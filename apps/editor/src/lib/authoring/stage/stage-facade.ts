@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { resolveStagePick } from './stage-pick';
@@ -248,6 +249,7 @@ export type StageOverlayContribution = {
 export type StageCandidatePreview = {
 	readonly id: string;
 	readonly role: 'subject' | 'affected' | 'refused';
+	readonly drawing?: boolean;
 	readonly polygons: readonly (readonly Vec3[])[];
 	readonly segments: readonly (readonly [Vec3, Vec3])[];
 	readonly labels: readonly { readonly world: Vec3; readonly text: string }[];
@@ -258,6 +260,7 @@ export type StageCandidatePreview = {
 export type StageCandidatePreviewView = {
 	readonly id: string;
 	readonly role: StageCandidatePreview['role'];
+	readonly drawing?: boolean;
 	readonly polygons: readonly (readonly (readonly [number, number])[])[];
 	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
 	readonly labels: readonly { readonly css: readonly [number, number]; readonly text: string }[];
@@ -442,6 +445,8 @@ export type StageEntryHome = 'dock' | 'find';
 
 /** One PLATE rail-family / capability-Find entry that invokes this adapter's task. */
 export type StageFindEntry = {
+	/** Optional editor-only invocation preparation, after eligibility. */
+	readonly onInvoke?: () => void;
 	readonly id: string;
 	/** The PLATE rail family this entry belongs to. */
 	readonly railFamily: string;
@@ -562,6 +567,7 @@ export type StageCardWriterRecord = StageInstrumentContent & { readonly adapterI
  * instrument to the Stage.
  */
 export type StageInstrumentContent = {
+	readonly presentation?: 'palette' | 'instrument';
 	readonly summary: string;
 	readonly facts?: readonly StageCardFact[];
 	/**
@@ -570,7 +576,7 @@ export type StageInstrumentContent = {
 	 */
 	readonly fieldIds?: readonly string[];
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
-	readonly view?: { readonly component: Component<{ services: StageAdapterServices }>; readonly services: StageAdapterServices };
+	readonly view?: { readonly component: Component<{ services: StageAdapterServices; detailOpen?: boolean; footer?: Snippet; secondary?: Snippet<[Snippet?]>; more?: Snippet<[Snippet?]> }>; readonly services: StageAdapterServices };
 };
 
 /** The binding context: the live read access plus the adapter's own identity. */
@@ -1333,7 +1339,9 @@ export function createStageFacade(input: {
 		return projectStageHandles({
 			adapterId: adapterEntry.adapter.id,
 			descriptors: admission.admitted,
-			openDisclosures,
+			openDisclosures: new Set([...openDisclosures, ...admission.admitted.filter(
+				(mark) => mark.role === 'disclose' && mark.intent === 'resize' && session.resizeHandles()
+			).map(mark => mark.id)]),
 			hoveredId: markHover?.adapterId === adapterEntry.adapter.id ? markHover.id : null,
 			activeId: activeMarkId,
 			project: (point) => {
@@ -1935,6 +1943,10 @@ export function createStageFacade(input: {
 			if (!isLive()) return false;
 			const mark = stageMarks().find((candidate) => candidate.id === id);
 			if (mark === undefined || mark.role !== 'disclose') return false;
+			if (mark.descriptor.role === 'disclose' && mark.descriptor.intent === 'resize') {
+				session.setResizeHandles(!session.resizeHandles());
+				return true;
+			}
 			if (openDisclosures.has(id)) openDisclosures.delete(id);
 			else openDisclosures.add(id);
 			return true;
@@ -2111,6 +2123,7 @@ export function createStageFacade(input: {
 							return [{
 								id: candidate.id,
 								role: candidate.role,
+								drawing: candidate.drawing,
 								polygons,
 								segments,
 								labels,
@@ -2212,6 +2225,7 @@ export function createStageFacade(input: {
 			const entry = findEntriesOf().find((candidate) => candidate.id === id && candidate.adapterId === adapterId);
 			const tasks = tasksOf().filter((candidate) => candidate.adapterId === adapterId && candidate.taskKind === entry?.taskKind);
 			if (tasks.length !== 1) return { kind: 'refused', code: 'unknown-task', message: 'Find requires one task of the declared kind in its owning adapter' };
+			entry?.onInvoke?.();
 			return facade.openContributedTask(tasks[0]!.id, adapterId);
 		},
 		openContributedTask(id, adapterId) {

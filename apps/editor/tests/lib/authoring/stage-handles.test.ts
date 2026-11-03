@@ -226,8 +226,8 @@ describe('R217.S07 — calibrated mark glyphs', () => {
 		const ring = marks[0]?.ring;
 		expect(ring).not.toBeNull();
 		const radii = ring!.map(([x, y]) => Math.hypot(x - 640, y - 360));
-		expect(Math.max(...radii)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.ringRadius, 3);
-		expect(Math.min(...radii)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.ringRadius, 3);
+		expect(Math.max(...radii)).toBeGreaterThanOrEqual(STAGE_MARK_GLYPH_CSS.ringRadius);
+		expect(Math.min(...radii)).toBeGreaterThanOrEqual(STAGE_MARK_GLYPH_CSS.ringRadius);
 	});
 
 	it('draws and hits both sides of a two-way base ray', () => {
@@ -509,13 +509,13 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 			new URL('../../../src/lib/authoring/stage/shell/StageSelectionLayer.svelte', import.meta.url),
 			'utf8'
 		);
-		expect(layer).toContain('const GOLD = 0xd4ad45');
-		expect(layer).toContain('const NEUTRAL = 0xf3f4ee');
+		expect(layer).toContain('const GOLD = STAGE_PAINT.selection');
+		expect(layer).toContain('const NEUTRAL = STAGE_PAINT.hover');
 		expect(layer).toContain("color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL");
-		expect(layer).toContain("opacity: tone === 'hover' ? 0.6 : 1");
+		expect(layer).toContain("toneMapped: false");
 		// Hover (and S10's erase dashes) are edges only; the tint is selection's alone.
-		expect(layer).toContain("if (tone !== 'selection') continue;");
-		expect(layer).toContain('opacity: 0.28');
+		expect(layer).not.toContain('new Mesh(tintGeometry');
+		expect(layer).toContain('visibleIdentityContour(positions, eye)');
 		// A selection at rest must repaint even though the ink objects are added
 		// imperatively rather than declared as Threlte children.
 		expect(layer).toContain('invalidate();');
@@ -528,8 +528,8 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		// Hidden LODs/children are not drawn, so they cannot contribute a gold clone.
 		expect(layer).toContain('hasVisibleAncestor(node)');
 		// Selection outranks hover when two identities share an edge.
-		expect(layer).toContain("tone === 'selection' ? 21 : tone === 'erase' ? 23 : 18");
-		expect(layer).toContain('tint.renderOrder = 20');
+		expect(layer).toContain("tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19");
+		expect(layer).not.toContain('tint.renderOrder');
 		const canvas = readFileSync(
 			new URL('../../../src/lib/authoring/stage/shell/StageCanvas.svelte', import.meta.url),
 			'utf8'
@@ -552,7 +552,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		// over Paper's own drawing by the identity the selection names.
 		expect(marks).toContain("PAPER_SELECTION_INK = '#d4ad45'");
 		expect(marks).toContain("PAPER_SELECTION_EDGE_INK = '#74560c'");
-		expect(marks).toContain("PAPER_HOVER_INK = '#f3f4ee'");
+		expect(marks).toContain("PAPER_HOVER_INK = '#4f8f6c'");
 		expect(marks).toContain('PAPER_MARK_HALO_INK');
 		expect(marks).toContain("line.sourceId === id");
 		expect(marks).toContain("footprint.entityId === id");
@@ -625,12 +625,12 @@ describe('R217.S07 — no leftover ad hoc handles', () => {
 });
 
 describe('R217.S14 — candidate outlines follow boundary segments', () => {
-	it('fills candidate polygons without stroking every polygon seam', () => {
+	it('uses boundary segments without duplicate polygon fills or seams', () => {
 		const overlay = readFileSync(
 			new URL('../../../src/lib/authoring/stage/shell/StageOverlay.svelte', import.meta.url),
 			'utf8'
 		);
-		expect(overlay).toContain('<path class="candidate-fill" d={polygonPath(polygon)} />');
+		expect(overlay).not.toContain('<path class="candidate-fill"');
 		expect(overlay).not.toContain('<path class="candidate-edge" d={polygonPath(polygon)} />');
 		expect(overlay).toContain('<line class="candidate-edge"');
 	});

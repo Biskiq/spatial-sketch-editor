@@ -1,3 +1,4 @@
+import { drawingRefusalWords } from './refusals';
 /**
  * T1.P02.S02 — the two bounded F.4 operations drawing adds.
  *
@@ -235,8 +236,9 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 			endpointJunctionSnaps: payload.junctionSnaps,
 			endpointHostSnaps: payload.hostSnaps
 		});
-		if (policy !== null) return refused(policy.message);
+		if (policy !== null) return refused(drawingRefusalWords(policy.code));
 		const plan = planWallChain({
+			roomNamePrefix: 'Room',
 			baseline,
 			points: payload.points,
 			close: payload.close,

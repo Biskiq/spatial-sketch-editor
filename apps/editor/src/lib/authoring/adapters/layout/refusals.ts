@@ -148,3 +148,15 @@ export function openingRefusalWords(
 	}
 	return `That ${kind} was refused. Adjust its host or size and try again.`;
 }
+
+/** Drawing diagnostics stay in tooling; the local problem marker offers a remedy. */
+export function drawingRefusalWords(code: string): string {
+	switch (code) {
+		case 'unconnected_crossing':
+		case 'unconnected_interior_contact': return 'End this line on the wall.';
+		case 'nested_room':
+		case 'unconnected_nested_ring': return 'Connect this outline to the room boundary.';
+		case 'insufficient_chain': return 'Add another point.';
+		default: return wallRefusalWords(code);
+	}
+}

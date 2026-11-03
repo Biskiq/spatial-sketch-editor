@@ -308,6 +308,8 @@ function cloneWallFirstDocument(document: LayoutDocumentWallFirst): LayoutDocume
  * so they are inert in production and add no telemetry.
  */
 export type WallChainPlanOptions = {
+	/** Naming policy for newly allocated Rooms only; existing authored names are retained. */
+	roomNamePrefix?: string;
 	/** Pre-operation document; never mutated. */
 	baseline: LayoutDocumentWallFirst;
 	points: readonly LayoutVec2[];
@@ -756,7 +758,7 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 					components,
 					predecessorWitnesses,
 					predecessorPolygons,
-					allocator: createAuthoringRoomAllocator(options.capture)
+					allocator: createAuthoringRoomAllocator(options.capture, options.roomNamePrefix)
 				})
 			);
 			if ('rejection' in result) {

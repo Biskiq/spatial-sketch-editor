@@ -33,7 +33,7 @@ import {
 	type SceneWritePort
 } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
-import { formCardController } from '$lib/authoring/adapters/scene/form-card';
+import { sceneObjectCommands } from './__fixtures__/scene-object-commands';
 import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
@@ -483,8 +483,8 @@ describe('Scene composition journey — one host, one history stack', () => {
 		expect(labels).not.toContain('Scale');
 		// The lazy Card's Size fields own the writable metre values; the facts stay
 		// read-only identity, not a second dimension writer.
-		expect(facade.cardWriter(subject)?.summary).toBe('Form fields');
-		const dimensions = formCardController(createStageAdapterServices(facade, host), FORM_ID)?.dimensions;
+		expect(facade.cardWriter(subject)?.summary).toBe('Object fields');
+		const dimensions = sceneObjectCommands(createStageAdapterServices(facade, host), FORM_ID)?.dimensions;
 		expect(dimensions).toHaveLength(3);
 		expect(dimensions![0]).toBeCloseTo(1, 9);
 		expect(dimensions![1]).toBeCloseTo(0.6, 9);

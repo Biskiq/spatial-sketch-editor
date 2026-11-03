@@ -4,29 +4,7 @@
 </script>
 
 <script lang="ts">
-	/**
-	 * StageInstrumentHost — the **invoked task instrument** home.
-	 *
-	 * One instrument appears because work is invoked, never merely because a
-	 * selected subject has advanced capabilities: with no task this component
-	 * renders nothing at all. When a task is present it names the procedure and its
-	 * technical target — which may differ from the canonical selection (an Opening
-	 * stays selected while its host Wall is unrolled) — and hosts that task's own
-	 * content through the `children` snippet.
-	 *
-	 * R217.S23 — the instrument is one row above the dock. It draws the dock's
-	 * material (forest, hairline edge, no caption) rather than a titled panel: the
-	 * procedure name, the target and Close share a single slim head, and the adapter's
-	 * content sits beneath it. The adapter's facts are not hover-only. They are the
-	 * instrument's accessible description (`aria-describedby` on the section and on the
-	 * info control), and an info control reveals them as a visible list for keyboard,
-	 * touch and sighted users alike.
-	 *
-	 * It is deliberately bounded: the shell's one lower column anchors it above the
-	 * dock, so opening, closing or resizing it never reflows or implicitly reframes
-	 * the Stage. It is a home for one task, not a second shell owner: it renders no
-	 * control layout of its own beyond naming, describing, hosting and closing.
-	 */
+	/** One contributed home: a Dock-anchored palette or an invoked instrument. The adapter keeps its controller. */
 	import type { Snippet } from 'svelte';
 	import type { StageInstrumentContent } from '../stage-facade';
 
@@ -34,7 +12,8 @@
 		task,
 		onClose,
 		instrument = null,
-		children
+		children,
+		onCollapse = onClose
 	}: {
 		task: { kind: string; label: string; targetLabel: string | null } | null;
 		onClose: () => void;
@@ -45,6 +24,7 @@
 		 */
 		instrument?: StageInstrumentContent | null;
 		children?: Snippet;
+		onCollapse?: () => void;
 	} = $props();
 
 	instances += 1;
@@ -63,44 +43,47 @@
 {#if task}
 	<section
 		class="instrument"
+		class:palette={instrument?.presentation === 'palette'}
 		aria-label={`${task.label} task`}
 		aria-describedby={facts.length > 0 ? descriptionId : undefined}
 		data-stage-instrument={task.kind}
 	>
-		<header class="instrument-head">
-			<h2 class="title">{heading}</h2>
-			{#if task.targetLabel}
-				<p class="target" title={task.targetLabel}>
-					<span class="target-key">Target</span>
-					<span class="target-value">{task.targetLabel}</span>
-				</p>
-			{/if}
-			{#if facts.length > 0}
-				<button
-					type="button"
-					class="about"
-					aria-label={`About ${heading}`}
-					aria-expanded={aboutOpen}
-					aria-controls={aboutId}
-					aria-describedby={descriptionId}
-					onclick={() => (aboutOpen = !aboutOpen)}
-				>
-					<span aria-hidden="true">i</span>
+		{#if instrument?.presentation !== 'palette'}
+			<header class="instrument-head">
+				<h2 class="title">{heading}</h2>
+				{#if task.targetLabel}
+					<p class="target" title={task.targetLabel}>
+						<span class="target-key">Target</span>
+						<span class="target-value">{task.targetLabel}</span>
+					</p>
+				{/if}
+				{#if facts.length > 0}
+					<button
+						type="button"
+						class="about"
+						aria-label={`About ${heading}`}
+						aria-expanded={aboutOpen}
+						aria-controls={aboutId}
+						aria-describedby={descriptionId}
+						onclick={() => (aboutOpen = !aboutOpen)}
+					>
+						<span aria-hidden="true">i</span>
+					</button>
+				{/if}
+				<button type="button" class="close" aria-label={`Close ${task.label}`} onclick={onClose}>
+					<span aria-hidden="true">✕</span>
 				</button>
-			{/if}
-			<button type="button" class="close" aria-label={`Close ${task.label}`} onclick={onClose}>
-				<span aria-hidden="true">✕</span>
-			</button>
-		</header>
-		{#if facts.length > 0}
-			<p id={descriptionId} class="sr-only">{factsText}</p>
-			{#if aboutOpen}
-				<dl id={aboutId} class="about-facts">
-					{#each facts as fact (fact.label)}
-						<dt>{fact.label}</dt>
-						<dd>{fact.value}</dd>
-					{/each}
-				</dl>
+			</header>
+			{#if facts.length > 0}
+				<p id={descriptionId} class="sr-only">{factsText}</p>
+				{#if aboutOpen}
+					<dl id={aboutId} class="about-facts">
+						{#each facts as fact (fact.label)}
+							<dt>{fact.label}</dt>
+							<dd>{fact.value}</dd>
+						{/each}
+					</dl>
+				{/if}
 			{/if}
 		{/if}
 		<div class="instrument-body">
@@ -112,6 +95,12 @@
 				{@render children()}
 			{/if}
 		</div>
+		{#if instrument?.presentation === 'palette'}<button
+				type="button"
+				class="collapse"
+				aria-label="Collapse palette"
+				onclick={onCollapse}>⌄</button
+			>{/if}
 	</section>
 {/if}
 
@@ -126,15 +115,23 @@
 		display: flex;
 		box-sizing: border-box;
 		flex-direction: column;
-		width: max-content;
+		width: min(480px, 100%);
 		max-width: 100%;
 		max-height: min(24rem, 60vh);
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.6rem;
+		border: 1px solid rgb(255 255 255 / 0.09);
+		border-radius: 12px;
 		background: var(--shell-forest, #11291f);
 		box-shadow: 0 0.5rem 1.5rem rgb(6 20 14 / 45%);
 		color: var(--shell-ink-light, #f3f4ee);
-		font-family: var(--shell-sans, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif);
+		font-family: var(
+			--shell-sans,
+			Inter,
+			ui-sans-serif,
+			system-ui,
+			-apple-system,
+			'Segoe UI',
+			sans-serif
+		);
 		font-size: var(--shell-text-utility, 12px);
 	}
 
@@ -274,6 +271,38 @@
 		.close {
 			min-width: var(--shell-touch-target, 44px);
 			min-height: var(--shell-touch-target, 44px);
+		}
+	}
+	.palette {
+		width: 42px;
+		padding: 4px 4px 2px;
+		overflow: visible;
+		max-height: none;
+		background: rgba(17, 41, 31, 0.95);
+		box-shadow: 0 10px 24px #0004;
+	}
+	.palette .instrument-body {
+		overflow: visible;
+		padding: 0;
+	}
+	.collapse {
+		width: 32px;
+		height: 16px;
+		border: 0;
+		margin-top: 1px;
+		padding: 0;
+		border-radius: 6px;
+		color: #d9e2da;
+		background: transparent;
+		cursor: pointer;
+	}
+	@media (pointer: coarse) {
+		.palette {
+			width: 54px;
+		}
+		.collapse {
+			width: 44px;
+			min-height: 44px;
 		}
 	}
 </style>

@@ -380,7 +380,7 @@ function supportCandidates(
 }
 
 describe('scene operation planners — registration', () => {
-	it('registers exactly the ten Scene operations as single-domain planners', () => {
+	it('registers exactly the twelve Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
 		expect(planners.map((planner) => planner.kind)).toEqual([
 			'place-object',
@@ -392,7 +392,9 @@ describe('scene operation planners — registration', () => {
 			'place-on-floor',
 			'resize-on-floor',
 			'duplicate-one',
-			'delete-one'
+			'delete-one',
+			'set-lift',
+			'set-name'
 		]);
 		for (const planner of planners) {
 			// `place-object` is the single Scene planner that declares typed-resource
@@ -751,7 +753,9 @@ describe('scene operation planners — poses and ownership', () => {
 });
 
 describe('scene operation planners — support and refusals', () => {
-	it('refuses a destination without support at the resting elevation', async () => {
+	// Review pass 2 §6: a base above the support beneath is a lift, not a missing
+	// support. Move and duplicate keep the lift over the destination's support.
+	it('keeps a lifted object’s lift when it moves beyond its support', async () => {
 		const project = await projectWith(sceneWith([box('entity-a', [3, 2.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
@@ -771,10 +775,12 @@ describe('scene operation planners — support and refusals', () => {
 				}
 			})
 		);
-		expect(result).toMatchObject({ kind: 'rejected', code: 'no-support' });
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		expect(result.candidate.source.units.scene.data.entities[0]!.position).toEqual([20, 2.5, 20]);
 	});
 
-	it('refuses a duplicate whose shifted contact leaves the supported elevation', async () => {
+	it('keeps a lifted object’s lift on its duplicate', async () => {
 		const project = await projectWith(sceneWith([box('entity-corner', [6.6, 2.5, 5.6])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
@@ -789,7 +795,10 @@ describe('scene operation planners — support and refusals', () => {
 				allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }]
 			})
 		);
-		expect(result).toMatchObject({ kind: 'rejected', code: 'no-support' });
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const copy = result.candidate.source.units.scene.data.entities.find((entity) => entity.id === 'entity-copy');
+		expect(copy?.position[1]).toBe(2.5);
 	});
 
 	it('moves and duplicates onto the datum beyond the Room at the same elevation', async () => {
@@ -2192,5 +2201,81 @@ describe('scene support — the explicit datum (R217.S17A)', () => {
 		const open = resolveSceneSupport({ layout: empty, sourceContentId: 'c', point: [9, 9], requiredElevation: null });
 		expect(open).toMatchObject({ kind: 'resolved', support: { elevation: 1.25, orderKey: 'stage-datum', witnesses: [] } });
 		expect(resolveSceneSupport({ layout: empty, sourceContentId: 'c', point: [9, 9], requiredElevation: 4 })).toMatchObject({ kind: 'refused', code: 'no-support' });
+	});
+});
+
+describe('scene operation planners — lift and name (review pass 2)', () => {
+	it('lifts an object above the support beneath it and back down, one owned field each', async () => {
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const snapshot = await snapshotOf(project);
+		const lifted = prepare(
+			'set-lift',
+			snapshot,
+			intent({
+				kind: 'set-lift',
+				operationId: 'op-lift',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', lift: 1.5, contactMinY: -0.5 }
+			})
+		);
+		expect(lifted.kind).toBe('prepared');
+		if (lifted.kind !== 'prepared') return;
+		expect(lifted.candidate.source.units.scene.data.entities[0]!.position).toEqual([3, 2, 2]);
+		const unchanged = prepare(
+			'set-lift',
+			snapshot,
+			intent({
+				kind: 'set-lift',
+				operationId: 'op-lift-same',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', lift: 0, contactMinY: -0.5 }
+			})
+		);
+		expect(unchanged.kind).not.toBe('prepared');
+		const negative = prepare(
+			'set-lift',
+			snapshot,
+			intent({
+				kind: 'set-lift',
+				operationId: 'op-lift-negative',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', lift: -1, contactMinY: -0.5 }
+			})
+		);
+		expect(negative.kind).toBe('rejected');
+	});
+
+	it('renames any entity, trims, and refuses a blank name', async () => {
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const snapshot = await snapshotOf(project);
+		const named = prepare(
+			'set-name',
+			snapshot,
+			intent({
+				kind: 'set-name',
+				operationId: 'op-name',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', name: '  Plinth  ' }
+			})
+		);
+		expect(named.kind).toBe('prepared');
+		if (named.kind !== 'prepared') return;
+		expect(named.candidate.source.units.scene.data.entities[0]!.name).toBe('Plinth');
+		const blank = prepare(
+			'set-name',
+			snapshot,
+			intent({
+				kind: 'set-name',
+				operationId: 'op-name-blank',
+				snapshot,
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
+				payload: { entityId: 'entity-a', name: '   ' }
+			})
+		);
+		expect(blank.kind).toBe('rejected');
 	});
 });

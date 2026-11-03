@@ -14,9 +14,3 @@ export function acceptFormCommand(services: StageAdapterServices, snapshot: Stag
 		capturedInputs: [], allocatedIds: allocatedId === undefined ? [] : [{ kind: 'scene-entity', id: allocatedId }]
 	});
 }
-
-export async function deleteForm(services: StageAdapterServices, snapshot: StageReadSnapshot, entityId: string) {
-	const result = await acceptFormCommand(services, snapshot, entityId, 'delete-one', { entityId });
-	return result.kind === 'refused' ? { kind: 'refused' as const, message: result.message }
-		: { kind: result.kind === 'no-op' ? 'no-op' as const : 'accepted' as const };
-}

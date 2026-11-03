@@ -261,7 +261,7 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 		await resizeTo(mounted, 2, 2);
 		expect(statusOf(mounted.target)).toBe('dirty');
 		expect(mounted.target.querySelector('[data-unsaved-work]')).not.toBeNull();
-		expect(saveButton(mounted.target).textContent?.trim()).toBe('Save changes');
+		expect(saveButton(mounted.target).getAttribute('aria-label')).toBe('Save changes');
 	});
 
 	it('adopts a Cloud rename across dirty history, Undo/Redo, Save and reopen', async () => {
@@ -377,7 +377,7 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 		expect(mounted.state.getSnapshot().savedCanonicalJson).toBe(capturedLocalJson);
 		expect(mounted.facade.snapshot().canonicalJson).not.toBe(capturedLocalJson);
 		expect(mounted.target.querySelector('[data-unsaved-work]')).not.toBeNull();
-		expect(saveButton(mounted.target).textContent?.trim()).toBe('Save changes');
+		expect(saveButton(mounted.target).getAttribute('aria-label')).toBe('Save changes');
 	});
 
 	it('holds a conflict as local work until the host reloads the remote copy', async () => {

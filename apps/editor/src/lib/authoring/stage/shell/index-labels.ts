@@ -85,7 +85,7 @@ export function indexLabels(inputs: readonly IndexLabelInput[]): ReadonlyMap<str
 export function layoutKindWord(sourceKind: string, openingKind?: 'door' | 'window'): string {
 	if (sourceKind === 'wall') return 'Wall';
 	if (sourceKind === 'opening') return openingKind === 'window' ? 'Window' : 'Door';
-	if (sourceKind === 'room-floor' || sourceKind === 'room') return 'Floor';
+	if (sourceKind === 'room-floor' || sourceKind === 'room') return 'Room';
 	if (sourceKind === 'object') return 'Object';
 	return sourceKind.charAt(0).toUpperCase() + sourceKind.slice(1);
 }

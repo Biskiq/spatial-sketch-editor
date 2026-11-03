@@ -1,26 +1,12 @@
 <script lang="ts">
-	/**
-	 * R217.S13 — PLATE's **drafting cluster** in the Stage's top-left furniture slot,
-	 * with R217.S20's **⚙ viewing preferences** beside it.
-	 *
-	 * The cluster is one reading control and two words, never a toolbar of domain
-	 * tools:
-	 *
-	 * - **2D | 3D** is the segmented reading control; it requests the existing
-	 *   `set-reading` viewing intent, so it neither composes a pose nor refits.
-	 * - **Grid** and **Snap** toggle their one fact and say it in words; a held
-	 *   Alt/Option is reported as `Snap held`, never by colour alone. Their values
-	 *   are fixed, so zoom can only thin the drawing.
-	 * - **⚙** opens the viewing preferences: 2D appearance, Height Sheet side, Reduce
-	 *   motion and motion speed. These are browser preferences, never source, and the
-	 *   panel holds no drafting value: Grid and Snap stay the words above.
-	 *
-	 * Nothing here reaches source, history or Save. Every control is a native button
-	 * with `aria-pressed` or `aria-expanded`, so keyboard access and state
-	 * announcement come from the control itself. Under `pointer: coarse` every target
-	 * is at least 44 CSS px.
-	 */
+	/** Reading and drafting families: light in Plan, dark glass in 3D. The gear holds viewing preferences. */
 	import type { StageDraftingPatch, StageDraftingState } from '../stage-drafting';
+	import { PAPER_TONES, PAPER_TONE_IDS, type PaperTone } from '../paper-plan';
+	import type { AppPreferences } from '$lib/platform/app-preferences';
+
+	type ViewPreferencePatch = Partial<
+		Pick<AppPreferences, 'roomLabels2d' | 'roomLabels3d' | 'paperTone2d' | 'paperTone3d'>
+	>;
 
 	let {
 		drafting,
@@ -37,7 +23,12 @@
 		reducedMotion = false,
 		onToggleReducedMotion = () => {},
 		motionSpeed = 'normal',
-		onMotionSpeed = () => {}
+		onMotionSpeed = () => {},
+		roomLabels2d = true,
+		roomLabels3d = false,
+		paperTone2d = 'current',
+		paperTone3d = 'current',
+		onViewPreference = () => {}
 	}: {
 		drafting: StageDraftingState;
 		/** The settled reading the segmented control reports. */
@@ -59,7 +50,16 @@
 		onToggleReducedMotion?: () => void;
 		motionSpeed?: 'slow' | 'normal' | 'fast';
 		onMotionSpeed?: (value: 'slow' | 'normal' | 'fast') => void;
+		/** Review pass 2 §7 — per-view Room labels and Paper tones (view preferences only). */
+		roomLabels2d?: boolean;
+		roomLabels3d?: boolean;
+		paperTone2d?: PaperTone;
+		paperTone3d?: PaperTone;
+		onViewPreference?: (patch: ViewPreferencePatch) => void;
 	} = $props();
+
+	/** One Paper tray open at a time; it stays open until its row is pressed again. */
+	let toneTray = $state<'2d' | '3d' | null>(null);
 
 	let viewingOpen = $state(false);
 	let gear: HTMLButtonElement | undefined;
@@ -81,13 +81,19 @@
 	function onWindowPointerDown(event: PointerEvent): void {
 		if (!viewingOpen) return;
 		const target = event.target;
-		if (target instanceof Element && target.closest('.viewing-slot') === null) viewingOpen = false;
+		if (target instanceof Element && target.closest('.viewing-slot') === null) { viewingOpen = false; toneTray = null; gear?.focus(); }
 	}
 </script>
 
 <svelte:window onpointerdowncapture={onWindowPointerDown} />
 
-<div class="cluster" class:quiet data-stage-drafting role="group" aria-label="Drafting state">
+<div
+	class="cluster"
+	class:quiet={reading === 'plan'}
+	data-stage-drafting
+	role="group"
+	aria-label="Drafting state"
+>
 	<div class="reading" role="group" aria-label="Reading">
 		<button
 			type="button"
@@ -107,6 +113,101 @@
 		>
 			3D
 		</button>
+
+		<div class="viewing-slot">
+			<button
+				type="button"
+				class="gear"
+				data-stage-viewing
+				bind:this={gear}
+				aria-label="Viewing settings"
+				aria-expanded={viewingOpen}
+				aria-controls={viewingId}
+				title="Viewing settings"
+				onclick={() => (viewingOpen = !viewingOpen)}
+				onkeydown={onViewingKeydown}
+			>
+				<span aria-hidden="true">⚙</span>
+			</button>
+			<!-- Escape closes the panel from any of its controls; the controls themselves are the focus targets. -->
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<div
+				id={viewingId}
+				class="viewing"
+				role="group"
+				aria-label="Viewing settings"
+				data-stage-viewing-panel
+				hidden={!viewingOpen}
+				onkeydown={onViewingKeydown}
+			>
+				<strong class="group-title">Viewing</strong>
+				<label>
+					<span>2D appearance</span>
+					<select
+						value={planAppearance}
+						onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}
+					>
+						<option value="paper">Paper</option>
+						<option value="shaded">Shaded</option>
+					</select>
+				</label>
+				<div class="pref-row">
+					<span>Room labels</span>
+					<span class="switches">
+						<button type="button" role="switch" class="switch" aria-checked={roomLabels2d} data-room-labels="2d"
+							onclick={() => onViewPreference({ roomLabels2d: !roomLabels2d })}>In 2D</button>
+						<button type="button" role="switch" class="switch" aria-checked={roomLabels3d} data-room-labels="3d"
+							onclick={() => onViewPreference({ roomLabels3d: !roomLabels3d })}>In 3D</button>
+					</span>
+				</div>
+				<strong class="group-title">Paper</strong>
+				{#each [{ view: '2d', word: '2D plan', tone: paperTone2d }, { view: '3d', word: '3D board', tone: paperTone3d }] as row (row.view)}
+					<button type="button" class="tone-row" aria-expanded={toneTray === row.view} data-paper-row={row.view}
+						onclick={() => (toneTray = toneTray === row.view ? null : (row.view as '2d' | '3d'))}>
+						<span>{row.word}</span>
+						<span class="tone-now"><i class="swatch" style:background={PAPER_TONES[row.tone].ink}></i>{PAPER_TONES[row.tone].label}<span class="chev" aria-hidden="true">⌄</span></span>
+					</button>
+					{#if toneTray === row.view}
+						<div class="tone-tray" role="group" aria-label={`${row.word} paper tone`}>
+							{#each PAPER_TONE_IDS as tone (tone)}
+								<button type="button" class="tile" aria-pressed={row.tone === tone} data-paper-tone={tone}
+									onclick={() => onViewPreference(row.view === '2d' ? { paperTone2d: tone } : { paperTone3d: tone })}>
+									<i class="paper" style:background-color={PAPER_TONES[tone].ink}></i>
+									<span>{PAPER_TONES[tone].label}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				{/each}
+				<label>
+					<span>Height Sheet</span>
+					<select
+						value={heightSheetSide}
+						onchange={(event) => onHeightSheetSide(event.currentTarget.value as 'left' | 'right')}
+					>
+						<option value="right">Right</option>
+						<option value="left">Left</option>
+					</select>
+				</label>
+				<strong class="group-title">Settings</strong>
+				<label class="check">
+					<input type="checkbox" checked={reducedMotion} onchange={() => onToggleReducedMotion()} />
+					<span>Reduce motion</span>
+				</label>
+				<label>
+					<span>Editor motion speed</span>
+					<select
+						value={motionSpeed}
+						onchange={(event) =>
+							onMotionSpeed(event.currentTarget.value as 'slow' | 'normal' | 'fast')}
+					>
+						<option value="slow">Slow</option>
+						<option value="normal">Normal</option>
+						<option value="fast">Fast</option>
+					</select>
+				</label>
+			</div>
+		</div>
 	</div>
 
 	<div class="words">
@@ -117,7 +218,7 @@
 			title="Grid: fixed 1 m and 5 m lines, thinned with zoom"
 			onclick={() => onPatch({ grid: !drafting.grid })}
 		>
-			{gridWord}
+			Grid
 		</button>
 		<button
 			type="button"
@@ -127,182 +228,101 @@
 			title="Snap: fixed 0.5 m increment (hold Alt or Option to suspend)"
 			onclick={() => onPatch({ snap: !drafting.snap })}
 		>
-			{snapWord}
+			{drafting.snap ? (snapWord.includes('held') ? 'Snap held' : 'Snap') : 'Snap'}
 		</button>
 	</div>
 	<!-- The durable aria-pressed is the switch; this polite status names the
 	     temporary Alt/Option hold, which would otherwise be visible only in text. -->
 	<span id="drafting-snap-state" class="sr-only" role="status" aria-live="polite">{snapWord}</span>
-
-	<div class="viewing-slot">
-		<button
-			type="button"
-			class="gear"
-			data-stage-viewing
-			bind:this={gear}
-			aria-label="Viewing settings"
-			aria-expanded={viewingOpen}
-			aria-controls={viewingId}
-			title="Viewing settings"
-			onclick={() => (viewingOpen = !viewingOpen)}
-			onkeydown={onViewingKeydown}
-		>
-			<span aria-hidden="true">⚙</span>
-		</button>
-		<!-- Escape closes the panel from any of its controls; the controls themselves are the focus targets. -->
-		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-		<div
-			id={viewingId}
-			class="viewing"
-			role="group"
-			aria-label="Viewing settings"
-			data-stage-viewing-panel
-			hidden={!viewingOpen}
-			onkeydown={onViewingKeydown}
-		>
-			<strong class="group-title">Viewing</strong>
-			<label>
-				<span>2D appearance</span>
-				<select
-					value={planAppearance}
-					onchange={(event) => onPlanAppearance(event.currentTarget.value as 'paper' | 'shaded')}
-				>
-					<option value="paper">Paper</option>
-					<option value="shaded">Shaded</option>
-				</select>
-			</label>
-			<label>
-				<span>Height Sheet</span>
-				<select
-					value={heightSheetSide}
-					onchange={(event) => onHeightSheetSide(event.currentTarget.value as 'left' | 'right')}
-				>
-					<option value="right">Right</option>
-					<option value="left">Left</option>
-				</select>
-			</label>
-			<strong class="group-title">Settings</strong>
-			<label class="check">
-				<input type="checkbox" checked={reducedMotion} onchange={() => onToggleReducedMotion()} />
-				<span>Reduce motion</span>
-			</label>
-			<label>
-				<span>Editor motion speed</span>
-				<select
-					value={motionSpeed}
-					onchange={(event) => onMotionSpeed(event.currentTarget.value as 'slow' | 'normal' | 'fast')}
-				>
-					<option value="slow">Slow</option>
-					<option value="normal">Normal</option>
-					<option value="fast">Fast</option>
-				</select>
-			</label>
-		</div>
-	</div>
 </div>
 
 <style>
 	.cluster {
-		/* The Head's calibrated chassis inks; the cluster lives outside `.head`, so
-		   without these the fallbacks were a visibly lighter chrome. */
-		--chassis-forest: #11291f;
-		--chassis-hairline: #2f4a3d;
 		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.4rem;
-		max-width: min(46rem, calc(100vw - 2rem));
+		align-items: flex-start;
+		gap: 6px;
+		max-width: calc(100vw - 20px);
+		color: #e7ece7;
+		font: 12px var(--shell-sans, system-ui);
 	}
+	.reading,
 	.words {
 		display: flex;
-		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.3rem;
-	}
-	.reading {
-		display: inline-flex;
-		overflow: hidden;
-		border: 1px solid var(--chassis-hairline, #405d4c);
-		border-radius: 0.4rem;
+		padding: 2px;
+		gap: 1px;
+		border: 1px solid rgb(255 255 255 / 0.1);
+		border-radius: 9px;
+		background: rgba(14, 30, 25, 0.8);
+		box-shadow: var(--shell-furniture-shadow);
 	}
 	button {
-		min-height: 2.25rem;
-		padding: 0 0.6rem;
-		border: 1px solid var(--chassis-hairline, #405d4c);
-		border-radius: 0.4rem;
-		background: var(--chassis-forest, #11291f);
-		color: #f4f0e9;
+		height: 28px;
+		min-width: 34px;
+		padding: 0 8px;
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: inherit;
 		font: inherit;
-		font-size: 0.76rem;
-		letter-spacing: 0.01em;
 		white-space: nowrap;
 		cursor: pointer;
 	}
-	.reading button {
-		border: 0;
-		border-radius: 0;
-	}
-	.reading button + button {
-		border-left: 1px solid var(--chassis-hairline, #405d4c);
-	}
 	button:hover {
-		border-color: #6d8f7b;
+		background: rgb(255 255 255 / 0.08);
 	}
-	button[aria-pressed='true'] {
-		background: #f4f0e9;
-		color: #14231b;
-		font-weight: 650;
+	.reading button[aria-pressed='true'] {
+		background: var(--shell-forest-raised, #22503c);
+		color: #fff;
+		font-weight: 600;
 	}
-	/* The off state is struck through as well as named; the reading segmented
-	   control is not a value and keeps its own selected treatment. */
-	.words button[aria-pressed='false'] {
-		text-decoration: line-through;
+	.words {
+		padding: 2px;
+	}
+	.words button {
+		height: 26px;
+		padding: 0 7px;
+		border-radius: 6px;
+		min-width: 0;
+	}
+	.words [aria-pressed='false'] {
 		opacity: 0.5;
+		text-decoration: line-through;
 	}
-	button:focus-visible {
-		outline: 2px solid #9fd0b4;
-		outline-offset: 2px;
+	.quiet {
+		color: var(--shell-ink, #1b201c);
 	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
+	.quiet .reading,
+	.quiet .words {
+		background: rgba(255, 255, 255, 0.94);
+		border-color: var(--shell-hairline, #e1e4de);
 	}
-
-	/* The ⚙ and its panel: a viewing disclosure, not a drafting control. */
+	.quiet button:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
 	.viewing-slot {
 		position: relative;
 	}
-	.gear {
-		width: 2.25rem;
-		padding: 0;
-		font-size: 0.95rem;
+	.reading .gear {
+		min-width: 26px;
+		width: 26px;
+		padding: 0 5px;
 	}
-	/*
-		The panel reads the shell's roles (shell-roles.css), not the cluster's chassis
-		inks: a mat panel is forest with light ink, and a Paper panel is Paper with forest ink.
-	*/
 	.viewing {
 		position: absolute;
-		z-index: 9;
-		top: calc(100% + 0.4rem);
+		z-index: 20;
+		top: 36px;
 		left: 0;
+		width: 256px;
 		display: grid;
-		gap: 0.5rem;
-		width: 16rem;
-		padding: 0.75rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.4rem;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #f3f4ee);
-		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 40%);
-		font-size: 0.76rem;
+		gap: 8px;
+		padding: 12px;
+		border: 1px solid rgb(255 255 255 / 0.1);
+		border-radius: 10px;
+		background: var(--shell-card, #fff);
+		color: var(--shell-ink, #1b201c);
+		border-color: var(--shell-hairline, #e1e4de);
+		box-shadow: var(--shell-shadow);
 	}
 	.viewing[hidden] {
 		display: none;
@@ -311,77 +331,145 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.6rem;
-	}
-	.viewing label.check {
-		justify-content: flex-start;
+		gap: 8px;
 	}
 	.viewing select {
-		min-height: 2.1rem;
-		padding: 0 0.3rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: var(--shell-forest, #11291f);
-		color: inherit;
+		appearance: none;
+		min-height: 30px;
+		padding: 0 22px 0 8px;
+		background-image: linear-gradient(45deg, transparent 50%, #4a524c 50%), linear-gradient(135deg, #4a524c 50%, transparent 50%);
+		background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
+		background-size: 4px 4px;
+		background-repeat: no-repeat;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 6px;
+		background-color: var(--shell-control-surface, #fafbf9);
+		color: var(--shell-ink, #1b201c);
 		font: inherit;
 	}
+	.pref-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+	}
+	.switches {
+		display: flex;
+		gap: 4px;
+	}
+	.viewing .switch {
+		height: 26px;
+		padding: 0 9px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 13px;
+		background: #fff;
+		color: var(--shell-ink-2, #4a524c);
+	}
+	.viewing .switch[aria-checked='true'] {
+		border-color: var(--shell-ink, #1b201c);
+		background: var(--shell-ink, #1b201c);
+		color: #fff;
+	}
+	.viewing .tone-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		width: 100%;
+		padding: 0 4px;
+		color: var(--shell-ink, #1b201c);
+	}
+	.viewing .tone-row:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.tone-now {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--shell-ink-2, #4a524c);
+	}
+	.swatch {
+		width: 14px;
+		height: 14px;
+		border: 1px solid rgb(27 32 28 / 0.25);
+		border-radius: 4px;
+	}
+	.chev {
+		display: inline-block;
+		transition: transform 120ms;
+	}
+	.tone-row[aria-expanded='true'] .chev {
+		transform: rotate(180deg);
+	}
+	.tone-tray {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+	}
+	.viewing .tile {
+		display: grid;
+		gap: 4px;
+		height: auto;
+		padding: 4px;
+		border-radius: 8px;
+		color: var(--shell-ink-2, #4a524c);
+		font-size: 11px;
+		white-space: normal;
+	}
+	.tile .paper {
+		display: block;
+		height: 44px;
+		border: 1px solid rgb(27 32 28 / 0.18);
+		border-radius: 6px;
+		/* The tone's own grid, so the tile reads as Paper rather than a flat chip. */
+		background-image: linear-gradient(rgb(27 32 28 / 0.09) 1px, transparent 1px),
+			linear-gradient(90deg, rgb(27 32 28 / 0.09) 1px, transparent 1px);
+		background-size: 8px 8px;
+	}
+	.tile[aria-pressed='true'] .paper {
+		outline: 2px solid var(--shell-ink, #1b201c);
+		outline-offset: 1px;
+	}
+	/* The 2D|3D segment's pressed fill must not reach the panel's own controls. */
+	.reading .viewing .tile[aria-pressed='true'] {
+		background: transparent;
+		color: var(--shell-ink, #1b201c);
+		font-weight: 600;
+	}
 	.group-title {
-		font-size: 0.66rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
+		font-size: 10px;
 		text-transform: uppercase;
-		color: var(--shell-ink-quiet, #9fb2a2);
+		letter-spacing: 0.07em;
+		color: var(--shell-ink-2, #4a524c);
 	}
-
-	/* D42: on Paper the words read quietly, never as a dark inverted toolbar. */
-	.cluster.quiet {
-		--chassis-forest: #f4f0e9;
-		--chassis-hairline: #a9b7a9;
+	.quiet .viewing {
+		background: #fff;
+		color: var(--shell-ink, #1b201c);
+		border-color: var(--shell-hairline, #e1e4de);
 	}
-	.cluster.quiet button {
-		color: #14231b;
+	.quiet .group-title {
+		color: var(--shell-ink-3, #79817b);
 	}
-	.cluster.quiet button:hover {
-		border-color: #4f6b58;
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
 	}
-	.cluster.quiet button[aria-pressed='true'] {
-		background: #22503c;
-		color: #f4f0e9;
-	}
-	.cluster.quiet button:focus-visible {
-		outline-color: #22503c;
-	}
-	/* On Paper the panel is Paper with forest ink; the selects are white Cards on it. Only shell roles. */
-	.cluster.quiet .viewing {
-		background: var(--shell-paper, #e9ebe6);
-		border-color: var(--shell-ink-quiet, #9fb2a2);
-		color: var(--shell-forest, #11291f);
-	}
-	.cluster.quiet .viewing select {
-		border-color: var(--shell-ink-quiet, #9fb2a2);
-		background: var(--shell-card, #ffffff);
-		color: var(--shell-forest, #11291f);
-	}
-	.cluster.quiet .group-title {
-		color: var(--shell-forest-raised, #22503c);
-	}
-
-	/* Touch targets: PLATE requires 44 px under a coarse pointer. */
 	@media (pointer: coarse) {
-		button {
-			min-height: 44px;
+		button,
+		.words button,
+		.reading .gear,
+		select {
 			min-width: 44px;
-			padding: 0 0.8rem;
+			min-height: 44px;
 		}
-		.reading button {
-			min-width: 56px;
-		}
-		.gear {
-			width: 44px;
+		.reading,
+		.words {
 			padding: 0;
 		}
-		.viewing select {
-			min-height: 44px;
+		.cluster {
+			gap: 6px;
 		}
 	}
 </style>

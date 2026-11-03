@@ -280,8 +280,9 @@ describe('R217 batch repair — first-stroke feedback', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		const preview = candidate(mounted, 'layout-candidate-chain');
-		expect(preview.polygons.length).toBeGreaterThan(0);
-		expect(preview.labels.some((label) => label.text.includes('Length 3.000'))).toBe(true);
+		expect(preview.polygons).toEqual([]);
+		expect(preview.segments.length).toBeGreaterThan(0);
+		expect(preview.labels.some((label) => label.text === '3.00 m')).toBe(true);
 		expect(acceptedLayout(mounted.facade)).toEqual(baseline);
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await eventually(() => acceptedLayout(mounted.facade).walls.length === baseline.walls.length + 1);
@@ -300,7 +301,7 @@ describe('R217 batch repair — first-stroke feedback', () => {
 		const from = stageCss(mounted, [8, 0]);
 		mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId });
 		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted, [11, 0]), evaluationId });
-		expect(candidate(mounted, 'layout-candidate-chain').polygons.length).toBeGreaterThan(0);
+		expect(candidate(mounted, 'layout-candidate-chain').segments.length).toBeGreaterThan(0);
 		mounted.facade.pointerIntent({ phase: 'move', css: [640, -400], evaluationId });
 		expect(mounted.facade.candidatePreviews()).toEqual([]);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: from, evaluationId });
@@ -323,7 +324,7 @@ describe('R217 batch repair — first-stroke feedback', () => {
 		expect(refused.labels[0]!.text).not.toBe('');
 		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
 		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted, [-1, 3]), evaluationId });
-		expect(candidate(mounted, 'layout-candidate-chain').polygons.length).toBeGreaterThan(0);
+		expect(candidate(mounted, 'layout-candidate-chain').segments.length).toBeGreaterThan(0);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: from, evaluationId });
 		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
 	});
@@ -377,7 +378,7 @@ describe('R217.S14 — overlay marker space', () => {
 		const evaluationId = mounted.facade.evaluationId()!;
 		const at = stageCss(mounted, [1, 1]);
 		expect(mounted.facade.hoverIntent({ phase: 'move', css: at, evaluationId })).toBe(true);
-		const marker = mounted.facade.overlays().find((entry) => entry.id === 'layout-ink-target');
+		const marker = mounted.facade.candidatePreviews().find((entry) => entry.snap !== undefined)?.snap;
 		expect(marker).toBeDefined();
 		const expected = stageCss(mounted, [1, 1]);
 		expect(marker!.css[0]).toBeCloseTo(expected[0], 5);
@@ -423,7 +424,9 @@ describe('R217.S14 — overlay marker space', () => {
 });
 
 describe('R217.S14 — the preview is the candidate geometry', () => {
-	it('matches the compiled Paper drawing of the Wall move release commits', async () => {
+	// Review pass 2 §2: the drag preview is one dashed centreline per Wall, not
+	// the Paper outline. It must run exactly along the Wall the release commits.
+	it('draws the committed Wall’s centreline as the move preview', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, mounted.rect);
 		selectWall(mounted.facade, mounted.wallId);
@@ -448,16 +451,14 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 
 		const document = acceptedLayout(mounted.facade);
 		const wall = document.walls.find((entry) => entry.id === mounted.wallId)!;
-		const sourceIds = new Set([mounted.wallId, ...document.openings.filter((entry) => entry.wallId === wall.id).map((entry) => entry.id)]);
-		const accepted = acceptedPaperCss(mounted, sourceIds);
-		expect(preview.polygons.length).toBe(accepted.polygons.length);
-		for (const [index, polygon] of preview.polygons.entries()) {
-			expectPointsClose(polygon, accepted.polygons[index]!);
-		}
-		expect(preview.segments.length).toBe(accepted.segments.length);
-		for (const [index, segment] of preview.segments.entries()) {
-			expectPointsClose(segment, accepted.segments[index]!);
-		}
+		const startPoint = document.junctions.find((entry) => entry.id === wall.startJunctionId)!.point;
+		const endPoint = document.junctions.find((entry) => entry.id === wall.endJunctionId)!.point;
+		expect(preview.polygons).toEqual([]);
+		expect(preview.segments.length).toBeGreaterThan(0);
+		expectPointsClose(
+			[preview.segments[0]![0], preview.segments.at(-1)![1]],
+			[stageCss(mounted, startPoint), stageCss(mounted, endPoint)]
+		);
 
 		// The affected contribution is the same promise for reshaped neighbours,
 		// derived here from the accepted topology rather than the preview's list.
@@ -472,16 +473,16 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 				)
 				.map((entry) => entry.id)
 		);
-		const affectedSourceIds = new Set([
-			...affectedWalls,
-			...document.openings.filter((entry) => affectedWalls.has(entry.wallId)).map((entry) => entry.id)
-		]);
-		const acceptedAffected = acceptedPaperCss(mounted, affectedSourceIds);
 		expect(neighbours).toBeDefined();
 		expect(neighbours!.polygons).toEqual([]);
-		expect(neighbours!.segments.length).toBe(acceptedAffected.segments.length);
-		for (const [index, segment] of neighbours!.segments.entries()) {
-			expectPointsClose(segment, acceptedAffected.segments[index]!);
+		// Each reshaped neighbour is its own centreline run, ending at the moved Junction.
+		const moved = [wall.startJunctionId, wall.endJunctionId].map(
+			(id) => stageCss(mounted, document.junctions.find((entry) => entry.id === id)!.point)
+		);
+		expect(neighbours!.segments.length).toBeGreaterThanOrEqual(affectedWalls.size);
+		const ends = neighbours!.segments.flatMap((segment) => [segment[0], segment[1]]);
+		for (const point of moved) {
+			expect(ends.some((end) => Math.hypot(end[0] - point[0], end[1] - point[1]) < 1e-3)).toBe(true);
 		}
 	});
 
@@ -662,15 +663,17 @@ describe('R217.S14 — refusals and snap words', () => {
 		const document = acceptedLayout(mounted.facade);
 		const createdWalls = document.walls.filter((entry) => !baselineWallIds.has(entry.id));
 		const createdRooms = document.rooms.filter((entry) => !baselineRoomIds.has(entry.id));
-		const sourceIds = new Set([...createdWalls.map((entry) => entry.id), ...createdRooms.map((entry) => entry.id)]);
-		const accepted = acceptedPaperCss(mounted, sourceIds);
-		expect(preview.polygons.length).toBe(accepted.polygons.length);
-		for (const [index, polygon] of preview.polygons.entries()) {
-			expectPointsClose(polygon, accepted.polygons[index]!);
-		}
-		expect(preview.segments.length).toBe(accepted.segments.length);
-		for (const [index, segment] of preview.segments.entries()) {
-			expectPointsClose(segment, accepted.segments[index]!);
+		expect(preview.drawing).toBe(true);
+		expect(preview.polygons).toEqual([]);
+		expect(preview.segments).toHaveLength(4);
+		expect(createdWalls).toHaveLength(4);
+		expect(createdRooms).toHaveLength(1);
+		expect(createdRooms[0]!.name).toMatch(/^Room \d+$/);
+		const byId = new Map(document.junctions.map(junction => [junction.id, junction.point]));
+		for (const wall of createdWalls) {
+			const from = projectWorld(mounted, [byId.get(wall.startJunctionId)![0], mounted.facade.snapshot().domain.datumMeters, byId.get(wall.startJunctionId)![1]]);
+			const to = projectWorld(mounted, [byId.get(wall.endJunctionId)![0], mounted.facade.snapshot().domain.datumMeters, byId.get(wall.endJunctionId)![1]]);
+			expect(preview.segments.some(segment => [[from,to], [to,from]].some(pair => segment.every((point, index) => Math.hypot(point[0] - pair[index]![0], point[1] - pair[index]![1]) < 1e-4))), JSON.stringify({preview: preview.segments, from, to})).toBe(true);
 		}
 	});
 
@@ -713,5 +716,19 @@ describe('R217.S14 — refusals and snap words', () => {
 			return next !== undefined && Math.abs(next.offset - 1.9) < 1e-6;
 		});
 		expect(before.offset).toBeCloseTo(1, 6);
+	});
+});
+
+describe('review pass 2 — Wall height ghost', () => {
+	it('draws the Wall sheet at the candidate height: base, lifted top and two end verticals', async () => {
+		const { wallHeightGhostPaper } = await import('$lib/authoring/adapters/layout/candidate-preview');
+		const { document, wallId } = fixtureDocument();
+		const ghost = wallHeightGhostPaper(document, wallId, 0, 3.1);
+		expect(ghost.polygons).toEqual([]);
+		const heights = ghost.segments.flatMap(([a, b]) => [a[1], b[1]]);
+		expect(new Set(heights)).toEqual(new Set([0, 3.1]));
+		const verticals = ghost.segments.filter(([a, b]) => a[0] === b[0] && a[2] === b[2]);
+		expect(verticals).toHaveLength(2);
+		expect(wallHeightGhostPaper(document, 'missing', 0, 3.1).segments).toEqual([]);
 	});
 });

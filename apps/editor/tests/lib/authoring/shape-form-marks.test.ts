@@ -7,6 +7,7 @@
  * draws only on the floor plane. A per-axis size ray commits one `set-form-size`;
  * the Card writes the same operation for exact values, and each edit is one step.
  */
+import { SCENE_OBJECT_MARK } from '$lib/authoring/adapters/scene/object-marks';
 import { describe, expect, it } from 'vitest';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import {
@@ -42,7 +43,7 @@ import {
 	formWorldPoint,
 	previewFormSize
 } from '$lib/authoring/adapters/scene/shape/form-size';
-import { formCardController } from '$lib/authoring/adapters/scene/form-card';
+import { sceneObjectCommands } from './__fixtures__/scene-object-commands';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -177,7 +178,7 @@ function sizeMark(facade: StageFacade, axis: 0 | 1 | 2) {
 	const id =
 		axis === 0 ? SCENE_FORM_MARK.width : axis === 1 ? SCENE_FORM_MARK.height : SCENE_FORM_MARK.depth;
 	if (!facade.marks().some((mark) => mark.id === id)) {
-		facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
+		facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint);
 	}
 	const mark = facade.marks().find((entry) => entry.id === id);
 	if (mark === undefined) throw new Error(`the selected form published no size mark for axis ${axis}`);
@@ -210,6 +211,17 @@ function cursorAfterAxisDelta(
 	return [from[0] + end[0] - start[0], from[1] + end[1] - start[1]];
 }
 
+/**
+ * The adapter measures Height on the top knob's own vertical axis, through the
+ * chip's corner (review pass 2 §6); Width and Depth stay on the centre axes.
+ */
+function travelOrigin(entity: SceneFormEntity, axis: 0 | 1 | 2): [number, number, number] {
+	const bounds = formSizeMeasurement(entity).bounds;
+	return axis === 1 && bounds !== null
+		? formWorldPoint(entity, bounds.max)
+		: formWorldPoint(entity, [0, 0, 0]);
+}
+
 function axisTravelAtCursor(
 	facade: StageFacade,
 	entity: SceneFormEntity,
@@ -220,7 +232,7 @@ function axisTravelAtCursor(
 	const result = facade.pointerRay([css[0] + RECT.left, css[1] + RECT.top], evaluationId);
 	if (result.kind !== 'ray') throw new Error('the press point did not produce a pointer ray');
 	const travel = axisTravelFromRay({
-		origin: formWorldPoint(entity, [0, 0, 0]),
+		origin: travelOrigin(entity, axis),
 		direction: formWorldAxis(entity, axis),
 		rayOrigin: result.ray.origin,
 		rayDirection: result.ray.direction
@@ -235,7 +247,7 @@ function cursorAtAxisTravel(
 	axis: 0 | 1 | 2,
 	travelMeters: number
 ): readonly [number, number] {
-	const origin = formWorldPoint(entity, [0, 0, 0]);
+	const origin = travelOrigin(entity, axis);
 	const worldAxis = formWorldAxis(entity, axis);
 	return stageCss(facade, [
 		origin[0] + worldAxis[0] * travelMeters,
@@ -320,7 +332,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 
 		// The Card is the one writer for exact values: dimensions, not scales.
 		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 2);
-		const card = formCardController(mounted.services, current.id);
+		const card = sceneObjectCommands(mounted.services, current.id);
 		if (card === null) throw new Error('the created form published no Card controller');
 		const outcome = await card.size([4, 1, 2]);
 		expect(outcome.kind).toBe('installed');
@@ -343,15 +355,15 @@ describe('T5.P01.S02 — Shape reading', () => {
 		const ids = () => mounted.facade.marks().map((mark) => mark.id);
 		expect(ids()).toEqual(
 			expect.arrayContaining([
-				SCENE_FORM_MARK.move,
-				SCENE_FORM_MARK.turn,
-				SCENE_FORM_MARK.scalePoint
+				SCENE_OBJECT_MARK.move,
+				SCENE_OBJECT_MARK.turn,
+				SCENE_OBJECT_MARK.scalePoint
 			])
 		);
 		for (const id of [SCENE_FORM_MARK.width, SCENE_FORM_MARK.height, SCENE_FORM_MARK.depth]) {
 			expect(ids()).not.toContain(id);
 		}
-		expect(mounted.facade.activateDisclosure(SCENE_FORM_MARK.scalePoint)).toBe(true);
+		expect(mounted.facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint)).toBe(true);
 		expect(ids()).toEqual(
 			expect.arrayContaining([SCENE_FORM_MARK.width, SCENE_FORM_MARK.height, SCENE_FORM_MARK.depth])
 		);
@@ -363,11 +375,11 @@ describe('T5.P01.S02 — Shape reading', () => {
 		await createFloorForm(mounted);
 		settleReading(mounted.facade, reading);
 		if (!mounted.facade.marks().some((mark) => mark.id === SCENE_FORM_MARK.width)) {
-			mounted.facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
+			mounted.facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint);
 		}
-		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
+		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.move)!;
 		const width = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.width)!;
-		const scale = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.scalePoint)!;
+		const scale = mounted.facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.scalePoint)!;
 		const widthMidpoint = [
 			(width.anchor[0] + width.tip![0]) / 2,
 			(width.anchor[1] + width.tip![1]) / 2
@@ -375,13 +387,13 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(move.descriptor.screen?.offset).not.toEqual([0, 0]);
 		expect(width.descriptor.screen).toBeUndefined();
 		expect(hitStageMark(mounted.facade.marks(), { css: scale.anchor, coarse: false })?.id).toBe(
-			SCENE_FORM_MARK.scalePoint
+			SCENE_OBJECT_MARK.scalePoint
 		);
 		expect(hitStageMark(mounted.facade.marks(), { css: widthMidpoint, coarse: false })?.id).toBe(
 			SCENE_FORM_MARK.width
 		);
-		expect(hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: false })?.id).toBe(
-			SCENE_FORM_MARK.move
+		expect(hitStageMark(mounted.facade.marks(), { css: move.anchor, coarse: false })?.id).toBe(
+			SCENE_OBJECT_MARK.move
 		);
 		mounted.facade.dispose();
 	});
@@ -390,17 +402,17 @@ describe('T5.P01.S02 — Shape reading', () => {
 		for (const yaw of [0, 0.6, -1.2]) {
 			const mounted = await mount();
 			const created = await createFloorForm(mounted);
-			const card = formCardController(mounted.services, created.id)!;
+			const card = sceneObjectCommands(mounted.services, created.id)!;
 			await card.turn(yaw);
 			settleReading(mounted.facade, 'plan');
 			mounted.facade.setDrafting({ snap: false, snapSuspended: false });
 			mounted.facade.closeDisclosure();
 
 			const evaluationId = mounted.facade.evaluationId()!;
-			const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-			const hit = hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true });
-			expect(hit?.id).toBe(SCENE_FORM_MARK.move);
-			const start = move.tip!;
+			const move = mounted.facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.move)!;
+			const hit = hitStageMark(mounted.facade.marks(), { css: move.anchor, coarse: true });
+			expect(hit?.id).toBe(SCENE_OBJECT_MARK.move);
+			const start = move.anchor;
 			const before = acceptedForms(mounted.facade)[0]!;
 			const history = mounted.host.history();
 			expect(
@@ -413,9 +425,9 @@ describe('T5.P01.S02 — Shape reading', () => {
 			expect(mounted.host.history()).toMatchObject(history);
 
 			const currentEvaluation = mounted.facade.evaluationId()!;
-			const currentMove = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-			const currentHit = hitStageMark(mounted.facade.marks(), { css: currentMove.tip!, coarse: true });
-			const from = currentMove.tip!;
+			const currentMove = mounted.facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.move)!;
+			const currentHit = hitStageMark(mounted.facade.marks(), { css: currentMove.anchor, coarse: true });
+			const from = currentMove.anchor;
 			const expected: readonly [number, number, number] = [
 				before.position[0] + 0.12,
 				before.position[1],
@@ -453,9 +465,9 @@ describe('T5.P01.S02 — Shape reading', () => {
 			settleReading(mounted.facade, state.reading);
 			mounted.facade.setDrafting({ snap: state.snap, snapSuspended: state.snapSuspended });
 			const evaluationId = mounted.facade.evaluationId()!;
-			const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-			const hit = hitStageMark(mounted.facade.marks(), { css: move.tip!, coarse: true });
-			const from = move.tip!;
+			const move = mounted.facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.move)!;
+			const hit = hitStageMark(mounted.facade.marks(), { css: move.anchor, coarse: true });
+			const from = move.anchor;
 			const originOnDatum: readonly [number, number, number] = [created.position[0], 0, created.position[2]];
 			const targetOnDatum: readonly [number, number, number] = [state.expected[0], 0, state.expected[2]];
 			const projectedOrigin = stageCss(mounted.facade, originOnDatum);
@@ -482,8 +494,8 @@ describe('T5.P01.S02 — Shape reading', () => {
 		settleReading(mounted.facade, 'plan');
 		mounted.facade.setDrafting({ snap: false, snapSuspended: false });
 		const evaluationId = mounted.facade.evaluationId()!;
-		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_FORM_MARK.move)!;
-		const from = move.tip!;
+		const move = mounted.facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.move)!;
+		const from = move.anchor;
 		const projectedOrigin = stageCss(mounted.facade, created.position);
 		const projectedOutside = stageCss(mounted.facade, [7.5, 0, created.position[2]]);
 		const to = [from[0] + projectedOutside[0] - projectedOrigin[0], from[1] + projectedOutside[1] - projectedOrigin[1]] as const;
@@ -507,10 +519,10 @@ describe('T5.P01.S02 — Shape reading', () => {
 		mounted.facade.closeDisclosure();
 		const history = mounted.host.history();
 		const marks = mounted.facade.marks();
-		const turn = marks.find((mark) => mark.id === SCENE_FORM_MARK.turn)!;
+		const turn = marks.find((mark) => mark.id === SCENE_OBJECT_MARK.turn)!;
 		const ring = turn.ring!;
 		const index = ring.findIndex((point) =>
-			hitStageMark(marks, { css: point, coarse: true })?.id === SCENE_FORM_MARK.turn
+			hitStageMark(marks, { css: point, coarse: true })?.id === SCENE_OBJECT_MARK.turn
 		);
 		if (index < 0) throw new Error('the Turn ring published no unclaimed point');
 		const from = ring[index]!;
@@ -532,7 +544,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 	it('sizes Depth from the hit-resolved ray with one history entry', async () => {
 		const mounted = await mount();
 		let created = await createFloorForm(mounted);
-		const card = formCardController(mounted.services, created.id)!;
+		const card = sceneObjectCommands(mounted.services, created.id)!;
 		const turned = await card.turn(Math.PI / 4);
 		expect(turned.kind).toBe('installed');
 		created = acceptedForms(mounted.facade)[0]!;
@@ -572,10 +584,10 @@ describe('T5.P01.S02 — Shape reading', () => {
 			mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: hit!.id }).claimed
 		).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: from, evaluationId });
-		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(false);
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-candidate')).toBe(false);
 		const tinyMove = [from[0] + 0.5, from[1]] as const;
 		mounted.facade.pointerIntent({ phase: 'move', css: tinyMove, evaluationId });
-		const preview = mounted.facade.ghosts().find((ghost) => ghost.id === 'scene-form-mark-preview');
+		const preview = mounted.facade.ghosts().find((ghost) => ghost.id === 'scene-candidate');
 		expect(preview?.shape.kind).toBe('form');
 		if (preview?.shape.kind !== 'form') throw new Error('the small Width drag produced no preview');
 		expect(Math.abs(preview.shape.form.scale[0] - created.form.scale[0]!)).toBeLessThan(0.02);
@@ -616,7 +628,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		const created = await createFloorForm(mounted);
 		const before = mounted.facade.snapshot().canonicalJson;
 		const history = mounted.host.history();
-		const card = formCardController(mounted.services, created.id);
+		const card = sceneObjectCommands(mounted.services, created.id);
 		if (card === null) throw new Error('the created form published no Card controller');
 		const width = formSizeMeasurement(created).handles.find((handle) => handle.axis === 0)!;
 		const envelope = stageEnvelope(mounted.facade.snapshot());
@@ -666,68 +678,51 @@ describe('T5.P01.S02 — Shape reading', () => {
 		expect(mounted.host.history()).toEqual(history);
 	});
 
-	it('sizes Height in settled Plan through its screen handle and commits one undoable result', async () => {
+	it('withholds Plan Height while the Card can still resize it, and keeps resize intent across acceptance and view changes', async () => {
 		const mounted = await mount();
 		const created = await createFloorForm(mounted);
-		const evaluation = settleReading(mounted.facade, 'plan');
-		const height = formSizeMeasurement(created).handles.find((handle) => handle.axis === 1)!;
-		const heightMark = sizeMark(mounted.facade, 1);
-		const from = heightMark.anchor;
-		const projectedWorldHandle = stageCss(mounted.facade, height.world);
-		// Plan hides world Y. The Height mark therefore needs its own visible
-		// screen travel, and the same point must be the hit-test target.
-		expect(sizeMark(mounted.facade, 1).tag).toContain('Height');
-		expect(Math.abs(from[1] - projectedWorldHandle[1])).toBeGreaterThan(20);
-		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
-
-		const evaluationId = mounted.facade.evaluationId()!;
-		const down = mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id });
-		expect(down.claimed).toBe(true);
-		const to = [from[0], from[1] - 80] as const;
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		const preview = mounted.facade.ghosts().find((ghost) => ghost.id === 'scene-form-mark-preview');
-		expect(preview?.shape.kind).toBe('form');
-		if (preview?.shape.kind !== 'form') throw new Error('Plan Height produced no form preview');
-		const expectedScale =
-			(height.dimension + 80 * evaluation.targetPlaneMetersPerCssPixel) / height.baseDimension;
-		expect(preview.shape.form.scale[1]).toBeCloseTo(expectedScale, 5);
-		expect(sizeMark(mounted.facade, 1).anchor[1]).toBeCloseTo(from[1] - 80, 1);
-
-		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
-		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[1] > created.form.scale[1]);
-		const committed = acceptedForms(mounted.facade)[0]!;
-		expect(committed.form.scale[0]).toBe(created.form.scale[0]);
-		expect(committed.form.scale[1]).toBeGreaterThan(created.form.scale[1]);
-		expect(committed.form.scale[2]).toBe(created.form.scale[2]);
-		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
-
-		expect((await mounted.host.undo()).kind).toBe('installed');
-		await eventually(() => acceptedForms(mounted.facade)[0]!.form.scale[1] === created.form.scale[1]);
-		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 1 });
+		settleReading(mounted.facade, 'plan');
+		expect(mounted.facade.session.resizeHandles()).toBe(false);
+		expect(mounted.facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint)).toBe(true);
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.height)).toBe(false);
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.width)).toBe(true);
+		const card = sceneObjectCommands(mounted.services, created.id)!;
+		const result = await card.size([card.dimensions[0]!, card.dimensions[1]! + .2, card.dimensions[2]!]);
+		expect(result.kind).toBe('installed');
+		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 25);
+		expect(mounted.facade.session.resizeHandles()).toBe(true);
+		settleReading(mounted.facade, '3d');
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.height)).toBe(true);
+		await createFloorForm(mounted);
+		expect(mounted.facade.session.resizeHandles()).toBe(true);
+		expect(mounted.facade.marks().find(mark => mark.id === SCENE_OBJECT_MARK.scalePoint)?.open).toBe(true);
+		mounted.facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint);
+		expect(mounted.facade.session.resizeHandles()).toBe(false);
+		expect(mounted.facade.marks().some(mark => mark.id === SCENE_FORM_MARK.width)).toBe(false);
 	});
 
-	it('cancels Plan Height preview without changing source or history', async () => {
+	it('cancels Plan Width preview without changing source or history', async () => {
 		const mounted = await mount();
 		const created = await createFloorForm(mounted);
 		settleReading(mounted.facade, 'plan');
 		const before = mounted.facade.snapshot().canonicalJson;
 		const history = mounted.host.history();
-		const heightMark = sizeMark(mounted.facade, 1);
+		const heightMark = sizeMark(mounted.facade, 0);
 		const from = heightMark.anchor;
 		const evaluationId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id }).claimed).toBe(true);
-		const to = [from[0], from[1] - 64] as const;
+		const to = cursorAfterAxisDelta(mounted.facade, created, 0, from, .5);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(true);
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-candidate')).toBe(true);
 
 		expect(mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId }).claimed).toBe(true);
 		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
 		expect(acceptedForms(mounted.facade)[0]!.form.scale).toEqual(created.form.scale);
 		expect(mounted.host.history()).toEqual(history);
-		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(false);
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-candidate')).toBe(false);
 	});
 
-	it('refuses Plan Height while another gesture owns the Stage', async () => {
+	it('refuses Plan Width while another gesture owns the Stage', async () => {
 		const mounted = await mount();
 		const created = await createFloorForm(mounted);
 		settleReading(mounted.facade, 'plan');
@@ -740,7 +735,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 			policy: 'cancel-on-reading-change'
 		});
 		expect(occupied.kind).toBe('granted');
-		const heightMark = sizeMark(mounted.facade, 1);
+		const heightMark = sizeMark(mounted.facade, 0);
 		const down = mounted.facade.pointerIntent({
 			phase: 'down',
 			css: heightMark.anchor,
@@ -748,25 +743,25 @@ describe('T5.P01.S02 — Shape reading', () => {
 			handleId: heightMark.id
 		});
 		expect(down.claimed).toBe(false);
-		expect(sizeMark(mounted.facade, 1).refusal).toContain('shape-size-test-owner');
-		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(false);
+		expect(sizeMark(mounted.facade, 0).refusal).toContain('shape-size-test-owner');
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-candidate')).toBe(false);
 		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
 		expect(acceptedForms(mounted.facade)[0]!.form.scale).toEqual(created.form.scale);
 		if (occupied.kind === 'granted') occupied.lease.release();
 		expect(mounted.host.history()).toEqual(history);
 	});
 
-	it('drops a live Plan Height preview when accepted content replaces its source', async () => {
+	it('drops a live Plan Width preview when accepted content replaces its source', async () => {
 		const mounted = await mount();
-		await createFloorForm(mounted);
+		const created = await createFloorForm(mounted);
 		settleReading(mounted.facade, 'plan');
-		const heightMark = sizeMark(mounted.facade, 1);
+		const heightMark = sizeMark(mounted.facade, 0);
 		const from = heightMark.anchor;
 		const evaluationId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id }).claimed).toBe(true);
-		const to = [from[0], from[1] - 64] as const;
+		const to = cursorAfterAxisDelta(mounted.facade, created, 0, from, .5);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(true);
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-candidate')).toBe(true);
 
 		const emptyProject = await createUnitProject({
 			id: PROJECT_ID,
@@ -791,7 +786,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		const installedSource = mounted.facade.snapshot().canonicalJson;
 		await eventually(() => acceptedForms(mounted.facade).length === 0);
 		mounted.facade.camera.evaluate(RECT, SETTLE_CLOCK + 30);
-		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-form-mark-preview')).toBe(false);
+		expect(mounted.facade.ghosts().some((ghost) => ghost.id === 'scene-candidate')).toBe(false);
 
 		// A release from the retired evaluation cannot write its captured form back.
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
@@ -819,7 +814,7 @@ describe('T5.P01.S02 — Shape reading', () => {
 		], [3, 0, 3]);
 		let created = acceptedForms(mounted.facade)[0]!;
 		expect(created.form.generator.plane).toBe('elevation');
-		const card = formCardController(mounted.services, created.id)!;
+		const card = sceneObjectCommands(mounted.services, created.id)!;
 		expect((await card.turn(Math.PI / 6)).kind).toBe('installed');
 		created = acceptedForms(mounted.facade)[0]!;
 		const evaluation = settleReading(mounted.facade, '3d');

@@ -45,9 +45,9 @@ import {
 } from '$lib/authoring/adapters/scene/placement';
 import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
-import { formCardController } from '$lib/authoring/adapters/scene/form-card';
+import { sceneObjectCommands } from './__fixtures__/scene-object-commands';
 import { sceneObjectCardController } from '$lib/authoring/adapters/scene/object-card';
-import { sceneObjectMarkDescriptors } from '$lib/authoring/adapters/scene/object-marks';
+import { SCENE_OBJECT_MARK, sceneObjectMarkDescriptors } from '$lib/authoring/adapters/scene/object-marks';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import { catalogueModelDefinition } from '$lib/authoring/scene/object-definition-policy';
 import { draftingSnapIncrementMeters, snapDraftingPlacement } from '$lib/authoring/stage/stage-drafting';
@@ -838,8 +838,8 @@ describe('Scene adapter registration', () => {
 					expect(facade.selectionState().ordered[0]?.representation).toBeUndefined();
 					expect(facade.subjects().find((row) => row.reference.subject.id === id)?.label).toContain('form');
 					const subject = { sourceId: id, sourceKind: 'entity', reference, ref: null };
-					expect(facade.cardWriter(subject)?.summary).toBe('Form fields');
-					expect(facade.cardActions(subject).map((action) => action.label)).toContain('Delete form');
+					expect(facade.cardWriter(subject)?.summary).toBe('Object fields');
+					expect(facade.cardActions(subject).map((action) => action.label)).toContain('Delete object');
 				}
 			}
 			expect(facade.resolveSourceHit({ evaluationId: 'stale', css: [500, 350] })).toEqual({ kind: 'failed', code: 'stale-evaluation' });
@@ -915,6 +915,66 @@ describe('Scene adapter registration', () => {
 		} finally { facade.dispose(); mesh.geometry.dispose(); }
 	});
 
+	// A Scene object is one thing wherever it came from: a primitive, a catalogue
+	// model and a drawn form share one Card writer, one action set and one mark
+	// vocabulary. Only sizing differs (a uniform Size, or a form's per-axis rays).
+	it('gives every Scene object kind the same Card, actions and shared marks', async () => {
+		const { facade, host } = await mounted(await supportedProject([boxEntity('box-1', [2, 0.5, 2]), nativeForm('plan', 4)]));
+		mountStageAdapter(facade, host, createAdapter);
+		try {
+			facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, 20);
+			facade.camera.evaluate(RECT, 30);
+			const read = (id: string) => {
+				const row = facade.subjects().find((item) => item.reference.subject.id === id)!;
+				facade.setSelection({ ordered: [{ reference: row.reference }], primary: row.reference });
+				// The chip's open state outlives the selection; open it only once.
+				if (facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.scalePoint)?.open !== true) {
+					facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint);
+				}
+				const subject = { sourceId: id, sourceKind: 'entity', reference: row.reference, ref: null };
+				const writer = facade.cardWriter(subject);
+				return {
+					summary: writer?.summary,
+					component: writer?.view?.component,
+					actions: facade.cardActions(subject).map((action) => action.id),
+					marks: new Set(facade.marks().map((mark) => mark.id))
+				};
+			};
+			const box = read('box-1');
+			const form = read('form-plan');
+			expect(form.summary).toBe(box.summary);
+			expect(form.component).toBe(box.component);
+			expect(form.component).toBeDefined();
+			expect(form.actions).toEqual(box.actions);
+			for (const id of [SCENE_OBJECT_MARK.move, SCENE_OBJECT_MARK.turn, SCENE_OBJECT_MARK.scalePoint, SCENE_OBJECT_MARK.lift]) {
+				expect(box.marks.has(id)).toBe(true);
+				expect(form.marks.has(id)).toBe(true);
+			}
+			// The one kind-specific capability: per-axis rays on a form only.
+			expect(form.marks.has('scene-form-mark-width')).toBe(true);
+			expect(box.marks.has('scene-form-mark-width')).toBe(false);
+		} finally { facade.dispose(); }
+	});
+
+	it('writes a form dimension through the shared Card in one history entry', async () => {
+		const { facade, host } = await mounted(await supportedProject([nativeForm('plan', 2)]));
+		mountStageAdapter(facade, host, createAdapter);
+		const services = createStageAdapterServices(facade, host);
+		try {
+			const card = sceneObjectCardController(services, 'form-plan')!;
+			expect(card.fields().map((field) => field.id)).toEqual(['position-x', 'position-z', 'yaw', 'width', 'height', 'depth', 'elevation']);
+			const depth = host.history().depth;
+			card.edit('width', '2');
+			expect(card.fields().find((field) => field.id === 'width')?.error).toBeNull();
+			expect((await card.commit('width')).kind).toBe('accepted');
+			const sized = stageScene(facade.snapshot()).entities.find((entity) => entity.id === 'form-plan');
+			expect(sized?.kind === 'form' && sized.form.scale[0]).toBeCloseTo(2, 9);
+			expect(host.history().depth).toBe(depth + 1);
+			card.edit('height', '0');
+			expect(card.fields().find((field) => field.id === 'height')?.error).not.toBeNull();
+		} finally { facade.dispose(); }
+	});
+
 	it('operates a selected form through its Card, shared history and a saved cold reopen', async () => {
 		const { facade, host } = await mounted(await supportedProject([nativeForm('plan', 2), nativeForm('elevation', 4)]));
 		mountStageAdapter(facade, host, createAdapter);
@@ -922,7 +982,7 @@ describe('Scene adapter registration', () => {
 		try {
 			const row = facade.subjects().find((item) => item.reference.subject.id === 'form-plan')!;
 			facade.setSelection({ ordered: [{ reference: row.reference }], primary: row.reference });
-			const card = () => formCardController(services, 'form-plan')!;
+			const card = () => sceneObjectCommands(services, 'form-plan')!;
 			const before = JSON.stringify(stageScene(facade.snapshot()).entities);
 			expect((await card().move(3, 3)).kind).toBe('installed');
 			expect(facade.selectionState().primary?.subject.id).toBe('form-plan');
@@ -959,7 +1019,7 @@ describe('Scene adapter registration', () => {
 			expect((await card().duplicate()).kind).toBe('installed');
 			const copyId = facade.selectionState().primary!.subject.id;
 			expect(copyId).not.toBe('form-plan');
-			expect((await formCardController(services, copyId)!.delete()).kind).toBe('installed');
+			expect((await sceneObjectCommands(services, copyId)!.delete()).kind).toBe('installed');
 			expect(facade.selectionState().primary).toBeNull();
 			expect(host.history().depth).toBe(7);
 			for (let index = 0; index < 6; index++) expect((await host.undo()).kind).toBe('installed');
@@ -978,9 +1038,9 @@ describe('Scene adapter registration', () => {
 		const { facade, host } = await mounted(await supportedProject([nativeForm('plan', 2)]));
 		mountStageAdapter(facade, host, createAdapter);
 		const services = createStageAdapterServices(facade, host);
-		const stale = formCardController(services, 'form-plan')!;
+		const stale = sceneObjectCommands(services, 'form-plan')!;
 		try {
-			expect((await formCardController(services, 'form-plan')!.size([2, 1, 1])).kind).toBe('installed');
+			expect((await sceneObjectCommands(services, 'form-plan')!.size([2, 1, 1])).kind).toBe('installed');
 			const live = stageScene(facade.snapshot()).entities.find((entity) => entity.id === 'form-plan');
 			expect(live?.kind).toBe('form');
 			if (live?.kind !== 'form') return;
@@ -1264,8 +1324,8 @@ describe('Scene adapter registration', () => {
 		expect(Math.max(width, height)).toBeLessThan(48);
 
 		const move = markOf(facade, 'scene-object-move');
-		expect(move.tip).not.toBeNull();
-		expect(Math.hypot(move.tip![0] - move.anchor[0], move.tip![1] - move.anchor[1])).toBeCloseTo(30, 3);
+		expect(move.cross).toBe(true);
+		expect(move.kind).toBe('point');
 		facade.setDrafting({ snap: false });
 		// The Move track runs through the body center; this point stays inside the
 		// small silhouette while sitting beyond its 11 px fine hit radius.
@@ -1922,7 +1982,9 @@ describe('Scene adapter registration', () => {
 		facade.pointerIntent({ phase: 'cancel', css: outside, evaluationId });
 	});
 
-	it('publishes Move, Turn, the Scale disclosure and the Size ray it reveals', async () => {
+	// Review pass 2 §6: the W·D·H chip reveals the lift knob (a drag on the chip
+	// itself scales uniformly); the old inward Size ray is retired.
+	it('publishes Move, Turn, the Scale chip and the lift knob it reveals', async () => {
 		const { facade } = await withSceneSurface();
 		const marks = facade.marks();
 		expect(marks.map((mark) => mark.id)).toEqual([
@@ -1951,7 +2013,8 @@ describe('Scene adapter registration', () => {
 		);
 		expect(marks.find((mark) => mark.id === 'scene-object-scale-point')?.descriptor).toMatchObject({
 			role: 'disclose',
-			reveals: ['scene-object-size']
+			drags: true,
+			reveals: ['scene-object-lift']
 		});
 		expect(
 			hitStageMark(marks, {
@@ -1964,23 +2027,23 @@ describe('Scene adapter registration', () => {
 		// history, so Undo remains exactly what it was before activation.
 		const canonical = facade.snapshot().canonicalJson;
 		expect(facade.activateDisclosure('scene-object-scale-point')).toBe(true);
-		const size = facade.marks().find((mark) => mark.id === 'scene-object-size');
-		expect(size?.descriptor).toMatchObject({
+		const lift = facade.marks().find((mark) => mark.id === 'scene-object-lift');
+		expect(lift?.descriptor).toMatchObject({
 			role: 'edit',
-			fact: 'scale',
-			planner: 'resize-on-floor',
+			fact: 'lift',
+			planner: 'set-lift',
 			disclosedBy: 'scene-object-scale-point'
 		});
-		const sizeRayProbe: [number, number] = [
-			size!.anchor[0] + (size!.tip![0] - size!.anchor[0]) * 0.75,
-			size!.anchor[1] + (size!.tip![1] - size!.anchor[1]) * 0.75
-		];
-		expect(hitStageMark(facade.marks(), { css: sizeRayProbe, coarse: false })?.id).toBe(
-			'scene-object-size'
+		expect(lift?.glyph).toBe('lift-knob');
+		expect(lift?.stem).not.toBeNull();
+		expect(hitStageMark(facade.marks(), { css: lift!.anchor, coarse: false })?.id).toBe(
+			'scene-object-lift'
 		);
 		expect(facade.snapshot().canonicalJson).toBe(canonical);
-		expect(facade.closeDisclosure()).toBe(true);
-		expect(facade.marks().some((mark) => mark.id === 'scene-object-size')).toBe(false);
+		expect(facade.closeDisclosure()).toBe(false);
+		expect(facade.session.resizeHandles()).toBe(true);
+		expect(facade.activateDisclosure('scene-object-scale-point')).toBe(true);
+		expect(facade.marks().some((mark) => mark.id === 'scene-object-lift')).toBe(false);
 	});
 
 	it('commits one Move entry and honours the S05 snap step', async () => {
@@ -2079,11 +2142,31 @@ describe('Scene adapter registration', () => {
 		expect(facade.ghosts()).toHaveLength(1);
 		const yaw = facade.ghosts()[0]!.yaw;
 		expect(Math.abs(yaw)).toBeGreaterThan(0);
-		if (reading === 'plan') expect(facade.candidatePreviews()).toHaveLength(1);
+		// Plan hides the Canvas ghost, so the proposal is the dashed footprint
+		// there; 3D draws the ghost body's dashed edges and no second outline.
+		const outline = facade.candidatePreviews().filter((entry) => entry.id === 'scene-mark-outline');
+		expect(outline).toHaveLength(reading === 'plan' ? 1 : 0);
+		if (reading === 'plan') expect(outline[0]).toMatchObject({ role: 'subject' });
 		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
 		await eventually(() => facade.snapshot().domain.scene.entities[0]!.rotation[1] !== 0);
 		expect(Number.isFinite(facade.snapshot().domain.scene.entities[0]!.rotation[1])).toBe(true);
 		expect(facade.snapshot().domain.scene.entities[0]!.rotation[1]).toBeCloseTo(yaw, 9);
+	});
+
+	// Review pass 3: the ring is not drawn, so only its bent arrow takes the press.
+	it('hits the turn control at its arrow and not along the undrawn ring', async () => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade } = await withSceneSurface(undefined, null, project, RECT, 'plan');
+		try {
+			const turn = markOf(facade, 'scene-object-turn');
+			expect(turn.ringGlyph).not.toBeNull();
+			expect(facade.hitMark({ css: turn.ringGlyph!.at, coarse: false })?.id).toBe('scene-object-turn');
+			const glyph = turn.ringGlyph!.at;
+			const far = turn.ring!.reduce((best, point) =>
+				Math.hypot(point[0] - glyph[0], point[1] - glyph[1]) > Math.hypot(best[0] - glyph[0], best[1] - glyph[1]) ? point : best
+			);
+			expect(facade.hitMark({ css: far, coarse: false })?.id).not.toBe('scene-object-turn');
+		} finally { facade.dispose(); }
 	});
 
 	it.each(['move', 'turn'] as const)('keeps the sized body in the adapter %s ghost', async (action) => {
@@ -2099,22 +2182,62 @@ describe('Scene adapter registration', () => {
 		} finally { facade.dispose(); }
 	});
 
-	it('commits one Size entry only after the Scale point reveals the ray and keeps the base on its support', async () => {
+	// Review pass 2 §6: dragging the W·D·H chip scales uniformly; a click on it
+	// only toggles the grips (the route decides that by click tolerance).
+	it('commits one uniform scale entry from a chip drag and keeps the base on its support', async () => {
 		const { facade, host } = await acceptedMarksSurface();
 		const before = host.history().depth;
-		expect(facade.activateDisclosure('scene-object-scale-point')).toBe(true);
-		const size = markOf(facade, 'scene-object-size');
-		expect(size.tip).not.toBeNull();
+		const chip = markOf(facade, 'scene-object-scale-point');
 		const evaluationId = facade.evaluationId()!;
-		expect(facade.pointerIntent({ phase: 'down', css: size.anchor, evaluationId, handleId: size.id }).claimed).toBe(true);
-		facade.pointerIntent({ phase: 'move', css: size.tip!, evaluationId });
-		facade.pointerIntent({ phase: 'up', css: size.tip!, evaluationId });
-		await eventually(() => (facade.snapshot().domain.scene.entities[0] as { scale?: number }).scale !== undefined);
+		const entity = facade.snapshot().domain.scene.entities[0]!;
+		const centre = facade.projectWorld([...entity.position] as Vec3, evaluationId);
+		if (centre.kind !== 'projected') throw new Error('the object centre did not project');
+		const rect = facade.evaluation()!.rect;
+		const centreCss: [number, number] = [centre.css[0] - rect.left, centre.css[1] - rect.top];
+		const outward: [number, number] = [
+			chip.anchor[0] + (chip.anchor[0] - centreCss[0]) * 0.6,
+			chip.anchor[1] + (chip.anchor[1] - centreCss[1]) * 0.6
+		];
+		expect(facade.pointerIntent({ phase: 'down', css: chip.anchor, evaluationId, handleId: chip.id }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: outward, evaluationId });
+		facade.pointerIntent({ phase: 'up', css: outward, evaluationId });
+		await eventually(() => ((facade.snapshot().domain.scene.entities[0] as { scale?: number }).scale ?? 1) !== 1);
 		const scaled = facade.snapshot().domain.scene.entities[0] as { scale?: number; position: Vec3 };
 		expect(scaled.scale).toBeGreaterThan(1);
 		// A box's authored contact is -0.5 m; at scale s the planner re-seats its
 		// centre at 0.5 s so the base stays on the compiled support at Y = 0.
 		expect(scaled.position[1] + scaled.scale! * -0.5).toBeCloseTo(0, 6);
+		expect(host.history().depth).toBe(before + 1);
+	});
+
+	it('writes nothing for a chip press released inside click tolerance', async () => {
+		const { facade, host } = await acceptedMarksSurface();
+		const before = host.history().depth;
+		const canonical = facade.snapshot().canonicalJson;
+		const chip = markOf(facade, 'scene-object-scale-point');
+		const evaluationId = facade.evaluationId()!;
+		expect(facade.pointerIntent({ phase: 'down', css: chip.anchor, evaluationId, handleId: chip.id }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: [chip.anchor[0] + 2, chip.anchor[1]], evaluationId });
+		facade.pointerIntent({ phase: 'up', css: [chip.anchor[0] + 2, chip.anchor[1]], evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(facade.snapshot().canonicalJson).toBe(canonical);
+		expect(host.history().depth).toBe(before);
+	});
+
+	it('lifts an object with the lift knob in one entry, keeping its size', async () => {
+		const { facade, host } = await acceptedMarksSurface();
+		const before = host.history().depth;
+		expect(facade.activateDisclosure('scene-object-scale-point')).toBe(true);
+		const lift = markOf(facade, 'scene-object-lift');
+		const evaluationId = facade.evaluationId()!;
+		const up: [number, number] = [lift.anchor[0], lift.anchor[1] - 60];
+		expect(facade.pointerIntent({ phase: 'down', css: lift.anchor, evaluationId, handleId: lift.id }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: up, evaluationId });
+		facade.pointerIntent({ phase: 'up', css: up, evaluationId });
+		await eventually(() => facade.snapshot().domain.scene.entities[0]!.position[1] > 0.5);
+		const lifted = facade.snapshot().domain.scene.entities[0] as { scale?: number; position: Vec3 };
+		expect(lifted.position[1]).toBeGreaterThan(0.5);
+		expect(lifted.scale ?? 1).toBe(1);
 		expect(host.history().depth).toBe(before + 1);
 	});
 
@@ -2128,11 +2251,13 @@ describe('Scene adapter registration', () => {
 			'position-x',
 			'position-z',
 			'yaw',
-			'size'
+			'size',
+			'elevation'
 		]);
 
 		// The Card field set and the mark fact set are the same declaration. The
-		// Size fact is published once its disclosure reveals the ray.
+		// lift fact is published once the chip reveals its knob; uniform scale is
+		// the chip's own drag (review pass 2 §6), so it carries no edit fact.
 		expect(facade.activateDisclosure('scene-object-scale-point')).toBe(true);
 		const fieldFacts = new Set(
 			controller!.fields().map((field) =>
@@ -2140,15 +2265,20 @@ describe('Scene adapter registration', () => {
 					? 'position'
 					: field.id === 'yaw'
 						? 'yaw'
-						: 'scale'
+						: field.id === 'elevation'
+							? 'lift'
+							: 'scale'
 			)
 		);
-		const markFacts = new Set(
-			facade
+		const markFacts = new Set([
+			...facade
 				.marks()
 				.filter((mark) => mark.role === 'edit')
-				.map((mark) => mark.fact)
-		);
+				.map((mark) => mark.fact),
+			...(facade.marks().some((mark) => mark.id === 'scene-object-scale-point' && mark.descriptor.role === 'disclose' && mark.descriptor.drags === true)
+				? ['scale']
+				: [])
+		]);
 		expect(fieldFacts).toEqual(markFacts);
 
 		controller!.edit('size', '0');
@@ -2190,17 +2320,18 @@ describe('Scene adapter registration', () => {
 			entity: model,
 			contactMinY: 0,
 			bounds: { min: [1, 0, 1], max: [3, 1.2, 3] },
-			footprint: { width: 2, depth: 2 }
+			footprint: { width: 2, depth: 2 },
+			lift: { lift: 0, supportY: 0 }
 		});
 		expect(descriptors.map((descriptor) => descriptor.id)).toEqual([
 			'scene-object-scale-point',
-			'scene-object-size',
+			'scene-object-lift',
 			'scene-object-move',
 			'scene-object-turn'
 		]);
-		expect(descriptors.find((descriptor) => descriptor.id === 'scene-object-size')).toMatchObject({
-			planner: 'resize-on-floor',
-			fact: 'scale'
+		expect(descriptors.find((descriptor) => descriptor.id === 'scene-object-lift')).toMatchObject({
+			planner: 'set-lift',
+			fact: 'lift'
 		});
 	});
 
@@ -2262,7 +2393,7 @@ describe('Scene adapter registration', () => {
 		expect(actions.find((action) => action.id === 'scene-object-delete')?.group).toBeUndefined();
 		// The object writer edits Position, Yaw and Size, so those facts are shown by the
 		// writer rather than repeated as rows; the header carries the name and the kind.
-		expect(facade.cardWriter(subject())?.fieldIds).toEqual(['position', 'yaw', 'scale']);
+		expect(facade.cardWriter(subject())?.fieldIds).toEqual(['position', 'yaw', 'scale', 'lift']);
 		expect(facade.cardFacts(subject()).map((fact) => fact.fieldId)).toEqual(
 			expect.arrayContaining(['kind', 'name', 'position', 'yaw', 'scale'])
 		);

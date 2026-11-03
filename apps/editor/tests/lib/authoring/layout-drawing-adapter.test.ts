@@ -304,8 +304,8 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		controller.finish();
 		await eventually(() => inkSurface()!.snapshot().refusal !== null);
 		const refusal = inkSurface()!.snapshot().refusal!;
-		expect(refusal).toContain(mounted.wallId);
-		expect(refusal.length).toBeGreaterThan(40);
+		expect(refusal).not.toContain(mounted.wallId);
+		expect(refusal).toBe('End this line on the wall.');
 		// Zero partial source, and the chain is still editable rather than dropped.
 		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
 		expect(inkSurface()!.snapshot().points).toHaveLength(2);

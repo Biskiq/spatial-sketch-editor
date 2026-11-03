@@ -1,3 +1,4 @@
+import { drawingRefusalWords } from './refusals';
 /**
  * T1.P02.S02 — the straight Wall chain: draft state, deliberate targets and the
  * planner-derived consequence the creator sees before finishing.
@@ -273,8 +274,9 @@ export function planChainDraft(options: {
 		endpointJunctionSnaps: request.endpointJunctionSnaps,
 		endpointHostSnaps: request.endpointHostSnaps
 	});
-	if (policy !== null) return { kind: 'refused', code: policy.code, message: policy.message };
+	if (policy !== null) return { kind: 'refused', code: policy.code, message: drawingRefusalWords(policy.code) };
 	const plan: WallChainPlan = planWallChain({
+		roomNamePrefix: 'Room',
 		baseline: options.document,
 		points: request.points,
 		close: request.close,
@@ -286,7 +288,7 @@ export function planChainDraft(options: {
 		...(options.height === undefined ? {} : { height: options.height })
 	});
 	if (plan.kind === 'rejected') {
-		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
+		return { kind: 'refused', code: plan.rejection.code, message: drawingRefusalWords(plan.rejection.code) };
 	}
 	const createdRoomIds = plan.lineage.map((record) => record.roomId);
 	return {

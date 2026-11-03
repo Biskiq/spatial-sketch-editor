@@ -2,6 +2,7 @@
  * R217.S09 — a hit-resolved Width edit refreshes the accepted form, Plan
  * footprint and Paper drawing from the same evaluated source.
  */
+import { SCENE_OBJECT_MARK } from '$lib/authoring/adapters/scene/object-marks';
 import { describe, expect, it } from 'vitest';
 import {
 	compileWallFirstLayoutGeometry,
@@ -23,7 +24,7 @@ import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/sce
 import { createAdapter as createLayoutAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { hitStageMark } from '$lib/authoring/stage/stage-handles';
-import { formSizeMeasurement, SCENE_FORM_MARK } from '$lib/authoring/adapters/scene/shape/form-size';
+import { formSizeMeasurement, formWorldPoint, SCENE_FORM_MARK } from '$lib/authoring/adapters/scene/shape/form-size';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -137,7 +138,7 @@ describe('R217.S09 — native form Paper agreement', () => {
 		settlePlan(facade);
 		const reference = sceneEntityReference('form-paper-width', facade.snapshot().domain.unitRevisions.scene);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
-		facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
+		facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint);
 		const beforeJson = facade.snapshot().canonicalJson;
 		const beforeRuntimeScene = facade.snapshot().domain.scene;
 		const beforeProjection = planSceneFootprintsFor(beforeRuntimeScene, beforeRuntimeScene.modelFootprints);
@@ -180,7 +181,7 @@ describe('R217.S09 — native form Paper agreement', () => {
 		expect(beforeDrawing.footprints[0]!.polygons).not.toEqual(paperFootprint.polygons);
 	});
 
-	it('keeps support contact through a centered factor-two Plan Height edit', async () => {
+	it('keeps support contact through a centered factor-two 3D Height edit', async () => {
 		const base = form();
 		const sourceForm: SceneFormEntity = {
 			...base,
@@ -200,10 +201,11 @@ describe('R217.S09 — native form Paper agreement', () => {
 			}
 		};
 		const { facade, host } = await mountedHost(sourceForm);
-		settlePlan(facade);
+		facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, 20);
+		facade.camera.evaluate(RECT, 30);
 		const reference = sceneEntityReference(sourceForm.id, facade.snapshot().domain.unitRevisions.scene);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
-		facade.activateDisclosure(SCENE_FORM_MARK.scalePoint);
+		facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint);
 		const acceptedBefore = stageEnvelope(facade.snapshot()).units.scene.data.entities.find(
 			(entity) => entity.id === sourceForm.id
 		);
@@ -217,14 +219,20 @@ describe('R217.S09 — native form Paper agreement', () => {
 		if (heightMark === undefined) throw new Error('centered form did not publish Height');
 		const history = host.history();
 		const evaluation = facade.evaluation()!;
-		const from = heightMark.anchor;
-		const to = [from[0], from[1] - 20] as const;
+		// The top knob's axis runs through the chip's corner (review pass 2 §6).
+		const corner = beforeMeasurement.bounds!.max;
+		const pressed = facade.projectWorld(formWorldPoint(acceptedBefore, [corner[0], corner[1], corner[2]]), facade.evaluationId()!);
+		if (pressed.kind !== 'projected') throw new Error('Height knob corner did not project');
+		const from = [pressed.css[0] - RECT.left, pressed.css[1] - RECT.top] as const;
+		const projected = facade.projectWorld(formWorldPoint(acceptedBefore, [corner[0], corner[1] + .5, corner[2]]), facade.evaluationId()!);
+		if (projected.kind !== 'projected') throw new Error('target Height point did not project');
+		const to = [projected.css[0] - RECT.left, projected.css[1] - RECT.top] as const;
 		const evaluationId = facade.evaluationId()!;
 		expect(facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: heightMark.id }).claimed).toBe(true);
 		facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		const preview = facade.ghosts().find((ghost) => ghost.id === 'scene-form-mark-preview');
+		const preview = facade.ghosts().find((ghost) => ghost.id === 'scene-candidate');
 		if (preview?.shape.kind !== 'form') throw new Error('Plan Height did not publish a form preview');
-		const expectedScale = (height.dimension + 20 * evaluation.targetPlaneMetersPerCssPixel) / height.baseDimension;
+		const expectedScale = (height.dimension + .5 * height.factor) / height.baseDimension;
 		expect(preview.shape.form.scale[1]).toBeCloseTo(expectedScale, 6);
 		facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		for (let attempt = 0; attempt < 200; attempt += 1) {
@@ -237,6 +245,40 @@ describe('R217.S09 — native form Paper agreement', () => {
 		const afterMeasurement = formSizeMeasurement(acceptedAfter);
 		expect(acceptedAfter.form.scale[1]).toBeCloseTo(expectedScale, 6);
 		expect(acceptedAfter.position[1] + afterMeasurement.contactMinY).toBeCloseTo(supportContact, 6);
+		expect(host.history()).toMatchObject({ depth: history.depth + 1, position: history.position + 1 });
+	});
+
+	it('lifts a form with the stem\'s bottom knob in one entry, keeping its size', async () => {
+		const sourceForm = form();
+		const { facade, host } = await mountedHost(sourceForm);
+		facade.camera.applyIntent({ kind: 'set-reading', reading: '3d' }, 20);
+		facade.camera.evaluate(RECT, 30);
+		const reference = sceneEntityReference(sourceForm.id, facade.snapshot().domain.unitRevisions.scene);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		facade.activateDisclosure(SCENE_OBJECT_MARK.scalePoint);
+		const lift = facade.marks().find((mark) => mark.id === SCENE_OBJECT_MARK.lift);
+		if (lift === undefined) throw new Error('a resting form did not publish its lift knob');
+		expect(lift.glyph).toBe('lift-knob');
+		const before = stageEnvelope(facade.snapshot()).units.scene.data.entities.find((entity) => entity.id === sourceForm.id);
+		if (before?.kind !== 'form') throw new Error('form was not admitted');
+		const history = host.history();
+		const evaluationId = facade.evaluationId()!;
+		const up: [number, number] = [lift.anchor[0], lift.anchor[1] - 60];
+		expect(facade.pointerIntent({ phase: 'down', css: lift.anchor, evaluationId, handleId: lift.id }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: up, evaluationId });
+		expect(facade.ghosts().some((ghost) => ghost.id === 'scene-candidate')).toBe(true);
+		facade.pointerIntent({ phase: 'up', css: up, evaluationId });
+		for (let attempt = 0; attempt < 200; attempt += 1) {
+			const current = stageEnvelope(facade.snapshot()).units.scene.data.entities.find((entity) => entity.id === sourceForm.id);
+			if (current !== undefined && current.position[1] !== before.position[1]) break;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		const after = stageEnvelope(facade.snapshot()).units.scene.data.entities.find((entity) => entity.id === sourceForm.id);
+		if (after?.kind !== 'form') throw new Error('the lift did not install');
+		expect(after.position[1]).toBeGreaterThan(before.position[1]);
+		expect(after.position[0]).toBe(before.position[0]);
+		expect(after.position[2]).toBe(before.position[2]);
+		expect(after.form.scale).toEqual(before.form.scale);
 		expect(host.history()).toMatchObject({ depth: history.depth + 1, position: history.position + 1 });
 	});
 });

@@ -352,7 +352,7 @@ function acceptedForm(coordinator: AcceptanceCoordinator<ProjectEnvelope>, entit
 }
 
 describe('Scene operations through the F.4 coordinator', () => {
-	it('registers the ten Scene planners beside the conformance Layout planner', async () => {
+	it('registers the twelve Scene planners beside the conformance Layout planner', async () => {
 		const { coordinator } = await boot();
 		expect(coordinator.planners().map((planner) => planner.kind).sort()).toEqual(
 			[
@@ -366,6 +366,8 @@ describe('Scene operations through the F.4 coordinator', () => {
 				'resize-on-floor',
 				'duplicate-one',
 				'delete-one',
+				'set-lift',
+				'set-name',
 				PROOF_LAYOUT_TRANSFORM_KIND
 			].sort()
 		);

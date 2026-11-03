@@ -13,32 +13,13 @@
 	export const TICK_LABEL_GAP_PX = 16;
 </script>
 
+<svelte:window onkeyup={(event) => { if (event.key === 'Enter') openingKeyHeld = false; }} />
+
 <script lang="ts">
-	/**
-	 * R217.S06 — PLATE's **Height Sheet** in the Stage's right-edge slot.
-	 *
-	 * The Sheet answers "at what height" and publishes one fact. It is host view
-	 * state: dragging it moves the Plan cut, it snaps to owner-declared surfaces
-	 * and to session pins, and it never arms a tool, changes selection, writes
-	 * source, creates history or makes the project dirty.
-	 *
-	 * Ticks are the floor datum (long), found surfaces (short) and pins (round).
-	 * The host has already merged the owners' declarations; this component only
-	 * draws them and maps pointer travel to the same height fact.
-	 *
-	 * R217.S22 (D11, D42): a thin line with a knob and semantic ticks, not a boxed
-	 * panel. The value shows on focus, drag and touch. The one pin hint is owned by the
-	 * Stage session (`pinHintSeen`, TD-15), appears on the first pin use and clears
-	 * itself. The Sheet positions its own lane, and the route measures that lane.
-	 *
-	 * R217.S23 (the light-ground fix): the Sheet's ink does not depend on the ground it
-	 * sits on. The 3D ground is pale on the plate and dark on the mat margin, Paper is
-	 * pale and Shaded is dark, so the rail, ticks, knob, value and labels all stand on
-	 * their own pale plate (`--shell-paper`) in forest ink (`--shell-forest`,
-	 * `--shell-forest-raised`). Pins are gold (`--shell-gold`, `--shell-gold-ink`). Every
-	 * pairing is a shell-role token, so the contrast is the same on any ground.
-	 */
+	/** Session-only height rail, neutral pins and invoked precision. No source, history or selection writes. */
 	import { onMount } from 'svelte';
+	import ShellIcon from './ShellIcon.svelte';
+	import { parseMeasureInput } from '$lib/authoring/adapters/layout/precision';
 	import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from '../plan-parameters';
 	import type { StageHeightCause, StageHeightTick } from '../stage-height-sheet';
 
@@ -80,6 +61,40 @@
 		onResetSubscribe: (onReset: () => void) => () => void;
 	} = $props();
 
+	let railHeight = $state(RAIL_PX);
+	function measureRail(node: HTMLElement) {
+		if (typeof ResizeObserver === 'undefined') return;
+		const observer = new ResizeObserver((entries) => {
+			railHeight = entries[0]?.contentRect.height ?? RAIL_PX;
+		});
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
+	function focusNumeric(node: HTMLInputElement): void {
+		node.focus();
+		node.select();
+	}
+	let numeric = $state(false);
+	let openingKeyHeld = false;
+	let heightText = $state('');
+	let heightError = $state('');
+	let pinContext = $state<number | null>(null);
+	function editHeight(fromKeyboard = false): void {
+		openingKeyHeld = fromKeyboard;
+		heightText = String(heightMeters);
+		numeric = true;
+		heightError = '';
+	}
+	function commitHeight(): void {
+		if (openingKeyHeld) return;
+		const parsed = parseMeasureInput(heightText);
+		if (!parsed.ok || parsed.value < 0) {
+			heightError = parsed.ok ? 'Height must be zero or greater.' : parsed.reason;
+			return;
+		}
+		onSetHeight(parsed.value, 'key');
+		numeric = false;
+	}
 	let active = false;
 	let dragging = $state(false);
 	let hovered = $state(false);
@@ -111,7 +126,10 @@
 	const nearestTick = $derived.by(() => {
 		let best: StageHeightTick | null = null;
 		for (const tick of ticks) {
-			if (best === null || Math.abs(tick.heightMeters - heightMeters) < Math.abs(best.heightMeters - heightMeters)) {
+			if (
+				best === null ||
+				Math.abs(tick.heightMeters - heightMeters) < Math.abs(best.heightMeters - heightMeters)
+			) {
 				best = tick;
 			}
 		}
@@ -126,7 +144,7 @@
 		const shown: StageHeightTick[] = [];
 		let lastPx = Number.NEGATIVE_INFINITY;
 		for (const tick of [...ticks].sort((a, b) => a.heightMeters - b.heightMeters)) {
-			const px = (tick.heightMeters / Math.max(maxMeters, 1e-9)) * RAIL_PX;
+			const px = (tick.heightMeters / Math.max(maxMeters, 1e-9)) * railHeight;
 			if (px - lastPx < TICK_LABEL_GAP_PX) continue;
 			shown.push(tick);
 			lastPx = px;
@@ -276,7 +294,9 @@
 	}
 
 	function jumpTick(direction: 1 | -1): void {
-		const values = [...new Set([0, ...ticks.map((tick) => tick.heightMeters), ...pins])].sort((a, b) => a - b);
+		const values = [...new Set([0, ...ticks.map((tick) => tick.heightMeters), ...pins])].sort(
+			(a, b) => a - b
+		);
 		const next =
 			direction > 0
 				? values.find((value) => value > heightMeters + 1e-6)
@@ -286,6 +306,11 @@
 
 	function onKeydown(event: KeyboardEvent): void {
 		switch (event.key) {
+			case 'Enter':
+				event.preventDefault();
+				event.stopPropagation();
+				editHeight(true);
+				return;
 			case 'ArrowUp':
 			case 'ArrowRight':
 				event.preventDefault();
@@ -361,11 +386,15 @@
 		}
 	}}
 >
-	<div class="rail-wrap">
+	<div class="rail-wrap" use:measureRail>
 		{#if labelsShown}
 			<span class="labels" aria-hidden="true">
 				{#each labelledTicks as tick (`${tick.kind}:${tick.heightMeters}:${tick.label}`)}
-					<span class="tick-label" class:datum={tick.kind === 'datum'} style={`bottom: ${percentOf(tick.heightMeters)}%`}>{tick.label}</span>
+					<span
+						class="tick-label"
+						class:datum={tick.kind === 'datum'}
+						style={`bottom: ${percentOf(tick.heightMeters)}%`}>{tick.label}</span
+					>
 				{/each}
 			</span>
 		{/if}
@@ -387,6 +416,8 @@
 			onpointercancel={onPointerEnd}
 			onlostpointercapture={onPointerEnd}
 			onkeydown={onKeydown}
+			ondblclick={() => editHeight()}
+			title="Working height · drag, or Enter to type"
 		>
 			<span class="rail" aria-hidden="true"></span>
 			{#each ticks as tick (`${tick.kind}:${tick.heightMeters}:${tick.label}`)}
@@ -403,15 +434,17 @@
 					type="button"
 					class="pin"
 					style={`bottom: ${percentOf(pin)}%`}
-					aria-label={`Remove the pin at ${pin.toFixed(2)} metres`}
+					aria-label={`Pin at ${pin.toFixed(2)} metres; options`}
 					title={`Remove pin at ${pin.toFixed(2)} m`}
 					onpointerdown={stopPointer}
-					onclick={() => onRemovePin(pin)}
+					onclick={() => (pinContext = pinContext === pin ? null : pin)}
 				>
-					×
+					<span class="pin-dot"></span>
 				</button>
 			{/each}
-			<span class="knob" style={`bottom: ${percentOf(heightMeters)}%`} aria-hidden="true"></span>
+			<span class="knob" style={`bottom: ${percentOf(heightMeters)}%`} aria-hidden="true"
+				>{heightMeters.toFixed(2)}</span
+			>
 		</div>
 		<button
 			type="button"
@@ -422,258 +455,264 @@
 			onpointerdown={stopPointer}
 			onclick={pinAtHeight}
 		>
-			＋
+			<ShellIcon name="pin" size={12} />
 		</button>
 	</div>
-	<p class="readout" class:shown={valueShown} aria-live="polite">{heightMeters.toFixed(2)} m</p>
+	{#if numeric}<form
+			class="numeric"
+			style={`bottom:${percentOf(heightMeters)}%`}
+			onsubmit={(event) => {
+				event.preventDefault();
+				commitHeight();
+			}}
+		>
+			<label
+				>Height (m)<input
+					aria-label="Sheet height (m)"
+					use:focusNumeric
+					type="text"
+					inputmode="decimal"
+					bind:value={heightText}
+					onkeydown={(event) => {
+						if (event.key === 'Escape') {
+							event.preventDefault();
+							event.stopPropagation();
+							numeric = false;
+							track?.focus();
+						}
+					}}
+				/></label
+			><button type="submit">Apply</button>{#each pins as pin}<button
+					type="button"
+					onclick={() => onRemovePin(pin)}>Remove pin at {pin.toFixed(2)} m</button
+				>{/each}{#if heightError}<p role="alert">
+					{heightError}
+				</p>{/if}
+		</form>{/if}
+	{#if pinContext !== null}<div class="pin-context" style={`bottom:${percentOf(pinContext)}%`}>
+			<button
+				type="button"
+				onclick={() => {
+					onRemovePin(pinContext!);
+					pinContext = null;
+				}}>Remove pin</button
+			><button type="button" onclick={() => (pinContext = null)}>Close</button>
+		</div>{/if}
+
 	{#if snapName !== null}
 		<p class="snap" role="status">{snapName}</p>
 	{/if}
 </div>
 {#if hintVisible}
-	<p class="hint" role="note" data-pin-hint>Pins mark a working height for this session. They are never saved.</p>
+	<p class="hint" role="note" data-pin-hint>
+		Pins mark a working height for this session. They are never saved.
+	</p>
 {/if}
 
 <style>
-	/*
-	 * The Sheet is a line on its own pale plate, not a box (R217.S22, D11) and not dark on
-	 * the mat (R217.S23). It is absolutely placed in the Stage's right-edge (or left-edge)
-	 * lane. The route measures this lane's width and clears the Card from it. Every colour is
-	 * a shell-role token (`shell-roles.css`), so the ink holds on any ground.
-	 */
 	.sheet {
-		--track-left: 4.5rem;
-		--track-w: 2.25rem;
-		--add-w: 1.4rem;
 		position: absolute;
-		top: 50%;
-		right: 0.75rem;
+		top: 56px;
+		bottom: 76px;
+		right: 10px;
 		z-index: 8;
-		transform: translateY(-50%);
-		display: grid;
-		justify-items: start;
-		gap: 0.3rem;
-		/* The label column, the track and the add button; the Card clears the measured width. */
-		width: calc(var(--track-left) + var(--track-w) + 0.25rem + var(--add-w) + 0.25rem);
-		font-size: 0.68rem;
-		line-height: 1.25;
-		color: var(--shell-forest, #11291f);
+		width: 40px;
+		color: var(--shell-ink, #1b201c);
+		font: 11px/1.35 var(--shell-mono, monospace);
 	}
 	.sheet.left {
 		right: auto;
-		left: 0.75rem;
+		left: 10px;
 	}
 	.rail-wrap {
 		position: relative;
 		width: 100%;
-		height: 13rem;
+		height: 100%;
 	}
-	/* The tick names sit in their own column, on the left of the track. */
-	.labels {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 0;
-		width: calc(var(--track-left) - 0.25rem);
-		pointer-events: none;
-	}
-	.tick-label {
-		position: absolute;
-		right: 0;
-		max-width: 100%;
-		overflow: hidden;
-		padding: 0 0.3rem;
-		border: 1px solid var(--shell-forest-raised, #22503c);
-		border-radius: 0.25rem;
-		background: var(--shell-paper, #e9ebe6);
-		color: var(--shell-forest, #11291f);
-		font-size: 0.66rem;
-		line-height: 1.4;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		transform: translateY(50%);
-	}
-	.tick-label.datum {
-		font-weight: 650;
-	}
-	/*
-	 * The track is the pressable rail: a pale plate the ink stands on. Its hit area is the
-	 * whole track width; the plate is the drawn capsule inside it.
-	 */
 	.track {
 		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: var(--track-left);
-		width: var(--track-w);
+		inset: 0;
 		cursor: ns-resize;
 		touch-action: none;
-	}
-	.track::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 50%;
-		width: 1.25rem;
-		box-sizing: border-box;
-		transform: translateX(-50%);
-		border: 1px solid var(--shell-forest-raised, #22503c);
-		border-radius: 0.625rem;
-		background: var(--shell-paper, #e9ebe6);
 	}
 	.rail {
 		position: absolute;
 		top: 0;
 		bottom: 0;
-		left: 50%;
-		width: 1px;
-		transform: translateX(-50%);
-		background: var(--shell-forest-raised, #22503c);
+		left: calc(50% - 1px);
+		width: 2px;
+		border-radius: 1px;
+		background: rgb(27 32 28 / 0.2);
+		box-shadow: 0 0 1px #fff;
 	}
 	.tick {
 		position: absolute;
 		left: 50%;
-		width: 0.9rem;
-		height: 1px;
+		width: 10px;
+		height: 1.5px;
+		background: var(--shell-ink-3, #79817b);
 		transform: translate(-50%, 50%);
-		background: var(--shell-forest-raised, #22503c);
 	}
 	.tick.datum {
-		width: 1.1rem;
-		background: var(--shell-forest, #11291f);
+		width: 22px;
+		height: 2.5px;
+	}
+	.knob {
+		position: absolute;
+		left: 50%;
+		transform: translate(-50%, 50%);
+		display: grid;
+		place-items: center;
+		height: 22px;
+		min-width: 40px;
+		padding: 0 5px;
+		border-radius: 11px;
+		background: var(--shell-sheet-knob, #fbfaf2);
+		color: var(--shell-ink, #1b201c);
+		box-shadow: 0 1px 4px #0006;
+		font-size: 10.5px;
+		font-weight: 600;
+		pointer-events: none;
+	}
+	.labels {
+		position: absolute;
+		right: calc(100% + 6px);
+		inset-block: 0;
+		width: 180px;
+		pointer-events: none;
+	}
+	.tick-label {
+		position: absolute;
+		right: 0;
+		padding: 2px 5px;
+		border-radius: 4px;
+		background: var(--shell-sheet-knob, #fbfaf2);
+		box-shadow: 0 1px 2px #0002;
+		white-space: nowrap;
+		transform: translateY(50%);
+		font: 11px var(--shell-sans, system-ui);
+	}
+	.add {
+		position: absolute;
+		right: calc(100% + 3px);
+		display: grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
+		padding: 0;
+		transform: translateY(50%);
+		border: 0;
+		border-radius: 50%;
+		background: #11291fdd;
+		color: #fff;
+		cursor: pointer;
 	}
 	.pin {
 		position: absolute;
 		left: 50%;
+		transform: translate(-50%, 50%);
 		display: grid;
 		place-items: center;
-		width: 1.1rem;
-		height: 1.1rem;
+		width: 22px;
+		height: 22px;
 		padding: 0;
-		transform: translate(-50%, 50%);
-		border: 1px solid var(--shell-gold-ink, #74560c);
-		border-radius: 50%;
-		background: var(--shell-gold, #d4ad45);
-		color: var(--shell-forest, #11291f);
-		font-size: 0.65rem;
+		border: 0;
+		background: none;
 		cursor: pointer;
 	}
-	/* The knob is the drawn ring on the plate; its pressable area is the rail's track. */
-	.knob {
+	.pin-dot {
+		width: 8px;
+		height: 8px;
+		border: 1px solid #fff;
+		border-radius: 50%;
+		background: var(--shell-ink-3, #79817b);
+		box-shadow: 0 0 1px var(--shell-forest, #11291f);
+	}
+	.numeric,
+	.pin-context {
 		position: absolute;
-		left: 50%;
-		width: 0.9rem;
-		height: 0.9rem;
+		right: calc(100% + 8px);
+		z-index: 20;
+		width: 180px;
+		padding: 8px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 8px;
+		background: #fff;
+		color: var(--shell-ink, #1b201c);
+		box-shadow: var(--shell-shadow);
+	}
+	.numeric label {
+		display: grid;
+		gap: 3px;
+	}
+	.numeric input {
 		box-sizing: border-box;
-		transform: translate(-50%, 50%);
-		border: 2px solid var(--shell-forest, #11291f);
-		border-radius: 50%;
-		background: var(--shell-paper, #e9ebe6);
-		pointer-events: none;
+		width: 100%;
+		height: 26px;
+		padding: 0 6px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 6px;
+		font: 12px var(--shell-mono, monospace);
 	}
-	.add {
-		position: absolute;
-		left: calc(var(--track-left) + var(--track-w) + 0.1rem);
-		width: var(--add-w);
-		height: var(--add-w);
-		padding: 0;
-		transform: translate(0, 50%);
-		border: 1px solid var(--shell-forest-raised, #22503c);
-		border-radius: 50%;
-		background: var(--shell-forest-raised, #22503c);
-		color: var(--shell-paper, #e9ebe6);
-		font: inherit;
+	.numeric button,
+	.pin-context button {
+		min-height: 26px;
+		border: 0;
+		border-radius: 6px;
+		background: var(--shell-leaf-tint, #e7f1ea);
 		cursor: pointer;
 	}
-	/* The value and the snap name are chips: forest ink on the pale plate. */
-	.readout,
 	.snap {
-		margin: 0 0 0 var(--track-left);
-		padding: 0.05rem 0.35rem;
-		border: 1px solid var(--shell-forest-raised, #22503c);
-		border-radius: 0.25rem;
-		background: var(--shell-paper, #e9ebe6);
-		color: var(--shell-forest, #11291f);
-		font-variant-numeric: tabular-nums;
-		letter-spacing: 0.01em;
-		white-space: nowrap;
+		position: absolute;
+		bottom: -30px;
+		right: 0;
+		width: max-content;
+		padding: 4px 6px;
+		border-radius: 5px;
+		background: #11291fdd;
+		color: #fff;
 	}
-	.readout {
-		opacity: 0;
-		transition: opacity 120ms ease;
-	}
-	.readout.shown {
-		opacity: 1;
-	}
-	.snap {
-		font-size: 0.62rem;
-	}
-	/*
-	 * The pin hint is a Stage note above the lower column, on the left edge, clear of the
-	 * Card and the Sheet lane. It is not interactive and it clears itself. Forest ground and
-	 * paper ink, both shell roles, so it reads on the pale plate and on the mat alike.
-	 */
 	.hint {
 		position: absolute;
+		left: 12px;
+		bottom: 80px;
 		z-index: 9;
-		left: calc(var(--sheet-lane-left, 0px) + 1rem);
-		bottom: calc(var(--lower-column-height, 0px) + 1.25rem);
-		width: min(16rem, calc(100% - 2rem));
-		margin: 0;
-		padding: 0.5rem 0.6rem;
-		border: 1px solid var(--shell-gold-ink, #74560c);
-		border-radius: 0.4rem;
+		max-width: 256px;
+		padding: 8px;
+		border-radius: 8px;
 		background: var(--shell-forest, #11291f);
-		color: var(--shell-paper, #e9ebe6);
-		font-size: 0.66rem;
-		line-height: 1.35;
+		color: var(--shell-ink-light, #eef1ec);
+		font-size: 12px;
 		pointer-events: none;
 	}
-	.track:focus-visible,
-	button:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
-		outline-offset: 2px;
-	}
-	.instant .tick,
-	.instant .knob,
-	.instant .readout {
-		transition: none;
-	}
-	/* PLATE's coarse-pointer law: every pressable part of the Sheet is 44 × 44 px, even
-	   though the drawn mark stays small. The knob's own box is 44 px; the track is 44 px wide. */
 	@media (pointer: coarse) {
 		.sheet {
-			--track-w: 44px;
-			--add-w: 44px;
+			width: 44px;
 		}
 		.track {
 			width: 44px;
 		}
-		.knob {
-			width: 44px;
-			height: 44px;
-			border: 0;
-			background: transparent;
-		}
-		.knob::before {
-			content: '';
-			position: absolute;
-			inset: 15px;
-			box-sizing: border-box;
-			border: 2px solid var(--shell-forest, #11291f);
-			border-radius: 50%;
-			background: var(--shell-paper, #e9ebe6);
-		}
-		.add,
-		.pin {
-			min-width: 44px;
-			min-height: 44px;
-			font-size: 1rem;
-		}
 		.add {
 			width: 44px;
 			height: 44px;
+			background: transparent;
+		}
+		.add :global(svg) {
+			padding: 4px;
+			box-sizing: content-box;
+			border-radius: 50%;
+			background: #11291fdd;
+		}
+		.pin {
+			pointer-events: none;
+			min-width: 44px;
+			min-height: 44px;
+		}
+		.numeric input,
+		.numeric button,
+		.pin-context button {
+			min-height: 44px;
+			min-width: 44px;
 		}
 	}
 </style>

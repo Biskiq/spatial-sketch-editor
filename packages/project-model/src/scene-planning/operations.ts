@@ -18,11 +18,18 @@
  * | `resize-on-floor` | uniform scale and the compensating Y; X/Z and rotation are preserved |
  * | `duplicate-one` | one appended entity at +0.5 m world X/Z, everything else copied |
  * | `delete-one` | exact removal, cluster-membership cleanup and an emptied-cluster drop |
+ * | `set-lift` | the Y that puts the base a given height above the support beneath; X/Z, rotation and scale are preserved |
+ * | `set-name` | the entity's name only |
  *
  * Support is always re-derived from the snapshot's canonical compile
  * (`./support`). Move, duplicate and resize must keep their **resting
  * elevation**; a destination that cannot support it refuses, because changing
- * the resting floor is an explicit `place-on-floor` decision. A primitive's
+ * the resting floor is an explicit `place-on-floor` decision. A **lifted**
+ * object (review pass 2 §6) rests on nothing: its reference is the support
+ * directly beneath it, and its lift is the height of its base above that
+ * support. No field stores the lift — world Y already does — so every planner
+ * re-derives it the same way and keeps it: Move, Place, Resize and Duplicate
+ * carry the lift to the destination's support. A primitive's
  * contact is analytical and a captured disagreement refuses; a model's contact
  * is host metadata captured with the intent, exactly as S01 treats verified
  * model contact.
@@ -65,7 +72,9 @@ export const SCENE_OPERATION_KINDS = [
 	'place-on-floor',
 	'resize-on-floor',
 	'duplicate-one',
-	'delete-one'
+	'delete-one',
+	'set-lift',
+	'set-name'
 ] as const;
 
 export type SceneOperationKind = (typeof SCENE_OPERATION_KINDS)[number];
@@ -180,8 +189,9 @@ export function planMoveHorizontal(input: {
 
 	const point = worldPoint(input.frame, input.worldXZ);
 	if (point === null) return nonFinitePoint();
-	const resting = restingElevation(target.entity, contact.value);
-	const support = resolveSupport(input.context, point, resting, input.choice);
+	const rest = restSupport(input.context, target.entity, contact.value, input.choice);
+	if (rest.kind !== 'resolved') return rest;
+	const support = resolveSupport(input.context, point, rest.lift > 0 ? null : rest.resting, input.choice);
 	if (support.kind !== 'resolved') return support;
 
 	const next: SceneEntity = {
@@ -266,8 +276,11 @@ export function planPlaceOnFloor(input: {
 	const support = resolveSupport(input.context, point, null, input.choice);
 	if (support.kind !== 'resolved') return support;
 
+	// A lifted object keeps its lift above the new support; a resting one rests.
+	const rest = restSupport(input.context, target.entity, contact.value, input.choice);
+	const lift = rest.kind === 'resolved' ? rest.lift : 0;
 	const scale = entityScale(target.entity);
-	const y = support.support.elevation - scale * contact.value;
+	const y = support.support.elevation + lift - scale * contact.value;
 	const rotation: Vec3 =
 		input.yaw === undefined
 			? target.entity.rotation
@@ -638,18 +651,13 @@ export function planSetFormSize(input: {
 	const contact = entity.form.generator.plane === 'plan' ? 0 : profile.bounds.minV;
 	const currentContact = contact * entity.form.scale[1];
 	const nextContact = contact * scale[1];
-	const resting = entity.position[1] + currentContact;
-	const support = resolveSupport(
-		input.context,
-		[entity.position[0], entity.position[2]],
-		resting,
-		input.choice
-	);
-	if (support.kind !== 'resolved') return support;
+	const rest = restSupport(input.context, entity, currentContact, input.choice);
+	if (rest.kind !== 'resolved') return rest;
+	const support = { support: rest.support };
 
 	const next: SceneEntity = {
 		...entity,
-		position: [entity.position[0], support.support.elevation - nextContact, entity.position[2]],
+		position: [entity.position[0], support.support.elevation + rest.lift - nextContact, entity.position[2]],
 		form: { ...entity.form, scale: [scale[0], scale[1], scale[2]] }
 	};
 	return finalize({
@@ -698,12 +706,11 @@ export function planResizeOnFloor(input: {
 		]);
 	}
 
-	const point: LayoutVec2 = [target.entity.position[0], target.entity.position[2]];
-	const resting = restingElevation(target.entity, contact.value);
-	const support = resolveSupport(input.context, point, resting, input.choice);
-	if (support.kind !== 'resolved') return support;
+	const rest = restSupport(input.context, target.entity, contact.value, input.choice);
+	if (rest.kind !== 'resolved') return rest;
+	const support = { support: rest.support };
 
-	const y = support.support.elevation - input.scale * contact.value;
+	const y = support.support.elevation + rest.lift - input.scale * contact.value;
 	const next: SceneEntity = {
 		...target.entity,
 		position: [target.entity.position[0], y, target.entity.position[2]],
@@ -723,6 +730,96 @@ export function planResizeOnFloor(input: {
 		},
 		correspondence: [{ relation: 'preserved', entityId: target.entity.id }],
 		support: support.support
+	});
+}
+
+/** The highest admitted lift above a support, in meters. */
+export const SCENE_LIFT_LIMIT_METERS = 50;
+
+/**
+ * `set-lift` — put the object's base `lift` meters above the support beneath it.
+ *
+ * Lift 0 is ordinary resting. The support is re-derived at the object's own X/Z
+ * exactly as every other planner derives it; only Y changes, so X/Z, rotation,
+ * scale and every other value compare exactly.
+ */
+export function planSetLift(input: {
+	readonly context: SceneOperationContext;
+	readonly entityId: string;
+	readonly lift: number;
+	readonly contactMinY: number;
+	readonly choice?: SceneSupportChoice | undefined;
+}): SceneOperationResult {
+	const target = readObject(input.context.scene, input.entityId);
+	if (target.kind !== 'object') return target;
+	const contact = readContactMinY(target.entity, input.contactMinY);
+	if (contact.kind !== 'value') return contact;
+	if (!upright(target.entity)) return unsupportedTransform(input.entityId, 'set-lift');
+	if (!Number.isFinite(input.lift) || input.lift < 0 || input.lift > SCENE_LIFT_LIMIT_METERS) {
+		return invalid(`A lift must be between 0 and ${SCENE_LIFT_LIMIT_METERS} m.`, ['lift']);
+	}
+	const rest = restSupport(input.context, target.entity, contact.value, input.choice);
+	if (rest.kind !== 'resolved') return rest;
+	const y = rest.support.elevation + input.lift - entityScale(target.entity) * contact.value;
+	if (Math.abs(y - target.entity.position[1]) <= CONTACT_TOLERANCE_METERS) {
+		return refusal('no_op', `Entity "${input.entityId}" is already lifted ${input.lift} m.`, ['lift']);
+	}
+	const next: SceneEntity = {
+		...target.entity,
+		position: [target.entity.position[0], y, target.entity.position[2]]
+	};
+	return finalize({
+		context: input.context,
+		operationKind: 'set-lift',
+		next,
+		fields: ['position'],
+		scope: {
+			changedEntityIds: [target.entity.id],
+			changedEntityFields: ['position[1]'],
+			createdEntityIds: [],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		},
+		correspondence: [{ relation: 'preserved', entityId: target.entity.id }],
+		support: rest.support
+	});
+}
+
+/** The longest admitted entity name, in characters. */
+export const SCENE_NAME_LIMIT = 120;
+
+/**
+ * `set-name` — rename one entity. Any entity kind may be renamed, lights
+ * included; nothing else changes. A blank name refuses and keeps the old one.
+ */
+export function planSetName(input: {
+	readonly context: SceneOperationContext;
+	readonly entityId: string;
+	readonly name: string;
+}): SceneOperationResult {
+	const entity = input.context.scene.entities.find((candidate) => candidate.id === input.entityId);
+	if (entity === undefined) {
+		return refusal('missing-target', `No Scene entity "${input.entityId}" exists in the accepted source.`, [
+			input.entityId
+		]);
+	}
+	const name = typeof input.name === 'string' ? input.name.trim() : '';
+	if (name.length === 0) return invalid('A name can’t be empty.', ['name']);
+	if (name.length > SCENE_NAME_LIMIT) return invalid(`A name can have at most ${SCENE_NAME_LIMIT} characters.`, ['name']);
+	if (name === entity.name) return refusal('no_op', `Entity "${input.entityId}" is already named "${name}".`, ['name']);
+	return finalize({
+		context: input.context,
+		operationKind: 'set-name',
+		next: { ...entity, name },
+		fields: ['name'],
+		scope: {
+			changedEntityIds: [entity.id],
+			changedEntityFields: ['name'],
+			createdEntityIds: [],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		},
+		correspondence: [{ relation: 'preserved', entityId: entity.id }]
 	});
 }
 
@@ -759,12 +856,13 @@ export function planDuplicateOne(input: {
 		);
 	}
 
-	const resting = restingElevation(target.entity, contact.value);
+	const rest = restSupport(input.context, target.entity, contact.value, input.choice);
+	if (rest.kind !== 'resolved') return rest;
 	const point: LayoutVec2 = [
 		target.entity.position[0] + DUPLICATE_OFFSET_METERS,
 		target.entity.position[2] + DUPLICATE_OFFSET_METERS
 	];
-	const support = resolveSupport(input.context, point, resting, input.choice);
+	const support = resolveSupport(input.context, point, rest.lift > 0 ? null : rest.resting, input.choice);
 	if (support.kind !== 'resolved') return support;
 
 	const duplicate: SceneEntity = {
@@ -1122,6 +1220,53 @@ function ownedYaw(existing: number, frame: LocalInputFrame, yaw: number): number
 
 function restingElevation(entity: SceneEntity, contactMinY: number): number {
 	return entity.position[1] + entityScale(entity) * contactMinY;
+}
+
+/**
+ * The support an object rests on, or — when it is lifted — the support directly
+ * beneath it, with the lift between them.
+ *
+ * A resting object resolves exactly as before (its resting elevation must be a
+ * support). Only when that fails and a support lies strictly below the base is
+ * the object lifted from it; any other failure is the original refusal. A form's
+ * `contactMinY` already includes its per-axis scale, so its entity scale is 1.
+ */
+/**
+ * The accepted lift of one entity above the support beneath it, or `null` when
+ * neither its resting base nor anything beneath it resolves. Read-only: the
+ * lift knob and the Card's Elevation field show this; `set-lift` changes it.
+ */
+export function sceneEntityLift(
+	context: SceneOperationContext,
+	entity: SceneEntity,
+	contactMinY: number
+): { readonly lift: number; readonly supportY: number } | null {
+	const rest = restSupport(context, entity, contactMinY, undefined);
+	return rest.kind === 'resolved' ? { lift: rest.lift, supportY: rest.support.elevation } : null;
+}
+
+function restSupport(
+	context: SceneOperationContext,
+	entity: SceneEntity,
+	contactMinY: number,
+	choice: SceneSupportChoice | undefined
+):
+	| {
+			readonly kind: 'resolved';
+			readonly support: SceneOperationSupportEvidence;
+			readonly resting: number;
+			readonly lift: number;
+	  }
+	| SceneOperationRefusal {
+	const point: LayoutVec2 = [entity.position[0], entity.position[2]];
+	const resting = restingElevation(entity, contactMinY);
+	const onIt = resolveSupport(context, point, resting, choice);
+	if (onIt.kind === 'resolved') return { kind: 'resolved', support: onIt.support, resting, lift: 0 };
+	const beneath = resolveSupport(context, point, null, choice);
+	if (beneath.kind === 'resolved' && resting > beneath.support.elevation + CONTACT_TOLERANCE_METERS) {
+		return { kind: 'resolved', support: beneath.support, resting, lift: resting - beneath.support.elevation };
+	}
+	return onIt;
 }
 
 function worldPoint(

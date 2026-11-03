@@ -329,7 +329,7 @@ describe('R217.S07 — Paper mark filtering', () => {
 		expect(marks.selection.contours[0]!.segments).toHaveLength(4);
 		expect(marks.selection.contours[0]!.cut).toBe(true);
 		// Cut poché keeps its black ink: gold over it is brown.
-		expect(marks.selection.fills).toEqual([]);
+		expect(marks.selection.fills).toHaveLength(1);
 		expect(marks.hover.contours).toEqual([]);
 	});
 
@@ -465,14 +465,14 @@ describe('R217.S07 — Paper mark filtering', () => {
 
 	it('keeps a footprint with no retained fill polygons contour-only', () => {
 		const marks = paperMarkSet(DRAWING, entry('scene', 'model', UNFOOTPRINTED_MODEL_ID), null);
-		expect(marks.selection.fills).toEqual([]);
+		expect(marks.selection.fills).toHaveLength(0);
 		expect(marks.selection.contours).toHaveLength(1);
 		expect(marks.selection.contours[0]!.segments).toHaveLength(1);
 	});
 
 	it('never fills an Opening as its host Wall', () => {
 		const marks = paperMarkSet(DRAWING, entry('layout', 'opening', OPENING_ID), null);
-		expect(marks.selection.fills).toEqual([]);
+		expect(marks.selection.fills).toHaveLength(0);
 		expect(marks.selection.contours).toHaveLength(1);
 		expect(marks.selection.contours[0]!.segments).toEqual([
 			[
@@ -548,16 +548,15 @@ describe('R217.S18 — union tint of a Scene subject', () => {
 });
 
 describe('R217.S07 — Paper mark overlay', () => {
-	it('strokes selected cut poché two-tone with no tint', () => {
+	it('repaints selected canonical cut bands in gold with one dark-gold perimeter', () => {
 		const resources = createPaperMarkScene(paperMarkSet(DRAWING, entry('layout', 'wall', WALL_ID), null), [800, 600]);
 		try {
-			expect(resources.group.children.some((child) => child instanceof Mesh && child.material instanceof MeshBasicMaterial)).toBe(false);
+			expect(resources.group.children.some((child) => child instanceof Mesh && child.material instanceof MeshBasicMaterial)).toBe(true);
 			const lines = resources.group.children.filter((child): child is LineSegments2 => child instanceof LineSegments2);
 			const at = (order: number) => lines.find((line) => line.renderOrder === order)!.material as LineMaterial;
 			expect(at(PAPER_MARK_LAYER.selectionHalo).color.getHexString()).toBe(PAPER_SELECTION_EDGE_INK.slice(1));
-			expect(at(PAPER_MARK_LAYER.selectionHalo).linewidth).toBe(5);
-			expect(at(PAPER_MARK_LAYER.selectionLine).color.getHexString()).toBe('d4ad45');
-			expect(at(PAPER_MARK_LAYER.selectionLine).linewidth).toBe(2.5);
+			expect(at(PAPER_MARK_LAYER.selectionHalo).linewidth).toBe(2);
+			expect(lines.some(line=>line.renderOrder===PAPER_MARK_LAYER.selectionLine)).toBe(false);
 		} finally {
 			resources.dispose();
 		}
@@ -582,8 +581,8 @@ describe('R217.S07 — Paper mark overlay', () => {
 		expect((selection!.material as LineMaterial).depthTest).toBe(false);
 		expect(selection!.layers.mask).toBe(1 << 2);
 		expect((selectionHalo!.material as LineMaterial).color.getHexString()).toBe('152c26');
-		expect((hover!.material as LineMaterial).color.getHexString()).toBe('f3f4ee');
-		expect((hoverHalo!.material as LineMaterial).color.getHexString()).toBe('152c26');
+		expect((hover!.material as LineMaterial).color.getHexString()).toBe('4f8f6c');
+		expect((hoverHalo!.material as LineMaterial).color.getHexString()).toBe('4f8f6c');
 		expect(resources.group.layers.mask).toBe(1 << 2);
 		const tint = resources.group.children.find(
 			(child): child is Mesh => child instanceof Mesh && child.material instanceof MeshBasicMaterial

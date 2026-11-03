@@ -156,7 +156,7 @@ describe('R217.S20 — the Head holds no viewing or drafting value', () => {
 		expect(text).not.toContain('Grid interval');
 		expect(text).not.toContain('Snap to the grid');
 		expect(text).not.toContain('Museum Editor');
-		expect(text).toContain('Biskiq');
+		expect(host.querySelector('[aria-label="Toggle Index"]')).not.toBeNull();
 	});
 
 	it('keeps the Head to one row of named permanent homes', () => {

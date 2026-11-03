@@ -11,7 +11,7 @@ import type { ShapeKind } from './outline';
 /** A Shape tile; Sphere has no drawn outline and places through existing Place. */
 export type ObjectTile = ShapeKind | 'sphere';
 
-type Arm = { tile: ObjectTile | null; compact: boolean };
+type Arm = { tile: ObjectTile | null; compact: boolean; precision?: boolean };
 
 const arms = new Map<string, Arm>();
 
@@ -39,4 +39,16 @@ export function objectsPanelCompact(projectId: string): boolean {
 
 export function setObjectsPanelCompact(projectId: string, compact: boolean): void {
 	armOf(projectId).compact = compact;
+}
+
+/** Explicitly invoked initial placement precision; never saved in a project. */
+export function requestObjectsPrecision(projectId: string): void {
+	armOf(projectId).precision = true;
+	armOf(projectId).compact = false;
+}
+export function takeObjectsPrecision(projectId: string): boolean {
+	const arm = armOf(projectId);
+	const requested = arm.precision === true;
+	arm.precision = false;
+	return requested;
 }

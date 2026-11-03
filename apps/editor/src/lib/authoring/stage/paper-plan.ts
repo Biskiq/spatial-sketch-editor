@@ -42,7 +42,20 @@ export const STAGE_OVERLAY_LAYER = 2;
 /** PLATE §Semantic color / §Material and working surfaces reference calibrations. */
 export const PAPER_INK = '#1b201c';
 export const PAPER_GROUND_INK = '#e9ebe6';
-export const MAT_BACKGROUND_INK = '#152c26';
+
+/**
+ * Review pass 2 §7: the reference Paper tones a viewer may choose per view in
+ * the ⚙. View preferences only — never authored, never in Save. Paper stays
+ * Paper in every tone (black ink, gold selection).
+ */
+export const PAPER_TONES = {
+	current: { label: 'Current', ink: PAPER_GROUND_INK },
+	cream: { label: 'Warm cream', ink: '#f3eee2' },
+	sage: { label: 'Deeper sage', ink: '#d9dfd4' }
+} as const;
+export type PaperTone = keyof typeof PAPER_TONES;
+export const PAPER_TONE_IDS = Object.keys(PAPER_TONES) as readonly PaperTone[];
+export const MAT_BACKGROUND_INK = '#1d3a33';
 
 /**
  * Plan draw order, low to high. The numbers are the resolver's Plan ranks too.
@@ -79,14 +92,15 @@ export type PaperLineStyle = {
 export const PAPER_LINE_STYLE: {
 	readonly [Treatment in Exclude<PaperTreatment, 'room-floor'>]: PaperLineStyle;
 } = {
-	cut: { ink: PAPER_INK, widthCssPx: 1.5, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
+	cut: { ink: PAPER_INK, widthCssPx: 0.5, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
 	projected: { ink: PAPER_INK, widthCssPx: 1, opacity: 0.7, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
 	hidden: { ink: PAPER_INK, widthCssPx: 1, opacity: 0.45, dashed: true, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
 	symbol: { ink: PAPER_INK, widthCssPx: 1, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 },
 	footprint: { ink: PAPER_INK, widthCssPx: 1.25, opacity: 1, dashed: false, dashSizeMeters: 0.12, gapSizeMeters: 0.08 }
 };
 
-export const PAPER_FILL_INK: { readonly cut: string; readonly 'room-floor': string } = {
+export const PAPER_FILL_INK: { readonly cut: string; readonly 'room-floor': string;
+} = {
 	cut: PAPER_INK,
 	'room-floor': PAPER_GROUND_INK
 };
@@ -341,7 +355,7 @@ function pointInUnion(
 				point[1] <= Math.max(prior[1], current[1]) + 1e-9;
 			if (Math.abs(onEdge) <= 1e-9 && within) return true;
 			const crosses =
-				(current[1] > point[1]) !== (prior[1] > point[1]) &&
+				current[1] > point[1] !== prior[1] > point[1] &&
 				point[0] < ((prior[0] - current[0]) * (point[1] - current[1])) / (prior[1] - current[1]) + current[0];
 			if (crosses) inside = !inside;
 		}
@@ -376,7 +390,8 @@ function edgeKey(a: LayoutVec2, b: LayoutVec2): string {
  * closed boundary for the drawing and for S07's later re-stroke.
  */
 function mergeCollinear(segments: readonly PaperSegment[]): PaperSegment[] {
-	type Group = { readonly reference: LayoutVec2; readonly direction: LayoutVec2; readonly intervals: Array<[number, number]> };
+	type Group = { readonly reference: LayoutVec2; readonly direction: LayoutVec2; readonly intervals: Array<[number, number]>;
+	};
 	const groups = new Map<string, Group>();
 	const round = (value: number): number => Math.round(value * 1e6) / 1e6;
 	for (const [start, end] of segments) {
@@ -702,7 +717,8 @@ function revealAmount(weight: number, [from, to]: readonly [number, number]): nu
  * build never lands in the visible part of the move.
  */
 export function paperRevealFor(
-	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number } | null,
+	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number;
+	} | null,
 	appearance: 'paper' | 'shaded'
 ): PaperReveal | null {
 	if (appearance !== 'paper' || evaluation === null || evaluation.renderedReading === '3d') return null;
@@ -718,8 +734,11 @@ export function paperRevealFor(
 
 /** Whether the Paper layer is the visible Plan drawing. */
 export function isPaperPlanVisible(
-	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number } | null,
+	evaluation: { readonly renderedReading: string; readonly orthographicWeight: number;
+	} | null,
 	appearance: 'paper' | 'shaded'
 ): boolean {
-	return appearance === 'paper' && evaluation !== null && evaluation.renderedReading === 'plan' && evaluation.orthographicWeight === 1;
+	return (
+		appearance === 'paper' && evaluation !== null && evaluation.renderedReading === 'plan' && evaluation.orthographicWeight === 1
+	);
 }

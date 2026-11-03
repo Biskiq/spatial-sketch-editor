@@ -130,7 +130,7 @@ it('an outgoing detached input cannot cancel a replacement controller draft', as
 	const { first, second, target, replace } = await panel();
 	const outgoing = target.querySelector<HTMLInputElement>('input[data-field="length"]')!;
 	outgoing.focus();
-	second.fields.mockReturnValue([{ id: 'width', label: 'Width', unit: 'm', value: '5', text: '7', error: null }]);
+	second.fields.mockReturnValue([{ id: 'height', label: 'Height', unit: 'm', value: '5', text: '7', error: null }]);
 	await replace();
 	expect(outgoing.isConnected).toBe(false);
 	vi.mocked(first.blur).mockClear();
@@ -139,7 +139,7 @@ it('an outgoing detached input cannot cancel a replacement controller draft', as
 	await tick();
 	expect(first.blur).not.toHaveBeenCalled();
 	expect(second.blur).not.toHaveBeenCalled();
-	expect(target.querySelector<HTMLInputElement>('input[data-field="width"]')?.value).toBe('7');
+	expect(target.querySelector<HTMLInputElement>('input[data-field="height"]')?.value).toBe('7');
 });
 
 describe('the Layout writer and the Card facts divide the subject\'s fields', () => {
@@ -154,4 +154,22 @@ describe('the Layout writer and the Card facts divide the subject\'s fields', ()
 			.map((fact) => fact.label);
 		expect(rows).toEqual(['Role']);
 	});
+});
+
+it('keeps full precision while focused, including after a controller refresh', async () => {
+	const { first, target } = await panel();
+	first.edit('length', '3.125');
+	const input = target.querySelector<HTMLInputElement>('input[data-field="length"]')!;
+	input.focus();
+	await tick();
+	expect(input.value).toBe('3.125');
+	// A current refusal refreshes the same controller without replacing its writer.
+	vi.mocked(first.commit).mockResolvedValue({ kind: 'refused', code: 'test', message: 'Keep editing' });
+	submit(target, 'commit');
+	await tick();
+	await vi.waitFor(() => expect(target.querySelector('[role="alert"]')?.textContent).toBe('Keep editing'));
+	expect(input.value).toBe('3.125');
+	input.blur();
+	await tick();
+	expect(input.value).toBe('5');
 });

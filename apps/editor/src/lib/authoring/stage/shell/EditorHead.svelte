@@ -1,22 +1,7 @@
 <script lang="ts">
-	/**
-	 * PLATE **Head** (§0.8): one compact row in the wireframe's order.
-	 *
-	 * Index toggle · Biskiq · project name (its disclosure holds the project actions)
-	 * · World | Experience · context chip while the Index is away · Find · Undo ·
-	 * Redo · Save · Preview.
-	 *
-	 * Head owns application actions, not a second task toolbar, and stays one row at
-	 * every desktop and tablet width. Eligibility and refusal semantics are unchanged:
-	 * a control that cannot act stays focusable with `aria-disabled` (a native
-	 * `disabled` control could not take focus, so its reason could not be reached),
-	 * and its reason is a focus, hover and tap disclosure with an accessible
-	 * description. The row holds no viewing or drafting value: those live in the
-	 * Stage's ⚙, and Keys live in Find. This component reaches no persistence
-	 * function, and downloading source JSON is a pure serialization of the admitted
-	 * source the caller already holds.
-	 */
+	/** Shared Head: project lifecycle, lens, scoped Find, history and truthful Save/Preview states. */
 	import { tick, untrack } from 'svelte';
+	import ShellIcon from './ShellIcon.svelte';
 	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
@@ -80,10 +65,22 @@
 		onOpenIndex = () => {},
 		projectActionsUnavailableReason = null,
 		projectActionBusy = false,
-		onPrepareRename = async () => ({ kind: 'blocked' as const, message: 'Project actions are unavailable.' }),
-		onRenameProject = async () => ({ kind: 'refused' as const, message: 'Project actions are unavailable.' }),
-		onPrepareDelete = async () => ({ kind: 'blocked' as const, message: 'Project actions are unavailable.' }),
-		onDeleteProject = async () => ({ kind: 'refused' as const, message: 'Project actions are unavailable.' }),
+		onPrepareRename = async () => ({
+			kind: 'blocked' as const,
+			message: 'Project actions are unavailable.'
+		}),
+		onRenameProject = async () => ({
+			kind: 'refused' as const,
+			message: 'Project actions are unavailable.'
+		}),
+		onPrepareDelete = async () => ({
+			kind: 'blocked' as const,
+			message: 'Project actions are unavailable.'
+		}),
+		onDeleteProject = async () => ({
+			kind: 'refused' as const,
+			message: 'Project actions are unavailable.'
+		}),
 		onProjectActionComplete = async () => {},
 		onProjectActionBusyChange = () => {},
 		onRefreshRemoteProject = null,
@@ -122,10 +119,15 @@
 		projectActionsUnavailableReason?: string | null;
 		projectActionBusy?: boolean;
 		onPrepareRename?: () => Promise<ProjectLifecyclePrepareResult>;
-		onRenameProject?: (prepared: PreparedProjectLifecycle, name: string) => Promise<ProjectLifecycleActionResult>;
+		onRenameProject?: (
+			prepared: PreparedProjectLifecycle,
+			name: string
+		) => Promise<ProjectLifecycleActionResult>;
 		onPrepareDelete?: () => Promise<ProjectLifecyclePrepareResult>;
 		onDeleteProject?: (prepared: PreparedProjectLifecycle) => Promise<ProjectLifecycleActionResult>;
-		onProjectActionComplete?: (result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>) => void | Promise<void>;
+		onProjectActionComplete?: (
+			result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>
+		) => void | Promise<void>;
 		onProjectActionBusyChange?: (busy: boolean) => void;
 		onRefreshRemoteProject?: (() => void | boolean | Promise<void | boolean>) | null;
 		/**
@@ -151,12 +153,27 @@
 		{ id: 'experience', label: 'Experience' }
 	] as const;
 
+	const findGroup = (entry: HeadFindEntry) =>
+		entry.verb === 'Go to'
+			? 'Places'
+			: entry.verb === 'Select'
+				? 'Subjects'
+				: entry.verb === 'Arm'
+					? 'Tools'
+					: 'Commands';
+	const findResults = $derived(
+		(find?.entries ?? []).toSorted(
+			(a, b) =>
+				['Subjects', 'Places', 'Tools', 'Commands'].indexOf(findGroup(a)) -
+				['Subjects', 'Places', 'Tools', 'Commands'].indexOf(findGroup(b))
+		)
+	);
 	type ReasonKey = 'undo' | 'redo' | 'save' | 'save-unavailable' | 'preview';
 
 	let selectedLensIndex = $derived(LENSES.findIndex((entry) => entry.id === lens));
 	const lensButtons: HTMLButtonElement[] = [];
-	let findDisclosure = $state<HTMLDetailsElement>();
-	let findSummary = $state<HTMLElement>();
+	let findOpen = $state(false);
+	let findIndex = $state(0);
 	let findInput = $state<HTMLInputElement>();
 	let projectTrigger: HTMLButtonElement | undefined;
 	/** The project procedures' own dialog, reached from the menu or from Find. */
@@ -177,10 +194,16 @@
 	}
 
 	function findShortcut(event: KeyboardEvent): void {
-		if (find === null || event.defaultPrevented || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return;
+		if (
+			find === null ||
+			event.defaultPrevented ||
+			!(event.metaKey || event.ctrlKey) ||
+			event.key.toLowerCase() !== 'k'
+		)
+			return;
 		event.preventDefault();
-		if (findDisclosure === undefined || findInput === undefined) return;
-		findDisclosure.open = true;
+		if (findInput === undefined) return;
+		findOpen = true;
 		findInput.focus();
 	}
 
@@ -189,7 +212,9 @@
 		const target = event.target;
 		if (!(target instanceof Element)) return;
 		if (openReason !== null && target.closest('[data-reason-owner]') === null) openReason = null;
-		if (projectMenuOpen && target.closest('[data-head-project-owner]') === null) projectMenuOpen = false;
+		if (projectMenuOpen && target.closest('[data-head-project-owner]') === null)
+			projectMenuOpen = false;
+		if (target.closest('[data-head-find]') === null) findOpen = false;
 	}
 
 	function onProjectKeydown(event: KeyboardEvent): void {
@@ -211,8 +236,8 @@
 	async function runFind(entry: HeadFindEntry): Promise<void> {
 		// A run closes the list and returns focus to Find, so what it opens (a dialog,
 		// a reference) can take focus without the list lying over it.
-		if (findDisclosure !== undefined) findDisclosure.open = false;
-		findSummary?.focus();
+		findOpen = false;
+		findInput?.focus();
 		if (entry.adapterId === PROJECT_ADAPTER && (entry.id === 'rename' || entry.id === 'delete')) {
 			projectMenuOpen = true;
 			await tick();
@@ -231,9 +256,9 @@
 	$effect(() => {
 		const current = save;
 		if (current === null) return;
-		return untrack(() => current.subscribe(() =>
-			perfMeasureSync('save.head-state-signal', () => (saveVersion += 1))
-		));
+		return untrack(() =>
+			current.subscribe(() => perfMeasureSync('save.head-state-signal', () => (saveVersion += 1)))
+		);
 	});
 	const saveControl = $derived.by(() => {
 		void saveVersion;
@@ -247,7 +272,9 @@
 		void saveVersion;
 		return save?.isDirty() ?? false;
 	});
-	const saveDisabled = $derived(saveControl !== null && (saveControl.disabled || projectActionBusy));
+	const saveDisabled = $derived(
+		saveControl !== null && (saveControl.disabled || projectActionBusy)
+	);
 	/** The Save reason as the control words it; a project action in progress takes precedence. */
 	const saveReasonText = $derived.by((): string | null => {
 		if (saveControl === null) return null;
@@ -259,14 +286,19 @@
 	 */
 	const refusalAnnouncement = $derived.by((): string => {
 		if (saveControl === null) return '';
-		const refused = saveStatus === 'refused' || saveStatus === 'error' || saveStatus === 'auth-required' || saveControl.conflict;
+		const refused =
+			saveStatus === 'refused' ||
+			saveStatus === 'error' ||
+			saveStatus === 'auth-required' ||
+			saveControl.conflict;
 		return refused ? (saveControl.reason ?? '') : '';
 	});
 
 	async function runSave(): Promise<void> {
 		if (projectActionBusy || save === null || saveControl === null || saveControl.disabled) return;
 		const status = save.snapshot().status;
-		if (status === 'refused' || status === 'error' || status === 'auth-required') await save.retry();
+		if (status === 'refused' || status === 'error' || status === 'auth-required')
+			await save.retry();
 		else await save.save();
 	}
 
@@ -325,11 +357,12 @@
 		type="button"
 		class="head-index"
 		data-head-index
+		aria-label="Toggle Index"
 		aria-expanded={indexOpen}
 		aria-controls="plate-index"
 		onclick={onToggleIndex}
 	>
-		Index <span class="chevron" aria-hidden="true">{indexOpen ? '▾' : '▸'}</span>
+		<ShellIcon name="menu" />
 	</button>
 
 	<!--
@@ -337,8 +370,13 @@
 		carries that key route; its focus targets are the name and the menu's buttons.
 	-->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-	<div class="identity" role="group" aria-label="Project" data-head-project-owner onkeydown={onProjectKeydown}>
-		<span class="brand">Biskiq</span>
+	<div
+		class="identity"
+		role="group"
+		aria-label="Project"
+		data-head-project-owner
+		onkeydown={onProjectKeydown}
+	>
 		<h1 class="project-title">
 			<button
 				type="button"
@@ -368,9 +406,9 @@
 				{projectName}
 				variant="head"
 				disabledReason={projectActionsUnavailableReason}
-				onPrepareRename={onPrepareRename}
+				{onPrepareRename}
 				onRename={onRenameProject}
-				onPrepareDelete={onPrepareDelete}
+				{onPrepareDelete}
 				onDelete={onDeleteProject}
 				onComplete={onProjectActionComplete}
 				onBusyChange={onProjectActionBusyChange}
@@ -393,7 +431,13 @@
 	</div>
 
 	{#if !indexOpen && locationLabel !== null}
-		<button type="button" class="location" data-head-location title={locationLabel} onclick={onOpenIndex}>{locationLabel}</button>
+		<button
+			type="button"
+			class="location"
+			data-head-location
+			title={locationLabel}
+			onclick={onOpenIndex}>{locationLabel}</button
+		>
 	{/if}
 
 	<div class="lens" role="group" aria-label="Product lens">
@@ -415,82 +459,149 @@
 
 	<div class="actions">
 		{#if find !== null}
-			<details class="find" data-head-find bind:this={findDisclosure}>
-				<summary bind:this={findSummary}>Find</summary>
-				<div class="find-body">
-					<label class="find-field">
-						<span>Find a subject, tool or operation</span>
-						<input
-							bind:this={findInput}
-							type="search"
-							value={find.query}
-							oninput={(event) => find?.onQuery(event.currentTarget.value)}
-						/>
-					</label>
-					{#if find.entries.length === 0}
-						<p class="find-empty">No subject, tool or operation matches that name.</p>
-					{:else}
-						<ul class="find-results">
-							{#each find.entries as entry (`${entry.adapterId}:${entry.id}`)}
-								<li>
-									<button
-										type="button"
-										data-find-id={entry.id}
-										data-find-adapter={entry.adapterId}
-										onclick={() => void runFind(entry)}
-									>
-										<span class="find-verb">{entry.verb}</span>
-										{entry.label}
-									</button>
-								</li>
-							{/each}
-						</ul>
-					{/if}
+			<div class="find" class:open={findOpen} data-head-find>
+				<ShellIcon name="search" size={15} />
+				<input
+					bind:this={findInput}
+					type="search"
+					role="combobox"
+					aria-label="Find a subject, tool or operation"
+					aria-expanded={findOpen}
+					aria-controls={`${uid}-find-results`}
+					aria-autocomplete="list"
+					aria-activedescendant={findOpen && findResults[findIndex]
+						? `${uid}-find-${findIndex}`
+						: undefined}
+					placeholder="Find tools, actions, places…"
+					value={find.query}
+					onfocus={() => {
+						findOpen = true;
+						findIndex = 0;
+					}}
+					oninput={(event) => {
+						find?.onQuery(event.currentTarget.value);
+						findIndex = 0;
+						findOpen = true;
+					}}
+					onkeydown={(event) => {
+						if (event.key === 'Escape') {
+							event.preventDefault();
+							event.stopPropagation();
+							findOpen = false;
+							findInput?.focus();
+						} else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+							event.preventDefault();
+							findOpen = true;
+							findIndex =
+								(findIndex + (event.key === 'ArrowDown' ? 1 : -1) + findResults.length) %
+								Math.max(1, findResults.length);
+							document
+								.getElementById(`${uid}-find-${findIndex}`)
+								?.scrollIntoView({ block: 'nearest' });
+						} else if (event.key === 'Enter' && findOpen && findResults[findIndex]) {
+							event.preventDefault();
+							void runFind(findResults[findIndex]!);
+						}
+					}}
+				/>
+				<kbd>⌘K</kbd>
+				<div class="find-body" hidden={!findOpen}>
+					<ul
+						class="find-results"
+						id={`${uid}-find-results`}
+						role="listbox"
+						aria-label="Find results"
+					>
+						{#each findResults as entry, index (`${entry.adapterId}:${entry.id}`)}
+							{#if index === 0 || findGroup(findResults[index - 1]!) !== findGroup(entry)}<li
+									role="presentation"
+									class="find-group"
+								>
+									{findGroup(entry)}
+								</li>{/if}
+							<li role="option" id={`${uid}-find-${index}`} aria-selected={index === findIndex}>
+								<button
+									type="button"
+									tabindex="-1"
+									data-find-id={entry.id}
+									data-find-adapter={entry.adapterId}
+									onpointerdown={(event) => event.preventDefault()}
+									onclick={() => void runFind(entry)}
+								>
+									<ShellIcon
+										name={entry.verb === 'Select'
+											? 'select'
+											: entry.verb === 'Go to'
+												? 'layers'
+												: entry.verb === 'Arm'
+													? 'ink'
+													: 'find'}
+										size={15}
+									/>
+									<span class="find-verb">{entry.verb}</span>{' '}<span>{entry.label}</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+					{#if find.entries.length === 0}<p class="find-empty">No matching results</p>{/if}
 				</div>
-			</details>
+			</div>
 		{/if}
 
-		<div class="history" data-editor-history data-unavailable-capability={!canUndo && !canRedo ? '' : undefined}>
+		<div
+			class="history"
+			data-editor-history
+			data-unavailable-capability={!canUndo && !canRedo ? '' : undefined}
+		>
 			<div class="cap" data-reason-owner data-reason-open={reasonOpen('undo')}>
 				<button
 					type="button"
 					class="action"
 					data-head-undo
+					aria-label="Undo"
 					aria-disabled={!canUndo}
 					aria-describedby={canUndo ? undefined : reasonId('undo')}
 					title={canUndo ? 'Undo the latest accepted change' : undefined}
 					onclick={runUndo}
 				>
-					Undo
+					<ShellIcon name="undo" />
 				</button>
-				{#if !canUndo}<span class="reason" id={reasonId('undo')}>{historyUnavailableReason}</span>{/if}
+				{#if !canUndo}<span class="reason" id={reasonId('undo')}>{historyUnavailableReason}</span
+					>{/if}
 			</div>
 			<div class="cap" data-reason-owner data-reason-open={reasonOpen('redo')}>
 				<button
 					type="button"
 					class="action"
 					data-head-redo
+					aria-label="Redo"
 					aria-disabled={!canRedo}
 					aria-describedby={canRedo ? undefined : reasonId('redo')}
 					title={canRedo ? 'Redo the last undone change' : undefined}
 					onclick={runRedo}
 				>
-					Redo
+					<ShellIcon name="redo" />
 				</button>
 				{#if !canRedo}<span class="reason" id={reasonId('redo')}>{redoUnavailableReason}</span>{/if}
 			</div>
 		</div>
 
 		{#if saveControl === null}
-			<div class="cap" data-reason-owner data-unavailable-capability="" data-reason-open={reasonOpen('save-unavailable')}>
+			<div
+				class="cap"
+				data-reason-owner
+				data-unavailable-capability=""
+				data-reason-open={reasonOpen('save-unavailable')}
+			>
 				<button
 					type="button"
 					class="action"
 					aria-disabled="true"
+					aria-label="Save"
 					aria-describedby={reasonId('save-unavailable')}
 					onclick={onSaveClick}
 				>
-					Save
+					<ShellIcon name="save2" />
 				</button>
 				<span class="reason" id={reasonId('save-unavailable')}>{saveUnavailableReason}</span>
 			</div>
@@ -507,11 +618,13 @@
 					type="button"
 					class="action"
 					data-head-save-button
+					aria-label={saveControl.label}
+					title={saveControl.label}
 					aria-disabled={saveDisabled}
 					aria-describedby={saveReasonText !== null || unsaved ? reasonId('save') : undefined}
 					onclick={onSaveClick}
 				>
-					{saveControl.label}
+					<ShellIcon name={unsaved || saveStatus !== 'saved' ? 'save2' : 'check'} />
 				</button>
 				{#if saveReasonText !== null || unsaved}
 					<span class="reason" id={reasonId('save')}>
@@ -524,32 +637,46 @@
 				{/if}
 			</div>
 		{/if}
-		<p class="sr-only" role="status" aria-live="polite" data-head-announce>{refusalAnnouncement}</p>
+		<p class="sr-only" role="status" aria-live="polite" data-head-announce>
+			{refusalAnnouncement}
+		</p>
 
 		{#if canPreview}
-			<div class="cap preview" data-reason-owner data-head-preview="" data-reason-open={reasonOpen('preview')}>
+			<div
+				class="cap preview"
+				data-reason-owner
+				data-head-preview=""
+				data-reason-open={reasonOpen('preview')}
+			>
 				<button
 					type="button"
 					class="action primary"
 					data-head-preview-button
+					aria-label="Preview"
 					aria-disabled="false"
 					title="Enter an isolated visitor Preview"
 					onclick={runPreview}
 				>
-					Preview
+					<ShellIcon name="preview" size={15} /> <span class="preview-label">Preview</span>
 				</button>
 			</div>
 		{:else}
-			<div class="cap preview" data-reason-owner data-unavailable-capability="" data-reason-open={reasonOpen('preview')}>
+			<div
+				class="cap preview"
+				data-reason-owner
+				data-unavailable-capability=""
+				data-reason-open={reasonOpen('preview')}
+			>
 				<button
 					type="button"
 					class="action primary"
 					data-head-preview-button
+					aria-label="Preview"
 					aria-disabled="true"
 					aria-describedby={reasonId('preview')}
 					onclick={runPreview}
 				>
-					Preview
+					<ShellIcon name="preview" size={15} /> <span class="preview-label">Preview</span>
 				</button>
 				<span class="reason" id={reasonId('preview')}>{previewUnavailableReason}</span>
 			</div>
@@ -558,409 +685,333 @@
 </header>
 
 <style>
-	/*
-		The row takes its roles from the scoped map on `.editor-host` (shell-roles.css).
-		The literal fallbacks keep the component legible when mounted on its own.
-	*/
-	.head {
-		box-sizing: border-box;
-		display: flex;
-		flex-wrap: nowrap;
-		align-items: center;
-		gap: 0.5rem;
-		height: var(--shell-head-height, 44px);
-		padding: 0 0.6rem;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #f3f4ee);
-		border-bottom: 1px solid var(--shell-hairline, #2f4a3d);
-		font-family: var(--shell-sans, Inter, ui-sans-serif, system-ui, sans-serif);
-		font-size: var(--shell-text-body, 13px);
-		min-width: 0;
-	}
-
-	.head-index,
-	.location {
-		font-size: var(--shell-text-utility, 12px);
-		letter-spacing: 0.02em;
-	}
-
-	.identity {
-		position: relative;
-		display: flex;
-		min-width: 0;
-		flex: 0 1 auto;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.brand {
-		font-size: var(--shell-text-utility, 12px);
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		color: var(--shell-ink-quiet, #9fb2a2);
-		white-space: nowrap;
-	}
-
-	.project-title {
-		min-width: 0;
-		margin: 0;
-		font: inherit;
-	}
-
-	.project-name {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		max-width: 14rem;
-		min-height: var(--shell-control-height, 32px);
-		padding: 0 0.3rem;
-		border-color: transparent;
-		color: #fff;
-		font-family: var(--shell-serif, 'Iowan Old Style', Palatino, Georgia, serif);
-		font-size: var(--shell-text-identity, 15px);
-		font-weight: 400;
-		line-height: 1.2;
-	}
-
-	.project-text {
-		overflow: hidden;
-		min-width: 0;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.chevron {
-		font-family: var(--shell-sans, Inter, sans-serif);
-		font-size: var(--shell-text-utility, 12px);
-		color: var(--shell-ink-quiet, #9fb2a2);
-	}
-
-	/* The project menu is a disclosure on the name, holding the procedures the old ☰ held. */
-	.project-menu {
-		position: absolute;
-		z-index: 30;
-		top: calc(100% + 0.3rem);
-		left: 0;
-		display: grid;
-		gap: 0.45rem;
-		width: min(18rem, 90vw);
-		padding: 0.6rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: var(--shell-forest, #11291f);
-		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 45%);
-		font-size: var(--shell-text-body, 13px);
-	}
-
-	.project-menu[hidden] {
-		display: none;
-	}
-
-	.menu-action {
-		justify-self: start;
-	}
-
-	.project-id {
-		margin: 0;
-		font-size: var(--shell-text-utility, 12px);
-		color: var(--shell-ink-quiet, #9fb2a2);
-	}
-
-	.project-id code {
-		padding: 0.1rem 0.3rem;
-		background: var(--shell-forest-raised, #22503c);
-		border-radius: 0.35rem;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: var(--shell-text-utility, 12px);
-		font-variant-numeric: tabular-nums;
-		overflow-wrap: anywhere;
-	}
-
-	.location {
-		min-width: 0;
-		max-width: 11rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		border-color: var(--shell-hairline, #2f4a3d);
-	}
-
-	/* The lens is a pale selected segment with forest ink; the inactive segment stays quiet. */
-	.lens {
-		display: inline-flex;
-		flex: none;
-		gap: 0.15rem;
-		padding: 0.15rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-	}
-
-	.lens-button {
-		border-color: transparent;
-	}
-
-	.lens-button.active {
-		background: var(--shell-paper, #e9ebe6);
-		border-color: var(--shell-paper, #e9ebe6);
-		color: var(--shell-forest, #11291f);
-		font-weight: 600;
-	}
-
-	.actions {
-		display: flex;
-		flex: none;
-		flex-wrap: nowrap;
-		align-items: center;
-		gap: 0.4rem;
-		min-width: 0;
-		margin-left: auto;
-	}
-
-	/* One reason cell per control: its disclosure opens beside its own control only. */
-	.cap {
-		position: relative;
-		display: inline-flex;
-		flex: none;
-		align-items: center;
-	}
-
-	.history {
-		display: inline-flex;
-		gap: 0.3rem;
-	}
-
-	/*
-		A reason is a disclosure: it opens on focus, hover or a tap of its control and
-		closes when focus, pointer or the tap moves away. At rest it is clipped to
-		nothing but stays in the accessibility tree, so aria-describedby reads it.
-	*/
-	.reason {
-		position: absolute;
-		z-index: 14;
-		top: calc(100% + 0.3rem);
-		left: 0;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		border: 0;
-		overflow: hidden;
-		clip-path: inset(50%);
-		white-space: nowrap;
-		font-size: var(--shell-text-utility, 12px);
-		line-height: 1.3;
-	}
-
-	.cap:hover > .reason,
-	.cap:focus-within > .reason,
-	.cap[data-reason-open] > .reason {
-		width: max-content;
-		max-width: min(18rem, 80vw);
-		height: auto;
-		padding: 0.4rem 0.55rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #f3f4ee);
-		overflow: visible;
-		clip-path: none;
-		white-space: normal;
-		box-shadow: 0 0.5rem 1.2rem rgb(6 20 14 / 45%);
-	}
-
-	.reason-line {
-		display: block;
-	}
-
-	/*
-		The action controls sit at the row's right edge, so each disclosure hangs from
-		its control's right edge and stays inside the viewport at every width.
-	*/
-	.actions .cap > .reason {
-		left: auto;
-		right: 0;
-	}
-
-	.find {
-		position: relative;
-	}
-
-	.find summary {
-		display: inline-flex;
-		align-items: center;
-		min-height: var(--shell-control-height, 32px);
-		padding: 0 0.6rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: var(--shell-forest-raised, #22503c);
-		color: var(--shell-ink-light, #f3f4ee);
-		font-size: var(--shell-text-body, 13px);
-		cursor: pointer;
-		list-style: none;
-	}
-
-	.find summary::-webkit-details-marker {
-		display: none;
-	}
-
-	.find-body {
-		position: absolute;
-		right: 0;
-		top: calc(100% + 0.3rem);
-		z-index: 12;
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		width: min(20rem, 80vw);
-		padding: 0.5rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: var(--shell-forest, #11291f);
-		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 45%);
-	}
-
-	.find-field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		font-size: var(--shell-text-utility, 12px);
-		color: var(--shell-ink-quiet, #9fb2a2);
-	}
-
-	.find-field input {
-		min-height: var(--shell-control-height, 32px);
-		padding: 0 0.4rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: transparent;
-		color: var(--shell-ink-light, #f3f4ee);
-		font: inherit;
-	}
-
-	.find-results {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		max-height: 12rem;
-		overflow: auto;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.find-results button {
-		display: flex;
-		width: 100%;
-		align-items: baseline;
-		gap: 0.4rem;
-		padding: 0.25rem 0.3rem;
-		border-color: transparent;
-		font-size: var(--shell-text-body, 13px);
-		text-align: left;
-	}
-
-	.find-verb {
-		color: var(--shell-gold, #d4ad45);
-		font-size: 0.62rem;
-		font-weight: 700;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.find-empty {
-		margin: 0;
-		font-size: var(--shell-text-utility, 12px);
-		color: var(--shell-ink-quiet, #9fb2a2);
-	}
-
-	button {
-		min-height: var(--shell-control-height, 32px);
-		padding: 0 0.6rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.35rem;
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		font-size: var(--shell-text-body, 13px);
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
-	/* Hover is neutral: a light overlay wash, never a second selection colour. */
-	button:hover:not([aria-disabled='true']):not(:disabled) {
-		background: rgb(243 244 238 / 8%);
-	}
-
-	/* An unavailable control keeps its focus and tap; only its look says it cannot act. */
-	button[aria-disabled='true'],
-	button:disabled {
-		cursor: default;
-		color: var(--shell-ink-quiet, #9fb2a2);
-		border-style: dashed;
-	}
-
-	/* The row's primary action: the gold Preview, with forest ink. */
-	button.primary {
-		background: var(--shell-gold, #d4ad45);
-		border-color: var(--shell-gold, #d4ad45);
-		color: var(--shell-forest, #11291f);
-		font-weight: 600;
-	}
-
-	button.primary[aria-disabled='true'] {
-		background: transparent;
-		border-color: var(--shell-hairline, #2f4a3d);
-		color: var(--shell-ink-quiet, #9fb2a2);
-		font-weight: 400;
-	}
-
-	button:focus-visible,
-	summary:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
-		outline-offset: 2px;
-	}
-
 	.sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
-		margin: -1px;
-		padding: 0;
-		border: 0;
 		overflow: hidden;
-		clip: rect(0 0 0 0);
+		clip-path: inset(50%);
+	}
+	.head {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		height: var(--shell-head-height, 44px);
+		padding: 0 8px;
+		background: var(--shell-forest, #11291f);
+		color: var(--shell-ink-light, #eef1ec);
+		min-width: 0;
+		font: 13px/1.35 var(--shell-sans, system-ui);
+	}
+	button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		height: 30px;
+		padding: 0 8px;
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	button:hover {
+		background: rgb(255 255 255 / 0.08);
+	}
+	.head-index,
+	.action:not(.primary) {
+		width: 32px;
+		padding: 0;
+		color: #dfe6df;
+	}
+	.identity {
+		position: relative;
+		min-width: 0;
+		flex: 0 1 auto;
+	}
+	.project-title {
+		margin: 0;
+		font: inherit;
+	}
+	.project-name {
+		max-width: 180px;
+		color: #fff;
+		padding: 0 4px;
+		font: 15px var(--shell-serif, Georgia);
+	}
+	.project-text {
+		overflow: hidden;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-
-	/*
-		Narrow desktop and tablet widths keep the one row by giving the name the room
-		left over. The brand and the names shrink first; no control leaves the row.
-	*/
-	@media (max-width: 1279px) {
-		.head {
-			gap: 0.35rem;
+	.chevron {
+		font: 11px system-ui;
+		color: var(--shell-ink-quiet, #9fb2a5);
+	}
+	.project-menu {
+		position: absolute;
+		z-index: 30;
+		top: 35px;
+		left: 0;
+		display: grid;
+		gap: 6px;
+		width: 288px;
+		padding: 10px;
+		border: 1px solid rgb(255 255 255 / 0.14);
+		border-radius: 10px;
+		background: var(--shell-forest, #11291f);
+		box-shadow: var(--shell-shadow);
+	}
+	.project-menu[hidden] {
+		display: none;
+	}
+	.menu-action {
+		justify-content: flex-start;
+	}
+	.project-id {
+		margin: 0;
+		color: var(--shell-ink-quiet, #9fb2a5);
+		font-size: 11px;
+		overflow-wrap: anywhere;
+	}
+	.lens {
+		display: flex;
+		flex: none;
+		gap: 0;
+		padding: 2px;
+		background: rgb(0 0 0 / 0.25);
+		border-radius: 8px;
+	}
+	.lens-button {
+		height: 26px;
+		padding: 0 11px;
+		border-radius: 6px;
+		color: #cfd8d0;
+		font-size: 12.5px;
+	}
+	.lens-button.active {
+		background: var(--shell-paper, #e9ebe6);
+		color: var(--shell-forest, #11291f);
+		font-weight: 600;
+	}
+	.location {
+		order: 1;
+		height: 28px;
+		max-width: 320px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 12px;
+		background: rgb(255 255 255 / 0.08);
+	}
+	.actions {
+		order: 2;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-left: auto;
+		min-width: 0;
+	}
+	.history {
+		display: flex;
+		gap: 0;
+	}
+	.cap {
+		position: relative;
+		display: inline-flex;
+		flex: none;
+	}
+	.reason {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+	}
+	.cap:hover > .reason,
+	.cap:focus-within > .reason,
+	.cap[data-reason-open] > .reason {
+		z-index: 40;
+		top: 35px;
+		right: 0;
+		width: max-content;
+		max-width: 288px;
+		height: auto;
+		padding: 7px 9px;
+		border-radius: 8px;
+		background: var(--shell-forest, #11291f);
+		color: var(--shell-ink-light, #eef1ec);
+		box-shadow: var(--shell-shadow);
+		clip-path: none;
+		font-size: 12px;
+		white-space: normal;
+	}
+	.reason-line {
+		display: block;
+	}
+	.find {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		width: 250px;
+		height: 30px;
+		padding: 0 8px;
+		border-radius: 8px;
+		background: rgb(255 255 255 / 0.1);
+		color: #b9c8bd;
+	}
+	.find.open {
+		width: 330px;
+		background: #fff;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.find input {
+		width: 100%;
+		min-width: 0;
+		border: 0;
+		outline: none;
+		padding: 0;
+		background: transparent;
+		color: inherit;
+		font: 12.5px var(--shell-sans, system-ui);
+	}
+	.find input::placeholder {
+		color: var(--shell-ink-quiet, #9fb2a5);
+	}
+	.find.open input {
+		color: var(--shell-ink, #1b201c);
+	}
+	kbd {
+		color: var(--shell-ink-quiet, #9fb2a5);
+		font: 10px var(--shell-mono, monospace);
+		white-space: nowrap;
+	}
+	.find-body {
+		position: absolute;
+		z-index: 40;
+		top: 36px;
+		right: 0;
+		width: 330px;
+		padding: 4px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 10px;
+		background: white;
+		color: var(--shell-ink, #1b201c);
+		box-shadow: var(--shell-shadow);
+	}
+	.find-body[hidden] {
+		display: none;
+	}
+	.find-results {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		max-height: 420px;
+		overflow: auto;
+	}
+	.find-results button {
+		justify-content: flex-start;
+		width: 100%;
+		height: auto;
+		min-height: 30px;
+		padding: 5px 8px;
+		text-align: left;
+		white-space: normal;
+		border-radius: 6px;
+	}
+	.find-results [aria-selected='true'],
+	.find-results button:hover {
+		background: var(--shell-hover, #eef0ed);
+		border-radius: 6px;
+	}
+	.find-verb {
+		flex: none;
+		font-size: 11px;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.find-group {
+		padding: 6px 8px 2px;
+		color: var(--shell-ink-3);
+		font-size: 10px;
+		text-transform: uppercase;
+		letter-spacing: 0.07em;
+	}
+	.find-empty {
+		margin: 8px;
+		font-size: 12px;
+	}
+	.primary {
+		padding: 0 11px;
+		border-radius: 8px;
+		background: var(--shell-gold, #d4ad45);
+		color: #2a2208;
+		font-weight: 600;
+	}
+	.primary:hover {
+		background: var(--shell-gold, #d4ad45);
+	}
+	button[aria-disabled='true'] {
+		opacity: 0.45;
+		cursor: default;
+	}
+	@media (max-width: 1100px) {
+		.location {
+			max-width: 180px;
 		}
-
-		.actions {
-			gap: 0.25rem;
-		}
-
-		.project-name {
-			max-width: 9rem;
+		.find,
+		.find.open {
+			width: 210px;
 		}
 	}
-
-	/* Coarse targets: at least 44 CSS px; the row grows to hold them without a second line. */
+	@media (max-width: 860px) {
+		.preview-label,
+		kbd {
+			display: none;
+		}
+		.primary {
+			width: 30px;
+			padding: 0;
+		}
+		.location {
+			flex: 0 1 130px;
+		}
+		.actions {
+			gap: 4px;
+		}
+		.project-name {
+			max-width: 130px;
+		}
+		.find,
+		.find.open {
+			width: 150px;
+		}
+		.location {
+			max-width: 130px;
+		}
+		.lens-button {
+			padding: 0 8px;
+		}
+	}
 	@media (pointer: coarse) {
 		.head {
-			height: auto;
-			min-height: var(--shell-head-height, 44px);
-			padding-block: 0.25rem;
+			height: 52px;
 		}
 
 		button,
-		summary {
-			min-height: 44px;
+		.head-index,
+		.action:not(.primary),
+		.lens-button {
 			min-width: 44px;
+			min-height: 44px;
+		}
+		.lens {
+			padding: 0;
+		}
+		.find {
+			min-height: 44px;
 		}
 	}
 </style>

@@ -154,7 +154,7 @@ async function mountCard(
 	} as unknown as StageAdapterServices;
 	const target = document.createElement('div');
 	document.body.appendChild(target);
-	const component = mount(SceneObjectCardFields, { target, props: { services } });
+	const component = mount(SceneObjectCardFields, { target, props: { services, detailOpen: true } });
 	cleanup = () => unmount(component);
 	await tick();
 	const select = (id: string): void => {
@@ -225,7 +225,7 @@ describe('Scene object Card writer', () => {
 
 	it('resets an uncommitted draft when the selected object changes', async () => {
 		const { target, select } = await mountCard({ entities: [BOX, OTHER_BOX] });
-		const x = input(target, 'position-x');
+		const x = input(target, 'size');
 		x.focus();
 		x.value = '7.5';
 		x.dispatchEvent(new Event('input', { bubbles: true }));
@@ -234,11 +234,11 @@ describe('Scene object Card writer', () => {
 
 		select(OTHER_BOX.id);
 		await tick();
-		expect(x.value).toBe('5');
+		expect(x.value).toBe('1');
 
 		select(BOX_ID);
 		await tick();
-		expect(x.value).toBe('2');
+		expect(x.value).toBe('1');
 	});
 
 	it('never commits on blur and restores the accepted text', async () => {
@@ -257,7 +257,7 @@ describe('Scene object Card writer', () => {
 
 	it('restores the accepted value on the first Escape', async () => {
 		const { target, accept } = await mountCard();
-		const yaw = input(target, 'yaw');
+		const yaw = input(target, 'size');
 		yaw.focus();
 		yaw.value = '45';
 		yaw.dispatchEvent(new Event('input', { bubbles: true }));
@@ -271,13 +271,14 @@ describe('Scene object Card writer', () => {
 		await tick();
 
 		expect(accept).not.toHaveBeenCalled();
-		expect(yaw.value).toBe('0');
+		expect(yaw.value).toBe('1');
 		expect(event.defaultPrevented).toBe(true);
 	});
 });
 
 describe('the object Card declares what it writes, once', () => {
 	it('names the mark facts its writer edits, so the Card does not repeat them as rows', () => {
-		expect(sceneObjectCardFieldFacts()).toEqual(['position', 'yaw', 'scale']);
+		// Every Scene object kind is listed once; each entity declares only its own.
+		expect(sceneObjectCardFieldFacts()).toEqual(['position', 'yaw', 'scale', 'scale[0]', 'scale[1]', 'scale[2]', 'lift']);
 	});
 });

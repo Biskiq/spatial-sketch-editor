@@ -1,3 +1,6 @@
+import { planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
+import { roomLabelFacts } from '$lib/authoring/stage/room-labels';
+import { axisTravelFromRay } from '$lib/authoring/stage/stage-axis-travel';
 /**
  * T1.P01.S04/S05 + T1.P02.S02 — the Layout adapter.
  *
@@ -51,9 +54,12 @@ import {
 	planCreateWallFirstOpening,
 	planDeleteWallFirstOpening,
 	planExactJunctionMove,
+	planExactWallHeight,
+	planExactWallThickness,
 	planUpdateWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
+	planWallFirstRoomMove,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 
@@ -147,7 +153,10 @@ import {
 	LAYOUT_PLINTH_PLACE_KIND,
 	LAYOUT_JUNCTION_MOVE_KIND,
 	LAYOUT_WALL_LENGTH_KIND,
+	LAYOUT_WALL_HEIGHT_KIND,
+	LAYOUT_WALL_THICKNESS_KIND,
 	LAYOUT_WALL_MOVE_KIND,
+	LAYOUT_ROOM_MOVE_KIND,
 	buildLayoutIntent,
 	createLayoutPlanners,
 	layoutFacts,
@@ -164,7 +173,7 @@ import {
 	type WallManipulationRequest,
 	type WallNeighbourPreview
 } from './layout/precision';
-import { layoutNameTarget } from './layout/adapter-support';
+import { layoutNameTarget, layoutRoomNameTarget } from './layout/adapter-support';
 import {
 	pointerWallRequest,
 	wallRequestExactLabel,
@@ -185,6 +194,8 @@ import {
 import { draftingSnapIncrementMeters, snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
 import {
 	buildLayoutCandidatePaper,
+	wallCenterlinePaper,
+	wallHeightGhostPaper,
 	candidatePreviewOf,
 	openingIdsOnWalls,
 	type CandidatePaperGeometry
@@ -370,7 +381,8 @@ type OpeningMarkGesture = {
 	readonly numericField: PlanNumericField;
 	readonly baseline: LayoutDocumentWallFirst;
 	/** The last candidate this gesture owns, or `null` after a refusal. */
-	request: { readonly field: 'offset' | 'width'; readonly value: number } | null;
+	request: { readonly field: 'offset' | 'width'; readonly value: number;
+	} | null;
 	/** The snap the pointer named, when one won. */
 	snap: LayoutSnapWinner | null;
 	/** The canonical candidate document the preview compiles. */
@@ -487,6 +499,513 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** The task this binding is showing; pointer handles belong to it. */
 			let openTaskKind: string | null = null;
 			let gesture: WallGesture | null = null;
+			type ScalarGesture = {
+				spec: {
+					id: string;
+					subject: 'wall' | 'opening';
+					subjectId: string;
+					field: 'height' | 'thickness';
+					value: number;
+					anchor: [number, number, number];
+					axis: [number, number, number];
+					/** A top knob's stem foot (review pass 2 §6); absent for plain rays. */
+					stem?: [number, number, number];
+				};
+				evaluationId: string;
+				revision: string;
+				pressCss: readonly [number, number];
+				startTravel: number;
+				metersPerCssPixel: number;
+				lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+				value: number | null;
+				candidate: LayoutDocumentWallFirst | null;
+				numeric: PlanNumericEntryState | null;
+				refusal: string | null;
+			};
+			let scalarGesture: ScalarGesture | null = null;
+			function endScalar(): void {
+				const current = scalarGesture;
+				scalarGesture = null;
+				if (current?.lease.lease.active) current.lease.lease.release();
+			}
+			const WALL_TOP_KNOB_REACH_METERS = 0.45;
+			function scalarSpecs(ctx: StageAdapterContext): ScalarGesture['spec'][] {
+				const wall = selectedWall(ctx);
+				const opening = wall === null ? selectedOpening(ctx) : null;
+				const y = ctx.snapshot.domain.datumMeters;
+				if (wall !== null) {
+					const source = document.walls.find((w) => w.id === wall.wallId);
+					const direction = wallDirection(wall.frame);
+					if (!source || !direction) return [];
+					const length = wallLength(wall.frame);
+					const planReading=ctx.evaluation.settledReading==='plan';
+					const thicknessAt=planReading && document.openings.some(o=>o.wallId===source.id&&o.offset<=length/4&&o.offset+o.width>=length/4) ? length*3/4 : length/4;
+					return [
+						{
+							id: 'layout-wall-height',
+							subject: 'wall',
+							subjectId: source.id,
+							field: 'height',
+							value: source.height,
+							// The top knob stands just past the Wall's end on a stem from
+							// its base, clear of the body and the thickness grip. Travel is
+							// vertical, so the drawn offset never changes the planned height.
+							anchor: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y + source.height),
+							stem: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y),
+							axis: [0, 1, 0]
+						},
+						{
+							id: 'layout-wall-thickness',
+							subject: 'wall',
+							subjectId: source.id,
+							field: 'thickness',
+							value: source.thickness,
+							anchor: framePoint(wall.frame,thicknessAt,planReading?y:y+source.height),
+							axis: [-direction[1], 0, direction[0]]
+						}
+					];
+				}
+				const source =
+					opening === null
+						? null
+						: document.openings.find((o) => o.id === opening.openingId);
+				return source && opening
+					? [
+							{
+								id: 'layout-opening-height',
+								subject: 'opening',
+								subjectId: source.id,
+								field: 'height',
+								value: source.height,
+								anchor: framePoint(
+									opening.frame,
+									source.offset + source.width / 2,
+									y + source.sillHeight + source.height
+								),
+								axis: [0, 1, 0]
+							}
+						]
+					: [];
+			}
+			function scalarTravel(
+				ctx: StageAdapterContext,
+				spec: ScalarGesture['spec'],
+				css: readonly [number, number]
+			): number | null {
+				if (spec.field === 'height' && ctx.evaluation.settledReading === 'plan')
+					return -css[1] * ctx.evaluation.targetPlaneMetersPerCssPixel;
+				const ray = ctx.ray([
+					css[0] + ctx.evaluation.rect.left,
+					css[1] + ctx.evaluation.rect.top
+				]);
+				return ray === null
+					? null
+					: axisTravelFromRay({
+							origin: spec.anchor,
+							direction: spec.axis,
+							rayOrigin: ray.origin,
+							rayDirection: ray.direction
+						});
+			}
+			function previewScalar(value: number): boolean {
+				const current = scalarGesture;
+				if (!current) return false;
+                if(current.spec.subject==='opening') {
+                    const opening=document.openings.find(o=>o.id===current.spec.subjectId);
+                    const plan=planUpdateWallFirstOpening(document,current.spec.subjectId,{height:value});
+                    if(plan.kind==='rejected') {current.value=null;current.candidate=null;current.refusal=openingRefusalWords(document,plan.rejection,{openingId:current.spec.subjectId,...(opening?{wallId:opening.wallId,kind:opening.kind,offset:opening.offset,width:opening.width}:{}),height:value});return false;}
+                    current.value=value;current.candidate=plan.document;current.refusal=null;return true;
+                }
+                const plan=current.spec.field==='height'?planExactWallHeight(document,current.spec.subjectId,value):planExactWallThickness(document,current.spec.subjectId,value);
+				if (plan.kind === 'rejected') {
+					current.value = null;
+					current.candidate = null;
+					current.refusal = wallRefusalWords(plan.rejection.code);
+					return false;
+				}
+				current.value = value;
+				current.candidate = plan.document;
+				current.refusal = null;
+				return true;
+			}
+			async function commitScalar(
+				current: ScalarGesture,
+				value: number
+			): Promise<void> {
+				const snapshot = services.stage.snapshot();
+				// Capture the baseline revision: a stale press can never be rebased into a different edit.
+				if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+				const subject = current.spec.subject;
+				const id = current.spec.subjectId;
+				const field = current.spec.field;
+				const outcome = await services.authoring.accept(
+					buildLayoutIntent({
+						kind:
+							subject === 'opening'
+								? LAYOUT_OPENING_MEASURE_KIND
+								: field === 'height'
+									? LAYOUT_WALL_HEIGHT_KIND
+									: LAYOUT_WALL_THICKNESS_KIND,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: current.revision,
+						contentRevision,
+						levelId,
+						targets: [
+							{
+								version: 1,
+								domain: 'layout',
+								subject: { kind: subject, id },
+								revision: { kind: 'exact', contentRevision },
+								instancePath: [],
+								location: {
+									kind: 'layout-location',
+									levelId,
+									structureInstancePath: []
+								},
+								componentId: null,
+								capabilityId: null
+							}
+						],
+						payload:
+							subject === 'opening'
+								? { openingId: id, field: 'height', value }
+								: { wallId: id, [field]: value }
+					})
+				);
+				refusal = outcome.kind === 'refused' ? outcome.message : null;
+				services.stage.notifySurfaceChange();
+			}
+			function scalarPointer(
+				intent: StagePointerIntent,
+				ctx: StageAdapterContext
+			): boolean {
+				if (intent.phase === 'down') {
+					const spec = scalarSpecs(ctx).find((s) => s.id === intent.handleId);
+					if (!spec) return false;
+					const travel = scalarTravel(ctx, spec, intent.css);
+					if (travel === null) return false;
+					const lease = services.stage.acquireGesture({
+						owner: 'layout-scalar',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (lease.kind !== 'granted') return false;
+					scalarGesture = {
+						spec,
+						evaluationId: intent.evaluationId,
+						revision: services.authoring.acceptedRevision().revisionId,
+						pressCss: intent.css,
+						startTravel: travel,
+						metersPerCssPixel: ctx.evaluation.targetPlaneMetersPerCssPixel,
+						lease,
+						value: null,
+						candidate: null,
+						numeric: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const current = scalarGesture;
+				if (!current) return false;
+				if (
+					intent.phase === 'cancel' ||
+					intent.evaluationId !== current.evaluationId ||
+					!current.lease.lease.active
+				) {
+					endScalar();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move' && current.numeric === null) {
+					if (!isPointerDrag(current.pressCss, intent.css)) return true;
+					const travel = scalarTravel(ctx, current.spec, intent.css);
+					if (travel === null) return true;
+					let value =
+						current.spec.value +
+						(travel - current.startTravel) *
+							(current.spec.field === 'thickness' ? 2 : 1);
+					const step = draftingSnapIncrementMeters(ctx.drafting());
+                    if(step!==null) {
+                        const raw=value; value=Math.round(value/step)*step;
+                        if(current.spec.field==='height') {
+                            const sill=current.spec.subject==='opening'?document.openings.find(o=>o.id===current.spec.subjectId)?.sillHeight??0:0;
+                            const candidates=[services.stage.heightSheet().height(),...services.stage.heightSheet().pins(),...services.stage.heightTicks().map(tick=>tick.heightMeters)].map(h=>h-sill).filter(h=>h>0);
+                            const nearest=candidates.toSorted((a,b)=>Math.abs(a-raw)-Math.abs(b-raw))[0];
+                            if(nearest!==undefined && Math.abs(nearest-raw)<(intent.coarse?12:6)*current.metersPerCssPixel)value=nearest;
+                        }
+                    }
+					previewScalar(value);
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'up' && current.numeric === null) {
+					const value = isPointerDrag(current.pressCss, intent.css)
+						? current.value
+						: null;
+                    if(current.refusal!==null) settledRefusal={subject:current.spec.subject==='wall'?{kind:'wall',wallId:current.spec.subjectId}:{kind:'opening',openingId:current.spec.subjectId},contentRevision,point:[current.spec.anchor[0],current.spec.anchor[2]],text:current.refusal};
+					endScalar();
+					if (value !== null) void commitScalar(current, value);
+					services.stage.notifySurfaceChange();
+				}
+				return true;
+			}
+			function scalarKey(intent: StageKeyboardIntent): boolean {
+				const current = scalarGesture;
+				if (!current) return false;
+				if (intent.kind === 'type') {
+					const key = intent.key;
+					if (key === '\t') return true;
+					if (current.numeric === null) {
+						const field = current.spec.field;
+						const opened = planNumericEntryOpen(
+							{ host: field, fieldId: field, ownerId: current.spec.subjectId },
+							{ [field]: current.value ?? current.spec.value }
+						);
+						current.numeric = planNumericEntryInput(opened, key);
+					} else
+						current.numeric = planNumericEntryInput(
+							current.numeric,
+							current.numeric.text + key
+						);
+				} else if (intent.kind === 'backtrack' && current.numeric !== null)
+					current.numeric = planNumericEntryInput(
+						current.numeric,
+						current.numeric.text.slice(0, -1)
+					);
+				else if (intent.kind === 'finish' && current.numeric !== null) {
+					const result = planNumericEntrySubmit(current.numeric);
+					if (result.kind === 'refuse') {
+						current.numeric = result.state;
+						current.refusal = 'Enter a positive measure.';
+					} else if (result.kind !== 'ignored') {
+						const value = result.values[current.spec.field];
+						if (value !== undefined && previewScalar(value)) {
+							endScalar();
+							void commitScalar(current, value);
+						}
+					}
+				} else if (intent.kind === 'cancel') {
+					if (current.numeric !== null) current.numeric = null;
+					else endScalar();
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			/*
+			 * Review pass 3 — Room move. A selected Room publishes one move cross under
+			 * its label; dragging it plans `planWallFirstRoomMove` on every move (the
+			 * Room's connected group travels together), shows the moved Walls' dashed
+			 * centrelines in the ghost colour, and a release commits one intent. Scene
+			 * objects stay where they are: they are world-placed, owned by no Room.
+			 */
+			type RoomMoveGesture = {
+				readonly roomId: string;
+				readonly evaluationId: string;
+				readonly revision: string;
+				readonly pressCss: readonly [number, number];
+				readonly pressPoint: readonly [number, number];
+				readonly labelWorld: [number, number, number];
+				readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+				delta: readonly [number, number];
+				candidate: LayoutDocumentWallFirst | null;
+				changedWallIds: readonly string[];
+				movedRooms: number;
+				refusal: string | null;
+			};
+			let roomMove: RoomMoveGesture | null = null;
+			const ROOM_MOVE_MARK = 'layout-room-move-mark';
+			function endRoomMove(): void {
+				const current = roomMove;
+				roomMove = null;
+				if (current?.lease.lease.active) current.lease.lease.release();
+			}
+			function selectedRoomLabel(ctx: StageAdapterContext): { readonly roomId: string; readonly world: [number, number, number] } | null {
+				const primary = ctx.selectionState().primary;
+				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'room') return null;
+				const fact = roomLabelFacts(ctx.snapshot.domain.geometry, stageLayout(ctx.snapshot).rooms).find(
+					(entry) => entry.id === primary.subject.id
+				);
+				return fact === undefined ? null : { roomId: fact.id, world: fact.world };
+			}
+			function roomMoveDescriptors(ctx: StageAdapterContext): readonly StageHandleDescriptor[] {
+				const label = selectedRoomLabel(ctx);
+				if (label === null) return [];
+				const current = roomMove?.roomId === label.roomId ? roomMove : null;
+				const at: [number, number, number] = current === null
+					? label.world
+					: [label.world[0] + current.delta[0], label.world[1], label.world[2] + current.delta[1]];
+				return [{
+					id: ROOM_MOVE_MARK,
+					kind: 'point',
+					role: 'edit',
+					draw: { cross: true },
+					anchor: at,
+					axis: [1, 0, 0],
+					extent: 0.5,
+					// Below the Room's name and area, so the label stays readable.
+					screen: { offset: [0, 34] },
+					label: 'Room position',
+					fact: 'position',
+					verb: 'Position',
+					planner: LAYOUT_ROOM_MOVE_KIND,
+					value:
+						current === null
+							? 'Δx 0.00 · Δz 0.00 m'
+							: `${planarDeltaLabel(current.delta[0], current.delta[1])}${current.movedRooms > 1 ? ` · ${current.movedRooms} Rooms` : ''}`,
+					refusal: current?.refusal ?? null
+				}];
+			}
+			function roomMovePointer(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
+				if (intent.phase === 'down') {
+					if (intent.handleId !== ROOM_MOVE_MARK) return false;
+					const label = selectedRoomLabel(ctx);
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (label === null || point === null) return false;
+					const lease = services.stage.acquireGesture({
+						owner: 'layout-room-move',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (lease.kind !== 'granted') return false;
+					roomMove = {
+						roomId: label.roomId,
+						evaluationId: intent.evaluationId,
+						revision: services.authoring.acceptedRevision().revisionId,
+						pressCss: intent.css,
+						pressPoint: point,
+						labelWorld: label.world,
+						lease,
+						delta: [0, 0],
+						candidate: null,
+						changedWallIds: [],
+						movedRooms: 1,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const current = roomMove;
+				if (current === null) return false;
+				if (intent.phase === 'cancel' || intent.evaluationId !== current.evaluationId || !current.lease.lease.active) {
+					endRoomMove();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					if (!isPointerDrag(current.pressCss, intent.css)) {
+						current.candidate = null;
+						current.refusal = null;
+						current.delta = [0, 0];
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (point === null) return true;
+					const step = draftingSnapIncrementMeters(ctx.drafting());
+					const snap = (value: number) => (step === null ? value : Math.round(value / step) * step);
+					const delta: [number, number] = [
+						Number(snap(point[0] - current.pressPoint[0]).toFixed(9)),
+						Number(snap(point[1] - current.pressPoint[1]).toFixed(9))
+					];
+					current.delta = delta;
+					if (delta[0] === 0 && delta[1] === 0) {
+						current.candidate = null;
+						current.refusal = null;
+					} else {
+						const plan = planWallFirstRoomMove(document, current.roomId, delta);
+						if (plan.kind === 'rejected') {
+							current.candidate = null;
+							current.refusal = plan.rejection.message;
+						} else {
+							current.candidate = plan.document;
+							current.changedWallIds = plan.changedWallIds;
+							current.movedRooms = plan.movedRoomIds.length;
+							current.refusal = null;
+						}
+					}
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				// Release: one captured candidate, one intent, one history entry.
+				endRoomMove();
+				if (intent.phase === 'up' && current.candidate !== null && isPointerDrag(current.pressCss, intent.css)) {
+					void commitRoomMove(current);
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+			async function commitRoomMove(current: RoomMoveGesture): Promise<void> {
+				const snapshot = services.stage.snapshot();
+				if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+				const outcome = await services.authoring.accept(
+					buildLayoutIntent({
+						kind: LAYOUT_ROOM_MOVE_KIND,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: current.revision,
+						contentRevision,
+						levelId,
+						targets: [
+							{
+								version: 1,
+								domain: 'layout',
+								subject: { kind: 'room', id: current.roomId },
+								revision: { kind: 'exact', contentRevision },
+								instancePath: [],
+								location: { kind: 'layout-location', levelId, structureInstancePath: [] },
+								componentId: null,
+								capabilityId: null
+							}
+						],
+						payload: { roomId: current.roomId, deltaX: current.delta[0], deltaZ: current.delta[1] }
+					})
+				);
+				refusal = outcome.kind === 'refused' ? outcome.message : null;
+				services.stage.notifySurfaceChange();
+			}
+			function roomMoveKey(intent: StageKeyboardIntent): boolean {
+				if (roomMove === null || intent.kind !== 'cancel') return false;
+				endRoomMove();
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+			/** The moved Walls' dashed centrelines, or the Room outline red dashed with its reason. */
+			function roomMovePreviews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
+				const current = roomMove;
+				if (current === null || (current.delta[0] === 0 && current.delta[1] === 0)) return [];
+				const label = {
+					world: [current.labelWorld[0] + current.delta[0], current.labelWorld[1], current.labelWorld[2] + current.delta[1]] as [number, number, number],
+					text: current.refusal ?? `${planarDeltaLabel(current.delta[0], current.delta[1])}${current.movedRooms > 1 ? ` · ${current.movedRooms} Rooms` : ''}`
+				};
+				if (current.candidate !== null) {
+					return [candidatePreviewOf({
+						id: 'layout-room-move-candidate',
+						role: 'subject',
+						geometry: wallCenterlinePaper(current.candidate, new Set(current.changedWallIds), y),
+						labels: [label]
+					})];
+				}
+				const room = ctx.snapshot.domain.geometry.rooms.find((entry) => entry.roomId === current.roomId);
+				if (room === undefined) return [];
+				const polygon = room.floorPolygon;
+				const segments: [[number, number, number], [number, number, number]][] = polygon.map((point, index) => {
+					const next = polygon[(index + 1) % polygon.length]!;
+					return [
+						[point[0] + current.delta[0], y, point[1] + current.delta[1]],
+						[next[0] + current.delta[0], y, next[1] + current.delta[1]]
+					];
+				});
+				return [candidatePreviewOf({
+					id: 'layout-room-move-candidate',
+					role: 'refused',
+					geometry: { polygons: [], segments },
+					labels: [label]
+				})];
+			}
+
 			let junctionGesture: JunctionHoverGesture | null = null;
 			let idleJunctionHover: IdleJunctionHover | null = null;
 			let openingGesture: OpeningMarkGesture | null = null;
@@ -514,7 +1033,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * content install replaces it exactly as it replaces every other binding
 			 * fact; the reading selection itself is adapter memory.
 			 */
-			let contributedSession: { readonly readingId: string; readonly session: StageInkReadingSession } | null = null;
+			let contributedSession: { readonly readingId: string; readonly session: StageInkReadingSession;
+			} | null = null;
 			/** The live chain draft, its hover target and its planner preview. */
 			let draft: ChainDraft = EMPTY_CHAIN_DRAFT;
 			/** One operation, one capture: the same identity previews and commits. */
@@ -567,6 +1087,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
 			function endGesture(): void {
+				endScalar();
 				const current = gesture;
 				gesture = null;
 				// Release **this gesture's own** grant. Reading the session's live lease
@@ -610,7 +1131,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** The contributed reading currently selected, or `null` for a built-in. */
 			function contributedReading(): StageInkReadingRecord | null {
 				if (inkReading === 'wall' || inkReading === 'opening') return null;
-				return services.stage.inkReadings().find((reading) => reading.id === inkReading) ?? null;
+				return (
+					services.stage.inkReadings().find((reading) => reading.id === inkReading) ?? null
+				);
 			}
 
 			/**
@@ -707,7 +1230,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return false;
 				}
 				const selected = selectedWall(adapterContext);
-				let nearest: { readonly value: IdleJunctionHover; readonly distanceCss: number } | null = null;
+				let nearest: { readonly value: IdleJunctionHover; readonly distanceCss: number;
+				} | null = null;
 				for (const junction of adapterContext.snapshot.domain.geometry.junctions ?? []) {
 					const junctionId = junction.junctionId;
 					if (
@@ -774,13 +1298,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					kind: 'point',
 					role: 'edit',
 					anchor: [point[0], adapterContext.snapshot.domain.datumMeters, point[1]],
-					label: 'Junction',
+					label: 'Move point',
 					fact: 'junction',
 					verb: 'Move',
 					planner: LAYOUT_JUNCTION_MOVE_KIND,
 					value: numericValue ?? (active?.request === null || active?.request === undefined
-						? 'Junction'
-						: `X ${active.request.point[0].toFixed(3)} · Z ${active.request.point[1].toFixed(3)} m`),
+						? planarDeltaLabel(0, 0)
+						: planarDeltaLabel(active.request.point[0] - active.startPoint[0], active.request.point[1] - active.startPoint[1])),
 					refusal: active === null ? null : refusal
 				}];
 			}
@@ -817,10 +1341,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								gesture.fixed,
 								gesture.request.kind === 'junction'
 									? {
+											baseline: gesture.frame,
 											frame: gesture.preview ?? undefined,
 											incidentWalls: gesture.neighbours.length + 1
 										}
-									: undefined
+									: { baseline: gesture.frame }
 							);
 						}
 						return accepted;
@@ -831,12 +1356,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const descriptors: StageHandleDescriptor[] = [
 						{
 							id: 'layout-wall-start-mark',
+							draw:{pointRadius:4.6},
 							kind: 'point',
 							role: 'edit',
 							anchor: framePoint(wall.frame, 0, y),
 							label: 'Wall start',
 							fact: 'start',
-							verb: 'Junction',
+							verb: 'Move point',
 							planner: LAYOUT_JUNCTION_MOVE_KIND,
 							value: valueFor(
 								'layout-wall-start-mark',
@@ -846,12 +1372,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						},
 						{
 							id: 'layout-wall-end-mark',
+							draw:{pointRadius:4.6},
 							kind: 'point',
 							role: 'edit',
 							anchor: framePoint(wall.frame, length, y),
 							label: 'Wall end',
 							fact: 'end',
-							verb: 'Junction',
+							verb: 'Move point',
 							planner: LAYOUT_JUNCTION_MOVE_KIND,
 							value: valueFor(
 								'layout-wall-end-mark',
@@ -881,6 +1408,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							// either way, so the reach is drawn on both sides of one anchor.
 							// The rigid move itself is not clamped; this is an affordance.
 							id: 'layout-wall-move-mark',
+							draw: {
+								twoWayHalf:
+									adapterContext.evaluation.settledReading === 'plan' ? 18 : 15
+							},
 							kind: 'track',
 							role: 'edit',
 							anchor: middle,
@@ -935,11 +1466,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						fact: 'offset',
 						verb: 'Offset',
 						planner: LAYOUT_OPENING_MEASURE_KIND,
-						value: numericValue('layout-opening-position') ?? `Offset ${liveOffset.toFixed(3)} m`,
+						value: numericValue('layout-opening-position') ?? sizeDeltaLabel(liveOffset, opening!.offset),
 						refusal: openingGesture?.markId === 'layout-opening-position' ? refusal : null
 					},
 					{
 						id: 'layout-opening-width-end',
+						draw: { ray: 18 },
 						kind: 'ray',
 						role: 'edit',
 						anchor: framePoint(opening!.frame, liveOffset + liveWidth, y),
@@ -952,7 +1484,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						fact: 'width',
 						verb: 'Width',
 						planner: LAYOUT_OPENING_MEASURE_KIND,
-						value: numericValue('layout-opening-width-end') ?? `Width ${liveWidth.toFixed(3)} m`,
+						value: numericValue('layout-opening-width-end') ?? sizeDeltaLabel(liveWidth, opening!.width),
 						refusal: openingGesture?.markId === 'layout-opening-width-end' ? refusal : null
 					}
 				];
@@ -1093,12 +1625,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (wall !== null) {
 					const length = wallLength(wall.frame);
 					const angle =
-						(((Math.atan2(
+						((Math.atan2(
 							wall.frame.end[1] - wall.frame.start[1],
 							wall.frame.end[0] - wall.frame.start[0]
 						) *
 							180) /
-							Math.PI) +
+							Math.PI +
 							360) %
 						360;
 					return {
@@ -1138,7 +1670,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			function activeGestureNumeric(): PlanNumericEntryState | null {
-				return gesture?.numeric ?? junctionGesture?.numeric ?? openingGesture?.numeric ?? null;
+				return (
+					gesture?.numeric ?? junctionGesture?.numeric ?? openingGesture?.numeric ?? null
+				);
 			}
 
 			function setActiveGestureNumeric(next: PlanNumericEntryState | null): void {
@@ -1314,7 +1848,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function preferredHostOf(sourceKind: string, sourceId: string): string | null {
 				if (sourceKind === 'wall') return sourceId;
 				if (sourceKind !== 'opening') return null;
-				return document.openings.find((opening) => opening.id === sourceId)?.wallId ?? null;
+				return (
+					document.openings.find((opening) => opening.id === sourceId)?.wallId ?? null
+				);
 			}
 
 			/** The host Wall's frame and resolved length, when it has one. */
@@ -1437,8 +1973,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					preferredWallId === null
 						? null
 						: preferredHostOf(preferredWallId.subject.kind, preferredWallId.subject.id);
-				let best: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
-				let preferredBest: { readonly candidate: OpeningCandidate; readonly distance: number } | null = null;
+				let best: { readonly candidate: OpeningCandidate; readonly distance: number;
+				} | null = null;
+				let preferredBest: { readonly candidate: OpeningCandidate; readonly distance: number;
+				} | null = null;
 				for (const wall of walls) {
 					const data = document.walls.find((candidate) => candidate.id === wall.id);
 					if (data === undefined) continue;
@@ -1971,7 +2509,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
 				const withHover =
 					linePreviewDraft();
-				const effective = boxMode ? boxPreviewDraft() ?? draft : 'points' in withHover ? withHover : draft;
+				const effective = boxMode ? (boxPreviewDraft() ?? draft)
+					: 'points' in withHover ? withHover : draft;
 				const pending =
 					inkHover === null || boxMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
@@ -1986,6 +2525,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const selectedHostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
 				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
+					options: { thickness: inkThickness, height: inkHeight },
 					reading: inkReading,
 					wallMode: inkWallMode,
 					box,
@@ -2527,6 +3067,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return subject === null ? [] : factsFor(document, subject);
 				},
 				cardName(cardSubject: StageCardSubject) {
+					if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
+						return layoutRoomNameTarget(services, cardSubject.sourceId);
+					}
 					const subject = layoutSubjectOf({
 						sourceKind: cardSubject.sourceKind,
 						sourceId: cardSubject.sourceId
@@ -2671,7 +3214,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				/**
 				 * The command keys drawing owns while Ink is armed.
-			 *
+				 *
 				 * `finish` and `backtrack` are the same two commands the palette's controls
 				 * run (one live chain, one state machine), and `cancel` is the palette-first
 				 * **Escape**: the chain ends here, before the host's unwind disarms the tool,
@@ -2680,6 +3223,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 */
 				keyIntent(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
 					if (openTaskKind !== LAYOUT_INK_TASK) {
+						if (scalarKey(intent)) return true;
+						if (roomMoveKey(intent)) return true;
 						// Direct manipulation has no task, but its press is a writer: typing
 						// freezes the pointer candidate and opens numeric entry, Enter commits
 						// once, and Esc discards without a document change or history entry.
@@ -2754,7 +3299,59 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				pressWhenNoTask: true,
 				/** The one mark vocabulary: Stage admits, projects, hit-tests and draws. */
 				handles(adapterContext: StageAdapterContext) {
-					return markDescriptors(adapterContext);
+					return [
+						...markDescriptors(adapterContext),
+						...(openTaskKind !== null || services.stage.session.task() !== null ? [] : roomMoveDescriptors(adapterContext)),
+						...(openTaskKind !== null || services.stage.session.task() !== null
+							? []
+							: scalarSpecs(adapterContext).filter(spec => spec.field !== 'height' || adapterContext.evaluation.settledReading !== 'plan').map(
+									(spec): StageHandleDescriptor => ({
+										id: spec.id,
+										kind: 'ray',
+										role: 'edit',
+										anchor: spec.anchor,
+										axis: spec.axis,
+										extent: spec.value,
+										draw:
+											spec.stem !== undefined
+												? { ray: 8, glyph: 'top-knob' }
+												: {
+														ray: spec.field === 'height' ? 22 : 9,
+														twoWayHalf: 9
+													},
+										...(spec.stem === undefined ? {} : { stem: spec.stem }),
+										bothWays: spec.field === 'thickness',
+										screen:
+											spec.field === 'height'
+												? {
+														axis: [0, -1],
+														...(adapterContext.evaluation.settledReading ===
+														'plan'
+															? { offset: [0, -24] as const }
+															: {})
+													}
+												: undefined,
+										label: spec.field === 'height' ? 'Height' : 'Thickness',
+										fact: spec.field,
+										verb: spec.field,
+										planner:
+											spec.subject === 'opening'
+												? LAYOUT_OPENING_MEASURE_KIND
+												: spec.field === 'height'
+													? LAYOUT_WALL_HEIGHT_KIND
+													: LAYOUT_WALL_THICKNESS_KIND,
+										value:
+											scalarGesture?.spec.id === spec.id &&
+											scalarGesture.numeric
+												? `${spec.field} ${scalarGesture.numeric.text}`
+												: sizeDeltaLabel(scalarGesture?.spec.id === spec.id ? (scalarGesture.value ?? spec.value) : spec.value, spec.value),
+										refusal:
+											scalarGesture?.spec.id === spec.id
+												? scalarGesture.refusal
+												: null
+									})
+								))
+					];
 				},
 				idleHandles(adapterContext: StageAdapterContext) {
 					return idleJunctionHandles(adapterContext);
@@ -2823,6 +3420,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkPointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
+					if (scalarPointer(intent, adapterContext)) return true;
+					if (roomMovePointer(intent, adapterContext)) return true;
 
 					if (intent.phase === 'down') {
 						if (gesture !== null) endGesture();
@@ -3510,7 +4109,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 										{
 											id: 'layout-wall-preview',
 											css,
-											label: wallRequestLabel(activeGesture.request, activeGesture.fixed)
+											label: wallRequestLabel(activeGesture.request, activeGesture.fixed, { baseline: activeGesture.frame })
 										}
 									]),
 							// Neighbours the canonical candidate reshaped: the junction this edit
@@ -3569,6 +4168,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (contributed !== null) ensureContributedSession();
 						publishInk();
 						return {
+							presentation: 'palette',
 							summary: contributed !== null ? `Ink · ${contributed.label}` : inkReading === 'opening' ? 'Ink · Opening' : 'Ink',
 							facts:
 								contributed !== null
@@ -3609,6 +4209,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				/** Esc, task replacement and install all end the writer with no commit. */
 				taskClosed() {
 					rearmEpoch += 1;
+					if (roomMove !== null) endRoomMove();
 					openTaskKind = null;
 					settledRefusal = null;
 					if (pausedProposal !== null) {
@@ -3628,6 +4229,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				dispose() {
 					rearmEpoch += 1;
+					if (roomMove !== null) endRoomMove();
 					openTaskKind = null;
 					if (pausedProposal !== null) {
 						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
@@ -3651,7 +4253,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				datumMeters: number,
 				subjectIds: ReadonlySet<string>,
 				affectedIds: ReadonlySet<string>
-			): { readonly paper: ReturnType<typeof buildLayoutCandidatePaper> } | null {
+			): { readonly paper: ReturnType<typeof buildLayoutCandidatePaper>;
+			} | null {
 				const result = services.stage.plan();
 				if (result.kind !== 'evaluated') return null;
 				return { paper: buildLayoutCandidatePaper(document, result.plan, datumMeters, subjectIds, affectedIds) };
@@ -3667,6 +4270,39 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
 				const y = adapterContext.snapshot.domain.datumMeters;
+				if (roomMove !== null) return roomMovePreviews(adapterContext, y);
+				if (scalarGesture !== null) {
+					const current = scalarGesture;
+					if (current.candidate !== null && current.value !== null && current.spec.subject === 'wall' && current.spec.field === 'height')
+						return [
+							candidatePreviewOf({
+								id: 'layout-scalar-candidate',
+								role: 'subject',
+								geometry: wallHeightGhostPaper(current.candidate, current.spec.subjectId, y, current.value)
+							})
+						];
+					if (current.candidate !== null) {
+						const ids = new Set([
+							current.spec.subjectId,
+							...(current.spec.subject === 'wall'
+								? openingIdsOnWalls(
+										current.candidate,
+										new Set([current.spec.subjectId])
+									)
+								: [])
+						]);
+						const built = candidatePaper(current.candidate, y, ids, new Set());
+						if (built)
+							return [
+								candidatePreviewOf({
+									id: 'layout-scalar-candidate',
+									role: 'subject',
+									geometry: built.paper.subject
+								})
+							];
+					}
+					return [];
+				}
 				const world = (point: readonly [number, number], elevation = y): [number, number, number] => [point[0], elevation, point[1]];
 				const snapOf = (winner: LayoutSnapWinner | null) =>
 					winner === null ? undefined : { world: world(winner.point), name: winner.name };
@@ -3738,10 +4374,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (activeWall !== null && activeWall.previewDocument !== null) {
 					const subjectWalls = new Set([activeWall.frame.wallId]);
 					const affectedWalls = new Set(activeWall.neighbours.map((neighbour) => neighbour.wallId));
-					const subjectIds = new Set([...subjectWalls, ...openingIdsOnWalls(activeWall.previewDocument, subjectWalls)]);
-					const affectedIds = new Set([...affectedWalls, ...openingIdsOnWalls(activeWall.previewDocument, affectedWalls)]);
-					const built = candidatePaper(activeWall.previewDocument, y, subjectIds, affectedIds);
-					if (built !== null) {
+					// One dashed centerline per changed Wall (review pass 2 §2): the
+					// proposal is the line the creator drew, not the band's outline.
+					const built = {
+						paper: {
+							subject: wallCenterlinePaper(activeWall.previewDocument, subjectWalls, y),
+							affected: wallCenterlinePaper(activeWall.previewDocument, affectedWalls, y)
+						}
+					};
+					{
 						return [
 							candidatePreviewOf({
 								id: 'layout-candidate-wall',
@@ -3759,6 +4400,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 														activeWall.numeric !== null
 															? `${planNumericEntryField(activeWall.numeric).label} ${activeWall.numeric.text}`
 															: wallRequestLabel(activeWall.request, activeWall.fixed, {
+																	baseline: activeWall.frame,
 																	frame: activeWall.preview ?? undefined,
 																	incidentWalls: activeWall.neighbours.length + 1
 																})
@@ -3772,7 +4414,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								: [candidatePreviewOf({ id: 'layout-candidate-neighbours', role: 'affected', geometry: built.paper.affected })])
 						];
 					}
-					return [];
 				}
 				if (activeWall !== null) return [];
 
@@ -3792,19 +4433,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						return [];
 					}
-					const subjectIds = new Set([
-						...activeJunction.wallIds,
-						...openingIdsOnWalls(activeJunction.previewDocument, new Set(activeJunction.wallIds))
-					]);
-					const built = candidatePaper(activeJunction.previewDocument, y, subjectIds, new Set());
-					if (built === null) return [];
 					return [candidatePreviewOf({
 						id: 'layout-candidate-junction-hover',
 						role: 'subject',
-						geometry: built.paper.subject,
+						geometry: wallCenterlinePaper(activeJunction.previewDocument, new Set(activeJunction.wallIds), y),
 						labels: [{
 							world: world(activeJunction.request.point),
-							text: `Junction X ${activeJunction.request.point[0].toFixed(3)} · Z ${activeJunction.request.point[1].toFixed(3)} m`
+							text: planarDeltaLabel(activeJunction.request.point[0] - activeJunction.startPoint[0], activeJunction.request.point[1] - activeJunction.startPoint[1])
 						}],
 						snap: snapOf(activeJunction.snap)
 					})];
@@ -3863,38 +4498,46 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// Wall chain / Box, including the cursor point before a plan exists.
 				const boxMode = inkWallMode === 'box';
 				const live = boxMode
-					? boxPreviewDraft() ?? draft
+					? (boxPreviewDraft() ?? draft)
 					: linePreviewDraft();
 				const points = 'points' in live ? live.points : draft.points;
 				if (inkPreview?.kind === 'planned') {
 					const subjectIds = new Set([...inkPreview.authoredWallIds, ...inkPreview.createdRoomIds]);
 					const affectedIds = new Set(inkPreview.splitWallIds);
 					const built = candidatePaper(inkPreview.document, y, subjectIds, affectedIds);
-					const geometry = built?.paper.subject ?? EMPTY_CANDIDATE_GEOMETRY;
+					const geometry = { polygons: [], segments: [...points.slice(1).map((point, i) => [world(points[i]!.point), world(point.point)] as const), ...(live.closed && points.length > 2 ? [[world(points.at(-1)!.point), world(points[0]!.point)] as const] : [])] };
 					const labels: { world: [number, number, number]; text: string }[] = [];
 					if (inkHover !== null && !boxMode) {
 						const pending = pendingLegFacts(linePreviewBase(), inkHover.point);
-						if (pending !== null) labels.push({ world: world(inkHover.point), text: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°` });
+						if (pending !== null) labels.push({ world: world(inkHover.point), text: `${pending.length.toFixed(2)} m` });
 					}
 					if (boxMode && inkHover !== null) {
 						const anchor = boxAnchor();
 						if (anchor !== null) {
 							labels.push({
 								world: world(inkHover.point),
-								text: `Box ${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(3)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(3)} m`
+								text: `${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(2)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(2)} m`
 							});
 						}
-						labels.push({ world: world(inkHover.point), text: inkPreview.consequence.summary });
+
 					}
 					return [
-						candidatePreviewOf({ id: 'layout-candidate-chain', role: 'subject', geometry, labels, snap: snapOf(inkSnapWinner) }),
+						candidatePreviewOf({ id: 'layout-candidate-chain', role: 'subject', drawing: true, geometry, labels, snap: snapOf(inkSnapWinner) }),
 						...(built === null || (built.paper.affected.polygons.length === 0 && built.paper.affected.segments.length === 0)
 							? []
 							: [candidatePreviewOf({ id: 'layout-candidate-chain-affected', role: 'affected', geometry: built.paper.affected })])
 					];
 				}
 				if (inkPreview?.kind === 'refused' && points.length >= 2) {
-					return [candidatePreviewOf({
+					// The placed legs stay drawn: only the live leg is refused (review
+					// pass 2 §3). They are the same ink line the creator already drew.
+					const placed = points.slice(0, -1);
+					return [...(placed.length < 2 ? [] : [candidatePreviewOf({
+						id: 'layout-candidate-chain',
+						role: 'subject',
+						drawing: true,
+						geometry: { polygons: [], segments: placed.slice(1).map((point, i) => [world(placed[i]!.point), world(point.point)] as const) }
+					})]), candidatePreviewOf({
 						id: 'layout-candidate-chain-refused',
 						role: 'refused',
 						// A dashed cursor reach names the refused input, never a Wall band.
@@ -3908,8 +4551,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return [candidatePreviewOf({
 						id: 'layout-candidate-cursor',
 						role: 'subject',
+						drawing: true,
 						geometry: { polygons: [], segments: [[world(last), world(inkHover.point)]] },
-						labels: pending === null ? [] : [{ world: world(inkHover.point), text: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°` }],
+						labels: pending === null ? [] : [{ world: world(inkHover.point), text: `${pending.length.toFixed(2)} m` }],
 						snap: snapOf(inkSnapWinner)
 					})];
 				}
@@ -3917,6 +4561,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return [candidatePreviewOf({
 						id: 'layout-candidate-cursor',
 						role: 'subject',
+						drawing: true,
 						geometry: EMPTY_CANDIDATE_GEOMETRY,
 						snap: snapOf(inkSnapWinner)
 					})];
@@ -3932,7 +4577,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function openingOverlay(
 				adapterContext: StageAdapterContext
 			): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
-				const markers: { id: string; css: readonly [number, number]; label: string }[] = [];
+				const markers: { id: string; css: readonly [number, number]; label: string;
+				}[] = [];
 				const y = adapterContext.snapshot.domain.datumMeters;
 				const project = (point: readonly [number, number]) =>
 					adapterContext.project([point[0], y, point[1]]);
@@ -3973,96 +4619,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * the preview can never show a chain the planner would refuse.
 			 */
 			function inkOverlay(adapterContext: StageAdapterContext): ReturnType<NonNullable<StageAdapterBinding['overlay']>> {
-				const markers: { id: string; css: readonly [number, number]; label: string }[] = [];
+				const markers: { id: string; css: readonly [number, number]; label: string;
+				}[] = [];
 				const y = adapterContext.snapshot.domain.datumMeters;
 				const project = (point: readonly [number, number]) =>
 					adapterContext.project([point[0], y, point[1]]);
-				if (inkPreview !== null && inkPreview.kind === 'planned' && inkPreview.authoredWallIds.length > 0) {
-					for (const leg of plannedLegs(inkPreview.document, inkPreview.authoredWallIds)) {
-						const css = project([
-							(leg.start[0] + leg.end[0]) / 2,
-							(leg.start[1] + leg.end[1]) / 2
-						]);
-						if (css === null) continue;
-						markers.push({
-							id: `layout-ink-leg-${leg.id}`,
-							css,
-							label: `Ghost Wall ${leg.id} — ${inkPreview.consequence.summary}`
-						});
-					}
-				}
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
-				const livePoints = boxMode
-					? boxPreviewDraft() ?? draft
-					: linePreviewDraft();
+				const livePoints = boxMode ? (boxPreviewDraft() ?? draft) : linePreviewDraft();
 				const points = 'points' in livePoints ? livePoints.points : draft.points;
-				points.forEach((entry, index) => {
-					const css = project(entry.point);
-					if (css === null) return;
-					const targetWords =
-						entry.target.kind === 'junction'
-							? `connects to Junction ${entry.target.junctionId}`
-							: entry.target.kind === 'host'
-								? `splits Wall ${entry.target.wallId}`
-								: 'free point';
-					markers.push({
-						id: `layout-ink-point-${index}`,
-						css,
-						label: `Chain point ${index + 1} — ${targetWords}`
-					});
-				});
-				if (inkHover !== null) {
-					const targetCss = project(inkHover.point);
-					if (targetCss !== null) {
-						markers.push({
-							id: 'layout-ink-target',
-							css: targetCss,
-						label:
-							inkHover.target.kind === 'junction'
-								? `Deliberate Junction ${inkHover.target.junctionId}`
-								: inkHover.target.kind === 'host'
-									? `Deliberate Wall interior — splits ${inkHover.target.wallId}`
-									: 'Free point'
-						});
-					}
-				}
-				const pending = inkHover === null || boxMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
-				const anchor = boxMode ? boxAnchor() : null;
-				if (anchor !== null && inkHover !== null) {
-					const css = project(inkHover.point);
-					if (css !== null) {
-						markers.push({
-							id: 'layout-ink-box',
-							css,
-							label: `Box ${Math.abs(inkHover.point[0] - anchor.point[0]).toFixed(3)} × ${Math.abs(inkHover.point[1] - anchor.point[1]).toFixed(3)} m`
-						});
-					}
-				}
-				if (pending !== null && inkHover !== null) {
-					const css = project(inkHover.point);
-					if (css !== null) {
-						markers.push({
-							id: 'layout-ink-pending',
-							css,
-							label: `Length ${pending.length.toFixed(3)} m · angle ${pending.angleDegrees.toFixed(1)}°`
-						});
-					}
-				}
-				if (refusal === null ? inkNotice !== null : refusal !== null) {
-					const anchor =
-						inkHover === null
-							? points.length > 0
-								? project(points[points.length - 1]!.point)
-								: null
-							: project(inkHover.point);
-					if (anchor !== null) {
-						markers.push({
-							id: 'layout-ink-refusal',
-							css: anchor,
-							label: (refusal ?? inkNotice) as string
-						});
-					}
-				}
+
 				return markers;
 			}
 		}

@@ -28,6 +28,7 @@ export const STAGE_DOCK_SHORTCUTS: Readonly<Record<StageDockSlot, string>> = {
 export type StageKeyAction =
 	| { readonly kind: 'reading'; readonly reading: '3d' | 'plan' }
 	| { readonly kind: 'fit' }
+	| { readonly kind: 'zoom'; readonly scale: number }
 	/** Arm one dock key (R217.S10): V Select · P Ink · M Measure · E Eraser · L Library. */
 	| { readonly kind: 'tool'; readonly slot: StageDockSlot }
 	/**
@@ -84,6 +85,11 @@ export function stageKeyAction(key: string, options: { readonly pressing?: boole
 		case 'l':
 		case 'L':
 			return pressing ? { kind: 'none' } : { kind: 'tool', slot: 'library' };
+		case '+':
+		case '=':
+			return pressing ? { kind: 'none' } : { kind: 'zoom', scale: 1 / 1.25 };
+		case '-':
+			return pressing ? { kind: 'none' } : { kind: 'zoom', scale: 1.25 };
 		case 'f':
 		case 'F':
 			return { kind: 'fit' };

@@ -1,39 +1,51 @@
-﻿<script lang="ts">
+<script lang="ts">
 	/**
 	 * T1.P02.S02 — the **Card's** Layout field writer (formerly Dimensions).
 	 *
-	 * PLATE (Round 2, D9) makes the Card the one writer for ordinary dimensions, so
-	 * the migrated fields render **here**: Wall height, thickness, exact length,
-	 * angle and rigid move with one explicit fixed endpoint, and Opening offset,
-	 * width, height and sill. The controller is the same one S05 shipped — same
-	 * parsers, same refusals, same gesture lease, same one-history-entry-per-field
-	 * commit — only its home moved. The name is not rendered here: the Card owns one
-	 * name writer and this component must not become a second one.
+	 * One controller owns the accepted dimensions, drafts, refusals and history.
+	 * Ordinary Wall length/height and Opening measures stay compact; thickness
+	 * and offset use the Card's one anchored secondary panel. Coordinate and
+	 * transform procedures are absent. The planner's default fixed endpoint is
+	 * preserved; presentation does not silently choose a different anchor.
+	 * The name remains the Card's delegated inline writer.
 	 *
 	 * It renders what the framework-free controller owns: the accepted value, the
 	 * edit buffer and the refusal reason. Enter commits, Esc and blur discard, and
 	 * the DOM never turns an empty field into zero.
 	 */
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack, type Snippet } from 'svelte';
+	import { compactMeasure } from '$lib/authoring/stage/shell/compact-measure';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createCardFieldsInstrument } from './adapter-support';
 
-	let { services }: { services: StageAdapterServices } = $props();
+	let {
+		services,
+		detailOpen = false,
+		footer, secondary, more
+	}: {
+		services: StageAdapterServices;
+		/** Whether the Card's More section is expanded; closing it discards its drafts. */
+		detailOpen?: boolean;
+		footer?: Snippet;
+		secondary?: Snippet<[Snippet?]>;
+		more?: Snippet<[Snippet?]>;
+	} = $props();
 	// Check this before reading any derived state in an async continuation: a
 	// successful install can destroy the panel before acceptance resolves.
 	let alive = true;
-	onDestroy(() => { alive = false; });
+	onDestroy(() => {
+		alive = false;
+	});
 
 	let fields = $state<readonly LayoutFieldState[]>([]);
 	let error = $state<string | null>(null);
+	let focusedField = $state<string | null>(null);
 	// Event continuations use this lifetime-owned reference, never an inert derived.
 	let currentController: LayoutInstrument | null = null;
 	/** A parameter a reading change preserved; Resume applies the captured value exactly. */
 	let paused = $state<PausedWallProposal | null>(null);
-	/** The explicit endpoint an exact length/angle edit keeps fixed. */
-	let fixedEndpoint = $state<'start' | 'end'>('start');
 
 	// The writer follows the one canonical selection: a new subject rebuilds the
 	// controller from the accepted source, so a stale selection can never keep
@@ -46,23 +58,17 @@
 		void selectionKey;
 		return createCardFieldsInstrument(services);
 	});
-	const editable = $derived(
-		fields.filter((field) => field.id !== 'name')
-	);
-	/** R217.S15 — the endpoint coordinates are the Card's one disclosed group. */
-	const junctionFields = $derived(
-		editable.filter((field) => field.id === 'startX' || field.id === 'startZ' || field.id === 'endX' || field.id === 'endZ')
-	);
+	const editable = $derived(fields.filter((field) => field.id !== 'name'));
 	const ordinaryFields = $derived(
-		editable.filter((field) => field.id !== 'startX' && field.id !== 'startZ' && field.id !== 'endX' && field.id !== 'endZ')
+		editable.filter(
+			(field) =>
+				field.id !== 'startX' && field.id !== 'startZ' && field.id !== 'endX' && field.id !== 'endZ'
+		)
 	);
-	const unavailableNote = $derived(
-		instrument === null
-			? ''
-			: instrument.subject.kind === 'wall'
-				? 'Read-only here: arch rise, Wall role and profile conversion have no supported writer.'
-				: 'Read-only here: the hosting Wall and profile conversion have no supported writer.'
-	);
+	const primaryFields = $derived.by(() => {
+		const ids = instrument?.subject.kind === 'wall' ? ['length', 'height'] : ['width', 'height', 'sillHeight'];
+		return ids.flatMap(id => ordinaryFields.filter(field => field.id === id));
+	});
 
 	function refresh(current = currentController): void {
 		fields = current?.fields() ?? [];
@@ -75,11 +81,16 @@
 		const current = instrument;
 		currentController = current;
 		refresh(current);
-		fixedEndpoint = current?.fixedEndpoint() ?? 'start';
 		return () => {
 			if (currentController === current) currentController = null;
 			current?.dispose();
 		};
+	});
+
+	// Dismissal discards secondary drafts; reopening never revives an abandoned edit.
+	$effect(() => {
+		if (detailOpen) return;
+		untrack(() => { currentController?.cancel('thickness'); currentController?.cancel('offset'); refresh(); });
 	});
 
 	/**
@@ -104,10 +115,6 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
-	function chooseFixedEndpoint(next: 'start' | 'end'): void {
-		fixedEndpoint = next;
-		currentController?.setFixedEndpoint(next);
-	}
 
 	async function commit(id: string): Promise<void> {
 		error = null;
@@ -137,17 +144,10 @@
 		refresh();
 	}
 
-	/**
-	 * Restore the field's accepted text after a cancel/blur.
-	 *
-	 * The input is not a bound value: while the creator types, the DOM holds text
-	 * the controller has not accepted, and `value={field.text}` only writes when
-	 * the rendered expression *changes*. Restoring "3" over a typed "32.8" is
-	 * therefore no change to Svelte, which leaves the rejected draft visible after
-	 * Esc or blur. The element is synced from the controller explicitly.
-	 */
+	/** Restore the accepted value without committing an abandoned DOM draft. */
 	function restoreText(id: string, input: HTMLInputElement): void {
-		input.value = currentController?.fields().find((field) => field.id === id)?.text ?? '';
+		const text = currentController?.fields().find((field) => field.id === id)?.text ?? '';
+		input.value = focusedField === id ? text : compactMeasure(text);
 	}
 
 	function discard(id: string, input?: HTMLInputElement): void {
@@ -169,7 +169,12 @@
 			type="text"
 			inputmode="decimal"
 			data-field={field.id}
-			value={field.text}
+			value={focusedField === field.id ? field.text : compactMeasure(field.text)}
+			onfocus={(event) => {
+				focusedField = field.id;
+				event.currentTarget.value =
+					currentController?.fields().find((value) => value.id === field.id)?.text ?? field.text;
+			}}
 			aria-invalid={field.error === null ? undefined : 'true'}
 			oninput={(event) => onInput(field.id, event)}
 			onkeydown={(event) => {
@@ -188,6 +193,7 @@
 				const input = event.currentTarget;
 				const id = input.dataset.field;
 				if (!alive || !input.isConnected || id === undefined) return;
+				focusedField = null;
 				currentController?.blur(id);
 				refresh();
 				restoreText(id, input);
@@ -197,172 +203,132 @@
 	</label>
 {/snippet}
 
-{#if instrument === null}
-	<p class="empty">Select a Wall, Opening or Layout object to edit its measures.</p>
-{:else}
+{#if instrument !== null}
 	<div class="card-fields" data-layout-card-fields>
-		{#if editable.length > 0}
-			<p class="eyebrow">Fields</p>
-		{/if}
+		<div class="primary-fields">
+			{#each primaryFields as field (field.id)}{@render fieldRow(
+					field
+				)}{/each}
+		</div>
 		{#if paused !== null}
 			<div class="paused" data-layout-paused>
 				<p>Paused after a reading change — {paused.label}</p>
-				<div class="paused-actions">
-					<button type="button" data-resume-paused onclick={resumePaused}>Resume</button>
-					<button type="button" onclick={discardPaused}>Discard</button>
-				</div>
-			</div>
+				<button type="button" data-resume-paused onclick={resumePaused}>Resume</button>
+				<button type="button" onclick={discardPaused}>Discard</button>
+			</div>{/if}
+		{#if error !== null}<p class="error" role="alert">{error}</p>
 		{/if}
-		{#if instrument.subject.kind === 'wall' && editable.some((field) => field.id === 'length')}
-			<fieldset class="fixed-endpoint" data-layout-fixed-endpoint>
-				<legend>Fixed endpoint</legend>
-				<label>
-					<input
-						type="radio"
-						name="layout-fixed-endpoint"
-						checked={fixedEndpoint === 'start'}
-						onchange={() => chooseFixedEndpoint('start')}
-					/>Start
-				</label>
-				<label>
-					<input
-						type="radio"
-						name="layout-fixed-endpoint"
-						checked={fixedEndpoint === 'end'}
-						onchange={() => chooseFixedEndpoint('end')}
-					/>End
-				</label>
-			</fieldset>
-		{/if}
-		{#each ordinaryFields as field (field.id)}
-			{@render fieldRow(field)}
-		{/each}
-		{#if junctionFields.length > 0}
-			<details class="junction-fields" data-layout-junction-fields>
-				<summary>Start and End X/Z</summary>
-				{#each junctionFields as field (field.id)}
-					{@render fieldRow(field)}
+		{#if footer}{@render footer()}{/if}
+		{#snippet details()}
+			<div class="precision">
+				{#if instrument.subject.kind === 'wall'}
+					<!-- Base and Top are foreseen, not built: shown, disabled, never a working field. -->
+					{#each ['Base', 'Top'] as label (label)}
+						<label class="field placeholder" title="{label} is coming soon">
+							<span>{label}</span>
+							<input type="text" value="—" disabled aria-disabled="true" data-field-placeholder={label.toLowerCase()} />
+						</label>
+					{/each}
+				{/if}
+				{#each ordinaryFields.filter(field => instrument.subject.kind === 'wall' ? field.id === 'thickness' : field.id === 'offset') as field (field.id)}
+					{@render fieldRow(field.id === 'thickness' ? { ...field, label: 'Thick' } : field)}
 				{/each}
-			</details>
-		{/if}
-		{#if error !== null}
-			<p class="error" role="alert">{error}</p>
-		{/if}
-		<p class="unavailable">{unavailableNote}</p>
+			</div>
+		{/snippet}
+		{#if more}{@render more(details)}{/if}
+		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}
 
 <style>
-	.card-fields {
+	.primary-fields {
 		display: grid;
-		gap: 0.35rem;
-		margin-top: 0.6rem;
-		font-size: 0.8rem;
-	}
-	.eyebrow {
-		margin: 0;
-		color: var(--plate-ink-quiet, #5c665e);
-		font-size: 0.68rem;
-		font-weight: 700;
-		letter-spacing: 0.09em;
-		text-transform: uppercase;
+		grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+		gap: 6px;
+		padding: 0 12px 8px;
 	}
 	.field {
+		position: relative;
 		display: grid;
-		grid-template-columns: 1fr 6rem auto;
-		align-items: center;
-		gap: 0.4rem;
+		gap: 2px;
+		min-width: 0;
+		color: var(--shell-ink-2, #4a524c);
+		font-size: 10.5px;
 	}
 	input {
-		min-height: 2.75rem;
-		padding: 0.1rem 0.35rem;
-		border: 1px solid var(--plate-control-edge, #cfd5cb);
-		border-radius: 0.45rem;
-		background: var(--plate-control-surface, #f5f6f4);
-		color: inherit;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		box-sizing: border-box;
+		width: 100%;
+		min-width: 0;
+		height: 26px;
+		padding: 0 18px 0 6px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 6px;
+		background: var(--shell-control-surface, #fafbf9);
+		color: var(--shell-ink, #1b201c);
+		font: 12px var(--shell-mono, monospace);
+		font-variant-numeric: tabular-nums;
+	}
+	input:hover {
+		border-color: var(--shell-hairline-strong, #cdd2ca);
+	}
+	input:focus {
+		background: #fff;
+		border-color: var(--shell-leaf, #4f8f6c);
 	}
 	input[aria-invalid='true'] {
-		border-color: #a33b24;
+		border-color: var(--shell-refuse, #7e2718);
 	}
 	.unit {
-		font-size: 0.7rem;
-		color: var(--plate-ink-quiet, #5c665e);
+		position: absolute;
+		right: 6px;
+		bottom: 6px;
+		font-size: 10px;
+		pointer-events: none;
 	}
-	.error,
-	.empty {
-		margin: 0;
-		font-size: 0.72rem;
-		color: #a33b24;
-	}
-	.unavailable {
-		margin: 0;
-		font-size: 0.68rem;
-		color: var(--plate-ink-quiet, #5c665e);
-	}
-	.junction-fields {
+	.precision {
 		display: grid;
-		gap: 0.35rem;
-		padding: 0.15rem 0.35rem;
-		border: 1px solid var(--plate-control-edge, #cfd5cb);
-		border-radius: 0.35rem;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 6px;
+		padding: 2px 12px 6px;
 	}
-	.junction-fields summary {
-		color: var(--plate-ink-quiet, #5c665e);
-		font-size: 0.72rem;
-		cursor: pointer;
+	.placeholder input {
+		border-style: dashed;
+		background: transparent;
+		color: var(--shell-ink-2, #4a524c);
+		cursor: default;
 	}
-	.fixed-endpoint {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
+	.error {
 		margin: 0;
-		padding: 0.15rem 0.35rem;
-		border: 1px solid var(--plate-control-edge, #cfd5cb);
-		border-radius: 0.35rem;
-		font-size: 0.72rem;
-	}
-	.fixed-endpoint legend {
-		padding: 0 0.25rem;
-		color: var(--plate-ink-quiet, #5c665e);
-	}
-	.fixed-endpoint label {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-	}
-	.fixed-endpoint input {
-		min-height: auto;
+		padding: 4px 12px;
+		color: var(--shell-refuse, #7e2718);
+		font-size: 11px;
 	}
 	.paused {
-		display: grid;
-		gap: 0.25rem;
-		padding: 0.3rem 0.4rem;
-		border: 1px dashed var(--plate-control-edge, #cfd5cb);
-		border-radius: 0.35rem;
-		font-size: 0.72rem;
+		padding: 6px 12px;
+		font-size: 11px;
 	}
 	.paused p {
 		margin: 0;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	}
-	.paused-actions {
-		display: flex;
-		gap: 0.4rem;
-	}
-	.paused button {
-		min-height: 2.25rem;
-		padding: 0.1rem 0.5rem;
-		border: 1px solid var(--plate-control-edge, #cfd5cb);
-		border-radius: 0.35rem;
-		background: transparent;
+	button {
+		min-height: 26px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 6px;
+		background: var(--shell-control-surface, #fafbf9);
 		color: inherit;
-		font: inherit;
 		cursor: pointer;
 	}
-	.field:focus-within span:first-child,
-	button:focus-visible {
-		outline: 2px solid var(--plate-focus, #2f6f52);
-		outline-offset: 1px;
+	@media (pointer: coarse) {
+		input,
+		button {
+			min-height: 44px;
+			min-width: 44px;
+		}
+		.primary-fields {
+			grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+		}
+		.unit {
+			bottom: 14px;
+		}
 	}
 </style>

@@ -32,6 +32,8 @@ export type PlanNumericUnit = 'length' | 'angle';
 
 export type PlanNumericFieldId =
 	| 'length'
+	| 'height'
+	| 'thickness'
 	| 'angle'
 	| 'width'
 	| 'depth'
@@ -120,6 +122,8 @@ export type PlanNumericHost =
 	| 'wall-move'
 	/** R217.S15 body drag: one signed distance along the Wall's current normal. */
 	| 'wall-normal'
+	| 'height'
+	| 'thickness'
 	/** Junction move: "X/Z when numeric editing". */
 	| 'junction'
 	/** Curve bend point: "active point X/Z on focus". */
@@ -141,6 +145,8 @@ export const PLAN_NUMERIC_FIELD_SETS = {
 	'opening-resize': [meters('width', 'Width', 'positive'), meters('offset', 'Offset', 'nonnegative')],
 	'wall-move': [meters('dx', 'ΔX', 'signed'), meters('dz', 'ΔZ', 'signed')],
 	'wall-normal': [meters('distance', 'Distance', 'signed')],
+	height: [meters('height', 'Height', 'positive')],
+	thickness: [meters('thickness', 'Thickness', 'positive')],
 	junction: [meters('x', 'X', 'signed'), meters('z', 'Z', 'signed')],
 	'curve-point': [meters('x', 'X', 'signed'), meters('z', 'Z', 'signed')],
 	'object-transform': [
@@ -345,7 +351,7 @@ export type PlanNumericInvalidReason =
 	| 'not-positive';
 
 export type PlanNumericParse =
-	| { ok: true; value: number }
+	{ ok: true; value: number }
 	| { ok: false; reason: PlanNumericInvalidReason };
 
 /**
@@ -632,7 +638,8 @@ function focusedText(state: PlanNumericEntryState, fieldIndex: number): string {
 function focusField(
 	state: PlanNumericEntryState,
 	fieldIndex: number,
-	overrides: { text?: string; invalidReason?: PlanNumericInvalidReason | null } = {}
+	overrides: { text?: string; invalidReason?: PlanNumericInvalidReason | null;
+	} = {}
 ): PlanNumericEntryState {
 	const text = overrides.text ?? focusedText(state, fieldIndex);
 	const field = state.fields[fieldIndex];
@@ -673,7 +680,7 @@ export function planNumericEntryTab(
 ): PlanNumericEntryState {
 	const step = direction === 'forward' || direction === 1 ? 1 : -1;
 	const count = state.fields.length;
-	const fieldIndex = ((state.fieldIndex + step) % count + count) % count;
+	const fieldIndex = (((state.fieldIndex + step) % count) + count) % count;
 	return focusField({ ...state, candidates }, fieldIndex);
 }
 
@@ -747,7 +754,8 @@ export type PlanNumericSubmitOutcome =
 export function planNumericEntrySubmit(state: PlanNumericEntryState): PlanNumericSubmitOutcome {
 	if (state.submitted) return { kind: 'ignored', state };
 	const values: Partial<Record<PlanNumericFieldId, number>> = {};
-	let refused: { index: number; field: PlanNumericField; reason: PlanNumericInvalidReason } | null = null;
+	let refused: { index: number; field: PlanNumericField; reason: PlanNumericInvalidReason;
+	} | null = null;
 	for (const [index, field] of state.fields.entries()) {
 		const text = state.typed[field.id];
 		if (text === undefined) continue;

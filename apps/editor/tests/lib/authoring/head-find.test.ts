@@ -103,8 +103,11 @@ describe('Head Find', () => {
 		const host = head({ query: '', entries: ENTRIES, onQuery: () => {}, onRun: () => {} }, { onOpenIndex });
 		await tick();
 		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, cancelable: true }));
-		const find = host.querySelector<HTMLDetailsElement>('[data-head-find]')!;
-		expect(find.open).toBe(true);
+		const find = host.querySelector<HTMLDivElement>('[data-head-find]')!;
+		await tick();
+		expect(find.querySelector('input')?.getAttribute('aria-expanded')).toBe(
+			'true'
+		);
 		expect(document.activeElement).toBe(find.querySelector('input'));
 		const location = [...host.querySelectorAll('button')].find((button) => button.textContent?.includes('Selected wall'))!;
 		location.click();
@@ -121,8 +124,8 @@ describe('Head Find', () => {
 		const onRun = vi.fn();
 		const host = head({ query: '', entries: ENTRIES, onQuery: () => {}, onRun });
 		await tick();
-		const find = host.querySelector<HTMLDetailsElement>('[data-head-find]')!;
-		find.querySelector('summary')!.click();
+		const find = host.querySelector<HTMLDivElement>('[data-head-find]')!;
+		find.querySelector('input')!.dispatchEvent(new FocusEvent('focus'));
 		await tick();
 		const results = [...find.querySelectorAll<HTMLButtonElement>('.find-results button')];
 		expect(results.map((node) => node.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
@@ -139,10 +142,12 @@ describe('Head Find', () => {
 		const onQuery = vi.fn();
 		const host = head({ query: '', entries: [], onQuery, onRun: () => {} });
 		await tick();
-		const find = host.querySelector<HTMLDetailsElement>('[data-head-find]')!;
-		find.querySelector('summary')!.click();
+		const find = host.querySelector<HTMLDivElement>('[data-head-find]')!;
+		find.querySelector('input')!.dispatchEvent(new FocusEvent('focus'));
 		await tick();
-		expect(find.querySelector('.find-empty')?.textContent).toContain('No subject, tool or operation matches');
+		expect(find.querySelector('.find-empty')?.textContent).toContain(
+			'No matching results'
+		);
 
 		const input = find.querySelector<HTMLInputElement>('input')!;
 		input.value = 'ink';
@@ -154,8 +159,8 @@ describe('Head Find', () => {
 		const onRun = vi.fn();
 		const host = head({ query: '', entries: FORMER_MENU, onQuery: () => {}, onRun });
 		await tick();
-		const find = host.querySelector<HTMLDetailsElement>('[data-head-find]')!;
-		find.querySelector('summary')!.click();
+		const find = host.querySelector<HTMLDivElement>('[data-head-find]')!;
+		find.querySelector('input')!.dispatchEvent(new FocusEvent('focus'));
 		await tick();
 
 		const rows = [...find.querySelectorAll<HTMLButtonElement>('[data-find-id]')];
@@ -183,8 +188,8 @@ describe('Head Find', () => {
 			onPrepareDelete
 		});
 		await tick();
-		const find = host.querySelector<HTMLDetailsElement>('[data-head-find]')!;
-		find.querySelector('summary')!.click();
+		const find = host.querySelector<HTMLDivElement>('[data-head-find]')!;
+		find.querySelector('input')!.dispatchEvent(new FocusEvent('focus'));
 		await tick();
 
 		const rename = find.querySelector<HTMLButtonElement>('[data-find-id="rename"]')!;
@@ -194,7 +199,7 @@ describe('Head Find', () => {
 		expect(host.querySelector<HTMLElement>('[data-head-project-menu]')!.hidden).toBe(false);
 		await vi.waitFor(() => expect(host.querySelector('.inline-message')?.textContent).toContain('Rename is unavailable'));
 
-		find.querySelector('summary')!.click();
+		find.querySelector('input')!.dispatchEvent(new FocusEvent('focus'));
 		await tick();
 		find.querySelector<HTMLButtonElement>('[data-find-id="delete"]')!.click();
 		await vi.waitFor(() => expect(onPrepareDelete).toHaveBeenCalledOnce());

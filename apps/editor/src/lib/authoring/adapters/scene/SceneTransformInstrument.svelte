@@ -13,6 +13,7 @@
 	 * Esc/Close and unmount both run the session's one `cancel()`.
 	 */
 	import { onDestroy, tick, untrack } from 'svelte';
+	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
 
 	import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 
@@ -27,6 +28,7 @@
 		armedTile,
 		objectsPanelCompact,
 		setObjectsPanelCompact,
+		takeObjectsPrecision,
 		type ObjectTile
 	} from './shape/armed-tile';
 	import { objectDrawSession, subscribeObjectDraw } from './shape/draw-surface';
@@ -53,6 +55,18 @@
 
 	let { services }: { services: StageAdapterServices } = $props();
 
+	let precisionOpen = $state(
+		untrack(() => takeObjectsPrecision(projectIdNow()))
+	);
+	$effect(() =>
+		services.stage.onAdaptersChanged?.(() => {
+			if (takeObjectsPrecision(projectIdNow())) {
+				precisionOpen = true;
+				compact = false;
+			}
+		})
+	);
+
 	let x = $state('0');
 	let z = $state('0');
 	/** S04's uniform Resize entry; blank/non-finite/non-positive never commits. */
@@ -63,8 +77,9 @@
 	let primitive = $state<NativePlacementPrimitive>('box');
 	let placementChoice = $state('native:box');
 	let catalogueArmRequest = 0;
-	const projectIdNow = (): string => services.stage.snapshot().acceptedRevision.projectId;
-	const OBJECT_TILES: readonly { readonly id: ObjectTile; readonly label: string; readonly summary: string }[] = [
+	function projectIdNow():string { return services.stage.snapshot().acceptedRevision.projectId; }
+	const OBJECT_TILES: readonly { readonly id: ObjectTile; readonly label: string; readonly summary: string;
+	}[] = [
 		...SHAPE_KINDS,
 		{ id: 'sphere', label: 'Sphere', summary: 'Click to place a sphere.' }
 	];
@@ -167,7 +182,9 @@
 		if (armedFormCopy !== null) return armedFormCopy.item.name;
 		if (!armedModelPresent) return null;
 		const assetId = placementChoice.startsWith('catalogue:') ? placementChoice.slice('catalogue:'.length) : null;
-		return catalogueModels.find((asset) => asset.id === assetId)?.name ?? 'Imported model';
+		return (
+			catalogueModels.find((asset) => asset.id === assetId)?.name ?? 'Imported model'
+		);
 	});
 	/**
 	 * The My Objects copy armed for this Place session, mirrored for its panel.
@@ -186,7 +203,7 @@
 
 	function composeEntity() {
 		const id = selectionEntityId();
-		return id === null ? null : entities.find((entity) => entity.id === id) ?? null;
+		return id === null ? null : (entities.find((entity) => entity.id === id) ?? null);
 	}
 
 	/**
@@ -704,7 +721,8 @@
 		<div class="editing" onfocusout={onFocusOut}>
 			<div class="row">
 				<span class="subject"
-					>Compose <code>{composeActive ? composeSubjectId ?? 'no entity' : composeSubject?.id ?? 'no entity'}</code></span
+					>Compose <code>{composeActive ? (composeSubjectId ?? 'no entity')
+							: (composeSubject?.id ?? 'no entity')}</code></span
 				>
 				{#if composeActive}<button type="button" class="quiet" onclick={cancel}>Cancel</button>{/if}
 			</div>
@@ -739,7 +757,7 @@
 				<button type="button" onclick={duplicateSelected} disabled={composeSupport === null || !composeSupport.duplicate}>Duplicate</button>
 				<button type="button" onclick={deleteSelected} disabled={composeSubject === null}>Delete</button>
 			</div>
-			<p class="hint">Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.</p>
+
 			{#if composeSupport?.reason}
 				<p class="hint">{composeSupport.reason}</p>
 			{/if}
@@ -752,7 +770,14 @@
 					aria-pressed={armedName === null && activeTile === tile.id}
 					title={tile.summary}
 					onclick={() => chooseTile(tile.id)}
-				>{tile.label}</button>
+				><ShellIcon
+						name={tile.id === 'sphere'
+							? 'round'
+							: tile.id === 'box'
+								? 'view3d'
+								: 'shape'}
+						size={26}
+					/><span>{tile.label}</span></button>
 			{/each}
 			{#if armedName !== null}<span class="armed-name">{armedName}</span>{/if}
 			{#if drawCanFinish}<button type="button" onclick={finishDraw}>Finish</button>{/if}
@@ -769,7 +794,8 @@
 									type="button"
 									aria-pressed={placementChoice === `catalogue:${asset.id}`}
 									onclick={() => chooseCatalogueModel(asset.id)}
-								>{asset.name}</button>
+								><ShellIcon name="object" size={26} /><span>{asset.name}</span
+									></button>
 							</li>
 						{/each}
 					</ul>
@@ -783,7 +809,7 @@
 				/>
 				<button type="button" onclick={openImport}>Import model…</button>
 			{/if}
-			{#if armedName !== null || activeTile !== 'free'}
+			{#if precisionOpen}
 				<div class="row place" role="group" aria-label="Exact position">
 					<span>Exact position</span>
 					<label>
@@ -800,15 +826,14 @@
 		{/if}
 	{/if}
 
-	<p class="feedback" aria-live="polite">{message}</p>
+	<p class="feedback" hidden={!message} aria-live="polite">{message}</p>
 </section>
 
 <style>
 	.objects-tiles {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+		gap: 6px;
 	}
 
 	.objects-section h4 {
@@ -908,5 +933,43 @@
 		margin: 0;
 		min-height: 1.1rem;
 		color: #e7e4dd;
+	}
+	.objects-tiles button,
+	.objects-models button {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		padding: 6px;
+		min-height: 62px;
+		width: 100%;
+		border: 2px solid transparent;
+		border-radius: 8px;
+		background: #fff;
+		color: var(--shell-ink, #1b201c);
+		font: 600 11px var(--shell-sans, system-ui);
+	}
+	.objects-tiles button[aria-pressed='true'],
+	.objects-models button[aria-pressed='true'] {
+		border-color: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold-tint, #f8efd6);
+	}
+	.objects-models {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+		gap: 6px;
+	}
+	.row.place {
+		padding-top: 8px;
+		border-top: 1px solid #ffffff22;
+		font-size: 11px;
+	}
+	@media (pointer: coarse) {
+		button,
+		input {
+			min-width: 44px;
+			min-height: 44px;
+		}
 	}
 </style>

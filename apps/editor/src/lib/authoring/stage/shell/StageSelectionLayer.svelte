@@ -2,9 +2,8 @@
 	/**
 	 * The Stage's **selection and hover ink in 3D**.
 	 *
-	 * Selection is one coherent identity contour: a gold edge outline with a
-	 * translucent gold tint for the primary selection, and the same two
-	 * mechanisms in a neutral tone for hover. It is built from the accepted render
+	 * Selection is one coherent gold identity contour; hover uses leaf ink.
+	 * A Wall silhouette suppresses visible-face creases and internal render seams. It is built from the accepted render
 	 * groups by source id — the same meshes the creator sees — never from a second
 	 * evaluator or a second renderer.
 	 *
@@ -12,7 +11,7 @@
 	 *
 	 * - **Never under a pick root.** This group is a child of the one Canvas, not
 	 *   of `VisitorLayoutShell` or `SceneEntity:*`, so the recursive pick raycast
-	 *   cannot reach a tint clone.
+	 *   cannot reach presentation ink.
 	 * - **The Stage overlay layer.** Every child is on layer 2, which the Stage
 	 *   camera shows only when world meshes are drawn. Raycasting keeps its
 	 *   default layer mask and never hits this ink.
@@ -31,6 +30,7 @@
 		Mesh,
 		MeshBasicMaterial,
 		Vector2,
+		Vector3,
 		type Object3D
 	} from 'three';
 	import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
@@ -39,10 +39,10 @@
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
-	import { PAPER_SELECTION_EDGE_INK } from '../paper-marks';
+	import { STAGE_PAINT } from './stage-paint';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
-	import { mergeStraightEdgeRuns, OUTLINE_DEPTH_BIAS } from './stage-outline';
+	import { mergeStraightEdgeRuns, visibleIdentityContour, OUTLINE_DEPTH_BIAS } from './stage-outline';
 
 	let {
 		selection,
@@ -52,7 +52,8 @@
 		scenePick,
 		width = 1,
 		height = 1,
-		fade = 1
+		fade = 1,
+		eye = [0, 10, 10]
 	}: {
 		selection: StageSelectionEntry | null;
 		hover: StageSelectionEntry | null;
@@ -65,11 +66,11 @@
 		height?: number;
 		/** Hands off to Paper's own marks as the sheet arrives during a flip. */
 		fade?: number;
+		eye?: readonly [number, number, number];
 	} = $props();
 
-	const GOLD = 0xd4ad45;
-	const SELECTION_EDGE = Number.parseInt(PAPER_SELECTION_EDGE_INK.slice(1), 16);
-	const NEUTRAL = 0xf3f4ee;
+	const GOLD = STAGE_PAINT.selection;
+	const NEUTRAL = STAGE_PAINT.hover;
 	const ERASE = Number.parseInt(STAGE_ERASE_INK.slice(1), 16);
 	const { invalidate } = useThrelte();
 
@@ -79,7 +80,8 @@
 	type Inked = { readonly object: Object3D; readonly dispose: () => void };
 	let inked: Inked[] = [];
 	/** Each drawn material at its own opacity, so a flip can fade it without a rebuild. */
-	const fades: { readonly material: { opacity: number }; readonly opacity: number }[] = [];
+	const fades: { readonly material: { opacity: number }; readonly opacity: number;
+	}[] = [];
 
 	function releaseAll(): void {
 		for (const entry of inked) {
@@ -176,107 +178,53 @@
 		if (entry === null) return;
 		const source = sourceMeshes(entry);
 		try {
-			for (const object of source.objects) {
-				for (const mesh of meshesUnder(object)) {
-				const matrix = matrixOf(mesh);
-				// Fat lines are a real pair of passes: a dark halo under the gold/neutral
-				// contour. `LineBasicMaterial` line width is a no-op on WebGL, so the
-				// Stage uses the line addon it already ships with Three.
-				const edges = new EdgesGeometry(mesh.geometry, 30);
-				const positions = edges.getAttribute('position')?.array;
-				if (positions === undefined) {
-					edges.dispose();
-					continue;
+			const meshes = source.objects.flatMap(meshesUnder);
+			const wall = entry.reference.domain === 'layout' && entry.reference.subject.kind === 'wall';
+			const groups = wall ? [meshes] : meshes.map(mesh => [mesh]);
+			for (const group of groups) {
+				const positions: number[] = [];
+				for (const mesh of group) {
+					const matrix = matrixOf(mesh);
+					if (wall) {
+						const vertices = mesh.geometry.getAttribute('position');
+						const index = mesh.geometry.index;
+						for (let i = 0; i < (index?.count ?? vertices.count); i++) {
+							const point = new Vector3().fromBufferAttribute(vertices, index ? index.getX(i) : i).applyMatrix4(matrix);
+							positions.push(point.x, point.y, point.z);
+						}
+					} else {
+						const edges = new EdgesGeometry(mesh.geometry, 30);
+						edges.applyMatrix4(matrix);
+						positions.push(...edges.getAttribute('position').array);
+						edges.dispose();
+					}
 				}
+				const contour = wall ? visibleIdentityContour(positions, eye) : mergeStraightEdgeRuns(positions);
+				if (contour.length === 0) continue;
 				const edgeGeometry = new LineSegmentsGeometry();
-				edgeGeometry.setPositions(mergeStraightEdgeRuns(positions));
-				edges.dispose();
-				const resolution = new Vector2(width, height);
-				const haloMaterial = new LineMaterial({
-					// Paper's two-tone contour: the forest halo swallows gold on the pale
-					// ground, while this edge holds there and on the forest mat.
-					color: tone === 'selection' ? SELECTION_EDGE : 0x152c26,
-					linewidth: tone === 'selection' ? 5 : tone === 'erase' ? 4 : 3.5,
-					transparent: true,
-					opacity: 0.9,
-					depthTest: true,
-					depthWrite: false,
-					...OUTLINE_DEPTH_BIAS,
-					resolution
-				});
-				const lineMaterial = new LineMaterial({
+				edgeGeometry.setPositions(contour);
+				const material = new LineMaterial({
 					color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
-					linewidth: tone === 'selection' ? 2.5 : tone === 'erase' ? 2.2 : 1.8,
+					linewidth: tone === 'selection' ? 3 : 2.5,
 					transparent: true,
-					opacity: tone === 'hover' ? 0.6 : 1,
+					opacity: 1,
+					toneMapped: false,
 					depthTest: true,
 					depthWrite: false,
 					...OUTLINE_DEPTH_BIAS,
-					resolution,
-					// The erase treatment is dashed; dash lengths are world meters.
+					resolution: new Vector2(width, height),
 					...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
 				});
-				const halo = new LineSegments2(edgeGeometry, haloMaterial);
-				// Selection outranks hover when two subjects share an edge: the gold
-				// identity must never be cut by a neighbouring neutral preview.
-				const haloOrder = tone === 'selection' ? 21 : tone === 'erase' ? 23 : 18;
-				const lineOrder = haloOrder + 1;
-				halo.matrixAutoUpdate = false;
-				halo.matrix.copy(matrix);
-				halo.frustumCulled = false;
-				halo.renderOrder = haloOrder;
-				halo.layers.set(2);
-				root.add(halo);
-				const line = new LineSegments2(edgeGeometry, lineMaterial);
+				const line = new LineSegments2(edgeGeometry, material);
 				if (tone === 'erase') line.computeLineDistances();
-				line.matrixAutoUpdate = false;
-				line.matrix.copy(matrix);
 				line.frustumCulled = false;
-				line.renderOrder = lineOrder;
+				line.renderOrder = tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19;
 				line.layers.set(2);
 				root.add(line);
-				fades.push({ material: haloMaterial, opacity: haloMaterial.opacity });
-				fades.push({ material: lineMaterial, opacity: lineMaterial.opacity });
-				inked.push({
-					object: halo,
-					dispose: () => {
-						edgeGeometry.dispose();
-						haloMaterial.dispose();
-						lineMaterial.dispose();
-					}
-				});
-				// The gold/neutral line shares the same geometry and is removed with the
-				// halo; its own dispose is the shared one above.
-				inked.push({ object: line, dispose: () => {} });
-				if (tone !== 'selection') continue;
-				const tintGeometry = mesh.geometry.clone();
-				const tintMaterial = new MeshBasicMaterial({
-					color: GOLD,
-					transparent: true,
-					opacity: 0.28,
-					depthWrite: false,
-					depthTest: true,
-					polygonOffset: true,
-					polygonOffsetFactor: -1,
-					polygonOffsetUnits: -1
-				});
-				fades.push({ material: tintMaterial, opacity: tintMaterial.opacity });
-				const tint = new Mesh(tintGeometry, tintMaterial);
-				tint.matrixAutoUpdate = false;
-				tint.matrix.copy(matrix);
-				// Above hover's line (19), below the selection's own halo/contour.
-				tint.renderOrder = 20;
-				tint.layers.set(2);
-				root.add(tint);
-				inked.push({
-					object: tint,
-					dispose: () => {
-						tintGeometry.dispose();
-						tintMaterial.dispose();
-					}
-				});
-				}
+				fades.push({ material, opacity: 1 });
+				inked.push({ object: line, dispose: () => { edgeGeometry.dispose(); material.dispose(); } });
 			}
+
 		} finally {
 			source.dispose();
 		}
@@ -311,6 +259,7 @@
 		geometry;
 		width;
 		height;
+		eye;
 		rebuild();
 		const stop = scenePick.onRenderRootsChanged(rebuild);
 		return () => {

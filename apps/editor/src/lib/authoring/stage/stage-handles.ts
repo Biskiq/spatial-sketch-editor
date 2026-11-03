@@ -44,6 +44,23 @@ export type StageHandleBase = {
 	 */
 	readonly extent?: number;
 	/**
+	 * Bounded drawing reach in CSS px; the projected result owns both drawing and hits.
+	 * `glyph` names a stem knob instead of the default glyph for its kind: the
+	 * height stem's top knob or its bottom (lift) knob (review pass 2 §6).
+	 */
+	readonly draw?: { readonly ray?:number; readonly twoWayHalf?:number; readonly pointRadius?:number; readonly cross?:boolean; readonly glyph?: 'top-knob' | 'lift-knob' };
+	/**
+	 * A knob's stem: the world point its stem line runs to (the other end of the
+	 * subject's height). Drawing only; the gesture still measures `axis`.
+	 */
+	readonly stem?: Vec3;
+	/**
+	 * A ring's turn-arrow direction in world space, in the ring's plane. The
+	 * owning domain derives it from the subject's own frame, so the one arrow
+	 * travels with the turn; absent, the arrow sits at the ring's first point.
+	 */
+	readonly phase?: Vec3;
+	/**
 	 * Draw a ray/track on both sides of its anchor — the grammar's two-way base
 	 * ray. It changes the drawing and the hit area only; the gesture is the one
 	 * the descriptor already names.
@@ -90,8 +107,16 @@ export type StageEditingGrip = StageHandleBase & {
 
 export type StageDisclosureMark = StageHandleBase & {
 	readonly role: 'disclose';
+	/** A resize toggle keeps its pressed intent across subjects and accepted edits. */
+	readonly intent?: 'resize';
 	/** Ids of this binding's editing grips the mark reveals. */
 	readonly reveals: readonly string[];
+	/**
+	 * The disclosure also drags: a press that travels past the click tolerance is
+	 * offered to the owning adapter under this mark's id (the W·D·H chip's
+	 * uniform scale). A click still only toggles.
+	 */
+	readonly drags?: boolean;
 };
 
 export type StageHandleDescriptor = StageEditingGrip | StageDisclosureMark;
@@ -119,16 +144,22 @@ export type StageHandleAdmission = {
 };
 
 function finiteVec3(value: Vec3 | undefined): value is Vec3 {
-	return value !== undefined && value.length === 3 && value.every(Number.isFinite);
+	return (
+		value !== undefined && value.length === 3 && value.every(Number.isFinite)
+	);
 }
 
 function hasUsableGeometry(descriptor: StageHandleDescriptor): boolean {
 	if (!finiteVec3(descriptor.anchor)) return false;
 	if (descriptor.kind === 'ray' || descriptor.kind === 'track') {
-		return finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0;
+		return (
+			finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0
+		);
 	}
 	if (descriptor.kind === 'ring') {
-		return finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0;
+		return (
+			finiteVec3(descriptor.axis) && descriptor.extent !== undefined && Number.isFinite(descriptor.extent) && descriptor.extent > 0
+		);
 	}
 	return true;
 }
@@ -237,7 +268,9 @@ export function stageHandleVisible(
 	openDisclosures: ReadonlySet<string>
 ): boolean {
 	if (descriptor.role === 'disclose') return true;
-	return descriptor.disclosedBy === undefined || openDisclosures.has(descriptor.disclosedBy);
+	return (
+		descriptor.disclosedBy === undefined || openDisclosures.has(descriptor.disclosedBy)
+	);
 }
 
 export type StageMarkView = {
@@ -256,6 +289,17 @@ export type StageMarkView = {
 	readonly tail: readonly [number, number] | null;
 	/** Ring outline in Stage-local CSS. */
 	readonly ring: readonly (readonly [number, number])[] | null;
+	readonly pointRadius?:number;
+	readonly cross?:boolean;
+	/** Projected direction of a point's or ray's world axis (the glyph's heading). */
+	readonly direction?: readonly [number, number] | null;
+	/** The ring's one turn arrow: where it sits and which way it points. */
+	readonly ringGlyph?: { readonly at: readonly [number, number]; readonly angle: number; readonly flip: boolean } | null;
+	/** A stem knob's other end, in Stage-local CSS. */
+	readonly stem?: readonly [number, number] | null;
+	readonly glyph?: 'top-knob' | 'lift-knob' | null;
+	/** A disclosure that also drags (the W·D·H chip): the adapter claims its press. */
+	readonly drags?: boolean;
 	readonly tag: string;
 	readonly refusal: string | null;
 	readonly open: boolean;
@@ -293,7 +337,9 @@ function squaredDistanceToSegment(
 	if (squared === 0) return (point[0] - start[0]) ** 2 + (point[1] - start[1]) ** 2;
 	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
 	const amount = Math.min(1, Math.max(0, raw));
-	return (point[0] - (start[0] + dx * amount)) ** 2 + (point[1] - (start[1] + dy * amount)) ** 2;
+	return (
+		(point[0] - (start[0] + dx * amount)) ** 2 + (point[1] - (start[1] + dy * amount)) ** 2
+	);
 }
 
 function distanceToSegment(
@@ -311,7 +357,9 @@ function normalize(value: Vec3): Vec3 | null {
 }
 
 function finiteCssPair(value: readonly [number, number] | undefined): value is readonly [number, number] {
-	return value !== undefined && value.length === 2 && value.every(Number.isFinite);
+	return (
+		value !== undefined && value.length === 2 && value.every(Number.isFinite)
+	);
 }
 
 /** A finite, non-zero CSS direction, or `null` when the hint cannot be trusted. */
@@ -397,6 +445,51 @@ function projectedAxis(
 }
 
 /**
+ * The ring's one turn arrow. It sits where the domain's `phase` direction meets
+ * the drawn ring, points along the ring's positive turn, and says which side the
+ * ring's centre lies on so a curved glyph bends with the ring.
+ */
+function turnArrow(
+	descriptor: StageHandleDescriptor,
+	axis: Vec3,
+	radius: number,
+	anchor: readonly [number, number],
+	project: (point: Vec3) => readonly [number, number] | null,
+	points: readonly (readonly [number, number])[]
+): StageMarkView['ringGlyph'] {
+	const phase = descriptor.phase === undefined ? null : normalize(descriptor.phase);
+	let at: readonly [number, number] | null = null;
+	let ahead: readonly [number, number] | null = null;
+	if (phase !== null) {
+		// The tangent of a positive turn about `axis`: axis × phase.
+		const tangent: Vec3 = [
+			axis[1] * phase[2] - axis[2] * phase[1],
+			axis[2] * phase[0] - axis[0] * phase[2],
+			axis[0] * phase[1] - axis[1] * phase[0]
+		];
+		const point = (along: number): Vec3 => [
+			descriptor.anchor[0] + (phase[0] + tangent[0] * along) * radius,
+			descriptor.anchor[1] + (phase[1] + tangent[1] * along) * radius,
+			descriptor.anchor[2] + (phase[2] + tangent[2] * along) * radius
+		];
+		at = project(point(0));
+		ahead = project(point(0.05));
+	}
+	if (at === null || ahead === null) {
+		at = points[0] ?? null;
+		ahead = points[1] ?? null;
+	}
+	if (at === null || ahead === null) return null;
+	const dx = ahead[0] - at[0];
+	const dy = ahead[1] - at[1];
+	if (Math.hypot(dx, dy) === 0) return null;
+	// The glyph bends toward its local +y; flip it when the centre lies on the other side.
+	const toCentre = [anchor[0] - at[0], anchor[1] - at[1]];
+	const flip = -dy * toCentre[0] + dx * toCentre[1] < 0;
+	return { at, angle: (Math.atan2(dy, dx) * 180) / Math.PI, flip };
+}
+
+/**
  * Project admitted marks into the overlay's Stage-local CSS space.
  *
  * `project` is the adapter context's own projection (viewport CSS); `offset` is
@@ -429,6 +522,7 @@ export function projectStageHandles(input: {
 		let tip: readonly [number, number] | null = null;
 		let tail: readonly [number, number] | null = null;
 		let ring: readonly (readonly [number, number])[] | null = null;
+		let ringGlyph: StageMarkView['ringGlyph'] = null;
 		if (descriptor.kind === 'ray' || descriptor.kind === 'track') {
 			const axis = descriptor.axis === undefined ? null : normalize(descriptor.axis);
 			if (axis === null) continue;
@@ -442,17 +536,35 @@ export function projectStageHandles(input: {
 			if (direction === null) continue;
 			if (descriptor.bothWays === true) {
 				tip = [
-					anchor[0] + direction[0] * STAGE_MARK_GLYPH_CSS.twoWayHalf,
-					anchor[1] + direction[1] * STAGE_MARK_GLYPH_CSS.twoWayHalf
+					anchor[0] + direction[0] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
+					anchor[1] + direction[1] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf)
 				];
 				tail = [
-					anchor[0] - direction[0] * STAGE_MARK_GLYPH_CSS.twoWayHalf,
-					anchor[1] - direction[1] * STAGE_MARK_GLYPH_CSS.twoWayHalf
+					anchor[0] - direction[0] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf),
+					anchor[1] - direction[1] *
+							(Number.isFinite(descriptor.draw?.twoWayHalf)
+								? Math.min(160, Math.max(6, descriptor.draw!.twoWayHalf!))
+								: STAGE_MARK_GLYPH_CSS.twoWayHalf)
 				];
 			} else {
 				tip = [
-					anchor[0] + direction[0] * STAGE_MARK_GLYPH_CSS.ray,
-					anchor[1] + direction[1] * STAGE_MARK_GLYPH_CSS.ray
+					anchor[0] + direction[0] *
+							(Number.isFinite(descriptor.draw?.ray)
+								? Math.min(160, Math.max(6, descriptor.draw!.ray!))
+								: STAGE_MARK_GLYPH_CSS.ray),
+					anchor[1] + direction[1] *
+							(Number.isFinite(descriptor.draw?.ray)
+								? Math.min(160, Math.max(6, descriptor.draw!.ray!))
+								: STAGE_MARK_GLYPH_CSS.ray)
 				];
 			}
 		} else if (descriptor.kind === 'ring') {
@@ -475,7 +587,8 @@ export function projectStageHandles(input: {
 				}
 				return points;
 			};
-			let points = outline(descriptor.extent);
+			let radiusUsed = descriptor.extent;
+			let points = outline(radiusUsed);
 			if (points.length < 12) continue;
 			const radiusCss = Math.max(
 				...points.map((point) => Math.hypot(point[0] - anchor[0], point[1] - anchor[1]))
@@ -485,8 +598,9 @@ export function projectStageHandles(input: {
 			// shared screen radius, regenerated in its own plane so a zoomed-out
 			// subject still has a reachable rotation grip and a close one never fills
 			// the Stage.
-			if (Math.abs(radiusCss - STAGE_MARK_GLYPH_CSS.ringRadius) > 0.5) {
-				points = outline(descriptor.extent * (STAGE_MARK_GLYPH_CSS.ringRadius / radiusCss));
+			if (radiusCss < STAGE_MARK_GLYPH_CSS.ringRadius - 0.5) {
+				radiusUsed = descriptor.extent * (STAGE_MARK_GLYPH_CSS.ringRadius / radiusCss);
+				points = outline(radiusUsed);
 				if (points.length < 12) continue;
 			}
 			const xs = points.map((point) => point[0]);
@@ -495,11 +609,37 @@ export function projectStageHandles(input: {
 			const spanY = Math.max(...ys) - Math.min(...ys);
 			if (Math.min(spanX, spanY) < MIN_RING_MINOR_CSS) continue;
 			ring = points;
+			ringGlyph = turnArrow(descriptor, axis, radiusUsed, anchor, project, points);
 		}
+		let direction: readonly [number, number] | null = null;
+		if (descriptor.kind === 'point' && descriptor.axis !== undefined) {
+			const axis = normalize(descriptor.axis);
+			direction = axis === null ? null : projectedAxis(projected, axis, descriptor.anchor, project);
+		} else if (tip !== null) {
+			const length = Math.hypot(tip[0] - anchor[0], tip[1] - anchor[1]);
+			direction = length === 0 ? null : [(tip[0] - anchor[0]) / length, (tip[1] - anchor[1]) / length];
+		}
+		// The stem rides the same CSS offset as its knob, so it stays parallel to
+		// the subject's edge rather than slanting back to it.
+		const stemProjected =
+			descriptor.stem === undefined || !finiteVec3(descriptor.stem) ? null : project(descriptor.stem);
+		const stemPoint: readonly [number, number] | null =
+			stemProjected === null
+				? null
+				: finiteCssPair(screenOffset)
+					? [stemProjected[0] + screenOffset[0], stemProjected[1] + screenOffset[1]]
+					: stemProjected;
 		const open = descriptor.role === 'disclose' && input.openDisclosures.has(descriptor.id);
 		views.push({
 			adapterId: input.adapterId,
 			id: descriptor.id,
+			pointRadius:Number.isFinite(descriptor.draw?.pointRadius)?Math.min(6,Math.max(3,descriptor.draw!.pointRadius!)):4.2,
+			cross:descriptor.kind==='point' && descriptor.draw?.cross===true,
+			direction,
+			ringGlyph,
+			stem: stemPoint,
+			glyph: descriptor.draw?.glyph ?? null,
+			drags: descriptor.role === 'disclose' && descriptor.drags === true,
 			role: descriptor.role,
 			kind: descriptor.kind,
 			label: descriptor.label,
@@ -535,6 +675,10 @@ export function hitStageMark(
 		if (mark.kind === 'point' || mark.kind === 'ring') {
 			if (mark.kind === 'point') {
 				hit = Math.hypot(query.css[0] - mark.anchor[0], query.css[1] - mark.anchor[1]) <= radius;
+			} else if (mark.ringGlyph != null) {
+				// The ring is not drawn (review pass 3): its bent arrow is the control,
+				// with a knob's reach so a press on the body beside it stays a body grab.
+				hit = Math.hypot(query.css[0] - mark.ringGlyph.at[0], query.css[1] - mark.ringGlyph.at[1]) <= radius;
 			} else if (mark.ring !== null) {
 				hit = mark.ring.some(
 					(point, index) =>

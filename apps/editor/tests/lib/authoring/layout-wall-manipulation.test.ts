@@ -536,7 +536,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: lengthCss, evaluationId });
 		// The preview is the planner's candidate, not a second interpolation.
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.00 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('→ 5.00 m'))).toBe(true);
 		// The edited junction also reshapes the neighbour that shares it; the overlay
 		// names that reach instead of leaving canonical validation as the only evidence.
 		const neighbour = mounted.document.walls.find((wall) => wall.id !== mounted.wallId)!;
@@ -684,7 +684,7 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move 0.50 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.50 m'))).toBe(true);
 		// A body drag moves **both** junctions, so every Wall sharing either endpoint
 		// is reshaped. The overlay must name the full reach, not only the neighbour
 		// of the endpoint the length path would have moved.
@@ -986,8 +986,8 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		const move = marks.find((mark) => mark.id === 'layout-wall-move-mark')!;
 		// The grammar's two-way base ray: one anchor, a reach on both sides.
 		expect(move.tail).not.toBeNull();
-		expect(distance(move.anchor, move.tip!)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.twoWayHalf, 6);
-		expect(distance(move.anchor, move.tail!)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.twoWayHalf, 6);
+		expect(distance(move.anchor, move.tip!)).toBeCloseTo(15, 6);
+		expect(distance(move.anchor, move.tail!)).toBeCloseTo(15, 6);
 	});
 
 	it('publishes Opening position and its truthful width ray', async () => {
@@ -996,7 +996,8 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		selectOpening(mounted.facade, mounted.openingId);
 		expect(mounted.facade.marks().map((mark) => mark.id)).toEqual([
 			'layout-opening-width-end',
-			'layout-opening-position'
+			'layout-opening-position',
+			'layout-opening-height'
 		]);
 		// The start edge is not published: the one-field width measure keeps the
 		// start fixed, so a start-edge grip would lie about which edge it moves.
@@ -1271,7 +1272,7 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		const shifted = stageCss(mounted.facade, [3.37, 0.37]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move 0.50 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.50 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: shifted, evaluationId });
 
 		mounted.facade.setDrafting({ snapSuspended: true });
@@ -1279,7 +1280,7 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		const secondId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId: secondId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId: secondId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move 0.37 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.37 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: shifted, evaluationId: secondId });
 	});
 
@@ -1292,7 +1293,7 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		const to = stageCss(mounted.facade, [5.26, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.50 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('→ 5.50 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await eventually(() => Math.abs(wallPoints(acceptedLayout(mounted.facade), mounted.wallId).length - 5.5) < 1e-6);
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
@@ -1478,8 +1479,8 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted.facade, [5.5, 0.5]), evaluationId });
 		const tag = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-end-mark')?.tag ?? '';
-		expect(tag).toContain('Length');
-		expect(tag).toContain('°');
+		expect(tag).toBe('Δx −0.50 · Δz +0.50 m');
+		expect(tag).not.toContain('°');
 		expect(tag).not.toMatch(/^X /);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: endCss, evaluationId });
 	});
@@ -1523,7 +1524,7 @@ describe('R217.S15 — body and length reach', () => {
 		const to = stageCss(mounted.facade, [5, 2]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.00 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('→ 5.00 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await eventually(() => {
 			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
@@ -1545,7 +1546,7 @@ describe('R217.S15 — body and length reach', () => {
 		const to = stageCss(mounted.facade, [5.37, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.37 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('→ 5.37 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId });
 	});
 
@@ -1607,7 +1608,7 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 			phase: 'down', css: from, evaluationId, handleId: mark!.id, handleAdapterId: mark!.adapterId
 		}).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(mounted.facade.marks().find((candidate) => candidate.id === 'layout-junction-hover')?.tag).toContain('X 0.500 · Z 1.000 m');
+		expect(mounted.facade.marks().find((candidate) => candidate.id === 'layout-junction-hover')?.tag).toContain('Δx +0.50 · Δz +1.00 m');
 		expect(mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-junction-hover')?.snap).toMatchObject({ name: 'Grid' });
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await eventually(() => {
@@ -1664,7 +1665,7 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 		const evaluationId = mounted.facade.evaluationId()!;
 		const from = stageCss(mounted.facade, junction.point);
 		const mark = mounted.facade.idleHoverIntent({ phase: 'move', css: from, evaluationId, coarse: false })!;
-		expect(mounted.facade.marks().find((entry) => entry.id === mark.id)?.tag).toBe('Junction');
+		expect(mounted.facade.marks().find((entry) => entry.id === mark.id)?.tag).toBe('Δx 0.00 · Δz 0.00 m');
 		const baseline = mounted.facade.snapshot().canonicalJson;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, handleId: mark.id, handleAdapterId: mark.adapterId }).claimed).toBe(true);
 		const to = stageCss(mounted.facade, other.point);

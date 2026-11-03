@@ -41,33 +41,33 @@
 <style>
 	.scale-bar {
 		position: absolute;
-		bottom: 0.7rem;
-		left: 0.8rem;
+		bottom: 12px;
+		left: 12px;
 		display: inline-flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 0.2rem;
+		align-items: flex-start;
+		gap: 2px;
 		color: #f4f0e9;
 		pointer-events: none;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 0.72rem;
+		font-size: 11px;
 		letter-spacing: 0.02em;
 		text-shadow: 0 1px 2px rgb(6 20 14 / 55%);
 	}
 	.scale-bar.quiet {
-		color: #233a2e;
+		color: #1b201c;
 		text-shadow: none;
 	}
 	.rule {
 		position: relative;
 		display: block;
-		height: 1px;
+		height: 1.5px;
 		background: currentColor;
 	}
 	.tick {
 		position: absolute;
 		bottom: 0;
-		width: 1px;
+		width: 1.5px;
 		height: 5px;
 		background: currentColor;
 	}
@@ -79,18 +79,12 @@
 	}
 	.length {
 		line-height: 1;
-		text-align: center;
+		text-align: left;
 	}
 	/* The ruler rises only when the centred lower column can reach it. */
 	@media (max-width: 760px) {
 		.scale-bar {
 			bottom: calc(0.7rem + var(--lower-column-height, 0px));
-		}
-	}
-	@media (pointer: coarse) {
-		.scale-bar {
-			left: 0.6rem;
-			font-size: 0.76rem;
 		}
 	}
 </style>

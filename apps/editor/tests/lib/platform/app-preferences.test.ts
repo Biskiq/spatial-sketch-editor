@@ -10,7 +10,15 @@ describe('browser-local app preferences', () => {
 			getItem: (key: string) => values.get(key) ?? null,
 			setItem: (key: string, value: string) => values.set(key, value)
 		});
-		const preferences = { planAppearance: 'shaded', reducedMotion: true, motionSpeed: 'slow' } as const;
+		const preferences = {
+			planAppearance: 'shaded',
+			reducedMotion: true,
+			motionSpeed: 'slow',
+			roomLabels2d: false,
+			roomLabels3d: true,
+			paperTone2d: 'cream',
+			paperTone3d: 'sage'
+		} as const;
 		writeAppPreferences(preferences);
 		expect(readAppPreferences()).toEqual(preferences);
 	});
@@ -21,7 +29,7 @@ describe('browser-local app preferences', () => {
 		expect(() => writeAppPreferences(DEFAULT_APP_PREFERENCES)).not.toThrow();
 		vi.stubGlobal('localStorage', { getItem: () => '{invalid' });
 		expect(readAppPreferences()).toEqual(DEFAULT_APP_PREFERENCES);
-		vi.stubGlobal('localStorage', { getItem: () => '{"planAppearance":"bad","reducedMotion":"true","motionSpeed":"bad"}' });
+		vi.stubGlobal('localStorage', { getItem: () => '{"planAppearance":"bad","reducedMotion":"true","motionSpeed":"bad","roomLabels2d":"no","paperTone3d":"neon"}' });
 		expect(readAppPreferences()).toEqual(DEFAULT_APP_PREFERENCES);
 	});
 });

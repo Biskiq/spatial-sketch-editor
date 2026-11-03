@@ -30,7 +30,7 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
-import { isPaperPlanVisible, paperRevealFor } from '../paper-plan';
+import { isPaperPlanVisible, paperRevealFor, PAPER_GROUND_INK } from '../paper-plan';
 import { gridIsVisible } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
@@ -59,6 +59,8 @@ import StageMatGround from './StageMatGround.svelte';
 		modelUrls = null,
 		plan = null,
 		planAppearance = 'paper',
+		paperInk2d = PAPER_GROUND_INK,
+		paperInk3d = PAPER_GROUND_INK,
 		/** R217.S05's one Grid/Snap view state; the grid is display-only. */
 		drafting = STAGE_DRAFTING_DEFAULTS,
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
@@ -87,6 +89,9 @@ import StageMatGround from './StageMatGround.svelte';
 		plan?: PlanEvaluation | null;
 		/** PLATE's app preference; Paper is the default. */
 		planAppearance?: 'paper' | 'shaded';
+		/** The viewer's per-view Paper tones (⚙ view preferences, never authored). */
+		paperInk2d?: string;
+		paperInk3d?: string;
 		/** Grid/Snap view state. It is never a pick source or a Camera mode. */
 		drafting?: StageDraftingState;
 		/** Layout ∪ Scene datum bounds for Paper's bounded sheet. */
@@ -234,13 +239,13 @@ import StageMatGround from './StageMatGround.svelte';
 	<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
-	<StageCamera {evaluation} paperVisible={paperCovers} />
+	<StageCamera {evaluation} paperVisible={paperCovers} paperInk={paperInk2d} />
 	{#if evaluation !== null && matVisible}
 		<!--
 			The mat ground and its per-pixel grid: world-anchored, occluded by walls,
 			never a registered pick root.
 		-->
-		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} {contentBounds} />
+		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} {contentBounds} plateInk={paperInk3d} />
 	{/if}
 	{#if heightPlane !== null && !paperVisible}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
@@ -311,6 +316,7 @@ import StageMatGround from './StageMatGround.svelte';
 			together, and neither writes `Object3D.visible` for appearance.
 		-->
 		<StageSelectionLayer
+			eye={evaluation ? [evaluation.inverseViewMatrix[12]!, evaluation.inverseViewMatrix[13]!, evaluation.inverseViewMatrix[14]!] : [0, 10, 10]}
 			{selection}
 			{hover}
 			{hoverTone}
@@ -330,13 +336,14 @@ import StageMatGround from './StageMatGround.svelte';
 		{#each ghosts as ghost (ghost.id)}
 			{#if ghost.shape.kind === 'form'}
 				<StageFormGhost
+					metersPerCssPixel={evaluation?.targetPlaneMetersPerCssPixel ?? 0.01}
 					form={ghost.shape.form}
 					position={ghost.center}
 					yaw={ghost.yaw}
 					treatment={ghost.treatment}
 				/>
 			{:else}
-				<StagePrimitiveGhost ghost={{ ...ghost, shape: ghost.shape }} />
+				<StagePrimitiveGhost metersPerCssPixel={evaluation?.targetPlaneMetersPerCssPixel ?? 0.01} ghost={{ ...ghost, shape: ghost.shape }} />
 			{/if}
 		{/each}
 	{/if}

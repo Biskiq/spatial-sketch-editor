@@ -1,5 +1,11 @@
 /**
- * R217.S08 — the Card's object writer.
+ * R217.S08 — the Card's object writer, for every Scene object.
+ *
+ * A catalogue model, a primitive and a drawn native form share this one
+ * controller. Sizing is the only field set that differs by kind: a uniform
+ * `size` for a model or primitive, per-axis `width`/`height`/`depth` for a form
+ * (written through `set-form-size`). Save to My Objects is form-only because
+ * only a form has an authored shape to save.
  *
  * The Arrange instrument's exact fields move here, where PLATE puts ordinary
  * dimensions. Every field calls the same `planSceneObjectMark` dispatch its mark
@@ -13,7 +19,7 @@
 import type { AuthoringIntent } from '@portfolio/project-model';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
-import type { SceneOperationContext } from '@portfolio/project-model/scene-planning';
+import { sceneEntityLift, type SceneOperationContext } from '@portfolio/project-model/scene-planning';
 
 import { acceptFormCommand } from './form-card-command';
 import {
@@ -28,6 +34,25 @@ import {
 	type SceneObjectCardFieldId
 } from './object-marks';
 import { localContactMinY, sceneEntityReference, sceneModelContactMinY } from './placement';
+import { formSizeMeasurement, previewFormSize } from './shape/form-size';
+import type { FormLibraryClient } from './library/client';
+
+const FORM_SIZE_AXIS = { width: 0, height: 1, depth: 2 } as const;
+
+/** The full per-axis scale a typed form dimension names, or `null` if unmeasurable. */
+function formScaleFor(
+	entity: ReturnType<typeof stageScene>['entities'][number],
+	id: SceneObjectCardFieldId,
+	value: number
+): [number, number, number] | null {
+	if (entity.kind !== 'form' || !(id === 'width' || id === 'height' || id === 'depth')) return null;
+	const axis = FORM_SIZE_AXIS[id];
+	const handle = formSizeMeasurement(entity).handles.find((entry) => entry.axis === axis);
+	if (handle === undefined || !(handle.dimension > 0)) return null;
+	const scale: [number, number, number] = [entity.form.scale[0], entity.form.scale[1], entity.form.scale[2]];
+	scale[axis] = (value / handle.dimension) * entity.form.scale[axis];
+	return scale;
+}
 
 export type SceneObjectCardWrite =
 	| { readonly kind: 'accepted' | 'no-op' }
@@ -89,10 +114,17 @@ export function sceneObjectCardController(
 		};
 	}
 
+	/** The accepted lift, or `null` where no support lies beneath (Elevation withheld). */
+	function liftOf(live: ReturnType<typeof liveEntity>): number | null {
+		const contactMinY = contactOf(live);
+		if (live === null || contactMinY === null) return null;
+		return sceneEntityLift(contextOf(), live, contactMinY)?.lift ?? null;
+	}
+
 	function acceptedText(id: SceneObjectCardFieldId): string {
 		const live = liveEntity();
 		if (live === null) return '';
-		return sceneObjectCardFields(live).find((field) => field.id === id)?.text ?? '';
+		return sceneObjectCardFields(live, liftOf(live)).find((field) => field.id === id)?.text ?? '';
 	}
 
 	/** The planner's refusal for the current draft, or `null`. */
@@ -111,6 +143,23 @@ export function sceneObjectCardController(
 		const contactMinY = contactOf(live);
 		if (contactMinY === null) {
 			return 'The entity has no verified floor contact for this operation.';
+		}
+		if (id === 'elevation') {
+			const result = planSceneObjectMark({
+				markId: SCENE_OBJECT_MARK.lift,
+				context: contextOf(),
+				entityId,
+				contactMinY,
+				lift: value
+			});
+			return result.kind === 'rejected' ? result.message : null;
+		}
+		if (id === 'width' || id === 'height' || id === 'depth') {
+			if (!(value > 0)) return 'Dimensions must be positive.';
+			const scale = formScaleFor(live, id, value);
+			if (scale === null) return 'The form body could not be measured.';
+			const result = previewFormSize({ context: contextOf(), entityId, scale });
+			return 'refusal' in result ? result.refusal : null;
 		}
 		if (id === 'size') {
 			const result = planSceneObjectMark({
@@ -152,6 +201,12 @@ export function sceneObjectCardController(
 				}
 			};
 		}
+		if (id === 'elevation') {
+			return { kind: 'set-lift', payload: { entityId, lift: value, contactMinY } };
+		}
+		if (id === 'width' || id === 'height' || id === 'depth') {
+			return { kind: 'set-form-size', payload: { entityId, scale: formScaleFor(live, id, value) ?? [...(live.kind === 'form' ? live.form.scale : [1, 1, 1])] } };
+		}
 		if (id === 'size') {
 			return {
 				kind: 'resize-on-floor',
@@ -175,7 +230,7 @@ export function sceneObjectCardController(
 		fields() {
 			const live = liveEntity();
 			if (live === null) return [];
-			return sceneObjectCardFields(live).map((field) => {
+			return sceneObjectCardFields(live, liftOf(live)).map((field) => {
 				const draft = drafts.get(field.id);
 				return draft === undefined
 					? { ...field, error: null }
@@ -319,6 +374,24 @@ export function sceneObjectCardAcceptedText(
 	return isSceneObjectEntity(entity)
 		? sceneObjectCardFields(entity).find((field) => field.id === id)?.text ?? ''
 		: '';
+}
+
+/**
+ * Save a form's **live accepted** source to My Objects, re-read by id so an
+ * accepted edit since the Card opened cannot be saved stale. Save is not an
+ * edit: no history entry, no dirty project. The library chunk loads here.
+ */
+export async function saveSceneObjectToMyObjects(
+	services: StageAdapterServices,
+	entityId: string,
+	client?: FormLibraryClient
+): Promise<{ readonly kind: string; readonly message?: string }> {
+	const latest = stageScene(services.stage.snapshot()).entities.find((entry) => entry.id === entityId);
+	if (latest?.kind !== 'form') {
+		return { kind: 'refused', message: 'That form is no longer accepted; nothing was saved.' };
+	}
+	const { saveFormToMyObjects } = await import('./library/save');
+	return saveFormToMyObjects(latest, client === undefined ? {} : { client });
 }
 
 /** Re-exported so a component and its tests name the same scale rule. */

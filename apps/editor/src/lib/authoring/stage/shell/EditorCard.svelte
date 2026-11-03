@@ -1,32 +1,36 @@
 <script lang="ts">
 	/**
-	 * PLATE contextual **Card** — canonical selection identity, and nothing else.
-	 *
-	 * The Card represents the selected subject, never the current tool, host,
-	 * inspection or task focus. Its identity header is persistent (it survives the
-	 * Card being compressed), owner/source/reach facts describe the same target, and
-	 * raw canonical IDs stay behind Technical details.
-	 *
-	 * It is an **overlay** on the Stage's lower edge: absolutely positioned, so
-	 * opening and closing it never reflows or implicitly reframes the Stage. At
-	 * rest — no canonical selection — it renders nothing at all; there is no empty
-	 * Card.
-	 *
-	 * Round 2 D9 makes it the one writer for the selected subject's **ordinary
-	 * fields**, and the one home for the actions its owning adapter scopes to it. It
-	 * renders published records: the adapter owns the controller and the intent, the
-	 * Card owns placement, confirmation and the words the creator reads.
-	 *
-	 * R217.S21 — each fact appears once. The header carries the name and the kind, a
-	 * contributed writer carries the fields it edits, and a fact whose field is held by
-	 * one of those is not repeated. Only `destructive: true` is destructive; a
-	 * `secondary` action moves into More.
+	 * Compact identity and one contributed writer. More expands the Card in place
+	 * (secondary dimensions and relations); `•••` holds the subject's functions.
 	 */
-	import { untrack } from 'svelte';
-	import type { StageCardActionRecord, StageCardFact, StageCardWriterRecord } from '../stage-facade';
+	import { untrack, tick, type Snippet } from 'svelte';
+	import ShellIcon from './ShellIcon.svelte';
+	import type {
+		StageCardActionRecord,
+		StageCardFact,
+		StageCardWriterRecord
+	} from '../stage-facade';
 
 	/** Fields the identity header itself shows; a fact for one of them is not repeated. */
 	const HEADER_FIELD_IDS: ReadonlySet<string> = new Set(['name', 'kind']);
+
+	/**
+	 * Review pass 2 §4: `•••` holds the subject's *functions*. The ones not built
+	 * yet are shown, disabled, with a quiet `Soon`, so the menu already reads as
+	 * what it will become; Erase (the contributed destructive action) is last.
+	 */
+	const FUNCTIONS: Readonly<Record<'wall' | 'room' | 'opening' | 'object', readonly string[]>> = {
+		wall: ['Face this wall', 'Unroll the room', 'Section through here', 'Paint…', 'Present this in Experience'],
+		room: ['Unroll the room', 'Section through here', 'Paint floor…', 'Present this in Experience'],
+		opening: ['Face this opening', 'Section through here', 'Present this in Experience'],
+		object: ['Face this', 'Section through here', 'Paint…', 'Present this in Experience']
+	};
+	function functionKind(kind: string): keyof typeof FUNCTIONS {
+		const word = kind.toLowerCase();
+		return word === 'wall' || word === 'room' || word === 'opening' ? word : 'object';
+	}
+	/** More stays open per subject kind for the session, as the plan asks. */
+	const moreByKind = new Map<string, boolean>();
 
 	let {
 		identity,
@@ -34,14 +38,10 @@
 		nameWriter = null,
 		writer = null,
 		actions = [],
-		technicalFacts = [],
-		collapsed = false,
-		onToggleCollapsed = () => {},
 		onClose,
-		onFocusTask,
-		onOpenTask,
 		onBringIntoView,
-		gesturing = false
+		gesturing = false,
+		renameRequest = 0
 	}: {
 		identity: {
 			sourceId: string;
@@ -68,19 +68,10 @@
 		/** The subject's scoped contributed actions (a delete and its disclosure). */
 		actions?: readonly StageCardActionRecord[];
 		/**
-		 * Diagnostics about how the selection is drawn (Stream, Eligible, Revealed). They
-		 * belong to Technical details, not to the ordinary Card.
-		 */
-		technicalFacts?: readonly StageCardFact[];
-		/**
 		 * PLATE arbitration: at constrained width the Card collapses to identity with
 		 * explicit expansion, so it never covers the task's lower column.
 		 */
-		collapsed?: boolean;
-		onToggleCollapsed?: () => void;
 		onClose: () => void;
-		onFocusTask: () => void;
-		onOpenTask: () => void;
 		onBringIntoView: () => void;
 		/**
 		 * R217.S22 (D36): a live authored gesture on the Stage. The Card fades and takes no
@@ -88,6 +79,8 @@
 		 * lease changes this; the Card's position, fold and facts do not.
 		 */
 		gesturing?: boolean;
+		/** Each increment opens the inline name editor (an Index row double-click). */
+		renameRequest?: number;
 	} = $props();
 
 	/** The facts the Card shows: never one the header or the writer already carries. */
@@ -99,16 +92,45 @@
 		});
 	});
 
-	/** Contributed actions in the row: everything that is not `secondary`. */
-	const primaryActions = $derived(actions.filter((action) => action.group !== 'secondary'));
-	/** Contributed actions in More. */
-	const secondaryActions = $derived(actions.filter((action) => action.group === 'secondary'));
-
 	/**
 	 * The Card's one writable fact is the subject's name, and it is delegated: the
 	 * input sends text to the adapter's canonical name planner, never to the source.
 	 * Enter commits, Esc resets, blur never commits.
 	 */
+	let renaming = $state(false);
+	let detailOpen = $state(false);
+	let moreOpen = $state(false);
+	let actionTrigger = $state<HTMLButtonElement>();
+	let panel = $state<HTMLDivElement>();
+	let titleButton = $state<HTMLButtonElement>();
+	let nameInput = $state<HTMLInputElement>();
+	const identityKey = $derived(identity?.sourceId ?? null);
+	$effect(() => {
+		void identityKey;
+		renaming = false;
+		detailOpen = false;
+		nameError = null;
+		moreOpen = untrack(() => (identity === null ? false : moreByKind.get(identity.kind) ?? false));
+	});
+	// Declared after the subject reset, so a request arriving with a new
+	// selection is honoured after that reset rather than cleared by it.
+	$effect(() => {
+		if (renameRequest === 0) return;
+		untrack(() => {
+			if (nameWriter !== null) startRename();
+		});
+	});
+	function toggleMore(): void {
+		moreOpen = !moreOpen;
+		if (identity !== null) moreByKind.set(identity.kind, moreOpen);
+	}
+	/**
+	 * The Card's own read-only rows in More: what the writer does not already show.
+	 * The level Datum is a level fact, not a relation of this subject.
+	 */
+	const relationFacts = $derived(
+		ordinaryFacts.filter((fact) => !fact.label.toLowerCase().includes('area') && fact.label !== 'Datum')
+	);
 	let nameDraft = $state('');
 	let nameError = $state<string | null>(null);
 	let nameBusy = $state(false);
@@ -165,7 +187,10 @@
 		actionMessage = null;
 		try {
 			const outcome = await action.run();
-			if (outcome.message !== undefined && outcome.kind !== 'accepted') actionMessage = outcome.message;
+			if (outcome.message !== undefined && outcome.kind !== 'accepted')
+				actionMessage = outcome.message;
+		} catch {
+			actionMessage = 'The action could not be completed. Try again.';
 		} finally {
 			actionBusy = false;
 		}
@@ -181,336 +206,270 @@
 		if (nameWriter === null || nameBusy) return;
 		const name = nameDraft.trim();
 		if (name.length === 0) {
-			nameError = 'Enter a name; an empty name is not a rename.';
+			nameError = 'Enter a name.';
 			return;
 		}
 		nameBusy = true;
 		nameError = null;
+		const target = identityKey;
+		const currentWriter = nameWriter;
 		try {
-			const outcome = await nameWriter.commit(name);
+			const outcome = await currentWriter.commit(name);
+			if (target !== identityKey) return;
 			if (outcome.kind !== 'accepted') {
 				nameError = outcome.message ?? 'The name was not accepted.';
 				return;
 			}
 			nameDraft = name;
+			renaming = false;
+			await tick();
+			titleButton?.focus();
+		} catch {
+			if (target === identityKey) nameError = 'The name could not be saved. Try again.';
 		} finally {
 			// A throwing writer ends the attempt too; leaving `nameBusy` true would
 			// disable the rename affordance for the rest of the selection.
 			nameBusy = false;
+			await tick();
+			if (target === identityKey && renaming) nameInput?.focus();
 		}
+	}
+
+	function closePanel(): void {
+		detailOpen = false;
+		confirming = null;
+		actionMessage = null;
+		actionTrigger?.focus();
+	}
+	function onOutside(event: PointerEvent): void {
+		if (!detailOpen || !(event.target instanceof Node)) return;
+		if (panel?.contains(event.target) || actionTrigger?.contains(event.target)) return;
+		closePanel();
+	}
+	function startRename(): void {
+		if (!nameWriter || nameBusy) return;
+		nameDraft = nameWriter.value;
+		nameError = null;
+		renaming = true;
+	}
+	function cancelRename(): void {
+		renaming = false;
+		nameDraft = nameWriter?.value ?? '';
+		nameError = null;
+	}
+	function focusName(input: HTMLInputElement) {
+		input.focus();
+		input.select();
 	}
 </script>
 
+<svelte:window onpointerdowncapture={onOutside} />
+
+{#snippet footer()}
+	<div class="footer">
+		<button type="button" aria-label="Bring into view" title="Bring into view" onclick={onBringIntoView}><ShellIcon name="fit" size={15} /></button>
+		<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={toggleMore}
+			>More <span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
+	</div>
+{/snippet}
+
+{#snippet more(content?: Snippet)}
+	{#if moreOpen}
+		<section class="more-section" aria-label="More details" data-card-more-section>
+			{#if content}<div class="more-dims">{@render content()}</div>{/if}
+			{#if relationFacts.length > 0}
+				<h3>Relations</h3>
+				<dl class="facts">
+					{#each relationFacts as fact (fact.label)}<dt>{fact.label}</dt><dd>{fact.value}</dd>{/each}
+				</dl>
+			{/if}
+		</section>
+	{/if}
+{/snippet}
+
+{#snippet secondary(content?: Snippet)}
+	{#if detailOpen}
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div class="subject-actions" bind:this={panel} data-card-actions role="group" aria-label="Subject actions"
+			onkeydown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closePanel(); } }}>
+			{#if identity}
+				{#each FUNCTIONS[functionKind(identity.kind)] as name (name)}
+					<button type="button" class="soon" disabled title="Coming soon" data-card-function={name}>{name}<span class="soon-cue">Soon</span></button>
+				{/each}
+			{/if}
+			{#if content}{@render content()}{/if}
+			{#each actions.filter((action) => action.destructive !== true) as action (`${action.adapterId}:${action.id}`)}
+				<button type="button" data-card-action={action.id} disabled={actionBusy} onclick={() => void runAction(action)}>{action.label}</button>
+			{/each}
+			{#if actions.some((action) => action.destructive === true)}<hr />{/if}
+			{#each actions.filter((action) => action.destructive === true) as action (`${action.adapterId}:${action.id}`)}
+				<button type="button" class="destructive" data-card-action={action.id} aria-label={action.label}
+					disabled={actionBusy} onclick={() => void runAction(action)}>
+					{confirming === confirmationKeyOf(action) ? 'Confirm erase' : 'Erase'}
+				</button>
+			{/each}
+			{#if confirming !== null}<button type="button" onclick={() => { confirming = null; actionMessage = null; }}>Cancel</button>{/if}
+			{#if actionMessage}<p class="error" role="alert">{actionMessage}</p>{/if}
+		</div>
+	{/if}
+{/snippet}
 {#if identity}
-	<aside class="card" class:gesturing aria-label="Selected subject" data-source-id={identity.sourceId} data-card-gesturing={gesturing ? 'true' : 'false'}>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
+	<aside
+		class="card"
+		class:gesturing
+		aria-label="Selected subject"
+		onkeydown={event => {
+			if (event.key !== 'Escape' || event.defaultPrevented) return;
+			if (detailOpen) { event.preventDefault(); event.stopPropagation(); closePanel(); }
+			// Escape collapses More before it is left to the shell to close the Card.
+			else if (moreOpen) { event.preventDefault(); event.stopPropagation(); toggleMore(); }
+		}}
+		onpointerdown={event => event.stopPropagation()}
+		onclick={event => event.stopPropagation()}
+		data-source-id={identity.sourceId}
+		data-card-gesturing={gesturing ? 'true' : 'false'}
+	>
 		<header class="card-head">
-			<div class="identity">
-				<div class="title-row">
-					<p class="eyebrow">
-						<span class="kind">{identity.kind}</span>
-						<span class="dot" aria-hidden="true">·</span>
-						<span class="status">{identity.status}</span>
-					</p>
-					<div class="head-actions">
-						<button
-							type="button"
-							class="icon"
-							aria-expanded={!collapsed}
-							onclick={onToggleCollapsed}
-						>{collapsed ? 'Expand' : 'Collapse'}</button>
-						<button type="button" class="icon" onclick={onClose} aria-label="Close selection card">✕</button>
-					</div>
-				</div>
-				<!-- The full name stays available even when the header ellipsizes. -->
-				<h2 class="name" title={identity.label}>{identity.label}</h2>
-				{#if nameWriter && !collapsed}
-					<form
-						class="rename"
-						onsubmit={(event) => {
-							event.preventDefault();
-							void commitName();
-						}}
-					>
-						<input
-							aria-label="Name"
-							type="text"
-							value={nameDraft}
-							disabled={nameBusy}
-							oninput={(event) => {
-								nameDraft = event.currentTarget.value;
-								nameError = null;
-							}}
-							onkeydown={(event) => {
-								if (event.key === 'Escape') {
-									event.preventDefault();
-									nameDraft = nameWriter.value;
-									nameError = null;
-								}
-							}}
-						/>
-						<button type="submit" class="action" disabled={nameBusy}>Rename</button>
-					</form>
-					{#if nameError !== null}
-						<p class="error" role="alert">{nameError}</p>
-					{/if}
-				{/if}
+			<span class="kind">{identity.kind}</span>
+			<div class="head-actions">
+				<button
+					type="button"
+					aria-label="Subject actions"
+					bind:this={actionTrigger}
+					aria-expanded={detailOpen}
+					onclick={() => { if (detailOpen) closePanel(); else detailOpen = true; }}><ShellIcon name="more" size={15} /></button
+				>
+				<button type="button" aria-label="Close selection card" onclick={onClose}
+					><ShellIcon name="close" size={15} /></button
+				>
 			</div>
 		</header>
-
-		{#if !collapsed && writer?.view}
-			<div class="writer" data-card-writer={writer.summary}>
-				<writer.view.component services={writer.view.services} />
-			</div>
-		{/if}
-
-		{#if !collapsed}
-			{#if primaryActions.length > 0}
-				<div class="card-actions" data-card-actions>
-					<!-- The action id is unique per adapter, not across them. -->
-					{#each primaryActions as action (`${action.adapterId}:${action.id}`)}
-						<button
-							type="button"
-							class="action"
-							class:destructive={action.destructive === true}
-							data-card-action={action.id}
-							disabled={actionBusy}
-							onclick={() => void runAction(action)}
-						>
-							{confirming === confirmationKeyOf(action) ? `Confirm ${action.label}` : action.label}
-						</button>
-					{/each}
-					{#if actionMessage !== null}
-						<p class="error" role="alert">{actionMessage}</p>
-					{/if}
-					{#if confirming !== null}
-						<button type="button" class="action" onclick={() => (confirming = null)}>Cancel</button>
-					{/if}
-				</div>
-			{/if}
-
-			{#if ordinaryFacts.length > 0}
-				<dl class="facts">
-					{#each ordinaryFacts as fact (fact.label)}
-						<dt>{fact.label}</dt>
-						<dd>{fact.value}</dd>
-					{/each}
-				</dl>
+		<h2 class="name" title={identity.label}>
+			{#if renaming && nameWriter}
+				<input class="rename-input" aria-label="Name" bind:this={nameInput} use:focusName value={nameDraft} disabled={nameBusy}
+					oninput={event => nameDraft = event.currentTarget.value}
+					onblur={() => { if (!nameBusy) cancelRename(); }}
+					onkeydown={event => {
+						if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void commitName(); }
+						if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelRename(); void tick().then(() => titleButton?.focus()); }
+					}} />
 			{:else}
-				<p class="quiet">No further facts.</p>
+				<button type="button" bind:this={titleButton} aria-label={nameWriter ? `Rename ${identity.label}` : identity.label}
+					ondblclick={startRename}
+					onpointerup={event => { if (event.pointerType === 'touch') startRename(); }}
+					onkeydown={event => { if (event.key === 'Enter' || event.key === 'F2') { event.preventDefault(); startRename(); } }}>{identity.label}</button>
 			{/if}
-
-			<div class="actions">
-				<!-- Bring into view is a Camera/navigation request: quieter than the task actions. -->
-				<button type="button" class="action navigate" onclick={onBringIntoView}>Bring into view</button>
-				<details class="more" data-card-more>
-					<summary>More</summary>
-					<div class="more-body">
-						<!-- Three separate operations: Focus deepens task context, Open task invokes
-						     specialist work; a contributed secondary action sits beside them. -->
-						{#each secondaryActions as action (`${action.adapterId}:${action.id}`)}
-							<button
-								type="button"
-								class="action"
-								class:destructive={action.destructive === true}
-								data-card-action={action.id}
-								disabled={actionBusy}
-								onclick={() => void runAction(action)}
-							>
-								{confirming === confirmationKeyOf(action) ? `Confirm ${action.label}` : action.label}
-							</button>
-						{/each}
-						<button type="button" class="action" onclick={onFocusTask}>Focus</button>
-						<button type="button" class="action" onclick={onOpenTask}>Open task</button>
-					</div>
-				</details>
+		</h2>
+		{#if nameError}<p class="error" role="alert">{nameError}</p>{/if}
+		{#if writer?.view}
+			<div class="writer" data-card-writer={writer.summary}>
+				<writer.view.component services={writer.view.services} detailOpen={moreOpen} {footer} {secondary} {more} />
 			</div>
-
-			<details class="technical">
-				<summary>Technical details</summary>
-				<dl class="facts mono">
-					<dt>Canonical ID</dt>
-					<dd>{identity.sourceId}</dd>
-					{#each technicalFacts as fact (fact.label)}
-						<dt>{fact.label}</dt>
-						<dd>{fact.value}</dd>
-					{/each}
-				</dl>
-			</details>
+		{:else}
+			{#if ordinaryFacts.length > 0}<dl class="facts">
+					{#each ordinaryFacts.filter((fact) => fact.label
+							.toLowerCase()
+							.includes('area')) as fact (fact.label)}<dt>{fact.label}</dt>
+						<dd>{fact.value}</dd>{/each}
+				</dl>{/if}
+			{@render footer()}
+			{@render more()}
+			{@render secondary()}
 		{/if}
+
 	</aside>
 {/if}
 
 <style>
-	/*
-	 * PLATE shell roles (shell-roles.css). The Card is a white working surface at the
-	 * role's width, with forest ink. Destructive and refusal words keep their existing
-	 * values: no shell role names them yet.
-	 */
-	/*
-	 * R217.S22: the lanes are measured by the route and published on the Stage frame. The
-	 * Card clears the Height Sheet lane (measured width plus 1.5 rem) and sits above the zoom
-	 * cluster, which is itself above the lower column. It never overlaps those lanes, and a
-	 * layout change never moves the Camera.
-	 */
 	.card {
 		position: absolute;
-		inset-inline-end: calc(var(--sheet-lane-right, 0px) + 1.5rem);
-		bottom: calc(var(--lower-column-height, 0px) + var(--zoom-lane-height, 0px) + 1.5rem);
+		top: 10px;
+		right: calc(var(--sheet-lane-right, 40px) + 18px);
 		z-index: 12;
-		width: min(var(--shell-card-width, 288px), calc(100% - 2rem));
-		max-height: calc(100% - var(--lower-column-height, 0px) - var(--zoom-lane-height, 0px) - 2.5rem);
-		overflow: auto;
-		transition: opacity 140ms ease;
-		box-sizing: border-box;
-		padding: 0.75rem 0.85rem 0.7rem;
-		border: 1px solid var(--shell-paper, #e9ebe6);
-		border-radius: 0.65rem;
-		background: var(--shell-card, #ffffff);
-		color: var(--shell-forest, #11291f);
-		box-shadow: 0 0.9rem 2rem rgb(17 41 31 / 18%);
-		font-family: var(--shell-sans, Inter, ui-sans-serif, system-ui, sans-serif);
-		font-size: var(--shell-text-body, 13px);
-		line-height: 1.4;
+		width: var(--shell-card-width, 288px);
+		max-width: calc(100% - 76px);
+		max-height: calc(100% - var(--lower-column-height, 50px) - 30px);
+		overflow: visible;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 12px;
+		background: #fff;
+		color: var(--shell-ink, #1b201c);
+		box-shadow: var(--shell-shadow);
+		font: 13px/1.35 var(--shell-sans, system-ui);
+		transition: opacity 140ms;
 	}
 
 	.card-head {
 		display: flex;
-		align-items: flex-start;
-		gap: 0.6rem;
-	}
-
-	.identity {
-		flex: 1 1 auto;
-		min-width: 0;
-	}
-
-	/* The eyebrow and the header controls share one line; the name and rename take the full width. */
-	.title-row {
-		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.4rem;
-		min-width: 0;
+		padding: 7px 6px 0 12px;
 	}
-
-	.eyebrow {
+	.kind {
+		color: var(--shell-ink-2, #4a524c);
+		font-size: 11px;
+	}
+	.head-actions {
 		display: flex;
+	}
+	button {
+		display: inline-flex;
+		justify-content: center;
 		align-items: center;
-		gap: 0.35rem;
-		min-width: 0;
-		margin: 0 0 0.2rem;
-		white-space: nowrap;
-		color: var(--shell-forest-raised, #22503c);
-		font-size: var(--shell-text-utility, 12px);
-		font-weight: 700;
-		letter-spacing: 0.09em;
-		text-transform: uppercase;
-	}
-
-	.eyebrow .kind {
-		flex: none;
-	}
-
-	.eyebrow .status {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.name {
-		margin: 0;
-		overflow: hidden;
-		color: var(--shell-forest, #11291f);
-		font-family: var(--shell-serif, 'Iowan Old Style', Palatino, Georgia, serif);
-		font-size: var(--shell-text-identity, 15px);
-		font-weight: 650;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-	}
-
-	.rename {
-		display: flex;
-		gap: 0.35rem;
-		margin-top: 0.35rem;
-	}
-
-	.rename input {
-		min-width: 0;
-		flex: 1;
-		min-height: var(--shell-control-height, 32px);
-		padding: 0 0.45rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.45rem;
-		background: var(--shell-index, #f5f6f4);
-		color: inherit;
-		font: inherit;
-	}
-
-	.error {
-		margin: 0.3rem 0 0;
-		color: #a33b24;
-		font-size: var(--shell-text-utility, 12px);
-	}
-
-	/* The Collapse control is text and the close control is an icon: both keep the control height. */
-	.icon {
-		flex: none;
-		min-width: var(--shell-control-height, 32px);
-		height: var(--shell-control-height, 32px);
-		padding: 0 0.4rem;
-		border: 1px solid transparent;
-		border-radius: 0.5rem;
+		gap: 4px;
+		min-height: 24px;
+		padding: 0 7px;
+		border: 0;
+		border-radius: 6px;
 		background: transparent;
-		color: var(--shell-forest-raised, #22503c);
+		color: inherit;
 		font: inherit;
 		cursor: pointer;
 	}
-
-	.icon:hover {
-		border-color: var(--shell-paper, #e9ebe6);
-		color: var(--shell-forest, #11291f);
+	button:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.head-actions button,
+	.footer button:not(.more) {
+		width: 24px;
+		padding: 0;
 	}
 
-	.head-actions {
+	.name {
+		margin: 0 12px 6px;
+		font: 400 19px/1.2 var(--shell-serif, Georgia);
+	}
+	.name button {
+		display: block;
+		max-width: 100%;
+		padding: 0;
+		font: inherit;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		text-align: left;
+	}
+	.footer {
 		display: flex;
-		flex: none;
 		align-items: center;
-		gap: 0.2rem;
-	}
-
-	.writer {
-		margin-top: 0.2rem;
-	}
-
-	.card-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
-		margin-top: 0.6rem;
-	}
-
-	/* Only a destructive action is styled destructively. */
-	.action.destructive {
-		border-color: #d8b7ab;
-		color: #8f3a22;
-	}
-
-	.icon:focus-visible,
-	.action:focus-visible,
-	summary:focus-visible {
-		outline: 2px solid var(--shell-forest-raised, #22503c);
-		outline-offset: 2px;
+		justify-content: space-between;
+		gap: 4px;
+		padding: 4px 8px 8px 10px;
+		border-top: 1px solid var(--shell-hairline, #e1e4de);
 	}
 
 	.facts {
 		display: grid;
-		grid-template-columns: minmax(5.5rem, auto) 1fr;
-		gap: 0.15rem 0.7rem;
-		margin: 0.6rem 0 0;
+		grid-template-columns: auto 1fr;
+		gap: 3px 8px;
+		margin: 0;
+		padding: 8px 12px;
+		font-size: 12px;
 	}
 
 	dt {
-		color: var(--shell-forest-raised, #22503c);
+		color: var(--shell-ink-2, #4a524c);
 	}
 
 	dd {
@@ -518,106 +477,67 @@
 		overflow-wrap: anywhere;
 	}
 
-	.mono {
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: var(--shell-text-utility, 12px);
-		word-break: break-all;
-	}
-
-	.quiet {
-		margin: 0.6rem 0 0;
-		color: var(--shell-forest-raised, #22503c);
-	}
-
-	.actions {
+	.subject-actions {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: flex-start;
-		gap: 0.4rem;
-		margin-top: 0.7rem;
+		gap: 4px;
+		padding: 8px 12px;
+		background: var(--shell-index, #f6f7f5);
 	}
-
-	.action {
-		min-height: var(--shell-control-height, 32px);
-		padding: 0 0.6rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
-		border-radius: 0.45rem;
-		background: var(--shell-index, #f5f6f4);
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
+	.error {
+		color: var(--shell-refuse, #7e2718);
+		font-size: 12px;
+		padding: 0 12px;
 	}
-
-	.action:hover {
-		background: var(--shell-paper, #e9ebe6);
+	.destructive {
+		color: var(--shell-refuse, #7e2718);
 	}
-
-	/* Bring into view is navigation, not an edit: quieter than the task actions. */
-	.navigate {
-		background: transparent;
-	}
-
-	.more {
-		position: relative;
-	}
-
-	.more summary {
-		min-height: var(--shell-control-height, 32px);
-		display: inline-flex;
-		align-items: center;
-		padding: 0 0.6rem;
-		border: 1px solid var(--shell-paper, #e9ebe6);
-		border-radius: 0.45rem;
-		color: var(--shell-forest-raised, #22503c);
-		font-size: var(--shell-text-utility, 12px);
-		cursor: pointer;
-		list-style: none;
-	}
-
-	.more summary::-webkit-details-marker {
-		display: none;
-	}
-
-	.more-body {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.4rem;
-		margin-top: 0.4rem;
-	}
-
-	.technical {
-		margin-top: 0.6rem;
-		border-top: 1px solid var(--shell-paper, #e9ebe6);
-		padding-top: 0.45rem;
-	}
-
-	summary {
-		color: var(--shell-forest-raised, #22503c);
-		cursor: pointer;
-		font-size: var(--shell-text-utility, 12px);
-	}
-
-	/*
-	 * A live authored gesture: the Card fades and takes no pointer events, so the subject
-	 * under it can be edited. It returns on release, at the same place it was.
-	 */
 	.card.gesturing {
 		opacity: 0.2;
 		pointer-events: none;
 	}
-
-	/*
-	 * Coarse pointer: every control the Card draws reaches the touch target (44 × 44 CSS
-	 * px). The fine-pointer density above (32 px) is unchanged. The host also sets this
-	 * floor on descendants; the Card states it for its own controls.
-	 */
-	@media (pointer: coarse) {
-		.icon,
-		.action,
-		.rename input,
-		summary {
-			min-width: var(--shell-touch-target, 44px);
-			min-height: var(--shell-touch-target, 44px);
+	@media (max-width: 860px) {
+		.card {
+			width: 252px;
 		}
 	}
+	@media (pointer: coarse) {
+		button,
+		.head-actions button,
+		.footer button,
+		.rename-input {
+			min-width: 44px;
+			min-height: 44px;
+		}
+	}
+
+	.subject-actions {
+		position: absolute;
+		top: 34px;
+		right: 6px;
+		z-index: 30;
+		width: min(264px, calc(100vw - 100px));
+		max-height: calc(100dvh - 160px);
+		overflow: auto;
+		display: grid;
+		gap: 4px;
+		padding: 8px;
+		border: 1px solid var(--shell-hairline);
+		border-radius: 10px;
+		background: var(--shell-card, white);
+		box-shadow: var(--shell-shadow);
+	}
+	.subject-actions button { justify-content: flex-start; min-height: 30px; }
+	.subject-actions hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--shell-hairline, #e1e4de); }
+	.soon { justify-content: space-between !important; color: var(--shell-ink-2, #4a524c); cursor: default; }
+	.soon:hover { background: transparent; }
+	.soon-cue { margin-left: auto; padding: 0 5px; border-radius: 4px; background: var(--shell-index, #f6f7f5); font-size: 10px; letter-spacing: .02em; }
+	.footer .more { gap: 3px; font-size: 12px; color: var(--shell-ink-2, #4a524c); }
+	.chev { display: inline-block; transition: transform 120ms; }
+	.chev.open { transform: rotate(180deg); }
+	.more-section { padding: 6px 0 4px; border-top: 1px solid var(--shell-hairline, #e1e4de); }
+	.more-section h3 { margin: 4px 12px 0; font: 600 10.5px/1.2 var(--shell-sans, system-ui); color: var(--shell-ink-2, #4a524c); letter-spacing: .03em; text-transform: uppercase; }
+	.more-section .facts { padding-top: 4px; }
+	.rename-input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; color: inherit; border: 1px solid var(--shell-hairline-strong); border-radius: 5px; padding: 3px 5px; }
+	@media (pointer: coarse) { .subject-actions button, .rename-input { min-height: 44px; } }
 </style>
