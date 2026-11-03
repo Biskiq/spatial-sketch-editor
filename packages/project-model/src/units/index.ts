@@ -22,6 +22,7 @@ export * from './source';
 export * from './canonical';
 export * from './envelope';
 export * from './runtime';
+export * from './camera-connectivity';
 export * from './validate';
 export * from './acceptance-staging';
 export * from './planning';

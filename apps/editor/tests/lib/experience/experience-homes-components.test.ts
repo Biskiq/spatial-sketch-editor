@@ -33,6 +33,10 @@ import {
 } from '$lib/authoring/experience/experience-model';
 import { EYE_HEIGHT_STEPS, LENS_STEPS } from '$lib/authoring/experience/look-through';
 import type {
+	ExperiencePathOccurrence,
+	ExperiencePathRead
+} from '$lib/authoring/experience/experience-paths';
+import type {
 	CameraView,
 	Experience,
 	ExperienceGuide as GuideRecord,
@@ -132,6 +136,8 @@ type ControllerOptions = {
 	guidedViews?: ExperienceStop['views'];
 	selectedViewId?: string;
 	selectedPresentationId?: string;
+	selectedPath?: ExperiencePathRead | null;
+	pathOccurrence?: ExperiencePathOccurrence | null;
 };
 
 function fakeController(options: ControllerOptions = {}) {
@@ -161,6 +167,20 @@ function fakeController(options: ControllerOptions = {}) {
 		filteredPresentations: PRESENTATIONS,
 		message: '',
 		busy: options.busy ?? false,
+		pathOccurrence: options.pathOccurrence ?? null,
+		selectedPath: options.selectedPath ?? null,
+		pathArmed: false,
+		selectedAnchorId: null,
+		pathFor: vi.fn(() => options.selectedPath ?? null),
+		selectPath: vi.fn(),
+		setPathArmed: vi.fn(),
+		selectAnchor: vi.fn(),
+		createPath: vi.fn(async () => true),
+		addPathAnchor: vi.fn(async () => true),
+		movePathAnchor: vi.fn(async () => true),
+		removePathAnchor: vi.fn(async () => true),
+		straightenPath: vi.fn(async () => true),
+		setPathDuration: vi.fn(async () => true),
 		query: '',
 		presentationLabel: (presentationId: string) =>
 			PRESENTATIONS.find((presentation) => presentation.id === presentationId)?.label ?? '',
@@ -178,6 +198,7 @@ function fakeController(options: ControllerOptions = {}) {
 		addStop: vi.fn(async (_presentationId: string, _options?: unknown) => true),
 		moveStopTo: vi.fn(async () => true),
 		moveStop: vi.fn(async () => true),
+		setStopViews: vi.fn(async () => true),
 		includeView: vi.fn(async (_stopId: string, _viewId: string) => true),
 		leaveOutView: vi.fn(async (_stopId: string, _viewId: string) => true),
 		moveGuidedViewTo: vi.fn(async (_stopId: string, _viewId: string, _index: number) => true),
@@ -556,8 +577,8 @@ describe('R217.S25 — the Transition writer is the one home of Cut and Travel (
 		const ends = [...target.querySelectorAll('.ends .end small')].map((small) => small.textContent?.trim());
 		expect(ends).toEqual(['leaves from', 'arrives at']);
 		expect(target.querySelector('.ends .end:last-child .num')?.textContent).toBe('3');
-		const path = target.querySelector('[aria-disabled="true"]')!;
-		expect(path.textContent).toContain('Comes with path editing');
+		expect(target.textContent).toContain('Add a Camera path');
+		expect(buttonNamed(target, /^Add Camera path$/).disabled).toBe(false);
 		expect(buttonNamed(target, /^Preview this move/).disabled).toBe(true);
 	});
 
@@ -735,12 +756,17 @@ describe('R217.S25 — the Experience dock (Path is the one disabled key)', () =
 		await settle();
 		expect(closed.querySelector('[data-dock-tool="path"]')).toBeNull();
 
-		const open = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), guideOpen: true });
+		const open = mountPlain(ExperienceDock, {
+			onCapture: vi.fn(),
+			onToggleGuide: vi.fn(),
+			guideOpen: true,
+			pathReason: 'Select a Travel move to edit its Camera path'
+		});
 		await settle();
 		const path = open.querySelector<HTMLButtonElement>('[data-dock-tool="path"]')!;
 		expect(path.disabled).toBe(true);
-		expect(path.title).toBe('Comes with path editing');
-		expect(reasonOf(path)).toBe('Comes with path editing');
+		expect(path.title).toBe('Select a Travel move to edit its Camera path');
+		expect(reasonOf(path)).toBe('Select a Travel move to edit its Camera path');
 	});
 
 	it('passes Capture and Guide presses to their handlers', async () => {
@@ -906,5 +932,56 @@ describe('R217.S27 guided shots and reach', () => {
 		expect(target.querySelector('#explorable-description')?.textContent).toContain('All 2 Views; opens at the Default');
 		toggle.click();
 		expect(controller.setExplorable).toHaveBeenCalledWith('piano', false);
+	});
+});
+
+describe('R217.S29 — an in-Stop Travel step shares the Transition Movement section', () => {
+	it('shows the selected step facts and re-pressing Travel only selects its occurrence', async () => {
+		const occurrence = { kind: 'step', stopId: 'stop-2', toViewId: 'piano-wide' } as const;
+		const read: ExperiencePathRead = {
+			occurrence,
+			fromViewId: 'gallery-hall',
+			toViewId: 'piano-wide',
+			transition: 'travel',
+			state: 'ready',
+			connectionId: 'connection-1',
+			direction: 'forward',
+			authoredSeconds: null,
+			seconds: 4.2,
+			lengthMeters: 3,
+			anchorCount: 1,
+			anchors: [{ id: 'anchor-1', position: [0, 1, 0] }],
+			sharedUses: [],
+			samples: [],
+			wall: null
+		};
+		const controller = fakeController({
+			selectedStopId: 'stop-2',
+			guidedViews: [{ viewId: 'gallery-hall' }, { viewId: 'piano-wide', transition: 'travel' }],
+			selectedPath: read,
+			pathOccurrence: occurrence
+		});
+		const homes = fakeHomes(controller);
+		const target = mountHome(ExperienceStopWriter, {}, homes);
+		await settle();
+
+		const movement = target.querySelector('[data-path-movement]');
+		expect(movement).not.toBeNull();
+		expect(movement?.textContent).toContain('Auto · 4.2 s');
+		expect(movement?.textContent).toContain('1 point · 3.0 m');
+		buttonNamed(movement as ParentNode, 'Longer duration').click();
+		expect(controller.setPathDuration).toHaveBeenCalledWith(5);
+		buttonNamed(movement as ParentNode, 'Straighten Camera path').click();
+		expect(controller.straightenPath).toHaveBeenCalledTimes(1);
+
+		const travel = [...target.querySelectorAll<HTMLButtonElement>('.step-kind button')].find(
+			(button) => button.textContent?.trim() === 'Travel'
+		)!;
+		expect(travel.getAttribute('aria-pressed')).toBe('true');
+		travel.click();
+		expect(controller.selectPath).toHaveBeenLastCalledWith(occurrence);
+		// A nested row press selects this step's path, never another subject or a no-op write.
+		expect(controller.setStopViews).not.toHaveBeenCalled();
+		expect(homes.select).not.toHaveBeenCalled();
 	});
 });

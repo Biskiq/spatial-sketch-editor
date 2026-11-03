@@ -16,7 +16,11 @@
  * x-paths (Camera connections) arrives with R217.S29, and x-salon's three-View Stop with
  * R217.S27; neither exists before its slice's format and planners.
  */
-import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import {
+	createEmptyWallFirstLayoutDocument,
+	planCreateWallFirstOpening,
+	planWallChain
+} from '@portfolio/layout-core';
 import type { AuthoringIntent, ScenePrimitiveEntity } from '@portfolio/project-model';
 import {
 	computeEnvelopeSourceContentId,
@@ -27,8 +31,9 @@ import {
 	type ExperienceGuidedView,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import {
+import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';	import {
+	cameraConnectionCreateIntent,
+	cameraConnectionUpdateIntent,
 	captureBindIntent,
 	capturedViewPose,
 	createExperienceIntent,
@@ -40,8 +45,8 @@ import {
 import { createUnitProject } from '../../authoring/__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../../layout/__fixtures__/layout-id-capture';
 
-export type XFixtureName = 'x-empty' | 'x-salon' | 'x-long' | 'x-dense';
-export const X_FIXTURE_NAMES: readonly XFixtureName[] = ['x-empty', 'x-salon', 'x-long', 'x-dense'];
+export type XFixtureName = 'x-empty' | 'x-salon' | 'x-long' | 'x-dense' | 'x-paths';
+export const X_FIXTURE_NAMES: readonly XFixtureName[] = ['x-empty', 'x-salon', 'x-long', 'x-dense', 'x-paths'];
 
 /** The stable identities a journey or test addresses. */
 export type XFixture = {
@@ -75,6 +80,16 @@ function world(): { layout: ReturnType<typeof createEmptyWallFirstLayoutDocument
 		levelId: base.floor.id
 	});
 	if (room.kind !== 'success') throw new Error('x-fixtures: the 6 × 4 room was refused');
+	// x-paths' wall/door variant: a real compiled Opening in the front Wall. The
+	// fixture keeps the same one-room world for every name; a path can therefore
+	// be read against a doorway without a second world builder.
+	const opening = planCreateWallFirstOpening(
+		room.document,
+		{ wallId: room.document.walls[0]!.id, kind: 'door', offset: 2.4, width: 1.2, height: 2.1 },
+		freshCapture(),
+		base.floor.id
+	);
+	if (opening.kind !== 'success') throw new Error('x-fixtures: the doorway was refused');
 	const piano: ScenePrimitiveEntity = {
 		kind: 'primitive',
 		primitive: 'box',
@@ -87,7 +102,7 @@ function world(): { layout: ReturnType<typeof createEmptyWallFirstLayoutDocument
 		position: [3, 0.5, 2],
 		rotation: [0, 0, 0]
 	};
-	return { layout: room.document, piano };
+	return { layout: opening.document, piano };
 }
 
 /** The real acceptance path: one profile, one coordinator, each intent one accepted entry. */
@@ -328,6 +343,74 @@ export async function buildXFixture(name: XFixtureName, projectId: string = `pro
 		]
 	});
 	await updateStop(a, stopIds[0]!, { continuation: { kind: 'stop', stopId: stopIds[4]!, transition: 'cut' } });
+	if (name === 'x-paths') {
+		// Stops 1 and 4 both exit at the piano's profile View and Travel to Stop 5
+		// (the corner): one direct Camera path shared by two Guided uses. Stop 4
+		// additionally travels between its two Views, the in-Stop step.
+		// Stop 2 is the walled in-Stop Travel: outside the front Wall, through the
+		// authored doorway when its one interior point is moved into the Opening.
+		await captureInto(a, window, 'x-window-path-outside', pose('Outside the wall', [1, -1], [3, 2]));
+		await captureInto(a, window, 'x-window-path-inside', pose('Inside the wall', [1, 1], [3, 2]));
+		await updateStop(a, stopIds[1]!, {
+			views: [
+				{ viewId: 'x-window-path-outside', holdSeconds: 2 },
+				{ viewId: 'x-window-path-inside', holdSeconds: 2, transition: 'travel' }
+			]
+		});
+		await updateStop(a, stopIds[0]!, {
+			views: [
+				{ viewId: 'x-piano-view-1', holdSeconds: 4 },
+				{ viewId: 'x-piano-view-2', holdSeconds: 3 }
+			],
+			continuation: { kind: 'stop', stopId: stopIds[4]!, transition: 'travel' }
+		});
+		await updateStop(a, stopIds[3]!, {
+			views: [
+				{ viewId: 'x-piano-view-1', holdSeconds: 3 },
+				{ viewId: 'x-piano-view-2', holdSeconds: 3, transition: 'travel' }
+			],
+			continuation: { kind: 'stop', stopId: stopIds[4]!, transition: 'travel' }
+		});
+		const view = (id: string) => a.now().units.camera.data.views.find((entry) => entry.id === id)!;
+		await a.accept(
+			cameraConnectionCreateIntent({
+				envelope: a.now(),
+				revision: a.revision(),
+				ids: { operation: a.op('path-shared'), connection: 'x-path-shared' },
+				fromView: view('x-piano-view-2'),
+				toView: view('x-corner-view-1')
+			})
+		);
+		await a.accept(
+			cameraConnectionCreateIntent({
+				envelope: a.now(),
+				revision: a.revision(),
+				ids: { operation: a.op('path-step'), connection: 'x-path-step' },
+				fromView: view('x-piano-view-1'),
+				toView: view('x-piano-view-2')
+			})
+		);
+		// The walled pair is its own connected component: the shared/step pair and
+		// the wall/door pair stay independent Camera paths, with no bridge edge.
+		await a.accept(
+			cameraConnectionCreateIntent({
+				envelope: a.now(),
+				revision: a.revision(),
+				ids: { operation: a.op('path-door'), connection: 'x-path-door' },
+				fromView: view('x-window-path-outside'),
+				toView: view('x-window-path-inside')
+			})
+		);
+		await a.accept(
+			cameraConnectionUpdateIntent({
+				envelope: a.now(),
+				revision: a.revision(),
+				ids: { operation: a.op('path-door-anchor') },
+				connectionId: 'x-path-door',
+				anchors: [{ id: 'x-path-door-point', position: [1, 1.5, 0] }]
+			})
+		);
+	}
 	return {
 		name,
 		project: await shareView(a.now()),

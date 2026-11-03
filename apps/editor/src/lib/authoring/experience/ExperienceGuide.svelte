@@ -18,6 +18,7 @@
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import { experienceHomes } from './experience-homes';
+	import { formatPathSeconds } from './experience-paths';
 
 	let { onClose }: { onClose: () => void } = $props();
 
@@ -111,15 +112,17 @@
 					resolved.kind === 'adjacent' || resolved.position !== null
 						? `Stop ${resolved.position}`
 						: 'a Stop outside this Guide';
+				const path = resolved.transition === 'travel' ? controller.pathFor?.({ kind: 'transition', stopId: stop.id }) ?? null : null;
+				const seconds = path?.state === 'ready' ? ` · ${formatPathSeconds(path.seconds)}` : '';
 				const attention = gap ? '. Travel has no Camera connection yet' : '';
 				connector = {
 					shape: resolved.kind,
 					text:
-						resolved.kind === 'adjacent'
+						(resolved.kind === 'adjacent'
 							? resolved.transition
 							: resolved.position === null
 								? '→ elsewhere'
-								: `→ ${resolved.position}`,
+								: `→ ${resolved.position}`) + (resolved.transition === 'travel' ? seconds : ''),
 					name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${attention}`,
 					transition: resolved.transition,
 					gap
@@ -722,6 +725,7 @@
 									<button
 										type="button"
 										class="chip {connector.shape}"
+										data-connector={card.stopId}
 										class:cut={connector.transition === 'cut'}
 										class:travel={connector.transition === 'travel'}
 										class:gap={connector.gap}
@@ -734,6 +738,21 @@
 									>
 										{connector.text}
 									</button>
+									{#if connector.gap && controller !== null}
+										<button
+											type="button"
+											class="chip-add"
+											aria-label={`Add a Camera path from Stop ${card.number} to the next`}
+											title="Add a Camera path"
+											onpointerdown={(event) => event.stopPropagation()}
+											onclick={(event) => {
+												event.stopPropagation();
+												void controller?.createPath({ kind: 'transition', stopId: card.stopId });
+											}}
+										>
+											+
+										</button>
+									{/if}
 								{/if}
 							</span>
 						{/each}
@@ -1064,6 +1083,29 @@
 		display: grid;
 		place-items: center;
 		width: 44px;
+	}
+	.chip-add {
+		width: 22px;
+		height: 22px;
+		min-width: 22px;
+		min-height: 22px;
+		margin-left: 3px;
+		border: 1px solid var(--caution, #b5682d);
+		border-radius: 50%;
+		background: transparent;
+		color: var(--caution, #b5682d);
+		font: inherit;
+		font-size: 14px;
+		line-height: 1;
+		cursor: pointer;
+	}
+	@media (pointer: coarse) {
+		.chip-add {
+			width: 44px;
+			height: 44px;
+			min-width: 44px;
+			min-height: 44px;
+		}
 	}
 	/* Adjacency is drawn only for a connector whose destination is the neighbour (D11). */
 	.slot.adjacent::before {

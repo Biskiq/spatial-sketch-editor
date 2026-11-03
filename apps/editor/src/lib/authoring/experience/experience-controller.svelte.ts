@@ -59,6 +59,17 @@ import {
 } from './experience-model';
 import { travelGapMessagesByStop } from './travel-gap';
 import {
+	experiencePathOccurrences,
+	readExperiencePath,
+	resolvePathAnchorInsertion,
+	resolvePathOccurrence,
+	type ExperiencePathOccurrence,
+	type ExperiencePathRead
+} from './experience-paths';
+import type { ScenePathAnchor } from '@portfolio/project-model';
+import {
+	cameraConnectionCreateIntent,
+	cameraConnectionUpdateIntent,
 	captureBindIntent,
 	capturedFovDegrees,
 	capturedViewPose,
@@ -126,6 +137,16 @@ export type ExperienceController = {
 	readonly travelGaps: readonly string[];
 	/** Travel gaps by Stop, from one validation of the snapshot. A Stop without a gap is absent. */
 	readonly travelGapsByStop: ReadonlyMap<string, readonly string[]>;
+	/** The Guided move whose Camera path the Path action edits; session state, never selection authority. */
+	readonly pathOccurrence: ExperiencePathOccurrence | null;
+	/** The one derived Camera path read of `pathOccurrence`, or null. */
+	readonly selectedPath: ExperiencePathRead | null;
+	/** Derive one occurrence's path for the Guide's connectors and shot list. */
+	pathFor(occurrence: ExperiencePathOccurrence): ExperiencePathRead | null;
+	/** Path is an armed Stage mode; only Plan inserts and drags. Session state. */
+	readonly pathArmed: boolean;
+	/** The selected interior point of the selected path, or null. */
+	readonly selectedAnchorId: string | null;
 	readonly stopUsage: ReadonlyMap<string, readonly string[]>;
 	/**
 	 * The Guide the tour reads use (B): the active Guide, else the Experience's entry Guide.
@@ -186,6 +207,22 @@ export type ExperienceController = {
 	setContinuation(stopId: string, target: 'next' | 'end' | { readonly stopId: string }): Promise<boolean>;
 	/** Cut or Travel on the continuation. Does nothing for End. */
 	setTransition(stopId: string, transition: 'cut' | 'travel'): Promise<boolean>;
+	/** Choose the occurrence the Path action reads; step occurrences live inside a Stop. */
+	selectPath(occurrence: ExperiencePathOccurrence | null): void;
+	setPathArmed(armed: boolean): void;
+	selectAnchor(anchorId: string | null): void;
+	/** Add the one Camera path a Travel needs (E11); never for a Cut. */
+	createPath(occurrence: ExperiencePathOccurrence): Promise<boolean>;
+	/**
+	 * Insert an interior point at a validated canonical slot in authored order.
+	 * Omitted, the slot is derived from Camera's own directed curve progress.
+	 */
+	addPathAnchor(point: readonly [number, number, number], slot?: number): Promise<boolean>;
+	movePathAnchor(anchorId: string, point: readonly [number, number, number]): Promise<boolean>;
+	removePathAnchor(anchorId: string): Promise<boolean>;
+	straightenPath(): Promise<boolean>;
+	/** A positive finite duration, or null for Camera's automatic duration. */
+	setPathDuration(seconds: number | null): Promise<boolean>;
 	/** The Card's inline rename of one Presentation's label. */
 	renamePresentation(
 		presentationId: string,
@@ -321,6 +358,75 @@ export function createExperienceController(
 		return current.guides.find((guide) => guide.id === current.entryGuideId) ?? null;
 	});
 	const guideStops = $derived(current === null ? [] : guideStopsOf(current, contextGuide));
+	// R217.S29 endpoint-change notice: a stopped-sequence edit that changes a
+	// Travel's pair keeps its Camera path; name the affected Travels rather than
+	// silently leaving a connection addressing Views the tour no longer joins.
+	let travelEndpoints = new Map<string, string>();
+	$effect(() => {
+		const experience = current;
+		const guide = contextGuide;
+		if (experience === null || guide === null) return;
+		const travels = new Map(
+			experiencePathOccurrences(experience, guide)
+				.filter((entry) => entry.occurrence.kind === 'transition' && entry.transition === 'travel')
+				.map((entry) => [entry.stopId, entry])
+		);
+		const next = new Map<string, string>();
+		const changed: string[] = [];
+		for (const [index, stopId] of guide.stopIds.entries()) {
+			if (index >= guide.stopIds.length - 1) break;
+			const entry = travels.get(stopId);
+			if (entry === undefined) continue;
+			const label = `Travel ${index + 1} → ${index + 2}`;
+			const signature = `${entry.fromViewId} -> ${entry.toViewId}`;
+			next.set(label, signature);
+			const previous = travelEndpoints.get(label);
+			if (previous !== undefined && previous !== signature) changed.push(label);
+		}
+		travelEndpoints = next;
+		if (changed.length === 0) return;
+		say(
+			`${changed.join(', ')} ${changed.length === 1 ? 'now joins' : 'now join'} different Views. Check the Camera path.`
+		);
+	});
+
+	// R217.S29 — the Path action's occurrence and its one derived Camera read. The
+	// occurrence is a selection *within* the Card subject, never a second authority.
+	let pathOccurrence = $state<ExperiencePathOccurrence | null>(null);
+	let pathArmed = $state(false);
+	let selectedAnchorId = $state<string | null>(null);
+	// One accepted read supplies both the canonical Camera graph and the compiled
+	// Layout geometry; never rebuild either for a derived path.
+	const acceptedDomain = $derived.by(() => {
+		void version;
+		return readServices().stage.snapshot().domain ?? null;
+	});
+	const acceptedGeometry = $derived(acceptedDomain?.geometry ?? null);
+	const acceptedGraph = $derived(acceptedDomain?.graph ?? null);
+	const selectedPath = $derived.by((): ExperiencePathRead | null => {
+		if (current === null || pathOccurrence === null || acceptedGraph === null) return null;
+		return readExperiencePath({
+			experience: current,
+			guide: contextGuide,
+			graph: acceptedGraph,
+			occurrence: pathOccurrence,
+			geometry: acceptedGeometry
+		});
+	});
+	// An Undo, a reorder or a removed occurrence invalidates the session's point
+	// and armed target; never leave a stale writer aimed at the old path.
+	$effect(() => {
+		const read = selectedPath;
+		if (read === null) {
+			pathArmed = false;
+			selectedAnchorId = null;
+			return;
+		}
+		if (selectedAnchorId !== null && !read.anchors.some((anchor) => anchor.id === selectedAnchorId)) {
+			selectedAnchorId = null;
+		}
+	});
+
 	let query = $state('');
 	const viewsOf = $derived.by(() => {
 		const views = snapshot.units.camera.data.views;
@@ -365,6 +471,15 @@ export function createExperienceController(
 
 	function newId(): string {
 		return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+	}
+
+	/** The retained Camera authoring convention, kept local so the controller imports no Camera module. */
+	function nextAnchorId(connectionId: string, existing: readonly string[]): string {
+		const occupied = new Set(existing);
+		for (let index = 1; ; index += 1) {
+			const candidate = `${connectionId}-anchor-${String(index).padStart(2, '0')}`;
+			if (!occupied.has(candidate)) return candidate;
+		}
 	}
 
 	function revision() {
@@ -1340,6 +1455,187 @@ export function createExperienceController(
 		}
 	}
 
+	// ---- Camera paths (R217.S29) ----
+
+	function selectPath(occurrence: ExperiencePathOccurrence | null): void {
+		pathOccurrence = occurrence;
+		selectedAnchorId = null;
+		if (occurrence === null) pathArmed = false;
+	}
+
+	function setPathArmed(armed: boolean): void {
+		pathArmed = armed;
+		if (!armed) selectedAnchorId = null;
+	}
+
+	function selectAnchor(anchorId: string | null): void {
+		selectedAnchorId = anchorId;
+	}
+
+	async function createPath(occurrence: ExperiencePathOccurrence): Promise<boolean> {
+		if (current === null) return false;
+		const resolved = resolvePathOccurrence(current, contextGuide, occurrence);
+		if (resolved === null) {
+			say('This move has no destination to travel to.');
+			return false;
+		}
+		if (resolved.transition !== 'travel') {
+			say('A Cut has no travel path. Choose Travel first.');
+			return false;
+		}
+		const fromView = snapshot.units.camera.data.views.find((view) => view.id === resolved.fromViewId);
+		const toView = snapshot.units.camera.data.views.find((view) => view.id === resolved.toViewId);
+		if (fromView === undefined || toView === undefined) {
+			say('A View this move needs is missing.');
+			return false;
+		}
+		const accepted = await run(
+			() =>
+				cameraConnectionCreateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId(), connection: newId() },
+					fromView,
+					toView
+				}),
+			() => 'Camera path added'
+		);
+		if (accepted) selectPath(occurrence);
+		return accepted;
+	}
+
+	/** One accepted write per anchor edit; every other connection field survives. */
+	async function writePathAnchors(
+		read: ExperiencePathRead,
+		anchors: readonly ScenePathAnchor[],
+		success: () => string
+	): Promise<boolean> {
+		if (read.connectionId === null) return false;
+		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		if (connection === undefined) return false;
+		return run(
+			() =>
+				cameraConnectionUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					connectionId: connection.id,
+					anchors
+				}),
+			success
+		);
+	}
+
+	async function addPathAnchor(
+		point: readonly [number, number, number],
+		slot?: number
+	): Promise<boolean> {
+		const read = selectedPath;
+		if (read === null || read.connectionId === null || read.direction === null) return false;
+		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		if (connection === undefined) return false;
+		const insertion =
+			slot === undefined
+				? resolvePathAnchorInsertion({
+						connection,
+						direction: read.direction,
+						graph: acceptedGraph,
+						point: [point[0], point[1], point[2]]
+					})
+				: Number.isInteger(slot)
+					? { index: slot, position: [point[0], point[1], point[2]] as const }
+					: null;
+		if (
+			insertion === null ||
+			insertion.index < 0 ||
+			insertion.index > connection.positionPath.anchors.length
+		) {
+			say('Insert a point on the selected Camera path.');
+			return false;
+		}
+		const anchor: ScenePathAnchor = {
+			id: nextAnchorId(connection.id, connection.positionPath.anchors.map((entry) => entry.id)),
+			position: [insertion.position[0], insertion.position[1], insertion.position[2]]
+		};
+		const anchors = [...connection.positionPath.anchors];
+		anchors.splice(insertion.index, 0, anchor);
+		const accepted = await writePathAnchors(read, anchors, () => 'Path point added');
+		if (accepted) selectedAnchorId = anchor.id;
+		return accepted;
+	}
+
+	async function movePathAnchor(
+		anchorId: string,
+		point: readonly [number, number, number]
+	): Promise<boolean> {
+		const read = selectedPath;
+		if (read === null || read.connectionId === null) return false;
+		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		const previous = connection?.positionPath.anchors.find((entry) => entry.id === anchorId);
+		if (connection === undefined || previous === undefined) return false;
+		const next = [point[0], point[1], point[2]] as const;
+		if (previous.position.every((value, index) => value === next[index])) return false;
+		return writePathAnchors(
+			read,
+			connection.positionPath.anchors.map((entry) =>
+				entry.id === anchorId ? { ...entry, position: [next[0], next[1], next[2]] } : entry
+			),
+			() => 'Path point moved'
+		);
+	}
+
+	async function removePathAnchor(anchorId: string): Promise<boolean> {
+		const read = selectedPath;
+		if (read === null || read.connectionId === null) return false;
+		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		if (connection === undefined || !connection.positionPath.anchors.some((entry) => entry.id === anchorId)) {
+			return false;
+		}
+		const accepted = await writePathAnchors(
+			read,
+			connection.positionPath.anchors.filter((entry) => entry.id !== anchorId),
+			() => 'Path point removed'
+		);
+		if (accepted) selectedAnchorId = null;
+		return accepted;
+	}
+
+	async function straightenPath(): Promise<boolean> {
+		const read = selectedPath;
+		if (read === null || read.connectionId === null) return false;
+		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		if (connection === undefined) return false;
+		if (connection.positionPath.anchors.length === 0) {
+			say('The Camera path is already straight.');
+			return false;
+		}
+		const accepted = await writePathAnchors(read, [], () => 'Camera path straightened');
+		if (accepted) selectedAnchorId = null;
+		return accepted;
+	}
+
+	async function setPathDuration(seconds: number | null): Promise<boolean> {
+		const read = selectedPath;
+		if (read === null || read.connectionId === null || read.direction === null) return false;
+		if (seconds !== null && (!Number.isFinite(seconds) || seconds <= 0)) {
+			say('A duration is a positive number of seconds, or Auto.');
+			return false;
+		}
+		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		if (connection === undefined) return false;
+		return run(
+			() =>
+				cameraConnectionUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					connectionId: connection.id,
+					timing: { [read.direction!]: { durationSeconds: seconds } }
+				}),
+			() => (seconds === null ? 'Automatic duration restored' : 'Camera path duration changed')
+		);
+	}
+
 	function presentationLabel(presentationId: string): string {
 		return current?.presentations.find((entry) => entry.id === presentationId)?.label ?? presentationId;
 	}
@@ -1382,6 +1678,18 @@ export function createExperienceController(
 		},
 		get travelGapsByStop() {
 			return travelGapsByStop;
+		},
+		get pathOccurrence() {
+			return pathOccurrence;
+		},
+		get selectedPath() {
+			return selectedPath;
+		},
+		get pathArmed() {
+			return pathArmed;
+		},
+		get selectedAnchorId() {
+			return selectedAnchorId;
 		},
 		get stopUsage() {
 			return stopUsage;
@@ -1426,7 +1734,12 @@ export function createExperienceController(
 		updateViewPose,
 		capturePose,
 		presentThisFramed,
-		select: (next: ExperienceSubject | null) => experienceFocus.select(next),
+		select: (next: ExperienceSubject | null) => {
+			experienceFocus.select(next);
+			// A transition owns its path occurrence; any other subject clears the Path reading.
+			pathOccurrence = next?.kind === 'transition' ? { kind: 'transition', stopId: next.stopId } : null;
+			selectedAnchorId = null;
+		},
 		openExperience: (experienceId: string) => experienceFocus.openExperience(experienceId),
 		openGuide,
 		viewFacts: (viewId: string) =>
@@ -1458,6 +1771,27 @@ export function createExperienceController(
 		setWelcome,
 		setContinuation,
 		setTransition,
+		pathFor: (occurrence: ExperiencePathOccurrence) =>
+			current === null
+				? null
+				: acceptedGraph === null
+					? null
+					: readExperiencePath({
+							experience: current,
+							guide: contextGuide,
+							graph: acceptedGraph,
+							occurrence,
+							geometry: acceptedGeometry
+						}),
+		selectPath,
+		setPathArmed,
+		selectAnchor,
+		createPath,
+		addPathAnchor,
+		movePathAnchor,
+		removePathAnchor,
+		straightenPath,
+		setPathDuration,
 		renamePresentation,
 		updatePresentationText,
 		setDefaultView,

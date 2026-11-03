@@ -1,6 +1,14 @@
 import type { SceneObjectFallback } from './scene';
 
+export type SceneConnectivityPolicy = 'single-component' | 'independent-components';
+
 export type SceneValidationOptions = {
+	/**
+	 * Connectivity context. The default is the Scene document's one-graph
+	 * invariant. Camera units opt into independent components explicitly through
+	 * their named policy; no authored field carries this choice.
+	 */
+	connectivity?: SceneConnectivityPolicy;
 	/** Catalogue seam: the model cannot know which asset IDs a host ships. */
 	isKnownAssetId?: (assetId: string) => boolean;
 	/** Catalogue seam for material definitions. */
@@ -10,6 +18,7 @@ export type SceneValidationOptions = {
 };
 
 export type ResolvedSceneValidationOptions = {
+	connectivity: SceneConnectivityPolicy;
 	isKnownAssetId: (assetId: string) => boolean;
 	isKnownMaterialId: (materialId: string) => boolean;
 	isSceneObjectFallback: (value: unknown) => value is SceneObjectFallback;
@@ -44,6 +53,7 @@ export function withSceneValidationOptions(
 	options: SceneValidationOptions = {}
 ): ResolvedSceneValidationOptions {
 	return {
+		connectivity: options.connectivity ?? 'single-component',
 		isKnownAssetId: options.isKnownAssetId ?? (() => true),
 		isKnownMaterialId: options.isKnownMaterialId ?? ((id) => MATERIAL_IDS.has(id)),
 		isSceneObjectFallback:

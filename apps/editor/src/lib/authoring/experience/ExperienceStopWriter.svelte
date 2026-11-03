@@ -4,8 +4,10 @@
 	import { EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS, type ExperienceStop } from '@portfolio/project-model/units';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
+	import ExperiencePathMovement from './ExperiencePathMovement.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
 	import { experienceHomes } from './experience-homes';
+	import { formatPathSeconds } from './experience-paths';
 
 	let {
 		secondary,
@@ -56,6 +58,17 @@
 	const entryId = $derived(stop?.views[0]?.viewId);
 	const entryName = $derived(views.find((view) => view.id === entryId)?.label ?? 'Missing View');
 	const guided = $derived(stop?.views ?? []);
+	const selectedStep = $derived(controller?.pathOccurrence?.kind === 'step' ? controller.pathOccurrence : null);
+	const selectedStepPath = $derived(selectedStep === null ? null : (controller?.selectedPath ?? null));
+	const selectedStepReason = $derived(
+		selectedStepPath === null
+			? null
+			: selectedStepPath.state === 'gap'
+				? 'Add a Camera path for this step'
+				: selectedStepPath.state === 'ambiguous'
+					? 'More than one Camera path joins these Views'
+					: null
+	);
 	const otherViews = $derived(views.filter((view) => !guided.some((entry) => entry.viewId === view.id)));
 	const folded = $derived(otherViews.length > FOLD_VIEWS_AFTER);
 	let othersOpen = $state(false);
@@ -162,6 +175,39 @@
 
 	function holdAt(index: number): number | null {
 		return guided[index]?.holdSeconds ?? (index < guided.length - 1 ? EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS : null);
+	}
+
+	/** R217.S29 — a step inside a Stop is a Cut or a Travel, stored beside its hold. */
+	function setStepTransition(viewId: string, transition: 'cut' | 'travel'): void {
+		if (controller === null || stop === null) return;
+		const views = stop.views.map((view) =>
+			view.viewId === viewId ? { ...view, transition } : view
+		);
+		void controller.setStopViews(stop.id, views);
+		// The Path tool targets this step's own occurrence, not the Stop transition.
+		controller.selectPath(transition === 'travel' ? { kind: 'step', stopId: stop.id, toViewId: viewId } : null);
+	}
+
+	function stepSeconds(viewId: string): string {
+		if (controller === null || stop === null) return '—';
+		const path = controller.pathFor?.({ kind: 'step', stopId: stop.id, toViewId: viewId });
+		return path?.state === 'ready' ? formatPathSeconds(path.seconds) : '—';
+	}
+
+	function selectStep(viewId: string, transition: 'cut' | 'travel', event: MouseEvent): void {
+		event.stopPropagation();
+		if (controller === null || stop === null) return;
+		const shot = stop.views.find((view) => view.viewId === viewId);
+		const current = shot?.transition ?? 'cut';
+		// Pressing the chosen kind again only selects this step's own path. A click on
+		// the nested row never writes a no-op or selects a different subject.
+		if (current === transition) {
+			if (transition === 'travel') {
+				controller.selectPath({ kind: 'step', stopId: stop.id, toViewId: viewId });
+			}
+			return;
+		}
+		setStepTransition(viewId, transition);
 	}
 
 	function stepHold(viewId: string, current: number | null, direction: 1 | -1): void {
@@ -399,7 +445,31 @@
 								{#if shot.viewId === defaultViewId}<span class="def" role="img" aria-label="Default View">◆</span>{/if}
 								{#if index === 0}<em class="tag">Entry</em>{/if}
 							</span>
-							<span class="shot-meta">
+								{#if index > 0}
+									<span class="step-kind" role="group" aria-label={`Step to ${label}`}>
+										<button type="button" aria-pressed={(shot.transition ?? 'cut') === 'cut'} disabled={busyReason !== null}
+											title={busyReason ?? 'Cut'} onclick={(event) => selectStep(shot.viewId, 'cut', event)}>Cut</button>
+										<button type="button" aria-pressed={(shot.transition ?? 'cut') === 'travel'} disabled={busyReason !== null}
+											title={busyReason ?? 'Travel'} onclick={(event) => selectStep(shot.viewId, 'travel', event)}>Travel</button>
+										{#if (shot.transition ?? 'cut') === 'travel'}
+											<b class="step-seconds">{stepSeconds(shot.viewId)}</b>
+											{#if controller.pathFor?.({ kind: 'step', stopId: stop.id, toViewId: shot.viewId })?.state === 'gap'}
+												<button
+													type="button"
+													class="step-add"
+													aria-label={`Add a Camera path to ${label}`}
+													title="Add a Camera path"
+													disabled={busyReason !== null}
+													onclick={(event) => {
+														event.stopPropagation();
+														void controller?.createPath({ kind: 'step', stopId: stop.id, toViewId: shot.viewId });
+													}}
+												>+ Path</button>
+											{/if}
+										{/if}
+									</span>
+								{/if}
+								<span class="shot-meta">
 								<span class="hold-lbl">Hold</span>
 								<span class="stepper" role="group" aria-label={`Hold for ${label}`}>
 									<button type="button" aria-label="Shorter hold"
@@ -471,6 +541,15 @@
 			{/if}
 			<p class="c-foot-note"><span class="def" aria-hidden="true">◆</span> marks the Presentation's Default View. Reordering here changes only this Stop.</p>
 		</section>
+
+		{#if selectedStep !== null && selectedStep.stopId === stop.id}
+			<ExperiencePathMovement
+				path={selectedStepPath}
+				pathReason={selectedStepReason}
+				{busyReason}
+				occurrence={selectedStep}
+			/>
+		{/if}
 
 		<section class="c-sec" aria-labelledby="stop-after-title">
 			<h3 id="stop-after-title">After this Stop</h3>
@@ -611,6 +690,32 @@
 		align-items: center;
 		gap: 8px;
 		padding: 8px 12px 0;
+	}
+	.step-kind {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
+	.step-kind button {
+		min-height: 20px;
+		padding: 0 6px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 5px;
+		background: var(--shell-card, #fff);
+		color: var(--shell-ink-2, #4a524c);
+		font-size: 10px;
+	}
+	.step-kind button[aria-pressed='true'] {
+		background: var(--shell-leaf-tint, #e8f1ea);
+		color: var(--shell-forest-raised, #22503c);
+	}
+	.step-seconds {
+		font: 600 10px var(--shell-mono, ui-monospace, monospace);
+		color: var(--shell-ink-3, #79817b);
+	}
+	.step-add {
+		color: var(--shell-caution, #b5682d);
+		border-color: var(--shell-caution, #b5682d);
 	}
 	.step {
 		display: inline-flex;
@@ -1081,6 +1186,11 @@
 	}
 	@media (pointer: coarse) {
 		button {
+			min-height: 44px;
+		}
+		.step-kind button,
+		.step-add {
+			min-width: 44px;
 			min-height: 44px;
 		}
 		.shot button,

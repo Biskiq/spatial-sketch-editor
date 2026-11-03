@@ -118,8 +118,8 @@ describe('scene document codec', () => {
 		);
 		expect(validateSceneDocument(withIsolated).success).toBe(true);
 
-		// Two disjoint connected components are still rejected: the relaxed
-		// check only exempts edge-less standalone nodes.
+		// Two disjoint connected components are still rejected by a direct Scene
+		// document: only an explicit Camera-unit policy may admit them.
 		const split = cloneDocument();
 		const [a, b, c, d] = split.navigationNodes;
 		a!.connectedNodeIds = [b!.id];
@@ -143,6 +143,34 @@ describe('scene document codec', () => {
 			}
 		];
 		expectIssue(split, 'disconnected_graph', '$.connections');
+
+		// The explicit Camera-unit policy admits the same two components.
+		const relaxed = validateSceneDocument(split, { connectivity: 'independent-components' });
+		expect(relaxed.success).toBe(true);
+
+		// Relaxing connectivity does not relax any other graph rule.
+		const malformed = JSON.parse(JSON.stringify(split)) as SceneDocument;
+		malformed.navigationNodes[0]!.connectedNodeIds = [];
+		const malformedResult = validateSceneDocument(malformed, { connectivity: 'independent-components' });
+		expect(malformedResult.success).toBe(false);
+		if (!malformedResult.success) {
+			expect(malformedResult.issues).toContainEqual(
+				expect.objectContaining({ code: 'connection_without_adjacency' })
+			);
+		}
+
+		const duplicateEdge = JSON.parse(JSON.stringify(split)) as SceneDocument;
+		duplicateEdge.connections.push({
+			...duplicateEdge.connections[1]!,
+			id: 'tour-c-d-duplicate'
+		});
+		const duplicateResult = validateSceneDocument(duplicateEdge, { connectivity: 'independent-components' });
+		expect(duplicateResult.success).toBe(false);
+		if (!duplicateResult.success) {
+			expect(duplicateResult.issues).toContainEqual(
+				expect.objectContaining({ code: 'duplicate_connection' })
+			);
+		}
 	});
 
 	it('round-trips canonical directional view tracks with stable field order and fresh values', () => {

@@ -153,11 +153,12 @@ describe('R217.S25 — the Experience home map', () => {
 		expect(place).not.toMatch(/\sdisabled\b/);
 		expect(place).toContain("'Place a View where the camera stands'");
 		const pathTag = dock.match(/<button[^>]*data-dock-tool="path"[^>]*>/)?.[0] ?? '';
-		expect(pathTag).toMatch(/\sdisabled\b/);
-		expect(pathTag).toMatch(/title="Comes with [^"]+"/);
-		const describedBy = pathTag.match(/aria-describedby="([^"]+)"/)?.[1] ?? '';
+		expect(pathTag).toMatch(/onclick=\{onPath\}/);
+		expect(pathTag).toMatch(/title=\{pathHint\}/);
+		expect(pathTag).toMatch(/disabled=\{pathReason !== undefined/);
+		const describedBy = pathTag.match(/aria-describedby=\{pathReason !== undefined[^}]*\? '([^']+)'/)?.[1] ?? '';
 		expect(describedBy).not.toBe('');
-		expect(dock).toMatch(new RegExp(`id="${describedBy}"[^>]*>Comes with `));
+		expect(dock).toContain('Path — click the path to add a point');
 	});
 
 	it('leaves the Guide closed by default in the route', () => {

@@ -2,10 +2,10 @@
 	/**
 	 * The Experience lower-edge dock (R217.S25): Select, Place a View, Path, Capture and Guide,
 	 * in the same forest bar and key grammar as the World dock. Place a View arms the Stage's
-	 * placement gesture; Path remains a disabled key with its reason in title and in a hidden
-	 * description until path editing lands. Capture submits through the controller's one
+	 * placement gesture; R217.S29 Path arms the selected Travel move's Camera path in Plan and
+	 * names its disabled reason otherwise. Capture submits through the controller's one
 	 * acceptance port; Guide opens or closes the invoked Guide instrument above it. It holds
-	 * no state: the route passes the open flag and the handlers.
+	 * no state: the route passes the open flag, the Path reading and the handlers.
 	 */
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 
@@ -14,7 +14,10 @@
 		captureReason,
 		guideOpen = false,
 		placeArmed = false,
+		pathArmed = false,
+		pathReason,
 		onPlaceView,
+		onPath,
 		onCapture,
 		onToggleGuide
 	}: {
@@ -23,10 +26,19 @@
 		guideOpen?: boolean;
 		/** S28: Place a View is armed on the Stage until Esc or another key. */
 		placeArmed?: boolean;
+		/** S29: Path is an armed Plan mode for the selected Travel move. */
+		pathArmed?: boolean;
+		/** Why Path cannot be armed; also its title when disabled. */
+		pathReason?: string;
 		onPlaceView?: () => void;
+		onPath?: () => void;
 		onCapture: () => void;
 		onToggleGuide: () => void;
 	} = $props();
+
+	const pathHint = $derived(
+		pathArmed ? 'Path — click the path to add a point · Done Esc' : (pathReason ?? 'Path: edit the selected Travel move')
+	);
 
 	const captureHint = $derived(
 		captureDisabled && captureReason ? captureReason : 'Capture: what you see becomes a View'
@@ -60,11 +72,14 @@
 		<button
 			type="button"
 			class="key"
-			disabled
+			class:path-armed={pathArmed}
+			aria-pressed={pathArmed}
 			aria-label="Path"
-			title="Comes with path editing"
-			aria-describedby="experience-dock-path-reason"
+			title={pathHint}
+			disabled={pathReason !== undefined && !pathArmed}
+			aria-describedby={pathReason !== undefined && !pathArmed ? 'experience-dock-path-reason' : undefined}
 			data-dock-tool="path"
+			onclick={onPath}
 		>
 			<ShellIcon name="path" size={18} />
 		</button>
@@ -95,8 +110,8 @@
 		<ShellIcon name="guide" size={18} />
 		<span class="label">Guide</span>
 	</button>
-	{#if guideOpen}
-		<span id="experience-dock-path-reason" class="visually-hidden">Comes with path editing</span>
+	{#if guideOpen && pathReason !== undefined}
+		<span id="experience-dock-path-reason" class="visually-hidden">{pathReason}</span>
 	{/if}
 	{#if captureDisabled && captureReason}
 		<span id="experience-dock-capture-reason" class="visually-hidden">{captureReason}</span>
@@ -157,6 +172,11 @@
 	.key.place-armed {
 		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 55%, var(--shell-forest, #11291f));
 		box-shadow: inset 0 0 0 1px var(--shell-leaf, #4f8f6c);
+	}
+	/* Path armed is a Stage mode: gold, the same role selection uses. */
+	.key.path-armed {
+		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 32%, var(--shell-forest, #11291f));
+		box-shadow: inset 0 0 0 1px var(--shell-gold, #d4ad45);
 	}
 	/* Guide open is a pressed key, not a second armed tool: Select stays the one armed key. */
 	.key[aria-pressed='true']:not(.armed) {

@@ -157,7 +157,7 @@ export function validateSceneDocument(
 		navigationNodes,
 		connections
 	};
-	validateSemantics(document, issues);
+	validateSemantics(document, issues, validation);
 	if (issues.length) return { success: false, issues };
 	const normalized = canonicalDocument(document);
 	return { success: true, document: normalized, canonicalJson: JSON.stringify(normalized, null, 2) + '\n' };
