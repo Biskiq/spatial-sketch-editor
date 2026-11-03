@@ -1,0 +1,516 @@
+{
+  "tree": "before",
+  "journey": "parity",
+  "width": 1180,
+  "height": 820,
+  "steps": [
+    {
+      "index": 0,
+      "name": "world-baseline",
+      "png": "before-1180x820-00-world-baseline.png",
+      "lens": {
+        "world": "true",
+        "experience": "false"
+      },
+      "indexOpen": true,
+      "crumb": null,
+      "createVisible": false,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": false,
+      "guideKeyPressed": null,
+      "cardKind": null,
+      "cardTitle": null,
+      "cardText": null,
+      "feedback": null,
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 1,
+      "name": "world-subject-selected",
+      "png": "before-1180x820-01-world-subject-selected.png",
+      "lens": {
+        "world": "true",
+        "experience": "false"
+      },
+      "indexOpen": true,
+      "crumb": null,
+      "createVisible": false,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": false,
+      "guideKeyPressed": null,
+      "cardKind": "Room",
+      "cardTitle": "Draft Room 1",
+      "cardText": "Room Draft Room 1 More ⌄",
+      "feedback": null,
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 2,
+      "name": "enter-experience",
+      "png": "before-1180x820-02-enter-experience.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": false,
+      "guideKeyPressed": "true",
+      "cardKind": "Room",
+      "cardTitle": "Draft Room 1",
+      "cardText": "Room Draft Room 1 More ⌄",
+      "feedback": "",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 3,
+      "name": "create-experience",
+      "png": "before-1180x820-03-create-experience.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": null,
+      "cardTitle": null,
+      "cardText": "First Guide Creates one Guide with an initial distinct Stop from the selected Presentation (or the selected Stop's Presentation). The Stop enters that Presentation's own View; no Camera pose is copied and no Connection is made. Guide label ",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 4,
+      "name": "three-d",
+      "png": "before-1180x820-04-three-d.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": null,
+      "cardTitle": null,
+      "cardText": "First Guide Creates one Guide with an initial distinct Stop from the selected Presentation (or the selected Stop's Presentation). The Stop enters that Presentation's own View; no Camera pose is copied and no Connection is made. Guide label ",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0,
+      "input": "pointer click on 3D"
+    },
+    {
+      "index": 5,
+      "name": "create-presentation-1",
+      "png": "before-1180x820-05-create-presentation-1.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1"
+      ],
+      "stops": [],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 1",
+      "cardText": "Presentation 1 Views1 Default5954a117-8ddc-4598-a1e8-a03c336e6610 Subject Environment / region Used in No Stop yet Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 6,
+      "name": "create-first-guide",
+      "png": "before-1180x820-06-create-first-guide.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1"
+      ],
+      "stops": [
+        "1. Presentation 1"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 1",
+      "cardText": "Presentation 1 Views1 Default5954a117-8ddc-4598-a1e8-a03c336e6610 Subject Environment / region Used in 343d3c17-60e8-46c5-b573-c90cdc7c21d4 Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 7,
+      "name": "capture-2",
+      "png": "before-1180x820-07-capture-2.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 2"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 2",
+      "cardText": "Presentation 2 Views1 Default1c0ab4e8-5faa-4e3a-bb10-841525870020 Subject Environment / region Used in 1f89a6cb-4cfb-40c7-8830-321f1ff6f1be Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 8,
+      "name": "capture-3",
+      "png": "before-1180x820-08-capture-3.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2",
+        "Presentation 3"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 3",
+        "3. Presentation 2"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 3",
+      "cardText": "Presentation 3 Views1 Defaultb7adddbf-84f2-400c-87ab-ba10e969a23f Subject Environment / region Used in 98646cb9-f6f2-4114-9421-0ec86201951b Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 9,
+      "name": "reorder-move-up",
+      "png": "before-1180x820-09-reorder-move-up.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2",
+        "Presentation 3"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 2",
+        "3. Presentation 3"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 3",
+      "cardText": "Presentation 3 Views1 Defaultb7adddbf-84f2-400c-87ab-ba10e969a23f Subject Environment / region Used in 98646cb9-f6f2-4114-9421-0ec86201951b Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 10,
+      "name": "view-presentation-1",
+      "png": "before-1180x820-10-view-presentation-1.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2",
+        "Presentation 3"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 2",
+        "3. Presentation 3"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 1",
+      "cardText": "Presentation 1 Views1 Default5954a117-8ddc-4598-a1e8-a03c336e6610 Subject Environment / region Used in 343d3c17-60e8-46c5-b573-c90cdc7c21d4 Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 11,
+      "name": "open-guide",
+      "png": "before-1180x820-11-open-guide.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2",
+        "Presentation 3"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 2",
+        "3. Presentation 3"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 1",
+      "cardText": "Presentation 1 Views1 Default5954a117-8ddc-4598-a1e8-a03c336e6610 Subject Environment / region Used in 343d3c17-60e8-46c5-b573-c90cdc7c21d4 Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "Accepted.",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 12,
+      "name": "preview-enter",
+      "png": "before-1180x820-12-preview-enter.png",
+      "lens": {
+        "world": null,
+        "experience": null
+      },
+      "indexOpen": false,
+      "crumb": null,
+      "createVisible": false,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": false,
+      "guideKeyPressed": null,
+      "cardKind": null,
+      "cardTitle": null,
+      "cardText": null,
+      "feedback": null,
+      "visitorPreview": true,
+      "undoDisabled": null,
+      "overflowPx": 0
+    },
+    {
+      "index": 13,
+      "name": "preview-exit",
+      "png": "before-1180x820-13-preview-exit.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2",
+        "Presentation 3"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 2",
+        "3. Presentation 3"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 1",
+      "cardText": "Presentation 1 Views1 Default5954a117-8ddc-4598-a1e8-a03c336e6610 Subject Environment / region Used in 343d3c17-60e8-46c5-b573-c90cdc7c21d4 Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 14,
+      "name": "return-world",
+      "png": "before-1180x820-14-return-world.png",
+      "lens": {
+        "world": "true",
+        "experience": "false"
+      },
+      "indexOpen": true,
+      "crumb": null,
+      "createVisible": false,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": false,
+      "guideKeyPressed": null,
+      "cardKind": null,
+      "cardTitle": null,
+      "cardText": null,
+      "feedback": null,
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 15,
+      "name": "undo-1-world",
+      "png": "before-1180x820-15-undo-1-world.png",
+      "lens": {
+        "world": "true",
+        "experience": "false"
+      },
+      "indexOpen": true,
+      "crumb": null,
+      "createVisible": false,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": false,
+      "guideKeyPressed": null,
+      "cardKind": null,
+      "cardTitle": null,
+      "cardText": null,
+      "feedback": null,
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 16,
+      "name": "undo-1-read",
+      "png": "before-1180x820-16-undo-1-read.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2",
+        "Presentation 3"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 3",
+        "3. Presentation 2"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 1",
+      "cardText": "Presentation 1 Views1 Default5954a117-8ddc-4598-a1e8-a03c336e6610 Subject Environment / region Used in 343d3c17-60e8-46c5-b573-c90cdc7c21d4 Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 17,
+      "name": "undo-2-world",
+      "png": "before-1180x820-17-undo-2-world.png",
+      "lens": {
+        "world": "true",
+        "experience": "false"
+      },
+      "indexOpen": true,
+      "crumb": null,
+      "createVisible": false,
+      "presentations": [],
+      "stops": [],
+      "guideOpen": false,
+      "guideKeyPressed": null,
+      "cardKind": null,
+      "cardTitle": null,
+      "cardText": null,
+      "feedback": null,
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    },
+    {
+      "index": 18,
+      "name": "undo-2-read",
+      "png": "before-1180x820-18-undo-2-read.png",
+      "lens": {
+        "world": "false",
+        "experience": "true"
+      },
+      "indexOpen": true,
+      "crumb": "Experience",
+      "createVisible": true,
+      "presentations": [
+        "Presentation 1",
+        "Presentation 2"
+      ],
+      "stops": [
+        "1. Presentation 1",
+        "2. Presentation 2"
+      ],
+      "guideOpen": true,
+      "guideKeyPressed": "true",
+      "cardKind": "Presentation (surface)",
+      "cardTitle": "Presentation 1",
+      "cardText": "Presentation 1 Views1 Default5954a117-8ddc-4598-a1e8-a03c336e6610 Subject Environment / region Used in 343d3c17-60e8-46c5-b573-c90cdc7c21d4 Label Information text (plain, 4,000 code points) Save Presentation Capture and rebind",
+      "feedback": "",
+      "visitorPreview": false,
+      "undoDisabled": false,
+      "overflowPx": 0
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "dialogs": [],
+  "lastAction": "read lens experience"
+}

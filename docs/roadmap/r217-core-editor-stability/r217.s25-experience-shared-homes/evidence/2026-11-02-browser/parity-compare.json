@@ -1,0 +1,3726 @@
+{
+  "1440x900": {
+    "after": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "before": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "rows": [
+      {
+        "index": 0,
+        "name": "world-baseline",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 1,
+        "name": "world-subject-selected",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 2,
+        "name": "enter-experience",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 3,
+        "name": "create-experience",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 4,
+        "name": "three-d",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 5,
+        "name": "create-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          },
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 6,
+        "name": "create-first-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 7,
+        "name": "capture-2",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 2"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 2"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 8,
+        "name": "capture-3",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 9,
+        "name": "reorder-move-up",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 10,
+        "name": "view-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 11,
+        "name": "open-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 12,
+        "name": "preview-enter",
+        "same": false,
+        "differs": {
+          "feedback": {
+            "before": "",
+            "after": "Accepted."
+          },
+          "guideOpen": {
+            "before": false,
+            "after": true
+          }
+        },
+        "after": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 13,
+        "name": "preview-exit",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 14,
+        "name": "return-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 15,
+        "name": "undo-1-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 16,
+        "name": "undo-1-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 17,
+        "name": "undo-2-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 18,
+        "name": "undo-2-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      }
+    ],
+    "identicalSteps": 6,
+    "totalSteps": 19
+  },
+  "1280x800": {
+    "after": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "before": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "rows": [
+      {
+        "index": 0,
+        "name": "world-baseline",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 1,
+        "name": "world-subject-selected",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 2,
+        "name": "enter-experience",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 3,
+        "name": "create-experience",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 4,
+        "name": "three-d",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 5,
+        "name": "create-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          },
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 6,
+        "name": "create-first-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 7,
+        "name": "capture-2",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 2"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 2"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 8,
+        "name": "capture-3",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 9,
+        "name": "reorder-move-up",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 10,
+        "name": "view-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 11,
+        "name": "open-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 12,
+        "name": "preview-enter",
+        "same": false,
+        "differs": {
+          "feedback": {
+            "before": "",
+            "after": "Accepted."
+          },
+          "guideOpen": {
+            "before": false,
+            "after": true
+          }
+        },
+        "after": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 13,
+        "name": "preview-exit",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 14,
+        "name": "return-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 15,
+        "name": "undo-1-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 16,
+        "name": "undo-1-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 17,
+        "name": "undo-2-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 18,
+        "name": "undo-2-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      }
+    ],
+    "identicalSteps": 6,
+    "totalSteps": 19
+  },
+  "1180x820": {
+    "after": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "before": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "rows": [
+      {
+        "index": 0,
+        "name": "world-baseline",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 1,
+        "name": "world-subject-selected",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 2,
+        "name": "enter-experience",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 3,
+        "name": "create-experience",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 4,
+        "name": "three-d",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 5,
+        "name": "create-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          },
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 6,
+        "name": "create-first-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 7,
+        "name": "capture-2",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 2"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 2"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 8,
+        "name": "capture-3",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 9,
+        "name": "reorder-move-up",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 10,
+        "name": "view-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 11,
+        "name": "open-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 12,
+        "name": "preview-enter",
+        "same": false,
+        "differs": {
+          "feedback": {
+            "before": "",
+            "after": "Accepted."
+          },
+          "guideOpen": {
+            "before": false,
+            "after": true
+          }
+        },
+        "after": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 13,
+        "name": "preview-exit",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 14,
+        "name": "return-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 15,
+        "name": "undo-1-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 16,
+        "name": "undo-1-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 17,
+        "name": "undo-2-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 18,
+        "name": "undo-2-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      }
+    ],
+    "identicalSteps": 6,
+    "totalSteps": 19
+  },
+  "820x1180": {
+    "after": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "before": {
+      "failure": null,
+      "steps": 19,
+      "pageErrors": 0,
+      "consoleErrors": 0,
+      "dialogs": 0
+    },
+    "rows": [
+      {
+        "index": 0,
+        "name": "world-baseline",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 1,
+        "name": "world-subject-selected",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 2,
+        "name": "enter-experience",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Room",
+            "Draft Room 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 3,
+        "name": "create-experience",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 4,
+        "name": "three-d",
+        "same": false,
+        "differs": {
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 5,
+        "name": "create-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          },
+          "guideOpen": {
+            "before": true,
+            "after": false
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 6,
+        "name": "create-first-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1"
+          ],
+          "stops": [
+            "1. Presentation 1"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 7,
+        "name": "capture-2",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 2"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 2"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 2"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 8,
+        "name": "capture-3",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 9,
+        "name": "reorder-move-up",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 3"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 3"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 3"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 10,
+        "name": "view-presentation-1",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 11,
+        "name": "open-guide",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "Accepted.",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 12,
+        "name": "preview-enter",
+        "same": false,
+        "differs": {
+          "feedback": {
+            "before": "",
+            "after": "Accepted."
+          },
+          "guideOpen": {
+            "before": false,
+            "after": true
+          }
+        },
+        "after": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "Accepted.",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "?",
+          "presentations": [],
+          "stops": [],
+          "preview": true,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": null,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 13,
+        "name": "preview-exit",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2",
+            "3. Presentation 3"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 14,
+        "name": "return-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 15,
+        "name": "undo-1-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 16,
+        "name": "undo-1-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2",
+            "Presentation 3"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 3",
+            "3. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      },
+      {
+        "index": 17,
+        "name": "undo-2-world",
+        "same": true,
+        "differs": {},
+        "after": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        },
+        "before": {
+          "lens": "World",
+          "presentations": [],
+          "stops": [],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            null,
+            null
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": false
+        }
+      },
+      {
+        "index": 18,
+        "name": "undo-2-read",
+        "same": false,
+        "differs": {
+          "card": {
+            "before": [
+              "Presentation (surface)",
+              "Presentation 1"
+            ],
+            "after": [
+              "Presentation",
+              "Presentation 1"
+            ]
+          }
+        },
+        "after": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        },
+        "before": {
+          "lens": "Experience",
+          "presentations": [
+            "Presentation 1",
+            "Presentation 2"
+          ],
+          "stops": [
+            "1. Presentation 1",
+            "2. Presentation 2"
+          ],
+          "preview": false,
+          "feedback": "",
+          "card": [
+            "Presentation (surface)",
+            "Presentation 1"
+          ],
+          "undoDisabled": false,
+          "overflowPx": 0,
+          "guideOpen": true
+        }
+      }
+    ],
+    "identicalSteps": 6,
+    "totalSteps": 19
+  }
+}
