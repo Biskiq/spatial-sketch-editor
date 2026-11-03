@@ -56,7 +56,7 @@ Prefix **shell**: `apps/editor/src/lib/authoring/stage/shell/` — EditorHead, E
 - Stage: `apps/editor/src/lib/authoring/stage/stage-facade.ts`, `stage-grid.ts`, `paper-marks.ts`, `paper-plan.ts` in that same directory.
 - Layout: `apps/editor/src/lib/authoring/adapters/layout.adapter.ts`; `apps/editor/src/lib/authoring/adapters/layout/wall-gesture.ts`, `precision.ts`, `LayoutInkPalette.svelte`.
 - Scene: `apps/editor/src/lib/authoring/adapters/scene.adapter.ts`; `apps/editor/src/lib/authoring/adapters/scene/candidate-ghost.ts`; `apps/editor/src/lib/authoring/scene/plan-scene-footprint.ts`.
-- Experience (R217.S25 shared homes): `apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts`; `ExperienceHomesHost.svelte`, `ExperienceDock.svelte`, `ExperienceGuidePanel.svelte`, `ExperiencePresentationWriter.svelte`, `ExperienceStopWriter.svelte`; the Index groups in `apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte`. The retired full-surface component is no longer an anchor.
+- Experience: `apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte`.
 - Camera: `packages/camera-core/src/viewport.ts` (`depthRange`, `upForReading`, `viewUpForPose`, `settledPoseFor`, `transitionFrame`).
 
 ## Historical capability evidence

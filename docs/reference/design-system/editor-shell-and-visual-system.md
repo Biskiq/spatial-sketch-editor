@@ -751,18 +751,11 @@ identity. There is no permanent Scene inventory or property editor; Stage and th
 World locator provide subject reach. Context links explicitly Open or Select
 their target; the Card's context remains canonical selected identity.
 
-**Shared homes (R217.S25, landed).** The Experience lens uses the World shell's homes. The
-lens and Preview stay in the Head. The Index carries the locator: the Experience crumb (with a
-switch when the source has more than one Experience), the **Presentations** group with its
-filter, the **Guide** group that opens the Guide, and the explicit **Create Experience** action,
-available with empty or populated projects. The Card carries the selected Presentation or Stop.
-The lower edge carries the invoked Guide instrument above the Experience dock. No full-surface
-overlay, second lens picker or second Preview entry exists. The dock carries **Select**,
-**Capture** (what you see becomes a View) and **Guide**, which toggles the Guide instrument.
-**Place a View** and **Path** are
-destination tools that no Experience command implements yet, so they are not shown. Look through
-(a gold capture frame) is likewise not built. Preview is a takeover. The height Sheet is not shown
-in Experience; whether View placement needs a working height is open.
+The Experience dock is the same lower-edge column as World: **Select**, **Place a View**
+and **Path** (available while a Guide is open) as pointer tools, then **Capture** (what you
+see becomes a View) and **Guide**, which opens the Guide instrument. Look through adds a
+gold capture frame; Preview is a takeover. The height Sheet is not shown in Experience;
+whether View placement needs a working height is open.
 
 ### Presentation, Views and Default View
 
@@ -794,12 +787,6 @@ visitor content. Card/instrument occlusion must leave that frame reviewable.
 Production must establish this through the real Camera and rendering contracts,
 rather than adopting the prototype's canvas resizing or extra WebGL contexts.
 
-Landed Card fields (R217.S25): the Presentation Card carries the Default View (a select when
-the Presentation has more than one View, otherwise a read-only line), the information text, Save
-Presentation and the Guide control. More holds Capture and rebind, and the Views, Subject and Used
-in facts. The label is the Card's inline name. A Presentation has no `•••` functions yet, so the
-menu is not shown. Thumbnail authoring stays a destination.
-
 Removing a Presentation use or View discloses Default, Stop and movement
 consequences. It does not delete Camera truth used elsewhere or silently choose
 a replacement. Shared updates follow the Ask Rule.
@@ -819,9 +806,8 @@ are preserved even when the prototypes do not demonstrate their full depth.
 ### Guide, Stops and Guide edges
 
 **A Guide is an invoked authoring context, not a permanent global bar.** It opens
-deliberately from the Index's Guide group, the Card's Guide control or the dock's Guide key
-(R217.S25), and it is closed by default on every entry to the Experience lens. There is **one
-active Guide context at a time**. It may stay open while inspecting/editing related
+deliberately from a Guide or relevant composition action. There is **one active
+Guide context at a time**. It may stay open while inspecting/editing related
 Presentations and Views; a selection change alone does not dismiss it or select
 the Guide. Closing it ends its instrument, playback and Guide-only Stage helpers
 together. Stored Guides remain authored truth.
@@ -907,11 +893,6 @@ Presentations and Camera Views through their owners. Their exact entry,
 availability and return policies require domain planning; prototype switches
 and end-of-tour behavior are not automatically ratified semantics.
 
-Preview has one entry, the Head's Preview (R217.S25). Its entry precedence is: the focused Stop of
-an open Guide, or that Guide's entry Stop when no Stop is focused; the selected Presentation alone
-when no Guide is open; the Experience's entry Guide; then the guide-free visitor list. Leaving it
-returns to the Experience lens with the Guide and the Card as they were.
-
 Visitor controls use visitor meaning, with an obvious Exit Preview. Preview exit
 restores the authoring context through its authorities. Look through and Follow
 remain authoring contexts and do not impersonate visitor execution.
@@ -923,9 +904,7 @@ grammar: forest framing and instruments, ivory armed keys, gold selection, white
 available-transform marks and neutral working surfaces. Thumbnail-led authoring, light
 Stop items within the dark Guide context, quiet spatial context and progressive disclosure
 provide one coherent application. World-specific tools keep their own procedures within
-this language. R217.S25 landed the shared grammar: the Experience Index uses the World
-crumbs, rows and neutral hover, the Card uses the World Card's More and `•••` rules, and the
-Guide's open state is a neutral pressed key. Gold stays the selection role.
+this language.
 
 ### Experience design acceptance
 

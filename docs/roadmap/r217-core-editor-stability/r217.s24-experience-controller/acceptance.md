@@ -9,7 +9,7 @@
 | Part | Where | Change |
 | --- | --- | --- |
 | Controller | [`experience-controller.svelte.ts`](../../../../apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts) (new) | One factory, `createExperienceController(readServices, readSnapshot)`. Owns `run`, `createExperience`, `captureAndBind`, `createFirstGuide`, `rebindToCapturedView`, `savePresentation`, `setDefaultView`, `insertStop`, `moveStop`, `saveStop`; the derived `current`, `currentGuide`, `selectedPresentation`, `selectedStop`, `travelGaps`, `stopUsage`, `guideStops`, `viewsOf` and `filteredPresentations`; and `message`, `busy` and the drafts |
-| Surface | `ExperienceSurface.svelte` (retired by [R217.S25](../r217.s25-experience-shared-homes/implementation-plan.md)) | Markup and styles only, plus the one piece of view state it kept (which Guide column is open) |
+| Surface | [`ExperienceSurface.svelte`](../../../../apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte) | Markup and styles only, plus the one piece of view state it kept (which Guide column is open) |
 | Unchanged | `commands.ts`, `focus.svelte.ts`, `travel-gap.ts` | Still the command, focus and gap authorities |
 
 The controller has no DOM access and holds no selection or Camera state. `readServices` and `readSnapshot` are getters because the route replaces either without unmounting the lens, which the controller test exercises.
