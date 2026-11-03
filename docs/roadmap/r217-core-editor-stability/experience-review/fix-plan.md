@@ -6,8 +6,23 @@ one correction pass the S26–S30 register rows allow for. The owner is the only
 one PR from the latest `main`, and the owner accepts it by using the editor.
 
 **Design sheet:** [design-sheet.html](./design-sheet.html). Open the file directly; it needs no server.
-Each row shows what production does now, the recommendation (★) and sometimes one alternative. This plan
-builds the ★ option unless the owner picks another one in the PR.
+Each row shows what production does now, the recommendation (★), the owner's pick (✓) and sometimes one
+alternative. This plan builds the ✓ option where the owner picked one and ★ elsewhere.
+
+**Design first.** No product code changes until the owner settles the sheet's redesigns, including the
+new start page. Rounds R1–R4 start only after that.
+
+## Owner picks (2026-11-03)
+
+| Sheet | Pick |
+| --- | --- |
+| §1 Look through | Full Stage with safe-frame ticks |
+| §2 Views | A real camera in 3D (body, viewfinder hump, shutter button, lens barrel, turned with the aim) with the wire frustum from the lens and the height stem; dot + short wedge in Plan |
+| §3 Paths | Ribbon + chevrons |
+| §4–§6 | As recommended: handles on the route, Travel adds a straight path, links in the Guide gutter |
+| §7 Toolbar | Light glass, **shared by the World and Experience Stage toolbars** (2D \| 3D ⚙, Grid · Snap, and Show in Experience) |
+| §11 Preview | The guided tour gets **Prev**: a Cut back to the previous Stop's first View, no travel back |
+| §9 Opening | Redesign the start page (`/`) and the first load; options in the sheet, to be settled before code |
 
 ## Confirmed findings
 
@@ -43,7 +58,7 @@ Reproduced at `83a83e46` with the `x-paths` fixture admitted through *Open sourc
 | D7 | Selection uses a blue box instead of the shell's gold | §2 |
 | D8 | Show is a white pill next to dark controls, and its menu uses browser checkboxes | §7 |
 | D9 | Messages use technical words, a page banner and generic toasts | §8 |
-| D10 | The editor opens on a black "Opening Spatial…" page | §9 |
+| D10 | The start page (`/`) is a dark purple card from no part of the shell, and opening a project shows a black "Opening Spatial…" page | §9 |
 | D11 | The Preview start is a grey card over a view from outside the building | §11 |
 | D12 | The Preview scene is a black void with flat light, and the tour controls are plain | §11 |
 
@@ -92,14 +107,16 @@ D1, D2, D3, D4, D7, D8 (sheet §1–§4 and §7).
 
 - Look through on the full Stage with a gold edge and 16:10 safe-frame ticks. Toolbar and marks hide.
   One HUD; the Card shows Framing only.
-- 3D Views: camera body, wire frustum, height stem and tag, stop badge. 2D Views: dot and short wedge;
+- 3D Views: a small real camera (body, viewfinder hump, shutter button, lens barrel turned with the
+  aim), the wire frustum from the lens, height stem and tag, stop badge. 2D Views: dot and short wedge;
   the full cone and aim knob only on the selection. Gold selection with brackets.
 - Paths: a ribbon with chevrons and a start ring. Cut is dotted, with a chip on hover. 3D paths sit at
   eye height with a floor shadow and drops at each point. A segment that passes through a wall gets the
   caution chip.
 - Path handles: drag points; drag a **+** to add a point; double-click or Delete removes one. Each
   gesture is one Undo.
-- Show: dark-glass group like 2D/3D, a light popover with leaf checkboxes and an "n off" count.
+- Stage toolbar: light glass groups in **both lenses** (World's 2D | 3D ⚙ and Grid · Snap change too);
+  Show joins them in Experience, with a light popover, leaf checkboxes and an "n off" count.
 
 **Done when:** in 3D you can tell where each View looks and how high it sits; a path's direction reads at
 a glance; you can shape a path without a mode; Look through feels like standing in the room.
@@ -123,12 +140,16 @@ Stage.
 
 D10, D11, D12 (sheet §9 and §11).
 
-- Opening: the Head and Paper show at once in shell colours with the project name; the Stage fades in.
+- Start page (`apps/editor/src/routes/+page.svelte`): the option the owner settles in sheet §9 (★ Paper
+  and a white Card, forest primary; Recent projects when signed in). No purple.
+- Opening a project (`apps/editor/src/routes/editor/+page.svelte` and the spatial route's boot): the Head and
+  Paper show at once in shell colours with the project name; the Stage fades in.
 - Preview welcome over the first Stop's opening View, blurred: name, welcome text, gold guided-tour card,
   *Explore freely* card. A gold "Preview" tab, Exit pill top right.
 - Visitor scene: daylight sky and ground outside openings, hemisphere and sun light with soft shadows,
-  never a black void. Tour bar with the Stop title, progress and Pause · Next stop · Finish · Explore
-  freely; a Places drawer; the end card.
+  never a black void. Tour bar with the Stop title, progress and Prev · Pause · Next stop · Finish ·
+  Explore freely (Prev cuts to the previous Stop, no travel back; disabled at Stop 1); a Places drawer;
+  the end card.
 - These changes stay inside the visitor chunk; no editor module reaches it
   (`preview-surface-boundary`).
 

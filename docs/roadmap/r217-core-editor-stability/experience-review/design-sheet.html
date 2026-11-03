@@ -80,6 +80,15 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 .cbody.tour{stroke:var(--leaf)} .cbody.sel{stroke:var(--goldink);fill:var(--goldtint)}
 .lens{fill:var(--ink)} .lens.sel{fill:var(--goldink)}
 .chipold{fill:#fff;stroke:var(--leaf);stroke-width:1}
+.cam{filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.32))}
+.cam polygon{stroke:var(--ink);stroke-width:.8;stroke-linejoin:round}
+.cam .ct{fill:#ffffff} .cam .cf{fill:#eceee9} .cam .cs{fill:#dde1da}
+.cam .ct.btn,.cam .cf.btn,.cam .cs.btn{fill:var(--ink)}
+.cam .cl{fill:#2c332e;stroke:#1b201c} .cam .cap{fill:#1b201c;stroke:#1b201c}
+.cam .glass{fill:#557a72;stroke:none} .cam .glint{fill:#fff;opacity:.85}
+.cam.tour polygon{stroke:var(--forest2)} .cam.tour .ct{fill:#f4faf6} .cam.tour .cf{fill:#e2eee6} .cam.tour .cs{fill:#d2e3d8}
+.cam.sel polygon{stroke:var(--goldink)} .cam.sel .ct{fill:#fff8e6} .cam.sel .cf{fill:#f6e7bd} .cam.sel .cs{fill:#ecd69a}
+.cam.sel .cl,.cam.sel .cap{stroke:var(--goldink)} .cam.sel .glass{fill:#6e8d7c}
 .htag rect{fill:var(--value)} .htag text{fill:#fff;font:500 10.5px var(--sans)}
 .route{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .route.case{stroke:#fff;stroke-width:7.5;stroke-opacity:.9}
@@ -178,7 +187,9 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 .g-tl .mv{height:2px;background:#6f8f7f}
 
 /* Stage toolbar + Show */
-.tbwrap{position:relative;background:var(--paper);border-radius:10px;padding:10px;min-height:370px}
+.tbwrap{position:relative;background:var(--paper);border-radius:10px;padding:10px;min-height:430px}
+.tblab{display:inline-block;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin:0 8px 0 2px;vertical-align:middle}
+.tbworld{position:absolute;left:10px;bottom:12px}
 .tb{display:inline-flex;gap:2px;padding:3px;border-radius:11px;vertical-align:top;margin-right:6px}
 .tb button{border:0;background:none;border-radius:8px;padding:5px 10px;font:500 12.5px var(--sans);display:inline-flex;gap:5px;align-items:center}
 .dark .tb{background:var(--glass);box-shadow:0 1px 2px rgba(0,0,0,.15)}
@@ -271,6 +282,35 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 .oldpv .wold .e{color:var(--gold);font-size:10px;letter-spacing:.1em} .oldpv .wold h3{font:500 22px var(--serif);margin:4px 0 10px}
 .oldpv .wold .cc{display:grid;grid-template-columns:1fr 1fr;gap:8px} .oldpv .wold .cc div{border:1px solid #556;border-radius:9px;padding:8px}
 
+/* Start page */
+.land{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background-color:var(--paper);background-image:linear-gradient(rgba(27,32,28,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(27,32,28,.06) 1px,transparent 1px);background-size:28px 28px}
+.land-bg{position:absolute;inset:0;width:100%;height:100%}
+.land-brand{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:8px;padding:12px 16px;font:500 15px var(--serif);color:var(--forest)}
+.land-sign{border:1px solid var(--hair2);background:rgba(255,255,255,.8);border-radius:9px;padding:5px 12px;font:13px var(--sans);color:var(--ink)}
+.land-av{width:28px;height:28px;border-radius:50%;background:var(--forest2);color:#fff;display:grid;place-items:center;font:600 12px var(--sans)}
+.land-card{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:min(88%,460px);background:#fff;border:1px solid var(--hair2);border-radius:16px;box-shadow:0 2px 4px rgba(0,0,0,.05),0 18px 50px rgba(20,40,30,.14);padding:24px 26px}
+.land-ey{font-size:11px;letter-spacing:.14em;color:var(--goldink);font-weight:600}
+.land-card h3{font:500 34px/1.1 var(--serif);margin:6px 0 8px;color:var(--ink)}
+.land-card p{margin:0 0 16px;color:var(--ink2);font-size:13.5px}
+.land-acts{display:flex;gap:8px;flex-wrap:wrap}
+.land-acts .btn{padding:8px 16px;font-size:13.5px}
+.land-lab{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin:16px 0 6px}
+.land-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.land-item{border:1px solid var(--hair);border-radius:10px;padding:5px;font-size:12px;cursor:pointer}
+.land-item:hover{background:var(--hover)}
+.land-item .thumb{aspect-ratio:16/10;border-radius:6px;overflow:hidden;margin-bottom:4px}
+.land-item b{display:block;font:500 12.5px var(--serif)} .land-item small{color:var(--ink3);font-size:11px}
+.land-foot{margin:12px 0 0!important;font-size:12px!important;color:var(--ink3)!important}
+.land.forest{background-color:var(--forest);background-image:linear-gradient(rgba(243,240,228,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(243,240,228,.04) 1px,transparent 1px)}
+.land.forest .land-brand{color:var(--ivory)} .land.forest .land-sign{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff}
+.land.forest .land-card{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);box-shadow:0 20px 60px rgba(0,0,0,.35);backdrop-filter:blur(8px)}
+.land.forest .land-card h3{color:var(--ivory)} .land.forest .land-card p{color:#cdd8d1} .land.forest .land-ey{color:var(--gold)}
+.land.forest .land-pri{background:var(--gold);border-color:var(--gold);color:var(--forest)} .land.forest .land-sec{background:transparent;border-color:rgba(255,255,255,.25);color:#fff}
+.land.forest .land-item{border-color:rgba(255,255,255,.12);color:#fff} .land.forest .land-item small,.land.forest .land-lab,.land.forest .land-foot{color:var(--quiet)!important}
+.land-old{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 20%,#2a2633,#131219 70%);display:grid;place-items:center;font-family:var(--sans)}
+.lo-card{width:min(80%,420px);border:1px solid #3a3644;border-radius:14px;background:#17161d;padding:22px;color:#f1eff5}
+.lo-ey{color:#b39ae6;font-size:10.5px;letter-spacing:.14em;font-weight:700} .lo-card h3{font:800 30px/1.1 var(--sans);margin:8px 0} .lo-card p{color:#b6b2c0;font-size:13px;margin:0 0 14px}
+.lo-b{display:inline-block;background:#8a63c9;border-radius:8px;padding:7px 12px;font-size:13px;margin-right:6px} .lo-s{display:inline-block;border:1px solid #47434f;border-radius:8px;padding:7px 12px;font-size:13px}
 /* Opening + thumbs */
 .open{position:relative;aspect-ratio:16/10;border-radius:12px;overflow:hidden}
 .open.now{background:#121214;display:grid;place-items:center;color:#9a9aa0;font-size:12px}
@@ -295,11 +335,12 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 </style>
 </head>
 <body>
-<header class="top"><h1>Experience review 1 — interaction sheet</h1><span>R217.S26–S30 owner review · 2026-11-03 · ★ recommended · struck = current production</span></header>
+<header class="top"><h1>Experience review 1 — interaction sheet</h1><span>R217.S26–S30 owner review · 2026-11-03 · ✓ your pick · ★ recommended · struck = current production</span></header>
 <nav class="toc">
-  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening the editor</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a>
+  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a>
 </nav>
 <p class="intro">Each row shows what production does now (red line), the proposal (★) and, where useful, one alternative. Try the live parts: drag and scroll in <b>Look through</b>, click Views in <b>2</b>, drag path points and the <b>+</b> handles in <b>4</b>, switch Cut/Travel in <b>5</b>, tick the boxes in <b>7</b>, and step through Preview in <b>11</b>. Pick a different option on any row to override ★; the fix plan implements ★ wherever you don't.</p>
+<p class="intro"><b>Your picks (2026-11-03):</b> 1 full Stage + ticks · 2 a real camera body with the frustum and short 2D wedge · 3 ribbon + chevrons · 4, 5, 6 as recommended · 7 light glass, shared by the World and Experience Stage toolbars · Preview tour gets <i>Prev</i> (a Cut back, no travel) · the opening page is redesigned (9).</p>
 <main>
 
 <!-- 1 · Look through -->
@@ -308,7 +349,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   <p class="now">Now: a small 16:10 inset in a dark mat; the HUD pill collides with the Stage toolbar; drag aims the camera at the pointer ray from the already-turned pose (feedback loop, jumps); each wheel event jumps a whole lens preset (24 → 50 → 85 mm on one trackpad flick).</p>
   <div class="opts">
     <span>Frame</span>
-    <div class="seg" data-key="frame"><button data-v="full" aria-pressed="true"><span class="star">★</span> Full Stage + safe-frame ticks</button><button data-v="bare" aria-pressed="false">Full Stage, plain gold edge</button><button data-v="inset" class="old" aria-pressed="false">Small inset</button></div>
+    <div class="seg" data-key="frame"><button data-v="full" aria-pressed="true"><span class="star">✓</span> Full Stage + safe-frame ticks</button><button data-v="bare" aria-pressed="false">Full Stage, plain gold edge</button><button data-v="inset" class="old" aria-pressed="false">Small inset</button></div>
   </div>
   <div class="ltwrap" id="lt">
     <svg viewBox="0 0 800 450" id="lt-svg" aria-label="Look through demo: drag to turn, scroll to step"></svg>
@@ -332,8 +373,8 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   <h2><span class="n">2</span>Views on the Stage: a camera you can read</h2>
   <p class="now">Now: in 3D every View is the same tiny camera-icon chip — no direction, no frustum, no height; in 2D every View draws a long translucent cone, so a busy Presentation is a fan of overlapping wedges. Selection is a blue browser focus box.</p>
   <div class="opts">
-    <span>3D</span><div class="seg" data-key="r3"><button data-v="body" aria-pressed="true"><span class="star">★</span> Body + frustum + stem</button><button data-v="frus" aria-pressed="false">Frustum only</button><button data-v="chip" class="old" aria-pressed="false">Icon chip</button></div>
-    <span>2D</span><div class="seg" data-key="r2"><button data-v="wedge" aria-pressed="true"><span class="star">★</span> Short wedge, full on selection</button><button data-v="arrow" aria-pressed="false">Dot + arrow</button><button data-v="fan" class="old" aria-pressed="false">Long cones</button></div>
+    <span>3D</span><div class="seg" data-key="r3"><button data-v="body" aria-pressed="true"><span class="star">✓</span> Camera + frustum + stem</button><button data-v="frus" aria-pressed="false">Frustum only</button><button data-v="chip" class="old" aria-pressed="false">Icon chip</button></div>
+    <span>2D</span><div class="seg" data-key="r2"><button data-v="wedge" aria-pressed="true"><span class="star">✓</span> Short wedge, full on selection</button><button data-v="arrow" aria-pressed="false">Dot + arrow</button><button data-v="fan" class="old" aria-pressed="false">Long cones</button></div>
   </div>
   <div class="pair">
     <div><div class="cap">3D</div><svg class="st" viewBox="0 0 640 430" id="v3"></svg></div>
@@ -341,7 +382,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   </div>
   <p class="hint">Click a View in either panel. Drag the white knob in Plan to aim it.</p>
   <ul class="rules">
-    <li><b>3D:</b> a small white camera body with an ink keyline (the World sticker style), a wire frustum to a picture plane about a metre ahead, and a dashed stem to a floor dot so its height reads. Quiet Views are ink at low strength; Views on the tour are leaf; the selection is gold with a <i>1.65 m</i> height tag and a stop badge.</li>
+    <li><b>3D:</b> a small real camera — body, viewfinder hump, shutter button and a dark lens barrel with glass, drawn in 3D and turned with the View's aim, in the World sticker finish (white faces, ink keyline, soft shadow). The wire frustum starts at the lens and reaches a picture plane about a metre ahead; and a dashed stem to a floor dot so its height reads. Quiet Views are ink at low strength; Views on the tour are leaf; the selection is gold with a <i>1.65 m</i> height tag and a stop badge.</li>
     <li><b>Plan:</b> a dot and a short wedge for every View; only the selected View draws its full cone with an aim knob. Default ◆ and Stop numbers sit on the dot.</li>
     <li><b>Selection is gold</b>: gold mark, gold corner brackets, name tag in the forest chip. No blue ring — keyboard focus uses the leaf focus ring only when tabbing.</li>
   </ul>
@@ -352,7 +393,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   <h2><span class="n">3</span>Camera paths show where they go</h2>
   <p class="now">Now: 1px lines with no direction; Travel and Cut look alike apart from a dash; in 3D the path lies flat with mono "CUT" captions and no height cue.</p>
   <div class="opts">
-    <span>Direction</span><div class="seg" data-key="dir"><button data-v="chev" aria-pressed="true"><span class="star">★</span> Ribbon + chevrons</button><button data-v="head" aria-pressed="false">Ribbon + arrowhead</button><button data-v="thin" class="old" aria-pressed="false">Thin line</button></div>
+    <span>Direction</span><div class="seg" data-key="dir"><button data-v="chev" aria-pressed="true"><span class="star">✓</span> Ribbon + chevrons</button><button data-v="head" aria-pressed="false">Ribbon + arrowhead</button><button data-v="thin" class="old" aria-pressed="false">Thin line</button></div>
     <span>Example</span><div class="seg" data-key="wall"><button data-v="no" aria-pressed="true">Clear path</button><button data-v="yes" aria-pressed="false">Path through a wall</button></div>
   </div>
   <div class="pair">
@@ -370,7 +411,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 <section id="s4">
   <h2><span class="n">4</span>Shape a path directly</h2>
   <p class="now">Now: points can only be added by arming a dock tool, then clicking the route — and View markers win the click, so short routes can't be edited at all. "0 points" and a disabled Straighten button are all the Card offers.</p>
-  <div class="opts"><span>Editing</span><div class="seg" data-key="edit"><button data-v="handles" aria-pressed="true"><span class="star">★</span> Handles on the route</button><button data-v="click" aria-pressed="false">Click the route to add</button><button data-v="armed" class="old" aria-pressed="false">Armed dock tool</button></div></div>
+  <div class="opts"><span>Editing</span><div class="seg" data-key="edit"><button data-v="handles" aria-pressed="true"><span class="star">✓</span> Handles on the route</button><button data-v="click" aria-pressed="false">Click the route to add</button><button data-v="armed" class="old" aria-pressed="false">Armed dock tool</button></div></div>
   <svg class="st" viewBox="0 0 600 380" id="pe"></svg>
   <p class="hint" id="pe-read"></p>
   <ul class="rules">
@@ -384,7 +425,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 <section id="s5">
   <h2><span class="n">5</span>Travel makes its own path</h2>
   <p class="now">Now: choosing Travel leaves a gap — a full-width technical banner appears, the whole Guide's playback drops to 0:00 and Preview refuses to start.</p>
-  <div class="opts"><span>Choosing Travel</span><div class="seg" data-key="trav"><button data-v="auto" aria-pressed="true"><span class="star">★</span> Adds a straight path</button><button data-v="ask" aria-pressed="false">Asks first</button><button data-v="gap" class="old" aria-pressed="false">Leaves a gap</button></div></div>
+  <div class="opts"><span>Choosing Travel</span><div class="seg" data-key="trav"><button data-v="auto" aria-pressed="true"><span class="star">✓</span> Adds a straight path</button><button data-v="ask" aria-pressed="false">Asks first</button><button data-v="gap" class="old" aria-pressed="false">Leaves a gap</button></div></div>
   <div class="ui" style="display:flex;justify-content:center">
     <div class="card">
       <div class="c-head"><div class="g"><div class="c-kind">‹ <a>Stop 4</a> · Transition in <a>Salon tour</a></div><div class="c-name">Stop 4 → Stop 5</div></div><button class="ib" aria-label="More">•••</button><button class="ib" aria-label="Close">✕</button></div>
@@ -422,7 +463,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 <section id="s6" class="wide">
   <h2><span class="n">6</span>Guide strip: links between, never on top</h2>
   <p class="now">Now: transition chips sit on the Stop cards and cover their titles; thumbnails are dark; after leaving Preview they disappear.</p>
-  <div class="opts"><span>Strip</span><div class="seg" data-key="strip"><button data-v="fixed" aria-pressed="true"><span class="star">★</span> Links in the gutter</button><button data-v="old" class="old" aria-pressed="false">Chips over cards</button></div></div>
+  <div class="opts"><span>Strip</span><div class="seg" data-key="strip"><button data-v="fixed" aria-pressed="true"><span class="star">✓</span> Links in the gutter</button><button data-v="old" class="old" aria-pressed="false">Chips over cards</button></div></div>
   <div class="guide ui">
     <div class="g-head"><span class="g-eyebrow">GUIDE</span><span class="g-name">Salon tour</span><span style="font-size:12px;color:var(--quiet)">6 stops</span><button class="g-play" aria-label="Play"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 1.5v9l7.5-4.5z" fill="#11291f"/></svg></button><span class="g-time"><b>0:00</b> / 0:41 + 1 wait</span><span class="g-sp"></span><button class="g-btn">◎ Follow</button><button class="g-btn">+ Stop</button><button class="g-btn" aria-label="Compact">⌄</button><button class="g-btn" aria-label="Close">✕</button></div>
     <div class="g-strip" id="gs">
@@ -446,11 +487,11 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 
 <!-- 7 · Show -->
 <section id="s7" class="wide">
-  <h2><span class="n">7</span>Show: same chrome as the Stage toolbar</h2>
+  <h2><span class="n">7</span>One light-glass Stage toolbar, World and Experience</h2>
   <p class="now">Now: <span class="oldshow">Show ▾</span> is a white pill beside dark controls; the menu uses the browser's blue checkboxes.</p>
-  <div class="opts"><span>Toolbar</span><div class="seg" data-key="bar"><button data-v="dark" aria-pressed="true"><span class="star">★</span> Dark glass, like 2D/3D</button><button data-v="light" aria-pressed="false">Light glass</button></div></div>
-  <div class="tbwrap ui dark" id="tbw">
-    <div class="tb"><button aria-pressed="false">▭ Plan</button><button aria-pressed="true">◇ 3D</button></div><div class="tb"><button aria-pressed="false">Grid</button><button aria-pressed="false">Snap</button></div><div class="tb"><button aria-pressed="true" id="show-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2 1.5 5.5 8 9l6.5-3.5z"/><path d="m1.5 8.5 6.5 3.5 6.5-3.5"/></svg>Show<span class="off" id="show-off" hidden></span></button></div>
+  <div class="opts"><span>Toolbar</span><div class="seg" data-key="bar"><button data-v="light" aria-pressed="true"><span class="star">✓</span> Light glass, both lenses</button><button data-v="dark" aria-pressed="false">Dark glass</button></div></div>
+  <div class="tbwrap ui light" id="tbw">
+    <div class="tblab">Experience</div><div class="tb"><button aria-pressed="false">2D</button><button aria-pressed="true">3D</button><button aria-pressed="false" aria-label="View settings">⚙</button></div><div class="tb"><button aria-pressed="true">Grid</button><button aria-pressed="false">Snap</button></div><div class="tb"><button aria-pressed="true" id="show-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2 1.5 5.5 8 9l6.5-3.5z"/><path d="m1.5 8.5 6.5 3.5 6.5-3.5"/></svg>Show<span class="off" id="show-off" hidden></span></button></div>
     <div class="showpop">
       <header><b>Show on Stage</b><span>editor only</span></header>
       <div class="cseg" id="show-mode"><button aria-pressed="true">Whole Guide</button><button aria-pressed="false">Selection only</button></div>
@@ -460,10 +501,11 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
       <label class="srow"><input type="checkbox" class="chk" data-f="labels" checked><span><b>Labels</b><small>View names and Stop numbers</small></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="4" width="13" height="8" rx="2"/><path d="M4.5 8h7"/></svg></label>
       <div class="foot">The selection always stays visible. <b>Selection only</b> hides other Stops' Views and paths.</div>
     </div>
+    <div class="tbworld"><div class="tblab">World</div><div class="tb"><button aria-pressed="true">2D</button><button aria-pressed="false">3D</button><button aria-pressed="false" aria-label="View settings">⚙</button></div><div class="tb"><button aria-pressed="true">Grid</button><button aria-pressed="true">Snap</button></div></div>
     <svg viewBox="0 0 600 380" id="showplan" style="position:absolute;left:500px;top:52px;width:min(340px,calc(100% - 520px));border-radius:8px;background:var(--paper);box-shadow:var(--shadow)"></svg>
   </div>
   <ul class="rules">
-    <li>All three Stage controls share one dark-glass group style; pressed = forest-3. Show carries the layers glyph and a gold "2 off" count when anything is hidden.</li>
+    <li>One Stage toolbar style for <b>both lenses</b>: light glass groups (white 94%, soft shadow), ink labels, pressed = forest. World shows <i>2D | 3D ⚙</i> and <i>Grid · Snap</i>; Experience adds <i>Show</i> in the same style. Show carries the layers glyph and a gold "2 off" count when anything is hidden.</li>
     <li>The menu is a light Card-material popover with leaf checkboxes (shell control, not the browser's), a title and a one-line explanation per row, and its icon on the right. Tick a box: the mini plan reacts.</li>
   </ul>
 </section>
@@ -513,18 +555,40 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 </section>
 
 <!-- 9 · Opening -->
-<section id="s9">
-  <h2><span class="n">9</span>Opening the editor</h2>
-  <p class="now">Now: a black page with "Opening Spatial…", then the shell pops in.</p>
-  <div class="pair">
-    <div><div class="cap">Now</div><div class="open now">Opening Spatial…</div></div>
+<section id="s9" class="wide">
+  <h2><span class="n">9</span>Opening: the start page and the first load</h2>
+  <p class="now">Now: the start page is a dark purple card ("Start a project", purple button) from no part of the shell; then a black "Opening Spatial…" page before the editor pops in.</p>
+  <div class="opts">
+    <span>Start page</span><div class="seg" data-key="land"><button data-v="paper" aria-pressed="true"><span class="star">★</span> Paper and Card</button><button data-v="forest" aria-pressed="false">Forest</button><button data-v="old" class="old" aria-pressed="false">Purple card</button></div>
+    <span>Visitor</span><div class="seg" data-key="who"><button data-v="guest" aria-pressed="true">Guest</button><button data-v="user" aria-pressed="false">Signed in</button></div>
+  </div>
+  <div class="land ui" id="land">
+    <svg class="land-bg" viewBox="0 0 640 430" preserveAspectRatio="xMidYMid slice" id="land-bg"></svg>
+    <div class="land-brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 21V10a7 7 0 0 1 14 0v11"/><path d="M9 21v-8a3 3 0 0 1 6 0v8"/></svg><span>Museum Editor</span><span class="g-sp"></span><button class="land-sign" data-when="who=guest">Sign in</button><span class="land-av" data-when="who=user">T</span></div>
+    <div class="land-card">
+      <div class="land-ey">MUSEUM EDITOR</div>
+      <h3>Start a project</h3>
+      <p>Draw the rooms, place what belongs in them, then shape the visit — guided or free.</p>
+      <div class="land-acts"><button class="btn forest land-pri">Start creating</button><button class="btn land-sec" data-when="who=guest">Sign in to keep projects</button><button class="btn land-sec" data-when="who=user">Open a file…</button></div>
+      <div class="land-rec" data-when="who=user"><div class="land-lab">Recent</div>
+        <div class="land-list"><div class="land-item"><div class="thumb" data-thumb="day:1.1:-40"></div><b>Salon evening</b><small>Edited today</small></div><div class="land-item"><div class="thumb" data-thumb="stage:1.3:60"></div><b>Portrait gallery</b><small>Edited Monday</small></div><div class="land-item"><div class="thumb" data-thumb="eve:1.2:0"></div><b>Night salon</b><small>Edited 2 Nov</small></div></div></div>
+      <p class="land-foot" data-when="who=guest">You can start without an account. Projects stay in this browser until you sign in.</p>
+    </div>
+    <div class="land-old" data-when="land=old"><div class="lo-card"><div class="lo-ey">MUSEUM EDITOR</div><h3>Start a project</h3><p>Create in Spatial. Sign in when you want cloud projects.</p><span class="lo-b">Start creating</span><span class="lo-s">Sign in</span></div></div>
+  </div>
+  <div class="pair" style="margin-top:12px">
+    <div><div class="cap">Opening a project · now</div><div class="open now">Opening Spatial…</div></div>
     <div><div class="cap">★ Shell first, Stage fades in</div><div class="open new"><div class="hd"><i style="width:70px"></i><i style="width:40px"></i><span style="flex:1"></span><i style="width:56px;background:var(--gold)"></i></div><div class="mid"><b>Salon evening</b><small>Opening…</small><div class="ld"><i></i></div></div></div></div>
   </div>
-  <ul class="rules"><li>The Head and Paper appear immediately in shell colours with the project name; the Stage content fades in when ready. A new project opens on Paper with the dock ready, not a blank black page.</li></ul>
+  <ul class="rules">
+    <li><b>Start page in the shell's own material:</b> ★ the editor's Paper with its grid and a faint sketch of a room, one white Card (radius 16, serif title, gold-ink eyebrow), a forest primary button and an outline secondary. No purple anywhere. <i>Forest</i> is the same layout on the Head's forest with a gold primary.</li>
+    <li>Guests see <i>Start creating</i> and <i>Sign in to keep projects</i>, plus one line on where their work lives. Signed-in creators also see <b>Recent</b> projects with real snapshots and <i>Open a file…</i>.</li>
+    <li><b>Opening a project:</b> the Head and Paper appear immediately in shell colours with the project name; the Stage fades in when ready. Never a black page.</li>
+  </ul>
 </section>
 
 <!-- 11 · Snapshots -->
-<section id="s11">
+<section id="s11" class="wide">
   <h2><span class="n">10</span>Snapshots show the Stage, not a dark mat</h2>
   <p class="now">Now: snapshots clear to the mat ink (#1d3a33), so anything outside the room is dark green-black; Index rows never render theirs; Transition Card thumbnails are placeholders.</p>
   <div class="tiles">
@@ -555,7 +619,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
       <div class="tab">Preview — what a visitor sees</div>
       <button class="exit">✕ Exit preview<kbd>Esc</kbd></button>
       <div class="welcome" id="pv-wel" data-when="pst=welcome"><div class="ey">WELCOME TO</div><h3>Salon evening</h3><p>A small wing of rooms around the composer's Pleyel piano.</p><div class="choices"><button class="choice pri"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#11291f" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="18" r="1.5"/><circle cx="19" cy="6" r="1.5"/><path d="M7 16.5 9 15m3-2 1.5-1m3-2.5L17 8"/></svg><b>Take the guided tour</b><small>6 stops · about 0:41</small></button><button class="choice"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg><b>Explore freely</b><small>5 places at your own pace</small></button></div></div>
-      <div class="tour" data-when="pst=guided"><div><div class="ey">GUIDED TOUR · STOP 2 OF 6</div><h4>North window</h4><div class="prog"><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i></div></div><div class="ctl"><button class="vbtn gold">❚❚ Pause</button><button class="vbtn">Next stop →</button><button class="vbtn">Finish tour</button><button class="vbtn">Explore freely</button></div></div>
+      <div class="tour" data-when="pst=guided"><div><div class="ey">GUIDED TOUR · STOP 2 OF 6</div><h4>North window</h4><div class="prog"><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i></div></div><div class="ctl"><button class="vbtn">← Prev</button><button class="vbtn gold">❚❚ Pause</button><button class="vbtn">Next stop →</button><button class="vbtn">Finish tour</button><button class="vbtn">Explore freely</button></div></div>
       <div data-when="pst=free"><div class="explore"><span class="vbtn" style="background:rgba(17,41,31,.75)">Drag to look around · click the floor to walk</span><button class="vbtn gold">↩ Back to the tour · Stop 2</button></div><div class="places"><b style="font-size:12px;letter-spacing:.08em;color:var(--gold)">PLACES</b><div>Pleyel piano <small>· 3 views</small></div><div>North window <small>· 5 views</small></div><div>Doorway <small>· 2 views</small></div><div>Reading corner <small>· 1 view</small></div><div>East wall <small>· 3 views</small></div></div></div>
       <div class="endc" data-when="pst=end"><div class="ey" style="font-size:11px;letter-spacing:.14em;color:var(--gold)">END OF THE TOUR</div><h3>Thank you for visiting</h3><button class="vbtn gold">Keep exploring — including views the tour skipped</button><button class="vbtn">Start the tour again</button></div>
     </div>
@@ -564,7 +628,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   <ul class="rules">
     <li><b>Start:</b> the welcome sits over the first Stop's opening View (not an outside overview), softly blurred, with the Experience name, welcome text and two choice cards — gold for the guided tour. <i>Take the guided tour</i> always starts at Stop 1; "Preview from this Stop" stays a Guide Card action.</li>
     <li><b>Scene:</b> ★ daylight — a soft sky and ground outside openings, hemisphere + sun light with soft shadows, warm wall tones. Nothing renders against black. The visitor never sees grid or editor marks.</li>
-    <li><b>Chrome:</b> a small gold tab says it's a Preview; Exit is a dark-glass pill top right. Tour controls sit in a bottom gradient: Stop title (serif), progress, Pause · Next stop · Finish · Explore freely. <b>Exit returns in under 200 ms</b> to the exact editor state, with snapshots intact.</li>
+    <li><b>Chrome:</b> a small gold tab says it's a Preview; Exit is a dark-glass pill top right. Tour controls sit in a bottom gradient: Stop title (serif), progress, Prev · Pause · Next stop · Finish · Explore freely. <b>Prev</b> cuts straight to the previous Stop's first View — no travel back; Stop 1 disables it. <b>Exit returns in under 200 ms</b> to the exact editor state, with snapshots intact.</li>
   </ul>
 </section>
 
@@ -674,14 +738,37 @@ function view2d(v,sel,mode,o={}){const x=px(v.x),y=pz(v.z),st=sel?'sel':v.stop?'
   if(sel)s+=mode==='fan'?`<rect class="blue" x="${x-14}" y="${y-14}" width="28" height="28" rx="6"/>`+tag(x,y+24,v.name,'vtag old'):brackets(x,y,13,13)+tag(x,y+26,v.name);
   else if(o.labels!==false&&o.allLabels)s+=`<text x="${x+8}" y="${y+16}" style="font:11px var(--sans);fill:var(--ink2)">${v.name}</text>`;
   return s+'</g>';}
+/* A small real camera drawn in 3D: body, viewfinder hump, shutter button and a lens barrel along
+   the View's aim. Faces are culled against the iso viewer direction and painted far to near. */
+function camGlyph(E,f,r,st){const S=1.3,V=[1,1,1],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const at=(a,b,c)=>[E[0]+(f[0]*a+r[0]*b)*S,E[1]+c*S,E[2]+(f[2]*a+r[2]*b)*S],neg=n=>n.map(x=>-x),u=[0,1,0];
+  const faces=[];
+  function box(a0,a1,b0,b1,c0,c1,k){
+    const q=[[a0,b0,c0],[a1,b0,c0],[a1,b1,c0],[a0,b1,c0],[a0,b0,c1],[a1,b0,c1],[a1,b1,c1],[a0,b1,c1]].map(p=>at(...p));
+    [[[1,2,6,5],f,'f'],[[0,3,7,4],neg(f),'f'],[[2,3,7,6],r,'s'],[[0,1,5,4],neg(r),'s'],[[4,5,6,7],u,'t']].forEach(([ix,n,t])=>{if(dot(n,V)>0)faces.push({pts:ix.map(i=>q[i]),cls:`c${t}${k||''}`});});}
+  box(-.24,.12,-.13,.13,-.12,.12);       // body
+  box(-.19,-.03,-.06,.06,.12,.19);       // viewfinder hump
+  box(.02,.08,.07,.11,.12,.15,' btn');   // shutter button
+  const n=10,R=.085,l0=.12,l1=.27,ring=a=>Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return at(a,Math.cos(t)*R,Math.sin(t)*R);});
+  const r0=ring(l0),r1=ring(l1);
+  for(let i=0;i<n;i++){const t=(i+.5)/n*Math.PI*2,nn=[r[0]*Math.cos(t),Math.sin(t),r[2]*Math.cos(t)];if(dot(nn,V)>0)faces.push({pts:[r0[i],r0[(i+1)%n],r1[(i+1)%n],r1[i]],cls:'cl'});}
+  const capVisible=dot(f,V)>0;if(capVisible)faces.push({pts:r1,cls:'cap'});
+  const depth=p=>p.reduce((s,q)=>s+dot(q,V),0)/p.length;
+  faces.sort((a,b)=>depth(a.pts)-depth(b.pts));
+  let svg=`<g class="cam ${st}">`+faces.map(fc=>`<polygon class="${fc.cls}" points="${P(fc.pts.map(p=>iso(...p)))}"/>`).join('');
+  if(capVisible){const g=Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return iso(...at(l1+.001,Math.cos(t)*R*.62,Math.sin(t)*R*.62));});svg+=`<polygon class="glass" points="${P(g)}"/>`;const hl=iso(...at(l1+.002,-R*.25,R*.3));svg+=`<circle class="glint" cx="${hl[0]}" cy="${hl[1]}" r="1.1"/>`;}
+  svg+='</g>';
+  return{svg,apex:at(l1,0,0)};}
 function view3d(v,sel,mode){const st=sel?'sel':v.stop?'tour':'';const E=[v.x,v.h,v.z],a=rad(v.yaw),f=[Math.cos(a),0,Math.sin(a)],r=[-Math.sin(a),0,Math.cos(a)];
   const e=iso(...E),fl=iso(v.x,0,v.z);let s=`<g class="v3" data-view="${v.id}" style="cursor:pointer">`;
   if(mode==='chip'){s+=`<rect class="chipold" x="${e[0]-7}" y="${e[1]-5}" width="14" height="10" rx="2" ${sel?'style="stroke:var(--gold);fill:#fbf3da"':''}/><path d="M${e[0]-3},${e[1]+2}l2,-3l2,2l2,-2" fill="none" stroke="var(--leaf)" stroke-width=".9"/>`;if(sel)s+=tag(e[0]+44,e[1],v.name,'vtag old');return s+'</g>';}
-  const d=sel?1.4:.9,h=Math.tan(rad(26))*d,w=h*1.6,C=(sx,sy)=>iso(E[0]+f[0]*d+r[0]*w*sx,E[1]+h*sy,E[2]+f[2]*d+r[2]*w*sx),cs=[C(-1,1),C(1,1),C(1,-1),C(-1,-1)];
+  const cam=mode==='body'?camGlyph(E,f,r,st):null,O=cam?cam.apex:E,o=iso(...O);
+  const d=sel?1.4:.9,h=Math.tan(rad(26))*d,w=h*1.6,C=(sx,sy)=>iso(O[0]+f[0]*d+r[0]*w*sx,O[1]+h*sy,O[2]+f[2]*d+r[2]*w*sx),cs=[C(-1,1),C(1,1),C(1,-1),C(-1,-1)];
   s+=`<line class="stem" x1="${e[0]}" y1="${e[1]}" x2="${fl[0]}" y2="${fl[1]}"/><ellipse class="foot" cx="${fl[0]}" cy="${fl[1]}" rx="5" ry="2.6"/>`;
-  s+=cs.map(c=>`<line class="frl ${st}" x1="${e[0]}" y1="${e[1]}" x2="${c[0]}" y2="${c[1]}"/>`).join('')+`<polygon class="fr ${st}" points="${P(cs)}"/>`;
-  if(mode==='body'){const cc=C(0,0),dx=cc[0]-e[0],dy=cc[1]-e[1],dl=Math.hypot(dx,dy)||1;s+=`<rect class="cbody ${st}" x="${e[0]-10}" y="${e[1]-7.5}" width="20" height="15" rx="4.5"/><circle class="lens ${st}" cx="${e[0]+dx/dl*6}" cy="${e[1]+dy/dl*4}" r="3.2"/>`;}
-  else s+=`<circle cx="${e[0]}" cy="${e[1]}" r="3.4" style="fill:${sel?'var(--gold)':v.stop?'var(--leaf)':'#fff'};stroke:var(--ink);stroke-width:1"/>`;
+  const fr=cs.map(c=>`<line class="frl ${st}" x1="${o[0]}" y1="${o[1]}" x2="${c[0]}" y2="${c[1]}"/>`).join('')+`<polygon class="fr ${st}" points="${P(cs)}"/>`;
+  // A frustum facing away from the viewer sits behind the camera; one facing it sits in front.
+  if(cam){const toward=f[0]+f[2]>0;s+=toward?cam.svg+fr:fr+cam.svg;}
+  else s+=fr+`<circle cx="${e[0]}" cy="${e[1]}" r="3.4" style="fill:${sel?'var(--gold)':v.stop?'var(--leaf)':'#fff'};stroke:var(--ink);stroke-width:1"/>`;
   if(v.stop)s+=`<g class="badge" transform="translate(${e[0]-12},${e[1]-12})"><circle r="7"/><text y="3.3" text-anchor="middle">${v.stop}</text></g>`;
   if(sel){s+=brackets(e[0],e[1],15,12)+tag(e[0],e[1]-28,v.name);const m=[(e[0]+fl[0])/2,(e[1]+fl[1])/2];s+=`<g class="htag" transform="translate(${m[0]+22},${m[1]})"><rect x="-19" y="-9" width="38" height="18" rx="5"/><text y="4" text-anchor="middle">${v.h.toFixed(2)} m</text></g>`;}
   return s+'</g>';}
@@ -799,6 +886,13 @@ R.s6=()=>{$('#gs').classList.toggle('old',$('#s6').dataset.strip==='old');};
   s+=`<path class="cone" d="${wedge(60,85,-20,52,22)}" style="fill:var(--leaf);fill-opacity:.14;stroke:var(--leaf)"/><circle cx="60" cy="85" r="5" fill="var(--leaf)" stroke="#fff" stroke-width="1.6"/><path d="${wedge(240,35,170,52,22)}" style="fill:var(--leaf);fill-opacity:.14;stroke:var(--leaf)"/><circle cx="240" cy="35" r="5" fill="var(--leaf)" stroke="#fff" stroke-width="1.6"/>`;
   s+=chip(150,48,'⚠ No path','pchip bad');s+=`<text x="60" y="108" text-anchor="middle" style="font:11px var(--sans);fill:var(--ink2)">North window</text><text x="240" y="62" text-anchor="middle" style="font:11px var(--sans);fill:var(--ink2)">Doorway</text>`;
   $('#probstage').innerHTML=s;})();
+
+
+/* ---------- 9 · Start page ---------- */
+(function(){const sec=$('#s9');
+  R.s9=()=>{const l=sec.dataset.land,el=$('#land');el.classList.toggle('forest',l==='forest');
+    const s=isoBase().replace('<rect width="640" height="430" fill="#e9ebe6"/>','');
+    $('#land-bg').innerHTML=`<g opacity="${l==='forest'?.12:.5}" transform="translate(150 40) scale(.8)">${s}</g>`+(l==='paper'?'<rect width="640" height="430" fill="url(#landfade)"/><defs><radialGradient id="landfade" cx=".5" cy=".55" r=".6"><stop offset="0" stop-color="#e9ebe6" stop-opacity=".2"/><stop offset="1" stop-color="#e9ebe6" stop-opacity=".9"/></radialGradient></defs>':'');};})();
 
 /* ---------- 10 · Preview ---------- */
 (function(){const sec=$('#s10');
