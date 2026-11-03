@@ -62,12 +62,14 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 		{
 			id: 'experience-1',
 			label: 'Morning walk',
+			welcome: null,
 			entryGuideId: 'guide-1',
 			presentations: [
 				{
 					id: 'presentation-1',
 					label: 'Piano',
 					viewIds: ['view-1'],
+					explorable: true,
 					defaultViewId: 'view-1',
 					subject: null,
 					text: { kind: 'plain', body: 'The piano.' }
@@ -76,6 +78,7 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 					id: 'presentation-2',
 					label: 'Gallery',
 					viewIds: ['view-2'],
+					explorable: true,
 					defaultViewId: 'view-2',
 					subject: null,
 					text: null
@@ -85,10 +88,10 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
-					holdSeconds: 0.5,
+					views: [{ viewId: 'view-1', holdSeconds: 0.5 }],
 					continuation: { kind: 'sequence-next', transition: 'travel' }
 				},
-				{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
 			],
 			guides: [
 				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' }

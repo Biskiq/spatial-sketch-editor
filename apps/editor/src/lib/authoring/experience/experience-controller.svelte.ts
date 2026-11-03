@@ -26,6 +26,7 @@ import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { stageEnvelope } from '../stage/unit-stage-source';
 import {
+	EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS,
 	planGuideRemoval,
 	planPresentationRemoval,
 	planPresentationViewRemoval,
@@ -36,6 +37,7 @@ import type {
 	Experience,
 	ExperienceContinuation,
 	ExperienceGuide,
+	ExperienceGuidedView,
 	ExperiencePresentation,
 	ExperienceStop,
 	ProjectEnvelope
@@ -46,9 +48,10 @@ import {
 	presentationsAboutEntity,
 	reachSummary,
 	resolveContinuation as resolveStopContinuation,
-	stopsEnteringAt,
+	stopsGuiding,
 	viewFactsOf,
 	type ExperienceReach,
+	type GuidedViewPosition,
 	type ExperienceSubject,
 	type ExperienceViewFacts,
 	type ResolvedContinuation
@@ -129,10 +132,10 @@ export type ExperienceController = {
 	viewFacts(viewId: string): ExperienceViewFacts | null;
 	/** Where a Stop's continuation goes, read against the context Guide (D11). */
 	resolveContinuation(stopId: string): ResolvedContinuation | null;
-	/** The context Guide's Stops that enter at this View, with 1-based positions. */
-	viewStops(viewId: string): readonly { readonly stopId: string; readonly position: number }[];
+	/** The context Guide's Stops that guide this View. */
+	viewStops(viewId: string): readonly GuidedViewPosition[];
 	presentationsAbout(entityId: string): readonly ExperiencePresentation[];
-	reach(): ExperienceReach;
+	reach(guide?: ExperienceGuide | null): ExperienceReach;
 	createExperience(): Promise<void>;
 	/**
 	 * Dock Capture (D1, D2): the current 3D viewpoint into the subject's Presentation,
@@ -152,9 +155,14 @@ export type ExperienceController = {
 	/** A guide-order permutation of the active Guide. */
 	moveStopTo(stopId: string, index: number): Promise<boolean>;
 	moveStop(stopId: string, direction: -1 | 1): Promise<boolean>;
-	/** null follows the Presentation's Default. */
-	setStopEntry(stopId: string, entryViewId: string | null): Promise<boolean>;
-	setStopHold(stopId: string, holdSeconds: number | null): Promise<boolean>;
+	setStopViews(stopId: string, views: readonly ExperienceGuidedView[]): Promise<boolean>;
+	includeView(stopId: string, viewId: string): Promise<boolean>;
+	leaveOutView(stopId: string, viewId: string): Promise<boolean>;
+	setViewHold(stopId: string, viewId: string, holdSeconds: number | null): Promise<boolean>;
+	moveGuidedViewTo(stopId: string, viewId: string, index: number): Promise<boolean>;
+	moveGuidedView(stopId: string, viewId: string, direction: -1 | 1): Promise<boolean>;
+	setExplorable(presentationId: string, explorable: boolean): Promise<boolean>;
+	setWelcome(body: string): Promise<boolean>;
 	/** Where Next goes. Keeps the Stop's Cut/Travel choice. */
 	setContinuation(stopId: string, target: 'next' | 'end' | { readonly stopId: string }): Promise<boolean>;
 	/** Cut or Travel on the continuation. Does nothing for End. */
@@ -552,8 +560,7 @@ export function createExperienceController(
 	async function updateStop(
 		stopId: string,
 		fields: {
-			readonly entryViewId?: string | null;
-			readonly holdSeconds?: number | null;
+			readonly views?: readonly ExperienceGuidedView[];
 			readonly continuation?: ExperienceContinuation | null;
 		}
 	): Promise<boolean> {
@@ -572,14 +579,60 @@ export function createExperienceController(
 		);
 	}
 
-	const setStopEntry = (stopId: string, entryViewId: string | null) => updateStop(stopId, { entryViewId });
+	const setStopViews = (stopId: string, views: readonly ExperienceGuidedView[]) => updateStop(stopId, { views });
+	const guidedViews = (stopId: string) => current?.stops.find((entry) => entry.id === stopId)?.views;
 
-	async function setStopHold(stopId: string, holdSeconds: number | null): Promise<boolean> {
+	/** A View moved into the entry position no longer has an incoming step. */
+	function withoutEntryTransition(views: readonly ExperienceGuidedView[]): readonly ExperienceGuidedView[] {
+		const [first, ...rest] = views;
+		if (first?.transition === undefined) return views;
+		const { transition: _transition, ...entry } = first;
+		return [entry, ...rest];
+	}
+
+	async function includeView(stopId: string, viewId: string): Promise<boolean> {
+		const views = guidedViews(stopId);
+		if (views === undefined || views.some((view) => view.viewId === viewId)) return false;
+		return setStopViews(stopId, [...views, { viewId, holdSeconds: EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS }]);
+	}
+
+	async function leaveOutView(stopId: string, viewId: string): Promise<boolean> {
+		const views = guidedViews(stopId);
+		if (views === undefined || !views.some((view) => view.viewId === viewId)) return false;
+		if (views.length === 1) {
+			say('A Stop shows at least one View');
+			return false;
+		}
+		return setStopViews(stopId, withoutEntryTransition(views.filter((view) => view.viewId !== viewId)));
+	}
+
+	async function setViewHold(stopId: string, viewId: string, holdSeconds: number | null): Promise<boolean> {
 		if (holdSeconds !== null && (!Number.isFinite(holdSeconds) || holdSeconds < 0)) {
 			say('A hold is a finite number of seconds, or blank for none.');
 			return false;
 		}
-		return updateStop(stopId, { holdSeconds });
+		const views = guidedViews(stopId);
+		const selected = views?.find((view) => view.viewId === viewId);
+		if (views === undefined || selected === undefined || selected.holdSeconds === (holdSeconds ?? undefined)) return false;
+		const { holdSeconds: _oldHold, ...view } = selected;
+		const updated = holdSeconds === null ? view : { ...view, holdSeconds };
+		return setStopViews(stopId, views.map((entry) => entry.viewId === viewId ? updated : entry));
+	}
+
+	async function moveGuidedViewTo(stopId: string, viewId: string, index: number): Promise<boolean> {
+		const views = guidedViews(stopId);
+		if (views === undefined || !Number.isInteger(index) || index < 0 || index >= views.length) return false;
+		const from = views.findIndex((view) => view.viewId === viewId);
+		if (from === -1 || from === index) return false;
+		const order = [...views];
+		const [view] = order.splice(from, 1);
+		order.splice(index, 0, view!);
+		return setStopViews(stopId, withoutEntryTransition(order));
+	}
+
+	async function moveGuidedView(stopId: string, viewId: string, direction: -1 | 1): Promise<boolean> {
+		const index = guidedViews(stopId)?.findIndex((view) => view.viewId === viewId) ?? -1;
+		return index >= 0 && moveGuidedViewTo(stopId, viewId, index + direction);
 	}
 
 	/** The Cut/Travel choice a continuation carries; End carries none. */
@@ -649,6 +702,37 @@ export function createExperienceController(
 				experienceId: experience.id,
 				presentationId,
 				text: body === '' ? null : { kind: 'plain', body }
+			})
+		);
+	}
+
+	async function setExplorable(presentationId: string, explorable: boolean): Promise<boolean> {
+		const experience = current;
+		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
+		if (experience === null || presentation === undefined || presentation.explorable === explorable) return false;
+		return run(() =>
+			presentationUpdateIntent({
+				envelope: snapshot,
+				revision: revision(),
+				ids: { operation: newId() },
+				experienceId: experience.id,
+				presentationId,
+				explorable
+			})
+		);
+	}
+
+	async function setWelcome(body: string): Promise<boolean> {
+		const experience = current;
+		const welcome = body.trim() === '' ? null : { kind: 'plain' as const, body };
+		if (experience === null || (experience.welcome?.body ?? null) === (welcome?.body ?? null)) return false;
+		return run(() =>
+			experienceUpdateIntent({
+				envelope: snapshot,
+				revision: revision(),
+				ids: { operation: newId() },
+				experienceId: experience.id,
+				welcome
 			})
 		);
 	}
@@ -1143,21 +1227,27 @@ export function createExperienceController(
 			current === null ? null : viewFactsOf(current, snapshot.units.camera.data.views, viewId),
 		resolveContinuation: (stopId: string) =>
 			current === null ? null : resolveStopContinuation(current, contextGuide, stopId),
-		viewStops: (viewId: string) => (current === null ? [] : stopsEnteringAt(current, contextGuide, viewId)),
+		viewStops: (viewId: string) => (current === null ? [] : stopsGuiding(current, contextGuide, viewId)),
 		presentationsAbout: (entityId: string) =>
 			current === null ? [] : presentationsAboutEntity(current, entityId),
-		reach: () =>
+		reach: (guide = contextGuide) =>
 			current === null
-				? { presentations: 0, views: 0, viewsOnlyFree: 0 }
-				: reachSummary(current, contextGuide),
+				? { presentations: 0, views: 0, freePresentations: 0, freeViews: 0, viewsOnlyFree: 0, hiddenViews: 0 }
+				: reachSummary(current, guide),
 		createExperience,
 		capture,
 		presentThis,
 		addStop,
 		moveStopTo,
 		moveStop,
-		setStopEntry,
-		setStopHold,
+		setStopViews,
+		includeView,
+		leaveOutView,
+		setViewHold,
+		moveGuidedViewTo,
+		moveGuidedView,
+		setExplorable,
+		setWelcome,
 		setContinuation,
 		setTransition,
 		renamePresentation,

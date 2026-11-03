@@ -114,7 +114,8 @@ describe('S03 recorded pre-change selection differential', () => {
 			// projection's near and far, so 167 worldPoint coordinates moved by at most
 			// 8.5e-15, and the Stage no longer draws the visitor plinth, which no sample
 			// had hit. Every winner and every other field is unchanged.
-			// Exact values are pinned again so later drift fails this test.
+			// R217.S27 updates only generation IDs because Experience 3 changes
+			// the source hashes. All sampled geometry and winners stay pinned.
 			expect(actual).toEqual(expected);
 		}
 	});

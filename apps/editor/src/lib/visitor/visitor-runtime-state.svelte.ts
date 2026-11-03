@@ -1,7 +1,7 @@
 /**
  * Visitor runtime — Experience-unit orchestration (AM-9, T3.P01.S04).
  *
- * The visitor executes one lowered `ExecutionProgram@2` through the single
+ * The visitor executes one lowered `ExecutionProgram@3` through the single
  * Experience interpreter. There is no node-keyed order, no main-flow walk and no
  * Scene `nextNodeId`/`previousNodeId` traversal: Guide order is authored in the
  * Experience unit, lowering produces the program, and this store only dispatches
@@ -53,7 +53,7 @@ export class VisitorRuntimeState {
 	 */
 	start(entryPresentationId: string | null) {
 		if (entryPresentationId !== null) {
-			this.selectPresentation(entryPresentationId);
+			this.state = this.interpreter.enterPresentation(entryPresentationId).state;
 			return;
 		}
 		if (this.program.entryStopId !== null) this.enter();
@@ -78,11 +78,12 @@ export class VisitorRuntimeState {
 	}
 
 	/**
-	 * Enter a Presentation that carries no Stop through the interpreter's
+	 * Enter an explorable Presentation at its Default through the interpreter's
 	 * Presentation-entry event. It realizes the Presentation's Default View through
 	 * the same Camera authority and never fabricates a Stop.
 	 */
 	selectPresentation(presentationId: string): boolean {
+		if (!this.freePresentations.some((presentation) => presentation.id === presentationId)) return false;
 		const result = this.interpreter.enterPresentation(presentationId);
 		if (result.outcome !== 'accepted') return false;
 		this.state = result.state;
@@ -104,7 +105,7 @@ export class VisitorRuntimeState {
 		// A hold is time, not a prompt: when the authored hold expires the run
 		// continues itself. A Gate is different and stays blocked until the
 		// visitor's explicit Continue.
-		if (wasHolding && this.state.phase === 'ready' && !this.state.gated) this.continue();
+		if (wasHolding && this.state.phase === 'ready' && this.state.holdRemainingMs === 0 && !this.state.gated) this.continue();
 	}
 
 	get currentStop() {
@@ -120,13 +121,25 @@ export class VisitorRuntimeState {
 			: this.program.presentations.find((presentation) => presentation.id === presentationId) ?? null;
 	}
 
-	/** The Camera View this run presents: the arrived Stop's own entry View. */
+	get freePresentations() {
+		return this.program.presentations.filter((presentation) => presentation.explorable);
+	}
+
+	get currentViewIndex(): number | null {
+		return this.state.viewIndex;
+	}
+
+	/** The Camera View this run presents. */
 	get currentViewId(): string | null {
 		return this.state.viewId;
 	}
 
 	get currentInvocation(): ProgramInvocation | null {
 		return this.state.invocation;
+	}
+
+	get currentInvocationFromViewId(): string | null {
+		return this.state.invocationFromViewId;
 	}
 
 	get ended() {

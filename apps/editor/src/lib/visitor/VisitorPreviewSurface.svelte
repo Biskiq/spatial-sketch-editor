@@ -71,11 +71,7 @@ import { PCFShadowMap } from 'three';
 			: createVisitorRuntimeState({ program, options: experienceOptions });
 	});
 	let cameraGap = $state<string | null>(null);
-	const guideFreePresentations = $derived.by(() => {
-		if (visitorState === null) return [];
-		const stopPresentations = new Set(visitorState.program.stops.map((stop) => stop.presentationId));
-		return visitorState.program.presentations.filter((entry) => !stopPresentations.has(entry.id));
-	});
+	const freePresentations = $derived(visitorState?.freePresentations ?? []);
 	$effect(() => {
 		if (visitorState === null) return;
 		visitorState.reducedMotion = reducedMotion;
@@ -179,9 +175,9 @@ import { PCFShadowMap } from 'three';
 			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} {modelUrls} />
 		</Canvas>
 	</div>
-	{#if guideFreePresentations.length > 0 || visitorState?.canResume}
+	{#if freePresentations.length > 0 || visitorState?.canResume}
 		<nav class="visitor-presentations" aria-label="Presentations">
-			{#each guideFreePresentations as entry (entry.id)}
+			{#each freePresentations as entry (entry.id)}
 				<button type="button" onclick={() => visitorState?.selectPresentation(entry.id)}>
 					{entry.label}
 				</button>

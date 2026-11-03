@@ -59,12 +59,14 @@ function parts(): Omit<ProjectEnvelopeInput, 'acceptedRevision' | 'dependencyLoc
 					{
 						id: 'experience-a',
 						label: 'Experience a',
+						welcome: null,
 						entryGuideId: 'guide-1',
 						presentations: [
 							{
 								id: 'presentation-1',
 								label: 'Entry',
 								viewIds: ['view-1'],
+								explorable: true,
 								defaultViewId: 'view-1',
 								subject: null,
 								text: null
@@ -74,7 +76,7 @@ function parts(): Omit<ProjectEnvelopeInput, 'acceptedRevision' | 'dependencyLoc
 							{
 								id: 'stop-1',
 								presentationId: 'presentation-1',
-								holdSeconds: 2,
+								views: [{ viewId: 'view-1', holdSeconds: 2 }],
 								continuation: { kind: 'end' }
 							}
 						],
@@ -221,7 +223,7 @@ describe('the envelope source-content digest', () => {
 								{
 									id: 'stop-1',
 									presentationId: 'presentation-1',
-									holdSeconds: 3,
+									views: [{ viewId: 'view-1', holdSeconds: 3 }],
 									continuation: { kind: 'end' }
 								}
 							]
@@ -237,7 +239,7 @@ describe('the envelope source-content digest', () => {
 
 it('hashes codec-normalized contents and remains self-consistent after a real read', async () => {
 	const values = parts();
-	values.experience.data.experiences[0]!.stops = [{ id: 'stop-1', presentationId: 'presentation-1' }];
+	values.experience.data.experiences[0]!.stops = [{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }];
 	const built = await createProjectEnvelope({ id: 'project-1', name: 'Project one',
 		acceptedRevision: { projectId: 'project-1', revisionId: 'r' }, dependencyLock: { formatVersion: 1, entries: [] }, ...values });
 	const read = validateProjectEnvelope(JSON.parse(serializeProjectEnvelope(built)));

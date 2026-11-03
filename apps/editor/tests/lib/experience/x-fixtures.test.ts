@@ -36,7 +36,8 @@ describe('R217.S26 x-fixtures', () => {
 		const stops = guide.stopIds.map((stopId) => experience.stops.find((stop) => stop.id === stopId)!);
 		expect(stops.map((stop) => stop.presentationId)).toEqual(['x-piano', 'x-window', 'x-door', 'x-piano', 'x-corner', 'x-wall']);
 		// The hold-less Stop and the nonadjacent continuation.
-		expect(stops.map((stop) => stop.holdSeconds ?? null)).toEqual([4, null, 4, 4, 4, 4]);
+		expect(stops.map((stop) => stop.views.at(-1)?.holdSeconds ?? null)).toEqual([4, null, 4, 4, 4, 4]);
+		expect(stops[3]!.views.map((view) => view.viewId)).toEqual(['x-piano-view-1', 'x-piano-view-2', 'x-piano-view-3']);
 		expect(stops[0]!.continuation).toEqual({ kind: 'stop', stopId: ids.stopIds[4], transition: 'cut' });
 	});
 

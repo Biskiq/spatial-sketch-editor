@@ -48,18 +48,20 @@ function experience(id: string, stopId: string): Experience {
 	return {
 		id,
 		label: id,
+		welcome: null,
 		entryGuideId: null,
 		presentations: [
 			{
 				id: `presentation:${id}`,
 				label: id,
 				viewIds: ['view-1'],
+				explorable: true,
 				defaultViewId: 'view-1',
 				subject: null,
 				text: null
 			}
 		],
-		stops: [{ id: stopId, presentationId: `presentation:${id}`, continuation: { kind: 'end' } }],
+		stops: [{ id: stopId, presentationId: `presentation:${id}`, views: [{ viewId: 'view-1' }], continuation: { kind: 'end' } }],
 		guides: [],
 		gates: [],
 		detours: []

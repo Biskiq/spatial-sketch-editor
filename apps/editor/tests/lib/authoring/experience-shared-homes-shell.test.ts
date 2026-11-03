@@ -31,7 +31,7 @@ function view(id: string, label: string, overrides: Partial<View> = {}): View {
 
 function presentation(id: string, label: string, overrides: Partial<Presentation> = {}): Presentation {
 	const views = overrides.views ?? [view(`${id}-front`, 'Front')];
-	return { id, label, viewCount: views.length, stopNumbers: [], selected: false, expanded: false, ...overrides, views };
+	return { id, label, viewCount: views.length, explorable: true, stopNumbers: [], selected: false, expanded: false, ...overrides, views };
 }
 
 function guide(id: string, label: string, overrides: Partial<Guide> = {}): Guide {

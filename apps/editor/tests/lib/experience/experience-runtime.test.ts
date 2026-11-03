@@ -18,6 +18,7 @@ import {
 	lowerExperienceProgram,
 	replayExperience,
 	reduceExperience,
+	validateProjectEnvelope,
 	type ExperienceEvent,
 	type ExperienceInterpreterOptions
 } from '@portfolio/project-model/units';
@@ -86,6 +87,7 @@ async function threeStopLowering(jumpFromEntry = false) {
 							id: 'presentation-3',
 							label: 'Study',
 							viewIds: ['view-3'],
+							explorable: true,
 							defaultViewId: 'view-3',
 							subject: null,
 							text: null
@@ -99,7 +101,7 @@ async function threeStopLowering(jumpFromEntry = false) {
 								}
 							: base.stops[0]!,
 						{ ...base.stops[1]!, continuation: { kind: 'sequence-next' as const, transition: 'travel' as const } },
-						{ id: 'stop-3', presentationId: 'presentation-3', continuation: { kind: 'end' as const } }
+						{ id: 'stop-3', views: [{ viewId: 'view-3' }], presentationId: 'presentation-3', continuation: { kind: 'end' as const } }
 					],
 					guides: [{ ...base.guides[0]!, stopIds: ['stop-1', 'stop-2', 'stop-3'] }]
 				}
@@ -121,14 +123,14 @@ describe('Experience lowering', () => {
 		expect(lowered.stops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2']);
 		expect(lowered.stops[0]).toMatchObject({
 			invocation: { kind: 'cut', viewId: 'view-1' },
-			holdSeconds: 0.5,
+			views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
 			continuation: { kind: 'sequence-next' }
 		});
 		expect(lowered.stops[1]).toMatchObject({
 			invocation: { kind: 'travel', connectionId: 'connection-1' },
 			continuation: { kind: 'end' }
 		});
-		expect(lowered.localTime).toEqual([{ stopId: 'stop-1', holdSeconds: 0.5 }]);
+		expect(lowered.localTime).toEqual([{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 0.5 }]);
 		expect(lowered.presentations.find((entry) => entry.id === 'presentation-1')?.content).toEqual([
 			{ id: 'presentation-1:text', kind: 'text', text: 'The piano.' }
 		]);
@@ -153,6 +155,7 @@ describe('Experience lowering', () => {
 								id: 'presentation-study',
 								label: 'Study',
 								viewIds: ['view-2'],
+								explorable: true,
 								defaultViewId: 'view-2',
 								subject: null,
 								text: null
@@ -272,13 +275,17 @@ describe('Experience lowering', () => {
 				experience: {
 					...envelope.units.experience,
 					data: {
-						formatVersion: 2 as const,
+						formatVersion: 3 as const,
 						experiences: envelope.units.experience.data.experiences.map((experience) => ({
 							...experience,
 							presentations: experience.presentations.map((presentation) =>
 								presentation.id === 'presentation-2'
 									? { ...presentation, viewIds: ['view-absent'], defaultViewId: 'view-absent' }
 									: presentation
+							),
+							stops: experience.stops.map((stop) => stop.id === 'stop-2'
+								? { ...stop, views: [{ viewId: 'view-absent' }] }
+								: stop
 							)
 						}))
 					}
@@ -301,7 +308,7 @@ describe('Experience lowering', () => {
 							presentation.id === 'presentation-1' ? { ...presentation, defaultViewId: null } : presentation
 						),
 						stops: base.stops.map((stop) =>
-							stop.id === 'stop-1' ? { ...stop, entryViewId: 'view-1' } : stop
+							stop.id === 'stop-1' ? { ...stop, views: [{ viewId: 'view-1' }] } : stop
 						)
 					}
 				]
@@ -405,13 +412,13 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 			...base,
 			presentations: [
 				...base.presentations,
-				{ id: 'presentation-extra', label: 'Extra', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] },
-				{ id: 'presentation-extra-2', label: 'Extra two', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] }
+				{ id: 'presentation-extra', label: 'Extra', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] },
+				{ id: 'presentation-extra-2', label: 'Extra two', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] }
 			],
 			stops: [
-				{ ...base.stops[0]!, holdSeconds: 0.5 },
-				{ ...base.stops[1]!, holdSeconds: null, continuation: { kind: 'sequence-next' as const } },
-				{ ...base.stops[0]!, id: 'stop-3', holdSeconds: null, continuation: { kind: 'end' as const } }
+				base.stops[0]!,
+				{ ...base.stops[1]!, continuation: { kind: 'sequence-next' as const } },
+				{ ...base.stops[0]!, id: 'stop-3', views: [{ ...base.stops[0]!.views[0]!, holdSeconds: null }], continuation: { kind: 'end' as const } }
 			]
 		};
 	}
@@ -740,7 +747,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 	 */
 	async function detourToOrigin(continuation?: ExecutionProgram['stops'][number]['continuation']) {
 		const base = await program();
-		const third = { ...base.stops[0]!, id: 'stop-3', holdSeconds: 0 };
+		const third = { ...base.stops[0]!, id: 'stop-3', views: [{ ...base.stops[0]!.views[0]!, holdSeconds: null }] };
 		const stops = [
 			...base.stops.map((stop) => (stop.id === 'stop-1' && continuation ? { ...stop, continuation } : stop)),
 			third
@@ -818,7 +825,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 
 	it('resolves an explicit nonadjacent Stop continuation', async () => {
 		const base = await program();
-		const third = { ...base.stops[0]!, id: 'stop-3', holdSeconds: 0, continuation: { kind: 'end' as const } };
+		const third = { ...base.stops[0]!, id: 'stop-3', views: [{ ...base.stops[0]!.views[0]!, holdSeconds: null }], continuation: { kind: 'end' as const } };
 		const program3: ExecutionProgram = {
 			...base,
 			stops: [{ ...base.stops[0]!, continuation: { kind: 'stop', stopId: 'stop-3' } }, base.stops[1]!, third]
@@ -1050,5 +1057,136 @@ describe('Experience companion', () => {
 		const companion = buildExperienceCompanion(lowered, state);
 		expect(companion.progress.visited).toBe(2);
 		expect(companion.progress.total).toBe(2);
+	});
+});
+
+describe('R217.S27 guided steps', () => {
+	async function guidedLowering(stepTransition?: 'travel') {
+		const base = EXPERIENCE.experiences[0]!;
+		const source = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [{
+					...base,
+					welcome: { kind: 'plain', body: 'Welcome to the salon' },
+					presentations: [
+						{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2'], explorable: false },
+						{ ...base.presentations[1]!, viewIds: ['view-2', 'view-1'] }
+					],
+					stops: [
+						{
+							...base.stops[0]!,
+							views: [{ viewId: 'view-1' }, { viewId: 'view-2', ...(stepTransition ? { transition: stepTransition } : {}) }]
+						},
+						{ ...base.stops[1]!, views: [{ viewId: 'view-1' }] }
+					]
+				}]
+			}
+		});
+		const lowered = lowerExperienceProgram(source, LOWERING_OPTIONS);
+		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
+		return { source, lowered };
+	}
+
+	it('lowers a Cut step, the default intermediate hold and an exit-to-entry Travel', async () => {
+		const { lowered } = await guidedLowering();
+		expect(lowered.program).toMatchObject({
+			formatVersion: 3,
+			welcome: 'Welcome to the salon',
+			presentations: [{ explorable: false }, { explorable: true }],
+			stops: [
+				{ views: [
+					{ viewId: 'view-1', holdSeconds: 3, step: null },
+					{ viewId: 'view-2', holdSeconds: null, step: { kind: 'cut', viewId: 'view-2' } }
+				] },
+				{ invocation: { kind: 'travel', connectionId: 'connection-1' } }
+			],
+			localTime: [{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 3 }]
+		});
+	});
+
+	it('binds a Travel step to a unique Camera connection and diagnoses an unsupported step', async () => {
+		const { source, lowered } = await guidedLowering('travel');
+		expect(lowered.program.stops[0]!.views[1]?.step).toEqual({ kind: 'travel', connectionId: 'connection-1' });
+		const broken = {
+			...source,
+			units: {
+				...source.units,
+				camera: {
+					...source.units.camera,
+					data: {
+						...source.units.camera.data,
+						views: source.units.camera.data.views.map((view) => ({ ...view, connectedViewIds: [] })),
+						connections: []
+					}
+				}
+			}
+		};
+		expect(lowerExperienceProgram(broken, LOWERING_OPTIONS)).toMatchObject({
+			kind: 'refused', code: 'travel-gap', message: expect.stringContaining('Step 2 of Stop')
+		});
+		const validated = validateProjectEnvelope(broken);
+		expect(validated.success).toBe(true);
+		if (!validated.success) return;
+		expect(validated.diagnostics).toEqual(expect.arrayContaining([
+			expect.objectContaining({ code: 'travel-gap', path: expect.stringContaining('.stops[0].views[1].transition') }),
+			expect.objectContaining({ code: 'travel-gap', path: expect.stringContaining('.stops[0].continuation.transition') })
+		]));
+	});
+
+	async function threeViewProgram(finalHold: number | null, firstHold = 1): Promise<ExecutionProgram> {
+		const base = await program();
+		const first = base.stops[0]!;
+		return {
+			...base,
+			presentations: [{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2', 'view-3'] }, base.presentations[1]!],
+			stops: [{ ...first, views: [
+				{ viewId: 'view-1', holdSeconds: firstHold, step: null },
+				{ viewId: 'view-2', holdSeconds: 2, step: { kind: 'cut', viewId: 'view-2' } },
+				{ viewId: 'view-3', holdSeconds: finalHold, step: { kind: 'travel', connectionId: 'connection-2' } }
+			] }, base.stops[1]!],
+			localTime: [
+				{ stopId: first.id, viewIndex: 0, holdSeconds: firstHold },
+				{ stopId: first.id, viewIndex: 1, holdSeconds: 2 },
+				...(finalHold === null ? [] : [{ stopId: first.id, viewIndex: 2, holdSeconds: finalHold }])
+			]
+		};
+	}
+
+	it('carries tick time across steps and keeps a final untimed View until Next', async () => {
+		const guided = await threeViewProgram(null);
+		const large = createExperienceInterpreter(guided, OPTIONS);
+		const small = createExperienceInterpreter(guided, OPTIONS);
+		for (const run of [large, small]) {
+			run.enter();
+			expect(run.continue().outcome).toBe('ignored');
+		}
+		const one = large.tick(3500);
+		const many = [small.tick(800), small.tick(500), small.tick(2200)];
+		expect(many.flatMap((result) => result.effects)).toEqual(one.effects);
+		expect(one.effects.map((effect) => effect.kind)).toEqual(['camera', 'step', 'hold', 'camera', 'step', 'ready']);
+		expect(small.state()).toEqual(one.state);
+		expect(one.state).toMatchObject({
+			stopId: 'stop-1', viewId: 'view-3', viewIndex: 2, phase: 'ready', holdRemainingMs: null,
+			invocationFromViewId: 'view-2'
+		});
+		expect(large.tick(500).state.stopId).toBe('stop-1');
+		large.enterPresentation('presentation-2');
+		expect(large.state().viewIndex).toBeNull();
+	});
+
+	it('steps past a zero intermediate hold and blocks at the gate after the final timed hold', async () => {
+		const run = createExperienceInterpreter(await threeViewProgram(0.5, 0), {
+			...OPTIONS,
+			gates: ['presentation-1']
+		});
+		const entered = run.enter();
+		expect(entered.state).toMatchObject({ viewId: 'view-2', viewIndex: 1, holdRemainingMs: 2000 });
+		expect(entered.effects).toContainEqual({ kind: 'step', stopId: 'stop-1', viewIndex: 1, viewId: 'view-2' });
+		expect(run.tick(2100).state).toMatchObject({ viewIndex: 2, phase: 'holding', holdRemainingMs: 400 });
+		expect(run.tick(400).state).toMatchObject({ viewIndex: 2, phase: 'blocked', holdRemainingMs: 0 });
+		expect(run.continue().outcome).toBe('accepted');
+		run.dispatch(event('reset'));
+		expect(run.state()).toMatchObject({ stopId: 'stop-1', viewIndex: 1, holdRemainingMs: 2000, elapsedMs: 0 });
 	});
 });

@@ -177,15 +177,16 @@ function experience(id: string, viewId: string): Experience {
 	return {
 		id,
 		label: id,
+		welcome: null,
 		entryGuideId: 'guide-1',
 		presentations: [
-			{ id: 'presentation-1', label: 'Entry', viewIds: [viewId], defaultViewId: viewId, subject: null, text: null }
+			{ id: 'presentation-1', label: 'Entry', viewIds: [viewId], explorable: true, defaultViewId: viewId, subject: null, text: null }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
-				holdSeconds: 0,
+				views: [{ viewId, holdSeconds: 0 }],
 				continuation: { kind: 'end' }
 			}
 		],
@@ -321,7 +322,10 @@ describe('references, lock diagnostics and closure', () => {
 		const validated = validateProjectEnvelope(readBack(built));
 		expect(validated.success).toBe(true);
 		if (!validated.success) return;
-		expect(validated.diagnostics.map((entry) => entry.code)).toEqual(['unresolved-view']);
+		expect(validated.diagnostics).toMatchObject([
+			{ code: 'unresolved-view', path: expect.stringContaining('.presentations[0].viewIds') },
+			{ code: 'unresolved-view', path: expect.stringContaining('.stops[0].views[0].viewId') }
+		]);
 		expect(validated.closure).toEqual([]);
 	});
 
@@ -448,6 +452,7 @@ describe('references, lock diagnostics and closure', () => {
 			id,
 			label: id,
 			viewIds: [viewId],
+			explorable: true,
 			defaultViewId: viewId,
 			subject: null,
 			text: null
@@ -482,12 +487,14 @@ describe('references, lock diagnostics and closure', () => {
 						stops: [
 							{
 								id: 'stop-1',
+								views: [{ viewId: 'view-1' }],
 								presentationId: 'presentation-1',
 								continuation: { kind: 'sequence-next', transition: 'travel' }
 							},
-							{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } },
+							{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } },
 							{
 								id: 'stop-3',
+								views: [{ viewId: 'view-3' }],
 								presentationId: 'presentation-3',
 								continuation: { kind: 'sequence-next', transition: 'travel' }
 							}
@@ -523,6 +530,7 @@ describe('references, lock diagnostics and closure', () => {
 			id,
 			label: id,
 			viewIds: [viewId],
+			explorable: true,
 			defaultViewId: viewId,
 			subject: null,
 			text: null
@@ -544,15 +552,16 @@ describe('references, lock diagnostics and closure', () => {
 							presentation('presentation-3', 'view-3')
 						],
 						stops: [
-							{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'end' } },
+							{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'end' } },
 							// stop-2 is the last Stop of the Guide and still authors a Travel: its
 							// `sequence-next` edge ends the run. stop-3 follows it only in the array.
 							{
 								id: 'stop-2',
+								views: [{ viewId: 'view-2' }],
 								presentationId: 'presentation-2',
 								continuation: { kind: 'sequence-next', transition: 'travel' }
 							},
-							{ id: 'stop-3', presentationId: 'presentation-3', continuation: { kind: 'end' } }
+							{ id: 'stop-3', views: [{ viewId: 'view-3' }], presentationId: 'presentation-3', continuation: { kind: 'end' } }
 						],
 						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' }]
 					}
@@ -644,7 +653,7 @@ function subjectReference(domain: string, componentId: string | null = null) {
 	};
 }
 
-/** The valid Experience-2 payload with one Experience, edited for a single refusal. */
+/** The valid Experience-3 payload with one Experience, edited for a single refusal. */
 function experiencePayload(edit: (value: Experience) => unknown) {
 	return { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [edit(experience('experience-a', 'view-1'))] };
 }
@@ -659,6 +668,35 @@ describe('validateExperiencePayload refusals', () => {
 			name: 'a format-1 payload',
 			code: 'unsupported_format_version',
 			input: () => ({ formatVersion: 1, experiences: [experience('experience-a', 'view-1')] })
+		},
+		{
+			name: 'the previous format-2 payload',
+			code: 'unsupported_format_version',
+			input: () => ({ formatVersion: 2, experiences: [] })
+		},
+		{
+			name: 'an empty guided sequence',
+			code: 'empty-guided-views',
+			input: () => experiencePayload((value) => ({ ...value, stops: [{ ...value.stops[0]!, views: [] }] }))
+		},
+		{
+			name: 'a repeated guided View',
+			code: 'duplicate-identity',
+			input: () => experiencePayload((value) => ({
+				...value, stops: [{ ...value.stops[0]!, views: [{ viewId: 'view-1' }, { viewId: 'view-1' }] }]
+			}))
+		},
+		{
+			name: 'an entry View with an incoming step',
+			code: 'entry-step-transition',
+			input: () => experiencePayload((value) => ({
+				...value, stops: [{ ...value.stops[0]!, views: [{ viewId: 'view-1', transition: 'cut' }] }]
+			}))
+		},
+		{
+			name: 'welcome text above 600 code points',
+			code: 'text-too-long',
+			input: () => experiencePayload((value) => ({ ...value, welcome: { kind: 'plain', body: 'é'.repeat(601) } }))
 		},
 		{
 			name: 'a View repeated in one Presentation',
@@ -680,11 +718,11 @@ describe('validateExperiencePayload refusals', () => {
 		},
 		{
 			name: 'a Stop entry View its Presentation does not carry',
-			code: 'entry-view-not-in-presentation',
+			code: 'guided-view-not-in-presentation',
 			input: () =>
 				experiencePayload((value) => ({
 					...value,
-					stops: [{ ...value.stops[0]!, entryViewId: 'view-missing' }]
+					stops: [{ ...value.stops[0]!, views: [{ viewId: 'view-missing' }] }]
 				}))
 		},
 		{

@@ -40,6 +40,8 @@ import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_TEXT_KINDS,
 	EXPERIENCE_TEXT_MAX_LENGTH,
+	EXPERIENCE_WELCOME_MAX_LENGTH,
+	type ExperienceGuidedView,
 	EXPERIENCE_TRANSITIONS,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	MODEL_DERIVATIVE_MAX_BYTES,
@@ -418,6 +420,7 @@ const EXPERIENCE_KEYS = [
 	'id',
 	'label',
 	'entryGuideId',
+	'welcome',
 	'presentations',
 	'stops',
 	'guides',
@@ -425,9 +428,9 @@ const EXPERIENCE_KEYS = [
 	'detours'
 ] as const;
 const GATE_KEYS = ['id', 'presentationId'] as const;
-const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'defaultViewId', 'subject', 'text'] as const;
+const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'defaultViewId', 'subject', 'text', 'explorable'] as const;
 const PRESENTATION_TEXT_KEYS = ['kind', 'body'] as const;
-const STOP_KEYS = ['id', 'presentationId', 'entryViewId', 'holdSeconds', 'continuation'] as const;
+const STOP_KEYS = ['id', 'presentationId', 'views', 'continuation'] as const;
 const GUIDE_KEYS = ['id', 'label', 'stopIds', 'entryStopId'] as const;
 const DETOUR_KEYS = ['id', 'fromStopId', 'toStopId', 'returnToStopId'] as const;
 const EXPERIENCE_PAYLOAD_KEYS = ['formatVersion', 'experiences'] as const;
@@ -465,10 +468,11 @@ function readContinuation(reader: ShapeReader, input: unknown, path: string): Ex
 }
 
 /** One Presentation's bounded plain text; `null` input is the explicit no-text state. */
-function readPresentationText(
+export function readExperienceText(
 	reader: ShapeReader,
 	input: unknown,
-	path: string
+	path: string,
+	maxLength = EXPERIENCE_TEXT_MAX_LENGTH
 ): ExperiencePresentationText | null {
 	const record = reader.object(input, path, PRESENTATION_TEXT_KEYS);
 	if (record === null) return null;
@@ -476,15 +480,36 @@ function readPresentationText(
 	const body = reader.string(record.body, `${path}.body`);
 	if (kind === null || body === null) return null;
 	const length = [...body].length;
-	if (length > EXPERIENCE_TEXT_MAX_LENGTH) {
+	if (length > maxLength) {
 		reader.problem(
 			`${path}.body`,
 			'text-too-long',
-			`${path}.body carries ${length} code points; Presentation text is bounded at ${EXPERIENCE_TEXT_MAX_LENGTH}`
+			`${path}.body carries ${length} code points; text is bounded at ${maxLength}`
 		);
 		return null;
 	}
 	return { kind: 'plain', body };
+}
+
+/** Read the shared guided View shape before checking sequence membership. */
+export function readGuidedViews(reader: ShapeReader, input: unknown, path: string): ExperienceGuidedView[] | null {
+	return readCollection(reader, input, path, (entry, entryPath) => {
+		const record = reader.object(entry, entryPath, ['viewId', 'holdSeconds', 'transition']);
+		if (record === null) return null;
+		const viewId = reader.opaqueId(record.viewId, `${entryPath}.viewId`);
+		const holdSeconds = record.holdSeconds === undefined
+			? undefined
+			: reader.numberAtLeast(record.holdSeconds, `${entryPath}.holdSeconds`, 0, false);
+		const transition = record.transition === undefined
+			? undefined
+			: readTransition(reader, record.transition, `${entryPath}.transition`);
+		if (viewId === null || holdSeconds === null || transition === null) return null;
+		return {
+			viewId,
+			...(holdSeconds === undefined ? {} : { holdSeconds }),
+			...(transition === undefined ? {} : { transition })
+		};
+	});
 }
 
 function readExperience(reader: ShapeReader, input: unknown, path: string): Experience | null {
@@ -495,6 +520,9 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 	const entryGuideId =
 		record.entryGuideId === null ? null : reader.opaqueId(record.entryGuideId, `${path}.entryGuideId`);
 
+	const welcome = record.welcome === null
+		? null
+		: readExperienceText(reader, record.welcome, `${path}.welcome`, EXPERIENCE_WELCOME_MAX_LENGTH);
 	const presentations = readCollection(reader, record.presentations, `${path}.presentations`, (entry, entryPath) => {
 		const value = reader.object(entry, entryPath, PRESENTATION_KEYS);
 		if (value === null) return null;
@@ -505,7 +533,8 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 			value.defaultViewId === null
 				? null
 				: reader.opaqueId(value.defaultViewId, `${entryPath}.defaultViewId`);
-		const text = value.text === null ? null : readPresentationText(reader, value.text, `${entryPath}.text`);
+		const text = value.text === null ? null : readExperienceText(reader, value.text, `${entryPath}.text`);
+		const explorable = reader.boolean(value.explorable, `${entryPath}.explorable`);
 		let subject: ExperiencePresentation['subject'] = null;
 		if (value.subject !== null) {
 			const read = validateSemanticReference(value.subject);
@@ -545,6 +574,7 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 			presentationId === null ||
 			presentationLabel === null ||
 			viewIds === null ||
+			explorable === null ||
 			(value.defaultViewId !== null && defaultViewId === null) ||
 			(value.text !== null && text === null)
 		) {
@@ -568,7 +598,8 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 			viewIds,
 			defaultViewId,
 			subject,
-			text
+			text,
+			explorable
 		} satisfies ExperiencePresentation;
 	});
 
@@ -577,22 +608,23 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 		if (value === null) return null;
 		const stopId = reader.opaqueId(value.id, `${entryPath}.id`);
 		const presentationId = reader.opaqueId(value.presentationId, `${entryPath}.presentationId`);
-		const entryViewId =
-			value.entryViewId === undefined
-				? undefined
-				: reader.opaqueId(value.entryViewId, `${entryPath}.entryViewId`);
-		const hold = value.holdSeconds === undefined ? undefined : reader.numberAtLeast(value.holdSeconds, `${entryPath}.holdSeconds`, 0, false);
+		const viewsPath = `${entryPath}.views`;
+		const views = readGuidedViews(reader, value.views, viewsPath);
 		const continuation = readContinuation(reader, value.continuation, `${entryPath}.continuation`);
-		if (stopId === null || presentationId === null || continuation === null) return null;
-		if (value.holdSeconds !== undefined && hold === null) return null;
-		if (value.entryViewId !== undefined && entryViewId === null) return null;
-		return {
-			id: stopId,
-			presentationId,
-			...(entryViewId === null || entryViewId === undefined ? {} : { entryViewId }),
-			...(hold === null || hold === undefined ? {} : { holdSeconds: hold }),
-			continuation
-		} satisfies ExperienceStop;
+		if (stopId === null || presentationId === null || views === null || continuation === null) return null;
+		if (views.length === 0) {
+			reader.problem(viewsPath, 'empty-guided-views', 'A Stop shows at least one View');
+			return null;
+		}
+		if (new Set(views.map((view) => view.viewId)).size !== views.length) {
+			reader.problem(viewsPath, 'duplicate-identity', 'A Stop cannot guide the same View twice');
+			return null;
+		}
+		if (views[0]!.transition !== undefined) {
+			reader.problem(`${viewsPath}[0].transition`, 'entry-step-transition', 'The first View cannot carry a step transition');
+			return null;
+		}
+		return { id: stopId, presentationId, views, continuation } satisfies ExperienceStop;
 	});
 
 	const guides = readCollection(reader, record.guides, `${path}.guides`, (entry, entryPath) => {
@@ -652,19 +684,15 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 	) {
 		return null;
 	}
-	// A Stop's entry View is one of its Presentation's views. It is checked after
-	// both collections are read, so a Stop is never rejected for a Presentation
-	// the same reader is about to report as invalid.
-	if (presentations !== null && stops !== null) {
-		const viewsByPresentation = new Map(presentations.map((entry) => [entry.id, new Set(entry.viewIds)]));
-		for (const [position, stop] of stops.entries()) {
-			if (stop.entryViewId === undefined) continue;
-			const views = viewsByPresentation.get(stop.presentationId);
-			if (views !== undefined && !views.has(stop.entryViewId)) {
+	const viewsByPresentation = new Map(presentations.map((entry) => [entry.id, new Set(entry.viewIds)]));
+	for (const [position, stop] of stops.entries()) {
+		const views = viewsByPresentation.get(stop.presentationId);
+		for (const [index, view] of stop.views.entries()) {
+			if (views !== undefined && !views.has(view.viewId)) {
 				reader.problem(
-					`${path}.stops[${position}].entryViewId`,
-					'entry-view-not-in-presentation',
-					`Stop "${stop.id}" enters at View "${stop.entryViewId}", which its Presentation does not carry`
+					`${path}.stops[${position}].views[${index}].viewId`,
+					'guided-view-not-in-presentation',
+					`Stop "${stop.id}" guides View "${view.viewId}", which its Presentation does not carry`
 				);
 				return null;
 			}
@@ -693,7 +721,7 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 		reader.problem(`${path}.entryGuideId`, 'missing-entry-guide', `${path}.entryGuideId "${entryGuideId ?? 'null'}" names no guide`);
 		return null;
 	}
-	return { id, label, entryGuideId, presentations, stops, guides, gates, detours };
+	return { id, label, entryGuideId, welcome, presentations, stops, guides, gates, detours };
 }
 
 function firstDuplicate(groups: readonly (readonly string[])[]): string | null {
@@ -727,12 +755,12 @@ function readCollection<T>(
 }
 
 /**
- * Strict read of the Experience 2 payload. The payload is a collection because
+ * Strict read of the Experience 3 payload. The payload is a collection because
  * several Experiences share one world; an empty collection is explicit. Stop,
  * Presentation and Guide identity are independent: repeated visits create fresh
  * runs of a Stop, and repeated guided placements use distinct Stop IDs.
  *
- * Format 2 is a pre-baseline cutover, not a migration: a format-1 payload is
+ * Format 3 is a strict cutover: an older payload is
  * refused as an unsupported version, never negotiated or upgraded in place.
  */
 export function validateExperiencePayload(input: unknown): ShapeValidation<ExperienceUnitPayload> {
@@ -1232,7 +1260,6 @@ function envelopeFindings(
 
 	units.experience.data.experiences.forEach((experience, index) => {
 		const path = `$.units.experience.data.experiences[${index}]`;
-		const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
 		for (const [position, presentation] of experience.presentations.entries()) {
 			for (const [viewPosition, viewId] of presentation.viewIds.entries()) {
 				if (!views.has(viewId)) {
@@ -1291,11 +1318,6 @@ function envelopeFindings(
 				else successorIdsByStopId.set(sId, [guide.stopIds[idx + 1]!]);
 			}
 		}
-		/** The View a Stop occurrence enters at: its entry View or the Default. */
-		const entryViewOf = (stop: ExperienceStop): string | null => {
-			const presentation = presentationById.get(stop.presentationId);
-			return stop.entryViewId ?? presentation?.defaultViewId ?? null;
-		};
 		/**
 		 * The Stops that follow `stop` under `sequence-next`. Lowering resolves that
 		 * edge through the Guide orders it was asked to lower, and `guide-order`
@@ -1316,12 +1338,23 @@ function envelopeFindings(
 					message: `stop "${stop.id}" names presentation "${stop.presentationId}", which this Experience does not carry`
 				});
 			}
-			if (stop.entryViewId !== undefined && !views.has(stop.entryViewId)) {
-				diagnostics.push({
-					path: `${path}.stops[${position}].entryViewId`,
-					code: 'unresolved-view',
-					message: `stop "${stop.id}" enters at camera view "${stop.entryViewId}", which this envelope does not carry`
-				});
+			for (const [index, view] of stop.views.entries()) {
+				const viewPath = `${path}.stops[${position}].views[${index}]`;
+				if (!views.has(view.viewId)) {
+					diagnostics.push({
+						path: `${viewPath}.viewId`,
+						code: 'unresolved-view',
+						message: `stop "${stop.id}" guides camera view "${view.viewId}", which this envelope does not carry`
+					});
+				}
+				const previous = stop.views[index - 1];
+				if (view.transition === 'travel' && previous && !supportedTravel(previous.viewId, view.viewId)) {
+					diagnostics.push({
+						path: `${viewPath}.transition`,
+						code: 'travel-gap',
+						message: `the Travel from "${previous.viewId}" to "${view.viewId}" has no Camera connection`
+					});
+				}
 			}
 			const continuation = stop.continuation;
 			if (
@@ -1339,7 +1372,7 @@ function envelopeFindings(
 				for (const target of targets) {
 					if (target === undefined || reported.has(target.id)) continue;
 					reported.add(target.id);
-					if (!supportedTravel(entryViewOf(stop), entryViewOf(target))) {
+					if (!supportedTravel(stop.views.at(-1)!.viewId, target.views[0]!.viewId)) {
 						diagnostics.push({
 							path: `${path}.stops[${position}].continuation.transition`,
 							code: 'travel-gap',

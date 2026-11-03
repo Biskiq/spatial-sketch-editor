@@ -3767,6 +3767,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				id: entry.id,
 				label: entry.label,
 				viewCount: entry.viewIds.length,
+				explorable: entry.explorable,
 				stopNumbers: stopNumbers.get(entry.id) ?? [],
 				selected: subject?.kind === 'presentation' && subject.presentationId === entry.id,
 				expanded: expandedPresentationId === entry.id,

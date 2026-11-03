@@ -183,7 +183,7 @@ describe('commands route through commands.ts', () => {
 
 	it('moves a Stop to an index as a permutation, and refuses a move that changes nothing', async () => {
 		const three = withExperience({
-			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', presentationId: 'presentation-1' }],
+			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }],
 			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2', 'stop-3'], entryStopId: 'stop-1' }]
 		});
 		const { controller, submitted } = await mounted({ experience: three });
@@ -202,7 +202,7 @@ describe('commands route through commands.ts', () => {
 
 	it('moves nothing when the Experience has no Guide to reorder', async () => {
 		const { controller, submitted } = await mounted({
-			experience: withExperience({ entryGuideId: null, guides: [], stops: [] })
+			experience: withExperience({ welcome: null, entryGuideId: null, guides: [], stops: [] })
 		});
 
 		expect(await controller.moveStop('stop-2', -1)).toBe(false);
@@ -232,14 +232,14 @@ describe('commands route through commands.ts', () => {
 });
 
 describe('per-field Stop edits keep the other fields', () => {
-	it('sends only the hold', async () => {
+	it('sends the sequence with its updated hold', async () => {
 		const { controller, submitted, envelope } = await mounted();
 
-		expect(await controller.setStopHold('stop-1', 2)).toBe(true);
+		expect(await controller.setViewHold('stop-1', 'view-1', 2)).toBe(true);
 
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_STOP_UPDATE_KIND);
-		expect(intent.payload).toEqual({ holdSeconds: 2 });
+		expect(intent.payload).toEqual({ views: [{ viewId: 'view-1', holdSeconds: 2 }] });
 		expect(intent).toEqual(
 			stopUpdateIntent({
 				envelope,
@@ -247,33 +247,33 @@ describe('per-field Stop edits keep the other fields', () => {
 				ids: { operation: intent.operationId },
 				experienceId: 'experience-1',
 				stopId: 'stop-1',
-				holdSeconds: 2
+				views: [{ viewId: 'view-1', holdSeconds: 2 }]
 			})
 		);
 	});
 
-	it('clears the hold with null, and refuses a hold that is not a finite non-negative number', async () => {
+	it('clears the hold by omitting it from the sequence, and refuses a hold that is not a finite non-negative number', async () => {
 		const { controller, submitted } = await mounted();
 
-		await controller.setStopHold('stop-1', null);
-		expect(submittedIntent(submitted).payload).toEqual({ holdSeconds: null });
+		await controller.setViewHold('stop-1', 'view-1', null);
+		expect(submittedIntent(submitted).payload).toEqual({ views: [{ viewId: 'view-1' }] });
 
 		submitted.mockClear();
-		expect(await controller.setStopHold('stop-1', -1)).toBe(false);
-		expect(await controller.setStopHold('stop-1', Number.NaN)).toBe(false);
+		expect(await controller.setViewHold('stop-1', 'view-1', -1)).toBe(false);
+		expect(await controller.setViewHold('stop-1', 'view-1', Number.NaN)).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
 		expect(controller.message).toBe('A hold is a finite number of seconds, or blank for none.');
 	});
 
-	it('sends only the entry View, and null to follow the Default', async () => {
+	it('submits a whole sequence and refuses to leave out the last View', async () => {
 		const { controller, submitted } = await mounted();
+		expect(await controller.leaveOutView('stop-1', 'view-1')).toBe(false);
+		expect(controller.message).toBe('A Stop shows at least one View');
+		expect(submitted).not.toHaveBeenCalled();
 
-		await controller.setStopEntry('stop-1', 'view-1');
-		expect(submittedIntent(submitted).payload).toEqual({ entryViewId: 'view-1' });
-
-		submitted.mockClear();
-		await controller.setStopEntry('stop-1', null);
-		expect(submittedIntent(submitted).payload).toEqual({ entryViewId: null });
+		const views = [{ viewId: 'view-1', holdSeconds: 3 }];
+		expect(await controller.setStopViews('stop-1', views)).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ views });
 	});
 
 	it('changes where Next goes and keeps the transition', async () => {
@@ -298,8 +298,8 @@ describe('per-field Stop edits keep the other fields', () => {
 	it('changes the transition and keeps the target', async () => {
 		const jump = withExperience({
 			stops: [
-				{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2' } },
-				{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2' } },
+				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: jump });
@@ -316,8 +316,8 @@ describe('per-field Stop edits keep the other fields', () => {
 		// authored default (a cut sequence-next) and the edit rewrites it.
 		const bare = withExperience({
 			stops: [
-				{ id: 'stop-1', presentationId: 'presentation-1' },
-				{ id: 'stop-2', presentationId: 'presentation-2' }
+				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' },
+				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2' }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: bare });
@@ -340,8 +340,8 @@ describe('per-field Stop edits keep the other fields', () => {
 		// stop-2 has no continuation: as the Guide's last Stop it reads as an implicit End, which has no next Stop.
 		const implicit = withExperience({
 			stops: [
-				{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } },
-				{ id: 'stop-2', presentationId: 'presentation-2' }
+				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } },
+				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2' }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: implicit });
@@ -359,7 +359,7 @@ describe('per-field Stop edits keep the other fields', () => {
 	it('names an unknown Stop as no change', async () => {
 		const { controller, submitted } = await mounted();
 
-		expect(await controller.setStopHold('missing', 1)).toBe(false);
+		expect(await controller.setViewHold('missing', 'view-1', 1)).toBe(false);
 		expect(await controller.setContinuation('missing', 'end')).toBe(false);
 		expect(await controller.setTransition('missing', 'cut')).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
@@ -552,7 +552,7 @@ describe('Capture (D1, D2)', () => {
 });
 
 describe('addStop (D8)', () => {
-	const noGuide = withExperience({ entryGuideId: null, stops: [], guides: [] });
+	const noGuide = withExperience({ welcome: null, entryGuideId: null, stops: [], guides: [] });
 
 	it('needs a trimmed Guide name before it creates the first Guide', async () => {
 		const { controller, submitted } = await mounted({ experience: noGuide });
@@ -644,7 +644,7 @@ describe('addStop (D8)', () => {
 
 	it('does not insert after a selected Stop that is not in the Guide', async () => {
 		const stray = withExperience({
-			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', presentationId: 'presentation-1' }]
+			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }]
 		});
 		const { controller, submitted } = await mounted({ experience: stray });
 		controller.openGuide('guide-1');
@@ -788,9 +788,9 @@ describe('derived reading and the route-supplied ports', () => {
 		expect(controller.currentGuide).toBeNull();
 		expect(controller.contextGuide?.id).toBe('guide-1');
 		expect(controller.guideStops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2']);
-		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2 }]);
+		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2, index: 0 }]);
 		expect(controller.resolveContinuation('stop-1')).toMatchObject({ kind: 'adjacent', stopId: 'stop-2', position: 2 });
-		expect(controller.reach()).toEqual({ presentations: 2, views: 2, viewsOnlyFree: 0 });
+		expect(controller.reach()).toEqual({ presentations: 2, views: 2, freePresentations: 2, freeViews: 2, hiddenViews: 0, viewsOnlyFree: 0 });
 
 		controller.openGuide('guide-1');
 		flush();
@@ -820,14 +820,14 @@ describe('derived reading and the route-supplied ports', () => {
 
 	it('has no context Guide when the Experience names no entry Guide, and the reads stay empty', async () => {
 		const { controller, flush } = await mounted({
-			experience: withExperience({ entryGuideId: null, guides: [], stops: [] })
+			experience: withExperience({ welcome: null, entryGuideId: null, guides: [], stops: [] })
 		});
 		flush();
 
 		expect(controller.contextGuide).toBeNull();
 		expect(controller.guideStops).toEqual([]);
 		expect(controller.viewStops('view-2')).toEqual([]);
-		expect(controller.reach()).toEqual({ presentations: 2, views: 2, viewsOnlyFree: 2 });
+		expect(controller.reach()).toEqual({ presentations: 2, views: 2, freePresentations: 2, freeViews: 2, hiddenViews: 0, viewsOnlyFree: 2 });
 	});
 
 	it('reads travel gaps for the selected Stop and for every Stop as the travel-gap authority does', async () => {
@@ -869,10 +869,10 @@ describe('derived reading and the route-supplied ports', () => {
 		});
 		expect(controller.resolveContinuation('stop-2')).toEqual({ kind: 'end', explicit: true });
 		expect(controller.resolveContinuation('missing')).toBeNull();
-		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2 }]);
+		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2, index: 0 }]);
 		expect(controller.presentationsAbout('entity-1').map((entry) => entry.id)).toEqual(['presentation-1']);
 		expect(controller.presentationsAbout('other')).toEqual([]);
-		expect(controller.reach()).toEqual({ presentations: 2, views: 2, viewsOnlyFree: 0 });
+		expect(controller.reach()).toEqual({ presentations: 2, views: 2, freePresentations: 2, freeViews: 2, hiddenViews: 0, viewsOnlyFree: 0 });
 		expect(controller.viewFacts('view-1')).toMatchObject({
 			presentationId: 'presentation-1',
 			fovDegrees: 54,
@@ -889,7 +889,7 @@ describe('derived reading and the route-supplied ports', () => {
 			...EXPERIENCE,
 			experiences: [
 				...EXPERIENCE.experiences,
-				{ id: 'experience-2', label: 'Second', entryGuideId: null, presentations: [], stops: [], guides: [], gates: [], detours: [] }
+				{ id: 'experience-2', label: 'Second', welcome: null, entryGuideId: null, presentations: [], stops: [], guides: [], gates: [], detours: [] }
 			]
 		};
 		const replaced: ProjectEnvelope = await experienceEnvelope({ experience: second });
@@ -924,7 +924,7 @@ describe('the controller module has no DOM at runtime', () => {
 			mount.controller.select({ kind: 'stop', stopId: 'stop-1' });
 			mount.flush();
 
-			await mount.controller.setStopHold('stop-1', 1);
+			await mount.controller.setViewHold('stop-1', 'view-1', 1);
 			await mount.controller.createExperience();
 
 			expect(submitted).toHaveBeenCalledTimes(2);
@@ -1078,8 +1078,8 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 	it('previews a Stop removal with the named fallback, then removes it and selects the Guide', async () => {
 		const jumping = withExperience({
 			stops: [
-				{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' } },
-				{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' } },
+				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
 			]
 		});
 		const { controller, submitted, envelope } = await mounted({ experience: jumping });

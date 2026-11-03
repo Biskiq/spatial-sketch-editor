@@ -28,7 +28,8 @@ export type ExperienceIndexGroups = {
 		readonly id: string;
 		readonly label: string;
 		readonly viewCount: number;
-		/** 1-based positions in the active Guide; empty when the Presentation is free. */
+		readonly explorable: boolean;
+		/** 1-based positions in the active Guide; empty when the Guide has no Stop for the Presentation. */
 		readonly stopNumbers: readonly number[];
 		readonly selected: boolean;
 		readonly expanded: boolean;

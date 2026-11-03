@@ -32,6 +32,7 @@ const GUIDE_FREE: ExperienceUnitPayload = {
 	experiences: [
 		{
 			...EXPERIENCE.experiences[0]!,
+			welcome: null,
 			entryGuideId: null,
 			stops: [],
 			guides: []
@@ -95,7 +96,7 @@ describe('first Guide creation', () => {
 		// A fresh Stop identity that enters the Presentation's own Default View and
 		// copies no Camera truth: the Camera unit is untouched.
 		expect(experience.stops).toEqual([
-			{ id: 'stop-new', presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } }
+			{ id: 'stop-new', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } }
 		]);
 		expect(installed.units.camera.data.views).toEqual(VIEWS);
 		expect(installed.units.camera.data.connections).toEqual(source.units.camera.data.connections);
@@ -145,7 +146,7 @@ describe('first Guide creation', () => {
 		expect(experience.guides).toEqual([
 			{ id: 'guide-new', label: 'Entrance walk', stopIds: ['stop-new'], entryStopId: 'stop-new' }
 		]);
-		expect(experience.stops[0]).toMatchObject({ id: 'stop-new', presentationId: 'presentation-new' });
+		expect(experience.stops[0]).toMatchObject({ id: 'stop-new', presentationId: 'presentation-new', views: [{ viewId: 'view-new' }] });
 		expect(installed.units.camera.data.views.map((view) => view.id)).toEqual(['view-1', 'view-2', 'view-new']);
 
 		const undone = await coordinator.undo();
@@ -214,6 +215,7 @@ describe('first Guide creation', () => {
 							id: 'presentation-no-default',
 							label: 'Study',
 							viewIds: ['view-1'],
+							explorable: true,
 							defaultViewId: null,
 							subject: null,
 							text: null
@@ -345,7 +347,7 @@ describe('first Guide creation', () => {
 		// Distinct Stop identities over one Presentation: occurrence-local holds and
 		// roles, one authoritative Guide order.
 		expect(experience.stops.map((stop) => stop.id)).toEqual(['stop-1-new', 'stop-2-new']);
-		expect(experience.stops[1]).toMatchObject({ presentationId: 'presentation-1', holdSeconds: 2 });
+		expect(experience.stops[1]).toMatchObject({ presentationId: 'presentation-1', views: [{ viewId: 'view-1', holdSeconds: 2 }] });
 		expect(experience.guides[0]!.stopIds).toEqual(['stop-1-new', 'stop-2-new']);
 		expect(experience.presentations.filter((entry) => entry.id === 'presentation-1')).toHaveLength(1);
 		// Reuse copies no Camera truth and manufactures no Connection.

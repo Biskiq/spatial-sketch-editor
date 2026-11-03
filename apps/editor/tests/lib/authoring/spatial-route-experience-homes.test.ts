@@ -23,6 +23,7 @@ import { CAMERA_UNIT_FORMAT_VERSION, createEmptyUnitSceneDocument } from '@portf
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { primitiveEntity } from './__fixtures__/f4-current-source-fixtures';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
+import { stageExperience } from '$lib/authoring/stage/unit-stage-source';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import { CONNECTIONS, EXPERIENCE, VIEWS } from '../experience/fixtures';
@@ -872,4 +873,24 @@ describe('R217.S26 — structure and removal through the route', () => {
 		expect(experienceFocus.subject).toEqual({ kind: 'stop', stopId: 'stop-2' });
 		expect(target.querySelector('[data-can-undo="true"]')).toBeNull();
 	});
+});
+
+it('R217.S27 writes welcome text on blur through More on the Guide Card', async () => {
+	await remountRouteWith(await seededExperienceProject());
+	await enterExperience();
+	experienceFocus.select({ kind: 'guide', guideId: 'guide-1' });
+	await frame();
+	expect(card()?.querySelector('textarea')).toBeNull();
+	card()!.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
+	await frame();
+
+	const welcome = card()!.querySelector<HTMLTextAreaElement>('[data-card-more-section] textarea')!;
+	expect(welcome.maxLength).toBe(600);
+	welcome.value = 'Welcome to the gallery.';
+	welcome.dispatchEvent(new Event('input', { bubbles: true }));
+	await frame();
+	welcome.dispatchEvent(new FocusEvent('blur'));
+	await vi.waitFor(() => expect(
+		stageExperience(facade().snapshot()).experiences[0]?.welcome
+	).toEqual({ kind: 'plain', body: 'Welcome to the gallery.' }));
 });

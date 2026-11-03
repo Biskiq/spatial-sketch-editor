@@ -672,7 +672,8 @@ probes; replacement teardown; shell/isolation; narrow, long-name and reduced-mot
 
 ## AM-6 Execution program and visitor profile v1
 
-Shared program codec `ExecutionProgram@1` with the bounded first visitor profile. The codec is
+The first shared program codec was `ExecutionProgram@1`. [AM-10](#am-10-guided-views-and-visitor-reach)
+records the current codec. The bounded first visitor profile still applies. The codec is
 derived from accepted Experience/Camera/source identities — never another editable order format
 — and its standalone import closure carries delivery validation only.
 
@@ -774,7 +775,7 @@ authored reader. Post-barrier rollback prefers a prior compatible prepared runti
 ## AM-9 Shared Camera and Experience cutover
 
 **Status:** **owner-ratified 2026-10-19** ([decision record](./decisions/t3-cutover-ratification-2026-10-19.md), R3); it
-supersedes AM-7 for the T3 cutover. Register: `T3.camera-experience-cutover@1`, `ratified`.
+supersedes AM-7 for the T3 cutover. Register: `T3.camera-experience-cutover@1`, superseded by [AM-10](#am-10-guided-views-and-visitor-reach).
 
 Behavioral contract of `T3.camera-experience-cutover@1`. Sole provider `T3.P01.S04`. Consumers:
 T3.P02, `T1.P01.S06` and later T1/T2 phases on F2 units (K1, K3), and `T4.prepared-reader@1`.
@@ -871,3 +872,31 @@ Presentation entry, datum-qualified capture readings and Scene attachments each 
 version/capability and older-reader behavior decision. None is pre-labelled additive. Preserve
 accepted provider identities and history; a new incompatible interface receives its own version
 and normal gate registration/conformance. Ratified shapes never manufacture implemented readiness.
+
+## AM-10 Guided Views and visitor reach
+
+R217.S27 provides `T3.camera-experience-cutover@2` with Experience unit format 3 and
+`ExecutionProgram@3`. The strict readers refuse older versions with `unsupported_format_version`.
+The cutover supersedes AM-9's runtime defaults for Stop entry, holds and free exploration.
+
+- A Stop authors a nonempty ordered sequence of distinct Camera Views from its Presentation.
+  The first View is the entry and the last is the exit. The Presentation's Default remains
+  independent of the Stop's sequence. Removing a View from a Presentation removes it from
+  each affected Stop. A Stop left empty gets a single View at the resulting Default.
+- Each View may author a hold in seconds. Lowering fills an absent intermediate hold with
+  3 seconds. The interpreter carries leftover tick time across steps. A timed final View
+  can auto-continue after the hold expires. An untimed final View waits for Next, and a Gate
+  always requires explicit continuation.
+- A step's optional transition arrives at that View and is absent on the first View.
+  The default is Cut. Travel must resolve to exactly one existing Camera connection. A
+  continuation Travel connects the source Stop's exit to the target Stop's entry. Lowering
+  reports gaps or ambiguous connections and binds only Camera identities. Camera owns pose,
+  route evaluation and motion duration.
+- The program contains the resolved View sequence, step invocations, and local-time entries
+  keyed by Stop identity and zero-based View index. The first View uses the Stop's arrival
+  invocation. Authored and lowered data carry neither the current View index nor the run clock.
+- Presentations opt into free exploration with `explorable`, which defaults to true at
+  creation. The visitor lists open Presentations in authored order and enters each at its
+  Default. The Guide can still reach a closed Presentation.
+- An Experience's optional welcome is plain text limited to 600 code points. It is authored
+  under More on the Guide Card. The lowered program carries the text for the visitor.

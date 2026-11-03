@@ -435,12 +435,14 @@ describe('source admission', () => {
 				{
 					id: 'experience-a',
 					label: 'Experience A',
+					welcome: null,
 					entryGuideId: 'guide-1',
 					presentations: [
 						{
 							id: 'presentation-1',
 							label: 'Entry',
 							viewIds: ['view-absent'],
+							explorable: true,
 							defaultViewId: 'view-absent',
 							subject: null,
 							text: null
@@ -450,7 +452,7 @@ describe('source admission', () => {
 						{
 							id: 'stop-1',
 							presentationId: 'presentation-1',
-							holdSeconds: 0,
+							views: [{ viewId: 'view-absent', holdSeconds: 0 }],
 							continuation: { kind: 'end' }
 						}
 					],
@@ -465,13 +467,13 @@ describe('source admission', () => {
 		const prepared = prepareUnitRuntime(source);
 		expect(prepared.kind).toBe('ready');
 		if (prepared.kind !== 'ready') return;
-		expect(prepared.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view']);
+		expect(prepared.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view', 'unresolved-view']);
 		expect(prepared.closure).toEqual([]);
 
 		const outcome = await admitSource(source, CONTEXT);
 		expect(outcome.kind).toBe('admitted');
 		if (outcome.kind !== 'admitted') return;
-		expect(outcome.snapshot.domain.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view']);
+		expect(outcome.snapshot.domain.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view', 'unresolved-view']);
 		expect(outcome.snapshot.domain.closure).toEqual([]);
 
 		// The binding is preserved as authored; admission does not resolve it by

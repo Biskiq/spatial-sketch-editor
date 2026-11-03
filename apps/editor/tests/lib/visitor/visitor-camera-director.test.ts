@@ -124,30 +124,29 @@ function graph(): NavigationGraph {
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 2,
+		formatVersion: 3,
 		capabilities: [],
+		welcome: null,
 		experienceId: 'experience-director',
 		entryStopId: 'stop-1',
 		presentations: [
-			{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] },
-			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] },
-			{ id: 'presentation-guide-free', label: 'Study', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] }
+			{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] },
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] },
+			{ id: 'presentation-guide-free', label: 'Study', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
-				viewId: 'view-1',
+				views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
 				invocation: { kind: 'cut', viewId: 'view-1' },
-				holdSeconds: null,
 				continuation: { kind: 'sequence-next' }
 			},
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
-				viewId: 'view-2',
+				views: [{ viewId: 'view-2', holdSeconds: 1, step: null }],
 				invocation: { kind: 'travel', connectionId: 'connection-2' },
-				holdSeconds: 1,
 				continuation: { kind: 'end' }
 			}
 		],
@@ -376,35 +375,32 @@ describe('mounted visitor Camera handoff', () => {
 		const threeStops = program({
 			entryStopId: 'stop-a',
 			presentations: [
-				{ id: 'presentation-a', label: 'Entrance', viewIds: ['view-a'], defaultViewId: 'view-a', content: [] },
-				{ id: 'presentation-b', label: 'Gallery', viewIds: ['view-b'], defaultViewId: 'view-b', content: [] },
-				{ id: 'presentation-c', label: 'Study', viewIds: ['view-c'], defaultViewId: 'view-c', content: [] }
+				{ id: 'presentation-a', label: 'Entrance', viewIds: ['view-a'], explorable: true, defaultViewId: 'view-a', content: [] },
+				{ id: 'presentation-b', label: 'Gallery', viewIds: ['view-b'], explorable: true, defaultViewId: 'view-b', content: [] },
+				{ id: 'presentation-c', label: 'Study', viewIds: ['view-c'], explorable: true, defaultViewId: 'view-c', content: [] }
 			],
 			stops: [
 				{
 					id: 'stop-a',
 					presentationId: 'presentation-a',
-					viewId: 'view-a',
+					views: [{ viewId: 'view-a', holdSeconds: null, step: null }],
 					invocation: { kind: 'cut', viewId: 'view-a' },
-					holdSeconds: null,
 					continuation: { kind: 'sequence-next' }
 				},
 				{
 					id: 'stop-b',
 					presentationId: 'presentation-b',
-					viewId: 'view-b',
+					views: [{ viewId: 'view-b', holdSeconds: 0.5, step: null }],
 					invocation: { kind: 'travel', connectionId: 'connection-ab' },
 					// Editorial time, not Camera arrival: this expires while the five-second
 					// Travel to B is still in flight.
-					holdSeconds: 0.5,
 					continuation: { kind: 'sequence-next' }
 				},
 				{
 					id: 'stop-c',
 					presentationId: 'presentation-c',
-					viewId: 'view-c',
+					views: [{ viewId: 'view-c', holdSeconds: null, step: null }],
 					invocation: { kind: 'travel', connectionId: 'connection-bc' },
-					holdSeconds: null,
 					continuation: { kind: 'end' }
 				}
 			]
@@ -452,32 +448,29 @@ describe('mounted visitor Camera handoff', () => {
 		const visitor = createVisitorRuntimeState({
 			program: program({
 				presentations: [
-					{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] },
-					{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] }
+					{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] },
+					{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] }
 				],
 				stops: [
 					{
 						id: 'stop-1',
 						presentationId: 'presentation-1',
-						viewId: 'view-1',
+						views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
 						invocation: { kind: 'cut', viewId: 'view-1' },
-						holdSeconds: null,
 						continuation: { kind: 'sequence-next' }
 					},
 					{
 						id: 'stop-2',
 						presentationId: 'presentation-2',
-						viewId: 'view-2',
+						views: [{ viewId: 'view-2', holdSeconds: 0.5, step: null }],
 						invocation: { kind: 'travel', connectionId: 'connection-1' },
-						holdSeconds: 0.5,
 						continuation: { kind: 'sequence-next' }
 					},
 					{
 						id: 'stop-3',
 						presentationId: 'presentation-1',
-						viewId: 'view-1',
+						views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
 						invocation: { kind: 'travel', connectionId: 'connection-1' },
-						holdSeconds: null,
 						continuation: { kind: 'end' }
 					}
 				]
@@ -554,4 +547,46 @@ describe('mounted visitor Camera handoff', () => {
 		await mountDirector(visitor);
 		expect(harness.tasks.every((task) => task.running())).toBe(true);
 	});
+});
+
+it('realizes the Travel after a tick crosses a View before the Camera frames it', async () => {
+	const base = program();
+	const third: NavigationNodeData = {
+		...NODES[1]!, id: 'view-3', position: [8, 1.6, 0], cameraTarget: [8, 1.6, -1],
+		connectedNodeIds: ['view-2']
+	};
+	const nodes = [...NODES, third];
+	const route = {
+		...connection('connection-23', 5),
+		fromNodeId: 'view-2',
+		toNodeId: 'view-3'
+	};
+	const visitor = runtime({
+		presentations: [
+			{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2', 'view-3'] },
+			...base.presentations.slice(1)
+		],
+		stops: [{ ...base.stops[0]!, views: [
+			{ viewId: 'view-1', holdSeconds: 0.5, step: null },
+			{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'cut', viewId: 'view-2' } },
+			{ viewId: 'view-3', holdSeconds: null, step: { kind: 'travel', connectionId: route.id } }
+		] }],
+		localTime: [
+			{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 0.5 },
+			{ stopId: 'stop-1', viewIndex: 1, holdSeconds: 0 }
+		]
+	});
+	const gaps: (string | null)[] = [];
+	visitor.enter();
+	await mountDirector(visitor, (message) => gaps.push(message), {
+		navigationNodes: nodes,
+		connections: [route],
+		nodeById: new Map(nodes.map((node) => [node.id, node]))
+	});
+	await frame(0.5);
+	expect(visitor.currentViewId).toBe('view-3');
+	expect(gaps.filter(Boolean)).toEqual([]);
+	expect(harness.starts).toEqual([expect.objectContaining({
+		edges: [expect.objectContaining({ connectionId: route.id, direction: 'forward' })]
+	})]);
 });

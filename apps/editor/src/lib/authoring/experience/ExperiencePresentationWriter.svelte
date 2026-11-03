@@ -42,23 +42,17 @@
 	);
 	const selectedViewId = $derived(controller?.selectedView?.id ?? null);
 
-	/** The Stops that enter at each View of this Presentation, in the active Guide. */
+	/** The Stops that guide each View of this Presentation, in the active Guide. */
 	const stopsByView = $derived(
 		new Map(views.map((view) => [view.id, controller?.viewStops(view.id) ?? []] as const))
 	);
 	function onTour(viewId: string): boolean {
 		return (stopsByView.get(viewId)?.length ?? 0) > 0;
 	}
-	/** Every Stop that shows one of this Presentation's Views, once each, in Guide order. */
-	const tourStops = $derived.by(() => {
-		const positions = new Map<string, number>();
-		for (const stops of stopsByView.values()) {
-			for (const stop of stops) positions.set(stop.stopId, stop.position);
-		}
-		return [...positions]
-			.map(([stopId, position]) => ({ stopId, position }))
-			.sort((left, right) => left.position - right.position);
-	});
+	/** Stops of this Presentation in Guide order. A shared View can appear elsewhere. */
+	const tourStops = $derived((controller?.guideStops ?? []).flatMap((stop, index) =>
+		stop.presentationId === presentation?.id ? [{ stopId: stop.id, position: index + 1 }] : []
+	));
 
 	/** Local filter for a long grid: a name search and the two tour chips (both on shows both). */
 	let filterText = $state('');
@@ -72,7 +66,7 @@
 		return views.filter((view) => {
 			if (needle !== '' && !view.label.toLowerCase().includes(needle)) return false;
 			if (!onTourChip && !freeChip) return true;
-			return (onTourChip && onTour(view.id)) || (freeChip && !onTour(view.id));
+			return (onTourChip && onTour(view.id)) || (freeChip && presentation?.explorable && !onTour(view.id));
 		});
 	});
 	$effect(() => {
@@ -281,7 +275,7 @@
 							onclick={() => (onTourChip = !onTourChip)}>On tour</button
 						>
 						<button type="button" class="chip" aria-pressed={freeChip} onclick={() => (freeChip = !freeChip)}
-							>Free</button
+							>Free only</button
 						>
 					</div>
 				</div>
@@ -334,6 +328,15 @@
 
 		<section class="sec" aria-label="Visitors reach it">
 			<h3 class="sec-title">Visitors reach it</h3>
+			<button type="button" class="explorable" role="switch" aria-checked={presentation.explorable}
+				aria-describedby="explorable-description" disabled={controller.busy}
+				onclick={() => void controller.setExplorable(presentation.id, !presentation.explorable)}>
+				<span>Open in free exploration</span>
+				<span class="switch-track" aria-hidden="true"></span>
+			</button>
+			<p class="foot-note" id="explorable-description">
+				All {views.length} {views.length === 1 ? 'View' : 'Views'}; opens at the Default
+			</p>
 			<div class="reach-row">
 				<span class="reach-ico"><ShellIcon name="guide" size={14} /></span>
 				{#if tourStops.length > 0}
@@ -622,6 +625,41 @@
 		overflow: hidden;
 		clip: rect(0 0 0 0);
 		white-space: nowrap;
+	}
+	.explorable {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		min-height: 28px;
+		padding: 0;
+		border: 0;
+		background: none;
+		text-align: left;
+	}
+	.switch-track {
+		display: flex;
+		align-items: center;
+		width: 28px;
+		height: 16px;
+		padding: 2px;
+		box-sizing: border-box;
+		border-radius: 9px;
+		background: var(--shell-hairline-strong, #cdd2ca);
+	}
+	.switch-track::before {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: var(--shell-card, #fff);
+		content: '';
+	}
+	.explorable[aria-checked='true'] .switch-track {
+		justify-content: flex-end;
+		background: var(--shell-forest-raised, #22503c);
+	}
+	.explorable[aria-checked='true'] .switch-track::before {
+		background: var(--shell-leaf, #8baf94);
 	}
 	@media (pointer: coarse) {
 		button,

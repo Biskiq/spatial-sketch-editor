@@ -295,7 +295,7 @@ const SHARED: ExperienceUnitPayload = {
 				{ ...EXPERIENCE.experiences[0]!.presentations[0]!, viewIds: ['view-1', 'view-2'], defaultViewId: 'view-2' },
 				EXPERIENCE.experiences[0]!.presentations[1]!
 			],
-			stops: [{ ...EXPERIENCE.experiences[0]!.stops[0]!, entryViewId: 'view-1' }, EXPERIENCE.experiences[0]!.stops[1]!]
+			stops: [{ ...EXPERIENCE.experiences[0]!.stops[0]!, views: [{ viewId: 'view-1' }] }, EXPERIENCE.experiences[0]!.stops[1]!]
 		}
 	]
 };
@@ -310,7 +310,7 @@ describe('experience-presentation-view-remove (E4)', () => {
 		expect(camera.views.map((view) => view.id)).toEqual(['view-2']);
 		expect(camera.views[0]!.connectedViewIds).toEqual([]);
 		expect(camera.connections).toEqual([]);
-		expect(s.experience().stops[0]!.entryViewId).toBeUndefined();
+		expect(s.experience().stops[0]!.views).toEqual([{ viewId: 'view-2' }]);
 		reloads(s.now());
 		await s.coordinator.undo();
 		expect(s.now().units.camera.data.connections.map((connection) => connection.id)).toEqual(['connection-1']);
@@ -403,7 +403,7 @@ describe('experience-guide-remove (E4)', () => {
 		expect(s.experience().entryGuideId).toBe('short');
 		expect(s.experience().stops.map((stop) => stop.id)).toEqual(['short-1']);
 		await s.coordinator.accept(removeIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-rg2' }, experienceId: 'x-experience', subject: 'guide', id: 'short' }));
-		expect(s.experience()).toMatchObject({ entryGuideId: null, guides: [], stops: [] });
+		expect(s.experience()).toMatchObject({ welcome: null, entryGuideId: null, guides: [], stops: [] });
 		// Presentations are never removed with a Guide.
 		expect(s.experience().presentations).toHaveLength(5);
 		reloads(s.now());

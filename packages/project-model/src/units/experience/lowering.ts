@@ -1,6 +1,6 @@
 /**
  * Experience lowering — one selected Experience + its Camera unit -> the accepted
- * `ExecutionProgram@2` codec (AM-6, T3.P01.S06).
+ * `ExecutionProgram@3` codec (AM-6, T3.P01.S06).
  *
  * Lowering is **derivation**, not a second authored format: it reads the accepted
  * F.2 envelope, resolves every Experience/Presentation/Stop/View/connection
@@ -9,13 +9,8 @@
  * source history into the program — a program names a View (`cut`) or a real
  * Camera connection (`travel`), and the Camera authority resolves the rest.
  *
- * Experience 2 carries everything lowering needs, so there is no interim input:
- * the Cut/Travel selector is authored on the continuation edge, a Stop's entry
- * View is its `entryViewId` (or the Presentation's Default), and Presentation
- * text is authored on the Presentation. Lowering never infers Travel from
- * connectivity and never falls back from an unsupported Travel to Cut: a Travel
- * whose pair of Views no Camera connection joins is a typed refusal, and Preview
- * reports the same gap.
+ * Experience authors the View sequences and the Cut/Travel selectors. Lowering
+ * never infers Travel from connectivity or falls back to Cut on a Travel gap.
  *
  * Lowering also returns a per-edge transition table for every authored approach
  * (Guide adjacency, explicit continuations, detours), so the interpreter
@@ -30,20 +25,22 @@ import { resolveReference } from '../../references/resolve';
 import { createUnitReadContext } from '../../references/unit-resolution';
 import type { ReferenceReadContext } from '../../references/types';
 import { validateExecutionProgram } from '../../program/validate';
+import { EXECUTION_PROGRAM_FORMAT_VERSION, EXECUTION_PROGRAM_KIND } from '../../program/types';
 import type {
 	ExecutionProgram,
 	ProgramAction,
 	ProgramCapability,
 	ProgramChannelPolicy,
 	ProgramContinuation,
-	ProgramGuard,
+	ProgramGuidedView,
+	ProgramLocalTime,
 	ProgramInvocation,
 	ProgramLifecycleAction,
 	ProgramPresentation,
 	ProgramStateDeclaration,
 	ProgramStop
 } from '../../program/types';
-import type { Experience, ProjectEnvelope } from '../types';
+import { EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS, type Experience, type ProjectEnvelope } from '../types';
 
 /** The family the selected Experience's run owns while it is executing. */
 const CAMERA_CHANNEL_FAMILY = CAMERA_SESSION_INSPECTION_FAMILY_ID;
@@ -247,6 +244,7 @@ export function lowerExperienceProgram(
 			label: presentation.label,
 			viewIds: resolvedViewIds,
 			defaultViewId: presentation.defaultViewId,
+			explorable: presentation.explorable,
 			content: presentation.text === null
 				? []
 				: [{ id: `${presentation.id}:text`, kind: 'text', text: presentation.text.body }]
@@ -254,12 +252,8 @@ export function lowerExperienceProgram(
 	}
 
 	const entryOccurrence = entryStopId === null ? -1 : order.indexOf(entryStopId);
-	const presentationOf = (stop: Experience['stops'][number]) => presentationById.get(stop.presentationId) ?? null;
-	/** The View one Stop occurrence enters at: its entry View or the Default. */
-	const entryViewOf = (stop: Experience['stops'][number]): string | null => {
-		const presentation = presentationOf(stop);
-		return stop.entryViewId ?? presentation?.defaultViewId ?? null;
-	};
+	const entryViewOf = (stop: Experience['stops'][number]) => stop.views[0]?.viewId ?? null;
+	const exitViewOf = (stop: Experience['stops'][number]) => stop.views.at(-1)?.viewId ?? null;
 	const travelConnection = (fromViewId: string | null, toViewId: string | null):
 		| { readonly kind: 'resolved'; readonly connectionId: string }
 		| { readonly kind: 'none' }
@@ -283,31 +277,31 @@ export function lowerExperienceProgram(
 	 * refused (never downgraded to a Cut) when the pair has none.
 	 */
 	const resolveApproach = (
-		previous: Experience['stops'][number],
-		target: Experience['stops'][number],
+		fromViewId: string | null,
+		targetViewId: string | null,
+		targetStopId: string,
 		transition: 'cut' | 'travel' | undefined,
 		label: string
 	): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | ExperienceLoweringRefusal => {
-		const targetViewId = entryViewOf(target);
 		if (targetViewId === null) {
-			return refuse('missing-entry', `${label} enters Stop "${target.id}", which has no entry View`, target.id);
+			return refuse('missing-entry', `${label} enters Stop "${targetStopId}", which has no entry View`, targetStopId);
 		}
 		if (transition !== 'travel') {
 			return { kind: 'resolved', invocation: { kind: 'cut', viewId: targetViewId } };
 		}
-		const connection = travelConnection(entryViewOf(previous), targetViewId);
+		const connection = travelConnection(fromViewId, targetViewId);
 		if (connection.kind === 'ambiguous') {
 			return refuse(
 				'travel-ambiguous',
-				`${label} binds a Travel, and more than one Camera connection joins "${entryViewOf(previous) ?? '?'}" to "${targetViewId}"; Experience never chooses between them`,
-				target.id
+				`${label} binds a Travel, and more than one Camera connection joins "${fromViewId ?? '?'}" to "${targetViewId}"; Experience never chooses between them`,
+				targetStopId
 			);
 		}
 		if (connection.kind === 'none') {
 			return refuse(
 				'travel-gap',
-				`${label} binds a Travel, and no Camera connection joins "${entryViewOf(previous) ?? '?'}" to "${targetViewId}"`,
-				target.id
+				`${label} binds a Travel, and no Camera connection joins "${fromViewId ?? '?'}" to "${targetViewId}"`,
+				targetStopId
 			);
 		}
 		return { kind: 'resolved', invocation: { kind: 'travel', connectionId: connection.connectionId } };
@@ -331,7 +325,7 @@ export function lowerExperienceProgram(
 		return 'cut' as const;
 	};
 	const stops: ProgramStop[] = [];
-	const localTime: { stopId: string; holdSeconds: number }[] = [];
+	const localTime: ProgramLocalTime[] = [];
 	for (const [occurrence, stopId] of order.entries()) {
 		const stop = stopById.get(stopId)!;
 		const presentation = presentationById.get(stop.presentationId);
@@ -346,16 +340,29 @@ export function lowerExperienceProgram(
 		if (entryViewId === null) {
 			return refuse(
 				'missing-entry',
-				`Stop "${stop.id}" has no entry View: its Presentation has no Default View and the Stop names none`,
+				`Stop "${stop.id}" has no guided entry View`,
 				stop.id
 			);
 		}
-		if (!resolves(context, reference('camera', 'view', entryViewId, cameraRevision, []))) {
-			return refuse(
-				'unknown-view',
-				`Stop "${stop.id}" enters at Camera view "${entryViewId}", which this envelope does not resolve`,
-				stop.id
+		const views: ProgramGuidedView[] = [];
+		for (const [viewIndex, view] of stop.views.entries()) {
+			if (!resolves(context, reference('camera', 'view', view.viewId, cameraRevision, []))) {
+				return refuse(
+					'unknown-view',
+					`Stop "${stop.id}" guides Camera view "${view.viewId}", which this envelope does not resolve`,
+					stop.id
+				);
+			}
+			const previous = stop.views[viewIndex - 1];
+			const approach = previous === undefined
+				? null
+				: resolveApproach(previous.viewId, view.viewId, stop.id, view.transition, `Step ${viewIndex + 1} of Stop "${stop.id}"`);
+			if (approach?.kind === 'refused') return approach;
+			const holdSeconds = view.holdSeconds ?? (
+				viewIndex < stop.views.length - 1 ? EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS : null
 			);
+			views.push({ viewId: view.viewId, holdSeconds, step: approach?.invocation ?? null });
+			if (holdSeconds !== null) localTime.push({ stopId, viewIndex, holdSeconds });
 		}
 		// A Stop of a Presentation without an enterable Default View is refused even
 		// when the Stop names its own resolvable entry View: the Presentation itself
@@ -370,19 +377,15 @@ export function lowerExperienceProgram(
 		const previous = occurrence === 0 ? null : stopById.get(order[occurrence - 1]!)!;
 		const approach = previous === null
 			? { kind: 'resolved' as const, invocation: { kind: 'cut' as const, viewId: entryViewId } }
-			: resolveApproach(previous, stop, adjacentTransition(previous, stop), `Guide adjacency into Stop "${stop.id}"`);
+			: resolveApproach(exitViewOf(previous), entryViewId, stop.id, adjacentTransition(previous, stop), `Guide adjacency into Stop "${stop.id}"`);
 		if (approach.kind === 'refused') return approach;
 		stops.push({
 			id: stop.id,
 			presentationId: stop.presentationId,
-			viewId: entryViewId,
+			views,
 			invocation: approach.invocation,
-			holdSeconds: stop.holdSeconds ?? null,
 			continuation: toProgramContinuation(stop.continuation)
 		});
-		if (stop.holdSeconds !== undefined) {
-			localTime.push({ stopId: stop.id, holdSeconds: stop.holdSeconds });
-		}
 	}
 	for (const stop of stops) {
 		if (stop.continuation.kind === 'stop' && !order.includes(stop.continuation.stopId)) {
@@ -425,8 +428,9 @@ export function lowerExperienceProgram(
 				? authoredContinuation.transition
 				: undefined;
 		const approach = resolveApproach(
-			authored,
-			targetStop,
+			exitViewOf(authored),
+			entryViewOf(targetStop),
+			targetId,
 			transition,
 			`The explicit continuation from Stop "${stop.id}" to "${targetId}"`
 		);
@@ -449,13 +453,14 @@ export function lowerExperienceProgram(
 	// still uses its Travel while `enter` starts with a Cut.
 	// `stops` is built in `order`, so the entry occurrence's index addresses it.
 	const entryStop = entryOccurrence > 0 ? stops[entryOccurrence] : undefined;
-	if (entryStop !== undefined) entryStop.invocation = { kind: 'cut', viewId: entryStop.viewId };
+	if (entryStop !== undefined) entryStop.invocation = { kind: 'cut', viewId: entryStop.views[0]!.viewId };
 
 	const program: ExecutionProgram = {
-		kind: 'execution-program',
-		formatVersion: 2,
+		kind: EXECUTION_PROGRAM_KIND,
+		formatVersion: EXECUTION_PROGRAM_FORMAT_VERSION,
 		capabilities: options.capabilities ?? [],
 		experienceId: experience.id,
+		welcome: experience.welcome?.body ?? null,
 		entryStopId,
 		presentations,
 		stops,
@@ -472,7 +477,7 @@ export function lowerExperienceProgram(
 		const first = validated.issues[0];
 		return refuse(
 			'invalid-program',
-			first === undefined ? 'the lowered program is not a valid ExecutionProgram@2' : `${first.path} (${first.code}): ${first.message}`
+			first === undefined ? 'the lowered program is not a valid ExecutionProgram@3' : `${first.path} (${first.code}): ${first.message}`
 		);
 	}
 	return {

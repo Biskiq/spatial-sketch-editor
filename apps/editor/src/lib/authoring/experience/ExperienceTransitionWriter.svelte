@@ -13,6 +13,7 @@
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
+	import { stopEntryViewId, stopExitViewId } from './experience-model';
 	import { experienceHomes } from './experience-homes';
 
 	let {
@@ -67,13 +68,8 @@
 					: null
 	);
 
-	/** A Stop's entry View label, as the Stop itself names it (the Presentation's Default when unset). */
-	function entryLabelOf(target: ExperienceStop): string {
-		if (controller === null) return '';
-		const presentation = controller.current?.presentations.find((entry) => entry.id === target.presentationId);
-		const entryId = target.entryViewId ?? presentation?.defaultViewId ?? null;
-		if (entryId === null) return 'Default View not set';
-		const view = controller.viewsOf.get(target.presentationId)?.find((entry) => entry.id === entryId);
+	function viewLabelOf(target: ExperienceStop, viewId: string): string {
+		const view = controller?.viewsOf.get(target.presentationId)?.find((entry) => entry.id === viewId);
 		return view?.label ?? 'Missing View';
 	}
 
@@ -124,11 +120,11 @@
 		<section class="ends" aria-label="Ends">
 			<button type="button" class="end" onclick={() => homes.select({ kind: 'stop', stopId: stop.id })}>
 				<span class="end-img">
-					<ExperienceSnapshot label={entryLabelOf(stop)} />
+					<ExperienceSnapshot label={viewLabelOf(stop, stopExitViewId(stop))} />
 					{#if fromPlace > 0}<span class="num">{fromPlace}</span>{/if}
 				</span>
 				<small>leaves from</small>
-				<b>{entryLabelOf(stop)}</b>
+				<b>{viewLabelOf(stop, stopExitViewId(stop))}</b>
 			</button>
 			<span class="ends-mid">
 				{#if transition !== null}
@@ -145,11 +141,11 @@
 					onclick={() => homes.select({ kind: 'stop', stopId: destination.id })}
 				>
 					<span class="end-img">
-						<ExperienceSnapshot label={entryLabelOf(destination)} />
+						<ExperienceSnapshot label={viewLabelOf(destination, stopEntryViewId(destination))} />
 						{#if toPlace > 0}<span class="num">{toPlace}</span>{/if}
 					</span>
 					<small>arrives at{#if toPlace === 0} · outside this Guide{/if}</small>
-					<b>{entryLabelOf(destination)}</b>
+					<b>{viewLabelOf(destination, stopEntryViewId(destination))}</b>
 				</button>
 			{:else if isEnd}
 				<span class="end static">
@@ -190,9 +186,9 @@
 					<div class="gaps" role="alert">
 						<div class="alert">
 							<ShellIcon name="warning" size={13} /><span
-								>Travel needs a Camera connection from “{entryLabelOf(stop)}” to “{destination === null
+								>Travel needs a Camera connection from “{viewLabelOf(stop, stopExitViewId(stop))}” to “{destination === null
 									? 'the next View'
-									: entryLabelOf(destination)}”. Connections come with path editing.</span
+									: viewLabelOf(destination, stopEntryViewId(destination))}”. Connections come with path editing.</span
 							>
 						</div>
 					</div>

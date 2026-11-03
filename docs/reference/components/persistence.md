@@ -81,7 +81,7 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 6, Scene 4, Camera 1, Experience 2 and resources 2.
+`units`. Unit payload versions are Layout 6, Scene 4, Camera 1, Experience 3 and resources 2.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
