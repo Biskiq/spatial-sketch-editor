@@ -4,6 +4,8 @@
 
 	import ShellIcon from './ShellIcon.svelte';
 	import { worldScopeRows, type WorldScope, type WorldIndexModel } from './world-index-model';
+	import type { ExperienceIndexGroups } from './experience-index-groups';
+	import ExperienceSnapshot from '$lib/authoring/experience/ExperienceSnapshot.svelte';
 	let {
 		open,
 		model,
@@ -16,7 +18,8 @@
 		onSelect,
 		onBringIntoView,
 		onReveal,
-		onRename = () => {}
+		onRename = () => {},
+		experience = null
 	}: {
 		open: boolean;
 		model: WorldIndexModel;
@@ -31,6 +34,12 @@
 		onReveal: (id: string) => void;
 		/** Double-click on a row renames through the selected subject's Card writer. */
 		onRename?: (id: string) => void;
+		/**
+		 * R217.S25: the Experience lens's groups. When present the Index shows them in place
+		 * of the World locator: the Experience crumb with its sibling menu, the Guides, and the
+		 * Presentations with their Views. Same Index shell and rows.
+		 */
+		experience?: ExperienceIndexGroups | null;
 	} = $props();
 	let facet = $state('all');
 	let limit = $state(40);
@@ -57,6 +66,12 @@
 		void facet;
 		limit = 40;
 	});
+
+	/** A Presentation row's Stop numbers: the first three, then how many follow. */
+	function stopsLabel(numbers: readonly number[]): string {
+		const shown = numbers.slice(0, 3).join(', ');
+		return numbers.length > 3 ? `${shown} +${numbers.length - 3}` : shown;
+	}
 
 	/**
 	 * Locating is a locator's own operation, not a Stage one: it focuses the
@@ -110,6 +125,166 @@
 	hidden={!open}
 >
 	{#if open}
+		{#if experience}
+		<div class="index-search">
+			<label
+				><ShellIcon name="search" size={15} />
+				<input
+					id="plate-index-search"
+					type="search"
+					aria-label="Find a Presentation or View"
+					placeholder="Find a Presentation or View"
+					value={experience.query}
+					oninput={(e) => experience.onQuery(e.currentTarget.value)}
+				/>
+			</label>
+			<button type="button" class="hide-index" aria-label="Hide Index" onclick={onClose}
+				><ShellIcon name="chevronLeft" size={15} /></button
+			>
+		</div>
+		<div class="crumbs" role="group" aria-label="Experience">
+			{#if experience.current !== null}
+				<span class="crumb" aria-current="location">{experience.current.label}</span>
+			{:else}
+				<span class="index-empty">No Experience yet</span>
+			{/if}
+			<details class="siblings">
+				<summary aria-label="Switch or create Experience"
+					><ShellIcon name="chevronDown" size={12} /></summary
+				>
+				<div>
+					{#each experience.experiences.filter((entry) => entry.id !== experience.current?.id) as entry (entry.id)}<button
+							type="button"
+							onclick={(event) => { experience.onOpenExperience(entry.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{entry.label}</button
+						>{/each}
+					<button
+						type="button"
+						class="menu-create"
+						disabled={experience.busy}
+						onclick={(event) => { experience.onCreateExperience(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>New Experience</button
+					>
+				</div>
+			</details>
+		</div>
+		<section class="group" aria-labelledby="index-presentations">
+			<h3 id="index-presentations" class="group-title">
+				Presentations <span class="count">{experience.totalPresentations}</span>
+			</h3>
+			{#if experience.pending}
+				<p class="index-empty">The Experience lens mounts with the admitted project source.</p>
+			{:else if experience.current === null}
+				<p class="index-empty">Create an Experience from the menu above to start presenting.</p>
+			{:else if experience.presentations.length === 0}
+				<p class="index-empty">
+					{experience.query.trim() === ''
+						? 'Nothing presented yet. Select an object and choose Present this, or press Capture in the dock.'
+						: `Nothing matches "${experience.query.trim()}".`}
+				</p>
+			{:else}
+				<ul class="group-items">
+					{#each experience.presentations as presentation (presentation.id)}
+						<li class="item" data-presentation-id={presentation.id}>
+							<!-- Only the Presentation's own row carries its selection; its Views keep their own. -->
+							<div class="item-head" class:selected={presentation.selected}>
+								<button
+									type="button"
+									class="item-row presentation-row"
+									draggable="true"
+									aria-current={presentation.selected ? 'true' : undefined}
+									aria-label={`Presentation ${presentation.label}`}
+									ondragstart={(event) => {
+										if (!event.dataTransfer) return;
+										event.dataTransfer.setData('application/x-biskiq-presentation', presentation.id);
+										event.dataTransfer.effectAllowed = 'copy';
+									}}
+									onclick={() => experience.onSelectPresentation(presentation.id)}
+									ondblclick={() => {
+										experience.onSelectPresentation(presentation.id);
+										onRename(presentation.id);
+									}}
+								>
+									<ExperienceSnapshot label={presentation.label} ratio="row" selected={presentation.selected} />
+									<span class="item-text">
+										<span class="item-name">{presentation.label}</span>
+										<span class="item-meta"
+											>{presentation.viewCount} {presentation.viewCount === 1 ? 'View' : 'Views'} · {#if presentation.stopNumbers.length > 0}Stops {stopsLabel(presentation.stopNumbers)}{:else}<span class="free-tag">free</span>{/if}</span
+										>
+									</span>
+								</button>
+								<button
+									type="button"
+									class="twist"
+									aria-expanded={presentation.expanded}
+									aria-label={`${presentation.expanded ? 'Hide' : 'Show'} Views of ${presentation.label}`}
+									disabled={presentation.views.length === 0}
+									onclick={() => experience.onToggleExpand(presentation.id)}
+								>
+									<ShellIcon name={presentation.expanded ? 'chevronDown' : 'chevronRight'} size={12} />
+								</button>
+							</div>
+							{#if presentation.expanded}
+								<ul class="view-list">
+									{#each presentation.views.slice(0, 8) as view (view.id)}
+										<li>
+											<button
+												type="button"
+												class="view-row"
+												class:selected={view.selected}
+												aria-current={view.selected ? 'true' : undefined}
+												aria-label={`${view.label}, ${view.onTour ? 'on tour' : 'free'}${view.isDefault ? ', Default View' : ''}`}
+												onclick={() => experience.onSelectView(view.id, presentation.id)}
+											>
+												<span class="tour-mark" class:on={view.onTour} aria-hidden="true"></span>
+												<span class="view-name">{view.label}</span>
+												{#if view.isDefault}<span class="default-mark" title="Default View" aria-hidden="true">◆</span>{/if}
+											</button>
+										</li>
+									{/each}
+									{#if presentation.views.length > 8}
+										<li>
+											<button type="button" class="view-more" onclick={() => experience.onSelectPresentation(presentation.id)}>+{presentation.views.length - 8} more — see all in the Card</button>
+										</li>
+									{/if}
+								</ul>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+		<!-- Round 2 order: the Presentations, then the Guides that order them. -->
+		{#if !experience.pending && experience.current !== null}
+			<section class="group" aria-labelledby="index-guides">
+				<h3 id="index-guides" class="group-title">Guides</h3>
+				{#each experience.guides as guide (guide.id)}
+					<div class="item" class:selected={guide.selected} class:open={guide.open} data-guide-id={guide.id}>
+						<button
+							type="button"
+							class="guide-row"
+							aria-current={guide.selected ? 'true' : undefined}
+							onclick={() => experience.onOpenGuide(guide.id)}
+						>
+							<ShellIcon name="guide" size={15} />
+							<span class="item-text">
+								<span class="item-name">{guide.label}</span>
+								<span class="item-meta">{guide.stopCount} stops</span>
+							</span>
+							{#if guide.open}<span class="chip">Open</span>{/if}
+						</button>
+					</div>
+				{:else}
+					<div class="item">
+						<button type="button" class="guide-row" onclick={() => experience.onOpenGuide(null)}>
+							<ShellIcon name="guide" size={15} />
+							<span class="item-text">
+								<span class="item-name muted">No Guide yet</span>
+							</span>
+						</button>
+					</div>
+				{/each}
+			</section>
+		{/if}
+		{:else}
 		<div class="index-search">
 			<label
 				><ShellIcon name="search" size={15} />
@@ -228,6 +403,7 @@
 		{#if result.total > result.rows.length}<button type="button" onclick={() => (limit += 40)}
 				>Show more ({result.total - result.rows.length})</button
 			>{:else if result.total === 0}<p class="index-empty">No matching subjects</p>{/if}
+		{/if}
 	{/if}
 </nav>
 
@@ -373,7 +549,8 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.item.selected {
+	.item.selected,
+	.item-head.selected {
 		background: var(--shell-gold-tint, #f8efd6);
 	}
 	.item.selected .item-name {
@@ -400,6 +577,195 @@
 	.badge {
 		font-size: 10px;
 		color: var(--shell-ink-3, #79817b);
+	}
+	.group {
+		display: flex;
+		flex-direction: column;
+	}
+	/* Round 2 igroup: 10 px uppercase labels. */
+	.group-title {
+		margin: 0;
+		padding: 8px 10px 2px 12px;
+		color: var(--shell-ink-3, #79817b);
+		font: 600 10px var(--shell-sans, system-ui);
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+	}
+	.index-search .hide-index {
+		margin-left: auto;
+	}
+	.siblings div button {
+		width: 100%;
+		min-height: 28px;
+		justify-content: flex-start;
+	}
+	.siblings div .menu-create {
+		margin-top: 4px;
+		border-top: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 0 0 6px 6px;
+	}
+	.siblings div button:disabled {
+		background: transparent;
+		color: var(--shell-ink-3, #79817b);
+		cursor: default;
+	}
+	.group-title .count {
+		margin-left: 4px;
+		letter-spacing: 0;
+	}
+	.item-text {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+	}
+	.item-meta {
+		overflow: hidden;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 11px;
+		line-height: 1.3;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.item-name.muted {
+		color: var(--shell-ink-3, #79817b);
+	}
+	.free-tag {
+		padding: 0 4px;
+		border: 1px dashed var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 4px;
+		font-size: 10px;
+	}
+	.chip {
+		flex: none;
+		padding: 0 6px;
+		border: 1px solid var(--shell-leaf, #4f8f6c);
+		border-radius: 999px;
+		background: #fff;
+		color: var(--shell-forest-3, #2d5e48);
+		font-size: 10px;
+		line-height: 15px;
+		font-weight: 600;
+	}
+	/* An open Guide is a leaf state; the gold role stays with selection alone. */
+	.item.open:not(.selected) {
+		background: var(--shell-leaf-tint, #e7f1ea);
+	}
+	/* Round 2 irow: one 28 px line, the stop count on the right. */
+	.guide-row {
+		width: 100%;
+		min-height: 28px;
+		padding: 4px 6px 4px 10px;
+		gap: 7px;
+		border-radius: 0;
+		text-align: left;
+	}
+	.guide-row .item-text {
+		flex-direction: row;
+		align-items: center;
+		gap: 7px;
+	}
+	.guide-row .item-name {
+		flex: 1;
+	}
+	.guide-row .item-meta {
+		flex: none;
+	}
+	/* Selecting a Presentation opens its Views (Round 2); the twist only reveals on hover or focus. */
+	.twist {
+		flex: none;
+		width: 26px;
+		height: 26px;
+		margin-right: 4px;
+		padding: 0;
+		justify-content: center;
+		border-radius: 6px;
+		color: var(--shell-ink-3, #79817b);
+		opacity: 0;
+	}
+	.item-head:hover .twist:enabled,
+	.twist:focus-visible {
+		opacity: 1;
+	}
+	.twist:hover {
+		background: rgb(0 0 0 / 0.07);
+		color: var(--shell-ink, #1b201c);
+	}
+	.twist:disabled {
+		visibility: hidden;
+	}
+	.presentation-row {
+		min-height: 28px;
+		padding: 4px 6px 4px 10px;
+		gap: 7px;
+		cursor: grab;
+	}
+	/* Round 2 Index rows read in the sans at 13 px; only the selected row is bold. */
+	.presentation-row .item-name {
+		font: 400 13px/1.35 var(--shell-sans, system-ui);
+	}
+	.item-head.selected .item-name {
+		font-weight: 600;
+	}
+	.view-list {
+		display: grid;
+		gap: 0;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	/* Round 2 nested irow: 14 px indent, then the row's own 10 px. */
+	.view-row {
+		width: 100%;
+		min-height: 28px;
+		padding: 4px 6px 4px 24px;
+		gap: 7px;
+		border-radius: 0;
+		text-align: left;
+		color: var(--shell-ink, #1b201c);
+		font-size: 13px;
+	}
+	.view-row:hover {
+		background: rgb(0 0 0 / 0.035);
+	}
+	.view-row.selected {
+		background: var(--shell-gold-tint, #f8efd6);
+		font-weight: 600;
+	}
+	.view-name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.tour-mark {
+		flex: none;
+		width: 8px;
+		height: 8px;
+		/* Sits in the 14 px icon slot of a Round 2 row. */
+		margin: 0 3px;
+		border: 1.5px solid var(--shell-ink-3, #79817b);
+		border-radius: 50%;
+	}
+	.tour-mark.on {
+		border-color: var(--shell-leaf, #4f8f6c);
+		background: var(--shell-leaf, #4f8f6c);
+	}
+	.default-mark {
+		flex: none;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 10px;
+	}
+	.view-more {
+		width: 100%;
+		min-height: 28px;
+		padding: 3px 6px 3px 24px;
+		border-radius: 6px;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 12px;
+		text-align: left;
 	}
 	.index-empty {
 		padding: 10px;

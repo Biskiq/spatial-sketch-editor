@@ -39,9 +39,12 @@
 		writer = null,
 		actions = [],
 		onClose,
-		onBringIntoView,
 		gesturing = false,
-		renameRequest = 0
+		renameRequest = 0,
+		functions = null,
+		kindLink = null,
+		menu = null,
+		onBringIntoView = null
 	}: {
 		identity: {
 			sourceId: string;
@@ -72,7 +75,34 @@
 		 * explicit expansion, so it never covers the task's lower column.
 		 */
 		onClose: () => void;
-		onBringIntoView: () => void;
+		/** Bring into view, or null for a subject with no spatial place (an Experience Presentation or Stop). */
+		onBringIntoView: (() => void) | null;
+		/**
+		 * The `•••` functions for this subject, or null for the World table. An Experience
+		 * subject passes an empty list: it has no functions yet, so the menu is not shown.
+		 */
+		functions?: readonly string[] | null;
+		/**
+		 * A link after the kind word, such as "View in" + "The Pleyel piano": the kind text
+		 * already carries the connecting words, so the link is only the named target. Null
+		 * for a subject with nothing to open from its header.
+		 */
+		kindLink?: { readonly label: string; readonly onOpen: () => void } | null;
+		/**
+		 * The `•••` menu for this subject, replacing the `functions` list when not null. Each
+		 * item runs once and closes the panel; a disabled item states its `reason` as the
+		 * title and to assistive technology. Null keeps the `functions` / `actions` behaviour.
+		 */
+		menu?: readonly {
+			readonly id: string;
+			readonly label: string;
+			/** A quiet right-aligned hint, such as a shortcut or the kind of change. */
+			readonly hint?: string;
+			readonly disabled?: boolean;
+			/** Why a disabled item cannot run; shown as the title and read as hidden text. */
+			readonly reason?: string;
+			readonly run: () => void;
+		}[] | null;
 		/**
 		 * R217.S22 (D36): a live authored gesture on the Stage. The Card fades and takes no
 		 * pointer events until it ends, so the subject being edited stays visible. Only the
@@ -105,6 +135,15 @@
 	let titleButton = $state<HTMLButtonElement>();
 	let nameInput = $state<HTMLInputElement>();
 	const identityKey = $derived(identity?.sourceId ?? null);
+	/** The `•••` functions: the route's own list when it states one, else the World table for this kind. */
+	const subjectFunctions = $derived.by((): readonly string[] => {
+		if (functions !== null) return functions;
+		return identity === null ? [] : FUNCTIONS[functionKind(identity.kind)];
+	});
+	/** `•••` is shown only when the subject has a function or an action to hold. */
+	const hasSubjectActions = $derived(
+		(menu !== null ? menu.length > 0 : subjectFunctions.length > 0) || actions.length > 0
+	);
 	$effect(() => {
 		void identityKey;
 		renaming = false;
@@ -267,7 +306,7 @@
 
 {#snippet footer()}
 	<div class="footer">
-		<button type="button" aria-label="Bring into view" title="Bring into view" onclick={onBringIntoView}><ShellIcon name="fit" size={15} /></button>
+		{#if onBringIntoView}<button type="button" aria-label="Bring into view" title="Bring into view" onclick={() => onBringIntoView?.()}><ShellIcon name="fit" size={15} /></button>{/if}
 		<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={toggleMore}
 			>More <span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
 	</div>
@@ -292,8 +331,14 @@
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div class="subject-actions" bind:this={panel} data-card-actions role="group" aria-label="Subject actions"
 			onkeydown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closePanel(); } }}>
-			{#if identity}
-				{#each FUNCTIONS[functionKind(identity.kind)] as name (name)}
+			{#if menu !== null}
+				{#each menu as item (item.id)}
+					<button type="button" class="menu-item" disabled={item.disabled === true} title={item.disabled === true ? item.reason : undefined}
+						data-card-menu={item.id}
+						onclick={() => { item.run(); closePanel(); }}>{item.label}{#if item.hint}<span class="hint">{item.hint}</span>{/if}{#if item.disabled === true && item.reason}<span class="sr-only">{item.reason}</span>{/if}</button>
+				{/each}
+			{:else if identity}
+				{#each subjectFunctions as name (name)}
 					<button type="button" class="soon" disabled title="Coming soon" data-card-function={name}>{name}<span class="soon-cue">Soon</span></button>
 				{/each}
 			{/if}
@@ -331,15 +376,15 @@
 		data-card-gesturing={gesturing ? 'true' : 'false'}
 	>
 		<header class="card-head">
-			<span class="kind">{identity.kind}</span>
+			<span class="kind">{identity.kind}{#if kindLink}{@const link = kindLink} <button type="button" class="kind-link" onclick={() => link.onOpen()}>{link.label}</button>{/if}</span>
 			<div class="head-actions">
-				<button
+				{#if hasSubjectActions}<button
 					type="button"
 					aria-label="Subject actions"
 					bind:this={actionTrigger}
 					aria-expanded={detailOpen}
 					onclick={() => { if (detailOpen) closePanel(); else detailOpen = true; }}><ShellIcon name="more" size={15} /></button
-				>
+				>{/if}
 				<button type="button" aria-label="Close selection card" onclick={onClose}
 					><ShellIcon name="close" size={15} /></button
 				>
@@ -385,12 +430,14 @@
 	.card {
 		position: absolute;
 		top: 10px;
-		right: calc(var(--sheet-lane-right, 40px) + 18px);
+		right: var(--card-right, calc(var(--sheet-lane-right, 40px) + 18px));
 		z-index: 12;
 		width: var(--shell-card-width, 288px);
 		max-width: calc(100% - 76px);
-		max-height: calc(100% - var(--lower-column-height, 50px) - 30px);
+		max-height: calc(100% - var(--card-bottom-clearance, calc(var(--lower-column-height, 50px) + 30px)));
 		overflow: visible;
+		display: flex;
+		flex-direction: column;
 		border: 1px solid var(--shell-hairline, #e1e4de);
 		border-radius: 12px;
 		background: #fff;
@@ -400,6 +447,27 @@
 		transition: opacity 140ms;
 	}
 
+	.card-head,
+	.name,
+	.card > .error { flex: none; }
+	/* Identity stays put; a long writer scrolls under it instead of spilling past the Card. */
+	.writer {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		border-radius: 0 0 12px 12px;
+		scrollbar-width: thin;
+		scrollbar-color: var(--shell-hairline-strong, #cdd2ca) transparent;
+	}
+	.writer::-webkit-scrollbar { width: 8px; }
+	.writer::-webkit-scrollbar-track { background: transparent; }
+	.writer::-webkit-scrollbar-thumb {
+		border: 2px solid transparent;
+		border-radius: 8px;
+		background: var(--shell-hairline-strong, #cdd2ca) padding-box;
+	}
+	.writer::-webkit-scrollbar-thumb:hover { background-color: var(--shell-ink-3, #79817b); }
 	.card-head {
 		display: flex;
 		align-items: center;
@@ -407,8 +475,22 @@
 		padding: 7px 6px 0 12px;
 	}
 	.kind {
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-3, #79817b);
 		font-size: 11px;
+	}
+	.kind-link {
+		min-height: 0;
+		margin-left: 0.25em;
+		padding: 0;
+		border-radius: 0;
+		background: none;
+		color: var(--shell-ink-2, #4a524c);
+		text-decoration: underline;
+		text-decoration-color: var(--shell-hairline-strong, #b9bfb8);
+		text-underline-offset: 2px;
+	}
+	.kind-link:hover {
+		background: none;
 	}
 	.head-actions {
 		display: flex;
@@ -501,6 +583,12 @@
 			width: 252px;
 		}
 	}
+	/* Narrow Stages leave the Guide no room beside the Card, so the Card stops above the whole lower column. */
+	@media (max-width: 1180px) {
+		.card {
+			max-height: calc(100% - var(--lower-column-height, 50px) - 30px);
+		}
+	}
 	@media (pointer: coarse) {
 		button,
 		.head-actions button,
@@ -531,6 +619,10 @@
 	.subject-actions hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--shell-hairline, #e1e4de); }
 	.soon { justify-content: space-between !important; color: var(--shell-ink-2, #4a524c); cursor: default; }
 	.soon:hover { background: transparent; }
+	.menu-item .hint { margin-left: auto; padding-left: 8px; color: var(--shell-ink-2, #4a524c); font-size: 11px; }
+	.menu-item:disabled { color: var(--shell-ink-2, #4a524c); cursor: default; }
+	.menu-item:disabled:hover { background: transparent; }
+	.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 	.soon-cue { margin-left: auto; padding: 0 5px; border-radius: 4px; background: var(--shell-index, #f6f7f5); font-size: 10px; letter-spacing: .02em; }
 	.footer .more { gap: 3px; font-size: 12px; color: var(--shell-ink-2, #4a524c); }
 	.chev { display: inline-block; transition: transform 120ms; }
