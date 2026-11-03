@@ -1990,6 +1990,14 @@ describe('the capability-readiness rule', () => {
 		const viewport = 'T1.viewport-projection@1:viewport-projection-v1';
 		const local = 'F4.intent-acceptance@1:local-single-domain-v1';
 		expect(sliceRequires(model)).toEqual({
+			// R217.S30 registration: the same consumed F/T scopes as every S26–S30 slice.
+			'R217.S30': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F4.intent-acceptance@1:unit-acceptance-v1',
+				'F4.intent-acceptance@1:conditional-save-units-v1',
+				viewport
+			],
 			'T1.P01.S02': ['F1.reference@1:references-v1', 'F3.channels@1:inspection-v1'],
 			'T1.P01.S03': ['F1.reference@1:references-v1'],
 			'T1.P01.S04': [

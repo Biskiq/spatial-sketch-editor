@@ -931,7 +931,11 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 			'src/lib/authoring/stage/shell/EditorCard.svelte'
 		];
 		for (const file of homes) {
-			expect(readFileSync(file, 'utf8'), file).not.toMatch(/aria-label="Preview"|>Preview</);
+			// S30 Card actions may say Preview (a move or a mode), but no home owns
+			// another Preview *entry*: they command the same Head-owned route through
+			// the homes callback, never `openPreview`/`data-head-preview` themselves.
+			const source = readFileSync(file, 'utf8');
+			expect(source, file).not.toMatch(/data-head-preview|onEnterPreview|openPreview/);
 		}
 	});
 

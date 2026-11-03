@@ -6,6 +6,7 @@
 	import type { PerspectiveCamera } from 'three';
 	import {
 		getNode,
+		getCameraMotionOptions,
 		createCameraMotion,
 		createCameraMotionSample,
 		sampleCameraMotion,
@@ -14,7 +15,7 @@
 		type CameraMotion
 	} from '@portfolio/camera-core';
 	import type { NavigationGraph } from '@portfolio/project-model';
-	import type { VisitorRuntimeState } from './visitor-runtime-state.svelte';
+	import type { VisitorRuntimeState, VisitorTickMotion } from './visitor-runtime-state.svelte';
 	import { resolveVisitorCameraRoute } from './visitor-camera-route';
 	import type { LayoutBounds3 } from '@portfolio/layout-core';
 
@@ -24,7 +25,18 @@
 		bounds = null,
 		runEpoch = 0,
 		active = true,
-		onCameraGap
+		paused = false,
+		viewOverride = null,
+		/** A surface-owned event boundary: free entry, Place choice or restart. */
+		destinationEpoch = 0,
+		/** S30 Preview: honor the authored invocation's exact directed options and timing. */
+		timeAligned = false,
+		/** Whether guided Continue keys may advance the run in this mode. */
+		guidedInputEnabled = true,
+		/** Free exploration suspends authored hold time without freezing look-around. */
+		suspendGuidance = false,
+		onCameraGap,
+		onTraveling
 	}: {
 		graph: NavigationGraph;
 		visitor: VisitorRuntimeState;
@@ -36,23 +48,52 @@
 		 * ticks the run nor requests frames, so a hidden, warm surface stays idle.
 		 */
 		active?: boolean;
+		/** Pause the whole Preview run: no editorial tick and no motion progress. */
+		paused?: boolean;
+		timeAligned?: boolean;
+		guidedInputEnabled?: boolean;
+		suspendGuidance?: boolean;
+		/** A visitor's free View choice: a validated exact Cut, cleared by its host. */
+		viewOverride?: string | null;
+		/**
+		 * Bumped on free entry, an explicit destination (including a Place default),
+		 * or restart. It invalidates guidance even when the View override stays null.
+		 */
+		destinationEpoch?: number;
 		/** Surfaces a typed handoff gap instead of silently re-routing. */
 		onCameraGap?: (message: string | null) => void;
+		/** Reports an in-flight directed Travel so a host can refuse Next honestly. */
+		onTraveling?: (traveling: boolean) => void;
 	} = $props();
 
-	// A reused surface keeps this component (and its look-around offset) alive.
-	// A new run starts from its own entry View, not from the previous run's aim.
+	// A free View, free entry, an explicit Place/default choice or a restart
+	// changes the effective invocation outside authored guidance. Stale queued
+	// guidance must not play ahead of it, even when the override remains null.
+	$effect(() => {
+		void viewOverride;
+		void destinationEpoch;
+		void suspendGuidance;
+		queuedMotions = [];
+		activeMotion = null;
+		activeTargetViewId = null;
+		pendingDestinationCut = true;
+	});
+
 	$effect(() => {
 		void runEpoch;
 		cameraViewId = null;
 		activeMotion = null;
 		activeTargetViewId = null;
+		queuedMotions = [];
+		pendingDestinationCut = true;
 		lookYaw = 0;
 		lookPitch = 0;
 		lookViewId = null;
 	});
 
-	const currentViewId = $derived(visitor.currentViewId);
+	// One effective View: a free choice overrides the interpreter's View as an
+	// exact Cut, so the main effect cannot later re-frame the default over it.
+	const effectiveViewId = $derived(viewOverride ?? visitor.currentViewId);
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
 
 	const motionSample = createCameraMotionSample();
@@ -87,7 +128,7 @@
 	}
 
 	// svelte-ignore state_referenced_locally
-	frameFor(currentViewId);
+	frameFor(effectiveViewId);
 	const initialCameraPosition: [number, number, number] = [
 		currentPosition.x,
 		currentPosition.y,
@@ -98,6 +139,15 @@
 	let activeMotion: CameraMotion | null = null;
 	let activeTargetViewId: string | null = $state(null);
 	let transitionProgress: number = $state(1);
+	/** Ordered Camera moves a single interpreter tick crossed (Preview only). */
+	let queuedMotions = $state<VisitorTickMotion[]>([]);
+	/** The next effective View is an explicit destination: settle it as a Cut. */
+	let pendingDestinationCut = $state(false);
+	$effect(() => {
+		// A queued crossing is still a pending transition: Next and guide keys must
+		// wait for the whole authored sequence, not only the motion in flight.
+		onTraveling?.(activeTargetViewId !== null || queuedMotions.length > 0);
+	});
 
 	const { canvas } = useThrelte();
 	const lookDirection = new Vector3();
@@ -115,7 +165,7 @@
 	let previousPointerX = 0;
 	let previousPointerY = 0;
 
-	const isAuthoredMode = () => currentViewId !== null;
+	const isAuthoredMode = () => effectiveViewId !== null;
 	const canLookAround = () => isAuthoredMode() && activeTargetViewId === null;
 
 	function cancelPointerLook() {
@@ -137,7 +187,14 @@
 		// interpreter owns why the visitor moved; this owns how the Camera gets
 		// there. A Cut (or reduced motion) is instant; a Travel animates the
 		// Camera route the unit already validated.
-		const targetViewId = currentViewId;
+		// Advance one interpreter crossing at a time. If a tick crossed several
+		// zero-length steps, the final invocation alone would swallow the Travels
+		// before it; the queue preserves their authored order and durations.
+		const queuedMotion = timeAligned ? queuedMotions[0] ?? null : null;
+		if (queuedMotion !== null && activeTargetViewId !== null) return;
+		const targetViewId = queuedMotion?.viewId ?? effectiveViewId;
+		const destinationCut = pendingDestinationCut;
+		pendingDestinationCut = false;
 		if (targetViewId === null) {
 			cameraViewId = null;
 			activeMotion = null;
@@ -152,27 +209,38 @@
 		// is a command to settle now, not a duplicate hold-tick re-run. Only an
 		// actual change is applied, so a hold at a Cut Stop does not reframe (and so
 		// does not cancel look-around) on every interpreter tick.
-		const invocation = visitor.currentInvocation ?? { kind: 'cut' as const, viewId: targetViewId };
-		const invocationOrigin = visitor.currentInvocationFromViewId;
+		const invocation = destinationCut
+			? { kind: 'cut' as const, viewId: targetViewId }
+			: (queuedMotion?.invocation ?? visitor.currentInvocation ?? { kind: 'cut' as const, viewId: targetViewId });
+		const invocationOrigin = queuedMotion === null ? visitor.currentInvocationFromViewId : null;
 		if (cameraViewId === null && invocation.kind === 'travel' && invocationOrigin !== null && !visitor.reducedMotion) {
 			cameraViewId = invocationOrigin;
 			frameFor(invocationOrigin);
 		}
 		if (cameraViewId === null || visitor.reducedMotion || invocation.kind === 'cut') {
 			const settling = cameraViewId !== targetViewId || activeTargetViewId !== null || activeMotion !== null;
-			if (!settling) return;
+			if (!settling) {
+				// A queued Cut to the View already settled is realized, not a wedge: consume
+				// it so later hold ticks can progress through the same-View revisit.
+				if (queuedMotion !== null) queuedMotions = queuedMotions.slice(1);
+				return;
+			}
 			cameraViewId = targetViewId;
 			activeMotion = null;
 			activeTargetViewId = null;
 			onCameraGap?.(null);
 			frameFor(targetViewId);
+			if (queuedMotion !== null) queuedMotions = queuedMotions.slice(1);
 			return;
 		}
 		// A target equal to the settled View is a duplicate hold tick only when no
 		// Travel is in flight. With one in flight it is a real new invocation —
 		// for example an authored Travel back to the View the Camera left — and the
 		// handoff below must realize it rather than letting the stale motion run on.
-		if (targetViewId === cameraViewId && activeTargetViewId === null) return;
+		if (targetViewId === cameraViewId && activeTargetViewId === null) {
+			if (queuedMotion !== null) queuedMotions = queuedMotions.slice(1);
+			return;
+		}
 		// A hold tick or any other interpreter state write re-runs this effect
 		// while the Camera is still travelling: `cameraViewId` stays at the origin
 		// until the motion completes. Starting the same route again would reset
@@ -204,26 +272,49 @@
 			activeTargetViewId = null;
 			onCameraGap?.(resolved.reason);
 			frameFor(targetViewId);
+			if (queuedMotion !== null) queuedMotions = queuedMotions.slice(1);
 			return;
 		}
 		onCameraGap?.(null);
-		activeMotion = createCameraMotion(resolved.route, {
-			position: currentPosition,
-			target: currentTarget,
-			fov: motionSample.fov
-		});
+		// Preview parity (S30): a time-aligned run starts on the authored View and
+		// uses the authored direction, easing and duration. The public surface keeps
+		// its live-pose overtake behavior, where a mid-flight handoff starts here.
+		let directedOptions = undefined;
+		if (timeAligned && invocation.kind === 'travel') {
+			const connection = graph.connections.find((candidate) => candidate.id === invocation.connectionId);
+			if (connection) {
+				const direction = connection.fromNodeId === resolved.originViewId ? 'forward' : 'reverse';
+				directedOptions = getCameraMotionOptions(connection, direction);
+			}
+		}
+		activeMotion = timeAligned
+			? createCameraMotion(resolved.route, undefined, directedOptions)
+			: createCameraMotion(resolved.route, {
+					position: currentPosition,
+					target: currentTarget,
+					fov: motionSample.fov
+				});
 		// A handoff overtook a Travel to `originViewId`: that View is now the
 		// logical origin the Experience left, even though the Camera never
 		// finished reaching it. The next connection is evaluated from there.
 		cameraViewId = resolved.originViewId;
 		activeTargetViewId = targetViewId;
 		transitionProgress = 0;
+		if (queuedMotion !== null) queuedMotions = queuedMotions.slice(1);
 	});
 
 	useTask(
 		(delta) => {
 			if (!cameraRef || !isAuthoredMode()) return;
-			if (visitor.state.phase === 'holding') visitor.tick(delta * 1000);
+			if (paused) return;
+			// Preview parity: a hold is editorial time, but it must not elapse while the
+			// Camera is still realizing the Travel into that Stop. Public keeps its
+			// landed overtake behavior.
+			if (!suspendGuidance && visitor.state.phase === 'holding' && !(timeAligned && (activeTargetViewId !== null || queuedMotions.length > 0))) {
+				visitor.tick(delta * 1000);
+				const crossed = visitor.takeTickMotions();
+				if (timeAligned && crossed.length > 0) queuedMotions = [...queuedMotions, ...crossed];
+			}
 			if (activeTargetViewId && activeMotion) {
 				if (activeMotion.durationSeconds === 0) {
 					transitionProgress = 1;
@@ -325,8 +416,13 @@
 			// previous/next: Guide order is authored, and a Gate is passed only by
 			// this explicit action.
 			if (key === 'ArrowRight' || key === 'Enter') {
+				// A governed mode still owns the key: free exploration must not advance
+				// the guided run, and neither a hold nor an in-flight Travel may be
+				// skipped by the keyboard when the visible Next control refuses it.
 				event.preventDefault();
-				visitor.continue();
+				if (guidedInputEnabled && visitor.state.phase !== 'holding' && activeTargetViewId === null && queuedMotions.length === 0) {
+					visitor.continue();
+				}
 			}
 		};
 
@@ -391,7 +487,7 @@
 
 	$effect(() => {
 		if (!isAuthoredMode()) return;
-		const viewId = currentViewId;
+		const viewId = effectiveViewId;
 		if (viewId !== lookViewId) {
 			lookViewId = viewId;
 			lookYaw = 0;

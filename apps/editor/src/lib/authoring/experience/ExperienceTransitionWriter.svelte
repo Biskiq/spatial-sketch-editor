@@ -33,13 +33,13 @@
 	const END_REASON = 'The tour ends here';
 	const NOT_IN_GUIDE_REASON = 'This Stop is not in the open Guide';
 	const BUSY_REASON = 'Wait for the last change to save';
-	const CAMERA_REASON = 'Comes with Camera playback';
 	const CUT_PATH_REASON = 'A Cut has no travel path';
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
 	/** The subject's Stop: this transition leaves from it. */
 	const stop = $derived(controller?.selectedStop ?? null);
+	const transportGuideId = $derived(stop === null ? null : homes.guideForStop(stop.id));
 	const continuation = $derived(
 		controller === null || stop === null ? null : (controller.resolveContinuation(stop.id) as Continuation | null)
 	);
@@ -210,7 +210,9 @@
 
 		{#if !isEnd}
 			<section class="c-sec row-end" aria-label="Playback">
-				<button type="button" class="btn" disabled title={CAMERA_REASON}>Preview this move<span class="sr-only">{CAMERA_REASON}</span><ShellIcon name="play" size={12} /></button>
+				<button type="button" class="btn" disabled={transportGuideId === null || stop === null}
+					title={transportGuideId === null ? 'There is no Guide to play' : 'Preview this move'}
+					onclick={() => transportGuideId !== null && stop !== null && homes.playGuide(transportGuideId, { kind: 'move', occurrence: { kind: 'transition', stopId: stop.id } })}>Preview this move<ShellIcon name="play" size={12} /></button>
 			</section>
 		{/if}
 

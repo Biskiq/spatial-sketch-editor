@@ -66,6 +66,32 @@ function runtime(overrides: Partial<ExecutionProgram> = {}) {
 }
 
 describe('Experience visitor runtime (no node-keyed orchestration)', () => {
+	it('queues every Camera move one tick crosses, including zero-hold Travel', () => {
+		const visitor = runtime({
+			stops: [
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					views: [
+						{ viewId: 'view-1', holdSeconds: 1, step: null },
+						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-1' } },
+						{ viewId: 'view-1', holdSeconds: 0, step: { kind: 'cut', viewId: 'view-1' } }
+					],
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		visitor.enter();
+		visitor.tick(1100);
+		const motions = visitor.takeTickMotions();
+		// The reducer finishes all three Views in one tick; the queue preserves the
+		// zero-hold Travel that the final state's invocation would otherwise hide.
+		expect(motions.map((motion) => motion.viewId)).toEqual(['view-2', 'view-1']);
+		expect(motions[0]?.invocation).toEqual({ kind: 'travel', connectionId: 'connection-1' });
+		expect(motions[1]?.invocation).toEqual({ kind: 'cut', viewId: 'view-1' });
+	});
+
 	it('starts neutral and enters at the authored entry Stop', () => {
 		const visitor = runtime();
 		expect(visitor.currentViewId).toBeNull();

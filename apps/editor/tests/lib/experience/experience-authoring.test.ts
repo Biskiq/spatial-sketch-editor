@@ -301,6 +301,34 @@ describe('Preview entry rule', () => {
 		expect(entry.program.entryStopId).toBe('stop-2');
 	});
 
+	it('enters a non-opening Guide Card guide at its own entry, ignoring the open rail focus', async () => {
+		const experience = {
+			...EXPERIENCE,
+			experiences: EXPERIENCE.experiences.map((entry) =>
+				entry.id === 'experience-1'
+					? {
+							...entry,
+							guides: [
+								...entry.guides,
+								{ id: 'guide-2', label: 'Other', stopIds: ['stop-2'], entryStopId: 'stop-2' }
+							]
+						}
+					: entry
+			)
+		};
+		const envelope = await experienceEnvelope({ experience });
+		// The rail still has Stop 1 of the opening Guide and its Presentation focused.
+		const entry = entryFor(envelope, {
+			guideId: 'guide-2',
+			stopId: 'stop-1',
+			presentationId: 'presentation-1'
+		});
+		expect(entry.kind).toBe('program');
+		if (entry.kind !== 'program') return;
+		expect(entry.program.entryStopId).toBe('stop-2');
+		expect(entry.title).toContain('Other');
+	});
+
 	it('enters a selected Presentation alone when no Guide is open', async () => {
 		const envelope = await experienceEnvelope();
 		const entry = entryFor(envelope, { presentationId: 'presentation-2' });

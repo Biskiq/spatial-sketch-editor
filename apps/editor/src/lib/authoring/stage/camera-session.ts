@@ -152,6 +152,12 @@ export type CameraSession = {
 	stepLookThroughLens(fovYDegrees: number): boolean;
 	/** Move eye and target together to a floor-relative eye height. */
 	setLookThroughEyeHeight(eyeHeightMetres: number, floorDatumMeters?: number): boolean;
+	/**
+	 * R217.S30 — the exact settled inspection standpoint **and reading** a Follow
+	 * run restores. A pose copy is not enough: Plan/3D posture is part of it.
+	 */
+	captureStandpoint(): ViewportCameraState;
+	restoreStandpoint(state: ViewportCameraState): boolean;
 	/** The provisional pose, for Update View or Capture while through. */
 	provisionalView(): LookThroughView | null;
 	/** Update View: the provisional pose becomes the authored one. */
@@ -493,6 +499,15 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			return true;
 		},
 		provisionalView,
+		captureStandpoint: () => currentState,
+		restoreStandpoint(state) {
+			// Follow never starts through Look through, and a restored entry is the
+			// whole settled inspection: pose, reading and ground datum.
+			if (lookThroughState !== null) return false;
+			currentState = state;
+			currentEvaluation = null;
+			return true;
+		},
 		commitLookThrough() {
 			const provisional = provisionalView();
 			if (lookThroughState === null || provisional === null) return null;

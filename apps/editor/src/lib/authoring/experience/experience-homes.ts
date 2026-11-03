@@ -14,7 +14,14 @@
  */
 import { getContext, setContext } from 'svelte';
 import type { ExperienceController } from './experience-controller.svelte';
+import type { ExperiencePlayback } from './playback.svelte';
 import type { ExperienceSubject } from './experience-model';
+import type { ExperiencePathOccurrence } from './experience-paths';
+
+export type ExperienceGuideTransport =
+	| { readonly kind: 'start' }
+	| { readonly kind: 'stop'; readonly stopId: string }
+	| { readonly kind: 'move'; readonly occurrence: ExperiencePathOccurrence };
 
 export type ExperienceHomes = {
 	/** The live controller, or null while the Experience lens is not mounted. */
@@ -44,6 +51,16 @@ export type ExperienceHomes = {
 	readonly captureProvisional: () => Promise<void>;
 	/** Present this through Camera's visible framing (E9), or arm placement in Plan. */
 	readonly presentThis: (entityId: string, label: string) => Promise<void>;
+	/** R217.S30 — the Stage-owned playback session, or null before the lens mounts. */
+	readonly playback: () => ExperiencePlayback | null;
+	/** Open Preview deliberately in guided or free exploration, for this Guide. */
+	readonly previewMode: (mode: 'guided' | 'free', guideId: string | null) => void;
+	/** The Guide's full authored run time, even while the rail is closed. */
+	readonly guideSeconds: (guideId: string) => number | null;
+	/** The Guide that lists a Stop, preferring the active Guide. */
+	readonly guideForStop: (stopId: string) => string | null;
+	/** Card transport: open/target the Guide, then start the requested action. */
+	readonly playGuide: (guideId: string, action: ExperienceGuideTransport) => void;
 };
 
 const HOMES = Symbol('experience-homes');
