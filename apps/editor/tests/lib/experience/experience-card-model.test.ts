@@ -1,38 +1,40 @@
 /**
- * The Card's identity and facts for an Experience subject (R217.S25).
+ * The shared Card's identity and facts for each Experience subject (R217.S25).
  *
- * A Presentation and a Stop show through the shared Card. The model names each one and
- * states the facts the Card lists in More, and every fact a writer edits carries that
- * writer's field id, so the Card never repeats a value the writer already shows.
+ * Every helper is a pure function over plain values, so each kind is tested with its inputs
+ * stated directly: the kind word, the name, the status and the More facts.
  */
 import { describe, expect, it } from 'vitest';
-import type { ExperiencePresentation, ExperienceStop } from '@portfolio/project-model/units';
 import {
 	PRESENTATION_WRITER_FIELDS,
 	STOP_WRITER_FIELDS,
+	guideCardModel,
+	guideSourceId,
 	presentationCardModel,
 	presentationSourceId,
 	stopCardModel,
-	stopSourceId
+	stopSourceId,
+	subjectCardModel,
+	subjectSourceId,
+	transitionCardModel,
+	transitionLabel,
+	transitionSourceId,
+	viewCardModel,
+	viewSourceId
 } from '$lib/authoring/experience/experience-card-model';
 
-const PRESENTATION: ExperiencePresentation = {
-	id: 'presentation-1',
-	label: 'Entry hall',
-	viewIds: ['view-1', 'view-2'],
-	defaultViewId: 'view-2',
-	subject: null,
-	text: null
-};
-
-const VIEWS = [
-	{ id: 'view-1', label: 'View 1' },
-	{ id: 'view-2', label: 'View 2' }
-];
-
 describe('presentationCardModel', () => {
-	it('names the Presentation with its own kind word and a stable subject identity', () => {
-		const model = presentationCardModel({ presentation: PRESENTATION, views: VIEWS, stopCount: 1 });
+	const base = {
+		presentationId: 'presentation-1',
+		label: 'Entry hall',
+		hasSubject: false,
+		viewCount: 2,
+		stopCount: 1,
+		hasDefaultView: true
+	};
+
+	it('names a Presentation with no subject with the plain kind word and a stable source id', () => {
+		const model = presentationCardModel(base);
 		expect(model.identity).toEqual({
 			sourceId: presentationSourceId('presentation-1'),
 			label: 'Entry hall',
@@ -42,90 +44,185 @@ describe('presentationCardModel', () => {
 		expect(model.identity.sourceId).toBe('experience:presentation:presentation-1');
 	});
 
-	it('lists the Views, the Default View and the Stops that visit it as More facts', () => {
-		const model = presentationCardModel({ presentation: PRESENTATION, views: VIEWS, stopCount: 2 });
+	it('names a Presentation about a Scene subject with the about kind word', () => {
+		const model = presentationCardModel({ ...base, hasSubject: true });
+		expect(model.identity.kind).toBe('Presentation · about');
+	});
+
+	it('lists the View count and the Stops that visit it as More facts', () => {
+		const model = presentationCardModel({ ...base, viewCount: 3, stopCount: 2 });
 		expect(model.facts.map((fact) => [fact.label, fact.value])).toEqual([
-			['Views', '2'],
-			['Default View', 'View 2'],
-			['Subject', 'Environment or region'],
+			['Views', '3'],
 			['Used in', '2 Stops']
 		]);
 	});
 
-	it('keeps the Default View fact keyed to the writer that edits it, so the Card does not repeat it', () => {
-		const model = presentationCardModel({ presentation: PRESENTATION, views: VIEWS, stopCount: 0 });
-		const defaultFact = model.facts.find((fact) => fact.label === 'Default View');
-		expect(defaultFact?.fieldId).toBe('default-view');
-		expect(PRESENTATION_WRITER_FIELDS).toContain(defaultFact?.fieldId);
+	it('says a single Stop in the singular and an unused Presentation as no Stop yet', () => {
+		expect(presentationCardModel({ ...base, stopCount: 1 }).facts[1]).toEqual({
+			label: 'Used in',
+			value: '1 Stop'
+		});
+		expect(presentationCardModel({ ...base, stopCount: 0 }).facts[1]).toEqual({
+			label: 'Used in',
+			value: 'No Stop yet'
+		});
 	});
 
-	it('states an unset Default View and an unused Presentation as honest states', () => {
-		const unset = presentationCardModel({
-			presentation: { ...PRESENTATION, defaultViewId: null },
-			views: VIEWS,
-			stopCount: 0
-		});
-		expect(unset.identity.status).toBe('No Default View');
-		expect(unset.facts.find((fact) => fact.label === 'Default View')?.value).toBe('Unset: cannot be entered');
-		expect(unset.facts.find((fact) => fact.label === 'Used in')?.value).toBe('No Stop yet');
-	});
-
-	it('keeps a Default View that names a missing View distinct from an unset one', () => {
-		const model = presentationCardModel({
-			presentation: { ...PRESENTATION, defaultViewId: 'view-gone' },
-			views: VIEWS,
-			stopCount: 0
-		});
-		// The reference is set but its View is absent: the Card says so, rather than calling it unset.
+	it('names a Presentation with no Default View as such', () => {
+		const model = presentationCardModel({ ...base, hasDefaultView: false });
 		expect(model.identity.status).toBe('No Default View');
-		expect(model.facts.find((fact) => fact.label === 'Default View')?.value).toBe('Missing View: cannot be entered');
+	});
+
+	it('keeps the writer field lists empty, so no fact names a writer field', () => {
+		expect(PRESENTATION_WRITER_FIELDS).toEqual([]);
+		for (const fact of presentationCardModel(base).facts) expect(fact.fieldId).toBeUndefined();
 	});
 });
 
-const STOP: ExperienceStop = { id: 'stop-1', presentationId: 'presentation-1' };
+describe('viewCardModel', () => {
+	it('names a View with the View in kind word, its name and the Presentation it belongs to', () => {
+		const model = viewCardModel({ viewId: 'view-1', label: 'Door', presentationLabel: 'Entry hall' });
+		expect(model.identity).toEqual({
+			sourceId: 'experience:view:view-1',
+			label: 'Door',
+			kind: 'View in',
+			status: 'Entry hall'
+		});
+		expect(viewSourceId('view-1')).toBe('experience:view:view-1');
+	});
+
+	it('lists no More facts', () => {
+		expect(viewCardModel({ viewId: 'view-1', label: 'Door', presentationLabel: 'Entry hall' }).facts).toEqual([]);
+	});
+});
 
 describe('stopCardModel', () => {
-	it('names a placed Stop by its position in the Guide and the Presentation it visits', () => {
+	it('names a placed Stop by its place in the active Guide and the Presentation it visits', () => {
 		const model = stopCardModel({
-			stop: STOP,
+			stopId: 'stop-1',
+			presentationLabel: 'Entry hall',
 			position: 2,
 			guideLength: 3,
-			presentationLabel: 'Entry hall',
 			guideLabel: 'Tour'
 		});
 		expect(model.identity).toEqual({
 			sourceId: stopSourceId('stop-1'),
-			label: '2. Entry hall',
-			kind: 'Stop',
+			label: 'Entry hall',
+			kind: 'Stop 2 of 3 · Tour',
 			status: 'Tour'
 		});
-		expect(model.facts.map((fact) => [fact.label, fact.value])).toEqual([
-			['Presentation', 'Entry hall'],
-			['Position', '2 of 3'],
-			['Guide', 'Tour']
-		]);
+		expect(model.facts).toEqual([]);
+		expect(model.identity.sourceId).toBe('experience:stop:stop-1');
 	});
 
-	it('names a Stop the open Guide does not list by what it visits, with no invented position', () => {
+	it('names a Stop the active Guide does not list by what it visits, with no invented place', () => {
 		const model = stopCardModel({
-			stop: STOP,
-			position: 0,
+			stopId: 'stop-1',
+			presentationLabel: 'Entry hall',
+			position: null,
 			guideLength: 3,
-			presentationLabel: 'Entry hall',
-			guideLabel: null
-		});
-		expect(model.identity.label).toBe('Entry hall');
-		expect(model.facts.map((fact) => fact.label)).toEqual(['Presentation']);
-	});
-
-	it('leaves the Stop fields to its writer, so none of them is repeated as a fact', () => {
-		const model = stopCardModel({
-			stop: STOP,
-			position: 1,
-			guideLength: 1,
-			presentationLabel: 'Entry hall',
 			guideLabel: 'Tour'
 		});
-		for (const fact of model.facts) expect(STOP_WRITER_FIELDS).not.toContain(fact.fieldId);
+		expect(model.identity.kind).toBe('Stop · Entry hall');
+		expect(model.identity.label).toBe('Entry hall');
+		expect(model.identity.status).toBe('Not in this Guide');
+	});
+
+	it('keeps the writer field list empty', () => {
+		expect(STOP_WRITER_FIELDS).toEqual([]);
+	});
+});
+
+describe('transitionCardModel', () => {
+	it('labels an adjacent continuation as the next Stop', () => {
+		const model = transitionCardModel({
+			stopId: 'stop-2',
+			fromPosition: 2,
+			guideLabel: 'Tour',
+			continuation: { kind: 'adjacent', stopId: 'stop-3', position: 3, transition: 'cut', explicit: false }
+		});
+		expect(model.identity).toEqual({
+			sourceId: transitionSourceId('stop-2'),
+			label: 'Stop 2 → Stop 3',
+			kind: 'Transition · Tour',
+			status: 'Cut'
+		});
+		expect(model.identity.sourceId).toBe('experience:transition:stop-2');
+	});
+
+	it('labels a jump to a later Stop of the Guide by its place', () => {
+		const model = transitionCardModel({
+			stopId: 'stop-2',
+			fromPosition: 2,
+			guideLabel: 'Tour',
+			continuation: { kind: 'jump', stopId: 'stop-5', position: 5, transition: 'travel', explicit: true }
+		});
+		expect(model.identity.label).toBe('Stop 2 → Stop 5');
+		expect(model.identity.status).toBe('Travel');
+	});
+
+	it('labels a jump to a Stop outside the active Guide as another Guide', () => {
+		const model = transitionCardModel({
+			stopId: 'stop-2',
+			fromPosition: 2,
+			guideLabel: 'Tour',
+			continuation: { kind: 'jump', stopId: 'stop-9', position: null, transition: 'cut', explicit: true }
+		});
+		expect(model.identity.label).toBe("Stop 2 → another Guide's Stop");
+	});
+
+	it('labels an end continuation as End', () => {
+		const model = transitionCardModel({
+			stopId: 'stop-2',
+			fromPosition: 2,
+			guideLabel: 'Tour',
+			continuation: { kind: 'end', explicit: true }
+		});
+		expect(model.identity.label).toBe('Stop 2 → End');
+		expect(model.identity.status).toBe('End');
+		expect(model.facts).toEqual([]);
+	});
+
+	it('gives every continuation label the same arrow line through transitionLabel', () => {
+		expect(transitionLabel({ kind: 'adjacent', stopId: 's', position: 4, transition: 'cut', explicit: false }, 3)).toBe(
+			'Stop 3 → Stop 4'
+		);
+		expect(transitionLabel({ kind: 'end', explicit: false }, 1)).toBe('Stop 1 → End');
+	});
+});
+
+describe('guideCardModel', () => {
+	it('names a Guide with the Guide kind word, its label and its Stop count', () => {
+		const model = guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 3 });
+		expect(model.identity).toEqual({
+			sourceId: guideSourceId('guide-1'),
+			label: 'Tour',
+			kind: 'Guide',
+			status: '3 Stops'
+		});
+		expect(model.identity.sourceId).toBe('experience:guide:guide-1');
+		expect(model.facts).toEqual([]);
+	});
+
+	it('states an empty Guide as having no Stops yet', () => {
+		expect(guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 0 }).identity.status).toBe('No Stops yet');
+	});
+
+	it('uses the singular for a single Stop', () => {
+		expect(guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 1 }).identity.status).toBe('1 Stop');
+	});
+});
+
+describe('subjectCardModel', () => {
+	it('names a Scene object with the Scene object kind word and its entity label', () => {
+		const model = subjectCardModel({ entityId: 'entity-7', label: 'Lamp' });
+		expect(model.identity).toEqual({
+			sourceId: subjectSourceId('entity-7'),
+			label: 'Lamp',
+			kind: 'Scene object',
+			status: 'In the Scene'
+		});
+		expect(model.identity.sourceId).toBe('experience:subject:entity-7');
+		expect(model.facts).toEqual([]);
 	});
 });

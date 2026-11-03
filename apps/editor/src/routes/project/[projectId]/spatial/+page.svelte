@@ -91,6 +91,7 @@
 	import {
 		createStageFacade,
 		type StageCardActionRecord,
+		type StageCardWriterRecord,
 		type StageFacade,
 		type StageIntentResult,
 		type StageInstrumentContent,
@@ -171,15 +172,22 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
 	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
-	import ExperienceGuidePanel from '$lib/authoring/experience/ExperienceGuidePanel.svelte';
+	import ExperienceGuide from '$lib/authoring/experience/ExperienceGuide.svelte';
 	import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePresentationWriter.svelte';
+	import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
 	import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
-	import { provideExperienceHomes, type ExperienceCardKind } from '$lib/authoring/experience/experience-homes';
+	import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
+	import ExperienceGuideWriter from '$lib/authoring/experience/ExperienceGuideWriter.svelte';
+	import ExperienceSubjectWriter from '$lib/authoring/experience/ExperienceSubjectWriter.svelte';
+	import { provideExperienceHomes } from '$lib/authoring/experience/experience-homes';
+	import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 	import {
-		PRESENTATION_WRITER_FIELDS,
-		STOP_WRITER_FIELDS,
+		guideCardModel,
 		presentationCardModel,
-		stopCardModel
+		stopCardModel,
+		subjectCardModel,
+		transitionCardModel,
+		viewCardModel
 	} from '$lib/authoring/experience/experience-card-model';
 	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 	import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
@@ -321,8 +329,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			lens = session.lens();
 			task = null;
 			contributionsVersion += 1;
-			// R217.S25: the Guide instrument is closed by default, so every entry starts closed.
-			if (lens === 'experience') experienceGuideOpen = false;
+			// R217.S25: the Guide instrument is closed by default, so every entry starts closed. A Card
+			// subject left from the last visit is cleared too, or its Guide-type subject would reopen it.
+			if (lens === 'experience') {
+				experienceGuideOpen = false;
+				experienceFocus.select(null);
+			}
+			guideNamePrompt = null;
 		}
 		// Arming the Experience dock's Guide key is not a mode: the lens owns it.
 	}
@@ -428,23 +441,83 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let experienceController = $state.raw<ExperienceController | null>(null);
 	/** Whether the Guide instrument is open in the lower edge. Closed by default. */
 	let experienceGuideOpen = $state(false);
-	/** The Experience subject the Card last focused: a Presentation, or a Stop of the Guide. */
-	let experienceCardKind = $state<ExperienceCardKind | null>(null);
-	/** A spatial selection takes Card priority without changing Experience composition focus. */
-	let experienceCardSuppressed = $state(false);
 	/** The controller the homes read; null outside the Experience lens. */
 	const activeExperience = $derived(lens === 'experience' ? experienceController : null);
+	/** The Presentation awaiting a first-Guide name (D8); null when none is asking. */
+	let guideNamePrompt = $state<string | null>(null);
+	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
+	let expandedPresentationId = $state<string | null>(null);
+	/**
+	 * R217.S25 (D10) — the one Card selection. A Presentation, View, Stop, transition or Guide
+	 * replaces the Stage selection; nothing here moves the Camera.
+	 */
+	function selectExperienceSubject(subject: ExperienceSubject | null): void {
+		facade?.select(null);
+		selection = null;
+		experienceController?.select(subject);
+		cardOpen = true;
+	}
+	/** The Scene entity the Card shows in the Experience lens: the Stage's primary Scene selection. */
+	const experienceSceneSubject = $derived.by(() => {
+		const selected = selection;
+		if (selected === null || selected.reference.domain !== 'scene' || selected.reference.subject.kind !== 'entity') {
+			return null;
+		}
+		return { entityId: selected.reference.subject.id, label: cardIdentity?.label ?? 'Object' };
+	});
 	provideExperienceHomes({
 		controller: () => (lens === 'experience' ? experienceController : null),
 		guideOpen: () => experienceGuideOpen,
 		setGuideOpen: (open) => {
 			experienceGuideOpen = open;
 		},
-		focusCardSubject: (kind) => {
-			experienceCardKind = kind;
-			experienceCardSuppressed = false;
-			cardOpen = true;
-		}
+		select: selectExperienceSubject,
+		guideNamePrompt: () => guideNamePrompt,
+		requestGuideName: (presentationId) => {
+			guideNamePrompt = presentationId;
+		},
+		sceneSubject: () => experienceSceneSubject,
+		openInWorld: () => changeLens('world')
+	});
+	// The controller can set a subject itself (a Capture, an added Stop); the Stage selection it
+	// replaces must not linger beside it.
+	$effect(() => {
+		if (activeExperience?.subject == null) return;
+		untrack(() => {
+			if (selection === null) return;
+			facade?.select(null);
+			selection = null;
+		});
+	});
+	// A subject whose ids no longer resolve (an undo, a redo or a removed Presentation) would leave the
+	// Card blank: clear it, so the Card falls back to the Stage selection or to nothing.
+	$effect(() => {
+		const controller = activeExperience;
+		const subject = controller?.subject ?? null;
+		if (controller === null || subject === null) return;
+		const resolves =
+			subject.kind === 'guide'
+				? controller.guides.some((guide) => guide.id === subject.guideId)
+				: subject.kind === 'view'
+					? controller.selectedView !== null
+					: subject.kind === 'stop' || subject.kind === 'transition'
+						? controller.selectedStop !== null
+						: controller.selectedPresentation !== null;
+		if (!resolves) untrack(() => experienceFocus.select(null));
+	});
+	// A Guide-type subject (a Stop, a transition or the Guide itself) belongs to the Guide, so its
+	// instrument opens. A Presentation, View or Stage subject never closes it. Lens entry clears the
+	// subject, so this does not fight the closed-on-entry rule in changeLens.
+	$effect(() => {
+		const kind = activeExperience?.subject?.kind;
+		if (kind !== 'stop' && kind !== 'transition' && kind !== 'guide') return;
+		untrack(() => openExperienceGuide());
+	});
+	// The Index opens the selected Presentation's Views. Only its id drives the effect, so a new object
+	// for the same Presentation (a rename, a capture) cannot re-expand a row the user collapsed.
+	const selectedPresentationId = $derived(activeExperience?.selectedPresentation?.id ?? null);
+	$effect(() => {
+		if (selectedPresentationId !== null) expandedPresentationId = selectedPresentationId;
 	});
 	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
@@ -1068,8 +1141,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewSurface = null;
 		adapterServices = null;
 		experienceFocus.reset();
-		experienceCardKind = null;
-		experienceCardSuppressed = false;
+		guideNamePrompt = null;
+		expandedPresentationId = null;
 		// The previous facade's listeners are dropped before its replacement exists,
 		// so a disposal-time notification cannot write through the new facade.
 		unsubscribeContributions?.();
@@ -2527,9 +2600,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * Mirror a selection the host or an adapter made canonically.
 	 *
 	 * A contributed task may select a new subject after its own accepted install
-	 * (Create, Place, Duplicate). A new primary selection takes the shared Card
-	 * from an Experience subject without changing Experience focus; a revision-only
-	 * requalification of the same subject leaves the current Card focus alone.
+	 * (Create, Place, Duplicate). A new primary selection replaces the Experience
+	 * subject (D10, one Card selection); a revision-only requalification of the same
+	 * subject leaves the current Card selection alone.
 	 */
 	function syncPrimarySelection(next: StageSelectionEntry | null): void {
 		const keyOf = (entry: StageSelectionEntry | null) =>
@@ -2540,7 +2613,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const key = keyOf(next);
 		selection = next;
 		if (key !== '' && key !== previous) {
-			experienceCardSuppressed = true;
+			experienceFocus.select(null);
 			cardOpen = true;
 		}
 	}
@@ -2551,7 +2624,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (hit.reference !== undefined) {
 			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
 			selection = primaryEntry(stage.selectionState());
-			experienceCardSuppressed = true;
+			experienceFocus.select(null);
 			cardOpen = true;
 			return;
 		}
@@ -2569,7 +2642,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		};
 		stage.select(selected);
 		selection = primaryEntry(stage.selectionState());
-		experienceCardSuppressed = true;
+		experienceFocus.select(null);
 		cardOpen = true;
 	}
 
@@ -2582,7 +2655,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function closeSelection(): void {
 		facade?.select(null);
 		selection = null;
-		experienceCardSuppressed = true;
+		experienceFocus.select(null);
 		cardOpen = true;
 	}
 
@@ -2595,7 +2668,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (subject !== undefined) {
 			stage.setSelection({ ordered: [{ reference: subject.reference }], primary: subject.reference });
 			selection = primaryEntry(stage.selectionState());
-			experienceCardSuppressed = true;
+			experienceFocus.select(null);
 			return;
 		}
 		const layoutId = sourceId.startsWith('layout:') ? sourceId.slice(sourceId.indexOf(':', 7) + 1) : sourceId;
@@ -2608,7 +2681,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			ref: fragment.ref
 		});
 		selection = primaryEntry(stage.selectionState());
-		experienceCardSuppressed = true;
+		experienceFocus.select(null);
 	}
 
 	/**
@@ -3326,7 +3399,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				const armedKey = dockKeys.find((key) => key.id === armedDockId);
 				if (task !== null && armedKey?.palette === true && paletteOpen) { paletteOpen = false; break; }
 				if (task !== null) closeTask();
-				else if (selection !== null) closeSelection();
+				else if (lens === 'experience') {
+					// R217.S25: Esc clears the Card selection (Experience subject or Stage), then
+					// closes the Guide instrument. A menu or mode in a component answered first.
+					if (experienceFocus.subject !== null) experienceFocus.select(null);
+					else if (selection !== null) closeSelection();
+					else if (experienceGuideOpen) experienceGuideOpen = false;
+				} else if (selection !== null) closeSelection();
 				break;
 			}
 			case 'none':
@@ -3598,10 +3677,27 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		});
 	});
 
+	/** The display label of a located Stage subject, or null when the Index does not list it. */
+	function referenceLabel(reference: StageSelectionEntry['reference']): string | null {
+		const kind = reference.subject.kind === 'room' ? 'room-floor' : reference.subject.kind;
+		return indexLabelMap.get(`${reference.domain}:${kind}:${reference.subject.id}`)?.label ?? null;
+	}
+
+	/** Stage-select a subject from an Experience Card link: the Stage selection replaces the Card subject. */
+	function selectStageReference(reference: StageSelectionEntry['reference']): void {
+		const stage = facade;
+		if (stage === null) return;
+		const change = stage.setSelection({ ordered: [{ reference }], primary: reference });
+		if (change.kind === 'refused') return;
+		selection = primaryEntry(stage.selectionState());
+		experienceFocus.select(null);
+		cardOpen = true;
+	}
+
 	/**
-	 * R217.S25 — the Experience lens's groups for the shared Index: the Presentations list with
-	 * its filter, the Experience switch, the empty-state create and the Guide group. A read of the
-	 * controller; every action is one of its commands.
+	 * R217.S25 — the Experience lens's groups for the shared Index: the Experience switch, the
+	 * Guides, and the Presentations with their Views and Stop numbers. A read of the controller;
+	 * every action is one of its commands or the one Card selection.
 	 */
 	const experienceIndex = $derived.by((): ExperienceIndexGroups | null => {
 		if (lens !== 'experience') return null;
@@ -3611,138 +3707,302 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				pending: true,
 				experiences: [],
 				current: null,
+				guides: [],
 				presentations: [],
+				totalPresentations: 0,
 				query: '',
 				busy: false,
-				guide: null,
 				onQuery: () => {},
 				onOpenExperience: () => {},
-				onSelectPresentation: () => {},
 				onCreateExperience: () => {},
-				onToggleGuide: () => {}
+				onOpenGuide: () => {},
+				onSelectPresentation: () => {},
+				onToggleExpand: () => {},
+				onSelectView: () => {}
 			};
 		}
 		const current = controller.current;
-		const selectedId = controller.selectedPresentation?.id ?? null;
+		const subject = controller.subject;
+		// The open chip reads the active Guide; the Stop numbers and On tour read the context Guide (entry before open).
+		const activeGuideId = controller.currentGuide?.id ?? null;
+		const stopNumbers = new Map<string, number[]>();
+		controller.guideStops.forEach((stop, index) => {
+			stopNumbers.set(stop.presentationId, [...(stopNumbers.get(stop.presentationId) ?? []), index + 1]);
+		});
 		return {
 			pending: false,
 			experiences: controller.experiences.map((entry) => ({ id: entry.id, label: entry.label })),
 			current: current === null ? null : { id: current.id, label: current.label },
+			guides: controller.guides.map((guide) => ({
+				id: guide.id,
+				label: guide.label,
+				stopCount: guide.stopIds.length,
+				open: experienceGuideOpen && guide.id === activeGuideId,
+				selected: subject?.kind === 'guide' && subject.guideId === guide.id
+			})),
 			presentations: controller.filteredPresentations.map((entry) => ({
 				id: entry.id,
 				label: entry.label,
-				selected: entry.id === selectedId
+				viewCount: entry.viewIds.length,
+				stopNumbers: stopNumbers.get(entry.id) ?? [],
+				selected: subject?.kind === 'presentation' && subject.presentationId === entry.id,
+				expanded: expandedPresentationId === entry.id,
+				views: (controller.viewsOf.get(entry.id) ?? []).map((view) => ({
+					id: view.id,
+					label: view.label,
+					onTour: controller.viewStops(view.id).length > 0,
+					isDefault: entry.defaultViewId === view.id,
+					selected:
+						subject?.kind === 'view' && subject.viewId === view.id && subject.presentationId === entry.id
+				}))
 			})),
+			totalPresentations: current?.presentations.length ?? 0,
 			query: controller.query,
 			busy: controller.busy,
-			guide: current === null ? null : { label: controller.currentGuide?.label ?? null, open: experienceGuideOpen },
 			onQuery: (query: string) => {
 				controller.query = query;
 			},
 			onOpenExperience: (experienceId: string) => {
 				controller.openExperience(experienceId);
-				experienceCardKind = null;
-				experienceCardSuppressed = false;
-				cardOpen = true;
-			},
-			onSelectPresentation: (presentationId: string) => {
-				controller.selectPresentation(presentationId);
-				experienceCardKind = 'presentation';
-				experienceCardSuppressed = false;
+				guideNamePrompt = null;
+				expandedPresentationId = null;
 				cardOpen = true;
 			},
 			onCreateExperience: () => {
+				// A pending name prompt or an expanded row belongs to the Experience it was opened in.
+				guideNamePrompt = null;
+				expandedPresentationId = null;
 				void controller.createExperience();
 			},
-			onToggleGuide: () => {
-				experienceGuideOpen = !experienceGuideOpen;
+			onOpenGuide: (guideId: string | null) => {
+				if (guideId === null) {
+					experienceGuideOpen = true;
+					return;
+				}
+				controller.openGuide(guideId);
+				experienceGuideOpen = true;
+				selectExperienceSubject({ kind: 'guide', guideId });
+			},
+			onSelectPresentation: (presentationId: string) => {
+				selectExperienceSubject({ kind: 'presentation', presentationId });
+			},
+			onToggleExpand: (presentationId: string) => {
+				expandedPresentationId = expandedPresentationId === presentationId ? null : presentationId;
+			},
+			onSelectView: (viewId: string, presentationId: string) => {
+				selectExperienceSubject({ kind: 'view', viewId, presentationId });
 			}
 		};
 	});
 
+	/** The Card's `menu` item shape. */
+	type ExperienceCardMenuItem = {
+		readonly id: string;
+		readonly label: string;
+		readonly hint?: string;
+		readonly disabled?: boolean;
+		readonly reason?: string;
+		readonly run: () => void;
+	};
+	type ShownCard = {
+		readonly identity: { sourceId: string; label: string; kind: string; status: string } | null;
+		readonly facts: readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[];
+		readonly nameWriter: {
+			readonly value: string;
+			commit(name: string): Promise<{ readonly kind: string; readonly message?: string }>;
+		} | null;
+		readonly writer: StageCardWriterRecord | null;
+		readonly actions: readonly StageCardActionRecord[];
+		readonly functions: readonly string[] | null;
+		readonly bringIntoView: (() => void) | null;
+		readonly kindLink: { readonly label: string; readonly onOpen: () => void } | null;
+		readonly menu: readonly ExperienceCardMenuItem[] | null;
+	};
+	const NO_CARD: ShownCard = {
+		identity: null,
+		facts: [],
+		nameWriter: null,
+		writer: null,
+		actions: [],
+		functions: [],
+		bringIntoView: null,
+		kindLink: null,
+		menu: null
+	};
+
 	/**
-	 * R217.S25 — the Experience subject the shared Card shows: the focused Stop or Presentation.
-	 * The one Card replaces the retired surface column. The Stop wins only when the creator focused
-	 * a Stop last; otherwise the focused Presentation does, and a Stop is the fallback.
+	 * R217.S25 (D10) — the one Card the Experience lens shows: the Experience subject when one is
+	 * selected, otherwise the Stage selection as the subject Card, otherwise none. The latest
+	 * selection always replaced the other, so there is never a second Card to arbitrate.
 	 */
-	const experienceCard = $derived.by(() => {
-		if (experienceCardSuppressed) return null;
+	const experienceShownCard = $derived.by((): ShownCard => {
 		const controller = activeExperience;
-		if (controller === null || adapterServices === null || controller.current === null) return null;
-		const stop = controller.selectedStop;
-		const presentation = controller.selectedPresentation;
-		const kind: ExperienceCardKind | null =
-			experienceCardKind === 'stop' && stop !== null
-				? 'stop'
-				: presentation !== null
-					? 'presentation'
-					: stop !== null
-						? 'stop'
-						: null;
 		const services = adapterServices;
-		if (kind === 'presentation' && presentation !== null) {
+		if (controller === null || services === null || controller.current === null) return NO_CARD;
+		// The Stop and transition kind lines name the context Guide, so a tour Stop reads its Guide before it is opened.
+		const guideLabel = controller.contextGuide?.label ?? '';
+		const writerOf = (summary: string, component: NonNullable<StageCardWriterRecord['view']>['component']): StageCardWriterRecord => ({
+			summary,
+			adapterId: 'experience',
+			fieldIds: [],
+			view: { component, services }
+		});
+		const subject = controller.subject;
+		if (subject?.kind === 'presentation') {
+			const presentation = controller.selectedPresentation;
+			if (presentation === null) return NO_CARD;
+			const reference = presentation.subject;
+			const subjectLabel = reference === null ? null : referenceLabel(reference as StageSelectionEntry['reference']);
 			const model = presentationCardModel({
-				presentation,
-				views: controller.viewsOf.get(presentation.id) ?? [],
-				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length
+				presentationId: presentation.id,
+				label: presentation.label,
+				hasSubject: reference !== null && subjectLabel !== null,
+				viewCount: presentation.viewIds.length,
+				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
+				hasDefaultView: presentation.defaultViewId !== null
 			});
 			return {
-				model,
+				...NO_CARD,
+				identity: model.identity,
+				facts: model.facts,
 				nameWriter: {
 					get value() {
 						return presentation.label;
 					},
 					commit: (name: string) => controller.renamePresentation(presentation.id, name)
 				},
-				writer: {
-					summary: 'Presentation',
-					adapterId: 'experience',
-					fieldIds: PRESENTATION_WRITER_FIELDS,
-					view: { component: ExperiencePresentationWriter, services }
-				}
+				writer: writerOf('Presentation', ExperiencePresentationWriter),
+				kindLink:
+					reference === null || subjectLabel === null
+						? null
+						: {
+								label: subjectLabel,
+								onOpen: () => selectStageReference(reference as StageSelectionEntry['reference'])
+							}
 			};
 		}
-		if (kind === 'stop' && stop !== null) {
-			const guideIndex = controller.guideStops.findIndex((entry) => entry.id === stop.id);
-			const model = stopCardModel({
-				stop,
-				position: guideIndex + 1,
-				guideLength: controller.guideStops.length,
-				presentationLabel: controller.presentationLabel(stop.presentationId),
-				guideLabel: controller.currentGuide?.label ?? null
+		if (subject?.kind === 'view') {
+			const view = controller.selectedView;
+			if (view === null) return NO_CARD;
+			const model = viewCardModel({
+				viewId: view.id,
+				label: view.label,
+				presentationLabel: controller.presentationLabel(view.presentationId)
 			});
 			return {
-				model,
-				nameWriter: null,
-				writer: {
-					summary: 'Stop',
-					adapterId: 'experience',
-					fieldIds: STOP_WRITER_FIELDS,
-					view: { component: ExperienceStopWriter, services }
+				...NO_CARD,
+				identity: model.identity,
+				facts: model.facts,
+				writer: writerOf('View', ExperienceViewWriter),
+				kindLink: {
+					label: controller.presentationLabel(view.presentationId),
+					onOpen: () => selectExperienceSubject({ kind: 'presentation', presentationId: view.presentationId })
 				}
 			};
 		}
-		return null;
+		if (subject?.kind === 'stop') {
+			const stop = controller.selectedStop;
+			if (stop === null) return NO_CARD;
+			const order = controller.guideStops;
+			const at = order.findIndex((entry) => entry.id === stop.id);
+			const position = at === -1 ? null : at + 1;
+			const model = stopCardModel({
+				stopId: stop.id,
+				presentationLabel: controller.presentationLabel(stop.presentationId),
+				position,
+				guideLength: order.length,
+				guideLabel
+			});
+			const items: ExperienceCardMenuItem[] = [
+				{
+					id: 'open-presentation',
+					label: 'Open Presentation',
+					run: () => selectExperienceSubject({ kind: 'presentation', presentationId: stop.presentationId })
+				}
+			];
+			if (position !== null) {
+				const first = position === 1;
+				const last = position === order.length;
+				const busy = controller.busy;
+				const stuck = (atEnd: boolean, reason: string): { disabled: boolean; reason?: string } =>
+					busy ? { disabled: true, reason: 'Wait for the current change' } : atEnd ? { disabled: true, reason } : { disabled: false };
+				items.push(
+					{ id: 'move-earlier', label: 'Move earlier', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStop(stop.id, -1) },
+					{ id: 'move-later', label: 'Move later', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStop(stop.id, 1) }
+				);
+				if (order.length > 6) {
+					items.push(
+						{ id: 'move-start', label: 'Move to the start', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStopTo(stop.id, 0) },
+						{ id: 'move-end', label: 'Move to the end', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStopTo(stop.id, order.length - 1) }
+					);
+				}
+			}
+			return {
+				...NO_CARD,
+				identity: model.identity,
+				facts: model.facts,
+				writer: writerOf('Stop', ExperienceStopWriter),
+				menu: items
+			};
+		}
+		if (subject?.kind === 'transition') {
+			const stop = controller.selectedStop;
+			if (stop === null) return NO_CARD;
+			const at = controller.guideStops.findIndex((entry) => entry.id === stop.id);
+			const continuation = controller.resolveContinuation(stop.id);
+			if (at === -1 || continuation === null) return NO_CARD;
+			const model = transitionCardModel({ stopId: stop.id, fromPosition: at + 1, guideLabel, continuation });
+			return {
+				...NO_CARD,
+				identity: model.identity,
+				facts: model.facts,
+				writer: writerOf('Transition', ExperienceTransitionWriter)
+			};
+		}
+		if (subject?.kind === 'guide') {
+			const guide = controller.guides.find((entry) => entry.id === subject.guideId);
+			if (guide === undefined) return NO_CARD;
+			const model = guideCardModel({ guideId: guide.id, label: guide.label, stopCount: guide.stopIds.length });
+			return {
+				...NO_CARD,
+				identity: model.identity,
+				facts: model.facts,
+				writer: writerOf('Guide', ExperienceGuideWriter)
+			};
+		}
+		// No Experience subject: the Stage selection is the Card.
+		const selected = selection;
+		if (selected === null) return NO_CARD;
+		const bring = () => {
+			const target = selectedWorldPoint();
+			if (target !== null) bringIntoView(target);
+		};
+		const scene = experienceSceneSubject;
+		if (scene !== null) {
+			const model = subjectCardModel({ entityId: scene.entityId, label: scene.label });
+			return {
+				...NO_CARD,
+				identity: model.identity,
+				facts: model.facts,
+				writer: writerOf('Scene object', ExperienceSubjectWriter),
+				bringIntoView: bring
+			};
+		}
+		// A Layout or other Stage subject: identity only, and the way back to its editing home.
+		return {
+			...NO_CARD,
+			identity: cardIdentity,
+			bringIntoView: bring,
+			menu: [{ id: 'open-in-world', label: 'Open in World', run: () => changeLens('world') }]
+		};
 	});
 
 	/**
-	 * What the one Card shows for the current lens: the Experience subject when one is focused,
-	 * otherwise the World selection exactly as before. Experience subjects have no spatial place
-	 * and no `•••` functions yet, so they take no Bring into view and no function list.
+	 * What the one Card shows for the current lens. The Experience lens shows its own Card (one
+	 * selection, D10); World shows the Stage selection exactly as before.
 	 */
-	const shownCard = $derived.by(() => {
-		const experience = experienceCard;
-		if (experience !== null) {
-			return {
-				identity: experience.model.identity,
-				facts: experience.model.facts,
-				nameWriter: experience.nameWriter,
-				writer: experience.writer,
-				actions: [] as readonly StageCardActionRecord[],
-				functions: [] as readonly string[],
-				bringIntoView: null
-			};
-		}
+	const shownCard = $derived.by((): ShownCard => {
+		if (lens === 'experience') return experienceShownCard;
 		return {
 			identity: cardIdentity,
 			facts: cardFacts,
@@ -3750,6 +4010,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			writer: cardWriter,
 			actions: cardActions,
 			functions: null,
+			kindLink: null,
+			menu: null,
 			bringIntoView: () => {
 				const target = selectedWorldPoint();
 				if (target !== null) bringIntoView(target);
@@ -3757,31 +4019,31 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		};
 	});
 
-	/** The Guide instrument's task and content, mounted in the lower edge by StageInstrumentHost. */
-	const experienceGuideTask = $derived({
-		kind: 'experience-guide',
-		label: 'Guide',
-		targetLabel: activeExperience?.currentGuide?.label ?? null
-	});
-	const experienceGuideInstrument = $derived.by((): StageInstrumentContent | null =>
-		adapterServices === null || activeExperience === null
-			? null
-			: {
-					summary: 'Guide',
-					presentation: 'instrument',
-					view: { component: ExperienceGuidePanel, services: adapterServices }
-				}
-	);
-
-	/** The Experience dock's Capture: the Stage framing becomes a View, through the controller. */
-	async function captureExperienceView(): Promise<void> {
+	/** Show the instrument on the active Guide, or on the entry Guide when none is active. */
+	function openExperienceGuide(): void {
 		const controller = activeExperience;
-		if (controller === null) return;
-		const accepted = await controller.captureAndBind();
-		if (!accepted || activeExperience !== controller) return;
-		experienceCardKind = 'presentation';
-		experienceCardSuppressed = false;
+		const entryGuideId = controller?.current?.entryGuideId ?? null;
+		if (controller !== null && controller.currentGuide === null && entryGuideId !== null) {
+			controller.openGuide(entryGuideId);
+		}
+		experienceGuideOpen = true;
 	}
+	/** The dock's Guide key: show or hide the instrument for the active Guide. */
+	function toggleExperienceGuide(): void {
+		if (experienceGuideOpen) {
+			experienceGuideOpen = false;
+			return;
+		}
+		openExperienceGuide();
+	}
+	/** Why the dock's Capture cannot run, or undefined when it can. */
+	const experienceCaptureReason = $derived.by((): string | undefined => {
+		const controller = activeExperience;
+		if (controller === null) return undefined;
+		if (controller.busy) return 'Wait for the current change';
+		if (controller.current === null) return 'Create an Experience first';
+		return undefined;
+	});
 
 	/**
 	 * Whether the Card is folded to identity.
@@ -4511,6 +4773,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				writer={shownCard.writer}
 				actions={shownCard.actions}
 				functions={shownCard.functions}
+				kindLink={shownCard.kindLink}
+				menu={shownCard.menu}
 				gesturing={cardGesturing}
 				onClose={closeCard}
 				onBringIntoView={shownCard.bringIntoView}
@@ -4551,18 +4815,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{#if activeExperience !== null}
 					<!-- Column order is bottom-up: the dock, its feedback line, then the Guide instrument above them. -->
 					<ExperienceDock
-						captureDisabled={activeExperience.busy || activeExperience.current === null}
+						captureDisabled={experienceCaptureReason !== undefined}
+						captureReason={experienceCaptureReason}
 						guideOpen={experienceGuideOpen}
-						onCapture={() => void captureExperienceView()}
-						onToggleGuide={() => (experienceGuideOpen = !experienceGuideOpen)}
+						onCapture={() => void activeExperience?.capture()}
+						onToggleGuide={toggleExperienceGuide}
 					/>
 					{#if activeExperience.message !== ''}<p class="experience-feedback" role="status" aria-live="polite">{activeExperience.message}</p>{/if}
 					{#if experienceGuideOpen}
-						<StageInstrumentHost
-							task={experienceGuideTask}
-							onClose={() => (experienceGuideOpen = false)}
-							instrument={experienceGuideInstrument}
-						/>
+						<ExperienceGuide onClose={() => (experienceGuideOpen = false)} />
 					{/if}
 				{/if}
 				{#if contributedInstrument!==null && contributedInstrument.presentation !== 'palette'}

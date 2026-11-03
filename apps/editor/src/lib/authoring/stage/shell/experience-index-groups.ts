@@ -8,24 +8,47 @@
 export type ExperienceIndexGroups = {
 	/** The lens is mounted but the controller is not yet bound to the admitted source. */
 	readonly pending: boolean;
-	/** Every Experience of the source, for the locator's sibling switch. */
+	/** Every Experience of the source, for the crumb's sibling menu. */
 	readonly experiences: readonly { readonly id: string; readonly label: string }[];
 	/** The open Experience, or null when the source has none yet. */
 	readonly current: { readonly id: string; readonly label: string } | null;
+	/** The Guides of the open Experience. One is active (`open`); its panel is the instrument. */
+	readonly guides: readonly {
+		readonly id: string;
+		readonly label: string;
+		/** The Guide's Stops, for the row's *n stops* meta. */
+		readonly stopCount: number;
+		readonly open: boolean;
+		readonly selected: boolean;
+	}[];
 	/** The Presentations the filter leaves, in the Experience's own order. */
 	readonly presentations: readonly {
 		readonly id: string;
 		readonly label: string;
+		readonly viewCount: number;
+		/** 1-based positions in the active Guide; empty when the Presentation is free. */
+		readonly stopNumbers: readonly number[];
 		readonly selected: boolean;
+		readonly expanded: boolean;
+		readonly views: readonly {
+			readonly id: string;
+			readonly label: string;
+			readonly onTour: boolean;
+			readonly isDefault: boolean;
+			readonly selected: boolean;
+		}[];
 	}[];
+	/** Every Presentation of the Experience, before the filter (the search appears from 8). */
+	readonly totalPresentations: number;
 	/** The Presentation filter the search field shows. */
 	readonly query: string;
 	readonly busy: boolean;
-	/** The Guide group: the open Experience's entry or named Guide, and whether its panel is open. */
-	readonly guide: { readonly label: string | null; readonly open: boolean } | null;
 	onQuery(query: string): void;
 	onOpenExperience(experienceId: string): void;
-	onSelectPresentation(presentationId: string): void;
 	onCreateExperience(): void;
-	onToggleGuide(): void;
+	/** null = the "No Guide yet" row: open the empty Guide. */
+	onOpenGuide(guideId: string | null): void;
+	onSelectPresentation(presentationId: string): void;
+	onToggleExpand(presentationId: string): void;
+	onSelectView(viewId: string, presentationId: string): void;
 };

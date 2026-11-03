@@ -1,7 +1,9 @@
 <script lang="ts">
 	/**
-	 * The Experience lower-edge dock (R217.S25): Select, Capture and Guide, in the same
-	 * forest bar and key grammar as the World dock. Capture submits through the controller's
+	 * The Experience lower-edge dock (R217.S25): Select, Place a View, Path, Capture and Guide,
+	 * in the same forest bar and key grammar as the World dock. Place a View and Path are
+	 * placeholders for capabilities that arrive later, so they are disabled keys with their
+	 * reason in title and in a hidden description. Capture submits through the controller's
 	 * one acceptance port; Guide opens or closes the invoked Guide instrument above it. It
 	 * holds no state: the route passes the open flag and the handlers.
 	 */
@@ -9,15 +11,21 @@
 
 	let {
 		captureDisabled = false,
+		captureReason,
 		guideOpen = false,
 		onCapture,
 		onToggleGuide
 	}: {
 		captureDisabled?: boolean;
+		captureReason?: string;
 		guideOpen?: boolean;
 		onCapture: () => void;
 		onToggleGuide: () => void;
 	} = $props();
+
+	const captureHint = $derived(
+		captureDisabled && captureReason ? captureReason : 'Capture: what you see becomes a View'
+	);
 </script>
 
 <nav class="dock" aria-label="Experience dock" data-experience-dock>
@@ -34,18 +42,44 @@
 	<button
 		type="button"
 		class="key"
+		disabled
+		aria-label="Place a View"
+		title="Comes with View placement"
+		aria-describedby="experience-dock-place-view-reason"
+		data-dock-tool="place-view"
+	>
+		<ShellIcon name="camera" size={18} />
+	</button>
+	{#if guideOpen}
+		<button
+			type="button"
+			class="key"
+			disabled
+			aria-label="Path"
+			title="Comes with path editing"
+			aria-describedby="experience-dock-path-reason"
+			data-dock-tool="path"
+		>
+			<ShellIcon name="path" size={18} />
+		</button>
+	{/if}
+	<span class="separator" aria-hidden="true"></span>
+	<button
+		type="button"
+		class="key labeled"
 		aria-label="Capture"
-		title="Capture: what you see becomes a View"
+		title={captureHint}
 		disabled={captureDisabled}
+		aria-describedby={captureDisabled && captureReason ? 'experience-dock-capture-reason' : undefined}
 		data-dock-tool="capture"
 		onclick={onCapture}
 	>
 		<ShellIcon name="capture" size={18} />
+		<span class="label">Capture</span>
 	</button>
-	<span class="separator" aria-hidden="true"></span>
 	<button
 		type="button"
-		class="key"
+		class="key labeled"
 		aria-pressed={guideOpen}
 		aria-label="Guide"
 		title="Guide: Stop composition, transitions and playback"
@@ -53,11 +87,20 @@
 		onclick={onToggleGuide}
 	>
 		<ShellIcon name="guide" size={18} />
+		<span class="label">Guide</span>
 	</button>
+	<span id="experience-dock-place-view-reason" class="visually-hidden">Comes with View placement</span>
+	{#if guideOpen}
+		<span id="experience-dock-path-reason" class="visually-hidden">Comes with path editing</span>
+	{/if}
+	{#if captureDisabled && captureReason}
+		<span id="experience-dock-capture-reason" class="visually-hidden">{captureReason}</span>
+	{/if}
 </nav>
 
 <style>
 	.dock {
+		position: relative;
 		display: flex;
 		align-items: center;
 		gap: 2px;
@@ -89,6 +132,14 @@
 		color: inherit;
 		cursor: pointer;
 	}
+	/* Labeled keys carry their word beside the icon, so the key widens to fit it. */
+	.key.labeled {
+		grid-auto-flow: column;
+		gap: 6px;
+		width: auto;
+		padding: 0 10px;
+		font-size: 13px;
+	}
 	.key:hover {
 		background: rgb(255 255 255 / 0.08);
 	}
@@ -99,7 +150,7 @@
 	}
 	/* Guide open is a pressed key, not a second armed tool: Select stays the one armed key. */
 	.key[aria-pressed='true']:not(.armed) {
-		background: rgb(255 255 255 / 0.16);
+		background: rgb(243 240 228 / 0.16);
 	}
 	.key:disabled {
 		opacity: 0.35;
@@ -109,10 +160,24 @@
 		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 1px;
 	}
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+	}
 	@media (pointer: coarse) {
 		.key {
-			width: var(--shell-touch-target, 44px);
 			height: var(--shell-touch-target, 44px);
+			width: var(--shell-touch-target, 44px);
+		}
+		.key.labeled {
+			width: auto;
 		}
 	}
 </style>

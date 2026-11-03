@@ -10,9 +10,13 @@ governing reference: PLATE and the other references are unchanged until visual a
 interaction and progressive-disclosure thresholds.
 [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md)
 and its [wireframe](../../../../prototypes/production-shell-wireframe/README.md) own the shared
-Head, Index, Card and Dock and the **compact visual treatment**: Card density, preview snapshots,
-the Guide instrument and its timeline bar. Conservatory's oversized Cards and previews are not
-copied literally. The domain contracts (`packages/project-model/src/units/types.ts`,
+Head, Index, Stage, outer Card container, Dock and shared interaction language. **Conservatory is the
+exact reference for Experience content inside that shell**: the internal layouts, content, styling and
+interactions of Presentation, View, Stop, Transition, Guide and subject Cards, adapted to Round 2's
+container dimensions. The Guide is the exception: Round 2's compact Stop cards, preview snapshots,
+connectors and thin timeline (concise seconds), with Conservatory's Guide workflow and behaviour
+preserved. In short: Round 2 = shared shell and compact Guide presentation; Conservatory =
+Experience-specific content and interaction design; existing domain = functional authority. The domain contracts (`packages/project-model/src/units/types.ts`,
 `planning.ts`, `apps/editor/src/lib/authoring/experience/commands.ts`) own what exists.
 
 **Sources studied.** Conservatory's source (`app/main.js`, `styles/*.css`), rationale, visual
@@ -36,28 +40,28 @@ capability, handed to S26. **X** prototype shortcut, never promoted.
 | D6 | **Cut/Travel** has one home, the Transition Card (opened from a connector) |
 | D7 | This harvest is committed to PR #261 for review |
 | D8 | **First Guide, two doors.** Presentation `•••` **Add to Guide** creates the first Guide and its Stop, asking for the Guide name inline the first time (no rename until S26); once a Guide exists it adds a Stop to the active Guide after the selected Stop. The empty Guide's **Add stop** (name in its header) does the same from the Guide side |
-| D9 | **Timeline in S25:** Round 2 layout; Stop cards show their hold; connectors show the resolved destination without seconds; the bar shows Stop order with a disabled Play and no total. Camera-evaluated seconds, time scale and playback are S26 |
+| D9 | **Timeline in S25:** Round 2 layout; the bar stays ordinal (equal segments, one per Stop) and each segment carries its authored hold as a compact label (*4s*); segments are not scaled by hold until Camera timing and Travel durations arrive in S26; connectors show the resolved destination without seconds; still no total, no Travel seconds, Play disabled. Camera-evaluated seconds, time scale and playback are S26 |
 | D10 | **One canonical selected Card.** The latest selection from the Stage, the Index, the Guide or a Card link is the Card. A stale Experience focus never overrides it |
 | D11 | **Transitions show the resolved destination**, including nonadjacent Stops and End. Never imply adjacency or Travel that does not exist |
 | D12 | **Default View has one mutation home, the View Card.** ◆ elsewhere is informational |
-| D13 | **Round 2 governs the compact visual treatment** (Cards, previews, Guide, timeline). Conservatory governs workflow |
+| D13 | **Boundary:** Round 2 owns the shared shell (Head, Index, Stage, outer Card container, Dock, interaction language) and the compact Guide presentation. Conservatory is the exact reference for Experience content inside that shell: Card interiors and the Presentation, View, Stop, Transition, Guide and subject compositions and interactions. The existing domain is functional authority |
 
 ## 2. Design harvest
 
-### 2.1 Composition: Conservatory placement, Round 2 compact treatment
+### 2.1 Composition: Round 2 shell, Conservatory content
 
-| Part | Conservatory (workflow and placement) | S25 visual treatment (Round 2) |
+| Part | Conservatory (workflow, placement and content) | S25 treatment (Round 2 shell; Conservatory Card interiors) |
 | --- | --- | --- |
 | Head | Project, World/Experience, history, Preview | Round 2 Head unchanged: one lens switch, one Preview |
 | Index | Left column, rail or drawer; Experience groups (§2.3) | Round 2 Index; two-line rows with a 48 × 30 snapshot |
 | Stage | Dominant; never reflows on selection | Round 2 Stage and reading control |
-| Card | Overlay docked right; appears only with a selection | Production Card, 288 px: 11 px kind line with parent link, 19 px serif name, 8 × 12 px sections with hairlines, 12 px fact rows, compact foot actions. Not Conservatory's 324 px Card, 23 px titles, large action buttons, 92 × 62 *Visits* block or boxed toggles |
-| View previews in a Card | 2 columns, 3 past 8 Views, filter past 12 | Round 2 snapshots: 2-column 16:10 grid, name and ◆ on a bottom label, gold border when selected. No *Capture* add tile (D1) |
-| View hero | Large hero with lens/height tag | Round 2: one 16:10 snapshot at Card width, then read-only *Lens mm* and *Eye* facts |
+| Card | Overlay docked right; appears only with a selection | Round 2 outer Card container, 288 px: kind line with parent link, name, close/menu. Interior follows Conservatory's composition scaled to 288 px: c-actions row, sections, *Visits* block, shots list, ends block, mode cards, hero with tag |
+| View previews in a Card | 2 columns, 3 past 8 Views, filter past 12 | Conservatory's grid and shots list, scaled to the 288 px Card. No *Capture* add tile (D1) |
+| View hero | Large hero with lens/height tag | Conservatory's hero with its tag, scaled to the 288 px Card, then read-only *Lens mm* and *Eye* facts |
 | Guide instrument | Inset at the bottom, width follows content, bounded left of the Card; full width on tablet | Round 2: forest panel, 12 px radius; header with 10 px *GUIDE* kicker, 15 px serif name, 26 px controls (Follow, + Stop, ×) |
 | Stop card | Selectable, reorderable sequence item | Round 2: 118 px card, 50 px snapshot on top with a mono number badge, 12.5 px serif name, 10.5 px hold (*4s*); gold border when selected |
 | Connector | Selects the transition | Round 2: 44 px slot, 11 px mono chip: *cut* (dashed), *travel* (leaf), *→ 5* or *End* (D11), red dashed when Travel lacks Camera support |
-| Timeline bar | Overview: orientation, bracket for cards in view, drop target for far moves | Round 2's single scrub row: 26 px gold Play, 8 px bar, mono time. In S25 the bar carries Stop order, selection, the in-view bracket and the drop caret; Play is disabled and no time is shown (D9) |
+| Timeline bar | Overview: orientation, bracket for cards in view, drop target for far moves | Round 2's single scrub row: 26 px gold Play (disabled in S25), 8 px bar. Ordinal equal segments; each Stop's segment shows its hold in concise seconds; no total and no Travel seconds (D9). Also carries Stop order, selection, the in-view bracket and the drop caret |
 | Responsive | Below 980 px: Index drawer, Card bottom sheet above the Guide, Guide full width. Below 620 px: icon-only Guide header | Same breakpoints through the Round 2 shell's rules |
 
 ### 2.2 Dense and narrow states (inspected live)
@@ -75,8 +79,8 @@ capability, handed to S26. **X** prototype shortcut, never promoted.
   above the Guide, up to about half the height. The Guide spans the width with smaller cards.
 - **Phone (390).** The Head keeps the mark, name, ⋯ and a Preview icon; Stage tools and the Guide
   header go icon-only; the Card sheet reaches about 62 %. Card and Guide together leave about a
-  third of the Stage, which is why S25 uses Round 2's compact Card and Guide rather than
-  Conservatory's.
+  third of the Stage, which is why S25 keeps Round 2's compact Guide and Card container, with
+  Conservatory's Card interiors scaled to fit.
 - **Thresholds kept (workflow):** Index search from 8 Presentations; 8 Views per Presentation in
   the Index; denser grid past 8 Views and filter past 12; *Not in this Stop* folds past 4;
   *Move to the start/end* past 6 Stops.
@@ -98,7 +102,7 @@ capability, handed to S26. **X** prototype shortcut, never promoted.
   open across Presentation and View work; × (or Esc after the selection is cleared) closes it
   with its helpers.
 
-### 2.4 Card content (Conservatory workflow, Round 2 density)
+### 2.4 Card content (Conservatory composition inside the Round 2 Card)
 
 | Card | Content |
 | --- | --- |
@@ -141,16 +145,16 @@ selection, then closes the Guide. Undo lives in the Head.
 | New standpoint Presentation | Dock Capture attaches any selected Scene entity and adds a Stop when a Guide is open | W | Nothing visibly selected: `subjectEntityId: null`, `guideId: null` (D1, D2) |
 | Present this | — (World forms shown instead) | W | Subject Card primary: capture-bind with that subject explicitly, no Stop; disabled in 2D with the reason |
 | Subject Card in Experience | World editing Card with forms | W | Identity, *Open in World*, Present this, *Already presented in* (`presentation.subject`), Bring into view |
-| Presentation Card | Default `select`, *Information text* textarea, *Save Presentation*, *Guide* button | W (+P) | Compact snapshot grid with informational ◆ and tour dots; *Visitors reach it*; Information text in More, committed on blur; rename inline; `•••` Add to Guide. No Default control, no Save, no Guide button |
+| Presentation Card | Default `select`, *Information text* textarea, *Save Presentation*, *Guide* button | W (+P) | Conservatory's snapshot grid with informational ◆ and tour dots; *Visitors reach it*; Information text in More, committed on blur; rename inline; `•••` Add to Guide. No Default control, no Save, no Guide button |
 | Default View | A `select` on the Presentation Card | W | **Make default** on the View Card only (`setDefaultView`) |
 | Reorder a Presentation's Views | — | S26 | No `viewIds` order field; no drag hint |
 | View Card | — (no View selection) | W + P | Snapshot placeholder, *Lens mm* and *Eye* facts (Camera `fov`, `eye`), Make default, *Where visitors see it*; **Look through** disabled (S26) |
-| Stop Card | Four form fields and *Save Stop* | W + P | Round 2 rows: ✓ entry View with Hold stepper (one `stopUpdateIntent` per edit; choosing another View as entry is a Stop edit, not a Default change); — other Views dimmed with disabled Include; *After this Stop* resolved (Next, a chosen Stop, End) |
+| Stop Card | Four form fields and *Save Stop* | W + P | Conservatory's Stop rows inside the Round 2 Card: ✓ entry View with Hold stepper (one `stopUpdateIntent` per edit; choosing another View as entry is a Stop edit, not a Default change); — other Views dimmed with disabled Include; *After this Stop* resolved (Next, a chosen Stop, End) |
 | Transition Card | Transition `select` inside the Stop form | W + P | Resolved ends (D11); Cut/Travel on the continuation (D6); Travel gaps from `travelGaps`; Movement and *Preview this move* disabled (S26) |
 | Connectors | — (vertical list text) | W | Adjacent chip only when the destination is the neighbour; *→ n* for nonadjacent; *End*; *travel* only when the transition is Travel, red dashed with a gap |
 | Stop sequence | Vertical floating list, ↑/↓ buttons | W | Horizontal Round 2 Stop cards; drag, bar drop, Alt ←/→ through `guide-order` permutations |
 | Insert a Stop | *Insert selected Presentation as a Stop* | W | + Stop menu, Index drag, or Presentation `•••` Add to Guide, after the selected Stop (`stopCreateIntent`) |
-| Holds and timeline | `hold 0s` text in rows | W + P | Hold on each Stop card; bar with Stop order, bracket, caret; Play disabled, no total (D9) |
+| Holds and timeline | `hold 0s` text in rows | W + P | Hold on each Stop card and as concise seconds on its bar segment; bar with Stop order, bracket, caret; Play disabled, no total (D9) |
 | Remove a Stop, Presentation or View | — | S26 | No domain operation; `guide-order` refuses removal. Not shown |
 | Thumbnails | — | P | Neutral frames at Round 2 sizes (D4) |
 | Preview | Head only, entry precedence, exit restores Guide and Card | W | Unchanged |
@@ -220,6 +224,6 @@ path keys `from>to`, View field names); `camera.js`; the fixed 1.6 s glide insid
 WebGL contexts for thumbnails and the visitor; `frameObject` auto-framing and the `inPoly` wall
 test; the *Open in free exploration* switch and *last Stop ends into free exploration*; the Guide
 Card's mode cards as Preview entries; the *Prototype ▾* menu, stress generators and simulated
-width; its oversized Card and preview metrics (D13). From the Round 2 wireframe: the Card's
+width. Conservatory's 324 px metrics are scaled to the Round 2 Card (D13). From the Round 2 wireframe: the Card's
 *Capture* add tile (D1), mock Camera interpolation and timeline durations, fixed pixel hit sizes
 below the 44 px coarse-pointer rule.

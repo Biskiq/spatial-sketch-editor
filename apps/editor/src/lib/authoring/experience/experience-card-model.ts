@@ -1,14 +1,17 @@
 /**
- * The Card's identity and ordinary facts for an Experience subject (R217.S25).
+ * The shared Card's identity and facts for each Experience subject (R217.S25).
  *
- * A Presentation and a Stop are shown through the shared Card, so each needs an identity
- * (its kind word and name) and the facts the Card lists in More. Pure data: the route
- * builds it from the controller's reads, and nothing here names a DOM, a Camera or a
- * source writer. The fields the writers edit are named by their `fieldId`, so the Card
- * never repeats a value a writer already shows.
+ * Every Experience subject (a Presentation, a View, a Stop, a Stop's transition, a Guide and
+ * a Scene object) is shown through the one Card. Each helper here returns the Card's kind
+ * word, its name and status, and the few facts the Card lists in More. The helpers are pure
+ * functions over plain values: the route reads the controller and passes labels, counts and
+ * positions in, and nothing here names a DOM, a Svelte rune or a source writer.
+ *
+ * Writers edit through the Card's own controls, so no fact carries a field id and the
+ * writer field lists stay empty.
  */
-import type { ExperiencePresentation, ExperienceStop } from '@portfolio/project-model/units';
 import type { StageCardFact } from '../stage/stage-facade';
+import type { ResolvedContinuation } from './experience-model';
 
 export type ExperienceCardIdentity = {
 	readonly sourceId: string;
@@ -22,82 +25,179 @@ export type ExperienceCardModel = {
 	readonly facts: readonly StageCardFact[];
 };
 
-/** The Card field ids the Presentation writer edits. Their facts are not repeated. */
-export const PRESENTATION_WRITER_FIELDS = ['default-view'] as const;
+/** The Card fields the Presentation writer edits. Empty: the Card's own controls carry them. */
+export const PRESENTATION_WRITER_FIELDS: readonly string[] = [];
 
-/** The Card field ids the Stop writer edits. Their facts are not repeated. */
-export const STOP_WRITER_FIELDS = ['entry-view', 'hold', 'continuation', 'transition'] as const;
+/** The Card fields the Stop writer edits. Empty: the Card's own controls carry them. */
+export const STOP_WRITER_FIELDS: readonly string[] = [];
 
 export function presentationSourceId(presentationId: string): string {
 	return `experience:presentation:${presentationId}`;
+}
+
+export function viewSourceId(viewId: string): string {
+	return `experience:view:${viewId}`;
 }
 
 export function stopSourceId(stopId: string): string {
 	return `experience:stop:${stopId}`;
 }
 
+export function transitionSourceId(stopId: string): string {
+	return `experience:transition:${stopId}`;
+}
+
+export function guideSourceId(guideId: string): string {
+	return `experience:guide:${guideId}`;
+}
+
+export function subjectSourceId(entityId: string): string {
+	return `experience:subject:${entityId}`;
+}
+
+function plural(count: number, word: string): string {
+	return `${count} ${word}${count === 1 ? '' : 's'}`;
+}
+
+/** A Presentation about a Scene subject names that subject in its kind word. */
 export function presentationCardModel(input: {
-	readonly presentation: ExperiencePresentation;
-	/** The View labels the Presentation uses, in its own order. */
-	readonly views: readonly { readonly id: string; readonly label: string }[];
+	readonly presentationId: string;
+	readonly label: string;
+	/** True when the Presentation is about a Scene subject, false for an environment or region. */
+	readonly hasSubject: boolean;
+	readonly viewCount: number;
 	/** How many Stops visit the Presentation. */
 	readonly stopCount: number;
+	readonly hasDefaultView: boolean;
 }): ExperienceCardModel {
-	const { presentation, views, stopCount } = input;
-	const defaultView = views.find((view) => view.id === presentation.defaultViewId) ?? null;
-	// An unset Default and a Default that names a View the source no longer carries are different honest states.
-	const defaultValue =
-		presentation.defaultViewId === null
-			? 'Unset: cannot be entered'
-			: defaultView === null
-				? 'Missing View: cannot be entered'
-				: defaultView.label;
-	const subject =
-		presentation.subject === null
-			? 'Environment or region'
-			: `${presentation.subject.domain} ${presentation.subject.subject.kind}`;
+	const { presentationId, label, hasSubject, viewCount, stopCount, hasDefaultView } = input;
 	return {
 		identity: {
-			sourceId: presentationSourceId(presentation.id),
-			label: presentation.label,
-			kind: 'Presentation',
-			status: defaultView === null ? 'No Default View' : 'Default View set'
+			sourceId: presentationSourceId(presentationId),
+			label,
+			kind: hasSubject ? 'Presentation · about' : 'Presentation',
+			status: hasDefaultView ? 'Default View set' : 'No Default View'
 		},
 		facts: [
-			{ label: 'Views', value: String(views.length) },
-			{
-				label: 'Default View',
-				value: defaultValue,
-				fieldId: 'default-view'
-			},
-			{ label: 'Subject', value: subject },
-			{ label: 'Used in', value: stopCount === 0 ? 'No Stop yet' : `${stopCount} Stop${stopCount === 1 ? '' : 's'}` }
+			{ label: 'Views', value: String(viewCount) },
+			{ label: 'Used in', value: stopCount === 0 ? 'No Stop yet' : plural(stopCount, 'Stop') }
 		]
 	};
 }
 
-export function stopCardModel(input: {
-	readonly stop: ExperienceStop;
-	/** The Stop's one-based place in its Guide. */
-	readonly position: number;
-	readonly guideLength: number;
+/** A View is shown by its name; its status says which Presentation it belongs to. */
+export function viewCardModel(input: {
+	readonly viewId: string;
+	readonly label: string;
 	readonly presentationLabel: string;
-	readonly guideLabel: string | null;
 }): ExperienceCardModel {
-	const { stop, position, guideLength, presentationLabel, guideLabel } = input;
-	// A Stop the open Guide does not list has no place to name: the Card says what it visits, nothing more.
-	const placed = position > 0;
+	const { viewId, label, presentationLabel } = input;
 	return {
 		identity: {
-			sourceId: stopSourceId(stop.id),
-			label: placed ? `${position}. ${presentationLabel}` : presentationLabel,
-			kind: 'Stop',
-			status: guideLabel ?? 'Guide'
+			sourceId: viewSourceId(viewId),
+			label,
+			kind: 'View in',
+			status: presentationLabel
 		},
-		facts: [
-			{ label: 'Presentation', value: presentationLabel },
-			...(placed ? [{ label: 'Position', value: `${position} of ${guideLength}` }] : []),
-			...(guideLabel === null ? [] : [{ label: 'Guide', value: guideLabel }])
-		]
+		facts: []
+	};
+}
+
+/**
+ * A Stop in the active Guide is named by its place; a Stop the active Guide does not list
+ * (`position` null) is named by the Presentation it visits, with no invented place.
+ */
+export function stopCardModel(input: {
+	readonly stopId: string;
+	readonly presentationLabel: string;
+	/** The Stop's one-based place in the active Guide, or null when the Guide does not list it. */
+	readonly position: number | null;
+	readonly guideLength: number;
+	readonly guideLabel: string;
+}): ExperienceCardModel {
+	const { stopId, presentationLabel, position, guideLength, guideLabel } = input;
+	const kind =
+		position === null
+			? `Stop · ${presentationLabel}`
+			: `Stop ${position} of ${guideLength} · ${guideLabel}`;
+	return {
+		identity: {
+			sourceId: stopSourceId(stopId),
+			label: presentationLabel,
+			kind,
+			status: position === null ? 'Not in this Guide' : guideLabel
+		},
+		facts: []
+	};
+}
+
+/** The arrow line that names where a Stop's continuation leads, from the Stop's own place. */
+export function transitionLabel(continuation: ResolvedContinuation, fromPosition: number): string {
+	const from = `Stop ${fromPosition}`;
+	switch (continuation.kind) {
+		case 'adjacent':
+			return `${from} → Stop ${continuation.position}`;
+		case 'jump':
+			return continuation.position === null
+				? `${from} → another Guide's Stop`
+				: `${from} → Stop ${continuation.position}`;
+		case 'end':
+			return `${from} → End`;
+	}
+}
+
+/** A Stop's outgoing continuation: its arrow line names the target, its status the cut or travel. */
+export function transitionCardModel(input: {
+	readonly stopId: string;
+	/** The Stop's one-based place in the active Guide. */
+	readonly fromPosition: number;
+	readonly guideLabel: string;
+	readonly continuation: ResolvedContinuation;
+}): ExperienceCardModel {
+	const { stopId, fromPosition, guideLabel, continuation } = input;
+	const status =
+		continuation.kind === 'end' ? 'End' : continuation.transition === 'travel' ? 'Travel' : 'Cut';
+	return {
+		identity: {
+			sourceId: transitionSourceId(stopId),
+			label: transitionLabel(continuation, fromPosition),
+			kind: `Transition · ${guideLabel}`,
+			status
+		},
+		facts: []
+	};
+}
+
+export function guideCardModel(input: {
+	readonly guideId: string;
+	readonly label: string;
+	readonly stopCount: number;
+}): ExperienceCardModel {
+	const { guideId, label, stopCount } = input;
+	return {
+		identity: {
+			sourceId: guideSourceId(guideId),
+			label,
+			kind: 'Guide',
+			status: stopCount === 0 ? 'No Stops yet' : plural(stopCount, 'Stop')
+		},
+		facts: []
+	};
+}
+
+/** A Scene object shown in the Experience lens, named by its entity label. */
+export function subjectCardModel(input: {
+	readonly entityId: string;
+	readonly label: string;
+}): ExperienceCardModel {
+	const { entityId, label } = input;
+	return {
+		identity: {
+			sourceId: subjectSourceId(entityId),
+			label,
+			kind: 'Scene object',
+			status: 'In the Scene'
+		},
+		facts: []
 	};
 }

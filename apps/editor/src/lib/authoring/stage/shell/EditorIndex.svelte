@@ -5,6 +5,7 @@
 	import ShellIcon from './ShellIcon.svelte';
 	import { worldScopeRows, type WorldScope, type WorldIndexModel } from './world-index-model';
 	import type { ExperienceIndexGroups } from './experience-index-groups';
+	import ExperienceSnapshot from '$lib/authoring/experience/ExperienceSnapshot.svelte';
 	let {
 		open,
 		model,
@@ -35,8 +36,8 @@
 		onRename?: (id: string) => void;
 		/**
 		 * R217.S25: the Experience lens's groups. When present the Index shows them in place
-		 * of the World locator: the Presentations list with its filter and empty-state
-		 * create, and the Guide that opens the lower-edge instrument. Same crumbs and rows.
+		 * of the World locator: the Experience crumb with its sibling menu, the Guides, and the
+		 * Presentations with their Views. Same Index shell and rows.
 		 */
 		experience?: ExperienceIndexGroups | null;
 	} = $props();
@@ -65,6 +66,12 @@
 		void facet;
 		limit = 40;
 	});
+
+	/** A Presentation row's Stop numbers: the first three, then how many follow. */
+	function stopsLabel(numbers: readonly number[]): string {
+		const shown = numbers.slice(0, 3).join(', ');
+		return numbers.length > 3 ? `${shown} +${numbers.length - 3}` : shown;
+	}
 
 	/**
 	 * Locating is a locator's own operation, not a Stage one: it focuses the
@@ -120,94 +127,163 @@
 	{#if open}
 		{#if experience}
 		<div class="index-search">
-			<label
-				><ShellIcon name="search" size={15} />
-				<input
-					id="plate-index-search"
-					type="search"
-					aria-label="Filter presentations"
-					placeholder="Filter presentations"
-					value={experience.query}
-					oninput={(e) => experience.onQuery(e.currentTarget.value)}
-				/>
-			</label><button type="button" aria-label="Hide Index" onclick={onClose}
+			{#if experience.totalPresentations >= 8 || experience.query !== ''}
+				<label
+					><ShellIcon name="search" size={15} />
+					<input
+						id="plate-index-search"
+						type="search"
+						aria-label="Find a Presentation or View"
+						placeholder="Find a Presentation or View"
+						value={experience.query}
+						oninput={(e) => experience.onQuery(e.currentTarget.value)}
+					/>
+				</label>
+			{/if}
+			<button type="button" class="hide-index" aria-label="Hide Index" onclick={onClose}
 				><ShellIcon name="chevronLeft" size={15} /></button
 			>
 		</div>
 		<div class="crumbs" role="group" aria-label="Experience">
 			{#if experience.current !== null}
 				<span class="crumb" aria-current="location">{experience.current.label}</span>
-				{#if experience.experiences.length > 1}<details class="siblings">
-						<summary aria-label="Switch Experience"
-							><ShellIcon name="chevronDown" size={12} /></summary
-						>
-						<div>
-							{#each experience.experiences.filter((entry) => entry.id !== experience.current?.id) as entry (entry.id)}<button
-									type="button"
-									onclick={(event) => { experience.onOpenExperience(entry.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{entry.label}</button
-								>{/each}
-						</div>
-					</details>{/if}
 			{:else}
 				<span class="index-empty">No Experience yet</span>
 			{/if}
+			<details class="siblings">
+				<summary aria-label="Switch or create Experience"
+					><ShellIcon name="chevronDown" size={12} /></summary
+				>
+				<div>
+					{#each experience.experiences.filter((entry) => entry.id !== experience.current?.id) as entry (entry.id)}<button
+							type="button"
+							onclick={(event) => { experience.onOpenExperience(entry.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{entry.label}</button
+						>{/each}
+					<button
+						type="button"
+						class="menu-create"
+						disabled={experience.busy}
+						onclick={(event) => { experience.onCreateExperience(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>New Experience</button
+					>
+				</div>
+			</details>
 		</div>
+		{#if !experience.pending && experience.current !== null}
+			<section class="group" aria-labelledby="index-guides">
+				<h3 id="index-guides" class="group-title">Guides</h3>
+				{#each experience.guides as guide (guide.id)}
+					<div class="item" class:selected={guide.selected} class:open={guide.open} data-guide-id={guide.id}>
+						<button
+							type="button"
+							class="guide-row"
+							aria-current={guide.selected ? 'true' : undefined}
+							onclick={() => experience.onOpenGuide(guide.id)}
+						>
+							<ShellIcon name="guide" size={15} />
+							<span class="item-text">
+								<span class="item-name serif">{guide.label}</span>
+								<span class="item-meta">{guide.stopCount} stops</span>
+							</span>
+							{#if guide.open}<span class="chip">Open</span>{/if}
+						</button>
+					</div>
+				{:else}
+					<div class="item">
+						<button type="button" class="guide-row" onclick={() => experience.onOpenGuide(null)}>
+							<ShellIcon name="guide" size={15} />
+							<span class="item-text">
+								<span class="item-name muted">No Guide yet</span>
+							</span>
+						</button>
+					</div>
+				{/each}
+			</section>
+		{/if}
 		<section class="group" aria-labelledby="index-presentations">
-			<h3 id="index-presentations" class="group-title">Presentations</h3>
+			<h3 id="index-presentations" class="group-title">
+				Presentations <span class="count">{experience.totalPresentations}</span>
+			</h3>
 			{#if experience.pending}
 				<p class="index-empty">The Experience lens mounts with the admitted project source.</p>
 			{:else if experience.current === null}
+				<p class="index-empty">Create an Experience from the menu above to start presenting.</p>
+			{:else if experience.presentations.length === 0}
 				<p class="index-empty">
-					This world has no Experience yet. Creating one is explicit: selecting or editing a world subject never creates it.
+					{experience.query.trim() === ''
+						? 'Nothing presented yet. Select an object and choose Present this, or press Capture in the dock.'
+						: `Nothing matches "${experience.query.trim()}".`}
 				</p>
 			{:else}
 				<ul class="group-items">
 					{#each experience.presentations as presentation (presentation.id)}
 						<li class="item" class:selected={presentation.selected} data-presentation-id={presentation.id}>
-							<button
-								type="button"
-								class="item-row"
-								aria-current={presentation.selected ? 'true' : undefined}
-								aria-label={`Presentation ${presentation.label}`}
-								onclick={() => experience.onSelectPresentation(presentation.id)}
-								ondblclick={() => {
-									experience.onSelectPresentation(presentation.id);
-									onRename(presentation.id);
-								}}
-							>
-								<ShellIcon name="camera" size={16} />
-								<span class="item-name">{presentation.label}</span>
-							</button>
-						</li>
-					{:else}
-						<li class="index-empty">
-							{experience.query.trim() === ''
-								? 'No Presentation yet. Capture a View to make one.'
-								: 'No Presentation matches this filter.'}
+							<div class="item-head">
+								<button
+									type="button"
+									class="twist"
+									aria-expanded={presentation.expanded}
+									aria-label={`${presentation.expanded ? 'Hide' : 'Show'} Views of ${presentation.label}`}
+									disabled={presentation.views.length === 0}
+									onclick={() => experience.onToggleExpand(presentation.id)}
+								>
+									<ShellIcon name={presentation.expanded ? 'chevronDown' : 'chevronRight'} size={12} />
+								</button>
+								<button
+									type="button"
+									class="item-row presentation-row"
+									draggable="true"
+									aria-current={presentation.selected ? 'true' : undefined}
+									aria-label={`Presentation ${presentation.label}`}
+									ondragstart={(event) => {
+										if (!event.dataTransfer) return;
+										event.dataTransfer.setData('application/x-biskiq-presentation', presentation.id);
+										event.dataTransfer.effectAllowed = 'copy';
+									}}
+									onclick={() => experience.onSelectPresentation(presentation.id)}
+									ondblclick={() => {
+										experience.onSelectPresentation(presentation.id);
+										onRename(presentation.id);
+									}}
+								>
+									<ExperienceSnapshot label={presentation.label} ratio="row" selected={presentation.selected} />
+									<span class="item-text">
+										<span class="item-name serif">{presentation.label}</span>
+										<span class="item-meta"
+											>{presentation.viewCount} {presentation.viewCount === 1 ? 'View' : 'Views'} · {#if presentation.stopNumbers.length > 0}Stops {stopsLabel(presentation.stopNumbers)}{:else}<span class="free-tag">free</span>{/if}</span
+										>
+									</span>
+								</button>
+							</div>
+							{#if presentation.expanded}
+								<ul class="view-list">
+									{#each presentation.views.slice(0, 8) as view (view.id)}
+										<li>
+											<button
+												type="button"
+												class="view-row"
+												class:selected={view.selected}
+												aria-current={view.selected ? 'true' : undefined}
+												aria-label={`${view.label}, ${view.onTour ? 'on tour' : 'free'}${view.isDefault ? ', Default View' : ''}`}
+												onclick={() => experience.onSelectView(view.id, presentation.id)}
+											>
+												<span class="tour-mark" class:on={view.onTour} aria-hidden="true"></span>
+												<span class="view-name">{view.label}</span>
+												{#if view.isDefault}<span class="default-mark" title="Default View" aria-hidden="true">◆</span>{/if}
+											</button>
+										</li>
+									{/each}
+									{#if presentation.views.length > 8}
+										<li>
+											<button type="button" class="view-more" onclick={() => experience.onSelectPresentation(presentation.id)}>+{presentation.views.length - 8} more — see all in the Card</button>
+										</li>
+									{/if}
+								</ul>
+							{/if}
 						</li>
 					{/each}
 				</ul>
 			{/if}
-			{#if !experience.pending}
-				<div class="group-action">
-					<button type="button" onclick={experience.onCreateExperience} disabled={experience.busy}>Create Experience</button>
-				</div>
-			{/if}
 		</section>
-		{#if experience.current !== null && experience.guide !== null}
-			<section class="group" aria-labelledby="index-guide">
-				<h3 id="index-guide" class="group-title">Guide</h3>
-				<button
-					type="button"
-					class="guide-toggle"
-					aria-expanded={experience.guide.open}
-					onclick={experience.onToggleGuide}
-				>
-					<ShellIcon name="guide" size={16} />
-					<span class="item-name">{experience.guide.label ?? 'No Guide yet'}</span>
-				</button>
-			</section>
-		{/if}
 		{:else}
 		<div class="index-search">
 			<label
@@ -516,21 +592,149 @@
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 	}
-	.group-action {
-		padding: 4px 10px 8px;
+	.index-search .hide-index {
+		margin-left: auto;
 	}
-	.item > .item-row,
-	.guide-toggle {
+	.siblings div button {
 		width: 100%;
 		min-height: 28px;
-		padding: 4px 10px;
+		justify-content: flex-start;
+	}
+	.siblings div .menu-create {
+		margin-top: 4px;
+		border-top: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 0 0 6px 6px;
+	}
+	.siblings div button:disabled {
+		background: transparent;
+		color: var(--shell-ink-3, #79817b);
+		cursor: default;
+	}
+	.group-title .count {
+		margin-left: 4px;
+		letter-spacing: 0;
+	}
+	.item-text {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+	}
+	.item-meta {
+		overflow: hidden;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 11px;
+		line-height: 1.3;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.item-name.serif {
+		font-family: var(--shell-serif, Georgia, serif);
+	}
+	.item-name.muted {
+		color: var(--shell-ink-3, #79817b);
+	}
+	.free-tag {
+		padding: 0 4px;
+		border: 1px dashed var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 4px;
+		font-size: 10px;
+	}
+	.chip {
+		flex: none;
+		padding: 0 6px;
+		border: 1px solid var(--shell-leaf, #4f8f6c);
+		border-radius: 999px;
+		background: #fff;
+		color: var(--shell-forest-3, #2d5e48);
+		font-size: 10px;
+		line-height: 15px;
+		font-weight: 600;
+	}
+	/* An open Guide is a leaf state; the gold role stays with selection alone. */
+	.item.open:not(.selected) {
+		background: var(--shell-leaf-tint, #e7f1ea);
+	}
+	.guide-row {
+		width: 100%;
+		min-height: 42px;
+		padding: 6px 10px;
 		border-radius: 0;
 		text-align: left;
 	}
-	/* An open Guide is a neutral state, not the gold selection role the Presentation row uses. */
-	.guide-toggle[aria-expanded='true'] {
-		background: var(--shell-hover, #eef0ed);
+	.twist {
+		flex: none;
+		width: 22px;
+		min-height: 44px;
+		padding: 0;
+		justify-content: center;
+		border-radius: 0;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.twist:disabled {
+		opacity: 0.35;
+	}
+	.presentation-row {
+		min-height: 44px;
+		padding: 5px 8px 5px 2px;
+		gap: 8px;
+		cursor: grab;
+	}
+	.presentation-row .item-name {
 		font-weight: 600;
+	}
+	.view-list {
+		display: grid;
+		gap: 1px;
+		margin: 0 6px 6px 28px;
+		padding: 0;
+		list-style: none;
+	}
+	.view-row {
+		width: 100%;
+		min-height: 28px;
+		padding: 3px 6px;
+		border-radius: 6px;
+		text-align: left;
+		color: var(--shell-ink-2, #4a524c);
+	}
+	.view-row.selected {
+		background: var(--shell-gold-tint, #f8efd6);
+		color: var(--shell-ink, #1b201c);
+		font-weight: 600;
+	}
+	.view-name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.tour-mark {
+		flex: none;
+		width: 8px;
+		height: 8px;
+		border: 1.5px solid var(--shell-ink-3, #79817b);
+		border-radius: 50%;
+	}
+	.tour-mark.on {
+		border-color: var(--shell-leaf, #4f8f6c);
+		background: var(--shell-leaf, #4f8f6c);
+	}
+	.default-mark {
+		flex: none;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 10px;
+	}
+	.view-more {
+		width: 100%;
+		min-height: 28px;
+		padding: 3px 6px;
+		border-radius: 6px;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 12px;
+		text-align: left;
 	}
 	.index-empty {
 		padding: 10px;
