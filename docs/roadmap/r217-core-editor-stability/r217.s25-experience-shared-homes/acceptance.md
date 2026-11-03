@@ -15,11 +15,12 @@ Tested revision: `703712d7` on `claude/r217-s25-experience-shared-homes`, from `
 | Part | Where | Change |
 | --- | --- | --- |
 | Head | `stage/shell/EditorHead.svelte` | Experience lens and the single Preview entry |
-| Index | `stage/shell/EditorIndex.svelte`, `experience-index-groups.ts` | Presentations, filter and create as Index groups in the same crumb and row grammar |
-| Card | `stage/shell/EditorCard.svelte`, `experience/experience-card-model.ts` | Presentation and Stop facts and fields, More, `•••` with Erase last |
-| Lower edge | `experience/ExperienceDock.svelte`, `ExperienceHomesHost.svelte` | Capture and View |
-| Guide | `experience/ExperienceGuide.svelte` | Opened from the Index, Card or dock; closed by default |
-| Controller | `experience/experience-controller.svelte.ts` | Behaviour unchanged from S24 |
+| Index | `stage/shell/EditorIndex.svelte`, `experience-index-groups.ts` | Experience crumb with New Experience, Presentations with their Views, then Guides, in Round 2 row metrics |
+| Card | `stage/shell/EditorCard.svelte`, `experience/Experience*Writer.svelte` | One Card subject (D10); Conservatory interiors for Presentation, View, Stop, Transition, Guide and Scene object; unsupported actions disabled with their reason |
+| Lower edge | `experience/ExperienceDock.svelte`, `ExperienceHomesHost.svelte` | Select, Capture and Guide keys |
+| Guide | `experience/ExperienceGuide.svelte` | Round 2 820 px instrument, closed by default; ordinal bar, holds on the Stop cards (D9) |
+| Stage | `stage/stage-facade.ts`, spatial route | No World marks or gizmo in the Experience lens (D13); a World selection shows its Experience Card on lens entry |
+| Controller | `experience/experience-controller.svelte.ts` | S24 behaviour; fading messages and readable refusals |
 | Retired | `ExperienceSurface.svelte` | Removed; no full-surface overlay remains |
 
 Shell contract Experience sections were reconciled in `17cd8780`, before this close. The drift register's Experience anchors (D24) point at the shared homes.
