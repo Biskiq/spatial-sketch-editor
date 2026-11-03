@@ -7,13 +7,15 @@
 	 * a single click selects a marker without moving the Camera, a double-click
 	 * opens Look through, and Move/aim belongs to the Stage's one gesture lease.
 	 */
-	import type { ViewportEvaluation } from '@portfolio/camera-core';
+	import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core';
 	import { experienceMarkModel, EXPERIENCE_MARK_CAPS } from './experience-marks';
 	import { experienceHomes } from './experience-homes';
 	import ExperiencePaths from './ExperiencePaths.svelte';
 
 	let {
 		evaluation,
+		/** R217.S30 — the projected, read-only playback rig; never an authored mark. */
+		rig = null,
 		onLookThrough,
 		showMarkers = true,
 		showFrustums = true,
@@ -25,6 +27,7 @@
 		endPathDragLease
 	}: {
 		evaluation: ViewportEvaluation;
+		rig?: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number] } | null;
 		onLookThrough?: (viewId: string) => void;
 		/** R217.S29 Show ▾: the four independent flags, all on by default. */
 		showMarkers?: boolean;
@@ -62,6 +65,19 @@
 			: model.frustums
 	}));
 
+	const rigPoint = $derived.by(() => {
+		if (rig === null) return null;
+		const eye = projectWorld(rig.eye, evaluation, evaluation.token);
+		const target = projectWorld(rig.target, evaluation, evaluation.token);
+		if (eye.kind !== 'projected' || eye.visibility !== 'visible') return null;
+		const local = (point: readonly [number, number]) =>
+			[point[0] - evaluation.rect.left, point[1] - evaluation.rect.top] as const;
+		return {
+			eye: local(eye.css),
+			target: target.kind === 'projected' && target.visibility === 'visible' ? local(target.css) : null
+		};
+	});
+
 	function selectView(viewId: string, presentationId: string): void {
 		homes.select({ kind: 'view', viewId, presentationId });
 	}
@@ -93,6 +109,16 @@
 			beginLease={beginPathDragLease}
 			endLease={endPathDragLease}
 		/>
+	{/if}
+	{#if rigPoint !== null}
+		<g class="rig" data-camera-rig aria-hidden="true">
+			{#if rigPoint.target !== null}
+				<line x1={rigPoint.eye[0]} y1={rigPoint.eye[1]} x2={rigPoint.target[0]} y2={rigPoint.target[1]} />
+			{/if}
+			<circle class="rig-halo" cx={rigPoint.eye[0]} cy={rigPoint.eye[1]} r="9" />
+			<circle class="rig-dot" cx={rigPoint.eye[0]} cy={rigPoint.eye[1]} r="4.5" />
+			<text x={rigPoint.eye[0] + 10} y={rigPoint.eye[1] - 10}>Rig</text>
+		</g>
 	{/if}
 	{#if showMarkers}
 	{#each filtered.marks as mark (mark.id)}
@@ -227,5 +253,28 @@
 	}
 	.mark.selected .number text {
 		fill: #2a2208;
+	}
+	.rig {
+		pointer-events: none;
+	}
+	.rig line {
+		stroke: var(--shell-gold, #d4ad45);
+		stroke-width: 1.2;
+		stroke-dasharray: 3 3;
+		opacity: 0.85;
+	}
+	.rig-halo {
+		fill: color-mix(in srgb, var(--shell-gold, #d4ad45) 22%, transparent);
+		stroke: var(--shell-gold, #d4ad45);
+		stroke-width: 1;
+	}
+	.rig-dot {
+		fill: var(--shell-gold, #d4ad45);
+		stroke: #2a2208;
+		stroke-width: 1.2;
+	}
+	.rig text {
+		fill: var(--shell-gold, #d4ad45);
+		font: 600 9px var(--shell-mono, ui-monospace, monospace);
 	}
 </style>

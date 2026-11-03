@@ -9,6 +9,7 @@
 	 * Experience's Opening Guide (E5); the Opening Guide shows the *opens* tag instead.
 	 */
 	import type { Snippet } from 'svelte';
+	import { formatGuideTime } from '@portfolio/camera-core';
 	import { EXPERIENCE_WELCOME_MAX_LENGTH } from '@portfolio/project-model/units';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
@@ -34,6 +35,7 @@
 	);
 	const isEntry = $derived(guide !== null && controller?.current?.entryGuideId === guide.id);
 	const reach = $derived(guide === null ? null : controller?.reach(guide) ?? null);
+	const guideSeconds = $derived(guideId === null ? null : homes.guideSeconds(guideId));
 
 	const stopCount = $derived(guide?.stopIds.length ?? 0);
 	const openingReason = $derived(controller?.busy ? 'Wait for the current change' : '');
@@ -84,19 +86,18 @@
 			<button
 				type="button"
 				class="btn ghost"
-				disabled
-				title="Comes with Camera playback"
-				aria-describedby="guide-play-reason"
+				disabled={controller === null || guideId === null || guideSeconds === null}
+				title={guideSeconds === null ? 'There is no Guide to play' : `Play from the start · ${formatGuideTime(guideSeconds)}`}
+				onclick={() => guideId !== null && homes.playGuide(guideId, { kind: 'start' })}
 			>
 				<ShellIcon name="play" size={12} />Play from the start
 			</button>
-			<span id="guide-play-reason" class="sr">Comes with Camera playback</span>
 		</div>
 
 		<section class="sec" aria-label="One museum, two ways in">
 			<h3 class="sec-title">One museum, two ways in</h3>
 			<div class="modes">
-				<div class="mode-card">
+				<button type="button" class="mode-card" title="Preview the guided tour" onclick={() => homes.previewMode('guided', guide.id)}>
 					<span class="mode-ico"><ShellIcon name="guide" size={15} /></span>
 					<span class="mode-text">
 						<span class="mode-name">Guided tour</span>
@@ -104,8 +105,8 @@
 							>{plural(stopCount, 'Stop')}. Visitors press Next between Stops.</span
 						>
 					</span>
-				</div>
-				<div class="mode-card">
+				</button>
+				<button type="button" class="mode-card" title="Preview free exploration" onclick={() => homes.previewMode('free', guide.id)}>
 					<span class="mode-ico"><ShellIcon name="eye" size={15} /></span>
 					<span class="mode-text">
 						<span class="mode-name">Free exploration</span>
@@ -117,7 +118,7 @@
 							>
 						{/if}
 					</span>
-				</div>
+				</button>
 			</div>
 			<p class="foot-note">Both use the same Presentations and Views. The Guide only decides an order through them.</p>
 		</section>
@@ -208,10 +209,18 @@
 		display: grid;
 		grid-template-columns: 20px 1fr;
 		column-gap: 8px;
+		width: 100%;
 		padding: 10px;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 12px;
 		background: var(--shell-card, #fff);
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.mode-card:hover {
+		border-color: var(--shell-forest-raised, #22503c);
 	}
 	.mode-ico {
 		display: inline-flex;

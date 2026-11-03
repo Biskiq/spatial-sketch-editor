@@ -45,13 +45,22 @@ const CARD_WRITER_FILES = [
 	path.join(EXPERIENCE_DIR, 'ExperienceSubjectWriter.svelte')
 ];
 
-/** The Preview words an enabled Preview entry would carry. */
-const PREVIEW_ENTRY = /\bPreview\b|onEnterPreview|Enter Preview|Preview from this Stop/;
+/**
+ * The Preview seam an enabled *entry* would carry. S30 adds Card actions whose
+ * labels say Preview (a move or a mode); they must route through the one homes
+ * callback, never become a second entry, so bare labels are not offenders.
+ */
+const PREVIEW_ENTRY = /onEnterPreview|Enter Preview|Preview from this Stop|data-head-preview|openPreview/;
 /**
  * The S26 placeholder *Preview this move* is a disabled button on the Transition Card (its
  * reason is Camera playback). It is not an entry, so only the disabled form is set aside.
  */
 const DISABLED_PREVIEW_PLACEHOLDER = /<button[^>]*\bdisabled\b[^>]*>\s*Preview this move[\s\S]*?<\/button>/g;
+/**
+ * S30's playback transport item *Preview this move* previews one authored
+ * movement; it is not a Preview entry. It is a menu item, never an entry seam.
+ */
+const PLAYBACK_MOVE_ITEM = /<button[^>]*role="menuitem"[^>]*>[\s\S]*?Preview this move[\s\S]*?<\/button>/g;
 
 function codeOf(file: string): string {
 	return stripComments(readFileSync(file, 'utf8'));
@@ -74,7 +83,9 @@ describe('R217.S25 — the Experience home map', () => {
 
 	it('reaches Preview and the lens only through the Head: no homes module names a Preview entry', () => {
 		const offenders = HOME_FILES.filter((file) =>
-			PREVIEW_ENTRY.test(codeOf(file).replace(DISABLED_PREVIEW_PLACEHOLDER, ''))
+			PREVIEW_ENTRY.test(
+				codeOf(file).replace(DISABLED_PREVIEW_PLACEHOLDER, '').replace(PLAYBACK_MOVE_ITEM, '')
+			)
 		);
 		expect(offenders.map(relativeToRepo)).toEqual([]);
 		const route = codeOf(ROUTE);

@@ -34,7 +34,6 @@
 
 	/** Past this many Views left out of the Stop, they fold behind a disclosure (Conservatory). */
 	const FOLD_VIEWS_AFTER = 4;
-	const PLAY_REASON = 'Comes with Camera playback';
 	const BUSY_REASON = 'Wait for the last change to save';
 	const NOT_IN_GUIDE_REASON = 'This Stop is not in the open Guide';
 	const LAST_VIEW_REASON = 'A Stop shows at least one View';
@@ -44,6 +43,12 @@
 	const controller = $derived(homes.controller());
 	const stop = $derived(controller?.selectedStop ?? null);
 	const guide = $derived(controller?.guideStops ?? []);
+	const transportGuideId = $derived(stop === null ? null : homes.guideForStop(stop.id));
+	const transportPosition = $derived.by(() => {
+		if (stop === null || transportGuideId === null || controller === null) return 0;
+		const guide = controller.guides.find((entry) => entry.id === transportGuideId);
+		return guide === undefined ? 0 : guide.stopIds.indexOf(stop.id) + 1;
+	});
 	/** The Stop's one-based place in the open Guide, or 0 when the Guide does not list it. */
 	const position = $derived(stop === null ? 0 : guide.findIndex((entry) => entry.id === stop.id) + 1);
 	const presentation = $derived(
@@ -467,6 +472,12 @@
 												>+ Path</button>
 											{/if}
 										{/if}
+										<button type="button" class="step-preview" title="Preview this step"
+											disabled={transportGuideId === null || stop === null}
+											onclick={(event) => {
+												event.stopPropagation();
+												if (transportGuideId !== null && stop !== null) homes.playGuide(transportGuideId, { kind: 'move', occurrence: { kind: 'step', stopId: stop.id, toViewId: shot.viewId } });
+											}}>Preview</button>
 									</span>
 								{/if}
 								<span class="shot-meta">
@@ -594,8 +605,10 @@
 		</section>
 
 		<section class="c-sec row-end" aria-label="Playback">
-			<button type="button" class="btn ghost" disabled title={PLAY_REASON}>
-				<ShellIcon name="play" size={12} />Play from this Stop<span class="sr-only">{PLAY_REASON}</span>
+			<button type="button" class="btn ghost" disabled={transportGuideId === null || stop === null || transportPosition === 0}
+				title={transportPosition === 0 ? NOT_IN_GUIDE_REASON : transportGuideId === null ? 'There is no Guide to play' : 'Play from this Stop'}
+				onclick={() => transportGuideId !== null && stop !== null && homes.playGuide(transportGuideId, { kind: 'stop', stopId: stop.id })}>
+				<ShellIcon name="play" size={12} />Play from this Stop
 			</button>
 		</section>
 

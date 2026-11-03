@@ -15,12 +15,22 @@
 	 * typed first-Guide name, the open + Stop menu, and the drag in progress.
 	 */
 	import { tick, untrack } from 'svelte';
+	import { formatGuideTime } from '@portfolio/camera-core';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import { experienceHomes } from './experience-homes';
 	import { formatPathSeconds } from './experience-paths';
+	import type { ExperiencePlayback } from './playback.svelte';
+	import { resolveWaitScrub } from './timeline-scrub';
 
-	let { onClose }: { onClose: () => void } = $props();
+	let {
+		onClose,
+		playback
+	}: {
+		onClose: () => void;
+		/** The Stage-owned ephemeral playback host: this panel only reads and commands it. */
+		playback: ExperiencePlayback;
+	} = $props();
 
 	instances += 1;
 	const instanceId = `experience-guide-${instances}`;
@@ -63,6 +73,183 @@
 	let barEl = $state<HTMLElement | null>(null);
 	/** Cards the pointer has focused last, so the roving tab stop survives a cleared selection. */
 	let focusedStopId = $state<string | null>(null);
+
+	// ---- R217.S30: the Stage owns the one ephemeral playback session ----
+
+	let transportOpen = $state(false);
+	let transportWrap = $state<HTMLElement | null>(null);
+	const canPlay = $derived(playback.map !== null || (controller?.playbackSource ?? null) !== null);
+	const stopTimes = $derived(
+		new Map((playback.map?.stopEntries ?? []).map((entry) => [entry.stopId, entry]))
+	);
+	const followPosition = $derived(
+		playback.activeStopId === null
+			? null
+			: stops.findIndex((stop) => stop.id === playback.activeStopId) + 1
+	);
+	const playheadPct = $derived.by(() => {
+		const map = playback.map;
+		const cursor = playback.cursor;
+		if (map === null || cursor === null) return 0;
+		if (map.totalSeconds <= 0) {
+			const index = map.segments.findIndex((entry) => entry.id === cursor.segmentId);
+			return map.segments.length <= 1 ? 0 : (Math.max(0, index) / (map.segments.length - 1)) * 100;
+		}
+		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
+		return segment === undefined
+			? 0
+			: ((segment.startSeconds + cursor.elapsedSeconds) / map.totalSeconds) * 100;
+	});
+	/** Each hold is one View's span; its own label/time stays readable on the bar. */
+	const timelineSegments = $derived.by(() => {
+		const map = playback.map;
+		if (map === null) return [];
+		return map.segments
+			.filter((segment) => segment.durationSeconds > 0)
+			.map((segment) => ({
+				id: segment.id,
+				kind: segment.kind,
+				viewId: segment.viewId,
+				label: segment.kind === 'hold' ? `View ${segment.viewId} · ${formatGuideTime(segment.durationSeconds)}` : `${segment.kind} · ${formatGuideTime(segment.durationSeconds)}`,
+				left: map.totalSeconds <= 0 ? 0 : (segment.startSeconds / map.totalSeconds) * 100,
+				width: map.totalSeconds <= 0 ? 100 : (segment.durationSeconds / map.totalSeconds) * 100,
+				active:
+					playback.activeStopId === segment.stopId &&
+					(playback.status === 'playing' || playback.status === 'waiting')
+			}));
+	});
+	const timelineWaits = $derived.by(() => {
+		const map = playback.map;
+		if (map === null) return [];
+		const waits = map.segments.filter((segment) => segment.kind === 'wait');
+		if (map.totalSeconds <= 0) {
+			// Time cannot place zero-width waits. They still occupy one addressable
+			// point each so an all-wait Guide remains scrub- and click-reachable.
+			return waits.map((segment, index) => ({
+				id: segment.id,
+				left: waits.length <= 1 ? 0 : (index / (waits.length - 1)) * 100
+			}));
+		}
+		return waits.map((segment) => ({ id: segment.id, left: (segment.startSeconds / map.totalSeconds) * 100 }));
+	});
+
+	function toggleTransport(): void {
+		if (transportOpen) {
+			transportOpen = false;
+			return;
+		}
+		transportOpen = true;
+		void tick().then(() => transportWrap?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+	}
+
+	function playPause(): void {
+		playback.playPause();
+	}
+
+	function playFromStart(): void {
+		transportOpen = false;
+		playback.playFromStart();
+	}
+
+	function playFromSelected(): void {
+		transportOpen = false;
+		if (selectedStopId !== null) playback.playFromStop(selectedStopId);
+	}
+
+	function previewSelectedMove(): void {
+		transportOpen = false;
+		if (subject?.kind === 'transition') playback.previewMove({ kind: 'transition', stopId: subject.stopId });
+		else if (subject?.kind === 'stop') {
+			const stop = stops.find((entry) => entry.id === subject.stopId);
+			const last = stop?.views.at(-1);
+			if (last !== undefined) playback.previewMove({ kind: 'step', stopId: subject.stopId, toViewId: last.viewId });
+		}
+	}
+
+	/** The Stage captures the entry standpoint; this panel only asks Follow to end. */
+	function restoreStandpoint(): void {
+		playback.setFollow(false);
+	}
+
+	function toggleFollow(): void {
+		if (playback.following) {
+			restoreStandpoint();
+			return;
+		}
+		if (!canPlay) return;
+		if (playback.map === null) playback.playFromStart();
+		if (playback.status === 'idle' || playback.status === 'ended') playback.playPause();
+		if (playback.status === 'idle' || playback.status === 'ended' || playback.map === null) return;
+		playback.setFollow(true);
+	}
+
+	function scrubAt(clientX: number): void {
+		const map = playback.map;
+		if (barEl === null || map === null) return;
+		const rect = barEl.getBoundingClientRect();
+		const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+		// A wait is its own addressable occurrence even at zero width. Coincident
+		// waits cycle on repeated presses, so each stacked occurrence is reachable.
+		const waitId = resolveWaitScrub({
+			waits: timelineWaits,
+			fractionPercent: fraction * 100,
+			currentSegmentId: playback.cursor?.segmentId ?? null
+		});
+		if (waitId !== null) {
+			playback.seekSegment(waitId);
+			return;
+		}
+		playback.seek(fraction * map.totalSeconds);
+	}
+
+	function onBarKeydown(event: KeyboardEvent): void {
+		const map = playback.map;
+		if (map === null) return;
+		if (map.totalSeconds <= 0) {
+			const queue = map.segments.filter((segment) => segment.kind === 'wait');
+			if (queue.length === 0 || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+			event.preventDefault();
+			const at = queue.findIndex((segment) => segment.id === playback.cursor?.segmentId);
+			const delta = event.key === 'ArrowLeft' ? -1 : 1;
+			const next = queue[(Math.max(0, at) + delta + queue.length) % queue.length];
+			playback.seekSegment(next!.id);
+			return;
+		}
+		const current = playback.cursor;
+		const segment = current === null ? null : map.segments.find((entry) => entry.id === current.segmentId);
+		const elapsed = segment === undefined || segment === null || current === null ? 0 : segment.startSeconds + current.elapsedSeconds;
+		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+			event.preventDefault();
+			playback.seek(elapsed + (event.key === 'ArrowLeft' ? -1 : 1));
+		} else if (event.key === 'Home' || event.key === 'End') {
+			event.preventDefault();
+			playback.seek(event.key === 'Home' ? 0 : map.totalSeconds);
+		}
+	}
+
+	function onWindowKeydown(event: KeyboardEvent): void {
+		if (event.defaultPrevented) return;
+		if (event.key !== 'Escape' || !playback.following) return;
+		event.preventDefault();
+		restoreStandpoint();
+	}
+
+	// Plain play and scrub never write the Camera. The Stage applies a sample
+	// only while Follow is on, and Space lives there with the same guards.
+	$effect(() => {
+		const activeStopId = playback.activeStopId;
+		if (activeStopId === null || compact) return;
+		void tick().then(() => {
+			const cards = rowEl?.querySelectorAll<HTMLElement>('[data-stop-id]') ?? [];
+			for (const card of cards) {
+				if (card.dataset.stopId !== activeStopId) continue;
+				// jsdom has no layout; the browser's scrollIntoView is optional here.
+				if (typeof card.scrollIntoView === 'function') {
+					card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+				}
+			}
+		});
+	});
 
 	// ---- Reading: cards, connectors, reasons ----
 
@@ -562,7 +749,7 @@
 	}
 </script>
 
-<svelte:window onpointerdown={onWindowPointerDown} />
+<svelte:window onpointerdown={onWindowPointerDown} onkeydown={onWindowKeydown} />
 
 {#if controller === null}
 	<p class="status" role="status">The Experience lens mounts with the admitted project source.</p>
@@ -612,9 +799,12 @@
 			<button
 				type="button"
 				class="tool"
-				disabled
-				title="Comes with Camera playback"
-				aria-describedby={followReasonId}
+				class:on={playback.following}
+				disabled={!canPlay}
+				title={playback.following ? 'Stop following the camera' : 'Follow the camera'}
+				aria-pressed={playback.following}
+				aria-describedby={playback.following ? followReasonId : undefined}
+				onclick={toggleFollow}
 			>
 				<ShellIcon name="camera" size={13} />
 				<span class="word">Follow</span>
@@ -717,6 +907,10 @@
 									{#if card.again}<em>again</em>{/if}
 									{#if card.again}<span aria-hidden="true"> · </span>{/if}
 									<span>{card.viewCount} {card.viewCount === 1 ? 'view' : 'views'}</span>
+									{#if stopTimes.get(card.stopId) !== undefined}
+										<span aria-hidden="true"> · </span>
+										<span class="stop-time" data-stop-time>{formatGuideTime(stopTimes.get(card.stopId)!.endSeconds - stopTimes.get(card.stopId)!.startSeconds)}</span>
+									{/if}
 								</span>
 							</button>
 							<span class="slot" class:adjacent={card.connector?.shape === 'adjacent'}>
@@ -763,46 +957,111 @@
 				</div>
 			{/if}
 
-			<div class="scrub">
+			<div class="scrub" data-playback-timeline>
 				<button
 					type="button"
 					class="play"
-					disabled
-					aria-label="Play"
-					title="Comes with Camera playback"
-					aria-describedby={playReasonId}
+					disabled={!canPlay}
+					aria-label={playback.status === 'playing' ? 'Pause' : 'Play'}
+					title={canPlay ? (playback.status === 'playing' ? 'Pause (Space)' : 'Play (Space)') : 'There is no Guide to play'}
+					aria-describedby={canPlay ? undefined : playReasonId}
+					onclick={playPause}
 				>
-					<ShellIcon name="play" size={13} />
+					{#if playback.status === 'playing'}
+						<span class="pause-glyph" aria-hidden="true">❚❚</span>
+					{:else}
+						<ShellIcon name="play" size={13} />
+					{/if}
 				</button>
+				<span class="transport-wrap" bind:this={transportWrap}>
+					<button
+						type="button"
+						class="tool transport"
+						disabled={!canPlay}
+						aria-haspopup="menu"
+						aria-expanded={transportOpen}
+						title="Play from…"
+						onclick={toggleTransport}
+					>
+						<span aria-hidden="true">▾</span>
+					</button>
+					{#if transportOpen}
+						<div class="menu transport-menu" role="menu" aria-label="Play from" tabindex="-1">
+							<button type="button" role="menuitem" class="menu-item" onclick={playFromStart}>
+								<span class="menu-label">Play from the start</span>
+							</button>
+							<button type="button" role="menuitem" class="menu-item" disabled={selectedStopId === null} onclick={playFromSelected}>
+								<span class="menu-label">Play from this Stop</span>
+								<span class="menu-hint">{selectedStopId === null ? 'Select a Stop' : `Stop ${selectedStopIndex + 1}`}</span>
+							</button>
+							<button
+								type="button"
+								role="menuitem"
+								class="menu-item"
+								disabled={subject?.kind !== 'transition' && subject?.kind !== 'stop'}
+								onclick={previewSelectedMove}
+							>
+								<span class="menu-label">Preview this move</span>
+								<span class="menu-hint">{subject?.kind === 'transition' || subject?.kind === 'stop' ? '' : 'Select a Stop or transition'}</span>
+							</button>
+						</div>
+					{/if}
+				</span>
 				<div
-					class="bar"
-					role="img"
-					aria-label={selectedStopIndex >= 0
-						? `${stops.length} Stops in order, Stop ${selectedStopIndex + 1} selected`
-						: `${stops.length} Stops in order`}
-					bind:this={barEl}
+					class="bar-hit"
+					role="slider"
+					tabindex={canPlay ? 0 : -1}
+					aria-label="Guide timeline"
+					aria-valuemin={0}
+					aria-valuemax={Math.round(playback.map?.totalSeconds ?? 0)}
+					aria-valuenow={Math.round((playback.map?.totalSeconds ?? 0) * (playheadPct / 100))}
+					aria-valuetext={`${playback.elapsedLabel} of ${playback.totalLabel}${playback.map === null ? '' : playback.map.waitCount === 0 ? '' : ` ${playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}`}`}
+					aria-disabled={!canPlay}
+					onpointerdown={(event) => scrubAt(event.clientX)}
+					onkeydown={onBarKeydown}
 				>
-					{#each stops as stop, index (stop.id)}
-						<span class="seg" class:selected={selectedStopId === stop.id}>
-							{#if cards[index]?.hold}<span class="seg-hold">{cards[index]?.hold}</span>{/if}
-						</span>
-					{/each}
-					{#if inView !== null && !compact}
-						<span
-							class="bracket"
-							style:left="{(inView.first / stops.length) * 100}%"
-							style:width="{((inView.last - inView.first + 1) / stops.length) * 100}%"
-						></span>
-					{/if}
-					{#if barCaretPct !== null}
-						<span class="bar-caret" style:left="{barCaretPct}%"></span>
-					{/if}
+					<div class="bar" bind:this={barEl} aria-hidden="true">
+						{#each timelineSegments as segment (segment.id)}
+							<span
+								class="seg {segment.kind}"
+								class:active={segment.active}
+								data-view-span={segment.kind === 'hold' ? segment.viewId : undefined}
+								title={segment.label}
+								aria-label={segment.label}
+								style:left="{segment.left}%"
+								style:width="{segment.width}%"
+							></span>
+						{/each}
+						{#each timelineWaits as wait (wait.id)}
+							<span class="hatch" style:left="{wait.left}%"></span>
+						{/each}
+						{#if playback.cursor !== null && playback.map !== null}
+							<span class="playhead" style:left="{playheadPct}%"></span>
+						{/if}
+						{#if inView !== null && !compact}
+							<span
+								class="bracket"
+								style:left="{(inView.first / stops.length) * 100}%"
+								style:width="{((inView.last - inView.first + 1) / stops.length) * 100}%"
+							></span>
+						{/if}
+					</div>
 				</div>
+				<span class="total" data-playback-total>
+					{playback.elapsedLabel} / {playback.totalLabel}{#if playback.map !== null && playback.map.waitCount > 0}<span class="waits">{playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}</span>{/if}
+				</span>
 			</div>
+			{#if playback.following}
+				<div class="follow-pill" role="status">
+					<span class="live-dot" aria-hidden="true"></span>
+					<span>Following the camera{followPosition === null || followPosition <= 0 ? '' : ` · travelling to Stop ${followPosition}`}</span>
+					<button type="button" class="pill-stop" onclick={restoreStandpoint}>Stop following <span class="kbd">Esc</span></button>
+				</div>
+			{/if}
 		{/if}
 
-		<span id={followReasonId} class="visually-hidden">Comes with Camera playback</span>
-		<span id={playReasonId} class="visually-hidden">Comes with Camera playback</span>
+		<span id={followReasonId} class="visually-hidden">Following the camera · Stop following Esc</span>
+		<span id={playReasonId} class="visually-hidden">There is no Guide to play</span>
 		{#if addReason !== null}<span id={addReasonId} class="visually-hidden">{addReason}</span>{/if}
 	</div>
 {/if}
@@ -1165,6 +1424,142 @@
 		pointer-events: none;
 	}
 
+	/* ---- R217.S30: time timeline ---- */
+	.transport-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+	.transport {
+		min-width: 24px;
+		padding: 0 4px;
+	}
+	.transport-menu {
+		left: 0;
+		bottom: calc(100% + 8px);
+		right: auto;
+	}
+	.tool.on {
+		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 38%, transparent);
+		color: #fff;
+	}
+	.bar-hit {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		min-width: 0;
+		min-height: 24px;
+		cursor: pointer;
+		touch-action: none;
+	}
+	.bar-hit:focus-visible {
+		outline: 2px solid var(--shell-ink-light, #eef1ec);
+		outline-offset: 2px;
+		border-radius: 6px;
+	}
+	.bar-hit .bar {
+		position: relative;
+		display: block;
+		width: 100%;
+		height: 8px;
+		border-radius: 4px;
+		background: rgb(255 255 255 / 0.14);
+		overflow: hidden;
+	}
+	.bar-hit .seg {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		background: rgb(255 255 255 / 0.28);
+		border-right: 1px solid rgb(17 41 31 / 0.65);
+	}
+	.bar-hit .seg.travel {
+		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 62%, #fff);
+	}
+	.bar-hit .seg.cut {
+		background: rgb(255 255 255 / 0.2);
+	}
+	.bar-hit .seg.active {
+		background: var(--shell-gold, #d4ad45);
+		box-shadow: 0 0 8px 1px color-mix(in srgb, var(--shell-gold, #d4ad45) 70%, transparent);
+	}
+	.bar-hit .hatch {
+		position: absolute;
+		top: -2px;
+		bottom: -2px;
+		width: 5px;
+		margin-left: -2.5px;
+		border-radius: 1px;
+		background: repeating-linear-gradient(
+			45deg,
+			var(--shell-gold, #d4ad45) 0 1px,
+			transparent 1px 2.5px
+		);
+		opacity: 0.95;
+	}
+	.bar-hit .playhead {
+		position: absolute;
+		top: -3px;
+		bottom: -3px;
+		width: 1px;
+		margin-left: -0.5px;
+		background: var(--shell-gold, #d4ad45);
+		box-shadow: 0 0 4px color-mix(in srgb, var(--shell-gold, #d4ad45) 80%, transparent);
+		pointer-events: none;
+	}
+	.total {
+		flex: none;
+		color: var(--shell-ink-light, #eef1ec);
+		font: 500 11px/1.2 var(--shell-mono, ui-monospace, monospace);
+		white-space: nowrap;
+	}
+	.total .waits {
+		margin-left: 4px;
+		color: var(--shell-gold, #d4ad45);
+	}
+	.stop-time {
+		font: 500 10px var(--shell-mono, ui-monospace, monospace);
+	}
+	.follow-pill {
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 10px);
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 4px 4px 4px 12px;
+		border-radius: 20px;
+		background: var(--shell-glass-dark, rgba(14, 30, 25, 0.8));
+		color: var(--shell-ink-light, #eef1ec);
+		font: 12px var(--shell-sans, system-ui, sans-serif);
+		white-space: nowrap;
+		z-index: 4;
+	}
+	.live-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.pause-glyph {
+		font: 600 9px/1 var(--shell-sans, system-ui, sans-serif);
+		letter-spacing: 1px;
+	}
+	.pill-stop {
+		height: 28px;
+		padding: 0 10px;
+		border: 0;
+		border-radius: 14px;
+		background: rgb(255 255 255 / 0.12);
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+	}
+	.kbd {
+		color: var(--shell-ink-quiet, #9fb2a5);
+		font-size: 11px;
+	}
+
 	/* ---- Stop-order bar ---- */
 	.scrub {
 		display: flex;
@@ -1268,12 +1663,17 @@
 		.icon,
 		.play,
 		.name-input,
-		.chip {
+		.chip,
+		.pill-stop {
 			min-height: var(--shell-touch-target, 44px);
 		}
 		.icon,
 		.play {
 			min-width: var(--shell-touch-target, 44px);
+		}
+		/* The coarse hit area is 44 px; the visual track stays 8 px. */
+		.bar-hit {
+			min-height: var(--shell-touch-target, 44px);
 		}
 	}
 </style>

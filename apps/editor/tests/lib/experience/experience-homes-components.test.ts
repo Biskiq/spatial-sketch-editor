@@ -46,6 +46,7 @@ import type {
 import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core';
 
 import ExperienceHomesProbe from './fixtures/ExperienceHomesProbe.svelte';
+import { createExperiencePlayback } from '$lib/authoring/experience/playback.svelte';
 
 // ---- The fixture Experience: five Stops over three Presentations ----
 
@@ -239,7 +240,12 @@ type ThroughOptions = {
 	readonly moved?: boolean;
 };
 
-function fakeHomes(controller: FakeController | null, guideOpen = false, through: ThroughOptions = {}) {
+function fakeHomes(
+	controller: FakeController | null,
+	guideOpen = false,
+	through: ThroughOptions = {},
+	transport: { readonly seconds?: number | null; readonly guideId?: string | null } = {}
+) {
 	return {
 		controller: () => controller as unknown as ExperienceController | null,
 		guideOpen: () => guideOpen,
@@ -264,7 +270,12 @@ function fakeHomes(controller: FakeController | null, guideOpen = false, through
 		exitLookThrough: vi.fn(),
 		updateLookThrough: vi.fn(async () => {}),
 		captureProvisional: vi.fn(async () => {}),
-		presentThis: vi.fn(async () => {})
+		presentThis: vi.fn(async () => {}),
+		playback: () => null,
+		previewMode: vi.fn<(mode: 'guided' | 'free', guideId: string | null) => void>(),
+		guideSeconds: () => transport.seconds ?? null,
+		guideForStop: () => transport.guideId ?? null,
+		playGuide: vi.fn()
 	} satisfies ExperienceHomes;
 }
 
@@ -289,9 +300,14 @@ function appendTarget(): HTMLElement {
 
 function mountHome(home: Component<any>, homeProps: Record<string, unknown>, homes: FakeHomes): HTMLElement {
 	const target = appendTarget();
+	// The Guide reads the Stage-owned playback host as a prop; this harness has no
+	// Stage, so mount it with an idle host (its controls stay honestly disabled).
+	const withHost = home === ExperienceGuide
+		? { playback: createExperiencePlayback(() => null), ...homeProps }
+		: homeProps;
 	const component = mount(ExperienceHomesProbe, {
 		target,
-		props: { homes: homes as unknown as ExperienceHomes, home, homeProps }
+		props: { homes: homes as unknown as ExperienceHomes, home, homeProps: withHost }
 	});
 	live.push({ component, target });
 	return target;
@@ -409,23 +425,20 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 		expect(homes.select).toHaveBeenLastCalledWith({ kind: 'stop', stopId: 'stop-3' });
 	});
 
-	it('shows each Stop hold on its bar segment and disables Play with its reason and no time readout', async () => {
+	it('renders the time timeline and disables Play when no lowered Guide can play', async () => {
 		const homes = fakeHomes(fakeController());
 		const target = mountHome(ExperienceGuide, { onClose: () => {} }, homes);
 		await settle();
 
-		const segments = [...target.querySelectorAll('.scrub .bar .seg')];
-		expect(segments).toHaveLength(5);
-		expect(segments[0]!.querySelector('.seg-hold')?.textContent).toBe('0.5s');
-		for (const unset of segments.slice(1)) expect(unset.textContent?.trim()).toBe('');
+		// S30 supersedes the ordinal bar: the track is time-scaled, so a fake
+		// controller without a lowered program has no timed segments to draw.
+		expect(target.querySelector('.scrub .bar') !== null).toBe(true);
+		expect(target.querySelector('[data-playback-total]')?.textContent ?? '').toMatch(/\d+:\d{2}\s*\/\s*\d+:\d{2}/);
 
 		const play = buttonNamed(target, 'Play');
 		expect(play.disabled).toBe(true);
-		expect(play.title).toBe('Comes with Camera playback');
-		expect(reasonOf(play)).toBe('Comes with Camera playback');
-
-		const scrub = target.querySelector('.scrub')!;
-		expect(scrub.textContent).not.toMatch(/\/|\d+:\d{2}/);
+		expect(play.title).toBe('There is no Guide to play');
+		expect(reasonOf(play)).toBe('There is no Guide to play');
 	});
 });
 
@@ -792,9 +805,20 @@ describe('R217.S26 — the Guide shows where the tour starts (E6)', () => {
 		expect(tagged.map((card) => card.getAttribute('data-stop-id'))).toEqual(['stop-1']);
 		expect(tagged[0]!.getAttribute('aria-label')).toContain('the tour starts here');
 	});
-});
+});	describe('R217.S26 — the Guide Card sets the Opening Guide (E5)', () => {
+	it('plays a non-opening Guide from its Card while the rail is closed, with the full authored time', async () => {
+		const other = fakeController({ subject: { kind: 'guide', guideId: 'guide-1' } });
+		(other as { current: Experience }).current = { ...EXPERIENCE, entryGuideId: 'guide-elsewhere' };
+		const homes = fakeHomes(other, false, {}, { seconds: 95, guideId: 'guide-1' });
+		const target = mountHome(ExperienceGuideWriter, {}, homes);
+		await settle();
+		const play = buttonNamed(target, /^Play from the start/);
+		expect(play.disabled).toBe(false);
+		expect(play.title).toContain('1:35');
+		play.click();
+		expect(homes.playGuide).toHaveBeenCalledWith('guide-1', { kind: 'start' });
+	});
 
-describe('R217.S26 — the Guide Card sets the Opening Guide (E5)', () => {
 	it('shows *opens* on the Opening Guide and offers Make this the opening Guide on another', async () => {
 		const opening = fakeController({ subject: { kind: 'guide', guideId: 'guide-1' } });
 		const first = mountHome(ExperienceGuideWriter, {}, fakeHomes(opening));

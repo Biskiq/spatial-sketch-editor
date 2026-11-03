@@ -27,6 +27,7 @@ import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { stageEnvelope } from '../stage/unit-stage-source';
 import {
 	EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS,
+	lowerExperienceProgram,
 	planGuideRemoval,
 	planPresentationRemoval,
 	planPresentationViewRemoval,
@@ -93,6 +94,7 @@ import {
 	type ExperienceRemovalTarget,
 	type RemovalNames
 } from './experience-removal';
+import type { PlaybackSource } from './playback.svelte';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
@@ -257,6 +259,12 @@ export type ExperienceController = {
 	readonly cameraViews: readonly CameraView[];
 	/** The accepted source content identity: a snapshot cache key, never an authored value. */
 	readonly sourceRevision: string;
+	/** The one lowered program + Camera graph S30 playback reads; null when lowering refuses. */
+	readonly playbackSource: PlaybackSource | null;
+	/** The accepted source for an explicit Guide, independent of the open Guide. */
+	playbackSourceFor(guideId: string): PlaybackSource | null;
+	/** The Guide that lists a Stop, preferring the active Guide. */
+	guideForStop(stopId: string): string | null;
 	viewPose(viewId: string): ExperienceViewPose | null;
 	/** Lens and Eye height steps write the exact Camera View (E7). */
 	setViewFraming(
@@ -403,6 +411,30 @@ export function createExperienceController(
 	});
 	const acceptedGeometry = $derived(acceptedDomain?.geometry ?? null);
 	const acceptedGraph = $derived(acceptedDomain?.graph ?? null);
+	// R217.S30 — the one lowered program the timeline/playback reads. It is the
+	// same lowering Preview and the visitor use, never a second topology.
+	function lowerPlaybackSource(guideId: string): PlaybackSource | null {
+		if (current === null || acceptedGraph === null) return null;
+		const guide = current.guides.find((entry) => entry.id === guideId);
+		if (guide === undefined) return null;
+		const read = readServices().stage.snapshot();
+		const lowered = lowerExperienceProgram(snapshot, {
+			experienceId: current.id,
+			sourceContentId: read.sourceContentId,
+			sessionEpoch: read.sessionEpoch,
+			guideId: guide.id
+		});
+		if (lowered.kind !== 'lowered') return null;
+		return {
+			program: lowered.program,
+			transitions: lowered.transitions,
+			graph: acceptedGraph,
+			entryStopId: guide.entryStopId
+		};
+	}
+	const playbackSource = $derived.by((): PlaybackSource | null =>
+		contextGuide === null ? null : lowerPlaybackSource(contextGuide.id)
+	);
 	const selectedPath = $derived.by((): ExperiencePathRead | null => {
 		if (current === null || pathOccurrence === null || acceptedGraph === null) return null;
 		return readExperiencePath({
@@ -1722,6 +1754,16 @@ export function createExperienceController(
 		get sourceRevision() {
 			// The accepted source read owns the content identity; the envelope does not.
 			return readServices().stage.snapshot().sourceContentId;
+		},
+		get playbackSource() {
+			return playbackSource;
+		},
+		playbackSourceFor(guideId: string) {
+			return lowerPlaybackSource(guideId);
+		},
+		guideForStop(stopId: string) {
+			const containing = (current?.guides ?? []).filter((guide) => guide.stopIds.includes(stopId));
+			return containing.find((guide) => guide.id === currentGuide?.id)?.id ?? containing[0]?.id ?? null;
 		},
 		viewPose(viewId: string) {
 			const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);

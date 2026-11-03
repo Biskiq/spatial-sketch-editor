@@ -1,7 +1,7 @@
 # Camera and tour
 
 **Read when:** camera nodes, connections, route/path evaluation, framing envelopes, motion guards, guided visitor runtime.
-**Last reviewed:** 2026-11-03 (S29 independent Travel pairs; Camera-unit connectivity policy)
+**Last reviewed:** 2026-11-03 (S30 Guide time map, playback and visitor Preview modes)
 
 ---
 
@@ -54,7 +54,21 @@ remains in the tree.
 
 ## Current vs destination (ratified 2026-09-27; reconciled 2026-09-29)
 
-**Current implementation (T3.P01.S04, S29 connectivity).** F2 Camera Views/connections supply the live
+**Current implementation (T3.P01.S04, S29 connectivity, S30 playback).** The
+Guide time map is one pure derived read in
+`packages/camera-core/src/guide-time-map.ts`: holds are authored seconds, Cut,
+zero hold and an untimed final View's *wait* occupy zero elapsed seconds while
+staying addressable, and a Travel carries Camera's exact directed motion. It is
+the only source for the timeline bar, the Guide tour time, each Stop time, scrub
+and playback; it owns no frame loop, state or serialized field, and reduced
+motion settles to the destination without changing the authored seconds. The
+editor's ephemeral playback session is host view state: an accepted edit
+invalidates it, refused edits do not, and nothing it does enters F4, history or
+Save. Preview opens the welcome chooser for a guided Experience, keeps the
+lowered entry Stop (or direct Presentation entry when no Guide is open), and
+realizes guided/free/Places/return/end through the same interpreter and Camera
+sampling the visitor uses; visitor chunks still import no editor module.
+ F2 Camera Views/connections supply the live
 graph; Experience Presentations/Stops/Guides supply editorial order, holds and continuation. One
 Camera unit may carry independent Travel pairs (A–B and C–D); they need no bridge edge, and a Cut
 authorizes no Camera edge. Camera-unit admission and the visitor's Scene projection force the one

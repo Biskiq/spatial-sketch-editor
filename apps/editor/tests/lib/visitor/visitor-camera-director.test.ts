@@ -65,6 +65,7 @@ import type { NavigationGraph, NavigationNodeData } from '@portfolio/project-mod
 import VisitorCameraDirector from '$lib/visitor/VisitorCameraDirector.svelte';
 import { createVisitorRuntimeState, type VisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.svelte';
 import VisitorRuntimeProbe from './fixtures/VisitorRuntimeProbe.svelte';
+import VisitorDirectorHost from './fixtures/VisitorDirectorHost.svelte';
 
 const OPTIONS: ExperienceInterpreterOptions = {
 	runId: 'run-director',
@@ -200,13 +201,19 @@ async function mountDirector(
 	visitor: VisitorRuntimeState,
 	onCameraGap?: (message: string | null) => void,
 	navigationGraph: NavigationGraph = graph(),
-	active = true
+	active = true,
+	options: {
+		readonly suspendGuidance?: boolean;
+		readonly guidedInputEnabled?: boolean;
+		readonly timeAligned?: boolean;
+		readonly viewOverride?: string | null;
+	} = {}
 ): Promise<void> {
 	const target = document.createElement('div');
 	document.body.appendChild(target);
 	const component = mount(VisitorCameraDirector, {
 		target,
-		props: { graph: navigationGraph, visitor, onCameraGap, active }
+		props: { graph: navigationGraph, visitor, onCameraGap, active, ...options }
 	});
 	cleanup = () => unmount(component);
 	await tick();
@@ -539,6 +546,198 @@ describe('mounted visitor Camera handoff', () => {
 		expect(visitor.state.holdRemainingMs).toBe(holdBefore);
 		expect(harness.starts).toHaveLength(0);
 		expect(harness.tasks.every((task) => task.running() === false)).toBe(true);
+	});
+
+	it('suspends authored hold time while free exploration is active', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		visitor.continue();
+		expect(visitor.state.phase).toBe('holding');
+		await mountDirector(visitor, undefined, graph(), true, { suspendGuidance: true });
+		const holdBefore = visitor.state.holdRemainingMs;
+		for (let index = 0; index < 90; index += 1) await frame();
+		expect(visitor.state.holdRemainingMs).toBe(holdBefore);
+		expect(visitor.state.phase).toBe('holding');
+	});
+
+	it('refuses guided keyboard advance during a hold, matching Next', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		visitor.continue();
+		expect(visitor.state.phase).toBe('holding');
+		await mountDirector(visitor, undefined, graph(), true, { guidedInputEnabled: true });
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+		await tick();
+		expect(visitor.state.phase).toBe('holding');
+		expect(visitor.state.holdRemainingMs).not.toBeNull();
+	});
+
+	it('starts a fresh neutral run for free exploration after the authored end', () => {
+		const visitor = runtime();
+		visitor.enter();
+		visitor.continue();
+		visitor.tick(1100);
+		expect(visitor.ended).toBe(true);
+		// The completed interpreter would ignore presentation entry; free
+		// exploration must begin on a fresh neutral run.
+		visitor.beginFreeExploration();
+		expect(visitor.ended).toBe(false);
+		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
+		expect(visitor.currentViewId).toBe('view-1');
+	});
+
+	it('keeps an explicit free View over the interpreter default that follows its selection', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		await mountDirector(visitor, undefined, graph(), true, { viewOverride: 'view-2' });
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+		// Selecting the Place triggers an interpreter state write whose Default is
+		// view-2; the override must still own the effective View, not reframe it.
+		visitor.selectPresentation('presentation-2');
+		await tick();
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+	});
+
+	it('realizes the zero-hold Travel a Preview tick crossed before the next Cut', async () => {
+		const visitor = runtime({
+			stops: [
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					views: [
+						{ viewId: 'view-1', holdSeconds: 1, step: null },
+						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-2' } },
+						{ viewId: 'view-1', holdSeconds: 1, step: { kind: 'cut', viewId: 'view-1' } }
+					],
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		visitor.enter();
+		await mountDirector(visitor, undefined, graph(), true, { timeAligned: true });
+		for (let index = 0; index < 70; index += 1) await frame();
+		expect(harness.starts).toHaveLength(1);
+		const route = harness.starts[0] as { edges?: Array<{ connectionId?: string; direction?: string }> };
+		expect(route.edges?.[0]).toEqual(expect.objectContaining({ connectionId: 'connection-2', direction: 'forward' }));
+		const mid = mockCamera().lastPoint;
+		expect(mid.x).toBeGreaterThan(0);
+		expect(mid.x).toBeLessThan(4);
+	});
+
+	it('consumes a queued same-View Cut so the next Stop hold can progress', async () => {
+		const visitor = runtime({
+			stops: [
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					views: [{ viewId: 'view-1', holdSeconds: 0.2, step: null }],
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					continuation: { kind: 'sequence-next' }
+				},
+				{
+					id: 'stop-2',
+					presentationId: 'presentation-1',
+					views: [{ viewId: 'view-1', holdSeconds: 0.2, step: null }],
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		visitor.enter();
+		await mountDirector(visitor, undefined, graph(), true, { timeAligned: true });
+		for (let index = 0; index < 20; index += 1) await frame(0.05);
+		expect(visitor.ended).toBe(true);
+	});
+
+	it('leaving during a queued sequence discards guidance and frames the chosen View', async () => {
+		const visitor = runtime({
+			stops: [
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					views: [
+						{ viewId: 'view-1', holdSeconds: 1, step: null },
+						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-2' } },
+						{ viewId: 'view-1', holdSeconds: 1, step: { kind: 'cut', viewId: 'view-1' } }
+					],
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		visitor.enter();
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		const host = mount(VisitorDirectorHost, {
+			target,
+			props: { graph: graph(), visitor, timeAligned: true }
+		});
+		cleanup = () => unmount(host);
+		await tick();
+		for (let index = 0; index < 70; index += 1) await frame();
+		expect(harness.starts.length).toBeGreaterThan(0);
+		const before = mockCamera().lastPoint.x;
+		expect(before).toBeGreaterThan(0);
+		expect(before).toBeLessThan(4);
+		host.setOverride('view-2');
+		await tick();
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+		// The stale Cut that followed the Travel is not replayed after leaving.
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+	});
+
+	it('free entry and a default Place cancel queued guidance with a null override', async () => {
+		const visitor = runtime({
+			stops: [
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					views: [
+						{ viewId: 'view-1', holdSeconds: 1, step: null },
+						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-2' } },
+						{ viewId: 'view-1', holdSeconds: 1, step: { kind: 'cut', viewId: 'view-1' } }
+					],
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		visitor.enter();
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		const host = mount(VisitorDirectorHost, {
+			target,
+			props: { graph: graph(), visitor, timeAligned: true }
+		});
+		cleanup = () => unmount(host);
+		await tick();
+		for (let index = 0; index < 70; index += 1) await frame();
+		expect(harness.starts.length).toBeGreaterThan(0);
+		const traveling = mockCamera().lastPoint.x;
+		expect(traveling).toBeGreaterThan(0);
+		expect(traveling).toBeLessThan(4);
+
+		// Explore freely keeps freeViewId null, exactly like the surface. The
+		// pending Travel and queued Cut must be cancelled, not played first.
+		host.enterFree();
+		await tick();
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(0, 5);
+
+		// The default View of a chosen Place is also an explicit destination even
+		// though the override stays null. It frames immediately and no stale Cut
+		// returns the Camera to the guided View later.
+		host.choosePlace('presentation-2');
+		await tick();
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+		for (let index = 0; index < 180; index += 1) await frame();
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
 	});
 
 	it('an active director runs its task, and the default is active', async () => {

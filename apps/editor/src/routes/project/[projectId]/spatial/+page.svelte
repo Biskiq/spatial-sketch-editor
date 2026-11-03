@@ -38,7 +38,7 @@
 	 * a click selects through the eligible Plan fragments so a hidden or excluded
 	 * target can never intercept input.
 	 */
-	import { onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { DEFAULT_APP_PREFERENCES, readAppPreferences, writeAppPreferences, type AppPreferences } from '$lib/platform/app-preferences';
 	import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
 	import { beforeNavigate, goto, replaceState } from '$app/navigation';
@@ -138,7 +138,7 @@ import {
 	type PlanEvaluation,
 	type PlanMembershipReason
 } from '@portfolio/layout-core';
-	import { CAMERA_FOV, fovYDegreesOf, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, fovYDegreesOf, viewPlacementPose, type ViewingIntent, type ViewportCameraState, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -183,7 +183,10 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
 	import ExperienceGuideWriter from '$lib/authoring/experience/ExperienceGuideWriter.svelte';
 	import ExperienceSubjectWriter from '$lib/authoring/experience/ExperienceSubjectWriter.svelte';
-	import { provideExperienceHomes } from '$lib/authoring/experience/experience-homes';
+	import {
+		provideExperienceHomes,
+		type ExperienceGuideTransport
+	} from '$lib/authoring/experience/experience-homes';
 	import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 	import {
 		guideCardModel,
@@ -199,6 +202,11 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
+	import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
+	import {
+		createExperiencePlayback,
+		shouldWritePlaybackSample
+	} from '$lib/authoring/experience/playback.svelte';
 	import {
 		enterPreview,
 		nextPreviewRunEpoch,
@@ -442,6 +450,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let previewSurface = $state.raw<VisitorSurface | null>(null);
 	let previewEpoch = 0;
 	let previewBusy = $state(false);
+	/** An explicit Card action's entry mode (guided or free), or null for the head Preview. */
+	let previewRequestedMode = $state<'guided' | 'free' | null>(null);
+	type PlaybackView = {
+		readonly eye: [number, number, number];
+		readonly target: [number, number, number];
+		readonly fov: number;
+	};
+	/** S30 playback writes the one Camera through a set-view intent, never a pose copy. */
+	function applyPlaybackView(view: PlaybackView): boolean {
+		const stage = facade;
+		if (stage === null) return false;
+		const ticket = stage.inspectionTicket();
+		if (ticket === null) return false;
+		const result = stage.requestViewingIntent(
+			{ kind: 'set-view', eye: view.eye, target: view.target, fovYDegrees: view.fov },
+			ticket,
+			performance.now() / 1000
+		);
+		return result.kind === 'accepted';
+	}
 	/** The adapter services the Stage and the Experience homes edit through. */
 	let adapterServices = $state.raw<StageAdapterServices | null>(null);
 	/**
@@ -502,6 +530,197 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let throughFrameEl = $state<HTMLElement | null>(null);
 	/** Monotone guard: only the newest Present-this run may capture framing. */
 	let framingRun = 0;
+
+	/* --- R217.S30 — one Stage-owned ephemeral playback session ----------------- */
+
+	const playback = createExperiencePlayback(() => activeExperience?.playbackSource ?? null);
+	/** The exact settled inspection (pose **and** reading) Follow restores. */
+	let playbackEntryStandpoint = $state.raw<ViewportCameraState | null>(null);
+	/** The Stage that captured the standpoint; a replacement must never inherit it. */
+	let playbackEntryStage = $state.raw<object | null>(null);
+	/** A restore refused while a handoff owned the Camera; retry only on the same Stage. */
+	let playbackRestorePending = $state.raw<{ readonly stage: object; readonly standpoint: ViewportCameraState } | null>(null);
+	/** Playback is a Guide instrument: any takeover or armed tool ends it. */
+	const playbackSuppressed = $derived(
+		preview !== null ||
+			previewBusy ||
+			previewRequestedMode !== null ||
+			lookThroughSession !== null ||
+			placementPress !== null ||
+			placementAim !== null ||
+			(activeExperience?.pathArmed ?? false) ||
+			experienceTool === 'place' ||
+			lens !== 'experience' ||
+			!experienceGuideOpen
+	);
+
+	/** A Card transport action opens its own Guide; the rail need not be open first. */
+	function guideSeconds(guideId: string): number | null {
+		const source = activeExperience?.playbackSourceFor(guideId) ?? null;
+		if (source === null) return null;
+		const map = guideTimeMapForProgram({
+			program: source.program,
+			transitions: source.transitions,
+			graph: source.graph,
+			entryStopId: source.entryStopId
+		});
+		return map.kind === 'ready' ? map.map.totalSeconds : null;
+	}
+
+	function playGuide(guideId: string, action: ExperienceGuideTransport): void {
+		const controller = activeExperience;
+		if (
+			controller === null ||
+			lens !== 'experience' ||
+			preview !== null ||
+			previewBusy ||
+			previewRequestedMode !== null ||
+			lookThroughSession !== null ||
+			placementPress !== null ||
+			placementAim !== null ||
+			controller.pathArmed ||
+			experienceTool === 'place'
+		) return;
+		controller.openGuide(guideId);
+		experienceGuideOpen = true;
+		void tick().then(() => {
+			if (activeExperience !== controller || !experienceGuideOpen) return;
+			playback.prepare();
+			if (action.kind === 'start') playback.playFromStart();
+			else if (action.kind === 'stop') playback.playFromStop(action.stopId);
+			else playback.previewMove(action.occurrence);
+		});
+	}
+
+	/** Synchronously end Follow and restore its exact entry before any handoff. */
+	function stopPlaybackAndRestore(): void {
+		const stage = facade;
+		if (playbackRestorePending !== null && playbackRestorePending.stage !== stage) playbackRestorePending = null;
+		playback.stop();
+		if (playbackEntryStandpoint !== null) restorePlaybackEntry(stage);
+	}
+
+	function restorePlaybackEntry(stage: typeof facade = facade): boolean {
+		const standpoint = playbackEntryStandpoint;
+		if (standpoint === null) return true;
+		if (stage === null || playbackEntryStage !== stage) {
+			// Never write an old Stage's standpoint into a replacement.
+			playbackEntryStandpoint = null;
+			playbackEntryStage = null;
+			return false;
+		}
+		if (!stage.camera.restoreStandpoint(standpoint)) {
+			playbackRestorePending = { stage, standpoint };
+			return false;
+		}
+		playbackEntryStandpoint = null;
+		playbackEntryStage = null;
+		playbackRestorePending = null;
+		return true;
+	}
+
+	$effect(() => {
+		const source = activeExperience?.playbackSource ?? null;
+		playback.setReducedMotion(reducedMotion);
+		playback.setBlocked(playbackSuppressed);
+		if (source === null || lens !== 'experience' || !experienceGuideOpen) {
+			stopPlaybackAndRestore();
+			return;
+		}
+		// Derive as soon as the Guide opens; an accepted edit derives a new map
+		// immediately and stops the old clock. Refused edits never reach here.
+		if (playback.source !== source || playback.map === null) {
+			if (playback.following) stopPlaybackAndRestore();
+			playback.invalidate();
+			playback.prepare();
+		}
+	});
+	$effect(() => {
+		if (playbackSuppressed && playback.status !== 'idle') stopPlaybackAndRestore();
+	});
+	$effect(() => {
+		if (playback.following && playbackEntryStandpoint === null && facade !== null) {
+			playbackEntryStandpoint = facade.camera.captureStandpoint();
+			playbackEntryStage = facade;
+		}
+	});
+	$effect(() => {
+		if (!playback.following && playbackEntryStandpoint !== null) restorePlaybackEntry();
+	});
+	$effect(() => {
+		const stage = facade;
+		void lookThroughSession;
+		void preview;
+		if (playbackRestorePending === null) return;
+		if (lookThroughSession !== null || preview !== null) return;
+		if (playbackRestorePending.stage !== stage) {
+			playbackRestorePending = null;
+			return;
+		}
+		const pending = playbackRestorePending;
+		playbackRestorePending = null;
+		restorePlaybackEntry(stage);
+		void pending;
+	});
+	$effect(() => {
+		// A replacement owns a new Camera: drop, never transplant, the old entry.
+		if (playbackEntryStage !== null && playbackEntryStage !== facade) {
+			playbackEntryStandpoint = null;
+			playbackEntryStage = null;
+		}
+		if (playbackRestorePending !== null && playbackRestorePending.stage !== facade) playbackRestorePending = null;
+	});
+	$effect(() => () => {
+		if (playbackEntryStandpoint !== null) restorePlaybackEntry();
+	});
+	$effect(() => {
+		if (playback.status !== 'playing' || playbackSuppressed) return;
+		let last = performance.now();
+		let frame = 0;
+		const step = (now: number) => {
+			const delta = (now - last) / 1000;
+			last = now;
+			playback.tick(delta);
+			frame = requestAnimationFrame(step);
+		};
+		frame = requestAnimationFrame(step);
+		return () => cancelAnimationFrame(frame);
+	});
+	// The one Camera write: an evaluated pose only during Follow. Plain play and
+	// scrub move the playhead and rig puck, never the inspection.
+	$effect(() => {
+		const sample = playback.sample;
+		if (sample === null || !shouldWritePlaybackSample(playback.following, playbackSuppressed)) return;
+		const accepted = applyPlaybackView({
+			eye: [sample.eye[0], sample.eye[1], sample.eye[2]],
+			target: [sample.target[0], sample.target[1], sample.target[2]],
+			fov: sample.fov
+		});
+		// A refused write stops the run instead of letting the playhead drift on
+		// a Camera the Stage no longer owns.
+		if (!accepted) playback.fail('The Stage refused the playback camera.');
+	});
+	$effect(() => {
+		const onKey = (event: KeyboardEvent) => {
+			if (event.defaultPrevented) return;
+			if (event.key === 'Escape' && playback.following) {
+				event.preventDefault();
+				playback.setFollow(false);
+				return;
+			}
+			if (event.key !== ' ' || !experienceGuideOpen || lens !== 'experience' || preview !== null) return;
+			if (activeExperience?.busy === true || playbackSuppressed) return;
+			const target = event.target;
+			if (
+				target instanceof HTMLElement &&
+				target.closest('input, textarea, select, button, a[href], [contenteditable="true"], [role="menu"], [role="slider"]') !== null
+			) return;
+			event.preventDefault();
+			playback.playPause();
+		};
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	});
 
 	type ViewEditKind = 'move' | 'aim';
 	type ViewEditSession = {
@@ -611,6 +830,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (lookThroughSession !== null) exitLookThrough();
+		stopPlaybackAndRestore();
 		experienceTool = 'place';
 		placementAim = null;
 		notice = 'Place a View: press where the camera stands, drag toward what it sees · Esc';
@@ -886,6 +1106,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			notice = 'That View is not in this project.';
 			return;
 		}
+		// The moving Follow pose must never become Look through's entry memory.
+		stopPlaybackAndRestore();
 		const result = stage.camera.beginLookThrough({
 			viewId,
 			presentationId: owner,
@@ -1012,6 +1234,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				];
 		if (stage.camera.state().reading === 'plan' || evaluation?.projectionKind === 'plan-orthographic') {
 			placementAim = target;
+			stopPlaybackAndRestore();
 			experienceTool = 'place';
 			notice = `Place a View aimed at ${label}: press where the camera stands.`;
 			return;
@@ -1107,7 +1330,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		exitLookThrough,
 		updateLookThrough: () => updateLookThrough(),
 		captureProvisional,
-		presentThis
+		presentThis,
+		playback: () => playback,
+		previewMode: (mode, guideId) => void openPreview(mode, guideId),
+		guideSeconds,
+		guideForStop: (stopId) => experienceController?.guideForStop(stopId) ?? null,
+		playGuide
 	});
 	// The controller can set a subject itself (a Capture, an added Stop); the Stage selection it
 	// replaces must not linger beside it.
@@ -1152,6 +1380,28 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
+	/** The visitor-facing View labels Places reads; program ids stay the identity. */
+	const previewViewLabels = $derived(
+		new Map<string, string>(
+			(currentEnvelope?.units.camera.data.views ?? []).map((view) => [view.id, view.label])
+		)
+	);
+	/** The welcome chooser's guided estimate, from the one lowered time map. */
+	const previewGuideStats = $derived.by(() => {
+		const view = previewView;
+		const graph = previewViewRead?.graph ?? null;
+		if (view === null || view.entry.kind !== 'program' || graph === null) return { stops: 0, seconds: 0 };
+		const read = guideTimeMapForProgram({
+			program: view.entry.program,
+			transitions: view.entry.transitions,
+			graph,
+			entryStopId: view.entry.program.entryStopId
+		});
+		return {
+			stops: view.entry.program.stops.length,
+			seconds: read.kind === 'ready' ? read.map.totalSeconds : 0
+		};
+	});
 	let preparedLifecycleEpoch: ReplacementEpochToken | null = null;
 	const projectActionsUnavailableReason = $derived.by(() => {
 		void headSaveVersion;
@@ -1232,6 +1482,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const stage = facade;
 		const active = preview;
 		preview = null;
+		previewRequestedMode = null;
 		// A hold entered before Preview may have been released while its keyup was
 		// guarded; leaving Preview always reconciles Snap to the physical modifier.
 		if (drafting.snapSuspended) patchDrafting({ snapSuspended: false });
@@ -1264,22 +1515,33 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * replacement or teardown that landed while the chunk loaded owns the Stage now,
 	 * so the handover is not entered against the newer source.
 	 */
-	async function openPreview(): Promise<void> {
+	async function openPreview(mode: 'guided' | 'free' | null = null, guideId: string | null = null): Promise<void> {
 		if (previewBusy || preview !== null || (boot.status !== 'ready' && boot.status !== 'empty')) return;
 		perfMark('preview:press');
 		const stage = facade;
 		if (stage === null) return;
+		previewRequestedMode = mode;
+		// Playback is a Guide instrument, not an authoring mode that survives a
+		// visitor takeover. Restore its exact entry synchronously before the
+		// Camera ticket moves; waiting for an effect would capture the Follow pose.
+		stopPlaybackAndRestore();
 		const snapshot = boot.snapshot;
 		const token = session.token();
 		previewBusy = true;
+		let entered = false;
 		try {
 			const runEpoch = nextPreviewRunEpoch(stage.camera.output(), ++previewEpoch);
+			// A Card action names its own Guide; it must not inherit a selected Stop,
+			// another open Guide, or a previously focused Presentation.
+			const focus = guideId === null
+				? experienceFocus.read()
+				: { ...experienceFocus.read(), guideId, stopId: null, presentationId: null };
 			const entry = previewEntryFor({
 				envelope: stageEnvelope(snapshot),
 				sourceContentId: snapshot.sourceContentId,
 				sessionEpoch: snapshot.sessionEpoch,
 				epoch: runEpoch,
-				focus: experienceFocus.read()
+				focus
 			});
 			if (entry.kind === 'unavailable') {
 				notice = entry.message;
@@ -1316,8 +1578,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			previewViewRead = snapshot.domain;
 			previewView = { entry, epoch: handover.runEpoch };
 			preview = { entry, epoch: handover.runEpoch };
+			entered = true;
 			perfMark('preview:entered', { runEpoch: handover.runEpoch, mode: entry.kind });
 		} finally {
+			// Any abandoned entry (unavailable, load failure, stale source or refused
+			// handover) must not keep playback suppressed by a stale requested mode.
+			if (!entered) previewRequestedMode = null;
 			previewBusy = false;
 		}
 	}
@@ -5507,6 +5773,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#if lens === 'experience' && evaluation !== null && lookThroughSession === null}
 						<ExperienceMarks
 							{evaluation}
+							rig={playback.status === 'idle' ? null : playback.sample}
 							onLookThrough={lookThroughView}
 							{showMarkers}
 							{showFrustums}
@@ -5825,6 +6092,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{modelUrls}
 						{reducedMotion}
 						title={entry?.title ?? null}
+						experienceTitle={entry?.title ?? null}
+						startMode={previewRequestedMode ?? (entry?.kind === 'program' && entry.entryPresentationId !== null ? 'presentation' : 'welcome')}
+						guideStopCount={previewGuideStats.stops}
+						guideSeconds={previewGuideStats.seconds}
+						viewLabels={previewViewLabels}
 						onExit={closePreview}
 					/>
 				</div>
@@ -5903,8 +6175,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							if (activeExperience === null) return;
 							if (activeExperience.pathArmed) activeExperience.setPathArmed(false);
 							else if (activeExperience.selectedPath?.state === 'ready') {
-								// Path editing is a Plan surface; arming from 3D enters it first.
-								if (draftingReading !== 'plan') setReading('plan');
+								// Restore the exact entry reading before asking the tool for Plan. The
+								// displayed reading can be stale while Follow changes the projection.
+								stopPlaybackAndRestore();
+								if ((facade?.camera.state().reading ?? '3d') !== 'plan') setReading('plan');
 								activeExperience.setPathArmed(true);
 							}
 						}}
@@ -5912,8 +6186,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onToggleGuide={toggleExperienceGuide}
 					/>
 					{#if activeExperience.message !== ''}<p class="experience-feedback" role="status" aria-live="polite">{activeExperience.message}</p>{/if}
-					{#if experienceGuideOpen}
-						<ExperienceGuide onClose={() => (experienceGuideOpen = false)} />
+					{#if experienceGuideOpen}							<ExperienceGuide
+								onClose={() => (experienceGuideOpen = false)}
+								{playback}
+							/>
 					{/if}
 				{/if}
 				{#if contributedInstrument!==null && contributedInstrument.presentation !== 'palette'}
