@@ -138,7 +138,7 @@ import {
 	type PlanEvaluation,
 	type PlanMembershipReason
 } from '@portfolio/layout-core';
-	import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, fovYDegreesOf, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -172,6 +172,10 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
 	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
+	import ExperienceMarks from '$lib/authoring/experience/ExperienceMarks.svelte';
+	import { EXPERIENCE_COACH } from '$lib/authoring/experience/experience-marks';
+	import { nextLensStep } from '$lib/authoring/experience/look-through';
+	import { aimViewAtPoint, moveViewOnFloor, viewEditMoved, type AuthoredViewPose } from '$lib/authoring/experience/experience-view-edit';
 	import ExperienceGuide from '$lib/authoring/experience/ExperienceGuide.svelte';
 	import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePresentationWriter.svelte';
 	import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
@@ -321,6 +325,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return (lifecycle.task.lens ?? 'world') === lens ? lifecycle.task : null;
 	});
 	function changeLens(next: 'world' | 'experience'): void {
+		// A lens switch invalidates any Present-this framing run still waiting.
+		framingRun += 1;
 		// Preview returns to the lens it was entered from; a lens switch ends it.
 		closePreview();
 		clearHover();
@@ -469,6 +475,558 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		return { entityId: selected.reference.subject.id, label: cardIdentity?.label ?? 'Object' };
 	});
+	/* --- R217.S28 — Place a View, Look through and Present this --------------- */
+
+	type StageTriple = [number, number, number];
+
+	/** Place a View is an armed Stage tool; Look through is a provisional posture. */
+	let experienceTool = $state<'select' | 'place'>('select');
+	let placementPress = $state<{ readonly pointerId: number; readonly start: StageTriple; current: StageTriple } | null>(null);
+	let placementGhost = $state<{ readonly eye: StageTriple; readonly target: StageTriple | null } | null>(null);
+	/** Present this in Plan aims the armed placement at the subject. */
+	let placementAim = $state<StageTriple | null>(null);
+	let lookThroughSession = $state<{ readonly viewId: string; readonly presentationId: string; readonly label: string } | null>(null);
+	let lookThroughTick = $state(0);
+	let lookThroughConfirm = $state<readonly string[] | null>(null);
+	let reaimPress = $state<{ readonly pointerId: number } | null>(null);
+	/** The capture frame's measured local viewport for the one Stage renderer. */
+	let throughViewport = $state<{ readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
+	let throughFrameEl = $state<HTMLElement | null>(null);
+	/** Monotone guard: only the newest Present-this run may capture framing. */
+	let framingRun = 0;
+
+	type ViewEditKind = 'move' | 'aim';
+	type ViewEditSession = {
+		readonly viewId: string;
+		readonly presentationId: string;
+		readonly kind: ViewEditKind;
+		readonly pointerId: number;
+		readonly capture: Element;
+		readonly start: AuthoredViewPose;
+		eye: StageTriple;
+		target: StageTriple;
+		moved: boolean;
+	};
+	/** A live Plan marker drag: the authored View is untouched until release. */
+	let viewEdit = $state<ViewEditSession | null>(null);
+	/** A marker edit that changes a View another Presentation also lists, awaiting confirmation. */
+	let pendingViewWrite = $state<{
+		readonly viewId: string;
+		readonly presentationId: string;
+		readonly pose: AuthoredViewPose;
+		readonly alsoIn: readonly string[];
+	} | null>(null);
+
+	const experienceFloorDatum = $derived.by(() =>
+		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0
+	);
+
+	const lookThroughMoved = $derived.by(() => {
+		void lookThroughTick;
+		return facade?.camera.lookThrough()?.moved ?? false;
+	});
+
+	function floorPlane(): {
+		readonly originMeters: StageTriple;
+		readonly normal: StageTriple;
+		readonly yawRadians: number;
+		readonly datumMeters: number;
+		readonly supportedLocalExtent: null;
+	} {
+		return {
+			originMeters: [0, experienceFloorDatum, 0],
+			normal: [0, 1, 0],
+			yawRadians: 0,
+			datumMeters: experienceFloorDatum,
+			supportedLocalExtent: null
+		};
+	}
+
+	/** The Floor point under one pointer, through Camera's own ray and plane hit. */
+	function placementPoint(event: PointerEvent): StageTriple | null {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		if (stage === null || id === null) return null;
+		const ray = stage.pointerRay(absoluteCss(event), id);
+		if (ray.kind !== 'ray') return null;
+		const hit = stage.intersectWorkingPlane(ray.ray, floorPlane(), id);
+		return hit.kind === 'intersected' ? hit.worldPoint : null;
+	}
+
+	function togglePlaceView(): void {
+		if (lens !== 'experience' || viewEdit !== null) return;
+		if (experienceTool === 'place') {
+			experienceTool = 'select';
+			placementAim = null;
+			cancelPlacement();
+			notice = '';
+			return;
+		}
+		if (lookThroughSession !== null) exitLookThrough();
+		experienceTool = 'place';
+		placementAim = null;
+		notice = 'Place a View: press where the camera stands, drag toward what it sees · Esc';
+	}
+
+	function viewMarkAt(event: PointerEvent): { readonly viewId: string; readonly kind: string } | null {
+		const target = event.target;
+		if (!(target instanceof Element)) return null;
+		const mark = target.closest('[data-view-mark]');
+		const viewId = mark?.getAttribute('data-view-mark') ?? null;
+		const kind = mark?.getAttribute('data-mark-kind') ?? null;
+		return viewId === null || kind === null ? null : { viewId, kind };
+	}
+
+	function beginViewEdit(event: PointerEvent, viewId: string, kind: ViewEditKind): void {
+		if (event.button !== 0 || event.shiftKey || viewEdit !== null) return;
+		const stage = facade;
+		const controller = activeExperience;
+		const id = stage?.evaluationId() ?? null;
+		if (stage === null || controller === null || id === null || evaluation?.projectionKind !== 'plan-orthographic') return;
+		const facts = controller.viewFacts(viewId);
+		const pose = controller.viewPose(viewId);
+		if (facts === null || pose === null) return;
+		const acquisition = stage.acquireGesture({
+			owner: 'experience-view-edit',
+			evaluationId: id,
+			policy: 'cancel-on-reading-change'
+		});
+		if (acquisition.kind !== 'granted') {
+			notice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+			return;
+		}
+		// Capture on the pressed marker, not the Stage: the SVG circle keeps its
+		// click/double-click target for the whole press, including a no-move click.
+		const capture = event.target instanceof Element ? event.target : null;
+		if (capture === null) {
+			session.gesture()?.release();
+			return;
+		}
+		capture.setPointerCapture(event.pointerId);
+		clearHover();
+		viewEdit = {
+			viewId,
+			presentationId: facts.presentationId,
+			kind,
+			pointerId: event.pointerId,
+			capture,
+			start: pose,
+			eye: [pose.eye[0], pose.eye[1], pose.eye[2]],
+			target: [pose.target[0], pose.target[1], pose.target[2]],
+			moved: false
+		};
+	}
+
+	function viewEditPose(event: PointerEvent, edit: ViewEditSession, id: string): AuthoredViewPose | null {
+		const stage = facade;
+		if (stage === null) return null;
+		const ray = stage.pointerRay(absoluteCss(event), id);
+		if (ray.kind !== 'ray') return null;
+		if (edit.kind === 'move') {
+			const hit = stage.intersectWorkingPlane(ray.ray, floorPlane(), id);
+			return hit.kind === 'intersected' ? moveViewOnFloor(edit.start, hit.worldPoint) : null;
+		}
+		// Aim on the target's own horizontal plane: the Plan handle moves in X/Z and
+		// keeps the target height it already had.
+		const hit = stage.intersectWorkingPlane(
+			ray.ray,
+			{
+				originMeters: [edit.start.target[0], edit.start.target[1], edit.start.target[2]],
+				normal: [0, 1, 0],
+				yawRadians: 0,
+				datumMeters: experienceFloorDatum,
+				supportedLocalExtent: null
+			},
+			id
+		);
+		return hit.kind === 'intersected' ? aimViewAtPoint(edit.start, hit.worldPoint) : null;
+	}
+
+	function updateViewEdit(event: PointerEvent): void {
+		const edit = viewEdit;
+		const id = facade?.evaluationId() ?? null;
+		if (edit === null || id === null || event.pointerId !== edit.pointerId) return;
+		const pose = viewEditPose(event, edit, id);
+		if (pose === null) return;
+		const moved = viewEditMoved(edit.kind, edit.start, pose);
+		viewEdit = {
+			...edit,
+			eye: [pose.eye[0], pose.eye[1], pose.eye[2]],
+			target: [pose.target[0], pose.target[1], pose.target[2]],
+			moved
+		};
+	}
+
+	function releaseViewEditPointer(edit: ViewEditSession): void {
+		if (edit.capture.hasPointerCapture?.(edit.pointerId)) edit.capture.releasePointerCapture(edit.pointerId);
+		session.gesture()?.release();
+	}
+
+	// A lease ended by a reading change (or another writer) is the authority's
+	// cancellation signal: discard the provisional pose and never author it.
+	$effect(() => {
+		const edit = viewEdit;
+		if (edit === null) return;
+		void evaluation?.token.evaluationGeneration;
+		if (facade === null || session.gesture() === null) untrack(() => cancelViewEdit());
+	});
+
+	function cancelViewEdit(): void {
+		const edit = viewEdit;
+		viewEdit = null;
+		if (edit === null) return;
+		releaseViewEditPointer(edit);
+	}
+
+	async function endViewEdit(): Promise<void> {
+		const edit = viewEdit;
+		viewEdit = null;
+		if (edit === null) return;
+		releaseViewEditPointer(edit);
+		if (!edit.moved) return;
+		const controller = activeExperience;
+		if (controller === null) return;
+		const outcome = await controller.updateViewPose(
+			edit.viewId,
+			{ eye: edit.eye, target: edit.target, fov: edit.start.fov },
+			edit.presentationId,
+			{ confirmShared: false }
+		);
+		if (outcome.kind === 'needs-confirmation') {
+			pendingViewWrite = {
+				viewId: edit.viewId,
+				presentationId: edit.presentationId,
+				pose: { eye: edit.eye, target: edit.target, fov: edit.start.fov },
+				alsoIn: outcome.alsoIn
+			};
+			return;
+		}
+		if (outcome.kind === 'updated') {
+			notice = edit.kind === 'move' ? 'View moved.' : 'View re-aimed.';
+			refresh();
+			return;
+		}
+		notice = outcome.message;
+	}
+
+	async function confirmPendingViewWrite(): Promise<void> {
+		const pending = pendingViewWrite;
+		pendingViewWrite = null;
+		if (pending === null) return;
+		const controller = activeExperience;
+		if (controller === null) return;
+		const outcome = await controller.updateViewPose(pending.viewId, pending.pose, pending.presentationId, {
+			confirmShared: true
+		});
+		if (outcome.kind === 'updated') {
+			notice = 'View updated.';
+			refresh();
+		} else if (outcome.kind === 'refused') {
+			notice = outcome.message;
+		}
+	}
+
+	function beginPlacement(event: PointerEvent): void {
+		if (event.button !== 0) return;
+		const point = placementPoint(event);
+		if (point === null) {
+			notice = 'Point at the Floor to place a View.';
+			return;
+		}
+		placementPress = { pointerId: event.pointerId, start: point, current: point };
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		// Until the drag clears 0.5 m there is no pose to preview; the same Camera
+		// constructor below decides both the preview and the committed pose.
+		placementGhost = null;
+	}
+
+	function placementPose(press: { start: StageTriple; current: StageTriple }, aim: StageTriple | null) {
+		return viewPlacementPose({
+			startFloorPoint: press.start,
+			currentFloorPoint: press.current,
+			aimPoint: aim,
+			floorDatumMeters: experienceFloorDatum,
+			fovYDegrees: CAMERA_FOV.default
+		});
+	}
+
+	function movePlacement(event: PointerEvent): void {
+		const press = placementPress;
+		if (press === null) return;
+		const point = placementPoint(event);
+		if (point === null) return;
+		const current = { ...press, current: point };
+		placementPress = current;
+		const pose = placementPose(current, placementAim);
+		placementGhost = pose === null ? null : { eye: pose.eye, target: pose.target };
+	}
+
+	function cancelPlacement(): void {
+		const press = placementPress;
+		placementPress = null;
+		placementGhost = null;
+		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+	}
+
+	function endPlacement(): void {
+		const press = placementPress;
+		const aim = placementAim;
+		placementPress = null;
+		placementGhost = null;
+		placementAim = null;
+		if (press === null) return;
+		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+		const pose = placementPose(press, aim);
+		if (pose === null) {
+			notice = 'Drag at least 0.5 m to place a View.';
+			return;
+		}
+		const controller = activeExperience;
+		if (controller === null) return;
+		void controller.placeView({ eye: pose.eye, target: pose.target, fov: pose.fovYDegrees }).then((outcome) => {
+			if (outcome.kind === 'refused') {
+				notice = outcome.message;
+				return;
+			}
+			if (outcome.createdPresentation) {
+				cardOpen = true;
+				// X28.2: the new Presentation opens its existing inline name editor.
+				cardRenameRequest += 1;
+				notice = 'Presentation created; name it in the Card.';
+			} else {
+				notice = 'View placed.';
+			}
+		});
+	}
+
+	function beginReaim(event: PointerEvent): void {
+		if (event.button !== 0) return;
+		const session = lookThroughSession;
+		if (session === null) return;
+		reaimPress = { pointerId: event.pointerId };
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+	}
+
+	function moveReaim(event: PointerEvent): void {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		const press = reaimPress;
+		if (stage === null || id === null || press === null || event.pointerId !== press.pointerId) return;
+		const ray = stage.pointerRay(absoluteCss(event), id);
+		if (ray.kind !== 'ray') return;
+		if (stage.camera.reaimLookThroughRay(ray.ray)) {
+			lookThroughTick += 1;
+			refresh();
+		}
+	}
+
+	function endReaim(): void {
+		const press = reaimPress;
+		reaimPress = null;
+		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+	}
+
+	function lookThroughView(viewId: string, presentationId?: string | null): void {
+		if (viewEdit !== null) return;
+		const stage = facade;
+		const controller = activeExperience;
+		if (stage === null || controller === null) return;
+		const facts = controller.viewFacts(viewId);
+		const pose = controller.viewPose(viewId);
+		const owner = presentationId ?? facts?.presentationId ?? null;
+		if (facts === null || pose === null || owner === null) {
+			notice = 'That View is not in this project.';
+			return;
+		}
+		const result = stage.camera.beginLookThrough({
+			viewId,
+			presentationId: owner,
+			label: facts.label,
+			eye: pose.eye,
+			target: pose.target,
+			fovYDegrees: pose.fov
+		});
+		if (result.kind === 'refused') {
+			notice = result.message;
+			return;
+		}
+		if (experienceTool === 'place') {
+			experienceTool = 'select';
+			cancelPlacement();
+		}
+		framingRun += 1;
+		lookThroughSession = { viewId, presentationId: owner, label: facts.label };
+		lookThroughConfirm = null;
+		lookThroughTick += 1;
+		refresh();
+	}
+
+	function exitLookThrough(): void {
+		framingRun += 1;
+		facade?.camera.endLookThrough();
+		lookThroughSession = null;
+		lookThroughConfirm = null;
+		lookThroughTick += 1;
+		refresh();
+	}
+
+	/** Lens and Eye height step only the provisional Camera; Update View commits them. */
+	function setLookThroughLens(fovYDegrees: number): boolean {
+		const stage = facade;
+		if (stage === null || lookThroughSession === null) return false;
+		if (!stage.camera.stepLookThroughLens(fovYDegrees)) return false;
+		lookThroughTick += 1;
+		refresh();
+		return true;
+	}
+
+	function setLookThroughEyeHeight(metres: number): boolean {
+		const stage = facade;
+		if (stage === null || lookThroughSession === null) return false;
+		if (!stage.camera.setLookThroughEyeHeight(metres, experienceFloorDatum)) return false;
+		lookThroughTick += 1;
+		refresh();
+		return true;
+	}
+
+	async function updateLookThrough(confirmShared = false): Promise<void> {
+		const controller = activeExperience;
+		const stage = facade;
+		const session = lookThroughSession;
+		if (controller === null || stage === null || session === null) return;
+		const provisional = stage.camera.provisionalView();
+		if (provisional === null) return;
+		const outcome = await controller.updateViewPose(
+			session.viewId,
+			{ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees },
+			session.presentationId,
+			{ confirmShared }
+		);
+		if (outcome.kind === 'needs-confirmation') {
+			lookThroughConfirm = outcome.alsoIn;
+			return;
+		}
+		if (outcome.kind === 'updated') {
+			stage.camera.commitLookThrough();
+			lookThroughConfirm = null;
+			lookThroughTick += 1;
+			refresh();
+			return;
+		}
+		notice = outcome.message;
+	}
+
+	async function captureProvisional(): Promise<void> {
+		const controller = activeExperience;
+		const provisional = facade?.camera.provisionalView() ?? null;
+		if (controller === null || provisional === null) return;
+		await controller.capturePose({ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees });
+	}
+
+	async function waitForFraming(
+		center: StageTriple,
+		run: number
+	): Promise<{ eye: StageTriple; target: StageTriple; fov: number } | null> {
+		const stage = facade;
+		if (stage === null) return null;
+		for (let frame = 0; frame < 120; frame += 1) {
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			if (facade !== stage || run !== framingRun) return null;
+			const state = stage.camera.state();
+			const painted = stage.evaluation();
+			if (state.reading !== '3d' || state.transition !== null) continue;
+			if (painted === null || painted.renderedReading !== '3d') continue;
+			const target = painted.target;
+			if (Math.hypot(target[0] - center[0], target[1] - center[1], target[2] - center[2]) > 0.01) continue;
+			return {
+				eye: [painted.eye[0], painted.eye[1], painted.eye[2]],
+				target: [target[0], target[1], target[2]],
+				fov: fovYDegreesOf(painted.pose)
+			};
+		}
+		return null;
+	}
+
+	/** E9 — frame the subject visibly through Camera, then read the evaluated pose. */
+	async function presentThis(entityId: string, label: string): Promise<void> {
+		const stage = facade;
+		const controller = activeExperience;
+		if (stage === null || controller === null) return;
+		framingRun += 1;
+		const run = framingRun;
+		const bounds = stage.sceneBounds(entityId);
+		const target: StageTriple | null = bounds === null
+			? null
+			: [
+					(bounds.min[0] + bounds.max[0]) / 2,
+					(bounds.min[1] + bounds.max[1]) / 2,
+					(bounds.min[2] + bounds.max[2]) / 2
+				];
+		if (stage.camera.state().reading === 'plan' || evaluation?.projectionKind === 'plan-orthographic') {
+			placementAim = target;
+			experienceTool = 'place';
+			notice = `Place a View aimed at ${label}: press where the camera stands.`;
+			return;
+		}
+		if (target === null) {
+			notice = 'That subject has no drawn body to frame.';
+			return;
+		}
+		const request = submit({ kind: 'bring-into-view', target }, nowSeconds());
+		if (request === null || request.kind !== 'accepted') {
+			notice = 'Camera refused the framing request; nothing was presented.';
+			return;
+		}
+		const framed = await waitForFraming(target, run);
+		if (run !== framingRun || facade !== stage) return;
+		if (framed === null) {
+			notice = 'The Stage could not frame that subject.';
+			return;
+		}
+		if (activeExperience !== controller) return;
+		const accepted = await controller.presentThisFramed(entityId, label, framed);
+		if (run !== framingRun) return;
+		notice = accepted
+			? `Presenting ${label}.`
+			: controller.message || 'Present this could not be accepted; check the subject and the current framing.';
+	}
+
+	// Leaving the lens ends the provisional posture; the entry standpoint is never
+	// restored into another lens's Camera.
+	$effect(() => {
+		if (lens !== 'experience' && lookThroughSession !== null) untrack(() => exitLookThrough());
+	});
+
+	const viewEditPreview = $derived.by(() => {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		const edit = viewEdit;
+		const origin = rect;
+		if (stage === null || id === null || edit === null || origin === null) return null;
+		const local = (point: readonly [number, number]): [number, number] => [point[0] - origin.left, point[1] - origin.top];
+		const eye = stage.projectWorld(edit.eye, id);
+		if (eye.kind !== 'projected') return null;
+		const target = stage.projectWorld(edit.target, id);
+		return {
+			kind: edit.kind,
+			eye: local(eye.css),
+			target: target.kind === 'projected' ? local(target.css) : null
+		};
+	});
+
+	const placementPreview = $derived.by(() => {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		const ghost = placementGhost;
+		const origin = rect;
+		if (stage === null || id === null || ghost === null || origin === null) return null;
+		const local = (point: readonly [number, number]): [number, number] => [point[0] - origin.left, point[1] - origin.top];
+		const eye = stage.projectWorld(ghost.eye, id);
+		if (eye.kind !== 'projected') return null;
+		const target = ghost.target === null ? null : stage.projectWorld(ghost.target, id);
+		return { eye: local(eye.css), target: target !== null && target.kind === 'projected' ? local(target.css) : null };
+	});
+
 	provideExperienceHomes({
 		controller: () => (lens === 'experience' ? experienceController : null),
 		guideOpen: () => experienceGuideOpen,
@@ -481,7 +1039,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			guideNamePrompt = presentationId;
 		},
 		sceneSubject: () => experienceSceneSubject,
-		openInWorld: () => changeLens('world')
+		openInWorld: () => changeLens('world'),
+		lookThroughViewId: () => lookThroughSession?.viewId ?? null,
+		lookThroughMoved: () => {
+			void lookThroughTick;
+			return facade?.camera.lookThrough()?.moved ?? false;
+		},
+		lookThroughFraming: () => {
+			void lookThroughTick;
+			const provisional = facade?.camera.provisionalView() ?? null;
+			return provisional === null
+				? null
+				: { fovYDegrees: provisional.fovYDegrees, eyeHeightMetres: provisional.eye[1] - experienceFloorDatum };
+		},
+		lookThroughLens: (fovYDegrees) => setLookThroughLens(fovYDegrees),
+		lookThroughEyeHeight: (metres) => setLookThroughEyeHeight(metres),
+		lookThrough: (viewId) => lookThroughView(viewId),
+		exitLookThrough,
+		updateLookThrough: () => updateLookThrough(),
+		captureProvisional,
+		presentThis
 	});
 	// The controller can set a subject itself (a Capture, an added Stop); the Stage selection it
 	// replaces must not linger beside it.
@@ -1125,6 +1702,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function activate(snapshot: StageReadSnapshot): void {
+		framingRun += 1;
 		// A completion that arrives after the route tore down must not mount a stage:
 		// nothing would ever dispose it, and it would hold a camera for a page that
 		// no longer exists.
@@ -2032,10 +2610,35 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const element = stageEl;
 		const width = element?.clientWidth ?? 0;
 		const height = element?.clientHeight ?? 0;
-		const left = element?.getBoundingClientRect().left ?? 0;
-		const top = element?.getBoundingClientRect().top ?? 0;
-		return { left, top, width, height, devicePixelRatio: window.devicePixelRatio || 1 };
+		const bounds = element?.getBoundingClientRect();
+		return { left: bounds?.left ?? 0, top: bounds?.top ?? 0, width, height, devicePixelRatio: window.devicePixelRatio || 1 };
 	}
+
+	/** The gold frame's content box: absolute for Camera, Stage-local for the scissor. */
+	function measureThroughFrame():
+		| { readonly absolute: ViewportRect; readonly local: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } }
+		| null {
+		const frame = throughFrameEl;
+		if (stageEl === undefined || frame === null) return null;
+		const stageRect = rect ?? measure();
+		const frameRect = frame.getBoundingClientRect();
+		const width = frameRect.width;
+		const height = frameRect.height;
+		if (!(width > 0 && height > 0)) return null;
+		const left = frameRect.left + frame.clientLeft;
+		const top = frameRect.top + frame.clientTop;
+		return {
+			absolute: { left, top, width, height, devicePixelRatio: window.devicePixelRatio || 1 },
+			local: { left: left - stageRect.left, top: top - stageRect.top, width, height }
+		};
+	}
+
+	// `bind:this` lands after the first look-through refresh; measure it then.
+	$effect(() => {
+		const frame = throughFrameEl;
+		const session = lookThroughSession;
+		if (frame !== null && session !== null) untrack(() => refresh());
+	});
 
 	function acceptRect(next: ViewportRect): void {
 		rect = next;
@@ -2076,7 +2679,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const lease = session.gesture();
 		const gesturing = lease !== null && lease.navigation !== true;
 		if (gesturing !== cardGesturing) cardGesturing = gesturing;
-		const currentRect = rect ?? measure();
+		// Look through renders the real picture inside its 16:10 capture frame; the
+		// same measured rect is both Camera's evaluation and the Canvas scissor.
+		let currentRect = rect ?? measure();
+		const framed = lookThroughSession === null ? null : measureThroughFrame();
+		if (framed !== null) currentRect = framed.absolute;
+		if (framed === null) {
+			if (throughViewport !== null) throughViewport = null;
+		} else if (
+			throughViewport === null ||
+			throughViewport.left !== framed.local.left ||
+			throughViewport.top !== framed.local.top ||
+			throughViewport.width !== framed.local.width ||
+			throughViewport.height !== framed.local.height
+		) {
+			throughViewport = framed.local;
+		}
 		const result = stage.camera.evaluate(currentRect, nowSeconds());
 		evaluation = result.kind === 'evaluated' ? result.evaluation : null;
 		if (evaluation === null) return;
@@ -2407,6 +3025,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function setReading(reading: '3d' | 'plan'): void {
+		framingRun += 1;
 		// Reduced motion cuts directly to the declared endpoint through the one
 		// settling rule — it is not a shortened tween.
 		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(reducedMotion, nowSeconds()));
@@ -2484,6 +3103,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function fit(): void {
 		const stage = facade;
 		if (stage === null || rect === null) return;
+		framingRun += 1;
 		const bounds = readStageContentBounds(stage);
 		if (bounds === null) return;
 		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, nowSeconds());
@@ -2498,19 +3118,24 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function bringIntoView(target: readonly [number, number, number]): void {
+		// A Card action competes with any Present-this run still waiting for its frame.
+		framingRun += 1;
 		submit({ kind: 'bring-into-view', target: [target[0], target[1], target[2]] }, nowSeconds());
 	}
 
 	function zoom(scale: number): void {
+		framingRun += 1;
 		submit({ kind: 'zoom', scale }, nowSeconds());
 	}
 
 	function pan(dx: number, dy: number): void {
 		if (rect === null) return;
+		framingRun += 1;
 		submit({ kind: 'pan', deltaCss: [dx, dy], rect }, nowSeconds());
 	}
 
 	function orbit(dAzimuth: number, dElevation: number): void {
+		framingRun += 1;
 		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
 	}
 
@@ -2810,6 +3435,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return [event.clientX - current.left, event.clientY - current.top];
 	}
 
+	/** Camera's pointerRay consumes absolute viewport CSS. */
+	function absoluteCss(event: PointerEvent): [number, number] {
+		return [event.clientX, event.clientY];
+	}
+
 	function onPointerDown(event: PointerEvent): void {
 		const stage = facade;
 		if (stage === null || evaluation === null) return;
@@ -2828,6 +3458,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
+		if (viewEdit !== null) return;
+		if (lens === 'experience' && lookThroughSession !== null) { beginReaim(event); return; }
+		if (lens === 'experience' && experienceTool === 'place') { beginPlacement(event); return; }
+		if (lens === 'experience' && lookThroughSession === null && experienceTool === 'select' && event.button === 0 && !event.shiftKey) {
+			const mark = viewMarkAt(event);
+			if (mark !== null) {
+				if (mark.kind === 'eye' || mark.kind === 'aim') {
+					beginViewEdit(event, mark.viewId, mark.kind === 'eye' ? 'move' : 'aim');
+				}
+				// A 3D glyph is a click entry, not navigation: never claim the Stage
+				// pointer lease or capture on the Stage ancestor.
+				return;
+			}
+		}
 		// The adapters get the press first: the binding that owns an open task (a Scene
 		// transform, an armed Ink chain) may claim it, and so may a binding that offers
 		// direct manipulation with no task at all (a selected Wall's handles). Only a
@@ -3047,6 +3691,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
+		if (viewEdit !== null) { updateViewEdit(event); return; }
 		if (pinch !== null) {
 			if (!pinch.has(event.pointerId)) return;
 			if (session.gesture() === null) { endPinch(); return; }
@@ -3059,6 +3704,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (oldDistance > 0 && newDistance > 0) zoom(oldDistance / newDistance);
 			return;
 		}
+		if (reaimPress !== null) { moveReaim(event); return; }
+		if (placementPress !== null) { movePlacement(event); return; }
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
 			hoverSample = { css: stageCss(event), shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
@@ -3159,6 +3806,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
+		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) void endViewEdit(); return; }
+		if (reaimPress !== null) { if (reaimPress.pointerId === event.pointerId) endReaim(); return; }
+		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) endPlacement(); return; }
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
 		// ended, not aborted. Only the owning pointer may end it — a refused second
@@ -3219,6 +3869,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interruptPress(reason: StageInterruptionReason): void {
+		if (viewEdit !== null) { cancelViewEdit(); return; }
 		if (pinch !== null) { endPinch(); clearHover(); return; }
 		const pointerId = press.owner();
 		if (pointerId === null || drag === null) { clearHover(); return; }
@@ -3239,10 +3890,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
+		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) cancelViewEdit(); return; }
+		if (reaimPress !== null) { if (reaimPress.pointerId === event.pointerId) endReaim(); return; }
+		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
+		if (viewEdit !== null && viewEdit.pointerId === event.pointerId) { cancelViewEdit(); return; }
+		if (reaimPress !== null && reaimPress.pointerId === event.pointerId) { endReaim(); return; }
+		if (placementPress !== null && placementPress.pointerId === event.pointerId) { cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
 
@@ -3288,6 +3945,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
+		if (viewEdit !== null) return;
+		const stage = facade;
+		if (lens === 'experience' && lookThroughSession !== null && stage !== null) {
+			// Scroll steps through the retained lens presets at a fixed eye and target.
+			const provisional = stage.camera.provisionalView();
+			if (provisional !== null) {
+				const step = nextLensStep(provisional.fovYDegrees, event.deltaY > 0 ? -1 : 1);
+				if (stage.camera.stepLookThroughLens(step.fovYDegrees)) {
+					lookThroughTick += 1;
+					refresh();
+				}
+			}
+			return;
+		}
 		zoom(Math.exp(event.deltaY * 0.001));
 	}
 
@@ -3296,6 +3967,31 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (preview !== null) {
 			if (event.key === 'Escape') closePreview();
 			return;
+		}
+		// S28 Esc precedence: a live marker gesture, then place, then Look through,
+		// then the Card's own unwinding.
+		if (event.key === 'Escape' && lens === 'experience') {
+			if (viewEdit !== null) {
+				event.preventDefault();
+				event.stopPropagation();
+				cancelViewEdit();
+				return;
+			}
+			if (experienceTool === 'place') {
+				event.preventDefault();
+				event.stopPropagation();
+				experienceTool = 'select';
+				placementAim = null;
+				cancelPlacement();
+				notice = '';
+				return;
+			}
+			if (lookThroughSession !== null) {
+				event.preventDefault();
+				event.stopPropagation();
+				exitLookThrough();
+				return;
+			}
 		}
 		// Typing in the Index's subject search must never move the camera.
 		if (stageKeyFromTextEntry(event.target)) return;
@@ -4731,6 +5427,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{drafting}
 						datumMeters={boot.snapshot.domain.datumMeters}
 						contentBounds={paperContentBounds}
+						snapshotBounds={stageContentBounds}
+						framedViewport={lookThroughSession !== null ? throughViewport : null}
 							{selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
@@ -4739,9 +5437,32 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					/>
 				{/if}
 				<div class="overlay-layer">
-					<StageOverlay
-							lightGround={paperVisible || evaluation?.renderedReading === '3d'}
-							{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+					{#if lookThroughSession === null}
+						<StageOverlay
+								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
+								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+					{/if}
+					{#if lens === 'experience' && evaluation !== null && lookThroughSession === null}
+						<ExperienceMarks {evaluation} onLookThrough={lookThroughView} />
+					{/if}
+					{#if viewEditPreview !== null}
+						<svg class="placement-preview view-edit-preview" data-view-edit-ghost aria-hidden="true">
+							{#if viewEditPreview.target !== null}
+								<line x1={viewEditPreview.eye[0]} y1={viewEditPreview.eye[1]} x2={viewEditPreview.target[0]} y2={viewEditPreview.target[1]} />
+								<circle class="aim" cx={viewEditPreview.target[0]} cy={viewEditPreview.target[1]} r="5" />
+							{/if}
+							<circle class="eye" cx={viewEditPreview.eye[0]} cy={viewEditPreview.eye[1]} r="4" />
+						</svg>
+					{/if}
+					{#if placementPreview !== null}
+						<svg class="placement-preview" aria-hidden="true">
+							{#if placementPreview.target !== null}
+								<line x1={placementPreview.eye[0]} y1={placementPreview.eye[1]} x2={placementPreview.target[0]} y2={placementPreview.target[1]} />
+								<circle class="aim" cx={placementPreview.target[0]} cy={placementPreview.target[1]} r="5" />
+							{/if}
+							<circle class="eye" cx={placementPreview.eye[0]} cy={placementPreview.eye[1]} r="4" />
+						</svg>
+					{/if}
 				</div>
 				<!--
 					The measured ruler is a Plan-only reading of the same evaluation. It
@@ -4866,6 +5587,58 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{/key}
 				{/if}
 
+				{#if lens === 'experience' && lookThroughSession !== null}
+					<!-- The capture frame sits beside the Card and above the Guide; helpers are hidden. -->
+					<div class="through-slot" bind:this={throughFrameEl} data-through-frame>
+						<div class="through-frame" aria-hidden="true"></div>
+					</div>
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="mode-pill through-pill"
+						data-look-through-pill
+						onclick={(event) => event.stopPropagation()}
+						onpointerdown={(event) => event.stopPropagation()}
+					>
+						<span class="live-dot" aria-hidden="true"></span>
+						<span>Looking through <b>{lookThroughSession.label}</b></span>
+						{#if lookThroughMoved}<span class="moved">moved</span>{/if}
+						<button
+							type="button"
+							class="pill-gold"
+							disabled={!lookThroughMoved || (activeExperience?.busy ?? false)}
+							title={lookThroughMoved ? 'Write the provisional pose back to this View' : 'Re-aim, change the lens or eye height first'}
+							onclick={() => void updateLookThrough(lookThroughConfirm !== null)}>Update View</button
+						>
+						<button type="button" onclick={exitLookThrough}>Exit View Esc</button>
+						<button type="button" title="Capture this provisional pose as a new View" onclick={() => void captureProvisional()}>Capture</button>
+					</div>
+					{#if lookThroughConfirm !== null}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
+							<p>Also changes {lookThroughConfirm.join(', ')}.</p>
+							<div class="through-confirm-actions">
+								<button type="button" class="pill-gold" onclick={() => void updateLookThrough(true)}>Update View</button>
+								<button type="button" onclick={() => (lookThroughConfirm = null)}>Cancel</button>
+							</div>
+						</div>
+					{/if}
+				{/if}
+				{#if pendingViewWrite !== null}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
+						<p>Also changes {pendingViewWrite.alsoIn.join(', ')}.</p>
+						<div class="through-confirm-actions">
+							<button type="button" class="pill-gold" onclick={() => void confirmPendingViewWrite()}>Update View</button>
+							<button type="button" onclick={() => (pendingViewWrite = null)}>Cancel</button>
+						</div>
+					</div>
+				{/if}
+				{#if lens === 'experience' && lookThroughSession === null && activeExperience?.current && activeExperience.current.presentations.length === 0}
+					<div class="experience-coach" data-experience-coach role="status">
+						<strong>{EXPERIENCE_COACH.title}</strong>
+						<span>{EXPERIENCE_COACH.body}</span>
+					</div>
+				{/if}
 				{#if notice}<p class="stage-note" role="status">{notice}</p>{/if}
 			</div>
 			{/if}
@@ -4973,6 +5746,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						captureDisabled={experienceCaptureReason !== undefined}
 						captureReason={experienceCaptureReason}
 						guideOpen={experienceGuideOpen}
+						placeArmed={experienceTool === 'place'}
+						onPlaceView={togglePlaceView}
 						onCapture={() => void activeExperience?.capture()}
 						onToggleGuide={toggleExperienceGuide}
 					/>
@@ -5250,6 +6025,176 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	*/
 	.stage-height-slot {
 		display: contents;
+	}
+	/* R217.S28 — Place a View, Look through and the empty Stage coach. */
+	.placement-preview {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		overflow: visible;
+		pointer-events: none;
+	}
+	.placement-preview line {
+		stroke: var(--shell-ghost, #2a62d6);
+		stroke-width: 2;
+		stroke-dasharray: 6 4;
+	}
+	.placement-preview .eye {
+		fill: #fff;
+		stroke: var(--shell-ghost, #2a62d6);
+		stroke-width: 2;
+	}
+	.placement-preview .aim {
+		fill: var(--shell-gold, #d4ad45);
+		stroke: #74560c;
+		stroke-width: 1.5;
+	}
+	.view-edit-preview line {
+		stroke: var(--shell-gold, #d4ad45);
+	}
+	.view-edit-preview .eye {
+		stroke: var(--shell-gold, #d4ad45);
+	}
+	/* The through capture frame: 16:10, beside the Card and above the Guide. */
+	.through-slot {
+		position: absolute;
+		left: 50%;
+		top: 42%;
+		z-index: 2;
+		transform: translate(-50%, -50%);
+		width: min(64%, calc(100% - 620px));
+		max-width: calc(100% - 2rem);
+		aspect-ratio: 16 / 10;
+		pointer-events: none;
+	}
+	.through-frame {
+		position: absolute;
+		inset: 0;
+		border-radius: 6px;
+		outline: 2px solid var(--shell-gold, #d4ad45);
+		box-shadow: 0 0 0 9999px rgb(8 18 14 / 0.44);
+	}
+	.mode-pill {
+		position: absolute;
+		left: 50%;
+		top: 0.75rem;
+		z-index: 6;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 4px 4px 4px 12px;
+		border-radius: 20px;
+		background: var(--shell-glass-dark, rgb(14 30 25 / 0.8));
+		color: var(--shell-ink-light, #eef1ec);
+		font-size: 12px;
+		box-shadow: 0 8px 20px rgb(0 0 0 / 0.28);
+	}
+	.mode-pill button {
+		height: 28px;
+		padding: 0 11px;
+		border: 0;
+		border-radius: 14px;
+		background: rgb(255 255 255 / 0.12);
+		color: inherit;
+		font: inherit;
+		font-size: 12px;
+		cursor: pointer;
+	}
+	.mode-pill button:disabled {
+		opacity: 0.45;
+		cursor: default;
+	}
+	.mode-pill button.pill-gold {
+		background: var(--shell-gold, #d4ad45);
+		color: #2a2208;
+		font-weight: 600;
+	}
+	.mode-pill .live-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.mode-pill .moved {
+		color: var(--shell-gold, #d4ad45);
+		font-weight: 600;
+	}
+	.through-confirm {
+		position: absolute;
+		left: 50%;
+		top: 3.4rem;
+		z-index: 7;
+		transform: translateX(-50%);
+		width: min(22rem, calc(100% - 2rem));
+		padding: 10px 12px;
+		border-radius: 10px;
+		background: var(--shell-popup-dark, rgb(17 41 31 / 0.97));
+		color: var(--shell-ink-light, #eef1ec);
+		box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
+		font-size: 12px;
+	}
+	.through-confirm p {
+		margin: 0 0 8px;
+	}
+	.through-confirm-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 6px;
+	}
+	.through-confirm button {
+		height: 28px;
+		padding: 0 10px;
+		border: 0;
+		border-radius: 7px;
+		background: rgb(255 255 255 / 0.14);
+		color: inherit;
+		font: inherit;
+		font-size: 12px;
+		cursor: pointer;
+	}
+	.through-confirm button.pill-gold {
+		background: var(--shell-gold, #d4ad45);
+		color: #2a2208;
+		font-weight: 600;
+	}
+	.experience-coach {
+		position: absolute;
+		left: 50%;
+		top: 46%;
+		transform: translate(-50%, -50%);
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		max-width: min(24rem, calc(100% - 2rem));
+		padding: 16px 18px;
+		border-radius: 12px;
+		background: var(--shell-glass-dark, rgb(14 30 25 / 0.8));
+		color: var(--shell-ink-light, #eef1ec);
+		text-align: center;
+		pointer-events: none;
+	}
+	.experience-coach strong {
+		font: 17px var(--shell-serif, Georgia, serif);
+	}
+	.experience-coach span {
+		color: var(--shell-ink-quiet, #9fb2a5);
+		font-size: 12px;
+		line-height: 1.45;
+	}
+	@media (pointer: coarse) {
+		.mode-pill button,
+		.through-confirm button {
+			min-width: 44px;
+			min-height: 44px;
+		}
+	}
+	@media (max-width: 960px) {
+		.through-slot {
+			width: calc(100% - 2rem);
+			top: 40%;
+		}
 	}
 	/* R217.S25: the Experience dock's feedback line sits on the lower edge, above its dock. */
 	.experience-feedback {

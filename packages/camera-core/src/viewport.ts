@@ -59,6 +59,7 @@ import {
 	dotVec3,
 	invertMatrix,
 	isFiniteVec3,
+	lengthVec3,
 	lerpNumber,
 	lerpVec3,
 	lookAtMatrix,
@@ -120,6 +121,15 @@ export type InspectionPose = {
 	readonly azimuthRadians: number;
 	readonly elevationRadians: number;
 	readonly targetPlaneHeightMeters: number;
+	/**
+	 * R217.S28 — an authored vertical field of view in degrees. When absent the
+	 * Stage keeps its fixed 54° reference FOV and `targetPlaneHeightMeters` alone
+	 * selects the dolly distance. When present the eye is placed at
+	 * `targetPlaneHeightMeters / 2 / tan(fov / 2)`, so an authored View's exact
+	 * eye, target and FOV evaluate through this one path. The authored value is
+	 * the source of truth; nothing here derives a different FOV for the shell.
+	 */
+	readonly fovYDegrees?: number;
 };
 
 /** The Stage's viewport rectangle. CSS pixels drive input and overlays; DPR only scales rendering. */
@@ -260,7 +270,20 @@ export type ViewingIntent =
 			readonly rect: ViewportRect;
 			readonly paddingFraction?: number;
 	  }
-	| { readonly kind: 'bring-into-view'; readonly target: Vec3; readonly targetPlaneHeightMeters?: number };
+	| { readonly kind: 'bring-into-view'; readonly target: Vec3; readonly targetPlaneHeightMeters?: number }
+	/** R217.S28 — re-aim at a new target with the eye held exactly still. */
+	| { readonly kind: 'aim'; readonly target: Vec3 }
+	/** R217.S28 — install one exact authored View pose (eye, target, FOV). */
+	| {
+			readonly kind: 'set-view';
+			readonly eye: Vec3;
+			readonly target: Vec3;
+			readonly fovYDegrees: number;
+	  }
+	/** R217.S28 — move eye and target together, keeping aim and FOV. */
+	| { readonly kind: 'lift'; readonly deltaMeters: number }
+	/** R217.S28 — change the authored lens at a fixed eye and target. */
+	| { readonly kind: 'lens'; readonly fovYDegrees: number }
 
 export const VIEWING_INTENT_REFUSALS = [
 	'invalid-intent',
@@ -495,9 +518,191 @@ function poseDirection(pose: InspectionPose): Vec3 {
 	return [Math.sin(pose.azimuthRadians) * cosElevation, Math.sin(pose.elevationRadians), Math.cos(pose.azimuthRadians) * cosElevation];
 }
 
+/** The half-FOV an authored pose evaluates at; the reference FOV when it authored none. */
+function poseHalfFovRadians(pose: InspectionPose): number {
+	return pose.fovYDegrees === undefined
+		? VIEWPORT_REFERENCE_FOV_Y_RADIANS / 2
+		: (pose.fovYDegrees * Math.PI) / 360;
+}
+
+function poseFovIsValid(pose: InspectionPose): boolean {
+	return (
+		pose.fovYDegrees === undefined ||
+		(isFiniteNumber(pose.fovYDegrees) && pose.fovYDegrees > 0 && pose.fovYDegrees < 180)
+	);
+}
+
+/**
+ * The authored vertical FOV a pose evaluates at, in degrees. A pose that
+ * authored none reads the Stage's reference FOV.
+ */
+export function fovYDegreesOf(pose: InspectionPose): number {
+	return pose.fovYDegrees ?? (VIEWPORT_REFERENCE_FOV_Y_RADIANS * 180) / Math.PI;
+}
+
+/**
+ * The exact eye a perspective pose evaluates at. This is the same derivation
+ * `evaluateViewport` uses; it is exported so a session can read the camera it
+ * is looking through without re-implementing the projection.
+ */
+export function eyeOfInspectionPose(pose: InspectionPose): Vec3 {
+	return addVec3(pose.target, scaleVec3(poseDirection(pose), perspectiveDistanceMeters(pose.targetPlaneHeightMeters, pose.fovYDegrees)));
+}
+
+/**
+ * An exact authored View as an inspection pose (R217.S28).
+ *
+ * `eye` and `target` place the view direction and distance; `fovDegrees` is the
+ * authored source of truth and sets the target-plane height so the evaluator
+ * recovers exactly that eye. A degenerate view, an invalid FOV or a view whose
+ * target-plane extent leaves the supported range refuses with `null` rather
+ * than clamping a different camera into place.
+ */
+export function inspectionPoseFromView(input: {
+	readonly eye: Vec3;
+	readonly target: Vec3;
+	readonly fovYDegrees: number;
+}): InspectionPose | null {
+	if (!isFiniteVec3(input.eye) || !isFiniteVec3(input.target)) return null;
+	if (!isFiniteNumber(input.fovYDegrees) || input.fovYDegrees <= 0 || input.fovYDegrees >= 180) return null;
+	const offset = subtractVec3(input.eye, input.target);
+	const distance = lengthVec3(offset);
+	if (!(distance > 1e-6)) return null;
+	const direction = scaleVec3(offset, 1 / distance);
+	const targetPlaneHeightMeters = 2 * distance * Math.tan((input.fovYDegrees * Math.PI) / 360);
+	if (targetPlaneHeightMeters < VIEWPORT_TARGET_PLANE_MIN_METERS || targetPlaneHeightMeters > VIEWPORT_TARGET_PLANE_MAX_METERS) {
+		return null;
+	}
+	return {
+		target: [input.target[0], input.target[1], input.target[2]],
+		azimuthRadians: Math.atan2(direction[0], direction[2]),
+		elevationRadians: Math.asin(clamp(direction[1], -1, 1)),
+		targetPlaneHeightMeters,
+		fovYDegrees: input.fovYDegrees
+	};
+}
+
+/**
+ * Re-aim at a new target while the eye stays exactly where it is (R217.S28).
+ * The authored FOV and the eye are preserved; only the direction and the
+ * target-plane extent change. The Plan reading is orthographic and has no
+ * eye to hold, so callers present a 3D pose.
+ */
+export function aimPoseAtTarget(pose: InspectionPose, target: Vec3): InspectionPose | null {
+	if (!isFiniteVec3(target)) return null;
+	const eye = eyeOfInspectionPose(pose);
+	const offset = subtractVec3(eye, target);
+	const distance = lengthVec3(offset);
+	if (!(distance > 1e-6)) return null;
+	const fovYDegrees = fovYDegreesOf(pose);
+	const targetPlaneHeightMeters = 2 * distance * Math.tan((fovYDegrees * Math.PI) / 360);
+	if (targetPlaneHeightMeters < VIEWPORT_TARGET_PLANE_MIN_METERS || targetPlaneHeightMeters > VIEWPORT_TARGET_PLANE_MAX_METERS) {
+		return null;
+	}
+	const direction = scaleVec3(offset, 1 / distance);
+	return {
+		target: [target[0], target[1], target[2]],
+		azimuthRadians: Math.atan2(direction[0], direction[2]),
+		elevationRadians: Math.asin(clamp(direction[1], -1, 1)),
+		targetPlaneHeightMeters,
+		fovYDegrees
+	};
+}
+
+/**
+ * Re-aim at the direction of a Camera-owned pointer ray while the eye stays
+ * exactly still and the existing focal distance is kept. Unlike a horizontal
+ * target-plane intersection this works for level views and rays that point up.
+ */
+export function aimPoseAlongRay(pose: InspectionPose, ray: PointerRay): InspectionPose | null {
+	const direction = normalizeVec3(ray.direction);
+	if (direction === null) return null;
+	const eye = eyeOfInspectionPose(pose);
+	const distance = lengthVec3(subtractVec3(pose.target, eye));
+	if (!(distance > 1e-6)) return null;
+	return aimPoseAtTarget(pose, addVec3(eye, scaleVec3(direction, distance)));
+}
+
+/**
+ * Construct the one authored pose a Place-a-View drag may produce (E8).
+ *
+ * The eye stands 1.65 m above the active Floor datum. A normal drag aims 1.25 m
+ * along its own horizontal direction; a pre-aimed Present this drag still has to
+ * travel the minimum distance, then keeps the named subject as the target. The
+ * caller supplies Floor points from Camera's pointer ray and plane hit; this
+ * function owns the authored construction and the 0.5 m refusal.
+ */
+export function viewPlacementPose(input: {
+	readonly startFloorPoint: Vec3;
+	readonly currentFloorPoint: Vec3;
+	readonly aimPoint?: Vec3 | null;
+	readonly floorDatumMeters: number;
+	readonly fovYDegrees: number;
+	readonly minimumDragMeters?: number;
+	readonly eyeHeightMeters?: number;
+	readonly targetHeightMeters?: number;
+}): { readonly eye: Vec3; readonly target: Vec3; readonly fovYDegrees: number } | null {
+	if (!isFiniteVec3(input.startFloorPoint) || !isFiniteVec3(input.currentFloorPoint)) return null;
+	if (!isFiniteNumber(input.floorDatumMeters) || !isFiniteNumber(input.fovYDegrees)) return null;
+	if (!(input.fovYDegrees > 0 && input.fovYDegrees < 180)) return null;
+	const minimum = input.minimumDragMeters ?? 0.5;
+	const eyeHeight = input.eyeHeightMeters ?? 1.65;
+	const targetHeight = input.targetHeightMeters ?? 1.25;
+	if (!isFiniteNumber(minimum) || minimum < 0 || !isFiniteNumber(eyeHeight) || !isFiniteNumber(targetHeight)) return null;
+	const dx = input.currentFloorPoint[0] - input.startFloorPoint[0];
+	const dz = input.currentFloorPoint[2] - input.startFloorPoint[2];
+	const drag = Math.hypot(dx, dz);
+	if (drag < minimum || drag <= 1e-9) return null;
+	const eye: Vec3 = [
+		input.startFloorPoint[0],
+		input.floorDatumMeters + eyeHeight,
+		input.startFloorPoint[2]
+	];
+	let target: Vec3;
+	if (input.aimPoint !== undefined && input.aimPoint !== null) {
+		if (!isFiniteVec3(input.aimPoint)) return null;
+		target = [input.aimPoint[0], input.aimPoint[1], input.aimPoint[2]];
+	} else {
+		target = [
+			input.startFloorPoint[0] + (dx / drag) * 1.25,
+			input.floorDatumMeters + targetHeight,
+			input.startFloorPoint[2] + (dz / drag) * 1.25
+		];
+	}
+	if (lengthVec3(subtractVec3(target, eye)) <= 1e-6) return null;
+	return { eye, target, fovYDegrees: input.fovYDegrees };
+}
+
+/** Move eye and target together by a floor-relative delta, keeping aim and FOV. */
+export function liftPose(pose: InspectionPose, deltaMeters: number): InspectionPose | null {
+	if (!isFiniteNumber(deltaMeters)) return null;
+	const target: Vec3 = [pose.target[0], pose.target[1] + deltaMeters, pose.target[2]];
+	if (!isFiniteVec3(target)) return null;
+	return {
+		...pose,
+		target
+	};
+}
+
+/** Change the authored lens at a fixed eye and target. */
+export function setPoseLens(pose: InspectionPose, fovYDegrees: number): InspectionPose | null {
+	if (!isFiniteNumber(fovYDegrees) || fovYDegrees <= 0 || fovYDegrees >= 180) return null;
+	const distance = perspectiveDistanceMeters(pose.targetPlaneHeightMeters, pose.fovYDegrees);
+	const targetPlaneHeightMeters = 2 * distance * Math.tan((fovYDegrees * Math.PI) / 360);
+	if (targetPlaneHeightMeters < VIEWPORT_TARGET_PLANE_MIN_METERS || targetPlaneHeightMeters > VIEWPORT_TARGET_PLANE_MAX_METERS) {
+		return null;
+	}
+	return {
+		...pose,
+		targetPlaneHeightMeters,
+		fovYDegrees
+	};
+}
+
 /** The perspective distance that fills the target plane with `targetPlaneHeightMeters`. */
-function perspectiveDistanceMeters(targetPlaneHeightMeters: number): number {
-	return targetPlaneHeightMeters / 2 / Math.tan(VIEWPORT_REFERENCE_FOV_Y_RADIANS / 2);
+function perspectiveDistanceMeters(targetPlaneHeightMeters: number, fovYDegrees?: number): number {
+	const halfFovRadians = fovYDegrees === undefined ? VIEWPORT_REFERENCE_FOV_Y_RADIANS / 2 : (fovYDegrees * Math.PI) / 360;
+	return targetPlaneHeightMeters / 2 / Math.tan(halfFovRadians);
 }
 
 function depthRange(distanceMeters: number, sceneRadiusMeters: number): { near: number; far: number; clamped: boolean } {
@@ -579,14 +784,16 @@ function settledPoseFor(reading: ViewportReading, pose: InspectionPose, lastElev
 			target: pose.target,
 			azimuthRadians: nearestQuarterTurn(pose.azimuthRadians),
 			elevationRadians: HALF_PI,
-			targetPlaneHeightMeters: pose.targetPlaneHeightMeters
+			targetPlaneHeightMeters: pose.targetPlaneHeightMeters,
+			...(pose.fovYDegrees === undefined ? {} : { fovYDegrees: pose.fovYDegrees })
 		};
 	}
 	return {
 		target: pose.target,
 		azimuthRadians: pose.azimuthRadians,
 		elevationRadians: clamp(lastElevationRadians, -VIEWPORT_ELEVATION_LIMIT_RADIANS, VIEWPORT_ELEVATION_LIMIT_RADIANS),
-		targetPlaneHeightMeters: pose.targetPlaneHeightMeters
+		targetPlaneHeightMeters: pose.targetPlaneHeightMeters,
+		...(pose.fovYDegrees === undefined ? {} : { fovYDegrees: pose.fovYDegrees })
 	};
 }
 
@@ -616,7 +823,12 @@ function transitionFrame(
 				transition.fromPose.targetPlaneHeightMeters,
 				transition.toPose.targetPlaneHeightMeters,
 				poseEased
-			)
+			),
+			...(transition.fromPose.fovYDegrees !== undefined && transition.toPose.fovYDegrees !== undefined
+				? { fovYDegrees: lerpNumber(transition.fromPose.fovYDegrees, transition.toPose.fovYDegrees, poseEased) }
+				: transition.toPose.fovYDegrees === undefined
+					? {}
+					: { fovYDegrees: transition.toPose.fovYDegrees })
 		},
 		orthographicWeight
 	};
@@ -691,11 +903,19 @@ export function evaluateViewport(
 	// while the perspective half-angle is recomputed from that distance, so the visible
 	// extent at the target plane stays exactly `targetPlaneHeightMeters` for every weight.
 	// `w = 1` is the exact orthographic matrix at the plan eye distance.
+	if (!poseFovIsValid(pose)) {
+		return unavailable(
+			'degenerate-view',
+			'$.pose.fovYDegrees',
+			'degenerate-view',
+			'an authored vertical field of view must be finite and strictly between 0 and 180 degrees'
+		);
+	}
 	const orthographic = orthographicWeight >= 1;
 	const halfHeightMeters = pose.targetPlaneHeightMeters / 2;
 	const distanceMeters = orthographic
 		? VIEWPORT_PLAN_EYE_DISTANCE_METERS
-		: perspectiveDistanceMeters(pose.targetPlaneHeightMeters) / (1 - orthographicWeight);
+		: perspectiveDistanceMeters(pose.targetPlaneHeightMeters, pose.fovYDegrees) / (1 - orthographicWeight);
 	if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
 		return unavailable('singular-projection', '$.pose', 'singular-projection', 'the pose has no finite view distance');
 	}
@@ -971,6 +1191,73 @@ export function requestViewingIntent(
 				return accept(withPose(settled, { ...settled.pose, target: intent.target, targetPlaneHeightMeters }));
 			}
 			return accept(withPose(settled, { ...settled.pose, target: intent.target }));
+		}
+		case 'aim': {
+			if (!isFiniteVec3(intent.target)) {
+				return reject(settled, 'invalid-intent', 'Aim needs a finite project-world target');
+			}
+			if (settled.reading === 'plan') {
+				return reject(
+					settled,
+					'unsupported-in-plan-reading',
+					'the Plan reading is orthographic and has no eye to hold; re-aim in 3D'
+				);
+			}
+			const aimed = aimPoseAtTarget(settled.pose, intent.target);
+			if (aimed === null) {
+				return reject(settled, 'invalid-intent', 'That aim point is too close to the eye to place a view');
+			}
+			return accept(withPose(settled, aimed));
+		}
+		case 'set-view': {
+			const pose = inspectionPoseFromView(intent);
+			if (pose === null) {
+				return reject(
+					settled,
+					'invalid-intent',
+					'An exact View needs a finite eye and target, distinct from each other, and a supported vertical field of view'
+				);
+			}
+			// Installing an authored View is a posture, not a reading flip: the
+			// through-camera is the exact perspective the View authored.
+			return accept({
+				...settled,
+				reading: '3d',
+				pose,
+				lastReadingElevationRadians: clamp(
+					pose.elevationRadians,
+					-VIEWPORT_ELEVATION_LIMIT_RADIANS,
+					VIEWPORT_ELEVATION_LIMIT_RADIANS
+				),
+				transition: null
+			});
+		}
+		case 'lift': {
+			if (!isFiniteNumber(intent.deltaMeters)) {
+				return reject(settled, 'invalid-intent', 'A height change must be a finite number of meters');
+			}
+			const lifted = liftPose(settled.pose, intent.deltaMeters);
+			if (lifted === null) {
+				return reject(settled, 'invalid-intent', 'That height change leaves the view degenerate');
+			}
+			return accept(withPose(settled, lifted));
+		}
+		case 'lens': {
+			if (!isFiniteNumber(intent.fovYDegrees) || intent.fovYDegrees <= 0 || intent.fovYDegrees >= 180) {
+				return reject(settled, 'invalid-intent', 'A lens must be a finite vertical field of view between 0 and 180 degrees');
+			}
+			if (settled.reading === 'plan') {
+				return reject(
+					settled,
+					'unsupported-in-plan-reading',
+					'the Plan reading is orthographic and has no lens; choose a lens in 3D'
+				);
+			}
+			const lensed = setPoseLens(settled.pose, intent.fovYDegrees);
+			if (lensed === null) {
+				return reject(settled, 'invalid-intent', 'That lens cannot be placed at this eye and target');
+			}
+			return accept(withPose(settled, lensed));
 		}
 		default: {
 			return reject(settled, 'invalid-intent', 'the intent is not a declared viewing intent');

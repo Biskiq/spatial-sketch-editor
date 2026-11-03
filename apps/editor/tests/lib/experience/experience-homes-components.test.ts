@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount, type Component } from 'svelte';
 
 import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
+import ExperienceMarks from '$lib/authoring/experience/ExperienceMarks.svelte';
 import ExperienceGuide from '$lib/authoring/experience/ExperienceGuide.svelte';
 import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePresentationWriter.svelte';
 import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
@@ -30,12 +31,15 @@ import {
 	type ExperienceSubject,
 	type ExperienceViewFacts
 } from '$lib/authoring/experience/experience-model';
+import { EYE_HEIGHT_STEPS, LENS_STEPS } from '$lib/authoring/experience/look-through';
 import type {
+	CameraView,
 	Experience,
 	ExperienceGuide as GuideRecord,
 	ExperiencePresentation,
 	ExperienceStop
 } from '@portfolio/project-model/units';
+import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-core';
 
 import ExperienceHomesProbe from './fixtures/ExperienceHomesProbe.svelte';
 
@@ -88,6 +92,11 @@ const EXPERIENCE: Experience = {
 
 const GAPS = new Map<string, readonly string[]>([['stop-2', ['Gallery has no Camera path to Garden.']]]);
 
+const CAMERA_VIEWS: readonly CameraView[] = [
+	{ id: 'piano-wide', label: 'Wide', eye: [-1, 2, 4], target: [0, 1, 0], fov: 54, connectedViewIds: [] },
+	{ id: 'piano-keys', label: 'Keys', eye: [1, 2, 4], target: [0, 1, 0], fov: 54, connectedViewIds: [] }
+];
+
 const VIEWS_OF = new Map(
 	PRESENTATIONS.map((presentation) => [
 		presentation.id,
@@ -138,6 +147,7 @@ function fakeController(options: ControllerOptions = {}) {
 		current: EXPERIENCE,
 		currentGuide: guide,
 		contextGuide: guide,
+		cameraViews: CAMERA_VIEWS,
 		guides: guide === null ? [] : [guide],
 		guideStops: stops,
 		subject: options.subject ?? null,
@@ -201,7 +211,14 @@ function fakeController(options: ControllerOptions = {}) {
 
 type FakeController = ReturnType<typeof fakeController>;
 
-function fakeHomes(controller: FakeController | null, guideOpen = false) {
+type ThroughOptions = {
+	readonly viewId?: string;
+	readonly fovYDegrees?: number;
+	readonly eyeHeightMetres?: number;
+	readonly moved?: boolean;
+};
+
+function fakeHomes(controller: FakeController | null, guideOpen = false, through: ThroughOptions = {}) {
 	return {
 		controller: () => controller as unknown as ExperienceController | null,
 		guideOpen: () => guideOpen,
@@ -210,7 +227,23 @@ function fakeHomes(controller: FakeController | null, guideOpen = false) {
 		guideNamePrompt: (): string | null => null,
 		requestGuideName: vi.fn<(presentationId: string | null) => void>(),
 		sceneSubject: () => null,
-		openInWorld: vi.fn()
+		openInWorld: vi.fn(),
+		lookThroughViewId: () => through.viewId ?? null,
+		lookThroughMoved: () => through.moved ?? false,
+		lookThroughFraming: () =>
+			through.viewId === undefined
+				? null
+				: {
+						fovYDegrees: through.fovYDegrees ?? 54,
+						eyeHeightMetres: through.eyeHeightMetres ?? 1.6
+					},
+		lookThroughLens: vi.fn(() => false),
+		lookThroughEyeHeight: vi.fn(() => false),
+		lookThrough: vi.fn(),
+		exitLookThrough: vi.fn(),
+		updateLookThrough: vi.fn(async () => {}),
+		captureProvisional: vi.fn(async () => {}),
+		presentThis: vi.fn(async () => {})
 	} satisfies ExperienceHomes;
 }
 
@@ -565,15 +598,40 @@ describe('R217.S25 — the View writer holds the only Default mutation (D12)', (
 		expect(reasonOf(makeDefault)).toBe('Wait for the current change');
 	});
 
-	it('disables Look through with the reason and shows the Default as information', async () => {
-		const target = mountHome(ExperienceViewWriter, {}, fakeHomes(fakeController({ selectedViewId: 'piano-wide' })));
+	it('opens Look through on this View and shows the Default as information', async () => {
+		const homes = fakeHomes(fakeController({ selectedViewId: 'piano-wide' }));
+		const target = mountHome(ExperienceViewWriter, {}, homes);
 		await settle();
 
 		const lookThrough = buttonNamed(target, 'Look through');
-		expect(lookThrough.disabled).toBe(true);
-		expect(reasonOf(lookThrough)).toBe('Comes with Look through');
+		expect(lookThrough.disabled).toBe(false);
+		lookThrough.click();
+		expect(homes.lookThrough).toHaveBeenCalledWith('piano-wide');
 		expect(target.querySelector('.default-note')?.textContent).toContain('Default View');
 		expect(target.querySelectorAll('.cfoot button').length).toBe(1);
+	});
+
+	it('applies Lens and Eye height live while looking through, without writing authored framing', async () => {
+		const close = LENS_STEPS[2]!;
+		const seated = EYE_HEIGHT_STEPS[0]!;
+		const controller = fakeController({ selectedViewId: 'piano-wide' });
+		const homes = fakeHomes(controller, false, {
+			viewId: 'piano-wide',
+			fovYDegrees: close.fovYDegrees,
+			eyeHeightMetres: seated.metres,
+			moved: true
+		});
+		const target = mountHome(ExperienceViewWriter, {}, homes);
+		await settle();
+
+		expect(target.textContent).toContain('Close');
+		expect(target.textContent).toContain('Seated');
+		buttonNamed(target, 'Close').click();
+		await settle();
+		expect(homes.lookThroughLens).toHaveBeenCalledWith(close.fovYDegrees);
+		buttonNamed(target, 'Seated').click();
+		await settle();
+		expect(homes.lookThroughEyeHeight).toHaveBeenCalledWith(seated.metres);
 	});
 
 	it('lists the Stops that enter at this View, or says it is not on the tour', async () => {
@@ -606,6 +664,9 @@ describe('R217.S25 — the Presentation writer has no Default control and no Sav
 
 		tiles[1]!.click();
 		expect(homes.select).toHaveBeenLastCalledWith({ kind: 'view', viewId: 'piano-keys', presentationId: 'piano' });
+
+		tiles[1]!.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+		expect(homes.lookThrough).toHaveBeenCalledWith('piano-keys');
 	});
 
 	it('offers no Default, Save or Capture control', async () => {
@@ -624,17 +685,49 @@ describe('R217.S25 — the Presentation writer has no Default control and no Sav
 	});
 });
 
+// ---- The Stage’s Experience View marks ----
+
+describe('R217.S28 — View marks open Look through', () => {
+	it('selects a marker on one click and opens Look through on a double-click', async () => {
+		const homes = fakeHomes(fakeController({ selectedPresentationId: 'piano' }));
+		const state = createViewportCameraState({
+			outputId: 'marks',
+			sessionEpoch: 'marks',
+			sourceRevision: 'marks',
+			pose: { target: [0, 1, 0], azimuthRadians: 0, elevationRadians: Math.PI / 2, targetPlaneHeightMeters: 12 },
+			sceneRadiusMeters: 50,
+			reading: 'plan'
+		});
+		const evaluated = evaluateViewport(state, { left: 0, top: 0, width: 1280, height: 800, devicePixelRatio: 1 }, 0, 1);
+		if (evaluated.kind !== 'evaluated') throw new Error(evaluated.reason);
+		const target = mountHome(ExperienceMarks, { evaluation: evaluated.evaluation, onLookThrough: homes.lookThrough }, homes);
+		await settle();
+
+		const mark = target.querySelector<SVGGElement>('[data-view-mark]');
+		if (mark === null) throw new Error('no View mark rendered');
+		const viewId = mark.getAttribute('data-view-mark')!;
+		const hit = mark.querySelector<SVGCircleElement>('.hit')!;
+		hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		expect(homes.select).toHaveBeenCalledWith({ kind: 'view', viewId, presentationId: 'piano' });
+		hit.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+		expect(homes.lookThrough).toHaveBeenCalledWith(viewId);
+	});
+});
+
 // ---- The lower-edge dock ----
 
-describe('R217.S25 — the Experience dock (Place a View and Path are placeholders)', () => {
-	it('disables Place a View with its reason in title and in a hidden description', async () => {
-		const target = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn() });
+describe('R217.S25 — the Experience dock (Path is the one disabled key)', () => {
+	it('arms Place a View as a Stage tool and calls its handler', async () => {
+		const onPlaceView = vi.fn();
+		const target = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), onPlaceView });
 		await settle();
 
 		const place = target.querySelector<HTMLButtonElement>('[data-dock-tool="place-view"]')!;
-		expect(place.disabled).toBe(true);
-		expect(place.title).toBe('Comes with View placement');
-		expect(reasonOf(place)).toBe('Comes with View placement');
+		expect(place.disabled).toBe(false);
+		expect(place.title).toBe('Place a View where the camera stands');
+		expect(place.getAttribute('aria-describedby')).toBeNull();
+		place.click();
+		expect(onPlaceView).toHaveBeenCalledTimes(1);
 	});
 
 	it('shows Path only while the Guide is open, and disables it with its reason', async () => {

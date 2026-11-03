@@ -40,6 +40,8 @@ import {
 const STAGE_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'stage');
 const SHELL_DIR = join(STAGE_DIR, 'shell');
 const ROUTE = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
+// R217.S28's offscreen snapshot host (fixed capture rect, not a viewport measurement).
+const SNAPSHOT_HOST = 'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte';
 
 function readSource(relative: string): string {
 	return readFileSync(join(REPO_ROOT, relative), 'utf8');
@@ -147,6 +149,9 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StageFormGhost.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
+			// R217.S28's snapshot host: an offscreen render target on the existing
+			// renderer. It owns no camera authority and opens no second context.
+			'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte',
 			'apps/editor/src/lib/authoring/stage/paper-scene.ts',
 			'apps/editor/src/lib/authoring/stage/paper-marks.ts',
 			'apps/editor/src/lib/authoring/stage/paper-fill-geometry.ts'
@@ -168,7 +173,18 @@ describe('Stage shell composition', () => {
 		// rendering at rest (Bench 1: 120 of 120 idle frames). A new evaluation asks
 		// for exactly one frame instead.
 		expect(camera).toContain('autoInvalidate: false');
+		expect(camera).toContain('stage: renderStage');
+		expect(camera).toContain('before: autoRenderTask');
+		expect(camera).toContain('if (!shouldRender()) return;');
 		expect(camera).toContain('invalidate();');
+
+		// The snapshot target owns its viewport in target pixels; the renderer's
+		// setViewport would apply the screen DPR even with a target bound.
+		const snapshot = codeOf(SNAPSHOT_HOST);
+		expect(snapshot).toContain('target.viewport.set(0, 0, WIDTH, height)');
+		expect(snapshot).toContain('target.scissor.set(0, 0, WIDTH, height)');
+		expect(snapshot).toContain('target.scissorTest = false');
+		expect(snapshot).not.toContain('renderer.setViewport(0, 0, WIDTH, height)');
 	});
 
 	it('drives pose only through the host’s own inspection claim', () => {
@@ -298,11 +314,23 @@ describe('Stage shell composition', () => {
 		// Blank only the two sanctioned rail reads, not the whole file: any other
 		// measurement in the Sheet still has to fail the single-measurer rule.
 		const sanctionedHeightSheet = heightSheet.replaceAll(HEIGHT_SHEET_RAIL_READ, '');
+		// R217.S28's snapshot host composes a fixed offscreen capture rect; its
+		// `devicePixelRatio: 1` is a target definition, not a viewport measurement.
+		// Blank exactly that one literal and prove it remains the only occurrence.
+		const snapshotHost = codeOf(SNAPSHOT_HOST);
+		const sanctionedSnapshotHost = snapshotHost.replace('devicePixelRatio: 1', '');
 		const sources: readonly (readonly [string, string])[] = [
 			[ROUTE, route],
 			...STAGE_FILES.map(
 				(file) =>
-					[file, file === HEIGHT_SHEET ? sanctionedHeightSheet : codeOf(file)] as const
+					[
+						file,
+						file === HEIGHT_SHEET
+							? sanctionedHeightSheet
+							: file === SNAPSHOT_HOST
+								? sanctionedSnapshotHost
+								: codeOf(file)
+					] as const
 			)
 		];
 		const measurers = sources
@@ -311,6 +339,8 @@ describe('Stage shell composition', () => {
 			)
 			.map(([file]) => file);
 		expect(measurers).toEqual([ROUTE]);
+		expect((snapshotHost.match(/devicePixelRatio/g) ?? []).length).toBe(1);
+		expect(snapshotHost).not.toMatch(/getBoundingClientRect|clientWidth|clientHeight/);
 		expect((heightSheet.match(/getBoundingClientRect/g) ?? []).length).toBe(2);
 		expect(sanctionedHeightSheet).not.toMatch(
 			/getBoundingClientRect|clientWidth|clientHeight|devicePixelRatio/

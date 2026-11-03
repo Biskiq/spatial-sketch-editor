@@ -427,6 +427,48 @@ export function guideUpdateIntent(input: {
 }
 
 /**
+ * Rewrite one Camera View's authored pose and label through `camera-view-update`.
+ * Connectivity is never sent: it is a Camera connection operation of its own.
+ */
+export function viewUpdateIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly view: CameraView;
+	readonly label?: string;
+	readonly eye?: readonly [number, number, number];
+	readonly target?: readonly [number, number, number];
+	readonly fov?: number;
+}): AuthoringIntent {
+	const eye = input.eye ?? input.view.eye;
+	const target = input.target ?? input.view.target;
+	return intent(
+		CAMERA_VIEW_UPDATE_KIND,
+		input.ids,
+		input.revision,
+		[
+			{
+				version: 1,
+				domain: 'camera',
+				revision: { kind: 'exact', contentRevision: input.envelope.units.camera.header.contentRevision },
+				subject: { kind: 'view', id: input.view.id },
+				instancePath: [],
+				location: { kind: 'project-root' },
+				componentId: null,
+				capabilityId: null
+			}
+		],
+		{
+			label: input.label ?? input.view.label,
+			eye: [eye[0], eye[1], eye[2]],
+			target: [target[0], target[1], target[2]],
+			fov: input.fov ?? input.view.fov
+		},
+		[]
+	);
+}
+
+/**
  * R217.S26 — rename a Camera View. The operation rewrites the View's whole pose, so
  * the pose is sent back exactly as authored: only the label changes.
  */

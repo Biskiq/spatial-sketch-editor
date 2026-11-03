@@ -9,24 +9,30 @@
 	 * overlays and the pointer rays all come from the same evaluated matrices.
 	 */
 	import { T, useTask, useThrelte } from '@threlte/core';
-	import { Color, type PerspectiveCamera } from 'three';
+	import { Color, Vector2, type PerspectiveCamera } from 'three';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
-	import { MAT_BACKGROUND_INK, PAPER_GROUND_INK, stageCameraLayerMask } from '../paper-plan';
+	import { MAT_BACKGROUND_INK, PAPER_GROUND_INK, STAGE_WORLD_LAYER, stageCameraLayerMask } from '../paper-plan';
 
 	let {
 		evaluation,
 		paperVisible,
-		paperInk = PAPER_GROUND_INK
+		paperInk = PAPER_GROUND_INK,
+		frameViewport = null,
+		worldOnly = false
 	}: {
 		evaluation: ViewportEvaluation | null;
 		/** Paper masks the world meshes without touching their `visible` flag. */
 		paperVisible: boolean;
 		/** The viewer's 2D Paper tone (a ⚙ view preference). */
 		paperInk?: string;
+		/** A Stage-local capture frame; the render is scissored to exactly this box. */
+		frameViewport?: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null;
+		/** Draw world content only inside a capture frame. */
+		worldOnly?: boolean;
 	} = $props();
 
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
-	const { invalidate, scene, renderer } = useThrelte();
+	const { invalidate, scene, renderer, shouldRender, renderStage, autoRenderTask } = useThrelte();
 
 	// Runs before the render pass each frame, so the evaluated matrices are the
 	// ones the meshes are actually drawn with even if Threlte touched the camera.
@@ -39,6 +45,25 @@
 	useTask(() => {
 		const camera = cameraRef;
 		if (camera === undefined || evaluation === null) return;
+		// The clear below is part of the render pass, not a main-stage tick: on an
+		// idle on-demand frame it must never erase the last drawn image.
+		if (!shouldRender()) return;
+		// The one renderer draws the active Stage and, when Looking through, only the
+		// measured 16:10 frame. Snapshot rendering restores these states in `finally`.
+		const size = renderer.getSize(new Vector2());
+		if (frameViewport === null) {
+			renderer.setScissorTest(false);
+			renderer.setViewport(0, 0, size.x, size.y);
+		} else {
+			renderer.setScissorTest(false);
+			renderer.setViewport(0, 0, size.x, size.y);
+			renderer.clear();
+			const x = frameViewport.left;
+			const y = Math.max(0, size.y - frameViewport.top - frameViewport.height);
+			renderer.setViewport(x, y, frameViewport.width, frameViewport.height);
+			renderer.setScissorTest(true);
+			renderer.setScissor(x, y, frameViewport.width, frameViewport.height);
+		}
 		camera.matrixAutoUpdate = false;
 		camera.matrix.fromArray(evaluation.inverseViewMatrix as number[]);
 		camera.matrixWorldNeedsUpdate = true;
@@ -48,13 +73,15 @@
 		camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
 		camera.updateMatrixWorld(true);
 		camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-	}, { autoInvalidate: false });
+	}, { autoInvalidate: false, stage: renderStage, before: autoRenderTask });
 
 	$effect(() => {
 		// One frame per evaluation. Everything else that can change the image (a
 		// compile, a Scene resolution, a selection, a pointer overlay) invalidates
 		// through Threlte's own reactivity.
 		void evaluation;
+		void frameViewport;
+		void worldOnly;
 		invalidate();
 	});
 
@@ -64,7 +91,7 @@
 		const camera = cameraRef;
 		if (camera === undefined) return;
 		camera.layers.disableAll();
-		for (const layer of stageCameraLayerMask(paperVisible)) camera.layers.enable(layer);
+		for (const layer of worldOnly ? [STAGE_WORLD_LAYER] : stageCameraLayerMask(paperVisible)) camera.layers.enable(layer);
 		invalidate();
 	});
 

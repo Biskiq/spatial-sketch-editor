@@ -402,6 +402,45 @@ describe('stage session — the reduced-motion endpoint rule', () => {
 	});
 });
 
+describe('stage session — Look-through return across a content rebase', () => {
+	it('restores the exact standpoint and reading on the new source revision', async () => {
+		const session = createStageSession({ sessionEpoch: 'session-look-through' });
+		const snapshot = await admit(await enclosureProject(PROJECT_ID));
+		session.replace(snapshot);
+		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:look-through' });
+		const rect = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
+		const entry = camera.state();
+
+		const entered = camera.beginLookThrough({
+			viewId: 'view-wide',
+			presentationId: 'presentation-main',
+			label: 'Wide',
+			eye: [3, 1.65, 4],
+			target: [0, 1.25, 0],
+			fovYDegrees: 36
+		});
+		expect(entered.kind).toBe('entered');
+		expect(camera.state().reading).toBe('3d');
+
+		// Content changes while looking through: the saved entry must move to the
+		// new source identity, or Exit would restore a superseded revision.
+		camera.rebaseSource('revision-look-through-new', snapshot.domain.geometry.bounds ?? null, 1);
+		expect(camera.state().sourceRevision).toBe('revision-look-through-new');
+		expect(camera.endLookThrough()).toBe(true);
+		expect(camera.state().sourceRevision).toBe('revision-look-through-new');
+		expect(camera.state().reading).toBe(entry.reading);
+		expect(camera.state().pose).toEqual(entry.pose);
+		expect(camera.state().displayGroundYMeters).toBe(1);
+		expect(camera.lookThrough()).toBeNull();
+
+		const evaluated = camera.evaluate(rect, 0);
+		expect(evaluated.kind).toBe('evaluated');
+		if (evaluated.kind !== 'evaluated') return;
+		expect(evaluated.evaluation.token.sourceRevision).toBe('revision-look-through-new');
+		expect(evaluated.evaluation.pose).toEqual(entry.pose);
+	});
+});
+
 describe('stage session hover', () => {
 	it('is ephemeral and clears on lens change and replacement', async () => {
 		const session = createStageSession();

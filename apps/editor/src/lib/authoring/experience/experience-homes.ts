@@ -31,6 +31,19 @@ export type ExperienceHomes = {
 	readonly sceneSubject: () => { readonly entityId: string; readonly label: string } | null;
 	/** Switch to the World lens keeping the Scene selection ("Open in World"). */
 	readonly openInWorld: () => void;
+	/** R217.S28 — the View the Stage's provisional through-camera shows, or null. */
+	readonly lookThroughViewId: () => string | null;
+	readonly lookThroughMoved: () => boolean;
+	/** The live provisional framing while looking through: authored lens and floor-relative eye height. */
+	readonly lookThroughFraming: () => { readonly fovYDegrees: number; readonly eyeHeightMetres: number } | null;
+	readonly lookThroughLens: (fovYDegrees: number) => boolean;
+	readonly lookThroughEyeHeight: (metres: number) => boolean;
+	readonly lookThrough: (viewId: string) => void;
+	readonly exitLookThrough: () => void;
+	readonly updateLookThrough: () => Promise<void>;
+	readonly captureProvisional: () => Promise<void>;
+	/** Present this through Camera's visible framing (E9), or arm placement in Plan. */
+	readonly presentThis: (entityId: string, label: string) => Promise<void>;
 };
 
 const HOMES = Symbol('experience-homes');
