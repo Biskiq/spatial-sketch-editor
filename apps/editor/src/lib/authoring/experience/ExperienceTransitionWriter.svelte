@@ -12,9 +12,11 @@
 	import type { ExperienceStop } from '@portfolio/project-model/units';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
+	import ExperiencePathMovement from './ExperiencePathMovement.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
 	import { stopEntryViewId, stopExitViewId } from './experience-model';
 	import { experienceHomes } from './experience-homes';
+
 
 	let {
 		secondary,
@@ -32,7 +34,7 @@
 	const NOT_IN_GUIDE_REASON = 'This Stop is not in the open Guide';
 	const BUSY_REASON = 'Wait for the last change to save';
 	const CAMERA_REASON = 'Comes with Camera playback';
-	const PATH_REASON = 'Comes with path editing';
+	const CUT_PATH_REASON = 'A Cut has no travel path';
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
@@ -56,6 +58,26 @@
 	});
 	const travelGaps = $derived(
 		stop === null || controller === null ? [] : (controller.travelGapsByStop.get(stop.id) ?? [])
+	);
+	/** R217.S29 — this transition's one derived Camera path read. */
+	const path = $derived(
+		controller?.pathOccurrence?.kind === 'transition' && controller.pathOccurrence.stopId === stop?.id
+			? controller.selectedPath
+			: null
+	);
+	const busyReason = $derived(controller?.busy === true ? BUSY_REASON : null);
+	/** Path is editable only for a supported Travel; a gap offers the one add action. */
+	const pathReason = $derived(
+		busyReason ??
+			(isEnd
+				? END_REASON
+				: transition === 'cut'
+					? CUT_PATH_REASON
+					: path?.state === 'gap'
+						? 'Add a Camera path for this move'
+						: path?.state === 'ambiguous'
+							? 'More than one Camera path joins these Views'
+							: null)
 	);
 
 	const segmentReason = $derived(
@@ -163,37 +185,23 @@
 		</section>
 
 		{#if travelling && !isEnd}
-			<section class="c-sec" aria-labelledby="transition-movement-title">
-				<h3 id="transition-movement-title">Movement</h3>
-				<div class="field">
-					<span class="f-lbl" id="transition-duration-label">Duration</span>
-					<span class="stepper" role="group" aria-labelledby="transition-duration-label">
-						<button type="button" disabled title={CAMERA_REASON} aria-label="Shorter duration">
-							<ShellIcon name="minus" size={11} /><span class="sr-only">{CAMERA_REASON}</span>
-						</button>
-						<b class="value">—</b>
-						<button type="button" disabled title={CAMERA_REASON} aria-label="Longer duration">
-							<ShellIcon name="plus" size={11} /><span class="sr-only">{CAMERA_REASON}</span>
-						</button>
-					</span>
-				</div>
-				<div class="field">
-					<span class="f-lbl">Path</span>
-					<span class="f-val muted" title={PATH_REASON} aria-disabled="true">{PATH_REASON}</span>
-				</div>
-				{#if travelGaps.length > 0}
-					<!-- The validator's finding names ids; the Card says the same thing in the author's words. -->
-					<div class="gaps" role="alert">
-						<div class="alert">
-							<ShellIcon name="warning" size={13} /><span
-								>Travel needs a Camera connection from “{viewLabelOf(stop, stopExitViewId(stop))}” to “{destination === null
-									? 'the next View'
-									: viewLabelOf(destination, stopEntryViewId(destination))}”. Connections come with path editing.</span
-							>
-						</div>
+			<ExperiencePathMovement
+				{path}
+				{pathReason}
+				{busyReason}
+				occurrence={{ kind: 'transition', stopId: stop.id }}
+			/>
+			{#if travelGaps.length > 0}
+				<div class="gaps" role="alert">
+					<div class="alert">
+						<ShellIcon name="warning" size={13} /><span
+							>Travel needs a Camera connection from “{viewLabelOf(stop, stopExitViewId(stop))}” to “{destination === null
+								? 'the next View'
+								: viewLabelOf(destination, stopEntryViewId(destination))}”. Add a Camera path for this move.</span
+						>
 					</div>
-				{/if}
-			</section>
+				</div>
+			{/if}
 		{:else if isEnd}
 			<p class="c-note">This is the last Stop, so the tour ends here. There is no move to author.</p>
 		{:else}
@@ -370,53 +378,11 @@
 		flex-direction: column;
 		padding: 12px 12px 4px;
 	}
-	.c-sec h3 {
-		margin: 0 0 6px;
-		font: 650 12.5px/1.2 var(--shell-sans, system-ui);
-	}
 	.c-note {
 		margin: 12px 12px 0;
 		color: var(--shell-ink-2, #4a524c);
 		font-size: 12px;
 		line-height: 1.5;
-	}
-	.field {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
-		min-height: 32px;
-	}
-	.f-lbl {
-		color: var(--shell-ink-2, #4a524c);
-	}
-	.f-val {
-		font-variant-numeric: tabular-nums;
-		font-size: 11.5px;
-	}
-	.stepper {
-		display: inline-flex;
-		align-items: center;
-		height: 24px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 7px;
-		background: var(--shell-card, #fff);
-	}
-	.stepper button {
-		display: inline-grid;
-		place-items: center;
-		width: 22px;
-		height: 22px;
-		padding: 0;
-		border: 0;
-		border-radius: 6px;
-		background: none;
-		color: var(--shell-ink-3, #79817b);
-	}
-	.stepper .value {
-		min-width: 30px;
-		text-align: center;
-		font: 600 11px var(--shell-mono, ui-monospace, monospace);
 	}
 	.gaps {
 		display: flex;

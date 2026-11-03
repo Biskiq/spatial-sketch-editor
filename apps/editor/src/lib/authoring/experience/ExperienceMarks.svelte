@@ -10,13 +10,31 @@
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import { experienceMarkModel, EXPERIENCE_MARK_CAPS } from './experience-marks';
 	import { experienceHomes } from './experience-homes';
+	import ExperiencePaths from './ExperiencePaths.svelte';
 
 	let {
 		evaluation,
-		onLookThrough
+		onLookThrough,
+		showMarkers = true,
+		showFrustums = true,
+		showPaths = true,
+		showLabels = true,
+		selectionOnly = false,
+		onPlanePoint,
+		beginPathDragLease,
+		endPathDragLease
 	}: {
 		evaluation: ViewportEvaluation;
 		onLookThrough?: (viewId: string) => void;
+		/** R217.S29 Show ▾: the four independent flags, all on by default. */
+		showMarkers?: boolean;
+		showFrustums?: boolean;
+		showPaths?: boolean;
+		showLabels?: boolean;
+		selectionOnly?: boolean;
+		onPlanePoint?: (css: readonly [number, number], height: number) => [number, number, number] | null;
+		beginPathDragLease?: () => boolean;
+		endPathDragLease?: () => void;
 	} = $props();
 
 	const homes = experienceHomes();
@@ -37,6 +55,12 @@
 			}
 		});
 	});
+	const filtered = $derived.by(() => ({
+		marks: selectionOnly ? model.marks.filter((mark) => mark.state === 'selected' || mark.state === 'strong') : model.marks,
+		frustums: selectionOnly
+			? model.frustums.filter((frustum) => frustum.state === 'selected' || frustum.state === 'strong')
+			: model.frustums
+	}));
 
 	function selectView(viewId: string, presentationId: string): void {
 		homes.select({ kind: 'view', viewId, presentationId });
@@ -52,14 +76,26 @@
 	data-frustum-cap={EXPERIENCE_MARK_CAPS.frustums}
 	focusable="false"
 >
-	{#each model.frustums as frustum (frustum.viewId)}
+	{#if showFrustums}
+	{#each filtered.frustums as frustum (frustum.viewId)}
 		<polygon
 			class="frustum {frustum.state}"
 			points={`${frustum.eye[0]},${frustum.eye[1]} ${frustum.left[0]},${frustum.left[1]} ${frustum.right[0]},${frustum.right[1]}`}
 			data-view-frustum={frustum.viewId}
 		/>
 	{/each}
-	{#each model.marks as mark (mark.id)}
+	{/if}
+	{#if showPaths}
+		<ExperiencePaths
+			{evaluation}
+			{selectionOnly}
+			{onPlanePoint}
+			beginLease={beginPathDragLease}
+			endLease={endPathDragLease}
+		/>
+	{/if}
+	{#if showMarkers}
+	{#each filtered.marks as mark (mark.id)}
 		<g class="mark {mark.state}" data-view-mark={mark.viewId} data-mark-kind={mark.kind}>
 			{#if mark.kind === 'eye'}
 				<circle class="dot" cx={mark.css[0]} cy={mark.css[1]} r="3.4" />
@@ -97,7 +133,7 @@
 					selectView(mark.viewId, mark.presentationId);
 				}}
 			/>
-			{#if mark.label !== ''}
+			{#if mark.label !== '' && showLabels}
 				<g class="tag" transform={`translate(${mark.css[0] + 9} ${mark.css[1] - 18})`}>
 					<rect width={Math.max(30, mark.label.length * 6.2 + 10)} height="16" rx="4" />
 					<text x="5" y="11">{mark.label}</text>
@@ -111,6 +147,7 @@
 			{/if}
 		</g>
 	{/each}
+	{/if}
 </svg>
 
 <style>

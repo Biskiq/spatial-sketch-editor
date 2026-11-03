@@ -1,7 +1,7 @@
 # Camera and tour
 
 **Read when:** camera nodes, connections, route/path evaluation, framing envelopes, motion guards, guided visitor runtime.
-**Last reviewed:** 2026-10-20 (T3.P01.S04 cutover implementation; PR #158 review pending, production activation owner-controlled)
+**Last reviewed:** 2026-11-03 (S29 independent Travel pairs; Camera-unit connectivity policy)
 
 ---
 
@@ -54,13 +54,17 @@ remains in the tree.
 
 ## Current vs destination (ratified 2026-09-27; reconciled 2026-09-29)
 
-**Current implementation (T3.P01.S04).** F2 Camera Views/connections supply the live graph;
-Experience Presentations/Stops/Guides supply editorial order, holds and continuation. The visitor
-store runs the shared interpreter. Guide-free Presentations remain selectable without fabricated
-Stops. Cut and reduced motion settle through the same Camera authority; Travel resolves the exact
-authored connection and direction. An in-flight handoff uses only the Experience-declared predecessor
-View and the live pose; unrelated connectivity is a typed gap. Authored Cut/Travel controls, text,
-state and lifecycle homes are T3.P02 amendments. Public reads remain unavailable until T4's reader.
+**Current implementation (T3.P01.S04, S29 connectivity).** F2 Camera Views/connections supply the live
+graph; Experience Presentations/Stops/Guides supply editorial order, holds and continuation. One
+Camera unit may carry independent Travel pairs (A–B and C–D); they need no bridge edge, and a Cut
+authorizes no Camera edge. Camera-unit admission and the visitor's Scene projection force the one
+Camera-unit connectivity policy, while a direct Scene document keeps its single-component default.
+The visitor store runs the shared interpreter. Guide-free Presentations remain selectable without
+fabricated Stops. Cut and reduced motion settle through the same Camera authority; Travel resolves
+the exact authored connection and direction. An in-flight handoff uses only the Experience-declared
+predecessor View and the live pose; unrelated connectivity is a typed gap. Authored Cut/Travel
+controls, text, state and lifecycle homes are T3.P02 amendments. Public reads remain unavailable
+until T4's reader.
 
 **Destination.** Camera keeps connectivity, routes, framing, projection and
 evaluation as one authority; every profile controller realizes viewing intent

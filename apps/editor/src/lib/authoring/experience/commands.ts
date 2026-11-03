@@ -13,7 +13,7 @@
  */
 
 import type { AuthoringIntent } from '@portfolio/project-model';
-import type { SemanticReference } from '@portfolio/project-model';
+import type { ScenePathAnchor, SemanticReference } from '@portfolio/project-model';
 import type {
 	Experience,
 	ExperienceContinuation,
@@ -21,6 +21,8 @@ import type {
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import {
+	CAMERA_CONNECTION_CREATE_KIND,
+	CAMERA_CONNECTION_UPDATE_KIND,
 	CAMERA_VIEW_UPDATE_KIND,
 	EXPERIENCE_CAPTURE_BIND_KIND,
 	EXPERIENCE_CREATE_KIND,
@@ -70,6 +72,8 @@ export type CommandIds = {
 	readonly presentation?: string;
 	readonly stop?: string;
 	readonly guide?: string;
+	/** R217.S29 — a captured Camera connection id. */
+	readonly connection?: string;
 };
 
 function intent(
@@ -500,6 +504,85 @@ export function viewRenameIntent(input: {
 			eye: [...input.view.eye],
 			target: [...input.view.target],
 			fov: input.view.fov
+		},
+		[]
+	);
+}
+
+/** One current Camera View at the Camera unit's exact revision. */
+function cameraViewReference(envelope: ProjectEnvelope, viewId: string): SemanticReference {
+	return {
+		version: 1,
+		domain: 'camera',
+		revision: { kind: 'exact', contentRevision: envelope.units.camera.header.contentRevision },
+		subject: { kind: 'view', id: viewId },
+		instancePath: [],
+		location: { kind: 'project-root' },
+		componentId: null,
+		capabilityId: null
+	};
+}
+
+/**
+ * R217.S29 (E11) — one straight Camera path from the exit View to the entry
+ * View, with the captured connection id and Camera's automatic duration.
+ */
+export function cameraConnectionCreateIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly fromView: CameraView;
+	readonly toView: CameraView;
+}): AuthoringIntent {
+	return intent(
+		CAMERA_CONNECTION_CREATE_KIND,
+		input.ids,
+		input.revision,
+		[
+			cameraViewReference(input.envelope, input.fromView.id),
+			cameraViewReference(input.envelope, input.toView.id)
+		],
+		{},
+		[{ kind: 'connection', id: input.ids.connection! }]
+	);
+}
+
+/**
+ * R217.S29 — replace one Camera path's interior anchors or one direction's
+ * duration. `durationSeconds: null` clears only that direction's duration.
+ */
+export function cameraConnectionUpdateIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly connectionId: string;
+	readonly anchors?: readonly ScenePathAnchor[];
+	readonly timing?: {
+		readonly forward?: { readonly durationSeconds: number | null };
+		readonly reverse?: { readonly durationSeconds: number | null };
+	};
+}): AuthoringIntent {
+	return intent(
+		CAMERA_CONNECTION_UPDATE_KIND,
+		input.ids,
+		input.revision,
+		[
+			{
+				version: 1,
+				domain: 'camera',
+				revision: { kind: 'exact', contentRevision: input.envelope.units.camera.header.contentRevision },
+				subject: { kind: 'connection', id: input.connectionId },
+				instancePath: [],
+				location: { kind: 'project-root' },
+				componentId: null,
+				capabilityId: null
+			}
+		],
+		{
+			...(input.anchors === undefined
+				? {}
+				: { anchors: input.anchors.map((anchor) => ({ id: anchor.id, position: [...anchor.position] })) }),
+			...(input.timing === undefined ? {} : { timing: input.timing })
 		},
 		[]
 	);

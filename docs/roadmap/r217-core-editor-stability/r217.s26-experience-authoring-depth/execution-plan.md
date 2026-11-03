@@ -75,7 +75,7 @@ owner's journeys.
 | **x-salon** | One Experience; five Presentations, one about a Scene object, one sharing a View with another; one Guide of six Stops with a revisit, a hold-less Stop and a nonadjacent continuation (→ 5); after S27, one Stop guiding three Views |
 | **x-long** | x-salon's world with a 30-Stop Guide |
 | **x-dense** | A 50-View Presentation and 40 Presentations |
-| **x-paths** | x-salon plus Camera connections for two transitions and one step inside a Stop: one through a Wall, one shared by two transitions (added in S29) |
+| **x-paths** | x-salon plus Camera connections for two independent Travel pairs: one path shared by two transitions, one walled step inside a Stop (added in S29) |
 
 ## 5. Slices
 
@@ -272,6 +272,9 @@ DOMAIN: camera-connection-create; camera-connection-update {anchors, timing.forw
 **Scope.**
 - **Camera support** ([E11](./owner-decisions.md#e11)): *Add a Camera path* on a gap, between Stops
   and between a Stop's guided Views. Steps inside a Stop gain the Cut/Travel choice in the shot list.
+- **Connectivity** ([R7](./owner-decisions.md#r7)): one Camera graph may carry independent Travel
+  pairs A–B and C–D. A Cut adds no Camera edge. Camera-unit admission and runtime force the one
+  connectivity policy; a direct Scene document keeps the single-component default.
 - **Paths on Stage**, only while the Guide is open:
   - the evaluated route: selected gold, neighbours solid, the rest faint;
   - Cut as a dotted *CUT* link;
@@ -281,8 +284,9 @@ DOMAIN: camera-connection-create; camera-connection-update {anchors, timing.forw
   anchor. Drag a point; select it (gold, echoed in the Card); Delete removes it. **Straighten** removes
   all points.
 - **Path facts:** *3 points · 12.4 m*.
-- **Duration:** a stepper over the Camera's per-direction duration, *Auto · 6 s* until set. Connectors
-  and Stop cards show seconds.
+- **Duration:** a stepper over the Camera's per-direction duration, *Auto · n s* until set. Connectors
+  and Stop cards show seconds. Camera clamps automatic Travel to 1.25–4.8 s, so a short pair such as
+  x-salon's Stop 1 → 5 evaluates near 1.3 s; an authored duration is the only way past that clamp.
 - **Crosses a wall** ([E12](./owner-decisions.md#e12)) and the **shared path** note.
 - **Entry or exit change** message: *Travel Stop 2 → 3 now joins different Views*.
 - **Show ▾** ([E14](./owner-decisions.md#e14)).
@@ -298,9 +302,9 @@ DOMAIN: camera-connection-create; camera-connection-update {anchors, timing.forw
 
 | # | On | Do | Expect |
 | --- | --- | --- | --- |
-| X29.1 | x-salon | Add a Camera path for a Travel gap; Undo | *travel 6s*; Undo restores the gap |
-| X29.2 | x-paths | Set a step inside Stop 2 to Travel; add its path | The shot list shows the step's seconds; Preview travels between the two Views |
-| X29.3 | x-paths, Plan | Arm Path on the walled transition; add a point; drag it through the doorway | Warning clears once through; one entry per add and drag |
+| X29.1 | x-salon | Set Stop 1 → 5 to Travel (a named gap); add its path; Undo | *travel · 1.3 s* (Camera's automatic clamp); Undo restores the gap |
+| X29.2 | x-paths | Set Stop 2 → 3 to Travel (the available gap); add its path | The connector shows the Travel's seconds; Preview travels from Stop 2 to Stop 3 |
+| X29.3 | x-paths, Plan | Arm Path while the seeded walled step inside Stop 2 is selected; add a point; drag it through the doorway | Warning clears once through; one entry per add and drag |
 | X29.4 | — | Select a point and Delete; Straighten; Duration 9 s, then Auto | Each one entry; seconds update everywhere |
 | X29.5 | x-paths | Edit the shared path; change Stop 2's entry View | The note names the other use; the change message names the new gaps; the old path remains |
 | X29.6 | x-paths | Show ▾ → Selection only; frustums off; close the Guide | Disclosure only; *2 off*; no paths without a Guide |

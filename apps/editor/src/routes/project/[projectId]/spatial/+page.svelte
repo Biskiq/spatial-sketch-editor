@@ -453,6 +453,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let experienceGuideOpen = $state(false);
 	/** The controller the homes read; null outside the Experience lens. */
 	const activeExperience = $derived(lens === 'experience' ? experienceController : null);
+	/** R217.S29 Show ▾ — session-only Stage drawing flags; all on by default. */
+	let showOpen = $state(false);
+	let showMode = $state<'whole' | 'selection'>('whole');
+	let showMarkers = $state(true);
+	let showFrustums = $state(true);
+	let showPaths = $state(true);
+	let showLabels = $state(true);
+	const showOffCount = $derived([showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length);
 	/** The Presentation awaiting a first-Guide name (D8); null when none is asking. */
 	let guideNamePrompt = $state<string | null>(null);
 	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
@@ -550,6 +558,46 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const ray = stage.pointerRay(absoluteCss(event), id);
 		if (ray.kind !== 'ray') return null;
 		const hit = stage.intersectWorkingPlane(ray.ray, floorPlane(), id);
+		return hit.kind === 'intersected' ? hit.worldPoint : null;
+	}
+
+	/** One path anchor drag point, through the same Camera ray and a level plane at its height. */
+	let pathDragLease: { release(): void } | null = null;
+	function beginPathDragLease(): boolean {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		if (stage === null || id === null || pathDragLease !== null) return false;
+		const outcome = stage.acquireGesture({
+			owner: 'experience-path-point',
+			evaluationId: id,
+			policy: 'cancel-on-reading-change'
+		});
+		if (outcome.kind !== 'granted') return false;
+		pathDragLease = outcome.lease;
+		return true;
+	}
+	function endPathDragLease(): void {
+		pathDragLease?.release();
+		pathDragLease = null;
+	}
+
+	function pathAnchorPoint(css: readonly [number, number], height: number): StageTriple | null {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		if (stage === null || id === null) return null;
+		const ray = stage.pointerRay([css[0], css[1]], id);
+		if (ray.kind !== 'ray') return null;
+		const hit = stage.intersectWorkingPlane(
+			ray.ray,
+			{
+				originMeters: [0, height, 0],
+				normal: [0, 1, 0],
+				yawRadians: 0,
+				datumMeters: experienceFloorDatum,
+				supportedLocalExtent: null
+			},
+			id
+		);
 		return hit.kind === 'intersected' ? hit.worldPoint : null;
 	}
 
@@ -1032,6 +1080,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		guideOpen: () => experienceGuideOpen,
 		setGuideOpen: (open) => {
 			experienceGuideOpen = open;
+			if (!open) experienceController?.setPathArmed(false);
 		},
 		select: selectExperienceSubject,
 		guideNamePrompt: () => guideNamePrompt,
@@ -4084,9 +4133,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				event.preventDefault();
 				break;
 			}
-			case 'delete':
+			case 'delete': {
+				const controller = activeExperience;
+				const anchorId = controller?.selectedAnchorId ?? null;
+				if (lens === 'experience' && controller !== null && anchorId !== null) {
+					event.preventDefault();
+					void controller.removePathAnchor(anchorId);
+					break;
+				}
 				requestDelete();
 				break;
+			}
 			case 'dismiss': {
 				// The deepest open context closes first. A disclosed-but-unconfirmed
 				// destructive action is deeper than the task; a **live proposal** is deeper
@@ -4095,6 +4152,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (pendingDelete !== null) {
 					pendingDelete = null;
 					notice = '';
+					break;
+				}
+				if (lens === 'experience' && activeExperience?.pathArmed) {
+					event.preventDefault();
+					activeExperience.setPathArmed(false);
 					break;
 				}
 				const stage = facade;
@@ -5443,7 +5505,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 					{/if}
 					{#if lens === 'experience' && evaluation !== null && lookThroughSession === null}
-						<ExperienceMarks {evaluation} onLookThrough={lookThroughView} />
+						<ExperienceMarks
+							{evaluation}
+							onLookThrough={lookThroughView}
+							{showMarkers}
+							{showFrustums}
+							{showPaths}
+							{showLabels}
+							selectionOnly={showMode === 'selection'}
+							onPlanePoint={pathAnchorPoint}
+							beginPathDragLease={beginPathDragLease}
+							endPathDragLease={endPathDragLease}
+						/>
 					{/if}
 					{#if viewEditPreview !== null}
 						<svg class="placement-preview view-edit-preview" data-view-edit-ghost aria-hidden="true">
@@ -5513,6 +5586,62 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						motionSpeed={preferences.motionSpeed}
 						onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
 					/>
+					{#if lens === 'experience'}
+						<!-- R217.S29 Show ▾: session-only Stage drawing flags beside the reading control. -->
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="show-control"
+							data-show-control
+							onclick={(event) => event.stopPropagation()}
+							onpointerdown={(event) => event.stopPropagation()}
+						>
+							<button
+								type="button"
+								class="show-button"
+								aria-expanded={showOpen}
+								aria-haspopup="true"
+								title="Show: what the Guide draws on the Stage"
+								onclick={() => (showOpen = !showOpen)}
+							>
+								Show <span aria-hidden="true">▾</span>
+								{#if showOffCount > 0}<span class="show-off" data-show-off>{showOffCount} off</span>{/if}
+							</button>
+							{#if showOpen}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div
+									class="show-popover"
+									role="dialog"
+									tabindex="-1"
+									aria-label="Show on the Stage"
+									onkeydown={(event) => {
+										if (event.key !== 'Escape') return;
+										event.stopPropagation();
+										showOpen = false;
+									}}
+								>
+									<header><strong>Show</strong><span>editor only</span></header>
+									<div class="show-mode" role="group" aria-label="Guide reading">
+										<button type="button" aria-pressed={showMode === 'whole'} onclick={() => (showMode = 'whole')}>Whole Guide</button>
+										<button type="button" aria-pressed={showMode === 'selection'} onclick={() => (showMode = 'selection')}>Selection only</button>
+									</div>
+									<label><input type="checkbox" bind:checked={showMarkers} /> Camera markers</label>
+									<label><input type="checkbox" bind:checked={showFrustums} /> View frustums</label>
+									<label><input type="checkbox" bind:checked={showPaths} /> Camera paths</label>
+									<label><input type="checkbox" bind:checked={showLabels} /> View labels</label>
+									<button
+										type="button"
+										class="show-all"
+										onclick={() => {
+											showMarkers = true;
+											showFrustums = true;
+											showPaths = true;
+											showLabels = true;
+										}}
+									>Show all</button>
+								</div>
+							{/if}
+						</div>
+					{/if}
 				</div>
 				{#if lens === 'world'}
 					<!--
@@ -5587,6 +5716,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{/key}
 				{/if}
 
+				{#if lens === 'experience' && activeExperience?.pathArmed}
+					<!-- R217.S29 path mode: one armed target, one way out. -->
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="mode-pill path-pill"
+						data-path-pill
+						onclick={(event) => event.stopPropagation()}
+						onpointerdown={(event) => event.stopPropagation()}
+					>
+						<span class="live-dot" aria-hidden="true"></span>
+						<span>Path — click the selected route to add a point</span>
+						<button type="button" onclick={() => activeExperience?.setPathArmed(false)}>Done Esc</button>
+					</div>
+				{/if}
 				{#if lens === 'experience' && lookThroughSession !== null}
 					<!-- The capture frame sits beside the Card and above the Guide; helpers are hidden. -->
 					<div class="through-slot" bind:this={throughFrameEl} data-through-frame>
@@ -5747,7 +5890,24 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						captureReason={experienceCaptureReason}
 						guideOpen={experienceGuideOpen}
 						placeArmed={experienceTool === 'place'}
+						pathArmed={activeExperience.pathArmed}
+						pathReason={activeExperience.selectedPath === null
+							? 'Select a Travel move to edit its Camera path'
+							: activeExperience.selectedPath.state === 'cut'
+								? 'A Cut has no travel path'
+								: activeExperience.selectedPath.state !== 'ready'
+									? 'Add a Camera path from this move'
+									: undefined}
 						onPlaceView={togglePlaceView}
+						onPath={() => {
+							if (activeExperience === null) return;
+							if (activeExperience.pathArmed) activeExperience.setPathArmed(false);
+							else if (activeExperience.selectedPath?.state === 'ready') {
+								// Path editing is a Plan surface; arming from 3D enters it first.
+								if (draftingReading !== 'plan') setReading('plan');
+								activeExperience.setPathArmed(true);
+							}
+						}}
 						onCapture={() => void activeExperience?.capture()}
 						onToggleGuide={toggleExperienceGuide}
 					/>
@@ -6055,6 +6215,84 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.view-edit-preview .eye {
 		stroke: var(--shell-gold, #d4ad45);
+	}
+	/* R217.S29 Show ▾: a light disclosure beside the Stage reading control. */
+	.show-control {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+	.show-button {
+		height: 30px;
+		padding: 0 10px;
+		border: 1px solid rgb(23 45 37 / 0.18);
+		border-radius: 6px;
+		background: var(--shell-paper, #fbf8ee);
+		color: var(--shell-ink, #1c2b23);
+		font: inherit;
+		font-size: 12px;
+		cursor: pointer;
+	}
+	.show-button[aria-expanded='true'] {
+		border-color: var(--shell-gold, #d4ad45);
+	}
+	.show-off {
+		margin-left: 5px;
+		color: var(--shell-muted, #5b6b62);
+	}
+	.show-popover {
+		position: absolute;
+		top: calc(100% + 8px);
+		right: 0;
+		z-index: 8;
+		width: 248px;
+		display: grid;
+		gap: 7px;
+		padding: 10px;
+		border-radius: 8px;
+		background: var(--shell-paper, #fbf8ee);
+		color: var(--shell-ink, #1c2b23);
+		box-shadow: 0 12px 30px rgb(0 0 0 / 0.22);
+		font-size: 12px;
+	}
+	.show-popover header {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+	}
+	.show-popover header span {
+		color: var(--shell-muted, #5b6b62);
+		font-size: 11px;
+	}
+	.show-mode {
+		display: flex;
+		gap: 4px;
+	}
+	.show-mode button,
+	.show-all {
+		flex: 1;
+		height: 27px;
+		border: 1px solid rgb(23 45 37 / 0.16);
+		border-radius: 5px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 11px;
+		cursor: pointer;
+	}
+	.show-mode button[aria-pressed='true'] {
+		background: rgb(23 45 37 / 0.08);
+		border-color: rgb(23 45 37 / 0.3);
+	}
+	.show-popover label {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		min-height: 26px;
+		cursor: pointer;
+	}
+	.show-all {
+		margin-top: 2px;
 	}
 	/* The through capture frame: 16:10, beside the Card and above the Guide. */
 	.through-slot {

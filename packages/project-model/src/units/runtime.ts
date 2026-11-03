@@ -30,6 +30,7 @@ import {
 } from '../scene';
 import type { SceneValidationOptions } from '../scene-codec';
 import type { ShapeIssue } from '../strict-shape';
+import { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 import type {
 	CameraFreeSceneDocument,
 	CameraUnitPayload,
@@ -163,7 +164,9 @@ export function prepareValidatedUnitRuntime(
 		runtimeScene = p2311Measure('scene-resolve', () =>
 			resolveSceneDocument(
 				sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
-				sceneOptions
+				// Force the Camera-unit policy after merging the host's catalogue
+				// options: editor admission and visitor preparation share one answer.
+				{ ...sceneOptions, ...CAMERA_UNIT_SCENE_VALIDATION }
 			)
 		);
 	} catch (error) {

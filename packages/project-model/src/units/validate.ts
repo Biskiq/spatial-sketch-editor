@@ -35,6 +35,7 @@ import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types'
 import { validateProjectSceneCameraPoses } from '../project-layout-semantics';
 import { SCENE_WORLD_LOCAL_FORMAT_VERSION } from '../scene';
 import { validateSceneDocument } from '../scene-codec';
+import { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 import {
 	ADMITTED_UNIT_VERSIONS,
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -383,21 +384,26 @@ export function validateCameraPayload(input: unknown): ShapeValidation<CameraUni
 		views.push({ id, label, eye, target, fov, connectedViewIds });
 	}
 	if (reader.issues.length > 0) return failed(reader);
-	const delegated = validateSceneDocument({
-		formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
-		textures: [],
-		materials: [],
-		entities: [],
-		navigationNodes: views.map((view) => ({
-			id: view.id,
-			label: view.label,
-			position: [...view.eye] as [number, number, number],
-			cameraTarget: [...view.target] as [number, number, number],
-			fov: view.fov,
-			connectedNodeIds: [...view.connectedViewIds]
-		})),
-		connections: record.connections
-	});
+	// Camera-unit admission uses the one named policy for independent Travel
+	// pairs. A direct Scene document keeps the codec's single-component default.
+	const delegated = validateSceneDocument(
+		{
+			formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
+			textures: [],
+			materials: [],
+			entities: [],
+			navigationNodes: views.map((view) => ({
+				id: view.id,
+				label: view.label,
+				position: [...view.eye] as [number, number, number],
+				cameraTarget: [...view.target] as [number, number, number],
+				fov: view.fov,
+				connectedNodeIds: [...view.connectedViewIds]
+			})),
+			connections: record.connections
+		},
+		CAMERA_UNIT_SCENE_VALIDATION
+	);
 	if (!delegated.success) return { success: false, issues: delegatedIssues(delegated.issues) };
 	const poseIssues = validateProjectSceneCameraPoses(delegated.document);
 	if (poseIssues.length > 0) return { success: false, issues: poseIssues.map((issue) => ({ ...issue, path: issue.path.replace('$.scene.', '$.') })) };

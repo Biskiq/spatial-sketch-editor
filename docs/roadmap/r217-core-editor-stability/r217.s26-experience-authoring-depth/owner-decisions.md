@@ -25,6 +25,13 @@ carries its recommendation, and the owner approved the plan with them on 2026-11
 | R5 | **E9 and E15 are approved as proposed**, including subject framing and Conservatory's visitor workflow |
 | R6 | **S27 format and gate:** a clean version break, strict refusal and no migration. The Experience unit format goes from 2 to 3 and `ExecutionProgram@2` to `@3`, and R217.S27 provides **`T3.camera-experience-cutover@2`**. S27's PR adds the `@2` gate-register row; the accepted `@1` row is unchanged ([E2](#e2)) |
 
+<a id="r7"></a>
+## Owner follow-up ruling (2026-11-03, S29 Camera connectivity)
+
+| # | Ruling |
+| --- | --- |
+| R7 | **Independent Travel pairs are approved.** One Camera graph may carry A–B and C–D as separate connected components. A Guide may Travel A → B, Cut B → C, then Travel C → D; a Cut adds no Camera edge. Camera-unit admission and runtime share one explicit connectivity policy, while a direct Scene document keeps its single-component default. No migration, authored setting, second validator or bridge edge is introduced. |
+
 ## Decisions
 
 | # | Decision | Recommendation |
