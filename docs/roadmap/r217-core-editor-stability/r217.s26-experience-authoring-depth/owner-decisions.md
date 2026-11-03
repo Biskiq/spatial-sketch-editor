@@ -6,7 +6,7 @@ recorded here and in the phase README when the owner gives them; this file never
 
 | # | Decision | Recommendation |
 | --- | --- | --- |
-| [E1](#e1) | Where S26 runs relative to S11 | S26–S32 as R217 slices, before S11 |
+| [E1](#e1) | Where S26 runs relative to S11 | S26–S29 as R217 slices, before S11 |
 | [E2](#e2) | The new planners and derived reads | Approve the ledger as one set |
 | [E3](#e3) | Stop-local guided Views | Defer to a T3 phase; keep the D5 placeholder |
 | [E4](#e4) | Removal rules | No silent replacement; named consequences; Camera truth removed only when unshared |
@@ -26,13 +26,13 @@ recorded here and in the phase README when the owner gives them; this file never
 <a id="e1"></a>
 ## E1 — Sequencing against S11
 
-**Recommendation: register S26–S32 in R217 and run them before S11**, which then also needs them
+**Recommendation: register S26–S29 in R217 and run them before S11**, which then also needs them
 merged and gains four Experience journeys ([execution plan §6](./execution-plan.md#6-r217-and-s11-sequencing)).
 S11 is R217's one integrated proof. Run now, it would certify an Experience lens full of disabled
-placeholders, and S26–S32 would then rework the Card, Index, route and Stage facade it just certified.
+placeholders, and S26–S29 would then rework the Card, Index, route and Stage facade it just certified.
 One later S11 proves the finished shell once.
 
-*Alternative:* run S11 now on S12–S25 and register S26–S32 as a new T3 phase. R217 closes sooner,
+*Alternative:* run S11 now on S12–S25 and register S26–S29 as a new T3 phase. R217 closes sooner,
 but the Experience lens is integrated twice, and the milestone's *Camera/Experience authoring* row
 already lists advanced path authoring and rich transport as *Not required*.
 
@@ -64,7 +64,7 @@ changes. S26 keeps D5: the entry View with its hold, the other Views dimmed, *In
 *Comes with Stop-local Views*. With no data obligations before beta, the later format change is a
 version bump with strict refusal and no migration.
 
-*Alternative:* an eighth slice, S33, with the format bump, after S32. It roughly doubles S26's
+*Alternative:* a fifth slice, S30, with the format bump, after S29. It roughly doubles S26's
 domain risk.
 
 <a id="e4"></a>
@@ -201,6 +201,6 @@ the Round 2 mock durations.
 ## E16 — Review route
 
 **Recommendation:** under the owner's 2026-11-02 process change, UI is accepted by owner visual
-review. Planner and Camera work is not UI, so S26, S27, S31 and S32 keep one independent review of
+review. Planner and Camera work is not UI, so S26, S28 and S29 keep one independent review of
 their domain and Camera parts (new planners, the time map, the Layout read). Every slice is then
 accepted visually by the owner.

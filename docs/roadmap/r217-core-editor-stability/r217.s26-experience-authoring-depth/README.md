@@ -11,8 +11,8 @@ in [owner-decisions.md](./owner-decisions.md); release needs a separate owner re
 **What S26 is.** S25 put Experience into the shared shell with honest placeholders. S26 completes the
 creator workflow those placeholders stand for — Presentation → Views → Guide and Stops → Camera paths →
 playback → Preview — inside the accepted Round 2 shell, with Conservatory's content and interaction,
-on the existing Camera and Experience authorities. It is delivered as seven bounded slices,
-**R217.S26–R217.S32**, before the final gate R217.S11.
+on the existing Camera and Experience authorities. It is delivered as four bounded slices,
+**R217.S26–R217.S29**, before the final gate R217.S11.
 
 **Authorities** (unchanged from the [S25 harvest](../r217.s25-experience-shared-homes/design-harvest.md), D13):
 
@@ -36,7 +36,7 @@ persisted-format change: the one capability that would need one, Stop-local guid
    that closes each gap. Includes the domain-operation ledger and corrections to the S25 harvest.
 2. [Owner decisions](./owner-decisions.md) — E1–E14, each with a recommendation. E1 (sequencing) and
    E2 (new planners) gate everything else.
-3. [Execution plan](./execution-plan.md) — the seven slices: scope, domain operations, visual and
+3. [Execution plan](./execution-plan.md) — the four slices: scope, domain operations, visual and
    interaction completion, dependencies, shared files, acceptance journeys and verification, plus the
    proposed S11 changes.
 
