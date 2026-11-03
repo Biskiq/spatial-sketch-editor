@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Experience Review Sheet</title>
+<!--
+  Experience review 1: proposal sheet for the owner's review of R217.S26–S30 (see fix-plan.md).
+  Standalone: open the file directly, no server or build. A design surface, not production code
+  or authority: geometry here is screen maths, not camera-core. ★ marks the recommendation;
+  struck-through options are current production, kept only for comparison.
+-->
+<style>
+:root{--forest:#11291f;--forest2:#22503c;--forest3:#2d5e48;--leaf:#4f8f6c;--leaftint:#e7f1ea;--hover:#eef0ed;--hair:#e1e4de;--hair2:#cdd2ca;--ink:#1b201c;--ink2:#4a524c;--ink3:#79817b;--quiet:#9fb2a5;--paper:#e9ebe6;--index:#f6f7f5;--mat:#1d3a33;--ivory:#f3f0e4;--gold:#d4ad45;--goldink:#74560c;--goldtint:#f8efd6;--caution:#c85a48;--cautionbg:#f7ede8;--refuse:#7e2718;--refusebg:#fdf3f0;--glass:rgba(14,30,25,.8);--popdark:rgba(17,41,31,.97);--value:rgba(10,24,18,.82);--serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;--sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--shadow:0 1px 2px rgb(0 0 0/.06),0 8px 24px rgb(0 0 0/.12)}
+*{box-sizing:border-box}
+body{margin:0;background:#f5f5f1;color:var(--ink);font:14px/1.45 var(--sans)}
+header.top{position:sticky;top:0;z-index:40;background:var(--forest);color:var(--ivory);padding:10px 16px;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline}
+header.top h1{font:500 19px/1.2 var(--serif);margin:0}
+header.top span{font-size:12px;color:var(--quiet)}
+nav.toc{max-width:1240px;margin:12px auto 0;padding:0 16px;display:flex;flex-wrap:wrap;gap:6px}
+nav.toc a{font-size:12px;color:var(--ink2);text-decoration:none;border:1px solid var(--hair2);border-radius:999px;padding:3px 10px;background:#fff}
+nav.toc a:hover{background:var(--hover)}
+.intro{max-width:1240px;margin:12px auto 0;padding:0 16px;font-size:13px;color:var(--ink2)}
+.intro b{color:var(--ink)}
+main{max-width:1240px;margin:0 auto;padding:14px 16px 48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,560px),1fr));gap:14px}
+section{background:#fff;border:1px solid var(--hair);border-radius:14px;padding:16px;min-width:0;scroll-margin-top:60px}
+section.wide{grid-column:1/-1}
+h2{font:600 15px/1.3 var(--sans);margin:0 0 2px}
+h2 .n{color:var(--ink3);font-weight:500;margin-right:6px}
+.now{margin:4px 0 8px;font-size:12.5px;color:var(--refuse)}
+.lede{margin:0 0 10px;font-size:13px;color:var(--ink2)}
+.opts{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 10px;font-size:12px;color:var(--ink2);align-items:center}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--hair2);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{border:0;background:none;padding:5px 10px;font:inherit;font-size:12px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+.seg button:hover{background:var(--hover)}
+.seg button[aria-pressed=true]{background:var(--ivory);color:var(--ink);font-weight:600}
+.seg button.old{text-decoration:line-through;text-decoration-color:rgba(126,39,24,.6)}
+.seg button:focus-visible,.ui button:focus-visible{outline:2px solid var(--leaf);outline-offset:-2px}
+.star{color:#b8901f}
+.hint{font-size:12px;color:var(--ink3);margin:8px 2px 0}
+.hint kbd{font:11px var(--mono);border:1px solid var(--hair2);border-radius:4px;padding:0 4px;background:#fafaf7}
+ul.rules{margin:8px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink2)} ul.rules li{margin:3px 0}
+svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} svg.st{display:block;width:100%;height:auto;border-radius:10px;user-select:none;-webkit-user-select:none;touch-action:none;background:var(--paper)}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:10px;align-items:start}
+.cap{font-size:11px;color:var(--ink3);margin:6px 2px 4px;text-transform:uppercase;letter-spacing:.07em}
+[hidden]{display:none!important}
+
+/* ---- Stage marks (SVG) ---- */
+.gl{stroke:rgba(27,32,28,.06)} .gl2{stroke:rgba(27,32,28,.12)}
+.wall{stroke:var(--ink);stroke-width:7;stroke-linecap:square;fill:none}
+.obj{fill:#dcd8ce;stroke:var(--ink2);stroke-width:1}
+.v2{cursor:pointer}
+.v2 .cone{fill:var(--ink);fill-opacity:.06;stroke:var(--ink);stroke-opacity:.28;stroke-width:1}
+.v2.tour .cone{fill:var(--leaf);fill-opacity:.13;stroke:var(--leaf);stroke-opacity:.65}
+.v2.sel .cone{fill:var(--gold);fill-opacity:.2;stroke:var(--gold);stroke-opacity:1;stroke-width:1.4}
+.v2 .eye{fill:#fff;stroke:var(--ink);stroke-width:1.4}
+.v2.tour .eye{fill:var(--leaf);stroke:#fff;stroke-width:1.6}
+.v2.sel .eye{fill:var(--gold);stroke:#fff;stroke-width:2}
+.v2 .arr{stroke:var(--ink);stroke-opacity:.5;stroke-width:1.6;fill:none;stroke-linecap:round}
+.v2.tour .arr{stroke:var(--leaf);stroke-opacity:1} .v2.sel .arr{stroke:var(--gold);stroke-opacity:1;stroke-width:2}
+.aimline{stroke:var(--goldink);stroke-width:1.2;stroke-dasharray:3 3}
+.knob{fill:#fff;stroke:var(--ink);stroke-width:1.1;filter:drop-shadow(0 1px 1.2px rgba(20,24,20,.3));cursor:grab}
+.brk{fill:none;stroke:var(--gold);stroke-width:2;stroke-linecap:round}
+.blue{fill:none;stroke:#2f7cf6;stroke-width:3;rx:6}
+.badge circle{fill:var(--forest);stroke:#fff;stroke-width:1.2} .badge text{fill:#fff;font:600 9.5px var(--sans)}
+.dmark{fill:var(--gold);stroke:#fff;stroke-width:1}
+.vtag rect{fill:var(--forest)} .vtag text{fill:#fff;font:500 11px var(--sans)}
+.vtag.old rect{fill:var(--ink)} .vtag.old text{font:500 10.5px var(--mono)}
+.floor3{fill:#e2e5de;stroke:var(--hair2)} .fgrid{stroke:rgba(27,32,28,.07)}
+.wallb{fill:#eee9df;stroke:#d6d0c2} .wallb2{fill:#e4ded1;stroke:#d6d0c2}
+.boxt{fill:#5d4636}.boxl{fill:#3e2d22}.boxr{fill:#4b382b}
+.fr{fill:var(--ink);fill-opacity:.05;stroke:var(--ink);stroke-opacity:.45;stroke-width:1}
+.fr.tour{fill:var(--leaf);fill-opacity:.14;stroke:var(--leaf);stroke-opacity:.9}
+.fr.sel{fill:var(--gold);fill-opacity:.24;stroke:var(--gold);stroke-opacity:1;stroke-width:1.5}
+.frl{stroke:var(--ink);stroke-opacity:.32;stroke-width:1}
+.frl.tour{stroke:var(--leaf);stroke-opacity:.8} .frl.sel{stroke:var(--goldink);stroke-opacity:.9;stroke-width:1.2}
+.stem{stroke:var(--ink);stroke-opacity:.45;stroke-width:1;stroke-dasharray:2 2.5}
+.foot{fill:var(--ink);fill-opacity:.22}
+.cbody{fill:#fff;stroke:var(--ink);stroke-width:1.1;filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3))}
+.cbody.tour{stroke:var(--leaf)} .cbody.sel{stroke:var(--goldink);fill:var(--goldtint)}
+.lens{fill:var(--ink)} .lens.sel{fill:var(--goldink)}
+.chipold{fill:#fff;stroke:var(--leaf);stroke-width:1}
+.htag rect{fill:var(--value)} .htag text{fill:#fff;font:500 10.5px var(--sans)}
+.route{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.route.case{stroke:#fff;stroke-width:7.5;stroke-opacity:.9}
+.route.tour{stroke:var(--leaf);stroke-width:4}
+.route.sel{stroke:var(--gold);stroke-width:4.4}
+.route.bad{stroke:var(--caution);stroke-width:3;stroke-dasharray:6 4}
+.route.thin{stroke:var(--leaf);stroke-width:1.1;stroke-opacity:.75}
+.route.thin.sel{stroke:var(--gold);stroke-width:1.4}
+.chev{fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ahead{fill:var(--gold)} .ahead.tour{fill:var(--leaf)}
+.sring{fill:#fff;stroke-width:2}
+.cutl{stroke:var(--ink);stroke-opacity:.55;stroke-width:1.4;stroke-dasharray:1.5 4;stroke-linecap:round;fill:none}
+.cutl.old{stroke-dasharray:4 4}
+.pchip rect{fill:#fff;stroke:var(--hair2)} .pchip text{fill:var(--ink2);font:500 10.5px var(--sans)}
+.pchip.bad rect{fill:var(--cautionbg);stroke:var(--caution)} .pchip.bad text{fill:var(--refuse)}
+.pchip.old text{font:500 9.5px var(--mono);fill:var(--ink3)} .pchip.old rect{fill:none;stroke:none}
+.shadow3{stroke:var(--ink);stroke-opacity:.3;stroke-width:1.2;stroke-dasharray:4 3;fill:none}
+.vtick{stroke:var(--goldink);stroke-opacity:.55;stroke-width:1;stroke-dasharray:2 2}
+.pt{fill:#fff;stroke:var(--ink);stroke-width:1.2;filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3));cursor:grab}
+.pt.on{fill:var(--gold);stroke:var(--goldink)}
+.mid{fill:rgba(255,255,255,.88);stroke:var(--goldink);stroke-width:1;cursor:copy}
+.midplus{stroke:var(--goldink);stroke-width:1.2;pointer-events:none}
+.endlock{fill:none;stroke:var(--goldink);stroke-width:1.2;stroke-dasharray:2 2}
+.hitroute{stroke:transparent;stroke-width:18;fill:none;cursor:copy}
+.dim{opacity:.32;pointer-events:none}
+
+/* ---- Shell UI mocks (HTML) ---- */
+.ui{font:13px/1.4 var(--sans);color:var(--ink)}
+.ui button{font:inherit;cursor:pointer}
+.card{width:300px;max-width:100%;background:#fff;border:1px solid var(--hair2);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.c-head{padding:12px 14px 6px 16px;display:flex;gap:6px;align-items:flex-start}
+.c-head .g{flex:1;min-width:0}
+.c-kind{font-size:12px;color:var(--ink3)}
+.c-kind a{color:var(--ink2);text-decoration:underline;text-decoration-color:var(--hair2)}
+.c-name{font:500 22px/1.2 var(--serif);margin-top:2px}
+.ib{border:0;background:none;width:28px;height:28px;border-radius:7px;color:var(--ink2)}
+.ib:hover{background:var(--hover)}
+.c-sec{padding:10px 16px;border-top:1px solid var(--hair)}
+.c-lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.cseg{display:grid;grid-template-columns:1fr 1fr;background:var(--hover);border-radius:10px;padding:3px;gap:3px}
+.cseg button{border:0;background:none;border-radius:8px;padding:6px;color:var(--ink2)}
+.cseg button[aria-pressed=true]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0}
+.row .k{color:var(--ink2)}
+.step{display:inline-flex;align-items:center;border:1px solid var(--hair2);border-radius:8px;overflow:hidden}
+.step button{border:0;background:#fff;width:26px;height:26px;color:var(--ink2)} .step button:hover{background:var(--hover)}
+.step span{padding:0 8px;font-weight:600;min-width:46px;text-align:center}
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:11.5px;background:var(--hover);color:var(--ink2)}
+.pill.auto{background:var(--leaftint);color:var(--forest2)}
+.tbtn{border:0;background:none;color:var(--forest2);padding:0;text-decoration:underline;text-decoration-color:var(--hair2)}
+.btn{border:1px solid var(--hair2);background:#fff;border-radius:9px;padding:6px 12px;color:var(--ink)}
+.btn:hover{background:var(--hover)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--forest);font-weight:600}
+.btn.forest{background:var(--forest2);border-color:var(--forest2);color:#fff;font-weight:600}
+.btn.full{width:100%}
+.film{display:grid;grid-template-columns:1fr 64px 1fr;gap:6px;align-items:center}
+.film .th{aspect-ratio:16/10;border-radius:8px;overflow:hidden;position:relative;background:var(--paper)}
+.film .th svg,.thumb svg{display:block;width:100%;height:100%}
+.film .th .no{position:absolute;left:6px;top:6px;width:18px;height:18px;border-radius:50%;background:var(--forest);color:#fff;font:600 10px/18px var(--sans);text-align:center}
+.film small{display:block;font-size:11px;color:var(--ink3);margin-top:3px} .film b{font:500 13px var(--serif)}
+.mini{display:block;width:100%;height:auto;background:var(--paper);border-radius:6px}
+.note{font-size:12px;color:var(--forest2);background:var(--leaftint);border-radius:8px;padding:6px 9px;margin-top:8px}
+.prob{background:var(--cautionbg);border:1px solid #efd4cb;border-radius:10px;padding:9px 11px;margin-top:8px;font-size:12.5px;color:var(--refuse)}
+.prob .acts{display:flex;gap:6px;margin-top:7px}
+.prob .acts .btn{padding:4px 10px;font-size:12px}
+.banner-old{background:#241d2b;color:#e8e3ef;font-size:11px;padding:7px 10px;border-radius:8px;margin-top:8px;text-decoration:line-through;text-decoration-color:rgba(255,120,100,.7)}
+.ask{border:1px solid var(--hair2);border-radius:10px;padding:9px 11px;margin-top:8px;font-size:12.5px}
+
+/* Guide instrument */
+.guide{background:var(--popdark);border-radius:16px;padding:10px 12px 12px;color:var(--ivory)}
+.g-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.g-eyebrow{font-size:10.5px;letter-spacing:.09em;color:var(--quiet)}
+.g-name{font:500 17px var(--serif)}
+.g-play{width:30px;height:30px;border-radius:50%;background:var(--gold);border:0;display:grid;place-items:center}
+.g-time{font-size:12px;color:#dfe6e1} .g-time b{color:#fff}
+.g-btn{border:1px solid #2f4a3e;background:#1a3a2d;color:#e6ece8;border-radius:9px;padding:4px 10px;font-size:12px}
+.g-sp{flex:1}
+.g-strip{display:flex;align-items:center;margin-top:6px;padding:6px 0 0 6px;overflow:hidden}
+.g-card{flex:0 0 132px;background:#fff;color:var(--ink);border-radius:11px;padding:5px;position:relative}
+.g-card .thumb{height:52px;border-radius:7px;overflow:hidden;background:var(--paper)}
+.g-card .no{position:absolute;left:-5px;top:-5px;width:19px;height:19px;border-radius:50%;background:var(--forest);color:#fff;border:1.5px solid #fff;font:600 10px/16px var(--sans);text-align:center}
+.g-card .t{font:500 12.5px var(--serif);margin:4px 2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-card .m{font-size:10.5px;color:var(--ink3);margin:0 2px}
+.g-card .bar{height:3px;border-radius:2px;background:var(--hair);margin:4px 2px 1px;overflow:hidden} .g-card .bar i{display:block;height:100%;background:var(--leaf)}
+.g-gut{flex:0 0 58px;display:grid;place-items:center}
+.tchip{display:inline-flex;align-items:center;gap:3px;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:600;white-space:nowrap}
+.tchip.trav{background:var(--gold);color:var(--forest)}
+.tchip.cut{background:transparent;color:#cfd8d2;border:1px dashed #5c7a6c}
+.tchip.gap{background:transparent;color:#f0b6a8;border:1.5px dashed var(--caution)}
+.tchip.sel{box-shadow:0 0 0 2px var(--ivory)}
+.g-strip.old .g-gut{flex-basis:14px}
+.g-strip.old .tchip{font:500 10px var(--mono);background:#1f3b2f;color:#dfe6e1;border:1px solid #6f8f7f;position:relative;z-index:2}
+.g-tl{display:flex;height:16px;margin-top:10px;gap:2px;align-items:center}
+.g-tl .s{height:8px;border-radius:3px;background:#2d5e48;color:#cfe0d6;font:600 8.5px/8px var(--sans);text-align:center}
+.g-tl .s.done{background:var(--leaf)} .g-tl .w{height:8px;flex:0 0 22px;border-radius:3px;background:repeating-linear-gradient(135deg,#2d5e48 0 3px,transparent 3px 6px);color:#cfe0d6;font:600 8.5px/8px var(--sans);text-align:center}
+.g-tl .mv{height:2px;background:#6f8f7f}
+
+/* Stage toolbar + Show */
+.tbwrap{position:relative;background:var(--paper);border-radius:10px;padding:10px;min-height:370px}
+.tb{display:inline-flex;gap:2px;padding:3px;border-radius:11px;vertical-align:top;margin-right:6px}
+.tb button{border:0;background:none;border-radius:8px;padding:5px 10px;font:500 12.5px var(--sans);display:inline-flex;gap:5px;align-items:center}
+.dark .tb{background:var(--glass);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.dark .tb button{color:#dfe6e1} .dark .tb button:hover{background:rgba(255,255,255,.08)}
+.dark .tb button[aria-pressed=true]{background:var(--forest3);color:#fff}
+.light .tb{background:rgba(255,255,255,.94);box-shadow:var(--shadow)}
+.light .tb button{color:var(--ink2)} .light .tb button:hover{background:var(--hover)}
+.light .tb button[aria-pressed=true]{background:var(--forest2);color:#fff}
+.tb .off{font-size:10.5px;background:var(--gold);color:var(--forest);border-radius:999px;padding:0 6px;font-weight:700}
+.showpop{position:absolute;left:180px;top:52px;width:300px;background:#fff;border:1px solid var(--hair2);border-radius:14px;box-shadow:var(--shadow);padding:12px}
+.showpop header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.showpop header b{font-size:13.5px} .showpop header span{font-size:11.5px;color:var(--ink3)}
+.showpop .cseg{margin-bottom:8px}
+.srow{display:grid;grid-template-columns:22px 1fr 18px;gap:8px;align-items:center;padding:5px 2px;border-radius:8px;cursor:pointer}
+.srow:hover{background:var(--hover)}
+.srow b{font-weight:500;font-size:13px;display:block} .srow small{font-size:11.5px;color:var(--ink3)}
+.srow svg{color:var(--ink3)}
+.chk{appearance:none;-webkit-appearance:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--hair2);background:#fff;margin:0;cursor:pointer}
+.chk:checked{background:var(--leaf) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat;border-color:var(--leaf)}
+.chk:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+.showpop .foot{font-size:11.5px;color:var(--ink3);margin:6px 2px 0;border-top:1px solid var(--hair);padding-top:7px}
+.oldshow{display:inline-block;background:#fff;border:1px solid #bbb;border-radius:6px;padding:3px 8px;font-size:12px;text-decoration:line-through;text-decoration-color:rgba(126,39,24,.6)}
+
+/* Head, toast */
+.head{background:var(--forest);color:var(--ivory);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:13px;position:relative}
+.head .nm{font:500 15px var(--serif)} .head .g-sp{flex:1}
+.fixpill{display:inline-flex;align-items:center;gap:6px;background:rgba(200,90,72,.18);color:#f6c9bd;border:1px solid rgba(200,90,72,.5);border-radius:999px;padding:3px 10px;font-size:12px}
+.fixpill i{width:7px;height:7px;border-radius:50%;background:var(--caution);display:inline-block}
+.fixlist{position:absolute;right:10px;top:42px;width:310px;background:#fff;color:var(--ink);border-radius:12px;box-shadow:var(--shadow);border:1px solid var(--hair2);padding:8px;z-index:3}
+.fixlist .it{display:flex;gap:8px;align-items:flex-start;padding:7px;border-radius:8px}
+.fixlist .it:hover{background:var(--hover)}
+.fixlist .it i{width:8px;height:8px;border-radius:50%;background:var(--caution);margin-top:6px;flex:0 0 8px}
+.fixlist small{display:block;color:var(--ink3);font-size:11.5px}
+.toast{display:inline-flex;align-items:center;gap:10px;background:var(--glass);color:#eef1ec;border-radius:12px;padding:8px 8px 8px 12px;font-size:12.5px;box-shadow:var(--shadow);backdrop-filter:blur(8px)}
+.toast button{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:4px 9px;font-size:12px}
+.copy{width:100%;border-collapse:collapse;font-size:12.5px}
+.copy th{text-align:left;font-weight:600;color:var(--ink2);padding:6px 8px;border-bottom:1px solid var(--hair2);font-size:12px}
+.copy td{padding:7px 8px;border-bottom:1px solid var(--hair);vertical-align:top}
+.copy td.was{color:var(--ink3);text-decoration:line-through;text-decoration-color:rgba(126,39,24,.45);font-size:11.5px;max-width:380px;word-break:break-word}
+.copy td.is b{font-weight:600}
+
+/* Look through */
+.ltwrap{position:relative;border-radius:12px;overflow:hidden;background:var(--mat)}
+.ltwrap svg{display:block;width:100%;height:auto;cursor:grab;touch-action:none}
+.ltwrap svg:active{cursor:grabbing}
+.hud{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:var(--glass);color:#eef1ec;border-radius:999px;padding:5px 6px 5px 12px;font-size:12.5px;white-space:nowrap;backdrop-filter:blur(8px)}
+.hud .dot{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+.hud .mv{color:var(--gold)}
+.hud button{border:0;border-radius:999px;padding:4px 11px;font-size:12px;background:rgba(255,255,255,.12);color:#fff}
+.hud button.gold{background:var(--gold);color:var(--forest);font-weight:600}
+.hud button:disabled{opacity:.45;cursor:default}
+.hud kbd{font:10.5px var(--mono);background:rgba(255,255,255,.14);border-radius:4px;padding:0 4px;margin-left:4px}
+.readout{position:absolute;left:10px;bottom:10px;background:var(--value);color:#fff;font-size:11.5px;border-radius:7px;padding:3px 8px}
+.framestrip{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:12.5px}
+.framestrip .cseg{grid-template-columns:repeat(3,auto);display:inline-grid}
+
+/* Preview */
+.pv{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/9;background:#000;color:#fff}
+.pv>svg{position:absolute;inset:0;width:100%;height:100%;transition:filter .3s}
+.pv.blur>svg{filter:blur(3px) brightness(.82)}
+.pv .brand{position:absolute;left:16px;top:12px;display:flex;align-items:center;gap:8px;font:500 17px var(--serif);color:var(--ivory);text-shadow:0 1px 6px rgba(0,0,0,.4)}
+.pv .tab{position:absolute;left:50%;top:0;transform:translateX(-50%);background:var(--gold);color:var(--forest);font-size:11.5px;font-weight:600;padding:3px 12px;border-radius:0 0 9px 9px}
+.pv .exit{position:absolute;right:12px;top:10px;background:var(--glass);border:0;color:#fff;border-radius:999px;padding:6px 12px;font-size:12.5px;backdrop-filter:blur(8px)}
+.pv .exit kbd{font:10.5px var(--mono);background:rgba(255,255,255,.14);border-radius:4px;padding:0 4px;margin-left:6px}
+.welcome{position:absolute;width:min(92%,470px);background:rgba(17,41,31,.86);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:22px;backdrop-filter:blur(12px);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.welcome.center{left:50%;top:50%;transform:translate(-50%,-50%)}
+.welcome.corner{left:18px;bottom:18px;text-align:left;width:min(80%,400px)}
+.welcome .ey{font-size:11px;letter-spacing:.14em;color:var(--gold)}
+.welcome h3{font:500 34px/1.1 var(--serif);margin:6px 0 4px;color:var(--ivory)}
+.welcome p{margin:0 0 14px;font-size:13px;color:#d5ddd8}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left}
+.choice{border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font:inherit;text-align:left}
+.choice b{display:block;font-size:14px;margin-top:6px} .choice small{font-size:12px;opacity:.8}
+.choice.pri{background:#ecd58f;border-color:#ecd58f;color:var(--forest)}
+.tour{position:absolute;left:0;right:0;bottom:0;padding:26px 16px 14px;background:linear-gradient(transparent,rgba(10,22,17,.82));display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.tour .ey{font-size:10.5px;letter-spacing:.12em;color:var(--gold)}
+.tour h4{font:500 24px/1.1 var(--serif);margin:3px 0 6px}
+.prog{display:flex;gap:3px;width:180px} .prog i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.25)} .prog i.d{background:var(--gold)} .prog i.c{background:linear-gradient(90deg,var(--gold) 45%,rgba(255,255,255,.25) 45%)}
+.tour .ctl{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.vbtn{border:0;border-radius:999px;padding:7px 13px;font-size:12.5px;background:rgba(17,41,31,.85);color:#fff;border:1px solid rgba(255,255,255,.14)}
+.vbtn.gold{background:var(--gold);color:var(--forest);font-weight:600;border-color:var(--gold)}
+.explore{position:absolute;left:14px;bottom:14px;display:flex;gap:8px;flex-wrap:wrap}
+.places{position:absolute;right:12px;top:52px;width:200px;background:rgba(17,41,31,.9);border-radius:14px;padding:10px;font-size:12.5px;backdrop-filter:blur(10px)}
+.places div{padding:5px 6px;border-radius:7px} .places div:hover{background:rgba(255,255,255,.08)} .places small{color:var(--quiet)}
+.endc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(90%,420px);background:rgba(17,41,31,.88);border-radius:18px;padding:20px;text-align:center;backdrop-filter:blur(12px)}
+.endc h3{font:500 26px var(--serif);margin:0 0 12px}
+.endc .vbtn{display:block;width:100%;margin-top:8px}
+.oldpv .pillold{position:absolute;left:50%;top:10px;transform:translateX(-50%);border:1px solid #2f5aa8;background:#0b0f18;border-radius:999px;padding:4px 12px;font-size:11px;white-space:nowrap}
+.oldpv .wold{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(88%,420px);background:#1b2522;border-radius:14px;padding:16px;font-size:12px}
+.oldpv .wold .e{color:var(--gold);font-size:10px;letter-spacing:.1em} .oldpv .wold h3{font:500 22px var(--serif);margin:4px 0 10px}
+.oldpv .wold .cc{display:grid;grid-template-columns:1fr 1fr;gap:8px} .oldpv .wold .cc div{border:1px solid #556;border-radius:9px;padding:8px}
+
+/* Opening + thumbs */
+.open{position:relative;aspect-ratio:16/10;border-radius:12px;overflow:hidden}
+.open.now{background:#121214;display:grid;place-items:center;color:#9a9aa0;font-size:12px}
+.open.new{background:var(--paper);background-image:linear-gradient(var(--gl,rgba(27,32,28,.06)) 1px,transparent 1px),linear-gradient(90deg,rgba(27,32,28,.06) 1px,transparent 1px);background-size:24px 24px}
+.open.new .hd{position:absolute;left:0;right:0;top:0;height:30px;background:var(--forest);display:flex;align-items:center;gap:8px;padding:0 10px}
+.open.new .hd i{display:block;height:8px;border-radius:4px;background:#2d5e48}
+.open.new .mid{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);text-align:center}
+.open.new .mid b{display:block;font:500 22px var(--serif);color:var(--ink)}
+.open.new .mid small{color:var(--ink3);font-size:12px}
+.open.new .ld{width:120px;height:2px;background:var(--hair2);border-radius:2px;margin:10px auto 0;overflow:hidden}
+.open.new .ld i{display:block;height:100%;width:40%;background:var(--gold);animation:ld 1.4s ease-in-out infinite}
+@keyframes ld{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile .thumb{aspect-ratio:16/10;border-radius:9px;overflow:hidden;border:1px solid var(--hair)}
+.tile .thumb.selg{outline:2px solid var(--gold);outline-offset:1px}
+.tile p{margin:5px 2px 0;font-size:12px;color:var(--ink2)}
+.idx{background:var(--index);border-radius:10px;padding:8px;display:grid;gap:4px}
+.idx .r{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center;padding:4px;border-radius:8px}
+.idx .r .thumb{height:28px;border-radius:5px;overflow:hidden;border:0}
+.idx .r .ph{height:28px;border-radius:5px;background:var(--mat);display:grid;place-items:center;color:#7f9a8e;font-size:11px}
+.idx .r b{font-weight:500;font-size:13px;display:block} .idx .r small{font-size:11px;color:var(--ink3)}
+</style>
+</head>
+<body>
+<header class="top"><h1>Experience review 1 — interaction sheet</h1><span>R217.S26–S30 owner review · 2026-11-03 · ★ recommended · struck = current production</span></header>
+<nav class="toc">
+  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening the editor</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a>
+</nav>
+<p class="intro">Each row shows what production does now (red line), the proposal (★) and, where useful, one alternative. Try the live parts: drag and scroll in <b>Look through</b>, click Views in <b>2</b>, drag path points and the <b>+</b> handles in <b>4</b>, switch Cut/Travel in <b>5</b>, tick the boxes in <b>7</b>, and step through Preview in <b>11</b>. Pick a different option on any row to override ★; the fix plan implements ★ wherever you don't.</p>
+<main>
+
+<!-- 1 · Look through -->
+<section id="s1" class="wide">
+  <h2><span class="n">1</span>Look through fills the Stage</h2>
+  <p class="now">Now: a small 16:10 inset in a dark mat; the HUD pill collides with the Stage toolbar; drag aims the camera at the pointer ray from the already-turned pose (feedback loop, jumps); each wheel event jumps a whole lens preset (24 → 50 → 85 mm on one trackpad flick).</p>
+  <div class="opts">
+    <span>Frame</span>
+    <div class="seg" data-key="frame"><button data-v="full" aria-pressed="true"><span class="star">★</span> Full Stage + safe-frame ticks</button><button data-v="bare" aria-pressed="false">Full Stage, plain gold edge</button><button data-v="inset" class="old" aria-pressed="false">Small inset</button></div>
+  </div>
+  <div class="ltwrap" id="lt">
+    <svg viewBox="0 0 800 450" id="lt-svg" aria-label="Look through demo: drag to turn, scroll to step"></svg>
+    <div class="hud ui"><span class="dot"></span><span>Looking through <b>Piano, keyboard</b></span><span class="mv" id="lt-moved" hidden>· moved</span><button class="gold" id="lt-upd" disabled>Update View</button><button id="lt-exit">Exit View<kbd>Esc</kbd></button></div>
+    <div class="readout" id="lt-read">Drag to turn · scroll to step</div>
+  </div>
+  <div class="framestrip ui">
+    <span class="c-lab" style="margin:0">Card while looking through</span>
+    <span>Lens</span><div class="cseg" id="lt-lens"><button aria-pressed="true">Wide</button><button aria-pressed="false">Normal</button><button aria-pressed="false">Close</button></div>
+    <span>Eye height</span><div class="cseg"><button aria-pressed="false">Seated</button><button aria-pressed="true">Standing</button><button aria-pressed="false">Raised</button></div>
+  </div>
+  <ul class="rules">
+    <li><b>The whole Stage becomes the View</b> (Index and Card stay). Gold 3px edge; the Stage toolbar, marks and paths hide. ★ adds four corner ticks marking the 16:10 frame every visitor screen keeps.</li>
+    <li><b>Drag turns your head</b>, relative to where you pressed (grab-and-turn, like the visitor's free look), never "point the camera at the cursor". <b>Scroll / two-finger</b> steps forward and back in 0.25 m steps after a deliberate amount of scroll. <b>Lens</b> lives on the Card (Wide · Normal · Close), not on the wheel.</li>
+    <li>One HUD only: the pill holds <i>Update View</i> (gold once moved) and <i>Exit View Esc</i>; the Card shows Framing, not duplicate buttons. A captured or placed View that sits within 1 mm of a lens step reads as that step ("Wide"), never "Custom · 24 mm".</li>
+  </ul>
+</section>
+
+<!-- 2 · Views -->
+<section id="s2" class="wide">
+  <h2><span class="n">2</span>Views on the Stage: a camera you can read</h2>
+  <p class="now">Now: in 3D every View is the same tiny camera-icon chip — no direction, no frustum, no height; in 2D every View draws a long translucent cone, so a busy Presentation is a fan of overlapping wedges. Selection is a blue browser focus box.</p>
+  <div class="opts">
+    <span>3D</span><div class="seg" data-key="r3"><button data-v="body" aria-pressed="true"><span class="star">★</span> Body + frustum + stem</button><button data-v="frus" aria-pressed="false">Frustum only</button><button data-v="chip" class="old" aria-pressed="false">Icon chip</button></div>
+    <span>2D</span><div class="seg" data-key="r2"><button data-v="wedge" aria-pressed="true"><span class="star">★</span> Short wedge, full on selection</button><button data-v="arrow" aria-pressed="false">Dot + arrow</button><button data-v="fan" class="old" aria-pressed="false">Long cones</button></div>
+  </div>
+  <div class="pair">
+    <div><div class="cap">3D</div><svg class="st" viewBox="0 0 640 430" id="v3"></svg></div>
+    <div><div class="cap">Plan</div><svg class="st" viewBox="0 0 600 380" id="v2"></svg></div>
+  </div>
+  <p class="hint">Click a View in either panel. Drag the white knob in Plan to aim it.</p>
+  <ul class="rules">
+    <li><b>3D:</b> a small white camera body with an ink keyline (the World sticker style), a wire frustum to a picture plane about a metre ahead, and a dashed stem to a floor dot so its height reads. Quiet Views are ink at low strength; Views on the tour are leaf; the selection is gold with a <i>1.65 m</i> height tag and a stop badge.</li>
+    <li><b>Plan:</b> a dot and a short wedge for every View; only the selected View draws its full cone with an aim knob. Default ◆ and Stop numbers sit on the dot.</li>
+    <li><b>Selection is gold</b>: gold mark, gold corner brackets, name tag in the forest chip. No blue ring — keyboard focus uses the leaf focus ring only when tabbing.</li>
+  </ul>
+</section>
+
+<!-- 3 · Paths -->
+<section id="s3" class="wide">
+  <h2><span class="n">3</span>Camera paths show where they go</h2>
+  <p class="now">Now: 1px lines with no direction; Travel and Cut look alike apart from a dash; in 3D the path lies flat with mono "CUT" captions and no height cue.</p>
+  <div class="opts">
+    <span>Direction</span><div class="seg" data-key="dir"><button data-v="chev" aria-pressed="true"><span class="star">★</span> Ribbon + chevrons</button><button data-v="head" aria-pressed="false">Ribbon + arrowhead</button><button data-v="thin" class="old" aria-pressed="false">Thin line</button></div>
+    <span>Example</span><div class="seg" data-key="wall"><button data-v="no" aria-pressed="true">Clear path</button><button data-v="yes" aria-pressed="false">Path through a wall</button></div>
+  </div>
+  <div class="pair">
+    <div><div class="cap">3D</div><svg class="st" viewBox="0 0 640 430" id="p3"></svg></div>
+    <div><div class="cap">Plan</div><svg class="st" viewBox="0 0 600 380" id="p2"></svg></div>
+  </div>
+  <ul class="rules">
+    <li><b>Travel</b> is a 3px ribbon with a white casing and white chevrons every ~35px pointing toward the arrival View; a hollow ring marks where it leaves. Leaf when on the tour, gold when selected.</li>
+    <li><b>Cut</b> is a quiet dotted ink link; its ✂ chip appears only on hover or selection.</li>
+    <li><b>3D:</b> the ribbon floats at eye height with a dashed shadow on the floor and thin drops at each path point, so height and route read together. The part that passes through a wall turns caution-dashed with a <i>Through a wall</i> chip (advisory; never blocks).</li>
+  </ul>
+</section>
+
+<!-- 4 · Path editing -->
+<section id="s4">
+  <h2><span class="n">4</span>Shape a path directly</h2>
+  <p class="now">Now: points can only be added by arming a dock tool, then clicking the route — and View markers win the click, so short routes can't be edited at all. "0 points" and a disabled Straighten button are all the Card offers.</p>
+  <div class="opts"><span>Editing</span><div class="seg" data-key="edit"><button data-v="handles" aria-pressed="true"><span class="star">★</span> Handles on the route</button><button data-v="click" aria-pressed="false">Click the route to add</button><button data-v="armed" class="old" aria-pressed="false">Armed dock tool</button></div></div>
+  <svg class="st" viewBox="0 0 600 380" id="pe"></svg>
+  <p class="hint" id="pe-read"></p>
+  <ul class="rules">
+    <li>Selecting a Travel puts its route <b>above everything</b>: other Views dim and stop taking clicks until you click away.</li>
+    <li>White discs are points: drag to move, double-click or <kbd>Delete</kbd> to remove. The small <b>+</b> between points: drag it out to make a new point. The two ends are locked to their Views (dashed ring).</li>
+    <li>No mode, no dock tool, no "Done". Every drag is one Undo. Straighten (Card) removes all points.</li>
+  </ul>
+</section>
+
+<!-- 5 · Travel + Card -->
+<section id="s5">
+  <h2><span class="n">5</span>Travel makes its own path</h2>
+  <p class="now">Now: choosing Travel leaves a gap — a full-width technical banner appears, the whole Guide's playback drops to 0:00 and Preview refuses to start.</p>
+  <div class="opts"><span>Choosing Travel</span><div class="seg" data-key="trav"><button data-v="auto" aria-pressed="true"><span class="star">★</span> Adds a straight path</button><button data-v="ask" aria-pressed="false">Asks first</button><button data-v="gap" class="old" aria-pressed="false">Leaves a gap</button></div></div>
+  <div class="ui" style="display:flex;justify-content:center">
+    <div class="card">
+      <div class="c-head"><div class="g"><div class="c-kind">‹ <a>Stop 4</a> · Transition in <a>Salon tour</a></div><div class="c-name">Stop 4 → Stop 5</div></div><button class="ib" aria-label="More">•••</button><button class="ib" aria-label="Close">✕</button></div>
+      <div class="c-sec" style="border-top:0;padding-top:4px">
+        <div class="cseg" id="tc-mode"><button data-m="cut" aria-pressed="true">✂ Cut</button><button data-m="travel" aria-pressed="false">↗ Travel</button></div>
+        <div id="tc-ask" class="ask" hidden>Travel needs a path between the two Views. Add a straight one?<div class="prob acts" style="background:none;border:0;padding:0;margin-top:7px"><button class="btn gold" id="tc-ask-yes">Add straight path</button><button class="btn" id="tc-ask-no">Keep Cut</button></div></div>
+        <div id="tc-old" class="banner-old" hidden>1 repairable authored binding is unresolved … $.units.experience.data.experiences[0].stops[3].continuation.transition … (travel-gap)</div>
+      </div>
+      <div class="c-sec">
+        <div class="film">
+          <div><div class="th" data-thumb="day:1.25:-140"><span class="no">4</span></div><small>leaves from</small><b>Piano, profile</b></div>
+          <svg class="mini" viewBox="0 0 64 40" id="tc-mini"></svg>
+          <div><div class="th" data-thumb="day:1.1:120"><span class="no">5</span></div><small>arrives at</small><b>Corner</b></div>
+        </div>
+      </div>
+      <div class="c-sec" id="tc-move">
+        <div class="c-lab">Movement</div>
+        <div class="row"><span class="k">Duration</span><span><span class="pill auto" id="tc-auto">Auto</span> <span class="step"><button>−</button><span id="tc-dur">6 s</span><button>+</button></span></span></div>
+        <div class="row"><span class="k">Path</span><span id="tc-path">Straight · 4.6 m</span></div>
+        <div class="row"><span></span><button class="tbtn">Straighten</button></div>
+        <div class="row" style="margin-top:2px"><span class="pill">Also used by Stop 1 → 2</span></div>
+        <div class="note" id="tc-note" hidden>Added a straight path. Shape it on the Stage — one Undo removes both.</div>
+      </div>
+      <div class="c-sec" id="tc-cutinfo"><span style="color:var(--ink3);font-size:12.5px">A Cut jumps straight to the next View.</span></div>
+      <div class="c-sec"><button class="btn full">▶ Preview this move</button></div>
+    </div>
+  </div>
+  <ul class="rules">
+    <li>★ Travel submits the transition and a straight Camera connection <b>in one accepted change</b>; Undo removes both. Auto timing applies at once, so playback and Preview keep working. Switching back to Cut keeps the path for later.</li>
+    <li>Leaves/arrives show real snapshots; a mini map shows the path between them. Duration is sans, not mono; "Auto" is a chip that clears when you step it.</li>
+  </ul>
+</section>
+
+<!-- 6 · Guide strip -->
+<section id="s6" class="wide">
+  <h2><span class="n">6</span>Guide strip: links between, never on top</h2>
+  <p class="now">Now: transition chips sit on the Stop cards and cover their titles; thumbnails are dark; after leaving Preview they disappear.</p>
+  <div class="opts"><span>Strip</span><div class="seg" data-key="strip"><button data-v="fixed" aria-pressed="true"><span class="star">★</span> Links in the gutter</button><button data-v="old" class="old" aria-pressed="false">Chips over cards</button></div></div>
+  <div class="guide ui">
+    <div class="g-head"><span class="g-eyebrow">GUIDE</span><span class="g-name">Salon tour</span><span style="font-size:12px;color:var(--quiet)">6 stops</span><button class="g-play" aria-label="Play"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 1.5v9l7.5-4.5z" fill="#11291f"/></svg></button><span class="g-time"><b>0:00</b> / 0:41 + 1 wait</span><span class="g-sp"></span><button class="g-btn">◎ Follow</button><button class="g-btn">+ Stop</button><button class="g-btn" aria-label="Compact">⌄</button><button class="g-btn" aria-label="Close">✕</button></div>
+    <div class="g-strip" id="gs">
+      <div class="g-card"><span class="no">1</span><div class="thumb" data-thumb="day:1.2:-60"></div><div class="t">Pleyel piano</div><div class="m">Start · 2 views · 0:07</div><div class="bar"><i style="width:100%"></i></div></div>
+      <div class="g-gut"><span class="tchip trav">↗ 6 s</span></div>
+      <div class="g-card"><span class="no">2</span><div class="thumb" data-thumb="day:1.5:200"></div><div class="t">North window</div><div class="m">2 views · 0:06</div><div class="bar"><i style="width:30%"></i></div></div>
+      <div class="g-gut"><span class="tchip cut">✂ cut</span></div>
+      <div class="g-card"><span class="no">3</span><div class="thumb" data-thumb="day:1.8:0"></div><div class="t">Doorway</div><div class="m">1 view · 0:05</div><div class="bar"><i style="width:0"></i></div></div>
+      <div class="g-gut"><span class="tchip gap">⚠ no path</span></div>
+      <div class="g-card"><span class="no">4</span><div class="thumb" data-thumb="day:1.3:-120"></div><div class="t">Pleyel piano</div><div class="m">again · 2 views · 0:07</div><div class="bar"><i style="width:0"></i></div></div>
+      <div class="g-gut"><span class="tchip trav sel">↗ 4 s</span></div>
+      <div class="g-card"><span class="no">5</span><div class="thumb" data-thumb="day:1.4:150"></div><div class="t">Reading corner</div><div class="m">1 view · waits</div><div class="bar"><i style="width:0"></i></div></div>
+    </div>
+    <div class="g-tl"><div class="s done" style="flex:7">1</div><div class="mv" style="flex:6"></div><div class="s" style="flex:6">2</div><div class="s" style="flex:5">3</div><div class="s" style="flex:7">4</div><div class="mv" style="flex:4"></div><div class="w">5</div><div class="s" style="flex:4">6</div></div>
+  </div>
+  <ul class="rules">
+    <li>Cards keep a fixed 58px gutter; the transition chip lives there: gold <i>↗ 6 s</i> for Travel, dashed <i>✂ cut</i>, caution-dashed <i>⚠ no path</i> only for imported or broken data (Travel now creates its path).</li>
+    <li>Playback lives in the Guide header (Conservatory); the timeline below shows numbered Stop segments, thin travel links and hatched waits.</li>
+  </ul>
+</section>
+
+<!-- 7 · Show -->
+<section id="s7" class="wide">
+  <h2><span class="n">7</span>Show: same chrome as the Stage toolbar</h2>
+  <p class="now">Now: <span class="oldshow">Show ▾</span> is a white pill beside dark controls; the menu uses the browser's blue checkboxes.</p>
+  <div class="opts"><span>Toolbar</span><div class="seg" data-key="bar"><button data-v="dark" aria-pressed="true"><span class="star">★</span> Dark glass, like 2D/3D</button><button data-v="light" aria-pressed="false">Light glass</button></div></div>
+  <div class="tbwrap ui dark" id="tbw">
+    <div class="tb"><button aria-pressed="false">▭ Plan</button><button aria-pressed="true">◇ 3D</button></div><div class="tb"><button aria-pressed="false">Grid</button><button aria-pressed="false">Snap</button></div><div class="tb"><button aria-pressed="true" id="show-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 2 1.5 5.5 8 9l6.5-3.5z"/><path d="m1.5 8.5 6.5 3.5 6.5-3.5"/></svg>Show<span class="off" id="show-off" hidden></span></button></div>
+    <div class="showpop">
+      <header><b>Show on Stage</b><span>editor only</span></header>
+      <div class="cseg" id="show-mode"><button aria-pressed="true">Whole Guide</button><button aria-pressed="false">Selection only</button></div>
+      <label class="srow"><input type="checkbox" class="chk" data-f="markers" checked><span><b>Camera markers</b><small>Views outside the selection</small></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="4.5" width="10" height="8" rx="1.5"/><path d="m11.5 7 3-1.5v6l-3-1.5"/></svg></label>
+      <label class="srow"><input type="checkbox" class="chk" data-f="frustums" checked><span><b>View frustums</b><small>What each View sees</small></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 8 14 3v10z"/></svg></label>
+      <label class="srow"><input type="checkbox" class="chk" data-f="paths" checked><span><b>Camera paths</b><small>Travel and Cut links</small></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 13c4 0 3-9 12-10"/><path d="m11 2 3 1-1 3"/></svg></label>
+      <label class="srow"><input type="checkbox" class="chk" data-f="labels" checked><span><b>Labels</b><small>View names and Stop numbers</small></span><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="4" width="13" height="8" rx="2"/><path d="M4.5 8h7"/></svg></label>
+      <div class="foot">The selection always stays visible. <b>Selection only</b> hides other Stops' Views and paths.</div>
+    </div>
+    <svg viewBox="0 0 600 380" id="showplan" style="position:absolute;left:500px;top:52px;width:min(340px,calc(100% - 520px));border-radius:8px;background:var(--paper);box-shadow:var(--shadow)"></svg>
+  </div>
+  <ul class="rules">
+    <li>All three Stage controls share one dark-glass group style; pressed = forest-3. Show carries the layers glyph and a gold "2 off" count when anything is hidden.</li>
+    <li>The menu is a light Card-material popover with leaf checkboxes (shell control, not the browser's), a title and a one-line explanation per row, and its icon on the right. Tick a box: the mini plan reacts.</li>
+  </ul>
+</section>
+
+<!-- 8 · Problems -->
+<section id="s8" class="wide">
+  <h2><span class="n">8</span>Problems and messages in the shell's language</h2>
+  <p class="now">Now: a full-width banner with JSON paths, internal ids and codes pushes the Stage down; "Preview cannot start: Guide adjacency into Stop "x-salon-guide-stop-3" binds a Travel…" appears as a toast hidden behind the Guide; every change toasts "Accepted."</p>
+  <div class="pair ui">
+    <div>
+      <div class="cap">Head · things to fix</div>
+      <div class="head"><span class="nm">R217 x-paths</span><span class="g-sp"></span><span class="fixpill"><i></i>1 to fix</span><span style="background:var(--gold);color:var(--forest);border-radius:9px;padding:4px 10px;font-weight:600;font-size:12px">▶ Preview</span>
+        <div class="fixlist"><div class="it"><i></i><div><b>Stop 2 → Stop 3 has no path</b><small>Travel needs a path between North window and Doorway.</small></div><button class="btn" style="margin-left:auto;padding:3px 9px;font-size:12px">Show</button></div></div>
+      </div>
+      <div style="height:84px"></div>
+      <div class="cap">Stage · on the subject</div>
+      <svg class="st" viewBox="0 0 300 120" id="probstage" style="max-width:380px"></svg>
+    </div>
+    <div>
+      <div class="cap">Card · one sentence, one fix</div>
+      <div class="card" style="width:100%">
+        <div class="c-head"><div class="g"><div class="c-kind">Transition in <a>Salon tour</a></div><div class="c-name">Stop 2 → Stop 3</div></div></div>
+        <div class="c-sec" style="border-top:0"><div class="prob"><b>No path to travel along.</b> North window and Doorway aren't connected yet.<div class="acts"><button class="btn gold">Add straight path</button><button class="btn">Use Cut</button></div></div></div>
+      </div>
+      <div class="cap" style="margin-top:14px">Toast · above the dock, never under the Guide</div>
+      <div class="toast">Preview needs a path for Stop 2 → Stop 3.<button>Show me</button></div>
+      <div class="cap" style="margin-top:14px">Refused action · tag at the pointer</div>
+      <div class="toast" style="background:var(--refusebg);color:var(--refuse);border:1px solid #efd4cb;box-shadow:none">That file belongs to a different project, so it wasn't opened. Nothing here changed.</div>
+    </div>
+  </div>
+  <table class="copy" style="margin-top:14px">
+    <tr><th>Situation</th><th>Now</th><th>Proposed</th></tr>
+    <tr><td>Travel without a path</td><td class="was">1 repairable authored binding is unresolved. They are disclosed as authored; they do not block this source. • $.units.experience.data.experiences[0].stops[1].continuation.transition: the Travel from stop "6a12e000-…" has no Camera connection to the View of stop "b702aa81-…" (travel-gap)</td><td class="is">Doesn't arise: Travel adds a straight path. For imported data: Stage chip <b>No path</b>, Card row "No path to travel along." [Add straight path] [Use Cut], Head <b>1 to fix</b>.</td></tr>
+    <tr><td>Preview blocked</td><td class="was">Preview cannot start: Guide adjacency into Stop "x-salon-guide-stop-3" binds a Travel, and no Camera …</td><td class="is">"Preview needs a path for Stop 2 → Stop 3." [Show me]</td></tr>
+    <tr><td>Opening another project's file</td><td class="was">The source was not opened: it belongs to another project. The current project is unchanged. ($.id: the source names project "project-x-paths", not "project:ea85af1c-…")</td><td class="is">"That file belongs to a different project, so it wasn't opened. Nothing here changed."</td></tr>
+    <tr><td>Any accepted change</td><td class="was">Accepted.</td><td class="is">Silent. The Stage and Card already show it. Toast only what you can't see ("Stop moved to 5").</td></tr>
+    <tr><td>Updating a shared View</td><td class="was">Also changes Stop 4, Stop 1 → 2.</td><td class="is">"This View is also used in Stop 4. Update it there too?" [Update both] [Save as new View]</td></tr>
+    <tr><td>Path through a wall</td><td class="was">(red line only)</td><td class="is">Chip <b>Through a wall</b> on the path; Card row "Drag a point through the doorway." (advisory)</td></tr>
+    <tr><td>Framing tag</td><td class="was">Custom · 24 mm · 1.65 m eye. Look through to re-aim it by hand.</td><td class="is">"Wide · Standing"</td></tr>
+    <tr><td>Nothing to undo</td><td class="was">Nothing to undo yet — no change has been accepted.</td><td class="is">"Nothing to undo"</td></tr>
+  </table>
+  <ul class="rules">
+    <li><b>Say it where it happened</b>: on the subject on the Stage and in its Card; the Head counts what needs fixing. No page-wide banners.</li>
+    <li><b>Use the creator's names</b> (Stop 2, North window) — never ids, JSON paths, codes, or internal words (binding, adjacency, source, baseline, acceptance). Technical detail goes behind ••• → <i>Copy details</i>.</li>
+    <li>One sentence: what's wrong and what to do, with one primary action. Caution red (#c85a48) for "needs fixing", refuse red (#7e2718) for "didn't happen". Toasts: dark glass, above the dock, 4 s, one action.</li>
+  </ul>
+</section>
+
+<!-- 9 · Opening -->
+<section id="s9">
+  <h2><span class="n">9</span>Opening the editor</h2>
+  <p class="now">Now: a black page with "Opening Spatial…", then the shell pops in.</p>
+  <div class="pair">
+    <div><div class="cap">Now</div><div class="open now">Opening Spatial…</div></div>
+    <div><div class="cap">★ Shell first, Stage fades in</div><div class="open new"><div class="hd"><i style="width:70px"></i><i style="width:40px"></i><span style="flex:1"></span><i style="width:56px;background:var(--gold)"></i></div><div class="mid"><b>Salon evening</b><small>Opening…</small><div class="ld"><i></i></div></div></div></div>
+  </div>
+  <ul class="rules"><li>The Head and Paper appear immediately in shell colours with the project name; the Stage content fades in when ready. A new project opens on Paper with the dock ready, not a blank black page.</li></ul>
+</section>
+
+<!-- 11 · Snapshots -->
+<section id="s11">
+  <h2><span class="n">10</span>Snapshots show the Stage, not a dark mat</h2>
+  <p class="now">Now: snapshots clear to the mat ink (#1d3a33), so anything outside the room is dark green-black; Index rows never render theirs; Transition Card thumbnails are placeholders.</p>
+  <div class="tiles">
+    <div class="tile"><div class="thumb" data-thumb="mat:1:0"></div><p style="text-decoration:line-through;text-decoration-color:rgba(126,39,24,.5)">Mat background</p></div>
+    <div class="tile"><div class="thumb selg" data-thumb="stage:1:0"></div><p><span class="star">★</span> Stage Paper + grid, no helpers</p></div>
+    <div class="tile"><div class="thumb" data-thumb="day:1:0"></div><p>Visitor daylight (as Preview)</p></div>
+  </div>
+  <div class="pair" style="margin-top:12px">
+    <div class="idx"><div class="r"><div class="ph">◉</div><span><b style="text-decoration:line-through;text-decoration-color:rgba(126,39,24,.5)">Pleyel piano</b><small>snapshot not rendered</small></span></div></div>
+    <div class="idx"><div class="r"><div class="thumb" data-thumb="stage:1.3:-80"></div><span><b>Pleyel piano</b><small>3 Views · Stops 1, 4</small></span></div></div>
+  </div>
+  <ul class="rules"><li>★ Snapshots render the World as the Stage shows it (Paper tone, grid on the ground, same lights) with every helper hidden. Index rows, Card tiles and Transition Cards all use them.</li></ul>
+</section>
+
+<!-- 10 · Preview -->
+<section id="s10" class="wide">
+  <h2><span class="n">11</span>Preview: a visitor's start, a lit scene, a quick way back</h2>
+  <p class="now">Now: a black void with flat light; the welcome is a plain grey card ("VISITOR PREVIEW · Experience 1 · 23") over a view from outside the building; a blue-outlined pill; "Take the guided tour" starts at the Stop selected in the editor; Exit stalls ~17 s and leaves the editor frozen.</p>
+  <div class="opts">
+    <span>Scene</span><div class="seg" data-key="env"><button data-v="day" aria-pressed="true"><span class="star">★</span> Daylight gallery</button><button data-v="eve" aria-pressed="false">Evening salon</button><button data-v="void" class="old" aria-pressed="false">Black void</button></div>
+    <span>Welcome</span><div class="seg" data-key="wel"><button data-v="center" aria-pressed="true"><span class="star">★</span> Centred</button><button data-v="corner" aria-pressed="false">Lower left</button></div>
+    <span>Step</span><div class="seg" data-key="pst"><button data-v="welcome" aria-pressed="true">Welcome</button><button data-v="guided" aria-pressed="false">Guided tour</button><button data-v="free" aria-pressed="false">Exploring</button><button data-v="end" aria-pressed="false">End</button></div>
+  </div>
+  <div class="pv ui" id="pv">
+    <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" id="pv-svg"></svg>
+    <div data-when="env=day|eve">
+      <div class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f3f0e4" stroke-width="1.8"><path d="M5 21V10a7 7 0 0 1 14 0v11"/><path d="M9 21v-8a3 3 0 0 1 6 0v8"/></svg>Salon evening</div>
+      <div class="tab">Preview — what a visitor sees</div>
+      <button class="exit">✕ Exit preview<kbd>Esc</kbd></button>
+      <div class="welcome" id="pv-wel" data-when="pst=welcome"><div class="ey">WELCOME TO</div><h3>Salon evening</h3><p>A small wing of rooms around the composer's Pleyel piano.</p><div class="choices"><button class="choice pri"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#11291f" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="18" r="1.5"/><circle cx="19" cy="6" r="1.5"/><path d="M7 16.5 9 15m3-2 1.5-1m3-2.5L17 8"/></svg><b>Take the guided tour</b><small>6 stops · about 0:41</small></button><button class="choice"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg><b>Explore freely</b><small>5 places at your own pace</small></button></div></div>
+      <div class="tour" data-when="pst=guided"><div><div class="ey">GUIDED TOUR · STOP 2 OF 6</div><h4>North window</h4><div class="prog"><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i></div></div><div class="ctl"><button class="vbtn gold">❚❚ Pause</button><button class="vbtn">Next stop →</button><button class="vbtn">Finish tour</button><button class="vbtn">Explore freely</button></div></div>
+      <div data-when="pst=free"><div class="explore"><span class="vbtn" style="background:rgba(17,41,31,.75)">Drag to look around · click the floor to walk</span><button class="vbtn gold">↩ Back to the tour · Stop 2</button></div><div class="places"><b style="font-size:12px;letter-spacing:.08em;color:var(--gold)">PLACES</b><div>Pleyel piano <small>· 3 views</small></div><div>North window <small>· 5 views</small></div><div>Doorway <small>· 2 views</small></div><div>Reading corner <small>· 1 view</small></div><div>East wall <small>· 3 views</small></div></div></div>
+      <div class="endc" data-when="pst=end"><div class="ey" style="font-size:11px;letter-spacing:.14em;color:var(--gold)">END OF THE TOUR</div><h3>Thank you for visiting</h3><button class="vbtn gold">Keep exploring — including views the tour skipped</button><button class="vbtn">Start the tour again</button></div>
+    </div>
+    <div class="oldpv" data-when="env=void"><div class="pillold">VISITOR PREVIEW · Viewing Current Draft <span style="background:#2a2a35;border-radius:999px;padding:1px 7px;margin-left:6px">✕ Exit Preview (Esc)</span></div><div class="wold"><div class="e">VISITOR PREVIEW</div><h3>Experience 1 · 23</h3><div class="cc"><div style="border-color:var(--gold)">Take the guided tour<br><small>1 stop · about 0:00</small></div><div>Explore freely<br><small>1 place</small></div></div></div></div>
+  </div>
+  <ul class="rules">
+    <li><b>Start:</b> the welcome sits over the first Stop's opening View (not an outside overview), softly blurred, with the Experience name, welcome text and two choice cards — gold for the guided tour. <i>Take the guided tour</i> always starts at Stop 1; "Preview from this Stop" stays a Guide Card action.</li>
+    <li><b>Scene:</b> ★ daylight — a soft sky and ground outside openings, hemisphere + sun light with soft shadows, warm wall tones. Nothing renders against black. The visitor never sees grid or editor marks.</li>
+    <li><b>Chrome:</b> a small gold tab says it's a Preview; Exit is a dark-glass pill top right. Tour controls sit in a bottom gradient: Stop title (serif), progress, Pause · Next stop · Finish · Explore freely. <b>Exit returns in under 200 ms</b> to the exact editor state, with snapshots intact.</li>
+  </ul>
+</section>
+
+</main>
+<script>
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const R={};
+const rad=d=>d*Math.PI/180;
+
+/* ---------- option rows ---------- */
+function applyWhen(sec){$$('[data-when]',sec).forEach(el=>{el.hidden=!el.dataset.when.split('&').every(c=>{const[k,v]=c.split('=');return v.split('|').includes(sec.dataset[k]);});});}
+$$('section').forEach(sec=>{
+  $$('.opts .seg',sec).forEach(seg=>{
+    sec.dataset[seg.dataset.key]=seg.querySelector('[aria-pressed=true]').dataset.v;
+    seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));sec.dataset[seg.dataset.key]=b.dataset.v;applyWhen(sec);R[sec.id]&&R[sec.id]();});
+  });
+  applyWhen(sec);
+});
+$$('.cseg').forEach(seg=>{if(seg.id)return;seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));});});
+
+/* ---------- perspective room (Look through, Preview, snapshots) ---------- */
+const ENV={
+  day:{sky:['#cfdcd7','#eef0e7'],ground:'#c9cfbe',ceil:'#f5f2ea',back:'#ede6d7',left:'#e0d8c6',right:'#e8e1d0',floor:['#c79a6b','#996b44'],plank:'rgba(70,40,15,.16)',piano:['#4d392c','#2f221a'],shade:.22,door:'out'},
+  eve:{sky:['#33424a','#7a6656'],ground:'#45463a',ceil:'#d3c5ab',back:'#d4c3a2',left:'#c2ae8a',right:'#cbb794',floor:['#8b5e39','#5a3a21'],plank:'rgba(30,15,5,.22)',piano:['#3a2a20','#20160f'],shade:.3,vig:.5,door:'out',lamps:true},
+  void:{bg:'#000',back:'#cbc5b5',left:'#bfb9a9',right:'#c5bfaf',floor:['#d8d5cc','#d8d5cc'],piano:['#4b3a2e','#4b3a2e'],door:'black'},
+  mat:{bg:'#1d3a33',back:'#cbc5b5',left:'#bfb9a9',right:'#c5bfaf',floor:['#d8d5cc','#d8d5cc'],piano:['#4b3a2e','#4b3a2e'],door:'mat'},
+  stage:{bg:'#e9ebe6',grid:true,back:'#ede7d9',left:'#e0d9c8',right:'#e7e0cf',floor:['#d9d2c3','#cfc7b6'],piano:['#4d392c','#2f221a'],shade:.12,door:'stage'}
+};
+let gid=0;
+function persp(key){
+  const e=ENV[key],id='q'+(gid++);let s='<defs>';
+  if(e.sky)s+=`<linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${e.sky[0]}"/><stop offset="1" stop-color="${e.sky[1]}"/></linearGradient>`;
+  s+=`<linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${e.floor[1]}"/><stop offset="1" stop-color="${e.floor[0]}"/></linearGradient><clipPath id="${id}c"><polygon points="0,500 800,500 580,330 220,330"/></clipPath>`;
+  if(e.vig)s+=`<radialGradient id="${id}v" cx=".5" cy=".55" r=".75"><stop offset=".5" stop-color="#140c05" stop-opacity="0"/><stop offset="1" stop-color="#140c05" stop-opacity="${e.vig}"/></radialGradient>`;
+  s+='</defs>';
+  s+=`<rect x="-200" y="-100" width="1200" height="700" fill="${e.sky?`url(#${id}s)`:e.bg}"/>`;
+  if(e.grid){s+='<g stroke="rgba(27,32,28,.09)">';for(let x=-200;x<=1000;x+=40)s+=`<line x1="${x}" y1="-100" x2="${x}" y2="600"/>`;for(let y=-100;y<=600;y+=40)s+=`<line x1="-200" y1="${y}" x2="1000" y2="${y}"/>`;s+='</g>';}
+  if(e.ceil)s+=`<polygon points="0,0 800,0 580,90 220,90" fill="${e.ceil}"/>`;
+  s+=`<polygon points="0,0 220,90 220,330 0,500" fill="${e.left}"/><polygon points="800,0 580,90 580,330 800,500" fill="${e.right}"/><rect x="220" y="90" width="360" height="240" fill="${e.back}"/>`;
+  const out=e.door==='out'?`url(#${id}s)`:e.door==='mat'?'#1d3a33':e.door==='stage'?'#e9ebe6':'#000';
+  s+=`<rect x="352" y="165" width="96" height="165" fill="${out}"/>`;
+  if(e.door==='out')s+=`<rect x="352" y="292" width="96" height="38" fill="${e.ground}"/>`;
+  if(e.door==='stage')s+=`<g stroke="rgba(27,32,28,.12)"><line x1="352" y1="300" x2="448" y2="300"/><line x1="352" y1="318" x2="448" y2="318"/><line x1="384" y1="290" x2="380" y2="330"/><line x1="416" y1="290" x2="420" y2="330"/></g>`;
+  s+=`<rect x="352" y="165" width="96" height="165" fill="none" stroke="#2a201a" stroke-width="5"/>`;
+  s+=`<polygon points="660,150 735,120 735,265 660,275" fill="${out}" stroke="#f7f4ec" stroke-width="5"/>`;
+  s+=`<polygon points="70,150 160,175 160,275 70,262" fill="#c2a24a"/><polygon points="80,162 150,182 150,265 80,253" fill="#2b2620"/><ellipse cx="115" cy="208" rx="13" ry="16" fill="#e9dcc4"/>`;
+  s+=`<polygon points="0,500 800,500 580,330 220,330" fill="url(#${id}f)"/>`;
+  if(e.plank){s+=`<g clip-path="url(#${id}c)" stroke="${e.plank}" stroke-width="1.2">`;for(let x=-800;x<=1600;x+=70)s+=`<line x1="400" y1="210" x2="${x}" y2="520"/>`;for(const y of [345,366,393,430,476])s+=`<line x1="0" y1="${y}" x2="800" y2="${y}"/>`;s+='</g>';}
+  if(e.shade)s+=`<ellipse cx="405" cy="458" rx="180" ry="22" fill="#000" opacity="${e.shade}"/>`;
+  s+=`<polygon points="300,368 505,368 538,410 268,410" fill="${e.piano[0]}"/><polygon points="268,410 538,410 538,446 268,446" fill="${e.piano[1]}"/><rect x="282" y="446" width="8" height="28" fill="${e.piano[1]}"/><rect x="518" y="446" width="8" height="28" fill="${e.piano[1]}"/>`;
+  if(key==='day')s+=`<polygon points="660,275 735,265 610,470 455,480" fill="#fff8e6" opacity=".2"/>`;
+  if(e.lamps)s+=`<circle cx="300" cy="120" r="40" fill="#ffd38a" opacity=".18"/><circle cx="500" cy="120" r="40" fill="#ffd38a" opacity=".18"/>`;
+  if(e.vig)s+=`<rect x="-200" y="-100" width="1200" height="700" fill="url(#${id}v)"/>`;
+  return s;
+}
+$$('[data-thumb]').forEach(el=>{const[env,sc='1',sx='0']=el.dataset.thumb.split(':');el.insertAdjacentHTML('afterbegin',`<svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><g transform="translate(${400+ +sx} 250) scale(${sc}) translate(-400 -250)">${persp(env)}</g></svg>`);});
+
+/* ---------- 1 · Look through ---------- */
+(function(){
+  const svg=$('#lt-svg'),sec=$('#s1');const st={yaw:0,pitch:0,step:0,ty:0,tx:0,tz:1,drag:null,acc:0,moved:false};
+  function draw(){
+    const f=sec.dataset.frame;
+    let s;
+    if(f==='inset'){s=`<rect width="800" height="450" fill="#1d3a33"/><svg x="235" y="108" width="330" height="206" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><g id="lt-g">${persp('day')}</g></svg><rect x="235" y="108" width="330" height="206" fill="none" stroke="#d4ad45" stroke-width="2.5"/>`;}
+    else{s=`<g id="lt-g">${persp('day')}</g><rect x="1.5" y="1.5" width="797" height="447" fill="none" stroke="#d4ad45" stroke-width="3"/>`;
+      if(f==='full'){const x0=40,x1=760,y0=0,y1=450,L=22;s+='<g stroke="#fff" stroke-width="2" fill="none" opacity=".85" style="filter:drop-shadow(0 0 1px rgba(0,0,0,.6))">'+[[x0,y0+8,1,1],[x1,y0+8,-1,1],[x0,y1-8,1,-1],[x1,y1-8,-1,-1]].map(([x,y,dx,dy])=>`<path d="M${x},${y+dy*L} V${y} H${x+dx*L}"/>`).join('')+'</g>';}}
+    svg.innerHTML=s;apply();
+  }
+  function apply(){const g=$('#lt-g',svg);if(!g)return;st.tx+=(-st.yaw*7-st.tx)*.35;st.ty+=(st.pitch*7-st.ty)*.35;const tz=1+st.step*.14;st.tz+=(tz-st.tz)*.35;g.setAttribute('transform',`translate(400 225) scale(${st.tz}) translate(${-400+st.tx} ${-262+st.ty})`);if(Math.abs(st.tx+st.yaw*7)>.3||Math.abs(st.tz-tz)>.002||Math.abs(st.ty-st.pitch*7)>.3)requestAnimationFrame(apply);}
+  function read(){$('#lt-read').textContent=`Turned ${st.yaw.toFixed(0)}° · tilted ${st.pitch.toFixed(0)}° · stepped ${st.step>=0?'+':''}${(st.step*.25).toFixed(2)} m`;$('#lt-moved').hidden=!st.moved;$('#lt-upd').disabled=!st.moved;}
+  svg.addEventListener('pointerdown',e=>{svg.setPointerCapture(e.pointerId);st.drag={x:e.clientX,y:e.clientY,yaw:st.yaw,pitch:st.pitch};});
+  svg.addEventListener('pointermove',e=>{if(!st.drag)return;const k=800/svg.getBoundingClientRect().width;st.yaw=Math.max(-40,Math.min(40,st.drag.yaw-(e.clientX-st.drag.x)*k*.12));st.pitch=Math.max(-15,Math.min(15,st.drag.pitch-(e.clientY-st.drag.y)*k*.08));st.moved=true;read();apply();});
+  svg.addEventListener('pointerup',()=>{st.drag=null;});
+  svg.addEventListener('wheel',e=>{e.preventDefault();st.acc+=e.deltaY;while(Math.abs(st.acc)>=180){const d=st.acc>0?-1:1;st.acc-=Math.sign(st.acc)*180;st.step=Math.max(-2,Math.min(6,st.step+d));st.moved=true;}read();apply();},{passive:false});
+  $('#lt-exit').addEventListener('click',()=>{Object.assign(st,{yaw:0,pitch:0,step:0,moved:false});read();apply();});
+  $('#lt-upd').addEventListener('click',()=>{st.moved=false;read();});
+  R.s1=draw;
+})();
+
+/* ---------- plan + iso helpers ---------- */
+const M=60,OX=60,OY=40,px=x=>OX+x*M,pz=z=>OY+z*M;
+function wedge(x,y,deg,fov,len){const a=rad(deg),h=rad(fov)/2;return `M${x},${y} L${(x+Math.cos(a-h)*len).toFixed(1)},${(y+Math.sin(a-h)*len).toFixed(1)} A${len},${len} 0 0 1 ${(x+Math.cos(a+h)*len).toFixed(1)},${(y+Math.sin(a+h)*len).toFixed(1)} Z`;}
+function brackets(x,y,hw,hh){const c=6;return `<path class="brk" d="M${x-hw},${y-hh+c}V${y-hh}H${x-hw+c}M${x+hw-c},${y-hh}H${x+hw}V${y-hh+c}M${x+hw},${y+hh-c}V${y+hh}H${x+hw-c}M${x-hw+c},${y+hh}H${x-hw}V${y+hh-c}"/>`;}
+function tag(x,y,t,cls='vtag'){const w=8+t.length*6.1;return `<g class="${cls}" transform="translate(${x},${y})"><rect x="${-w/2}" y="-9" width="${w}" height="18" rx="5"/><text y="4" text-anchor="middle">${t}</text></g>`;}
+function planBase(){let s='<rect width="600" height="380" fill="#e9ebe6"/>';for(let x=0;x<=600;x+=30)s+=`<line class="${(x-OX)%60?'gl':'gl2'}" x1="${x}" y1="0" x2="${x}" y2="380"/>`;for(let y=10;y<=380;y+=30)s+=`<line class="${(y-OY)%60?'gl':'gl2'}" x1="0" y1="${y}" x2="600" y2="${y}"/>`;
+  s+=`<rect x="${px(3.6)}" y="${pz(2)}" width="${1.4*M}" height="${.8*M}" rx="4" class="obj"/>`;
+  s+=`<path class="wall" d="M${px(3.6)},${pz(0)}H${px(0)}V${pz(5)}H${px(8)}V${pz(0)}H${px(4.4)}"/>`;return s;}
+const K=44,IX=310,IY=124,iso=(x,y,z)=>[IX+(x-z)*.866*K,IY+(x+z)*.5*K-y*K];
+const P=a=>a.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ');
+function isoBase(){let s='<rect width="640" height="430" fill="#e9ebe6"/>';
+  s+=`<polygon class="floor3" points="${P([iso(0,0,0),iso(8,0,0),iso(8,0,5),iso(0,0,5)])}"/>`;
+  for(let x=1;x<8;x++)s+=`<line class="fgrid" x1="${iso(x,0,0)[0]}" y1="${iso(x,0,0)[1]}" x2="${iso(x,0,5)[0]}" y2="${iso(x,0,5)[1]}"/>`;
+  for(let z=1;z<5;z++)s+=`<line class="fgrid" x1="${iso(0,0,z)[0]}" y1="${iso(0,0,z)[1]}" x2="${iso(8,0,z)[0]}" y2="${iso(8,0,z)[1]}"/>`;
+  const H=2.6;s+=`<polygon class="wallb2" points="${P([iso(0,0,0),iso(0,0,5),iso(0,H,5),iso(0,H,0)])}"/>`;
+  s+=`<polygon class="wallb" points="${P([iso(0,0,0),iso(3.6,0,0),iso(3.6,H,0),iso(0,H,0)])}"/><polygon class="wallb" points="${P([iso(4.4,0,0),iso(8,0,0),iso(8,H,0),iso(4.4,H,0)])}"/><polygon class="wallb" points="${P([iso(3.6,2.1,0),iso(4.4,2.1,0),iso(4.4,H,0),iso(3.6,H,0)])}"/>`;
+  const b=[3.6,5,0,.9,2,2.8];s+=`<polygon class="boxl" points="${P([iso(b[0],b[2],b[5]),iso(b[1],b[2],b[5]),iso(b[1],b[3],b[5]),iso(b[0],b[3],b[5])])}"/><polygon class="boxr" points="${P([iso(b[1],b[2],b[4]),iso(b[1],b[2],b[5]),iso(b[1],b[3],b[5]),iso(b[1],b[3],b[4])])}"/><polygon class="boxt" points="${P([iso(b[0],b[3],b[4]),iso(b[1],b[3],b[4]),iso(b[1],b[3],b[5]),iso(b[0],b[3],b[5])])}"/>`;
+  return s;}
+const VIEWS=[{id:'a',name:'Piano, keyboard',x:2.3,z:3.9,yaw:-48,h:1.65,stop:1,def:true},{id:'c',name:'North window',x:5.2,z:.8,yaw:120,h:1.65,stop:2},{id:'b',name:'Piano, profile',x:6.8,z:3.3,yaw:195,h:1.15,stop:4},{id:'d',name:'From the door',x:7.2,z:4.5,yaw:225,h:2.5,stop:null},{id:'e',name:'Corner',x:1.0,z:1.0,yaw:35,h:1.65,stop:null}];
+function view2d(v,sel,mode,o={}){const x=px(v.x),y=pz(v.z),st=sel?'sel':v.stop?'tour':'quiet';let s=`<g class="v2 ${st}" data-view="${v.id}">`;
+  if(o.frustum!==false){if(mode==='fan')s+=`<path class="cone" d="${wedge(x,y,v.yaw,52,sel?120:110)}"/>`;
+    else if(mode==='wedge'){const L=sel?92:v.stop?24:18;s+=`<path class="cone" d="${wedge(x,y,v.yaw,52,L)}"/>`;}
+    else{const a=rad(v.yaw),L=sel?34:20,ex=x+Math.cos(a)*L,ey=y+Math.sin(a)*L;s+=`<path class="arr" d="M${x},${y}L${ex},${ey}M${ex-Math.cos(a-.5)*6},${ey-Math.sin(a-.5)*6}L${ex},${ey}L${ex-Math.cos(a+.5)*6},${ey-Math.sin(a+.5)*6}"/>`;}}
+  if(sel&&mode!=='fan'){const a=rad(v.yaw),L=mode==='wedge'?100:44;s+=`<line class="aimline" x1="${x}" y1="${y}" x2="${x+Math.cos(a)*L}" y2="${y+Math.sin(a)*L}"/><circle class="knob" data-aim="${v.id}" cx="${x+Math.cos(a)*L}" cy="${y+Math.sin(a)*L}" r="6.5"/>`;}
+  s+=`<circle class="eye" cx="${x}" cy="${y}" r="${sel?6.5:v.stop?5:4.2}"/>`;
+  if(o.labels!==false&&v.stop)s+=`<g class="badge" transform="translate(${x-11},${y-11})"><circle r="7"/><text y="3.3" text-anchor="middle">${v.stop}</text></g>`;
+  if(v.def)s+=`<path class="dmark" d="M${x+10},${y-15}l3.5,3.5l-3.5,3.5l-3.5,-3.5z"/>`;
+  if(sel)s+=mode==='fan'?`<rect class="blue" x="${x-14}" y="${y-14}" width="28" height="28" rx="6"/>`+tag(x,y+24,v.name,'vtag old'):brackets(x,y,13,13)+tag(x,y+26,v.name);
+  else if(o.labels!==false&&o.allLabels)s+=`<text x="${x+8}" y="${y+16}" style="font:11px var(--sans);fill:var(--ink2)">${v.name}</text>`;
+  return s+'</g>';}
+function view3d(v,sel,mode){const st=sel?'sel':v.stop?'tour':'';const E=[v.x,v.h,v.z],a=rad(v.yaw),f=[Math.cos(a),0,Math.sin(a)],r=[-Math.sin(a),0,Math.cos(a)];
+  const e=iso(...E),fl=iso(v.x,0,v.z);let s=`<g class="v3" data-view="${v.id}" style="cursor:pointer">`;
+  if(mode==='chip'){s+=`<rect class="chipold" x="${e[0]-7}" y="${e[1]-5}" width="14" height="10" rx="2" ${sel?'style="stroke:var(--gold);fill:#fbf3da"':''}/><path d="M${e[0]-3},${e[1]+2}l2,-3l2,2l2,-2" fill="none" stroke="var(--leaf)" stroke-width=".9"/>`;if(sel)s+=tag(e[0]+44,e[1],v.name,'vtag old');return s+'</g>';}
+  const d=sel?1.4:.9,h=Math.tan(rad(26))*d,w=h*1.6,C=(sx,sy)=>iso(E[0]+f[0]*d+r[0]*w*sx,E[1]+h*sy,E[2]+f[2]*d+r[2]*w*sx),cs=[C(-1,1),C(1,1),C(1,-1),C(-1,-1)];
+  s+=`<line class="stem" x1="${e[0]}" y1="${e[1]}" x2="${fl[0]}" y2="${fl[1]}"/><ellipse class="foot" cx="${fl[0]}" cy="${fl[1]}" rx="5" ry="2.6"/>`;
+  s+=cs.map(c=>`<line class="frl ${st}" x1="${e[0]}" y1="${e[1]}" x2="${c[0]}" y2="${c[1]}"/>`).join('')+`<polygon class="fr ${st}" points="${P(cs)}"/>`;
+  if(mode==='body'){const cc=C(0,0),dx=cc[0]-e[0],dy=cc[1]-e[1],dl=Math.hypot(dx,dy)||1;s+=`<rect class="cbody ${st}" x="${e[0]-10}" y="${e[1]-7.5}" width="20" height="15" rx="4.5"/><circle class="lens ${st}" cx="${e[0]+dx/dl*6}" cy="${e[1]+dy/dl*4}" r="3.2"/>`;}
+  else s+=`<circle cx="${e[0]}" cy="${e[1]}" r="3.4" style="fill:${sel?'var(--gold)':v.stop?'var(--leaf)':'#fff'};stroke:var(--ink);stroke-width:1"/>`;
+  if(v.stop)s+=`<g class="badge" transform="translate(${e[0]-12},${e[1]-12})"><circle r="7"/><text y="3.3" text-anchor="middle">${v.stop}</text></g>`;
+  if(sel){s+=brackets(e[0],e[1],15,12)+tag(e[0],e[1]-28,v.name);const m=[(e[0]+fl[0])/2,(e[1]+fl[1])/2];s+=`<g class="htag" transform="translate(${m[0]+22},${m[1]})"><rect x="-19" y="-9" width="38" height="18" rx="5"/><text y="4" text-anchor="middle">${v.h.toFixed(2)} m</text></g>`;}
+  return s+'</g>';}
+
+/* ---------- 2 · Views ---------- */
+(function(){const sec=$('#s2');let sel='b',aim=null;
+  function draw(){const r2=sec.dataset.r2,r3=sec.dataset.r3;
+    let s=planBase();const order=[...VIEWS].sort((a,b)=>(a.id===sel)-(b.id===sel));s+=order.map(v=>view2d(v,v.id===sel,r2)).join('');$('#v2').innerHTML=s;
+    const vs=[...VIEWS].sort((p,q)=>(p.id===sel)-(q.id===sel)||(p.x+p.z)-(q.x+q.z));let t=isoBase();t+=vs.map(v=>view3d(v,v.id===sel,r3)).join('');$('#v3').innerHTML=t;}
+  function pick(e){const g=e.target.closest('[data-view]');if(e.target.closest('[data-aim]'))return;if(g){sel=g.dataset.view;draw();}}
+  $('#v2').addEventListener('pointerdown',e=>{const k=e.target.closest('[data-aim]');if(k){aim=k.dataset.aim;$('#v2').setPointerCapture(e.pointerId);return;}pick(e);});
+  $('#v2').addEventListener('pointermove',e=>{if(!aim)return;const p=toSvg($('#v2'),e),v=VIEWS.find(q=>q.id===aim);v.yaw=Math.atan2(p[1]-pz(v.z),p[0]-px(v.x))*180/Math.PI;draw();});
+  $('#v2').addEventListener('pointerup',()=>aim=null);
+  $('#v3').addEventListener('pointerdown',pick);
+  R.s2=draw;})();
+function toSvg(svg,e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const q=pt.matrixTransform(svg.getScreenCTM().inverse());return[q.x,q.y];}
+
+/* ---------- path helpers ---------- */
+function cr(Pts,n=14){const out=[];for(let i=0;i<Pts.length-1;i++){const p0=Pts[i-1]||Pts[i],p1=Pts[i],p2=Pts[i+1],p3=Pts[i+2]||Pts[i+1];const last=i===Pts.length-2;for(let t=0;t<(last?n+1:n);t++){const u=t/n,u2=u*u,u3=u2*u;out.push([0,1].map(k=>.5*(2*p1[k]+(-p0[k]+p2[k])*u+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*u2+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*u3)));}}return out;}
+const dpath=pts=>'M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L');
+function chevrons(pts,every=34,from=18){let s='',acc=0,next=from;for(let i=1;i<pts.length;i++){const[a,b]=[pts[i-1],pts[i]],L=Math.hypot(b[0]-a[0],b[1]-a[1]);while(acc+L>=next&&next<total(pts)-14){const t=(next-acc)/L,x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,ang=Math.atan2(b[1]-a[1],b[0]-a[0])*180/Math.PI;s+=`<path class="chev" transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${ang.toFixed(1)})" d="M-2.8,-3.4 L1.8,0 L-2.8,3.4"/>`;next+=every;}acc+=L;}return s;}
+function total(pts){let L=0;for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L;}
+function arrowAt(pts,cls){const n=pts.length,b=pts[n-1];let i=n-2;while(i>0&&Math.hypot(b[0]-pts[i][0],b[1]-pts[i][1])<16)i--;const a=pts[i],ang=Math.atan2(b[1]-a[1],b[0]-a[0]),x=b[0]-Math.cos(ang)*11,y=b[1]-Math.sin(ang)*11;return `<path class="ahead ${cls}" transform="translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${(ang*180/Math.PI).toFixed(1)})" d="M-7,-5.5 L4,0 L-7,5.5z"/>`;}
+function drawRoute(pts,cls,dir,badMask){let s='';if(dir==='thin')return `<path class="route thin ${cls==='sel'?'sel':''}" d="${dpath(pts)}"/>`;
+  s+=`<path class="route case" d="${dpath(pts)}"/><path class="route ${cls}" d="${dpath(pts)}"/>`;
+  if(badMask){let run=[];const flush=()=>{if(run.length>1)s+=`<path class="route case" d="${dpath(run)}"/><path class="route bad" d="${dpath(run)}"/>`;run=[];};pts.forEach((p,i)=>{if(badMask[i])run.push(p);else{if(run.length)run.push(p);flush();}});flush();}
+  s+=dir==='chev'?chevrons(pts):arrowAt(pts,cls);
+  s+=`<circle class="sring" cx="${pts[0][0]}" cy="${pts[0][1]}" r="4.5" style="stroke:var(--${cls==='sel'?'gold':'leaf'})"/>`;return s;}
+
+/* ---------- 3 · Paths ---------- */
+(function(){const sec=$('#s3');const V=id=>VIEWS.find(v=>v.id===id);
+  function routes(){const wall=sec.dataset.wall==='yes';return[{from:'a',to:'c',pts:[[3.2,2.9],[4.6,1.6]],cls:'tour'},{from:'c',to:'b',pts:wall?[[6.6,-.5],[7.5,1.6]]:[[6.7,1.2]],cls:'sel'}];}
+  function draw(){const dir=sec.dataset.dir;let s=planBase(),t=isoBase();
+    for(const r of routes()){const A=V(r.from),B=V(r.to),pl=cr([[A.x,A.z],...r.pts,[B.x,B.z]]),pts=pl.map(([x,z])=>[px(x),pz(z)]);const bad=pl.map(([x,z])=>z<0.02||x>7.98);
+      s+=drawRoute(pts,r.cls,dir,bad.some(Boolean)?bad:null);
+      const n=pl.length,p3=pl.map(([x,z],i)=>{const h=A.h+(B.h-A.h)*i/(n-1);return iso(x,h,z);}),sh=pl.map(([x,z])=>iso(x,0,z));
+      if(dir!=='thin'){t+=`<path class="shadow3" d="${dpath(sh)}"/>`;[A,...r.pts.map(([x,z])=>({x,z,h:(A.h+B.h)/2})),B].slice(1,-1).forEach(q=>{const top=iso(q.x,q.h,q.z),bot=iso(q.x,0,q.z);t+=`<line class="vtick" x1="${top[0]}" y1="${top[1]}" x2="${bot[0]}" y2="${bot[1]}"/>`;});}
+      t+=drawRoute(dir==='thin'?sh:p3,r.cls,dir,bad.some(Boolean)?bad:null);
+      if(bad.some(Boolean)&&dir!=='thin'){const i=bad.indexOf(true),q=pts[i],q3=p3[i];s+=chip(q[0]+4,q[1]-16,'Through a wall','pchip bad');t+=chip(q3[0]+40,q3[1]-14,'Through a wall','pchip bad');}}
+    const B=V('b'),D=V('d');s+=`<line class="cutl" x1="${px(B.x)}" y1="${pz(B.z)}" x2="${px(D.x)}" y2="${pz(D.z)}"/>`;
+    const b3=iso(B.x,B.h,B.z),d3=iso(D.x,D.h,D.z);t+=`<line class="cutl" x1="${b3[0]}" y1="${b3[1]}" x2="${d3[0]}" y2="${d3[1]}"/>`;
+    if(dir==='thin'){s+=chip((px(B.x)+px(D.x))/2,(pz(B.z)+pz(D.z))/2,'CUT','pchip old');t+=chip((b3[0]+d3[0])/2,(b3[1]+d3[1])/2,'CUT','pchip old');}
+    else{s+=chip((px(B.x)+px(D.x))/2+18,(pz(B.z)+pz(D.z))/2-6,'✂ Cut','pchip');}
+    const mode=dir==='thin'?'chip':'body',m2=dir==='thin'?'fan':'wedge';
+    s+=VIEWS.map(v=>view2d(v,false,m2)).join('');t+=[...VIEWS].sort((p,q)=>(p.x+p.z)-(q.x+q.z)).map(v=>view3d(v,false,mode)).join('');
+    $('#p2').innerHTML=s;$('#p3').innerHTML=t;}
+  R.s3=draw;})();
+function chip(x,y,t,cls){const w=10+t.length*6;return `<g class="${cls}" transform="translate(${x},${y})"><rect x="${-w/2}" y="-9" width="${w}" height="18" rx="9"/><text y="3.8" text-anchor="middle">${t}</text></g>`;}
+
+/* ---------- 4 · Path editing ---------- */
+(function(){const sec=$('#s4'),svg=$('#pe');const A={x:1.3,z:3.9,yaw:-25,h:1.65,stop:1,name:'Piano, keyboard',id:'A'},B={x:6.8,z:1.0,yaw:150,h:1.65,stop:2,name:'North window',id:'B'};
+  let pts=[[3.0,4.2]],on=-1,drag=null,flash='';
+  const ctrl=()=>[[A.x,A.z],...pts,[B.x,B.z]];
+  function draw(){const m=sec.dataset.edit;const pl=cr(ctrl()),sp=pl.map(([x,z])=>[px(x),pz(z)]);let s=planBase();
+    s+=`<g class="${m==='armed'?'':'dim'}">`+view2d({id:'x1',x:2.2,z:1.1,yaw:20,name:'Corner'},false,'wedge')+view2d({id:'x2',x:6.4,z:1.5,yaw:200,name:'Window seat',stop:3},false,'wedge')+'</g>';
+    s+=`<path class="hitroute" data-route="1" d="${dpath(sp)}"/>`+drawRoute(sp,'sel',m==='armed'?'thin':'chev');
+    s+=view2d(A,false,'wedge')+view2d(B,false,'wedge');
+    if(m==='armed'){s+=view2d({id:'x3',x:(A.x+B.x)/2-.3,z:(A.z+B.z)/2+.2,yaw:-80,name:'Corner',stop:5},false,'fan');s+=`<g transform="translate(300,22)"><rect x="-180" y="-13" width="360" height="26" rx="13" fill="rgba(14,30,25,.85)"/><circle cx="-164" cy="0" r="3.5" fill="#d4ad45"/><text x="-154" y="4" fill="#fff" style="font:12px var(--sans)">Path — click the selected route to add a point</text><text x="128" y="4" fill="#fff" style="font:12px var(--sans)">Done Esc</text></g>`;if(flash)s+=chip(300,350,flash,'pchip bad');}
+    else{const c=ctrl();
+      if(m==='handles')for(let i=0;i<c.length-1;i++){const mx=px((c[i][0]+c[i+1][0])/2),mz=pz((c[i][1]+c[i+1][1])/2);s+=`<g data-mid="${i}"><circle class="mid" cx="${mx}" cy="${mz}" r="6.5"/><path class="midplus" d="M${mx-3},${mz}H${mx+3}M${mx},${mz-3}V${mz+3}"/></g>`;}
+      pts.forEach(([x,z],i)=>{s+=`<circle class="pt ${i===on?'on':''}" data-pt="${i}" cx="${px(x)}" cy="${pz(z)}" r="${i===on?7.5:6.5}"/>`;});
+      s+=`<circle class="endlock" cx="${px(A.x)}" cy="${pz(A.z)}" r="11"/><circle class="endlock" cx="${px(B.x)}" cy="${pz(B.z)}" r="11"/>`;}
+    svg.innerHTML=s;
+    let L=0;for(let i=1;i<pl.length;i++)L+=Math.hypot(pl[i][0]-pl[i-1][0],pl[i][1]-pl[i-1][1]);
+    $('#pe-read').textContent=m==='armed'?'Armed tool: the route sits under View markers, so most clicks pick a View.':`${pts.length} point${pts.length===1?'':'s'} · ${L.toFixed(1)} m · about ${Math.round(L/1.3+1)} s (Auto)${on>=0?' · point '+(on+1)+' selected — Delete removes':''}`;}
+  function nearestSeg(p){const c=ctrl();let best=0,bd=1e9;for(let i=0;i<c.length-1;i++){const a=[px(c[i][0]),pz(c[i][1])],b=[px(c[i+1][0]),pz(c[i+1][1])],dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy))),d=Math.hypot(a[0]+dx*t-p[0],a[1]+dy*t-p[1]);if(d<bd){bd=d;best=i;}}return best;}
+  const toM=p=>[(p[0]-OX)/M,(p[1]-OY)/M];
+  svg.addEventListener('pointerdown',e=>{const m=sec.dataset.edit,p=toSvg(svg,e);
+    if(m==='armed'){if(e.target.closest('[data-route]')||e.target.closest('[data-view]')){flash='Picked the View “Corner” instead';draw();setTimeout(()=>{flash='';draw();},1400);}return;}
+    const pt=e.target.closest('[data-pt]'),mid=e.target.closest('[data-mid]'),rt=e.target.closest('[data-route]');
+    if(pt){on=+pt.dataset.pt;drag=on;}
+    else if(mid&&m==='handles'){const i=+mid.dataset.mid;pts.splice(i,0,toM(p));on=i;drag=i;}
+    else if(rt){const i=nearestSeg(p);pts.splice(i,0,toM(p));on=i;drag=m==='click'?i:null;}
+    else{on=-1;}
+    if(drag!==null)svg.setPointerCapture(e.pointerId);draw();});
+  svg.addEventListener('pointermove',e=>{if(drag===null)return;const q=toM(toSvg(svg,e));pts[drag]=[Math.max(.2,Math.min(7.8,q[0])),Math.max(.2,Math.min(4.8,q[1]))];draw();});
+  svg.addEventListener('pointerup',()=>{drag=null;});
+  svg.addEventListener('dblclick',e=>{const pt=e.target.closest('[data-pt]');if(pt){pts.splice(+pt.dataset.pt,1);on=-1;draw();}});
+  svg.tabIndex=0;svg.addEventListener('keydown',e=>{if((e.key==='Backspace'||e.key==='Delete')&&on>=0){pts.splice(on,1);on=-1;draw();e.preventDefault();}});
+  R.s4=draw;})();
+
+/* ---------- 5 · Travel card ---------- */
+(function(){const sec=$('#s5');let mode='cut',path=false;
+  function draw(){const t=sec.dataset.trav;$$('#tc-mode button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===mode));
+    const trav=mode==='travel';$('#tc-move').hidden=!trav;$('#tc-cutinfo').hidden=trav;$('#tc-old').hidden=!(trav&&!path&&t==='gap');
+    $('#tc-dur').textContent=trav&&!path?'–':'6 s';$('#tc-auto').hidden=trav&&!path;$('#tc-path').textContent=path?'Straight · 4.6 m':'No path';
+    let s='<rect width="64" height="40" fill="#e9ebe6"/><circle cx="10" cy="30" r="3" fill="#4f8f6c"/><circle cx="54" cy="10" r="3" fill="#4f8f6c"/>';
+    if(trav&&path)s+='<path d="M10,30 L54,10" stroke="#fff" stroke-width="4"/><path d="M10,30 L54,10" stroke="#d4ad45" stroke-width="2.2" stroke-dasharray="60" stroke-dashoffset="60"><animate attributeName="stroke-dashoffset" from="60" to="0" dur=".5s" fill="freeze"/></path><path d="M27,22.5l3.5,-1l-1.5,3.2" fill="none" stroke="#fff" stroke-width="1.2"/>';
+    else if(trav)s+='<path d="M10,30 L54,10" stroke="#c85a48" stroke-width="1.8" stroke-dasharray="3 2.5"/>';
+    else s+='<path d="M10,30 L54,10" stroke="#1b201c" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="1 3" stroke-linecap="round"/>';
+    $('#tc-mini').innerHTML=s;}
+  $('#tc-mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const t=sec.dataset.trav;$('#tc-note').hidden=true;$('#tc-ask').hidden=true;
+    if(b.dataset.m==='travel'&&mode!=='travel'){if(t==='ask'&&!path){$('#tc-ask').hidden=false;return;}mode='travel';if(t==='auto'&&!path){path=true;$('#tc-note').hidden=false;}}
+    else if(b.dataset.m==='cut')mode='cut';draw();});
+  $('#tc-ask-yes').addEventListener('click',()=>{mode='travel';path=true;$('#tc-ask').hidden=true;draw();});
+  $('#tc-ask-no').addEventListener('click',()=>{$('#tc-ask').hidden=true;});
+  R.s5=()=>{mode='cut';path=false;$('#tc-note').hidden=true;$('#tc-ask').hidden=true;draw();};})();
+
+/* ---------- 6 · Guide strip ---------- */
+R.s6=()=>{$('#gs').classList.toggle('old',$('#s6').dataset.strip==='old');};
+
+/* ---------- 7 · Show ---------- */
+(function(){const sec=$('#s7');const f={markers:1,frustums:1,paths:1,labels:1};let selOnly=false;
+  function mini(){let s=planBase();const A=VIEWS.find(v=>v.id==='a'),C=VIEWS.find(v=>v.id==='c');
+    if(f.paths&&!selOnly){const pl=cr([[A.x,A.z],[3.2,2.9],[4.6,1.6],[C.x,C.z]]).map(([x,z])=>[px(x),pz(z)]);s+=drawRoute(pl,'tour','chev');}
+    VIEWS.forEach(v=>{const sel=v.id==='b';if(!sel&&(!f.markers||selOnly))return;s+=view2d(v,sel,'wedge',{frustum:!!f.frustums||sel,labels:!!f.labels});});
+    $('#showplan').innerHTML=s;const off=Object.values(f).filter(x=>!x).length;$('#show-off').hidden=!off;$('#show-off').textContent=off+' off';}
+  $$('.chk',sec).forEach(c=>c.addEventListener('change',()=>{f[c.dataset.f]=c.checked?1:0;mini();}));
+  $('#show-mode').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#show-mode button').forEach(x=>x.setAttribute('aria-pressed',x===b));selOnly=b.textContent.startsWith('Selection');mini();});
+  R.s7=()=>{const w=$('#tbw');w.classList.toggle('dark',sec.dataset.bar==='dark');w.classList.toggle('light',sec.dataset.bar==='light');mini();};})();
+
+/* ---------- 8 · Problems (stage snippet) ---------- */
+(function(){let s='<rect width="300" height="120" fill="#e9ebe6"/>';for(let x=0;x<=300;x+=30)s+=`<line class="gl" x1="${x}" y1="0" x2="${x}" y2="120"/>`;for(let y=0;y<=120;y+=30)s+=`<line class="gl" x1="0" y1="${y}" x2="300" y2="${y}"/>`;
+  s+=`<path d="M60,85 L240,35" stroke="#fff" stroke-width="6"/><path d="M60,85 L240,35" class="route bad"/>`;
+  s+=`<path class="cone" d="${wedge(60,85,-20,52,22)}" style="fill:var(--leaf);fill-opacity:.14;stroke:var(--leaf)"/><circle cx="60" cy="85" r="5" fill="var(--leaf)" stroke="#fff" stroke-width="1.6"/><path d="${wedge(240,35,170,52,22)}" style="fill:var(--leaf);fill-opacity:.14;stroke:var(--leaf)"/><circle cx="240" cy="35" r="5" fill="var(--leaf)" stroke="#fff" stroke-width="1.6"/>`;
+  s+=chip(150,48,'⚠ No path','pchip bad');s+=`<text x="60" y="108" text-anchor="middle" style="font:11px var(--sans);fill:var(--ink2)">North window</text><text x="240" y="62" text-anchor="middle" style="font:11px var(--sans);fill:var(--ink2)">Doorway</text>`;
+  $('#probstage').innerHTML=s;})();
+
+/* ---------- 10 · Preview ---------- */
+(function(){const sec=$('#s10');
+  R.s10=()=>{const env=sec.dataset.env,st=sec.dataset.pst,wel=sec.dataset.wel;const g=env==='void'?`<g transform="translate(400 225) scale(.62) translate(-400 -170)">${persp('void')}</g>`:`<g transform="translate(0 -40)">${persp(env)}</g>`;
+    $('#pv-svg').innerHTML=(env==='void'?'<rect width="800" height="450" fill="#000"/>':'')+g;
+    $('#pv').classList.toggle('blur',env!=='void'&&st==='welcome');const w=$('#pv-wel');w.classList.toggle('center',wel==='center');w.classList.toggle('corner',wel==='corner');};})();
+
+Object.values(R).forEach(f=>f());
+</script>
+</body>
+</html>
