@@ -1,183 +1,191 @@
-# Native modeling freedom and semantic architecture
+# Candidate T5 architecture: Native Object Studio & direct modeling foundation
 
-**Research proposal only · Revised after PR #266 peer review · 2026-11-03 · owner review**
+**Research & architecture proposal · PR #266 follow-up revision · 2026-11-03 · owner review**
 
-Prepared against `main` at `535e4bd1`. Research proposal only: no prototype code, permanent schema, dependency commitment, final UX or roadmap authorization is included in this change.
+Prepared against `main` at `535e4bd1` (including landed `R217` shell slices through `S28`; where [`editor-shell-and-visual-system.md`](../../docs/reference/design-system/editor-shell-and-visual-system.md) lags behind `R217`, landed [`apps/editor`](../../apps/editor/src/routes/project/[projectId]/spatial/+page.svelte) code takes precedence as the authoritative shell baseline). Proposal only: no implementation code, schema bump, dependency installation, contract ratification or roadmap release is included in this change.
 
-**Intent:** define a gated, honest experimental modeling program—timed while `T5` has no active phase ([`t5-expressive-geometry/current.md`](../../docs/operations/t5-expressive-geometry/current.md))—that tests **both** improvements compatible with the adopted [`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) **and** a bounded, explicit challenge to its prohibition on face-addressed solid editing, with an early interactive owner gate before expensive machinery is funded.
-
----
-
-## 1. Relationship to the adopted T5 direction and prior evidence
-
-### 1.1 Explicit challenge to `umbrella-plan.md` A3/A4 (and what would justify overturning it)
-
-Part of this proposal explores **face-addressed direct solid editing** (splitting planar faces, offsetting loops, pushing/pulling sub-faces, persistent `FaceId`/`EdgeId` lineage, and—if gated in later—moving/tilting faces while adjacent planes re-intersect). **That directly challenges the `T5` direction currently in force**, and the proposal must say so plainly:
-
-- **Where current planning rejects this:**
-  - [`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) **Commitment A3** (`:27`, `:160-166`) binds edits strictly to *authored controls and object space*, declaring that *"generated faces, vertices and triangle indices are never addresses"* so admitted operations need no topological naming.
-  - **Commitment A4** (`:28`) specifies *admitted representation routes, not a universal kernel*, and **"Rejected now"** (`:33-38`) explicitly excludes *"polygon modeling (vertex, edge and face editing...) as the creator model"* and *"a universal implicit or B-rep substrate"*.
-  - [`UX-SPEC.md`](../../prototypes/native-object-shaping/UX-SPEC.md) (`:183`) states *"there is no raw vertex, face, spline-weight or handle-cloud editor"*.
-  - [`roadmap-handoff.md`](../native-creative-depth/roadmap-handoff.md) (`:323-327`) recommends not scheduling *"arbitrary B-rep face push/pull with neighbor healing"* without new evidence and an owner decision, and [`approaches-and-precedents.md`](../native-creative-depth/approaches-and-precedents.md) (`:68`, `:79`) flags Solid Edge Synchronous Technology as **a warning case** (inferred face-move rules needing a large rule vocabulary and frequent manual overrides).
-- **Why testing the challenge is legitimate now:**
-  - [`architecture.md`](../../docs/reference/architecture.md) (`:196-198`) leaves representation mix and kernels open; `umbrella-plan.md` (`:38`) notes no rejection is permanent; [`north-star.md`](../../docs/reference/north-star.md) (`:134-140`) neither admits nor excludes by technique; and [`native-form-lab/FINDINGS.md`](../../prototypes/native-form-lab/FINDINGS.md) (`:111`) explicitly notes that *"P3 comparison with direct solid editing is also unrun."*
-- **Required Owner Decision (`D-T5-A3`) and evidentiary standard:**
-  - Adopting any face-addressed / B-rep-source model into `T5` requires an explicit owner decision (**`D-T5-A3`**) amending [`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) A3/A4 ([planning record](../../docs/reference/decisions/t5-object-focus-planning-2026-10-27.md)).
-  - Under [`north-star.md`](../../docs/reference/north-star.md) (`:129-132`, *Evidence-led capability expansion*), overturning A3/A4 requires demonstrating a **concrete creative barrier** on target work that the **incumbent `T5` route** (`P01` extrude + `P02` object-space shaping + `R2` positioned solid-combination cutters/adders + `T2` part composition) cannot express cleanly, weighed alongside revision dependability, numerical correctness, browser cost, and failure/repair legibility.
-  - **Every `T5` extractability claim for B-rep / face-addressed code in this proposal is strictly conditional on `D-T5-A3`.** Meanwhile, two companion spikes in Phase 1 (non-uniform stretch on `P01` forms and `manifold-3d` `faceID`/precision testing) yield direct `T5` / `R2` value *even if A3/A4 remain untouched*.
-
-### 1.2 Reusable foundation vs genuinely unresolved mechanisms
-
-1. **Prior work and measurements already in hand (cite and build from, do not repeat):**
-   - **Shipped `@portfolio/geometry-core`:** [`predicates.ts`](../../packages/geometry-core/src/predicates.ts), [`profile.ts`](../../packages/geometry-core/src/profile.ts) and [`extrude.ts`](../../packages/geometry-core/src/extrude.ts) provide exact `orient2d`, quadratic smooth corners, `earcut` triangulation (which already supports hole bridging), and `FormMesh` region tagging under A5 IEEE arithmetic. *(Note: [`p3-depth`'s `plan.js`](../../prototypes/p3-depth/src/core/plan.js) uses `Math.hypot`, fixed epsilons, and convex-only `clipConvex`, violating A5 canonical rules—it is treated as **conceptual reference only**, not extractable code.)*
-   - **2D booleans & polygon offsets:** [`geometry-library-harvest.md`](../geometry-library-harvest.md) (`:178`) already identifies **Clipper2** (BSL-1.0, snap-rounded integer model) as the primary candidate for 2D booleans and offsets—directly relevant to `offsetFaceLoop`, where insetting a concave polygon can split one loop into multiple disjoint loops.
-   - **3D solid booleans & Manifold probes:** [`geometry-identity-and-performance.md`](../native-creative-depth/geometry-identity-and-performance.md) (`:36-38`, `:48`, `:184`) and [`probe-methods.md`](../native-creative-depth/probe-methods.md) (`:61-63`, `:91`, `:110-118`, `:129`) already establish `manifold-3d@3.5.4` (Apache-2.0) at **`155 KiB` brotli WASM + `17 KiB` glue**, **`6–17 ms` init**, `1.29–3.73 ms` p50 on the 40-opening wall, `133.7 ms` p50 on a `131,072`-triangle sphere union, `Mesh.faceID` survival across subtraction (`66` distinct face IDs preserved), `earcut`'s **`160` open T-junction edges** when extruding collinear hole vertices without side-stitching, and **Manifold issue #1888** (silent volume loss while returning `NoError` on near-coincident inputs).
-   - **Profile families & scope UX:** [`native-form-lab`](../../prototypes/native-form-lab/FINDINGS.md) proves keyed `extrude`/`revolve`/`sweep`, cap lifetimes, and planar-role `HostLink` `'unresolved'` fallback; [`object-composition-prototype`](../../prototypes/object-composition-prototype/HANDOFF.md) explores attachment repair UX; [PR #244](../native-object-creation-ux/PROPOSAL.md) frames the `World ↔ Object Focus` scope transition.
-
-2. **Separating composition from four rungs of solid complexity:**
-   A four-legged table or slatted bench needs **parts (`Rung 0`), not Booleans**—matching [PR #244](../native-object-creation-ux/PROPOSAL.md)'s *"touching forms do not silently fuse"*:
-   - **Rung 0 — Multi-part composition of `genus 0` bodies:** semantic ownership of definitions, instances, and component tables belongs to **`T2`** ([`t2-composition/README.md`](../../docs/roadmap/t2-composition/README.md), `umbrella-plan.md:339`), not `T5`.
-   - **Rung 1 — 2D planar topology on a single prism:** outer + inner hole contours (`earcut` + T-junction-free collinear side-stitching) and 2D offsets (`Clipper2`). Zero 3D CSG.
-   - **Rung 2 — Local planar face splitting & non-colliding Push/Pull:** drawing lines/loops on a planar face, `Offset`ting a border loop, and pushing bosses or blind pockets within host bounds with coplanar neighbor healing.
-   - **Rung 3 — Volumetric breakthroughs, coplanar grazing & face tilting:** pushing a pocket through a back/stepped face, grazing coplanar cuts, or tilting/moving faces across multi-plane corners.
-
-### 1.3 Fairly stating the incumbent `T5` route (`B2` correction)
-
-An earlier draft compared direct B-rep editing against a *face-addressed `seed + ops[]` feature tree* that fails on topological naming. That was the wrong baseline: [`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) explicitly rejects feature trees (`:35`) and specifies **`I_umbrella`**:
-
-- **Keyed generators (`R1`)** + **object-space bound operations** (`P02` `reshape` displacement fields and `keep` spatial regions, `:27`, `:163-167`), which re-evaluate *where they are in the object* on upstream profile edits and **need no topological naming**.
-- **Route `R2` solid combination (`:190`, `:337`):** `cut` and `add` as **authored solid bodies positioned in object space**, evaluated non-destructively at tessellation time with `Mesh.faceID` mapped back to `SourceRoleKey` regions.
-- **Per-axis proportional `scale` (`:154-156`)** + **`T2`-owned multi-part composition (`:339`)**.
-
-In this revised proposal, **`I_umbrella` (object-space ops + non-destructive `R2` cutter/adder bodies + parts)** is a full, first-class contender that can genuinely win: because `R2` evaluates from clean `Float64` source in one pass rather than mutating a B-rep across edits, it avoids iterative `Float32` drift and topological naming entirely—leaving the real research question as **whether creator workflows hit a genuine expressiveness or comprehension barrier when modeling chained local steps/pockets via positioned `R2` cutter bodies versus direct face `Push/Pull`**.
+**Intent:** replace the standalone `prototypes/` plan with an **in-application, promotion-ready strategy**—developing a flag-gated **Native Object Studio** directly inside [`apps/editor`](../../apps/editor/src/lib/authoring/README.md) alongside a UI-free modeling engine—so proven UX and geometry capabilities merge incrementally into Biskiq and can directly supersede affected [`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) commitments without a post-prototype rebuild.
 
 ---
 
-## 2. Upfront technical decisions and mechanisms to test
+## 1. Strategic assessment: in-app Studio vs isolated prototype
 
-### 2.1 Settling the B-rep representation and determinism rules upfront
+### 1.1 Why building inside Biskiq beats a second standalone prototype
 
-1. **Hybrid Plane-Primary + 2D Frame-Pinned B-Rep (`core/brep/`):**
-   - Pure plane-derived vertices fail on SketchUp-style coplanar face splits (where new vertices lie on `< 3` independent planes and are under-determined), while pure vertex meshes accumulate planarity drift. Conversely, tilting a face at a degree-4+ corner makes the vertex over-determined.
-   - **Upfront representation choice:** Each planar `Face` owns an authoritative `Float64` plane frame `(origin, u, v, normal)` and outer + hole `Loop`s. **3-plane corners** (where three linearly independent faces meet) derive their 3D coordinates in `Float64` from their three planes; **under-determined vertices** (`< 3` independent planes: coplanar splits, inset loops, collinear edge splits) store exact 2D `(u, v)` coordinates in their host face's plane frame (guaranteeing `0` out-of-plane drift by construction).
-   - **Upfront topology-change rule:** Stage 1 (Rungs 1–2) supports coplanar splits (`Clipper2` / exact 2D arrangement), T-junction-free cap/side stitching, and orthogonal `pushPullFace` within host bounds, and **explicitly refuses** over-determined degree-4+ face moves or self-intersecting collapses with typed refusal codes. Synchronous `moveFaces`/`tiltFace` (and whether degree-4+ corners refuse vs split into new bevel edges) is **not built in Phase 1**; it is gated behind the Step 4 Owner Barrier Gate.
+[`native-form-lab`](../../prototypes/native-form-lab/FINDINGS.md) already paid the standalone-prototype tax once: custom Threlte canvas, bespoke camera controller, JSON-snapshot undo, and mock persistence—none of which could merge into production. Building a second isolated app under `prototypes/` would repeat that throwaway scaffolding while leaving the hardest integration questions untested:
 
-2. **Determinism vs numerical robustness (clarifying A5):**
-   - Under `umbrella-plan.md` A5 (`:218-222`), solving 3-plane intersections via `+ − × ÷` and `Math.sqrt` in fixed order is **already bit-identical** across JS engines, and angles (if `tiltFace` or `revolve` enter later) use a **fixed in-house polynomial** rather than `Math.sin/cos`.
-   - The genuine numerical questions tested here are **robustness and boundary precision**, not JS engine non-determinism: **(a)** exact predicates vs explicit snap/tolerance rules when classifying coincidence on computed intersection points, and **(b)** `manifold-3d`'s **`Float32Array` (`Mesh.vertProperties`) quantization boundary**.
+- **Workspace UX (`Studio` vs World-inline) requires real World context:** [PR #244](../native-object-creation-ux/PROPOSAL.md)'s core premise—entering from a placed Scene object with preserved identity and viewing angle, seeing real [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts) rooms recede as muted read-only context (or switching to `StageCanvas`'s clean cutting mat), and returning cleanly to World—cannot be judged honestly in an empty toy viewer.
+- **Landed `R217` shell seams already provide the composition primitives:** `R217` (`S01–S28`) has already established sub-session bars (`.mode-pill` in `lookThroughSession`), `.lower-column` dock swapping (`StageDock` vs `ExperienceDock`), `EditorIndex` group swapping, `EditorCard` gesture-fading (`gesturing`) and `•••` menus, and `StageMatGround`'s measured cutting mat—making an in-app Studio dramatically cleaner to host than pre-`R217` docs suggested.
+- **Real `F4`, `Save`, `Preview` and `My Objects` keep geometry honest:** Routing edits through [`host-acceptance.ts`](../../apps/editor/src/lib/authoring/stage/host-acceptance.ts), [`form-evaluation.ts`](../../apps/editor/src/lib/content/form-evaluation.ts), and [`MyObjectsSectionLazy.svelte`](../../apps/editor/src/lib/authoring/adapters/scene/library/MyObjectsSectionLazy.svelte) proves Undo/Redo, Save/reopen, Paper Plan footprints, and Visitor parity continuously rather than deferring integration surprises to the end.
+- **Zero rebuild on success:** Production-safe seams (Studio scope host, Camera framing/return, lazy chunking, `P01` Studio editing, stretch and Rung 1–2 geometry) land as small, mergeable PRs rather than an unmergeable research branch.
 
-### 2.2 Accounting for `manifold-3d@3.5.4` realities (`Spike B`)
+### 1.2 Candid pushback: three coupling hazards we must refuse (a hybrid seam)
 
-Inspecting `manifold-3d@3.5.4` directly shapes how Rung 3 / Route `R2` must be tested:
-- **`faceID` already survives booleans:** `Mesh.faceID` carries input face IDs through CSG and preserves boundary edges between distinct `faceID`s during simplification ([`geometry-identity-and-performance.md`](../native-creative-depth/geometry-identity-and-performance.md) §5.2 item 6). Heuristic coplanar-triangle normal clustering is unnecessary; `FaceId`s pass in directly via `faceID`, requiring only boundary loop extraction per surviving `faceID` when reconstructing polygons.
-- **`Mesh.vertProperties` is `Float32Array` (32-bit float):** Reading Manifold's output vertices directly back into a B-rep rounds coordinates to float32 on every edit, guaranteeing cumulative quantization drift over `20` chained edits regardless of algorithm quality. Spike B therefore explicitly compares:
-  1. **One-pass `R2` non-destructive evaluation** (`Float64` base + `Float64` cutter bodies → single Manifold pass → render mesh, `0` iterative round-trips—directly serving as `umbrella-plan.md:337` `R2` entry evidence), against
-  2. **Plane-re-derived B-rep round-tripping** (using Manifold's output `triVerts` + `faceID` strictly for *topology and face adjacency*, while re-computing 3-plane vertex coordinates in `Float64` from authoritative `Face` planes, isolating real algorithmic failures from float32 truncation).
-- **Manifold issue #1888 validator:** Because near-coincident / coplanar-grazing booleans can silently lose volume while returning `NoError` (`geometry-identity-and-performance.md:48`), every boolean pass is wrapped in an independent closed-manifold + expected-volume-bounds post-condition check that converts silent corruption into a typed refusal.
+Integrating *everything* into production codecs and Stage imports on Day 1 would **weaken the geometry experiment and create avoidable churn**. An in-app strategy is preferable **only if we enforce three hard decoupling boundaries**:
 
-### 2.3 Non-uniform stretch independent of B-rep (`Spike A` — Question Q4)
+1. **Do not churn canonical `Scene` v4 or `My Objects` v1 schemas before the Owner Demo (Two-Tier Persistence):**
+   Mutating persisted [`SceneFormSource`](../../packages/project-model/src/scene.ts) for unproven B-rep loops or `R2` cutter arrays would force repeated format bumps and golden regenerations (`umbrella-plan.md:228-229`) before we know which representation wins. Instead:
+   - **Tier P1 (merges to production `Scene` v4):** Studio's end-to-end vertical slice (`C1`) reads and writes canonical `T5.P01` `SceneFormSource` (outline anchors/smooth curves, plane, extent, `form.scale`, materials, `My Objects`). This proves 100% of Studio ↔ `F4` ↔ `Save` ↔ `World` plumbing on real production data with zero schema risk.
+   - **Tier P2 (experimental-flag-only Studio source):** Richer representations under comparison (stretch zones, Rung 1–2 face splits/offsets/push-pulls, and `I_umbrella` `R2` cutter/adder bodies) run behind an **experimental codec/session guard** (persistable in local/dev experimental projects, refused by default cloud save) until the Owner Demo (`C5`) selects the winning representation for **one** deliberate `Scene` format bump.
+2. **Do not touch `@portfolio/geometry-core`'s visitor root or Stage first-load (`+0 B` rule):**
+   [`geometry-core-boundary.test.ts`](../../apps/editor/tests/lib/geometry-core/geometry-core-boundary.test.ts) restricts [`packages/geometry-core`](../../packages/geometry-core/src/index.ts) to `earcut` + `robust-predicates` because Visitor `/p/[publicationId]` (`≤ 250 KiB br`) and Stage (`439.0 KiB br`, already under exception above the `425 KiB br` cap) import it directly. All Studio UI and experimental/heavy geometry (`Clipper2`, `manifold-3d` Worker) **must** sit behind dynamic `import()` boundaries so Stage first-load and Visitor chunks gain **`0 B`** when Studio is inactive.
+3. **Do not let Studio UI slow or bias the geometry comparison:**
+   Geometry operators, `20`-edit numerical drift probes, and the `I_umbrella` vs direct-B-rep comparison remain **pure, headless TypeScript modules** tested in `vitest` (`C2`, `C3`) in parallel with Studio shell work (`C1`). UI convenience never masks topological fragility, and a great Studio UX never forces adoption of a brittle geometry kernel (or vice versa).
 
-[`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) (`:154-156`) currently commits [`SceneFormSource`](../../packages/project-model/src/scene.ts) to proportional per-axis `scale`. Because **spatial stretch planes / kept-thickness zones** operate directly on profile/mesh coordinates, **Q4 does not depend on B-rep adoption**: Spike A tests stretch-plane resizing directly on shipped `P01` extruded forms and multi-form arrangements in Phase 1 (including the **splayed-leg / `45°` member falsifier**, contrasting single-body plane-stretch shear against rigid multi-part origin translation).
+### 1.3 Explicit relationship to `umbrella-plan.md` (A1/A3/A4/A6) and the landed `R217` shell
 
-### 2.4 Respecting `T1` and `T2` cross-track ownership
+This initiative **preserves Biskiq's core architectural invariants and composes natively with the landed `R217` shell**, while **explicitly challenging four `T5` umbrella commitments**:
 
-- **Architectural host surfaces belong to `T1`:** [`t1-spatial-world/README.md`](../../docs/roadmap/t1-spatial-world/README.md) (`:91-95`) states that *"no consumer reconstructs architecture"* and registers `T1`'s face-frame provider once a consumer names its contract. Furthermore, [`CompiledJunctionSurface`](../../packages/layout-core/src/layout-geometry-types.ts) (`:439-454`) holds **wall-end caps, thickness/height steps, branch trims, and junction keels**—*not* the room-facing wall side surfaces (which derive from straight or `cubic-chain` centerline samples, wall thickness, and `CompiledJunctionInterface` trims, and are non-trivial). Accordingly, this proposal **does not reconstruct room-facing wall surfaces in `T5`**; Phase 1 uses simple analytic reference planes in the workbench, and if Phase 2 runs, its architectural output is a crisp **consumer-requirements specification for `T1`'s face-frame provider** (plus verifying that wall-thickness niches cannot be Scene-side CSG cuts into [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts)).
-- **Definitions, instances & continuing relationships belong to `T2` + `F`:** `PartDefinition`, `PartInstance`, `Make Unique`, and any **continuing host-span resize relationship** (`stretchAssembly` driven by moving walls) are owned by **`T2`** ([`t2-composition/README.md`](../../docs/roadmap/t2-composition/README.md), `umbrella-plan.md:339`) under [`north-star.md`](../../docs/reference/north-star.md) (`:116-118`, *Composable relationships*). Any multi-body grouping in the prototype is disposable local harness state to test geometry behavior, never a competing `T5` component table or cross-domain relationship store.
-
----
-
-## 3. Module boundaries, package imports and conditional extractability
-
-The prototype lives in a self-contained folder under [`prototypes/`](../../prototypes/README.md) (outside root npm `workspaces` so `manifold-3d` and `clipper2-js`/`clipper2-wasm` never touch root `package-lock.json`). It consumes `@portfolio/geometry-core` (and `@portfolio/layout-core` types if Phase 2 runs) via explicit **Vite/Vitest `resolve.alias` to `../../packages/*/src`** in its local config, keeping workspace isolation intact.
-
-| Prototype module | Allowed imports | Extractability & condition |
+| Invariant / commitment | Status in this proposal | Governance & required owner decision |
 | --- | --- | --- |
-| **`spikes/stretch-q4/`** (axis/frame stretch-planes vs per-axis `scale` on `P01` forms + splayed falsifier) | Pure TS + `@portfolio/geometry-core` | **Directly informs `T5` resize (`umbrella-plan.md:154-156`)** without reopening A3/A4. |
-| **`spikes/manifold-r2/`** (`faceID` region table, `R2` 1-pass cutter eval vs `Float64` plane re-derivation over `20` chained edits, #1888 volume/manifold validator) | Pure TS + `manifold-3d` (isolated) | **Directly reusable as `umbrella-plan.md:337` Route `R2` entry evidence** even if B-rep editing is rejected at Gate G2. |
-| **`core/brep/` & `core/ops/`** (hybrid `Float64`-plane / `(u,v)` B-rep, T-junction-free hole extrusion, `Clipper2` `splitFace`/`offsetFaceLoop`, local `pushPullFace`) | Pure TS + `robust-predicates` + `earcut` + `Clipper2` (zero Svelte/Threlte/Three/DOM) | **2D hole/offset findings reusable in `R1`; B-rep & face-addressed ops extractable ONLY IF owner decision `D-T5-A3` amends A3/A4.** |
-| **`workbench/`** (thin Svelte 5 + Threlte interactive Rung 1–2 push/pull & `R2` cutter comparison stage + X-Ray inspector) | Svelte 5, Threlte, Three.js, `core/*`, `spikes/*` | **Disposable research harness** — zero shell/Card/UX authority ([PR #244](../native-object-creation-ux/PROPOSAL.md)). |
-| **Conditional Phase 2 modules** (`moveFaces`/`tiltFace`, head-to-head `I_umbrella` vs B-rep 20-edit revision harness, `T1`/`T2` consumer contract spec) | Built **only** if Gate G2 passes | **Conditional research evidence** for `D-T5-A3`, `T1` face-frame provider requirements, and `T2` part/relationship seams. |
+| **One Stage `<Canvas>`, one Camera authority, one `Scene` unit, one `F4` history, one `HeadSave`, Visitor isolation & landed `R217` shell chrome** ([`architecture.md`](../../docs/reference/architecture.md), [`stage-shell-composition.test.ts`](../../apps/editor/tests/lib/authoring/stage-shell-composition.test.ts), [`editor-host-no-write.test.ts`](../../apps/editor/tests/lib/authoring/editor-host-no-write.test.ts)) | **Preserved 100%.** Studio is *not* a second SvelteKit app, second WebGL `<Canvas>`, `OrbitControls` rig, or shadow Scene document, and reuses landed `R217` `EditorHead`, `EditorIndex`, `EditorCard`, `.mode-pill`, `.lower-column`, and `StageMatGround` mechanics. | Enforced continuously by `npm run test:arch` on every PR (with landed `R217` code taking precedence where shell docs lag). |
+| **Umbrella A1 & A6** (`umbrella-plan.md:25, 30, 33, 40-63`) | **Challenged explicitly (`D-Studio-UX`).** A1/A6 reject a dedicated studio workspace in favor of editing inside World's shared `StageDock` / `Objects` palette. We hypothesize a **dedicated in-app Object Studio sub-session** (own modeling dock/tools, precision readouts, `Context: World \| Mat` toggle, standalone unplaced entry) unlocks markedly better modeling flow while sharing the one `StageCanvas`, `Camera`, and `F4` stack. | Experimental flag until proven; promotion to default creator UX requires owner decision **`D-Studio-UX`** amending `umbrella-plan.md` A1/A6 (and folding Studio into shell docs alongside `R217`). |
+| **Umbrella A3, A4 & proportional `scale`** (`umbrella-plan.md:27-28, 33-38, 154-166`; [`UX-SPEC.md`](../../prototypes/native-object-shaping/UX-SPEC.md) `:183`; [`roadmap-handoff.md`](../native-creative-depth/roadmap-handoff.md) `:323-327`; [`approaches-and-precedents.md`](../native-creative-depth/approaches-and-precedents.md) `:68, 79`) | **Challenged explicitly (`D-T5-Source`).** Tests hybrid `Float64`-plane/`(u,v)` planar face editing (`splitFace`, `offsetFaceLoop`, `pushPullFace`) and thickness-preserving stretch against the **true incumbent `T5` model (`I_umbrella`: object-space ops + non-destructive `R2` positioned cutters/adders + `T2` parts)**. | Experimental source guard until proven against [`north-star.md`](../../docs/reference/north-star.md) (`:129-132`, *demonstrated creative barrier*); promotion requires owner decision **`D-T5-Source`**. **UX (`D-Studio-UX`) and geometry (`D-T5-Source`) are judged independently.** |
 
 ---
 
-## 4. Progressive stage plan, sizing, stop-loss caps and gate rules
+## 2. Candidate Studio and modeling architecture on real Biskiq seams
 
 ```mermaid
-flowchart TD
-  P1A["Step 1–2 (Core, ~3.5–5d): Hybrid B-Rep + Rungs 1–2 Ops + Thin Workbench\n(holes, Clipper2 split/offset, local push/pull, depth snap, X-Ray)"]
-  P1B["Parallel Spike A (~1d): Q4 Stretch-Planes\non existing P01 extruded forms + splayed falsifier"]
-  P1C["Parallel Spike B (~1–1.5d): Manifold faceID + Float32 vs Float64\n20-edit round-trip & #1888 grazing validator (doubles as R2 evidence)"]
-  G1{"Gate G1 (Automated): Rung 1–2 & Spike Integrity\n0 open T-junction edges; #1888 caught;\nFloat64 plane re-derivation separates float32 drift"}
-  G2{"Step 4 — Gate G2 (Owner Barrier Walkthrough)\nCompare Thin Workbench vs Incumbent Route\n(P01 + P02 + R2 cutters + T2 parts)"}
-  STOP["Stop B-Rep Track (Keep A3/A4)\nHarvest Spike A (Q4 stretch), Spike B (R2 Manifold),\nand 2D hole/offset findings into current T5 umbrella"]
-  P2["Conditional Phase 2 (~5–7d, cap 8d — only if D-T5-A3 opened)\nmoveFaces/tiltFace + Rung 3 integration + 20-edit I_umbrella vs B-Rep\nrevision shootout + T1/T2 consumer requirements spec"]
-  G3{"Gate G3: Revision & Synchronous Complexity Gate"}
+flowchart LR
+  subgraph Route["spatial/+page.svelte (Landed R217 Single Host)"]
+    Canvas["StageCanvas + StageCamera + StageMatGround\n(One WebGL Context · @portfolio/camera-core)"]
+    Shell["R217 Chrome: EditorHead · EditorIndex · EditorCard\n(.mode-pill Session Bar · .lower-column Dock Slot)"]
+    F4["StageAcceptanceHost (host-acceptance.ts)\n(One F4 History · Undo/Redo · HeadSave)"]
+    Toggle["Experimental Gate (app-preferences / ?studio=1)\n0 B Stage First-Load When Closed"]
+  end
 
-  P1A & P1B & P1C --> G1 --> G2
-  G2 -- "No creative barrier worth reopening A3" --> STOP
-  G2 -- "Demonstrated barrier -> explore D-T5-A3" --> P2 --> G3
+  subgraph Studio["Lazy Studio Host (authoring/studio/ · Dynamic import())"]
+    Scope["Studio Session & Scope\n(Card ••• Edit | Objects New Draft | Find ⌘K\nContext: Muted World | Clean Mat Ground)"]
+    UX["Task-Specific Modeling UX\n(StudioDock · 3D Face/Edge/Outline Pick · Inference\nOffset & Push/Pull · Stretch · Card Writer)"]
+    Scope --> UX
+  end
+
+  subgraph Engine["UI-Free Modeling & Evaluation Layer (Pure TS + Worker)"]
+    GC["@portfolio/geometry-core (Unchanged v1 Root)\n(Runtime-Safe P01 Extrude · earcut · robust-predicates)"]
+    Lab["Candidate Modeling Modules (UI-Free TS)\n(Hybrid B-Rep Rung 1–2 · Clipper2 2D Split/Offset\nStretch Zones · Incumbent R2 Cutter Evaluator)"]
+    Wkr["Lazy Boolean Worker (manifold-3d WASM)\n(faceID Provenance · Float64 Plane Re-Derive · #1888 Guard)"]
+    Lab --> Wkr
+  end
+
+  Toggle -. "lazy import()" .-> Scope
+  Scope -- ".mode-pill + StudioDock + Index groups" --> Shell
+  UX -- "ViewingIntent (Inspection Claim)" --> Canvas
+  UX -- "StageFormGhost + FormMesh" --> Canvas
+  UX -- "Tier P1: P01 Intent | Tier P2: Exp Guard" --> F4
+  GC & Lab -- "FormMesh + Regions" --> Canvas
 ```
 
-### Phase 1 — Pre-gate build & parallel spikes (~5.5–7.5 engineering days total; hard stop-loss cap: 8 days)
+### Concrete mapping to landed `R217` and engine seams
 
-1. **Step 1 — Settle hybrid `core/brep/` & Rung 1–2 pure-TS ops (~2–3 days):**
-   Implement the hybrid `Float64`-plane + `(u, v)` B-rep, T-junction-free hole extrusion (`earcut` + collinear side-vertex stitching fixing `probe-methods.md:91`'s 160-open-edge trap), `Clipper2`-backed `splitFace` and `offsetFaceLoop` (including concave loop-split lineage), and bounded orthogonal `pushPullFace` with coplanar face healing.
-2. **Step 2 — Thin interactive workbench right on top of Step 1 (~1.5–2 days):**
-   Put Rungs 1–2 into the owner's hands immediately (hover/pick planar face, sketch line/rect/poly, drag `Offset` border, drag `Push/Pull` with snap-to-face depth, plus an `R2` positioned-cutter comparison toggle and `FaceId`/wireframe X-Ray panel)—**before** spending a day on `moveFaces`/`tiltFace`, `PartGraph`, or Layout adapters.
-3. **Step 3 — Parallel Spike A (`Q4` stretch, ~1 day) & Spike B (`manifold-3d` `faceID`/float32/#1888, ~1–1.5 days):**
-   Run both headless `vitest` spikes in parallel: Q4 stretch zones on `P01` forms, and `20` chained boolean edits comparing 1-pass `R2` cutter evaluation against `Float32Array` naive readback vs `Float64` plane re-derivation (including Manifold #1888 coplanar-grazing detection).
-
-### Explicit gate decision rules
-
-- **Gate G1 — Automated Technical Gate (end of Step 3):**
-  - *Stop / fix before owner walkthrough if:* Rung 1–2 operations emit `> 0` open/non-manifold edges across a `20`-edit chain, concave `offsetFaceLoop` splits silently drop `FaceId` broadcast lineage, or Spike B's post-condition validator fails to catch simulated/real #1888 volume loss.
-  - *Redirect Rung 3 architecture immediately if:* Spike B shows that even `Float64` plane re-derivation cannot recover valid B-rep loops when `manifold-3d`'s `Float32Array` output merges near-coincident topologies—ruling out destructive Manifold-to-B-rep round-tripping in favor of **non-destructive `R2` cutter evaluation**.
-- **Step 4: Gate G2 — Owner Creative-Barrier Gate (mandatory funding boundary):**
-  - Owner walks through the thin workbench across the §5.1 test shapes and reviews the **Incumbent Route Comparison** + recorded **blocked intentions** (`umbrella-plan.md:337`).
-  - **STOP rule:** If `P01` extrude + `P02` shaping + `R2` non-destructive cutters + `T2` parts (plus Spike A stretch and Rung 1 holes) can build the target work without a severe workflow/comprehension barrier, **stop B-rep work here**, keep A3/A4 intact, and feed Spikes A & B directly into `T5` successor planning.
-  - **PROCEED rule:** Fund **Conditional Phase 2 (~5–7 days, hard stop-loss cap: 8 days)** *only* if Gate G2 identifies specific, high-value creator intentions blocked under A3 that justify evaluating `D-T5-A3`.
-- **Gate G3 — Conditional Phase 2 Synchronous & Revision Gate (only if Phase 2 runs):**
-  - *Stop / reject `moveFaces`/`tiltFace` if:* handling degree-4+ corners or neighbor re-intersections demands Synchronous-Technology-style intent-inference overrides (`approaches-and-precedents.md:79`), **or** if `I_umbrella` (object-space ops + `R2` cutters) achieves equal or higher upstream-revision survival with fewer `unresolved` states across the `20`-edit out-of-order corpus.
+1. **Entry doors on landed `R217` surfaces ([`EditorCard.svelte`](../../apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte), [`SceneTransformInstrument.svelte`](../../apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte), [`EditorHead.svelte`](../../apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte)):**
+   When the experimental Studio preference (`?studio=1` or `app-preferences`) is enabled, three zero-overhead entry points appear: **(a)** `Edit in Studio` in `EditorCard`'s `menu` (`•••`) for any selected native form; **(b)** standalone **New Object in Studio** inside `SceneTransformInstrument`'s `Objects` palette (alongside S17A's `Box`/`Round`/`Free`/`Sphere` tiles and [`MyObjectsSectionLazy.svelte`](../../apps/editor/src/lib/authoring/adapters/scene/library/MyObjectsSectionLazy.svelte), requiring no `Layout` room); and **(c)** a scoped `HeadFindEntry` in `EditorHead`'s `Find` (`⌘K`). When inactive, nothing in Studio's module graph is fetched (`0 B` added to Stage first-load).
+2. **Active Studio shell posture ([`spatial/+page.svelte`](../../apps/editor/src/routes/project/[projectId]/spatial/+page.svelte), [`ExperienceHomesHost.svelte`](../../apps/editor/src/lib/authoring/experience/ExperienceHomesHost.svelte), [`EditorIndex.svelte`](../../apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte)):**
+   Studio mounts as a focused Stage sub-session combining two already-landed `R217` patterns:
+   - **Session bar (`.mode-pill`, matching `R217.S28` `lookThroughSession`):** Top-center pill announces `Studio · <Object Name | New Object>`, toggles `Context: World | Mat`, and provides `Back to World (Esc)` (plus `Place in World` / `Save to My Objects` for unplaced standalone drafts).
+   - **Lower column & chrome swap (matching `R217.S25` `ExperienceHomesHost`):** `EditorHead` stays live for `Undo`/`Redo` and `HeadSave`; `.lower-column` swaps World's `StageDock` for `StudioDock` + modeling tool palette (`Select`, `Sketch`, `Push/Pull`, `Offset`, `Stretch`, `Cut/Part`) while hiding World-only `StageHeightSheet` and `StageScaleBar`; `EditorIndex` scopes to the target object's parts/features (just as `EditorIndex` swaps to `ExperienceIndexGroups`); and `EditorCard` edits active feature/stretch dimensions while auto-fading on live 3D drags via `R217.S22`'s `gesturing` prop.
+3. **Rendering & `World | Mat` context seam ([`StageCanvas.svelte`](../../apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte), [`form-evaluation.ts`](../../apps/editor/src/lib/content/form-evaluation.ts), [`form-geometry.ts`](../../apps/editor/src/lib/museum/entities/form-geometry.ts)):**
+   Uses the **one `StageCanvas`** (`PCFShadowMap`). In **`Context: Mat`**, `VisitorLayoutShell` and non-target `StageEntities` hide so the edited object sits cleanly on `StageCanvas`'s landed dark cutting mat and world-anchored per-pixel grid (`StageMatGround`). In **`Context: World`**, surrounding rooms and Scene objects remain visible as dimmed, non-pickable spatial context (`scenePick` scopes active picking to the Studio target + optional read-only architectural reference planes), streaming live edits through `StageFormGhost` / `FormMesh`.
+4. **Camera seam ([`StageCamera.svelte`](../../apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte), [`stage-facade.ts`](../../apps/editor/src/lib/authoring/stage/stage-facade.ts)):**
+   Acquires a Studio inspection claim via `stage.acquireInspection` and drives all framing (smooth arrival onto target bounds, local orbit/pan/zoom, align-to-face / section reading, and exact `Back to World` pose restoration) strictly through `stage.requestViewingIntent`—zero `OrbitControls` or side-channel matrices.
+5. **Acceptance, history & library seam ([`host-acceptance.ts`](../../apps/editor/src/lib/authoring/stage/host-acceptance.ts), [`scene.adapter.ts`](../../apps/editor/src/lib/authoring/adapters/scene.adapter.ts)):**
+   Every committed Studio edit dispatches an `AuthoringIntent` into the project's single `F4` coordinator. `Undo`/`Redo` works seamlessly inside Studio *and* after returning to World. Standalone **New Object in Studio** holds an unplaced draft session until the creator chooses **Place in World** or **Save to My Objects**.
+6. **UI-free geometry, Worker & `T1`/`T2` boundaries ([`packages/geometry-core`](../../packages/geometry-core/src/index.ts), [`worker-client.ts`](../../apps/editor/src/lib/authoring/adapters/scene/import/worker-client.ts), [`t1-spatial-world/README.md`](../../docs/roadmap/t1-spatial-world/README.md) `:91-95`, [`t2-composition/README.md`](../../docs/roadmap/t2-composition/README.md)):**
+   All modeling math, validation, correspondence, and stretch/boolean evaluators live in framework-free TypeScript modules, using the model-import Worker pattern for `manifold-3d` WASM (`155 KiB` brotli + `17 KiB` glue, [`probe-methods.md`](../native-creative-depth/probe-methods.md) `:129`). Studio never reconstructs room-facing wall side surfaces (`T1` owns the face-frame provider; [`CompiledJunctionSurface`](../../packages/layout-core/src/layout-geometry-types.ts) `:439-454` holds end-caps/trims/keels, not wall sides) and never forks `T2` / `F.1` `PartDefinition`/`PartInstance` ownership.
 
 ---
 
-## 5. Generality corpus, incumbent-route comparison and evaluation dimensions
+## 3. Converging UX and geometry research into one T5 direction
 
-### 5.1 Test set with incumbent-route baseline (`M3` creator-value check)
+Existing studies stop pulling in different directions once separated by role:
 
-Zero domain nouns (`table`, `leg`, `vitrine`) appear in `core/*`. Every benchmark family is evaluated **both** on how the incumbent route builds it and on adversarial variations:
+- **Fast World start stays untouched ([`T5.P01`](../../docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md) & S17A):** Quick footprints (`Box`, `Round`, `Free`, `Sphere`) and World size rays remain immediate; a simple plinth never has to open Studio.
+- **Studio entry, context & lifecycle build on [PR #244](../native-object-creation-ux/PROPOSAL.md):** Dual entry (**Edit in Studio** on a selected object + standalone **New Object** without requiring a Room), recognizable spatial continuity, explicit `Context: World | Mat` control, and grow-on-demand parts (*touching bodies do not silently fuse*).
+- **Precision, reach & honest repair draw from [`UX-SPEC.md`](../../prototypes/native-object-shaping/UX-SPEC.md)—without its genus-0 lock:** Anchor-bracketed dimensions, explicit `Keep` regions, clear candidate/refusal feedback, and shared World/Studio history carry over, while Studio is free to improve presentation (direct 3D face/plane manipulation + optional section plane rather than mandatory 2D paper-slice takeover).
+- **Geometry supplies the missing modeling verbs (PR #266's Rung 0–3 + `I_umbrella` + `Q4`):**
+  1. **Rung 0 (Parts):** Multi-part assemblies solve 4-legged tables and benches with zero CSG.
+  2. **Rung 1–2 (Planar holes, `Clipper2` split/offset, local `Push/Pull`):** Hybrid `Float64`-plane + in-face `(u, v)` B-rep (with upfront refusal on over-determined degree-4+ moves, §5.2) unlocks frames, rebates, blind pockets, and stepped casework.
+  3. **Rung 3 / Route `R2` (`manifold-3d` booleans):** Tested head-to-head—1-pass non-destructive `I_umbrella` positioned cutter/adder bodies (`Float64` source → single evaluation) versus `Float64` plane-re-derived B-rep round-tripping, guarded by the Manifold #1888 volume/manifold validator ([`geometry-identity-and-performance.md`](../native-creative-depth/geometry-identity-and-performance.md) `:48`, `:184`).
+  4. **Thickness-preserving Stretch (`Q4`):** Spatial stretch planes keep table legs square and vitrine borders fixed during non-uniform resize (`umbrella-plan.md:154-156` gap).
 
-| Geometry / task class | Built via incumbent route (`P01` + `P02` + `R2` cutters + `T2` parts)? | What the direct B-rep / Spike comparison specifically tests |
+Crucially, **UX and geometry remain decoupled at promotion**: if Studio's workspace UX excels while `I_umbrella` (`R2` cutters + stretch + holes) beats stateful B-rep on revision reliability, **Studio ships on `I_umbrella` (`D-Studio-UX` = yes, `D-T5-Source` = R1/R2)**—and conversely if B-rep operators shine while lighter Focus chrome suffices.
+
+---
+
+## 4. Lean capability sequence, dependencies and parallelism
+
+Improving on the 6-item sketch: **combine Studio foundation with `P01` vertical `F4` plumbing early** (so Studio is never an empty UI shell), while running **headless geometry spikes and core operators in parallel worktrees** so neither blocks the other:
+
+```mermaid
+flowchart LR
+  C1["C1: Studio Foundation + P01 Vertical Slice\n(Flag, R217 entry/pill/dock, World|Mat context,\nCamera claim, F4 Undo/Save/Reopen, My Objects)"]
+  C2["C2: Parallel Geometry Spikes (Headless)\n(Q4 Stretch on P01 + splayed falsifier;\nManifold faceID, Float32 vs Float64 20-edit, #1888)"]
+  C3["C3: Reusable Modeling Engine (Headless TS)\n(T-junction-free holes, Clipper2 split/offset,\nhybrid Rung 1–2 push/pull + I_umbrella R2 baseline)"]
+  C4["C4: Experimental Studio Modeling Integration\n(3D face/edge pick, inference, Offset, Push/Pull,\nR2 cutter & Stretch modes behind Tier P2 guard)"]
+  C5{"C5: Integrated Owner Demonstration\nEvaluate UX (D-Studio-UX) & Geometry (D-T5-Source)\nagainst incumbent T5 umbrella"}
+  C6["C6: Conditional Expansion & Promotion Cutover\n(Winning Scene format bump, deeper shaping/parts,\nmoveFaces/tiltFace if justified, T1/T2 seams)"]
+
+  C1 --> C4
+  C2 --> C3 --> C4 --> C5 --> C6
+  C2 --> C4
+```
+
+| Capability (1–2 small PRs each) | Scope & deliverables | Dependencies & parallelism |
 | --- | --- | --- |
-| **1. Multi-part orthogonal joinery** (4-legged apron table, slatted bench, shelved rack) | **Yes — `P01` extrusions + `T2` parts (`0` Booleans).** Blocked today only on `T2` part grouping and proportional `scale` stretching leg thickness (`umbrella-plan.md:154-156`). | **Spike A (`Q4`):** Does stretch-plane resize on `P01`/multi-part forms solve leg/stile thickness preservation without needing B-rep at all? |
-| **2. Splayed / angled assemblies** (`15°–45°` mid-century legs, diagonal cross-braces) | **Partially — `P01`/`R1` parts tilted in `T2`**, but non-uniform whole-assembly stretch shears angled cross-sections. | **Adversarial Q4 falsifier:** Quantifies shear under world-axis stretch planes vs rigid sub-part origin translation. |
-| **3. Perforated panels & concave border frames** (multi-pane frame, concave L-frame with inset border) | **Partially — `R2` cutter bodies** can punch panes, though authoring 12 positioned cutter boxes vs 2D holes/`Offset` adds object clutter. | **Rung 1–2 (`Clipper2` + holes):** Tests whether 2D holes + concave `offsetFaceLoop` (where inset splits 1 loop into 2) is cleaner as a profile/R1 extension vs face editing. |
-| **4. Stepped & recessed single-body casework** (vitrine with rebated lip + inner pocket, stepped plinth with cross-seam notch) | **Possible via stacked `R2` cutter/adder bodies**, but chained steps relative to *previous* cut floors require manually coordinating cutter positions in object space. | **Primary Gate G2 discriminator:** Owner walkthrough records whether chaining 4–6 face-relative `Offset → Push/Pull` steps reveals a genuine creative barrier against `R2` positioned cutters—and tests **out-of-order depth/width revision** across both models. |
-| **5. Partial breakthroughs & coplanar grazing** (pocket pushed through a stepped/angled back; flush step merge; `20` chained edits) | **`R2` evaluates in 1 pass from `Float64` source**, avoiding `20`-step `Float32` accumulation, subject to Manifold #1888 on grazing faces. | **Spike B & Gate G1/G3:** Measures `Float32` vs `Float64` plane-re-derived drift across `20` chained edits, coplanar edge dissolution, and #1888 post-condition refusal accuracy. |
-| **6. Non-90° architectural corner & wall niche boundary** (`120°` corner counter; vitrine next to `LayoutWallOpening`) | **Waits on `T1` face-frame provider + `T2` relationships**; wall-thickness niches blocked in Scene by domain boundary. | Clarifies minimal consumer frame/clearance data `T5`/`T2` need from `T1` without reconstructing architecture. |
+| **C1 — Studio Foundation & End-to-End `P01` Vertical Slice** | Experimental flag ([`app-preferences.ts`](../../apps/editor/src/lib/platform/app-preferences.ts) / `?studio=1`); lazy `studio/` controller on [`spatial/+page.svelte`](../../apps/editor/src/routes/project/[projectId]/spatial/+page.svelte) (`EditorCard` `•••` **Edit in Studio** + `Objects` palette **New Object** + `Find` entry, `.mode-pill` session bar, `.lower-column` `StudioDock`, `Context: World \| Mat` on `StageMatGround`); Camera focus/return claim; live editing of canonical `T5.P01` `SceneFormSource` (outline anchors/arcs, extent, size) through real `F4` Undo/Redo, `HeadSave`, reload, and `My Objects`. | **Zero geometry dependency.** Runs immediately in Worktree A; production-safe to merge behind flag. |
+| **C2 — Geometry Research Spikes (`Stretch Q4` & `Manifold R2`)** | Pure-TS + `vitest` spikes: **(a)** stretch-planes vs `form.scale` on `P01` forms + splayed-angle shear falsifier; **(b)** `manifold-3d@3.5.4` `Mesh.faceID` region survival, `Float32Array` naive drift vs `Float64` plane re-derivation vs 1-pass `R2` cutters across `20` chained edits, and #1888 grazing validator. | **Runs in parallel with C1** in Worktree B. Directly informs C3/C4 and `R2` admission. |
+| **C3 — Core Modeling Engine & Adversarial Corpus** | UI-free TS modeling module: A5-deterministic 3-plane/+−×÷/sqrt math, T-junction-free hole extrusion (`earcut` + collinear side-stitching fixing [`probe-methods.md`](../native-creative-depth/probe-methods.md) `:91`), `Clipper2` (`geometry-library-harvest.md:178`) `splitFace` & concave `offsetFaceLoop`, hybrid `Float64`-plane/`(u,v)` Rung 2 `pushPullFace` + coplanar healing, `FaceId` correspondence, `I_umbrella` `R2` cutter evaluator, and the adversarial torture corpus. | **Starts in parallel with C1**; folds in C2's Rung 3 / `R2` findings before finalizing boolean escalation. |
+| **C4 — Studio Modeling UX & Experimental Source Wire-up** | Connects C3 + C2 into C1's Studio: 3D face/edge/vertex raycast + spatial inference, on-face sketch (`Line`, `Rect`, `Circle`, `Poly`), interactive `Offset`, snap-to-face `Push/Pull`, `Stretch` handles, and mode switch/workflow for `I_umbrella` (`R2` cutters) vs direct face ops—persisted under the **Tier P2 experimental guard**. | Consumes C1 + C2 + C3. |
+| **C5 — Integrated Owner Demonstration & Umbrella Gate** | Hands-on evaluation inside Biskiq across real projects (see §6.1), producing explicit owner rulings on **`D-Studio-UX`** (`umbrella-plan.md` A1/A6) and **`D-T5-Source`** (`A3/A4` vs `I_umbrella` + `R2` + `Q4`). | Gate before any permanent schema bump or C6 expansion. |
+| **C6 — Conditional Expansion & Promotion Cutover** | *Only what C5 approves:* promote winning source into a single `Scene` format bump, retire losing experimental path, update shell/umbrella contracts, and—only where justified—add `P02` organic section shaping, `moveFaces`/`tiltFace`, `T2`-aligned multi-part assemblies, standalone draft persistence, and `T1` wall face-frame integration. | Post-C5 owner decision. |
 
-### 5.2 Five evaluation dimensions (research measurements, not artificial release gates)
+### Workflow alignment: rules currently in force vs PR #259
 
-A failed mechanism that maps a real limit (e.g., proving `Float32` Manifold round-trips cannot sustain destructive B-rep editing, or proving `I_umbrella` + Spike A already covers 90% of creator intent) counts as **high-value research success**:
-
-1. **Creator-value & blocked-intention log (Gate G2 primary output):** Side-by-side step count, cognitive objects managed (faces vs phantom `R2` cutter bodies), and explicit blocked intentions recorded during the owner walkthrough (`umbrella-plan.md:337` & `north-star.md:129-132`).
-2. **Numerical & topological stability across `20` chained edits:** Closed 2-manifold rate (`0` open/T-junction edges), max face-planarity error ($\max |n \cdot v - d|$), coplanar merge cleanliness, and separation of `Float32Array` marshaling quantization from algorithmic bugs.
-3. **Revision & resize tradeoff matrix (`I_umbrella` vs B-rep + Stretch):** Across identical out-of-order upstream outline/depth edits and non-uniform stretches, measure **(a)** edits completed without manual rebuild, **(b)** thickness/angle preservation (including splayed-member shear), and **(c)** correspondence honesty (`0` silent `FaceId`/region swaps; explicit `unresolved` reporting).
-4. **Cross-track boundary cleanliness:** `0` architectural surface reconstructions claiming `T1` authority, `0` competing component/relationship stores claiming `T2` authority, and `0` Scene mutations of Layout.
-5. **Empirical browser/Node cost curves:** `p50 / p95` latency and memory by face/cutter count, plus WASM size/init reference figures, recorded as curves for `T5` planning rather than pass/fail cutoffs (compatible with both active [`docs/operations/README.md`](../../docs/operations/README.md) bounded replanning and PR #259's proposed `needs-research → needs-decision` spike model).
+- **Rules currently in force ([`AGENTS.md`](../../AGENTS.md), [`docs/roadmap/README.md`](../../docs/roadmap/README.md) `:33-47`):** Production implementation is under the 2026-10-22 **production implementation hold** (`now.md` is owner-written), `T5` has no active registered phase ([`t5-expressive-geometry/current.md`](../../docs/operations/t5-expressive-geometry/current.md)), and `parallel-track-gates.test.ts` governs `docs/roadmap/` and `docs/operations/`. Under active rules, starting `C1–C4` requires an explicit owner release / phase or cross-track registration.
+- **PR #259's proposed lean workflow (unmerged proposal, distinguished from active rules):** Treats `T1–T5` as expertise lenses rather than handoff gates, letting one agent span `Stage`, `Scene`, `Camera`, `F4`, and `T5` geometry in an isolated worktree per capability, placing any needed capability plan in the **first commit of its draft PR** without separate authorization/closeout ceremony, and reserving owner gates for architectural/design shifts (`C5`).
+- **Compatibility:** Partitioning `C1–C6` as small, worktree-isolated, arch-test-verified PRs works cleanly under **either** workflow without inventing new bureaucracy.
 
 ---
 
-## 6. Intentionally undecided questions and initial owner alignment
+## 5. Incremental merge policy, experimental isolation and stop rules
 
-### 6.1 Left open until Phase 1 / Gate G2 evidence exists
+### 5.1 Promotion & isolation matrix
 
-- **Whether to open `D-T5-A3` at all** (keep `umbrella-plan.md` A3/A4 intact and harvest only `Q4` stretch + `R2` Manifold provenance + 2D holes/offsets, vs admit bounded face-addressed solid editing).
-- **Permanent `Scene` codecs, `T2` component schemas, `T1` face-frame API shapes, and final Object Focus UX.**
-- **Production dependency admission** (`Clipper2` port vs WASM; `manifold-3d` Worker lifecycle and visitor delivery derivatives).
+| Layer | Merges incrementally to `main`? | Isolation mechanism before C5 | What requires explicit Owner Approval |
+| --- | --- | --- | --- |
+| **Experimental Studio flag & lazy loader** (`C1`) | **Yes** | Off by default (`app-preferences` / `?studio=1`); `0 B` in Stage first-load & Visitor bundles; `T5.P01` World workflow unchanged. | Exposing Studio entry in default creator UI (**`D-Studio-UX`**, amending `umbrella-plan.md` A1/A6). |
+| **Studio scope, `R217` shell integration, Camera claim & `P01` `F4` editing** (`C1`) | **Yes** | Reuses landed `R217` shell seams (`.mode-pill`, `.lower-column`, `StageMatGround`, `EditorCard`); commits only valid `Scene` v4 (`T5.P01`) `SceneFormSource` via `F4` & `HeadSave`; passes `stage-shell-composition` & `editor-host-no-write`. | Changing default World `StageDock` / `EditorCard` behavior when Studio flag is off. |
+| **Headless spikes, Rung 1–2 engine, `I_umbrella` `R2` evaluator & corpus** (`C2`, `C3`) | **Yes** (as editor/authoring-only or non-visitor modules) | [`packages/geometry-core`](../../packages/geometry-core/src/index.ts) root stays untouched (`geometry-core-boundary.test.ts` green); `Clipper2` / `manifold-3d` stay lazy/Worker-only. | Admitting new runtime dependencies into `@portfolio/geometry-core` or Visitor chunks; weak-copyleft review if ever needed. |
+| **Experimental Studio modeling & Tier P2 source** (`C4`) | **Yes, gated** | Tier P2 source variants run only when experimental Studio mode is enabled and refuse unmarked production cloud overwrite, protecting existing projects. | **`D-T5-Source`** (`umbrella-plan.md` A3/A4 amendment + single `Scene` format version cutover + delivery derivative rule). |
+| **Wall face-frames (`T1`) & Component/Part instances (`T2`)** (`C6`) | **Deferred to C6** | C1–C5 use World context visually + local Studio helpers without reconstructing `T1` wall sides or forking `T2` component tables. | `T1` face-frame provider contract & `T2` / `F.1` component admission. |
 
-### 6.2 Three alignment checks to start Phase 1
+### 5.2 Retained technical stop and redirect criteria (from PR #266)
 
-1. **Explicit A3/A4 challenge + `I_umbrella` baseline:** Does framing Phase 1 as an honest test against the incumbent `P01 + P02 + R2 cutters + T2 parts` route—with all B-rep extractability strictly conditional on owner decision `D-T5-A3` at Gate G2—match your intent?
-2. **Phase 1 scope & `8`-day stop-loss cap:** Are you happy to greenlight **Steps 1–3 only** (hybrid Rung 1–2 B-rep + thin interactive workbench + parallel `Q4` stretch spike + `manifold-3d` `faceID`/`Float32`/#1888 spike, capped at `~5.5–7.5` days / `8` days max) and hold `moveFaces`/`tiltFace`, `PartGraph`, and cross-track harnesses behind **Step 4's Owner Walkthrough Gate (`G2`)**?
-3. **`T1` / `T2` boundary discipline:** Confirm that Phase 1 uses simple reference planes and local array helpers rather than building `T1` wall-side reconstruction or `T2` component/relationship infrastructure?
+1. **Rung 1–2 integrity stop (`C3`):** No Rung 1–2 operator (`extrude` with holes, `splitFace`, `offsetFaceLoop`, local `pushPullFace`) enters `C4` Studio UI until it passes `0` open/T-junction edges and intact `FaceId` broadcast/unresolved correspondence across a `20`-edit chain.
+2. **Manifold `Float32Array` & #1888 redirect (`C2` → `C3`):** If `C2` shows that `manifold-3d`'s `Float32Array` (`Mesh.vertProperties`) output causes topological degeneracies on `20` chained edits even when 3-plane vertices are re-derived from authoritative `Float64` planes, **do not wire destructive Manifold-to-B-rep round-tripping into Studio**—route all Rung 3 cuts/unions through **non-destructive `R2` cutter/adder bodies evaluated from `Float64` source**, guarded by the #1888 volume/manifold post-condition validator.
+3. **Synchronous complexity stop (`C5` → `C6`):** Do **not** build Synchronous-Technology-style inferred face-constraint solvers (`approaches-and-precedents.md:79`); over-determined degree-4+ face moves refuse cleanly unless simple local topology rules suffice.
+
+---
+
+## 6. Earliest meaningful owner demonstration and open questions
+
+### 6.1 What Capability C5 (Owner Demonstration) must prove inside Biskiq
+
+Before any `umbrella-plan.md` commitment is superseded or `Scene` format version is bumped, **C5** demonstrates live inside `apps/editor`:
+
+1. **Coherent Studio journey on real `R217` project infrastructure:** Open a real project with `Layout` rooms/walls/openings → select a `P01` object via `EditorCard` `•••` **Edit in Studio** (and separately invoke standalone **New Object in Studio** from `Objects` on an empty/existing project) → transition into **Object Studio** with smooth `@portfolio/camera-core` framing, testing both muted-`World` context and clean `Mat` cutting-mat backdrop → **Back to World** → verify `Undo` / `Redo` across the Studio boundary, `HeadSave` / cold reopen, Paper Plan footprint projection, Visitor Preview, and `My Objects` round-trip.
+2. **Genuine modeling freedom beyond generators (with incumbent comparison):** Build and **revise out of order** representative open-form targets (4-legged apron table stretched `1.2 m → 2.0 m` with `60 mm` legs intact; recessed/rebated vitrine; multi-pane concave frame; stepped plinth with through-opening; plus adversarial splayed-member stretch), comparing **direct planar `Offset → Push/Pull`** side-by-side against **incumbent `I_umbrella` (`R2` positioned cutters + stretch)** on step count, mental model, and upstream revision survival.
+3. **Architectural coexistence without domain fusion:** Model a custom counter/vitrine in visual reference to real compiled `Layout` walls and openings without mutating `Layout` or creating sticky-mesh fusion.
+4. **Measured cost & isolation proof:** Report Stage first-load (`+0 B` with Studio closed), Studio lazy-chunk & Worker WASM footprints, `p50/p95` interactive preview/commit timings, and `100%` passing `test:arch` boundaries.
+
+### 6.2 Intentionally undecided until C5 evidence exists
+
+- Whether **Studio** becomes the default `T5` editing environment (superseding `umbrella-plan.md` A1/A6), narrows to a lighter scope, or stays an opt-in power posture (**`D-Studio-UX`**).
+- Whether canonical `T5` source adopts **hybrid planar B-rep operations**, stays on **`I_umbrella` (`R1` profiles + `P02` shaping + `R2` non-destructive cutters + `Q4` stretch)**, or combines `R1/R2` with bounded planar face splits (**`D-T5-Source`**).
+- Permanent `Scene` v5+ schema encoding, `Clipper2` TS-port vs WASM choice, and whether published visitor payloads evaluate cuts at runtime or consume compiled `FormMesh` derivatives under `T4`.
+
+### 6.3 Three owner alignment checks before starting C1–C3
+
+1. **Two-tier persistence boundary:** Are you aligned with **C1 proving full `F4` / `Save` / `My Objects` integration on canonical `Scene` v4 (`P01`) data**, while keeping **C4's experimental B-rep / `R2` / stretch source behind an experimental guard** until **C5** selects one winning schema for a clean format bump?
+2. **Parallel launch (`C1` + `C2` + `C3`):** When authorized to start implementation, should we launch **C1 (Studio scope + `R217` shell integration + `P01` vertical slice)** and **C2/C3 (headless `Q4` stretch, `Manifold R2/Float32/#1888` spike, and Rung 1–2 engine)** concurrently in separate isolated worktrees?
+3. **Execution governance:** Until PR #259 lands, do you want `C1–C4` released via a lightweight cross-track/T5 owner authorization under current rules, or held until PR #259's lean workflow merges?
