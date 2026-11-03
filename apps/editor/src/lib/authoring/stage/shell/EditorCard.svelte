@@ -39,9 +39,10 @@
 		writer = null,
 		actions = [],
 		onClose,
-		onBringIntoView,
 		gesturing = false,
-		renameRequest = 0
+		renameRequest = 0,
+		functions = null,
+		onBringIntoView = null
 	}: {
 		identity: {
 			sourceId: string;
@@ -72,7 +73,13 @@
 		 * explicit expansion, so it never covers the task's lower column.
 		 */
 		onClose: () => void;
-		onBringIntoView: () => void;
+		/** Bring into view, or null for a subject with no spatial place (an Experience Presentation or Stop). */
+		onBringIntoView: (() => void) | null;
+		/**
+		 * The `•••` functions for this subject, or null for the World table. An Experience
+		 * subject passes an empty list: it has no functions yet, so the menu is not shown.
+		 */
+		functions?: readonly string[] | null;
 		/**
 		 * R217.S22 (D36): a live authored gesture on the Stage. The Card fades and takes no
 		 * pointer events until it ends, so the subject being edited stays visible. Only the
@@ -105,6 +112,13 @@
 	let titleButton = $state<HTMLButtonElement>();
 	let nameInput = $state<HTMLInputElement>();
 	const identityKey = $derived(identity?.sourceId ?? null);
+	/** The `•••` functions: the route's own list when it states one, else the World table for this kind. */
+	const subjectFunctions = $derived.by((): readonly string[] => {
+		if (functions !== null) return functions;
+		return identity === null ? [] : FUNCTIONS[functionKind(identity.kind)];
+	});
+	/** `•••` is shown only when the subject has a function or an action to hold. */
+	const hasSubjectActions = $derived(subjectFunctions.length > 0 || actions.length > 0);
 	$effect(() => {
 		void identityKey;
 		renaming = false;
@@ -267,7 +281,7 @@
 
 {#snippet footer()}
 	<div class="footer">
-		<button type="button" aria-label="Bring into view" title="Bring into view" onclick={onBringIntoView}><ShellIcon name="fit" size={15} /></button>
+		{#if onBringIntoView}<button type="button" aria-label="Bring into view" title="Bring into view" onclick={() => onBringIntoView?.()}><ShellIcon name="fit" size={15} /></button>{/if}
 		<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={toggleMore}
 			>More <span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
 	</div>
@@ -293,7 +307,7 @@
 		<div class="subject-actions" bind:this={panel} data-card-actions role="group" aria-label="Subject actions"
 			onkeydown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closePanel(); } }}>
 			{#if identity}
-				{#each FUNCTIONS[functionKind(identity.kind)] as name (name)}
+				{#each subjectFunctions as name (name)}
 					<button type="button" class="soon" disabled title="Coming soon" data-card-function={name}>{name}<span class="soon-cue">Soon</span></button>
 				{/each}
 			{/if}
@@ -333,13 +347,13 @@
 		<header class="card-head">
 			<span class="kind">{identity.kind}</span>
 			<div class="head-actions">
-				<button
+				{#if hasSubjectActions}<button
 					type="button"
 					aria-label="Subject actions"
 					bind:this={actionTrigger}
 					aria-expanded={detailOpen}
 					onclick={() => { if (detailOpen) closePanel(); else detailOpen = true; }}><ShellIcon name="more" size={15} /></button
-				>
+				>{/if}
 				<button type="button" aria-label="Close selection card" onclick={onClose}
 					><ShellIcon name="close" size={15} /></button
 				>
