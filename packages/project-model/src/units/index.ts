@@ -25,6 +25,7 @@ export * from './runtime';
 export * from './validate';
 export * from './acceptance-staging';
 export * from './planning';
+export * from './experience-structure';
 export * from './acceptance';
 export * from './save';
 // The F.4-facing half of the same capability (the wider registry and the

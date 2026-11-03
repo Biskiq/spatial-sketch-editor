@@ -24,9 +24,16 @@
  *   permutation of the authored order, never an insert, a removal or an
  *   index-keyed move, and it is the only order writer.
  * - `experience-presentation-update` and `experience-stop-update` edit the bounded
- *   editorial fields: a Presentation's label, text, subject and Default (a newly
- *   captured View rebinds it deliberately), and a Stop's entry View, hold and
- *   continuation edge (including its Cut/Travel selector).
+ *   editorial fields: a Presentation's label, text, subject, Default (a newly
+ *   captured View rebinds it deliberately) and View order (a permutation of its
+ *   `viewIds`), and a Stop's entry View, hold and continuation edge (including
+ *   its Cut/Travel selector).
+ * - `experience-update` and `experience-guide-update` (R217.S26) edit an
+ *   Experience's label and Opening Guide, and a Guide's label and start Stop.
+ * - `experience-stop-remove`, `experience-presentation-view-remove`,
+ *   `experience-presentation-remove` and `experience-guide-remove` (R217.S26)
+ *   install the E4 removal plans of `experience-structure.ts`: one operation,
+ *   nothing replaced silently, Camera truth removed only when unshared.
  *
  * Everything a planner needs is supplied: the captured ids arrive in
  * `intent.allocatedIds`, the payload is read strictly (unknown keys refuse), and
@@ -81,6 +88,13 @@ import {
 } from './types';
 
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from './source';
+import {
+	planGuideRemoval,
+	planPresentationRemoval,
+	planPresentationViewRemoval,
+	planStopRemoval,
+	type ExperienceRemovalPlan
+} from './experience-structure';
 
 /** The single-domain Camera View operation kind. */
 export const CAMERA_VIEW_UPDATE_KIND = 'camera-view-update';
@@ -90,7 +104,7 @@ export const EXPERIENCE_CREATE_KIND = 'experience-create';
 export const EXPERIENCE_CAPTURE_BIND_KIND = 'experience-capture-bind';
 /** Reuse an existing Presentation at a distinct Stop. */
 export const EXPERIENCE_STOP_CREATE_KIND = 'experience-stop-create';
-/** Create the Experience's first Guide and its initial Stop from an existing Presentation. */
+/** Create a Guide and its initial Stop from an existing Presentation; the first one opens the Experience. */
 export const EXPERIENCE_GUIDE_CREATE_KIND = 'experience-guide-create';
 /** Reorder a Guide's Stops by stable identity. */
 export const EXPERIENCE_GUIDE_ORDER_KIND = 'experience-guide-order';
@@ -98,6 +112,18 @@ export const EXPERIENCE_GUIDE_ORDER_KIND = 'experience-guide-order';
 export const EXPERIENCE_PRESENTATION_UPDATE_KIND = 'experience-presentation-update';
 /** Edit one Stop's entry View, hold or continuation edge. */
 export const EXPERIENCE_STOP_UPDATE_KIND = 'experience-stop-update';
+/** Edit one Experience's label or Opening Guide. */
+export const EXPERIENCE_UPDATE_KIND = 'experience-update';
+/** Edit one Guide's label or start Stop. */
+export const EXPERIENCE_GUIDE_UPDATE_KIND = 'experience-guide-update';
+/** Remove one Stop under the E4 rules. */
+export const EXPERIENCE_STOP_REMOVE_KIND = 'experience-stop-remove';
+/** Remove one View from one Presentation under the E4 rules (writes Camera when unshared). */
+export const EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND = 'experience-presentation-view-remove';
+/** Remove one Presentation under the E4 rules (writes Camera when unshared). */
+export const EXPERIENCE_PRESENTATION_REMOVE_KIND = 'experience-presentation-remove';
+/** Remove one Guide under the E4 rules. */
+export const EXPERIENCE_GUIDE_REMOVE_KIND = 'experience-guide-remove';
 
 /** The captured staging input name; the value is the staging set the host uploaded. */
 export const STAGED_RESOURCES_INPUT = 'staged-resources-v1';
@@ -933,12 +959,12 @@ export function createCaptureBindPlanner(
 	};
 }
 
-/* --- First Guide creation -------------------------------------------------- */
+/* --- Guide creation -------------------------------------------------------- */
 
 const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'holdSeconds', 'continuation'] as const;
 
 /**
- * Create one Experience's first Guide and its initial distinct Stop.
+ * Create one Guide of an Experience and its initial distinct Stop.
  *
  * Targets: exactly one `experience:experience` reference. The Guide's label and
  * the captured guide/stop ids are the intent's; the Stop enters the chosen
@@ -946,10 +972,10 @@ const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'ho
  * payload names one of its views). Reusing a Presentation creates a fresh Stop
  * identity: no Camera pose or FOV is copied and no Connection is manufactured.
  *
- * The first Guide is created only while the Experience carries none, and it
- * becomes the Experience's explicit `entryGuideId`. Guide membership is never
- * made mandatory for any other Presentation, and a source with no Guide still
- * Preview through the visitor list.
+ * Any number of Guides may be created (R217.S26, E5). The first one becomes the
+ * Experience's explicit `entryGuideId`; a later one leaves the Opening Guide as
+ * it is. Guide membership is never made mandatory for any other Presentation,
+ * and a source with no Guide still Previews through the visitor list.
  */
 export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
@@ -989,13 +1015,8 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			const experienceIndex = envelope.units.experience.data.experiences.findIndex((candidate) => candidate.id === target.subject.id);
 			if (experienceIndex === -1) return refuse('missing-target', `experience "${target.subject.id}" is not in this envelope`);
 			const experience = envelope.units.experience.data.experiences[experienceIndex]!;
-			if (experience.guides.length > 0) {
-				return refuse(
-					'guide-exists',
-					`experience "${experience.id}" already carries a Guide; insert a Stop into that Guide instead of creating a first Guide`
-				);
-			}
-			if (experience.entryGuideId !== null) {
+			const firstGuide = experience.guides.length === 0;
+			if (firstGuide && experience.entryGuideId !== null) {
 				return refuse(
 					'missing-target',
 					`experience "${experience.id}" already names entry guide "${experience.entryGuideId}", which it does not carry`
@@ -1039,9 +1060,9 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], entryStopId: newStop.id };
 			const updatedExperience: Experience = {
 				...experience,
-				entryGuideId: newGuide.id,
+				entryGuideId: firstGuide ? newGuide.id : experience.entryGuideId,
 				stops: [...experience.stops, newStop],
-				guides: [newGuide]
+				guides: [...experience.guides, newGuide]
 			};
 			const candidate: ProjectEnvelope = {
 				...envelope,
@@ -1068,7 +1089,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 					changes: [
 						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId'] },
 						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'holdSeconds', 'continuation'] },
-						{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }
+						...(firstGuide ? [{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }] : [])
 					],
 					correspondence: [
 						{
@@ -1331,7 +1352,7 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 
 /* --- Bounded editorial fields ---------------------------------------------- */
 
-const PRESENTATION_UPDATE_KEYS = ['label', 'text', 'subject', 'view', 'defaultViewId'] as const;
+const PRESENTATION_UPDATE_KEYS = ['label', 'text', 'subject', 'view', 'defaultViewId', 'viewIds'] as const;
 
 /**
  * Edit one Presentation's label, text and subject, or rebind it to a freshly
@@ -1340,7 +1361,10 @@ const PRESENTATION_UPDATE_KEYS = ['label', 'text', 'subject', 'view', 'defaultVi
  * Targets: exactly one `experience:presentation` reference. `text` and `subject`
  * are replaced when present and cleared by an explicit `null`; `view` captures a
  * new View, appends it to `viewIds` and makes it the Default — the deliberate
- * rebind, rather than editing a shared View in place.
+ * rebind, rather than editing a shared View in place. `viewIds` (R217.S26)
+ * reorders the Presentation's Views: it must be a permutation of the authored
+ * `viewIds`, never an insert or a removal, and it is not combined with a capture.
+ * Reordering never changes the Default.
  */
 export function createExperiencePresentationUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
@@ -1372,7 +1396,10 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				: payload.defaultViewId === null
 					? null
 					: reader.opaqueId(payload.defaultViewId, '$.payload.defaultViewId');
+			const orderPresent = payload.viewIds !== undefined;
+			const order = orderPresent ? reader.opaqueIdArray(payload.viewIds, '$.payload.viewIds') : null;
 			if (
+				(orderPresent && order === null) ||
 				(label === null && payload.label !== undefined) ||
 				(textPresent && payload.text !== null && text === null) ||
 				(subject !== null && subject.ok === false) ||
@@ -1386,7 +1413,8 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				!textPresent &&
 				!subjectPresent &&
 				!viewPresent &&
-				payload.defaultViewId === undefined
+				payload.defaultViewId === undefined &&
+				!orderPresent
 			) {
 				return refuse('invalid-payload', 'the Presentation payload names no field to change');
 			}
@@ -1405,7 +1433,23 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				return refuse('missing-target', `presentation "${target.subject.id}" is not in experience "${container.id}"`);
 			}
 			const previous = container.presentations[presentationIndex]!;
-			let viewIds = previous.viewIds;
+			if (order !== null) {
+				if (viewPresent) {
+					return refuse('invalid-payload', 'a View order is never combined with a captured View; reorder after the capture is accepted');
+				}
+				const authored = new Set(previous.viewIds);
+				if (
+					order.length !== previous.viewIds.length ||
+					new Set(order).size !== order.length ||
+					!order.every((viewId) => authored.has(viewId))
+				) {
+					return refuse(
+						'invalid-order',
+						`the new View order must be a permutation of presentation "${previous.id}"'s views; it is never an insert or a removal`
+					);
+				}
+			}
+			let viewIds = order ?? previous.viewIds;
 			let defaultView: string | null = previous.defaultViewId;
 			let createdView: CameraView | null = null;
 			if (view !== null) {
@@ -1485,7 +1529,9 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 			if (textPresent) changedFields.push('text');
 			if (subject !== null) changedFields.push('subject');
 			if (defaultView !== previous.defaultViewId) changedFields.push('defaultViewId');
-			if (viewIds !== previous.viewIds) changedFields.push('viewIds');
+			if (viewIds.some((viewId, index) => viewId !== previous.viewIds[index]) || viewIds.length !== previous.viewIds.length) {
+				changedFields.push('viewIds');
+			}
 			const changes: OperationChange[] = [
 				{ kind: 'experience.presentation.updated', subjectIds: [updated.id], fields: changedFields }
 			];
@@ -1668,6 +1714,409 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 	};
 }
 
+/* --- Experience and Guide fields (R217.S26) -------------------------------- */
+
+/** The Experience a member reference names through its one-element instance path. */
+function containerOf(envelope: ProjectEnvelope, target: SemanticReference): Experience | undefined {
+	return target.instancePath.length === 1
+		? envelope.units.experience.data.experiences.find((candidate) => candidate.id === target.instancePath[0])
+		: undefined;
+}
+
+/** The envelope with one Experience replaced (and, when given, the Camera payload). */
+function withExperience(
+	envelope: ProjectEnvelope,
+	experience: Experience,
+	camera: Pick<ProjectEnvelope['units']['camera']['data'], 'views' | 'connections'> | null = null
+): ProjectEnvelope {
+	return {
+		...envelope,
+		units: {
+			...envelope.units,
+			camera: camera === null
+				? envelope.units.camera
+				: {
+						header: { ...envelope.units.camera.header },
+						data: { formatVersion: CAMERA_UNIT_FORMAT_VERSION, views: camera.views, connections: camera.connections }
+					},
+			experience: {
+				header: { ...envelope.units.experience.header },
+				data: {
+					formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+					experiences: envelope.units.experience.data.experiences.map((candidate) =>
+						candidate.id === experience.id ? experience : candidate
+					)
+				}
+			}
+		}
+	};
+}
+
+function prepared(
+	request: PlannerRequest<ProjectEnvelope>,
+	candidate: ProjectEnvelope,
+	changes: OperationChange[],
+	correspondence: CorrespondenceEntry[]
+): PlannerOutcome<ProjectEnvelope> {
+	return {
+		kind: 'prepared',
+		candidate: {
+			operationId: request.intent.operationId,
+			sourceKind: request.snapshot.sourceKind,
+			sourceVersion: request.snapshot.sourceVersion,
+			source: candidate,
+			changes,
+			correspondence,
+			diagnostics: []
+		}
+	};
+}
+
+const EXPERIENCE_UPDATE_KEYS = ['label', 'entryGuideId'] as const;
+
+/**
+ * Edit one Experience's label or its Opening Guide.
+ *
+ * Targets: exactly one `experience:experience` reference. `entryGuideId` names one
+ * of the Experience's Guides; it is never cleared while a Guide exists, because
+ * the Opening Guide is null only for an Experience with no Guide.
+ */
+export function createExperienceUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.experience-update',
+		kind: EXPERIENCE_UPDATE_KIND,
+		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const reader = new ShapeReader();
+			const payload = reader.object(request.intent.payload, '$.payload', EXPERIENCE_UPDATE_KEYS);
+			if (payload === null) return refuse('invalid-payload', 'The Experience payload is not a valid shape', reader.issues);
+			const label = payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
+			const entryGuideId = payload.entryGuideId === undefined ? undefined : reader.opaqueId(payload.entryGuideId, '$.payload.entryGuideId');
+			if (label === null || entryGuideId === null) {
+				return refuse('invalid-payload', 'The Experience payload is not a valid shape', reader.issues);
+			}
+			if (label === undefined && entryGuideId === undefined) {
+				return refuse('invalid-payload', 'the Experience payload names no field to change');
+			}
+			if (label !== undefined && label.trim() === '') return refuse('invalid-payload', 'A name is needed');
+			const target = targetOf(request.intent, 'experience', 'experience');
+			if (target === null) {
+				return refuse('unsupported-operation', 'experience-update targets exactly one experience:experience reference');
+			}
+			const previous = envelope.units.experience.data.experiences.find((candidate) => candidate.id === target.subject.id);
+			if (previous === undefined) return refuse('missing-target', `experience "${target.subject.id}" is not in this envelope`);
+			if (entryGuideId !== undefined && !previous.guides.some((guide) => guide.id === entryGuideId)) {
+				return refuse('missing-target', `guide "${entryGuideId}" is not in experience "${previous.id}"`);
+			}
+			const updated: Experience = {
+				...previous,
+				label: label ?? previous.label,
+				entryGuideId: entryGuideId ?? previous.entryGuideId
+			};
+			const candidate = withExperience(envelope, updated);
+			const fields: string[] = [];
+			if (updated.label !== previous.label) fields.push('label');
+			if (updated.entryGuideId !== previous.entryGuideId) fields.push('entryGuideId');
+			return prepared(request, candidate, [{ kind: 'experience.updated', subjectIds: [updated.id], fields }], [
+				{
+					relation: 'preserved',
+					before: reference('experience', 'experience', previous.id, [], revisionOf(envelope, 'experience')),
+					after: reference('experience', 'experience', previous.id, [], revisionOf(candidate, 'experience'))
+				}
+			]);
+		}
+	};
+}
+
+const GUIDE_UPDATE_KEYS = ['label', 'entryStopId'] as const;
+
+/**
+ * Edit one Guide's label or its start Stop.
+ *
+ * Targets: exactly one `experience:guide` reference scoped by its Experience.
+ * `entryStopId` is one of the Guide's ordered Stops; it is independent of order,
+ * so reordering never moves the start and this never reorders (E6).
+ */
+export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.experience-guide-update',
+		kind: EXPERIENCE_GUIDE_UPDATE_KIND,
+		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const reader = new ShapeReader();
+			const payload = reader.object(request.intent.payload, '$.payload', GUIDE_UPDATE_KEYS);
+			if (payload === null) return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
+			const label = payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
+			const entryStopId = payload.entryStopId === undefined ? undefined : reader.opaqueId(payload.entryStopId, '$.payload.entryStopId');
+			if (label === null || entryStopId === null) {
+				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
+			}
+			if (label === undefined && entryStopId === undefined) {
+				return refuse('invalid-payload', 'the Guide payload names no field to change');
+			}
+			if (label !== undefined && label.trim() === '') return refuse('invalid-payload', 'A name is needed');
+			const target = targetOf(request.intent, 'experience', 'guide');
+			if (target === null) {
+				return refuse('unsupported-operation', 'experience-guide-update targets exactly one experience:guide reference');
+			}
+			const container = containerOf(envelope, target);
+			if (container === undefined) {
+				return refuse('missing-target', `the Guide's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
+			}
+			const previous = container.guides.find((candidate) => candidate.id === target.subject.id);
+			if (previous === undefined) return refuse('missing-target', `guide "${target.subject.id}" is not in experience "${container.id}"`);
+			if (entryStopId !== undefined && !previous.stopIds.includes(entryStopId)) {
+				return refuse('invalid-payload', `stop "${entryStopId}" is not one of guide "${previous.id}"'s ordered stops`);
+			}
+			const updated: ExperienceGuide = {
+				...previous,
+				label: label ?? previous.label,
+				entryStopId: entryStopId ?? previous.entryStopId
+			};
+			const candidate = withExperience(envelope, {
+				...container,
+				guides: container.guides.map((candidate) => (candidate.id === updated.id ? updated : candidate))
+			});
+			const fields: string[] = [];
+			if (updated.label !== previous.label) fields.push('label');
+			if (updated.entryStopId !== previous.entryStopId) fields.push('entryStopId');
+			return prepared(request, candidate, [{ kind: 'experience.guide.updated', subjectIds: [updated.id], fields }], [
+				{
+					relation: 'preserved',
+					before: reference('experience', 'guide', previous.id, [container.id], revisionOf(envelope, 'experience')),
+					after: reference('experience', 'guide', previous.id, [container.id], revisionOf(candidate, 'experience'))
+				}
+			]);
+		}
+	};
+}
+
+/* --- Removal (R217.S26, E4) ------------------------------------------------ */
+
+/**
+ * The changes and correspondence of an installed removal plan: every removed
+ * subject is `retired`, every changed one is reported under its own change kind.
+ */
+function removalRecord(
+	envelope: ProjectEnvelope,
+	experienceId: string,
+	plan: Extract<ExperienceRemovalPlan, { kind: 'planned' }>
+): { changes: OperationChange[]; correspondence: CorrespondenceEntry[] } {
+	const changes: OperationChange[] = [];
+	const correspondence: CorrespondenceEntry[] = [];
+	const retire = (domain: 'experience' | 'camera', kind: string, id: string, path: readonly string[]) =>
+		correspondence.push({ relation: 'retired', before: reference(domain, kind, id, path, revisionOf(envelope, domain)), after: null });
+	for (const consequence of plan.consequences) {
+		switch (consequence.kind) {
+			case 'stop-removed':
+				changes.push({ kind: 'experience.stop.removed', subjectIds: [consequence.stopId], fields: [] });
+				retire('experience', 'stop', consequence.stopId, [experienceId]);
+				break;
+			case 'presentation-removed':
+				changes.push({ kind: 'experience.presentation.removed', subjectIds: [consequence.presentationId], fields: [] });
+				retire('experience', 'presentation', consequence.presentationId, [experienceId]);
+				break;
+			case 'guide-removed':
+				changes.push({ kind: 'experience.guide.removed', subjectIds: [consequence.guideId], fields: [] });
+				retire('experience', 'guide', consequence.guideId, [experienceId]);
+				break;
+			case 'gate-removed':
+				changes.push({ kind: 'experience.gate.removed', subjectIds: [consequence.gateId], fields: [] });
+				break;
+			case 'view-deleted':
+				changes.push({ kind: 'camera.view.removed', subjectIds: [consequence.viewId], fields: [] });
+				retire('camera', 'view', consequence.viewId, []);
+				break;
+			case 'connection-deleted':
+				changes.push({ kind: 'camera.connection.removed', subjectIds: [consequence.connectionId], fields: [] });
+				break;
+			case 'view-removed':
+			case 'default-changed':
+				changes.push({ kind: 'experience.presentation.updated', subjectIds: [consequence.presentationId], fields: consequence.kind === 'view-removed' ? ['viewIds'] : ['defaultViewId'] });
+				break;
+			case 'continuation-fallback':
+				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['continuation'] });
+				break;
+			case 'stop-entry-fallback':
+				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['entryViewId'] });
+				break;
+			case 'guide-start-moved':
+				changes.push({ kind: 'experience.guide.updated', subjectIds: [consequence.guideId], fields: ['entryStopId'] });
+				break;
+			case 'opening-guide-moved':
+				changes.push({ kind: 'experience.updated', subjectIds: [experienceId], fields: ['entryGuideId'] });
+				break;
+			case 'view-kept':
+				break;
+		}
+	}
+	return { changes, correspondence };
+}
+
+/** Run one removal plan and install it, or refuse with its reason. */
+function installRemoval(
+	request: PlannerRequest<ProjectEnvelope>,
+	envelope: ProjectEnvelope,
+	experienceId: string,
+	plan: ExperienceRemovalPlan
+): PlannerOutcome<ProjectEnvelope> {
+	if (plan.kind === 'refused') return refuse(plan.code, plan.reason);
+	const candidate = withExperience(envelope, plan.experience, plan.camera);
+	const record = removalRecord(envelope, experienceId, plan);
+	return prepared(request, candidate, record.changes, record.correspondence);
+}
+
+function emptyPayload(request: PlannerRequest<ProjectEnvelope>, what: string): PrepareFailure | null {
+	const reader = new ShapeReader();
+	const payload = reader.object(request.intent.payload, '$.payload', [] as const);
+	return payload === null ? refuse('invalid-payload', `The ${what} removal payload is not a valid shape`, reader.issues) : null;
+}
+
+/**
+ * Remove one Stop (E4). Targets: exactly one `experience:stop` reference. The
+ * Stop leaves every Guide that orders it; the only Stop of a Guide and a Stop a
+ * Detour uses refuse.
+ */
+export function createExperienceStopRemovePlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.experience-stop-remove',
+		kind: EXPERIENCE_STOP_REMOVE_KIND,
+		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const invalid = emptyPayload(request, 'Stop');
+			if (invalid !== null) return invalid;
+			const target = targetOf(request.intent, 'experience', 'stop');
+			if (target === null) return refuse('unsupported-operation', 'experience-stop-remove targets exactly one experience:stop reference');
+			const container = containerOf(envelope, target);
+			if (container === undefined) {
+				return refuse('missing-target', `the Stop's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
+			}
+			return installRemoval(request, envelope, container.id, planStopRemoval(container, target.subject.id));
+		}
+	};
+}
+
+/**
+ * Remove one Guide (E4). Targets: exactly one `experience:guide` reference. Its
+ * Stops no other Guide orders go with it; the Opening Guide passes to the next.
+ */
+export function createExperienceGuideRemovePlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.experience-guide-remove',
+		kind: EXPERIENCE_GUIDE_REMOVE_KIND,
+		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const invalid = emptyPayload(request, 'Guide');
+			if (invalid !== null) return invalid;
+			const target = targetOf(request.intent, 'experience', 'guide');
+			if (target === null) return refuse('unsupported-operation', 'experience-guide-remove targets exactly one experience:guide reference');
+			const container = containerOf(envelope, target);
+			if (container === undefined) {
+				return refuse('missing-target', `the Guide's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
+			}
+			return installRemoval(request, envelope, container.id, planGuideRemoval(container, target.subject.id));
+		}
+	};
+}
+
+/**
+ * Remove one Presentation (E4). Targets: exactly one `experience:presentation`
+ * reference. Its Stops, Gates and unshared Camera Views (with their connections)
+ * go with it, so it may write Camera.
+ */
+export function createExperiencePresentationRemovePlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.experience-presentation-remove',
+		kind: EXPERIENCE_PRESENTATION_REMOVE_KIND,
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const invalid = emptyPayload(request, 'Presentation');
+			if (invalid !== null) return invalid;
+			const target = targetOf(request.intent, 'experience', 'presentation');
+			if (target === null) {
+				return refuse('unsupported-operation', 'experience-presentation-remove targets exactly one experience:presentation reference');
+			}
+			const container = containerOf(envelope, target);
+			if (container === undefined) {
+				return refuse('missing-target', `the Presentation's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
+			}
+			return installRemoval(
+				request,
+				envelope,
+				container.id,
+				planPresentationRemoval(envelope.units.experience.data.experiences, envelope.units.camera.data, container.id, target.subject.id)
+			);
+		}
+	};
+}
+
+const VIEW_REMOVE_KEYS = ['viewId', 'defaultViewId'] as const;
+
+/**
+ * Remove one View from one Presentation (E4). Targets: exactly one
+ * `experience:presentation` reference; the payload names the View and, when it
+ * is the Default, the new Default. The Camera View is deleted only when no other
+ * Presentation lists it, so it may write Camera.
+ */
+export function createExperiencePresentationViewRemovePlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.experience-presentation-view-remove',
+		kind: EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const reader = new ShapeReader();
+			const payload = reader.object(request.intent.payload, '$.payload', VIEW_REMOVE_KEYS);
+			if (payload === null) return refuse('invalid-payload', 'The View removal payload is not a valid shape', reader.issues);
+			const viewId = reader.opaqueId(payload.viewId, '$.payload.viewId');
+			const defaultViewId = payload.defaultViewId === undefined || payload.defaultViewId === null
+				? null
+				: reader.opaqueId(payload.defaultViewId, '$.payload.defaultViewId');
+			if (viewId === null || (payload.defaultViewId !== undefined && payload.defaultViewId !== null && defaultViewId === null)) {
+				return refuse('invalid-payload', 'The View removal payload is not a valid shape', reader.issues);
+			}
+			const target = targetOf(request.intent, 'experience', 'presentation');
+			if (target === null) {
+				return refuse('unsupported-operation', 'experience-presentation-view-remove targets exactly one experience:presentation reference');
+			}
+			const container = containerOf(envelope, target);
+			if (container === undefined) {
+				return refuse('missing-target', `the Presentation's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
+			}
+			return installRemoval(
+				request,
+				envelope,
+				container.id,
+				planPresentationViewRemoval(
+					envelope.units.experience.data.experiences,
+					envelope.units.camera.data,
+					container.id,
+					target.subject.id,
+					viewId,
+					defaultViewId
+				)
+			);
+		}
+	};
+}
+
 /** Every planner a host registers for this slice's authored operations. */
 export function createUnitCandidatePlanners(options: CaptureBindOptions = {}): DomainPlanner<ProjectEnvelope>[] {
 	return [
@@ -1678,7 +2127,13 @@ export function createUnitCandidatePlanners(options: CaptureBindOptions = {}): D
 		createExperienceStopCreatePlanner(),
 		createExperienceGuideOrderPlanner(),
 		createExperiencePresentationUpdatePlanner(),
-		createExperienceStopUpdatePlanner()
+		createExperienceStopUpdatePlanner(),
+		createExperienceUpdatePlanner(),
+		createExperienceGuideUpdatePlanner(),
+		createExperienceStopRemovePlanner(),
+		createExperiencePresentationViewRemovePlanner(),
+		createExperiencePresentationRemovePlanner(),
+		createExperienceGuideRemovePlanner()
 	];
 }
 

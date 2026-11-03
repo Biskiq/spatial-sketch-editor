@@ -765,6 +765,69 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 	});
 });
 
+describe('R217.S26 — the structure and removal planners in the one admission profile', () => {
+	const S26 = {
+		'experience-update': null,
+		'experience-guide-update': null,
+		'experience-stop-remove': null,
+		'experience-guide-remove': null,
+		'experience-presentation-view-remove': ['camera'],
+		'experience-presentation-remove': ['camera']
+	} as const;
+
+	it('registers each S26 operation once, in the Experience domain, compound only where it may delete Camera truth', () => {
+		const profile = createUnitAcceptanceProfile({ compound: true });
+		for (const [kind, writes] of Object.entries(S26)) {
+			const matching = profile.planners.filter((planner) => planner.kind === kind);
+			expect(matching, kind).toHaveLength(1);
+			const admission = matching[0]!.admission;
+			expect(admission.domain).toBe('experience');
+			expect(admission.units).toBe(true);
+			expect(admission.resources).toBe(false);
+			if (writes === null) {
+				expect(admission.compound, kind).toBe(false);
+				expect(admission.writes, kind).toBeUndefined();
+			} else {
+				expect(admission.compound, kind).toBe(true);
+				expect(admission.writes, kind).toEqual(writes);
+			}
+		}
+	});
+
+	it('installs a single-domain removal with only the Experience unit changed', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true });
+		const outcome = await coordinator.accept({
+			version: 1,
+			kind: 'experience-guide-remove',
+			operationId: 'op-s26-guide-remove',
+			expectedRevision: coordinator.acceptedRevision(),
+			targets: [
+				{
+					version: 1,
+					domain: 'experience',
+					revision: { kind: 'exact', contentRevision: source.units.experience.header.contentRevision },
+					subject: { kind: 'guide', id: 'guide-main' },
+					instancePath: ['experience-main'],
+					location: { kind: 'project-root' },
+					componentId: null,
+					capabilityId: null
+				}
+			],
+			payload: {},
+			capturedInputs: [],
+			allocatedIds: []
+		});
+		expect(outcome.kind).toBe('accepted');
+		const installed = coordinator.acceptedSnapshot().domain.source;
+		for (const domain of ['layout', 'scene', 'camera', 'resources'] as const) {
+			expect(installed.units[domain].header.contentRevision, domain).toBe(source.units[domain].header.contentRevision);
+		}
+		expect(installed.units.experience.header.contentRevision).not.toBe(source.units.experience.header.contentRevision);
+		expect(coordinator.history().depth).toBe(2);
+	});
+});
+
 describe('F.2 unit Save capture', () => {
 	it('captures the accepted revision while the content identity ignores it', async () => {
 		const source = await envelope();

@@ -14,15 +14,29 @@
  *
  * A project replacement resets it, because the identities it names belong to the
  * source that was replaced.
+ *
+ * R217.S26 (E17): the subjects selected before the current one form a session-only
+ * history of at most 40 entries, so Back can return to what was looked at. Back only
+ * changes what is looked at; it never undoes, and history is never serialized.
  */
 import type { ExperienceSubject } from './experience-model';
 import { EMPTY_EXPERIENCE_FOCUS, type ExperienceFocus } from './preview-entry';
+
+/** How many earlier subjects Back can return to. */
+export const EXPERIENCE_BACK_LIMIT = 40;
+
+function sameSubject(left: ExperienceSubject, right: ExperienceSubject): boolean {
+	return JSON.stringify(left) === JSON.stringify(right);
+}
 
 class ExperienceFocusState {
 	experienceId = $state<string | null>(null);
 	/** The active Guide: context for the instrument and the Stop numbers, not a selection. */
 	guideId = $state<string | null>(null);
-	subject = $state<ExperienceSubject | null>(null);
+	/** Raw: a subject is an immutable value, so history keeps the very objects that were selected. */
+	subject = $state.raw<ExperienceSubject | null>(null);
+	/** Earlier subjects, the most recent last. Session state only. */
+	history = $state.raw<readonly ExperienceSubject[]>([]);
 
 	get stopId(): string | null {
 		const subject = this.subject;
@@ -50,6 +64,7 @@ class ExperienceFocusState {
 		this.experienceId = experienceId;
 		this.guideId = guideId;
 		this.subject = null;
+		this.history = [];
 	}
 
 	/** Make a Guide the active one. It selects nothing. */
@@ -58,13 +73,37 @@ class ExperienceFocusState {
 	}
 
 	select(subject: ExperienceSubject | null): void {
+		const previous = this.subject;
+		if (previous !== null && (subject === null || !sameSubject(previous, subject))) {
+			this.history = [...this.history.filter((entry) => !sameSubject(entry, previous)), previous].slice(-EXPERIENCE_BACK_LIMIT);
+		}
 		this.subject = subject;
+	}
+
+	/** The subject Back returns to: the most recent earlier one that still resolves. */
+	previous(resolves: (subject: ExperienceSubject) => boolean): ExperienceSubject | null {
+		for (let index = this.history.length - 1; index >= 0; index -= 1) {
+			const entry = this.history[index]!;
+			if (resolves(entry) && (this.subject === null || !sameSubject(entry, this.subject))) return entry;
+		}
+		return null;
+	}
+
+	/** Return to the previous subject that still resolves; entries after it are dropped. */
+	back(resolves: (subject: ExperienceSubject) => boolean): boolean {
+		const target = this.previous(resolves);
+		if (target === null) return false;
+		const at = this.history.lastIndexOf(target);
+		this.history = this.history.slice(0, at);
+		this.subject = target;
+		return true;
 	}
 
 	reset(): void {
 		this.experienceId = EMPTY_EXPERIENCE_FOCUS.experienceId;
 		this.guideId = null;
 		this.subject = null;
+		this.history = [];
 	}
 }
 

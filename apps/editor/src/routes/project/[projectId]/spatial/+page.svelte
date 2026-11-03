@@ -189,7 +189,9 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 		transitionCardModel,
 		viewCardModel
 	} from '$lib/authoring/experience/experience-card-model';
-	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
+	import { NAME_NEEDED, type ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
+	import type { ExperienceRemovalTarget } from '$lib/authoring/experience/experience-removal';
+	import type { ComponentProps } from 'svelte';
 	import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
@@ -3297,6 +3299,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		// Typing in the Index's subject search must never move the camera.
 		if (stageKeyFromTextEntry(event.target)) return;
+		// R217.S26 (E17): Alt+← is the Card's Back in the Experience lens. A focused Stop card
+		// or View tile claims Alt+← for its own reorder first (it prevents the default).
+		if (
+			lens === 'experience' &&
+			event.key === 'ArrowLeft' &&
+			event.altKey &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.shiftKey &&
+			!event.defaultPrevented
+		) {
+			if (experienceController?.back()) {
+				event.preventDefault();
+				cardOpen = true;
+			}
+			return;
+		}
 		// While a press is live the dock letters and `2` keep reaching the gesture's
 		// typed entry, exactly as before they were dock keys.
 		const action = stageKeyAction(event.key, { pressing: drag !== null || pinch !== null });
@@ -3717,6 +3736,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				onQuery: () => {},
 				onOpenExperience: () => {},
 				onCreateExperience: () => {},
+				onRenameExperience: async () => ({ kind: 'refused' as const }),
 				onOpenGuide: () => {},
 				onSelectPresentation: () => {},
 				onToggleExpand: () => {},
@@ -3740,7 +3760,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				label: guide.label,
 				stopCount: guide.stopIds.length,
 				open: experienceGuideOpen && guide.id === activeGuideId,
-				selected: subject?.kind === 'guide' && subject.guideId === guide.id
+				selected: subject?.kind === 'guide' && subject.guideId === guide.id,
+				opening: current?.entryGuideId === guide.id
 			})),
 			presentations: controller.filteredPresentations.map((entry) => ({
 				id: entry.id,
@@ -3776,6 +3797,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				expandedPresentationId = null;
 				void controller.createExperience();
 			},
+			onRenameExperience: (label: string) => controller.renameExperience(label),
 			onOpenGuide: (guideId: string | null) => {
 				if (guideId === null) {
 					experienceGuideOpen = true;
@@ -3797,28 +3819,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		};
 	});
 
-	/** The Card's `menu` item shape. */
-	type ExperienceCardMenuItem = {
-		readonly id: string;
-		readonly label: string;
-		readonly hint?: string;
-		readonly disabled?: boolean;
-		readonly reason?: string;
-		readonly run: () => void;
-	};
+	/** The Card's `menu` item shape (R217.S26: danger items, consequence blocks and submenus). */
+	type ExperienceCardMenuItem = NonNullable<ComponentProps<typeof EditorCard>['menu']>[number];
 	type ShownCard = {
 		readonly identity: { sourceId: string; label: string; kind: string; status: string } | null;
 		readonly facts: readonly { readonly label: string; readonly value: string; readonly fieldId?: string }[];
-		readonly nameWriter: {
-			readonly value: string;
-			commit(name: string): Promise<{ readonly kind: string; readonly message?: string }>;
-		} | null;
+		readonly nameWriter: ComponentProps<typeof EditorCard>['nameWriter'];
 		readonly writer: StageCardWriterRecord | null;
 		readonly actions: readonly StageCardActionRecord[];
 		readonly functions: readonly string[] | null;
 		readonly bringIntoView: (() => void) | null;
 		readonly kindLink: { readonly label: string; readonly onOpen: () => void } | null;
 		readonly menu: readonly ExperienceCardMenuItem[] | null;
+		readonly back: { readonly label: string; readonly onBack: () => void } | null;
 	};
 	const NO_CARD: ShownCard = {
 		identity: null,
@@ -3829,8 +3842,77 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		functions: [],
 		bringIntoView: null,
 		kindLink: null,
-		menu: null
+		menu: null,
+		back: null
 	};
+
+	/**
+	 * R217.S26 (E4) — a danger item for one removal. Its consequence block reads the same plan the
+	 * removal planner installs; an item the plan refuses stays disabled with the reason as its hint.
+	 * A Default View's removal asks for the new Default in the block (no automatic choice).
+	 */
+	function removalItem(
+		controller: ExperienceController,
+		id: string,
+		label: string,
+		target: ExperienceRemovalTarget
+	): ExperienceCardMenuItem {
+		const withChoice = (choice: string | null): ExperienceRemovalTarget =>
+			target.kind === 'view' ? { ...target, newDefaultViewId: choice } : target;
+		const initial = controller.removalPreview(target);
+		return {
+			id,
+			label,
+			danger: true,
+			...(controller.busy
+				? { disabled: true, reason: 'Wait for the current change' }
+				: initial.kind === 'refused'
+					? { disabled: true, reason: initial.reason }
+					: {}),
+			consequence: {
+				read: (choice) => {
+					const preview = controller.removalPreview(withChoice(choice));
+					if (preview.kind === 'refused') return preview;
+					return {
+						kind: 'ready',
+						lines: preview.lines,
+						choose: preview.chooseDefault === null ? null : { label: 'New Default View', options: preview.chooseDefault },
+						runnable: preview.runnable
+					};
+				},
+				run: (choice) => controller.remove(withChoice(choice))
+			}
+		};
+	}
+
+	/**
+	 * R217.S26 (E17): the kind line's *‹ Back* when the previous subject is not the kind line's
+	 * own parent link (a View's Presentation is already its kind link).
+	 */
+	function backOf(controller: ExperienceController, parent: ExperienceSubject | null): ShownCard['back'] {
+		const target = controller.backTarget;
+		if (target === null) return null;
+		if (parent !== null && JSON.stringify(parent) === JSON.stringify(target)) return null;
+		return {
+			label: controller.subjectName(target),
+			onBack: () => {
+				controller.back();
+				cardOpen = true;
+			}
+		};
+	}
+
+	/** The Experience rename fields commit on Enter or blur and refuse an empty name (R217.S26). */
+	function experienceNameWriter(value: () => string, commit: (name: string) => Promise<{ readonly kind: string; readonly message?: string }>): ShownCard['nameWriter'] {
+		return {
+			get value() {
+				return value();
+			},
+			commit,
+			commitOnBlur: true,
+			emptyMessage: NAME_NEEDED
+		};
+	}
 
 	/**
 	 * R217.S25 (D10) — the one Card the Experience lens shows: the Experience subject when one is
@@ -3863,16 +3945,49 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
 				hasDefaultView: presentation.defaultViewId !== null
 			});
+			// E5: Add to Guide ▸ — the Guides, the active one first, with *again* where the
+			// Presentation already has a Stop, then New Guide…, which asks the name inline (D8).
+			const activeGuideId = controller.currentGuide?.id ?? controller.contextGuide?.id ?? null;
+			const guidesInOrder = [
+				...controller.guides.filter((guide) => guide.id === activeGuideId),
+				...controller.guides.filter((guide) => guide.id !== activeGuideId)
+			];
+			const presentationStops = new Set(controller.stopUsage.get(presentation.id) ?? []);
+			const busyReason = controller.busy ? { disabled: true, reason: 'Wait for the current change' } : {};
+			const addToGuide: ExperienceCardMenuItem = {
+				id: 'add-to-guide',
+				label: 'Add to Guide',
+				children: [
+					...guidesInOrder.map((guide) => ({
+						id: `add-to-guide:${guide.id}`,
+						label: guide.label,
+						...(guide.stopIds.some((stopId) => presentationStops.has(stopId)) ? { hint: 'again' } : {}),
+						...busyReason,
+						run: () => void controller.addToGuide(presentation.id, guide.id)
+					})),
+					{
+						id: 'new-guide',
+						label: 'New Guide…',
+						...busyReason,
+						run: () => {
+							guideNamePrompt = presentation.id;
+						}
+					}
+				]
+			};
 			return {
 				...NO_CARD,
 				identity: model.identity,
 				facts: model.facts,
-				nameWriter: {
-					get value() {
-						return presentation.label;
-					},
-					commit: (name: string) => controller.renamePresentation(presentation.id, name)
-				},
+				nameWriter: experienceNameWriter(
+					() => presentation.label,
+					(name: string) => controller.renamePresentation(presentation.id, name)
+				),
+				menu: [
+					addToGuide,
+					removalItem(controller, 'remove-presentation', 'Remove Presentation', { kind: 'presentation', presentationId: presentation.id })
+				],
+				back: backOf(controller, null),
 				writer: writerOf('Presentation', ExperiencePresentationWriter),
 				kindLink:
 					reference === null || subjectLabel === null
@@ -3895,6 +4010,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				...NO_CARD,
 				identity: model.identity,
 				facts: model.facts,
+				nameWriter: experienceNameWriter(
+					() => view.label,
+					(name: string) => controller.renameView(view.id, name)
+				),
+				menu: [
+					removalItem(controller, 'remove-view', 'Remove View', {
+						kind: 'view',
+						presentationId: view.presentationId,
+						viewId: view.id
+					})
+				],
+				back: backOf(controller, { kind: 'presentation', presentationId: view.presentationId }),
 				writer: writerOf('View', ExperienceViewWriter),
 				kindLink: {
 					label: controller.presentationLabel(view.presentationId),
@@ -3939,12 +4066,28 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					);
 				}
 			}
+			// E6: Start the tour here changes the context Guide's start; order is untouched.
+			if (position !== null) {
+				const isStart = controller.contextGuide?.entryStopId === stop.id;
+				items.push({
+					id: 'start-here',
+					label: 'Start the tour here',
+					...(controller.busy
+						? { disabled: true, reason: 'Wait for the current change' }
+						: isStart
+							? { disabled: true, reason: 'The tour already starts here' }
+							: {}),
+					run: () => void controller.setGuideStart(stop.id)
+				});
+			}
+			items.push(removalItem(controller, 'remove-stop', 'Remove Stop', { kind: 'stop', stopId: stop.id }));
 			return {
 				...NO_CARD,
 				identity: model.identity,
 				facts: model.facts,
 				writer: writerOf('Stop', ExperienceStopWriter),
-				menu: items
+				menu: items,
+				back: backOf(controller, null)
 			};
 		}
 		if (subject?.kind === 'transition') {
@@ -3958,7 +4101,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				...NO_CARD,
 				identity: model.identity,
 				facts: model.facts,
-				writer: writerOf('Transition', ExperienceTransitionWriter)
+				writer: writerOf('Transition', ExperienceTransitionWriter),
+				back: backOf(controller, { kind: 'stop', stopId: stop.id })
 			};
 		}
 		if (subject?.kind === 'guide') {
@@ -3969,6 +4113,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				...NO_CARD,
 				identity: model.identity,
 				facts: model.facts,
+				nameWriter: experienceNameWriter(
+					() => guide.label,
+					(name: string) => controller.renameGuide(guide.id, name)
+				),
+				menu: [removalItem(controller, 'remove-guide', 'Remove Guide', { kind: 'guide', guideId: guide.id })],
+				back: backOf(controller, null),
 				writer: writerOf('Guide', ExperienceGuideWriter)
 			};
 		}
@@ -4014,6 +4164,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			functions: null,
 			kindLink: null,
 			menu: null,
+			back: null,
 			bringIntoView: () => {
 				const target = selectedWorldPoint();
 				if (target !== null) bringIntoView(target);
@@ -4777,6 +4928,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				functions={shownCard.functions}
 				kindLink={shownCard.kindLink}
 				menu={shownCard.menu}
+				back={shownCard.back}
 				gesturing={cardGesturing}
 				onClose={closeCard}
 				onBringIntoView={shownCard.bringIntoView}

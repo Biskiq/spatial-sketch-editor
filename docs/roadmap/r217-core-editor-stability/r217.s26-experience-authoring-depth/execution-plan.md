@@ -60,6 +60,8 @@ reviewed, accepted and merged once.
 - **Owner acceptance.** The owner runs each slice's journeys manually; they are the acceptance. An
   independent review covers the domain and Camera parts the block names.
 - **Placeholders.** A control a slice completes loses its *Comes with…* text in that slice.
+- **Card metrics.** Experience Card interiors and controls follow [Card metrics](./card-metrics.md).
+- **Brief first.** Each slice's PR opens with a brief, written after reading the merged code: typed contracts, payloads, signatures, and every choice where the plan leaves room. S27's brief stops for the owner's OK on the format; S28's brief settles snapshot rendering (E10) before implementation.
 
 ## 4. Fixtures
 

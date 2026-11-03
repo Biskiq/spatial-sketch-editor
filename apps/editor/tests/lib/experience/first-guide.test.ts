@@ -156,7 +156,7 @@ describe('first Guide creation', () => {
 		expect(restored.units.camera.data.views.map((view) => view.id)).toEqual(['view-1', 'view-2']);
 	});
 
-	it('refuses a second Guide and writes no history', async () => {
+	it('creates a second Guide without moving the Opening Guide (R217.S26, E5)', async () => {
 		const { source, coordinator } = await boot();
 		const first = await coordinator.accept(
 			guideCreateIntent({
@@ -187,11 +187,19 @@ describe('first Guide creation', () => {
 				continuation: null
 			})
 		);
-		// `planner-rejected` is the coordinator's code for a planner refusal; the
-		// planner's own reason stays legible beside it.
-		expect(second).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'guide-exists' });
-		expect(coordinator.history().depth).toBe(depth);
-		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).guides).toHaveLength(1);
+		// The `guide-exists` refusal is lifted: a later Guide is one more accepted entry,
+		// and the first Guide stays the one the Experience opens on.
+		expect(second.kind).toBe('accepted');
+		expect(coordinator.history().depth).toBe(depth + 1);
+		const experience = experienceOf(coordinator.acceptedSnapshot().domain.source);
+		expect(experience.guides.map((guide) => guide.id)).toEqual(['guide-1-new', 'guide-2-new']);
+		expect(experience.guides[1]).toMatchObject({ label: 'Second', stopIds: ['stop-2-new'], entryStopId: 'stop-2-new' });
+		expect(experience.entryGuideId).toBe('guide-1-new');
+		// One Undo removes the second Guide and its Stop together.
+		await coordinator.undo();
+		const restored = experienceOf(coordinator.acceptedSnapshot().domain.source);
+		expect(restored.guides.map((guide) => guide.id)).toEqual(['guide-1-new']);
+		expect(restored.stops.map((stop) => stop.id)).toEqual(['stop-1-new']);
 	});
 
 	it('refuses a Presentation with no Default View and a duplicate captured identity', async () => {

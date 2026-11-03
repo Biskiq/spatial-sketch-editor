@@ -5,6 +5,9 @@
 	 * visitors see the View. Make default is the only Default mutation (D12); the Default shows as
 	 * an informational badge otherwise. Look through waits for View placement (S26). It edits
 	 * through the Experience controller and holds no state of its own.
+	 *
+	 * R217.S26: a View another Presentation also lists says *Also in ⟨Presentation⟩*, so a rename
+	 * or a removal is read as shared before it runs. The name renames from the Card title.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -35,6 +38,7 @@
 	const lens = $derived(view === null ? 0 : Math.round(view.lensMillimetres));
 	const eyeHeight = $derived(view === null ? '' : view.eyeHeightMetres.toFixed(2));
 	const makeDefaultReason = $derived(controller?.busy ? 'Wait for the current change' : '');
+	const alsoIn = $derived(view === null || controller === null ? [] : controller.alsoIn(view.id, view.presentationId));
 
 	async function makeDefault(): Promise<void> {
 		if (controller === null || view === null || makeDefaultReason !== '') return;
@@ -72,6 +76,16 @@
 				{#if makeDefaultReason !== ''}<span id="make-default-reason" class="sr">{makeDefaultReason}</span>{/if}
 			{/if}
 		</div>
+
+		{#if alsoIn.length > 0}
+			<p class="also-in" data-view-also-in>
+				Also in
+				{#each alsoIn as other, index (other.id)}{#if index > 0},{/if}
+					<button type="button" class="also-link" onclick={() => homes.select({ kind: 'presentation', presentationId: other.id })}
+						>{other.label}</button
+					>{/each}
+			</p>
+		{/if}
 
 		<section class="sec hero-sec">
 			<div class="hero">
@@ -121,6 +135,25 @@
 {/if}
 
 <style>
+	.also-in {
+		margin: 0;
+		padding: 0 12px 8px;
+		color: var(--shell-ink-2, #4a524c);
+		font-size: 11.5px;
+	}
+	button.also-link {
+		display: inline;
+		min-height: 0;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--shell-ink, #1b201c);
+		font: inherit;
+		text-decoration: underline;
+		text-decoration-color: var(--shell-hairline-strong, #cdd2ca);
+		text-underline-offset: 2px;
+		cursor: pointer;
+	}
 	.writer {
 		display: flex;
 		flex-direction: column;
@@ -304,7 +337,8 @@
 	}
 	@media (pointer: coarse) {
 		.btn,
-		.link-row {
+		.link-row,
+		button.also-link {
 			min-height: 44px;
 		}
 	}

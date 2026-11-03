@@ -67,6 +67,37 @@
 		limit = 40;
 	});
 
+	/* R217.S26 — the Experience crumb's inline rename: Enter or blur commits, Esc cancels. */
+	let renamingExperience = $state(false);
+	let experienceDraft = $state('');
+	let renameBusy = $state(false);
+	let renameError = $state<string | null>(null);
+	function startExperienceRename(): void {
+		if (!experience?.current) return;
+		experienceDraft = experience.current.label;
+		renameError = null;
+		renamingExperience = true;
+	}
+	async function commitExperienceName(): Promise<void> {
+		if (!experience || renameBusy || !renamingExperience) return;
+		renameBusy = true;
+		try {
+			const outcome = await experience.onRenameExperience(experienceDraft);
+			if (outcome.kind === 'accepted') {
+				renamingExperience = false;
+				renameError = null;
+			} else {
+				renameError = outcome.message ?? 'The name was not accepted.';
+			}
+		} finally {
+			renameBusy = false;
+		}
+	}
+	function focusSelect(input: HTMLInputElement) {
+		input.focus();
+		input.select();
+	}
+
 	/** A Presentation row's Stop numbers: the first three, then how many follow. */
 	function stopsLabel(numbers: readonly number[]): string {
 		const shown = numbers.slice(0, 3).join(', ');
@@ -143,7 +174,21 @@
 			>
 		</div>
 		<div class="crumbs" role="group" aria-label="Experience">
-			{#if experience.current !== null}
+			{#if experience.current !== null && renamingExperience}
+				<input
+					class="crumb-input"
+					aria-label="Experience name"
+					value={experienceDraft}
+					disabled={renameBusy}
+					use:focusSelect
+					oninput={(event) => (experienceDraft = event.currentTarget.value)}
+					onblur={() => { if (!renameBusy) void commitExperienceName(); }}
+					onkeydown={(event) => {
+						if (event.key === 'Enter') { event.preventDefault(); void commitExperienceName(); }
+						else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); renamingExperience = false; renameError = null; }
+					}}
+				/>
+			{:else if experience.current !== null}
 				<span class="crumb" aria-current="location">{experience.current.label}</span>
 			{:else}
 				<span class="index-empty">No Experience yet</span>
@@ -153,6 +198,12 @@
 					><ShellIcon name="chevronDown" size={12} /></summary
 				>
 				<div>
+					{#if experience.current !== null}<button
+							type="button"
+							class="menu-rename"
+							disabled={experience.busy}
+							onclick={(event) => { startExperienceRename(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Rename…</button
+						>{/if}
 					{#each experience.experiences.filter((entry) => entry.id !== experience.current?.id) as entry (entry.id)}<button
 							type="button"
 							onclick={(event) => { experience.onOpenExperience(entry.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{entry.label}</button
@@ -166,6 +217,7 @@
 				</div>
 			</details>
 		</div>
+		{#if renameError}<p class="crumb-error" role="alert">{renameError}</p>{/if}
 		<section class="group" aria-labelledby="index-presentations">
 			<h3 id="index-presentations" class="group-title">
 				Presentations <span class="count">{experience.totalPresentations}</span>
@@ -269,6 +321,7 @@
 								<span class="item-name">{guide.label}</span>
 								<span class="item-meta">{guide.stopCount} stops</span>
 							</span>
+							{#if guide.opening}<span class="opens-tag" data-opening-guide>opens</span>{/if}
 							{#if guide.open}<span class="chip">Open</span>{/if}
 						</button>
 					</div>
@@ -484,6 +537,31 @@
 	}
 	.siblings {
 		position: relative;
+	}
+	/* R217.S26: the crumb's inline rename uses the crumb's own metrics. */
+	.crumb-input {
+		box-sizing: border-box;
+		min-width: 0;
+		flex: 1 1 auto;
+		padding: 1px 4px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 5px;
+		font: 600 12px/1.3 var(--shell-sans, system-ui);
+		color: inherit;
+	}
+	.crumb-error {
+		margin: -2px 10px 6px;
+		color: var(--shell-refuse, #7e2718);
+		font-size: 11.5px;
+	}
+	.opens-tag {
+		flex: none;
+		padding: 0 4px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 3px;
+		color: var(--shell-ink-2, #4a524c);
+		font: 500 10px/1.5 var(--shell-mono, ui-monospace, monospace);
+		letter-spacing: 0.02em;
 	}
 	.siblings summary {
 		cursor: pointer;
