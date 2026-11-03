@@ -675,6 +675,10 @@ export function hitStageMark(
 		if (mark.kind === 'point' || mark.kind === 'ring') {
 			if (mark.kind === 'point') {
 				hit = Math.hypot(query.css[0] - mark.anchor[0], query.css[1] - mark.anchor[1]) <= radius;
+			} else if (mark.ringGlyph != null) {
+				// The ring is not drawn (review pass 3): its bent arrow is the control,
+				// with a knob's reach so a press on the body beside it stays a body grab.
+				hit = Math.hypot(query.css[0] - mark.ringGlyph.at[0], query.css[1] - mark.ringGlyph.at[1]) <= radius;
 			} else if (mark.ring !== null) {
 				hit = mark.ring.some(
 					(point, index) =>

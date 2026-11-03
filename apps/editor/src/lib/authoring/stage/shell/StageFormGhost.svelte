@@ -57,7 +57,7 @@
 	<T.Group position={at} rotation={[0, yaw, 0]}>
 	{#if edges}
 		<T.LineSegments geometry={edges} renderOrder={3} raycast={ignoreRaycast} oncreate={line => { line.computeLineDistances(); }}>
-			<T.LineDashedMaterial color={0x1b201c} dashSize={metersPerCssPixel * 1.5} gapSize={metersPerCssPixel * 3} depthTest={true} depthWrite={false} toneMapped={false} />
+			<T.LineDashedMaterial color={0x2a62d6} dashSize={metersPerCssPixel * 1.5} gapSize={metersPerCssPixel * 3} depthTest={true} depthWrite={false} toneMapped={false} />
 		</T.LineSegments>
 	{/if}
 	</T.Group>

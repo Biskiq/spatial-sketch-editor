@@ -1,4 +1,5 @@
 import { planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
+import { roomLabelFacts } from '$lib/authoring/stage/room-labels';
 import { axisTravelFromRay } from '$lib/authoring/stage/stage-axis-travel';
 /**
  * T1.P01.S04/S05 + T1.P02.S02 — the Layout adapter.
@@ -58,6 +59,7 @@ import {
 	planUpdateWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
+	planWallFirstRoomMove,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 
@@ -154,6 +156,7 @@ import {
 	LAYOUT_WALL_HEIGHT_KIND,
 	LAYOUT_WALL_THICKNESS_KIND,
 	LAYOUT_WALL_MOVE_KIND,
+	LAYOUT_ROOM_MOVE_KIND,
 	buildLayoutIntent,
 	createLayoutPlanners,
 	layoutFacts,
@@ -789,6 +792,218 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				services.stage.notifySurfaceChange();
 				return true;
+			}
+
+			/*
+			 * Review pass 3 — Room move. A selected Room publishes one move cross under
+			 * its label; dragging it plans `planWallFirstRoomMove` on every move (the
+			 * Room's connected group travels together), shows the moved Walls' dashed
+			 * centrelines in the ghost colour, and a release commits one intent. Scene
+			 * objects stay where they are: they are world-placed, owned by no Room.
+			 */
+			type RoomMoveGesture = {
+				readonly roomId: string;
+				readonly evaluationId: string;
+				readonly revision: string;
+				readonly pressCss: readonly [number, number];
+				readonly pressPoint: readonly [number, number];
+				readonly labelWorld: [number, number, number];
+				readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+				delta: readonly [number, number];
+				candidate: LayoutDocumentWallFirst | null;
+				changedWallIds: readonly string[];
+				movedRooms: number;
+				refusal: string | null;
+			};
+			let roomMove: RoomMoveGesture | null = null;
+			const ROOM_MOVE_MARK = 'layout-room-move-mark';
+			function endRoomMove(): void {
+				const current = roomMove;
+				roomMove = null;
+				if (current?.lease.lease.active) current.lease.lease.release();
+			}
+			function selectedRoomLabel(ctx: StageAdapterContext): { readonly roomId: string; readonly world: [number, number, number] } | null {
+				const primary = ctx.selectionState().primary;
+				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'room') return null;
+				const fact = roomLabelFacts(ctx.snapshot.domain.geometry, stageLayout(ctx.snapshot).rooms).find(
+					(entry) => entry.id === primary.subject.id
+				);
+				return fact === undefined ? null : { roomId: fact.id, world: fact.world };
+			}
+			function roomMoveDescriptors(ctx: StageAdapterContext): readonly StageHandleDescriptor[] {
+				const label = selectedRoomLabel(ctx);
+				if (label === null) return [];
+				const current = roomMove?.roomId === label.roomId ? roomMove : null;
+				const at: [number, number, number] = current === null
+					? label.world
+					: [label.world[0] + current.delta[0], label.world[1], label.world[2] + current.delta[1]];
+				return [{
+					id: ROOM_MOVE_MARK,
+					kind: 'point',
+					role: 'edit',
+					draw: { cross: true },
+					anchor: at,
+					axis: [1, 0, 0],
+					extent: 0.5,
+					// Below the Room's name and area, so the label stays readable.
+					screen: { offset: [0, 34] },
+					label: 'Room position',
+					fact: 'position',
+					verb: 'Position',
+					planner: LAYOUT_ROOM_MOVE_KIND,
+					value:
+						current === null
+							? 'Δx 0.00 · Δz 0.00 m'
+							: `${planarDeltaLabel(current.delta[0], current.delta[1])}${current.movedRooms > 1 ? ` · ${current.movedRooms} Rooms` : ''}`,
+					refusal: current?.refusal ?? null
+				}];
+			}
+			function roomMovePointer(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
+				if (intent.phase === 'down') {
+					if (intent.handleId !== ROOM_MOVE_MARK) return false;
+					const label = selectedRoomLabel(ctx);
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (label === null || point === null) return false;
+					const lease = services.stage.acquireGesture({
+						owner: 'layout-room-move',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (lease.kind !== 'granted') return false;
+					roomMove = {
+						roomId: label.roomId,
+						evaluationId: intent.evaluationId,
+						revision: services.authoring.acceptedRevision().revisionId,
+						pressCss: intent.css,
+						pressPoint: point,
+						labelWorld: label.world,
+						lease,
+						delta: [0, 0],
+						candidate: null,
+						changedWallIds: [],
+						movedRooms: 1,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const current = roomMove;
+				if (current === null) return false;
+				if (intent.phase === 'cancel' || intent.evaluationId !== current.evaluationId || !current.lease.lease.active) {
+					endRoomMove();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					if (!isPointerDrag(current.pressCss, intent.css)) {
+						current.candidate = null;
+						current.refusal = null;
+						current.delta = [0, 0];
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (point === null) return true;
+					const step = draftingSnapIncrementMeters(ctx.drafting());
+					const snap = (value: number) => (step === null ? value : Math.round(value / step) * step);
+					const delta: [number, number] = [
+						Number(snap(point[0] - current.pressPoint[0]).toFixed(9)),
+						Number(snap(point[1] - current.pressPoint[1]).toFixed(9))
+					];
+					current.delta = delta;
+					if (delta[0] === 0 && delta[1] === 0) {
+						current.candidate = null;
+						current.refusal = null;
+					} else {
+						const plan = planWallFirstRoomMove(document, current.roomId, delta);
+						if (plan.kind === 'rejected') {
+							current.candidate = null;
+							current.refusal = plan.rejection.message;
+						} else {
+							current.candidate = plan.document;
+							current.changedWallIds = plan.changedWallIds;
+							current.movedRooms = plan.movedRoomIds.length;
+							current.refusal = null;
+						}
+					}
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				// Release: one captured candidate, one intent, one history entry.
+				endRoomMove();
+				if (intent.phase === 'up' && current.candidate !== null && isPointerDrag(current.pressCss, intent.css)) {
+					void commitRoomMove(current);
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+			async function commitRoomMove(current: RoomMoveGesture): Promise<void> {
+				const snapshot = services.stage.snapshot();
+				if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+				const outcome = await services.authoring.accept(
+					buildLayoutIntent({
+						kind: LAYOUT_ROOM_MOVE_KIND,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: current.revision,
+						contentRevision,
+						levelId,
+						targets: [
+							{
+								version: 1,
+								domain: 'layout',
+								subject: { kind: 'room', id: current.roomId },
+								revision: { kind: 'exact', contentRevision },
+								instancePath: [],
+								location: { kind: 'layout-location', levelId, structureInstancePath: [] },
+								componentId: null,
+								capabilityId: null
+							}
+						],
+						payload: { roomId: current.roomId, deltaX: current.delta[0], deltaZ: current.delta[1] }
+					})
+				);
+				refusal = outcome.kind === 'refused' ? outcome.message : null;
+				services.stage.notifySurfaceChange();
+			}
+			function roomMoveKey(intent: StageKeyboardIntent): boolean {
+				if (roomMove === null || intent.kind !== 'cancel') return false;
+				endRoomMove();
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+			/** The moved Walls' dashed centrelines, or the Room outline red dashed with its reason. */
+			function roomMovePreviews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
+				const current = roomMove;
+				if (current === null || (current.delta[0] === 0 && current.delta[1] === 0)) return [];
+				const label = {
+					world: [current.labelWorld[0] + current.delta[0], current.labelWorld[1], current.labelWorld[2] + current.delta[1]] as [number, number, number],
+					text: current.refusal ?? `${planarDeltaLabel(current.delta[0], current.delta[1])}${current.movedRooms > 1 ? ` · ${current.movedRooms} Rooms` : ''}`
+				};
+				if (current.candidate !== null) {
+					return [candidatePreviewOf({
+						id: 'layout-room-move-candidate',
+						role: 'subject',
+						geometry: wallCenterlinePaper(current.candidate, new Set(current.changedWallIds), y),
+						labels: [label]
+					})];
+				}
+				const room = ctx.snapshot.domain.geometry.rooms.find((entry) => entry.roomId === current.roomId);
+				if (room === undefined) return [];
+				const polygon = room.floorPolygon;
+				const segments: [[number, number, number], [number, number, number]][] = polygon.map((point, index) => {
+					const next = polygon[(index + 1) % polygon.length]!;
+					return [
+						[point[0] + current.delta[0], y, point[1] + current.delta[1]],
+						[next[0] + current.delta[0], y, next[1] + current.delta[1]]
+					];
+				});
+				return [candidatePreviewOf({
+					id: 'layout-room-move-candidate',
+					role: 'refused',
+					geometry: { polygons: [], segments },
+					labels: [label]
+				})];
 			}
 
 			let junctionGesture: JunctionHoverGesture | null = null;
@@ -3009,6 +3224,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				keyIntent(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
 					if (openTaskKind !== LAYOUT_INK_TASK) {
 						if (scalarKey(intent)) return true;
+						if (roomMoveKey(intent)) return true;
 						// Direct manipulation has no task, but its press is a writer: typing
 						// freezes the pointer candidate and opens numeric entry, Enter commits
 						// once, and Esc discards without a document change or history entry.
@@ -3085,6 +3301,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				handles(adapterContext: StageAdapterContext) {
 					return [
 						...markDescriptors(adapterContext),
+						...(openTaskKind !== null || services.stage.session.task() !== null ? [] : roomMoveDescriptors(adapterContext)),
 						...(openTaskKind !== null || services.stage.session.task() !== null
 							? []
 							: scalarSpecs(adapterContext).filter(spec => spec.field !== 'height' || adapterContext.evaluation.settledReading !== 'plan').map(
@@ -3204,6 +3421,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (openTaskKind === LAYOUT_INK_TASK) return inkPointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
 					if (scalarPointer(intent, adapterContext)) return true;
+					if (roomMovePointer(intent, adapterContext)) return true;
 
 					if (intent.phase === 'down') {
 						if (gesture !== null) endGesture();
@@ -3991,6 +4209,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				/** Esc, task replacement and install all end the writer with no commit. */
 				taskClosed() {
 					rearmEpoch += 1;
+					if (roomMove !== null) endRoomMove();
 					openTaskKind = null;
 					settledRefusal = null;
 					if (pausedProposal !== null) {
@@ -4010,6 +4229,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				dispose() {
 					rearmEpoch += 1;
+					if (roomMove !== null) endRoomMove();
 					openTaskKind = null;
 					if (pausedProposal !== null) {
 						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
@@ -4050,6 +4270,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
 				const y = adapterContext.snapshot.domain.datumMeters;
+				if (roomMove !== null) return roomMovePreviews(adapterContext, y);
 				if (scalarGesture !== null) {
 					const current = scalarGesture;
 					if (current.candidate !== null && current.value !== null && current.spec.subject === 'wall' && current.spec.field === 'height')

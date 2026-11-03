@@ -922,6 +922,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						});
 			}
 
+			/**
+			 * The live mark gesture's proposal in Plan, where the Canvas draws no ghost
+			 * body: the candidate's footprint as dashed segments at the datum, the same
+			 * full-size outline 3D draws as the body's dashed edges.
+			 */
+			function objectMarkOutline(adapterContext: StageAdapterContext): StageCandidatePreview | null {
+				pruneObjectMarkGesture();
+				const current = objectMarkGesture;
+				if (current === null || current.candidate === null) return null;
+				const entity = sceneEntityAtCandidate(current.candidate, stageScene(adapterContext.snapshot).entities);
+				if (entity === null) return null;
+				const runtimeScene = adapterContext.snapshot.domain.scene;
+				const projection = buildPlanSceneFootprintProjection(
+					{ entities: [entity] },
+					{
+						modelFootprintById: (assetId) =>
+							runtimeScene.modelFootprints?.get(assetId) ??
+							admittedModelFootprint(adapterContext.snapshot, assetId) ??
+							undefined
+					}
+				);
+				const footprint = projection.footprints[0];
+				if (footprint === undefined) return null;
+				const y = adapterContext.snapshot.domain.datumMeters;
+				const segments: [Vec3, Vec3][] = [];
+				for (const ring of footprint.polygons ?? [footprint.points]) {
+					for (let index = 0; index < ring.length; index += 1) {
+						const a = ring[index]!;
+						const b = ring[(index + 1) % ring.length]!;
+						segments.push([[a[0], y, a[1]], [b[0], y, b[1]]]);
+					}
+				}
+				return { id: 'scene-mark-outline', role: 'subject', polygons: [], segments, labels: [] };
+			}
+
 			/** The pointer ray's angle around the entity's vertical axis. */
 			function turnAngleAt(
 				adapterContext: StageAdapterContext,
@@ -2136,6 +2171,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							labels: drawn.label === null ? [] : [drawn.label],
 							...(drawn.snap === null ? {} : { snap: { world: drawn.snap, name: 'Grid' } })
 						}];
+					}
+					// Review pass 3: Plan hides the Canvas ghost, so a mark gesture's
+					// proposal is drawn there as its dashed footprint in the ghost colour.
+					if (adapterContext.evaluation.settledReading === 'plan') {
+						const markOutline = objectMarkOutline(adapterContext);
+						if (markOutline !== null) return [markOutline];
 					}
 					if (
 						adapterContext.evaluation.settledReading !== 'plan' ||

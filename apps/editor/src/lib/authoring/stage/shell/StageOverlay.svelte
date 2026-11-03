@@ -236,7 +236,7 @@
 			data-candidate-id={candidate.id}
 			data-candidate-role={candidate.role}
 		>
-			<!-- Drawing is solid ink; a proposal is the same ink, dashed; a refusal is red dashed. -->
+			<!-- Drawing is solid draft ink; a proposal is dashed in the ghost colour; a refusal is red dashed. -->
 			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
 				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
 			{/each}
@@ -336,9 +336,10 @@
 					<path class="glyph" class:held={mark.active} d={sized(GLYPH.arrow, emphasised)} transform={glyphTransform(glyphAt, headingOf(mark.direction))} />
 				{/if}
 			{:else if mark.kind === 'ring'}
-				<polyline class="glyph-line ring" class:emphasised points={mark.ring?.map((point) => point.join(',')).join(' ') ?? ''} />
+				<!-- No ring (review pass 3): one bent two-way arrow, carried by the subject's
+				     own frame, is the whole Turn control. The ring stays only as the plane
+				     the turn is measured in. -->
 				{#if mark.ringGlyph}
-					<!-- One curved arrow, carried by the subject's own frame. -->
 					<path class="glyph turn" class:held={mark.active} d={sized(GLYPH.curved, emphasised, 1, mark.ringGlyph.flip ? -1 : 1)} transform={glyphTransform(mark.ringGlyph.at, mark.ringGlyph.angle)} />
 				{/if}
 			{:else}
@@ -439,6 +440,10 @@
 		pointer-events: none;
 		overflow: visible;
 		--overlay-ink: var(--shell-ink, #1b201c);
+		--overlay-draft: var(--shell-draft-ink, #ffffff);
+		--overlay-draft-halo: var(--shell-draft-halo, none);
+		--overlay-ghost: var(--shell-ghost, #2a62d6);
+		--overlay-ghost-halo: var(--shell-ghost-halo, none);
 		--overlay-problem: #7e2718;
 	}
 	.task-marker circle {
@@ -447,19 +452,24 @@
 		stroke-width: 1.5;
 	}
 
-	/* Drafting ink (review pass 2 §1–3). */
+	/* Review pass 3: drawing is solid draft ink; every gesture's proposal — Wall,
+	   Room or object, 2D or 3D — is the same dashed line in the ghost colour; a
+	   refusal is red dashed. */
 	.candidate .candidate-edge {
 		fill: none;
-		stroke: var(--overlay-ink);
+		stroke: var(--overlay-ghost);
+		filter: var(--overlay-ghost-halo);
 		stroke-width: 1.5;
 		stroke-dasharray: 6 4;
 		stroke-linecap: round;
 	}
-	.candidate.drawing .candidate-edge { stroke-width: 1.6; stroke-dasharray: none; }
-	.candidate.refused .candidate-edge { stroke: var(--overlay-problem); stroke-width: 2; stroke-dasharray: 6 4; }
-	.end-mark { fill: var(--overlay-ink); stroke: var(--overlay-ink); stroke-width: 1.6; }
+	.candidate.drawing .candidate-edge { stroke: var(--overlay-draft); filter: var(--overlay-draft-halo); stroke-width: 1.6; stroke-dasharray: none; }
+	.candidate.refused .candidate-edge { stroke: var(--overlay-problem); filter: none; stroke-width: 2; stroke-dasharray: 6 4; }
+	.end-mark { fill: var(--overlay-ghost); stroke: var(--overlay-ghost); stroke-width: 1.6; filter: var(--overlay-ghost-halo); }
+	.candidate.drawing .end-mark { fill: var(--overlay-draft); stroke: var(--overlay-draft); filter: var(--overlay-draft-halo); }
+	.candidate.drawing .end-mark.hollow { fill: none; }
 	.end-mark.hollow { fill: #fff; }
-	.candidate.refused .end-mark { fill: var(--overlay-problem); stroke: var(--overlay-problem); }
+	.candidate.refused .end-mark { fill: var(--overlay-problem); stroke: var(--overlay-problem); filter: none; }
 
 	.tag rect { fill: var(--overlay-ink); stroke: none; }
 	.tag.bad rect { fill: var(--overlay-problem); }
@@ -488,7 +498,6 @@
 		filter: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95));
 	}
 	.mark .glyph-line.dash { stroke-dasharray: 4 3.5; }
-	.mark .glyph-line.ring.emphasised { stroke-width: 2.2; }
 	.mark .chip .toggle-hit { fill: transparent; stroke: none; filter: none; }
 	.mark .chip-icon { fill: none; stroke: var(--overlay-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 	.mark .chip.open .glyph { fill: var(--overlay-ink); }
@@ -500,12 +509,13 @@
 
 	.dimension .dimension-line {
 		fill: none;
-		stroke: var(--overlay-ink);
+		stroke: var(--overlay-draft);
+		filter: var(--overlay-draft-halo);
 		stroke-width: 1.25;
 		stroke-linecap: round;
 	}
 	.dimension.live .dimension-line { stroke-dasharray: 4 3; }
-	.dimension .halo { fill: none; stroke: rgba(255, 255, 255, 0.7); stroke-width: 3.4; stroke-linecap: round; }
+	.dimension .halo { display: none; }
 
 	.room-label text { fill: #4a524c; font: 12px system-ui; paint-order: stroke; stroke: #fff; stroke-width: 2px; stroke-opacity: .75; }
 	.room-label .area { font: 11px ui-monospace, monospace; }

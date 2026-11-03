@@ -23,6 +23,11 @@ body.gz-white{--gz-fill:#fff;--gz-stroke:none;--gz-sw:0;--gz-filter:drop-shadow(
 body.gz-sticker{--gz-fill:#fff;--gz-stroke:#1b201c;--gz-sw:1.1px;--gz-filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3));--gzl:#1b201c;--gzl-filter:drop-shadow(0 0 .7px rgba(255,255,255,.95));--chip-on:#1b201c;--chip-on-icon:#fff;--chip-icon:#1b201c}
 body.gz-glade{--gz-fill:#fff;--gz-stroke:none;--gz-sw:0;--gz-filter:drop-shadow(0 1.6px 2px rgba(45,32,20,.55)) drop-shadow(0 0 .5px rgba(45,32,20,.55));--gzl:#fff;--gzl-filter:drop-shadow(0 1px 1.4px rgba(45,32,20,.65));--chip-on:#1b201c;--chip-on-icon:#fff;--chip-icon:#1b201c}
 body.gz-ink{--gz-fill:#1b201c;--gz-stroke:#fff;--gz-sw:1.1px;--gz-filter:drop-shadow(0 1px 1.4px rgba(0,0,0,.25));--gzl:#1b201c;--gzl-filter:none;--chip-on:#fff;--chip-on-icon:#1b201c;--chip-icon:#fff}
+/* Ink: what is drawn. Ghost: what a gesture proposes. Both are switchable (review pass 3). */
+body{--draft:#1b201c;--draft-halo:none;--ghost:var(--draft);--ghost-halo:var(--draft-halo)}
+body.ink-white{--draft:#fff;--draft-halo:drop-shadow(0 0 .6px rgba(8,22,16,.95)) drop-shadow(0 0 1.6px rgba(8,22,16,.35))}
+body.ghost-cobalt{--ghost:#2a62d6;--ghost-halo:drop-shadow(0 0 .7px rgba(255,255,255,.95)) drop-shadow(0 0 1.4px rgba(255,255,255,.5))}
+body.ghost-violet{--ghost:#7b45d8;--ghost-halo:drop-shadow(0 0 .7px rgba(255,255,255,.95)) drop-shadow(0 0 1.4px rgba(255,255,255,.5))}
 .gz{fill:var(--gz-fill);stroke:var(--gz-stroke);stroke-width:var(--gz-sw);stroke-linejoin:round;filter:var(--gz-filter)}
 .gzl{fill:none;stroke:var(--gzl);stroke-width:1.5;filter:var(--gzl-filter);stroke-linecap:round}
 .gzl.dash{stroke-dasharray:4 3.5}
@@ -63,13 +68,15 @@ svg.stage:focus-visible{box-shadow:0 0 0 2px var(--leaf)}
 .paper{fill:var(--paper)} .gridl{stroke:var(--grid);fill:none} .gridl2{stroke:var(--grid2);fill:none}
 .tag rect{fill:var(--ink)} .tag text{fill:#fff;font:500 11.5px ui-monospace,SFMono-Regular,Menlo,monospace}
 .tag.bad rect{fill:var(--problem)}
-.inkl{stroke:var(--ink);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.ghost{stroke:var(--ink);stroke-width:1.5;fill:none;stroke-dasharray:6 4;stroke-linecap:round}
+.inkl{stroke:var(--draft);filter:var(--draft-halo);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ghost{stroke:var(--ghost);filter:var(--ghost-halo);stroke-width:1.5;fill:none;stroke-dasharray:6 4;stroke-linecap:round;stroke-linejoin:round}
+.ghost.tint{fill:var(--ghost);fill-opacity:.08}
+.ghostm{fill:var(--paper);stroke:var(--ghost);stroke-width:1.6;filter:var(--ghost-halo)}
 .ghost.dots{stroke-dasharray:1 4;stroke-width:1.5}
 .refused{stroke:var(--problem);stroke-width:2;stroke-dasharray:6 4;fill:none;stroke-linecap:round}
 .wall2d{stroke:var(--ink);stroke-width:8;stroke-linecap:square;fill:none}
 .wall2d.sel{stroke:var(--gold)}
-.endm{fill:var(--ink);stroke:var(--ink);stroke-width:1.6}
+.endm{fill:var(--draft);stroke:var(--draft);stroke-width:1.6;filter:var(--draft-halo)}
 .endm.hollow{fill:var(--paper)}
 .endm.bad{fill:var(--problem);stroke:var(--problem)} .endm.bad.hollow{fill:var(--paper)}
 .room-name{font:500 12px system-ui;fill:var(--ink2)} .room-area{font:11px ui-monospace,Menlo,monospace;fill:var(--ink2)}
@@ -77,7 +84,8 @@ svg.stage:focus-visible{box-shadow:0 0 0 2px var(--leaf)}
 .sel-edge{fill:none;stroke:var(--gold);stroke-width:2;stroke-linejoin:round}
 .bang circle{fill:#fff;stroke:var(--problem);stroke-width:1.5} .bang text{fill:var(--problem);font:700 12px system-ui}
 .scalebar rect{stroke:var(--ink);stroke-width:1} .scalebar text{font:11px ui-monospace,Menlo,monospace;fill:var(--ink)}
-.tick{stroke:var(--ink);stroke-width:1.6;stroke-linecap:round}
+.tick{stroke:var(--draft);filter:var(--draft-halo);stroke-width:1.6;stroke-linecap:round}
+.swatchdot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
 
 /* Glyph key */
 .keycap{font:600 11.5px system-ui;fill:var(--ink2)} .keysub{font:11px system-ui;fill:var(--mute)}
@@ -166,19 +174,30 @@ table.fut th{color:var(--ink2);font-weight:600}
 @media (max-width:600px){header{position:static}.cardwrap{width:100%}}
 </style>
 </head>
-<body class="gz-sticker">
+<body class="gz-sticker ink-white ghost-cobalt">
 <header>
-  <h1>World · interaction sheet <span style="font-weight:400;opacity:.7">review pass 2</span></h1>
+  <h1>World · interaction sheet <span style="font-weight:400;opacity:.7">review pass 3</span></h1>
   <div class="ctl">Gizmo style
     <div class="seg" data-key="style" role="group" aria-label="Gizmo style">
       <button data-v="white">A · White + halo</button><button data-v="sticker">B · Sticker <span class="star">★ chosen</span></button><button data-v="glade">C · Soft shadow</button><button data-v="ink">D · Ink</button>
     </div>
   </div>
+  <div class="ctl">Ink
+    <div class="seg" data-key="ink" role="group" aria-label="Drawing ink">
+      <button data-v="black">Black</button><button data-v="white">White <span class="star">★</span></button>
+    </div>
+  </div>
+  <div class="ctl">Ghost
+    <div class="seg" data-key="ghostColor" role="group" aria-label="Ghost colour">
+      <button data-v="ink">Same as ink</button><button data-v="cobalt"><span class="swatchdot" style="background:#2a62d6"></span>A · Cobalt <span class="star">★</span></button><button data-v="violet"><span class="swatchdot" style="background:#7b45d8"></span>B · Violet</button>
+    </div>
+  </div>
   <div class="ctl" style="opacity:.8">Paper is chosen per view in the gear (section 6)</div>
 </header>
 
+<p class="intro status"><b>Round 3 (2026-11-02):</b> the owner accepted round 2 except the ghosts. This round proposes one ghost language for every transform — Walls, Rooms and objects, in 2D and 3D — in a colour of its own, and a White ink to match the white controls; the turn ring is removed (only the bent two-way arrow stays); Rooms become movable. New: the <b>Ink</b> and <b>Ghost</b> switches in the header and section 8. <b>Ghost colour: ★ A · Cobalt</b> — a hue no other state uses (gold is selection, red is refusal, green is focus), so a proposal never reads as drawn ink, and it holds contrast on all three Papers (about 4.6:1) and, with its thin white halo, on dark materials. <b>B · Violet</b> is the alternative if cobalt reads too close to a link. <b>Ink: ★ White</b> with a dark hairline halo, the same treatment as the white sticker controls; Black stays one click away.</p>
 <p class="intro status"><b>Status:</b> owner review, round 2 (2026-11-02). Once the owner settles it, this sheet is promoted as the <b>authority for the World visual language</b>: marks, glyphs, ink, ghosts, refusal, Paper and the Card's shape. Every row keeps its alternatives on record. <span class="star">★</span> is the recommendation and is what round 2 implements; <b>chosen</b> marks an explicit owner decision; <s>struck</s> is current production, kept only to compare. Geometry on this page is screen maths, not the Layout/Scene planners.</p>
-<p class="intro"><b>Clear, visually pleasing, self-explanatory.</b> Every control's shape says what it does: an arrow drags that way, a curved arrow turns, a knob on a stem lifts, a four-way cross moves, a chip toggles a mode. Drawing is solid black ink; a proposal is the same ink, dashed; a refusal is red dashed; selection is gold. Every stage below is live: drag, draw and click. The header switch restyles every gizmo; the gear (section 6) sets the Paper for 2D and 3D.</p>
+<p class="intro"><b>Clear, visually pleasing, self-explanatory.</b> Every control's shape says what it does: an arrow drags that way, a curved arrow turns, a knob on a stem lifts, a four-way cross moves, a chip toggles a mode. Drawing is solid ink (black or white); a proposal is dashed in the ghost colour, for every subject and in both views; a refusal is red dashed; selection is gold. Every stage below is live: drag, draw and click. The header switch restyles every gizmo; the gear (section 6) sets the Paper for 2D and 3D.</p>
 
 <main>
 <section class="wide" id="s-key">
@@ -201,7 +220,7 @@ table.fut th{color:var(--ink2);font-weight:600}
 
 <section id="s-ghost">
   <h2>2 · Drag preview <small>ghost of a Wall edit (2D)</small> <button class="reset" data-reset="ghost">Reset</button></h2>
-  <p class="lede">The source stays put. The proposal is one dashed centreline per changed Wall — the same line you drew, dashed. Drag an end knob or the two-way arrow.</p>
+  <p class="lede">The source stays put. The proposal is one dashed centreline per changed Wall — the same line you drew, dashed in the ghost colour. Rooms and objects use the same dashed language (section 8). Drag an end knob or the two-way arrow.</p>
   <div class="opts">Ghost
     <div class="seg" data-key="ghost" role="group" aria-label="Ghost presentation">
       <button data-v="line">A · One dashed centreline <span class="star">★</span></button><button data-v="band">B · Dashed line + faint band</button><button data-v="outline" class="retired">Current · dotted thickness outline</button>
@@ -213,10 +232,10 @@ table.fut th{color:var(--ink2);font-weight:600}
 
 <section id="s-obj">
   <h2>3 · Object gizmo <small>move, turn, W·D·H (3D)</small> <button class="reset" data-reset="obj">Reset</button></h2>
-  <p class="lede">The ring and its one arrow belong to the object: turn it and the arrow travels with it. The chip does two things: <b>click</b> shows the W·D·H arrows and the height stem, <b>drag</b> scales the whole object uniformly. The stem has two knobs: the top one moves the top, the bottom one lifts the object off its support (objects only). Values are deltas from where the gesture began.</p>
+  <p class="lede">No ring: one bent two-way arrow beside the object turns it, and travels with it as it turns. Every gesture shows the object's dashed edges at the proposed pose in the ghost colour; the object itself stays put until release. The chip does two things: <b>click</b> shows the W·D·H arrows and the height stem, <b>drag</b> scales the whole object uniformly. The stem has two knobs: the top one moves the top, the bottom one lifts the object off its support (objects only). Values are deltas from where the gesture began.</p>
   <div class="opts">Turn arrow
     <div class="seg" data-key="turn" role="group" aria-label="Turn glyph">
-      <button data-v="curved">A · One curved arrow <span class="star">★</span></button><button data-v="tri">B · One arrowhead on the ring</button><button data-v="old" class="retired">Current · two facing, fixed</button>
+      <button data-v="bent">A · Bent two-way arrow, no ring <span class="star">★ chosen</span></button><button data-v="bent2">B · Two bent arrows, opposite corners</button><button data-v="curved" class="retired">Current · ring + bent arrow</button>
     </div>
     <span style="margin-left:6px">Bottom knob</span>
     <div class="seg" data-key="lift" role="group" aria-label="Bottom knob">
@@ -224,7 +243,7 @@ table.fut th{color:var(--ink2);font-weight:600}
     </div>
   </div>
   <svg class="stage" id="sv-obj" viewBox="0 0 560 330" aria-label="Object gizmo stage"></svg>
-  <p class="hint">Drag the ring to turn (15° steps, hold <kbd>Alt</kbd> for free) · drag ✥ to move · drag the chip to scale · click the chip, then drag the face arrows or either ⬢ · <kbd>Esc</kbd> cancels.</p>
+  <p class="hint">Drag the bent arrow to turn (15° steps, hold <kbd>Alt</kbd> for free) · drag ✥ to move · drag the chip to scale · click the chip, then drag the face arrows or either ⬢ · <kbd>Esc</kbd> cancels.</p>
 </section>
 
 <section id="s-wall">
@@ -241,7 +260,7 @@ table.fut th{color:var(--ink2);font-weight:600}
 
 <section id="s-ruler">
   <h2>5 · Ruler <small>measure and scale</small> <button class="reset" data-reset="ruler">Reset</button></h2>
-  <p class="lede">Black ink on Paper in both readings. The ends use the same snap shapes as drawing.</p>
+  <p class="lede">Ink on Paper in both readings (the header Ink switch). The ends use the same snap shapes as drawing.</p>
   <div class="opts">Ends
     <div class="seg" data-key="rulerEnd" role="group" aria-label="Ruler ends">
       <button data-v="ticks">A · End ticks <span class="star">★</span></button><button data-v="marks">B · Snap marks</button>
@@ -298,12 +317,29 @@ table.fut th{color:var(--ink2);font-weight:600}
     </div>
   </div>
 </section>
+
+<section class="wide" id="s-tx">
+  <h2>8 · Transform ghosts <small>one language for Walls, Rooms and objects (2D shown; 3D draws the same lines)</small> <button class="reset" data-reset="tx">Reset</button></h2>
+  <p class="lede">While a gesture is live, the subject stays where it is and its proposal is drawn <b>dashed in the ghost colour</b>; releasing commits it as one Undo step, <kbd>Esc</kbd> drops it. Walls and Rooms show their dashed centrelines. Objects show their dashed outline: the footprint in 2D, the box edges in 3D (section 3). A turn shows the same outline at the new angle. A refusal turns the ghost red dashed with its reason. Moving a Room moves its connected group: Rooms that share a Wall travel together, because they cannot be pulled apart without detaching architecture.</p>
+  <div class="opts">Object ghost
+    <div class="seg" data-key="tx" role="group" aria-label="Object ghost">
+      <button data-v="outline">A · Dashed outline <span class="star">★</span></button><button data-v="tint">B · Dashed outline + faint tint</button><button data-v="current" class="retired">Current · solid body in 3D, marks only in 2D</button>
+    </div>
+    <span style="margin-left:6px">Objects in a moved Room</span>
+    <div class="seg" data-key="roomFollow" role="group" aria-label="Objects in a moved Room">
+      <button data-v="walls">A · Stay put <span class="star">★ this PR</span></button><button data-v="follow">B · Follow the Room</button>
+    </div>
+  </div>
+  <svg class="stage" id="sv-tx" viewBox="0 0 1060 360" aria-label="Transform ghosts stage"></svg>
+  <p class="hint">Drag ✥ on a Room to move its group · drag ✥ on an object (or its body) to move it · drag its bent arrow to turn it (15° steps, <kbd>Alt</kbd> for free) · drag the Wall's ⟷ to slide it · drop anywhere to commit · drag a Room onto the free Wall to see a refusal.</p>
+  <p class="note" style="max-width:none"><b>Objects in a moved Room.</b> A Room and its Walls are Layout; furniture is Scene, placed in the world and owned by no Room. <b>A</b> keeps that split: the Room moves, objects stay (move them after). <b>B</b> moves objects standing in the Room with it as one Undo step; it needs one change that spans Layout and Scene, so it is a larger follow-up.</p>
+</section>
 </main>
 
 <script>
 'use strict';
 const $ = (s) => document.querySelector(s);
-const S = { style: 'sticker', p2: 'pale', p3: 'pale', lift: 'whole', refuse: 'reason', ghost: 'line', turn: 'curved', knob: 'disc', rulerEnd: 'ticks', subject: 'wall', lab2d: true, lab3d: false };
+const S = { style: 'sticker', ink: 'white', ghostColor: 'cobalt', p2: 'pale', p3: 'pale', lift: 'whole', refuse: 'reason', ghost: 'line', tx: 'outline', roomFollow: 'walls', turn: 'bent', knob: 'disc', rulerEnd: 'ticks', subject: 'wall', lab2d: true, lab3d: false };
 
 // ---------- shared maths ----------
 const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -621,7 +657,9 @@ function renderObj() {
   const ring = []; for (let i = 0; i <= 72; i++) { const a = i / 72 * Math.PI * 2; ring.push(iso(g.x + rr * Math.cos(a), g.y + rr * Math.sin(a), 0.01)); }
   OB.ring = ring;
   const ringHov = OB.hov === 'turn' || k === 'turn';
-  if (S.turn === 'old') s += `<polyline class="old-ring" points="${ring.map(P).join(' ')}"/>`;
+  const ringed = S.turn === 'curved' || S.turn === 'tri' || S.turn === 'old';
+  if (!ringed) OB.ring = [];
+  else if (S.turn === 'old') s += `<polyline class="old-ring" points="${ring.map(P).join(' ')}"/>`;
   else s += `<polyline class="gzl" style="stroke-width:${ringHov ? 2.2 : 1.5}px" points="${ring.map(P).join(' ')}"/>`;
   // a lifted object keeps a dashed footprint on its support
   if (g.z > 0.01) s += `<polygon class="ghost" points="${oCorners(g).map((p) => P(iso(...p, 0))).join(' ')}"/><path class="ghost" d="M${P(iso(g.x, g.y, 0))}L${P(iso(g.x, g.y, g.z))}"/>`;
@@ -630,7 +668,15 @@ function renderObj() {
   // turn arrow: travels with the object
   const ga = (g.rot + RING_LOCAL) * Math.PI / 180, gw = [g.x + rr * Math.cos(ga), g.y + rr * Math.sin(ga), 0.01];
   const gp = iso(...gw), tan = screenDir(iso, gw, [-Math.sin(ga), Math.cos(ga)]), toC = sub(iso(g.x, g.y, 0), gp);
-  if (S.turn === 'curved') s += glyph(G.curved, gp, deg(tan), ringHov, dot([-tan[1], tan[0]], toC) < 0 ? ' scale(1,-1)' : '');
+  if (S.turn === 'curved' || S.turn === 'bent' || S.turn === 'bent2') {
+    s += glyph(G.curved, gp, deg(tan), ringHov, dot([-tan[1], tan[0]], toC) < 0 ? ' scale(1,-1)' : '');
+    if (S.turn === 'bent2') {
+      const gw2 = [g.x - rr * Math.cos(ga), g.y - rr * Math.sin(ga), 0.01], gp2 = iso(...gw2);
+      const tan2 = screenDir(iso, gw2, [Math.sin(ga), -Math.cos(ga)]), toC2 = sub(iso(g.x, g.y, 0), gp2);
+      s += glyph(G.curved, gp2, deg(tan2), ringHov, dot([-tan2[1], tan2[0]], toC2) < 0 ? ' scale(1,-1)' : '');
+      H.push({ k: 'turn', p: gp2, r: 16 });
+    }
+  }
   else if (S.turn === 'tri') s += glyph(G.tri, gp, deg(tan), ringHov);
   else {
     // production: two open heads meeting at a fixed screen position, whatever the turn
@@ -938,9 +984,119 @@ function commitName(v) {
   document.addEventListener('pointerdown', (e) => { if (CS.menu && !e.target.closest('#cardwrap')) { CS.menu = false; renderCard(); } });
 })();
 
+// ---------- 8 · transform ghosts ----------
+// 2D, 40 px per metre. Rooms are rectangles here; the product derives them from Walls.
+const TX0 = () => ({
+  rooms: [{ name: 'Living', r: [80, 60, 330, 300] }, { name: 'Study', r: [330, 60, 500, 300] }],
+  free: [[660, 60], [660, 300]],
+  objs: [{ id: 'sofa', name: 'Sofa', x: 225, y: 262, w: 110, d: 40, rot: 0 }, { id: 'table', name: 'Table', x: 820, y: 180, w: 90, d: 56, rot: 20 }],
+  cand: null, drag: null, hov: null, handles: []
+});
+let TX = TX0();
+const oPoly = (o) => { const r = o.rot * Math.PI / 180, u = [Math.cos(r), Math.sin(r)], v = [-u[1], u[0]]; return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [o.x + u[0] * a * o.w / 2 + v[0] * b * o.d / 2, o.y + u[1] * a * o.w / 2 + v[1] * b * o.d / 2]); };
+const roomEdges = (r) => { const [x0, y0, x1, y1] = r; return [[[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[x1, y1], [x0, y1]], [[x0, y1], [x0, y0]]]; };
+const shift = (r, d) => [r[0] + d[0], r[1] + d[1], r[2] + d[0], r[3] + d[1]];
+const inside = (o, r) => o.x > r[0] && o.x < r[2] && o.y > r[1] && o.y < r[3];
+function txTurnAt(o) { const r = o.rot * Math.PI / 180, R = Math.hypot(o.w, o.d) / 2 + 16, a = r - Math.PI / 4; return { p: [o.x + R * Math.cos(a), o.y + R * Math.sin(a)], ang: a * 180 / Math.PI + 90 }; }
+function renderTx() {
+  const C = TX.cand, k = TX.drag?.k; let s = paper('ptx', 1060, 360);
+  const allR = TX.rooms.map((rm) => rm.r);
+  // Walls: each Room edge once (a shared Wall is drawn once), and the free Wall
+  const seen = []; let walls = '';
+  for (const r of allR) for (const [a, b] of roomEdges(r)) { if (seen.some(([c, d]) => (d2(a, c) < 1 && d2(b, d) < 1) || (d2(a, d) < 1 && d2(b, c) < 1))) continue; seen.push([a, b]); walls += `M${P(a)}L${P(b)}`; }
+  s += `<path class="wall2d" d="${walls}"/><path class="wall2d" d="M${P(TX.free[0])}L${P(TX.free[1])}"/>`;
+  TX.rooms.forEach((rm) => { const [x0, y0, x1, y1] = rm.r; s += roomLabel([(x0 + x1) / 2, (y0 + y1) / 2 - 14], rm.name, (x1 - x0) * (y1 - y0) / (PXM * PXM)); });
+  // objects: solid source
+  for (const o of TX.objs) s += `<polygon points="${oPoly(o).map(P).join(' ')}" fill="#cfc6b6" stroke="var(--ink2)" stroke-width="1"/>`;
+  // ghost
+  const bad = C?.refusal;
+  const cls = bad ? 'refused' : `ghost${S.tx === 'tint' ? ' tint' : ''}`;
+  if (C && S.tx !== 'current') {
+    if (C.kind === 'room') {
+      const seen2 = []; let d = '';
+      for (const r of C.rooms) for (const [a, b] of roomEdges(r)) { if (seen2.some(([c, e]) => (d2(a, c) < 1 && d2(b, e) < 1) || (d2(a, e) < 1 && d2(b, c) < 1))) continue; seen2.push([a, b]); d += `M${P(a)}L${P(b)}`; }
+      s += `<path class="${bad ? 'refused' : 'ghost'}" d="${d}"/>`;
+      if (S.roomFollow === 'follow') for (const o of C.objs) s += `<polygon class="${cls}" points="${oPoly(o).map(P).join(' ')}"/>`;
+    } else if (C.kind === 'wall') s += `<line class="ghost" x1="${C.free[0][0]}" y1="${C.free[0][1]}" x2="${C.free[1][0]}" y2="${C.free[1][1]}"/>`;
+    else s += `<polygon class="${cls}" points="${oPoly(C.obj).map(P).join(' ')}"/>`;
+  }
+  // handles: drawn at the proposal while a gesture is live, so they travel with it
+  const H = [], hv = (n) => TX.hov === n || k === n;
+  TX.rooms.forEach((rm, i) => {
+    const r = C?.kind === 'room' ? C.rooms[i] : rm.r, c = [(r[0] + r[2]) / 2, (r[1] + r[3]) / 2 + 30];
+    s += glyph(G.move, c, 0, hv('room' + i)); H.push({ k: 'room' + i, p: c, r: 16 });
+  });
+  TX.objs.forEach((o0, i) => {
+    const o = C?.kind === 'obj' && C.i === i ? C.obj : o0;
+    s += glyph(G.move, [o.x, o.y], o.rot, hv('obj' + i)); H.push({ k: 'obj' + i, p: [o.x, o.y], r: 16 });
+    const t = txTurnAt(o); s += glyph(G.curved, t.p, t.ang, hv('turn' + i)); H.push({ k: 'turn' + i, p: t.p, r: 16 });
+  });
+  const fw = C?.kind === 'wall' ? C.free : TX.free, fm = [fw[0][0] + 22, (fw[0][1] + fw[1][1]) / 2];
+  s += glyph(G.two, fm, 0, hv('wall')); H.push({ k: 'wall', p: fm, r: 15 });
+  TX.handles = H;
+  if (TX.drag && C) {
+    const p = TX.drag.at; let t;
+    if (C.refusal) t = C.refusal;
+    else if (C.kind === 'room') t = `Δx ${sgn(C.d[0] / PXM)} · Δz ${sgn(C.d[1] / PXM)} m${C.rooms.length > 1 ? ' · 2 Rooms' : ''}`;
+    else if (C.kind === 'wall') t = `Δ ${sgn((C.free[0][0] - TX.free[0][0]) / PXM)} m`;
+    else if (k.startsWith('turn')) t = `Δθ ${sgn(((C.obj.rot - TX.objs[C.i].rot) % 360 + 540) % 360 - 180, 0)}°`;
+    else t = `Δx ${sgn((C.obj.x - TX.objs[C.i].x) / PXM)} · Δz ${sgn((C.obj.y - TX.objs[C.i].y) / PXM)} m`;
+    s += tag(p[0] + 16, p[1] - 32, t, !!C.refusal, 1060);
+  }
+  $('#sv-tx').innerHTML = s;
+}
+(function bindTx() {
+  const svg = $('#sv-tx');
+  const hit = (p) => {
+    const h = TX.handles.find((x) => d2(p, x.p) < x.r); if (h) return h.k;
+    const i = TX.objs.findIndex((o) => { const q = oPoly(o); let c = false; for (let a = 0, b = 3; a < 4; b = a++) if ((q[a][1] > p[1]) !== (q[b][1] > p[1]) && p[0] < (q[b][0] - q[a][0]) * (p[1] - q[a][1]) / (q[b][1] - q[a][1]) + q[a][0]) c = !c; return c; });
+    return i >= 0 ? 'obj' + i : null;
+  };
+  const snap = (v) => Math.round(v / 20) * 20;
+  svg.addEventListener('pointerdown', (e) => {
+    const p = svgPt(svg, e), k = hit(p); if (!k) return;
+    let a0 = 0; if (k.startsWith('turn')) { const o = TX.objs[+k.slice(4)]; a0 = deg(sub(p, [o.x, o.y])); }
+    TX.drag = { k, p0: p, at: p, a0 }; svg.setPointerCapture(e.pointerId); renderTx();
+  });
+  svg.addEventListener('pointermove', (e) => {
+    const p = svgPt(svg, e);
+    if (!TX.drag) { const k = hit(p); if (k !== TX.hov) { TX.hov = k; svg.style.cursor = k ? 'grab' : 'default'; renderTx(); } return; }
+    const D = TX.drag, d = sub(p, D.p0); D.at = p;
+    if (d2(p, D.p0) < 4) { TX.cand = null; renderTx(); return; }
+    if (D.k.startsWith('room')) {
+      const dd = [snap(d[0]), snap(d[1])];
+      const rooms = TX.rooms.map((rm) => shift(rm.r, dd));
+      const objs = TX.objs.filter((o) => TX.rooms.some((rm) => inside(o, rm.r))).map((o) => ({ ...o, x: o.x + dd[0], y: o.y + dd[1] }));
+      const fx = TX.free[0][0], hitsFree = rooms.some((r) => r[0] < fx + 4 && r[2] > fx - 4);
+      TX.cand = { kind: 'room', d: dd, rooms, objs, refusal: hitsFree ? 'Rooms would cross a Wall' : null };
+    } else if (D.k === 'wall') {
+      const dx = snap(d[0]); TX.cand = { kind: 'wall', free: TX.free.map((q) => [q[0] + dx, q[1]]) };
+    } else if (D.k.startsWith('turn')) {
+      const i = +D.k.slice(4), o = TX.objs[i]; let a = deg(sub(p, [o.x, o.y])) - D.a0; if (!e.altKey) a = Math.round(a / 15) * 15;
+      TX.cand = { kind: 'obj', i, obj: { ...o, rot: o.rot + a } };
+    } else {
+      const i = +D.k.slice(3), o = TX.objs[i];
+      TX.cand = { kind: 'obj', i, obj: { ...o, x: o.x + snap(d[0]) / 2, y: o.y + snap(d[1]) / 2 } };
+    }
+    renderTx();
+  });
+  const end = (commit) => {
+    if (!TX.drag) return; const C = TX.cand;
+    if (commit && C && !C.refusal) {
+      if (C.kind === 'room') { TX.rooms = TX.rooms.map((rm, i) => ({ ...rm, r: C.rooms[i] })); if (S.roomFollow === 'follow') TX.objs = TX.objs.map((o) => C.objs.find((q) => q.id === o.id) || o); }
+      else if (C.kind === 'wall') TX.free = C.free;
+      else TX.objs = TX.objs.map((o, i) => (i === C.i ? C.obj : o));
+    }
+    TX.drag = null; TX.cand = null; renderTx();
+  };
+  svg.addEventListener('pointerup', () => end(true));
+  svg.addEventListener('pointercancel', () => end(false));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') end(false); });
+})();
+
 // ---------- 6b · Paper in the gear ----------
 const TONES = { pale: 'Current', cream: 'Warm cream', sage: 'Deeper sage' };
-const STAGES = { p2: ['#sv-draw', '#sv-ghost', '#sv-ruler', '#sv-l2'], p3: ['#sv-key', '#sv-obj', '#sv-wall', '#sv-l3'] };
+const STAGES = { p2: ['#sv-draw', '#sv-ghost', '#sv-ruler', '#sv-l2', '#sv-tx'], p3: ['#sv-key', '#sv-obj', '#sv-wall', '#sv-l3'] };
 let paperOpen = null;
 function buildGear() {
   const chev = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>';
@@ -968,11 +1124,13 @@ function applyTones() { for (const v of ['p2', 'p3']) for (const id of STAGES[v]
 buildGear(); updateGear(); applyTones();
 
 // ---------- options and resets ----------
-function renderAll() { renderKey(); renderDraw(); renderGhost(); renderObj(); renderWall(); renderRuler(); renderLabels(); renderCard(); }
+function renderAll() { renderKey(); renderDraw(); renderGhost(); renderObj(); renderWall(); renderRuler(); renderLabels(); renderCard(); renderTx(); }
 function setOpt(key, v) {
   S[key] = v;
   document.querySelectorAll(`.seg[data-key="${key}"] button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
   if (key === 'style') document.body.className = document.body.className.replace(/gz-\w+/, 'gz-' + v);
+  if (key === 'ink') document.body.className = document.body.className.replace(/ink-\w+/, 'ink-' + v);
+  if (key === 'ghostColor') document.body.className = document.body.className.replace(/ghost-\w+/, 'ghost-' + v);
   if (key === 'subject') { CS.menu = false; CS.renaming = false; CS.err = ''; }
   renderAll();
 }
@@ -982,7 +1140,7 @@ document.querySelectorAll('.seg').forEach((seg) => {
 });
 document.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('click', () => {
   const k = b.dataset.reset;
-  if (k === 'draw') DR = DRAW0(); if (k === 'ghost') GH = GHOST0(); if (k === 'obj') OB = OBJ0(); if (k === 'wall') WL = WALL0(); if (k === 'ruler') RU = RULER0();
+  if (k === 'draw') DR = DRAW0(); if (k === 'ghost') GH = GHOST0(); if (k === 'obj') OB = OBJ0(); if (k === 'wall') WL = WALL0(); if (k === 'ruler') RU = RULER0(); if (k === 'tx') TX = TX0();
   renderAll();
 }));
 renderAll();

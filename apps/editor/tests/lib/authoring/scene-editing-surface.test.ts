@@ -2142,11 +2142,31 @@ describe('Scene adapter registration', () => {
 		expect(facade.ghosts()).toHaveLength(1);
 		const yaw = facade.ghosts()[0]!.yaw;
 		expect(Math.abs(yaw)).toBeGreaterThan(0);
-		if (reading === 'plan') expect(facade.candidatePreviews()).toHaveLength(1);
+		// Plan hides the Canvas ghost, so the proposal is the dashed footprint
+		// there; 3D draws the ghost body's dashed edges and no second outline.
+		const outline = facade.candidatePreviews().filter((entry) => entry.id === 'scene-mark-outline');
+		expect(outline).toHaveLength(reading === 'plan' ? 1 : 0);
+		if (reading === 'plan') expect(outline[0]).toMatchObject({ role: 'subject' });
 		facade.pointerIntent({ phase: 'up', css: target, evaluationId });
 		await eventually(() => facade.snapshot().domain.scene.entities[0]!.rotation[1] !== 0);
 		expect(Number.isFinite(facade.snapshot().domain.scene.entities[0]!.rotation[1])).toBe(true);
 		expect(facade.snapshot().domain.scene.entities[0]!.rotation[1]).toBeCloseTo(yaw, 9);
+	});
+
+	// Review pass 3: the ring is not drawn, so only its bent arrow takes the press.
+	it('hits the turn control at its arrow and not along the undrawn ring', async () => {
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade } = await withSceneSurface(undefined, null, project, RECT, 'plan');
+		try {
+			const turn = markOf(facade, 'scene-object-turn');
+			expect(turn.ringGlyph).not.toBeNull();
+			expect(facade.hitMark({ css: turn.ringGlyph!.at, coarse: false })?.id).toBe('scene-object-turn');
+			const glyph = turn.ringGlyph!.at;
+			const far = turn.ring!.reduce((best, point) =>
+				Math.hypot(point[0] - glyph[0], point[1] - glyph[1]) > Math.hypot(best[0] - glyph[0], best[1] - glyph[1]) ? point : best
+			);
+			expect(facade.hitMark({ css: far, coarse: false })?.id).not.toBe('scene-object-turn');
+		} finally { facade.dispose(); }
 	});
 
 	it.each(['move', 'turn'] as const)('keeps the sized body in the adapter %s ghost', async (action) => {

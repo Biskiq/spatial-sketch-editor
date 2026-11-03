@@ -16,6 +16,7 @@
  * | Wall length (fixed endpoint) | `layout-wall-length` | `planExactWallLength` |
  * | Wall angle (fixed endpoint) | `layout-wall-angle` | `planExactWallAngle` |
  * | Rigid Wall translation | `layout-wall-move` | `planRigidWallMove` |
+ * | Rigid Room-group translation | `layout-room-move` | `planWallFirstRoomMove` |
  * | Opening offset/width/height/sill | `layout-opening-measure` | `planUpdateWallFirstOpening` |
  * | Wall/Opening/Room name | `layout-entity-name` | `planWallMetadataUpdate` / `planOpeningMetadataUpdate` / `planRoomMetadataUpdate` |
  * | Place → Layout plinth | `layout-plinth-place` | `planCommitLayoutObjectPresetWithId` |
@@ -52,6 +53,7 @@ import {
 	planExactWallThickness,
 	planOpeningMetadataUpdate,
 	planRigidWallMove,
+	planWallFirstRoomMove,
 	planUpdateWallFirstOpening,
 	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
@@ -94,6 +96,12 @@ export const LAYOUT_WALL_LENGTH_KIND = 'layout-wall-length';
 export const LAYOUT_WALL_ANGLE_KIND = 'layout-wall-angle';
 /** T1.P01.S05 — rigid straight-Wall translation: both endpoints move by one delta. */
 export const LAYOUT_WALL_MOVE_KIND = 'layout-wall-move';
+/**
+ * Review pass 3 — a Room moves rigidly in X/Z. The retained planner moves the
+ * Room's connected group (Rooms sharing a Wall travel together) and refuses
+ * with the canonical gates' words; Scene objects stay where they are.
+ */
+export const LAYOUT_ROOM_MOVE_KIND = 'layout-room-move';
 /** R217.S15 — one shared Junction moves freely in X/Z; every incident Wall follows. */
 export const LAYOUT_JUNCTION_MOVE_KIND = 'layout-junction-move';
 
@@ -122,6 +130,7 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_LENGTH_KIND]: ['wallId', 'length', 'fixed'],
 	[LAYOUT_WALL_ANGLE_KIND]: ['wallId', 'angleRadians', 'fixed'],
 	[LAYOUT_WALL_MOVE_KIND]: ['wallId', 'deltaX', 'deltaZ'],
+	[LAYOUT_ROOM_MOVE_KIND]: ['roomId', 'deltaX', 'deltaZ'],
 	[LAYOUT_JUNCTION_MOVE_KIND]: ['wallId', 'junctionId', 'x', 'z'],
 	[LAYOUT_OPENING_MEASURE_KIND]: ['openingId', 'field', 'value'],
 	[LAYOUT_ENTITY_NAME_KIND]: ['subjectKind', 'subjectId', 'name'],
@@ -475,6 +484,23 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
+/** Rigid Room-group translation: one delta for the Room and every Room joined to it. */
+function roomMovePlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_ROOM_MOVE_KIND, (request) => {
+		const payload = readPayload(LAYOUT_ROOM_MOVE_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { roomId, deltaX, deltaZ } = payload.value;
+		if (!opaqueId(roomId) || !finiteNumber(deltaX) || !finiteNumber(deltaZ)) {
+			return rejected('invalid-value', 'A Room move needs one room id and finite X and Z deltas in meters.');
+		}
+		const addressed = addressedSubject(request, 'room', roomId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planWallFirstRoomMove(request.snapshot.domain.source.units.layout.data, roomId, [deltaX, deltaZ]);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(request, 'layout-room-move', { kind: 'room', id: roomId }, plan.document, ['position']);
+	});
+}
+
 /**
  * R217.S15 — move one shared Junction freely. The selected Wall supplies the
  * F.1 target and the payload names the Junction that must be one of its ends, so
@@ -703,6 +729,7 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		wallLengthPlanner(),
 		wallAnglePlanner(),
 		wallMovePlanner(),
+		roomMovePlanner(),
 		junctionMovePlanner(),
 		openingMeasurePlanner(),
 		entityNamePlanner(),

@@ -155,6 +155,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 			'layout-junction-move',
 			'layout-opening-measure',
 			'layout-plinth-place',
+			'layout-room-move',
 			'layout-wall-angle',
 			'layout-wall-height',
 			'layout-wall-length',
@@ -672,4 +673,93 @@ describe('Layout scalar Stage grips',()=>{
   const accepted=stageEnvelope(facade.snapshot()).units.layout.data.openings.find(o=>o.id===openingId)!;
   expect(accepted).toMatchObject({...original,height:1.4});facade.dispose();
  });
+});
+
+/** A complete selection for one Room of the mounted source. */
+function selectRoom(facade: StageFacade, roomId: string): void {
+	const snapshot = facade.snapshot();
+	const reference = {
+		version: 1 as const,
+		domain: 'layout' as const,
+		revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.layout },
+		subject: { kind: 'room' as const, id: roomId },
+		instancePath: [],
+		location: { kind: 'layout-location' as const, levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	facade.setSelection({ ordered: [{ reference }], primary: reference });
+}
+
+// Review pass 3: a selected Room moves by the cross under its label, carrying
+// its connected Walls; the objects it holds stay put.
+describe('Layout Room move', () => {
+	const points = (facade: StageFacade) =>
+		stageEnvelope(facade.snapshot()).units.layout.data.junctions.map((junction) => [...junction.point]);
+
+	it('publishes the cross only for a selected Room', async () => {
+		const { facade, wallId } = await mount();
+		const room = stageEnvelope(facade.snapshot()).units.layout.data.rooms[0]!;
+		expect(facade.marks().some((mark) => mark.id === 'layout-room-move-mark')).toBe(false);
+		selectWall(facade, wallId);
+		expect(facade.marks().some((mark) => mark.id === 'layout-room-move-mark')).toBe(false);
+		selectRoom(facade, room.id);
+		expect(facade.marks().find((mark) => mark.id === 'layout-room-move-mark')).toMatchObject({
+			kind: 'point',
+			planner: 'layout-room-move'
+		});
+		facade.dispose();
+	});
+
+	it('drags the Room as a dashed ghost and commits one translated history entry', async () => {
+		const { facade, host } = await mount();
+		const room = stageEnvelope(facade.snapshot()).units.layout.data.rooms[0]!;
+		selectRoom(facade, room.id);
+		const before = facade.snapshot().canonicalJson;
+		const original = points(facade);
+		const mark = facade.marks().find((entry) => entry.id === 'layout-room-move-mark')!;
+		const evaluationId = facade.evaluationId()!;
+		const to: [number, number] = [mark.anchor[0] + 80, mark.anchor[1] + 40];
+		expect(facade.pointerIntent({ phase: 'down', handleId: mark.id, css: mark.anchor, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		const preview = facade.candidatePreviews().find((entry) => entry.id === 'layout-room-move-candidate');
+		expect(preview).toMatchObject({ role: 'subject' });
+		expect(preview!.segments.length).toBeGreaterThan(0);
+		expect(facade.snapshot().canonicalJson).toBe(before);
+
+		facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await expect.poll(() => host.history().position).toBe(1);
+		const moved = points(facade);
+		const delta = [moved[0]![0]! - original[0]![0]!, moved[0]![1]! - original[0]![1]!];
+		expect(Math.hypot(delta[0]!, delta[1]!)).toBeGreaterThan(0);
+		moved.forEach((point, index) => {
+			expect(point[0]! - original[index]![0]!).toBeCloseTo(delta[0]!, 9);
+			expect(point[1]! - original[index]![1]!).toBeCloseTo(delta[1]!, 9);
+		});
+		expect(host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect(facade.session.gesture()).toBeNull();
+		expect((await host.undo()).kind).toBe('installed');
+		expect(facade.snapshot().canonicalJson).toBe(before);
+		facade.dispose();
+	});
+
+	it.each(['cancel', 'click'] as const)('leaves source and history unchanged after %s', async (end) => {
+		const { facade, host } = await mount();
+		selectRoom(facade, stageEnvelope(facade.snapshot()).units.layout.data.rooms[0]!.id);
+		const before = facade.snapshot().canonicalJson;
+		const mark = facade.marks().find((entry) => entry.id === 'layout-room-move-mark')!;
+		const evaluationId = facade.evaluationId()!;
+		facade.pointerIntent({ phase: 'down', handleId: mark.id, css: mark.anchor, evaluationId });
+		if (end === 'cancel') {
+			facade.pointerIntent({ phase: 'move', css: [mark.anchor[0] + 80, mark.anchor[1]], evaluationId });
+			facade.gestureKeyIntent({ kind: 'cancel' });
+		} else {
+			facade.pointerIntent({ phase: 'up', css: mark.anchor, evaluationId });
+		}
+		expect(facade.candidatePreviews().some((entry) => entry.id === 'layout-room-move-candidate')).toBe(false);
+		expect(facade.snapshot().canonicalJson).toBe(before);
+		expect(host.history()).toMatchObject({ depth: 1, position: 0 });
+		expect(facade.session.gesture()).toBeNull();
+		facade.dispose();
+	});
 });

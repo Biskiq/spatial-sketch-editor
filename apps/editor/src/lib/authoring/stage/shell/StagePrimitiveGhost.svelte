@@ -32,6 +32,6 @@
 <T.Group {position} rotation={[0, ghost.yaw, 0]}>
 	<!-- A proposed pose must remain legible where it overlaps the accepted body. -->
 	<T.LineSegments geometry={geometry.edges} renderOrder={3} raycast={ignoreRaycast} oncreate={line => { line.computeLineDistances(); }}>
-		<T.LineDashedMaterial color={0x1b201c} dashSize={metersPerCssPixel * 1.5} gapSize={metersPerCssPixel * 3} depthTest={true} depthWrite={false} toneMapped={false} />
+		<T.LineDashedMaterial color={0x2a62d6} dashSize={metersPerCssPixel * 1.5} gapSize={metersPerCssPixel * 3} depthTest={true} depthWrite={false} toneMapped={false} />
 	</T.LineSegments>
 </T.Group>
