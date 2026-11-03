@@ -2,8 +2,8 @@
 /**
  * The Experience lens controller (R217.S24).
  *
- * ExperienceSurface.svelte kept its commands, derived reading, message, busy flag and
- * drafts inline. They now live in createExperienceController, which must keep three
+ * The controller (R217.S24) holds the commands, derived reading, message, busy flag and
+ * drafts that the lens owned before the shared homes (R217.S25). It must keep three
  * properties: each command is the intent commands.ts builds and goes through the one
  * acceptance port; busy and message report what that port returned; and the module
  * runs with no DOM at all.
@@ -23,6 +23,7 @@ import {
 	capturedViewPose,
 	createExperienceIntent,
 	guideOrderIntent,
+	presentationUpdateIntent,
 	stopUpdateIntent
 } from '$lib/authoring/experience/commands';
 import { travelGapMessages } from '$lib/authoring/experience/travel-gap';
@@ -366,5 +367,42 @@ describe('the controller module has no DOM at runtime', () => {
 		} finally {
 			vi.unstubAllGlobals();
 		}
+	});
+});
+
+describe('the Card rename of a Presentation (R217.S25)', () => {
+	it('submits the label as the presentation-update intent, and reports acceptance to the Card', async () => {
+		const envelope = await experienceEnvelope();
+		const { services, submitted } = servicesFor();
+		const mounted = mountExperienceController(() => services, () => envelope);
+		dispose = mounted.dispose;
+
+		const outcome = await mounted.controller.renamePresentation('presentation-1', 'Renamed hall');
+
+		const intent = submittedIntent(submitted);
+		expect(intent).toEqual(
+			presentationUpdateIntent({
+				envelope,
+				revision: REVISION,
+				ids: { operation: intent.operationId },
+				experienceId: envelope.units.experience.data.experiences[0]!.id,
+				presentationId: 'presentation-1',
+				label: 'Renamed hall'
+			})
+		);
+		expect(outcome).toEqual({ kind: 'accepted' });
+	});
+
+	it('reports a refused rename with the refusal, and leaves the Presentation focus as it was', async () => {
+		const envelope = await experienceEnvelope();
+		const { services } = servicesFor(async () => ({ kind: 'refused', code: 'stale', message: 'The source changed.' }) as unknown as Outcome);
+		const mounted = mountExperienceController(() => services, () => envelope);
+		dispose = mounted.dispose;
+		experienceFocus.selectPresentation('presentation-2');
+
+		const outcome = await mounted.controller.renamePresentation('presentation-1', 'Renamed hall');
+
+		expect(outcome).toEqual({ kind: 'refused', message: 'stale: The source changed.' });
+		expect(experienceFocus.presentationId).toBe('presentation-2');
 	});
 });

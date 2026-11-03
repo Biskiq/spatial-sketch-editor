@@ -1,8 +1,9 @@
 /**
  * The Experience lens controller (R217.S24).
  *
- * ExperienceSurface.svelte renders this controller and keeps only its markup and
- * styles. The controller holds what the surface held before, moved without a change
+ * The Experience homes (R217.S25) read this controller: the shared Index, the Card's
+ * writers and the lower-edge Guide and dock. It holds what the retired surface held,
+ * moved without a change
  * of behaviour: the reactive reading of the accepted source the lens shows, the
  * Experience commands (each one an intent built by commands.ts and submitted through
  * the host's one F.4 acceptance port), the surface's message and busy flag, and its
@@ -86,6 +87,11 @@ export type ExperienceController = {
 	createFirstGuide(): Promise<void>;
 	rebindToCapturedView(): Promise<void>;
 	savePresentation(): Promise<void>;
+	/** The Card's inline rename of one Presentation's label. */
+	renamePresentation(
+		presentationId: string,
+		label: string
+	): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
 	setDefaultView(presentationId: string, viewId: string): Promise<void>;
 	insertStop(): Promise<void>;
 	moveStop(stopId: string, direction: -1 | 1): Promise<void>;
@@ -391,6 +397,28 @@ export function createExperienceController(
 		);
 	}
 
+	/**
+	 * The Card's inline rename of a Presentation: one label edit through the same
+	 * acceptance port the Save button uses, so the rename is one accepted result.
+	 */
+	async function renamePresentation(
+		presentationId: string,
+		label: string
+	): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }> {
+		if (current === null) return { kind: 'refused', message: 'There is no Experience to rename a Presentation in.' };
+		const accepted = await run(() =>
+			presentationUpdateIntent({
+				envelope: snapshot,
+				revision: revision(),
+				ids: { operation: newId() },
+				experienceId: current.id,
+				presentationId,
+				label
+			})
+		);
+		return accepted ? { kind: 'accepted' } : { kind: 'refused', message };
+	}
+
 	async function setDefaultView(presentationId: string, viewId: string): Promise<void> {
 		if (current === null) return;
 		await run(() =>
@@ -534,6 +562,7 @@ export function createExperienceController(
 		createFirstGuide,
 		rebindToCapturedView,
 		savePresentation,
+		renamePresentation,
 		setDefaultView,
 		insertStop,
 		moveStop,
