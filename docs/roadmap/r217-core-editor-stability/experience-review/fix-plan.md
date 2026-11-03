@@ -10,7 +10,7 @@ Each row shows what production does now, the recommendation (★), the owner's p
 alternative. This plan builds the ✓ option where the owner picked one and ★ elsewhere.
 
 **Design first.** No product code changes until the owner settles the sheet's redesigns, including the
-new start page. Rounds R1–R4 start only after that.
+new start page. Rounds R1–R5 start only after that.
 
 ## Owner picks (2026-11-03)
 
@@ -61,6 +61,7 @@ Reproduced at `83a83e46` with the `x-paths` fixture admitted through *Open sourc
 | D10 | The start page (`/`) is a dark purple card from no part of the shell, and opening a project shows a black "Opening Spatial…" page | §9 |
 | D11 | The Preview start is a grey card over a view from outside the building | §11 |
 | D12 | The Preview scene is a black void with flat light, and the tour controls are plain | §11 |
+| D13 | The World has no environment: the Stage is always Paper with fixed lights, and nothing sets a sky, horizon or light for Preview and visitors | §12 |
 
 ## Decisions this pass changes
 
@@ -79,7 +80,7 @@ Reproduced at `83a83e46` with the `x-paths` fixture admitted through *Open sourc
 
 ## Rounds
 
-Each round is one PR from the latest `main`. Order: R1 → R2 → R3 → R4. R1 can ship alone.
+Each round is one PR from the latest `main`. Order: R1 → R2 → R3 → R4 → R5. R1 can ship alone.
 
 ### R1: blockers
 
@@ -151,8 +152,8 @@ D10, D11, D12 (sheet §9 and §11).
   Paper show at once in shell colours with the project name; the Stage fades in.
 - Preview welcome over the first Stop's opening View, blurred: name, welcome text, gold guided-tour card,
   *Explore freely* card. A gold "Preview" tab, Exit pill top right.
-- Visitor scene: daylight sky and ground outside openings, hemisphere and sun light with soft shadows,
-  never a black void. Tour bar with the Stop title, progress and Prev · Pause · Next stop · Finish ·
+- Visitor scene: the Stage's Paper and lights without the grid, never a black void. R5 replaces this
+  with the World's environment. Tour bar with the Stop title, progress and Prev · Pause · Next stop · Finish ·
   Explore freely (Prev cuts to the previous Stop, no travel back; disabled at Stop 1); a Places drawer;
   the end card.
 - These changes stay inside the visitor chunk; no editor module reaches it
@@ -160,13 +161,37 @@ D10, D11, D12 (sheet §9 and §11).
 
 **Done when:** Preview looks like Conservatory's, and leaving it is instant.
 
+### R5: World environment
+
+D13 (sheet §12). A new scope from the owner, sized as one bounded round.
+
+- Four fixed presets: **Paper** (the default, today's look), Daylight, Golden hour and Dusk. Each sets
+  the sky gradient, ground colour and horizon haze, hemisphere fill, one sun (direction, colour, soft
+  shadow) and exposure. No custom values.
+- One runtime-safe preset table and one environment component, used by the Stage, snapshots, Preview
+  and the published visit. It is World presentation, so the visitor chunk may import it; no editor
+  module comes with it.
+- Scene saves `environment: { preset }`. The Scene format number goes up, older files are refused, and
+  fixtures are regenerated. Layout is unchanged, so rooms and floors stay editable on their own.
+- The picker sits in the World Inspector when nothing is selected. A pick is one change with one Undo.
+  The Stage's ⚙ gets "Plain Paper while editing", a Stage preference that isn't saved.
+- The sun is the only new shadow caster. It joins the existing on-demand shadow invalidation, and its
+  shadow camera fits the Layout bounds. The sky is one dome and the ground one fading disc. Authored lights
+  add on top.
+- Later, not in R5: custom colours, sun position or time of day, HDRI, weather, and changing the
+  environment per Stop.
+
+**Done when:** a new World still looks like Paper; picking Daylight changes the Stage, snapshots and
+Preview together with one Undo; frame time on `x-dense` stays where it was with the sun on.
+
 ## Limits and checks
 
 - One Camera authority: poses, routes and timing come from `camera-core`. The only addition is the
   `turn` and `step` intents. Path creation uses the existing `camera-connection-create`.
-- No persisted-format change is expected. If a round finds it needs one, it stops and asks.
+- R5 is the only persisted-format change: a Scene format bump with strict refusal, no migration. If
+  another round finds it needs one, it stops and asks.
 - The writer runs `npm run check`, `npm run build` and the editor test lanes in
   [`apps/editor/tests/README.md`](../../../../apps/editor/tests/README.md). The writer adds tests
   for the B1 loop, Travel plus its connection as one Undo, route hit priority, lens matching, and the
-  camera-core `turn`/`step` intents, and runs a short browser smoke check. Acceptance is the owner's,
+  camera-core `turn`/`step` intents, and the R5 preset round-trip and refusal, and runs a short browser smoke check. Acceptance is the owner's,
   in the PR.

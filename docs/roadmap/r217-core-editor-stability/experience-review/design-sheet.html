@@ -260,7 +260,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 .pv{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/9;background:#000;color:#fff}
 .pv>svg{position:absolute;inset:0;width:100%;height:100%;transition:filter .3s}
 .pv.blur>svg{filter:blur(3px) brightness(.82)}
-.pv .brand{position:absolute;left:16px;top:12px;display:flex;align-items:center;gap:8px;font:500 17px var(--serif);color:var(--ivory);text-shadow:0 1px 6px rgba(0,0,0,.4)}
+.pv .brand{position:absolute;left:12px;top:10px;display:flex;align-items:center;gap:8px;font:500 16px var(--serif);color:var(--ivory);background:var(--glass);border-radius:999px;padding:4px 13px 4px 9px;backdrop-filter:blur(8px)}
 .pv .tab{position:absolute;left:50%;top:0;transform:translateX(-50%);background:var(--gold);color:var(--forest);font-size:11.5px;font-weight:600;padding:3px 12px;border-radius:0 0 9px 9px}
 .pv .exit{position:absolute;right:12px;top:10px;background:var(--glass);border:0;color:#fff;border-radius:999px;padding:6px 12px;font-size:12.5px;backdrop-filter:blur(8px)}
 .pv .exit kbd{font:10.5px var(--mono);background:rgba(255,255,255,.14);border-radius:4px;padding:0 4px;margin-left:6px}
@@ -342,14 +342,36 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 .idx .r .thumb{height:28px;border-radius:5px;overflow:hidden;border:0}
 .idx .r .ph{height:28px;border-radius:5px;background:var(--mat);display:grid;place-items:center;color:#7f9a8e;font-size:11px}
 .idx .r b{font-weight:500;font-size:13px;display:block} .idx .r small{font-size:11px;color:var(--ink3)}
+.envwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+@media (max-width:820px){.envwrap{grid-template-columns:1fr}}
+.envwrap .stage{border-radius:12px;overflow:hidden;border:1px solid var(--hair);aspect-ratio:16/10;background:var(--paper)}
+.envwrap .stage svg{display:block;width:100%;height:100%}
+.envpick{background:#fff;border:1px solid var(--hair2);border-radius:16px;box-shadow:var(--shadow);padding:12px}
+.envpick header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+.envpick header b{font-size:13.5px} .envpick header span{font-size:11.5px;color:var(--ink3)}
+.envpick .sub{font-size:11.5px;color:var(--ink3);margin:0 0 9px}
+.envgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.envgrid button{border:0;background:none;padding:0;text-align:left;font:inherit;color:var(--ink2);cursor:pointer}
+.envgrid .sw{display:block;aspect-ratio:16/10;border-radius:9px;overflow:hidden;border:1px solid var(--hair)}
+.envgrid .sw svg{display:block;width:100%;height:100%}
+.envgrid button[aria-pressed=true] .sw{outline:2px solid var(--gold);outline-offset:1px}
+.envgrid button[aria-pressed=true] b{color:var(--ink)}
+.envgrid b{display:block;font-size:12px;font-weight:500;margin-top:4px} .envgrid small{font-size:10.5px;color:var(--ink3)}
+.envpick .lab{font-size:11.5px;color:var(--ink3);margin:0 2px 5px}
+.envpick .foot{font-size:11.5px;color:var(--ink3);margin:8px 2px 0;border-top:1px solid var(--hair);padding-top:7px}
+.scope{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px;margin-top:12px}
+.scope div{background:#fff;border:1px solid var(--hair);border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--ink2)}
+.scope h4{margin:0 0 4px;font:600 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.scope ul{margin:0;padding-left:16px} .scope li{margin:2px 0}
+.scope .verdict{grid-column:1/-1;background:var(--index);border-color:transparent}
 </style>
 </head>
 <body>
 <header class="top"><h1>Experience review 1 — interaction sheet</h1><span>R217.S26–S30 owner review · 2026-11-03 · ✓ your pick · ★ recommended · struck = current production</span></header>
 <nav class="toc">
-  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a>
+  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a><a href="#s12">12 Environment</a>
 </nav>
-<p class="intro">Each row shows what production does now (red line), the proposal (★) and, where useful, one alternative. Try the live parts: drag and scroll in <b>Look through</b>, click Views in <b>2</b>, drag path points and the <b>+</b> handles in <b>4</b>, switch Cut/Travel in <b>5</b>, tick the boxes in <b>7</b>, and step through Preview in <b>11</b>. Pick a different option on any row to override ★; the fix plan implements ★ wherever you don't.</p>
+<p class="intro">Each row shows what production does now (red line), the proposal (★) and, where useful, one alternative. Try the live parts: drag and scroll in <b>Look through</b>, click Views in <b>2</b>, drag path points and the <b>+</b> handles in <b>4</b>, switch Cut/Travel in <b>5</b>, tick the boxes in <b>7</b>, step through Preview in <b>11</b>, and try the environment presets in <b>12</b> (a new scope proposal). Pick a different option on any row to override ★; the fix plan implements ★ wherever you don't.</p>
 <p class="intro"><b>Your picks (2026-11-03):</b> 1 full Stage + ticks · 2 a real camera body with the frustum and short 2D wedge · 3 ribbon + chevrons · 4, 5, 6 as recommended · 7 light glass, shared by the World and Experience Stage toolbars · Preview tour gets <i>Prev</i> (a Cut back, no travel) · the opening page is redesigned (9).</p>
 <main>
 
@@ -613,7 +635,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
     <div class="idx"><div class="r"><div class="ph">◉</div><span><b style="text-decoration:line-through;text-decoration-color:rgba(126,39,24,.5)">Pleyel piano</b><small>snapshot not rendered</small></span></div></div>
     <div class="idx"><div class="r"><div class="thumb" data-thumb="stage:1.3:-80"></div><span><b>Pleyel piano</b><small>3 Views · Stops 1, 4</small></span></div></div>
   </div>
-  <ul class="rules"><li>★ Snapshots render the World as the Stage shows it (Paper tone, grid on the ground, same lights) with every helper hidden. Index rows, Card tiles and Transition Cards all use them.</li></ul>
+  <ul class="rules"><li>★ Snapshots render the World as the Stage shows it (Paper tone, grid on the ground, same lights) with every helper hidden. Index rows, Card tiles and Transition Cards all use them.</li><li>With an environment preset (§12), snapshots use that sky and light too. Editing on Paper changes only the Stage, not the snapshots.</li></ul>
 </section>
 
 <!-- 10 · Preview -->
@@ -621,13 +643,13 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   <h2><span class="n">11</span>Preview: a visitor's start, a lit scene, a quick way back</h2>
   <p class="now">Now: a black void with flat light; the welcome is a plain grey card ("VISITOR PREVIEW · Experience 1 · 23") over a view from outside the building; a blue-outlined pill; "Take the guided tour" starts at the Stop selected in the editor; Exit stalls ~17 s and leaves the editor frozen.</p>
   <div class="opts">
-    <span>Scene</span><div class="seg" data-key="env"><button data-v="day" aria-pressed="true"><span class="star">★</span> Daylight gallery</button><button data-v="eve" aria-pressed="false">Evening salon</button><button data-v="void" class="old" aria-pressed="false">Black void</button></div>
+    <span>Environment</span><div class="seg" data-key="env"><button data-v="paper" aria-pressed="false">Paper (default)</button><button data-v="day" aria-pressed="true"><span class="star">★</span> Daylight</button><button data-v="gold" aria-pressed="false">Golden hour</button><button data-v="eve" aria-pressed="false">Dusk</button><button data-v="void" class="old" aria-pressed="false">Black void</button></div>
     <span>Welcome</span><div class="seg" data-key="wel"><button data-v="center" aria-pressed="true"><span class="star">★</span> Centred</button><button data-v="corner" aria-pressed="false">Lower left</button></div>
     <span>Step</span><div class="seg" data-key="pst"><button data-v="welcome" aria-pressed="true">Welcome</button><button data-v="guided" aria-pressed="false">Guided tour</button><button data-v="free" aria-pressed="false">Exploring</button><button data-v="end" aria-pressed="false">End</button></div>
   </div>
   <div class="pv ui" id="pv">
     <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" id="pv-svg"></svg>
-    <div data-when="env=day|eve">
+    <div data-when="env=paper|day|gold|eve">
       <div class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f3f0e4" stroke-width="1.8"><path d="M5 21V10a7 7 0 0 1 14 0v11"/><path d="M9 21v-8a3 3 0 0 1 6 0v8"/></svg>Salon evening</div>
       <div class="tab">Preview — what a visitor sees</div>
       <button class="exit">✕ Exit preview<kbd>Esc</kbd></button>
@@ -640,8 +662,54 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   </div>
   <ul class="rules">
     <li><b>Start:</b> the welcome sits over the first Stop's opening View (not an outside overview), softly blurred, with the Experience name, welcome text and two choice cards — gold for the guided tour. <i>Take the guided tour</i> always starts at Stop 1; "Preview from this Stop" stays a Guide Card action.</li>
-    <li><b>Scene:</b> ★ daylight — a soft sky and ground outside openings, hemisphere + sun light with soft shadows, warm wall tones. Nothing renders against black. The visitor never sees grid or editor marks.</li>
+    <li><b>Scene:</b> Preview renders the World's <b>environment</b> (§12): Paper by default, or a preset such as ★ Daylight — sky and ground outside openings, hemisphere + sun with soft shadows. Nothing renders against black. The visitor never sees grid or editor marks.</li>
     <li><b>Chrome:</b> a small gold tab says it's a Preview; Exit is a dark-glass pill top right. Tour controls sit in a bottom gradient: Stop title (serif), progress, Prev · Pause · Next stop · Finish · Explore freely. <b>Prev</b> cuts straight to the previous Stop's first View — no travel back; Stop 1 disables it. <b>Exit returns in under 200 ms</b> to the exact editor state, with snapshots intact.</li>
+  </ul>
+</section>
+
+<!-- 12 · Environment -->
+<section id="s12" class="wide">
+  <h2><span class="n">12</span>Environment: a sky, a horizon and light, Paper by default</h2>
+  <p class="now">Now: the Stage always shows Paper with fixed neutral lights. Snapshots clear to the mat ink. Preview hard-codes a near-black background, fog and one dim cool light. The World has no setting for any of it.</p>
+  <div class="opts">
+    <span>Preset</span><div class="seg" data-key="ep"><button data-v="paper" aria-pressed="true"><span class="star">★</span> Paper (default)</button><button data-v="day" aria-pressed="false">Daylight</button><button data-v="gold" aria-pressed="false">Golden hour</button><button data-v="dusk" aria-pressed="false">Dusk</button></div>
+    <span>Seen in</span><div class="seg" data-key="es"><button data-v="stage" aria-pressed="true">Stage (3D)</button><button data-v="pv" aria-pressed="false">Preview</button></div>
+  </div>
+  <div class="envwrap ui">
+    <div class="stage" id="env-stage"></div>
+    <div class="envpick">
+      <header><b>Environment</b><span>World · saved</span></header>
+      <p class="sub">Sky, horizon and light. Rooms, floors and your own lights stay yours.</p>
+      <div class="envgrid" id="env-grid"></div>
+      <p class="lab">While editing, the Stage shows</p>
+      <div class="cseg" id="env-edit"><button aria-pressed="true" data-v="env">The environment</button><button aria-pressed="false" data-v="paper">Plain Paper</button></div>
+      <div class="foot" id="env-foot">Picking a preset is one change with one Undo. Preview, snapshots and the published visit always use it.</div>
+    </div>
+  </div>
+  <div class="scope">
+    <div class="verdict"><b>Scope: a decent, bounded round (R5), about the size of one Card redesign.</b> The look is a fixed table of presets. The work is one shared environment component, one saved Scene field and one picker. Nothing in Layout changes, so rooms and floors stay editable on their own.</div>
+    <div><h4>In R5</h4><ul>
+      <li>Four presets: <b>Paper</b> (default, today's look), <b>Daylight</b>, <b>Golden hour</b>, <b>Dusk</b>. Each fixes a sky gradient, ground colour and horizon haze, hemisphere fill, one sun (direction, colour, soft shadow) and exposure.</li>
+      <li>One runtime-safe preset table and one environment component, shared by the Stage, snapshots, Preview and the published visit. No editor module reaches the visitor chunk.</li>
+      <li>Scene saves <code>environment: { preset }</code> as World presentation. The Scene format number goes up, older files are refused, and fixtures are regenerated.</li>
+      <li>The picker sits in the World Inspector when nothing is selected. "Plain Paper while editing" is a Stage preference and isn't saved.</li>
+    </ul></div>
+    <div><h4>Later, not now</h4><ul>
+      <li>Custom colours, sun position and time-of-day sliders</li>
+      <li>Image-based lighting (HDRI), clouds, weather, an animated sky</li>
+      <li>Changing the environment per Stop or during a tour (Experience)</li>
+      <li>Fog and render quality as their own controls</li>
+    </ul></div>
+    <div><h4>Cost and risk</h4><ul>
+      <li>The sky is one gradient dome and the ground one disc that fades into the haze: two draw calls.</li>
+      <li>The sun is the only new shadow caster. Today only authored lights cast shadows on the Stage. The sun joins the existing on-demand shadow invalidation, so it re-renders on change, not every frame. Its shadow camera fits the Layout bounds.</li>
+      <li>Authored lights add on top. Dusk is dim on purpose, so a room's own lamps carry it.</li>
+    </ul></div>
+  </div>
+  <ul class="rules">
+    <li><b>Paper stays the default.</b> A new World looks exactly as it does now, and Preview shows the same Paper without the grid (never black).</li>
+    <li>Grid and Snap draw on top of any environment's ground while editing. Visitors and snapshots never see the grid.</li>
+    <li>Presets are stylized, not photographic: flat gradients, soft shadows, warm paper-like tones, the same art direction as the shell.</li>
   </ul>
 </section>
 
@@ -668,6 +736,8 @@ const ENV={
   eve:{sky:['#33424a','#7a6656'],ground:'#45463a',ceil:'#d3c5ab',back:'#d4c3a2',left:'#c2ae8a',right:'#cbb794',floor:['#8b5e39','#5a3a21'],plank:'rgba(30,15,5,.22)',piano:['#3a2a20','#20160f'],shade:.3,vig:.5,door:'out',lamps:true},
   void:{bg:'#000',back:'#cbc5b5',left:'#bfb9a9',right:'#c5bfaf',floor:['#d8d5cc','#d8d5cc'],piano:['#4b3a2e','#4b3a2e'],door:'black'},
   mat:{bg:'#1d3a33',back:'#cbc5b5',left:'#bfb9a9',right:'#c5bfaf',floor:['#d8d5cc','#d8d5cc'],piano:['#4b3a2e','#4b3a2e'],door:'mat'},
+  paper:{bg:'#e9ebe6',back:'#ede7d9',left:'#e0d9c8',right:'#e7e0cf',floor:['#d9d2c3','#cfc7b6'],piano:['#4d392c','#2f221a'],shade:.12,door:'stage'},
+  gold:{sky:['#e9b989','#f7e5c4'],ground:'#cdb48e',ceil:'#f3e6cf',back:'#f0dcbd',left:'#e2c9a3',right:'#ebd3ae',floor:['#c8935f','#94643c'],plank:'rgba(70,35,10,.18)',piano:['#4d392c','#2f221a'],shade:.26,door:'out'},
   stage:{bg:'#e9ebe6',grid:true,back:'#ede7d9',left:'#e0d9c8',right:'#e7e0cf',floor:['#d9d2c3','#cfc7b6'],piano:['#4d392c','#2f221a'],shade:.12,door:'stage'}
 };
 let gid=0;
@@ -692,7 +762,7 @@ function persp(key){
   if(e.plank){s+=`<g clip-path="url(#${id}c)" stroke="${e.plank}" stroke-width="1.2">`;for(let x=-800;x<=1600;x+=70)s+=`<line x1="400" y1="210" x2="${x}" y2="520"/>`;for(const y of [345,366,393,430,476])s+=`<line x1="0" y1="${y}" x2="800" y2="${y}"/>`;s+='</g>';}
   if(e.shade)s+=`<ellipse cx="405" cy="458" rx="180" ry="22" fill="#000" opacity="${e.shade}"/>`;
   s+=`<polygon points="300,368 505,368 538,410 268,410" fill="${e.piano[0]}"/><polygon points="268,410 538,410 538,446 268,446" fill="${e.piano[1]}"/><rect x="282" y="446" width="8" height="28" fill="${e.piano[1]}"/><rect x="518" y="446" width="8" height="28" fill="${e.piano[1]}"/>`;
-  if(key==='day')s+=`<polygon points="660,275 735,265 610,470 455,480" fill="#fff8e6" opacity=".2"/>`;
+  if(key==='day'||key==='gold')s+=`<polygon points="660,275 735,265 610,470 455,480" fill="#fff8e6" opacity=".2"/>`;
   if(e.lamps)s+=`<circle cx="300" cy="120" r="40" fill="#ffd38a" opacity=".18"/><circle cx="500" cy="120" r="40" fill="#ffd38a" opacity=".18"/>`;
   if(e.vig)s+=`<rect x="-200" y="-100" width="1200" height="700" fill="url(#${id}v)"/>`;
   return s;
@@ -937,6 +1007,44 @@ R.s6=()=>{$('#gs').classList.toggle('old',$('#s6').dataset.strip==='old');};
   R.s10=()=>{const env=sec.dataset.env,st=sec.dataset.pst,wel=sec.dataset.wel;const g=env==='void'?`<g transform="translate(400 225) scale(.62) translate(-400 -170)">${persp('void')}</g>`:`<g transform="translate(0 -40)">${persp(env)}</g>`;
     $('#pv-svg').innerHTML=(env==='void'?'<rect width="800" height="450" fill="#000"/>':'')+g;
     $('#pv').classList.toggle('blur',env!=='void'&&st==='welcome');const w=$('#pv-wel');w.classList.toggle('center',wel==='center');w.classList.toggle('corner',wel==='corner');};})();
+
+/* ---------- 12 · Environment ---------- */
+(function(){const sec=$('#s12');
+  /* sh = sun direction on the ground per metre of height [dx, dz] and shadow strength */
+  const EP={
+    paper:{name:'Paper',sub:'Default, as today',sky:['#e9ebe6','#e9ebe6'],haze:'#e9ebe6',ground:'#e9ebe6',sun:null,tint:null,sh:null,pv:'paper'},
+    day:{name:'Daylight',sub:'Soft sky, noon sun',sky:['#b7cfcd','#eef0e6'],haze:'#e8ebe1',ground:'#cdd3bd',sun:{x:470,y:30,r:15,c:'#fffbea'},tint:null,sh:[-.15,.85,.24],pv:'day'},
+    gold:{name:'Golden hour',sub:'Low warm sun',sky:['#e2a676','#f8e4c2'],haze:'#f4dbb2',ground:'#ccb38a',sun:{x:548,y:56,r:19,c:'#ffeab8'},tint:'#ffdcae',sh:[-1.55,.35,.24],pv:'gold'},
+    dusk:{name:'Dusk',sub:'Your lamps carry it',sky:['#25313e','#8b6e5d'],haze:'#6e5e54',ground:'#45473c',sun:{x:500,y:26,r:7,c:'#ebe6d6'},tint:'#8a8fa6',sh:null,glow:true,pv:'eve'}
+  };
+  const HZ=74;
+  function envStage(k,grid){const e=EP[k],id='es'+(gid++);let s=`<defs><linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${e.sky[0]}"/><stop offset="1" stop-color="${e.sky[1]}"/></linearGradient><linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${e.haze}"/><stop offset=".35" stop-color="${e.ground}"/><stop offset="1" stop-color="${e.ground}"/></linearGradient><linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${e.haze}"/><stop offset="1" stop-color="${e.haze}" stop-opacity="0"/></linearGradient><clipPath id="${id}c"><rect x="0" y="${HZ}" width="640" height="${430-HZ}"/></clipPath>`;
+    if(e.tint)s+=`<filter id="${id}t" x="0" y="0" width="1" height="1"><feFlood flood-color="${e.tint}" result="f"/><feBlend in="SourceGraphic" in2="f" mode="multiply"/><feComposite in2="SourceAlpha" operator="in"/></filter>`;
+    if(e.glow)s+=`<radialGradient id="${id}l"><stop offset="0" stop-color="#ffd38a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd38a" stop-opacity="0"/></radialGradient>`;
+    s+='</defs>';
+    s+=`<rect width="640" height="${HZ+1}" fill="url(#${id}s)"/>`;
+    if(e.sun)s+=`<circle cx="${e.sun.x}" cy="${e.sun.y}" r="${e.sun.r*2.2}" fill="${e.sun.c}" opacity=".25"/><circle cx="${e.sun.x}" cy="${e.sun.y}" r="${e.sun.r}" fill="${e.sun.c}"/>`;
+    const T='translate(14 46) scale(.93)';
+    s+=`<g${e.tint?` filter="url(#${id}t)"`:''}><rect y="${HZ}" width="640" height="${430-HZ}" fill="url(#${id}g)"/>`;
+    s+=`<g clip-path="url(#${id}c)"><g transform="${T}">`;
+    if(e.sh){const[dx,dz,o]=e.sh,H=2.6,c=[[0,0],[8,0],[8,5],[0,5]];s+=`<polygon points="${P(hull([...c,...c.map(([x,z])=>[x+dx*H,z+dz*H])]).map(([x,z])=>iso(x,0,z)))}" fill="#1b201c" opacity="${o}"/>`;}
+    if(grid){s+='<g stroke="rgba(27,32,28,.1)">';for(let x=-12;x<=20;x++)s+=`<line x1="${iso(x,0,-10)[0]}" y1="${iso(x,0,-10)[1]}" x2="${iso(x,0,14)[0]}" y2="${iso(x,0,14)[1]}"/>`;for(let z=-10;z<=14;z++)s+=`<line x1="${iso(-12,0,z)[0]}" y1="${iso(-12,0,z)[1]}" x2="${iso(20,0,z)[0]}" y2="${iso(20,0,z)[1]}"/>`;s+='</g>';}
+    s+=`</g><rect y="${HZ}" width="640" height="90" fill="url(#${id}h)"/></g>`;
+    s+=`<g transform="${T}">${isoBase().replace('<rect width="640" height="430" fill="#e9ebe6"/>','')}</g></g>`;
+    if(e.glow){s+=`<g transform="${T}"><polygon points="${P([iso(3.6,0,0),iso(4.4,0,0),iso(4.4,2.1,0),iso(3.6,2.1,0)])}" fill="#ffd38a" opacity=".7"/><polygon points="${P([iso(3.3,0,.05),iso(4.7,0,.05),iso(5.1,0,1.6),iso(2.9,0,1.6)])}" fill="#ffd38a" opacity=".22"/>`;
+      const[lx,ly]=iso(2.2,1.9,2.6);s+=`<circle cx="${lx}" cy="${ly}" r="70" fill="url(#${id}l)"/><circle cx="${lx}" cy="${ly}" r="5" fill="#ffe7b8"/></g>`;}
+    return s;}
+  const grid=$('#env-grid');
+  grid.innerHTML=Object.entries(EP).map(([k,e])=>`<button data-p="${k}" aria-pressed="false"><span class="sw"><svg viewBox="0 30 640 400" preserveAspectRatio="xMidYMid slice">${envStage(k,false)}</svg></span><b>${e.name}</b><small>${e.sub}</small></button>`).join('');
+  grid.addEventListener('click',ev=>{const b=ev.target.closest('button');if(b)$(`.opts .seg[data-key=ep] [data-v=${b.dataset.p}]`,sec).click();});
+  let edit='env';
+  $('#env-edit').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;edit=b.dataset.v;$$('#env-edit button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();});
+  function draw(){const k=sec.dataset.ep,where=sec.dataset.es,e=EP[k];
+    $$('button',grid).forEach(b=>b.setAttribute('aria-pressed',b.dataset.p===k));
+    const shown=where==='stage'&&edit==='paper'?'paper':k;
+    $('#env-stage').innerHTML=where==='stage'?`<svg viewBox="0 0 640 400" preserveAspectRatio="xMidYMid slice">${envStage(shown,true)}</svg>`:`<svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><g transform="translate(0 -20)">${persp(e.pv)}</g></svg>`;
+    $('#env-foot').innerHTML=where==='stage'&&edit==='paper'&&k!=='paper'?`The Stage shows Paper while you edit. Preview, snapshots and the published visit still use <b>${e.name}</b>.`:'Picking a preset is one change with one Undo. Preview, snapshots and the published visit always use it.';}
+  R.s12=draw;})();
 
 Object.values(R).forEach(f=>f());
 </script>
