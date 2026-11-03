@@ -278,22 +278,31 @@ and reveal precision and complexity progressively.
 ### Direct manipulation: rays and points
 
 Objects, walls, openings, platforms, roofs and the Slice share one manipulation
-vocabulary, defined in the [spatial-instrument grammar](./spatial-instrument-grammar.md#rays-and-points):
-a thin dashed white line says "a transformation is available here", a small open
-arrowhead says which way it drags, a small white point is an anchor, and the live value
-appears **only on hover or drag**. Gold disks, XYZ gizmos and permanent W/D/H text are
-retired. The shell requires:
+vocabulary, defined in the [spatial-instrument grammar](./spatial-instrument-grammar.md#rays-and-points).
+Each control's shape says what it does, in one friendly **sticker** glyph set (white
+filled glyph, fine ink keyline, small soft shadow; no axis colouring): a chunky arrow on a
+short dashed stem drags that way, a four-way cross moves on the support, one bent two-way
+arrow turns (no ring is drawn), a stem with hexagon knobs spans base to top, a small disc
+knob is a point you drag, and a rounded chip toggles size mode. The live value appears
+**only on hover or drag**. Gold disks, black disc knobs, XYZ gizmos and permanent W/D/H
+text are retired (World shell recovery, accepted 2026-11-02). The shell requires:
 
-- **Progressive size by default.** Width, depth and height appear when the creator clicks
-  the scale point; an always-shown alternative is retained for close-range work, and a
-  zoom-dependent rule (rays shown when the subject is large enough on screen) is a
-  permitted later refinement. Handles never stack into unreachable targets at overview
-  zoom.
+- **Progressive size by default.** One on-object **W·D·H chip** toggles the width, depth
+  and height controls; it is session intent that survives resizing, cancellation,
+  selection changes and 2D/3D switches, and reload starts it off. Dragging the chip scales
+  a model or primitive uniformly (`× 1.25`); a drawn form, which is sized per axis, uses its
+  face arrows instead. Height is the stem's top knob in 3D only: 2D has no canvas height
+  control, and Card height fields stay in both readings. Handles never stack into
+  unreachable targets at overview zoom.
 - **Support-aware change.** Resizing keeps an object's base on its support and grows
   height upward; things resting on it ride along and settle when their support goes.
-  Nothing is blocked by category, imported assets included; the live tag names the verb
-  (for example "Height 1.10 · base stays"). Which fit behaviour a given object kind has
-  is a Scene-domain and feature decision.
+  An object's bottom knob lifts it off its support with its height kept, leaving a dashed
+  footprint; moving or resizing a lifted object keeps its lift. Walls have no base control.
+  Nothing is blocked by category, imported assets included. The live tag shows one signed,
+  invocation-relative change from a zero baseline (`Δ +0.50 m`, `Δx +0.30 · Δz −0.20 m`,
+  `Δθ −13.4°`, `× 1.25`), never an absolute world angle; drawing shows the segment's
+  length. Which fit behaviour a given object kind has is a Scene-domain and feature
+  decision.
 - **Admission by domain.** A handle exists only for an operation its owning domain
   supports. The shell does not admit a wall-curve, thickness, sill or eave handle that the
   domain cannot evaluate (grammar: [affordance admission](./spatial-instrument-grammar.md#spatial-truth-and-affordance-admission)).
@@ -325,6 +334,24 @@ Within a room's contents, the Index uses only non-empty relevant groups such as 
 Located here, Overlays, Attached here**. A Wall may bound several Spaces; an Opening
 is hosted by a Wall; an object may merely be located in a Space; a Zone may overlap
 Spaces. Location, indentation, ownership and source identity remain distinct.
+
+**Landed World Index (World shell recovery, #258).** The Index shows **Project → Rooms and
+Free objects**. A row selects; a Room's chevron enters that Room's context, which shows its
+bounding Walls, hosted Openings and related objects (a shared Wall appears in both Rooms
+as a reference); the crumbs return to an ancestor; double-clicking a row's title renames
+through the subject's one name writer. One Bring into view lives in the Card, not in Index
+rows. An object is grouped under a Room only when Scene's qualified support resolves an
+unambiguous contact with that Room's floor, or the floor beneath when the object is
+lifted; anything else stays in **Free objects**, and Find still reaches every subject.
+This grouping is an organizational projection, never transform parenting, ownership or
+cascading deletion. Deferred, not landed:
+
+- **Level navigation.** The single Floor crumb is hidden by decision until real Levels and
+  their navigation exist; the Layout datum is kept internally.
+- **Durable Auto / named Room / Free membership.** The accepted control and its
+  persistence, validation, deletion and Undo semantics await a Scene organizational
+  association design; no named or Free choice is offered or stored until it lands (the
+  [Scene contract](../components/scene-content.md) keeps world-local placement).
 
 Browse exposes wider project breadth without changing selection. If the selected
 subject lies outside the browsed context, show a conditional **Selected elsewhere**
@@ -406,6 +433,13 @@ separately transient. Do not clamp silently, commit then roll back, add history 
 clear selection or obscure the writer. Corrections are deliberate actions, never
 automatic repairs. Only valid acceptance creates the logical source edit.
 
+A refused drawing keeps every already-placed segment visible; only the refused segment
+turns red dashed, and the live tag swaps its length for a short reason (`Crosses a
+wall`). There is no separate problem marker; the full sentence is the accessible
+announcement on a refused commit, and each problem has one presentation owner rather
+than a tool, overlay and toast repeating it. No identities leak into the reason. An empty
+project is an ordinary state with no empty-workspace banner.
+
 ### Shared source and repair
 
 Owner, Source and Reach appear where the proposed operation needs them. For a source
@@ -467,6 +501,14 @@ inside the tool's palette; a new permanent slot needs an owner ruling.
   chip. A future smarter Pen only improves the first reading and the chip order; it keeps
   the one-undo-step re-read, never commits an interpretation silently across domains, and
   never becomes a second tool. No Shape intent toggle exists in the Ink palette (O10).
+  **Draft ink** is one solid black line in 2D and 3D, with small start and current-end
+  marks; a Box or closed chain draws the same thin perimeter, with no thickness, area fill
+  or intermediate controls, and physical thickness appears after acceptance. The end mark's
+  shape is the snap cue: a filled dot is free, a hollow ring is on a Wall or Wall end, a
+  small square is on the grid; gold never appears while drafting. One compact length tag
+  (`13.50 m`) and no snap words. The thin draft still validates and commits the real
+  planner candidate. A closed, accepted Room shows its name and usable area (`Room 3 ·
+  24.1 m²`); an open or invalid loop gets no Room.
 - **Slice** has two modes: a horizontal cut at the Sheet height (pill "Cut at h · depth", no Section or Face) and a drawn vertical Slice, which is drawn like the Pen: a finite straight segment with a start and an end, a
   45° soft snap and a live length tag, previewing a translucent yellow plane and depth
   volume that cuts only within its extent. End points redraw the line, the line moves it,
@@ -485,7 +527,7 @@ inside the tool's palette; a new permanent slot needs an owner ruling.
   consequences are named in the toast and are one undo away.
 - **Brush** is a permanent tool: one swatch of colours and materials, a dropper, and a
   face or whole-room scope. A change to a shared source follows the Ask Rule.
-- **Measure** produces temporary heights and distances (angles when a feature needs them), not authored annotations.
+- **Measure** produces temporary heights and distances (angles when a feature needs them), not authored annotations. The Measure line, its end ticks and the passive scale bar use black ink over Paper in either reading.
 - **Library** holds objects, art, materials, lights and import with Place or Trace. It is
   an Instrument, opened from beside the dock or Find. A placed item dispatches to Layout or
   Scene ownership and seeks eligible hosts where it needs one.
@@ -567,6 +609,29 @@ actions live in one fixed-order scoped list shared by Card ⋯, the context menu
 **For …** group; usage never re-ranks it. *In Experience* appears only when something
 uses the subject. The Card has no wide editing posture and no Dimensions Instrument.
 
+**Landed World Card (World shell recovery, #258).** Models, primitives and drawn forms are
+one Scene object with one Card writer and one action set; only sizing differs by kind.
+
+- **Header:** kind with a relation line, the name, `•••` and close. Double-clicking the name
+  edits it in place (Enter commits, Escape or blur cancels, F2/Enter on the focused title,
+  touch on the same title); there is no Rename row or form. Walls, Openings, Rooms and
+  every Scene object rename through their one name writer and one history entry; a blank
+  name is refused and keeps the prior name.
+- **Primary dimensions,** labelled with units: Wall Length · Height; object Width · Depth ·
+  Height (and Elevation). The action row keeps Bring into view, its one home, and **More**.
+- **More expands the Card in place:** secondary dimensions three per row (Wall Base · Top ·
+  Thick; Thick is live, Base and Top are disabled `—` placeholders) and read-only
+  **Relations** showing only facts the adapters publish. Expansion persists per subject kind
+  for the session; Escape collapses More before it closes the Card.
+- **`•••` holds subject functions** in one compact anchored menu (no Stage click-through,
+  focus returns to its trigger). Functions not built yet (for example Face this wall,
+  Unroll the room, Section through here, Paint…, Present this in Experience) are disabled
+  with a quiet `Soon`; **Erase** is last and is the one delete home.
+- **Removed from ordinary UI:** technical identity, raw keys, absolute angle/yaw, endpoint
+  coordinates, Move/Place/Turn forms and the fixed-endpoint radios. A Card length edit keeps
+  the existing default anchor; choosing the other fixed endpoint is a deferred interaction
+  gap, not a landed control.
+
 **Precision ladder.** Precision remains invoked:
 
 1. **Direct:** drag a legible mark, with snap marks at the snap point. Valid release
@@ -575,7 +640,8 @@ uses the subject. The Card has no wide editing posture and no Dimensions Instrum
 3. **Type at the gesture:** digits turn the live tag into numeric entry. Commit once;
    Esc restores the transient value, then cancels; blur never commits.
 4. **Card:** every settled writable measure of the selection, with units, keep-anchors and
-   refusal at the field, and More for advanced fields.
+   refusal at the field, and More for advanced fields. (An explicit keep-anchor choice is
+   deferred; the landed Card uses the planner's default anchor.)
 5. **Procedure:** parameters, validation and consequences accepted on Apply, in an
    Instrument. Reserved for work that truly has steps, such as import.
 
@@ -607,7 +673,12 @@ settings belong in that cluster. Grid is one fact across 2D surfaces; on a wall 
 flat it is Wall grid, and off reveals real wall material under the
 [paper rule](#material-and-working-surfaces-44). Viewing preferences (2D appearance,
 Height Sheet side, reduced motion, motion speed) stay in the Stage's ⚙ viewing panel,
-beside the drafting words, and Find reaches the same values. A later grid or snap preference has one named seam to extend; the word
+beside the drafting words, and Find reaches the same values. The ⚙ panel uses the light
+Card-family material and styled controls in both readings. It also holds **Room labels**
+(In 2D, default on; In 3D, default off; name and area together) and a per-view **Paper**
+tone (2D plan and 3D board, each opening a swatch tray of Current, Warm cream and Deeper
+sage; a tone currently changes the ground colour only, not its grid ink). These are per-viewer browser preferences: never authored, never in the project
+document or Save. A later grid or snap preference has one named seam to extend; the word
 **Sheet** now means only the Height Sheet. The World status rail is retired.
 
 **2D | 3D continuity.** The switch requests a tilt through Camera about the current
@@ -954,18 +1025,23 @@ display-only. Paper and selection compose; selection does not replace the sheet.
 | Neutral working surfaces | White Card, pale stone Index and light Paper (`#ffffff` / `#f5f6f4` / `#e9ebe6` reference) |
 | Guide composition items | Light neutral Stop items on the forest instrument |
 | Primary technical / reference dimension ink on light surfaces | Dark neutral ink, contrast-calibrated (`#1b201c` reference) |
+| Draft ink | The same black (`#1b201c`), solid, for a stroke being drawn and its end marks in 2D and 3D on Paper; never gold |
+| Proposal ghost | **Cobalt** dashed (`#2a62d6` reference) with a white halo, for every move, turn, resize and edit candidate of Walls, Rooms and objects; no candidate fill |
+| UI hover | Neutral grey (`#eef0ed` reference) on Card, menus and Index rows; never leaf tint, never selection |
 | Light overlay ink/halo | `#F3F4EE` |
 | Paper grid minor / major | `#9FB2A2` at 0.28 / `#809984` at 0.45 |
 | 3D background, inside and outside the drawn ground | `#152C26` |
 | 3D ground plate, its grid and a default Room floor | Paper's ground and grid tokens, never separate values |
 | Built-in lighting | Neutral illumination only, in the Stage and Preview. A cast shadow comes only from an authored light with `castShadow` |
 | Default physical Wall | `#F1E6CF`, half unlit and untoned so it reads the same in the Stage and Preview; never over an authored material |
-| Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue |
+| Camera infrastructure / active context | Restrained leaf green (`#4f8f6c` reference), reinforced by shape/line; no mandatory competing blue/teal shell hue other than the proposal ghost |
+| Stage hover | Leaf contour on a hovered 3D Wall; the approved 2D cut-band hover is unchanged |
 | Selection, the held anchor and current playback moment | Gold (`#d4ad45`, dark ink `#74560c` reference), local contour and quiet tint; selection and playback retain different shape/text cues. Gold means selected geometry (or the point being held), never hover, an available action or inspection |
 | Armed tool | Soft **ivory** key (`#f3f0e4` reference) with a dark icon on the dock material; tool colour is only a 2 px mark under an icon |
-| Available transformation | **White** dashed line, open arrowhead and anchor point over a dark halo ([mark language](#spatial-mark-language)) |
+| Available transformation | **White sticker** glyphs with a fine ink keyline and soft shadow; glyph lines in ink with a hairline white halo ([mark language](#spatial-mark-language)) |
 | Temporary inspection (Slice and its depth) | Translucent **yellow** plane or volume (`#f2d000` reference) with the state pill; distinct from gold by hue, translucency and the pill |
 | Marked for erasing | **Red** dashes (`#d0412d` reference), only while the Eraser is in use |
+| Refused draft or proposal | **Red** dashes in the refusal ink (`#7e2718`) on the refused segment or outline only, with the reason in its tag |
 | Live value | Dark tag, mono text, shown only on hover or drag |
 | Visitor-facing Preview / deliberate View update | Gold accent at the explicit action, distinguishable from selected identity |
 | Clearance caution | `#F7EDE8` surface, `#C85A48` accent, `#3A241D` body, `#7E2718` action |
@@ -999,19 +1075,22 @@ the marks are drawn and arbitrated; this table owns what each role means.
 
 | Mark | Means | Never means |
 | --- | --- | --- |
-| **Gold outline and translucent gold volume** | Selected geometry | Available actions, hover, inspection |
-| **Thin white dashed line with a dark halo** | A transformation is available here (axis ray, rotation ring, track, dimension line) | Geometry |
-| **Small white open arrowhead** | Which way that line drags | A button |
-| **Small white point** | An anchor: wall end, joint, slide position on a track, the scale point. It turns gold while held | Selection |
+| **Gold outline and translucent gold volume** | Selected geometry; on a 3D Wall one clean identity contour without internal seams or repeated thickness edges | Available actions, hover, inspection |
+| **White sticker glyph** (white body, fine ink keyline, small soft shadow) | A control whose shape says what it does: a chunky arrow drags that way, a four-way cross moves, a bent two-way arrow turns, a rounded chip toggles size mode | A button with words, an axis colour |
+| **Stem with hexagon knobs** | Height: the top knob moves the top; on objects the bottom knob lifts off the support | Geometry |
+| **Small disc knob** | A point you drag: Wall end or joint; gold while held | Selection |
+| **Solid black draft ink with an end mark** | A stroke being drawn; the end mark's shape (dot, ring, square) is the snap cue | Accepted geometry, selection |
+| **Cobalt dashed outline** | A live proposal (move, turn, resize, edit) before commit | Accepted geometry, selection |
 | **Translucent yellow plane or volume** | Temporary inspection: the Slice and its depth | Source; it is never saved |
-| **Red dashes** | Marked for erasing, only with the Eraser | Errors elsewhere |
-| **Dark tag, mono text** | The live value, only on hover or drag ("Height 1.10 · base stays") | Permanent W / D / H text |
+| **Red dashes** | Marked for erasing with the Eraser; or, in the refusal ink, a refused draft segment or proposal | Errors elsewhere |
+| **Dark tag, mono text** | The live value, only on hover or drag: a length while drawing, otherwise a signed change from the gesture's start (`Δ +0.50 m`, `Δθ −13.4°`, `× 1.25`) | Permanent W / D / H text, absolute world angles |
 
-The halo is a dark under-stroke beneath every white mark, so lines and arrows stay legible
-on pale walls, on the gold selection and on the dark grid without a second colour.
-Retired: large knob disks, XYZ gizmos, permanent W/D/H labels, gold joint buttons and the
+Glyph lines (stems, dashed arrow stems) use ink with a hairline white halo, so marks stay
+legible on pale Paper, on the gold selection and on dark materials without a second colour.
+Retired: large knob disks, black disc knobs, a drawn rotation ring and facing arrowheads,
+XYZ gizmos, permanent W/D/H labels, gold joint buttons, a separate `!` problem marker and the
 Card's wide editing posture. Red and yellow are never the only cue: the Slice has its
-pill, the Eraser its bar, and a filter a text line. Task focus (for example Focus height)
+pill, the Eraser its bar, a refusal its reason tag and a filter a text line. Task focus (for example Focus height)
 keeps its own emphasis distinct from gold and yellow; under Focus the Height Sheet's plane
 becomes an outline so it does not wash out the focused story.
 
@@ -1019,10 +1098,10 @@ becomes an outline so it does not wash out the focused story.
 
 | State | Required distinction |
 | --- | --- |
-| **Hover** | Perceptual lift in chrome; restrained edge/tint below selection on Stage |
+| **Hover** | Neutral grey on light UI surfaces (Card, menus, Index rows), where held/selected rows stay light gold; restrained edge/tint below selection on Stage |
 | **Armed** | Named tool and distinct active-context treatment: the ivory key on the dark dock, with the palette open or collapsed; never a selected-identity gold echo |
 | **Selected** | Coherent identity contour/edge and quiet fill across its representations |
-| **Keyboard focus** | Independent visible non-hue focus cue, using focus-visible behavior |
+| **Keyboard focus** | Independent visible non-hue focus cue, using focus-visible behavior; no focus ring after a pointer click |
 | **Pressed/toggled or active lens/reading** | Quiet recess, edge and inset rule; does not become selection |
 | **Task focus / reference / candidate** | Named context and distinct emphasis, never a selected-identity echo |
 | **Authored / derived** | Distinct glyph, line or read-only treatment, especially anchors/stations |
