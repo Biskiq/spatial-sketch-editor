@@ -1,8 +1,7 @@
 # R217.S26 — owner decisions
 
-**AUTHORITY: NONE until the owner rules.** The owner's directions given in the planning conversation
-are recorded first, as given. The decisions below them carry a recommendation each. Registration still
-needs the owner's bounded-replanning entry; nothing here releases a slice.
+The owner's directions (OD1–OD6) and rulings (R1–R6) are recorded as given. Each decision E1–E17
+carries its recommendation, and the owner approved the plan with them on 2026-11-03.
 
 ## Owner directions (2026-11-03, planning conversation for PR #262)
 
@@ -14,6 +13,17 @@ needs the owner's bounded-replanning entry; nothing here releases a slice.
 | OD4 | **Five slices**, R217.S26–S30 |
 | OD5 | **Testing split for S26–S30.** The writer owns the test code and checks correctness and visual tokens; there are no browser journey runs or lengthy captures by the writer. The owner runs the acceptance journeys manually |
 | OD6 | **Reconciliation, lock and promotion come after the final slice**, once everything is accepted, when the owner triggers them; this plan does not prepare them |
+
+## Owner rulings (2026-11-03, final planning follow-up for PR #262)
+
+| # | Ruling |
+| --- | --- |
+| R1 | **The five-slice structure is approved.** Exception for these slices: no separate doc approval |
+| R2 | **S11 stays lightweight:** no additional acceptance rounds beyond the owner's own |
+| R3 | **Manual journeys:** the owner handles end-to-end acceptance; acceptance is given in the PR, with no separate record |
+| R4 | **S27 timing:** timed Views advance automatically; an untimed final View waits for Next. Reordering re-resolves transitions without inventing Camera paths ([E3](#e3)) |
+| R5 | **E9 and E15 are approved as proposed**, including subject framing and Conservatory's visitor workflow |
+| R6 | **S27 format and gate:** a clean version break, strict refusal and no migration. The Experience unit format goes from 2 to 3 and `ExecutionProgram@2` to `@3`, and R217.S27 provides **`T3.camera-experience-cutover@2`**. S27's PR adds the `@2` gate-register row; the accepted `@1` row is unchanged ([E2](#e2)) |
 
 ## Decisions
 
@@ -61,10 +71,10 @@ one set.** It holds:
   free-exploration flag and the Experience's welcome text, with the `ExecutionProgram`, lowering and
   interpreter changes they need.
 
-Under the owner's no-versioning stance the format change is a version bump: strict readers refuse the
-old format, fixtures are regenerated, and nothing is migrated. Whether the program change is a new
-`T3.camera-experience-cutover` version is ruled with the gate register at registration. Approving the
-set clears campaign checkpoint 3 for exactly these items; anything else still stops there.
+The format change is a clean version break (R6): Experience unit format 2 → 3, `ExecutionProgram@2` →
+`@3`, and the new gate version `T3.camera-experience-cutover@2`, provided by R217.S27. Strict readers
+refuse the old format, fixtures are regenerated, and nothing is migrated. Approving the set clears
+campaign checkpoint 3 for exactly these items; anything else still stops there.
 
 The Camera planners write Camera-owned facts. `camera-core` still resolves routes and evaluates
 motion, and the time map is a `camera-core` read beside `experience-controllers.ts`, not a second clock.
@@ -80,8 +90,11 @@ each with an optional hold. The first is the entry, which replaces the single `e
 - **Include:** appends a View with a 3 s hold. Leaving out the last View is refused (*A Stop shows at
   least one View*). Reordering is Stop-local. None of these changes the Presentation's Default
   (Conservatory, PLATE).
-- **Hold rules:** an intermediate View without a hold gets 3 s, because a visitor never waits inside
-  a Stop. Only the last View's hold may be absent, which means the Stop *waits* for Next ([E13](#e13)).
+- **Timing (R4):** timed Views advance automatically. An intermediate View always has a hold (3 s when
+  none is set), because a visitor never waits inside a Stop. Only the final View may be untimed; it
+  waits for Next ([E13](#e13)).
+- **Reordering** re-resolves the step and continuation transitions against the new first and last
+  Views. A Travel without a connection becomes a named gap; no Camera path is invented.
 - **Moves inside a Stop** use the same rule as between Stops: Cut by default, Travel when a Camera
   connection joins the two Views, with the gap named otherwise. Conservatory's fixed 1.6 s glide is a
   shortcut and is not promoted. The step's Cut/Travel choice is stored per guided View, beside its

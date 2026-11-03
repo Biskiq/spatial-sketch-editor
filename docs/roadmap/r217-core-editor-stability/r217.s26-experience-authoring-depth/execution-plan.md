@@ -1,8 +1,7 @@
 # R217.S26 — execution plan: Experience authoring depth
 
-**Status: proposed, for owner review.** Nothing here is registered or released. The slice blocks below
-become plans only when the owner registers them ([E1](./owner-decisions.md#e1)); each block then
-moves to its own `r217.sNN-…/implementation-plan.md` without changing scope. The
+**Status: approved by the owner, 2026-11-03 ([R1](./owner-decisions.md#owner-rulings-2026-11-03-final-planning-follow-up-for-pr-262)).**
+Exception for these slices: no separate doc approval. Each block is that slice's plan. The
 [inventory](./capability-inventory.md) owns the gap evidence and the Conservatory harvest closure; the
 [decisions](./owner-decisions.md) own the owner directions (OD1–OD6) and the open choices.
 
@@ -148,12 +147,15 @@ VERIFICATION: architecture-integration, plus the visitor and public-isolation co
 DOMAIN: Experience unit format bump — Stop guided-View sequence {viewId, holdSeconds?, step transition?};
         Presentation free-exploration flag; Experience welcome text; experience-stop-update over the sequence;
         experience-presentation-update + flag; experience-update + text; ExecutionProgram, lowering and
-        interpreter for in-Stop steps; visitor runtime advance and reach. Gate version ruled at registration (E2)
+        interpreter for in-Stop steps; visitor runtime advance and reach. Experience format 2 → 3, ExecutionProgram@3, provides T3.camera-experience-cutover@2 (R6)
 ```
 
 **Scope.**
-- **Format** per [E3](./owner-decisions.md#e3) and [E15](./owner-decisions.md#e15). The format is
-  bumped; strict readers refuse the old one; fixtures and seeded projects are regenerated.
+- **Format** per [E3](./owner-decisions.md#e3), [E15](./owner-decisions.md#e15) and R6: a clean
+  version break with strict refusal and no migration; fixtures and seeded projects are regenerated. The
+  PR adds the `T3.camera-experience-cutover@2` gate-register row.
+- **Timing (R4):** timed Views advance automatically and an untimed final View waits for Next.
+  Reordering re-resolves transitions without inventing Camera paths.
 - **Stop Card shot list** (Conservatory *Guided views*):
   - numbered rows with grip, snapshot slot, name, the Default ◆ and an *Entry* tag on the first;
   - a per-View **Hold** stepper and × to leave out (disabled on the last View, *A Stop shows at least
@@ -367,8 +369,8 @@ plan or the milestone before that.
   moves advanced path authoring and transport from *Not required* to required. R217's outcome gains
   Experience authoring depth. Its non-goal *Experience Guide and Path redesign* gains *(S26–S30 build
   the accepted design)*.
-- **S11:** the dependency becomes *R217.S01–S10 and R217.S12–S30 accepted*. It gains four
-  owner-run journeys:
+- **S11:** the dependency becomes *R217.S01–S10 and R217.S12–S30 accepted*. It stays lightweight
+  (R2), with no additional acceptance rounds, and gains four owner-run journeys:
 
 | # | Journey |
 | --- | --- |
@@ -377,11 +379,12 @@ plan or the milestone before that.
 | J20 | **Paths and playback.** x-paths: Add a Camera path, shape it, set duration, Play, scrub, Follow, Preview this move, then the visitor Preview end to end |
 | J21 | **Removal across reload.** Remove a Stop, the Default View and a Presentation; Undo, Redo, Save and reload; nothing orphaned |
 
-- **Register rows:** R217.S26–S30 enter the slice register as `approved` only at registration. S27's
-  row records the format change and the gate ruling. The register sentence *No slice … changes a
-  persisted format* gains that exception. The gate tests gain the rows in the same change.
+- **Register rows:** each slice's own PR adds its register row and gate-test entry. S27's row records
+  the format change and `T3.camera-experience-cutover@2`, and the register sentence *No slice … changes
+  a persisted format* gains that exception.
 - **Ownership:** the T3 row gains S26–S30 and the T1 row gains S28–S29.
-- **Release:** an owner release adds `now.md` rows and extends the campaign record or writes its own.
+- **Exception for these slices: no separate doc approval** (R1). Each slice's PR carries its plan,
+  code, contract updates and tests; the owner accepts it in the PR (R3).
 - **After the final slice:** once everything is accepted, the owner triggers reconciliation, lock and
   promotion (OD6); this plan does not prepare it.
 

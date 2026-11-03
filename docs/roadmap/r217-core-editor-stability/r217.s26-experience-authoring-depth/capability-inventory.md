@@ -1,6 +1,6 @@
 # R217.S26 — capability and gap inventory
 
-**AUTHORITY: NONE.** Planning evidence for owner review. The [S25 harvest](../r217.s25-experience-shared-homes/design-harvest.md)
+**AUTHORITY: NONE.** Planning evidence for the approved S26–S30 plan. The [S25 harvest](../r217.s25-experience-shared-homes/design-harvest.md)
 was the starting inventory. This file extends it to every Conservatory capability (OD2) and checks
 each row against the domain at `f8da7eb0`. Slice scope lives in the [execution plan](./execution-plan.md).
 

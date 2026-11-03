@@ -1,12 +1,8 @@
 # R217.S26 — Experience authoring depth: planning workspace
 
-**Status: proposed, for owner review (2026-11-03).** Planning only. Nothing here registers,
-releases or authorizes a slice. The proposed slices are listed in the
-[R217 README](../README.md#post-s25-experience-authoring-depth-proposed), not in its slice register;
-the [release list](../../now.md) is unchanged, so every scope below stays
-under the [production hold](../../README.md#production-implementation-hold). Registration needs the
-owner's [bounded replanning](../../../operations/README.md#bounded-replanning) entry and the decisions
-in [owner-decisions.md](./owner-decisions.md); release needs a separate owner release.
+**Status: approved by the owner, 2026-11-03.** Exception for these slices: no separate doc approval;
+each slice's PR carries its plan, code and tests, and the owner accepts it in the PR
+([rulings](./owner-decisions.md#owner-rulings-2026-11-03-final-planning-follow-up-for-pr-262)).
 
 **What S26 is.** S25 put Experience into the shared shell with honest placeholders. S26 completes the
 creator workflow those placeholders stand for — Presentation → Views → Guide and Stops → Camera paths →
@@ -41,7 +37,7 @@ no migration.
    a recommendation. E1 (sequencing) and E2 (planners and the format change) gate everything else.
 3. [Execution plan](./execution-plan.md) — the five slices: scope, domain operations, visual and
    interaction completion, dependencies, shared files, the writer's verification and the owner's
-   manual journeys, plus the proposed S11 and milestone changes.
+   manual journeys, plus the S11 and milestone changes.
 
 ## Sources studied
 

@@ -22,19 +22,15 @@ on 2026-10-30 and directed that the resulting work be registered here, under
 [campaign record](../../reference/decisions/r217-convergence-campaign-2026-10-30.md) releases them together, and S11, when the owner merges
 PR #230. It does not close R217. Those rulings amend landed contracts only at each slice's cutover.
 
-## Post-S25 Experience authoring depth (proposed)
+## Post-S25 Experience authoring depth
 
-The [S26 planning workspace](./r217.s26-experience-authoring-depth/README.md) proposes R217.S26–S30
-to complete Experience authoring in the shared shell: structure, removal, guided Views, View
-placement, Look through, snapshots, Camera paths, playback and Preview, harvesting every Conservatory
-capability. With them R217 becomes a stable product milestone, certified by S11. It is **proposed for
-owner review only**: the slices below are not in the [slice register](#slice-register) until the
-owner registers them, nothing is released, and the sequencing, S11, milestone, ownership and non-goal
-changes it proposes ([execution plan §6](./r217.s26-experience-authoring-depth/execution-plan.md#6-r217-s11-and-milestone-sequencing))
-take effect only through the owner's [bounded replanning](../../operations/README.md#bounded-replanning)
-and [decisions](./r217.s26-experience-authoring-depth/owner-decisions.md).
+The [S26 planning workspace](./r217.s26-experience-authoring-depth/README.md) plans R217.S26–S30, approved
+by the owner on 2026-11-03: structure, removal, guided Views, View placement, Look through, snapshots,
+Camera paths, playback and Preview, harvesting every Conservatory capability. With them R217 becomes a
+stable product milestone, certified by S11. Exception for these slices: no separate doc approval; each
+slice's PR adds its own register row and is accepted by the owner in the PR.
 
-| Proposed slice | Scope | After |
+| Slice | Scope | After |
 | --- | --- | --- |
 | R217.S26 | [Structure and removal](./r217.s26-experience-authoring-depth/execution-plan.md#r217s26--structure-and-removal) | S25 |
 | R217.S27 | [Guided Views and visitor reach](./r217.s26-experience-authoring-depth/execution-plan.md#r217s27--guided-views-and-visitor-reach) | S26 |
