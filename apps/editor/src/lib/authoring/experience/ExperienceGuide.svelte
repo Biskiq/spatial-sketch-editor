@@ -793,10 +793,8 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
-		/* Centred, it stays clear of the Card on the right, so the Card can run down to the dock. */
-		--guide-room: max(320px, calc(100% - 2 * (var(--shell-card-width, 288px) + var(--sheet-lane-right, 40px) + 30px)));
-		/* Round 2: a fixed 820 px instrument, whatever the number of Stops. */
-		width: min(820px, var(--guide-room));
+		/* Round 2: a fixed 820 px instrument, whatever the number of Stops; the Card stops above it. */
+		width: min(820px, 100%);
 		border-radius: 12px;
 		background: var(--shell-forest, #11291f);
 		color: var(--shell-ink-light, #eef1ec);
@@ -1020,7 +1018,7 @@
 		padding: 5px;
 		border: 2px solid transparent;
 		border-radius: 8px;
-		background: var(--shell-index, #f6f7f5);
+		background: #f3f4ef;
 		color: var(--shell-ink, #1b201c);
 		font: inherit;
 		text-align: left;
@@ -1047,7 +1045,8 @@
 		font: 12.5px/1.15 var(--shell-serif, Georgia, serif);
 	}
 	.stop-meta {
-		min-height: 1.3em;
+		min-height: 1.35em;
+		line-height: 1.35;
 		color: var(--shell-ink-3, #79817b);
 		font-size: 10.5px;
 	}

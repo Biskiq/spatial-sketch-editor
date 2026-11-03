@@ -430,7 +430,7 @@
 	.card {
 		position: absolute;
 		top: 10px;
-		right: calc(var(--sheet-lane-right, 40px) + 18px);
+		right: var(--card-right, calc(var(--sheet-lane-right, 40px) + 18px));
 		z-index: 12;
 		width: var(--shell-card-width, 288px);
 		max-width: calc(100% - 76px);
@@ -475,7 +475,7 @@
 		padding: 7px 6px 0 12px;
 	}
 	.kind {
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-3, #79817b);
 		font-size: 11px;
 	}
 	.kind-link {

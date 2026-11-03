@@ -188,16 +188,6 @@
 							<div class="item-head" class:selected={presentation.selected}>
 								<button
 									type="button"
-									class="twist"
-									aria-expanded={presentation.expanded}
-									aria-label={`${presentation.expanded ? 'Hide' : 'Show'} Views of ${presentation.label}`}
-									disabled={presentation.views.length === 0}
-									onclick={() => experience.onToggleExpand(presentation.id)}
-								>
-									<ShellIcon name={presentation.expanded ? 'chevronDown' : 'chevronRight'} size={12} />
-								</button>
-								<button
-									type="button"
 									class="item-row presentation-row"
 									draggable="true"
 									aria-current={presentation.selected ? 'true' : undefined}
@@ -220,6 +210,16 @@
 											>{presentation.viewCount} {presentation.viewCount === 1 ? 'View' : 'Views'} · {#if presentation.stopNumbers.length > 0}Stops {stopsLabel(presentation.stopNumbers)}{:else}<span class="free-tag">free</span>{/if}</span
 										>
 									</span>
+								</button>
+								<button
+									type="button"
+									class="twist"
+									aria-expanded={presentation.expanded}
+									aria-label={`${presentation.expanded ? 'Hide' : 'Show'} Views of ${presentation.label}`}
+									disabled={presentation.views.length === 0}
+									onclick={() => experience.onToggleExpand(presentation.id)}
+								>
+									<ShellIcon name={presentation.expanded ? 'chevronDown' : 'chevronRight'} size={12} />
 								</button>
 							</div>
 							{#if presentation.expanded}
@@ -581,16 +581,14 @@
 	.group {
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
-		margin-top: 6px;
 	}
+	/* Round 2 igroup: 10 px uppercase labels. */
 	.group-title {
 		margin: 0;
-		padding: 6px 10px 2px;
+		padding: 8px 10px 2px 12px;
 		color: var(--shell-ink-3, #79817b);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.04em;
+		font: 600 10px var(--shell-sans, system-ui);
+		letter-spacing: 0.07em;
 		text-transform: uppercase;
 	}
 	.index-search .hide-index {
@@ -654,28 +652,52 @@
 	.item.open:not(.selected) {
 		background: var(--shell-leaf-tint, #e7f1ea);
 	}
+	/* Round 2 irow: one 28 px line, the stop count on the right. */
 	.guide-row {
 		width: 100%;
-		min-height: 36px;
-		padding: 4px 10px;
+		min-height: 28px;
+		padding: 4px 6px 4px 10px;
+		gap: 7px;
 		border-radius: 0;
 		text-align: left;
 	}
+	.guide-row .item-text {
+		flex-direction: row;
+		align-items: center;
+		gap: 7px;
+	}
+	.guide-row .item-name {
+		flex: 1;
+	}
+	.guide-row .item-meta {
+		flex: none;
+	}
+	/* Selecting a Presentation opens its Views (Round 2); the twist only reveals on hover or focus. */
 	.twist {
 		flex: none;
-		width: 22px;
-		min-height: 38px;
+		width: 26px;
+		height: 26px;
+		margin-right: 4px;
 		padding: 0;
 		justify-content: center;
-		border-radius: 0;
+		border-radius: 6px;
 		color: var(--shell-ink-3, #79817b);
+		opacity: 0;
+	}
+	.item-head:hover .twist:enabled,
+	.twist:focus-visible {
+		opacity: 1;
+	}
+	.twist:hover {
+		background: rgb(0 0 0 / 0.07);
+		color: var(--shell-ink, #1b201c);
 	}
 	.twist:disabled {
-		opacity: 0.35;
+		visibility: hidden;
 	}
 	.presentation-row {
 		min-height: 28px;
-		padding: 4px 6px 4px 2px;
+		padding: 4px 6px 4px 10px;
 		gap: 7px;
 		cursor: grab;
 	}
@@ -689,21 +711,26 @@
 	.view-list {
 		display: grid;
 		gap: 0;
-		margin: 0 6px 4px 28px;
+		margin: 0;
 		padding: 0;
 		list-style: none;
 	}
+	/* Round 2 nested irow: 14 px indent, then the row's own 10 px. */
 	.view-row {
 		width: 100%;
-		min-height: 26px;
-		padding: 2px 6px;
-		border-radius: 6px;
+		min-height: 28px;
+		padding: 4px 6px 4px 24px;
+		gap: 7px;
+		border-radius: 0;
 		text-align: left;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink, #1b201c);
+		font-size: 13px;
+	}
+	.view-row:hover {
+		background: rgb(0 0 0 / 0.035);
 	}
 	.view-row.selected {
 		background: var(--shell-gold-tint, #f8efd6);
-		color: var(--shell-ink, #1b201c);
 		font-weight: 600;
 	}
 	.view-name {
@@ -717,6 +744,8 @@
 		flex: none;
 		width: 8px;
 		height: 8px;
+		/* Sits in the 14 px icon slot of a Round 2 row. */
+		margin: 0 3px;
 		border: 1.5px solid var(--shell-ink-3, #79817b);
 		border-radius: 50%;
 	}
@@ -732,7 +761,7 @@
 	.view-more {
 		width: 100%;
 		min-height: 28px;
-		padding: 3px 6px;
+		padding: 3px 6px 3px 24px;
 		border-radius: 6px;
 		color: var(--shell-ink-3, #79817b);
 		font-size: 12px;

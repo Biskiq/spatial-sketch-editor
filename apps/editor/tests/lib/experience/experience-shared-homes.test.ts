@@ -163,7 +163,9 @@ describe('R217.S25 — the Experience home map', () => {
 		const route = codeOf(ROUTE);
 		expect(route).toMatch(/let experienceGuideOpen = \$state\(false\);/);
 		// Lens entry closes the Guide and clears the Card subject (the R217.S25 Guide-open effect would reopen it otherwise).
-		expect(route).toMatch(/if \(lens === 'experience'\) \{\s*experienceGuideOpen = false;\s*experienceFocus\.select\(null\);\s*\}/);
+		expect(route).toMatch(/if \(lens === 'experience'\) \{\s*experienceGuideOpen = false;\s*experienceFocus\.select\(null\);/);
+		// With no Experience, a World selection carried in has no Card, so lens entry drops it.
+		expect(route).toMatch(/experienceController\?\.current == null && selection !== null\) closeSelection\(\);/);
 	});
 
 	it('keeps the Card the one writer of Experience subjects: no subject carries its own Card', () => {

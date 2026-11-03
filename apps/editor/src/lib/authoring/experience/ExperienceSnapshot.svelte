@@ -42,6 +42,7 @@
 	.snapshot.stop {
 		aspect-ratio: auto;
 		height: 50px;
+		border-width: 0;
 		border-radius: 5px;
 	}
 	.snapshot.row {

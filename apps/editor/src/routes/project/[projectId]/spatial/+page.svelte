@@ -334,6 +334,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (lens === 'experience') {
 				experienceGuideOpen = false;
 				experienceFocus.select(null);
+				// With no Experience there is no Card for a carried-over World selection, so it goes too.
+				if (experienceController?.current == null && selection !== null) closeSelection();
 			}
 			guideNamePrompt = null;
 		}
@@ -4479,7 +4481,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	<div
 		class="editor-body"
-		style={`--lower-column-height: ${lowerColumnHeight}px; ${lens === 'experience' ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
+		style={`--lower-column-height: ${lowerColumnHeight}px; ${lens === 'experience' ? '--card-right: 10px; ' : ''}${lens === 'experience' && !experienceGuideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
 	>
 		{#if preview === null}
 		<EditorIndex
