@@ -145,18 +145,19 @@ describe('R217.S25 — the Experience home map', () => {
 		expect(openers).toEqual(['ExperienceGuideWriter.svelte']);
 	});
 
-	it('draws the lower-edge dock as Select, Place a View, Path, Capture and Guide, with the placeholders disabled and reasoned', () => {
+	it('draws the lower-edge dock as Select, Place a View, Path, Capture and Guide, with Place armed and Path a reasoned disabled key', () => {
 		const dock = readFileSync(path.join(EXPERIENCE_DIR, 'ExperienceDock.svelte'), 'utf8');
 		const keys = [...dock.matchAll(/data-dock-tool="([a-z-]+)"/g)].map((match) => match[1]);
 		expect(keys).toEqual(['select', 'place-view', 'path', 'capture', 'guide']);
-		for (const key of ['place-view', 'path']) {
-			const tag = dock.match(new RegExp(`<button[^>]*data-dock-tool="${key}"[^>]*>`))?.[0] ?? '';
-			expect(tag, key).toMatch(/\sdisabled\b/);
-			expect(tag, key).toMatch(/title="Comes with [^"]+"/);
-			const describedBy = tag.match(/aria-describedby="([^"]+)"/)?.[1] ?? '';
-			expect(describedBy, key).not.toBe('');
-			expect(dock, key).toMatch(new RegExp(`id="${describedBy}"[^>]*>Comes with `));
-		}
+		const place = dock.match(/<button[^>]*data-dock-tool="place-view"[^>]*>/)?.[0] ?? '';
+		expect(place).not.toMatch(/\sdisabled\b/);
+		expect(place).toContain("'Place a View where the camera stands'");
+		const pathTag = dock.match(/<button[^>]*data-dock-tool="path"[^>]*>/)?.[0] ?? '';
+		expect(pathTag).toMatch(/\sdisabled\b/);
+		expect(pathTag).toMatch(/title="Comes with [^"]+"/);
+		const describedBy = pathTag.match(/aria-describedby="([^"]+)"/)?.[1] ?? '';
+		expect(describedBy).not.toBe('');
+		expect(dock).toMatch(new RegExp(`id="${describedBy}"[^>]*>Comes with `));
 	});
 
 	it('leaves the Guide closed by default in the route', () => {

@@ -28,11 +28,15 @@
  */
 import {
 	advanceViewport,
+	aimPoseAlongRay,
 	createViewportCameraState,
 	evaluateViewport,
+	eyeOfInspectionPose,
+	fovYDegreesOf,
 	rebaseViewportSource,
 	requestViewingIntent,
 	type InspectionPose,
+	type PointerRay,
 	type ViewingIntent,
 	type ViewingIntentResult,
 	type ViewportCameraState,
@@ -116,8 +120,44 @@ export function sceneRadiusOf(bounds: { min: Vec3; max: Vec3 } | null, target?: 
 	);
 }
 
+export type LookThroughView = {
+	readonly viewId: string;
+	readonly presentationId: string;
+	readonly label: string;
+	readonly eye: Vec3;
+	readonly target: Vec3;
+	readonly fovYDegrees: number;
+};
+
+/** The live Look-through posture: the authored View and the provisional camera. */
+export type LookThroughState = {
+	readonly view: LookThroughView;
+	readonly authored: LookThroughView;
+	readonly moved: boolean;
+};
+
 export type CameraSession = {
 	state(): ViewportCameraState;
+	/**
+	 * R217.S28 — the provisional Look-through posture, or `null` at ordinary rest.
+	 * It is session state: no authored document holds it.
+	 */
+	lookThrough(): LookThroughState | null;
+	beginLookThrough(view: LookThroughView): { readonly kind: 'entered' } | { readonly kind: 'refused'; readonly message: string };
+	/** Re-aim the provisional camera at a fixed eye. */
+	reaimLookThrough(target: Vec3): boolean;
+	/** Re-aim through Camera's own pointer ray at the existing focal distance. */
+	reaimLookThroughRay(ray: PointerRay): boolean;
+	/** Step the provisional lens at a fixed eye and target. */
+	stepLookThroughLens(fovYDegrees: number): boolean;
+	/** Move eye and target together to a floor-relative eye height. */
+	setLookThroughEyeHeight(eyeHeightMetres: number, floorDatumMeters?: number): boolean;
+	/** The provisional pose, for Update View or Capture while through. */
+	provisionalView(): LookThroughView | null;
+	/** Update View: the provisional pose becomes the authored one. */
+	commitLookThrough(): LookThroughView | null;
+	/** Exit View: restore the exact settled pose and reading the inspection had. */
+	endLookThrough(): boolean;
 	evaluation(): ViewportEvaluation | null;
 	evaluationId(): string | null;
 	/** Evaluate at the explicit clock and keep the result as the current output. */
@@ -195,6 +235,51 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 	});
 	let ticket: CameraOutputTicket | null = null;
 	let preview: CameraOutputTicket | null = null;
+	/**
+	 * R217.S28 — the exact settled inspection the through-camera temporarily
+	 * replaces. It holds a pose, a reading and the source identity it was captured
+	 * under: the output ticket protocol still owns the output, and a content
+	 * rebase moves the saved entry to the new revision with the live state so Exit
+	 * cannot restore a superseded source.
+	 */
+	let lookThroughState:
+		| {
+				readonly entry: ViewportCameraState;
+				readonly view: LookThroughView;
+				authored: LookThroughView;
+				moved: boolean;
+		  }
+		| null = null;
+
+	function cloneView(view: LookThroughView): LookThroughView {
+		return {
+			viewId: view.viewId,
+			presentationId: view.presentationId,
+			label: view.label,
+			eye: [view.eye[0], view.eye[1], view.eye[2]],
+			target: [view.target[0], view.target[1], view.target[2]],
+			fovYDegrees: view.fovYDegrees
+		};
+	}
+
+	function provisionalView(): LookThroughView | null {
+		if (lookThroughState === null) return null;
+		const pose = currentState.pose;
+		return {
+			viewId: lookThroughState.view.viewId,
+			presentationId: lookThroughState.view.presentationId,
+			label: lookThroughState.view.label,
+			eye: eyeOfInspectionPose(pose),
+			target: [pose.target[0], pose.target[1], pose.target[2]],
+			fovYDegrees: fovYDegreesOf(pose)
+		};
+	}
+
+	function applyLookThroughIntent(intent: ViewingIntent): boolean {
+		const result = requestViewingIntent(currentState, intent, Number.POSITIVE_INFINITY);
+		currentState = result.state;
+		return result.kind === 'accepted';
+	}
 
 	function inspectionRequest(runEpoch: number) {
 		return {
@@ -251,6 +336,19 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 				bounds = nextBounds;
 				if (displayGroundYMeters !== undefined && Number.isFinite(displayGroundYMeters)) {
 					currentState = { ...currentState, displayGroundYMeters };
+				}
+				if (lookThroughState !== null) {
+					// The entry is a full camera state, not a bare pose: leaving it on the
+					// old revision would make Exit restore a source the host has replaced.
+					const rebasedEntry = rebaseViewportSource(lookThroughState.entry, sourceRevision);
+					const entryState =
+						displayGroundYMeters !== undefined && Number.isFinite(displayGroundYMeters)
+							? { ...rebasedEntry.state, displayGroundYMeters }
+							: rebasedEntry.state;
+					lookThroughState =
+						rebasedEntry.kind === 'refused'
+							? null
+							: { ...lookThroughState, entry: entryState };
 				}
 			}
 			// The output named the previous revision, so it is not the current output
@@ -339,6 +437,76 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			return decision;
 		},
 		inspectionTicket: () => ticket,
-		previewTicket: () => preview
+		previewTicket: () => preview,
+		lookThrough: () =>
+			lookThroughState === null
+				? null
+				: {
+						view: lookThroughState.view,
+						authored: lookThroughState.authored,
+						moved: lookThroughState.moved
+					},
+		beginLookThrough(view) {
+			if (lookThroughState !== null) {
+				return { kind: 'refused', message: 'Already looking through a View; exit it first.' };
+			}
+			const entry = currentState;
+			const result = requestViewingIntent(
+				currentState,
+				{ kind: 'set-view', eye: view.eye, target: view.target, fovYDegrees: view.fovYDegrees },
+				Number.POSITIVE_INFINITY
+			);
+			currentState = result.state;
+			if (result.kind === 'rejected') return { kind: 'refused', message: result.message };
+			const clone = cloneView(view);
+			lookThroughState = { entry, view: clone, authored: clone, moved: false };
+			return { kind: 'entered' };
+		},
+		reaimLookThrough(target) {
+			if (lookThroughState === null) return false;
+			if (!applyLookThroughIntent({ kind: 'aim', target })) return false;
+			lookThroughState = { ...lookThroughState, moved: true };
+			return true;
+		},
+		reaimLookThroughRay(ray) {
+			if (lookThroughState === null) return false;
+			const aimed = aimPoseAlongRay(currentState.pose, ray);
+			if (aimed === null) return false;
+			if (!applyLookThroughIntent({ kind: 'aim', target: aimed.target })) return false;
+			lookThroughState = { ...lookThroughState, moved: true };
+			return true;
+		},
+		stepLookThroughLens(fovYDegrees) {
+			if (lookThroughState === null) return false;
+			if (!applyLookThroughIntent({ kind: 'lens', fovYDegrees })) return false;
+			lookThroughState = { ...lookThroughState, moved: true };
+			return true;
+		},
+		setLookThroughEyeHeight(eyeHeightMetres, floorDatumMeters = 0) {
+			const provisional = provisionalView();
+			if (lookThroughState === null || provisional === null) return false;
+			if (!Number.isFinite(eyeHeightMetres) || !Number.isFinite(floorDatumMeters)) return false;
+			const delta = floorDatumMeters + eyeHeightMetres - provisional.eye[1];
+			if (Math.abs(delta) < 1e-6) return false;
+			if (!applyLookThroughIntent({ kind: 'lift', deltaMeters: delta })) return false;
+			lookThroughState = { ...lookThroughState, moved: true };
+			return true;
+		},
+		provisionalView,
+		commitLookThrough() {
+			const provisional = provisionalView();
+			if (lookThroughState === null || provisional === null) return null;
+			lookThroughState = { ...lookThroughState, authored: provisional, moved: false };
+			return provisional;
+		},
+		endLookThrough() {
+			if (lookThroughState === null) return false;
+			// The entry state is the whole settled inspection: pose, reading and any
+			// last-reading elevation. Restoring it is not a Camera move and enters no
+			// history; the output claim was never transferred.
+			currentState = lookThroughState.entry;
+			lookThroughState = null;
+			return true;
+		}
 	};
 }

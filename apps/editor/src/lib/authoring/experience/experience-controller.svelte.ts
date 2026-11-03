@@ -34,6 +34,7 @@ import {
 	type ExperienceRemovalPlan
 } from '@portfolio/project-model/units';
 import type {
+	CameraView,
 	Experience,
 	ExperienceContinuation,
 	ExperienceGuide,
@@ -62,6 +63,7 @@ import {
 	capturedFovDegrees,
 	capturedViewPose,
 	createExperienceIntent,
+	type CapturedViewPose,
 	experienceUpdateIntent,
 	guideCreateIntent,
 	guideOrderIntent,
@@ -71,7 +73,8 @@ import {
 	stopCreateIntent,
 	stopUpdateIntent,
 	viewRemoveIntent,
-	viewRenameIntent
+	viewRenameIntent,
+	viewUpdateIntent
 } from './commands';
 import {
 	removalLines,
@@ -86,6 +89,22 @@ export type ExperienceViewChoice = { readonly id: string; readonly label: string
 
 /** The outcome an inline rename field reads: accepted, or refused with the reason to show. */
 export type ExperienceRenameOutcome = { readonly kind: 'accepted' | 'refused'; readonly message?: string };
+
+/** One exact authored View pose, as the Stage's Camera reads it. */
+export type ExperienceViewPose = {
+	readonly eye: [number, number, number];
+	readonly target: [number, number, number];
+	readonly fov: number;
+};
+
+export type ExperiencePlacement =
+	| { readonly kind: 'placed'; readonly presentationId: string; readonly viewId: string; readonly createdPresentation: boolean }
+	| { readonly kind: 'refused'; readonly message: string };
+
+export type ExperienceViewUpdate =
+	| { readonly kind: 'updated' }
+	| { readonly kind: 'needs-confirmation'; readonly alsoIn: readonly string[] }
+	| { readonly kind: 'refused'; readonly message: string };
 
 /** The creator-facing refusal for an empty name (every Experience rename field). */
 export const NAME_NEEDED = 'A name is needed';
@@ -197,6 +216,33 @@ export type ExperienceController = {
 	removalPreview(target: ExperienceRemovalTarget): ExperienceRemovalPreview;
 	/** Run one previewed removal; on success the parent of the removed subject is selected. */
 	remove(target: ExperienceRemovalTarget): Promise<boolean>;
+	/** The accepted Camera Views; the Stage's marks and Look-through read them here. */
+	readonly cameraViews: readonly CameraView[];
+	/** The accepted source content identity: a snapshot cache key, never an authored value. */
+	readonly sourceRevision: string;
+	viewPose(viewId: string): ExperienceViewPose | null;
+	/** Lens and Eye height steps write the exact Camera View (E7). */
+	setViewFraming(
+		viewId: string,
+		framing: { readonly fov?: number; readonly eyeHeightMetres?: number }
+	): Promise<boolean>;
+	/** Place a View in the selected Presentation, else a new one. Never adds a Stop. */
+	placeView(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<ExperiencePlacement>;
+	/** Update View from Look through; a shared View needs its named consequence confirmed. */
+	updateViewPose(
+		viewId: string,
+		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number },
+		presentationId: string,
+		options?: { readonly confirmShared?: boolean }
+	): Promise<ExperienceViewUpdate>;
+	/** Capture an exact provisional pose as a new View, without reading the painted frame. */
+	capturePose(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<boolean>;
+	/** Present this, after Camera has visibly framed the subject. */
+	presentThisFramed(
+		entityId: string,
+		label: string,
+		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
+	): Promise<boolean>;
 	/** The subject Back returns to, or null (E17). */
 	readonly backTarget: ExperienceSubject | null;
 	/** Back to the previous subject. It changes only what is looked at; it never undoes. */
@@ -217,6 +263,12 @@ export function createExperienceController(
 	const snapshot = $derived.by((): ProjectEnvelope => {
 		void version;
 		return readSnapshot() ?? stageEnvelope(readServices().stage.snapshot());
+	});
+	/** The Floor datum the accepted Stage read carries; eye heights are relative to it. */
+	const datumMeters = $derived.by(() => {
+		void version;
+		// A host read always carries its domain; a controller-only test double may not.
+		return readServices().stage.snapshot().domain?.datumMeters ?? 0;
 	});
 
 	const experiences = $derived(snapshot.units.experience.data.experiences);
@@ -243,7 +295,7 @@ export function createExperienceController(
 	});
 	const selectedView = $derived.by((): ExperienceViewFacts | null => {
 		if (current === null || subject === null || subject.kind !== 'view') return null;
-		return viewFactsOf(current, snapshot.units.camera.data.views, subject.viewId, subject.presentationId);
+		return viewFactsOf(current, snapshot.units.camera.data.views, subject.viewId, subject.presentationId, datumMeters);
 	});
 	const selectedStop = $derived.by(() => {
 		if (current === null || subject === null) return null;
@@ -385,10 +437,11 @@ export function createExperienceController(
 	 */
 	async function captureNewPresentation(
 		subjectEntityId: string | null,
-		presentationLabelText: string | null
+		presentationLabelText: string | null,
+		exactPose: CapturedViewPose | null = null
 	): Promise<boolean> {
 		if (current === null) return false;
-		const view = currentCapturePose();
+		const view = exactPose ?? currentCapturePose();
 		if (view === null) return false;
 		const experience = current;
 		const presentationId = newId();
@@ -423,12 +476,10 @@ export function createExperienceController(
 	 * new View as its Default, and the message says so. Otherwise a new standpoint
 	 * Presentation with no subject and no Stop.
 	 */
-	async function capture(): Promise<boolean> {
+	async function captureView(view: CapturedViewPose): Promise<boolean> {
 		if (current === null) return false;
 		const target = selectedPresentation;
-		if (target === null) return captureNewPresentation(null, null);
-		const view = currentCapturePose();
-		if (view === null) return false;
+		if (target === null) return captureNewPresentation(null, null, view);
 		const experience = current;
 		const keptDefault = target.defaultViewId;
 		const accepted = await run(() =>
@@ -446,6 +497,143 @@ export function createExperienceController(
 			say(`${target.label} had no Default View, so this View is now its Default.`);
 		}
 		return accepted;
+	}
+
+	async function capture(): Promise<boolean> {
+		if (current === null) return false;
+		const view = currentCapturePose();
+		if (view === null) return false;
+		return captureView(view);
+	}
+
+	function viewLabel(): string {
+		return `View ${snapshot.units.camera.data.views.length + 1}`;
+	}
+
+	async function capturePose(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<boolean> {
+		return captureView(capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov }));
+	}
+
+	async function presentThisFramed(
+		entityId: string,
+		label: string,
+		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
+	): Promise<boolean> {
+		return captureNewPresentation(
+			entityId,
+			label,
+			capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov })
+		);
+	}
+
+	async function placeView(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<ExperiencePlacement> {
+		if (current === null) return { kind: 'refused', message: 'Create an Experience first' };
+		const experience = current;
+		const viewId = newId();
+		const view = capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov });
+		const target = selectedPresentation;
+		if (target !== null) {
+			const keptDefault = target.defaultViewId;
+			const accepted = await run(
+				() =>
+					presentationUpdateIntent({
+						envelope: snapshot,
+						revision: revision(),
+						ids: { operation: newId(), view: viewId },
+						experienceId: experience.id,
+						presentationId: target.id,
+						view,
+						...(keptDefault === null ? {} : { defaultViewId: keptDefault })
+					}),
+				() => succeed(`View placed in ${target.label}.`)
+			);
+			if (!accepted) return { kind: 'refused', message };
+			experienceFocus.select({ kind: 'view', viewId, presentationId: target.id });
+			return { kind: 'placed', presentationId: target.id, viewId, createdPresentation: false };
+		}
+		const presentationId = newId();
+		const accepted = await run(
+			() =>
+				captureBindIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId(), view: viewId, presentation: presentationId },
+					experienceId: experience.id,
+					view,
+					presentationLabel: `Presentation ${experience.presentations.length + 1}`,
+					subjectEntityId: null,
+					text: null,
+					guideId: null,
+					firstGuideLabel: null,
+					afterStopId: null
+				}),
+			() => succeed('Presentation created; name it in the Card.')
+		);
+		if (!accepted) return { kind: 'refused', message };
+		experienceFocus.select({ kind: 'presentation', presentationId });
+		return { kind: 'placed', presentationId, viewId, createdPresentation: true };
+	}
+
+	async function updateViewPose(
+		viewId: string,
+		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number },
+		presentationId: string,
+		options: { readonly confirmShared?: boolean } = {}
+	): Promise<ExperienceViewUpdate> {
+		const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
+		if (view === undefined) return { kind: 'refused', message: 'That View is not in this project' };
+		const shared = alsoIn(viewId, presentationId);
+		if (shared.length > 0 && options.confirmShared !== true) {
+			return { kind: 'needs-confirmation', alsoIn: shared.map((presentation) => presentation.label) };
+		}
+		const accepted = await run(
+			() =>
+				viewUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					view,
+					eye: pose.eye,
+					target: pose.target,
+					fov: pose.fov
+				}),
+			() => succeed(shared.length > 0 ? `View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.` : 'View updated.')
+		);
+		return accepted ? { kind: 'updated' } : { kind: 'refused', message };
+	}
+
+	async function setViewFraming(
+		viewId: string,
+		framing: { readonly fov?: number; readonly eyeHeightMetres?: number }
+	): Promise<boolean> {
+		const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
+		if (view === undefined) {
+			say('That View is not in this project.');
+			return false;
+		}
+		const eye: [number, number, number] = [view.eye[0], view.eye[1], view.eye[2]];
+		const target: [number, number, number] = [view.target[0], view.target[1], view.target[2]];
+		let fov = view.fov;
+		if (framing.fov !== undefined) {
+			if (!Number.isFinite(framing.fov) || framing.fov <= 0 || framing.fov >= 180) {
+				say('That lens is not a supported field of view.');
+				return false;
+			}
+			fov = framing.fov;
+		}
+		if (framing.eyeHeightMetres !== undefined) {
+			if (!Number.isFinite(framing.eyeHeightMetres)) {
+				say('That eye height is not a number.');
+				return false;
+			}
+			const delta = datumMeters + framing.eyeHeightMetres - view.eye[1];
+			eye[1] += delta;
+			target[1] += delta;
+		}
+		return run(
+			() => viewUpdateIntent({ envelope: snapshot, revision: revision(), ids: { operation: newId() }, view, eye, target, fov }),
+			() => succeed('Framing updated.')
+		);
 	}
 
 	async function presentThis(entityId: string, label: string): Promise<boolean> {
@@ -1220,11 +1408,31 @@ export function createExperienceController(
 			query = next;
 		},
 		presentationLabel,
+		get cameraViews() {
+			return snapshot.units.camera.data.views;
+		},
+		get sourceRevision() {
+			// The accepted source read owns the content identity; the envelope does not.
+			return readServices().stage.snapshot().sourceContentId;
+		},
+		viewPose(viewId: string) {
+			const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
+			return view === undefined
+				? null
+				: { eye: [view.eye[0], view.eye[1], view.eye[2]], target: [view.target[0], view.target[1], view.target[2]], fov: view.fov };
+		},
+		setViewFraming,
+		placeView,
+		updateViewPose,
+		capturePose,
+		presentThisFramed,
 		select: (next: ExperienceSubject | null) => experienceFocus.select(next),
 		openExperience: (experienceId: string) => experienceFocus.openExperience(experienceId),
 		openGuide,
 		viewFacts: (viewId: string) =>
-			current === null ? null : viewFactsOf(current, snapshot.units.camera.data.views, viewId),
+			current === null
+				? null
+				: viewFactsOf(current, snapshot.units.camera.data.views, viewId, undefined, datumMeters),
 		resolveContinuation: (stopId: string) =>
 			current === null ? null : resolveStopContinuation(current, contextGuide, stopId),
 		viewStops: (viewId: string) => (current === null ? [] : stopsGuiding(current, contextGuide, viewId)),

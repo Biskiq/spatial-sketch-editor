@@ -32,7 +32,9 @@
 
 	async function presentThis(): Promise<void> {
 		if (controller === null || subject === null || presentReason !== '') return;
-		await controller.presentThis(subject.entityId, subject.label);
+		// E9: the Stage visibly frames the subject (or arms placement in Plan) before
+		// anything is captured; the route owns that Camera request.
+		await homes.presentThis(subject.entityId, subject.label);
 	}
 	function plural(count: number, word: string): string {
 		return `${count} ${word}${count === 1 ? '' : 's'}`;

@@ -389,7 +389,7 @@
 							<ShellIcon name="menu" size={12} />
 						</span>
 						<span class="shot-n">{index + 1}</span>
-						<span class="shot-thumb"><ExperienceSnapshot {label} ratio="row" /></span>
+						<span class="shot-thumb"><ExperienceSnapshot {label} viewId={shot.viewId} ratio="row" /></span>
 						<span class="shot-main">
 							<span class="shot-name">
 								<button type="button" class="name-btn" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
@@ -417,6 +417,11 @@
 								</span>
 							</span>
 						</span>
+						<button type="button" class="icon-btn shot-look" title="Look through this View"
+							aria-label={`Look through ${label}`}
+							onclick={(event) => { event.stopPropagation(); homes.lookThrough(shot.viewId); }}>
+							<ShellIcon name="eye" size={11} />
+						</button>
 						<button type="button" class="icon-btn shot-x" disabled={leaveReason !== null}
 							title={leaveReason ?? 'Leave out'} aria-label={`Leave out ${label}`}
 							onclick={() => void controller.leaveOutView(stop.id, shot.viewId)}>
@@ -445,7 +450,7 @@
 					<ul class="shots out">
 						{#each otherViews as view (view.id)}
 							<li class="shot is-out">
-								<span class="shot-thumb"><ExperienceSnapshot label={view.label} ratio="row" /></span>
+								<span class="shot-thumb"><ExperienceSnapshot label={view.label} viewId={view.id} ratio="row" /></span>
 								<span class="shot-name">
 									<button
 										type="button"

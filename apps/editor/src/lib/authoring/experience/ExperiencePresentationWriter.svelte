@@ -2,8 +2,8 @@
 	/**
 	 * The Card's writer for a selected Presentation (R217.S25, Round 2 density). Its body is a
 	 * snapshot grid of the Presentation's Views: a tile selects that View (the one Card selection,
-	 * D10), and the ◆ and the tour dot are informational only, since the Default changes on the
-	 * View Card (D12). *Visitors reach it* names the Stops that show its Views. While the first
+	 * D10), a double-click opens Look through, and the ◆ and the tour dot are informational only,
+	 * since the Default changes on the View Card (D12). *Visitors reach it* names the Stops that show its Views. While the first
 	 * Guide is awaiting its name (D8) the name is asked inline here. Add to Guide is the visible
 	 * action under the Card name; the Information text is committed on blur. It edits through the Experience controller; its
 	 * own state is the Views filter, the text draft and the first-Guide name.
@@ -185,6 +185,9 @@
 		if (presentation === null) return;
 		homes.select({ kind: 'view', viewId, presentationId: presentation.id });
 	}
+	function lookThrough(viewId: string): void {
+		homes.lookThrough(viewId);
+	}
 	function selectStop(stopId: string): void {
 		homes.select({ kind: 'stop', stopId });
 	}
@@ -303,6 +306,11 @@
 							data-view-tile={view.id}
 							draggable={!filterOn}
 							onclick={() => selectView(view.id)}
+							ondblclick={(event) => {
+								event.preventDefault();
+								event.stopPropagation();
+								lookThrough(view.id);
+							}}
 							onkeydown={(event) => onTileKeydown(event, view.id)}
 							ondragstart={(event) => onTileDragStart(event, view.id)}
 							ondragover={(event) => onTileDragOver(event, view.id)}
@@ -310,7 +318,7 @@
 							ondragend={onTileDragEnd}
 						>
 							<span class="vt-img">
-								<ExperienceSnapshot label={view.label} selected={selectedViewId === view.id} />
+								<ExperienceSnapshot label={view.label} viewId={view.id} selected={selectedViewId === view.id} />
 								{#if presentation.defaultViewId === view.id}
 									<span class="badge-def" aria-hidden="true">◆ Default</span>
 								{/if}

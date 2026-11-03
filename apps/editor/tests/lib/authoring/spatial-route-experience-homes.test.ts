@@ -23,7 +23,7 @@ import { CAMERA_UNIT_FORMAT_VERSION, createEmptyUnitSceneDocument } from '@portf
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { primitiveEntity } from './__fixtures__/f4-current-source-fixtures';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
-import { stageExperience } from '$lib/authoring/stage/unit-stage-source';
+import { stageCamera, stageExperience } from '$lib/authoring/stage/unit-stage-source';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import { CONNECTIONS, EXPERIENCE, VIEWS } from '../experience/fixtures';
@@ -55,6 +55,27 @@ vi.mock('$lib/authoring/stage/host-acceptance', async (original) => {
 			const host = actual.createStageAcceptanceHost(...args);
 			harness.acceptance = host;
 			return host;
+		}
+	};
+});
+
+// The Stage canvas is doubled, so no Scene meshes register with the real pick
+// source. Present this needs a drawn body; supply deterministic render bounds for
+// the entities this suite seeds while leaving picking and lifecycle untouched.
+vi.mock('$lib/authoring/scene/scene-pick-source', async (original) => {
+	const actual = await original<typeof import('$lib/authoring/scene/scene-pick-source')>();
+	return {
+		...actual,
+		createScenePickSource: () => {
+			const source = actual.createScenePickSource();
+			return {
+				...source,
+				bounds: (id: string, scene: Parameters<typeof source.bounds>[1]) =>
+					source.bounds(id, scene) ??
+					(scene.entities.some((entity) => entity.id === id)
+						? { min: [-0.5, 0, -0.5] as [number, number, number], max: [0.5, 1, 0.5] as [number, number, number] }
+						: null)
+			};
 		}
 	};
 });
@@ -200,9 +221,26 @@ async function createExperience(): Promise<void> {
 	await frame();
 }
 
+async function settleReading(reading: '3d' | 'plan'): Promise<void> {
+	let now = performance.now();
+	const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+	try {
+		for (let pumped = 0; pumped < 160; pumped += 1) {
+			const state = facade().camera.state();
+			if (state.reading === reading && state.transition === null) return;
+			now += 20;
+			await frame();
+		}
+	} finally {
+		clock.mockRestore();
+	}
+	throw new Error(`The Stage reading did not settle to ${reading}.`);
+}
+
 async function setThreeD(): Promise<void> {
 	control('3D').click();
 	await frame();
+	await settleReading('3d');
 }
 
 /** Dock Capture. Capture is accepted asynchronously, so callers wait on the outcome they expect. */
@@ -267,6 +305,129 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
+	function aimMarker(): { mark: SVGGElement; hit: SVGCircleElement; viewId: string } {
+		const mark = target.querySelector<SVGGElement>('[data-view-mark][data-mark-kind="aim"]');
+		const hit = mark?.querySelector<SVGCircleElement>('.hit') ?? null;
+		if (mark === null || hit === null) throw new Error('no aim marker rendered');
+		return { mark, hit, viewId: mark.getAttribute('data-view-mark')! };
+	}
+
+	function pointer(type: string, element: Element, pointerId: number, x: number, y: number): void {
+		const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 });
+		Object.defineProperty(event, 'pointerId', { value: pointerId });
+		Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+		element.dispatchEvent(event);
+	}
+
+	function markerPoint(): [number, number] {
+		const { hit, mark } = aimMarker();
+		const cx = Number(hit.getAttribute('cx'));
+		const cy = Number(hit.getAttribute('cy'));
+		return [RECT.left + cx, RECT.top + cy];
+	}
+
+	async function withSvgPointerCapture(run: () => Promise<void>): Promise<void> {
+		const proto = SVGElement.prototype as SVGElement & {
+			setPointerCapture?: (id: number) => void;
+			hasPointerCapture?: (id: number) => boolean;
+			releasePointerCapture?: (id: number) => void;
+		};
+		const saved = ['setPointerCapture', 'hasPointerCapture', 'releasePointerCapture'] as const;
+		const descriptors = saved.map((name) => Object.getOwnPropertyDescriptor(proto, name));
+		Object.defineProperty(proto, 'setPointerCapture', { configurable: true, value: () => {} });
+		Object.defineProperty(proto, 'hasPointerCapture', { configurable: true, value: () => true });
+		Object.defineProperty(proto, 'releasePointerCapture', { configurable: true, value: () => {} });
+		try {
+			await run();
+		} finally {
+			saved.forEach((name, index) => {
+				if (descriptors[index] === undefined) Reflect.deleteProperty(proto, name);
+				else Object.defineProperty(proto, name, descriptors[index]!);
+			});
+		}
+	}
+
+	it('opens the new Presentation name after placing a View', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		await setThreeD();
+		dockKey('place-view').click();
+		await frame();
+		const stage = facade();
+		const id = stage.evaluationId();
+		if (id === null) throw new Error('no evaluation');
+		const start = stage.projectWorld([1, 0, 1], id);
+		const end = stage.projectWorld([2, 0, 1], id);
+		if (start.kind !== 'projected' || end.kind !== 'projected') throw new Error('floor point not projected');
+		const surface = target.querySelector<HTMLElement>('.stage')!;
+		pointer('pointerdown', surface, 1, start.css[0], start.css[1]);
+		pointer('pointermove', surface, 1, end.css[0], end.css[1]);
+		pointer('pointerup', surface, 1, end.css[0], end.css[1]);
+		for (let pumped = 0; pumped < 120 && target.querySelector('input.rename-input') === null; pumped += 1) await frame();
+		await vi.waitFor(() => expect(target.querySelector('input.rename-input')).not.toBeNull());
+	});
+
+	it('reserves a 3D glyph press for its mark and keeps it out of Stage navigation', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		await setThreeD();
+		const glyph = target.querySelector<SVGGElement>('[data-view-mark][data-mark-kind="glyph"]');
+		const hit = glyph?.querySelector<SVGCircleElement>('.hit') ?? null;
+		if (glyph === null || hit === null) throw new Error('no 3D glyph rendered');
+		const viewId = glyph.getAttribute('data-view-mark')!;
+		const x = RECT.left + Number(hit.getAttribute('cx'));
+		const y = RECT.top + Number(hit.getAttribute('cy'));
+		pointer('pointerdown', hit, 1, x, y);
+		pointer('pointerup', hit, 1, x, y);
+		hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+		await frame();
+		expect(experienceFocus.subject).toEqual({ kind: 'view', viewId, presentationId: 'presentation-1' });
+	});
+
+	it('authors one aim update, ignores a second pointer, and preserves click/double-click without authoring', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		const { viewId } = aimMarker();
+		const before = stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!;
+		const beforeTarget = [...before.target];
+
+		await withSvgPointerCapture(async () => {
+			const [x, y] = markerPoint();
+			const { hit } = aimMarker();
+			pointer('pointerdown', hit, 1, x, y);
+			await frame();
+			pointer('pointerdown', hit, 2, x, y);
+			pointer('pointermove', hit, 2, x + 30, y);
+			pointer('pointerup', hit, 2, x + 30, y);
+			await frame();
+			pointer('pointermove', hit, 1, x + 30, y + 12);
+			pointer('pointerup', hit, 1, x + 30, y + 12);
+			await frame();
+		});
+		let afterAimTarget: readonly number[] = [];
+		await vi.waitFor(() => {
+			const after = stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!;
+			expect(after.target).not.toEqual(beforeTarget);
+			afterAimTarget = [...after.target];
+		});
+
+		// A click on the marker still selects the View, and a double-click opens Look through.
+		await withSvgPointerCapture(async () => {
+			const { hit } = aimMarker();
+			const [x, y] = markerPoint();
+			pointer('pointerdown', hit, 1, x, y);
+			pointer('pointerup', hit, 1, x, y);
+			hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+			await frame();
+			hit.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+			await frame();
+		});
+		expect(target.querySelector('[data-through-frame]')).not.toBeNull();
+		expect(stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!.target).toEqual(afterAimTarget);
+	});
+});
+
 describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 	it('draws no full-surface overlay, and the Head is the only lens control', async () => {
 		await enterExperience();
@@ -290,7 +451,7 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(target.textContent).toContain('Create an Experience from the menu above to start presenting.');
 		// The search always heads the Index, so the top row is never empty.
 		expect(target.querySelector('input[aria-label="Find a Presentation or View"]')).not.toBeNull();
-		// The dock: Select, Place a View (placeholder), Capture and Guide. Path shows only with a Guide open.
+		// The dock: Select, Place a View, Capture and Guide. Path shows only with a Guide open.
 		const keys = [...target.querySelectorAll<HTMLElement>('[data-experience-dock] [data-dock-tool]')].map((key) => key.dataset.dockTool);
 		expect(keys).toEqual(['select', 'place-view', 'capture', 'guide']);
 		expect(target.querySelector('[data-stage-dock]')).toBeNull();
@@ -671,14 +832,19 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await setThreeD();
 		await selectSceneEntityOnStage();
 
+		// E9 frames through Camera first. `waitForFraming` awaits requestAnimationFrame,
+		// which this suite stubs, so pump the route's frames instead of real-timing it.
 		control('Present this').click();
-		await vi.waitFor(() => expect(presentationRows()).toHaveLength(3));
-		await frame();
+		// Pump the stubbed animation frames through Camera framing, then let the
+		// asynchronous acceptance install the new Presentation.
+		for (let pumped = 0; pumped < 240 && presentationRows().length < 3; pumped += 1) await frame();
+		await vi.waitFor(() => expect(presentationRows()).toHaveLength(3), { timeout: 6000 });
+		expect(presentationRows()).toHaveLength(3);
 
 		expect(cardKind()).toContain('Presentation · about');
 		expect(card()!.querySelector('.kind-link')).not.toBeNull();
 		expect(guideRow('guide-1')?.textContent).toContain('2 stops');
-	});
+	}, 15000);
 
 	it('Add to Guide with no Guide asks the first Guide name inline in the Presentation writer, then makes the Guide', async () => {
 		await enterExperience();

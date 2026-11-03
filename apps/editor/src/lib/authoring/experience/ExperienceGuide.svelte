@@ -74,6 +74,7 @@
 	};
 	type CardFacts = {
 		readonly stopId: string;
+		readonly viewId: string | null;
 		readonly number: number;
 		readonly label: string;
 		readonly viewCount: number;
@@ -95,6 +96,7 @@
 			const number = index + 1;
 			const label = controller.presentationLabel(stop.presentationId);
 			const again = stops.slice(0, index).some((earlier) => earlier.presentationId === stop.presentationId);
+			const viewId = stop.views[0]?.viewId ?? null;
 			const viewCount = stop.views.length;
 			const finalHold = stop.views.at(-1)?.holdSeconds;
 			const hold = finalHold === undefined ? null : `${finalHold}s`;
@@ -128,7 +130,7 @@
 			if (start) spoken.push('the tour starts here');
 			if (again) spoken.push('again');
 			spoken.push(`${viewCount} ${viewCount === 1 ? 'view' : 'views'}`);
-			return { stopId: stop.id, number, label, viewCount, hold, again, start, name: spoken.join(', '), connector };
+			return { stopId: stop.id, viewId, number, label, viewCount, hold, again, start, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -705,7 +707,7 @@
 								onkeydown={(event) => onCardKeydown(event, card.stopId, index)}
 								onfocus={() => (focusedStopId = card.stopId)}
 							>
-								<ExperienceSnapshot label={card.label} number={card.number} ratio="stop" />
+								<ExperienceSnapshot label={card.label} viewId={card.viewId} number={card.number} ratio="stop" />
 								<span class="stop-name">{card.label}</span>
 								<span class="stop-meta">
 									{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}

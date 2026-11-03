@@ -42,6 +42,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
+	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import type { GridRect } from '../stage-grid';
 
 	function ignoreRaycast(): void {}
@@ -65,6 +66,8 @@ import StageMatGround from './StageMatGround.svelte';
 		drafting = STAGE_DRAFTING_DEFAULTS,
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
 		contentBounds = null,
+		snapshotBounds = null,
+		framedViewport = null,
 		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
 		datumMeters = 0,
 		selection = null,
@@ -96,6 +99,10 @@ import StageMatGround from './StageMatGround.svelte';
 		drafting?: StageDraftingState;
 		/** Layout ∪ Scene datum bounds for Paper's bounded sheet. */
 		contentBounds?: GridRect | null;
+		/** Layout ∪ Scene world bounds for the snapshot host's depth range. */
+		snapshotBounds?: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] } | null;
+		/** A Look-through capture frame in Stage-local CSS; null draws the whole Stage. */
+		framedViewport?: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null;
 		/** The level datum the mat ground sits at. */
 		datumMeters?: number;
 		/** Canonical primary selection and pointer hover; ink is Stage-owned. */
@@ -239,15 +246,15 @@ import StageMatGround from './StageMatGround.svelte';
 	<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
 	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
-	<StageCamera {evaluation} paperVisible={paperCovers} paperInk={paperInk2d} />
+	<StageCamera {evaluation} paperVisible={paperCovers} paperInk={paperInk2d} frameViewport={framedViewport} worldOnly={framedViewport !== null} />
 	{#if evaluation !== null && matVisible}
 		<!--
 			The mat ground and its per-pixel grid: world-anchored, occluded by walls,
 			never a registered pick root.
 		-->
-		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible} {contentBounds} plateInk={paperInk3d} />
+		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible && framedViewport === null} {contentBounds} plateInk={paperInk3d} />
 	{/if}
-	{#if heightPlane !== null && !paperVisible}
+	{#if heightPlane !== null && !paperVisible && framedViewport === null}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
 		<T.Mesh
 			position={heightPlane.center}
@@ -278,7 +285,7 @@ import StageMatGround from './StageMatGround.svelte';
 		onEntityRenderable={entityRendererReady}
 		onEntityRoot={registerSceneRoot}
 	/>
-	{#if paperReveal !== null && plan !== null && evaluation !== null}
+	{#if framedViewport === null && paperReveal !== null && plan !== null && evaluation !== null}
 		<!--
 			The Plan is a drawing on Paper: the same Plan evaluation the Layout pick
 			provider reads, and the same Scene footprints the Scene pick reads.
@@ -308,6 +315,7 @@ import StageMatGround from './StageMatGround.svelte';
 		/>
 	{/if}
 	{#if !paperVisible}
+		{#if framedViewport === null}
 		<!--
 			Selection and hover ink on the mat: the same accepted meshes, gold for the
 			selected identity and quiet neutral for hover. It is a Canvas child, never a
@@ -326,13 +334,14 @@ import StageMatGround from './StageMatGround.svelte';
 			height={evaluation?.rect.height ?? 1}
 			fade={1 - (paperReveal?.sheet ?? 0)}
 		/>
+		{/if}
 	{/if}
 	<!--
 		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
 		and depth-write-free so the accepted body stays readable underneath. They are
 		one more child of the same Canvas — never a second renderer or scene.
 	-->
-	{#if !paperVisible}
+	{#if framedViewport === null && !paperVisible}
 		{#each ghosts as ghost (ghost.id)}
 			{#if ghost.shape.kind === 'form'}
 				<StageFormGhost
@@ -347,4 +356,10 @@ import StageMatGround from './StageMatGround.svelte';
 			{/if}
 		{/each}
 	{/if}
+	<!--
+		R217.S28 — the Experience snapshot host: the same renderer, an offscreen target,
+		and the authored View pose evaluated by Camera. It renders no frame of its own
+		until a visible slot asks.
+	-->
+	<StageSnapshotRenderer revision={sceneRootRevision + entityRenderRevision} bounds={snapshotBounds} />
 </Canvas>

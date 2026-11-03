@@ -108,7 +108,8 @@ export function viewFactsOf(
 	experience: Experience,
 	cameraViews: readonly CameraView[],
 	viewId: string,
-	presentationId?: string
+	presentationId?: string,
+	floorDatumMeters = 0
 ): ExperienceViewFacts | null {
 	const view = cameraViews.find((entry) => entry.id === viewId);
 	const presentation = presentationOfView(experience, viewId, presentationId);
@@ -119,7 +120,7 @@ export function viewFactsOf(
 		presentationId: presentation.id,
 		fovDegrees: view.fov,
 		lensMillimetres: lensMillimetres(view.fov),
-		eyeHeightMetres: view.eye[1],
+		eyeHeightMetres: view.eye[1] - floorDatumMeters,
 		isDefault: presentation.defaultViewId === view.id
 	};
 }
