@@ -81,6 +81,16 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
 .lens{fill:var(--ink)} .lens.sel{fill:var(--goldink)}
 .chipold{fill:#fff;stroke:var(--leaf);stroke-width:1}
 .cam{filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.32))}
+.cam.soft polygon{stroke:none}
+.cam.soft .hull{fill:#fff;stroke:var(--ink);stroke-width:2.2;stroke-linejoin:round}
+.cam.soft.tour .hull{stroke:var(--forest2)} .cam.soft.sel .hull{stroke:var(--goldink);fill:#fff8e6}
+.cam.soft .ct{fill:#fff} .cam.soft .cf{fill:#f1f2ee} .cam.soft .cs{fill:#e4e7e1}
+.cam.soft .cl{fill:#2c332e} .cam.soft .cap{fill:#1b201c}
+.cam.soft.tour .ct{fill:#f6fbf8} .cam.soft.tour .cf{fill:#e6f0ea} .cam.soft.tour .cs{fill:#d7e6dc}
+.cam.soft .rim{fill:none;stroke-width:1.4} .cam.soft.tour .rim{stroke:var(--leaf)} .cam.soft.sel .rim{stroke:var(--gold)}
+.camkey text{font:11px var(--sans);fill:var(--ink2)} .camkey .kh{font:600 12px var(--sans);fill:var(--ink)}
+.camkey .cam polygon,.camkey .cam .hull{vector-effect:non-scaling-stroke}
+
 .cam polygon{stroke:var(--ink);stroke-width:.8;stroke-linejoin:round}
 .cam .ct{fill:#ffffff} .cam .cf{fill:#eceee9} .cam .cs{fill:#dde1da}
 .cam .ct.btn,.cam .cf.btn,.cam .cs.btn{fill:var(--ink)}
@@ -373,7 +383,7 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
   <h2><span class="n">2</span>Views on the Stage: a camera you can read</h2>
   <p class="now">Now: in 3D every View is the same tiny camera-icon chip — no direction, no frustum, no height; in 2D every View draws a long translucent cone, so a busy Presentation is a fan of overlapping wedges. Selection is a blue browser focus box.</p>
   <div class="opts">
-    <span>3D</span><div class="seg" data-key="r3"><button data-v="body" aria-pressed="true"><span class="star">✓</span> Camera + frustum + stem</button><button data-v="frus" aria-pressed="false">Frustum only</button><button data-v="chip" class="old" aria-pressed="false">Icon chip</button></div>
+    <span>3D</span><div class="seg" data-key="r3"><button data-v="block" aria-pressed="true"><span class="star">★</span> Soft block</button><button data-v="hood" aria-pressed="false">Lens hood</button><button data-v="body" aria-pressed="false">Detailed</button><button data-v="frus" aria-pressed="false">Frustum only</button><button data-v="chip" class="old" aria-pressed="false">Icon chip</button></div>
     <span>2D</span><div class="seg" data-key="r2"><button data-v="wedge" aria-pressed="true"><span class="star">✓</span> Short wedge, full on selection</button><button data-v="arrow" aria-pressed="false">Dot + arrow</button><button data-v="fan" class="old" aria-pressed="false">Long cones</button></div>
   </div>
   <div class="pair">
@@ -381,8 +391,11 @@ svg.st:focus{outline:none} svg.st:focus-visible{outline:2px solid var(--leaf)} s
     <div><div class="cap">Plan</div><svg class="st" viewBox="0 0 600 380" id="v2"></svg></div>
   </div>
   <p class="hint">Click a View in either panel. Drag the white knob in Plan to aim it.</p>
+  <div class="cap" style="margin-top:12px">Close-up · three camera styles in their three states</div>
+  <svg class="st camkey" viewBox="0 0 640 300" id="camkey" style="background:#e9ebe6"></svg>
   <ul class="rules">
-    <li><b>3D:</b> a small real camera — body, viewfinder hump, shutter button and a dark lens barrel with glass, drawn in 3D and turned with the View's aim, in the World sticker finish (white faces, ink keyline, soft shadow). The wire frustum starts at the lens and reaches a picture plane about a metre ahead; and a dashed stem to a floor dot so its height reads. Quiet Views are ink at low strength; Views on the tour are leaf; the selection is gold with a <i>1.65 m</i> height tag and a stop badge.</li>
+    <li><b>3D:</b> a small camera drawn in 3D and turned with the View's aim, in the World sticker finish: white faces, one ink outline round the whole form, a soft shadow, and no inner edge lines. ★ <b>Soft block</b> is just a body and a short lens, the simplest shape that still reads as a camera. <b>Lens hood</b> trades the lens for a flared hood that points where the camera looks. <b>Detailed</b> (body, viewfinder, shutter button, barrel) stays on record as the earlier pick. On the tour the outline turns forest and the lens gets a leaf rim; selected, gold. The wire frustum starts at the lens and reaches a picture plane about a metre ahead; and a dashed stem to a floor dot so its height reads. Quiet Views are ink at low strength; Views on the tour are leaf; the selection is gold with a <i>1.65 m</i> height tag and a stop badge.</li>
+    <li><b>Many Views:</b> each camera is one merged mesh with shared materials, drawn as one instanced batch, so the count barely matters (about 60–90 triangles each). Far away or zoomed out it drops to box + lens, then to a dot. Tags and badges appear only for the selection and the tour.</li>
     <li><b>Plan:</b> a dot and a short wedge for every View; only the selected View draws its full cone with an aim knob. Default ◆ and Stop numbers sit on the dot.</li>
     <li><b>Selection is gold</b>: gold mark, gold corner brackets, name tag in the forest chip. No blue ring — keyboard focus uses the leaf focus ring only when tabbing.</li>
   </ul>
@@ -738,31 +751,46 @@ function view2d(v,sel,mode,o={}){const x=px(v.x),y=pz(v.z),st=sel?'sel':v.stop?'
   if(sel)s+=mode==='fan'?`<rect class="blue" x="${x-14}" y="${y-14}" width="28" height="28" rx="6"/>`+tag(x,y+24,v.name,'vtag old'):brackets(x,y,13,13)+tag(x,y+26,v.name);
   else if(o.labels!==false&&o.allLabels)s+=`<text x="${x+8}" y="${y+16}" style="font:11px var(--sans);fill:var(--ink2)">${v.name}</text>`;
   return s+'</g>';}
-/* A small real camera drawn in 3D: body, viewfinder hump, shutter button and a lens barrel along
-   the View's aim. Faces are culled against the iso viewer direction and painted far to near. */
-function camGlyph(E,f,r,st){const S=1.3,V=[1,1,1],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+/* A small camera drawn in 3D, turned with the View's aim. Faces are culled against the iso viewer
+   direction and painted far to near. Styles:
+   full  – body, viewfinder hump, shutter button, lens barrel with glass (detailed)
+   block – one body and a short lens: two forms, one outline (soft sticker)
+   hood  – a compact body with a flared lens hood that points where it looks */
+function hull(pts){const q=[...pts].sort((a,b)=>a[0]-b[0]||a[1]-b[1]),cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]),lo=[],up=[];
+  for(const p of q){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  for(const p of q.reverse()){while(up.length>1&&cr(up[up.length-2],up[up.length-1],p)<=0)up.pop();up.push(p);}
+  return lo.slice(0,-1).concat(up.slice(0,-1));}
+function camGlyph(E,f,r,st,style='block'){const S=1.3,V=[1,1,1],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
   const at=(a,b,c)=>[E[0]+(f[0]*a+r[0]*b)*S,E[1]+c*S,E[2]+(f[2]*a+r[2]*b)*S],neg=n=>n.map(x=>-x),u=[0,1,0];
   const faces=[];
   function box(a0,a1,b0,b1,c0,c1,k){
     const q=[[a0,b0,c0],[a1,b0,c0],[a1,b1,c0],[a0,b1,c0],[a0,b0,c1],[a1,b0,c1],[a1,b1,c1],[a0,b1,c1]].map(p=>at(...p));
     [[[1,2,6,5],f,'f'],[[0,3,7,4],neg(f),'f'],[[2,3,7,6],r,'s'],[[0,1,5,4],neg(r),'s'],[[4,5,6,7],u,'t']].forEach(([ix,n,t])=>{if(dot(n,V)>0)faces.push({pts:ix.map(i=>q[i]),cls:`c${t}${k||''}`});});}
-  box(-.24,.12,-.13,.13,-.12,.12);       // body
-  box(-.19,-.03,-.06,.06,.12,.19);       // viewfinder hump
-  box(.02,.08,.07,.11,.12,.15,' btn');   // shutter button
-  const n=10,R=.085,l0=.12,l1=.27,ring=a=>Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return at(a,Math.cos(t)*R,Math.sin(t)*R);});
-  const r0=ring(l0),r1=ring(l1);
-  for(let i=0;i<n;i++){const t=(i+.5)/n*Math.PI*2,nn=[r[0]*Math.cos(t),Math.sin(t),r[2]*Math.cos(t)];if(dot(nn,V)>0)faces.push({pts:[r0[i],r0[(i+1)%n],r1[(i+1)%n],r1[i]],cls:'cl'});}
-  const capVisible=dot(f,V)>0;if(capVisible)faces.push({pts:r1,cls:'cap'});
+  const n=style==='full'?10:8,ring=(a,R)=>Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return at(a,Math.cos(t)*R,Math.sin(t)*R);});
+  function tube(l0,R0,l1,R1,cls){const r0=ring(l0,R0),r1=ring(l1,R1);
+    for(let i=0;i<n;i++){const t=(i+.5)/n*Math.PI*2,nn=[r[0]*Math.cos(t),Math.sin(t),r[2]*Math.cos(t)];if(dot(nn,V)>0)faces.push({pts:[r0[i],r0[(i+1)%n],r1[(i+1)%n],r1[i]],cls});}
+    return r1;}
+  let L1,R1,cap;
+  if(style==='full'){box(-.1,.07,-.18,.18,-.12,.12);box(-.07,.05,-.06,.06,.12,.19);box(-.03,.04,.1,.15,.12,.15,' btn');L1=.22;R1=.09;cap=tube(.07,R1,L1,R1,'cl');}
+  else if(style==='hood'){box(-.09,.05,-.15,.15,-.1,.1);L1=.24;R1=.12;cap=tube(.05,.065,L1,R1,'cl');}
+  else{box(-.1,.06,-.17,.17,-.11,.11);L1=.19;R1=.085;cap=tube(.06,R1,L1,R1,'cl');}
+  const capVisible=dot(f,V)>0;if(capVisible)faces.push({pts:cap,cls:'cap'});
   const depth=p=>p.reduce((s,q)=>s+dot(q,V),0)/p.length;
   faces.sort((a,b)=>depth(a.pts)-depth(b.pts));
-  let svg=`<g class="cam ${st}">`+faces.map(fc=>`<polygon class="${fc.cls}" points="${P(fc.pts.map(p=>iso(...p)))}"/>`).join('');
-  if(capVisible){const g=Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return iso(...at(l1+.001,Math.cos(t)*R*.62,Math.sin(t)*R*.62));});svg+=`<polygon class="glass" points="${P(g)}"/>`;const hl=iso(...at(l1+.002,-R*.25,R*.3));svg+=`<circle class="glint" cx="${hl[0]}" cy="${hl[1]}" r="1.1"/>`;}
+  const soft=style!=='full',proj=faces.map(fc=>fc.pts.map(p=>iso(...p)));
+  let svg=`<g class="cam ${st}${soft?' soft':''}">`;
+  if(soft)svg+=`<polygon class="hull" points="${P(hull(proj.flat()))}"/>`;
+  svg+=faces.map((fc,i)=>`<polygon class="${fc.cls}" points="${P(proj[i])}"/>`).join('');
+  if(capVisible){const k=style==='hood'?.42:.62,g=Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return iso(...at(L1+.001,Math.cos(t)*R1*k,Math.sin(t)*R1*k));});
+    svg+=`<polygon class="glass" points="${P(g)}"/>`;
+    if(soft&&st)svg+=`<polygon class="rim" points="${P(cap.map(p=>iso(...p)))}"/>`;
+    const hl=iso(...at(L1+.002,-R1*.25,R1*.3));svg+=`<circle class="glint" cx="${hl[0]}" cy="${hl[1]}" r="1.1"/>`;}
   svg+='</g>';
-  return{svg,apex:at(l1,0,0)};}
+  return{svg,apex:at(L1,0,0)};}
 function view3d(v,sel,mode){const st=sel?'sel':v.stop?'tour':'';const E=[v.x,v.h,v.z],a=rad(v.yaw),f=[Math.cos(a),0,Math.sin(a)],r=[-Math.sin(a),0,Math.cos(a)];
   const e=iso(...E),fl=iso(v.x,0,v.z);let s=`<g class="v3" data-view="${v.id}" style="cursor:pointer">`;
   if(mode==='chip'){s+=`<rect class="chipold" x="${e[0]-7}" y="${e[1]-5}" width="14" height="10" rx="2" ${sel?'style="stroke:var(--gold);fill:#fbf3da"':''}/><path d="M${e[0]-3},${e[1]+2}l2,-3l2,2l2,-2" fill="none" stroke="var(--leaf)" stroke-width=".9"/>`;if(sel)s+=tag(e[0]+44,e[1],v.name,'vtag old');return s+'</g>';}
-  const cam=mode==='body'?camGlyph(E,f,r,st):null,O=cam?cam.apex:E,o=iso(...O);
+  const cam=['body','block','hood'].includes(mode)?camGlyph(E,f,r,st,mode==='body'?'full':mode):null,O=cam?cam.apex:E,o=iso(...O);
   const d=sel?1.4:.9,h=Math.tan(rad(26))*d,w=h*1.6,C=(sx,sy)=>iso(O[0]+f[0]*d+r[0]*w*sx,O[1]+h*sy,O[2]+f[2]*d+r[2]*w*sx),cs=[C(-1,1),C(1,1),C(1,-1),C(-1,-1)];
   s+=`<line class="stem" x1="${e[0]}" y1="${e[1]}" x2="${fl[0]}" y2="${fl[1]}"/><ellipse class="foot" cx="${fl[0]}" cy="${fl[1]}" rx="5" ry="2.6"/>`;
   const fr=cs.map(c=>`<line class="frl ${st}" x1="${o[0]}" y1="${o[1]}" x2="${c[0]}" y2="${c[1]}"/>`).join('')+`<polygon class="fr ${st}" points="${P(cs)}"/>`;
@@ -785,6 +813,16 @@ function view3d(v,sel,mode){const st=sel?'sel':v.stop?'tour':'';const E=[v.x,v.h
   $('#v3').addEventListener('pointerdown',pick);
   R.s2=draw;})();
 function toSvg(svg,e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const q=pt.matrixTransform(svg.getScreenCTM().inverse());return[q.x,q.y];}
+
+
+/* ---------- 2 · camera close-up ---------- */
+(function(){const yaw=rad(28),f=[Math.cos(yaw),0,Math.sin(yaw)],r=[-Math.sin(yaw),0,Math.cos(yaw)];
+  const styles=[['block','Soft block ★'],['hood','Lens hood'],['full','Detailed']],states=[['','Quiet'],['tour','On the tour'],['sel','Selected']];
+  let s='';const o=iso(0,0,0);
+  states.forEach(([st,lab],j)=>{s+=`<text class="kh" x="${240+j*150}" y="30" text-anchor="middle">${lab}</text>`;});
+  styles.forEach(([sty,lab],i)=>{s+=`<text x="20" y="${100+i*82}">${lab}</text>`;
+    states.forEach(([st],j)=>{const g=camGlyph([0,0,0],f,r,st,sty);s+=`<g transform="translate(${240+j*150} ${96+i*82}) scale(2.1) translate(${-o[0]} ${-o[1]})">${g.svg}</g>`;});});
+  $('#camkey').innerHTML=s;})();
 
 /* ---------- path helpers ---------- */
 function cr(Pts,n=14){const out=[];for(let i=0;i<Pts.length-1;i++){const p0=Pts[i-1]||Pts[i],p1=Pts[i],p2=Pts[i+1],p3=Pts[i+2]||Pts[i+1];const last=i===Pts.length-2;for(let t=0;t<(last?n+1:n);t++){const u=t/n,u2=u*u,u3=u2*u;out.push([0,1].map(k=>.5*(2*p1[k]+(-p0[k]+p2[k])*u+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*u2+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*u3)));}}return out;}

@@ -17,7 +17,7 @@ new start page. Rounds R1–R4 start only after that.
 | Sheet | Pick |
 | --- | --- |
 | §1 Look through | Full Stage with safe-frame ticks |
-| §2 Views | A real camera in 3D (body, viewfinder hump, shutter button, lens barrel, turned with the aim) with the wire frustum from the lens and the height stem; dot + short wedge in Plan |
+| §2 Views | A camera in 3D, turned with the aim, with the wire frustum from the lens and the height stem; dot + short wedge in Plan. Camera style still open: ★ Soft block (body + short lens), Lens hood, or Detailed (body, viewfinder, shutter, barrel; too much detail for now) |
 | §3 Paths | Ribbon + chevrons |
 | §4–§6 | As recommended: handles on the route, Travel adds a straight path, links in the Guide gutter |
 | §7 Toolbar | Light glass, **shared by the World and Experience Stage toolbars** (2D \| 3D ⚙, Grid · Snap, and Show in Experience) |
@@ -107,8 +107,13 @@ D1, D2, D3, D4, D7, D8 (sheet §1–§4 and §7).
 
 - Look through on the full Stage with a gold edge and 16:10 safe-frame ticks. Toolbar and marks hide.
   One HUD; the Card shows Framing only.
-- 3D Views: a small real camera (body, viewfinder hump, shutter button, lens barrel turned with the
-  aim), the wire frustum from the lens, height stem and tag, stop badge. 2D Views: dot and short wedge;
+- 3D Views: a small camera in the style the owner settles in sheet §2 (★ Soft block), in the World
+  sticker finish: white faces, one ink outline, soft shadow. The wire frustum starts at the lens; height
+  stem and tag; stop badge.
+- Many Views stay cheap: each camera is one merged mesh with shared materials, all drawn as one
+  instanced batch (state is a per-instance colour), and frustums are one merged line set. Far away or
+  zoomed out a camera drops to box + lens, then to a dot. Tags and badges render only for the selection
+  and the tour. Check frame time against the `x-dense` fixture (50-View Presentation, 40 Presentations). 2D Views: dot and short wedge;
   the full cone and aim knob only on the selection. Gold selection with brackets.
 - Paths: a ribbon with chevrons and a start ring. Cut is dotted, with a chip on hover. 3D paths sit at
   eye height with a floor shadow and drops at each point. A segment that passes through a wall gets the
