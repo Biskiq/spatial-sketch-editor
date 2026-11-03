@@ -1,204 +1,220 @@
 # Native modeling freedom and semantic architecture
 
-**Research proposal only · 2026-11-03 · owner review (do not merge as production authority)**
+**Research proposal only · Revised after PR #266 adversarial review · 2026-11-03 · owner review**
 
-Prepared against `main` at `535e4bd1`. Research proposal only: no experiment code, prototype implementation, schema selection, contract ratification or roadmap authorization is included in this change.
+Prepared against `main` at `535e4bd1`. Research proposal only: no prototype code, permanent schema, dependency commitment, final UX or roadmap authorization is included in this change.
 
-**Goal of this proposal:** define a bounded, high-signal feasibility experiment that tests how SketchUp-like direct modeling freedom (freely modeling a table, vitrine or stepped counter without furniture-specific generators) can coexist with retained, revisable source and Biskiq's semantic architecture ([`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts)), where an Opening understands its host Wall while a Scene object never becomes a Layout entity.
+**Intent of this revision:** move from a narrow binary shootout (`M1` vs `M2`) to a **progressive, extractable experimental modeling foundation** designed to answer the core architectural questions blocking `T5`—how SketchUp-grade direct geometric freedom, non-destructive revisability, and [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts) architectural intelligence can coexist—while producing pure geometry, correspondence, and fixture engineering that `T5` can directly reuse or adapt.
 
 ---
 
-## 1. The unresolved problem and what prior work already answers
+## 1. Consequential unresolved architectural questions
 
-Biskiq sits between two well-known failure modes:
+### 1.1 Separating reusable work from genuinely novel mechanisms
 
-- **The Generator Trap (current trajectory risk):** each new form capability is added as a specialized parametric generator (`extrude`, `revolve`, `sweep`, `roof`, `walk`, or single-body genus-0 slice `reshape`). Revision guarantees stay strong inside each generator's lane, **but** any everyday object whose topology crosses that lane—a four-legged table with an apron, a wall-hung vitrine with a recessed cavity, a slotted frame, or a stepped alcove counter—is either impossible or demands yet another bespoke generator.
-- **The Soup Trap (classic SketchUp failure mode):** collapsing everything into one mutable face/edge mesh (`Push/Pull` on split faces plus sticky edges) makes first-pass modeling effortless, **but** destroys two things Biskiq cannot give up:
-  1. **Intra-object revisability:** widening a `1.2 m` table to `2.0 m` stretches `60 mm × 60 mm` legs into `100 mm × 60 mm` planks unless manually box-selected, and changing an earlier recess depth or outline requires rebuilding.
-  2. **Architectural intelligence:** a window cut becomes dead faces rather than a portal-validated `LayoutWallOpening`, while touching furniture either fuses into walls or stays blindly stranded when walls move.
+Before writing new geometry code, we must separate capabilities Biskiq has **already proven** from the four distinct complexity tiers that Draft 1 conflated:
 
-### 1.1 What existing code and research already answer
+1. **Already proven and directly reusable (do not re-research):**
+   - **Exact 2D predicates & deterministic linear extrusion:** [`predicates.ts`](../../packages/geometry-core/src/predicates.ts), [`profile.ts`](../../packages/geometry-core/src/profile.ts) and [`extrude.ts`](../../packages/geometry-core/src/extrude.ts) establish cross-browser 2D contour validation, quadratic smooth corners, and `FormMesh` region tagging.
+   - **Single-contour `extrude` / `revolve` / `sweep`, closed-solid validation & rigid face-role hosting:** [`native-form-lab`](../../prototypes/native-form-lab/FINDINGS.md) ([`geometry/index.ts`](../../prototypes/native-form-lab/src/geometry/index.ts)) already proves arbitrary 3D `Frame` generation, convex profile-corner rounding, manifold edge inspection (`inspectMesh`), role-keyed paint broadcast on segment split, and `HostLink` fallback to `'unresolved'` at `lastFrame`.
+   - **2D convex clipping & hole-bridging triangulation:** [`p3-depth`](../../prototypes/p3-depth/DESIGN.md) ([`plan.js`](../../prototypes/p3-depth/src/core/plan.js)) already implements dependency-free planar polygon clipping and reflex-bridge ear triangulation with interior holes.
+   - **Attachment UX states & Object Focus scope journey:** [`object-composition-prototype`](../../prototypes/object-composition-prototype/HANDOFF.md) already explores wall-mount/broken/setdown UX and ID-based revision diffing; [PR #244's UX proposal](../native-object-creation-ux/PROPOSAL.md) and [`UX-SPEC.md`](../../prototypes/native-object-shaping/UX-SPEC.md) already frame the `World ↔ Object Focus` scope transition.
 
-We should not repeat work the repository has already proven or falsified:
+2. **Distinguishing multi-part composition from topological complexity:**
+   A four-legged table with aprons, a slatted bench, or a multi-board bookcase requires **zero 3D Booleans** and **zero `genus > 0` topology**—only local multi-part composition and part-instance reuse. Topological complexity rises across four distinct rungs, each demanding different machinery:
+   - **Rung 0 — Multi-part composition of `genus 0` solids:** independent or aligned sub-parts (tabletop + 4 instances of 1 leg + aprons). Needs component/part hierarchy and alignment/stretch rules, not CSG.
+   - **Rung 1 — 2D planar topology on a single prism:** profiles with interior holes (frames, rings, perforated panels) and collinear edge splits. Needs 2D polygon arrangement + hole triangulation, still zero 3D CSG.
+   - **Rung 2 — Local boundary editing on a planar-faced solid:** splitting an existing planar face with edges/loops, `Offset`ting a border loop, non-colliding `Push/Pull` (bosses and blind pockets strictly inside a host face), and synchronous `Move / Tilt Face` (miters, tapers, gable tops, pocket-depth edits). Solvable via **polygonal B-rep / half-edge surgery + plane re-intersection** without a triangle-mesh Boolean engine.
+   - **Rung 3 — Volumetric breakthroughs, coplanar merges & cross-seam cuts:** pushing a pocket all the way through a parallel, stepped or angled back face to punch an opening; pushing a step until it meets and dissolves into an adjacent coplanar face; or cutting a rabbet/mortise across an existing edge seam. Here local half-edge rules hit combinatorial edge-face intersections and genus changes, requiring **volumetric Boolean / cell-arrangement resolution + coplanar polygon recovery**.
 
-| Evidence source | What is already established (do not re-prove) | What remains unresolved |
+### 1.2 Why Draft 1's `M1 vs M2` framing was wrong—and the five real questions
+
+Draft 1 pitted "structured constructive feature modeling (`M1`)" against "mutable polyhedral soup (`M2`)" as mutually exclusive engines. That framing conflated **two orthogonal axes**:
+
+- **Composition axis:** *Single merged solid* vs *Component/Part assembly over leaf solids* (even expert SketchUp modeling relies on **Groups and Components** to stop table legs from sticking to tabletops and to edit all four legs as one definition).
+- **Leaf-solid & revision axis:** *Constructive operation replay* (`seed + operations[]`, assumed in [`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) §5) vs *Stateful boundary solid + history-free synchronous editing* (where the live polygonal B-rep **is** the source, and dimensions/depths remain editable by moving live faces or stretch planes rather than replaying creation history) vs *Hybrid leaf coexistence* (procedural `sweep`/`revolve` leaves alongside directly edited B-rep leaves).
+
+Building two parallel toy engines wastes effort. Instead, one modular experimental engine should answer **five consequential architectural questions**:
+
+1. **Q1 — Canonical leaf representation:** Can a **planar-dominant polygonal B-rep** (faces with outer + hole loops, crisp feature edges, coplanar healing, persistent `FaceId`/`EdgeId` lineage, plus optional analytic metadata on curved/revolved groups) serve as Biskiq's general editable solid—and where must procedural generators (`revolve`, `sweep`, slice `reshape`) remain retained leaf definitions versus lowering into that B-rep?
+2. **Q2 — History-free revisability vs operation replay:** How much useful revision (changing pocket depth, wall/frame thickness, miter angle, overall width/height) can be achieved **directly on a live B-rep without a construction tree**—via synchronous face-set offset/move, spatial stretch planes, and shared `Part` definitions—and under what exact edits does history-free editing fail where retained replay succeeds (or vice versa)?
+3. **Q3 — The Rung 2 → Rung 3 Boolean boundary & round-trip drift:** How far do pure TypeScript polygonal B-rep operations (Rungs 1–2) take SketchUp-style modeling before users hit Rung 3 breakthroughs—and if Rung 3 escalates to a triangle-mesh Boolean kernel (such as `manifold-3d`), **can its triangulated output be healed back into drift-free, re-sketchable planar polygons with intact `FaceId` lineage across 20+ sequential edits**, or does mesh-CSG round-tripping progressively corrupt planarity and snap edges?
+4. **Q4 — Non-uniform resize across assemblies and angled geometry:** Without semantic furniture types (`"table"`, `"leg"`) or a full CAD constraint solver, what are the real capabilities and failure boundaries of **spatial box-stretch (keep/stretch planes)** versus **part-local frame translation** when stretching orthogonal joinery, hollowed frames, and non-orthogonal (splayed/angled) assemblies?
+5. **Q5 — Minimum semantic architectural host interface:** What is the **smallest read-only geometric interface** over real [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts) output (`compileWallFirstLayoutGeometry`) needed so arbitrary modeled objects can snap/align in situ against non-orthogonal walls and openings, adapt across a span without distorting part thicknesses, and preserve strict `Layout` vs `Scene` authority separation?
+
+### 1.3 Candid pushbacks and challenged assumptions
+
+Where engineering evidence pushes back against both Draft 1 and tempting simplifications in the review:
+
+1. **Pushback on deferring Rung 3 volumetric breakthroughs too far:**
+   A four-legged table needs no Booleans, **but SketchUp's signature single-body gesture—drawing a rectangle on a panel/wall of an object and pushing it until it snaps to the back face to punch a clean window/slot, or pushing across a step—is Rung 3**. If we stop at Rung 2 (blind pockets that refuse to cross another face or edge), we will build a system that looks general on blocks and fails on the third minute of real casework or joinery. We should stage Rung 2 *before* Rung 3 (so Rung 3 earns its keep), not exclude Rung 3.
+2. **Pushback on "SketchUp freedom + effortless parametric revision" as a free lunch:**
+   SketchUp itself does **not** preserve leg thickness when scaling an ungrouped table, nor can spatial box-stretch resize a `15°`-splayed mid-century chair leg without shearing its cross-section. Likewise, a swept curved handrail ([`native-form-lab`](../../prototypes/native-form-lab/FINDINGS.md)) wants retained `profile + carrier` editing, whereas a notched cabinet carcass with 12 cross-cutting rabbets makes operation replay brittle (`red feature tree` failure) and wants history-free B-rep face moves. Expecting **one** universal leaf mechanism to win every geometry class is likely false; our experiment should test **where pluralistic leaves under a uniform `PartGraph` + `FaceId` boundary beat any single dogma**.
+3. **Pushback on mocking Layout *and* on assuming zero semantic grey zone:**
+   - Draft 1 over-scoped T1/T2 lifecycle workflows (`planWallSplit` rebasing, wall-deletion `setdown` UI); **we cut those from this revision**. However, replacing `@portfolio/layout-core` with a mocked flat plane would hide two real geometric interactions that directly stress `T5`: **(a)** modeling/mitering in situ against non-90° `CompiledJunctionSurface`s, and **(b)** driving non-uniform object stretch from compiled alcove spans and `CompiledOpening` bounds.
+   - We also flag an architectural truth the product must eventually confront: keeping Scene strictly non-mutating toward Layout ([`architecture.md`](../../docs/reference/architecture.md), [`scene-content.md`](../../docs/reference/components/scene-content.md)) means **a Scene object can never carve a recessed niche *into* a `LayoutWall`'s thickness**. Vitrine cavities live inside the Scene object's own depth; if Biskiq wants true wall-thickness niches, Layout itself will need a non-portal `WallRecess` sibling of `Opening` rather than cross-domain CSG.
+4. **Pushback on naive "drop-in" extractability into `@portfolio/geometry-core`:**
+   [`predicates.ts`](../../packages/geometry-core/src/predicates.ts) and [`profile.ts`](../../packages/geometry-core/src/profile.ts) enforce **zero geometric epsilons and zero transcendental `Math.*` functions** for bit-identical IEEE-754 output across engines. Arbitrary 3D plane-plane intersections (`tiltFace`, non-orthogonal miters), revolved/curved surfaces, and polygonal face-healing after 3D cuts inevitably confront floating-point plane tolerances (or rational/exact predicates vs canonicalized plane equations). Rather than pretending 3D B-rep code drops straight into today's zero-epsilon contract unchanged, the experiment must explicitly measure numerical drift and define what determinism contract `geometry-core` v2 actually requires.
+
+---
+
+## 2. Experimental architecture and mechanisms to test
+
+Instead of two disposable prototypes, we propose building **one clean, layered experimental modeling engine** inside a standalone folder under [`prototypes/`](../../prototypes/README.md), separating UI-independent geometry/revision packages (`core/*` and `corpus/*`) from a thin interactive workbench (`workbench/*`):
+
+### 2.1 Editable polygonal B-rep & leaf boundary contract (`core/brep/`)
+
+- **Canonical polygonal solid:** Closed 2-manifold boundary representation with explicit planar `Face`s (outer CCW `Loop` + `0..k` CW hole `Loop`s), half-edge topology, explicit plane representations, crisp vs smooth `Edge` flags, and deterministic lowering to [`FormMesh`](../../packages/geometry-core/src/extrude.ts)-compatible indexed buffers (`positions`, `indices`, `regions` mapped to `FaceId`, sharp creases).
+- **Explicit `FaceId` & `EdgeId` lineage graph:** Every topological edit emits machine-checkable lineage (`preserved`, `split: parent → [children]`, `merged: [parents] → child`, `created`, `retired`), generalizing [`native-form-lab`](../../prototypes/native-form-lab/FINDINGS.md)'s segment-key rules to arbitrary 3D face splits, offsets, pockets, and coplanar heals.
+- **Leaf polymorphism behind one boundary:** Both a **stateful polygonal B-rep leaf** and a **retained procedural leaf** (adapting `extrude` / `revolve` / `sweep` from `native-form-lab`) implement the same evaluated `Solid + FaceId` contract—allowing direct comparison of when keeping a procedural seed helps vs when converting/editing as a stateful B-rep wins.
+
+### 2.2 Direct modeling operator algebra & two-tier kernel (`core/ops/`)
+
+A small, orthogonal set of geometric operators—containing **zero object-type logic**:
+
+- **2D face-plane arrangement (`splitFace`, `offsetFaceLoop`):** Project onto any planar `Face`'s local orthonormal `Frame`; split faces by open edge chains or closed inner loops (reusing `robust-predicates` + hole-bridging triangulation); inset/outset loops to form borders, rails, stiles, and tabletop aprons in one gesture.
+- **Tier 1 pure-TS B-rep solid ops (`extrudeLoop`, local `pushPullFace`, synchronous `moveFaces` / `tiltFace`):**
+  - Extrude any outer+hole profile on an arbitrary 3D `Frame` into a new solid or child part.
+  - Local `pushPullFace` for bosses, blind pockets, and flush coplanar step merges within Rung 2 topology, automatically dissolving redundant coplanar edges (`healCoplanarFaces`).
+  - **Synchronous `moveFaces` / `tiltFace`:** Translate or rotate one or more existing faces (e.g., pocket floor, step riser, mitered end, outer wall) while recomputing intersections with adjacent support planes and validating against edge collapse or self-intersection—testing **history-free dimensional revision**.
+- **Tier 2 pluggable volumetric breakthrough & Boolean resolver (`booleanResolve`):**
+  - Invoked **only** when `pushPullFace` or solid-solid cut/union crosses Rung 2's boundary (e.g., pushing a pocket through a back/stepped face to open a window/slot, or cutting across an existing edge seam).
+  - Isolates volumetric resolution (`manifold-3d` WASM vs lightweight pure-TS BSP/mesh clipping probe) behind a strict post-processing pipeline: **volumetric op → coplanar triangle clustering → polygon+hole `Loop` reconstruction → collinear vertex cleanup → `FaceId` provenance mapping**.
+
+### 2.3 Multi-part composition, revision & stretch (`core/revision/`)
+
+- **`PartGraph` (component-level structure over editable solids):**
+  - An object can remain a single leaf solid or contain multiple named/unnamed `PartInstance`s referencing local `PartDefinition`s (so editing one table leg or louver updates all linked instances immediately, while `Make Unique` forks one instance). Touching parts **never** auto-fuse unless explicitly boolean-joined.
+- **Controlled comparison of four revision & resize mechanisms:**
+  1. *History-free synchronous face editing* (revising pocket depths, border widths, and thicknesses on a mutated B-rep regardless of creation order).
+  2. *Operation-stack replay* (recording `seed + ops[]` and re-evaluating after upstream contour/parameter edits, measuring exact topological naming failure modes when downstream cuts cross upstream seams).
+  3. *Spatial Stretch-Plane / Box-Stretch* (slicing a solid or `PartGraph` with 1–3 axis/frame stretch planes so interior spans grow while corner legs, stiles, rabbets, and holes translate rigidly without distortion).
+  4. *Part-frame anchor translation* (comparing against Stretch-Planes on angled/splayed parts where planar slicing shears cross-sections).
+
+### 2.4 Narrow authentic architectural host adapter (`core/arch-host/`)
+
+Rather than simulating T1/T2 wall-split and wall-deletion repair workflows, `core/arch-host/` wraps **real [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts) `compileWallFirstLayoutGeometry` output** in a ~150-LOC read-only query interface exposing only what affects `T5` geometry:
+
+- **Read-only architectural reference planes & edges:** Wall side planes/frames (including non-90° `CompiledJunctionSurface` trims/miters), `CompiledRoom` floor/ceiling elevations, and `CompiledOpening` jamb/sill/head bounds—consumable as **non-fusing construction/snap references** while sketching or pushing faces in situ.
+- **Span & clearance feedback:** Given an assembly hosted on a Wall face or spanning two opposing Wall faces, drives `stretchAssembly` when the compiled room/alcove span changes and reports deterministic clearance intersections against `CompiledPhysicalWall.openings` (contrasting Layout's native `LayoutWallOpening` cut against a Scene object's self-contained B-rep cavity).
+
+---
+
+## 3. Extractable engineering vs disposable research scaffolding
+
+Every module is partitioned upfront so `T5` can harvest proven math and tests without inheriting prototype UI debt or premature schemas:
+
+| Module | Dependencies allowed | Extractability target & boundary |
 | --- | --- | --- |
-| **Shipped `T5.P01` & `geometry-core`** ([P01 README](../../docs/roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md), [`profile.ts`](../../packages/geometry-core/src/profile.ts), [`extrude.ts`](../../packages/geometry-core/src/extrude.ts), [`scene.ts`](../../packages/project-model/src/scene.ts)) | Cross-browser deterministic 2D contour validation (`robust-predicates` + `earcut`), quadratic smooth corners, linear extrusion on `'plan' \| 'elevation'`, `FormMesh.regions` (`0` base, `1` top, `2 + i` side) + `segmentKeys`, and detached `My Objects` source copies. | Single outer contour only (`earcut` holes disabled; collinear split vertices rejected); two world-aligned planes only; per-axis [`SceneFormSource`](../../packages/project-model/src/scene.ts) `scale: Vec3` only; no multi-part assembly, holes, cuts or arbitrary face frames. |
-| **Shipped `layout-core` & `F.1–F.5`** ([`layout-geometry.ts`](../../packages/layout-core/src/layout-geometry.ts), [`layout-floor-support.ts`](../../packages/layout-core/src/layout-floor-support.ts), [`support.ts`](../../packages/project-model/src/scene-planning/support.ts), [`unit-resolution.ts`](../../packages/project-model/src/references/unit-resolution.ts)) | Wall-first compilation (`Junctions`, line/cubic-chain `Walls`, analytic `Openings` with portal checks, `reconcileRooms`, [`layout-wall-noding.ts`](../../packages/layout-core/src/layout-wall-noding.ts) split lineage, captured non-recycling IDs) and [`composition-execution.md`](../../docs/reference/composition-execution.md) `F.1–F.5` envelopes. | `CompiledQueryPolygon` emits `'room-floor'` **only**; Wall side faces and junction surfaces expose no addressable surface frames to Scene; `F.1` unit resolvers currently refuse non-null `componentId`; [`operations.ts`](../../packages/project-model/src/scene-planning/operations.ts) bakes world `position`/`rotation` at commit time, so Wall moves/splits/deletes leave Scene objects stranded. |
-| **`native-form-lab`** ([`FINDINGS.md`](../../prototypes/native-form-lab/FINDINGS.md)) | Keyed `extrude` / `revolve` / `sweep` closed solids, convex corner rounding, role-keyed paint broadcast on segment split, revolve cap birth/retirement (`270° → 360° → 270°`), and planar-role child `HostLink` transport with explicit `'unresolved'` fallback at `lastFrame`. | Still locked to single-contour generators; cannot cut recesses, punch interior holes, coordinate non-uniform multi-part resize, or couple to [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts). |
-| **`native-object-shaping` & `native-object-creation-ux`** ([`UX-SPEC.md`](../../prototypes/native-object-shaping/UX-SPEC.md), [UX proposal](../native-object-creation-ux/PROPOSAL.md)) | Progressive-depth **Object Focus** scope journey (`World → Edit object → Focus → Back to World`) and orthogonal cross-section contour deformation (`reshape`, `keep`) on a single genus-0 body. | Fixed genus-0 single-body topology cannot produce legs, open frames, slots or cavities; UX proposal explicitly leaves part/boolean geometry operations and storage open. |
-| **`object-composition-prototype` & `p2-smart-wall`** ([`HANDOFF.md`](../../prototypes/object-composition-prototype/HANDOFF.md), [`p2-smart-wall`](../../prototypes/p2-smart-wall/README.md)) | UX semantics for parametric wall-mount (`hangPose`, Opening AABB refusal), wall-move propagation vs unattached pass-through warning, wall-delete `setdown` vs `broken` repair, and ID-only library revision correspondence. | Simulated on a 1-parameter gallery bay (`backZ`) and procedural Three.js boxes/cylinders—not wired to real `compileWallFirstLayoutGeometry`, Wall splits/curves, or editable native geometry. |
-| **`p3-depth` & `native-creative-depth`** ([`DESIGN.md`](../../prototypes/p3-depth/DESIGN.md), [synthesis](../native-creative-depth/synthesis-and-direction.md), [identity/perf](../native-creative-depth/geometry-identity-and-performance.md), [proof agenda](../native-creative-depth/proof-agenda.md)) | CSG-free Layout-side compound roofs and walking-line stairs/rails; licensing clearance ([G0 ratification](../../docs/reference/decisions/t5-g0-ratification-2026-10-27.md)) admitting permissive (`manifold-3d`, Clipper2) and weak-copyleft candidates after compliance review. | Does not test general Scene object modeling, boolean face-provenance survival under upstream edits, or live Scene ↔ Layout surface coupling. |
-| **Withdrawn `E0` & `living-drawing`** ([`e0-execution-plan.md`](../../docs/roadmap/t5-expressive-geometry/e0-execution-plan.md), [`living-drawing`](../../prototypes/living-drawing/README.md)) | Negative controls: `E0`'s shared floor guide converged with explicit controls and was withdrawn ([planning record](../../docs/reference/decisions/t5-object-focus-planning-2026-10-27.md)); `living-drawing` retreated to built-ins only and pushed niches into walls. | Confirms we must test **real geometric/semantic mechanics**, not UI control relocation or built-in-only subsets. |
-
-### 1.2 The precise three-way frontier
-
-No existing code or prototype tests the intersection where all four brief questions meet:
-
-1. **Minimal general modeling beyond single-contour generators (Q1):** What smallest set of face-local modeling and part-composition primitives lets a creator build arbitrary multi-part and `genus > 0` / recessed objects (table, vitrine, slotted frame, stepped bench) without object-type schemas?
-2. **Direct editing + revisable source & honest resize (Q2):** When a creator draws on faces to push/pull parts or cuts and later widens the object or edits an upstream contour, what representation preserves part proportions (e.g., square table legs, fixed vitrine border) and surface roles without exposing a parametric CAD constraint solver—and when must correspondence explicitly go `unresolved`?
-3. **Architectural interaction without domain fusion (Q3):** How does a freely modeled Scene object consume compiled [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts) Wall/Opening/Room surfaces across *ephemeral snap*, *persistent surface mount*, and *alcove span fit*—reacting deterministically to Wall moves, Wall splits, Wall deletions and Opening collisions while keeping [`architecture.md`](../../docs/reference/architecture.md) and [`scene-content.md`](../../docs/reference/components/scene-content.md) authorities strictly separate?
-4. **Pre-commitment technical proofs (Q4):** Which representations, provenance trackers, and Layout surface read queries hold up empirically under edit/revision cycles and Biskiq's Worker/bundle limits before committing `T5.P02+`?
+| **`core/brep/`** (polygonal B-rep, `FaceId`/`EdgeId` lineage, coplanar healing, `FormMesh` tessellator, manifold/planarity validator) | Pure TypeScript + `robust-predicates` + `earcut` (zero Svelte, Threlte, Three, or DOM) | **High — direct candidate for `@portfolio/geometry-core`**, subject to owner review of the 3D plane-intersection tolerance / determinism findings (§1.3). |
+| **`core/ops/`** (`splitFace`, `offsetFaceLoop`, `extrudeLoop`, local `pushPullFace`, synchronous `moveFaces`/`tiltFace`) | `core/brep/` only | **High — direct algorithm & operator candidates** for `T5` object focus shaping and extrusion generalization. |
+| **`core/ops/boolean/`** (WASM `manifold-3d` / CSG adapter + coplanar triangle-to-polygon B-rep recovery) | `core/brep/` + isolated Boolean backend | **Medium / Conditional — isolated behind an interface** so if mesh-CSG round-tripping proves lossy or WASM stays Worker-only, `core/brep/` remains clean and zero-WASM. |
+| **`core/revision/`** (`PartGraph`, `stretchSolid`/`stretchAssembly`, replay vs synchronous harness, correspondence certificates) | `core/brep/` + `core/ops/` | **High — algorithmic & F.4-correspondence evidence** directly informing `T5` compound object representation and resize semantics without dictating `Scene` JSON codecs. |
+| **`core/arch-host/`** (read-only surface frames, junction planes, Opening clearance over `CompiledLayoutGeometry`) | `@portfolio/layout-core` types/compiler only | **High — candidate specification/seed** for `T1` / `project-model`'s missing Wall/Ceiling surface read query ([`support.ts`](../../packages/project-model/src/scene-planning/support.ts), [`unit-resolution.ts`](../../packages/project-model/src/references/unit-resolution.ts)). |
+| **`corpus/`** (deterministic construction, torture & out-of-order revision suites + metric collectors) | `vitest` + `core/*` | **High — directly portable regression & benchmark corpus** for future `geometry-core` / `T5` phases. |
+| **`workbench/`** (Svelte 5 + Threlte interactive viewport, tool state, debug sliders, X-Ray inspector) | Svelte 5, Threlte, Three.js, `core/*` | **Intentionally disposable research harness** — zero authority over Stage/Focus shell UX ([PR #244](../native-object-creation-ux/PROPOSAL.md)) or production session stores. |
 
 ---
 
-## 2. Recommended experiment, framing challenges and alternatives considered
+## 4. Proving generality, adversarial stress and workbench scope
 
-### 2.1 Challenging three tempting assumptions
+### 4.1 Guarding against "prepared demo" bias
 
-1. **Challenge to [`umbrella-plan.md`](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) §5 ("generator + linear `operations[]` replay"):**
-   Adding `revolve` and `sweep` to `extrude` + genus-0 slice `reshape` still cannot model a four-legged table or a recessed display case. Moreover, assuming an `operations[]` list replays cleanly in object space after upstream outline edits already conflicts with [`UX-SPEC.md`](../../prototypes/native-object-shaping/UX-SPEC.md) §11.1 ("do not replay an original extrusion over subsequent work") and becomes fragile as soon as inward cuts, interior holes or multi-part joints reference earlier faces.
-2. **Challenge to [`living-drawing`](../../prototypes/living-drawing/README.md) ("native = built-ins; furniture = GLB"):**
-   Outsourcing tables and casework to static GLBs forfeits native creative freedom, while carving niches into walls violates `Layout` vs `Scene` separation ([`north-star.md`](../../docs/reference/north-star.md)).
-3. **Challenge to "SketchUp freedom requires a single sticky B-rep soup":**
-   What makes SketchUp feel liberating is the **action grammar**—*pick any planar face, sketch a closed loop or split line on it, push/pull out or in, and duplicate/align parts in space*—not the destructive merging of all geometry into one unsemantic mesh. Whether that grammar is better backed by **structured parts + face-hosted push/pull features** or by **in-place polyhedral face-splitting** is an empirical question this experiment should settle directly.
+To ensure we test **general modeling freedom** rather than three hardcoded examples:
 
-### 2.2 Recommended experiment: a two-layer durable feasibility prototype
+1. **Zero domain-specific logic in `core/*`:** No function, heuristic, or stretch rule may inspect object names, aspect ratios ("looks like a leg"), or scenario presets.
+2. **Diverse open-form construction families:** The same six primitive actions (`sketch/split on face`, `offset loop`, `push/pull`, `move/tilt face`, `part/instance`, `stretch/scale`) must construct unfamiliar shapes across distinct structural topologies:
+   - *Multi-part joinery:* 4-legged apron table, splayed-leg stool/chair frame, louvered or shelved rack (linked `PartInstance`s).
+   - *Hollowed & perforated single solids (`genus ≥ 1`):* recessed vitrine, multi-pane window/picture frame, slotted architectural screen, stepped display plinth with intersecting cutouts.
+   - *Non-orthogonal & angled solids:* mitered corner counter (`120°` alcove), pitched/tapered lectern, notched half-lap / rabbeted timber joint.
+3. **Adversarial geometry & out-of-order revision torture suite (`corpus/`):**
+   - **25-step sequential mutation chain** (`split → offset → pocket → breakthrough → flush-merge → move-face`) tracking cumulative planarity error $\max |n \cdot v - d|$, vertex count inflation, and sliver edges.
+   - **Partial & angled breakthroughs:** pushing a pocket through a back face that is stepped (half exits into air, half cuts solid) or tilted at `15°`.
+   - **Coplanar grazing & edge dissolution:** pushing a split step until it becomes exactly coplanar with an adjacent face, verifying clean polygon healing so a new sketch can immediately span across the dissolved seam.
+   - **Out-of-order upstream conflict:** cut a secondary notch across a pocket's rim, *then* revise the pocket's depth and outer frame width—comparing synchronous `moveFaces` against `operations[]` replay.
+   - **Splayed-member stretch falsifier:** apply axis-aligned `Box-Stretch` vs `PartGraph` frame-translation to an assembly containing `15°`–`45°` angled braces/legs, explicitly documenting shear distortion vs joint separation.
 
-We propose a bounded, self-contained prototype under [`prototypes/`](../../prototypes/README.md) (working name: `native-modeling-freedom`) built in **two coupled layers**:
+### 4.2 Interactive workbench: genuine modeling vs minimal inspection controls
 
-#### Layer 1 — Headless representation shootout (reproducible Vitest corpus)
+Interactivity is essential because direct modeling lives or dies on **spatial inference, push-to-face depth snapping, and immediate comprehension of what moves vs stays fixed**. However, shell UX is explicitly out of scope:
 
-Run the **exact same creation, resize and upstream-revision scripts** across a baseline control and two competing general modeling representations:
-
-- **Control `M0` (Current trajectory baseline):** single-loop extrusion + per-axis `Vec3` scale + naive operation replay. Serves as the sensitivity control demonstrating where legs shear/stretch and topological cuts fail.
-- **Candidate `M1` — Structured Direct Modeling (Multi-Part Assembly + Face-Hosted Push/Pull Add/Cut):**
-  - An object begins as one extruded body and grows on demand into a local assembly of **parts**, without any furniture schema.
-  - Generalized profile kernel admits **arbitrary orthonormal 3D face `Frame`s**, **interior contour holes**, and **collinear split points** on straight edges.
-  - Sketching on any planar face (`SourceRoleKey`) supports **Push outward as joined feature or distinct child part** and **Push inward as cavity/cut** (evaluated through Worker-isolated `manifold-3d` WASM booleans mapping `originalID` / `faceID` back to `SourceRoleKey`, with a zero-WASM planar hole-extrude fast path when a cut passes cleanly through a prism).
-  - Whole-object non-uniform resize uses **three purely geometric part-anchoring modes** (no `"leg"`/`"apron"` semantics, no general constraint solver): `proportional` (scales with bounds), `face-offset` (preserves part cross-section while maintaining corner/edge inset on its host face—keeping table legs `60 mm × 60 mm`), and `face-span` (stretches along the span axis between two opposing planes while preserving thickness—keeping aprons and shelves honest).
-- **Candidate `M2` — Stateful Polyhedral / Cell Solid (SketchUp-style Face Split + Offset):**
-  - An object is a single mutable polyhedral manifold where drawing a loop or splitting segment on a planar face subdivides that face in place, and `Push/Pull` offsets the target sub-face along its normal (merging coplanar neighbors and splitting side quads directly, without retaining a constructive feature tree).
-  - Tests how far face-provenance tags + spatial kept-slab heuristics (`keep` planes / 9-slice style bounds) can go on non-uniform resize and subsequent edits **before** the absence of retained source blocks revision (e.g., changing recess depth after border edits, or resizing angled/multi-part assemblies).
-
-#### Layer 2 — Minimal interactive spatial workbench (Svelte 5 + Threlte + real `@portfolio/layout-core`)
-
-A stripped-down single-page 3D + active-face drawing workbench wired to **real `compileWallFirstLayoutGeometry`** through a thin, read-only **`LayoutSurfaceQuery`** adapter (zero edits to `@portfolio/layout-core` source; zero Scene concepts inside Layout).
-
-`LayoutSurfaceQuery` derives from `CompiledLayoutGeometry`:
-- Addressable planar/curved **Wall side surface frames** `(wallId, side: 'left' | 'right', s, y)` and room floor/ceiling planes.
-- **Solid-span vs `CompiledOpening` clearance intervals** along each Wall.
-- **Lineage forwarding** across [`layout-wall-noding.ts`](../../packages/layout-core/src/layout-wall-noding.ts) Wall splits (`W → W, W2` at offset `d`) and dissolves.
-
-Inside one compact gallery corner (**3 `LayoutWall`s forming an alcove + 1 movable `LayoutWallOpening`**), the workbench exercises **three discriminating scenarios**:
-
-1. **Scenario 1 — The Free Table (tests Q1, Q2, Q4):**
-   Sketch a tabletop, flip/pick its underside face, sketch one `60 mm × 60 mm` leg, push/pull it to `720 mm`, duplicate/mirror to four corners, add spanning aprons or a `12 mm` recessed tray cut into the top—using zero `"table"` concepts. Then drag overall **Width `1.2 m → 2.0 m`**, edit a tabletop edge/corner, and revise the tray recess depth, toggling live between `M0`, `M1` and `M2`.
-2. **Scenario 2 — Wall-Hung Recessed Vitrine vs Architectural Window (tests Q1, Q3, Q4):**
-   Model a hollow/stepped wall vitrine via inward face push/pull and mount it to a `LayoutWall` side frame alongside a real `LayoutWallOpening` (`window`/`door`). Perform three live architectural edits:
-   - **Move / rotate the Wall:** Opening moves with the Wall and cuts `CompiledPhysicalWall.sections`; Vitrine's Scene world pose re-evaluates cleanly from its host frame without cutting or mutating Layout.
-   - **Split the Wall (`planWallSplit`):** Vitrine rebases deterministically onto `W` or `W2` using split lineage (just as Openings do, without becoming a Layout record).
-   - **Slide the Window into the Vitrine's footprint:** Opening continues to cut the Wall normally; Vitrine never fuses or gets boolean-carved by the Wall, instead entering an explicit **`conflict: overlaps-opening`** repair state (`Slide clear` / `Detach in place`).
-3. **Scenario 3 — Alcove Stepped Counter / Bench (tests Q2, Q3, Q4):**
-   Fit a stepped counter across the 3-wall alcove in two selectable Scene relationship modes:
-   - **Mode A — Ephemeral snap (solve-once default):** architectural faces guide creation/snapping only; moving a flanking Wall leaves the counter at its world-local pose and surfaces passive overlap feedback (`Overlaps Wall`), proving no SketchUp sticky-edge fusion.
-   - **Mode B — Bounded alcove span-host:** counter anchors its left/right span between the two facing Wall surface frames; widening the alcove stretches spanning parts while keeping end-panel thicknesses fixed (`M1`), and deleting a flanking Wall transitions cleanly to **`unresolved-host`** frozen at the last accepted world pose.
-
-### 2.3 Alternatives considered
-
-| Option | Strengths | Why not selected as the primary design |
-| --- | --- | --- |
-| **1. Headless geometry & Layout test suite only (non-interactive)** | Fastest build; deterministic pass/fail metrics on `M1` vs `M2` and `LayoutSurfaceQuery`. | Cannot validate whether direct face-sketch + push/pull + explicit anchor/host states remain spatially legible during live manipulation. Retained as **Layer 1** (and can be gated first; see §7). |
-| **2. Heavy B-rep CAD kernel (`opencascade.js` ~4.9 MiB br LGPL-2.1) + 2D sketch constraint solver** | Industrial fillets, NURBS intersections, full parametric sketch constraints. | Massive Worker/WASM footprint, LGPL-2.1 compliance overhead, and CAD-constraint UX friction—disproportionate before testing whether polygonal/manifold solids (`manifold-3d` ~172 KiB br Apache-2.0 + prism fast path) cover Biskiq's creative ceiling. |
-| **3. Extend single-body genus-0 slice `reshape` (`T5.P02`) only** | Zero boolean kernel; smooth organic tapers and waists. | Topologically incapable of multi-leg furniture, through-openings, frames, or sharp joinery recesses (`genus > 0`). Orthogonal complement to `M1`/`M2`, not a substitute. |
-| **4. Unified Layout + Scene boolean solid graph (`living-drawing` niche style)** | One CSG pipeline cuts walls and objects alike. | **Rejected outright:** creates a second architectural compiler, breaks `F.2` unit isolation, leaks heavy CSG into Layout/visitor paths, and makes deleting Scene furniture mutate Room/Wall topology. |
-| **5. Full Stage / Object Focus UI prototype** | High visual fidelity to production shell. | Spends ~80% of effort recreating camera/dock/card chrome already specified in [`UX-SPEC.md`](../../prototypes/native-object-shaping/UX-SPEC.md) and [UX proposal](../native-object-creation-ux/PROPOSAL.md) rather than testing geometry and cross-domain revision. |
-| **6. Recommended: Layer 1 (`M0`/`M1`/`M2` corpus) + Layer 2 (3-scenario `layout-core` workbench)** | Directly adjudicates representation choice, source revisability, and real `layout-core` coupling with minimal UI scaffolding. | **Selected.** |
+| Genuine interactive implementation (core to the research question) | Minimal debug / inspection controls (avoiding UX & T1/T2 scope creep) |
+| --- | --- |
+| **3D raycast picking** of planar `Face`s, `Edge`s, `Vertex`es, `PartInstance`s (double-click to enter/exit `PartDefinition` scope, matching [PR #244](../native-object-creation-ux/PROPOSAL.md)'s part-scoping premise), and read-only `Layout` reference planes/edges. | **Plain floating debug strip** + hotkeys (`Line`, `Rect`, `Poly`, `Offset`, `Push/Pull`, `Move/Tilt Face`, `Part/Instance`, `Stretch`). Zero Stage Dock, Card chrome, or PLATE styling work. |
+| **On-face sketching & inference:** 2D drawing on any hovered/locked face plane with snap to vertices, midpoints, parallel/perpendicular axes, and `Layout` wall/jamb lines, plus live **`Offset`** loop drag. | **3-slider Architectural Context Drawer** (`Alcove Span`, `Corner Angle 75°–135°`, `Opening Offset & Width`) driving real `compileWallFirstLayoutGeometry` recompilation—zero Wall-drawing or Wall-split UI tools. |
+| **Snap-aware `Push/Pull` & synchronous `Move Face`:** Live drag along face normal with **depth snapping to any pointed reference face/vertex** (the crucial SketchUp gesture that makes "push flush to back face to punch an opening" exact rather than guesswork) + typed metric input. | **Geometry & Lineage X-Ray Drawer:** Toggles for `FaceId` provenance colors, polygonal B-rep edges vs raw render triangles, planarity/manifold health readout, stretch-plane gizmo visibility, and Replay vs Synchronous diff view. |
+| **Interactive `Box-Stretch` plane handles vs proportional `Scale` handles**, plus linked `Duplicate Instance` / `Make Unique` part actions. | **JSON snapshot export/import** to save any ad-hoc interactive creation directly into `corpus/` as a deterministic regression fixture. |
 
 ---
 
-## 3. Real, simplified and simulated boundaries
+## 5. Progressive 4-stage execution strategy with redirect gates
 
-To keep the evidence trustworthy for T5 planning, every subsystem has an explicit fidelity contract:
+Each stage produces standalone reusable code and can **invalidate or redirect** downstream stages before further engineering is spent:
 
-| Subsystem | Tier | Exact behavior in the experiment |
-| --- | --- | --- |
-| **Architectural compilation, Wall moves/splits & Openings** | **Real** | Imports [`@portfolio/layout-core`](../../packages/layout-core/src/layout-geometry.ts) directly (`compileWallFirstLayoutGeometry`, `LayoutWallOpening`, Wall split/move operations, `queryFloorSupports`). Zero toy wall math. |
-| **`LayoutSurfaceQuery` (Wall side frames & Opening intervals)** | **Real** | Pure read-only derivation over `CompiledLayoutGeometry` computing orthonormal `(wallId, side, s, y)` frames, solid-span intervals, and split-lineage rebasing. |
-| **`M1` & `M2` solid evaluation, holes & boolean cuts** | **Real** | Closed 2-manifold triangle meshes verified for `0` boundary edges, `0` non-manifold edges, consistent winding, and positive volume; real Worker-capable `manifold-3d` evaluation + `faceID → SourceRoleKey` provenance table vs planar hole-extrude fast path. |
-| **Non-uniform resize & upstream contour/depth revision** | **Real** | Real geometric re-evaluation across `M0`, `M1` (`proportional` / `face-offset` / `face-span`), and `M2` (cell offset + spatial slab tags), including role-paint survival and explicit `unresolved` diagnostics. |
-| **Face sketching & part manipulation UX** | **Simplified** | Click-polygon + rectangle + circle + numeric offset/depth inputs on any picked planar face, plus simple duplicate/mirror and wall-drag handles. No freehand stroke beautification or full Object Focus shell chrome. |
-| **Curved-wall hosting** | **Simplified** | Evaluated in Layer 1 corpus (tangent frame along `cubic-chain` Wall); Layer 2 interactive workbench uses straight 3-wall alcove + Opening for clarity. |
-| **Persistence, Undo stack, Camera/Experience & UV polish** | **Simulated / Stubbed** | In-memory JSON fixture snapshots + simple command history for scenario reset/step-back; flat/role-tinted materials with simple planar UVs; zero `ProjectEnvelope` codec migrations, Camera routes or visitor runtime wiring. |
+```mermaid
+flowchart TD
+  S1["Stage 1: Pure-TS Polygonal B-Rep + Rung 1–2 Ops\n(splitFace, offset, extrude, local push/pull, synchronous moveFace)"]
+  G1{"Gate 1: Local B-Rep Drift & Cliff\nHow far do Rung 1–2 ops go?\nIs plane/vertex canonicalization stable?"}
+  S2["Stage 2: Rung 3 Volumetric Breakthrough + Polygon Recovery\n(pluggable Boolean escalation + coplanar loop healing + FaceId map)"]
+  G2{"Gate 2: Boolean Round-Trip Fidelity\nDo 20 chained Boolean+heal edits\npreserve clean, sketchable planar faces?"}
+  S2Alt["Redirect 2A: Non-Destructive Cutters / Exact Plane Clipping\nKeep canonical B-rep exact; evaluate cutters without mesh round-trip"]
+  S3["Stage 3: PartGraph + Stretch vs Replay vs Synchronous Revision\n(out-of-order edit corpus, splayed-part stretch, correspondence)"]
+  G3{"Gate 3: Leaf & Revision Architecture\nWhere does synchronous B-rep win vs\nretained procedural seeds (sweep/revolve)?"}
+  S4["Stage 4: Minimal Interactive Workbench + Read-Only Layout Host\n(unscripted modeling trials, non-90° junctions, span stretch, X-Ray)"]
 
----
+  S1 --> G1 --> S2 --> G2
+  G2 -- "Clean planar recovery" --> S3
+  G2 -- "Planarity / sliver degradation" --> S2Alt --> S3
+  S3 --> G3 --> S4
+```
 
-## 4. Minimum implementation scope and explicit exclusions
-
-### Minimum scope (if greenlit after review)
-
-1. **Self-contained prototype package** under [`prototypes/`](../../prototypes/README.md) (not an npm workspace; imports `@portfolio/layout-core` and `@portfolio/geometry-core` via read-only relative/file resolution or local Vite alias without editing `packages/*`).
-2. **Layer 1 deterministic corpus (`vitest`):**
-   - Generalized 2D face-frame profile helper (outer loop + inner hole loops + collinear split vertices).
-   - `M1` evaluator (multi-part assembly + face-hosted extrude/cut + `manifold-3d` provenance + 3 geometric resize anchor modes).
-   - `M2` evaluator (planar face-loop split + normal push/pull cell mutation + spatial resize heuristic).
-   - `LayoutSurfaceQuery` over compiled `LayoutDocumentWallFirst` fixtures (Wall move, Wall length change, Wall split, Wall delete, Opening slide, curved-wall tangent frame).
-   - Machine-readable `evidence.json` + assertion suite recording pass/fail, triangle/manifold health, provenance retention, and p50/p95 timings.
-3. **Layer 2 interactive workbench (`vite` + Svelte 5 + Threlte):**
-   - Single viewport with scenario switcher (**1: Free Table**, **2: Vitrine vs Window**, **3: Alcove Counter**), representation toggle (`M0 | M1 | M2`), active-face sketch/push-pull tool, dimension/wall/opening drag handles, and an live **Invariant & Provenance Inspector** overlay showing manifold status, `SourceRoleKey` survival, and `Layout ↔ Scene` relationship state (`world-local`, `hosted`, `span-fit`, `conflict: overlaps-opening`, `unresolved-host`).
-
-### Explicit exclusions (out of scope)
-
-- Production schema or codec edits in `packages/project-model/`, `packages/layout-core/`, or `packages/geometry-core/`.
-- Full Stage / Object Focus UI chrome, World Index, Card styling, or freehand curve fitting.
-- 3D B-rep edge fillets/chamfers across boolean seams, lofted NURBS surfaces, or clay/voxel sculpting.
-- Full 2D/3D parametric sketch constraint solvers (coincident/tangent/angle equation graphs).
-- Multi-level stairs, roofs ([`p3-depth`](../../prototypes/p3-depth/DESIGN.md)), imported GLB mesh editing, textures/PBR look-dev, Camera paths, or Experience playback.
+1. **Stage 1 — Editable Polygonal B-Rep & Pure-TS Direct Ops (Headless + `corpus/`):**
+   Build `core/brep/` and Rung 1–2 `core/ops/` (`extrudeLoop` with holes, `splitFace`, `offsetFaceLoop`, non-tunneling `pushPullFace` with coplanar healing, synchronous `moveFaces`/`tiltFace`). Run iterative drift and Rung 2 boundary tests.
+   - *Redirect trigger:* If chained angled `moveFaces`/`tiltFace` edits accumulate planarity error beyond clean face-loop triangulation, solve plane-primary vs vertex-primary canonicalization here before introducing Booleans.
+2. **Stage 2 — Volumetric Breakthroughs & Coplanar Polygon Recovery (Headless + `corpus/`):**
+   Add `core/ops/boolean/` (`manifold-3d` WASM + coplanar face-loop reconstruction + `FaceId` provenance recovery) for through-pushes and cross-seam cuts; run the 25-step chained breakthrough/re-sketch torture test.
+   - *Redirect trigger (high value):* If round-tripping through triangle-mesh Booleans fragments coplanar faces or degrades edge snapping across repeated edits, **do not build an editor on destructive mesh-CSG round-trips**—redirect immediately to either **(a)** exact plane-clipped convex-cell / polyhedral clipping for planar solids or **(b)** retaining negative cutter volumes evaluated at tessellation time!
+3. **Stage 3 — `PartGraph`, Stretch Semantics & Out-of-Order Revision Comparison (Headless + `corpus/`):**
+   Build `PartGraph` instancing, `stretchSolid` / `stretchAssembly`, and the head-to-head out-of-order revision harness comparing *Synchronous B-Rep Face Moves* against *Seed+Ops Replay* (including procedural `revolve`/`sweep` leaves adapted from `native-form-lab`).
+   - *Redirect trigger:* Determines which revision controls and hybrid leaf rules deserve interactive exposure in Stage 4, rather than wiring dead-end UI modes.
+4. **Stage 4 — Interactive Workbench & Read-Only `@portfolio/layout-core` Trials:**
+   Build `core/arch-host/` and `workbench/`, run unscripted construction and architectural-context trials (orthogonal bay, non-90° corner, `LayoutWallOpening` span/clearance), capture JSON fixtures from real interactive sessions into `corpus/`, and publish reproducible measurements in `FINDINGS.md` and `evidence.json`.
 
 ---
 
-## 5. Evaluation criteria, falsifiers and architectural implications
+## 6. Research evaluation framework and retention path
 
-### 5.1 Quantitative and behavioral pass/fail gates
+### 6.1 Five evaluation dimensions (falsifiers and measurements, not arbitrary release gates)
 
-| Dimension | Pass criterion | Falsifier (what disproves a candidate) |
-| --- | --- | --- |
-| **1. Expressive freedom without object generators (Q1)** | All 4 benchmark shapes (**4-legged apron table**, **hollowed wall vitrine**, **stepped alcove counter**, **slotted open frame**) are built from the same minimal primitives (`face sketch`, `push/pull add/cut`, `duplicate/align`), yielding valid closed 2-manifolds (`0` open/non-manifold edges, `signedVolume > 0`). | Any benchmark requires an object-specific generator or produces non-manifold / inverted shells on valid inputs. |
-| **2. Non-uniform resize & source revision honesty (Q2)** | Widening the `1.2 m` table to `2.0 m` keeps `60 mm × 60 mm` legs square and apron thickness constant; editing tabletop outline or vitrine recess depth preserves unaffected `SourceRoleKey` paint regions and marks `100%` of invalidated face hosts/cuts as explicit `unresolved` (`0` silent jumps to wrong faces). | Legs shear or stretch into planks; upstream outline or recess-depth edits require deleting downstream work; or `faceID` provenance silently swaps material/attachment roles across coplanar splits. |
-| **3. Semantic architecture boundary (Q3)** | `0` Scene imports or mutations in `@portfolio/layout-core`; `LayoutWallOpening` cuts `CompiledPhysicalWall` while hosted Vitrine/Counter never alters Layout geometry; Wall move & `planWallSplit` preserve hosted alignment; Window intrusion triggers `conflict: overlaps-opening`; Wall deletion freezes world pose as `unresolved-host`; default solve-once objects stay independent on Wall move. | Supporting wall/alcove objects requires special-casing Scene inside `layout-core`, causes sticky-edge fusion on unattached contact, or loses host alignment on straight Wall move/split. |
-| **4. Performance & bundle viability (Q4)** | Non-boolean / prism-fast-path drag preview `< 8 ms` p95; Worker `manifold-3d` boolean commit `< 25 ms` p95 on multi-cut furniture (`≤ 20` parts/cuts); serialized mesh derivative proves visitor runtime needs `0 B` of boolean WASM (`Stage` is already under `439.0 KiB br` exception pressure; visitor cap is `≤ 250 KiB br`). | Interactive push/pull stalls main thread `> 16 ms`, coplanar boolean degeneracies require brittle epsilon tuning, or delivery requires shipping WASM CSG to visitors. |
+A candidate mechanism failing on an adversarial case and exposing *why* is a **successful research outcome**, not a broken build. We evaluate across five reproducible dimensions:
 
-### 5.2 How outcomes map to T5 / T1 / F architecture
+1. **Topological & numerical stability curves:** Across $N = 1 \dots 25$ chained edits, record closed 2-manifold pass rate, maximum face-planarity deviation ($\max |n \cdot v - d|$ in meters), coplanar face-merge completeness (whether split/healed faces remain single pickable polygons), and vertex/triangle growth ratios.
+2. **Modeling generality & operator boundary map:** Document exactly which geometry classes Rung 0 (`PartGraph`), Rung 1 (holes), Rung 2 (local B-rep + synchronous move), and Rung 3 (volumetric Boolean) unlock, and catalog the concrete failure cliffs of each.
+3. **Revision & resize tradeoff matrix:** On identical out-of-order edit and non-uniform resize suites, compare *Synchronous B-Rep*, *Operation Replay*, *Stretch-Plane*, and *Part-Frame Translation* by **(a)** fraction of upstream/mid-stream edits completed without manual rebuild, **(b)** geometric invariant preservation (leg cross-sections, frame border widths, angled member shear), and **(c)** correspondence honesty (`0` silent `FaceId` swaps; explicit `collapsed` / `unresolved` reporting).
+4. **Architectural host sufficiency & isolation:** Verify `0` Scene mutations or imports inside `@portfolio/layout-core`, test whether read-only plane/edge/clearance queries over `compileWallFirstLayoutGeometry` suffice for non-orthogonal corners and span adaptation, and document cross-domain boundary cases (such as wall-thickness niches vs proud/alcove casework).
+5. **Empirical compute & comprehension profile:** Measure `p50 / p95` compute cost per operator as a function of face/part count (pure-TS vs WASM, main-thread vs Worker) and cold/gzipped payload sizes as reference curves for T5 planning, alongside qualitative interaction notes on face-splitting, push-to-depth snapping, part scoping, and stretch planes.
 
-- **If `M1` passes Gates 1–4 and decisively beats `M2` on resize/revision (primary hypothesis):**
-  - `T5` shifts away from an unbounded single-body `operations[]` replay stack toward **lightweight multi-part assemblies + planar face-hosted `extrude/cut` features + geometric anchor pins**, while keeping `T5.P02` genus-0 slice `reshape` as an optional deformer on individual parts rather than the sole path to depth.
-  - `manifold-3d` stays **lazy, authoring-only, and Worker-isolated**, while `@portfolio/geometry-core` extends cleanly with inner-hole contours, collinear split anchors, and 3D `Frame` extrusion (covering ~80% of cases without WASM).
-  - Visitor/public delivery (`ExecutionProgram` / Scene release payloads) consumes **immutable evaluated `FormMesh` buffers** (`AGENTS.md` Rule 3), preserving the `≤ 250 KiB br` visitor cap.
-- **If `M2` matches `M1` on common edits and `M1`'s part/feature boundaries feel rigid during interactive chaining:**
-  - `T5` adopts a **bounded polyhedral cell solid** as the leaf body representation, using `M1`'s multi-part assembly + geometric pins only between distinct parts (legs vs top) rather than for intra-body steps/recesses.
-- **If `manifold-3d` provenance fragments on coplanar face cuts:**
-  - Restrict cuts in early T5 to **planar prism through-holes and bounded pocket extrusions** synthesized directly in `@portfolio/geometry-core` (exact 2D polygon clipping + prism stitch, zero 3D general CSG) until provenance-stable boolean splitting is proven.
-- **Implications for `T1` and `F.1`:**
-  - Validates the exact minimal shape of a read-only **`LayoutSurfaceQuery`** in `@portfolio/layout-core` (what `T1` actually needs to expose for Wall/Ceiling/Alcove surfaces) and clarifies what `componentId` / surface sub-reference contract [`unit-resolution.ts`](../../packages/project-model/src/references/unit-resolution.ts) must admit for cross-unit `Scene → Layout` hosting.
+### 6.2 Retaining and consuming the results
+
+- **Durable isolation:** Hosted in its own non-workspace folder under [`prototypes/`](../../prototypes/README.md) (`AGENTS.md` non-authority rule), keeping experimental packages (`manifold-3d` if tested in Stage 2) out of root `package-lock.json` and visitor/editor bundles while keeping `core/*` TypeScript modules clean for future extraction.
+- **Governance compatibility (active rules vs PR #259 proposal):**
+  - *Under rules currently in force* (`AGENTS.md` Rule 10, [`docs/README.md`](../../docs/README.md), [`docs/operations/README.md`](../../docs/operations/README.md)): `FINDINGS.md`, `evidence.json`, and `core/*` remain non-authoritative evidence until consumed through owner decision, bounded `T5`/`T1` replanning, and explicit contract cutover.
+  - *Under PR #259's proposed lean workflow* (unmerged proposal, distinguished from active rules): each stage (`Stage 1 → 4`) acts as a bounded `needs-research` decision exit that directly informs `T5` capability records and Risk Tier classification without ceremonial slice churn.
 
 ---
 
-## 6. Retaining and consuming the evidence in T5 planning
+## 7. Intentionally undecided questions and initial owner alignment
 
-If approved for execution, the experiment should be built once and kept as **durable, executable non-authoritative evidence**:
+### 7.1 Kept intentionally open until empirical evidence exists
 
-1. **Repository placement & isolation:**
-   - Lives in its own self-contained folder under [`prototypes/`](../../prototypes/README.md) with its own `package.json`, `README.md`, `FINDINGS.md`, `evidence.json`, and `vitest` suite—outside root npm workspaces (`apps/*`, `packages/*`), so experimental dependencies (`manifold-3d`) never enter production `package-lock.json` or bundle gates.
-2. **Consumption under governance rules currently in force:**
-   - Per `AGENTS.md` Rules 2, 9 and 10 and [`docs/README.md`](../../docs/README.md), prototype code and `FINDINGS.md` are **evidence, never contract authority**.
-   - Consuming the results into `T5` (`T5.P02` / `T5.P03`), `T1` (Layout surface queries), or `F.1` (`SemanticReference` component resolution) happens through explicit owner decision + the **bounded replanning** procedure in [`docs/operations/README.md`](../../docs/operations/README.md), leaving landed [`scene-content.md`](../../docs/reference/components/scene-content.md) and [`architecture.md`](../../docs/reference/architecture.md) untouched until their implementation cutovers.
-3. **Compatibility with PR #259's proposed lean workflow (distinguishing proposal from active rules):**
-   - PR #259 (currently an unmerged proposal, **not** an active rule) proposes replacing slice/phase ceremony with a `capabilities.json` ledger, Risk Tiers `0–2`, and GitHub flags (`needs-research` for bounded decision-exit spikes, `needs-decision`, `needs-ux`).
-   - Structuring this prototype around **explicit pass/fail gates, `evidence.json`, and a concrete `M1` vs `M2` + `LayoutSurfaceQuery` decision exit** makes it natively compatible with both regimes: under current rules it feeds `T5` bounded replanning cleanly; if PR #259 is adopted, it closes a `needs-research` spike directly into a `needs-decision` capability record with zero rework.
+This proposal refuses to pre-decide:
+- **Permanent `Scene` or `F.1` persisted schemas** (whether leaf B-reps serialize as compact winged polygons, half-spaces, hybrid procedural+B-rep descriptors, or constructive deltas).
+- **Production dependency commitments** (whether `manifold-3d` or any WASM ships in authoring Workers, or whether visitor releases always consume pre-tessellated `FormMesh` derivatives).
+- **Final `@portfolio/geometry-core` v2 determinism contract** (exact rational/adaptive predicates vs canonicalized double-precision plane tolerances once 3D tilted faces and Booleans are measured in Stages 1–2).
+- **Final Object Focus UI chrome, toolbars, gestures, and keyboard grammar** (owned by future `T5` UX design building on [PR #244](../native-object-creation-ux/PROPOSAL.md)).
 
----
+### 7.2 Three alignment checks before starting Stage 1
 
-## 7. Unresolved questions requiring owner judgment
-
-Before (or upon) authorizing execution of the experiment, five product and sequencing judgments belong with the owner:
-
-1. **Target freedom ceiling for native Scene objects:**
-   Should Biskiq's general object modeling target **architectural & furniture solids/joinery** (planar/extruded/revolved/swept parts, holes, pockets, steps, spans — `M1` territory) or **arbitrary polyhedral/CAD topology** (tilting individual faces in 3D, arbitrary non-planar splits, 3D boolean seam fillets — `M2` / B-rep territory)?
-2. **Non-uniform resize expectation on freely modeled assemblies:**
-   When a creator widens a freely modeled multi-part object (such as a table) in World without semantic types, should Biskiq **infer geometric behavior by default** (e.g., narrow corner-inset vertical parts default to `face-offset` so legs stay square, overridable per part) or **scale everything proportionally (`M0`) unless the creator explicitly pins parts in Focus**?
-3. **Default relationship when sketching a Scene object directly on a Wall or Alcove:**
-   Should drawing a new Scene object directly on a `LayoutWall` face default to **ephemeral solve-once alignment** (safe world-local Scene object; explicit `Attach to wall` opt-in) or **persistent Wall-surface attachment** by default?
-4. **Two-stage execution gate vs single prototype pass:**
-   Do you want to run **Layer 1 (headless `M0`/`M1`/`M2` + `manifold-3d` provenance + `LayoutSurfaceQuery` corpus)** first as a fast falsification gate before building **Layer 2 (the interactive 3-scenario Svelte/Threlte workbench)**, or build both layers together in one pass?
-5. **Authoring-only booleans vs runtime parametric delivery:**
-   Are you comfortable treating boolean/compound evaluation as **authoring-time source evaluation** whose published visitor artifact is an immutable derived `FormMesh` (`AGENTS.md` Rule 3, keeping `0 B` of boolean WASM out of visitor chunks), or must visitor runtimes dynamically re-evaluate parametric boolean cuts?
+1. **Investment & extractable-kernel scope:** Does this 4-stage progressive architecture—investing real engineering in a framework-free `core/` (`brep`, `ops`, `revision`, `arch-host`) + adversarial `corpus/` before the thin Stage 4 `workbench/`—match the level of foundational rigor and reusable `T5` value you want?
+2. **Stage-gated execution cadence:** Should we execute **Stages 1–2 first** (pure-TS polygonal B-rep + synchronous ops, then the Boolean-to-polygon round-trip gate) and report the empirical Gate 2 findings before proceeding into Stage 3–4, or run Stages 1–4 continuously unless a redirect gate trips?
+3. **Architectural boundary scope:** Are you aligned with dropping T1/T2 wall-split/delete repair workflows in favor of the narrower read-only `@portfolio/layout-core` surface/junction/opening-clearance host adapter (§2.4)—treating true wall-thickness niches as a separate Layout-owned question rather than cross-domain CSG?
