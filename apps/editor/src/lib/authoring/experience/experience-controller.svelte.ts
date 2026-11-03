@@ -1,11 +1,16 @@
 /**
- * The Experience lens controller (R217.S24, R217.S25).
+ * The Experience lens controller (R217.S24, R217.S25, R217.S26).
  *
  * The Experience homes read this controller: the shared Index, the Card's writers and
  * the lower-edge Guide and dock. It holds the reactive reading of the accepted source
  * the lens shows, the Experience commands (each one an intent built by commands.ts and
  * submitted through the host's one F.4 acceptance port), the message and busy flag, and
  * the Presentation filter.
+ *
+ * R217.S26 adds the structure commands (renames, additional Guides, the Opening Guide, a
+ * Guide's start, View order) and the four E4 removals. A removal is previewed from the same
+ * pure plan its planner installs, so the Card's consequence block names exactly what runs.
+ * Back (E17) reads the focus's session history.
  *
  * It is not an authority. Focus stays in focus.svelte.ts, the one writable owner of what
  * the lens works on (one Card subject, D10); the readings stay in experience-model.ts;
@@ -20,6 +25,13 @@ import { untrack } from 'svelte';
 import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { stageEnvelope } from '../stage/unit-stage-source';
+import {
+	planGuideRemoval,
+	planPresentationRemoval,
+	planPresentationViewRemoval,
+	planStopRemoval,
+	type ExperienceRemovalPlan
+} from '@portfolio/project-model/units';
 import type {
 	Experience,
 	ExperienceContinuation,
@@ -47,16 +59,33 @@ import {
 	capturedFovDegrees,
 	capturedViewPose,
 	createExperienceIntent,
+	experienceUpdateIntent,
 	guideCreateIntent,
 	guideOrderIntent,
+	guideUpdateIntent,
 	presentationUpdateIntent,
+	removeIntent,
 	stopCreateIntent,
-	stopUpdateIntent
+	stopUpdateIntent,
+	viewRemoveIntent,
+	viewRenameIntent
 } from './commands';
+import {
+	removalLines,
+	type ExperienceRemovalPreview,
+	type ExperienceRemovalTarget,
+	type RemovalNames
+} from './experience-removal';
 
 type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
 export type ExperienceViewChoice = { readonly id: string; readonly label: string };
+
+/** The outcome an inline rename field reads: accepted, or refused with the reason to show. */
+export type ExperienceRenameOutcome = { readonly kind: 'accepted' | 'refused'; readonly message?: string };
+
+/** The creator-facing refusal for an empty name (every Experience rename field). */
+export const NAME_NEEDED = 'A name is needed';
 
 export type ExperienceController = {
 	readonly experiences: readonly Experience[];
@@ -134,11 +163,38 @@ export type ExperienceController = {
 	renamePresentation(
 		presentationId: string,
 		label: string
-	): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
+	): Promise<ExperienceRenameOutcome>;
 	/** An empty body clears the Presentation's text. */
 	updatePresentationText(presentationId: string, body: string): Promise<boolean>;
 	/** The View Card's Make default: the only place a Default View changes. */
 	setDefaultView(presentationId: string, viewId: string): Promise<void>;
+	/* R217.S26 — structure. Each rename refuses an empty name and adds nothing when unchanged. */
+	renameExperience(label: string): Promise<ExperienceRenameOutcome>;
+	renameGuide(guideId: string, label: string): Promise<ExperienceRenameOutcome>;
+	renameView(viewId: string, label: string): Promise<ExperienceRenameOutcome>;
+	/** The Guide Card's Make this the opening Guide. */
+	makeOpeningGuide(guideId: string): Promise<boolean>;
+	/** Start the tour here (E6): the context Guide's start Stop. Order is untouched. */
+	setGuideStart(stopId: string): Promise<boolean>;
+	/** E5: a Stop of this Presentation at the end of a chosen Guide, which becomes active. */
+	addToGuide(presentationId: string, guideId: string): Promise<boolean>;
+	/** E5: New Guide… — a new, active Guide with this Presentation as its Stop 1. */
+	createGuide(presentationId: string, label: string): Promise<boolean>;
+	/** Other Presentations that list this View, for *Also in*. */
+	alsoIn(viewId: string, presentationId: string): readonly ExperiencePresentation[];
+	/** A permutation of one Presentation's View order. */
+	moveViewTo(presentationId: string, viewId: string, index: number): Promise<boolean>;
+	moveView(presentationId: string, viewId: string, direction: -1 | 1): Promise<boolean>;
+	/** The consequence block's reading of a removal, from the plan its planner installs. */
+	removalPreview(target: ExperienceRemovalTarget): ExperienceRemovalPreview;
+	/** Run one previewed removal; on success the parent of the removed subject is selected. */
+	remove(target: ExperienceRemovalTarget): Promise<boolean>;
+	/** The subject Back returns to, or null (E17). */
+	readonly backTarget: ExperienceSubject | null;
+	/** Back to the previous subject. It changes only what is looked at; it never undoes. */
+	back(): boolean;
+	/** A short name for a subject: *Stop 2*, a Presentation, View or Guide label. */
+	subjectName(subject: ExperienceSubject): string;
 };
 
 export function createExperienceController(
@@ -233,6 +289,8 @@ export function createExperienceController(
 	});
 
 	let message = $state('');
+	/** Success lines fade quickly; anything else (a refusal) stays long enough to read. */
+	const accepted = new Set<string>(['Accepted.']);
 	// Feedback is a passing line: success fades quickly, a refusal stays long enough to read.
 	let messageTimer: ReturnType<typeof setTimeout> | undefined;
 	function say(text: string): void {
@@ -241,7 +299,7 @@ export function createExperienceController(
 		const shown = text;
 		messageTimer = setTimeout(() => {
 			if (message === shown) message = '';
-		}, text === 'Accepted.' ? 2400 : 6000);
+		}, accepted.has(text) ? 2400 : 6000);
 	}
 	let busy = $state(false);
 
@@ -253,8 +311,8 @@ export function createExperienceController(
 		return readServices().stage.snapshot().acceptedRevision;
 	}
 
-	/** Submit one command; `true` only when the source actually changed. */
-	async function run(builder: () => Submission): Promise<boolean> {
+	/** Submit one command; `true` only when the source actually changed. `success` is the fading message. */
+	async function run(builder: () => Submission, success: () => string = () => 'Accepted.'): Promise<boolean> {
 		if (busy) return false;
 		busy = true;
 		try {
@@ -267,7 +325,7 @@ export function createExperienceController(
 				say('No change to accept.');
 				return false;
 			}
-			say('Accepted.');
+			say(success());
 			return true;
 		} finally {
 			busy = false;
@@ -564,23 +622,20 @@ export function createExperienceController(
 	 * The Card's inline rename of a Presentation: one label edit through the same
 	 * acceptance port every edit uses, so the rename is one accepted result.
 	 */
-	async function renamePresentation(
-		presentationId: string,
-		label: string
-	): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }> {
-		if (current === null) return { kind: 'refused', message: 'There is no Experience to rename a Presentation in.' };
+	function renamePresentation(presentationId: string, label: string): Promise<ExperienceRenameOutcome> {
+		if (current === null) return Promise.resolve({ kind: 'refused', message: 'There is no Experience to rename a Presentation in.' });
 		const experience = current;
-		const accepted = await run(() =>
+		const presentation = experience.presentations.find((entry) => entry.id === presentationId) ?? null;
+		return rename(label, presentation?.label ?? null, (trimmed) =>
 			presentationUpdateIntent({
 				envelope: snapshot,
 				revision: revision(),
 				ids: { operation: newId() },
 				experienceId: experience.id,
 				presentationId,
-				label
+				label: trimmed
 			})
 		);
-		return accepted ? { kind: 'accepted' } : { kind: 'refused', message };
 	}
 
 	async function updatePresentationText(presentationId: string, body: string): Promise<boolean> {
@@ -611,6 +666,406 @@ export function createExperienceController(
 				defaultViewId: viewId
 			})
 		);
+	}
+
+	/* --- R217.S26 structure ------------------------------------------------------ */
+
+	function succeed(text: string): string {
+		accepted.add(text);
+		return text;
+	}
+
+	async function rename(
+		label: string,
+		previous: string | null,
+		builder: (trimmed: string) => Submission
+	): Promise<ExperienceRenameOutcome> {
+		const trimmed = label.trim();
+		if (trimmed === '') return { kind: 'refused', message: NAME_NEEDED };
+		if (previous === null) return { kind: 'refused', message: 'That subject is no longer in this Experience.' };
+		// An unchanged name is no edit, so it adds no history entry.
+		if (trimmed === previous) return { kind: 'accepted' };
+		const ok = await run(() => builder(trimmed), () => succeed('Renamed.'));
+		return ok ? { kind: 'accepted' } : { kind: 'refused', message };
+	}
+
+	function renameExperience(label: string): Promise<ExperienceRenameOutcome> {
+		const experience = current;
+		return rename(label, experience?.label ?? null, (trimmed) =>
+			experienceUpdateIntent({
+				envelope: snapshot,
+				revision: revision(),
+				ids: { operation: newId() },
+				experienceId: experience!.id,
+				label: trimmed
+			})
+		);
+	}
+
+	function renameGuide(guideId: string, label: string): Promise<ExperienceRenameOutcome> {
+		const experience = current;
+		const guide = experience?.guides.find((entry) => entry.id === guideId) ?? null;
+		return rename(label, guide?.label ?? null, (trimmed) =>
+			guideUpdateIntent({
+				envelope: snapshot,
+				revision: revision(),
+				ids: { operation: newId() },
+				experienceId: experience!.id,
+				guideId,
+				label: trimmed
+			})
+		);
+	}
+
+	function renameView(viewId: string, label: string): Promise<ExperienceRenameOutcome> {
+		const view = snapshot.units.camera.data.views.find((entry) => entry.id === viewId) ?? null;
+		return rename(label, view?.label ?? null, (trimmed) =>
+			viewRenameIntent({ envelope: snapshot, revision: revision(), ids: { operation: newId() }, view: view!, label: trimmed })
+		);
+	}
+
+	async function makeOpeningGuide(guideId: string): Promise<boolean> {
+		const experience = current;
+		const guide = experience?.guides.find((entry) => entry.id === guideId);
+		if (experience == null || guide === undefined || experience.entryGuideId === guideId) return false;
+		return run(
+			() =>
+				experienceUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					experienceId: experience.id,
+					entryGuideId: guideId
+				}),
+			() => succeed(`The Experience now opens on ${guide.label}.`)
+		);
+	}
+
+	async function setGuideStart(stopId: string): Promise<boolean> {
+		const experience = current;
+		const guide = contextGuide;
+		if (experience === null || guide === null || !guide.stopIds.includes(stopId) || guide.entryStopId === stopId) return false;
+		const position = guide.stopIds.indexOf(stopId) + 1;
+		return run(
+			() =>
+				guideUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					experienceId: experience.id,
+					guideId: guide.id,
+					entryStopId: stopId
+				}),
+			() => succeed(`The tour now starts at Stop ${position}.`)
+		);
+	}
+
+	async function addToGuide(presentationId: string, guideId: string): Promise<boolean> {
+		const experience = current;
+		const guide = experience?.guides.find((entry) => entry.id === guideId);
+		if (experience == null || guide === undefined) return false;
+		const stopId = newId();
+		const ok = await run(
+			() =>
+				stopCreateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId(), stop: stopId },
+					experienceId: experience.id,
+					presentationId,
+					guideId,
+					afterStopId: null,
+					entryViewId: null,
+					holdSeconds: null,
+					continuation: { kind: 'sequence-next', transition: 'cut' }
+				}),
+			() => succeed(`Added as Stop ${guide.stopIds.length + 1} of ${guide.label}.`)
+		);
+		if (ok) {
+			experienceFocus.openGuide(guideId);
+			experienceFocus.select({ kind: 'stop', stopId });
+		}
+		return ok;
+	}
+
+	async function createGuide(presentationId: string, label: string): Promise<boolean> {
+		const experience = current;
+		const trimmed = label.trim();
+		if (experience === null) return false;
+		if (trimmed === '') {
+			say(NAME_NEEDED);
+			return false;
+		}
+		const guideId = newId();
+		const stopId = newId();
+		const ok = await run(
+			() =>
+				guideCreateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId(), guide: guideId, stop: stopId },
+					experienceId: experience.id,
+					presentationId,
+					label: trimmed,
+					entryViewId: null,
+					holdSeconds: null,
+					continuation: { kind: 'sequence-next', transition: 'cut' }
+				}),
+			() => succeed(`${trimmed} created with ${presentationLabel(presentationId)} as Stop 1.`)
+		);
+		if (ok) {
+			experienceFocus.openGuide(guideId);
+			experienceFocus.select({ kind: 'stop', stopId });
+		}
+		return ok;
+	}
+
+	function alsoIn(viewId: string, presentationId: string): readonly ExperiencePresentation[] {
+		return current?.presentations.filter((entry) => entry.id !== presentationId && entry.viewIds.includes(viewId)) ?? [];
+	}
+
+	async function moveViewTo(presentationId: string, viewId: string, index: number): Promise<boolean> {
+		const experience = current;
+		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
+		if (experience == null || presentation === undefined) return false;
+		if (!presentation.viewIds.includes(viewId)) return false;
+		const order = presentation.viewIds.filter((entry) => entry !== viewId);
+		const to = Math.max(0, Math.min(Math.trunc(index), order.length));
+		order.splice(to, 0, viewId);
+		if (order.every((entry, position) => entry === presentation.viewIds[position])) return false;
+		return run(
+			() =>
+				presentationUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					experienceId: experience.id,
+					presentationId,
+					viewIds: order
+				}),
+			() => succeed(`View moved to position ${to + 1}.`)
+		);
+	}
+
+	async function moveView(presentationId: string, viewId: string, direction: -1 | 1): Promise<boolean> {
+		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
+		if (presentation === undefined) return false;
+		const at = presentation.viewIds.indexOf(viewId);
+		const to = at + direction;
+		if (at === -1 || to < 0 || to >= presentation.viewIds.length) return false;
+		return moveViewTo(presentationId, viewId, to);
+	}
+
+	/** Names as the creator reads them: Stops by their position in the context Guide. */
+	const names: RemovalNames = {
+		stop: (stopId) => {
+			const at = contextGuide?.stopIds.indexOf(stopId) ?? -1;
+			if (at !== -1) return `Stop ${at + 1}`;
+			const stop = current?.stops.find((entry) => entry.id === stopId);
+			return stop === undefined ? 'a Stop' : `a Stop of ${presentationLabel(stop.presentationId)}`;
+		},
+		presentation: (presentationId) => presentationLabel(presentationId),
+		view: (viewId) => snapshot.units.camera.data.views.find((entry) => entry.id === viewId)?.label ?? viewId,
+		guide: (guideId) => current?.guides.find((entry) => entry.id === guideId)?.label ?? 'the Guide'
+	};
+
+	function planOf(target: ExperienceRemovalTarget): ExperienceRemovalPlan | null {
+		const experience = current;
+		if (experience === null) return null;
+		const experiencesNow = snapshot.units.experience.data.experiences;
+		const camera = snapshot.units.camera.data;
+		switch (target.kind) {
+			case 'stop':
+				return planStopRemoval(experience, target.stopId);
+			case 'guide':
+				return planGuideRemoval(experience, target.guideId);
+			case 'presentation':
+				return planPresentationRemoval(experiencesNow, camera, experience.id, target.presentationId);
+			case 'view':
+				return planPresentationViewRemoval(
+					experiencesNow,
+					camera,
+					experience.id,
+					target.presentationId,
+					target.viewId,
+					target.newDefaultViewId ?? null
+				);
+		}
+	}
+
+	function removalPreview(target: ExperienceRemovalTarget): ExperienceRemovalPreview {
+		const plan = planOf(target);
+		if (plan === null) return { kind: 'refused', reason: 'There is no Experience to remove from.' };
+		if (plan.kind === 'refused' && plan.code === 'default-needed' && target.kind === 'view') {
+			const presentation = current?.presentations.find((entry) => entry.id === target.presentationId);
+			const options = (presentation?.viewIds ?? [])
+				.filter((viewId) => viewId !== target.viewId)
+				.map((viewId) => ({ id: viewId, label: names.view(viewId) }));
+			return {
+				kind: 'ready',
+				lines: [
+					`Removes ${names.view(target.viewId)} from ${names.presentation(target.presentationId)}.`,
+					'It is the Default View: choose the new Default.'
+				],
+				chooseDefault: options,
+				runnable: false
+			};
+		}
+		if (plan.kind === 'refused') return { kind: 'refused', reason: plan.reason };
+		const isDefault =
+			target.kind === 'view' &&
+			current?.presentations.find((entry) => entry.id === target.presentationId)?.defaultViewId === target.viewId;
+		return {
+			kind: 'ready',
+			lines: removalLines(target, plan.consequences, names),
+			chooseDefault:
+				isDefault && target.kind === 'view'
+					? (current?.presentations.find((entry) => entry.id === target.presentationId)?.viewIds ?? [])
+							.filter((viewId) => viewId !== target.viewId)
+							.map((viewId) => ({ id: viewId, label: names.view(viewId) }))
+					: null,
+			runnable: true
+		};
+	}
+
+	/** The parent a removal selects (E4: removing the selected subject selects its parent). */
+	function parentOf(target: ExperienceRemovalTarget): ExperienceSubject | null {
+		if (target.kind === 'view') return { kind: 'presentation', presentationId: target.presentationId };
+		if (target.kind === 'stop' && contextGuide !== null && contextGuide.stopIds.length > 1) {
+			return { kind: 'guide', guideId: contextGuide.id };
+		}
+		return null;
+	}
+
+	/** Whether the subject is (or hangs from) what a removal takes away. */
+	function removes(target: ExperienceRemovalTarget, subject: ExperienceSubject | null): boolean {
+		if (subject === null) return false;
+		switch (target.kind) {
+			case 'stop':
+				return (subject.kind === 'stop' || subject.kind === 'transition') && subject.stopId === target.stopId;
+			case 'guide':
+				return subject.kind === 'guide' && subject.guideId === target.guideId;
+			case 'presentation':
+				return (subject.kind === 'presentation' || subject.kind === 'view') && subject.presentationId === target.presentationId;
+			case 'view':
+				return subject.kind === 'view' && subject.viewId === target.viewId && subject.presentationId === target.presentationId;
+		}
+	}
+
+	async function remove(target: ExperienceRemovalTarget): Promise<boolean> {
+		const experience = current;
+		if (experience === null) return false;
+		const preview = removalPreview(target);
+		if (preview.kind === 'refused') {
+			say(preview.reason);
+			return false;
+		}
+		if (!preview.runnable) {
+			say('Choose the new Default View first.');
+			return false;
+		}
+		const plan = planOf(target);
+		if (plan === null || plan.kind !== 'planned') return false;
+		const after = plan.experience;
+		const parent = parentOf(target);
+		// Read before the install: the route clears a subject that stops resolving.
+		const selectsParent = removes(target, experienceFocus.subject);
+		const removedName =
+			target.kind === 'stop'
+				? names.stop(target.stopId)
+				: target.kind === 'guide'
+					? names.guide(target.guideId)
+					: target.kind === 'presentation'
+						? names.presentation(target.presentationId)
+						: names.view(target.viewId);
+		const ok = await run(
+			() =>
+				target.kind === 'view'
+					? viewRemoveIntent({
+							envelope: snapshot,
+							revision: revision(),
+							ids: { operation: newId() },
+							experienceId: experience.id,
+							presentationId: target.presentationId,
+							viewId: target.viewId,
+							defaultViewId: target.newDefaultViewId ?? null
+						})
+					: removeIntent({
+							envelope: snapshot,
+							revision: revision(),
+							ids: { operation: newId() },
+							experienceId: experience.id,
+							subject: target.kind,
+							id: target.kind === 'stop' ? target.stopId : target.kind === 'guide' ? target.guideId : target.presentationId
+						}),
+			() => succeed(`${removedName} removed. ${remaining(target, after)}`.trim())
+		);
+		if (ok) {
+			if (selectsParent) experienceFocus.select(parent);
+			if (target.kind === 'guide' && experienceFocus.guideId === target.guideId) experienceFocus.openGuide(null);
+		}
+		return ok;
+	}
+
+	/** What remains after a removal, read from the plan the planner installs. */
+	function remaining(target: ExperienceRemovalTarget, after: Experience): string {
+		switch (target.kind) {
+			case 'stop': {
+				const guide = after.guides.find((entry) => entry.id === contextGuide?.id);
+				return guide === undefined ? '' : `${guide.label} has ${guide.stopIds.length} ${guide.stopIds.length === 1 ? 'Stop' : 'Stops'}.`;
+			}
+			case 'guide':
+				return after.guides.length === 0
+					? 'No Guide yet.'
+					: `${after.guides.length} ${after.guides.length === 1 ? 'Guide remains' : 'Guides remain'}.`;
+			case 'presentation':
+				return `${after.presentations.length} ${after.presentations.length === 1 ? 'Presentation remains' : 'Presentations remain'}.`;
+			case 'view': {
+				const presentation = after.presentations.find((entry) => entry.id === target.presentationId);
+				return presentation === undefined
+					? ''
+					: `${presentation.label} has ${presentation.viewIds.length} ${presentation.viewIds.length === 1 ? 'View' : 'Views'}.`;
+			}
+		}
+	}
+
+	/** Whether a subject still names something in the current Experience. */
+	function resolves(candidate: ExperienceSubject): boolean {
+		const experience = current;
+		if (experience === null) return false;
+		switch (candidate.kind) {
+			case 'presentation':
+				return experience.presentations.some((entry) => entry.id === candidate.presentationId);
+			case 'view':
+				return experience.presentations.some(
+					(entry) => entry.id === candidate.presentationId && entry.viewIds.includes(candidate.viewId)
+				);
+			case 'stop':
+			case 'transition':
+				return experience.stops.some((entry) => entry.id === candidate.stopId);
+			case 'guide':
+				return experience.guides.some((entry) => entry.id === candidate.guideId);
+		}
+	}
+
+	const backTarget = $derived.by(() => {
+		void subject;
+		return experienceFocus.previous(resolves);
+	});
+
+	function subjectName(candidate: ExperienceSubject): string {
+		switch (candidate.kind) {
+			case 'presentation':
+				return names.presentation(candidate.presentationId);
+			case 'view':
+				return names.view(candidate.viewId);
+			case 'stop':
+				return names.stop(candidate.stopId);
+			case 'transition':
+				return `${names.stop(candidate.stopId)} onward`;
+			case 'guide':
+				return names.guide(candidate.guideId);
+		}
 	}
 
 	function presentationLabel(presentationId: string): string {
@@ -707,6 +1162,23 @@ export function createExperienceController(
 		setTransition,
 		renamePresentation,
 		updatePresentationText,
-		setDefaultView
+		setDefaultView,
+		renameExperience,
+		renameGuide,
+		renameView,
+		makeOpeningGuide,
+		setGuideStart,
+		addToGuide,
+		createGuide,
+		alsoIn,
+		moveViewTo,
+		moveView,
+		removalPreview,
+		remove,
+		get backTarget() {
+			return backTarget;
+		},
+		back: () => experienceFocus.back(resolves),
+		subjectName
 	};
 }

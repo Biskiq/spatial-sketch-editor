@@ -8,7 +8,7 @@
  * subject with no `•••` functions and no Bring into view, and a World subject keeps both.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushSync, mount, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
 import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 import { createWorldIndexModel } from '$lib/authoring/stage/shell/world-index-model';
@@ -35,7 +35,7 @@ function presentation(id: string, label: string, overrides: Partial<Presentation
 }
 
 function guide(id: string, label: string, overrides: Partial<Guide> = {}): Guide {
-	return { id, label, stopCount: 1, open: false, selected: false, ...overrides };
+	return { id, label, stopCount: 1, open: false, selected: false, opening: false, ...overrides };
 }
 
 function groups(overrides: Partial<ExperienceIndexGroups> = {}): ExperienceIndexGroups {
@@ -54,6 +54,7 @@ function groups(overrides: Partial<ExperienceIndexGroups> = {}): ExperienceIndex
 		onQuery: vi.fn(),
 		onOpenExperience: vi.fn(),
 		onCreateExperience: vi.fn(),
+		onRenameExperience: vi.fn(async () => ({ kind: 'accepted' as const })),
 		onOpenGuide: vi.fn(),
 		onSelectPresentation: vi.fn(),
 		onToggleExpand: vi.fn(),
@@ -318,5 +319,63 @@ describe('R217.S25 — the Card takes an Experience subject', () => {
 		expect(bring).not.toBeNull();
 		bring!.click();
 		expect(onBringIntoView).toHaveBeenCalledOnce();
+	});
+});
+
+describe('R217.S26 — every Guide in the Index, with *opens* on the Opening Guide', () => {
+	it('lists each Guide and tags only the Opening Guide', () => {
+		const target = mountIndex(
+			groups({ guides: [guide('guide-1', 'Salon tour', { opening: true }), guide('guide-2', 'Short tour', { open: true })] })
+		);
+		const rows = [...target.querySelectorAll('[data-guide-id]')];
+		expect(rows.map((row) => row.getAttribute('data-guide-id'))).toEqual(['guide-1', 'guide-2']);
+		expect(rows.map((row) => row.querySelector('[data-opening-guide]')?.textContent ?? null)).toEqual(['opens', null]);
+		unmountIndex();
+	});
+});
+
+describe('R217.S26 — Rename… opens the Experience crumb inline', () => {
+	function startRename(target: HTMLElement): HTMLInputElement {
+		const rename = buttonWithText(target, 'Rename…')!;
+		flushSync(() => rename.click());
+		return target.querySelector<HTMLInputElement>('input[aria-label="Experience name"]')!;
+	}
+	function type(input: HTMLInputElement, value: string) {
+		flushSync(() => {
+			input.value = value;
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		});
+	}
+
+	it('commits on Enter through onRenameExperience', async () => {
+		const onRenameExperience = vi.fn(async () => ({ kind: 'accepted' as const }));
+		const target = mountIndex(groups({ onRenameExperience }));
+		const input = startRename(target);
+		expect(input.value).toBe('Experience 1');
+		type(input, 'Salon evening');
+		flushSync(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+		await tick();
+		await tick();
+		flushSync();
+		expect(onRenameExperience).toHaveBeenCalledWith('Salon evening');
+		expect(target.querySelector('input[aria-label="Experience name"]')).toBeNull();
+		unmountIndex();
+	});
+
+	it('shows a refusal beside the crumb, and Esc cancels with no rename', async () => {
+		const onRenameExperience = vi.fn(async () => ({ kind: 'refused' as const, message: 'A name is needed' }));
+		const target = mountIndex(groups({ onRenameExperience }));
+		const input = startRename(target);
+		type(input, '');
+		flushSync(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+		await tick();
+		await tick();
+		flushSync();
+		expect(target.querySelector('.crumb-error')?.textContent).toBe('A name is needed');
+		onRenameExperience.mockClear();
+		flushSync(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+		expect(target.querySelector('input[aria-label="Experience name"]')).toBeNull();
+		expect(onRenameExperience).not.toHaveBeenCalled();
+		unmountIndex();
 	});
 });

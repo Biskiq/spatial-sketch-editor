@@ -8,7 +8,8 @@
  * here is one accepted result and one undo payload.
  *
  * The commands construct no order: `guide-order` is a permutation of authored Stop
- * ids, and no other command touches Guide order.
+ * ids, and no other command touches Guide order. A Presentation's View order is
+ * likewise only ever a permutation of its authored `viewIds`.
  */
 
 import type { AuthoringIntent } from '@portfolio/project-model';
@@ -19,13 +20,21 @@ import type {
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import {
+	CAMERA_VIEW_UPDATE_KIND,
 	EXPERIENCE_CAPTURE_BIND_KIND,
 	EXPERIENCE_CREATE_KIND,
 	EXPERIENCE_GUIDE_CREATE_KIND,
 	EXPERIENCE_GUIDE_ORDER_KIND,
+	EXPERIENCE_GUIDE_REMOVE_KIND,
+	EXPERIENCE_GUIDE_UPDATE_KIND,
+	EXPERIENCE_PRESENTATION_REMOVE_KIND,
 	EXPERIENCE_PRESENTATION_UPDATE_KIND,
+	EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
 	EXPERIENCE_STOP_CREATE_KIND,
-	EXPERIENCE_STOP_UPDATE_KIND
+	EXPERIENCE_STOP_REMOVE_KIND,
+	EXPERIENCE_STOP_UPDATE_KIND,
+	EXPERIENCE_UPDATE_KIND,
+	type CameraView
 } from '@portfolio/project-model/units';
 
 export type CapturedViewPose = {
@@ -227,7 +236,7 @@ export function captureBindIntent(input: {
 }
 
 /**
- * Create the Experience's first Guide and its initial distinct Stop.
+ * Create a Guide and its initial distinct Stop; the first Guide opens the Experience.
  *
  * The Stop enters the chosen Presentation at its own View — an explicit
  * `entryViewId` or the Presentation's Default. Reusing a Presentation creates a
@@ -323,6 +332,8 @@ export function presentationUpdateIntent(input: {
 	readonly text?: { kind: 'plain'; body: string } | null;
 	readonly view?: CapturedViewPose;
 	readonly defaultViewId?: string | null;
+	/** A permutation of the Presentation's authored `viewIds` (R217.S26). */
+	readonly viewIds?: readonly string[];
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_PRESENTATION_UPDATE_KIND,
@@ -333,7 +344,8 @@ export function presentationUpdateIntent(input: {
 			...(input.label === undefined ? {} : { label: input.label }),
 			...(input.text === undefined ? {} : { text: input.text }),
 			...(input.view === undefined ? {} : { view: input.view }),
-			...(input.defaultViewId === undefined ? {} : { defaultViewId: input.defaultViewId })
+			...(input.defaultViewId === undefined ? {} : { defaultViewId: input.defaultViewId }),
+			...(input.viewIds === undefined ? {} : { viewIds: [...input.viewIds] })
 		},
 		input.view === undefined ? [] : [{ kind: 'view', id: input.ids.view! }]
 	);
@@ -360,6 +372,135 @@ export function stopUpdateIntent(input: {
 			...(input.holdSeconds === undefined ? {} : { holdSeconds: input.holdSeconds }),
 			...(input.continuation === undefined ? {} : { continuation: input.continuation })
 		},
+		[]
+	);
+}
+
+type Revision = { readonly projectId: string; readonly revisionId: string };
+
+/** R217.S26 — rename the Experience or choose its Opening Guide. */
+export function experienceUpdateIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly experienceId: string;
+	readonly label?: string;
+	readonly entryGuideId?: string;
+}): AuthoringIntent {
+	return intent(
+		EXPERIENCE_UPDATE_KIND,
+		input.ids,
+		input.revision,
+		[experienceReference(input.envelope, input.experienceId)],
+		{
+			...(input.label === undefined ? {} : { label: input.label }),
+			...(input.entryGuideId === undefined ? {} : { entryGuideId: input.entryGuideId })
+		},
+		[]
+	);
+}
+
+/** R217.S26 — rename a Guide or choose where it starts (E6). */
+export function guideUpdateIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly experienceId: string;
+	readonly guideId: string;
+	readonly label?: string;
+	readonly entryStopId?: string;
+}): AuthoringIntent {
+	return intent(
+		EXPERIENCE_GUIDE_UPDATE_KIND,
+		input.ids,
+		input.revision,
+		[experienceMemberReference(input.envelope, input.experienceId, 'guide', input.guideId)],
+		{
+			...(input.label === undefined ? {} : { label: input.label }),
+			...(input.entryStopId === undefined ? {} : { entryStopId: input.entryStopId })
+		},
+		[]
+	);
+}
+
+/**
+ * R217.S26 — rename a Camera View. The operation rewrites the View's whole pose, so
+ * the pose is sent back exactly as authored: only the label changes.
+ */
+export function viewRenameIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly view: CameraView;
+	readonly label: string;
+}): AuthoringIntent {
+	return intent(
+		CAMERA_VIEW_UPDATE_KIND,
+		input.ids,
+		input.revision,
+		[
+			{
+				version: 1,
+				domain: 'camera',
+				revision: { kind: 'exact', contentRevision: input.envelope.units.camera.header.contentRevision },
+				subject: { kind: 'view', id: input.view.id },
+				instancePath: [],
+				location: { kind: 'project-root' },
+				componentId: null,
+				capabilityId: null
+			}
+		],
+		{
+			label: input.label,
+			eye: [...input.view.eye],
+			target: [...input.view.target],
+			fov: input.view.fov
+		},
+		[]
+	);
+}
+
+/** R217.S26 (E4) — remove one Stop, one Guide or one Presentation. */
+export function removeIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly experienceId: string;
+	readonly subject: 'stop' | 'guide' | 'presentation';
+	readonly id: string;
+}): AuthoringIntent {
+	const kind =
+		input.subject === 'stop'
+			? EXPERIENCE_STOP_REMOVE_KIND
+			: input.subject === 'guide'
+				? EXPERIENCE_GUIDE_REMOVE_KIND
+				: EXPERIENCE_PRESENTATION_REMOVE_KIND;
+	return intent(
+		kind,
+		input.ids,
+		input.revision,
+		[experienceMemberReference(input.envelope, input.experienceId, input.subject, input.id)],
+		{},
+		[]
+	);
+}
+
+/** R217.S26 (E4) — remove one View from one Presentation; the Default needs its successor named. */
+export function viewRemoveIntent(input: {
+	readonly envelope: ProjectEnvelope;
+	readonly revision: Revision;
+	readonly ids: CommandIds;
+	readonly experienceId: string;
+	readonly presentationId: string;
+	readonly viewId: string;
+	readonly defaultViewId: string | null;
+}): AuthoringIntent {
+	return intent(
+		EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND,
+		input.ids,
+		input.revision,
+		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
+		{ viewId: input.viewId, ...(input.defaultViewId === null ? {} : { defaultViewId: input.defaultViewId }) },
 		[]
 	);
 }

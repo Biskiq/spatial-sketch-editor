@@ -18,6 +18,7 @@ import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePr
 import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
 import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
 import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
+import ExperienceGuideWriter from '$lib/authoring/experience/ExperienceGuideWriter.svelte';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceHomes } from '$lib/authoring/experience/experience-homes';
 import {
@@ -132,6 +133,7 @@ function fakeController(options: ControllerOptions = {}) {
 	return {
 		current: EXPERIENCE,
 		currentGuide: guide,
+		contextGuide: guide,
 		guides: guide === null ? [] : [guide],
 		guideStops: stops,
 		subject: options.subject ?? null,
@@ -168,7 +170,23 @@ function fakeController(options: ControllerOptions = {}) {
 		setTransition: vi.fn(async (_stopId: string, _transition: 'cut' | 'travel') => true),
 		renamePresentation: vi.fn(async () => ({ kind: 'accepted' as const })),
 		updatePresentationText: vi.fn(async () => true),
-		setDefaultView: vi.fn(async (_presentationId: string, _viewId: string) => undefined)
+		setDefaultView: vi.fn(async (_presentationId: string, _viewId: string) => undefined),
+		renameExperience: vi.fn(async () => ({ kind: 'accepted' as const })),
+		renameGuide: vi.fn(async () => ({ kind: 'accepted' as const })),
+		renameView: vi.fn(async () => ({ kind: 'accepted' as const })),
+		makeOpeningGuide: vi.fn(async (_guideId: string) => true),
+		setGuideStart: vi.fn(async (_stopId: string) => true),
+		addToGuide: vi.fn(async () => true),
+		createGuide: vi.fn(async (_presentationId: string, _label: string) => true),
+		alsoIn: (viewId: string, presentationId: string) =>
+			PRESENTATIONS.filter((presentation) => presentation.id !== presentationId && presentation.viewIds.includes(viewId)),
+		moveViewTo: vi.fn(async () => true),
+		moveView: vi.fn(async (_presentationId: string, _viewId: string, _direction: -1 | 1) => true),
+		removalPreview: vi.fn(() => ({ kind: 'refused' as const, reason: 'not in this fake' })),
+		remove: vi.fn(async () => true),
+		backTarget: null,
+		back: vi.fn(() => false),
+		subjectName: vi.fn(() => '')
 	};
 }
 
@@ -180,7 +198,7 @@ function fakeHomes(controller: FakeController | null, guideOpen = false) {
 		guideOpen: () => guideOpen,
 		setGuideOpen: vi.fn<(open: boolean) => void>(),
 		select: vi.fn<(subject: ExperienceSubject | null) => void>(),
-		guideNamePrompt: () => null,
+		guideNamePrompt: (): string | null => null,
 		requestGuideName: vi.fn<(presentationId: string | null) => void>(),
 		sceneSubject: () => null,
 		openInWorld: vi.fn()
@@ -630,5 +648,113 @@ describe('R217.S25 — the Experience dock (Place a View and Path are placeholde
 		target.querySelector<HTMLButtonElement>('[data-dock-tool="guide"]')!.click();
 		expect(onCapture).toHaveBeenCalledTimes(1);
 		expect(onToggleGuide).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---- R217.S26: structure in the homes ----
+
+describe('R217.S26 — the Guide shows where the tour starts (E6)', () => {
+	it('tags only the start Stop with Start, and says so to assistive technology', async () => {
+		const target = mountHome(ExperienceGuide, { onClose: () => {} }, fakeHomes(fakeController()));
+		await settle();
+		const tagged = [...target.querySelectorAll('.stop-card')].filter((card) => card.querySelector('[data-start-tag]') !== null);
+		expect(tagged.map((card) => card.getAttribute('data-stop-id'))).toEqual(['stop-1']);
+		expect(tagged[0]!.getAttribute('aria-label')).toContain('the tour starts here');
+	});
+});
+
+describe('R217.S26 — the Guide Card sets the Opening Guide (E5)', () => {
+	it('shows *opens* on the Opening Guide and offers Make this the opening Guide on another', async () => {
+		const opening = fakeController({ subject: { kind: 'guide', guideId: 'guide-1' } });
+		const first = mountHome(ExperienceGuideWriter, {}, fakeHomes(opening));
+		await settle();
+		expect(first.querySelector('[data-opening-guide]')?.textContent).toBe('opens');
+		expect(first.querySelector('[data-make-opening]')).toBeNull();
+
+		const other = fakeController({ subject: { kind: 'guide', guideId: 'guide-1' } });
+		(other as { current: Experience }).current = { ...EXPERIENCE, entryGuideId: 'guide-elsewhere' };
+		const second = mountHome(ExperienceGuideWriter, {}, fakeHomes(other));
+		await settle();
+		const make = second.querySelector<HTMLButtonElement>('[data-make-opening]')!;
+		expect(make.textContent?.trim()).toBe('Make this the opening Guide');
+		make.click();
+		expect(other.makeOpeningGuide).toHaveBeenCalledWith('guide-1');
+	});
+});
+
+describe('R217.S26 — the View Card says where else a shared View is used', () => {
+	it('lists *Also in* with a link to each other Presentation', async () => {
+		const controller = fakeController({ selectedViewId: 'piano-keys', subject: { kind: 'view', viewId: 'piano-keys', presentationId: 'piano' } });
+		(controller as { alsoIn: (viewId: string, presentationId: string) => readonly ExperiencePresentation[] }).alsoIn = () => [PRESENTATIONS[2]!];
+		const homes = fakeHomes(controller);
+		const target = mountHome(ExperienceViewWriter, {}, homes);
+		await settle();
+		const line = target.querySelector('[data-view-also-in]')!;
+		expect(line.textContent?.replace(/\s+/g, ' ').trim()).toBe('Also in Garden');
+		buttonNamed(line, 'Garden').click();
+		expect(homes.select).toHaveBeenLastCalledWith({ kind: 'presentation', presentationId: 'garden' });
+	});
+
+	it('shows no *Also in* for a View only one Presentation lists', async () => {
+		const target = mountHome(ExperienceViewWriter, {}, fakeHomes(fakeController({ selectedViewId: 'piano-keys' })));
+		await settle();
+		expect(target.querySelector('[data-view-also-in]')).toBeNull();
+	});
+});
+
+describe('R217.S26 — View order in the Presentation Card', () => {
+	function denseController() {
+		const controller = fakeController({ selectedPresentationId: 'piano' });
+		const views = Array.from({ length: 13 }, (_, index) => ({ id: `piano-${index}`, label: index === 0 ? 'Keys' : `Angle ${index}` }));
+		(controller as { viewsOf: Map<string, readonly { id: string; label: string }[]> }).viewsOf = new Map([['piano', views]]);
+		return controller;
+	}
+
+	it('moves a focused tile with Alt ←/→ and claims the key from Back', async () => {
+		const controller = fakeController({ selectedPresentationId: 'piano' });
+		const target = mountHome(ExperiencePresentationWriter, {}, fakeHomes(controller));
+		await settle();
+		const tile = target.querySelector<HTMLButtonElement>('[data-view-tile="piano-wide"]')!;
+		expect(tile.draggable).toBe(true);
+		const event = new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true, cancelable: true });
+		tile.dispatchEvent(event);
+		expect(event.defaultPrevented).toBe(true);
+		expect(controller.moveView).toHaveBeenCalledWith('piano', 'piano-wide', 1);
+	});
+
+	it('refuses to reorder while the filter is on and says how to reorder', async () => {
+		const controller = denseController();
+		const target = mountHome(ExperiencePresentationWriter, {}, fakeHomes(controller));
+		await settle();
+		expect(target.querySelector('[data-reorder-refused]')).toBeNull();
+		const filter = target.querySelector<HTMLInputElement>('input[aria-label="Filter Views"]')!;
+		filter.value = 'angle';
+		filter.dispatchEvent(new Event('input', { bubbles: true }));
+		await settle();
+		expect(target.querySelector('[data-reorder-refused]')?.textContent).toBe('12 shown · clear the filter to reorder');
+		const tile = target.querySelector<HTMLButtonElement>('[data-view-tile="piano-1"]')!;
+		expect(tile.draggable).toBe(false);
+		tile.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true, cancelable: true }));
+		expect(controller.moveView).not.toHaveBeenCalled();
+	});
+});
+
+describe('R217.S26 — New Guide… asks the name inline beside existing Guides (E5)', () => {
+	it('creates a new Guide through createGuide, not the first-Guide path', async () => {
+		const controller = fakeController({ selectedPresentationId: 'gallery' });
+		const homes = { ...fakeHomes(controller), guideNamePrompt: () => 'gallery' };
+		const target = mountHome(ExperiencePresentationWriter, {}, homes);
+		await settle();
+		const input = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
+		const create = buttonNamed(target, 'Create Guide');
+		expect(create.disabled).toBe(true);
+		expect(reasonOf(create)).toBe('A name is needed');
+		input.value = 'Short tour';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await settle();
+		create.click();
+		await settle();
+		expect(controller.createGuide).toHaveBeenCalledWith('gallery', 'Short tour');
+		expect(controller.addStop).not.toHaveBeenCalled();
 	});
 });

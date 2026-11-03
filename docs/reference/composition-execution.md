@@ -292,8 +292,12 @@ expected revision and durable saved-base CAS remain separate preconditions. Head
 exact source/revision/operation identity, preserves conflicts and ambiguous retries, and offers
 captured F2 sign-in recovery explicitly. See [persistence](./components/persistence.md).
 The Stage host admits compound installs through `unit-acceptance-v1`. Landed Layout and Scene
-planners declare single-domain scope; the landed compound planner is the Experience/Camera
-Presentation-and-Stop create, which declares Camera as its extra write domain. Acceptance holds a
+planners declare single-domain scope. The landed compound planners are the Experience planners that
+may write Camera, each declaring Camera as its extra write domain: the Presentation-and-Stop create,
+the Presentation update (a captured View) and, from R217.S26, the View and Presentation removals,
+which delete a Camera View and its connections only when no other Presentation lists it. The other
+R217.S26 Experience operations (Experience and Guide update, Stop and Guide removal) are
+single-domain. Acceptance holds a
 candidate's actual changed unit domains to the producing planner's own declared scope — its
 `domain` plus a compound planner's `writes` — so a single-domain planner cannot change a
 neighbouring authority even where the host admits compound installs (AM-4). History reinstalls

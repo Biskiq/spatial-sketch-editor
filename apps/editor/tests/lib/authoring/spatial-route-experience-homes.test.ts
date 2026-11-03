@@ -125,8 +125,13 @@ function card(): HTMLElement | null {
 	return target.querySelector<HTMLElement>('aside.card');
 }
 
+/** The kind line's own words, without the R217.S26 *‹ Back* link that may precede them. */
 function cardKind(): string | null {
-	return card()?.querySelector('.kind')?.textContent?.trim() ?? null;
+	const kind = card()?.querySelector('.kind');
+	if (kind == null) return null;
+	const words = kind.cloneNode(true) as HTMLElement;
+	words.querySelector('[data-card-back]')?.remove();
+	return words.textContent?.trim() ?? null;
 }
 
 /** The Index's Experience crumb: its name, or null before any Experience exists. */
@@ -777,5 +782,94 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 		// Undo restores only the Capture: the Experience created before it stays.
 		expect(experienceName()).toBe('Experience 1');
 		expect(target.textContent).toContain('Nothing presented yet. Select an object and choose Present this, or press Capture in the dock.');
+	});
+});
+
+describe('R217.S26 — structure and removal through the route', () => {
+	async function openStopCard(stopId: string): Promise<void> {
+		experienceFocus.select({ kind: 'stop', stopId });
+		await frame();
+	}
+	function openMenu(): void {
+		card()!.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();
+	}
+	function menuItem(id: string): HTMLButtonElement {
+		return card()!.querySelector<HTMLButtonElement>(`[data-card-menu="${id}"]`)!;
+	}
+
+	it('removes a Stop after its consequence block, selects its Guide, and Undo restores it', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		await openStopCard('stop-2');
+		openMenu();
+		await frame();
+		expect(menuItem('remove-stop').classList.contains('danger')).toBe(true);
+		menuItem('remove-stop').click();
+		await frame();
+		const block = card()!.querySelector('[data-card-consequence="remove-stop"]')!;
+		expect(block.textContent).toContain('Removes Stop 2. Gallery stays.');
+		block.querySelector<HTMLButtonElement>('[data-card-consequence-run]')!.click();
+
+		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stops'));
+		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
+		expect(target.querySelector('.experience-feedback')?.textContent).toBe('Stop 2 removed. Main has 1 Stop.');
+
+		expect((await acceptance().undo()).kind).toBe('installed');
+		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('2 stops'));
+	});
+
+	it('Add to Guide ▸ New Guide… makes a second, active Guide; *opens* stays on the first', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		presentationRow('presentation-2')!.click();
+		await frame();
+		openMenu();
+		await frame();
+		menuItem('add-to-guide').click();
+		await frame();
+		menuItem('new-guide').click();
+		await frame();
+		const name = card()!.querySelector<HTMLInputElement>('section[aria-label="Name the new Guide"] input[aria-label="Guide name"]')!;
+		name.value = 'Short tour';
+		name.dispatchEvent(new Event('input', { bubbles: true }));
+		await frame();
+		control('Create Guide').click();
+
+		await vi.waitFor(() => expect(target.querySelectorAll('[data-guide-id]')).toHaveLength(2));
+		const rows = [...target.querySelectorAll('[data-guide-id]')];
+		expect(rows.map((row) => row.querySelector('[data-opening-guide]') !== null)).toEqual([true, false]);
+		expect(rows[1]!.textContent).toContain('Short tour');
+		expect(rows[1]!.querySelector('.chip')?.textContent).toBe('Open');
+		expect(cardKind()).toMatch(/^Stop 1 of 1 · Short tour/);
+	});
+
+	it('Start the tour here moves the start, and the Stop menu says when it already is', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		await openStopCard('stop-1');
+		openMenu();
+		await frame();
+		expect(menuItem('start-here').disabled).toBe(true);
+		expect(menuItem('start-here').title).toBe('The tour already starts here');
+		await openStopCard('stop-2');
+		openMenu();
+		await frame();
+		menuItem('start-here').click();
+		await vi.waitFor(() => expect(target.querySelector('.experience-feedback')?.textContent).toBe('The tour now starts at Stop 2.'));
+	});
+
+	it('Alt+← returns to the previous subject; the kind line shows it as *‹ Stop 2*', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		await openStopCard('stop-2');
+		experienceFocus.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
+		await frame();
+		expect(card()!.querySelector('[data-card-back]')?.textContent).toBe('‹ Stop 2');
+		target.querySelector<HTMLElement>('.stage')!.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, bubbles: true, cancelable: true })
+		);
+		await frame();
+		expect(experienceFocus.subject).toEqual({ kind: 'stop', stopId: 'stop-2' });
+		expect(target.querySelector('[data-can-undo="true"]')).toBeNull();
 	});
 });

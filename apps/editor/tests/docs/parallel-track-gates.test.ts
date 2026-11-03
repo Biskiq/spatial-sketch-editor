@@ -2051,11 +2051,12 @@ describe('the capability-readiness rule', () => {
 			'T3.P04.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:conditional-save-units-v1'],
 			// T5 planning registration (2026-10-27): T5.P01 consumes the same unit, acceptance, Save and
 			// viewport scopes as the Scene import phase. R217 registration (2026-10-28): the Core Editor
-			// Stability repository phase consumes the same scopes. No slice provides a gate.
+			// Stability repository phase consumes the same scopes (R217.S26 joins under the owner's approval of
+			// 2026-11-03). No slice provides a gate.
 			...Object.fromEntries(
 				[
 					...['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03', 'T5.P01.S01', 'T5.P01.S02', 'T5.P01.S03', 'T5.P01.S04'],
-					...Array.from({ length: 25 }, (_, index) => `R217.S${String(index + 1).padStart(2, '0')}`)
+					...Array.from({ length: 26 }, (_, index) => `R217.S${String(index + 1).padStart(2, '0')}`)
 				].map(
 					(id) => [
 						id,

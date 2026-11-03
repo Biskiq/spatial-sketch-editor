@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The Experience lens controller (R217.S24, R217.S25).
+ * The Experience lens controller (R217.S24, R217.S25, R217.S26).
  *
  * The controller holds the commands, derived reading, message and busy flag that the lens
  * owned before the shared homes. It must keep these properties: each command is the
@@ -15,6 +15,9 @@ import {
 	EXPERIENCE_CAPTURE_BIND_KIND,
 	EXPERIENCE_GUIDE_CREATE_KIND,
 	EXPERIENCE_GUIDE_ORDER_KIND,
+	EXPERIENCE_GUIDE_UPDATE_KIND,
+	EXPERIENCE_STOP_REMOVE_KIND,
+	EXPERIENCE_UPDATE_KIND,
 	EXPERIENCE_PRESENTATION_UPDATE_KIND,
 	EXPERIENCE_STOP_CREATE_KIND,
 	EXPERIENCE_STOP_UPDATE_KIND,
@@ -31,9 +34,12 @@ import {
 	createExperienceIntent,
 	guideCreateIntent,
 	guideOrderIntent,
+	guideUpdateIntent,
 	presentationUpdateIntent,
+	removeIntent,
 	stopCreateIntent,
-	stopUpdateIntent
+	stopUpdateIntent,
+	viewRenameIntent
 } from '$lib/authoring/experience/commands';
 import { travelGapMessages } from '$lib/authoring/experience/travel-gap';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -978,5 +984,192 @@ describe('Presentation edits', () => {
 		await controller.setDefaultView('presentation-1', 'view-1');
 
 		expect(submittedIntent(submitted).payload).toEqual({ defaultViewId: 'view-1' });
+	});
+});
+
+describe('R217.S26 — structure commands', () => {
+	it('renames a Guide, a View and the Experience through their own intents; empty and unchanged names submit nothing', async () => {
+		const { controller, submitted, envelope } = await mounted();
+
+		expect(await controller.renameGuide('guide-1', '  ')).toEqual({ kind: 'refused', message: 'A name is needed' });
+		expect(await controller.renameGuide('guide-1', 'Main')).toEqual({ kind: 'accepted' });
+		expect(submitted).not.toHaveBeenCalled();
+
+		expect(await controller.renameGuide('guide-1', ' Evening ')).toEqual({ kind: 'accepted' });
+		let intent = submittedIntent(submitted);
+		expect(intent).toEqual(
+			guideUpdateIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId }, experienceId: 'experience-1', guideId: 'guide-1', label: 'Evening' })
+		);
+
+		submitted.mockClear();
+		await controller.renameView('view-1', 'Keyboard');
+		intent = submittedIntent(submitted);
+		expect(intent).toEqual(
+			viewRenameIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId }, view: envelope.units.camera.data.views[0]!, label: 'Keyboard' })
+		);
+		// The pose goes back exactly as authored: only the label changes.
+		expect(intent.payload).toEqual({ label: 'Keyboard', eye: [0, 1.6, 2], target: [0, 1.4, 0], fov: 54 });
+
+		submitted.mockClear();
+		await controller.renameExperience('Afternoon walk');
+		intent = submittedIntent(submitted);
+		expect(intent.kind).toBe(EXPERIENCE_UPDATE_KIND);
+		expect(intent.payload).toEqual({ label: 'Afternoon walk' });
+	});
+
+	it('makes a Guide the Opening Guide and moves a Guide’s start, never when it already is', async () => {
+		const two = withExperience({
+			guides: [
+				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' },
+				{ id: 'guide-2', label: 'Short', stopIds: ['stop-2'], entryStopId: 'stop-2' }
+			]
+		});
+		const { controller, submitted } = await mounted({ experience: two });
+		expect(await controller.makeOpeningGuide('guide-1')).toBe(false);
+		expect(await controller.setGuideStart('stop-1')).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
+
+		await controller.makeOpeningGuide('guide-2');
+		expect(submittedIntent(submitted).payload).toEqual({ entryGuideId: 'guide-2' });
+
+		submitted.mockClear();
+		await controller.setGuideStart('stop-2');
+		const intent = submittedIntent(submitted);
+		expect(intent.kind).toBe(EXPERIENCE_GUIDE_UPDATE_KIND);
+		expect(intent.payload).toEqual({ entryStopId: 'stop-2' });
+		expect(controller.message).toBe('The tour now starts at Stop 2.');
+	});
+
+	it('adds to a chosen Guide at its end, and New Guide makes a new active Guide with this Presentation as Stop 1', async () => {
+		const { controller, submitted } = await mounted();
+		await controller.addToGuide('presentation-2', 'guide-1');
+		let intent = submittedIntent(submitted);
+		expect(intent.kind).toBe(EXPERIENCE_STOP_CREATE_KIND);
+		expect(intent.payload).toMatchObject({ presentationId: 'presentation-2', guideId: 'guide-1', afterStopId: null });
+		expect(experienceFocus.guideId).toBe('guide-1');
+
+		submitted.mockClear();
+		expect(await controller.createGuide('presentation-2', '')).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
+		await controller.createGuide('presentation-2', 'Short tour');
+		intent = submittedIntent(submitted);
+		expect(intent.kind).toBe(EXPERIENCE_GUIDE_CREATE_KIND);
+		const guide = intent.allocatedIds.find((entry) => entry.kind === 'guide')!.id;
+		const stop = intent.allocatedIds.find((entry) => entry.kind === 'stop')!.id;
+		expect(intent.payload).toMatchObject({ label: 'Short tour', presentationId: 'presentation-2' });
+		expect(experienceFocus.guideId).toBe(guide);
+		expect(experienceFocus.subject).toEqual({ kind: 'stop', stopId: stop });
+	});
+
+	it('reorders a Presentation’s Views as a permutation and refuses a move that changes nothing', async () => {
+		const many = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+		const { controller, submitted } = await mounted({ experience: many });
+		expect(await controller.moveView('presentation-1', 'view-1', -1)).toBe(false);
+		expect(await controller.moveViewTo('presentation-1', 'view-1', 0)).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
+		await controller.moveView('presentation-1', 'view-1', 1);
+		const intent = submittedIntent(submitted);
+		expect(intent.kind).toBe(EXPERIENCE_PRESENTATION_UPDATE_KIND);
+		expect(intent.payload).toEqual({ viewIds: ['view-2', 'view-1'] });
+	});
+});
+
+describe('R217.S26 — removal reads its plan, then runs it once', () => {
+	it('previews a Stop removal with the named fallback, then removes it and selects the Guide', async () => {
+		const jumping = withExperience({
+			stops: [
+				{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' } },
+				{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } }
+			]
+		});
+		const { controller, submitted, envelope } = await mounted({ experience: jumping });
+		controller.select({ kind: 'stop', stopId: 'stop-2' });
+		const preview = controller.removalPreview({ kind: 'stop', stopId: 'stop-2' });
+		expect(preview).toEqual({
+			kind: 'ready',
+			lines: ['Removes Stop 2. Gallery stays.', 'Stop 1 no longer continues to Stop 2; it follows the Guide order.'],
+			chooseDefault: null,
+			runnable: true
+		});
+		expect(submitted).not.toHaveBeenCalled();
+
+		expect(await controller.remove({ kind: 'stop', stopId: 'stop-2' })).toBe(true);
+		const intent = submittedIntent(submitted);
+		expect(intent).toEqual(
+			removeIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' })
+		);
+		expect(intent.kind).toBe(EXPERIENCE_STOP_REMOVE_KIND);
+		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
+		expect(controller.message).toBe('Stop 2 removed. Main has 1 Stop.');
+	});
+
+	it('keeps a refused removal disabled with its reason and submits nothing', async () => {
+		const single = withExperience({ guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }] });
+		const { controller, submitted } = await mounted({ experience: single });
+		expect(controller.removalPreview({ kind: 'stop', stopId: 'stop-1' })).toEqual({
+			kind: 'refused',
+			reason: 'A Guide keeps at least one Stop — remove the Guide instead'
+		});
+		expect(await controller.remove({ kind: 'stop', stopId: 'stop-1' })).toBe(false);
+		expect(controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1' })).toMatchObject({
+			kind: 'refused'
+		});
+		expect(submitted).not.toHaveBeenCalled();
+	});
+
+	it('asks for the new Default before a Default View can be removed, with no automatic choice', async () => {
+		const many = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+		const { controller, submitted } = await mounted({ experience: many });
+		controller.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
+		const asking = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1' });
+		expect(asking).toMatchObject({ kind: 'ready', chooseDefault: [{ id: 'view-2', label: 'Gallery' }], runnable: false });
+		expect(await controller.remove({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1' })).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
+
+		const chosen = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1', newDefaultViewId: 'view-2' });
+		expect(chosen).toMatchObject({ kind: 'ready', runnable: true });
+		// view-1 is listed only by presentation-1, so its Camera View goes too.
+		expect(chosen.kind === 'ready' && chosen.lines).toContain('Gallery becomes the Default View.');
+		await controller.remove({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1', newDefaultViewId: 'view-2' });
+		const intent = submittedIntent(submitted);
+		expect(intent.payload).toEqual({ viewId: 'view-1', defaultViewId: 'view-2' });
+		expect(experienceFocus.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
+	});
+
+	it('names a shared View as still used instead of deleting it', async () => {
+		const shared = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+		const { controller } = await mounted({ experience: shared });
+		const preview = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-2' });
+		expect(preview.kind === 'ready' && preview.lines).toEqual([
+			'Removes Gallery from Piano.',
+			'Gallery stays: still used by Gallery.'
+		]);
+	});
+});
+
+describe('R217.S26 — Back (E17)', () => {
+	it('returns to the previous subject, skips one that no longer resolves, and submits nothing', async () => {
+		const { controller, submitted } = await mounted();
+		expect(controller.backTarget).toBeNull();
+		controller.select({ kind: 'stop', stopId: 'stop-2' });
+		controller.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
+		expect(controller.backTarget).toEqual({ kind: 'stop', stopId: 'stop-2' });
+		expect(controller.subjectName({ kind: 'stop', stopId: 'stop-2' })).toBe('Stop 2');
+		expect(controller.back()).toBe(true);
+		expect(experienceFocus.subject).toEqual({ kind: 'stop', stopId: 'stop-2' });
+		expect(controller.back()).toBe(false);
+
+		// A removed subject is never returned to.
+		experienceFocus.select({ kind: 'stop', stopId: 'stop-gone' });
+		experienceFocus.select({ kind: 'presentation', presentationId: 'presentation-2' });
+		expect(controller.backTarget).toEqual({ kind: 'stop', stopId: 'stop-2' });
+		expect(submitted).not.toHaveBeenCalled();
+	});
+
+	it('keeps at most 40 earlier subjects', () => {
+		experienceFocus.reset();
+		for (let index = 0; index < 50; index += 1) experienceFocus.select({ kind: 'stop', stopId: `stop-${index}` });
+		expect(experienceFocus.history).toHaveLength(40);
+		expect(experienceFocus.history[0]).toEqual({ kind: 'stop', stopId: 'stop-9' });
 	});
 });

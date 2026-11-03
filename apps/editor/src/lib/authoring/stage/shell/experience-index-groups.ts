@@ -20,6 +20,8 @@ export type ExperienceIndexGroups = {
 		readonly stopCount: number;
 		readonly open: boolean;
 		readonly selected: boolean;
+		/** R217.S26: the Experience's Opening Guide carries the *opens* tag. */
+		readonly opening: boolean;
 	}[];
 	/** The Presentations the filter leaves, in the Experience's own order. */
 	readonly presentations: readonly {
@@ -46,6 +48,8 @@ export type ExperienceIndexGroups = {
 	onQuery(query: string): void;
 	onOpenExperience(experienceId: string): void;
 	onCreateExperience(): void;
+	/** R217.S26: the crumb's inline rename. An empty name refuses with its reason. */
+	onRenameExperience(label: string): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
 	/** null = the "No Guide yet" row: open the empty Guide. */
 	onOpenGuide(guideId: string | null): void;
 	onSelectPresentation(presentationId: string): void;

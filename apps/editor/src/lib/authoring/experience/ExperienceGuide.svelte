@@ -78,6 +78,8 @@
 		readonly label: string;
 		readonly hold: string | null;
 		readonly again: boolean;
+		/** R217.S26 (E6): the Guide's start Stop carries the *Start* tag. */
+		readonly start: boolean;
 		readonly name: string;
 		readonly connector: Connector | null;
 	};
@@ -123,10 +125,12 @@
 					gap
 				};
 			}
+			const start = controller.contextGuide?.entryStopId === stop.id;
 			const spoken = [`Stop ${number}`, label];
+			if (start) spoken.push('the tour starts here');
 			if (again) spoken.push('again');
 			if (hold !== null) spoken.push(`hold ${hold.slice(0, -1)} seconds`);
-			return { stopId: stop.id, number, label, hold, again, name: spoken.join(', '), connector };
+			return { stopId: stop.id, number, label, hold, again, start, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -706,6 +710,7 @@
 								<ExperienceSnapshot label={card.label} number={card.number} ratio="stop" />
 								<span class="stop-name">{card.label}</span>
 								<span class="stop-meta">
+									{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
 									{#if card.again}<em>again</em>{/if}
 									{#if card.again && card.hold !== null}<span aria-hidden="true"> · </span>{/if}
 									{#if card.hold !== null}<span>{card.hold}</span>{/if}
@@ -1097,6 +1102,15 @@
 	}
 	.chip.selected {
 		box-shadow: 0 0 0 2px var(--shell-gold, #d4ad45);
+	}
+	/* R217.S26: the *Start* tag, a mono 10 px tag like the Index's *opens*. */
+	.start-tag {
+		margin-right: 4px;
+		padding: 0 4px;
+		border: 1px solid currentColor;
+		border-radius: 3px;
+		font: 500 10px/1.4 var(--shell-mono, ui-monospace, monospace);
+		letter-spacing: 0.02em;
 	}
 	.caret {
 		position: absolute;

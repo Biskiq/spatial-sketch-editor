@@ -38,6 +38,8 @@ no migration.
 3. [Execution plan](./execution-plan.md) — the five slices: scope, domain operations, visual and
    interaction completion, dependencies, shared files, the writer's verification and the owner's
    manual journeys, plus the S11 and milestone changes.
+4. [Card metrics](./card-metrics.md) — layout, sizes, spacing and type role for every Experience Card
+   interior and control S26–S30 name, at the 288 px Card with shell tokens.
 
 ## Sources studied
 

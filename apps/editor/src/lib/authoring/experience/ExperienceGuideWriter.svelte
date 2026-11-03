@@ -5,6 +5,9 @@
 	 * instrument opens and edits it (D3); the Card carries no Guide buttons. Its name is the Card's
 	 * own name. The reach summary is the active Guide's, so it is read only while this Guide is the
 	 * active one.
+	 *
+	 * R217.S26: the name renames from the Card title, and **Make this the opening Guide** sets the
+	 * Experience's Opening Guide (E5); the Opening Guide shows the *opens* tag instead.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -32,6 +35,7 @@
 	const reach = $derived(isActive && controller !== null ? controller.reach() : null);
 
 	const stopCount = $derived(guide?.stopIds.length ?? 0);
+	const openingReason = $derived(controller?.busy ? 'Wait for the current change' : '');
 
 	/** The Guide instrument is where Stops are added; open it on this Guide. */
 	function addStop(): void {
@@ -48,6 +52,20 @@
 {#if controller !== null && guide !== null}
 	<div class="writer" data-experience-writer="guide">
 		<div class="c-actions">
+			{#if isEntry}
+				<span class="opens-tag" data-opening-guide>opens</span>
+			{:else}
+				<button
+					type="button"
+					class="btn"
+					disabled={openingReason !== ''}
+					title={openingReason || 'Visitors who start the tour start in this Guide'}
+					aria-describedby={openingReason !== '' ? 'guide-opening-reason' : undefined}
+					data-make-opening
+					onclick={() => guide !== null && void controller.makeOpeningGuide(guide.id)}>Make this the opening Guide</button
+				>
+				{#if openingReason !== ''}<span id="guide-opening-reason" class="sr">{openingReason}</span>{/if}
+			{/if}
 			<button type="button" class="btn" onclick={addStop}>
 				<ShellIcon name="plus" size={13} />Add stop
 			</button>
@@ -118,6 +136,15 @@
 		flex-wrap: wrap;
 		gap: 6px;
 		padding: 8px 12px;
+	}
+	.opens-tag {
+		align-self: center;
+		padding: 0 5px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 3px;
+		color: var(--shell-ink-2, #4a524c);
+		font: 500 10px/1.6 var(--shell-mono, ui-monospace, monospace);
+		letter-spacing: 0.02em;
 	}
 	.sec {
 		display: flex;

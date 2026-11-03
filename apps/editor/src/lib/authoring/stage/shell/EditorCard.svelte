@@ -32,6 +32,38 @@
 	/** More stays open per subject kind for the session, as the plan asks. */
 	const moreByKind = new Map<string, boolean>();
 
+	/**
+	 * R217.S26 — what a danger item discloses before it runs: the consequence block reads
+	 * the effect lines (and, when the removal needs one, a choice such as the new Default)
+	 * and runs only after the creator presses Remove. It is shown in place, never as a modal.
+	 */
+	type CardConsequence = {
+		read(choice: string | null):
+			| { readonly kind: 'refused'; readonly reason: string }
+			| {
+					readonly kind: 'ready';
+					readonly lines: readonly string[];
+					readonly choose: { readonly label: string; readonly options: readonly { readonly id: string; readonly label: string }[] } | null;
+					readonly runnable: boolean;
+			  };
+		run(choice: string | null): unknown;
+	};
+	type CardMenuItem = {
+		readonly id: string;
+		readonly label: string;
+		/** A quiet right-aligned hint, such as a shortcut or the kind of change. */
+		readonly hint?: string;
+		readonly disabled?: boolean;
+		/** Why a disabled item cannot run; shown as its hint, its title and to assistive technology. */
+		readonly reason?: string;
+		/** R217.S26: a destructive item. It sits at the end after a rule, in red, and runs through `consequence`. */
+		readonly danger?: boolean;
+		readonly consequence?: CardConsequence;
+		/** R217.S26: a submenu (such as Add to Guide ▸); the item opens it in place instead of running. */
+		readonly children?: readonly CardMenuItem[];
+		readonly run?: () => void;
+	};
+
 	let {
 		identity,
 		facts,
@@ -44,6 +76,7 @@
 		functions = null,
 		kindLink = null,
 		menu = null,
+		back = null,
 		onBringIntoView = null
 	}: {
 		identity: {
@@ -60,6 +93,10 @@
 		nameWriter?: {
 			readonly value: string;
 			commit(name: string): Promise<{ readonly kind: string; readonly message?: string }>;
+			/** R217.S26: blur commits too (the Experience rename fields); Esc still cancels. */
+			readonly commitOnBlur?: boolean;
+			/** The refusal an empty name shows; `Enter a name.` when absent. */
+			readonly emptyMessage?: string;
 		} | null;
 		/**
 		 * The subject's contributed **ordinary-field writer** (T1.P02.S02). The Card is
@@ -93,16 +130,12 @@
 		 * item runs once and closes the panel; a disabled item states its `reason` as the
 		 * title and to assistive technology. Null keeps the `functions` / `actions` behaviour.
 		 */
-		menu?: readonly {
-			readonly id: string;
-			readonly label: string;
-			/** A quiet right-aligned hint, such as a shortcut or the kind of change. */
-			readonly hint?: string;
-			readonly disabled?: boolean;
-			/** Why a disabled item cannot run; shown as the title and read as hidden text. */
-			readonly reason?: string;
-			readonly run: () => void;
-		}[] | null;
+		menu?: readonly CardMenuItem[] | null;
+		/**
+		 * R217.S26 (E17): the previous selection, when it is not the kind line's parent. The kind
+		 * line shows it as *‹ Stop 2* before the kind; it changes what is looked at, never undoes.
+		 */
+		back?: { readonly label: string; readonly onBack: () => void } | null;
 		/**
 		 * R217.S22 (D36): a live authored gesture on the Stage. The Card fades and takes no
 		 * pointer events until it ends, so the subject being edited stays visible. Only the
@@ -149,6 +182,8 @@
 		renaming = false;
 		detailOpen = false;
 		nameError = null;
+		disclosing = null;
+		openSubmenu = null;
 		moreOpen = untrack(() => (identity === null ? false : moreByKind.get(identity.kind) ?? false));
 	});
 	// Declared after the subject reset, so a request arriving with a new
@@ -245,7 +280,7 @@
 		if (nameWriter === null || nameBusy) return;
 		const name = nameDraft.trim();
 		if (name.length === 0) {
-			nameError = 'Enter a name.';
+			nameError = nameWriter.emptyMessage ?? 'Enter a name.';
 			return;
 		}
 		nameBusy = true;
@@ -276,9 +311,50 @@
 
 	function closePanel(): void {
 		detailOpen = false;
+		openSubmenu = null;
 		confirming = null;
 		actionMessage = null;
 		actionTrigger?.focus();
+	}
+
+	/** The menu's ordinary items first; danger items after a rule, at the end (R217.S26). */
+	const ordinaryItems = $derived((menu ?? []).filter((item) => item.danger !== true));
+	const dangerItems = $derived((menu ?? []).filter((item) => item.danger === true));
+	let openSubmenu = $state<string | null>(null);
+	/** The danger item whose consequence block is open in the Card, and the creator's choice in it. */
+	let disclosing = $state<{ readonly item: CardMenuItem; readonly choice: string | null } | null>(null);
+	let consequenceBusy = $state(false);
+	const disclosed = $derived(disclosing?.item.consequence?.read(disclosing.choice) ?? null);
+	function runItem(item: CardMenuItem): void {
+		if (item.children !== undefined) {
+			openSubmenu = openSubmenu === item.id ? null : item.id;
+			return;
+		}
+		if (item.danger === true && item.consequence !== undefined) {
+			detailOpen = false;
+			openSubmenu = null;
+			disclosing = { item, choice: null };
+			return;
+		}
+		item.run?.();
+		closePanel();
+	}
+	function cancelConsequence(): void {
+		disclosing = null;
+		void tick().then(() => actionTrigger?.focus());
+	}
+	async function confirmConsequence(): Promise<void> {
+		const open = disclosing;
+		if (open === null || disclosed?.kind !== 'ready' || !disclosed.runnable || consequenceBusy) return;
+		consequenceBusy = true;
+		try {
+			await open.item.consequence?.run(open.choice);
+		} finally {
+			consequenceBusy = false;
+			disclosing = null;
+			await tick();
+			actionTrigger?.focus();
+		}
 	}
 	function onOutside(event: PointerEvent): void {
 		if (!detailOpen || !(event.target instanceof Node)) return;
@@ -295,6 +371,12 @@
 		renaming = false;
 		nameDraft = nameWriter?.value ?? '';
 		nameError = null;
+	}
+	/** The consequence block takes focus on open, so the keyboard reaches its choices and Esc. */
+	function focusFirst(button: HTMLButtonElement) {
+		const block = button.closest('section');
+		const target = block?.querySelector<HTMLElement>('input, button:not(:disabled)') ?? button;
+		target.focus();
 	}
 	function focusName(input: HTMLInputElement) {
 		input.focus();
@@ -330,13 +412,23 @@
 	{#if detailOpen}
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div class="subject-actions" bind:this={panel} data-card-actions role="group" aria-label="Subject actions"
-			onkeydown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closePanel(); } }}>
+			onkeydown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (openSubmenu !== null) openSubmenu = null; else closePanel(); } }}>
 			{#if menu !== null}
-				{#each menu as item (item.id)}
-					<button type="button" class="menu-item" disabled={item.disabled === true} title={item.disabled === true ? item.reason : undefined}
+				{#snippet menuItem(item: CardMenuItem, nested: boolean)}
+					{@const shownHint = item.disabled === true && item.reason ? item.reason : item.hint}
+					<button type="button" class="menu-item" class:danger={item.danger === true} class:nested disabled={item.disabled === true} title={item.disabled === true ? item.reason : undefined}
 						data-card-menu={item.id}
-						onclick={() => { item.run(); closePanel(); }}>{item.label}{#if item.hint}<span class="hint">{item.hint}</span>{/if}{#if item.disabled === true && item.reason}<span class="sr-only">{item.reason}</span>{/if}</button>
-				{/each}
+						aria-expanded={item.children !== undefined ? openSubmenu === item.id : undefined}
+						onclick={() => runItem(item)}>{item.label}{#if item.children !== undefined}<span class="hint" aria-hidden="true">{openSubmenu === item.id ? '▾' : '▸'}</span>{:else if shownHint}<span class="hint" aria-hidden={item.disabled === true ? 'true' : undefined}>{shownHint}</span>{/if}{#if item.disabled === true && item.reason}<span class="sr-only">{item.reason}</span>{/if}</button>
+					{#if item.children !== undefined && openSubmenu === item.id}
+						<div class="submenu" role="group" aria-label={item.label} data-card-submenu={item.id}>
+							{#each item.children as child (child.id)}{@render menuItem(child, true)}{/each}
+						</div>
+					{/if}
+				{/snippet}
+				{#each ordinaryItems as item (item.id)}{@render menuItem(item, false)}{/each}
+				{#if dangerItems.length > 0}<hr />{/if}
+				{#each dangerItems as item (item.id)}{@render menuItem(item, false)}{/each}
 			{:else if identity}
 				{#each subjectFunctions as name (name)}
 					<button type="button" class="soon" disabled title="Coming soon" data-card-function={name}>{name}<span class="soon-cue">Soon</span></button>
@@ -376,7 +468,7 @@
 		data-card-gesturing={gesturing ? 'true' : 'false'}
 	>
 		<header class="card-head">
-			<span class="kind">{identity.kind}{#if kindLink}{@const link = kindLink} <button type="button" class="kind-link" onclick={() => link.onOpen()}>{link.label}</button>{/if}</span>
+			<span class="kind">{#if back}{@const previous = back}<button type="button" class="back-link" aria-label={`Back to ${previous.label}`} title="Back (Alt+←)" data-card-back onclick={() => previous.onBack()}>‹ {previous.label}</button> {/if}{identity.kind}{#if kindLink}{@const link = kindLink} <button type="button" class="kind-link" onclick={() => link.onOpen()}>{link.label}</button>{/if}</span>
 			<div class="head-actions">
 				{#if hasSubjectActions}<button
 					type="button"
@@ -394,7 +486,7 @@
 			{#if renaming && nameWriter}
 				<input class="rename-input" aria-label="Name" bind:this={nameInput} use:focusName value={nameDraft} disabled={nameBusy}
 					oninput={event => nameDraft = event.currentTarget.value}
-					onblur={() => { if (!nameBusy) cancelRename(); }}
+					onblur={() => { if (nameBusy) return; if (nameWriter?.commitOnBlur === true && nameDraft.trim() !== '') void commitName(); else cancelRename(); }}
 					onkeydown={event => {
 						if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void commitName(); }
 						if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelRename(); void tick().then(() => titleButton?.focus()); }
@@ -407,6 +499,32 @@
 			{/if}
 		</h2>
 		{#if nameError}<p class="error" role="alert">{nameError}</p>{/if}
+		{#if disclosing !== null && disclosed !== null}
+			{@const open = disclosing}
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<section class="consequence" role="group" aria-label={`${open.item.label}?`} data-card-consequence={open.item.id}
+				onkeydown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelConsequence(); } }}>
+				{#if disclosed.kind === 'refused'}
+					<p class="consequence-line" role="alert">{disclosed.reason}</p>
+				{:else}
+					{#each disclosed.lines as line, index (index)}<p class="consequence-line">{line}</p>{/each}
+					{#if disclosed.choose !== null}
+						<fieldset class="consequence-choice">
+							<legend>{disclosed.choose.label}</legend>
+							{#each disclosed.choose.options as option (option.id)}
+								<label><input type="radio" name="card-consequence-choice" value={option.id} checked={open.choice === option.id}
+									onchange={() => (disclosing = { item: open.item, choice: option.id })} />{option.label}</label>
+							{/each}
+						</fieldset>
+					{/if}
+				{/if}
+				<div class="consequence-actions">
+					<button type="button" class="remove" use:focusFirst disabled={disclosed.kind !== 'ready' || !disclosed.runnable || consequenceBusy}
+						data-card-consequence-run onclick={() => void confirmConsequence()}>Remove</button>
+					<button type="button" class="cancel" data-card-consequence-cancel onclick={cancelConsequence}>Cancel</button>
+				</div>
+			</section>
+		{/if}
 		{#if writer?.view}
 			<div class="writer" data-card-writer={writer.summary}>
 				<writer.view.component services={writer.view.services} detailOpen={moreOpen} {footer} {secondary} {more} />
@@ -631,5 +749,21 @@
 	.more-section h3 { margin: 4px 12px 0; font: 600 10.5px/1.2 var(--shell-sans, system-ui); color: var(--shell-ink-2, #4a524c); letter-spacing: .03em; text-transform: uppercase; }
 	.more-section .facts { padding-top: 4px; }
 	.rename-input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; color: inherit; border: 1px solid var(--shell-hairline-strong); border-radius: 5px; padding: 3px 5px; }
-	@media (pointer: coarse) { .subject-actions button, .rename-input { min-height: 44px; } }
+	.menu-item.danger { color: var(--shell-refuse, #7e2718); }
+	.menu-item.danger:disabled { color: var(--shell-ink-2, #4a524c); }
+	.menu-item.nested { padding-left: 18px; }
+	.submenu { display: grid; gap: 2px; }
+	.back-link { min-height: 0; margin-right: 0.15em; padding: 0; color: var(--shell-ink-2, #4a524c); font-size: 11px; }
+	.back-link:hover { background: none; color: var(--shell-ink, #1b201c); }
+	.consequence { display: grid; gap: 6px; margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--shell-refuse, #7e2718); border-radius: 8px; background: var(--shell-index, #f6f7f5); font-size: 12px; }
+	.consequence-line { margin: 0; color: var(--shell-ink, #1b201c); line-height: 1.4; }
+	.consequence-choice { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; }
+	.consequence-choice legend { padding: 0; color: var(--shell-ink-2, #4a524c); font-size: 11px; }
+	.consequence-choice label { display: flex; align-items: center; gap: 6px; }
+	.consequence-actions { display: flex; gap: 6px; }
+	.consequence-actions button { min-height: 28px; padding: 0 11px; border: 1px solid var(--shell-hairline-strong, #cdd2ca); font-weight: 600; }
+	.consequence-actions .remove { border-color: var(--shell-refuse, #7e2718); background: var(--shell-refuse, #7e2718); color: #fff; }
+	.consequence-actions .remove:hover { background: var(--shell-refuse, #7e2718); }
+	.consequence-actions .remove:disabled { opacity: 0.45; cursor: not-allowed; }
+	@media (pointer: coarse) { .subject-actions button, .rename-input, .consequence-actions button, .consequence-choice label, .back-link { min-height: 44px; } }
 </style>

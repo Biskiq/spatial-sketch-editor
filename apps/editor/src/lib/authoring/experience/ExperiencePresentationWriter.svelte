@@ -7,8 +7,12 @@
 	 * Guide is awaiting its name (D8) the name is asked inline here. Add to Guide is the visible
 	 * action under the Card name; the Information text is committed on blur. It edits through the Experience controller; its
 	 * own state is the Views filter, the text draft and the first-Guide name.
+	 *
+	 * R217.S26: `•••` → Add to Guide ▸ New Guide… asks the new Guide's name here too (E5). The
+	 * View grid reorders by dragging a tile (a gold caret marks the gap) or with Alt ←/→ on a
+	 * focused tile; reordering is refused while the filter is on, and never changes the Default.
 	 */
-	import { untrack, type Snippet } from 'svelte';
+	import { tick, untrack, type Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
@@ -105,11 +109,15 @@
 	});
 	const guideNameTrimmed = $derived(guideName.trim());
 	const createReason = $derived(
-		controller?.busy ? 'Wait for the current change' : guideNameTrimmed === '' ? 'Enter a name for the Guide' : ''
+		controller?.busy ? 'Wait for the current change' : guideNameTrimmed === '' ? 'A name is needed' : ''
 	);
+	/** The first Guide (D8), or New Guide… beside existing ones (E5): a new, active Guide either way. */
+	const firstGuide = $derived((controller?.guides.length ?? 0) === 0);
 	async function createGuide(): Promise<void> {
 		if (controller === null || presentation === null || createReason !== '') return;
-		const accepted = await controller.addStop(presentation.id, { firstGuideLabel: guideNameTrimmed });
+		const accepted = firstGuide
+			? await controller.addStop(presentation.id, { firstGuideLabel: guideNameTrimmed })
+			: await controller.createGuide(presentation.id, guideNameTrimmed);
 		if (accepted) homes.requestGuideName(null);
 	}
 	function cancelGuideName(): void {
@@ -125,6 +133,58 @@
 		if (controller === null || presentation === null || addReason !== '') return;
 		if (controller.guides.length === 0) homes.requestGuideName(presentation.id);
 		else void controller.addStop(presentation.id);
+	}
+
+	/* ---- View order (R217.S26) ---- */
+	const VIEW_MIME = 'application/x-biskiq-view';
+	const filterOn = $derived(filterVisible && (filterText.trim() !== '' || onTourChip || freeChip));
+	/** The tile a drag is over, and which side of it the gold caret stands on. */
+	let dropAt = $state<{ readonly viewId: string; readonly after: boolean } | null>(null);
+	let draggingViewId = $state<string | null>(null);
+	let gridEl = $state<HTMLDivElement | null>(null);
+	async function refocusTile(viewId: string): Promise<void> {
+		await tick();
+		gridEl?.querySelector<HTMLElement>(`[data-view-tile="${CSS.escape(viewId)}"]`)?.focus();
+	}
+	function onTileKeydown(event: KeyboardEvent, viewId: string): void {
+		if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+		// The tile claims Alt ←/→ so the Card's Back does not also run.
+		event.preventDefault();
+		event.stopPropagation();
+		if (controller === null || presentation === null || controller.busy || filterOn) return;
+		const presentationId = presentation.id;
+		void controller.moveView(presentationId, viewId, event.key === 'ArrowLeft' ? -1 : 1).then(() => refocusTile(viewId));
+	}
+	function onTileDragStart(event: DragEvent, viewId: string): void {
+		if (filterOn || event.dataTransfer === null) {
+			event.preventDefault();
+			return;
+		}
+		draggingViewId = viewId;
+		event.dataTransfer.setData(VIEW_MIME, viewId);
+		event.dataTransfer.effectAllowed = 'move';
+	}
+	function onTileDragOver(event: DragEvent, viewId: string): void {
+		if (draggingViewId === null || filterOn) return;
+		event.preventDefault();
+		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		dropAt = { viewId, after: event.clientX > box.left + box.width / 2 };
+	}
+	function onTileDrop(event: DragEvent): void {
+		event.preventDefault();
+		const dragged = draggingViewId;
+		const at = dropAt;
+		draggingViewId = null;
+		dropAt = null;
+		if (controller === null || presentation === null || dragged === null || at === null || filterOn) return;
+		const others = presentation.viewIds.filter((viewId) => viewId !== dragged);
+		const index = others.indexOf(at.viewId);
+		if (index === -1) return;
+		void controller.moveViewTo(presentation.id, dragged, index + (at.after ? 1 : 0));
+	}
+	function onTileDragEnd(): void {
+		draggingViewId = null;
+		dropAt = null;
 	}
 
 	function selectView(viewId: string): void {
@@ -184,7 +244,7 @@
 						type="button"
 						class="btn primary"
 						disabled={createReason !== ''}
-						title={createReason || 'Create the first Guide with this Presentation as its first Stop'}
+						title={createReason || 'Create the Guide with this Presentation as its first Stop'}
 						aria-describedby={createReason !== '' ? 'guide-name-reason' : undefined}
 						onclick={() => void createGuide()}>Create Guide</button
 					>
@@ -226,21 +286,34 @@
 					</div>
 				</div>
 			{/if}
+			{#if filterOn}
+				<p class="foot-note" data-reorder-refused>{shownViews.length} shown · clear the filter to reorder</p>
+			{/if}
 			{#if views.length === 0}
 				<p class="empty">No Views yet. Capture in the dock adds the first.</p>
 			{:else if shownViews.length === 0}
 				<p class="empty">No View matches.</p>
 			{:else}
-				<div class="vgrid" class:three={columns === 3} data-view-grid>
+				<div class="vgrid" class:three={columns === 3} data-view-grid bind:this={gridEl}>
 					{#each shownViews as view (view.id)}
 						<button
 							type="button"
 							class="vtile"
 							class:selected={selectedViewId === view.id}
+							class:caret-before={dropAt?.viewId === view.id && !dropAt.after}
+							class:caret-after={dropAt?.viewId === view.id && dropAt.after}
+							class:dragging={draggingViewId === view.id}
 							aria-label={tileLabel(view)}
 							aria-current={selectedViewId === view.id ? 'true' : undefined}
+							aria-keyshortcuts={filterOn ? undefined : 'Alt+ArrowLeft Alt+ArrowRight'}
 							data-view-tile={view.id}
+							draggable={!filterOn}
 							onclick={() => selectView(view.id)}
+							onkeydown={(event) => onTileKeydown(event, view.id)}
+							ondragstart={(event) => onTileDragStart(event, view.id)}
+							ondragover={(event) => onTileDragOver(event, view.id)}
+							ondrop={onTileDrop}
+							ondragend={onTileDragEnd}
 						>
 							<span class="vt-img">
 								<ExperienceSnapshot label={view.label} selected={selectedViewId === view.id} />
@@ -398,6 +471,30 @@
 	.vt-img {
 		position: relative;
 		display: block;
+	}
+	/* R217.S26: the reorder caret is the Stop cards' gold insertion caret, at the tile's edge. */
+	.vtile {
+		position: relative;
+	}
+	.vtile.caret-before::before,
+	.vtile.caret-after::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		width: 3px;
+		border-radius: 2px;
+		background: var(--shell-gold, #d4ad45);
+		pointer-events: none;
+	}
+	.vtile.caret-before::before {
+		left: -4.5px;
+	}
+	.vtile.caret-after::after {
+		right: -4.5px;
+	}
+	.vtile.dragging {
+		opacity: 0.5;
 	}
 	.badge-def {
 		position: absolute;
