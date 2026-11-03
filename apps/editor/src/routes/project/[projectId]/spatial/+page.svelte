@@ -4479,7 +4479,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	<div
 		class="editor-body"
-		style={`--lower-column-height: ${lowerColumnHeight}px; --sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
+		style={`--lower-column-height: ${lowerColumnHeight}px; ${lens === 'experience' ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
 	>
 		{#if preview === null}
 		<EditorIndex

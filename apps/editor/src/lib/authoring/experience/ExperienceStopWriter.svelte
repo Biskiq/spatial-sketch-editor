@@ -16,9 +16,7 @@
 	import { experienceHomes } from './experience-homes';
 
 	let {
-		footer,
 		secondary,
-		more
 	}: {
 		services?: StageAdapterServices;
 		detailOpen?: boolean;
@@ -519,8 +517,6 @@
 			</button>
 		</section>
 
-		{#if footer}{@render footer()}{/if}
-		{#if more}{@render more()}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}

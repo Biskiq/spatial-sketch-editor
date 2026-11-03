@@ -313,7 +313,7 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 		expect(travel.textContent?.trim()).toBe('travel');
 		expect(travel.classList.contains('travel')).toBe(true);
 		expect(travel.classList.contains('gap')).toBe(true);
-		expect(travel.getAttribute('aria-label')).toContain('Needs attention: Gallery has no Camera path to Garden.');
+		expect(travel.getAttribute('aria-label')).toContain('Travel has no Camera connection yet');
 	});
 
 	it('selects the transition when a chip is pressed and the Stop when its card is pressed', async () => {
@@ -483,11 +483,13 @@ describe('R217.S25 — the Transition writer is the one home of Cut and Travel (
 		expect(first.setTransition).toHaveBeenLastCalledWith('stop-1', 'travel');
 	});
 
-	it('names the Travel gap as written and the Camera placeholders as disabled', async () => {
+	it('names the Travel gap in the author\'s words, with no ids, and the Camera placeholders as disabled', async () => {
 		const target = mountHome(ExperienceTransitionWriter, {}, fakeHomes(fakeController({ selectedStopId: 'stop-2' })));
 		await settle();
 
-		expect(target.querySelector('[role="alert"]')?.textContent).toContain('Gallery has no Camera path to Garden.');
+		const alert = target.querySelector('[role="alert"]')?.textContent ?? '';
+		expect(alert).toContain('Travel needs a Camera connection from “Hall” to “Gate”');
+		expect(alert).not.toContain('Gallery has no Camera path to Garden.');
 		const ends = [...target.querySelectorAll('.ends .end small')].map((small) => small.textContent?.trim());
 		expect(ends).toEqual(['leaves from', 'arrives at']);
 		expect(target.querySelector('.ends .end:last-child .num')?.textContent).toBe('3');

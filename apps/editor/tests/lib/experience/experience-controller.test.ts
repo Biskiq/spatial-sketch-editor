@@ -733,7 +733,7 @@ describe('busy and message', () => {
 		expect(controller.message).toBe('Accepted.');
 	});
 
-	it('names a refusal as its code and message, focuses nothing new and clears busy', async () => {
+	it('names a refusal in its own words, without the code, focuses nothing new and clears busy', async () => {
 		const { controller } = await mounted({
 			accept: async () => ({
 				kind: 'refused',
@@ -744,7 +744,7 @@ describe('busy and message', () => {
 
 		await controller.createExperience();
 
-		expect(controller.message).toBe('stale-session: the snapshot belongs to another host lifetime');
+		expect(controller.message).toBe('the snapshot belongs to another host lifetime');
 		expect(controller.busy).toBe(false);
 		expect(experienceFocus.experienceId).toBe('experience-1');
 	});
@@ -957,7 +957,7 @@ describe('Presentation edits', () => {
 
 		const outcome = await controller.renamePresentation('presentation-1', 'Renamed hall');
 
-		expect(outcome).toEqual({ kind: 'refused', message: 'stale: The source changed.' });
+		expect(outcome).toEqual({ kind: 'refused', message: 'The source changed.' });
 		expect(experienceFocus.presentationId).toBe('presentation-2');
 	});
 

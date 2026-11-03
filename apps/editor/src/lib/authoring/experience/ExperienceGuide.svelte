@@ -109,7 +109,7 @@
 					resolved.kind === 'adjacent' || resolved.position !== null
 						? `Stop ${resolved.position}`
 						: 'a Stop outside this Guide';
-				const attention = gap ? `. Needs attention: ${gaps.join(' ')}` : '';
+				const attention = gap ? '. Travel has no Camera connection yet' : '';
 				connector = {
 					shape: resolved.kind,
 					text:
@@ -793,9 +793,11 @@
 		position: relative;
 		display: flex;
 		flex-direction: column;
+		/* Centred, it stays clear of the Card on the right, so the Card can run down to the dock. */
+		--guide-room: max(320px, calc(100% - 2 * (var(--shell-card-width, 288px) + var(--sheet-lane-right, 40px) + 30px)));
 		width: max-content;
-		min-width: min(560px, 100%);
-		max-width: 100%;
+		min-width: min(560px, var(--guide-room));
+		max-width: var(--guide-room);
 		border-radius: 12px;
 		background: var(--shell-forest, #11291f);
 		color: var(--shell-ink-light, #eef1ec);
@@ -991,8 +993,17 @@
 	/* ---- Stop cards and connectors ---- */
 	.cards {
 		overflow-x: auto;
-		padding: 8px 0 4px;
+		padding: 8px 0 2px;
+		scrollbar-width: thin;
+		scrollbar-color: rgb(255 255 255 / 0.22) transparent;
 	}
+	.cards::-webkit-scrollbar { height: 6px; }
+	.cards::-webkit-scrollbar-track { background: transparent; }
+	.cards::-webkit-scrollbar-thumb {
+		border-radius: 6px;
+		background: rgb(255 255 255 / 0.22);
+	}
+	.cards::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.38); }
 	.row {
 		position: relative;
 		display: flex;
@@ -1105,14 +1116,14 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 4px 12px 10px;
+		padding: 2px 12px 8px;
 	}
 	.play {
 		display: grid;
 		place-items: center;
 		flex: none;
-		width: 26px;
-		height: 26px;
+		width: 24px;
+		height: 22px;
 		padding: 0;
 		border: 0;
 		border-radius: 7px;
@@ -1124,7 +1135,7 @@
 		display: flex;
 		flex: 1;
 		gap: 2px;
-		height: 14px;
+		height: 10px;
 		min-width: 0;
 	}
 	.seg {
@@ -1135,7 +1146,7 @@
 		container-type: inline-size;
 		min-width: 0;
 		overflow: hidden;
-		border-radius: 4px;
+		border-radius: 3px;
 		background: rgb(79 143 108 / 0.55);
 	}
 	.seg.selected {
@@ -1144,7 +1155,7 @@
 	/* The hold is written on its segment only while the segment is wide enough for it. */
 	.seg-hold {
 		display: none;
-		font: 600 9.5px/1 var(--shell-mono, ui-monospace, monospace);
+		font: 600 8px/1 var(--shell-mono, ui-monospace, monospace);
 		color: #e3eee7;
 		white-space: nowrap;
 		pointer-events: none;

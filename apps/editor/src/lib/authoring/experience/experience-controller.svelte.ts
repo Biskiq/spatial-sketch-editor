@@ -233,6 +233,16 @@ export function createExperienceController(
 	});
 
 	let message = $state('');
+	// Feedback is a passing line: success fades quickly, a refusal stays long enough to read.
+	let messageTimer: ReturnType<typeof setTimeout> | undefined;
+	function say(text: string): void {
+		message = text;
+		clearTimeout(messageTimer);
+		const shown = text;
+		messageTimer = setTimeout(() => {
+			if (message === shown) message = '';
+		}, text === 'Accepted.' ? 2400 : 6000);
+	}
 	let busy = $state(false);
 
 	function newId(): string {
@@ -250,14 +260,14 @@ export function createExperienceController(
 		try {
 			const outcome = await readServices().authoring.accept(builder());
 			if (outcome.kind === 'refused') {
-				message = `${outcome.code}: ${outcome.message}`;
+				say(outcome.message);
 				return false;
 			}
 			if (outcome.kind !== 'installed') {
-				message = 'No change to accept.';
+				say('No change to accept.');
 				return false;
 			}
-			message = 'Accepted.';
+			say('Accepted.');
 			return true;
 		} finally {
 			busy = false;
@@ -281,18 +291,18 @@ export function createExperienceController(
 	function currentCapturePose() {
 		const evaluation = readServices().stage.evaluation();
 		if (evaluation === null) {
-			message = 'The Stage has not evaluated a reading yet; wait for the reading to settle.';
+			say('The Stage has not evaluated a reading yet; wait for the reading to settle.');
 			return null;
 		}
 		// Plan is orthographic: its eye/target would record a perspective View the
 		// creator never saw. Capture is a 3D-reading action.
 		if (evaluation.projectionKind !== 'perspective-3d') {
-			message = 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.';
+			say('Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
 			return null;
 		}
 		const fov = capturedFovDegrees(evaluation.projectionMatrix);
 		if (fov === null) {
-			message = 'The Stage projection is degenerate; frame the View again.';
+			say('The Stage projection is degenerate; frame the View again.');
 			return null;
 		}
 		return capturedViewPose({
@@ -367,7 +377,7 @@ export function createExperienceController(
 			})
 		);
 		if (accepted && keptDefault === null) {
-			message = `${target.label} had no Default View, so this View is now its Default.`;
+			say(`${target.label} had no Default View, so this View is now its Default.`);
 		}
 		return accepted;
 	}
@@ -383,14 +393,14 @@ export function createExperienceController(
 		if (current === null) return false;
 		const experience = current;
 		if (!experience.presentations.some((entry) => entry.id === presentationId)) {
-			message = 'That Presentation is not in this Experience.';
+			say('That Presentation is not in this Experience.');
 			return false;
 		}
 		const stopId = newId();
 		if (experience.guides.length === 0) {
 			const guideLabel = options.firstGuideLabel?.trim() ?? '';
 			if (guideLabel === '') {
-				message = 'Name the Guide first.';
+				say('Name the Guide first.');
 				return false;
 			}
 			const guideId = newId();
@@ -508,7 +518,7 @@ export function createExperienceController(
 
 	async function setStopHold(stopId: string, holdSeconds: number | null): Promise<boolean> {
 		if (holdSeconds !== null && (!Number.isFinite(holdSeconds) || holdSeconds < 0)) {
-			message = 'A hold is a finite number of seconds, or blank for none.';
+			say('A hold is a finite number of seconds, or blank for none.');
 			return false;
 		}
 		return updateStop(stopId, { holdSeconds });

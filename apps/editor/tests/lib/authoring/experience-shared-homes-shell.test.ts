@@ -181,9 +181,10 @@ describe('R217.S25 — the Index groups in the Experience lens', () => {
 		expect(filtered.textContent).toContain('Nothing matches "zzz".');
 	});
 
-	it('shows the Presentation search only from 8 Presentations or while a filter is typed', () => {
-		const few = mountIndex(groups({ totalPresentations: 7 }));
-		expect(few.querySelector('input[aria-label="Find a Presentation or View"]')).toBeNull();
+	it('always shows the Presentation search in the Index head, beside Hide Index', () => {
+		const few = mountIndex(groups({ totalPresentations: 1 }));
+		expect(few.querySelector('.index-search input[aria-label="Find a Presentation or View"]')).not.toBeNull();
+		expect(few.querySelector('.index-search [aria-label="Hide Index"]')).not.toBeNull();
 		unmountIndex();
 
 		const many = mountIndex(groups({ totalPresentations: 8 }));

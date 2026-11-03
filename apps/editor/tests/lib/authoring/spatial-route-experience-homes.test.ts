@@ -282,8 +282,8 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(target.querySelector('[aria-label="Switch or create Experience"]')).not.toBeNull();
 		expect(control('New Experience')).toBeDefined();
 		expect(target.textContent).toContain('Create an Experience from the menu above to start presenting.');
-		// Search appears only from eight Presentations, so an empty Experience has none.
-		expect(target.querySelector('input[aria-label="Find a Presentation or View"]')).toBeNull();
+		// The search always heads the Index, so the top row is never empty.
+		expect(target.querySelector('input[aria-label="Find a Presentation or View"]')).not.toBeNull();
 		// The dock: Select, Place a View (placeholder), Capture and Guide. Path shows only with a Guide open.
 		const keys = [...target.querySelectorAll<HTMLElement>('[data-experience-dock] [data-dock-tool]')].map((key) => key.dataset.dockTool);
 		expect(keys).toEqual(['select', 'place-view', 'capture', 'guide']);
@@ -608,7 +608,8 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		expect(card()!.textContent).not.toContain('Save Presentation');
 		// A standpoint Presentation has no Scene subject, so Bring into view has no place to go.
 		expect(card()!.querySelector('[aria-label="Bring into view"]')).toBeNull();
-		expect(card()!.querySelector('[data-card-more]')).not.toBeNull();
+		// Experience Cards carry no More disclosure: the writer already shows the relations.
+		expect(card()!.querySelector('[data-card-more]')).toBeNull();
 		// Add to Guide is the visible button at the top of the writer; the Card's ••• holds no Add to Guide item.
 		expect(control('Add to Guide').closest('[data-experience-writer="presentation"]')).not.toBeNull();
 		expect(card()!.querySelector('[data-card-menu="add-to-guide"]')).toBeNull();

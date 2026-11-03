@@ -16,9 +16,7 @@
 	import { experienceHomes } from './experience-homes';
 
 	let {
-		footer,
 		secondary,
-		more
 	}: {
 		services?: StageAdapterServices;
 		detailOpen?: boolean;
@@ -188,10 +186,15 @@
 					<span class="f-val muted" title={PATH_REASON} aria-disabled="true">{PATH_REASON}</span>
 				</div>
 				{#if travelGaps.length > 0}
+					<!-- The validator's finding names ids; the Card says the same thing in the author's words. -->
 					<div class="gaps" role="alert">
-						{#each travelGaps as gap, index (index)}
-							<div class="alert"><ShellIcon name="warning" size={13} /><span>{gap}</span></div>
-						{/each}
+						<div class="alert">
+							<ShellIcon name="warning" size={13} /><span
+								>Travel needs a Camera connection from “{entryLabelOf(stop)}” to “{destination === null
+									? 'the next View'
+									: entryLabelOf(destination)}”. Connections come with path editing.</span
+							>
+						</div>
 					</div>
 				{/if}
 			</section>
@@ -207,8 +210,6 @@
 			</section>
 		{/if}
 
-		{#if footer}{@render footer()}{/if}
-		{#if more}{@render more()}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}

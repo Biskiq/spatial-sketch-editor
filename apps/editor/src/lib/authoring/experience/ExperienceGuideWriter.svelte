@@ -12,9 +12,7 @@
 	import { experienceHomes } from './experience-homes';
 
 	let {
-		footer,
 		secondary,
-		more
 	}: {
 		services?: StageAdapterServices;
 		detailOpen?: boolean;
@@ -105,8 +103,6 @@
 			{#if isEntry}<p class="foot-note">The Experience opens on this Guide.</p>{/if}
 		</section>
 
-		{#if footer}{@render footer()}{/if}
-		{#if more}{@render more()}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}

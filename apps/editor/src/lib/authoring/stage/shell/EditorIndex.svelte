@@ -127,19 +127,17 @@
 	{#if open}
 		{#if experience}
 		<div class="index-search">
-			{#if experience.totalPresentations >= 8 || experience.query !== ''}
-				<label
-					><ShellIcon name="search" size={15} />
-					<input
-						id="plate-index-search"
-						type="search"
-						aria-label="Find a Presentation or View"
-						placeholder="Find a Presentation or View"
-						value={experience.query}
-						oninput={(e) => experience.onQuery(e.currentTarget.value)}
-					/>
-				</label>
-			{/if}
+			<label
+				><ShellIcon name="search" size={15} />
+				<input
+					id="plate-index-search"
+					type="search"
+					aria-label="Find a Presentation or View"
+					placeholder="Find a Presentation or View"
+					value={experience.query}
+					oninput={(e) => experience.onQuery(e.currentTarget.value)}
+				/>
+			</label>
 			<button type="button" class="hide-index" aria-label="Hide Index" onclick={onClose}
 				><ShellIcon name="chevronLeft" size={15} /></button
 			>
@@ -216,8 +214,9 @@
 			{:else}
 				<ul class="group-items">
 					{#each experience.presentations as presentation (presentation.id)}
-						<li class="item" class:selected={presentation.selected} data-presentation-id={presentation.id}>
-							<div class="item-head">
+						<li class="item" data-presentation-id={presentation.id}>
+							<!-- Only the Presentation's own row carries its selection; its Views keep their own. -->
+							<div class="item-head" class:selected={presentation.selected}>
 								<button
 									type="button"
 									class="twist"
@@ -549,7 +548,8 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.item.selected {
+	.item.selected,
+	.item-head.selected {
 		background: var(--shell-gold-tint, #f8efd6);
 	}
 	.item.selected .item-name {
@@ -658,15 +658,15 @@
 	}
 	.guide-row {
 		width: 100%;
-		min-height: 42px;
-		padding: 6px 10px;
+		min-height: 36px;
+		padding: 4px 10px;
 		border-radius: 0;
 		text-align: left;
 	}
 	.twist {
 		flex: none;
 		width: 22px;
-		min-height: 44px;
+		min-height: 38px;
 		padding: 0;
 		justify-content: center;
 		border-radius: 0;
@@ -676,8 +676,8 @@
 		opacity: 0.35;
 	}
 	.presentation-row {
-		min-height: 44px;
-		padding: 5px 8px 5px 2px;
+		min-height: 38px;
+		padding: 4px 8px 4px 2px;
 		gap: 8px;
 		cursor: grab;
 	}
@@ -686,15 +686,15 @@
 	}
 	.view-list {
 		display: grid;
-		gap: 1px;
-		margin: 0 6px 6px 28px;
+		gap: 0;
+		margin: 0 6px 4px 28px;
 		padding: 0;
 		list-style: none;
 	}
 	.view-row {
 		width: 100%;
-		min-height: 28px;
-		padding: 3px 6px;
+		min-height: 26px;
+		padding: 2px 6px;
 		border-radius: 6px;
 		text-align: left;
 		color: var(--shell-ink-2, #4a524c);

@@ -16,9 +16,7 @@
 	import type { ExperienceViewChoice } from './experience-controller.svelte';
 
 	let {
-		footer,
 		secondary,
-		more
 	}: {
 		services?: StageAdapterServices;
 		detailOpen?: boolean;
@@ -299,8 +297,6 @@
 			</label>
 		</section>
 
-		{#if footer}{@render footer()}{/if}
-		{#if more}{@render more()}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}

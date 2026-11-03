@@ -434,8 +434,10 @@
 		z-index: 12;
 		width: var(--shell-card-width, 288px);
 		max-width: calc(100% - 76px);
-		max-height: calc(100% - var(--lower-column-height, 50px) - 30px);
+		max-height: calc(100% - var(--card-bottom-clearance, calc(var(--lower-column-height, 50px) + 30px)));
 		overflow: visible;
+		display: flex;
+		flex-direction: column;
 		border: 1px solid var(--shell-hairline, #e1e4de);
 		border-radius: 12px;
 		background: #fff;
@@ -445,6 +447,27 @@
 		transition: opacity 140ms;
 	}
 
+	.card-head,
+	.name,
+	.card > .error { flex: none; }
+	/* Identity stays put; a long writer scrolls under it instead of spilling past the Card. */
+	.writer {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		border-radius: 0 0 12px 12px;
+		scrollbar-width: thin;
+		scrollbar-color: var(--shell-hairline-strong, #cdd2ca) transparent;
+	}
+	.writer::-webkit-scrollbar { width: 8px; }
+	.writer::-webkit-scrollbar-track { background: transparent; }
+	.writer::-webkit-scrollbar-thumb {
+		border: 2px solid transparent;
+		border-radius: 8px;
+		background: var(--shell-hairline-strong, #cdd2ca) padding-box;
+	}
+	.writer::-webkit-scrollbar-thumb:hover { background-color: var(--shell-ink-3, #79817b); }
 	.card-head {
 		display: flex;
 		align-items: center;
@@ -457,6 +480,7 @@
 	}
 	.kind-link {
 		min-height: 0;
+		margin-left: 0.25em;
 		padding: 0;
 		border-radius: 0;
 		background: none;
@@ -557,6 +581,12 @@
 	@media (max-width: 860px) {
 		.card {
 			width: 252px;
+		}
+	}
+	/* Narrow Stages leave the Guide no room beside the Card, so the Card stops above the whole lower column. */
+	@media (max-width: 1180px) {
+		.card {
+			max-height: calc(100% - var(--lower-column-height, 50px) - 30px);
 		}
 	}
 	@media (pointer: coarse) {
