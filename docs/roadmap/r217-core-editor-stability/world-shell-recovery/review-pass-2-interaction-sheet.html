@@ -174,7 +174,7 @@ table.fut th{color:var(--ink2);font-weight:600}
 @media (max-width:600px){header{position:static}.cardwrap{width:100%}}
 </style>
 </head>
-<body class="gz-sticker ink-white ghost-cobalt">
+<body class="gz-sticker ink-black ghost-cobalt">
 <header>
   <h1>World · interaction sheet <span style="font-weight:400;opacity:.7">review pass 3</span></h1>
   <div class="ctl">Gizmo style
@@ -184,7 +184,7 @@ table.fut th{color:var(--ink2);font-weight:600}
   </div>
   <div class="ctl">Ink
     <div class="seg" data-key="ink" role="group" aria-label="Drawing ink">
-      <button data-v="black">Black</button><button data-v="white">White <span class="star">★</span></button>
+      <button data-v="black">Black <span class="star">★ chosen</span></button><button data-v="white">White</button>
     </div>
   </div>
   <div class="ctl">Ghost
@@ -195,7 +195,7 @@ table.fut th{color:var(--ink2);font-weight:600}
   <div class="ctl" style="opacity:.8">Paper is chosen per view in the gear (section 6)</div>
 </header>
 
-<p class="intro status"><b>Round 3 (2026-11-02):</b> the owner accepted round 2 except the ghosts. This round proposes one ghost language for every transform — Walls, Rooms and objects, in 2D and 3D — in a colour of its own, and a White ink to match the white controls; the turn ring is removed (only the bent two-way arrow stays); Rooms become movable. New: the <b>Ink</b> and <b>Ghost</b> switches in the header and section 8. <b>Ghost colour: ★ A · Cobalt</b> — a hue no other state uses (gold is selection, red is refusal, green is focus), so a proposal never reads as drawn ink, and it holds contrast on all three Papers (about 4.6:1) and, with its thin white halo, on dark materials. <b>B · Violet</b> is the alternative if cobalt reads too close to a link. <b>Ink: ★ White</b> with a dark hairline halo, the same treatment as the white sticker controls; Black stays one click away.</p>
+<p class="intro status"><b>Round 3 (2026-11-02):</b> the owner accepted round 2 except the ghosts. This round proposes one ghost language for every transform — Walls, Rooms and objects, in 2D and 3D — in a colour of its own, and a White ink to match the white controls; the turn ring is removed (only the bent two-way arrow stays); Rooms become movable. New: the <b>Ink</b> and <b>Ghost</b> switches in the header and section 8. <b>Ghost colour: ★ A · Cobalt</b> — a hue no other state uses (gold is selection, red is refusal, green is focus), so a proposal never reads as drawn ink, and it holds contrast on all three Papers (about 4.6:1) and, with its thin white halo, on dark materials. <b>B · Violet</b> is the alternative if cobalt reads too close to a link. <b>Ink: chosen Black</b> — the owner kept black draft ink to match the 2D black ink; White with a dark hairline halo stays on record.</p>
 <p class="intro status"><b>Status:</b> owner review, round 2 (2026-11-02). Once the owner settles it, this sheet is promoted as the <b>authority for the World visual language</b>: marks, glyphs, ink, ghosts, refusal, Paper and the Card's shape. Every row keeps its alternatives on record. <span class="star">★</span> is the recommendation and is what round 2 implements; <b>chosen</b> marks an explicit owner decision; <s>struck</s> is current production, kept only to compare. Geometry on this page is screen maths, not the Layout/Scene planners.</p>
 <p class="intro"><b>Clear, visually pleasing, self-explanatory.</b> Every control's shape says what it does: an arrow drags that way, a curved arrow turns, a knob on a stem lifts, a four-way cross moves, a chip toggles a mode. Drawing is solid ink (black or white); a proposal is dashed in the ghost colour, for every subject and in both views; a refusal is red dashed; selection is gold. Every stage below is live: drag, draw and click. The header switch restyles every gizmo; the gear (section 6) sets the Paper for 2D and 3D.</p>
 
@@ -339,7 +339,7 @@ table.fut th{color:var(--ink2);font-weight:600}
 <script>
 'use strict';
 const $ = (s) => document.querySelector(s);
-const S = { style: 'sticker', ink: 'white', ghostColor: 'cobalt', p2: 'pale', p3: 'pale', lift: 'whole', refuse: 'reason', ghost: 'line', tx: 'outline', roomFollow: 'walls', turn: 'bent', knob: 'disc', rulerEnd: 'ticks', subject: 'wall', lab2d: true, lab3d: false };
+const S = { style: 'sticker', ink: 'black', ghostColor: 'cobalt', p2: 'pale', p3: 'pale', lift: 'whole', refuse: 'reason', ghost: 'line', tx: 'outline', roomFollow: 'walls', turn: 'bent', knob: 'disc', rulerEnd: 'ticks', subject: 'wall', lab2d: true, lab3d: false };
 
 // ---------- shared maths ----------
 const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);

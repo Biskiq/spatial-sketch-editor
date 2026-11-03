@@ -1,6 +1,6 @@
 # World shell recovery — owner review pass 2
 
-**Date:** 2026-11-02. **Status:** plan for owner release; every open choice is settled (owner choice or the sheet's ★ recommendation); nothing is implemented; owner visual acceptance pending.
+**Date:** 2026-11-02. **Status:** implemented and accepted by the owner 2026-11-02 (rounds 2 and 3, §9–§10).
 
 This is the plan and acceptance home for the owner's second manual review of the recovered World shell. It covers all 17 supplied images, the owner's written review, four interview answers and the owner's follow-up (two-knob height stem, chip as uniform scale, chosen glyph style, per-view Paper). It does not record any proposed change as shipped. [Pass 1](./review-pass-1-plan.md) remains the baseline for everything not reopened here; where this document differs, it replaces the pass-1 direction for that concern only. Do not append this review to the pass-1 or earlier plans.
 
@@ -207,7 +207,7 @@ Domain rules unchanged: no new persisted fields, no second writer, F4 history, C
 | Implementation verification | Passed 2026-11-02: `npm run check` (0 errors), `npm run build`, `npm test` (271 files, 3515 tests), `check:layout-core`, `check:project-model`, editor `tests/docs` (56 tests). New coverage: set-lift/set-name planners, lift-preserving move and duplicate, chip drag scale and chip click (no write), lift knob commit, Room rename (trim, blank refused), Card More/`•••` on the mounted route, view preferences round trip. In-app browser: gear Room label switches and Paper tray applied live (3D board tone change observed), draft ink clean black. |
 | Scene object unification (follow-up, 2026-11-02) | Models, primitives and drawn forms are one Scene object in the editor: one Card writer (`SceneObjectCardFields.svelte`, `object-card.ts`), one action set (Duplicate, Delete) and one mark builder and gesture path (`object-marks.ts`, `scene.adapter.ts`). Sizing is the one kind-specific capability: a uniform chip scale for models and primitives, per-axis Width/Height/Depth rays and fields for forms (`form-size.ts`); Save to My Objects is form-only. The separate form Card (`FormCardFields*.svelte`, `form-card.ts`) and form gesture path were removed; a test pins one Card, action set and shared mark vocabulary for every kind. |
 | Known gaps for owner review | Forms now have the Elevation field and lift knob through the shared object Card and marks. A Wall height drag shows a dashed sheet ghost (follow-up); it was not observed in the browser. Relations shows only facts adapters already publish; Wall → bounding Room is not yet a published fact. Room Card has no Ceiling height placeholder. Paper tones change the ground colour only; each tone's own grid ink is not applied. Save/reopen of renamed and lifted subjects was not exercised in the browser (planner and acceptance tests cover the writes). |
-| Owner World visual/UX acceptance | Pending. Round 3 follow-up: §10. |
+| Owner World visual/UX acceptance | Accepted by owner 2026-11-02, with the round-3 changes in §10 (draft ink kept black). |
 
 ### Reconciliation after owner visual acceptance
 
@@ -215,21 +215,21 @@ When the owner settles the sheet and accepts the round-2 implementation, promote
 
 ## 10. Owner review round 3 (2026-11-02)
 
-The owner reviewed the round-2 build and asked for consistent ghosts, a 2D rotation ghost, no turn ring, an object outline that matches its body when moved in 2D, colour options for the dashed ghost, a check on Room moves, and white ink to match the white controls. The sheet (§8 *Transform ghosts* and the header Ink/Ghost switches) carries the options; the owner chose **"use the ★ picks"**.
+The owner reviewed the round-2 build and asked for consistent ghosts, a 2D rotation ghost, no turn ring, an object outline that matches its body when moved in 2D, colour options for the dashed ghost, a check on Room moves, and a ghost colour consistent with the white controls. The sheet (§8 *Transform ghosts* and the header Ink/Ghost switches) carries the options; the owner chose **"use the ★ picks"**.
 
 | Concern | Decision (★) |
 | --- | --- |
-| Ink | **White** draft ink with a dark hairline halo, matching the white sticker controls (black stays on record in the sheet). |
+| Ink | **Black** draft ink, aligned with the 2D black ink (owner correction after review: white was not intended; it stays on record in the sheet). |
 | Ghost colour | **Cobalt `#2a62d6`** dashed with a white halo for every proposal (Walls, Rooms, objects); refused stays red dashed. Violet `#7b45d8` and "same as ink" stay on record. |
 | Turn control | The bent two-way arrow only; the ring is not drawn and the arrow alone takes the press, with a knob's reach. |
 | Object ghost | A dashed outline, no tint: the object's full footprint in 2D (Plan hides the Canvas ghost), its body's dashed edges in 3D. Move and turn both show it; release commits. |
 | Room move | A wiring gap, not missing capability: Layout core already had `planWallFirstRoomMove`. Wired in this PR as a four-way cross under the selected Room's label; the dashed ghost shows the moved Walls of the connected Room group; release commits one history entry; a refusal shows the Room outline red dashed with its reason. **Objects in a moved Room stay put** (option A); following the Room is on record for later. |
 
-**Implementation (uncommitted):** shell tokens `--shell-draft-ink`, `--shell-draft-halo`, `--shell-ghost`, `--shell-ghost-halo` (`shell-roles.css`); `StageOverlay.svelte` draws candidates in the ghost colour (draft ink while drawing, red when refused) and no turn ring; `hitStageMark` hits a ring by its arrow; `StagePrimitiveGhost` / `StageFormGhost` dashed edges in cobalt; `scene.adapter.ts` publishes the mark gesture's Plan footprint outline; `layout-room-move` planner (`layout/precision.ts`) and the Room move gesture (`layout.adapter.ts`).
+**Implementation:** shell tokens `--shell-draft-ink` (black), `--shell-draft-halo`, `--shell-ghost`, `--shell-ghost-halo` (`shell-roles.css`); `StageOverlay.svelte` draws candidates in the ghost colour (draft ink while drawing, red when refused) and no turn ring; `hitStageMark` hits a ring by its arrow; `StagePrimitiveGhost` / `StageFormGhost` dashed edges in cobalt; `scene.adapter.ts` publishes the mark gesture's Plan footprint outline; `layout-room-move` planner (`layout/precision.ts`) and the Room move gesture (`layout.adapter.ts`).
 
-**Verification:** `npm run check` (0 errors), `npm run build`, `npm test` (271 files, 3525 tests), `check:layout-core`, `check:project-model`, `git diff --check`. New coverage: Room move cross published only for a selected Room, drag ghost and one translated history entry with Undo, cancel and click leave source and history unchanged; turn control hit at its arrow and not along the undrawn ring; Plan footprint outline for a mark gesture and none in 3D. In-app browser: Room drag showed the cobalt dashed ghost with its Δ label and committed; white ink marks observed.
+**Verification:** `npm run check` (0 errors), `npm run build`, `npm test` (271 files, 3525 tests), `check:layout-core`, `check:project-model`, `git diff --check`. New coverage: Room move cross published only for a selected Room, drag ghost and one translated history entry with Undo, cancel and click leave source and history unchanged; turn control hit at its arrow and not along the undrawn ring; Plan footprint outline for a mark gesture and none in 3D. In-app browser: Room drag showed the cobalt dashed ghost with its Δ label and committed.
 
-**Owner World visual/UX acceptance (round 3):** pending.
+**Owner World visual/UX acceptance:** accepted by the owner 2026-11-02 (rounds 2 and 3), with draft ink kept black. Promotion of the sheet under the reworked documentation system is left to that rework; no routine closeout.
 
 ## Supplied image evidence
 

@@ -28,8 +28,8 @@
 	/* Review pass 3: drawn ink is white with a dark hairline halo (the sticker
 	   controls' treatment); a gesture's proposal is cobalt, a hue no other state
 	   uses, with a white halo for dark materials. */
-	--shell-draft-ink: #ffffff;
-	--shell-draft-halo: drop-shadow(0 0 0.6px rgba(8, 22, 16, 0.95)) drop-shadow(0 0 1.6px rgba(8, 22, 16, 0.35));
+	--shell-draft-ink: #1b201c;
+	--shell-draft-halo: none;
 	--shell-ghost: #2a62d6;
 	--shell-ghost-halo: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1.4px rgba(255, 255, 255, 0.5));
 	--shell-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

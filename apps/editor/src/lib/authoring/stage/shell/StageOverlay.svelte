@@ -440,7 +440,7 @@
 		pointer-events: none;
 		overflow: visible;
 		--overlay-ink: var(--shell-ink, #1b201c);
-		--overlay-draft: var(--shell-draft-ink, #ffffff);
+		--overlay-draft: var(--shell-draft-ink, #1b201c);
 		--overlay-draft-halo: var(--shell-draft-halo, none);
 		--overlay-ghost: var(--shell-ghost, #2a62d6);
 		--overlay-ghost-halo: var(--shell-ghost-halo, none);
@@ -467,7 +467,6 @@
 	.candidate.refused .candidate-edge { stroke: var(--overlay-problem); filter: none; stroke-width: 2; stroke-dasharray: 6 4; }
 	.end-mark { fill: var(--overlay-ghost); stroke: var(--overlay-ghost); stroke-width: 1.6; filter: var(--overlay-ghost-halo); }
 	.candidate.drawing .end-mark { fill: var(--overlay-draft); stroke: var(--overlay-draft); filter: var(--overlay-draft-halo); }
-	.candidate.drawing .end-mark.hollow { fill: none; }
 	.end-mark.hollow { fill: #fff; }
 	.candidate.refused .end-mark { fill: var(--overlay-problem); stroke: var(--overlay-problem); filter: none; }
 
@@ -515,7 +514,7 @@
 		stroke-linecap: round;
 	}
 	.dimension.live .dimension-line { stroke-dasharray: 4 3; }
-	.dimension .halo { display: none; }
+	.dimension .halo { fill: none; stroke: rgba(255, 255, 255, 0.7); stroke-width: 3.4; stroke-linecap: round; }
 
 	.room-label text { fill: #4a524c; font: 12px system-ui; paint-order: stroke; stroke: #fff; stroke-width: 2px; stroke-opacity: .75; }
 	.room-label .area { font: 11px ui-monospace, monospace; }
