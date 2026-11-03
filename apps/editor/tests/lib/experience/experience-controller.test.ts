@@ -14,6 +14,8 @@ import {
 	EXPERIENCE_CAPTURE_BIND_KIND,
 	EXPERIENCE_GUIDE_ORDER_KIND,
 	EXPERIENCE_STOP_UPDATE_KIND,
+	type ExperiencePresentation,
+	type ExperienceUnitPayload,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
@@ -33,6 +35,21 @@ import { EXPERIENCE, experienceEnvelope } from './fixtures';
 
 type Accept = StageAdapterServices['authoring']['accept'];
 type Outcome = Awaited<ReturnType<Accept>>;
+
+function withPresentationChange(
+	presentationId: string,
+	changes: Partial<ExperiencePresentation>
+): ExperienceUnitPayload {
+	return {
+		...EXPERIENCE,
+		experiences: EXPERIENCE.experiences.map((experience) => ({
+			...experience,
+			presentations: experience.presentations.map((presentation) =>
+				presentation.id === presentationId ? { ...presentation, ...changes } : presentation
+			)
+		}))
+	};
+}
 
 const REVISION = { projectId: 'project-1', revisionId: 'revision-1' };
 
@@ -162,7 +179,7 @@ describe('commands route through commands.ts', () => {
 		const mounted = mountExperienceController(() => services, () => envelope);
 		dispose = mounted.dispose;
 
-		await mounted.controller.captureAndBind();
+		expect(await mounted.controller.captureAndBind()).toBe(true);
 
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_CAPTURE_BIND_KIND);
@@ -272,7 +289,7 @@ describe('busy and message', () => {
 		const unevaluatedMount = mountExperienceController(() => unevaluated.services, () => envelope);
 		dispose = unevaluatedMount.dispose;
 
-		await unevaluatedMount.controller.captureAndBind();
+		expect(await unevaluatedMount.controller.captureAndBind()).toBe(false);
 		expect(unevaluated.submitted).not.toHaveBeenCalled();
 		expect(unevaluatedMount.controller.message).toBe(
 			'The Stage has not evaluated a reading yet; wait for the reading to settle.'
@@ -281,7 +298,7 @@ describe('busy and message', () => {
 		const plan = servicesFor(undefined, { projectionKind: 'orthographic', projectionMatrix: [], eye: [], target: [] });
 		const planMount = mountExperienceController(() => plan.services, () => envelope);
 		dispose = planMount.dispose;
-		await planMount.controller.captureAndBind();
+		expect(await planMount.controller.captureAndBind()).toBe(false);
 		expect(plan.submitted).not.toHaveBeenCalled();
 		expect(planMount.controller.message).toBe('Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
 	});
@@ -391,6 +408,45 @@ describe('the Card rename of a Presentation (R217.S25)', () => {
 			})
 		);
 		expect(outcome).toEqual({ kind: 'accepted' });
+	});
+
+	it('preserves the information draft on a label-only acceptance and refreshes it on source text or selection changes', async () => {
+		const envelope = await experienceEnvelope();
+		const cell = snapshotCell(envelope);
+		const { services } = servicesFor();
+		const mounted = mountExperienceController(() => services, () => cell.value);
+		dispose = mounted.dispose;
+		experienceFocus.selectPresentation('presentation-1');
+		mounted.flush();
+
+		mounted.controller.drafts.presentationText = 'Unsaved curator note.';
+		const outcome = await mounted.controller.renamePresentation('presentation-1', 'Renamed hall');
+		expect(outcome).toEqual({ kind: 'accepted' });
+		cell.value = await experienceEnvelope({
+			experience: withPresentationChange('presentation-1', { label: 'Renamed hall' })
+		});
+		mounted.flush();
+		expect(mounted.controller.drafts.presentationLabel).toBe('Renamed hall');
+		expect(mounted.controller.drafts.presentationText).toBe('Unsaved curator note.');
+
+		cell.value = await experienceEnvelope({
+			experience: withPresentationChange('presentation-1', {
+				label: 'Renamed hall',
+				text: { kind: 'plain', body: 'Revised accepted text.' }
+			})
+		});
+		mounted.flush();
+		expect(mounted.controller.drafts.presentationText).toBe('Revised accepted text.');
+
+		mounted.controller.drafts.presentationText = 'Another unsaved note.';
+		cell.value = await experienceEnvelope({
+			experience: withPresentationChange('presentation-2', {
+				text: { kind: 'plain', body: 'Garden copy.' }
+			})
+		});
+		experienceFocus.selectPresentation('presentation-2');
+		mounted.flush();
+		expect(mounted.controller.drafts.presentationText).toBe('Garden copy.');
 	});
 
 	it('reports a refused rename with the refusal, and leaves the Presentation focus as it was', async () => {

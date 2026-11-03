@@ -101,6 +101,35 @@ describe('R217.S25 — the Index groups in the Experience lens', () => {
 		expect(target.querySelector('#index-guide')).toBeNull();
 	});
 
+	it('keeps Create Experience reachable with a populated Index and retains Experience switching', () => {
+		const onCreateExperience = vi.fn();
+		const onOpenExperience = vi.fn();
+		const target = mountIndex(
+			groups({
+				experiences: [
+					{ id: 'experience-1', label: 'Experience 1' },
+					{ id: 'experience-2', label: 'Experience 2' }
+				],
+				onCreateExperience,
+				onOpenExperience
+			})
+		);
+		const create = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+			(button) => button.textContent === 'Create Experience'
+		);
+		expect(create).toBeDefined();
+		create!.click();
+		expect(onCreateExperience).toHaveBeenCalledOnce();
+
+		target.querySelector<HTMLElement>('[aria-label="Switch Experience"]')!.click();
+		const sibling = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+			(button) => button.textContent === 'Experience 2'
+		);
+		expect(sibling).toBeDefined();
+		sibling!.click();
+		expect(onOpenExperience).toHaveBeenCalledWith('experience-2');
+	});
+
 	it('says no Presentation exists yet, and distinguishes a filter that matches nothing', () => {
 		const empty = mountIndex(groups({ presentations: [] }));
 		expect(empty.textContent).toContain('No Presentation yet. Capture a View to make one.');

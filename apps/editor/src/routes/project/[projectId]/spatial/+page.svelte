@@ -430,6 +430,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let experienceGuideOpen = $state(false);
 	/** The Experience subject the Card last focused: a Presentation, or a Stop of the Guide. */
 	let experienceCardKind = $state<ExperienceCardKind | null>(null);
+	/** A spatial selection takes Card priority without changing Experience composition focus. */
+	let experienceCardSuppressed = $state(false);
 	/** The controller the homes read; null outside the Experience lens. */
 	const activeExperience = $derived(lens === 'experience' ? experienceController : null);
 	provideExperienceHomes({
@@ -440,6 +442,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		},
 		focusCardSubject: (kind) => {
 			experienceCardKind = kind;
+			experienceCardSuppressed = false;
 			cardOpen = true;
 		}
 	});
@@ -1065,6 +1068,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewSurface = null;
 		adapterServices = null;
 		experienceFocus.reset();
+		experienceCardKind = null;
+		experienceCardSuppressed = false;
 		// The previous facade's listeners are dropped before its replacement exists,
 		// so a disposal-time notification cannot write through the new facade.
 		unsubscribeContributions?.();
@@ -2522,9 +2527,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * Mirror a selection the host or an adapter made canonically.
 	 *
 	 * A contributed task may select a new subject after its own accepted install
-	 * (Create, Place, Duplicate). The Card was dismissed for the previous subject,
-	 * so a new primary selection must reveal it; a revision-only requalification of
-	 * the same subject must leave the creator's dismissal alone.
+	 * (Create, Place, Duplicate). A new primary selection takes the shared Card
+	 * from an Experience subject without changing Experience focus; a revision-only
+	 * requalification of the same subject leaves the current Card focus alone.
 	 */
 	function syncPrimarySelection(next: StageSelectionEntry | null): void {
 		const keyOf = (entry: StageSelectionEntry | null) =>
@@ -2534,7 +2539,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const previous = keyOf(selection);
 		const key = keyOf(next);
 		selection = next;
-		if (key !== '' && key !== previous) cardOpen = true;
+		if (key !== '' && key !== previous) {
+			experienceCardSuppressed = true;
+			cardOpen = true;
+		}
 	}
 
 	function selectHit(hit: StageSourceHit): void {
@@ -2543,6 +2551,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (hit.reference !== undefined) {
 			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
 			selection = primaryEntry(stage.selectionState());
+			experienceCardSuppressed = true;
 			cardOpen = true;
 			return;
 		}
@@ -2560,6 +2569,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		};
 		stage.select(selected);
 		selection = primaryEntry(stage.selectionState());
+		experienceCardSuppressed = true;
 		cardOpen = true;
 	}
 
@@ -2572,6 +2582,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function closeSelection(): void {
 		facade?.select(null);
 		selection = null;
+		experienceCardSuppressed = true;
 		cardOpen = true;
 	}
 
@@ -2584,6 +2595,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (subject !== undefined) {
 			stage.setSelection({ ordered: [{ reference: subject.reference }], primary: subject.reference });
 			selection = primaryEntry(stage.selectionState());
+			experienceCardSuppressed = true;
 			return;
 		}
 		const layoutId = sourceId.startsWith('layout:') ? sourceId.slice(sourceId.indexOf(':', 7) + 1) : sourceId;
@@ -2596,6 +2608,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			ref: fragment.ref
 		});
 		selection = primaryEntry(stage.selectionState());
+		experienceCardSuppressed = true;
 	}
 
 	/**
@@ -3629,11 +3642,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			onOpenExperience: (experienceId: string) => {
 				controller.openExperience(experienceId);
 				experienceCardKind = null;
+				experienceCardSuppressed = false;
 				cardOpen = true;
 			},
 			onSelectPresentation: (presentationId: string) => {
 				controller.selectPresentation(presentationId);
 				experienceCardKind = 'presentation';
+				experienceCardSuppressed = false;
 				cardOpen = true;
 			},
 			onCreateExperience: () => {
@@ -3651,6 +3666,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * a Stop last; otherwise the focused Presentation does, and a Stop is the fallback.
 	 */
 	const experienceCard = $derived.by(() => {
+		if (experienceCardSuppressed) return null;
 		const controller = activeExperience;
 		if (controller === null || adapterServices === null || controller.current === null) return null;
 		const stop = controller.selectedStop;
@@ -3761,8 +3777,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	async function captureExperienceView(): Promise<void> {
 		const controller = activeExperience;
 		if (controller === null) return;
-		await controller.captureAndBind();
+		const accepted = await controller.captureAndBind();
+		if (!accepted || activeExperience !== controller) return;
 		experienceCardKind = 'presentation';
+		experienceCardSuppressed = false;
 	}
 
 	/**

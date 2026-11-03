@@ -754,11 +754,12 @@ their target; the Card's context remains canonical selected identity.
 **Shared homes (R217.S25, landed).** The Experience lens uses the World shell's homes. The
 lens and Preview stay in the Head. The Index carries the locator: the Experience crumb (with a
 switch when the source has more than one Experience), the **Presentations** group with its
-filter, the **Guide** group that opens the Guide, and the explicit **Create Experience** when no
-Experience exists. The Card carries the selected Presentation or Stop. The lower edge carries the
-invoked Guide instrument above the Experience dock. No full-surface overlay, second lens picker or
-second Preview entry exists. The dock carries **Select**, **Capture** (what you see becomes a
-View) and **Guide**, which toggles the Guide instrument. **Place a View** and **Path** are
+filter, the **Guide** group that opens the Guide, and the explicit **Create Experience** action,
+available with empty or populated projects. The Card carries the selected Presentation or Stop.
+The lower edge carries the invoked Guide instrument above the Experience dock. No full-surface
+overlay, second lens picker or second Preview entry exists. The dock carries **Select**,
+**Capture** (what you see becomes a View) and **Guide**, which toggles the Guide instrument.
+**Place a View** and **Path** are
 destination tools that no Experience command implements yet, so they are not shown. Look through
 (a gold capture frame) is likewise not built. Preview is a takeover. The height Sheet is not shown
 in Experience; whether View placement needs a working height is open.
@@ -906,9 +907,10 @@ Presentations and Camera Views through their owners. Their exact entry,
 availability and return policies require domain planning; prototype switches
 and end-of-tour behavior are not automatically ratified semantics.
 
-Preview has one entry, the Head's Preview (R217.S25). It enters the focused Stop of an open
-Guide, otherwise the Experience's entry Guide, and leaving it returns to the Experience lens with
-the Guide and the Card as they were.
+Preview has one entry, the Head's Preview (R217.S25). Its entry precedence is: the focused Stop of
+an open Guide, or that Guide's entry Stop when no Stop is focused; the selected Presentation alone
+when no Guide is open; the Experience's entry Guide; then the guide-free visitor list. Leaving it
+returns to the Experience lens with the Guide and the Card as they were.
 
 Visitor controls use visitor meaning, with an obvious Exit Preview. Preview exit
 restores the authoring context through its authorities. Look through and Follow

@@ -62,7 +62,7 @@
 {:else if current === null}
 	<p class="hint">Create an Experience in the Index before composing its Guide.</p>
 {:else}
-	{#if current.guides.length > 1}
+	{#if current.guides.length > 0}
 		<label class="inline">
 			<span>Guide</span>
 			<select value={guide?.id ?? ''} onchange={chooseGuide}>
@@ -73,9 +73,13 @@
 	{/if}
 
 	{#if guide === null}
-		<p class="hint">
-			This Experience carries no Guide, so its Presentations are entered from the visitor list.
-		</p>
+		{#if current.guides.length > 0}
+			<p class="hint">No Guide is selected. Choose a saved Guide to edit its Stops; None leaves the saved Guides unchanged.</p>
+		{:else}
+			<p class="hint">
+				This Experience carries no Guide, so its Presentations are entered from the visitor list.
+			</p>
+		{/if}
 		{#if current.guides.length === 0}
 			<div class="first-guide" aria-label="First Guide">
 				<p class="hint">

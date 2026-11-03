@@ -10,14 +10,31 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
+import { CAMERA_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
+import type { StageFacade } from '$lib/authoring/stage/stage-facade';
+import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
+import { CONNECTIONS, EXPERIENCE, VIEWS } from '../experience/fixtures';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
-const harness = vi.hoisted(() => ({ document: null as unknown }));
+const harness = vi.hoisted(() => ({ document: null as unknown, facade: null as unknown }));
+
+vi.mock('$lib/authoring/stage/stage-facade', async (original) => {
+	const actual = await original<typeof import('$lib/authoring/stage/stage-facade')>();
+	return {
+		...actual,
+		createStageFacade: (...args: Parameters<typeof actual.createStageFacade>) => {
+			const facade = actual.createStageFacade(...args);
+			harness.facade = facade;
+			return facade;
+		}
+	};
+});
 
 vi.mock('$lib/authoring/stage/shell/EditorHead.svelte', async () => ({ default: (await import('./fixtures/HeadProbe.svelte')).default }));
 vi.mock('$lib/authoring/stage/shell/StageCanvas.svelte', async () => ({ default: (await import('./fixtures/StageCanvasProbe.svelte')).default }));
+vi.mock('$lib/visitor/VisitorPreviewSurface.svelte', async () => ({ default: (await import('./fixtures/StageCanvasProbe.svelte')).default }));
 vi.mock('$lib/platform/project-persistence', async (original) => {
 	const actual = await original<typeof import('$lib/platform/project-persistence')>();
 	return {
@@ -37,6 +54,7 @@ vi.mock('$lib/platform/project-persistence', async (original) => {
 });
 
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
+const facade = () => harness.facade as StageFacade;
 
 let component: ReturnType<typeof mount>;
 let target: HTMLElement;
@@ -70,8 +88,8 @@ function guidePanel(): Element | null {
 	return target.querySelector('[data-stage-instrument="experience-guide"]');
 }
 
-async function mountRoute(): Promise<void> {
-	harness.document = await createUnitProject({ id: 'project-1', name: 'Experience homes', layout: buildStarterEnclosureLayout() });
+async function mountRoute(source?: unknown): Promise<void> {
+	harness.document = source ?? await createUnitProject({ id: 'project-1', name: 'Experience homes', layout: buildStarterEnclosureLayout() });
 	target = document.createElement('div');
 	document.body.append(target);
 	component = mount(Page, { target });
@@ -79,6 +97,43 @@ async function mountRoute(): Promise<void> {
 	await frame();
 	control('2D').click();
 	await frame();
+}
+
+async function remountRouteWith(source: unknown): Promise<void> {
+	unmount(component);
+	target.remove();
+	await mountRoute(source);
+}
+
+async function seededExperienceProject(): Promise<unknown> {
+	return createUnitProject({
+		id: 'project-1',
+		name: 'Experience homes',
+		layout: buildStarterEnclosureLayout(),
+		camera: { formatVersion: CAMERA_UNIT_FORMAT_VERSION, views: VIEWS, connections: CONNECTIONS },
+		experience: EXPERIENCE
+	});
+}
+
+async function selectWallOnStage(): Promise<void> {
+	const stage = target.querySelector<HTMLElement>('.stage')!;
+	stage.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true, cancelable: true }));
+	await frame();
+	const stageFacade = facade();
+	const evaluationId = stageFacade.evaluationId();
+	if (evaluationId === null) throw new Error('the Stage has no evaluation');
+	const projected = stageFacade.projectWorld([3.5, 0, -4], evaluationId);
+	if (projected.kind !== 'projected') throw new Error('the starter Wall is not projected');
+	const [x, y] = projected.css;
+	const point = [x, y] as const;
+	for (const type of ['pointerdown', 'pointerup', 'click']) {
+		const event = new MouseEvent(type, { bubbles: true, clientX: point[0], clientY: point[1] });
+		Object.defineProperty(event, 'pointerId', { value: 1 });
+		Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+		stage.dispatchEvent(event);
+	}
+	await frame();
+	expect(facade().selectionState().primary?.subject.kind).toBe('wall');
 }
 
 async function enterExperience(): Promise<void> {
@@ -154,6 +209,24 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(guidePanel()).toBeNull();
 	});
 
+	it('offers a saved sole Guide before Guide focus and shows its Stops after selection', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		dockGuide().click();
+		await frame();
+
+		const panel = guidePanel()!;
+		const picker = panel.querySelector<HTMLSelectElement>('select')!;
+		expect([...picker.options].map((option) => option.textContent?.trim())).toEqual(['None', 'Main']);
+		expect(panel.textContent).toContain('No Guide is selected');
+		expect(panel.textContent).not.toContain('This Experience carries no Guide');
+
+		picker.value = 'guide-1';
+		picker.dispatchEvent(new Event('change', { bubbles: true }));
+		await frame();
+		expect(panel.querySelectorAll('ol[aria-label="Stops"] button.row')).toHaveLength(2);
+	});
+
 	it('closes the Guide again on each entry to the Experience lens', async () => {
 		await enterExperience();
 		dockGuide().click();
@@ -176,6 +249,24 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(target.querySelector('#index-guide')).not.toBeNull();
 		expect(target.querySelector('.guide-toggle')?.textContent).toContain('No Guide yet');
 		expect(target.textContent).toContain('No Presentation yet. Capture a View to make one.');
+	});
+
+	it('keeps Create Experience available after the first and preserves multi-Experience switching', async () => {
+		await enterExperience();
+		control('Create Experience').click();
+		await vi.waitFor(() => expect(target.querySelector('[aria-current="location"]')?.textContent).toBe('Experience 1'));
+
+		control('Create Experience').click();
+		await vi.waitFor(() => expect(target.querySelector('[aria-current="location"]')?.textContent).toBe('Experience 2'));
+		const switcher = target.querySelector<HTMLDetailsElement>('.siblings')!;
+		expect(switcher).not.toBeNull();
+		switcher.querySelector('summary')!.click();
+		await frame();
+		const first = [...switcher.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Experience 1');
+		expect(first).toBeDefined();
+		first!.click();
+		await frame();
+		expect(target.querySelector('[aria-current="location"]')?.textContent).toBe('Experience 1');
 	});
 
 	it('refuses Capture outside the 3D reading, and writes no View', async () => {
@@ -212,6 +303,52 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(card.querySelector('[aria-label="Bring into view"]')).toBeNull();
 		expect(card.querySelector('[data-card-more]')).not.toBeNull();
 		expect(target.querySelector('[data-presentation-id] [aria-current="true"]')).not.toBeNull();
+	});
+
+	it('keeps the Stage Wall in the Card after a refused Capture without changing Preview focus', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		target.querySelector<HTMLButtonElement>('[data-presentation-id="presentation-1"] .item-row')!.click();
+		await frame();
+		expect(target.querySelector('aside.card .kind')?.textContent).toBe('Presentation');
+		const focusBefore = experienceFocus.read();
+		expect(focusBefore.presentationId).toBe('presentation-1');
+
+		await selectWallOnStage();
+
+		expect(target.querySelector('aside.card .kind')?.textContent).toBe('Wall');
+		control('Capture').click();
+		await vi.waitFor(() =>
+			expect(target.querySelector('.experience-feedback')?.textContent).toContain('Capture needs the 3D reading')
+		);
+		expect(target.querySelectorAll('[data-presentation-id]')).toHaveLength(2);
+		expect(target.querySelector('aside.card .kind')?.textContent).toBe('Wall');
+		expect(experienceFocus.read()).toEqual(focusBefore);
+	});
+
+	it('shows the selected Stage Wall after Stop focus while retaining the Guide and Stop for Preview', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		dockGuide().click();
+		await frame();
+		const panel = guidePanel()!;
+		const picker = panel.querySelector<HTMLSelectElement>('select')!;
+		picker.value = 'guide-1';
+		picker.dispatchEvent(new Event('change', { bubbles: true }));
+		await frame();
+		const stop = panel.querySelector<HTMLButtonElement>('ol[aria-label="Stops"] button.row')!;
+		stop.click();
+		await frame();
+		expect(target.querySelector('aside.card .kind')?.textContent).toBe('Stop');
+		const focusBefore = experienceFocus.read();
+		expect(focusBefore.guideId).toBe('guide-1');
+		expect(focusBefore.stopId).toBe('stop-1');
+
+		await selectWallOnStage();
+
+		expect(target.querySelector('aside.card .kind')?.textContent).toBe('Wall');
+		expect(experienceFocus.read()).toEqual(focusBefore);
+		expect(panel.querySelector('ol[aria-label="Stops"] button.row[aria-pressed="true"]')?.textContent).toContain('Piano');
 	});
 
 	it('offers the first Guide once a Presentation exists and no Guide does, from the Guide panel', async () => {

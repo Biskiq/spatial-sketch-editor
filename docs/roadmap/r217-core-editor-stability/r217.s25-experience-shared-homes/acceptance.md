@@ -1,6 +1,6 @@
 # R217.S25 — acceptance record: Experience shared homes
 
-**Slice:** R217.S25 · **Status:** implementation evidence recorded at tested revision `17cd8780`; the verdict and the slice status are for independent review and are not set here · **Plan:** [implementation-plan.md](./implementation-plan.md) · **Phase:** [R217](../README.md) · **Slice register:** [phase register](../README.md#slice-register) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/implementation-plan.md)
+**Slice:** R217.S25 · **Status:** owner review WIP. Code re-review complete. Manual visual acceptance pending · **Plan:** [implementation-plan.md](./implementation-plan.md) · **Phase:** [R217](../README.md) · **Slice register:** [phase register](../README.md#slice-register) · **Integration route:** [R217.S11](../r217.s11-integrated-final-gate/implementation-plan.md)
 
 **AUTHORITY: NONE.** This record reports what was implemented, the gates run, the browser evidence, the parity journey and the drift and residuals. The [phase slice register](../README.md#slice-register) owns status, and the verdict belongs to the independent review.
 
@@ -9,7 +9,7 @@
 | Part | Where | Change |
 | --- | --- | --- |
 | Retired overlay | the route's `lens-surface` block, and `ExperienceSurface.svelte` | The full-surface overlay is no longer mounted, and the component is deleted |
-| Index groups | [`EditorIndex.svelte`](../../../../apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte), [`experience-index-groups.ts`](../../../../apps/editor/src/lib/authoring/stage/shell/experience-index-groups.ts) | The Experience crumb with a sibling switch, the **Presentations** group (rows, filter, empty-state create) and the **Guide** group. The World locator is unchanged |
+| Index groups | [`EditorIndex.svelte`](../../../../apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte), [`experience-index-groups.ts`](../../../../apps/editor/src/lib/authoring/stage/shell/experience-index-groups.ts) | The Experience crumb with a sibling switch, the **Presentations** group (rows, filter, Create Experience) and the **Guide** group. The World locator is unchanged |
 | Card | [`EditorCard.svelte`](../../../../apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte) | An optional `functions` list (an Experience subject passes none, so `•••` is not shown) and a nullable Bring into view. World subjects keep both |
 | Card contributions | [`experience-card-model.ts`](../../../../apps/editor/src/lib/authoring/experience/experience-card-model.ts), [`ExperiencePresentationWriter.svelte`](../../../../apps/editor/src/lib/authoring/experience/ExperiencePresentationWriter.svelte), [`ExperienceStopWriter.svelte`](../../../../apps/editor/src/lib/authoring/experience/ExperienceStopWriter.svelte) | Identity, More facts and the writer's primary fields for a Presentation and for a Stop. Writer-edited facts are keyed by field id, so the Card never repeats them |
 | Guide | [`ExperienceGuidePanel.svelte`](../../../../apps/editor/src/lib/authoring/experience/ExperienceGuidePanel.svelte) | The invoked instrument, mounted by `StageInstrumentHost` in the lower edge. Stops, order, Insert, the first Guide and Travel gaps. Closed by default |
@@ -30,7 +30,7 @@ Every control the retired surface carried, with its single new home. Nothing has
 | --- | --- | --- |
 | `Experience` heading | Head lens (World \| Experience, pressed) and the Index crumb | |
 | Experience `<select>` (switch Experience) | Index crumb sibling switch | The lens has no picker. Switching is the locator's own control |
-| Create Experience | Index, Presentations group (empty state) | Shown only when the source has no Experience |
+| Create Experience | Index, Presentations group | Available in empty and populated projects |
 | Enter Preview (header) | **Removed.** The Head's Preview is the only entry | |
 | Preview from this Stop | **Removed.** The Head's Preview enters the focused Stop by the unchanged preview-entry rule | |
 | "This world has no Experience yet" note | Index, Presentations group | |
@@ -43,7 +43,7 @@ Every control the retired surface carried, with its single new home. Nothing has
 | Information text | Card writer, primary field | |
 | Save Presentation | Card writer, primary action | |
 | Capture and rebind | Card More (the details section) | |
-| Open Guide select | Guide panel's Guide select (shown with two or more Guides) and the Index Guide group | |
+| Open Guide select | Guide panel's Guide select | Available with any saved Guide. The Index Guide group opens the panel |
 | Guides column closed note | **Removed.** The dock's Guide key shows the open state | |
 | First Guide card (label, Create first Guide) | Guide panel, First Guide form | Its label is typed in the panel, which is closed by default (drift D-10) |
 | Stop list and its meta | Guide panel, Stops list | |
@@ -206,7 +206,15 @@ Each item below is a place where the delivered behaviour or wording differs from
 
 ## Independent review
 
-Not performed here. This record is the implementer's evidence. The independent review, and the owner's visual acceptance of the Guide panel and the Card (R-1), come next.
+The independent code re-review passed after the review fixes. A saved single Guide can be
+opened, Create Experience is available in populated projects, and renaming a Presentation
+preserves its information draft. Explicit Stage selection takes the shared Card while preserving
+Experience focus. Refused Capture keeps the current Card and accepted Capture selects the new
+Presentation. The shell contract records the Preview entry precedence.
+
+Post-fix verification passed 139 focused tests, the mounted accepted Capture probe,
+`npm run check`, and all 203 architecture tests. The browser evidence above is from
+`17cd8780`. The owner will perform the final manual visual review (R-1).
 
 ## Closeout and preservation
 

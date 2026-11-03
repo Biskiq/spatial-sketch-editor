@@ -160,9 +160,6 @@
 				<p class="index-empty">
 					This world has no Experience yet. Creating one is explicit: selecting or editing a world subject never creates it.
 				</p>
-				<div class="group-action">
-					<button type="button" onclick={experience.onCreateExperience} disabled={experience.busy}>Create Experience</button>
-				</div>
 			{:else}
 				<ul class="group-items">
 					{#each experience.presentations as presentation (presentation.id)}
@@ -190,6 +187,11 @@
 						</li>
 					{/each}
 				</ul>
+			{/if}
+			{#if !experience.pending}
+				<div class="group-action">
+					<button type="button" onclick={experience.onCreateExperience} disabled={experience.busy}>Create Experience</button>
+				</div>
 			{/if}
 		</section>
 		{#if experience.current !== null && experience.guide !== null}

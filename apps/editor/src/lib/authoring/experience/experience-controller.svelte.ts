@@ -83,7 +83,7 @@ export type ExperienceController = {
 	selectPresentation(presentationId: string): void;
 	selectStop(stopId: string): void;
 	createExperience(): Promise<void>;
-	captureAndBind(): Promise<void>;
+	captureAndBind(): Promise<boolean>;
 	createFirstGuide(): Promise<void>;
 	rebindToCapturedView(): Promise<void>;
 	savePresentation(): Promise<void>;
@@ -186,12 +186,20 @@ export function createExperienceController(
 		stopTransition: 'cut'
 	});
 
+	let previousPresentationDraftId: string | null | undefined;
+	let previousPresentationDraftText: string | undefined;
 	$effect(() => {
 		const presentation = selectedPresentation;
+		const presentationId = presentation?.id ?? null;
+		const presentationText = presentation?.text?.body ?? '';
+		const refreshText =
+			presentationId !== previousPresentationDraftId || presentationText !== previousPresentationDraftText;
 		untrack(() => {
 			drafts.presentationLabel = presentation?.label ?? '';
-			drafts.presentationText = presentation?.text?.body ?? '';
+			if (refreshText) drafts.presentationText = presentationText;
 		});
+		previousPresentationDraftId = presentationId;
+		previousPresentationDraftText = presentationText;
 	});
 	$effect(() => {
 		const stop = selectedStop;
@@ -287,10 +295,10 @@ export function createExperienceController(
 	 * stays Guide-free unless the creator asked for the first Guide, in which case
 	 * View + Presentation + Guide + Stop are one accepted install.
 	 */
-	async function captureAndBind(): Promise<void> {
-		if (current === null) return;
+	async function captureAndBind(): Promise<boolean> {
+		if (current === null) return false;
 		const view = currentCapturePose();
-		if (view === null) return;
+		if (view === null) return false;
 		const presentationId = newId();
 		const stopId = newId();
 		const guideId = newId();
@@ -320,6 +328,7 @@ export function createExperienceController(
 			// Measurement anchor for the capture/bind → Preview entry row.
 			perfMark('experience:capture-accepted', { firstGuide: wantsFirstGuide });
 		}
+		return accepted;
 	}
 
 	/** The Presentation a first Guide can start from: the selected Stop's, else the selection. */
