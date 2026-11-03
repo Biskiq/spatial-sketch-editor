@@ -200,6 +200,11 @@ Enter, Esc), labels and focus rings; a live check of the dense and narrow states
 
 ## 4. S26 handoff: missing authoring capability
 
+Carried forward and checked against the domain in the proposed
+[S26 capability inventory](../r217.s26-experience-authoring-depth/capability-inventory.md), which
+also [corrects](../r217.s26-experience-authoring-depth/capability-inventory.md#3-corrections-to-the-s25-harvest-4)
+four rows below.
+
 | Capability | Today | Note for S26 |
 | --- | --- | --- |
 | **View placement** in Plan (press where the camera stands, drag toward what it sees); View markers in Plan and camera glyphs in 3D; drag to move, handle to aim | No markers or placement | `camera-view-update` exists in the domain with no editor caller |
