@@ -1099,8 +1099,9 @@ export function releaseListProblems(input: {
 			);
 		}
 	}
+	// An owner release prunes a shipped slice's row, so only an unshipped release needs one.
 	for (const slice of input.slices) {
-		if (/\breleased\b/i.test(slice.authorization) && !listed.has(slice.id)) {
+		if (slice.status !== 'shipped' && /\breleased\b/i.test(slice.authorization) && !listed.has(slice.id)) {
 			problems.push(`release list: ${slice.id} says released and has no row`);
 		}
 	}

@@ -22,6 +22,7 @@ Experience uses the same Head, Index, Card and lower edge as World instead of a 
 ## 2. Dependencies
 
 - R217.S20, R217.S21, R217.S22, R217.S23 and R217.S24
+- PR #258 (World shell recovery) merged; the owner accepted the World shell visually on 2026-11-02
 - Every consumed gate and required scope rechecked at this slice's trusted base.
 - The [rules for every slice](../post-s10-convergence/execution-plan.md#rules-for-every-slice) apply: shared-file order, browser widths, the interaction journey, rollback and contract edits.
 
@@ -29,22 +30,24 @@ Experience uses the same Head, Index, Card and lower edge as World instead of a 
 
 **Behaviour:** [Experience](../post-s10-convergence/target-specification.md#experience).
 
+**Reference:** the merged World shell and the reconciled [shell contract](../../../reference/design-system/editor-shell-and-visual-system.md) and [spatial-instrument grammar](../../../reference/design-system/spatial-instrument-grammar.md). The Experience visual target is the World shell grammar (Index, Card with More and `•••`, lower edge, neutral grey hover, light menus), not a separate design. The World acceptance is not Experience design acceptance, which stays with the owner.
+
 **Components:**
 
 | Part | Where | Change |
 | --- | --- | --- |
-| Mount | `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` L3743 block | The full-surface `ExperienceSurface` overlay goes |
-| Locator | `apps/editor/src/lib/authoring/adapters/experience.adapter.ts` feeding `EditorIndex.svelte` | Presentations list, filter and empty-state create become Index groups |
-| Selected facts and fields | `experience.adapter.ts` feeding `EditorCard.svelte` | Presentation and Stop facts, fields and actions use the Card contributions |
-| Guide | An invoked panel in the route's `.lower-column` | Stops, order and Travel gaps; closed by default, and opened from the Index or Card |
-| Capture and View | The lower edge, through the existing instrument host | The same commands from the controller |
+| Mount | `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`, the `{#if lens === 'experience'}` `.lens-surface` block (≈L4210–4230 at `98b3422f`) | The full-surface `ExperienceSurface` overlay goes |
+| Locator | `apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte`, which renders the route-built `model`/`scope` (today `worldIndex` from `stage/shell/world-index-model.ts`: Project → Rooms and Free objects, crumbs, row double-click rename); Experience state comes from `apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts` | Presentations list, filter and empty-state create become Index groups in the same crumb and row grammar. `experience.adapter.ts` contributes only planners, the task and the Find entry; it feeds neither the Index nor the Card today |
+| Selected facts and fields | `EditorCard.svelte`, fed by the route's `cardIdentity`, `cardFacts`, `cardNameWriter`, `cardWriter` and `cardActions` (≈L3487–3560) | Presentation and Stop facts, fields and actions use the same Card: primary fields, **More** expanding in place, `•••` functions with Erase last, inline rename. `EditorCard`'s `FUNCTIONS` table is keyed by World kinds and falls back to the object list, so an Experience subject needs its own entry or none |
+| Guide | An invoked panel in the route's `.lower-column` (≈L4325), mounted through `StageInstrumentHost.svelte` as a non-palette instrument; `StageDock` renders only in the World lens | Stops, order and Travel gaps; closed by default, and opened from the Index or Card |
+| Capture and View | The lower edge, through `StageInstrumentHost.svelte` | The same commands from the controller |
 | Preview and lens | `apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte` | Stay in the Head only; the surface's own Preview button goes |
 | Retired | `apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte` | Deleted or reduced to presentational pieces the homes mount |
 
 **Rules:**
 
 - Capture, View, first-Guide intent, travel-gap behaviour, F4 history and isolated Preview are unchanged.
-- Browser calibration owns panel size and row density.
+- Panel size and row density: the agent proposes; the owner accepts visually.
 
 **Contracts this slice updates at cutover:**
 
@@ -60,6 +63,11 @@ Experience uses the same Head, Index, Card and lower edge as World instead of a 
 - Capture, View, Guide, Preview and return in the shared homes.
 - History and lens parking are unchanged.
 - The Guide is closed by default.
+
+**PR description must include:**
+
+- A **home map**: every old `ExperienceSurface` control and its single new home (Head, Index, Card, `•••`, lower edge), with no control left with two homes or none.
+- A **before/after parity journey**, run on `main` before the change and on the shared homes after it: create Presentation → capture 3 Stops → reorder → View → open Guide → Preview → return to World → Undo ×2, recording the result at each step.
 
 ## 6. Exclusions and stop conditions
 

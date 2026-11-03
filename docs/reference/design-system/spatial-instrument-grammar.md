@@ -66,24 +66,25 @@ exists; it must then read as a helper, not a disabled-looking mystery grip.
 Use the shell's [semantic color/state roles](./editor-shell-and-visual-system.md#semantic-color-64)
 and [state hierarchy](./editor-shell-and-visual-system.md#state-and-control-hierarchy-183).
 This document assigns their spatial expression; it does not define another palette.
-Domain accents and selection are separate roles. Transformation marks are white, not axis
-coloured: the axis a ray addresses is named by its direction and its live tag, and axis
+Domain accents and selection are separate roles. Transformation marks are white sticker
+glyphs, not axis coloured: the axis a ray addresses is named by its direction and its live tag, and axis
 conventions never become feature-selection colours.
 
 | Species/state | Stage expression |
 | --- | --- |
 | **Canonical selection** | Coherent identity contour/boundary and permitted handles; remains distinct from a referenced focus or a task target |
 | **Task focus** | Named relationship/component/host and local instrument emphasis without selecting that identity |
-| **Hover** | Restrained preview below selection emphasis; does not grant selection or unsupported handles |
+| **Hover** | Restrained preview below selection emphasis (leaf contour on a 3D Wall); does not grant selection or unsupported handles |
 | **Reference/context** | Quiet line/shape/label, not the selected-identity treatment |
 | **Authored control** | Distinct operative glyph and interaction where supported |
-| **Available transformation** | Thin white dashed line (axis ray, ring, track, dimension line) with a small open arrowhead for the drag direction and a small white anchor point; dark halo beneath; revealed on selection, value only on hover or drag |
+| **Available transformation** | White sticker glyph (white body, fine ink keyline, small soft shadow) whose shape names the operation, on a short dashed ink stem with a hairline white halo; small disc knobs for points; revealed on selection, value only on hover or drag |
 | **Derived helper** | Lighter/hollow/dashed or explicitly read-only treatment; cannot masquerade as an authored control |
 | **Active manipulation** | Strong local emphasis on the active grip, edited edge/relationship and affected measure, rather than every value or the whole model |
 | **Temporary inspection** | Explicit reading/state label and retained as-built relationship; neither damage nor a second authored object. The Slice is a translucent yellow plane and depth volume with its state pill |
-| **Marked for erasing** | Red dashes, only while the Eraser is in use, cleared on accept, cancel or tool change |
-| **Proposal/refusal** | Separate transient geometry and local reason; accepted source and selection remain visible |
-| **Snap/guide** | Relation shape and text at the winning location, with state distinct from selection and refusal |
+| **Marked for erasing** | Red dashes on existing geometry, only while the Eraser is in use, cleared on accept, cancel or tool change |
+| **Draft** | Solid black ink, the drawing's only colour; small start and end marks |
+| **Proposal/refusal** | Separate transient geometry and local reason; accepted source and selection remain visible. A proposal is one cobalt dashed line or outline with a white halo (one dashed centreline per changed Wall, an object's dashed outline or edges), no fill. A refused draft segment or proposal is red dashed in the refusal ink with its reason in the live tag, while already-placed segments stay; like Eraser marking, red dashes mean "this won't stay", and context (a draft or proposal versus existing geometry under the Eraser) separates them |
+| **Snap/guide** | Relation shape at the winning location, with state distinct from selection and refusal. While drawing, the end mark's shape is the snap cue: filled dot free, hollow ring on a Wall or Wall end, small square on the grid; ink only, no snap words |
 
 Owner/state cannot depend on hue alone. Reinforce through shape, line, icon, label,
 position or pattern. A Camera path point remains recognizable as a path point when selected; a Journey Cue
@@ -102,26 +103,31 @@ vellum without flooding the drawing.
 <a id="rays-and-points"></a>
 
 Every transformation on Stage reads as the same small vocabulary. It is quiet at rest,
-scales from a 0.6 m plinth to a 24 m roof, and shows its value only on hover or drag
-("Height 1.10 · base stays"). The vocabulary draws what a domain operation already allows;
+scales from a 0.6 m plinth to a 24 m roof, and shows its value only on hover or drag: one
+tag with the drawn length, or a signed change from the gesture's zero baseline (`Δ +0.50 m`,
+`Δθ −13.4°`, `× 1.25`), never an absolute world angle. The vocabulary draws what a domain operation already allows;
 admission still follows [affordance admission](#spatial-truth-and-affordance-admission).
 
 | Mark | Role |
 | --- | --- |
-| **Ray** | A dashed white line out of the addressed face or edge, past any ring, ending in an open arrowhead that shows which way it drags |
-| **Ring** | A dashed rotation ring, planar; radius calibrated at implementation |
+| **Ray** | A short dashed ink stem out of the addressed face or edge ending in a chunky white sticker arrow that shows which way it drags |
+| **Move cross** | A four-way chunky cross at the subject's projected manipulation origin; moves on the support |
+| **Turn arrow** | One bent two-way arrow at a fixed angle in the subject's local frame, travelling with the turn; the ring itself is not drawn and the arrow alone takes the press, with a knob's reach |
+| **Height stem** | One stem beside the subject spanning base to top, with hexagon knobs: the top knob moves the top; on objects a bottom knob lifts the subject off its support |
+| **Size chip** | A rounded chip with a diagonal two-way icon: click toggles the size controls; on uniform-only objects a drag scales uniformly |
 | **Track** | A dashed line along a host the subject slides on |
-| **Point** | A small white anchor: an end, a joint, a slide position, the scale point; gold while held |
+| **Point** | A small disc knob: an end, a joint, a slide position; gold while held |
 | **Dimension line** | A dashed measure line, only where a measured relationship is the operation |
-| **Tag** | A dark mono tag with the live value and the verb, only on hover or drag |
+| **Tag** | A dark mono tag with the live value, only on hover or drag |
 
 Each subject keeps its own handles; **the shared language stops at anchors and rays**.
 There is no single universal handle, and a subject gets only the marks its domain supports:
 
 | Subject | Marks (when its domain supports the operation) |
 | --- | --- |
-| **Object** | Move cross at the base; planar rotation ring; a scale point that, when clicked, opens a ray from each face (width, depth) and from the top (height) past the ring; corner proportional scale. Resizing keeps the base on its support and riders follow |
-| **Wall** | End points (shared Junction X/Z); the selected body slides along its normal; a free-end length ray (length, other end fixed); a top ray (height, snapping to Sheet heights); a two-way base ray (move parallel); a two-way thickness arrow on the cap, symmetric about the wall's line |
+| **Object** | Move cross at the base; turn arrow; a size chip that toggles width/depth rays (2D and 3D) and the height stem (3D only), and drag-scales a model or primitive uniformly; a drawn form sizes per axis by its face rays. A bottom knob lifts the object with its height kept. Resizing keeps the base (or lift) on its support and riders follow |
+| **Wall** | End points as disc knobs (shared Junction X/Z); the selected body slides along its normal; a free-end length ray (length, other end fixed); height as a stem's top knob just past the free end (no bottom knob: Layout has no authored Wall base); a two-way base ray (move parallel); a two-way thickness arrow on the cap, symmetric about the wall's line |
+| **Room** | A four-way move cross under the selected Room's label; the proposal shows the moved Walls of the connected Room group; objects in a moved Room stay put |
 | **Opening** | A dashed track along the host with a slide point; side rays (width); a head ray; a sill ray |
 | **Platform** | Corner points and a height ray |
 | **Roof** | A ridge ray up and an eave ray down on the nearer eave; a roof-local section with joint points, midpoint **＋** and a gold profile for Edit shape |
@@ -138,12 +144,17 @@ for a fine pointer; a coarse pointer needs at least 44 px or an equivalent contr
 reveal on hover has a touch path: tags during a drag, a tap on the scale point, the snap
 name while dragging, and no affordance that exists only on hover.
 
-**Progressive or immediate size.** Width, depth and height rays appear when the scale
-point is clicked (default); an always-shown mode and a zoom-dependent rule are retained
-candidates. Never show so many rays at overview zoom that targets stack.
+**Progressive or immediate size.** Width, depth and height controls appear while the size
+chip is pressed (default). The pressed state is editor session intent: it survives
+resizing, cancellation, refusal, selection changes and 2D/3D switches until pressed off,
+reload starts it off, and an ineligible subject simply shows no unsupported handles. 2D has
+no canvas height control, and a planar control never changes height indirectly. An
+always-shown mode and a zoom-dependent rule are retained candidates. Never show so many
+controls at overview zoom that targets stack.
 
-**Contrast.** The halo keeps white marks legible on pale walls, the gold selection and
-the dark grid. A product pass must measure 3:1 non-text contrast for every mark.
+**Contrast.** The sticker keyline and shadow keep white glyphs legible on pale Paper, the
+gold selection and dark materials; ink glyph lines carry a hairline white halo. A product
+pass must measure 3:1 non-text contrast for every mark.
 
 ## Direct manipulation and precision
 
