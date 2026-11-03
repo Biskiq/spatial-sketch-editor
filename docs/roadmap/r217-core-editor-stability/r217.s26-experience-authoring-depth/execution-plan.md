@@ -3,361 +3,407 @@
 **Status: proposed, for owner review.** Nothing here is registered or released. The slice blocks below
 become plans only when the owner registers them ([E1](./owner-decisions.md#e1)); each block then
 moves to its own `r217.sNN-…/implementation-plan.md` without changing scope. The
-[inventory](./capability-inventory.md) owns the gap evidence; the [decisions](./owner-decisions.md)
-own the open choices. Every block assumes the recommended rulings; a different ruling changes only the
-rows that cite it.
+[inventory](./capability-inventory.md) owns the gap evidence and the Conservatory harvest closure; the
+[decisions](./owner-decisions.md) own the owner directions (OD1–OD6) and the open choices.
 
 ## 1. Scope
 
-Four sequential slices complete the creator workflow. Each groups work that shares one authority seam
-and one review:
+Five sequential slices complete the creator workflow and harvest every Conservatory capability (OD2).
+Each groups work that shares one authority seam and one review:
 
 | Slice | Name | Closes | Seam |
 | --- | --- | --- | --- |
-| **R217.S26** | Structure and removal | Renames, plural Guides, Opening Guide, Guide start, View order; Remove Stop, View, Presentation, Guide | Experience planners and the Card writers |
-| **R217.S27** | Views on the Stage | Markers, Place a View, move and aim, Lens and Eye height, Present this in Plan, Look through, snapshots | The Stage Camera seam and render host |
-| **R217.S28** | Camera paths | Camera support for Travel, path editing on Stage, duration, *crosses a wall*, Show ▾ | Camera connection planners and a Layout read |
-| **R217.S29** | Timeline and playback | Time-scaled bar and total, Play, scrub, rig, Follow, Play from this Stop, Preview this move | The `camera-core` time map and the playback host |
+| **R217.S26** | Structure and removal | Renames, plural Guides, Opening Guide, Guide start, View order, Back; Remove Stop, View, Presentation, Guide | Experience planners and the Card writers |
+| **R217.S27** | Guided Views and visitor reach | Several guided Views per Stop, per-View holds, Include and leave out; *Open in free exploration*; welcome text | The Experience format, program, interpreter and visitor runtime |
+| **R217.S28** | Views on the Stage | Markers, Place a View, move and aim, Lens and Eye height, framed Present this, Look through, snapshots, Stage coach | The Stage Camera seam and render host |
+| **R217.S29** | Camera paths | Camera support for Travel between Stops and inside a Stop, path editing, duration, *crosses a wall*, Show ▾ | Camera connection planners and a Layout read |
+| **R217.S30** | Timeline, playback and Preview | Time-scaled bar and total, Play, scrub, rig, Follow, Play from…, Preview this move; the Preview welcome chooser, guided controls, Places, back to the tour, end of the tour | The `camera-core` time map, the playback host and the visitor surface |
 
 Each slice delivers the function **and** its visual and interaction completion: Conservatory's content
-and behaviour inside the Round 2 shell, every state in the [cross-cutting table](./capability-inventory.md#28-cross-cutting-completion),
-and the disabled placeholder it replaces removed or re-worded. The accepted Round 2 shared shell and
-compact Guide are not restyled.
-
-Paths and playback stay separate: each adds new Camera-side code with its own independent review and
-heavy Camera contracts, and together they would make one very large PR.
+and behaviour inside the Round 2 shell, the [cross-cutting bar](./capability-inventory.md#28-cross-cutting-completion),
+and the placeholder it replaces removed. The Round 2 shared shell and compact Guide are not restyled.
 
 ## 2. Order and dependencies
 
 ```text
-S25 (merged) ─ S26 structure, removal ─ S27 Views on the Stage ─ S28 Camera paths ─ S29 playback
-                                                                      S11 final gate (needs all)
+S25 (merged) ─ S26 structure, removal ─ S27 guided Views ─ S28 Views on the Stage ─ S29 Camera paths ─ S30 playback, Preview
+                                                                                   S11 final gate (needs all)
 ```
 
 | Slice | Requires | Why |
 | --- | --- | --- |
 | S26 | S25 | Writers and controller are S25's |
-| S27 | S26 | Stage markers must disappear with removed Views; shares the route and Card |
-| S28 | S27 | Paths join View markers; editing returns through the same Stage postures |
-| S29 | S28 | Travel seconds come from Camera connections S28 creates |
+| S27 | S26 | Removal rules must already cover guided Views; the format lands before anything is built on the Stop model |
+| S28 | S27 | Markers number a Stop's guided Views; shares the route and Card |
+| S29 | S28 | Paths join View markers, including steps inside a Stop |
+| S30 | S29 | Travel and step seconds come from Camera connections S29 creates |
 
-The campaign rule of one implementation slice at a time applies. Inside a slice the writer may land the
-work as several commits, but the slice is reviewed, accepted and merged once.
+One implementation slice at a time (campaign rule). A slice may land as several commits, but it is
+reviewed, accepted and merged once.
 
 ## 3. Rules for every slice
 
-- **Start.** Through the T1 runbook start step with the T1 baton, as the campaign record says, once
-  the slice is registered and released. Gates and active scopes are rechecked at the trusted base.
-- **Live check first.** Before editing, the writer opens the slice's fixtures in the running editor
-  at 1440 × 900 and 820 × 1180 under the `browser-hygiene` skill, and records any state that differs
-  from the inventory. No screenshot archive.
+- **Start.** Through the T1 runbook start step with the T1 baton once the slice is registered and
+  released. Gates and active scopes are rechecked at the trusted base.
 - **Authority.** Writes go through the Experience controller's `run` into planners. Camera poses,
   routes, durations and samples come from `camera-core`. No component holds authored state. Session
-  state (selection, armed tool, Look-through provisional pose, playback clock, Show, snapshots) is
-  never serialized.
+  state (selection and its history, armed tool, Look-through provisional pose, playback clock, Show,
+  snapshots) is never serialized.
 - **Shared files.** The writer records a claim in the T1 baton before editing the files in §7.
-- **Verification.** The declared tier, the whole architecture lane and the slice's journeys in the
-  browser. Planner slices add the planner contract tests and `unit-acceptance-conformance`. Slices
-  that consume Camera motion add the affected heavy Camera contracts.
-- **Review and acceptance.** [E16](./owner-decisions.md#e16): an independent review of planner and
-  Camera parts where the block names them, then owner visual acceptance.
-- **Placeholders.** A disabled control that S26–S29 do not complete keeps its reason. A control a slice
-  completes loses its *Comes with…* text in the same slice.
+- **Writer's verification (OD5, [E16](./owner-decisions.md#e16)).**
+  - The writer owns the test code and checks: planner contract tests and
+    `unit-acceptance-conformance` for new planners; controller and component tests for every new state,
+    refusal and Undo label; the declared tier and the whole architecture lane; and the affected heavy
+    Camera contracts where a slice consumes motion.
+  - A **visual-token check** asserts the shell contract's colour roles, type roles, control metrics and
+    44 px coarse targets on the slice's controls, in component tests or one short computed-style check.
+  - There are no journey runs, no screenshots and no capture archive.
+- **Owner acceptance.** The owner runs each slice's journeys manually; they are the acceptance. An
+  independent review covers the domain and Camera parts the block names.
+- **Placeholders.** A control a slice completes loses its *Comes with…* text in that slice.
 
 ## 4. Fixtures
 
 Built once in S26 as a test and browser seeding helper that calls the real planners. They are not
-Conservatory's generators, and no product UI is added for them.
+Conservatory's generators, and no product UI is added for them. They serve the writer's tests and the
+owner's journeys.
 
 | Fixture | Contents |
 | --- | --- |
 | **x-empty** | A Layout room, one Scene object, no Experience |
-| **x-salon** | One Experience; five Presentations, one about a Scene object, one sharing a View with another; one Guide of six Stops with a revisit, a hold-less Stop and a nonadjacent continuation (→ 5) |
+| **x-salon** | One Experience; five Presentations, one about a Scene object, one sharing a View with another; one Guide of six Stops with a revisit, a hold-less Stop and a nonadjacent continuation (→ 5); after S27, one Stop guiding three Views |
 | **x-long** | x-salon's world with a 30-Stop Guide |
 | **x-dense** | A 50-View Presentation and 40 Presentations |
-| **x-paths** | x-salon plus Camera connections for two transitions, one through a Wall, one shared by two transitions (added in S28) |
+| **x-paths** | x-salon plus Camera connections for two transitions and one step inside a Stop: one through a Wall, one shared by two transitions (added in S29) |
 
 ## 5. Slices
 
 ### R217.S26 — Structure and removal
 
 ```text
-WRITER: T3 (integrator)   REVIEW: independent (planners, compound scope), owner visual (UI)
+WRITER: T3 (integrator)   REVIEW: independent (planners, compound scope); owner manual acceptance
 VERIFICATION: architecture-integration   INTEGRATION ROUTE: R217.S11
 DOMAIN: experience-update {label, entryGuideId}; experience-guide-update {label, entryStopId};
         experience-guide-create without guide-exists; experience-presentation-update + viewIds (permutation);
-        first editor caller of camera-view-update (label only);
-        experience-stop-remove; experience-presentation-view-remove (writes camera);
+        camera-view-update (label only); experience-stop-remove; experience-presentation-view-remove (writes camera);
         experience-presentation-remove (writes camera); experience-guide-remove — rules per E4
 ```
 
 **Scope: structure.**
-- Rename the Experience from the crumb's sibling menu (*Rename…* opens the crumb inline), a Guide
-  from its Card title, and a View from its Card title. A View listed by another Presentation says
-  *Also in ⟨Presentation⟩* under the title.
-- Additional Guides ([E5](./owner-decisions.md#e5)): *Add to Guide* becomes a submenu of Guides
-  (active first) and **New Guide…** with the inline name. The new Guide becomes active. The Index
-  shows every Guide and an *opens* tag on the Opening Guide.
-- Guide Card: **Make this the opening Guide** (disabled on the Opening Guide: *The Experience opens
-  on this Guide*).
-- Guide start ([E6](./owner-decisions.md#e6)): a *Start* tag on the start Stop's card and in the Stop
-  Card kind line; **Start the tour here** in the selected Stop's `•••`.
-- Reorder a Presentation's Views: drag a tile in the Card grid (gold caret), Alt ←/→ on a focused
-  tile. With a filter on, the hint reads *n shown · clear the filter to reorder* and dragging is off.
-  The Index View list follows the order.
+- **Renames.**
+  - The Experience, from the crumb's sibling menu (*Rename…* opens the crumb inline).
+  - A Guide, from its Card title.
+  - A View, from its Card title. A View listed by another Presentation says *Also in ⟨Presentation⟩*.
+- **Additional Guides** ([E5](./owner-decisions.md#e5)): *Add to Guide* becomes a submenu of Guides and
+  **New Guide…**. The Index shows every Guide and an *opens* tag on the Opening Guide.
+- **Opening Guide:** the Guide Card's **Make this the opening Guide**.
+- **Guide start** ([E6](./owner-decisions.md#e6)): a *Start* tag on the start Stop; **Start the tour
+  here** in the Stop's `•••`.
+- **View order:** reorder a Presentation's Views by dragging a tile (gold caret) or with Alt ←/→.
+  Reordering is refused while a filter is on (*n shown · clear the filter to reorder*). The Index
+  follows the order.
+- **Back** in the Card ([E17](./owner-decisions.md#e17)).
+- **World subject Card:** *Already presented in* with a cross-lens link that opens the Presentation in
+  Experience, added if missing.
 
-**Scope: removal.** *Remove Stop* (Stop `•••`, hint *Presentation stays*), *Remove View* (View Card
-`•••`), *Remove Presentation* (Presentation `•••`, hint *and its n Stops*) and *Remove Guide* (Guide
-Card `•••`), each with the [E4](./owner-decisions.md#e4) rules. Removing the selected subject selects
-its parent: the Guide for a Stop, the Presentation for a View, nothing for a Presentation.
+**Scope: removal.** Remove Stop, View, Presentation and Guide with the [E4](./owner-decisions.md#e4)
+rules. Removing the selected subject selects its parent.
 
 **Scope: fixtures.** The x-fixtures in §4.
 
 **Visual and interaction completion.**
-- Inline rename fields use the Card title metrics, commit on Enter or blur and cancel on Esc; an empty
-  name refuses with *A name is needed*.
-- The submenu uses the Round 2 menu, with *again* hints kept. *Start* and *opens* are mono 10 px tags
-  in the Round 2 tag style. View reorder uses the same drag affordance and caret as Stop cards.
-- Danger items are red, at the end of `•••` after a rule. Choosing one opens a consequence block in
-  place in the Card, not a modal: the effect lines (*Stop 1 will follow the Guide order*, *Stops 2 and 5
-  will enter at the Default View*, *1 Camera path is removed*), a red **Remove** and **Cancel**. Esc
-  cancels and focus returns to `•••`. Removing the Default needs a Default chosen in the block first.
-- Refusals keep the item disabled with the reason as its hint (*last View*, *A Guide keeps at least one
-  Stop*). After a removal a fading message names what remains (*Stop 2 removed — ⟨Presentation⟩ is
-  still in the Index*).
+- **Rename fields** use the Card title metrics. Enter or blur commits and Esc cancels; an empty name
+  refuses with *A name is needed*.
+- **Menus and tags:** the submenu is the Round 2 menu with *again* hints kept. *Start* and *opens* are
+  mono 10 px tags. View reorder uses the Stop cards' drag affordance and caret.
+- **Danger items** are red, at the end of `•••` after a rule. Choosing one opens a consequence block in
+  place in the Card, not a modal: effect lines, a red **Remove** and **Cancel**. Esc cancels and focus
+  returns to `•••`. Removing the Default needs a new Default chosen in the block.
+- **Refusals** keep the item disabled with the reason as its hint. After a removal, a fading message
+  names what remains.
 
-**Acceptance journeys.**
+**Owner acceptance journeys (manual).**
 
 | # | On | Do | Expect |
 | --- | --- | --- | --- |
-| X26.1 | x-salon | Rename the Experience, the Guide and the shared View; Undo each | Names change everywhere they appear (crumb, Index, Guide header, Stop and Transition Cards, *Also in* on both Presentations); three Undo entries labelled *Rename …*; Esc and empty names add none |
-| X26.2 | x-salon, Guide open | Presentation `•••` → Add to Guide ▸ New Guide…, name *Short tour*, Enter | A second Guide with that Presentation as Stop 1 is active; the Index lists two Guides, *Open* on *Short tour*, *opens* still on the first; one Undo removes the Guide and its Stop together |
-| X26.3 | after X26.2 | *Short tour* Card → Make this the opening Guide; nothing selected → Head Preview | The *opens* tag moves; Preview enters *Short tour*'s start Stop; Undo restores the tag |
-| X26.4 | x-salon | Stop 3 `•••` → Start the tour here; drag Stop 3 to the end | *Start* tag on Stop 3 after both edits; Preview of the Guide starts at Stop 3; one Undo entry for the start, one for the move |
-| X26.5 | x-dense | Drag View 1 to position 5; Alt → twice on a focused tile; filter *On tour* and try to drag; Save and reload | Order kept after reload and mirrored in the Index; dragging refused while filtered with the hint; Default and Guide order unchanged |
-| X26.6 | x-salon | Remove Stop 2; Undo; Redo | Connectors re-resolve to the new neighbour; Stop numbers update; Undo restores the Stop with its id, hold, entry and position; Redo removes it again |
-| X26.7 | x-salon | Remove the Stop that Stop 1 continues to (→ 5) | The block names Stop 1's fallback; afterwards Stop 1's connector shows adjacency |
-| X26.8 | a Guide with one Stop | Open its `•••` | *Remove Stop* is disabled with *A Guide keeps at least one Stop*; *Remove Guide* is reachable from the Guide Card |
-| X26.9 | x-salon | Remove the Default View of a Presentation with three Views and Stops that enter there by name | The block requires a new Default; the named Stops enter at it; the Camera View is deleted (unshared); one Undo restores all |
-| X26.10 | x-salon | Remove the shared View from one Presentation | The other Presentation keeps it; the block says *Still used by ⟨Presentation⟩*; the Camera View remains |
-| X26.11 | x-salon | Remove a Presentation used by two Stops; Save; reload | Both Stops, its unshared Views and their connections are gone after reload; the Index and Guide are consistent; nothing orphaned in the Camera unit |
-| X26.12 | after X26.2 | Remove the Opening Guide; then the last Guide | The other Guide becomes the Opening Guide, named in the block; removing the last leaves *No Guide yet* |
-| X26.13 | any | Esc in the consequence block; keyboard-only removal and rename | Nothing changes and no history entry on Esc; both flows work from the keyboard with visible focus |
-| X26.14 | x-salon, 820 × 1180 | Repeat X26.2 and X26.9 in the Card sheet | Submenu, inline name and consequence block are reachable and usable with a coarse pointer |
+| X26.1 | x-salon | Rename the Experience, the Guide and the shared View; Undo each | Names change everywhere they appear; three Undo entries; Esc and empty names add none |
+| X26.2 | x-salon, Guide open | Presentation `•••` → Add to Guide ▸ New Guide…, *Short tour* | A second, active Guide with that Presentation as Stop 1; *opens* stays on the first; one Undo removes Guide and Stop |
+| X26.3 | after X26.2 | Make *Short tour* the opening Guide; Head Preview with nothing selected | The tag moves; Preview enters *Short tour*'s start Stop |
+| X26.4 | x-salon | Start the tour at Stop 3; drag Stop 3 to the end | *Start* stays on Stop 3; Preview starts there |
+| X26.5 | x-dense | Reorder Views by drag and Alt →; try while filtered; Save and reload | Order kept and mirrored in the Index; refused while filtered; Default unchanged |
+| X26.6 | x-salon | Select Stop 2, then a View, then press Back and Alt+← | *‹ Stop 2* in the kind line returns to Stop 2; Undo history unchanged |
+| X26.7 | x-salon | Remove Stop 2; Undo; Redo | Connectors re-resolve; Undo restores the Stop with its id and fields |
+| X26.8 | x-salon | Remove the Stop that Stop 1 continues to | The block names Stop 1's fallback |
+| X26.9 | one-Stop Guide | Open its `•••` | *Remove Stop* disabled with its reason; *Remove Guide* on the Guide Card |
+| X26.10 | x-salon | Remove a Default View; remove the shared View from one Presentation | A new Default is required; the shared Camera View survives with *Still used by* |
+| X26.11 | x-salon | Remove a Presentation with two Stops; Save; reload | Its Stops, unshared Views and connections are gone; nothing orphaned |
+| X26.12 | after X26.2 | Remove the Opening Guide, then the last Guide | The other becomes Opening; then *No Guide yet* |
+| X26.13 | 820 × 1180, keyboard | New Guide and a removal in the Card sheet, by keyboard | Reachable, visible focus, Esc cancels with no entry |
 
-**Out.** Experience removal; Guide colours or icons; reordering Guides in the Index.
-
-### R217.S27 — Views on the Stage
+### R217.S27 — Guided Views and visitor reach
 
 ```text
-WRITER: T3 with a T1 shared-file claim   REVIEW: owner visual (T1 reviews the Stage mark layer, Camera seam and render host)
+WRITER: T3   REVIEW: independent (format, program, lowering, interpreter, visitor runtime); owner manual acceptance
+VERIFICATION: architecture-integration, plus the visitor and public-isolation contracts   INTEGRATION ROUTE: R217.S11
+DOMAIN: Experience unit format bump — Stop guided-View sequence {viewId, holdSeconds?, step transition?};
+        Presentation free-exploration flag; Experience welcome text; experience-stop-update over the sequence;
+        experience-presentation-update + flag; experience-update + text; ExecutionProgram, lowering and
+        interpreter for in-Stop steps; visitor runtime advance and reach. Gate version ruled at registration (E2)
+```
+
+**Scope.**
+- **Format** per [E3](./owner-decisions.md#e3) and [E15](./owner-decisions.md#e15). The format is
+  bumped; strict readers refuse the old one; fixtures and seeded projects are regenerated.
+- **Stop Card shot list** (Conservatory *Guided views*):
+  - numbered rows with grip, snapshot slot, name, the Default ◆ and an *Entry* tag on the first;
+  - a per-View **Hold** stepper and × to leave out (disabled on the last View, *A Stop shows at least
+    one View*);
+  - drag and Alt ↑/↓ to reorder;
+  - **Not in this Stop**, folded past 4, with **Include**;
+  - the note *Reordering here changes only this Stop*.
+- **Removal rules** of S26 extended to guided Views ([E4](./owner-decisions.md#e4)).
+- **Stop cards** show *n views* and *again*. **Connectors and continuations** read the Stop's last
+  guided View as the exit and its first as the entry.
+- **Reach:**
+  - the Presentation Card's *Open in free exploration* switch, *All n Views; opens at the Default*;
+  - the View Card's reach line (*Free exploration · opens here*, *Hidden from free exploration*);
+  - the Guide Card's *n Views only found this way*.
+- **Welcome text** on the Guide Card, under More: bounded plain text like Information text.
+- **Visitor runtime:** guided playback advances a Stop's Views by their holds, with Cut steps for now
+  (Travel steps arrive with S29). Free exploration lists only open Presentations, in View order.
+
+**Visual and interaction completion.** Conservatory's shot-list composition scaled to the 288 px Card,
+in Round 2 row metrics. Dimmed rows for *Not in this Stop*. The switch uses the Round 2 toggle. The D5
+*Include* placeholder and *Comes with Stop-local Views* are removed.
+
+**Owner acceptance journeys (manual).**
+
+| # | On | Do | Expect |
+| --- | --- | --- | --- |
+| X27.1 | x-salon | Stop 2: Include two Views, set holds 4 s and 3 s, drag the third to first | *Entry* moves to the new first View; the Default ◆ is unchanged; each edit one Undo entry |
+| X27.2 | — | Leave out Views until one remains | The last × is disabled with its reason |
+| X27.3 | — | Stop 5 revisits the same Presentation with a different sequence | Both Stops keep their own sequences; the Presentation is unchanged |
+| X27.4 | — | Preview the Guide | Stop 2's Views advance by their holds and wait for *Next* between Stops |
+| X27.5 | x-salon | Switch a Presentation out of free exploration | The View Card says *Hidden from free exploration*; the Guide Card count changes; Preview's free list omits it |
+| X27.6 | x-salon | Remove a View guided by two Stops (S26 rules) | The block names both Stops; their sequences lose it |
+| X27.7 | — | Write welcome text; Save; reload | Kept after reload; bounded length refuses past the limit |
+| X27.8 | old-format project | Open it | A strict, readable refusal; no partial load |
+
+### R217.S28 — Views on the Stage
+
+```text
+WRITER: T3 with a T1 shared-file claim   REVIEW: owner manual acceptance (T1 reviews the mark layer, Camera seam and render host)
 VERIFICATION: affected-subsystem   INTEGRATION ROUTE: R217.S11
-DOMAIN: camera-view-update (eye, target, fov); capture-bind and presentation-update view with a gesture pose;
-        snapshots are a derived render (E10)
+DOMAIN: camera-view-update (eye, target, fov); capture-bind and presentation-update view with a gesture or framed pose;
+        Bring into view (existing Stage Camera request); snapshots are a derived render (E10)
 ```
 
 **Scope: markers and placement.**
-- **View markers** in the Experience lens: in Plan a dot at the eye, a short frustum wedge and a
-  round aim handle, world-anchored and screen-sized; in 3D a camera glyph. States follow Conservatory's
-  emphasis: *selected* (gold ring, larger glyph, label), *strong* (the selected Presentation's or
-  Stop's Views), *normal*, *dim* (context), *hidden*. Labels for at most 12 strong markers, frustums
-  for at most 24 Views. Markers are Stage marks in the existing mark layer, not World marks (D13 stays).
-- Selecting a marker selects the View and never moves the Camera.
-- **Place a View** dock key (Round 2 `C`), enabled in Plan and 3D on the Floor plane: press where the
-  camera stands and drag toward what it sees. A drag under 0.5 m places nothing and says so. The new
-  View goes into the visibly selected Presentation, otherwise into a new Presentation whose title opens
-  for naming (D1, D2: never a Stop). Height per [E8](./owner-decisions.md#e8).
-- **Move** a selected View by dragging its dot and **aim** it by its handle, with a live ghost, one
-  Undo entry per drag, and Esc to cancel mid-drag.
-- **Lens** and **Eye height** steps on the View Card ([E7](./owner-decisions.md#e7)), above the exact
-  facts.
-- **Present this in Plan** ([E9](./owner-decisions.md#e9)).
+- **View markers.**
+  - In Plan: a dot at the eye, a short frustum wedge and a round aim handle, world-anchored and
+    screen-sized.
+  - In 3D: a camera glyph, with labels for the selected View and the selected Stop's guided Views,
+    numbered.
+  - States are *selected*, *strong*, *normal*, *dim* and *hidden*. Labels show for at most 12 strong
+    markers; frustums for at most 24 Views.
+  - Markers are Stage marks, not World marks (D13 stays). Selecting one never moves the Camera.
+- **Place a View** dock key: press where the camera stands, drag toward what it sees.
+  - A drag under 0.5 m places nothing and says so.
+  - The View goes into the visibly selected Presentation, otherwise into a new Presentation whose
+    title opens for naming. It never adds a Stop.
+  - Height per [E8](./owner-decisions.md#e8).
+- **Move** (drag the dot) and **aim** (handle): a live ghost, one Undo entry per drag, Esc cancels.
+- **Lens** and **Eye height** steps and the hero tag ([E7](./owner-decisions.md#e7)).
+- **Present this** frames the subject with Bring into view, then captures it
+  ([E9](./owner-decisions.md#e9)). In Plan it arms Place a View aimed at the subject.
+- **Empty Stage coach:** *Start your experience*.
 
 **Scope: Look through.**
-- **Look through** from the View Card (primary), from a double-click on a marker or thumbnail, and
-  from the Stop Card's entry View row. The Stage enters the Through posture: the 3D reading through the
-  View's exact pose and fov, a gold capture frame at a fixed aspect fitted to the Stage area the Card
-  and Guide leave uncovered, and a mode pill *Looking through ⟨View⟩ · Exit View Esc*.
-- Drag to re-aim and scroll to step forward or back, through the Stage Camera; the pill adds *moved*
-  and a gold **Update View**. Lens and Eye steps apply live while looking through.
-- **Update View** writes once through `camera-view-update`; a shared View first says *Also changes
-  ⟨Presentation⟩*. **Exit View** and Esc discard and return to the exact standpoint and reading,
-  Plan included, through the Stage's existing Camera return seam (the one Preview's handover uses).
-- Dock **Capture** while looking through captures the provisional pose as a new View in the same
-  Presentation.
+- **Entry:** from the View Card, a double-click on a marker or thumbnail, or a Stop's shot-list row.
+- **Through posture:** the View's exact pose and fov, a gold capture frame at a fixed aspect fitted
+  beside the Card and Guide, and the pill *Looking through ⟨View⟩ · Exit View Esc*.
+- **Re-aim:** drag to re-aim and scroll to step. The pill adds *moved* and a gold **Update View**.
+  Lens and Eye apply live.
+- **Update View** writes once; a shared View first says *Also changes ⟨Presentation⟩*.
+- **Exit View** and Esc return to the exact standpoint and reading through the Stage's Camera return
+  seam.
+- **Capture** while looking through captures the provisional pose as a new View.
 
-**Scope: snapshots.** Real snapshots ([E10](./owner-decisions.md#e10)) in every slot that holds a
-placeholder: Index rows, the Presentation grid, the View hero, Stop rows, Stop cards, Transition ends,
-subject *Already presented in* rows, and the D8 menus where they show a View. Rendered lazily for
-visible slots at the capture-frame aspect, cached by View pose and source revision, refreshed after
-Update View, move, aim, Lens, Eye and World edits. A neutral frame shows while rendering and when
-rendering is unavailable.
+**Scope: snapshots.** Real snapshots in every slot ([E10](./owner-decisions.md#e10)), including the
+shot list. They render lazily for visible slots at the capture-frame aspect and are cached by pose and
+source revision.
 
 **Visual and interaction completion.**
-- Leaf green for Camera marks and gold for selection (PLATE visual grammar). Coarse-pointer hit
-  targets of 44 px for dot and handle. Markers are not the only path: the Index and Card already reach
-  every View from the keyboard.
-- Mode pills top-centre: *Place a View — press where the camera stands, drag toward what it sees ·
-  Cancel Esc* while placing; the Looking-through pill above.
-- World and Experience helpers are hidden inside the capture frame. The View Card swaps its action row
-  to Exit View and Update View. The reading control shows Through as active, and choosing Plan exits
-  first. Esc order: menu → place → Look through → selection → Guide.
-- Snapshot slots keep the placeholder geometry so nothing shifts; images crop to the slot like Round
-  2's `slice`, with the full composition in the hero; the Default ◆ and number badges sit over them.
-- The dock key loses *Comes with View placement*; the View Card loses *Comes with Look through*.
+- **Colours:** leaf green for Camera marks, gold for selection.
+- **Targets:** dot and handle have 44 px coarse targets.
+- **Mode pills** sit top-centre. Helpers are hidden inside the capture frame. The View Card swaps to
+  Exit View and Update View.
+- **Esc** unwinds menu → place → Look through → selection → Guide.
+- **Snapshot slots** keep the placeholder geometry, crop like Round 2's `slice`, and carry the ◆ and
+  number badges.
+- The *Comes with View placement* and *Comes with Look through* texts are removed.
 
-**Acceptance journeys.**
+**Owner acceptance journeys (manual).**
 
 | # | On | Do | Expect |
 | --- | --- | --- | --- |
-| X27.1 | x-salon, Plan | Select a Presentation, then one of its Views, pan and zoom | Its Views strong, others dim; the View gold with its label; marker size constant on screen; the Stage Camera pose is numerically unchanged by selection |
-| X27.2 | x-salon, Plan, Presentation selected | Place a View with a 3 m drag | A View in that Presentation at 1.65 m, aimed along the drag; its Card opens; one Undo; no Stop added |
-| X27.3 | x-empty | Place a View with nothing selected; type a name | A new Presentation with that View as Default, title named inline; one Undo removes both |
-| X27.4 | x-salon | Drag a marker 2 m; drag its handle 90°; start a drag and press Esc | Live ghost; two Undo entries; the cancelled drag leaves no change and no entry |
-| X27.5 | x-salon | View Card: Lens Close, then Eye Seated | *85 mm*, fov per the preset; eye and target down by the same amount; *Custom* shows for an off-preset View |
-| X27.6 | x-salon, Plan | Subject Card → Present this | Placement armed with the aim on the subject; the result is a Presentation about that subject |
-| X27.7 | x-dense, 3D and Plan | Select the 50-View Presentation | Labels only while strong markers number 12 or fewer; frustums hidden past 24; still responsive |
-| X27.8 | x-salon, Plan | Look through a View | The Stage pose and fov equal the View exactly (numeric check); the frame is fully visible beside the Card at 1440 × 900 and 1180 × 820 |
-| X27.9 | — | Re-aim, Update View; then re-aim and Esc | *moved*, then one Undo entry *Update View*, with marker, facts and snapshot following; Esc leaves no change and no entry and returns to Plan at the same centre and zoom |
-| X27.10 | — | Look through the shared View, re-aim, Update View | The *Also changes* notice appears first; both Presentations show the new pose |
-| X27.11 | — | Looking through, Lens Wide, Capture | A new View with the provisional pose and Wide lens in the same Presentation; the looked-through View is unchanged |
-| X27.12 | x-salon | Compare a View's hero with its Look-through frame; move a Wall in World and return | Same composition and aspect; affected snapshots refresh, unaffected ones are not re-rendered |
-| X27.13 | x-dense | Scroll the 50-View grid; Save and compare bytes | Only visible tiles render; WebGL context count unchanged; no lost input; no snapshot or cache in the saved source |
-| X27.14 | x-salon, 820 × 1180, coarse pointer | Place, move and Look through with the Card sheet open | Gestures land at 44 px targets with no hover-only state; the frame fits above the sheet; Exit and Update reachable |
+| X28.1 | x-salon, Plan | Select a Presentation, a View and a Stop; pan and zoom | Strong, dim and selected markers; Stop Views numbered in 3D; marker size constant; the Camera never moves on selection |
+| X28.2 | x-salon / x-empty | Place a View with a Presentation selected, then with nothing selected | Into that Presentation; or a new, named Presentation; one Undo each; no Stop |
+| X28.3 | x-salon | Move and aim a marker; Esc mid-drag | Live ghost; one entry per drag; no change on Esc |
+| X28.4 | x-salon | Lens Close, Eye Seated; an off-preset View | *85 mm*, aim kept, hero tag updated; *Custom* shown |
+| X28.5 | x-salon, 3D and Plan | Present this on the subject | 3D: the Stage frames it and the first View matches the hero; Plan: placement armed toward it |
+| X28.6 | x-salon | Look through, re-aim, Update View; again and Esc | One *Update View* entry; Esc returns to the same Plan standpoint with no entry |
+| X28.7 | — | Look through the shared View and Update; Capture while looking | The *Also changes* notice; a new View from the provisional pose |
+| X28.8 | x-dense, x-empty | Scroll the grid; open an empty Experience | Only visible snapshots render; the Stage coach shows |
 
-### R217.S28 — Camera paths
+### R217.S29 — Camera paths
 
 ```text
-WRITER: T3 (Camera) with a T1 shared-file claim   REVIEW: independent (planners, Layout read, camera-core consumption), owner visual
+WRITER: T3 (Camera) with a T1 shared-file claim   REVIEW: independent (planners, Layout read, camera-core consumption); owner manual acceptance
 VERIFICATION: architecture-integration, plus the affected heavy Camera contracts   INTEGRATION ROUTE: R217.S11
 DOMAIN: camera-connection-create; camera-connection-update {anchors, timing.forward|reverse.durationSeconds};
-        layout-core route-versus-Wall read (E12)
+        layout-core route-versus-Wall read (E12); step Travel inside a Stop (E3)
 ```
 
 **Scope.**
-- **Camera support** ([E11](./owner-decisions.md#e11)): *Add a Camera path* on a Travel gap, in the
-  Transition Card and the red connector's menu.
-- **Paths on Stage** only while the Guide is open: the evaluated route from `getCameraConnectionRoute`;
-  the selected transition's path gold, its neighbours solid, the rest faint; Cut as a dotted *CUT*
-  link with no geometry; Stop numbers on entry Views in the whole-Guide reading. Shown in 3D, edited in
-  Plan.
-- **Path** dock key (Round 2 `T`), enabled with a transition selected: arms insertion, then a click on
-  the path adds an interior anchor at the nearest progress. Drag a point; click to select it (gold,
-  echoed in the Card as *Point 2 selected · Remove point*); Delete removes it. **Straighten** removes
-  every interior point.
-- **Duration**: a stepper over the Camera's per-direction `durationSeconds`, showing the computed
-  value as *Auto · 6 s* until set, with *Auto* to clear. Connectors and Stop cards show Travel seconds.
-- **Crosses a wall** ([E12](./owner-decisions.md#e12)): the path red-dashed and a Card alert, *The
-  path passes through a wall. Add a point and drag it through the doorway.*
-- **Shared path** note: *This path is also used by Stop 4 → 5.*
-- Entry or exit change: a fading message names the transitions that now join different Views and show
-  a gap.
+- **Camera support** ([E11](./owner-decisions.md#e11)): *Add a Camera path* on a gap, between Stops
+  and between a Stop's guided Views. Steps inside a Stop gain the Cut/Travel choice in the shot list.
+- **Paths on Stage**, only while the Guide is open:
+  - the evaluated route: selected gold, neighbours solid, the rest faint;
+  - Cut as a dotted *CUT* link;
+  - Stop numbers on entry Views in the whole-Guide reading.
+  - Paths are shown in 3D and edited in Plan.
+- **Path** dock key, enabled with a transition or step selected. A click on the path adds an interior
+  anchor. Drag a point; select it (gold, echoed in the Card); Delete removes it. **Straighten** removes
+  all points.
+- **Path facts:** *3 points · 12.4 m*.
+- **Duration:** a stepper over the Camera's per-direction duration, *Auto · 6 s* until set. Connectors
+  and Stop cards show seconds.
+- **Crosses a wall** ([E12](./owner-decisions.md#e12)) and the **shared path** note.
+- **Entry or exit change** message: *Travel Stop 2 → 3 now joins different Views*.
 - **Show ▾** ([E14](./owner-decisions.md#e14)).
 
-**Visual and interaction completion.** Shape carries species (spatial grammar): ● View endpoint,
-○ path point, gold selected point; derived samples unmarked. Points have 44 px coarse hit targets.
-Insertion happens only with Path armed, so a click never authors geometry by accident. Mode pill while
-armed: *Path — click the path to add a point · Done Esc*. The Path key and the Transition Card lose
-*Comes with path editing*.
+**Visual and interaction completion.**
+- **Shape carries species:** ● View endpoint, ○ path point, gold selected point.
+- **Targets:** points have 44 px coarse targets.
+- **Insertion** only happens with Path armed. The pill reads *Path — click the path to add a point ·
+  Done Esc*.
+- The *Comes with path editing* texts are removed.
 
-**Acceptance journeys.**
+**Owner acceptance journeys (manual).**
 
 | # | On | Do | Expect |
 | --- | --- | --- | --- |
-| X28.1 | x-salon | Stop 1 → 2 Travel with a gap: Add a Camera path; Undo | Connector turns *travel 6s* (computed), path drawn; Undo returns the gap and removes the connection |
-| X28.2 | x-paths, Plan | Select the walled transition; arm Path; add a point; drag it through the doorway | Red dashed and alert while crossing; both clear once through; one Undo entry per add and per drag |
-| X28.3 | — | Select a point; Delete; Straighten | Point removed; Straighten removes all; each one entry |
-| X28.4 | — | Duration 6 → 9 s; Auto | Connector and bar show 9 s; Auto restores the computed value |
-| X28.5 | x-paths | Edit the shared path | The note names the other transition; both reflect the edit |
-| X28.6 | x-paths | Change Stop 2's entry View | The message names the affected transitions; their connectors show the gap; the old connection still exists between its Views |
-| X28.7 | x-paths | Show ▾ → Selection only; turn off frustums | Other Stops' paths and Views hide; *2 off* on the key; source unchanged; closing the Guide hides all paths |
-| X28.8 | — | Choose Cut | Dotted CUT link; Path key disabled with *A Cut has no travel path*; the connection is not deleted |
+| X29.1 | x-salon | Add a Camera path for a Travel gap; Undo | *travel 6s*; Undo restores the gap |
+| X29.2 | x-paths | Set a step inside Stop 2 to Travel; add its path | The shot list shows the step's seconds; Preview travels between the two Views |
+| X29.3 | x-paths, Plan | Arm Path on the walled transition; add a point; drag it through the doorway | Warning clears once through; one entry per add and drag |
+| X29.4 | — | Select a point and Delete; Straighten; Duration 9 s, then Auto | Each one entry; seconds update everywhere |
+| X29.5 | x-paths | Edit the shared path; change Stop 2's entry View | The note names the other use; the change message names the new gaps; the old path remains |
+| X29.6 | x-paths | Show ▾ → Selection only; frustums off; close the Guide | Disclosure only; *2 off*; no paths without a Guide |
+| X29.7 | — | Choose Cut | Dotted CUT link; Path disabled with *A Cut has no travel path*; the connection kept |
 
-### R217.S29 — Timeline and playback
+### R217.S30 — Timeline, playback and Preview
 
 ```text
-WRITER: T3 (Camera, Experience)   REVIEW: independent (time map, playback host), owner visual
-VERIFICATION: architecture-integration, plus the affected heavy Camera contracts   INTEGRATION ROUTE: R217.S11
-DOMAIN: Guide time map in camera-core beside experience-controllers.ts (E2); no planner
+WRITER: T3 (Camera, Experience)   REVIEW: independent (time map, playback host, visitor surface); owner manual acceptance
+VERIFICATION: architecture-integration, plus the affected heavy Camera contracts and the public-isolation contracts
+INTEGRATION ROUTE: R217.S11
+DOMAIN: Guide time map in camera-core beside experience-controllers.ts (E2); visitor surface per E15; no planner
 ```
 
-**Scope.**
-- **Time map**: from the lowered program, each Stop's hold and each continuation's Cut (0 s) or
-  Travel (Camera motion `durationSeconds`), with hold-less Stops as *waits*
-  ([E13](./owner-decisions.md#e13)). It is the only source for the bar, total, scrub and playback.
-- **Bar**: time-scaled segments replace D9's ordinal ones; the total *0:00 / 0:41 + 2 waits*.
-- **Play/Pause** (gold key, Space while the Guide is open), **scrub** on the bar, playhead, Stop card
-  glow and segment fill, cards scrolling to the moment.
-- **Camera rig**: a gold puck on Stage at the evaluated pose (outside observation).
-- **Follow camera**: the Stage looks through the evaluated Camera with the pill *Following the camera ·
-  travelling to Stop 3 · Stop following Esc*; off or Esc returns to the standpoint.
-- **Play from this Stop** (Stop Card), **Preview this move** (Transition Card: the travel with two
-  seconds either side), and the Guide Card's *Guided tour* time.
-- Lifecycle: an accepted source edit stops the clock and re-derives the map; Look through, Place,
-  Path and Preview stop playback; playback writes no source and no history.
-- Reduced motion: Follow and the rig take the reduced-motion controller's settle.
+**Scope: timeline and playback.**
+- **Time map:** guided-View holds; steps and continuations at Cut 0 s or Travel at Camera duration;
+  hold-less Stops as *waits* ([E13](./owner-decisions.md#e13)). It is the only source for the bar,
+  the total, scrub and playback.
+- **Bar:** time-scaled segments replace D9's ordinal ones. Stop cards gain their time and per-View
+  segments. The total reads *0:00 / 0:41 + 2 waits*.
+- **Playback:** Play/Pause (Space), scrub, the playhead, Stop glow and segment fill, and cards that
+  follow the moment.
+- **Camera rig:** a puck on Stage.
+- **Follow camera:** the pill *Following the camera · travelling to Stop 3 · Stop following Esc*; off
+  or Esc returns to the standpoint.
+- **Entries:** **Play from this Stop**, **Play from the start**, **Preview this move**, and the Guide
+  Card's tour time.
+- **Lifecycle:** an accepted edit stops the clock and re-derives it. Look through, Place, Path and
+  Preview stop playback. Playback writes nothing.
+- **Reduced motion:** Follow and the rig settle as the visitor's reduced-motion profile does.
 
-**Visual and interaction completion.** Round 2's 26 px gold Play and 8 px bar, *waits* hatched,
-the playhead a thin gold line. Glow on the playing Stop card only. The puck follows the spatial
-grammar's *Camera rig*. Every *Comes with Camera playback* text is removed.
+**Scope: Preview** ([E15](./owner-decisions.md#e15)).
+- **Welcome chooser:** the Experience name and welcome text, *Take the guided tour* (*n stops · about
+  0:41*) and *Explore freely* (*n places*).
+- **Guided controls:** Pause/Resume, *Next stop*, *Finish tour*, *Explore freely*.
+- **Places** drawer: open Presentations and their Views.
+- **Back to the tour · Stop N.**
+- **End of the tour:** *Keep exploring — including views the tour skipped* and *Start the tour again*.
+- **Guide Card mode cards** open Preview guided or free.
+- Visitor chunks stay free of editor modules.
 
-**Acceptance journeys.**
+**Visual and interaction completion.**
+- **Timeline:** Round 2's 26 px gold Play and 8 px bar, hatched *waits*, and a thin gold playhead.
+  Only the playing Stop glows. The puck follows the grammar's *Camera rig*.
+- **Preview:** the visitor surface takes Conservatory's composition with the visitor tokens.
+- Every *Comes with Camera playback* text is removed.
+
+**Owner acceptance journeys (manual).**
 
 | # | On | Do | Expect |
 | --- | --- | --- | --- |
-| X29.1 | x-paths | Open the Guide | Segments proportional to holds and Travel seconds; the hold-less Stop as *waits*; the total matches the sum |
-| X29.2 | — | Play; Space to pause | Playhead, glow and puck advance together; Play stops at the *waits* segment until pressed again |
-| X29.3 | — | Scrub to mid-Travel | The puck sits at the evaluated pose; **parity**: for the same occurrence and progress, the editor pose equals the visitor director's within numeric tolerance |
-| X29.4 | — | Follow; Esc | The Stage looks through the moving Camera; Esc returns to the exact standpoint, Plan included |
-| X29.5 | — | Play from Stop 4; Preview this move on 3 → 4 | Starts at Stop 4; the move plays its stretch and stops |
-| X29.6 | — | While playing, change a hold | The clock stops with a message; the bar re-derives; the history has only the hold edit |
-| X29.7 | reduced motion | Play with Follow | Travel settles as the visitor's reduced-motion profile does |
-| X29.8 | x-long | Play across 30 Stops | Cards follow the playhead; the bracket tracks; no stale clock after closing the Guide |
+| X30.1 | x-paths | Open the Guide | Segments by holds, steps and Travel; *waits*; the total matches |
+| X30.2 | — | Play; scrub to mid-Travel; Space | Playhead, glow and puck together; the editor pose equals the visitor's at the same moment; pauses at *waits* |
+| X30.3 | — | Follow; Esc | Through the moving Camera; back to the exact standpoint |
+| X30.4 | — | Play from Stop 4; Play from the start; Preview this move | Each starts where it says; the move stops after its stretch |
+| X30.5 | — | Change a hold while playing | The clock stops and re-derives; history has only the edit |
+| X30.6 | — | Head Preview → welcome → guided tour → Explore freely → Back to the tour → finish | Each screen as described; *Keep exploring* lists the Views the tour skipped |
+| X30.7 | — | Guide Card mode cards | Each opens Preview in its mode |
+| X30.8 | reduced motion, x-long | Play with Follow across 30 Stops | Travel settles; cards follow; no stale clock after closing the Guide |
 
-## 6. R217 and S11 sequencing
+## 6. R217, S11 and milestone sequencing
 
-Proposed for the owner's registration ([E1](./owner-decisions.md#e1)). Nothing here edits the S11 plan
-before that.
+Proposed for the owner's registration ([E1](./owner-decisions.md#e1), OD1). Nothing here edits the S11
+plan or the milestone before that.
 
-- **Total order:** S25 (merged) → PR #259 documentation prune, as the release list says → S26 → S27 →
-  S28 → S29 → S11.
-- **S11 dependency** becomes *R217.S01–S10 and R217.S12–S29 accepted*. Its §2 and §3 wording changes
-  to match.
-- **S11 journeys gained**, run in its pointer and viewport matrix:
+- **Total order:** S25 (merged) → PR #259 documentation prune → S26 → S27 → S28 → S29 → S30 → S11.
+- **Milestone:** R217 certifies a stable product. The milestone's *Camera/Experience authoring* row
+  moves advanced path authoring and transport from *Not required* to required. R217's outcome gains
+  Experience authoring depth. Its non-goal *Experience Guide and Path redesign* gains *(S26–S30 build
+  the accepted design)*.
+- **S11:** the dependency becomes *R217.S01–S10 and R217.S12–S30 accepted*. It gains four
+  owner-run journeys:
 
 | # | Journey |
 | --- | --- |
-| J18 | **Experience from empty.** x-empty → Place a View (new Presentation) → Present this → Look through and Update → first Guide → second Guide → reorder, start, opening Guide → Save → reload → Preview |
-| J19 | **Long and dense Experience.** x-long and x-dense at 1440 × 900 and 820 × 1180: selection reveal, bracket, View reorder, removal and Undo |
-| J20 | **Paths and playback.** x-paths: Add a Camera path, shape it through a doorway, set its duration, Play, scrub, Follow, Preview this move, then Preview, with editor and visitor poses in parity |
-| J21 | **Removal across reload.** Remove a Stop, the Default View and a Presentation, then Undo, Redo, Save and reload; no orphaned Camera View or connection |
+| J18 | **Experience from empty.** x-empty → Place a View → Present this → Look through and Update → first and second Guide → guided Views in a Stop → reorder, start, opening Guide → Save → reload → Preview |
+| J19 | **Long and dense Experience.** x-long and x-dense: selection reveal, bracket, View and shot-list reorder, removal and Undo |
+| J20 | **Paths and playback.** x-paths: Add a Camera path, shape it, set duration, Play, scrub, Follow, Preview this move, then the visitor Preview end to end |
+| J21 | **Removal across reload.** Remove a Stop, the Default View and a Presentation; Undo, Redo, Save and reload; nothing orphaned |
 
-- **Register rows:** R217.S26–S29 enter the slice register as `approved` only at registration; until
-  then the R217 README lists them in its proposed section. They consume and require the same gates and
-  scopes as S25, and the register's gate tests gain the four rows in the same change.
-- **Ownership table:** the T3 row's slice list gains S26–S29; the T1 row gains S27–S28 for the Stage
-  shared files.
-- **Non-goals:** *Experience Guide and Path redesign* gains *(S26–S29 build the accepted design; they
-  are not a redesign)*.
-- **Release:** an owner release adds `now.md` rows and either extends the campaign record to S26–S29
-  or writes its own record. This plan writes neither.
+- **Register rows:** R217.S26–S30 enter the slice register as `approved` only at registration. S27's
+  row records the format change and the gate ruling. The register sentence *No slice … changes a
+  persisted format* gains that exception. The gate tests gain the rows in the same change.
+- **Ownership:** the T3 row gains S26–S30 and the T1 row gains S28–S29.
+- **Release:** an owner release adds `now.md` rows and extends the campaign record or writes its own.
+- **After the final slice:** once everything is accepted, the owner triggers reconciliation, lock and
+  promotion (OD6); this plan does not prepare it.
 
 ## 7. Shared-file order
 
 | File | Slices, in order |
 | --- | --- |
-| `packages/project-model/src/units/planning.ts` (+ its tests) | S26 → S28 |
-| `apps/editor/src/lib/authoring/experience/experience-controller.svelte.ts`, `commands.ts` | S26 → S27 → S28 → S29 |
-| `ExperienceGuide.svelte` | S26 → S28 → S29 |
-| Card writers (`Experience*Writer.svelte`), `EditorCard.svelte` | S26 → S27 → S28 → S29 |
-| `EditorIndex.svelte`, `experience-index-groups.ts` | S26 → S27 |
-| `ExperienceDock.svelte` | S27 → S28 |
-| `stage-facade.ts`, `StageSelectionLayer.svelte`, the spatial route | S27 → S28 → S29 |
-| `ExperienceSnapshot.svelte` and the render host | S27 |
-| `packages/layout-core/src/` (route-versus-Wall read only) | S28 |
-| `packages/camera-core/src/` (new time-map module only) | S29 |
+| `packages/project-model/src/units/{types,planning,validate}.ts` (+ tests) | S26 → S27 → S29 |
+| `packages/project-model/src/units/experience/*`, `program` types | S27 |
+| `apps/editor/src/lib/visitor/*` (runtime, Preview surface) | S27 → S30 |
+| `experience-controller.svelte.ts`, `commands.ts` | S26 → S27 → S28 → S29 → S30 |
+| `ExperienceGuide.svelte` | S26 → S27 → S29 → S30 |
+| Card writers (`Experience*Writer.svelte`), `EditorCard.svelte` | S26 → S27 → S28 → S29 → S30 |
+| `EditorIndex.svelte`, `experience-index-groups.ts` | S26 → S27 → S28 |
+| `ExperienceDock.svelte` | S28 → S29 |
+| `stage-facade.ts`, `StageSelectionLayer.svelte`, the spatial route | S26 (Back) → S28 → S29 → S30 |
+| `ExperienceSnapshot.svelte` and the render host | S28 |
+| `packages/layout-core/src/` (route-versus-Wall read only) | S29 |
+| `packages/camera-core/src/` (new time-map module only) | S30 |
 
-## 8. Not in S26
+## 8. Not in S26–S30
 
-See [E15](./owner-decisions.md#e15). Stop-local guided Views go to T3 ([E3](./owner-decisions.md#e3)).
-Nothing in S26–S29 touches visitor chunks, the public route or a release payload.
+The non-Conservatory items in the [harvest closure](./capability-inventory.md#3-conservatory-harvest-closure-od2)
+stay out: the phone Preview frame, Experience removal, removing a Camera path on its own, path editing
+in 3D, numeric Camera precision, narration, captions, cues, Gates, Detours, branching and publishing.

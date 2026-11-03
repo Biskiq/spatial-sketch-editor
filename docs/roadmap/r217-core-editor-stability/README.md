@@ -24,20 +24,23 @@ PR #230. It does not close R217. Those rulings amend landed contracts only at ea
 
 ## Post-S25 Experience authoring depth (proposed)
 
-The [S26 planning workspace](./r217.s26-experience-authoring-depth/README.md) proposes R217.S26–S29
-to complete Experience authoring in the shared shell: structure, removal, View placement, Look
-through, snapshots, Camera paths and playback, in four slices. It is **proposed for owner review only**: the
-slices below are not in the [slice register](#slice-register) until the owner registers them,
-nothing is released, and the sequencing, S11 dependency, ownership and non-goal changes it proposes ([execution plan §6](./r217.s26-experience-authoring-depth/execution-plan.md#6-r217-and-s11-sequencing))
+The [S26 planning workspace](./r217.s26-experience-authoring-depth/README.md) proposes R217.S26–S30
+to complete Experience authoring in the shared shell: structure, removal, guided Views, View
+placement, Look through, snapshots, Camera paths, playback and Preview, harvesting every Conservatory
+capability. With them R217 becomes a stable product milestone, certified by S11. It is **proposed for
+owner review only**: the slices below are not in the [slice register](#slice-register) until the
+owner registers them, nothing is released, and the sequencing, S11, milestone, ownership and non-goal
+changes it proposes ([execution plan §6](./r217.s26-experience-authoring-depth/execution-plan.md#6-r217-s11-and-milestone-sequencing))
 take effect only through the owner's [bounded replanning](../../operations/README.md#bounded-replanning)
 and [decisions](./r217.s26-experience-authoring-depth/owner-decisions.md).
 
 | Proposed slice | Scope | After |
 | --- | --- | --- |
 | R217.S26 | [Structure and removal](./r217.s26-experience-authoring-depth/execution-plan.md#r217s26--structure-and-removal) | S25 |
-| R217.S27 | [Views on the Stage](./r217.s26-experience-authoring-depth/execution-plan.md#r217s27--views-on-the-stage) | S26 |
-| R217.S28 | [Camera paths](./r217.s26-experience-authoring-depth/execution-plan.md#r217s28--camera-paths) | S27 |
-| R217.S29 | [Timeline and playback](./r217.s26-experience-authoring-depth/execution-plan.md#r217s29--timeline-and-playback) | S28 |
+| R217.S27 | [Guided Views and visitor reach](./r217.s26-experience-authoring-depth/execution-plan.md#r217s27--guided-views-and-visitor-reach) | S26 |
+| R217.S28 | [Views on the Stage](./r217.s26-experience-authoring-depth/execution-plan.md#r217s28--views-on-the-stage) | S27 |
+| R217.S29 | [Camera paths](./r217.s26-experience-authoring-depth/execution-plan.md#r217s29--camera-paths) | S28 |
+| R217.S30 | [Timeline, playback and Preview](./r217.s26-experience-authoring-depth/execution-plan.md#r217s30--timeline-playback-and-preview) | S29 |
 
 ## Outcome
 

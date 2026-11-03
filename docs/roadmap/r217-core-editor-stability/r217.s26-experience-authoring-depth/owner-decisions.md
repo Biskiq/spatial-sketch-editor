@@ -1,71 +1,93 @@
 # R217.S26 — owner decisions
 
-**AUTHORITY: NONE until the owner rules.** Each decision has a recommendation and the alternative
-considered. E1 and E2 gate the rest: without them nothing in S26 can be registered. Rulings are
-recorded here and in the phase README when the owner gives them; this file never records one itself.
+**AUTHORITY: NONE until the owner rules.** The owner's directions given in the planning conversation
+are recorded first, as given. The decisions below them carry a recommendation each. Registration still
+needs the owner's bounded-replanning entry; nothing here releases a slice.
+
+## Owner directions (2026-11-03, planning conversation for PR #262)
+
+| # | Direction |
+| --- | --- |
+| OD1 | **R217 becomes a stable product milestone**, not only a shell recovery: Experience authoring depth is part of it, and S11 certifies it |
+| OD2 | **Every Conservatory capability is harvested in this plan.** After it, no prototype is harvested again |
+| OD3 | **Several guided Views in a Stop are included** (reverses this plan's earlier deferral) |
+| OD4 | **Five slices**, R217.S26–S30 |
+| OD5 | **Testing split for S26–S30.** The writer owns the test code and checks correctness and visual tokens; there are no browser journey runs or lengthy captures by the writer. The owner runs the acceptance journeys manually |
+| OD6 | **Reconciliation, lock and promotion come after the final slice**, once everything is accepted, when the owner triggers them; this plan does not prepare them |
+
+## Decisions
 
 | # | Decision | Recommendation |
 | --- | --- | --- |
-| [E1](#e1) | Where S26 runs relative to S11 | S26–S29 as R217 slices, before S11 |
-| [E2](#e2) | The new planners and derived reads | Approve the ledger as one set |
-| [E3](#e3) | Stop-local guided Views | Defer to a T3 phase; keep the D5 placeholder |
+| [E1](#e1) | Where S26–S30 run relative to S11 | Before S11, which certifies the milestone (OD1) |
+| [E2](#e2) | New planners, the format change and derived reads | Approve the ledger as one set |
+| [E3](#e3) | Guided Views in a Stop: model and moves | A View sequence with holds; moves inside a Stop use the Cut/Travel rule |
 | [E4](#e4) | Removal rules | No silent replacement; named consequences; Camera truth removed only when unshared |
 | [E5](#e5) | The door for additional Guides | Add to Guide ▸ New Guide…; Guide Card owns rename and Opening Guide |
 | [E6](#e6) | A Guide's start | Show it; change it from the Stop's `•••` |
-| [E7](#e7) | Lens and Eye height | Promote the three-step presets over exact values |
+| [E7](#e7) | Lens and Eye height | The three-step presets over exact values |
 | [E8](#e8) | Height for Place a View | Camera defaults, no working-height control |
-| [E9](#e9) | Present this in Plan; auto-framing | Arm Place a View aimed at the subject; no auto-framing |
+| [E9](#e9) | Present this framing | Bring the subject into view visibly, then capture it |
 | [E10](#e10) | Snapshot rendering | The Stage's own renderer, offscreen, at the capture-frame aspect |
-| [E11](#e11) | How a Travel gets Camera support | A deliberate *Add a Camera path*, never implied by choosing Travel |
+| [E11](#e11) | How a Travel gets Camera support | A deliberate *Add a Camera path* |
 | [E12](#e12) | *Crosses a wall* warning | Include, through a Layout-owned read |
 | [E13](#e13) | Hold-less Stops in the timeline | A *waits* segment, outside the total |
-| [E14](#e14) | Where Show ▾ lives in the Round 2 shell | Beside the Stage reading control, Experience only |
-| [E15](#e15) | Exclusions | Confirm the list |
-| [E16](#e16) | Review route | Independent review for planner work; owner visual acceptance for UI |
+| [E14](#e14) | Where Show ▾ lives | Beside the Stage reading control, Experience only |
+| [E15](#e15) | Visitor reach and Preview modes | Harvest Conservatory's: free-exploration switch, welcome chooser, end into free exploration, back to the tour |
+| [E16](#e16) | Review and test route | Writer: tests, correctness, tokens; independent review for domain parts; owner: manual journeys |
+| [E17](#e17) | *Back* in the Card | A back link in the Round 2 kind line, plus Alt+← |
 
 <a id="e1"></a>
 ## E1 — Sequencing against S11
 
-**Recommendation: register S26–S29 in R217 and run them before S11**, which then also needs them
-merged and gains four Experience journeys ([execution plan §6](./execution-plan.md#6-r217-and-s11-sequencing)).
-S11 is R217's one integrated proof. Run now, it would certify an Experience lens full of disabled
-placeholders, and S26–S29 would then rework the Card, Index, route and Stage facade it just certified.
-One later S11 proves the finished shell once.
-
-*Alternative:* run S11 now on S12–S25 and register S26–S29 as a new T3 phase. R217 closes sooner,
-but the Experience lens is integrated twice, and the milestone's *Camera/Experience authoring* row
-already lists advanced path authoring and rich transport as *Not required*.
-
-Either way, R217's non-goal *Experience Guide and Path redesign* needs one clarifying amendment.
-S26 is not a redesign: it builds the accepted Conservatory and Round 2 design.
+**Recommendation: register S26–S30 in R217 and run them before S11**, which then needs them merged and
+gains Experience journeys ([execution plan §6](./execution-plan.md#6-r217-s11-and-milestone-sequencing)).
+OD1 settles the earlier alternative (run S11 first and move Experience to a T3 phase): S11 now
+certifies the stable product, Experience included. The milestone's *Camera/Experience authoring* row
+and R217's non-goal *Experience Guide and Path redesign* need amending at registration.
 
 <a id="e2"></a>
-## E2 — New planners and derived reads
+## E2 — New planners, the format change and derived reads
 
 **Recommendation: approve the [ledger](./capability-inventory.md#12-operations-that-are-missing) as
-one set:** `experience-update`, `experience-guide-update`, multi-Guide `experience-guide-create`, the
-`viewIds` permutation, the four removals, `camera-connection-create`, `camera-connection-update`, the
-Guide time map and the route-versus-Wall read. They change no format, gate version or F interface,
-but they are planner changes under campaign checkpoint 3. Approving them together lets each slice
-start without stopping again at that checkpoint. Any planner not on the list still stops there.
+one set.** It holds:
 
-The Camera planners write Camera-owned facts (connection, interior anchors, per-direction timing).
-They do not move authority: `camera-core` still resolves routes and evaluates motion, and the time
-map is a `camera-core` read beside `experience-controllers.ts`, not a second clock.
+- the Experience planners: `experience-update`, `experience-guide-update`, multi-Guide
+  `experience-guide-create`, the `viewIds` permutation, the four removals, and the Stop-sequence and
+  reach fields;
+- the Camera planners: `camera-connection-create` and `camera-connection-update`;
+- the derived reads: the Guide time map and the route-versus-Wall read;
+- **one format change, in S27:** the Experience unit's Stop View sequence, the Presentation's
+  free-exploration flag and the Experience's welcome text, with the `ExecutionProgram`, lowering and
+  interpreter changes they need.
+
+Under the owner's no-versioning stance the format change is a version bump: strict readers refuse the
+old format, fixtures are regenerated, and nothing is migrated. Whether the program change is a new
+`T3.camera-experience-cutover` version is ruled with the gate register at registration. Approving the
+set clears campaign checkpoint 3 for exactly these items; anything else still stops there.
+
+The Camera planners write Camera-owned facts. `camera-core` still resolves routes and evaluates
+motion, and the time map is a `camera-core` read beside `experience-controllers.ts`, not a second clock.
 
 <a id="e3"></a>
-## E3 — Stop-local guided Views
+## E3 — Guided Views in a Stop
 
-**Recommendation: defer to a T3 phase.** Several Views per Stop, their order and per-View holds need
-an Experience format change, an `ExecutionProgram` and lowering change, interpreter support for
-in-Stop moves through Camera (Conservatory's fixed 1.6 s glide is a shortcut), and the
-`T3.camera-experience-cutover` gate. That is beyond an R217 slice, whose registration excludes format
-changes. S26 keeps D5: the entry View with its hold, the other Views dimmed, *Include* disabled with
-*Comes with Stop-local Views*. With no data obligations before beta, the later format change is a
-version bump with strict refusal and no migration.
+**Recommendation.** A Stop carries an ordered, non-empty list of guided Views from its Presentation,
+each with an optional hold. The first is the entry, which replaces the single `entryViewId`. Its
+`holdSeconds` becomes the per-View hold. The Stop's continuation is unchanged.
 
-*Alternative:* a fifth slice, S30, with the format bump, after S29. It roughly doubles S26's
-domain risk.
+- **New Stops:** one View, the Presentation's Default (Conservatory), with no hold set.
+- **Include:** appends a View with a 3 s hold. Leaving out the last View is refused (*A Stop shows at
+  least one View*). Reordering is Stop-local. None of these changes the Presentation's Default
+  (Conservatory, PLATE).
+- **Hold rules:** an intermediate View without a hold gets 3 s, because a visitor never waits inside
+  a Stop. Only the last View's hold may be absent, which means the Stop *waits* for Next ([E13](#e13)).
+- **Moves inside a Stop** use the same rule as between Stops: Cut by default, Travel when a Camera
+  connection joins the two Views, with the gap named otherwise. Conservatory's fixed 1.6 s glide is a
+  shortcut and is not promoted. The step's Cut/Travel choice is stored per guided View, beside its
+  hold.
+- **Visitor:** guided playback advances the Views by their holds and waits for *Next stop* between
+  Stops (Conservatory).
 
 <a id="e4"></a>
 ## E4 — Removal rules
@@ -75,132 +97,126 @@ before it runs. Nothing is replaced silently.
 
 | Removing | Rule |
 | --- | --- |
-| A Stop | Removed from `stops` and from every Guide that orders it. A continuation targeting it falls back to the Guide order, and the summary names it. A Guide's start moves to the Stop that followed it (or preceded it, if it was last), named. **The only Stop of a Guide:** refused, *A Guide keeps at least one Stop — remove the Guide instead*. A Detour that uses it: refused with that reason (no Detour UI exists to repair it) |
-| A View from a Presentation | **The last View:** refused, *remove the Presentation instead*. **The Default:** the summary asks for the new Default from the remaining Views; no automatic choice. Stops that enter there by name revert to entering at the Default, named. The Camera View and its connections are deleted only when no other Presentation lists it; otherwise *Still used by ⟨Presentation⟩* |
+| A Stop | Removed from `stops` and from every Guide that orders it. A continuation targeting it falls back to the Guide order, named. A Guide's start moves to the Stop that followed it (or preceded it, if it was last), named. **The only Stop of a Guide:** refused, *A Guide keeps at least one Stop — remove the Guide instead*. A Detour that uses it: refused with that reason |
+| A View from a Presentation | **The last View:** refused, *remove the Presentation instead*. **The Default:** the summary asks for the new Default; no automatic choice. Stops that guide through it lose it from their sequences, and a Stop left with no View enters at the Default, named. The Camera View and its connections are deleted only when no other Presentation lists it; otherwise *Still used by ⟨Presentation⟩* |
 | A Presentation | Its Stops (Stop rules apply, so a Guide left empty refuses), its Gates, and its unshared Camera Views with their connections. Summary: *and its 2 Stops*, *and 1 Camera path* |
 | A Guide | Its Stops that no other Guide orders. If it is the Opening Guide, the next Guide becomes it, named; with none left, `entryGuideId` becomes `null` and the Index says *No Guide yet* |
-
-*Alternative:* keep orphaned Camera Views and connections after removal. It is simpler but leaves
-Camera truth no creator can reach or see.
 
 <a id="e5"></a>
 ## E5 — Additional Guides
 
 **Recommendation:** the Presentation `•••` *Add to Guide* becomes a submenu: the Guides (the active
-one first), then **New Guide…**, which asks for the name inline as D8 does. A new Guide becomes the
-active Guide. It does not become the Opening Guide unless it is the first. The Guide Card owns rename
-(its title, as on every Card) and **Make this the opening Guide**. The Index Guides group keeps one
-row per Guide and gains an *opens* tag on the Opening Guide. No Index *New*, keeping D1's
-one-home rule.
-
-*Alternative:* a *New Guide* row in the Index Guides group. It is quicker to find, but it creates a
-Guide with no Stop, which the domain refuses.
+one first), then **New Guide…**, which asks for the name inline as D8 does. A new Guide becomes active
+but not the Opening Guide unless it is the first. The Guide Card owns rename and **Make this the
+opening Guide**. The Index Guides group gains an *opens* tag. No Index *New* (D1).
 
 <a id="e6"></a>
 ## E6 — A Guide's start
 
-**Recommendation:** show a *Start* tag on the start Stop's card. **Start the tour here** in the
-selected Stop's `•••` changes it (`experience-guide-update.entryStopId`). New Guides start at their
-first Stop. Reordering never moves the start, as the domain rules.
-
-*Alternative:* make the start follow the first position on every reorder. It matches Conservatory's
-mock, but it writes a second field the creator did not touch.
+**Recommendation:** a *Start* tag on the start Stop's card. **Start the tour here** in the selected
+Stop's `•••` changes it. New Guides start at their first Stop. Reordering never moves the start.
 
 <a id="e7"></a>
 ## E7 — Lens and Eye height
 
-**Recommendation:** promote Conservatory's two three-step controls as shortcuts over exact Camera
-values. Lens Wide, Normal and Close map to the retained `CAMERA_LENS_PRESETS` (24, 50 and 85 mm) and
-show *Custom · 35 mm* when the View matches none. Conservatory's mock field-of-view values (72°, 52°,
-32°) are not promoted. Eye height Seated, Standing and Raised (1.15 m, the Camera default 1.65 m, and
-2.5 m) moves eye and target by the same amount, so aim is kept. The exact *Lens mm* and *Eye* facts
-stay below as the readout. All writes go through `camera-view-update`. Numeric entry stays deferred
-advanced precision (PLATE *Camera View precision*).
+**Recommendation:** Conservatory's two three-step controls as shortcuts over exact Camera values.
+
+- **Lens:** Wide, Normal and Close map to the retained `CAMERA_LENS_PRESETS` (24, 50 and 85 mm).
+  The control shows *Custom · 35 mm* when the View matches none. Conservatory's mock field-of-view
+  values (72°, 52°, 32°) are not promoted.
+- **Eye height:** Seated, Standing and Raised are 1.15 m, the Camera default of 1.65 m, and 2.5 m.
+  A step moves eye and target by the same amount, so aim is kept.
+- The hero tag reads *Normal · Standing*. Writes go through `camera-view-update`.
 
 <a id="e8"></a>
 ## E8 — Place a View height
 
-**Recommendation:** the placed eye is at the Camera default of 1.65 m above the Floor and the target
-at 1.25 m along the drag. There is no working-height control (PLATE leaves it open; Levels are
-non-goals). Eye height changes afterwards through E7.
+**Recommendation:** the eye is at the Camera default of 1.65 m above the Floor and the target at 1.25 m
+along the drag. There is no working-height control.
 
 <a id="e9"></a>
-## E9 — Present this in Plan, and auto-framing
+## E9 — Present this framing
 
-**Recommendation:** in 3D, Present this keeps S25's behaviour of capturing what you see. In Plan it
-arms **Place a View** bound to the subject: press where the camera stands, and the aim starts pointed
-at the subject; drag to adjust. Nothing is captured that the creator did not compose. Conservatory's
-`frameObject` auto-framing is a prototype shortcut and is not promoted.
+**Recommendation:** harvest Conservatory's *a first View framed on it* without capturing what the
+creator has not seen.
 
-*Alternative:* a Camera framing request (*Bring into view*) and then a capture. It needs a recommended-
-framing Camera capability that does not exist.
+- **In 3D:** Present this issues the Stage's existing **Bring into view** request on the subject.
+  This is a deliberate Camera move, which PLATE allows. It then captures the framed pose as the
+  Presentation's first View, in one acceptance. The Stage stays on that framing, and the hero and Look
+  through show it.
+- **In Plan:** Present this arms Place a View aimed at the subject.
+
+Conservatory's `frameObject` heuristic is not promoted.
 
 <a id="e10"></a>
 ## E10 — Snapshots
 
 **Recommendation:** render each View through `camera-core` projection with the Stage's own renderer
-into an offscreen target at the Look-through capture-frame aspect. Render lazily, only for slots in
-view, cached by View pose and the source revision, and never serialized. No extra WebGL context (the
-visitor Preview's existing context is unchanged). Aspect and composition agree with Look through, as
-PLATE requires.
-
-*Alternative:* schematic snapshots from the Paper Plan representation. They are cheaper but do not
-show what the visitor sees.
+into an offscreen target at the Look-through capture-frame aspect. Snapshots render lazily for visible
+slots, are cached by View pose and source revision, and are never serialized. No extra WebGL context.
 
 <a id="e11"></a>
 ## E11 — Camera support for Travel
 
-**Recommendation:** choosing Travel never creates movement. When the Transition has a gap, its Card
-says *No Camera path joins ⟨exit View⟩ and ⟨entry View⟩* and offers **Add a Camera path**, which
-creates one straight connection from the exit View to the entry View (no interior anchors, computed
-timing) through `camera-connection-create`. Camera then resolves either direction. The red connector's
-menu offers the same action. A later entry or exit change re-resolves, and the old connection stays
-with its Views.
+**Recommendation:** choosing Travel never creates movement. A gap's Card offers **Add a Camera path**,
+which creates one straight connection from the exit View to the entry View with computed timing, through
+`camera-connection-create`. The red connector's menu offers the same action. The same action covers a
+Travel step inside a Stop ([E3](#e3)).
 
 <a id="e12"></a>
 ## E12 — *Crosses a wall*
 
-**Recommendation:** include it. The check is a runtime-safe Layout read in `layout-core`: the
-evaluated route's planar samples against the Wall solids of the Layout representation, which
-Openings pierce. It reuses an existing helper if bounded investigation finds one; otherwise it adds
-a pure function. It is advisory only: it never blocks an edit, never moves a point and never
-becomes a Camera guard.
-
-*Alternative:* defer it. Path editing then has no feedback for its most common mistake.
+**Recommendation:** include it, as a runtime-safe Layout read in `layout-core`. It tests the evaluated
+route's planar samples against the Layout representation's Wall solids, which Openings pierce. The
+warning is advisory: it never blocks, never moves a point and never becomes a Camera guard.
 
 <a id="e13"></a>
 ## E13 — Hold-less Stops in the timeline
 
-**Recommendation:** a Stop without `holdSeconds` waits for the visitor's *Next*. On the bar it is a
-*waits* segment of fixed width, hatched. The total counts seconds only and adds *+ 2 waits*.
-Playback pauses there until Play is pressed again. Stops with holds and Travel links are scaled by
-seconds.
+**Recommendation:** a Stop whose last View has no hold waits for the visitor's *Next*. On the bar it is
+a hatched *waits* segment of fixed width. The total counts seconds and adds *+ 2 waits*, and playback
+pauses there until Play is pressed again.
 
 <a id="e14"></a>
 ## E14 — Show ▾ placement
 
-**Recommendation:** in the Experience lens only, a **Show ▾** popover beside the Round 2 Stage
-reading control, with Conservatory's content: *Whole Guide* or *Selection only* (with a Guide open),
-Camera markers, View frustums, Camera paths (disabled without a Guide: *Open a Guide to see its
-paths*) and Labels, plus an *n off* count on the key. Session state only. Round 2 owns Stage chrome,
-so the owner confirms the placement.
+**Recommendation:** in the Experience lens only, a **Show ▾** popover beside the Round 2 Stage reading
+control, with Conservatory's content: *Whole Guide* or *Selection only*; Camera markers, View
+frustums, Camera paths and Labels; and *n off* on the key. Session state only.
 
 <a id="e15"></a>
-## E15 — Exclusions
+## E15 — Visitor reach and Preview modes
 
-**Recommendation: confirm these as outside S26:** publishing and every T4 surface; narration,
-captions, cues and beats; Gates, Detours and branching authoring; per-Presentation *Open in free
-exploration* (a format addition); a guided or free chooser and a phone frame in the visitor Preview;
-Experience removal; Conservatory's *Back* chip; path editing in 3D; removing a Camera path on its own;
-numeric Camera precision panels; auto-framing; and every prototype shortcut in the
-[S25 harvest §5](../r217.s25-experience-shared-homes/design-harvest.md#5-prototype-shortcuts-never-promoted)
-plus `camera.js`'s fixed glide and Catmull-Rom curve, `evalGuide`'s lerp, the `inPoly` test and
-the Round 2 mock durations.
+**Recommendation: harvest Conservatory's visitor model.** The camera-tour contract leaves these
+policies to domain planning; this decision is that planning.
+
+| Capability | Where it lives |
+| --- | --- |
+| **Open in free exploration** (per Presentation, default on) | Presentation Card *Visitors reach it*; View Card *Hidden from free exploration*; S27 format |
+| **Welcome chooser:** Experience name and welcome text; *Take the guided tour* (*n stops · about 0:41*) and *Explore freely* (*n places*) | Preview, S30. The welcome text is bounded plain text like a Presentation's Information text, edited on the Guide Card under More |
+| **Guided controls:** Pause/Resume, *Next stop*, *Finish tour*, *Explore freely* | Preview, S30 |
+| **Places** drawer listing open Presentations and their Views | Preview, S30 |
+| **Back to the tour · Stop N** | Preview, S30 (the visitor runtime's resume) |
+| **End of the tour:** *Keep exploring — including views the tour skipped* and *Start the tour again* | Preview, S30 |
+| **Guide Card mode cards** as Preview entries (guided or free) | Guide Card, S30 |
+
+*Remove if unwanted:* the welcome text is the only new visitor-facing text field. Dropping it keeps the
+chooser with the name alone.
 
 <a id="e16"></a>
-## E16 — Review route
+## E16 — Review and test route (OD5)
 
-**Recommendation:** under the owner's 2026-11-02 process change, UI is accepted by owner visual
-review. Planner and Camera work is not UI, so S26, S28 and S29 keep one independent review of
-their domain and Camera parts (new planners, the time map, the Layout read). Every slice is then
-accepted visually by the owner.
+| Who | Owns |
+| --- | --- |
+| **Writer** | All test code: planner contracts, controller and component tests, the architecture lane, and the heavy Camera contracts where the slice consumes motion. Correctness checks. A visual-token check: the slice's controls use the shell contract's role tokens and metrics (colour roles, type roles, control sizes, 44 px coarse targets), asserted in component tests or one short computed-style check. No journey runs, no screenshots, no capture archive |
+| **Independent reviewer** | Domain and Camera parts only: S26, S27, S29 and S30 (planners, format, program, time map, Layout read) |
+| **Owner** | The acceptance journeys, run manually; visual acceptance |
+
+<a id="e17"></a>
+## E17 — *Back* in the Card
+
+**Recommendation:** harvest Conservatory's selection-history Back without new chrome. When the
+previous selection is not the kind line's parent, the Round 2 kind line shows *‹ Stop 2* before the
+kind. Alt+← does the same. Back only changes what you look at; it never undoes. History is session
+state, up to 40 entries. Round 2 owns the Card container, so the owner confirms this reuse of the kind
+line.

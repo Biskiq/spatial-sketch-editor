@@ -202,7 +202,7 @@ Enter, Esc), labels and focus rings; a live check of the dense and narrow states
 
 Carried forward and checked against the domain in the proposed
 [S26 capability inventory](../r217.s26-experience-authoring-depth/capability-inventory.md), which
-also [corrects](../r217.s26-experience-authoring-depth/capability-inventory.md#3-corrections-to-the-s25-harvest-4)
+also [corrects](../r217.s26-experience-authoring-depth/capability-inventory.md#4-corrections-to-the-s25-harvest-4)
 four rows below.
 
 | Capability | Today | Note for S26 |
