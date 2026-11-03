@@ -169,7 +169,20 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 		type ApprovedModelSources
 	} from '$lib/authoring/scene/model-bytes';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
-	import ExperienceSurface from '$lib/authoring/experience/ExperienceSurface.svelte';
+	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
+	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
+	import ExperienceGuidePanel from '$lib/authoring/experience/ExperienceGuidePanel.svelte';
+	import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePresentationWriter.svelte';
+	import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
+	import { provideExperienceHomes, type ExperienceCardKind } from '$lib/authoring/experience/experience-homes';
+	import {
+		PRESENTATION_WRITER_FIELDS,
+		STOP_WRITER_FIELDS,
+		presentationCardModel,
+		stopCardModel
+	} from '$lib/authoring/experience/experience-card-model';
+	import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
+	import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
 	import {
@@ -308,6 +321,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			lens = session.lens();
 			task = null;
 			contributionsVersion += 1;
+			// R217.S25: the Guide instrument is closed by default, so every entry starts closed.
+			if (lens === 'experience') experienceGuideOpen = false;
 		}
 		// Arming the Experience dock's Guide key is not a mode: the lens owns it.
 	}
@@ -404,8 +419,30 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let previewSurface = $state.raw<VisitorSurface | null>(null);
 	let previewEpoch = 0;
 	let previewBusy = $state(false);
-	/** The adapter services the Experience lens surface edits through. */
+	/** The adapter services the Stage and the Experience homes edit through. */
 	let adapterServices = $state.raw<StageAdapterServices | null>(null);
+	/**
+	 * R217.S25 — the Experience controller the shared homes read. ExperienceHomesHost creates it
+	 * while the Experience lens is open and binds it here; it is null in World.
+	 */
+	let experienceController = $state.raw<ExperienceController | null>(null);
+	/** Whether the Guide instrument is open in the lower edge. Closed by default. */
+	let experienceGuideOpen = $state(false);
+	/** The Experience subject the Card last focused: a Presentation, or a Stop of the Guide. */
+	let experienceCardKind = $state<ExperienceCardKind | null>(null);
+	/** The controller the homes read; null outside the Experience lens. */
+	const activeExperience = $derived(lens === 'experience' ? experienceController : null);
+	provideExperienceHomes({
+		controller: () => (lens === 'experience' ? experienceController : null),
+		guideOpen: () => experienceGuideOpen,
+		setGuideOpen: (open) => {
+			experienceGuideOpen = open;
+		},
+		focusCardSubject: (kind) => {
+			experienceCardKind = kind;
+			cardOpen = true;
+		}
+	});
 	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
@@ -3549,6 +3586,186 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	});
 
 	/**
+	 * R217.S25 — the Experience lens's groups for the shared Index: the Presentations list with
+	 * its filter, the Experience switch, the empty-state create and the Guide group. A read of the
+	 * controller; every action is one of its commands.
+	 */
+	const experienceIndex = $derived.by((): ExperienceIndexGroups | null => {
+		if (lens !== 'experience') return null;
+		const controller = experienceController;
+		if (controller === null) {
+			return {
+				pending: true,
+				experiences: [],
+				current: null,
+				presentations: [],
+				query: '',
+				busy: false,
+				guide: null,
+				onQuery: () => {},
+				onOpenExperience: () => {},
+				onSelectPresentation: () => {},
+				onCreateExperience: () => {},
+				onToggleGuide: () => {}
+			};
+		}
+		const current = controller.current;
+		const selectedId = controller.selectedPresentation?.id ?? null;
+		return {
+			pending: false,
+			experiences: controller.experiences.map((entry) => ({ id: entry.id, label: entry.label })),
+			current: current === null ? null : { id: current.id, label: current.label },
+			presentations: controller.filteredPresentations.map((entry) => ({
+				id: entry.id,
+				label: entry.label,
+				selected: entry.id === selectedId
+			})),
+			query: controller.query,
+			busy: controller.busy,
+			guide: current === null ? null : { label: controller.currentGuide?.label ?? null, open: experienceGuideOpen },
+			onQuery: (query: string) => {
+				controller.query = query;
+			},
+			onOpenExperience: (experienceId: string) => {
+				controller.openExperience(experienceId);
+				experienceCardKind = null;
+				cardOpen = true;
+			},
+			onSelectPresentation: (presentationId: string) => {
+				controller.selectPresentation(presentationId);
+				experienceCardKind = 'presentation';
+				cardOpen = true;
+			},
+			onCreateExperience: () => {
+				void controller.createExperience();
+			},
+			onToggleGuide: () => {
+				experienceGuideOpen = !experienceGuideOpen;
+			}
+		};
+	});
+
+	/**
+	 * R217.S25 — the Experience subject the shared Card shows: the focused Stop or Presentation.
+	 * The one Card replaces the retired surface column. The Stop wins only when the creator focused
+	 * a Stop last; otherwise the focused Presentation does, and a Stop is the fallback.
+	 */
+	const experienceCard = $derived.by(() => {
+		const controller = activeExperience;
+		if (controller === null || adapterServices === null || controller.current === null) return null;
+		const stop = controller.selectedStop;
+		const presentation = controller.selectedPresentation;
+		const kind: ExperienceCardKind | null =
+			experienceCardKind === 'stop' && stop !== null
+				? 'stop'
+				: presentation !== null
+					? 'presentation'
+					: stop !== null
+						? 'stop'
+						: null;
+		const services = adapterServices;
+		if (kind === 'presentation' && presentation !== null) {
+			const model = presentationCardModel({
+				presentation,
+				views: controller.viewsOf.get(presentation.id) ?? [],
+				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length
+			});
+			return {
+				model,
+				nameWriter: {
+					get value() {
+						return presentation.label;
+					},
+					commit: (name: string) => controller.renamePresentation(presentation.id, name)
+				},
+				writer: {
+					summary: 'Presentation',
+					adapterId: 'experience',
+					fieldIds: PRESENTATION_WRITER_FIELDS,
+					view: { component: ExperiencePresentationWriter, services }
+				}
+			};
+		}
+		if (kind === 'stop' && stop !== null) {
+			const guideIndex = controller.guideStops.findIndex((entry) => entry.id === stop.id);
+			const model = stopCardModel({
+				stop,
+				position: guideIndex + 1,
+				guideLength: controller.guideStops.length,
+				presentationLabel: controller.presentationLabel(stop.presentationId),
+				guideLabel: controller.currentGuide?.label ?? null
+			});
+			return {
+				model,
+				nameWriter: null,
+				writer: {
+					summary: 'Stop',
+					adapterId: 'experience',
+					fieldIds: STOP_WRITER_FIELDS,
+					view: { component: ExperienceStopWriter, services }
+				}
+			};
+		}
+		return null;
+	});
+
+	/**
+	 * What the one Card shows for the current lens: the Experience subject when one is focused,
+	 * otherwise the World selection exactly as before. Experience subjects have no spatial place
+	 * and no `•••` functions yet, so they take no Bring into view and no function list.
+	 */
+	const shownCard = $derived.by(() => {
+		const experience = experienceCard;
+		if (experience !== null) {
+			return {
+				identity: experience.model.identity,
+				facts: experience.model.facts,
+				nameWriter: experience.nameWriter,
+				writer: experience.writer,
+				actions: [] as readonly StageCardActionRecord[],
+				functions: [] as readonly string[],
+				bringIntoView: null
+			};
+		}
+		return {
+			identity: cardIdentity,
+			facts: cardFacts,
+			nameWriter: cardNameWriter,
+			writer: cardWriter,
+			actions: cardActions,
+			functions: null,
+			bringIntoView: () => {
+				const target = selectedWorldPoint();
+				if (target !== null) bringIntoView(target);
+			}
+		};
+	});
+
+	/** The Guide instrument's task and content, mounted in the lower edge by StageInstrumentHost. */
+	const experienceGuideTask = $derived({
+		kind: 'experience-guide',
+		label: 'Guide',
+		targetLabel: activeExperience?.currentGuide?.label ?? null
+	});
+	const experienceGuideInstrument = $derived.by((): StageInstrumentContent | null =>
+		adapterServices === null || activeExperience === null
+			? null
+			: {
+					summary: 'Guide',
+					presentation: 'instrument',
+					view: { component: ExperienceGuidePanel, services: adapterServices }
+				}
+	);
+
+	/** The Experience dock's Capture: the Stage framing becomes a View, through the controller. */
+	async function captureExperienceView(): Promise<void> {
+		const controller = activeExperience;
+		if (controller === null) return;
+		await controller.captureAndBind();
+		experienceCardKind = 'presentation';
+	}
+
+	/**
 	 * Whether the Card is folded to identity.
 	 *
 	 * PLATE's arbitration: the Card keeps its facts readable *beside* the one lower
@@ -4017,6 +4234,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			}}
 			onReveal={(id) => { if (id.startsWith('layout:')) toggleReveal(id.slice(id.indexOf(':', 7) + 1)); }}
 			onRename={() => { cardOpen = true; cardRenameRequest += 1; }}
+			experience={experienceIndex}
 		/>
 		{/if}
 		<!--
@@ -4207,31 +4425,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					</section>
 				{/if}
 
-				{#if lens === 'experience'}
-					<!--
-						Like the toolbar, this panel stops its own pointer/click events: the
-						Stage surface below is pointer-driven and captures the pointer on press,
-						so a bubbled press would move the click onto the Stage and a control
-						inside the lens would never receive it.
-					-->
-					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-					<div
-						class="lens-surface"
-						role="region"
-						aria-label="Experience lens"
-						onpointerdown={(event) => event.stopPropagation()}
-						onclick={(event) => event.stopPropagation()}
-					>
-						{#if adapterServices !== null && currentEnvelope !== null}
-							<ExperienceSurface
-								services={adapterServices}
-								snapshot={currentEnvelope}
-								onEnterPreview={() => void openPreview()}
-							/>
-						{:else}
-							<p class="lens-pending" role="status">The Experience lens mounts with the admitted project source.</p>
-						{/if}
-					</div>
+				{#if lens === 'experience' && adapterServices !== null && currentEnvelope !== null}
+					<!-- The shared homes' controller: it renders nothing; the Index, Card and lower edge read it. -->
+					{#key adapterServices}
+						<ExperienceHomesHost services={adapterServices} snapshot={currentEnvelope} bind:controller={experienceController} />
+					{/key}
 				{/if}
 
 				{#if notice}<p class="stage-note" role="status">{notice}</p>{/if}
@@ -4288,19 +4486,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			{/if}
 
 			<EditorCard
-				identity={preview === null && cardOpen ? cardIdentity : null}
-				facts={cardFacts}
-				nameWriter={cardNameWriter}
+				identity={preview === null && cardOpen ? shownCard.identity : null}
+				facts={shownCard.facts}
+				nameWriter={shownCard.nameWriter}
 				renameRequest={cardRenameRequest}
-				writer={cardWriter}
-				actions={cardActions}
-
+				writer={shownCard.writer}
+				actions={shownCard.actions}
+				functions={shownCard.functions}
 				gesturing={cardGesturing}
 				onClose={closeCard}
-				onBringIntoView={() => {
-					const target = selectedWorldPoint();
-					if (target !== null) bringIntoView(target);
-				}}
+				onBringIntoView={shownCard.bringIntoView}
 			/>
 
 			{#if preview === null && inactiveTask}
@@ -4334,6 +4529,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							/>
 				{/snippet}
 					</StageDock>
+				{/if}
+				{#if activeExperience !== null}
+					<!-- Column order is bottom-up: the dock, its feedback line, then the Guide instrument above them. -->
+					<ExperienceDock
+						captureDisabled={activeExperience.busy || activeExperience.current === null}
+						guideOpen={experienceGuideOpen}
+						onCapture={() => void captureExperienceView()}
+						onToggleGuide={() => (experienceGuideOpen = !experienceGuideOpen)}
+					/>
+					{#if activeExperience.message !== ''}<p class="experience-feedback" role="status" aria-live="polite">{activeExperience.message}</p>{/if}
+					{#if experienceGuideOpen}
+						<StageInstrumentHost
+							task={experienceGuideTask}
+							onClose={() => (experienceGuideOpen = false)}
+							instrument={experienceGuideInstrument}
+						/>
+					{/if}
 				{/if}
 				{#if contributedInstrument!==null && contributedInstrument.presentation !== 'palette'}
                 <StageInstrumentHost task={paletteOpen ? taskHost : null} onClose={closeTask} instrument={contributedInstrument} />
@@ -4605,31 +4817,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.stage-height-slot {
 		display: contents;
 	}
-	/*
-		Round 2's one lower working edge: the invited Guide instrument sits above the
-		surface's own dock, centred on the Stage, and the Stage stays dominant. This is
-		the Capture/Guide contribution, not a second shell column.
-	*/
-	.lens-surface {
-		position: absolute;
-		left: 50%;
-		bottom: calc(0.75rem + var(--lower-column-height, 0px));
-		transform: translateX(-50%);
-		max-height: calc(100% - 5rem);
-		width: min(52rem, calc(100% - 1.5rem));
-		display: flex;
-		min-height: 0;
-	}
-	.lens-surface :global(.experience-surface) {
-		flex: 1;
-		min-height: 0;
-	}
-	.lens-pending {
+	/* R217.S25: the Experience dock's feedback line sits on the lower edge, above its dock. */
+	.experience-feedback {
+		max-width: min(30rem, 100%);
 		margin: 0;
-		padding: 0.6rem 0.75rem;
-		color: #bcb5c4;
-		font-size: 0.86rem;
-		line-height: 1.45;
+		padding: 0.25rem 0.6rem;
+		border-radius: 8px;
+		background: rgb(17 41 31 / 0.92);
+		color: #e6ece6;
+		font-size: 0.78rem;
+		line-height: 1.35;
 	}
 	.preview-takeover {
 		position: absolute;
