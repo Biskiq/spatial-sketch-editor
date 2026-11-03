@@ -6,7 +6,7 @@
  * (`experience-model.ts`), and every write is a spy. A probe puts the fake homes in context the way
  * the route does. Each block names one design decision from the S25 harvest: connectors name the
  * resolved destination (D11), Cut and Travel have one home (D6), a Stop's other Views are dimmed
- * with a disabled Include (D5), the Default View has one mutation home (D12), and the timeline
+ * with an Include action (S27), the Default View has one mutation home (D12), and the timeline
  * shows Stop order with no time (D9).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -26,7 +26,7 @@ import {
 	lensMillimetres,
 	reachSummary,
 	resolveContinuation,
-	stopsEnteringAt,
+	stopsGuiding,
 	type ExperienceSubject,
 	type ExperienceViewFacts
 } from '$lib/authoring/experience/experience-model';
@@ -54,17 +54,17 @@ const VIEW_LABELS: Record<string, string> = {
  * jumps to Stop 5 over Stop 4. Stop 4 follows the sequence. Stop 5 ends the tour.
  */
 const PRESENTATIONS: readonly ExperiencePresentation[] = [
-	{ id: 'piano', label: 'Piano', viewIds: ['piano-wide', 'piano-keys'], defaultViewId: 'piano-wide', subject: null, text: null },
-	{ id: 'gallery', label: 'Gallery', viewIds: ['gallery-hall'], defaultViewId: 'gallery-hall', subject: null, text: null },
-	{ id: 'garden', label: 'Garden', viewIds: ['garden-gate', 'garden-bench'], defaultViewId: 'garden-gate', subject: null, text: null }
+	{ id: 'piano', label: 'Piano', viewIds: ['piano-wide', 'piano-keys'], explorable: true, defaultViewId: 'piano-wide', subject: null, text: null },
+	{ id: 'gallery', label: 'Gallery', viewIds: ['gallery-hall'], explorable: true, defaultViewId: 'gallery-hall', subject: null, text: null },
+	{ id: 'garden', label: 'Garden', viewIds: ['garden-gate', 'garden-bench'], explorable: true, defaultViewId: 'garden-gate', subject: null, text: null }
 ];
 
 const STOPS: readonly ExperienceStop[] = [
-	{ id: 'stop-1', presentationId: 'piano', holdSeconds: 0.5, continuation: { kind: 'sequence-next', transition: 'cut' } },
-	{ id: 'stop-2', presentationId: 'gallery', continuation: { kind: 'sequence-next', transition: 'travel' } },
-	{ id: 'stop-3', presentationId: 'garden', continuation: { kind: 'stop', stopId: 'stop-5', transition: 'cut' } },
-	{ id: 'stop-4', presentationId: 'piano', continuation: { kind: 'sequence-next' } },
-	{ id: 'stop-5', presentationId: 'gallery', continuation: { kind: 'end' } }
+	{ id: 'stop-1', presentationId: 'piano', views: [{ viewId: 'piano-wide', holdSeconds: 0.5 }], continuation: { kind: 'sequence-next', transition: 'cut' } },
+	{ id: 'stop-2', views: [{ viewId: 'gallery-hall' }], presentationId: 'gallery', continuation: { kind: 'sequence-next', transition: 'travel' } },
+	{ id: 'stop-3', views: [{ viewId: 'garden-gate' }], presentationId: 'garden', continuation: { kind: 'stop', stopId: 'stop-5', transition: 'cut' } },
+	{ id: 'stop-4', views: [{ viewId: 'piano-wide' }], presentationId: 'piano', continuation: { kind: 'sequence-next' } },
+	{ id: 'stop-5', views: [{ viewId: 'gallery-hall' }], presentationId: 'gallery', continuation: { kind: 'end' } }
 ];
 
 const GUIDE: GuideRecord = {
@@ -77,6 +77,7 @@ const GUIDE: GuideRecord = {
 const EXPERIENCE: Experience = {
 	id: 'experience-1',
 	label: 'Walk',
+	welcome: null,
 	entryGuideId: 'guide-1',
 	presentations: PRESENTATIONS,
 	stops: STOPS,
@@ -119,6 +120,7 @@ type ControllerOptions = {
 	busy?: boolean;
 	subject?: ExperienceSubject | null;
 	selectedStopId?: string;
+	guidedViews?: ExperienceStop['views'];
 	selectedViewId?: string;
 	selectedPresentationId?: string;
 };
@@ -126,9 +128,11 @@ type ControllerOptions = {
 function fakeController(options: ControllerOptions = {}) {
 	const guide = options.guided === false ? null : GUIDE;
 	const stops = guideStopsOf(EXPERIENCE, guide);
-	const selectedStop = STOPS.find((stop) => stop.id === options.selectedStopId) ?? null;
+	const stop = STOPS.find((stop) => stop.id === options.selectedStopId) ?? null;
+	const selectedStop = stop === null || options.guidedViews === undefined ? stop : { ...stop, views: options.guidedViews };
 	const selectedPresentation =
-		PRESENTATIONS.find((presentation) => presentation.id === options.selectedPresentationId) ?? null;
+		PRESENTATIONS.find((presentation) => presentation.id === options.selectedPresentationId ||
+			(options.selectedViewId !== undefined && presentation.viewIds.includes(options.selectedViewId))) ?? null;
 	const selectedView = options.selectedViewId === undefined ? null : (VIEW_FACTS[options.selectedViewId] ?? null);
 	return {
 		current: EXPERIENCE,
@@ -155,7 +159,7 @@ function fakeController(options: ControllerOptions = {}) {
 		openGuide: vi.fn(),
 		viewFacts: vi.fn(() => null),
 		resolveContinuation: (stopId: string) => resolveContinuation(EXPERIENCE, guide, stopId),
-		viewStops: (viewId: string) => stopsEnteringAt(EXPERIENCE, guide, viewId),
+		viewStops: (viewId: string) => stopsGuiding(EXPERIENCE, guide, viewId),
 		presentationsAbout: vi.fn(() => []),
 		reach: () => reachSummary(EXPERIENCE, guide),
 		createExperience: vi.fn(async () => undefined),
@@ -164,8 +168,13 @@ function fakeController(options: ControllerOptions = {}) {
 		addStop: vi.fn(async (_presentationId: string, _options?: unknown) => true),
 		moveStopTo: vi.fn(async () => true),
 		moveStop: vi.fn(async () => true),
-		setStopEntry: vi.fn(async (_stopId: string, _entryViewId: string | null) => true),
-		setStopHold: vi.fn(async (_stopId: string, _holdSeconds: number | null) => true),
+		includeView: vi.fn(async (_stopId: string, _viewId: string) => true),
+		leaveOutView: vi.fn(async (_stopId: string, _viewId: string) => true),
+		moveGuidedViewTo: vi.fn(async (_stopId: string, _viewId: string, _index: number) => true),
+		moveGuidedView: vi.fn(async (_stopId: string, _viewId: string, _direction: number) => true),
+		setExplorable: vi.fn(async (_presentationId: string, _explorable: boolean) => true),
+		setWelcome: vi.fn(async (_body: string) => true),
+		setViewHold: vi.fn(async (_stopId: string, _viewId: string, _holdSeconds: number | null) => true),
 		setContinuation: vi.fn(async (_stopId: string, _target: unknown) => true),
 		setTransition: vi.fn(async (_stopId: string, _transition: 'cut' | 'travel') => true),
 		renamePresentation: vi.fn(async () => ({ kind: 'accepted' as const })),
@@ -398,8 +407,8 @@ describe('R217.S25 — the Guide adds a Stop from a Presentation', () => {
 
 describe('R217.S25 — the Stop writer shows the entry View, the other Views and where Next goes', () => {
 	it('shows the entry View with the word Entry and its hold', async () => {
-		const homes = fakeHomes(fakeController({ selectedStopId: 'stop-1' }));
-		const target = mountHome(ExperienceStopWriter, {}, homes);
+		const controller = fakeController({ selectedStopId: 'stop-1' });
+		const target = mountHome(ExperienceStopWriter, {}, fakeHomes(controller));
 		await settle();
 
 		const entries = target.querySelectorAll('ol.shots > li.shot');
@@ -410,18 +419,21 @@ describe('R217.S25 — the Stop writer shows the entry View, the other Views and
 		expect(entry.querySelector('.stepper .value')?.textContent).toBe('0.5s');
 	});
 
-	it('dims the other Views of the Presentation with a disabled Include that gives the reason', async () => {
-		const homes = fakeHomes(fakeController({ selectedStopId: 'stop-1' }));
-		const target = mountHome(ExperienceStopWriter, {}, homes);
+	it('dims the other Views of the Presentation with a working Include and guards the last guided View', async () => {
+		const controller = fakeController({ selectedStopId: 'stop-1' });
+		const target = mountHome(ExperienceStopWriter, {}, fakeHomes(controller));
 		await settle();
 
 		const others = target.querySelectorAll('.shot.is-out');
 		expect(others).toHaveLength(1);
 		expect(others[0]!.textContent).toContain('Keys');
 		const include = others[0]!.querySelector<HTMLButtonElement>('button.include')!;
-		expect(include.disabled).toBe(true);
-		expect(include.title).toBe('Comes with Stop-local Views');
-		expect(include.textContent).toContain('Include');
+		expect(include.disabled).toBe(false);
+		include.click();
+		expect(controller.includeView).toHaveBeenCalledWith('stop-1', 'piano-keys');
+		const leave = buttonNamed(target, 'Leave out Wide');
+		expect(leave.disabled).toBe(true);
+		expect(leave.title).toBe('A Stop shows at least one View');
 	});
 
 	it('sets the first hold to one second when the hold is unset and the Stop has none', async () => {
@@ -436,7 +448,7 @@ describe('R217.S25 — the Stop writer shows the entry View, the other Views and
 
 		buttonNamed(target, 'Longer hold').click();
 		await settle();
-		expect(controller.setStopHold).toHaveBeenCalledWith('stop-2', 1);
+		expect(controller.setViewHold).toHaveBeenCalledWith('stop-2', 'gallery-hall', 1);
 	});
 
 	it('offers no Cut or Travel control: the transition is reached through its own card', async () => {
@@ -571,7 +583,7 @@ describe('R217.S25 — the View writer holds the only Default mutation (D12)', (
 
 		const offTour = mountHome(ExperienceViewWriter, {}, fakeHomes(fakeController({ selectedViewId: 'piano-keys' })));
 		await settle();
-		expect(offTour.querySelector('.reach-note')?.textContent).toContain('Not in any Stop');
+		expect(offTour.querySelector('[aria-label="Where visitors see it"]')?.textContent).toContain('Not in any Stop');
 	});
 });
 
@@ -756,5 +768,50 @@ describe('R217.S26 — New Guide… asks the name inline beside existing Guides 
 		await settle();
 		expect(controller.createGuide).toHaveBeenCalledWith('gallery', 'Short tour');
 		expect(controller.addStop).not.toHaveBeenCalled();
+	});
+});
+
+describe('R217.S27 guided shots and reach', () => {
+	it('shows the entry independently of the Default, with per-View holds and Alt reorder', async () => {
+		const controller = fakeController({
+			selectedStopId: 'stop-1',
+			guidedViews: [{ viewId: 'piano-keys' }, { viewId: 'piano-wide' }]
+		});
+		const target = mountHome(ExperienceStopWriter, {}, fakeHomes(controller));
+		await settle();
+		const shots = [...target.querySelectorAll('[data-guided-view]')];
+		expect(shots.map((shot) => shot.querySelector('.shot-n')?.textContent)).toEqual(['1', '2']);
+		expect(shots.map((shot) => shot.querySelector('.value')?.textContent?.trim())).toEqual(['3s', '—']);
+		expect(shots[0]?.querySelector('.tag')?.textContent).toBe('Entry');
+		expect(shots[1]?.querySelector('[aria-label="Default View"]')).not.toBeNull();
+
+		const reorder = new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true, cancelable: true });
+		shots[1]!.querySelector('.name-btn')!.dispatchEvent(reorder);
+		expect(reorder.defaultPrevented).toBe(true);
+		expect(controller.moveGuidedView).toHaveBeenCalledWith('stop-1', 'piano-wide', -1);
+
+		const transfer = { setData: vi.fn(), effectAllowed: '' };
+		const start = new Event('dragstart', { bubbles: true, cancelable: true });
+		Object.defineProperty(start, 'dataTransfer', { value: transfer });
+		shots[1]!.querySelector('.grip')!.dispatchEvent(start);
+		shots[0]!.dispatchEvent(new MouseEvent('dragover', { clientY: 0, bubbles: true, cancelable: true }));
+		await settle();
+		expect(shots[0]?.classList.contains('drop-before')).toBe(true);
+		shots[0]!.dispatchEvent(new Event('drop', { bubbles: true, cancelable: true }));
+		expect(controller.moveGuidedViewTo).toHaveBeenCalledWith('stop-1', 'piano-wide', 0);
+
+		buttonNamed(target, 'Leave out Keys').click();
+		expect(controller.leaveOutView).toHaveBeenCalledWith('stop-1', 'piano-keys');
+	});
+
+	it('switches free exploration off through the Presentation edit', async () => {
+		const controller = fakeController({ selectedPresentationId: 'piano' });
+		const target = mountHome(ExperiencePresentationWriter, {}, fakeHomes(controller));
+		await settle();
+		const toggle = target.querySelector<HTMLButtonElement>('[role="switch"]')!;
+		expect(toggle.getAttribute('aria-checked')).toBe('true');
+		expect(target.querySelector('#explorable-description')?.textContent).toContain('All 2 Views; opens at the Default');
+		toggle.click();
+		expect(controller.setExplorable).toHaveBeenCalledWith('piano', false);
 	});
 });

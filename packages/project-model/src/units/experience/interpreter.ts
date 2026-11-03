@@ -1,7 +1,7 @@
 /**
  * The one Experience interpreter (AM-6, T3.P01.S06).
  *
- * A deterministic reducer over `ExecutionProgram@2`: an initial state plus
+ * A deterministic reducer over `ExecutionProgram@3`: an initial state plus
  * ordered events produce the same state every time, and an explicit integer
  * clock supplies every hold. There is no ambient time, randomness, network,
  * renderer or Camera evaluation here — the interpreter derives editorial state
@@ -76,12 +76,10 @@ export type ExperienceRunState = {
 	readonly stopId: string | null;
 	readonly occurrenceId: string | null;
 	readonly presentationId: string | null;
-	/**
-	 * The Camera View this run presents, or `null` before any arrival. It is the
-	 * arrived Stop's own entry View, so one Presentation reused at two Stops
-	 * presents two different Views.
-	 */
+	/** The current Camera View, or `null` before any arrival. */
 	readonly viewId: string | null;
+	/** Zero-based within the current Stop, or `null` outside a Stop. */
+	readonly viewIndex: number | null;
 	readonly phase: ExperienceRunPhase;
 	/** Explicit integer clock since the run entered, in milliseconds. */
 	readonly elapsedMs: number;
@@ -95,6 +93,8 @@ export type ExperienceRunState = {
 	/** Content ids a lifecycle `show-content` selected before a panel existed. */
 	readonly pendingContent: readonly string[];
 	readonly invocation: ProgramInvocation | null;
+	/** The logical predecessor of a Travel, even when one tick advances several Views. */
+	readonly invocationFromViewId: string | null;
 	/** The origin a covered detour must return to, or `null`. */
 	readonly returnToStopId: string | null;
 	/**
@@ -162,7 +162,7 @@ export type ExperienceInterpreterOptions = {
 	readonly sourceContentId?: string | null;
 	/**
 	 * Presentation ids whose arrival waits for an explicit Continue. A Gate is
-	 * authored experience policy; it is passed in because `ExecutionProgram@2`
+	 * authored experience policy; it is passed in because `ExecutionProgram@3`
 	 * carries no Gate slot.
 	 */
 	readonly gates?: readonly string[];
@@ -182,6 +182,7 @@ export type ExperienceEffect =
 			readonly stopId: string | null;
 			readonly invocation: ProgramInvocation;
 	  }
+	| { readonly kind: 'step'; readonly stopId: string; readonly viewIndex: number; readonly viewId: string }
 	| { readonly kind: 'hold'; readonly stopId: string; readonly milliseconds: number }
 	| { readonly kind: 'ready'; readonly stopId: string | null }
 	| { readonly kind: 'blocked'; readonly stopId: string }
@@ -219,6 +220,7 @@ export function createExperienceRun(
 		occurrenceId: null,
 		presentationId: null,
 		viewId: null,
+		viewIndex: null,
 		phase: 'ready',
 		elapsedMs: 0,
 		holdRemainingMs: null,
@@ -228,6 +230,7 @@ export function createExperienceRun(
 		panel: null,
 		pendingContent: [],
 		invocation: null,
+		invocationFromViewId: null,
 		returnToStopId: null,
 		resume: null,
 		lastEvent: null
@@ -261,7 +264,7 @@ export function reduceExperience(
 		return ignored(state);
 	}
 
-	if (event.kind === 'tick') return tick(state, event.milliseconds);
+	if (event.kind === 'tick') return tick(program, state, event.milliseconds);
 	if (event.kind === 'enter') return enter(program, state, options);
 	if (event.kind === 'enter-presentation') {
 		return enterPresentation(program, state, event.presentationId);
@@ -401,12 +404,14 @@ function enterPresentation(
 		occurrenceId: null,
 		presentationId: presentation.id,
 		viewId: presentation.defaultViewId,
+		viewIndex: null,
 		phase: 'ready',
 		holdRemainingMs: null,
 		gated: false,
 		panel,
 		pendingContent: [],
 		invocation,
+		invocationFromViewId: null,
 		returnToStopId: null,
 		lastEvent: 'arrival'
 	};
@@ -446,14 +451,23 @@ function invocationFor(
 	options: ExperienceInterpreterOptions
 ): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | { readonly kind: 'gap'; readonly message: string } {
 	const predecessor = state.stopId;
-	if (predecessor === null) return { kind: 'resolved', invocation: stop.invocation };
+	if (predecessor === null) {
+		return { kind: 'resolved', invocation: { kind: 'cut', viewId: stop.views[0]!.viewId } };
+	}
+	const exit = stopById(program, predecessor)?.views.at(-1);
+	const fromExit = exit?.viewId === state.viewId;
 	const transition = (options.transitions ?? []).find(
 		(entry) => entry.fromStopId === predecessor && entry.toStopId === stopId
 	);
-	if (transition !== undefined) return { kind: 'resolved', invocation: transition.invocation };
+	if (transition !== undefined) {
+		if (transition.invocation.kind !== 'travel' || fromExit) {
+			return { kind: 'resolved', invocation: transition.invocation };
+		}
+		return { kind: 'gap', message: `Travel from Stop "${predecessor}" starts at its final guided View` };
+	}
 	const index = program.stops.findIndex((entry) => entry.id === stopId);
 	const authoredPredecessor = index > 0 ? program.stops[index - 1]!.id : null;
-	if (authoredPredecessor === predecessor) return { kind: 'resolved', invocation: stop.invocation };
+	if (authoredPredecessor === predecessor && fromExit) return { kind: 'resolved', invocation: stop.invocation };
 	if (stop.invocation.kind === 'cut') return { kind: 'resolved', invocation: stop.invocation };
 	return {
 		kind: 'gap',
@@ -555,11 +569,13 @@ function arrive(
 		stopId,
 		occurrenceId: visit.occurrenceId,
 		presentationId: presentation.id,
-		viewId: stop.viewId,
+		viewId: stop.views[0]!.viewId,
+		viewIndex: 0,
 		visited: appendVisit ? [...state.visited, visit] : state.visited,
 		panel,
 		pendingContent: [],
 		invocation,
+		invocationFromViewId: invocation.kind === 'travel' ? state.viewId : null,
 		gated,
 		holdRemainingMs: null,
 		phase: 'ready',
@@ -582,17 +598,10 @@ function arrive(
 	if (actioned.navigateTo !== null && actioned.navigateTo !== stopId) {
 		return arrive(program, actioned.state, actioned.navigateTo, options, nextEffects, true, depth + 1);
 	}
-	let result = actioned.state;
-	const holdSeconds = stop.holdSeconds;
-	if (holdSeconds !== null && holdSeconds > 0) {
-		result = { ...result, phase: 'holding', holdRemainingMs: Math.round(holdSeconds * 1000) };
-		nextEffects.push({ kind: 'hold', stopId, milliseconds: result.holdRemainingMs! });
-	} else if (gated) {
-		result = { ...result, phase: 'blocked' };
-		nextEffects.push({ kind: 'blocked', stopId });
-	} else {
-		nextEffects.push({ kind: 'ready', stopId });
-	}
+	const first = startViewHold(actioned.state, stop, 0, nextEffects);
+	const result = first.phase === 'holding' && stop.views.length > 1
+		? advanceViewHolds(first, stop, 0, nextEffects, false)
+		: first;
 	// A lifecycle `continue` resolves the occurrence exactly once, and only when the
 	// occurrence is actually ready: a hold is time and a Gate is a prompt, so neither
 	// is skipped by the action.
@@ -602,31 +611,65 @@ function arrive(
 	return { state: result, outcome: 'accepted', effects: nextEffects };
 }
 
-function tick(state: ExperienceRunState, milliseconds: number): ExperienceReduceResult {
+function finishViewHold(state: ExperienceRunState, stopId: string, effects: ExperienceEffect[]): ExperienceRunState {
+	effects.push(state.gated ? { kind: 'blocked', stopId } : { kind: 'ready', stopId });
+	return { ...state, phase: state.gated ? 'blocked' : 'ready' };
+}
+
+function startViewHold(
+	state: ExperienceRunState,
+	stop: ProgramStop,
+	viewIndex: number,
+	effects: ExperienceEffect[]
+): ExperienceRunState {
+	const view = stop.views[viewIndex]!;
+	const next = { ...state, viewId: view.viewId, viewIndex };
+	if (view.holdSeconds === null && viewIndex === stop.views.length - 1) {
+		return finishViewHold({ ...next, holdRemainingMs: null }, stop.id, effects);
+	}
+	const milliseconds = Math.round((view.holdSeconds ?? 0) * 1000);
+	effects.push({ kind: 'hold', stopId: stop.id, milliseconds });
+	return { ...next, phase: 'holding', holdRemainingMs: milliseconds };
+}
+
+function advanceViewHolds(
+	state: ExperienceRunState,
+	stop: ProgramStop,
+	milliseconds: number,
+	effects: ExperienceEffect[],
+	expireFinal: boolean
+): ExperienceRunState {
+	let next = state;
+	while (next.phase === 'holding' && next.holdRemainingMs !== null && next.viewIndex !== null) {
+		const viewIndex = next.viewIndex + 1;
+		const view = stop.views[viewIndex];
+		if (view === undefined && !expireFinal) break;
+		if (next.holdRemainingMs > milliseconds) {
+			return { ...next, holdRemainingMs: next.holdRemainingMs - milliseconds };
+		}
+		milliseconds -= next.holdRemainingMs;
+		if (view === undefined) return finishViewHold({ ...next, holdRemainingMs: 0 }, stop.id, effects);
+		const invocation = view.step!;
+		effects.push(
+			{ kind: 'camera', stopId: stop.id, invocation },
+			{ kind: 'step', stopId: stop.id, viewIndex, viewId: view.viewId }
+		);
+		next = startViewHold({
+			...next,
+			invocation,
+			invocationFromViewId: invocation.kind === 'travel' ? next.viewId : null
+		}, stop, viewIndex, effects);
+	}
+	return next;
+}
+
+function tick(program: ExecutionProgram, state: ExperienceRunState, milliseconds: number): ExperienceReduceResult {
 	if (!Number.isInteger(milliseconds) || milliseconds < 0) return ignored(state);
-	const elapsedMs = state.elapsedMs + milliseconds;
-	if (state.phase !== 'holding' || state.holdRemainingMs === null || state.stopId === null) {
-		return { state: { ...state, elapsedMs }, outcome: 'accepted', effects: [] };
-	}
-	const remaining = state.holdRemainingMs - milliseconds;
-	if (remaining > 0) {
-		return {
-			state: { ...state, elapsedMs, holdRemainingMs: remaining },
-			outcome: 'accepted',
-			effects: []
-		};
-	}
-	const phase: ExperienceRunPhase = state.gated ? 'blocked' : 'ready';
-	const effects: ExperienceEffect[] = [
-		phase === 'blocked'
-			? { kind: 'blocked', stopId: state.stopId }
-			: { kind: 'ready', stopId: state.stopId }
-	];
-	return {
-		state: { ...state, elapsedMs, holdRemainingMs: 0, phase },
-		outcome: 'accepted',
-		effects
-	};
+	const next = { ...state, elapsedMs: state.elapsedMs + milliseconds };
+	const stop = state.stopId === null ? undefined : stopById(program, state.stopId);
+	if (stop === undefined || state.phase !== 'holding') return accepted(next, []);
+	const effects: ExperienceEffect[] = [];
+	return accepted(advanceViewHolds(next, stop, milliseconds, effects, true), effects);
 }
 
 function continueRun(
@@ -777,6 +820,7 @@ function resetRun(
 		occurrenceId: null,
 		presentationId: null,
 		viewId: null,
+		viewIndex: null,
 		phase: 'ready',
 		elapsedMs: 0,
 		holdRemainingMs: null,
@@ -786,6 +830,7 @@ function resetRun(
 		panel: null,
 		pendingContent: [],
 		invocation: null,
+		invocationFromViewId: null,
 		returnToStopId: null,
 		resume: null,
 		lastEvent: null

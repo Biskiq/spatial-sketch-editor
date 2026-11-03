@@ -1,5 +1,5 @@
 /**
- * `ExecutionProgram@2` — the shared visitor program codec (AM-6).
+ * `ExecutionProgram@3` — the shared visitor program codec (AM-6).
  *
  * One lowered program is executed by Preview and by a prepared release; T4
  * persists it as an immutable delivery derivative and creates no second
@@ -22,7 +22,7 @@
 export const EXECUTION_PROGRAM_KIND = 'execution-program' as const;
 
 /** The program format version this module implements. */
-export const EXECUTION_PROGRAM_FORMAT_VERSION = 2 as const;
+export const EXECUTION_PROGRAM_FORMAT_VERSION = 3 as const;
 
 /**
  * A capability the program requires or tolerates. A reader must refuse an
@@ -48,6 +48,7 @@ export type ProgramPresentation = {
 	label: string;
 	viewIds: readonly string[];
 	defaultViewId: string;
+	explorable: boolean;
 	content: readonly ProgramContentRecord[];
 };
 
@@ -66,26 +67,21 @@ export type ProgramContinuation =
 	| { kind: 'stop'; stopId: string }
 	| { kind: 'end' };
 
-/**
- * One stable Stop occurrence with its invocation and bounded hold.
- *
- * `viewId` is the View this occurrence presents — the one its Stop enters at
- * (`entryViewId` or the Presentation's Default). It is the occurrence's own fact,
- * so a Presentation reused at two Stops may present two different Views.
- *
- * `invocation` is the Camera intent for arriving here. The program's entry Stop
- * is the run's first arrival and has no predecessor pose, so its invocation is
- * always a `cut`; the reader refuses a `travel` there. Every other Stop may carry
- * either, and the authored approach into the entry Stop stays available as its
- * transition from the real predecessor.
- */
+/** A guided View and the resolved invocation for the step into it. */
+export type ProgramGuidedView = {
+	viewId: string;
+	/** Finite non-negative seconds, or `null` for an untimed final View. */
+	holdSeconds: number | null;
+	/** Only the first View uses the Stop's arrival invocation instead. */
+	step: ProgramInvocation | null;
+};
+
+/** One stable Stop occurrence with its sequence and arrival invocation. */
 export type ProgramStop = {
 	id: string;
 	presentationId: string;
-	viewId: string;
+	views: readonly ProgramGuidedView[];
 	invocation: ProgramInvocation;
-	/** Finite non-negative seconds, or `null` for no hold. */
-	holdSeconds: number | null;
 	continuation: ProgramContinuation;
 };
 
@@ -106,8 +102,8 @@ export type ProgramGuard =
 	| { kind: 'equals'; stateId: string; value: string | boolean }
 	| { kind: 'conjunction'; guards: readonly ProgramGuard[] };
 
-/** A finite local-time mapping: the hold one Stop occurrence contributes. */
-export type ProgramLocalTime = { stopId: string; holdSeconds: number };
+/** A finite local-time mapping: the hold of one guided View. */
+export type ProgramLocalTime = { stopId: string; viewIndex: number; holdSeconds: number };
 
 /** A channel policy: which shared family the run reads and how it owns it. */
 export type ProgramChannelPolicy = {
@@ -157,6 +153,7 @@ export type ExecutionProgram = {
 	formatVersion: typeof EXECUTION_PROGRAM_FORMAT_VERSION;
 	capabilities: readonly ProgramCapability[];
 	experienceId: string;
+	welcome: string | null;
 	entryStopId: string | null;
 	presentations: readonly ProgramPresentation[];
 	stops: readonly ProgramStop[];

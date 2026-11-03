@@ -568,23 +568,25 @@ const DOCUMENT = await createUnitProject({
 		]
 	},
 	experience: {
-		formatVersion: 2,
+		formatVersion: 3,
 		experiences: [
 			{
 				id: 'experience-1',
 				label: 'Walk',
+				welcome: null,
 				entryGuideId: 'guide-1',
 				presentations: [
 					{
 						id: 'presentation-1',
 						label: 'Entry',
 						viewIds: ['node-1'],
+						explorable: true,
 						defaultViewId: 'node-1',
 						subject: null,
 						text: null
 					}
 				],
-				stops: [{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'end' } }],
+				stops: [{ id: 'stop-1', views: [{ viewId: 'node-1' }], presentationId: 'presentation-1', continuation: { kind: 'end' } }],
 				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
 				gates: [],
 				detours: []

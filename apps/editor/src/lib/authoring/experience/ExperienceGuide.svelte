@@ -76,6 +76,7 @@
 		readonly stopId: string;
 		readonly number: number;
 		readonly label: string;
+		readonly viewCount: number;
 		readonly hold: string | null;
 		readonly again: boolean;
 		/** R217.S26 (E6): the Guide's start Stop carries the *Start* tag. */
@@ -88,18 +89,15 @@
 		return transition === 'travel' ? 'Travel' : 'Cut';
 	}
 
-	function holdWord(seconds: number | undefined): string | null {
-		if (seconds === undefined) return null;
-		return `${Number.isInteger(seconds) ? seconds : Number(seconds.toFixed(1))}s`;
-	}
-
 	const cards = $derived.by((): readonly CardFacts[] => {
 		if (controller === null) return [];
 		return stops.map((stop, index) => {
 			const number = index + 1;
 			const label = controller.presentationLabel(stop.presentationId);
 			const again = stops.slice(0, index).some((earlier) => earlier.presentationId === stop.presentationId);
-			const hold = holdWord(stop.holdSeconds);
+			const viewCount = stop.views.length;
+			const finalHold = stop.views.at(-1)?.holdSeconds;
+			const hold = finalHold === undefined ? null : `${finalHold}s`;
 			const resolved = controller.resolveContinuation(stop.id);
 			const gaps = controller.travelGapsByStop.get(stop.id) ?? [];
 			let connector: Connector | null = null;
@@ -129,8 +127,8 @@
 			const spoken = [`Stop ${number}`, label];
 			if (start) spoken.push('the tour starts here');
 			if (again) spoken.push('again');
-			if (hold !== null) spoken.push(`hold ${hold.slice(0, -1)} seconds`);
-			return { stopId: stop.id, number, label, hold, again, start, name: spoken.join(', '), connector };
+			spoken.push(`${viewCount} ${viewCount === 1 ? 'view' : 'views'}`);
+			return { stopId: stop.id, number, label, viewCount, hold, again, start, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -712,8 +710,8 @@
 								<span class="stop-meta">
 									{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
 									{#if card.again}<em>again</em>{/if}
-									{#if card.again && card.hold !== null}<span aria-hidden="true"> · </span>{/if}
-									{#if card.hold !== null}<span>{card.hold}</span>{/if}
+									{#if card.again}<span aria-hidden="true"> · </span>{/if}
+									<span>{card.viewCount} {card.viewCount === 1 ? 'view' : 'views'}</span>
 								</span>
 							</button>
 							<span class="slot" class:adjacent={card.connector?.shape === 'adjacent'}>

@@ -46,7 +46,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
 export const SCENE_UNIT_FORMAT_VERSION = 4 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
-export const EXPERIENCE_UNIT_FORMAT_VERSION = 2 as const;
+export const EXPERIENCE_UNIT_FORMAT_VERSION = 3 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
 
 /** The five admitted unit domains, in stable order. */
@@ -185,6 +185,8 @@ export const EXPERIENCE_TEXT_KINDS = ['plain'] as const;
  * count the same text. A longer body is a structural refusal, never truncated.
  */
 export const EXPERIENCE_TEXT_MAX_LENGTH = 4000;
+export const EXPERIENCE_WELCOME_MAX_LENGTH = 600;
+export const EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS = 3;
 
 export type ExperiencePresentationText = {
 	kind: 'plain';
@@ -209,6 +211,7 @@ export type ExperiencePresentation = {
 	defaultViewId: string | null;
 	subject: SemanticReference | null;
 	text: ExperiencePresentationText | null;
+	explorable: boolean;
 };
 
 /** The authored approach to a Stop: a Cut (the default) or a supported Travel. */
@@ -230,6 +233,13 @@ export type ExperienceContinuation =
 	| { kind: 'stop'; stopId: string; transition?: ExperienceTransitionKind }
 	| { kind: 'end' };
 
+/** A View in one Stop. The transition arrives at this View and is absent on entry. */
+export type ExperienceGuidedView = {
+	viewId: string;
+	holdSeconds?: number;
+	transition?: ExperienceTransitionKind;
+};
+
 /**
  * A Stop is a stable authored occurrence identity — never an array index, a
  * label, a Room, a pose or a Camera view id. Visiting one Stop twice starts two
@@ -238,14 +248,7 @@ export type ExperienceContinuation =
 export type ExperienceStop = {
 	id: string;
 	presentationId: string;
-	/**
-	 * The View this occurrence enters at; one of its Presentation's `viewIds`.
-	 * Absent means the Presentation's `defaultViewId`. It is the Stop's whole entry
-	 * role: hold and continuation already differ per Stop.
-	 */
-	entryViewId?: string;
-	/** An editorial station hold: finite, non-negative seconds. */
-	holdSeconds?: number;
+	views: readonly ExperienceGuidedView[];
 	/** Default continuation is the guide sequence; this field overrides it. */
 	continuation?: ExperienceContinuation;
 };
@@ -282,6 +285,7 @@ export type Experience = {
 	label: string;
 	/** The guide whose sequence the Experience enters by default; `null` iff it has no guides. */
 	entryGuideId: string | null;
+	welcome: ExperiencePresentationText | null;
 	presentations: readonly ExperiencePresentation[];
 	stops: readonly ExperienceStop[];
 	guides: readonly ExperienceGuide[];

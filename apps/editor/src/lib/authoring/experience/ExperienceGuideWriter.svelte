@@ -3,19 +3,21 @@
 	 * The Card's writer for a selected Guide (R217.S25, Round 2 density). Read-only: how many Stops
 	 * the Guide has, whether it is the Experience's entry Guide, and what it reaches. The Guide
 	 * instrument opens and edits it (D3); the Card carries no Guide buttons. Its name is the Card's
-	 * own name. The reach summary is the active Guide's, so it is read only while this Guide is the
-	 * active one.
+	 * own name. Its reach summary follows the selected Guide.
 	 *
 	 * R217.S26: the name renames from the Card title, and **Make this the opening Guide** sets the
 	 * Experience's Opening Guide (E5); the Opening Guide shows the *opens* tag instead.
 	 */
 	import type { Snippet } from 'svelte';
+	import { EXPERIENCE_WELCOME_MAX_LENGTH } from '@portfolio/project-model/units';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
 	import { experienceHomes } from './experience-homes';
 
 	let {
+		footer,
 		secondary,
+		more,
 	}: {
 		services?: StageAdapterServices;
 		detailOpen?: boolean;
@@ -31,11 +33,21 @@
 		guideId === null || controller === null ? null : (controller.guides.find((entry) => entry.id === guideId) ?? null)
 	);
 	const isEntry = $derived(guide !== null && controller?.current?.entryGuideId === guide.id);
-	const isActive = $derived(guide !== null && controller?.currentGuide?.id === guide.id);
-	const reach = $derived(isActive && controller !== null ? controller.reach() : null);
+	const reach = $derived(guide === null ? null : controller?.reach(guide) ?? null);
 
 	const stopCount = $derived(guide?.stopIds.length ?? 0);
 	const openingReason = $derived(controller?.busy ? 'Wait for the current change' : '');
+
+	let welcomeDraft = $state('');
+	$effect(() => {
+		welcomeDraft = controller?.current?.welcome?.body ?? '';
+	});
+	async function commitWelcome(): Promise<void> {
+		if (controller === null || controller.busy || welcomeDraft === (controller.current?.welcome?.body ?? '')) return;
+		if (!await controller.setWelcome(welcomeDraft)) {
+			welcomeDraft = controller.current?.welcome?.body ?? '';
+		}
+	}
 
 	/** The Guide instrument is where Stops are added; open it on this Guide. */
 	function addStop(): void {
@@ -99,12 +111,10 @@
 						<span class="mode-name">Free exploration</span>
 						{#if reach !== null}
 							<span class="mode-desc"
-								>{plural(reach.presentations, 'Presentation')} · {plural(reach.views, 'View')}.
+								>{plural(reach.freePresentations, 'Presentation')} · {plural(reach.freeViews, 'View')}.
 								{reach.viewsOnlyFree}
-								{reach.viewsOnlyFree === 1 ? 'View is' : 'Views are'} only found this way.</span
+								{reach.viewsOnlyFree === 1 ? 'View' : 'Views'} only found this way.</span
 							>
-						{:else}
-							<span class="mode-desc">Open this Guide to see what it reaches.</span>
 						{/if}
 					</span>
 				</div>
@@ -121,11 +131,42 @@
 			{#if isEntry}<p class="foot-note">The Experience opens on this Guide.</p>{/if}
 		</section>
 
+		{#snippet content()}
+			<label class="welcome">
+				<span class="sec-title">Welcome text</span>
+				<textarea rows="3" maxlength={EXPERIENCE_WELCOME_MAX_LENGTH} bind:value={welcomeDraft}
+					disabled={controller.busy} onblur={() => void commitWelcome()}></textarea>
+			</label>
+		{/snippet}
+		{#if footer}{@render footer()}{/if}
+		{#if more}{@render more(content)}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}
 
 <style>
+	.welcome {
+		display: grid;
+		width: 100%;
+		gap: 6px;
+	}
+	.welcome textarea {
+		box-sizing: border-box;
+		width: 100%;
+		min-height: 44px;
+		resize: vertical;
+		padding: 6px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 6px;
+		background: var(--shell-card, #fff);
+		color: var(--shell-ink, #1b201c);
+		font: inherit;
+	}
+	.welcome textarea:focus-visible {
+		outline: 2px solid var(--shell-forest-raised, #22503c);
+		outline-offset: 1px;
+	}
+
 	.writer {
 		display: flex;
 		flex-direction: column;
@@ -164,11 +205,12 @@
 		gap: 6px;
 	}
 	.mode-card {
-		display: flex;
-		gap: 8px;
-		padding: 8px;
+		display: grid;
+		grid-template-columns: 20px 1fr;
+		column-gap: 8px;
+		padding: 10px;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
-		border-radius: 8px;
+		border-radius: 12px;
 		background: var(--shell-card, #fff);
 	}
 	.mode-ico {
@@ -185,12 +227,13 @@
 	}
 	.mode-name {
 		color: var(--shell-ink, #1b201c);
-		font: 13px/1.3 var(--shell-serif, Georgia, serif);
+		font-size: 13px;
+		font-weight: 600;
 	}
 	.mode-desc {
 		color: var(--shell-ink-2, #4a524c);
-		font-size: 11.5px;
-		line-height: 1.4;
+		font-size: 12px;
+		line-height: 1.45;
 	}
 	.c-note {
 		margin: 0;

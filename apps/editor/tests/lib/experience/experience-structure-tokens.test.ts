@@ -102,3 +102,29 @@ describe('R217.S26 visual tokens', () => {
 		expect(coarse(source('experience/ExperienceGuideWriter'))).toMatch(/button\s*\{\s*min-height:\s*44px/);
 	});
 });
+
+describe('R217.S27 visual tokens', () => {
+	it('uses the shell roles and the guided row metrics', () => {
+		const stop = source('experience/ExperienceStopWriter');
+		expect(rule(stop, '.shot')).toMatch(/min-height:\s*42px/);
+		expect(rule(stop, '.shot-n')).toMatch(/width:\s*14px/);
+		expect(rule(stop, '.shot-thumb :global(.snapshot.row)')).toMatch(/width:\s*52px;\s*height:\s*36px/);
+		expect(rule(stop, '.shot.is-out .shot-thumb :global(.snapshot.row)')).toMatch(/width:\s*46px;\s*height:\s*30px/);
+		expect(rule(stop, '.shot-x')).toMatch(/width:\s*24px;\s*height:\s*24px/);
+		expect(rule(stop, '.shot.drop-before::before,\n\t.shot.drop-after::after')).toContain('var(--shell-gold');
+		const presentation = source('experience/ExperiencePresentationWriter');
+		expect(rule(presentation, '.explorable')).toMatch(/min-height:\s*28px/);
+		expect(rule(presentation, ".explorable[aria-checked='true'] .switch-track")).toContain('var(--shell-forest-raised');
+		expect(rule(presentation, ".explorable[aria-checked='true'] .switch-track::before")).toContain('var(--shell-leaf');
+		for (const token of ['--shell-gold', '--shell-forest-raised', '--shell-leaf']) expect(tokens).toContain(`${token}:`);
+	});
+
+	it('keeps shot controls, the free exploration switch and welcome field at 44 px for coarse pointers', () => {
+		const stop = source('experience/ExperienceStopWriter').split('@media (pointer: coarse)')[1]!;
+		expect(rule(stop, 'button')).toMatch(/min-height:\s*44px/);
+		expect(rule(stop, '.shot button,\n\t\t.icon-btn')).toMatch(/min-width:\s*44px/);
+		const presentation = source('experience/ExperiencePresentationWriter').split('@media (pointer: coarse)')[1]!;
+		expect(rule(presentation, 'button,\n\t\t.text-input')).toMatch(/min-height:\s*44px/);
+		expect(rule(source('experience/ExperienceGuideWriter'), '.welcome textarea')).toMatch(/min-height:\s*44px/);
+	});
+});

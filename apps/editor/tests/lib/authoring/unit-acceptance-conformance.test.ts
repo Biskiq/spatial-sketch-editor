@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { experienceUpdateIntent, presentationUpdateIntent, stopUpdateIntent } from '$lib/authoring/experience/commands';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {
 	createEmptyWallFirstLayoutDocument,
@@ -92,12 +93,14 @@ async function envelope(): Promise<ProjectEnvelope> {
 						{
 							id: 'experience-main',
 							label: 'Main',
+							welcome: null,
 							entryGuideId: 'guide-main',
 							presentations: [
 							{
 								id: 'presentation-entry',
 								label: 'Entry',
 								viewIds: ['view-entry'],
+								explorable: true,
 								defaultViewId: 'view-entry',
 								subject: null,
 								text: null
@@ -109,6 +112,7 @@ async function envelope(): Promise<ProjectEnvelope> {
 					stops: [
 						{
 							id: 'stop-entry',
+							views: [{ viewId: 'view-entry' }],
 							presentationId: 'presentation-entry',
 							continuation: { kind: 'sequence-next', transition: 'cut' }
 						}
@@ -986,5 +990,54 @@ describe('F.1 accepted-read identity over an accepted unit source', () => {
 		expect(second.kind).toBe('accepted');
 		const installed = coordinator.acceptedSnapshot().domain.source;
 		expect(installed.units.resources.data.resources[0]).toMatchObject({ id: 'paper', contentRevision: 'rev-paper-3' });
+	});
+});
+
+describe('R217.S27 — Guided Views and visitor reach in the shared profile', () => {
+	it('installs each editorial edit on the Experience unit and undoes the sequence once', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true });
+		const experience = () => coordinator.acceptedSnapshot().domain.source.units.experience.data.experiences[0]!;
+		const next = (operation: string) => ({
+			envelope: coordinator.acceptedSnapshot().domain.source,
+			revision: coordinator.acceptedRevision(),
+			ids: { operation },
+			experienceId: 'experience-main'
+		});
+		expect(await coordinator.accept(experienceUpdateIntent({
+			...next('welcome'), welcome: { kind: 'plain', body: 'Welcome' }
+		}))).toMatchObject({ kind: 'accepted' });
+		expect(await coordinator.accept(presentationUpdateIntent({
+			...next('reach'), presentationId: 'presentation-entry', explorable: false
+		}))).toMatchObject({ kind: 'accepted' });
+
+		const input = () => ({ ...next('sequence'), stopId: 'stop-entry' });
+		for (const [views, reason] of [
+			[[], 'stop-keeps-a-view'],
+			[[{ viewId: 'view-entry' }, { viewId: 'view-entry' }], 'invalid-sequence'],
+			[[{ viewId: 'view-foreign' }], 'invalid-sequence'],
+			[[{ viewId: 'view-entry', transition: 'cut' }], 'invalid-sequence'],
+			[[{ viewId: 'view-entry', holdSeconds: -1 }], 'invalid-payload']
+		] as const) {
+			expect(await coordinator.accept(stopUpdateIntent({ ...input(), views }))).toMatchObject({ kind: 'rejected', reason });
+		}
+		expect(await coordinator.accept(stopUpdateIntent(input()))).toMatchObject({ kind: 'rejected', reason: 'invalid-payload' });
+		expect(await coordinator.accept(experienceUpdateIntent({
+			...next('welcome-too-long'), welcome: { kind: 'plain', body: '🌿'.repeat(601) }
+		}))).toMatchObject({
+			kind: 'rejected', reason: 'invalid-payload', diagnostics: [expect.objectContaining({ code: 'text-too-long' })]
+		});
+		const views = [{ viewId: 'view-entry', holdSeconds: 2 }];
+		const before = coordinator.history().depth;
+		expect(await coordinator.accept(stopUpdateIntent({ ...input(), views }))).toMatchObject({ kind: 'accepted' });
+		expect(coordinator.history().depth).toBe(before + 1);
+		expect(experience()).toMatchObject({
+			welcome: { kind: 'plain', body: 'Welcome' },
+			presentations: [{ explorable: false, defaultViewId: 'view-entry' }],
+			stops: [{ views }]
+		});
+		expect(coordinator.acceptedSnapshot().domain.source.units.camera).toEqual(source.units.camera);
+		expect(await coordinator.undo()).toMatchObject({ kind: 'restored' });
+		expect(experience().stops[0]!.views).toEqual([{ viewId: 'view-entry' }]);
 	});
 });

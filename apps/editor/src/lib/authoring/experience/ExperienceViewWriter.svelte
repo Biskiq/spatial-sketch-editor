@@ -31,10 +31,18 @@
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
 	const view = $derived(controller?.selectedView ?? null);
-	/** The Stops that enter at this View, in the active Guide. */
+	/** The Stops that guide this View, in the active Guide. */
 	const entries = $derived(view === null || controller === null ? [] : controller.viewStops(view.id));
 	const shownEntries = $derived(entries.slice(0, ENTRY_LIST_LIMIT));
 	const moreEntries = $derived(entries.length - shownEntries.length);
+	const explorable = $derived(controller?.selectedPresentation?.explorable ?? false);
+	const ordinals = new Intl.PluralRules('en', { type: 'ordinal' });
+	function positionLabel(index: number): string {
+		if (index === 0) return 'entry';
+		const position = index + 1;
+		const suffix = { one: 'st', two: 'nd', few: 'rd' }[ordinals.select(position) as 'one' | 'two' | 'few'] ?? 'th';
+		return `${position}${suffix} view`;
+	}
 	const lens = $derived(view === null ? 0 : Math.round(view.lensMillimetres));
 	const eyeHeight = $derived(view === null ? '' : view.eyeHeightMetres.toFixed(2));
 	const makeDefaultReason = $derived(controller?.busy ? 'Wait for the current change' : '');
@@ -109,13 +117,17 @@
 
 		<section class="sec" aria-label="Where visitors see it">
 			<h3>Where visitors see it</h3>
+			<p class="reach-row reach-note">
+				<span class="chev"><ShellIcon name="eye" size={13} /></span>
+				<span>{explorable ? (view.isDefault ? 'Free exploration · opens here' : 'Free exploration') : 'Hidden from free exploration'}</span>
+			</p>
 			{#if shownEntries.length > 0}
 				<ul class="entries">
 					{#each shownEntries as entry (entry.stopId)}
 						<li>
 							<button type="button" class="link-row" onclick={() => selectStop(entry.stopId)}>
 								<span class="num">{entry.position}</span>
-								<span>Stop {entry.position} · <em>entry</em></span>
+								<span>Stop {entry.position} · <em>{positionLabel(entry.index)}</em></span>
 								<span class="chev"><ShellIcon name="chevronRight" size={13} /></span>
 							</button>
 						</li>

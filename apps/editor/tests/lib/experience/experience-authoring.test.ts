@@ -94,6 +94,7 @@ describe('capture, binding and Guide order', () => {
 		expect(experience.presentations.find((entry) => entry.id === 'presentation-new')).toMatchObject({
 			label: 'Entrance',
 			viewIds: ['view-new'],
+			explorable: true,
 			defaultViewId: 'view-new',
 			subject: null,
 			text: { kind: 'plain', body: 'Welcome.' }
@@ -148,7 +149,7 @@ describe('capture, binding and Guide order', () => {
 				ids: { operation: 'op-invalid-entry' },
 				experienceId: 'experience-1',
 				stopId: 'stop-2',
-				entryViewId: 'view-1'
+				views: [{ viewId: 'view-1' }]
 			})
 		);
 		expect(refused.kind).toBe('rejected');
@@ -213,7 +214,7 @@ describe('capture, binding and Guide order', () => {
 				ids: { operation: 'op-entry-view' },
 				experienceId: 'experience-1',
 				stopId: 'stop-1',
-				entryViewId: 'view-1'
+				views: [{ viewId: 'view-1' }]
 			})
 		);
 		expect(entry.kind).toBe('accepted');
@@ -335,6 +336,7 @@ describe('Preview entry rule', () => {
 				experiences: [
 					{
 						...base,
+						welcome: null,
 						entryGuideId: null,
 						guides: [],
 						stops: [],
@@ -344,6 +346,7 @@ describe('Preview entry rule', () => {
 								id: 'presentation-no-default',
 								label: 'Study',
 								viewIds: ['view-1'],
+								explorable: true,
 								defaultViewId: null,
 								subject: null,
 								text: null

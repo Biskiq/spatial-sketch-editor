@@ -12,7 +12,8 @@
  * Stop: an authored hold is editorial time and may expire before the Camera has
  * physically reached that Stop's View. The Experience has then left the View it
  * was travelling to, so the next connection's declared origin is authoritative.
- * The caller names that in-flight View explicitly (`handoffFromViewId`); this
+ * The caller names the logical predecessor explicitly (`handoffFromViewId`),
+ * including when an editorial tick crosses several Views between frames. This
  * resolver accepts the connection only when it joins **that** View to the
  * requested destination, and reports the origin it actually used. It never
  * accepts an arbitrary endpoint, finishes the stale Travel first, or pathfinds.
@@ -51,7 +52,7 @@ export function resolveVisitorCameraRoute({
 	readonly toViewId: string;
 	readonly invocation: ProgramInvocation;
 	readonly graph: CameraGraph;
-	/** The View a still-in-flight Travel was realizing, when one is in flight. */
+	/** The logical predecessor when it differs from the last Camera frame. */
 	readonly handoffFromViewId?: string | null;
 }): VisitorCameraRoute {
 	try {

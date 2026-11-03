@@ -95,6 +95,9 @@ export function removalLines(
 					`${names.view(consequence.viewId)} stays: still used by ${consequence.usedByPresentationIds.map((id) => names.presentation(id)).join(', ')}.`
 				);
 				break;
+			case 'stop-view-removed':
+				lines.push(`${names.stop(consequence.stopId)} leaves out ${names.view(consequence.viewId)}.`);
+				break;
 			case 'stop-entry-fallback':
 				lines.push(`${names.stop(consequence.stopId)} enters at the Default View instead.`);
 				break;

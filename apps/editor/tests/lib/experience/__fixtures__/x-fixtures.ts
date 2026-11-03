@@ -24,6 +24,7 @@ import {
 	serializeProjectEnvelope,
 	validateProjectEnvelope,
 	type ExperienceContinuation,
+	type ExperienceGuidedView,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
@@ -208,7 +209,7 @@ async function guide(a: Authoring, guideId: string, label: string, presentationI
 async function updateStop(
 	a: Authoring,
 	stopId: string,
-	fields: { readonly holdSeconds?: number | null; readonly continuation?: ExperienceContinuation | null }
+	fields: { readonly views?: readonly ExperienceGuidedView[]; readonly continuation?: ExperienceContinuation | null }
 ): Promise<void> {
 	await a.accept(
 		stopUpdateIntent({ envelope: a.now(), revision: a.revision(), ids: { operation: a.op('stop-update') }, experienceId: EXPERIENCE_ID, stopId, ...fields })
@@ -311,8 +312,21 @@ export async function buildXFixture(name: XFixtureName, projectId: string = `pro
 	const [piano, window, door, corner, wall] = presentationIds as [string, string, string, string, string];
 	const stopIds = await guide(a, 'x-salon-guide', 'Salon tour', [piano, window, door, piano, corner, wall]);
 	for (const [index, stopId] of stopIds.entries()) {
-		if (index !== 1) await updateStop(a, stopId, { holdSeconds: 4 });
+		if (index === 1) continue;
+		const stop = a.now().units.experience.data.experiences[0]!.stops.find((entry) => entry.id === stopId)!;
+		await updateStop(a, stopId, { views: [{ viewId: stop.views[0]!.viewId, holdSeconds: 4 }] });
 	}
+	// Stop 2 starts with one View and has two more to include in the owner journey.
+	await captureInto(a, window, 'x-window-view-2', pose('Window, from the door', [1.5, 1.5], [3, 0]));
+	await captureInto(a, window, 'x-window-view-3', pose('Window, from the wall', [4.5, 1.5], [3, 0]));
+	await captureInto(a, piano, 'x-piano-view-3', pose('Piano, lid', [2, 1.5], [3, 2]));
+	await updateStop(a, stopIds[3]!, {
+		views: [
+			{ viewId: 'x-piano-view-1', holdSeconds: 3 },
+			{ viewId: 'x-piano-view-2', holdSeconds: 3 },
+			{ viewId: 'x-piano-view-3', holdSeconds: 4 }
+		]
+	});
 	await updateStop(a, stopIds[0]!, { continuation: { kind: 'stop', stopId: stopIds[4]!, transition: 'cut' } });
 	return {
 		name,

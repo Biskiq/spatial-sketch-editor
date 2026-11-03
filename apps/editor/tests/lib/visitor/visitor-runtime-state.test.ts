@@ -9,8 +9,9 @@ import { createVisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.sv
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 2,
+		formatVersion: 3,
 		capabilities: [],
+		welcome: null,
 		experienceId: 'experience-1',
 		entryStopId: 'stop-1',
 		presentations: [
@@ -18,14 +19,16 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 				id: 'presentation-1',
 				label: 'Piano',
 				viewIds: ['view-1'],
+				explorable: true,
 				defaultViewId: 'view-1',
 				content: [{ id: 'content-1', kind: 'text', text: 'The piano.' }]
 			},
-			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] },
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] },
 			{
 				id: 'presentation-guide-free',
 				label: 'Study',
 				viewIds: ['view-3'],
+				explorable: true,
 				defaultViewId: 'view-3',
 				content: []
 			}
@@ -34,17 +37,15 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
-				viewId: 'view-1',
+				views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
 				invocation: { kind: 'cut', viewId: 'view-1' },
-				holdSeconds: null,
 				continuation: { kind: 'sequence-next' }
 			},
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
-				viewId: 'view-2',
+				views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
 				invocation: { kind: 'cut', viewId: 'view-2' },
-				holdSeconds: null,
 				continuation: { kind: 'end' }
 			}
 		],
@@ -118,17 +119,15 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
-					viewId: 'view-1',
+					views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
 					invocation: { kind: 'cut', viewId: 'view-1' },
-					holdSeconds: 0.5,
 					continuation: { kind: 'sequence-next' }
 				},
 				{
 					id: 'stop-2',
 					presentationId: 'presentation-2',
-					viewId: 'view-2',
+					views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
 					invocation: { kind: 'cut', viewId: 'view-2' },
-					holdSeconds: null,
 					continuation: { kind: 'end' }
 				}
 			]
@@ -169,17 +168,15 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
-					viewId: 'view-1',
+					views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
 					invocation: { kind: 'cut', viewId: 'view-1' },
-					holdSeconds: 0.5,
 					continuation: { kind: 'sequence-next' }
 				},
 				{
 					id: 'stop-2',
 					presentationId: 'presentation-2',
-					viewId: 'view-2',
+					views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
 					invocation: { kind: 'cut', viewId: 'view-2' },
-					holdSeconds: null,
 					continuation: { kind: 'end' }
 				}
 			]
@@ -228,17 +225,15 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
-					viewId: 'view-1',
+					views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
 					invocation: { kind: 'cut', viewId: 'view-1' },
-					holdSeconds: 0.5,
 					continuation: { kind: 'sequence-next' }
 				},
 				{
 					id: 'stop-2',
 					presentationId: 'presentation-2',
-					viewId: 'view-2',
+					views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
 					invocation: { kind: 'cut', viewId: 'view-2' },
-					holdSeconds: null,
 					continuation: { kind: 'end' }
 				}
 			]
@@ -257,5 +252,46 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		visitor.enter();
 		expect(visitor.ended).toBe(true);
 		expect(visitor.currentViewId).toBeNull();
+	});
+});
+
+describe('R217.S27 visitor reach and steps', () => {
+	it('lists open Presentations in program order, including those in the Guide', () => {
+		const base = program();
+		const visitor = runtime({
+			presentations: [
+				base.presentations[2]!,
+				{ ...base.presentations[0]!, explorable: false },
+				base.presentations[1]!
+			]
+		});
+		expect(visitor.freePresentations.map((presentation) => presentation.id)).toEqual([
+			'presentation-guide-free', 'presentation-2'
+		]);
+		expect(visitor.selectPresentation('presentation-1')).toBe(false);
+		expect(visitor.selectPresentation('presentation-2')).toBe(true);
+		expect(visitor.currentViewId).toBe('view-2');
+		expect(visitor.currentViewIndex).toBeNull();
+	});
+
+	it('holds an untimed final View for Next even when a tick steps into it', () => {
+		const base = program();
+		const visitor = runtime({
+			presentations: [{ ...base.presentations[0]!, viewIds: ['view-1', 'view-3'] }, ...base.presentations.slice(1)],
+			stops: [{ ...base.stops[0]!, views: [
+				{ viewId: 'view-1', holdSeconds: 0.5, step: null },
+				{ viewId: 'view-3', holdSeconds: null, step: { kind: 'cut', viewId: 'view-3' } }
+			] }, base.stops[1]!],
+			localTime: [{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 0.5 }]
+		});
+		visitor.enter();
+		visitor.tick(1000);
+		expect(visitor.currentStop?.id).toBe('stop-1');
+		expect(visitor.currentViewId).toBe('view-3');
+		expect(visitor.currentViewIndex).toBe(1);
+		expect(visitor.state.holdRemainingMs).toBeNull();
+		visitor.continue();
+		expect(visitor.currentStop?.id).toBe('stop-2');
+		expect(visitor.currentViewIndex).toBe(0);
 	});
 });

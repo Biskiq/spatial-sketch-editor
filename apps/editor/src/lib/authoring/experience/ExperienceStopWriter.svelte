@@ -1,15 +1,7 @@
 <script lang="ts">
-	/**
-	 * The Card's writer for a selected Stop (R217.S25), composed as the Conservatory Stop Card.
-	 * The top row steps through the open Guide, the Visits block names the Presentation the Stop
-	 * visits, and Guided views lists the one entry View with its hold and an Enter-at menu, the
-	 * other Views dimmed with a disabled Include (D5). After this Stop shows where Next goes,
-	 * resolved against the Guide (D11), and links to the transition, where Cut and Travel live
-	 * (D6). Every edit goes through the controller; the writer holds only which menu is open.
-	 */
 	import { tick, type Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-	import type { ExperienceStop } from '@portfolio/project-model/units';
+	import { EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS, type ExperienceStop } from '@portfolio/project-model/units';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
@@ -27,7 +19,7 @@
 
 	type Continuation = NonNullable<ReturnType<ExperienceController['resolveContinuation']>>;
 	type Target = 'next' | 'end' | { readonly stopId: string };
-	type MenuName = 'entry' | 'next';
+	type MenuName = 'next';
 	type MenuItem = {
 		readonly id: string;
 		readonly label: string;
@@ -43,7 +35,8 @@
 	const PLAY_REASON = 'Comes with Camera playback';
 	const BUSY_REASON = 'Wait for the last change to save';
 	const NOT_IN_GUIDE_REASON = 'This Stop is not in the open Guide';
-	const INCLUDE_REASON = 'Comes with Stop-local Views';
+	const LAST_VIEW_REASON = 'A Stop shows at least one View';
+	const GUIDED_VIEW_MIME = 'application/x-biskiq-guided-view';
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
@@ -60,12 +53,10 @@
 		stop === null || controller === null ? [] : (controller.viewsOf.get(stop.presentationId) ?? [])
 	);
 	const defaultViewId = $derived(presentation?.defaultViewId ?? null);
-	const defaultView = $derived(views.find((view) => view.id === defaultViewId) ?? null);
-	/** The entry View is the Stop's own, else the Presentation's Default (D5). */
-	const entryId = $derived(stop === null ? null : (stop.entryViewId ?? defaultViewId));
-	const entryView = $derived(views.find((view) => view.id === entryId) ?? null);
-	const entryName = $derived(entryView?.label ?? (entryId === null ? 'Default View not set' : 'Missing View'));
-	const otherViews = $derived(views.filter((view) => view.id !== entryId));
+	const entryId = $derived(stop?.views[0]?.viewId);
+	const entryName = $derived(views.find((view) => view.id === entryId)?.label ?? 'Missing View');
+	const guided = $derived(stop?.views ?? []);
+	const otherViews = $derived(views.filter((view) => !guided.some((entry) => entry.viewId === view.id)));
 	const folded = $derived(otherViews.length > FOLD_VIEWS_AFTER);
 	let othersOpen = $state(false);
 	/** A Presentation an earlier Stop of the Guide already visits reads *again* (harvest §2.4). */
@@ -124,32 +115,6 @@
 
 	const busyReason = $derived(controller?.busy === true ? BUSY_REASON : null);
 
-	const entryItems = $derived.by((): MenuItem[] => {
-		if (controller === null || stop === null) return [];
-		const items: MenuItem[] = [
-			{
-				id: 'default',
-				label:
-					defaultView === null ? 'The Default View (not set)' : `The Default View (◆ ${defaultView.label})`,
-				hint: null,
-				checked: stop.entryViewId === undefined,
-				reason: defaultView === null ? 'This Presentation has no Default View' : busyReason,
-				run: () => setEntry(null)
-			}
-		];
-		for (const view of views) {
-			items.push({
-				id: `view-${view.id}`,
-				label: view.label,
-				hint: null,
-				checked: stop.entryViewId === view.id,
-				reason: busyReason,
-				run: () => setEntry(view.id)
-			});
-		}
-		return items;
-	});
-
 	const nextItems = $derived.by((): MenuItem[] => {
 		if (controller === null || stop === null || continuation === null) return [];
 		const explicit = continuation.explicit;
@@ -190,41 +155,79 @@
 		if (target !== null) homes.select({ kind: 'stop', stopId: target.id });
 	}
 
-	function setEntry(entryViewId: string | null): void {
-		if (controller === null || stop === null) return;
-		void controller.setStopEntry(stop.id, entryViewId);
-	}
-
 	function setNext(target: Target): void {
 		if (controller === null || stop === null) return;
 		void controller.setContinuation(stop.id, target);
 	}
 
-	/** One hold step: + from unset is 1 s; − from 0 is unset (harvest D5). */
-	function stepHold(direction: 1 | -1): void {
-		if (controller === null || stop === null) return;
-		const current = stop.holdSeconds;
-		if (direction > 0) {
-			void controller.setStopHold(stop.id, current === undefined ? 1 : current + 1);
-		} else if (current !== undefined) {
-			void controller.setStopHold(stop.id, current > 0 ? Math.max(0, current - 1) : null);
-		}
+	function holdAt(index: number): number | null {
+		return guided[index]?.holdSeconds ?? (index < guided.length - 1 ? EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS : null);
 	}
-	const holdLabel = $derived(stop === null || stop.holdSeconds === undefined ? '—' : `${stop.holdSeconds}s`);
-	/** The Guided views hint: the hold, nothing when it is unset. */
-	const holdHint = $derived(stop === null || stop.holdSeconds === undefined ? '' : `${stop.holdSeconds}s`);
-	const holdUnsetReason = $derived(stop?.holdSeconds === undefined ? 'No hold is set' : null);
-	const holdMoreReason = $derived(busyReason);
-	const holdLessReason = $derived(busyReason ?? holdUnsetReason);
+
+	function stepHold(viewId: string, current: number | null, direction: 1 | -1): void {
+		if (controller === null || stop === null || controller.busy) return;
+		const next = direction === 1 ? (current ?? 0) + 1 : current === 0 ? null : Math.max(0, (current ?? 0) - 1);
+		void controller.setViewHold(stop.id, viewId, next);
+	}
+
+	let draggingViewId = $state<string | null>(null);
+	let dropAt = $state<{ viewId: string; after: boolean } | null>(null);
+
+	function onViewKey(event: KeyboardEvent, viewId: string): void {
+		if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (controller === null || stop === null || controller.busy) return;
+		void controller.moveGuidedView(stop.id, viewId, event.key === 'ArrowUp' ? -1 : 1);
+	}
+
+	function onShotDragStart(event: DragEvent, viewId: string): void {
+		if (controller?.busy || event.dataTransfer === null || guided.length < 2) {
+			event.preventDefault();
+			return;
+		}
+		draggingViewId = viewId;
+		event.dataTransfer.setData(GUIDED_VIEW_MIME, viewId);
+		event.dataTransfer.effectAllowed = 'move';
+	}
+
+	function onShotDragOver(event: DragEvent, viewId: string): void {
+		if (draggingViewId === null || controller?.busy) return;
+		event.preventDefault();
+		if (draggingViewId === viewId) {
+			dropAt = null;
+			return;
+		}
+		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		dropAt = { viewId, after: event.clientY > box.top + box.height / 2 };
+	}
+
+	function endShotDrag(): void {
+		draggingViewId = null;
+		dropAt = null;
+	}
+
+	function onShotDrop(event: DragEvent, viewId: string): void {
+		if (draggingViewId === null) return;
+		event.preventDefault();
+		const dragged = draggingViewId;
+		const target = dropAt;
+		endShotDrag();
+		if (stop === null || controller === null || controller.busy || target?.viewId !== viewId) return;
+		const index = guided.filter((view) => view.viewId !== dragged).findIndex((view) => view.viewId === viewId);
+		if (index >= 0) void controller.moveGuidedViewTo(stop.id, dragged, index + (target.after ? 1 : 0));
+	}
 
 	/** Menus: one open at a time; Esc closes and returns focus to its trigger. */
 	let openMenu = $state<MenuName | null>(null);
 	let menuElement = $state<HTMLDivElement | null>(null);
-	const triggers = $state<Record<MenuName, HTMLButtonElement | null>>({ entry: null, next: null });
+	const triggers = $state<Record<MenuName, HTMLButtonElement | null>>({ next: null });
 
 	$effect(() => {
 		void stop?.id;
 		openMenu = null;
+		othersOpen = false;
+		endShotDrag();
 	});
 
 	async function openMenuFor(name: MenuName): Promise<void> {
@@ -361,73 +364,67 @@
 
 		<section class="c-sec" aria-labelledby="stop-views-title">
 			<div class="c-sec-head">
-				<h3 id="stop-views-title">Guided views<span class="n">1</span></h3>
-				{#if holdHint}<span class="hint">{holdHint}</span>{/if}
+				<h3 id="stop-views-title">Guided views<span class="n">{guided.length}</span></h3>
 			</div>
 			<ol class="shots">
-				<li class="shot" data-menu-wrap="entry">
-					<span class="grip">
-						<ShellIcon name="menu" size={12} />
-					</span>
-					<span class="shot-n">1</span>
-					<span class="shot-thumb"><ExperienceSnapshot label={entryName} ratio="row" /></span>
-					<span class="shot-main">
-						<span class="shot-name">
-							{#if entryView !== null}
-								<button
-									type="button"
-									class="name-btn"
-									onclick={() => homes.select({ kind: 'view', viewId: entryView.id, presentationId: stop.presentationId })}
-									>{entryName}</button
-								>
-							{:else}
-								<span class="name-btn">{entryName}</span>
-							{/if}
-							{#if entryId !== null && entryId === defaultViewId}<span class="def" role="img" aria-label="Default View">◆</span>{/if}
-							<button
-								type="button"
-								class="chev"
-								aria-label="Enter at…"
-								title="Choose the View this Stop enters at"
-								aria-haspopup="menu"
-								aria-expanded={openMenu === 'entry'}
-								bind:this={triggers.entry}
-								onclick={() => toggleMenu('entry')}
-							>
-								<ShellIcon name="chevronDown" size={11} />
-							</button>
-							<em class="tag">Entry</em>
+				{#each guided as shot, index (shot.viewId)}
+					{@const label = views.find((view) => view.id === shot.viewId)?.label ?? 'Missing View'}
+					{@const hold = holdAt(index)}
+					{@const leaveReason = guided.length === 1 ? LAST_VIEW_REASON : busyReason}
+					{@const shorterReason = busyReason ?? (hold === null
+						? 'No hold is set'
+						: hold === 0 && index < guided.length - 1 ? 'The hold is already zero' : null)}
+					<li
+						class="shot"
+						class:dragging={draggingViewId === shot.viewId}
+						class:drop-before={dropAt?.viewId === shot.viewId && !dropAt.after}
+						class:drop-after={dropAt?.viewId === shot.viewId && dropAt.after}
+						ondragover={(event) => onShotDragOver(event, shot.viewId)}
+						ondrop={(event) => onShotDrop(event, shot.viewId)}
+						data-guided-view={shot.viewId}
+					>
+						<span class="grip" draggable={!controller.busy && guided.length > 1}
+							ondragstart={(event) => onShotDragStart(event, shot.viewId)} ondragend={endShotDrag}
+							title="Drag to reorder" aria-hidden="true">
+							<ShellIcon name="menu" size={12} />
 						</span>
-						<span class="shot-meta">
-							<span class="hold-lbl">Hold</span>
-							<span class="stepper" role="group" aria-label="Hold">
-								<button
-									type="button"
-									aria-label="Shorter hold"
-									title={holdLessReason ?? 'Shorter hold'}
-									disabled={holdLessReason !== null}
-									onclick={() => stepHold(-1)}
-								>
-									<ShellIcon name="minus" size={11} />{#if holdLessReason}<span class="sr-only">{holdLessReason}</span>{/if}
-								</button>
-								<b class="value" aria-live="polite">{holdLabel}</b>
-								<button
-									type="button"
-									aria-label="Longer hold"
-									title={holdMoreReason ?? 'Longer hold'}
-									disabled={holdMoreReason !== null}
-									onclick={() => stepHold(1)}
-								>
-									<ShellIcon name="plus" size={11} />{#if holdMoreReason}<span class="sr-only">{holdMoreReason}</span>{/if}
-								</button>
+						<span class="shot-n">{index + 1}</span>
+						<span class="shot-thumb"><ExperienceSnapshot {label} ratio="row" /></span>
+						<span class="shot-main">
+							<span class="shot-name">
+								<button type="button" class="name-btn" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+									onkeydown={(event) => onViewKey(event, shot.viewId)}
+									onclick={() => homes.select({ kind: 'view', viewId: shot.viewId, presentationId: stop.presentationId })}
+								>{label}</button>
+								{#if shot.viewId === defaultViewId}<span class="def" role="img" aria-label="Default View">◆</span>{/if}
+								{#if index === 0}<em class="tag">Entry</em>{/if}
+							</span>
+							<span class="shot-meta">
+								<span class="hold-lbl">Hold</span>
+								<span class="stepper" role="group" aria-label={`Hold for ${label}`}>
+									<button type="button" aria-label="Shorter hold"
+										title={shorterReason ?? 'Shorter hold'}
+										disabled={shorterReason !== null} onclick={() => stepHold(shot.viewId, hold, -1)}>
+										<ShellIcon name="minus" size={11} />
+									</button>
+									<b class="value" aria-live="polite" title={hold === null ? 'Waits for Next' : undefined}>
+										{hold === null ? '—' : `${hold}s`}
+									</b>
+									<button type="button" aria-label="Longer hold" title={busyReason ?? 'Longer hold'}
+										disabled={busyReason !== null} onclick={() => stepHold(shot.viewId, hold, 1)}>
+										<ShellIcon name="plus" size={11} />
+									</button>
+								</span>
 							</span>
 						</span>
-					</span>
-					<button type="button" class="icon-btn shot-x" disabled title={INCLUDE_REASON} aria-label="Leave out">
-						<ShellIcon name="close" size={11} /><span class="sr-only">{INCLUDE_REASON}</span>
-					</button>
-					{#if openMenu === 'entry'}{@render choiceMenu('Enter at…', entryItems)}{/if}
-				</li>
+						<button type="button" class="icon-btn shot-x" disabled={leaveReason !== null}
+							title={leaveReason ?? 'Leave out'} aria-label={`Leave out ${label}`}
+							onclick={() => void controller.leaveOutView(stop.id, shot.viewId)}>
+							<ShellIcon name="close" size={11} />
+							{#if leaveReason}<span class="sr-only">{leaveReason}</span>{/if}
+						</button>
+					</li>
+				{/each}
 			</ol>
 
 			{#if otherViews.length > 0}
@@ -458,15 +455,16 @@
 									>
 									{#if view.id === defaultViewId}<span class="def" role="img" aria-label="Default View">◆</span>{/if}
 								</span>
-								<button type="button" class="btn xs include" disabled title={INCLUDE_REASON}>
-									Include<span class="sr-only">{INCLUDE_REASON}</span>
+								<button type="button" class="btn xs include" disabled={busyReason !== null} title={busyReason ?? undefined}
+									aria-label={`Include ${view.label}`} onclick={() => void controller.includeView(stop.id, view.id)}>
+									Include
 								</button>
 							</li>
 						{/each}
 					</ul>
 				{/if}
 			{/if}
-			<p class="c-foot-note"><span class="def" aria-hidden="true">◆</span> marks the Presentation's Default View.</p>
+			<p class="c-foot-note"><span class="def" aria-hidden="true">◆</span> marks the Presentation's Default View. Reordering here changes only this Stop.</p>
 		</section>
 
 		<section class="c-sec" aria-labelledby="stop-after-title">
@@ -732,10 +730,6 @@
 		align-items: baseline;
 		justify-content: space-between;
 	}
-	.hint {
-		color: var(--shell-ink-3, #79817b);
-		font: 10.5px var(--shell-mono, ui-monospace, monospace);
-	}
 	.c-sub {
 		margin: 12px 0 6px;
 		color: var(--shell-ink-2, #4a524c);
@@ -780,34 +774,64 @@
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		min-height: 46px;
+		min-height: 42px;
 		padding: 4px 4px 4px 2px;
 		border: 1px solid var(--shell-hairline, #e1e4de);
 		border-radius: 8px;
 		background: var(--shell-card, #fff);
 	}
+	.shot.dragging {
+		border-color: var(--shell-gold, #d4ad45);
+		box-shadow: var(--shell-shadow);
+	}
 	.grip {
 		display: inline-flex;
 		flex: none;
-		color: var(--shell-hairline-strong, #cdd2ca);
+		color: var(--shell-ink-3, #79817b);
+	}
+	.grip[draggable="true"] {
+		cursor: grab;
 	}
 	.shot-n {
 		flex: none;
-		width: 12px;
+		width: 14px;
 		text-align: center;
-		color: var(--shell-forest-raised, #22503c);
-		font: 600 11px var(--shell-mono, ui-monospace, monospace);
+		color: var(--shell-forest, #11291f);
+		font: 600 12px var(--shell-mono, ui-monospace, monospace);
+		font-variant-numeric: tabular-nums;
 	}
 	.shot-thumb {
 		display: inline-flex;
 		flex: none;
-		width: 48px;
 	}
+	.shot-thumb :global(.snapshot.row) {
+		width: 52px;
+		height: 36px;
+		border-radius: 5px;
+	}
+	.shot.is-out .shot-thumb :global(.snapshot.row) {
+		width: 46px;
+		height: 30px;
+	}
+	.shot.drop-before::before,
+	.shot.drop-after::after {
+		position: absolute;
+		z-index: 1;
+		right: 0;
+		left: 0;
+		height: 2px;
+		border-radius: 1px;
+		background: var(--shell-gold, #d4ad45);
+		content: '';
+		pointer-events: none;
+	}
+	.shot.drop-before::before { top: -3px; }
+	.shot.drop-after::after { bottom: -3px; }
 	.shot-main {
 		display: flex;
 		flex: 1;
 		flex-direction: column;
-		gap: 3px;
+		gap: 2px;
 		min-width: 0;
 	}
 	.shot-name {
@@ -831,7 +855,7 @@
 		padding: 0;
 		border: 0;
 		background: none;
-		font: 500 12.5px var(--shell-serif, serif);
+		font: 500 12px var(--shell-sans, system-ui);
 		text-align: left;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -842,31 +866,13 @@
 		text-decoration: underline;
 		text-decoration-color: var(--shell-hairline-strong, #cdd2ca);
 	}
-	.chev {
-		display: inline-grid;
-		place-items: center;
-		flex: none;
-		width: 18px;
-		height: 18px;
-		padding: 0;
-		border: 0;
-		border-radius: 4px;
-		background: none;
-		color: var(--shell-ink-3, #79817b);
-	}
-	.chev:hover,
-	.chev[aria-expanded='true'] {
-		background: var(--shell-hover, #eef0ed);
-	}
 	.tag {
 		flex: none;
 		padding: 1px 5px;
 		border-radius: 4px;
 		background: var(--shell-forest, #11291f);
 		color: #fff;
-		font-size: 9.5px;
-		font-style: normal;
-		font-weight: 700;
+		font: 700 10px var(--shell-mono, ui-monospace, monospace);
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 	}
@@ -900,9 +906,11 @@
 	}
 	.shot-x {
 		flex: none;
-		width: 22px;
-		height: 22px;
+		width: 24px;
+		height: 24px;
+		opacity: 0.55;
 	}
+	.shot-x:not(:disabled):is(:hover, :focus-visible) { opacity: 1; }
 	.shot.is-out {
 		padding-left: 6px;
 		border-style: dashed;
@@ -1067,8 +1075,29 @@
 		font-size: 11px;
 	}
 	@media (pointer: coarse) {
-		button:not(.name-btn) {
+		button {
 			min-height: 44px;
 		}
+		.shot button,
+		.icon-btn {
+			min-width: 44px;
+		}
+		.shot {
+			display: grid;
+			grid-template-columns: 44px auto auto minmax(0, 1fr) auto;
+		}
+		.shot.is-out { grid-template-columns: auto minmax(0, 1fr) auto; }
+		.shot-name { flex-wrap: wrap; }
+		.grip {
+			display: inline-grid;
+			place-items: center;
+			min-height: 44px;
+		}
+		.shot-main { display: contents; }
+		.shot-meta {
+			grid-column: 1 / -1;
+			grid-row: 2;
+		}
+		.stepper { height: auto; }
 	}
 </style>

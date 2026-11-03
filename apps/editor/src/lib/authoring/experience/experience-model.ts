@@ -2,12 +2,12 @@
  * The Experience homes' reading model (R217.S25).
  *
  * Pure functions of the accepted Experience and Camera facts: what a Card subject is,
- * where a Stop's continuation actually goes, which Stops enter at a View, which
+ * where a Stop's continuation actually goes, which Stops guide a View, which
  * Presentations are about a Scene entity, and how much of the Experience the Guide
  * reaches. No state, no Camera evaluation, no DOM; the controller derives from these
  * and the Cards render what they return.
  *
- * A Stop enters at its own `entryViewId`, else at the Presentation's Default View. A
+ * A Stop enters at its first guided View and exits at its last. A
  * continuation is read against one Guide: a Stop's neighbour is the next Stop of that
  * Guide, and a chosen target only counts as adjacent when it is that neighbour.
  */
@@ -68,8 +68,11 @@ export type ResolvedContinuation =
 export type ExperienceReach = {
 	readonly presentations: number;
 	readonly views: number;
-	/** Views no Stop enters at: only free exploration finds them. */
+	readonly freePresentations: number;
+	readonly freeViews: number;
+	/** Views reached by free exploration and absent from this Guide. */
 	readonly viewsOnlyFree: number;
+	readonly hiddenViews: number;
 };
 
 /** 35 mm equivalent focal length (24 mm frame height): 12 / tan(fov / 2), rounded. */
@@ -80,12 +83,12 @@ export function lensMillimetres(fovDegrees: number): number {
 	return Math.round(12 / tangent);
 }
 
-/** The View a Stop enters at: its own entry View, else its Presentation's Default (null: none). */
-export function stopEntryViewId(
-	stop: ExperienceStop,
-	presentation: ExperiencePresentation | null
-): string | null {
-	return stop.entryViewId ?? presentation?.defaultViewId ?? null;
+export function stopEntryViewId(stop: ExperienceStop): string {
+	return stop.views[0]!.viewId;
+}
+
+export function stopExitViewId(stop: ExperienceStop): string {
+	return stop.views.at(-1)!.viewId;
 }
 
 /** The Presentation holding a View, preferring the named one. */
@@ -167,21 +170,21 @@ export function resolveContinuation(
 	return { kind: 'adjacent', stopId: next, position: at + 2, transition, explicit: false };
 }
 
-/** The Guide's Stops that enter at this View, with their 1-based positions. */
-export function stopsEnteringAt(
+export type GuidedViewPosition = { readonly stopId: string; readonly position: number; readonly index: number };
+
+/** Positions are one-based in the Guide; index is zero-based within the Stop. */
+export function stopsGuiding(
 	experience: Experience,
 	guide: ExperienceGuide | null,
 	viewId: string
-): readonly { readonly stopId: string; readonly position: number }[] {
-	if (guide === null) return [];
-	const entering: { stopId: string; position: number }[] = [];
-	guide.stopIds.forEach((stopId, index) => {
+): readonly GuidedViewPosition[] {
+	const matches: GuidedViewPosition[] = [];
+	guide?.stopIds.forEach((stopId, position) => {
 		const stop = experience.stops.find((entry) => entry.id === stopId);
-		if (stop === undefined) return;
-		const presentation = experience.presentations.find((entry) => entry.id === stop.presentationId) ?? null;
-		if (stopEntryViewId(stop, presentation) === viewId) entering.push({ stopId, position: index + 1 });
+		const index = stop?.views.findIndex((view) => view.viewId === viewId) ?? -1;
+		if (index >= 0) matches.push({ stopId, position: position + 1, index });
 	});
-	return entering;
+	return matches;
 }
 
 /** Presentations whose subject is this Scene entity. */
@@ -198,19 +201,18 @@ export function presentationsAboutEntity(
 	);
 }
 
-/** How much of the Experience the Guide reaches: Views no Stop enters at are only found by free exploration. */
+/** Count distinct Camera Views reached by the Guide, free exploration, or neither. */
 export function reachSummary(experience: Experience, guide: ExperienceGuide | null): ExperienceReach {
-	const entered = new Set<string>();
-	for (const stop of guideStopsOf(experience, guide)) {
-		const presentation = experience.presentations.find((entry) => entry.id === stop.presentationId) ?? null;
-		const viewId = stopEntryViewId(stop, presentation);
-		if (viewId !== null) entered.add(viewId);
-	}
-	const views = new Set<string>();
-	for (const presentation of experience.presentations) {
-		for (const viewId of presentation.viewIds) views.add(viewId);
-	}
-	let free = 0;
-	for (const viewId of views) if (!entered.has(viewId)) free += 1;
-	return { presentations: experience.presentations.length, views: views.size, viewsOnlyFree: free };
+	const guided = new Set(guideStopsOf(experience, guide).flatMap((stop) => stop.views.map((view) => view.viewId)));
+	const views = new Set(experience.presentations.flatMap((presentation) => presentation.viewIds));
+	const explorable = experience.presentations.filter((presentation) => presentation.explorable);
+	const free = new Set(explorable.flatMap((presentation) => presentation.viewIds));
+	return {
+		presentations: experience.presentations.length,
+		views: views.size,
+		freePresentations: explorable.length,
+		freeViews: free.size,
+		viewsOnlyFree: [...free].filter((viewId) => !guided.has(viewId)).length,
+		hiddenViews: [...views].filter((viewId) => !guided.has(viewId) && !free.has(viewId)).length
+	};
 }

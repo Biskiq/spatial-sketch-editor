@@ -259,7 +259,7 @@
 									<span class="item-text">
 										<span class="item-name">{presentation.label}</span>
 										<span class="item-meta"
-											>{presentation.viewCount} {presentation.viewCount === 1 ? 'View' : 'Views'} · {#if presentation.stopNumbers.length > 0}Stops {stopsLabel(presentation.stopNumbers)}{:else}<span class="free-tag">free</span>{/if}</span
+											>{presentation.viewCount} {presentation.viewCount === 1 ? 'View' : 'Views'} · {#if presentation.stopNumbers.length > 0}Stops {stopsLabel(presentation.stopNumbers)}{:else}<span class="free-tag">{presentation.explorable ? 'free' : 'hidden'}</span>{/if}</span
 										>
 									</span>
 								</button>
@@ -283,7 +283,7 @@
 												class="view-row"
 												class:selected={view.selected}
 												aria-current={view.selected ? 'true' : undefined}
-												aria-label={`${view.label}, ${view.onTour ? 'on tour' : 'free'}${view.isDefault ? ', Default View' : ''}`}
+												aria-label={`${view.label}, ${view.onTour ? 'on tour' : presentation.explorable ? 'free' : 'hidden from free exploration'}${view.isDefault ? ', Default View' : ''}`}
 												onclick={() => experience.onSelectView(view.id, presentation.id)}
 											>
 												<span class="tour-mark" class:on={view.onTour} aria-hidden="true"></span>

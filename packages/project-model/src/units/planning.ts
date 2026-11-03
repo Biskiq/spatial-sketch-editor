@@ -26,10 +26,9 @@
  * - `experience-presentation-update` and `experience-stop-update` edit the bounded
  *   editorial fields: a Presentation's label, text, subject, Default (a newly
  *   captured View rebinds it deliberately) and View order (a permutation of its
- *   `viewIds`), and a Stop's entry View, hold and continuation edge (including
- *   its Cut/Travel selector).
+ *   `viewIds`), free-exploration reach, and a Stop's guided Views and continuation.
  * - `experience-update` and `experience-guide-update` (R217.S26) edit an
- *   Experience's label and Opening Guide, and a Guide's label and start Stop.
+ *   Experience's label, welcome and Opening Guide, and a Guide's label and start Stop.
  * - `experience-stop-remove`, `experience-presentation-view-remove`,
  *   `experience-presentation-remove` and `experience-guide-remove` (R217.S26)
  *   install the E4 removal plans of `experience-structure.ts`: one operation,
@@ -67,10 +66,10 @@ import {
 	createUnitAcceptancePreparation
 } from './acceptance';
 import { stageUnitResources, type StagedUnitResource } from './acceptance-staging';
+import { readExperienceText, readGuidedViews } from './validate';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
-	EXPERIENCE_TEXT_KINDS,
-	EXPERIENCE_TEXT_MAX_LENGTH,
+	EXPERIENCE_WELCOME_MAX_LENGTH,
 	EXPERIENCE_TRANSITIONS,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	type CameraView,
@@ -275,7 +274,6 @@ const STOP_PAYLOAD_KEYS = ['holdSeconds', 'continuation', 'guideId', 'afterStopI
 const COMPOUND_PAYLOAD_KEYS = ['view', 'presentation', 'stop', 'firstGuide', 'resource'] as const;
 const FIRST_GUIDE_PAYLOAD_KEYS = ['label'] as const;
 const PRESENTATION_PAYLOAD_KEYS = ['label', 'subject', 'text'] as const;
-const TEXT_KEYS = ['kind', 'body'] as const;
 const RESOURCE_UPDATE_KEYS = ['contentRevision', 'pin'] as const;
 
 type ResourceUpdate = { readonly contentRevision: string | null; readonly pin: ResourcePin | null };
@@ -296,25 +294,6 @@ function readResourceUpdate(reader: ShapeReader, input: unknown, path: string): 
 		return null;
 	}
 	return { contentRevision, pin };
-}
-
-/** One Presentation's plain text: the closed kind set, bounded at 4,000 code points. */
-function readTextPayload(reader: ShapeReader, input: unknown, path: string): ExperiencePresentationText | null {
-	const record = reader.object(input, path, TEXT_KEYS);
-	if (record === null) return null;
-	const kind = reader.tag(record.kind, `${path}.kind`, EXPERIENCE_TEXT_KINDS);
-	const body = reader.string(record.body, `${path}.body`);
-	if (kind === null || body === null) return null;
-	const length = [...body].length;
-	if (length > EXPERIENCE_TEXT_MAX_LENGTH) {
-		reader.problem(
-			`${path}.body`,
-			'text-too-long',
-			`${path}.body carries ${length} characters; Presentation text is bounded at ${EXPERIENCE_TEXT_MAX_LENGTH}`
-		);
-		return null;
-	}
-	return { kind: 'plain', body };
 }
 
 type SubjectRead =
@@ -501,6 +480,7 @@ export function createExperienceCreatePlanner(): DomainPlanner<ProjectEnvelope> 
 				id: experienceId,
 				label,
 				entryGuideId: null,
+				welcome: null,
 				presentations: [],
 				stops: [],
 				guides: [],
@@ -586,7 +566,7 @@ export function createCaptureBindPlanner(
 			const presentationLabel = presentationPayload === null ? null : reader.string(presentationPayload.label, '$.payload.presentation.label');
 			const text = presentationPayload === null || presentationPayload.text === null
 				? null
-				: readTextPayload(reader, presentationPayload.text, '$.payload.presentation.text');
+				: readExperienceText(reader, presentationPayload.text, '$.payload.presentation.text');
 			const subject = presentationPayload === null
 				? { ok: false as const }
 				: readSubjectPayload(reader, presentationPayload.subject, '$.payload.presentation.subject');
@@ -728,6 +708,7 @@ export function createCaptureBindPlanner(
 				viewIds: [viewId],
 				defaultViewId: viewId,
 				subject: subject.value,
+				explorable: true,
 				text
 			};
 			const newStop: ExperienceStop | null =
@@ -736,7 +717,7 @@ export function createCaptureBindPlanner(
 					: {
 							id: stopId,
 							presentationId,
-							...(stop.holdSeconds === undefined ? {} : { holdSeconds: stop.holdSeconds }),
+							views: [{ viewId, ...(stop.holdSeconds === undefined ? {} : { holdSeconds: stop.holdSeconds }) }],
 							...(stop.continuation === undefined ? {} : { continuation: stop.continuation })
 						};
 			const newGuide: ExperienceGuide | null =
@@ -935,7 +916,7 @@ export function createCaptureBindPlanner(
 				});
 			}
 			if (newStop !== null) {
-				changes.push({ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'holdSeconds', 'continuation'] });
+				changes.push({ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'views', 'continuation'] });
 				if (guide !== null) changes.push({ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] });
 				correspondence.push({
 					relation: 'created',
@@ -961,7 +942,7 @@ export function createCaptureBindPlanner(
 
 /* --- Guide creation -------------------------------------------------------- */
 
-const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'holdSeconds', 'continuation'] as const;
+const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'views', 'continuation'] as const;
 
 /**
  * Create one Guide of an Experience and its initial distinct Stop.
@@ -1053,8 +1034,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			const newStop: ExperienceStop = {
 				id: stopId,
 				presentationId,
-				...(entryViewId === null ? {} : { entryViewId }),
-				...(holdSeconds === undefined || holdSeconds === null ? {} : { holdSeconds }),
+				views: [{ viewId: entry, ...(holdSeconds === undefined || holdSeconds === null ? {} : { holdSeconds }) }],
 				...(continuation === undefined || continuation === null ? {} : { continuation })
 			};
 			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], entryStopId: newStop.id };
@@ -1088,7 +1068,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 					source: candidate,
 					changes: [
 						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId'] },
-						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'holdSeconds', 'continuation'] },
+						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'views', 'continuation'] },
 						...(firstGuide ? [{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }] : [])
 					],
 					correspondence: [
@@ -1202,8 +1182,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			const newStop: ExperienceStop = {
 				id: stopId,
 				presentationId,
-				...(entryViewId === undefined || entryViewId === null ? {} : { entryViewId }),
-				...(holdSeconds === undefined || holdSeconds === null ? {} : { holdSeconds }),
+				views: [{ viewId: entry, ...(holdSeconds === undefined || holdSeconds === null ? {} : { holdSeconds }) }],
 				...(continuation === undefined || continuation === null ? {} : { continuation })
 			};
 			const guides = experience.guides.map((candidate) =>
@@ -1242,7 +1221,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 					sourceVersion: request.snapshot.sourceVersion,
 					source: candidate,
 					changes: [
-						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'holdSeconds', 'continuation'] },
+						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'views', 'continuation'] },
 						{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }
 					],
 					correspondence: [
@@ -1352,7 +1331,7 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 
 /* --- Bounded editorial fields ---------------------------------------------- */
 
-const PRESENTATION_UPDATE_KEYS = ['label', 'text', 'subject', 'view', 'defaultViewId', 'viewIds'] as const;
+const PRESENTATION_UPDATE_KEYS = ['label', 'text', 'subject', 'view', 'defaultViewId', 'viewIds', 'explorable'] as const;
 
 /**
  * Edit one Presentation's label, text and subject, or rebind it to a freshly
@@ -1382,7 +1361,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 			const textPresent = payload.text !== undefined;
 			const text = !textPresent || payload.text === null
 				? null
-				: readTextPayload(reader, payload.text, '$.payload.text');
+				: readExperienceText(reader, payload.text, '$.payload.text');
 			const subjectPresent = payload.subject !== undefined;
 			const subject = payload.subject === null
 				? { ok: true as const, value: null }
@@ -1396,9 +1375,13 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				: payload.defaultViewId === null
 					? null
 					: reader.opaqueId(payload.defaultViewId, '$.payload.defaultViewId');
+			const explorable = payload.explorable === undefined
+				? undefined
+				: reader.boolean(payload.explorable, '$.payload.explorable');
 			const orderPresent = payload.viewIds !== undefined;
 			const order = orderPresent ? reader.opaqueIdArray(payload.viewIds, '$.payload.viewIds') : null;
 			if (
+				explorable === null ||
 				(orderPresent && order === null) ||
 				(label === null && payload.label !== undefined) ||
 				(textPresent && payload.text !== null && text === null) ||
@@ -1414,7 +1397,8 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				!subjectPresent &&
 				!viewPresent &&
 				payload.defaultViewId === undefined &&
-				!orderPresent
+				!orderPresent &&
+				explorable === undefined
 			) {
 				return refuse('invalid-payload', 'the Presentation payload names no field to change');
 			}
@@ -1486,7 +1470,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 			) {
 				return refuse(
 					'invalid-payload',
-					`presentation "${previous.id}" has Stops; keep a Default View while a Stop still enters through it`
+					`presentation "${previous.id}" has Stops; keep a Default View while the Guide uses this Presentation`
 				);
 			}
 			const updated: ExperiencePresentation = {
@@ -1495,7 +1479,8 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				viewIds,
 				defaultViewId: defaultView,
 				subject: subject === null ? previous.subject : subject.value,
-				text: textPresent ? text : previous.text
+				text: textPresent ? text : previous.text,
+				explorable: explorable ?? previous.explorable
 			};
 			const updatedExperience: Experience = {
 				...container,
@@ -1527,6 +1512,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 			const changedFields: string[] = [];
 			if (updated.label !== previous.label) changedFields.push('label');
 			if (textPresent) changedFields.push('text');
+			if (updated.explorable !== previous.explorable) changedFields.push('explorable');
 			if (subject !== null) changedFields.push('subject');
 			if (defaultView !== previous.defaultViewId) changedFields.push('defaultViewId');
 			if (viewIds.some((viewId, index) => viewId !== previous.viewIds[index]) || viewIds.length !== previous.viewIds.length) {
@@ -1566,21 +1552,13 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 	};
 }
 
-const STOP_UPDATE_PAYLOAD_KEYS = ['entryViewId', 'holdSeconds', 'continuation'] as const;
+const STOP_UPDATE_PAYLOAD_KEYS = ['views', 'continuation'] as const;
 
 function presentationOfStop(experience: Experience, stop: ExperienceStop): ExperiencePresentation | null {
 	return experience.presentations.find((candidate) => candidate.id === stop.presentationId) ?? null;
 }
 
-/**
- * Edit one Stop's entry View, hold or continuation edge.
- *
- * Targets: exactly one `experience:stop` reference. Every field is replaced when
- * present; `entryViewId: null` and `holdSeconds: null` clear them, and
- * `continuation: null` restores the authored default. The continuation's
- * transition is the Cut/Travel selector, so an unsupported Travel stays authored
- * and is reported by Preview rather than silently cut.
- */
+/** Replace a Stop's guided sequence, continuation, or both in one intent. */
 export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: 'unit.experience-stop-update',
@@ -1593,28 +1571,20 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', STOP_UPDATE_PAYLOAD_KEYS);
 			if (payload === null) return refuse('invalid-payload', 'The Stop payload is not a valid shape', reader.issues);
-			const entryPresent = payload.entryViewId !== undefined;
-			const entryViewId = entryPresent
-				? payload.entryViewId === null
-					? null
-					: reader.opaqueId(payload.entryViewId, '$.payload.entryViewId')
-				: undefined;
-			const holdPresent = payload.holdSeconds !== undefined;
-			const holdSeconds = !holdPresent || payload.holdSeconds === null
-				? null
-				: reader.numberAtLeast(payload.holdSeconds, '$.payload.holdSeconds', 0, false);
+			const viewsPresent = payload.views !== undefined;
+			const views = viewsPresent ? readGuidedViews(reader, payload.views, '$.payload.views') : null;
 			const continuationPresent = payload.continuation !== undefined;
 			const continuation = !continuationPresent || payload.continuation === null
 				? null
 				: readContinuation(reader, payload.continuation, '$.payload.continuation');
 			if (
-				(entryPresent && payload.entryViewId !== null && entryViewId === null) ||
-				(holdPresent && payload.holdSeconds !== null && holdSeconds === null) ||
+				reader.issues.length !== 0 ||
+				(viewsPresent && views === null) ||
 				(continuationPresent && payload.continuation !== null && continuation === null)
 			) {
 				return refuse('invalid-payload', 'The Stop payload is not a valid shape', reader.issues);
 			}
-			if (!entryPresent && !holdPresent && !continuationPresent) {
+			if (!viewsPresent && !continuationPresent) {
 				return refuse('invalid-payload', 'the Stop payload names no field to change');
 			}
 			const target = targetOf(request.intent, 'experience', 'stop');
@@ -1634,17 +1604,15 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			if (presentation === undefined || presentation === null) {
 				return refuse('missing-target', `stop "${previous.id}" names presentation "${previous.presentationId}", which this Experience does not carry`);
 			}
-			if (entryPresent && entryViewId !== null && entryViewId !== undefined && !presentation.viewIds.includes(entryViewId)) {
-				return refuse('invalid-payload', `entry view "${entryViewId}" is not one of presentation "${presentation.id}"'s views`);
-			}
-			// The mirror of the Presentation guard: clearing the Stop's own entry View
-			// while its Presentation has no Default would leave the Stop with no View to
-			// enter, and lowering would refuse the whole Experience.
-			if (entryPresent && entryViewId === null && previous.entryViewId !== undefined && presentation.defaultViewId === null) {
-				return refuse(
-					'invalid-payload',
-					`stop "${previous.id}" would enter at no View: presentation "${presentation.id}" has no Default View, so the Stop needs its own entry View`
-				);
+			if (views !== null) {
+				if (views.length === 0) return refuse('stop-keeps-a-view', 'A Stop shows at least one View');
+				if (
+					views[0]!.transition !== undefined ||
+					new Set(views.map((view) => view.viewId)).size !== views.length ||
+					views.some((view) => !presentation.viewIds.includes(view.viewId))
+				) {
+					return refuse('invalid-sequence', 'Use distinct Views from the Presentation and leave the entry transition unset');
+				}
 			}
 			if (
 				continuationPresent &&
@@ -1657,12 +1625,7 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			const updated: ExperienceStop = {
 				id: previous.id,
 				presentationId: previous.presentationId,
-				...(entryPresent
-					? entryViewId === null ? {} : { entryViewId }
-					: previous.entryViewId === undefined ? {} : { entryViewId: previous.entryViewId }),
-				...(holdPresent
-					? holdSeconds === null ? {} : { holdSeconds }
-					: previous.holdSeconds === undefined ? {} : { holdSeconds: previous.holdSeconds }),
+				views: views ?? previous.views,
 				...(continuationPresent
 					? continuation === null ? {} : { continuation }
 					: previous.continuation === undefined ? {} : { continuation: previous.continuation })
@@ -1687,8 +1650,7 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 				}
 			};
 			const changedFields: string[] = [];
-			if (updated.entryViewId !== previous.entryViewId) changedFields.push('entryViewId');
-			if (updated.holdSeconds !== previous.holdSeconds) changedFields.push('holdSeconds');
+			if (JSON.stringify(updated.views) !== JSON.stringify(previous.views)) changedFields.push('views');
 			if (JSON.stringify(updated.continuation) !== JSON.stringify(previous.continuation)) changedFields.push('continuation');
 			return {
 				kind: 'prepared',
@@ -1772,7 +1734,7 @@ function prepared(
 	};
 }
 
-const EXPERIENCE_UPDATE_KEYS = ['label', 'entryGuideId'] as const;
+const EXPERIENCE_UPDATE_KEYS = ['label', 'entryGuideId', 'welcome'] as const;
 
 /**
  * Edit one Experience's label or its Opening Guide.
@@ -1795,10 +1757,14 @@ export function createExperienceUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 			if (payload === null) return refuse('invalid-payload', 'The Experience payload is not a valid shape', reader.issues);
 			const label = payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
 			const entryGuideId = payload.entryGuideId === undefined ? undefined : reader.opaqueId(payload.entryGuideId, '$.payload.entryGuideId');
-			if (label === null || entryGuideId === null) {
+			const welcomePresent = payload.welcome !== undefined;
+			const welcome = !welcomePresent || payload.welcome === null
+				? null
+				: readExperienceText(reader, payload.welcome, '$.payload.welcome', EXPERIENCE_WELCOME_MAX_LENGTH);
+			if (label === null || entryGuideId === null || reader.issues.length !== 0) {
 				return refuse('invalid-payload', 'The Experience payload is not a valid shape', reader.issues);
 			}
-			if (label === undefined && entryGuideId === undefined) {
+			if (label === undefined && entryGuideId === undefined && !welcomePresent) {
 				return refuse('invalid-payload', 'the Experience payload names no field to change');
 			}
 			if (label !== undefined && label.trim() === '') return refuse('invalid-payload', 'A name is needed');
@@ -1814,11 +1780,13 @@ export function createExperienceUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 			const updated: Experience = {
 				...previous,
 				label: label ?? previous.label,
-				entryGuideId: entryGuideId ?? previous.entryGuideId
+				entryGuideId: entryGuideId ?? previous.entryGuideId,
+				welcome: welcomePresent ? welcome : previous.welcome
 			};
 			const candidate = withExperience(envelope, updated);
 			const fields: string[] = [];
 			if (updated.label !== previous.label) fields.push('label');
+			if (welcomePresent) fields.push('welcome');
 			if (updated.entryGuideId !== previous.entryGuideId) fields.push('entryGuideId');
 			return prepared(request, candidate, [{ kind: 'experience.updated', subjectIds: [updated.id], fields }], [
 				{
@@ -1944,7 +1912,8 @@ function removalRecord(
 				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['continuation'] });
 				break;
 			case 'stop-entry-fallback':
-				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['entryViewId'] });
+			case 'stop-view-removed':
+				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['views'] });
 				break;
 			case 'guide-start-moved':
 				changes.push({ kind: 'experience.guide.updated', subjectIds: [consequence.guideId], fields: ['entryStopId'] });

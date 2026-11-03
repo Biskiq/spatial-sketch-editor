@@ -438,8 +438,14 @@ export function gateProblems(model: StructureModel): string[] {
 					const declared = consumed.find((reference) => reference.startsWith(`${required}@`));
 					if (declared === undefined) {
 						problems.push(`${slice.id}: effect ${CAMERA_EFFECT} requires an exact accepted ${required}@<version> in Consumes`);
-					} else if (rows.get(declared)?.state !== 'accepted') {
-						problems.push(`${slice.id}: effect ${CAMERA_EFFECT} requires ${declared} to be accepted`);
+					} else {
+						const gate = rows.get(declared);
+						// A shipped effect keeps the gate version it was accepted against.
+						const historical = slice.status === 'shipped' && gate?.state === 'superseded' &&
+							!isSentinel(gate.acceptance) && !isSentinel(gate.commit);
+						if (gate?.state !== 'accepted' && !historical) {
+							problems.push(`${slice.id}: effect ${CAMERA_EFFECT} requires ${declared} to be accepted`);
+						}
 					}
 				}
 			}
@@ -1842,6 +1848,18 @@ describe('execution structure is registered, exact and eligible', () => {
 		);
 		expect(gateProblems(resolved)).toEqual([]);
 
+		const cutover = withBoth.gates[1]!;
+		const superseded = fixture({
+			gates: [
+				...withBoth.gates.map((row) => row === cutover ? { ...row, state: 'superseded' } : row),
+				{ ...cutover, version: '2', state: 'implemented' }
+			],
+			trustedBase: withBoth.trustedBase
+		});
+		const migration = { consumes: 'T1.viewport-projection@1, T3.camera-experience-cutover@1', effects: CAMERA_EFFECT };
+		expect(gateProblems(withSlice({ ...migration, status: 'shipped' }, superseded))).toEqual([]);
+		expect(gateProblems(withSlice(migration, superseded)).join('\n')).toContain('consumes superseded');
+
 		const tagged = withSlice({ consumes: 'T1.viewport-projection, T3.camera-experience-cutover', effects: CAMERA_EFFECT });
 		expect(gateProblems(tagged).join('\n')).toContain('is not an exact Gate@Version');
 
@@ -2051,12 +2069,11 @@ describe('the capability-readiness rule', () => {
 			'T3.P04.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:conditional-save-units-v1'],
 			// T5 planning registration (2026-10-27): T5.P01 consumes the same unit, acceptance, Save and
 			// viewport scopes as the Scene import phase. R217 registration (2026-10-28): the Core Editor
-			// Stability repository phase consumes the same scopes (R217.S26 joins under the owner's approval of
-			// 2026-11-03). No slice provides a gate.
+			// Stability repository phase consumes the same scopes. R217.S27 provides the versioned Camera/Experience cutover.
 			...Object.fromEntries(
 				[
 					...['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T1.P02.S05', 'T1.P02.S06', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03', 'T5.P01.S01', 'T5.P01.S02', 'T5.P01.S03', 'T5.P01.S04'],
-					...Array.from({ length: 26 }, (_, index) => `R217.S${String(index + 1).padStart(2, '0')}`)
+					...Array.from({ length: 27 }, (_, index) => `R217.S${String(index + 1).padStart(2, '0')}`)
 				].map(
 					(id) => [
 						id,

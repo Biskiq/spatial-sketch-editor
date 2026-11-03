@@ -17,6 +17,7 @@ import type { SemanticReference } from '@portfolio/project-model';
 import type {
 	Experience,
 	ExperienceContinuation,
+	ExperienceGuidedView,
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import {
@@ -329,6 +330,7 @@ export function presentationUpdateIntent(input: {
 	readonly experienceId: string;
 	readonly presentationId: string;
 	readonly label?: string;
+	readonly explorable?: boolean;
 	readonly text?: { kind: 'plain'; body: string } | null;
 	readonly view?: CapturedViewPose;
 	readonly defaultViewId?: string | null;
@@ -342,6 +344,7 @@ export function presentationUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
+			...(input.explorable === undefined ? {} : { explorable: input.explorable }),
 			...(input.text === undefined ? {} : { text: input.text }),
 			...(input.view === undefined ? {} : { view: input.view }),
 			...(input.defaultViewId === undefined ? {} : { defaultViewId: input.defaultViewId }),
@@ -351,15 +354,14 @@ export function presentationUpdateIntent(input: {
 	);
 }
 
-/** Edit one Stop's entry View, hold or continuation edge. */
+/** Replace one Stop's View sequence or continuation. */
 export function stopUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: { readonly projectId: string; readonly revisionId: string };
 	readonly ids: CommandIds;
 	readonly experienceId: string;
 	readonly stopId: string;
-	readonly entryViewId?: string | null;
-	readonly holdSeconds?: number | null;
+	readonly views?: readonly ExperienceGuidedView[];
 	readonly continuation?: ExperienceContinuation | null;
 }): AuthoringIntent {
 	return intent(
@@ -368,8 +370,7 @@ export function stopUpdateIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, 'stop', input.stopId)],
 		{
-			...(input.entryViewId === undefined ? {} : { entryViewId: input.entryViewId }),
-			...(input.holdSeconds === undefined ? {} : { holdSeconds: input.holdSeconds }),
+			...(input.views === undefined ? {} : { views: input.views }),
 			...(input.continuation === undefined ? {} : { continuation: input.continuation })
 		},
 		[]
@@ -386,6 +387,7 @@ export function experienceUpdateIntent(input: {
 	readonly experienceId: string;
 	readonly label?: string;
 	readonly entryGuideId?: string;
+	readonly welcome?: { kind: 'plain'; body: string } | null;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_UPDATE_KIND,
@@ -394,7 +396,8 @@ export function experienceUpdateIntent(input: {
 		[experienceReference(input.envelope, input.experienceId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
-			...(input.entryGuideId === undefined ? {} : { entryGuideId: input.entryGuideId })
+			...(input.entryGuideId === undefined ? {} : { entryGuideId: input.entryGuideId }),
+			...(input.welcome === undefined ? {} : { welcome: input.welcome })
 		},
 		[]
 	);

@@ -132,6 +132,7 @@
 	}
 
 	$effect(() => {
+		if (!active) return;
 		// Only a changed Presentation view starts Camera motion. The Experience
 		// interpreter owns why the visitor moved; this owns how the Camera gets
 		// there. A Cut (or reduced motion) is instant; a Travel animates the
@@ -152,6 +153,11 @@
 		// actual change is applied, so a hold at a Cut Stop does not reframe (and so
 		// does not cancel look-around) on every interpreter tick.
 		const invocation = visitor.currentInvocation ?? { kind: 'cut' as const, viewId: targetViewId };
+		const invocationOrigin = visitor.currentInvocationFromViewId;
+		if (cameraViewId === null && invocation.kind === 'travel' && invocationOrigin !== null && !visitor.reducedMotion) {
+			cameraViewId = invocationOrigin;
+			frameFor(invocationOrigin);
+		}
 		if (cameraViewId === null || visitor.reducedMotion || invocation.kind === 'cut') {
 			const settling = cameraViewId !== targetViewId || activeTargetViewId !== null || activeMotion !== null;
 			if (!settling) return;
@@ -179,10 +185,10 @@
 		// connection's declared origin is authoritative. Accept the handoff from
 		// the live pose; never finish the stale Travel first (that would reorder
 		// the authored motion) and never substitute pathfinding.
-		const handoffFromViewId =
-			activeTargetViewId !== null && activeTargetViewId !== targetViewId
-				? activeTargetViewId
-				: null;
+		// An editorial tick can cross a zero hold or several positive holds before
+		// this effect runs. Use the interpreter's logical predecessor even when
+		// there was no frame or in-flight motion for that View.
+		const handoffFromViewId = invocationOrigin ?? activeTargetViewId;
 		const resolved = resolveVisitorCameraRoute({
 			fromViewId: cameraViewId,
 			toViewId: targetViewId,

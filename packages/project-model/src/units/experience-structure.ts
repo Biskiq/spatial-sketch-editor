@@ -36,6 +36,7 @@ export type ExperienceRemovalConsequence =
 	| { readonly kind: 'stop-removed'; readonly stopId: string; readonly presentationId: string }
 	| { readonly kind: 'continuation-fallback'; readonly stopId: string; readonly removedStopId: string }
 	| { readonly kind: 'guide-start-moved'; readonly guideId: string; readonly fromStopId: string; readonly toStopId: string }
+	| { readonly kind: 'stop-view-removed'; readonly stopId: string; readonly viewId: string }
 	| { readonly kind: 'stop-entry-fallback'; readonly stopId: string; readonly viewId: string }
 	| { readonly kind: 'default-changed'; readonly presentationId: string; readonly fromViewId: string; readonly toViewId: string }
 	| { readonly kind: 'view-deleted'; readonly viewId: string }
@@ -291,11 +292,23 @@ export function planPresentationViewRemoval(
 	} else if (newDefaultViewId !== null && newDefaultViewId !== presentation.defaultViewId) {
 		return refused('invalid-default', 'A new Default is chosen only when the Default View is removed');
 	}
+	if (defaultViewId === null && experience.stops.some((stop) =>
+		stop.presentationId === presentationId && stop.views.length === 1 && stop.views[0]!.viewId === viewId
+	)) {
+		return refused('default-needed', 'Choose a Default View before removing the only View of a Stop');
+	}
 	const stops = experience.stops.map((stop) => {
-		if (stop.presentationId !== presentationId || stop.entryViewId !== viewId) return stop;
-		consequences.push({ kind: 'stop-entry-fallback', stopId: stop.id, viewId });
-		const { entryViewId: _removed, ...rest } = stop;
-		return rest;
+		if (stop.presentationId !== presentationId || !stop.views.some((view) => view.viewId === viewId)) return stop;
+		consequences.push({ kind: 'stop-view-removed', stopId: stop.id, viewId });
+		const views = stop.views.filter((view) => view.viewId !== viewId);
+		if (views.length === 0 && defaultViewId !== null) {
+			consequences.push({ kind: 'stop-entry-fallback', stopId: stop.id, viewId });
+			return { ...stop, views: [{ viewId: defaultViewId }] };
+		}
+		const [entry, ...rest] = views;
+		if (entry?.transition === undefined) return { ...stop, views };
+		const { transition: _transition, ...first } = entry;
+		return { ...stop, views: [first, ...rest] };
 	});
 	const next: Experience = {
 		...experience,
