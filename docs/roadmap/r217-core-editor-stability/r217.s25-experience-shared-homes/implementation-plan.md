@@ -42,7 +42,7 @@ Experience uses the same Head, Index, Card and lower edge as World instead of a 
 | Guide | An invoked panel in the route's `.lower-column` (≈L4325), mounted through `StageInstrumentHost.svelte` as a non-palette instrument; `StageDock` renders only in the World lens | Stops, order and Travel gaps; closed by default, and opened from the Index or Card |
 | Capture and View | The lower edge, through `StageInstrumentHost.svelte` | The same commands from the controller |
 | Preview and lens | `apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte` | Stay in the Head only; the surface's own Preview button goes |
-| Retired | `apps/editor/src/lib/authoring/experience/ExperienceSurface.svelte` | Deleted or reduced to presentational pieces the homes mount |
+| Retired | `ExperienceSurface.svelte` (the experience folder) | Deleted or reduced to presentational pieces the homes mount |
 
 **Rules:**
 
