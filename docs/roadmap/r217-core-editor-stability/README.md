@@ -22,6 +22,22 @@ on 2026-10-30 and directed that the resulting work be registered here, under
 [campaign record](../../reference/decisions/r217-convergence-campaign-2026-10-30.md) releases them together, and S11, when the owner merges
 PR #230. It does not close R217. Those rulings amend landed contracts only at each slice's cutover.
 
+## Post-S25 Experience authoring depth
+
+The [S26 planning workspace](./r217.s26-experience-authoring-depth/README.md) plans R217.S26–S30, approved
+by the owner on 2026-11-03: structure, removal, guided Views, View placement, Look through, snapshots,
+Camera paths, playback and Preview, harvesting every Conservatory capability. With them R217 becomes a
+stable product milestone, certified by S11. Exception for these slices: no separate doc approval; each
+slice's PR adds its own register row and is accepted by the owner in the PR.
+
+| Slice | Scope | After |
+| --- | --- | --- |
+| R217.S26 | [Structure and removal](./r217.s26-experience-authoring-depth/execution-plan.md#r217s26--structure-and-removal) | S25 |
+| R217.S27 | [Guided Views and visitor reach](./r217.s26-experience-authoring-depth/execution-plan.md#r217s27--guided-views-and-visitor-reach) | S26 |
+| R217.S28 | [Views on the Stage](./r217.s26-experience-authoring-depth/execution-plan.md#r217s28--views-on-the-stage) | S27 |
+| R217.S29 | [Camera paths](./r217.s26-experience-authoring-depth/execution-plan.md#r217s29--camera-paths) | S28 |
+| R217.S30 | [Timeline, playback and Preview](./r217.s26-experience-authoring-depth/execution-plan.md#r217s30--timeline-playback-and-preview) | S29 |
+
 ## Outcome
 
 A creator opens a project in a shell that matches the ratified production design:
