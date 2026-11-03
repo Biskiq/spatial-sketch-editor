@@ -795,9 +795,8 @@
 		flex-direction: column;
 		/* Centred, it stays clear of the Card on the right, so the Card can run down to the dock. */
 		--guide-room: max(320px, calc(100% - 2 * (var(--shell-card-width, 288px) + var(--sheet-lane-right, 40px) + 30px)));
-		width: max-content;
-		min-width: min(560px, var(--guide-room));
-		max-width: var(--guide-room);
+		/* Round 2: a fixed 820 px instrument, whatever the number of Stops. */
+		width: min(820px, var(--guide-room));
 		border-radius: 12px;
 		background: var(--shell-forest, #11291f);
 		color: var(--shell-ink-light, #eef1ec);
@@ -993,7 +992,7 @@
 	/* ---- Stop cards and connectors ---- */
 	.cards {
 		overflow-x: auto;
-		padding: 8px 0 2px;
+		padding: 8px 0 4px;
 		scrollbar-width: thin;
 		scrollbar-color: rgb(255 255 255 / 0.22) transparent;
 	}
@@ -1116,14 +1115,14 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 2px 12px 8px;
+		padding: 4px 12px 10px;
 	}
 	.play {
 		display: grid;
 		place-items: center;
 		flex: none;
-		width: 24px;
-		height: 22px;
+		width: 31px;
+		height: 26px;
 		padding: 0;
 		border: 0;
 		border-radius: 7px;
@@ -1134,9 +1133,11 @@
 		position: relative;
 		display: flex;
 		flex: 1;
-		gap: 2px;
-		height: 10px;
+		gap: 0;
+		height: 8px;
 		min-width: 0;
+		border-radius: 4px;
+		background: rgb(255 255 255 / 0.12);
 	}
 	.seg {
 		flex: 1 1 0;
@@ -1146,15 +1147,16 @@
 		container-type: inline-size;
 		min-width: 0;
 		overflow: hidden;
-		border-radius: 3px;
-		background: rgb(79 143 108 / 0.55);
+		border-right: 1px solid rgb(17 41 31 / 0.6);
+		background: rgb(255 255 255 / 0.22);
 	}
 	.seg.selected {
 		background: var(--shell-gold, #d4ad45);
 	}
 	/* The hold is written on its segment only while the segment is wide enough for it. */
+	/* Round 2's 8 px bar has no room for text: a Stop's hold reads on its card. */
 	.seg-hold {
-		display: none;
+		display: none !important;
 		font: 600 8px/1 var(--shell-mono, ui-monospace, monospace);
 		color: #e3eee7;
 		white-space: nowrap;

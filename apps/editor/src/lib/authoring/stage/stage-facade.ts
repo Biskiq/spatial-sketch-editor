@@ -1357,8 +1357,16 @@ export function createStageFacade(input: {
 		});
 	}
 
+	/**
+	 * R217.S25: the Experience lens reads a settled World. Every mark the adapters publish (move,
+	 * turn, size, wall ends) is World editing, so none is drawn or hit there.
+	 */
+	function worldMarksOffered(): boolean {
+		return session.lens() !== 'experience';
+	}
+
 	function selectionMarks(): readonly StageMarkView[] {
-		if (!isLive()) return [];
+		if (!isLive() || !worldMarksOffered()) return [];
 		syncDisclosureSelection();
 		if (session.task() !== null) return [];
 		const entry = primaryEntry(session.selectionState());
@@ -1379,7 +1387,7 @@ export function createStageFacade(input: {
 	}
 
 	function idleMarks(): readonly StageMarkView[] {
-		if (!isLive() || session.task() !== null) return [];
+		if (!isLive() || session.task() !== null || !worldMarksOffered()) return [];
 		ensureBindings();
 		const handle = adapterContext();
 		if (handle === null) return [];

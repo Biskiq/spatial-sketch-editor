@@ -166,37 +166,6 @@
 				</div>
 			</details>
 		</div>
-		{#if !experience.pending && experience.current !== null}
-			<section class="group" aria-labelledby="index-guides">
-				<h3 id="index-guides" class="group-title">Guides</h3>
-				{#each experience.guides as guide (guide.id)}
-					<div class="item" class:selected={guide.selected} class:open={guide.open} data-guide-id={guide.id}>
-						<button
-							type="button"
-							class="guide-row"
-							aria-current={guide.selected ? 'true' : undefined}
-							onclick={() => experience.onOpenGuide(guide.id)}
-						>
-							<ShellIcon name="guide" size={15} />
-							<span class="item-text">
-								<span class="item-name serif">{guide.label}</span>
-								<span class="item-meta">{guide.stopCount} stops</span>
-							</span>
-							{#if guide.open}<span class="chip">Open</span>{/if}
-						</button>
-					</div>
-				{:else}
-					<div class="item">
-						<button type="button" class="guide-row" onclick={() => experience.onOpenGuide(null)}>
-							<ShellIcon name="guide" size={15} />
-							<span class="item-text">
-								<span class="item-name muted">No Guide yet</span>
-							</span>
-						</button>
-					</div>
-				{/each}
-			</section>
-		{/if}
 		<section class="group" aria-labelledby="index-presentations">
 			<h3 id="index-presentations" class="group-title">
 				Presentations <span class="count">{experience.totalPresentations}</span>
@@ -246,7 +215,7 @@
 								>
 									<ExperienceSnapshot label={presentation.label} ratio="row" selected={presentation.selected} />
 									<span class="item-text">
-										<span class="item-name serif">{presentation.label}</span>
+										<span class="item-name">{presentation.label}</span>
 										<span class="item-meta"
 											>{presentation.viewCount} {presentation.viewCount === 1 ? 'View' : 'Views'} · {#if presentation.stopNumbers.length > 0}Stops {stopsLabel(presentation.stopNumbers)}{:else}<span class="free-tag">free</span>{/if}</span
 										>
@@ -283,6 +252,38 @@
 				</ul>
 			{/if}
 		</section>
+		<!-- Round 2 order: the Presentations, then the Guides that order them. -->
+		{#if !experience.pending && experience.current !== null}
+			<section class="group" aria-labelledby="index-guides">
+				<h3 id="index-guides" class="group-title">Guides</h3>
+				{#each experience.guides as guide (guide.id)}
+					<div class="item" class:selected={guide.selected} class:open={guide.open} data-guide-id={guide.id}>
+						<button
+							type="button"
+							class="guide-row"
+							aria-current={guide.selected ? 'true' : undefined}
+							onclick={() => experience.onOpenGuide(guide.id)}
+						>
+							<ShellIcon name="guide" size={15} />
+							<span class="item-text">
+								<span class="item-name">{guide.label}</span>
+								<span class="item-meta">{guide.stopCount} stops</span>
+							</span>
+							{#if guide.open}<span class="chip">Open</span>{/if}
+						</button>
+					</div>
+				{:else}
+					<div class="item">
+						<button type="button" class="guide-row" onclick={() => experience.onOpenGuide(null)}>
+							<ShellIcon name="guide" size={15} />
+							<span class="item-text">
+								<span class="item-name muted">No Guide yet</span>
+							</span>
+						</button>
+					</div>
+				{/each}
+			</section>
+		{/if}
 		{:else}
 		<div class="index-search">
 			<label
@@ -629,9 +630,6 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.item-name.serif {
-		font-family: var(--shell-serif, Georgia, serif);
-	}
 	.item-name.muted {
 		color: var(--shell-ink-3, #79817b);
 	}
@@ -676,12 +674,16 @@
 		opacity: 0.35;
 	}
 	.presentation-row {
-		min-height: 38px;
-		padding: 4px 8px 4px 2px;
-		gap: 8px;
+		min-height: 28px;
+		padding: 4px 6px 4px 2px;
+		gap: 7px;
 		cursor: grab;
 	}
+	/* Round 2 Index rows read in the sans at 13 px; only the selected row is bold. */
 	.presentation-row .item-name {
+		font: 400 13px/1.35 var(--shell-sans, system-ui);
+	}
+	.item-head.selected .item-name {
 		font-weight: 600;
 	}
 	.view-list {
