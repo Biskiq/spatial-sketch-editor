@@ -111,7 +111,7 @@ No mutation proof is claimed. The new tests assert the new homes; none asserts a
 
 ### Browser acceptance
 
-**Setup.** Headed Chromium (Playwright 1.63 from the repository's `node_modules`), one browser per pass, closed in `finally`. Scratch database `biskiq_r217_s25` on the local Postgres (created for this slice, migrated with the API's own migrator, and dropped at close-out). Two API instances on the same scratch database: port 8797 for the branch (`EDITOR_ORIGIN` 5173) and 8798 for `main` (`EDITOR_ORIGIN` 5174). Two Vite dev servers: the branch at 5173 and `main` at 5174, the latter in a temporary worktree at `e9e778a0`, which is removed at close-out. Sessions came from the API's test-auth seam (`agent-user-a`), set on each browser context. Real pointer input throughout, with keyboard input only where the journey says so.
+**Setup.** Headed Chromium (Playwright 1.63 from the repository's `node_modules`), one browser per pass, closed in `finally`. Scratch database `biskiq_r217_s25` on the local Postgres (created for this slice, migrated with the API's own migrator, and dropped after the runs). Two API instances on the same scratch database: port 8797 for the branch (`EDITOR_ORIGIN` 5173) and 8798 for `main` (`EDITOR_ORIGIN` 5174). Two Vite dev servers: the branch at 5173 and `main` at 5174, the latter in a temporary worktree at `e9e778a0`, which was removed after the runs. Sessions came from the API's test-auth seam (`agent-user-a`), set on each browser context. Real pointer input throughout, with keyboard input only where the journey says so.
 
 **The journey.** Each pass starts from New Project (the create baseline), installs the starter through Find (and confirms the Replace), selects the starter's room in the World locator, and then runs the parity steps: enter Experience, create the Experience, select 3D, Capture, create the first Guide, Capture twice more, Move up the last Stop, select Presentation 1 (View), open the Guide, Preview, exit Preview, return to World, Undo, read, Undo, read. Each step records the lens, the Index's Presentations and Stops, the Guide's state, the Card, the feedback line, whether Preview is up, Undo's state and horizontal overflow, and takes a screenshot.
 
@@ -201,7 +201,7 @@ Each item below is a place where the delivered behaviour or wording differs from
 - **R-6. Preview readouts (step 12).** The journey's Guide and feedback readouts differ during Preview because `main` unmounts its surface and the branch hides its lower edge. The creator sees neither during Preview.
 - **R-7. Coarse pointer, touch, Safari (S11's rows).** Not measured here. See the browser section.
 - **R-8. Select key.** It stays decorative, as on `main`. No shortcut behaviour was added.
-- **R-9. Local database.** The browser passes used a scratch database on the local Postgres, not the Compose stack. The database is dropped at close-out.
+- **R-9. Local database.** The browser passes used a scratch database on the local Postgres, not the Compose stack. The database was dropped after the runs.
 - **R-10. Console favicon 404 (TD-19).** Pre-existing. Filtered from the console records, and the journals show no other console error.
 
 ## Independent review
