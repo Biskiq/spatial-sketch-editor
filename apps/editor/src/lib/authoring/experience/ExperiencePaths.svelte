@@ -568,7 +568,7 @@
 	.anchor-hit {
 		fill: transparent;
 		pointer-events: auto;
-		cursor: var(--cursor-move, move);
+		cursor: var(--cursor-grab, grab);
 	}
 	.preview {
 		pointer-events: none;

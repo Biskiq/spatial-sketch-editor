@@ -445,6 +445,52 @@ function rotate2(direction: readonly [number, number], angle: number): [number, 
 	return [direction[0] * c - direction[1] * s, direction[0] * s + direction[1] * c];
 }
 
+export type PlacementGhostPose = {
+	readonly eye: Vec3;
+	readonly target: Vec3;
+	readonly fovYDegrees: number;
+};
+
+function planFrustum(
+	viewId: string,
+	state: ExperienceMarkState,
+	eye: StagePoint,
+	target: StagePoint,
+	fov: number,
+	length: number
+): ExperienceFrustum | null {
+	const dx = target[0] - eye[0];
+	const dy = target[1] - eye[1];
+	const span = Math.hypot(dx, dy);
+	if (span < 1e-3) return null;
+	const direction = [dx / span, dy / span] as const;
+	const half = (clampFov(fov) * Math.PI) / 360;
+	const left = rotate2(direction, -half);
+	const right = rotate2(direction, half);
+	const point = (along: StagePoint): StagePoint =>
+		[round1(eye[0] + along[0] * length), round1(eye[1] + along[1] * length)];
+	return { viewId, state, eye, left: point(left), right: point(right), tip: point(direction), length };
+}
+
+/** The same View glyph and frustum at the provisional pose, without an authored View or hit target. */
+export function projectPlacementGhost(evaluation: ViewportEvaluation, pose: PlacementGhostPose) {
+	const eye = projectStage(evaluation, pose.eye, true);
+	if (eye === null) return null;
+	if (evaluation.projectionKind !== 'plan-orthographic') {
+		return {
+			eye,
+			camera: cameraGlyph(evaluation, pose.eye, pose.target, pose.fovYDegrees, true, CAMERA_FRUSTUM_FAR_METRES),
+			wedge: null
+		};
+	}
+	const target = projectStage(evaluation, pose.target, false);
+	return {
+		eye,
+		camera: null,
+		wedge: target === null ? null : planFrustum('placement', 'selected', eye, target, pose.fovYDegrees, PLAN_WEDGE_SELECTED_PX)
+	};
+}
+
 /** One related set drives the marks, travel routes and cut links. */
 export function relatedToSelection(
 	selection: MarkSelection,
@@ -586,28 +632,11 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 			camera: null
 		});
 
-		// The aim in screen space; a View seen straight down has no wedge to draw.
-		const dx = target[0] - eye[0];
-		const dy = target[1] - eye[1];
-		const span = Math.hypot(dx, dy);
-		if (span < 1e-3) continue;
-		const direction = [dx / span, dy / span] as const;
 		const length = state === 'selected' ? PLAN_WEDGE_SELECTED_PX : (onTour || state === 'strong') ? PLAN_WEDGE_TOUR_PX : PLAN_WEDGE_QUIET_PX;
-		const half = (clampFov(view.fov) * Math.PI) / 360;
-		const left = rotate2(direction, -half);
-		const right = rotate2(direction, half);
-		const tip: [number, number] = [round1(eye[0] + direction[0] * length), round1(eye[1] + direction[1] * length)];
-		if (frustums.length < EXPERIENCE_MARK_CAPS.frustums) {
-			frustums.push({
-				viewId: view.id,
-				state,
-				eye,
-				left: [round1(eye[0] + left[0] * length), round1(eye[1] + left[1] * length)],
-				right: [round1(eye[0] + right[0] * length), round1(eye[1] + right[1] * length)],
-				tip,
-				length
-			});
-		}
+		const wedge = planFrustum(view.id, state, eye, target, view.fov, length);
+		if (wedge === null) continue;
+		if (frustums.length < EXPERIENCE_MARK_CAPS.frustums) frustums.push(wedge);
+		const { tip } = wedge;
 		if (state === 'selected') {
 			marks.push({
 				id: `view:${view.id}:turn`,

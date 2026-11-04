@@ -686,7 +686,7 @@ export function stageCameraLayerMask(paperVisible: boolean): readonly number[] {
 
 /**
  * How far each part of Paper has arrived. Linework leads, the sheet covers the
- * shaded frame under it, and the cut poché lands last, exactly at weight 1.
+ * shaded frame under it, and the cut poché blends in as the Camera settles.
  */
 export type PaperReveal = {
 	readonly lines: number;

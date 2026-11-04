@@ -119,6 +119,7 @@ import {
 } from './layout/drawing-planners';
 import {
 	classifyInkPointerTarget,
+	INK_JUNCTION_HIT_CSS_PX,
 	classifyOpeningHost,
 	offsetAlongWall,
 	pointOnWallCenterline,
@@ -187,11 +188,11 @@ import {
 	resolveJunctionPointSnap,
 	resolveOpeningSlideSnap,
 	resolveOpeningWidthSnap,
-	snapWallDistance,
-	snapWallLength,
+	DRAG_GRID_SNAP_CSS_PX,
+	snapWallDrag,
 	type LayoutSnapWinner
 } from './layout/snap';
-import { draftingSnapIncrementMeters, snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
+import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingPlacement, snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
 import {
 	buildLayoutCandidatePaper,
 	wallCenterlinePaper,
@@ -351,6 +352,7 @@ type JunctionHoverGesture = {
 	readonly wallId: string;
 	readonly wallIds: readonly string[];
 	readonly startPoint: LayoutVec2;
+	readonly pressPoint: LayoutVec2;
 	readonly lease: GestureAcquisition | null;
 	readonly baseline: LayoutDocumentWallFirst;
 	numeric: PlanNumericEntryState | null;
@@ -875,7 +877,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						evaluationId: intent.evaluationId,
 						revision: services.authoring.acceptedRevision().revisionId,
 						pressCss: intent.css,
-						pressPoint: point,
+						pressPoint: [point[0], point[1]],
 						labelWorld: label.world,
 						lease,
 						delta: [0, 0],
@@ -2323,6 +2325,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				adapterContext: StageAdapterContext,
 				css: readonly [number, number]
 			): InkPointerTarget | null {
+				const start = inkWallMode === 'line' && draft.points.length >= 3 ? draft.points[0] : undefined;
+				if (start !== undefined) {
+					const { left, top } = adapterContext.evaluation.rect;
+					const projected = adapterContext.project([start.point[0], adapterContext.snapshot.domain.datumMeters, start.point[1]]);
+					if (projected !== null && Math.hypot(css[0] + left - projected[0], css[1] + top - projected[1]) <= INK_JUNCTION_HIT_CSS_PX) {
+						inkSnapWinner = { point: start.point, kind: 'junction', name: 'Junction' };
+						return { ...start, css };
+					}
+				}
 				const projected = projectedScene(adapterContext);
 				const hit = classifyInkPointerTarget({ css, junctions: projected.junctions, walls: projected.walls });
 				if (hit?.kind === 'junction') {
@@ -2401,6 +2412,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function linePreviewDraft(): ChainDraft {
 				const base = linePreviewBase();
 				if (base.closed || inkHover === null) return base;
+				if (base.points.length >= 2 && isDraftStart(base, inkHover.point, 1e-9)) return { ...base, closed: true };
 				const extended = appendChainPoint(base, { point: inkHover.point, target: inkHover.target });
 				return 'points' in extended ? extended : base;
 			}
@@ -2424,20 +2436,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
 					return;
 				}
-				const points =
-					linePreviewDraft();
-				if (!('points' in points)) {
-					inkPreview = null;
-					return;
-				}
-				inkPreview = planChainDraft({
-					document,
-					draft: points,
-					capture: chainCapture ?? mintLayoutIdCapture(),
-					levelId,
-					...(inkThickness === null ? {} : { thickness: inkThickness }),
-					...(inkHeight === null ? {} : { height: inkHeight })
-				});
+				const points = linePreviewDraft();
+				inkPreview = planInkDraft(points);
 				// A refusal is only words for the palette: the live chain is untouched.
 				inkNotice =
 					inkPreview.kind === 'refused' && points.points.length >= 2 ? inkPreview.message : null;
@@ -2765,6 +2765,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						draft = begun;
 					}
+				}
+				if (draft.points.length >= 2 && isDraftStart(draft, release.point, 1e-9)) {
+					void commitChain({ ...draft, closed: true });
+					return;
 				}
 				const appended = appendChainPoint(draft, { point: release.point, target: release.target });
 				if (!('points' in appended)) {
@@ -3461,6 +3465,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								wallId,
 								wallIds: hovered.wallIds,
 								startPoint: current.point,
+								pressPoint: [point[0], point[1]],
 								lease: acquisition,
 								baseline,
 								numeric: null,
@@ -3721,7 +3726,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						if (junctionGesture !== null) {
 							const drafting = adapterContext.drafting();
-							const snappedPoint = snapDraftingPoint(point, drafting);
+							const aimed: LayoutVec2 = [
+								junctionGesture.startPoint[0] + (point[0] - junctionGesture.pressPoint[0]),
+								junctionGesture.startPoint[1] + (point[1] - junctionGesture.pressPoint[1])
+							];
+							const gridPoint = snapDraftingPoint(aimed, drafting);
+							const snap = draftingSnapIncrementMeters(drafting) !== null &&
+								Math.hypot(gridPoint[0] - aimed[0], gridPoint[1] - aimed[1]) <=
+									DRAG_GRID_SNAP_CSS_PX * adapterContext.evaluation.targetPlaneMetersPerCssPixel;
+							const free = snapDraftingPlacement(aimed, null);
+							const snappedPoint = snap ? gridPoint : [free.x, free.z];
 							junctionGesture.pointerPoint = [point[0], point[1]];
 							if (
 								Math.hypot(
@@ -3754,9 +3768,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							} else {
 								junctionGesture.request = request;
 								junctionGesture.previewDocument = planned.document;
-								junctionGesture.snap = draftingSnapIncrementMeters(drafting) === null
-									? null
-									: { point: request.point, kind: 'grid', name: 'Grid' };
+								junctionGesture.snap = snap ? { point: request.point, kind: 'grid', name: 'Grid' } : null;
 								refusal = null;
 							}
 							services.stage.notifySurfaceChange();
@@ -3828,7 +3840,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						const wallGesture = gesture!;
 						const drafting = adapterContext.drafting();
-						const snapActive = draftingSnapIncrementMeters(drafting) !== null;
+						const metersPerCssPixel = adapterContext.evaluation.targetPlaneMetersPerCssPixel;
+						const grabbedEnd = wallGesture.handle === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
+						const aimed: LayoutVec2 = [
+							grabbedEnd[0] + (point[0] - wallGesture.startPoint[0]),
+							grabbedEnd[1] + (point[1] - wallGesture.startPoint[1])
+						];
+						let moveSnapped = false;
 						wallGesture.pointerPoint = [point[0], point[1]];
 						let request: WallManipulationRequest;
 						let winner: LayoutSnapWinner | null = null;
@@ -3838,12 +3856,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							if (anchor === null) return true;
 							const snapped = resolveJunctionPointSnap({
 								geometry: adapterContext.snapshot.domain.geometry,
-								point: [point[0], point[1]],
+								point: aimed,
 								anchor: [anchor[0], anchor[1]],
 								pixelsPerMeter: 1 / adapterContext.evaluation.targetPlaneMetersPerCssPixel,
 								drafting
 							});
-							snappedPoint = snapped?.point ?? point;
+							snappedPoint = snapped?.point ?? aimed;
 							winner = snapped;
 							request = pointerWallRequest({
 								handle: wallGesture.handle,
@@ -3872,7 +3890,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								(point[0] - wallGesture.startPoint[0]) * wallGesture.normal[0] +
 								(point[1] - wallGesture.startPoint[1]) * wallGesture.normal[1];
 							wallGesture.normalSign = rawDistance < 0 ? -1 : 1;
-							const distance = snapWallDistance(rawDistance, drafting);
+							const { value: distance, snapped } = snapWallDrag(rawDistance, drafting, metersPerCssPixel);
+							moveSnapped = snapped;
 							wallGesture.distance = distance;
 							if (distance === 0) {
 								// A zero delta is not a refusal and not a proposal: the Wall has not
@@ -3927,7 +3946,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							return true;
 						}
 						if (request.kind === 'length') {
-							const snappedLength = snapWallLength(request.length, drafting);
+							const { value: snappedLength, snapped } = snapWallDrag(request.length, drafting, metersPerCssPixel, DRAFTING_SNAP_METERS);
 							if (snappedLength !== request.length) {
 								request = { kind: 'length', length: snappedLength };
 							}
@@ -3943,7 +3962,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								services.stage.notifySurfaceChange();
 								return true;
 							}
-							if (snapActive) {
+							if (snapped) {
 								const fixedPoint = wallGesture.fixed === 'start' ? wallGesture.frame.start : wallGesture.frame.end;
 								const sign = wallGesture.fixed === 'start' ? 1 : -1;
 								winner = {
@@ -3979,7 +3998,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							wallGesture.previewDocument = planned.document;
 							wallGesture.neighbours = planned.neighbours;
 							wallGesture.snap =
-								request.kind === 'move' && snapActive
+								request.kind === 'move' && moveSnapped
 									? {
 											point: [
 												(planned.wall.start[0] + planned.wall.end[0]) / 2,
@@ -4502,12 +4521,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					: linePreviewDraft();
 				const points = 'points' in live ? live.points : draft.points;
 				if (inkPreview?.kind === 'planned') {
-					const subjectIds = new Set([...inkPreview.authoredWallIds, ...inkPreview.createdRoomIds]);
+					const closesRoom = !boxMode && live.closed && inkPreview.createdRoomIds.length > 0;
+					const subjectIds = new Set(closesRoom ? inkPreview.createdRoomIds : []);
 					const affectedIds = new Set(inkPreview.splitWallIds);
-					const built = candidatePaper(inkPreview.document, y, subjectIds, affectedIds);
-					const geometry = { polygons: [], segments: [...points.slice(1).map((point, i) => [world(points[i]!.point), world(point.point)] as const), ...(live.closed && points.length > 2 ? [[world(points.at(-1)!.point), world(points[0]!.point)] as const] : [])] };
+					const built = subjectIds.size > 0 || affectedIds.size > 0
+						? candidatePaper(inkPreview.document, y, subjectIds, affectedIds)
+						: null;
+					const geometry = {
+						polygons: built?.paper.subject.polygons ?? [],
+						segments: [
+							...points.slice(1).map((point, i) => [world(points[i]!.point), world(point.point)] as const),
+							...(live.closed && points.length > 2 ? [[world(points.at(-1)!.point), world(points[0]!.point)] as const] : [])
+						]
+					};
 					const labels: { world: [number, number, number]; text: string }[] = [];
-					if (inkHover !== null && !boxMode) {
+					if (closesRoom) {
+						const count = inkPreview.createdRoomIds.length;
+						labels.push({ world: world(points[0]!.point), text: count === 1 ? 'Creates 1 Room' : `Creates ${count} Rooms` });
+					} else if (inkHover !== null && !boxMode) {
 						const pending = pendingLegFacts(linePreviewBase(), inkHover.point);
 						if (pending !== null) labels.push({ world: world(inkHover.point), text: `${pending.length.toFixed(2)} m` });
 					}
@@ -4522,7 +4553,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 					}
 					return [
-						candidatePreviewOf({ id: 'layout-candidate-chain', role: 'subject', drawing: true, geometry, labels, snap: snapOf(inkSnapWinner) }),
+						candidatePreviewOf({
+							id: 'layout-candidate-chain', role: 'subject', drawing: true, geometry, labels,
+							snap: closesRoom ? { world: world(points[0]!.point), name: 'Close Room' } : snapOf(inkSnapWinner)
+						}),
 						...(built === null || (built.paper.affected.polygons.length === 0 && built.paper.affected.segments.length === 0)
 							? []
 							: [candidatePreviewOf({ id: 'layout-candidate-chain-affected', role: 'affected', geometry: built.paper.affected })])
@@ -4531,7 +4565,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (inkPreview?.kind === 'refused' && points.length >= 2) {
 					// The placed legs stay drawn: only the live leg is refused (review
 					// pass 2 §3). They are the same ink line the creator already drew.
-					const placed = points.slice(0, -1);
+					const placed = live.closed ? points : points.slice(0, -1);
+					const from = live.closed ? points.at(-1)! : points.at(-2)!;
+					const to = live.closed ? points[0]! : points.at(-1)!;
 					return [...(placed.length < 2 ? [] : [candidatePreviewOf({
 						id: 'layout-candidate-chain',
 						role: 'subject',
@@ -4541,8 +4577,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						id: 'layout-candidate-chain-refused',
 						role: 'refused',
 						// A dashed cursor reach names the refused input, never a Wall band.
-						geometry: { polygons: [], segments: [[world(points[points.length - 2]!.point), world(points[points.length - 1]!.point)]] },
-						labels: [{ world: world(points[points.length - 1]!.point), text: inkPreview.message }]
+						geometry: { polygons: [], segments: [[world(from.point), world(to.point)]] },
+						labels: [{ world: world(to.point), text: inkPreview.message }]
 					})];
 				}
 				if (inkHover !== null && linePreviewBase().points.length > 0) {

@@ -63,7 +63,8 @@
 	 * §1): a ring on a Wall, Junction or Opening, a square on the grid, a dot when
 	 * free or merely aligned.
 	 */
-	function snapShape(name: string | undefined): 'dot' | 'ring' | 'square' {
+	function snapShape(name: string | undefined): 'dot' | 'ring' | 'square' | 'closure' {
+		if (name === 'Close Room') return 'closure';
 		if (name === 'Grid') return 'square';
 		if (name === 'Junction' || name === 'Wall' || name === 'Opening') return 'ring';
 		return 'dot';
@@ -236,6 +237,11 @@
 			data-candidate-id={candidate.id}
 			data-candidate-role={candidate.role}
 		>
+			{#if candidate.snap?.name === 'Close Room'}
+				{#each candidate.polygons as polygon, index (`${candidate.id}:room:${index}`)}
+					<polygon class="candidate-room" points={polygon.map(([x, y]) => `${x},${y}`).join(' ')} />
+				{/each}
+			{/if}
 			<!-- Drawing is solid draft ink; a proposal is dashed in the ghost colour; a refusal is red dashed. -->
 			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
 				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
@@ -247,6 +253,7 @@
 				{@const shape = snapShape(candidate.snap.name)}
 				<g class="candidate-snap end-mark-group" data-snap-name={candidate.snap.name} data-snap-shape={shape} transform={`translate(${candidate.snap.css[0]} ${candidate.snap.css[1]})`}>
 					{#if shape === 'square'}<rect class="end-mark hollow" x="-4" y="-4" width="8" height="8" />
+					{:else if shape === 'closure'}<circle class="close-room-ring" r="8" /><circle class="close-room-center" r="3" />
 					{:else if shape === 'ring'}<circle class="end-mark hollow" r="4.6" />
 					{:else}<circle class="end-mark" r="3.4" />{/if}
 					<title>{candidate.snap.name}</title>
@@ -467,6 +474,9 @@
 	.candidate.refused .candidate-edge { stroke: var(--overlay-problem); filter: none; stroke-width: 2; stroke-dasharray: 6 4; }
 	.end-mark { fill: var(--overlay-ghost); stroke: var(--overlay-ghost); stroke-width: 1.6; filter: var(--overlay-ghost-halo); }
 	.candidate.drawing .end-mark { fill: var(--overlay-draft); stroke: var(--overlay-draft); filter: var(--overlay-draft-halo); }
+	.candidate-room { fill: var(--shell-leaf, #4f8f6c); fill-opacity: 0.2; }
+	.close-room-ring { fill: #fff; stroke: var(--shell-forest-2, #22503c); stroke-width: 2; }
+	.close-room-center { fill: var(--shell-forest-2, #22503c); }
 	.end-mark.hollow { fill: #fff; }
 	.candidate.refused .end-mark { fill: var(--overlay-problem); stroke: var(--overlay-problem); filter: none; }
 

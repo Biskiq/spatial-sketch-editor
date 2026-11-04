@@ -13,6 +13,9 @@
 	import {
 		experienceMarkModel,
 		relatedToSelection,
+		projectPlacementGhost,
+		type PlacementGhostPose,
+		type ExperienceCameraGlyph,
 		EXPERIENCE_MARK_CAPS,
 		type ExperienceCameraFrustum,
 		type ExperienceFrustum,
@@ -26,6 +29,7 @@
 		evaluation,
 		/** R217.S30 — the projected, read-only playback rig; never an authored mark. */
 		rig = null,
+		placementGhost = null,
 		onLookThrough,
 		showMarkers = true,
 		showFrustums = true,
@@ -38,6 +42,7 @@
 	}: {
 		evaluation: ViewportEvaluation;
 		rig?: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number] } | null;
+		placementGhost?: PlacementGhostPose | null;
 		onLookThrough?: (viewId: string) => void;
 		/** R217.S29 Show ▾: the four independent flags, all on by default. */
 		showMarkers?: boolean;
@@ -86,6 +91,8 @@
 		...filtered.marks.filter((mark) => mark.kind === 'turn'),
 		...filtered.marks.filter((mark) => mark.kind !== 'turn')
 	]);
+
+	const placement = $derived(placementGhost === null ? null : projectPlacementGhost(evaluation, placementGhost));
 
 	const rigPoint = $derived.by(() => {
 		if (rig === null) return null;
@@ -142,6 +149,33 @@
 	}
 </script>
 
+{#snippet detailedCamera(camera: ExperienceCameraGlyph, wire: boolean)}
+	{#if camera.shadow}
+		<ellipse class="cam-shadow" cx={camera.shadow.center[0]} cy={camera.shadow.center[1]} rx={camera.shadow.rx} ry={camera.shadow.ry} />
+	{/if}
+	{#if camera.stem}
+		<line class="stem" x1={camera.stem[0][0]} y1={camera.stem[0][1]} x2={camera.stem[1][0]} y2={camera.stem[1][1]} />
+	{/if}
+	{#if camera.floor}
+		<circle class="foot" cx={camera.floor[0]} cy={camera.floor[1]} r="2.6" />
+	{/if}
+	{#if wire && camera.frustum}
+		<path class="wire" d={wirePath(camera.frustum)} data-camera-wire />
+	{/if}
+	<g class="cam" data-camera-glyph>
+		{#each camera.faces as face, index (index)}
+			<polygon class="face {face.shade}" points={polygon(face.points)} />
+		{/each}
+		{#if camera.glass}
+			<polygon class="glass" points={polygon(camera.glass)} />
+		{/if}
+		{#if camera.glint}
+			<circle class="glint" cx={camera.glint[0]} cy={camera.glint[1]} r="1.1" />
+		{/if}
+		<path class="outline" d={outline(camera.outline)} />
+	</g>
+{/snippet}
+
 <svg
 	class="experience-marks"
 	role="group"
@@ -191,35 +225,12 @@
 		>
 			{#if mark.camera}
 				{@const camera = mark.camera}
-				{#if camera.shadow}
-					<ellipse class="cam-shadow" cx={camera.shadow.center[0]} cy={camera.shadow.center[1]} rx={camera.shadow.rx} ry={camera.shadow.ry} />
+				{@render detailedCamera(camera, showFrustums)}
+				{#if showFrustums && camera.frustum && mark.state === 'selected'}
+					<path class="turn-wire" d={wirePath(camera.frustum)} data-turn-grip>
+						<title>Drag to turn this View</title>
+					</path>
 				{/if}
-				{#if camera.stem}
-					<line class="stem" x1={camera.stem[0][0]} y1={camera.stem[0][1]} x2={camera.stem[1][0]} y2={camera.stem[1][1]} />
-				{/if}
-				{#if camera.floor}
-					<circle class="foot" cx={camera.floor[0]} cy={camera.floor[1]} r="2.6" />
-				{/if}
-				{#if showFrustums && camera.frustum}
-					<path class="wire" d={wirePath(camera.frustum)} data-camera-wire />
-					{#if mark.state === 'selected'}
-						<path class="turn-wire" d={wirePath(camera.frustum)} data-turn-grip>
-							<title>Drag to turn this View</title>
-						</path>
-					{/if}
-				{/if}
-				<g class="cam" data-camera-glyph>
-					{#each camera.faces as face, index (index)}
-						<polygon class="face {face.shade}" points={polygon(face.points)} />
-					{/each}
-					{#if camera.glass}
-						<polygon class="glass" points={polygon(camera.glass)} />
-					{/if}
-					{#if camera.glint}
-						<circle class="glint" cx={camera.glint[0]} cy={camera.glint[1]} r="1.1" />
-					{/if}
-					<path class="outline" d={outline(camera.outline)} />
-				</g>
 			{:else if mark.kind === 'turn'}
 				{@const grip = model.frustums.find((frustum) => frustum.viewId === mark.viewId)}
 				{#if grip !== undefined}
@@ -277,6 +288,18 @@
 		</g>
 	{/each}
 	{/if}
+	{#if placement !== null}
+		<g class="mark selected placement-ghost" data-view-placement-ghost aria-hidden="true">
+			{#if placement.camera}
+				{@render detailedCamera(placement.camera, true)}
+			{:else}
+				{#if placement.wedge}
+					<path class="frustum selected" d={wedgePath(placement.wedge)} data-placement-wedge />
+				{/if}
+				<circle class="dot" cx={placement.eye[0]} cy={placement.eye[1]} r={dotRadius('selected')} />
+			{/if}
+		</g>
+	{/if}
 </svg>
 
 <style>
@@ -288,6 +311,8 @@
 		overflow: visible;
 		pointer-events: none;
 	}
+
+	.placement-ghost { opacity: 0.85; pointer-events: none; }
 
 	/* Plan wedges: quiet, on the tour, and the selected View's full cone. */
 	.frustum {
@@ -342,7 +367,7 @@
 		cursor: var(--cursor-turn, crosshair);
 	}
 	.mark.selected[data-mark-kind='eye'] .hit {
-		cursor: var(--cursor-move, move);
+		cursor: var(--cursor-grab, grab);
 	}
 
 	/* The 3D Detailed camera: one ink outline over white faces. */

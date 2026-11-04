@@ -1269,8 +1269,11 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
 		const middle = stageCss(mounted.facade, [3, 0]);
-		const shifted = stageCss(mounted.facade, [3.37, 0.37]);
+		const between = stageCss(mounted.facade, [3.37, 0.37]);
+		const shifted = stageCss(mounted.facade, [3.37, 0.48]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: between, evaluationId });
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.37 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.50 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: shifted, evaluationId });
@@ -1280,7 +1283,7 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		const secondId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId: secondId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId: secondId });
-		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.37 m'))).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.48 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: shifted, evaluationId: secondId });
 	});
 
@@ -1290,7 +1293,7 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
 		const rayCss = lengthRayPress(mounted);
-		const to = stageCss(mounted.facade, [5.26, 0]);
+		const to = stageCss(mounted.facade, [5.48, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: rayCss, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('→ 5.50 m'))).toBe(true);
@@ -1603,7 +1606,7 @@ describe('R217.S16 — Opening priority and idle Junction hover', () => {
 		expect(mark).toMatchObject({ id: 'layout-junction-hover', adapterId: 'layout', role: 'edit' });
 		expect(mounted.facade.marks().some((candidate) => candidate.id === 'layout-junction-hover')).toBe(true);
 		const selectionBefore = mounted.facade.selectionState();
-		const to = stageCss(mounted.facade, [junction.point[0] + 0.62, junction.point[1] + 0.77]);
+		const to = stageCss(mounted.facade, [junction.point[0] + 0.52, junction.point[1] + 0.98]);
 		expect(mounted.facade.pointerIntent({
 			phase: 'down', css: from, evaluationId, handleId: mark!.id, handleAdapterId: mark!.adapterId
 		}).claimed).toBe(true);

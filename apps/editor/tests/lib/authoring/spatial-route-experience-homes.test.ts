@@ -373,6 +373,72 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		await vi.waitFor(() => expect(target.querySelector('input.rename-input')).not.toBeNull());
 	}, 15000);
 
+	it.each(['3D', '2D'] as const)('anchors the %s placement ghost, commits its aimed pose once, and cancels with Escape', async (reading) => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		if (reading === '3D') await setThreeD();
+		else await setTwoD();
+		const stage = facade();
+		const id = stage.evaluationId()!;
+		const start = stage.projectWorld([1, 0, 1], id);
+		const aim = stage.projectWorld([3, 0, 1], id);
+		if (start.kind !== 'projected' || aim.kind !== 'projected') throw new Error('Floor points must project');
+		const surface = target.querySelector<HTMLElement>('.stage')!;
+		const ghost = () => target.querySelector('[data-view-placement-ghost]');
+		const frustum = () => ghost()?.querySelector(reading === '3D' ? '[data-camera-wire]' : '[data-placement-wedge]');
+		const eye = () => reading === '3D'
+			? [ghost()?.querySelector('.stem')?.getAttribute('x1'), ghost()?.querySelector('.stem')?.getAttribute('y1')]
+			: [ghost()?.querySelector('.dot')?.getAttribute('cx'), ghost()?.querySelector('.dot')?.getAttribute('cy')];
+		const baseline = stage.snapshot().canonicalJson;
+		const viewIds = new Set(stageCamera(stage.snapshot()).views.map((view) => view.id));
+
+		dockKey('place-view').click();
+		await frame();
+		pointer('pointerdown', surface, 1, ...start.css);
+		await frame();
+		expect(Boolean(ghost()?.querySelector('[data-camera-glyph]'))).toBe(reading === '3D');
+		expect(ghost()?.querySelector('[role="button"]')).toBeNull();
+		const startWire = frustum()?.getAttribute('d');
+		const startEye = eye();
+		expect(startWire).toBeTruthy();
+		expect(startEye.every(Boolean)).toBe(true);
+		pointer('pointermove', surface, 1, ...aim.css);
+		await frame();
+		expect(eye()).toEqual(startEye);
+		expect(frustum()?.getAttribute('d')).not.toBe(startWire);
+		expect(stage.snapshot().canonicalJson).toBe(baseline);
+
+		await pressEscape();
+		pointer('pointerup', surface, 1, ...aim.css);
+		await frame();
+		expect(ghost()).toBeNull();
+		expect(stage.snapshot().canonicalJson).toBe(baseline);
+		expect((await acceptance().undo()).kind).not.toBe('installed');
+
+		dockKey('place-view').click();
+		await frame();
+		pointer('pointerdown', surface, 2, ...start.css);
+		pointer('pointermove', surface, 2, ...aim.css);
+		await frame();
+		const previewWire = frustum()?.getAttribute('d');
+		expect(previewWire).toBeTruthy();
+		pointer('pointerup', surface, 2, ...aim.css);
+		await vi.waitFor(() => expect(stageCamera(stage.snapshot()).views).toHaveLength(viewIds.size + 1));
+		await frame();
+		expect(ghost()).toBeNull();
+		const view = stageCamera(stage.snapshot()).views.find((candidate) => !viewIds.has(candidate.id))!;
+		expect(view.eye[0]).toBeCloseTo(1);
+		expect(view.eye[2]).toBeCloseTo(1);
+		expect(view.target[0]).toBeGreaterThan(view.eye[0]);
+		expect(view.target[2]).toBeCloseTo(view.eye[2]);
+		const acceptedFrustum = reading === '3D'
+			? target.querySelector(`[data-view-mark="${view.id}"] [data-camera-wire]`)
+			: target.querySelector(`[data-view-frustum="${view.id}"]`);
+		expect(acceptedFrustum?.getAttribute('d')).toBe(previewWire);
+		expect((await acceptance().undo()).kind).toBe('installed');
+		expect(stageCamera(stage.snapshot()).views.map((candidate) => candidate.id)).toEqual([...viewIds]);
+	}, 15000);
+
 	it('reserves a 3D glyph press for its mark and keeps it out of Stage navigation', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();

@@ -126,12 +126,14 @@ export function resolveJunctionPointSnap(input: {
 		{
 			pixelsPerMeter: input.pixelsPerMeter,
 			gridStep: DRAFTING_SNAP_METERS,
+			snapRadiusCssPx: DRAG_GRID_SNAP_CSS_PX,
 			anchor: input.anchor
 		},
 		{ allowedKinds: ['orthogonal-guide', 'grid'] }
 	);
 	if (resolution.kind !== 'snap') return null;
 	const { candidate } = resolution;
+	if (Math.hypot(candidate.point[0] - input.point[0], candidate.point[1] - input.point[1]) * input.pixelsPerMeter > DRAG_GRID_SNAP_CSS_PX) return null;
 	return {
 		point: [cleanCoordinate(candidate.point[0]), cleanCoordinate(candidate.point[1])],
 		kind: candidate.kind,
@@ -139,27 +141,22 @@ export function resolveJunctionPointSnap(input: {
 	};
 }
 
-/**
- * Round one signed distance on the fixed 0.5 m grid, or return it unchanged
- * while Snap is held. Zero stays zero: a body drag that never leaves its line
- * names no movement rather than the nearest half metre.
- */
-export function snapWallDistance(distance: number, drafting: StageDraftingState): number {
-	if (draftingSnapIncrementMeters(drafting) === null) return distance;
-	const snapped = Math.round(distance / DRAFTING_SNAP_METERS) * DRAFTING_SNAP_METERS;
-	return Math.abs(snapped) < 1e-9 ? 0 : cleanCoordinate(snapped);
-}
+/** A drag follows the pointer between grid lines. The grid itself stays at 0.5 m. */
+export const DRAG_GRID_SNAP_CSS_PX = 4;
 
-/**
- * Round a positive Wall length on the fixed 0.5 m grid. A pointer that crossed
- * the fixed endpoint keeps its negative sign so the adapter can refuse it; it is
- * never laundered into a tiny positive Wall.
- */
-export function snapWallLength(length: number, drafting: StageDraftingState): number {
-	if (!(length > 0)) return length;
-	if (draftingSnapIncrementMeters(drafting) === null) return length;
-	const snapped = Math.round(length / DRAFTING_SNAP_METERS) * DRAFTING_SNAP_METERS;
-	return snapped < DRAFTING_SNAP_METERS ? DRAFTING_SNAP_METERS : cleanCoordinate(snapped);
+/** Scalar Wall grips acquire the fixed grid only near an increment. */
+export function snapWallDrag(
+	value: number,
+	drafting: StageDraftingState,
+	metersPerCssPixel: number,
+	minimum = -Infinity
+): { readonly value: number; readonly snapped: boolean } {
+	const step = draftingSnapIncrementMeters(drafting);
+	if (step === null || value < minimum) return { value, snapped: false };
+	const nearest = Math.max(minimum, cleanCoordinate(Math.round(value / step) * step));
+	return Math.abs(nearest - value) <= DRAG_GRID_SNAP_CSS_PX * metersPerCssPixel
+		? { value: nearest, snapped: true }
+		: { value, snapped: false };
 }
 
 /** Resolve an Opening slide's start-edge offset, or the raw offset. */

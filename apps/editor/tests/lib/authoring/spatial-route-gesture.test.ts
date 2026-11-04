@@ -189,7 +189,7 @@ beforeEach(async () => {
 	Object.defineProperty(HTMLElement.prototype, 'setPointerCapture', { configurable: true, value: () => { } });
 	await mountRoute();
 	await selectFirstWall();
-	target.querySelector<HTMLButtonElement>('.facets button[aria-label="wall"]')?.click();
+	target.querySelector<HTMLButtonElement>('.facets button[aria-label="Walls"]')?.click();
 	await tick();
 	// T1.P02.S02: the Wall's own Card carries its fields and a handle press is direct
 	// manipulation, so this contract runs with **no** contributed task open — an
@@ -1810,6 +1810,52 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 		field.dispatchEvent(new Event('input', { bubbles: true }));
 	}
 it('keeps Line and Box in the column and invokes precision upward',async()=>{await openInk();const row=target.querySelector('[data-layout-ink-palette] .keys')!;expect(row.querySelector('[data-ink-wall-mode="line"]')).not.toBeNull();expect(row.querySelector('[data-ink-wall-mode="box"]')).not.toBeNull();expect(target.querySelector('[data-ink-x]')).toBeNull();await press('[data-ink-point-toggle]');expect(target.querySelectorAll('[data-ink-x]')).toHaveLength(1);});
+
+	it('previews the planner’s Room as the pointer returns to a draft Junction and accepts it on click', async () => {
+		await openInk();
+		const before = facade().snapshot().canonicalJson;
+		const corners = [[0, -1], [4, -1], [4, -4], [0, -4]] as const;
+		for (const [x, z] of corners) {
+			const at = projected([x, 0, z]);
+			pointer('pointerdown', at);
+			pointer('pointerup', at);
+			await frame();
+		}
+		const first = projected([0, 0, -1]);
+		const nearStart = [first[0] - 5, first[1] + 3] as const;
+		pointer('pointermove', nearStart);
+		await frame();
+		expect(target.querySelector('[data-snap-shape="closure"]')).not.toBeNull();
+		expect(target.querySelector('.candidate-room')).not.toBeNull();
+		expect(target.querySelector('[data-candidate-id="layout-candidate-chain"]')?.textContent).toContain('Creates 1 Room');
+		expect(facade().snapshot().canonicalJson).toBe(before);
+
+		pointer('pointerdown', nearStart);
+		pointer('pointerup', nearStart);
+		await vi.waitFor(() => expect(facade().snapshot().domain.rooms).toHaveLength(2));
+		await settled();
+		expect(target.querySelector('[data-snap-shape="closure"]')).toBeNull();
+	});
+
+	it('opens Rooms and Free objects from Project and returns by breadcrumb without changing selection', async () => {
+		const index = target.querySelector('#plate-index')!;
+		const toggle = index.querySelector<HTMLButtonElement>('button[aria-label="Project locations"]')!;
+		const before = facade().selectionState();
+		expect(index.querySelector('summary')).toBeNull();
+		expect(index.querySelector('#world-locations')).toBeNull();
+		toggle.click();
+		await tick();
+		const locations = [...index.querySelectorAll<HTMLButtonElement>('#world-locations button')];
+		expect(locations.map((button) => button.textContent?.trim())).toEqual(['Free objects', 'Draft Room 1']);
+		locations[1]!.click();
+		await tick();
+		expect(index.querySelector('.crumbs [aria-current]')?.textContent).toBe('Draft Room 1');
+		expect(indexRowOf(index as HTMLElement, STARTER_WALL_2)).not.toBeNull();
+		expect(facade().selectionState()).toEqual(before);
+		[...index.querySelectorAll<HTMLButtonElement>('.crumbs button')].find((button) => button.textContent?.trim() === 'Project')!.click();
+		await tick();
+		expect(index.querySelector('.crumbs [aria-current]')?.getAttribute('aria-label')).toBe('Project locations');
+	});
 
 	it('draws the typed path through the row, and Finish, Backtrack and Cancel act on the chain', async () => {
 		await openInk();

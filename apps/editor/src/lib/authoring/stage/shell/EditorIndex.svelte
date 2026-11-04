@@ -44,23 +44,39 @@
 	} = $props();
 	let facet = $state('all');
 	let limit = $state(40);
-	const result = $derived(worldScopeRows(model, scope, facet, query, limit));
-	const current = $derived(model.contexts.find((c) => c.id === scope) ?? model.contexts[0]!);
-	const crumbs = $derived(
-		model.contexts.filter(
-			(c) => c.id === 'project' || c.id === scope
-		)
+	const result = $derived(worldScopeRows(model, scope, query.trim() ? 'all' : facet, query, limit));
+	const project = $derived(model.contexts[0]!);
+	const location = $derived(model.contexts.find((context) => context.id === scope));
+	const locations = $derived(model.contexts.filter((context) => context.parent === 'project'));
+	let locationsOpen = $state(false);
+	function changeScope(next: WorldScope): void {
+		locationsOpen = false;
+		facet = 'all';
+		onScope(next);
+	}
+
+	const kinds = [
+		{ id: 'room-floor', label: 'Rooms', icon: 'plan' },
+		{ id: 'wall', label: 'Walls', icon: 'wall' },
+		{ id: 'opening', label: 'Openings', icon: 'opening' },
+		{ id: 'objects', label: 'Objects', icon: 'object' }
+	];
+	const rowKind = (group: string) => kinds.find((kind) =>
+		kind.id === (group === 'object' || group === 'scene' ? 'objects' : group)
 	);
-	const siblings = $derived(
-		model.contexts.filter((c) => c.parent === current.parent && c.id !== scope)
-	);
-	const facets = $derived([
-		...new Set(
-			model.rows
-				.filter((r) => scope === 'project' || r.relations.includes(scope))
-				.map((r) => r.group)
-		)
-	]);
+	const groups = $derived.by(() => {
+		if (query.trim() === '' && facet !== 'all') return [{ label: `${rowKind(facet)?.label ?? facet} in ${scope === 'project' ? 'the project' : location?.label}`, rows: result.rows, count: result.total }];
+		if (query.trim() !== '' || !scope.startsWith('room:')) return [{ label: '', rows: result.rows, count: result.total }];
+		return [
+			{ label: 'Walls', id: 'wall' },
+			{ label: 'Openings', id: 'opening' },
+			{ label: 'In the room', id: 'objects' }
+		].map(({ label, id }) => ({
+			label,
+			rows: result.rows.filter((row) => rowKind(row.group)?.id === id),
+			count: worldScopeRows(model, scope, id, query, 0).total
+		})).filter((group) => group.rows.length > 0);
+	});
 	$effect(() => {
 		void scope;
 		void query;
@@ -228,6 +244,18 @@
 		return `${item.kind} ${item.label}.${badge === '' ? '' : ` ${badge}.`}`;
 	}
 </script>
+
+<svelte:window onkeydown={(event) => {
+	if (event.key === 'Escape' && locationsOpen) {
+		locationsOpen = false;
+		if (event.target instanceof HTMLElement && event.target.closest('#plate-index')) {
+			document.getElementById('world-location-toggle')?.focus();
+			event.stopPropagation();
+		}
+	}
+}} onpointerdown={(event) => {
+	if (!(event.target instanceof Element) || !event.target.closest('.world-location, #world-locations')) locationsOpen = false;
+}} />
 
 <nav
 	id="plate-index"
@@ -457,9 +485,10 @@
 			</section>
 		{/if}
 		{:else}
-		<div class="index-search">
+
+		<div class="index-search world-search">
 			<label
-				><ShellIcon name="search" size={15} />
+				><ShellIcon name="search" size={14} />
 				<input
 					id="plate-index-search"
 					type="search"
@@ -473,50 +502,56 @@
 			>
 		</div>
 		<div class="crumbs" role="group" aria-label="Location">
-			{#each crumbs as crumb (crumb.id)}<button
-					type="button"
-					aria-current={scope === crumb.id ? 'location' : undefined}
-					onclick={() => onScope(crumb.id)}>{crumb.label}</button
-				>{#if crumb.id !== scope}<ShellIcon name="chevronRight" size={12} />{/if}{/each}
-			{#if siblings.length}<details class="siblings">
-					<summary aria-label="Switch sibling location"
-						><ShellIcon name="chevronDown" size={12} /></summary
-					>
-					<div>
-						{#each siblings as sibling (sibling.id)}<button
-								type="button"
-								onclick={(event) => { onScope(sibling.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{sibling.label}</button
-							>{/each}
-					</div>
-				</details>{/if}
+			<span class="crumb world-location">
+				{#if scope !== 'project'}
+					<button type="button" title={project.label} onclick={() => changeScope('project')}>Project</button>
+				{/if}
+				{#if locations.length > 0}
+					<button type="button" class:current={scope === 'project'} class:location-toggle={scope !== 'project'}
+						id="world-location-toggle" aria-label="Project locations" title={project.label}
+						aria-current={scope === 'project' ? 'location' : undefined} aria-expanded={locationsOpen}
+						aria-controls={locationsOpen ? 'world-locations' : undefined} onclick={() => (locationsOpen = !locationsOpen)}>
+						{#if scope === 'project'}Project{/if}
+						<ShellIcon name="chevronDown" size={11} />
+					</button>
+				{:else if scope === 'project'}
+					<span class="crumb current" aria-current="location">Project</span>
+				{/if}
+			</span>
+			{#if scope !== 'project'}
+				<span aria-hidden="true">›</span>
+				<span class="crumb current" aria-current="location">{location?.label}</span>
+			{/if}
 		</div>
-		<div class="facets" role="group" aria-label="Subject kinds">
-			<button type="button" aria-pressed={facet === 'all'} onclick={() => (facet = 'all')}
-				>All</button
-			>{#each facets as kind}<button
-					type="button"
-					aria-label={kind.replace('-', ' ')}
-					title={kind.replace('-', ' ')}
-					aria-pressed={facet === kind}
-					onclick={() => (facet = kind)}
-					><ShellIcon
-						name={kind === 'wall'
-							? 'wall'
-							: kind === 'opening'
-								? 'opening'
-								: kind === 'scene'
-									? 'object'
-									: 'plan'}
-						size={16}
-					/></button
-				>{/each}
-		</div>
-
-		{#if scope === 'project' && model.rows.some(row => row.relations.includes('free'))}
-			<button type="button" class="floor-scope" onclick={() => onScope('free')}><ShellIcon name="object" size={16} />Free objects <ShellIcon name="chevronRight" size={15} /></button>
+		{#if locationsOpen && locations.length > 0}
+			<div id="world-locations" class="location-list" role="group" aria-label="Project locations">
+				{#each locations as entry (entry.id)}
+					<button type="button" aria-current={scope === entry.id ? 'location' : undefined}
+						onclick={() => { changeScope(entry.id); document.getElementById('world-location-toggle')?.focus(); }}>
+						<ShellIcon name={entry.id === 'free' ? 'object' : 'plan'} size={15} />{entry.label}
+					</button>
+				{/each}
+			</div>
 		{/if}
+		{#if query.trim() === ''}
+			<div class="facets" role="group" aria-label="Subject kinds">
+				<button type="button" aria-pressed={facet === 'all'} onclick={() => (facet = 'all')}>All</button>
+				{#each kinds as kind}
+					{@const count = worldScopeRows(model, scope, kind.id, '', 0).total}
+					<button type="button" aria-label={kind.label} title={`${kind.label} · ${count} here`}
+						aria-pressed={facet === kind.id} onclick={() => (facet = kind.id)}>
+						<ShellIcon name={kind.icon} size={14} />
+					</button>
+				{/each}
+			</div>
+		{/if}
+		<div class="world-list">
+		{#each groups as group (group.label)}
+			{#if group.label}
+				<h3 class="group-title world-group"><span>{group.label}</span><span>{group.count}</span></h3>
+			{/if}
 		<ul class="group-items">
-			{#each result.rows as item (item.sourceId)}
+			{#each group.rows as item (item.sourceId)}
 				<li
 					class="item"
 					data-source-id={item.sourceId}
@@ -541,14 +576,8 @@
 							}}
 						>
 							<ShellIcon
-								name={item.group === 'wall'
-									? 'wall'
-									: item.group === 'opening'
-										? 'opening'
-										: item.group === 'scene'
-											? 'object'
-											: 'plan'}
-								size={16}
+								name={rowKind(item.group)?.icon ?? 'dot'}
+								size={15}
 							/>
 							<span class="item-name" class:generated={!item.authored}>{item.label}</span>
 							{#if item.revealed || !item.eligible}
@@ -560,21 +589,17 @@
 						{#if item.membership !== 'included' || item.revealed}
 							<button type="button" class="item-actions-toggle" aria-label={`${item.revealed ? 'Hide' : 'Reveal'} ${item.label}`} onclick={() => onReveal(item.sourceId)}><ShellIcon name="eye" size={15} /></button>
 						{/if}
-						{#if item.context}<button
-								type="button"
-								class="scope-entry"
-								aria-label={`Go into ${item.label}`}
-								onclick={() => onScope(item.context!)}
-								><span class="room-count">{worldScopeRows(model, item.context!, 'all', '', Number.MAX_SAFE_INTEGER).rows.filter(row => row.context !== item.context).length}</span><ShellIcon name="chevronRight" size={15} /></button
-							>{/if}
+
 					</div>
 
 				</li>
 			{/each}
 		</ul>
-		{#if result.total > result.rows.length}<button type="button" onclick={() => (limit += 40)}
+		{/each}
+		{#if result.total > result.rows.length}<button type="button" class="world-more" onclick={() => (limit += 40)}
 				>Show more ({result.total - result.rows.length})</button
 			>{:else if result.total === 0}<p class="index-empty">No matching subjects</p>{/if}
+		</div>
 		{/if}
 	{/if}
 </nav>
@@ -791,17 +816,56 @@
 	}
 
 
+	.world-search input { font-size: 12.5px; }
+	.world-search > button { width: 28px; height: 28px; padding: 0; justify-content: center; }
+	.crumbs {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 2px 3px;
+		padding: 0 10px 6px;
+		font-size: 12px;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.crumb { display: inline-flex; align-items: center; }
+	.crumb > button, .crumb.current { padding: 2px 4px; }
+	.crumb > button { min-height: 0; color: var(--shell-ink-2, #4a524c); border-radius: 5px; }
+	.crumb > .current, .crumb.current { color: var(--shell-ink, #1b201c); font-weight: 600; }
+	.crumb > .location-toggle { padding: 2px; color: var(--shell-ink-3, #79817b); }
+	.location-list {
+		flex: none;
+		margin: 0 10px 6px;
+		padding: 3px;
+		max-height: 220px;
+		overflow: auto;
+		background: #fff;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 8px;
+		box-shadow: 0 1px 2px #0001, 0 8px 24px #0002;
+	}
+	.location-list button { width: 100%; padding: 4px 8px; min-height: 0; text-align: left; font-size: 12px; }
+	.location-list [aria-current] { background: var(--shell-leaf-tint, #e7f1ea); font-weight: 600; }
+	.world-list { flex: 1; overflow: auto; padding-bottom: 14px; }
+	.world-group { display: flex; justify-content: space-between; }
+	.world-list .item-row { color: var(--shell-ink-3, #79817b); font-weight: 400; }
+	.world-list .item-name { color: var(--shell-ink, #1b201c); }
+	.world-list .selected .item-name { font-weight: 600; }
+	.world-list .item:hover:not(.selected) { background: rgb(0 0 0 / 3.5%); }
+	.world-list .item-row:hover { background: transparent; }
+	.world-more { margin: 4px 10px 4px 12px; font-size: 12px; color: var(--shell-forest-2, #22503c); }
 	.facets {
 		display: flex;
 		gap: 2px;
 		margin: 0 8px 4px;
 		padding: 2px;
 		border-radius: 7px;
-		background: #eaede7;
+		background: #eceee9;
 	}
 	.facets button {
 		flex: 1;
-		justify-content: center;
+		display: grid;
+		place-items: center;
+		font-size: 11.5px;
 		height: 24px;
 		min-height: 24px;
 		padding: 0 4px;
@@ -810,7 +874,7 @@
 	.facets [aria-pressed='true'] {
 		background: #fff;
 		color: var(--shell-ink, #1b201c);
-		box-shadow: 0 1px 2px #0002;
+		box-shadow: 0 0 0 1px var(--shell-hairline-strong, #cdd2ca);
 	}
 	.group-items {
 		list-style: none;
@@ -853,12 +917,6 @@
 	.item:hover .item-actions-toggle,
 	.item:focus-within .item-actions-toggle {
 		opacity: 1;
-	}
-	.scope-entry {
-		min-width: 40px;
-		justify-content: center;
-		padding: 0;
-		margin-right: 4px;
 	}
 
 	.badge {
@@ -1047,12 +1105,13 @@
 	@media (pointer: coarse) {
 		button,
 		.facets button,
+		.crumb > button,
+		.location-list button,
 		.index-search label,
 		input {
 			min-height: 44px;
 		}
-		.item-actions-toggle,
-		.scope-entry {
+		.item-actions-toggle {
 			min-width: 44px;
 			opacity: 1;
 		}

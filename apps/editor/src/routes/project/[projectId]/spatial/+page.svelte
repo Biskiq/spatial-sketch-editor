@@ -547,8 +547,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Place a View is an armed Stage tool; Look through is a provisional posture. */
 	let experienceTool = $state<'select' | 'place'>('select');
-	let placementPress = $state<{ readonly pointerId: number; readonly start: StageTriple; current: StageTriple } | null>(null);
-	let placementGhost = $state<{ readonly eye: StageTriple; readonly target: StageTriple | null } | null>(null);
+	let placementPress = $state.raw<{ readonly pointerId: number; readonly start: StageTriple; readonly css: readonly [number, number] } | null>(null);
+	let placementGhost = $state.raw<ReturnType<typeof viewPlacementPose>>(null);
 	/** Present this in Plan aims the armed placement at the subject. */
 	let placementAim = $state<StageTriple | null>(null);
 	let lookThroughSession = $state<{ readonly viewId: string; readonly presentationId: string; readonly label: string } | null>(null);
@@ -1048,17 +1048,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			notice = 'Point at the Floor to place a View.';
 			return;
 		}
-		placementPress = { pointerId: event.pointerId, start: point, current: point };
+		placementPress = { pointerId: event.pointerId, start: point, css: absoluteCss(event) };
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		const pose = placementPose(placementPress, placementAim);
-		placementGhost = pose === null ? null : { eye: pose.eye, target: pose.target };
+		placementGhost = placementPose(point, point);
 	}
 
-	function placementPose(press: { start: StageTriple; current: StageTriple }, aim: StageTriple | null) {
+	function placementPose(start: StageTriple, current: StageTriple) {
 		return viewPlacementPose({
-			startFloorPoint: press.start,
-			currentFloorPoint: press.current,
-			aimPoint: aim,
+			startFloorPoint: start,
+			currentFloorPoint: current,
+			aimPoint: placementAim,
+			minimumDragMeters: 0,
 			defaultAzimuthRadians: evaluation?.pose.azimuthRadians,
 			floorDatumMeters: experienceFloorDatum,
 			fovYDegrees: CAMERA_FOV.default
@@ -1070,10 +1070,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (press === null || event.pointerId !== press.pointerId) return;
 		const point = placementPoint(event);
 		if (point === null) return;
-		const current = { ...press, current: point };
-		placementPress = current;
-		const pose = placementPose(current, placementAim);
-		placementGhost = pose === null ? null : { eye: pose.eye, target: pose.target };
+		const [x, y] = absoluteCss(event);
+		const [startX, startY] = press.css;
+		const dragged = isStageDrag({ x: startX, y: startY }, { x, y });
+		placementGhost = placementPose(press.start, dragged ? point : press.start);
 	}
 
 	function cancelPlacement(): void {
@@ -1085,13 +1085,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function endPlacement(): void {
 		const press = placementPress;
-		const aim = placementAim;
+		const pose = placementGhost;
 		placementPress = null;
 		placementGhost = null;
 		placementAim = null;
 		if (press === null) return;
 		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
-		const pose = placementPose(press, aim);
 		if (pose === null) {
 			notice = 'The View needs a target away from its eye.';
 			return;
@@ -1348,19 +1347,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			target: targetCss,
 			turn
 		};
-	});
-
-	const placementPreview = $derived.by(() => {
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		const ghost = placementGhost;
-		const origin = rect;
-		if (stage === null || id === null || ghost === null || origin === null) return null;
-		const local = (point: readonly [number, number]): [number, number] => [point[0] - origin.left, point[1] - origin.top];
-		const eye = stage.projectWorld(ghost.eye, id);
-		if (eye.kind !== 'projected') return null;
-		const target = ghost.target === null ? null : stage.projectWorld(ghost.target, id);
-		return { eye: local(eye.css), target: target !== null && target.kind === 'projected' ? local(target.css) : null };
 	});
 
 	provideExperienceHomes({
@@ -4306,7 +4292,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// here, after the pointer sequence has ended, and only by the pointer it belongs to.
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
 		// Look through owns the Stage: a drag turns the view and its release is not a pick.
-		if (lens === 'experience' && lookThroughSession !== null) return;
+		if (lens === 'experience' && (lookThroughSession !== null || experienceTool === 'place')) return;
 		// An **armed dock tool** owns the Stage surface: its tap already placed a
 		// point, split a Wall or was refused, and re-selecting underneath it would
 		// silently move what the tool is editing. Another adapter's task (Compose,
@@ -5816,8 +5802,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				role="application"
 				tabindex="0"
 				data-paper={paperVisible ? 'true' : 'false'}
-				data-cursor={viewEdit !== null ? viewEdit.kind
-				: drag?.mode === 'pan' || drag?.mode === 'orbit' ? 'grabbing'
+				data-cursor={viewEdit !== null ? (viewEdit.kind === 'move' ? 'grabbing' : viewEdit.kind)
+				: drag?.mode === 'pan' || drag?.mode === 'orbit' || (drag?.mode === 'adapter' && task === null) ? 'grabbing'
 				: lookThroughSession !== null ? 'look'
 				: experienceTool === 'place' ? 'place-view'
 				: hoverMove ? 'move'
@@ -5870,6 +5856,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#if lens === 'experience' && evaluation !== null && lookThroughSession === null}
 						<ExperienceMarks
 							{evaluation}
+							{placementGhost}
 							rig={playback.status === 'idle' ? null : playback.sample}
 							onLookThrough={lookThroughView}
 							{showMarkers}
@@ -5883,7 +5870,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						/>
 					{/if}
 					{#if viewEditPreview !== null}
-						<svg class="placement-preview view-edit-preview" data-view-edit-ghost aria-hidden="true">
+						<svg class="view-edit-preview" data-view-edit-ghost aria-hidden="true">
 							{#if viewEditPreview.turn !== null}
 								<path class="turn-wedge" d={viewEditPreview.turn.wedge} />
 								<path class="turn-arc" d={viewEditPreview.turn.arc} />
@@ -5892,15 +5879,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 								<line x1={viewEditPreview.eye[0]} y1={viewEditPreview.eye[1]} x2={viewEditPreview.target[0]} y2={viewEditPreview.target[1]} />
 							{/if}
 							<circle class="eye" cx={viewEditPreview.eye[0]} cy={viewEditPreview.eye[1]} r="4" />
-						</svg>
-					{/if}
-					{#if placementPreview !== null}
-						<svg class="placement-preview" aria-hidden="true">
-							{#if placementPreview.target !== null}
-								<line x1={placementPreview.eye[0]} y1={placementPreview.eye[1]} x2={placementPreview.target[0]} y2={placementPreview.target[1]} />
-								<circle class="aim" cx={placementPreview.target[0]} cy={placementPreview.target[1]} r="5" />
-							{/if}
-							<circle class="eye" cx={placementPreview.eye[0]} cy={placementPreview.eye[1]} r="4" />
 						</svg>
 					{/if}
 				</div>
@@ -6383,7 +6361,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		touch-action: none;
 		cursor: var(--cursor-select);
 	}
-	.stage[data-cursor='move'] { cursor: var(--cursor-move); }
+	.stage[data-cursor='move'] { cursor: var(--cursor-grab); }
 	.stage[data-cursor='turn'] { cursor: var(--cursor-turn); }
 	.stage[data-cursor='grabbing'] { cursor: var(--cursor-grabbing); }
 	.stage[data-cursor='look'] { cursor: var(--cursor-look); }
@@ -6561,7 +6539,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		display: contents;
 	}
 	/* R217.S28 — Place a View, Look through and the empty Stage coach. */
-	.placement-preview {
+	.view-edit-preview {
 		position: absolute;
 		inset: 0;
 		width: 100%;
@@ -6569,26 +6547,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		overflow: visible;
 		pointer-events: none;
 	}
-	.placement-preview line {
-		stroke: var(--shell-ghost, #2a62d6);
+	.view-edit-preview line {
+		stroke: var(--shell-gold, #d4ad45);
 		stroke-width: 2;
 		stroke-dasharray: 6 4;
 	}
-	.placement-preview .eye {
-		fill: #fff;
-		stroke: var(--shell-ghost, #2a62d6);
-		stroke-width: 2;
-	}
-	.placement-preview .aim {
-		fill: var(--shell-gold, #d4ad45);
-		stroke: #74560c;
-		stroke-width: 1.5;
-	}
-	.view-edit-preview line {
-		stroke: var(--shell-gold, #d4ad45);
-	}
 	.view-edit-preview .eye {
+		fill: #fff;
 		stroke: var(--shell-gold, #d4ad45);
+		stroke-width: 2;
 	}
 	.view-edit-preview .turn-wedge {
 		fill: color-mix(in srgb, var(--shell-gold, #d4ad45) 22%, transparent);
