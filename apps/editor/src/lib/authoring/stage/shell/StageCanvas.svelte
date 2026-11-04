@@ -252,7 +252,7 @@ import StageMatGround from './StageMatGround.svelte';
 	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
-		<VisitorLayoutShell {geometry} {presentation} plinth={false} />
+		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false} />
 	</T.Group>
 	<StageEntities
 		{scenePick}

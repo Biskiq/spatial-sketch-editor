@@ -17,12 +17,12 @@ import {
 	buildArchProfile,
 	type LayoutDocumentWallFirst,
 	type LayoutWallOpening,
-	type CompiledPhysicalWall,
 	type LayoutVec2,
 	type PlanEvaluation,
 	wallCenterlineSamples
 } from '@portfolio/layout-core';
 
+import { compiledOpeningFaceLoops, openingFaceLoops, openingLoopSegments, wallPointAtDistance } from '../../layout/opening-faces';
 import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/paper-plan';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-facade';
 
@@ -44,70 +44,6 @@ function worldPoint(point: LayoutVec2, datumMeters: number): Vec3 {
 
 type OpeningGhostValues = Pick<LayoutWallOpening, 'kind' | 'profile' | 'offset' | 'width' | 'height' | 'sillHeight'>;
 
-function wallPointAtDistance(
-	wall: CompiledPhysicalWall,
-	distance: number
-): { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null {
-	const samples = wall.samples;
-	if (samples.length === 0) return null;
-	if (distance <= samples[0]!.distance) {
-		const sample = samples[0]!;
-		return {
-			point: [sample.point[0] + sample.tangent[0] * (distance - sample.distance), sample.point[1] + sample.tangent[1] * (distance - sample.distance)],
-			tangent: sample.tangent
-		};
-	}
-	for (let index = 1; index < samples.length; index += 1) {
-		const before = samples[index - 1]!;
-		const after = samples[index]!;
-		if (distance > after.distance) continue;
-		const span = after.distance - before.distance;
-		const amount = span > 0 ? (distance - before.distance) / span : 0;
-		const tangent: LayoutVec2 = [
-			before.tangent[0] + (after.tangent[0] - before.tangent[0]) * amount,
-			before.tangent[1] + (after.tangent[1] - before.tangent[1]) * amount
-		];
-		const magnitude = Math.hypot(tangent[0], tangent[1]) || 1;
-		return {
-			point: [before.point[0] + (after.point[0] - before.point[0]) * amount, before.point[1] + (after.point[1] - before.point[1]) * amount],
-			tangent: [tangent[0] / magnitude, tangent[1] / magnitude]
-		};
-	}
-	const sample = samples.at(-1)!;
-	return {
-		point: [sample.point[0] + sample.tangent[0] * (distance - sample.distance), sample.point[1] + sample.tangent[1] * (distance - sample.distance)],
-		tangent: sample.tangent
-	};
-}
-
-function openingFaceOutline(
-	wall: CompiledPhysicalWall,
-	values: OpeningGhostValues,
-	datumMeters: number,
-	topBoundary: readonly LayoutVec2[]
-): CandidatePaperGeometry {
-	const localOutline: LayoutVec2[] = [[0, 0], [values.width, 0], ...[...topBoundary].reverse()];
-	const segments: [Vec3, Vec3][] = [];
-	for (const side of [-1, 1]) {
-		const points = localOutline.map(([x, y]) => {
-			const location = wallPointAtDistance(wall, values.offset + x);
-			if (location === null) return null;
-			const normal: LayoutVec2 = [-location.tangent[1], location.tangent[0]];
-			return [
-				location.point[0] + normal[0] * wall.thickness * side / 2,
-				datumMeters + values.sillHeight + y,
-				location.point[1] + normal[1] * wall.thickness * side / 2
-			] as Vec3;
-		});
-		if (points.some((point) => point === null)) continue;
-		const face = points as Vec3[];
-		for (let index = 0; index < face.length; index += 1) {
-			segments.push([face[index]!, face[(index + 1) % face.length]!]);
-		}
-	}
-	return { polygons: [], segments };
-}
-
 /** The candidate's compiled profile outline on both Wall faces in the 3D reading. */
 export function openingFacePaper(
 	document: LayoutDocumentWallFirst,
@@ -119,16 +55,7 @@ export function openingFacePaper(
 	for (const wall of compiled.walls) {
 		for (const opening of wall.openings) {
 			if (!openingIds.has(opening.openingId)) continue;
-			const values: OpeningGhostValues = {
-				kind: opening.kind,
-				profile: opening.profile,
-				offset: opening.offset,
-				width: opening.width,
-				height: opening.height,
-				sillHeight: opening.sillHeight
-			};
-			const boundary = opening.profileShape?.topBoundary ?? [[0, opening.height], [opening.width, opening.height]] as LayoutVec2[];
-			segments.push(...openingFaceOutline(wall, values, datumMeters, boundary).segments);
+			segments.push(...openingLoopSegments(compiledOpeningFaceLoops(wall, opening, datumMeters)));
 		}
 	}
 	return { polygons: [], segments };
@@ -147,8 +74,7 @@ export function openingAttemptFacePaper(
 		? { topBoundary: [[0, values.height], [values.width, values.height]] as LayoutVec2[] }
 		: buildArchProfile(values.profile, values.width, values.height).profile;
 	const envelope = [[0, values.height], [values.width, values.height]] as LayoutVec2[];
-	const ghost = openingFaceOutline(wall, values, datumMeters, profile?.topBoundary ?? envelope);
-	return ghost.segments.length > 0 ? ghost : { polygons: [], segments: [] };
+	return { polygons: [], segments: openingLoopSegments(openingFaceLoops(wall, values, datumMeters, profile?.topBoundary ?? envelope)) };
 }
 
 /** The rejected Plan attempt's wall-local symbol, built from its exact raw dimensions. */
