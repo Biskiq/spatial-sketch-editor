@@ -45,6 +45,7 @@ import {
 	experiencePathOccurrences,
 	isPathEditTarget,
 	readExperiencePath,
+	previewPathSamples,
 	resolvePathAnchorInsertion,
 	resolvePathOccurrence
 } from '$lib/authoring/experience/experience-paths';
@@ -429,6 +430,27 @@ describe('R217.S29 Camera paths', () => {
 		// Near View A on a reversed rounded path is authored index 0, not the directed slot 2.
 		expect(slot('rounded-polyline', 'reverse', [1, 1.5, 0])?.index).toBe(0);
 		expect(slot('rounded-polyline', 'reverse', [5, 1.5, 0])?.index).toBe(2);
+	});
+
+	it('samples a temporary bend with the accepted View endpoints in either direction', async () => {
+		const { graph } = await pathsFixture();
+		const cameraGraph: CameraGraph = graph;
+		const connection = cameraGraph.connections.find((entry) => entry.id === 'x-path-shared')!;
+		const accepted = structuredClone(connection.positionPath.anchors);
+		const from = accepted[0]!.position;
+		const to = accepted.at(-1)!.position;
+		const anchor = {
+			id: 'draft-point',
+			position: [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2 + 1] as [number, number, number]
+		};
+		for (const direction of ['forward', 'reverse'] as const) {
+			const samples = previewPathSamples(connection.id, direction, cameraGraph, [anchor])!;
+			expect(samples[0]).toEqual(connection.positionPath.anchors.at(direction === 'forward' ? 0 : -1)?.position);
+			expect(samples.at(-1)).toEqual(connection.positionPath.anchors.at(direction === 'forward' ? -1 : 0)?.position);
+			expect(samples.some((sample) => Math.hypot(...sample.map((value, axis) =>
+				value - anchor.position[axis]!)) < 0.2)).toBe(true);
+		}
+		expect(connection.positionPath.anchors).toEqual(accepted);
 	});
 
 	it('only the selected route is an armed edit target', async () => {

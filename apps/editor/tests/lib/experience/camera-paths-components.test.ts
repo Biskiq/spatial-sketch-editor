@@ -186,6 +186,8 @@ describe('R217.S29 — one path write per gesture', () => {
 		await settle();
 
 		const route = entry.target.querySelector<SVGPolylineElement>('.route-hit')!;
+		const ink = entry.target.querySelector<SVGPolylineElement>('polyline.route')!;
+		const original = ink.getAttribute('points');
 		const [x, y] = cssOf(PATH_SAMPLES[2]!);
 		expect(entry.target.querySelector('.plus')).toBeNull();
 		route.dispatchEvent(pointer('pointerdown', { x, y }));
@@ -197,6 +199,10 @@ describe('R217.S29 — one path write per gesture', () => {
 		liveEvaluation.redraw();
 		await settle();
 		route.dispatchEvent(pointer('pointermove', { x: x + 40, y }));
+		await settle();
+		expect(ink.getAttribute('points')).not.toBe(original);
+		expect(entry.target.querySelectorAll('polyline.route')).toHaveLength(1);
+		expect(entry.target.querySelector('.route-hit')).toBe(route);
 		expect(homes.addPathAnchor).not.toHaveBeenCalled();
 		route.dispatchEvent(pointer('pointerup', { x: x + 40, y }));
 		expect(homes.addPathAnchor).toHaveBeenCalledExactlyOnceWith(DRAGGED_POINT, undefined, PATH_SAMPLES[2]);
@@ -209,13 +215,17 @@ describe('R217.S29 — one path write per gesture', () => {
 		const entry = mountOverlay(homes, { endLease, evaluation: liveEvaluation.read });
 		await settle();
 		const hit = anchorHit(entry);
+		const ink = entry.target.querySelector<SVGPolylineElement>('polyline.route')!;
+		const original = ink.getAttribute('points');
 
 		hit.dispatchEvent(pointer('pointerdown'));
 		hit.dispatchEvent(pointer('pointermove', { x: 40, y: 30 }));
 		await settle();
+		expect(ink.getAttribute('points')).not.toBe(original);
 		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
 		await settle();
 
+		expect(ink.getAttribute('points')).toBe(original);
 		expect(homes.movePathAnchor).not.toHaveBeenCalled();
 		expect(endLease).toHaveBeenCalledTimes(1);
 		expect(releaseCapture).toHaveBeenCalledTimes(1);
