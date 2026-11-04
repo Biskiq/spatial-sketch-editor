@@ -251,6 +251,12 @@ async function setThreeD(): Promise<void> {
 	await settleReading('3d');
 }
 
+async function setTwoD(): Promise<void> {
+	control('2D').click();
+	await frame();
+	await settleReading('plan');
+}
+
 /** Dock Capture. Capture is accepted asynchronously, so callers wait on the outcome they expect. */
 async function pressCapture(): Promise<void> {
 	dockKey('capture').click();
@@ -434,7 +440,19 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		const acceptedFrustum = reading === '3D'
 			? target.querySelector(`[data-view-mark="${view.id}"] [data-camera-wire]`)
 			: target.querySelector(`[data-view-frustum="${view.id}"]`);
-		expect(acceptedFrustum?.getAttribute('d')).toBe(previewWire);
+		// The accepted View is no longer the selected ghost, so its frustum may be
+		// shorter; it keeps the ghost's eye and aim direction.
+		const firstLeg = (d: string | null | undefined) => {
+			const [x0, y0, x1, y1] = (d ?? '').match(/-?\d+(?:\.\d+)?/g)!.slice(0, 4).map(Number) as [number, number, number, number];
+			const length = Math.hypot(x1 - x0, y1 - y0);
+			return { eye: [x0, y0], direction: [(x1 - x0) / length, (y1 - y0) / length] };
+		};
+		const accepted = firstLeg(acceptedFrustum?.getAttribute('d'));
+		const preview = firstLeg(previewWire);
+		expect(accepted.eye[0]).toBeCloseTo(preview.eye[0]!, 0);
+		expect(accepted.eye[1]).toBeCloseTo(preview.eye[1]!, 0);
+		expect(accepted.direction[0]).toBeCloseTo(preview.direction[0]!, 2);
+		expect(accepted.direction[1]).toBeCloseTo(preview.direction[1]!, 2);
 		expect((await acceptance().undo()).kind).toBe('installed');
 		expect(stageCamera(stage.snapshot()).views.map((candidate) => candidate.id)).toEqual([...viewIds]);
 	}, 15000);

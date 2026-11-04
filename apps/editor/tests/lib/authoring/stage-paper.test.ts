@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../../helpers/import-closure';
-import { Layers, Mesh } from 'three';
+import { Layers, Mesh, MeshBasicMaterial } from 'three';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
@@ -45,7 +45,7 @@ import {
 	type PlanSceneProjection
 } from '$lib/authoring/scene/plan-scene-footprint';
 import { resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
-import { createPaperScene } from '$lib/authoring/stage/paper-scene';
+import { createPaperScene, PAPER_SHEET_NAME } from '$lib/authoring/stage/paper-scene';
 import { createPaperMarkScene } from '$lib/authoring/stage/paper-marks';
 import {
 	buildPaperPlan,
@@ -55,7 +55,9 @@ import {
 	paperRevealFor,
 	MAT_BACKGROUND_INK,
 	PAPER_GROUND_INK,
+	PAPER_INK,
 	PAPER_LAYER,
+	paperStageComposition,
 	PAPER_LINE_STYLE,
 	stageCameraLayerMask,
 	unionOutline,
@@ -587,6 +589,60 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		expect(isPaperPlanVisible({ renderedReading: 'transition', orthographicWeight: 1 }, 'paper')).toBe(false);
 		expect(isPaperPlanVisible({ renderedReading: '3d', orthographicWeight: 0 }, 'paper')).toBe(false);
 		expect(DEFAULT_APP_PREFERENCES.planAppearance).toBe('paper');
+	});
+
+	it('settles 2D Paper to opaque black Wall poché over the sheet, and masks the world only then', () => {
+		const settled = paperStageComposition({
+			evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, appearance: 'paper', framed: false, hasPlan: true
+		});
+		expect(settled).toEqual({ reveal: { lines: 1, sheet: 1, poche: 1 }, visible: true, covers: true });
+		expect(stageCameraLayerMask(settled.covers)).toEqual([STAGE_OVERLAY_LAYER]);
+		// Mid-flip the shaded Walls stay under the translucent poché (material → ink).
+		for (const weight of [0.6, 0.8, 0.95, 0.999]) {
+			const flipping = paperStageComposition({
+				evaluation: { renderedReading: 'transition', orthographicWeight: weight }, appearance: 'paper', framed: false, hasPlan: true
+			});
+			expect(flipping.covers).toBe(false);
+			expect(stageCameraLayerMask(flipping.covers)).toContain(STAGE_WORLD_LAYER);
+		}
+		// Shaded, a capture frame, or no Plan never draw Paper.
+		for (const input of [
+			{ appearance: 'shaded' as const, framed: false, hasPlan: true },
+			{ appearance: 'paper' as const, framed: true, hasPlan: true },
+			{ appearance: 'paper' as const, framed: false, hasPlan: false }
+		]) {
+			expect(paperStageComposition({ evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, ...input }))
+				.toEqual({ reveal: null, visible: false, covers: false });
+		}
+
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const resources = createPaperScene(drawing, [1280, 720]);
+		const marks = createPaperMarkScene({
+			selection: { fills: [], contours: [] }, hover: { fills: [], contours: [] }, erase: { fills: [], contours: [] }
+		}, [1280, 720]);
+		try {
+			resources.setReveal(settled.reveal!);
+			const meshes: Mesh[] = [];
+			resources.group.traverse((node) => { if (node instanceof Mesh && node.material instanceof MeshBasicMaterial) meshes.push(node); });
+			const material = (mesh: Mesh) => mesh.material as MeshBasicMaterial;
+			const sheet = meshes.find((mesh) => mesh.name === PAPER_SHEET_NAME)!;
+			const poche = meshes.filter((mesh) => mesh.name === '' && material(mesh).color.getHexString() === PAPER_INK.slice(1));
+			const floors = meshes.filter((mesh) => mesh.name === '' && mesh !== poche[0] && material(mesh).colorWrite);
+			expect(poche).toHaveLength(1);
+			const ink = material(poche[0]!);
+			expect(ink.opacity).toBe(1);
+			expect(ink.colorWrite).toBe(true);
+			expect(ink.stencilWrite).toBe(false);
+			expect(ink.depthTest).toBe(false);
+			expect(poche[0]!.renderOrder).toBeGreaterThan(sheet.renderOrder);
+			for (const floor of floors) expect(poche[0]!.renderOrder).toBeGreaterThan(floor.renderOrder);
+			// Nothing unselected in the marks layer paints over the settled poché.
+			expect(marks.group.children).toHaveLength(0);
+		} finally {
+			resources.dispose();
+			marks.dispose();
+		}
 	});
 
 	it('puts every Paper object on layer 2 and orders it by its Plan layer', () => {

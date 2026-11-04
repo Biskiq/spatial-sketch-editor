@@ -1814,16 +1814,21 @@ it('keeps Line and Box in the column and invokes precision upward',async()=>{awa
 	it('previews the planner’s Room as the pointer returns to a draft Junction and accepts it on click', async () => {
 		await openInk();
 		const before = facade().snapshot().canonicalJson;
-		const corners = [[0, -1], [4, -1], [4, -4], [0, -4]] as const;
+		const rooms = () => JSON.parse(facade().snapshot().canonicalJson).units.layout.data.rooms.length as number;
+		const roomsBefore = rooms();
+		// Free space beside the starter enclosure (x 0..7): a nested loop is refused.
+		const corners = [[-1, -1], [-0.5, -1], [-0.5, -3], [-1, -3]] as const;
 		for (const [x, z] of corners) {
 			const at = projected([x, 0, z]);
 			pointer('pointerdown', at);
 			pointer('pointerup', at);
 			await frame();
 		}
-		const first = projected([0, 0, -1]);
-		const nearStart = [first[0] - 5, first[1] + 3] as const;
+		const first = projected([-1, 0, -1]);
+		const nearStart = [first[0] + 5, first[1] + 3] as const;
 		pointer('pointermove', nearStart);
+		// One frame resolves the hover; the next draws the surface it changed.
+		await frame();
 		await frame();
 		expect(target.querySelector('[data-snap-shape="closure"]')).not.toBeNull();
 		expect(target.querySelector('.candidate-room')).not.toBeNull();
@@ -1832,7 +1837,7 @@ it('keeps Line and Box in the column and invokes precision upward',async()=>{awa
 
 		pointer('pointerdown', nearStart);
 		pointer('pointerup', nearStart);
-		await vi.waitFor(() => expect(facade().snapshot().domain.rooms).toHaveLength(2));
+		await vi.waitFor(() => expect(rooms()).toBe(roomsBefore + 1));
 		await settled();
 		expect(target.querySelector('[data-snap-shape="closure"]')).toBeNull();
 	});

@@ -29,7 +29,7 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
-import { isPaperPlanVisible, paperRevealFor, PAPER_GROUND_INK } from '../paper-plan';
+import { paperStageComposition, PAPER_GROUND_INK } from '../paper-plan';
 import { workspaceRectFor } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
@@ -120,13 +120,13 @@ import StageMatGround from './StageMatGround.svelte';
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
-	// Use the same reveal for the sheet, grid, ink and Camera mask. Keep the
-	// shaded world available until the complete Paper drawing can cover it.
-	const paperReveal = $derived(
-		framedViewport === null && plan !== null ? paperRevealFor(evaluation, planAppearance) : null
+	// One reveal for the sheet, grid, ink and Camera mask (see `paperStageComposition`).
+	const paperComposition = $derived(
+		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
 	);
-	const paperVisible = $derived(paperReveal !== null && isPaperPlanVisible(evaluation, planAppearance));
-	const paperCovers = $derived(paperVisible && paperReveal?.poche === 1);
+	const paperReveal = $derived(paperComposition.reveal);
+	const paperVisible = $derived(paperComposition.visible);
+	const paperCovers = $derived(paperComposition.covers);
 	const matVisible = $derived(!paperCovers);
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);

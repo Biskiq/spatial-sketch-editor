@@ -742,3 +742,30 @@ export function isPaperPlanVisible(
 		appearance === 'paper' && evaluation !== null && evaluation.renderedReading === 'plan' && evaluation.orthographicWeight === 1
 	);
 }
+
+/**
+ * The Stage's one Paper composition, read from the Camera weight alone. The
+ * sheet, grid, ink and the Camera's world mask all take the same reveal, so the
+ * shaded frame is masked only on the frame where the black poché is fully
+ * opaque over it — never earlier (a hole in the Walls) and never later (a
+ * settled Plan that keeps the material under translucent ink).
+ */
+export type PaperStageComposition = {
+	readonly reveal: PaperReveal | null;
+	/** Paper is the settled Plan drawing. */
+	readonly visible: boolean;
+	/** Paper fully covers the shaded frame, so the Camera masks the world layer. */
+	readonly covers: boolean;
+};
+
+export function paperStageComposition(input: {
+	readonly evaluation: { readonly renderedReading: string; readonly orthographicWeight: number } | null;
+	readonly appearance: 'paper' | 'shaded';
+	/** A Look-through capture frame draws the world only. */
+	readonly framed: boolean;
+	readonly hasPlan: boolean;
+}): PaperStageComposition {
+	const reveal = !input.framed && input.hasPlan ? paperRevealFor(input.evaluation, input.appearance) : null;
+	const visible = reveal !== null && isPaperPlanVisible(input.evaluation, input.appearance);
+	return { reveal, visible, covers: visible && reveal.poche === 1 };
+}
