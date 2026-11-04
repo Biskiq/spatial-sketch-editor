@@ -317,3 +317,9 @@ The owner accepts the round by using the editor.
   - No notice after a View move or a point add.
   - The default Stage cursor is `select`.
 - **Verification.** `npm run check`, the editor test lanes, and a browser pass at 1280×820 in Paper, Golden hour and Dusk, with screenshots for G6.
+
+### Owner follow-up
+
+Clicking the Floor places a View using the Stage's current heading. Dragging is optional
+and sets the direction. A pre-aimed placement from Present this keeps the subject target.
+This supersedes the minimum-drag requirement in the original S28 plan.

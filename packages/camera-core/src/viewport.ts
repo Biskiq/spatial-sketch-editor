@@ -634,13 +634,9 @@ export function aimPoseAlongRay(pose: InspectionPose, ray: PointerRay): Inspecti
 }
 
 /**
- * Construct the one authored pose a Place-a-View drag may produce (E8).
- *
- * The eye stands 1.65 m above the active Floor datum. A normal drag aims 1.25 m
- * along its own horizontal direction; a pre-aimed Present this drag still has to
- * travel the minimum distance, then keeps the named subject as the target. The
- * caller supplies Floor points from Camera's pointer ray and plane hit; this
- * function owns the authored construction and the 0.5 m refusal.
+ * Construct an authored View at the clicked Floor point. An explicit subject
+ * takes priority. Otherwise aim along the drag, or use the inspection heading
+ * for a click or small pointer movement.
  */
 export function viewPlacementPose(input: {
 	readonly startFloorPoint: Vec3;
@@ -649,6 +645,7 @@ export function viewPlacementPose(input: {
 	readonly floorDatumMeters: number;
 	readonly fovYDegrees: number;
 	readonly minimumDragMeters?: number;
+	readonly defaultAzimuthRadians?: number;
 	readonly eyeHeightMeters?: number;
 	readonly targetHeightMeters?: number;
 }): { readonly eye: Vec3; readonly target: Vec3; readonly fovYDegrees: number } | null {
@@ -656,13 +653,13 @@ export function viewPlacementPose(input: {
 	if (!isFiniteNumber(input.floorDatumMeters) || !isFiniteNumber(input.fovYDegrees)) return null;
 	if (!(input.fovYDegrees > 0 && input.fovYDegrees < 180)) return null;
 	const minimum = input.minimumDragMeters ?? 0.5;
+	const azimuth = input.defaultAzimuthRadians ?? 0;
 	const eyeHeight = input.eyeHeightMeters ?? 1.65;
 	const targetHeight = input.targetHeightMeters ?? 1.25;
-	if (!isFiniteNumber(minimum) || minimum < 0 || !isFiniteNumber(eyeHeight) || !isFiniteNumber(targetHeight)) return null;
+	if (!isFiniteNumber(minimum) || minimum < 0 || !isFiniteNumber(azimuth) || !isFiniteNumber(eyeHeight) || !isFiniteNumber(targetHeight)) return null;
 	const dx = input.currentFloorPoint[0] - input.startFloorPoint[0];
 	const dz = input.currentFloorPoint[2] - input.startFloorPoint[2];
 	const drag = Math.hypot(dx, dz);
-	if (drag < minimum || drag <= 1e-9) return null;
 	const eye: Vec3 = [
 		input.startFloorPoint[0],
 		input.floorDatumMeters + eyeHeight,
@@ -673,10 +670,13 @@ export function viewPlacementPose(input: {
 		if (!isFiniteVec3(input.aimPoint)) return null;
 		target = [input.aimPoint[0], input.aimPoint[1], input.aimPoint[2]];
 	} else {
+		const aimedByDrag = drag >= minimum && drag > 1e-9;
+		const forwardX = aimedByDrag ? dx / drag : -Math.sin(azimuth);
+		const forwardZ = aimedByDrag ? dz / drag : -Math.cos(azimuth);
 		target = [
-			input.startFloorPoint[0] + (dx / drag) * 1.25,
+			input.startFloorPoint[0] + forwardX * 1.25,
 			input.floorDatumMeters + targetHeight,
-			input.startFloorPoint[2] + (dz / drag) * 1.25
+			input.startFloorPoint[2] + forwardZ * 1.25
 		];
 	}
 	if (lengthVec3(subtractVec3(target, eye)) <= 1e-6) return null;

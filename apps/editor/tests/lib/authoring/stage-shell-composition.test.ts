@@ -485,6 +485,12 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 		}
 	});
 
+	it('keeps the Stage rectangle fixed behind the Index at every width', () => {
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).toMatch(/\.stage-frame \{[^}]*position: absolute;[^}]*inset: 0;/);
+		expect(route).toMatch(/:global\(\.plate-index\) \{[^}]*position: absolute;[^}]*inset: 0 auto 0 0;/);
+	});
+
 	it('ends the constrained Index above the lower column and drops the viewport-sized shadow', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		expect(route).not.toContain('100vmax');

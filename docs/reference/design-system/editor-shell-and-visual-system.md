@@ -135,9 +135,9 @@ INDEX (collapses to nothing)   STAGE — dominant spatial work; reading control,
 | **Dock and palette** | Pointer tools: what the pointer does next | Select · Ink · Measure · Eraser, then Objects | Select · Place a View · Path, then Capture and Guide |
 | **Instrument** | Work invoked at the lower edge that needs room; selection identity stays in the Card | Library and repair only | One active **Guide context**, integrating Stop composition, Cut/Travel, path authoring and playback |
 
-The wide shell has Index left and Stage as the working ground. Card overlays the
-Stage edge instead of reserving a permanent inspector column. Opening/closing it
-does not reflow or implicitly reframe the Stage. There is no empty Card at rest.
+The wide shell has Index left and Stage as the working ground. Index and Card
+overlay the Stage edges without resizing or reframing the viewport. There is no
+empty Card at rest.
 Selected identity remains legible or directly recoverable when the Card is closed
 or compressed. **A collapsed Index takes no width** and its location moves into the Head
 (or, in the retained alternative, a minimal edge arrow); collapse preserves location,
@@ -977,7 +977,7 @@ copied pixels. Stop cards are semantic composition items in the Guide instrument
 the shell does not become nested dashboard cards. Spatial marks
 retain the precision and legibility requirements of their domain grammar.
 
-**Grid and wall sheet.** Paper draws fixed 1 m minor and 5 m major lines; there is no
+**Grid and wall sheet.** The Grid toggle applies in Paper, Shaded 2D and 3D. Paper draws fixed 1 m minor and 5 m major lines; there is no
 zoom-driven interval ladder. Decimate the **drawing** by projected CSS-pixel spacing:
 each level is fully inked at 16 px and above, fades from 16 to 8 px and is suppressed
 below 8 px. On Paper a 25 m reference appears only while the 5 m level is suppressed, and

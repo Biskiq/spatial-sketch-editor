@@ -227,12 +227,12 @@
 </script>
 
 <svelte:head>
-	<title>Projects — Museum Editor</title>
+	<title>Projects — Biskiq Editor</title>
 </svelte:head>
 
 <main class="hub-page">
 	<header class="hub-header">
-		<a href="/">Museum Editor</a>
+		<a href="/">Biskiq Editor</a>
 		{#if sessionStatus === 'authenticated'}
 			<button type="button" disabled={busy || lifecycleBusyIds.size > 0} onclick={() => void signOut()}>Sign out</button>
 		{/if}

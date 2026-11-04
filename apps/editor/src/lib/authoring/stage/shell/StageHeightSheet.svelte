@@ -522,7 +522,7 @@
 	}
 	.sheet.left {
 		right: auto;
-		left: 10px;
+		left: calc(10px + var(--index-cover, 0px));
 	}
 	.rail-wrap {
 		position: relative;
@@ -674,7 +674,7 @@
 	}
 	.hint {
 		position: absolute;
-		left: 12px;
+		left: calc(12px + var(--index-cover, 0px));
 		bottom: 80px;
 		z-index: 9;
 		max-width: 256px;

@@ -42,7 +42,7 @@
 		class:place-armed={placeArmed}
 		aria-pressed={placeArmed}
 		aria-label="Place a View"
-		title={placeArmed ? 'Place a View: drag toward what the View sees · Esc' : 'Place a View where the camera stands'}
+		title={placeArmed ? 'Place a View: click to place or drag to aim · Esc' : 'Place a View where the camera stands'}
 		data-dock-tool="place-view"
 		onclick={onPlaceView}
 	>

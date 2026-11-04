@@ -122,21 +122,25 @@ describe('R217.S28 — exact authored View evaluation', () => {
 		expect(eye[2]).toBeCloseTo(5, 6);
 	});
 
-	it('constructs placement inside Camera and refuses a pre-aimed drag under 0.5 m', () => {
+	it('places on click using the inspection heading, with drag and subject aim overrides', () => {
 		const input = {
 			startFloorPoint: [1, 0, 2] as [number, number, number],
-			currentFloorPoint: [1, 0, 2.2] as [number, number, number],
+			currentFloorPoint: [1, 0, 2] as [number, number, number],
+			defaultAzimuthRadians: Math.PI / 2,
 			floorDatumMeters: 0,
 			fovYDegrees: 54
 		};
-		expect(viewPlacementPose(input)).toBeNull();
+		const click = viewPlacementPose(input);
+		expect(click?.eye).toEqual([1, 1.65, 2]);
+		expect(click?.target).toEqual([-0.25, 1.25, 2]);
+		expect(viewPlacementPose({ ...input, currentFloorPoint: [1, 0, 2.2] })).toEqual(click);
 		const placed = viewPlacementPose({ ...input, currentFloorPoint: [1, 0, 2.5] });
 		if (placed === null) throw new Error('placement refused');
 		expect(placed.eye).toEqual([1, 1.65, 2]);
 		expect(placed.target[0]).toBeCloseTo(1, 9);
 		expect(placed.target[1]).toBeCloseTo(1.25, 9);
 		expect(placed.target[2]).toBeCloseTo(3.25, 9);
-		const preAimed = viewPlacementPose({ ...input, currentFloorPoint: [1, 0, 2.6], aimPoint: [0, 1.2, 0] });
+		const preAimed = viewPlacementPose({ ...input, aimPoint: [0, 1.2, 0] });
 		if (preAimed === null) throw new Error('pre-aimed placement refused');
 		expect(preAimed.target).toEqual([0, 1.2, 0]);
 	});

@@ -31,7 +31,7 @@
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { isPaperPlanVisible, paperRevealFor, PAPER_GROUND_INK } from '../paper-plan';
-import { gridIsVisible, workspaceRectFor } from '../stage-grid';
+import { workspaceRectFor } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
@@ -187,17 +187,8 @@ import StageMatGround from './StageMatGround.svelte';
 			size: [Math.max(0.1, max[0] - min[0]), Math.max(0.1, max[2] - min[2])] as [number, number]
 		};
 	});
-	/**
-	 * Grid visibility is one fact on both surfaces: under a Grid-off state, and in
-	 * Shaded Plan it is never drawn. The mat keeps its grid in shaded 3D.
-	 */
-	const gridVisible = $derived(
-		gridIsVisible({
-			grid: drafting.grid,
-			appearance: planAppearance,
-			renderedReading: evaluation?.renderedReading ?? null
-		})
-	);
+	// Both readings and appearances honor the same Grid toggle.
+	const gridVisible = $derived(drafting.grid && framedViewport === null);
 
 	const presentation = $derived.by(() => {
 		const record: Record<string, VisitorRoomPresentation> = {};
@@ -274,7 +265,7 @@ import StageMatGround from './StageMatGround.svelte';
 		<StageMatGround
 			{evaluation}
 			{datumMeters}
-			gridVisible={gridVisible && framedViewport === null}
+			{gridVisible}
 			{contentBounds}
 			plateInk={paperInk3d}
 			litPlate={environmentShown ? (worldEnvironmentLook(environment)?.plate ?? null) : null}
@@ -311,7 +302,7 @@ import StageMatGround from './StageMatGround.svelte';
 		onEntityRenderable={entityRendererReady}
 		onEntityRoot={registerSceneRoot}
 	/>
-	{#if framedViewport === null && paperReveal !== null && gridVisible}
+	{#if paperReveal !== null && gridVisible}
 		<StageGrid {evaluation} {datumMeters} {contentBounds} fade={paperReveal.sheet} />
 	{/if}
 	{#if framedViewport === null && paperReveal !== null && plan !== null && evaluation !== null}

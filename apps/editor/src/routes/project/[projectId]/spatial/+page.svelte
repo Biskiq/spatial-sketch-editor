@@ -1042,7 +1042,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function beginPlacement(event: PointerEvent): void {
-		if (event.button !== 0) return;
+		if (event.button !== 0 || placementPress !== null) return;
 		const point = placementPoint(event);
 		if (point === null) {
 			notice = 'Point at the Floor to place a View.';
@@ -1050,9 +1050,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		placementPress = { pointerId: event.pointerId, start: point, current: point };
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		// Until the drag clears 0.5 m there is no pose to preview; the same Camera
-		// constructor below decides both the preview and the committed pose.
-		placementGhost = null;
+		const pose = placementPose(placementPress, placementAim);
+		placementGhost = pose === null ? null : { eye: pose.eye, target: pose.target };
 	}
 
 	function placementPose(press: { start: StageTriple; current: StageTriple }, aim: StageTriple | null) {
@@ -1060,6 +1059,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			startFloorPoint: press.start,
 			currentFloorPoint: press.current,
 			aimPoint: aim,
+			defaultAzimuthRadians: evaluation?.pose.azimuthRadians,
 			floorDatumMeters: experienceFloorDatum,
 			fovYDegrees: CAMERA_FOV.default
 		});
@@ -1067,7 +1067,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function movePlacement(event: PointerEvent): void {
 		const press = placementPress;
-		if (press === null) return;
+		if (press === null || event.pointerId !== press.pointerId) return;
 		const point = placementPoint(event);
 		if (point === null) return;
 		const current = { ...press, current: point };
@@ -1093,7 +1093,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
 		const pose = placementPose(press, aim);
 		if (pose === null) {
-			notice = 'Drag at least 0.5 m to place a View.';
+			notice = 'The View needs a target away from its eye.';
 			return;
 		}
 		const controller = activeExperience;
@@ -1277,7 +1277,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			];
 			stopPlaybackAndRestore();
 			experienceTool = 'place';
-			notice = `Place a View aimed at ${label}: press where the camera stands.`;
+			notice = `Place a View aimed at ${label}: click where the camera stands.`;
 			return;
 		}
 		const viewerEye = stage.evaluation()?.eye;
@@ -5746,6 +5746,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	<div
 		class="editor-body"
 		style={`--lower-column-height: ${lowerColumnHeight}px; ${lens === 'experience' ? '--card-right: 10px; ' : ''}${lens === 'experience' && !experienceGuideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
+		data-index-open={preview === null && indexOpen}
 	>
 		{#if preview === null}
 		<EditorIndex
@@ -6303,7 +6304,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	{:else if boot.status !== 'ready' && boot.status !== 'empty'}
 		<div class="boot-panel" role="status" aria-live="polite">
 			{#if boot.status === 'loading'}
-				<p>Loading project…</p>
+				<span class="boot-brand">Biskiq Editor</span>
+				<p class="boot-loading">Loading project…</p>
 			{:else if boot.status === 'missing'}
 				<h1>Project not found</h1>
 				<p>This project does not exist for your account.</p>
@@ -6354,26 +6356,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 <style>
 	:global(body) {
 		margin: 0;
-		background: #111117;
-		color: #f4f0e9;
-		font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 	}
 	.editor-host {
 		display: flex;
 		flex-direction: column;
 		height: 100dvh;
+		background: var(--shell-forest);
+		color: var(--shell-ivory);
 	}
 	.editor-body {
 		position: relative;
-		display: flex;
 		min-height: 0;
 		flex: 1;
 		overflow: hidden;
 	}
 	.stage-frame {
-		position: relative;
-		min-width: 0;
-		flex: 1;
+		position: absolute;
+		inset: 0;
 	}
 	.stage {
 		position: absolute;
@@ -6439,21 +6438,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		pointer-events: auto;
 	}
 	.lower-column[hidden] { display: none; }
-	/*
-		R217.S23 — at a constrained width the Index is an overlay sheet. It ends above the
-		lower column's measured span (the dock, and the palette above it when one is open),
-		so the dock stays usable behind an open Index. Its dimming is the explicit scrim below,
-		not a viewport-sized shadow.
-	*/
+	/* The Index covers the Stage without participating in viewport layout. */
+	.editor-body > :global(.plate-index) {
+		position: absolute;
+		z-index: 20;
+		inset: 0 auto 0 0;
+		box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
+	}
+	@media (width > 1100px) {
+		.editor-body[data-index-open='true'] {
+			--index-cover: var(--shell-index-width);
+		}
+	}
+	/* The constrained Index ends above the lower column and has a close scrim. */
 	@media (max-width: 1100px) {
 		.editor-body > :global(.plate-index) {
-			position: absolute;
-			z-index: 20;
-			top: 0;
 			bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);
-			left: 0;
 			width: min(var(--shell-index-width, 256px), 80%);
-			box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
 		}
 		/*
 			The scrim covers the Stage above the lower column and beneath it: the dock, the
@@ -6484,7 +6485,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.stage-actions {
 		position: absolute;
 		top: 10px;
-		left: 10px;
+		left: calc(10px + var(--index-cover, 0px));
 		/* Its popovers (Show, Environment) open over the Stage's start card. */
 		z-index: 6;
 		display: flex;
@@ -6873,7 +6874,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.experience-welcome {
 		position: absolute;
-		left: 1rem;
+		left: calc(1rem + var(--index-cover, 0px));
 		bottom: 4.75rem;
 		width: min(18rem, calc(100% - 2rem));
 		padding: 1rem;
@@ -7054,43 +7055,59 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.boot-panel {
 		position: absolute;
+		z-index: 30;
 		top: 4rem;
 		left: 50%;
 		transform: translateX(-50%);
 		width: min(32rem, calc(100% - 2rem));
 		padding: 1.25rem;
-		border: 1px solid #4d4655;
-		border-radius: 0.6rem;
-		background: rgb(25 24 31 / 96%);
+		border: 1px solid color-mix(in srgb, var(--shell-ivory) 20%, transparent);
+		border-radius: 16px;
+		background: var(--shell-dock-surface);
+		color: var(--shell-ivory);
+		box-shadow: var(--shell-shadow);
 		box-sizing: border-box;
 	}
-	.boot-panel h1 {
+	.boot-brand {
+		color: var(--shell-gold);
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+	.boot-panel h1,
+	.boot-panel .boot-loading {
 		margin: 0 0 0.5rem;
-		font-size: 1.15rem;
+		color: var(--shell-ivory);
+		font: 400 1.4rem/1.25 var(--shell-serif);
+	}
+	.boot-panel .boot-loading {
+		margin: 0.35rem 0 0;
 	}
 	.boot-panel p {
 		margin: 0 0 0.75rem;
-		color: #bcb5c4;
+		color: var(--shell-ink-light);
 	}
 	.boot-panel button {
 		margin-right: 0.5rem;
 		padding: 0.5rem 0.8rem;
-		border: 1px solid #635a6f;
-		border-radius: 0.35rem;
-		background: #292632;
+		border: 1px solid color-mix(in srgb, var(--shell-ivory) 30%, transparent);
+		border-radius: 8px;
+		background: transparent;
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
 	}
 	.boot-panel button.primary {
-		border-color: #b997f2;
-		background: #8f69c8;
-		color: #fff;
+		border-color: var(--shell-gold);
+		background: var(--shell-gold);
+		color: var(--shell-forest);
 	}
+	.boot-panel button:focus-visible {
+		outline-color: var(--shell-gold);
+	}
+
 	@media (max-width: 720px) {
-		.editor-body {
-			flex-direction: column;
-		}
 		/* Below the centered lens panel in a narrow shell, so the notice never
 		   overlaps its buttons. */
 		.stage-note {

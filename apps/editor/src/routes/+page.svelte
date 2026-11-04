@@ -87,7 +87,7 @@
 </script>
 
 <svelte:head>
-	<title>Museum Editor</title>
+	<title>Biskiq Editor</title>
 </svelte:head>
 
 <main class="entry-page">
@@ -102,7 +102,7 @@
 		</g>
 	</svg>
 	<section class="entry-card" aria-labelledby="entry-title">
-		<p class="eyebrow">Museum Editor</p>
+		<p class="eyebrow">Biskiq Editor</p>
 		<h1 id="entry-title">Start a project</h1>
 		<p class="lede">Create in Spatial. Sign in when you want cloud projects.</p>
 		{#if redirecting}

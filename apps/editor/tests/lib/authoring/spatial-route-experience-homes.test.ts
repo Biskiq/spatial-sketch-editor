@@ -355,7 +355,7 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		}
 	}
 
-	it('opens the new Presentation name after placing a View', async () => {
+	it('places a View on click and opens the new Presentation name', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
 		await setThreeD();
@@ -365,12 +365,10 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		const id = stage.evaluationId();
 		if (id === null) throw new Error('no evaluation');
 		const start = stage.projectWorld([1, 0, 1], id);
-		const end = stage.projectWorld([2, 0, 1], id);
-		if (start.kind !== 'projected' || end.kind !== 'projected') throw new Error('floor point not projected');
+		if (start.kind !== 'projected') throw new Error('floor point not projected');
 		const surface = target.querySelector<HTMLElement>('.stage')!;
 		pointer('pointerdown', surface, 1, start.css[0], start.css[1]);
-		pointer('pointermove', surface, 1, end.css[0], end.css[1]);
-		pointer('pointerup', surface, 1, end.css[0], end.css[1]);
+		pointer('pointerup', surface, 1, start.css[0], start.css[1]);
 		for (let pumped = 0; pumped < 120 && target.querySelector('input.rename-input') === null; pumped += 1) await frame();
 		await vi.waitFor(() => expect(target.querySelector('input.rename-input')).not.toBeNull());
 	}, 15000);
