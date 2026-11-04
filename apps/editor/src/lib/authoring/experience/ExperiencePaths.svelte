@@ -1,16 +1,6 @@
 <script lang="ts">
-	/**
-	 * R217.S29 — Camera paths on the Stage.
-	 *
-	 * Every point is projected through the one live `ViewportEvaluation`, and every
-	 * route comes from `experience-paths.ts` (Camera's own motion samples). The
-	 * overlay draws and selects: an armed click on a Plan path inserts one interior
-	 * point at the nearest evaluated sample through the controller, a click on a
-	 * point selects it, and Delete removes it. Paths appear only while the Guide is
-	 * open; 3D reads them and only Plan inserts. The Stage keeps its arbitration.
-	 */
 	import { onDestroy } from 'svelte';
-	import { projectWorld, type Vec3, type ViewportEvaluation } from '@portfolio/camera-core';
+	import { projectWorld, type Vec3, type ViewportEvaluation, type ViewportEvaluationToken } from '@portfolio/camera-core';
 	import { experienceHomes } from './experience-homes';
 	import {
 		experiencePathOccurrences,
@@ -23,12 +13,14 @@
 	let {
 		evaluation,
 		selectionOnly = false,
+		relatedPaths,
 		onPlanePoint,
 		beginLease,
 		endLease
 	}: {
 		evaluation: ViewportEvaluation;
 		selectionOnly?: boolean;
+		relatedPaths?: ReadonlySet<string>;
 		/** The host's Camera ray/plane hit at a horizontal height, in world meters. */
 		onPlanePoint?: (css: readonly [number, number], height: number) => Vec3 | null;
 		/** The Stage gesture lease; a refused acquisition means no drag starts. */
@@ -39,23 +31,31 @@
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
 	const guideOpen = $derived(homes.guideOpen());
-	const plan = $derived(evaluation.projectionKind === 'plan-orthographic');
 	const selected = $derived(controller?.selectedPath ?? null);
-	const armed = $derived(controller?.pathArmed === true && plan);
+	// Experience review 1: the selected Travel's route is editable in both readings
+	// without arming a tool; handles appear on selection.
+	const armed = $derived(selected !== null && selected.state === 'ready');
 	const selectedKey = $derived(selected === null ? null : occurrenceKey(selected.occurrence));
 	type Drag = {
-		readonly anchorId: string;
+		readonly anchorId: string | null;
 		readonly readKey: string;
 		readonly connectionId: string | null;
 		readonly pointerId: number;
 		readonly height: number;
-		readonly generation: number;
+		readonly token: ViewportEvaluationToken;
+		readonly projectionKind: ViewportEvaluation['projectionKind'];
+		readonly start: readonly [number, number];
+		readonly origin: Vec3;
+		readonly planeStart: Vec3;
 		readonly capture: Element;
 		preview: Vec3;
 		moved: boolean;
 	};
 	let drag = $state<Drag | null>(null);
 	let suppressClick = false;
+	let edited = $state(false);
+	let hint = $state<readonly [number, number] | null>(null);
+	let hoveredAnchor = $state<string | null>(null);
 	const dragPreview = $derived.by(() => (drag === null ? null : project(drag.preview)));
 
 	function project(point: Vec3): readonly [number, number] | null {
@@ -78,7 +78,31 @@
 			readonly position: Vec3;
 		}[];
 		readonly state: 'selected' | 'near' | 'faint';
+		/** Direction chevrons along the route, every ~46 CSS px. */
+		readonly chevrons: readonly { readonly x: number; readonly y: number; readonly angle: number }[];
 	};
+
+	function chevronsAlong(runs: readonly (readonly (readonly [number, number])[])[], spacing = 46) {
+		const out: { x: number; y: number; angle: number }[] = [];
+		for (const run of runs) {
+			let carried = spacing * 0.5;
+			for (let index = 1; index < run.length; index += 1) {
+				const [ax, ay] = run[index - 1]!;
+				const [bx, by] = run[index]!;
+				const length = Math.hypot(bx - ax, by - ay);
+				if (length === 0) continue;
+				const angle = (Math.atan2(by - ay, bx - ax) * 180) / Math.PI;
+				let at = carried;
+				while (at <= length) {
+					const t = at / length;
+					out.push({ x: ax + (bx - ax) * t, y: ay + (by - ay) * t, angle });
+					at += spacing;
+				}
+				carried = at - length;
+			}
+		}
+		return out;
+	}
 
 	/** Paths of the open Guide's Travel moves, plus the one selected path. */
 	const drawn = $derived.by((): readonly Drawn[] => {
@@ -112,18 +136,19 @@
 						: { anchorId: anchor.id, css, position: anchor.position };
 				})
 				.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-			if (selectionOnly && key !== selectedKey) continue;
-			const state =
-				key === selectedKey
-					? 'selected'
-					: selected !== null &&
-						  (selected.occurrence.stopId === occurrence.stopId ||
-								selected.occurrence.kind === 'transition' && occurrence.toStopId === selected.occurrence.stopId)
-						? 'near'
-						: 'faint';
-			result.push({ key, occurrence, read, runs, points, state });
+			if (selectionOnly && key !== selectedKey && !relatedPaths?.has(key)) continue;
+			const state = key === selectedKey ? 'selected' : relatedPaths?.has(key) ? 'near' : 'faint';
+			result.push({
+				key,
+				occurrence,
+				read,
+				runs,
+				points,
+				state,
+				chevrons: chevronsAlong(runs)
+			});
 		}
-		return result;
+		return result.sort((a, b) => Number(a.state === 'selected') - Number(b.state === 'selected'));
 	});
 
 	/** Cut transitions draw their dotted CUT link in the whole-Guide reading. */
@@ -144,7 +169,7 @@
 			})
 			.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
 			// Selection only shows the selected occurrence; unrelated Cuts fold.
-			.filter((entry) => !selectionOnly || entry.key === selectedKey);
+			.filter((entry) => !selectionOnly || entry.key === selectedKey || relatedPaths?.has(entry.key));
 	});
 
 	function nearestSample(
@@ -167,44 +192,55 @@
 		return best === null ? null : { sample: best, index: bestIndex };
 	}
 
-	function onPathClick(event: MouseEvent, read: ExperiencePathRead): void {
-		if (!armed || controller === null || !isPathEditTarget(read, selected)) return;
-		event.stopPropagation();
-		const bounds = (event.currentTarget as SVGElement).ownerSVGElement?.getBoundingClientRect();
-		if (bounds === undefined) return;
-		const nearest = nearestSample(read, [event.clientX - bounds.left, event.clientY - bounds.top]);
-		// A path endpoint is not an insertion slot; only an interior hit inserts.
-		if (nearest === null || nearest.index <= 0 || nearest.index >= read.samples.length - 1) return;
-		void controller.addPathAnchor(nearest.sample);
+	function interiorSample(event: MouseEvent, read: ExperiencePathRead): Vec3 | null {
+		const nearest = nearestSample(read, [event.clientX - evaluation.rect.left, event.clientY - evaluation.rect.top]);
+		if (nearest === null || nearest.index === 0 || nearest.index === read.samples.length - 1) return null;
+		return nearest.sample;
+	}
+
+	function sameSource(active: Drag): boolean {
+		const { token, projectionKind } = evaluation;
+		return token.outputId === active.token.outputId &&
+			token.sessionEpoch === active.token.sessionEpoch &&
+			token.sourceRevision === active.token.sourceRevision &&
+			projectionKind === active.projectionKind;
 	}
 
 	function beginDrag(
 		event: PointerEvent,
-		point: { readonly anchorId: string; readonly position: Vec3 },
-		read: ExperiencePathRead
+		read: ExperiencePathRead,
+		anchor?: { readonly anchorId: string; readonly position: Vec3 }
 	): void {
-		if (!plan || !armed || controller === null || onPlanePoint === undefined || !isPathEditTarget(read, selected)) return;
-		if (event.button !== 0 || drag !== null) return;
-		if (beginLease !== undefined && !beginLease()) return;
 		event.stopPropagation();
+		if (event.button !== 0 || drag !== null) return;
+		suppressClick = false;
+		if (!armed || controller?.busy || !isPathEditTarget(read, selected) || onPlanePoint === undefined) return;
+		const origin = anchor?.position ?? interiorSample(event, read);
+		if (origin === null) return;
+		const start = [event.clientX, event.clientY] as const;
+		const planeStart = onPlanePoint(start, origin[1]);
 		const capture = event.currentTarget as Element | null;
-		if (capture === null) return;
+		if (capture === null || planeStart === null || (beginLease !== undefined && !beginLease())) return;
 		try {
 			capture.setPointerCapture(event.pointerId);
 		} catch {
 			endLease?.();
 			return;
 		}
-		suppressClick = false;
+		hint = null;
 		drag = {
-			anchorId: point.anchorId,
+			anchorId: anchor?.anchorId ?? null,
 			readKey: occurrenceKey(read.occurrence),
 			connectionId: read.connectionId,
 			pointerId: event.pointerId,
-			height: point.position[1],
-			generation: evaluation.token.evaluationGeneration,
+			height: origin[1],
+			token: evaluation.token,
+			projectionKind: evaluation.projectionKind,
 			capture,
-			preview: point.position,
+			start,
+			origin,
+			planeStart,
+			preview: origin,
 			moved: false
 		};
 	}
@@ -212,30 +248,44 @@
 	function moveDrag(event: PointerEvent): void {
 		const active = drag;
 		if (active === null || event.pointerId !== active.pointerId) return;
-		if (evaluation.token.evaluationGeneration !== active.generation) {
+		event.stopPropagation();
+		if (!sameSource(active)) {
 			cancelDrag();
 			return;
 		}
+		if (!active.moved && Math.hypot(event.clientX - active.start[0], event.clientY - active.start[1]) < 4) return;
 		const world = onPlanePoint?.([event.clientX, event.clientY], active.height) ?? null;
 		if (world === null) return;
-		drag = { ...active, preview: world, moved: true };
+		const preview: Vec3 = active.anchorId === null ? world : [
+			active.origin[0] + world[0] - active.planeStart[0],
+			active.height,
+			active.origin[2] + world[2] - active.planeStart[2]
+		];
+		drag = { ...active, preview, moved: true };
 	}
 
 	async function endDrag(event: PointerEvent): Promise<void> {
+		if (drag === null || event.pointerId !== drag.pointerId) return;
+		event.stopPropagation();
+		moveDrag(event);
 		const active = drag;
-		if (active === null || event.pointerId !== active.pointerId) return;
-		const commit = active.moved && evaluation.token.evaluationGeneration === active.generation;
-		const point = active.preview;
-		drag = null;
-		try {
-			if (active.capture.hasPointerCapture(active.pointerId)) active.capture.releasePointerCapture(active.pointerId);
-		} catch {
-			// A lost capture is already cancelled; the lease still releases below.
-		}
-		endLease?.();
-		if (!commit || controller === null) return;
+		cancelDrag();
+		if (active === null || !active.moved || controller === null) return;
 		suppressClick = true;
-		await controller.movePathAnchor(active.anchorId, point);
+		const accepted = await (active.anchorId === null
+			? controller.addPathAnchor(active.preview, undefined, active.origin)
+			: controller.movePathAnchor(active.anchorId, active.preview));
+		edited = edited || accepted;
+	}
+
+	async function addOnDoubleClick(event: MouseEvent, read: ExperiencePathRead): Promise<void> {
+		event.stopPropagation();
+		if (controller === null || suppressClick || !isPathEditTarget(read, selected)) return;
+		const near = interiorSample(event, read);
+		if (near === null) return;
+		const point = onPlanePoint?.([event.clientX, event.clientY], near[1]) ?? near;
+		const accepted = await controller.addPathAnchor(point, undefined, near);
+		edited = edited || accepted;
 	}
 
 	function cancelDrag(): void {
@@ -261,11 +311,11 @@
 		if (
 			drag !== null &&
 			(!guideOpen ||
-				!plan ||
 				!armed ||
 				key === null ||
 				drag.readKey !== key ||
-				drag.connectionId !== connectionId)
+				drag.connectionId !== connectionId ||
+				!sameSource(drag))
 		) {
 			cancelDrag();
 		}
@@ -284,17 +334,36 @@
 		return () => window.removeEventListener('keydown', onKey, true);
 	});
 
+	// Overlapping hit targets still address the nearest authored point.
+	function anchorAt(event: MouseEvent, points: Drawn['points']): Drawn['points'][number] {
+		const x = event.clientX - evaluation.rect.left;
+		const y = event.clientY - evaluation.rect.top;
+		let nearest = points[0]!;
+		let distance = Infinity;
+		for (const point of points) {
+			const next = (point.css[0] - x) ** 2 + (point.css[1] - y) ** 2;
+			if (next >= distance) continue;
+			distance = next;
+			nearest = point;
+		}
+		return nearest;
+	}
+
 	function selectAnchor(anchorId: string): void {
 		controller?.selectAnchor(anchorId);
 	}
 
 	function insertAtMiddle(event: KeyboardEvent, read: ExperiencePathRead): void {
-		if (!armed || controller === null || !isPathEditTarget(read, selected)) return;
+		if (controller === null) return;
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
 		event.stopPropagation();
 		const middle = read.samples[Math.floor(read.samples.length / 2)];
-		if (middle !== undefined) void controller.addPathAnchor(middle);
+		if (!isPathEditTarget(read, selected)) {
+			controller.selectPath(read.occurrence);
+		} else if (middle !== undefined) {
+			void controller.addPathAnchor(middle).then((accepted) => { edited = edited || accepted; });
+		}
 	}
 </script>
 
@@ -302,23 +371,48 @@
 <g class="experience-paths" data-experience-paths>
 	{#each drawn as path (path.key)}
 		{#each path.runs as run, index (index)}
+			<polyline class="ribbon {path.state}" points={run.map((point) => `${point[0]},${point[1]}`).join(' ')} />
 			<polyline
 				class="route {path.state}"
 				points={run.map((point) => `${point[0]},${point[1]}`).join(' ')}
 				data-path={path.read.connectionId}
 			/>
-			{#if armed && isPathEditTarget(path.read, selected)}
-				<polyline
-					class="route-hit"
-					data-path-target={path.read.connectionId}
-					points={run.map((point) => `${point[0]},${point[1]}`).join(' ')}
-					role="button"
-					tabindex="0"
-					aria-label="Add a path point"
-					onclick={(event) => onPathClick(event, path.read)}
-					onkeydown={(event) => insertAtMiddle(event, path.read)}
-				/>
-			{/if}
+			<polyline
+				class="route-hit"
+				class:edit={isPathEditTarget(path.read, selected)}
+				data-path-target={path.read.connectionId}
+				points={run.map((point) => `${point[0]},${point[1]}`).join(' ')}
+				role="button"
+				tabindex="0"
+				aria-label={isPathEditTarget(path.read, selected) ? 'Add a path point' : 'Select this Travel'}
+				onpointerdown={(event) => beginDrag(event, path.read)}
+				onpointermove={(event) => {
+					moveDrag(event);
+					if (!edited && drag === null && isPathEditTarget(path.read, selected)) {
+						hint = [event.clientX - evaluation.rect.left, event.clientY - evaluation.rect.top];
+					}
+				}}
+				onpointerleave={() => (hint = null)}
+				onpointerup={(event) => void endDrag(event)}
+				onpointercancel={cancelDrag}
+				onlostpointercapture={cancelDrag}
+				onclick={(event) => {
+					event.stopPropagation();
+					if (!suppressClick && !isPathEditTarget(path.read, selected)) controller?.selectPath(path.read.occurrence);
+				}}
+				ondblclick={(event) => void addOnDoubleClick(event, path.read)}
+				onkeydown={(event) => insertAtMiddle(event, path.read)}
+			/>
+		{/each}
+		{#if path.runs[0] !== undefined && path.runs[0][0] !== undefined}
+			<circle class="start-ring {path.state}" cx={path.runs[0][0][0]} cy={path.runs[0][0][1]} r="5" />
+		{/if}
+		{#each path.chevrons as chevron, index (index)}
+			<path
+				class="chevron {path.state}"
+				d="M-3.5,-4 L2,0 L-3.5,4"
+				transform={`translate(${chevron.x} ${chevron.y}) rotate(${chevron.angle})`}
+			/>
 		{/each}
 		{#each path.points as point (point.anchorId)}
 			<circle
@@ -326,7 +420,8 @@
 				class:selected={isPathEditTarget(path.read, selected) && controller?.selectedAnchorId === point.anchorId}
 				cx={point.css[0]}
 				cy={point.css[1]}
-				r="3"
+				r={isPathEditTarget(path.read, selected) &&
+					(hoveredAnchor === point.anchorId || controller?.selectedAnchorId === point.anchorId) ? 6 : 3}
 				data-path-anchor={point.anchorId}
 			/>
 			{#if isPathEditTarget(path.read, selected)}
@@ -334,12 +429,17 @@
 				class="anchor-hit"
 				cx={point.css[0]}
 				cy={point.css[1]}
-				r="22"
+				r="14"
 				role="button"
 				tabindex="0"
 				aria-label="Path point"
-				onpointerdown={(event) => beginDrag(event, point, path.read)}
-				onpointermove={moveDrag}
+				onpointerdown={(event) => beginDrag(event, path.read, anchorAt(event, path.points))}
+				onpointerenter={(event) => { hoveredAnchor = anchorAt(event, path.points).anchorId; hint = null; }}
+				onpointerleave={() => (hoveredAnchor = null)}
+				onpointermove={(event) => {
+					moveDrag(event);
+					if (drag === null) hoveredAnchor = anchorAt(event, path.points).anchorId;
+				}}
 				onpointerup={(event) => void endDrag(event)}
 				onpointercancel={cancelDrag}
 				onlostpointercapture={cancelDrag}
@@ -349,7 +449,14 @@
 						suppressClick = false;
 						return;
 					}
-					selectAnchor(point.anchorId);
+					selectAnchor(anchorAt(event, path.points).anchorId);
+				}}
+				ondblclick={(event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					if (!suppressClick) {
+						void controller?.removePathAnchor(anchorAt(event, path.points).anchorId).then((accepted) => { edited = edited || accepted; });
+					}
 				}}
 				onkeydown={(event) => {
 					if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -361,12 +468,17 @@
 			{/if}
 		{/each}
 	{/each}
+	{#if hint !== null && !edited && drag === null}
+		<g class="path-hint" transform={`translate(${Math.max(0, Math.min(hint[0] + 12, evaluation.rect.width - 216))} ${Math.max(0, hint[1] - 32)})`}>
+			<rect width="213" height="24" rx="5" />
+			<text x="8" y="16">Drag to bend · double-click to add a point</text>
+		</g>
+	{/if}
 	{#if dragPreview !== null}
 		<circle class="anchor selected preview" cx={dragPreview[0]} cy={dragPreview[1]} r="3.4" />
 	{/if}
 	{#each cuts as cut (cut.key)}
-		<line class="cut" x1={cut.a[0]} y1={cut.a[1]} x2={cut.b[0]} y2={cut.b[1]} />
-		<text class="cut-label" x={(cut.a[0] + cut.b[0]) / 2} y={(cut.a[1] + cut.b[1]) / 2 - 4}>CUT</text>
+		<line class="cut" class:faint={relatedPaths !== undefined && !relatedPaths.has(cut.key)} x1={cut.a[0]} y1={cut.a[1]} x2={cut.b[0]} y2={cut.b[1]}><title>Cut</title></line>
 	{/each}
 </g>
 {/if}
@@ -374,6 +486,47 @@
 <style>
 	.experience-paths {
 		pointer-events: none;
+	}
+	.ribbon {
+		fill: none;
+		stroke: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 26%, transparent);
+		stroke-width: 9;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.ribbon.selected {
+		stroke: color-mix(in srgb, var(--shell-gold, #d4ad45) 34%, transparent);
+		stroke-width: 11;
+	}
+	.ribbon.faint,
+	.chevron.faint,
+	.cut.faint,
+	.start-ring.faint {
+		opacity: 0.3;
+	}
+	.chevron {
+		fill: none;
+		stroke: var(--shell-forest, #11291f);
+		stroke-width: 1.8;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	.chevron.selected {
+		stroke: var(--shell-gold-ink, #74560c);
+	}
+	.start-ring {
+		fill: #fff;
+		stroke: var(--shell-leaf, #4f8f6c);
+		stroke-width: 2;
+	}
+	.start-ring.selected {
+		stroke: var(--shell-gold, #d4ad45);
+	}
+	.path-hint rect { fill: var(--shell-forest, #11291f); }
+	.path-hint text { fill: white; font-size: 10px; }
+	.route-hit:focus,
+	.anchor-hit:focus {
+		outline: none;
 	}
 	.route {
 		fill: none;
@@ -397,12 +550,15 @@
 		stroke: transparent;
 		stroke-width: 22;
 		pointer-events: stroke;
-		cursor: crosshair;
+		cursor: var(--cursor-select, default);
+	}
+	.route-hit.edit {
+		cursor: var(--cursor-add-point, copy);
 	}
 	.anchor {
 		fill: var(--shell-card, #fff);
 		stroke: var(--shell-leaf, #4f8f6c);
-		stroke-width: 1.6;
+		stroke-width: 1.8;
 		pointer-events: none;
 	}
 	.anchor.selected {
@@ -412,7 +568,7 @@
 	.anchor-hit {
 		fill: transparent;
 		pointer-events: auto;
-		cursor: pointer;
+		cursor: var(--cursor-move, move);
 	}
 	.preview {
 		pointer-events: none;
@@ -422,12 +578,6 @@
 		stroke-width: 1;
 		stroke-dasharray: 3 4;
 		opacity: 0.75;
-	}
-	.cut-label {
-		fill: var(--shell-ink-3, #79817b);
-		font: 500 9px var(--shell-mono, ui-monospace, monospace);
-		text-anchor: middle;
-		pointer-events: none;
 	}
 	@media (pointer: coarse) {
 		.anchor-hit {

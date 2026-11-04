@@ -122,21 +122,25 @@ describe('R217.S28 — exact authored View evaluation', () => {
 		expect(eye[2]).toBeCloseTo(5, 6);
 	});
 
-	it('constructs placement inside Camera and refuses a pre-aimed drag under 0.5 m', () => {
+	it('places on click using the inspection heading, with drag and subject aim overrides', () => {
 		const input = {
 			startFloorPoint: [1, 0, 2] as [number, number, number],
-			currentFloorPoint: [1, 0, 2.2] as [number, number, number],
+			currentFloorPoint: [1, 0, 2] as [number, number, number],
+			defaultAzimuthRadians: Math.PI / 2,
 			floorDatumMeters: 0,
 			fovYDegrees: 54
 		};
-		expect(viewPlacementPose(input)).toBeNull();
+		const click = viewPlacementPose(input);
+		expect(click?.eye).toEqual([1, 1.65, 2]);
+		expect(click?.target).toEqual([-0.25, 1.25, 2]);
+		expect(viewPlacementPose({ ...input, currentFloorPoint: [1, 0, 2.2] })).toEqual(click);
 		const placed = viewPlacementPose({ ...input, currentFloorPoint: [1, 0, 2.5] });
 		if (placed === null) throw new Error('placement refused');
 		expect(placed.eye).toEqual([1, 1.65, 2]);
 		expect(placed.target[0]).toBeCloseTo(1, 9);
 		expect(placed.target[1]).toBeCloseTo(1.25, 9);
 		expect(placed.target[2]).toBeCloseTo(3.25, 9);
-		const preAimed = viewPlacementPose({ ...input, currentFloorPoint: [1, 0, 2.6], aimPoint: [0, 1.2, 0] });
+		const preAimed = viewPlacementPose({ ...input, aimPoint: [0, 1.2, 0] });
 		if (preAimed === null) throw new Error('pre-aimed placement refused');
 		expect(preAimed.target).toEqual([0, 1.2, 0]);
 	});
@@ -212,5 +216,20 @@ describe('R217.S28 — exact authored View evaluation', () => {
 		const lifted = liftPose(pose, 0.5);
 		if (lifted === null) throw new Error('lift refused');
 		expect(eyeOfInspectionPose(lifted)[1]).toBeCloseTo(eyeOfInspectionPose(pose)[1] + 0.5, 9);
+	});
+	it('turns about a fixed eye and steps eye and target together', () => {
+		const pose = viewPose([2, 1.65, 5], [2, 1.65, 2], 54);
+		const eye = eyeOfInspectionPose(pose);
+		const turned = requestViewingIntent(stateFor(pose), { kind: 'turn', deltaYawRadians: 0.3, deltaPitchRadians: 0.1 }, 0);
+		if (turned.kind !== 'accepted') throw new Error(turned.message);
+		const turnedEye = eyeOfInspectionPose(turned.state.pose);
+		for (let i = 0; i < 3; i += 1) expect(turnedEye[i]).toBeCloseTo(eye[i], 9);
+		expect(turned.state.pose.target).not.toEqual(pose.target);
+		const stepped = requestViewingIntent(stateFor(pose), { kind: 'step', deltaMeters: 0.25 }, 0);
+		if (stepped.kind !== 'accepted') throw new Error(stepped.message);
+		expect(eyeOfInspectionPose(stepped.state.pose)[2]).toBeCloseTo(eye[2] - 0.25, 9);
+		expect(stepped.state.pose.target[2]).toBeCloseTo(1.75, 9);
+		const plan = requestViewingIntent(stateFor(pose, 'plan'), { kind: 'turn', deltaYawRadians: 0.1, deltaPitchRadians: 0 }, 0);
+		expect(plan.kind).toBe('rejected');
 	});
 });

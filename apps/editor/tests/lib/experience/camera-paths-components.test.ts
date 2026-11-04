@@ -123,7 +123,8 @@ const live: Live[] = [];
 function mountOverlay(
 	homes: ReturnType<typeof createPathsHomes>,
 	options: {
-		readonly onPlanePoint?: () => Vec3 | null;
+		readonly onPlanePoint?: (css: readonly [number, number]) => Vec3 | null;
+		readonly evaluation?: () => ViewportEvaluation;
 		readonly beginLease?: () => boolean;
 		readonly endLease?: () => void;
 	} = {}
@@ -136,8 +137,9 @@ function mountOverlay(
 			homes: homes.homes,
 			home: ExperiencePaths,
 			homeProps: {
-				evaluation: EVALUATION,
-				onPlanePoint: options.onPlanePoint ?? (() => DRAGGED_POINT),
+				get evaluation() { return options.evaluation?.() ?? EVALUATION; },
+				onPlanePoint: options.onPlanePoint ?? (([x, y]: readonly [number, number]) =>
+					x === 0 && y === 0 ? PATH_ANCHOR.position : DRAGGED_POINT),
 				beginLease: options.beginLease ?? (() => true),
 				endLease: options.endLease
 			}
@@ -177,26 +179,34 @@ afterEach(() => {
 });
 
 describe('R217.S29 — one path write per gesture', () => {
-	it('adds exactly one point for one armed click on the route', async () => {
+	it('adds one point at release, with the press position choosing its slot across redraws', async () => {
 		const homes = createPathsHomes(pathRead());
-		const entry = mountOverlay(homes);
+		const liveEvaluation = homes.createEvaluation(EVALUATION);
+		const entry = mountOverlay(homes, { evaluation: liveEvaluation.read });
 		await settle();
 
-		const route = entry.target.querySelector<SVGPolylineElement>('.route-hit');
-		if (route === null) throw new Error('no armed route rendered');
+		const route = entry.target.querySelector<SVGPolylineElement>('.route-hit')!;
 		const [x, y] = cssOf(PATH_SAMPLES[2]!);
-		route.dispatchEvent(
-			new MouseEvent('click', { bubbles: true, cancelable: true, clientX: x, clientY: y })
-		);
+		expect(entry.target.querySelector('.plus')).toBeNull();
+		route.dispatchEvent(pointer('pointerdown', { x, y }));
+		route.dispatchEvent(pointer('pointerup', { x, y }));
+		route.dispatchEvent(pointer('click', { x, y }));
+		expect(homes.addPathAnchor).not.toHaveBeenCalled();
 
-		expect(homes.addPathAnchor).toHaveBeenCalledTimes(1);
-		expect(homes.addPathAnchor).toHaveBeenCalledWith(PATH_SAMPLES[2]);
+		route.dispatchEvent(pointer('pointerdown', { x, y }));
+		liveEvaluation.redraw();
+		await settle();
+		route.dispatchEvent(pointer('pointermove', { x: x + 40, y }));
+		expect(homes.addPathAnchor).not.toHaveBeenCalled();
+		route.dispatchEvent(pointer('pointerup', { x: x + 40, y }));
+		expect(homes.addPathAnchor).toHaveBeenCalledExactlyOnceWith(DRAGGED_POINT, undefined, PATH_SAMPLES[2]);
 	});
 
 	it('commits one move for one drag, makes no change on Escape, then drags afresh', async () => {
 		const endLease = vi.fn();
 		const homes = createPathsHomes(pathRead());
-		const entry = mountOverlay(homes, { endLease });
+		const liveEvaluation = homes.createEvaluation(EVALUATION);
+		const entry = mountOverlay(homes, { endLease, evaluation: liveEvaluation.read });
 		await settle();
 		const hit = anchorHit(entry);
 
@@ -212,12 +222,14 @@ describe('R217.S29 — one path write per gesture', () => {
 
 		// A cancelled press leaves no captured writer: the next press is a fresh drag.
 		hit.dispatchEvent(pointer('pointerdown', { id: 2 }));
+		liveEvaluation.redraw();
+		await settle();
 		hit.dispatchEvent(pointer('pointermove', { id: 2, x: 44, y: 34 }));
 		hit.dispatchEvent(pointer('pointerup', { id: 2, x: 44, y: 34 }));
 		await settle();
 
 		expect(homes.movePathAnchor).toHaveBeenCalledTimes(1);
-		expect(homes.movePathAnchor).toHaveBeenCalledWith(PATH_ANCHOR.id, DRAGGED_POINT);
+		expect(homes.movePathAnchor).toHaveBeenCalledWith(PATH_ANCHOR.id, [DRAGGED_POINT[0], PATH_ANCHOR.position[1], DRAGGED_POINT[2]]);
 		expect(endLease).toHaveBeenCalledTimes(2);
 	});
 

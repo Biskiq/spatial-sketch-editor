@@ -104,19 +104,28 @@
 	const timelineSegments = $derived.by(() => {
 		const map = playback.map;
 		if (map === null) return [];
+		// Each drawn hold is one View's span. A Stop's first drawn hold carries its
+		// number at the segment start; travel links carry none.
+		const numbered = new Set<string>();
 		return map.segments
 			.filter((segment) => segment.durationSeconds > 0)
-			.map((segment) => ({
-				id: segment.id,
-				kind: segment.kind,
-				viewId: segment.viewId,
-				label: segment.kind === 'hold' ? `View ${segment.viewId} · ${formatGuideTime(segment.durationSeconds)}` : `${segment.kind} · ${formatGuideTime(segment.durationSeconds)}`,
-				left: map.totalSeconds <= 0 ? 0 : (segment.startSeconds / map.totalSeconds) * 100,
-				width: map.totalSeconds <= 0 ? 100 : (segment.durationSeconds / map.totalSeconds) * 100,
-				active:
-					playback.activeStopId === segment.stopId &&
-					(playback.status === 'playing' || playback.status === 'waiting')
-			}));
+			.map((segment) => {
+				const index = stops.findIndex((stop) => stop.id === segment.stopId);
+				const first = segment.kind === 'hold' && index >= 0 && !numbered.has(segment.stopId);
+				if (first) numbered.add(segment.stopId);
+				return {
+					id: segment.id,
+					kind: segment.kind,
+					viewId: segment.viewId,
+					number: first ? index + 1 : null,
+					label: segment.kind === 'hold' ? `View ${segment.viewId} · ${formatGuideTime(segment.durationSeconds)}` : `${segment.kind} · ${formatGuideTime(segment.durationSeconds)}`,
+					left: map.totalSeconds <= 0 ? 0 : (segment.startSeconds / map.totalSeconds) * 100,
+					width: map.totalSeconds <= 0 ? 100 : (segment.durationSeconds / map.totalSeconds) * 100,
+					active:
+						playback.activeStopId === segment.stopId &&
+						(playback.status === 'playing' || playback.status === 'waiting')
+				};
+			});
 	});
 	const timelineWaits = $derived.by(() => {
 		const map = playback.map;
@@ -304,13 +313,15 @@
 				const attention = gap ? '. Travel has no Camera connection yet' : '';
 				connector = {
 					shape: resolved.kind,
+					// The gutter is 38 px: an adjacent link is drawn as its glyph, a jump
+					// names its Stop, and a Travel's seconds live in the accessible name.
 					text:
-						(resolved.kind === 'adjacent'
+						resolved.kind === 'adjacent'
 							? resolved.transition
 							: resolved.position === null
-								? '→ elsewhere'
-								: `→ ${resolved.position}`) + (resolved.transition === 'travel' ? seconds : ''),
-					name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${attention}`,
+								? '→'
+								: `→ ${resolved.position}`,
+					name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${resolved.transition === 'travel' ? seconds : ''}${attention}`,
 					transition: resolved.transition,
 					gap
 				};
@@ -796,6 +807,62 @@
 				/>
 			{/if}
 			<span class="spacer"></span>
+			{#if stops.length > 0}
+				<span class="transport-cluster">
+					<button
+						type="button"
+						class="play"
+						disabled={!canPlay}
+						aria-label={playback.status === 'playing' ? 'Pause' : 'Play'}
+						title={canPlay ? (playback.status === 'playing' ? 'Pause (Space)' : 'Play (Space)') : 'There is no Guide to play'}
+						aria-describedby={canPlay ? undefined : playReasonId}
+						onclick={playPause}
+					>
+						{#if playback.status === 'playing'}
+							<span class="pause-glyph" aria-hidden="true">❚❚</span>
+						{:else}
+							<ShellIcon name="play" size={13} />
+						{/if}
+					</button>
+					<span class="transport-wrap" bind:this={transportWrap}>
+						<button
+							type="button"
+							class="tool transport"
+							disabled={!canPlay}
+							aria-haspopup="menu"
+							aria-expanded={transportOpen}
+							title="Play from…"
+							onclick={toggleTransport}
+						>
+							<span aria-hidden="true">▾</span>
+						</button>
+						{#if transportOpen}
+							<div class="menu transport-menu" role="menu" aria-label="Play from" tabindex="-1">
+								<button type="button" role="menuitem" class="menu-item" onclick={playFromStart}>
+									<span class="menu-label">Play from the start</span>
+								</button>
+								<button type="button" role="menuitem" class="menu-item" disabled={selectedStopId === null} onclick={playFromSelected}>
+									<span class="menu-label">Play from this Stop</span>
+									<span class="menu-hint">{selectedStopId === null ? 'Select a Stop' : `Stop ${selectedStopIndex + 1}`}</span>
+								</button>
+								<button
+									type="button"
+									role="menuitem"
+									class="menu-item"
+									disabled={subject?.kind !== 'transition' && subject?.kind !== 'stop'}
+									onclick={previewSelectedMove}
+								>
+									<span class="menu-label">Preview this move</span>
+									<span class="menu-hint">{subject?.kind === 'transition' || subject?.kind === 'stop' ? '' : 'Select a Stop or transition'}</span>
+								</button>
+							</div>
+						{/if}
+					</span>
+					<span class="total" data-playback-total>
+						{playback.elapsedLabel} / {playback.totalLabel}{#if playback.map !== null && playback.map.waitCount > 0}<span class="waits">{playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}</span>{/if}
+					</span>
+				</span>
+			{/if}
 			<button
 				type="button"
 				class="tool"
@@ -930,7 +997,15 @@
 										tabindex={rovingStopId === card.stopId ? 0 : -1}
 										onclick={() => selectTransition(card.stopId)}
 									>
-										{connector.text}
+										{#if connector.shape !== 'adjacent'}
+											{connector.text}
+										{:else if connector.gap}
+											<span aria-hidden="true">⚠</span>
+										{:else if connector.transition === 'travel'}
+											<svg class="glyph" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4h9M7.2 1.8 9.4 4l-2.2 2.2" /></svg>
+										{:else}
+											<svg class="glyph" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1 4h10" stroke-dasharray="0.1 2.3" /></svg>
+										{/if}
 									</button>
 									{#if connector.gap && controller !== null}
 										<button
@@ -958,55 +1033,6 @@
 			{/if}
 
 			<div class="scrub" data-playback-timeline>
-				<button
-					type="button"
-					class="play"
-					disabled={!canPlay}
-					aria-label={playback.status === 'playing' ? 'Pause' : 'Play'}
-					title={canPlay ? (playback.status === 'playing' ? 'Pause (Space)' : 'Play (Space)') : 'There is no Guide to play'}
-					aria-describedby={canPlay ? undefined : playReasonId}
-					onclick={playPause}
-				>
-					{#if playback.status === 'playing'}
-						<span class="pause-glyph" aria-hidden="true">❚❚</span>
-					{:else}
-						<ShellIcon name="play" size={13} />
-					{/if}
-				</button>
-				<span class="transport-wrap" bind:this={transportWrap}>
-					<button
-						type="button"
-						class="tool transport"
-						disabled={!canPlay}
-						aria-haspopup="menu"
-						aria-expanded={transportOpen}
-						title="Play from…"
-						onclick={toggleTransport}
-					>
-						<span aria-hidden="true">▾</span>
-					</button>
-					{#if transportOpen}
-						<div class="menu transport-menu" role="menu" aria-label="Play from" tabindex="-1">
-							<button type="button" role="menuitem" class="menu-item" onclick={playFromStart}>
-								<span class="menu-label">Play from the start</span>
-							</button>
-							<button type="button" role="menuitem" class="menu-item" disabled={selectedStopId === null} onclick={playFromSelected}>
-								<span class="menu-label">Play from this Stop</span>
-								<span class="menu-hint">{selectedStopId === null ? 'Select a Stop' : `Stop ${selectedStopIndex + 1}`}</span>
-							</button>
-							<button
-								type="button"
-								role="menuitem"
-								class="menu-item"
-								disabled={subject?.kind !== 'transition' && subject?.kind !== 'stop'}
-								onclick={previewSelectedMove}
-							>
-								<span class="menu-label">Preview this move</span>
-								<span class="menu-hint">{subject?.kind === 'transition' || subject?.kind === 'stop' ? '' : 'Select a Stop or transition'}</span>
-							</button>
-						</div>
-					{/if}
-				</span>
 				<div
 					class="bar-hit"
 					role="slider"
@@ -1030,7 +1056,13 @@
 								aria-label={segment.label}
 								style:left="{segment.left}%"
 								style:width="{segment.width}%"
-							></span>
+							>
+								{#if segment.kind === 'travel'}
+									<svg class="chev" viewBox="0 0 6 8" aria-hidden="true"><path d="M1.5 1 4.5 4 1.5 7" /></svg>
+								{:else if segment.number !== null}
+									<span class="seg-no">{segment.number}</span>
+								{/if}
+							</span>
 						{/each}
 						{#each timelineWaits as wait (wait.id)}
 							<span class="hatch" style:left="{wait.left}%"></span>
@@ -1047,9 +1079,6 @@
 						{/if}
 					</div>
 				</div>
-				<span class="total" data-playback-total>
-					{playback.elapsedLabel} / {playback.totalLabel}{#if playback.map !== null && playback.map.waitCount > 0}<span class="waits">{playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}</span>{/if}
-				</span>
 			</div>
 			{#if playback.following}
 				<div class="follow-pill" role="status">
@@ -1189,9 +1218,13 @@
 	}
 	.guide button:focus-visible,
 	.guide input:focus-visible {
-		outline: 2px solid var(--shell-ink-light, #eef1ec);
+		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 1px;
 		box-shadow: none;
+	}
+	.guide ::selection {
+		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 38%, transparent);
+		color: inherit;
 	}
 
 	/* ---- + Stop menu: opens upward, over the Stage, since the Guide sits at the lower edge ---- */
@@ -1338,33 +1371,10 @@
 	}
 	.slot {
 		position: relative;
-		flex: none;
+		flex: 0 0 38px;
+		width: 38px;
 		display: grid;
 		place-items: center;
-		width: 44px;
-	}
-	.chip-add {
-		width: 22px;
-		height: 22px;
-		min-width: 22px;
-		min-height: 22px;
-		margin-left: 3px;
-		border: 1px solid var(--caution, #b5682d);
-		border-radius: 50%;
-		background: transparent;
-		color: var(--caution, #b5682d);
-		font: inherit;
-		font-size: 14px;
-		line-height: 1;
-		cursor: pointer;
-	}
-	@media (pointer: coarse) {
-		.chip-add {
-			width: 44px;
-			height: 44px;
-			min-width: 44px;
-			min-height: 44px;
-		}
 	}
 	/* Adjacency is drawn only for a connector whose destination is the neighbour (D11). */
 	.slot.adjacent::before {
@@ -1375,22 +1385,37 @@
 		top: 50%;
 		border-top: 1px solid rgb(255 255 255 / 0.28);
 	}
+	/* The link lives in the fixed gutter: a glyph pill, never wider than the 38 px slot. */
 	.chip {
 		position: relative;
-		padding: 2px 6px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 18px;
+		min-width: 24px;
+		max-width: 36px;
+		padding: 0 5px;
 		border: 1px solid transparent;
-		border-radius: 10px;
-		background: color-mix(in srgb, #fff 8%, var(--shell-forest, #11291f));
+		border-radius: 999px;
+		background: color-mix(in srgb, #fff 10%, var(--shell-forest, #11291f));
 		color: var(--shell-ink-light, #eef1ec);
-		font: 11px var(--shell-mono, ui-monospace, monospace);
+		font: 600 10px/1 var(--shell-mono, ui-monospace, monospace);
 		white-space: nowrap;
+		overflow: hidden;
 		cursor: pointer;
 	}
+	.chip .glyph {
+		display: block;
+		width: 12px;
+		height: 8px;
+	}
+	/* Cut is a dotted line; Travel is a solid arrow on the leaf green. */
 	.chip.cut {
-		border: 1px dashed rgb(255 255 255 / 0.35);
+		border: 1px dashed rgb(255 255 255 / 0.4);
+		background: transparent;
 	}
 	.chip.travel {
-		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 40%, var(--shell-forest, #11291f));
+		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 45%, var(--shell-forest, #11291f));
 	}
 	.chip.jump,
 	.chip.end {
@@ -1398,12 +1423,47 @@
 	}
 	.chip.gap {
 		border: 1px dashed var(--shell-caution, #c85a48);
-		background: color-mix(in srgb, var(--shell-caution, #c85a48) 28%, var(--shell-forest, #11291f));
+		background: transparent;
 		color: color-mix(in srgb, var(--shell-caution, #c85a48) 35%, #fff);
 	}
+	/* A selected transition is gold, whatever its kind. */
 	.chip.selected {
-		box-shadow: 0 0 0 2px var(--shell-gold, #d4ad45);
+		border-color: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold, #d4ad45);
+		color: var(--shell-forest, #11291f);
 	}
+	/* The + sits under the gap chip, inside the gutter's width. */
+	.chip-add {
+		position: absolute;
+		left: 50%;
+		top: calc(50% + 14px);
+		transform: translateX(-50%);
+		width: 20px;
+		height: 20px;
+		min-width: 20px;
+		min-height: 20px;
+		padding: 0;
+		border: 1px solid var(--caution, #b5682d);
+		border-radius: 50%;
+		background: var(--shell-forest, #11291f);
+		color: var(--caution, #b5682d);
+		font: inherit;
+		font-size: 14px;
+		line-height: 1;
+		cursor: pointer;
+	}
+	/* Touch: a 44 px tall target that still fits the 38 px gutter; it sits under the taller touch chip. */
+	@media (pointer: coarse) {
+		.chip-add {
+			top: calc(50% + 24px);
+			width: 44px;
+			height: 44px;
+			min-width: 44px;
+			min-height: 44px;
+			border-radius: 999px;
+		}
+	}
+
 	/* R217.S26: the *Start* tag, a mono 10 px tag like the Index's *opens*. */
 	.start-tag {
 		margin-right: 4px;
@@ -1425,6 +1485,12 @@
 	}
 
 	/* ---- R217.S30: time timeline ---- */
+	.transport-cluster {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		flex: none;
+	}
 	.transport-wrap {
 		position: relative;
 		display: inline-flex;
@@ -1452,7 +1518,7 @@
 		touch-action: none;
 	}
 	.bar-hit:focus-visible {
-		outline: 2px solid var(--shell-ink-light, #eef1ec);
+		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 2px;
 		border-radius: 6px;
 	}
@@ -1469,18 +1535,46 @@
 		position: absolute;
 		top: 0;
 		bottom: 0;
-		background: rgb(255 255 255 / 0.28);
+		box-sizing: border-box;
 		border-right: 1px solid rgb(17 41 31 / 0.65);
+		/* A hold is hatched: time spent on a Stop, not a link. */
+		background: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.4) 0 1.5px, rgb(255 255 255 / 0.1) 1.5px 4px);
 	}
+	/* A travel is a solid link with a chevron. */
 	.bar-hit .seg.travel {
-		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 62%, #fff);
+		display: grid;
+		place-items: center;
+		background: var(--shell-leaf, #4f8f6c);
 	}
-	.bar-hit .seg.cut {
-		background: rgb(255 255 255 / 0.2);
+	.bar-hit .seg .chev {
+		width: 6px;
+		height: 8px;
+		fill: none;
+		stroke: var(--shell-ink-light, #eef1ec);
+		stroke-width: 1.4;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	/* The Stop number sits at the start of the Stop's first hold. */
+	.bar-hit .seg-no {
+		position: absolute;
+		left: 0;
+		top: 0;
+		min-width: 9px;
+		height: 8px;
+		padding: 0 2px;
+		background: var(--shell-forest, #11291f);
+		color: var(--shell-ink-light, #eef1ec);
+		font: 600 7.5px/8px var(--shell-sans, system-ui, sans-serif);
+		text-align: center;
+		border-radius: 0 0 2px 0;
 	}
 	.bar-hit .seg.active {
 		background: var(--shell-gold, #d4ad45);
 		box-shadow: 0 0 8px 1px color-mix(in srgb, var(--shell-gold, #d4ad45) 70%, transparent);
+	}
+	.bar-hit .seg.active .chev {
+		stroke: var(--shell-forest, #11291f);
 	}
 	.bar-hit .hatch {
 		position: absolute;
@@ -1588,37 +1682,6 @@
 		min-width: 0;
 		border-radius: 4px;
 		background: rgb(255 255 255 / 0.12);
-	}
-	.seg {
-		flex: 1 1 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		container-type: inline-size;
-		min-width: 0;
-		overflow: hidden;
-		border-right: 1px solid rgb(17 41 31 / 0.6);
-		background: rgb(255 255 255 / 0.22);
-	}
-	.seg.selected {
-		background: var(--shell-gold, #d4ad45);
-	}
-	/* The hold is written on its segment only while the segment is wide enough for it. */
-	/* Round 2's 8 px bar has no room for text: a Stop's hold reads on its card. */
-	.seg-hold {
-		display: none !important;
-		font: 600 8px/1 var(--shell-mono, ui-monospace, monospace);
-		color: #e3eee7;
-		white-space: nowrap;
-		pointer-events: none;
-	}
-	@container (min-width: 24px) {
-		.seg-hold {
-			display: block;
-		}
-	}
-	.seg.selected .seg-hold {
-		color: #2a2208;
 	}
 	.bracket {
 		position: absolute;

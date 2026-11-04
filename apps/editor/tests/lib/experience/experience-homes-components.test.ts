@@ -170,11 +170,9 @@ function fakeController(options: ControllerOptions = {}) {
 		busy: options.busy ?? false,
 		pathOccurrence: options.pathOccurrence ?? null,
 		selectedPath: options.selectedPath ?? null,
-		pathArmed: false,
 		selectedAnchorId: null,
 		pathFor: vi.fn(() => options.selectedPath ?? null),
 		selectPath: vi.fn(),
-		setPathArmed: vi.fn(),
 		selectAnchor: vi.fn(),
 		createPath: vi.fn(async () => true),
 		addPathAnchor: vi.fn(async () => true),
@@ -366,14 +364,15 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 		await settle();
 
 		const cut = chipAfter(target, 'stop-1');
-		expect(cut.textContent?.trim()).toBe('cut');
+		// An adjacent link is drawn as its glyph; its name is the accessible label.
+		expect(cut.querySelector('svg.glyph')).not.toBeNull();
 		expect(cut.classList.contains('cut')).toBe(true);
 		expect(cut.getAttribute('aria-label')).toBe('Stop 1 continues to Stop 2 by Cut');
 		expect(cut.parentElement?.classList.contains('adjacent')).toBe(true);
 		expect(cut.classList.contains('gap')).toBe(false);
 
 		const travel = chipAfter(target, 'stop-4');
-		expect(travel.textContent?.trim()).toBe('cut');
+		expect(travel.querySelector('svg.glyph')).not.toBeNull();
 		expect(travel.parentElement?.classList.contains('adjacent')).toBe(true);
 	});
 
@@ -407,7 +406,7 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 		await settle();
 
 		const travel = chipAfter(target, 'stop-2');
-		expect(travel.textContent?.trim()).toBe('travel');
+		expect(travel.textContent?.trim()).toBe('⚠');
 		expect(travel.classList.contains('travel')).toBe(true);
 		expect(travel.classList.contains('gap')).toBe(true);
 		expect(travel.getAttribute('aria-label')).toContain('Travel has no Camera connection yet');
@@ -588,7 +587,7 @@ describe('R217.S25 — the Transition writer is the one home of Cut and Travel (
 		expect(alert).toContain('Travel needs a Camera connection from “Hall” to “Gate”');
 		expect(alert).not.toContain('Gallery has no Camera path to Garden.');
 		const ends = [...target.querySelectorAll('.ends .end small')].map((small) => small.textContent?.trim());
-		expect(ends).toEqual(['leaves from', 'arrives at']);
+		expect(ends).toEqual(['Leaves', 'Arrives']);
 		expect(target.querySelector('.ends .end:last-child .num')?.textContent).toBe('3');
 		expect(target.textContent).toContain('Add a Camera path');
 		expect(buttonNamed(target, /^Add Camera path$/).disabled).toBe(false);
@@ -750,7 +749,7 @@ describe('R217.S28 — View marks open Look through', () => {
 
 // ---- The lower-edge dock ----
 
-describe('R217.S25 — the Experience dock (Path is the one disabled key)', () => {
+describe('R217.S25 — the Experience dock', () => {
 	it('arms Place a View as a Stage tool and calls its handler', async () => {
 		const onPlaceView = vi.fn();
 		const target = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), onPlaceView });
@@ -764,22 +763,10 @@ describe('R217.S25 — the Experience dock (Path is the one disabled key)', () =
 		expect(onPlaceView).toHaveBeenCalledTimes(1);
 	});
 
-	it('shows Path only while the Guide is open, and disables it with its reason', async () => {
-		const closed = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), guideOpen: false });
+	it('keeps path editing on the Stage while the Guide is open', async () => {
+		const dock = mountPlain(ExperienceDock, { onCapture: vi.fn(), onToggleGuide: vi.fn(), guideOpen: true });
 		await settle();
-		expect(closed.querySelector('[data-dock-tool="path"]')).toBeNull();
-
-		const open = mountPlain(ExperienceDock, {
-			onCapture: vi.fn(),
-			onToggleGuide: vi.fn(),
-			guideOpen: true,
-			pathReason: 'Select a Travel move to edit its Camera path'
-		});
-		await settle();
-		const path = open.querySelector<HTMLButtonElement>('[data-dock-tool="path"]')!;
-		expect(path.disabled).toBe(true);
-		expect(path.title).toBe('Select a Travel move to edit its Camera path');
-		expect(reasonOf(path)).toBe('Select a Travel move to edit its Camera path');
+		expect(dock.querySelector('[data-dock-tool="path"]')).toBeNull();
 	});
 
 	it('passes Capture and Guide presses to their handlers', async () => {

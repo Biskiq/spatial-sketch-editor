@@ -1,3 +1,4 @@
+import type { ViewportEvaluation } from '@portfolio/camera-core';
 /**
  * R217.S29 — reactive fake homes for the Stage path overlay (tests only).
  *
@@ -103,9 +104,6 @@ export function createPathsHomes(initial: ExperiencePathRead) {
 		contextGuide: GUIDE,
 		guideStops: [STOP],
 		cameraViews: [],
-		get pathArmed() {
-			return true;
-		},
 		get selectedPath() {
 			return selectedPath;
 		},
@@ -126,6 +124,18 @@ export function createPathsHomes(initial: ExperiencePathRead) {
 		addPathAnchor,
 		movePathAnchor,
 		selectAnchor,
+		createEvaluation(initial: ViewportEvaluation) {
+			let evaluation = $state.raw(initial);
+			return {
+				read: () => evaluation,
+				redraw: () => {
+					evaluation = {
+						...evaluation,
+						token: { ...evaluation.token, evaluationGeneration: evaluation.token.evaluationGeneration + 1 }
+					};
+				}
+			};
+		},
 		setGuideOpen(open: boolean): void {
 			guideOpen = open;
 		},

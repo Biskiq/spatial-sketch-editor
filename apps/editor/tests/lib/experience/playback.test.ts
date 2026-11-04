@@ -39,7 +39,7 @@ async function source(): Promise<PlaybackSource> {
 }
 
 describe('R217.S30 playback', () => {
-	it('plays holds and Travel, pauses on the first wait, and resumes past it', async () => {
+	it('plays holds and Travel, completes the terminal wait, then replays from the entry', async () => {
 		const input = await source();
 		const playback = createExperiencePlayback(() => input);
 		playback.playPause();
@@ -54,6 +54,12 @@ describe('R217.S30 playback', () => {
 		// nowhere to resume and the run is at its end.
 		playback.playPause();
 		expect(playback.status).toBe('ended');
+		playback.playPause();
+		expect(playback.status).toBe('playing');
+		expect(playback.activeStopId).toBe('stop-1');
+		expect(playback.elapsedLabel).toBe('0:00');
+		playback.tick(0.4);
+		expect(playback.cursor?.elapsedSeconds).toBeCloseTo(0.4);
 	});
 
 	it('scrubs to an exact addressable wait and normal scrub pauses', async () => {

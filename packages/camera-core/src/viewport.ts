@@ -244,6 +244,8 @@ export type ViewportCameraState = {
 	 * bounds, Fit or the pose.
 	 */
 	readonly displayGroundYMeters?: number | null;
+	/** The renderer’s finite environment ground, when it extends beyond the display mat. */
+	readonly minimumGroundReachMeters?: number;
 	readonly transition: ViewportTransition | null;
 };
 
@@ -284,6 +286,14 @@ export type ViewingIntent =
 	| { readonly kind: 'lift'; readonly deltaMeters: number }
 	/** R217.S28 — change the authored lens at a fixed eye and target. */
 	| { readonly kind: 'lens'; readonly fovYDegrees: number }
+	/**
+	 * Experience review 1 — turn the view in place: the eye holds still while the
+	 * aim yaws and pitches by bounded deltas (Look through drag).
+	 */
+	| { readonly kind: 'turn'; readonly deltaYawRadians: number; readonly deltaPitchRadians: number }
+	/** Experience review 1 — step the eye and target together along the level aim (Look through scroll). */
+	| { readonly kind: 'step'; readonly deltaMeters: number }
+	| { readonly kind: 'truck'; readonly deltaRightMeters: number; readonly deltaUpMeters: number }
 
 export const VIEWING_INTENT_REFUSALS = [
 	'invalid-intent',
@@ -624,13 +634,9 @@ export function aimPoseAlongRay(pose: InspectionPose, ray: PointerRay): Inspecti
 }
 
 /**
- * Construct the one authored pose a Place-a-View drag may produce (E8).
- *
- * The eye stands 1.65 m above the active Floor datum. A normal drag aims 1.25 m
- * along its own horizontal direction; a pre-aimed Present this drag still has to
- * travel the minimum distance, then keeps the named subject as the target. The
- * caller supplies Floor points from Camera's pointer ray and plane hit; this
- * function owns the authored construction and the 0.5 m refusal.
+ * Construct an authored View at the clicked Floor point. An explicit subject
+ * takes priority. Otherwise aim along the drag, or use the inspection heading
+ * for a click or small pointer movement.
  */
 export function viewPlacementPose(input: {
 	readonly startFloorPoint: Vec3;
@@ -639,6 +645,7 @@ export function viewPlacementPose(input: {
 	readonly floorDatumMeters: number;
 	readonly fovYDegrees: number;
 	readonly minimumDragMeters?: number;
+	readonly defaultAzimuthRadians?: number;
 	readonly eyeHeightMeters?: number;
 	readonly targetHeightMeters?: number;
 }): { readonly eye: Vec3; readonly target: Vec3; readonly fovYDegrees: number } | null {
@@ -646,13 +653,13 @@ export function viewPlacementPose(input: {
 	if (!isFiniteNumber(input.floorDatumMeters) || !isFiniteNumber(input.fovYDegrees)) return null;
 	if (!(input.fovYDegrees > 0 && input.fovYDegrees < 180)) return null;
 	const minimum = input.minimumDragMeters ?? 0.5;
+	const azimuth = input.defaultAzimuthRadians ?? 0;
 	const eyeHeight = input.eyeHeightMeters ?? 1.65;
 	const targetHeight = input.targetHeightMeters ?? 1.25;
-	if (!isFiniteNumber(minimum) || minimum < 0 || !isFiniteNumber(eyeHeight) || !isFiniteNumber(targetHeight)) return null;
+	if (!isFiniteNumber(minimum) || minimum < 0 || !isFiniteNumber(azimuth) || !isFiniteNumber(eyeHeight) || !isFiniteNumber(targetHeight)) return null;
 	const dx = input.currentFloorPoint[0] - input.startFloorPoint[0];
 	const dz = input.currentFloorPoint[2] - input.startFloorPoint[2];
 	const drag = Math.hypot(dx, dz);
-	if (drag < minimum || drag <= 1e-9) return null;
 	const eye: Vec3 = [
 		input.startFloorPoint[0],
 		input.floorDatumMeters + eyeHeight,
@@ -663,14 +670,44 @@ export function viewPlacementPose(input: {
 		if (!isFiniteVec3(input.aimPoint)) return null;
 		target = [input.aimPoint[0], input.aimPoint[1], input.aimPoint[2]];
 	} else {
+		const aimedByDrag = drag >= minimum && drag > 1e-9;
+		const forwardX = aimedByDrag ? dx / drag : -Math.sin(azimuth);
+		const forwardZ = aimedByDrag ? dz / drag : -Math.cos(azimuth);
 		target = [
-			input.startFloorPoint[0] + (dx / drag) * 1.25,
+			input.startFloorPoint[0] + forwardX * 1.25,
 			input.floorDatumMeters + targetHeight,
-			input.startFloorPoint[2] + (dz / drag) * 1.25
+			input.startFloorPoint[2] + forwardZ * 1.25
 		];
 	}
 	if (lengthVec3(subtractVec3(target, eye)) <= 1e-6) return null;
 	return { eye, target, fovYDegrees: input.fovYDegrees };
+}
+
+/** Frame the subject's bounding sphere from the viewer's side at a fixed eye height. */
+export function frameSubjectPose(input: {
+	readonly bounds: { readonly min: Vec3; readonly max: Vec3 };
+	readonly viewerEye: Vec3;
+	readonly eyeYMeters: number;
+	readonly fovYDegrees: number;
+	readonly aspect: number;
+}): { readonly eye: Vec3; readonly target: Vec3; readonly fovYDegrees: number } | null {
+	const { min, max } = input.bounds;
+	const { viewerEye, eyeYMeters, fovYDegrees, aspect } = input;
+	if (!isFiniteVec3(min) || !isFiniteVec3(max) || !isFiniteVec3(viewerEye) ||
+		min.some((value, index) => value > max[index]!) ||
+		!Number.isFinite(eyeYMeters) || !(fovYDegrees > 0 && fovYDegrees < 180) ||
+		!Number.isFinite(aspect) || aspect <= 0) return null;
+	const target = scaleVec3(addVec3(min, max), 0.5);
+	const radius = lengthVec3(subtractVec3(max, min)) / 2;
+	const usable = 1 - 2 * VIEWPORT_FIT_PADDING_FRACTION;
+	const halfAngle = Math.atan(Math.tan(fovYDegrees * Math.PI / 360) * Math.min(1, aspect) * usable);
+	const distance = radius / Math.sin(halfAngle);
+	const vertical = Math.abs(eyeYMeters - target[1]);
+	const horizontal = Math.max(0.5, Math.sqrt(Math.max(0, distance ** 2 - vertical ** 2)));
+	const side = normalizeVec3([viewerEye[0] - target[0], 0, viewerEye[2] - target[2]]) ?? [0, 0, 1];
+	const eye: Vec3 = [target[0] + side[0] * horizontal, eyeYMeters, target[2] + side[2] * horizontal];
+	const framed = { eye, target, fovYDegrees };
+	return inspectionPoseFromView(framed) === null ? null : framed;
 }
 
 /** Move eye and target together by a floor-relative delta, keeping aim and FOV. */
@@ -682,6 +719,58 @@ export function liftPose(pose: InspectionPose, deltaMeters: number): InspectionP
 		...pose,
 		target
 	};
+}
+
+/** The largest single turn a `turn` intent accepts; a drag sends many small ones. */
+export const VIEWPORT_TURN_STEP_LIMIT_RADIANS = Math.PI / 2;
+
+/** Turn the aim about a fixed eye; the focal distance and lens are kept. */
+export function turnPose(pose: InspectionPose, deltaYawRadians: number, deltaPitchRadians: number): InspectionPose | null {
+	if (!isFiniteNumber(deltaYawRadians) || !isFiniteNumber(deltaPitchRadians)) return null;
+	if (Math.abs(deltaYawRadians) > VIEWPORT_TURN_STEP_LIMIT_RADIANS || Math.abs(deltaPitchRadians) > VIEWPORT_TURN_STEP_LIMIT_RADIANS) {
+		return null;
+	}
+	const eye = eyeOfInspectionPose(pose);
+	const distance = lengthVec3(subtractVec3(eye, pose.target));
+	if (!(distance > 1e-6)) return null;
+	const azimuthRadians = pose.azimuthRadians + deltaYawRadians;
+	// Looking up lowers the eye's elevation above the target.
+	const elevationRadians = clamp(
+		pose.elevationRadians - deltaPitchRadians,
+		-VIEWPORT_ELEVATION_LIMIT_RADIANS,
+		VIEWPORT_ELEVATION_LIMIT_RADIANS
+	);
+	const cosine = Math.cos(elevationRadians);
+	const target: Vec3 = [
+		eye[0] - Math.sin(azimuthRadians) * cosine * distance,
+		eye[1] - Math.sin(elevationRadians) * distance,
+		eye[2] - Math.cos(azimuthRadians) * cosine * distance
+	];
+	if (!isFiniteVec3(target)) return null;
+	return { ...pose, target, azimuthRadians, elevationRadians };
+}
+
+/** Move the eye and target together along the level aim, keeping aim and lens. */
+export function stepPose(pose: InspectionPose, deltaMeters: number): InspectionPose | null {
+	if (!isFiniteNumber(deltaMeters)) return null;
+	const target: Vec3 = [
+		pose.target[0] - Math.sin(pose.azimuthRadians) * deltaMeters,
+		pose.target[1],
+		pose.target[2] - Math.cos(pose.azimuthRadians) * deltaMeters
+	];
+	if (!isFiniteVec3(target)) return null;
+	return { ...pose, target };
+}
+
+/** Move the camera in its image plane, keeping its orientation, lens and focal distance. */
+export function truckPose(pose: InspectionPose, deltaRightMeters: number, deltaUpMeters: number): InspectionPose | null {
+	if (!isFiniteNumber(deltaRightMeters) || !isFiniteNumber(deltaUpMeters) ||
+		Math.hypot(deltaRightMeters, deltaUpMeters) > VIEWPORT_TARGET_PLANE_MAX_METERS) return null;
+	const eye = eyeOfInspectionPose(pose);
+	const basis = viewScreenBasis(eye, pose.target, viewUpForPose(pose));
+	if (basis === null) return null;
+	const target = addVec3(pose.target, addVec3(scaleVec3(basis.right, deltaRightMeters), scaleVec3(basis.up, deltaUpMeters)));
+	return isFiniteVec3(target) ? { ...pose, target } : null;
 }
 
 /** Change the authored lens at a fixed eye and target. */
@@ -912,9 +1001,11 @@ export function evaluateViewport(
 		);
 	}
 	const orthographic = orthographicWeight >= 1;
+	const displayGroundY = state.displayGroundYMeters ?? null;
+	const groundAboveTarget = displayGroundY === null ? 0 : displayGroundY - pose.target[1];
 	const halfHeightMeters = pose.targetPlaneHeightMeters / 2;
 	const distanceMeters = orthographic
-		? VIEWPORT_PLAN_EYE_DISTANCE_METERS
+		? Math.max(VIEWPORT_PLAN_EYE_DISTANCE_METERS, groundAboveTarget + VIEWPORT_NEAR_FLOOR_METERS * 2)
 		: perspectiveDistanceMeters(pose.targetPlaneHeightMeters, pose.fovYDegrees) / (1 - orthographicWeight);
 	if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
 		return unavailable('singular-projection', '$.pose', 'singular-projection', 'the pose has no finite view distance');
@@ -933,20 +1024,29 @@ export function evaluateViewport(
 	}
 
 	const aspect = rect.width / rect.height;
-	const displayGroundY = state.displayGroundYMeters ?? null;
+	// A sparse scene's sphere may omit the datum after a 3D pan. Keep the
+	// display grid and the ink just above it inside the orthographic depth range.
+	const planRadius = displayGroundY === null
+		? state.sceneRadiusMeters
+		: Math.max(state.sceneRadiusMeters, Math.abs(groundAboveTarget) + VIEWPORT_NEAR_FLOOR_METERS);
 	const depth =
-		orthographic || displayGroundY === null
-			? depthRange(distanceMeters, state.sceneRadiusMeters)
-			: groundDepthRange(distanceMeters, state.sceneRadiusMeters, {
-					eyeHeightMeters: eye[1] - displayGroundY,
-					elevationRadians: pose.elevationRadians,
-					halfFovRadians: Math.atan(tanHalfFov),
-					reachMeters: viewportGroundReachMeters({
-						targetPlaneHeightMeters: pose.targetPlaneHeightMeters,
-						aspect,
-						eyeHeightMeters: eye[1] - displayGroundY
-					})
-				});
+		orthographic
+			? depthRange(distanceMeters, planRadius)
+			: displayGroundY === null
+				? depthRange(distanceMeters, state.sceneRadiusMeters)
+				: groundDepthRange(distanceMeters, state.sceneRadiusMeters, {
+						eyeHeightMeters: eye[1] - displayGroundY,
+						elevationRadians: pose.elevationRadians,
+						halfFovRadians: Math.atan(tanHalfFov),
+						reachMeters: Math.max(
+							state.minimumGroundReachMeters ?? 0,
+							viewportGroundReachMeters({
+								targetPlaneHeightMeters: pose.targetPlaneHeightMeters,
+								aspect,
+								eyeHeightMeters: eye[1] - displayGroundY
+							})
+						)
+					});
 	const projectionMatrix = orthographic
 		? orthographicMatrix(halfHeightMeters, aspect, depth.near, depth.far)
 		: perspectiveMatrix(tanHalfFov, aspect, depth.near, depth.far);
@@ -1258,6 +1358,27 @@ export function requestViewingIntent(
 				return reject(settled, 'invalid-intent', 'That lens cannot be placed at this eye and target');
 			}
 			return accept(withPose(settled, lensed));
+		}
+		case 'turn':
+		case 'step':
+		case 'truck': {
+			if (settled.reading === 'plan') {
+				return reject(
+					settled,
+					'unsupported-in-plan-reading',
+					'the Plan reading is orthographic and has no perspective eye to move; look through in 3D'
+				);
+			}
+			const moved =
+				intent.kind === 'turn'
+					? turnPose(settled.pose, intent.deltaYawRadians, intent.deltaPitchRadians)
+					: intent.kind === 'step'
+						? stepPose(settled.pose, intent.deltaMeters)
+						: truckPose(settled.pose, intent.deltaRightMeters, intent.deltaUpMeters);
+			if (moved === null) {
+				return reject(settled, 'invalid-intent', 'Camera movement needs a finite delta within its supported range');
+			}
+			return accept(withPose(settled, moved));
 		}
 		default: {
 			return reject(settled, 'invalid-intent', 'the intent is not a declared viewing intent');

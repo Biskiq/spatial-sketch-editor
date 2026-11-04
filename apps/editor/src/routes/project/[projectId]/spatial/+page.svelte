@@ -62,9 +62,11 @@
 	} from '$lib/authoring/save/pending-capture';
 	import { isSavedBaseToken, type SaveRequest } from '@portfolio/project-model/save';
 	import {
+		SCENE_ENVIRONMENT_SET_KIND,
 		serializeProjectEnvelope,
 		validateProjectEnvelope,
-		type ProjectEnvelope
+		type ProjectEnvelope,
+		type SceneEnvironmentPreset
 	} from '@portfolio/project-model/units';
 	import { layoutSelectionReference, primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import {
@@ -138,7 +140,7 @@ import {
 	type PlanEvaluation,
 	type PlanMembershipReason
 } from '@portfolio/layout-core';
-	import { CAMERA_FOV, fovYDegreesOf, viewPlacementPose, type ViewingIntent, type ViewportCameraState, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportCameraState, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -151,8 +153,11 @@ import {
 	} from '$lib/authoring/stage/stage-input';
 	import { installStageInterruptions, type StageInterruptionReason } from '$lib/authoring/stage/stage-interruption';
 	import '$lib/authoring/stage/shell/shell-roles.css';
+	import '$lib/authoring/stage/shell/cursors.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
+	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
+	import StageEnvironmentControl from '$lib/authoring/stage/shell/StageEnvironmentControl.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
 	import StageDock from '$lib/authoring/stage/shell/StageDock.svelte';
 import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
@@ -173,9 +178,9 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
 	import ExperienceMarks from '$lib/authoring/experience/ExperienceMarks.svelte';
-	import { EXPERIENCE_COACH } from '$lib/authoring/experience/experience-marks';
-	import { nextLensStep } from '$lib/authoring/experience/look-through';
-	import { aimViewAtPoint, moveViewOnFloor, viewEditMoved, type AuthoredViewPose } from '$lib/authoring/experience/experience-view-edit';
+	import { WORLD_ENVIRONMENT_GROUND_RADIUS_METERS } from '$lib/render/world-environment';
+	import { EYE_HEIGHT_STEPS, LENS_STEPS } from '$lib/authoring/experience/look-through';
+	import { moveViewOnFloor, turnViewAboutEye, viewEditMoved, yawFromEye, type AuthoredViewPose } from '$lib/authoring/experience/experience-view-edit';
 	import ExperienceGuide from '$lib/authoring/experience/ExperienceGuide.svelte';
 	import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePresentationWriter.svelte';
 	import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
@@ -334,7 +339,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	});
 	function changeLens(next: 'world' | 'experience'): void {
 		// A lens switch invalidates any Present-this framing run still waiting.
-		framingRun += 1;
+
 		// Preview returns to the lens it was entered from; a lens switch ends it.
 		closePreview();
 		clearHover();
@@ -481,6 +486,31 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let experienceGuideOpen = $state(false);
 	/** The controller the homes read; null outside the Experience lens. */
 	const activeExperience = $derived(lens === 'experience' ? experienceController : null);
+	/** Experience review 1 (R5): the World's saved environment, and the unsaved "Plain Paper while editing". */
+	const worldEnvironment = $derived.by(() => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper');
+	let editOnPaper = $state(false);
+	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
+
+	async function setWorldEnvironment(preset: SceneEnvironmentPreset): Promise<void> {
+		const services = adapterServices;
+		if (services === null || environmentWrite === services || preset === worldEnvironment) return;
+		environmentWrite = services;
+		try {
+			const outcome = await services.authoring.accept({
+				version: 1,
+				kind: SCENE_ENVIRONMENT_SET_KIND,
+				operationId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+				expectedRevision: services.stage.snapshot().acceptedRevision,
+				targets: [],
+				payload: { preset },
+				allocatedIds: [],
+				capturedInputs: []
+			});
+			if (adapterServices === services && outcome.kind === 'refused') notice = outcome.message;
+		} finally {
+			if (environmentWrite === services) environmentWrite = null;
+		}
+	}
 	/** R217.S29 Show ▾ — session-only Stage drawing flags; all on by default. */
 	let showOpen = $state(false);
 	let showMode = $state<'whole' | 'selection'>('whole');
@@ -524,12 +554,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let lookThroughSession = $state<{ readonly viewId: string; readonly presentationId: string; readonly label: string } | null>(null);
 	let lookThroughTick = $state(0);
 	let lookThroughConfirm = $state<readonly string[] | null>(null);
-	let reaimPress = $state<{ readonly pointerId: number } | null>(null);
+	/** Scroll in Look through accumulates until one 0.25 m step is owed. */
+	const EXPERIENCE_WELCOME_KEY = 'museum.experience.welcome-dismissed';
+	let showExperienceWelcome = $state(false);
+
+	function dismissExperienceWelcome(): void {
+		showExperienceWelcome = false;
+		try {
+			localStorage.setItem(EXPERIENCE_WELCOME_KEY, '1');
+		} catch {
+			// A blocked preference store still allows dismissal for this visit.
+		}
+	}
+
+	let lookThroughZoom: { pending: number; startedAt: number; applied: number } | null = null;
+	const lookThroughPointers = new Map<number, { x: number; y: number; truck: boolean }>();
 	/** The capture frame's measured local viewport for the one Stage renderer. */
 	let throughViewport = $state<{ readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
 	let throughFrameEl = $state<HTMLElement | null>(null);
 	/** Monotone guard: only the newest Present-this run may capture framing. */
-	let framingRun = 0;
+
 
 	/* --- R217.S30 — one Stage-owned ephemeral playback session ----------------- */
 
@@ -548,7 +592,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			lookThroughSession !== null ||
 			placementPress !== null ||
 			placementAim !== null ||
-			(activeExperience?.pathArmed ?? false) ||
 			experienceTool === 'place' ||
 			lens !== 'experience' ||
 			!experienceGuideOpen
@@ -578,7 +621,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			lookThroughSession !== null ||
 			placementPress !== null ||
 			placementAim !== null ||
-			controller.pathArmed ||
 			experienceTool === 'place'
 		) return;
 		controller.openGuide(guideId);
@@ -722,7 +764,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
-	type ViewEditKind = 'move' | 'aim';
+	type ViewEditKind = 'move' | 'turn';
 	type ViewEditSession = {
 		readonly viewId: string;
 		readonly presentationId: string;
@@ -732,9 +774,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		readonly start: AuthoredViewPose;
 		eye: StageTriple;
 		target: StageTriple;
+		/** Turn: the yaw from the eye to the press point, in the eye's plane. */
+		readonly grabYaw: number | null;
 		moved: boolean;
 	};
-	/** A live Plan marker drag: the authored View is untouched until release. */
+	/** A live marker drag: the authored View is untouched until release. */
 	let viewEdit = $state<ViewEditSession | null>(null);
 	/** A marker edit that changes a View another Presentation also lists, awaiting confirmation. */
 	let pendingViewWrite = $state<{
@@ -833,7 +877,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		stopPlaybackAndRestore();
 		experienceTool = 'place';
 		placementAim = null;
-		notice = 'Place a View: press where the camera stands, drag toward what it sees · Esc';
+		notice = '';
 	}
 
 	function viewMarkAt(event: PointerEvent): { readonly viewId: string; readonly kind: string } | null {
@@ -841,7 +885,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (!(target instanceof Element)) return null;
 		const mark = target.closest('[data-view-mark]');
 		const viewId = mark?.getAttribute('data-view-mark') ?? null;
-		const kind = mark?.getAttribute('data-mark-kind') ?? null;
+		const kind = target.closest('[data-turn-grip]') !== null ? 'turn' : mark?.getAttribute('data-mark-kind') ?? null;
 		return viewId === null || kind === null ? null : { viewId, kind };
 	}
 
@@ -850,10 +894,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const stage = facade;
 		const controller = activeExperience;
 		const id = stage?.evaluationId() ?? null;
-		if (stage === null || controller === null || id === null || evaluation?.projectionKind !== 'plan-orthographic') return;
+		if (stage === null || controller === null || id === null || evaluation === null || (kind === 'move' && evaluation.projectionKind !== 'plan-orthographic')) return;
 		const facts = controller.viewFacts(viewId);
 		const pose = controller.viewPose(viewId);
 		if (facts === null || pose === null) return;
+		const pressed = kind === 'turn' ? viewTurnPoint(event, pose, id) : null;
+		if (kind === 'turn' && pressed === null) return;
 		const acquisition = stage.acquireGesture({
 			owner: 'experience-view-edit',
 			evaluationId: id,
@@ -881,6 +927,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			start: pose,
 			eye: [pose.eye[0], pose.eye[1], pose.eye[2]],
 			target: [pose.target[0], pose.target[1], pose.target[2]],
+			grabYaw: pressed === null ? null : yawFromEye(pose, pressed),
 			moved: false
 		};
 	}
@@ -894,20 +941,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			const hit = stage.intersectWorkingPlane(ray.ray, floorPlane(), id);
 			return hit.kind === 'intersected' ? moveViewOnFloor(edit.start, hit.worldPoint) : null;
 		}
-		// Aim on the target's own horizontal plane: the Plan handle moves in X/Z and
-		// keeps the target height it already had.
-		const hit = stage.intersectWorkingPlane(
-			ray.ray,
-			{
-				originMeters: [edit.start.target[0], edit.start.target[1], edit.start.target[2]],
-				normal: [0, 1, 0],
-				yawRadians: 0,
-				datumMeters: experienceFloorDatum,
-				supportedLocalExtent: null
-			},
-			id
-		);
-		return hit.kind === 'intersected' ? aimViewAtPoint(edit.start, hit.worldPoint) : null;
+		// Turn about the eye (review round 2, G1): the pointer's yaw from the eye,
+		// relative to where the wedge was pressed, turns the View; its distance,
+		// heights and lens stay. Shift snaps the turn to 15°.
+		const point = viewTurnPoint(event, edit.start, id);
+		const yaw = point === null ? null : yawFromEye(edit.start, point);
+		if (yaw === null || edit.grabYaw === null) return null;
+		let delta = yaw - edit.grabYaw;
+		if (event.shiftKey) delta = Math.round(delta / (Math.PI / 12)) * (Math.PI / 12);
+		return turnViewAboutEye(edit.start, delta);
+	}
+
+	/** Plan turns on the eye plane, while perspective drags use the Stage floor. */
+	function viewTurnPoint(event: PointerEvent, pose: AuthoredViewPose, id: string): StageTriple | null {
+		const height = evaluation?.projectionKind === 'plan-orthographic' ? pose.eye[1] : experienceFloorDatum;
+		return pathAnchorPoint(absoluteCss(event), height);
 	}
 
 	function updateViewEdit(event: PointerEvent): void {
@@ -969,8 +1017,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			};
 			return;
 		}
+		// The Stage shows the change and Undo confirms it: nothing to say (G11).
 		if (outcome.kind === 'updated') {
-			notice = edit.kind === 'move' ? 'View moved.' : 'View re-aimed.';
 			refresh();
 			return;
 		}
@@ -987,7 +1035,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			confirmShared: true
 		});
 		if (outcome.kind === 'updated') {
-			notice = 'View updated.';
 			refresh();
 		} else if (outcome.kind === 'refused') {
 			notice = outcome.message;
@@ -995,7 +1042,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function beginPlacement(event: PointerEvent): void {
-		if (event.button !== 0) return;
+		if (event.button !== 0 || placementPress !== null) return;
 		const point = placementPoint(event);
 		if (point === null) {
 			notice = 'Point at the Floor to place a View.';
@@ -1003,9 +1050,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		placementPress = { pointerId: event.pointerId, start: point, current: point };
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		// Until the drag clears 0.5 m there is no pose to preview; the same Camera
-		// constructor below decides both the preview and the committed pose.
-		placementGhost = null;
+		const pose = placementPose(placementPress, placementAim);
+		placementGhost = pose === null ? null : { eye: pose.eye, target: pose.target };
 	}
 
 	function placementPose(press: { start: StageTriple; current: StageTriple }, aim: StageTriple | null) {
@@ -1013,6 +1059,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			startFloorPoint: press.start,
 			currentFloorPoint: press.current,
 			aimPoint: aim,
+			defaultAzimuthRadians: evaluation?.pose.azimuthRadians,
 			floorDatumMeters: experienceFloorDatum,
 			fovYDegrees: CAMERA_FOV.default
 		});
@@ -1020,7 +1067,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function movePlacement(event: PointerEvent): void {
 		const press = placementPress;
-		if (press === null) return;
+		if (press === null || event.pointerId !== press.pointerId) return;
 		const point = placementPoint(event);
 		if (point === null) return;
 		const current = { ...press, current: point };
@@ -1046,7 +1093,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
 		const pose = placementPose(press, aim);
 		if (pose === null) {
-			notice = 'Drag at least 0.5 m to place a View.';
+			notice = 'The View needs a target away from its eye.';
 			return;
 		}
 		const controller = activeExperience;
@@ -1062,36 +1109,56 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				cardRenameRequest += 1;
 				notice = 'Presentation created; name it in the Card.';
 			} else {
-				notice = 'View placed.';
+				notice = '';
 			}
 		});
 	}
 
 	function beginReaim(event: PointerEvent): void {
-		if (event.button !== 0) return;
-		const session = lookThroughSession;
-		if (session === null) return;
-		reaimPress = { pointerId: event.pointerId };
+		if (event.button !== 0 && event.button !== 2) return;
+		if (lookThroughPointers.size >= 2 || (lookThroughPointers.size > 0 && event.pointerType !== 'touch')) return;
+		lookThroughPointers.set(event.pointerId, { x: event.clientX, y: event.clientY, truck: event.button === 2 });
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 	}
 
 	function moveReaim(event: PointerEvent): void {
 		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		const press = reaimPress;
-		if (stage === null || id === null || press === null || event.pointerId !== press.pointerId) return;
-		const ray = stage.pointerRay(absoluteCss(event), id);
-		if (ray.kind !== 'ray') return;
-		if (stage.camera.reaimLookThroughRay(ray.ray)) {
+		const press = lookThroughPointers.get(event.pointerId);
+		if (stage === null || press === undefined) return;
+		const dx = event.clientX - press.x;
+		const dy = event.clientY - press.y;
+		press.x = event.clientX;
+		press.y = event.clientY;
+		if (dx === 0 && dy === 0) return;
+		const scale = evaluation?.targetPlaneMetersPerCssPixel ?? 0;
+		const touches = lookThroughPointers.size === 2;
+		const pan = press.truck || event.shiftKey || touches;
+		const share = touches ? 0.5 : 1;
+		const moved = pan
+			? scale > 0 && stage.camera.truckLookThrough(-dx * scale * share, dy * scale * share)
+			: stage.camera.turnLookThrough(dx * 0.0032, dy * 0.0032);
+		if (moved) {
 			lookThroughTick += 1;
 			refresh();
 		}
 	}
 
-	function endReaim(): void {
-		const press = reaimPress;
-		reaimPress = null;
-		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+	function endReaim(pointerId: number): void {
+		lookThroughPointers.delete(pointerId);
+		if (stageEl?.hasPointerCapture?.(pointerId)) stageEl.releasePointerCapture(pointerId);
+	}
+
+	/** Ease remaining wheel travel through Camera's existing step intent. */
+	function advanceLookThroughZoom(now: number, finish = false): void {
+		const zoom = lookThroughZoom;
+		const stage = facade;
+		if (zoom === null || stage === null || lookThroughSession === null) return;
+		const progress = finish || reducedMotion ? 1 : Math.min(1, (now - zoom.startedAt) / 120);
+		const next = zoom.pending * (1 - (1 - progress) ** 3);
+		const delta = next - zoom.applied;
+		zoom.applied = next;
+		if (progress === 1) lookThroughZoom = null;
+		if (delta !== 0 && stage.camera.stepLookThrough(delta)) lookThroughTick += 1;
 	}
 
 	function lookThroughView(viewId: string, presentationId?: string | null): void {
@@ -1124,7 +1191,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			experienceTool = 'select';
 			cancelPlacement();
 		}
-		framingRun += 1;
+
 		lookThroughSession = { viewId, presentationId: owner, label: facts.label };
 		lookThroughConfirm = null;
 		lookThroughTick += 1;
@@ -1132,7 +1199,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function exitLookThrough(): void {
-		framingRun += 1;
+		lookThroughZoom = null;
+		for (const pointerId of lookThroughPointers.keys()) endReaim(pointerId);
+
 		facade?.camera.endLookThrough();
 		lookThroughSession = null;
 		lookThroughConfirm = null;
@@ -1164,6 +1233,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const stage = facade;
 		const session = lookThroughSession;
 		if (controller === null || stage === null || session === null) return;
+		advanceLookThroughZoom(performance.now(), true);
 		const provisional = stage.camera.provisionalView();
 		if (provisional === null) return;
 		const outcome = await controller.updateViewPose(
@@ -1193,73 +1263,36 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		await controller.capturePose({ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees });
 	}
 
-	async function waitForFraming(
-		center: StageTriple,
-		run: number
-	): Promise<{ eye: StageTriple; target: StageTriple; fov: number } | null> {
-		const stage = facade;
-		if (stage === null) return null;
-		for (let frame = 0; frame < 120; frame += 1) {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-			if (facade !== stage || run !== framingRun) return null;
-			const state = stage.camera.state();
-			const painted = stage.evaluation();
-			if (state.reading !== '3d' || state.transition !== null) continue;
-			if (painted === null || painted.renderedReading !== '3d') continue;
-			const target = painted.target;
-			if (Math.hypot(target[0] - center[0], target[1] - center[1], target[2] - center[2]) > 0.01) continue;
-			return {
-				eye: [painted.eye[0], painted.eye[1], painted.eye[2]],
-				target: [target[0], target[1], target[2]],
-				fov: fovYDegreesOf(painted.pose)
-			};
-		}
-		return null;
-	}
-
-	/** E9 — frame the subject visibly through Camera, then read the evaluated pose. */
+	/** Frame the new View through Camera without changing the Stage's reading. */
 	async function presentThis(entityId: string, label: string): Promise<void> {
 		const stage = facade;
 		const controller = activeExperience;
 		if (stage === null || controller === null) return;
-		framingRun += 1;
-		const run = framingRun;
 		const bounds = stage.sceneBounds(entityId);
-		const target: StageTriple | null = bounds === null
-			? null
-			: [
-					(bounds.min[0] + bounds.max[0]) / 2,
-					(bounds.min[1] + bounds.max[1]) / 2,
-					(bounds.min[2] + bounds.max[2]) / 2
-				];
 		if (stage.camera.state().reading === 'plan' || evaluation?.projectionKind === 'plan-orthographic') {
-			placementAim = target;
+			placementAim = bounds === null ? null : [
+				(bounds.min[0] + bounds.max[0]) / 2,
+				(bounds.min[1] + bounds.max[1]) / 2,
+				(bounds.min[2] + bounds.max[2]) / 2
+			];
 			stopPlaybackAndRestore();
 			experienceTool = 'place';
-			notice = `Place a View aimed at ${label}: press where the camera stands.`;
+			notice = `Place a View aimed at ${label}: click where the camera stands.`;
 			return;
 		}
-		if (target === null) {
-			notice = 'That subject has no drawn body to frame.';
-			return;
-		}
-		const request = submit({ kind: 'bring-into-view', target }, nowSeconds());
-		if (request === null || request.kind !== 'accepted') {
-			notice = 'Camera refused the framing request; nothing was presented.';
-			return;
-		}
-		const framed = await waitForFraming(target, run);
-		if (run !== framingRun || facade !== stage) return;
+		const viewerEye = stage.evaluation()?.eye;
+		const framed = bounds === null || viewerEye === undefined ? null : frameSubjectPose({
+			bounds,
+			viewerEye,
+			eyeYMeters: experienceFloorDatum + EYE_HEIGHT_STEPS[1]!.metres,
+			fovYDegrees: LENS_STEPS[1]!.fovYDegrees,
+			aspect: 16 / 10
+		});
 		if (framed === null) {
 			notice = 'The Stage could not frame that subject.';
 			return;
 		}
-		if (activeExperience !== controller) return;
-		const accepted = await controller.presentThisFramed(entityId, label, framed);
-		if (run !== framingRun) return;
-		notice = accepted
-			? `Presenting ${label}.`
-			: controller.message || 'Present this could not be accepted; check the subject and the current framing.';
+		await controller.presentThisFramed(entityId, label, { eye: framed.eye, target: framed.target, fov: framed.fovYDegrees });
 	}
 
 	// Leaving the lens ends the provisional posture; the entry standpoint is never
@@ -1278,10 +1311,42 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const eye = stage.projectWorld(edit.eye, id);
 		if (eye.kind !== 'projected') return null;
 		const target = stage.projectWorld(edit.target, id);
+		const eyeCss = local(eye.css);
+		const targetCss = target.kind === 'projected' ? local(target.css) : null;
+		// Turn (G1): a ghost wedge along the new direction, an arc from the start
+		// direction and the angle; never a line that stretches with the pointer.
+		let turn: { readonly wedge: string; readonly arc: string; readonly label: string; readonly labelAt: readonly [number, number] } | null = null;
+		if (edit.kind === 'turn' && targetCss !== null) {
+			const start = stage.projectWorld(edit.start.target, id);
+			if (start.kind === 'projected') {
+				const startCss = local(start.css);
+				const a0 = Math.atan2(startCss[1] - eyeCss[1], startCss[0] - eyeCss[0]);
+				const a1 = Math.atan2(targetCss[1] - eyeCss[1], targetCss[0] - eyeCss[0]);
+				let delta = a1 - a0;
+				while (delta > Math.PI) delta -= 2 * Math.PI;
+				while (delta < -Math.PI) delta += 2 * Math.PI;
+				const half = (Math.max(10, Math.min(110, edit.start.fov)) * Math.PI) / 360;
+				const at = (angle: number, radius: number): string =>
+					`${(eyeCss[0] + Math.cos(angle) * radius).toFixed(1)},${(eyeCss[1] + Math.sin(angle) * radius).toFixed(1)}`;
+				const length = 90;
+				const arcRadius = 46;
+				const startYaw = yawFromEye(edit.start, edit.start.target);
+				const turnedYaw = yawFromEye(edit.start, edit.target);
+				const yawChange = startYaw === null || turnedYaw === null ? 0 : turnedYaw - startYaw;
+				const degrees = Math.round(Math.abs(Math.atan2(Math.sin(yawChange), Math.cos(yawChange))) * 180 / Math.PI);
+				turn = {
+					wedge: `M${eyeCss[0]},${eyeCss[1]}L${at(a1 - half, length)}A${length},${length} 0 0 1 ${at(a1 + half, length)}Z`,
+					arc: `M${at(a0, arcRadius)}A${arcRadius},${arcRadius} 0 0 ${delta > 0 ? 1 : 0} ${at(a1, arcRadius)}`,
+					label: `${degrees}°`,
+					labelAt: [eyeCss[0] + Math.cos(a0 + delta / 2) * (arcRadius + 16), eyeCss[1] + Math.sin(a0 + delta / 2) * (arcRadius + 16)]
+				};
+			}
+		}
 		return {
 			kind: edit.kind,
-			eye: local(eye.css),
-			target: target.kind === 'projected' ? local(target.css) : null
+			eye: eyeCss,
+			target: targetCss,
+			turn
 		};
 	});
 
@@ -1303,7 +1368,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		guideOpen: () => experienceGuideOpen,
 		setGuideOpen: (open) => {
 			experienceGuideOpen = open;
-			if (!open) experienceController?.setPathArmed(false);
 		},
 		select: selectExperienceSubject,
 		guideNamePrompt: () => guideNamePrompt,
@@ -1767,6 +1831,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let roomLabels = $state<readonly RoomLabelView[]>([]);
 	let marks = $state<readonly StageMarkView[]>([]);
 	let notice = $state('');
+	$effect(() => {
+		const shown = notice;
+		if (lens !== 'experience' || shown === '') return;
+		const timeout = setTimeout(() => { if (notice === shown) notice = ''; }, 4000);
+		return () => clearTimeout(timeout);
+	});
 	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
 	/** Set by the route's teardown: no late completion may mount a stage after it. */
 	let tornDown = false;
@@ -2017,7 +2087,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function activate(snapshot: StageReadSnapshot): void {
-		framingRun += 1;
+
 		// A completion that arrives after the route tore down must not mount a stage:
 		// nothing would ever dispose it, and it would hold a camera for a page that
 		// no longer exists.
@@ -2983,6 +3053,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let tracePreview = $state<PerfTracePreview | null>(null);
 
 	function refresh(): void {
+		advanceLookThroughZoom(performance.now());
 		const stage = facade;
 		if (stage === null) return;
 		// The gesture lease is host state that changes what Undo can do without an
@@ -3010,7 +3081,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		) {
 			throughViewport = framed.local;
 		}
-		const result = stage.camera.evaluate(currentRect, nowSeconds());
+		const groundReach = !editOnPaper && worldEnvironment !== 'paper' ? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS : undefined;
+		const result = stage.camera.evaluate(currentRect, nowSeconds(), groundReach);
 		evaluation = result.kind === 'evaluated' ? result.evaluation : null;
 		if (evaluation === null) return;
 
@@ -3133,6 +3205,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	onMount(() => {
 		perfMark('stage:route-mounted');
+		try {
+			showExperienceWelcome = localStorage.getItem(EXPERIENCE_WELCOME_KEY) !== '1';
+		} catch {
+			showExperienceWelcome = true;
+		}
 		const initial = measure();
 		acceptRect(initial);
 		let frame = 0;
@@ -3340,7 +3417,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function setReading(reading: '3d' | 'plan'): void {
-		framingRun += 1;
+
 		// Reduced motion cuts directly to the declared endpoint through the one
 		// settling rule — it is not a shortened tween.
 		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(reducedMotion, nowSeconds()));
@@ -3418,7 +3495,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function fit(): void {
 		const stage = facade;
 		if (stage === null || rect === null) return;
-		framingRun += 1;
+
 		const bounds = readStageContentBounds(stage);
 		if (bounds === null) return;
 		submit({ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect }, nowSeconds());
@@ -3434,23 +3511,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function bringIntoView(target: readonly [number, number, number]): void {
 		// A Card action competes with any Present-this run still waiting for its frame.
-		framingRun += 1;
+
 		submit({ kind: 'bring-into-view', target: [target[0], target[1], target[2]] }, nowSeconds());
 	}
 
 	function zoom(scale: number): void {
-		framingRun += 1;
+
 		submit({ kind: 'zoom', scale }, nowSeconds());
 	}
 
 	function pan(dx: number, dy: number): void {
 		if (rect === null) return;
-		framingRun += 1;
+
 		submit({ kind: 'pan', deltaCss: [dx, dy], rect }, nowSeconds());
 	}
 
 	function orbit(dAzimuth: number, dElevation: number): void {
-		framingRun += 1;
+
 		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
 	}
 
@@ -3707,8 +3784,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/* --- pointer and keyboard ---------------------------------------------- */
 
-	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host';
-	} | null = null;
+	let drag = $state<{ x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null>(null);
 	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
 	let adapterMarkPress = false;
 	/** A dragging disclosure's press: a release within click tolerance toggles it. */
@@ -3779,8 +3855,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (lens === 'experience' && lookThroughSession === null && experienceTool === 'select' && event.button === 0 && !event.shiftKey) {
 			const mark = viewMarkAt(event);
 			if (mark !== null) {
-				if (mark.kind === 'eye' || mark.kind === 'aim') {
-					beginViewEdit(event, mark.viewId, mark.kind === 'eye' ? 'move' : 'aim');
+				if (mark.kind === 'eye' || mark.kind === 'turn') {
+					beginViewEdit(event, mark.viewId, mark.kind === 'eye' ? 'move' : 'turn');
 				}
 				// A 3D glyph is a click entry, not navigation: never claim the Stage
 				// pointer lease or capture on the Stage ancestor.
@@ -4019,7 +4095,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (oldDistance > 0 && newDistance > 0) zoom(oldDistance / newDistance);
 			return;
 		}
-		if (reaimPress !== null) { moveReaim(event); return; }
+		if (lookThroughSession !== null) { moveReaim(event); return; }
 		if (placementPress !== null) { movePlacement(event); return; }
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
@@ -4122,7 +4198,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function onPointerUp(event: PointerEvent): void {
 		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) void endViewEdit(); return; }
-		if (reaimPress !== null) { if (reaimPress.pointerId === event.pointerId) endReaim(); return; }
+		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
 		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) endPlacement(); return; }
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
@@ -4206,14 +4282,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function onPointerCancel(event: PointerEvent): void {
 		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) cancelViewEdit(); return; }
-		if (reaimPress !== null) { if (reaimPress.pointerId === event.pointerId) endReaim(); return; }
+		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
 		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
 		if (viewEdit !== null && viewEdit.pointerId === event.pointerId) { cancelViewEdit(); return; }
-		if (reaimPress !== null && reaimPress.pointerId === event.pointerId) { endReaim(); return; }
+		if (lookThroughPointers.has(event.pointerId)) { endReaim(event.pointerId); return; }
 		if (placementPress !== null && placementPress.pointerId === event.pointerId) { cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
@@ -4229,6 +4305,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// also select (or report that nothing was selectable). The decision is consumed
 		// here, after the pointer sequence has ended, and only by the pointer it belongs to.
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
+		// Look through owns the Stage: a drag turns the view and its release is not a pick.
+		if (lens === 'experience' && lookThroughSession !== null) return;
 		// An **armed dock tool** owns the Stage surface: its tap already placed a
 		// point, split a Wall or was refused, and re-selecting underneath it would
 		// silently move what the tool is editing. Another adapter's task (Compose,
@@ -4263,15 +4341,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (viewEdit !== null) return;
 		const stage = facade;
 		if (lens === 'experience' && lookThroughSession !== null && stage !== null) {
-			// Scroll steps through the retained lens presets at a fixed eye and target.
-			const provisional = stage.camera.provisionalView();
-			if (provisional !== null) {
-				const step = nextLensStep(provisional.fovYDegrees, event.deltaY > 0 ? -1 : 1);
-				if (stage.camera.stepLookThroughLens(step.fovYDegrees)) {
-					lookThroughTick += 1;
-					refresh();
-				}
-			}
+			const now = performance.now();
+			advanceLookThroughZoom(now);
+			const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? (evaluation?.rect.height ?? 1) : 1);
+			const remaining = lookThroughZoom === null ? 0 : lookThroughZoom.pending - lookThroughZoom.applied;
+			lookThroughZoom = { pending: remaining - pixels * 0.004, startedAt: now, applied: 0 };
+			if (reducedMotion) advanceLookThroughZoom(now, true);
 			return;
 		}
 		zoom(Math.exp(event.deltaY * 0.001));
@@ -4418,11 +4493,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (pendingDelete !== null) {
 					pendingDelete = null;
 					notice = '';
-					break;
-				}
-				if (lens === 'experience' && activeExperience?.pathArmed) {
-					event.preventDefault();
-					activeExperience.setPathArmed(false);
 					break;
 				}
 				const stage = facade;
@@ -4751,6 +4821,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return {
 				pending: true,
 				experiences: [],
+				draftLabel: '',
 				current: null,
 				guides: [],
 				presentations: [],
@@ -4777,7 +4848,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		});
 		return {
 			pending: false,
-			experiences: controller.experiences.map((entry) => ({ id: entry.id, label: entry.label })),
+			experiences: controller.experiences.map((entry) => ({
+				id: entry.id,
+				label: entry.label,
+				stopCount: entry.stops.length,
+				presentationCount: entry.presentations.length
+			})),
+			draftLabel: controller.draftLabel,
 			current: current === null ? null : { id: current.id, label: current.label },
 			guides: controller.guides.map((guide) => ({
 				id: guide.id,
@@ -4816,11 +4893,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				expandedPresentationId = null;
 				cardOpen = true;
 			},
-			onCreateExperience: () => {
+			onCreateExperience: (label?: string) => {
 				// A pending name prompt or an expanded row belongs to the Experience it was opened in.
 				guideNamePrompt = null;
 				expandedPresentationId = null;
-				void controller.createExperience();
+				return controller.createExperience(label);
 			},
 			onRenameExperience: (label: string) => controller.renameExperience(label),
 			onOpenGuide: (guideId: string | null) => {
@@ -4947,7 +5024,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const experienceShownCard = $derived.by((): ShownCard => {
 		const controller = activeExperience;
 		const services = adapterServices;
-		if (controller === null || services === null || controller.current === null) return NO_CARD;
+		// The ready draft (no Experience yet) still shows the Stage selection, so Present this can start it.
+		if (controller === null || services === null) return NO_CARD;
 		// The Stop and transition kind lines name the context Guide, so a tour Stop reads its Guide before it is opened.
 		const guideLabel = controller.contextGuide?.label ?? '';
 		const writerOf = (summary: string, component: NonNullable<StageCardWriterRecord['view']>['component']): StageCardWriterRecord => ({
@@ -5219,7 +5297,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const controller = activeExperience;
 		if (controller === null) return undefined;
 		if (controller.busy) return 'Wait for the current change';
-		if (controller.current === null) return 'Create an Experience first';
 		return undefined;
 	});
 
@@ -5317,6 +5394,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// procedures under the project name), and Keys, which has no other home.
 			...HEAD_PREFERENCE_ENTRIES,
 			{ id: 'keys', adapterId: 'keys', label: 'Keys', verb: 'Show' },
+			...(lens === 'experience'
+				? [{ id: 'tips', adapterId: 'experience', label: 'Show Experience tips', verb: '' }]
+				: []),
 			...HEAD_PROJECT_ENTRIES
 		];
 		return needle === '' ? entries : entries.filter((entry) => entry.label.toLowerCase().includes(needle));
@@ -5458,6 +5538,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		if (entry.adapterId === 'preference') { runPreferenceEntry(entry.id); return; }
 		if (entry.adapterId === 'keys') { keysOpen = true; return; }
+		if (entry.adapterId === 'experience' && entry.id === 'tips') {
+			showExperienceWelcome = true;
+			return;
+		}
 		if (entry.adapterId === 'project-menu') {
 			// Rename and delete open the Head's own dialog and never reach the route.
 			if (entry.id === 'download') downloadSourceJson();
@@ -5627,37 +5711,42 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	{/if}
 
 	{#if sourceFindings !== null}
-		<div class="source-findings" role="status" aria-label="Source findings">
-			{#if sourceFindings.closure.length > 0}
-				<p>
-					<strong>This source cannot execute.</strong> Its resource requirements are not
-					satisfied, so Save, accepted edits and release are unavailable. The source stays
-					visible for inspection; nothing is repaired or pinned automatically.
-				</p>
-				<ul>
-					{#each sourceFindings.closure.slice(0, 5) as finding (finding.path + finding.code)}
-						<li>{finding.path}: {finding.message} ({finding.code})</li>
-					{/each}
-				</ul>
-			{/if}
-			{#if sourceFindings.diagnostics.length > 0}
-				<p>
-					{sourceFindings.diagnostics.length} repairable authored
-					{sourceFindings.diagnostics.length === 1 ? 'binding is' : 'bindings are'} unresolved.
-					They are disclosed as authored; they do not block this source.
-				</p>
-				<ul>
-					{#each sourceFindings.diagnostics.slice(0, 5) as finding (finding.path + finding.code)}
-						<li>{finding.path}: {finding.message} ({finding.code})</li>
-					{/each}
-				</ul>
-			{/if}
-		</div>
+		<!--
+			Experience review 1: source problems are a quiet chip, not a page banner.
+			The creator reads a count and one sentence; ids and paths stay behind
+			Details, for copying into a report.
+		-->
+		<details class="source-findings" class:blocking={sourceFindings.closure.length > 0} aria-label="Source findings">
+			<summary>
+				{#if sourceFindings.closure.length > 0}
+					<strong>This project can't be saved yet.</strong> Something it needs is missing.
+				{:else}
+					<strong>{sourceFindings.diagnostics.length} to fix</strong>
+					{sourceFindings.diagnostics.length === 1 ? 'A link points at something that is gone.' : 'Some links point at things that are gone.'}
+				{/if}
+				<span class="source-findings-more">Details</span>
+			</summary>
+			<ul>
+				{#each [...sourceFindings.closure, ...sourceFindings.diagnostics].slice(0, 8) as finding (finding.path + finding.code)}
+					<li data-finding-code={finding.code}>{finding.message}</li>
+				{/each}
+			</ul>
+			<button
+				type="button"
+				onclick={() =>
+					void navigator.clipboard?.writeText(
+						[...sourceFindings.closure, ...sourceFindings.diagnostics]
+							.map((finding) => `${finding.path}: ${finding.message} (${finding.code})`)
+							.join('\n')
+					)}>Copy details</button
+			>
+		</details>
 	{/if}
 
 	<div
 		class="editor-body"
 		style={`--lower-column-height: ${lowerColumnHeight}px; ${lens === 'experience' ? '--card-right: 10px; ' : ''}${lens === 'experience' && !experienceGuideOpen ? '--card-bottom-clearance: 96px; ' : ''}--sheet-lane-right: ${sheetLaneRight}px; --sheet-lane-left: ${sheetLaneLeft}px`}
+		data-index-open={preview === null && indexOpen}
 	>
 		{#if preview === null}
 		<EditorIndex
@@ -5727,7 +5816,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				role="application"
 				tabindex="0"
 				data-paper={paperVisible ? 'true' : 'false'}
-				data-cursor={hoverMove ? 'move' : task?.kind === 'layout-ink' || armedHostTool !== null ? 'crosshair' : 'grab'}
+				data-cursor={viewEdit !== null ? viewEdit.kind
+				: drag?.mode === 'pan' || drag?.mode === 'orbit' ? 'grabbing'
+				: lookThroughSession !== null ? 'look'
+				: experienceTool === 'place' ? 'place-view'
+				: hoverMove ? 'move'
+				: task?.kind === 'layout-ink' || armedHostTool !== null ? 'draw'
+				: 'select'}
 				aria-label="Spatial stage"
 				onpointerleave={clearHover}
 				onpointerdown={onPointerDown}
@@ -5737,6 +5832,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				onlostpointercapture={onLostPointerCapture}
 				onclick={onClick}
 				onwheel={onWheel}
+				oncontextmenu={(event) => { if (lookThroughSession !== null) event.preventDefault(); }}
 			>
 				{#if boot.status === 'ready' || boot.status === 'empty'}
 					<StageCanvas
@@ -5756,6 +5852,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						datumMeters={boot.snapshot.domain.datumMeters}
 						contentBounds={paperContentBounds}
 						snapshotBounds={stageContentBounds}
+						environment={editOnPaper ? 'paper' : worldEnvironment}
 						framedViewport={lookThroughSession !== null ? throughViewport : null}
 							{selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
@@ -5787,9 +5884,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{/if}
 					{#if viewEditPreview !== null}
 						<svg class="placement-preview view-edit-preview" data-view-edit-ghost aria-hidden="true">
-							{#if viewEditPreview.target !== null}
+							{#if viewEditPreview.turn !== null}
+								<path class="turn-wedge" d={viewEditPreview.turn.wedge} />
+								<path class="turn-arc" d={viewEditPreview.turn.arc} />
+								<text class="turn-angle" x={viewEditPreview.turn.labelAt[0]} y={viewEditPreview.turn.labelAt[1]} text-anchor="middle" dominant-baseline="middle">{viewEditPreview.turn.label}</text>
+							{:else if viewEditPreview.kind === 'move' && viewEditPreview.target !== null}
 								<line x1={viewEditPreview.eye[0]} y1={viewEditPreview.eye[1]} x2={viewEditPreview.target[0]} y2={viewEditPreview.target[1]} />
-								<circle class="aim" cx={viewEditPreview.target[0]} cy={viewEditPreview.target[1]} r="5" />
 							{/if}
 							<circle class="eye" cx={viewEditPreview.eye[0]} cy={viewEditPreview.eye[1]} r="4" />
 						</svg>
@@ -5823,6 +5923,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="stage-actions"
+					style:display={lookThroughSession !== null ? 'none' : undefined}
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
@@ -5870,7 +5971,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 								title="Show: what the Guide draws on the Stage"
 								onclick={() => (showOpen = !showOpen)}
 							>
-								Show <span aria-hidden="true">▾</span>
+								<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 2 1.5 5.5 8 9l6.5-3.5z" /><path d="m1.5 8.5 6.5 3.5 6.5-3.5" /></svg>Show
 								{#if showOffCount > 0}<span class="show-off" data-show-off>{showOffCount} off</span>{/if}
 							</button>
 							{#if showOpen}
@@ -5908,6 +6009,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 								</div>
 							{/if}
 						</div>
+					{/if}
+					{#if adapterServices !== null}
+						<StageEnvironmentControl
+							environment={worldEnvironment}
+							onEnvironment={(preset) => void setWorldEnvironment(preset)}
+							{editOnPaper}
+							onEditOnPaper={(value) => (editOnPaper = value)}
+							busy={environmentWrite === adapterServices}
+						/>
 					{/if}
 				</div>
 				{#if lens === 'world'}
@@ -5983,24 +6093,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{/key}
 				{/if}
 
-				{#if lens === 'experience' && activeExperience?.pathArmed}
-					<!-- R217.S29 path mode: one armed target, one way out. -->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div
-						class="mode-pill path-pill"
-						data-path-pill
-						onclick={(event) => event.stopPropagation()}
-						onpointerdown={(event) => event.stopPropagation()}
-					>
-						<span class="live-dot" aria-hidden="true"></span>
-						<span>Path — click the selected route to add a point</span>
-						<button type="button" onclick={() => activeExperience?.setPathArmed(false)}>Done Esc</button>
-					</div>
-				{/if}
 				{#if lens === 'experience' && lookThroughSession !== null}
 					<!-- The capture frame sits beside the Card and above the Guide; helpers are hidden. -->
 					<div class="through-slot" bind:this={throughFrameEl} data-through-frame>
 						<div class="through-frame" aria-hidden="true"></div>
+						<div class="through-safe" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 					</div>
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
@@ -6016,7 +6113,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							type="button"
 							class="pill-gold"
 							disabled={!lookThroughMoved || (activeExperience?.busy ?? false)}
-							title={lookThroughMoved ? 'Write the provisional pose back to this View' : 'Re-aim, change the lens or eye height first'}
+							title={lookThroughMoved ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
 							onclick={() => void updateLookThrough(lookThroughConfirm !== null)}>Update View</button
 						>
 						<button type="button" onclick={exitLookThrough}>Exit View Esc</button>
@@ -6043,13 +6140,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						</div>
 					</div>
 				{/if}
-				{#if lens === 'experience' && lookThroughSession === null && activeExperience?.current && activeExperience.current.presentations.length === 0}
-					<div class="experience-coach" data-experience-coach role="status">
-						<strong>{EXPERIENCE_COACH.title}</strong>
-						<span>{EXPERIENCE_COACH.body}</span>
-					</div>
+				{#if lens === 'experience' && showExperienceWelcome && lookThroughSession === null && experienceTool === 'select'}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<aside class="experience-welcome" aria-label="Welcome to Experience" onpointerdown={(event) => event.stopPropagation()} onclick={(event) => event.stopPropagation()}>
+						<span>Welcome to Experience</span>
+						<h2>Turn this World into a visit</h2>
+						<ol>
+							<li><b>Present an object.</b> Select it, then choose <em>Present this</em> in its Card.</li>
+							<li><b>Capture</b> keeps what the Stage shows as a View.</li>
+							<li><b>Open a Guide</b> to put Stops in order, then press Play.</li>
+						</ol>
+						<footer>
+							<small>Tips again: ⌘K → Show Experience tips</small>
+							<button type="button" onclick={dismissExperienceWelcome}>Got it</button>
+						</footer>
+					</aside>
 				{/if}
-				{#if notice}<p class="stage-note" role="status">{notice}</p>{/if}
+				{#if lens !== 'experience' && notice}<p class="stage-note" role="status">{notice}</p>{/if}
 			</div>
 			{/if}
 
@@ -6098,6 +6205,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						guideSeconds={previewGuideStats.seconds}
 						viewLabels={previewViewLabels}
 						onExit={closePreview}
+						environment={worldEnvironment}
 					/>
 				</div>
 			{:else if preview !== null}
@@ -6162,30 +6270,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						captureReason={experienceCaptureReason}
 						guideOpen={experienceGuideOpen}
 						placeArmed={experienceTool === 'place'}
-						pathArmed={activeExperience.pathArmed}
-						pathReason={activeExperience.selectedPath === null
-							? 'Select a Travel move to edit its Camera path'
-							: activeExperience.selectedPath.state === 'cut'
-								? 'A Cut has no travel path'
-								: activeExperience.selectedPath.state !== 'ready'
-									? 'Add a Camera path from this move'
-									: undefined}
 						onPlaceView={togglePlaceView}
-						onPath={() => {
-							if (activeExperience === null) return;
-							if (activeExperience.pathArmed) activeExperience.setPathArmed(false);
-							else if (activeExperience.selectedPath?.state === 'ready') {
-								// Restore the exact entry reading before asking the tool for Plan. The
-								// displayed reading can be stale while Follow changes the projection.
-								stopPlaybackAndRestore();
-								if ((facade?.camera.state().reading ?? '3d') !== 'plan') setReading('plan');
-								activeExperience.setPathArmed(true);
-							}
-						}}
 						onCapture={() => void activeExperience?.capture()}
 						onToggleGuide={toggleExperienceGuide}
 					/>
-					{#if activeExperience.message !== ''}<p class="experience-feedback" role="status" aria-live="polite">{activeExperience.message}</p>{/if}
+					{#if notice || activeExperience.message}
+						<p class="experience-feedback" class:refused={!notice && activeExperience.messageRefused} role="status">
+							{notice || activeExperience.message}
+						</p>
+					{/if}
 					{#if experienceGuideOpen}							<ExperienceGuide
 								onClose={() => (experienceGuideOpen = false)}
 								{playback}
@@ -6211,7 +6304,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	{:else if boot.status !== 'ready' && boot.status !== 'empty'}
 		<div class="boot-panel" role="status" aria-live="polite">
 			{#if boot.status === 'loading'}
-				<p>Loading project…</p>
+				<span class="boot-brand">Biskiq Editor</span>
+				<p class="boot-loading">Loading project…</p>
 			{:else if boot.status === 'missing'}
 				<h1>Project not found</h1>
 				<p>This project does not exist for your account.</p>
@@ -6262,26 +6356,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 <style>
 	:global(body) {
 		margin: 0;
-		background: #111117;
-		color: #f4f0e9;
-		font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 	}
 	.editor-host {
 		display: flex;
 		flex-direction: column;
 		height: 100dvh;
+		background: var(--shell-forest);
+		color: var(--shell-ivory);
 	}
 	.editor-body {
 		position: relative;
-		display: flex;
 		min-height: 0;
 		flex: 1;
 		overflow: hidden;
 	}
 	.stage-frame {
-		position: relative;
-		min-width: 0;
-		flex: 1;
+		position: absolute;
+		inset: 0;
 	}
 	.stage {
 		position: absolute;
@@ -6290,11 +6381,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: #152c26;
 		outline: none;
 		touch-action: none;
-		cursor: grab;
+		cursor: var(--cursor-select);
 	}
-	.stage[data-cursor='move'] { cursor: move; }
-	.stage[data-cursor='crosshair'] { cursor: crosshair; }
-	.stage[data-cursor='grab'] { cursor: grab; }
+	.stage[data-cursor='move'] { cursor: var(--cursor-move); }
+	.stage[data-cursor='turn'] { cursor: var(--cursor-turn); }
+	.stage[data-cursor='grabbing'] { cursor: var(--cursor-grabbing); }
+	.stage[data-cursor='look'] { cursor: var(--cursor-look); }
+	.stage[data-cursor='place-view'] { cursor: var(--cursor-place-view); }
+	.stage[data-cursor='draw'] { cursor: var(--cursor-draw); }
 	/*
 		PLATE's 1 CSS px inset perimeter separates Paper from the chassis. It is an
 		inset shadow, not a border: the canvas rectangle, Camera aspect and pointer
@@ -6344,21 +6438,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		pointer-events: auto;
 	}
 	.lower-column[hidden] { display: none; }
-	/*
-		R217.S23 — at a constrained width the Index is an overlay sheet. It ends above the
-		lower column's measured span (the dock, and the palette above it when one is open),
-		so the dock stays usable behind an open Index. Its dimming is the explicit scrim below,
-		not a viewport-sized shadow.
-	*/
+	/* The Index covers the Stage without participating in viewport layout. */
+	.editor-body > :global(.plate-index) {
+		position: absolute;
+		z-index: 20;
+		inset: 0 auto 0 0;
+		box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
+	}
+	@media (width > 1100px) {
+		.editor-body[data-index-open='true'] {
+			--index-cover: var(--shell-index-width);
+		}
+	}
+	/* The constrained Index ends above the lower column and has a close scrim. */
 	@media (max-width: 1100px) {
 		.editor-body > :global(.plate-index) {
-			position: absolute;
-			z-index: 20;
-			top: 0;
 			bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);
-			left: 0;
 			width: min(var(--shell-index-width, 256px), 80%);
-			box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
 		}
 		/*
 			The scrim covers the Stage above the lower column and beneath it: the dock, the
@@ -6389,7 +6485,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.stage-actions {
 		position: absolute;
 		top: 10px;
-		left: 10px;
+		left: calc(10px + var(--index-cover, 0px));
+		/* Its popovers (Show, Environment) open over the Stage's start card. */
+		z-index: 6;
 		display: flex;
 		gap: 0.4rem;
 	}
@@ -6492,103 +6590,199 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.view-edit-preview .eye {
 		stroke: var(--shell-gold, #d4ad45);
 	}
+	.view-edit-preview .turn-wedge {
+		fill: color-mix(in srgb, var(--shell-gold, #d4ad45) 22%, transparent);
+		stroke: var(--shell-gold, #d4ad45);
+		stroke-width: 1.4;
+	}
+	.view-edit-preview .turn-arc {
+		fill: none;
+		stroke: var(--shell-gold-ink, #74560c);
+		stroke-width: 1.2;
+		stroke-dasharray: 3 3;
+	}
+	.view-edit-preview .turn-angle {
+		fill: var(--shell-gold-ink, #74560c);
+		font: 600 11px var(--shell-sans, system-ui, sans-serif);
+		paint-order: stroke;
+		stroke: rgb(255 255 255 / 0.85);
+		stroke-width: 3px;
+	}
 	/* R217.S29 Show ▾: a light disclosure beside the Stage reading control. */
 	.show-control {
 		position: relative;
 		display: flex;
 		align-items: center;
+		padding: 3px;
+		border: 1px solid rgb(27 32 28 / 0.1);
+		border-radius: 10px;
+		background: rgb(255 255 255 / 0.94);
+		box-shadow: 0 4px 14px rgb(17 41 31 / 0.12);
+		backdrop-filter: blur(10px);
 	}
 	.show-button {
-		height: 30px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		height: 28px;
 		padding: 0 10px;
-		border: 1px solid rgb(23 45 37 / 0.18);
-		border-radius: 6px;
-		background: var(--shell-paper, #fbf8ee);
-		color: var(--shell-ink, #1c2b23);
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: var(--shell-ink, #1b201c);
 		font: inherit;
-		font-size: 12px;
+		font-size: 12.5px;
 		cursor: pointer;
 	}
+	.show-button:hover {
+		background: rgb(27 32 28 / 0.06);
+	}
 	.show-button[aria-expanded='true'] {
-		border-color: var(--shell-gold, #d4ad45);
+		background: var(--shell-forest, #11291f);
+		color: #fff;
+	}
+	.show-button:focus-visible,
+	.show-mode button:focus-visible,
+	.show-all:focus-visible {
+		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline-offset: 1px;
 	}
 	.show-off {
-		margin-left: 5px;
-		color: var(--shell-muted, #5b6b62);
+		padding: 0 6px;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 28%, transparent);
+		color: var(--shell-gold-ink, #74560c);
+		font-size: 11px;
+		font-weight: 600;
 	}
 	.show-popover {
 		position: absolute;
 		top: calc(100% + 8px);
 		right: 0;
 		z-index: 8;
-		width: 248px;
+		width: 268px;
 		display: grid;
-		gap: 7px;
-		padding: 10px;
-		border-radius: 8px;
-		background: var(--shell-paper, #fbf8ee);
-		color: var(--shell-ink, #1c2b23);
-		box-shadow: 0 12px 30px rgb(0 0 0 / 0.22);
-		font-size: 12px;
+		gap: 6px;
+		padding: 12px;
+		border: 1px solid rgb(27 32 28 / 0.12);
+		border-radius: 14px;
+		background: #fff;
+		color: var(--shell-ink, #1b201c);
+		box-shadow: 0 10px 30px rgb(17 41 31 / 0.16);
+		font-size: 12.5px;
 	}
 	.show-popover header {
 		display: flex;
 		justify-content: space-between;
 		align-items: baseline;
+		margin-bottom: 2px;
+	}
+	.show-popover header strong {
+		font-size: 13.5px;
 	}
 	.show-popover header span {
-		color: var(--shell-muted, #5b6b62);
-		font-size: 11px;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 11.5px;
 	}
 	.show-mode {
-		display: flex;
-		gap: 4px;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 3px;
+		padding: 3px;
+		border-radius: 10px;
+		background: rgb(27 32 28 / 0.05);
 	}
-	.show-mode button,
-	.show-all {
-		flex: 1;
-		height: 27px;
-		border: 1px solid rgb(23 45 37 / 0.16);
-		border-radius: 5px;
-		background: transparent;
-		color: inherit;
+	.show-mode button {
+		height: 28px;
+		border: 0;
+		border-radius: 8px;
+		background: none;
+		color: var(--shell-ink-2, #4a524c);
 		font: inherit;
-		font-size: 11px;
+		font-size: 12px;
 		cursor: pointer;
 	}
 	.show-mode button[aria-pressed='true'] {
-		background: rgb(23 45 37 / 0.08);
-		border-color: rgb(23 45 37 / 0.3);
+		background: #fff;
+		color: var(--shell-ink, #1b201c);
+		font-weight: 600;
+		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 	}
 	.show-popover label {
 		display: flex;
 		align-items: center;
-		gap: 7px;
-		min-height: 26px;
+		gap: 9px;
+		min-height: 30px;
+		padding: 0 2px;
+		border-radius: 8px;
 		cursor: pointer;
 	}
-	.show-all {
-		margin-top: 2px;
+	.show-popover label:hover {
+		background: rgb(27 32 28 / 0.04);
 	}
-	/* The through capture frame: 16:10, beside the Card and above the Guide. */
+	.show-popover input[type='checkbox'] {
+		appearance: none;
+		-webkit-appearance: none;
+		flex: none;
+		width: 18px;
+		height: 18px;
+		margin: 0;
+		border: 1.5px solid rgb(27 32 28 / 0.2);
+		border-radius: 5px;
+		background: #fff;
+		cursor: pointer;
+	}
+	.show-popover input[type='checkbox']:checked {
+		border-color: var(--shell-leaf, #4f8f6c);
+		background: var(--shell-leaf, #4f8f6c) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+	}
+	.show-popover input[type='checkbox']:focus-visible {
+		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline-offset: 2px;
+	}
+	.show-all {
+		height: 28px;
+		margin-top: 2px;
+		border: 1px solid rgb(27 32 28 / 0.14);
+		border-radius: 8px;
+		background: #fff;
+		color: inherit;
+		font: inherit;
+		font-size: 12px;
+		cursor: pointer;
+	}
+	/* Look through fills the Stage: a gold edge and 16:10 safe-frame ticks. */
 	.through-slot {
 		position: absolute;
-		left: 50%;
-		top: 42%;
+		inset: 0;
 		z-index: 2;
-		transform: translate(-50%, -50%);
-		width: min(64%, calc(100% - 620px));
-		max-width: calc(100% - 2rem);
-		aspect-ratio: 16 / 10;
+		container-type: size;
 		pointer-events: none;
 	}
 	.through-frame {
 		position: absolute;
 		inset: 0;
-		border-radius: 6px;
-		outline: 2px solid var(--shell-gold, #d4ad45);
-		box-shadow: 0 0 0 9999px rgb(8 18 14 / 0.44);
+		box-shadow: inset 0 0 0 3px var(--shell-gold, #d4ad45);
 	}
+	.through-safe {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: min(100cqw - 48px, (100cqh - 24px) * 1.6);
+		aspect-ratio: 16 / 10;
+		transform: translate(-50%, -50%);
+	}
+	.through-safe i {
+		position: absolute;
+		width: 22px;
+		height: 22px;
+		border: 0 solid rgb(255 255 255 / 0.9);
+		filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.6));
+	}
+	.through-safe i:nth-child(1) { left: 0; top: 0; border-width: 2px 0 0 2px; }
+	.through-safe i:nth-child(2) { right: 0; top: 0; border-width: 2px 2px 0 0; }
+	.through-safe i:nth-child(3) { left: 0; bottom: 0; border-width: 0 0 2px 2px; }
+	.through-safe i:nth-child(4) { right: 0; bottom: 0; border-width: 0 2px 2px 0; }
 	.mode-pill {
 		position: absolute;
 		left: 50%;
@@ -6635,6 +6829,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		color: var(--shell-gold, #d4ad45);
 		font-weight: 600;
 	}
+	/* Look through's one HUD: top left of the Stage, clear of the Card and the toolbar. */
+	.mode-pill.through-pill {
+		left: 16px;
+		transform: none;
+	}
 	.through-confirm {
 		position: absolute;
 		left: 50%;
@@ -6673,29 +6872,49 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		color: #2a2208;
 		font-weight: 600;
 	}
-	.experience-coach {
+	.experience-welcome {
 		position: absolute;
-		left: 50%;
-		top: 46%;
-		transform: translate(-50%, -50%);
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		max-width: min(24rem, calc(100% - 2rem));
-		padding: 16px 18px;
+		left: calc(1rem + var(--index-cover, 0px));
+		bottom: 4.75rem;
+		width: min(18rem, calc(100% - 2rem));
+		padding: 1rem;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 12px;
-		background: var(--shell-glass-dark, rgb(14 30 25 / 0.8));
-		color: var(--shell-ink-light, #eef1ec);
-		text-align: center;
-		pointer-events: none;
+		background: var(--shell-card, #fff);
+		box-shadow: var(--shell-shadow, 0 8px 24px rgb(0 0 0 / 0.12));
+		color: var(--shell-ink, #1b201c);
+		font-size: 0.8rem;
 	}
-	.experience-coach strong {
-		font: 17px var(--shell-serif, Georgia, serif);
+	.experience-welcome > span {
+		color: var(--shell-gold-ink, #74560c);
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
 	}
-	.experience-coach span {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font-size: 12px;
-		line-height: 1.45;
+	.experience-welcome h2 {
+		margin: 0.25rem 0 0.6rem;
+		font: 400 1.15rem var(--shell-serif, Georgia, serif);
+	}
+	.experience-welcome ol {
+		margin: 0 0 0.75rem;
+		padding-left: 1.1rem;
+	}
+	.experience-welcome li + li { margin-top: 0.35rem; }
+	.experience-welcome footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+	.experience-welcome button {
+		flex: none;
+		padding: 0.35rem 0.65rem;
+		border: 0;
+		border-radius: 6px;
+		background: var(--shell-forest, #11291f);
+		color: white;
+		cursor: pointer;
 	}
 	@media (pointer: coarse) {
 		.mode-pill button,
@@ -6704,23 +6923,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			min-height: 44px;
 		}
 	}
-	@media (max-width: 960px) {
-		.through-slot {
-			width: calc(100% - 2rem);
-			top: 40%;
-		}
-	}
-	/* R217.S25: the Experience dock's feedback line sits on the lower edge, above its dock. */
+		/* R217.S25: the Experience dock's feedback line sits on the lower edge, above its dock. */
 	.experience-feedback {
 		max-width: min(30rem, 100%);
 		margin: 0;
 		padding: 0.25rem 0.6rem;
 		border-radius: 8px;
 		background: rgb(17 41 31 / 0.92);
-		color: #e6ece6;
+		color: white;
 		font-size: 0.78rem;
 		line-height: 1.35;
 	}
+	.experience-feedback.refused { background: #623639; }
 	.preview-takeover {
 		position: absolute;
 		inset: 0;
@@ -6794,62 +7008,106 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		color: #fff;
 	}
 	.source-findings {
-		padding: 0.7rem 1rem;
-		border-bottom: 1px solid #635a6f;
-		background: #201d29;
-		color: #ddd6e6;
+		position: absolute;
+		top: calc(var(--shell-head-height, 48px) + 8px);
+		left: 50%;
+		z-index: 30;
+		transform: translateX(-50%);
+		max-width: min(32rem, calc(100% - 2rem));
+		padding: 6px 12px;
+		border: 1px solid rgb(27 32 28 / 0.12);
+		border-radius: 12px;
+		background: rgb(255 255 255 / 0.96);
+		box-shadow: 0 6px 18px rgb(17 41 31 / 0.14);
+		color: var(--shell-ink, #1b201c);
+		font-size: 12.5px;
 	}
-	.source-findings p {
-		margin: 0 0 0.35rem;
-		line-height: 1.4;
+	.source-findings summary {
+		display: flex;
+		gap: 6px;
+		align-items: baseline;
+		cursor: pointer;
+		list-style: none;
+	}
+	.source-findings strong {
+		color: var(--shell-gold-ink, #74560c);
+	}
+	.source-findings.blocking strong {
+		color: var(--shell-caution, #c85a48);
+	}
+	.source-findings-more {
+		margin-left: auto;
+		color: var(--shell-ink-3, #79817b);
+		text-decoration: underline;
 	}
 	.source-findings ul {
-		margin: 0 0 0.35rem 1rem;
+		margin: 6px 0 4px 1rem;
 		padding: 0;
-		font-size: 0.85rem;
+		color: var(--shell-ink-2, #4a524c);
 	}
-	.source-findings li {
-		margin-bottom: 0.2rem;
+	.source-findings button {
+		border: 1px solid rgb(27 32 28 / 0.14);
+		border-radius: 8px;
+		background: #fff;
+		padding: 3px 9px;
+		font: inherit;
+		cursor: pointer;
 	}
 	.boot-panel {
 		position: absolute;
+		z-index: 30;
 		top: 4rem;
 		left: 50%;
 		transform: translateX(-50%);
 		width: min(32rem, calc(100% - 2rem));
 		padding: 1.25rem;
-		border: 1px solid #4d4655;
-		border-radius: 0.6rem;
-		background: rgb(25 24 31 / 96%);
+		border: 1px solid color-mix(in srgb, var(--shell-ivory) 20%, transparent);
+		border-radius: 16px;
+		background: var(--shell-dock-surface);
+		color: var(--shell-ivory);
+		box-shadow: var(--shell-shadow);
 		box-sizing: border-box;
 	}
-	.boot-panel h1 {
+	.boot-brand {
+		color: var(--shell-gold);
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+	.boot-panel h1,
+	.boot-panel .boot-loading {
 		margin: 0 0 0.5rem;
-		font-size: 1.15rem;
+		color: var(--shell-ivory);
+		font: 400 1.4rem/1.25 var(--shell-serif);
+	}
+	.boot-panel .boot-loading {
+		margin: 0.35rem 0 0;
 	}
 	.boot-panel p {
 		margin: 0 0 0.75rem;
-		color: #bcb5c4;
+		color: var(--shell-ink-light);
 	}
 	.boot-panel button {
 		margin-right: 0.5rem;
 		padding: 0.5rem 0.8rem;
-		border: 1px solid #635a6f;
-		border-radius: 0.35rem;
-		background: #292632;
+		border: 1px solid color-mix(in srgb, var(--shell-ivory) 30%, transparent);
+		border-radius: 8px;
+		background: transparent;
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
 	}
 	.boot-panel button.primary {
-		border-color: #b997f2;
-		background: #8f69c8;
-		color: #fff;
+		border-color: var(--shell-gold);
+		background: var(--shell-gold);
+		color: var(--shell-forest);
 	}
+	.boot-panel button:focus-visible {
+		outline-color: var(--shell-gold);
+	}
+
 	@media (max-width: 720px) {
-		.editor-body {
-			flex-direction: column;
-		}
 		/* Below the centered lens panel in a narrow shell, so the notice never
 		   overlaps its buttons. */
 		.stage-note {

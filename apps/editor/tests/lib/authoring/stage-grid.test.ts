@@ -39,7 +39,6 @@ import {
 	GRID_SUPPRESS_SPACING_CSS_PX,
 	MAT_GRID_INK,
 	PAPER_GRID_INK,
-	gridIsVisible,
 	gridLevelsFor,
 	gridLinesFor,
 	gridPlanFor,
@@ -400,11 +399,11 @@ describe('the workspace reads committed geometry only', () => {
 });
 
 describe('R217.S05 — surfaces, visibility and the mat footprint', () => {
-	it('is never drawn in Shaded Plan or under Grid off, and the mat keeps it in 3D', () => {
-		expect(gridIsVisible({ grid: false, appearance: 'paper', renderedReading: 'plan' })).toBe(false);
-		expect(gridIsVisible({ grid: true, appearance: 'shaded', renderedReading: 'plan' })).toBe(false);
-		expect(gridIsVisible({ grid: true, appearance: 'paper', renderedReading: 'plan' })).toBe(true);
-		expect(gridIsVisible({ grid: true, appearance: 'shaded', renderedReading: '3d' })).toBe(true);
+	it('wires the Grid toggle to both the Paper and mat renderers', () => {
+		const canvas = readFileSync(resolve(process.cwd(), 'src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');
+		expect(canvas).toContain('$derived(drafting.grid && framedViewport === null)');
+		expect(canvas).toMatch(/<StageMatGround\b[^>]*\{gridVisible\}/);
+		expect(canvas).toMatch(/\{#if paperReveal !== null && gridVisible\}\s*<StageGrid\b/);
 	});
 
 	it('draws the mat grid per pixel on one quad, never as line geometry', () => {

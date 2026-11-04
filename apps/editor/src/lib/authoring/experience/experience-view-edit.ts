@@ -29,7 +29,7 @@ export function moveViewOnFloor(pose: AuthoredViewPose, floorPoint: Vec3): Autho
 
 /** Whether a live edit actually moved the endpoint its gesture owns. */
 export function viewEditMoved(
-	kind: 'move' | 'aim',
+	kind: 'move' | 'turn',
 	start: AuthoredViewPose,
 	current: AuthoredViewPose
 ): boolean {
@@ -45,4 +45,28 @@ export function aimViewAtPoint(pose: AuthoredViewPose, point: Vec3): AuthoredVie
 		target: [point[0], point[1], point[2]],
 		fov: pose.fov
 	};
+}
+
+/**
+ * Experience review round 2 (G1): turn a View about its eye by `deltaYaw`
+ * radians. The eye, the target's height, its horizontal distance from the eye and
+ * the lens all stay; only the direction the View faces changes.
+ */
+export function turnViewAboutEye(pose: AuthoredViewPose, deltaYaw: number): AuthoredViewPose {
+	const dx = pose.target[0] - pose.eye[0];
+	const dz = pose.target[2] - pose.eye[2];
+	const cos = Math.cos(deltaYaw);
+	const sin = Math.sin(deltaYaw);
+	return {
+		eye: [pose.eye[0], pose.eye[1], pose.eye[2]],
+		target: [pose.eye[0] + dx * cos - dz * sin, pose.target[1], pose.eye[2] + dx * sin + dz * cos],
+		fov: pose.fov
+	};
+}
+
+/** The yaw (radians, X→Z) from the eye toward a floor point, or null on the eye itself. */
+export function yawFromEye(pose: AuthoredViewPose, point: Vec3): number | null {
+	const dx = point[0] - pose.eye[0];
+	const dz = point[2] - pose.eye[2];
+	return Math.hypot(dx, dz) < 1e-6 ? null : Math.atan2(dz, dx);
 }

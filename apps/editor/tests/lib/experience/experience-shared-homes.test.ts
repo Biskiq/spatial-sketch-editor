@@ -156,20 +156,13 @@ describe('R217.S25 — the Experience home map', () => {
 		expect(openers).toEqual(['ExperienceGuideWriter.svelte']);
 	});
 
-	it('draws the lower-edge dock as Select, Place a View, Path, Capture and Guide, with Place armed and Path a reasoned disabled key', () => {
+	it('draws the lower-edge dock as Select, Place a View, Capture and Guide, with Place armed', () => {
 		const dock = readFileSync(path.join(EXPERIENCE_DIR, 'ExperienceDock.svelte'), 'utf8');
 		const keys = [...dock.matchAll(/data-dock-tool="([a-z-]+)"/g)].map((match) => match[1]);
-		expect(keys).toEqual(['select', 'place-view', 'path', 'capture', 'guide']);
+		expect(keys).toEqual(['select', 'place-view', 'capture', 'guide']);
 		const place = dock.match(/<button[^>]*data-dock-tool="place-view"[^>]*>/)?.[0] ?? '';
 		expect(place).not.toMatch(/\sdisabled\b/);
 		expect(place).toContain("'Place a View where the camera stands'");
-		const pathTag = dock.match(/<button[^>]*data-dock-tool="path"[^>]*>/)?.[0] ?? '';
-		expect(pathTag).toMatch(/onclick=\{onPath\}/);
-		expect(pathTag).toMatch(/title=\{pathHint\}/);
-		expect(pathTag).toMatch(/disabled=\{pathReason !== undefined/);
-		const describedBy = pathTag.match(/aria-describedby=\{pathReason !== undefined[^}]*\? '([^']+)'/)?.[1] ?? '';
-		expect(describedBy).not.toBe('');
-		expect(dock).toContain('Path — click the path to add a point');
 	});
 
 	it('leaves the Guide closed by default in the route', () => {

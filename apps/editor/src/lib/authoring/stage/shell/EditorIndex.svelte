@@ -1,5 +1,6 @@
 <script lang="ts">
 	/** Ephemeral scope locator over accepted source relationships. Selection, scope and Camera requests stay distinct. */
+	import { untrack } from 'svelte';
 	import { membershipLabel } from './index-labels';
 
 	import ShellIcon from './ShellIcon.svelte';
@@ -73,8 +74,8 @@
 	let renameBusy = $state(false);
 	let renameError = $state<string | null>(null);
 	function startExperienceRename(): void {
-		if (!experience?.current) return;
-		experienceDraft = experience.current.label;
+		if (!experience) return;
+		experienceDraft = experience.current?.label ?? experience.draftLabel;
 		renameError = null;
 		renamingExperience = true;
 	}
@@ -93,9 +94,90 @@
 			renameBusy = false;
 		}
 	}
+	function renameKeys(event: KeyboardEvent): void {
+		if (event.key === 'Enter') { event.preventDefault(); void commitExperienceName(); }
+		else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); renamingExperience = false; renameError = null; }
+	}
+
+	/*
+	 * Experience review 1 — the Experiences list. Folded, it shows the current
+	 * Experience and the most recently opened ones (at most EXPERIENCE_FOLD_ROWS);
+	 * "Show all" lists every one in authored order inside a capped scroll, with a
+	 * filter from EXPERIENCE_FILTER_FROM. The fold choice is a per-browser convenience.
+	 */
+	const EXPERIENCE_FOLD_ROWS = 3;
+	const EXPERIENCE_FILTER_FROM = 8;
+	const EXPANDED_KEY = 'museum.index.experiences-expanded';
+	function readExpanded(): boolean {
+		try {
+			return globalThis.localStorage?.getItem(EXPANDED_KEY) === 'true';
+		} catch {
+			return false;
+		}
+	}
+	let expanded = $state(readExpanded());
+	function setExpanded(next: boolean): void {
+		expanded = next;
+		experienceFilter = '';
+		try {
+			globalThis.localStorage?.setItem(EXPANDED_KEY, String(next));
+		} catch {
+			// A blocked store only forgets the choice.
+		}
+	}
+	let experienceFilter = $state('');
+	let recentExperienceIds = $state<string[]>([]);
+	$effect(() => {
+		const id = experience?.current?.id ?? null;
+		if (id === null) return;
+		untrack(() => {
+			recentExperienceIds = [id, ...recentExperienceIds.filter((entry) => entry !== id)].slice(0, 12);
+		});
+	});
+	const shownExperiences = $derived.by(() => {
+		const all = experience?.experiences ?? [];
+		if (expanded || all.length <= EXPERIENCE_FOLD_ROWS) {
+			const needle = experienceFilter.trim().toLowerCase();
+			return needle === '' ? all : all.filter((entry) => entry.label.toLowerCase().includes(needle) || entry.id === experience?.current?.id);
+		}
+		const byId = new Map(all.map((entry) => [entry.id, entry]));
+		const order = [...recentExperienceIds, ...all.map((entry) => entry.id)];
+		const picked: typeof all[number][] = [];
+		for (const id of order) {
+			const entry = byId.get(id);
+			if (entry !== undefined && !picked.includes(entry)) picked.push(entry);
+			if (picked.length === EXPERIENCE_FOLD_ROWS) break;
+		}
+		return picked;
+	});
+	function experienceMeta(entry: { readonly stopCount: number; readonly presentationCount: number }): string {
+		if (entry.stopCount > 0) return `${entry.stopCount} ${entry.stopCount === 1 ? 'stop' : 'stops'}`;
+		if (entry.presentationCount > 0) return `${entry.presentationCount} presented`;
+		return 'empty';
+	}
+
+	let creatingName = $state<string | null>(null);
+	function startCreate(): void {
+		if (!experience) return;
+		renamingExperience = false;
+		creatingName = `Experience ${experience.experiences.length + 1}`;
+	}
+	async function commitCreate(): Promise<void> {
+		if (!experience || creatingName === null) return;
+		const name = creatingName.trim();
+		creatingName = null;
+		if (name === '') return;
+		await experience.onCreateExperience(name);
+	}
+
 	function focusSelect(input: HTMLInputElement) {
 		input.focus();
 		input.select();
+	}
+
+	/** A Presentation row's snapshot shows its default View, or its first View when none is marked. */
+	function representativeViewId(views: readonly { readonly id: string; readonly isDefault: boolean }[]): string | null {
+		return (views.find((view) => view.isDefault) ?? views[0])?.id ?? null;
 	}
 
 	/** A Presentation row's Stop numbers: the first three, then how many follow. */
@@ -173,51 +255,88 @@
 				><ShellIcon name="chevronLeft" size={15} /></button
 			>
 		</div>
-		<div class="crumbs" role="group" aria-label="Experience">
-			{#if experience.current !== null && renamingExperience}
-				<input
-					class="crumb-input"
-					aria-label="Experience name"
-					value={experienceDraft}
-					disabled={renameBusy}
-					use:focusSelect
-					oninput={(event) => (experienceDraft = event.currentTarget.value)}
-					onblur={() => { if (!renameBusy) void commitExperienceName(); }}
-					onkeydown={(event) => {
-						if (event.key === 'Enter') { event.preventDefault(); void commitExperienceName(); }
-						else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); renamingExperience = false; renameError = null; }
-					}}
-				/>
-			{:else if experience.current !== null}
-				<span class="crumb" aria-current="location">{experience.current.label}</span>
-			{:else}
-				<span class="index-empty">No Experience yet</span>
-			{/if}
-			<details class="siblings">
-				<summary aria-label="Switch or create Experience"
-					><ShellIcon name="chevronDown" size={12} /></summary
+		<!-- Experience review 1: the Experiences of this World, listed like a file's pages. -->
+		<section class="group experiences" aria-labelledby="index-experiences" data-experience-list>
+			<h3 id="index-experiences" class="group-title group-title-row">
+				<span>Experiences <span class="count">{experience.experiences.length || ''}</span></span>
+				<button
+					type="button"
+					class="group-add"
+					aria-label="New Experience"
+					title="New Experience"
+					disabled={experience.busy || creatingName !== null}
+					onclick={startCreate}><ShellIcon name="plus" size={14} /></button
 				>
-				<div>
-					{#if experience.current !== null}<button
-							type="button"
-							class="menu-rename"
-							disabled={experience.busy}
-							onclick={(event) => { startExperienceRename(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Rename…</button
-						>{/if}
-					{#each experience.experiences.filter((entry) => entry.id !== experience.current?.id) as entry (entry.id)}<button
-							type="button"
-							onclick={(event) => { experience.onOpenExperience(entry.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{entry.label}</button
-						>{/each}
-					<button
-						type="button"
-						class="menu-create"
-						disabled={experience.busy}
-						onclick={(event) => { experience.onCreateExperience(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>New Experience</button
-					>
-				</div>
-			</details>
-		</div>
-		{#if renameError}<p class="crumb-error" role="alert">{renameError}</p>{/if}
+			</h3>
+			{#if expanded && experience.experiences.length > EXPERIENCE_FILTER_FROM}
+				<label class="exp-filter"
+					><ShellIcon name="search" size={13} /><input
+						type="search"
+						aria-label="Filter Experiences"
+						placeholder="Filter Experiences"
+						bind:value={experienceFilter}
+					/></label
+				>
+			{/if}
+			<ul class="group-items exp-list" class:scrolls={expanded && experience.experiences.length > EXPERIENCE_FOLD_ROWS}>
+				{#if experience.current === null}
+					<li class="exp-row current draft" data-experience-draft>
+						{#if renamingExperience}
+							<input class="crumb-input" aria-label="Experience name" value={experienceDraft} disabled={renameBusy} use:focusSelect
+								oninput={(event) => (experienceDraft = event.currentTarget.value)}
+								onblur={() => { if (!renameBusy) void commitExperienceName(); }}
+								onkeydown={renameKeys} />
+						{:else}
+							<button type="button" class="exp-open" aria-current="location" ondblclick={startExperienceRename} title="Double-click to rename"
+								><i class="exp-ic"></i><span class="exp-name">{experience.draftLabel}</span><span class="exp-meta">draft</span></button
+							>
+						{/if}
+					</li>
+				{/if}
+				{#each shownExperiences as entry (entry.id)}
+					{@const isCurrent = entry.id === experience.current?.id}
+					<li class="exp-row" class:current={isCurrent} data-experience-row={entry.id}>
+						{#if isCurrent && renamingExperience}
+							<input class="crumb-input" aria-label="Experience name" value={experienceDraft} disabled={renameBusy} use:focusSelect
+								oninput={(event) => (experienceDraft = event.currentTarget.value)}
+								onblur={() => { if (!renameBusy) void commitExperienceName(); }}
+								onkeydown={renameKeys} />
+						{:else}
+							<button
+								type="button"
+								class="exp-open"
+								aria-current={isCurrent ? 'location' : undefined}
+								onclick={() => { if (!isCurrent) experience.onOpenExperience(entry.id); }}
+								ondblclick={() => { if (isCurrent) startExperienceRename(); }}
+								><i class="exp-ic"></i><span class="exp-name">{entry.label}</span><span class="exp-meta">{experienceMeta(entry)}</span></button
+							>
+							{#if isCurrent}
+								<button type="button" class="exp-more" aria-label={`Rename ${entry.label}`} title="Rename" disabled={experience.busy}
+									onclick={startExperienceRename}><ShellIcon name="more" size={14} /></button
+								>
+							{/if}
+						{/if}
+					</li>
+				{/each}
+				{#if creatingName !== null}
+					<li class="exp-row current creating">
+						<input class="crumb-input" aria-label="New Experience name" value={creatingName} disabled={experience.busy} use:focusSelect
+							oninput={(event) => (creatingName = event.currentTarget.value)}
+							onblur={() => { if (!experience.busy) void commitCreate(); }}
+							onkeydown={(event) => {
+								if (event.key === 'Enter') { event.preventDefault(); void commitCreate(); }
+								else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); creatingName = null; }
+							}} />
+					</li>
+				{/if}
+			</ul>
+			{#if experience.experiences.length > EXPERIENCE_FOLD_ROWS}
+				<button type="button" class="exp-more-toggle" aria-expanded={expanded} onclick={() => setExpanded(!expanded)}
+					>{expanded ? 'Show less' : `Show all ${experience.experiences.length}`}<ShellIcon name={expanded ? 'chevronUp' : 'chevronDown'} size={12} /></button
+				>
+			{/if}
+			{#if renameError}<p class="crumb-error" role="alert">{renameError}</p>{/if}
+		</section>
 		<section class="group" aria-labelledby="index-presentations">
 			<h3 id="index-presentations" class="group-title">
 				Presentations <span class="count">{experience.totalPresentations}</span>
@@ -225,7 +344,7 @@
 			{#if experience.pending}
 				<p class="index-empty">The Experience lens mounts with the admitted project source.</p>
 			{:else if experience.current === null}
-				<p class="index-empty">Create an Experience from the menu above to start presenting.</p>
+				<p class="index-empty">Nothing presented yet. Start from the Stage.</p>
 			{:else if experience.presentations.length === 0}
 				<p class="index-empty">
 					{experience.query.trim() === ''
@@ -255,7 +374,7 @@
 										onRename(presentation.id);
 									}}
 								>
-									<ExperienceSnapshot label={presentation.label} ratio="row" selected={presentation.selected} />
+									<ExperienceSnapshot label={presentation.label} viewId={representativeViewId(presentation.views)} ratio="row" selected={presentation.selected} />
 									<span class="item-text">
 										<span class="item-name">{presentation.label}</span>
 										<span class="item-meta"
@@ -521,22 +640,129 @@
 		font: 12px var(--shell-sans, system-ui);
 	}
 
-	.crumbs {
+	/* Experience review 1 — the Experiences list, in the Index's own row grammar. */
+	.group-title-row {
 		display: flex;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 3px;
-		padding: 0 10px 6px;
-		font-size: 12px;
+		justify-content: space-between;
+		padding-right: 6px;
 	}
-	.crumbs button {
-		padding: 2px 4px;
+	.group-add {
+		display: grid;
+		place-items: center;
+		width: 22px;
+		height: 22px;
+		min-height: 22px;
+		padding: 0;
+		border-radius: 6px;
+		color: var(--shell-ink-3, #79817b);
 	}
-	.crumbs [aria-current] {
+	.group-add:hover:not(:disabled) {
+		background: var(--shell-hover, #eef0ed);
+		color: var(--shell-ink, #1b201c);
+	}
+	.exp-list.scrolls {
+		max-height: 224px;
+		overflow-y: auto;
+		box-shadow: inset 0 -8px 8px -8px rgb(0 0 0 / 0.12);
+	}
+	.exp-row {
+		display: flex;
+		align-items: center;
+		min-height: 28px;
+	}
+	.exp-row.current {
+		background: var(--shell-gold-tint, #f8efd6);
+	}
+	.exp-open {
+		flex: 1;
+		min-width: 0;
+		min-height: 28px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 4px 8px 4px 12px;
+		border-radius: 0;
+		text-align: left;
+		font: 400 13px/1.35 var(--shell-sans, system-ui);
+	}
+	.exp-row:not(.current) .exp-open:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.exp-ic {
+		flex: none;
+		width: 9px;
+		height: 9px;
+		border: 1.5px solid var(--shell-ink-3, #79817b);
+		border-radius: 2px;
+	}
+	.exp-row.current .exp-ic {
+		border-color: var(--shell-gold-ink, #74560c);
+		background: var(--shell-gold, #d4ad45);
+	}
+	.exp-name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.exp-row.current .exp-name {
 		font-weight: 600;
 	}
-	.siblings {
-		position: relative;
+	.exp-row.draft .exp-name {
+		font-style: italic;
+		color: var(--shell-ink-2, #4a524c);
+	}
+	.exp-meta {
+		flex: none;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 11px;
+	}
+	.exp-more {
+		width: 26px;
+		padding: 0;
+		justify-content: center;
+		opacity: 0;
+	}
+	.exp-row:hover .exp-more,
+	.exp-row:focus-within .exp-more {
+		opacity: 1;
+	}
+	.exp-row .crumb-input {
+		margin: 3px 8px 3px 12px;
+		border: 0;
+		border-bottom: 2px solid var(--shell-gold, #d4ad45);
+		border-radius: 0;
+		background: none;
+		font: 600 13px/1.35 var(--shell-sans, system-ui);
+		outline: none;
+	}
+	.exp-filter {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin: 2px 8px 4px;
+		padding: 0 8px;
+		height: 26px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 7px;
+		background: #fff;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.exp-more-toggle {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		width: 100%;
+		min-height: 26px;
+		padding: 0 12px;
+		color: var(--shell-ink-3, #79817b);
+		font: 500 12px var(--shell-sans, system-ui);
+	}
+	.exp-more-toggle:hover {
+		background: var(--shell-hover, #eef0ed);
+		color: var(--shell-ink, #1b201c);
 	}
 	/* R217.S26: the crumb's inline rename uses the crumb's own metrics. */
 	.crumb-input {
@@ -563,24 +789,7 @@
 		font: 500 10px/1.5 var(--shell-mono, ui-monospace, monospace);
 		letter-spacing: 0.02em;
 	}
-	.siblings summary {
-		cursor: pointer;
-		list-style: none;
-	}
 
-	.siblings div {
-		position: absolute;
-		z-index: 30;
-		top: 24px;
-		left: -80px;
-		width: 180px;
-		display: grid;
-		padding: 6px;
-		background: white;
-		border: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 8px;
-		box-shadow: var(--shell-shadow);
-	}
 
 	.facets {
 		display: flex;
@@ -671,21 +880,6 @@
 	}
 	.index-search .hide-index {
 		margin-left: auto;
-	}
-	.siblings div button {
-		width: 100%;
-		min-height: 28px;
-		justify-content: flex-start;
-	}
-	.siblings div .menu-create {
-		margin-top: 4px;
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 0 0 6px 6px;
-	}
-	.siblings div button:disabled {
-		background: transparent;
-		color: var(--shell-ink-3, #79817b);
-		cursor: default;
 	}
 	.group-title .count {
 		margin-left: 4px;

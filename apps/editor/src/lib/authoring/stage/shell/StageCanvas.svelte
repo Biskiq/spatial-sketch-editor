@@ -31,7 +31,7 @@
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { isPaperPlanVisible, paperRevealFor, PAPER_GROUND_INK } from '../paper-plan';
-import { gridIsVisible } from '../stage-grid';
+import { workspaceRectFor } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
@@ -43,6 +43,9 @@ import StageMatGround from './StageMatGround.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
+	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
+	import { worldEnvironmentLook } from '$lib/render/world-environment';
+	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
 
 	function ignoreRaycast(): void {}
@@ -67,6 +70,7 @@ import StageMatGround from './StageMatGround.svelte';
 		/** Layout ∪ Scene datum bounds; Paper's grid draws a bounded sheet. */
 		contentBounds = null,
 		snapshotBounds = null,
+		environment = 'paper',
 		framedViewport = null,
 		/** R217.S14 — the live candidate's extent; the sheet grows to include it. */
 		datumMeters = 0,
@@ -101,6 +105,8 @@ import StageMatGround from './StageMatGround.svelte';
 		contentBounds?: GridRect | null;
 		/** Layout ∪ Scene world bounds for the snapshot host's depth range. */
 		snapshotBounds?: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] } | null;
+		/** Experience review 1 (R5) — the environment the Stage shows (already `paper` while editing on Paper). */
+		environment?: SceneEnvironmentPreset;
 		/** A Look-through capture frame in Stage-local CSS; null draws the whole Stage. */
 		framedViewport?: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null;
 		/** The level datum the mat ground sits at. */
@@ -181,17 +187,8 @@ import StageMatGround from './StageMatGround.svelte';
 			size: [Math.max(0.1, max[0] - min[0]), Math.max(0.1, max[2] - min[2])] as [number, number]
 		};
 	});
-	/**
-	 * Grid visibility is one fact on both surfaces: under a Grid-off state, and in
-	 * Shaded Plan it is never drawn. The mat keeps its grid in shaded 3D.
-	 */
-	const gridVisible = $derived(
-		gridIsVisible({
-			grid: drafting.grid,
-			appearance: planAppearance,
-			renderedReading: evaluation?.renderedReading ?? null
-		})
-	);
+	// Both readings and appearances honor the same Grid toggle.
+	const gridVisible = $derived(drafting.grid && framedViewport === null);
 
 	const presentation = $derived.by(() => {
 		const record: Record<string, VisitorRoomPresentation> = {};
@@ -213,6 +210,12 @@ import StageMatGround from './StageMatGround.svelte';
 	}
 	/** A Scene root or lazy body arriving or leaving changes what Paper may draw. */
 	let sceneRootRevision = $state(0);
+	const environmentShown = $derived(environment !== 'paper' && !paperCovers);
+	const workspace = $derived(workspaceRectFor(contentBounds));
+	const shadowBounds = $derived({
+		min: [workspace.minX, Math.min(datumMeters, snapshotBounds?.min[1] ?? datumMeters), workspace.minZ] as const,
+		max: [workspace.maxX, Math.max(datumMeters, snapshotBounds?.max[1] ?? datumMeters), workspace.maxZ] as const
+	});
 	let entityRenderRevision = $state(0);
 	/** A model/form renderer has mounted geometry for already-registered roots. */
 	function entityRendererReady(): void {
@@ -242,17 +245,31 @@ import StageMatGround from './StageMatGround.svelte';
 		mat for the model, applied by the Camera's appearance realizer. No fog: the mat is
 		a measured ground, not an atmospheric room.
 	-->
-	<T.AmbientLight intensity={0.35} />
-	<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
-	<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
-	<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
-	<StageCamera {evaluation} paperVisible={paperCovers} paperInk={paperInk2d} frameViewport={framedViewport} worldOnly={framedViewport !== null} />
+	{#if environmentShown}
+		<!-- R5: the World's environment replaces the neutral lights, and the mat outside the plate. -->
+		<T.AmbientLight intensity={0.12} />
+		<WorldEnvironment preset={environment} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
+	{:else}
+		<T.AmbientLight intensity={0.35} />
+		<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
+		<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
+		<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
+	{/if}
+	<StageCamera {evaluation} paperVisible={paperCovers} paperInk={paperInk2d} frameViewport={framedViewport} worldOnly={framedViewport !== null} environmentSky={environmentShown} />
 	{#if evaluation !== null && matVisible}
 		<!--
 			The mat ground and its per-pixel grid: world-anchored, occluded by walls,
-			never a registered pick root.
+			never a registered pick root. Under an environment the bounded plate and
+			its grid stay; the environment's ground and horizon replace the mat around it.
 		-->
-		<StageMatGround {evaluation} {datumMeters} gridVisible={gridVisible && framedViewport === null} {contentBounds} plateInk={paperInk3d} />
+		<StageMatGround
+			{evaluation}
+			{datumMeters}
+			{gridVisible}
+			{contentBounds}
+			plateInk={paperInk3d}
+			litPlate={environmentShown ? (worldEnvironmentLook(environment)?.plate ?? null) : null}
+		/>
 	{/if}
 	{#if heightPlane !== null && !paperVisible && framedViewport === null}
 		<!-- A quiet neutral tint at the cut, never yellow or gold and never picked. -->
@@ -285,20 +302,11 @@ import StageMatGround from './StageMatGround.svelte';
 		onEntityRenderable={entityRendererReady}
 		onEntityRoot={registerSceneRoot}
 	/>
+	{#if paperReveal !== null && gridVisible}
+		<StageGrid {evaluation} {datumMeters} {contentBounds} fade={paperReveal.sheet} />
+	{/if}
 	{#if framedViewport === null && paperReveal !== null && plan !== null && evaluation !== null}
-		<!--
-			The Plan is a drawing on Paper: the same Plan evaluation the Layout pick
-			provider reads, and the same Scene footprints the Scene pick reads.
-		-->
-		{#if gridVisible && evaluation !== null}
-			<!-- Paper's grid is overlay ink beneath the drawing, on the same sheet. -->
-			<StageGrid
-				{evaluation}
-				{datumMeters}
-				{contentBounds}
-				fade={paperReveal.sheet}
-			/>
-		{/if}
+		<!-- Paper's drawing shares the same Plan and Scene footprints as the pick providers. -->
 		<StagePaper
 			{plan}
 			compiled={geometry}
@@ -361,5 +369,9 @@ import StageMatGround from './StageMatGround.svelte';
 		and the authored View pose evaluated by Camera. It renders no frame of its own
 		until a visible slot asks.
 	-->
-	<StageSnapshotRenderer revision={sceneRootRevision + entityRenderRevision} bounds={snapshotBounds} />
+	<StageSnapshotRenderer
+		revision={sceneRootRevision + entityRenderRevision}
+		bounds={snapshotBounds}
+		environment={environmentShown ? environment : 'paper'}
+	/>
 </Canvas>

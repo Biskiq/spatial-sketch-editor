@@ -50,7 +50,10 @@ import {
 	MODEL_SOURCE_SET_MAX_BYTES,
 	RESOURCE_KINDS,
 	RESOURCE_UNIT_FORMAT_VERSION,
+	SCENE_ENVIRONMENT_PRESETS,
 	SCENE_UNIT_FORMAT_VERSION,
+	type SceneEnvironment,
+	type SceneEnvironmentPreset,
 	UNIT_DOMAINS,
 	UNIT_ENVELOPE_FORMAT_VERSION,
 	type CameraFreeSceneDocument,
@@ -303,7 +306,7 @@ export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUni
  */
 export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<CameraFreeSceneDocument> {
 	const reader = new ShapeReader();
-	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'clusters']);
+	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'clusters', 'environment']);
 	if (record === null) return failed(reader);
 	if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {
 		reader.problem(
@@ -312,6 +315,16 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 			`$.formatVersion must be ${SCENE_UNIT_FORMAT_VERSION}; Scene ${SCENE_UNIT_FORMAT_VERSION} is Camera-free, carries native forms and carries no navigation graph`
 		);
 		return failed(reader);
+	}
+	let environment: SceneEnvironment | undefined;
+	if (record.environment !== undefined) {
+		const shape = reader.object(record.environment, '$.environment', ['preset']);
+		const preset = shape === null ? null : shape.preset;
+		if (typeof preset !== 'string' || !(SCENE_ENVIRONMENT_PRESETS as readonly string[]).includes(preset)) {
+			reader.problem('$.environment.preset', 'invalid_value', `$.environment.preset must be one of ${SCENE_ENVIRONMENT_PRESETS.join(', ')}`);
+		} else {
+			environment = { preset: preset as SceneEnvironmentPreset };
+		}
 	}
 	if (reader.issues.length > 0) return failed(reader);
 	const delegated = validateSceneDocument({
@@ -332,7 +345,8 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 			textures: document.textures,
 			materials: document.materials,
 			entities: document.entities,
-			...(document.clusters === undefined ? {} : { clusters: document.clusters })
+			...(document.clusters === undefined ? {} : { clusters: document.clusters }),
+			...(environment === undefined ? {} : { environment })
 		},
 		ignoredOptionalExtensions: []
 	};

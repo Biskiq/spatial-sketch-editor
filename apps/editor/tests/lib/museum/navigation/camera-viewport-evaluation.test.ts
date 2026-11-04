@@ -442,7 +442,28 @@ describe('view reading flip', () => {
 		expect(firstRay.ray.origin).not.toEqual(secondRay.ray.origin);
 	});
 
-	it('holds the target-plane extent through every intermediate step', () => {
+	it('trucks along the image plane while preserving aim and projection scale', () => {
+	const camera = state();
+	const before = evaluated(camera, RECT, 0);
+	const result = requestViewingIntent(camera, { kind: 'truck', deltaRightMeters: 2, deltaUpMeters: -1 }, 0);
+	if (result.kind !== 'accepted') throw new Error(result.message);
+	const after = evaluated(result.state, RECT, 0);
+	const { right, up } = screenBasis(before);
+	const delta = subtractVec3(scaleVec3(right, 2), up);
+	for (const [axis, component] of delta.entries()) {
+		expect(after.eye[axis]! - before.eye[axis]!).toBeCloseTo(component);
+		expect(after.target[axis]! - before.target[axis]!).toBeCloseTo(component);
+	}
+	expect(after.targetPlaneMetersPerCssPixel).toBe(before.targetPlaneMetersPerCssPixel);
+	expect(requestViewingIntent(camera, { kind: 'truck', deltaRightMeters: Infinity, deltaUpMeters: 0 }, 0)).toMatchObject({
+		kind: 'rejected', code: 'invalid-intent'
+	});
+	expect(requestViewingIntent(camera, { kind: 'truck', deltaRightMeters: 1001, deltaUpMeters: 0 }, 0)).toMatchObject({
+		kind: 'rejected', code: 'invalid-intent'
+	});
+});
+
+it('holds the target-plane extent through every intermediate step', () => {
 		const camera = state();
 		const flip = requestViewingIntent(camera, { kind: 'set-reading', reading: 'plan' }, 0);
 		if (flip.kind !== 'accepted') throw new Error('expected an accepted flip');
@@ -755,7 +776,7 @@ describe('R217.S19 — display ground clip range', () => {
 		expect(evaluation.targetPlaneMetersPerCssPixel).toBe(sphere.targetPlaneMetersPerCssPixel);
 	});
 
-	it('keeps the scene sphere when it reaches farther, and leaves Plan orthographic untouched', () => {
+	it('keeps the scene sphere when it reaches farther and already contains the Plan datum', () => {
 		const wide = evaluated(0, 5000);
 		const distance = Math.hypot(...subtractVec3(wide.eye, wide.target));
 		expect(wide.far).toBeCloseTo(distance + 5000, 6);
@@ -771,6 +792,26 @@ describe('R217.S19 — display ground clip range', () => {
 		const withGround = evaluateViewport(state, rect, 0, 1);
 		const without = evaluateViewport({ ...state, displayGroundYMeters: null }, rect, 0, 1);
 		expect(withGround).toEqual(without);
+	});
+
+	it('keeps the Paper datum visible when the Plan target is above a sparse scene', () => {
+		const camera = state({
+			reading: 'plan',
+			pose: { ...pose, target: [0, 4, 0], elevationRadians: Math.PI / 2 },
+			sceneRadiusMeters: 1,
+			displayGroundYMeters: 0
+		});
+		const plan = evaluatedViewport(camera);
+		const unbounded = evaluatedViewport({ ...camera, displayGroundYMeters: null });
+		expect(projectWorld([0, 0.004, 0], plan, plan.token)).toMatchObject({ kind: 'projected', visibility: 'visible' });
+		expect(plan.pose).toEqual(unbounded.pose);
+		expect(plan.targetPlaneMetersPerCssPixel).toBe(unbounded.targetPlaneMetersPerCssPixel);
+
+		function evaluatedViewport(camera: ViewportCameraState): ViewportEvaluation {
+			const result = evaluateViewport(camera, rect, 0, 1);
+			if (result.kind !== 'evaluated') throw new Error(result.reason);
+			return result.evaluation;
+		}
 	});
 
 	it('ignores a ground above the eye instead of inverting the range', () => {

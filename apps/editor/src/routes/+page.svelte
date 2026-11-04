@@ -87,12 +87,22 @@
 </script>
 
 <svelte:head>
-	<title>Museum Editor</title>
+	<title>Biskiq Editor</title>
 </svelte:head>
 
 <main class="entry-page">
+	<svg class="entry-sketch" viewBox="0 0 640 430" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid slice">
+		<g fill="none" stroke="#f3f0e4" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
+			<path d="M320 120 L520 230 L320 340 L120 230 Z" />
+			<path d="M120 230 L120 80 L320 -30 L320 120" />
+			<path d="M320 120 L320 -30 L520 80 L520 230" />
+			<path d="M170 100 L230 67 L230 127 L170 160 Z" />
+			<path d="M370 -2 L430 31 L430 91 L370 58 Z" />
+			<path d="M230 205 L300 240 L260 260 L190 225 Z" />
+		</g>
+	</svg>
 	<section class="entry-card" aria-labelledby="entry-title">
-		<p class="eyebrow">Museum Editor</p>
+		<p class="eyebrow">Biskiq Editor</p>
 		<h1 id="entry-title">Start a project</h1>
 		<p class="lede">Create in Spatial. Sign in when you want cloud projects.</p>
 		{#if redirecting}
@@ -122,19 +132,106 @@
 <style>
 	:global(body) {
 		margin: 0;
-		background: #111117;
-		color: #f4f0e9;
-		font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+		background: #11291f;
+		color: #f3f0e4;
+		font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 	}
-	.entry-page { display: grid; min-height: 100dvh; place-items: center; padding: 1.5rem; box-sizing: border-box; background: radial-gradient(circle at 50% 0%, #302b38, #111117 58%); }
-	.entry-card { width: min(30rem, 100%); padding: 2rem; border: 1px solid #4d4655; border-radius: 0.8rem; background: rgb(25 24 31 / 92%); box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 28%); }
-	.eyebrow { margin: 0 0 0.8rem; color: #c9a9ff; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-	h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.8rem); line-height: 1.05; }
-	.lede { margin: 1rem 0 0; color: #bcb5c4; line-height: 1.5; }
-	.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; }
-	button { padding: 0.65rem 0.85rem; border: 1px solid #635a6f; border-radius: 0.4rem; background: #292632; color: inherit; font: inherit; cursor: pointer; }
-	button:hover:not(:disabled) { border-color: #c9a9ff; }
-	button:disabled { cursor: default; opacity: 0.45; }
-	button.primary { border-color: #b997f2; background: #8f69c8; color: #fff; }
-	.status { margin: 1rem 0 0; color: #e3c4c4; line-height: 1.4; }
+	.entry-page {
+		position: relative;
+		display: grid;
+		min-height: 100dvh;
+		place-items: center;
+		padding: 16px;
+		box-sizing: border-box;
+		overflow: hidden;
+		background: var(--shell-forest, #11291f);
+		color: #f3f0e4;
+	}
+	.entry-sketch {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: min(720px, 140%);
+		transform: translate(-50%, -50%);
+		opacity: 0.12;
+		pointer-events: none;
+	}
+	.entry-card {
+		position: relative;
+		width: min(30rem, 100%);
+		box-sizing: border-box;
+		padding: 2rem;
+		border: 1px solid rgba(255, 255, 255, 0.14);
+		border-radius: 16px;
+		background: rgba(255, 255, 255, 0.05);
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+	}
+	.eyebrow {
+		margin: 0 0 0.8rem;
+		color: #d4ad45;
+		font-size: 0.72rem;
+		font-weight: 600;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+	}
+	h1 {
+		margin: 0;
+		font-family: 'Iowan Old Style', Palatino, Georgia, serif;
+		font-weight: 500;
+		font-size: clamp(1.8rem, 6vw, 2.2rem);
+		line-height: 1.1;
+		color: #f3f0e4;
+	}
+	.lede {
+		margin: 0.9rem 0 0;
+		color: #cdd8d1;
+		line-height: 1.5;
+	}
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin-top: 1.5rem;
+	}
+	button {
+		padding: 0.65rem 1rem;
+		border: 1px solid rgba(255, 255, 255, 0.28);
+		border-radius: 8px;
+		background: transparent;
+		color: #f3f0e4;
+		font: inherit;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+	button:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.08);
+	}
+	button:disabled {
+		cursor: default;
+		opacity: 0.45;
+	}
+	button.primary {
+		border-color: #d4ad45;
+		background: #d4ad45;
+		color: #11291f;
+		font-weight: 600;
+	}
+	button.primary:hover:not(:disabled) {
+		background: #e0bb58;
+		border-color: #e0bb58;
+	}
+	button:focus-visible {
+		outline: 2px solid #d4ad45;
+		outline-offset: 2px;
+	}
+	.status {
+		margin: 1rem 0 0;
+		color: #f2c6bd;
+		line-height: 1.4;
+	}
+	@media (max-width: 480px) {
+		.entry-card {
+			padding: 1.5rem;
+		}
+	}
 </style>

@@ -194,8 +194,14 @@ export function captureBindIntent(input: {
 	 */
 	readonly firstGuideLabel?: string | null;
 	readonly afterStopId: string | null;
+	/**
+	 * Experience review 1 (ready draft): create the Experience `experienceId` in the
+	 * same accepted change, with this label. The capture then targets no Experience.
+	 */
+	readonly newExperienceLabel?: string | null;
 }): AuthoringIntent {
 	const firstGuideLabel = input.firstGuideLabel ?? null;
+	const newExperienceLabel = input.newExperienceLabel ?? null;
 	if (firstGuideLabel !== null && input.guideId !== null) {
 		throw new Error('captureBindIntent: a capture authors either an existing Guide Stop or a first Guide, never both');
 	}
@@ -210,11 +216,12 @@ export function captureBindIntent(input: {
 		}
 		allocated.push({ kind: 'stop', id: input.ids.stop! }, { kind: 'guide', id: input.ids.guide });
 	}
+	if (newExperienceLabel !== null) allocated.push({ kind: 'experience', id: input.experienceId });
 	return intent(
 		EXPERIENCE_CAPTURE_BIND_KIND,
 		input.ids,
 		input.revision,
-		[experienceReference(input.envelope, input.experienceId)],
+		newExperienceLabel === null ? [experienceReference(input.envelope, input.experienceId)] : [],
 		{
 			view: input.view,
 			presentation: {
@@ -234,7 +241,8 @@ export function captureBindIntent(input: {
 							continuation: { kind: 'sequence-next', transition: 'cut' }
 						}
 					}),
-			...(firstGuideLabel === null ? {} : { firstGuide: { label: firstGuideLabel } })
+			...(firstGuideLabel === null ? {} : { firstGuide: { label: firstGuideLabel } }),
+			...(newExperienceLabel === null ? {} : { newExperience: { label: newExperienceLabel } })
 		},
 		allocated
 	);
@@ -367,6 +375,8 @@ export function stopUpdateIntent(input: {
 	readonly stopId: string;
 	readonly views?: readonly ExperienceGuidedView[];
 	readonly continuation?: ExperienceContinuation | null;
+	/** Travel: the straight Camera path this change adds when the pair has none (one Undo). */
+	readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_STOP_UPDATE_KIND,
@@ -375,9 +385,12 @@ export function stopUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'stop', input.stopId)],
 		{
 			...(input.views === undefined ? {} : { views: input.views }),
-			...(input.continuation === undefined ? {} : { continuation: input.continuation })
+			...(input.continuation === undefined ? {} : { continuation: input.continuation }),
+			...(input.travelPath === undefined ? {} : { travelPath: input.travelPath })
 		},
-		[]
+		input.travelPath === undefined || input.ids.connection === undefined
+			? []
+			: [{ kind: 'connection', id: input.ids.connection }]
 	);
 }
 

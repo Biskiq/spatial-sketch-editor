@@ -163,14 +163,15 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 
 	function startAt(guideMap: GuideTimeMap, seconds: number): void {
 		map = guideMap;
-		seekTo(seconds);
 		if (guideMap.segments.length === 0) {
 			status = 'idle';
 			return;
 		}
 		// Starting on a wait (an untimed first View, or an all-wait Guide) enters
 		// that occurrence and waits; only a fresh Play moves past it.
+		cursor = seconds === 0 ? initialCursor(guideMap) : guideTimeCursorAt(guideMap, seconds);
 		status = currentSegment()?.kind === 'wait' ? 'waiting' : 'playing';
+		updateSample();
 	}
 
 	function pause(): void {
@@ -337,6 +338,11 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 				resumePastWait();
 				return;
 			}
+			if (map !== null && status === 'ended') {
+				// A finished run plays again from its own entry, never from a stale end.
+				startAt(map, 0);
+				return;
+			}
 			if (currentSegment()?.kind === 'wait') {
 				if (status === 'idle') {
 					// Entering the run's first wait pauses on it.
@@ -355,11 +361,7 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 				status = 'playing';
 				return;
 			}
-			if (map !== null && status === 'ended') {
-				// A finished run plays again from its own entry, never from a stale end.
-				startAt(map, 0);
-				return;
-			}
+
 			const derived = derive(readSource()?.entryStopId ?? null);
 			if (derived !== null) startAt(derived, 0);
 		},

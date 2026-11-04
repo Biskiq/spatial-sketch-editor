@@ -68,7 +68,6 @@
 	const activeEye = $derived(
 		throughFraming !== null ? eyeHeightStepOf(throughFraming.eyeHeightMetres) : view === null ? null : eyeHeightStepOf(view.eyeHeightMetres)
 	);
-	const throughMoved = $derived(homes.lookThroughMoved());
 	const makeDefaultReason = $derived(controller?.busy ? 'Wait for the current change' : '');
 	const alsoIn = $derived(view === null || controller === null ? [] : controller.alsoIn(view.id, view.presentationId));
 
@@ -98,27 +97,13 @@
 	function lookThrough(): void {
 		if (view !== null) homes.lookThrough(view.id);
 	}
-	function exitLookThrough(): void {
-		homes.exitLookThrough();
-	}
-	async function updateLookThrough(): Promise<void> {
-		await homes.updateLookThrough();
-	}
 </script>
 
 {#if controller !== null && view !== null}
 	<div class="writer" data-experience-writer="view">
 		<div class="c-actions cfoot">
-			{#if through}
-				<button type="button" class="btn" onclick={exitLookThrough}>Exit View</button>
-				<button
-					type="button"
-					class="btn gold"
-					disabled={!throughMoved || controller.busy}
-					title={throughMoved ? 'Write the provisional pose back to this View' : 'Re-aim, change the lens or eye height first'}
-					onclick={() => void updateLookThrough()}>Update View</button
-				>
-			{:else}
+			<!-- While through, the Stage HUD owns Exit and Update; the Card keeps Framing. -->
+			{#if !through}
 				<button type="button" class="btn primary" onclick={lookThrough}>
 					<ShellIcon name="eye" size={14} />Look through
 				</button>

@@ -112,7 +112,7 @@ async function authoring(projectId: string, name: string) {
 		id: projectId,
 		name,
 		layout,
-		scene: { formatVersion: 4, textures: [], materials: [], entities: [piano] }
+		scene: { formatVersion: 5, textures: [], materials: [], entities: [piano] }
 	});
 	const profile = createUnitAcceptanceProfile({ compound: true, sessionEpoch: 'x-fixtures' });
 	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({

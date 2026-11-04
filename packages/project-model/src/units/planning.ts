@@ -69,6 +69,8 @@ import { stageUnitResources, type StagedUnitResource } from './acceptance-stagin
 import { readExperienceText, readGuidedViews } from './validate';
 import type { SceneConnection, ScenePathAnchor } from '../scene';
 import {
+	SCENE_ENVIRONMENT_PRESETS,
+	type SceneEnvironmentPreset,
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_WELCOME_MAX_LENGTH,
 	EXPERIENCE_TRANSITIONS,
@@ -272,7 +274,7 @@ export function createCameraViewUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 
 const CONTINUATION_KEYS = ['kind', 'stopId', 'transition'] as const;
 const STOP_PAYLOAD_KEYS = ['holdSeconds', 'continuation', 'guideId', 'afterStopId'] as const;
-const COMPOUND_PAYLOAD_KEYS = ['view', 'presentation', 'stop', 'firstGuide', 'resource'] as const;
+const COMPOUND_PAYLOAD_KEYS = ['view', 'presentation', 'stop', 'firstGuide', 'resource', 'newExperience'] as const;
 const FIRST_GUIDE_PAYLOAD_KEYS = ['label'] as const;
 const PRESENTATION_PAYLOAD_KEYS = ['label', 'subject', 'text'] as const;
 const RESOURCE_UPDATE_KEYS = ['contentRevision', 'pin'] as const;
@@ -602,15 +604,49 @@ export function createCaptureBindPlanner(
 				return refuse('unsupported-operation', 'a staged resource change targets exactly one resource reference');
 			}
 
-			const target = targetOf(request.intent, 'experience', 'experience');
-			if (target === null) {
-				return refuse('unsupported-operation', 'experience-capture-bind targets exactly one experience:experience reference');
+			// Experience review 1 (ready draft): the first step in an unsaved draft
+			// creates its Experience in the same accepted change, so one Undo removes both.
+			const requestedNewExperience = payload.newExperience !== null && payload.newExperience !== undefined;
+			const newExperiencePayload = requestedNewExperience
+				? reader.object(payload.newExperience, '$.payload.newExperience', CREATE_PAYLOAD_KEYS)
+				: null;
+			const newExperienceLabel = newExperiencePayload === null ? null : reader.string(newExperiencePayload.label, '$.payload.newExperience.label');
+			if (requestedNewExperience && newExperienceLabel === null) {
+				return refuse('invalid-payload', 'The new Experience payload is not a valid shape', reader.issues);
 			}
-			const experienceIndex = envelope.units.experience.data.experiences.findIndex(
-				(candidate) => candidate.id === target.subject.id
-			);
-			if (experienceIndex === -1) return refuse('missing-target', `experience "${target.subject.id}" is not in this envelope`);
-			const experience = envelope.units.experience.data.experiences[experienceIndex]!;
+			let experienceIndex = -1;
+			let experience: Experience;
+			if (newExperienceLabel !== null) {
+				if (request.intent.targets.some((candidateTarget) => candidateTarget.domain === 'experience')) {
+					return refuse('unsupported-operation', 'a capture that creates its Experience targets no existing Experience');
+				}
+				const newExperienceId = capturedId(request.intent, 'experience');
+				if (newExperienceId === null) return refuse('unsupported-operation', 'the intent must capture exactly one experience id');
+				if (allIds(envelope).has(newExperienceId)) {
+					return refuse('duplicate-identity', `the captured id "${newExperienceId}" already names a subject in this envelope`);
+				}
+				experience = {
+					id: newExperienceId,
+					label: newExperienceLabel,
+					entryGuideId: null,
+					welcome: null,
+					presentations: [],
+					stops: [],
+					guides: [],
+					gates: [],
+					detours: []
+				};
+			} else {
+				const target = targetOf(request.intent, 'experience', 'experience');
+				if (target === null) {
+					return refuse('unsupported-operation', 'experience-capture-bind targets exactly one experience:experience reference');
+				}
+				experienceIndex = envelope.units.experience.data.experiences.findIndex(
+					(candidate) => candidate.id === target.subject.id
+				);
+				if (experienceIndex === -1) return refuse('missing-target', `experience "${target.subject.id}" is not in this envelope`);
+				experience = envelope.units.experience.data.experiences[experienceIndex]!;
+			}
 
 			const viewId = capturedId(request.intent, 'view');
 			const presentationId = capturedId(request.intent, 'presentation');
@@ -623,6 +659,7 @@ export function createCaptureBindPlanner(
 			}
 			const ids = allIds(envelope);
 			for (const id of [viewId, presentationId, ...(stopId === null ? [] : [stopId])]) {
+				if (id === experience.id) return refuse('duplicate-identity', 'the new Experience and its first View or Presentation must have distinct identities');
 				if (ids.has(id)) return refuse('duplicate-identity', `the captured id "${id}" already names a subject in this envelope`);
 			}
 			if (viewId === presentationId || viewId === stopId || presentationId === stopId) {
@@ -741,9 +778,11 @@ export function createCaptureBindPlanner(
 				// never makes Guide membership mandatory for any other Presentation.
 				entryGuideId: newGuide === null ? experience.entryGuideId : newGuide.id
 			};
-			const experiences = envelope.units.experience.data.experiences.map((candidate, index) =>
-				index === experienceIndex ? updatedExperience : candidate
-			);
+			const experiences = experienceIndex === -1
+				? [...envelope.units.experience.data.experiences, updatedExperience]
+				: envelope.units.experience.data.experiences.map((candidate, index) =>
+						index === experienceIndex ? updatedExperience : candidate
+					);
 			// An optional staged-resource change is applied to the **same candidate**
 			// as the Camera/Experience content, including its exact lock entry, so one
 			// install carries one resource revision/pin beside the authored change.
@@ -878,6 +917,9 @@ export function createCaptureBindPlanner(
 			}
 
 			const changes: OperationChange[] = [
+				...(experienceIndex === -1
+					? [{ kind: 'experience.created', subjectIds: [experience.id], fields: ['label', 'entryGuideId'] } as OperationChange]
+					: []),
 				{ kind: 'camera.view.created', subjectIds: [newView.id], fields: ['label', 'eye', 'target', 'fov', 'connectedViewIds'] },
 				{
 					kind: 'experience.presentation.created',
@@ -886,6 +928,9 @@ export function createCaptureBindPlanner(
 				}
 			];
 			const correspondence: CorrespondenceEntry[] = [
+				...(experienceIndex === -1
+					? [{ relation: 'created', before: null, after: reference('experience', 'experience', experience.id, [], revisionOf(candidate, 'experience')) } as CorrespondenceEntry]
+					: []),
 				{
 					relation: 'created',
 					before: null,
@@ -1553,18 +1598,27 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 	};
 }
 
-const STOP_UPDATE_PAYLOAD_KEYS = ['views', 'continuation'] as const;
+const STOP_UPDATE_PAYLOAD_KEYS = ['views', 'continuation', 'travelPath'] as const;
+const STOP_TRAVEL_PATH_KEYS = ['fromViewId', 'toViewId'] as const;
 
 function presentationOfStop(experience: Experience, stop: ExperienceStop): ExperiencePresentation | null {
 	return experience.presentations.find((candidate) => candidate.id === stop.presentationId) ?? null;
 }
 
-/** Replace a Stop's guided sequence, continuation, or both in one intent. */
+/**
+ * Replace a Stop's guided sequence, continuation, or both in one intent.
+ *
+ * Experience review 1 — choosing Travel may carry `travelPath` (the leaving and
+ * arriving Views). When no Camera path joins that pair yet, the same accepted
+ * change adds the straight one (`camera-connection-create`'s shape, with the
+ * captured `connection` id), so Travel plays at once and is one Undo. An
+ * existing path is kept as it is.
+ */
 export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: 'unit.experience-stop-update',
 		kind: EXPERIENCE_STOP_UPDATE_KIND,
-		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
@@ -1587,6 +1641,16 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			}
 			if (!viewsPresent && !continuationPresent) {
 				return refuse('invalid-payload', 'the Stop payload names no field to change');
+			}
+			let travelPath: { readonly fromViewId: string; readonly toViewId: string } | null = null;
+			if (payload.travelPath !== undefined) {
+				const path = reader.object(payload.travelPath, '$.payload.travelPath', STOP_TRAVEL_PATH_KEYS);
+				const fromViewId = path === null ? null : reader.string(path.fromViewId, '$.payload.travelPath.fromViewId');
+				const toViewId = path === null ? null : reader.string(path.toViewId, '$.payload.travelPath.toViewId');
+				if (fromViewId === null || toViewId === null || reader.issues.length !== 0) {
+					return refuse('invalid-payload', 'The Stop payload is not a valid shape', reader.issues);
+				}
+				travelPath = { fromViewId, toViewId };
 			}
 			const target = targetOf(request.intent, 'experience', 'stop');
 			if (target === null) {
@@ -1650,6 +1714,14 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 					}
 				}
 			};
+			let source: ProjectEnvelope = candidate;
+			let createdConnection: SceneConnection | null = null;
+			if (travelPath !== null && travelPath.fromViewId !== travelPath.toViewId) {
+				const joined = withStraightConnection(envelope, candidate, travelPath, capturedId(request.intent, 'connection'));
+				if (joined.kind === 'refused') return refuse(joined.code, joined.message);
+				source = joined.envelope;
+				createdConnection = joined.connection;
+			}
 			const changedFields: string[] = [];
 			if (JSON.stringify(updated.views) !== JSON.stringify(previous.views)) changedFields.push('views');
 			if (JSON.stringify(updated.continuation) !== JSON.stringify(previous.continuation)) changedFields.push('continuation');
@@ -1659,16 +1731,34 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 					operationId: request.intent.operationId,
 					sourceKind: request.snapshot.sourceKind,
 					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
+					source,
 					changes: [
-						{ kind: 'experience.stop.updated', subjectIds: [updated.id], fields: changedFields }
+						{ kind: 'experience.stop.updated', subjectIds: [updated.id], fields: changedFields },
+						...(createdConnection === null
+							? []
+							: [
+									{
+										kind: 'camera.connection.created',
+										subjectIds: [createdConnection.id],
+										fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath']
+									}
+								])
 					],
 					correspondence: [
 						{
 							relation: 'preserved',
 							before: reference('experience', 'stop', previous.id, [container.id], revisionOf(envelope, 'experience')),
-							after: reference('experience', 'stop', previous.id, [container.id], revisionOf(candidate, 'experience'))
-						}
+							after: reference('experience', 'stop', previous.id, [container.id], revisionOf(source, 'experience'))
+						},
+						...(createdConnection === null
+							? []
+							: [
+									{
+										relation: 'created' as const,
+										before: null,
+										after: reference('camera', 'connection', createdConnection.id, [], revisionOf(source, 'camera'))
+									}
+								])
 					],
 					diagnostics: []
 				}
@@ -1678,6 +1768,64 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 }
 
 /* --- Camera connections (R217.S29) ----------------------------------------- */
+
+/**
+ * The straight Camera path a Travel needs, added to `candidate` unless the pair
+ * is already joined. Shared by the Stop update so Travel and its path are one
+ * accepted change; the standalone create planner keeps its own refusal for an
+ * existing pair.
+ */
+function withStraightConnection(
+	envelope: ProjectEnvelope,
+	candidate: ProjectEnvelope,
+	pair: { readonly fromViewId: string; readonly toViewId: string },
+	connectionId: string | null
+):
+	| { readonly kind: 'joined'; readonly envelope: ProjectEnvelope; readonly connection: SceneConnection | null }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	const views = candidate.units.camera.data.views;
+	const fromView = views.find((view) => view.id === pair.fromViewId);
+	const toView = views.find((view) => view.id === pair.toViewId);
+	if (fromView === undefined || toView === undefined) {
+		return { kind: 'refused', code: 'missing-target', message: 'A View this Travel needs is not in this envelope' };
+	}
+	if (candidate.units.camera.data.connections.some((connection) => sameUnorderedPair(connection, fromView.id, toView.id))) {
+		return { kind: 'joined', envelope: candidate, connection: null };
+	}
+	if (connectionId === null || allIds(envelope).has(connectionId)) {
+		return { kind: 'refused', code: 'invalid-identity', message: 'The captured Camera connection id is missing or already used' };
+	}
+	const connection: SceneConnection = {
+		id: connectionId,
+		fromNodeId: fromView.id,
+		toNodeId: toView.id,
+		clearance: CAMERA_CONNECTION_DEFAULT_CLEARANCE,
+		positionPath: { kind: 'auto-bezier', anchors: [] }
+	};
+	const connected = views.map((view) => {
+		const other = view.id === fromView.id ? toView.id : view.id === toView.id ? fromView.id : null;
+		if (other === null || view.connectedViewIds.includes(other)) return view;
+		return { ...view, connectedViewIds: [...view.connectedViewIds, other] };
+	});
+	return {
+		kind: 'joined',
+		connection,
+		envelope: {
+			...candidate,
+			units: {
+				...candidate.units,
+				camera: {
+					header: { ...candidate.units.camera.header },
+					data: {
+						formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+						views: connected,
+						connections: [...candidate.units.camera.data.connections, connection]
+					}
+				}
+			}
+		}
+	};
+}
 
 /** Create one straight Camera connection between two existing Views. */
 export const CAMERA_CONNECTION_CREATE_KIND = 'camera-connection-create';
@@ -2448,8 +2596,49 @@ export function createExperiencePresentationViewRemovePlanner(): DomainPlanner<P
 }
 
 /** Every planner a host registers for this slice's authored operations. */
+/** Experience review 1 (R5) — choose the World's environment preset. */
+export const SCENE_ENVIRONMENT_SET_KIND = 'scene-environment-set';
+
+/**
+ * Set the Scene's World environment to one fixed preset. No targets: the Scene
+ * holds one environment. `paper` is written as the field's absence, so a World
+ * that never chose one and a World set back to Paper are the same bytes.
+ */
+export function createSceneEnvironmentSetPlanner(): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'unit.scene-environment-set',
+		kind: SCENE_ENVIRONMENT_SET_KIND,
+		admission: { domain: 'scene', compound: false, units: true, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare(request) {
+			const envelope = envelopeOf(request);
+			const reader = new ShapeReader();
+			const payload = reader.object(request.intent.payload, '$.payload', ['preset'] as const);
+			const preset = payload === null ? null : payload.preset;
+			if (typeof preset !== 'string' || !(SCENE_ENVIRONMENT_PRESETS as readonly string[]).includes(preset)) {
+				return refuse('invalid-payload', 'Choose one of the environment presets', reader.issues);
+			}
+			if (request.intent.targets.length !== 0) {
+				return refuse('unsupported-operation', 'scene-environment-set takes no targets');
+			}
+			const scene = envelope.units.scene.data;
+			const previous = scene.environment?.preset ?? 'paper';
+			if (previous === preset) return refuse('no-change', 'The World already uses this environment');
+			const { environment: _previous, ...rest } = scene;
+			const data = preset === 'paper' ? rest : { ...rest, environment: { preset: preset as SceneEnvironmentPreset } };
+			const candidate: ProjectEnvelope = {
+				...envelope,
+				units: { ...envelope.units, scene: { header: { ...envelope.units.scene.header }, data } }
+			};
+			return prepared(request, candidate, [{ kind: 'scene.environment.updated', subjectIds: [], fields: ['environment'] }], []);
+		}
+	};
+}
+
 export function createUnitCandidatePlanners(options: CaptureBindOptions = {}): DomainPlanner<ProjectEnvelope>[] {
 	return [
+		createSceneEnvironmentSetPlanner(),
 		createCameraViewUpdatePlanner(),
 		createCameraConnectionCreatePlanner(),
 		createCameraConnectionUpdatePlanner(),

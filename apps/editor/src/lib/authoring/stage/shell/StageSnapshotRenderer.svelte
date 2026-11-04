@@ -9,11 +9,11 @@
 	 * renderer mutation is restored in a `finally`, including when the readback
 	 * throws.
 	 */
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { useThrelte } from '@threlte/core';
 	import { Color, PerspectiveCamera, UnsignedByteType, Vector4, WebGLRenderTarget } from 'three';
 	import { createViewportCameraState, evaluateViewport, inspectionPoseFromView } from '@portfolio/camera-core';
-	import { MAT_BACKGROUND_INK, STAGE_WORLD_LAYER } from '../paper-plan';
+	import { PAPER_GROUND_INK, STAGE_WORLD_LAYER } from '../paper-plan';
 	import {
 		invalidateStageSnapshots,
 		registerStageSnapshotRenderer,
@@ -22,9 +22,12 @@
 
 	let {
 		revision = 0,
-		bounds = null
+		bounds = null,
+		environment = 'paper'
 	}: {
 		revision?: number;
+		/** The environment the Stage shows; a change owes every snapshot a new image. */
+		environment?: string;
 		bounds?: { readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] } | null;
 	} = $props();
 
@@ -124,7 +127,8 @@
 			target.scissor.set(0, 0, WIDTH, height);
 			target.scissorTest = false;
 			renderer.setRenderTarget(target);
-			renderer.setClearColor(MAT_BACKGROUND_INK, 1);
+			// Snapshots read as the Stage: Paper behind the World, never the mat.
+			renderer.setClearColor(PAPER_GROUND_INK, 1);
 			renderer.autoClear = true;
 			renderer.clear();
 			renderer.render(scene, camera);
@@ -152,15 +156,27 @@
 		};
 	});
 
-	let firstRevision = true;
+	let lastRevision: string | null = null;
+	let pendingFrame = 0;
+	onMount(() => () => cancelAnimationFrame(pendingFrame));
 	$effect(() => {
-		void revision;
-		if (firstRevision) {
-			firstRevision = false;
-			return;
-		}
-		// A newly renderable body, a resolved model or a helper-layer change owes new
-		// images; the exact-pose cache can no longer claim to describe the scene.
-		invalidateStageSnapshots();
+		const next = `${revision}:${environment}`;
+		untrack(() => {
+			if (lastRevision === null) {
+				lastRevision = next;
+				return;
+			}
+			if (next === lastRevision) return;
+			lastRevision = next;
+			// A newly renderable body, a resolved model or a helper-layer change owes new
+			// images. Mounting a Stage bumps the revision once per body, so the
+			// invalidation is coalesced to one per frame and never runs inside this
+			// effect: slots that re-request cannot feed back into the same flush.
+			if (pendingFrame !== 0) return;
+			pendingFrame = requestAnimationFrame(() => {
+				pendingFrame = 0;
+				invalidateStageSnapshots();
+			});
+		});
 	});
 </script>

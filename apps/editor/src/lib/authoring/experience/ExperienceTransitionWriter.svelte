@@ -65,6 +65,8 @@
 			? controller.selectedPath
 			: null
 	);
+	/** Other moves that share this Camera path, shown as a small "Also used by" chip. */
+	const sharedCount = $derived(travelling && path !== null ? path.sharedUses.length : 0);
 	const busyReason = $derived(controller?.busy === true ? BUSY_REASON : null);
 	/** Path is editable only for a supported Travel; a gap offers the one add action. */
 	const pathReason = $derived(
@@ -139,22 +141,21 @@
 			</div>
 		</div>
 
-		<section class="ends" aria-label="Ends">
+		<section class="ends" aria-label="Leaves and arrives">
 			<button type="button" class="end" onclick={() => homes.select({ kind: 'stop', stopId: stop.id })}>
+				<small class="end-tag">Leaves</small>
 				<span class="end-img">
-					<ExperienceSnapshot label={viewLabelOf(stop, stopExitViewId(stop))} />
+					<ExperienceSnapshot
+						label={viewLabelOf(stop, stopExitViewId(stop))}
+						viewId={stopExitViewId(stop)}
+					/>
 					{#if fromPlace > 0}<span class="num">{fromPlace}</span>{/if}
 				</span>
-				<small>leaves from</small>
 				<b>{viewLabelOf(stop, stopExitViewId(stop))}</b>
 			</button>
-			<span class="ends-mid">
-				{#if transition !== null}
-					<ShellIcon name={transition === 'cut' ? 'cut' : 'travel'} size={16} />
-					<small>{transition === 'cut' ? 'cut' : 'travel'}</small>
-				{:else}
-					<ShellIcon name="chevronRight" size={16} />
-				{/if}
+			<span class="ends-mid" aria-hidden="true">
+				<ShellIcon name="chevronRight" size={16} />
+				{#if transition !== null}<small>{transition === 'cut' ? 'Cut' : 'Travel'}</small>{/if}
 			</span>
 			{#if destination !== null}
 				<button
@@ -162,27 +163,40 @@
 					class="end"
 					onclick={() => homes.select({ kind: 'stop', stopId: destination.id })}
 				>
+					<small class="end-tag"
+						>Arrives{#if toPlace === 0} · outside this Guide{/if}</small
+					>
 					<span class="end-img">
-						<ExperienceSnapshot label={viewLabelOf(destination, stopEntryViewId(destination))} />
+						<ExperienceSnapshot
+							label={viewLabelOf(destination, stopEntryViewId(destination))}
+							viewId={stopEntryViewId(destination)}
+						/>
 						{#if toPlace > 0}<span class="num">{toPlace}</span>{/if}
 					</span>
-					<small>arrives at{#if toPlace === 0} · outside this Guide{/if}</small>
 					<b>{viewLabelOf(destination, stopEntryViewId(destination))}</b>
 				</button>
 			{:else if isEnd}
 				<span class="end static">
+					<small class="end-tag">Arrives</small>
 					<span class="end-img finish"><ShellIcon name="pin" size={16} /></span>
-					<small>arrives at</small>
 					<b>End of tour</b>
 				</span>
 			{:else}
 				<span class="end static">
+					<small class="end-tag">Arrives</small>
 					<span class="end-img finish"><ShellIcon name="warning" size={16} /></span>
-					<small>arrives at</small>
 					<b class="muted">The next Stop is missing from this Experience.</b>
 				</span>
 			{/if}
 		</section>
+
+		{#if sharedCount > 0}
+			<div class="meta-row">
+				<span class="chip" title="Other moves that use this same Camera path">
+					Also used by {sharedCount} {sharedCount === 1 ? 'move' : 'moves'}
+				</span>
+			</div>
+		{/if}
 
 		{#if travelling && !isEnd}
 			<ExperiencePathMovement
@@ -344,20 +358,22 @@
 		border-radius: 9px;
 		background: var(--shell-forest, #11291f);
 		color: #fff;
-		font: 600 10.5px/1 var(--shell-mono, ui-monospace, monospace);
+		font: 600 11px/1 var(--shell-sans, system-ui, sans-serif);
 	}
-	.end small {
+	.end-tag {
 		color: var(--shell-ink-3, #79817b);
-		font-size: 10px;
+		font: 600 10px/1.2 var(--shell-sans, system-ui, sans-serif);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 	.end b {
-		font: 600 11.5px var(--shell-serif, serif);
+		font: 600 12px/1.3 var(--shell-serif, 'Iowan Old Style', Palatino, Georgia, serif);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.end b.muted {
-		font: 11px var(--shell-sans, system-ui);
+		font: 11px/1.4 var(--shell-sans, system-ui, sans-serif);
 		white-space: normal;
 	}
 	button.end:hover b {
@@ -368,10 +384,29 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 2px;
-		padding-top: 14px;
+		align-self: start;
+		/* Sits level with the snapshot tiles, below the Leaves / Arrives tags. */
+		padding-top: 40px;
 		color: var(--shell-forest-raised, #22503c);
-		font-size: 10px;
-		font-weight: 600;
+	}
+	.ends-mid small {
+		font: 600 10px/1 var(--shell-sans, system-ui, sans-serif);
+	}
+	.meta-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 8px 12px 0;
+	}
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		min-height: 20px;
+		padding: 0 8px;
+		border-radius: 999px;
+		background: var(--shell-gold-tint, #f6efd9);
+		color: var(--shell-gold-ink, #74560c);
+		font: 500 11px/1.2 var(--shell-sans, system-ui, sans-serif);
 	}
 
 	/* Sections */

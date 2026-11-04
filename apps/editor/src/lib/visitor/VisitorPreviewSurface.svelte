@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
 	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
 	import { T } from '@threlte/core';
@@ -18,6 +18,8 @@ import { PCFShadowMap } from 'three';
 	import VisitorCameraDirector from './VisitorCameraDirector.svelte';
 	import VisitorEntities from './VisitorEntities.svelte';
 	import VisitorLayoutShell from './VisitorLayoutShell.svelte';
+	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
+	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 
 	let {
 		scene,
@@ -48,7 +50,8 @@ import { PCFShadowMap } from 'three';
 		guideStopCount = 0,
 		guideSeconds = 0,
 		viewLabels = null,
-		onExit
+		onExit,
+		environment = 'paper'
 	}: {
 		scene: RuntimeScene;
 		geometry: CompiledLayoutGeometry;
@@ -74,6 +77,8 @@ import { PCFShadowMap } from 'three';
 		guideSeconds?: number;
 		viewLabels?: ReadonlyMap<string, string> | null;
 		onExit?: () => void;
+		/** Experience review 1 (R5) — the Scene's World environment; Paper by default, never black. */
+		environment?: SceneEnvironmentPreset;
 	} = $props();
 
 	const visitorState = $derived.by(() => {
@@ -149,6 +154,14 @@ import { PCFShadowMap } from 'three';
 		paused = false;
 		destinationEpoch += 1;
 	}
+	function goPrevious(): void {
+		// Prev is a Cut: the Experience moves to the previous Stop, and the destination
+		// boundary settles the Camera on that Stop's first View with no travel back.
+		if (visitorState?.previousStop() !== true) return;
+		showEnd = false;
+		freeViewId = null;
+		destinationEpoch += 1;
+	}
 	function startAgain(): void {
 		visitorState?.restart();
 		surfaceMode = 'guided';
@@ -203,7 +216,11 @@ import { PCFShadowMap } from 'three';
 		// The welcome chooser holds no run: a guided tour starts only when the
 		// visitor chooses it, and free exploration starts per Place.
 		if (surfaceMode === 'welcome') return;
-		if (startMode === 'presentation' || surfaceMode === 'guided') visitorState.start(entryPresentationId);
+		if (startMode !== 'presentation' && surfaceMode !== 'guided') return;
+		// start() reads the run state it replaces; untracked, so the new state never re-runs this.
+		const runtime = visitorState;
+		const entry = entryPresentationId;
+		untrack(() => runtime.start(entry));
 	});
 	/**
 	 * This entry's first presented opportunity.
@@ -266,6 +283,7 @@ import { PCFShadowMap } from 'three';
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex (the WebGL viewport owns guarded preview keys) -->
 	<div
 		class="visitor-canvas"
+		class:is-welcome={surfaceMode === 'welcome' && mode === 'preview'}
 		tabindex="0"
 		role="application"
 		aria-label={mode === 'public' ? 'Published project canvas' : 'Visitor preview canvas'}
@@ -277,10 +295,20 @@ import { PCFShadowMap } from 'three';
 		shadows={PCFShadowMap}
 		renderMode={active ? 'always' : 'on-demand'}
 	>
-			<T.Color attach="background" args={[0x050508]} />
-			<T.Fog attach="fog" args={[0x050508, 22, 54]} />
-			<T.AmbientLight intensity={0.2} />
-			<T.DirectionalLight position={[2, 8, 5]} color="#c9d1df" intensity={0.7} />
+			{#if environment === 'paper'}
+				<!-- Paper: the Stage's own tone and neutral light, without the grid. Never a black void. -->
+				<T.Color attach="background" args={['#e9ebe6']} />
+				<T.AmbientLight intensity={0.45} />
+				<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
+				<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
+				<T.Mesh rotation.x={-Math.PI / 2} position={[0, -0.02, 0]} receiveShadow>
+					<T.CircleGeometry args={[90, 48]} />
+					<T.MeshLambertMaterial color="#e2e5de" />
+				</T.Mesh>
+			{:else}
+				<T.AmbientLight intensity={0.12} />
+				<WorldEnvironment preset={environment} bounds={geometry.bounds ?? null} />
+			{/if}
 			{#if visitorState}
 				<VisitorCameraDirector
 					graph={graph}
@@ -302,15 +330,25 @@ import { PCFShadowMap } from 'three';
 			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} {modelUrls} />
 		</Canvas>
 	</div>
+	<div class="visitor-brand" class:published={mode === 'public'}>
+		{#if mode === 'public'}<span class="brand-kicker">Published</span>{/if}
+		<span class="brand-title">{experienceTitle ?? publicTitle}</span>
+	</div>
+	{#if mode === 'preview'}
+		<div class="visitor-tab" role="status">Preview — what a visitor sees</div>
+		{#if onExit}
+			<button type="button" class="visitor-exit" onclick={onExit}>✕ Exit preview <kbd>Esc</kbd></button>
+		{/if}
+	{/if}
 	{#if surfaceMode === 'welcome' && mode === 'preview'}
-		<section class="visitor-welcome" role="dialog" aria-modal="true" aria-label="Welcome">
-			<p class="overline">Visitor preview</p>
+		<section class="visitor-card visitor-welcome" role="dialog" aria-modal="true" aria-label="Welcome">
+			<p class="overline">Welcome to</p>
 			<h1>{experienceTitle ?? publicTitle}</h1>
 			{#if visitorState?.program.welcome}<p class="welcome-body">{visitorState.program.welcome}</p>{/if}
 			<div class="choices">
 				<button
 					type="button"
-					class="choice"
+					class="choice primary"
 					disabled={visitorState === null || visitorState.program.entryStopId === null}
 					onclick={chooseGuided}
 				>
@@ -326,35 +364,40 @@ import { PCFShadowMap } from 'three';
 	{/if}
 	{#if surfaceMode === 'guided' && visitorState !== null && !visitorState.ended && visitorState.state.stopId !== null}
 		<nav class="visitor-guided" aria-label="Tour controls">
-			<span class="guided-caption">
-				<span class="overline">Guided tour</span>
-				<strong>{visitorState.currentPresentation?.label ?? 'The tour'}</strong>
-				<span class="guided-position">Stop {currentStopNumber} of {visitorState.program.stops.length}</span>
-			</span>
+			<div class="guided-caption">
+				<p class="overline">Guided tour · Stop {currentStopNumber} of {visitorState.program.stops.length}</p>
+				<strong class="guided-title">{visitorState.currentPresentation?.label ?? 'The tour'}</strong>
+				<div class="prog" aria-hidden="true">
+					{#each visitorState.program.stops as stop, index (stop.id)}
+						<i class:done={index + 1 < currentStopNumber} class:current={index + 1 === currentStopNumber}></i>
+					{/each}
+				</div>
+			</div>
 			<div class="guided-actions">
-				<button type="button" class="primary" onclick={() => (paused = !paused)}>{paused ? 'Resume' : 'Pause'}</button>
-				<button type="button" disabled={visitorState.state.phase === 'holding' || traveling}
+				<button
+					type="button"
+					class="vbtn"
+					disabled={currentStopNumber <= 1}
+					title={currentStopNumber <= 1 ? 'This is the first Stop' : 'Cut to the previous Stop'}
+					onclick={goPrevious}>← Prev</button
+				>
+				<button type="button" class="vbtn gold" onclick={() => (paused = !paused)}>{paused ? 'Play' : 'Pause'}</button>
+				<button type="button" class="vbtn" disabled={visitorState.state.phase === 'holding' || traveling}
 					title={traveling ? 'The authored movement is still arriving' : visitorState.state.phase === 'holding' ? 'The authored hold is still playing' : 'Next stop'}
-					onclick={() => visitorState?.continue()}>Next stop</button>
-				<button type="button" onclick={() => visitorState?.finish()}>Finish tour</button>
-				<button type="button" onclick={chooseFree}>Explore freely</button>
+					onclick={() => visitorState?.continue()}>Next stop →</button>
+				<button type="button" class="vbtn" onclick={() => visitorState?.finish()}>Finish tour</button>
+				<button type="button" class="vbtn" onclick={chooseFree}>Explore freely</button>
 			</div>
 		</nav>
 	{/if}
 	{#if surfaceMode !== 'welcome' && showEnd}
-		<section class="visitor-end" role="dialog" aria-modal="true" aria-label="End of the tour">
+		<section class="visitor-card visitor-end" role="dialog" aria-modal="true" aria-label="End of the tour">
 			<p class="overline">End of the tour</p>
-			<h1>{experienceTitle ?? publicTitle}</h1>
+			<h1>Thank you for visiting</h1>
 			<p class="welcome-body">Keep exploring — including views the tour skipped.</p>
-			<div class="choices">
-				<button type="button" class="choice" disabled={freePresentations.length === 0} onclick={chooseFree}>
-					<strong>Keep exploring</strong>
-					<span>{freePresentations.length} {freePresentations.length === 1 ? 'place' : 'places'}</span>
-				</button>
-				<button type="button" class="choice" onclick={startAgain}>
-					<strong>Start the tour again</strong>
-					<span>{guideStopCount} {guideStopCount === 1 ? 'stop' : 'stops'}</span>
-				</button>
+			<div class="end-actions">
+				<button type="button" class="vbtn gold" disabled={freePresentations.length === 0} onclick={chooseFree}>Keep exploring</button>
+				<button type="button" class="vbtn" onclick={startAgain}>Start the tour again</button>
 			</div>
 		</section>
 	{/if}
@@ -380,85 +423,137 @@ import { PCFShadowMap } from 'three';
 			</aside>
 		{/if}
 		<nav class="visitor-free" aria-label="Free exploration">
-			{#if visitorState.program.entryStopId !== null && !visitorState.canResume}
-				<button type="button" class="resume-tour" onclick={startGuidedFromFree}>
-					Start the guided tour
-				</button>
-			{/if}
+			<p class="explore-hint">Drag to look around · click the floor to walk</p>
 			{#if visitorState.canResume}
-				<button type="button" class="resume-tour" onclick={backToTheTour}>
-					Back to the tour{resumeStopNumber > 0 ? ` · Stop ${resumeStopNumber}` : ''}
+				<button type="button" class="vbtn gold" onclick={backToTheTour}>
+					↩ Back to the tour{resumeStopNumber > 0 ? ` · Stop ${resumeStopNumber}` : ''}
 				</button>
 			{/if}
-			<button type="button" onclick={() => (placesOpen = !placesOpen)} aria-expanded={placesOpen}>Places</button>
+			{#if visitorState.program.entryStopId !== null && !visitorState.canResume}
+				<button type="button" class="vbtn" onclick={startGuidedFromFree}>Start the guided tour</button>
+			{/if}
+			<button type="button" class="vbtn" onclick={() => (placesOpen = !placesOpen)} aria-expanded={placesOpen}>Places</button>
 		</nav>
 	{/if}
 	{#if cameraGap}
 		<p class="visitor-camera-gap" role="status">{cameraGap}</p>
 	{/if}
-	<div class="visitor-pill" role="status">
-		{#if mode === 'public'}
-			<span class="pill-label">PUBLISHED · {publicTitle}</span>
-		{:else}
-			<span class="pill-label">VISITOR PREVIEW · Viewing Current Draft</span>
-			{#if onExit}
-				<button type="button" class="pill-exit" onclick={onExit}>✕ Exit Preview (Esc)</button>
-			{/if}
-		{/if}
-	</div>
 	<p id="visitor-preview-help" class="visitor-help">{canvasDescription}</p>
 </div>
 
 <style>
 	.visitor-preview {
+		--visitor-forest: #11291f;
+		--visitor-glass: rgba(14, 30, 25, 0.78);
+		--visitor-gold: #d4ad45;
+		--visitor-gold-ink: #74560c;
+		--visitor-ivory: #f3f0e4;
+		--visitor-serif: 'Iowan Old Style', Palatino, Georgia, serif;
+		--visitor-sans: var(--shell-sans, system-ui, sans-serif);
 		position: relative;
 		width: 100%;
 		height: 100%;
 		min-height: 0;
-		background: #050508;
+		background: var(--visitor-forest);
 		overflow: hidden;
 	}
 	.visitor-canvas {
 		position: absolute;
 		inset: 0;
 		outline: none;
+		transition: filter 320ms ease;
+	}
+	/* The welcome sits over a softly blurred first View. */
+	.visitor-canvas.is-welcome {
+		filter: blur(3px) brightness(0.94);
 	}
 	.visitor-canvas:focus-visible {
-		box-shadow: inset 0 0 0 1px #2f8cff;
+		box-shadow: inset 0 0 0 1px rgb(212 173 69 / 55%);
 	}
 	.visitor-canvas :global(canvas) {
 		display: block;
 		width: 100%;
 		height: 100%;
 	}
-	.visitor-pill {
+	/* ---- Chrome: brand left, a gold Preview tab on the top edge, Exit right ---- */
+	.visitor-brand {
 		position: absolute;
-		top: 0.75rem;
+		top: 14px;
+		left: 14px;
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		min-width: 0;
+		max-width: calc(100% - 240px);
+		padding: 8px 16px;
+		border: 1px solid rgb(243 240 228 / 14%);
+		border-radius: 999px;
+		background: var(--visitor-glass);
+		-webkit-backdrop-filter: blur(12px);
+		backdrop-filter: blur(12px);
+		color: var(--visitor-ivory);
+		z-index: 5;
+	}
+	.brand-kicker {
+		color: var(--visitor-gold);
+		font: 700 10px/1 var(--visitor-sans);
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+	.brand-title {
+		min-width: 0;
+		overflow: hidden;
+		font: 600 15px/1.2 var(--visitor-serif);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.visitor-tab {
+		position: absolute;
+		top: 0;
 		left: 50%;
 		transform: translateX(-50%);
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-		padding: 0.45rem 0.7rem;
-		border: 1px solid rgb(47 140 255 / 45%);
-		border-radius: 999px;
-		background: rgb(5 5 8 / 82%);
-		color: #f4f0e9;
-		font: 600 0.72rem/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+		padding: 6px 12px 7px;
+		border-radius: 0 0 10px 10px;
+		background: var(--visitor-gold);
+		color: var(--visitor-gold-ink);
+		font: 700 11px/1 var(--visitor-sans);
+		letter-spacing: 0.02em;
 		white-space: nowrap;
 		z-index: 5;
 	}
-	.pill-exit {
-		padding: 0.3rem 0.55rem;
-		border: 1px solid #635a6f;
+	.visitor-exit {
+		position: absolute;
+		top: 14px;
+		right: 14px;
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 36px;
+		padding: 0 8px 0 14px;
+		border: 1px solid rgb(243 240 228 / 18%);
 		border-radius: 999px;
-		background: #292632;
-		color: inherit;
-		font: inherit;
+		background: var(--visitor-glass);
+		-webkit-backdrop-filter: blur(12px);
+		backdrop-filter: blur(12px);
+		color: var(--visitor-ivory);
+		font: 600 12px var(--visitor-sans);
 		cursor: pointer;
+		z-index: 5;
 	}
-	.pill-exit:hover {
-		border-color: #c9a9ff;
+	.visitor-exit:hover {
+		border-color: var(--visitor-gold);
+	}
+	.visitor-exit:focus-visible {
+		outline: 2px solid var(--visitor-gold);
+		outline-offset: 2px;
+	}
+	kbd {
+		padding: 1px 6px;
+		border: 1px solid rgb(243 240 228 / 35%);
+		border-radius: 4px;
+		color: var(--visitor-ivory);
+		font: 600 10px var(--visitor-sans);
+		opacity: 0.85;
 	}
 	.visitor-camera-gap {
 		position: absolute;
@@ -469,95 +564,175 @@ import { PCFShadowMap } from 'three';
 		padding: 0.4rem 0.6rem;
 		border: 1px solid #a86b2a;
 		border-radius: 6px;
-		background: rgb(5 5 8 / 88%);
+		background: var(--visitor-glass);
 		color: #f4d7a8;
-		font: 500 0.72rem/1.35 Inter, ui-sans-serif, system-ui, sans-serif;
+		font: 500 0.72rem/1.35 var(--visitor-sans);
 		z-index: 5;
 	}
-	/* ---- S30 visitor surface: welcome, guided controls, Places, end ---- */
-	.visitor-welcome,
-	.visitor-end {
+	/* ---- Welcome and end: a centred dark-glass card ---- */
+	.visitor-card {
 		position: absolute;
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
 		width: min(520px, calc(100% - 2rem));
-		padding: 28px 28px 24px;
+		padding: 30px 30px 26px;
+		border: 1px solid rgb(243 240 228 / 12%);
 		border-radius: 20px;
-		background: var(--shell-glass-dark, rgba(14, 30, 25, 0.9));
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--visitor-glass);
+		-webkit-backdrop-filter: blur(14px);
+		backdrop-filter: blur(14px);
+		color: var(--visitor-ivory);
 		box-shadow: 0 24px 60px rgb(0 0 0 / 0.45);
+		text-align: center;
 		z-index: 8;
 	}
 	.overline {
-		margin: 0 0 6px;
-		color: var(--shell-gold, #d4ad45);
-		font: 600 11px var(--shell-sans, system-ui, sans-serif);
-		letter-spacing: 0.08em;
+		margin: 0 0 8px;
+		color: var(--visitor-gold);
+		font: 700 11px/1.2 var(--visitor-sans);
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
 	}
 	.visitor-welcome h1,
 	.visitor-end h1 {
 		margin: 0 0 10px;
-		font: 32px/1.1 var(--shell-serif, Georgia, serif);
+		color: var(--visitor-ivory);
+		font: 500 34px/1.1 var(--visitor-serif);
 	}
 	.visitor-end h1 {
-		font-size: 28px;
+		font-size: 30px;
 	}
 	.welcome-body {
-		margin: 0 0 16px;
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font: 13px/1.5 var(--shell-sans, system-ui, sans-serif);
+		max-width: 40ch;
+		margin: 0 auto 18px;
+		color: rgb(243 240 228 / 72%);
+		font: 14px/1.5 var(--visitor-sans);
 	}
 	.choices {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 12px;
+		text-align: left;
 	}
 	.choice {
 		display: grid;
 		gap: 4px;
-		padding: 14px;
-		border: 1px solid rgb(255 255 255 / 0.16);
+		padding: 16px;
+		border: 1px solid rgb(243 240 228 / 18%);
 		border-radius: 14px;
-		background: rgb(255 255 255 / 0.06);
-		color: inherit;
+		background: rgb(243 240 228 / 6%);
+		color: var(--visitor-ivory);
+		font: inherit;
 		text-align: left;
 		cursor: pointer;
 	}
 	.choice:hover:not(:disabled) {
-		border-color: var(--shell-gold, #d4ad45);
+		border-color: var(--visitor-gold);
+	}
+	.choice:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 	.choice strong {
-		font: 600 13px var(--shell-sans, system-ui, sans-serif);
+		font: 600 14px var(--visitor-sans);
 	}
 	.choice span {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font: 12px/1.45 var(--shell-sans, system-ui, sans-serif);
+		color: rgb(243 240 228 / 66%);
+		font: 12px/1.45 var(--visitor-sans);
 	}
+	.choice.primary {
+		border-color: transparent;
+		background: var(--visitor-gold);
+		color: var(--visitor-forest);
+	}
+	.choice.primary span {
+		color: rgb(17 41 31 / 78%);
+	}
+	.choice.primary:hover:not(:disabled) {
+		border-color: transparent;
+		filter: brightness(1.05);
+	}
+	.end-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		justify-content: center;
+	}
+	/* ---- Shared pill buttons over dark glass ---- */
+	.vbtn {
+		min-height: 40px;
+		padding: 0 16px;
+		border: 1px solid rgb(243 240 228 / 22%);
+		border-radius: 999px;
+		background: var(--visitor-glass);
+		-webkit-backdrop-filter: blur(10px);
+		backdrop-filter: blur(10px);
+		color: var(--visitor-ivory);
+		font: 600 13px var(--visitor-sans);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.vbtn:hover:not(:disabled) {
+		border-color: rgb(243 240 228 / 50%);
+	}
+	.vbtn:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.vbtn.gold {
+		border-color: transparent;
+		background: var(--visitor-gold);
+		color: var(--visitor-forest);
+	}
+	.vbtn.gold:hover:not(:disabled) {
+		border-color: transparent;
+		filter: brightness(1.05);
+	}
+	/* ---- Guided tour bar in a bottom gradient ---- */
 	.visitor-guided {
 		position: absolute;
 		left: 0;
 		right: 0;
 		bottom: 0;
 		display: flex;
-		align-items: center;
+		align-items: flex-end;
 		justify-content: space-between;
+		flex-wrap: wrap;
 		gap: 16px;
-		padding: 24px;
-		background: linear-gradient(transparent, rgb(5 5 8 / 0.9));
+		padding: 56px 24px 22px;
+		background: linear-gradient(to top, rgb(17 41 31 / 0.94) 35%, rgb(17 41 31 / 0));
+		color: var(--visitor-ivory);
 		z-index: 6;
 	}
 	.guided-caption {
 		display: grid;
-		gap: 2px;
+		gap: 4px;
+		min-width: 0;
 	}
-	.guided-caption strong {
-		font: 24px/1.15 var(--shell-serif, Georgia, serif);
+	.guided-caption .overline {
+		margin: 0;
 	}
-	.guided-position {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font: 13px var(--shell-sans, system-ui, sans-serif);
+	.guided-title {
+		font: 500 26px/1.15 var(--visitor-serif);
+	}
+	.prog {
+		display: flex;
+		gap: 4px;
+		margin-top: 8px;
+	}
+	.prog i {
+		display: block;
+		width: 26px;
+		height: 4px;
+		border-radius: 2px;
+		background: rgb(243 240 228 / 22%);
+	}
+	.prog i.done {
+		background: rgb(243 240 228 / 70%);
+	}
+	.prog i.current {
+		background: var(--visitor-gold);
 	}
 	.guided-actions {
 		display: flex;
@@ -565,43 +740,39 @@ import { PCFShadowMap } from 'three';
 		gap: 8px;
 		justify-content: flex-end;
 	}
-	.guided-actions button,
-	.visitor-free button,
-	.place-name,
-	.place-view {
-		min-height: 44px;
-		padding: 0 16px;
-		border: 1px solid rgb(255 255 255 / 0.22);
-		border-radius: 22px;
-		background: rgb(5 5 8 / 72%);
-		color: var(--shell-ink-light, #eef1ec);
-		font: 600 13px var(--shell-sans, system-ui, sans-serif);
-		cursor: pointer;
-	}
-	.guided-actions .primary {
-		border-color: transparent;
-		background: var(--shell-gold, #d4ad45);
-		color: #2a2208;
-	}
+	/* ---- Exploring: hint, way back to the tour, Places ---- */
 	.visitor-free {
 		position: absolute;
 		left: 24px;
+		right: 24px;
 		bottom: 24px;
 		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
 		gap: 8px;
 		z-index: 6;
 	}
+	.explore-hint {
+		margin: 0;
+		padding: 9px 14px;
+		border-radius: 999px;
+		background: rgb(17 41 31 / 0.75);
+		color: var(--visitor-ivory);
+		font: 500 12px var(--visitor-sans);
+	}
 	.visitor-places {
 		position: absolute;
-		top: 0;
+		top: 64px;
 		bottom: 0;
 		left: 0;
 		width: 272px;
 		overflow-y: auto;
 		padding: 12px 12px 84px;
 		border-radius: 0 16px 16px 0;
-		background: var(--shell-glass-dark, rgba(14, 30, 25, 0.94));
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--visitor-glass);
+		-webkit-backdrop-filter: blur(14px);
+		backdrop-filter: blur(14px);
+		color: var(--visitor-ivory);
 		z-index: 7;
 	}
 	.places-head {
@@ -612,7 +783,7 @@ import { PCFShadowMap } from 'three';
 	}
 	.places-head h2 {
 		margin: 0;
-		font: 16px var(--shell-serif, Georgia, serif);
+		font: 16px var(--visitor-serif);
 	}
 	.places-close {
 		width: 44px;
@@ -628,13 +799,15 @@ import { PCFShadowMap } from 'three';
 	}
 	.place-name {
 		width: 100%;
+		min-height: 44px;
 		border: 0;
 		background: transparent;
-		text-align: left;
-		color: var(--shell-gold, #d4ad45);
-		font: 11px var(--shell-sans, system-ui, sans-serif);
+		color: var(--visitor-gold);
+		font: 700 11px var(--visitor-sans);
 		letter-spacing: 0.07em;
+		text-align: left;
 		text-transform: uppercase;
+		cursor: pointer;
 	}
 	.place-views {
 		display: grid;
@@ -642,10 +815,15 @@ import { PCFShadowMap } from 'three';
 		overflow-wrap: anywhere;
 	}
 	.place-view {
+		min-height: 40px;
+		padding: 0 14px;
+		border: 1px solid rgb(243 240 228 / 22%);
 		border-radius: 8px;
+		background: var(--visitor-glass);
+		color: var(--visitor-ivory);
+		font: 500 12px var(--visitor-sans);
 		text-align: left;
-		font-weight: 500;
-		font-size: 12px;
+		cursor: pointer;
 	}
 	.visitor-help {
 		position: absolute;
@@ -655,13 +833,31 @@ import { PCFShadowMap } from 'three';
 		overflow: hidden;
 	}
 	@media (max-width: 760px) {
+		.visitor-brand {
+			max-width: calc(100% - 150px);
+		}
+		.visitor-tab {
+			top: 58px;
+			border-radius: 999px;
+		}
+		.visitor-exit {
+			right: 12px;
+		}
 		.choices {
 			grid-template-columns: 1fr;
 		}
 		.visitor-guided {
-			padding: 16px;
-			align-items: flex-start;
+			padding: 48px 16px 16px;
+			align-items: stretch;
 			flex-direction: column;
+		}
+		.guided-actions {
+			justify-content: flex-start;
+		}
+		.visitor-free {
+			left: 12px;
+			right: 12px;
+			bottom: 16px;
 		}
 		.visitor-places {
 			width: 100%;

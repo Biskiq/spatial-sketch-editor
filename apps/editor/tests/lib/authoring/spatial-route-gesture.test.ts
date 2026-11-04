@@ -1512,7 +1512,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 });
 
 describe('R217.S15 — Stage cursor truth', () => {
-	it('shows move over the selected Wall and grab over anything else', async () => {
+	it('shows move over the selected Wall and the Select cursor over other subjects', async () => {
 		const body = projected([3.5, 0, -4]);
 		pointer('pointermove', body);
 		await frame();
@@ -1521,7 +1521,7 @@ describe('R217.S15 — Stage cursor truth', () => {
 		const other = anotherWall();
 		pointer('pointermove', other.css);
 		await frame();
-		expect(stage().dataset.cursor).toBe('grab');
+		expect(stage().dataset.cursor).toBe('select');
 	});
 });
 
