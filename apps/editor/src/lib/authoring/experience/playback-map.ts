@@ -94,18 +94,14 @@ export function guideRunFromProgram(input: {
 			};
 		}
 		visited.add(current.id);
+		// A Travel with no authored transition for this approach plays as a Cut:
+		// the gap stays a problem on its own link (the Card names it) instead of
+		// making the whole Guide unplayable.
+		const authored = previous === null ? null : transitionFor(transitions, previous.id, current.id);
 		const arrival: ProgramInvocation =
 			previous === null
 				? entryCut(current)
-				: transitionFor(transitions, previous.id, current.id) ??
-					(current.invocation.kind === 'cut' ? current.invocation : { kind: 'cut', viewId: current.views[0]!.viewId });
-		if (previous !== null && arrival.kind === 'travel' && transitionFor(transitions, previous.id, current.id) === null) {
-			return {
-				kind: 'gap',
-				reason: `Arriving at Stop "${current.id}" from "${previous.id}" binds a Travel without an authored transition for that approach.`,
-				stopId: current.id
-			};
-		}
+				: authored ?? (current.invocation.kind === 'cut' ? current.invocation : { kind: 'cut', viewId: current.views[0]!.viewId });
 		occurrences.push({
 			occurrenceId: `${index}:${current.id}`,
 			stopId: current.id,

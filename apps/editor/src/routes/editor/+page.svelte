@@ -15,8 +15,105 @@
 	<title>Museum editor</title>
 </svelte:head>
 
-<main class="redirecting" aria-live="polite">Opening Spatial…</main>
+<main class="opening" aria-live="polite" aria-busy="true">
+	<header class="opening-head">
+		<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false">
+			<path d="M5 21V10a7 7 0 0 1 14 0v11" />
+			<path d="M9 21v-8a3 3 0 0 1 6 0v8" />
+		</svg>
+		<span>Spatial</span>
+	</header>
+	<div class="opening-body">
+		<p class="opening-name">Spatial</p>
+		<p class="opening-line">Opening…</p>
+		<div class="opening-bar" aria-hidden="true"><i></i></div>
+	</div>
+</main>
 
 <style>
-	.redirecting { display: grid; min-height: 100dvh; place-items: center; color: #bcb5c4; background: #111117; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+	:global(body) {
+		margin: 0;
+		background: #e9ebe6;
+	}
+	.opening {
+		display: flex;
+		flex-direction: column;
+		min-height: 100dvh;
+		box-sizing: border-box;
+		background: #e9ebe6;
+		font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	}
+	.opening-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		height: 44px;
+		padding: 0 16px;
+		box-sizing: border-box;
+		background: var(--shell-forest, #11291f);
+		color: #f3f0e4;
+		font-family: 'Iowan Old Style', Palatino, Georgia, serif;
+		font-size: 15px;
+		font-weight: 500;
+	}
+	.opening-body {
+		flex: 1;
+		display: grid;
+		place-content: center;
+		justify-items: center;
+		padding: 16px;
+		box-sizing: border-box;
+		text-align: center;
+		background-color: #e9ebe6;
+		background-image:
+			linear-gradient(rgba(27, 32, 28, 0.06) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(27, 32, 28, 0.06) 1px, transparent 1px);
+		background-size: 28px 28px;
+	}
+	.opening-name {
+		margin: 0;
+		font-family: 'Iowan Old Style', Palatino, Georgia, serif;
+		font-weight: 500;
+		font-size: clamp(1.6rem, 6vw, 2.2rem);
+		line-height: 1.1;
+		color: #1b201c;
+	}
+	.opening-line {
+		margin: 8px 0 0;
+		font-size: 13px;
+		color: #4a524c;
+	}
+	.opening-bar {
+		position: relative;
+		width: 120px;
+		height: 2px;
+		margin-top: 16px;
+		border-radius: 2px;
+		overflow: hidden;
+		background: #cdd2ca;
+	}
+	.opening-bar i {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: 40%;
+		border-radius: 2px;
+		background: #d4ad45;
+		animation: opening-slide 1.4s ease-in-out infinite;
+	}
+	@keyframes opening-slide {
+		0% {
+			transform: translateX(-100%);
+		}
+		100% {
+			transform: translateX(250%);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.opening-bar i {
+			animation: none;
+			left: 30%;
+		}
+	}
 </style>

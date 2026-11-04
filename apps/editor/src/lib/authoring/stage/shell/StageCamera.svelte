@@ -18,7 +18,8 @@
 		paperVisible,
 		paperInk = PAPER_GROUND_INK,
 		frameViewport = null,
-		worldOnly = false
+		worldOnly = false,
+		environmentSky = false
 	}: {
 		evaluation: ViewportEvaluation | null;
 		/** Paper masks the world meshes without touching their `visible` flag. */
@@ -29,6 +30,8 @@
 		frameViewport?: { readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null;
 		/** Draw world content only inside a capture frame. */
 		worldOnly?: boolean;
+		/** A World environment owns `scene.background` (its sky); leave it alone. */
+		environmentSky?: boolean;
 	} = $props();
 
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
@@ -100,7 +103,7 @@
 		// makes the surface an opaque PLATE material rather than a scene object; a
 		// settled Shaded Plan has no Paper build or Camera move to request the frame
 		// that would otherwise show it.
-		scene.background = null;
+		if (!environmentSky) scene.background = null;
 		renderer.setClearColor(new Color(paperVisible ? paperInk : MAT_BACKGROUND_INK), 1);
 		invalidate();
 	});

@@ -293,12 +293,12 @@ describe('Preview entry rule', () => {
 		expect(entry.options.runEpoch).toBe(1);
 	});
 
-	it('enters the selected Stop of an open Guide', async () => {
+	it('enters an open Guide at its entry Stop, not the focused Stop (the welcome tour starts at Stop 1)', async () => {
 		const envelope = await experienceEnvelope();
 		const entry = entryFor(envelope, { guideId: 'guide-1', stopId: 'stop-2' });
 		expect(entry.kind).toBe('program');
 		if (entry.kind !== 'program') return;
-		expect(entry.program.entryStopId).toBe('stop-2');
+		expect(entry.program.entryStopId).toBe('stop-1');
 	});
 
 	it('enters a non-opening Guide Card guide at its own entry, ignoring the open rail focus', async () => {

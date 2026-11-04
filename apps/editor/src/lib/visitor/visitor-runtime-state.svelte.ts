@@ -2,7 +2,7 @@
  * Visitor runtime — Experience-unit orchestration (AM-9, T3.P01.S04).
  *
  * The visitor executes one lowered `ExecutionProgram@3` through the single
- * Experience interpreter. There is no node-keyed order, no main-flow walk and no
+ * Experience reducer. There is no node-keyed order, no main-flow walk and no
  * Scene `nextNodeId`/`previousNodeId` traversal: Guide order is authored in the
  * Experience unit, lowering produces the program, and this store only dispatches
  * explicit events at editorial arrival. Camera framing is read from the current
@@ -10,11 +10,15 @@
  */
 import {
 	buildExperienceCompanion,
-	createExperienceInterpreter,
+	createExperienceRun,
+	reduceExperience,
 	type ExecutionProgram,
 	type ExperienceEffect,
+	type ExperienceEvent,
 	type ExperienceInterpreterOptions,
+	type ExperienceReduceResult,
 	type ExperienceRunState,
+	type ExperienceTransition,
 	type ProgramInvocation
 } from '@portfolio/project-model/units';
 
@@ -36,7 +40,6 @@ export class VisitorRuntimeState {
 	reducedMotion = $state(false);
 	state: ExperienceRunState = $state<ExperienceRunState>() as ExperienceRunState;
 
-	private interpreter: ReturnType<typeof createExperienceInterpreter>;
 	/** Fractional frame milliseconds carried until they form one interpreter tick. */
 	private pendingMilliseconds = 0;
 	/** Camera moves the reducer crossed without pausing; the time-aligned director drains them. */
@@ -45,13 +48,25 @@ export class VisitorRuntimeState {
 	constructor({ program, options }: VisitorRuntimeInput) {
 		this.program = program;
 		this.options = options;
-		this.interpreter = createExperienceInterpreter(program, options);
-		this.state = this.interpreter.state();
+		this.state = createExperienceRun(program, options);
+	}
+
+	/**
+	 * Fold one event into this run through the one pure Experience reducer. The run
+	 * state held here is the only copy: nothing else keeps an interpreter-side copy
+	 * that could drift from it.
+	 */
+	private reduce(event: ExperienceEvent, options: ExperienceInterpreterOptions = this.options): ExperienceReduceResult {
+		return reduceExperience(this.program, this.state, event, options);
+	}
+
+	private runIdentity(): { readonly runId: string; readonly runEpoch: number } {
+		return { runId: this.state.runId, runEpoch: this.state.runEpoch };
 	}
 
 	/** Enter the Experience at its authored entry Stop. Idempotent. */
 	enter() {
-		this.state = this.interpreter.enter().state;
+		this.state = this.reduce({ kind: 'enter', ...this.runIdentity() }).state;
 	}
 
 	/**
@@ -63,7 +78,7 @@ export class VisitorRuntimeState {
 	start(entryPresentationId: string | null) {
 		this.queuedMotions = [];
 		if (entryPresentationId !== null) {
-			this.state = this.interpreter.enterPresentation(entryPresentationId).state;
+			this.state = this.reduce({ kind: 'enter-presentation', ...this.runIdentity(), presentationId: entryPresentationId }).state;
 			return;
 		}
 		if (this.program.entryStopId !== null) this.enter();
@@ -71,7 +86,7 @@ export class VisitorRuntimeState {
 
 	/** The explicit Continue control. A Gate or a finished hold advances once. */
 	continue() {
-		this.state = this.interpreter.continue().state;
+		this.state = this.reduce({ kind: 'continue', ...this.runIdentity() }).state;
 	}
 
 	/**
@@ -80,12 +95,47 @@ export class VisitorRuntimeState {
 	 */
 	resume() {
 		this.queuedMotions = [];
-		this.state = this.interpreter.resume().state;
+		this.state = this.reduce({ kind: 'resume', ...this.runIdentity() }).state;
 	}
 
 	/** An explicit authored destination; the Guide is never bypassed by this. */
 	navigate(stopId: string) {
-		this.state = this.interpreter.navigate(stopId).state;
+		this.state = this.reduce({ kind: 'navigate', ...this.runIdentity(), stopId }).state;
+	}
+
+	/**
+	 * The visitor's Prev control: an explicit destination at the previous Stop's
+	 * first View, realized as a Cut. The authored Travel into this Stop belongs to
+	 * the forward approach, so the one backward edge is given a Cut transition for
+	 * this event only; the Experience reducer still arrives the Stop and owns its
+	 * occurrence, panel and holds. Returns false at Stop 1 or when no Stop is current.
+	 */
+	previousStop(): boolean {
+		const fromStopId = this.state.stopId;
+		if (fromStopId === null) return false;
+		const index = this.program.stops.findIndex((stop) => stop.id === fromStopId);
+		const previous = index > 0 ? this.program.stops[index - 1] : undefined;
+		const firstViewId = previous?.views[0]?.viewId;
+		if (previous === undefined || firstViewId === undefined) return false;
+		const cut: ExperienceTransition = {
+			fromStopId,
+			toStopId: previous.id,
+			invocation: { kind: 'cut', viewId: firstViewId }
+		};
+		const transitions = [
+			cut,
+			...(this.options.transitions ?? []).filter(
+				(entry) => entry.fromStopId !== fromStopId || entry.toStopId !== previous.id
+			)
+		];
+		const result = this.reduce(
+			{ kind: 'navigate', ...this.runIdentity(), stopId: previous.id },
+			{ ...this.options, transitions }
+		);
+		if (result.outcome !== 'accepted') return false;
+		this.queuedMotions = [];
+		this.state = result.state;
+		return true;
 	}
 
 	/**
@@ -95,7 +145,7 @@ export class VisitorRuntimeState {
 	 */
 	selectPresentation(presentationId: string): boolean {
 		if (!this.freePresentations.some((presentation) => presentation.id === presentationId)) return false;
-		const result = this.interpreter.enterPresentation(presentationId);
+		const result = this.reduce({ kind: 'enter-presentation', ...this.runIdentity(), presentationId });
 		if (result.outcome !== 'accepted') return false;
 		this.queuedMotions = [];
 		this.state = result.state;
@@ -104,14 +154,13 @@ export class VisitorRuntimeState {
 
 	/**
 	 * R217.S30 — after the authored run ends, free exploration starts a fresh
-	 * neutral presentation-entry run. The completed interpreter is never reused:
-	 * its terminal phase would ignore `enterPresentation`.
+	 * neutral presentation-entry run. The completed run is never reused: its
+	 * terminal phase would ignore `enterPresentation`.
 	 */
 	beginFreeExploration() {
 		this.pendingMilliseconds = 0;
 		this.queuedMotions = [];
-		this.interpreter = createExperienceInterpreter(this.program, this.options);
-		this.state = this.interpreter.state();
+		this.state = createExperienceRun(this.program, this.options);
 	}
 
 	/**
@@ -120,22 +169,14 @@ export class VisitorRuntimeState {
 	 */
 	restart() {
 		this.queuedMotions = [];
-		this.state = this.interpreter.dispatch({
-			kind: 'reset',
-			runId: this.state.runId,
-			runEpoch: this.state.runEpoch
-		}).state;
+		this.state = this.reduce({ kind: 'reset', ...this.runIdentity() }).state;
 	}
 
 	/** Finish the tour: the visitor ends the run from its own control. */
 	finish() {
 		if (this.ended) return;
 		this.queuedMotions = [];
-		this.state = this.interpreter.dispatch({
-			kind: 'cancel',
-			runId: this.state.runId,
-			runEpoch: this.state.runEpoch
-		}).state;
+		this.state = this.reduce({ kind: 'cancel', ...this.runIdentity() }).state;
 	}
 
 	/** Advance the explicit clock; holds auto-continue on expiry. */
@@ -149,14 +190,14 @@ export class VisitorRuntimeState {
 		if (wholeMilliseconds <= 0) return;
 		this.pendingMilliseconds -= wholeMilliseconds;
 		const wasHolding = this.state.phase === 'holding';
-		const ticked = this.interpreter.tick(wholeMilliseconds);
+		const ticked = this.reduce({ kind: 'tick', ...this.runIdentity(), milliseconds: wholeMilliseconds });
 		this.state = ticked.state;
 		this.queuedMotions.push(...this.cameraMotions(ticked.effects));
 		// A hold is time, not a prompt: when the authored hold expires the run
 		// continues itself. A Gate is different and stays blocked until the
 		// visitor's explicit Continue.
 		if (wasHolding && this.state.phase === 'ready' && this.state.holdRemainingMs === 0 && !this.state.gated) {
-			const continued = this.interpreter.continue();
+			const continued = this.reduce({ kind: 'continue', ...this.runIdentity() });
 			this.state = continued.state;
 			this.queuedMotions.push(...this.cameraMotions(continued.effects));
 		}

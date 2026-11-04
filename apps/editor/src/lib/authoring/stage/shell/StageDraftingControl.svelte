@@ -58,6 +58,7 @@
 		onViewPreference?: (patch: ViewPreferencePatch) => void;
 	} = $props();
 
+
 	/** One Paper tray open at a time; it stays open until its row is pressed again. */
 	let toneTray = $state<'2d' | '3d' | null>(null);
 
@@ -161,24 +162,23 @@
 					</span>
 				</div>
 				<strong class="group-title">Paper</strong>
-				{#each [{ view: '2d', word: '2D plan', tone: paperTone2d }, { view: '3d', word: '3D board', tone: paperTone3d }] as row (row.view)}
-					<button type="button" class="tone-row" aria-expanded={toneTray === row.view} data-paper-row={row.view}
-						onclick={() => (toneTray = toneTray === row.view ? null : (row.view as '2d' | '3d'))}>
-						<span>{row.word}</span>
-						<span class="tone-now"><i class="swatch" style:background={PAPER_TONES[row.tone].ink}></i>{PAPER_TONES[row.tone].label}<span class="chev" aria-hidden="true">⌄</span></span>
-					</button>
-					{#if toneTray === row.view}
-						<div class="tone-tray" role="group" aria-label={`${row.word} paper tone`}>
-							{#each PAPER_TONE_IDS as tone (tone)}
-								<button type="button" class="tile" aria-pressed={row.tone === tone} data-paper-tone={tone}
-									onclick={() => onViewPreference(row.view === '2d' ? { paperTone2d: tone } : { paperTone3d: tone })}>
-									<i class="paper" style:background-color={PAPER_TONES[tone].ink}></i>
-									<span>{PAPER_TONES[tone].label}</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
-				{/each}
+				<!-- One paper colour for the 2D plan and the 3D board; both preferences move together. -->
+				<button type="button" class="tone-row" aria-expanded={toneTray !== null} data-paper-row="all"
+					onclick={() => (toneTray = toneTray === null ? '3d' : null)}>
+					<span>Paper colour</span>
+					<span class="tone-now"><i class="swatch" style:background={PAPER_TONES[paperTone3d].ink}></i>{PAPER_TONES[paperTone3d].label}<span class="chev" aria-hidden="true">⌄</span></span>
+				</button>
+				{#if toneTray !== null}
+					<div class="tone-tray" role="group" aria-label="Paper colour">
+						{#each PAPER_TONE_IDS as tone (tone)}
+							<button type="button" class="tile" aria-pressed={paperTone3d === tone} data-paper-tone={tone}
+								onclick={() => onViewPreference({ paperTone2d: tone, paperTone3d: tone })}>
+								<i class="paper" style:background-color={PAPER_TONES[tone].ink}></i>
+								<span>{PAPER_TONES[tone].label}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
 				<label>
 					<span>Height Sheet</span>
 					<select
@@ -242,19 +242,22 @@
 		align-items: flex-start;
 		gap: 6px;
 		max-width: calc(100vw - 20px);
-		color: #e7ece7;
+		color: var(--shell-ink, #1b201c);
 		font: 12px var(--shell-sans, system-ui);
 	}
+	/* Light glass groups in both lenses: one material for World and Experience. */
 	.reading,
 	.words {
 		display: flex;
 		align-items: center;
-		padding: 2px;
-		gap: 1px;
-		border: 1px solid rgb(255 255 255 / 0.1);
-		border-radius: 9px;
-		background: rgba(14, 30, 25, 0.8);
-		box-shadow: var(--shell-furniture-shadow);
+		padding: 3px;
+		gap: 2px;
+		border: 1px solid rgba(27, 32, 28, 0.1);
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.94);
+		-webkit-backdrop-filter: blur(10px);
+		backdrop-filter: blur(10px);
+		box-shadow: 0 4px 14px rgba(17, 41, 31, 0.12);
 	}
 	button {
 		height: 28px;
@@ -263,42 +266,42 @@
 		border: 0;
 		border-radius: 7px;
 		background: transparent;
-		color: inherit;
+		color: var(--shell-ink, #1b201c);
 		font: inherit;
+		font-size: 12.5px;
 		white-space: nowrap;
 		cursor: pointer;
 	}
 	button:hover {
-		background: rgb(255 255 255 / 0.08);
+		background: rgba(27, 32, 28, 0.06);
 	}
-	.reading button[aria-pressed='true'] {
-		background: var(--shell-forest-raised, #22503c);
+	.reading button[aria-pressed='true'],
+	.words button[aria-pressed='true'] {
+		background: var(--shell-forest, #11291f);
 		color: #fff;
 		font-weight: 600;
 	}
 	.words {
-		padding: 2px;
+		padding: 3px;
 	}
 	.words button {
-		height: 26px;
-		padding: 0 7px;
-		border-radius: 6px;
 		min-width: 0;
+		padding: 0 8px;
+	}
+	button:focus-visible,
+	select:focus-visible,
+	input:focus-visible {
+		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline-offset: 1px;
 	}
 	.words [aria-pressed='false'] {
 		opacity: 0.5;
 		text-decoration: line-through;
 	}
-	.quiet {
-		color: var(--shell-ink, #1b201c);
-	}
+	/* The quiet variant only lowers the toolbar's opacity a little; it never darkens it. */
 	.quiet .reading,
 	.quiet .words {
-		background: rgba(255, 255, 255, 0.94);
-		border-color: var(--shell-hairline, #e1e4de);
-	}
-	.quiet button:hover {
-		background: var(--shell-hover, #eef0ed);
+		opacity: 0.9;
 	}
 	.viewing-slot {
 		position: relative;
@@ -317,12 +320,32 @@
 		display: grid;
 		gap: 8px;
 		padding: 12px;
-		border: 1px solid rgb(255 255 255 / 0.1);
-		border-radius: 10px;
-		background: var(--shell-card, #fff);
+		border: 1px solid rgba(27, 32, 28, 0.12);
+		border-radius: 14px;
+		background: #fff;
 		color: var(--shell-ink, #1b201c);
-		border-color: var(--shell-hairline, #e1e4de);
-		box-shadow: var(--shell-shadow);
+		box-shadow: 0 10px 30px rgba(17, 41, 31, 0.16);
+	}
+	/* Leaf checkbox in the light Card: shell-drawn, never the browser's blue. */
+	.viewing .check input[type='checkbox'] {
+		appearance: none;
+		-webkit-appearance: none;
+		flex: none;
+		width: 18px;
+		height: 18px;
+		margin: 0;
+		border: 1.5px solid rgba(27, 32, 28, 0.2);
+		border-radius: 5px;
+		background: #fff;
+		cursor: pointer;
+	}
+	.viewing .check input[type='checkbox']:checked {
+		border-color: #4f8f6c;
+		background-color: #4f8f6c;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.5 9.5 3.8' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+		background-size: 12px 12px;
+		background-position: center;
+		background-repeat: no-repeat;
 	}
 	.viewing[hidden] {
 		display: none;
@@ -440,11 +463,6 @@
 		text-transform: uppercase;
 		letter-spacing: 0.07em;
 		color: var(--shell-ink-2, #4a524c);
-	}
-	.quiet .viewing {
-		background: #fff;
-		color: var(--shell-ink, #1b201c);
-		border-color: var(--shell-hairline, #e1e4de);
 	}
 	.quiet .group-title {
 		color: var(--shell-ink-3, #79817b);

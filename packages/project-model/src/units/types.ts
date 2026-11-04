@@ -44,7 +44,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 
 /** Admitted unit versions (AM-2). Layout tracks the landed wall-first format. */
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
-export const SCENE_UNIT_FORMAT_VERSION = 4 as const;
+export const SCENE_UNIT_FORMAT_VERSION = 5 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
 export const EXPERIENCE_UNIT_FORMAT_VERSION = 3 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
@@ -136,7 +136,7 @@ export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
  * Camera-free Scene 4: the landed world-local records without the navigation
- * graph, now carrying native forms. `formatVersion: 4` is the payload's own
+ * graph, now carrying native forms. `formatVersion: 5` is the payload's own
  * version and matches the unit header. A model names a catalogue asset or a
  * `model` resource of the same envelope; the fallback vocabulary includes the
  * generic footprint box.
@@ -148,7 +148,18 @@ export type CameraFreeSceneDocument = {
 	entities: SceneEntity[];
 	/** Editor-only hierarchy metadata; visitor rendering stays flat. */
 	clusters?: SceneObjectCluster[];
+	/**
+	 * Scene 5 — World presentation: the sky, horizon and light the World renders
+	 * in. Absent means `paper`, the Stage's own look. A fixed preset, never
+	 * per-value lighting.
+	 */
+	environment?: SceneEnvironment;
 };
+
+/** The fixed environment presets (Experience review 1, R5). */
+export const SCENE_ENVIRONMENT_PRESETS = ['paper', 'daylight', 'golden-hour', 'dusk'] as const;
+export type SceneEnvironmentPreset = (typeof SCENE_ENVIRONMENT_PRESETS)[number];
+export type SceneEnvironment = { readonly preset: SceneEnvironmentPreset };
 
 /** A Camera view: one eye/target/fov station plus its connectivity. */
 export type CameraView = {

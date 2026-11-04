@@ -213,4 +213,19 @@ describe('R217.S28 — exact authored View evaluation', () => {
 		if (lifted === null) throw new Error('lift refused');
 		expect(eyeOfInspectionPose(lifted)[1]).toBeCloseTo(eyeOfInspectionPose(pose)[1] + 0.5, 9);
 	});
+	it('turns about a fixed eye and steps eye and target together', () => {
+		const pose = viewPose([2, 1.65, 5], [2, 1.65, 2], 54);
+		const eye = eyeOfInspectionPose(pose);
+		const turned = requestViewingIntent(stateFor(pose), { kind: 'turn', deltaYawRadians: 0.3, deltaPitchRadians: 0.1 }, 0);
+		if (turned.kind !== 'accepted') throw new Error(turned.message);
+		const turnedEye = eyeOfInspectionPose(turned.state.pose);
+		for (let i = 0; i < 3; i += 1) expect(turnedEye[i]).toBeCloseTo(eye[i], 9);
+		expect(turned.state.pose.target).not.toEqual(pose.target);
+		const stepped = requestViewingIntent(stateFor(pose), { kind: 'step', deltaMeters: 0.25 }, 0);
+		if (stepped.kind !== 'accepted') throw new Error(stepped.message);
+		expect(eyeOfInspectionPose(stepped.state.pose)[2]).toBeCloseTo(eye[2] - 0.25, 9);
+		expect(stepped.state.pose.target[2]).toBeCloseTo(1.75, 9);
+		const plan = requestViewingIntent(stateFor(pose, 'plan'), { kind: 'turn', deltaYawRadians: 0.1, deltaPitchRadians: 0 }, 0);
+		expect(plan.kind).toBe('rejected');
+	});
 });

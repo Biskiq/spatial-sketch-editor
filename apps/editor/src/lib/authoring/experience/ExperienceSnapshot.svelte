@@ -53,9 +53,17 @@
 		const stopAvailability = onStageSnapshotAvailability(() => {
 			hostReady = true;
 		});
+		// Invalidation is broadcast to every slot at once; each slot re-requests on
+		// its own microtask so no listener writes state inside the broadcaster.
+		let queued = false;
 		const stopInvalidation = onStageSnapshotsInvalidated(() => {
-			source = null;
-			epoch += 1;
+			if (queued) return;
+			queued = true;
+			queueMicrotask(() => {
+				queued = false;
+				source = null;
+				epoch += 1;
+			});
 		});
 		const cleanup = () => {
 			stopAvailability();

@@ -12,7 +12,7 @@ import {
 	type ViewportEvaluation
 } from '@portfolio/camera-core';
 import type { CameraView, Experience } from '@portfolio/project-model/units';
-import { EXPERIENCE_MARK_CAPS, experienceMarkModel } from '../../../src/lib/authoring/experience/experience-marks';
+import { EXPERIENCE_MARK_CAPS, experienceMarkModel, relatedToSelection } from '$lib/authoring/experience/experience-marks';
 
 function evaluate(pose: InspectionPose, reading: '3d' | 'plan'): ViewportEvaluation {
 	const state = createViewportCameraState({
@@ -74,6 +74,29 @@ function experience(viewIds: readonly string[], guided: readonly string[]): Expe
 	};
 }
 
+it('relates the Views and Camera paths owned by each selection', () => {
+	const base = experience(['a', 'b', 'c'], ['a', 'b']);
+	const exp: Experience = {
+		...base,
+		stops: [
+			{ id: 'stop', presentationId: 'pres', views: [{ viewId: 'a' }, { viewId: 'b', transition: 'travel' }] },
+			{ id: 'next', presentationId: 'pres', views: [{ viewId: 'c' }] }
+		]
+	};
+	const guide = { ...base.guides[0]!, stopIds: ['stop', 'next'] };
+	const step = 'step:stop:b';
+	const transition = 'transition:stop';
+	expect(relatedToSelection({ presentationId: 'pres' }, exp, guide)).toEqual({ views: new Set(['a', 'b', 'c']), paths: new Set() });
+	expect(relatedToSelection({ viewId: 'b' }, exp, guide)).toEqual({ views: new Set(['b']), paths: new Set([step, transition]) });
+	expect(relatedToSelection({ stopId: 'next' }, exp, guide)).toEqual({ views: new Set(['c']), paths: new Set([transition]) });
+	expect(relatedToSelection({ path: { kind: 'transition', stopId: 'stop' } }, exp, guide)).toEqual({
+		views: new Set(['b', 'c']), paths: new Set([transition])
+	});
+	expect(relatedToSelection({ path: { kind: 'step', stopId: 'stop', toViewId: 'b' } }, exp, guide)).toEqual({
+		views: new Set(['a', 'b']), paths: new Set([step])
+	});
+});
+
 describe('R217.S28 — Experience marks', () => {
 	it('marks one glyph per View in 3D and no frustums', () => {
 		const model = experienceMarkModel({
@@ -118,7 +141,7 @@ describe('R217.S28 — Experience marks', () => {
 			guide: null,
 			views,
 			evaluation: plan(),
-			selection: { presentationId: 'pres' }
+			selection: {}
 		});
 		expect(unselected.frustums).toHaveLength(EXPERIENCE_MARK_CAPS.frustums);
 		// `normal` Views carry no label; only selected/strong labels are capped.

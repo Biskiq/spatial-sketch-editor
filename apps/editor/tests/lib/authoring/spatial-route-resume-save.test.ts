@@ -559,8 +559,8 @@ describe('spatial route resume Save', () => {
 		await mountPage();
 		await waitForReady('Closure project');
 
-		expect(target.textContent).toContain('This source cannot execute.');
-		expect(target.textContent).toContain('missing-resource');
+		expect(target.textContent).toContain("This project can't be saved yet.");
+		expect(target.querySelector('.source-findings [data-finding-code="missing-resource"]')).not.toBeNull();
 		expect(head().dataset.saveDisabled).toBe('true');
 		expect(head().dataset.saveLabel).toBe('Save unavailable');
 		expect(target.querySelector('[data-testid="head-save-reason"]')?.textContent).toContain(

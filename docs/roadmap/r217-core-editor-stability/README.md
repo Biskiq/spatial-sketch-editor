@@ -39,7 +39,7 @@ slice's PR adds its own register row and is accepted by the owner in the PR.
 | R217.S30 | [Timeline, playback and Preview](./r217.s26-experience-authoring-depth/execution-plan.md#r217s30--timeline-playback-and-preview) | S29 |
 
 The owner's end-to-end review after S30 did not accept S26–S30. The correction pass is in
-[Experience review 1](./experience-review/fix-plan.md), with its [design sheet](./experience-review/design-sheet.html).
+[Experience review 1](./experience-review/fix-plan.md), with its [design sheet](./experience-review/design-sheet.html). The settled sheet is promoted to [reference](../../reference/design-system/experience-interaction-sheet.html).
 
 ## Outcome
 

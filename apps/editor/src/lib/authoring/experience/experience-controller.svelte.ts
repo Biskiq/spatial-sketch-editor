@@ -101,6 +101,9 @@ type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 export type ExperienceViewChoice = { readonly id: string; readonly label: string };
 
 /** The outcome an inline rename field reads: accepted, or refused with the reason to show. */
+/** The ready draft's name until the creator renames it (Experience review 1). */
+export const DRAFT_EXPERIENCE_LABEL = 'Untitled experience';
+
 export type ExperienceRenameOutcome = { readonly kind: 'accepted' | 'refused'; readonly message?: string };
 
 /** One exact authored View pose, as the Stage's Camera reads it. */
@@ -146,7 +149,6 @@ export type ExperienceController = {
 	/** Derive one occurrence's path for the Guide's connectors and shot list. */
 	pathFor(occurrence: ExperiencePathOccurrence): ExperiencePathRead | null;
 	/** Path is an armed Stage mode; only Plan inserts and drags. Session state. */
-	readonly pathArmed: boolean;
 	/** The selected interior point of the selected path, or null. */
 	readonly selectedAnchorId: string | null;
 	readonly stopUsage: ReadonlyMap<string, readonly string[]>;
@@ -161,6 +163,7 @@ export type ExperienceController = {
 	readonly viewsOf: ReadonlyMap<string, readonly ExperienceViewChoice[]>;
 	readonly filteredPresentations: readonly ExperiencePresentation[];
 	readonly message: string;
+	readonly messageRefused: boolean;
 	readonly busy: boolean;
 	/** The Presentation filter the lens's search field writes. */
 	query: string;
@@ -178,7 +181,14 @@ export type ExperienceController = {
 	viewStops(viewId: string): readonly GuidedViewPosition[];
 	presentationsAbout(entityId: string): readonly ExperiencePresentation[];
 	reach(guide?: ExperienceGuide | null): ExperienceReach;
-	createExperience(): Promise<void>;
+	/** Create and open an empty Experience; the label defaults to *Experience n*. */
+	createExperience(label?: string): Promise<boolean>;
+	/**
+	 * Experience review 1 (ready draft): with no Experience yet the lens shows an
+	 * unsaved draft under this name. Its first Capture, Present this or Place a View
+	 * creates the Experience in the same accepted change.
+	 */
+	readonly draftLabel: string;
 	/**
 	 * Dock Capture (D1, D2): the current 3D viewpoint into the subject's Presentation,
 	 * keeping its Default View, else a new standpoint Presentation. Never adds a Stop.
@@ -211,7 +221,8 @@ export type ExperienceController = {
 	setTransition(stopId: string, transition: 'cut' | 'travel'): Promise<boolean>;
 	/** Choose the occurrence the Path action reads; step occurrences live inside a Stop. */
 	selectPath(occurrence: ExperiencePathOccurrence | null): void;
-	setPathArmed(armed: boolean): void;
+	/** Experience review 1 (R5) — the World's saved environment preset. */
+	/** Choose the World's environment: one accepted Scene change, one Undo. */
 	selectAnchor(anchorId: string | null): void;
 	/** Add the one Camera path a Travel needs (E11); never for a Cut. */
 	createPath(occurrence: ExperiencePathOccurrence): Promise<boolean>;
@@ -219,7 +230,7 @@ export type ExperienceController = {
 	 * Insert an interior point at a validated canonical slot in authored order.
 	 * Omitted, the slot is derived from Camera's own directed curve progress.
 	 */
-	addPathAnchor(point: readonly [number, number, number], slot?: number): Promise<boolean>;
+	addPathAnchor(point: readonly [number, number, number], slot?: number, near?: readonly [number, number, number]): Promise<boolean>;
 	movePathAnchor(anchorId: string, point: readonly [number, number, number]): Promise<boolean>;
 	removePathAnchor(anchorId: string): Promise<boolean>;
 	straightenPath(): Promise<boolean>;
@@ -327,6 +338,7 @@ export function createExperienceController(
 			untrack(() => (experienceFocus.experienceId = current!.id));
 		}
 	});
+	let draftLabel = $state(DRAFT_EXPERIENCE_LABEL);
 	const guides = $derived(current?.guides ?? []);
 	const currentGuide = $derived.by(() => {
 		if (current === null || experienceFocus.guideId === null) return null;
@@ -401,7 +413,6 @@ export function createExperienceController(
 	// R217.S29 — the Path action's occurrence and its one derived Camera read. The
 	// occurrence is a selection *within* the Card subject, never a second authority.
 	let pathOccurrence = $state<ExperiencePathOccurrence | null>(null);
-	let pathArmed = $state(false);
 	let selectedAnchorId = $state<string | null>(null);
 	// One accepted read supplies both the canonical Camera graph and the compiled
 	// Layout geometry; never rebuild either for a derived path.
@@ -446,11 +457,10 @@ export function createExperienceController(
 		});
 	});
 	// An Undo, a reorder or a removed occurrence invalidates the session's point
-	// and armed target; never leave a stale writer aimed at the old path.
+	// and edit target; never leave a stale writer aimed at the old path.
 	$effect(() => {
 		const read = selectedPath;
 		if (read === null) {
-			pathArmed = false;
 			selectedAnchorId = null;
 			return;
 		}
@@ -491,13 +501,22 @@ export function createExperienceController(
 	const accepted = new Set<string>(['Accepted.']);
 	// Feedback is a passing line: success fades quickly, a refusal stays long enough to read.
 	let messageTimer: ReturnType<typeof setTimeout> | undefined;
+	/**
+	 * Experience review 1 — a refusal reaches the creator in their own words: text
+	 * that carries a JSON path, an internal kind or a raw identity is replaced by
+	 * one plain sentence (the detail stays in the source findings' Copy details).
+	 */
+	function creatorMessage(text: string): string {
+		const technical = /\$\.|\([a-z]+(?:-[a-z]+)+\)|[a-z]+:[a-z-]+|"[0-9a-f-]{8,}"|[a-z]+(?:-[a-z]+){2,}/;
+		return technical.test(text) ? "That change didn't go through. Undo is unchanged." : text;
+	}
 	function say(text: string): void {
 		message = text;
 		clearTimeout(messageTimer);
 		const shown = text;
 		messageTimer = setTimeout(() => {
 			if (message === shown) message = '';
-		}, accepted.has(text) ? 2400 : 6000);
+		}, 4000);
 	}
 	let busy = $state(false);
 
@@ -518,14 +537,14 @@ export function createExperienceController(
 		return readServices().stage.snapshot().acceptedRevision;
 	}
 
-	/** Submit one command; `true` only when the source actually changed. `success` is the fading message. */
-	async function run(builder: () => Submission, success: () => string = () => 'Accepted.'): Promise<boolean> {
+	/** Submit one command; `true` only when the source actually changed. */
+	async function run(builder: () => Submission, success: () => string = () => ''): Promise<boolean> {
 		if (busy) return false;
 		busy = true;
 		try {
 			const outcome = await readServices().authoring.accept(builder());
 			if (outcome.kind === 'refused') {
-				say(outcome.message);
+				say(creatorMessage(outcome.message));
 				return false;
 			}
 			if (outcome.kind !== 'installed') {
@@ -539,18 +558,30 @@ export function createExperienceController(
 		}
 	}
 
-	async function createExperience(): Promise<void> {
+	async function createExperience(label?: string): Promise<boolean> {
 		const experienceId = newId();
+		const named = label?.trim() || `Experience ${experiences.length + 1}`;
 		const accepted = await run(() =>
 			createExperienceIntent({
 				revision: revision(),
 				ids: { operation: newId(), experience: experienceId },
-				label: `Experience ${experiences.length + 1}`
+				label: named
 			})
 		);
 		// Focus never names an identity the source does not carry: a refused create
 		// must not point Preview at a non-existent Experience.
 		if (accepted) experienceFocus.openExperience(experienceId);
+		return accepted;
+	}
+
+	/**
+	 * The Experience a first step joins: the current one, or the ready draft, which
+	 * that same accepted change creates under `draftLabel`.
+	 */
+	function stepExperience(): { readonly id: string; readonly presentations: number; readonly newLabel: string | null } {
+		return current === null
+			? { id: newId(), presentations: 0, newLabel: draftLabel }
+			: { id: current.id, presentations: current.presentations.length, newLabel: null };
 	}
 
 	function currentCapturePose() {
@@ -587,10 +618,9 @@ export function createExperienceController(
 		presentationLabelText: string | null,
 		exactPose: CapturedViewPose | null = null
 	): Promise<boolean> {
-		if (current === null) return false;
 		const view = exactPose ?? currentCapturePose();
 		if (view === null) return false;
-		const experience = current;
+		const experience = stepExperience();
 		const presentationId = newId();
 		const accepted = await run(() =>
 			captureBindIntent({
@@ -599,15 +629,20 @@ export function createExperienceController(
 				ids: { operation: newId(), view: newId(), presentation: presentationId },
 				experienceId: experience.id,
 				view,
-				presentationLabel: presentationLabelText ?? `Presentation ${experience.presentations.length + 1}`,
+				presentationLabel: presentationLabelText ?? `Presentation ${experience.presentations + 1}`,
 				subjectEntityId,
 				text: null,
 				guideId: null,
 				firstGuideLabel: null,
-				afterStopId: null
+				afterStopId: null,
+				newExperienceLabel: experience.newLabel
 			})
 		);
 		if (accepted) {
+			if (experience.newLabel !== null) {
+				experienceFocus.openExperience(experience.id);
+				draftLabel = DRAFT_EXPERIENCE_LABEL;
+			}
 			experienceFocus.select({ kind: 'presentation', presentationId });
 			// Measurement anchor for the capture/bind → Preview entry row.
 			perfMark('experience:capture-accepted', { firstGuide: false });
@@ -624,9 +659,8 @@ export function createExperienceController(
 	 * Presentation with no subject and no Stop.
 	 */
 	async function captureView(view: CapturedViewPose): Promise<boolean> {
-		if (current === null) return false;
 		const target = selectedPresentation;
-		if (target === null) return captureNewPresentation(null, null, view);
+		if (current === null || target === null) return captureNewPresentation(null, null, view);
 		const experience = current;
 		const keptDefault = target.defaultViewId;
 		const accepted = await run(() =>
@@ -647,7 +681,6 @@ export function createExperienceController(
 	}
 
 	async function capture(): Promise<boolean> {
-		if (current === null) return false;
 		const view = currentCapturePose();
 		if (view === null) return false;
 		return captureView(view);
@@ -674,12 +707,11 @@ export function createExperienceController(
 	}
 
 	async function placeView(pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }): Promise<ExperiencePlacement> {
-		if (current === null) return { kind: 'refused', message: 'Create an Experience first' };
-		const experience = current;
 		const viewId = newId();
 		const view = capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov });
 		const target = selectedPresentation;
-		if (target !== null) {
+		if (current !== null && target !== null) {
+			const experience = current;
 			const keptDefault = target.defaultViewId;
 			const accepted = await run(
 				() =>
@@ -692,13 +724,14 @@ export function createExperienceController(
 						view,
 						...(keptDefault === null ? {} : { defaultViewId: keptDefault })
 					}),
-				() => succeed(`View placed in ${target.label}.`)
+				() => ''
 			);
 			if (!accepted) return { kind: 'refused', message };
 			experienceFocus.select({ kind: 'view', viewId, presentationId: target.id });
 			return { kind: 'placed', presentationId: target.id, viewId, createdPresentation: false };
 		}
 		const presentationId = newId();
+		const experience = stepExperience();
 		const accepted = await run(
 			() =>
 				captureBindIntent({
@@ -707,16 +740,21 @@ export function createExperienceController(
 					ids: { operation: newId(), view: viewId, presentation: presentationId },
 					experienceId: experience.id,
 					view,
-					presentationLabel: `Presentation ${experience.presentations.length + 1}`,
+					presentationLabel: `Presentation ${experience.presentations + 1}`,
 					subjectEntityId: null,
 					text: null,
 					guideId: null,
 					firstGuideLabel: null,
-					afterStopId: null
+					afterStopId: null,
+					newExperienceLabel: experience.newLabel
 				}),
-			() => succeed('Presentation created; name it in the Card.')
+			() => ''
 		);
 		if (!accepted) return { kind: 'refused', message };
+		if (experience.newLabel !== null) {
+			experienceFocus.openExperience(experience.id);
+			draftLabel = DRAFT_EXPERIENCE_LABEL;
+		}
 		experienceFocus.select({ kind: 'presentation', presentationId });
 		return { kind: 'placed', presentationId, viewId, createdPresentation: true };
 	}
@@ -744,7 +782,7 @@ export function createExperienceController(
 					target: pose.target,
 					fov: pose.fov
 				}),
-			() => succeed(shared.length > 0 ? `View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.` : 'View updated.')
+			() => shared.length > 0 ? succeed(`View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.`) : ''
 		);
 		return accepted ? { kind: 'updated' } : { kind: 'refused', message };
 	}
@@ -779,7 +817,7 @@ export function createExperienceController(
 		}
 		return run(
 			() => viewUpdateIntent({ envelope: snapshot, revision: revision(), ids: { operation: newId() }, view, eye, target, fov }),
-			() => succeed('Framing updated.')
+			() => ''
 		);
 	}
 
@@ -897,20 +935,23 @@ export function createExperienceController(
 		fields: {
 			readonly views?: readonly ExperienceGuidedView[];
 			readonly continuation?: ExperienceContinuation | null;
+			readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
 		}
 	): Promise<boolean> {
 		if (current === null) return false;
 		const experience = current;
 		if (!experience.stops.some((entry) => entry.id === stopId)) return false;
-		return run(() =>
-			stopUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				stopId,
-				...fields
-			})
+		return run(
+			() =>
+				stopUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId(), ...(fields.travelPath === undefined ? {} : { connection: newId() }) },
+					experienceId: experience.id,
+					stopId,
+					...fields
+				}),
+			() => ''
 		);
 	}
 
@@ -1003,7 +1044,14 @@ export function createExperienceController(
 		}
 		const continuation: ExperienceContinuation =
 			existing === undefined ? { kind: 'sequence-next', transition } : { ...existing, transition };
-		return updateStop(stopId, { continuation });
+		// Travel makes its path: the straight Camera connection rides in the same
+		// accepted change, so Travel plays at once and one Undo takes both back.
+		const resolved = transition === 'travel' ? resolvePathOccurrence(current, contextGuide, { kind: 'transition', stopId }) : null;
+		const travelPath =
+			resolved === null || resolved.fromViewId === resolved.toViewId
+				? undefined
+				: { fromViewId: resolved.fromViewId, toViewId: resolved.toViewId };
+		return updateStop(stopId, { continuation, ...(travelPath === undefined ? {} : { travelPath }) });
 	}
 
 	/**
@@ -1104,12 +1152,19 @@ export function createExperienceController(
 		if (previous === null) return { kind: 'refused', message: 'That subject is no longer in this Experience.' };
 		// An unchanged name is no edit, so it adds no history entry.
 		if (trimmed === previous) return { kind: 'accepted' };
-		const ok = await run(() => builder(trimmed), () => succeed('Renamed.'));
+		const ok = await run(() => builder(trimmed), () => '');
 		return ok ? { kind: 'accepted' } : { kind: 'refused', message };
 	}
 
 	function renameExperience(label: string): Promise<ExperienceRenameOutcome> {
 		const experience = current;
+		// The draft is not saved yet: its name is kept here until the first step creates it.
+		if (experience === null) {
+			const trimmed = label.trim();
+			if (trimmed === '') return Promise.resolve({ kind: 'refused', message: 'A name cannot be empty.' });
+			draftLabel = trimmed;
+			return Promise.resolve({ kind: 'accepted' });
+		}
 		return rename(label, experience?.label ?? null, (trimmed) =>
 			experienceUpdateIntent({
 				envelope: snapshot,
@@ -1262,7 +1317,7 @@ export function createExperienceController(
 					presentationId,
 					viewIds: order
 				}),
-			() => succeed(`View moved to position ${to + 1}.`)
+			() => ''
 		);
 	}
 
@@ -1492,13 +1547,8 @@ export function createExperienceController(
 	function selectPath(occurrence: ExperiencePathOccurrence | null): void {
 		pathOccurrence = occurrence;
 		selectedAnchorId = null;
-		if (occurrence === null) pathArmed = false;
 	}
 
-	function setPathArmed(armed: boolean): void {
-		pathArmed = armed;
-		if (!armed) selectedAnchorId = null;
-	}
 
 	function selectAnchor(anchorId: string | null): void {
 		selectedAnchorId = anchorId;
@@ -1539,8 +1589,7 @@ export function createExperienceController(
 	/** One accepted write per anchor edit; every other connection field survives. */
 	async function writePathAnchors(
 		read: ExperiencePathRead,
-		anchors: readonly ScenePathAnchor[],
-		success: () => string
+		anchors: readonly ScenePathAnchor[]
 	): Promise<boolean> {
 		if (read.connectionId === null) return false;
 		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
@@ -1553,26 +1602,27 @@ export function createExperienceController(
 					ids: { operation: newId() },
 					connectionId: connection.id,
 					anchors
-				}),
-			success
+				})
 		);
 	}
 
 	async function addPathAnchor(
 		point: readonly [number, number, number],
-		slot?: number
+		slot?: number,
+		near?: readonly [number, number, number]
 	): Promise<boolean> {
 		const read = selectedPath;
 		if (read === null || read.connectionId === null || read.direction === null) return false;
 		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
 		if (connection === undefined) return false;
+		const origin = near ?? point;
 		const insertion =
 			slot === undefined
 				? resolvePathAnchorInsertion({
 						connection,
 						direction: read.direction,
 						graph: acceptedGraph,
-						point: [point[0], point[1], point[2]]
+						point: [origin[0], origin[1], origin[2]]
 					})
 				: Number.isInteger(slot)
 					? { index: slot, position: [point[0], point[1], point[2]] as const }
@@ -1587,11 +1637,11 @@ export function createExperienceController(
 		}
 		const anchor: ScenePathAnchor = {
 			id: nextAnchorId(connection.id, connection.positionPath.anchors.map((entry) => entry.id)),
-			position: [insertion.position[0], insertion.position[1], insertion.position[2]]
+			position: near === undefined ? [...insertion.position] : [...point]
 		};
 		const anchors = [...connection.positionPath.anchors];
 		anchors.splice(insertion.index, 0, anchor);
-		const accepted = await writePathAnchors(read, anchors, () => 'Path point added');
+		const accepted = await writePathAnchors(read, anchors);
 		if (accepted) selectedAnchorId = anchor.id;
 		return accepted;
 	}
@@ -1611,8 +1661,7 @@ export function createExperienceController(
 			read,
 			connection.positionPath.anchors.map((entry) =>
 				entry.id === anchorId ? { ...entry, position: [next[0], next[1], next[2]] } : entry
-			),
-			() => 'Path point moved'
+			)
 		);
 	}
 
@@ -1625,8 +1674,7 @@ export function createExperienceController(
 		}
 		const accepted = await writePathAnchors(
 			read,
-			connection.positionPath.anchors.filter((entry) => entry.id !== anchorId),
-			() => 'Path point removed'
+			connection.positionPath.anchors.filter((entry) => entry.id !== anchorId)
 		);
 		if (accepted) selectedAnchorId = null;
 		return accepted;
@@ -1641,7 +1689,7 @@ export function createExperienceController(
 			say('The Camera path is already straight.');
 			return false;
 		}
-		const accepted = await writePathAnchors(read, [], () => 'Camera path straightened');
+		const accepted = await writePathAnchors(read, []);
 		if (accepted) selectedAnchorId = null;
 		return accepted;
 	}
@@ -1717,9 +1765,6 @@ export function createExperienceController(
 		get selectedPath() {
 			return selectedPath;
 		},
-		get pathArmed() {
-			return pathArmed;
-		},
 		get selectedAnchorId() {
 			return selectedAnchorId;
 		},
@@ -1737,6 +1782,9 @@ export function createExperienceController(
 		},
 		get message() {
 			return message;
+		},
+		get messageRefused() {
+			return message !== '' && !accepted.has(message);
 		},
 		get busy() {
 			return busy;
@@ -1798,6 +1846,9 @@ export function createExperienceController(
 				? { presentations: 0, views: 0, freePresentations: 0, freeViews: 0, viewsOnlyFree: 0, hiddenViews: 0 }
 				: reachSummary(current, guide),
 		createExperience,
+		get draftLabel() {
+			return draftLabel;
+		},
 		capture,
 		presentThis,
 		addStop,
@@ -1826,7 +1877,6 @@ export function createExperienceController(
 							geometry: acceptedGeometry
 						}),
 		selectPath,
-		setPathArmed,
 		selectAnchor,
 		createPath,
 		addPathAnchor,

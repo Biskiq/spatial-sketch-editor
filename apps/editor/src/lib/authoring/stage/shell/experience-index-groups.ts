@@ -8,8 +8,16 @@
 export type ExperienceIndexGroups = {
 	/** The lens is mounted but the controller is not yet bound to the admitted source. */
 	readonly pending: boolean;
-	/** Every Experience of the source, for the crumb's sibling menu. */
-	readonly experiences: readonly { readonly id: string; readonly label: string }[];
+	/** Every Experience of the source, for the Index's Experiences list. */
+	readonly experiences: readonly {
+		readonly id: string;
+		readonly label: string;
+		/** Stops across its Guides and Presentations, for the row's meta. */
+		readonly stopCount: number;
+		readonly presentationCount: number;
+	}[];
+	/** Experience review 1: the ready draft's name while the source has no Experience. */
+	readonly draftLabel: string;
 	/** The open Experience, or null when the source has none yet. */
 	readonly current: { readonly id: string; readonly label: string } | null;
 	/** The Guides of the open Experience. One is active (`open`); its panel is the instrument. */
@@ -48,7 +56,8 @@ export type ExperienceIndexGroups = {
 	readonly busy: boolean;
 	onQuery(query: string): void;
 	onOpenExperience(experienceId: string): void;
-	onCreateExperience(): void;
+	/** Create and open an empty Experience under this name (Experience review 1: inline in the list). */
+	onCreateExperience(label?: string): Promise<boolean> | void;
 	/** R217.S26: the crumb's inline rename. An empty name refuses with its reason. */
 	onRenameExperience(label: string): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
 	/** null = the "No Guide yet" row: open the empty Guide. */

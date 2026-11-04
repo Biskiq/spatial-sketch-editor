@@ -65,7 +65,7 @@ describe('R217.S26 visual tokens', () => {
 		expect(rule(card, '.name')).toMatch(/font:\s*400 19px\/1\.2 var\(--shell-serif/);
 		expect(card).toMatch(/\.rename-input \{[^}]*font: inherit/);
 		const index = source('stage/shell/EditorIndex');
-		expect(rule(index, '.crumbs')).toMatch(/font-size:\s*12px/);
+		expect(rule(index, '.exp-open')).toMatch(/font:\s*400 13px\/1\.35 var\(--shell-sans/);
 		expect(rule(index, '.crumb-input')).toMatch(/font:\s*600 12px\/1\.3 var\(--shell-sans/);
 		expect(rule(index, '.crumb-error')).toMatch(/color:\s*var\(--shell-refuse/);
 	});

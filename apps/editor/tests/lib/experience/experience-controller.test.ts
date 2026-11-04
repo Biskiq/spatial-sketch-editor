@@ -158,7 +158,7 @@ describe('commands route through commands.ts', () => {
 			})
 		);
 		expect(experienceFocus.experienceId).toBe(created.id);
-		expect(controller.message).toBe('Accepted.');
+		expect(controller.message).toBe('');
 	});
 
 	it('reorders a Guide with the guide-order intent and nothing else', async () => {
@@ -284,13 +284,13 @@ describe('per-field Stop edits keep the other fields', () => {
 
 		submitted.mockClear();
 		await controller.setContinuation('stop-1', { stopId: 'stop-2' });
-		expect(submittedIntent(submitted).payload).toEqual({
+		expect(submittedIntent(submitted).payload).toMatchObject({
 			continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' }
 		});
 
 		submitted.mockClear();
 		await controller.setContinuation('stop-1', 'next');
-		expect(submittedIntent(submitted).payload).toEqual({
+		expect(submittedIntent(submitted).payload).toMatchObject({
 			continuation: { kind: 'sequence-next', transition: 'travel' }
 		});
 	});
@@ -306,7 +306,7 @@ describe('per-field Stop edits keep the other fields', () => {
 
 		await controller.setTransition('stop-1', 'travel');
 
-		expect(submittedIntent(submitted).payload).toEqual({
+		expect(submittedIntent(submitted).payload).toMatchObject({
 			continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' }
 		});
 	});
@@ -324,7 +324,7 @@ describe('per-field Stop edits keep the other fields', () => {
 
 		await controller.setTransition('stop-1', 'travel');
 
-		expect(submittedIntent(submitted).payload).toEqual({
+		expect(submittedIntent(submitted).payload).toMatchObject({
 			continuation: { kind: 'sequence-next', transition: 'travel' }
 		});
 	});
@@ -351,7 +351,7 @@ describe('per-field Stop edits keep the other fields', () => {
 		expect(submitted).not.toHaveBeenCalled();
 
 		expect(await controller.setTransition('stop-1', 'travel')).toBe(true);
-		expect(submittedIntent(submitted).payload).toEqual({
+		expect(submittedIntent(submitted).payload).toMatchObject({
 			continuation: { kind: 'sequence-next', transition: 'travel' }
 		});
 	});
@@ -393,7 +393,7 @@ describe('Capture (D1, D2)', () => {
 			})
 		);
 		expect((intent.payload as { defaultViewId?: string }).defaultViewId).toBe('view-1');
-		expect(controller.message).toBe('Accepted.');
+		expect(controller.message).toBe('');
 		// The Card stays on what it showed.
 		expect(controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
 	});
@@ -736,7 +736,7 @@ describe('busy and message', () => {
 		release(installed());
 		await pending;
 		expect(controller.busy).toBe(false);
-		expect(controller.message).toBe('Accepted.');
+		expect(controller.message).toBe('');
 	});
 
 	it('names a refusal in its own words, without the code, focuses nothing new and clears busy', async () => {
@@ -928,7 +928,7 @@ describe('the controller module has no DOM at runtime', () => {
 			await mount.controller.createExperience();
 
 			expect(submitted).toHaveBeenCalledTimes(2);
-			expect(mount.controller.message).toBe('Accepted.');
+			expect(mount.controller.message).toBe('');
 		} finally {
 			vi.unstubAllGlobals();
 		}

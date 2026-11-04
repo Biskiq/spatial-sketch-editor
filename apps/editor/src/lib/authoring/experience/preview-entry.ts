@@ -2,8 +2,9 @@
  * Preview entry (T3.P02.S01).
  *
  * The Preview entry rule is the owner-accepted shell draft's: Preview enters *what
- * you are working on* — the selected Stop of an open Guide, otherwise the
- * Experience's entry Guide; from a selected Presentation, that Presentation alone
+ * you are working on* — an open Guide at its entry Stop (never the focused Stop, so
+ * the welcome's guided tour always starts there), otherwise the Experience's entry
+ * Guide; from a selected Presentation, that Presentation alone
  * through Presentation entry; with no Guide at all, the visitor list of enterable
  * Presentations. A Presentation without a Default View is listed as unavailable
  * with its reason rather than entered or silently dropped.
@@ -155,18 +156,16 @@ export function previewEntryFor(input: {
 		sessionEpoch: input.sessionEpoch
 	};
 
-	// 1. The selected Stop of an open Guide, otherwise that Guide's entry Stop.
+	// 1. An open Guide starts at its own entry Stop (its authored start, Stop 1 by
+	// default), never at the Stop the editor has focused: the welcome's guided tour
+	// begins there. Lowering with no explicit entry uses the Guide's `entryStopId`.
 	const openGuide = focus.guideId === null
 		? null
 		: experience.guides.find((guide) => guide.id === focus.guideId) ?? null;
 	if (openGuide !== null) {
-		const selectedStop = focus.stopId !== null && openGuide.stopIds.includes(focus.stopId)
-			? focus.stopId
-			: openGuide.entryStopId;
 		const lowered = lowerExperienceProgram(envelope, {
 			...baseLowering,
-			guideId: openGuide.id,
-			entryStopId: selectedStop
+			guideId: openGuide.id
 		});
 		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
 		return {

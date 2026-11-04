@@ -32,8 +32,13 @@ import {
 } from '@portfolio/project-model/units';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {
+	SCENE_ENVIRONMENT_SET_KIND
+} from '@portfolio/project-model/units';
+import {
 	cameraConnectionCreateIntent,
 	cameraConnectionUpdateIntent,
+	captureBindIntent,
+	capturedViewPose,
 	stopUpdateIntent
 } from '$lib/authoring/experience/commands';
 import {
@@ -544,10 +549,10 @@ describe('R217.S29 Camera paths', () => {
 		const source = readFileSync('src/lib/authoring/experience/ExperiencePaths.svelte', 'utf8');
 		expect(source).toContain('--shell-gold');
 		expect(source).toContain('--shell-leaf');
-		expect(source).toContain('r="22"');
+		expect(source).toMatch(/@media \(pointer: coarse\) \{\s*\.anchor-hit \{\s*r: 22;/);
 		expect(source).toContain('@media (pointer: coarse)');
 		// Point selection and drag are rendered only for the selected occurrence.
-		expect(source).toContain('beginDrag(event, point, path.read)');
+		expect(source).toContain('beginDrag(event, path.read, anchorAt(event, path.points))');
 		expect(source).toContain('{#if isPathEditTarget(path.read, selected)}');
 		expect(source).toContain('!selectionOnly || entry.key === selectedKey');
 		// A press releases its capture and lease on every way out.
@@ -614,5 +619,70 @@ describe('R217.S29 Camera paths', () => {
 		// X29.1's pair is 2.6 m; Camera clamps automatic travel to 1.25–4.8 s, so it
 		// reads the 1.25 s floor — an authored duration is the only way higher.
 		expect(read?.seconds).toBe(1.25);
+	});
+	it('Experience review 1: Travel adds its straight path in the same accepted change', async () => {
+		const { fixture, coordinator, accept, op } = await pathsFixture('x-salon');
+		const project = coordinator.acceptedSnapshot().domain.source;
+		const experience = project.units.experience.data.experiences[0]!;
+		const stop = experience.stops.find((entry) => entry.id === fixture.ids.stopIds[0]!)!;
+		const destination = experience.stops.find((entry) => entry.id === fixture.ids.stopIds[4]!)!;
+		const before = project.units.camera.data.connections.length;
+		const travelled = await accept(
+			stopUpdateIntent({
+				envelope: project,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: op('travel-with-path'), connection: 'x-salon-implicit' },
+				experienceId: experience.id,
+				stopId: stop.id,
+				continuation: { kind: 'stop', stopId: destination.id, transition: 'travel' },
+				travelPath: { fromViewId: stop.views.at(-1)!.viewId, toViewId: destination.views[0]!.viewId }
+			})
+		);
+		if (travelled.kind !== 'accepted') throw new Error(JSON.stringify(travelled));
+		const after = coordinator.acceptedSnapshot().domain.source;
+		expect(after.units.camera.data.connections).toHaveLength(before + 1);
+		expect(after.units.camera.data.connections.some((entry) => entry.id === 'x-salon-implicit')).toBe(true);
+		expect(after.units.experience.data.experiences[0]!.stops.find((entry) => entry.id === stop.id)!.continuation).toMatchObject({ transition: 'travel' });
+
+		const environment = await accept({
+			version: 1,
+			kind: SCENE_ENVIRONMENT_SET_KIND,
+			operationId: op('environment'),
+			expectedRevision: coordinator.acceptedRevision(),
+			targets: [],
+			payload: { preset: 'daylight' },
+			allocatedIds: [],
+			capturedInputs: []
+		} as Parameters<typeof accept>[0]);
+		if (environment.kind !== 'accepted') throw new Error(JSON.stringify(environment).slice(0, 600));
+		expect(coordinator.acceptedSnapshot().domain.source.units.scene.data.environment).toEqual({ preset: 'daylight' });
+	});
+
+	it('Experience review 1: a ready draft is created by its first capture, in the same accepted change', async () => {
+		const { coordinator, accept, op } = await pathsFixture('x-salon');
+		const project = coordinator.acceptedSnapshot().domain.source;
+		const before = project.units.experience.data.experiences.length;
+		const captured = await accept(
+			captureBindIntent({
+				envelope: project,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: op('draft-capture'), view: 'draft-view', presentation: 'draft-presentation' },
+				experienceId: 'draft-experience',
+				view: capturedViewPose({ label: 'View d', eye: [1, 1.6, 1], target: [2, 1.6, 2], fov: 50 }),
+				presentationLabel: 'Presentation 1',
+				subjectEntityId: null,
+				text: null,
+				guideId: null,
+				afterStopId: null,
+				newExperienceLabel: 'Untitled experience'
+			})
+		);
+		if (captured.kind !== 'accepted') throw new Error(JSON.stringify(captured).slice(0, 600));
+		const after = coordinator.acceptedSnapshot().domain.source;
+		expect(after.units.experience.data.experiences).toHaveLength(before + 1);
+		const created = after.units.experience.data.experiences.find((entry) => entry.id === 'draft-experience')!;
+		expect(created.label).toBe('Untitled experience');
+		expect(created.presentations.map((entry) => entry.id)).toEqual(['draft-presentation']);
+		expect(after.units.camera.data.views.some((entry) => entry.id === 'draft-view')).toBe(true);
 	});
 });
