@@ -192,6 +192,7 @@ export type InkPaletteReading = {
 };
 
 export type InkOpeningKind = 'door' | 'window';
+export type InkOpeningProfile = 'rectangular' | 'rounded' | 'pointed';
 
 /**
  * R217.S10 — how the Wall reading names a chain: **Line** taps or drags points one
@@ -203,6 +204,7 @@ export type InkWallMode = 'line' | 'box';
 /** The next Opening's palette defaults; a session remembers them. */
 export type InkOpeningOptions = {
 	readonly kind: InkOpeningKind;
+	readonly profile?: InkOpeningProfile;
 	readonly width: number;
 	readonly height: number;
 	readonly sillHeight: number;
@@ -218,6 +220,7 @@ export type InkOpeningSnapshot = {
 	readonly height: number;
 	readonly sillHeight: number;
 	readonly kind: InkOpeningKind;
+	readonly profile: InkOpeningProfile;
 	/** The planner accepted the exact candidate under the pointer. */
 	readonly canPlace: boolean;
 	/** Planner-derived refusal/repair words while the candidate does not fit. */

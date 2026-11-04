@@ -355,7 +355,12 @@ describe('Stage shell composition', () => {
 		// Chrome may translate (that is layout of the chrome itself); nothing in the
 		// Stage may scale or matrix-transform the surface. Comments are blanked
 		// upstream, so this reads declarations only.
-		const scaling = sources
+		// The cursor glyph source transforms only its embedded SVG artwork to orient
+		// the pointer preview; it does not transform the Stage surface.
+		const surfaceSources = sources.filter(([file]) =>
+			file !== 'apps/editor/src/lib/authoring/stage/stage-glyphs.ts'
+		);
+		const scaling = surfaceSources
 			.filter(([, source]) => /(?:^|[\s;{])(?:scale|scale3d|matrix|matrix3d)\s*\(/m.test(source))
 			.map(([file]) => file);
 		expect(scaling).toEqual([]);

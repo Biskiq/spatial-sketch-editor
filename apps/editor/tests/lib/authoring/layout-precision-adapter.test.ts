@@ -661,17 +661,16 @@ describe('Layout scalar Stage grips',()=>{
   else {for(const key of '0')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});}
   expect(facade.snapshot().canonicalJson).toBe(before);expect(host.history()).toMatchObject({depth:1,position:0});expect(facade.session.gesture()).toBeNull();facade.dispose();
  });
- it('edits Opening height with its sill and canonical host unchanged',async()=>{
-  const {facade,host,openingId}=await mount();const snapshot=facade.snapshot();
+	it('keeps Opening height in the Card and exposes the 3D top-edge cursor only',async()=>{
+	  const {facade,services,openingId}=await mount();const snapshot=facade.snapshot();
   const reference={version:1 as const,domain:'layout' as const,subject:{kind:'opening' as const,id:openingId},revision:{kind:'exact' as const,contentRevision:snapshot.domain.unitRevisions.layout},instancePath:[],location:{kind:'layout-location' as const,levelId:snapshot.domain.layoutLevelId,structureInstancePath:[]},componentId:null,capabilityId:null};
-  facade.setSelection({ordered:[{reference}],primary:reference});
-  const original=stageEnvelope(snapshot).units.layout.data.openings.find(o=>o.id===openingId)!;
-  const mark=facade.marks().find(m=>m.id==='layout-opening-height')!;expect(mark).toBeDefined();const evaluationId=facade.evaluationId()!;
-  expect(facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId}).claimed).toBe(true);
-  for(const key of '1.4')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});
-  await expect.poll(()=>host.history().position).toBe(1);
-  const accepted=stageEnvelope(facade.snapshot()).units.layout.data.openings.find(o=>o.id===openingId)!;
-  expect(accepted).toMatchObject({...original,height:1.4});facade.dispose();
+	  const representation: PlanSourceRef={sourceId:openingId,sourceKind:'opening',generationId:snapshot.compileGeneration,stream:'projected',subRef:null};
+	  facade.setSelection({ordered:[{reference,representation}],primary:reference});
+	  const marks=facade.marks();
+	  expect(marks.find(m=>m.id==='layout-opening-height')).toBeUndefined();
+	  expect(marks.find(m=>m.id==='layout-opening-height-top')).toMatchObject({hidden:true,resizeCursor:'opening-edge',planner:'layout-opening-resize'});
+	  expect(createCardFieldsInstrument(services)!.fields().some(field=>field.id==='height')).toBe(true);
+	  facade.dispose();
  });
 });
 

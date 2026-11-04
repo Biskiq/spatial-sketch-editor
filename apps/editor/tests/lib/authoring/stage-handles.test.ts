@@ -25,6 +25,11 @@ import {
 	type StageHandleDescriptor
 } from '$lib/authoring/stage/stage-handles';
 import {
+	STAGE_ARROW_GLYPH,
+	STAGE_SCALE_GLYPH,
+	stageResizeCursorCss
+} from '$lib/authoring/stage/stage-glyphs';
+import {
 	createEmptyWallFirstLayoutDocument,
 	planWallChain
 } from '@portfolio/layout-core';
@@ -163,6 +168,63 @@ describe('R217.S07 — mark projection and hit areas', () => {
 			offset: [0, 0]
 		});
 		expect(hitStageMark(marks, { css: [640, 360], coarse: false })?.id).toBe('first');
+	});
+
+	it('arbitrates a resize group by nearest hit and keeps descriptor order for ties', () => {
+		const marks = projectStageHandles({
+			adapterId: 'layout',
+			descriptors: [
+				{ ...GRIP, id: 'left-edge', disclosedBy: undefined, anchor: [0, 0, 0], hitRadiusCss: 22, hitGroup: 'opening-controls' },
+				{ ...GRIP, id: 'center-move', disclosedBy: undefined, anchor: [0.3, 0, 0], hitRadiusCss: 22, hitGroup: 'opening-controls' }
+			],
+			openDisclosures: new Set(),
+			hoveredId: null,
+			activeId: null,
+			project,
+			offset: [0, 0]
+		});
+		expect(hitStageMark(marks, { css: [659, 360], coarse: false })?.id).toBe('center-move');
+		expect(hitStageMark(marks, { css: [655, 360], coarse: false })?.id).toBe('left-edge');
+	});
+
+	it('keeps a hidden resize target at its exact 22 CSS-pixel hit radius', () => {
+		const marks = projectStageHandles({
+			adapterId: 'layout',
+			descriptors: [{
+				...GRIP,
+				disclosedBy: undefined,
+				draw: { hidden: true, resizeCursor: 'opening-edge' },
+				axis: [1, 0, 0],
+				hitSegments: [[[-1, 0, 0], [1, 0, 0]]],
+				hitRadiusCss: 22
+			}],
+			openDisclosures: new Set(),
+			hoveredId: null,
+			activeId: null,
+			project,
+			offset: [0, 0]
+		});
+		expect(marks[0]).toMatchObject({ hidden: true, resizeCursor: 'opening-edge', hitRadiusCss: 22 });
+		expect(hitStageMark(marks, { css: [640, 382], coarse: false })?.id).toBe('probe-grip');
+		expect(hitStageMark(marks, { css: [640, 382.01], coarse: false })).toBeNull();
+	});
+});
+
+describe('Opening resize cursor stickers', () => {
+	function cursorSvg(value: string | null): string {
+		const encoded = value?.match(/url\("data:image\/svg\+xml,([^"]+)"\)/)?.[1];
+		if (encoded === undefined) throw new Error('the Stage resize cursor is missing its SVG');
+		return decodeURIComponent(encoded);
+	}
+
+	it('reuses the directional sticker arrow for an edge and the unboxed white scale glyph for corners', () => {
+		const edge = cursorSvg(stageResizeCursorCss('opening-edge', [1, 0]));
+		expect(edge).toContain(STAGE_ARROW_GLYPH);
+		const corner = cursorSvg(stageResizeCursorCss('opening-corner', [1, 0]));
+		expect(corner).toContain(STAGE_SCALE_GLYPH);
+		expect(corner).toContain('stroke="white" stroke-width="1.5"');
+		expect(corner).not.toContain('<rect');
+		expect(stageResizeCursorCss('opening-edge', null)).toBeNull();
 	});
 });
 

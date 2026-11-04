@@ -23,6 +23,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../../helpers/import-closure';
 import { Layers, Mesh, MeshBasicMaterial } from 'three';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
@@ -115,6 +117,18 @@ function withDoor(fixture: Fixture): Fixture {
 	);
 	if (door.kind !== 'success') throw new Error(`the door no longer plans: ${door.rejection.code}`);
 	return { compiled: compileWallFirstLayoutGeometry(door.document).geometry, document: door.document };
+}
+
+function withWindow(fixture: Fixture): Fixture {
+	const layout = fixture.document;
+	const window = planCreateWallFirstOpening(
+		layout,
+		{ wallId: layout.walls[0]!.id, kind: 'window', offset: 1, width: 1.2, height: 1.2, sillHeight: 1 },
+		freshCapture(),
+		layout.floor.id
+	);
+	if (window.kind !== 'success') throw new Error(`the window no longer plans: ${window.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(window.document).geometry, document: window.document };
 }
 
 function withLowWalls(fixture: Fixture, height: number): Fixture {
@@ -313,14 +327,62 @@ describe('Paper Plan — stream treatment', () => {
 		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
 		const plan = evaluate(fixture.compiled);
 		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
-		const symbols = drawing.lines.filter((line) => line.stream === 'symbol');
-		expect(symbols.length).toBeGreaterThan(0);
-		expect(symbols.every((line) => line.layer === PAPER_LAYER.symbol)).toBe(true);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		const wall = fixture.compiled.walls.find((candidate) => candidate.openings.some((entry) => entry.openingId === opening.openingId))!;
+		const symbol = drawing.lines.find((line) => line.stream === 'symbol' && line.sourceId === opening.openingId)!;
+		const swing = drawing.lines.find((line) => line.sourceId === opening.openingId && line.dashed)!;
+		expect(symbol.layer).toBe(PAPER_LAYER.symbol);
+		expect(symbol.segments).toHaveLength(3);
+		expect(swing.segments).toHaveLength(18);
+		expect(swing.dashed).toBe(true);
+		// Two thin jambs and the physical leaf stay solid. The leaf is perpendicular
+		// to the Wall; the movement arc is separately dashed at the Opening width.
+		const [hinge, leafEnd] = symbol.segments[2]!;
+		const tangent: LayoutVec2 = [
+			(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0]) / Math.hypot(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0], opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1]),
+			(opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1]) / Math.hypot(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0], opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1])
+		];
+		const leaf = [leafEnd[0] - hinge[0], leafEnd[1] - hinge[1]] as const;
+		expect(Math.hypot(leaf[0], leaf[1])).toBeCloseTo(opening.width, 6);
+		expect(leaf[0] * tangent[0] + leaf[1] * tangent[1]).toBeCloseTo(0, 6);
+		for (const segment of swing.segments) {
+			for (const point of segment) {
+				expect(Math.hypot(point[0] - hinge[0], point[1] - hinge[1])).toBeCloseTo(opening.width, 5);
+			}
+		}
+		expect(Math.hypot(symbol.segments[0]![0][0] - symbol.segments[0]![1][0], symbol.segments[0]![0][1] - symbol.segments[0]![1][1])).toBeCloseTo(wall.thickness, 6);
+		const resources = createPaperScene(drawing, [800, 600]);
+		try {
+			const symbolBatches = resources.group.children.filter(
+				(child): child is LineSegments2 => child instanceof LineSegments2 && child.renderOrder === PAPER_LAYER.symbol
+			);
+			expect(symbolBatches.map((line) => (line.material as LineMaterial).dashed).sort()).toEqual([false, true]);
+		} finally {
+			resources.dispose();
+		}
 		const lintels = drawing.lines.filter(
 			(line) => line.stream === 'projected' && eligiblePlanFragments(plan).some((fragment) => fragment.ref.sourceId === line.sourceId && fragment.ref.sourceKind === 'wall')
 		);
 		expect(lintels.length, 'a Wall span above the cut is projected').toBeGreaterThan(0);
 		expect(lintels.every((line) => line.layer === PAPER_LAYER.projected)).toBe(true);
+	});
+
+	it('keeps Window glazing inside its Wall and omits an oversized Plan outline', () => {
+		const fixture = withWindow(enclosure(STARTER_ENCLOSURE_POINTS));
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		const wall = fixture.compiled.walls.find((candidate) => candidate.openings.some((entry) => entry.openingId === opening.openingId))!;
+		const symbol = drawing.lines.find((line) => line.stream === 'symbol' && line.sourceId === opening.openingId)!;
+		expect(symbol.segments).toHaveLength(12);
+		expect(PAPER_LINE_STYLE.symbol.widthCssPx).toBe(1);
+		for (const segment of symbol.segments.slice(2)) {
+			for (const point of segment) {
+				const centerDistance = Math.min(...opening.centerPolyline.map((center) => Math.hypot(point[0] - center[0], point[1] - center[1])));
+				expect(centerDistance).toBeCloseTo(wall.thickness * 0.2, 4);
+				expect(centerDistance).toBeLessThan(wall.thickness / 2);
+			}
+		}
 	});
 
 	it('draws a Wall wholly below the cut as dashed hidden ink', () => {

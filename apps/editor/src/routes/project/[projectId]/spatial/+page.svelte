@@ -103,6 +103,7 @@
 		type StageSourceHit
 	} from '$lib/authoring/stage/stage-facade';
 	import type { StageMarkView } from '$lib/authoring/stage/stage-handles';
+	import { stageResizeCursorCss } from '$lib/authoring/stage/stage-glyphs';
 	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
 	import {
 		createStageAdapterServices,
@@ -1816,6 +1817,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let modelNotice: string | null = null;
 	let roomLabels = $state<readonly RoomLabelView[]>([]);
 	let marks = $state<readonly StageMarkView[]>([]);
+	let stageCursor = $state<string | null>(null);
 	let notice = $state('');
 	$effect(() => {
 		const shown = notice;
@@ -3966,6 +3968,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		hoverFrame = null;
 		hoverSample = null;
 		facade?.setMarkHover(null);
+		stageCursor = null;
 		session.setHover(null);
 		hoverSelection = null;
 		hoverMove = false;
@@ -3983,6 +3986,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
 		if (sample === null || stage === null || id === null || session.gesture() !== null || drag !== null) return;
+		stageCursor = null;
 		// An armed host tool previews its own winner (the Eraser's dashes, Measure's
 		// second point); the ordinary subject hover would compete with it.
 		if (armedHostTool !== null) {
@@ -4002,6 +4006,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (mark !== null) {
 			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 			stage.setMarkHover({ adapterId: mark.adapterId, id: mark.id });
+			stageCursor = mark.mark.resizeCursor === undefined
+				? null
+				: stageResizeCursorCss(mark.mark.resizeCursor, mark.mark.direction);
 			session.setHover(null);
 			hoverSelection = null;
 			// R217.S15 — a selected Wall's own grips are draggable; every other
@@ -4017,6 +4024,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		stage.setMarkHover(null);
+		stageCursor = null;
 		const idleMark = stage.idleHoverIntent({ phase: 'move', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
 		if (idleMark !== null) {
 			stage.setMarkHover({ adapterId: idleMark.adapterId, id: idleMark.id });
@@ -5809,6 +5817,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				: hoverMove ? 'move'
 				: task?.kind === 'layout-ink' || armedHostTool !== null ? 'draw'
 				: 'select'}
+				style:cursor={stageCursor ?? undefined}
 				aria-label="Spatial stage"
 				onpointerleave={clearHover}
 				onpointerdown={onPointerDown}

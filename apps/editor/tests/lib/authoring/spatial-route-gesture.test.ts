@@ -1619,10 +1619,8 @@ describe('R217.S16 — selected Opening body priority', () => {
 		const nearEnd = projected([pointAt(0.04)[0], 0, pointAt(0.04)[1]]);
 		const local = [nearEnd[0] - RECT.left, nearEnd[1] - RECT.top] as [number, number];
 		const evaluationId = facade().evaluationId()!;
-		expect(facade().hitMark({ css: local, coarse: false })).toBeNull();
-		expect(facade().idleHoverIntent({ phase: 'move', css: local, evaluationId, coarse: false })).toMatchObject({
-			id: 'layout-junction-hover', adapterId: 'layout'
-		});
+		expect(facade().hitMark({ css: local, coarse: false })).toMatchObject({ id: 'layout-opening-width-start' });
+		expect(facade().idleHoverIntent({ phase: 'move', css: local, evaluationId, coarse: false })).toBeNull();
 
 		const pointerDown = nearEnd;
 		pointer('pointerdown', pointerDown);
@@ -1916,7 +1914,8 @@ it('retains Box/Line choices while disclosure changes',async()=>{await openInk()
 		await press('[data-ink-reading-opening]');
 		expect(target.querySelector('[data-ink-thickness]')).toBeNull();
 		expect(target.querySelector('[data-ink-finish]')).toBeNull();
-		expect(target.querySelector('[data-ink-options-toggle]')!.getAttribute('aria-expanded')).toBe('true');
+		await vi.waitFor(() => expect(target.querySelector('[data-layout-opening-palette]')).not.toBeNull());
+		expect(target.querySelector('[data-ink-options-toggle]')).toBeNull();
 	});
 
 	it('refuses an invalid Wall option in words, and accepts a valid one, through the Options disclosure', async () => {

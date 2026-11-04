@@ -21,6 +21,7 @@
 	 */
 	import type { StageMarkView } from '../stage-handles';
 	import type { StageCandidatePreviewView } from '../stage-facade';
+	import { STAGE_ARROW_GLYPH, STAGE_MOVE_GLYPH } from '../stage-glyphs';
 
 	let {
 		markers,
@@ -73,11 +74,11 @@
 	/** The sticker glyph set. Each path is drawn about its own origin. */
 	const GLYPH = {
 		/** A chunky arrow, tail at the origin, pointing +x. */
-		arrow: 'M0,-2.7 H8 V-6.8 L16.5,0 L8,6.8 V2.7 H0 Z',
+		arrow: STAGE_ARROW_GLYPH,
 		/** A two-way arrow centred on the origin. */
 		two: 'M-15.5,0 L-7.5,-6.8 V-2.7 H7.5 V-6.8 L15.5,0 L7.5,6.8 V2.7 H-7.5 V6.8 Z',
 		/** The four-way move cross. */
-		move: 'M0,-15 L6.4,-8 H2.5 V-2.5 H8 V-6.4 L15,0 L8,6.4 V2.5 H2.5 V8 H6.4 L0,15 L-6.4,8 H-2.5 V2.5 H-8 V6.4 L-15,0 L-8,-6.4 V-2.5 H-2.5 V-8 H-6.4 Z',
+		move: STAGE_MOVE_GLYPH,
 		hex: hexPath(7),
 		hexSmall: hexPath(5.6),
 		curved: curvedArrowPath()
@@ -293,6 +294,7 @@
 		{@const tail = mark.tail}
 		{@const emphasised = mark.hovered || mark.active}
 		{@const label = refusalAtPointer || candidates.some(candidate => candidate.labels.length > 0) ? '' : mark.refusal ?? mark.tag}
+		{#if !mark.hidden}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 		<g
 			class="mark"
@@ -325,7 +327,7 @@
 				{/if}
 				<path class="glyph" class:held={mark.active} d={sized(mark.glyph === 'top-knob' ? GLYPH.hex : GLYPH.hexSmall, emphasised)} transform={glyphTransform(mark.anchor, 0)} />
 			{:else if mark.cross}
-				<path class="glyph" class:held={mark.active} d={sized(GLYPH.move, emphasised)} transform={glyphTransform(mark.anchor, headingOf(mark.direction))} />
+				<path class="glyph" class:held={mark.active} d={sized(GLYPH.move, emphasised, mark.glyphScale)} transform={glyphTransform(mark.anchor, headingOf(mark.direction))} />
 			{:else if mark.kind === 'ray' || mark.kind === 'track'}
 				{#if tail !== null}
 					{@const reach = Math.hypot(tip[0] - mark.anchor[0], tip[1] - mark.anchor[1])}
@@ -361,6 +363,7 @@
 				</g>
 			{/if}
 		</g>
+		{/if}
 	{/each}
 
 	{#if hostTools?.measure}
