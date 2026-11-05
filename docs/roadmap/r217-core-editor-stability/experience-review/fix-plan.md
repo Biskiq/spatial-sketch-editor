@@ -329,20 +329,20 @@ This supersedes the minimum-drag requirement in the original S28 plan.
 **Not accepted yet.** The owner picked from the reference sheet's §23–§25
 ([interaction sheet](../../../reference/design-system/experience-interaction-sheet.html)): §23 as recommended,
 §24 the World's marks with the picture in the Card only, §25 *Cards are the timeline*. The owner also
-reported the live gaps below. The working tree implements H1–H9; H10 is the next step.
+reported the live gaps below. The correction includes H1–H9 and the Camera portion of H10.
 
 | # | Finding | Cause | Fix |
 | --- | --- | --- | --- |
 | H1 | In Plan the cameras vanish when the scene has no objects, and at some pans. | `experience-marks.ts` dropped a View unless its eye **and its target** projected `visible`. An empty Plan fits its depth range to the Floor, so a View at eye height is `clipped`. A target off the frame (a pan, a far look point) hid the whole View. `ExperiencePaths` had the same rule. | A mark is screen ink: only `behind` (and an eye `outside-frame`) drops it. The target only gives the wedge its direction. Tests: a far target and a clipped eye both still mark. |
 | H2 | Plan shows a dot; the camera doesn't move while dragged, only on release. | The Plan eye drew a `.dot`. During a move, a separate dot-and-line preview moved while the real mark stayed. | Sheet §23 ✓. The Plan eye draws the Detailed camera from above (`planCamera` snippet, state colours as in 3D), turned to the mark's new `heading`. The wedge starts at the lens (`PLAN_LENS_PX`). `liveEdit` draws the dragged View at its provisional pose through `experienceMarkModel({ livePose })`, and a dashed ghost with the distance stays at the start pose. The turn keeps only its arc and angle. Placement ghosts use the same glyph. |
-| H3 | The Card fades to 20 % while a camera is adjusted, so it can't be read. | D36 fades the Card for every non-navigation lease. | Sheet §24 *Card only*. The `experience-view-edit` and `experience-path-point` leases keep the Card clear; other authored gestures still fade it. The Card's picture updates on release. A live picture during the drag is not built. |
+| H3 | The Card fades to 20 % while a camera is adjusted, so it can't be read. | D36 fades the Card for every non-navigation lease. | Sheet §24 *Card only*. The `experience-view-edit` and `experience-path-point` leases keep the Card clear; other authored gestures still fade it. The Card keeps its last accepted picture during the drag and refreshes after the edit is accepted. |
 | H4 | Playback draws a dot and a dashed line, with no frustum. | The rig was its own dot glyph. | The rig draws the same camera and frustum a View draws (3D Detailed camera, or the Plan camera and wedge), in the tour colours, read-only. |
 | H5 | The ▾ *Play from…* menu next to ▶ is one choice too many. | S30 transport menu. | Removed. ▶ plays from the playhead. Pressing a Stop card moves the playhead to its start, and pressing a move chip moves it to the end of the Stop before. A playing run keeps playing (`playback.seekStop`). *Preview this move* stays on the Transition Card. |
 | H6 | The Guide's Stop cards are tall, and it shows a scrollbar. | 118 px cards stack picture, name and meta; `.cards` has a thin visible scrollbar. | Sheet §25. 176 × 50 cards with a 62 × 40 picture beside a one-line title and the Stop's time; each card carries its own progress bar. No visible scrollbar: the wheel scrolls sideways, and ‹ › arrows show only on a side with more. **Not yet:** the separate scrub bar is kept, because it is still the only home for waits and keyboard scrubbing (H10). |
 | H7 | The Stop Card's kind line reads "‹ Stop 2Stop 1 of 2 · 23". | `backOf` names the previous subject even after ‹ › stepping to a sibling Stop, and the back link ran into the kind with no gap. | Sibling steps (same subject kind) show no back link, and Alt+← still returns. The back link has a hairline divider. |
 | H8 | The Stop's ‹ › sit on a row of their own; "VISITSAGAIN". | A separate `.stop-nav` row; Svelte trims the space at the start of `{#if again} again`. | The steppers stack beside the Visits block. The label is one expression, `Visits again`. |
 | H9 | Guided View rows are cramped: names cut to "Vi…", a large ENTRY slab, and Hold, eye, × and Preview colliding. | One 300 px flex line holds grip, number, thumbnail, name, tag, Cut/Travel/+ Path/Preview, Hold, eye and ×. | A grid row: the name gets the first line; step and Hold sit beneath; eye and × stack at the right; Preview is a play icon; *Entry* is an outlined tag like *Start*. |
-| H10 | (next) §24 *Advanced* and the rest of §25. | — | Not built: the Card's Advanced switch, the camera's move cross, lift knob, turn arrow, tilt arrow, lens grips, the Plan side strip; folding the scrub bar into the cards (waits and keyboard scrubbing need their own home first); a live Card picture while dragging. |
+| H10 | §24 *Advanced* and the rest of §25. | — | Advanced reveals the World sticker handles in 3D and lens grips in Plan. Plan height and tilt stay in the Card. The Card's picture refreshes after acceptance. The separate Guide scrub bar is still the home for waits and keyboard scrubbing. |
 
 ### Limits and checks
 
@@ -377,9 +377,17 @@ Proposed in the sheet (not built):
 | R3 | How should scrubbing live in *Cards are the timeline*? | The separate scrub row is the only proportional time, the only place a wait shows and the only keyboard scrubber. | §28: the rail under the cards becomes one continuous scrubber, with View ticks, a ⏸ cap for waits, playback that stops at waits, and slider keys. |
 | R4 | Changing the Travel time changes the next View's hold. | In the Stop Card, the step (*Cut · Travel · ▷*) and View 2's *Hold* stepper share View 2's row. The Travel time is read-only text there and can be set only through the path (`setPathDuration`, Camera connection timing). | §29: the step sits between the two Views, and a Travel carries its own stepper (Camera connection timing, *Auto* to restore, and *Same path in N steps* when shared). |
 
-**Live Card picture while dragging (assessment, not built).** About one to one and a half days. The snapshot path (`StageSnapshotRenderer`) renders a full scene into a render target, reads the pixels back synchronously and encodes a PNG data URL, and results are cached by pose. A live picture needs:
-- a second, uncached request path that takes the View-edit session's provisional pose, throttled to about 10 Hz;
-- the picture drawn into a small `<canvas>` with `putImageData`, not a PNG;
-- `ExperienceSnapshot` given a `livePose` override.
+**Advanced Camera picture.** Keep the Stage marks and Card values live during the drag.
+Refresh the Card's picture after the View edit is accepted, including after confirmation for
+a shared View. The accepted snapshot path reuses the Stage renderer and caches the result.
+This avoids a scene draw, GPU readback and PNG encode for each provisional frame.
 
-The cost is one extra scene draw and a GPU readback each tick during the drag, so large scenes need the throttle (and possibly a lower resolution). It uses the same Camera evaluation, so no second preview authority.
+### Revised model before building Round 4 (sheet §30)
+
+The owner's model is a guided tour with optional exploration. **R1, R3 and R4 above are revised by sheet §30 and are not to be built as drawn.**
+- Stops visit one entry View and carry one stay (seconds or until Next).
+- Presentations hold an ordered list of Views. View 1 is the Default. Steps between Views are Cut or Camera path, with no holds.
+- The Guide clock covers only Stops and the transitions between them.
+- Exploring pauses the Guide and its channels. Coming back resumes the same playhead, where today the Stop starts over.
+
+This means an Experience format 4 and an execution program v4, with format 3 strictly refused. Camera is unchanged. §30 lists ten open product decisions. R2 (§27) and the pointer-capture fix are not affected.

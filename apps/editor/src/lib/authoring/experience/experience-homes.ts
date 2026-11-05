@@ -16,6 +16,7 @@ import { getContext, setContext } from 'svelte';
 import type { ExperienceController } from './experience-controller.svelte';
 import type { ExperiencePlayback } from './playback.svelte';
 import type { ExperienceSubject } from './experience-model';
+import type { AdvancedViewFraming, AuthoredViewPose } from './experience-view-edit';
 import type { ExperiencePathOccurrence } from './experience-paths';
 
 export type ExperienceGuideTransport =
@@ -38,6 +39,15 @@ export type ExperienceHomes = {
 	readonly sceneSubject: () => { readonly entityId: string; readonly label: string } | null;
 	/** Switch to the World lens keeping the Scene selection ("Open in World"). */
 	readonly openInWorld: () => void;
+	/** Editor-only disclosure and the selected View's live gesture. */
+	readonly advancedCamera?: {
+		readonly on: () => boolean;
+		readonly set: (on: boolean) => void;
+		readonly eligible: (viewId: string) => boolean;
+		readonly busy: () => boolean;
+		readonly pose: (viewId: string) => AuthoredViewPose | null;
+		readonly write: (viewId: string, edit: AdvancedViewFraming) => Promise<void>;
+	};
 	/** R217.S28 — the View the Stage's provisional through-camera shows, or null. */
 	readonly lookThroughViewId: () => string | null;
 	readonly lookThroughMoved: () => boolean;

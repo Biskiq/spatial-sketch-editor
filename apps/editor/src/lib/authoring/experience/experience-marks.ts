@@ -123,7 +123,7 @@ export const PLAN_LENS_PX = 17;
 /** The selected Plan camera draws 12 % larger. */
 export const PLAN_SELECTED_SCALE = 1.12;
 /** The 3D wire frustum's far distance, in metres from the lens tip. */
-const CAMERA_FRUSTUM_FAR_METRES = 1.2;
+export const CAMERA_FRUSTUM_FAR_METRES = 1.2;
 /** Unselected Views carry a short wire so many Views stay readable (owner review). */
 const CAMERA_FRUSTUM_QUIET_METRES = 0.42;
 /** The wire frustum's aspect ratio. */
@@ -237,6 +237,7 @@ function buildCameraMesh(): CameraMesh {
 
 /** Built once at module scope; only the per-View transform changes. */
 const CAMERA_MESH = buildCameraMesh();
+export const CAMERA_LENS_OFFSET_METRES = CAMERA_MESH.lensTip[0];
 
 function dot3(a: V3, b: V3): number {
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -351,7 +352,8 @@ function cameraGlyph(
 	aim: V3,
 	fovDegrees: number,
 	wire: boolean,
-	wireMetres: number = CAMERA_FRUSTUM_FAR_METRES
+	wireMetres: number = CAMERA_FRUSTUM_FAR_METRES,
+	datum = 0
 ): ExperienceCameraGlyph | null {
 	const forward = unit3(sub3(aim, eye)) ?? [0, 0, -1];
 	const reference: V3 = Math.abs(forward[1]) > 0.999 ? [0, 0, 1] : [0, 1, 0];
@@ -404,17 +406,17 @@ function cameraGlyph(
 	const glass = glassVisible ? CAMERA_MESH.glass.ids.map((index) => screen[index]!) : null;
 
 	const eyeCss = projectStage(evaluation, eye, false);
-	const floorWorld: V3 = [eye[0], 0, eye[2]];
+	const floorWorld: V3 = [eye[0], datum, eye[2]];
 	const floorCss = projectStage(evaluation, floorWorld, false);
 	let shadow: ExperienceCameraGlyph['shadow'] = null;
 	if (floorCss !== null) {
-		const offsetX = projectStage(evaluation, [floorWorld[0] + right[0] * CAMERA_SHADOW_RADIUS_METRES, 0, floorWorld[2] + right[2] * CAMERA_SHADOW_RADIUS_METRES], false);
+		const offsetX = projectStage(evaluation, [floorWorld[0] + right[0] * CAMERA_SHADOW_RADIUS_METRES, datum, floorWorld[2] + right[2] * CAMERA_SHADOW_RADIUS_METRES], false);
 		if (offsetX !== null) {
 			const radius = Math.hypot(offsetX[0] - floorCss[0], offsetX[1] - floorCss[1]);
 			shadow = { center: floorCss, rx: radius, ry: radius * 0.55 };
 		}
 	}
-	const showStem = eye[1] > CAMERA_STEM_MIN_METRES && eyeCss !== null && floorCss !== null;
+	const showStem = eye[1] - datum > CAMERA_STEM_MIN_METRES && eyeCss !== null && floorCss !== null;
 
 	let frustum: ExperienceCameraFrustum | null = null;
 	if (wire) {
@@ -560,13 +562,13 @@ export function relatedToSelection(
 
 /** Only Views presented by the Experience have Stage marks. */
 export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
-	const { experience, evaluation, selection, guide, livePose } = input;
+	const { experience, evaluation, selection, guide, livePose, datum = 0 } = input;
 	if (experience === null) return { marks: [], frustums: [] };
 	// Review round 3 (sheet §23): a live marker drag draws the View at its provisional
 	// pose, so the camera itself follows the pointer. The authored View is untouched.
 	const views = livePose == null
 		? input.views
-		: input.views.map((view) => view.id === livePose.viewId ? { ...view, eye: [...livePose.eye], target: [...livePose.target] } as CameraView : view);
+		: input.views.map((view) => view.id === livePose.viewId ? { ...view, eye: [...livePose.eye], target: [...livePose.target], fov: livePose.fov } as CameraView : view);
 
 	const presentationOf = new Map<string, string[]>();
 	for (const presentation of experience.presentations) {
@@ -626,7 +628,7 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 
 		if (!plan) {
 			const wire = wires < EXPERIENCE_MARK_CAPS.frustums;
-			const camera = cameraGlyph(evaluation, view.eye as Vec3, view.target as Vec3, view.fov, wire, state === 'selected' ? CAMERA_FRUSTUM_FAR_METRES : CAMERA_FRUSTUM_QUIET_METRES);
+			const camera = cameraGlyph(evaluation, view.eye as Vec3, view.target as Vec3, view.fov, wire, state === 'selected' ? CAMERA_FRUSTUM_FAR_METRES : CAMERA_FRUSTUM_QUIET_METRES, datum);
 			if (camera?.frustum) wires += 1;
 			const box: StageBox = camera
 				? [camera.bounds[0] - CAMERA_BRACKET_PAD_PX, camera.bounds[1] - CAMERA_BRACKET_PAD_PX, camera.bounds[2] + CAMERA_BRACKET_PAD_PX, camera.bounds[3] + CAMERA_BRACKET_PAD_PX]
@@ -702,7 +704,8 @@ type MarkInput = {
 	readonly evaluation: ViewportEvaluation;
 	readonly selection: MarkSelection;
 	/** A live marker drag's provisional pose for one View; never authored. */
-	readonly livePose?: { readonly viewId: string; readonly eye: Vec3; readonly target: Vec3 } | null;
+	readonly datum?: number;
+	readonly livePose?: { readonly viewId: string; readonly eye: Vec3; readonly target: Vec3; readonly fov: number } | null;
 };
 
 type MarkSelection = {

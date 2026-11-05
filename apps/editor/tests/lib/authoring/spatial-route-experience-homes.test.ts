@@ -24,6 +24,7 @@ import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { primitiveEntity } from './__fixtures__/f4-current-source-fixtures';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
 import { stageCamera, stageExperience } from '$lib/authoring/stage/unit-stage-source';
+import { registerStageSnapshotRenderer, type SnapshotRequest } from '$lib/authoring/stage/stage-snapshots';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import { CONNECTIONS, EXPERIENCE, VIEWS } from '../experience/fixtures';
@@ -204,14 +205,14 @@ async function remountRouteWith(source: unknown): Promise<void> {
 }
 
 /** The starter Layout, the Camera's two Views, a Presentation pair with one Guide, and one Scene entity. */
-async function seededExperienceProject(): Promise<unknown> {
+async function seededExperienceProject(experience = EXPERIENCE): Promise<unknown> {
 	return createUnitProject({
 		id: 'project-1',
 		name: 'Experience homes',
 		layout: buildStarterEnclosureLayout(),
 		scene: { ...createEmptyUnitSceneDocument(), entities: [primitiveEntity(0)] },
 		camera: { formatVersion: CAMERA_UNIT_FORMAT_VERSION, views: VIEWS, connections: CONNECTIONS },
-		experience: EXPERIENCE
+		experience
 	});
 }
 
@@ -534,6 +535,99 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		});
 		expect(target.querySelector('[data-through-frame]')).not.toBeNull();
 		expect(stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!.target).toEqual(afterTurnTarget);
+	});
+
+	it('renders the Advanced Card picture only after a drag is accepted', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		experienceFocus.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
+		await frame();
+		control('Advanced').click();
+		await frame();
+
+		const render = vi.fn(async (request: SnapshotRequest) =>
+			`/snapshot-${request.pose.target[0]}.png`
+		);
+		const unregister = registerStageSnapshotRenderer(render);
+		try {
+			const picture = () => card()?.querySelector('.hero img')?.getAttribute('src');
+			await vi.waitFor(() => expect(picture()).toBe('/snapshot-0.png'));
+			const baseline = facade().snapshot().canonicalJson;
+			const before = picture();
+
+			await withSvgPointerCapture(async () => {
+				for (const cancel of [true, false]) {
+					const [x, y] = markerPoint();
+					const { hit } = turnMarker();
+					render.mockClear();
+					pointer('pointerdown', hit, 1, x, y);
+					pointer('pointermove', hit, 1, x + 30, y + 12);
+					await frame();
+					expect(target.querySelector('[data-view-edit-ghost]')).not.toBeNull();
+					expect(picture()).toBe(before);
+					expect(render).not.toHaveBeenCalled();
+					if (cancel) await pressEscape();
+					pointer('pointerup', hit, 1, x + 30, y + 12);
+					await frame();
+					if (cancel) {
+						expect(facade().snapshot().canonicalJson).toBe(baseline);
+						expect(picture()).toBe(before);
+						expect(render).not.toHaveBeenCalled();
+					}
+				}
+			});
+
+			await vi.waitFor(() => {
+				const accepted = stageCamera(facade().snapshot()).views.find(view => view.id === 'view-1')!;
+				expect(accepted.target[0]).not.toBe(0);
+				expect(picture()).toBe(`/snapshot-${accepted.target[0]}.png`);
+				expect(render.mock.calls.filter(([request]) => request.viewId === 'view-1')).toHaveLength(1);
+			});
+		} finally {
+			unregister();
+		}
+	});
+
+	it('discloses Advanced in Plan without a write, and confirms a shared edit once', async () => {
+		const source = structuredClone(EXPERIENCE);
+		const experience = source.experiences[0]!;
+		const shared = {
+			...source, experiences: [{ ...experience, presentations: experience.presentations.map(presentation =>
+				presentation.id === 'presentation-2' ? { ...presentation, viewIds: [...presentation.viewIds, 'view-1'] } : presentation
+			) }]
+		};
+		await remountRouteWith(await seededExperienceProject(shared));
+		await enterExperience();
+		experienceFocus.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
+		await frame();
+		const baseline = facade().snapshot().canonicalJson;
+		const advanced = control('Advanced');
+		expect(advanced.getAttribute('aria-checked')).toBe('false');
+		advanced.click();
+		await frame();
+		expect(advanced.getAttribute('aria-checked')).toBe('true');
+		expect(target.querySelector('[data-advanced-handle="lift"]')).toBeNull();
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+
+		const dialog = () => target.querySelector('[aria-label="Update a shared View"]');
+		control('Raise camera').click();
+		await vi.waitFor(() => expect(dialog()?.textContent).toContain('Also changes Gallery'));
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		await pressEscape();
+		expect(dialog()).toBeNull();
+		expect((await acceptance().undo()).kind).not.toBe('installed');
+
+		control('Raise camera').click();
+		await vi.waitFor(() => expect(dialog()).not.toBeNull());
+		dialog()!.querySelector<HTMLButtonElement>('button')!.click();
+		await vi.waitFor(() => {
+			const view = stageCamera(facade().snapshot()).views.find(candidate => candidate.id === 'view-1')!;
+			expect(view.eye[1]).toBeCloseTo(VIEWS[0]!.eye[1] + 0.05);
+			expect(view.target[1]).toBeCloseTo(VIEWS[0]!.target[1] + 0.05);
+		});
+		expect((await acceptance().undo()).kind).toBe('installed');
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect((await acceptance().undo()).kind).not.toBe('installed');
 	});
 
 	it('moves in proportion to small wheel deltas and pans the provisional View with Shift-drag', async () => {

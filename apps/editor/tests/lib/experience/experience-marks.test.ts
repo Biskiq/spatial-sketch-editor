@@ -207,11 +207,26 @@ describe('Review round 3 — a live marker drag draws the camera at its provisio
 			selection: { viewId: 'a' }
 		};
 		const still = experienceMarkModel(input);
-		const live = experienceMarkModel({ ...input, livePose: { viewId: 'a', eye: [-3, 2, 2], target: [-3, 1, 0] } });
+		const live = experienceMarkModel({ ...input, livePose: { viewId: 'a', eye: [-3, 2, 2], target: [-3, 1, 0], fov: input.views[0]!.fov } });
 		const eyeOf = (model: typeof still, id: string) => model.marks.find((mark) => mark.viewId === id && mark.kind === 'eye')!.css;
 		expect(eyeOf(live, 'a')[0]).toBeLessThan(eyeOf(still, 'a')[0]);
 		expect(eyeOf(live, 'b')).toEqual(eyeOf(still, 'b'));
 		// The Plan mark carries the heading the Plan camera glyph turns to.
 		expect(typeof live.marks.find((mark) => mark.viewId === 'a' && mark.kind === 'eye')!.heading).toBe('number');
 	});
+
+	it('uses the provisional lens for the selected Plan wedge only', () => {
+		const a = view('a', -1);
+		const input = { experience: experience(['a', 'b'], []), guide: null,
+			views: [a, view('b', 1)], evaluation: plan(), selection: { viewId: 'a' } };
+		const still = experienceMarkModel(input);
+		const live = experienceMarkModel({
+			...input, livePose: { viewId: 'a', eye: a.eye, target: a.target, fov: 90 }
+		});
+		const wedge = (model: typeof still, id: string) => model.frustums.find(item => item.viewId === id);
+		expect(wedge(live, 'a')?.left).not.toEqual(wedge(still, 'a')?.left);
+		expect(wedge(live, 'a')?.eye).toEqual(wedge(still, 'a')?.eye);
+		expect(wedge(live, 'b')).toEqual(wedge(still, 'b'));
+	});
+
 });

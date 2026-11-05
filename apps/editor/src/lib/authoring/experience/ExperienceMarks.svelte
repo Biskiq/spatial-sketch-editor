@@ -9,6 +9,7 @@
 	 * a double-click opens Look through, and Move/aim belongs to the Stage's one
 	 * gesture lease.
 	 */
+	import { onMount } from 'svelte';
 	import { projectWorld, type ViewportEvaluation } from '@portfolio/camera-core';
 	import {
 		experienceMarkModel,
@@ -23,6 +24,8 @@
 		type StageBox,
 		type StagePoint
 	} from './experience-marks';
+	import StageSticker from '../stage/shell/StageSticker.svelte';
+	import { viewEditTag, type AuthoredViewPose, type ViewEditKind } from './experience-view-edit';
 	import { experienceHomes } from './experience-homes';
 	import ExperiencePaths from './ExperiencePaths.svelte';
 
@@ -32,6 +35,8 @@
 		rig = null,
 		placementGhost = null,
 		liveEdit = null,
+		advanced = false,
+		datum = 0,
 		onLookThrough,
 		showMarkers = true,
 		showFrustums = true,
@@ -49,9 +54,14 @@
 		 * Review round 3 (sheet §23): a live marker drag. Its View draws at the provisional
 		 * pose, and a dashed ghost stays at the start pose until release.
 		 */
+		advanced?: boolean;
+		datum?: number;
 		liveEdit?: {
 			readonly viewId: string;
-			readonly kind: 'move' | 'turn';
+			readonly kind: ViewEditKind;
+			readonly handleId: string;
+			readonly pointer: StagePoint;
+			readonly fov: number;
 			readonly start: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number };
 			readonly eye: readonly [number, number, number];
 			readonly target: readonly [number, number, number];
@@ -87,8 +97,9 @@
 		guide: controller?.contextGuide ?? null,
 		views: controller?.cameraViews ?? [],
 		evaluation,
+		datum,
 		selection,
-		livePose: liveEdit?.moved ? { viewId: liveEdit.viewId, eye: [...liveEdit.eye], target: [...liveEdit.target] } : null
+		livePose: liveEdit?.moved ? { viewId: liveEdit.viewId, eye: [...liveEdit.eye], target: [...liveEdit.target], fov: liveEdit.fov } : null
 	}));
 	const relatedPaths = $derived(controller?.current == null
 		? new Set<string>()
@@ -119,7 +130,7 @@
 		});
 		if (start === null) return null;
 		let distance: { readonly from: StagePoint; readonly to: StagePoint; readonly label: string } | null = null;
-		if (liveEdit.kind === 'move') {
+		if (liveEdit.kind === 'move' && !advanced) {
 			const now = projectWorld(liveEdit.eye, evaluation, evaluation.token);
 			const metres = Math.hypot(liveEdit.eye[0] - liveEdit.start.eye[0], liveEdit.eye[2] - liveEdit.start.eye[2]);
 			if (now.kind === 'projected' && metres >= 0.01) {
@@ -140,6 +151,115 @@
 	const rigGlyph = $derived(rig === null
 		? null
 		: projectPlacementGhost(evaluation, { eye: [...rig.eye], target: [...rig.target], fovYDegrees: rig.fov }));
+
+	type AdvancedHandle = {
+		id: string;
+		kind: ViewEditKind;
+		at: StagePoint;
+		glyph: 'move' | 'curved' | 'hex' | 'two' | 'corner';
+		angle?: number;
+		stem?: StagePoint;
+		apex?: StagePoint;
+		side?: -1 | 1;
+	};
+	const selectedId = $derived(selection.viewId);
+	const pose = $derived.by((): AuthoredViewPose | null => {
+		if (selectedId === null) return null;
+		if (liveEdit?.viewId === selectedId) return { eye: [...liveEdit.eye], target: [...liveEdit.target], fov: liveEdit.fov };
+		return controller?.viewPose(selectedId) ?? null;
+	});
+	let hovered = $state<string | null>(null);
+	let coarse = $state(false);
+	onMount(() => {
+		if (typeof window.matchMedia !== 'function') return;
+		const query = window.matchMedia('(any-pointer: coarse)');
+		const update = () => { coarse = query.matches; };
+		update();
+		query.addEventListener('change', update);
+		return () => query.removeEventListener('change', update);
+	});
+	const hitRadius = $derived(coarse ? 22 : 14);
+	const handleOffset = $derived(hitRadius * 2 + 6);
+	const advancedHandles = $derived.by((): AdvancedHandle[] => {
+		if (!advanced || !showMarkers || pose === null) return [];
+		const mark = filtered.marks.find(item => item.viewId === selectedId && item.kind !== 'turn');
+		if (!mark) return [];
+		const candidates: AdvancedHandle[] = [];
+		if (plan) {
+			const wedge = showFrustums ? filtered.frustums.find(item => item.viewId === selectedId) : undefined;
+			if (wedge) candidates.push(
+				{ id: 'lens-left', kind: 'lens', at: wedge.left, glyph: 'corner', apex: wedge.eye, side: -1 },
+				{ id: 'lens-right', kind: 'lens', at: wedge.right, glyph: 'corner', apex: wedge.eye, side: 1 }
+			);
+		} else if (mark.camera) {
+			const foot = mark.camera.floor;
+			if (foot) {
+				candidates.push({ id: 'move', kind: 'move', at: foot, glyph: 'move' });
+				const floorAim = projectWorld([pose.target[0], datum, pose.target[2]], evaluation, evaluation.token);
+				const direction = floorAim.kind === 'projected'
+					? [floorAim.css[0] - evaluation.rect.left - foot[0], floorAim.css[1] - evaluation.rect.top - foot[1]]
+					: [0, 0];
+				const span = Math.hypot(direction[0], direction[1]);
+				if (span > 1) candidates.push({
+					id: 'turn', kind: 'turn', glyph: 'curved',
+					at: [foot[0] - direction[0] * handleOffset / span, foot[1] - direction[1] * handleOffset / span],
+					angle: Math.atan2(direction[1], direction[0]) * 180 / Math.PI - 90
+				});
+			}
+			const top = projectWorld([pose.eye[0], pose.eye[1] + 1, pose.eye[2]], evaluation, evaluation.token);
+			if (top.kind === 'projected') {
+				const dx = top.css[0] - evaluation.rect.left - mark.css[0];
+				const dy = top.css[1] - evaluation.rect.top - mark.css[1];
+				const span = Math.hypot(dx, dy);
+				if (span > 1) {
+					// The height stem sits beside the camera so the knob clears its name.
+					const axis: StagePoint = [dx / span, dy / span];
+					const across: StagePoint = [-axis[1], axis[0]];
+					const apex = mark.camera.frustum?.apex;
+					const lensSide = apex && (apex[0] - mark.css[0]) * across[0] + (apex[1] - mark.css[1]) * across[1] > 0 ? -1 : 1;
+					const offset = (hitRadius + 12) * lensSide;
+					const stem: StagePoint = [mark.css[0] + offset * across[0], mark.css[1] + offset * across[1]];
+					candidates.push({
+						id: 'lift', kind: 'lift', glyph: 'hex', stem,
+						at: [stem[0] + handleOffset * 0.7 * axis[0], stem[1] + handleOffset * 0.7 * axis[1]]
+					});
+				}
+			}
+			const wire = showFrustums ? mark.camera.frustum : null;
+			if (wire) {
+				const [left, right] = wire.corners;
+				const topEdge: StagePoint = [(left[0] + right[0]) / 2, (left[1] + right[1]) / 2];
+				candidates.push({ id: 'tilt', kind: 'tilt', glyph: 'two', angle: 90, stem: topEdge,
+					at: [topEdge[0], topEdge[1] - (hitRadius + 11)] });
+				wire.corners.forEach((at, index) => candidates.push({
+					id: `lens-${index}`, kind: 'lens', at, glyph: 'corner', side: index < 2 ? 1 : -1
+				}));
+			}
+		}
+
+		const admitted: AdvancedHandle[] = [];
+		// Keep the held mark first as the provisional framing changes.
+		const held = candidates.find(handle => handle.id === liveEdit?.handleId);
+		for (const handle of held ? [held, ...candidates.filter(item => item !== held)] : candidates) {
+			const [x, y] = handle.at;
+			if (x < hitRadius || y < hitRadius || x > evaluation.rect.width - hitRadius || y > evaluation.rect.height - hitRadius) continue;
+			if (admitted.some(other => Math.hypot(other.at[0] - x, other.at[1] - y) < hitRadius * 2)) continue;
+			if (filtered.marks.some(other => other.kind !== 'turn' && other.viewId !== selectedId &&
+				Math.hypot(other.css[0] - x, other.css[1] - y) < 22 + hitRadius)) continue;
+			admitted.push(handle);
+		}
+		return admitted;
+	});
+	const advancedTag = $derived.by(() => {
+		if (!advanced || pose === null) return null;
+		if (liveEdit !== null && liveEdit.viewId !== selectedId) return null;
+		if (liveEdit !== null) return {
+			at: advancedHandles.find(handle => handle.id === liveEdit?.handleId)?.at ?? liveEdit.pointer,
+			label: viewEditTag(liveEdit.kind, pose, datum, liveEdit.start)
+		};
+		const handle = advancedHandles.find(item => item.id === hovered);
+		return handle ? { at: handle.at, label: viewEditTag(handle.kind, pose, datum) } : null;
+	});
 
 	function selectView(viewId: string, presentationId: string): void {
 		homes.select({ kind: 'view', viewId, presentationId });
@@ -279,12 +399,12 @@
 		</g>
 	{/if}
 	{#if editGhost !== null}
-		<g class="mark edit-ghost" data-view-edit-ghost aria-hidden="true">
+		<g class="mark edit-ghost" class:advanced-ghost={advanced} data-view-edit-ghost aria-hidden="true">
 			<g class="ghost-body">
 			{#if editGhost.camera}
-				{@render detailedCamera(editGhost.camera, true)}
+				{@render detailedCamera(editGhost.camera, showFrustums)}
 			{:else}
-				{#if editGhost.wedge}
+				{#if showFrustums && editGhost.wedge}
 					<path class="frustum" d={wedgePath(editGhost.wedge)} />
 				{/if}
 				{#if editGhost.heading != null}
@@ -322,7 +442,7 @@
 				{/if}
 			{:else if mark.kind === 'turn'}
 				{@const grip = model.frustums.find((frustum) => frustum.viewId === mark.viewId)}
-				{#if grip !== undefined}
+				{#if showFrustums && grip !== undefined}
 					<path class="turn-grip" d={wedgePath(grip)} data-turn-grip>
 						<title>Drag to turn this View</title>
 					</path>
@@ -379,6 +499,36 @@
 		</g>
 	{/each}
 	{/if}
+	{#each advancedHandles as handle (handle.id)}
+		<g class="advanced-handle" data-view-mark={selectedId} data-mark-kind={handle.kind}
+			data-advanced-handle={handle.id} data-side={handle.side}
+			data-apex-x={handle.apex ? handle.apex[0] + evaluation.rect.left : undefined}
+			data-apex-y={handle.apex ? handle.apex[1] + evaluation.rect.top : undefined}
+			aria-hidden="true">
+			<!-- The Card supplies keyboard framing controls. These are pointer targets. -->
+			<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+			<circle class="handle-hit" cx={handle.at[0]} cy={handle.at[1]} r={hitRadius}
+				onpointerenter={() => hovered = handle.id}
+				onpointerdown={() => hovered = null}
+				onpointerleave={() => { if (hovered === handle.id) hovered = null; }}
+				onclick={(event) => event.stopPropagation()}
+				ondblclick={(event) => event.stopPropagation()} />
+			<StageSticker kind={handle.glyph} at={handle.at} angle={handle.angle} stem={handle.stem}
+				scale={handle.glyph === 'move' || handle.glyph === 'curved' ? 0.8 : 0.7}
+				emphasised={liveEdit === null ? hovered === handle.id : liveEdit.handleId === handle.id}
+				held={liveEdit?.handleId === handle.id} />
+		</g>
+	{/each}
+	{#if advancedTag}
+		{@const width = tagWidth(advancedTag.label) + 6}
+		{@const x = Math.max(2, Math.min(advancedTag.at[0] + 15, evaluation.rect.width - width - 2))}
+		{@const y = Math.max(2, Math.min(advancedTag.at[1] - 24, evaluation.rect.height - 22))}
+		<g class="advanced-value" transform={`translate(${x} ${y})`} aria-hidden="true">
+			<rect {width} height="20" rx="3" />
+			<text x="6" y="13">{advancedTag.label}</text>
+		</g>
+	{/if}
+
 	{#if placement !== null}
 		<g class="mark selected placement-ghost" data-view-placement-ghost aria-hidden="true">
 			{#if placement.camera}
@@ -398,6 +548,17 @@
 </svg>
 
 <style>
+	.handle-hit { fill: transparent; pointer-events: all; touch-action: none; }
+	.advanced-handle[data-mark-kind='move'] { cursor: var(--cursor-move, move); }
+	.advanced-handle[data-mark-kind='turn'] { cursor: var(--cursor-turn, crosshair); }
+	.advanced-handle[data-mark-kind='lift'],
+	.advanced-handle[data-mark-kind='tilt'] { cursor: ns-resize; }
+	.advanced-handle[data-mark-kind='lens'] { cursor: nwse-resize; }
+	[data-stage-reading='plan'] .advanced-handle[data-mark-kind='lens'] { cursor: ew-resize; }
+	.advanced-value { pointer-events: none; }
+	.advanced-value rect { fill: var(--shell-ink, #1b201c); }
+	.advanced-value text { fill: #fff; font: 11px var(--shell-mono, monospace); }
+
 	.experience-marks {
 		position: absolute;
 		inset: 0;
@@ -650,6 +811,16 @@
 	.edit-ghost .plan-cam .o { fill: rgb(255 255 255 / 0.4); stroke-width: 1.1; stroke-dasharray: 3 2.2; }
 	.edit-ghost .plan-cam :is(.body, .barrel, .hump, .button, .lens-cap, .rim) { display: none; }
 	.edit-ghost .frustum { fill: none; stroke-dasharray: 3 3; }
+	.advanced-ghost .ghost-body { opacity: 1; }
+	.advanced-ghost :is(.face, .glass, .glint, .cam-shadow, .foot, .stem) { display: none; }
+	.advanced-ghost :is(.outline, .wire, .frustum, .plan-cam .o, .dot) {
+		fill: none;
+		stroke: var(--shell-proposal, #2a62d6);
+		stroke-opacity: 1;
+		stroke-width: 1.3;
+		stroke-dasharray: 4 3;
+		filter: drop-shadow(0 0 .7px rgba(255,255,255,.95));
+	}
 	.edit-ghost .offset { stroke: var(--shell-gold-ink, #74560c); stroke-width: 1.2; stroke-dasharray: 3 3; }
 	.edit-ghost .value rect { fill: rgba(10, 24, 18, 0.82); }
 	.edit-ghost .value text { fill: #fff; font: 500 10.5px var(--shell-sans, system-ui, sans-serif); }

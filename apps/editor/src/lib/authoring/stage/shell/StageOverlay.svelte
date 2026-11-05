@@ -21,7 +21,7 @@
 	 */
 	import type { StageMarkView } from '../stage-handles';
 	import type { StageCandidatePreviewView } from '../stage-facade';
-	import { STAGE_ARROW_GLYPH, STAGE_MOVE_GLYPH } from '../stage-glyphs';
+	import StageSticker from './StageSticker.svelte';
 
 	let {
 		markers,
@@ -81,65 +81,8 @@
 		return 'dot';
 	}
 
-	/** The sticker glyph set. Each path is drawn about its own origin. */
-	const GLYPH = {
-		/** A chunky arrow, tail at the origin, pointing +x. */
-		arrow: STAGE_ARROW_GLYPH,
-		/** A two-way arrow centred on the origin. */
-		two: 'M-15.5,0 L-7.5,-6.8 V-2.7 H7.5 V-6.8 L15.5,0 L7.5,6.8 V2.7 H-7.5 V6.8 Z',
-		/** The four-way move cross. */
-		move: STAGE_MOVE_GLYPH,
-		hex: hexPath(7),
-		hexSmall: hexPath(5.6),
-		curved: curvedArrowPath()
-	} as const;
-
-	function hexPath(radius: number): string {
-		return `M${[0, 1, 2, 3, 4, 5].map((k) => {
-			const angle = ((k * 60 - 90) * Math.PI) / 180;
-			return `${(radius * Math.cos(angle)).toFixed(2)},${(radius * Math.sin(angle)).toFixed(2)}`;
-		}).join('L')}Z`;
-	}
-
-	/** One curved two-way arrow; its middle sits at the origin with tangent +x and it bends toward +y. */
-	function curvedArrowPath(): string {
-		const R = 21, half = 36, width = 5.4, flare = 3.8, head = 17, rad = Math.PI / 180;
-		const at = (rho: number, angle: number) => `${(rho * Math.cos(angle * rad)).toFixed(2)},${(R + rho * Math.sin(angle * rad)).toFixed(2)}`;
-		const a0 = -90 - half, a1 = -90 + half;
-		const points = [at(R, a0 - head), at(R + width / 2 + flare, a0)];
-		for (let angle = a0; angle <= a1 + 0.01; angle += 6) points.push(at(R + width / 2, angle));
-		points.push(at(R + width / 2 + flare, a1), at(R, a1 + head), at(R - width / 2 - flare, a1));
-		for (let angle = a1; angle >= a0 - 0.01; angle -= 6) points.push(at(R - width / 2, angle));
-		points.push(at(R - width / 2 - flare, a0));
-		return `M${points.join('L')}Z`;
-	}
-
 	function headingOf(direction: readonly [number, number] | null | undefined): number {
 		return direction == null ? 0 : (Math.atan2(direction[1], direction[0]) * 180) / Math.PI;
-	}
-
-	function glyphTransform(at: readonly [number, number], angle: number): string {
-		return `translate(${at[0]} ${at[1]}) rotate(${angle.toFixed(1)})`;
-	}
-
-	/**
-	 * A glyph's path at a size: the coordinates themselves are scaled (absolute
-	 * M/L/H/V only), so no SVG transform ever scales anything on the Stage.
-	 * Emphasis (hover/held) grows the glyph by 15 %.
-	 */
-	function sized(d: string, emphasised: boolean, sx = 1, sy = sx): string {
-		const k = emphasised ? 1.15 : 1;
-		let command = '';
-		let index = 0;
-		return d.replace(/([MLHVZ])|(-?\d*\.?\d+)/g, (_match, letter: string | undefined, number: string | undefined) => {
-			if (letter !== undefined) {
-				command = letter;
-				index = 0;
-				return letter;
-			}
-			const factor = command === 'H' ? sx : command === 'V' ? sy : index++ % 2 === 0 ? sx : sy;
-			return String(Number((Number(number) * factor * k).toFixed(2)));
-		});
 	}
 
 	/** Where the arrow glyph of a one-way ray starts, so its point lands on the tip. */
@@ -326,43 +269,40 @@
 			<title>{mark.label}</title>
 			{#if mark.role === 'disclose'}
 				<!-- The W·D·H chip: click shows the size grips; a drag scales (where the domain allows). -->
-				<g class="chip" class:open={mark.open} transform={glyphTransform(mark.anchor, 0)}>
+				<g class="chip" class:open={mark.open} transform={`translate(${mark.anchor[0]} ${mark.anchor[1]})`}>
 					<rect class="toggle-hit" x="-22" y="-22" width="44" height="44" />
 					<rect class="glyph" x="-12" y="-12" width="24" height="24" rx="7" />
 					<path class="chip-icon" d="M-5,5 L5,-5 M-5,5 h4.2 M-5,5 v-4.2 M5,-5 h-4.2 M5,-5 v4.2" />
 				</g>
 			{:else if mark.glyph === 'top-knob' || mark.glyph === 'lift-knob'}
-				{#if mark.stem}
-					<line class="glyph-line" x1={mark.stem[0]} y1={mark.stem[1]} x2={mark.anchor[0]} y2={mark.anchor[1]} />
-				{/if}
-				<path class="glyph" class:held={mark.active} d={sized(mark.glyph === 'top-knob' ? GLYPH.hex : GLYPH.hexSmall, emphasised)} transform={glyphTransform(mark.anchor, 0)} />
+				<StageSticker kind={mark.glyph === 'top-knob' ? 'hex' : 'hexSmall'} at={mark.anchor} stem={mark.stem} {emphasised} held={mark.active} />
 			{:else if mark.cross}
-				<path class="glyph" class:held={mark.active} d={sized(GLYPH.move, emphasised, mark.glyphScale)} transform={glyphTransform(mark.anchor, headingOf(mark.direction))} />
+				<StageSticker kind="move" at={mark.anchor} angle={headingOf(mark.direction)} scale={mark.glyphScale} {emphasised} held={mark.active} />
 			{:else if mark.kind === 'ray' || mark.kind === 'track'}
 				{#if tail !== null}
 					{@const reach = Math.hypot(tip[0] - mark.anchor[0], tip[1] - mark.anchor[1])}
 					{#if reach <= 22}
-						<path class="glyph" class:held={mark.active} d={sized(GLYPH.two, emphasised, Math.max(0.6, reach / 15.5))} transform={glyphTransform(mark.anchor, headingOf(mark.direction))} />
+						<StageSticker kind="two" at={mark.anchor} angle={headingOf(mark.direction)} scale={Math.max(0.6, reach / 15.5)} {emphasised} held={mark.active} />
 					{:else}
 						<!-- A long track: its guide, with one arrow at each end. -->
 						<line class="glyph-line dash" x1={tail[0]} y1={tail[1]} x2={tip[0]} y2={tip[1]} />
-						<path class="glyph" class:held={mark.active} d={sized(GLYPH.arrow, emphasised, 0.8)} transform={glyphTransform(arrowTail(mark.anchor, tip), headingOf(mark.direction))} />
-						<path class="glyph" class:held={mark.active} d={sized(GLYPH.arrow, emphasised, 0.8)} transform={glyphTransform(arrowTail(mark.anchor, tail), headingOf(mark.direction) + 180)} />
+						<StageSticker kind="arrow" at={arrowTail(mark.anchor, tip)} angle={headingOf(mark.direction)} scale={0.8} {emphasised} held={mark.active} />
+						<StageSticker kind="arrow" at={arrowTail(mark.anchor, tail)} angle={headingOf(mark.direction) + 180} scale={0.8} {emphasised} held={mark.active} />
 					{/if}
 				{:else}
 					{@const glyphAt = arrowTail(mark.anchor, tip)}
 					<line class="glyph-line dash" x1={mark.anchor[0]} y1={mark.anchor[1]} x2={glyphAt[0]} y2={glyphAt[1]} />
-					<path class="glyph" class:held={mark.active} d={sized(GLYPH.arrow, emphasised)} transform={glyphTransform(glyphAt, headingOf(mark.direction))} />
+					<StageSticker kind="arrow" at={glyphAt} angle={headingOf(mark.direction)} {emphasised} held={mark.active} />
 				{/if}
 			{:else if mark.kind === 'ring'}
 				<!-- No ring (review pass 3): one bent two-way arrow, carried by the subject's
 				     own frame, is the whole Turn control. The ring stays only as the plane
 				     the turn is measured in. -->
 				{#if mark.ringGlyph}
-					<path class="glyph turn" class:held={mark.active} d={sized(GLYPH.curved, emphasised, 1, mark.ringGlyph.flip ? -1 : 1)} transform={glyphTransform(mark.ringGlyph.at, mark.ringGlyph.angle)} />
+					<StageSticker kind="curved" at={mark.ringGlyph.at} angle={mark.ringGlyph.angle} flip={mark.ringGlyph.flip} {emphasised} held={mark.active} />
 				{/if}
 			{:else}
-				<circle class="glyph knob" class:held={mark.active} cx={mark.anchor[0]} cy={mark.anchor[1]} r={emphasised ? 6.4 : 5.4} />
+				<StageSticker kind="point" at={mark.anchor} {emphasised} held={mark.active} />
 			{/if}
 
 			{#if emphasised && label !== '' && mark.role !== 'disclose'}
@@ -511,7 +451,6 @@
 		stroke-linejoin: round;
 		filter: drop-shadow(0 1.2px 1.3px rgba(20, 24, 20, 0.3));
 	}
-	.mark .glyph.held { fill: #f8efd6; }
 	.mark .glyph-line {
 		fill: none;
 		stroke: var(--overlay-ink);

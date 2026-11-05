@@ -798,12 +798,82 @@ svg.st .ln-t{font:500 10.5px var(--sans);fill:var(--ink2)}
 .tt-key{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--ink3);margin-top:6px}
 .tt-key i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 @media (max-width:980px){.ln-grid{grid-template-columns:minmax(0,1fr)}.vr-grid,.tt-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* ---- Round 4 revised (§30): Stops visit, Presentations explore ---- */
+.supersede{margin:4px 0 8px;font-size:12.5px;color:var(--goldink);background:var(--goldtint);border-radius:8px;padding:6px 10px}
+.supersede a{color:var(--goldink)}
+.rv-model{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:4px 0 12px;font-size:12px}
+.rv-box{border:1px solid var(--hair2);border-radius:10px;padding:8px 10px;background:#fff;min-width:0;flex:1 1 210px}
+.rv-box b{display:block;font:600 12.5px var(--sans);margin-bottom:3px}
+.rv-box small{display:block;color:var(--ink3);line-height:1.45}
+.rv-box.g{background:var(--popdark);color:var(--ivory);border-color:transparent} .rv-box.g small{color:#cfd8d2}
+.rv-box.x{border-style:dashed}
+.rv-grid{display:grid;grid-template-columns:288px 288px minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:1100px){.rv-grid{grid-template-columns:288px minmax(0,1fr)}.rv-vp{grid-column:1/-1}}
+@media (max-width:680px){.rv-grid{grid-template-columns:minmax(0,1fr)}}
+.rv-field{display:grid;grid-template-columns:58px minmax(0,1fr);gap:8px;align-items:center;margin:8px 0;font-size:12.5px;color:var(--ink2)}
+.rv-field select{font:inherit;font-size:12.5px;border:1px solid var(--hair2);border-radius:7px;padding:4px 6px;background:#fff;min-width:0;width:100%}
+.rv-field .vr-meta{color:var(--ink2)}
+.rv-visit{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:center;border:1px solid var(--hair);border-radius:12px;padding:6px;box-shadow:0 1px 3px rgb(0 0 0/.06)}
+.rv-visit .th{position:relative;height:46px;border-radius:7px;overflow:hidden} .rv-visit .th svg{display:block;width:100%;height:100%}
+.rv-visit small{font-size:10.5px;letter-spacing:.07em;color:var(--ink3);text-transform:uppercase}
+.rv-visit b{display:block;font:500 15px/1.2 var(--serif)} .rv-visit a{font-size:12px;color:var(--forest2);font-weight:600}
+.rv-narr{border:1.5px dashed var(--hair2);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--ink3)}
+.rv-sub{font-size:11.5px;color:var(--ink3);margin:2px 0 0}
+.rv-ex{position:absolute;right:3px;bottom:3px;font:600 9px/14px var(--sans);background:rgb(10 24 18/.78);color:#fff;border-radius:7px;padding:0 5px;font-style:normal}
+.rv-sw{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px}
+.rv-sw small{display:block;color:var(--ink3);font-size:11.5px}
+/* visitor preview */
+.rv-vp{min-width:0}
+.rv-vpst{position:relative;aspect-ratio:16/10;max-height:440px;border-radius:12px;overflow:hidden;background:#000;color:#fff}
+.rv-vpst>.bg{position:absolute;inset:0} .rv-vpst>.bg svg{width:100%;height:100%;display:block}
+.rv-cap{position:absolute;left:12px;top:10px;background:rgb(10 24 18/.74);border-radius:10px;padding:6px 10px;max-width:62%}
+.rv-cap small{display:block;font-size:10px;letter-spacing:.08em;color:#cfd8d2;text-transform:uppercase}
+.rv-cap b{font:500 16px/1.25 var(--serif)}
+.rv-bar{position:absolute;left:10px;right:10px;bottom:10px;background:rgb(10 24 18/.88);border-radius:12px;padding:8px 10px;display:grid;gap:7px}
+.rv-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rv-vb{border:1px solid rgb(255 255 255/.24);background:rgb(255 255 255/.08);color:#fff;border-radius:8px;padding:4px 9px;font-size:12px;white-space:nowrap}
+.rv-vb:hover{background:rgb(255 255 255/.16)}
+.rv-vb.gold{background:var(--gold);color:var(--forest);border-color:var(--gold);font-weight:600}
+.rv-vb[disabled]{opacity:.4;cursor:default}
+.rv-dots{display:flex;gap:3px;flex:1;min-width:80px}
+.rv-dots i{flex:1;height:4px;border-radius:2px;background:rgb(255 255 255/.2);position:relative;overflow:hidden}
+.rv-dots i b{position:absolute;left:0;top:0;bottom:0;background:var(--leaf)}
+.rv-time{font:600 11.5px var(--mono);color:#dfe6e1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rv-nar{font-size:11px;color:#cfd8d2;white-space:nowrap}
+.rv-film{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;align-items:flex-end}
+.rv-film::-webkit-scrollbar{display:none}
+.rv-film button{flex:none;width:92px;border:2px solid transparent;border-radius:8px;padding:0;background:none;color:#fff;text-align:left}
+.rv-film button[aria-current=true]{border-color:var(--gold)}
+.rv-film .th{height:46px;border-radius:6px;overflow:hidden} .rv-film .th svg{display:block;width:100%;height:100%}
+.rv-film span{display:block;font-size:11px;padding:2px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-film em{flex:none;align-self:center;font-style:normal;font-size:10px;color:#cfd8d2;padding:0 1px}
+.rv-paused{display:inline-flex;align-items:center;gap:6px;background:rgb(212 173 69/.18);color:#f3e2b0;border:1px solid rgb(212 173 69/.45);border-radius:999px;padding:2px 9px;font-size:11.5px}
+.rv-places{position:absolute;left:10px;top:10px;bottom:10px;width:200px;background:rgb(246 247 245/.97);color:var(--ink);border-radius:12px;padding:8px;overflow:auto}
+.rv-places h4{margin:2px 4px 6px;font:600 12px var(--sans)}
+.rv-places button{display:grid;grid-template-columns:44px minmax(0,1fr);gap:6px;align-items:center;width:100%;border:0;background:none;text-align:left;padding:4px;border-radius:7px;color:var(--ink)}
+.rv-places button:hover{background:var(--hover)} .rv-places .th{height:28px;border-radius:5px;overflow:hidden} .rv-places .th svg{display:block;width:100%;height:100%}
+.rv-places b{font:500 13px/1.2 var(--serif);display:block} .rv-places small{font-size:10.5px;color:var(--ink3)}
+.rv-tr{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);background:rgb(10 24 18/.74);border-radius:999px;padding:4px 12px;font-size:12px;white-space:nowrap}
+.rv-guidew{display:flex;justify-content:center;background:var(--paper);border:1px solid var(--hair);border-radius:12px;padding:14px 12px}
+.rv-guidew .cg{width:min(820px,100%)}
+/* account */
+.rv-h3{font:600 13.5px var(--sans);margin:18px 0 4px}
+.rv-tw{overflow-x:auto}
+.rv-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 4px;min-width:640px}
+.rv-tbl th,.rv-tbl td{border-top:1px solid var(--hair);padding:6px 8px;text-align:left;vertical-align:top}
+.rv-tbl th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);font-weight:600;border-top:0}
+.rv-tbl td:first-child{font-weight:600}
+.rv-tbl code{font:11.5px var(--mono);background:var(--hover);border-radius:4px;padding:0 3px}
+.rv-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:0 22px}
+.rv-cols ol,.rv-cols ul{margin:4px 0;padding-left:20px;font-size:12.5px;color:var(--ink2)}
+.rv-cols li{margin:4px 0} .rv-cols li b{color:var(--ink)}
 </style>
 </head>
 <body>
 <header class="top"><h1>Experience review 1 — interaction sheet</h1><span>R217.S26–S30 owner review · 2026-11-03 · ✓ your pick · ★ recommended · struck = current production</span></header>
 <nav class="toc">
-  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a><a href="#s12">12 Environment</a><a href="#s13">13 Experiences</a><a href="#s14">14 Environment home</a><a href="#s15">15 Cursors</a><a href="#s16">16 Turn a View</a><a href="#s17">17 Present this</a><a href="#s18">18 Welcome</a><a href="#s19">19 Shape a path</a><a href="#s20">20 Selection only</a><a href="#s21">21 Look-through motion</a><a href="#s22">22 Messages</a><a href="#s23">23 Plan camera</a><a href="#s24">24 Advanced camera</a><a href="#s25">25 Compact Guide</a><a href="#s26">26 View rows</a><a href="#s27">27 Presentation and object</a><a href="#s28">28 Scrub on the cards</a><a href="#s29">29 Travel time</a>
+  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a><a href="#s12">12 Environment</a><a href="#s13">13 Experiences</a><a href="#s14">14 Environment home</a><a href="#s15">15 Cursors</a><a href="#s16">16 Turn a View</a><a href="#s17">17 Present this</a><a href="#s18">18 Welcome</a><a href="#s19">19 Shape a path</a><a href="#s20">20 Selection only</a><a href="#s21">21 Look-through motion</a><a href="#s22">22 Messages</a><a href="#s23">23 Plan camera</a><a href="#s24">24 Advanced camera</a><a href="#s25">25 Compact Guide</a><a href="#s26">26 View rows</a><a href="#s27">27 Presentation and object</a><a href="#s28">28 Scrub on the cards</a><a href="#s29">29 Travel time</a><a href="#s30">30 Stops visit, Presentations explore</a>
 </nav>
 <p class="intro">Each row shows what production does now (red line), the proposal (★) and, where useful, one alternative. Try the live parts: drag and scroll in <b>Look through</b>, click Views in <b>2</b>, drag path points and the <b>+</b> handles in <b>4</b>, switch Cut/Travel in <b>5</b>, tick the boxes in <b>7</b>, step through Preview in <b>11</b>, and try the environment presets in <b>12</b> (a new scope proposal). Pick a different option on any row to override ★; the fix plan implements ★ wherever you don't.</p>
 <p class="intro"><b>Your picks (2026-11-03):</b> 1 full Stage + ticks · 2 a real camera body with the frustum and short 2D wedge · 3 ribbon + chevrons · 4, 5, 6 as recommended · 7 light glass, shared by the World and Experience Stage toolbars · Preview tour gets <i>Prev</i> (a Cut back, no travel) · the opening page is redesigned (9).</p>
@@ -1539,6 +1609,7 @@ svg.st .ln-t{font:500 10.5px var(--sans);fill:var(--ink2)}
 <!-- 26 · View rows -->
 <section id="s26" class="wide">
   <h2><span class="n">26</span>View rows that fit a real name<span class="r2new">ROUND 4</span></h2>
+  <p class="supersede"><b>Revised by <a href="#s30">§30</a>.</b> Stops no longer list Views, so these rows move to the Presentation Card and lose their Hold. View 1 is the Default, so neither ◆ nor <i>Entry</i> stays. Number on the picture is still the recommendation.</p>
   <p class="now">Now: a Guided View row spends its left edge on a grip and a number, then marks the first View twice (◆ and <i>Entry</i>). In a 288 px Card that leaves about 62 px, so "Chopin piano" shows as "Chopin …".</p>
   <div class="opts">
     <span>Row</span><div class="seg" data-key="vrl"><button data-v="np" aria-pressed="true"><span class="star">★</span> Number on the picture</button><button data-v="gh" aria-pressed="false">Grip on hover</button><button data-v="wrap" aria-pressed="false">Number on the picture, two lines</button><button data-v="old" class="old" aria-pressed="false">Grip + number</button></div>
@@ -1592,6 +1663,7 @@ svg.st .ln-t{font:500 10.5px var(--sans);fill:var(--ink2)}
 <!-- 28 · Scrub on the cards -->
 <section id="s28" class="wide">
   <h2><span class="n">28</span>Scrub on the cards, with waits and keys<span class="r2new">ROUND 4</span></h2>
+  <p class="supersede"><b>Revised by <a href="#s30">§30</a>.</b> A Stop has one stay, so its rail has no View ticks. Rail scrubbing, the ⏸ wait cap and the keys stay as shown here.</p>
   <p class="now">Now: the open Guide keeps a separate scrub row under the cards. It is the only proportional view of time, the only place a wait shows, and the only keyboard scrubber, so it couldn't simply go.</p>
   <div class="opts">
     <span>Scrub</span><div class="seg" data-key="sbm"><button data-v="rail" aria-pressed="true"><span class="star">★</span> The card rail is the scrubber</button><button data-v="card" aria-pressed="false">Drag across a card</button><button data-v="hair" aria-pressed="false">Hairline under the Guide</button><button data-v="old" class="old" aria-pressed="false">Separate scrub row</button></div>
@@ -1614,6 +1686,7 @@ svg.st .ln-t{font:500 10.5px var(--sans);fill:var(--ink2)}
 <!-- 29 · Travel time -->
 <section id="s29" class="wide">
   <h2><span class="n">29</span>A Travel's time is the step's, not the next View's<span class="r2new">ROUND 4</span></h2>
+  <p class="supersede"><b>Replaced by <a href="#s30">§30</a>.</b> There are no steps inside a Stop any more. A Stop's arrival time lives in the Guide gutter and the Stop Card's <i>Arrive</i> row. Steps between optional Views sit between rows on the Presentation Card, with path time only and no hold. The finding (a hold stepper read as the Travel time) still stands.</p>
   <p class="now">Now: View 2's row shows <i>Cut · Travel · ▷</i>, then <i>Hold − 3s +</i>. That stepper is View 2's hold, but it sits under Travel, so changing "the Travel time" changes the hold instead. The Travel's own time is read-only text, and it changes only on the Camera path's Card.</p>
   <div class="opts">
     <span>Step</span><div class="seg" data-key="ttl"><button data-v="between" aria-pressed="true"><span class="star">★</span> A step between Views</button><button data-v="pair" aria-pressed="false">Two labelled times in the row</button><button data-v="link" aria-pressed="false">Travel time on its path</button><button data-v="old" class="old" aria-pressed="false">Hold under the step</button></div>
@@ -1636,6 +1709,89 @@ svg.st .ln-t{font:500 10.5px var(--sans);fill:var(--ink2)}
     <li><b>The Stop-to-Stop step works the same way.</b> In <i>After this Stop</i>, a Travel shows its time with a stepper beside the target, not under it.</li>
     <li><i>Two labelled times</i> keeps everything in the row, labelled <i>Arrive</i> and <i>Hold</i>, so rows get taller. <i>Travel time on its path</i> makes the time a link to the path's Card: the least to build, but still a trip away.</li>
   </ul>
+</section>
+
+<!-- 30 · Stops visit, Presentations explore (revised Round 4 model) -->
+<section id="s30" class="wide">
+  <h2><span class="n">30</span>Stops visit, Presentations explore<span class="r2new">ROUND 4 · REVISED MODEL</span></h2>
+  <p class="now">Now: each Stop holds its own timed list of Views, so the Guide times every View, and the Presentation's other Views get holds they never needed. Leaving the tour to look around pauses it, but coming back starts the Stop over instead of resuming. There is no narration.</p>
+  <p class="lede">A guided museum tour with optional exploration. <b>The Guide times Stops only.</b> <b>A Presentation holds Views you explore at your own pace:</b> ordered, joined by Camera paths, with no holds. Exploring pauses the tour, and coming back resumes the same playhead.</p>
+  <div class="rv-model" aria-label="The revised model">
+    <div class="rv-box g"><b>Guide</b><small>Ordered Stops and the transitions between them. It is the only clock: the playhead, scrubbing and (later) narration follow it.</small></div>
+    <div class="rv-box"><b>Stop</b><small>Visits one Presentation through <i>one entry View</i>, stays for a set time or until Next, and is reached by a Cut or a Travel.</small></div>
+    <div class="rv-box"><b>Presentation</b><small>An interest point. View 1 is its Default; the rest are optional Views in an order you set, joined by a Cut or a Camera path. No holds. Works with or without a Guide.</small></div>
+    <div class="rv-box x"><b>Camera (unchanged)</b><small>Views, connections and path timing. Experience names which path to play and never searches the graph.</small></div>
+  </div>
+  <div class="rv-grid">
+    <div><div class="cap" style="margin-top:0">Presentation Card</div><div class="card ui vr-card" id="rv-pcard"></div></div>
+    <div><div class="cap" style="margin-top:0">Stop Card · Stop 4</div><div class="card ui vr-card" id="rv-scard"></div></div>
+    <div class="rv-vp">
+      <div class="opts" style="margin:0 0 6px"><span class="cap" style="margin:0">Visitor Preview</span><div class="seg" id="rv-mode"><button data-v="tour" aria-pressed="true">With a Guide</button><button data-v="free" aria-pressed="false">No Guide</button></div></div>
+      <div class="rv-vpst ui" id="rv-vpst"><div class="bg" id="rv-bg"></div><div class="rv-cap" id="rv-cap"></div><div id="rv-over"></div><div class="rv-bar" id="rv-bar"></div></div>
+      <p class="r2read" id="rv-read"></p>
+    </div>
+  </div>
+  <div class="cap">Guide (same clock as the Preview)</div>
+  <div class="rv-guidew ui" id="rv-guide"></div>
+  <ul class="rules">
+    <li><b>Presentation Card:</b> one ordered list of Views. Number 1 is the Default, so neither ◆ nor <i>Entry</i> is needed. Between two Views sits the step, Cut or Travel, with the path's own time; there are no hold steppers. <i>Listed in Places</i> is today's <code>explorable</code>: visitors can open the Presentation without a Guide.</li>
+    <li><b>Stop Card:</b> <i>Enter at</i> (the Default unless you pick another View), <i>Stay</i> (seconds, or until Next), <i>Arrive</i> (Cut or Travel from the previous Stop, with the path's time) and <i>After this Stop</i> (unchanged). The Guided views list goes. A line counts the Views visitors can explore and says they add no time.</li>
+    <li><b>Guide:</b> one card per Stop showing its entry View, its stay and a <i>+2</i> badge for Views to explore. Gutters are the transitions. The rail is the scrubber (§28) without View ticks. A wait shows as the ⏸ cap.</li>
+    <li><b>Visitor Preview:</b> <i>Explore</i> appears once a Stop has arrived and has more Views. It pauses the tour and the narration, and shows a strip of the Presentation's Views. ‹ › follow the order and play the authored step; picking a View that isn't next to the current one cuts to it. <i>Back to the tour</i> cuts to the Stop's entry View and carries on from the same playhead. Without a Guide, <i>Places</i> opens the same exploration.</li>
+  </ul>
+
+  <h3 class="rv-h3">Model changes (smallest coherent set)</h3>
+  <div class="rv-tw"><table class="rv-tbl">
+    <thead><tr><th>Where</th><th>Today</th><th>Proposed</th></tr></thead>
+    <tbody>
+      <tr><td>Presentation</td><td><code>viewIds</code> (display order only) and a separate <code>defaultViewId</code></td><td><code>views: [{ viewId, transition? }]</code>, ordered. The first is the Default. <code>transition</code> (Cut or Travel) arrives from the View before it. No holds. <code>subject</code>, <code>text</code> and <code>explorable</code> are unchanged.</td></tr>
+      <tr><td>Stop</td><td><code>views: [{ viewId, holdSeconds?, transition? }]</code></td><td><code>entryViewId: string | null</code> (null means the Presentation's Default) and <code>staySeconds: number | null</code> (null means until Next). <code>continuation</code> and its Cut/Travel are unchanged.</td></tr>
+      <tr><td>Experience unit</td><td>format 3</td><td>format 4. Guides, Gates and Detours are unchanged.</td></tr>
+      <tr><td>Execution program</td><td>v3: <code>ProgramStop.views</code>, and <code>localTime</code> per View</td><td>v4: <code>ProgramStop.entryViewId</code> + <code>staySeconds</code>; <code>ProgramPresentation.steps</code> (the resolved Cut or Travel between neighbouring Views); <code>localTime</code> per Stop.</td></tr>
+      <tr><td>Interpreter</td><td>Entering a Presentation suspends the tour; <code>resume</code> is a fresh arrival, so the Stop starts over.</td><td>An <code>exploring</code> sub-state with step next/previous/any-View events. <code>resume</code> restores the saved cursor (segment and local time) and cuts to the entry View. The run clock and the Guide's channels stand still while exploring.</td></tr>
+      <tr><td>Guide time map</td><td>Hold, wait and step segments for every View</td><td>One stay (or wait) segment per Stop, plus its Cut or Travel arrival. No <code>viewIndex</code>.</td></tr>
+      <tr><td>Camera</td><td>—</td><td>No change. Paths between optional Views are ordinary connections, and path editing (§19) works as it does now.</td></tr>
+      <tr><td>Editor</td><td>Path selection <code>{ kind: 'step', stopId, toViewId }</code>; Stop Card Guided views; <code>setViewHold</code>, <code>setStopViews</code></td><td><code>{ kind: 'explore-step', presentationId, toViewId }</code>; the Stop Card above; <code>setStopEntry</code>, <code>setStopStay</code>, <code>setPresentationStep</code>. Stop-to-Stop path selection is unchanged.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="rv-cols">
+    <div>
+      <h3 class="rv-h3">Compatibility</h3>
+      <ul>
+        <li><b>Experience format 3 files are refused</b>, following the pre-beta rule: bump the format and refuse older files, with no migration. Your test projects with multi-View Stops (Stop 4 has two) won't open. Converting them would be a migration the rule currently rules out (decision 6).</li>
+        <li><b>Published releases with program v3</b> are refused by the v4 reader and have to be republished.</li>
+        <li><b>Layout, Scene, Camera and resources are untouched.</b> Camera paths keep their bytes, and Gates and Detours are unchanged.</li>
+        <li><b>Kept from PR #270:</b> path editing (§19), the Plan camera and drag ghost (§23), the compact Guide (§25), the object link (§27), the shell fixes and the pointer-capture fix.</li>
+        <li><b>Changed by this model:</b> §26 rows move to the Presentation Card; §28 loses its View ticks; §29 is replaced (see the notes at the top of each).</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="rv-h3">Assumptions challenged</h3>
+      <ul>
+        <li><b>Default and entry are two things.</b> The Default becomes View 1, so ◆ goes. A Stop still needs its own entry, because a second visit (<i>again</i>) often enters elsewhere, so the entry stays an optional override.</li>
+        <li><b>"Ordered sequence" means ‹ › only.</b> Visitors can still pick any View from the strip. A pick that isn't the next or previous View is a Cut, because Experience never routes through the Camera graph.</li>
+        <li><b>"The same playhead" is only clean at a Stop.</b> Exploring mid-Travel would need the half-travelled pose rebuilt and a made-up path back. Offering Explore only once a Stop has arrived keeps the restored camera an authored View.</li>
+        <li><b>Narration doesn't exist yet.</b> Presentation text is an untimed information panel. This model leaves room for narration: the Guide clock is the only timeline it can follow, and exploring pauses only the Guide's own channels, as the ratified record requires.</li>
+        <li><b>Travel time is shared.</b> It belongs to the Camera path, and every use of the path shares it. The ratified record allows an Experience time mapping per visit, evaluated through Camera, but that needs the framing guard proven first. Until then the UI says <i>Same path in N places</i>.</li>
+        <li><b>"Until Next" overlaps the Gate.</b> A Stop that stays until Next and a Gate on its Presentation both block the tour. They should be one idea (decision 8).</li>
+      </ul>
+    </div>
+  </div>
+  <h3 class="rv-h3">Open product decisions</h3>
+  <div class="rv-cols"><ol>
+    <li><b>Stop entry override</b>: allowed (recommended, for second visits) or always the Default?</li>
+    <li><b>Explore during a Travel</b>: offered only once the Stop arrives (recommended), or pause mid-path and return by a Cut to the sampled pose?</li>
+    <li><b>Return to the tour</b>: a Cut (recommended), or a short fade? A camera move back would need a path nobody authored.</li>
+    <li><b>Other Presentations during a tour</b> (Places): allowed, with one resume point as today, or only the current Stop's Views?</li>
+    <li><b>Remaining stay after exploring</b>: the Stop resumes with what was left (recommended), or restarts its stay?</li>
+  </ol><ol start="6">
+    <li><b>Old multi-View Stops</b>: strict refusal (the current rule), or a one-off converter (entry = first View, stay = its hold, the rest appended to the Presentation, later holds dropped)?</li>
+    <li><b>Per-visit Travel timing</b>: now, as an Experience time mapping through Camera, or later?</li>
+    <li><b>Until Next vs Gate</b>: merge them, or keep both?</li>
+    <li><b>Narration</b>: a clip per Stop starting on arrival, with the stay at least as long as the clip? May narration run on through the next transition?</li>
+    <li><b>‹ › at the ends</b> of a Presentation: stop at the ends (recommended), or wrap around?</li>
+  </ol></div>
 </section>
 
 </main>
@@ -2604,6 +2760,108 @@ function vrRow(o){const L=o.layout;
     else if(k[0]==='l'){msg=`Opens the Camera path's Card, where the Travel time to ${v.name} is set.`;}
     render();});
   R.s29=render;})();
+
+/* ---------- §30 Stops visit, Presentations explore ---------- */
+(()=>{const sec=$('#s30');if(!sec)return;
+  const pcard=$('#rv-pcard'),scard=$('#rv-scard'),bg=$('#rv-bg'),cap=$('#rv-cap'),over=$('#rv-over'),bar=$('#rv-bar'),read=$('#rv-read'),gw=$('#rv-guide'),modeSeg=$('#rv-mode');
+  const P={hall:{name:'Entrance hall',ex:true,views:[{n:'Doorway',th:['day',1,0]}]},
+    piano:{name:'Pleyel piano',ex:true,views:[{n:'Keyboard',th:['day',1.3,-60]},{n:'Profile',th:['day',1.6,-170],tr:'trav',t:2.4,shared:1},{n:'Score detail',th:['day',2.2,-30],tr:'cut'}]},
+    win:{name:'North window',ex:true,views:[{n:'Window',th:['day',1.5,200]},{n:'Garden',th:['gold',1.7,250],tr:'trav',t:3,shared:1}]},
+    corner:{name:'Reading corner',ex:false,views:[{n:'Armchair',th:['day',1.4,150]}]}};
+  const S=[{p:'hall',e:null,d:6},{p:'piano',e:null,d:10,arr:{k:'trav',t:5,shared:1}},{p:'win',e:null,d:6,arr:{k:'cut'}},{p:'piano',e:1,d:8,again:true,arr:{k:'trav',t:4,shared:2}},{p:'corner',e:null,d:null,arr:{k:'trav',t:4,shared:1}}];
+  const SC=3;/* the Stop Card shows Stop 4 */
+  const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  const entry=s=>s.e??0;
+  let t=0,playing=false,raf=0,lastTs=0,mode='tour',explore=null,placesOpen=false,flash='';
+  /* The Guide clock: Stops and the transitions between them, nothing else. */
+  function seq(){const q=[];let a=0;S.forEach((s,i)=>{if(i>0){const d=s.arr.k==='trav'?s.arr.t:0;q.push({k:s.arr.k,i,a,d});a+=d;}q.push({k:'stay',i,a,d:s.d??0,wait:s.d===null});a+=s.d??0;});return{q,T:a};}
+  function at(tt){const{q}=seq();let cur=q[0];for(const x of q){if(x.a<=tt+1e-6)cur=x;}if(cur.k!=='stay'&&cur.d===0)cur=q[q.indexOf(cur)+1];return cur;}
+  const dyn=(th,k=0)=>thumbSvg(th[0],th[1],th[2]);
+  /* ---- Presentation Card ---- */
+  function drawP(){const p=P.piano,used=S.map((s,i)=>s.p==='piano'?`Stop ${i+1}${s.e!==null?` (enters at ${p.views[s.e].n})`:''}`:null).filter(Boolean);
+    let li='';p.views.forEach((v,i)=>{
+      if(i>0)li+=`<li class="tt-step ${v.tr}"><span class="vr-kind" role="group" aria-label="Step to ${v.n}"><button data-pa="k${i}:cut" aria-pressed="${v.tr==='cut'}">Cut</button><button data-pa="k${i}:trav" aria-pressed="${v.tr==='trav'}">Travel</button></span>${v.tr==='trav'?`${vrStep('Path time to '+v.n,fmtS(v.t),'pt'+i)}<span class="lbl">path time</span>`:'<span class="lbl">instant</span>'}${v.tr==='trav'&&v.shared>1?`<span class="tt-shared">Same path in ${v.shared} places</span>`:''}</li>`;
+      li+=vrRow({n:i+1,name:v.n,th:v.th,layout:'np',lines:[`<span class="vr-meta">${i===0?'Default · opens here':'Optional'}</span>`]});});
+    pcard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Presentation · about <a>Pleyel piano</a></div><div class="c-name">${p.name}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="vr-h">Views<span class="vr-cnt">${p.views.length}</span></div><ol class="vr-list">${li}</ol><p class="vr-note">View 1 opens the Presentation. Drag a picture to reorder; visitors step through in this order.</p></div>
+      <div class="c-sec"><div class="rv-sw"><span>Listed in Places<small>Visitors can open it without a Guide</small></span><button class="sw" role="switch" aria-checked="${p.ex}" data-pa="ex:0" aria-label="Listed in Places"><i></i></button></div></div>
+      <div class="c-sec"><div class="c-lab">Used by</div><p class="rv-sub" style="margin:0">${used.join(' · ')}</p></div>`;}
+  pcard.addEventListener('click',e=>{const b=e.target.closest('[data-pa],[data-act]');if(!b)return;const p=P.piano;
+    if(b.dataset.pa==='ex:0'){p.ex=!p.ex;flash=`Pleyel piano is ${p.ex?'now listed':'no longer listed'} in Places.`;}
+    else if(b.dataset.pa){const[k,d]=b.dataset.pa.split(':'),i=+k.slice(1);p.views[i].tr=d;if(d==='trav'&&!p.views[i].t)p.views[i].t=2;flash=`The step to ${p.views[i].n} is a ${d==='trav'?'Travel':'Cut'}. It adds no time to the Guide.`;}
+    else{const[k,d]=b.dataset.act.split(':'),i=+k.slice(2);p.views[i].t=Math.max(.5,Math.round((p.views[i].t+.5*+d)*2)/2);flash=`Path time to ${p.views[i].n}: ${fmtS(p.views[i].t)}. It plays only while exploring; the Guide's time is unchanged.`;}
+    all();});
+  /* ---- Stop Card (Stop 4) ---- */
+  function drawS(){const s=S[SC],p=P[s.p],ev=p.views[entry(s)],more=p.views.length-1;
+    const opts=p.views.map((v,i)=>`<option value="${i}" ${entry(s)===i?'selected':''}>${v.n}${i===0?' (Default)':''}</option>`).join('');
+    scard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Stop ${SC+1} of ${S.length} · Evening tour</div><div class="c-name">${p.name}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="rv-visit"><span class="th">${dyn(ev.th)}</span><span><small>${s.again?'Visits again':'Visits'}</small><b>${p.name}</b><a>Open Presentation</a></span></div>
+        <div class="rv-field"><span>Enter at</span><select id="rv-entry" aria-label="Enter at">${opts}</select></div>
+        <div class="rv-field"><span>Stay</span><span class="vr-meta">${s.d===null?'<b style="color:var(--ink)">until Next</b>':vrStep('Stay',fmtS(s.d),'st0')}<span class="vr-kind"><button data-sa="mode:timed" aria-pressed="${s.d!==null}">Timed</button><button data-sa="mode:next" aria-pressed="${s.d===null}">Until Next</button></span></span></div>
+        <p class="rv-sub">${more>0?`Visitors can explore ${more} more View${more>1?'s':''} here. Exploring pauses the tour and adds no time.`:'This Presentation has no other Views to explore.'}</p></div>
+      <div class="c-sec"><div class="c-lab">Arrive from Stop ${SC}</div><div class="vr-meta" style="color:var(--ink2)"><span class="vr-kind"><button data-sa="arr:cut" aria-pressed="${s.arr.k==='cut'}">Cut</button><button data-sa="arr:trav" aria-pressed="${s.arr.k==='trav'}">Travel</button></span>${s.arr.k==='trav'?`${vrStep('Travel time',fmtS(s.arr.t),'at0')}<span>path time</span>`:'<span>instant</span>'}</div>${s.arr.k==='trav'&&s.arr.shared>1?`<p class="rv-sub">Same path in ${s.arr.shared} places: changing it changes both.</p>`:''}</div>
+      <div class="c-sec"><div class="c-lab">Narration</div><div class="rv-narr">Not in this round. It would follow the Guide clock from this Stop's arrival.</div></div>
+      <div class="c-sec"><div class="c-lab">After this Stop</div><p class="rv-sub" style="margin:0">Visitor presses <b>Next</b> › Stop ${SC+2}</p></div>`;}
+  scard.addEventListener('click',e=>{const b=e.target.closest('[data-sa],[data-act]');if(!b)return;const s=S[SC];
+    if(b.dataset.sa){const[k,v]=b.dataset.sa.split(':');if(k==='mode'){s.d=v==='next'?null:(s.d??8);flash=v==='next'?'Stop 4 now waits for Next; the Guide ends its rail with ⏸.':'Stop 4 is timed again.';}else{s.arr.k=v;if(v==='trav'&&!s.arr.t)s.arr.t=4;flash=`Stop 4 is reached by a ${v==='trav'?'Travel':'Cut'}.`;}}
+    else{const[k,d]=b.dataset.act.split(':');if(k==='st0'){s.d=Math.max(1,s.d+ +d);flash=`Stop 4 stays ${fmtS(s.d)}. That is the only time a Stop adds.`;}else{s.arr.t=Math.max(.5,Math.round((s.arr.t+.5*+d)*2)/2);flash=`Travel into Stop 4: ${fmtS(s.arr.t)}, set on its Camera path.`;}}
+    const{T}=seq();if(t>T)t=T;all();});
+  scard.addEventListener('change',e=>{if(e.target.id!=='rv-entry')return;const v=+e.target.value;S[SC].e=v===0?null:v;flash=`Stop 4 enters at ${P[S[SC].p].views[v].n}${v===0?', the Default':''}.`;all();});
+  /* ---- Guide strip ---- */
+  function drawG(){const{q,T}=seq();let r='';
+    S.forEach((s,i)=>{const p=P[s.p],v=p.views[entry(s)],more=p.views.length-1;
+      if(i>0)r+=`<span class="cg-g" data-i="${i}">${s.arr.k==='trav'?`<span class="tchip trav" title="Travel · ${s.arr.t} s">↗ ${fmtS(s.arr.t)}</span>`:'<span class="tchip cut" title="Cut">✂</span>'}<span class="gt"></span></span>`;
+      r+=`<button class="cg-c" data-i="${i}" title="${p.name}"><span class="cg-th">${dyn(v.th)}<i class="cg-no">${i+1}</i>${more>0?`<i class="rv-ex" title="${more} more View${more>1?'s':''} to explore; they add no time">+${more}</i>`:''}</span><span class="cg-tx"><b>${p.name}</b><small>${i===0?'<span class="st">Start</span> · ':''}${s.again?'<em>again</em> · ':''}${s.e!==null?v.n+' · ':''}${s.d===null?'until Next':fmt(s.d)}</small></span><span class="cg-pb"><i></i>${s.d===null?'<b class="wt" title="Waits for Next">❚❚</b>':''}</span></button>`;});
+    gw.innerHTML=`<div class="cg sb m-rail"><div class="cg-h"><span class="g-eyebrow">GUIDE</span><span class="cg-name">Evening tour</span><span class="cg-cnt">${S.length} stops</span><span class="g-sp"></span><button class="cg-play" aria-label="${playing?'Pause':'Play'}">${playing?'❚❚':'▶'}</button><span class="cg-time"><b>${fmt(t)}</b> / ${fmt(T)}</span></div><div class="cg-strip"><div class="cg-sc"><div class="cg-row" style="position:relative">${r}</div></div></div></div>`;
+    paintG();}
+  function paintG(){const{q,T}=seq();q.forEach(x=>{const p=clamp(x.d?(t-x.a)/x.d:(t>=x.a?1:0),0,1);
+      if(x.k==='stay'){const c=gw.querySelector(`.cg-c[data-i="${x.i}"]`);if(!c)return;c.querySelector('.cg-pb i').style.width=p*100+'%';c.classList.toggle('play',at(t)===x&&!explore);c.classList.toggle('sel',x.i===SC);}
+      else{const g=gw.querySelector(`.cg-g[data-i="${x.i}"] .gt`);if(g)g.style.width=p*100+'%';}});
+    const tm=gw.querySelector('.cg-time');if(tm)tm.innerHTML=`<b>${fmt(t)}</b> / ${fmt(T)}`;const pb=gw.querySelector('.cg-play');if(pb){pb.textContent=playing?'❚❚':'▶';}}
+  gw.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.classList.contains('cg-play')){toggle();return;}
+    if(b.classList.contains('cg-c')){const x=seq().q.find(y=>y.k==='stay'&&y.i===+b.dataset.i);explore=null;t=x.a;paint();}});
+  /* ---- Visitor Preview ---- */
+  function film(p,cur){return `<div class="rv-film" role="group" aria-label="${p.name}: Views">${p.views.map((v,i)=>`${i>0?`<em title="${v.tr==='trav'?'Travel '+fmtS(v.t):'Cut'}">${v.tr==='trav'?'↗':'✂'}</em>`:''}<button data-v="${i}" aria-current="${i===cur}"><span class="th">${dyn(v.th)}</span><span>${i+1} · ${v.n}</span></button>`).join('')}</div>`;}
+  function drawV(){const{T}=seq();over.innerHTML='';
+    if(explore){const p=P[explore.p],v=p.views[explore.v];bg.innerHTML=dyn(v.th);
+      cap.innerHTML=`<small>${mode==='tour'?'Exploring · the tour is paused':'Exploring'}</small><b>${p.name}</b>`;
+      if(explore.msg)over.innerHTML=`<div class="rv-tr">${explore.msg}</div>`;
+      const back=mode==='tour'?`<span class="rv-paused">❚❚ Tour paused at ${fmt(t)} · Stop ${at(t).i+1} · narration paused</span><button class="rv-vb gold" data-vv="back">↩ Back to the tour</button>`:`<button class="rv-vb" data-vv="places">☰ Places</button>`;
+      bar.innerHTML=`<div class="rv-row"><button class="rv-vb" data-vv="prev" ${explore.v===0?'disabled':''} aria-label="Previous View">‹</button>${film(p,explore.v)}<button class="rv-vb" data-vv="next" ${explore.v===p.views.length-1?'disabled':''} aria-label="Next View">›</button></div><div class="rv-row">${back}<span class="rv-nar" style="margin-left:auto">${explore.v+1} of ${p.views.length} · your pace, no timer</span></div>`;
+      return;}
+    if(mode==='free'){bg.innerHTML=dyn(['paper',1,0]);cap.innerHTML='<small>No Guide</small><b>Choose a place</b>';
+      const list=Object.entries(P).filter(([,p])=>p.ex);
+      over.innerHTML=`<div class="rv-places"><h4>Places</h4>${list.map(([k,p])=>`<button data-pl="${k}"><span class="th">${dyn(p.views[0].th)}</span><span><b>${p.name}</b><small>${p.views.length} View${p.views.length>1?'s':''}</small></span></button>`).join('')}${list.length?'':'<p class="rv-sub">Nothing is listed in Places.</p>'}</div>`;
+      bar.innerHTML='<div class="rv-row"><span class="rv-nar">Places lists Presentations marked <i>Listed in Places</i>. Each opens at View 1.</span></div>';return;}
+    const x=at(t),s=S[x.i],p=P[s.p],arrived=x.k==='stay',more=p.views.length-1;
+    if(arrived){bg.innerHTML=dyn(p.views[entry(s)].th);}else{const ps=S[x.i-1];bg.innerHTML=dyn(P[ps.p].views[entry(ps)].th);over.innerHTML=`<div class="rv-tr">↗ Travelling to Stop ${x.i+1}…</div>`;}
+    cap.innerHTML=`<small>Guided tour · Stop ${x.i+1} of ${S.length}</small><b>${p.name}</b>`;
+    const dots=S.map((_,i)=>{const st=seq().q.find(y=>y.k==='stay'&&y.i===i),f=i<x.i?1:i>x.i?0:(arrived?(st.d?clamp((t-st.a)/st.d,0,1):1):0);return `<i><b style="width:${f*100}%"></b></i>`;}).join('');
+    const nar=arrived&&s.d?`Narration ${fmt(t-x.a)} / ${fmt(s.d)}`:arrived?'Waiting for Next':'Narration resumes on arrival';
+    const exBtn=more>0?`<button class="rv-vb gold" data-vv="explore" ${arrived?'':'disabled title="Explore opens when the Stop arrives"'}>Explore ${more} more View${more>1?'s':''}</button>`:'';
+    bar.innerHTML=`<div class="rv-row"><div class="rv-dots" aria-hidden="true">${dots}</div><span class="rv-time">${fmt(t)} / ${fmt(T)}</span></div><div class="rv-row"><button class="rv-vb" data-vv="prev" ${x.i===0?'disabled':''}>← Prev</button><button class="rv-vb" data-vv="play">${playing?'Pause':'Play'}</button><button class="rv-vb" data-vv="nextstop" ${x.i===S.length-1?'disabled':''}>Next stop →</button>${exBtn}<span class="rv-nar" style="margin-left:auto">${nar}</span></div>`;}
+  function paint(){paintG();drawV();read.innerHTML=flash||(explore&&mode==='tour'?`The tour is paused at <b>${fmt(t)}</b>. The Guide clock and narration stand still; ‹ › play the Presentation's own steps.`:mode==='free'?'No Guide: exploration works the same way, with no tour to return to.':'Press <b>Play</b>, then <b>Explore</b> once a Stop with more Views arrives.');flash='';}
+  function toggle(){const{T}=seq();if(explore)return;if(!playing&&t>=T)t=0;playing=!playing;lastTs=0;paint();if(playing)raf=requestAnimationFrame(tick);}
+  function tick(ts){if(!playing||explore)return;const dt=lastTs?(ts-lastTs)/1000:0;lastTs=ts;const{q,T}=seq();let nt=t+dt*2;
+    for(const x of q)if(x.wait&&t<=x.a+1e-6&&nt>x.a){nt=x.a;playing=false;}
+    t=Math.min(nt,T);if(t>=T)playing=false;paint();if(playing)raf=requestAnimationFrame(tick);}
+  let wasPlaying=false;
+  $('#rv-vpst').addEventListener('click',e=>{const b=e.target.closest('[data-vv],[data-v],[data-pl]');if(!b)return;
+    if(b.dataset.pl){explore={p:b.dataset.pl,v:0};placesOpen=false;paint();return;}
+    if(b.dataset.v!==undefined&&explore){const p=P[explore.p],to=+b.dataset.v,from=explore.v;if(to===from)return;const adj=Math.abs(to-from)===1,step=p.views[Math.max(to,from)];
+      explore={...explore,v:to,msg:adj&&step.tr==='trav'?`↗ Travel ${fmtS(step.t)} (its path)`:'✂ Cut'};paint();setTimeout(()=>{if(explore){explore.msg='';drawV();}},900);return;}
+    const a=b.dataset.vv,{q}=seq(),x=at(t);
+    if(a==='play')toggle();
+    else if(a==='explore'){wasPlaying=playing;playing=false;explore={p:S[x.i].p,v:entry(S[x.i])};paint();}
+    else if(a==='back'){explore=null;flash=`Back on the tour at <b>${fmt(t)}</b>: a Cut to Stop ${x.i+1}'s entry View, the same playhead, narration resumes.`;paint();if(wasPlaying){playing=true;lastTs=0;raf=requestAnimationFrame(tick);}}
+    else if(a==='places'){explore=null;paint();}
+    else if(a==='prev'&&explore){const p=P[explore.p];$('#rv-vpst').querySelector(`[data-v="${explore.v-1}"]`)?.click();}
+    else if(a==='next'&&explore){$('#rv-vpst').querySelector(`[data-v="${explore.v+1}"]`)?.click();}
+    else if(a==='prev'){const st=q.find(y=>y.k==='stay'&&y.i===x.i-1);t=st.a;paint();}
+    else if(a==='nextstop'){const nx=q.find(y=>y.i===x.i+1);t=nx.a;paint();}});
+  modeSeg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;modeSeg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));mode=b.dataset.v;explore=null;playing=false;paint();});
+  function all(){drawP();drawS();drawG();paint();}
+  R.s30=all;})();
 
 Object.values(R).forEach(f=>f());
 </script>
