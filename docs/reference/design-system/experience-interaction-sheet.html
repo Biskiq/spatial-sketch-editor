@@ -1040,14 +1040,231 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 .gp-pacel{border:1px solid #2f4a3e;background:none;color:#cfd8d2;border-radius:999px;padding:1px 9px;font:inherit;font-size:11px;cursor:pointer}
 .gp-pacel:hover{background:#1a3a2d}
 @media (max-width:900px){.oc-wrap,.pl-wrap{grid-template-columns:minmax(0,1fr)}}
+/* ---- §33 final reconciliation ---- */
+.sup{font-size:12px;color:var(--forest2);background:var(--leaftint);border-radius:8px;padding:6px 10px;margin:4px 0 10px}
+.sup a{color:var(--forest2)}
+.fz-plan{font-size:12.5px;margin:0 0 10px}
+.fz-own{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin:4px 0 6px}
+.fz-own div{border:1px solid var(--hair);border-radius:10px;padding:7px 9px;background:var(--index)}
+.fz-own b{display:block;font-size:12.5px} .fz-own small{font-size:11px;color:var(--ink3)}
+.fz-wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.fz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:14px;align-items:start}
+.fz-cards .card{width:100%}
+.fz-stage{position:relative;background:var(--paper);border-radius:12px;padding:56px 12px 12px;min-height:200px;overflow:hidden}
+.fz-stage::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(27,32,28,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(27,32,28,.06) 1px,transparent 1px);background-size:28px 28px;pointer-events:none}
+.fz-toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:6;max-width:calc(100% - 24px);pointer-events:none}
+.fz-fb{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:12px;box-shadow:0 2px 10px rgb(0 0 0/.12);white-space:normal}
+.fz-fb.ok{background:#e4f0e8;color:#1d4a35;border:1px solid #c6dfcf}
+.fz-fb.info{background:#fff;color:var(--ink2);border:1px solid var(--hair2)}
+.fz-fb.no{background:var(--refusebg);color:var(--refuse);border:1px solid #efd4cb}
+.fz-fbline{min-height:34px;margin:8px 0 0}
+.fz-fbbtns{display:flex;flex-wrap:wrap;gap:6px}
+.fz-fbbtns .btn{padding:4px 10px;font-size:12px}
+.experience-feedback-old{display:inline-block;margin:0;background:var(--refusebg);color:var(--refuse);border:1px solid #efd4cb;border-radius:8px;padding:4px 9px;font-size:12px;text-decoration:line-through;text-decoration-color:rgba(126,39,24,.5)}
+.fz-bar{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.fz-bar .btn{padding:4px 10px;font-size:12px}
+.fz-bar .btn:disabled{opacity:.45;cursor:default}
+
+/* the strip */
+.fz-g{position:relative;width:min(820px,100%);margin:0 auto;background:var(--forest);border-radius:12px;color:#eef1ec;box-shadow:0 12px 30px rgb(0 0 0/.22)}
+.fz-gh{display:flex;align-items:center;gap:7px;padding:6px 6px 6px 12px;border-bottom:1px solid rgb(255 255 255/.08);font-size:12px;flex-wrap:wrap}
+.fz-gh .g-eyebrow{font-size:10px}
+.fz-gname{border:0;background:none;color:#fff;font:500 13.5px var(--serif);padding:2px 5px;border-radius:6px;cursor:pointer}
+.fz-gname:hover,.fz-gname[aria-pressed=true]{background:#1a3a2d}
+.fz-cnt{color:var(--quiet);font-size:11px}
+.fz-pace{border:1px solid #2f4a3e;background:none;color:#dfe6e1;border-radius:999px;padding:1px 9px;font:inherit;font-size:11px;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+.fz-pace:hover,.fz-pace[aria-expanded=true]{background:#1a3a2d}
+.fz-pace:focus-visible,.fz-gname:focus-visible,.fz-play:focus-visible,.fz-tool:focus-visible,.fz-c:focus-visible,.fz-chip:focus-visible,.fz-hit:focus-visible,.fz-arrow:focus-visible{outline:2px solid #9fd0b2;outline-offset:1px}
+.fz-sp{flex:1}
+.fz-play{width:26px;height:26px;border-radius:50%;border:0;background:var(--ivory);color:var(--forest);display:grid;place-items:center;cursor:pointer;font-size:11px;padding:0}
+.fz-clock{font:500 11.5px var(--mono);color:#dfe6e1;white-space:nowrap}
+.fz-clock i{font-style:normal;color:var(--quiet);margin-left:4px;font-family:var(--sans)}
+.fz-tool{border:0;background:none;color:#dfe6e1;border-radius:7px;padding:3px 8px;font:inherit;font-size:12px;cursor:pointer}
+.fz-tool:hover{background:#1a3a2d}
+.fz-cw{position:relative}
+.fz-row{position:relative;display:flex;align-items:stretch;overflow-x:auto;padding:8px 10px 10px;scrollbar-width:none;touch-action:pan-x}
+.fz-row::-webkit-scrollbar{display:none}
+.fz-c{position:relative;flex:none;display:flex;align-items:center;gap:8px;width:150px;height:48px;padding:4px 6px 8px 4px;border:0;border-radius:9px;background:#1a3a2d;color:#eef1ec;font:inherit;text-align:left;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-x}
+.fz-c:hover{background:#21443a}
+.fz-c.sel{background:var(--forest3);box-shadow:0 0 0 1px rgba(223,236,227,.55)}
+.fz-c.drag{z-index:5;opacity:.94;box-shadow:0 8px 20px rgb(0 0 0/.4);cursor:grabbing}
+.fz-c.unreached{opacity:.4}
+.fz-th{position:relative;flex:none;width:50px;height:32px;border-radius:6px;overflow:hidden}
+.fz-th svg{display:block;width:100%;height:100%}
+.fz-th i{position:absolute;left:3px;top:3px;font:600 9.5px/13px var(--sans);font-style:normal;background:rgba(17,41,31,.82);color:#fff;border-radius:4px;padding:0 3px}
+.fz-th i.st::after{content:' ▸';opacity:.8}
+.fz-tt{min-width:0;flex:1;display:flex;align-items:center;gap:4px}
+.fz-tt b{font:500 12.5px var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.fz-bd{flex:none;font-size:10px;color:#9fb2a5;opacity:.85}
+.fz-rail{position:absolute;left:6px;right:6px;bottom:3px;height:3px;border-radius:2px;background:rgba(255,255,255,.14);overflow:visible}
+.fz-rail>i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:#8fc3a3}
+.fz-rail .wc{position:absolute;right:-4px;top:-4px;width:10px;height:10px;border-radius:3px;background:#2f4a3e;color:#cfe0d6;font:700 6.5px/10px var(--sans);text-align:center}
+.fz-rail .wc.done{background:#8fc3a3;color:var(--forest)}
+.fz-gut{position:relative;flex:none;width:58px;display:flex;align-items:center;justify-content:center}
+.fz-gut .grail{position:absolute;left:0;right:0;bottom:3px;height:3px;background:rgba(255,255,255,.14)}
+.fz-gut .grail>i{position:absolute;left:0;top:0;bottom:0;background:#8fc3a3}
+.fz-gut.cut .grail{height:0;border-top:1px dotted rgba(255,255,255,.3);background:none;bottom:4px}
+.fz-gut.cut .grail>i{display:none}
+.fz-chip{border:0;border-radius:999px;padding:2px 8px;font:600 11px var(--sans);cursor:pointer;white-space:nowrap;margin-bottom:6px}
+.fz-chip.trav{background:#2b5643;color:#e6f2ea}
+.fz-chip.cut{background:transparent;color:#cfd8d2;border:1px dashed #5c7a6c}
+.fz-chip.bad{background:transparent;color:#f0b6a8;border:1px dashed var(--caution)}
+.fz-chip.end{background:#33231e;color:#f3d6c9;border:1px solid #6b4436}
+.fz-chip.jump{background:#2f3f5a;color:#dbe5f5}
+.fz-chip.sel{box-shadow:0 0 0 1.5px rgba(223,236,227,.85)}
+.fz-hit{position:absolute;left:0;bottom:6px;height:13px;z-index:3;cursor:ew-resize;background:transparent;border-radius:3px}
+.fz-ph{position:absolute;bottom:4px;width:2px;height:15px;margin-left:-1px;background:#fff;border-radius:1px;box-shadow:0 0 0 1px rgba(17,41,31,.6);z-index:4;pointer-events:none}
+.fz-ph::after{content:'';position:absolute;left:-3px;top:-4px;width:8px;height:8px;border-radius:50%;background:#fff}
+.fz-ins{position:absolute;top:10px;bottom:12px;width:2px;margin-left:-1px;border-radius:1px;background:#dfece3;z-index:6;pointer-events:none}
+.fz-ins::before,.fz-ins::after{content:'';position:absolute;left:-2px;width:6px;height:6px;border-radius:50%;background:#dfece3}
+.fz-ins::before{top:-3px}.fz-ins::after{bottom:-3px}
+.fz-tip{position:absolute;bottom:26px;z-index:7;transform:translateX(-50%);background:rgba(10,24,18,.94);color:#eef1ec;border-radius:7px;padding:3px 8px;font:500 11px var(--sans);white-space:nowrap;pointer-events:none}
+.fz-arrow{position:absolute;top:8px;bottom:12px;width:26px;border:0;z-index:5;color:#eef1ec;cursor:pointer;font-size:16px}
+.fz-arrow.l{left:0;background:linear-gradient(90deg,var(--forest) 40%,transparent);border-radius:0 0 0 12px}
+.fz-arrow.r{right:0;background:linear-gradient(270deg,var(--forest) 40%,transparent);border-radius:0 0 12px 0}
+.fz-pop{position:absolute;z-index:9;width:250px;background:#fff;color:var(--ink);border-radius:12px;padding:6px;box-shadow:0 10px 28px rgba(0,0,0,.28);font-size:12px}
+.fz-pop [role=radio]{display:grid;grid-template-columns:16px 1fr;gap:2px 8px;width:100%;border:0;background:none;border-radius:8px;padding:7px 8px;text-align:left;font:inherit;cursor:pointer;color:var(--ink)}
+.fz-pop [role=radio]:hover,.fz-pop [role=radio]:focus-visible{background:var(--hover);outline:none}
+.fz-pop [role=radio] .dot{grid-row:span 2;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--hair2);margin-top:1px}
+.fz-pop [role=radio][aria-checked=true] .dot{border:4px solid var(--forest2)}
+.fz-pop [role=radio] b{font-weight:600} .fz-pop [role=radio] small{color:var(--ink3);font-size:11.5px}
+.fz-menu{position:absolute;z-index:9;min-width:170px;background:#fff;color:var(--ink);border-radius:10px;padding:4px;box-shadow:0 10px 28px rgba(0,0,0,.28);font-size:12.5px}
+.fz-menu button{display:block;width:100%;border:0;background:none;text-align:left;padding:6px 9px;border-radius:7px;font:inherit;cursor:pointer;color:var(--ink)}
+.fz-menu button:hover,.fz-menu button:focus-visible{background:var(--hover);outline:none}
+.fz-menu button:disabled{color:var(--ink3);cursor:default;background:none}
+.fz-menu hr{border:0;border-top:1px solid var(--hair);margin:3px 4px}
+
+/* production mock */
+.fz-g.prod .fz-c{background:#f3f4ef;color:var(--ink);border:2px solid transparent;height:54px;width:176px}
+.fz-g.prod .fz-c.sel{border-color:var(--gold);background:#fff;box-shadow:none}
+.fz-g.prod .fz-tt{flex-direction:column;align-items:flex-start;gap:1px}
+.fz-g.prod .fz-meta{font-size:10.5px;color:var(--ink3);display:flex;gap:4px;align-items:center}
+.fz-g.prod .fz-meta .st{background:var(--goldtint);color:var(--goldink);border-radius:4px;padding:0 4px;font-weight:600}
+.fz-g.prod .fz-gut{width:38px}
+.fz-g.prod .fz-chip{font-size:12px;padding:1px 6px}
+.fz-g.prod .fz-chip.sel{background:var(--gold);color:var(--forest);box-shadow:none}
+.fz-g.prod .fz-rail>i{background:var(--leaf)}
+.fz-oldbar{margin:2px 12px 10px;height:10px;border-radius:3px;display:flex;gap:2px;position:relative}
+.fz-oldbar span{height:100%;border-radius:2px;background:#2d5e48}
+.fz-oldbar span.t{background:repeating-linear-gradient(135deg,#2d5e48 0 3px,#1a3a2d 3px 6px)}
+.fz-oldnote{position:absolute;right:12px;bottom:-1px;font-size:10px;color:#f0b6a8}
+
+/* the Card column */
+.fz-paths{border:1px solid var(--hair);border-radius:10px;background:#fff;font-size:12px}
+.fz-paths div{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:6px 9px;border-top:1px solid var(--hair)}
+.fz-paths div:first-child{border-top:0}
+.fz-paths b{font-weight:500} .fz-paths small{grid-column:1/-1;color:var(--ink3);font-size:11px}
+.fz-paths .new{background:#eef6f0} .fz-paths .idle small{color:var(--ink3)}
+.fz-tag{display:inline-block;border-radius:4px;padding:0 5px;font-size:10.5px;font-weight:600;background:var(--hover);color:var(--ink2);vertical-align:1px}
+.fz-tag.f{background:var(--leaftint);color:var(--forest2)}
+.fz-tag.q{background:none;color:var(--ink3);font-weight:500}
+.fz-tag.w{background:var(--cautionbg);color:var(--refuse)}
+.fz-kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 10px;font-size:12.5px;align-items:center}
+.fz-kv>span:nth-child(odd){color:var(--ink3)}
+.fz-kv select,.fz-sel{font:inherit;font-size:12.5px;border:1px solid var(--hair2);border-radius:7px;padding:3px 6px;background:#fff;max-width:100%}
+.fz-ro{color:var(--ink3);font-size:11px;margin-left:4px}
+.fz-acts{display:flex;gap:6px;flex-wrap:wrap}
+.fz-acts .btn,.fz-btn-s{padding:4px 10px;font-size:12px}
+.fz-oldcard{opacity:.78}
+.fz-oldcard .c-sec{position:relative}
+.fz-oldcard .x{text-decoration:line-through;text-decoration-color:rgba(126,39,24,.55)}
+.fz-oldcard .bigopt{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.fz-oldcard .bigopt span{border:1px solid var(--hair2);border-radius:8px;padding:6px;font-size:11px;color:var(--ink3)}
+.fz-wel{width:100%;min-height:54px;resize:vertical;font:inherit;font-size:12.5px;border:1px solid var(--hair2);border-radius:7px;padding:6px}
+.fz-welprev{margin-top:8px;background:var(--mat);color:var(--ivory);border-radius:10px;padding:10px 12px;font-size:12px}
+.fz-welprev b{display:block;font:500 15px var(--serif);margin-bottom:3px}
+
+/* View rows */
+.fz-vrow{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--hair)}
+.fz-vrow:first-child{border-top:0}
+.fz-vrow .fz-th{width:56px;height:36px}
+.fz-vrow b{font-weight:500;font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fz-vrow small{font-size:11px;color:var(--ink3)}
+.fz-add{border:1px solid var(--hair2);background:#fff;border-radius:999px;padding:2px 9px;font:inherit;font-size:11.5px;cursor:pointer;color:var(--forest2);white-space:nowrap}
+.fz-add:hover{background:var(--leaftint)}
+.fz-note-col .rules{margin-top:0}
+
+/* link */
+.fz-link{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);gap:14px;align-items:start}
+.fz-wact{margin:6px 0}
+.fz-wact .btn{padding:4px 10px;font-size:12px}
+.fz-name{display:flex;align-items:center;gap:6px}
+.fz-name input{flex:1;min-width:0;font:500 20px/1.2 var(--serif);border:1px solid transparent;border-radius:7px;padding:2px 5px;background:none;color:var(--ink)}
+.fz-name input:hover{border-color:var(--hair)} .fz-name input:focus{border-color:var(--forest2);outline:none;background:#fff}
+.fz-name input::placeholder{color:var(--ink)}
+.fz-follow{font-size:11.5px;color:var(--ink3);margin:2px 5px 0}
+.fz-mirror{border:1px solid var(--hair);border-radius:10px;background:#fff;font-size:12.5px}
+.fz-mirror div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;padding:7px 10px;border-top:1px solid var(--hair)}
+.fz-mirror div:first-child{border-top:0}
+.fz-mirror span{color:var(--ink3);font-size:11.5px}
+.fz-mirror b{font-weight:500;font-family:var(--serif)}
+.fz-mirror .vc{background:var(--mat);color:var(--ivory);border-radius:6px;padding:2px 7px;font-family:var(--serif)}
+.fz-warn{background:var(--cautionbg);border:1px solid #efd4cb;border-radius:9px;padding:8px 10px;font-size:12.5px;color:var(--refuse)}
+.fz-sugg{background:var(--leaftint);border-radius:9px;padding:8px 10px;font-size:12.5px;color:var(--forest2)}
+#fz-plan .o{cursor:default} #fz-plan.picking .o{cursor:pointer}
+#fz-plan .o rect{fill:#dcd8ce;stroke:var(--ink2);stroke-width:1}
+#fz-plan .o.lk rect{fill:var(--leaftint);stroke:var(--forest2);stroke-width:1.6}
+#fz-plan.picking .o:hover rect{fill:#e9f3ec;stroke:var(--leaf);stroke-width:2}
+#fz-plan .o.gone{opacity:.25}
+#fz-plan text{font:500 10px var(--sans);fill:var(--ink2)}
+
+/* visitor */
+.fz-vpw{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+.fz-vp{position:relative;aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:#000;outline:none}
+.fz-vbg,.fz-vbg svg{position:absolute;inset:0;width:100%;height:100%}
+.fz-vcap{position:absolute;z-index:2;left:12px;top:10px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.55);font-size:11px}
+.fz-vcap b{display:block;font:500 15px var(--serif)}
+.fz-vhud{position:absolute;z-index:2;left:10px;right:10px;bottom:10px;background:rgba(14,30,25,.86);border-radius:12px;padding:8px 10px;color:var(--ivory);display:grid;gap:7px}
+.fz-vtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px}
+.fz-vtop b{font:500 13px var(--serif)} .fz-vtop .q{color:var(--quiet)}
+.fz-vbtns{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.fz-vb{border:1px solid rgba(243,240,228,.25);background:rgba(255,255,255,.06);color:var(--ivory);border-radius:8px;padding:3px 9px;font:inherit;font-size:11.5px;cursor:pointer}
+.fz-vb:hover{background:rgba(255,255,255,.14)} .fz-vb:disabled{opacity:.4;cursor:default}
+.fz-vb.pri{background:var(--ivory);color:var(--forest);border-color:var(--ivory);font-weight:600}
+.fz-vb:focus-visible{outline:2px solid #9fd0b2;outline-offset:1px}
+.fz-prog{display:flex;align-items:center;height:6px}
+.fz-prog.frozen{opacity:.45}
+.fz-prog .s{position:relative;flex:1 1 0;min-width:14px;height:4px;border-radius:2px;background:rgba(243,240,228,.2);overflow:hidden}
+.fz-prog .s>i{position:absolute;left:0;top:0;bottom:0;background:rgba(243,240,228,.85)}
+.fz-prog .s.cur>i{background:#cfe9d8}
+.fz-prog .s.wait{background:transparent;box-shadow:inset 0 0 0 1px rgba(243,240,228,.75)}
+.fz-prog .k{flex:none;width:3px}
+.fz-prog .k.t{width:12px;height:2px;background:rgba(243,240,228,.2);margin:0 2px;position:relative;overflow:hidden;border-radius:1px}
+.fz-prog .k.t>i{position:absolute;left:0;top:0;bottom:0;background:rgba(243,240,228,.85)}
+.fz-xstrip{display:flex;align-items:center;gap:6px;font-size:11.5px}
+.fz-xstrip .v{width:38px;height:24px;border-radius:5px;overflow:hidden;border:1.5px solid transparent;cursor:pointer;padding:0;background:none}
+.fz-xstrip .v svg{display:block;width:100%;height:100%}
+.fz-xstrip .v.on{border-color:var(--ivory)}
+.fz-end{position:absolute;inset:0;display:grid;place-items:center;background:rgba(17,41,31,.72);color:var(--ivory);text-align:center}
+.fz-end b{display:block;font:500 20px var(--serif);margin-bottom:8px}
+
+/* problems */
+.fz-pchip{border:1px solid var(--hair2);border-radius:12px;background:#fff;font-size:12.5px;overflow:hidden}
+.fz-pchip>summary{list-style:none;cursor:pointer;padding:8px 11px;display:flex;gap:6px;align-items:baseline}
+.fz-pchip>summary::-webkit-details-marker{display:none}
+.fz-pchip>summary b{color:var(--refuse)}
+.fz-pchip>summary .more{margin-left:auto;color:var(--ink3);font-size:11.5px}
+.fz-pi{border-top:1px solid var(--hair);padding:8px 11px;display:grid;gap:5px}
+.fz-pi p{margin:0}
+.fz-pi .fz-acts .btn{padding:3px 9px;font-size:11.5px}
+.fz-pi pre{margin:0;font:10.5px/1.4 var(--mono);background:var(--hover);border-radius:6px;padding:5px 7px;white-space:pre-wrap;word-break:break-all;color:var(--ink2)}
+.fz-ok{border:1px solid #c6dfcf;background:#eef6f0;color:#1d4a35;border-radius:12px;padding:8px 11px;font-size:12.5px}
+.fz-oldprob{font-size:11.5px;background:#fff;border:1px solid var(--hair2);border-radius:10px;padding:7px 10px;text-decoration:line-through;text-decoration-color:rgba(126,39,24,.5);color:var(--ink2)}
+.fz-oldprob span{color:var(--ink3);margin-left:6px}
+.fz-oldprob code{display:block;font:10.5px var(--mono);color:var(--ink3);margin-top:3px;word-break:break-all}
+.fz-bad{background:var(--refusebg)}
+.fz-chg{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.03em;color:var(--forest2);background:var(--leaftint);border-radius:4px;padding:0 5px;margin-left:4px;vertical-align:1px}
+@media (max-width:980px){.fz-wrap,.fz-link,.fz-vpw{grid-template-columns:minmax(0,1fr)}}
+.fz-opts{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 10px;font-size:12px;color:var(--ink2);align-items:center}
+.fz-stage{overflow:visible}
 </style>
 </head>
 <body>
-<header class="top"><h1>Experience — interaction sheet</h1><span>R217 design reference · 2026-11-04 · one settled design</span></header>
+<header class="top"><h1>Experience — interaction sheet</h1><span>R217 design reference · 2026-11-05 · one settled design</span></header>
 <nav class="toc">
-  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a><a href="#s12">12 Environment</a><a href="#s13">13 Experiences</a><a href="#s14">14 Environment home</a><a href="#s15">15 Cursors</a><a href="#s16">16 Turn a View</a><a href="#s17">17 Present this</a><a href="#s18">18 Welcome</a><a href="#s19">19 Shape a path</a><a href="#s20">20 Selection only</a><a href="#s21">21 Look-through motion</a><a href="#s22">22 Messages</a><a href="#s23">23 Plan camera</a><a href="#s24">24 Advanced camera</a><a href="#s25">25 Compact Guide</a><a href="#s27">27 Presentation and object</a><a href="#s28">28 Scrub on the cards</a><a href="#s31">31 Follow, or step aside</a><a href="#s32">32 One setting, one place</a>
+  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a><a href="#s12">12 Environment</a><a href="#s13">13 Experiences</a><a href="#s14">14 Environment home</a><a href="#s15">15 Cursors</a><a href="#s16">16 Turn a View</a><a href="#s17">17 Present this</a><a href="#s18">18 Welcome</a><a href="#s19">19 Shape a path</a><a href="#s20">20 Selection only</a><a href="#s21">21 Look-through motion</a><a href="#s22">22 Messages</a><a href="#s23">23 Plan camera</a><a href="#s24">24 Advanced camera</a><a href="#s25">25 Compact Guide</a><a href="#s27">27 Presentation and object</a><a href="#s28">28 Scrub on the cards</a><a href="#s31">31 Follow, or step aside</a><a href="#s32">32 One setting, one place</a><a href="#s33">33 Final reconciliation</a>
 </nav>
-<p class="intro">The settled Experience design, one section per surface. Each shows the chosen behaviour; the option rows that remain are demo switches, not choices. Try the live parts: drag and scroll in <b>Look through</b> (1), drag path points in <b>4</b> and <b>19</b>, switch Cut/Travel in <b>5</b>, step through the Preview in <b>11</b>, turn a View in <b>16</b>, switch <b>Advanced</b> on in <b>24</b>, scrub the Guide in <b>28</b>, and run the visitor journeys in <b>31</b>. <b>§32</b> sets where each setting is edited, and how a long View list folds. Plans: <a href="../../roadmap/r217-core-editor-stability/experience-review/fix-plan.md">fix-plan.md</a> and <a href="../../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md">guide-playback-plan.md</a>.</p>
+<p class="intro">The settled Experience design, one section per surface. Each shows the chosen behaviour; the option rows that remain are demo switches, not choices. Try the live parts: drag and scroll in <b>Look through</b> (1), drag path points in <b>4</b> and <b>19</b>, switch Cut/Travel in <b>5</b>, step through the Preview in <b>11</b>, turn a View in <b>16</b>, switch <b>Advanced</b> on in <b>24</b>, scrub the Guide in <b>28</b>, and run the visitor journeys in <b>31</b>. <b>§32</b> sets where each setting is edited, and how a long View list folds. <b>§33</b> reconciles the shipped PR #271 with all of it and supersedes conflicting placement and styling: one Guide strip and timeline, a compact Guide Card, View → Stop, the object link, visitor progress, feedback and continuation recovery. Plans: <a href="../../roadmap/r217-core-editor-stability/experience-review/fix-plan.md">fix-plan.md</a> and <a href="../../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md">guide-playback-plan.md</a>, and for §33 <a href="../../roadmap/r217-core-editor-stability/experience-review/fix.md">fix.md</a>.</p>
 <main>
 
 <!-- 1 · Look through -->
@@ -1640,6 +1857,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 25 · Compact Guide -->
 <section id="s25" class="wide" data-cgl="tl">
   <h2><span class="n">25</span>A shorter Guide that keeps every Stop readable</h2>
+  <p class="sup"><b>Amended by <a href="#s33">§33 A</a>:</b> dark compact cards with quiet selection; no Stop time or <i>Start</i> on the card; no <i>+</i> path button. Overflow, fades and the fixed gutter width are kept.</p>
   <div class="opts">
     <span>Stops</span><div class="seg" data-key="cgn"><button data-v="5" aria-pressed="true">5</button><button data-v="12" aria-pressed="false">12, overflowing</button></div>
     <span>Guide</span><div class="seg" data-key="cgo"><button data-v="open" aria-pressed="true">Open</button><button data-v="closed" aria-pressed="false">Collapsed (unchanged)</button></div>
@@ -1665,6 +1883,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 27 · Presentation and object -->
 <section id="s27" class="wide" data-lnn="follow" data-lnk="suggest">
   <h2><span class="n">27</span>A Presentation follows its object, and a captured one can link to one</h2>
+  <p class="sup"><b>Delivered by <a href="#s33">§33 D</a></b>, which keeps this model. It amends the removed-object state (decision O-3) and settles the format: <code>label: string | null</code> inside format 4, so there is no new bump.</p>
   <div class="ln-grid">
     <div class="ln-world">
       <div class="cap" style="margin-top:0">World · rename an object here</div>
@@ -1688,6 +1907,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 28 · Scrub on the cards -->
 <section id="s28" class="wide" data-sbm="rail">
   <h2><span class="n">28</span>Scrub on the cards, with waits and keys</h2>
+  <p class="sup"><b>Kept, and delivered by <a href="#s33">§33 A</a>:</b> PR #271 shipped a second, separate scrub bar. §33 retires it for this one segmented track.</p>
   <div class="sbstage ui" id="sb-stage">
     <svg class="st cg-bg" viewBox="0 0 600 380" preserveAspectRatio="xMidYMin slice" id="sb-bg" aria-hidden="true"></svg>
     <div class="hinttag" id="sb-tip" hidden></div>
@@ -1707,6 +1927,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 31 · Follow the Guide, or step aside -->
 <section id="s31" class="wide" data-gpi="chip" data-gpp="automatic">
   <h2><span class="n">31</span>Follow the Guide, or step aside and come back</h2>
+  <p class="sup"><b>Amended by <a href="#s33">§33</a>:</b> pacing is now edited on the Guide strip (§33 A), the visitor bar gains segmented progress (§33 F), and the welcome moves to the Experience Card (§33 B). The model and journeys A–H are unchanged.</p>
   <p class="lede">Think of a museum guide. Visitors can follow along, or step aside to look closer and rejoin the group where it is. <b>Pacing is one choice for the whole Guide.</b> <b>Exploring is the visitor's time, never the Guide's.</b> <b>An invitation is a hint; it never stops the tour.</b></p>
   <div class="rv-model" aria-label="The refined model">
     <div class="rv-box g"><b>Guide · Automatic or Manual</b><small>Ordered Stops and the transitions between them, and the one clock. <i>Automatic</i> moves on when each stay ends; <i>Manual</i> waits for Next at every Stop.</small></div>
@@ -1879,6 +2100,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 32 · One setting, one place -->
 <section id="s32" class="wide" data-gce="card" data-vl="rail" data-vn="30">
   <h2><span class="n">32</span>One setting, one owner, one place to edit it</h2>
+  <p class="sup"><b>Superseded in part by <a href="#fz-own">§33's table</a>:</b> pacing, the welcome, <i>Next goes to</i>, path creation and the Guide Card's contents. A (the Transition Card) and B (the View list) are kept.</p>
   <p class="lede">Every setting has <b>one owner and one Card field</b>. Other surfaces show the value and link to that field; they never repeat the control. Stage marks may write the same fact through the same domain change, as the shell contract allows. <b>No capability goes:</b> each duplicate becomes a link to its one field. §31 already follows this table.</p>
   <h3 class="rv-h3">Where each setting is edited</h3>
   <div class="rv-tw"><table class="rv-tbl own-tbl">
@@ -1936,6 +2158,224 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 
   <h3 class="rv-h3">Shared path time</h3>
   <p class="lede">A path's time is one Camera fact, and more than one connection can use it (here, a Presentation step and a Guide arrival). It is edited at the connection you're on, with <i>×2</i> and the uses listed, so you know the change reaches each: the same fact through the same change, like a Stage mark.</p>
+</section>
+
+<!-- 33 · Experience final reconciliation -->
+<section id="s33" class="wide" data-fzv="final" data-fzn="5">
+  <h2><span class="n">33</span>Experience final reconciliation: one Guide, one timeline, one clear authoring flow</h2>
+  <p class="lede">The owner's review of PR #271 against §25, §27, §28, §31 and §32. The Experience v4 model is kept as it is: a Presentation holds ordered Views, a Stop visits one Presentation at one entry View with one stay, the Guide owns order and pacing, and Camera owns paths. What changes is <b>where things are done</b> and <b>how little the creator has to know</b>. Every panel in this section shares one state, so an edit in one place shows everywhere. Where §33 disagrees with an earlier section, §33 wins, and the <a href="#fz-delta">change table</a> names each case.</p>
+  <p class="fz-plan">Implementation plan and defect ledger: <a href="../../roadmap/r217-core-editor-stability/experience-review/fix.md">experience-review/fix.md</a>.</p>
+
+  <div class="fz-own" aria-label="One place to do each thing">
+    <div><b>Guide strip</b><small>Order, select, play, scrub, pacing, + Stop</small></div>
+    <div><b>Guide Card</b><small>Name, opening, Starts at, summaries</small></div>
+    <div><b>Stop Card</b><small>Enter at, stay, invitation</small></div>
+    <div><b>Transition Card</b><small>Cut or Travel, path, time, shape</small></div>
+    <div><b>Presentation Card</b><small>Views, object link, text, Places</small></div>
+    <div><b>Experience Card</b><small>Name, opening Guide, welcome</small></div>
+    <div><b>Visitor Preview</b><small>Progress, Next, Explore, Back</small></div>
+  </div>
+
+  <!-- A · strip -->
+  <h3 class="rv-h3" id="fz-a">A · The Guide strip and its one timeline</h3>
+  <div class="opts">
+    <span>Show</span><div class="seg" data-key="fzv"><button data-v="final" aria-pressed="true"><span class="star">★</span> §33</button><button data-v="prod" aria-pressed="false" class="old">PR #271 today</button></div>
+    <span>Stops</span><div class="seg" data-key="fzn"><button data-v="5" aria-pressed="true">5</button><button data-v="12" aria-pressed="false">12, overflowing</button></div>
+  </div>
+  <div class="fz-wrap">
+    <div class="fz-left">
+      <div class="fz-stage ui" id="fz-stage">
+        <div class="fz-toast" id="fz-toast" role="status" aria-live="polite"></div>
+        <div id="fz-strip"></div>
+      </div>
+      <div class="fz-bar"><button class="btn" id="fz-undo" disabled>↶ Undo</button><button class="btn" id="fz-reset">Reset</button><span class="r2read" id="fz-read" style="margin:0"></span></div>
+      <div class="pl-try"><b>Try:</b> press ▶, then drag along the rail under the cards (one track: each card's rail is its stay, each ↗ gutter its Travel) · focus the rail and use <kbd>←</kbd> <kbd>→</kbd> (<kbd>Shift</kbd> 5 s), <kbd>PgUp</kbd>/<kbd>PgDn</kbd>, <kbd>Home</kbd>/<kbd>End</kbd> · press the pacing pill, choose Manual, and play: ▶ stops at each ⏸ · drag Stop 3 before Stop 2, or focus a Stop and press <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> · right-click a Stop · press a gutter chip, then choose Travel</div>
+    </div>
+    <div class="fz-right">
+      <div class="cap" style="margin-top:0" id="fz-cardcap">Card</div>
+      <div class="card ui vr-card" id="fz-card" style="width:100%"></div>
+      <div class="cap">Camera paths (Camera owns them; Travel uses them)</div>
+      <div class="fz-paths ui" id="fz-paths"></div>
+    </div>
+  </div>
+  <ul class="rules">
+    <li><b>Dark, compact Stop cards</b> in the forest material: a picture with its number, and one line of title. A Presentation used twice adds its entry View to the line (<i>Pleyel piano · From the window</i>), so repeated visits stay distinct. Stop times, <i>Start</i> and <i>0:05</i> leave the cards: time lives on the rail, the clock and the connection, and the start Stop is set in the Guide Card. The start Stop is still in the card's accessible name, and a small ▸ marks it when it isn't Stop 1.</li>
+    <li><b>Quiet selection:</b> a raised forest fill and a thin light ring, never gold. ✦ (invites) and +N (Views to explore) stay, at reduced contrast.</li>
+    <li><b>Between Stops:</b> <i>✂</i> for a Cut and <i>↗ 5 s</i> for a Travel, with the path's real time. Pressing a chip opens its Transition Card. There is no manual <i>+ Add path</i>: choosing Travel makes the path (§33 E).</li>
+    <li><b>One timeline.</b> Each card's bottom rail is that Stop's stay, and each Travel gutter's rail is that Travel. A Cut takes no time, so its gutter shows a dotted hairline and the playhead jumps over it. One playhead, one clock (<i>0:21 / 0:53</i> in the header) and one scrub interaction. The separate full-width scrub bar goes. Cards keep fixed widths, so the scrub maps each segment on its own: dragging across a 4 s card and a 12 s card moves at different rates, and the tooltip names the time and the Stop.</li>
+    <li><b>Manual:</b> every card rail is a wait that ends in ⏸. Play stops there, and ▶ continues, as a visitor presses Next. A wait has no length on the clock, so the header reads <i>0:09 + 5 waits</i>.</li>
+    <li><b>Pacing lives on the strip.</b> The pill opens a small popover with the two choices. Arrow keys move, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes, and focus returns to the pill. The Guide Card shows the pacing and doesn't edit it.</li>
+    <li><b>Reorder:</b> drag a card (on touch, hold it first), or use <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>. A thin light insertion line, with no gold border, shows where it lands. A card's outgoing Cut or Travel moves with it, because the choice belongs to the Stop it leaves. Overflow scrolls sideways with no visible scrollbar and pages with the arrows, and the selected or playing Stop scrolls into view.</li>
+  </ul>
+
+  <!-- B · Guide Card and Experience Card -->
+  <h3 class="rv-h3" id="fz-b">B · A compact Guide Card, and the welcome's real home</h3>
+  <div class="fz-cards">
+    <div><div class="cap" style="margin-top:0">Guide Card (press the Guide's name on the strip)</div><div class="card ui vr-card" id="fz-gcard"></div></div>
+    <div><div class="cap" style="margin-top:0">Experience Card (press the Experience name in the Index)</div><div class="card ui vr-card" id="fz-xcard"></div></div>
+    <div><div class="cap" style="margin-top:0">PR #271 Guide Card today</div><div class="card ui vr-card fz-oldcard" id="fz-oldg"></div></div>
+  </div>
+  <ul class="rules">
+    <li><b>Removed from the Guide Card:</b> <i>Add stop</i> and <i>Play from the start</i> (the strip has both), the large Automatic/Manual cards (now the strip's popover), the <i>Guided tour / Free exploration</i> launch cards (the head <i>Preview</i> opens the welcome, which offers both), the <i>Build the tour</i> instructions, and the welcome text.</li>
+    <li><b>Kept, because only the Card can say it:</b> the name, the opening Guide status or <i>Make opening</i>, the Stop count, a read-only pacing line, the length (or the travel time and waits), <b>Starts at</b> (the controller already supports it, and today it's reachable only from a Stop's context menu), and what the Guide reaches: the Presentations it visits, the Views it enters, and the Views left to explore.</li>
+    <li><b>The welcome is the Experience's.</b> It is the first thing every visitor sees, whichever Guide opens. It moves to an <b>Experience Card</b>, opened from the Experience name in the Index, with the name, the opening Guide and the welcome. This is a new Card subject (<code>{kind:'experience'}</code>), not a new field.</li>
+  </ul>
+
+  <!-- C · Direct View → Stop -->
+  <h3 class="rv-h3" id="fz-c">C · A View straight into the Guide</h3>
+  <div class="fz-opts"><span>Presentation</span><div class="seg" id="fz-pseg"></div></div>
+  <div class="fz-cards">
+    <div><div class="cap" style="margin-top:0">Presentation Card · Views</div><div class="card ui vr-card" id="fz-pcard"></div></div>
+    <div class="fz-note-col">
+      <p class="r2read" id="fz-pread"></p>
+      <ul class="rules">
+        <li><b>＋ Stop on a View row</b> adds a Stop that enters at that View, after the selected Stop or at the end, in one accepted change. The schema and planner already accept <code>entryViewId</code>; only the controller passes <code>null</code> today. Dragging a View row onto the strip does the same.</li>
+        <li><b>Add to Guide</b> on the Presentation still adds a Stop at the Default, and follows the Default if the Views are reordered.</li>
+        <li><b>Guided or exploration only</b> is readable per row: <i>Stop 2</i> or <i>Stops 2, 4</i> where Stops enter, and a muted <i>explore</i> where none do.</li>
+        <li>With no Guide yet, the first ＋ Stop asks for the Guide's name inline (D8), exactly as Add to Guide does.</li>
+        <li>A new Stop arrives by Cut. If the Stop before it already travelled on to the next Stop, it now travels to the new one, and a straight path is added in the same Undo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- D · Object link -->
+  <h3 class="rv-h3" id="fz-d">D · A Presentation follows its World object (§27, delivered)</h3>
+  <div class="fz-opts"><span>Jump to</span><div class="seg" id="fz-lseg"><button data-ls="follow" aria-pressed="true">Linked · follows</button><button data-ls="renamed" aria-pressed="false">Renamed in World</button><button data-ls="own" aria-pressed="false">Own name</button><button data-ls="unlinked" aria-pressed="false">Unlinked · suggestion</button><button data-ls="missing" aria-pressed="false">Object removed</button></div></div>
+  <div class="fz-link">
+    <div>
+      <div class="cap" style="margin-top:0">World · rename or remove the object</div>
+      <label class="ln-obj"><span>Object</span><input id="fz-on-piano" aria-label="Name of the piano object"><span class="chip">Form 2</span></label>
+      <label class="ln-obj"><span>Object</span><input id="fz-on-desk" aria-label="Name of the desk object"><span class="chip">Form 1</span></label>
+      <div class="fz-wact"><button class="btn" id="fz-odel">Remove the piano</button></div>
+      <div class="ln-planw"><svg class="st" viewBox="0 0 300 150" id="fz-plan" aria-label="Plan: two objects"></svg><div class="hinttag" id="fz-ptag" hidden style="left:8px;top:8px">Click an object to link it · <kbd>Esc</kbd> cancels</div></div>
+    </div>
+    <div><div class="cap" style="margin-top:0">Presentation Card</div><div class="card ui vr-card" id="fz-lcard"></div></div>
+    <div><div class="cap" style="margin-top:0">Where the name shows</div><div class="fz-mirror" id="fz-mirror"></div><p class="r2read" id="fz-lread"></p></div>
+  </div>
+  <ul class="rules">
+    <li><b>One source of truth.</b> <code>label: string | null</code>. <code>null</code> means the name is the linked object's live name, read through the stable subject reference, never looked up by name. A string is the creator's own name. Nothing stores a copy of the object's name and calls it live.</li>
+    <li><b>The name shows everywhere it's used:</b> the Index, the Presentation Card, the Guide's Stop cards, the Stop and Transition Cards, the visitor's caption and Places. Typing a name makes it the creator's own, and <i>Use the object's name</i> goes back to following.</li>
+    <li><b>Identity stays separate from the name.</b> The kind line reads <i>about Pleyel piano · Form 2</i>, with <i>Show in World</i>. <i>Link</i> and <i>Unlink</i> are explicit actions, one Undo each. Capture suggests the object under the centre of the View (§27) and waits for <i>Link</i>. <i>Pick on the Stage</i> arms a one-shot picker, and <kbd>Esc</kbd> cancels it.</li>
+    <li><b>Unlinking keeps the current name</b> as the Presentation's own. Environment and region Presentations stay unlinked; nothing forces a subject on them.</li>
+    <li><b>A removed object</b> is a plain-language state: <i>The object this was about was removed</i>, with <i>Link another object</i> or <i>Unlink</i>, and never a silent retarget. ★ The World removal sets the Presentation's name to the object's last name in the same change, so it never goes blank; see fix.md, decision O-3.</li>
+  </ul>
+
+  <!-- E · Travel without connections -->
+  <h3 class="rv-h3" id="fz-e">E · Travel without thinking about Camera connections</h3>
+  <div class="rv-tw"><table class="rv-tbl">
+    <thead><tr><th>Edit</th><th>PR #271 today</th><th>§33</th></tr></thead>
+    <tbody>
+      <tr><td>Cut → Travel on a Guide connection</td><td>Adds a straight path when the pair has none ✓</td><td>Unchanged</td></tr>
+      <tr><td>Cut → Travel on a Presentation step</td><td>Adds a straight path ✓</td><td>Unchanged</td></tr>
+      <tr><td>Reorder Stops</td><td class="fz-bad">Keeps each Travel and adds no path for the new pair. The whole Guide then refuses to lower, and Preview and the strip can't play.</td><td>The same change adds a straight path for each new Travel pair. Existing paths and their shapes stay as they are.</td></tr>
+      <tr><td>Insert or add a Stop after a Travel</td><td class="fz-bad">The earlier Stop's Travel now points at the new Stop, with no path</td><td>A straight path is added; the new Stop's own outgoing connection is a Cut</td></tr>
+      <tr><td>Change a Stop's <i>Enter at</i></td><td class="fz-bad">The Travel in and out now join different Views, with no path</td><td>A path is added for each new pair</td></tr>
+      <tr><td>Reorder a Presentation's Views (the Default changes)</td><td class="fz-bad">The steps are fixed, but Stops that follow the Default now join different Views</td><td>The Guide pairs are fixed in the same change</td></tr>
+      <tr><td>Remove a Stop or a View</td><td class="fz-bad">The new neighbours keep the Travel, with no path</td><td>The removal plan adds the straight path; its consequence list says so</td></tr>
+      <tr><td>Travel → Cut</td><td>Keeps the path ✓</td><td>Unchanged: Cut stops using the path and never deletes it</td></tr>
+      <tr><td>Cut → Travel again</td><td>Reuses the path for that pair ✓</td><td>Unchanged</td></tr>
+      <tr><td>Travel between two Stops on the same View</td><td class="fz-bad">Allowed, then an unfixable gap</td><td>Travel is disabled, with the reason <i>Both Stops show Front</i>. An existing one is the one creator-facing repair.</td></tr>
+      <tr><td>Two paths join the same pair (imported)</td><td>Refused, with raw ids</td><td>Plain-language repair; Experience never guesses</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede" style="margin-top:8px">Try it in the strip above: drag <i>North window</i> (Stop 3) to the end. Stop 2's Travel now leads to the piano's second visit, so a straight <i>Front ↔ From the window</i> path is added in the same Undo. The custom <i>Front ↔ North window</i> path stays, unused, for when you move the Stop back. Nothing is stretched or retargeted.</p>
+
+  <!-- F · Visitor HUD -->
+  <h3 class="rv-h3" id="fz-f">F · Visitor Preview: progress you can read, and a scene that stays dominant</h3>
+  <div class="fz-vpw">
+    <div class="fz-vp ui" id="fz-vp" tabindex="-1">
+      <div class="fz-vbg" id="fz-vbg"></div>
+      <div class="fz-vcap" id="fz-vcap"></div>
+      <div class="fz-vhud" id="fz-vhud"></div>
+    </div>
+    <div>
+      <div class="fz-opts" style="margin-top:0"><span>Run</span><div class="seg" id="fz-vrun"><button data-vr="start">Start the tour</button><button data-vr="reset">Reset</button></div></div>
+      <p class="r2read" id="fz-vread" aria-live="polite"></p>
+      <ul class="rules">
+        <li><b>One thin segmented bar</b> in the HUD: one segment per Stop occurrence, so a second visit to the Pleyel piano is its own segment. Done segments are filled, upcoming ones are faint, and the current one fills with its stay.</li>
+        <li><b>Travel</b> fills the short connector between two segments. A Cut has a hairline gap and nothing to fill.</li>
+        <li><b>Manual</b> shows the current segment outlined, with <i>Next when you're ready</i>, and no fill, because there's no time to show.</li>
+        <li><b>Pause and Explore freeze it.</b> Explore dims the bar while the explore strip is up. <i>Back to the tour</i> restores the same fill and the same play, pause or wait. Back's 2 s lead-in shows as the fill stepping back a little.</li>
+        <li>Segments are equal widths with a minimum, not proportional to time, so a 2 s stay is still visible. The final segment fills, and the end card follows.</li>
+        <li><b>No new timer.</b> The stay fill reads the interpreter's <code>holdRemainingMs</code> and the Stop's <code>staySeconds</code>; the Travel fill reads the Camera director's motion progress; the order reads the run (<code>guideRunFromProgram</code>). It's feedback only: visitors can't scrub.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- G · Feedback and diagnostics -->
+  <h3 class="rv-h3" id="fz-g">G · Feedback that says what happened, problems that say where</h3>
+  <div class="fz-cards">
+    <div>
+      <div class="cap" style="margin-top:0">Feedback line · typed, not guessed from the text</div>
+      <div class="fz-fbbtns"><button class="btn" data-fb="manual">Switch to Manual</button><button class="btn" data-fb="auto">Switch to Automatic</button><button class="btn" data-fb="tip">A tip</button><button class="btn" data-fb="no">A refusal</button></div>
+      <div class="fz-fbline" id="fz-fbline"></div>
+      <div class="cap">PR #271 today</div>
+      <p class="experience-feedback-old">Automatic: each Stop stays for its time, then the tour moves on by itself.</p>
+      <p class="rv-sub">Shown red: only <code>Accepted.</code> and lines wrapped in <code>succeed()</code> count as success.</p>
+    </div>
+    <div>
+      <div class="cap" style="margin-top:0">Problems · live from the state above</div>
+      <div id="fz-probs"></div>
+      <div class="fz-opts" style="margin:8px 0 0"><span>Imported file</span><div class="seg" id="fz-impseg"><button data-imp="0" aria-pressed="true">Clean</button><button data-imp="1" aria-pressed="false">Two paths join Front and North window</button></div></div>
+      <div class="cap">PR #271 today</div>
+      <div class="fz-oldprob"><b>1 to fix</b> A link points at something that is gone. <span>Details</span><code>the Travel from stop "3f2c9a1e-…" has no Camera connection to the View of stop "b71d…"</code></div>
+    </div>
+  </div>
+  <ul class="rules">
+    <li><b>Typed feedback.</b> Every command returns <code>{kind:'success'|'info'|'refusal', text}</code>. A success is a short forest-green line that fades. A tip is neutral. A refusal keeps the red treatment and stays long enough to read. Nothing classifies by matching the text.</li>
+    <li><b>Problems are written for the creator:</b> Stop numbers, the Guide's name, Presentation names and View labels, in a sentence that names the real fault (a missing or doubled path, the same View on both sides, a removed object), never <i>points at things that are gone</i>. Each has a <i>Show</i> that opens the control that fixes it. Ids, codes and source paths sit behind <i>Copy details</i>.</li>
+    <li><b>No warning for what an ordinary edit should have done.</b> Once §33 E lands, a Travel gap can only come from an imported or hand-edited file. The R217.S29 notice <i>Travel 2 → 3 now joins different Views. Check the Camera path.</i> is retired.</li>
+  </ul>
+
+  <!-- H · Continuation -->
+  <h3 class="rv-h3" id="fz-h">H · The Guide's order is the route; End and jumps can be seen and undone</h3>
+  <div class="fz-opts"><span>Case</span><div class="seg" id="fz-cseg"><button data-cc="linear" aria-pressed="true">Ordinary linear</button><button data-cc="end" aria-pressed="false">Explicit End after Stop 3</button><button data-cc="jump" aria-pressed="false">Jump: Stop 2 → Stop 4</button></div></div>
+  <div class="fz-cards">
+    <div style="grid-column:span 2"><div class="cap" style="margin-top:0">Guide</div><div id="fz-cstrip"></div><p class="r2read" id="fz-cread"></p></div>
+    <div><div class="cap" style="margin-top:0">Transition Card</div><div class="card ui vr-card" id="fz-ccard"></div></div>
+  </div>
+  <ul class="rules">
+    <li><b>The ordinary Transition Card has no <i>Next goes to</i>.</b> The strip's order is the route. Cut or Travel, the path, its time and its shape are all the Card edits.</li>
+    <li><b>An explicit continuation</b> (End, or a jump to a later Stop) is kept in the data and the runtime. It shows as an exception: the gutter reads <i>■ End</i> or <i>→ 4</i>, the Stops it skips are dimmed <i>not reached</i>, and the Card says what's happening and offers one recovery: <i>Continue to Stop 4</i> or <i>Follow the Guide order</i>. Today, choosing End hides the only control that undoes it; this fixes that.</li>
+    <li><b>Creating</b> an End or a jump moves out of ordinary authoring. Without branching, an early End only makes later Stops unreachable, which removing them, or a second Guide, does more honestly. Detours and explicit targets stay dormant until a branching design exists (fix.md, deferred).</li>
+  </ul>
+
+  <!-- Ownership -->
+  <h3 class="rv-h3" id="fz-own">Where each thing is done (supersedes §32's table)</h3>
+  <div class="rv-tw"><table class="rv-tbl own-tbl">
+    <thead><tr><th>Setting or action</th><th>Owner</th><th>Done in (the one place)</th><th>Shown elsewhere as</th><th>Retired duplicate</th></tr></thead>
+    <tbody>
+      <tr><td>Pacing</td><td>Guide</td><td><b>Guide strip · pacing popover</b> <span class="fz-chg">changed from §32</span></td><td>Guide Card read-only line; Stop Card <i>Until Next</i>; visitor bar</td><td>Guide Card pacing cards</td></tr>
+      <tr><td>Stop order</td><td>Guide</td><td>Guide strip (drag, <kbd>Alt</kbd>+arrows, context menu)</td><td>Stop Card <i>Stop 2 of 5</i></td><td>—</td></tr>
+      <tr><td>Add a Stop</td><td>Guide</td><td>Strip <i>+ Stop</i>; Presentation <i>Add to Guide</i>; View row <i>＋ Stop</i> <span class="fz-chg">new</span></td><td>—</td><td>Guide Card <i>Add stop</i></td></tr>
+      <tr><td>Play, seek, scrub</td><td>Editor playback</td><td>Guide strip: ▶, the rail, the keys</td><td>Header clock</td><td>Guide Card <i>Play from the start</i>; the separate scrub bar</td></tr>
+      <tr><td>Start Stop</td><td>Guide</td><td><b>Guide Card · Starts at</b></td><td>▸ on the card, and its accessible name</td><td><i>Start</i> tag on cards; the Stop context menu item</td></tr>
+      <tr><td>Opening Guide</td><td>Experience</td><td>Experience Card · Opens with; Guide Card <i>Make opening</i> writes the same fact</td><td>Guide Card status</td><td>—</td></tr>
+      <tr><td>Welcome</td><td>Experience</td><td><b>Experience Card · Welcome</b> <span class="fz-chg">moved</span></td><td>Visitor welcome</td><td>Guide Card welcome text</td></tr>
+      <tr><td>Cut or Travel between Stops</td><td>Transition</td><td>Transition Card</td><td>Gutter chip <i>↗ 5 s</i>; Stop Card Connections</td><td>Gutter <i>+</i> add-path button</td></tr>
+      <tr><td>Where Next goes</td><td>Guide order</td><td>The strip's order <span class="fz-chg">changed</span></td><td>Explicit End or jump: an exception chip with one recovery</td><td>Transition Card <i>Next goes to</i> selector</td></tr>
+      <tr><td>Camera path existence</td><td>Camera, written by the Travel edit</td><td>Automatic, in the same change as the edit <span class="fz-chg">changed</span></td><td>Paths on the Stage; ×N uses</td><td>Manual <i>Add a Camera path</i> outside repair</td></tr>
+      <tr><td>Path time and shape</td><td>Camera path</td><td>Transition Card, or the Presentation spine; shape on the Stage</td><td><i>↗ 5 s</i> wherever it's used</td><td>—</td></tr>
+      <tr><td>Entry View</td><td>Stop</td><td>Stop Card · Enter at; or chosen at creation from a View row</td><td>Presentation rows <i>Stop 2</i></td><td>—</td></tr>
+      <tr><td>Stay, invitation</td><td>Stop</td><td>Stop Card</td><td>Card rail; ✦</td><td>—</td></tr>
+      <tr><td>Presentation name, object link</td><td>Presentation</td><td>Presentation Card · name and <i>About</i></td><td>Index, strip, visitor caption</td><td>—</td></tr>
+      <tr><td>View order, steps, Listed in Places</td><td>Presentation</td><td>Presentation Card</td><td>Visitor View strip</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+
+  <!-- Delta -->
+  <h3 class="rv-h3" id="fz-delta">What §33 changes in earlier sections</h3>
+  <div class="rv-tw"><table class="rv-tbl">
+    <thead><tr><th>Section</th><th>Earlier decision</th><th>PR #271 shipped</th><th>§33</th></tr></thead>
+    <tbody>
+      <tr><td>§25 Compact Guide</td><td>Wide white cards with the Stop's time; ⚠ only for broken data</td><td>Light cards with gold selection, <i>Start</i> and the time on each card, and a manual <i>+</i> path button</td><td><b>Amended:</b> dark compact cards, quiet selection, no time or <i>Start</i> on the card, no <i>+</i>. Overflow and fades are kept.</td></tr>
+      <tr><td>§28 Scrub on the cards</td><td>The rails join into one scrubber, with no separate row</td><td>Rails <i>plus</i> a separate proportional scrub bar</td><td><b>Kept, and delivered:</b> one segmented track; the separate bar is retired</td></tr>
+      <tr><td>§27 Presentation and object</td><td>Name follows; link and unlink; picker; removed state</td><td>Not delivered: <code>label</code> is a required string, and the Card shows no subject</td><td><b>Kept, and delivered:</b> <code>label: string | null</code> inside format 4; the removed state is amended (O-3)</td></tr>
+      <tr><td>§31 Follow or step aside</td><td>Visitor bar with Next, Pause, Explore and Back</td><td>Delivered, with ordinal dashes for progress</td><td><b>Amended:</b> segmented continuous progress. The model is unchanged.</td></tr>
+      <tr><td>§32 One setting, one place</td><td>Pacing edited in the Guide Card; the strip label links to it</td><td>As decided, plus Add stop, Play, the launch cards and the welcome in the Guide Card</td><td><b>Amended:</b> pacing is edited on the strip; the Guide Card is summary-only; the welcome moves to the Experience Card; <i>Next goes to</i> is retired</td></tr>
+      <tr><td>§5 Travel and its Card</td><td>Choosing Travel creates its path</td><td>Only when switching Cut → Travel</td><td><b>Kept, and generalised:</b> every edit that changes a Travel's pair keeps it valid</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 </main>
@@ -3266,6 +3706,406 @@ Object.values(R).forEach(f=>f());
   seedPL(+sec.dataset.vn);
   R.s32=()=>{if(PL.views.length!==+sec.dataset.vn){seedPL(+sec.dataset.vn);pmsg='';}if(pop_())ci=ci;pop=null;drawA();drawB();};
   R.s32();
+})();
+/* ---------- §33 Experience final reconciliation ---------- */
+(()=>{const sec=$('#s33');if(!sec)return;
+  /* ---- one shared state: World objects, Camera Views and paths, Presentations, the Guide ---- */
+  const VW={h1:{n:'From the door',th:['day',1,0]},h2:{n:'Stair foot',th:['day',1.25,140]},p1:{n:'Front',th:['day',1.3,-60]},p2:{n:'Keyboard',th:['day',1.9,-110,30]},p3:{n:'From the window',th:['gold',1.2,150]},
+    w1:{n:'North window',th:['day',1.6,240]},r1:{n:'Reading corner',th:['eve',1.4,150]},r2:{n:'Lamp',th:['eve',1.9,200]},g1:{n:'Gallery',th:['day',1.1,-200]},g2:{n:'Portraits',th:['day',1.5,-240]},
+    c1:{n:'Conservatory',th:['gold',1.05,60]},c2:{n:'Palms',th:['gold',1.6,90]},s1:{n:'Study',th:['eve',1.15,-80]},t1:{n:'Terrace',th:['gold',1.3,-150]}};
+  const key=(a,b)=>a<b?a+'|'+b:b+'|'+a;
+  const hash=s=>{let h=7;for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;return h;};
+  const straightT=(a,b)=>2.5+(hash(key(a,b))%5)*.5;
+  const fmtT=s=>{s=Math.max(0,Math.round(s));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
+  const sec1=s=>`${+(+s).toFixed(1)} s`;
+  function seed(n){
+    const P={hall:{label:'Entrance hall',subject:null,views:['h1','h2'],sugg:null},piano:{label:null,subject:'piano',views:['p1','p2','p3'],sugg:'piano'},
+      win:{label:'North window',subject:null,views:['w1'],sugg:null},read:{label:'Reading corner',subject:null,views:['r1','r2'],sugg:null},
+      gal:{label:'Gallery',subject:null,views:['g1','g2'],sugg:null},cons:{label:'Conservatory',subject:null,views:['c1','c2'],sugg:null},study:{label:'Study',subject:null,views:['s1'],sugg:null},ter:{label:'Terrace',subject:null,views:['t1'],sugg:null}};
+    const OBJ={piano:{name:'Pleyel piano',form:'Form 2',alive:true,x:150,y:58,w:78,h:38},desk:{name:'Writing desk',form:'Form 1',alive:true,x:36,y:86,w:58,h:28}};
+    let stops=[{id:'s1',p:'hall',entry:null,stay:6,inv:false,out:'cut'},{id:'s2',p:'piano',entry:null,stay:10,inv:true,out:'trav'},{id:'s3',p:'win',entry:null,stay:5,inv:false,out:'cut'},
+      {id:'s4',p:'piano',entry:'p3',stay:6,inv:false,out:'trav'},{id:'s5',p:'read',entry:null,stay:8,inv:false,out:'cut'}];
+    const CX={[key('p1','w1')]:{t:5,kind:'custom',pts:2},[key('p3','r1')]:{t:4,kind:'straight',pts:0}};
+    if(n>5){stops[4].out='cut';stops=stops.concat([{id:'s6',p:'gal',entry:null,stay:6,inv:false,out:'trav'},{id:'s7',p:'cons',entry:null,stay:7,inv:true,out:'cut'},{id:'s8',p:'study',entry:null,stay:5,inv:false,out:'trav'},
+      {id:'s9',p:'ter',entry:null,stay:6,inv:false,out:'cut'},{id:'s10',p:'gal',entry:'g2',stay:4,inv:false,out:'cut'},{id:'s11',p:'hall',entry:'h2',stay:5,inv:false,out:'trav'},{id:'s12',p:'read',entry:'r2',stay:6,inv:false,out:'cut'}]);
+      CX[key('g1','c1')]={t:4.5,kind:'straight',pts:0};CX[key('s1','t1')]={t:3,kind:'custom',pts:1};CX[key('h2','r2')]={t:5.5,kind:'straight',pts:0};}
+    return {P,OBJ,CX,imp:false,G:{name:'Evening tour',pacing:'automatic',start:'s1',stops},X:{name:'The Pleyel house',welcome:'Step inside a nineteenth-century music room. Follow the evening tour, or wander at your own pace.'}};
+  }
+  let S=seed(5),UNDO=[],nid=1,sel={kind:'guide'};
+  const stops=()=>S.G.stops;
+  const entryOf=st=>st.entry??S.P[st.p].views[0];
+  function pname(pid){const p=S.P[pid];if(p.label!==null)return p.label;const o=p.subject&&S.OBJ[p.subject];return o?o.name:'Untitled';}
+  function stitle(i){const st=stops()[i];const again=stops().filter(x=>x.p===st.p).length>1;return pname(st.p)+(again?' · '+VW[entryOf(st)].n:'');}
+  function edges(){const L=stops();return L.slice(0,-1).map((st,i)=>{const a=entryOf(st),b=entryOf(L[i+1]),k=key(a,b);
+    return {i,kind:st.out,a,b,k,same:a===b,cx:S.CX[k]||null,amb:S.imp&&k===key('p1','w1')};});}
+  const travelOK=e=>e.kind==='trav'&&!e.same&&e.cx&&!e.amb;
+  function reconcile(){const made=[];for(const e of edges()){if(e.kind==='trav'&&!e.same&&!S.CX[e.k]){S.CX[e.k]={t:straightT(e.a,e.b),kind:'straight',pts:0,isNew:true};made.push(e.k);}}return made;}
+  const pairName=k=>k.split('|').map(v=>VW[v].n).join(' ↔ ');
+  const madeText=made=>made.length===0?'':made.length===1?` A straight path was added for ${pairName(made[0])}.`:` ${made.length} straight paths were added.`;
+
+  /* ---- Undo, feedback ---- */
+  const snap=()=>JSON.stringify({S,sel});
+  function edit(fn,msg){UNDO.push(snap());if(UNDO.length>40)UNDO.shift();for(const c of Object.values(S.CX))delete c.isNew;
+    const r=fn();if(r===false){UNDO.pop();return;}const made=reconcile();rebuild();renderAll();const m=msg?msg(made):[];if(m.length===2)toast(m[0],m[1]);}
+  function undo(){const s=UNDO.pop();if(!s)return;const o=JSON.parse(s);S=o.S;sel=o.sel;rebuild();renderAll();toast('info','Undone.');}
+  let toastT=0;const toastEl=$('#fz-toast');
+  function fbHtml(kind,text){return `<span class="fz-fb ${kind}">${kind==='ok'?'✓ ':kind==='no'?'⚠ ':''}${text}</span>`;}
+  function toast(kind,text){clearTimeout(toastT);toastEl.innerHTML=fbHtml(kind,text);toastT=setTimeout(()=>{toastEl.innerHTML='';},kind==='no'?6000:3200);}
+  const read=$('#fz-read');let readMsg='';
+  const say=m=>{readMsg=m;read.innerHTML=m;};
+
+  /* ---- the timeline: segments, one playhead, one clock ---- */
+  let SEG=[],TOTAL=0,WAITS=0;const PH={k:0,local:0,status:'idle',released:false};
+  function rebuild(){SEG=[];let t=0;const L=stops(),E=edges(),man=S.G.pacing==='manual';
+    L.forEach((st,i)=>{const d=man?0:st.stay;SEG.push({k:'stay',i,t0:t,dur:d,wait:man});t+=d;
+      if(i<L.length-1){const e=E[i],tr=travelOK(e),d2=tr?e.cx.t:0;SEG.push({k:tr?'trav':'cut',i,t0:t,dur:d2,wait:false});t+=d2;}});
+    TOTAL=t;WAITS=man?L.length:0;if(PH.k>=SEG.length){PH.k=Math.max(0,SEG.length-1);PH.local=0;}PH.local=Math.min(PH.local,SEG[PH.k]?SEG[PH.k].dur:0);}
+  const nowT=()=>SEG.length?SEG[PH.k].t0+PH.local:0;
+  function advance(dt){while(dt>0||SEG[PH.k].wait){const s=SEG[PH.k];
+      if(s.wait){if(PH.released){PH.released=false;if(PH.k===SEG.length-1){PH.status='ended';return;}PH.k++;PH.local=0;continue;}PH.status='waiting';return;}
+      const rem=s.dur-PH.local;if(dt<rem){PH.local+=dt;return;}dt-=rem;
+      if(PH.k===SEG.length-1){PH.local=s.dur;PH.status='ended';return;}PH.k++;PH.local=0;}}
+  function seekTo(k,local){PH.k=Math.max(0,Math.min(SEG.length-1,k));const s=SEG[PH.k];PH.local=Math.max(0,Math.min(s.dur,local));
+    if(s.k==='cut'&&PH.k<SEG.length-1){PH.k++;PH.local=0;}PH.released=false;if(PH.status==='ended')PH.status='paused';if(SEG[PH.k].wait&&PH.status==='playing')PH.status='waiting';}
+  function seekTime(t){t=Math.max(0,Math.min(TOTAL,t));for(let k=0;k<SEG.length;k++){const s=SEG[k];if(s.wait&&Math.abs(s.t0-t)<1e-6)return seekTo(k,0);if(s.dur>0&&t<s.t0+s.dur)return seekTo(k,t-s.t0);}seekTo(SEG.length-1,SEG[SEG.length-1].dur);}
+  function stopAt(i){const k=SEG.findIndex(s=>s.k==='stay'&&s.i===i);if(k>=0)seekTo(k,0);}
+  const curStop=()=>SEG.length?SEG[PH.k].i+(SEG[PH.k].k==='stay'?0:1):0;
+  function play(){if(!SEG.length)return;if(PH.status==='playing'){PH.status='paused';}else{if(PH.status==='ended'){PH.k=0;PH.local=0;}if(SEG[PH.k].wait)PH.released=true;PH.status='playing';loop();}paint();}
+  let raf=0,last=0;function loop(){cancelAnimationFrame(raf);last=performance.now();const f=now=>{const dt=Math.min(.1,(now-last)/1000)*2;last=now;if(PH.status!=='playing')return paint();
+      const before=curStop();advance(dt);if(curStop()!==before)scrollToStop(curStop());paint();if(PH.status==='playing')raf=requestAnimationFrame(f);};raf=requestAnimationFrame(f);}
+
+  /* ---- the strip ---- */
+  const host=$('#fz-strip');let row=null,popOpen=false,menu=null,addOpen=false,drag=null,suppress=0,focusI=0;
+  const thumb=v=>thumbSvg(...VW[v].th);
+  function chipOf(e){if(!e)return'';if(e.kind==='trav'&&(e.same||e.amb))return{c:'bad',t:'⚠',n:e.same?'Travel, but both Stops show the same View':'Travel, two paths join these Views'};
+    if(e.kind==='trav')return{c:'trav',t:'↗ '+sec1(e.cx.t),n:`Travel, ${sec1(e.cx.t)}`};return{c:'cut',t:'✂',n:'Cut'};}
+  function renderStrip(){const prod=sec.dataset.fzv==='prod',L=stops(),E=edges(),man=S.G.pacing==='manual',startI=L.findIndex(s=>s.id===S.G.start);
+    let r='';L.forEach((st,i)=>{const P=S.P[st.p],more=P.views.length-1,isSel=sel.kind==='stop'&&sel.i===i,title=stitle(i);
+      const spoken=[`Stop ${i+1}`,title];if(i===startI)spoken.push('the tour starts here');if(st.inv)spoken.push('invites exploring');if(more>0)spoken.push(`${more} more ${more===1?'View':'Views'} to explore`);if(man)spoken.push('waits for Next');
+      if(prod){r+=`<button class="fz-c${isSel?' sel':''}" data-si="${i}" tabindex="-1"><span class="fz-th">${thumb(entryOf(st))}<i>${i+1}</i></span><span class="fz-tt"><b>${esc(pname(st.p))}</b><span class="fz-meta">${i===startI?'<span class="st">Start</span>':''}${man?'⏸':fmtT(st.stay)}${st.inv?' ✦':''}${more?` +${more}`:''}</span></span><span class="fz-rail"><i data-rf="${i}" style="width:0"></i></span></button>`;}
+      else r+=`<button class="fz-c${isSel?' sel':''}" data-si="${i}" tabindex="${i===focusI?0:-1}" aria-pressed="${isSel}" aria-label="${esc(spoken.join(', '))}" title="${esc(title)}"><span class="fz-th">${thumb(entryOf(st))}<i class="${i===startI&&i>0?'st':''}">${i+1}</i></span><span class="fz-tt"><b>${esc(title)}</b>${st.inv?'<span class="fz-bd" aria-hidden="true">✦</span>':''}${more?`<span class="fz-bd" aria-hidden="true">+${more}</span>`:''}</span><span class="fz-rail" aria-hidden="true"><i data-rf="${i}"></i>${man?`<span class="wc" data-wc="${i}">❚❚</span>`:''}</span></button>`;
+      if(i<L.length-1){const e=E[i],c=chipOf(e),ts=sel.kind==='transition'&&sel.i===i;
+        r+=`<span class="fz-gut ${travelOK(e)?'trav':'cut'}" data-gi="${i}"><button class="fz-chip ${c.c}${ts?' sel':''}" data-ti="${i}" tabindex="-1" aria-pressed="${ts}" aria-label="Stop ${i+1} to Stop ${i+2}: ${c.n}">${prod?(c.c==='trav'?'↗':c.t):c.t}</button>${prod?'':`<span class="grail" aria-hidden="true"><i data-gf="${i}"></i></span>`}</span>`;}});
+    const ph=prod?'':'<div class="fz-hit" id="fz-hit" role="slider" tabindex="0" aria-label="Guide timeline"></div><div class="fz-ph" id="fz-ph"></div><div class="fz-ins" id="fz-ins" hidden></div><div class="fz-tip" id="fz-tip" hidden></div>';
+    const pace=prod?`<button class="fz-pace" data-oldpace>${man?'Manual · waits for Next':'Automatic'} ›</button>`:`<button class="fz-pace" id="fz-pace" aria-haspopup="true" aria-expanded="${popOpen}" aria-controls="fz-pop">${man?'Manual':'Automatic'} <span aria-hidden="true">▾</span></button>`;
+    const oldbar=prod?`<div class="fz-oldbar" aria-hidden="true">${SEG.filter(s=>s.dur>0).map(s=>`<span class="${s.k==='trav'?'t':''}" style="flex:${s.dur}"></span>`).join('')}<span class="fz-oldnote">separate scrub bar</span></div>`:'';
+    host.innerHTML=`<div class="fz-g${prod?' prod':''}" id="fz-g" role="group" aria-label="Guide"><div class="fz-gh"><span class="g-eyebrow">GUIDE</span><button class="fz-gname" data-gname aria-pressed="${sel.kind==='guide'}">${esc(S.G.name)}</button><span class="fz-cnt">${L.length} Stops</span>${pace}<span class="fz-sp"></span>
+      <button class="fz-play" id="fz-play" aria-label="Play">▶</button><span class="fz-clock" id="fz-clock"></span><button class="fz-tool" data-follow>◉ Follow</button><button class="fz-tool" id="fz-addb" data-add aria-haspopup="menu" aria-expanded="${addOpen}">＋ Stop</button></div>
+      <div class="fz-cw"><div class="fz-row" id="fz-row">${r}${ph}</div><button class="fz-arrow l" data-pg="-1" aria-label="Earlier Stops" hidden>‹</button><button class="fz-arrow r" data-pg="1" aria-label="Later Stops" hidden>›</button></div>${oldbar}
+      ${popOpen&&!prod?popHtml():''}${addOpen&&!prod?addHtml():''}${menu&&!prod?menuHtml():''}</div>`;
+    row=$('#fz-row');row.addEventListener('scroll',arrows);
+    const hit=$('#fz-hit');if(hit){hit.style.width=row.scrollWidth+'px';}
+    arrows();placePops();paint();}
+  function arrows(){if(!row)return;const l=host.querySelector('[data-pg="-1"]'),r=host.querySelector('[data-pg="1"]');l.hidden=row.scrollLeft<4;r.hidden=row.scrollLeft+row.clientWidth>=row.scrollWidth-4;}
+  function scrollToStop(i){if(!row)return;const c=row.querySelector(`[data-si="${i}"]`);if(!c)return;const a=c.offsetLeft,b=a+c.offsetWidth;if(a<row.scrollLeft+28)row.scrollTo({left:a-34,behavior:'smooth'});else if(b>row.scrollLeft+row.clientWidth-28)row.scrollTo({left:b-row.clientWidth+34,behavior:'smooth'});}
+  function elOf(s){return s.k==='stay'?row.querySelector(`[data-si="${s.i}"] .fz-rail`):row.querySelector(`[data-gi="${s.i}"] .grail`);}
+  function xOf(el){const R=row.getBoundingClientRect(),r=el.getBoundingClientRect();return{l:r.left-R.left+row.scrollLeft,w:r.width};}
+  function paint(){if(!row)return;const prod=sec.dataset.fzv==='prod';const clock=$('#fz-clock'),pb=$('#fz-play');
+    clock.innerHTML=`${fmtT(nowT())} / ${fmtT(TOTAL)}${WAITS?`<i>+ ${WAITS} waits</i>`:''}`;
+    pb.textContent=PH.status==='playing'?'❚❚':'▶';pb.setAttribute('aria-label',PH.status==='playing'?'Pause':PH.status==='waiting'?'Continue':'Play');
+    SEG.forEach((s,k)=>{const f=k<PH.k?1:k>PH.k?0:(s.dur>0?PH.local/s.dur:(s.wait?(PH.status==='ended'?1:0):0));
+      if(s.k==='stay'){const el=row.querySelector(`[data-rf="${s.i}"]`);if(el)el.style.width=(s.wait?(k<PH.k||PH.status==='ended'?100:0):f*100)+'%';const wc=row.querySelector(`[data-wc="${s.i}"]`);if(wc)wc.classList.toggle('done',k<PH.k||PH.status==='ended');}
+      else{const el=row.querySelector(`[data-gf="${s.i}"]`);if(el)el.style.width=f*100+'%';}});
+    if(prod)return;const ph=$('#fz-ph'),s=SEG[PH.k],el=s&&elOf(s);if(el){const x=xOf(el),f=s.dur>0?PH.local/s.dur:(s.wait?1:0);ph.style.left=(x.l+x.w*f)+'px';}
+    const hit=$('#fz-hit');if(hit){const cs=curStop();hit.setAttribute('aria-valuemin','0');hit.setAttribute('aria-valuemax',String(Math.round(TOTAL)));hit.setAttribute('aria-valuenow',String(Math.round(nowT())));
+      hit.setAttribute('aria-valuetext',`${fmtT(nowT())} of ${fmtT(TOTAL)}${WAITS?` + ${WAITS} waits`:''}, ${s&&s.k==='trav'?`travelling to Stop ${s.i+2}`:`Stop ${cs+1}, ${stitle(Math.min(cs,stops().length-1))}`}${PH.status==='waiting'?', waits for Next':''}`);}
+    if(PH.status==='waiting'&&readMsg.indexOf('Waits for Next')<0)say(`Stop ${curStop()+1} <b>waits for Next</b>, as a visitor would press it. ▶ continues.`);
+    if(PH.status==='ended'&&readMsg.indexOf('end of the Guide')<0)say('At the end of the Guide. ▶ plays it again from the start.');}
+  /* pacing popover */
+  function popHtml(){const p=S.G.pacing,o=(v,b,sm)=>`<button role="radio" data-pv="${v}" aria-checked="${p===v}" tabindex="${p===v?0:-1}"><span class="dot" aria-hidden="true"></span><b>${b}</b><small>${sm}</small></button>`;
+    return `<div class="fz-pop" id="fz-pop" role="radiogroup" aria-label="Pacing">${o('automatic','Automatic','Each Stop stays for its own time, then the tour moves on.')}${o('manual','Manual','Each Stop waits for the visitor to press Next.')}</div>`;}
+  function addHtml(){const ids=sec.dataset.fzn==='12'?Object.keys(S.P):['hall','piano','win','read'];return `<div class="fz-menu" id="fz-addm" role="menu" aria-label="Add a Presentation as a Stop">${ids.map(id=>`<button role="menuitem" data-addp="${id}">${esc(pname(id))}${stops().some(s=>s.p===id)?' <span class="fz-ro">again</span>':''}</button>`).join('')}</div>`;}
+  function menuHtml(){const i=menu.i,n=stops().length;return `<div class="fz-menu" id="fz-ctx" role="menu" aria-label="Stop ${i+1}" style="left:${menu.x}px;top:${menu.y}px"><button role="menuitem" data-mv="-1" ${i===0?'disabled':''}>Move earlier</button><button role="menuitem" data-mv="1" ${i===n-1?'disabled':''}>Move later</button><hr><button role="menuitem" data-rm="${i}" ${n<=1?'disabled':''}>Remove Stop</button></div>`;}
+  function placePops(){const g=$('#fz-g');if(!g)return;const G=g.getBoundingClientRect();const pop=$('#fz-pop'),pill=$('#fz-pace');
+    if(pop&&pill){const r=pill.getBoundingClientRect();pop.style.left=Math.max(6,Math.min(G.width-256,r.left-G.left))+'px';pop.style.top=(r.bottom-G.top+6)+'px';}
+    const am=$('#fz-addm'),ab=$('#fz-addb');if(am&&ab){const r=ab.getBoundingClientRect();am.style.left=Math.max(6,r.right-G.left-180)+'px';am.style.top=(r.bottom-G.top+6)+'px';}}
+  function setPacing(p,quiet){if(S.G.pacing===p)return;edit(()=>{S.G.pacing=p;},()=>quiet?[]:['ok',p==='manual'?'Manual: each Stop now waits for Next.':'Automatic: each Stop stays for its time, then moves on.']);if(PH.status==='playing'||PH.status==='waiting')PH.status='paused';PH.released=false;paint();}
+  function openPop(){popOpen=true;addOpen=false;menu=null;renderStrip();const c=host.querySelector('#fz-pop [aria-checked=true]');c&&c.focus();}
+  function closePop(back=true){if(!popOpen)return;popOpen=false;renderStrip();if(back)$('#fz-pace')&&$('#fz-pace').focus();}
+  /* strip events */
+  host.addEventListener('click',e=>{if(suppress&&performance.now()<suppress){suppress=0;return;}const prod=sec.dataset.fzv==='prod';const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+    if(prod){say('PR #271 today, for comparison: light cards with a gold border, <i>Start</i> and the time on every card, and a second, separate scrub bar under the cards. Switch <i>Show</i> to §33 to use the strip.');return;}
+    if(b.id==='fz-pace'){popOpen?closePop():openPop();return;}
+    if(d.pv){setPacing(d.pv);popOpen=false;renderStrip();$('#fz-pace').focus();return;}
+    if(b.id==='fz-play'){play();if(PH.status==='playing')say('Playing at 2×. The playhead runs along the card rails and the Travel gutters: one track, one clock.');return;}
+    if(d.follow!==undefined){say('Follow is unchanged (§25): the Stage camera follows the playhead.');return;}
+    if(d.add!==undefined){addOpen=!addOpen;popOpen=false;menu=null;renderStrip();if(addOpen){const f=host.querySelector('#fz-addm button');f&&f.focus();}return;}
+    if(d.addp){addOpen=false;addStop(d.addp,null);return;}
+    if(d.pg){row.scrollBy({left:+d.pg*row.clientWidth*.8,behavior:'smooth'});return;}
+    if(d.gname!==undefined){sel={kind:'guide'};renderAll();say('The Guide Card: name, opening, Starts at, and what the tour reaches. Pacing is shown there, not edited.');return;}
+    if(d.mv){const i=menu.i;menu=null;moveStop(i,i+ +d.mv);return;}
+    if(d.rm){const i=+d.rm;menu=null;edit(()=>{const st=stops()[i];stops().splice(i,1);if(S.G.start===st.id)S.G.start=stops()[0].id;if(sel.kind!=='guide')sel={kind:'guide'};},made=>['ok',`Stop ${i+1} removed. Its neighbours keep their Cut or Travel.${madeText(made)} One Undo.`]);return;}
+    if(d.si!==undefined){const i=+d.si;focusI=i;sel={kind:'stop',i};stopAt(i);renderAll();scrollToStop(i);say(`Stop ${i+1} selected: the playhead moves to it, and its Card shows Enter at, Stay and the invitation.`);return;}
+    if(d.ti!==undefined){const i=+d.ti;focusI=i;sel={kind:'transition',i};renderAll();say(`Stop ${i+1} → Stop ${i+2}: the Transition Card holds Cut or Travel, the path and its time.`);return;}});
+  host.addEventListener('keydown',e=>{const t=e.target;
+    if(t.closest('#fz-pop')){const all=$$('#fz-pop [role=radio]');const i=all.indexOf(t);
+      if(e.key==='ArrowDown'||e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();const n=all[(i+(e.key==='ArrowDown'||e.key==='ArrowRight'?1:all.length-1))%all.length];all.forEach(x=>x.tabIndex=-1);n.tabIndex=0;n.focus();}
+      else if(e.key==='Escape'){e.preventDefault();closePop();}else if(e.key==='Tab'){closePop(false);}return;}
+    if(t.closest('.fz-menu')){const all=$$('button:not(:disabled)',t.closest('.fz-menu'));const i=all.indexOf(t);
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();all[(i+(e.key==='ArrowDown'?1:all.length-1))%all.length].focus();}
+      else if(e.key==='Escape'){e.preventDefault();const was=menu?menu.i:null;menu=null;addOpen=false;renderStrip();(was!==null?row.querySelector(`[data-si="${was}"]`):$('#fz-addb')).focus();}return;}
+    if(t.id==='fz-hit'){const s=e.shiftKey?5:1;let h=true;
+      if(e.key==='ArrowRight')seekTime(nowT()+s);else if(e.key==='ArrowLeft')seekTime(nowT()-s);
+      else if(e.key==='PageDown'){stopAt(Math.min(stops().length-1,SEG[PH.k].i+1));}
+      else if(e.key==='PageUp'){const s=SEG[PH.k];stopAt(s.k==='stay'&&PH.local<.01?Math.max(0,s.i-1):s.i);}
+      else if(e.key==='Home')seekTo(0,0);else if(e.key==='End')seekTo(SEG.length-1,SEG[SEG.length-1].dur);else if(e.key===' '){play();}else h=false;
+      if(h){e.preventDefault();scrollToStop(curStop());paint();}return;}
+    const c=t.closest('.fz-c,.fz-chip');if(!c||sec.dataset.fzv==='prod')return;const items=$$('.fz-c,.fz-chip',row);const at=items.indexOf(c);
+    if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&c.dataset.si!==undefined){e.preventDefault();const i=+c.dataset.si;moveStop(i,i+(e.key==='ArrowRight'?1:-1),true);return;}
+    if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();const n=items[Math.max(0,Math.min(items.length-1,at+(e.key==='ArrowRight'?1:-1)))];items.forEach(x=>x.tabIndex=-1);n.tabIndex=0;n.focus();focusI=+(n.dataset.si??n.dataset.ti);}
+    else if(e.key==='Home'||e.key==='End'){e.preventDefault();const n=items[e.key==='Home'?0:items.length-1];items.forEach(x=>x.tabIndex=-1);n.tabIndex=0;n.focus();}
+    else if((e.key==='F10'&&e.shiftKey)||e.key==='ContextMenu'){if(c.dataset.si===undefined)return;e.preventDefault();openMenu(+c.dataset.si,c);}});
+  host.addEventListener('contextmenu',e=>{const c=e.target.closest('.fz-c');if(!c||sec.dataset.fzv==='prod')return;e.preventDefault();openMenu(+c.dataset.si,c,e.clientX,e.clientY);});
+  function openMenu(i,c,cx,cy){const G=$('#fz-g').getBoundingClientRect(),r=c.getBoundingClientRect();sel={kind:'stop',i};focusI=i;popOpen=false;addOpen=false;
+    menu={i,x:Math.max(6,Math.min(G.width-180,(cx??r.left+20)-G.left)),y:Math.max(6,(cy??r.top+20)-G.top-140)};renderAll();const f=host.querySelector('#fz-ctx button:not(:disabled)');f&&f.focus();say(`Stop ${i+1}'s context menu. The right-click selects it first.`);}
+  document.addEventListener('pointerdown',e=>{if(!host.contains(e.target)||!e.target.closest('.fz-pop,.fz-menu,#fz-pace,#fz-addb')){if(popOpen||addOpen||menu){popOpen=false;addOpen=false;menu=null;renderStrip();}}},true);
+  window.addEventListener('resize',()=>{if(row){const h=$('#fz-hit');if(h)h.style.width=row.scrollWidth+'px';arrows();placePops();paint();}});
+  /* scrub */
+  function segAtX(x){let best=null,bd=1e9;SEG.forEach((s,k)=>{const el=elOf(s);if(!el)return;const r=xOf(el);const d=x<r.l?r.l-x:x>r.l+r.w?x-r.l-r.w:0;if(d<bd){bd=d;best={k,f:r.w?Math.max(0,Math.min(1,(x-r.l)/r.w)):0,r};}});return best;}
+  function scrubAt(clientX){const R=row.getBoundingClientRect(),x=clientX-R.left+row.scrollLeft,h=segAtX(x);if(!h)return;const s=SEG[h.k];
+    if(s.wait)seekTo(h.k,0);else if(s.k==='cut')seekTo(h.k+1,0);else seekTo(h.k,h.f*s.dur);
+    const tip=$('#fz-tip'),cs=SEG[PH.k];tip.hidden=false;tip.style.left=Math.max(60,Math.min(row.scrollWidth-60,x))+'px';
+    tip.textContent=cs.k==='trav'?`${fmtT(nowT())} · Travel ${cs.i+1} → ${cs.i+2} · ${sec1(PH.local)} of ${sec1(cs.dur)}`:`${fmtT(nowT())} · Stop ${cs.i+1} · ${stitle(cs.i)}${cs.wait?' · waits for Next':` · ${sec1(PH.local)} of ${sec1(cs.dur)}`}`;paint();}
+  host.addEventListener('pointerdown',e=>{if(sec.dataset.fzv==='prod')return;const hit=e.target.closest('#fz-hit');
+    if(hit){e.preventDefault();hit.focus();try{hit.setPointerCapture(e.pointerId);}catch{}const was=PH.status;if(was==='playing')PH.status='paused';scrubAt(e.clientX);
+      const mv=ev=>scrubAt(ev.clientX),up=()=>{hit.removeEventListener('pointermove',mv);hit.removeEventListener('pointerup',up);hit.removeEventListener('pointercancel',up);$('#fz-tip').hidden=true;if(was==='playing'){PH.status='playing';if(SEG[PH.k].wait)PH.status='waiting';else loop();}paint();
+        say(`Scrubbed to ${fmtT(nowT())}. Each card's rail is its own stay, so equal distances aren't equal times; the tooltip names the time and the Stop.`);};
+      hit.addEventListener('pointermove',mv);hit.addEventListener('pointerup',up);hit.addEventListener('pointercancel',up);return;}
+    const c=e.target.closest('.fz-c');if(!c||e.button!==0)return;const i=+c.dataset.si;
+    drag={i,x0:e.clientX,y0:e.clientY,on:false,id:e.pointerId,el:c,armed:e.pointerType!=='touch',tm:0,slot:i};
+    if(e.pointerType==='touch')drag.tm=setTimeout(()=>{if(drag){drag.armed=true;c.style.transform='scale(1.04)';say('Lifted: now drag it sideways.');}},300);});
+  host.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x0;
+    if(!drag.on){if(!drag.armed){if(Math.abs(dx)>8){clearTimeout(drag.tm);drag=null;}return;}if(Math.abs(dx)<5)return;drag.on=true;drag.el.classList.add('drag');try{drag.el.setPointerCapture(e.pointerId);}catch{}}
+    e.preventDefault();drag.el.style.transform=`translateX(${dx}px)`;const R=row.getBoundingClientRect(),x=e.clientX-R.left+row.scrollLeft;
+    const cards=$$('.fz-c',row).filter(c=>c!==drag.el);let slot=0;cards.forEach(c=>{if(c.offsetLeft+c.offsetWidth/2<x)slot++;});drag.slot=slot;
+    const ins=$('#fz-ins');ins.hidden=false;const ref=slot===0?cards[0]:cards[slot-1];ins.style.left=(slot===0?ref.offsetLeft-29:ref.offsetLeft+ref.offsetWidth+29)+'px';
+    if(e.clientX<R.left+30)row.scrollLeft-=8;else if(e.clientX>R.right-30)row.scrollLeft+=8;});
+  const endDrag=e=>{if(!drag||e.pointerId!==drag.id)return;clearTimeout(drag.tm);const d=drag;drag=null;d.el.style.transform='';
+    if(d.on){suppress=performance.now()+300;d.el.classList.remove('drag');$('#fz-ins').hidden=true;moveStop(d.i,d.slot);}};
+  host.addEventListener('pointerup',endDrag);host.addEventListener('pointercancel',endDrag);
+  function moveStop(from,to,kb){const n=stops().length;to=Math.max(0,Math.min(n-1,to));if(from===to){renderStrip();return;}
+    edit(()=>{const [st]=stops().splice(from,1);stops().splice(to,0,st);sel={kind:'stop',i:to};focusI=to;},made=>['ok',`Moved to Stop ${to+1}. Each Stop keeps its own Cut or Travel.${madeText(made)} One Undo.`]);
+    if(kb){const c=row.querySelector(`[data-si="${to}"]`);c&&c.focus();}scrollToStop(to);}
+  function addStop(pid,viewId){const P=S.P[pid],L=stops();const at=sel.kind==='stop'?sel.i+1:L.length;const entry=viewId===null||viewId===P.views[0]?null:viewId;
+    edit(()=>{L.splice(at,0,{id:'n'+(nid++),p:pid,entry,stay:6,inv:false,out:'cut'});sel={kind:'stop',i:at};focusI=at;},
+      made=>['ok',`Added Stop ${at+1} · ${esc(pname(pid))}${viewId?`, entering at ${VW[viewId].n}`:''}.${madeText(made)}`]);scrollToStop(at);}
+
+  /* ---- Cards ---- */
+  const cardEl=$('#fz-card'),cap=$('#fz-cardcap');
+  function reach(){const L=stops(),ps=[...new Set(L.map(s=>s.p))],ents=new Set(L.map(entryOf)),all=ps.flatMap(p=>S.P[p].views);return{ps:ps.length,ents:ents.size,more:all.filter(v=>!ents.has(v)).length};}
+  function guideCard(){const L=stops(),man=S.G.pacing==='manual',r=reach(),travel=edges().filter(travelOK).reduce((a,e)=>a+e.cx.t,0);
+    return `<div class="c-head"><div class="g"><div class="c-kind">Guide · <span class="fz-tag f">Opening Guide</span></div><div class="c-name">${esc(S.G.name)}</div></div><button class="ib" aria-label="More: Remove Guide">⋯</button></div>
+      <div class="c-sec"><div class="fz-kv"><span>Stops</span><span>${L.length}</span><span>Pacing</span><span>${man?'Manual':'Automatic'}<span class="fz-ro">· set on the strip</span></span>
+        <span>${man?'Travel':'Length'}</span><span>${man?`${fmtT(travel)} · ${L.length} waits for Next`:fmtT(TOTAL)}</span>
+        <span>Starts at</span><span><select class="fz-sel" data-act="start" aria-label="Starts at">${L.map((s,i)=>`<option value="${s.id}" ${s.id===S.G.start?'selected':''}>Stop ${i+1} · ${esc(stitle(i))}</option>`).join('')}</select></span></div></div>
+      <div class="c-sec"><div class="c-lab">Reaches</div><div class="fz-kv"><span>Presentations</span><span>${r.ps} visited</span><span>Views</span><span>${r.ents} entered · ${r.more} more to explore</span></div></div>`;}
+  function stopCard(i){const st=stops()[i],P=S.P[st.p],L=stops(),E=edges(),man=S.G.pacing==='manual',lk=(w,lab,j)=>{const c=chipOf(E[j]);return `<button class="oc-lk" data-act="tr:${j}"><span>${w} · ${lab}</span><span><b>${c.t==='✂'?'✂ Cut':c.t==='⚠'?'⚠ Travel':c.t}</b> ›</span></button>`;};
+    return `<div class="c-head"><div class="g"><div class="c-kind">Stop ${i+1} of ${L.length} · ${esc(S.G.name)}</div><div class="c-name">${esc(pname(st.p))}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="fz-kv"><span>Enter at</span><span><select class="fz-sel" data-act="entry" aria-label="Enter at">${P.views.map((v,j)=>`<option value="${v}" ${entryOf(st)===v?'selected':''}>${esc(VW[v].n)}${j===0?' (Default)':''}</option>`).join('')}</select></span>
+        <span>Stay</span><span>${man?'Until Next<span class="fz-ro">· the Guide is Manual</span>':vrStep('Stay',sec1(st.stay),'stay')}</span>
+        <span>Invite</span><span><button class="gp-sw" role="switch" aria-checked="${st.inv}" aria-label="Invite to explore" data-act="inv"><i></i></button></span></div></div>
+      <div class="c-sec"><div class="c-lab">Connections<span class="oc-ro">each is edited on its transition</span></div>${i===0?'<p class="rv-sub" style="margin:0">The tour arrives here first, by Cut.</p>':lk('In',`from Stop ${i}`,i-1)}${i===L.length-1?'<p class="rv-sub" style="margin:6px 0 0">The tour ends after this Stop.</p>':lk('Out',`to Stop ${i+2}`,i)}</div>`;}
+  function transCard(i){const e=edges()[i],L=stops(),a=L[i],b=L[i+1],trav=e.kind==='trav',uses=edges().filter(x=>x.kind==='trav'&&x.k===e.k).length;
+    const end=(st,j,w)=>`<div><div class="th">${thumb(entryOf(st))}</div><small>${w}</small><b>${esc(VW[entryOf(st)].n)}</b><small>Stop ${j+1} · ${esc(pname(st.p))}</small></div>`;
+    let how='';if(trav&&e.same)how=`<div class="fz-warn">Both Stops show <b>${esc(VW[e.a].n)}</b>, so there is nothing to travel. Enter Stop ${i+2} at another View, or use a Cut.</div><div class="fz-acts" style="margin-top:6px"><button class="btn" data-act="kind:cut">Use a Cut</button><button class="btn" data-act="sel:${i+1}">Open Stop ${i+2}</button></div>`;
+    else if(trav&&e.amb)how=`<div class="fz-warn">Two Camera paths join <b>${esc(VW[e.a].n)}</b> and <b>${esc(VW[e.b].n)}</b> (from an imported file). Keep one on the Stage; Experience never guesses.</div><div class="fz-acts" style="margin-top:6px"><button class="btn" data-act="showst">Show both on the Stage</button></div>`;
+    else if(trav)how=`<div class="row" style="margin-top:8px"><span class="k">Path time</span>${vrStep('Path time',sec1(e.cx.t),'pt')}</div><div class="row"><span class="k">Path</span><span>${e.cx.kind==='custom'?`Custom · ${e.cx.pts} ${e.cx.pts===1?'point':'points'}`:'Straight'} · <button class="tbtn" data-act="showst">Shape it on the Stage</button></span></div>${uses>1?`<p class="gp-own"><b>Same path in ${uses} places</b>: a change reaches each.</p>`:''}<p class="gp-own">${e.cx.isNew?'Added with this Travel, in the same Undo.':'The path is Camera\'s. Every use of it shares it.'}</p>`;
+    else how='<p class="gp-own">A Cut needs no path. The paths stay as they are, ready for a Travel.</p>';
+    const dis=e.same?'disabled title="Both Stops show the same View"':'';
+    return `<div class="c-head"><div class="g"><div class="c-kind">Transition · ${esc(S.G.name)}</div><div class="c-name">Stop ${i+1} → Stop ${i+2}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="film">${end(a,i,'leaves from')}<span></span>${end(b,i+1,'arrives at')}</div></div>
+      <div class="c-sec"><div class="c-lab">How it moves</div><div class="cseg" role="group" aria-label="How it moves"><button data-act="kind:cut" aria-pressed="${!trav}">✂ Cut</button><button data-act="kind:trav" aria-pressed="${trav}" ${e.same&&!trav?dis:''}>↗ Travel</button></div>${how}</div>
+      <div class="c-sec"><p class="gp-own" style="margin:0">${travelOK(e)?`Adds ${sec1(e.cx.t)} to the Guide.`:'Adds no time.'} Next follows the Guide's order; there is no destination to choose.</p></div>`;}
+  function renderCard(){if(sel.kind==='stop'&&sel.i>=stops().length)sel={kind:'guide'};if(sel.kind==='transition'&&sel.i>=stops().length-1)sel={kind:'guide'};
+    cap.textContent=sel.kind==='guide'?'Guide Card':sel.kind==='stop'?'Stop Card':'Transition Card';
+    cardEl.innerHTML=sel.kind==='guide'?guideCard():sel.kind==='stop'?stopCard(sel.i):transCard(sel.i);}
+  function renderPaths(){const used={};edges().forEach(e=>{if(e.kind==='trav'&&!e.same)(used[e.k]=used[e.k]||[]).push(`Travel ${e.i+1} → ${e.i+2}`);});
+    $('#fz-paths').innerHTML=Object.entries(S.CX).map(([k,c])=>`<div class="${c.isNew?'new':used[k]?'':'idle'}"><b>${esc(pairName(k))}</b><span>${sec1(c.t)}</span><small>${c.kind==='custom'?`custom, ${c.pts} ${c.pts===1?'point':'points'}`:'straight'} · ${used[k]?'used by '+used[k].join(', '):'not used now, kept'}${c.isNew?' · <b>added by the last edit</b>':''}</small></div>`).join('')+(S.imp?`<div><b>${esc(pairName(key('p1','w1')))}</b><span>3 s</span><small>imported duplicate · the same pair twice</small></div>`:'');}
+  function onCard(e){const b=e.target.closest('[data-act]');if(!b||b.tagName==='SELECT')return;const[a,v]=b.dataset.act.split(':');
+    if(a==='tr'){sel={kind:'transition',i:+v};renderAll();return;}
+    if(a==='sel'){sel={kind:'stop',i:+v};renderAll();return;}
+    if(a==='showst'){toast('info','The Stage shows the path. Drag its points there to shape it.');return;}
+    if(a==='kind'&&sel.kind==='transition'){const i=sel.i,want=v;if(stops()[i].out===want)return;const e2=edges()[i];
+      if(want==='trav'&&e2.same){toast('no',`Both Stops show ${VW[e2.a].n}: there's nothing to travel.`);return;}
+      edit(()=>{stops()[i].out=want;},made=>want==='cut'?['ok','Cut. The path stays, ready if you choose Travel again.']:made.length?['ok',`Travel. A straight ${sec1(S.CX[made[0]].t)} path was added in the same Undo; shape it on the Stage any time.`]:['ok',`Travel, on the existing ${sec1(S.CX[edges()[i].k].t)} path.`]);return;}
+    if(a==='pt'&&sel.kind==='transition'){const e2=edges()[sel.i];if(!S.CX[e2.k])return;edit(()=>{S.CX[e2.k].t=Math.max(.5,S.CX[e2.k].t+.5*+v);},()=>['ok',`Path time ${sec1(S.CX[e2.k].t)}.`]);return;}
+    if(a==='stay'&&sel.kind==='stop'){const st=stops()[sel.i];if(st.stay+ +v<1){toast('no','A stay is at least 1 s.');return;}edit(()=>{st.stay+= +v;},()=>[]);return;}
+    if(a==='inv'&&sel.kind==='stop'){const st=stops()[sel.i];edit(()=>{st.inv=!st.inv;},()=>['ok',st.inv?'Invites to explore. Visitors see it on arrival; it never stops the tour.':'No invitation. Explore is still in the bar.']);return;}}
+  function onCardChange(e){const s=e.target.closest('select[data-act]');if(!s)return;const a=s.dataset.act;
+    if(a==='start')edit(()=>{S.G.start=s.value;},()=>['ok',`The tour now starts at Stop ${stops().findIndex(x=>x.id===s.value)+1}.`]);
+    if(a==='entry'&&sel.kind==='stop'){const st=stops()[sel.i],P=S.P[st.p];edit(()=>{st.entry=s.value===P.views[0]?null:s.value;},made=>['ok',`Stop ${sel.i+1} enters at ${VW[s.value].n}.${madeText(made)}`]);}}
+  [cardEl,$('#fz-gcard')].forEach(h=>{h.addEventListener('click',onCard);h.addEventListener('change',onCardChange);});
+
+  /* ---- B · Guide Card, Experience Card, today's Guide Card ---- */
+  function renderB(){$('#fz-gcard').innerHTML=guideCard();
+    const x=$('#fz-xcard');const ta=x.querySelector('textarea');const focused=ta&&document.activeElement===ta;if(focused){x.querySelector('.fz-welprev p').textContent=S.X.welcome;}
+    else x.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Experience · 1 Guide · ${Object.keys(S.P).length>4&&sec.dataset.fzn==='12'?8:4} Presentations</div><div class="c-name">${esc(S.X.name)}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="fz-kv"><span>Opens with</span><span><select class="fz-sel" aria-label="Opens with"><option>${esc(S.G.name)}</option></select></span><span>Places</span><span>${sec.dataset.fzn==='12'?8:4} listed</span></div></div>
+      <div class="c-sec"><div class="c-lab">Welcome</div><textarea class="fz-wel" aria-label="Welcome text" maxlength="280">${esc(S.X.welcome)}</textarea><div class="fz-welprev" aria-label="What visitors see first"><b>${esc(S.X.name)}</b><p style="margin:0">${esc(S.X.welcome)}</p><p style="margin:6px 0 0;color:var(--quiet)">Start the tour · Explore freely</p></div></div>`;
+    $('#fz-oldg').innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Guide</div><div class="c-name">${esc(S.G.name)}</div></div></div>
+      <div class="c-sec x"><span class="btn">＋ Add stop</span> <span class="btn">▶ Play from the start</span></div>
+      <div class="c-sec"><div class="c-lab x">Pacing</div><div class="bigopt x"><span><b>Automatic</b><br>Each Stop stays for its time…</span><span><b>Manual</b><br>Each Stop waits…</span></div></div>
+      <div class="c-sec"><div class="c-lab x">One museum, two ways in</div><div class="bigopt x"><span><b>Guided tour</b><br>5 Stops · plays on…</span><span><b>Free exploration</b><br>4 Presentations…</span></div></div>
+      <div class="c-sec x"><div class="c-lab">Build the tour</div><span class="rv-sub">Drag a Presentation from the index onto the Guide…</span></div>
+      <div class="c-sec x"><div class="c-lab">Welcome text</div><span class="rv-sub">(Experience-wide, in the Guide's Card)</span></div>`;}
+  $('#fz-xcard').addEventListener('input',e=>{if(e.target.tagName==='TEXTAREA'){S.X.welcome=e.target.value;e.target.parentNode.querySelector('.fz-welprev p').textContent=S.X.welcome;}});
+  $('#fz-xcard').addEventListener('change',e=>{if(e.target.tagName==='TEXTAREA')toast('ok','Welcome saved for the whole Experience.');});
+
+  /* ---- C · View → Stop ---- */
+  let cp='piano';const pseg=$('#fz-pseg'),pcard=$('#fz-pcard'),pread=$('#fz-pread');
+  function renderC(){pseg.innerHTML=['piano','hall','read'].map(id=>`<button data-cp="${id}" aria-pressed="${cp===id}">${esc(pname(id))}</button>`).join('');
+    const P=S.P[cp],L=stops();
+    const rows=P.views.map((v,j)=>{const at=L.map((s,i)=>s.p===cp&&entryOf(s)===v?i+1:0).filter(Boolean);
+      return `<div class="fz-vrow"><span class="fz-th">${thumb(v)}<i>${j+1}</i></span><span><b>${esc(VW[v].n)}</b><small>${j===0?'Default · opens here · ':''}${at.length?`<span class="fz-tag f">${at.length>1?'Stops':'Stop'} ${at.join(', ')}</span>`:'<span class="fz-tag q">explore</span>'}</small></span><button class="fz-add" data-addv="${v}" aria-label="Add ${esc(VW[v].n)} to ${esc(S.G.name)} as a Stop">＋ Stop</button></div>`;}).join('');
+    const o=P.subject&&S.OBJ[P.subject];
+    pcard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Presentation${o?` · about <a>${esc(o.name)}</a>`:''}</div><div class="c-name">${esc(pname(cp))}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="c-lab">Views</div>${rows}</div><div class="c-sec"><div class="fz-acts"><button class="btn" data-addv="">＋ Add to Guide <span class="fz-ro">at the Default</span></button></div></div>`;
+    pread.innerHTML=sel.kind==='stop'?`New Stops go after <b>Stop ${sel.i+1}</b>, the selected Stop.`:'No Stop is selected, so new Stops go at the end.';}
+  pseg.addEventListener('click',e=>{const b=e.target.closest('[data-cp]');if(!b)return;cp=b.dataset.cp;renderC();});
+  pcard.addEventListener('click',e=>{const b=e.target.closest('[data-addv]');if(!b)return;addStop(cp,b.dataset.addv||null);});
+
+  /* ---- D · object link ---- */
+  const lcard=$('#fz-lcard'),mirror=$('#fz-mirror'),lread=$('#fz-lread'),plan=$('#fz-plan'),ptag=$('#fz-ptag'),inP=$('#fz-on-piano'),inD=$('#fz-on-desk'),odel=$('#fz-odel');let picking=false;
+  const LP=()=>S.P.piano;
+  function lstate(){const p=LP();if(p.subject===null)return'unlinked';const o=S.OBJ[p.subject];if(!o.alive)return'missing';return p.label===null?'follow':'own';}
+  function renderD(){const p=LP(),st=lstate(),o=p.subject&&S.OBJ[p.subject],nm=pname('piano');
+    if(document.activeElement!==inP)inP.value=S.OBJ.piano.name;if(document.activeElement!==inD)inD.value=S.OBJ.desk.name;
+    inP.disabled=!S.OBJ.piano.alive;odel.textContent=S.OBJ.piano.alive?'Remove the piano':'Undo the removal';
+    const kind=st==='missing'?'Presentation · about a removed object':o?`Presentation · about <a data-l="show">${esc(o.name)}</a> · ${esc(o.form)}`:'Presentation · not linked to an object';
+    const follow=st==='follow'?"Follows the object's name":st==='own'?`Your own name · <button class="tbtn" data-l="usename">Use the object's name</button>`:"The Presentation's own name";
+    let about='';
+    if(st==='follow'||st==='own')about=`<div class="fz-kv"><span>Object</span><span><b>${esc(o.name)}</b> <span class="fz-tag">${esc(o.form)}</span></span></div><div class="fz-acts" style="margin-top:8px"><button class="btn" data-l="show">Show in World</button><button class="btn" data-l="unlink">Unlink</button></div>`;
+    else if(st==='unlinked')about=`${p.sugg&&S.OBJ[p.sugg].alive?`<div class="fz-sugg">Captured with <b>${esc(S.OBJ[p.sugg].name)}</b> at the centre of the View.<div class="fz-acts" style="margin-top:6px"><button class="btn forest" data-l="link:${p.sugg}">Link to ${esc(S.OBJ[p.sugg].name)}</button></div></div>`:''}<div class="fz-acts" style="margin-top:8px"><button class="btn" data-l="pick">${picking?'Picking… Esc cancels':'Pick on the Stage'}</button></div>`;
+    else about=`<div class="fz-warn">The object this was about was removed. Its last name, <b>${esc(nm)}</b>, is now this Presentation's own.</div><div class="fz-acts" style="margin-top:8px"><button class="btn" data-l="pick">${picking?'Picking… Esc cancels':'Link another object'}</button><button class="btn" data-l="unlink">Unlink</button></div>`;
+    lcard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">${kind}</div><div class="fz-name"><input data-l="name" aria-label="Presentation name" value="${esc(p.label??'')}" placeholder="${esc(st==='follow'?o.name:'')}"></div><div class="fz-follow">${follow}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="c-lab">About</div>${about}</div><div class="c-sec"><div class="c-lab">Views</div><div class="rv-sub" style="margin:0">${S.P.piano.views.map(v=>esc(VW[v].n)).join(' · ')}</div></div>`;
+    const stopsOf=stops().map((s,i)=>s.p==='piano'?i+1:0).filter(Boolean);
+    mirror.innerHTML=`<div><span>Index</span><span><b>${esc(nm)}</b>${o&&st==='own'?` <span class="rv-sub" style="display:inline">· about ${esc(o.name)}</span>`:st==='follow'?' <span class="rv-sub" style="display:inline">· follows its object</span>':''}</span></div>
+      <div><span>Guide strip</span><span>${stopsOf.length?stopsOf.map(i=>`Stop ${i} · <b>${esc(stitle(i-1))}</b>`).join('<br>'):'not in the Guide'}</span></div>
+      <div><span>Visitor caption</span><span><span class="vc">${esc(nm)}</span></span></div>
+      <div><span>Places</span><span>${esc(nm)}</span></div>`;
+    plan.classList.toggle('picking',picking);ptag.hidden=!picking;
+    plan.innerHTML=`<rect x="10" y="10" width="280" height="130" rx="4" fill="#f1f2ee" stroke="#cdd2ca"/><path d="M10 10H290V140H10Z" fill="none" stroke="#1b201c" stroke-width="5"/>`+Object.entries(S.OBJ).map(([id,o2])=>`<g class="o${p.subject===id?' lk':''}${o2.alive?'':' gone'}" data-o="${id}"><rect x="${o2.x}" y="${o2.y}" width="${o2.w}" height="${o2.h}" rx="3"/><text x="${o2.x+o2.w/2}" y="${o2.y+o2.h+12}" text-anchor="middle">${esc(o2.name)}</text></g>`).join('')+`<path d="M250 120 L215 92" stroke="#4f8f6c" stroke-width="1.5" stroke-dasharray="3 3"/><circle cx="250" cy="120" r="5" fill="#4f8f6c"/>`;
+    $$('#fz-lseg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ls===(st==='follow'&&S.OBJ.piano.name!=='Pleyel piano'?'renamed':st)));}
+  function linkMsg(m){lread.innerHTML=m;}
+  function setName(v){const p=LP(),st=lstate(),o=p.subject&&S.OBJ[p.subject];v=v.trim();
+    if(v===''){if(st==='follow'||st==='own'){edit(()=>{p.label=null;},()=>['ok',"Back to following the object's name."]);linkMsg('An empty name follows the object again.');}else{toast('no','A name is needed.');renderD();}return;}
+    if(o&&o.alive&&v===o.name){if(p.label!==null)edit(()=>{p.label=null;},()=>['ok',"That's the object's name, so it follows it again."]);return;}
+    if(v===(p.label??''))return;edit(()=>{p.label=v;},()=>['ok',st==='follow'||st==='own'?`Named “${esc(v)}”. It no longer follows the object; <i>Use the object's name</i> goes back.`:`Named “${esc(v)}”.`]);}
+  lcard.addEventListener('keydown',e=>{if(e.target.dataset.l==='name'&&e.key==='Enter'){e.preventDefault();e.target.blur();}});
+  lcard.addEventListener('focusout',e=>{if(e.target.dataset&&e.target.dataset.l==='name')setName(e.target.value);});
+  lcard.addEventListener('click',e=>{const b=e.target.closest('button[data-l],a[data-l]');if(!b)return;const[a,v]=b.dataset.l.split(':'),p=LP();
+    if(a==='show'){linkMsg(`<b>Show in World</b> switches to the World lens with ${esc(S.OBJ[p.subject].name)} selected.`);return;}
+    if(a==='usename'){edit(()=>{p.label=null;},()=>['ok',`Follows ${esc(S.OBJ[p.subject].name)} again.`]);return;}
+    if(a==='unlink'){const nm=pname('piano');edit(()=>{p.label=nm;p.subject=null;},()=>['ok',`Unlinked. “${esc(nm)}” stays as the Presentation's own name.`]);linkMsg('Unlinking keeps the last name. One Undo.');return;}
+    if(a==='link'){edit(()=>{p.subject=v;},()=>['ok',`Linked to ${esc(S.OBJ[v].name)}.${p.label!==null?' Your own name stays; <i>Use the object\'s name</i> follows it.':''}`]);return;}
+    if(a==='pick'){picking=!picking;renderD();linkMsg(picking?'Pick an object on the plan. <kbd>Esc</kbd> cancels, and nothing changes.':'Picking cancelled.');}});
+  plan.addEventListener('click',e=>{if(!picking)return;const g=e.target.closest('[data-o]');if(!g)return;const id=g.dataset.o;if(!S.OBJ[id].alive)return;picking=false;const p=LP();
+    edit(()=>{p.subject=id;},()=>['ok',`Linked to ${esc(S.OBJ[id].name)}.${p.label!==null?' Your own name stays.':''}`]);});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&picking){picking=false;renderD();linkMsg('Picking cancelled with <kbd>Esc</kbd>. Nothing changed.');}});
+  const objName=(id,inp)=>{inp.addEventListener('input',()=>{const v=inp.value;if(v.trim()==='')return;S.OBJ[id].name=v;renderAll(true);});inp.addEventListener('change',()=>{if(inp.value.trim()===''){inp.value=S.OBJ[id].name;}else{linkMsg(`Renamed in World. Every Presentation that follows ${esc(S.OBJ[id].name)} shows it at once.`);}});};
+  objName('piano',inP);objName('desk',inD);
+  odel.addEventListener('click',()=>{const o=S.OBJ.piano,p=LP();
+    if(o.alive)edit(()=>{o.alive=false;if(p.subject==='piano'&&p.label===null){p.label=o.name;p.frozen=true;}},()=>['info',`The piano was removed. ${p.subject==='piano'?'Its Presentation keeps the name “'+esc(o.name)+'” as its own.':''}`]);
+    else edit(()=>{o.alive=true;if(p.frozen){p.label=null;p.frozen=false;}},()=>['info','Removal undone. The Presentation follows the piano again.']);});
+  $('#fz-lseg').addEventListener('click',e=>{const b=e.target.closest('[data-ls]');if(!b)return;const p=LP(),o=S.OBJ.piano;UNDO.push(snap());picking=false;
+    o.alive=true;o.name='Pleyel piano';p.frozen=false;
+    if(b.dataset.ls==='follow'){p.subject='piano';p.label=null;}
+    if(b.dataset.ls==='renamed'){p.subject='piano';p.label=null;o.name='Pleyel grand, 1839';}
+    if(b.dataset.ls==='own'){p.subject='piano';p.label='The music room piano';}
+    if(b.dataset.ls==='unlinked'){p.subject=null;p.label='Pleyel piano';p.sugg='piano';}
+    if(b.dataset.ls==='missing'){p.subject='piano';p.label='Pleyel piano';p.frozen=true;o.alive=false;}
+    rebuild();renderAll();linkMsg({follow:"Following: the name is the object's, read live.",renamed:'Renamed in World: the Index, both Stop cards, the caption and Places all changed at once.',own:"Own name: World renames no longer reach it. <i>Use the object's name</i> goes back.",unlinked:'Unlinked, with the suggestion Capture made. One press links it.',missing:'The object was removed. The name stays readable, and the Card offers a repair.'}[b.dataset.ls]);});
+
+  /* ---- F · visitor ---- */
+  const vp=$('#fz-vp'),vbg=$('#fz-vbg'),vcap=$('#fz-vcap'),vhud=$('#fz-vhud'),vread=$('#fz-vread');
+  let V={mode:'welcome'};let vraf=0,vlast=0;
+  const run=()=>{const L=stops(),s=Math.max(0,L.findIndex(x=>x.id===S.G.start));return L.slice(s).map((st,j)=>({st,gi:s+j}));};
+  function edgeInto(j){const R=run();if(j===0)return null;return edges()[R[j].gi-1];}
+  const travIn=j=>{const e=edgeInto(j);return e&&travelOK(e)?e.cx.t:0;};
+  function vStart(){V={mode:'tour',j:0,phase:S.G.pacing==='manual'?'wait':'stay',local:0,paused:false,ex:false,saved:null,xv:null};vRender();vAnnounce();vLoop();vp.focus();}
+  function vAdvance(){const R=run();if(V.j>=R.length-1){V.mode='end';vRender();vread.textContent='The tour is over. Keep exploring, or start again.';return;}
+    V.j++;V.local=0;V.phase=travIn(V.j)>0?'travel':(S.G.pacing==='manual'?'wait':'stay');vRender();vAnnounce();}
+  function vLand(){V.phase=S.G.pacing==='manual'?'wait':'stay';V.local=0;}
+  function vAnnounce(){const R=run();vread.textContent=V.phase==='travel'?`Travelling to Stop ${V.j+1} of ${R.length}, ${pname(R[V.j].st.p)}.`:`Stop ${V.j+1} of ${R.length}, ${pname(R[V.j].st.p)}.`;}
+  function vTick(dt){if(V.mode!=='tour'||V.paused||V.ex)return;const R=run(),st=R[V.j].st;
+    if(V.phase==='travel'){V.local+=dt;if(V.local>=travIn(V.j)){vLand();vRender();}}
+    else if(V.phase==='stay'){V.local+=dt;if(V.local>=st.stay)vAdvance();}}
+  function vLoop(){cancelAnimationFrame(vraf);vlast=performance.now();const f=now=>{const dt=Math.min(.1,(now-vlast)/1000)*2;vlast=now;vTick(dt);vPaint();if(V.mode==='tour')vraf=requestAnimationFrame(f);};vraf=requestAnimationFrame(f);}
+  function vRender(){const R=run();
+    if(V.mode==='welcome'){vbg.innerHTML=thumb('h1');vcap.innerHTML='';vhud.innerHTML='';vhud.hidden=true;vp.querySelector('.fz-end')?.remove();
+      const w=document.createElement('div');w.className='fz-end';w.innerHTML=`<div><b>${esc(S.X.name)}</b><p style="margin:0 24px 10px;font-size:12px">${esc(S.X.welcome)}</p><button class="fz-vb pri" data-v="start">Start the tour</button></div>`;vp.appendChild(w);return;}
+    vp.querySelector('.fz-end')?.remove();
+    if(V.mode==='end'){vhud.hidden=true;const w=document.createElement('div');w.className='fz-end';w.innerHTML=`<div><b>End of the tour</b><button class="fz-vb pri" data-v="free">Keep exploring</button> <button class="fz-vb" data-v="start">Start the tour again</button></div>`;vp.appendChild(w);vPaint();return;}
+    vhud.hidden=false;const o=R[V.j],P=S.P[o.st.p],man=S.G.pacing==='manual',last=V.j===R.length-1;
+    vbg.innerHTML=thumb(V.ex&&V.xv?V.xv:entryOf(o.st));
+    vcap.innerHTML=V.ex?`Exploring<b>${esc(pname(o.st.p))}</b>`:`Stop ${V.j+1} of ${R.length}<b>${esc(pname(o.st.p))}</b>`;
+    const prog=`<div class="fz-prog${V.ex||V.paused?' frozen':''}" aria-hidden="true">${R.map((r,j)=>`${j?`<span class="k${travIn(j)>0?' t':''}">${travIn(j)>0?`<i data-vt="${j}"></i>`:''}</span>`:''}<span class="s${j===V.j?' cur':''}${j===V.j&&man&&V.phase==='wait'?' wait':''}"><i data-vs="${j}"></i></span>`).join('')}</div>`;
+    if(V.ex){const vi=P.views.indexOf(V.xv);vhud.innerHTML=`${prog}<div class="fz-vtop"><span class="q">Exploring · the tour is waiting at Stop ${V.j+1}</span><div class="fz-xstrip" role="group" aria-label="${esc(pname(o.st.p))}: Views"><button class="fz-vb" data-v="xp" ${vi<=0?'disabled':''} aria-label="Previous View">‹</button>${P.views.map(v=>`<button class="v${v===V.xv?' on':''}" data-xv="${v}" aria-label="${esc(VW[v].n)}">${thumb(v)}</button>`).join('')}<button class="fz-vb" data-v="xn" ${vi>=P.views.length-1?'disabled':''} aria-label="Next View">›</button></div><div class="fz-vbtns"><button class="fz-vb pri" data-v="back">Back to the tour</button></div></div>`;}
+    else vhud.innerHTML=`${prog}<div class="fz-vtop"><span><b>${esc(pname(o.st.p))}</b> <span class="q" id="fz-vst"></span></span><div class="fz-vbtns"><button class="fz-vb" data-v="prev" ${V.j===0?'disabled':''}>← Prev</button>${man?'':`<button class="fz-vb" data-v="pause" aria-pressed="${V.paused}">${V.paused?'▶ Play':'❚❚ Pause'}</button>`}<button class="fz-vb${man?' pri':''}" data-v="next">${last&&V.phase!=='travel'?'Finish':'Next →'}</button><button class="fz-vb" data-v="explore">◎ Explore${P.views.length>1?` · ${P.views.length} views`:''}</button></div></div>`;
+    vPaint();}
+  function vPaint(){if(V.mode!=='tour'&&V.mode!=='end')return;const R=run();const at=V.mode==='end'?R.length:V.j;
+    R.forEach((r,j)=>{const s=vhud.querySelector(`[data-vs="${j}"]`);if(s){let f=j<at?1:j>at?0:(V.phase==='stay'?V.local/r.st.stay:0);s.style.width=f*100+'%';}
+      const t=vhud.querySelector(`[data-vt="${j}"]`);if(t){const f=j<at||(j===at&&V.phase!=='travel')?1:j>at?0:V.local/travIn(j);t.style.width=f*100+'%';}});
+    const st=$('#fz-vst');if(st&&V.mode==='tour'){const o=R[V.j].st;st.textContent=V.phase==='travel'?`· travelling to Stop ${V.j+1}`:V.phase==='wait'?"· Next when you're ready":`· ${V.paused?'paused · ':''}${Math.max(0,Math.ceil(o.stay-V.local))} s left here`;}
+    vbg.firstChild&&(vbg.firstChild.style.opacity=V.phase==='travel'?.75:1);}
+  function vCmd(c){const R=run();if(c==='start'){vStart();return;}if(c==='free'){V={mode:'welcome'};vRender();vread.textContent='Places opens here, with no Guide (unchanged).';return;}
+    if(V.mode!=='tour')return;
+    if(c==='next'){if(V.phase==='travel'){vLand();vRender();vread.textContent='Arrived now: Next during a Travel lands at once.';}else vAdvance();}
+    else if(c==='prev'&&V.j>0){V.j--;vLand();vRender();vAnnounce();}
+    else if(c==='pause'&&S.G.pacing==='automatic'){V.paused=!V.paused;vRender();vread.textContent=V.paused?'Paused. The bar holds still.':'Playing.';}
+    else if(c==='explore'){if(V.phase==='travel')vLand();V.saved={phase:V.phase,local:V.local,paused:V.paused};V.ex=true;V.xv=entryOf(R[V.j].st);vRender();vread.textContent=`Exploring ${pname(R[V.j].st.p)}. The bar is frozen; the tour waits.`;}
+    else if(c==='back'){const s=V.saved,st=R[V.j].st;V.ex=false;V.phase=s.phase;V.paused=s.paused;V.local=s.phase==='stay'&&st.stay-s.local<2?Math.max(0,st.stay-2):s.local;V.saved=null;V.xv=null;vRender();vread.textContent=`Back to the tour at Stop ${V.j+1}, ${V.paused?'still paused':S.G.pacing==='manual'?'still waiting for Next':'carrying on'}, with the same progress.`;}
+    else if(c==='xp'||c==='xn'){const P=S.P[R[V.j].st.p],vi=P.views.indexOf(V.xv)+(c==='xn'?1:-1);if(vi>=0&&vi<P.views.length){V.xv=P.views[vi];vRender();}}}
+  vp.addEventListener('click',e=>{const b=e.target.closest('[data-v],[data-xv]');if(!b)return;if(b.dataset.xv){V.xv=b.dataset.xv;vRender();return;}vCmd(b.dataset.v);});
+  vp.addEventListener('keydown',e=>{const k={' ':'pause',ArrowRight:'next',ArrowLeft:'prev',e:'explore',E:'explore',b:'back',B:'back',Escape:'back'}[e.key];if(!k||V.mode!=='tour')return;if(V.ex&&(k==='next'||k==='prev')){e.preventDefault();vCmd(k==='next'?'xn':'xp');return;}if(!V.ex&&k==='back')return;if(V.ex&&k!=='back')return;e.preventDefault();vCmd(k);});
+  $('#fz-vrun').addEventListener('click',e=>{const b=e.target.closest('[data-vr]');if(!b)return;if(b.dataset.vr==='start')vStart();else{cancelAnimationFrame(vraf);V={mode:'welcome'};vRender();vread.textContent='';}});
+
+  /* ---- G · feedback and problems ---- */
+  const fbl=$('#fz-fbline');let fbT=0;
+  function fbShow(kind,text){clearTimeout(fbT);fbl.innerHTML=fbHtml(kind,text);fbT=setTimeout(()=>{fbl.innerHTML='';},kind==='no'?6000:3200);}
+  $$('[data-fb]',sec).forEach(b=>b.addEventListener('click',()=>{const f=b.dataset.fb;
+    if(f==='manual'){setPacing('manual',true);fbShow('ok','Manual: each Stop now waits for Next.');}
+    else if(f==='auto'){setPacing('automatic',true);fbShow('ok','Automatic: each Stop stays for its time, then moves on.');}
+    else if(f==='tip')fbShow('info','Tip: on touch, hold a Stop to lift it, then drag.');else fbShow('no','A stay is at least 1 s.');}));
+  function problems(){const L=stops(),out=[];edges().forEach(e=>{const a=L[e.i],b=L[e.i+1];
+      if(e.kind==='trav'&&e.same)out.push({t:`<b>Stop ${e.i+1}</b> and <b>Stop ${e.i+2}</b> in ${esc(S.G.name)} both show <b>${esc(VW[e.a].n)}</b>, so the Travel between them has nothing to travel.`,fix:'Use a Cut',i:e.i,d:`$.units.experience.data.experiences[0].stops[${e.i}].continuation.transition\ntravel-gap · stop "${a.id}" → stop "${b.id}" · view "${e.a}" → "${e.b}"`});
+      if(e.kind==='trav'&&e.amb)out.push({t:`Two Camera paths join <b>${esc(VW[e.a].n)}</b> and <b>${esc(VW[e.b].n)}</b>, so the Travel from <b>Stop ${e.i+1}</b> to <b>Stop ${e.i+2}</b> can't choose one. Keep one on the Stage.`,i:e.i,d:`travel-ambiguous · connections "cx-07", "cx-12" · views "${e.a}", "${e.b}"`});});
+    const p=S.P.piano;if(p.subject&&!S.OBJ[p.subject].alive)out.push({t:`<b>${esc(pname('piano'))}</b> is about an object that was removed from the World.`,link:true,d:`$.units.experience.data.experiences[0].presentations[1].subject\nunresolved-subject · scene entity "piano"`});
+    return out;}
+  function renderG(){const P=problems(),h=$('#fz-probs');$$('#fz-impseg button').forEach(x=>x.setAttribute('aria-pressed',String((x.dataset.imp==='1')===S.imp)));
+    if(!P.length){h.innerHTML='<div class="fz-ok">✓ Nothing to check. Every Travel has its path.</div>';return;}
+    h.innerHTML=`<details class="fz-pchip" open><summary><b>${P.length} to check</b> ${P.length===1?'One thing needs a decision.':'A few things need a decision.'}<span class="more">Details</span></summary>${P.map((x,n)=>`<div class="fz-pi"><p>${x.t}</p><div class="fz-acts">${x.i!==undefined?`<button class="btn" data-pshow="${x.i}">Show</button>`:''}${x.fix?`<button class="btn" data-pfix="${x.i}">${x.fix}</button>`:''}${x.link?'<button class="btn" data-plink>Open its Card</button>':''}</div><details><summary class="rv-sub" style="cursor:pointer">Copy details</summary><pre>${esc(x.d)}</pre></details></div>`).join('')}</details>`;}
+  $('#fz-probs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.pshow!==undefined){sel={kind:'transition',i:+b.dataset.pshow};renderAll();$('#fz-a').scrollIntoView({behavior:'smooth',block:'start'});toast('info',`Stop ${+b.dataset.pshow+1} → Stop ${+b.dataset.pshow+2} is open in the Card.`);}
+    if(b.dataset.pfix!==undefined){const i=+b.dataset.pfix;edit(()=>{stops()[i].out='cut';},()=>['ok','Cut. Nothing left to check there.']);}
+    if(b.dataset.plink!==undefined)$('#fz-d').scrollIntoView({behavior:'smooth',block:'start'});});
+  $('#fz-impseg').addEventListener('click',e=>{const b=e.target.closest('[data-imp]');if(!b)return;$$('#fz-impseg button').forEach(x=>x.setAttribute('aria-pressed',x===b));edit(()=>{S.imp=b.dataset.imp==='1';},()=>[]);});
+
+  /* ---- H · continuation ---- */
+  let cc='linear';const cstrip=$('#fz-cstrip'),ccard=$('#fz-ccard'),cread=$('#fz-cread');
+  const CS=[['hall','h1','Entrance hall'],['piano','p1','Pleyel piano'],['win','w1','North window'],['piano','p3','Pleyel piano · From the window'],['read','r1','Reading corner']];
+  function renderH(){const ex=cc==='end'?2:cc==='jump'?1:-1;let r='';
+    CS.forEach(([p,v,n],i)=>{const un=(cc==='end'&&i>2)||(cc==='jump'&&i===2);r+=`<span class="fz-c${un?' unreached':''}${i===ex?' sel':''}" style="cursor:default"><span class="fz-th">${thumb(v)}<i>${i+1}</i></span><span class="fz-tt"><b>${esc(n)}</b></span>${un?'':''}</span>`;
+      if(i<CS.length-1){let chip=i===1?'<button class="fz-chip trav" data-cx="1">↗ 5 s</button>':'<button class="fz-chip cut" data-cx="'+i+'">✂</button>';
+        if(cc==='end'&&i===2)chip='<button class="fz-chip end sel" data-cx="2" aria-label="The tour ends after Stop 3">■ End</button>';if(cc==='jump'&&i===1)chip='<button class="fz-chip jump sel" data-cx="1" aria-label="Next goes to Stop 4">→ 4</button>';
+        r+=`<span class="fz-gut">${chip}</span>`;}});
+    cstrip.innerHTML=`<div class="fz-g"><div class="fz-gh"><span class="g-eyebrow">GUIDE</span><b style="font:500 13.5px var(--serif)">Evening tour</b><span class="fz-cnt">5 Stops</span></div><div class="fz-row">${r}</div></div>`;
+    if(cc==='linear')ccard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Transition · Evening tour</div><div class="c-name">Stop 2 → Stop 3</div></div></div><div class="c-sec"><div class="c-lab">How it moves</div><div class="cseg"><button aria-pressed="false">✂ Cut</button><button aria-pressed="true">↗ Travel</button></div><div class="row" style="margin-top:8px"><span class="k">Path time</span>${vrStep('Path time','5 s','x')}</div></div><div class="c-sec"><p class="gp-own" style="margin:0">Next follows the Guide's order. There is no <i>Next goes to</i>: drag the Stops to change the route.</p></div>
+      <div class="c-sec"><div class="c-lab">PR #271 today</div><div class="fz-oldprob" style="text-decoration:none">Next goes to <span class="fz-sel" style="display:inline-block">The next Stop in the Guide ▾</span><code>all Stops · End of the tour. Choosing End hides this field, and the only way back is Undo.</code></div></div>`;
+    else if(cc==='end')ccard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Transition · Evening tour</div><div class="c-name">After Stop 3</div></div><button class="ib" aria-label="More">⋯</button></div><div class="c-sec"><div class="fz-warn" style="color:var(--ink);background:var(--index);border-color:var(--hair2)"><b>The tour ends after this Stop.</b> Stops 4 and 5 are not reached. This was set in an earlier or imported file.</div><div class="fz-acts" style="margin-top:8px"><button class="btn forest" data-cr>Continue to Stop 4</button></div></div><div class="c-sec"><p class="gp-own" style="margin:0">Continue makes it an ordinary Cut to Stop 4, one Undo. Removing Stops 4–5, or moving them to a second Guide, is the honest way to end early.</p></div>`;
+    else ccard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Transition · Evening tour</div><div class="c-name">Stop 2 → Stop 4</div></div><button class="ib" aria-label="More">⋯</button></div><div class="c-sec"><div class="fz-warn" style="color:var(--ink);background:var(--index);border-color:var(--hair2)"><b>Next skips to Stop 4</b> (Pleyel piano · From the window). Stop 3 is not reached.</div><div class="fz-acts" style="margin-top:8px"><button class="btn forest" data-cr>Follow the Guide order</button></div></div><div class="c-sec"><div class="c-lab">How it moves</div><div class="cseg"><button aria-pressed="false">✂ Cut</button><button aria-pressed="true">↗ Travel</button></div></div>`;
+    $$('#fz-cseg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cc===cc));}
+  $('#fz-cseg').addEventListener('click',e=>{const b=e.target.closest('[data-cc]');if(!b)return;cc=b.dataset.cc;renderH();cread.innerHTML={linear:'The order is the route. Nothing to choose.',end:'An explicit End shows on its gutter, and the Stops after it are dimmed.',jump:'A jump shows its target on the gutter, and the skipped Stop is dimmed.'}[cc];});
+  ccard.addEventListener('click',e=>{if(!e.target.closest('[data-cr]'))return;const was=cc;cc='linear';renderH();cread.innerHTML=was==='end'?'Recovered: Stop 3 continues to Stop 4 by Cut, as an ordinary connection. One Undo.':'Recovered: Next follows the Guide order again, and the Travel is kept for Stop 2 → Stop 3. One Undo.';});
+
+  /* ---- glue ---- */
+  function renderAll(soft){renderStrip();renderCard();renderPaths();renderB();renderC();renderD();renderG();$('#fz-undo').disabled=UNDO.length===0;if(V.mode==='tour'||V.mode==='end')vRender();}
+  $('#fz-undo').addEventListener('click',undo);
+  $('#fz-reset').addEventListener('click',()=>{S=seed(+sec.dataset.fzn);UNDO=[];sel={kind:'guide'};PH.k=0;PH.local=0;PH.status='idle';rebuild();renderAll();say('Reset.');});
+  R.s33=()=>{if(stops().length!==+sec.dataset.fzn){S=seed(+sec.dataset.fzn);UNDO=[];sel={kind:'guide'};PH.k=0;PH.local=0;PH.status='idle';}popOpen=false;addOpen=false;menu=null;rebuild();renderAll();
+    if(sec.dataset.fzv==='prod')say('PR #271 today, for comparison: light cards with a gold border, <i>Start</i> and the time on every card, and a separate scrub bar under them.');else if(!readMsg||readMsg.startsWith('PR #271'))say('Press ▶, scrub the rail, open the pacing pill, or drag a Stop.');};
+  rebuild();R.s33();renderH();vRender();
 })();
 </script>
 </body>
