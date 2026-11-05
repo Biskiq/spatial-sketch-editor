@@ -183,8 +183,8 @@ describe('commands route through commands.ts', () => {
 
 	it('moves a Stop to an index as a permutation, and refuses a move that changes nothing', async () => {
 		const three = withExperience({
-			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }],
-			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2', 'stop-3'], entryStopId: 'stop-1' }]
+			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' }],
+			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2', 'stop-3'], entryStopId: 'stop-1', pacing: 'automatic' as const }]
 		});
 		const { controller, submitted } = await mounted({ experience: three });
 		controller.openGuide('guide-1');
@@ -232,14 +232,13 @@ describe('commands route through commands.ts', () => {
 });
 
 describe('per-field Stop edits keep the other fields', () => {
-	it('sends the sequence with its updated hold', async () => {
+	it('Stay writes only the stay, rounded to 0.5 s, and refuses a stay under 1 s', async () => {
 		const { controller, submitted, envelope } = await mounted();
 
-		expect(await controller.setViewHold('stop-1', 'view-1', 2)).toBe(true);
-
+		expect(await controller.setStopStay('stop-1', 4.2)).toBe(true);
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_STOP_UPDATE_KIND);
-		expect(intent.payload).toEqual({ views: [{ viewId: 'view-1', holdSeconds: 2 }] });
+		expect(intent.payload).toEqual({ staySeconds: 4 });
 		expect(intent).toEqual(
 			stopUpdateIntent({
 				envelope,
@@ -247,33 +246,70 @@ describe('per-field Stop edits keep the other fields', () => {
 				ids: { operation: intent.operationId },
 				experienceId: 'experience-1',
 				stopId: 'stop-1',
-				views: [{ viewId: 'view-1', holdSeconds: 2 }]
+				staySeconds: 4
 			})
 		);
-	});
-
-	it('clears the hold by omitting it from the sequence, and refuses a hold that is not a finite non-negative number', async () => {
-		const { controller, submitted } = await mounted();
-
-		await controller.setViewHold('stop-1', 'view-1', null);
-		expect(submittedIntent(submitted).payload).toEqual({ views: [{ viewId: 'view-1' }] });
 
 		submitted.mockClear();
-		expect(await controller.setViewHold('stop-1', 'view-1', -1)).toBe(false);
-		expect(await controller.setViewHold('stop-1', 'view-1', Number.NaN)).toBe(false);
+		expect(await controller.setStopStay('stop-1', 0.5)).toBe(false);
+		expect(await controller.setStopStay('stop-1', Number.NaN)).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
-		expect(controller.message).toBe('A hold is a finite number of seconds, or blank for none.');
+		expect(controller.message).toBe('A stay is at least 1 s.');
 	});
 
-	it('submits a whole sequence and refuses to leave out the last View', async () => {
-		const { controller, submitted } = await mounted();
-		expect(await controller.leaveOutView('stop-1', 'view-1')).toBe(false);
-		expect(controller.message).toBe('A Stop shows at least one View');
+	it('Enter at names a View of the Presentation; the Default is written as null', async () => {
+		const two = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'cut' }] });
+		const { controller, submitted } = await mounted({ experience: two });
+		expect(await controller.setStopEntry('stop-1', 'view-2')).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ entryViewId: 'view-2' });
+		submitted.mockClear();
+		// Already following the Default: no change.
+		expect(await controller.setStopEntry('stop-1', 'view-1')).toBe(false);
+		expect(await controller.setStopEntry('stop-1', 'view-absent')).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
+	});
 
-		const views = [{ viewId: 'view-1', holdSeconds: 3 }];
-		expect(await controller.setStopViews('stop-1', views)).toBe(true);
-		expect(submittedIntent(submitted).payload).toEqual({ views });
+	it('Invite to explore turns on with the default prompt, and an empty prompt is the default', async () => {
+		const { controller, submitted } = await mounted();
+		expect(await controller.setStopInvitation('stop-1', { prompt: null })).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ invitation: { prompt: null } });
+		submitted.mockClear();
+		expect(await controller.setStopInvitation('stop-1', null)).toBe(false);
+		expect(await controller.setStopInvitation('stop-2', { prompt: '  Look at the keys ' })).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ invitation: { prompt: 'Look at the keys' } });
+	});
+
+	it('Pacing is written on the Guide, once', async () => {
+		const { controller, submitted } = await mounted();
+		expect(await controller.setGuidePacing('guide-1', 'manual')).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ pacing: 'manual' });
+		submitted.mockClear();
+		expect(await controller.setGuidePacing('guide-1', 'automatic')).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
+	});
+
+	it('the View rail sets a step or a range in one change, adding the straight paths a Travel needs', async () => {
+		const three = withPresentationChange('presentation-1', {
+			views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'cut' }]
+		});
+		const { controller, submitted } = await mounted({ experience: three });
+		expect(await controller.setPresentationStep('presentation-1', 1, 'travel')).toBe(true);
+		const intent = submittedIntent(submitted);
+		// view-1 and view-2 are joined by connection-1, so no path is added.
+		expect(intent.payload).toEqual({ views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'travel' }] });
+		submitted.mockClear();
+		expect(await controller.setPresentationStep('presentation-1', 1, 'cut', 1)).toBe(false);
+	});
+
+	it('moving a View to the top makes it the Default; each View keeps its own step', async () => {
+		const two = withPresentationChange('presentation-1', {
+			views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'travel' }]
+		});
+		const { controller, submitted } = await mounted({ experience: two });
+		expect(await controller.movePresentationView('presentation-1', 'view-2', 0)).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({
+			views: [{ viewId: 'view-2' }, { viewId: 'view-1', transition: 'cut' }]
+		});
 	});
 
 	it('changes where Next goes and keeps the transition', async () => {
@@ -298,8 +334,8 @@ describe('per-field Stop edits keep the other fields', () => {
 	it('changes the transition and keeps the target', async () => {
 		const jump = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2' } },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2' } },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', continuation: { kind: 'end' } }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: jump });
@@ -316,8 +352,8 @@ describe('per-field Stop edits keep the other fields', () => {
 		// authored default (a cut sequence-next) and the edit rewrites it.
 		const bare = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2' }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2' }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: bare });
@@ -340,8 +376,8 @@ describe('per-field Stop edits keep the other fields', () => {
 		// stop-2 has no continuation: as the Guide's last Stop it reads as an implicit End, which has no next Stop.
 		const implicit = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2' }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2' }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: implicit });
@@ -359,7 +395,9 @@ describe('per-field Stop edits keep the other fields', () => {
 	it('names an unknown Stop as no change', async () => {
 		const { controller, submitted } = await mounted();
 
-		expect(await controller.setViewHold('missing', 'view-1', 1)).toBe(false);
+		expect(await controller.setStopStay('missing', 3)).toBe(false);
+		expect(await controller.setStopEntry('missing', 'view-1')).toBe(false);
+		expect(await controller.setStopInvitation('missing', null)).toBe(false);
 		expect(await controller.setContinuation('missing', 'end')).toBe(false);
 		expect(await controller.setTransition('missing', 'cut')).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
@@ -367,7 +405,7 @@ describe('per-field Stop edits keep the other fields', () => {
 });
 
 describe('Capture (D1, D2)', () => {
-	it('captures into the selected Presentation and sends its existing Default so it is kept', async () => {
+	it('captures into the selected Presentation, appended after its Default', async () => {
 		const { controller, submitted, envelope } = await mounted({ evaluation: perspectiveReading().evaluation });
 		controller.select({ kind: 'presentation', presentationId: 'presentation-1' });
 
@@ -388,11 +426,10 @@ describe('Capture (D1, D2)', () => {
 					eye: [0, 1.6, 2],
 					target: [0, 1.4, 0],
 					fov: capturedFovDegrees(perspectiveReading().projection)!
-				}),
-				defaultViewId: 'view-1'
+				})
 			})
 		);
-		expect((intent.payload as { defaultViewId?: string }).defaultViewId).toBe('view-1');
+		expect('views' in (intent.payload as object)).toBe(false);
 		expect(controller.message).toBe('');
 		// The Card stays on what it showed.
 		expect(controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
@@ -407,17 +444,17 @@ describe('Capture (D1, D2)', () => {
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_PRESENTATION_UPDATE_KIND);
 		expect(intent.targets[0]!.subject).toEqual({ kind: 'presentation', id: 'presentation-2' });
-		expect((intent.payload as { defaultViewId?: string }).defaultViewId).toBe('view-2');
+		expect('views' in (intent.payload as object)).toBe(false);
 	});
 
 	it('omits the Default when there is none, so the new View fills it, and says so', async () => {
-		const unset = withPresentationChange('presentation-2', { defaultViewId: null });
+		const unset = withPresentationChange('presentation-2', { views: [] });
 		const noStops: ExperienceUnitPayload = {
 			...unset,
 			experiences: unset.experiences.map((experience) => ({
 				...experience,
 				stops: experience.stops.filter((stop) => stop.presentationId !== 'presentation-2'),
-				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }]
+				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }]
 			}))
 		};
 		const { controller, submitted } = await mounted({
@@ -429,7 +466,7 @@ describe('Capture (D1, D2)', () => {
 		expect(await controller.capture()).toBe(true);
 
 		const intent = submittedIntent(submitted);
-		expect('defaultViewId' in (intent.payload as object)).toBe(false);
+		expect('views' in (intent.payload as object)).toBe(false);
 		expect(controller.message).toBe('Gallery had no Default View, so this View is now its Default.');
 	});
 
@@ -584,7 +621,7 @@ describe('addStop (D8)', () => {
 				presentationId: 'presentation-1',
 				label: 'Morning route',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: { kind: 'sequence-next', transition: 'cut' }
 			})
 		);
@@ -612,7 +649,7 @@ describe('addStop (D8)', () => {
 				guideId: 'guide-1',
 				afterStopId: 'stop-1',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: { kind: 'sequence-next', transition: 'cut' }
 			})
 		);
@@ -644,7 +681,7 @@ describe('addStop (D8)', () => {
 
 	it('does not insert after a selected Stop that is not in the Guide', async () => {
 		const stray = withExperience({
-			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }]
+			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' }]
 		});
 		const { controller, submitted } = await mounted({ experience: stray });
 		controller.openGuide('guide-1');
@@ -760,7 +797,7 @@ describe('busy and message', () => {
 			accept: async () => ({ kind: 'no-op', revision: REVISION }) as unknown as Outcome
 		});
 
-		await controller.setDefaultView('presentation-1', 'view-1');
+		await controller.setStopStay('stop-1', 3);
 		expect(controller.message).toBe('No change to accept.');
 	});
 });
@@ -788,7 +825,7 @@ describe('derived reading and the route-supplied ports', () => {
 		expect(controller.currentGuide).toBeNull();
 		expect(controller.contextGuide?.id).toBe('guide-1');
 		expect(controller.guideStops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2']);
-		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2, index: 0 }]);
+		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2 }]);
 		expect(controller.resolveContinuation('stop-1')).toMatchObject({ kind: 'adjacent', stopId: 'stop-2', position: 2 });
 		expect(controller.reach()).toEqual({ presentations: 2, views: 2, freePresentations: 2, freeViews: 2, hiddenViews: 0, viewsOnlyFree: 0 });
 
@@ -869,7 +906,7 @@ describe('derived reading and the route-supplied ports', () => {
 		});
 		expect(controller.resolveContinuation('stop-2')).toEqual({ kind: 'end', explicit: true });
 		expect(controller.resolveContinuation('missing')).toBeNull();
-		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2, index: 0 }]);
+		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2 }]);
 		expect(controller.presentationsAbout('entity-1').map((entry) => entry.id)).toEqual(['presentation-1']);
 		expect(controller.presentationsAbout('other')).toEqual([]);
 		expect(controller.reach()).toEqual({ presentations: 2, views: 2, freePresentations: 2, freeViews: 2, hiddenViews: 0, viewsOnlyFree: 0 });
@@ -889,7 +926,7 @@ describe('derived reading and the route-supplied ports', () => {
 			...EXPERIENCE,
 			experiences: [
 				...EXPERIENCE.experiences,
-				{ id: 'experience-2', label: 'Second', welcome: null, entryGuideId: null, presentations: [], stops: [], guides: [], gates: [], detours: [] }
+				{ id: 'experience-2', label: 'Second', welcome: null, entryGuideId: null, presentations: [], stops: [], guides: [], detours: [] }
 			]
 		};
 		const replaced: ProjectEnvelope = await experienceEnvelope({ experience: second });
@@ -924,7 +961,7 @@ describe('the controller module has no DOM at runtime', () => {
 			mount.controller.select({ kind: 'stop', stopId: 'stop-1' });
 			mount.flush();
 
-			await mount.controller.setViewHold('stop-1', 'view-1', 1);
+			await mount.controller.setStopStay('stop-1', 3);
 			await mount.controller.createExperience();
 
 			expect(submitted).toHaveBeenCalledTimes(2);
@@ -978,12 +1015,13 @@ describe('Presentation edits', () => {
 		expect(submittedIntent(submitted).payload).toEqual({ text: null });
 	});
 
-	it('Make default sends only the Default View', async () => {
-		const { controller, submitted } = await mounted();
+	it('Make default moves the View to the top: View 1 is the Default', async () => {
+		const many = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'travel' }] });
+		const { controller, submitted } = await mounted({ experience: many });
 
-		await controller.setDefaultView('presentation-1', 'view-1');
+		await controller.setDefaultView('presentation-1', 'view-2');
 
-		expect(submittedIntent(submitted).payload).toEqual({ defaultViewId: 'view-1' });
+		expect(submittedIntent(submitted).payload).toEqual({ views: [{ viewId: 'view-2' }, { viewId: 'view-1', transition: 'cut' }] });
 	});
 });
 
@@ -1020,8 +1058,8 @@ describe('R217.S26 — structure commands', () => {
 	it('makes a Guide the Opening Guide and moves a Guide’s start, never when it already is', async () => {
 		const two = withExperience({
 			guides: [
-				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' },
-				{ id: 'guide-2', label: 'Short', stopIds: ['stop-2'], entryStopId: 'stop-2' }
+				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1', pacing: 'automatic' as const },
+				{ id: 'guide-2', label: 'Short', stopIds: ['stop-2'], entryStopId: 'stop-2', pacing: 'automatic' as const }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: two });
@@ -1062,7 +1100,7 @@ describe('R217.S26 — structure commands', () => {
 	});
 
 	it('reorders a Presentation’s Views as a permutation and refuses a move that changes nothing', async () => {
-		const many = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+		const many = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
 		const { controller, submitted } = await mounted({ experience: many });
 		expect(await controller.moveView('presentation-1', 'view-1', -1)).toBe(false);
 		expect(await controller.moveViewTo('presentation-1', 'view-1', 0)).toBe(false);
@@ -1070,7 +1108,7 @@ describe('R217.S26 — structure commands', () => {
 		await controller.moveView('presentation-1', 'view-1', 1);
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_PRESENTATION_UPDATE_KIND);
-		expect(intent.payload).toEqual({ viewIds: ['view-2', 'view-1'] });
+		expect(intent.payload).toEqual({ views: [{ viewId: 'view-2' }, { viewId: 'view-1', transition: 'cut' }] });
 	});
 });
 
@@ -1078,8 +1116,8 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 	it('previews a Stop removal with the named fallback, then removes it and selects the Guide', async () => {
 		const jumping = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' } },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' } },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', continuation: { kind: 'end' } }
 			]
 		});
 		const { controller, submitted, envelope } = await mounted({ experience: jumping });
@@ -1104,7 +1142,7 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 	});
 
 	it('keeps a refused removal disabled with its reason and submits nothing', async () => {
-		const single = withExperience({ guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }] });
+		const single = withExperience({ guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }] });
 		const { controller, submitted } = await mounted({ experience: single });
 		expect(controller.removalPreview({ kind: 'stop', stopId: 'stop-1' })).toEqual({
 			kind: 'refused',
@@ -1117,13 +1155,13 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 		expect(submitted).not.toHaveBeenCalled();
 	});
 
-	it('asks for the new Default before a Default View can be removed, with no automatic choice', async () => {
-		const many = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+	it('removing View 1 makes the next View the Default, and names it', async () => {
+		const many = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
 		const { controller, submitted } = await mounted({ experience: many });
 		controller.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
 		const asking = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1' });
-		expect(asking).toMatchObject({ kind: 'ready', chooseDefault: [{ id: 'view-2', label: 'Gallery' }], runnable: false });
-		expect(await controller.remove({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1' })).toBe(false);
+		expect(asking).toMatchObject({ kind: 'ready', chooseDefault: [{ id: 'view-2', label: 'Gallery' }], runnable: true });
+		expect(asking.kind === 'ready' && asking.lines).toContain('Gallery becomes the Default View.');
 		expect(submitted).not.toHaveBeenCalled();
 
 		const chosen = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1', newDefaultViewId: 'view-2' });
@@ -1137,7 +1175,7 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 	});
 
 	it('names a shared View as still used instead of deleting it', async () => {
-		const shared = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+		const shared = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
 		const { controller } = await mounted({ experience: shared });
 		const preview = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-2' });
 		expect(preview.kind === 'ready' && preview.lines).toEqual([

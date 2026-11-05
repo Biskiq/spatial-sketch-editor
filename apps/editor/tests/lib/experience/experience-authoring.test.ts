@@ -93,9 +93,8 @@ describe('capture, binding and Guide order', () => {
 		const experience = experienceOf(installed);
 		expect(experience.presentations.find((entry) => entry.id === 'presentation-new')).toMatchObject({
 			label: 'Entrance',
-			viewIds: ['view-new'],
+			views: [{ viewId: 'view-new' }],
 			explorable: true,
-			defaultViewId: 'view-new',
 			subject: null,
 			text: { kind: 'plain', body: 'Welcome.' }
 		});
@@ -149,7 +148,7 @@ describe('capture, binding and Guide order', () => {
 				ids: { operation: 'op-invalid-entry' },
 				experienceId: 'experience-1',
 				stopId: 'stop-2',
-				views: [{ viewId: 'view-1' }]
+				entryViewId: 'view-1'
 			})
 		);
 		expect(refused.kind).toBe('rejected');
@@ -188,53 +187,23 @@ describe('capture, binding and Guide order', () => {
 		expect(coordinator.history().depth).toBe(2);
 	});
 
-	it('refuses clearing a Default View a Stop still enters at', async () => {
+	it('keeps View 1 as the Default: a Views write that drops or adds a View is refused', async () => {
 		const { source, coordinator } = await boot();
-		// stop-1 names no entry View, so its own entry is presentation-1's Default.
-		const refused = await coordinator.accept(
-			presentationUpdateIntent({
-				envelope: source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-no-default' },
-				experienceId: 'experience-1',
-				presentationId: 'presentation-1',
-				defaultViewId: null
-			})
-		);
-		expect(refused.kind).toBe('rejected');
+		for (const views of [[], [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'cut' as const }]]) {
+			const refused = await coordinator.accept(
+				presentationUpdateIntent({
+					envelope: source,
+					revision: coordinator.acceptedRevision(),
+					ids: { operation: `op-views-${views.length}` },
+					experienceId: 'experience-1',
+					presentationId: 'presentation-1',
+					views
+				})
+			);
+			expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-order' });
+		}
+		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).presentations[0]!.views).toEqual([{ viewId: 'view-1' }]);
 		expect(coordinator.history().depth).toBe(1);
-
-		// Giving the Stop its own entry View does not make the Default clearable: the
-		// Stop still enters through its Presentation, which would be left without an
-		// enterable Default View.
-		const entry = await coordinator.accept(
-			stopUpdateIntent({
-				envelope: source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-entry-view' },
-				experienceId: 'experience-1',
-				stopId: 'stop-1',
-				views: [{ viewId: 'view-1' }]
-			})
-		);
-		expect(entry.kind).toBe('accepted');
-		const stillEntered = await coordinator.accept(
-			presentationUpdateIntent({
-				envelope: coordinator.acceptedSnapshot().domain.source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-no-default-with-entry' },
-				experienceId: 'experience-1',
-				presentationId: 'presentation-1',
-				defaultViewId: null
-			})
-		);
-		// `planner-rejected` is the coordinator's code for a planner refusal; the
-		// planner's own `invalid-payload` stays in `reason`.
-		expect(stillEntered).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
-		if (stillEntered.kind !== 'rejected') return;
-		expect(stillEntered.message).toContain('keep a Default View');
-		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).presentations[0]!.defaultViewId).toBe('view-1');
-		expect(coordinator.history().depth).toBe(2);
 	});
 });
 
@@ -310,7 +279,7 @@ describe('Preview entry rule', () => {
 							...entry,
 							guides: [
 								...entry.guides,
-								{ id: 'guide-2', label: 'Other', stopIds: ['stop-2'], entryStopId: 'stop-2' }
+								{ id: 'guide-2', label: 'Other', stopIds: ['stop-2'], entryStopId: 'stop-2', pacing: 'automatic' as const }
 							]
 						}
 					: entry
@@ -373,9 +342,8 @@ describe('Preview entry rule', () => {
 							{
 								id: 'presentation-no-default',
 								label: 'Study',
-								viewIds: ['view-1'],
+								views: [],
 								explorable: true,
-								defaultViewId: null,
 								subject: null,
 								text: null
 							}

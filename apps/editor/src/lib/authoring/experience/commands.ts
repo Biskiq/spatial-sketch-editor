@@ -9,7 +9,7 @@
  *
  * The commands construct no order: `guide-order` is a permutation of authored Stop
  * ids, and no other command touches Guide order. A Presentation's View order is
- * likewise only ever a permutation of its authored `viewIds`.
+ * likewise only ever a permutation of its authored Views.
  */
 
 import type { AuthoringIntent } from '@portfolio/project-model';
@@ -17,7 +17,9 @@ import type { ScenePathAnchor, SemanticReference } from '@portfolio/project-mode
 import type {
 	Experience,
 	ExperienceContinuation,
-	ExperienceGuidedView,
+	ExperienceGuidePacing,
+	ExperienceInvitation,
+	ExperiencePresentationView,
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import {
@@ -74,6 +76,8 @@ export type CommandIds = {
 	readonly guide?: string;
 	/** R217.S29 — a captured Camera connection id. */
 	readonly connection?: string;
+	/** Several captured Camera connection ids, for a range set to All Travel. */
+	readonly connections?: readonly string[];
 };
 
 function intent(
@@ -263,7 +267,7 @@ export function guideCreateIntent(input: {
 	readonly presentationId: string;
 	readonly label: string;
 	readonly entryViewId: string | null;
-	readonly holdSeconds: number | null;
+	readonly staySeconds?: number | null;
 	readonly continuation: ExperienceContinuation | null;
 }): AuthoringIntent {
 	return intent(
@@ -275,7 +279,7 @@ export function guideCreateIntent(input: {
 			label: input.label,
 			presentationId: input.presentationId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
-			...(input.holdSeconds === null ? {} : { holdSeconds: input.holdSeconds }),
+			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
 			...(input.continuation === null ? {} : { continuation: input.continuation })
 		},
 		[
@@ -295,7 +299,7 @@ export function stopCreateIntent(input: {
 	readonly guideId: string;
 	readonly afterStopId: string | null;
 	readonly entryViewId: string | null;
-	readonly holdSeconds: number | null;
+	readonly staySeconds?: number | null;
 	readonly continuation: ExperienceContinuation | null;
 }): AuthoringIntent {
 	return intent(
@@ -308,7 +312,7 @@ export function stopCreateIntent(input: {
 			guideId: input.guideId,
 			afterStopId: input.afterStopId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
-			...(input.holdSeconds === null ? {} : { holdSeconds: input.holdSeconds }),
+			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
 			...(input.continuation === null ? {} : { continuation: input.continuation })
 		},
 		[{ kind: 'stop', id: input.ids.stop! }]
@@ -345,10 +349,15 @@ export function presentationUpdateIntent(input: {
 	readonly explorable?: boolean;
 	readonly text?: { kind: 'plain'; body: string } | null;
 	readonly view?: CapturedViewPose;
-	readonly defaultViewId?: string | null;
-	/** A permutation of the Presentation's authored `viewIds` (R217.S26). */
-	readonly viewIds?: readonly string[];
+	/**
+	 * The ordered Views with their Cut/Travel steps: the same Views (a reorder or a
+	 * step change). View 1 is the Default.
+	 */
+	readonly views?: readonly ExperiencePresentationView[];
+	/** View pairs a Travel step needs a straight Camera path for (one Undo). */
+	readonly travelPaths?: readonly { readonly fromViewId: string; readonly toViewId: string }[];
 }): AuthoringIntent {
+	const connectionIds = input.ids.connections ?? (input.ids.connection === undefined ? [] : [input.ids.connection]);
 	return intent(
 		EXPERIENCE_PRESENTATION_UPDATE_KIND,
 		input.ids,
@@ -359,21 +368,31 @@ export function presentationUpdateIntent(input: {
 			...(input.explorable === undefined ? {} : { explorable: input.explorable }),
 			...(input.text === undefined ? {} : { text: input.text }),
 			...(input.view === undefined ? {} : { view: input.view }),
-			...(input.defaultViewId === undefined ? {} : { defaultViewId: input.defaultViewId }),
-			...(input.viewIds === undefined ? {} : { viewIds: [...input.viewIds] })
+			...(input.views === undefined ? {} : { views: input.views.map((view) => ({ ...view })) }),
+			...(input.travelPaths === undefined || input.travelPaths.length === 0
+				? {}
+				: { travelPaths: input.travelPaths.map((pair) => ({ ...pair })) })
 		},
-		input.view === undefined ? [] : [{ kind: 'view', id: input.ids.view! }]
+		[
+			...(input.view === undefined ? [] : [{ kind: 'view', id: input.ids.view! }]),
+			...(input.travelPaths === undefined
+				? []
+				: connectionIds.slice(0, input.travelPaths.length).map((id) => ({ kind: 'connection', id })))
+		]
 	);
 }
 
-/** Replace one Stop's View sequence or continuation. */
+/** Edit one Stop's entry View, stay, invitation or continuation. */
 export function stopUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: { readonly projectId: string; readonly revisionId: string };
 	readonly ids: CommandIds;
 	readonly experienceId: string;
 	readonly stopId: string;
-	readonly views?: readonly ExperienceGuidedView[];
+	/** `null` follows the Presentation's Default. */
+	readonly entryViewId?: string | null;
+	readonly staySeconds?: number;
+	readonly invitation?: ExperienceInvitation | null;
 	readonly continuation?: ExperienceContinuation | null;
 	/** Travel: the straight Camera path this change adds when the pair has none (one Undo). */
 	readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
@@ -384,7 +403,9 @@ export function stopUpdateIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, 'stop', input.stopId)],
 		{
-			...(input.views === undefined ? {} : { views: input.views }),
+			...(input.entryViewId === undefined ? {} : { entryViewId: input.entryViewId }),
+			...(input.staySeconds === undefined ? {} : { staySeconds: input.staySeconds }),
+			...(input.invitation === undefined ? {} : { invitation: input.invitation }),
 			...(input.continuation === undefined ? {} : { continuation: input.continuation }),
 			...(input.travelPath === undefined ? {} : { travelPath: input.travelPath })
 		},
@@ -420,7 +441,7 @@ export function experienceUpdateIntent(input: {
 	);
 }
 
-/** R217.S26 — rename a Guide or choose where it starts (E6). */
+/** R217.S26 — rename a Guide, choose where it starts (E6), or set its pacing (sheet §31). */
 export function guideUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;
@@ -429,6 +450,7 @@ export function guideUpdateIntent(input: {
 	readonly guideId: string;
 	readonly label?: string;
 	readonly entryStopId?: string;
+	readonly pacing?: ExperienceGuidePacing;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_GUIDE_UPDATE_KIND,
@@ -437,7 +459,8 @@ export function guideUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'guide', input.guideId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
-			...(input.entryStopId === undefined ? {} : { entryStopId: input.entryStopId })
+			...(input.entryStopId === undefined ? {} : { entryStopId: input.entryStopId }),
+			...(input.pacing === undefined ? {} : { pacing: input.pacing })
 		},
 		[]
 	);
@@ -626,7 +649,7 @@ export function removeIntent(input: {
 	);
 }
 
-/** R217.S26 (E4) — remove one View from one Presentation; the Default needs its successor named. */
+/** R217.S26 (E4) — remove one View from one Presentation; removing View 1 makes the next View the Default unless one is named. */
 export function viewRemoveIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;

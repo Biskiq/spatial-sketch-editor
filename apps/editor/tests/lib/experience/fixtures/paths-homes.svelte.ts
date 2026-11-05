@@ -19,7 +19,7 @@ import type {
 
 export const PATH_OCCURRENCE: ExperiencePathOccurrence = {
 	kind: 'step',
-	stopId: 'stop-1',
+	presentationId: 'piano',
 	toViewId: 'view-two'
 };
 
@@ -36,7 +36,9 @@ export const PATH_ANCHOR = { id: 'anchor-1', position: [0, 1, 0] as Vec3 };
 const STOP: ExperienceStop = {
 	id: 'stop-1',
 	presentationId: 'piano',
-	views: [{ viewId: 'view-one' }, { viewId: 'view-two', transition: 'travel' }],
+	entryViewId: null,
+	staySeconds: 5,
+	invitation: null,
 	continuation: { kind: 'end' }
 };
 
@@ -44,7 +46,7 @@ const GUIDE: ExperienceGuide = {
 	id: 'guide-1',
 	label: 'Main',
 	stopIds: ['stop-1'],
-	entryStopId: 'stop-1'
+	entryStopId: 'stop-1', pacing: 'automatic' as const
 };
 
 const EXPERIENCE: Experience = {
@@ -56,16 +58,14 @@ const EXPERIENCE: Experience = {
 		{
 			id: 'piano',
 			label: 'Piano',
-			viewIds: ['view-one', 'view-two'],
+			views: [{ viewId: 'view-one' }, { viewId: 'view-two', transition: 'travel' }],
 			explorable: true,
-			defaultViewId: 'view-one',
 			subject: null,
 			text: null
 		}
 	],
 	stops: [STOP],
 	guides: [GUIDE],
-	gates: [],
 	detours: []
 };
 

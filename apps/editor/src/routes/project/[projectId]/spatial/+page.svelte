@@ -5010,7 +5010,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			presentations: controller.filteredPresentations.map((entry) => ({
 				id: entry.id,
 				label: entry.label,
-				viewCount: entry.viewIds.length,
+				viewCount: entry.views.length,
 				explorable: entry.explorable,
 				stopNumbers: stopNumbers.get(entry.id) ?? [],
 				selected: subject?.kind === 'presentation' && subject.presentationId === entry.id,
@@ -5019,7 +5019,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					id: view.id,
 					label: view.label,
 					onTour: controller.viewStops(view.id).length > 0,
-					isDefault: entry.defaultViewId === view.id,
+					isDefault: entry.views[0]?.viewId === view.id,
 					selected:
 						subject?.kind === 'view' && subject.viewId === view.id && subject.presentationId === entry.id
 				}))
@@ -5190,9 +5190,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				presentationId: presentation.id,
 				label: presentation.label,
 				hasSubject: reference !== null && subjectLabel !== null,
-				viewCount: presentation.viewIds.length,
+				viewCount: presentation.views.length,
 				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
-				hasDefaultView: presentation.defaultViewId !== null
+				hasDefaultView: presentation.views.length > 0
 			});
 			// E5: Add to Guide ▸ — the Guides, the active one first, with *again* where the
 			// Presentation already has a Stop, then New Guide…, which asks the name inline (D8).

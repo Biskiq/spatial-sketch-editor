@@ -44,9 +44,9 @@ const subjectOf = (entityId: string, domain = 'scene', kind = 'entity') =>
 	}) as unknown as ExperiencePresentation['subject'];
 
 const PRESENTATIONS: ExperiencePresentation[] = [
-	{ id: 'p-1', label: 'One', viewIds: ['view-a', 'view-b'], explorable: true, defaultViewId: 'view-a', subject: subjectOf('piano'), text: null },
-	{ id: 'p-2', label: 'Two', viewIds: ['view-c'], explorable: true, defaultViewId: 'view-c', subject: null, text: null },
-	{ id: 'p-3', label: 'Three', viewIds: ['view-d'], explorable: true, defaultViewId: null, subject: null, text: null }
+	{ id: 'p-1', label: 'One', views: [{ viewId: 'view-a' }, { viewId: 'view-b' }], explorable: true, subject: subjectOf('piano'), text: null },
+	{ id: 'p-2', label: 'Two', views: [{ viewId: 'view-c' }], explorable: true, subject: null, text: null },
+	{ id: 'p-3', label: 'Three', views: [{ viewId: 'view-d' }], explorable: true, subject: null, text: null }
 ];
 
 function experience(stops: ExperienceStop[], stopIds = stops.map((stop) => stop.id)): Experience {
@@ -57,8 +57,7 @@ function experience(stops: ExperienceStop[], stopIds = stops.map((stop) => stop.
 		entryGuideId: 'g-1',
 		presentations: PRESENTATIONS,
 		stops,
-		guides: [{ id: 'g-1', label: 'Main', stopIds, entryStopId: stopIds[0]! }],
-		gates: [],
+		guides: [{ id: 'g-1', label: 'Main', stopIds, entryStopId: stopIds[0]!, pacing: 'automatic' }],
 		detours: []
 	};
 }
@@ -102,25 +101,24 @@ describe('viewFactsOf', () => {
 
 describe('Stops guiding a View', () => {
 	const stops: ExperienceStop[] = [
-		{ id: 's-1', views: [{ viewId: 'view-a' }], presentationId: 'p-1' },
-		{ id: 's-2', presentationId: 'p-1', views: [{ viewId: 'view-b' }, { viewId: 'view-a' }] },
-		{ id: 's-3', views: [{ viewId: 'view-a' }], presentationId: 'p-1' }
+		{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1' },
+		{ id: 's-2', entryViewId: 'view-b', staySeconds: 5, invitation: null, presentationId: 'p-1' },
+		{ id: 's-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1' }
 	];
 	const value = experience(stops);
 
-	it('enters at the first guided View and exits at the last', () => {
-		expect(stopEntryViewId(stops[0]!)).toBe('view-a');
-		expect(stopEntryViewId(stops[1]!)).toBe('view-b');
-		expect(stopExitViewId(stops[1]!)).toBe('view-a');
+	it('enters at its own View, else the Default, and leaves from the same View', () => {
+		expect(stopEntryViewId(value, stops[0]!)).toBe('view-a');
+		expect(stopEntryViewId(value, stops[1]!)).toBe('view-b');
+		expect(stopExitViewId(value, stops[1]!)).toBe('view-b');
 	});
 
-	it('lists the Guide Stops with their Stop position and View index', () => {
+	it('lists the Guide Stops that enter at a View, with their Stop position', () => {
 		expect(stopsGuiding(value, guideOf(value), 'view-a')).toEqual([
-			{ stopId: 's-1', position: 1, index: 0 },
-			{ stopId: 's-2', position: 2, index: 1 },
-			{ stopId: 's-3', position: 3, index: 0 }
+			{ stopId: 's-1', position: 1 },
+			{ stopId: 's-3', position: 3 }
 		]);
-		expect(stopsGuiding(value, guideOf(value), 'view-b')).toEqual([{ stopId: 's-2', position: 2, index: 0 }]);
+		expect(stopsGuiding(value, guideOf(value), 'view-b')).toEqual([{ stopId: 's-2', position: 2 }]);
 		expect(stopsGuiding(value, guideOf(value), 'view-c')).toEqual([]);
 		expect(stopsGuiding(value, null, 'view-a')).toEqual([]);
 	});
@@ -155,22 +153,22 @@ describe('presentationsAboutEntity', () => {
 describe('reachSummary', () => {
 	it('counts the Views no Stop enters at as only free', () => {
 		const value = experience([
-			{ id: 's-1', views: [{ viewId: 'view-a' }], presentationId: 'p-1' },
-			{ id: 's-2', views: [{ viewId: 'view-c' }], presentationId: 'p-2' }
+			{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1' },
+			{ id: 's-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2' }
 		]);
 		// Views: a, b (p-1), c (p-2), d (p-3, no Default). Stops enter at a and c.
 		expect(reachSummary(value, guideOf(value))).toEqual({ presentations: 3, views: 4, freePresentations: 3, freeViews: 4, hiddenViews: 0, viewsOnlyFree: 2 });
 	});
 
 	it('counts every View as free without an active Guide', () => {
-		const value = experience([{ id: 's-1', views: [{ viewId: 'view-a' }], presentationId: 'p-1' }]);
+		const value = experience([{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1' }]);
 		expect(reachSummary(value, null)).toEqual({ presentations: 3, views: 4, freePresentations: 3, freeViews: 4, hiddenViews: 0, viewsOnlyFree: 4 });
 	});
 
 	it('counts a View once however many Stops enter there', () => {
 		const value = experience([
-			{ id: 's-1', views: [{ viewId: 'view-a' }], presentationId: 'p-1' },
-			{ id: 's-2', views: [{ viewId: 'view-a' }], presentationId: 'p-1' }
+			{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1' },
+			{ id: 's-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1' }
 		]);
 		expect(reachSummary(value, guideOf(value)).viewsOnlyFree).toBe(3);
 	});
@@ -178,13 +176,13 @@ describe('reachSummary', () => {
 
 describe('resolveContinuation', () => {
 	const stops: ExperienceStop[] = [
-		{ id: 's-1', views: [{ viewId: 'view-a' }], presentationId: 'p-1', continuation: { kind: 'sequence-next', transition: 'travel' } },
-		{ id: 's-2', views: [{ viewId: 'view-c' }], presentationId: 'p-2', continuation: { kind: 'stop', stopId: 's-4' } },
-		{ id: 's-3', views: [{ viewId: 'view-a' }], presentationId: 'p-1', continuation: { kind: 'stop', stopId: 's-4', transition: 'travel' } },
-		{ id: 's-4', views: [{ viewId: 'view-c' }], presentationId: 'p-2', continuation: { kind: 'end' } },
-		{ id: 's-5', views: [{ viewId: 'view-a' }], presentationId: 'p-1', continuation: { kind: 'sequence-next' } },
-		{ id: 's-6', views: [{ viewId: 'view-c' }], presentationId: 'p-2' },
-		{ id: 's-7', views: [{ viewId: 'view-a' }], presentationId: 'p-1', continuation: { kind: 'stop', stopId: 's-1' } }
+		{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'sequence-next', transition: 'travel' } },
+		{ id: 's-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2', continuation: { kind: 'stop', stopId: 's-4' } },
+		{ id: 's-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'stop', stopId: 's-4', transition: 'travel' } },
+		{ id: 's-4', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2', continuation: { kind: 'end' } },
+		{ id: 's-5', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'sequence-next' } },
+		{ id: 's-6', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2' },
+		{ id: 's-7', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'stop', stopId: 's-1' } }
 	];
 	const value = experience(stops, ['s-1', 's-2', 's-3', 's-4', 's-5', 's-6']);
 	const guide = guideOf(value);
@@ -222,8 +220,8 @@ describe('resolveContinuation', () => {
 
 	it('reads an unauthored continuation as the sequence with a Cut', () => {
 		const bare = experience([
-			{ id: 's-1', views: [{ viewId: 'view-a' }], presentationId: 'p-1' },
-			{ id: 's-2', views: [{ viewId: 'view-c' }], presentationId: 'p-2' }
+			{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1' },
+			{ id: 's-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2' }
 		]);
 		expect(resolveContinuation(bare, guideOf(bare), 's-1')).toEqual({
 			kind: 'adjacent',

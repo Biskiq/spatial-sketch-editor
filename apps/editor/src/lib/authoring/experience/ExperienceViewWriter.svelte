@@ -257,7 +257,7 @@
 						<li>
 							<button type="button" class="link-row" onclick={() => selectStop(entry.stopId)}>
 								<span class="num">{entry.position}</span>
-								<span>Stop {entry.position} · <em>{positionLabel(entry.index)}</em></span>
+								<span>Stop {entry.position} · <em>enters here</em></span>
 								<span class="chev"><ShellIcon name="chevronRight" size={13} /></span>
 							</button>
 						</li>
@@ -523,11 +523,6 @@
 	.btn.primary:hover:not(:disabled) {
 		background: var(--shell-forest-raised, #22503c);
 		filter: brightness(1.12);
-	}
-	.btn.gold {
-		border-color: var(--shell-gold, #d4ad45);
-		background: var(--shell-gold, #d4ad45);
-		color: #2a2208;
 	}
 	.btn:disabled {
 		opacity: 0.45;

@@ -593,7 +593,7 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		const experience = source.experiences[0]!;
 		const shared = {
 			...source, experiences: [{ ...experience, presentations: experience.presentations.map(presentation =>
-				presentation.id === 'presentation-2' ? { ...presentation, viewIds: [...presentation.viewIds, 'view-1'] } : presentation
+				presentation.id === 'presentation-2' ? { ...presentation, views: [...presentation.views, { viewId: 'view-1', transition: 'cut' as const }] } : presentation
 			) }]
 		};
 		await remountRouteWith(await seededExperienceProject(shared));
@@ -1040,11 +1040,12 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await setThreeD();
 
 		await pressCapture();
-		await vi.waitFor(() => expect(card()!.querySelectorAll('[data-view-tile]')).toHaveLength(2));
+		await vi.waitFor(() => expect(card()!.querySelectorAll('[data-rail-view]')).toHaveLength(2));
 		expect(presentationRows()).toHaveLength(2);
-		const tiles = [...card()!.querySelectorAll<HTMLElement>('[data-view-tile]')];
-		expect(tiles[0]!.getAttribute('aria-label')).toContain('Default View');
-		expect(tiles[1]!.getAttribute('aria-label')).not.toContain('Default View');
+		// The new View is appended to the rail after View 1, the Default.
+		const rows = [...card()!.querySelectorAll<HTMLElement>('[data-rail-view]')];
+		expect(rows[0]!.getAttribute('aria-label')).toContain('the Default');
+		expect(rows[1]!.getAttribute('aria-label')).not.toContain('the Default');
 		expect(cardKind()).toBe('Presentation');
 		expect(experienceFocus.read().presentationId).toBe('presentation-1');
 		expect(guideRow('guide-1')?.textContent).toContain('2 stops');

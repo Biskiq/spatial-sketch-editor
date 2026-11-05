@@ -22,6 +22,7 @@ import { projectWorld, type Vec3, type ViewportEvaluation } from '@portfolio/cam
 import type { CameraView, Experience, ExperienceGuide } from '@portfolio/project-model/units';
 
 import { experiencePathOccurrences, occurrenceKey, resolvePathOccurrence, type ExperiencePathOccurrence } from './experience-paths';
+import { stopEntryViewId } from './experience-model';
 
 export type ExperienceMarkState = 'selected' | 'strong' | 'normal' | 'dim';
 export type ExperienceMarkKind = 'eye' | 'turn' | 'glyph';
@@ -540,12 +541,12 @@ export function relatedToSelection(
 	} else if (selection.viewId != null) {
 		views.add(selection.viewId);
 	} else if (selection.stopId != null) {
-		for (const view of experience.stops.find((stop) => stop.id === selection.stopId)?.views ?? []) {
-			views.add(view.viewId);
-		}
+		const stop = experience.stops.find((entry) => entry.id === selection.stopId);
+		const entry = stop === undefined ? null : stopEntryViewId(experience, stop);
+		if (entry !== null) views.add(entry);
 	} else if (selection.presentationId != null) {
-		for (const viewId of experience.presentations.find((entry) => entry.id === selection.presentationId)?.viewIds ?? []) {
-			views.add(viewId);
+		for (const view of experience.presentations.find((entry) => entry.id === selection.presentationId)?.views ?? []) {
+			views.add(view.viewId);
 		}
 	}
 
@@ -572,7 +573,7 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 
 	const presentationOf = new Map<string, string[]>();
 	for (const presentation of experience.presentations) {
-		for (const viewId of presentation.viewIds) {
+		for (const { viewId } of presentation.views) {
 			presentationOf.set(viewId, [...(presentationOf.get(viewId) ?? []), presentation.id]);
 		}
 	}
@@ -581,7 +582,9 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 		? null
 		: experience.stops.find((stop) => stop.id === selection.stopId) ?? null;
 	const numbered = new Map<string, number>();
-	guidedStop?.views.forEach((view, index) => numbered.set(view.viewId, index + 1));
+	// A Stop's mark is its entry View, numbered 1: one visit, one View.
+	const guidedEntry = guidedStop === null ? null : stopEntryViewId(experience, guidedStop);
+	if (guidedEntry !== null) numbered.set(guidedEntry, 1);
 	const guided = new Set(numbered.keys());
 	const nothingSelected =
 		(selection.presentationId ?? null) === null && (selection.viewId ?? null) === null && selection.stopId == null && selection.path == null;

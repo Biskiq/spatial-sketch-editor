@@ -81,7 +81,7 @@
 								<span class="lr-thumb"><ExperienceSnapshot label={presentation.label} /></span>
 								<span class="lr-text">
 									<span class="row-name">{presentation.label}</span>
-									<span class="row-meta">{plural(presentation.viewIds.length, 'View')}</span>
+									<span class="row-meta">{plural(presentation.views.length, 'View')}</span>
 								</span>
 								<span class="lr-chev"><ShellIcon name="chevronRight" size={13} /></span>
 							</button>

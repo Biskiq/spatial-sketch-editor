@@ -77,7 +77,7 @@ describe('first Guide creation', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: { kind: 'sequence-next', transition: 'cut' }
 			})
 		);
@@ -91,12 +91,12 @@ describe('first Guide creation', () => {
 		// The first Guide is named the Experience's entry Guide explicitly.
 		expect(experience.entryGuideId).toBe('guide-new');
 		expect(experience.guides).toEqual([
-			{ id: 'guide-new', label: 'Main', stopIds: ['stop-new'], entryStopId: 'stop-new' }
+			{ id: 'guide-new', label: 'Main', stopIds: ['stop-new'], entryStopId: 'stop-new', pacing: 'automatic' as const }
 		]);
 		// A fresh Stop identity that enters the Presentation's own Default View and
 		// copies no Camera truth: the Camera unit is untouched.
 		expect(experience.stops).toEqual([
-			{ id: 'stop-new', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } }
+			{ id: 'stop-new', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } }
 		]);
 		expect(installed.units.camera.data.views).toEqual(VIEWS);
 		expect(installed.units.camera.data.connections).toEqual(source.units.camera.data.connections);
@@ -144,9 +144,9 @@ describe('first Guide creation', () => {
 		const experience = experienceOf(installed);
 		expect(experience.entryGuideId).toBe('guide-new');
 		expect(experience.guides).toEqual([
-			{ id: 'guide-new', label: 'Entrance walk', stopIds: ['stop-new'], entryStopId: 'stop-new' }
+			{ id: 'guide-new', label: 'Entrance walk', stopIds: ['stop-new'], entryStopId: 'stop-new', pacing: 'automatic' as const }
 		]);
-		expect(experience.stops[0]).toMatchObject({ id: 'stop-new', presentationId: 'presentation-new', views: [{ viewId: 'view-new' }] });
+		expect(experience.stops[0]).toMatchObject({ id: 'stop-new', presentationId: 'presentation-new', entryViewId: null, staySeconds: 5, invitation: null });
 		expect(installed.units.camera.data.views.map((view) => view.id)).toEqual(['view-1', 'view-2', 'view-new']);
 
 		const undone = await coordinator.undo();
@@ -168,7 +168,7 @@ describe('first Guide creation', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: null
 			})
 		);
@@ -184,7 +184,7 @@ describe('first Guide creation', () => {
 				presentationId: 'presentation-2',
 				label: 'Second',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: null
 			})
 		);
@@ -194,7 +194,7 @@ describe('first Guide creation', () => {
 		expect(coordinator.history().depth).toBe(depth + 1);
 		const experience = experienceOf(coordinator.acceptedSnapshot().domain.source);
 		expect(experience.guides.map((guide) => guide.id)).toEqual(['guide-1-new', 'guide-2-new']);
-		expect(experience.guides[1]).toMatchObject({ label: 'Second', stopIds: ['stop-2-new'], entryStopId: 'stop-2-new' });
+		expect(experience.guides[1]).toMatchObject({ label: 'Second', stopIds: ['stop-2-new'], entryStopId: 'stop-2-new', pacing: 'automatic' as const });
 		expect(experience.entryGuideId).toBe('guide-1-new');
 		// One Undo removes the second Guide and its Stop together.
 		await coordinator.undo();
@@ -214,9 +214,8 @@ describe('first Guide creation', () => {
 						{
 							id: 'presentation-no-default',
 							label: 'Study',
-							viewIds: ['view-1'],
+							views: [],
 							explorable: true,
-							defaultViewId: null,
 							subject: null,
 							text: null
 						}
@@ -233,7 +232,7 @@ describe('first Guide creation', () => {
 				presentationId: 'presentation-no-default',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: null
 			})
 		);
@@ -249,7 +248,7 @@ describe('first Guide creation', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: null
 			})
 		);
@@ -322,7 +321,7 @@ describe('first Guide creation', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: { kind: 'sequence-next', transition: 'cut' }
 			})
 		);
@@ -337,7 +336,7 @@ describe('first Guide creation', () => {
 				guideId: 'guide-new',
 				afterStopId: 'stop-1-new',
 				entryViewId: null,
-				holdSeconds: 2,
+				staySeconds: 2,
 				continuation: { kind: 'end' }
 			})
 		);
@@ -347,7 +346,7 @@ describe('first Guide creation', () => {
 		// Distinct Stop identities over one Presentation: occurrence-local holds and
 		// roles, one authoritative Guide order.
 		expect(experience.stops.map((stop) => stop.id)).toEqual(['stop-1-new', 'stop-2-new']);
-		expect(experience.stops[1]).toMatchObject({ presentationId: 'presentation-1', views: [{ viewId: 'view-1', holdSeconds: 2 }] });
+		expect(experience.stops[1]).toMatchObject({ presentationId: 'presentation-1', entryViewId: null, staySeconds: 2, invitation: null });
 		expect(experience.guides[0]!.stopIds).toEqual(['stop-1-new', 'stop-2-new']);
 		expect(experience.presentations.filter((entry) => entry.id === 'presentation-1')).toHaveLength(1);
 		// Reuse copies no Camera truth and manufactures no Connection.
@@ -374,7 +373,7 @@ describe('first Guide and capture-side refusals', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: { kind: 'stop', stopId: 'stop-missing', transition: 'cut' }
 			})
 		);
@@ -398,7 +397,7 @@ describe('first Guide and capture-side refusals', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: -1,
+				staySeconds: 0.5,
 				continuation: null
 			})
 		);
@@ -418,7 +417,7 @@ describe('first Guide and capture-side refusals', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: null
 			})
 		);
@@ -455,7 +454,7 @@ describe('first Guide and capture-side refusals', () => {
 				presentationId: 'presentation-1',
 				label: 'Main',
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: null
 			})
 		);

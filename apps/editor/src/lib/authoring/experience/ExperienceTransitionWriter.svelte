@@ -14,8 +14,9 @@
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import ExperiencePathMovement from './ExperiencePathMovement.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
-	import { stopEntryViewId, stopExitViewId } from './experience-model';
+	import { stopEntryViewId as entryOf, stopExitViewId as exitOf } from './experience-model';
 	import { experienceHomes } from './experience-homes';
+	import { occurrenceLabel } from './experience-paths';
 
 
 	let {
@@ -91,6 +92,24 @@
 					? BUSY_REASON
 					: null
 	);
+
+	const stopEntryViewId = (target: ExperienceStop): string =>
+		(controller?.current == null ? null : entryOf(controller.current, target)) ?? '';
+	const stopExitViewId = (target: ExperienceStop): string =>
+		(controller?.current == null ? null : exitOf(controller.current, target)) ?? '';
+
+	/** Where Next goes from this Stop: the Guide's next Stop, a chosen Stop, or the End. */
+	const nextValue = $derived(
+		continuation === null || !continuation.explicit
+			? 'next'
+			: continuation.kind === 'end'
+				? 'end'
+				: `stop:${continuation.stopId}`
+	);
+	function chooseNext(value: string): void {
+		if (controller === null || stop === null) return;
+		void controller.setContinuation(stop.id, value === 'next' ? 'next' : value === 'end' ? 'end' : { stopId: value.slice(5) });
+	}
 
 	function viewLabelOf(target: ExperienceStop, viewId: string): string {
 		const view = controller?.viewsOf.get(target.presentationId)?.find((entry) => entry.id === viewId);
@@ -190,10 +209,25 @@
 			{/if}
 		</section>
 
-		{#if sharedCount > 0}
+		{#if !isEnd && continuation !== null}
+			<label class="next-to">
+				<span>Next goes to</span>
+				<select value={nextValue} disabled={controller.busy} onchange={(event) => chooseNext((event.currentTarget as HTMLSelectElement).value)}>
+					<option value="next">The next Stop in the Guide</option>
+					{#each (controller.current?.stops ?? []).filter((entry) => entry.id !== stop.id) as target (target.id)}
+						<option value={`stop:${target.id}`}>{placeOf(target) > 0 ? `Stop ${placeOf(target)} · ` : ''}{controller.presentationLabel(target.presentationId)}</option>
+					{/each}
+					<option value="end">End of the tour</option>
+				</select>
+			</label>
+		{/if}
+
+		{#if sharedCount > 0 && path !== null}
 			<div class="meta-row">
-				<span class="chip" title="Other moves that use this same Camera path">
-					Also used by {sharedCount} {sharedCount === 1 ? 'move' : 'moves'}
+				<span class="chip" title="This path's time is one Camera fact: a change reaches each use">
+					×{sharedCount + 1} · Same path in {sharedCount + 1} places, also {path.sharedUses
+						.map((use) => occurrenceLabel(use, controller.guideStops.map((entry) => entry.id)))
+						.join(', ')}: a change reaches each.
 				</span>
 			</div>
 		{/if}
@@ -235,6 +269,21 @@
 {/if}
 
 <style>
+	.next-to {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 12px;
+		font-size: 12px;
+	}
+	.next-to select {
+		flex: 1;
+		min-height: 28px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 7px;
+		background: var(--shell-card, #fff);
+		font: inherit;
+	}
 	.writer {
 		display: flex;
 		flex-direction: column;

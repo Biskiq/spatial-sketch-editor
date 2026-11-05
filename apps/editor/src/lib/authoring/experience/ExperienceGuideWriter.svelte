@@ -94,6 +94,36 @@
 			</button>
 		</div>
 
+		<section class="sec" aria-labelledby="guide-pacing-title" data-guide-pacing>
+			<h3 class="sec-title" id="guide-pacing-title">Pacing</h3>
+			<div class="pacing" role="radiogroup" aria-labelledby="guide-pacing-title">
+				<button
+					type="button"
+					role="radio"
+					aria-checked={guide.pacing === 'automatic'}
+					disabled={controller.busy}
+					onclick={() => guide !== null && void controller.setGuidePacing(guide.id, 'automatic')}
+				>
+					<b>Automatic</b>
+					<small>Each Stop stays for its time, then the tour plays on.</small>
+				</button>
+				<button
+					type="button"
+					role="radio"
+					aria-checked={guide.pacing === 'manual'}
+					disabled={controller.busy}
+					onclick={() => guide !== null && void controller.setGuidePacing(guide.id, 'manual')}
+				>
+					<b>Manual</b>
+					<small>Each Stop waits until the visitor presses Next.</small>
+				</button>
+			</div>
+			<p class="foot-note">
+				{#if guideSeconds !== null}Length {formatGuideTime(guideSeconds)}{guide.pacing === 'manual' ? ` + ${plural(stopCount, 'wait')}` : ''}. {/if}Transitions
+				play in both. Stops keep their times while Manual is on, so switching back restores them.
+			</p>
+		</section>
+
 		<section class="sec" aria-label="One museum, two ways in">
 			<h3 class="sec-title">One museum, two ways in</h3>
 			<div class="modes">
@@ -102,7 +132,7 @@
 					<span class="mode-text">
 						<span class="mode-name">Guided tour</span>
 						<span class="mode-desc"
-							>{plural(stopCount, 'Stop')}. Visitors press Next between Stops.</span
+							>{plural(stopCount, 'Stop')} · {guide.pacing === 'manual' ? 'at the visitor’s pace' : 'plays on by itself'}. Explore is always in the bar.</span
 						>
 					</span>
 				</button>
@@ -146,6 +176,31 @@
 {/if}
 
 <style>
+	.pacing {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 6px;
+	}
+	.pacing button {
+		display: grid;
+		gap: 2px;
+		padding: 8px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 8px;
+		background: var(--shell-card, #fff);
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.pacing button[aria-checked='true'] {
+		border-color: var(--shell-forest-raised, #22503c);
+		box-shadow: inset 0 0 0 1px var(--shell-forest-raised, #22503c);
+	}
+	.pacing small {
+		color: var(--shell-ink-3, #6b736d);
+		font-size: 11px;
+	}
 	.welcome {
 		display: grid;
 		width: 100%;

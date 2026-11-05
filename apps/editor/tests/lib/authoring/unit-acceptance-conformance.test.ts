@@ -99,9 +99,8 @@ async function envelope(): Promise<ProjectEnvelope> {
 							{
 								id: 'presentation-entry',
 								label: 'Entry',
-								viewIds: ['view-entry'],
+								views: [{ viewId: 'view-entry' }],
 								explorable: true,
-								defaultViewId: 'view-entry',
 								subject: null,
 								text: null
 							}
@@ -112,13 +111,12 @@ async function envelope(): Promise<ProjectEnvelope> {
 					stops: [
 						{
 							id: 'stop-entry',
-							views: [{ viewId: 'view-entry' }],
+							entryViewId: null, staySeconds: 5, invitation: null,
 							presentationId: 'presentation-entry',
 							continuation: { kind: 'sequence-next', transition: 'cut' }
 						}
 					],
-							guides: [{ id: 'guide-main', label: 'Guide', stopIds: ['stop-entry'], entryStopId: 'stop-entry' }],
-							gates: [],
+							guides: [{ id: 'guide-main', label: 'Guide', stopIds: ['stop-entry'], entryStopId: 'stop-entry', pacing: 'automatic' as const }],
 							detours: []
 						}
 					]
@@ -1011,15 +1009,13 @@ describe('R217.S27 — Guided Views and visitor reach in the shared profile', ()
 			...next('reach'), presentationId: 'presentation-entry', explorable: false
 		}))).toMatchObject({ kind: 'accepted' });
 
-		const input = () => ({ ...next('sequence'), stopId: 'stop-entry' });
-		for (const [views, reason] of [
-			[[], 'stop-keeps-a-view'],
-			[[{ viewId: 'view-entry' }, { viewId: 'view-entry' }], 'invalid-sequence'],
-			[[{ viewId: 'view-foreign' }], 'invalid-sequence'],
-			[[{ viewId: 'view-entry', transition: 'cut' }], 'invalid-sequence'],
-			[[{ viewId: 'view-entry', holdSeconds: -1 }], 'invalid-payload']
+		const input = () => ({ ...next('visit'), stopId: 'stop-entry' });
+		for (const [fields, reason] of [
+			[{ staySeconds: 0.5 }, 'invalid-payload'],
+			[{ entryViewId: 'view-foreign' }, 'invalid-payload'],
+			[{ invitation: { prompt: 'x'.repeat(81) } }, 'invalid-payload']
 		] as const) {
-			expect(await coordinator.accept(stopUpdateIntent({ ...input(), views }))).toMatchObject({ kind: 'rejected', reason });
+			expect(await coordinator.accept(stopUpdateIntent({ ...input(), ...fields }))).toMatchObject({ kind: 'rejected', reason });
 		}
 		expect(await coordinator.accept(stopUpdateIntent(input()))).toMatchObject({ kind: 'rejected', reason: 'invalid-payload' });
 		expect(await coordinator.accept(experienceUpdateIntent({
@@ -1027,17 +1023,17 @@ describe('R217.S27 — Guided Views and visitor reach in the shared profile', ()
 		}))).toMatchObject({
 			kind: 'rejected', reason: 'invalid-payload', diagnostics: [expect.objectContaining({ code: 'text-too-long' })]
 		});
-		const views = [{ viewId: 'view-entry', holdSeconds: 2 }];
 		const before = coordinator.history().depth;
-		expect(await coordinator.accept(stopUpdateIntent({ ...input(), views }))).toMatchObject({ kind: 'accepted' });
+		const staySeconds = experience().stops[0]!.staySeconds;
+		expect(await coordinator.accept(stopUpdateIntent({ ...input(), staySeconds: 7, invitation: { prompt: null } }))).toMatchObject({ kind: 'accepted' });
 		expect(coordinator.history().depth).toBe(before + 1);
 		expect(experience()).toMatchObject({
 			welcome: { kind: 'plain', body: 'Welcome' },
-			presentations: [{ explorable: false, defaultViewId: 'view-entry' }],
-			stops: [{ views }]
+			presentations: [{ explorable: false }],
+			stops: [{ staySeconds: 7, invitation: { prompt: null } }]
 		});
 		expect(coordinator.acceptedSnapshot().domain.source.units.camera).toEqual(source.units.camera);
 		expect(await coordinator.undo()).toMatchObject({ kind: 'restored' });
-		expect(experience().stops[0]!.views).toEqual([{ viewId: 'view-entry' }]);
+		expect(experience().stops[0]!).toMatchObject({ staySeconds, invitation: null });
 	});
 });

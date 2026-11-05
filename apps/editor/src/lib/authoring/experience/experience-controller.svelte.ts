@@ -26,7 +26,7 @@ import { perfMark } from '$lib/platform/perf-marks';
 import type { StageAdapterServices } from '../stage/stage-adapter-host';
 import { stageEnvelope } from '../stage/unit-stage-source';
 import {
-	EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS,
+	EXPERIENCE_STAY_MIN_SECONDS,
 	lowerExperienceProgram,
 	planGuideRemoval,
 	planPresentationRemoval,
@@ -39,7 +39,9 @@ import type {
 	Experience,
 	ExperienceContinuation,
 	ExperienceGuide,
-	ExperienceGuidedView,
+	ExperienceGuidePacing,
+	ExperienceInvitation,
+	ExperiencePresentationView,
 	ExperiencePresentation,
 	ExperienceStop,
 	ProjectEnvelope
@@ -208,12 +210,18 @@ export type ExperienceController = {
 	/** A guide-order permutation of the active Guide. */
 	moveStopTo(stopId: string, index: number): Promise<boolean>;
 	moveStop(stopId: string, direction: -1 | 1): Promise<boolean>;
-	setStopViews(stopId: string, views: readonly ExperienceGuidedView[]): Promise<boolean>;
-	includeView(stopId: string, viewId: string): Promise<boolean>;
-	leaveOutView(stopId: string, viewId: string): Promise<boolean>;
-	setViewHold(stopId: string, viewId: string, holdSeconds: number | null): Promise<boolean>;
-	moveGuidedViewTo(stopId: string, viewId: string, index: number): Promise<boolean>;
-	moveGuidedView(stopId: string, viewId: string, direction: -1 | 1): Promise<boolean>;
+	/** Guide Card · Pacing (sheet §31, §32). */
+	setGuidePacing(guideId: string, pacing: ExperienceGuidePacing): Promise<boolean>;
+	/** Stop Card · Enter at: a View of its Presentation; `null` follows the Default. */
+	setStopEntry(stopId: string, viewId: string | null): Promise<boolean>;
+	/** Stop Card · Stay: at least 1 s; Manual keeps it unused. */
+	setStopStay(stopId: string, seconds: number): Promise<boolean>;
+	/** Stop Card · Invite to explore: `null` is off. */
+	setStopInvitation(stopId: string, invitation: { readonly prompt: string | null } | null): Promise<boolean>;
+	/** Presentation Card spine: Cut or Travel into View `toIndex`, or a range through `throughIndex`, as one Undo. */
+	setPresentationStep(presentationId: string, toIndex: number, kind: 'cut' | 'travel', throughIndex?: number): Promise<boolean>;
+	/** Presentation Card reorder: View 1 is the Default. */
+	movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean>;
 	setExplorable(presentationId: string, explorable: boolean): Promise<boolean>;
 	setWelcome(body: string): Promise<boolean>;
 	/** Where Next goes. Keeps the Stop's Cut/Travel choice. */
@@ -478,7 +486,7 @@ export function createExperienceController(
 		for (const presentation of current?.presentations ?? []) {
 			byPresentation.set(
 				presentation.id,
-				presentation.viewIds.map((viewId) => ({
+				presentation.views.map(({ viewId }) => ({
 					id: viewId,
 					label: views.find((view) => view.id === viewId)?.label ?? viewId
 				}))
@@ -654,17 +662,16 @@ export function createExperienceController(
 
 	/**
 	 * Dock Capture (D1, D2). Into the visibly selected Presentation (or the one a selected
-	 * View belongs to) when there is one: the new View is appended and the Presentation's
-	 * Default is sent back unchanged, because planning applies `view` (which makes the new
-	 * View the Default) and then `defaultViewId`. A Presentation with no Default takes the
-	 * new View as its Default, and the message says so. Otherwise a new standpoint
-	 * Presentation with no subject and no Stop.
+	 * View belongs to) when there is one: the new View is appended, joined by a Cut, and
+	 * the Default (View 1) is unchanged. A Presentation with no View takes it as its
+	 * Default, and the message says so. Otherwise a new standpoint Presentation with no
+	 * subject and no Stop.
 	 */
 	async function captureView(view: CapturedViewPose): Promise<boolean> {
 		const target = selectedPresentation;
 		if (current === null || target === null) return captureNewPresentation(null, null, view);
 		const experience = current;
-		const keptDefault = target.defaultViewId;
+		const hadDefault = target.views.length > 0;
 		const accepted = await run(() =>
 			presentationUpdateIntent({
 				envelope: snapshot,
@@ -672,11 +679,10 @@ export function createExperienceController(
 				ids: { operation: newId(), view: newId() },
 				experienceId: experience.id,
 				presentationId: target.id,
-				view,
-				...(keptDefault === null ? {} : { defaultViewId: keptDefault })
+				view
 			})
 		);
-		if (accepted && keptDefault === null) {
+		if (accepted && !hadDefault) {
 			say(`${target.label} had no Default View, so this View is now its Default.`);
 		}
 		return accepted;
@@ -714,7 +720,6 @@ export function createExperienceController(
 		const target = selectedPresentation;
 		if (current !== null && target !== null) {
 			const experience = current;
-			const keptDefault = target.defaultViewId;
 			const accepted = await run(
 				() =>
 					presentationUpdateIntent({
@@ -723,8 +728,7 @@ export function createExperienceController(
 						ids: { operation: newId(), view: viewId },
 						experienceId: experience.id,
 						presentationId: target.id,
-						view,
-						...(keptDefault === null ? {} : { defaultViewId: keptDefault })
+						view
 					}),
 				() => ''
 			);
@@ -854,7 +858,7 @@ export function createExperienceController(
 					presentationId,
 					label: guideLabel,
 					entryViewId: null,
-					holdSeconds: null,
+					staySeconds: null,
 					continuation: { kind: 'sequence-next', transition: 'cut' }
 				})
 			);
@@ -884,7 +888,7 @@ export function createExperienceController(
 				guideId: guide.id,
 				afterStopId,
 				entryViewId: null,
-				holdSeconds: null,
+				staySeconds: null,
 				continuation: { kind: 'sequence-next', transition: 'cut' }
 			})
 		);
@@ -935,7 +939,9 @@ export function createExperienceController(
 	async function updateStop(
 		stopId: string,
 		fields: {
-			readonly views?: readonly ExperienceGuidedView[];
+			readonly entryViewId?: string | null;
+			readonly staySeconds?: number;
+			readonly invitation?: ExperienceInvitation | null;
 			readonly continuation?: ExperienceContinuation | null;
 			readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
 		}
@@ -957,60 +963,159 @@ export function createExperienceController(
 		);
 	}
 
-	const setStopViews = (stopId: string, views: readonly ExperienceGuidedView[]) => updateStop(stopId, { views });
-	const guidedViews = (stopId: string) => current?.stops.find((entry) => entry.id === stopId)?.views;
+	/* --- One Card field per setting (sheet §32) ------------------------------- */
 
-	/** A View moved into the entry position no longer has an incoming step. */
-	function withoutEntryTransition(views: readonly ExperienceGuidedView[]): readonly ExperienceGuidedView[] {
-		const [first, ...rest] = views;
-		if (first?.transition === undefined) return views;
-		const { transition: _transition, ...entry } = first;
-		return [entry, ...rest];
+	/** Guide Card · Pacing: Automatic plays on after each stay; Manual waits for Next. */
+	async function setGuidePacing(guideId: string, pacing: ExperienceGuidePacing): Promise<boolean> {
+		if (current === null) return false;
+		const experience = current;
+		const guide = experience.guides.find((entry) => entry.id === guideId);
+		if (guide === undefined || guide.pacing === pacing) return false;
+		return run(
+			() =>
+				guideUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					experienceId: experience.id,
+					guideId,
+					pacing
+				}),
+			() =>
+				pacing === 'manual'
+					? 'Manual: every Stop now waits for Next. Each Stop keeps its time, unused, for switching back.'
+					: 'Automatic: each Stop stays for its time, then the tour moves on by itself.'
+		);
 	}
 
-	async function includeView(stopId: string, viewId: string): Promise<boolean> {
-		const views = guidedViews(stopId);
-		if (views === undefined || views.some((view) => view.viewId === viewId)) return false;
-		return setStopViews(stopId, [...views, { viewId, holdSeconds: EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS }]);
+	/** Stop Card · Enter at: one of its Presentation's Views; the Default follows View 1. */
+	async function setStopEntry(stopId: string, viewId: string | null): Promise<boolean> {
+		const stop = current?.stops.find((entry) => entry.id === stopId);
+		const presentation = current?.presentations.find((entry) => entry.id === stop?.presentationId);
+		if (stop === undefined || presentation === undefined) return false;
+		const entry = viewId === null || viewId === presentation.views[0]?.viewId ? null : viewId;
+		if (entry === stop.entryViewId) return false;
+		if (entry !== null && !presentation.views.some((view) => view.viewId === entry)) return false;
+		return updateStop(stopId, { entryViewId: entry });
 	}
 
-	async function leaveOutView(stopId: string, viewId: string): Promise<boolean> {
-		const views = guidedViews(stopId);
-		if (views === undefined || !views.some((view) => view.viewId === viewId)) return false;
-		if (views.length === 1) {
-			say('A Stop shows at least one View');
+	/** Stop Card · Stay: finite seconds, at least 1 s. */
+	async function setStopStay(stopId: string, seconds: number): Promise<boolean> {
+		const stop = current?.stops.find((entry) => entry.id === stopId);
+		if (stop === undefined) return false;
+		if (!Number.isFinite(seconds) || seconds < EXPERIENCE_STAY_MIN_SECONDS) {
+			say(`A stay is at least ${EXPERIENCE_STAY_MIN_SECONDS} s.`);
 			return false;
 		}
-		return setStopViews(stopId, withoutEntryTransition(views.filter((view) => view.viewId !== viewId)));
+		const rounded = Math.round(seconds * 2) / 2;
+		if (rounded === stop.staySeconds) return false;
+		return updateStop(stopId, { staySeconds: rounded });
 	}
 
-	async function setViewHold(stopId: string, viewId: string, holdSeconds: number | null): Promise<boolean> {
-		if (holdSeconds !== null && (!Number.isFinite(holdSeconds) || holdSeconds < 0)) {
-			say('A hold is a finite number of seconds, or blank for none.');
+	/** Stop Card · Invite to explore: `null` is off; an empty prompt is the default wording. */
+	async function setStopInvitation(stopId: string, invitation: { readonly prompt: string | null } | null): Promise<boolean> {
+		const stop = current?.stops.find((entry) => entry.id === stopId);
+		if (stop === undefined) return false;
+		const normalized = invitation === null
+			? null
+			: { prompt: invitation.prompt === null || invitation.prompt.trim() === '' ? null : invitation.prompt.trim() };
+		if (JSON.stringify(normalized) === JSON.stringify(stop.invitation)) return false;
+		return updateStop(stopId, { invitation: normalized });
+	}
+
+	/** Write one Presentation's whole View list (order and steps) as one accepted change. */
+	async function writePresentationViews(
+		presentationId: string,
+		views: readonly ExperiencePresentationView[],
+		message: () => string = () => ''
+	): Promise<boolean> {
+		if (current === null) return false;
+		const experience = current;
+		const presentation = experience.presentations.find((entry) => entry.id === presentationId);
+		if (presentation === undefined) return false;
+		const normalized = views.map((view, index) =>
+			index === 0
+				? { viewId: view.viewId }
+				: { viewId: view.viewId, transition: view.transition ?? ('cut' as const) }
+		);
+		if (JSON.stringify(normalized) === JSON.stringify(presentation.views.map((view, index) => (index === 0 ? { viewId: view.viewId } : { viewId: view.viewId, transition: view.transition ?? 'cut' })))) {
 			return false;
 		}
-		const views = guidedViews(stopId);
-		const selected = views?.find((view) => view.viewId === viewId);
-		if (views === undefined || selected === undefined || selected.holdSeconds === (holdSeconds ?? undefined)) return false;
-		const { holdSeconds: _oldHold, ...view } = selected;
-		const updated = holdSeconds === null ? view : { ...view, holdSeconds };
-		return setStopViews(stopId, views.map((entry) => entry.viewId === viewId ? updated : entry));
+		// A new Travel adds its straight path in the same change (§5), one Undo.
+		const connections = snapshot.units.camera.data.connections;
+		const travelPaths = normalized.flatMap((view, index) => {
+			if (index === 0 || view.transition !== 'travel') return [];
+			const from = normalized[index - 1]!.viewId;
+			const joined = connections.some(
+				(connection) =>
+					(connection.fromNodeId === from && connection.toNodeId === view.viewId) ||
+					(connection.fromNodeId === view.viewId && connection.toNodeId === from)
+			);
+			return joined ? [] : [{ fromViewId: from, toViewId: view.viewId }];
+		});
+		const added = presentation.views.flatMap((view, index) => (index > 0 && view.transition === 'travel' ? [] : [view.viewId]));
+		void added;
+		return run(
+			() =>
+				presentationUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId(), connections: travelPaths.map(() => newId()) },
+					experienceId: experience.id,
+					presentationId,
+					views: normalized,
+					travelPaths
+				}),
+			message
+		);
 	}
 
-	async function moveGuidedViewTo(stopId: string, viewId: string, index: number): Promise<boolean> {
-		const views = guidedViews(stopId);
-		if (views === undefined || !Number.isInteger(index) || index < 0 || index >= views.length) return false;
-		const from = views.findIndex((view) => view.viewId === viewId);
+	/**
+	 * Presentation Card · the spine: set the step into View `toIndex` (one or a
+	 * range `toIndex..throughIndex`) to Cut or Travel. A new Travel with no path
+	 * adds the straight one in the same Undo.
+	 */
+	async function setPresentationStep(
+		presentationId: string,
+		toIndex: number,
+		kind: 'cut' | 'travel',
+		throughIndex: number = toIndex
+	): Promise<boolean> {
+		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
+		if (presentation === undefined) return false;
+		const from = Math.max(1, Math.min(toIndex, throughIndex));
+		const to = Math.min(presentation.views.length - 1, Math.max(toIndex, throughIndex));
+		if (from > to) return false;
+		const views = presentation.views.map((view, index) => (index >= from && index <= to ? { viewId: view.viewId, transition: kind } : view));
+		const count = to - from + 1;
+		return writePresentationViews(presentationId, views, () =>
+			count > 1
+				? `${count} connections are ${kind === 'travel' ? 'Travel' : 'Cut'}. One Undo.`
+				: `${kind === 'travel' ? 'Travel' : 'Cut'}. Exploring adds no Guide time.`
+		);
+	}
+
+	/**
+	 * Presentation Card · reorder (drag, or Alt+↑↓). Each View keeps its own
+	 * Cut/Travel into it; moving a View to the top makes it the Default, and Stops
+	 * without their own entry follow it.
+	 */
+	async function movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean> {
+		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
+		if (presentation === undefined || !Number.isInteger(index) || index < 0 || index >= presentation.views.length) return false;
+		const from = presentation.views.findIndex((view) => view.viewId === viewId);
 		if (from === -1 || from === index) return false;
-		const order = [...views];
-		const [view] = order.splice(from, 1);
-		order.splice(index, 0, view!);
-		return setStopViews(stopId, withoutEntryTransition(order));
-	}
-
-	async function moveGuidedView(stopId: string, viewId: string, direction: -1 | 1): Promise<boolean> {
-		const index = guidedViews(stopId)?.findIndex((view) => view.viewId === viewId) ?? -1;
-		return index >= 0 && moveGuidedViewTo(stopId, viewId, index + direction);
+		const order = [...presentation.views];
+		const [moved] = order.splice(from, 1);
+		order.splice(index, 0, moved!);
+		const label = (id: string) => snapshot.units.camera.data.views.find((view) => view.id === id)?.label ?? id;
+		return writePresentationViews(presentationId, order, () =>
+			index === 0
+				? `${label(viewId)} is now View 1, the Default. Stops without their own entry follow it.`
+				: from === 0
+					? `${label(viewId)} moves to ${index + 1}; ${label(order[0]!.viewId)} becomes the Default.`
+					: `${label(viewId)} moves to ${index + 1}. New neighbours keep their Cut or Travel.`
+		);
 	}
 
 	/** The Cut/Travel choice a continuation carries; End carries none. */
@@ -1122,19 +1227,9 @@ export function createExperienceController(
 		);
 	}
 
+	/** Make default moves the View to the top of the list: View 1 is the Default. */
 	async function setDefaultView(presentationId: string, viewId: string): Promise<void> {
-		if (current === null) return;
-		const experience = current;
-		await run(() =>
-			presentationUpdateIntent({
-				envelope: snapshot,
-				revision: revision(),
-				ids: { operation: newId() },
-				experienceId: experience.id,
-				presentationId,
-				defaultViewId: viewId
-			})
-		);
+		await movePresentationView(presentationId, viewId, 0);
 	}
 
 	/* --- R217.S26 structure ------------------------------------------------------ */
@@ -1252,7 +1347,7 @@ export function createExperienceController(
 					guideId,
 					afterStopId: null,
 					entryViewId: null,
-					holdSeconds: null,
+					staySeconds: null,
 					continuation: { kind: 'sequence-next', transition: 'cut' }
 				}),
 			() => succeed(`Added as Stop ${guide.stopIds.length + 1} of ${guide.label}.`)
@@ -1284,7 +1379,7 @@ export function createExperienceController(
 					presentationId,
 					label: trimmed,
 					entryViewId: null,
-					holdSeconds: null,
+					staySeconds: null,
 					continuation: { kind: 'sequence-next', transition: 'cut' }
 				}),
 			() => succeed(`${trimmed} created with ${presentationLabel(presentationId)} as Stop 1.`)
@@ -1297,39 +1392,23 @@ export function createExperienceController(
 	}
 
 	function alsoIn(viewId: string, presentationId: string): readonly ExperiencePresentation[] {
-		return current?.presentations.filter((entry) => entry.id !== presentationId && entry.viewIds.includes(viewId)) ?? [];
+		return current?.presentations.filter((entry) => entry.id !== presentationId && entry.views.some((view) => view.viewId === viewId)) ?? [];
 	}
 
 	async function moveViewTo(presentationId: string, viewId: string, index: number): Promise<boolean> {
-		const experience = current;
-		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
-		if (experience == null || presentation === undefined) return false;
-		if (!presentation.viewIds.includes(viewId)) return false;
-		const order = presentation.viewIds.filter((entry) => entry !== viewId);
-		const to = Math.max(0, Math.min(Math.trunc(index), order.length));
-		order.splice(to, 0, viewId);
-		if (order.every((entry, position) => entry === presentation.viewIds[position])) return false;
-		return run(
-			() =>
-				presentationUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					presentationId,
-					viewIds: order
-				}),
-			() => ''
-		);
+		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
+		if (presentation === undefined) return false;
+		const to = Math.max(0, Math.min(Math.trunc(index), presentation.views.length - 1));
+		return movePresentationView(presentationId, viewId, to);
 	}
 
 	async function moveView(presentationId: string, viewId: string, direction: -1 | 1): Promise<boolean> {
 		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
 		if (presentation === undefined) return false;
-		const at = presentation.viewIds.indexOf(viewId);
+		const at = presentation.views.findIndex((view) => view.viewId === viewId);
 		const to = at + direction;
-		if (at === -1 || to < 0 || to >= presentation.viewIds.length) return false;
-		return moveViewTo(presentationId, viewId, to);
+		if (at === -1 || to < 0 || to >= presentation.views.length) return false;
+		return movePresentationView(presentationId, viewId, to);
 	}
 
 	/** Names as the creator reads them: Stops by their position in the context Guide. */
@@ -1372,33 +1451,18 @@ export function createExperienceController(
 	function removalPreview(target: ExperienceRemovalTarget): ExperienceRemovalPreview {
 		const plan = planOf(target);
 		if (plan === null) return { kind: 'refused', reason: 'There is no Experience to remove from.' };
-		if (plan.kind === 'refused' && plan.code === 'default-needed' && target.kind === 'view') {
-			const presentation = current?.presentations.find((entry) => entry.id === target.presentationId);
-			const options = (presentation?.viewIds ?? [])
-				.filter((viewId) => viewId !== target.viewId)
-				.map((viewId) => ({ id: viewId, label: names.view(viewId) }));
-			return {
-				kind: 'ready',
-				lines: [
-					`Removes ${names.view(target.viewId)} from ${names.presentation(target.presentationId)}.`,
-					'It is the Default View: choose the new Default.'
-				],
-				chooseDefault: options,
-				runnable: false
-			};
-		}
 		if (plan.kind === 'refused') return { kind: 'refused', reason: plan.reason };
 		const isDefault =
 			target.kind === 'view' &&
-			current?.presentations.find((entry) => entry.id === target.presentationId)?.defaultViewId === target.viewId;
+			current?.presentations.find((entry) => entry.id === target.presentationId)?.views[0]?.viewId === target.viewId;
 		return {
 			kind: 'ready',
 			lines: removalLines(target, plan.consequences, names),
 			chooseDefault:
 				isDefault && target.kind === 'view'
-					? (current?.presentations.find((entry) => entry.id === target.presentationId)?.viewIds ?? [])
-							.filter((viewId) => viewId !== target.viewId)
-							.map((viewId) => ({ id: viewId, label: names.view(viewId) }))
+					? (current?.presentations.find((entry) => entry.id === target.presentationId)?.views ?? [])
+							.filter((view) => view.viewId !== target.viewId)
+							.map((view) => ({ id: view.viewId, label: names.view(view.viewId) }))
 					: null,
 			runnable: true
 		};
@@ -1500,7 +1564,7 @@ export function createExperienceController(
 				const presentation = after.presentations.find((entry) => entry.id === target.presentationId);
 				return presentation === undefined
 					? ''
-					: `${presentation.label} has ${presentation.viewIds.length} ${presentation.viewIds.length === 1 ? 'View' : 'Views'}.`;
+					: `${presentation.label} has ${presentation.views.length} ${presentation.views.length === 1 ? 'View' : 'Views'}.`;
 			}
 		}
 	}
@@ -1514,7 +1578,7 @@ export function createExperienceController(
 				return experience.presentations.some((entry) => entry.id === candidate.presentationId);
 			case 'view':
 				return experience.presentations.some(
-					(entry) => entry.id === candidate.presentationId && entry.viewIds.includes(candidate.viewId)
+					(entry) => entry.id === candidate.presentationId && entry.views.some((view) => view.viewId === candidate.viewId)
 				);
 			case 'stop':
 			case 'transition':
@@ -1867,12 +1931,12 @@ export function createExperienceController(
 		addStop,
 		moveStopTo,
 		moveStop,
-		setStopViews,
-		includeView,
-		leaveOutView,
-		setViewHold,
-		moveGuidedViewTo,
-		moveGuidedView,
+		setGuidePacing,
+		setStopEntry,
+		setStopStay,
+		setStopInvitation,
+		setPresentationStep,
+		movePresentationView,
 		setExplorable,
 		setWelcome,
 		setContinuation,

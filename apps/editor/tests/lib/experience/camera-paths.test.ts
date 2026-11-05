@@ -112,7 +112,7 @@ describe('R217.S29 Camera paths', () => {
 			experience,
 			guide,
 			graph,
-			occurrence: { kind: 'step', stopId: fixture.ids.stopIds[3]!, toViewId: 'x-piano-view-2' }
+			occurrence: { kind: 'step', presentationId: 'x-piano', toViewId: 'x-piano-view-2' }
 		})!;
 		expect(step.state).toBe('ready');
 		expect(step.connectionId).toBe('x-path-step');
@@ -163,13 +163,13 @@ describe('R217.S29 Camera paths', () => {
 		// A host cannot relax or tighten the Camera-unit policy: the projection
 		// forces the named policy after catalogue options.
 		expect(prepareUnitRuntime(project, { connectivity: 'single-component' }).kind).toBe('ready');
-		const read = (value: typeof experience, occurrence: { kind: 'transition'; stopId: string } | { kind: 'step'; stopId: string; toViewId: string }, graph = prepared.graph) =>
+		const read = (value: typeof experience, occurrence: { kind: 'transition'; stopId: string } | { kind: 'step'; presentationId: string; toViewId: string }, graph = prepared.graph) =>
 			readExperiencePath({ experience: value, guide, graph, occurrence });
 		const shared = read(experience, { kind: 'transition', stopId: stopIds[0]! });
 		expect(shared?.state).toBe('ready');
 		expect(shared?.connectionId).toBe('x-path-shared');
 		expect(shared?.direction).toBe('forward');
-		const walled = read(experience, { kind: 'step', stopId: stopIds[1]!, toViewId: 'x-window-path-inside' });
+		const walled = read(experience, { kind: 'step', presentationId: 'x-window', toViewId: 'x-window-path-inside' });
 		expect(walled?.state).toBe('ready');
 		expect(walled?.connectionId).toBe('x-path-door');
 		expect(walled?.direction).toBe('forward');
@@ -214,7 +214,7 @@ describe('R217.S29 Camera paths', () => {
 			experience: reloadedExperience,
 			guide: reloadedGuide,
 			graph: reloaded.graph,
-			occurrence: { kind: 'step', stopId: stopIds[1]!, toViewId: 'x-window-path-inside' }
+			occurrence: { kind: 'step', presentationId: 'x-window', toViewId: 'x-window-path-inside' }
 		})?.connectionId).toBe('x-path-door');
 
 		// A Travel requested across the two components is the existing typed gap;
@@ -251,7 +251,7 @@ describe('R217.S29 Camera paths', () => {
 		const { fixture, graph, geometry, coordinator, accept, op } = await pathsFixture();
 		const experience = fixture.project.units.experience.data.experiences[0]!;
 		const guide = experience.guides[0]!;
-		const occurrence = { kind: 'step', stopId: fixture.ids.stopIds[1]!, toViewId: 'x-window-path-inside' } as const;
+		const occurrence = { kind: 'step', presentationId: 'x-window', toViewId: 'x-window-path-inside' } as const;
 		const before = readExperiencePath({ experience, guide, graph, geometry, occurrence });
 		expect(before?.state).toBe('ready');
 		expect(before?.connectionId).toBe('x-path-door');
@@ -281,7 +281,7 @@ describe('R217.S29 Camera paths', () => {
 		expect(after?.anchors).toHaveLength(1);
 		// Shared and in-Stop paths survive the walled Travel edit.
 		expect(readExperiencePath({ experience: prepared.envelope.units.experience.data.experiences[0]!, guide: prepared.envelope.units.experience.data.experiences[0]!.guides[0]!, graph: prepared.graph, geometry: prepared.geometry, occurrence: { kind: 'transition', stopId: fixture.ids.stopIds[0]! } })?.connectionId).toBe('x-path-shared');
-		expect(readExperiencePath({ experience: prepared.envelope.units.experience.data.experiences[0]!, guide: prepared.envelope.units.experience.data.experiences[0]!.guides[0]!, graph: prepared.graph, geometry: prepared.geometry, occurrence: { kind: 'step', stopId: fixture.ids.stopIds[3]!, toViewId: 'x-piano-view-2' } })?.connectionId).toBe('x-path-step');
+		expect(readExperiencePath({ experience: prepared.envelope.units.experience.data.experiences[0]!, guide: prepared.envelope.units.experience.data.experiences[0]!.guides[0]!, graph: prepared.graph, geometry: prepared.geometry, occurrence: { kind: 'step', presentationId: 'x-piano', toViewId: 'x-piano-view-2' } })?.connectionId).toBe('x-path-step');
 	});
 
 	it('describes a Cut as cut and a Travel without a connection as a gap', async () => {
@@ -467,7 +467,7 @@ describe('R217.S29 Camera paths', () => {
 			experience,
 			guide,
 			graph,
-			occurrence: { kind: 'step', stopId: fixture.ids.stopIds[3]!, toViewId: 'x-piano-view-2' }
+			occurrence: { kind: 'step', presentationId: 'x-piano', toViewId: 'x-piano-view-2' }
 		})!;
 		// The two Travels share `x-path-shared`; only the selected occurrence is a target.
 		const otherShared = readExperiencePath({
@@ -583,13 +583,15 @@ describe('R217.S29 Camera paths', () => {
 
 		const movement = readFileSync('src/lib/authoring/experience/ExperiencePathMovement.svelte', 'utf8');
 		const stopWriter = readFileSync('src/lib/authoring/experience/ExperienceStopWriter.svelte', 'utf8');
+		const rail = readFileSync('src/lib/authoring/experience/ExperienceViewRail.svelte', 'utf8');
 		const transitionWriter = readFileSync('src/lib/authoring/experience/ExperienceTransitionWriter.svelte', 'utf8');
 		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
 		expect(transitionWriter).toContain('<ExperiencePathMovement');
-		expect(stopWriter).toContain('<ExperiencePathMovement');
+		// §32: a Stop Card edits no connection; explore steps are edited on the rail.
+		expect(stopWriter).not.toContain('<ExperiencePathMovement');
 		expect(movement).toContain('data-path-movement');
 		expect(movement).toMatch(/@media \(pointer: coarse\)[\s\S]*?min-height: 44px/);
-		expect(stopWriter).toMatch(/\.step-kind button,[\s\S]*?min-height: 44px/);
+		expect(rail).toMatch(/@media \(pointer: coarse\)[\s\S]*?min-height: 44px/);
 		expect(guide).toMatch(/@media \(pointer: coarse\)[\s\S]*?width: 44px/);
 	});
 
@@ -601,8 +603,10 @@ describe('R217.S29 Camera paths', () => {
 		const destinationId = fixture.ids.stopIds[4]!;
 		const stop = experience.stops.find((entry) => entry.id === stopId)!;
 		const destination = experience.stops.find((entry) => entry.id === destinationId)!;
-		const fromView = project.units.camera.data.views.find((entry) => entry.id === stop.views.at(-1)!.viewId)!;
-		const toView = project.units.camera.data.views.find((entry) => entry.id === destination.views[0]!.viewId)!;
+		const entryOf = (target: typeof stop) =>
+			target.entryViewId ?? experience.presentations.find((entry) => entry.id === target.presentationId)!.views[0]!.viewId;
+		const fromView = project.units.camera.data.views.find((entry) => entry.id === entryOf(stop))!;
+		const toView = project.units.camera.data.views.find((entry) => entry.id === entryOf(destination))!;
 
 		const travelled = await accept(
 			stopUpdateIntent({
@@ -657,7 +661,10 @@ describe('R217.S29 Camera paths', () => {
 				experienceId: experience.id,
 				stopId: stop.id,
 				continuation: { kind: 'stop', stopId: destination.id, transition: 'travel' },
-				travelPath: { fromViewId: stop.views.at(-1)!.viewId, toViewId: destination.views[0]!.viewId }
+				travelPath: {
+					fromViewId: stop.entryViewId ?? experience.presentations.find((entry) => entry.id === stop.presentationId)!.views[0]!.viewId,
+					toViewId: destination.entryViewId ?? experience.presentations.find((entry) => entry.id === destination.presentationId)!.views[0]!.viewId
+				}
 			})
 		);
 		if (travelled.kind !== 'accepted') throw new Error(JSON.stringify(travelled));

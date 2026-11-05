@@ -47,6 +47,8 @@
 	const hasGuide = $derived((controller?.guides.length ?? 0) > 0);
 	const guide = $derived(controller?.currentGuide ?? null);
 	const stops = $derived(controller?.guideStops ?? []);
+	/** The Guide's pacing (sheet §31): edited on the Guide Card, shown here. */
+	const pacing = $derived((guide ?? controller?.contextGuide)?.pacing ?? 'automatic');
 	const presentations = $derived(current?.presentations ?? []);
 	const busy = $derived(controller?.busy ?? false);
 	const subject = $derived(controller?.subject ?? null);
@@ -259,8 +261,10 @@
 		readonly viewId: string | null;
 		readonly number: number;
 		readonly label: string;
-		readonly viewCount: number;
-		readonly hold: string | null;
+		/** Views to explore beyond the entry (+N on the card). */
+		readonly more: number;
+		/** ✦: the Stop invites exploring. */
+		readonly invites: boolean;
 		readonly again: boolean;
 		/** R217.S26 (E6): the Guide's start Stop carries the *Start* tag. */
 		readonly start: boolean;
@@ -278,10 +282,10 @@
 			const number = index + 1;
 			const label = controller.presentationLabel(stop.presentationId);
 			const again = stops.slice(0, index).some((earlier) => earlier.presentationId === stop.presentationId);
-			const viewId = stop.views[0]?.viewId ?? null;
-			const viewCount = stop.views.length;
-			const finalHold = stop.views.at(-1)?.holdSeconds;
-			const hold = finalHold === undefined ? null : `${finalHold}s`;
+			const presentation = controller.current?.presentations.find((entry) => entry.id === stop.presentationId);
+			const viewId = stop.entryViewId ?? presentation?.views[0]?.viewId ?? null;
+			const more = Math.max(0, (presentation?.views.length ?? 1) - 1);
+			const invites = stop.invitation !== null;
 			const resolved = controller.resolveContinuation(stop.id);
 			const gaps = controller.travelGapsByStop.get(stop.id) ?? [];
 			let connector: Connector | null = null;
@@ -315,8 +319,10 @@
 			const spoken = [`Stop ${number}`, label];
 			if (start) spoken.push('the tour starts here');
 			if (again) spoken.push('again');
-			spoken.push(`${viewCount} ${viewCount === 1 ? 'view' : 'views'}`);
-			return { stopId: stop.id, viewId, number, label, viewCount, hold, again, start, name: spoken.join(', '), connector };
+			if (invites) spoken.push('invites exploring');
+			if (more > 0) spoken.push(`${more} more ${more === 1 ? 'view' : 'views'} to explore`);
+			if (pacing === 'manual') spoken.push('waits for Next');
+			return { stopId: stop.id, viewId, number, label, more, invites, again, start, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -808,6 +814,16 @@
 					<span class="guide-name plain">Guide</span>
 				{/if}
 				<span class="count">{stops.length} {stops.length === 1 ? 'stop' : 'stops'}</span>
+				{#if guide !== null}
+					<!-- §32: the pacing is shown here and edited on the Guide Card. -->
+					<button
+						type="button"
+						class="pacing-label"
+						data-pacing-label={pacing}
+						title="Pacing is set on the Guide Card"
+						onclick={selectGuide}
+					>{pacing === 'manual' ? 'Manual · waits for Next' : 'Automatic'} ›</button>
+				{/if}
 			{:else}
 				<input
 					class="name-input"
@@ -956,11 +972,13 @@
 									<span class="stop-meta">
 										{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
 										{#if card.again}<em>again</em><span aria-hidden="true"> · </span>{/if}
-										{#if stopTimes.get(card.stopId) !== undefined}
+										{#if pacing === 'manual'}
+											<span class="stop-time wait-cap" data-stop-time title="Waits for Next">⏸</span>
+										{:else if stopTimes.get(card.stopId) !== undefined}
 											<span class="stop-time" data-stop-time>{formatGuideTime(stopTimes.get(card.stopId)!.endSeconds - stopTimes.get(card.stopId)!.startSeconds)}</span>
-										{:else}
-											<span>{card.viewCount} {card.viewCount === 1 ? 'view' : 'views'}</span>
 										{/if}
+										{#if card.invites}<span class="badge invite" title="Invites exploring" data-invite-badge>✦</span>{/if}
+										{#if card.more > 0}<span class="badge more" title={`${card.more} more ${card.more === 1 ? 'View' : 'Views'} to explore`}>+{card.more}</span>{/if}
 									</span>
 								</span>
 								<!-- Review round 3 (sheet §25): each Stop card carries its own part of the timeline. -->
@@ -1086,6 +1104,32 @@
 {/if}
 
 <style>
+	.pacing-label {
+		min-height: 24px;
+		padding: 0 8px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 999px;
+		background: none;
+		color: var(--shell-ink-2, #4a524c);
+		font: 500 11px var(--shell-sans, system-ui);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.pacing-label:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.badge {
+		margin-left: 4px;
+		color: var(--shell-ink-3, #6b736d);
+		font-size: 10.5px;
+		font-weight: 600;
+	}
+	.badge.invite {
+		color: var(--shell-gold, #b48a1e);
+	}
+	.wait-cap {
+		color: var(--shell-ink-3, #6b736d);
+	}
 	.status {
 		margin: 0;
 		color: var(--shell-ink-quiet, #9fb2a5);

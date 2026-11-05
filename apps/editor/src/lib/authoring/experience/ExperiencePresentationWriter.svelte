@@ -8,14 +8,17 @@
 	 * action under the Card name; the Information text is committed on blur. It edits through the Experience controller; its
 	 * own state is the Views filter, the text draft and the first-Guide name.
 	 *
-	 * R217.S26: `•••` → Add to Guide ▸ New Guide… asks the new Guide's name here too (E5). The
-	 * View grid reorders by dragging a tile (a gold caret marks the gap) or with Alt ←/→ on a
-	 * focused tile; reordering is refused while the filter is on, and never changes the Default.
+	 * R217.S26: `•••` → Add to Guide ▸ New Guide… asks the new Guide's name here too (E5).
+	 *
+	 * Sheet §32: the View list is the rail (`ExperienceViewRail`) — the one place View
+	 * order, the Default (View 1) and the Cut/Travel steps between neighbours are edited.
+	 * *Listed in Places* is this Card's one switch for free exploration, and *Used by*
+	 * shows which Stops enter elsewhere and which invite.
 	 */
-	import { tick, untrack, type Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
-	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
+	import ExperienceViewRail from './ExperienceViewRail.svelte';
 	import { experienceHomes } from './experience-homes';
 	import type { ExperienceViewChoice } from './experience-controller.svelte';
 
@@ -29,11 +32,6 @@
 		more?: Snippet<[Snippet?]>;
 	} = $props();
 
-	/** Past this many Views the grid offers a filter and the tour chips. */
-	const FILTER_THRESHOLD = 12;
-	/** Past this many Views the grid is three columns instead of two. */
-	const THREE_COLUMN_THRESHOLD = 8;
-
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
 	const presentation = $derived(controller?.selectedPresentation ?? null);
@@ -42,41 +40,17 @@
 	);
 	const selectedViewId = $derived(controller?.selectedView?.id ?? null);
 
-	/** The Stops that guide each View of this Presentation, in the active Guide. */
-	const stopsByView = $derived(
-		new Map(views.map((view) => [view.id, controller?.viewStops(view.id) ?? []] as const))
-	);
-	function onTour(viewId: string): boolean {
-		return (stopsByView.get(viewId)?.length ?? 0) > 0;
-	}
 	/** Stops of this Presentation in Guide order. A shared View can appear elsewhere. */
 	const tourStops = $derived((controller?.guideStops ?? []).flatMap((stop, index) =>
-		stop.presentationId === presentation?.id ? [{ stopId: stop.id, position: index + 1 }] : []
+		stop.presentationId === presentation?.id
+			? [{
+					stopId: stop.id,
+					position: index + 1,
+					entersAt: stop.entryViewId === null ? null : (views.find((view) => view.id === stop.entryViewId)?.label ?? null),
+					invites: stop.invitation !== null
+				}]
+			: []
 	));
-
-	/** Local filter for a long grid: a name search and the two tour chips (both on shows both). */
-	let filterText = $state('');
-	let onTourChip = $state(false);
-	let freeChip = $state(false);
-	const filterVisible = $derived(views.length > FILTER_THRESHOLD);
-	const columns = $derived(views.length > THREE_COLUMN_THRESHOLD ? 3 : 2);
-	const shownViews = $derived.by(() => {
-		if (!filterVisible) return views;
-		const needle = filterText.trim().toLowerCase();
-		return views.filter((view) => {
-			if (needle !== '' && !view.label.toLowerCase().includes(needle)) return false;
-			if (!onTourChip && !freeChip) return true;
-			return (onTourChip && onTour(view.id)) || (freeChip && presentation?.explorable && !onTour(view.id));
-		});
-	});
-	$effect(() => {
-		void presentation?.id;
-		untrack(() => {
-			filterText = '';
-			onTourChip = false;
-			freeChip = false;
-		});
-	});
 
 	/** The Information text draft; committed on blur only when it differs from the stored text. */
 	let textDraft = $state('');
@@ -129,58 +103,6 @@
 		else void controller.addStop(presentation.id);
 	}
 
-	/* ---- View order (R217.S26) ---- */
-	const VIEW_MIME = 'application/x-biskiq-view';
-	const filterOn = $derived(filterVisible && (filterText.trim() !== '' || onTourChip || freeChip));
-	/** The tile a drag is over, and which side of it the gold caret stands on. */
-	let dropAt = $state<{ readonly viewId: string; readonly after: boolean } | null>(null);
-	let draggingViewId = $state<string | null>(null);
-	let gridEl = $state<HTMLDivElement | null>(null);
-	async function refocusTile(viewId: string): Promise<void> {
-		await tick();
-		gridEl?.querySelector<HTMLElement>(`[data-view-tile="${CSS.escape(viewId)}"]`)?.focus();
-	}
-	function onTileKeydown(event: KeyboardEvent, viewId: string): void {
-		if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
-		// The tile claims Alt ←/→ so the Card's Back does not also run.
-		event.preventDefault();
-		event.stopPropagation();
-		if (controller === null || presentation === null || controller.busy || filterOn) return;
-		const presentationId = presentation.id;
-		void controller.moveView(presentationId, viewId, event.key === 'ArrowLeft' ? -1 : 1).then(() => refocusTile(viewId));
-	}
-	function onTileDragStart(event: DragEvent, viewId: string): void {
-		if (filterOn || event.dataTransfer === null) {
-			event.preventDefault();
-			return;
-		}
-		draggingViewId = viewId;
-		event.dataTransfer.setData(VIEW_MIME, viewId);
-		event.dataTransfer.effectAllowed = 'move';
-	}
-	function onTileDragOver(event: DragEvent, viewId: string): void {
-		if (draggingViewId === null || filterOn) return;
-		event.preventDefault();
-		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		dropAt = { viewId, after: event.clientX > box.left + box.width / 2 };
-	}
-	function onTileDrop(event: DragEvent): void {
-		event.preventDefault();
-		const dragged = draggingViewId;
-		const at = dropAt;
-		draggingViewId = null;
-		dropAt = null;
-		if (controller === null || presentation === null || dragged === null || at === null || filterOn) return;
-		const others = presentation.viewIds.filter((viewId) => viewId !== dragged);
-		const index = others.indexOf(at.viewId);
-		if (index === -1) return;
-		void controller.moveViewTo(presentation.id, dragged, index + (at.after ? 1 : 0));
-	}
-	function onTileDragEnd(): void {
-		draggingViewId = null;
-		dropAt = null;
-	}
-
 	function selectView(viewId: string): void {
 		if (presentation === null) return;
 		homes.select({ kind: 'view', viewId, presentationId: presentation.id });
@@ -190,12 +112,6 @@
 	}
 	function selectStop(stopId: string): void {
 		homes.select({ kind: 'stop', stopId });
-	}
-	function tileLabel(view: ExperienceViewChoice): string {
-		const parts = [view.label];
-		if (presentation?.defaultViewId === view.id) parts.push('Default View');
-		parts.push(onTour(view.id) ? 'on the tour' : 'not on the tour');
-		return parts.join(', ');
 	}
 </script>
 
@@ -253,104 +169,36 @@
 		{/if}
 
 		<section class="sec" aria-label="Views">
-			<h3 class="sec-title">Views <span class="n">{views.length}</span></h3>
-			{#if filterVisible}
-				<div class="filter">
-					<input
-						class="text-input"
-						type="search"
-						aria-label="Filter Views"
-						placeholder="Filter Views"
-						bind:value={filterText}
-						onkeydown={(event) => {
-							if (event.key === 'Escape' && filterText !== '') {
-								event.preventDefault();
-								event.stopPropagation();
-								filterText = '';
-							}
-						}}
-					/>
-					<div class="chips" role="group" aria-label="Show Views">
-						<button
-							type="button"
-							class="chip"
-							aria-pressed={onTourChip}
-							onclick={() => (onTourChip = !onTourChip)}>On tour</button
-						>
-						<button type="button" class="chip" aria-pressed={freeChip} onclick={() => (freeChip = !freeChip)}
-							>Free only</button
-						>
-					</div>
-				</div>
-			{/if}
-			{#if filterOn}
-				<p class="foot-note" data-reorder-refused>{shownViews.length} shown · clear the filter to reorder</p>
-			{/if}
-			{#if views.length === 0}
-				<p class="empty">No Views yet. Capture in the dock adds the first.</p>
-			{:else if shownViews.length === 0}
-				<p class="empty">No View matches.</p>
-			{:else}
-				<div class="vgrid" class:three={columns === 3} data-view-grid bind:this={gridEl}>
-					{#each shownViews as view (view.id)}
-						<button
-							type="button"
-							class="vtile"
-							class:selected={selectedViewId === view.id}
-							class:caret-before={dropAt?.viewId === view.id && !dropAt.after}
-							class:caret-after={dropAt?.viewId === view.id && dropAt.after}
-							class:dragging={draggingViewId === view.id}
-							aria-label={tileLabel(view)}
-							aria-current={selectedViewId === view.id ? 'true' : undefined}
-							aria-keyshortcuts={filterOn ? undefined : 'Alt+ArrowLeft Alt+ArrowRight'}
-							data-view-tile={view.id}
-							draggable={!filterOn}
-							onclick={() => selectView(view.id)}
-							ondblclick={(event) => {
-								event.preventDefault();
-								event.stopPropagation();
-								lookThrough(view.id);
-							}}
-							onkeydown={(event) => onTileKeydown(event, view.id)}
-							ondragstart={(event) => onTileDragStart(event, view.id)}
-							ondragover={(event) => onTileDragOver(event, view.id)}
-							ondrop={onTileDrop}
-							ondragend={onTileDragEnd}
-						>
-							<span class="vt-img">
-								<ExperienceSnapshot label={view.label} viewId={view.id} selected={selectedViewId === view.id} />
-								{#if presentation.defaultViewId === view.id}
-									<span class="badge-def" aria-hidden="true">◆ Default</span>
-								{/if}
-							</span>
-							<span class="vt-name">
-								<span class="vt-text">{view.label}</span>
-								<span class="tour" class:on={onTour(view.id)} aria-hidden="true"></span>
-							</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-			<p class="foot-note">Capture in the dock records exactly what the Stage camera sees.</p>
+			<ExperienceViewRail
+				{controller}
+				{presentation}
+				{views}
+				{selectedViewId}
+				onSelect={selectView}
+				onLookThrough={lookThrough}
+				onShapePath={(toViewId) => controller.selectPath({ kind: 'step', presentationId: presentation.id, toViewId })}
+			/>
+			<p class="foot-note">The order is a suggestion: visitors step it with ‹ › while exploring. Capture in the dock adds a View at the end.</p>
 		</section>
 
-		<section class="sec" aria-label="Visitors reach it">
-			<h3 class="sec-title">Visitors reach it</h3>
+		<section class="sec" aria-label="Places and use">
 			<button type="button" class="explorable" role="switch" aria-checked={presentation.explorable}
 				aria-describedby="explorable-description" disabled={controller.busy}
 				onclick={() => void controller.setExplorable(presentation.id, !presentation.explorable)}>
-				<span>Open in free exploration</span>
+				<span>Listed in Places</span>
 				<span class="switch-track" aria-hidden="true"></span>
 			</button>
 			<p class="foot-note" id="explorable-description">
-				All {views.length} {views.length === 1 ? 'View' : 'Views'}; opens at the Default
+				Places opens it without a Guide, at View 1. Explore from a Stop opens it either way.
 			</p>
 			<div class="reach-row">
 				<span class="reach-ico"><ShellIcon name="guide" size={14} /></span>
 				{#if tourStops.length > 0}
-					<span class="reach-label">On the tour at</span>
+					<span class="reach-label">Used by</span>
 					{#each tourStops.slice(0, 3) as stop (stop.stopId)}
-						<button type="button" class="chip mono" onclick={() => selectStop(stop.stopId)}>Stop {stop.position}</button>
+						<button type="button" class="chip mono" title={stop.entersAt === null ? 'Enters at View 1' : `Enters at ${stop.entersAt}`} onclick={() => selectStop(stop.stopId)}
+							>Stop {stop.position}{stop.entersAt === null ? '' : ` · at ${stop.entersAt}`}{stop.invites ? ' ✦' : ''}</button
+						>
 					{/each}
 					{#if tourStops.length > 3}
 						<span class="more-count">+{tourStops.length - 3}</span>
@@ -362,7 +210,9 @@
 			{#if tourStops.length > 3}
 				<div class="chips">
 					{#each tourStops.slice(3) as stop (stop.stopId)}
-						<button type="button" class="chip mono" onclick={() => selectStop(stop.stopId)}>Stop {stop.position}</button>
+						<button type="button" class="chip mono" onclick={() => selectStop(stop.stopId)}
+							>Stop {stop.position}{stop.entersAt === null ? '' : ` · at ${stop.entersAt}`}{stop.invites ? ' ✦' : ''}</button
+						>
 					{/each}
 				</div>
 			{/if}
@@ -411,10 +261,6 @@
 		color: var(--shell-ink-3, #79817b);
 		font: 600 11px/1.3 var(--shell-sans, system-ui);
 	}
-	.n {
-		font: 400 10.5px var(--shell-mono, ui-monospace, monospace);
-	}
-	.empty,
 	.note {
 		margin: 0;
 		color: var(--shell-ink-2, #4a524c);
@@ -429,7 +275,6 @@
 		font-size: 10.5px;
 		line-height: 1.4;
 	}
-	.filter,
 	.row-actions,
 	.chips {
 		display: flex;
@@ -458,93 +303,7 @@
 		resize: vertical;
 	}
 
-	.vgrid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 8px 6px;
-	}
-	.vgrid.three {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-	}
-	.vtile {
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
-		padding: 0;
-		border: 0;
-		background: none;
-		color: inherit;
-		font: inherit;
-		text-align: left;
-		cursor: pointer;
-	}
-	.vt-img {
-		position: relative;
-		display: block;
-	}
 	/* R217.S26: the reorder caret is the Stop cards' gold insertion caret, at the tile's edge. */
-	.vtile {
-		position: relative;
-	}
-	.vtile.caret-before::before,
-	.vtile.caret-after::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		width: 3px;
-		border-radius: 2px;
-		background: var(--shell-gold, #d4ad45);
-		pointer-events: none;
-	}
-	.vtile.caret-before::before {
-		left: -4.5px;
-	}
-	.vtile.caret-after::after {
-		right: -4.5px;
-	}
-	.vtile.dragging {
-		opacity: 0.5;
-	}
-	.badge-def {
-		position: absolute;
-		left: 4px;
-		top: 4px;
-		padding: 1px 5px;
-		border-radius: 999px;
-		background: var(--shell-forest-raised, #22503c);
-		color: #fff;
-		font: 600 9.5px/1.4 var(--shell-sans, system-ui);
-		pointer-events: none;
-	}
-	.vt-name {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		min-width: 0;
-		color: var(--shell-ink, #1b201c);
-		font: 12px/1.3 var(--shell-serif, Georgia, serif);
-	}
-	.vt-text {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.tour {
-		flex: none;
-		width: 7px;
-		height: 7px;
-		box-sizing: border-box;
-		border: 1.5px solid var(--shell-ink-3, #79817b);
-		border-radius: 50%;
-	}
-	.tour.on {
-		border-color: var(--shell-forest-raised, #22503c);
-		background: var(--shell-forest-raised, #22503c);
-	}
 
 	.reach-row {
 		display: flex;
@@ -599,25 +358,11 @@
 		border-color: transparent;
 		background: transparent;
 	}
-	button.vtile {
-		display: flex;
-		align-items: stretch;
-		justify-content: flex-start;
-		min-height: 0;
-		padding: 0;
-		border: 0;
-		background: none;
-	}
 	button.chip {
 		min-height: 20px;
 		padding: 0 7px;
 		border-radius: 999px;
 		font-size: 11px;
-	}
-	button.chip[aria-pressed='true'] {
-		border-color: var(--shell-forest-raised, #22503c);
-		background: var(--shell-forest-raised, #22503c);
-		color: #fff;
 	}
 	button.mono {
 		font-family: var(--shell-mono, ui-monospace, monospace);
@@ -673,9 +418,6 @@
 		button,
 		.text-input {
 			min-height: 44px;
-		}
-		button.vtile {
-			min-height: 0;
 		}
 		button.chip {
 			min-height: 36px;

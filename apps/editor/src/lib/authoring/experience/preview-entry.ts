@@ -141,7 +141,6 @@ export function previewEntryFor(input: {
 		runId,
 		runEpoch: input.epoch,
 		sourceContentId: input.sourceContentId,
-		gates: experience.gates.map((gate) => gate.presentationId),
 		detours: experience.detours.map((detour) => ({
 			fromStopId: detour.fromStopId,
 			toStopId: detour.toStopId,
@@ -263,5 +262,5 @@ export function previewEntryFor(input: {
 /** Program invocation a Presentation entry realizes: a Cut to its Default View. */
 export function presentationEntryInvocation(program: ExecutionProgram, presentationId: string): ProgramInvocation | null {
 	const presentation = program.presentations.find((entry) => entry.id === presentationId);
-	return presentation === undefined ? null : { kind: 'cut', viewId: presentation.defaultViewId };
+	return presentation === undefined ? null : { kind: 'cut', viewId: presentation.viewIds[0]! };
 }

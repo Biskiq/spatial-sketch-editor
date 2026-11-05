@@ -7,17 +7,21 @@
  * reaches. No state, no Camera evaluation, no DOM; the controller derives from these
  * and the Cards render what they return.
  *
- * A Stop enters at its first guided View and exits at its last. A
+ * A Stop is one visit: it enters at its entry View (its own, else the
+ * Presentation's Default, View 1) and leaves from the same View. A
  * continuation is read against one Guide: a Stop's neighbour is the next Stop of that
  * Guide, and a chosen target only counts as adjacent when it is that neighbour.
  */
-import type {
-	CameraView,
-	Experience,
-	ExperienceGuide,
-	ExperiencePresentation,
-	ExperienceStop,
-	ExperienceTransitionKind
+import {
+	presentationDefaultViewId,
+	presentationViewIds,
+	stopEntryViewId as unitStopEntryViewId,
+	type CameraView,
+	type Experience,
+	type ExperienceGuide,
+	type ExperiencePresentation,
+	type ExperienceStop,
+	type ExperienceTransitionKind
 } from '@portfolio/project-model/units';
 
 /**
@@ -83,12 +87,14 @@ export function lensMillimetres(fovDegrees: number): number {
 	return Math.round(12 / tangent);
 }
 
-export function stopEntryViewId(stop: ExperienceStop): string {
-	return stop.views[0]!.viewId;
+/** The View a Stop enters at: its own entry, else its Presentation's Default. */
+export function stopEntryViewId(experience: Experience, stop: ExperienceStop): string | null {
+	return unitStopEntryViewId(stop, experience.presentations.find((entry) => entry.id === stop.presentationId));
 }
 
-export function stopExitViewId(stop: ExperienceStop): string {
-	return stop.views.at(-1)!.viewId;
+/** A Stop is one visit: it leaves from the View it entered at. */
+export function stopExitViewId(experience: Experience, stop: ExperienceStop): string | null {
+	return stopEntryViewId(experience, stop);
 }
 
 /** The Presentation holding a View, preferring the named one. */
@@ -100,8 +106,8 @@ export function presentationOfView(
 	const named =
 		presentationId === undefined
 			? undefined
-			: experience.presentations.find((entry) => entry.id === presentationId && entry.viewIds.includes(viewId));
-	return named ?? experience.presentations.find((entry) => entry.viewIds.includes(viewId)) ?? null;
+			: experience.presentations.find((entry) => entry.id === presentationId && presentationViewIds(entry).includes(viewId));
+	return named ?? experience.presentations.find((entry) => presentationViewIds(entry).includes(viewId)) ?? null;
 }
 
 export function viewFactsOf(
@@ -121,7 +127,7 @@ export function viewFactsOf(
 		fovDegrees: view.fov,
 		lensMillimetres: lensMillimetres(view.fov),
 		eyeHeightMetres: view.eye[1] - floorDatumMeters,
-		isDefault: presentation.defaultViewId === view.id
+		isDefault: presentationDefaultViewId(presentation) === view.id
 	};
 }
 
@@ -171,9 +177,9 @@ export function resolveContinuation(
 	return { kind: 'adjacent', stopId: next, position: at + 2, transition, explicit: false };
 }
 
-export type GuidedViewPosition = { readonly stopId: string; readonly position: number; readonly index: number };
+export type GuidedViewPosition = { readonly stopId: string; readonly position: number };
 
-/** Positions are one-based in the Guide; index is zero-based within the Stop. */
+/** The Stops of a Guide that enter at this View; positions are one-based in the Guide. */
 export function stopsGuiding(
 	experience: Experience,
 	guide: ExperienceGuide | null,
@@ -182,8 +188,7 @@ export function stopsGuiding(
 	const matches: GuidedViewPosition[] = [];
 	guide?.stopIds.forEach((stopId, position) => {
 		const stop = experience.stops.find((entry) => entry.id === stopId);
-		const index = stop?.views.findIndex((view) => view.viewId === viewId) ?? -1;
-		if (index >= 0) matches.push({ stopId, position: position + 1, index });
+		if (stop !== undefined && stopEntryViewId(experience, stop) === viewId) matches.push({ stopId, position: position + 1 });
 	});
 	return matches;
 }
@@ -204,10 +209,15 @@ export function presentationsAboutEntity(
 
 /** Count distinct Camera Views reached by the Guide, free exploration, or neither. */
 export function reachSummary(experience: Experience, guide: ExperienceGuide | null): ExperienceReach {
-	const guided = new Set(guideStopsOf(experience, guide).flatMap((stop) => stop.views.map((view) => view.viewId)));
-	const views = new Set(experience.presentations.flatMap((presentation) => presentation.viewIds));
+	const guided = new Set(
+		guideStopsOf(experience, guide).flatMap((stop) => {
+			const entry = stopEntryViewId(experience, stop);
+			return entry === null ? [] : [entry];
+		})
+	);
+	const views = new Set(experience.presentations.flatMap((presentation) => presentationViewIds(presentation)));
 	const explorable = experience.presentations.filter((presentation) => presentation.explorable);
-	const free = new Set(explorable.flatMap((presentation) => presentation.viewIds));
+	const free = new Set(explorable.flatMap((presentation) => presentationViewIds(presentation)));
 	return {
 		presentations: experience.presentations.length,
 		views: views.size,

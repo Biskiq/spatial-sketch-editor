@@ -1,6 +1,6 @@
 # Guide pacing, invitations, explore and return: refinement plan (sheet §31)
 
-**Status:** proposal for owner review, 2026-11-04. Nothing here is built.
+**Status:** accepted 2026-11-04; implemented in slices 1–7 on `claude/eloquent-goldberg-yrasgu` (owner acceptance of journeys A–H pending). The landed contract is [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return).
 **Design:** [sheet §31](../../../reference/design-system/experience-interaction-sheet.html#s31), with
 interactive journeys A–H, and [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#s32)
 for where each setting is edited (open for review).

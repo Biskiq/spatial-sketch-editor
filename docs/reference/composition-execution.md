@@ -900,3 +900,30 @@ The cutover supersedes AM-9's runtime defaults for Stop entry, holds and free ex
   Default. The Guide can still reach a closed Presentation.
 - An Experience's optional welcome is plain text limited to 600 code points. It is authored
   under More on the Guide Card. The lowered program carries the text for the visitor.
+
+## AM-11 Guide pacing, explore and return
+
+The R217 Experience review's [guide-playback plan](../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
+cuts over to Experience unit format 4 and `ExecutionProgram@4`. Format 3 and `ExecutionProgram@3`
+are refused with `unsupported_format_version`, with no converter. AM-10's Stop View sequences,
+per-View holds and Gates are superseded.
+
+- A Stop is one visit: a Presentation, an entry View (`entryViewId`, `null` follows the
+  Presentation's Default), a finite stay of at least 1 s and an optional invitation
+  (`{ prompt }`, `prompt` at most 80 code points). A Guide carries `pacing`, `automatic` or
+  `manual`; Manual keeps every stay unused. Gates are removed; detours are unchanged.
+- A Presentation carries ordered `views`, each with the Cut/Travel step into it; the first is the
+  Default and carries no step. Steps add no Guide time. Removing View 1 makes the next View the
+  Default; a Stop that entered at a removed View follows the Default.
+- The program carries `pacing`, each Stop's resolved `entryViewId`, `staySeconds` (`null`
+  exactly when Manual) and `invitation`, each Presentation's `steps`, and one local-time entry per
+  timed Stop. A Travel gap on a Presentation step refuses lowering like a Guide edge.
+- The interpreter starts a stay only after its arrival completes (a Travel is `traveling` until
+  the host confirms `arrival`). Next always works: it lands an arrival now, ends a stay, or
+  continues a wait. Pause and play are run state. Explore (`enter-presentation` from a Stop)
+  freezes the clock and keeps the occurrence suspended; `explore-view` plays the authored step to
+  a neighbour and Cuts otherwise; `resume` restores the same occurrence, its remaining stay (with
+  a 2 s lead-in) and its play state, without re-running arrival actions.
+- One Guide clock: the visitor-safe `guide-run-map` adapter passes one View per Stop to the
+  unchanged Camera time map, and every visitor surface is time-aligned (the public overtake is
+  retired), so a run's arrival times equal the map's.
