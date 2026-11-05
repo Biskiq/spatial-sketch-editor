@@ -1,5 +1,7 @@
 # Experience review 1: gaps and fix plan
 
+**Historical record.** The current plan is [fix.md](./fix.md) (review 2); where they disagree, fix.md and [AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) win.
+
 **Owner review of R217.S26–S30, 2026-11-03: not accepted.** The functionality works. The UX and UI
 fall short of [Conservatory](../../../../prototypes/experience-ux-alternative/README.md). This is the
 one correction pass the S26–S30 register rows allow for. The owner is the only acceptance: each round is

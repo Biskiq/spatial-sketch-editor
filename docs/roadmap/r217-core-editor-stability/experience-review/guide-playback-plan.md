@@ -1,6 +1,7 @@
 # Guide pacing, invitations, explore and return: refinement plan (sheet §31)
 
 **Status:** accepted 2026-11-04; implemented in slices 1–7 on `claude/eloquent-goldberg-yrasgu` (owner acceptance of journeys A–H pending). The landed contract is [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return).
+**Superseded in part (2026-11-05)** by [fix.md](./fix.md), the owner's second review: the Guide's start Stop, explicit continuations, the Guide Card and the welcome's place are replaced there and in AM-11. This plan is kept as the record of slices 1–7; where it disagrees with fix.md or AM-11, they win.
 **Design:** [sheet §31](../../../reference/design-system/experience-interaction-sheet.html#s31), with
 interactive journeys A–H, and [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#s32)
 for where each setting is edited (open for review).

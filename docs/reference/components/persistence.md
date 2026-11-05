@@ -84,8 +84,13 @@ contract until an explicitly reviewed cutover.
 `units`. Unit payload versions are Layout 6, Scene 4, Camera 1, Experience 4 and resources 2.
 Experience 4 (guide-playback plan, R217 Experience review) replaces Stop View sequences with one
 entry View, a stay and an optional invitation per Stop, gives each Guide a `pacing`, gives each
-Presentation ordered `views` with Cut/Travel steps (the first is the Default) and retires Gates;
-format 3 is refused with no converter.
+Presentation ordered `views` (the first is the Default) and retires Gates; format 3 is refused
+with no converter. The owner's second review amends format 4 in place, with no bump or reader
+for the earlier shape ([AM-11](../composition-execution.md#am-11-guide-pacing-explore-and-return)):
+a Guide is one linear order with no start Stop, a Stop carries an optional outgoing
+`transition` instead of a `continuation`, a View's step is the step to the next View, and a
+Presentation's `label` may be `null` to follow its linked Scene entity. AM-11's implementation
+status says which of these the PR #271 branch implements so far.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 

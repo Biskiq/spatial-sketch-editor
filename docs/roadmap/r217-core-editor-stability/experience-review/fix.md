@@ -1,15 +1,16 @@
 # Experience final reconciliation: defect ledger and implementation plan (sheet §33)
 
-**Status:** revision 2, for owner review, 2026-11-05. Design only: no product code has changed in this round.
-**PR:** Biskiq/spatial-sketch-editor#271 on `claude/eloquent-goldberg-yrasgu`, open and not accepted. R217.S11 does not begin until the [final gate](#9-final-gate) passes.
+**Status:** revision 3, 2026-11-05. The owner approved the design (§33) and every decision in §2. This is the implementation plan for PR #271. Documentation and contracts only so far: no product code has changed in this round.
+**PR:** Biskiq/spatial-sketch-editor#271 on `claude/eloquent-goldberg-yrasgu`, open and not accepted. Every slice lands on this PR, with the commits and review checkpoints in §4.1, and one [final gate](#9-final-gate) precedes the merge. R217.S11 does not begin until then.
+**Contract:** [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) is the normative Experience format 4 and runtime contract. Its *Implementation status* list says which rules the branch already implements; each slice updates that list in the same commit.
 **Design:** [sheet §33](../../../reference/design-system/experience-interaction-sheet.html#s33), with interactive prototypes A–G, the linear-Guide table (H), the ownership table and the change table.
 **History:** [fix-plan.md](./fix-plan.md) (review 1) and [guide-playback-plan.md](./guide-playback-plan.md) (§31/§32, slices 1–7) stay as the record. This file is the implementation-ready plan for the current round.
 
 **Evidence used:** the PR #271 code at head `da61716d`; sheet §5, §25, §27, §28, §31 and §32; the existing contracts ([composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return)); and a throwaway reproduction test, run once and then deleted (§1.1). The owner's screenshots are not in the repository. The dark compact reference is taken from the sheet's own forest strip (§32 A), which matches the owner's description.
 
-### What revision 2 changes
+### What revisions 2 and 3 change
 
-The owner approved the rest of §33 and decided the open questions (§2, D-1 to D-8), then added four rules in the same spirit (D-9 to D-12). The Guide becomes **one linear sequence**: the first Stop starts, the last Stop ends, and the order is the route. Rather than hiding *Starts at*, *Next goes to* and an early End, they leave format 4. The Guide Card is retired, because each Guide setting already has a home on the strip or the Experience Card. A Travel exists only between two different Views, and never after the last Stop, so any edit that would break either rule writes a Cut. Removing a linked World object unlinks its Presentation and keeps the name, and World never marks an object as linked. The first Stop creates the first Guide, named *Tour*, with no prompt; a single Guide is the Opening Guide without asking. The slices are recut around a new model slice (§4, slice 2), and §2.2 lists the remaining tradeoffs, including where the owner's decisions meet the architecture.
+The owner approved the rest of §33 and decided the open questions (§2, D-1 to D-8), then added four rules in the same spirit (D-9 to D-12). The Guide becomes **one linear sequence**: the first Stop starts, the last Stop ends, and the order is the route. Rather than hiding *Starts at*, *Next goes to* and an early End, they leave format 4. The Guide Card is retired, because each Guide setting already has a home on the strip or the Experience Card. A Travel exists only between two different Views, and never after the last Stop, so any edit that would break either rule writes a Cut. Removing a linked World object unlinks its Presentation and keeps the name, and World never marks an object as linked. The first Stop creates the first Guide, named *Tour*, with no prompt; a single Guide is the Opening Guide without asking. The slices are recut around a new model slice (§4, slice 2). Revision 3 records the owner's answers to the architectural questions (§2.2, A-1 to A-8). It folds them into AM-11 and the persistence reference, and adds the commit and checkpoint plan (§4.1). Superseded options and conditionals are removed, not kept as alternatives.
 
 The sheet's visitor-HUD defect is also fixed. A global `.cur` rule from an earlier section (white, `min-height: 150px`) leaked into the current progress segment and drew a pale box over the HUD. That was a sheet defect only, not a product one.
 
@@ -90,38 +91,38 @@ Neither is a Camera or interpreter defect. The lowering refusal is correct, beca
 | D-1 | **One polished, predictable linear Guide.** The strip's order is the route: first Stop starts, last Stop ends. Visitors still jump between Stops; the editor seeks anywhere without changing the order. | `Guide.entryStopId` and `Stop.continuation` leave format 4 (§5). The Cut/Travel choice stays, as `Stop.transition`. Preview-from-here and visitor Prev, Next and Places stay as run-time navigation. Sheet §33 H. |
 | D-2 | **Retire the Guide Card.** | No Guide subject in the Card. Name: rename in place on the strip, and on the Index row. Pacing: the strip pill. Order and playback: the strip. Remove Guide: the strip's ⋯ and the Index row menu. Opening Guide and welcome: the Experience Card, which is the Card when nothing is selected. The Guide Card's *Reaches* summary is dropped, not moved. Sheet §33 B. |
 | D-3 (O-1) | **A Cut or Travel follows the Stop it leaves** on reorder; existing paths are preserved; no surprising dormant transitions. | The transition moves with its card. A Stop that becomes the last one gets a Cut in the same change, so no Travel is ever dormant. Paths are never deleted (D-5). |
-| D-4 (O-3) | **Deleting a linked World object just works.** The Presentation keeps its last name, Views and Stops, and is unlinked automatically. No World warning or recovery UX. | One accepted change: the Scene removal also unlinks every Presentation about that object and writes its effective name as the own name. One Undo restores both. The feedback line says it once; there's no removed state. See T-3 for the architectural cost. |
+| D-4 (O-3) | **Deleting a linked World object just works.** The Presentation keeps its last name, Views and Stops, and is unlinked automatically. No World warning or recovery UX. | One accepted change: the Scene removal also unlinks every Presentation about that object and writes its effective name as the own name. One Undo restores both. The feedback line says it once; there's no removed state. A-3 gives the mechanism. |
 | D-5 (O-4) | **Leave unused Camera paths alone** for now. | Kept. A later Camera tidy-up may list them. |
 | D-6 (O-5) | **Amend format 4 directly**, with no compatibility or migration. | §5. |
 | D-7 (O-7) | **Same View to itself is simply a Cut.** Don't offer Travel; handle it the same way after reorders. | The Transition Card shows *✂ Cut · Both Stops show Front* and no switch. Any edit that makes a Travel's two Stops share a View writes a Cut in the same change. The validator refuses a same-View Travel in a file (`travel-same-view`). |
 | D-8 | **Keep the Transition Card** for both Cut and Travel. **No branching** in this milestone; keep the existing Detour semantics if they're sound. | The Transition Card keeps Cut or Travel, the path, its time and its shape. Detours are sound (§1.3) and keep their data, lowering and runtime; G26's dead end is fixed by letting a Stop removal take its Detours with it. No Detour authoring UI is added. |
 | — (O-2, O-6) | Superseded by D-1. | Early End and jumps leave the model; *Start the tour here* goes with *Starts at*. |
 | D-9 | **The first Stop creates the first Guide** automatically, with a default name. No setup or naming prompt; rename inline on the strip later. | The first ＋ Stop, Add to Guide, View-row ＋ Stop or View drop creates a Guide labelled *Tour* in the same change. A further Guide made from the Index is *Tour 2*, *Tour 3*, and so on. The D8 naming prompt and `firstGuideLabel` are removed. |
-| D-10 | **One Guide is automatically the Opening Guide.** Expose the choice only when several Guides exist. | `entryGuideId` stays in the format, maintained by the planners: the first Guide created sets it, and removing the opening Guide moves it to the next one (already the case). The Experience Card shows *Opens with* only with two or more Guides. See T-8. |
+| D-10 | **One Guide is automatically the Opening Guide.** Expose the choice only when several Guides exist. | A-8. |
 | D-11 | **No World-side badge, warning or indicator** because an object is linked to a Presentation. The relationship is managed from the Presentation. | The Stage, Plan and World object Card show nothing about links. Today they show nothing either (C: `plan-scene-footprint.ts`'s `presentationForEntity` is visual styling, not Experience), so this is a guard: a boundary test keeps Experience reads out of World chrome. A World removal's feedback is the ordinary *Pleyel piano removed.*; the unlink is a plan consequence shown only on the Experience side. |
-| D-12 | **The last Stop has no outgoing transition.** Moved back into the middle, it gets a fresh Cut; hidden Travel settings are never resurrected. | `Stop.transition` is absent on the last Stop (`travel-after-last` refuses it in a file), and nothing remembers what it was, so a Stop moved back into the middle leaves by a Cut. Its Camera path stays (D-5), so choosing Travel again reuses its shape. Same as D-3 and T-2. |
+| D-12 | **The last Stop has no outgoing transition.** Moved back into the middle, it gets a fresh Cut; hidden Travel settings are never resurrected. | `Stop.transition` is absent on the last Stop (`travel-after-last` refuses it in a file), and nothing remembers what it was, so a Stop moved back into the middle leaves by a Cut. Its Camera path stays (D-5), so choosing Travel again reuses its shape. Same rule as D-3 and A-2. |
 
-### 2.2 Challenges and remaining tradeoffs
+### 2.2 Architectural decisions (approved 5 November)
 
-These are where the decisions meet the architecture, or where a simpler model was weighed. ★ is the recommendation.
+These were the open tradeoffs of revision 2 (T-1 to T-8). Each is now a rule, and the rejected alternatives are gone.
 
-- **T-1 · The Guide and the Presentation should follow the same rule.** D-3 puts a Guide edge on the Stop it *leaves*. A Presentation's step is stored on the View it *arrives at* (`ExperiencePresentationView.transition`, *the step into this View*). Dragging a Stop carries its outgoing chip, while dragging a View carries its incoming one: the same gesture, two behaviours, in two Cards. ★ Amend the Presentation inside format 4 so a View's `transition` is the step to the **next** View, and the last View has none. That gives one rule everywhere: *a Cut or Travel belongs to the item before it*. Cost: inside slice 2 (lowering's step loop, `writePresentationViews`, the View rail's chip placement, fixtures). *Alternative:* keep the Presentation as it is and document the asymmetry.
-- **T-2 · Writing a Cut is lossy over a round trip.** Moving a Travel Stop to the end and back, or making two Stops share a View and then separating them, leaves a Cut where there was a Travel. That is the price of "no dormant transitions". The Camera path is kept, so choosing Travel again restores the same shape and time in one press, and the feedback line names every Cut that an edit wrote. ★ Accept. *Alternative:* keep the dormant Travel and show it greyed out, which the owner ruled out.
-- **T-3 · D-4 needs the first registered Scene → Experience write.** Scene planners are documented and admitted as single-domain (`packages/project-model/src/scene-planning/planners.ts`: `compound`, `units` and `resources` false; *the landed registry refuses anything wider*). D-4's single undoable change therefore needs `delete-one`, the only Scene removal, admitted as `compound: true, writes: ['experience']`, the same mechanism that Experience → Camera uses. To keep the authorities separate, Scene never edits Experience data itself: it calls one pure Experience helper, `unlinkSceneSubject(experience, entityId, effectiveName)`, and the plan lists *1 Presentation keeps the name "Pleyel piano"* as a consequence. ★ Do this: it's the honest cost of "just works". *Fallback,* if a Scene compound is unwanted: Presentations store a name snapshot (`label` always a string, plus a "follows the object" flag), the Card treats a dangling subject as unlinked, and nothing writes at removal. That fallback shows the name from the last time the Presentation was written, which may predate a World rename, and it leaves a dangling reference in the file until the next edit. Not recommended.
-- **T-4 · Program v4 keeps `stop` and `end` continuations.** Lowering will only ever emit `sequence-next`. The program's `stop` and `end` kinds, and the interpreter's handling of them, become unreachable from authoring but stay valid runtime. ★ Keep them this milestone: the interpreter isn't touched, and a compiled derivative isn't authoring surface. *Option:* prune them later, with the branching design, which will define its own shape anyway.
-- **T-5 · One Stop, one Guide.** The linear model needs a Stop's outgoing transition to have one meaning (G27). ★ Add the invariant to validation: every Stop is listed by exactly one Guide, once. *Considered:* nesting Stops inside their Guide (`guide.stops[]`). That's a stronger shape, but it rewrites every Stop path, planner and fixture for the same guarantee. Not recommended now.
-- **T-6 · Removing a Stop removes the Detours that use it.** This replaces an existing refusal with a cascade. ★ Do it, listed in the removal's consequences and undone together. *Alternative:* keep the refusal and add Detour authoring, which is branching UX the owner deferred.
-- **T-8 · The Opening Guide: a field, or "the first Guide opens"?** D-1 says the first Stop starts. The same principle could say the first Guide in the Index opens, which would remove `entryGuideId` too, with the choice made by dragging a Guide to the top of the Index. That's one fewer field, but it hides a visitor-facing choice in list order, and the Index's Guide order means nothing else today. ★ Keep `entryGuideId`, maintained automatically (D-10), with *Opens with* shown only when there's a choice. *Alternative:* the first Guide opens, and the field is removed in slice 2.
-- **T-7 · Projects saved on this branch stop opening.** Format 4 has never been on `main`, so there's no migration. Any format-4 project the owner saved while testing PR #271 carries `entryStopId` (and possibly `continuation`), and the strict reader will refuse it as an unknown key. ★ Accept, per D-6, and say so in the PR. Re-create test projects after slice 2.
+- **A-1 · One outgoing-edge rule for Guides and Presentations (T-1).** A Cut or Travel belongs to the item it **leaves**: a Stop's `transition` is the step to the next Stop in its Guide, and a Presentation View's `transition` is the step to the next View. The last item has none. A Presentation's step therefore moves from the View it arrives at (format 4 today) to the View it leaves, so dragging a Stop or a View carries the same chip: its outgoing one.
+- **A-2 · Dormant Travel settings are not kept (T-2).** When an edit leaves a Travel with no next item, or with the same View on both sides, the same change writes a Cut. Nothing remembers the earlier Travel. Camera paths are never deleted by an Experience edit, so choosing Travel again reuses the pair's path, with its shape and time.
+- **A-3 · Removing a World object unlinks its Presentations atomically (T-3).** Scene `delete-one` is admitted as `compound: true, writes: ['experience']`, the same registered mechanism that Experience → Camera uses. Domain ownership stays intact: Scene never edits Experience data itself. It calls one pure Experience helper, `unlinkSceneSubject(experience, entityId, effectiveName)`, which sets `subject: null` and stores the effective name as `label`. The plan lists the unlink as a consequence. One accepted change, one Undo. This is the only Scene → Experience write, and nothing in World chrome shows it (D-11).
+- **A-4 · Runtime continuation capabilities stay (T-4).** Program v4 keeps its `sequence-next`, `stop` and `end` continuation kinds and the interpreter keeps handling them. Lowering emits only `sequence-next`, because the authored format has no other kind. No branching is added.
+- **A-5 · Exactly one Guide per Stop (T-5).** Every Stop is listed by exactly one Guide, exactly once. Validation refuses anything else (`stop-guide-membership`). Stops stay in `Experience.stops`; they are not nested inside Guides.
+- **A-6 · Removing a Stop removes its Detours (T-6).** A Stop removal, or a Guide removal for the Stops it removes, deletes every Detour that names one of those Stops, in the same change. The removal's consequences list them, and one Undo restores them. The `detour-uses-stop` refusal is deleted. Detours otherwise keep their data, lowering and runtime, with no authoring UI.
+- **A-7 · Old development files break (T-7).** The format 4 amendment has no migration, compatibility reader or legacy support. A project saved on this branch before slice 2 is refused by the strict reader (unknown key, or a broken rule from §5) and has to be re-created. PR #271's description says so.
+- **A-8 · The Opening Guide is an explicit setting (T-8).** `Experience.entryGuideId` stays. Planners maintain it: creating the first Guide sets it, and removing the opening Guide moves it to the next Guide (already the case), or to `null` when none remain. The Experience Card shows *Opens with* only when two or more Guides exist.
 
 ## 3. Code boundary
 
 **Project model** (`packages/project-model/src/units/`): the only place Travel validity is decided.
 
-- `types.ts` (format 4 amendment, §5): `ExperienceGuide` loses `entryStopId`. `ExperienceStop` loses `continuation` and gains `transition?: ExperienceTransitionKind`, the step to the next Stop in its Guide (absent means Cut). `ExperiencePresentation.label` becomes `string | null`. With T-1, `ExperiencePresentationView.transition` becomes the step to the next View. `ExperienceContinuation` is deleted.
+- `types.ts` (format 4 amendment, §5): `ExperienceGuide` loses `entryStopId`. `ExperienceStop` loses `continuation` and gains `transition?: ExperienceTransitionKind`, the step to the next Stop in its Guide (absent means Cut). `ExperiencePresentation.label` becomes `string | null`. `ExperiencePresentationView.transition` becomes the step to the next View (A-1). `ExperienceContinuation` is deleted.
 - `validate.ts`: the strict reader drops the removed keys, so a file that carries them is refused as an unknown key. New structural findings:
-  - `stop-guide-membership`: a Stop is listed by zero Guides, or by two (T-5).
-  - `travel-after-last`: a Travel on a Guide's last Stop, or, with T-1, on a Presentation's last View.
+  - `stop-guide-membership`: a Stop listed by no Guide, by two, or twice by one (A-5).
+  - `travel-after-last`: a Travel on a Guide's last Stop, or on a Presentation's last View (A-1).
   - `travel-same-view`: a Travel whose two Stops enter the same View.
   - `label: null` is admitted only with a Scene-entity subject.
 
@@ -129,14 +130,14 @@ These are where the decisions meet the architecture, or where a simpler model wa
 - `experience-structure.ts`: three pure functions.
   - **New** `normalizeTransitions(experience) → { experience, cuts }`. It writes a Cut on every last Stop and every same-View pair, and returns them for the feedback line.
   - **New** `requiredTravelPairs(experience, connections) → ViewPair[]`. It returns every distinct unordered pair that a remaining Travel uses (Guide adjacencies and Presentation steps) and that no connection joins, in sorted order.
-  - **New** `unlinkSceneSubject(experience, entityId, effectiveName)`, used by T-3.
+  - **New** `unlinkSceneSubject(experience, entityId, effectiveName)`, used by A-3.
 
   `planStopRemoval` drops `detour-uses-stop`, removes the Detours that use the Stop, and reports `{ kind: 'detour-removed' }`. Guide removal does the same for the Stops it removes. Removal plans return the straight connections they add (`camera` non-null), as `{ kind: 'connection-added', … }`.
 - `planning.ts`: every planner that can change an endpoint builds its candidate, then calls `normalizeTransitions` and then `withRequiredTravelPaths(candidate, capturedIds('connection'))`. That covers guide-order, stop-create, guide-create, stop-update, presentation-update, stop-remove, guide-remove and presentation-view-remove. `withRequiredTravelPaths` generalises today's `withStraightConnections`. The planner refuses `travel-paths-incomplete` if the id pool runs short, so an accepted change can never create a gap. Admissions become `compound: true, writes: ['camera']` for guide-order, stop-create, guide-create, stop-remove and guide-remove. The guide-start planner and the stop-update `continuation` and `travelPath` payloads are deleted.
 - **Captured ids:** the controller supplies a pool of `connection` ids sized to an upper bound (the number of Travel uses in the candidate, plus one). The planner consumes them in sorted-pair order and ignores the rest, so planners still never allocate.
-- `experience/lowering.ts`: the order is `guide.stopIds`, and entry is `options.entryStopId ?? order[0]`, the editor's preview-from-here option and never authored. The adjacent transition reads `stop.transition`. The explicit-continuation block and its refusals go, every `ProgramStop.continuation` is `sequence-next` (T-4), and detour edges are unchanged. `presentationDisplayName(presentation, sceneEntities)` resolves `label ?? entity name` and is exported for the editor. `travel-same-view` and `travel-after-last` are refused. **The interpreter is not touched.**
+- `experience/lowering.ts`: the order is `guide.stopIds`, and entry is `options.entryStopId ?? order[0]`, the editor's preview-from-here option and never authored. The adjacent transition reads `stop.transition`. The explicit-continuation block and its refusals go, every `ProgramStop.continuation` is `sequence-next` (A-4), and detour edges are unchanged. `presentationDisplayName(presentation, sceneEntities)` resolves `label ?? entity name` and is exported for the editor. `travel-same-view` and `travel-after-last` are refused. **The interpreter is not touched.**
 
-**Scene planning** (`packages/project-model/src/scene-planning/planners.ts`): `delete-one` is admitted `compound: true, writes: ['experience']`. When a Presentation names the entity, it calls `unlinkSceneSubject` and lists the consequence. That is its only Experience write (T-3).
+**Scene planning** (`packages/project-model/src/scene-planning/planners.ts`): `delete-one` is admitted `compound: true, writes: ['experience']`. When a Presentation names the entity, it calls `unlinkSceneSubject` and lists the consequence. That is its only Experience write (A-3).
 
 **Editor controller and commands** (`apps/editor/src/lib/authoring/experience/`):
 
@@ -170,7 +171,7 @@ These are where the decisions meet the architecture, or where a simpler model wa
 - `ExperienceGuideWriter.svelte`: **deleted**.
 - New `ExperienceExperienceWriter.svelte`: the name, the welcome, and *Opens with* only when there are two or more Guides (D-10).
 - `ExperienceTransitionWriter.svelte`: *Next goes to* and End are removed; a same-View pair shows *✂ Cut · Both Stops show Front* with a link to the Stop, and no switch.
-- `ExperienceViewRail.svelte`: ＋ Stop per row, guided or explore tags, and a light insertion line. With T-1, the step chip moves to below the View it leaves.
+- `ExperienceViewRail.svelte`: ＋ Stop per row, guided or explore tags, and a light insertion line. The step chip sits below the View it leaves (A-1).
 - `ExperiencePresentationWriter.svelte`: the *About* section (link, unlink, Show in World, pick, the Capture suggestion) and the name field's follow state. There is no removed state, and the first-Guide naming prompt is removed (D-9).
 - World chrome (the Stage, Plan and the World object Card): **unchanged**, with no link indicator (D-11). `preview-surface-boundary`-style coverage extends to assert that World components don't read Experience subjects.
 - The spatial route (`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`):
@@ -190,7 +191,7 @@ These are where the decisions meet the architecture, or where a simpler model wa
 **Not touched:**
 - `packages/camera-core` (authority, evaluation, `guide-time-map.ts`)
 - the interpreter
-- program v4's shape (T-4)
+- program v4's shape (A-4)
 - Layout evaluation and Scene evaluation
 - resources
 
@@ -214,23 +215,46 @@ Ordered by dependency. Complexity: **S** under half a day, **M** one to two days
 | # | Slice | Contains | Entry | End | Size |
 |---|---|---|---|---|---|
 | 1 | **Typed feedback** | G8: the `feedback` shape, `run`/`say` typed, the route styling, tests updated from `messageRefused` | — | Manual ⇄ Automatic shows a green line; a refusal stays red; no string whitelist remains | S |
-| 2 | **The linear Guide model** | D-1, D-7's rule, D-8, T-1 (if accepted), T-5, T-6. Format 4 amended: `entryStopId` and `continuation` out, `Stop.transition` in. `stop-guide-membership`, `travel-after-last` and `travel-same-view`. `normalizeTransitions`. Lowering simplified. Stop removal takes its Detours. Controller and Transition Card lose *Starts at*, *Next goes to* and End; the context-menu Start goes. Fixtures and tests rewritten. Closes G6, G7 (rule), G11, G14, G19, G26, G27. | 1 | R27–R31 pass. No product file mentions `entryStopId` (except lowering's preview option) or `ExperienceContinuation`. Journeys A–H still pass, minus *Starts at*. | M |
+| 2 | **The linear Guide model** | D-1, D-7's rule, D-8, D-12, A-1, A-2's rule, A-5, A-6, A-7. Format 4 amended: `entryStopId` and `continuation` out, `Stop.transition` in. `stop-guide-membership`, `travel-after-last` and `travel-same-view`. `normalizeTransitions`. Lowering simplified. Presentation steps become outgoing edges (lowering's step loop, `writePresentationViews`, the View rail's chip). Stop and Guide removal take their Detours. Controller and Transition Card lose *Starts at*, *Next goes to* and End; the context-menu Start goes. Fixtures and tests rewritten. Closes G6, G7 (rule), G11, G14, G19, G26, G27. | 1 | R27–R31 and R39 pass. No product file mentions `entryStopId` (except lowering's preview option) or `ExperienceContinuation`. Journeys A–H still pass, minus *Starts at*. | M |
 | 3 | **Travel reconciliation** | G1–G5, G7 (every edit), G10's notice: `normalizeTransitions` and `requiredTravelPairs` in every endpoint-changing planner, compound admissions, the id pool through every command, removal plans adding paths, the S29 notice deleted | 2 | R1–R12 pass; no ordinary edit produces `travel-gap`, `travel-same-view` or `travel-after-last`; Undo removes the edit, its Cuts and its paths together | L |
 | 4 | **Problems** | G9: `experience-problems.ts`, the chip's sentences and *Show*, *Copy details* holding the codes | 3 | R13–R15; a duplicate imported path reads in plain language and *Show* opens its Transition Card | M |
 | 5 | **Guide strip and one timeline** | G10's **+** button, G13, G15–G17, G21, G22: cards, gutter time, the segmented scrub, the pacing popover, rename in place and the ⋯ menu, the insertion line, chip selection | 1 | Journeys I and L; R32; the §28 keys pass on the new track; no gold remains on the strip or the rail | L |
 | 6 | **Retire the Guide Card; the Experience Card** | D-2, D-10, G18, G20: `ExperienceGuideWriter.svelte` and `guideCardModel` deleted; the `experience` subject and Card with the welcome and, with two or more Guides, *Opens with*; the Index Guide row menu | 2, 5 | Journey Q; R20, R33, R36; the welcome is edited only in the Experience Card | M |
 | 7 | **View → Stop, and the first Guide** | G23, D-9: `entryViewId` through the creation commands; ＋ Stop per row; a View dropped onto the strip; the first Stop creates *Tour* with no prompt | 3 | Journey J; R16, R35 | S |
-| 8 | **Presentation follows its object** | G24, D-4: the `label: string \| null` amendment; `presentationDisplayName` in lowering and the controller; Present this and Capture bind with `label: null`; the *About* section; link, unlink and follow commands; the Stage picker; the Scene `delete-one` compound (T-3); the D-11 guard test | 3 | Journey M; R17–R19, R34, R37; the Index, strip, Cards, caption and Places all agree | L |
+| 8 | **Presentation follows its object** | G24, D-4, D-11, A-3: the `label: string \| null` amendment; `presentationDisplayName` in lowering and the controller; Present this and Capture bind with `label: null`; the *About* section; link, unlink and follow commands; the Stage picker; the Scene `delete-one` compound; the D-11 guard test | 3 | Journey M; R17–R19, R34, R37; the Index, strip, Cards, caption and Places all agree | L |
 | 9 | **Visitor progress** | G12, G25: segments in the Guide's order; visited marking; stay and Travel fill; Manual outline; freeze; Back | 2 | Journey N; R21–R23 | M |
-| 10 | **Acceptance** | Journeys A–H re-run, plus I–Q; `npm test`, `npm run test:arch`, `npm run check`, `npm run build`; AM-11 and the persistence reference amended | all | §9 | M |
+| 10 | **Acceptance** | Journeys A–H re-run, plus I–Q; `npm test`, `npm run test:arch`, `npm run check`, `npm run build`; AM-11's implementation status shows every rule as implemented; the PR description updated | all | §9 | M |
 
 Slice 1 goes first and is small. Slice 2 then fixes the model that everything else builds on, and slice 3 remains the critical path. Slices 4, 7 and 8 can run in parallel after slice 3; slice 5 can run alongside slices 2–3, because it touches only the strip's presentation.
+
+```text
+1 ─┬─ 2 ─┬─ 3 ─┬─ 4
+   │     │     ├─ 7
+   │     │     └─ 8 (CP-C inside)
+   │     ├─ 9
+   └─ 5 ─┴─ 6                 all ── 10 ── final gate ── merge
+```
+
+### 4.1 Commits, review checkpoints and the one final gate
+
+- **One PR.** Every slice lands on `claude/eloquent-goldberg-yrasgu` in PR #271. There is no new PR, and nothing merges before the final gate.
+- **One commit or more per slice,** each named `feat(experience): slice N, <name>` or `fix(experience): slice N, <name>`. A slice's commits carry its code, its tests and the AM-11 *Implementation status* rows it makes true. Mechanical churn (fixtures, renames) goes in its own commit inside the slice, so the architectural diff reads on its own.
+- **Verification per commit:** the slice's focused test files, plus `npm run test:arch`. **Verification per checkpoint:** `npm test`, `npm run test:arch` and `npm run check`, compared against the PR's recorded base failures.
+- **Review checkpoints** for the major architectural changes. At each one the slice stops, and the PR gets a short comment: what changed in the contract, the diff to read, and the tests run. A slice that depends on it waits for the owner's go-ahead. Independent slices (1, 5, 9) may continue meanwhile.
+
+| Checkpoint | After | What the owner reviews |
+|---|---|---|
+| **CP-A · Format 4 amendment** | Slice 2 | The amended types and strict reader; `stop-guide-membership`, `travel-after-last` and `travel-same-view`; outgoing-edge Presentation steps (A-1); the Detour cascade (A-6); lowering's simplification; AM-11 and the persistence reference |
+| **CP-B · Reconciling planners** | Slice 3 | The compound `writes: ['camera']` admissions for guide-order, stop-create, guide-create, stop-remove and guide-remove; the captured connection-id pool; `normalizeTransitions` and `requiredTravelPairs`; the "no ordinary edit lowers to a refusal" property test |
+| **CP-C · Scene → Experience write** | The first commit of slice 8 | The `delete-one` compound admission, `unlinkSceneSubject`, the consequence, one Undo, and the registry test that refuses any other Scene → Experience write (A-3) |
+
+- **One final acceptance gate** (§9), run once on the finished branch. Only then is PR #271 accepted and merged by the owner, and R217.S11 begins.
 
 Against revision 1: *Continuation pruning* (old slice 6) is absorbed into slice 2, which deletes rather than hides. The Guide Card slice becomes a removal. Slice 2 is new and moves reconciliation one step later, but makes it simpler, because there are no explicit continuations to join.
 
 ## 5. Schema implications
 
-**Yes, format 4 changes, and it stays format 4** (D-6). Format 4 exists only on this PR's branch (`main` is at format 3), so it is amended in place. There's no bump, migration, compatibility reader or dual representation, and format 3 stays strictly refused. T-7 covers the cost to projects saved on this branch.
+**Yes, format 4 changes, and it stays format 4** (D-6). Format 4 exists only on this PR's branch (`main` is at format 3), so it is amended in place. There's no bump, migration, compatibility reader or dual representation, and format 3 stays strictly refused. A-7: projects saved on this branch before slice 2 are refused, not converted.
 
 | Field | Before (format 4 on PR #271) | After (format 4, amended) |
 |---|---|---|
@@ -238,11 +262,12 @@ Against revision 1: *Continuation pruning* (old slice 6) is absorbed into slice 
 | `ExperienceStop.continuation` | Optional `sequence-next` / `stop` / `end`, with `transition` on the first two | **Removed.** |
 | `ExperienceStop.transition` | — | **New**, optional `'cut' \| 'travel'` (absent means Cut): the step to the next Stop in its Guide. Never `'travel'` on a last Stop, nor between two Stops that enter the same View. |
 | `ExperiencePresentation.label` | Required string | `string \| null`. `null` means the linked Scene entity's live name, and is admitted only with a Scene-entity subject. |
-| `ExperiencePresentationView.transition` | The step **into** this View | With T-1, the step **to the next** View, never on the last. Without T-1, unchanged. |
-| `Experience.detours` | Unchanged | Unchanged; a removal cascade keeps them valid. |
-| Membership | Implicit | Every Stop is listed by exactly one Guide, once (`stop-guide-membership`). |
+| `ExperiencePresentationView.transition` | The step **into** this View; none on the first | The step **to the next** View; none on the last (A-1). |
+| `Experience.detours` | Unchanged | Unchanged in shape; a Stop or Guide removal removes the Detours that use its Stops (A-6). |
+| `Experience.entryGuideId` | Required when a Guide exists | Unchanged in shape; maintained by the planners (A-8). |
+| Membership | Implicit | Every Stop is listed by exactly one Guide, once (`stop-guide-membership`, A-5). |
 
-**Program v4:** unchanged in shape (T-4). `ProgramPresentation.label` is the resolved effective name, so visitor runtimes and published releases never resolve Scene names. `ProgramStop.continuation` is always `sequence-next`. `ExecutionProgram.entryStopId` is the first Stop, or the editor's preview start.
+**Program v4:** unchanged in shape (A-4). `ProgramPresentation.label` is the resolved effective name, so visitor runtimes and published releases never resolve Scene names. `ProgramStop.continuation` is always `sequence-next`. `ExecutionProgram.entryStopId` is the first Stop, or the editor's preview start.
 
 **Not a format change:** Travel reconciliation, typed feedback, the Experience Card, rename in place, View → Stop and the HUD are behaviour only. The `cuts`, `connection-added` and `detour-removed` consequences are planning types and are not persisted.
 
@@ -288,6 +313,7 @@ Against revision 1: *Continuation pruning* (old slice 6) is absorbed into slice 
 | R36 | One Guide; then two; then remove the opening one | One: no *Opens with*, and it opens. Two: *Opens with* appears. After removal, the remaining Guide opens and the choice disappears again. |
 | R37 | Linked object in World: select it, hover it, rename it, remove it | No badge, outline, warning or Card section about the link; removal feedback is the ordinary line |
 | R38 | A Stop with a Travel is moved to the end, then back into the middle (D-12) | At the end it has no outgoing step; back in the middle it leaves by a fresh Cut; its path is unused and kept |
+| R39 | A Presentation View with an outgoing Travel step is dragged (A-1): to the middle, to the end, and back | The step moves with the View and joins its new next View (path added or reused); at the end it becomes a Cut; back in the middle it leaves by a fresh Cut; the Guide's Travels that follow the Default are joined in the same change |
 
 ## 7. Browser acceptance journeys (in addition to A–H)
 
@@ -309,7 +335,7 @@ Not in this round, and not to be grown into by accident:
 
 - Narration and audio; walking or free movement in Explore; published hosting and sharing; analytics.
 - **Branching with consequences**, choice points, Detour authoring UI and mixed pacing (one wait in an Automatic Guide). Detours keep their data and runtime (D-8); nothing is added for them beyond the removal cascade.
-- Pruning program v4's `stop` and `end` continuations (T-4).
+- Pruning program v4's `stop` and `end` continuations: they stay (A-4).
 - Visitor scrubbing; per-visit Travel time; automatic deletion of unused paths (D-5).
 - Layout-element subjects for §27. Preview still does not resolve them (`unresolved-subject`); §33 links Scene entities only, and D-4's unlink applies to Scene removal only.
 - Any Camera authority, evaluation or `guide-time-map.ts` change; any interpreter rewrite; any second timer.
@@ -321,9 +347,10 @@ Not in this round, and not to be grown into by accident:
 PR #271 can be accepted, and R217.S11 can begin, only when:
 
 1. Slices 1–9 are merged on this branch, with every G-row in §1.1–§1.2 closed or explicitly waived by the owner.
-2. R1–R38 pass as automated tests where they're testable, and in the browser otherwise.
+2. R1–R39 pass as automated tests where they're testable, and in the browser otherwise.
 3. Journeys A–H and I–Q pass in the owner's browser run.
 4. No ordinary authoring path can produce `travel-gap`, `travel-same-view`, `travel-after-last` or `stop-guide-membership`. A property-style test runs random reorders, inserts, entry changes, View reorders and removals over a fixture with Travels, a repeated Presentation and a Detour, and lowering never refuses.
 5. `npm test` and `npm run test:arch` show no failure beyond the base `parallel-track-gates` and `spatial-route-gesture` set PR #271 recorded. `npm run check` reports 0 errors and `npm run build` passes.
-6. AM-11 in [composition-execution.md](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) and the persistence reference record the format 4 amendments (§5) and the reconciliation rule, and sheet §33 matches what shipped.
-7. T-1 to T-8 are answered by the owner, and the answers are recorded here.
+6. AM-11's *Implementation status* in [composition-execution.md](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) shows every rule as implemented, the persistence reference matches, and sheet §33 matches what shipped.
+7. Checkpoints CP-A, CP-B and CP-C were each reviewed by the owner, and any finding from them is closed.
+8. PR #271's description lists the slices' commits, the checkpoints and A-7's notice about old development files.

@@ -14,8 +14,11 @@ NEXT:  Owner decision on next T3 planning or milestone integration. No next phas
 ROUTE: ../../roadmap/t3-experience/README.md →
        ../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md
 R217:  Experience review guide-playback plan (../../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
-       slices 1–7 implemented on claude/eloquent-goldberg-yrasgu (PR Biskiq/spatial-sketch-editor#271);
-       owner acceptance of journeys A–H and slice-closeout stay with the owner.
+       slices 1–7 implemented on claude/eloquent-goldberg-yrasgu (PR Biskiq/spatial-sketch-editor#271).
+       Owner review 2 approved sheet §33 and the plan in
+       ../../roadmap/r217-core-editor-stability/experience-review/fix.md (revision 3, 2026-11-05):
+       slices 1–10 land on PR #271 with checkpoints CP-A, CP-B and CP-C, then one final gate.
+       No review-2 slice has started. Merge, S11 and slice-closeout stay with the owner.
 BLOCKER: none.
 CARRY: F2 production epoch activation remains a separate owner-operated procedure.
        No track completion, milestone acceptance or cycle transition is claimed.

@@ -906,18 +906,65 @@ The cutover supersedes AM-9's runtime defaults for Stop entry, holds and free ex
 The R217 Experience review's [guide-playback plan](../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
 cuts over to Experience unit format 4 and `ExecutionProgram@4`. Format 3 and `ExecutionProgram@3`
 are refused with `unsupported_format_version`, with no converter. AM-10's Stop View sequences,
-per-View holds and Gates are superseded.
+per-View holds, Gates and Guide Card welcome are superseded. The owner's second review
+(2026-11-05, [fix.md](../roadmap/r217-core-editor-stability/experience-review/fix.md) §2) amends
+format 4 in place: format 4 has never been on `main`, so there is no bump, migration or
+compatibility reader, and a file written before the amendment is refused. The rules below are
+normative for format 4. [Implementation status](#am-11-implementation-status) says which of them
+PR #271's branch implements so far.
 
-- A Stop is one visit: a Presentation, an entry View (`entryViewId`, `null` follows the
-  Presentation's Default), a finite stay of at least 1 s and an optional invitation
-  (`{ prompt }`, `prompt` at most 80 code points). A Guide carries `pacing`, `automatic` or
-  `manual`; Manual keeps every stay unused. Gates are removed; detours are unchanged.
-- A Presentation carries ordered `views`, each with the Cut/Travel step into it; the first is the
-  Default and carries no step. Steps add no Guide time. Removing View 1 makes the next View the
-  Default; a Stop that entered at a removed View follows the Default.
+**Authored format 4**
+
+- **A Guide is one linear order:** `id`, `label`, `stopIds` and `pacing` (`automatic` or `manual`;
+  Manual keeps every stay unused). The first Stop starts the Guide and the last Stop ends it.
+  There is no start Stop, no explicit continuation and no early End. Every Stop is listed by
+  exactly one Guide, exactly once (`stop-guide-membership`).
+- **A Stop is one visit:** a Presentation, an entry View (`entryViewId`, `null` follows the
+  Presentation's Default), a finite stay of at least 1 s, an optional invitation (`{ prompt }`,
+  `prompt` at most 80 code points), and an optional outgoing `transition` (`cut` or `travel`,
+  absent means Cut): the step to the next Stop in its Guide. The last Stop has none
+  (`travel-after-last`), and a Travel between two Stops that enter the same View is refused
+  (`travel-same-view`).
+- **A Presentation** carries `label`, ordered `views`, `subject`, `text` and `explorable`. Its
+  first View is the Default. Each View may carry an outgoing `transition`, the step to the next
+  View, and the last View has none. Steps add no Guide time. Removing View 1 makes the next View
+  the Default; a Stop that entered at a removed View follows the Default. `label` is the
+  creator's own name, or `null` for the linked Scene entity's live name, which is admitted
+  only with a Scene-entity `subject`.
+- **One rule for every edge:** a Cut or Travel belongs to the item it leaves, in a Guide and in a
+  Presentation alike. Travel must resolve to exactly one existing Camera connection joining the
+  two Views, in either direction. Lowering reports gaps and ambiguous connections, and binds only
+  Camera identities.
+- **The Experience** carries `entryGuideId`, an explicit Opening Guide that is `null` exactly
+  when there is no Guide, and a plain-text `welcome` of at most 600 code points, authored on the
+  Experience Card. Detours keep their shape and runtime.
+
+**Authoring invariants** (every accepted Experience change; Camera owns the paths)
+
+- An edit that leaves a Travel with no next item, or with the same View on both sides, writes a
+  Cut in the same change. A Travel setting is never kept dormant or restored later.
+- An edit that gives a Travel a new pair of different Views reuses the connection that joins the
+  pair (either direction), or adds a straight connection in the same change. Planners use
+  captured connection ids and refuse `travel-paths-incomplete` rather than leave a gap. No
+  Experience edit deletes, retargets or reshapes a Camera connection.
+- Removing a Stop, or a Guide's Stops, removes the Detours that name them in the same change.
+- Creating the first Guide sets `entryGuideId`. Removing the Opening Guide moves it to the next
+  Guide, or to `null`. The first Stop added to an Experience with no Guide creates a Guide with
+  a default label in the same change.
+- Removing a Scene entity (`delete-one`) is one compound change that also unlinks every
+  Presentation about it, storing its effective name as `label`, through a pure Experience
+  helper. This is the only Scene → Experience write. Nothing in World chrome marks an entity as
+  linked.
+
+**Program and runtime**
+
 - The program carries `pacing`, each Stop's resolved `entryViewId`, `staySeconds` (`null`
-  exactly when Manual) and `invitation`, each Presentation's `steps`, and one local-time entry per
-  timed Stop. A Travel gap on a Presentation step refuses lowering like a Guide edge.
+  exactly when Manual) and `invitation`, each Presentation's resolved `label` and `steps`
+  (`steps[i]` runs from `viewIds[i]` to `viewIds[i + 1]`), and one local-time entry per timed
+  Stop. A Travel gap on a Presentation step refuses lowering like a Guide edge. `entryStopId` is
+  the Guide's first Stop, or the editor's preview start, which is never authored.
+- Lowering emits only `sequence-next` continuations. The program keeps its `stop` and `end`
+  kinds, and the interpreter keeps handling them, as runtime capability with no authored source.
 - The interpreter starts a stay only after its arrival completes (a Travel is `traveling` until
   the host confirms `arrival`). Next always works: it lands an arrival now, ends a stay, or
   continues a wait. Pause and play are run state. Explore (`enter-presentation` from a Stop)
@@ -927,3 +974,16 @@ per-View holds and Gates are superseded.
 - One Guide clock: the visitor-safe `guide-run-map` adapter passes one View per Stop to the
   unchanged Camera time map, and every visitor surface is time-aligned (the public overtake is
   retired), so a run's arrival times equal the map's.
+
+### AM-11 implementation status
+
+PR #271's branch (head before the review-2 slices) implements format 4's pacing, stays,
+invitations, entry Views, Presentation `views`, program v4, the interpreter, Explore and
+Back, and the one Guide clock. It does **not yet** implement the review-2 amendments: it still
+reads and writes `Guide.entryStopId` and `Stop.continuation`, stores a Presentation step on the
+View it arrives at, requires `label` to be a string, lacks the membership, same-View and
+after-last refusals, refuses a Stop removal that a Detour uses, joins a new pair only when Cut
+switches to Travel, keeps Scene `delete-one` single-domain, and asks for the first Guide's name.
+Each lands with a [fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices)
+(the model with slice 2, reconciliation with slice 3, the first Guide with slice 7, `label` and
+the Scene unlink with slice 8), and each slice updates this paragraph in the same commit.

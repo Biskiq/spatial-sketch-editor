@@ -1887,7 +1887,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 27 · Presentation and object -->
 <section id="s27" class="wide" data-lnn="follow" data-lnk="suggest">
   <h2><span class="n">27</span>A Presentation follows its object, and a captured one can link to one</h2>
-  <p class="sup"><b>Delivered by <a href="#s33">§33 D</a></b>, which keeps this model. It replaces the removed-object state (removing the object unlinks it and keeps its name, decision O-3) and settles the format: <code>label: string | null</code> inside format 4, so there is no new bump.</p>
+  <p class="sup"><b>Delivered by <a href="#s33">§33 D</a></b>, which keeps this model. It replaces the removed-object state (removing the object unlinks it and keeps its name, decisions D-4 and A-3) and settles the format: <code>label: string | null</code> inside format 4, so there is no new bump.</p>
   <div class="ln-grid">
     <div class="ln-world">
       <div class="cap" style="margin-top:0">World · rename an object here</div>
@@ -1931,7 +1931,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 31 · Follow the Guide, or step aside -->
 <section id="s31" class="wide" data-gpi="chip" data-gpp="automatic">
   <h2><span class="n">31</span>Follow the Guide, or step aside and come back</h2>
-  <p class="sup"><b>Amended by <a href="#s33">§33</a>:</b> pacing and the Guide's name are edited on the Guide strip (§33 A), the Guide Card is retired and the welcome moves to the Experience Card (§33 B), the visitor bar gains segmented progress (§33 F), and the Guide becomes one linear order with no start Stop, <i>Next goes to</i> or early End (§33 H). Pacing, stays, Explore and Back are unchanged; journeys A–H are re-run without <i>Starts at</i>.</p>
+  <p class="sup"><b>Amended by <a href="#s33">§33</a>:</b> pacing and the Guide's name are edited on the Guide strip (§33 A), the Guide Card is retired and the welcome moves to the Experience Card (§33 B), the visitor bar gains segmented progress (§33 F), the Guide becomes one linear order with no start Stop, <i>Next goes to</i> or early End, and a Presentation step belongs to the View it leaves (§33 H). Pacing, stays, Explore and Back are unchanged; journeys A–H are re-run without <i>Starts at</i>.</p>
   <p class="lede">Think of a museum guide. Visitors can follow along, or step aside to look closer and rejoin the group where it is. <b>Pacing is one choice for the whole Guide.</b> <b>Exploring is the visitor's time, never the Guide's.</b> <b>An invitation is a hint; it never stops the tour.</b></p>
   <div class="rv-model" aria-label="The refined model">
     <div class="rv-box g"><b>Guide · Automatic or Manual</b><small>Ordered Stops and the transitions between them, and the one clock. <i>Automatic</i> moves on when each stay ends; <i>Manual</i> waits for Next at every Stop.</small></div>
@@ -2167,7 +2167,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 33 · Experience final reconciliation -->
 <section id="s33" class="wide" data-fzv="final" data-fzn="5">
   <h2><span class="n">33</span>Experience final reconciliation: one linear Guide, one timeline, one clear authoring flow</h2>
-  <p class="lede">The owner's review of PR #271 against §25, §27, §28, §31 and §32. A Presentation holds ordered Views, a Stop visits one Presentation at one entry View with one stay, the Guide owns order and pacing, and Camera owns paths. Revision 2 (the owner's decisions of 5 November) makes the Guide <b>one linear sequence</b>: the first Stop starts, the last Stop ends, and the order is the route, so <i>Starts at</i>, <i>Next goes to</i> and an early End leave the model rather than being hidden. The Guide Card is retired, because each Guide setting already has a home. What changes is <b>where things are done</b> and <b>how little the creator has to know</b>. Every panel in this section shares one state, so an edit in one place shows everywhere. Where §33 disagrees with an earlier section, §33 wins, and the <a href="#fz-delta">change table</a> names each case.</p>
+  <p class="lede">The owner's review of PR #271 against §25, §27, §28, §31 and §32. A Presentation holds ordered Views, a Stop visits one Presentation at one entry View with one stay, the Guide owns order and pacing, and Camera owns paths. The owner's decisions of 5 November (fix.md §2, all approved) make the Guide <b>one linear sequence</b>: the first Stop starts, the last Stop ends, and the order is the route, so <i>Starts at</i>, <i>Next goes to</i> and an early End leave the model rather than being hidden. The Guide Card is retired, because each Guide setting already has a home. What changes is <b>where things are done</b> and <b>how little the creator has to know</b>. Every panel in this section shares one state, so an edit in one place shows everywhere. Where §33 disagrees with an earlier section, §33 wins, and the <a href="#fz-delta">change table</a> names each case.</p>
   <p class="fz-plan">Implementation plan, defect ledger and the owner's decisions: <a href="../../roadmap/r217-core-editor-stability/experience-review/fix.md">experience-review/fix.md</a>.</p>
 
   <div class="fz-own" aria-label="One place to do each thing">
@@ -2209,7 +2209,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
     <li><b>One timeline.</b> Each card's bottom rail is that Stop's stay, and each Travel gutter's rail is that Travel. A Cut takes no time, so its gutter shows a dotted hairline and the playhead jumps over it. One playhead, one clock (<i>0:21 / 0:53</i> in the header) and one scrub interaction. The separate full-width scrub bar goes. Cards keep fixed widths, so the scrub maps each segment on its own: dragging across a 4 s card and a 12 s card moves at different rates, and the tooltip names the time and the Stop.</li>
     <li><b>Manual:</b> every card rail is a wait that ends in ⏸. Play stops there, and ▶ continues, as a visitor presses Next. A wait has no length on the clock, so the header reads <i>0:09 + 5 waits</i>.</li>
     <li><b>Pacing lives on the strip.</b> The pill opens a small popover with the two choices. Arrow keys move, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes, and focus returns to the pill. There is no other pacing control.</li>
-    <li><b>Reorder:</b> drag a card (on touch, hold it first), or use <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>. A thin light insertion line, with no gold border, shows where it lands. A card's outgoing Cut or Travel moves with it, because the choice belongs to the Stop it leaves (O-1). Two rules keep that predictable, with nothing dormant. The last Stop has no outgoing step at all, so a Stop moved to the end loses its Travel; moved back into the middle, it leaves by a fresh Cut, and no hidden Travel settings come back. And a Travel whose two Stops now show the same View becomes a Cut (O-7). Both are written in the same change, said once in the feedback line, and leave the Camera path in place for the next Travel. Overflow scrolls sideways with no visible scrollbar and pages with the arrows, and the selected or playing Stop scrolls into view.</li>
+    <li><b>Reorder:</b> drag a card (on touch, hold it first), or use <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>. A thin light insertion line, with no gold border, shows where it lands. A card's outgoing Cut or Travel moves with it, because the choice belongs to the Stop it leaves (D-3). Two rules keep that predictable, with nothing dormant. The last Stop has no outgoing step at all, so a Stop moved to the end loses its Travel; moved back into the middle, it leaves by a fresh Cut, and no hidden Travel settings come back. And a Travel whose two Stops now show the same View becomes a Cut (D-7). Both are written in the same change, said once in the feedback line, and leave the Camera path in place for the next Travel. Overflow scrolls sideways with no visible scrollbar and pages with the arrows, and the selected or playing Stop scrolls into view.</li>
   </ul>
 
   <!-- B · No Guide Card; the Experience Card -->
@@ -2274,7 +2274,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
     <li><b>Identity stays separate from the name.</b> The kind line reads <i>about Pleyel piano · Form 2</i>, with <i>Show in World</i>. <i>Link</i> and <i>Unlink</i> are explicit actions, one Undo each. Capture suggests the object under the centre of the View (§27) and waits for <i>Link</i>. <i>Pick on the Stage</i> arms a one-shot picker, and <kbd>Esc</kbd> cancels it.</li>
     <li><b>Unlinking keeps the current name</b> as the Presentation's own. Environment and region Presentations stay unlinked; nothing forces a subject on them.</li>
     <li><b>World shows nothing about the link.</b> No badge, outline, warning or special state marks an object because a Presentation is about it, in the plan, the Stage or the object's Card. The relationship is managed from the Presentation (<i>About</i>, <i>Show in World</i>).</li>
-    <li><b>Removing the object just works</b> (O-3). The World removal is one change that also unlinks the Presentation and keeps its last name as its own. The Presentation, its Views and its Stops stay. There's no World warning, no removed state and no repair; the World's feedback is the ordinary <i>Pleyel piano removed.</i>, and one Undo brings the object and the link back. Nothing ever retargets.</li>
+    <li><b>Removing the object just works</b> (D-4, A-3). The World removal is one change that also unlinks the Presentation and keeps its last name as its own. The Presentation, its Views and its Stops stay. There's no World warning, no removed state and no repair; the World's feedback is the ordinary <i>Pleyel piano removed.</i>, and one Undo brings the object and the link back. Nothing ever retargets.</li>
   </ul>
 
   <!-- E · Travel without connections -->
@@ -2355,12 +2355,14 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
       <tr><td>Next goes to</td><td><code>Stop.continuation</code> <code>{kind:'stop'}</code></td><td>The next Stop in the order. A jump that skips Stops is, without branching, a reorder or a removal.</td></tr>
       <tr><td>Early End</td><td><code>Stop.continuation</code> <code>{kind:'end'}</code></td><td>The last Stop ends. Stops after an early End were unreachable; removing them, or a second Guide, says that honestly.</td></tr>
       <tr><td>Cut or Travel to the next Stop</td><td><code>continuation.transition</code></td><td>Kept, as <code>Stop.transition</code>: the step from this Stop to the next. The last Stop has none.</td></tr>
+      <tr><td>A Presentation step stored on the View it arrives at</td><td><code>views[i].transition</code>, the step <i>into</i> View i</td><td>The same field now means the step <i>to the next</i> View, and the last View has none (A-1). A Guide and a Presentation follow one rule: a Cut or Travel belongs to the item it leaves, so dragging a Stop or a View carries its outgoing chip.</td></tr>
     </tbody>
   </table></div>
   <ul class="rules">
+    <li><b>Each Stop belongs to exactly one Guide</b>, once (A-5), so its outgoing Cut or Travel always means one pair.</li>
     <li><b>Visitors still move freely.</b> <i>Prev</i>, <i>Next</i> and Places jump between Stops and Presentations at run time. That is navigation, not authored order, so it needs no field.</li>
     <li><b>Detours are kept as they are.</b> A Detour is an authored return trip (from, to, return to) that plays only when a visitor jumps along it; it has no authoring UI and none is added. One fix: removing a Stop that a Detour uses removes that Detour in the same change and lists it, instead of refusing with no way to remove the Detour.</li>
-    <li><b>Branching with consequences is a later milestone.</b> Nothing here prepares it, and nothing here blocks it: a future design adds its own fields rather than reviving these.</li>
+    <li><b>Branching with consequences is a later milestone.</b> Nothing here prepares it, and nothing here blocks it: a future design adds its own fields rather than reviving these. The visitor runtime keeps its existing jump and End handling (A-4), but nothing authors them.</li>
   </ul>
 
   <!-- Ownership -->
@@ -2385,7 +2387,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
       <tr><td>Entry View</td><td>Stop</td><td>Stop Card · Enter at; or chosen at creation from a View row</td><td>Presentation rows <i>Stop 2</i></td><td>—</td></tr>
       <tr><td>Stay, invitation</td><td>Stop</td><td>Stop Card</td><td>Card rail; ✦</td><td>—</td></tr>
       <tr><td>Presentation name, object link</td><td>Presentation</td><td>Presentation Card · name and <i>About</i></td><td>Index, strip, visitor caption</td><td>—</td></tr>
-      <tr><td>View order, steps, Listed in Places</td><td>Presentation</td><td>Presentation Card</td><td>Visitor View strip</td><td>—</td></tr>
+      <tr><td>View order, steps, Listed in Places</td><td>Presentation</td><td>Presentation Card; each step belongs to the View it leaves (A-1) <span class="fz-chg">changed</span></td><td>Visitor View strip</td><td>—</td></tr>
     </tbody>
   </table></div>
 
@@ -2396,9 +2398,10 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
     <tbody>
       <tr><td>§25 Compact Guide</td><td>Wide white cards with the Stop's time; ⚠ only for broken data</td><td>Light cards with gold selection, <i>Start</i> and the time on each card, and a manual <i>+</i> path button</td><td><b>Amended:</b> dark compact cards, quiet selection, no time or <i>Start</i> on the card, no <i>+</i>. Overflow and fades are kept.</td></tr>
       <tr><td>§28 Scrub on the cards</td><td>The rails join into one scrubber, with no separate row</td><td>Rails <i>plus</i> a separate proportional scrub bar</td><td><b>Kept, and delivered:</b> one segmented track; the separate bar is retired</td></tr>
-      <tr><td>§27 Presentation and object</td><td>Name follows; link and unlink; picker; removed state</td><td>Not delivered: <code>label</code> is a required string, and the Card shows no subject</td><td><b>Kept, and delivered:</b> <code>label: string | null</code> inside format 4. The removed state is replaced: removing the object unlinks it and keeps the name (O-3).</td></tr>
+      <tr><td>§27 Presentation and object</td><td>Name follows; link and unlink; picker; removed state</td><td>Not delivered: <code>label</code> is a required string, and the Card shows no subject</td><td><b>Kept, and delivered:</b> <code>label: string | null</code> inside format 4. The removed state is replaced: removing the object unlinks it and keeps the name (D-4, A-3).</td></tr>
       <tr><td>§31 Follow or step aside</td><td>Visitor bar with Next, Pause, Explore and Back</td><td>Delivered, with ordinal dashes for progress</td><td><b>Amended:</b> segmented continuous progress. The model is unchanged.</td></tr>
       <tr><td>§32 One setting, one place</td><td>Pacing edited in the Guide Card; the strip label links to it</td><td>As decided, plus Add stop, Play, the launch cards and the welcome in the Guide Card</td><td><b>Amended:</b> pacing and the Guide's name are edited on the strip; the Guide Card is retired; the welcome moves to the Experience Card; <i>Starts at</i> and <i>Next goes to</i> leave the model</td></tr>
+      <tr><td>§31 Presentation steps</td><td>The step into each View; the first has none</td><td>As decided</td><td><b>Amended:</b> the step to the next View; the last has none (A-1)</td></tr>
       <tr><td>§25 / §31 Continuation</td><td>Each Stop continues to the next, an explicit Stop, or End; the Guide has a start Stop</td><td>As decided, with <i>Next goes to</i> in the Transition Card and <i>Start the tour here</i> in the context menu</td><td><b>Simplified:</b> one linear order. <code>entryStopId</code> and <code>continuation</code> leave format 4; the Cut or Travel stays on the Stop it leaves (H)</td></tr>
       <tr><td>§5 Travel and its Card</td><td>Choosing Travel creates its path</td><td>Only when switching Cut → Travel</td><td><b>Kept, and generalised:</b> every edit that changes a Travel's pair keeps it valid: a path for a new pair of different Views, a Cut for the same View or no next Stop</td></tr>
     </tbody>
