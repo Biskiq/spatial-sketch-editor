@@ -12,8 +12,11 @@
  *   (`sequence-next`, its Cut/Travel choice kept), named;
  * - a Guide's start that was removed moves to the Stop that followed it (or
  *   preceded it, when it was last), named;
- * - a Stop that entered at a removed View enters at its Presentation's Default,
- *   named;
+ * - a Stop that entered at a removed View enters at its Presentation's Default
+ *   (`entryViewId: null`), named;
+ * - removing a Presentation's first View makes the next View the Default, named;
+ *   the Views either side of a removed View become neighbours and keep their
+ *   Cut/Travel;
  * - a Camera View is deleted with its connections only when no other
  *   Presentation lists it; otherwise it is kept and its other users are named;
  * - removing the Opening Guide makes the next Guide the Opening Guide, named, or
@@ -23,12 +26,14 @@
  * no clock is read.
  */
 
-import type {
-	CameraUnitPayload,
-	Experience,
-	ExperienceContinuation,
-	ExperienceGuide,
-	ExperienceStop
+import {
+	presentationViewIds,
+	type CameraUnitPayload,
+	type Experience,
+	type ExperienceContinuation,
+	type ExperienceGuide,
+	type ExperiencePresentationView,
+	type ExperienceStop
 } from './types';
 
 /** One named effect of a removal, in the order the removal applies it. */
@@ -36,13 +41,11 @@ export type ExperienceRemovalConsequence =
 	| { readonly kind: 'stop-removed'; readonly stopId: string; readonly presentationId: string }
 	| { readonly kind: 'continuation-fallback'; readonly stopId: string; readonly removedStopId: string }
 	| { readonly kind: 'guide-start-moved'; readonly guideId: string; readonly fromStopId: string; readonly toStopId: string }
-	| { readonly kind: 'stop-view-removed'; readonly stopId: string; readonly viewId: string }
 	| { readonly kind: 'stop-entry-fallback'; readonly stopId: string; readonly viewId: string }
 	| { readonly kind: 'default-changed'; readonly presentationId: string; readonly fromViewId: string; readonly toViewId: string }
 	| { readonly kind: 'view-deleted'; readonly viewId: string }
 	| { readonly kind: 'view-kept'; readonly viewId: string; readonly usedByPresentationIds: readonly string[] }
 	| { readonly kind: 'connection-deleted'; readonly connectionId: string }
-	| { readonly kind: 'gate-removed'; readonly gateId: string }
 	| { readonly kind: 'guide-removed'; readonly guideId: string }
 	| { readonly kind: 'opening-guide-moved'; readonly fromGuideId: string; readonly toGuideId: string | null }
 	| { readonly kind: 'presentation-removed'; readonly presentationId: string }
@@ -54,7 +57,6 @@ export type ExperienceRemovalRefusalCode =
 	| 'guide-keeps-a-stop'
 	| 'detour-uses-stop'
 	| 'presentation-keeps-a-view'
-	| 'default-needed'
 	| 'invalid-default';
 
 export type ExperienceRemovalPlan =
@@ -152,7 +154,7 @@ function releaseViews(
 	for (const viewId of candidateViewIds) {
 		if (deleted.has(viewId)) continue;
 		const usedBy = experiences.flatMap((entry) =>
-			entry.presentations.filter((presentation) => presentation.viewIds.includes(viewId)).map((presentation) => presentation.id)
+			entry.presentations.filter((presentation) => presentation.views.some((view) => view.viewId === viewId)).map((presentation) => presentation.id)
 		);
 		if (usedBy.length > 0) {
 			consequences.push({ kind: 'view-kept', viewId, usedByPresentationIds: usedBy });
@@ -220,7 +222,7 @@ export function planGuideRemoval(experience: Experience, guideId: string): Exper
 
 /**
  * E4 — remove one Presentation: its Stops (under the Stop rules, so a Guide left
- * empty refuses), its Gates, and its Camera Views no other Presentation lists,
+ * empty refuses) and its Camera Views no other Presentation lists,
  * with their connections.
  */
 export function planPresentationRemoval(
@@ -239,25 +241,21 @@ export function planPresentationRemoval(
 	const stopIds = new Set(experience.stops.filter((stop) => stop.presentationId === presentationId).map((stop) => stop.id));
 	const withoutStops = removeStops(experience, stopIds, new Set(), consequences);
 	if ('kind' in withoutStops) return withoutStops;
-	const gates = withoutStops.gates.filter((gate) => {
-		if (gate.presentationId !== presentationId) return true;
-		consequences.push({ kind: 'gate-removed', gateId: gate.id });
-		return false;
-	});
 	const next: Experience = {
 		...withoutStops,
-		presentations: withoutStops.presentations.filter((entry) => entry.id !== presentationId),
-		gates
+		presentations: withoutStops.presentations.filter((entry) => entry.id !== presentationId)
 	};
-	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), presentation.viewIds, consequences);
+	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), presentationViewIds(presentation), consequences);
 	return { kind: 'planned', experience: next, camera: releasedCamera, consequences };
 }
 
 /**
- * E4 — remove one View from one Presentation. The last View refuses; removing the
- * Default needs the new Default chosen (`newDefaultViewId`), never an automatic
- * pick. Stops that entered at the View enter at the Default. The Camera View and
- * its connections are deleted only when no other Presentation lists it.
+ * E4 — remove one View from one Presentation. The last View refuses. The
+ * Default is the first View: removing it makes the next View the Default, or
+ * `newDefaultViewId` when the creator chose another (it moves to the top).
+ * The Views either side of the removed one become neighbours and keep their
+ * Cut/Travel. Stops that entered at the View enter at the Default. The Camera
+ * View and its connections are deleted only when no other Presentation lists it.
  */
 export function planPresentationViewRemoval(
 	experiences: readonly Experience[],
@@ -265,7 +263,7 @@ export function planPresentationViewRemoval(
 	experienceId: string,
 	presentationId: string,
 	viewId: string,
-	newDefaultViewId: string | null
+	newDefaultViewId: string | null = null
 ): ExperienceRemovalPlan {
 	const experience = experiences.find((entry) => entry.id === experienceId);
 	if (experience === undefined) return refused('missing-target', `experience "${experienceId}" is not in this envelope`);
@@ -273,48 +271,33 @@ export function planPresentationViewRemoval(
 	if (presentation === undefined) {
 		return refused('missing-target', `presentation "${presentationId}" is not in experience "${experience.id}"`);
 	}
-	if (!presentation.viewIds.includes(viewId)) {
+	const at = presentation.views.findIndex((view) => view.viewId === viewId);
+	if (at === -1) {
 		return refused('missing-target', `view "${viewId}" is not one of presentation "${presentation.id}"'s views`);
 	}
-	if (presentation.viewIds.length === 1) return refused('presentation-keeps-a-view', PRESENTATION_KEEPS_A_VIEW_REASON);
-	const viewIds = presentation.viewIds.filter((id) => id !== viewId);
-	let defaultViewId = presentation.defaultViewId;
+	if (presentation.views.length === 1) return refused('presentation-keeps-a-view', PRESENTATION_KEEPS_A_VIEW_REASON);
 	const consequences: ExperienceRemovalConsequence[] = [{ kind: 'view-removed', presentationId, viewId }];
-	if (presentation.defaultViewId === viewId) {
-		if (newDefaultViewId === null) {
-			return refused('default-needed', 'This is the Default View: choose the new Default first');
+	let views: ExperiencePresentationView[] = presentation.views.filter((view) => view.viewId !== viewId);
+	if (at === 0) {
+		const chosen = newDefaultViewId ?? views[0]!.viewId;
+		const chosenAt = views.findIndex((view) => view.viewId === chosen);
+		if (chosenAt === -1) {
+			return refused('invalid-default', `the new Default "${chosen}" is not one of the Presentation's other Views`);
 		}
-		if (!viewIds.includes(newDefaultViewId)) {
-			return refused('invalid-default', `the new Default "${newDefaultViewId}" is not one of the Presentation's other Views`);
-		}
-		defaultViewId = newDefaultViewId;
-		consequences.push({ kind: 'default-changed', presentationId, fromViewId: viewId, toViewId: newDefaultViewId });
-	} else if (newDefaultViewId !== null && newDefaultViewId !== presentation.defaultViewId) {
+		const { transition: _dropped, ...head } = views[chosenAt]!;
+		views = [head, ...views.filter((_, index) => index !== chosenAt)];
+		consequences.push({ kind: 'default-changed', presentationId, fromViewId: viewId, toViewId: chosen });
+	} else if (newDefaultViewId !== null && newDefaultViewId !== presentation.views[0]!.viewId) {
 		return refused('invalid-default', 'A new Default is chosen only when the Default View is removed');
 	}
-	if (defaultViewId === null && experience.stops.some((stop) =>
-		stop.presentationId === presentationId && stop.views.length === 1 && stop.views[0]!.viewId === viewId
-	)) {
-		return refused('default-needed', 'Choose a Default View before removing the only View of a Stop');
-	}
 	const stops = experience.stops.map((stop) => {
-		if (stop.presentationId !== presentationId || !stop.views.some((view) => view.viewId === viewId)) return stop;
-		consequences.push({ kind: 'stop-view-removed', stopId: stop.id, viewId });
-		const views = stop.views.filter((view) => view.viewId !== viewId);
-		if (views.length === 0 && defaultViewId !== null) {
-			consequences.push({ kind: 'stop-entry-fallback', stopId: stop.id, viewId });
-			return { ...stop, views: [{ viewId: defaultViewId }] };
-		}
-		const [entry, ...rest] = views;
-		if (entry?.transition === undefined) return { ...stop, views };
-		const { transition: _transition, ...first } = entry;
-		return { ...stop, views: [first, ...rest] };
+		if (stop.presentationId !== presentationId || stop.entryViewId !== viewId) return stop;
+		consequences.push({ kind: 'stop-entry-fallback', stopId: stop.id, viewId });
+		return { ...stop, entryViewId: null };
 	});
 	const next: Experience = {
 		...experience,
-		presentations: experience.presentations.map((entry) =>
-			entry.id === presentationId ? { ...entry, viewIds, defaultViewId } : entry
-		),
+		presentations: experience.presentations.map((entry) => (entry.id === presentationId ? { ...entry, views } : entry)),
 		stops
 	};
 	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), [viewId], consequences);

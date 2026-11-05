@@ -66,14 +66,20 @@ import {
 	createUnitAcceptancePreparation
 } from './acceptance';
 import { stageUnitResources, type StagedUnitResource } from './acceptance-staging';
-import { readExperienceText, readGuidedViews } from './validate';
+import { readExperienceText, readInvitation, readPresentationViews, readStaySeconds } from './validate';
 import type { SceneConnection, ScenePathAnchor } from '../scene';
 import {
 	SCENE_ENVIRONMENT_PRESETS,
 	type SceneEnvironmentPreset,
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_WELCOME_MAX_LENGTH,
+	EXPERIENCE_GUIDE_PACINGS,
+	EXPERIENCE_STAY_DEFAULT_SECONDS,
 	EXPERIENCE_TRANSITIONS,
+	presentationDefaultViewId,
+	presentationViewIds,
+	type ExperienceGuidePacing,
+	type ExperiencePresentationView,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	type CameraView,
 	type Experience,
@@ -184,6 +190,11 @@ function capturedId(intent: PlannerRequest<ProjectEnvelope>['intent'], kind: str
 	return matches.length === 1 ? matches[0]!.id : null;
 }
 
+/** Every captured id of one kind, in capture order. */
+function capturedIds(intent: PlannerRequest<ProjectEnvelope>['intent'], kind: string): string[] {
+	return intent.allocatedIds.filter((entry) => entry.kind === kind).map((entry) => entry.id);
+}
+
 function allIds(envelope: ProjectEnvelope): Set<string> {
 	const ids = new Set<string>();
 	for (const unit of Object.values(envelope.units)) ids.add(unit.header.unitId);
@@ -191,7 +202,7 @@ function allIds(envelope: ProjectEnvelope): Set<string> {
 	for (const connection of envelope.units.camera.data.connections) ids.add(connection.id);
 	for (const experience of envelope.units.experience.data.experiences) {
 		ids.add(experience.id);
-		for (const item of [...experience.presentations, ...experience.stops, ...experience.guides, ...experience.gates, ...experience.detours]) {
+		for (const item of [...experience.presentations, ...experience.stops, ...experience.guides, ...experience.detours]) {
 			ids.add(item.id);
 		}
 	}
@@ -273,7 +284,7 @@ export function createCameraViewUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 /* --- shared payload readers ------------------------------------------------ */
 
 const CONTINUATION_KEYS = ['kind', 'stopId', 'transition'] as const;
-const STOP_PAYLOAD_KEYS = ['holdSeconds', 'continuation', 'guideId', 'afterStopId'] as const;
+const STOP_PAYLOAD_KEYS = ['staySeconds', 'continuation', 'guideId', 'afterStopId'] as const;
 const COMPOUND_PAYLOAD_KEYS = ['view', 'presentation', 'stop', 'firstGuide', 'resource', 'newExperience'] as const;
 const FIRST_GUIDE_PAYLOAD_KEYS = ['label'] as const;
 const PRESENTATION_PAYLOAD_KEYS = ['label', 'subject', 'text'] as const;
@@ -355,7 +366,7 @@ function readContinuation(reader: ShapeReader, input: unknown, path: string): Ex
 }
 
 type StopPayload = {
-	readonly holdSeconds: number | undefined;
+	readonly staySeconds: number;
 	readonly continuation: ExperienceContinuation | undefined;
 	/** The existing Guide the Stop joins, or `null` when the capture creates the first Guide. */
 	readonly guideId: string | null;
@@ -365,7 +376,7 @@ type StopPayload = {
 function readStopPayload(reader: ShapeReader, input: unknown, path: string): StopPayload | null {
 	const record = reader.object(input, path, STOP_PAYLOAD_KEYS);
 	if (record === null) return null;
-	const holdSeconds = record.holdSeconds === undefined ? undefined : reader.numberAtLeast(record.holdSeconds, `${path}.holdSeconds`, 0, false);
+	const staySeconds = record.staySeconds === undefined ? EXPERIENCE_STAY_DEFAULT_SECONDS : readStaySeconds(reader, record.staySeconds, `${path}.staySeconds`);
 	const continuation = record.continuation === undefined ? undefined : readContinuation(reader, record.continuation, `${path}.continuation`);
 	const guideId = record.guideId === null || record.guideId === undefined
 		? null
@@ -376,8 +387,8 @@ function readStopPayload(reader: ShapeReader, input: unknown, path: string): Sto
 		if (parsed === null) return null;
 		afterStopId = parsed;
 	}
-	if (holdSeconds === null || continuation === null) return null;
-	return { holdSeconds: holdSeconds ?? undefined, continuation: continuation ?? undefined, guideId, afterStopId };
+	if (staySeconds === null || continuation === null) return null;
+	return { staySeconds, continuation: continuation ?? undefined, guideId, afterStopId };
 }
 
 /** The first Guide's authored label; its identities are the intent's captured ids. */
@@ -487,7 +498,6 @@ export function createExperienceCreatePlanner(): DomainPlanner<ProjectEnvelope> 
 				presentations: [],
 				stops: [],
 				guides: [],
-				gates: [],
 				detours: []
 			};
 			const candidate: ProjectEnvelope = {
@@ -633,7 +643,6 @@ export function createCaptureBindPlanner(
 					presentations: [],
 					stops: [],
 					guides: [],
-					gates: [],
 					detours: []
 				};
 			} else {
@@ -743,8 +752,7 @@ export function createCaptureBindPlanner(
 			const newPresentation: ExperiencePresentation = {
 				id: presentationId,
 				label: presentationLabel,
-				viewIds: [viewId],
-				defaultViewId: viewId,
+				views: [{ viewId }],
 				subject: subject.value,
 				explorable: true,
 				text
@@ -755,13 +763,15 @@ export function createCaptureBindPlanner(
 					: {
 							id: stopId,
 							presentationId,
-							views: [{ viewId, ...(stop.holdSeconds === undefined ? {} : { holdSeconds: stop.holdSeconds }) }],
+							entryViewId: null,
+							staySeconds: stop.staySeconds,
+							invitation: null,
 							...(stop.continuation === undefined ? {} : { continuation: stop.continuation })
 						};
 			const newGuide: ExperienceGuide | null =
 				firstGuide === null || firstGuideId === null || newStop === null
 					? null
-					: { id: firstGuideId, label: firstGuide.label, stopIds: [newStop.id], entryStopId: newStop.id };
+					: { id: firstGuideId, label: firstGuide.label, stopIds: [newStop.id], entryStopId: newStop.id, pacing: 'automatic' };
 			const guides = newGuide === null
 				? experience.guides.map((candidate) =>
 						guide !== null && candidate.id === guide.id && newStop !== null
@@ -924,7 +934,7 @@ export function createCaptureBindPlanner(
 				{
 					kind: 'experience.presentation.created',
 					subjectIds: [newPresentation.id],
-					fields: ['label', 'viewIds', 'defaultViewId', 'subject', 'text']
+					fields: ['label', 'views', 'subject', 'text']
 				}
 			];
 			const correspondence: CorrespondenceEntry[] = [
@@ -952,7 +962,7 @@ export function createCaptureBindPlanner(
 			}
 			if (newGuide !== null) {
 				changes.push(
-					{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId'] },
+					{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId', 'pacing'] },
 					{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }
 				);
 				correspondence.push({
@@ -962,7 +972,7 @@ export function createCaptureBindPlanner(
 				});
 			}
 			if (newStop !== null) {
-				changes.push({ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'views', 'continuation'] });
+				changes.push({ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'continuation'] });
 				if (guide !== null) changes.push({ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] });
 				correspondence.push({
 					relation: 'created',
@@ -988,7 +998,7 @@ export function createCaptureBindPlanner(
 
 /* --- Guide creation -------------------------------------------------------- */
 
-const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'views', 'continuation'] as const;
+const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'staySeconds', 'continuation', 'pacing'] as const;
 
 /**
  * Create one Guide of an Experience and its initial distinct Stop.
@@ -1020,9 +1030,12 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			const presentationId = reader.opaqueId(payload.presentationId, '$.payload.presentationId');
 			const entryViewProvided = payload.entryViewId !== undefined && payload.entryViewId !== null;
 			const entryViewId = entryViewProvided ? reader.opaqueId(payload.entryViewId, '$.payload.entryViewId') : null;
-			const holdSeconds = payload.holdSeconds === undefined || payload.holdSeconds === null
-				? undefined
-				: reader.numberAtLeast(payload.holdSeconds, '$.payload.holdSeconds', 0, false);
+			const staySeconds = payload.staySeconds === undefined
+				? EXPERIENCE_STAY_DEFAULT_SECONDS
+				: readStaySeconds(reader, payload.staySeconds, '$.payload.staySeconds');
+			const pacing = payload.pacing === undefined
+				? 'automatic'
+				: (reader.tag(payload.pacing, '$.payload.pacing', EXPERIENCE_GUIDE_PACINGS) as ExperienceGuidePacing | null);
 			const continuation = payload.continuation === undefined || payload.continuation === null
 				? undefined
 				: readContinuation(reader, payload.continuation, '$.payload.continuation');
@@ -1030,7 +1043,8 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 				label === null ||
 				presentationId === null ||
 				(entryViewProvided && entryViewId === null) ||
-				(holdSeconds === null && payload.holdSeconds !== undefined) ||
+				staySeconds === null ||
+				pacing === null ||
 				continuation === null
 			) {
 				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
@@ -1055,11 +1069,12 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			}
 			// A Presentation without a Default View is not enterable, so no Stop of it
 			// can join a Guide.
-			if (presentation.defaultViewId === null) {
+			const defaultViewId = presentationDefaultViewId(presentation);
+			if (defaultViewId === null) {
 				return refuse('missing-entry', `presentation "${presentation.id}" has no Default View, so a Stop cannot enter it`);
 			}
-			const entry: string = entryViewId ?? presentation.defaultViewId;
-			if (!presentation.viewIds.includes(entry)) {
+			const entry: string = entryViewId ?? defaultViewId;
+			if (!presentationViewIds(presentation).includes(entry)) {
 				return refuse('invalid-payload', `entry view "${entry}" is not one of presentation "${presentation.id}"'s views`);
 			}
 			if (continuation !== undefined && continuation.kind === 'stop' && !experience.stops.some((candidate) => candidate.id === continuation.stopId)) {
@@ -1080,10 +1095,12 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			const newStop: ExperienceStop = {
 				id: stopId,
 				presentationId,
-				views: [{ viewId: entry, ...(holdSeconds === undefined || holdSeconds === null ? {} : { holdSeconds }) }],
+				entryViewId: entry === defaultViewId ? null : entry,
+				staySeconds,
+				invitation: null,
 				...(continuation === undefined || continuation === null ? {} : { continuation })
 			};
-			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], entryStopId: newStop.id };
+			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], entryStopId: newStop.id, pacing };
 			const updatedExperience: Experience = {
 				...experience,
 				entryGuideId: firstGuide ? newGuide.id : experience.entryGuideId,
@@ -1113,8 +1130,8 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 					sourceVersion: request.snapshot.sourceVersion,
 					source: candidate,
 					changes: [
-						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId'] },
-						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'views', 'continuation'] },
+						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId', 'pacing'] },
+						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'continuation'] },
 						...(firstGuide ? [{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }] : [])
 					],
 					correspondence: [
@@ -1138,7 +1155,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 
 /* --- Reuse a Presentation at a distinct Stop ------------------------------- */
 
-const STOP_CREATE_PAYLOAD_KEYS = ['presentationId', 'guideId', 'afterStopId', 'entryViewId', 'holdSeconds', 'continuation'] as const;
+const STOP_CREATE_PAYLOAD_KEYS = ['presentationId', 'guideId', 'afterStopId', 'entryViewId', 'staySeconds', 'continuation'] as const;
 
 /**
  * Create one Stop for an existing Presentation and insert it into a Guide.
@@ -1166,9 +1183,9 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 				? undefined
 				: reader.opaqueId(payload.entryViewId, '$.payload.entryViewId');
 			const entryViewProvided = payload.entryViewId !== undefined;
-			const holdSeconds = payload.holdSeconds === undefined
-				? undefined
-				: reader.numberAtLeast(payload.holdSeconds, '$.payload.holdSeconds', 0, false);
+			const staySeconds = payload.staySeconds === undefined
+				? EXPERIENCE_STAY_DEFAULT_SECONDS
+				: readStaySeconds(reader, payload.staySeconds, '$.payload.staySeconds');
 			const continuation = payload.continuation === undefined
 				? undefined
 				: readContinuation(reader, payload.continuation, '$.payload.continuation');
@@ -1181,7 +1198,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			if (
 				presentationId === null ||
 				guideId === null ||
-				(holdSeconds === null && payload.holdSeconds !== undefined) ||
+				staySeconds === null ||
 				continuation === null ||
 				(entryViewProvided && entryViewId === null)
 			) {
@@ -1200,13 +1217,14 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			}
 			const guide = experience.guides.find((candidate) => candidate.id === guideId);
 			if (guide === undefined) return refuse('missing-target', `guide "${guideId}" is not in experience "${experience.id}"`);
-			const entry: string | null = entryViewId ?? presentation.defaultViewId;
+			const defaultViewId = presentationDefaultViewId(presentation);
+			const entry: string | null = entryViewId ?? defaultViewId;
 			// A Presentation without a Default View is not enterable, so lowering never
 			// carries its Stops even when this Stop names its own entry View.
-			if (presentation.defaultViewId === null || entry === null) {
+			if (defaultViewId === null || entry === null) {
 				return refuse('missing-entry', `presentation "${presentation.id}" has no Default View, so a Stop cannot enter it`);
 			}
-			if (!presentation.viewIds.includes(entry)) {
+			if (!presentationViewIds(presentation).includes(entry)) {
 				return refuse('invalid-payload', `entry view "${entry}" is not one of presentation "${presentation.id}"'s views`);
 			}
 			if (continuation !== undefined && continuation.kind === 'stop' && !experience.stops.some((candidate) => candidate.id === continuation.stopId)) {
@@ -1228,7 +1246,9 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			const newStop: ExperienceStop = {
 				id: stopId,
 				presentationId,
-				views: [{ viewId: entry, ...(holdSeconds === undefined || holdSeconds === null ? {} : { holdSeconds }) }],
+				entryViewId: entry === defaultViewId ? null : entry,
+				staySeconds,
+				invitation: null,
 				...(continuation === undefined || continuation === null ? {} : { continuation })
 			};
 			const guides = experience.guides.map((candidate) =>
@@ -1267,7 +1287,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 					sourceVersion: request.snapshot.sourceVersion,
 					source: candidate,
 					changes: [
-						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'views', 'continuation'] },
+						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'continuation'] },
 						{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }
 					],
 					correspondence: [
@@ -1377,19 +1397,91 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 
 /* --- Bounded editorial fields ---------------------------------------------- */
 
-const PRESENTATION_UPDATE_KEYS = ['label', 'text', 'subject', 'view', 'defaultViewId', 'viewIds', 'explorable'] as const;
+const PRESENTATION_UPDATE_KEYS = ['label', 'text', 'subject', 'view', 'views', 'travelPaths', 'explorable'] as const;
+const TRAVEL_PATH_KEYS = ['fromViewId', 'toViewId'] as const;
+
+type ViewPair = { readonly fromViewId: string; readonly toViewId: string };
+
+/** Read an optional list of View pairs a Travel needs a straight Camera path for. */
+function readTravelPaths(reader: ShapeReader, input: unknown, path: string): ViewPair[] | null {
+	if (!Array.isArray(input)) {
+		reader.problem(path, 'not-an-array', `${path} must be an array`);
+		return null;
+	}
+	const pairs: ViewPair[] = [];
+	for (const [index, entry] of input.entries()) {
+		const record = reader.object(entry, `${path}[${index}]`, TRAVEL_PATH_KEYS);
+		if (record === null) return null;
+		const fromViewId = reader.opaqueId(record.fromViewId, `${path}[${index}].fromViewId`);
+		const toViewId = reader.opaqueId(record.toViewId, `${path}[${index}].toViewId`);
+		if (fromViewId === null || toViewId === null) return null;
+		pairs.push({ fromViewId, toViewId });
+	}
+	return pairs;
+}
 
 /**
- * Edit one Presentation's label, text and subject, or rebind it to a freshly
- * captured View.
+ * Add the straight Camera path each Travel pair needs, in order, consuming one
+ * captured `connection` id per pair that is not joined yet. An existing path is
+ * kept as it is; the result names every connection it created.
+ */
+function withStraightConnections(
+	envelope: ProjectEnvelope,
+	candidate: ProjectEnvelope,
+	pairs: readonly ViewPair[],
+	connectionIds: readonly string[]
+):
+	| { readonly kind: 'joined'; readonly envelope: ProjectEnvelope; readonly connections: SceneConnection[] }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	let current = candidate;
+	const created: SceneConnection[] = [];
+	let next = 0;
+	for (const pair of pairs) {
+		if (pair.fromViewId === pair.toViewId) continue;
+		const joined = current.units.camera.data.connections.some((connection) =>
+			sameUnorderedPair(connection, pair.fromViewId, pair.toViewId)
+		);
+		if (joined) continue;
+		const result = withStraightConnection(envelope, current, pair, connectionIds[next] ?? null);
+		if (result.kind === 'refused') return result;
+		next += 1;
+		current = result.envelope;
+		if (result.connection !== null) created.push(result.connection);
+	}
+	return { kind: 'joined', envelope: current, connections: created };
+}
+
+function connectionRecords(
+	source: ProjectEnvelope,
+	connections: readonly SceneConnection[]
+): { changes: OperationChange[]; correspondence: CorrespondenceEntry[] } {
+	return {
+		changes: connections.map((connection) => ({
+			kind: 'camera.connection.created',
+			subjectIds: [connection.id],
+			fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath']
+		})),
+		correspondence: connections.map((connection) => ({
+			relation: 'created' as const,
+			before: null,
+			after: reference('camera', 'connection', connection.id, [], revisionOf(source, 'camera'))
+		}))
+	};
+}
+
+/**
+ * Edit one Presentation's label, text, subject, Places listing or Views.
  *
  * Targets: exactly one `experience:presentation` reference. `text` and `subject`
- * are replaced when present and cleared by an explicit `null`; `view` captures a
- * new View, appends it to `viewIds` and makes it the Default — the deliberate
- * rebind, rather than editing a shared View in place. `viewIds` (R217.S26)
- * reorders the Presentation's Views: it must be a permutation of the authored
- * `viewIds`, never an insert or a removal, and it is not combined with a capture.
- * Reordering never changes the Default.
+ * are replaced when present and cleared by an explicit `null`. `views` replaces
+ * the ordered View list with its Cut/Travel steps: it must name the same Views
+ * (a reorder or a step change, never an insert or a removal), and the first View
+ * — the Default — carries no step. Moving a View to the top makes it the
+ * Default; Stops without their own entry follow it. `view` captures a new View
+ * and appends it, joined by a Cut, and is never combined with `views`.
+ * `travelPaths` names View pairs a Travel step needs: the same accepted change
+ * adds each missing straight Camera path (one captured `connection` id each),
+ * so the Travel plays at once and is one Undo.
  */
 export function createExperiencePresentationUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
@@ -1416,24 +1508,20 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 					: readSubjectPayload(reader, payload.subject, '$.payload.subject');
 			const viewPresent = payload.view !== undefined && payload.view !== null;
 			const view = viewPresent ? readViewPose(reader, payload.view, '$.payload.view') : null;
-			const defaultViewId = payload.defaultViewId === undefined
-				? undefined
-				: payload.defaultViewId === null
-					? null
-					: reader.opaqueId(payload.defaultViewId, '$.payload.defaultViewId');
 			const explorable = payload.explorable === undefined
 				? undefined
 				: reader.boolean(payload.explorable, '$.payload.explorable');
-			const orderPresent = payload.viewIds !== undefined;
-			const order = orderPresent ? reader.opaqueIdArray(payload.viewIds, '$.payload.viewIds') : null;
+			const viewsPresent = payload.views !== undefined;
+			const views = viewsPresent ? readPresentationViews(reader, payload.views, '$.payload.views') : null;
+			const travelPaths = payload.travelPaths === undefined ? [] : readTravelPaths(reader, payload.travelPaths, '$.payload.travelPaths');
 			if (
 				explorable === null ||
-				(orderPresent && order === null) ||
+				(viewsPresent && views === null) ||
+				travelPaths === null ||
 				(label === null && payload.label !== undefined) ||
 				(textPresent && payload.text !== null && text === null) ||
 				(subject !== null && subject.ok === false) ||
-				(viewPresent && view === null) ||
-				(payload.defaultViewId !== undefined && payload.defaultViewId !== null && defaultViewId === null)
+				(viewPresent && view === null)
 			) {
 				return refuse('invalid-payload', 'The Presentation payload is not a valid shape', reader.issues);
 			}
@@ -1442,8 +1530,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				!textPresent &&
 				!subjectPresent &&
 				!viewPresent &&
-				payload.defaultViewId === undefined &&
-				!orderPresent &&
+				!viewsPresent &&
 				explorable === undefined
 			) {
 				return refuse('invalid-payload', 'the Presentation payload names no field to change');
@@ -1452,9 +1539,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 			if (target === null) {
 				return refuse('unsupported-operation', 'experience-presentation-update targets exactly one experience:presentation reference');
 			}
-			const container = target.instancePath.length === 1
-				? envelope.units.experience.data.experiences.find((candidate) => candidate.id === target.instancePath[0])
-				: undefined;
+			const container = containerOf(envelope, target);
 			if (container === undefined) {
 				return refuse('missing-target', `the Presentation's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
 			}
@@ -1463,24 +1548,19 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				return refuse('missing-target', `presentation "${target.subject.id}" is not in experience "${container.id}"`);
 			}
 			const previous = container.presentations[presentationIndex]!;
-			if (order !== null) {
+			if (views !== null) {
 				if (viewPresent) {
-					return refuse('invalid-payload', 'a View order is never combined with a captured View; reorder after the capture is accepted');
+					return refuse('invalid-payload', 'A View order is never combined with a captured View; reorder after the capture is accepted');
 				}
-				const authored = new Set(previous.viewIds);
-				if (
-					order.length !== previous.viewIds.length ||
-					new Set(order).size !== order.length ||
-					!order.every((viewId) => authored.has(viewId))
-				) {
+				const authored = new Set(presentationViewIds(previous));
+				if (views.length !== previous.views.length || !views.every((entry) => authored.has(entry.viewId))) {
 					return refuse(
 						'invalid-order',
-						`the new View order must be a permutation of presentation "${previous.id}"'s views; it is never an insert or a removal`
+						`the Views must be presentation "${previous.id}"'s own Views; reordering or changing a step never inserts or removes one`
 					);
 				}
 			}
-			let viewIds = order ?? previous.viewIds;
-			let defaultView: string | null = previous.defaultViewId;
+			let nextViews: ExperiencePresentationView[] = [...(views ?? previous.views)];
 			let createdView: CameraView | null = null;
 			if (view !== null) {
 				const viewId = capturedId(request.intent, 'view');
@@ -1491,39 +1571,12 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 					return refuse('duplicate-identity', `the captured id "${viewId}" already names a subject in this envelope`);
 				}
 				createdView = { id: viewId, label: view.label, eye: view.eye, target: view.target, fov: view.fov, connectedViewIds: [] };
-				viewIds = [...viewIds, viewId];
-				defaultView = viewId;
-			}
-			if (defaultViewId !== undefined) {
-				if (defaultViewId === null) {
-					defaultView = null;
-				} else {
-					if (!viewIds.includes(defaultViewId)) {
-						return refuse('invalid-payload', `default view "${defaultViewId}" is not one of this Presentation's views`);
-					}
-					defaultView = defaultViewId;
-				}
-			}
-			// Clearing the Default would leave a Stop of this Presentation with no
-			// enterable Presentation: lowering reports such a Presentation as
-			// unavailable and refuses the Stop's order. A Stop's own entry View does not
-			// rescue it, so any Stop of the Presentation blocks the clear. Only a clear
-			// is refused: an edit that never touched the Default is not blocked.
-			if (
-				previous.defaultViewId !== null &&
-				defaultView === null &&
-				container.stops.some((stop) => stop.presentationId === previous.id)
-			) {
-				return refuse(
-					'invalid-payload',
-					`presentation "${previous.id}" has Stops; keep a Default View while the Guide uses this Presentation`
-				);
+				nextViews = [...nextViews, nextViews.length === 0 ? { viewId } : { viewId, transition: 'cut' }];
 			}
 			const updated: ExperiencePresentation = {
 				id: previous.id,
 				label: label ?? previous.label,
-				viewIds,
-				defaultViewId: defaultView,
+				views: nextViews,
 				subject: subject === null ? previous.subject : subject.value,
 				text: textPresent ? text : previous.text,
 				explorable: explorable ?? previous.explorable
@@ -1532,38 +1585,32 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				...container,
 				presentations: container.presentations.map((candidate, index) => (index === presentationIndex ? updated : candidate))
 			};
-			const experiences = envelope.units.experience.data.experiences.map((candidate) =>
-				candidate.id === container.id ? updatedExperience : candidate
-			);
-			const candidate: ProjectEnvelope = {
-				...envelope,
-				units: {
-					...envelope.units,
-					camera: createdView === null
-						? envelope.units.camera
-						: {
-								header: { ...envelope.units.camera.header },
-								data: {
-									formatVersion: CAMERA_UNIT_FORMAT_VERSION,
-									views: [...envelope.units.camera.data.views, createdView],
-									connections: envelope.units.camera.data.connections
-								}
-							},
-					experience: {
-						header: { ...envelope.units.experience.header },
-						data: { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences }
+			let source = withExperience(envelope, updatedExperience);
+			if (createdView !== null) {
+				source = {
+					...source,
+					units: {
+						...source.units,
+						camera: {
+							header: { ...envelope.units.camera.header },
+							data: {
+								formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+								views: [...envelope.units.camera.data.views, createdView],
+								connections: envelope.units.camera.data.connections
+							}
+						}
 					}
-				}
-			};
+				};
+			}
+			const joined = withStraightConnections(envelope, source, travelPaths, capturedIds(request.intent, 'connection'));
+			if (joined.kind === 'refused') return refuse(joined.code, joined.message);
+			source = joined.envelope;
 			const changedFields: string[] = [];
 			if (updated.label !== previous.label) changedFields.push('label');
 			if (textPresent) changedFields.push('text');
 			if (updated.explorable !== previous.explorable) changedFields.push('explorable');
 			if (subject !== null) changedFields.push('subject');
-			if (defaultView !== previous.defaultViewId) changedFields.push('defaultViewId');
-			if (viewIds.some((viewId, index) => viewId !== previous.viewIds[index]) || viewIds.length !== previous.viewIds.length) {
-				changedFields.push('viewIds');
-			}
+			if (JSON.stringify(updated.views) !== JSON.stringify(previous.views)) changedFields.push('views');
 			const changes: OperationChange[] = [
 				{ kind: 'experience.presentation.updated', subjectIds: [updated.id], fields: changedFields }
 			];
@@ -1571,7 +1618,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				{
 					relation: 'preserved',
 					before: reference('experience', 'presentation', previous.id, [container.id], revisionOf(envelope, 'experience')),
-					after: reference('experience', 'presentation', previous.id, [container.id], revisionOf(candidate, 'experience'))
+					after: reference('experience', 'presentation', previous.id, [container.id], revisionOf(source, 'experience'))
 				}
 			];
 			if (createdView !== null) {
@@ -1579,26 +1626,16 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				correspondence.push({
 					relation: 'created',
 					before: null,
-					after: reference('camera', 'view', createdView.id, [], revisionOf(candidate, 'camera'))
+					after: reference('camera', 'view', createdView.id, [], revisionOf(source, 'camera'))
 				});
 			}
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes,
-					correspondence,
-					diagnostics: []
-				}
-			};
+			const records = connectionRecords(source, joined.connections);
+			return prepared(request, source, [...changes, ...records.changes], [...correspondence, ...records.correspondence]);
 		}
 	};
 }
 
-const STOP_UPDATE_PAYLOAD_KEYS = ['views', 'continuation', 'travelPath'] as const;
+const STOP_UPDATE_PAYLOAD_KEYS = ['entryViewId', 'staySeconds', 'invitation', 'continuation', 'travelPath'] as const;
 const STOP_TRAVEL_PATH_KEYS = ['fromViewId', 'toViewId'] as const;
 
 function presentationOfStop(experience: Experience, stop: ExperienceStop): ExperiencePresentation | null {
@@ -1606,13 +1643,15 @@ function presentationOfStop(experience: Experience, stop: ExperienceStop): Exper
 }
 
 /**
- * Replace a Stop's guided sequence, continuation, or both in one intent.
+ * Edit one Stop's own visit facts — its entry View, its stay, its invitation —
+ * or its continuation, in one intent.
  *
- * Experience review 1 — choosing Travel may carry `travelPath` (the leaving and
- * arriving Views). When no Camera path joins that pair yet, the same accepted
- * change adds the straight one (`camera-connection-create`'s shape, with the
- * captured `connection` id), so Travel plays at once and is one Undo. An
- * existing path is kept as it is.
+ * `entryViewId: null` follows the Presentation's Default; a named entry must be
+ * one of its Views. `staySeconds` is finite and at least 1 s. `invitation` is
+ * `null` (off) or `{ prompt }`. Experience review 1 — choosing Travel may carry
+ * `travelPath` (the leaving and arriving Views). When no Camera path joins that
+ * pair yet, the same accepted change adds the straight one (with the captured
+ * `connection` id), so Travel plays at once and is one Undo.
  */
 export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
@@ -1626,23 +1665,31 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', STOP_UPDATE_PAYLOAD_KEYS);
 			if (payload === null) return refuse('invalid-payload', 'The Stop payload is not a valid shape', reader.issues);
-			const viewsPresent = payload.views !== undefined;
-			const views = viewsPresent ? readGuidedViews(reader, payload.views, '$.payload.views') : null;
+			const entryPresent = payload.entryViewId !== undefined;
+			const entryViewId = !entryPresent || payload.entryViewId === null
+				? null
+				: reader.opaqueId(payload.entryViewId, '$.payload.entryViewId');
+			const stayPresent = payload.staySeconds !== undefined;
+			const staySeconds = stayPresent ? readStaySeconds(reader, payload.staySeconds, '$.payload.staySeconds') : null;
+			const invitationPresent = payload.invitation !== undefined;
+			const invitation = invitationPresent ? readInvitation(reader, payload.invitation, '$.payload.invitation') : null;
 			const continuationPresent = payload.continuation !== undefined;
 			const continuation = !continuationPresent || payload.continuation === null
 				? null
 				: readContinuation(reader, payload.continuation, '$.payload.continuation');
 			if (
 				reader.issues.length !== 0 ||
-				(viewsPresent && views === null) ||
+				(entryPresent && payload.entryViewId !== null && entryViewId === null) ||
+				(stayPresent && staySeconds === null) ||
+				(invitation !== null && !invitation.ok) ||
 				(continuationPresent && payload.continuation !== null && continuation === null)
 			) {
 				return refuse('invalid-payload', 'The Stop payload is not a valid shape', reader.issues);
 			}
-			if (!viewsPresent && !continuationPresent) {
+			if (!entryPresent && !stayPresent && !invitationPresent && !continuationPresent) {
 				return refuse('invalid-payload', 'the Stop payload names no field to change');
 			}
-			let travelPath: { readonly fromViewId: string; readonly toViewId: string } | null = null;
+			let travelPath: ViewPair | null = null;
 			if (payload.travelPath !== undefined) {
 				const path = reader.object(payload.travelPath, '$.payload.travelPath', STOP_TRAVEL_PATH_KEYS);
 				const fromViewId = path === null ? null : reader.string(path.fromViewId, '$.payload.travelPath.fromViewId');
@@ -1656,9 +1703,7 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			if (target === null) {
 				return refuse('unsupported-operation', 'experience-stop-update targets exactly one experience:stop reference');
 			}
-			const container = target.instancePath.length === 1
-				? envelope.units.experience.data.experiences.find((candidate) => candidate.id === target.instancePath[0])
-				: undefined;
+			const container = containerOf(envelope, target);
 			if (container === undefined) {
 				return refuse('missing-target', `the Stop's Experience "${target.instancePath[0] ?? '(unspecified)'}" is not in this envelope`);
 			}
@@ -1666,18 +1711,11 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			if (stopIndex === -1) return refuse('missing-target', `stop "${target.subject.id}" is not in experience "${container.id}"`);
 			const previous = container.stops[stopIndex]!;
 			const presentation = presentationOfStop(container, previous);
-			if (presentation === undefined || presentation === null) {
+			if (presentation === null) {
 				return refuse('missing-target', `stop "${previous.id}" names presentation "${previous.presentationId}", which this Experience does not carry`);
 			}
-			if (views !== null) {
-				if (views.length === 0) return refuse('stop-keeps-a-view', 'A Stop shows at least one View');
-				if (
-					views[0]!.transition !== undefined ||
-					new Set(views.map((view) => view.viewId)).size !== views.length ||
-					views.some((view) => !presentation.viewIds.includes(view.viewId))
-				) {
-					return refuse('invalid-sequence', 'Use distinct Views from the Presentation and leave the entry transition unset');
-				}
+			if (entryViewId !== null && !presentationViewIds(presentation).includes(entryViewId)) {
+				return refuse('invalid-payload', `entry view "${entryViewId}" is not one of presentation "${presentation.id}"'s views`);
 			}
 			if (
 				continuationPresent &&
@@ -1687,82 +1725,52 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			) {
 				return refuse('missing-target', `the continuation names stop "${continuation.stopId}", which this Experience does not carry`);
 			}
+			// Naming the Default as the entry is the same visit as following it: the
+			// Stop keeps following the Default through a later reorder.
+			const nextEntry = entryPresent
+				? entryViewId === presentationDefaultViewId(presentation) ? null : entryViewId
+				: previous.entryViewId;
 			const updated: ExperienceStop = {
 				id: previous.id,
 				presentationId: previous.presentationId,
-				views: views ?? previous.views,
+				entryViewId: nextEntry,
+				staySeconds: staySeconds ?? previous.staySeconds,
+				invitation: invitation !== null && invitation.ok ? invitation.value : previous.invitation,
 				...(continuationPresent
 					? continuation === null ? {} : { continuation }
 					: previous.continuation === undefined ? {} : { continuation: previous.continuation })
 			};
-			const updatedExperience: Experience = {
+			const candidate = withExperience(envelope, {
 				...container,
-				stops: container.stops.map((candidate, index) => (index === stopIndex ? updated : candidate))
-			};
-			const candidate: ProjectEnvelope = {
-				...envelope,
-				units: {
-					...envelope.units,
-					experience: {
-						header: { ...envelope.units.experience.header },
-						data: {
-							formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
-							experiences: envelope.units.experience.data.experiences.map((entryExperience) =>
-								entryExperience.id === container.id ? updatedExperience : entryExperience
-							)
-						}
-					}
-				}
-			};
-			let source: ProjectEnvelope = candidate;
-			let createdConnection: SceneConnection | null = null;
-			if (travelPath !== null && travelPath.fromViewId !== travelPath.toViewId) {
-				const joined = withStraightConnection(envelope, candidate, travelPath, capturedId(request.intent, 'connection'));
-				if (joined.kind === 'refused') return refuse(joined.code, joined.message);
-				source = joined.envelope;
-				createdConnection = joined.connection;
-			}
+				stops: container.stops.map((candidateStop, index) => (index === stopIndex ? updated : candidateStop))
+			});
+			const joined = withStraightConnections(
+				envelope,
+				candidate,
+				travelPath === null ? [] : [travelPath],
+				capturedIds(request.intent, 'connection')
+			);
+			if (joined.kind === 'refused') return refuse(joined.code, joined.message);
+			const source = joined.envelope;
 			const changedFields: string[] = [];
-			if (JSON.stringify(updated.views) !== JSON.stringify(previous.views)) changedFields.push('views');
+			if (updated.entryViewId !== previous.entryViewId) changedFields.push('entryViewId');
+			if (updated.staySeconds !== previous.staySeconds) changedFields.push('staySeconds');
+			if (JSON.stringify(updated.invitation) !== JSON.stringify(previous.invitation)) changedFields.push('invitation');
 			if (JSON.stringify(updated.continuation) !== JSON.stringify(previous.continuation)) changedFields.push('continuation');
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source,
-					changes: [
-						{ kind: 'experience.stop.updated', subjectIds: [updated.id], fields: changedFields },
-						...(createdConnection === null
-							? []
-							: [
-									{
-										kind: 'camera.connection.created',
-										subjectIds: [createdConnection.id],
-										fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath']
-									}
-								])
-					],
-					correspondence: [
-						{
-							relation: 'preserved',
-							before: reference('experience', 'stop', previous.id, [container.id], revisionOf(envelope, 'experience')),
-							after: reference('experience', 'stop', previous.id, [container.id], revisionOf(source, 'experience'))
-						},
-						...(createdConnection === null
-							? []
-							: [
-									{
-										relation: 'created' as const,
-										before: null,
-										after: reference('camera', 'connection', createdConnection.id, [], revisionOf(source, 'camera'))
-									}
-								])
-					],
-					diagnostics: []
-				}
-			};
+			const records = connectionRecords(source, joined.connections);
+			return prepared(
+				request,
+				source,
+				[{ kind: 'experience.stop.updated', subjectIds: [updated.id], fields: changedFields }, ...records.changes],
+				[
+					{
+						relation: 'preserved',
+						before: reference('experience', 'stop', previous.id, [container.id], revisionOf(envelope, 'experience')),
+						after: reference('experience', 'stop', previous.id, [container.id], revisionOf(source, 'experience'))
+					},
+					...records.correspondence
+				]
+			);
 		}
 	};
 }
@@ -2308,10 +2316,11 @@ export function createExperienceUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 	};
 }
 
-const GUIDE_UPDATE_KEYS = ['label', 'entryStopId'] as const;
+const GUIDE_UPDATE_KEYS = ['label', 'entryStopId', 'pacing'] as const;
 
 /**
- * Edit one Guide's label or its start Stop.
+ * Edit one Guide's label, its start Stop or its pacing (sheet §31: Automatic
+ * moves on when each stay ends; Manual waits for Next and keeps every stay).
  *
  * Targets: exactly one `experience:guide` reference scoped by its Experience.
  * `entryStopId` is one of the Guide's ordered Stops; it is independent of order,
@@ -2331,10 +2340,13 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 			if (payload === null) return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
 			const label = payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
 			const entryStopId = payload.entryStopId === undefined ? undefined : reader.opaqueId(payload.entryStopId, '$.payload.entryStopId');
-			if (label === null || entryStopId === null) {
+			const pacing = payload.pacing === undefined
+				? undefined
+				: (reader.tag(payload.pacing, '$.payload.pacing', EXPERIENCE_GUIDE_PACINGS) as ExperienceGuidePacing | null);
+			if (label === null || entryStopId === null || pacing === null) {
 				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
 			}
-			if (label === undefined && entryStopId === undefined) {
+			if (label === undefined && entryStopId === undefined && pacing === undefined) {
 				return refuse('invalid-payload', 'the Guide payload names no field to change');
 			}
 			if (label !== undefined && label.trim() === '') return refuse('invalid-payload', 'A name is needed');
@@ -2354,7 +2366,8 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 			const updated: ExperienceGuide = {
 				...previous,
 				label: label ?? previous.label,
-				entryStopId: entryStopId ?? previous.entryStopId
+				entryStopId: entryStopId ?? previous.entryStopId,
+				pacing: pacing ?? previous.pacing
 			};
 			const candidate = withExperience(envelope, {
 				...container,
@@ -2363,6 +2376,7 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 			const fields: string[] = [];
 			if (updated.label !== previous.label) fields.push('label');
 			if (updated.entryStopId !== previous.entryStopId) fields.push('entryStopId');
+			if (updated.pacing !== previous.pacing) fields.push('pacing');
 			return prepared(request, candidate, [{ kind: 'experience.guide.updated', subjectIds: [updated.id], fields }], [
 				{
 					relation: 'preserved',
@@ -2403,9 +2417,6 @@ function removalRecord(
 				changes.push({ kind: 'experience.guide.removed', subjectIds: [consequence.guideId], fields: [] });
 				retire('experience', 'guide', consequence.guideId, [experienceId]);
 				break;
-			case 'gate-removed':
-				changes.push({ kind: 'experience.gate.removed', subjectIds: [consequence.gateId], fields: [] });
-				break;
 			case 'view-deleted':
 				changes.push({ kind: 'camera.view.removed', subjectIds: [consequence.viewId], fields: [] });
 				retire('camera', 'view', consequence.viewId, []);
@@ -2415,14 +2426,13 @@ function removalRecord(
 				break;
 			case 'view-removed':
 			case 'default-changed':
-				changes.push({ kind: 'experience.presentation.updated', subjectIds: [consequence.presentationId], fields: consequence.kind === 'view-removed' ? ['viewIds'] : ['defaultViewId'] });
+				changes.push({ kind: 'experience.presentation.updated', subjectIds: [consequence.presentationId], fields: ['views'] });
 				break;
 			case 'continuation-fallback':
 				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['continuation'] });
 				break;
 			case 'stop-entry-fallback':
-			case 'stop-view-removed':
-				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['views'] });
+				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['entryViewId'] });
 				break;
 			case 'guide-start-moved':
 				changes.push({ kind: 'experience.guide.updated', subjectIds: [consequence.guideId], fields: ['entryStopId'] });
