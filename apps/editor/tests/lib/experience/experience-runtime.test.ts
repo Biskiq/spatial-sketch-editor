@@ -3,9 +3,11 @@
  * deterministic interpreter and the semantic companion.
  *
  * The cases are behavioral traces, not implementation snapshots: a repeated Stop
- * gets a fresh occurrence, a hold needs the explicit clock, a gate needs
- * Continue, continuation resolves by occurrence, a stale event cannot advance a
- * newer run, and every admitted destination is reachable from the companion.
+ * gets a fresh occurrence, a stay needs the explicit clock and starts only after
+ * its arrival, Next always works, Explore freezes the clock and Back restores the
+ * same occurrence, continuation resolves by occurrence, a stale event cannot
+ * advance a newer run, and every admitted destination is reachable from the
+ * companion (Experience format 4, sheet §31).
  */
 import { describe, expect, it } from 'vitest';
 
@@ -86,9 +88,8 @@ async function threeStopLowering(jumpFromEntry = false) {
 						{
 							id: 'presentation-3',
 							label: 'Study',
-							viewIds: ['view-3'],
+							views: [{ viewId: 'view-3' }],
 							explorable: true,
-							defaultViewId: 'view-3',
 							subject: null,
 							text: null
 						}
@@ -101,7 +102,14 @@ async function threeStopLowering(jumpFromEntry = false) {
 								}
 							: base.stops[0]!,
 						{ ...base.stops[1]!, continuation: { kind: 'sequence-next' as const, transition: 'travel' as const } },
-						{ id: 'stop-3', views: [{ viewId: 'view-3' }], presentationId: 'presentation-3', continuation: { kind: 'end' as const } }
+						{
+							id: 'stop-3',
+							presentationId: 'presentation-3',
+							entryViewId: null,
+							staySeconds: 3,
+							invitation: null,
+							continuation: { kind: 'end' as const }
+						}
 					],
 					guides: [{ ...base.guides[0]!, stopIds: ['stop-1', 'stop-2', 'stop-3'] }]
 				}
@@ -115,22 +123,28 @@ describe('Experience lowering', () => {
 	it('derives the entry guide order, the authored Travel and the panel content', async () => {
 		const lowered = await program();
 		expect(validateExecutionProgram(lowered).success).toBe(true);
+		expect(lowered.pacing).toBe('automatic');
 		expect(lowered.presentations.find((entry) => entry.id === 'presentation-1')).toMatchObject({
 			viewIds: ['view-1'],
-			defaultViewId: 'view-1'
+			steps: []
 		});
 		expect(lowered.entryStopId).toBe('stop-1');
 		expect(lowered.stops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2']);
 		expect(lowered.stops[0]).toMatchObject({
 			invocation: { kind: 'cut', viewId: 'view-1' },
-			views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
+			entryViewId: 'view-1',
+			staySeconds: 1,
+			invitation: null,
 			continuation: { kind: 'sequence-next' }
 		});
 		expect(lowered.stops[1]).toMatchObject({
 			invocation: { kind: 'travel', connectionId: 'connection-1' },
 			continuation: { kind: 'end' }
 		});
-		expect(lowered.localTime).toEqual([{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 0.5 }]);
+		expect(lowered.localTime).toEqual([
+			{ stopId: 'stop-1', staySeconds: 1 },
+			{ stopId: 'stop-2', staySeconds: 2 }
+		]);
 		expect(lowered.presentations.find((entry) => entry.id === 'presentation-1')?.content).toEqual([
 			{ id: 'presentation-1:text', kind: 'text', text: 'The piano.' }
 		]);
@@ -154,9 +168,8 @@ describe('Experience lowering', () => {
 							{
 								id: 'presentation-study',
 								label: 'Study',
-								viewIds: ['view-2'],
+								views: [{ viewId: 'view-2' }],
 								explorable: true,
-								defaultViewId: 'view-2',
 								subject: null,
 								text: null
 							}
@@ -275,17 +288,13 @@ describe('Experience lowering', () => {
 				experience: {
 					...envelope.units.experience,
 					data: {
-						formatVersion: 3 as const,
+						formatVersion: 4 as const,
 						experiences: envelope.units.experience.data.experiences.map((experience) => ({
 							...experience,
 							presentations: experience.presentations.map((presentation) =>
 								presentation.id === 'presentation-2'
-									? { ...presentation, viewIds: ['view-absent'], defaultViewId: 'view-absent' }
+									? { ...presentation, views: [{ viewId: 'view-absent' }] }
 									: presentation
-							),
-							stops: experience.stops.map((stop) => stop.id === 'stop-2'
-								? { ...stop, views: [{ viewId: 'view-absent' }] }
-								: stop
 							)
 						}))
 					}
@@ -296,7 +305,7 @@ describe('Experience lowering', () => {
 		expect(lowered).toMatchObject({ kind: 'refused', code: 'unknown-view' });
 	});
 
-	it('refuses a Stop whose Presentation has no Default View, even with its own entry View', async () => {
+	it('refuses a Stop whose Presentation has no Default View', async () => {
 		const base = EXPERIENCE.experiences[0]!;
 		const envelope = await experienceEnvelope({
 			experience: {
@@ -305,10 +314,7 @@ describe('Experience lowering', () => {
 					{
 						...base,
 						presentations: base.presentations.map((presentation) =>
-							presentation.id === 'presentation-1' ? { ...presentation, defaultViewId: null } : presentation
-						),
-						stops: base.stops.map((stop) =>
-							stop.id === 'stop-1' ? { ...stop, views: [{ viewId: 'view-1' }] } : stop
+							presentation.id === 'presentation-1' ? { ...presentation, views: [] } : presentation
 						)
 					}
 				]
@@ -354,7 +360,7 @@ describe('Experience lowering', () => {
 				experiences: [
 					{
 						...base,
-						guides: [...base.guides, { id: 'guide-2', label: 'Reverse', stopIds: ['stop-2', 'stop-1'], entryStopId: 'stop-2' }]
+						guides: [...base.guides, { id: 'guide-2', label: 'Reverse', stopIds: ['stop-2', 'stop-1'], entryStopId: 'stop-2', pacing: 'automatic' as const }]
 					}
 				]
 			}
@@ -373,84 +379,234 @@ describe('Experience lowering', () => {
 	});
 });
 
-describe('Experience interpreter — occurrence, holds and continuation', () => {
-	it('holds for the explicit clock, then continues over the bound Travel', async () => {
+describe('Experience interpreter — occurrence, stays and continuation', () => {
+	it('stays for the explicit clock, plays on over the bound Travel and starts the next stay only on arrival', async () => {
 		const lowered = await program();
 		const interpreter = createExperienceInterpreter(lowered, OPTIONS);
 		const entered = interpreter.enter();
-		expect(entered.state).toMatchObject({ stopId: 'stop-1', phase: 'holding', holdRemainingMs: 500 });
+		expect(entered.state).toMatchObject({ stopId: 'stop-1', phase: 'holding', holdRemainingMs: 1000 });
 		expect(entered.effects).toContainEqual({
 			kind: 'camera',
 			stopId: 'stop-1',
 			invocation: { kind: 'cut', viewId: 'view-1' }
 		});
 
-		expect(interpreter.tick(499).state).toMatchObject({ phase: 'holding', holdRemainingMs: 1 });
-		expect(interpreter.tick(1).state).toMatchObject({ phase: 'ready', holdRemainingMs: 0 });
-
-		const advanced = interpreter.continue();
-		expect(advanced.state).toMatchObject({ stopId: 'stop-2', phase: 'ready' });
-		expect(advanced.effects).toContainEqual({
+		expect(interpreter.tick(999).state).toMatchObject({ phase: 'holding', holdRemainingMs: 1 });
+		// Automatic: the stay ends and the authored Travel plays on by itself.
+		const played = interpreter.tick(1);
+		expect(played.state).toMatchObject({ stopId: 'stop-2', phase: 'traveling', holdRemainingMs: null });
+		expect(played.effects).toContainEqual({
 			kind: 'camera',
 			stopId: 'stop-2',
 			invocation: { kind: 'travel', connectionId: 'connection-1' }
 		});
+		// Ticks during the Travel never count toward the stay.
+		expect(interpreter.tick(3000).state).toMatchObject({ phase: 'traveling', holdRemainingMs: null });
+		const arrived = interpreter.arrival();
+		expect(arrived.state).toMatchObject({ phase: 'holding', holdRemainingMs: 2000 });
+		expect(arrived.effects).toEqual([{ kind: 'hold', stopId: 'stop-2', milliseconds: 2000 }]);
 
-		const completed = interpreter.continue();
+		const completed = interpreter.tick(2000);
 		expect(completed.state.phase).toBe('completed');
 		expect(completed.effects).toContainEqual({ kind: 'completed' });
 	});
 
+	it('Next lands an arrival Travel now, ends a stay, and finishes on the last Stop', async () => {
+		const lowered = await program();
+		const interpreter = createExperienceInterpreter(lowered, OPTIONS);
+		interpreter.enter();
+		expect(interpreter.continue().state).toMatchObject({ stopId: 'stop-2', phase: 'traveling' });
+		const landed = interpreter.continue();
+		expect(landed.state).toMatchObject({ stopId: 'stop-2', phase: 'holding', holdRemainingMs: 2000, viewId: 'view-2' });
+		expect(landed.effects).toContainEqual({ kind: 'camera', stopId: 'stop-2', invocation: { kind: 'cut', viewId: 'view-2' } });
+		expect(landed.state.visited).toHaveLength(2);
+		expect(interpreter.continue().state.phase).toBe('completed');
+	});
+
+	it('waits for Next at every Stop in Manual pacing, and Travels still play', async () => {
+		const base = await program();
+		const manual: ExecutionProgram = {
+			...base,
+			pacing: 'manual',
+			stops: base.stops.map((stop) => ({ ...stop, staySeconds: null })),
+			localTime: []
+		};
+		expect(validateExecutionProgram(manual).success).toBe(true);
+		const interpreter = createExperienceInterpreter(manual, OPTIONS);
+		expect(interpreter.enter().state).toMatchObject({ stopId: 'stop-1', phase: 'ready', holdRemainingMs: null });
+		expect(interpreter.tick(60_000).state).toMatchObject({ stopId: 'stop-1', phase: 'ready' });
+		expect(interpreter.pause().outcome).toBe('ignored');
+		expect(interpreter.continue().state).toMatchObject({ stopId: 'stop-2', phase: 'traveling' });
+		const arrived = interpreter.arrival();
+		expect(arrived.state).toMatchObject({ stopId: 'stop-2', phase: 'ready' });
+		expect(arrived.effects).toEqual([{ kind: 'ready', stopId: 'stop-2' }]);
+		expect(interpreter.continue().state.phase).toBe('completed');
+	});
+
+	it('pause freezes the Guide clock, mid-Travel included, and Next or Play resumes it', async () => {
+		const lowered = await program();
+		const interpreter = createExperienceInterpreter(lowered, OPTIONS);
+		interpreter.enter();
+		interpreter.tick(400);
+		expect(interpreter.pause().state).toMatchObject({ paused: true, holdRemainingMs: 600 });
+		expect(interpreter.tick(5000)).toMatchObject({ outcome: 'ignored' });
+		expect(interpreter.state()).toMatchObject({ holdRemainingMs: 600, elapsedMs: 400 });
+		expect(interpreter.play().state.paused).toBe(false);
+		interpreter.tick(600);
+		expect(interpreter.state()).toMatchObject({ stopId: 'stop-2', phase: 'traveling' });
+		interpreter.pause();
+		expect(interpreter.tick(100).outcome).toBe('ignored');
+		// Next resumes play and lands the arrival.
+		expect(interpreter.continue().state).toMatchObject({ paused: false, phase: 'holding' });
+	});
+
 	/**
-	 * A three-Stop Guide with two extra Presentations that carry no Stop. Stop-1 holds
-	 * for the explicit clock; every other occurrence is ready, so the tests drive
-	 * only the events they name.
+	 * A three-Stop Guide over a three-View Presentation with authored steps, and two
+	 * extra Presentations that carry no Stop. Stop-1 stays 1 s, stop-2 enters at
+	 * view-2 with a Cut, stop-3 is the last.
 	 */
 	async function guidedWithExtras(): Promise<ExecutionProgram> {
 		const base = await program();
 		return {
 			...base,
 			presentations: [
-				...base.presentations,
-				{ id: 'presentation-extra', label: 'Extra', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] },
-				{ id: 'presentation-extra-2', label: 'Extra two', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] }
+				{
+					...base.presentations[0]!,
+					viewIds: ['view-1', 'view-2', 'view-3'],
+					steps: [
+						{ kind: 'travel', connectionId: 'connection-1' },
+						{ kind: 'cut', viewId: 'view-3' }
+					]
+				},
+				...base.presentations.slice(1),
+				{ id: 'presentation-extra', label: 'Extra', viewIds: ['view-1'], steps: [], explorable: true, content: [] },
+				{ id: 'presentation-extra-2', label: 'Extra two', viewIds: ['view-2'], steps: [], explorable: true, content: [] }
 			],
 			stops: [
 				base.stops[0]!,
-				{ ...base.stops[1]!, continuation: { kind: 'sequence-next' as const } },
-				{ ...base.stops[0]!, id: 'stop-3', views: [{ ...base.stops[0]!.views[0]!, holdSeconds: null }], continuation: { kind: 'end' as const } }
+				{
+					...base.stops[1]!,
+					presentationId: 'presentation-1',
+					invocation: { kind: 'cut', viewId: 'view-2' },
+					staySeconds: 4,
+					continuation: { kind: 'sequence-next' as const }
+				},
+				{ ...base.stops[0]!, id: 'stop-3', staySeconds: 3, continuation: { kind: 'end' as const } }
+			],
+			localTime: [
+				{ stopId: 'stop-1', staySeconds: 1 },
+				{ stopId: 'stop-2', staySeconds: 4 },
+				{ stopId: 'stop-3', staySeconds: 3 }
 			]
 		};
 	}
 
-	it('suspends the Guide on a Presentation entry and returns only through the explicit resume', async () => {
+	it('Explore keeps the occurrence suspended, freezes the clock and Back restores the playhead and play state', async () => {
 		const extended = await guidedWithExtras();
+		expect(validateExecutionProgram(extended).success).toBe(true);
 		const interpreter = createExperienceInterpreter(extended, OPTIONS);
 		interpreter.enter();
-		interpreter.tick(500);
 		interpreter.continue();
-		expect(interpreter.state()).toMatchObject({ stopId: 'stop-2', resume: null });
+		interpreter.tick(1500);
+		const at = interpreter.state();
+		expect(at).toMatchObject({ stopId: 'stop-2', phase: 'holding', holdRemainingMs: 2500, viewId: 'view-2' });
 
-		expect(interpreter.enterPresentation('presentation-extra').outcome).toBe('accepted');
-		expect(interpreter.state()).toMatchObject({
+		// Journey B: accept, step along the Presentation, pick a non-adjacent View.
+		const explored = interpreter.enterPresentation('presentation-1', 'view-2');
+		expect(explored.state).toMatchObject({
 			stopId: null,
-			presentationId: 'presentation-extra',
-			resume: { stopId: 'stop-2', returnToStopId: null }
+			presentationId: 'presentation-1',
+			viewId: 'view-2',
+			viewIndex: 1,
+			resume: { stopId: 'stop-2', occurrenceId: at.occurrenceId, viewId: 'view-2', holdRemainingMs: 2500, paused: false }
 		});
-
-		// Continue during a Presentation is still ignored: it never returns to the tour.
+		expect(explored.effects).toContainEqual({ kind: 'camera', stopId: null, invocation: { kind: 'cut', viewId: 'view-2' } });
+		expect(interpreter.tick(10_000).outcome).toBe('ignored');
+		// ‹ plays the authored step backwards along its path; › then a pick of View 3 from View 1 is a Cut.
+		expect(interpreter.exploreView('view-1').effects).toEqual([
+			{ kind: 'camera', stopId: null, invocation: { kind: 'travel', connectionId: 'connection-1' } }
+		]);
+		expect(interpreter.exploreView('view-3').effects).toEqual([
+			{ kind: 'camera', stopId: null, invocation: { kind: 'cut', viewId: 'view-3' } }
+		]);
+		expect(interpreter.exploreView('view-2').effects).toEqual([
+			{ kind: 'camera', stopId: null, invocation: { kind: 'cut', viewId: 'view-2' } }
+		]);
+		// Next is not the tour's while exploring.
 		expect(interpreter.continue().outcome).toBe('ignored');
-		expect(interpreter.state()).toMatchObject({ stopId: null, presentationId: 'presentation-extra' });
 
 		const resumed = interpreter.resume();
 		expect(resumed.outcome).toBe('accepted');
-		expect(resumed.state).toMatchObject({ stopId: 'stop-2', phase: 'ready', resume: null });
-		expect(resumed.effects).toContainEqual({ kind: 'ready', stopId: 'stop-2' });
-		expect(resumed.state.visited.at(-1)?.stopId).toBe('stop-2');
+		expect(resumed.state).toMatchObject({
+			stopId: 'stop-2',
+			occurrenceId: at.occurrenceId,
+			phase: 'holding',
+			holdRemainingMs: 2500,
+			viewId: 'view-2',
+			paused: false,
+			resume: null
+		});
+		expect(resumed.effects).toContainEqual({ kind: 'camera', stopId: 'stop-2', invocation: { kind: 'cut', viewId: 'view-2' } });
+		// Back is not a new visit.
+		expect(resumed.state.visited).toEqual(at.visited);
+		expect(interpreter.tick(2500).state).toMatchObject({ stopId: 'stop-3' });
+	});
 
-		// Continue then moves on as authored, from the resumed Stop.
-		const advanced = interpreter.continue();
-		expect(advanced.state).toMatchObject({ stopId: 'stop-3', resume: null });
+	it('Back leaves a 2 s lead-in when less of the stay remained', async () => {
+		const extended = await guidedWithExtras();
+		const interpreter = createExperienceInterpreter(extended, OPTIONS);
+		interpreter.enter();
+		interpreter.continue();
+		interpreter.tick(3200);
+		interpreter.enterPresentation('presentation-1');
+		expect(interpreter.resume().state).toMatchObject({ stopId: 'stop-2', holdRemainingMs: 2000 });
+		// The lead-in never exceeds the stay itself.
+		const short = createExperienceInterpreter(extended, OPTIONS);
+		short.enter();
+		short.tick(900);
+		short.enterPresentation('presentation-1');
+		expect(short.resume().state).toMatchObject({ stopId: 'stop-1', holdRemainingMs: 1000 });
+	});
+
+	it('Explore remembers paused and waiting, and lands an arrival Travel first', async () => {
+		const extended = await guidedWithExtras();
+		const paused = createExperienceInterpreter(extended, OPTIONS);
+		paused.enter();
+		paused.pause();
+		paused.enterPresentation('presentation-1');
+		expect(paused.state().paused).toBe(false);
+		expect(paused.resume().state).toMatchObject({ stopId: 'stop-1', paused: true, phase: 'holding' });
+
+		const lowered = await program();
+		const travelling = createExperienceInterpreter(lowered, OPTIONS);
+		travelling.enter();
+		travelling.continue();
+		expect(travelling.state().phase).toBe('traveling');
+		const landed = travelling.enterPresentation('presentation-2');
+		expect(landed.state.resume).toMatchObject({ stopId: 'stop-2', viewId: 'view-2', holdRemainingMs: 2000 });
+		expect(travelling.resume().state).toMatchObject({ stopId: 'stop-2', phase: 'holding', holdRemainingMs: 2000 });
+
+		const manual = createExperienceInterpreter(
+			{ ...lowered, pacing: 'manual', stops: lowered.stops.map((stop) => ({ ...stop, staySeconds: null })), localTime: [] },
+			OPTIONS
+		);
+		manual.enter();
+		manual.enterPresentation('presentation-1');
+		expect(manual.resume().state).toMatchObject({ stopId: 'stop-1', phase: 'ready', holdRemainingMs: null });
+		expect(manual.continue().state).toMatchObject({ stopId: 'stop-2' });
+	});
+
+	it('does not re-run arrival lifecycle actions on Back', async () => {
+		const extended = await guidedWithExtras();
+		const counted: ExecutionProgram = {
+			...extended,
+			state: [{ id: 'arrivals', type: 'boolean', values: [], initial: false, reset: false }],
+			lifecycle: [{ event: 'arrival', guard: null, action: { kind: 'open-url', url: 'https://example.com/' } }]
+		};
+		const interpreter = createExperienceInterpreter(counted, OPTIONS);
+		expect(interpreter.enter().effects.filter((effect) => effect.kind === 'open-url')).toHaveLength(1);
+		interpreter.enterPresentation('presentation-extra');
+		expect(interpreter.resume().effects.some((effect) => effect.kind === 'open-url')).toBe(false);
 	});
 
 	it('ignores resume when no Guide position is suspended', async () => {
@@ -470,7 +626,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		interpreter.continue();
 		interpreter.enterPresentation('presentation-extra');
 		interpreter.enterPresentation('presentation-extra-2');
-		expect(interpreter.state().resume).toEqual({ stopId: 'stop-2', returnToStopId: null });
+		expect(interpreter.state().resume).toMatchObject({ stopId: 'stop-2', returnToStopId: null });
 		expect(interpreter.resume().state).toMatchObject({ stopId: 'stop-2', resume: null });
 	});
 
@@ -515,6 +671,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		let state = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter')).state;
 		state = reduceExperience(lowered, state, event('tick', { milliseconds: 500 })).state;
 		state = reduceExperience(lowered, state, event('continue')).state;
+		state = reduceExperience(lowered, state, event('arrival')).state;
 		const completed = reduceExperience(lowered, state, event('continue')).state;
 		expect(completed.phase).toBe('completed');
 		const lateArrival = reduceExperience(lowered, completed, event('arrival'));
@@ -544,6 +701,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 
 		let state = reduceExperience(lowered, entered.state, event('tick', { milliseconds: 500 })).state;
 		state = reduceExperience(lowered, state, event('continue')).state;
+		state = reduceExperience(lowered, state, event('arrival')).state;
 		const completed = reduceExperience(lowered, state, event('continue'));
 		expect(completed.state.phase).toBe('completed');
 		const duplicate = reduceExperience(lowered, completed.state, event('complete'));
@@ -604,7 +762,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		// Navigate rather than continue: stop-2 authors an end, and the point here is
 		// that the edge from the actual predecessor (stop-2) is the one resolved.
 		const toStudy = reduceExperience(lowered.program, toGallery.state, event('navigate', { stopId: 'stop-3' }, options), options);
-		expect(toStudy.state).toMatchObject({ stopId: 'stop-3', phase: 'ready' });
+		expect(toStudy.state).toMatchObject({ stopId: 'stop-3', phase: 'traveling' });
 		expect(toStudy.effects).toContainEqual({
 			kind: 'camera',
 			stopId: 'stop-3',
@@ -647,11 +805,11 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('presentation-2:text'))).toBe(true);
 	});
 
-	it('ignores Continue while a hold is still running', async () => {
+	it('Next during a stay ends it and moves on', async () => {
 		const lowered = await program();
 		const state = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter'));
-		const held = reduceExperience(lowered, state.state, event('continue'));
-		expect(held).toMatchObject({ outcome: 'ignored', state: { phase: 'holding', stopId: 'stop-1' } });
+		const next = reduceExperience(lowered, state.state, event('continue'));
+		expect(next).toMatchObject({ outcome: 'accepted', state: { phase: 'traveling', stopId: 'stop-2' } });
 	});
 
 	it('gives a repeated Stop a fresh occurrence identity', async () => {
@@ -674,22 +832,12 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		let state = reduceExperience(lowered, createExperienceRun(lowered, options), event('enter', {}, options), options).state;
 		state = reduceExperience(lowered, state, event('tick', { milliseconds: 500 }, options), options).state;
 		state = reduceExperience(lowered, state, event('navigate', { stopId: 'stop-2' }, options), options).state;
+		state = reduceExperience(lowered, state, event('arrival', {}, options), options).state;
 		const returned = reduceExperience(lowered, state, event('continue', {}, options), options);
 		// Returning re-enters the origin occurrence as a fresh invocation, including
-		// its authored finite hold; only the return obligation is discharged.
-		expect(returned.state).toMatchObject({ stopId: 'stop-1', phase: 'holding', holdRemainingMs: 500 });
+		// its authored finite stay; only the return obligation is discharged.
+		expect(returned.state).toMatchObject({ stopId: 'stop-1', phase: 'holding', holdRemainingMs: 1000 });
 		expect(returned.state.returnToStopId).toBeNull();
-	});
-
-	it('requires Continue at an authored Gate after the hold', async () => {
-		const lowered = await program();
-		const options: ExperienceInterpreterOptions = { ...OPTIONS, gates: ['presentation-1'] };
-		let state = reduceExperience(lowered, createExperienceRun(lowered, options), event('enter', {}, options), options).state;
-		expect(state.phase).toBe('holding');
-		state = reduceExperience(lowered, state, event('tick', { milliseconds: 500 }, options), options).state;
-		expect(state).toMatchObject({ phase: 'blocked', gated: true });
-		const advanced = reduceExperience(lowered, state, event('continue', {}, options), options);
-		expect(advanced.state.stopId).toBe('stop-2');
 	});
 
 	it('rejects an event from an older run and leaves the newer run untouched', async () => {
@@ -730,9 +878,12 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		const events: ExperienceEvent[] = [
 			event('enter'),
 			event('tick', { milliseconds: 250 }),
-			event('tick', { milliseconds: 250 }),
-			event('continue'),
-			event('continue')
+			event('tick', { milliseconds: 750 }),
+			event('pause'),
+			event('tick', { milliseconds: 750 }),
+			event('play'),
+			event('arrival'),
+			event('tick', { milliseconds: 2000 })
 		];
 		const first = replayExperience(lowered, OPTIONS, events);
 		const second = replayExperience(lowered, OPTIONS, events);
@@ -747,7 +898,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 	 */
 	async function detourToOrigin(continuation?: ExecutionProgram['stops'][number]['continuation']) {
 		const base = await program();
-		const third = { ...base.stops[0]!, id: 'stop-3', views: [{ ...base.stops[0]!.views[0]!, holdSeconds: null }] };
+		const third = { ...base.stops[0]!, id: 'stop-3' };
 		const stops = [
 			...base.stops.map((stop) => (stop.id === 'stop-1' && continuation ? { ...stop, continuation } : stop)),
 			third
@@ -825,7 +976,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 
 	it('resolves an explicit nonadjacent Stop continuation', async () => {
 		const base = await program();
-		const third = { ...base.stops[0]!, id: 'stop-3', views: [{ ...base.stops[0]!.views[0]!, holdSeconds: null }], continuation: { kind: 'end' as const } };
+		const third = { ...base.stops[0]!, id: 'stop-3', continuation: { kind: 'end' as const } };
 		const program3: ExecutionProgram = {
 			...base,
 			stops: [{ ...base.stops[0]!, continuation: { kind: 'stop', stopId: 'stop-3' } }, base.stops[1]!, third]
@@ -882,25 +1033,23 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('presentation-2:text'))).toBe(true);
 	});
 
-	it('resolves a lifecycle continue after arrival, but never through a hold or Gate', async () => {
+	it('resolves a lifecycle continue after arrival only when the Stop waits, never through a stay', async () => {
 		const base = await program();
 		const auto: ExecutionProgram = {
 			...base,
 			lifecycle: [{ event: 'arrival', guard: null, action: { kind: 'continue' } }]
 		};
-		// The entry occurrence holds, so its arrival cannot be continued by the action.
+		// The entry occurrence stays, so its arrival cannot be continued by the action.
 		const held = reduceExperience(auto, createExperienceRun(auto, OPTIONS), event('enter'));
 		expect(held.state).toMatchObject({ stopId: 'stop-1', phase: 'holding' });
-		// A Gate is a prompt too: the same arrival action must not skip it once the
-		// hold has elapsed, and only an explicit Continue may proceed.
-		const gateOptions: ExperienceInterpreterOptions = { ...OPTIONS, gates: ['presentation-1'] };
-		const gated = reduceExperience(auto, createExperienceRun(auto, gateOptions), event('enter', {}, gateOptions), gateOptions);
-		const blocked = reduceExperience(auto, gated.state, event('tick', { milliseconds: 500 }, gateOptions), gateOptions);
-		expect(blocked.state).toMatchObject({ stopId: 'stop-1', phase: 'blocked', gated: true });
-		expect(blocked.state.visited).toHaveLength(1);
-		expect(blocked.effects).not.toContainEqual({ kind: 'completed' });
-		// A ready occurrence continues once, and the action is not replayed later.
-		const advanced = reduceExperience(auto, held.state, event('navigate', { stopId: 'stop-2' }));
+		// A waiting (Manual) occurrence continues once, and the action is not replayed later.
+		const manual: ExecutionProgram = {
+			...auto,
+			pacing: 'manual',
+			stops: auto.stops.map((stop) => ({ ...stop, staySeconds: null, invocation: { kind: 'cut' as const, viewId: stop.entryViewId } })),
+			localTime: []
+		};
+		const advanced = reduceExperience(manual, createExperienceRun(manual, OPTIONS), event('enter'));
 		expect(advanced.state.phase).toBe('completed');
 		expect(advanced.effects.filter((effect) => effect.kind === 'completed')).toHaveLength(1);
 	});
@@ -933,6 +1082,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		let state = reduceExperience(ending, createExperienceRun(ending, OPTIONS), event('enter')).state;
 		state = reduceExperience(ending, state, event('tick', { milliseconds: 500 })).state;
 		state = reduceExperience(ending, state, event('continue')).state;
+		state = reduceExperience(ending, state, event('arrival')).state;
 		const completed = reduceExperience(ending, state, event('continue'));
 		expect(completed.state.phase).toBe('completed');
 		expect(completed.state.stopId).toBe('stop-2');
@@ -950,13 +1100,12 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 });
 
 describe('Experience runtime policy', () => {
-	it('derives gates and detours from the authored Experience, not from the caller', async () => {
+	it('derives detours from the authored Experience, not from the caller', async () => {
 		const authored = {
 			...EXPERIENCE,
 			experiences: [
 				{
 					...EXPERIENCE.experiences[0]!,
-					gates: [{ id: 'gate-1', presentationId: 'presentation-1' }],
 					detours: [{ id: 'detour-1', fromStopId: 'stop-1', toStopId: 'stop-2', returnToStopId: 'stop-1' }]
 				}
 			]
@@ -964,25 +1113,29 @@ describe('Experience runtime policy', () => {
 		const envelope = await experienceEnvelope({ experience: authored });
 		expect(deriveExperienceRuntimePolicy(envelope, 'experience-1')).toEqual({
 			kind: 'derived',
-			policy: {
-				gates: ['presentation-1'],
-				detours: [{ fromStopId: 'stop-1', toStopId: 'stop-2', returnToStopId: 'stop-1' }]
-			}
+			policy: { detours: [{ fromStopId: 'stop-1', toStopId: 'stop-2', returnToStopId: 'stop-1' }] }
 		});
 	});
 
-	it('refuses a gate or detour that names a subject the Experience does not carry', async () => {
-		const dangling = {
-			...EXPERIENCE,
-			experiences: [
-				{
-					...EXPERIENCE.experiences[0]!,
-					gates: [{ id: 'gate-1', presentationId: 'presentation-absent' }]
+	it('refuses a detour that names a Stop the Experience does not carry', async () => {
+		const envelope = await experienceEnvelope();
+		const dangling: typeof envelope = {
+			...envelope,
+			units: {
+				...envelope.units,
+				experience: {
+					...envelope.units.experience,
+					data: {
+						...envelope.units.experience.data,
+						experiences: envelope.units.experience.data.experiences.map((experience) => ({
+							...experience,
+							detours: [{ id: 'detour-1', fromStopId: 'stop-1', toStopId: 'stop-absent', returnToStopId: 'stop-1' }]
+						}))
+					}
 				}
-			]
+			}
 		};
-		const envelope = await experienceEnvelope({ experience: dangling });
-		expect(deriveExperienceRuntimePolicy(envelope, 'experience-1').kind).toBe('refused');
+		expect(deriveExperienceRuntimePolicy(dangling, 'experience-1').kind).toBe('refused');
 	});
 });
 
@@ -1011,33 +1164,28 @@ describe('Experience companion', () => {
 		expect(companion.gaps).toEqual([{ stopId: 'stop-2', message: 'the Gallery has no supported Camera route' }]);
 	});
 
-	it('offers an explicit Continue control at a Gate and explains a running hold', async () => {
+	it('offers Next at every Stop, during a stay and during an arrival alike', async () => {
 		const lowered = await program();
-		const options: ExperienceInterpreterOptions = { ...OPTIONS, gates: ['presentation-1'] };
-		let state = reduceExperience(lowered, createExperienceRun(lowered, options), event('enter', {}, options), options).state;
-		let companion = buildExperienceCompanion(lowered, state);
-		expect(companion.continueControl).toMatchObject({
-			available: false,
-			label: 'Continue',
-			reason: 'This Stop is still holding.',
-			stopId: 'stop-1',
-			occurrenceId: 'run-1:stop-1:1'
-		});
-		state = reduceExperience(lowered, state, event('tick', { milliseconds: 500 }, options), options).state;
-		companion = buildExperienceCompanion(lowered, state);
-		expect(companion.continueControl).toEqual({
+		let state = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter')).state;
+		expect(buildExperienceCompanion(lowered, state).continueControl).toEqual({
 			available: true,
-			label: 'Continue',
+			label: 'Next',
 			reason: null,
 			stopId: 'stop-1',
 			occurrenceId: 'run-1:stop-1:1'
 		});
+		state = reduceExperience(lowered, state, event('continue')).state;
+		expect(state.phase).toBe('traveling');
+		expect(buildExperienceCompanion(lowered, state).continueControl).toMatchObject({ available: true, stopId: 'stop-2' });
+		state = reduceExperience(lowered, state, event('pause')).state;
+		expect(buildExperienceCompanion(lowered, state).announcements).toContain('The tour is paused.');
 	});
 
 	it('clears the current destination and bounded progress when the run ends', async () => {
 		const lowered = await program();
 		let state = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter')).state;
 		state = reduceExperience(lowered, state, event('tick', { milliseconds: 500 })).state;
+		state = reduceExperience(lowered, state, event('continue')).state;
 		state = reduceExperience(lowered, state, event('continue')).state;
 		state = reduceExperience(lowered, state, event('continue')).state;
 		const companion = buildExperienceCompanion(lowered, state);
@@ -1060,133 +1208,82 @@ describe('Experience companion', () => {
 	});
 });
 
-describe('R217.S27 guided steps', () => {
-	async function guidedLowering(stepTransition?: 'travel') {
+describe('Presentation explore steps (sheet §31)', () => {
+	async function stepped(transition: 'cut' | 'travel', connections = CONNECTIONS) {
 		const base = EXPERIENCE.experiences[0]!;
-		const source = await experienceEnvelope({
+		const envelope = await experienceEnvelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: connections.length === 0 ? VIEWS.map((view) => ({ ...view, connectedViewIds: [] })) : VIEWS,
+				connections
+			},
 			experience: {
 				...EXPERIENCE,
-				experiences: [{
-					...base,
-					welcome: { kind: 'plain', body: 'Welcome to the salon' },
-					presentations: [
-						{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2'], explorable: false },
-						{ ...base.presentations[1]!, viewIds: ['view-2', 'view-1'] }
-					],
-					stops: [
-						{
-							...base.stops[0]!,
-							views: [{ viewId: 'view-1' }, { viewId: 'view-2', ...(stepTransition ? { transition: stepTransition } : {}) }]
-						},
-						{ ...base.stops[1]!, views: [{ viewId: 'view-1' }] }
-					]
-				}]
-			}
-		});
-		const lowered = lowerExperienceProgram(source, LOWERING_OPTIONS);
-		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
-		return { source, lowered };
-	}
-
-	it('lowers a Cut step, the default intermediate hold and an exit-to-entry Travel', async () => {
-		const { lowered } = await guidedLowering();
-		expect(lowered.program).toMatchObject({
-			formatVersion: 3,
-			welcome: 'Welcome to the salon',
-			presentations: [{ explorable: false }, { explorable: true }],
-			stops: [
-				{ views: [
-					{ viewId: 'view-1', holdSeconds: 3, step: null },
-					{ viewId: 'view-2', holdSeconds: null, step: { kind: 'cut', viewId: 'view-2' } }
-				] },
-				{ invocation: { kind: 'travel', connectionId: 'connection-1' } }
-			],
-			localTime: [{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 3 }]
-		});
-	});
-
-	it('binds a Travel step to a unique Camera connection and diagnoses an unsupported step', async () => {
-		const { source, lowered } = await guidedLowering('travel');
-		expect(lowered.program.stops[0]!.views[1]?.step).toEqual({ kind: 'travel', connectionId: 'connection-1' });
-		const broken = {
-			...source,
-			units: {
-				...source.units,
-				camera: {
-					...source.units.camera,
-					data: {
-						...source.units.camera.data,
-						views: source.units.camera.data.views.map((view) => ({ ...view, connectedViewIds: [] })),
-						connections: []
+				experiences: [
+					{
+						...base,
+						presentations: base.presentations.map((presentation) =>
+							presentation.id === 'presentation-1'
+								? { ...presentation, views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition }] }
+								: presentation
+						),
+						stops: base.stops.map((stop) =>
+							stop.id === 'stop-1' ? { ...stop, continuation: { kind: 'sequence-next' as const } } : stop
+						)
 					}
-				}
+				]
 			}
-		};
-		expect(lowerExperienceProgram(broken, LOWERING_OPTIONS)).toMatchObject({
-			kind: 'refused', code: 'travel-gap', message: expect.stringContaining('Step 2 of Stop')
 		});
-		const validated = validateProjectEnvelope(broken);
-		expect(validated.success).toBe(true);
-		if (!validated.success) return;
-		expect(validated.diagnostics).toEqual(expect.arrayContaining([
-			expect.objectContaining({ code: 'travel-gap', path: expect.stringContaining('.stops[0].views[1].transition') }),
-			expect.objectContaining({ code: 'travel-gap', path: expect.stringContaining('.stops[0].continuation.transition') })
-		]));
-	});
-
-	async function threeViewProgram(finalHold: number | null, firstHold = 1): Promise<ExecutionProgram> {
-		const base = await program();
-		const first = base.stops[0]!;
-		return {
-			...base,
-			presentations: [{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2', 'view-3'] }, base.presentations[1]!],
-			stops: [{ ...first, views: [
-				{ viewId: 'view-1', holdSeconds: firstHold, step: null },
-				{ viewId: 'view-2', holdSeconds: 2, step: { kind: 'cut', viewId: 'view-2' } },
-				{ viewId: 'view-3', holdSeconds: finalHold, step: { kind: 'travel', connectionId: 'connection-2' } }
-			] }, base.stops[1]!],
-			localTime: [
-				{ stopId: first.id, viewIndex: 0, holdSeconds: firstHold },
-				{ stopId: first.id, viewIndex: 1, holdSeconds: 2 },
-				...(finalHold === null ? [] : [{ stopId: first.id, viewIndex: 2, holdSeconds: finalHold }])
-			]
-		};
+		return lowerExperienceProgram(envelope, LOWERING_OPTIONS);
 	}
 
-	it('carries tick time across steps and keeps a final untimed View until Next', async () => {
-		const guided = await threeViewProgram(null);
-		const large = createExperienceInterpreter(guided, OPTIONS);
-		const small = createExperienceInterpreter(guided, OPTIONS);
-		for (const run of [large, small]) {
-			run.enter();
-			expect(run.continue().outcome).toBe('ignored');
-		}
-		const one = large.tick(3500);
-		const many = [small.tick(800), small.tick(500), small.tick(2200)];
-		expect(many.flatMap((result) => result.effects)).toEqual(one.effects);
-		expect(one.effects.map((effect) => effect.kind)).toEqual(['camera', 'step', 'hold', 'camera', 'step', 'ready']);
-		expect(small.state()).toEqual(one.state);
-		expect(one.state).toMatchObject({
-			stopId: 'stop-1', viewId: 'view-3', viewIndex: 2, phase: 'ready', holdRemainingMs: null,
-			invocationFromViewId: 'view-2'
-		});
-		expect(large.tick(500).state.stopId).toBe('stop-1');
-		large.enterPresentation('presentation-2');
-		expect(large.state().viewIndex).toBeNull();
+	it('lowers a Cut step and a Travel step bound to the one Camera path, adding no Guide time', async () => {
+		const cut = await stepped('cut');
+		if (cut.kind !== 'lowered') throw new Error(cut.message);
+		expect(cut.program.presentations[0]).toMatchObject({ viewIds: ['view-1', 'view-2'], steps: [{ kind: 'cut', viewId: 'view-2' }] });
+		const travel = await stepped('travel');
+		if (travel.kind !== 'lowered') throw new Error(travel.message);
+		expect(travel.program.presentations[0]!.steps).toEqual([{ kind: 'travel', connectionId: 'connection-1' }]);
+		expect(travel.program.localTime).toEqual(cut.program.localTime);
 	});
 
-	it('steps past a zero intermediate hold and blocks at the gate after the final timed hold', async () => {
-		const run = createExperienceInterpreter(await threeViewProgram(0.5, 0), {
-			...OPTIONS,
-			gates: ['presentation-1']
+	it('refuses Preview with a typed gap when an explore Travel has no path, never a silent Cut', async () => {
+		const gap = await stepped('travel', []);
+		expect(gap).toMatchObject({ kind: 'refused', code: 'travel-gap', presentationId: 'presentation-1' });
+	});
+
+	it('lowers a Stop that enters at its own View and its invitation; Manual lowers every stay to null', async () => {
+		const base = EXPERIENCE.experiences[0]!;
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						presentations: base.presentations.map((presentation) =>
+							presentation.id === 'presentation-2'
+								? { ...presentation, views: [{ viewId: 'view-2' }, { viewId: 'view-1' }] }
+								: presentation
+						),
+						stops: base.stops.map((stop) =>
+							stop.id === 'stop-2'
+								? { ...stop, entryViewId: 'view-1', invitation: { prompt: 'Look closer' } }
+								: { ...stop, continuation: { kind: 'sequence-next' as const } }
+						),
+						guides: base.guides.map((guide) => ({ ...guide, pacing: 'manual' as const }))
+					}
+				]
+			}
 		});
-		const entered = run.enter();
-		expect(entered.state).toMatchObject({ viewId: 'view-2', viewIndex: 1, holdRemainingMs: 2000 });
-		expect(entered.effects).toContainEqual({ kind: 'step', stopId: 'stop-1', viewIndex: 1, viewId: 'view-2' });
-		expect(run.tick(2100).state).toMatchObject({ viewIndex: 2, phase: 'holding', holdRemainingMs: 400 });
-		expect(run.tick(400).state).toMatchObject({ viewIndex: 2, phase: 'blocked', holdRemainingMs: 0 });
-		expect(run.continue().outcome).toBe('accepted');
-		run.dispatch(event('reset'));
-		expect(run.state()).toMatchObject({ stopId: 'stop-1', viewIndex: 1, holdRemainingMs: 2000, elapsedMs: 0 });
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
+		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
+		expect(lowered.program.pacing).toBe('manual');
+		expect(lowered.program.localTime).toEqual([]);
+		expect(lowered.program.stops[1]).toMatchObject({
+			entryViewId: 'view-1',
+			staySeconds: null,
+			invitation: { prompt: 'Look closer' },
+			invocation: { kind: 'cut', viewId: 'view-1' }
+		});
 	});
 });

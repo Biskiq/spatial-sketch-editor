@@ -54,16 +54,14 @@ function experience(id: string, stopId: string): Experience {
 			{
 				id: `presentation:${id}`,
 				label: id,
-				viewIds: ['view-1'],
+				views: [{ viewId: 'view-1' }],
 				explorable: true,
-				defaultViewId: 'view-1',
 				subject: null,
 				text: null
 			}
 		],
-		stops: [{ id: stopId, presentationId: `presentation:${id}`, views: [{ viewId: 'view-1' }], continuation: { kind: 'end' } }],
+		stops: [{ id: stopId, presentationId: `presentation:${id}`, entryViewId: null, staySeconds: 5, invitation: null, continuation: { kind: 'end' } }],
 		guides: [],
-		gates: [],
 		detours: []
 	};
 }

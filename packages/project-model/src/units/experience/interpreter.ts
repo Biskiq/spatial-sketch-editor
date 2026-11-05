@@ -1,7 +1,7 @@
 /**
  * The one Experience interpreter (AM-6, T3.P01.S06).
  *
- * A deterministic reducer over `ExecutionProgram@3`: an initial state plus
+ * A deterministic reducer over `ExecutionProgram@4`: an initial state plus
  * ordered events produce the same state every time, and an explicit integer
  * clock supplies every hold. There is no ambient time, randomness, network,
  * renderer or Camera evaluation here — the interpreter derives editorial state
@@ -23,8 +23,13 @@
  *   arrival. A `reset` rewinds the **same** run (`runId`/`runEpoch` unchanged)
  *   to a fresh entry; starting a new run is the host's new-run path, not reset.
  *
- * `traveling`/`arrived` are reserved host phases: the interpreter reports an
- * arrival as `ready`/`holding`/`blocked` and the host owns realization state.
+ * Guide clock (sheet §31): a Stop's stay counts only after its arrival
+ * completes. An arrival by Travel is `traveling` until the host confirms it with
+ * `arrival` (or Next lands it now with a Cut); then the Stop `holding`s for its
+ * stay (Automatic) and plays on, or waits `ready` for Next (Manual). Pause and
+ * Explore freeze the clock: ticks are ignored. Explore keeps the Stop occurrence
+ * suspended, and `resume` restores it — the same occurrence, the remaining stay
+ * (with a lead-in) and the play or pause state — as a Cut, never a fresh arrival.
  *
  * The reducer owns no authored source: a run is session state and is never
  * written back to the envelope.
@@ -36,19 +41,22 @@ import type {
 	ProgramEvent,
 	ProgramGuard,
 	ProgramInvocation,
+	ProgramPresentation,
 	ProgramStop
 } from '../../program/types';
 
 export type ExperienceRunPhase =
 	| 'ready'
-	/** Reserved for a host that realizes travel; the reducer never produces it. */
+	/** An arrival Travel is playing; the stay has not started yet. */
 	| 'traveling'
 	/** Reserved for a host that stages arrival; the reducer never produces it. */
 	| 'arrived'
 	| 'holding'
-	| 'blocked'
 	| 'completed'
 	| 'cancelled';
+
+/** The lead-in a resumed stay keeps, so the tour never leaves the moment a visitor rejoins. */
+export const EXPERIENCE_RESUME_LEAD_IN_MS = 2000;
 
 export type ExperiencePanel = {
 	readonly presentationId: string;
@@ -61,6 +69,22 @@ export type ExperienceVisit = {
 	readonly occurrenceId: string;
 	/** One-based visit order within the run. */
 	readonly index: number;
+};
+
+/**
+ * A Stop occurrence that Explore suspended. `resume` restores exactly this: the
+ * same occurrence, its View, the remaining stay (or the wait) and whether the
+ * tour was paused. There is one resume point however many Presentations the
+ * visitor opens.
+ */
+export type ExperienceSuspendedVisit = {
+	readonly stopId: string;
+	readonly occurrenceId: string;
+	readonly viewId: string;
+	/** Remaining stay in milliseconds, or `null` when the Stop was waiting for Next. */
+	readonly holdRemainingMs: number | null;
+	readonly paused: boolean;
+	readonly returnToStopId: string | null;
 };
 
 export type ExperienceRunState = {
@@ -78,64 +102,60 @@ export type ExperienceRunState = {
 	readonly presentationId: string | null;
 	/** The current Camera View, or `null` before any arrival. */
 	readonly viewId: string | null;
-	/** Zero-based within the current Stop, or `null` outside a Stop. */
+	/** Zero-based index of the current View in its Presentation's order, or `null`. */
 	readonly viewIndex: number | null;
 	readonly phase: ExperienceRunPhase;
-	/** Explicit integer clock since the run entered, in milliseconds. */
+	/** Explicit integer Guide clock since the run entered, in milliseconds. */
 	readonly elapsedMs: number;
-	/** Remaining hold on the current occurrence, or `null` when none is active. */
+	/** Remaining stay on the current occurrence, or `null` when none is running. */
 	readonly holdRemainingMs: number | null;
-	/** The current occurrence waits for an explicit Continue (authored Gate). */
-	readonly gated: boolean;
+	/** Automatic pacing only: the Guide clock is frozen until Play or Next. */
+	readonly paused: boolean;
 	readonly visited: readonly ExperienceVisit[];
 	readonly values: Readonly<Record<string, string | boolean>>;
 	readonly panel: ExperiencePanel | null;
 	/** Content ids a lifecycle `show-content` selected before a panel existed. */
 	readonly pendingContent: readonly string[];
 	readonly invocation: ProgramInvocation | null;
-	/** The logical predecessor of a Travel, even when one tick advances several Views. */
+	/** The logical predecessor of a Travel. */
 	readonly invocationFromViewId: string | null;
 	/** The origin a covered detour must return to, or `null`. */
 	readonly returnToStopId: string | null;
 	/**
-	 * The Guide position a Presentation entry suspended, or `null`. Only the explicit
-	 * `resume` event returns to it; Continue never does.
+	 * The Stop occurrence Explore suspended, or `null`. Only the explicit `resume`
+	 * event returns to it; Next never does.
 	 */
-	readonly resume: { readonly stopId: string; readonly returnToStopId: string | null } | null;
+	readonly resume: ExperienceSuspendedVisit | null;
 	readonly lastEvent: ProgramEvent | null;
 };
 
+type RunEvent<K extends string> = { readonly kind: K; readonly runId: string; readonly runEpoch: number };
+
 export type ExperienceEvent =
-	| { readonly kind: 'enter'; readonly runId: string; readonly runEpoch: number }
+	| RunEvent<'enter'>
 	/**
-	 * Enter one enterable Presentation with no Stop: the guide-free Preview path.
-	 * It starts at the Presentation's Default View and never fabricates a Stop.
+	 * Enter one Presentation to explore it. From a Stop it keeps that occurrence
+	 * suspended (landing an arrival Travel first); from nothing it is the
+	 * guide-free Places path. It starts at `viewId` when that is one of the
+	 * Presentation's Views, else at its Default, and never fabricates a Stop.
 	 */
-	| {
-			readonly kind: 'enter-presentation';
-			readonly runId: string;
-			readonly runEpoch: number;
-			readonly presentationId: string;
-	  }
-	| { readonly kind: 'arrival'; readonly runId: string; readonly runEpoch: number }
-	| { readonly kind: 'continue'; readonly runId: string; readonly runEpoch: number }
-	/**
-	 * Return to the Guide position a Presentation entry suspended. It is the explicit
-	 * control; Continue during a Presentation stays ignored.
-	 */
-	| { readonly kind: 'resume'; readonly runId: string; readonly runEpoch: number }
-	| { readonly kind: 'complete'; readonly runId: string; readonly runEpoch: number }
-	| { readonly kind: 'cancel'; readonly runId: string; readonly runEpoch: number }
-	| { readonly kind: 'reset'; readonly runId: string; readonly runEpoch: number }
-	| { readonly kind: 'tick'; readonly runId: string; readonly runEpoch: number; readonly milliseconds: number }
-	| { readonly kind: 'navigate'; readonly runId: string; readonly runEpoch: number; readonly stopId: string }
-	| {
-			readonly kind: 'set-state';
-			readonly runId: string;
-			readonly runEpoch: number;
-			readonly stateId: string;
-			readonly value: string | boolean;
-	  };
+	| (RunEvent<'enter-presentation'> & { readonly presentationId: string; readonly viewId?: string })
+	/** Step to one View of the explored Presentation: its authored step when adjacent, else a Cut. */
+	| (RunEvent<'explore-view'> & { readonly viewId: string })
+	/** Confirms the current arrival; after an arrival Travel it starts the stay. */
+	| RunEvent<'arrival'>
+	/** Next: lands an arrival now, ends a stay, or continues a wait; it also resumes play. */
+	| RunEvent<'continue'>
+	| RunEvent<'pause'>
+	| RunEvent<'play'>
+	/** Back to the tour: restore the suspended occurrence with its lead-in. */
+	| RunEvent<'resume'>
+	| RunEvent<'complete'>
+	| RunEvent<'cancel'>
+	| RunEvent<'reset'>
+	| (RunEvent<'tick'> & { readonly milliseconds: number })
+	| (RunEvent<'navigate'> & { readonly stopId: string })
+	| (RunEvent<'set-state'> & { readonly stateId: string; readonly value: string | boolean });
 
 export type ExperienceDetourPolicy = {
 	readonly fromStopId: string;
@@ -160,12 +180,6 @@ export type ExperienceInterpreterOptions = {
 	readonly runEpoch: number;
 	/** The lowering source this run belongs to; a differing value ends the run. */
 	readonly sourceContentId?: string | null;
-	/**
-	 * Presentation ids whose arrival waits for an explicit Continue. A Gate is
-	 * authored experience policy; it is passed in because `ExecutionProgram@3`
-	 * carries no Gate slot.
-	 */
-	readonly gates?: readonly string[];
 	readonly detours?: readonly ExperienceDetourPolicy[];
 	/**
 	 * Lowering-derived invocation per authored edge. Without a table the run only
@@ -178,14 +192,12 @@ export type ExperienceInterpreterOptions = {
 export type ExperienceEffect =
 	| {
 			readonly kind: 'camera';
-			/** `null` for a Presentation entry, which has no Stop occurrence. */
+			/** `null` while exploring a Presentation, which has no Stop occurrence. */
 			readonly stopId: string | null;
 			readonly invocation: ProgramInvocation;
 	  }
-	| { readonly kind: 'step'; readonly stopId: string; readonly viewIndex: number; readonly viewId: string }
 	| { readonly kind: 'hold'; readonly stopId: string; readonly milliseconds: number }
 	| { readonly kind: 'ready'; readonly stopId: string | null }
-	| { readonly kind: 'blocked'; readonly stopId: string }
 	| { readonly kind: 'panel'; readonly panel: ExperiencePanel }
 	| { readonly kind: 'open-url'; readonly url: string }
 	| { readonly kind: 'completed' }
@@ -224,7 +236,7 @@ export function createExperienceRun(
 		phase: 'ready',
 		elapsedMs: 0,
 		holdRemainingMs: null,
-		gated: false,
+		paused: false,
 		visited: [],
 		values,
 		panel: null,
@@ -235,6 +247,11 @@ export function createExperienceRun(
 		resume: null,
 		lastEvent: null
 	};
+}
+
+/** Whether a run is exploring: a Stop occurrence is suspended behind it. */
+export function isExploring(state: ExperienceRunState): boolean {
+	return state.resume !== null;
 }
 
 /** Fold one event into one run. Pure: the input state is never mutated. */
@@ -255,7 +272,7 @@ export function reduceExperience(
 	) {
 		return { state, outcome: 'stale', effects: [] };
 	}
-	// A terminal run is finished: no lifecycle action, hold, state write or
+	// A terminal run is finished: no lifecycle action, stay, state write or
 	// navigation may run again, and a late complete/cancel cannot resurrect it or
 	// flip one terminal phase into the other. `reset` is the explicit rewind and
 	// is the only event admitted here; it deliberately runs the `enter` lifecycle
@@ -264,19 +281,36 @@ export function reduceExperience(
 		return ignored(state);
 	}
 
-	if (event.kind === 'tick') return tick(program, state, event.milliseconds);
-	if (event.kind === 'enter') return enter(program, state, options);
-	if (event.kind === 'enter-presentation') {
-		return enterPresentation(program, state, event.presentationId);
+	switch (event.kind) {
+		case 'tick':
+			return tick(program, state, event.milliseconds, options);
+		case 'enter':
+			return enter(program, state, options);
+		case 'enter-presentation':
+			return enterPresentation(program, state, event.presentationId, event.viewId);
+		case 'explore-view':
+			return exploreView(program, state, event.viewId);
+		case 'reset':
+			return resetRun(program, state, options);
+		case 'cancel':
+			return finish(program, state, 'cancel', options);
+		case 'complete':
+			return finish(program, state, 'complete', options);
+		case 'arrival':
+			return arrivalEvent(program, state);
+		case 'pause':
+			return setPaused(program, state, true);
+		case 'play':
+			return setPaused(program, state, false);
+		case 'set-state':
+			return setState(program, state, event.stateId, event.value);
+		case 'navigate':
+			return navigate(program, state, event.stopId, options);
+		case 'resume':
+			return resumeGuide(program, state);
+		case 'continue':
+			return continueRun(program, state, options);
 	}
-	if (event.kind === 'reset') return resetRun(program, state, options);
-	if (event.kind === 'cancel') return finish(program, state, 'cancel', options);
-	if (event.kind === 'complete') return finish(program, state, 'complete', options);
-	if (event.kind === 'arrival') return arrivalEvent(state);
-	if (event.kind === 'set-state') return setState(program, state, event.stateId, event.value);
-	if (event.kind === 'navigate') return navigate(program, state, event.stopId, options);
-	if (event.kind === 'resume') return resumeGuide(program, state, options);
-	return continueRun(program, state, options);
 }
 
 /** Replay an ordered event list from a fresh run. Seeking replays; it never guesses history. */
@@ -303,6 +337,8 @@ export function createExperienceInterpreter(
 	options: ExperienceInterpreterOptions
 ) {
 	let current = createExperienceRun(program, options);
+	const run = <K extends ExperienceEvent['kind']>(kind: K) =>
+		({ kind, runId: current.runId, runEpoch: current.runEpoch }) as Extract<ExperienceEvent, { kind: K }>;
 	return {
 		program,
 		state: (): ExperienceRunState => current,
@@ -312,27 +348,38 @@ export function createExperienceInterpreter(
 			return result;
 		},
 		enter(): ExperienceReduceResult {
-			return this.dispatch({ kind: 'enter', runId: current.runId, runEpoch: current.runEpoch });
+			return this.dispatch(run('enter'));
 		},
-		enterPresentation(presentationId: string): ExperienceReduceResult {
+		enterPresentation(presentationId: string, viewId?: string): ExperienceReduceResult {
 			return this.dispatch({
-				kind: 'enter-presentation',
-				runId: current.runId,
-				runEpoch: current.runEpoch,
-				presentationId
+				...run('enter-presentation'),
+				presentationId,
+				...(viewId === undefined ? {} : { viewId })
 			});
 		},
+		exploreView(viewId: string): ExperienceReduceResult {
+			return this.dispatch({ ...run('explore-view'), viewId });
+		},
+		arrival(): ExperienceReduceResult {
+			return this.dispatch(run('arrival'));
+		},
 		continue(): ExperienceReduceResult {
-			return this.dispatch({ kind: 'continue', runId: current.runId, runEpoch: current.runEpoch });
+			return this.dispatch(run('continue'));
+		},
+		pause(): ExperienceReduceResult {
+			return this.dispatch(run('pause'));
+		},
+		play(): ExperienceReduceResult {
+			return this.dispatch(run('play'));
 		},
 		resume(): ExperienceReduceResult {
-			return this.dispatch({ kind: 'resume', runId: current.runId, runEpoch: current.runEpoch });
+			return this.dispatch(run('resume'));
 		},
 		tick(milliseconds: number): ExperienceReduceResult {
-			return this.dispatch({ kind: 'tick', runId: current.runId, runEpoch: current.runEpoch, milliseconds });
+			return this.dispatch({ ...run('tick'), milliseconds });
 		},
 		navigate(stopId: string): ExperienceReduceResult {
-			return this.dispatch({ kind: 'navigate', runId: current.runId, runEpoch: current.runEpoch, stopId });
+			return this.dispatch({ ...run('navigate'), stopId });
 		}
 	};
 }
@@ -343,6 +390,22 @@ function sameRun(state: ExperienceRunState, event: ExperienceEvent): boolean {
 
 function stopById(program: ExecutionProgram, stopId: string): ProgramStop | undefined {
 	return program.stops.find((stop) => stop.id === stopId);
+}
+
+function presentationById(program: ExecutionProgram, presentationId: string | null): ProgramPresentation | undefined {
+	return presentationId === null ? undefined : program.presentations.find((entry) => entry.id === presentationId);
+}
+
+function fullPanel(presentation: ProgramPresentation): ExperiencePanel {
+	return {
+		presentationId: presentation.id,
+		title: presentation.label,
+		content: presentation.content.map((record) => ({ id: record.id, text: record.text }))
+	};
+}
+
+function stayMs(stop: ProgramStop): number | null {
+	return stop.staySeconds === null ? null : Math.round(stop.staySeconds * 1000);
 }
 
 function enter(
@@ -358,7 +421,7 @@ function enter(
 			effects: [{ kind: 'completed' }]
 		};
 	}
-	const entered: ExperienceRunState = { ...state, entered: true, resume: null, lastEvent: 'enter' };
+	const entered: ExperienceRunState = { ...state, entered: true, resume: null, paused: false, lastEvent: 'enter' };
 	const effects: ExperienceEffect[] = [];
 	// An `enter` cancellation can have no occurrence to continue from yet; only the
 	// arrival lifecycle may request a continuation.
@@ -370,32 +433,39 @@ function enter(
 }
 
 /**
- * Enter one Presentation with no Stop.
+ * Explore one Presentation. This is the interpreter's Presentation-entry event,
+ * not a host-side shortcut.
  *
- * This is the interpreter's Presentation-entry event, not a host-side shortcut:
- * a Guide-free Experience starts at a Presentation's Default View, presents its
- * own content, and leaves through the host's Camera return (`cancel`), so every
- * run is still prepared, entered and exited by this one reducer.
+ * From a Stop the occurrence is suspended, never cleared: its View, remaining
+ * stay (or wait) and play state are kept for `resume`. Explore during an arrival
+ * Travel lands first — the suspended occurrence is at its entry View with its
+ * whole stay — so coming back always lands on an authored View. Moving between
+ * Presentations keeps the one resume point. Exploring freezes the Guide clock.
  */
 function enterPresentation(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
-	presentationId: string
+	presentationId: string,
+	viewId: string | undefined
 ): ExperienceReduceResult {
-	const presentation = program.presentations.find((entry) => entry.id === presentationId);
+	const presentation = presentationById(program, presentationId);
 	if (presentation === undefined) return ignored(state);
-	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
-	const panel: ExperiencePanel = {
-		presentationId: presentation.id,
-		title: presentation.label,
-		content: presentation.content.map((record) => ({ id: record.id, text: record.text }))
-	};
-	const invocation: ProgramInvocation = { kind: 'cut', viewId: presentation.defaultViewId };
-	// Entering from a Guide position suspends it; moving between extras keeps the
-	// original tour position rather than the previous Presentation.
-	const resume = state.stopId !== null
-		? { stopId: state.stopId, returnToStopId: state.returnToStopId }
-		: state.resume;
+	const startViewId = viewId !== undefined && presentation.viewIds.includes(viewId) ? viewId : presentation.viewIds[0]!;
+	let resume = state.resume;
+	if (state.stopId !== null && state.occurrenceId !== null) {
+		const stop = stopById(program, state.stopId)!;
+		const landed = state.phase === 'traveling';
+		resume = {
+			stopId: state.stopId,
+			occurrenceId: state.occurrenceId,
+			viewId: landed ? stop.entryViewId : state.viewId ?? stop.entryViewId,
+			holdRemainingMs: landed ? stayMs(stop) : state.phase === 'holding' ? state.holdRemainingMs : null,
+			paused: state.paused,
+			returnToStopId: state.returnToStopId
+		};
+	}
+	const panel = fullPanel(presentation);
+	const invocation: ProgramInvocation = { kind: 'cut', viewId: startViewId };
 	const next: ExperienceRunState = {
 		...state,
 		entered: true,
@@ -403,11 +473,11 @@ function enterPresentation(
 		stopId: null,
 		occurrenceId: null,
 		presentationId: presentation.id,
-		viewId: presentation.defaultViewId,
-		viewIndex: null,
+		viewId: startViewId,
+		viewIndex: presentation.viewIds.indexOf(startViewId),
 		phase: 'ready',
 		holdRemainingMs: null,
-		gated: false,
+		paused: false,
 		panel,
 		pendingContent: [],
 		invocation,
@@ -415,26 +485,68 @@ function enterPresentation(
 		returnToStopId: null,
 		lastEvent: 'arrival'
 	};
-	return {
-		state: next,
-		outcome: 'accepted',			effects: [
-			{ kind: 'camera', stopId: null, invocation },
-			{ kind: 'panel', panel },
-			{ kind: 'ready', stopId: null }
-		]
-	};
+	return accepted(next, [
+		{ kind: 'camera', stopId: null, invocation },
+		{ kind: 'panel', panel },
+		{ kind: 'ready', stopId: null }
+	]);
 }
 
-function arrivalEvent(state: ExperienceRunState): ExperienceReduceResult {
+/**
+ * Step to one View of the explored Presentation. A neighbour plays the
+ * Presentation's authored step (a Travel runs its path in either direction);
+ * any other pick is a Cut, because Experience never routes through the Camera
+ * graph. Steps add no Guide time.
+ */
+function exploreView(program: ExecutionProgram, state: ExperienceRunState, viewId: string): ExperienceReduceResult {
+	if (state.stopId !== null) return ignored(state);
+	const presentation = presentationById(program, state.presentationId);
+	if (presentation === undefined || state.viewId === null) return ignored(state);
+	const to = presentation.viewIds.indexOf(viewId);
+	const from = presentation.viewIds.indexOf(state.viewId);
+	if (to === -1 || to === from) return ignored(state);
+	const step = from === -1
+		? null
+		: to === from + 1
+			? presentation.steps[from]
+			: to === from - 1
+				? presentation.steps[to]
+				: null;
+	const invocation: ProgramInvocation = step?.kind === 'travel' ? step : { kind: 'cut', viewId };
+	return accepted(
+		{
+			...state,
+			viewId,
+			viewIndex: to,
+			invocation,
+			invocationFromViewId: invocation.kind === 'travel' ? state.viewId : null
+		},
+		[{ kind: 'camera', stopId: null, invocation }]
+	);
+}
+
+function arrivalEvent(program: ExecutionProgram, state: ExperienceRunState): ExperienceReduceResult {
 	if (state.stopId === null) return ignored(state);
-	// A terminal run has already issued every Camera intent it is allowed to; a
-	// late confirmation from its old travel must not write to the Camera again.
-	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
-	// Confirming an arrival is not a second visit and not a second Camera intent:
-	// the occurrence identity stays and the invocation was issued once at editorial
-	// arrival. Re-emitting it here would duplicate the one Camera write and could
-	// restart a completed travel.
+	// The arrival Travel completed: the stay starts now, never during the Travel.
+	if (state.phase === 'traveling') {
+		const effects: ExperienceEffect[] = [];
+		const stop = stopById(program, state.stopId)!;
+		return accepted(beginStay({ ...state, lastEvent: 'arrival' }, stop, effects), effects);
+	}
+	// Confirming a Cut arrival is not a second visit and not a second Camera
+	// intent: the occurrence identity stays and the invocation was issued once.
 	return accepted({ ...state, lastEvent: 'arrival' }, []);
+}
+
+/** Start the stay (Automatic) or the wait for Next (Manual) of an arrived Stop. */
+function beginStay(state: ExperienceRunState, stop: ProgramStop, effects: ExperienceEffect[]): ExperienceRunState {
+	const milliseconds = stayMs(stop);
+	if (milliseconds === null) {
+		effects.push({ kind: 'ready', stopId: stop.id });
+		return { ...state, phase: 'ready', holdRemainingMs: null };
+	}
+	effects.push({ kind: 'hold', stopId: stop.id, milliseconds });
+	return { ...state, phase: 'holding', holdRemainingMs: milliseconds };
 }
 
 /**
@@ -452,10 +564,10 @@ function invocationFor(
 ): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | { readonly kind: 'gap'; readonly message: string } {
 	const predecessor = state.stopId;
 	if (predecessor === null) {
-		return { kind: 'resolved', invocation: { kind: 'cut', viewId: stop.views[0]!.viewId } };
+		return { kind: 'resolved', invocation: { kind: 'cut', viewId: stop.entryViewId } };
 	}
-	const exit = stopById(program, predecessor)?.views.at(-1);
-	const fromExit = exit?.viewId === state.viewId;
+	const exit = stopById(program, predecessor)?.entryViewId;
+	const fromExit = exit === state.viewId;
 	const transition = (options.transitions ?? []).find(
 		(entry) => entry.fromStopId === predecessor && entry.toStopId === stopId
 	);
@@ -463,7 +575,7 @@ function invocationFor(
 		if (transition.invocation.kind !== 'travel' || fromExit) {
 			return { kind: 'resolved', invocation: transition.invocation };
 		}
-		return { kind: 'gap', message: `Travel from Stop "${predecessor}" starts at its final guided View` };
+		return { kind: 'gap', message: `Travel from Stop "${predecessor}" starts at its entry View` };
 	}
 	const index = program.stops.findIndex((entry) => entry.id === stopId);
 	const authoredPredecessor = index > 0 ? program.stops[index - 1]!.id : null;
@@ -477,7 +589,8 @@ function invocationFor(
 
 /**
  * Arrive at a Stop occurrence: a fresh occurrence identity, the Presentation's
- * panel, its invocation intent, and one of ready/holding/blocked.
+ * panel and its invocation intent. A Cut arrives at once and starts the stay;
+ * a Travel is `traveling` until the host confirms the arrival.
  */
 function arrive(
 	program: ExecutionProgram,
@@ -510,7 +623,7 @@ function arrive(
 			message: `the program carries no Stop "${stopId}"`
 		}] };
 	}
-	const presentation = program.presentations.find((entry) => entry.id === stop.presentationId);
+	const presentation = presentationById(program, stop.presentationId);
 	if (presentation === undefined) {
 		return { state, outcome: 'ignored', effects: [...effects, {
 			kind: 'gap',
@@ -552,9 +665,6 @@ function arrive(
 	// panel: the arrival shows its own full Presentation and reports the foreign id
 	// as a gap below. A partially matching selection still narrows as declared.
 	const selected = matchedSelection.length === 0 ? presentation.content : matchedSelection;
-	// A selection that belongs to another Presentation cannot silently narrow this
-	// panel to nothing: the arrival still happens and the unconsumed selection is
-	// reported as a typed gap for the host/companion to explain.
 	const outsideSelection = state.pendingContent.filter(
 		(contentId) => !presentation.content.some((record) => record.id === contentId)
 	);
@@ -563,20 +673,18 @@ function arrive(
 		title: presentation.label,
 		content: selected.map((record) => ({ id: record.id, text: record.text }))
 	};
-	const gated = (options.gates ?? []).includes(presentation.id);
 	const base: ExperienceRunState = {
 		...state,
 		stopId,
 		occurrenceId: visit.occurrenceId,
 		presentationId: presentation.id,
-		viewId: stop.views[0]!.viewId,
-		viewIndex: 0,
+		viewId: stop.entryViewId,
+		viewIndex: presentation.viewIds.indexOf(stop.entryViewId),
 		visited: appendVisit ? [...state.visited, visit] : state.visited,
 		panel,
 		pendingContent: [],
 		invocation,
 		invocationFromViewId: invocation.kind === 'travel' ? state.viewId : null,
-		gated,
 		holdRemainingMs: null,
 		phase: 'ready',
 		lastEvent: 'arrival'
@@ -598,96 +706,82 @@ function arrive(
 	if (actioned.navigateTo !== null && actioned.navigateTo !== stopId) {
 		return arrive(program, actioned.state, actioned.navigateTo, options, nextEffects, true, depth + 1);
 	}
-	const first = startViewHold(actioned.state, stop, 0, nextEffects);
-	const result = first.phase === 'holding' && stop.views.length > 1
-		? advanceViewHolds(first, stop, 0, nextEffects, false)
-		: first;
+	const result = invocation.kind === 'travel'
+		? { ...actioned.state, phase: 'traveling' as const }
+		: beginStay(actioned.state, stop, nextEffects);
 	// A lifecycle `continue` resolves the occurrence exactly once, and only when the
-	// occurrence is actually ready: a hold is time and a Gate is a prompt, so neither
-	// is skipped by the action.
+	// occurrence is waiting: a stay is time, so it is not skipped by the action.
 	if (actioned.continueRequested && result.phase === 'ready') {
 		return advance(program, result, options, nextEffects, continueDepth);
 	}
 	return { state: result, outcome: 'accepted', effects: nextEffects };
 }
 
-function finishViewHold(state: ExperienceRunState, stopId: string, effects: ExperienceEffect[]): ExperienceRunState {
-	effects.push(state.gated ? { kind: 'blocked', stopId } : { kind: 'ready', stopId });
-	return { ...state, phase: state.gated ? 'blocked' : 'ready' };
-}
-
-function startViewHold(
+/**
+ * Advance the Guide clock. Ticks are ignored while paused or exploring. A tick
+ * during an arrival Travel or a wait only moves the clock; a tick through the
+ * end of a stay plays on (Automatic), and the remainder runs into the next stay
+ * when that arrival is a Cut.
+ */
+function tick(
+	program: ExecutionProgram,
 	state: ExperienceRunState,
-	stop: ProgramStop,
-	viewIndex: number,
-	effects: ExperienceEffect[]
-): ExperienceRunState {
-	const view = stop.views[viewIndex]!;
-	const next = { ...state, viewId: view.viewId, viewIndex };
-	if (view.holdSeconds === null && viewIndex === stop.views.length - 1) {
-		return finishViewHold({ ...next, holdRemainingMs: null }, stop.id, effects);
-	}
-	const milliseconds = Math.round((view.holdSeconds ?? 0) * 1000);
-	effects.push({ kind: 'hold', stopId: stop.id, milliseconds });
-	return { ...next, phase: 'holding', holdRemainingMs: milliseconds };
-}
-
-function advanceViewHolds(
-	state: ExperienceRunState,
-	stop: ProgramStop,
 	milliseconds: number,
-	effects: ExperienceEffect[],
-	expireFinal: boolean
-): ExperienceRunState {
-	let next = state;
-	while (next.phase === 'holding' && next.holdRemainingMs !== null && next.viewIndex !== null) {
-		const viewIndex = next.viewIndex + 1;
-		const view = stop.views[viewIndex];
-		if (view === undefined && !expireFinal) break;
-		if (next.holdRemainingMs > milliseconds) {
-			return { ...next, holdRemainingMs: next.holdRemainingMs - milliseconds };
-		}
-		milliseconds -= next.holdRemainingMs;
-		if (view === undefined) return finishViewHold({ ...next, holdRemainingMs: 0 }, stop.id, effects);
-		const invocation = view.step!;
-		effects.push(
-			{ kind: 'camera', stopId: stop.id, invocation },
-			{ kind: 'step', stopId: stop.id, viewIndex, viewId: view.viewId }
-		);
-		next = startViewHold({
-			...next,
-			invocation,
-			invocationFromViewId: invocation.kind === 'travel' ? next.viewId : null
-		}, stop, viewIndex, effects);
-	}
-	return next;
-}
-
-function tick(program: ExecutionProgram, state: ExperienceRunState, milliseconds: number): ExperienceReduceResult {
+	options: ExperienceInterpreterOptions
+): ExperienceReduceResult {
 	if (!Number.isInteger(milliseconds) || milliseconds < 0) return ignored(state);
-	const next = { ...state, elapsedMs: state.elapsedMs + milliseconds };
-	const stop = state.stopId === null ? undefined : stopById(program, state.stopId);
-	if (stop === undefined || state.phase !== 'holding') return accepted(next, []);
-	const effects: ExperienceEffect[] = [];
-	return accepted(advanceViewHolds(next, stop, milliseconds, effects, true), effects);
+	if (state.paused || state.resume !== null) return ignored(state);
+	let next: ExperienceRunState = { ...state, elapsedMs: state.elapsedMs + milliseconds };
+	let effects: ExperienceEffect[] = [];
+	let remaining = milliseconds;
+	for (let guard = 0; guard < 1024; guard += 1) {
+		if (next.stopId === null || next.phase !== 'holding' || next.holdRemainingMs === null) break;
+		if (next.holdRemainingMs > remaining) {
+			next = { ...next, holdRemainingMs: next.holdRemainingMs - remaining };
+			break;
+		}
+		remaining -= next.holdRemainingMs;
+		const advanced = advance(program, { ...next, holdRemainingMs: 0 }, options, effects);
+		next = advanced.state;
+		effects = [...advanced.effects];
+		if (advanced.outcome === 'ignored') break;
+	}
+	return accepted(next, effects);
 }
 
+function setPaused(program: ExecutionProgram, state: ExperienceRunState, paused: boolean): ExperienceReduceResult {
+	if (paused && (program.pacing !== 'automatic' || state.stopId === null)) return ignored(state);
+	if (state.paused === paused) return ignored(state);
+	return accepted({ ...state, paused }, []);
+}
+
+/**
+ * Next. It is always available at a Stop: during an arrival Travel it lands now
+ * (a Cut to the entry View) and starts the stay; during a stay it moves on; while
+ * waiting it continues; on the last Stop it finishes. In Automatic it also
+ * resumes play.
+ */
 function continueRun(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	options: ExperienceInterpreterOptions
 ): ExperienceReduceResult {
-	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
-	if (state.phase === 'holding') {
-		// A hold is time, not a prompt: Continue during it changes nothing.
-		return ignored(state);
-	}
 	if (state.stopId === null) return ignored(state);
-	// Continue is an action, not a run-scoped program event. The lifecycle actions
-	// were already applied on arrival; continuing resolves this occurrence's
-	// continuation exactly once.
+	const current = state.paused ? { ...state, paused: false } : state;
 	const effects: ExperienceEffect[] = [];
-	return advance(program, state, options, effects);
+	if (current.phase === 'traveling') {
+		const stop = stopById(program, current.stopId!)!;
+		const invocation: ProgramInvocation = { kind: 'cut', viewId: stop.entryViewId };
+		effects.push({ kind: 'camera', stopId: stop.id, invocation });
+		return accepted(
+			beginStay({ ...current, invocation, invocationFromViewId: null }, stop, effects),
+			effects
+		);
+	}
+	const advanced = advance(program, current, options, effects);
+	// A paused run that pressed Next still plays on, even when the advance had
+	// nowhere to go.
+	return advanced.outcome === 'ignored' && current !== state ? accepted(current, advanced.effects) : advanced;
 }
 
 /** Resolve the occurrence's continuation once, by occurrence identity. */
@@ -716,18 +810,13 @@ function advance(
 	const continuation = stop.continuation;
 
 	// A covered detour is an excursion: finishing the detour occurrence returns to
-	// the origin occurrence before **any** continuation kind is resolved, including
-	// sequence-next and an explicit Stop target. Otherwise the run would follow the
-	// detour target's own continuation and never discharge the return obligation.
+	// the origin occurrence before **any** continuation kind is resolved.
 	if (state.returnToStopId !== null) {
 		const origin = state.returnToStopId;
 		const returned = arrive(program, state, origin, options, effects, true, 0, continueDepth + 1);
-		// The obligation is discharged only once the origin arrival actually happened;
-		// a gapped return (for example a missing transition in a partial table) leaves
-		// the run at the detour target with its return still owed.
 		return returned.outcome === 'ignored'
 			? returned
-				: { ...returned, state: { ...returned.state, returnToStopId: null } };
+			: { ...returned, state: { ...returned.state, returnToStopId: null } };
 	}
 
 	if (continuation.kind === 'end') {
@@ -745,23 +834,49 @@ function advance(
 }
 
 /**
- * Return to the Guide position a Presentation entry suspended. This is a fresh
- * arrival at that Stop (a new visit), so Continue then moves on as authored.
+ * Back to the tour: restore the suspended occurrence as a Cut to its View. It is
+ * the same occurrence — no new visit, and arrival lifecycle actions do not run
+ * again — with the same play, pause or wait state. When under the lead-in of
+ * the stay remained, the playhead steps back to leave the lead-in (never longer
+ * than the stay itself); the Guide gets no longer.
  */
-function resumeGuide(
-	program: ExecutionProgram,
-	state: ExperienceRunState,
-	options: ExperienceInterpreterOptions
-): ExperienceReduceResult {
-	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
-	if (state.resume === null) return ignored(state);
-	return arrive(
-		program,
-		{ ...state, resume: null, returnToStopId: state.resume.returnToStopId },
-		state.resume.stopId,
-		options,
-		[]
-	);
+function resumeGuide(program: ExecutionProgram, state: ExperienceRunState): ExperienceReduceResult {
+	const suspended = state.resume;
+	if (suspended === null) return ignored(state);
+	const stop = stopById(program, suspended.stopId);
+	const presentation = stop === undefined ? undefined : presentationById(program, stop.presentationId);
+	if (stop === undefined || presentation === undefined) return ignored(state);
+	const stay = stayMs(stop);
+	const holdRemainingMs = suspended.holdRemainingMs === null || stay === null
+		? null
+		: Math.max(suspended.holdRemainingMs, Math.min(EXPERIENCE_RESUME_LEAD_IN_MS, stay));
+	const invocation: ProgramInvocation = { kind: 'cut', viewId: suspended.viewId };
+	const panel = fullPanel(presentation);
+	const next: ExperienceRunState = {
+		...state,
+		resume: null,
+		stopId: suspended.stopId,
+		occurrenceId: suspended.occurrenceId,
+		presentationId: presentation.id,
+		viewId: suspended.viewId,
+		viewIndex: presentation.viewIds.indexOf(suspended.viewId),
+		phase: holdRemainingMs === null ? 'ready' : 'holding',
+		holdRemainingMs,
+		paused: suspended.paused,
+		panel,
+		pendingContent: [],
+		invocation,
+		invocationFromViewId: null,
+		returnToStopId: suspended.returnToStopId,
+		lastEvent: 'arrival'
+	};
+	return accepted(next, [
+		{ kind: 'camera', stopId: stop.id, invocation },
+		{ kind: 'panel', panel },
+		holdRemainingMs === null
+			? { kind: 'ready', stopId: stop.id }
+			: { kind: 'hold', stopId: stop.id, milliseconds: holdRemainingMs }
+	]);
 }
 
 function navigate(
@@ -824,7 +939,7 @@ function resetRun(
 		phase: 'ready',
 		elapsedMs: 0,
 		holdRemainingMs: null,
-		gated: false,
+		paused: false,
 		visited: [],
 		values,
 		panel: null,

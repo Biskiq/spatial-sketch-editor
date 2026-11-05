@@ -1,5 +1,5 @@
 /**
- * Strict validation for `ExecutionProgram@3` (AM-6).
+ * Strict validation for `ExecutionProgram@4` (AM-6).
  *
  * The program is a delivery format, so the reader refuses anything a consumer
  * could misread: unknown keys, non-finite or negative holds, an unregistered
@@ -24,7 +24,7 @@ import {
 	type ProgramContinuation,
 	type ProgramContentRecord,
 	type ProgramGuard,
-	type ProgramGuidedView,
+	type ProgramInvitation,
 	type ProgramInvocation,
 	type ProgramLifecycleAction,
 	type ProgramLocalTime,
@@ -39,6 +39,7 @@ const PROGRAM_KEYS = [
 	'capabilities',
 	'experienceId',
 	'welcome',
+	'pacing',
 	'entryStopId',
 	'presentations',
 	'stops',
@@ -49,14 +50,16 @@ const PROGRAM_KEYS = [
 	'profile'
 ] as const;
 const CAPABILITY_KEYS = ['id', 'required'] as const;
-const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'defaultViewId', 'content', 'explorable'] as const;
+const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'steps', 'content', 'explorable'] as const;
 const CONTENT_KEYS = ['id', 'kind', 'text'] as const;
-const STOP_KEYS = ['id', 'presentationId', 'views', 'invocation', 'continuation'] as const;
+const STOP_KEYS = ['id', 'presentationId', 'entryViewId', 'staySeconds', 'invitation', 'invocation', 'continuation'] as const;
+const INVITATION_KEYS = ['prompt'] as const;
+const PROGRAM_PROMPT_MAX_CODE_POINTS = 80;
 const INVOCATION_KEYS = ['kind', 'viewId', 'connectionId'] as const;
 const CONTINUATION_KEYS = ['kind', 'stopId'] as const;
 const STATE_KEYS = ['id', 'type', 'values', 'initial', 'reset'] as const;
 const GUARD_KEYS = ['kind', 'value', 'stateId', 'guards'] as const;
-const LOCALTIME_KEYS = ['stopId', 'viewIndex', 'holdSeconds'] as const;
+const LOCALTIME_KEYS = ['stopId', 'staySeconds'] as const;
 const CHANNEL_KEYS = ['id', 'family', 'policy'] as const;
 const LIFECYCLE_KEYS = ['event', 'action', 'guard'] as const;
 const ACTION_KEYS = ['kind', 'contentId', 'stopId', 'url', 'stateId', 'value'] as const;
@@ -143,27 +146,29 @@ function readPresentation(reader: ShapeReader, input: unknown, path: string): Pr
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const label = reader.string(record.label, `${path}.label`);
 	const viewIds = reader.opaqueIdArray(record.viewIds, `${path}.viewIds`);
-	const defaultViewId = reader.opaqueId(record.defaultViewId, `${path}.defaultViewId`);
+	const steps = readArray(reader, record.steps, `${path}.steps`, (entry, entryPath) => readInvocation(reader, entry, entryPath));
 	const explorable = reader.boolean(record.explorable, `${path}.explorable`);
 	const content = readArray(reader, record.content, `${path}.content`, (entry, entryPath) =>
 		readContent(reader, entry, entryPath)
 	);
-	if (id === null || label === null || viewIds === null || defaultViewId === null || content === null || explorable === null) return null;
+	if (id === null || label === null || viewIds === null || steps === null || content === null || explorable === null) return null;
 	if (!uniqueIds(reader, viewIds, `${path}.viewIds`, 'view')) return null;
 	if (viewIds.length === 0) {
 		reader.problem(`${path}.viewIds`, 'out-of-range', `${path}.viewIds must name at least one Camera view`);
 		return null;
 	}
-	if (!viewIds.includes(defaultViewId)) {
-		reader.problem(
-			`${path}.defaultViewId`,
-			'default-not-in-views',
-			`${path}.defaultViewId "${defaultViewId}" is not one of this Presentation's views`
-		);
+	if (steps.length !== viewIds.length - 1) {
+		reader.problem(`${path}.steps`, 'step-count', `${path}.steps must hold one step between each pair of neighbouring Views`);
 		return null;
 	}
+	for (const [index, step] of steps.entries()) {
+		if (step.kind === 'cut' && step.viewId !== viewIds[index + 1]) {
+			reader.problem(`${path}.steps[${index}].viewId`, 'view-mismatch', 'a Cut step must realize the View it steps into');
+			return null;
+		}
+	}
 	if (!uniqueIds(reader, content.map((entry) => entry.id), `${path}.content`, 'content record')) return null;
-	return { id, label, viewIds, defaultViewId, content, explorable };
+	return { id, label, viewIds, steps, content, explorable };
 }
 
 function readInvocation(reader: ShapeReader, input: unknown, path: string): ProgramInvocation | null {
@@ -287,7 +292,7 @@ function readAction(reader: ShapeReader, input: unknown, path: string): ProgramA
 }
 
 /**
- * Read one `ExecutionProgram@3`.
+ * Read one `ExecutionProgram@4`.
  *
  * Cross-field rules are validated here rather than left to the interpreter:
  * an entry stop must be one of the program's stops (or explicitly `null` with no
@@ -309,6 +314,7 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	);
 	const experienceId = reader.opaqueId(record.experienceId, '$.experienceId');
 	const welcome = record.welcome === null ? null : reader.string(record.welcome, '$.welcome');
+	const pacing = reader.tag(record.pacing, '$.pacing', ['automatic', 'manual']) as ExecutionProgram['pacing'] | null;
 	if (welcome !== null && [...welcome].length > PROGRAM_WELCOME_MAX_CODE_POINTS) {
 		reader.problem('$.welcome', 'text-too-long', `welcome text is bounded at ${PROGRAM_WELCOME_MAX_CODE_POINTS} code points`);
 	}
@@ -340,6 +346,7 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	if (
 		capabilities === null ||
 		experienceId === null ||
+		pacing === null ||
 		entryStopId === undefined ||
 		presentations === null ||
 		stops === null ||
@@ -357,7 +364,7 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	if (!uniqueIds(reader, presentations.map((entry) => entry.id), '$.presentations', 'presentation')) return failed(reader);
 	if (!uniqueIds(reader, stops.map((entry) => entry.id), '$.stops', 'stop')) return failed(reader);
 	if (!uniqueIds(reader, state.map((entry) => entry.id), '$.state', 'state declaration')) return failed(reader);
-	if (!uniqueIds(reader, localTime.map((entry) => localTimeKey(entry.stopId, entry.viewIndex)), '$.localTime', 'local-time mapping')) return failed(reader);
+	if (!uniqueIds(reader, localTime.map((entry) => entry.stopId), '$.localTime', 'local-time mapping')) return failed(reader);
 	if (!uniqueIds(reader, channels.map((entry) => entry.id), '$.channels', 'channel policy')) return failed(reader);
 
 	const presentationIds = new Set(presentations.map((entry) => entry.id));
@@ -374,26 +381,18 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 			reader.problem(`${path}.presentationId`, 'missing-presentation', `${path}.presentationId names no presentation`);
 		}
 		const presentation = presentations.find((entry) => entry.id === stop.presentationId);
-		for (const [viewIndex, view] of stop.views.entries()) {
-			const viewPath = `${path}.views[${viewIndex}]`;
-			if (presentation !== undefined && !presentation.viewIds.includes(view.viewId)) {
-				reader.problem(`${viewPath}.viewId`, 'view-mismatch', 'a guided View must belong to its Presentation');
-			}
-			if (viewIndex === 0 && view.step !== null) {
-				reader.problem(`${viewPath}.step`, 'entry-step-transition', 'the first View uses the Stop invocation');
-			}
-			if (viewIndex > 0 && view.step === null) {
-				reader.problem(`${viewPath}.step`, 'missing-step', 'each later View needs a step invocation');
-			}
-			if (view.step?.kind === 'cut' && view.step.viewId !== view.viewId) {
-				reader.problem(`${viewPath}.step.viewId`, 'view-mismatch', 'a Cut step must realize its guided View');
-			}
-			if (viewIndex < stop.views.length - 1 && view.holdSeconds === null) {
-				reader.problem(`${viewPath}.holdSeconds`, 'missing-step-hold', 'an intermediate View needs a hold');
-			}
+		if (presentation !== undefined && !presentation.viewIds.includes(stop.entryViewId)) {
+			reader.problem(`${path}.entryViewId`, 'view-mismatch', 'a Stop enters at one of its Presentation\'s Views');
 		}
-		if (stop.invocation.kind === 'cut' && stop.invocation.viewId !== stop.views[0]!.viewId) {
-			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize the first View of this Stop');
+		if (stop.invocation.kind === 'cut' && stop.invocation.viewId !== stop.entryViewId) {
+			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize the entry View of this Stop');
+		}
+		if ((pacing === 'manual') !== (stop.staySeconds === null)) {
+			reader.problem(
+				`${path}.staySeconds`,
+				'stay-pacing-mismatch',
+				pacing === 'manual' ? 'a Manual program waits for Next: every stay is null' : 'an Automatic program times every Stop'
+			);
 		}
 		// The entry Stop is the run's first arrival: no pose precedes it, so a Travel
 		// there names a route the runtime cannot start. Lowering always emits a Cut.
@@ -415,25 +414,20 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	} else if (entryStopId === null || !stopIds.has(entryStopId)) {
 		reader.problem('$.entryStopId', 'missing-stop', '$.entryStopId must name one of the program stops');
 	}
-	const mappedHolds = new Set<string>();
+	const mappedStays = new Set<string>();
 	for (const [index, mapping] of localTime.entries()) {
 		const path = `$.localTime[${index}]`;
 		const stop = stops.find((entry) => entry.id === mapping.stopId);
-		const view = stop?.views[mapping.viewIndex];
 		if (stop === undefined) {
 			reader.problem(`${path}.stopId`, 'missing-stop', `${path}.stopId names no stop`);
-		} else if (view === undefined) {
-			reader.problem(`${path}.viewIndex`, 'missing-view', `${path}.viewIndex names no guided View`);
-		} else if (view.holdSeconds !== mapping.holdSeconds) {
-			reader.problem(`${path}.holdSeconds`, 'hold-mismatch', 'the local-time mapping must agree with its guided View hold');
+		} else if (stop.staySeconds !== mapping.staySeconds) {
+			reader.problem(`${path}.staySeconds`, 'stay-mismatch', 'the local-time mapping must agree with its Stop stay');
 		}
-		mappedHolds.add(localTimeKey(mapping.stopId, mapping.viewIndex));
+		mappedStays.add(mapping.stopId);
 	}
 	for (const [index, stop] of stops.entries()) {
-		for (const [viewIndex, view] of stop.views.entries()) {
-			if (view.holdSeconds !== null && !mappedHolds.has(localTimeKey(stop.id, viewIndex))) {
-				reader.problem(`$.stops[${index}].views[${viewIndex}].holdSeconds`, 'missing-local-time', 'a timed View needs a local-time mapping');
-			}
+		if (stop.staySeconds !== null && !mappedStays.has(stop.id)) {
+			reader.problem(`$.stops[${index}].staySeconds`, 'missing-local-time', 'a timed Stop needs a local-time mapping');
 		}
 	}
 	for (const [index, entry] of lifecycle.entries()) {
@@ -454,6 +448,7 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 			capabilities,
 			experienceId,
 			welcome,
+			pacing,
 			entryStopId,
 			presentations,
 			stops,
@@ -472,30 +467,38 @@ function readStop(reader: ShapeReader, input: unknown, path: string): ProgramSto
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const presentationId = reader.opaqueId(record.presentationId, `${path}.presentationId`);
-	const views = readArray(reader, record.views, `${path}.views`, (entry, entryPath) =>
-		readGuidedView(reader, entry, entryPath)
-	);
+	const entryViewId = reader.opaqueId(record.entryViewId, `${path}.entryViewId`);
+	const staySeconds = record.staySeconds === null
+		? null
+		: reader.numberAtLeast(record.staySeconds, `${path}.staySeconds`, 1, false);
+	const invitation = record.invitation === null ? null : readProgramInvitation(reader, record.invitation, `${path}.invitation`);
 	const invocation = readInvocation(reader, record.invocation, `${path}.invocation`);
 	const continuation = readContinuation(reader, record.continuation, `${path}.continuation`);
-	if (id === null || presentationId === null || views === null || invocation === null || continuation === null) return null;
-	if (views.length === 0) {
-		reader.problem(`${path}.views`, 'empty-guided-views', 'a Stop needs at least one guided View');
+	if (
+		id === null ||
+		presentationId === null ||
+		entryViewId === null ||
+		(staySeconds === null && record.staySeconds !== null) ||
+		(invitation === null && record.invitation !== null) ||
+		invocation === null ||
+		continuation === null
+	) {
 		return null;
 	}
-	if (!uniqueIds(reader, views.map((view) => view.viewId), `${path}.views`, 'guided View')) return null;
-	return { id, presentationId, views, invocation, continuation };
+	return { id, presentationId, entryViewId, staySeconds, invitation, invocation, continuation };
 }
 
-function readGuidedView(reader: ShapeReader, input: unknown, path: string): ProgramGuidedView | null {
-	const record = reader.object(input, path, ['viewId', 'holdSeconds', 'step']);
+function readProgramInvitation(reader: ShapeReader, input: unknown, path: string): ProgramInvitation | null {
+	const record = reader.object(input, path, INVITATION_KEYS);
 	if (record === null) return null;
-	const viewId = reader.opaqueId(record.viewId, `${path}.viewId`);
-	const holdSeconds = record.holdSeconds === null
-		? null
-		: reader.numberAtLeast(record.holdSeconds, `${path}.holdSeconds`, 0, false);
-	const step = record.step === null ? null : readInvocation(reader, record.step, `${path}.step`);
-	if (viewId === null || (holdSeconds === null && record.holdSeconds !== null) || (step === null && record.step !== null)) return null;
-	return { viewId, holdSeconds, step };
+	if (record.prompt === null) return { prompt: null };
+	const prompt = reader.string(record.prompt, `${path}.prompt`);
+	if (prompt === null) return null;
+	if ([...prompt].length > PROGRAM_PROMPT_MAX_CODE_POINTS) {
+		reader.problem(`${path}.prompt`, 'text-too-long', `an invitation prompt is bounded at ${PROGRAM_PROMPT_MAX_CODE_POINTS} code points`);
+		return null;
+	}
+	return { prompt };
 }
 
 function readState(reader: ShapeReader, input: unknown, path: string): ProgramStateDeclaration | null {
@@ -533,18 +536,13 @@ function readState(reader: ShapeReader, input: unknown, path: string): ProgramSt
 	return { id, type: 'choice', values, initial, reset };
 }
 
-function localTimeKey(stopId: string, viewIndex: number): string {
-	return JSON.stringify([stopId, viewIndex]);
-}
-
 function readLocalTime(reader: ShapeReader, input: unknown, path: string): ProgramLocalTime | null {
 	const record = reader.object(input, path, LOCALTIME_KEYS);
 	if (record === null) return null;
 	const stopId = reader.opaqueId(record.stopId, `${path}.stopId`);
-	const viewIndex = reader.integerAtLeast(record.viewIndex, `${path}.viewIndex`, 0);
-	const holdSeconds = reader.numberAtLeast(record.holdSeconds, `${path}.holdSeconds`, 0, false);
-	if (stopId === null || viewIndex === null || holdSeconds === null) return null;
-	return { stopId, viewIndex, holdSeconds };
+	const staySeconds = reader.numberAtLeast(record.staySeconds, `${path}.staySeconds`, 1, false);
+	if (stopId === null || staySeconds === null) return null;
+	return { stopId, staySeconds };
 }
 
 function readChannel(reader: ShapeReader, input: unknown, path: string): ProgramChannelPolicy | null {

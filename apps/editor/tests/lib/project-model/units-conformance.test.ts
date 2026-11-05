@@ -180,18 +180,19 @@ function experience(id: string, viewId: string): Experience {
 		welcome: null,
 		entryGuideId: 'guide-1',
 		presentations: [
-			{ id: 'presentation-1', label: 'Entry', viewIds: [viewId], explorable: true, defaultViewId: viewId, subject: null, text: null }
+			{ id: 'presentation-1', label: 'Entry', views: [{ viewId: viewId }], explorable: true, subject: null, text: null }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
-				views: [{ viewId, holdSeconds: 0 }],
+				entryViewId: null,
+				staySeconds: 5,
+				invitation: null,
 				continuation: { kind: 'end' }
 			}
 		],
-		guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
-		gates: [],
+		guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }],
 		detours: []
 	};
 }
@@ -323,8 +324,8 @@ describe('references, lock diagnostics and closure', () => {
 		expect(validated.success).toBe(true);
 		if (!validated.success) return;
 		expect(validated.diagnostics).toMatchObject([
-			{ code: 'unresolved-view', path: expect.stringContaining('.presentations[0].viewIds') },
-			{ code: 'unresolved-view', path: expect.stringContaining('.stops[0].views[0].viewId') }
+			{ code: 'unresolved-view', path: expect.stringContaining('.presentations[0].views[0].viewId') },
+			{ code: 'unresolved-view', path: expect.stringContaining('.stops[0].entryViewId') }
 		]);
 		expect(validated.closure).toEqual([]);
 	});
@@ -451,9 +452,8 @@ describe('references, lock diagnostics and closure', () => {
 		const presentation = (id: string, viewId: string) => ({
 			id,
 			label: id,
-			viewIds: [viewId],
+			views: [{ viewId: viewId }],
 			explorable: true,
-			defaultViewId: viewId,
 			subject: null,
 			text: null
 		});
@@ -487,14 +487,14 @@ describe('references, lock diagnostics and closure', () => {
 						stops: [
 							{
 								id: 'stop-1',
-								views: [{ viewId: 'view-1' }],
+								entryViewId: null, staySeconds: 5, invitation: null,
 								presentationId: 'presentation-1',
 								continuation: { kind: 'sequence-next', transition: 'travel' }
 							},
-							{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } },
+							{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', continuation: { kind: 'end' } },
 							{
 								id: 'stop-3',
-								views: [{ viewId: 'view-3' }],
+								entryViewId: null, staySeconds: 5, invitation: null,
 								presentationId: 'presentation-3',
 								continuation: { kind: 'sequence-next', transition: 'travel' }
 							}
@@ -504,7 +504,7 @@ describe('references, lock diagnostics and closure', () => {
 								id: 'guide-1',
 								label: 'Guide',
 								stopIds: ['stop-1', 'stop-3', 'stop-2'],
-								entryStopId: 'stop-1'
+								entryStopId: 'stop-1', pacing: 'automatic' as const
 							}
 						]
 					}
@@ -529,9 +529,8 @@ describe('references, lock diagnostics and closure', () => {
 		const presentation = (id: string, viewId: string) => ({
 			id,
 			label: id,
-			viewIds: [viewId],
+			views: [{ viewId: viewId }],
 			explorable: true,
-			defaultViewId: viewId,
 			subject: null,
 			text: null
 		});
@@ -552,18 +551,18 @@ describe('references, lock diagnostics and closure', () => {
 							presentation('presentation-3', 'view-3')
 						],
 						stops: [
-							{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'end' } },
+							{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'end' } },
 							// stop-2 is the last Stop of the Guide and still authors a Travel: its
 							// `sequence-next` edge ends the run. stop-3 follows it only in the array.
 							{
 								id: 'stop-2',
-								views: [{ viewId: 'view-2' }],
+								entryViewId: null, staySeconds: 5, invitation: null,
 								presentationId: 'presentation-2',
 								continuation: { kind: 'sequence-next', transition: 'travel' }
 							},
-							{ id: 'stop-3', views: [{ viewId: 'view-3' }], presentationId: 'presentation-3', continuation: { kind: 'end' } }
+							{ id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-3', continuation: { kind: 'end' } }
 						],
-						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' }]
+						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1', pacing: 'automatic' as const }]
 					}
 				]
 			}
@@ -653,7 +652,7 @@ function subjectReference(domain: string, componentId: string | null = null) {
 	};
 }
 
-/** The valid Experience-3 payload with one Experience, edited for a single refusal. */
+/** The valid Experience-4 payload with one Experience, edited for a single refusal. */
 function experiencePayload(edit: (value: Experience) => unknown) {
 	return { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [edit(experience('experience-a', 'view-1'))] };
 }
@@ -675,22 +674,48 @@ describe('validateExperiencePayload refusals', () => {
 			input: () => ({ formatVersion: 2, experiences: [] })
 		},
 		{
-			name: 'an empty guided sequence',
-			code: 'empty-guided-views',
-			input: () => experiencePayload((value) => ({ ...value, stops: [{ ...value.stops[0]!, views: [] }] }))
+			name: 'the previous format-3 payload',
+			code: 'unsupported_format_version',
+			input: () => ({ formatVersion: 3, experiences: [] })
 		},
 		{
-			name: 'a repeated guided View',
-			code: 'duplicate-identity',
-			input: () => experiencePayload((value) => ({
-				...value, stops: [{ ...value.stops[0]!, views: [{ viewId: 'view-1' }, { viewId: 'view-1' }] }]
-			}))
+			name: 'a stay under 1 s',
+			code: 'out-of-range',
+			input: () => experiencePayload((value) => ({ ...value, stops: [{ ...value.stops[0]!, staySeconds: 0.5 }] }))
 		},
 		{
-			name: 'an entry View with an incoming step',
+			name: 'a Stop without a stay',
+			code: 'non-finite-number',
+			input: () => experiencePayload((value) => {
+				const { staySeconds: _stay, ...stop } = value.stops[0]!;
+				return { ...value, stops: [stop] };
+			})
+		},
+		{
+			name: 'a Stop that keeps format-3 guided Views',
+			code: 'unknown-key',
+			input: () => experiencePayload((value) => ({ ...value, stops: [{ ...value.stops[0]!, views: [{ viewId: 'view-1' }] }] }))
+		},
+		{
+			name: 'an invitation prompt above 80 code points',
+			code: 'text-too-long',
+			input: () => experiencePayload((value) => ({ ...value, stops: [{ ...value.stops[0]!, invitation: { prompt: 'x'.repeat(81) } }] }))
+		},
+		{
+			name: 'a Guide without pacing',
+			code: 'unknown-tag',
+			input: () => experiencePayload((value) => ({ ...value, guides: [{ ...value.guides[0]!, pacing: 'mixed' }] }))
+		},
+		{
+			name: 'a retired Gate list',
+			code: 'unknown-key',
+			input: () => experiencePayload((value) => ({ ...value, gates: [] }))
+		},
+		{
+			name: 'a Default View with an incoming step',
 			code: 'entry-step-transition',
 			input: () => experiencePayload((value) => ({
-				...value, stops: [{ ...value.stops[0]!, views: [{ viewId: 'view-1', transition: 'cut' }] }]
+				...value, presentations: [{ ...value.presentations[0]!, views: [{ viewId: 'view-1', transition: 'cut' }] }]
 			}))
 		},
 		{
@@ -704,25 +729,16 @@ describe('validateExperiencePayload refusals', () => {
 			input: () =>
 				experiencePayload((value) => ({
 					...value,
-					presentations: [{ ...value.presentations[0]!, viewIds: ['view-1', 'view-1'] }]
-				}))
-		},
-		{
-			name: 'a Default View outside the Presentation views',
-			code: 'default-not-in-views',
-			input: () =>
-				experiencePayload((value) => ({
-					...value,
-					presentations: [{ ...value.presentations[0]!, defaultViewId: 'view-missing' }]
+					presentations: [{ ...value.presentations[0]!, views: [{ viewId: 'view-1' }, { viewId: 'view-1' }] }]
 				}))
 		},
 		{
 			name: 'a Stop entry View its Presentation does not carry',
-			code: 'guided-view-not-in-presentation',
+			code: 'entry-view-not-in-presentation',
 			input: () =>
 				experiencePayload((value) => ({
 					...value,
-					stops: [{ ...value.stops[0]!, views: [{ viewId: 'view-missing' }] }]
+					stops: [{ ...value.stops[0]!, entryViewId: 'view-absent' }]
 				}))
 		},
 		{

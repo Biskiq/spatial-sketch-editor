@@ -1,5 +1,5 @@
 /**
- * `ExecutionProgram@3` conformance (AM-6).
+ * `ExecutionProgram@4` conformance (AM-6).
  *
  * The codec freezes before the interpreter and the first authoring surface
  * exist, so the fixtures here are hand-authored and non-empty: they cover
@@ -22,37 +22,42 @@ import {
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 3,
+		formatVersion: 4,
 		capabilities: [
 			{ id: 'profile.reduced-motion', required: true },
 			{ id: 'panel.info', required: false }
 		],
 		welcome: null,
 		experienceId: 'experience-a',
+		pacing: 'automatic',
 		entryStopId: 'stop-1',
 		presentations: [
 			{
 				id: 'presentation-1',
 				label: 'Piano',
 				viewIds: ['view-1'],
+				steps: [],
 				explorable: true,
-				defaultViewId: 'view-1',
 				content: [{ id: 'content-1', kind: 'text', text: 'A restored piano.' }]
 			},
-			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] }
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], steps: [], explorable: true, content: [] }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
-				views: [{ viewId: 'view-1', holdSeconds: 2, step: null }],
+				entryViewId: 'view-1',
+				staySeconds: 2,
+				invitation: { prompt: 'Look closer' },
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				continuation: { kind: 'sequence-next' }
 			},
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
-				views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
+				entryViewId: 'view-2',
+				staySeconds: 3,
+				invitation: null,
 				invocation: { kind: 'travel', connectionId: 'connection-1' },
 				continuation: { kind: 'stop', stopId: 'stop-1' }
 			},
@@ -60,7 +65,9 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-3',
 				presentationId: 'presentation-1',
-				views: [{ viewId: 'view-1', holdSeconds: 0, step: null }],
+				entryViewId: 'view-1',
+				staySeconds: 1,
+				invitation: { prompt: null },
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				continuation: { kind: 'end' }
 			}
@@ -69,7 +76,11 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{ id: 'state-seen', type: 'boolean', values: [], initial: false, reset: false },
 			{ id: 'state-room', type: 'choice', values: ['piano', 'gallery'], initial: 'piano', reset: 'piano' }
 		],
-		localTime: [{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 2 }, { stopId: 'stop-3', viewIndex: 0, holdSeconds: 0 }],
+		localTime: [
+			{ stopId: 'stop-1', staySeconds: 2 },
+			{ stopId: 'stop-2', staySeconds: 3 },
+			{ stopId: 'stop-3', staySeconds: 1 }
+		],
 		channels: [{ id: 'channel-1', family: 'camera.session-inspection', policy: 'exclusive' }],
 		lifecycle: [
 			{ event: 'enter', action: { kind: 'show-content', contentId: 'content-1' }, guard: null },
@@ -173,23 +184,30 @@ describe('the strict invocation, timing and continuation rules', () => {
 		expect(codes({ ...program(), stops: travelling })).toContain('unknown-key');
 	});
 
-	it('refuses a negative, non-finite or missing hold and an unknown continuation kind', () => {
-		const negative = program().stops.map((stop) => (stop.id === 'stop-1' ? { ...stop, views: [{ ...stop.views[0]!, holdSeconds: -1 }] } : stop));
-		expect(codes({ ...program(), stops: negative })).toContain('out-of-range');
-
-		const nonFinite = program().stops.map((stop) => (stop.id === 'stop-1' ? { ...stop, views: [{ ...stop.views[0]!, holdSeconds: Infinity }] } : stop));
-		expect(codes({ ...program(), stops: nonFinite })).toContain('non-finite-number');
-
-		const noHold = program().stops.map((stop) => {
-			const { holdSeconds, ...rest } = stop.views[0]!;
-			return { ...stop, views: [rest] };
-		});
-		expect(codes({ ...program(), stops: noHold })).toContain('non-finite-number');
+	it('refuses a stay under 1 s, a non-finite or missing stay and an unknown continuation kind', () => {
+		const stay = (staySeconds: unknown) =>
+			program().stops.map((stop) => (stop.id === 'stop-1' ? { ...stop, staySeconds } : stop));
+		expect(codes({ ...program(), stops: stay(0.5) })).toContain('out-of-range');
+		expect(codes({ ...program(), stops: stay(Infinity) })).toContain('non-finite-number');
+		expect(codes({ ...program(), stops: stay(undefined) })).toContain('non-finite-number');
 
 		const badContinuation = program().stops.map((stop) =>
 			stop.id === 'stop-1' ? { ...stop, continuation: { kind: 'loop' } } : stop
 		);
 		expect(codes({ ...program(), stops: badContinuation })).toContain('unknown-tag');
+	});
+
+	it('requires every stay in Automatic and none in Manual', () => {
+		expect(codes({ ...program(), pacing: 'manual' })).toContain('stay-pacing-mismatch');
+		const manual = {
+			...program(),
+			pacing: 'manual' as const,
+			stops: program().stops.map((stop) => ({ ...stop, staySeconds: null })),
+			localTime: []
+		};
+		expect(validateExecutionProgram(manual).success).toBe(true);
+		expect(codes({ ...manual, pacing: 'automatic' })).toContain('stay-pacing-mismatch');
+		expect(codes({ ...program(), pacing: 'mixed' })).toContain('unknown-tag');
 	});
 
 	it('refuses an entry that names no stop and a non-null entry with no stops', () => {
@@ -216,8 +234,8 @@ describe('the strict invocation, timing and continuation rules', () => {
 	});
 
 	it('refuses a local-time mapping outside the stops and above the finite range', () => {
-		expect(codes({ ...program(), localTime: [{ stopId: 'stop-absent', viewIndex: 0, holdSeconds: 1 }] })).toContain('missing-stop');
-		expect(codes({ ...program(), localTime: [{ stopId: 'stop-1', viewIndex: 0, holdSeconds: -2 }] })).toContain('out-of-range');
+		expect(codes({ ...program(), localTime: [...program().localTime, { stopId: 'stop-absent', staySeconds: 1 }] })).toContain('missing-stop');
+		expect(codes({ ...program(), localTime: [{ stopId: 'stop-1', staySeconds: -2 }] })).toContain('out-of-range');
 	});
 });
 
@@ -300,7 +318,7 @@ describe('independent AM-6 admission regressions', () => {
 		expect(codes({ ...program(), presentations: duplicate })).toContain('duplicate-identity');
 		expect(codes({ ...program(), stops: program().stops.map((stop) => stop.id === 'stop-1'
 			? { ...stop, invocation: { kind: 'cut', viewId: 'view-2' } } : stop) })).toContain('view-mismatch');
-		expect(codes({ ...program(), localTime: [{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 3 }] })).toContain('hold-mismatch');
+		expect(codes({ ...program(), localTime: [{ stopId: 'stop-1', staySeconds: 3 }, ...program().localTime.slice(1)] })).toContain('stay-mismatch');
 	});
 
 	it('bounds presentation text by code points, not UTF-16 units', () => {
@@ -349,33 +367,46 @@ describe('independent AM-6 admission regressions', () => {
 	});
 });
 
-describe('R217.S27 guided program validation', () => {
-	const entry = { viewId: 'view-1', holdSeconds: 2, step: null };
-	const final = { viewId: 'view-2', holdSeconds: null, step: { kind: 'cut', viewId: 'view-2' } } as const;
-
-	it.each([
-		['empty-guided-views', []],
-		['duplicate-identity', [entry, { ...final, viewId: 'view-1' }]],
-		['view-mismatch', [entry, { ...final, viewId: 'view-absent' }]],
-		['entry-step-transition', [{ ...entry, step: final.step }, final]],
-		['missing-step', [entry, { ...final, step: null }]],
-		['missing-step-hold', [{ ...entry, holdSeconds: null }, final]],
-		['view-mismatch', [entry, { ...final, step: { kind: 'cut', viewId: 'view-1' } }]]
-	])('refuses %s', (code, views) => {
+describe('Experience 4 Presentation steps, entry and invitation', () => {
+	const twoViews = () => {
 		const base = program();
-		const presentations = [{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2'] }, base.presentations[1]!];
-		expect(codes({ ...base, presentations, stops: [{ ...base.stops[0]!, views }, ...base.stops.slice(1)] })).toContain(code);
+		return {
+			...base,
+			presentations: [
+				{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2'], steps: [{ kind: 'travel', connectionId: 'connection-1' }] },
+				base.presentations[1]!
+			]
+		} as ExecutionProgram;
+	};
+
+	it('admits one step between each pair of neighbouring Views', () => {
+		expect(validateExecutionProgram(twoViews()).success).toBe(true);
 	});
 
-	it('keys mappings by Stop and View index and requires exact agreement', () => {
+	it.each([
+		['step-count', { viewIds: ['view-1', 'view-2'], steps: [] }],
+		['step-count', { viewIds: ['view-1'], steps: [{ kind: 'cut', viewId: 'view-1' }] }],
+		['view-mismatch', { viewIds: ['view-1', 'view-2'], steps: [{ kind: 'cut', viewId: 'view-1' }] }],
+		['duplicate-identity', { viewIds: ['view-1', 'view-1'], steps: [{ kind: 'cut', viewId: 'view-1' }] }],
+		['out-of-range', { viewIds: [], steps: [] }]
+	])('refuses %s', (code, shape) => {
 		const base = program();
-		const presentations = [{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2'] }, base.presentations[1]!];
-		const stops = [{ ...base.stops[0]!, views: [entry, { ...final, holdSeconds: 4 }] }, ...base.stops.slice(1)];
-		const mapping = { stopId: 'stop-1', viewIndex: 1, holdSeconds: 4 };
-		const source = { ...base, presentations, stops, localTime: [...base.localTime, mapping] };
-		expect(validateExecutionProgram(source).success).toBe(true);
-		expect(codes({ ...source, localTime: [...source.localTime, mapping] })).toContain('duplicate-identity');
-		expect(codes({ ...source, localTime: base.localTime })).toContain('missing-local-time');
-		expect(codes({ ...source, localTime: [...base.localTime, { ...mapping, viewIndex: 2 }] })).toContain('missing-view');
+		expect(codes({ ...base, presentations: [{ ...base.presentations[0]!, ...shape }, base.presentations[1]!] })).toContain(code);
+	});
+
+	it('refuses an entry View outside the Presentation and an unbounded invitation prompt', () => {
+		const base = twoViews();
+		const entered = base.stops.map((stop) => (stop.id === 'stop-1' ? { ...stop, entryViewId: 'view-2', invocation: { kind: 'cut' as const, viewId: 'view-2' } } : stop));
+		expect(validateExecutionProgram({ ...base, stops: entered }).success).toBe(true);
+		const outside = base.stops.map((stop) => (stop.id === 'stop-2' ? { ...stop, entryViewId: 'view-1' } : stop));
+		expect(codes({ ...base, stops: outside })).toContain('view-mismatch');
+		const long = base.stops.map((stop) => (stop.id === 'stop-1' ? { ...stop, invitation: { prompt: 'x'.repeat(81) } } : stop));
+		expect(codes({ ...base, stops: long })).toContain('text-too-long');
+	});
+
+	it('keys local time by Stop and requires exact agreement', () => {
+		const base = program();
+		expect(codes({ ...base, localTime: [...base.localTime, base.localTime[0]!] })).toContain('duplicate-identity');
+		expect(codes({ ...base, localTime: base.localTime.slice(1) })).toContain('missing-local-time');
 	});
 });

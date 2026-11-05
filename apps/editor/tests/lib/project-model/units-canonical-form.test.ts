@@ -65,9 +65,8 @@ function parts(): Omit<ProjectEnvelopeInput, 'acceptedRevision' | 'dependencyLoc
 							{
 								id: 'presentation-1',
 								label: 'Entry',
-								viewIds: ['view-1'],
+								views: [{ viewId: 'view-1' }],
 								explorable: true,
-								defaultViewId: 'view-1',
 								subject: null,
 								text: null
 							}
@@ -76,12 +75,11 @@ function parts(): Omit<ProjectEnvelopeInput, 'acceptedRevision' | 'dependencyLoc
 							{
 								id: 'stop-1',
 								presentationId: 'presentation-1',
-								views: [{ viewId: 'view-1', holdSeconds: 2 }],
+								entryViewId: null, staySeconds: 2, invitation: null,
 								continuation: { kind: 'end' }
 							}
 						],
-						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
-						gates: [],
+						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }],
 						detours: []
 					}
 				]
@@ -223,7 +221,7 @@ describe('the envelope source-content digest', () => {
 								{
 									id: 'stop-1',
 									presentationId: 'presentation-1',
-									views: [{ viewId: 'view-1', holdSeconds: 3 }],
+									entryViewId: null, staySeconds: 3, invitation: null,
 									continuation: { kind: 'end' }
 								}
 							]
@@ -239,7 +237,7 @@ describe('the envelope source-content digest', () => {
 
 it('hashes codec-normalized contents and remains self-consistent after a real read', async () => {
 	const values = parts();
-	values.experience.data.experiences[0]!.stops = [{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }];
+	values.experience.data.experiences[0]!.stops = [{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' }];
 	const built = await createProjectEnvelope({ id: 'project-1', name: 'Project one',
 		acceptedRevision: { projectId: 'project-1', revisionId: 'r' }, dependencyLock: { formatVersion: 1, entries: [] }, ...values });
 	const read = validateProjectEnvelope(JSON.parse(serializeProjectEnvelope(built)));

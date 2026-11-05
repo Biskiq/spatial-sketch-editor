@@ -172,7 +172,7 @@ describe('View order and View rename', () => {
 		const outcome = await s.coordinator.accept(
 			presentationUpdateIntent({
 				envelope: s.now(), revision: s.revision(), ids: { operation: 'op-v' }, experienceId: 'x-experience', presentationId: 'x-piano',
-				viewIds: [...before.viewIds].reverse()
+				views: [{ viewId: ...before.viewIds }].reverse()
 			})
 		);
 		expect(outcome.kind).toBe('accepted');
@@ -196,7 +196,7 @@ describe('View order and View rename', () => {
 			await s.coordinator.accept(
 				presentationUpdateIntent({
 					envelope: s.now(), revision: s.revision(), ids: { operation: 'op-both', view: 'v-new' }, experienceId: 'x-experience', presentationId: 'x-piano',
-					viewIds: ['x-piano-view-2', 'x-piano-view-1'], view: { label: 'New', eye: [1, 1.65, 1], target: [2, 1.25, 2], fov: 54 }
+					views: [{ viewId: 'x-piano-view-2' }, { viewId: 'x-piano-view-1' }], view: { label: 'New', eye: [1, 1.65, 1], target: [2, 1.25, 2], fov: 54 }
 				})
 			),
 			'invalid-payload'
@@ -260,7 +260,7 @@ describe('experience-stop-remove (E4)', () => {
 			await experienceEnvelope({
 				experience: {
 					...EXPERIENCE,
-					experiences: [{ ...EXPERIENCE.experiences[0]!, guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }] }]
+					experiences: [{ ...EXPERIENCE.experiences[0]!, guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }] }]
 				}
 			})
 		);
@@ -292,10 +292,10 @@ const SHARED: ExperienceUnitPayload = {
 		{
 			...EXPERIENCE.experiences[0]!,
 			presentations: [
-				{ ...EXPERIENCE.experiences[0]!.presentations[0]!, viewIds: ['view-1', 'view-2'], defaultViewId: 'view-2' },
+				{ ...EXPERIENCE.experiences[0]!.presentations[0]!, views: [{ viewId: 'view-1' }, { viewId: 'view-2' }]},
 				EXPERIENCE.experiences[0]!.presentations[1]!
 			],
-			stops: [{ ...EXPERIENCE.experiences[0]!.stops[0]!, views: [{ viewId: 'view-1' }] }, EXPERIENCE.experiences[0]!.stops[1]!]
+			stops: [{ ...EXPERIENCE.experiences[0]!.stops[0]!, entryViewId: null, staySeconds: 5, invitation: null }, EXPERIENCE.experiences[0]!.stops[1]!]
 		}
 	]
 };
@@ -303,7 +303,7 @@ const SHARED: ExperienceUnitPayload = {
 describe('experience-presentation-view-remove (E4)', () => {
 	it('deletes an unshared View with its connections; its Stop enters at the Default', async () => {
 		const s = await boot(await experienceEnvelope({ experience: SHARED }));
-		const intent = viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-v1' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-1', defaultViewId: null });
+		const intent = viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-v1' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-1'});
 		expect(intent.kind).toBe(EXPERIENCE_PRESENTATION_VIEW_REMOVE_KIND);
 		expect((await s.coordinator.accept(intent)).kind).toBe('accepted');
 		const camera = s.now().units.camera.data;
@@ -320,15 +320,15 @@ describe('experience-presentation-view-remove (E4)', () => {
 		const s = await boot(await experienceEnvelope({ experience: SHARED }));
 		refusedWith(
 			await s.coordinator.accept(
-				viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-nodef' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-2', defaultViewId: null })
+				viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-nodef' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-2'})
 			),
 			'default-needed'
 		);
 		const outcome = await s.coordinator.accept(
-			viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-def' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-2', defaultViewId: 'view-1' })
+			viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-def' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-2'})
 		);
 		expect(outcome.kind).toBe('accepted');
-		expect(s.experience().presentations[0]).toMatchObject({ viewIds: ['view-1'], defaultViewId: 'view-1' });
+		expect(s.experience().presentations[0]).toMatchObject({ views: [{ viewId: 'view-1' }]});
 		// Still used by presentation-2: the Camera View survives.
 		expect(s.now().units.camera.data.views.map((view) => view.id)).toEqual(['view-1', 'view-2']);
 	});
@@ -337,13 +337,13 @@ describe('experience-presentation-view-remove (E4)', () => {
 		const s = await boot(await experienceEnvelope({ experience: SHARED }));
 		refusedWith(
 			await s.coordinator.accept(
-				viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-last' }, experienceId: 'experience-1', presentationId: 'presentation-2', viewId: 'view-2', defaultViewId: null })
+				viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-last' }, experienceId: 'experience-1', presentationId: 'presentation-2', viewId: 'view-2'})
 			),
 			'presentation-keeps-a-view'
 		);
 		refusedWith(
 			await s.coordinator.accept(
-				viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-extra' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-1', defaultViewId: 'view-1' })
+				viewRemoveIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-extra' }, experienceId: 'experience-1', presentationId: 'presentation-1', viewId: 'view-1'})
 			),
 			'invalid-default'
 		);
@@ -374,7 +374,7 @@ describe('experience-presentation-remove (E4)', () => {
 			await experienceEnvelope({
 				experience: {
 					...EXPERIENCE,
-					experiences: [{ ...EXPERIENCE.experiences[0]!, gates: [{ id: 'gate-1', presentationId: 'presentation-2' }], guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }] }]
+					experiences: [{ ...EXPERIENCE.experiences[0]!, gates: [{ id: 'gate-1', presentationId: 'presentation-2' }], guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }] }]
 				}
 			})
 		);
@@ -418,8 +418,8 @@ describe('experience-guide-remove (E4)', () => {
 						{
 							...EXPERIENCE.experiences[0]!,
 							guides: [
-								{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' },
-								{ id: 'guide-2', label: 'Second', stopIds: ['stop-2'], entryStopId: 'stop-2' }
+								{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1', pacing: 'automatic' as const },
+								{ id: 'guide-2', label: 'Second', stopIds: ['stop-2'], entryStopId: 'stop-2', pacing: 'automatic' as const }
 							]
 						}
 					]
