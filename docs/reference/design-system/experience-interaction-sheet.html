@@ -1072,6 +1072,11 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 .fz-gname{border:0;background:none;color:#fff;font:500 13.5px var(--serif);padding:2px 5px;border-radius:6px;cursor:pointer}
 .fz-gname:hover,.fz-gname[aria-pressed=true]{background:#1a3a2d}
 .fz-cnt{color:var(--quiet);font-size:11px}
+.fz-gin{border:1px solid #9fd0b2;background:#10261e;color:#fff;font:500 13.5px var(--serif);padding:1px 5px;border-radius:6px;width:13ch;outline:none}
+.fz-gmore{border:0;background:none;color:var(--quiet);border-radius:6px;padding:2px 6px;cursor:pointer;font-size:13px}
+.fz-gmore:hover{background:#1a3a2d;color:#fff} .fz-gmore:focus-visible{outline:2px solid #9fd0b2;outline-offset:1px}
+.fz-cutonly{display:flex;align-items:center;gap:8px;border:1px solid var(--hair2);border-radius:10px;padding:7px 10px;background:var(--index);font-size:12.5px}
+.fz-cutonly b{font-weight:600}
 .fz-pace{border:1px solid #2f4a3e;background:none;color:#dfe6e1;border-radius:999px;padding:1px 9px;font:inherit;font-size:11px;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
 .fz-pace:hover,.fz-pace[aria-expanded=true]{background:#1a3a2d}
 .fz-pace:focus-visible,.fz-gname:focus-visible,.fz-play:focus-visible,.fz-tool:focus-visible,.fz-c:focus-visible,.fz-chip:focus-visible,.fz-hit:focus-visible,.fz-arrow:focus-visible{outline:2px solid #9fd0b2;outline-offset:1px}
@@ -1203,7 +1208,6 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 .fz-sugg{background:var(--leaftint);border-radius:9px;padding:8px 10px;font-size:12.5px;color:var(--forest2)}
 #fz-plan .o{cursor:default} #fz-plan.picking .o{cursor:pointer}
 #fz-plan .o rect{fill:#dcd8ce;stroke:var(--ink2);stroke-width:1}
-#fz-plan .o.lk rect{fill:var(--leaftint);stroke:var(--forest2);stroke-width:1.6}
 #fz-plan.picking .o:hover rect{fill:#e9f3ec;stroke:var(--leaf);stroke-width:2}
 #fz-plan .o.gone{opacity:.25}
 #fz-plan text{font:500 10px var(--sans);fill:var(--ink2)}
@@ -1226,7 +1230,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 .fz-prog.frozen{opacity:.45}
 .fz-prog .s{position:relative;flex:1 1 0;min-width:14px;height:4px;border-radius:2px;background:rgba(243,240,228,.2);overflow:hidden}
 .fz-prog .s>i{position:absolute;left:0;top:0;bottom:0;background:rgba(243,240,228,.85)}
-.fz-prog .s.cur>i{background:#cfe9d8}
+.fz-prog .s.here>i{background:#cfe9d8}
 .fz-prog .s.wait{background:transparent;box-shadow:inset 0 0 0 1px rgba(243,240,228,.75)}
 .fz-prog .k{flex:none;width:3px}
 .fz-prog .k.t{width:12px;height:2px;background:rgba(243,240,228,.2);margin:0 2px;position:relative;overflow:hidden;border-radius:1px}
@@ -1883,7 +1887,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 27 · Presentation and object -->
 <section id="s27" class="wide" data-lnn="follow" data-lnk="suggest">
   <h2><span class="n">27</span>A Presentation follows its object, and a captured one can link to one</h2>
-  <p class="sup"><b>Delivered by <a href="#s33">§33 D</a></b>, which keeps this model. It amends the removed-object state (decision O-3) and settles the format: <code>label: string | null</code> inside format 4, so there is no new bump.</p>
+  <p class="sup"><b>Delivered by <a href="#s33">§33 D</a></b>, which keeps this model. It replaces the removed-object state (removing the object unlinks it and keeps its name, decision O-3) and settles the format: <code>label: string | null</code> inside format 4, so there is no new bump.</p>
   <div class="ln-grid">
     <div class="ln-world">
       <div class="cap" style="margin-top:0">World · rename an object here</div>
@@ -1927,7 +1931,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 31 · Follow the Guide, or step aside -->
 <section id="s31" class="wide" data-gpi="chip" data-gpp="automatic">
   <h2><span class="n">31</span>Follow the Guide, or step aside and come back</h2>
-  <p class="sup"><b>Amended by <a href="#s33">§33</a>:</b> pacing is now edited on the Guide strip (§33 A), the visitor bar gains segmented progress (§33 F), and the welcome moves to the Experience Card (§33 B). The model and journeys A–H are unchanged.</p>
+  <p class="sup"><b>Amended by <a href="#s33">§33</a>:</b> pacing and the Guide's name are edited on the Guide strip (§33 A), the Guide Card is retired and the welcome moves to the Experience Card (§33 B), the visitor bar gains segmented progress (§33 F), and the Guide becomes one linear order with no start Stop, <i>Next goes to</i> or early End (§33 H). Pacing, stays, Explore and Back are unchanged; journeys A–H are re-run without <i>Starts at</i>.</p>
   <p class="lede">Think of a museum guide. Visitors can follow along, or step aside to look closer and rejoin the group where it is. <b>Pacing is one choice for the whole Guide.</b> <b>Exploring is the visitor's time, never the Guide's.</b> <b>An invitation is a hint; it never stops the tour.</b></p>
   <div class="rv-model" aria-label="The refined model">
     <div class="rv-box g"><b>Guide · Automatic or Manual</b><small>Ordered Stops and the transitions between them, and the one clock. <i>Automatic</i> moves on when each stay ends; <i>Manual</i> waits for Next at every Stop.</small></div>
@@ -2100,7 +2104,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 <!-- 32 · One setting, one place -->
 <section id="s32" class="wide" data-gce="card" data-vl="rail" data-vn="30">
   <h2><span class="n">32</span>One setting, one owner, one place to edit it</h2>
-  <p class="sup"><b>Superseded in part by <a href="#fz-own">§33's table</a>:</b> pacing, the welcome, <i>Next goes to</i>, path creation and the Guide Card's contents. A (the Transition Card) and B (the View list) are kept.</p>
+  <p class="sup"><b>Superseded in part by <a href="#fz-own">§33's table</a>:</b> pacing, the welcome, the start Stop, <i>Next goes to</i>, path creation, and the Guide Card, which is retired. A (the Transition Card) and B (the View list) are kept.</p>
   <p class="lede">Every setting has <b>one owner and one Card field</b>. Other surfaces show the value and link to that field; they never repeat the control. Stage marks may write the same fact through the same domain change, as the shell contract allows. <b>No capability goes:</b> each duplicate becomes a link to its one field. §31 already follows this table.</p>
   <h3 class="rv-h3">Where each setting is edited</h3>
   <div class="rv-tw"><table class="rv-tbl own-tbl">
@@ -2162,17 +2166,16 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 
 <!-- 33 · Experience final reconciliation -->
 <section id="s33" class="wide" data-fzv="final" data-fzn="5">
-  <h2><span class="n">33</span>Experience final reconciliation: one Guide, one timeline, one clear authoring flow</h2>
-  <p class="lede">The owner's review of PR #271 against §25, §27, §28, §31 and §32. The Experience v4 model is kept as it is: a Presentation holds ordered Views, a Stop visits one Presentation at one entry View with one stay, the Guide owns order and pacing, and Camera owns paths. What changes is <b>where things are done</b> and <b>how little the creator has to know</b>. Every panel in this section shares one state, so an edit in one place shows everywhere. Where §33 disagrees with an earlier section, §33 wins, and the <a href="#fz-delta">change table</a> names each case.</p>
-  <p class="fz-plan">Implementation plan and defect ledger: <a href="../../roadmap/r217-core-editor-stability/experience-review/fix.md">experience-review/fix.md</a>.</p>
+  <h2><span class="n">33</span>Experience final reconciliation: one linear Guide, one timeline, one clear authoring flow</h2>
+  <p class="lede">The owner's review of PR #271 against §25, §27, §28, §31 and §32. A Presentation holds ordered Views, a Stop visits one Presentation at one entry View with one stay, the Guide owns order and pacing, and Camera owns paths. Revision 2 (the owner's decisions of 5 November) makes the Guide <b>one linear sequence</b>: the first Stop starts, the last Stop ends, and the order is the route, so <i>Starts at</i>, <i>Next goes to</i> and an early End leave the model rather than being hidden. The Guide Card is retired, because each Guide setting already has a home. What changes is <b>where things are done</b> and <b>how little the creator has to know</b>. Every panel in this section shares one state, so an edit in one place shows everywhere. Where §33 disagrees with an earlier section, §33 wins, and the <a href="#fz-delta">change table</a> names each case.</p>
+  <p class="fz-plan">Implementation plan, defect ledger and the owner's decisions: <a href="../../roadmap/r217-core-editor-stability/experience-review/fix.md">experience-review/fix.md</a>.</p>
 
   <div class="fz-own" aria-label="One place to do each thing">
-    <div><b>Guide strip</b><small>Order, select, play, scrub, pacing, + Stop</small></div>
-    <div><b>Guide Card</b><small>Name, opening, Starts at, summaries</small></div>
+    <div><b>Guide strip</b><small>Name, order, select, play, scrub, pacing, + Stop</small></div>
     <div><b>Stop Card</b><small>Enter at, stay, invitation</small></div>
     <div><b>Transition Card</b><small>Cut or Travel, path, time, shape</small></div>
     <div><b>Presentation Card</b><small>Views, object link, text, Places</small></div>
-    <div><b>Experience Card</b><small>Name, opening Guide, welcome</small></div>
+    <div><b>Experience Card</b><small>Name, opening Guide, welcome; shown when nothing is selected</small></div>
     <div><b>Visitor Preview</b><small>Progress, Next, Explore, Back</small></div>
   </div>
 
@@ -2189,7 +2192,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
         <div id="fz-strip"></div>
       </div>
       <div class="fz-bar"><button class="btn" id="fz-undo" disabled>↶ Undo</button><button class="btn" id="fz-reset">Reset</button><span class="r2read" id="fz-read" style="margin:0"></span></div>
-      <div class="pl-try"><b>Try:</b> press ▶, then drag along the rail under the cards (one track: each card's rail is its stay, each ↗ gutter its Travel) · focus the rail and use <kbd>←</kbd> <kbd>→</kbd> (<kbd>Shift</kbd> 5 s), <kbd>PgUp</kbd>/<kbd>PgDn</kbd>, <kbd>Home</kbd>/<kbd>End</kbd> · press the pacing pill, choose Manual, and play: ▶ stops at each ⏸ · drag Stop 3 before Stop 2, or focus a Stop and press <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> · right-click a Stop · press a gutter chip, then choose Travel</div>
+      <div class="pl-try"><b>Try:</b> press ▶, then drag along the rail under the cards (one track: each card's rail is its stay, each ↗ gutter its Travel) · focus the rail and use <kbd>←</kbd> <kbd>→</kbd> (<kbd>Shift</kbd> 5 s), <kbd>PgUp</kbd>/<kbd>PgDn</kbd>, <kbd>Home</kbd>/<kbd>End</kbd> · press the pacing pill, choose Manual, and play: ▶ stops at each ⏸ · drag Stop 3 before Stop 2, or focus a Stop and press <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd> · right-click a Stop · press a gutter chip, then choose Travel · press <i>Evening tour</i> to rename it in place · drag Stop 2 to the end: its Travel becomes a Cut, because nothing follows it</div>
     </div>
     <div class="fz-right">
       <div class="cap" style="margin-top:0" id="fz-cardcap">Card</div>
@@ -2199,26 +2202,39 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
     </div>
   </div>
   <ul class="rules">
-    <li><b>Dark, compact Stop cards</b> in the forest material: a picture with its number, and one line of title. A Presentation used twice adds its entry View to the line (<i>Pleyel piano · From the window</i>), so repeated visits stay distinct. Stop times, <i>Start</i> and <i>0:05</i> leave the cards: time lives on the rail, the clock and the connection, and the start Stop is set in the Guide Card. The start Stop is still in the card's accessible name, and a small ▸ marks it when it isn't Stop 1.</li>
+    <li><b>Dark, compact Stop cards</b> in the forest material: a picture with its number, and one line of title. A Presentation used twice adds its entry View to the line (<i>Pleyel piano · From the window</i>), so repeated visits stay distinct. Stop times, <i>Start</i> and <i>0:05</i> leave the cards: time lives on the rail, the clock and the connection. Stop 1 is always the start and the last Stop is always the end, so neither needs a mark.</li>
+    <li><b>The Guide's own settings live on the strip.</b> Press its name to rename it in place (<kbd>Enter</kbd> keeps, <kbd>Esc</kbd> cancels). <i>⋯</i> has Rename and Remove Guide. Pacing is the pill, order is the cards, playback is ▶ and the rail. With nothing selected, the Card is the Experience Card (B).</li>
     <li><b>Quiet selection:</b> a raised forest fill and a thin light ring, never gold. ✦ (invites) and +N (Views to explore) stay, at reduced contrast.</li>
     <li><b>Between Stops:</b> <i>✂</i> for a Cut and <i>↗ 5 s</i> for a Travel, with the path's real time. Pressing a chip opens its Transition Card. There is no manual <i>+ Add path</i>: choosing Travel makes the path (§33 E).</li>
     <li><b>One timeline.</b> Each card's bottom rail is that Stop's stay, and each Travel gutter's rail is that Travel. A Cut takes no time, so its gutter shows a dotted hairline and the playhead jumps over it. One playhead, one clock (<i>0:21 / 0:53</i> in the header) and one scrub interaction. The separate full-width scrub bar goes. Cards keep fixed widths, so the scrub maps each segment on its own: dragging across a 4 s card and a 12 s card moves at different rates, and the tooltip names the time and the Stop.</li>
     <li><b>Manual:</b> every card rail is a wait that ends in ⏸. Play stops there, and ▶ continues, as a visitor presses Next. A wait has no length on the clock, so the header reads <i>0:09 + 5 waits</i>.</li>
-    <li><b>Pacing lives on the strip.</b> The pill opens a small popover with the two choices. Arrow keys move, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes, and focus returns to the pill. The Guide Card shows the pacing and doesn't edit it.</li>
-    <li><b>Reorder:</b> drag a card (on touch, hold it first), or use <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>. A thin light insertion line, with no gold border, shows where it lands. A card's outgoing Cut or Travel moves with it, because the choice belongs to the Stop it leaves. Overflow scrolls sideways with no visible scrollbar and pages with the arrows, and the selected or playing Stop scrolls into view.</li>
+    <li><b>Pacing lives on the strip.</b> The pill opens a small popover with the two choices. Arrow keys move, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes, and focus returns to the pill. There is no other pacing control.</li>
+    <li><b>Reorder:</b> drag a card (on touch, hold it first), or use <kbd>Alt</kbd>+<kbd>←</kbd>/<kbd>→</kbd>. A thin light insertion line, with no gold border, shows where it lands. A card's outgoing Cut or Travel moves with it, because the choice belongs to the Stop it leaves (O-1). Two rules keep that predictable, with nothing dormant. The last Stop has no outgoing step at all, so a Stop moved to the end loses its Travel; moved back into the middle, it leaves by a fresh Cut, and no hidden Travel settings come back. And a Travel whose two Stops now show the same View becomes a Cut (O-7). Both are written in the same change, said once in the feedback line, and leave the Camera path in place for the next Travel. Overflow scrolls sideways with no visible scrollbar and pages with the arrows, and the selected or playing Stop scrolls into view.</li>
   </ul>
 
-  <!-- B · Guide Card and Experience Card -->
-  <h3 class="rv-h3" id="fz-b">B · A compact Guide Card, and the welcome's real home</h3>
+  <!-- B · No Guide Card; the Experience Card -->
+  <h3 class="rv-h3" id="fz-b">B · No Guide Card: every Guide setting already has a home</h3>
   <div class="fz-cards">
-    <div><div class="cap" style="margin-top:0">Guide Card (press the Guide's name on the strip)</div><div class="card ui vr-card" id="fz-gcard"></div></div>
-    <div><div class="cap" style="margin-top:0">Experience Card (press the Experience name in the Index)</div><div class="card ui vr-card" id="fz-xcard"></div></div>
-    <div><div class="cap" style="margin-top:0">PR #271 Guide Card today</div><div class="card ui vr-card fz-oldcard" id="fz-oldg"></div></div>
+    <div><div class="cap" style="margin-top:0">Experience Card (the Card when nothing is selected, or from the Experience name in the Index)</div><div class="card ui vr-card" id="fz-xcard"></div></div>
+    <div><div class="cap" style="margin-top:0">PR #271 Guide Card today · retired</div><div class="card ui vr-card fz-oldcard" id="fz-oldg"></div></div>
   </div>
+  <div class="rv-tw"><table class="rv-tbl">
+        <thead><tr><th>Was on the Guide Card</th><th>Now</th></tr></thead>
+        <tbody>
+          <tr><td>Name</td><td>Renamed in place on the strip, or from the Index row</td></tr>
+          <tr><td>Pacing</td><td>The strip's pill</td></tr>
+          <tr><td>Add stop, Play from the start</td><td>The strip's <i>＋ Stop</i>, ▶ and <kbd>Home</kbd></td></tr>
+          <tr><td>Starts at</td><td>Gone from the model: Stop 1 starts</td></tr>
+          <tr><td>Opening Guide</td><td>Automatic with one Guide; Experience Card · <i>Opens with</i>, shown only with two or more</td></tr>
+          <tr><td>Remove Guide</td><td>The strip's <i>⋯</i>, or the Index row's menu</td></tr>
+          <tr><td>Length, Stop count</td><td>The strip's clock and count</td></tr>
+          <tr><td>Reaches (Presentations, Views)</td><td>Dropped: the Index and the View rows' <i>Stop 2</i> / <i>explore</i> tags say it where it's acted on</td></tr>
+          <tr><td>Welcome</td><td>Experience Card</td></tr>
+        </tbody>
+      </table></div>
   <ul class="rules">
-    <li><b>Removed from the Guide Card:</b> <i>Add stop</i> and <i>Play from the start</i> (the strip has both), the large Automatic/Manual cards (now the strip's popover), the <i>Guided tour / Free exploration</i> launch cards (the head <i>Preview</i> opens the welcome, which offers both), the <i>Build the tour</i> instructions, and the welcome text.</li>
-    <li><b>Kept, because only the Card can say it:</b> the name, the opening Guide status or <i>Make opening</i>, the Stop count, a read-only pacing line, the length (or the travel time and waits), <b>Starts at</b> (the controller already supports it, and today it's reachable only from a Stop's context menu), and what the Guide reaches: the Presentations it visits, the Views it enters, and the Views left to explore.</li>
-    <li><b>The welcome is the Experience's.</b> It is the first thing every visitor sees, whichever Guide opens. It moves to an <b>Experience Card</b>, opened from the Experience name in the Index, with the name, the opening Guide and the welcome. This is a new Card subject (<code>{kind:'experience'}</code>), not a new field.</li>
+    <li><b>Nothing is invented to fill a Card.</b> Every Guide setting has a natural home on the strip, so the Guide gets no Card at all. Selecting a Guide (in the Index) shows its strip; the Card stays the Experience's.</li>
+    <li><b>The welcome is the Experience's.</b> It is the first thing every visitor sees, whichever Guide opens. It lives on the <b>Experience Card</b>, with the name and, once there are two Guides, <i>Opens with</i>. With one Guide that Guide simply opens, and the Card doesn't ask. The Experience Card is what the Card shows when nothing is selected, so it needs no extra navigation. It is a new Card subject (<code>{kind:'experience'}</code>), not a new field.</li>
   </ul>
 
   <!-- C · Direct View → Stop -->
@@ -2232,7 +2248,7 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
         <li><b>＋ Stop on a View row</b> adds a Stop that enters at that View, after the selected Stop or at the end, in one accepted change. The schema and planner already accept <code>entryViewId</code>; only the controller passes <code>null</code> today. Dragging a View row onto the strip does the same.</li>
         <li><b>Add to Guide</b> on the Presentation still adds a Stop at the Default, and follows the Default if the Views are reordered.</li>
         <li><b>Guided or exploration only</b> is readable per row: <i>Stop 2</i> or <i>Stops 2, 4</i> where Stops enter, and a muted <i>explore</i> where none do.</li>
-        <li>With no Guide yet, the first ＋ Stop asks for the Guide's name inline (D8), exactly as Add to Guide does.</li>
+        <li><b>The first Stop makes the Guide.</b> With no Guide yet, the first ＋ Stop or Add to Guide creates one called <i>Tour</i> in the same change, with no setup and no naming prompt. Rename it later on the strip. With one Guide, it is the Opening Guide automatically.</li>
         <li>A new Stop arrives by Cut. If the Stop before it already travelled on to the next Stop, it now travels to the new one, and a straight path is added in the same Undo.</li>
       </ul>
     </div>
@@ -2240,10 +2256,10 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
 
   <!-- D · Object link -->
   <h3 class="rv-h3" id="fz-d">D · A Presentation follows its World object (§27, delivered)</h3>
-  <div class="fz-opts"><span>Jump to</span><div class="seg" id="fz-lseg"><button data-ls="follow" aria-pressed="true">Linked · follows</button><button data-ls="renamed" aria-pressed="false">Renamed in World</button><button data-ls="own" aria-pressed="false">Own name</button><button data-ls="unlinked" aria-pressed="false">Unlinked · suggestion</button><button data-ls="missing" aria-pressed="false">Object removed</button></div></div>
+  <div class="fz-opts"><span>Jump to</span><div class="seg" id="fz-lseg"><button data-ls="follow" aria-pressed="true">Linked · follows</button><button data-ls="renamed" aria-pressed="false">Renamed in World</button><button data-ls="own" aria-pressed="false">Own name</button><button data-ls="unlinked" aria-pressed="false">Unlinked · suggestion</button><button data-ls="missing" aria-pressed="false">Object removed · unlinked</button></div></div>
   <div class="fz-link">
     <div>
-      <div class="cap" style="margin-top:0">World · rename or remove the object</div>
+      <div class="cap" style="margin-top:0">World · rename or remove the object (no link marks here)</div>
       <label class="ln-obj"><span>Object</span><input id="fz-on-piano" aria-label="Name of the piano object"><span class="chip">Form 2</span></label>
       <label class="ln-obj"><span>Object</span><input id="fz-on-desk" aria-label="Name of the desk object"><span class="chip">Form 1</span></label>
       <div class="fz-wact"><button class="btn" id="fz-odel">Remove the piano</button></div>
@@ -2257,7 +2273,8 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
     <li><b>The name shows everywhere it's used:</b> the Index, the Presentation Card, the Guide's Stop cards, the Stop and Transition Cards, the visitor's caption and Places. Typing a name makes it the creator's own, and <i>Use the object's name</i> goes back to following.</li>
     <li><b>Identity stays separate from the name.</b> The kind line reads <i>about Pleyel piano · Form 2</i>, with <i>Show in World</i>. <i>Link</i> and <i>Unlink</i> are explicit actions, one Undo each. Capture suggests the object under the centre of the View (§27) and waits for <i>Link</i>. <i>Pick on the Stage</i> arms a one-shot picker, and <kbd>Esc</kbd> cancels it.</li>
     <li><b>Unlinking keeps the current name</b> as the Presentation's own. Environment and region Presentations stay unlinked; nothing forces a subject on them.</li>
-    <li><b>A removed object</b> is a plain-language state: <i>The object this was about was removed</i>, with <i>Link another object</i> or <i>Unlink</i>, and never a silent retarget. ★ The World removal sets the Presentation's name to the object's last name in the same change, so it never goes blank; see fix.md, decision O-3.</li>
+    <li><b>World shows nothing about the link.</b> No badge, outline, warning or special state marks an object because a Presentation is about it, in the plan, the Stage or the object's Card. The relationship is managed from the Presentation (<i>About</i>, <i>Show in World</i>).</li>
+    <li><b>Removing the object just works</b> (O-3). The World removal is one change that also unlinks the Presentation and keeps its last name as its own. The Presentation, its Views and its Stops stay. There's no World warning, no removed state and no repair; the World's feedback is the ordinary <i>Pleyel piano removed.</i>, and one Undo brings the object and the link back. Nothing ever retargets.</li>
   </ul>
 
   <!-- E · Travel without connections -->
@@ -2274,7 +2291,9 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
       <tr><td>Remove a Stop or a View</td><td class="fz-bad">The new neighbours keep the Travel, with no path</td><td>The removal plan adds the straight path; its consequence list says so</td></tr>
       <tr><td>Travel → Cut</td><td>Keeps the path ✓</td><td>Unchanged: Cut stops using the path and never deletes it</td></tr>
       <tr><td>Cut → Travel again</td><td>Reuses the path for that pair ✓</td><td>Unchanged</td></tr>
-      <tr><td>Travel between two Stops on the same View</td><td class="fz-bad">Allowed, then an unfixable gap</td><td>Travel is disabled, with the reason <i>Both Stops show Front</i>. An existing one is the one creator-facing repair.</td></tr>
+      <tr><td>Travel between two Stops on the same View</td><td class="fz-bad">Allowed, then an unfixable gap</td><td>Not offered. The Transition Card shows <i>✂ Cut · Both Stops show Front</i>; there's nothing to choose.</td></tr>
+      <tr><td>An edit makes a Travel's two Stops show the same View (a reorder, an insert, <i>Enter at</i>, a View reorder)</td><td class="fz-bad">Kept as Travel, and the Guide stops playing</td><td>Becomes a Cut in the same change, said once in the feedback line. Moving it apart again keeps the Cut; choosing Travel reuses any path the pair has.</td></tr>
+      <tr><td>A Stop with a Travel becomes the last Stop</td><td class="fz-bad">The Travel is kept but goes nowhere, and comes back to life on the next append</td><td>Becomes a Cut in the same change. The path stays.</td></tr>
       <tr><td>Two paths join the same pair (imported)</td><td>Refused, with raw ids</td><td>Plain-language repair; Experience never guesses</td></tr>
     </tbody>
   </table></div>
@@ -2327,17 +2346,21 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
     <li><b>No warning for what an ordinary edit should have done.</b> Once §33 E lands, a Travel gap can only come from an imported or hand-edited file. The R217.S29 notice <i>Travel 2 → 3 now joins different Views. Check the Camera path.</i> is retired.</li>
   </ul>
 
-  <!-- H · Continuation -->
-  <h3 class="rv-h3" id="fz-h">H · The Guide's order is the route; End and jumps can be seen and undone</h3>
-  <div class="fz-opts"><span>Case</span><div class="seg" id="fz-cseg"><button data-cc="linear" aria-pressed="true">Ordinary linear</button><button data-cc="end" aria-pressed="false">Explicit End after Stop 3</button><button data-cc="jump" aria-pressed="false">Jump: Stop 2 → Stop 4</button></div></div>
-  <div class="fz-cards">
-    <div style="grid-column:span 2"><div class="cap" style="margin-top:0">Guide</div><div id="fz-cstrip"></div><p class="r2read" id="fz-cread"></p></div>
-    <div><div class="cap" style="margin-top:0">Transition Card</div><div class="card ui vr-card" id="fz-ccard"></div></div>
-  </div>
+  <!-- H · One linear Guide -->
+  <h3 class="rv-h3" id="fz-h">H · One linear Guide: the order is the route</h3>
+  <div class="rv-tw"><table class="rv-tbl">
+    <thead><tr><th>Leaves the model</th><th>Format 4 today</th><th>What covers it</th></tr></thead>
+    <tbody>
+      <tr><td>Starts at</td><td><code>Guide.entryStopId</code></td><td>Stop 1 starts. To start elsewhere, drag that Stop to the front. Editor seeking (the rail, a Stop click, <i>Play from here</i>) is playback state and never changes the order.</td></tr>
+      <tr><td>Next goes to</td><td><code>Stop.continuation</code> <code>{kind:'stop'}</code></td><td>The next Stop in the order. A jump that skips Stops is, without branching, a reorder or a removal.</td></tr>
+      <tr><td>Early End</td><td><code>Stop.continuation</code> <code>{kind:'end'}</code></td><td>The last Stop ends. Stops after an early End were unreachable; removing them, or a second Guide, says that honestly.</td></tr>
+      <tr><td>Cut or Travel to the next Stop</td><td><code>continuation.transition</code></td><td>Kept, as <code>Stop.transition</code>: the step from this Stop to the next. The last Stop has none.</td></tr>
+    </tbody>
+  </table></div>
   <ul class="rules">
-    <li><b>The ordinary Transition Card has no <i>Next goes to</i>.</b> The strip's order is the route. Cut or Travel, the path, its time and its shape are all the Card edits.</li>
-    <li><b>An explicit continuation</b> (End, or a jump to a later Stop) is kept in the data and the runtime. It shows as an exception: the gutter reads <i>■ End</i> or <i>→ 4</i>, the Stops it skips are dimmed <i>not reached</i>, and the Card says what's happening and offers one recovery: <i>Continue to Stop 4</i> or <i>Follow the Guide order</i>. Today, choosing End hides the only control that undoes it; this fixes that.</li>
-    <li><b>Creating</b> an End or a jump moves out of ordinary authoring. Without branching, an early End only makes later Stops unreachable, which removing them, or a second Guide, does more honestly. Detours and explicit targets stay dormant until a branching design exists (fix.md, deferred).</li>
+    <li><b>Visitors still move freely.</b> <i>Prev</i>, <i>Next</i> and Places jump between Stops and Presentations at run time. That is navigation, not authored order, so it needs no field.</li>
+    <li><b>Detours are kept as they are.</b> A Detour is an authored return trip (from, to, return to) that plays only when a visitor jumps along it; it has no authoring UI and none is added. One fix: removing a Stop that a Detour uses removes that Detour in the same change and lists it, instead of refusing with no way to remove the Detour.</li>
+    <li><b>Branching with consequences is a later milestone.</b> Nothing here prepares it, and nothing here blocks it: a future design adds its own fields rather than reviving these.</li>
   </ul>
 
   <!-- Ownership -->
@@ -2345,15 +2368,18 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
   <div class="rv-tw"><table class="rv-tbl own-tbl">
     <thead><tr><th>Setting or action</th><th>Owner</th><th>Done in (the one place)</th><th>Shown elsewhere as</th><th>Retired duplicate</th></tr></thead>
     <tbody>
-      <tr><td>Pacing</td><td>Guide</td><td><b>Guide strip · pacing popover</b> <span class="fz-chg">changed from §32</span></td><td>Guide Card read-only line; Stop Card <i>Until Next</i>; visitor bar</td><td>Guide Card pacing cards</td></tr>
+      <tr><td>Guide name</td><td>Guide</td><td><b>Guide strip · rename in place</b> <span class="fz-chg">changed</span></td><td>Index row; Stop and Transition Card kind lines</td><td>Guide Card name field</td></tr>
+      <tr><td>Pacing</td><td>Guide</td><td><b>Guide strip · pacing popover</b> <span class="fz-chg">changed from §32</span></td><td>Stop Card <i>Until Next</i>; visitor bar</td><td>Guide Card pacing cards</td></tr>
       <tr><td>Stop order</td><td>Guide</td><td>Guide strip (drag, <kbd>Alt</kbd>+arrows, context menu)</td><td>Stop Card <i>Stop 2 of 5</i></td><td>—</td></tr>
       <tr><td>Add a Stop</td><td>Guide</td><td>Strip <i>+ Stop</i>; Presentation <i>Add to Guide</i>; View row <i>＋ Stop</i> <span class="fz-chg">new</span></td><td>—</td><td>Guide Card <i>Add stop</i></td></tr>
       <tr><td>Play, seek, scrub</td><td>Editor playback</td><td>Guide strip: ▶, the rail, the keys</td><td>Header clock</td><td>Guide Card <i>Play from the start</i>; the separate scrub bar</td></tr>
-      <tr><td>Start Stop</td><td>Guide</td><td><b>Guide Card · Starts at</b></td><td>▸ on the card, and its accessible name</td><td><i>Start</i> tag on cards; the Stop context menu item</td></tr>
-      <tr><td>Opening Guide</td><td>Experience</td><td>Experience Card · Opens with; Guide Card <i>Make opening</i> writes the same fact</td><td>Guide Card status</td><td>—</td></tr>
+      <tr><td>Start and end</td><td>Guide order</td><td><b>The first and last Stops</b> <span class="fz-chg">removed from the model</span></td><td>Stop Card <i>The tour starts here</i> / <i>ends here</i></td><td><i>Start</i> tag; <i>Starts at</i>; <i>Start the tour here</i>; End</td></tr>
+      <tr><td>Opening Guide</td><td>Experience</td><td>Automatic with one Guide; Experience Card · <i>Opens with</i> only with two or more <span class="fz-chg">changed</span></td><td>Index (the opening Guide is listed first)</td><td>Guide Card <i>Make opening</i></td></tr>
+      <tr><td>First Guide</td><td>Experience</td><td>Created by the first Stop, named <i>Tour</i> <span class="fz-chg">changed</span></td><td>—</td><td>The first-Guide naming prompt</td></tr>
+      <tr><td>Remove a Guide</td><td>Experience</td><td>Strip <i>⋯</i>; Index row menu</td><td>—</td><td>Guide Card menu</td></tr>
       <tr><td>Welcome</td><td>Experience</td><td><b>Experience Card · Welcome</b> <span class="fz-chg">moved</span></td><td>Visitor welcome</td><td>Guide Card welcome text</td></tr>
-      <tr><td>Cut or Travel between Stops</td><td>Transition</td><td>Transition Card</td><td>Gutter chip <i>↗ 5 s</i>; Stop Card Connections</td><td>Gutter <i>+</i> add-path button</td></tr>
-      <tr><td>Where Next goes</td><td>Guide order</td><td>The strip's order <span class="fz-chg">changed</span></td><td>Explicit End or jump: an exception chip with one recovery</td><td>Transition Card <i>Next goes to</i> selector</td></tr>
+      <tr><td>Cut or Travel between Stops</td><td>The Stop it leaves</td><td>Transition Card (Travel only where the Views differ)</td><td>Gutter chip <i>↗ 5 s</i>; Stop Card Connections</td><td>Gutter <i>+</i> add-path button</td></tr>
+      <tr><td>Where Next goes</td><td>Guide order</td><td>The strip's order <span class="fz-chg">removed from the model</span></td><td>—</td><td>Transition Card <i>Next goes to</i> selector</td></tr>
       <tr><td>Camera path existence</td><td>Camera, written by the Travel edit</td><td>Automatic, in the same change as the edit <span class="fz-chg">changed</span></td><td>Paths on the Stage; ×N uses</td><td>Manual <i>Add a Camera path</i> outside repair</td></tr>
       <tr><td>Path time and shape</td><td>Camera path</td><td>Transition Card, or the Presentation spine; shape on the Stage</td><td><i>↗ 5 s</i> wherever it's used</td><td>—</td></tr>
       <tr><td>Entry View</td><td>Stop</td><td>Stop Card · Enter at; or chosen at creation from a View row</td><td>Presentation rows <i>Stop 2</i></td><td>—</td></tr>
@@ -2370,10 +2396,11 @@ button.tchip{border:0;font-family:inherit;cursor:pointer}
     <tbody>
       <tr><td>§25 Compact Guide</td><td>Wide white cards with the Stop's time; ⚠ only for broken data</td><td>Light cards with gold selection, <i>Start</i> and the time on each card, and a manual <i>+</i> path button</td><td><b>Amended:</b> dark compact cards, quiet selection, no time or <i>Start</i> on the card, no <i>+</i>. Overflow and fades are kept.</td></tr>
       <tr><td>§28 Scrub on the cards</td><td>The rails join into one scrubber, with no separate row</td><td>Rails <i>plus</i> a separate proportional scrub bar</td><td><b>Kept, and delivered:</b> one segmented track; the separate bar is retired</td></tr>
-      <tr><td>§27 Presentation and object</td><td>Name follows; link and unlink; picker; removed state</td><td>Not delivered: <code>label</code> is a required string, and the Card shows no subject</td><td><b>Kept, and delivered:</b> <code>label: string | null</code> inside format 4; the removed state is amended (O-3)</td></tr>
+      <tr><td>§27 Presentation and object</td><td>Name follows; link and unlink; picker; removed state</td><td>Not delivered: <code>label</code> is a required string, and the Card shows no subject</td><td><b>Kept, and delivered:</b> <code>label: string | null</code> inside format 4. The removed state is replaced: removing the object unlinks it and keeps the name (O-3).</td></tr>
       <tr><td>§31 Follow or step aside</td><td>Visitor bar with Next, Pause, Explore and Back</td><td>Delivered, with ordinal dashes for progress</td><td><b>Amended:</b> segmented continuous progress. The model is unchanged.</td></tr>
-      <tr><td>§32 One setting, one place</td><td>Pacing edited in the Guide Card; the strip label links to it</td><td>As decided, plus Add stop, Play, the launch cards and the welcome in the Guide Card</td><td><b>Amended:</b> pacing is edited on the strip; the Guide Card is summary-only; the welcome moves to the Experience Card; <i>Next goes to</i> is retired</td></tr>
-      <tr><td>§5 Travel and its Card</td><td>Choosing Travel creates its path</td><td>Only when switching Cut → Travel</td><td><b>Kept, and generalised:</b> every edit that changes a Travel's pair keeps it valid</td></tr>
+      <tr><td>§32 One setting, one place</td><td>Pacing edited in the Guide Card; the strip label links to it</td><td>As decided, plus Add stop, Play, the launch cards and the welcome in the Guide Card</td><td><b>Amended:</b> pacing and the Guide's name are edited on the strip; the Guide Card is retired; the welcome moves to the Experience Card; <i>Starts at</i> and <i>Next goes to</i> leave the model</td></tr>
+      <tr><td>§25 / §31 Continuation</td><td>Each Stop continues to the next, an explicit Stop, or End; the Guide has a start Stop</td><td>As decided, with <i>Next goes to</i> in the Transition Card and <i>Start the tour here</i> in the context menu</td><td><b>Simplified:</b> one linear order. <code>entryStopId</code> and <code>continuation</code> leave format 4; the Cut or Travel stays on the Stop it leaves (H)</td></tr>
+      <tr><td>§5 Travel and its Card</td><td>Choosing Travel creates its path</td><td>Only when switching Cut → Travel</td><td><b>Kept, and generalised:</b> every edit that changes a Travel's pair keeps it valid: a path for a new pair of different Views, a Cut for the same View or no next Stop</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -3729,9 +3756,9 @@ Object.values(R).forEach(f=>f());
     if(n>5){stops[4].out='cut';stops=stops.concat([{id:'s6',p:'gal',entry:null,stay:6,inv:false,out:'trav'},{id:'s7',p:'cons',entry:null,stay:7,inv:true,out:'cut'},{id:'s8',p:'study',entry:null,stay:5,inv:false,out:'trav'},
       {id:'s9',p:'ter',entry:null,stay:6,inv:false,out:'cut'},{id:'s10',p:'gal',entry:'g2',stay:4,inv:false,out:'cut'},{id:'s11',p:'hall',entry:'h2',stay:5,inv:false,out:'trav'},{id:'s12',p:'read',entry:'r2',stay:6,inv:false,out:'cut'}]);
       CX[key('g1','c1')]={t:4.5,kind:'straight',pts:0};CX[key('s1','t1')]={t:3,kind:'custom',pts:1};CX[key('h2','r2')]={t:5.5,kind:'straight',pts:0};}
-    return {P,OBJ,CX,imp:false,G:{name:'Evening tour',pacing:'automatic',start:'s1',stops},X:{name:'The Pleyel house',welcome:'Step inside a nineteenth-century music room. Follow the evening tour, or wander at your own pace.'}};
+    return {P,OBJ,CX,imp:false,G:{name:'Evening tour',pacing:'automatic',stops},X:{name:'The Pleyel house',welcome:'Step inside a nineteenth-century music room. Follow the evening tour, or wander at your own pace.'}};
   }
-  let S=seed(5),UNDO=[],nid=1,sel={kind:'guide'};
+  let S=seed(5),UNDO=[],nid=1,sel={kind:'none'};
   const stops=()=>S.G.stops;
   const entryOf=st=>st.entry??S.P[st.p].views[0];
   function pname(pid){const p=S.P[pid];if(p.label!==null)return p.label;const o=p.subject&&S.OBJ[p.subject];return o?o.name:'Untitled';}
@@ -3739,6 +3766,9 @@ Object.values(R).forEach(f=>f());
   function edges(){const L=stops();return L.slice(0,-1).map((st,i)=>{const a=entryOf(st),b=entryOf(L[i+1]),k=key(a,b);
     return {i,kind:st.out,a,b,k,same:a===b,cx:S.CX[k]||null,amb:S.imp&&k===key('p1','w1')};});}
   const travelOK=e=>e.kind==='trav'&&!e.same&&e.cx&&!e.amb;
+  function normalize(){const L=stops(),cuts=[];L.forEach((st,i)=>{if(st.out!=='trav')return;
+      if(i===L.length-1){st.out='cut';cuts.push({i,why:'last'});return;}const a=entryOf(st);if(a===entryOf(L[i+1])){st.out='cut';cuts.push({i,why:'same',v:a});}});return cuts;}
+  const cutText=cuts=>cuts.map(c=>c.why==='last'?` Stop ${c.i+1} is now the last Stop, so its Travel became a Cut; the path stays.`:` Stop ${c.i+1} → ${c.i+2} is now a Cut: both show ${VW[c.v].n}.`).join('');
   function reconcile(){const made=[];for(const e of edges()){if(e.kind==='trav'&&!e.same&&!S.CX[e.k]){S.CX[e.k]={t:straightT(e.a,e.b),kind:'straight',pts:0,isNew:true};made.push(e.k);}}return made;}
   const pairName=k=>k.split('|').map(v=>VW[v].n).join(' ↔ ');
   const madeText=made=>made.length===0?'':made.length===1?` A straight path was added for ${pairName(made[0])}.`:` ${made.length} straight paths were added.`;
@@ -3746,7 +3776,7 @@ Object.values(R).forEach(f=>f());
   /* ---- Undo, feedback ---- */
   const snap=()=>JSON.stringify({S,sel});
   function edit(fn,msg){UNDO.push(snap());if(UNDO.length>40)UNDO.shift();for(const c of Object.values(S.CX))delete c.isNew;
-    const r=fn();if(r===false){UNDO.pop();return;}const made=reconcile();rebuild();renderAll();const m=msg?msg(made):[];if(m.length===2)toast(m[0],m[1]);}
+    const r=fn();if(r===false){UNDO.pop();return;}const cuts=normalize(),made=reconcile();rebuild();renderAll();const m=msg?msg(made):[];if(m.length===2)toast(m[0],m[1]+cutText(cuts));else if(cuts.length)toast('info',cutText(cuts).trim());}
   function undo(){const s=UNDO.pop();if(!s)return;const o=JSON.parse(s);S=o.S;sel=o.sel;rebuild();renderAll();toast('info','Undone.');}
   let toastT=0;const toastEl=$('#fz-toast');
   function fbHtml(kind,text){return `<span class="fz-fb ${kind}">${kind==='ok'?'✓ ':kind==='no'?'⚠ ':''}${text}</span>`;}
@@ -3775,25 +3805,28 @@ Object.values(R).forEach(f=>f());
       const before=curStop();advance(dt);if(curStop()!==before)scrollToStop(curStop());paint();if(PH.status==='playing')raf=requestAnimationFrame(f);};raf=requestAnimationFrame(f);}
 
   /* ---- the strip ---- */
-  const host=$('#fz-strip');let row=null,popOpen=false,menu=null,addOpen=false,drag=null,suppress=0,focusI=0;
+  const host=$('#fz-strip');let row=null,popOpen=false,menu=null,addOpen=false,gmenu=false,renaming=false,drag=null,suppress=0,focusI=0;
+  function startRename(){renaming=true;gmenu=false;popOpen=false;addOpen=false;menu=null;renderStrip();const g=$('#fz-gin');g.focus();g.select();say('Rename the Guide in place. <kbd>Enter</kbd> keeps it, <kbd>Esc</kbd> cancels. There is no Guide Card to open.');}
+  function commitName(v,blur){v=v.trim();renaming=false;if(v===''||v===S.G.name){renderStrip();if(!blur)$('[data-gname]',host).focus();if(v==='')toast('no','A Guide needs a name.');return;}edit(()=>{S.G.name=v;},()=>['ok',`Guide renamed “${esc(v)}”.`]);if(!blur)$('[data-gname]',host).focus();}
+  function gmenuHtml(){return `<div class="fz-menu" id="fz-gm" role="menu" aria-label="Guide" style="left:84px;top:34px"><button role="menuitem" data-grn>Rename</button><hr><button role="menuitem" data-grm>Remove Guide</button></div>`;}
   const thumb=v=>thumbSvg(...VW[v].th);
-  function chipOf(e){if(!e)return'';if(e.kind==='trav'&&(e.same||e.amb))return{c:'bad',t:'⚠',n:e.same?'Travel, but both Stops show the same View':'Travel, two paths join these Views'};
+  function chipOf(e){if(!e)return'';if(e.same)return{c:'cut',t:'✂',n:'Cut: both Stops show the same View'};if(e.kind==='trav'&&e.amb)return{c:'bad',t:'⚠',n:'Travel, two paths join these Views'};
     if(e.kind==='trav')return{c:'trav',t:'↗ '+sec1(e.cx.t),n:`Travel, ${sec1(e.cx.t)}`};return{c:'cut',t:'✂',n:'Cut'};}
-  function renderStrip(){const prod=sec.dataset.fzv==='prod',L=stops(),E=edges(),man=S.G.pacing==='manual',startI=L.findIndex(s=>s.id===S.G.start);
+  function renderStrip(){const prod=sec.dataset.fzv==='prod',L=stops(),E=edges(),man=S.G.pacing==='manual',startI=0;
     let r='';L.forEach((st,i)=>{const P=S.P[st.p],more=P.views.length-1,isSel=sel.kind==='stop'&&sel.i===i,title=stitle(i);
-      const spoken=[`Stop ${i+1}`,title];if(i===startI)spoken.push('the tour starts here');if(st.inv)spoken.push('invites exploring');if(more>0)spoken.push(`${more} more ${more===1?'View':'Views'} to explore`);if(man)spoken.push('waits for Next');
+      const spoken=[`Stop ${i+1}`,title];if(i===0)spoken.push('the tour starts here');if(i===L.length-1)spoken.push('the tour ends here');if(st.inv)spoken.push('invites exploring');if(more>0)spoken.push(`${more} more ${more===1?'View':'Views'} to explore`);if(man)spoken.push('waits for Next');
       if(prod){r+=`<button class="fz-c${isSel?' sel':''}" data-si="${i}" tabindex="-1"><span class="fz-th">${thumb(entryOf(st))}<i>${i+1}</i></span><span class="fz-tt"><b>${esc(pname(st.p))}</b><span class="fz-meta">${i===startI?'<span class="st">Start</span>':''}${man?'⏸':fmtT(st.stay)}${st.inv?' ✦':''}${more?` +${more}`:''}</span></span><span class="fz-rail"><i data-rf="${i}" style="width:0"></i></span></button>`;}
-      else r+=`<button class="fz-c${isSel?' sel':''}" data-si="${i}" tabindex="${i===focusI?0:-1}" aria-pressed="${isSel}" aria-label="${esc(spoken.join(', '))}" title="${esc(title)}"><span class="fz-th">${thumb(entryOf(st))}<i class="${i===startI&&i>0?'st':''}">${i+1}</i></span><span class="fz-tt"><b>${esc(title)}</b>${st.inv?'<span class="fz-bd" aria-hidden="true">✦</span>':''}${more?`<span class="fz-bd" aria-hidden="true">+${more}</span>`:''}</span><span class="fz-rail" aria-hidden="true"><i data-rf="${i}"></i>${man?`<span class="wc" data-wc="${i}">❚❚</span>`:''}</span></button>`;
+      else r+=`<button class="fz-c${isSel?' sel':''}" data-si="${i}" tabindex="${i===focusI?0:-1}" aria-pressed="${isSel}" aria-label="${esc(spoken.join(', '))}" title="${esc(title)}"><span class="fz-th">${thumb(entryOf(st))}<i>${i+1}</i></span><span class="fz-tt"><b>${esc(title)}</b>${st.inv?'<span class="fz-bd" aria-hidden="true">✦</span>':''}${more?`<span class="fz-bd" aria-hidden="true">+${more}</span>`:''}</span><span class="fz-rail" aria-hidden="true"><i data-rf="${i}"></i>${man?`<span class="wc" data-wc="${i}">❚❚</span>`:''}</span></button>`;
       if(i<L.length-1){const e=E[i],c=chipOf(e),ts=sel.kind==='transition'&&sel.i===i;
         r+=`<span class="fz-gut ${travelOK(e)?'trav':'cut'}" data-gi="${i}"><button class="fz-chip ${c.c}${ts?' sel':''}" data-ti="${i}" tabindex="-1" aria-pressed="${ts}" aria-label="Stop ${i+1} to Stop ${i+2}: ${c.n}">${prod?(c.c==='trav'?'↗':c.t):c.t}</button>${prod?'':`<span class="grail" aria-hidden="true"><i data-gf="${i}"></i></span>`}</span>`;}});
     const ph=prod?'':'<div class="fz-hit" id="fz-hit" role="slider" tabindex="0" aria-label="Guide timeline"></div><div class="fz-ph" id="fz-ph"></div><div class="fz-ins" id="fz-ins" hidden></div><div class="fz-tip" id="fz-tip" hidden></div>';
     const pace=prod?`<button class="fz-pace" data-oldpace>${man?'Manual · waits for Next':'Automatic'} ›</button>`:`<button class="fz-pace" id="fz-pace" aria-haspopup="true" aria-expanded="${popOpen}" aria-controls="fz-pop">${man?'Manual':'Automatic'} <span aria-hidden="true">▾</span></button>`;
     const oldbar=prod?`<div class="fz-oldbar" aria-hidden="true">${SEG.filter(s=>s.dur>0).map(s=>`<span class="${s.k==='trav'?'t':''}" style="flex:${s.dur}"></span>`).join('')}<span class="fz-oldnote">separate scrub bar</span></div>`:'';
-    host.innerHTML=`<div class="fz-g${prod?' prod':''}" id="fz-g" role="group" aria-label="Guide"><div class="fz-gh"><span class="g-eyebrow">GUIDE</span><button class="fz-gname" data-gname aria-pressed="${sel.kind==='guide'}">${esc(S.G.name)}</button><span class="fz-cnt">${L.length} Stops</span>${pace}<span class="fz-sp"></span>
+    host.innerHTML=`<div class="fz-g${prod?' prod':''}" id="fz-g" role="group" aria-label="Guide"><div class="fz-gh"><span class="g-eyebrow">GUIDE</span>${renaming&&!prod?`<input class="fz-gin" id="fz-gin" aria-label="Guide name" value="${esc(S.G.name)}" maxlength="60">`:`<button class="fz-gname" data-gname title="Rename the Guide" aria-label="Guide: ${esc(S.G.name)}. Rename">${esc(S.G.name)}</button>`}${prod?'':`<button class="fz-gmore" id="fz-gmore" data-gmore aria-label="Guide menu" aria-haspopup="menu" aria-expanded="${gmenu}">⋯</button>`}<span class="fz-cnt">${L.length} Stops</span>${pace}<span class="fz-sp"></span>
       <button class="fz-play" id="fz-play" aria-label="Play">▶</button><span class="fz-clock" id="fz-clock"></span><button class="fz-tool" data-follow>◉ Follow</button><button class="fz-tool" id="fz-addb" data-add aria-haspopup="menu" aria-expanded="${addOpen}">＋ Stop</button></div>
       <div class="fz-cw"><div class="fz-row" id="fz-row">${r}${ph}</div><button class="fz-arrow l" data-pg="-1" aria-label="Earlier Stops" hidden>‹</button><button class="fz-arrow r" data-pg="1" aria-label="Later Stops" hidden>›</button></div>${oldbar}
-      ${popOpen&&!prod?popHtml():''}${addOpen&&!prod?addHtml():''}${menu&&!prod?menuHtml():''}</div>`;
-    row=$('#fz-row');row.addEventListener('scroll',arrows);
+      ${popOpen&&!prod?popHtml():''}${addOpen&&!prod?addHtml():''}${menu&&!prod?menuHtml():''}${gmenu&&!prod?gmenuHtml():''}</div>`;
+    row=$('#fz-row');row.addEventListener('scroll',arrows);const gin=$('#fz-gin');if(gin){gin.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commitName(gin.value);}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();renaming=false;renderStrip();$('[data-gname]',host).focus();}});gin.addEventListener('blur',()=>{if(renaming)commitName(gin.value,true);});}
     const hit=$('#fz-hit');if(hit){hit.style.width=row.scrollWidth+'px';}
     arrows();placePops();paint();}
   function arrows(){if(!row)return;const l=host.querySelector('[data-pg="-1"]'),r=host.querySelector('[data-pg="1"]');l.hidden=row.scrollLeft<4;r.hidden=row.scrollLeft+row.clientWidth>=row.scrollWidth-4;}
@@ -3832,9 +3865,11 @@ Object.values(R).forEach(f=>f());
     if(d.add!==undefined){addOpen=!addOpen;popOpen=false;menu=null;renderStrip();if(addOpen){const f=host.querySelector('#fz-addm button');f&&f.focus();}return;}
     if(d.addp){addOpen=false;addStop(d.addp,null);return;}
     if(d.pg){row.scrollBy({left:+d.pg*row.clientWidth*.8,behavior:'smooth'});return;}
-    if(d.gname!==undefined){sel={kind:'guide'};renderAll();say('The Guide Card: name, opening, Starts at, and what the tour reaches. Pacing is shown there, not edited.');return;}
+    if(d.gname!==undefined||d.grn!==undefined){startRename();return;}
+    if(d.gmore!==undefined){gmenu=!gmenu;popOpen=false;addOpen=false;menu=null;renderStrip();if(gmenu){const f=host.querySelector('#fz-gm button');f&&f.focus();}return;}
+    if(d.grm!==undefined){gmenu=false;renderStrip();toast('info','Remove Guide removes its Stops in one change, with one Undo; its Presentations, Views and Camera paths stay. (Not run in this sheet.)');return;}
     if(d.mv){const i=menu.i;menu=null;moveStop(i,i+ +d.mv);return;}
-    if(d.rm){const i=+d.rm;menu=null;edit(()=>{const st=stops()[i];stops().splice(i,1);if(S.G.start===st.id)S.G.start=stops()[0].id;if(sel.kind!=='guide')sel={kind:'guide'};},made=>['ok',`Stop ${i+1} removed. Its neighbours keep their Cut or Travel.${madeText(made)} One Undo.`]);return;}
+    if(d.rm){const i=+d.rm;menu=null;edit(()=>{stops().splice(i,1);sel={kind:'none'};},made=>['ok',`Stop ${i+1} removed. The Stop before it keeps its Cut or Travel, now into the next Stop.${madeText(made)} One Undo.`]);return;}
     if(d.si!==undefined){const i=+d.si;focusI=i;sel={kind:'stop',i};stopAt(i);renderAll();scrollToStop(i);say(`Stop ${i+1} selected: the playhead moves to it, and its Card shows Enter at, Stay and the invitation.`);return;}
     if(d.ti!==undefined){const i=+d.ti;focusI=i;sel={kind:'transition',i};renderAll();say(`Stop ${i+1} → Stop ${i+2}: the Transition Card holds Cut or Travel, the path and its time.`);return;}});
   host.addEventListener('keydown',e=>{const t=e.target;
@@ -3843,7 +3878,7 @@ Object.values(R).forEach(f=>f());
       else if(e.key==='Escape'){e.preventDefault();closePop();}else if(e.key==='Tab'){closePop(false);}return;}
     if(t.closest('.fz-menu')){const all=$$('button:not(:disabled)',t.closest('.fz-menu'));const i=all.indexOf(t);
       if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();all[(i+(e.key==='ArrowDown'?1:all.length-1))%all.length].focus();}
-      else if(e.key==='Escape'){e.preventDefault();const was=menu?menu.i:null;menu=null;addOpen=false;renderStrip();(was!==null?row.querySelector(`[data-si="${was}"]`):$('#fz-addb')).focus();}return;}
+      else if(e.key==='Escape'){e.preventDefault();const was=menu?menu.i:null,wasG=gmenu;menu=null;addOpen=false;gmenu=false;renderStrip();(was!==null?row.querySelector(`[data-si="${was}"]`):wasG?$('#fz-gmore'):$('#fz-addb')).focus();}return;}
     if(t.id==='fz-hit'){const s=e.shiftKey?5:1;let h=true;
       if(e.key==='ArrowRight')seekTime(nowT()+s);else if(e.key==='ArrowLeft')seekTime(nowT()-s);
       else if(e.key==='PageDown'){stopAt(Math.min(stops().length-1,SEG[PH.k].i+1));}
@@ -3858,7 +3893,7 @@ Object.values(R).forEach(f=>f());
   host.addEventListener('contextmenu',e=>{const c=e.target.closest('.fz-c');if(!c||sec.dataset.fzv==='prod')return;e.preventDefault();openMenu(+c.dataset.si,c,e.clientX,e.clientY);});
   function openMenu(i,c,cx,cy){const G=$('#fz-g').getBoundingClientRect(),r=c.getBoundingClientRect();sel={kind:'stop',i};focusI=i;popOpen=false;addOpen=false;
     menu={i,x:Math.max(6,Math.min(G.width-180,(cx??r.left+20)-G.left)),y:Math.max(6,(cy??r.top+20)-G.top-140)};renderAll();const f=host.querySelector('#fz-ctx button:not(:disabled)');f&&f.focus();say(`Stop ${i+1}'s context menu. The right-click selects it first.`);}
-  document.addEventListener('pointerdown',e=>{if(!host.contains(e.target)||!e.target.closest('.fz-pop,.fz-menu,#fz-pace,#fz-addb')){if(popOpen||addOpen||menu){popOpen=false;addOpen=false;menu=null;renderStrip();}}},true);
+  document.addEventListener('pointerdown',e=>{if(!host.contains(e.target)||!e.target.closest('.fz-pop,.fz-menu,#fz-pace,#fz-addb,#fz-gmore')){if(popOpen||addOpen||menu||gmenu){popOpen=false;addOpen=false;menu=null;gmenu=false;renderStrip();}}},true);
   window.addEventListener('resize',()=>{if(row){const h=$('#fz-hit');if(h)h.style.width=row.scrollWidth+'px';arrows();placePops();paint();}});
   /* scrub */
   function segAtX(x){let best=null,bd=1e9;SEG.forEach((s,k)=>{const el=elOf(s);if(!el)return;const r=xOf(el);const d=x<r.l?r.l-x:x>r.l+r.w?x-r.l-r.w:0;if(d<bd){bd=d;best={k,f:r.w?Math.max(0,Math.min(1,(x-r.l)/r.w)):0,r};}});return best;}
@@ -3893,32 +3928,29 @@ Object.values(R).forEach(f=>f());
   /* ---- Cards ---- */
   const cardEl=$('#fz-card'),cap=$('#fz-cardcap');
   function reach(){const L=stops(),ps=[...new Set(L.map(s=>s.p))],ents=new Set(L.map(entryOf)),all=ps.flatMap(p=>S.P[p].views);return{ps:ps.length,ents:ents.size,more:all.filter(v=>!ents.has(v)).length};}
-  function guideCard(){const L=stops(),man=S.G.pacing==='manual',r=reach(),travel=edges().filter(travelOK).reduce((a,e)=>a+e.cx.t,0);
-    return `<div class="c-head"><div class="g"><div class="c-kind">Guide · <span class="fz-tag f">Opening Guide</span></div><div class="c-name">${esc(S.G.name)}</div></div><button class="ib" aria-label="More: Remove Guide">⋯</button></div>
-      <div class="c-sec"><div class="fz-kv"><span>Stops</span><span>${L.length}</span><span>Pacing</span><span>${man?'Manual':'Automatic'}<span class="fz-ro">· set on the strip</span></span>
-        <span>${man?'Travel':'Length'}</span><span>${man?`${fmtT(travel)} · ${L.length} waits for Next`:fmtT(TOTAL)}</span>
-        <span>Starts at</span><span><select class="fz-sel" data-act="start" aria-label="Starts at">${L.map((s,i)=>`<option value="${s.id}" ${s.id===S.G.start?'selected':''}>Stop ${i+1} · ${esc(stitle(i))}</option>`).join('')}</select></span></div></div>
-      <div class="c-sec"><div class="c-lab">Reaches</div><div class="fz-kv"><span>Presentations</span><span>${r.ps} visited</span><span>Views</span><span>${r.ents} entered · ${r.more} more to explore</span></div></div>`;}
+  function expCard(){const n=sec.dataset.fzn==='12'?8:4;
+    return `<div class="c-head"><div class="g"><div class="c-kind">Experience · 1 Guide · ${n} Presentations</div><div class="c-name">${esc(S.X.name)}</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="fz-kv"><span>Guide</span><span>${esc(S.G.name)}<span class="fz-ro">· opens the Experience</span></span><span>Places</span><span>${n} listed</span></div><p class="gp-own" style="margin:6px 0 0">With one Guide there's nothing to choose. <i>Opens with</i> appears here once there are two.</p></div>
+      <div class="c-sec"><div class="c-lab">Welcome</div><textarea class="fz-wel" aria-label="Welcome text" maxlength="280">${esc(S.X.welcome)}</textarea><div class="fz-welprev" aria-label="What visitors see first"><b>${esc(S.X.name)}</b><p style="margin:0">${esc(S.X.welcome)}</p><p style="margin:6px 0 0;color:var(--quiet)">Start the tour · Explore freely</p></div></div>`;}
+  function paintX(el){const ta=el.querySelector('textarea');if(ta&&document.activeElement===ta){el.querySelector('.fz-welprev p').textContent=S.X.welcome;return;}el.innerHTML=expCard();}
   function stopCard(i){const st=stops()[i],P=S.P[st.p],L=stops(),E=edges(),man=S.G.pacing==='manual',lk=(w,lab,j)=>{const c=chipOf(E[j]);return `<button class="oc-lk" data-act="tr:${j}"><span>${w} · ${lab}</span><span><b>${c.t==='✂'?'✂ Cut':c.t==='⚠'?'⚠ Travel':c.t}</b> ›</span></button>`;};
     return `<div class="c-head"><div class="g"><div class="c-kind">Stop ${i+1} of ${L.length} · ${esc(S.G.name)}</div><div class="c-name">${esc(pname(st.p))}</div></div><button class="ib" aria-label="More">⋯</button></div>
       <div class="c-sec"><div class="fz-kv"><span>Enter at</span><span><select class="fz-sel" data-act="entry" aria-label="Enter at">${P.views.map((v,j)=>`<option value="${v}" ${entryOf(st)===v?'selected':''}>${esc(VW[v].n)}${j===0?' (Default)':''}</option>`).join('')}</select></span>
         <span>Stay</span><span>${man?'Until Next<span class="fz-ro">· the Guide is Manual</span>':vrStep('Stay',sec1(st.stay),'stay')}</span>
         <span>Invite</span><span><button class="gp-sw" role="switch" aria-checked="${st.inv}" aria-label="Invite to explore" data-act="inv"><i></i></button></span></div></div>
-      <div class="c-sec"><div class="c-lab">Connections<span class="oc-ro">each is edited on its transition</span></div>${i===0?'<p class="rv-sub" style="margin:0">The tour arrives here first, by Cut.</p>':lk('In',`from Stop ${i}`,i-1)}${i===L.length-1?'<p class="rv-sub" style="margin:6px 0 0">The tour ends after this Stop.</p>':lk('Out',`to Stop ${i+2}`,i)}</div>`;}
+      <div class="c-sec"><div class="c-lab">Connections<span class="oc-ro">each is edited on its transition</span></div>${i===0?'<p class="rv-sub" style="margin:0">The tour starts here: the first Stop is always the start.</p>':lk('In',`from Stop ${i}`,i-1)}${i===L.length-1?'<p class="rv-sub" style="margin:6px 0 0">The tour ends here: the last Stop is always the end.</p>':lk('Out',`to Stop ${i+2}`,i)}</div>`;}
   function transCard(i){const e=edges()[i],L=stops(),a=L[i],b=L[i+1],trav=e.kind==='trav',uses=edges().filter(x=>x.kind==='trav'&&x.k===e.k).length;
     const end=(st,j,w)=>`<div><div class="th">${thumb(entryOf(st))}</div><small>${w}</small><b>${esc(VW[entryOf(st)].n)}</b><small>Stop ${j+1} · ${esc(pname(st.p))}</small></div>`;
-    let how='';if(trav&&e.same)how=`<div class="fz-warn">Both Stops show <b>${esc(VW[e.a].n)}</b>, so there is nothing to travel. Enter Stop ${i+2} at another View, or use a Cut.</div><div class="fz-acts" style="margin-top:6px"><button class="btn" data-act="kind:cut">Use a Cut</button><button class="btn" data-act="sel:${i+1}">Open Stop ${i+2}</button></div>`;
-    else if(trav&&e.amb)how=`<div class="fz-warn">Two Camera paths join <b>${esc(VW[e.a].n)}</b> and <b>${esc(VW[e.b].n)}</b> (from an imported file). Keep one on the Stage; Experience never guesses.</div><div class="fz-acts" style="margin-top:6px"><button class="btn" data-act="showst">Show both on the Stage</button></div>`;
+    let how='';if(trav&&e.amb)how=`<div class="fz-warn">Two Camera paths join <b>${esc(VW[e.a].n)}</b> and <b>${esc(VW[e.b].n)}</b> (from an imported file). Keep one on the Stage; Experience never guesses.</div><div class="fz-acts" style="margin-top:6px"><button class="btn" data-act="showst">Show both on the Stage</button></div>`;
     else if(trav)how=`<div class="row" style="margin-top:8px"><span class="k">Path time</span>${vrStep('Path time',sec1(e.cx.t),'pt')}</div><div class="row"><span class="k">Path</span><span>${e.cx.kind==='custom'?`Custom · ${e.cx.pts} ${e.cx.pts===1?'point':'points'}`:'Straight'} · <button class="tbtn" data-act="showst">Shape it on the Stage</button></span></div>${uses>1?`<p class="gp-own"><b>Same path in ${uses} places</b>: a change reaches each.</p>`:''}<p class="gp-own">${e.cx.isNew?'Added with this Travel, in the same Undo.':'The path is Camera\'s. Every use of it shares it.'}</p>`;
     else how='<p class="gp-own">A Cut needs no path. The paths stay as they are, ready for a Travel.</p>';
-    const dis=e.same?'disabled title="Both Stops show the same View"':'';
     return `<div class="c-head"><div class="g"><div class="c-kind">Transition · ${esc(S.G.name)}</div><div class="c-name">Stop ${i+1} → Stop ${i+2}</div></div><button class="ib" aria-label="More">⋯</button></div>
       <div class="c-sec"><div class="film">${end(a,i,'leaves from')}<span></span>${end(b,i+1,'arrives at')}</div></div>
-      <div class="c-sec"><div class="c-lab">How it moves</div><div class="cseg" role="group" aria-label="How it moves"><button data-act="kind:cut" aria-pressed="${!trav}">✂ Cut</button><button data-act="kind:trav" aria-pressed="${trav}" ${e.same&&!trav?dis:''}>↗ Travel</button></div>${how}</div>
+      <div class="c-sec"><div class="c-lab">How it moves</div>${e.same?`<div class="fz-cutonly"><b>✂ Cut</b><span>Both Stops show ${esc(VW[e.a].n)}</span></div><p class="gp-own">There is nowhere to travel, so this is always a Cut. Enter Stop ${i+2} at another View (<button class="tbtn" data-act="sel:${i+1}">Open Stop ${i+2}</button>) and Travel is offered again.</p>`:`<div class="cseg" role="group" aria-label="How it moves"><button data-act="kind:cut" aria-pressed="${!trav}">✂ Cut</button><button data-act="kind:trav" aria-pressed="${trav}">↗ Travel</button></div>${how}`}</div>
       <div class="c-sec"><p class="gp-own" style="margin:0">${travelOK(e)?`Adds ${sec1(e.cx.t)} to the Guide.`:'Adds no time.'} Next follows the Guide's order; there is no destination to choose.</p></div>`;}
-  function renderCard(){if(sel.kind==='stop'&&sel.i>=stops().length)sel={kind:'guide'};if(sel.kind==='transition'&&sel.i>=stops().length-1)sel={kind:'guide'};
-    cap.textContent=sel.kind==='guide'?'Guide Card':sel.kind==='stop'?'Stop Card':'Transition Card';
-    cardEl.innerHTML=sel.kind==='guide'?guideCard():sel.kind==='stop'?stopCard(sel.i):transCard(sel.i);}
+  function renderCard(){if(sel.kind==='stop'&&sel.i>=stops().length)sel={kind:'none'};if(sel.kind==='transition'&&sel.i>=stops().length-1)sel={kind:'none'};
+    cap.textContent=sel.kind==='none'?'Experience Card (nothing selected)':sel.kind==='stop'?'Stop Card':'Transition Card';
+    if(sel.kind==='none'){if(!cardEl.querySelector('textarea'))cardEl.innerHTML='';paintX(cardEl);}else cardEl.innerHTML=sel.kind==='stop'?stopCard(sel.i):transCard(sel.i);}
   function renderPaths(){const used={};edges().forEach(e=>{if(e.kind==='trav'&&!e.same)(used[e.k]=used[e.k]||[]).push(`Travel ${e.i+1} → ${e.i+2}`);});
     $('#fz-paths').innerHTML=Object.entries(S.CX).map(([k,c])=>`<div class="${c.isNew?'new':used[k]?'':'idle'}"><b>${esc(pairName(k))}</b><span>${sec1(c.t)}</span><small>${c.kind==='custom'?`custom, ${c.pts} ${c.pts===1?'point':'points'}`:'straight'} · ${used[k]?'used by '+used[k].join(', '):'not used now, kept'}${c.isNew?' · <b>added by the last edit</b>':''}</small></div>`).join('')+(S.imp?`<div><b>${esc(pairName(key('p1','w1')))}</b><span>3 s</span><small>imported duplicate · the same pair twice</small></div>`:'');}
   function onCard(e){const b=e.target.closest('[data-act]');if(!b||b.tagName==='SELECT')return;const[a,v]=b.dataset.act.split(':');
@@ -3932,24 +3964,19 @@ Object.values(R).forEach(f=>f());
     if(a==='stay'&&sel.kind==='stop'){const st=stops()[sel.i];if(st.stay+ +v<1){toast('no','A stay is at least 1 s.');return;}edit(()=>{st.stay+= +v;},()=>[]);return;}
     if(a==='inv'&&sel.kind==='stop'){const st=stops()[sel.i];edit(()=>{st.inv=!st.inv;},()=>['ok',st.inv?'Invites to explore. Visitors see it on arrival; it never stops the tour.':'No invitation. Explore is still in the bar.']);return;}}
   function onCardChange(e){const s=e.target.closest('select[data-act]');if(!s)return;const a=s.dataset.act;
-    if(a==='start')edit(()=>{S.G.start=s.value;},()=>['ok',`The tour now starts at Stop ${stops().findIndex(x=>x.id===s.value)+1}.`]);
     if(a==='entry'&&sel.kind==='stop'){const st=stops()[sel.i],P=S.P[st.p];edit(()=>{st.entry=s.value===P.views[0]?null:s.value;},made=>['ok',`Stop ${sel.i+1} enters at ${VW[s.value].n}.${madeText(made)}`]);}}
-  [cardEl,$('#fz-gcard')].forEach(h=>{h.addEventListener('click',onCard);h.addEventListener('change',onCardChange);});
+  cardEl.addEventListener('click',onCard);cardEl.addEventListener('change',onCardChange);
 
   /* ---- B · Guide Card, Experience Card, today's Guide Card ---- */
-  function renderB(){$('#fz-gcard').innerHTML=guideCard();
-    const x=$('#fz-xcard');const ta=x.querySelector('textarea');const focused=ta&&document.activeElement===ta;if(focused){x.querySelector('.fz-welprev p').textContent=S.X.welcome;}
-    else x.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Experience · 1 Guide · ${Object.keys(S.P).length>4&&sec.dataset.fzn==='12'?8:4} Presentations</div><div class="c-name">${esc(S.X.name)}</div></div><button class="ib" aria-label="More">⋯</button></div>
-      <div class="c-sec"><div class="fz-kv"><span>Opens with</span><span><select class="fz-sel" aria-label="Opens with"><option>${esc(S.G.name)}</option></select></span><span>Places</span><span>${sec.dataset.fzn==='12'?8:4} listed</span></div></div>
-      <div class="c-sec"><div class="c-lab">Welcome</div><textarea class="fz-wel" aria-label="Welcome text" maxlength="280">${esc(S.X.welcome)}</textarea><div class="fz-welprev" aria-label="What visitors see first"><b>${esc(S.X.name)}</b><p style="margin:0">${esc(S.X.welcome)}</p><p style="margin:6px 0 0;color:var(--quiet)">Start the tour · Explore freely</p></div></div>`;
+  function renderB(){paintX($('#fz-xcard'));
     $('#fz-oldg').innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Guide</div><div class="c-name">${esc(S.G.name)}</div></div></div>
       <div class="c-sec x"><span class="btn">＋ Add stop</span> <span class="btn">▶ Play from the start</span></div>
       <div class="c-sec"><div class="c-lab x">Pacing</div><div class="bigopt x"><span><b>Automatic</b><br>Each Stop stays for its time…</span><span><b>Manual</b><br>Each Stop waits…</span></div></div>
       <div class="c-sec"><div class="c-lab x">One museum, two ways in</div><div class="bigopt x"><span><b>Guided tour</b><br>5 Stops · plays on…</span><span><b>Free exploration</b><br>4 Presentations…</span></div></div>
       <div class="c-sec x"><div class="c-lab">Build the tour</div><span class="rv-sub">Drag a Presentation from the index onto the Guide…</span></div>
       <div class="c-sec x"><div class="c-lab">Welcome text</div><span class="rv-sub">(Experience-wide, in the Guide's Card)</span></div>`;}
-  $('#fz-xcard').addEventListener('input',e=>{if(e.target.tagName==='TEXTAREA'){S.X.welcome=e.target.value;e.target.parentNode.querySelector('.fz-welprev p').textContent=S.X.welcome;}});
-  $('#fz-xcard').addEventListener('change',e=>{if(e.target.tagName==='TEXTAREA')toast('ok','Welcome saved for the whole Experience.');});
+  [$('#fz-xcard'),cardEl].forEach(h=>{h.addEventListener('input',e=>{if(e.target.tagName==='TEXTAREA'){S.X.welcome=e.target.value;e.target.parentNode.querySelector('.fz-welprev p').textContent=S.X.welcome;}});
+    h.addEventListener('change',e=>{if(e.target.tagName==='TEXTAREA'){toast('ok','Welcome saved for the whole Experience.');renderAll();}});});
 
   /* ---- C · View → Stop ---- */
   let cp='piano';const pseg=$('#fz-pseg'),pcard=$('#fz-pcard'),pread=$('#fz-pread');
@@ -3967,16 +3994,15 @@ Object.values(R).forEach(f=>f());
   /* ---- D · object link ---- */
   const lcard=$('#fz-lcard'),mirror=$('#fz-mirror'),lread=$('#fz-lread'),plan=$('#fz-plan'),ptag=$('#fz-ptag'),inP=$('#fz-on-piano'),inD=$('#fz-on-desk'),odel=$('#fz-odel');let picking=false;
   const LP=()=>S.P.piano;
-  function lstate(){const p=LP();if(p.subject===null)return'unlinked';const o=S.OBJ[p.subject];if(!o.alive)return'missing';return p.label===null?'follow':'own';}
+  function lstate(){const p=LP();if(p.subject===null)return'unlinked';return p.label===null?'follow':'own';}
   function renderD(){const p=LP(),st=lstate(),o=p.subject&&S.OBJ[p.subject],nm=pname('piano');
     if(document.activeElement!==inP)inP.value=S.OBJ.piano.name;if(document.activeElement!==inD)inD.value=S.OBJ.desk.name;
     inP.disabled=!S.OBJ.piano.alive;odel.textContent=S.OBJ.piano.alive?'Remove the piano':'Undo the removal';
-    const kind=st==='missing'?'Presentation · about a removed object':o?`Presentation · about <a data-l="show">${esc(o.name)}</a> · ${esc(o.form)}`:'Presentation · not linked to an object';
+    const kind=o?`Presentation · about <a data-l="show">${esc(o.name)}</a> · ${esc(o.form)}`:'Presentation · not linked to an object';
     const follow=st==='follow'?"Follows the object's name":st==='own'?`Your own name · <button class="tbtn" data-l="usename">Use the object's name</button>`:"The Presentation's own name";
     let about='';
     if(st==='follow'||st==='own')about=`<div class="fz-kv"><span>Object</span><span><b>${esc(o.name)}</b> <span class="fz-tag">${esc(o.form)}</span></span></div><div class="fz-acts" style="margin-top:8px"><button class="btn" data-l="show">Show in World</button><button class="btn" data-l="unlink">Unlink</button></div>`;
     else if(st==='unlinked')about=`${p.sugg&&S.OBJ[p.sugg].alive?`<div class="fz-sugg">Captured with <b>${esc(S.OBJ[p.sugg].name)}</b> at the centre of the View.<div class="fz-acts" style="margin-top:6px"><button class="btn forest" data-l="link:${p.sugg}">Link to ${esc(S.OBJ[p.sugg].name)}</button></div></div>`:''}<div class="fz-acts" style="margin-top:8px"><button class="btn" data-l="pick">${picking?'Picking… Esc cancels':'Pick on the Stage'}</button></div>`;
-    else about=`<div class="fz-warn">The object this was about was removed. Its last name, <b>${esc(nm)}</b>, is now this Presentation's own.</div><div class="fz-acts" style="margin-top:8px"><button class="btn" data-l="pick">${picking?'Picking… Esc cancels':'Link another object'}</button><button class="btn" data-l="unlink">Unlink</button></div>`;
     lcard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">${kind}</div><div class="fz-name"><input data-l="name" aria-label="Presentation name" value="${esc(p.label??'')}" placeholder="${esc(st==='follow'?o.name:'')}"></div><div class="fz-follow">${follow}</div></div><button class="ib" aria-label="More">⋯</button></div>
       <div class="c-sec"><div class="c-lab">About</div>${about}</div><div class="c-sec"><div class="c-lab">Views</div><div class="rv-sub" style="margin:0">${S.P.piano.views.map(v=>esc(VW[v].n)).join(' · ')}</div></div>`;
     const stopsOf=stops().map((s,i)=>s.p==='piano'?i+1:0).filter(Boolean);
@@ -3985,8 +4011,8 @@ Object.values(R).forEach(f=>f());
       <div><span>Visitor caption</span><span><span class="vc">${esc(nm)}</span></span></div>
       <div><span>Places</span><span>${esc(nm)}</span></div>`;
     plan.classList.toggle('picking',picking);ptag.hidden=!picking;
-    plan.innerHTML=`<rect x="10" y="10" width="280" height="130" rx="4" fill="#f1f2ee" stroke="#cdd2ca"/><path d="M10 10H290V140H10Z" fill="none" stroke="#1b201c" stroke-width="5"/>`+Object.entries(S.OBJ).map(([id,o2])=>`<g class="o${p.subject===id?' lk':''}${o2.alive?'':' gone'}" data-o="${id}"><rect x="${o2.x}" y="${o2.y}" width="${o2.w}" height="${o2.h}" rx="3"/><text x="${o2.x+o2.w/2}" y="${o2.y+o2.h+12}" text-anchor="middle">${esc(o2.name)}</text></g>`).join('')+`<path d="M250 120 L215 92" stroke="#4f8f6c" stroke-width="1.5" stroke-dasharray="3 3"/><circle cx="250" cy="120" r="5" fill="#4f8f6c"/>`;
-    $$('#fz-lseg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ls===(st==='follow'&&S.OBJ.piano.name!=='Pleyel piano'?'renamed':st)));}
+    plan.innerHTML=`<rect x="10" y="10" width="280" height="130" rx="4" fill="#f1f2ee" stroke="#cdd2ca"/><path d="M10 10H290V140H10Z" fill="none" stroke="#1b201c" stroke-width="5"/>`+Object.entries(S.OBJ).map(([id,o2])=>`<g class="o${o2.alive?'':' gone'}" data-o="${id}"><rect x="${o2.x}" y="${o2.y}" width="${o2.w}" height="${o2.h}" rx="3"/><text x="${o2.x+o2.w/2}" y="${o2.y+o2.h+12}" text-anchor="middle">${esc(o2.name)}</text></g>`).join('')+`<path d="M250 120 L215 92" stroke="#4f8f6c" stroke-width="1.5" stroke-dasharray="3 3"/><circle cx="250" cy="120" r="5" fill="#4f8f6c"/>`;
+    $$('#fz-lseg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ls===(!S.OBJ.piano.alive?'missing':st==='follow'&&S.OBJ.piano.name!=='Pleyel piano'?'renamed':st)));}
   function linkMsg(m){lread.innerHTML=m;}
   function setName(v){const p=LP(),st=lstate(),o=p.subject&&S.OBJ[p.subject];v=v.trim();
     if(v===''){if(st==='follow'||st==='own'){edit(()=>{p.label=null;},()=>['ok',"Back to following the object's name."]);linkMsg('An empty name follows the object again.');}else{toast('no','A name is needed.');renderD();}return;}
@@ -4006,21 +4032,21 @@ Object.values(R).forEach(f=>f());
   const objName=(id,inp)=>{inp.addEventListener('input',()=>{const v=inp.value;if(v.trim()==='')return;S.OBJ[id].name=v;renderAll(true);});inp.addEventListener('change',()=>{if(inp.value.trim()===''){inp.value=S.OBJ[id].name;}else{linkMsg(`Renamed in World. Every Presentation that follows ${esc(S.OBJ[id].name)} shows it at once.`);}});};
   objName('piano',inP);objName('desk',inD);
   odel.addEventListener('click',()=>{const o=S.OBJ.piano,p=LP();
-    if(o.alive)edit(()=>{o.alive=false;if(p.subject==='piano'&&p.label===null){p.label=o.name;p.frozen=true;}},()=>['info',`The piano was removed. ${p.subject==='piano'?'Its Presentation keeps the name “'+esc(o.name)+'” as its own.':''}`]);
-    else edit(()=>{o.alive=true;if(p.frozen){p.label=null;p.frozen=false;}},()=>['info','Removal undone. The Presentation follows the piano again.']);});
+    if(o.alive){const nm=pname('piano'),was=p.subject==='piano';edit(()=>{o.alive=false;if(was){p.label=nm;p.subject=null;}},()=>['ok',`${esc(o.name)} removed.`]);linkMsg(was?`The Presentation kept the name “${esc(nm)}” and is no longer linked. World said nothing about it.`:'');}
+    else undo();});
   $('#fz-lseg').addEventListener('click',e=>{const b=e.target.closest('[data-ls]');if(!b)return;const p=LP(),o=S.OBJ.piano;UNDO.push(snap());picking=false;
-    o.alive=true;o.name='Pleyel piano';p.frozen=false;
+    o.alive=true;o.name='Pleyel piano';
     if(b.dataset.ls==='follow'){p.subject='piano';p.label=null;}
     if(b.dataset.ls==='renamed'){p.subject='piano';p.label=null;o.name='Pleyel grand, 1839';}
     if(b.dataset.ls==='own'){p.subject='piano';p.label='The music room piano';}
     if(b.dataset.ls==='unlinked'){p.subject=null;p.label='Pleyel piano';p.sugg='piano';}
-    if(b.dataset.ls==='missing'){p.subject='piano';p.label='Pleyel piano';p.frozen=true;o.alive=false;}
-    rebuild();renderAll();linkMsg({follow:"Following: the name is the object's, read live.",renamed:'Renamed in World: the Index, both Stop cards, the caption and Places all changed at once.',own:"Own name: World renames no longer reach it. <i>Use the object's name</i> goes back.",unlinked:'Unlinked, with the suggestion Capture made. One press links it.',missing:'The object was removed. The name stays readable, and the Card offers a repair.'}[b.dataset.ls]);});
+    if(b.dataset.ls==='missing'){p.subject=null;p.label='Pleyel piano';p.sugg=null;o.alive=false;}
+    rebuild();renderAll();linkMsg({follow:"Following: the name is the object's, read live.",renamed:'Renamed in World: the Index, both Stop cards, the caption and Places all changed at once.',own:"Own name: World renames no longer reach it. <i>Use the object's name</i> goes back.",unlinked:'Unlinked, with the suggestion Capture made. One press links it.',missing:'The object was removed in World. The same change unlinked the Presentation and kept its last name, so nothing here needs a repair.'}[b.dataset.ls]);});
 
   /* ---- F · visitor ---- */
   const vp=$('#fz-vp'),vbg=$('#fz-vbg'),vcap=$('#fz-vcap'),vhud=$('#fz-vhud'),vread=$('#fz-vread');
   let V={mode:'welcome'};let vraf=0,vlast=0;
-  const run=()=>{const L=stops(),s=Math.max(0,L.findIndex(x=>x.id===S.G.start));return L.slice(s).map((st,j)=>({st,gi:s+j}));};
+  const run=()=>stops().map((st,j)=>({st,gi:j}));
   function edgeInto(j){const R=run();if(j===0)return null;return edges()[R[j].gi-1];}
   const travIn=j=>{const e=edgeInto(j);return e&&travelOK(e)?e.cx.t:0;};
   function vStart(){V={mode:'tour',j:0,phase:S.G.pacing==='manual'?'wait':'stay',local:0,paused:false,ex:false,saved:null,xv:null};vRender();vAnnounce();vLoop();vp.focus();}
@@ -4040,7 +4066,7 @@ Object.values(R).forEach(f=>f());
     vhud.hidden=false;const o=R[V.j],P=S.P[o.st.p],man=S.G.pacing==='manual',last=V.j===R.length-1;
     vbg.innerHTML=thumb(V.ex&&V.xv?V.xv:entryOf(o.st));
     vcap.innerHTML=V.ex?`Exploring<b>${esc(pname(o.st.p))}</b>`:`Stop ${V.j+1} of ${R.length}<b>${esc(pname(o.st.p))}</b>`;
-    const prog=`<div class="fz-prog${V.ex||V.paused?' frozen':''}" aria-hidden="true">${R.map((r,j)=>`${j?`<span class="k${travIn(j)>0?' t':''}">${travIn(j)>0?`<i data-vt="${j}"></i>`:''}</span>`:''}<span class="s${j===V.j?' cur':''}${j===V.j&&man&&V.phase==='wait'?' wait':''}"><i data-vs="${j}"></i></span>`).join('')}</div>`;
+    const prog=`<div class="fz-prog${V.ex||V.paused?' frozen':''}" aria-hidden="true">${R.map((r,j)=>`${j?`<span class="k${travIn(j)>0?' t':''}">${travIn(j)>0?`<i data-vt="${j}"></i>`:''}</span>`:''}<span class="s${j===V.j?' here':''}${j===V.j&&man&&V.phase==='wait'?' wait':''}"><i data-vs="${j}"></i></span>`).join('')}</div>`;
     if(V.ex){const vi=P.views.indexOf(V.xv);vhud.innerHTML=`${prog}<div class="fz-vtop"><span class="q">Exploring · the tour is waiting at Stop ${V.j+1}</span><div class="fz-xstrip" role="group" aria-label="${esc(pname(o.st.p))}: Views"><button class="fz-vb" data-v="xp" ${vi<=0?'disabled':''} aria-label="Previous View">‹</button>${P.views.map(v=>`<button class="v${v===V.xv?' on':''}" data-xv="${v}" aria-label="${esc(VW[v].n)}">${thumb(v)}</button>`).join('')}<button class="fz-vb" data-v="xn" ${vi>=P.views.length-1?'disabled':''} aria-label="Next View">›</button></div><div class="fz-vbtns"><button class="fz-vb pri" data-v="back">Back to the tour</button></div></div>`;}
     else vhud.innerHTML=`${prog}<div class="fz-vtop"><span><b>${esc(pname(o.st.p))}</b> <span class="q" id="fz-vst"></span></span><div class="fz-vbtns"><button class="fz-vb" data-v="prev" ${V.j===0?'disabled':''}>← Prev</button>${man?'':`<button class="fz-vb" data-v="pause" aria-pressed="${V.paused}">${V.paused?'▶ Play':'❚❚ Pause'}</button>`}<button class="fz-vb${man?' pri':''}" data-v="next">${last&&V.phase!=='travel'?'Finish':'Next →'}</button><button class="fz-vb" data-v="explore">◎ Explore${P.views.length>1?` · ${P.views.length} views`:''}</button></div></div>`;
     vPaint();}
@@ -4068,10 +4094,8 @@ Object.values(R).forEach(f=>f());
     if(f==='manual'){setPacing('manual',true);fbShow('ok','Manual: each Stop now waits for Next.');}
     else if(f==='auto'){setPacing('automatic',true);fbShow('ok','Automatic: each Stop stays for its time, then moves on.');}
     else if(f==='tip')fbShow('info','Tip: on touch, hold a Stop to lift it, then drag.');else fbShow('no','A stay is at least 1 s.');}));
-  function problems(){const L=stops(),out=[];edges().forEach(e=>{const a=L[e.i],b=L[e.i+1];
-      if(e.kind==='trav'&&e.same)out.push({t:`<b>Stop ${e.i+1}</b> and <b>Stop ${e.i+2}</b> in ${esc(S.G.name)} both show <b>${esc(VW[e.a].n)}</b>, so the Travel between them has nothing to travel.`,fix:'Use a Cut',i:e.i,d:`$.units.experience.data.experiences[0].stops[${e.i}].continuation.transition\ntravel-gap · stop "${a.id}" → stop "${b.id}" · view "${e.a}" → "${e.b}"`});
+  function problems(){const out=[];edges().forEach(e=>{
       if(e.kind==='trav'&&e.amb)out.push({t:`Two Camera paths join <b>${esc(VW[e.a].n)}</b> and <b>${esc(VW[e.b].n)}</b>, so the Travel from <b>Stop ${e.i+1}</b> to <b>Stop ${e.i+2}</b> can't choose one. Keep one on the Stage.`,i:e.i,d:`travel-ambiguous · connections "cx-07", "cx-12" · views "${e.a}", "${e.b}"`});});
-    const p=S.P.piano;if(p.subject&&!S.OBJ[p.subject].alive)out.push({t:`<b>${esc(pname('piano'))}</b> is about an object that was removed from the World.`,link:true,d:`$.units.experience.data.experiences[0].presentations[1].subject\nunresolved-subject · scene entity "piano"`});
     return out;}
   function renderG(){const P=problems(),h=$('#fz-probs');$$('#fz-impseg button').forEach(x=>x.setAttribute('aria-pressed',String((x.dataset.imp==='1')===S.imp)));
     if(!P.length){h.innerHTML='<div class="fz-ok">✓ Nothing to check. Every Travel has its path.</div>';return;}
@@ -4082,30 +4106,13 @@ Object.values(R).forEach(f=>f());
     if(b.dataset.plink!==undefined)$('#fz-d').scrollIntoView({behavior:'smooth',block:'start'});});
   $('#fz-impseg').addEventListener('click',e=>{const b=e.target.closest('[data-imp]');if(!b)return;$$('#fz-impseg button').forEach(x=>x.setAttribute('aria-pressed',x===b));edit(()=>{S.imp=b.dataset.imp==='1';},()=>[]);});
 
-  /* ---- H · continuation ---- */
-  let cc='linear';const cstrip=$('#fz-cstrip'),ccard=$('#fz-ccard'),cread=$('#fz-cread');
-  const CS=[['hall','h1','Entrance hall'],['piano','p1','Pleyel piano'],['win','w1','North window'],['piano','p3','Pleyel piano · From the window'],['read','r1','Reading corner']];
-  function renderH(){const ex=cc==='end'?2:cc==='jump'?1:-1;let r='';
-    CS.forEach(([p,v,n],i)=>{const un=(cc==='end'&&i>2)||(cc==='jump'&&i===2);r+=`<span class="fz-c${un?' unreached':''}${i===ex?' sel':''}" style="cursor:default"><span class="fz-th">${thumb(v)}<i>${i+1}</i></span><span class="fz-tt"><b>${esc(n)}</b></span>${un?'':''}</span>`;
-      if(i<CS.length-1){let chip=i===1?'<button class="fz-chip trav" data-cx="1">↗ 5 s</button>':'<button class="fz-chip cut" data-cx="'+i+'">✂</button>';
-        if(cc==='end'&&i===2)chip='<button class="fz-chip end sel" data-cx="2" aria-label="The tour ends after Stop 3">■ End</button>';if(cc==='jump'&&i===1)chip='<button class="fz-chip jump sel" data-cx="1" aria-label="Next goes to Stop 4">→ 4</button>';
-        r+=`<span class="fz-gut">${chip}</span>`;}});
-    cstrip.innerHTML=`<div class="fz-g"><div class="fz-gh"><span class="g-eyebrow">GUIDE</span><b style="font:500 13.5px var(--serif)">Evening tour</b><span class="fz-cnt">5 Stops</span></div><div class="fz-row">${r}</div></div>`;
-    if(cc==='linear')ccard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Transition · Evening tour</div><div class="c-name">Stop 2 → Stop 3</div></div></div><div class="c-sec"><div class="c-lab">How it moves</div><div class="cseg"><button aria-pressed="false">✂ Cut</button><button aria-pressed="true">↗ Travel</button></div><div class="row" style="margin-top:8px"><span class="k">Path time</span>${vrStep('Path time','5 s','x')}</div></div><div class="c-sec"><p class="gp-own" style="margin:0">Next follows the Guide's order. There is no <i>Next goes to</i>: drag the Stops to change the route.</p></div>
-      <div class="c-sec"><div class="c-lab">PR #271 today</div><div class="fz-oldprob" style="text-decoration:none">Next goes to <span class="fz-sel" style="display:inline-block">The next Stop in the Guide ▾</span><code>all Stops · End of the tour. Choosing End hides this field, and the only way back is Undo.</code></div></div>`;
-    else if(cc==='end')ccard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Transition · Evening tour</div><div class="c-name">After Stop 3</div></div><button class="ib" aria-label="More">⋯</button></div><div class="c-sec"><div class="fz-warn" style="color:var(--ink);background:var(--index);border-color:var(--hair2)"><b>The tour ends after this Stop.</b> Stops 4 and 5 are not reached. This was set in an earlier or imported file.</div><div class="fz-acts" style="margin-top:8px"><button class="btn forest" data-cr>Continue to Stop 4</button></div></div><div class="c-sec"><p class="gp-own" style="margin:0">Continue makes it an ordinary Cut to Stop 4, one Undo. Removing Stops 4–5, or moving them to a second Guide, is the honest way to end early.</p></div>`;
-    else ccard.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">Transition · Evening tour</div><div class="c-name">Stop 2 → Stop 4</div></div><button class="ib" aria-label="More">⋯</button></div><div class="c-sec"><div class="fz-warn" style="color:var(--ink);background:var(--index);border-color:var(--hair2)"><b>Next skips to Stop 4</b> (Pleyel piano · From the window). Stop 3 is not reached.</div><div class="fz-acts" style="margin-top:8px"><button class="btn forest" data-cr>Follow the Guide order</button></div></div><div class="c-sec"><div class="c-lab">How it moves</div><div class="cseg"><button aria-pressed="false">✂ Cut</button><button aria-pressed="true">↗ Travel</button></div></div>`;
-    $$('#fz-cseg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cc===cc));}
-  $('#fz-cseg').addEventListener('click',e=>{const b=e.target.closest('[data-cc]');if(!b)return;cc=b.dataset.cc;renderH();cread.innerHTML={linear:'The order is the route. Nothing to choose.',end:'An explicit End shows on its gutter, and the Stops after it are dimmed.',jump:'A jump shows its target on the gutter, and the skipped Stop is dimmed.'}[cc];});
-  ccard.addEventListener('click',e=>{if(!e.target.closest('[data-cr]'))return;const was=cc;cc='linear';renderH();cread.innerHTML=was==='end'?'Recovered: Stop 3 continues to Stop 4 by Cut, as an ordinary connection. One Undo.':'Recovered: Next follows the Guide order again, and the Travel is kept for Stop 2 → Stop 3. One Undo.';});
-
   /* ---- glue ---- */
   function renderAll(soft){renderStrip();renderCard();renderPaths();renderB();renderC();renderD();renderG();$('#fz-undo').disabled=UNDO.length===0;if(V.mode==='tour'||V.mode==='end')vRender();}
   $('#fz-undo').addEventListener('click',undo);
-  $('#fz-reset').addEventListener('click',()=>{S=seed(+sec.dataset.fzn);UNDO=[];sel={kind:'guide'};PH.k=0;PH.local=0;PH.status='idle';rebuild();renderAll();say('Reset.');});
-  R.s33=()=>{if(stops().length!==+sec.dataset.fzn){S=seed(+sec.dataset.fzn);UNDO=[];sel={kind:'guide'};PH.k=0;PH.local=0;PH.status='idle';}popOpen=false;addOpen=false;menu=null;rebuild();renderAll();
-    if(sec.dataset.fzv==='prod')say('PR #271 today, for comparison: light cards with a gold border, <i>Start</i> and the time on every card, and a separate scrub bar under them.');else if(!readMsg||readMsg.startsWith('PR #271'))say('Press ▶, scrub the rail, open the pacing pill, or drag a Stop.');};
-  rebuild();R.s33();renderH();vRender();
+  $('#fz-reset').addEventListener('click',()=>{S=seed(+sec.dataset.fzn);UNDO=[];sel={kind:'none'};renaming=false;gmenu=false;PH.k=0;PH.local=0;PH.status='idle';rebuild();renderAll();say('Reset.');});
+  R.s33=()=>{if(stops().length!==+sec.dataset.fzn){S=seed(+sec.dataset.fzn);UNDO=[];sel={kind:'none'};PH.k=0;PH.local=0;PH.status='idle';}popOpen=false;addOpen=false;menu=null;gmenu=false;renaming=false;rebuild();renderAll();
+    if(sec.dataset.fzv==='prod')say('PR #271 today, for comparison: light cards with a gold border, <i>Start</i> and the time on every card, and a separate scrub bar under them.');else if(!readMsg||readMsg.startsWith('PR #271'))say('Press ▶, scrub the rail, open the pacing pill, press the Guide\'s name to rename it, or drag a Stop.');};
+  rebuild();R.s33();vRender();
 })();
 </script>
 </body>
