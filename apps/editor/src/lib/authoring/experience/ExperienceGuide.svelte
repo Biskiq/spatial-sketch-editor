@@ -56,7 +56,6 @@
 	const selectedStopId = $derived(
 		subjectStopId !== null && stops.some((stop) => stop.id === subjectStopId) ? subjectStopId : null
 	);
-	const selectedStopIndex = $derived(stops.findIndex((stop) => stop.id === selectedStopId));
 	const guideSelected = $derived(subject?.kind === 'guide');
 	/** The Presentation awaiting a first-Guide name (Presentation Add to Guide, or a drop without a name). */
 	const pending = $derived(homes.guideNamePrompt());
@@ -76,8 +75,6 @@
 
 	// ---- R217.S30: the Stage owns the one ephemeral playback session ----
 
-	let transportOpen = $state(false);
-	let transportWrap = $state<HTMLElement | null>(null);
 	const canPlay = $derived(playback.map !== null || (controller?.playbackSource ?? null) !== null);
 	const stopTimes = $derived(
 		new Map((playback.map?.stopEntries ?? []).map((entry) => [entry.stopId, entry]))
@@ -100,6 +97,23 @@
 			? 0
 			: ((segment.startSeconds + cursor.elapsedSeconds) / map.totalSeconds) * 100;
 	});
+	/** The playhead in seconds, for each Stop card's own progress (review round 3). */
+	const elapsedSeconds = $derived.by(() => {
+		const map = playback.map;
+		const cursor = playback.cursor;
+		if (map === null || cursor === null) return null;
+		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
+		return segment === undefined ? null : segment.startSeconds + cursor.elapsedSeconds;
+	});
+	function stopProgress(stopId: string): number {
+		const entry = stopTimes.get(stopId);
+		const at = elapsedSeconds;
+		if (entry === undefined || at === null) return 0;
+		const span = entry.endSeconds - entry.startSeconds;
+		if (at >= entry.endSeconds) return 100;
+		if (at <= entry.startSeconds) return 0;
+		return span <= 0 ? 100 : ((at - entry.startSeconds) / span) * 100;
+	}
 	/** Each hold is one View's span; its own label/time stays readable on the bar. */
 	const timelineSegments = $derived.by(() => {
 		const map = playback.map;
@@ -142,37 +156,8 @@
 		return waits.map((segment) => ({ id: segment.id, left: (segment.startSeconds / map.totalSeconds) * 100 }));
 	});
 
-	function toggleTransport(): void {
-		if (transportOpen) {
-			transportOpen = false;
-			return;
-		}
-		transportOpen = true;
-		void tick().then(() => transportWrap?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
-	}
-
 	function playPause(): void {
 		playback.playPause();
-	}
-
-	function playFromStart(): void {
-		transportOpen = false;
-		playback.playFromStart();
-	}
-
-	function playFromSelected(): void {
-		transportOpen = false;
-		if (selectedStopId !== null) playback.playFromStop(selectedStopId);
-	}
-
-	function previewSelectedMove(): void {
-		transportOpen = false;
-		if (subject?.kind === 'transition') playback.previewMove({ kind: 'transition', stopId: subject.stopId });
-		else if (subject?.kind === 'stop') {
-			const stop = stops.find((entry) => entry.id === subject.stopId);
-			const last = stop?.views.at(-1);
-			if (last !== undefined) playback.previewMove({ kind: 'step', stopId: subject.stopId, toViewId: last.viewId });
-		}
 	}
 
 	/** The Stage captures the entry standpoint; this panel only asks Follow to end. */
@@ -403,6 +388,8 @@
 
 	function selectTransition(stopId: string): void {
 		homes.select({ kind: 'transition', stopId });
+		// Review round 3: the move after a Stop starts where that Stop ends.
+		playback.seekStop(stopId, 'end');
 	}
 
 	function selectGuide(): void {
@@ -481,9 +468,32 @@
 	/** The cards scrolled into view, as first and last index; null when they all show. */
 	let inView = $state<{ first: number; last: number } | null>(null);
 
+	/** Review round 3: the strip has no visible scrollbar; arrows show only on a side with more. */
+	let more = $state<{ left: boolean; right: boolean }>({ left: false, right: false });
+
+	function pageCards(direction: -1 | 1): void {
+		const scroller = scrollerEl;
+		if (scroller === null) return;
+		scroller.scrollBy({ left: direction * Math.max(120, scroller.clientWidth - 96), behavior: 'smooth' });
+	}
+
+	/** A mouse wheel over the strip scrolls it sideways; trackpads already send deltaX. */
+	function onCardsWheel(event: WheelEvent): void {
+		const scroller = scrollerEl;
+		if (scroller === null || scroller.scrollWidth <= scroller.clientWidth) return;
+		if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+		scroller.scrollLeft += event.deltaY;
+		event.preventDefault();
+	}
+
 	function measureView(): void {
 		const scroller = scrollerEl;
 		const els = cardEls();
+		if (scroller !== null) {
+			const left = scroller.scrollLeft > 2;
+			const right = scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 2;
+			if (left !== more.left || right !== more.right) more = { left, right };
+		}
 		if (scroller === null || els.length === 0) {
 			inView = null;
 			return;
@@ -688,6 +698,9 @@
 	function onCardClick(stopId: string): void {
 		if (suppressClick) return;
 		selectStop(stopId);
+		// Review round 3: like a video timeline, pressing a Stop moves the playhead to it;
+		// ▶ then plays from there, with no Play-from menu to choose from.
+		playback.seekStop(stopId, 'start');
 	}
 
 	// ---- Insert by dropping a Presentation from the Index ----
@@ -824,40 +837,6 @@
 							<ShellIcon name="play" size={13} />
 						{/if}
 					</button>
-					<span class="transport-wrap" bind:this={transportWrap}>
-						<button
-							type="button"
-							class="tool transport"
-							disabled={!canPlay}
-							aria-haspopup="menu"
-							aria-expanded={transportOpen}
-							title="Play from…"
-							onclick={toggleTransport}
-						>
-							<span aria-hidden="true">▾</span>
-						</button>
-						{#if transportOpen}
-							<div class="menu transport-menu" role="menu" aria-label="Play from" tabindex="-1">
-								<button type="button" role="menuitem" class="menu-item" onclick={playFromStart}>
-									<span class="menu-label">Play from the start</span>
-								</button>
-								<button type="button" role="menuitem" class="menu-item" disabled={selectedStopId === null} onclick={playFromSelected}>
-									<span class="menu-label">Play from this Stop</span>
-									<span class="menu-hint">{selectedStopId === null ? 'Select a Stop' : `Stop ${selectedStopIndex + 1}`}</span>
-								</button>
-								<button
-									type="button"
-									role="menuitem"
-									class="menu-item"
-									disabled={subject?.kind !== 'transition' && subject?.kind !== 'stop'}
-									onclick={previewSelectedMove}
-								>
-									<span class="menu-label">Preview this move</span>
-									<span class="menu-hint">{subject?.kind === 'transition' || subject?.kind === 'stop' ? '' : 'Select a Stop or transition'}</span>
-								</button>
-							</div>
-						{/if}
-					</span>
 					<span class="total" data-playback-total>
 						{playback.elapsedLabel} / {playback.totalLabel}{#if playback.map !== null && playback.map.waitCount > 0}<span class="waits">{playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}</span>{/if}
 					</span>
@@ -945,7 +924,11 @@
 			</div>
 		{:else}
 			{#if !compact}
-				<div class="cards" bind:this={scrollerEl} onscroll={measureView}>
+				<div class="cards-wrap">
+				{#if more.left}
+					<button type="button" class="more-arrow left" aria-label="Earlier Stops" title="Earlier Stops" onclick={() => pageCards(-1)}><span aria-hidden="true">‹</span></button>
+				{/if}
+				<div class="cards" bind:this={scrollerEl} onscroll={measureView} onwheel={onCardsWheel}>
 					<div class="row" role="group" aria-label={guide !== null ? `Stops in ${guide.label}` : 'Stops'} bind:this={rowEl}>
 						{#each cards as card, index (card.stopId)}
 							{@const selected = selectedStopId === card.stopId && subject?.kind === 'stop'}
@@ -968,17 +951,20 @@
 								onfocus={() => (focusedStopId = card.stopId)}
 							>
 								<ExperienceSnapshot label={card.label} viewId={card.viewId} number={card.number} ratio="stop" />
-								<span class="stop-name">{card.label}</span>
-								<span class="stop-meta">
-									{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
-									{#if card.again}<em>again</em>{/if}
-									{#if card.again}<span aria-hidden="true"> · </span>{/if}
-									<span>{card.viewCount} {card.viewCount === 1 ? 'view' : 'views'}</span>
-									{#if stopTimes.get(card.stopId) !== undefined}
-										<span aria-hidden="true"> · </span>
-										<span class="stop-time" data-stop-time>{formatGuideTime(stopTimes.get(card.stopId)!.endSeconds - stopTimes.get(card.stopId)!.startSeconds)}</span>
-									{/if}
+								<span class="stop-text">
+									<span class="stop-name" title={card.label}>{card.label}</span>
+									<span class="stop-meta">
+										{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
+										{#if card.again}<em>again</em><span aria-hidden="true"> · </span>{/if}
+										{#if stopTimes.get(card.stopId) !== undefined}
+											<span class="stop-time" data-stop-time>{formatGuideTime(stopTimes.get(card.stopId)!.endSeconds - stopTimes.get(card.stopId)!.startSeconds)}</span>
+										{:else}
+											<span>{card.viewCount} {card.viewCount === 1 ? 'view' : 'views'}</span>
+										{/if}
+									</span>
 								</span>
+								<!-- Review round 3 (sheet §25): each Stop card carries its own part of the timeline. -->
+								<span class="stop-progress" aria-hidden="true"><i style:width="{stopProgress(card.stopId)}%"></i></span>
 							</button>
 							<span class="slot" class:adjacent={card.connector?.shape === 'adjacent'}>
 								{#if card.connector !== null}
@@ -1029,6 +1015,10 @@
 							<span class="caret" style:left="{caretPx}px" aria-hidden="true"></span>
 						{/if}
 					</div>
+				</div>
+				{#if more.right}
+					<button type="button" class="more-arrow right" aria-label="Later Stops" title="Later Stops" onclick={() => pageCards(1)}><span aria-hidden="true">›</span></button>
+				{/if}
 				</div>
 			{/if}
 
@@ -1304,34 +1294,76 @@
 	}
 
 	/* ---- Stop cards and connectors ---- */
+	/* Review round 3 (sheet §25): no visible scrollbar; trackpad, touch and wheel still
+	   scroll, and arrows over a fade appear only on a side that has more Stops. */
+	.cards-wrap {
+		position: relative;
+		min-width: 0;
+	}
 	.cards {
 		overflow-x: auto;
-		padding: 8px 0 4px;
-		scrollbar-width: thin;
-		scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+		overflow-y: hidden;
+		padding: 8px 0 6px;
+		scrollbar-width: none;
+		overscroll-behavior-x: contain;
 	}
-	.cards::-webkit-scrollbar { height: 6px; }
-	.cards::-webkit-scrollbar-track { background: transparent; }
-	.cards::-webkit-scrollbar-thumb {
-		border-radius: 6px;
-		background: rgb(255 255 255 / 0.22);
+	.cards::-webkit-scrollbar { display: none; }
+	.more-arrow {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		z-index: 3;
+		display: flex;
+		align-items: center;
+		width: 56px;
+		padding: 0 6px;
+		border: 0;
+		color: #fff;
+		cursor: pointer;
 	}
-	.cards::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.38); }
+	.more-arrow.left {
+		left: 0;
+		justify-content: flex-start;
+		background: linear-gradient(90deg, rgb(17 41 31) 35%, rgb(17 41 31 / 0));
+	}
+	.more-arrow.right {
+		right: 0;
+		justify-content: flex-end;
+		background: linear-gradient(270deg, rgb(17 41 31) 35%, rgb(17 41 31 / 0));
+	}
+	.more-arrow span {
+		display: grid;
+		place-items: center;
+		width: 26px;
+		height: 26px;
+		border: 1px solid #3c5e4f;
+		border-radius: 50%;
+		background: #1a3a2d;
+		font-size: 15px;
+		line-height: 1;
+	}
+	.more-arrow:hover span { background: #25483a; }
 	.row {
 		position: relative;
 		display: flex;
 		align-items: stretch;
+		/* Border-box: the padding sits inside the 100 %, so one Stop never overflows the strip. */
+		box-sizing: border-box;
 		width: max-content;
 		min-width: 100%;
 		padding: 0 12px;
 	}
+	/* Review round 3 (sheet §25): a wide row card, the picture beside the title and time. */
 	.stop-card {
+		position: relative;
 		flex: none;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		width: 118px;
-		padding: 5px;
+		display: grid;
+		grid-template-columns: 62px minmax(0, 1fr);
+		align-items: center;
+		gap: 8px;
+		width: 176px;
+		min-height: 50px;
+		padding: 5px 5px 7px;
 		border: 2px solid transparent;
 		border-radius: 8px;
 		background: #f3f4ef;
@@ -1352,19 +1384,44 @@
 		opacity: 0.92;
 		box-shadow: 0 8px 20px rgb(0 0 0 / 0.35);
 	}
+	.stop-card :global(.snapshot.stop) {
+		width: 62px;
+		height: 40px;
+	}
+	.stop-text {
+		display: grid;
+		gap: 2px;
+		min-width: 0;
+	}
 	.stop-name {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
 		overflow: hidden;
-		font: 12.5px/1.15 var(--shell-serif, Georgia, serif);
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		font: 12.5px/1.2 var(--shell-serif, Georgia, serif);
 	}
 	.stop-meta {
-		min-height: 1.35em;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 		line-height: 1.35;
 		color: var(--shell-ink-3, #79817b);
 		font-size: 10.5px;
+		font-variant-numeric: tabular-nums;
+	}
+	.stop-progress {
+		position: absolute;
+		left: 6px;
+		right: 6px;
+		bottom: 3px;
+		height: 2px;
+		border-radius: 1px;
+		overflow: hidden;
+		pointer-events: none;
+	}
+	.stop-progress i {
+		display: block;
+		height: 100%;
+		background: var(--shell-leaf, #4f8f6c);
 	}
 	.stop-meta em {
 		font-style: italic;
@@ -1490,19 +1547,6 @@
 		align-items: center;
 		gap: 6px;
 		flex: none;
-	}
-	.transport-wrap {
-		position: relative;
-		display: inline-flex;
-	}
-	.transport {
-		min-width: 24px;
-		padding: 0 4px;
-	}
-	.transport-menu {
-		left: 0;
-		bottom: calc(100% + 8px);
-		right: auto;
 	}
 	.tool.on {
 		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 38%, transparent);

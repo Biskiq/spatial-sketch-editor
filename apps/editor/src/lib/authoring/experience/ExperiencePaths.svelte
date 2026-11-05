@@ -56,11 +56,12 @@
 	let edited = $state(false);
 	let hint = $state<readonly [number, number] | null>(null);
 	let hoveredAnchor = $state<string | null>(null);
-	const dragPreview = $derived.by(() => (drag === null ? null : project(drag.preview)));
+	const dragPreview = $derived.by(() => (drag?.moved ? project(drag.preview) : null));
 
 	function project(point: Vec3): readonly [number, number] | null {
 		const projected = projectWorld(point, evaluation, evaluation.token);
-		if (projected.kind !== 'projected' || projected.visibility !== 'visible') return null;
+		// Screen ink: SVG clips at the frame, and depth clipping never hides a path (review round 3).
+		if (projected.kind !== 'projected' || projected.visibility === 'behind') return null;
 		return [
 			Math.round((projected.css[0] - evaluation.rect.left) * 10) / 10,
 			Math.round((projected.css[1] - evaluation.rect.top) * 10) / 10
@@ -72,6 +73,7 @@
 		readonly occurrence: ResolvedPathOccurrence;
 		readonly read: ExperiencePathRead;
 		readonly runs: readonly (readonly (readonly [number, number])[])[];
+		readonly hitRuns: Drawn['runs'];
 		readonly points: readonly {
 			readonly anchorId: string;
 			readonly css: readonly [number, number];
@@ -104,6 +106,22 @@
 		return out;
 	}
 
+	function projectRuns(samples: ExperiencePathRead['samples']): Drawn['runs'] {
+		const runs: (readonly [number, number])[][] = [];
+		let run: [number, number][] = [];
+		for (const sample of samples) {
+			const point = project(sample);
+			if (point === null) {
+				if (run.length > 1) runs.push(run);
+				run = [];
+				continue;
+			}
+			run.push([point[0], point[1]]);
+		}
+		if (run.length > 1) runs.push(run);
+		return runs;
+	}
+
 	/** Paths of the open Guide's Travel moves, plus the one selected path. */
 	const drawn = $derived.by((): readonly Drawn[] => {
 		const current = controller?.current ?? null;
@@ -116,18 +134,12 @@
 			const key = occurrenceKey(occurrence.occurrence);
 			const read = key === selectedKey ? selected : (controller?.pathFor?.(occurrence.occurrence) ?? null);
 			if (read === null || read.state !== 'ready') continue;
-			const runs: (readonly [number, number])[][] = [];
-			let run: [number, number][] = [];
-			for (const sample of read.samples) {
-				const point = project(sample);
-				if (point === null) {
-					if (run.length > 1) runs.push(run);
-					run = [];
-					continue;
-				}
-				run.push([point[0], point[1]]);
-			}
-			if (run.length > 1) runs.push(run);
+			// A second occurrence of the same connection would leave its old curve behind.
+			if (drag?.moved && key !== drag.readKey && read.connectionId === drag.connectionId) continue;
+			const hitRuns = projectRuns(read.samples);
+			const active = drag?.moved && drag.readKey === key ? drag : null;
+			const samples = active === null ? null : controller?.previewPathDrag(active.anchorId, active.preview, active.origin);
+			const runs = samples == null ? hitRuns : projectRuns(samples);
 			const points = read.anchors
 				.map((anchor) => {
 					const css = project(anchor.position);
@@ -143,6 +155,7 @@
 				occurrence,
 				read,
 				runs,
+				hitRuns,
 				points,
 				state,
 				chevrons: chevronsAlong(runs)
@@ -368,7 +381,7 @@
 </script>
 
 {#if guideOpen}
-<g class="experience-paths" data-experience-paths>
+<g class="experience-paths" class:dragging={drag?.moved} data-experience-paths>
 	{#each drawn as path (path.key)}
 		{#each path.runs as run, index (index)}
 			<polyline class="ribbon {path.state}" points={run.map((point) => `${point[0]},${point[1]}`).join(' ')} />
@@ -377,6 +390,9 @@
 				points={run.map((point) => `${point[0]},${point[1]}`).join(' ')}
 				data-path={path.read.connectionId}
 			/>
+		{/each}
+		<!-- Keep the captured hit element mounted if the draft curve clips or changes runs. -->
+		{#each path.hitRuns as run, index (index)}
 			<polyline
 				class="route-hit"
 				class:edit={isPathEditTarget(path.read, selected)}
@@ -417,9 +433,10 @@
 		{#each path.points as point (point.anchorId)}
 			<circle
 				class="anchor"
+				class:preview={drag?.readKey === path.key && drag.anchorId === point.anchorId && dragPreview !== null}
 				class:selected={isPathEditTarget(path.read, selected) && controller?.selectedAnchorId === point.anchorId}
-				cx={point.css[0]}
-				cy={point.css[1]}
+				cx={drag?.readKey === path.key && drag.anchorId === point.anchorId && dragPreview !== null ? dragPreview[0] : point.css[0]}
+				cy={drag?.readKey === path.key && drag.anchorId === point.anchorId && dragPreview !== null ? dragPreview[1] : point.css[1]}
 				r={isPathEditTarget(path.read, selected) &&
 					(hoveredAnchor === point.anchorId || controller?.selectedAnchorId === point.anchorId) ? 6 : 3}
 				data-path-anchor={point.anchorId}
@@ -474,8 +491,8 @@
 			<text x="8" y="16">Drag to bend · double-click to add a point</text>
 		</g>
 	{/if}
-	{#if dragPreview !== null}
-		<circle class="anchor selected preview" cx={dragPreview[0]} cy={dragPreview[1]} r="3.4" />
+	{#if dragPreview !== null && drag?.anchorId === null}
+		<circle class="anchor selected preview" cx={dragPreview[0]} cy={dragPreview[1]} r="6" />
 	{/if}
 	{#each cuts as cut (cut.key)}
 		<line class="cut" class:faint={relatedPaths !== undefined && !relatedPaths.has(cut.key)} x1={cut.a[0]} y1={cut.a[1]} x2={cut.b[0]} y2={cut.b[1]}><title>Cut</title></line>
@@ -568,7 +585,10 @@
 	.anchor-hit {
 		fill: transparent;
 		pointer-events: auto;
-		cursor: var(--cursor-move, move);
+		cursor: var(--cursor-select, default);
+	}
+	.dragging :is(.anchor-hit, .route-hit.edit) {
+		cursor: var(--cursor-grabbing, grabbing);
 	}
 	.preview {
 		pointer-events: none;

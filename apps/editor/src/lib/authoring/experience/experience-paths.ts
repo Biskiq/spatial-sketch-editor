@@ -198,6 +198,30 @@ export function pathMotionFor(
 	return value;
 }
 
+/** Evaluate a temporary anchor edit through the same Camera route and motion. */
+export function previewPathSamples(
+	connectionId: string,
+	direction: 'forward' | 'reverse',
+	graph: CameraGraph,
+	anchors: readonly SceneConnection['positionPath']['anchors'][number][]
+): Vec3[] | null {
+	const connection = graph.connections.find((entry) => entry.id === connectionId);
+	if (connection === undefined) return null;
+	const from = connection.positionPath.anchors[0];
+	const to = connection.positionPath.anchors.at(-1);
+	if (from === undefined || to === undefined) return null;
+	const candidate = {
+		...connection,
+		positionPath: { ...connection.positionPath, anchors: [from, ...anchors, to] }
+	};
+	const draft = {
+		...graph,
+		connections: graph.connections.map((entry) => entry.id === candidate.id ? candidate : entry)
+	};
+	const route = getCameraConnectionRoute(candidate.id, direction, draft);
+	return pathSamples(createCameraMotion(route, undefined, getCameraMotionOptions(candidate, direction)));
+}
+
 function connectionDirection(
 	connection: SceneConnection,
 	fromViewId: string,

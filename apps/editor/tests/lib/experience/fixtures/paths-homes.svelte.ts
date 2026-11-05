@@ -111,6 +111,7 @@ export function createPathsHomes(initial: ExperiencePathRead) {
 			return selectedAnchorId;
 		},
 		pathFor: () => selectedPath,
+		previewPathDrag: (_anchorId: string | null, point: Vec3) => [PATH_SAMPLES[0]!, point, PATH_SAMPLES.at(-1)!],
 		addPathAnchor,
 		movePathAnchor,
 		selectAnchor

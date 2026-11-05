@@ -23,6 +23,7 @@ import {
 	nextLayoutPresetObjectId,
 	planCreateWallFirstOpening,
 	planWallChain,
+	setWorkObserver,
 	type LayoutDocumentWallFirst,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
@@ -661,17 +662,16 @@ describe('Layout scalar Stage grips',()=>{
   else {for(const key of '0')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});}
   expect(facade.snapshot().canonicalJson).toBe(before);expect(host.history()).toMatchObject({depth:1,position:0});expect(facade.session.gesture()).toBeNull();facade.dispose();
  });
- it('edits Opening height with its sill and canonical host unchanged',async()=>{
-  const {facade,host,openingId}=await mount();const snapshot=facade.snapshot();
+	it('keeps Opening height in the Card and exposes the 3D top-edge cursor only',async()=>{
+	  const {facade,services,openingId}=await mount();const snapshot=facade.snapshot();
   const reference={version:1 as const,domain:'layout' as const,subject:{kind:'opening' as const,id:openingId},revision:{kind:'exact' as const,contentRevision:snapshot.domain.unitRevisions.layout},instancePath:[],location:{kind:'layout-location' as const,levelId:snapshot.domain.layoutLevelId,structureInstancePath:[]},componentId:null,capabilityId:null};
-  facade.setSelection({ordered:[{reference}],primary:reference});
-  const original=stageEnvelope(snapshot).units.layout.data.openings.find(o=>o.id===openingId)!;
-  const mark=facade.marks().find(m=>m.id==='layout-opening-height')!;expect(mark).toBeDefined();const evaluationId=facade.evaluationId()!;
-  expect(facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId}).claimed).toBe(true);
-  for(const key of '1.4')facade.gestureKeyIntent({kind:'type',key});facade.gestureKeyIntent({kind:'finish'});
-  await expect.poll(()=>host.history().position).toBe(1);
-  const accepted=stageEnvelope(facade.snapshot()).units.layout.data.openings.find(o=>o.id===openingId)!;
-  expect(accepted).toMatchObject({...original,height:1.4});facade.dispose();
+	  const representation: PlanSourceRef={sourceId:openingId,sourceKind:'opening',generationId:snapshot.compileGeneration,stream:'projected',subRef:null};
+	  facade.setSelection({ordered:[{reference,representation}],primary:reference});
+	  const marks=facade.marks();
+	  expect(marks.find(m=>m.id==='layout-opening-height')).toBeUndefined();
+	  expect(marks.find(m=>m.id==='layout-opening-height-top')).toMatchObject({hidden:true,resizeCursor:'opening-edge',planner:'layout-opening-resize'});
+	  expect(createCardFieldsInstrument(services)!.fields().some(field=>field.id==='height')).toBe(true);
+	  facade.dispose();
  });
 });
 
@@ -721,10 +721,23 @@ describe('Layout Room move', () => {
 		const evaluationId = facade.evaluationId()!;
 		const to: [number, number] = [mark.anchor[0] + 80, mark.anchor[1] + 40];
 		expect(facade.pointerIntent({ phase: 'down', handleId: mark.id, css: mark.anchor, evaluationId }).claimed).toBe(true);
-		facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		const preview = facade.candidatePreviews().find((entry) => entry.id === 'layout-room-move-candidate');
-		expect(preview).toMatchObject({ role: 'subject' });
-		expect(preview!.segments.length).toBeGreaterThan(0);
+		const spans: string[] = [];
+		const observer = setWorkObserver({ span: (name) => spans.push(name), count: () => {} });
+		try {
+			const previewId = 'layout-room-move-candidate';
+			facade.pointerIntent({ phase: 'move', css: [mark.anchor[0] + 35, mark.anchor[1] + 15], evaluationId });
+			const first = facade.candidatePreviews().find((entry) => entry.id === previewId);
+			expect(first?.role).toBe('subject');
+
+			facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+			const next = facade.candidatePreviews().find((entry) => entry.id === previewId);
+			expect(next?.role).toBe('subject');
+			expect(next?.segments).toHaveLength(4);
+			expect(next?.segments).not.toEqual(first?.segments);
+		} finally {
+			setWorkObserver(observer);
+		}
+		expect(spans.filter((name) => name.includes('compile') || name.includes('sampling'))).toEqual([]);
 		expect(facade.snapshot().canonicalJson).toBe(before);
 
 		facade.pointerIntent({ phase: 'up', css: to, evaluationId });

@@ -5,7 +5,7 @@
  * authored lens still. The route commits either result as one View update.
  */
 import { describe, expect, it } from 'vitest';
-import { aimViewAtPoint, moveViewOnFloor, turnViewAboutEye, viewEditMoved, type AuthoredViewPose } from '$lib/authoring/experience/experience-view-edit';
+import { aimViewAtPoint, frameView, moveViewOnFloor, planLensFromDrag, snapViewDrag, turnViewAboutEye, viewEditMoved, viewTilt, type AuthoredViewPose } from '$lib/authoring/experience/experience-view-edit';
 
 describe('R217.S28 — marker Move and aim', () => {
 	it('moves the eye on the Floor and carries the aim by the same horizontal delta', () => {
@@ -51,5 +51,50 @@ describe('R217.S28 — marker Move and aim', () => {
 		expect(viewEditMoved('move', start, moved)).toBe(true);
 		expect(viewEditMoved('move', start, start)).toBe(false);
 		expect(viewEditMoved('turn', start, aimViewAtPoint(start, start.target))).toBe(false);
+	});
+});
+
+
+describe('Advanced View framing', () => {
+	const start: AuthoredViewPose = { eye: [1, 4.5, 2], target: [2, 4, -1], fov: 42 };
+
+	it('lifts against the project datum and keeps the full aim offset', () => {
+		const lifted = frameView(start, { kind: 'lift', value: 2.5 }, 3);
+		expect(lifted).toEqual({ eye: [1, 5.5, 2], target: [2, 5, -1], fov: 42 });
+		expect(viewEditMoved('lift', start, lifted)).toBe(true);
+		expect(viewEditMoved('tilt', start, start)).toBe(false);
+	});
+
+	it('tilts around a fixed eye without changing yaw, focal distance or lens', () => {
+		const tilted = frameView(start, { kind: 'tilt', value: 20 }, 3);
+		expect(tilted.eye).toEqual(start.eye);
+		expect(tilted.fov).toBe(start.fov);
+		expect(viewTilt(tilted)).toBeCloseTo(20);
+		expect(Math.hypot(...tilted.target.map((value, i) => value - tilted.eye[i]!))).toBeCloseTo(Math.hypot(1, 0.5, 3));
+		expect((tilted.target[0] - 1) / (tilted.target[2] - 2)).toBeCloseTo(-1 / 3);
+		expect(frameView(start, { kind: 'tilt', value: viewTilt(start) }, 3)).toBe(start);
+		expect(viewTilt(frameView(start, { kind: 'tilt', value: 0 }, 3))).toBe(0);
+	});
+
+	it('changes just the lens, with a stable Plan grab and the Camera FOV limits', () => {
+		expect(planLensFromDrag(42, 1, 1, -1)).toBe(42);
+		expect(planLensFromDrag(42, Math.PI - 0.1, -Math.PI + 0.1, 1)).toBeCloseTo(42 + 0.4 * 180 / Math.PI);
+		const changed = frameView(start, { kind: 'lens', value: 180 }, 3);
+		expect(changed).toEqual({ ...start, fov: 120 });
+		expect(viewEditMoved('lens', start, changed)).toBe(true);
+	});
+
+	it('uses preset detents and gives Alt precedence over Shift', () => {
+		const free = { altKey: true, shiftKey: true };
+		const shift = { altKey: false, shiftKey: true };
+		const plain = { altKey: false, shiftKey: false };
+		expect(snapViewDrag('lift', 1.19, plain)).toBe(1.15);
+		expect(snapViewDrag('lift', 1.23, plain)).toBe(1.23);
+		expect(snapViewDrag('lens', 29, plain)).toBeCloseTo(26.99, 2);
+		expect(snapViewDrag('tilt', -2, plain)).toBe(0);
+		expect(snapViewDrag('tilt', 7, shift)).toBe(5);
+		expect(snapViewDrag('move', 0.4, shift)).toBe(0.5);
+		expect(snapViewDrag('turn', 8, shift)).toBe(15);
+		expect(snapViewDrag('turn', 8, free)).toBe(8);
 	});
 });

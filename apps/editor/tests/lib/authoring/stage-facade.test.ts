@@ -65,7 +65,7 @@ async function enclosureProject(points: readonly LayoutVec2[], id: string = PROJ
 }
 
 /** The enclosure with one door opening, so its first Wall has two solid spans. */
-async function enclosureWithDoor(): Promise<ProjectEnvelope> {
+async function enclosureWithDoor(profile: 'rectangular' | 'rounded' | 'pointed' = 'rectangular'): Promise<ProjectEnvelope> {
 	const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
 	const baseLayout = base.units.layout.data;
 	const wallId = baseLayout.walls[0]!.id;
@@ -74,6 +74,7 @@ async function enclosureWithDoor(): Promise<ProjectEnvelope> {
 		{
 			wallId,
 			kind: 'door',
+			profile,
 			offset: 0.5,
 			width: 1,
 			height: 2.1,
@@ -1146,7 +1147,7 @@ describe('S03 facade dispatch to the Layout provider', () => {
 			}
 			const evaluation = facade.evaluation()!;
 			const id = facade.evaluationId()!;
-			const context = { snapshot, evaluation, evaluationId: id } as StageAdapterContext;
+			const context = { snapshot, evaluation, pickScene: () => null };
 			for (let x = 0; x < 20; x++) for (let y = 0; y < 20; y++) {
 				const css = [(x + 0.5) * RECT.width / 20, (y + 0.5) * RECT.height / 20] as const;
 				const previous = facade.resolveSourceHit({ css, evaluationId: id });
@@ -1189,34 +1190,40 @@ describe('S03 Layout host-tool picks', () => {
 });
 
 describe('S03 Layout priority at a hosted Opening', () => {
-	it('keeps the host Wall first in 3D and its Opening first in Plan at overlapping picks', async () => {
-		const document = await enclosureWithDoor();
-		const { facade } = await mount(document);
-		const hostWallId = document.units.layout.data.walls[0]!.id;
-		const openingId = document.units.layout.data.openings[0]!.id;
-		facade.acquireInspection('exclusive');
-		for (const reading of ['3d', 'plan'] as const) {
-			facade.camera.applyIntent({ kind: 'set-reading', reading }, 1);
-			facade.camera.evaluate(RECT, 3);
-			const id = facade.evaluationId()!;
-			const openings = facade.eligibleFragments().filter((fragment) => fragment.ref.sourceKind === 'opening');
-			expect(openings.length).toBeGreaterThan(0);
-			const expectedId = reading === '3d' ? hostWallId : openingId;
-			const expectedKind = reading === '3d' ? 'wall' : 'opening';
-			let overlap = false;
-			for (const opening of openings) {
-				const geometry = opening.geometry;
-				const points = geometry.kind === 'span' ? [geometry.start, geometry.end] : geometry.kind === 'polyline' ? geometry.polyline : geometry.polygon;
-				for (const point of points) {
-					const css = facade.projectWorld([point[0], opening.elevationMeters, point[1]], id);
-					if (css.kind !== 'projected') continue;
-					const result = facade.resolveSourceHit({ evaluationId: id, css: css.css });
-					if (result.kind === 'resolved' && result.hit.sourceKind === expectedKind && result.hit.sourceId === expectedId) overlap = true;
+	it.each(['rectangular', 'rounded', 'pointed'] as const)(
+		'selects the %s Opening in Plan and through its aperture in 3D',
+		async (profile) => {
+			const document = await enclosureWithDoor(profile);
+			const { facade, snapshot } = await mount(document);
+			const opening = snapshot.domain.geometry.walls.flatMap((wall) => wall.openings)[0]!;
+			facade.acquireInspection('exclusive');
+			for (const reading of ['3d', 'plan'] as const) {
+				facade.camera.applyIntent({ kind: 'set-reading', reading }, 1);
+				facade.camera.evaluate(RECT, 3);
+				const id = facade.evaluationId()!;
+				const fragment = facade.eligibleFragments().find((entry) => entry.ref.sourceId === opening.openingId)!;
+				const css = facade.projectWorld([
+					opening.center.point[0],
+					reading === '3d' ? 1 : fragment.elevationMeters,
+					opening.center.point[1]
+				], id);
+				expect(css.kind).toBe('projected');
+				if (css.kind !== 'projected') return;
+				expect(facade.resolveSourceHit({ evaluationId: id, css: css.css })).toMatchObject({
+					kind: 'resolved', hit: { sourceKind: 'opening', sourceId: opening.openingId }
+				});
+				if (reading === '3d') {
+					const provider = createPlanPickProvider(() => facade.plan());
+					const context: Pick<StageAdapterContext, 'snapshot' | 'evaluation' | 'pickScene'> = {
+						snapshot, evaluation: facade.evaluation()!,
+						pickScene: () => ({ kind: 'layout', entityId: null, distanceMeters: 0, worldPoint: [0, 0, 0] })
+					};
+					expect(provider({ evaluationId: id, css: css.css, purpose: 'select', tool: null }, context)
+						?.hit.sourceKind).not.toBe('opening');
 				}
 			}
-			expect(overlap, `${reading} overlap`).toBe(true);
 		}
-	});
+	);
 });
 
 describe('R217.S06 — the Height Sheet drives the Plan cut', () => {

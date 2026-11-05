@@ -366,8 +366,25 @@
 
 {#if controller !== null && stop !== null}
 	<div class="writer" data-experience-writer="stop">
+		<!-- Review round 3: the Stop's ‹ › steppers sit beside what it visits, not on a row of their own. -->
+		<div class="visits-row">
+		<button
+			type="button"
+			class="visits"
+			title="Open the Presentation"
+			onclick={() => homes.select({ kind: 'presentation', presentationId: stop.presentationId })}
+		>
+			<span class="visits-thumb">
+				<ExperienceSnapshot label={entryName} ratio="stop" />
+				{#if position > 0}<span class="num lg">{position}</span>{/if}
+			</span>
+			<span class="visits-txt">
+				<small>{again ? 'Visits again' : 'Visits'}</small>
+				<b>{controller.presentationLabel(stop.presentationId)}</b>
+				<span class="open">Open Presentation <ShellIcon name="chevronRight" size={11} /></span>
+			</span>
+		</button>
 		<section class="stop-nav" aria-label="Guide position">
-			{#if position === 0}<span class="where">Not in the open Guide</span>{/if}
 			<span class="step">
 				<button
 					type="button"
@@ -395,23 +412,8 @@
 				</button>
 			</span>
 		</section>
-
-		<button
-			type="button"
-			class="visits"
-			title="Open the Presentation"
-			onclick={() => homes.select({ kind: 'presentation', presentationId: stop.presentationId })}
-		>
-			<span class="visits-thumb">
-				<ExperienceSnapshot label={entryName} ratio="stop" />
-				{#if position > 0}<span class="num lg">{position}</span>{/if}
-			</span>
-			<span class="visits-txt">
-				<small>Visits{#if again} again{/if}</small>
-				<b>{controller.presentationLabel(stop.presentationId)}</b>
-				<span class="open">Open Presentation <ShellIcon name="chevronRight" size={11} /></span>
-			</span>
-		</button>
+		</div>
+		{#if position === 0}<p class="where">Not in the open Guide</p>{/if}
 
 		<section class="c-sec" aria-labelledby="stop-views-title">
 			<div class="c-sec-head">
@@ -472,12 +474,12 @@
 												>+ Path</button>
 											{/if}
 										{/if}
-										<button type="button" class="step-preview" title="Preview this step"
+										<button type="button" class="step-preview" title="Preview this step" aria-label={`Preview the step to ${label}`}
 											disabled={transportGuideId === null || stop === null}
 											onclick={(event) => {
 												event.stopPropagation();
 												if (transportGuideId !== null && stop !== null) homes.playGuide(transportGuideId, { kind: 'move', occurrence: { kind: 'step', stopId: stop.id, toViewId: shot.viewId } });
-											}}>Preview</button>
+											}}><ShellIcon name="play" size={9} /></button>
 									</span>
 								{/if}
 								<span class="shot-meta">
@@ -498,6 +500,7 @@
 								</span>
 							</span>
 						</span>
+						<span class="shot-acts">
 						<button type="button" class="icon-btn shot-look" title="Look through this View"
 							aria-label={`Look through ${label}`}
 							onclick={(event) => { event.stopPropagation(); homes.lookThrough(shot.viewId); }}>
@@ -509,6 +512,7 @@
 							<ShellIcon name="close" size={11} />
 							{#if leaveReason}<span class="sr-only">{leaveReason}</span>{/if}
 						</button>
+						</span>
 					</li>
 				{/each}
 			</ol>
@@ -697,12 +701,25 @@
 		background: var(--shell-leaf-tint, #e7f1ea);
 	}
 
-	/* Stop navigation: previous / next with the place in the Guide. */
+	/* Stop navigation: previous / next, stacked beside the Visits block (review round 3). */
+	.visits-row {
+		display: flex;
+		align-items: stretch;
+		gap: 4px;
+		margin: 8px 12px 0;
+	}
+	.visits-row .visits {
+		flex: 1;
+		min-width: 0;
+		margin: 0;
+	}
 	.stop-nav {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		padding: 8px 12px 0;
+	}
+	.stop-nav .step {
+		flex-direction: column;
+		margin: 0;
 	}
 	.step-kind {
 		display: inline-flex;
@@ -737,6 +754,7 @@
 		margin-left: auto;
 	}
 	.where {
+		margin: 4px 12px 0;
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -822,6 +840,8 @@
 		color: var(--shell-forest-raised, #22503c);
 		font-size: 11.5px;
 		font-weight: 600;
+		/* One line even when the Card's scrollbar narrows the row beside the steppers. */
+		white-space: nowrap;
 	}
 
 	/* Sections */
@@ -892,13 +912,16 @@
 		padding: 0;
 		list-style: none;
 	}
+	/* Review round 3: a View row is a grid. The name gets the whole first line; the
+	   step and the hold sit under it; eye and × stack at the right edge. */
 	.shot {
 		position: relative;
-		display: flex;
+		display: grid;
+		grid-template-columns: 12px 14px 52px minmax(0, 1fr) auto;
 		align-items: center;
-		gap: 6px;
+		column-gap: 6px;
 		min-height: 42px;
-		padding: 4px 4px 4px 2px;
+		padding: 5px 4px 5px 2px;
 		border: 1px solid var(--shell-hairline, #e1e4de);
 		border-radius: 8px;
 		background: var(--shell-card, #fff);
@@ -913,7 +936,7 @@
 		color: var(--shell-ink-3, #79817b);
 	}
 	.grip[draggable="true"] {
-		cursor: grab;
+		cursor: default;
 	}
 	.shot-n {
 		flex: none;
@@ -952,17 +975,34 @@
 	.shot.drop-after::after { bottom: -3px; }
 	.shot-main {
 		display: flex;
-		flex: 1;
 		flex-direction: column;
-		gap: 2px;
+		gap: 3px;
 		min-width: 0;
 	}
 	.shot-name {
 		display: flex;
-		flex: 1;
 		align-items: center;
 		gap: 4px;
 		min-width: 0;
+	}
+	.shot-name .name-btn {
+		flex: 0 1 auto;
+	}
+	.shot-acts {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0;
+	}
+	.step-kind {
+		flex-wrap: wrap;
+		row-gap: 3px;
+	}
+	.step-preview {
+		display: inline-grid;
+		place-items: center;
+		width: 20px;
+		padding: 0;
 	}
 	.shot-meta {
 		display: flex;
@@ -989,15 +1029,16 @@
 		text-decoration: underline;
 		text-decoration-color: var(--shell-hairline-strong, #cdd2ca);
 	}
+	/* The entry tag reads like the Guide's *Start* tag: small, outlined, not a slab. */
 	.tag {
 		flex: none;
-		padding: 1px 5px;
-		border-radius: 4px;
-		background: var(--shell-forest, #11291f);
-		color: #fff;
-		font: 700 10px var(--shell-mono, ui-monospace, monospace);
-		letter-spacing: 0.05em;
-		text-transform: uppercase;
+		padding: 0 4px;
+		border: 1px solid currentColor;
+		border-radius: 3px;
+		color: var(--shell-forest-raised, #22503c);
+		font: 500 10px/1.4 var(--shell-mono, ui-monospace, monospace);
+		font-style: normal;
+		letter-spacing: 0.02em;
 	}
 	.stepper {
 		display: inline-flex;
@@ -1035,6 +1076,7 @@
 	}
 	.shot-x:not(:disabled):is(:hover, :focus-visible) { opacity: 1; }
 	.shot.is-out {
+		grid-template-columns: 46px minmax(0, 1fr) auto;
 		padding-left: 6px;
 		border-style: dashed;
 		background: transparent;

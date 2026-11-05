@@ -20,7 +20,6 @@
 	 * backtracks, Escape cancels (the host owns those keys on the Stage).
 	 */
 	import { untrack, type Component } from 'svelte';
-	import { WALL_OPENING_DEFAULTS } from '@portfolio/layout-core';
 	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { parseMeasureInput, parsePlacementXZ } from './precision';
@@ -112,11 +111,6 @@
 		inkSurface()?.controller.setReading(id);
 	}
 
-	function chooseOpeningKind(kind: 'door' | 'window'): void {
-		if (snapshot.opening?.kind === kind) return;
-		inkSurface()?.controller.setOpeningOptions({ kind, ...WALL_OPENING_DEFAULTS[kind] });
-	}
-
 	function chooseWallMode(mode: 'line' | 'box'): void {
 		// A Box has no typed point, so an open point disclosure does not carry over.
 		if (mode === 'box' && disclosed === 'point') disclosed = null;
@@ -189,22 +183,22 @@
 >
 	{#if disclosed === 'pens'}
 		<div class="panel" aria-label="Ink settings">
-			<button
-				type="button"
-				data-ink-reading-opening
-				onclick={() => {
-					chooseReading('opening');
-					disclosed = 'options';
-				}}>Opening…</button
-			>
+			{#if snapshot.reading !== 'opening'}<button
+					type="button"
+					data-ink-reading-opening
+					onclick={() => {
+						chooseReading('opening');
+						disclosed = 'options';
+					}}>Opening…</button
+				>{/if}
 			{#if snapshot.reading !== 'wall'}<button
 					type="button"
 					data-ink-reading-wall
 					onclick={() => chooseReading('wall')}>Wall</button
 				>{/if}
-			<button type="button" data-ink-options-toggle onclick={() => toggle('options')}
+			{#if snapshot.reading === 'wall'}<button type="button" data-ink-options-toggle onclick={() => toggle('options')}
 				>Wall options…</button
-			>
+			>{/if}
 			{#if snapshot.reading === 'wall' && snapshot.wallMode === 'line'}<button
 					type="button"
 					data-ink-point-toggle
@@ -343,29 +337,6 @@
 				aria-label="Sketch unavailable"
 				aria-disabled="true"
 				title="Sketch is not available yet"><ShellIcon name="sketch" size={16} /></button
-			>
-		{:else if snapshot.reading === 'opening'}
-			{#each ['door', 'window'] as const as kind}<button
-					type="button"
-					class="key"
-					aria-label={kind === 'door' ? 'Door' : 'Window'}
-					aria-pressed={snapshot.opening?.kind === kind}
-					onclick={() => chooseOpeningKind(kind)}
-					><ShellIcon name={kind === 'door' ? 'opening' : 'box'} size={16} /></button
-				>{/each}
-			<button
-				type="button"
-				class="key"
-				aria-label="Opening options"
-				data-ink-options-toggle
-				aria-expanded={disclosed === 'options'}
-				onclick={() => toggle('options')}><ShellIcon name="opening" size={16} /></button
-			>
-			<button
-				type="button"
-				class="key"
-				aria-label="Return to Wall"
-				onclick={() => chooseReading('wall')}><ShellIcon name="wall" size={16} /></button
 			>
 		{/if}
 	</div>

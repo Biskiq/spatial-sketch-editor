@@ -21,6 +21,8 @@ Historical records and governing visual references remain unchanged.
 - [Owner review pass 1](./review-pass-1-plan.md): separate follow-up plan, accepted owner decisions and acceptance record. Implementation and non-browser functional verification are delivered; visual acceptance remains pending.
 - [Owner review pass 2](./review-pass-2-plan.md): second review plan (drawing ink, dashed ghosts, refusal, Card More/`•••`, rename, sticker gizmos, two-knob height stem, chip scale, gear Room labels and per-view Paper) with its [interaction sheet](./review-pass-2-interaction-sheet.html), which becomes the World visual-language authority once settled. Planned; awaiting owner release.
 
+Opening follow-up for PR #270: [design and implementation boundary](./opening-design-review.md), with interactive section 9 in the existing sheet. Proposal only; awaiting owner review before production expansion.
+
 ## Review basis
 
 The review used the [live Round 2 sources](../../../../prototypes/production-shell-wireframe/README.md),

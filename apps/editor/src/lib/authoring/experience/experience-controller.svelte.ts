@@ -62,6 +62,7 @@ import { travelGapMessagesByStop } from './travel-gap';
 import {
 	experiencePathOccurrences,
 	readExperiencePath,
+	previewPathSamples,
 	resolvePathAnchorInsertion,
 	resolvePathOccurrence,
 	type ExperiencePathOccurrence,
@@ -226,6 +227,7 @@ export type ExperienceController = {
 	selectAnchor(anchorId: string | null): void;
 	/** Add the one Camera path a Travel needs (E11); never for a Cut. */
 	createPath(occurrence: ExperiencePathOccurrence): Promise<boolean>;
+	previewPathDrag(anchorId: string | null, point: readonly [number, number, number], origin: readonly [number, number, number]): ExperiencePathRead['samples'] | null;
 	/**
 	 * Insert an interior point at a validated canonical slot in authored order.
 	 * Omitted, the slot is derived from Camera's own directed curve progress.
@@ -1606,6 +1608,49 @@ export function createExperienceController(
 		);
 	}
 
+	function proposedPathAnchors(
+		read: ExperiencePathRead,
+		anchorId: string | null,
+		point: readonly [number, number, number],
+		slot?: number,
+		near?: readonly [number, number, number]
+	): readonly ScenePathAnchor[] | null {
+		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
+		if (connection === undefined || read.direction === null || acceptedGraph === null) return null;
+		const anchors = connection.positionPath.anchors;
+		if (anchorId !== null) {
+			const previous = anchors.find((anchor) => anchor.id === anchorId);
+			if (previous === undefined || previous.position.every((value, index) => value === point[index])) return null;
+			return anchors.map((anchor) => anchor.id === anchorId ? { ...anchor, position: [...point] } : anchor);
+		}
+		const insertion = slot === undefined
+			? resolvePathAnchorInsertion({ connection, direction: read.direction, graph: acceptedGraph, point: [...(near ?? point)] })
+			: Number.isInteger(slot) ? { index: slot, position: point } : null;
+		if (insertion === null || insertion.index < 0 || insertion.index > anchors.length) return null;
+		const anchor: ScenePathAnchor = {
+			id: nextAnchorId(connection.id, anchors.map((entry) => entry.id)),
+			position: [...(near === undefined ? insertion.position : point)]
+		};
+		return [...anchors.slice(0, insertion.index), anchor, ...anchors.slice(insertion.index)];
+	}
+
+	function previewPathDrag(
+		anchorId: string | null,
+		point: readonly [number, number, number],
+		origin: readonly [number, number, number]
+	): ExperiencePathRead['samples'] | null {
+		const read = selectedPath;
+		if (read === null || read.direction === null || acceptedGraph === null) return null;
+		if (read.connectionId === null) return null;
+		try {
+			const anchors = proposedPathAnchors(read, anchorId, point, undefined, origin);
+			return anchors === null ? null : previewPathSamples(read.connectionId, read.direction, acceptedGraph, anchors);
+		} catch {
+			// An intermediate point may fail Camera evaluation. Keep the accepted route visible.
+			return null;
+		}
+	}
+
 	async function addPathAnchor(
 		point: readonly [number, number, number],
 		slot?: number,
@@ -1613,56 +1658,24 @@ export function createExperienceController(
 	): Promise<boolean> {
 		const read = selectedPath;
 		if (read === null || read.connectionId === null || read.direction === null) return false;
-		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		if (connection === undefined) return false;
-		const origin = near ?? point;
-		const insertion =
-			slot === undefined
-				? resolvePathAnchorInsertion({
-						connection,
-						direction: read.direction,
-						graph: acceptedGraph,
-						point: [origin[0], origin[1], origin[2]]
-					})
-				: Number.isInteger(slot)
-					? { index: slot, position: [point[0], point[1], point[2]] as const }
-					: null;
-		if (
-			insertion === null ||
-			insertion.index < 0 ||
-			insertion.index > connection.positionPath.anchors.length
-		) {
+		const anchors = proposedPathAnchors(read, null, point, slot, near);
+		if (anchors === null) {
 			say('Insert a point on the selected Camera path.');
 			return false;
 		}
-		const anchor: ScenePathAnchor = {
-			id: nextAnchorId(connection.id, connection.positionPath.anchors.map((entry) => entry.id)),
-			position: near === undefined ? [...insertion.position] : [...point]
-		};
-		const anchors = [...connection.positionPath.anchors];
-		anchors.splice(insertion.index, 0, anchor);
 		const accepted = await writePathAnchors(read, anchors);
-		if (accepted) selectedAnchorId = anchor.id;
+		if (accepted) {
+			const existing = new Set(read.anchors.map((anchor) => anchor.id));
+			selectedAnchorId = anchors.find((anchor) => !existing.has(anchor.id))?.id ?? null;
+		}
 		return accepted;
 	}
 
-	async function movePathAnchor(
-		anchorId: string,
-		point: readonly [number, number, number]
-	): Promise<boolean> {
+	async function movePathAnchor(anchorId: string, point: readonly [number, number, number]): Promise<boolean> {
 		const read = selectedPath;
-		if (read === null || read.connectionId === null) return false;
-		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
-		const previous = connection?.positionPath.anchors.find((entry) => entry.id === anchorId);
-		if (connection === undefined || previous === undefined) return false;
-		const next = [point[0], point[1], point[2]] as const;
-		if (previous.position.every((value, index) => value === next[index])) return false;
-		return writePathAnchors(
-			read,
-			connection.positionPath.anchors.map((entry) =>
-				entry.id === anchorId ? { ...entry, position: [next[0], next[1], next[2]] } : entry
-			)
-		);
+		if (read === null) return false;
+		const anchors = proposedPathAnchors(read, anchorId, point);
+		return anchors !== null && writePathAnchors(read, anchors);
 	}
 
 	async function removePathAnchor(anchorId: string): Promise<boolean> {
@@ -1879,6 +1892,7 @@ export function createExperienceController(
 		selectPath,
 		selectAnchor,
 		createPath,
+		previewPathDrag,
 		addPathAnchor,
 		movePathAnchor,
 		removePathAnchor,

@@ -77,6 +77,12 @@ export type ExperienceMark = {
 	readonly box: StageBox;
 	/** The 3D Detailed camera; null in Plan. */
 	readonly camera: ExperienceCameraGlyph | null;
+	/**
+	 * Review round 3 (sheet §23): in Plan the eye draws the Detailed camera seen from
+	 * above, turned to this screen heading in degrees (eye → target). Null in 3D, or
+	 * when the View looks straight down and has no heading.
+	 */
+	readonly heading?: number | null;
 };
 
 /** A Plan wedge: the View's aim in screen space, from its eye. */
@@ -105,12 +111,19 @@ export const EXPERIENCE_MARK_CAPS = {
 const PLAN_WEDGE_QUIET_PX = 18;
 const PLAN_WEDGE_TOUR_PX = 24;
 const PLAN_WEDGE_SELECTED_PX = 90;
-/** Plan selection brackets: half the eye dot's box. */
-const PLAN_BOX_HALF_PX = 13;
+/** Plan selection brackets: half the Plan camera glyph's box. */
+const PLAN_BOX_HALF_PX = 19;
 /** Vertical offset of the Plan tag below the eye. */
-const PLAN_TAG_DROP_PX = 26;
+const PLAN_TAG_DROP_PX = 33;
+/**
+ * Review round 3 (sheet §23): the Plan camera glyph's lens front, in CSS pixels from
+ * the eye. The wedge starts here, at the lens, not at the camera's centre.
+ */
+export const PLAN_LENS_PX = 17;
+/** The selected Plan camera draws 12 % larger. */
+export const PLAN_SELECTED_SCALE = 1.12;
 /** The 3D wire frustum's far distance, in metres from the lens tip. */
-const CAMERA_FRUSTUM_FAR_METRES = 1.2;
+export const CAMERA_FRUSTUM_FAR_METRES = 1.2;
 /** Unselected Views carry a short wire so many Views stay readable (owner review). */
 const CAMERA_FRUSTUM_QUIET_METRES = 0.42;
 /** The wire frustum's aspect ratio. */
@@ -224,6 +237,7 @@ function buildCameraMesh(): CameraMesh {
 
 /** Built once at module scope; only the per-View transform changes. */
 const CAMERA_MESH = buildCameraMesh();
+export const CAMERA_LENS_OFFSET_METRES = CAMERA_MESH.lensTip[0];
 
 function dot3(a: V3, b: V3): number {
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -291,12 +305,16 @@ function round1(value: number): number {
 /**
  * Projects a project-world point to Stage-local CSS. Points behind a perspective
  * camera never project; `requireVisible` keeps only points inside the frame.
+ *
+ * Review round 3: a mark is screen ink, not scene geometry, so a point the Stage
+ * camera's depth range clips (`clipped`) still marks. In an empty Plan the depth
+ * range hugs the Floor, and every View at eye height was dropped.
  */
 function projectStage(evaluation: ViewportEvaluation, point: V3, requireVisible: boolean): StagePoint | null {
 	const projected = projectWorld(point, evaluation, evaluation.token);
 	if (projected.kind !== 'projected') return null;
 	if (projected.visibility === 'behind') return null;
-	if (requireVisible && projected.visibility !== 'visible') return null;
+	if (requireVisible && projected.visibility === 'outside-frame') return null;
 	// projectWorld is absolute viewport CSS; Stage SVG ink is Stage-local.
 	return [round1(projected.css[0] - evaluation.rect.left), round1(projected.css[1] - evaluation.rect.top)];
 }
@@ -334,7 +352,8 @@ function cameraGlyph(
 	aim: V3,
 	fovDegrees: number,
 	wire: boolean,
-	wireMetres: number = CAMERA_FRUSTUM_FAR_METRES
+	wireMetres: number = CAMERA_FRUSTUM_FAR_METRES,
+	datum = 0
 ): ExperienceCameraGlyph | null {
 	const forward = unit3(sub3(aim, eye)) ?? [0, 0, -1];
 	const reference: V3 = Math.abs(forward[1]) > 0.999 ? [0, 0, 1] : [0, 1, 0];
@@ -387,17 +406,17 @@ function cameraGlyph(
 	const glass = glassVisible ? CAMERA_MESH.glass.ids.map((index) => screen[index]!) : null;
 
 	const eyeCss = projectStage(evaluation, eye, false);
-	const floorWorld: V3 = [eye[0], 0, eye[2]];
+	const floorWorld: V3 = [eye[0], datum, eye[2]];
 	const floorCss = projectStage(evaluation, floorWorld, false);
 	let shadow: ExperienceCameraGlyph['shadow'] = null;
 	if (floorCss !== null) {
-		const offsetX = projectStage(evaluation, [floorWorld[0] + right[0] * CAMERA_SHADOW_RADIUS_METRES, 0, floorWorld[2] + right[2] * CAMERA_SHADOW_RADIUS_METRES], false);
+		const offsetX = projectStage(evaluation, [floorWorld[0] + right[0] * CAMERA_SHADOW_RADIUS_METRES, datum, floorWorld[2] + right[2] * CAMERA_SHADOW_RADIUS_METRES], false);
 		if (offsetX !== null) {
 			const radius = Math.hypot(offsetX[0] - floorCss[0], offsetX[1] - floorCss[1]);
 			shadow = { center: floorCss, rx: radius, ry: radius * 0.55 };
 		}
 	}
-	const showStem = eye[1] > CAMERA_STEM_MIN_METRES && eyeCss !== null && floorCss !== null;
+	const showStem = eye[1] - datum > CAMERA_STEM_MIN_METRES && eyeCss !== null && floorCss !== null;
 
 	let frustum: ExperienceCameraFrustum | null = null;
 	if (wire) {
@@ -445,6 +464,64 @@ function rotate2(direction: readonly [number, number], angle: number): [number, 
 	return [direction[0] * c - direction[1] * s, direction[0] * s + direction[1] * c];
 }
 
+export type PlacementGhostPose = {
+	readonly eye: Vec3;
+	readonly target: Vec3;
+	readonly fovYDegrees: number;
+};
+
+/** The Plan heading in degrees from the eye toward the target, or null with no direction. */
+function planHeading(eye: StagePoint, target: StagePoint): number | null {
+	const dx = target[0] - eye[0];
+	const dy = target[1] - eye[1];
+	return Math.hypot(dx, dy) < 1e-3 ? null : round1((Math.atan2(dy, dx) * 180) / Math.PI);
+}
+
+function planFrustum(
+	viewId: string,
+	state: ExperienceMarkState,
+	eye: StagePoint,
+	target: StagePoint,
+	fov: number,
+	length: number
+): ExperienceFrustum | null {
+	const dx = target[0] - eye[0];
+	const dy = target[1] - eye[1];
+	const span = Math.hypot(dx, dy);
+	if (span < 1e-3) return null;
+	const direction = [dx / span, dy / span] as const;
+	const half = (clampFov(fov) * Math.PI) / 360;
+	const left = rotate2(direction, -half);
+	const right = rotate2(direction, half);
+	// The wedge's apex is the glyph's lens front (sheet §23), not the camera's centre.
+	const lens = PLAN_LENS_PX * (state === 'selected' ? PLAN_SELECTED_SCALE : 1);
+	const apex: StagePoint = [round1(eye[0] + direction[0] * lens), round1(eye[1] + direction[1] * lens)];
+	const point = (along: StagePoint): StagePoint =>
+		[round1(apex[0] + along[0] * length), round1(apex[1] + along[1] * length)];
+	return { viewId, state, eye: apex, left: point(left), right: point(right), tip: point(direction), length };
+}
+
+/** The same View glyph and frustum at the provisional pose, without an authored View or hit target. */
+export function projectPlacementGhost(evaluation: ViewportEvaluation, pose: PlacementGhostPose) {
+	const eye = projectStage(evaluation, pose.eye, true);
+	if (eye === null) return null;
+	if (evaluation.projectionKind !== 'plan-orthographic') {
+		return {
+			eye,
+			camera: cameraGlyph(evaluation, pose.eye, pose.target, pose.fovYDegrees, true, CAMERA_FRUSTUM_FAR_METRES),
+			heading: null,
+			wedge: null
+		};
+	}
+	const target = projectStage(evaluation, pose.target, false);
+	return {
+		eye,
+		camera: null,
+		heading: target === null ? null : planHeading(eye, target),
+		wedge: target === null ? null : planFrustum('placement', 'selected', eye, target, pose.fovYDegrees, PLAN_WEDGE_SELECTED_PX)
+	};
+}
+
 /** One related set drives the marks, travel routes and cut links. */
 export function relatedToSelection(
 	selection: MarkSelection,
@@ -485,8 +562,13 @@ export function relatedToSelection(
 
 /** Only Views presented by the Experience have Stage marks. */
 export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
-	const { experience, views, evaluation, selection, guide } = input;
+	const { experience, evaluation, selection, guide, livePose, datum = 0 } = input;
 	if (experience === null) return { marks: [], frustums: [] };
+	// Review round 3 (sheet §23): a live marker drag draws the View at its provisional
+	// pose, so the camera itself follows the pointer. The authored View is untouched.
+	const views = livePose == null
+		? input.views
+		: input.views.map((view) => view.id === livePose.viewId ? { ...view, eye: [...livePose.eye], target: [...livePose.target], fov: livePose.fov } as CameraView : view);
 
 	const presentationOf = new Map<string, string[]>();
 	for (const presentation of experience.presentations) {
@@ -546,7 +628,7 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 
 		if (!plan) {
 			const wire = wires < EXPERIENCE_MARK_CAPS.frustums;
-			const camera = cameraGlyph(evaluation, view.eye as Vec3, view.target as Vec3, view.fov, wire, state === 'selected' ? CAMERA_FRUSTUM_FAR_METRES : CAMERA_FRUSTUM_QUIET_METRES);
+			const camera = cameraGlyph(evaluation, view.eye as Vec3, view.target as Vec3, view.fov, wire, state === 'selected' ? CAMERA_FRUSTUM_FAR_METRES : CAMERA_FRUSTUM_QUIET_METRES, datum);
 			if (camera?.frustum) wires += 1;
 			const box: StageBox = camera
 				? [camera.bounds[0] - CAMERA_BRACKET_PAD_PX, camera.bounds[1] - CAMERA_BRACKET_PAD_PX, camera.bounds[2] + CAMERA_BRACKET_PAD_PX, camera.bounds[3] + CAMERA_BRACKET_PAD_PX]
@@ -568,7 +650,9 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 			continue;
 		}
 
-		const target = projectStage(evaluation, view.target as Vec3, true);
+		// The target only gives the wedge its direction: it may lie outside the frame
+		// (a panned Plan, a far look point) without hiding the View.
+		const target = projectStage(evaluation, view.target as Vec3, false);
 		if (target === null) continue;
 		const box: StageBox = [eye[0] - PLAN_BOX_HALF_PX, eye[1] - PLAN_BOX_HALF_PX, eye[0] + PLAN_BOX_HALF_PX, eye[1] + PLAN_BOX_HALF_PX];
 		marks.push({
@@ -581,33 +665,17 @@ export function experienceMarkModel(input: MarkInput): ExperienceMarkModel {
 			number,
 			state,
 			tagAt: [eye[0], eye[1] + PLAN_TAG_DROP_PX],
-			numberAt: [eye[0] - 11, eye[1] - 11],
+			numberAt: [eye[0] - 15, eye[1] - 15],
 			box,
-			camera: null
+			camera: null,
+			heading: planHeading(eye, target)
 		});
 
-		// The aim in screen space; a View seen straight down has no wedge to draw.
-		const dx = target[0] - eye[0];
-		const dy = target[1] - eye[1];
-		const span = Math.hypot(dx, dy);
-		if (span < 1e-3) continue;
-		const direction = [dx / span, dy / span] as const;
 		const length = state === 'selected' ? PLAN_WEDGE_SELECTED_PX : (onTour || state === 'strong') ? PLAN_WEDGE_TOUR_PX : PLAN_WEDGE_QUIET_PX;
-		const half = (clampFov(view.fov) * Math.PI) / 360;
-		const left = rotate2(direction, -half);
-		const right = rotate2(direction, half);
-		const tip: [number, number] = [round1(eye[0] + direction[0] * length), round1(eye[1] + direction[1] * length)];
-		if (frustums.length < EXPERIENCE_MARK_CAPS.frustums) {
-			frustums.push({
-				viewId: view.id,
-				state,
-				eye,
-				left: [round1(eye[0] + left[0] * length), round1(eye[1] + left[1] * length)],
-				right: [round1(eye[0] + right[0] * length), round1(eye[1] + right[1] * length)],
-				tip,
-				length
-			});
-		}
+		const wedge = planFrustum(view.id, state, eye, target, view.fov, length);
+		if (wedge === null) continue;
+		if (frustums.length < EXPERIENCE_MARK_CAPS.frustums) frustums.push(wedge);
+		const { tip } = wedge;
 		if (state === 'selected') {
 			marks.push({
 				id: `view:${view.id}:turn`,
@@ -635,6 +703,9 @@ type MarkInput = {
 	readonly views: readonly CameraView[];
 	readonly evaluation: ViewportEvaluation;
 	readonly selection: MarkSelection;
+	/** A live marker drag's provisional pose for one View; never authored. */
+	readonly datum?: number;
+	readonly livePose?: { readonly viewId: string; readonly eye: Vec3; readonly target: Vec3; readonly fov: number } | null;
 };
 
 type MarkSelection = {

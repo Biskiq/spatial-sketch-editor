@@ -15,6 +15,8 @@
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
+	import { CAMERA_FOV } from '@portfolio/camera-core';
+	import { viewTilt, type AdvancedViewFraming } from './experience-view-edit';
 	import { experienceHomes } from './experience-homes';
 	import { lensMillimetres } from './experience-model';
 	import { EYE_HEIGHT_STEPS, LENS_STEPS, eyeHeightStepOf, framingTag, lensStepOf } from './look-through';
@@ -49,25 +51,34 @@
 	}
 	const through = $derived(view !== null && homes.lookThroughViewId() === view.id);
 	const throughFraming = $derived(through ? homes.lookThroughFraming() : null);
-	const lens = $derived(
-		throughFraming !== null ? lensMillimetres(throughFraming.fovYDegrees) : (view?.lensMillimetres ?? 0)
-	);
-	const eyeHeight = $derived(
-		throughFraming !== null ? throughFraming.eyeHeightMetres.toFixed(2) : (view?.eyeHeightMetres.toFixed(2) ?? '')
-	);
-	const tag = $derived(
-		throughFraming !== null
-			? framingTag(throughFraming.fovYDegrees, throughFraming.eyeHeightMetres)
-			: view === null
-				? ''
-				: framingTag(view.fovDegrees, view.eyeHeightMetres)
-	);
-	const activeLens = $derived(
-		throughFraming !== null ? lensStepOf(throughFraming.fovYDegrees) : view === null ? null : lensStepOf(view.fovDegrees)
-	);
-	const activeEye = $derived(
-		throughFraming !== null ? eyeHeightStepOf(throughFraming.eyeHeightMetres) : view === null ? null : eyeHeightStepOf(view.eyeHeightMetres)
-	);
+	const advanced = homes.advancedCamera;
+	const advancedOn = $derived(advanced?.on() ?? false);
+	const advancedEligible = $derived(view !== null && (advanced?.eligible(view.id) ?? false));
+	const framingBusy = $derived(controller?.busy === true || (advanced?.busy() ?? false));
+	const livePose = $derived(view === null ? null : advanced?.pose(view.id) ?? null);
+	const authoredPose = $derived(view === null || !advancedOn ? null : controller?.viewPose(view.id) ?? null);
+	const pose = $derived(livePose ?? authoredPose);
+	const fov = $derived(throughFraming?.fovYDegrees ?? pose?.fov ?? view?.fovDegrees ?? 0);
+	const height = $derived(throughFraming?.eyeHeightMetres ??
+		(view && livePose && authoredPose ? view.eyeHeightMetres + livePose.eye[1] - authoredPose.eye[1] : view?.eyeHeightMetres ?? 0));
+	const tilt = $derived(pose === null ? 0 : viewTilt(pose));
+	const lens = $derived(lensMillimetres(fov));
+	const eyeHeight = $derived(height.toFixed(2));
+	const tag = $derived(view === null ? '' : framingTag(fov, height));
+	const activeLens = $derived(lensStepOf(fov));
+	const activeEye = $derived(eyeHeightStepOf(height));
+
+	function writeFraming(kind: AdvancedViewFraming['kind'], value: number): void {
+		if (view !== null && advancedEligible && !framingBusy) void advanced?.write(view.id, { kind, value });
+	}
+
+	function setExactLens(event: Event & { currentTarget: HTMLInputElement }): void {
+		const input = event.currentTarget;
+		const value = input.valueAsNumber;
+		input.value = fov.toFixed(1);
+		if (Number.isFinite(value)) writeFraming('lens', value);
+	}
+
 	const makeDefaultReason = $derived(controller?.busy ? 'Wait for the current change' : '');
 	const alsoIn = $derived(view === null || controller === null ? [] : controller.alsoIn(view.id, view.presentationId));
 
@@ -136,9 +147,66 @@
 		<section class="sec hero-sec">
 			<div class="hero">
 				<ExperienceSnapshot label={view.label} viewId={view.id} selected />
-				<span class="hero-tag">{tag}</span>
+				{#if !advancedOn || through}<span class="hero-tag">{tag}</span>{/if}
 			</div>
 		</section>
+
+		{#if !through && advanced}
+			<section class="sec advanced-sec">
+				<button type="button" role="switch" class="advanced-switch" aria-checked={advancedOn}
+					onclick={() => advanced.set(!advancedOn)}>
+					<span>Advanced</span><span class="switch-track" aria-hidden="true"></span>
+				</button>
+				{#if advancedOn}
+					<div class="advanced-fields" data-advanced-framing>
+						<div class="field">
+							<span class="f-lbl">Height</span>
+							<span class="stepper" role="group" aria-label="Height">
+								<button type="button" class="btn" aria-label="Lower camera" disabled={!advancedEligible || framingBusy} onclick={() => writeFraming('lift', height - 0.05)}>−</button>
+								<span>{eyeHeight} m</span>
+								<button type="button" class="btn" aria-label="Raise camera" disabled={!advancedEligible || framingBusy} onclick={() => writeFraming('lift', height + 0.05)}>+</button>
+							</span>
+						</div>
+						<div class="field">
+							<span class="seg" role="group" aria-label="Height presets">
+								{#each EYE_HEIGHT_STEPS as step (step.label)}
+									<button type="button" class="seg-btn" aria-pressed={activeEye?.label === step.label}
+										title={`${step.metres.toFixed(2)} m`} disabled={!advancedEligible || framingBusy}
+										onclick={() => writeFraming('lift', step.metres)}>{step.label}</button>
+								{/each}
+							</span>
+						</div>
+						<div class="field">
+							<span class="f-lbl">Tilt</span>
+							<span class="stepper" role="group" aria-label="Tilt">
+								<button type="button" class="btn" aria-label="Tilt down" disabled={!advancedEligible || framingBusy} onclick={() => writeFraming('tilt', tilt - 2)}>−</button>
+								<span>{tilt.toFixed(1)}°</span>
+								<button type="button" class="btn" aria-label="Tilt up" disabled={!advancedEligible || framingBusy} onclick={() => writeFraming('tilt', tilt + 2)}>+</button>
+							</span>
+						</div>
+						<div class="field">
+							<label class="f-lbl" for="advanced-view-lens">Lens</label>
+							<span class="lens-field"><input id="advanced-view-lens" type="number" min={CAMERA_FOV.min} max={CAMERA_FOV.max}
+								step="any" value={fov.toFixed(1)} disabled={!advancedEligible || framingBusy}
+								aria-label="Lens, vertical field of view in degrees" onchange={setExactLens} />°</span>
+						</div>
+						<div class="field">
+							<span class="seg" role="group" aria-label="Lens presets">
+								{#each LENS_STEPS as step (step.label)}
+									<button type="button" class="seg-btn" aria-pressed={activeLens?.label === step.label}
+										title={`${step.preset.focalLengthMm} mm`} disabled={!advancedEligible || framingBusy}
+										onclick={() => writeFraming('lens', step.fovYDegrees)}>{step.label}</button>
+								{/each}
+							</span>
+						</div>
+						<button type="button" class="btn level" disabled={!advancedEligible || framingBusy || Math.abs(tilt) < 0.001}
+							onclick={() => writeFraming('tilt', 0)}>Level camera</button>
+					</div>
+				{/if}
+			</section>
+		{/if}
+
+		{#if !advancedOn || through}
 
 		<section class="sec">
 			<h3>Framing <span class="tag-mono">{tag}</span></h3>
@@ -175,6 +243,8 @@
 			<p class="foot-note">{activeLens === null ? `Custom · ${lens} mm` : `${lens} mm`} · {eyeHeight} m eye. Look through to re-aim it by hand.</p>
 		</section>
 
+		{/if}
+
 		<section class="sec" aria-label="Where visitors see it">
 			<h3>Where visitors see it</h3>
 			<p class="reach-row reach-note">
@@ -207,6 +277,68 @@
 {/if}
 
 <style>
+	.advanced-switch {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		min-height: 30px;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.switch-track {
+		display: flex;
+		align-items: center;
+		width: 32px;
+		height: 18px;
+		padding: 2px;
+		border-radius: 999px;
+		background: var(--shell-hairline-strong, #cdd2ca);
+	}
+	.switch-track::before {
+		content: '';
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		background: #fff;
+		box-shadow: 0 1px 2px #1b201c33;
+	}
+	.advanced-switch[aria-checked='true'] .switch-track {
+		justify-content: end;
+		background: var(--shell-forest, #1d3b2f);
+	}
+	.advanced-switch:focus-visible, .lens-field input:focus-visible {
+		outline: 2px solid var(--shell-leaf, #4f8f6c);
+		outline-offset: 2px;
+	}
+	.advanced-fields { display: grid; gap: 4px; padding-bottom: 8px; }
+	.advanced-fields .seg { margin-left: auto; }
+	.stepper, .lens-field {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-variant-numeric: tabular-nums;
+	}
+	.stepper > span { min-width: 6ch; text-align: center; }
+	.stepper .btn { min-width: 28px; padding-inline: 5px; }
+	.level { justify-self: start; }
+	.lens-field input {
+		width: 7ch;
+		min-height: 28px;
+		padding: 0 4px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 5px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: right;
+	}
+
 	.also-in {
 		margin: 0;
 		padding: 0 12px 8px;

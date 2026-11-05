@@ -20,7 +20,8 @@
 		geometry,
 		presentation,
 		textureScope = null,
-		plinth = true
+		plinth = true,
+		doorFrames = true
 	}: {
 		geometry: CompiledLayoutGeometry;
 		presentation: Readonly<Record<string, VisitorRoomPresentation>>;
@@ -30,6 +31,7 @@
 		 * editor Stage's mat) turns it off, so the two grounds never overlap.
 		 */
 		plinth?: boolean;
+		doorFrames?: boolean;
 	} = $props();
 
 	function polygonShape(points: readonly LayoutVec2[], invertZ = true): Shape {
@@ -162,7 +164,7 @@
 
 	/** A straight frame only fits a rectangular door; an arch keeps its bare reveal. */
 	function isFramedDoor(opening: { kind: string; profile: string }): boolean {
-		return opening.kind === 'door' && opening.profile === 'rectangular';
+		return doorFrames && opening.kind === 'door' && opening.profile === 'rectangular';
 	}
 
 	function adaptedFor(roomId: string): AdaptedRoom | undefined {

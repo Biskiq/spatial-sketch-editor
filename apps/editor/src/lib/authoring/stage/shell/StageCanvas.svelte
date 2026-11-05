@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
 	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
 	/**
@@ -30,7 +29,7 @@
 		type VisitorRoomPresentation
 	} from '$lib/visitor/room-presentation';
 	import { planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
-import { isPaperPlanVisible, paperRevealFor, PAPER_GROUND_INK } from '../paper-plan';
+import { paperStageComposition, PAPER_GROUND_INK } from '../paper-plan';
 import { workspaceRectFor } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
 import StageCamera from './StageCamera.svelte';
@@ -50,8 +49,6 @@ import StageMatGround from './StageMatGround.svelte';
 
 	function ignoreRaycast(): void {}
 
-	const POCHE_LANDING_DELAY_MS = 150;
-	const POCHE_LANDING_FILL_MS = 350;
 
 	let {
 		geometry,
@@ -123,49 +120,13 @@ import StageMatGround from './StageMatGround.svelte';
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
-	const paperVisible = $derived(isPaperPlanVisible(evaluation, planAppearance));
-	/** Paper's arrival during a flip; it fully covers the shaded frame at weight 1. */
-	const paperWeightReveal = $derived(paperRevealFor(evaluation, planAppearance));
-	/**
-	 * Arriving from 3D, the poché waits for the Camera to land and then fills the
-	 * linework; the 3D frame stays drawn under it until it covers. Leaving, it follows
-	 * the weight. A Plan reached without a flip (load, reduced motion) has no wait.
-	 */
-	let pocheLanded = $state(false);
-	let pocheArrival = $state(0);
-	let flipped = false;
-	$effect(() => {
-		if (paperWeightReveal === null) {
-			pocheLanded = false;
-			pocheArrival = 0;
-			flipped = false;
-		} else if (evaluation?.renderedReading === 'transition') {
-			flipped = true;
-		}
-	});
-	$effect(() => {
-		if (!paperVisible || untrack(() => pocheLanded)) return;
-		if (!flipped) {
-			pocheLanded = true;
-			return;
-		}
-		const started = performance.now();
-		let frame = 0;
-		const step = (now: number): void => {
-			const linear = Math.min(1, Math.max(0, (now - started - POCHE_LANDING_DELAY_MS) / POCHE_LANDING_FILL_MS));
-			pocheArrival = linear * linear * (3 - 2 * linear);
-			if (linear < 1) frame = requestAnimationFrame(step);
-			else pocheLanded = true;
-		};
-		frame = requestAnimationFrame(step);
-		return () => cancelAnimationFrame(frame);
-	});
-	const paperReveal = $derived(
-		paperWeightReveal === null || pocheLanded ? paperWeightReveal : { ...paperWeightReveal, poche: pocheArrival }
+	// One reveal for the sheet, grid, ink and Camera mask (see `paperStageComposition`).
+	const paperComposition = $derived(
+		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
 	);
-	/** The shaded frame is hidden only once Paper fully covers it. */
-	const paperCovers = $derived(paperVisible && pocheLanded);
-	/** The mat ground is the Stage's own surface in both mesh readings; Paper hides it. */
+	const paperReveal = $derived(paperComposition.reveal);
+	const paperVisible = $derived(paperComposition.visible);
+	const paperCovers = $derived(paperComposition.covers);
 	const matVisible = $derived(!paperCovers);
 	/** Stable identity: an inline predicate would rebuild the Paper drawing every frame. */
 	const footprintMounted = (entityId: string): boolean => scenePick.hasPickableBody(entityId);
@@ -291,7 +252,7 @@ import StageMatGround from './StageMatGround.svelte';
 	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
-		<VisitorLayoutShell {geometry} {presentation} plinth={false} />
+		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false} />
 	</T.Group>
 	<StageEntities
 		{scenePick}

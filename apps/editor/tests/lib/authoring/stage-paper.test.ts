@@ -22,7 +22,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../../helpers/import-closure';
-import { Layers, Mesh } from 'three';
+import { Layers, Mesh, MeshBasicMaterial } from 'three';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
@@ -45,7 +47,7 @@ import {
 	type PlanSceneProjection
 } from '$lib/authoring/scene/plan-scene-footprint';
 import { resolvePlanSceneHit } from '$lib/authoring/scene/plan-scene-hit';
-import { createPaperScene } from '$lib/authoring/stage/paper-scene';
+import { createPaperScene, PAPER_SHEET_NAME } from '$lib/authoring/stage/paper-scene';
 import { createPaperMarkScene } from '$lib/authoring/stage/paper-marks';
 import {
 	buildPaperPlan,
@@ -55,7 +57,9 @@ import {
 	paperRevealFor,
 	MAT_BACKGROUND_INK,
 	PAPER_GROUND_INK,
+	PAPER_INK,
 	PAPER_LAYER,
+	paperStageComposition,
 	PAPER_LINE_STYLE,
 	stageCameraLayerMask,
 	unionOutline,
@@ -113,6 +117,18 @@ function withDoor(fixture: Fixture): Fixture {
 	);
 	if (door.kind !== 'success') throw new Error(`the door no longer plans: ${door.rejection.code}`);
 	return { compiled: compileWallFirstLayoutGeometry(door.document).geometry, document: door.document };
+}
+
+function withWindow(fixture: Fixture): Fixture {
+	const layout = fixture.document;
+	const window = planCreateWallFirstOpening(
+		layout,
+		{ wallId: layout.walls[0]!.id, kind: 'window', offset: 1, width: 1.2, height: 1.2, sillHeight: 1 },
+		freshCapture(),
+		layout.floor.id
+	);
+	if (window.kind !== 'success') throw new Error(`the window no longer plans: ${window.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(window.document).geometry, document: window.document };
 }
 
 function withLowWalls(fixture: Fixture, height: number): Fixture {
@@ -311,14 +327,62 @@ describe('Paper Plan — stream treatment', () => {
 		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
 		const plan = evaluate(fixture.compiled);
 		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
-		const symbols = drawing.lines.filter((line) => line.stream === 'symbol');
-		expect(symbols.length).toBeGreaterThan(0);
-		expect(symbols.every((line) => line.layer === PAPER_LAYER.symbol)).toBe(true);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		const wall = fixture.compiled.walls.find((candidate) => candidate.openings.some((entry) => entry.openingId === opening.openingId))!;
+		const symbol = drawing.lines.find((line) => line.stream === 'symbol' && line.sourceId === opening.openingId)!;
+		const swing = drawing.lines.find((line) => line.sourceId === opening.openingId && line.dashed)!;
+		expect(symbol.layer).toBe(PAPER_LAYER.symbol);
+		expect(symbol.segments).toHaveLength(3);
+		expect(swing.segments).toHaveLength(18);
+		expect(swing.dashed).toBe(true);
+		// Two thin jambs and the physical leaf stay solid. The leaf is perpendicular
+		// to the Wall; the movement arc is separately dashed at the Opening width.
+		const [hinge, leafEnd] = symbol.segments[2]!;
+		const tangent: LayoutVec2 = [
+			(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0]) / Math.hypot(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0], opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1]),
+			(opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1]) / Math.hypot(opening.centerPolyline[1]![0] - opening.centerPolyline[0]![0], opening.centerPolyline[1]![1] - opening.centerPolyline[0]![1])
+		];
+		const leaf = [leafEnd[0] - hinge[0], leafEnd[1] - hinge[1]] as const;
+		expect(Math.hypot(leaf[0], leaf[1])).toBeCloseTo(opening.width, 6);
+		expect(leaf[0] * tangent[0] + leaf[1] * tangent[1]).toBeCloseTo(0, 6);
+		for (const segment of swing.segments) {
+			for (const point of segment) {
+				expect(Math.hypot(point[0] - hinge[0], point[1] - hinge[1])).toBeCloseTo(opening.width, 5);
+			}
+		}
+		expect(Math.hypot(symbol.segments[0]![0][0] - symbol.segments[0]![1][0], symbol.segments[0]![0][1] - symbol.segments[0]![1][1])).toBeCloseTo(wall.thickness, 6);
+		const resources = createPaperScene(drawing, [800, 600]);
+		try {
+			const symbolBatches = resources.group.children.filter(
+				(child): child is LineSegments2 => child instanceof LineSegments2 && child.renderOrder === PAPER_LAYER.symbol
+			);
+			expect(symbolBatches.map((line) => (line.material as LineMaterial).dashed).sort()).toEqual([false, true]);
+		} finally {
+			resources.dispose();
+		}
 		const lintels = drawing.lines.filter(
 			(line) => line.stream === 'projected' && eligiblePlanFragments(plan).some((fragment) => fragment.ref.sourceId === line.sourceId && fragment.ref.sourceKind === 'wall')
 		);
 		expect(lintels.length, 'a Wall span above the cut is projected').toBeGreaterThan(0);
 		expect(lintels.every((line) => line.layer === PAPER_LAYER.projected)).toBe(true);
+	});
+
+	it('keeps Window glazing inside its Wall and omits an oversized Plan outline', () => {
+		const fixture = withWindow(enclosure(STARTER_ENCLOSURE_POINTS));
+		const plan = evaluate(fixture.compiled);
+		const drawing = buildPaperPlan(plan, fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		const wall = fixture.compiled.walls.find((candidate) => candidate.openings.some((entry) => entry.openingId === opening.openingId))!;
+		const symbol = drawing.lines.find((line) => line.stream === 'symbol' && line.sourceId === opening.openingId)!;
+		expect(symbol.segments).toHaveLength(12);
+		expect(PAPER_LINE_STYLE.symbol.widthCssPx).toBe(1);
+		for (const segment of symbol.segments.slice(2)) {
+			for (const point of segment) {
+				const centerDistance = Math.min(...opening.centerPolyline.map((center) => Math.hypot(point[0] - center[0], point[1] - center[1])));
+				expect(centerDistance).toBeCloseTo(wall.thickness * 0.2, 4);
+				expect(centerDistance).toBeLessThan(wall.thickness / 2);
+			}
+		}
 	});
 
 	it('draws a Wall wholly below the cut as dashed hidden ink', () => {
@@ -587,6 +651,60 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 		expect(isPaperPlanVisible({ renderedReading: 'transition', orthographicWeight: 1 }, 'paper')).toBe(false);
 		expect(isPaperPlanVisible({ renderedReading: '3d', orthographicWeight: 0 }, 'paper')).toBe(false);
 		expect(DEFAULT_APP_PREFERENCES.planAppearance).toBe('paper');
+	});
+
+	it('settles 2D Paper to opaque black Wall poché over the sheet, and masks the world only then', () => {
+		const settled = paperStageComposition({
+			evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, appearance: 'paper', framed: false, hasPlan: true
+		});
+		expect(settled).toEqual({ reveal: { lines: 1, sheet: 1, poche: 1 }, visible: true, covers: true });
+		expect(stageCameraLayerMask(settled.covers)).toEqual([STAGE_OVERLAY_LAYER]);
+		// Mid-flip the shaded Walls stay under the translucent poché (material → ink).
+		for (const weight of [0.6, 0.8, 0.95, 0.999]) {
+			const flipping = paperStageComposition({
+				evaluation: { renderedReading: 'transition', orthographicWeight: weight }, appearance: 'paper', framed: false, hasPlan: true
+			});
+			expect(flipping.covers).toBe(false);
+			expect(stageCameraLayerMask(flipping.covers)).toContain(STAGE_WORLD_LAYER);
+		}
+		// Shaded, a capture frame, or no Plan never draw Paper.
+		for (const input of [
+			{ appearance: 'shaded' as const, framed: false, hasPlan: true },
+			{ appearance: 'paper' as const, framed: true, hasPlan: true },
+			{ appearance: 'paper' as const, framed: false, hasPlan: false }
+		]) {
+			expect(paperStageComposition({ evaluation: { renderedReading: 'plan', orthographicWeight: 1 }, ...input }))
+				.toEqual({ reveal: null, visible: false, covers: false });
+		}
+
+		const fixture = enclosure(STARTER_ENCLOSURE_POINTS);
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const resources = createPaperScene(drawing, [1280, 720]);
+		const marks = createPaperMarkScene({
+			selection: { fills: [], contours: [] }, hover: { fills: [], contours: [] }, erase: { fills: [], contours: [] }
+		}, [1280, 720]);
+		try {
+			resources.setReveal(settled.reveal!);
+			const meshes: Mesh[] = [];
+			resources.group.traverse((node) => { if (node instanceof Mesh && node.material instanceof MeshBasicMaterial) meshes.push(node); });
+			const material = (mesh: Mesh) => mesh.material as MeshBasicMaterial;
+			const sheet = meshes.find((mesh) => mesh.name === PAPER_SHEET_NAME)!;
+			const poche = meshes.filter((mesh) => mesh.name === '' && material(mesh).color.getHexString() === PAPER_INK.slice(1));
+			const floors = meshes.filter((mesh) => mesh.name === '' && mesh !== poche[0] && material(mesh).colorWrite);
+			expect(poche).toHaveLength(1);
+			const ink = material(poche[0]!);
+			expect(ink.opacity).toBe(1);
+			expect(ink.colorWrite).toBe(true);
+			expect(ink.stencilWrite).toBe(false);
+			expect(ink.depthTest).toBe(false);
+			expect(poche[0]!.renderOrder).toBeGreaterThan(sheet.renderOrder);
+			for (const floor of floors) expect(poche[0]!.renderOrder).toBeGreaterThan(floor.renderOrder);
+			// Nothing unselected in the marks layer paints over the settled poché.
+			expect(marks.group.children).toHaveLength(0);
+		} finally {
+			resources.dispose();
+			marks.dispose();
+		}
 	});
 
 	it('puts every Paper object on layer 2 and orders it by its Plan layer', () => {

@@ -25,6 +25,7 @@
 		const fallback = WALL_OPENING_DEFAULTS.door;
 		return {
 			kind: source?.kind ?? 'door',
+			profile: source?.profile ?? 'rectangular',
 			width: String(source?.width ?? fallback.width),
 			height: String(source?.height ?? fallback.height),
 			sill: String(source?.sillHeight ?? fallback.sillHeight)
@@ -32,6 +33,7 @@
 	}
 	const initial = untrack(() => rememberedOptions(opening));
 	let kind = $state<'door' | 'window'>(initial.kind);
+	let profile = $state<'rectangular' | 'rounded' | 'pointed'>(initial.profile);
 	let widthText = $state(initial.width);
 	let heightText = $state(initial.height);
 	let sillText = $state(initial.sill);
@@ -63,6 +65,7 @@
 		error = null;
 		inkSurface()?.controller.setOpeningOptions({
 			kind,
+			profile,
 			width: width.value,
 			height: height.value,
 			sillHeight: sill.value
@@ -84,6 +87,11 @@
 		inkSurface()?.controller.placeOpening(offsetText);
 	}
 
+	function chooseProfile(next: 'rectangular' | 'rounded' | 'pointed'): void {
+		profile = next;
+		commitOptions();
+	}
+
 	// A remount can follow an invalid draft being discarded; the displayed
 	// (remembered) values are valid, so the adapter must agree before a pointer
 	// press is refused against a stale invalid flag.
@@ -101,6 +109,14 @@
 				<option value="window">Window</option>
 			</select>
 		</label>
+		<div class="profiles" role="group" aria-label="Opening profile">
+			<span class="profile-label">Profile</span>
+			{#each ['rectangular', 'rounded', 'pointed'] as const as option}
+				<button type="button" data-opening-profile={option} aria-pressed={profile === option} onclick={() => chooseProfile(option)}>
+					{option === 'rectangular' ? 'Rectangular' : option === 'rounded' ? 'Rounded' : 'Pointed'}
+				</button>
+			{/each}
+		</div>
 		<label>
 			<span>Width</span>
 			<input type="text" inputmode="decimal" data-opening-width bind:value={widthText} onchange={commitOptions} />
@@ -163,6 +179,32 @@
 		flex-wrap: wrap;
 		gap: 0.6rem;
 	}
+	.profiles {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.profile-label {
+		margin-right: 0.2rem;
+		color: var(--shell-ink-quiet, #9fb2a2);
+		font-size: 0.68rem;
+	}
+	.profiles button {
+		min-height: 1.7rem;
+		padding: 0.1rem 0.4rem;
+		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
+		border-radius: 0.3rem;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 0.67rem;
+		cursor: pointer;
+	}
+	.profiles button[aria-pressed='true'] {
+		background: rgb(243 240 228 / 0.14);
+		box-shadow: inset 0 0 0 1px rgb(243 240 228 / 0.55);
+	}
 	.options label {
 		display: grid;
 		grid-template-columns: auto 4.5rem auto;
@@ -223,7 +265,8 @@
 		opacity: 0.55;
 	}
 	button:focus-visible,
-	input:focus-visible {
+	input:focus-visible,
+	select:focus-visible {
 		outline: 2px solid var(--shell-gold, #d4ad45);
 		outline-offset: 1px;
 	}

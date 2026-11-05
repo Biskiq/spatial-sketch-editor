@@ -172,6 +172,23 @@ table.fut th{color:var(--ink2);font-weight:600}
 .mini .cap{font-size:12px;color:var(--mute);margin:0 0 4px 2px}
 .lab-input{position:absolute;font:500 12px system-ui;width:90px;border:1px solid var(--leaf);border-radius:4px;padding:1px 4px;transform:translate(-50%,-50%);text-align:center}
 @media (max-width:600px){header{position:static}.cardwrap{width:100%}}
+/* Opening section reuses the sheet's palette, Card and sticker tokens. */
+.op-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
+.op-concept{margin-top:18px;border-top:1px solid var(--hair);padding-top:12px;color:var(--ink2)}
+.op-concept summary{cursor:pointer;font-weight:600}
+#op-stage .op-cut{fill:var(--paper);stroke:none}
+#op-stage [data-grip]{cursor:grab} #op-stage [data-id]{cursor:pointer}
+#op-stage .op-symbol{stroke-width:1.15;fill:none;stroke-linecap:round;stroke-linejoin:round}
+#op-stage .op-hit{fill:transparent;stroke:none;pointer-events:all}
+#op-stage .op-handle:hover .gz{stroke-width:1.5}
+#op-stage .op-handle:focus{outline:none}
+#op-stage .op-handle:focus-visible .gz{stroke:var(--leaf);stroke-width:2.2}
+.op-toolbar{gap:8px}
+.op-toolbar .seg button{display:inline-flex;align-items:center;gap:6px;min-height:32px}
+.op-toolbar .seg svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.op-toolbar #op-view{margin-left:auto}
+#s-opening button:focus-visible,#s-opening summary:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+@media(max-width:850px){.op-layout{grid-template-columns:1fr}.op-layout .card{max-width:400px}}
 </style>
 </head>
 <body class="gz-sticker ink-black ghost-cobalt">
@@ -334,6 +351,29 @@ table.fut th{color:var(--ink2);font-weight:600}
   <p class="hint">Drag ✥ on a Room to move its group · drag ✥ on an object (or its body) to move it · drag its bent arrow to turn it (15° steps, <kbd>Alt</kbd> for free) · drag the Wall's ⟷ to slide it · drop anywhere to commit · drag a Room onto the free Wall to see a refusal.</p>
   <p class="note" style="max-width:none"><b>Objects in a moved Room.</b> A Room and its Walls are Layout; furniture is Scene, placed in the world and owned by no Room. <b>A</b> keeps that split: the Room moves, objects stay (move them after). <b>B</b> moves objects standing in the Room with it as one Undo step; it needs one change that spans Layout and Scene, so it is a larger follow-up.</p>
 </section>
+<section class="wide" id="s-opening">
+  <h2>9. Door &amp; Window <small>PR #270 · proposal for owner review</small></h2>
+  <p class="lede">Choose in Ink. Aim at a Wall. Click to place. Select an Opening to slide it or reveal its dimensions.</p>
+  <div class="opts op-toolbar">
+    <div class="seg" id="op-tools" role="group" aria-label="Tool"><button data-tool="select" aria-pressed="false">Select</button><button data-tool="opening" aria-pressed="true">Ink › Opening</button></div>
+    <div class="seg" id="op-kind" role="group" aria-label="Opening kind">
+      <button data-kind="door" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 4A16 16 0 0 1 20 20M4 20H20"/></svg>Door</button>
+      <button data-kind="window" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V17M20 7V17M4 10H20M4 14H20"/></svg>Window</button>
+    </div>
+    <div class="seg" id="op-profile" role="group" aria-label="Opening profile">
+      <button data-profile="rectangular" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V3H19V21Z"/></svg>Rectangular</button>
+      <button data-profile="rounded" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V10A7 7 0 0 1 19 10V21Z"/></svg>Rounded</button>
+      <button data-profile="pointed" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V10L12 3L19 10V21Z"/></svg>Pointed</button>
+    </div>
+    <div class="seg" id="op-view" role="group" aria-label="View"><button data-view="plan" aria-pressed="true">Plan</button><button data-view="space" aria-pressed="false">3D</button></div>
+    <button class="reset" id="op-reset">Reset specimen</button>
+  </div>
+  <div class="op-layout"><div><svg class="stage tone-pale" id="op-stage" viewBox="0 0 760 400" tabindex="0" aria-label="Opening specimen. Hover the Wall to preview; click to place. Use the offset field and Place button for keyboard placement."></svg><p id="op-status" class="hint" role="status" aria-live="polite"></p><p class="hint">Door: a thin swing arc. Window: glazing contained within Wall thickness. The swing is a Plan symbol; handing is not edited in this specimen.</p></div>
+  <div class="card"><div class="c-head"><div class="grow"><div class="c-kind">Opening · Wall 1</div><div class="c-name" id="op-title">Door</div></div></div><div class="c-fields two" id="op-fields"></div><div class="c-acts"><button class="cbtn" id="op-place">Place</button><button class="cbtn" id="op-cancel">Cancel</button><span class="sp"></span><button class="cbtn" id="op-more" aria-expanded="false">More ▾</button></div><div class="c-more" id="op-secondary" hidden><div class="c-fields two" id="op-extra-fields"></div><div class="rel"><div><span>Host</span><span>Wall 1 · 8.00 m</span></div><div><span>Head</span><span id="op-head"></span></div><div><span>Profile</span><span id="op-profile-name">Rectangular</span></div><p class="note">Width and height stay at hand. Sill and offset are in More; their Stage grips offer direct manipulation.</p></div></div></div></div>
+  <p class="note" style="max-width:none">Technical specimen: real Layout create/update planners and refusal wording; schematic SVG projection, one host Wall, session-only state. It does not exercise production hit testing, F.4 history or the compiled renderer. Drag a sticker grip; release accepts a valid candidate, Esc cancels. Each width arrow moves its adjacent edge and keeps the opposite edge fixed. Height changes the top; sill lifts the Opening with height preserved. The left-edge specimen uses the core planner’s combined offset/width patch; production gesture wiring remains for review. Profile silhouettes use the existing Layout compiler definitions; this is a proposed palette, not production wiring.</p>
+  <details class="op-concept"><summary>Future concept · one Pen, explicit surface and reading — not available in PR #270</summary><p>Keep the Ink/Pen entry and palette. Before drawing, show <b>Surface: Floor / Plan · Reading: Wall, Room or Shape</b>, or <b>Surface: Wall 1, front face · Reading: Opening profile</b>. Door/Window remain explicit intent, never guessed from a stroke.</p><ol><li>Hover reveals the eligible surface. An edge or overlapping face asks you to choose the host; no stroke starts while ambiguous.</li><li>Press locks the host face, its frame and the chosen reading for the whole gesture. Leaving the face refuses or cancels; it never turns into Floor drawing.</li><li>Box, Round and Sketch can eventually offer different editable profiles. Only domain-admitted readings are enabled. A rejected stroke stays an Opening attempt with a repair or explicit cancel.</li></ol><p><b>Concept only:</b> no face drawing, Round/Sketch cuts, boolean geometry or recognition is implemented here. T1 owns the Opening and host constraints; future T5 integration may supply profile editing without acquiring Opening ownership.</p></details>
+</section>
+
 </main>
 
 <script>
@@ -1134,7 +1174,7 @@ function setOpt(key, v) {
   if (key === 'subject') { CS.menu = false; CS.renaming = false; CS.err = ''; }
   renderAll();
 }
-document.querySelectorAll('.seg').forEach((seg) => {
+document.querySelectorAll('.seg[data-key]').forEach((seg) => {
   const key = seg.dataset.key;
   seg.querySelectorAll('button').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.v === S[key])); b.addEventListener('click', () => setOpt(key, b.dataset.v)); });
 });
@@ -1145,5 +1185,6 @@ document.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('cli
 }));
 renderAll();
 </script>
+<script src="opening-design.bundle.js"></script>
 </body>
 </html>

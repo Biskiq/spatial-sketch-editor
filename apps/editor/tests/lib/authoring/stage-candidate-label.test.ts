@@ -24,8 +24,8 @@ it.each([928, 820])('keeps a crossing refusal inside a %spx Stage and clear of t
 		expect(y).toBeGreaterThanOrEqual(8);
 		expect(y! + Number(rect.getAttribute('height'))).toBeLessThan(720);
 		// Moving the words never changes the cursor's refused reach or invents a fill.
-		expect(target.querySelectorAll('.candidate path')).toHaveLength(0);
-		expect(target.querySelector('.candidate line')!.getAttribute('x2')).toBe(String(width - 10));
+		expect(target.querySelectorAll('.candidate path')).toHaveLength(1);
+		expect(target.querySelector('.candidate-edge')?.getAttribute('d')).toBe(`M40,450L${width - 10},450`);
 	} finally {
 		await unmount(component);
 		target.remove();
@@ -45,15 +45,15 @@ it('draws a refused candidate red dashed with its reason always visible', async 
 		}],
 		candidates: [{
 			id: 'refused', role: 'refused', polygons: [],
-			segments: [[[100, 100], [300, 300]]],
+			segments: [[[100, 100], [200, 200]], [[200, 200], [300, 300]]],
 			labels: [{ css: [300, 300], text: 'This would cross or meet another Wall.' }]
 		}]
 	} as never });
 	try {
 		await tick();
-		const lines = [...target.querySelectorAll('.candidate line')];
-		expect(lines).toHaveLength(1);
-		expect(lines[0]!.classList.contains('candidate-edge')).toBe(true);
+		const edges = [...target.querySelectorAll('.candidate path.candidate-edge')];
+		expect(edges).toHaveLength(1);
+		expect(edges[0]?.getAttribute('d')).toBe('M100,100L200,200L300,300');
 		expect(target.querySelector('.candidate.refused')).not.toBeNull();
 		expect(target.querySelectorAll('.problem')).toHaveLength(0);
 		const tag = target.querySelector('.candidate .tag');

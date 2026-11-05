@@ -9,6 +9,9 @@ budget tables. The harness exists; this document still claims no new browser/GPU
 result. The [review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md) separates
 ratification, permanent workflow authorization and production hold release.
 
+For implementation rules on the Layout drag, commit, Undo/Redo and Open paths, see
+[Layout performance rules](./layout-performance.md).
+
 ## Owner policy amendment — 2026-10-28
 
 **The mandatory performance-benchmarking strategy is suspended indefinitely.** No formal

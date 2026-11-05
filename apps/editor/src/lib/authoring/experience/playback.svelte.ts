@@ -375,6 +375,24 @@ export function createExperiencePlayback(read: () => PlaybackSource | null) {
 			if (status === 'idle') status = 'paused';
 			seekTo(seconds);
 		},
+		/**
+		 * Review round 3: the Guide reads like a video timeline. Pressing a Stop (or the
+		 * move after it) moves the playhead to that Stop's start (or end) in the Guide's
+		 * own run; a playing run keeps playing from there, anything else pauses there.
+		 */
+		seekStop(stopId: string, edge: 'start' | 'end' = 'start'): void {
+			if (blocked) return;
+			if (map === null) {
+				const derived = derive(readSource()?.entryStopId ?? null);
+				if (derived === null) return;
+			}
+			const entry = map!.stopEntries.find((candidate) => candidate.stopId === stopId);
+			if (entry === undefined) return;
+			const keepPlaying = status === 'playing';
+			seekTo(edge === 'start' ? entry.startSeconds : entry.endSeconds);
+			status = keepPlaying ? (currentSegment()?.kind === 'wait' ? 'waiting' : 'playing') : 'paused';
+			updateSample();
+		},
 		/** A pointer hit on a hatch lands exactly on that addressable wait. */
 		seekSegment(segmentId: string): void {
 			if (map === null) return;

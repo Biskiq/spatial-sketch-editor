@@ -23,12 +23,10 @@
 	 */
 	import { T, useThrelte } from '@threlte/core';
 	import {
-		BoxGeometry,
 		EdgesGeometry,
 		Group,
 		Matrix4,
 		Mesh,
-		MeshBasicMaterial,
 		Vector2,
 		Vector3,
 		type Object3D
@@ -39,6 +37,7 @@
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import { hasVisibleAncestor, type ScenePickSource } from '$lib/authoring/scene/scene-pick-source';
+	import { compiledOpeningFaceLoops, openingLoopSegments } from '../../layout/opening-faces';
 	import { STAGE_PAINT } from './stage-paint';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
@@ -94,7 +93,7 @@
 	type Source = { readonly objects: Object3D[]; readonly dispose: () => void };
 	const NO_SOURCE: Source = { objects: [], dispose: () => {} };
 
-	/** Every rendered mesh the selected subject owns, or a synthetic Opening box. */
+	/** Every rendered mesh the selected subject owns. */
 	function sourceMeshes(entry: StageSelectionEntry): Source {
 		const id = entry.reference.subject.id;
 		const domain = entry.reference.domain;
@@ -118,43 +117,20 @@
 				const floor = layout.getObjectByName(`VisitorFloor:${id}`);
 				return floor === undefined ? NO_SOURCE : { objects: [floor], dispose: () => {} };
 			}
-			if (kind === 'opening') return openingMesh(id);
 			return NO_SOURCE;
 		}
 		const entity = scenePick.entityObject(id);
 		return entity === null ? NO_SOURCE : { objects: [entity], dispose: () => {} };
 	}
 
-	/**
-	 * An Opening is carved out of its host Wall, so there is no opening mesh to
-	 * clone. Its evaluated opening box is the truthful source: the same compiled
-	 * centre, width, height and sill the Wall mesh was built from.
-	 */
-	function openingMesh(openingId: string): Source {
-		const wall = geometry.walls?.find((candidate) =>
-			candidate.openings.some((opening) => opening.openingId === openingId)
-		);
-		const opening = wall?.openings.find((candidate) => candidate.openingId === openingId);
-		if (wall === undefined || opening === undefined) return NO_SOURCE;
-		const floor = geometry.floors.find((candidate) => candidate.floorId === wall.floorId);
-		const elevation = floor?.elevation ?? 0;
-		const box = new BoxGeometry(opening.width, opening.height, wall.thickness + 0.02);
-		const material = new MeshBasicMaterial();
-		const mesh = new Mesh(box, material);
-		mesh.position.set(
-			opening.center.point[0],
-			elevation + opening.sillHeight + opening.height / 2,
-			opening.center.point[1]
-		);
-		mesh.rotation.y = opening.center.yaw;
-		mesh.updateMatrixWorld(true);
-		return {
-			objects: [mesh],
-			dispose: () => {
-				box.dispose();
-				material.dispose();
-			}
-		};
+	function openingContour(openingId: string): number[] {
+		for (const wall of geometry.walls) {
+			const opening = wall.openings.find((candidate) => candidate.openingId === openingId);
+			if (opening === undefined) continue;
+			const elevation = geometry.floors.find((floor) => floor.floorId === wall.floorId)?.elevation ?? 0;
+			return openingLoopSegments(compiledOpeningFaceLoops(wall, opening, elevation)).flat(2);
+		}
+		return [];
 	}
 
 	/** An invisible node is not drawn, so it must not contribute a gold clone either. */
@@ -171,11 +147,41 @@
 		return mesh.matrixWorld.clone();
 	}
 
+	function addContour(contour: number[] | Float32Array, tone: 'selection' | 'hover' | 'erase'): void {
+		if (contour.length === 0) return;
+		const edgeGeometry = new LineSegmentsGeometry();
+		edgeGeometry.setPositions(contour);
+		const material = new LineMaterial({
+			color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
+			linewidth: tone === 'selection' ? 3 : 2.5,
+			transparent: true,
+			opacity: 1,
+			toneMapped: false,
+			depthTest: true,
+			depthWrite: false,
+			...OUTLINE_DEPTH_BIAS,
+			resolution: new Vector2(width, height),
+			...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
+		});
+		const line = new LineSegments2(edgeGeometry, material);
+		if (tone === 'erase') line.computeLineDistances();
+		line.frustumCulled = false;
+		line.renderOrder = tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19;
+		line.layers.set(2);
+		root.add(line);
+		fades.push({ material, opacity: 1 });
+		inked.push({ object: line, dispose: () => { edgeGeometry.dispose(); material.dispose(); } });
+	}
+
 	function apply(
 		entry: StageSelectionEntry | null,
 		tone: 'selection' | 'hover' | 'erase'
 	): void {
 		if (entry === null) return;
+		if (entry.reference.domain === 'layout' && entry.reference.subject.kind === 'opening') {
+			addContour(openingContour(entry.reference.subject.id), tone);
+			return;
+		}
 		const source = sourceMeshes(entry);
 		try {
 			const meshes = source.objects.flatMap(meshesUnder);
@@ -200,29 +206,7 @@
 					}
 				}
 				const contour = wall ? visibleIdentityContour(positions, eye) : mergeStraightEdgeRuns(positions);
-				if (contour.length === 0) continue;
-				const edgeGeometry = new LineSegmentsGeometry();
-				edgeGeometry.setPositions(contour);
-				const material = new LineMaterial({
-					color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
-					linewidth: tone === 'selection' ? 3 : 2.5,
-					transparent: true,
-					opacity: 1,
-					toneMapped: false,
-					depthTest: true,
-					depthWrite: false,
-					...OUTLINE_DEPTH_BIAS,
-					resolution: new Vector2(width, height),
-					...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
-				});
-				const line = new LineSegments2(edgeGeometry, material);
-				if (tone === 'erase') line.computeLineDistances();
-				line.frustumCulled = false;
-				line.renderOrder = tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19;
-				line.layers.set(2);
-				root.add(line);
-				fades.push({ material, opacity: 1 });
-				inked.push({ object: line, dispose: () => { edgeGeometry.dispose(); material.dispose(); } });
+				addContour(contour, tone);
 			}
 
 		} finally {
