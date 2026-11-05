@@ -90,15 +90,33 @@
 		const path = controller.pathFor({ kind: 'transition', stopId: source.id });
 		const place = resolved.position === null ? '' : `Stop ${resolved.position} · `;
 		const target = controller.current?.stops.find((entry) => entry.id === resolved.stopId);
+		const sourcePlace = guide.findIndex((entry) => entry.id === source.id) + 1;
+		const label = target?.id === stop?.id
+			? `${sourcePlace > 0 ? `Stop ${sourcePlace} · ` : ''}${controller.presentationLabel(source.presentationId)}`
+			: `${place}${target === undefined ? 'Missing Stop' : controller.presentationLabel(target.presentationId)}`;
 		return {
 			fromStopId: source.id,
-			label: `${place}${target === undefined ? 'Missing Stop' : controller.presentationLabel(target.presentationId)}`,
+			label,
 			kind: resolved.transition,
 			seconds: resolved.transition === 'travel' && path?.state === 'ready' ? formatPathSeconds(path.seconds) : null,
 			gap: resolved.transition === 'travel' && (path === null || path.state === 'gap' || path.state === 'ambiguous')
 		};
 	}
-	const incoming = $derived(connectionFrom(previous));
+	/**
+	 * The connection that arrives here: the previous Stop's when it continues to
+	 * this one, else the first Stop of the Guide that jumps here. A Stop no
+	 * connection reaches says so rather than borrowing its neighbour's.
+	 */
+	const arrivingFrom = $derived.by((): ExperienceStop | null => {
+		if (controller === null || stop === null || position <= 1) return null;
+		const reaches = (source: ExperienceStop) => {
+			const resolved = controller.resolveContinuation(source.id);
+			return resolved !== null && resolved.kind !== 'end' && resolved.stopId === stop.id;
+		};
+		if (previous !== null && reaches(previous)) return previous;
+		return guide.find((entry) => entry.id !== stop.id && reaches(entry)) ?? null;
+	});
+	const incoming = $derived(connectionFrom(arrivingFrom));
 	const outgoing = $derived(stop === null || position === 0 ? null : connectionFrom(stop));
 
 	function selectStop(target: ExperienceStop | null): void {
@@ -188,7 +206,7 @@
 				{#if position > 0}<span class="num lg">{position}</span>{/if}
 			</span>
 			<span class="visits-txt">
-				<small>{again ? 'Visits again' : 'Visits'}{position > 0 ? ` · Stop ${position} of ${guide.length}` : ''}</small>
+				<small>{again ? 'Visits again' : 'Visits'}</small>
 				<b>{controller.presentationLabel(stop.presentationId)}</b>
 				<span class="open">Open Presentation <ShellIcon name="chevronRight" size={11} /></span>
 			</span>
@@ -321,7 +339,7 @@
 		<section class="c-sec" aria-labelledby="stop-connections-title">
 			<h3 id="stop-connections-title">Connections</h3>
 			<ul class="conns">
-				{@render connectionLink('In', incoming, position <= 1 ? 'The tour starts here' : 'No connection')}
+				{@render connectionLink('In', incoming, position <= 1 ? 'The tour starts here' : 'No Stop continues here')}
 				{@render connectionLink('Out', outgoing, position === 0 ? NOT_IN_GUIDE_REASON : 'No connection')}
 			</ul>
 		</section>

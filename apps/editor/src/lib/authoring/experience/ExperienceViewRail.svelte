@@ -501,14 +501,14 @@
 		position: relative;
 		flex: none;
 		align-self: stretch;
-		width: 56px;
+		width: 64px;
 	}
 	/* The spine: a dotted line for a Cut, solid for a Travel, dashed for a Travel with no path. */
 	.spine::before,
 	.spine::after {
 		content: '';
 		position: absolute;
-		left: 41px;
+		left: 31px;
 		width: 0;
 		border-left: 2px solid transparent;
 	}
@@ -535,7 +535,7 @@
 	.node {
 		position: absolute;
 		top: 50%;
-		left: 38px;
+		left: 28px;
 		width: 8px;
 		height: 8px;
 		margin-top: -4px;
@@ -550,12 +550,13 @@
 	.chip {
 		position: absolute;
 		top: 0;
-		right: 22px;
+		left: 32px;
 		z-index: 1;
 		display: inline-flex;
 		align-items: center;
 		gap: 1px;
-		transform: translateY(-50%);
+		transform: translate(-50%, -50%);
+		white-space: nowrap;
 		padding: 1px;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 999px;
@@ -659,7 +660,7 @@
 	.editor {
 		display: grid;
 		gap: 6px;
-		margin: 2px 0 2px 30px;
+		margin: 2px 0 2px 34px;
 		padding: 8px;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 8px;

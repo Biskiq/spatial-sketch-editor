@@ -13,6 +13,9 @@ ACTIVE: none. No T3 slice or phase is in progress or authorized.
 NEXT:  Owner decision on next T3 planning or milestone integration. No next phase is registered in the T3 phase register or global roadmap.
 ROUTE: ../../roadmap/t3-experience/README.md →
        ../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md
+R217:  Experience review guide-playback plan (../../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
+       slices 1–7 implemented on claude/eloquent-goldberg-yrasgu (PR Biskiq/spatial-sketch-editor#271);
+       owner acceptance of journeys A–H and slice-closeout stay with the owner.
 BLOCKER: none.
 CARRY: F2 production epoch activation remains a separate owner-operated procedure.
        No track completion, milestone acceptance or cycle transition is claimed.

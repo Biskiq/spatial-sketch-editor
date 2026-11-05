@@ -1107,16 +1107,16 @@
 	.pacing-label {
 		min-height: 24px;
 		padding: 0 8px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid rgb(255 255 255 / 28%);
 		border-radius: 999px;
 		background: none;
-		color: var(--shell-ink-2, #4a524c);
+		color: inherit;
 		font: 500 11px var(--shell-sans, system-ui);
 		white-space: nowrap;
 		cursor: pointer;
 	}
 	.pacing-label:hover {
-		background: var(--shell-hover, #eef0ed);
+		background: rgb(255 255 255 / 10%);
 	}
 	.badge {
 		margin-left: 4px;
