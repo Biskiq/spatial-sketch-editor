@@ -5,31 +5,33 @@ import { createVisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.sv
 /**
  * A two-Stop guided Experience. There is no navigation graph, no node order and
  * no `nextNodeId`: the run is entirely Experience-unit orchestration (AM-9).
+ * Manual pacing by default, so each Stop waits for Next; `automatic()` times them.
  */
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 3,
+		formatVersion: 4,
 		capabilities: [],
 		welcome: null,
 		experienceId: 'experience-1',
+		pacing: 'manual',
 		entryStopId: 'stop-1',
 		presentations: [
 			{
 				id: 'presentation-1',
 				label: 'Piano',
-				viewIds: ['view-1'],
+				viewIds: ['view-1', 'view-3'],
+				steps: [{ kind: 'travel', connectionId: 'connection-13' }],
 				explorable: true,
-				defaultViewId: 'view-1',
 				content: [{ id: 'content-1', kind: 'text', text: 'The piano.' }]
 			},
-			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] },
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], steps: [], explorable: true, content: [] },
 			{
 				id: 'presentation-guide-free',
 				label: 'Study',
 				viewIds: ['view-3'],
+				steps: [],
 				explorable: true,
-				defaultViewId: 'view-3',
 				content: []
 			}
 		],
@@ -37,14 +39,18 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
-				views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
+				entryViewId: 'view-1',
+				staySeconds: null,
+				invitation: { prompt: null },
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				continuation: { kind: 'sequence-next' }
 			},
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
-				views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
+				entryViewId: 'view-2',
+				staySeconds: null,
+				invitation: null,
 				invocation: { kind: 'cut', viewId: 'view-2' },
 				continuation: { kind: 'end' }
 			}
@@ -58,6 +64,21 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	};
 }
 
+function automatic(stays: readonly [number, number] = [0.5, 2], arrival: ExecutionProgram['stops'][number]['invocation'] = { kind: 'cut', viewId: 'view-2' }) {
+	const base = program();
+	return {
+		pacing: 'automatic' as const,
+		stops: [
+			{ ...base.stops[0]!, staySeconds: stays[0] },
+			{ ...base.stops[1]!, staySeconds: stays[1], invocation: arrival }
+		],
+		localTime: [
+			{ stopId: 'stop-1', staySeconds: stays[0] },
+			{ stopId: 'stop-2', staySeconds: stays[1] }
+		]
+	};
+}
+
 function runtime(overrides: Partial<ExecutionProgram> = {}) {
 	return createVisitorRuntimeState({
 		program: program(overrides),
@@ -66,32 +87,6 @@ function runtime(overrides: Partial<ExecutionProgram> = {}) {
 }
 
 describe('Experience visitor runtime (no node-keyed orchestration)', () => {
-	it('queues every Camera move one tick crosses, including zero-hold Travel', () => {
-		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [
-						{ viewId: 'view-1', holdSeconds: 1, step: null },
-						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-1' } },
-						{ viewId: 'view-1', holdSeconds: 0, step: { kind: 'cut', viewId: 'view-1' } }
-					],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
-		visitor.enter();
-		visitor.tick(1100);
-		const motions = visitor.takeTickMotions();
-		// The reducer finishes all three Views in one tick; the queue preserves the
-		// zero-hold Travel that the final state's invocation would otherwise hide.
-		expect(motions.map((motion) => motion.viewId)).toEqual(['view-2', 'view-1']);
-		expect(motions[0]?.invocation).toEqual({ kind: 'travel', connectionId: 'connection-1' });
-		expect(motions[1]?.invocation).toEqual({ kind: 'cut', viewId: 'view-1' });
-	});
-
 	it('starts neutral and enters at the authored entry Stop', () => {
 		const visitor = runtime();
 		expect(visitor.currentViewId).toBeNull();
@@ -100,6 +95,8 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.state.stopId).toBe('stop-1');
 		expect(visitor.currentViewId).toBe('view-1');
 		expect(visitor.currentInvocation).toEqual({ kind: 'cut', viewId: 'view-1' });
+		expect(visitor.waiting).toBe(true);
+		expect(visitor.invitation).toEqual({ prompt: null });
 	});
 
 	it('advances only through the authored continuation', () => {
@@ -110,8 +107,6 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.currentViewId).toBe('view-2');
 		visitor.continue();
 		expect(visitor.state.phase).toBe('completed');
-		// The final camera pose stays where the last Stop left it; the run is ended
-		// and no further Continue is accepted.
 		expect(visitor.currentViewId).toBe('view-2');
 		expect(visitor.ended).toBe(true);
 	});
@@ -139,31 +134,72 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		});
 	});
 
-	it('holds on the explicit clock and auto-continues on expiry', () => {
-		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'sequence-next' }
-				},
-				{
-					id: 'stop-2',
-					presentationId: 'presentation-2',
-					views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-2' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
+	it('stays on the explicit clock and plays on in Automatic', () => {
+		const visitor = runtime(automatic());
 		visitor.enter();
 		expect(visitor.state.phase).toBe('holding');
-		visitor.continue();
-		expect(visitor.state.stopId).toBe('stop-1');
 		visitor.tick(600);
 		expect(visitor.state.stopId).toBe('stop-2');
+		expect(visitor.state.phase).toBe('holding');
+	});
+
+	it('accumulates fractional frame milliseconds so a stay actually expires', () => {
+		const visitor = runtime(automatic());
+		visitor.enter();
+		for (let frame = 0; frame < 31; frame += 1) visitor.tick(1000 / 60);
+		expect(visitor.state.stopId).toBe('stop-2');
+	});
+
+	it('starts a stay only once its arrival Travel is confirmed', () => {
+		const visitor = runtime(automatic([0.5, 2], { kind: 'travel', connectionId: 'connection-12' }));
+		visitor.enter();
+		visitor.tick(500);
+		expect(visitor.traveling).toBe(true);
+		expect(visitor.takeTickMotions()).toEqual([
+			{ invocation: { kind: 'travel', connectionId: 'connection-12' }, viewId: 'view-2' }
+		]);
+		visitor.tick(5000);
+		expect(visitor.state.holdRemainingMs).toBeNull();
+		visitor.arrival();
+		expect(visitor.state).toMatchObject({ phase: 'holding', holdRemainingMs: 2000 });
+	});
+
+	it('keeps one pause flag in run state; Next resumes play', () => {
+		const visitor = runtime(automatic());
+		visitor.enter();
+		visitor.pause();
+		expect(visitor.paused).toBe(true);
+		visitor.tick(5000);
+		expect(visitor.state).toMatchObject({ stopId: 'stop-1', holdRemainingMs: 500 });
+		visitor.continue();
+		expect(visitor.paused).toBe(false);
+		expect(visitor.state.stopId).toBe('stop-2');
+		// Manual has nothing to pause.
+		const manual = runtime();
+		manual.enter();
+		manual.pause();
+		expect(manual.paused).toBe(false);
+	});
+
+	it('explores the Stop from its View, steps the Presentation and returns to the same occurrence', () => {
+		const visitor = runtime(automatic([4, 2]));
+		visitor.enter();
+		visitor.tick(1500);
+		const occurrence = visitor.state.occurrenceId;
+		expect(visitor.explore()).toBe(true);
+		expect(visitor.exploring).toBe(true);
+		expect(visitor.currentViewId).toBe('view-1');
+		visitor.tick(10_000);
+		expect(visitor.state.resume?.holdRemainingMs).toBe(2500);
+		expect(visitor.exploreStep(1)).toBe(true);
+		expect(visitor.currentInvocation).toEqual({ kind: 'travel', connectionId: 'connection-13' });
+		expect(visitor.currentViewId).toBe('view-3');
+		expect(visitor.exploreStep(1)).toBe(false);
+		// Places keeps the one resume point.
+		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
+		visitor.resume();
+		expect(visitor.exploring).toBe(false);
+		expect(visitor.state).toMatchObject({ stopId: 'stop-1', occurrenceId: occurrence, holdRemainingMs: 2500, viewId: 'view-1' });
 	});
 
 	it('selects a Stop-free Presentation as a real Camera destination', () => {
@@ -172,105 +208,40 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
 		expect(visitor.currentPresentation?.id).toBe('presentation-guide-free');
 		expect(visitor.currentViewId).toBe('view-3');
-		// The detached Presentation is a Cut. Replaying the entry Stop's invocation
-		// here would ask Camera for a connection the visitor never travelled.
 		expect(visitor.currentInvocation).toEqual({ kind: 'cut', viewId: 'view-3' });
 		expect(visitor.selectPresentation('presentation-absent')).toBe(false);
-		// An explicit Stop navigation leaves the Stop-free selection behind.
 		visitor.navigate('stop-2');
 		expect(visitor.currentPresentation?.id).toBe('presentation-2');
 		expect(visitor.currentViewId).toBe('view-2');
-		// `enter()` is idempotent: it never restarts an entered run, so a detached
-		// Presentation stays until a real arrival replaces it.
-		visitor.selectPresentation('presentation-guide-free');
-		visitor.enter();
-		expect(visitor.currentPresentation?.id).toBe('presentation-guide-free');
-		expect(visitor.currentViewId).toBe('view-3');
+		expect(visitor.canResume).toBe(false);
 	});
 
-	it('keeps a detached Presentation until a real arrival replaces it', () => {
-		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'sequence-next' }
-				},
-				{
-					id: 'stop-2',
-					presentationId: 'presentation-2',
-					views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-2' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
-		visitor.enter();
-		expect(visitor.state.phase).toBe('holding');
-		visitor.selectPresentation('presentation-guide-free');
-		expect(visitor.currentViewId).toBe('view-3');
-
-		// Presentation entry ends the occurrence: no Stop and no hold remain, so
-		// Continue has nothing to advance and the explicit clock cannot move it.
-		expect(visitor.state.stopId).toBeNull();
-		expect(visitor.state.phase).toBe('ready');
-		visitor.continue();
-		expect(visitor.currentViewId).toBe('view-3');
-		visitor.tick(600);
-		expect(visitor.currentViewId).toBe('view-3');
-
-		// A real arrival replaces the detached Presentation and its View.
-		visitor.navigate('stop-2');
-		expect(visitor.state.stopId).toBe('stop-2');
-		expect(visitor.state.presentationId).toBe('presentation-2');
-		expect(visitor.currentViewId).toBe('view-2');
-	});
-
-	it('offers an explicit Resume only while a Presentation has suspended the Guide', () => {
+	it('offers Back only while a Stop is suspended, and Next never returns', () => {
 		const visitor = runtime();
 		visitor.enter();
 		visitor.continue();
 		expect(visitor.canResume).toBe(false);
 		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
 		expect(visitor.canResume).toBe(true);
-		// Continue never returns to the suspended Stop.
 		visitor.continue();
 		expect(visitor.currentPresentation?.id).toBe('presentation-guide-free');
-		expect(visitor.canResume).toBe(true);
 		visitor.resume();
 		expect(visitor.canResume).toBe(false);
 		expect(visitor.state.stopId).toBe('stop-2');
 		expect(visitor.currentViewId).toBe('view-2');
+		expect(visitor.waiting).toBe(true);
 	});
 
-	it('accumulates fractional frame milliseconds so a hold actually expires', () => {
+	it('Prev cuts to the previous Stop entry View', () => {
 		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [{ viewId: 'view-1', holdSeconds: 0.5, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'sequence-next' }
-				},
-				{
-					id: 'stop-2',
-					presentationId: 'presentation-2',
-					views: [{ viewId: 'view-2', holdSeconds: null, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-2' },
-					continuation: { kind: 'end' }
-				}
-			]
+			stops: program().stops.map((stop) => (stop.id === 'stop-1' ? { ...stop, entryViewId: 'view-3', invocation: { kind: 'cut' as const, viewId: 'view-3' } } : stop))
 		});
 		visitor.enter();
-		expect(visitor.state.phase).toBe('holding');
-		// 60 fps deltas are fractional; the integer-only interpreter used to reject
-		// every frame, so a hold never expired.
-		for (let frame = 0; frame < 31; frame += 1) visitor.tick(1000 / 60);
-		expect(visitor.state.stopId).toBe('stop-2');
-		expect(visitor.state.phase).toBe('ready');
+		visitor.continue();
+		expect(visitor.previousStop()).toBe(true);
+		expect(visitor.state).toMatchObject({ stopId: 'stop-1', viewId: 'view-3' });
+		expect(visitor.currentInvocation).toEqual({ kind: 'cut', viewId: 'view-3' });
+		expect(visitor.previousStop()).toBe(false);
 	});
 
 	it('treats an empty program as an explicit neutral state', () => {
@@ -279,10 +250,8 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.ended).toBe(true);
 		expect(visitor.currentViewId).toBeNull();
 	});
-});
 
-describe('R217.S27 visitor reach and steps', () => {
-	it('lists open Presentations in program order, including those in the Guide', () => {
+	it('lists Places in program order, only those Listed in Places', () => {
 		const base = program();
 		const visitor = runtime({
 			presentations: [
@@ -297,27 +266,6 @@ describe('R217.S27 visitor reach and steps', () => {
 		expect(visitor.selectPresentation('presentation-1')).toBe(false);
 		expect(visitor.selectPresentation('presentation-2')).toBe(true);
 		expect(visitor.currentViewId).toBe('view-2');
-		expect(visitor.currentViewIndex).toBeNull();
-	});
-
-	it('holds an untimed final View for Next even when a tick steps into it', () => {
-		const base = program();
-		const visitor = runtime({
-			presentations: [{ ...base.presentations[0]!, viewIds: ['view-1', 'view-3'] }, ...base.presentations.slice(1)],
-			stops: [{ ...base.stops[0]!, views: [
-				{ viewId: 'view-1', holdSeconds: 0.5, step: null },
-				{ viewId: 'view-3', holdSeconds: null, step: { kind: 'cut', viewId: 'view-3' } }
-			] }, base.stops[1]!],
-			localTime: [{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 0.5 }]
-		});
-		visitor.enter();
-		visitor.tick(1000);
-		expect(visitor.currentStop?.id).toBe('stop-1');
-		expect(visitor.currentViewId).toBe('view-3');
-		expect(visitor.currentViewIndex).toBe(1);
-		expect(visitor.state.holdRemainingMs).toBeNull();
-		visitor.continue();
-		expect(visitor.currentStop?.id).toBe('stop-2');
 		expect(visitor.currentViewIndex).toBe(0);
 	});
 });

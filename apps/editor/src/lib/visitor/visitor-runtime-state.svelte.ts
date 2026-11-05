@@ -1,12 +1,17 @@
 /**
  * Visitor runtime — Experience-unit orchestration (AM-9, T3.P01.S04).
  *
- * The visitor executes one lowered `ExecutionProgram@3` through the single
+ * The visitor executes one lowered `ExecutionProgram@4` through the single
  * Experience reducer. There is no node-keyed order, no main-flow walk and no
  * Scene `nextNodeId`/`previousNodeId` traversal: Guide order is authored in the
  * Experience unit, lowering produces the program, and this store only dispatches
  * explicit events at editorial arrival. Camera framing is read from the current
  * Stop's Presentation view; motion remains the Camera authority's.
+ *
+ * One Guide clock (sheet §31): play, pause, wait and Explore are run state in
+ * the reducer, never a second flag here or in the director. A stay counts only
+ * after its arrival: the director confirms a finished arrival Travel with
+ * `arrival()`, in Preview and in a release alike.
  */
 import {
 	buildExperienceCompanion,
@@ -84,17 +89,81 @@ export class VisitorRuntimeState {
 		if (this.program.entryStopId !== null) this.enter();
 	}
 
-	/** The explicit Continue control. A Gate or a finished hold advances once. */
+	/**
+	 * Next. Always available at a Stop: during an arrival Travel it lands now, at
+	 * a Stop it moves on, on the last Stop it finishes; in Automatic it also
+	 * resumes play.
+	 */
 	continue() {
+		this.queuedMotions = [];
 		this.state = this.reduce({ kind: 'continue', ...this.runIdentity() }).state;
 	}
 
+	/** The director finished the arrival Travel: the Stop's stay starts now. */
+	arrival() {
+		if (this.state.phase !== 'traveling') return;
+		this.state = this.reduce({ kind: 'arrival', ...this.runIdentity() }).state;
+	}
+
+	/** Automatic only: freeze the Guide clock, mid-Travel included. */
+	pause() {
+		this.state = this.reduce({ kind: 'pause', ...this.runIdentity() }).state;
+	}
+
+	play() {
+		this.state = this.reduce({ kind: 'play', ...this.runIdentity() }).state;
+	}
+
+	togglePause() {
+		if (this.state.paused) this.play();
+		else this.pause();
+	}
+
 	/**
-	 * Return to the Guide position a Presentation suspended. Only this explicit
-	 * control returns; Continue never does.
+	 * Explore the current Stop's Presentation from the View the visitor sees. It
+	 * keeps the Stop occurrence suspended and freezes the Guide clock; during an
+	 * arrival Travel it lands first.
+	 */
+	explore(): boolean {
+		const stop = this.currentStop;
+		if (stop === null) return false;
+		const viewId = this.state.phase === 'traveling' ? stop.entryViewId : (this.state.viewId ?? stop.entryViewId);
+		const result = this.reduce({
+			kind: 'enter-presentation',
+			...this.runIdentity(),
+			presentationId: stop.presentationId,
+			viewId
+		});
+		if (result.outcome !== 'accepted') return false;
+		this.queuedMotions = [];
+		this.state = result.state;
+		return true;
+	}
+
+	/** In Explore: step to one View — the authored step when adjacent, else a Cut. */
+	exploreView(viewId: string): boolean {
+		const result = this.reduce({ kind: 'explore-view', ...this.runIdentity(), viewId });
+		if (result.outcome !== 'accepted') return false;
+		this.state = result.state;
+		return true;
+	}
+
+	/** ‹ › in Explore: the previous or next View of the Presentation's own order. */
+	exploreStep(direction: -1 | 1): boolean {
+		const presentation = this.currentPresentation;
+		const index = this.state.viewIndex;
+		if (presentation === null || index === null) return false;
+		const viewId = presentation.viewIds[index + direction];
+		return viewId === undefined ? false : this.exploreView(viewId);
+	}
+
+	/**
+	 * Back to the tour: a Cut to the Stop's View that restores the playhead and the
+	 * play, pause or wait state of the same occurrence. Next never returns.
 	 */
 	resume() {
 		this.queuedMotions = [];
+		this.pendingMilliseconds = 0;
 		this.state = this.reduce({ kind: 'resume', ...this.runIdentity() }).state;
 	}
 
@@ -115,7 +184,7 @@ export class VisitorRuntimeState {
 		if (fromStopId === null) return false;
 		const index = this.program.stops.findIndex((stop) => stop.id === fromStopId);
 		const previous = index > 0 ? this.program.stops[index - 1] : undefined;
-		const firstViewId = previous?.views[0]?.viewId;
+		const firstViewId = previous?.entryViewId;
 		if (previous === undefined || firstViewId === undefined) return false;
 		const cut: ExperienceTransition = {
 			fromStopId,
@@ -139,13 +208,18 @@ export class VisitorRuntimeState {
 	}
 
 	/**
-	 * Enter an explorable Presentation at its Default through the interpreter's
-	 * Presentation-entry event. It realizes the Presentation's Default View through
-	 * the same Camera authority and never fabricates a Stop.
+	 * Places: enter a Presentation listed in Places at its Default through the
+	 * interpreter's Presentation-entry event. From a Stop or from Explore it keeps
+	 * the one resume point; it never fabricates a Stop.
 	 */
-	selectPresentation(presentationId: string): boolean {
+	selectPresentation(presentationId: string, viewId?: string): boolean {
 		if (!this.freePresentations.some((presentation) => presentation.id === presentationId)) return false;
-		const result = this.reduce({ kind: 'enter-presentation', ...this.runIdentity(), presentationId });
+		const result = this.reduce({
+			kind: 'enter-presentation',
+			...this.runIdentity(),
+			presentationId,
+			...(viewId === undefined ? {} : { viewId })
+		});
 		if (result.outcome !== 'accepted') return false;
 		this.queuedMotions = [];
 		this.state = result.state;
@@ -179,9 +253,17 @@ export class VisitorRuntimeState {
 		this.state = this.reduce({ kind: 'cancel', ...this.runIdentity() }).state;
 	}
 
-	/** Advance the explicit clock; holds auto-continue on expiry. */
+	/**
+	 * Advance the one Guide clock. Ticks are ignored while paused or exploring
+	 * (the reducer refuses them too); a stay that ends plays on by itself in
+	 * Automatic, and a Manual Stop waits for Next.
+	 */
 	tick(milliseconds: number) {
 		if (!Number.isFinite(milliseconds) || milliseconds <= 0) return;
+		if (this.state.paused || this.exploring || this.ended) {
+			this.pendingMilliseconds = 0;
+			return;
+		}
 		// The interpreter's clock is integer milliseconds. A renderer supplies
 		// `delta * 1000` (≈16.67 at 60 fps), so accumulate and dispatch whole
 		// milliseconds rather than dropping every fractional frame.
@@ -189,18 +271,9 @@ export class VisitorRuntimeState {
 		const wholeMilliseconds = Math.floor(this.pendingMilliseconds);
 		if (wholeMilliseconds <= 0) return;
 		this.pendingMilliseconds -= wholeMilliseconds;
-		const wasHolding = this.state.phase === 'holding';
 		const ticked = this.reduce({ kind: 'tick', ...this.runIdentity(), milliseconds: wholeMilliseconds });
 		this.state = ticked.state;
 		this.queuedMotions.push(...this.cameraMotions(ticked.effects));
-		// A hold is time, not a prompt: when the authored hold expires the run
-		// continues itself. A Gate is different and stays blocked until the
-		// visitor's explicit Continue.
-		if (wasHolding && this.state.phase === 'ready' && this.state.holdRemainingMs === 0 && !this.state.gated) {
-			const continued = this.reduce({ kind: 'continue', ...this.runIdentity() });
-			this.state = continued.state;
-			this.queuedMotions.push(...this.cameraMotions(continued.effects));
-		}
 	}
 
 	/**
@@ -219,12 +292,9 @@ export class VisitorRuntimeState {
 		for (let index = 0; index < effects.length; index += 1) {
 			const effect = effects[index]!;
 			if (effect.kind !== 'camera') continue;
-			const next = effects[index + 1];
-			const stepViewId = next?.kind === 'step' ? next.viewId : null;
-			const arrivalViewId = effect.stopId === null
-				? null
-				: this.program.stops.find((stop) => stop.id === effect.stopId)?.views[0]?.viewId ?? null;
-			const viewId = stepViewId ?? arrivalViewId;
+			const viewId = effect.stopId === null
+				? (effect.invocation.kind === 'cut' ? effect.invocation.viewId : this.state.viewId)
+				: this.program.stops.find((stop) => stop.id === effect.stopId)?.entryViewId ?? null;
 			if (viewId !== null) motions.push({ invocation: effect.invocation, viewId });
 		}
 		return motions;
@@ -268,14 +338,38 @@ export class VisitorRuntimeState {
 		return this.state.phase === 'completed' || this.state.phase === 'cancelled';
 	}
 
-	/** The last View was untimed and the tour waits for Next. */
+	/** A Manual Stop waits for Next. */
 	get waiting() {
 		return this.state.phase === 'ready' && this.state.holdRemainingMs === null && this.state.stopId !== null;
+	}
+
+	/** The arrival Travel into the current Stop is playing; its stay has not started. */
+	get traveling() {
+		return this.state.phase === 'traveling';
+	}
+
+	/** Automatic only: the Guide clock is frozen. */
+	get paused() {
+		return this.state.paused;
+	}
+
+	get pacing() {
+		return this.program.pacing;
+	}
+
+	/** Exploring: a Stop occurrence is suspended behind the visitor's own looking. */
+	get exploring(): boolean {
+		return this.state.resume !== null;
 	}
 
 	/** Whether a suspended Guide position can be returned to. */
 	get canResume(): boolean {
 		return this.state.resume !== null;
+	}
+
+	/** The current Stop's invitation to explore, or null. */
+	get invitation() {
+		return this.currentStop?.invitation ?? null;
 	}
 
 	get companion() {

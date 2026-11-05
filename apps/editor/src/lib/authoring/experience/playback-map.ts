@@ -1,167 +1,35 @@
 /**
- * R217.S30 — project the lowered `ExecutionProgram@3` into the Camera time map.
+ * R217.S30 — the editor's movement previews over the one Guide clock.
  *
- * This is the one adapter between the shared program and `camera-core`'s
- * structural time-map input. It copies no Camera fact: each Travel names the
- * connection the program bound, and the Camera resolves its directed motion.
- *
- * The traversal follows the authored continuations from the run's entry Stop, so
- * a nonadjacent Next, a Cut between otherwise unconnected Stops and an
- * independent Travel pair all read exactly as the run would. A revisit is a new
- * occurrence; a sequence that would revisit a Stop forever is refused as a cycle
- * rather than expanded.
+ * The Guide's time map itself lives in the visitor-safe `guide-run-map` module
+ * (guide-playback plan, slice 4), so Preview, a release and the editor read one
+ * adapter. This module adds only the editor's single-movement preview ("play
+ * this move"), for a Guide connection or a Presentation's explore step.
  *
  * Pure: no editor state, no renderer, no writes.
  */
 import {
 	buildGuideMovementMap,
-	buildGuideTimeMap,
 	type CameraGraph,
 	type GuideTimeInvocation,
-	type GuideTimeMapResult,
-	type GuideTimeOccurrenceInput
+	type GuideTimeMapResult
 } from '@portfolio/camera-core';
 import type {
 	ExecutionProgram,
 	ExperienceProgramTransition,
 	ProgramInvocation
 } from '@portfolio/project-model/units';
-
-type ProgramStop = ExecutionProgram['stops'][number];
+import { nextProgramStopId, programTransitionFor } from '$lib/visitor/guide-run-map';
 import type { ExperiencePathOccurrence } from './experience-paths';
 
-export type GuideRunRefusal =
-	| {
-			readonly kind: 'gap';
-			readonly reason: string;
-			readonly stopId?: string;
-			readonly viewIndex?: number;
-	  }
-	| { readonly kind: 'cycle'; readonly reason: string; readonly stopId: string };
+export {
+	guideRunFromProgram,
+	guideTimeMapForProgram,
+	type GuideRunRefusal,
+	type GuideRunResult
+} from '$lib/visitor/guide-run-map';
 
-export type GuideRunResult =
-	| { readonly kind: 'ready'; readonly occurrences: readonly GuideTimeOccurrenceInput[] }
-	| GuideRunRefusal;
-
-function transitionFor(
-	transitions: readonly ExperienceProgramTransition[],
-	fromStopId: string,
-	toStopId: string
-): ProgramInvocation | null {
-	const entry = transitions.find(
-		(candidate) => candidate.fromStopId === fromStopId && candidate.toStopId === toStopId
-	);
-	return entry?.invocation ?? null;
-}
-
-function entryCut(stop: ProgramStop): ProgramInvocation {
-	return { kind: 'cut', viewId: stop.views[0]!.viewId };
-}
-
-/**
- * Walk one finite run from `entryStopId`.
- *
- * The first occurrence never starts with a Travel. Every later occurrence takes
- * the invocation authored for the edge it actually came from (the transition
- * table), falling back to the Stop's own binding only when that binding is a Cut:
- * a Travel is never borrowed from another predecessor.
- */
-export function guideRunFromProgram(input: {
-	readonly program: ExecutionProgram;
-	readonly transitions: readonly ExperienceProgramTransition[];
-	/** Defaults to the program's entry Stop. */
-	readonly entryStopId?: string | null;
-}): GuideRunResult {
-	const { program, transitions } = input;
-	const stopById = new Map(program.stops.map((stop) => [stop.id, stop]));
-	const startStopId = input.entryStopId ?? program.entryStopId;
-	if (startStopId === null) return { kind: 'ready', occurrences: [] };
-	const first = stopById.get(startStopId);
-	if (first === undefined) {
-		return { kind: 'gap', reason: `The run's entry Stop "${startStopId}" is not in this program.`, stopId: startStopId };
-	}
-	const occurrences: GuideTimeOccurrenceInput[] = [];
-	const visited = new Set<string>();
-	let current: ProgramStop | null = first;
-	let previous: ProgramStop | null = null;
-	let index = 1;
-	while (current !== null) {
-		if (visited.has(current.id)) {
-			return {
-				kind: 'cycle',
-				reason: `The run revisits Stop "${current.id}", so a finite traversal cannot be represented.`,
-				stopId: current.id
-			};
-		}
-		visited.add(current.id);
-		// A Travel with no authored transition for this approach plays as a Cut:
-		// the gap stays a problem on its own link (the Card names it) instead of
-		// making the whole Guide unplayable.
-		const authored = previous === null ? null : transitionFor(transitions, previous.id, current.id);
-		const arrival: ProgramInvocation =
-			previous === null
-				? entryCut(current)
-				: authored ?? (current.invocation.kind === 'cut' ? current.invocation : { kind: 'cut', viewId: current.views[0]!.viewId });
-		occurrences.push({
-			occurrenceId: `${index}:${current.id}`,
-			stopId: current.id,
-			presentationId: current.presentationId,
-			views: current.views.map((view) => ({
-				viewId: view.viewId,
-				holdSeconds: view.holdSeconds,
-				step: view.step
-			})),
-			arrival: arrival as GuideTimeInvocation
-		});
-		const currentId: string = current.id;
-		const nextStopId: string | null =
-			current.continuation.kind === 'stop'
-				? current.continuation.stopId
-				: current.continuation.kind === 'end'
-					? null
-					: (program.stops[program.stops.findIndex((stop) => stop.id === currentId) + 1]?.id ?? null);
-		const next: ProgramStop | null = nextStopId === null ? null : (stopById.get(nextStopId) ?? null);
-		if (nextStopId !== null && next === null) {
-			return {
-				kind: 'gap',
-				reason: `Stop "${current.id}" continues to "${nextStopId}", which is not in this program.`,
-				stopId: current.id
-			};
-		}
-		previous = current;
-		current = next;
-		index += 1;
-	}
-	return { kind: 'ready', occurrences };
-}
-
-/** The Guide's one time map, from its authored entry (or an explicit run entry). */
-export function guideTimeMapForProgram(input: {
-	readonly program: ExecutionProgram;
-	readonly transitions: readonly ExperienceProgramTransition[];
-	readonly graph: CameraGraph;
-	readonly entryStopId?: string | null;
-}): GuideTimeMapResult | GuideRunRefusal {
-	const run = guideRunFromProgram(input);
-	if (run.kind !== 'ready') return run;
-	if (run.occurrences.length === 0) {
-		return {
-			kind: 'ready',
-			map: {
-				graph: input.graph,
-				segments: [],
-				totalSeconds: 0,
-				waitCount: 0,
-				stopEntries: [],
-				occurrences: [],
-				boundaries: []
-			}
-		};
-	}
-	return buildGuideTimeMap({ occurrences: run.occurrences, graph: input.graph });
-}
-
-/** The authoring identity of one Guided move, projected to its program edge. */
+/** The authoring identity of one move, projected to its program edge or step. */
 export function movementForOccurrence(input: {
 	readonly occurrence: ExperiencePathOccurrence;
 	readonly program: ExecutionProgram;
@@ -170,40 +38,37 @@ export function movementForOccurrence(input: {
 	readonly fromViewId: string | null;
 	readonly toViewId: string;
 	readonly invocation: ProgramInvocation;
-	readonly stopId: string;
+	readonly stopId: string | null;
 	readonly presentationId: string;
 } | null {
 	const occurrence = input.occurrence;
-	const stop = input.program.stops.find((entry) => entry.id === occurrence.stopId);
-	if (stop === undefined) return null;
 	if (occurrence.kind === 'step') {
-		const viewIndex = stop.views.findIndex((view) => view.viewId === occurrence.toViewId);
+		const presentation = input.program.presentations.find((entry) => entry.id === occurrence.presentationId);
+		if (presentation === undefined) return null;
+		const viewIndex = presentation.viewIds.indexOf(occurrence.toViewId);
 		if (viewIndex <= 0) return null;
 		return {
-			fromViewId: stop.views[viewIndex - 1]!.viewId,
-			toViewId: stop.views[viewIndex]!.viewId,
-			invocation: stop.views[viewIndex]!.step ?? { kind: 'cut', viewId: stop.views[viewIndex]!.viewId },
-			stopId: stop.id,
-			presentationId: stop.presentationId
+			fromViewId: presentation.viewIds[viewIndex - 1]!,
+			toViewId: occurrence.toViewId,
+			invocation: presentation.steps[viewIndex - 1] ?? { kind: 'cut', viewId: occurrence.toViewId },
+			stopId: null,
+			presentationId: presentation.id
 		};
 	}
-	const nextStopId =
-		stop.continuation.kind === 'stop'
-			? stop.continuation.stopId
-			: stop.continuation.kind === 'end'
-				? null
-				: (input.program.stops[input.program.stops.findIndex((entry) => entry.id === stop.id) + 1]?.id ?? null);
+	const stop = input.program.stops.find((entry) => entry.id === occurrence.stopId);
+	if (stop === undefined) return null;
+	const nextStopId = nextProgramStopId(input.program, stop);
 	if (nextStopId === null) return null;
 	const next = input.program.stops.find((entry) => entry.id === nextStopId);
 	if (next === undefined) return null;
 	return {
-		fromViewId: stop.views.at(-1)!.viewId,
-		toViewId: next.views[0]!.viewId,
+		fromViewId: stop.entryViewId,
+		toViewId: next.entryViewId,
 		// A Travel is used only when the authored edge names one; never inferred
 		// from connectivity and never borrowed from another approach.
 		invocation:
-			transitionFor(input.transitions, stop.id, next.id) ??
-			{ kind: 'cut', viewId: next.views[0]!.viewId },
+			programTransitionFor(input.transitions, stop.id, next.id) ??
+			{ kind: 'cut', viewId: next.entryViewId },
 		stopId: stop.id,
 		presentationId: stop.presentationId
 	};
@@ -219,14 +84,16 @@ export function movementTimeMap(input: {
 	const movement = movementForOccurrence(input);
 	if (movement === null) return null;
 	const occurrenceRef: string =
-		input.occurrence.kind === 'step' ? input.occurrence.toViewId : 'next';
+		input.occurrence.kind === 'step'
+			? `${input.occurrence.presentationId}:${input.occurrence.toViewId}`
+			: input.occurrence.stopId;
 	return buildGuideMovementMap({
 		fromViewId: movement.fromViewId,
 		toViewId: movement.toViewId,
 		invocation: movement.invocation as GuideTimeInvocation,
-		stopId: movement.stopId,
+		stopId: movement.stopId ?? movement.presentationId,
 		presentationId: movement.presentationId,
-		occurrenceId: `${input.occurrence.kind}:${input.occurrence.stopId}:${occurrenceRef}`,
+		occurrenceId: `${input.occurrence.kind}:${occurrenceRef}`,
 		graph: input.graph
 	});
 }

@@ -43,19 +43,32 @@ describe('R217.S30 Guide time map', () => {
 		expect(result.kind).toBe('ready');
 		if (result.kind !== 'ready') return;
 		const map = result.map;
-		// arrival Cut (0) + 0.5 s hold + 4 s authored Travel + untimed final wait.
-		expect(map.totalSeconds).toBe(4.5);
-		expect(map.waitCount).toBe(1);
-		expect(map.segments.map((segment) => segment.kind)).toEqual(['cut', 'hold', 'travel', 'wait']);
-		expect(map.segments.map((segment) => segment.durationSeconds)).toEqual([0, 0.5, 4, 0]);
-		expect(formatGuideTotal(map)).toBe('0:05 + 1 wait');
+		// arrival Cut (0) + 1 s stay + 4 s authored Travel + 2 s stay: one View per Stop.
+		expect(map.totalSeconds).toBe(7);
+		expect(map.waitCount).toBe(0);
+		expect(map.segments.map((segment) => segment.kind)).toEqual(['cut', 'hold', 'travel', 'hold']);
+		expect(map.segments.map((segment) => segment.durationSeconds)).toEqual([0, 1, 4, 2]);
+		expect(formatGuideTotal(map)).toBe('0:07');
 		expect(formatGuideWaits(2)).toBe('+ 2 waits');
-		// Both zero-length segments at 0 s stay distinct through the cursor.
+		// Both zero-length and timed segments at 0 s stay distinct through the cursor.
 		expect(map.boundaries[0]!.segmentIds.length).toBe(2);
 		const start = guideTimeCursorAt(map, 0);
 		expect(map.segments.find((segment) => segment.id === start.segmentId)!.kind).toBe('cut');
-		const wait = map.segments.find((segment) => segment.kind === 'wait')!;
-		expect(guideTimeCursorAt(map, 0.5).segmentId).not.toBe(wait.id);
+	});
+
+	it('maps Manual pacing as a wait at every Stop, keeping the Travel time', async () => {
+		const { graph, program, transitions } = await fixture();
+		const manual = {
+			...program,
+			pacing: 'manual' as const,
+			stops: program.stops.map((stop) => ({ ...stop, staySeconds: null })),
+			localTime: []
+		};
+		const result = guideTimeMapForProgram({ program: manual, transitions, graph });
+		if (result.kind !== 'ready') throw new Error('map not ready');
+		expect(result.map.segments.map((segment) => segment.kind)).toEqual(['cut', 'wait', 'travel', 'wait']);
+		expect(result.map.totalSeconds).toBe(4);
+		expect(formatGuideTotal(result.map)).toBe('0:04 + 2 waits');
 	});
 
 	it('samples the authored pose, mid-travel motion and the reduced-motion destination', async () => {
@@ -64,7 +77,7 @@ describe('R217.S30 Guide time map', () => {
 		if (result.kind !== 'ready') throw new Error('map not ready');
 		const map = result.map;
 		const hold = map.segments.find((segment) => segment.kind === 'hold')!;
-		const held = sampleGuideTime(map, { segmentId: hold.id, elapsedSeconds: 0.25 });
+		const held = sampleGuideTime(map, { segmentId: hold.id, elapsedSeconds: 0.5 });
 		expect(held.kind).toBe('camera');
 		if (held.kind !== 'camera') return;
 		expect(held.sample.eye).toEqual([0, 1.6, 2]);

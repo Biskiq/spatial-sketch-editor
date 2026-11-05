@@ -14,10 +14,10 @@
  * 3. An explicit Cut to the in-flight destination, a Cut back to the origin, or
  *    a reduced-motion toggle must settle immediately instead of being mistaken
  *    for another hold tick.
- * 4. An authored hold can expire before its Travel reaches the Stop it belongs
- *    to. The next Travel then overtakes the unfinished one; the Camera must
- *    realize the new authored connection from its live pose (a declared
- *    handoff), not mistake it for an endpoint mismatch and Cut.
+ * 4. One Guide clock (guide-playback plan, slice 4): every surface is
+ *    time-aligned. A stay never counts during its arrival Travel — the director
+ *    confirms the arrival when the Travel lands — so the retired public
+ *    overtake (a hold expiring mid-flight) cannot happen.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -65,7 +65,6 @@ import type { NavigationGraph, NavigationNodeData } from '@portfolio/project-mod
 import VisitorCameraDirector from '$lib/visitor/VisitorCameraDirector.svelte';
 import { createVisitorRuntimeState, type VisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.svelte';
 import VisitorRuntimeProbe from './fixtures/VisitorRuntimeProbe.svelte';
-import VisitorDirectorHost from './fixtures/VisitorDirectorHost.svelte';
 
 const OPTIONS: ExperienceInterpreterOptions = {
 	runId: 'run-director',
@@ -118,41 +117,55 @@ function graph(): NavigationGraph {
 }
 
 /**
- * Two authored Stops. The second is reached by an explicit Travel on
- * `connection-2`, with a hold long enough that hold ticks run while the Camera
- * is still traveling (the motion is authored at five seconds).
+ * Two authored Stops in Automatic pacing. The second is reached by an explicit
+ * Travel on `connection-2` (five seconds), then stays one second.
  */
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 3,
+		formatVersion: 4,
 		capabilities: [],
 		welcome: null,
 		experienceId: 'experience-director',
+		pacing: 'automatic',
 		entryStopId: 'stop-1',
 		presentations: [
-			{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] },
-			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] },
-			{ id: 'presentation-guide-free', label: 'Study', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] }
+			{
+				id: 'presentation-1',
+				label: 'Entrance',
+				viewIds: ['view-1', 'view-2'],
+				steps: [{ kind: 'travel', connectionId: 'connection-1' }],
+				explorable: true,
+				content: []
+			},
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], steps: [], explorable: true, content: [] },
+			{ id: 'presentation-guide-free', label: 'Study', viewIds: ['view-1'], steps: [], explorable: true, content: [] }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
-				views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
+				entryViewId: 'view-1',
+				staySeconds: 30,
+				invitation: null,
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				continuation: { kind: 'sequence-next' }
 			},
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
-				views: [{ viewId: 'view-2', holdSeconds: 1, step: null }],
+				entryViewId: 'view-2',
+				staySeconds: 1,
+				invitation: null,
 				invocation: { kind: 'travel', connectionId: 'connection-2' },
 				continuation: { kind: 'end' }
 			}
 		],
 		state: [],
-		localTime: [],
+		localTime: [
+			{ stopId: 'stop-1', staySeconds: 30 },
+			{ stopId: 'stop-2', staySeconds: 1 }
+		],
 		channels: [],
 		lifecycle: [],
 		profile: { reducedMotion: 'required', semanticDomNavigation: 'required' },
@@ -203,10 +216,9 @@ async function mountDirector(
 	navigationGraph: NavigationGraph = graph(),
 	active = true,
 	options: {
-		readonly suspendGuidance?: boolean;
 		readonly guidedInputEnabled?: boolean;
-		readonly timeAligned?: boolean;
 		readonly viewOverride?: string | null;
+		readonly onCommand?: (command: string) => void;
 	} = {}
 ): Promise<void> {
 	const target = document.createElement('div');
@@ -234,9 +246,8 @@ describe('mounted visitor Camera handoff', () => {
 		visitor.continue();
 		await tick();
 		expect(target.querySelector('[data-testid="view"]')?.textContent).toBe('view-2');
-		expect(target.querySelector('[data-testid="phase"]')?.textContent).toBe('holding');
+		expect(target.querySelector('[data-testid="phase"]')?.textContent).toBe('traveling');
 
-		// A Stop-free selection is reactive too, and a real arrival replaces it.
 		visitor.selectPresentation('presentation-guide-free');
 		await tick();
 		expect(target.querySelector('[data-testid="selected"]')?.textContent).toBe('presentation-guide-free');
@@ -245,46 +256,49 @@ describe('mounted visitor Camera handoff', () => {
 		expect(target.querySelector('[data-testid="selected"]')?.textContent).toBe('presentation-2');
 	});
 
-	it('does not restart an in-flight Travel when hold ticks change interpreter state', async () => {
+	it('plays the arrival Travel on its authored timing and starts the stay only when it lands', async () => {
 		const visitor = runtime();
 		visitor.enter();
 		await mountDirector(visitor);
-		// First framing is a Cut; no motion yet.
 		expect(harness.starts).toHaveLength(0);
 
 		visitor.continue();
 		await tick();
 		expect(harness.starts).toHaveLength(1);
 		const route = harness.starts[0] as { edges?: Array<{ connectionId?: string; direction?: string }> };
-		expect(route.edges?.[0]).toEqual(
-			expect.objectContaining({ connectionId: 'connection-2', direction: 'forward' })
-		);
+		expect(route.edges?.[0]).toEqual(expect.objectContaining({ connectionId: 'connection-2', direction: 'forward' }));
 
-		// The destination holds for one second while the authored motion runs for
-		// five. Each tick replaces the interpreter state; the effect must not
-		// restart the same Travel from the current mid-flight pose.
-		for (let index = 0; index < 10; index += 1) await frame();
-		expect(visitor.state.holdRemainingMs).toBeLessThan(1000);
+		// Two seconds into a five-second Travel: no stay has started, nothing restarts.
+		for (let index = 0; index < 120; index += 1) await frame();
+		expect(visitor.state).toMatchObject({ stopId: 'stop-2', phase: 'traveling', holdRemainingMs: null });
 		expect(harness.starts).toHaveLength(1);
-		// The Camera is already moving toward the destination, so the motion is not
-		// pinned at the origin by a per-frame restart.
 		const midFlight = mockCamera().lastPoint;
 		expect(midFlight.x).toBeGreaterThan(0);
 		expect(midFlight.x).toBeLessThan(4);
 
-		// Finish the hold (auto-Continue advances the run) and keep framing. The
-		// completion state change must not start a second motion either.
-		for (let index = 0; index < 60; index += 1) await frame();
+		// The Travel lands; the director confirms the arrival and the one-second stay runs.
+		for (let index = 0; index < 190; index += 1) await frame();
+		expect(visitor.state.phase).toBe('holding');
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+		for (let index = 0; index < 70; index += 1) await frame();
 		expect(visitor.state.phase).toBe('completed');
 		expect(harness.starts).toHaveLength(1);
+	});
 
-		// The authored motion is five seconds. Let it finish; the sampled Camera
-		// pose reaches the destination node rather than being pinned at the origin.
-		for (let index = 0; index < 260; index += 1) await frame();
-		const finished = mockCamera().lastPoint;
-		expect(finished.x).toBeCloseTo(4, 5);
-		expect(finished.y).toBeCloseTo(1.6, 5);
-		expect(finished.z).toBeCloseTo(0, 5);
+	it('Next during the arrival Travel lands now with a Cut', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		await mountDirector(visitor, undefined, graph(), true, { guidedInputEnabled: true });
+		visitor.continue();
+		await tick();
+		for (let index = 0; index < 30; index += 1) await frame();
+		expect(mockCamera().lastPoint.x).toBeLessThan(4);
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+		await tick();
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+		expect(visitor.state).toMatchObject({ stopId: 'stop-2', phase: 'holding', holdRemainingMs: 1000 });
+		expect(harness.starts).toHaveLength(1);
 	});
 
 	it('settles an explicit Cut to the in-flight destination immediately', async () => {
@@ -293,22 +307,12 @@ describe('mounted visitor Camera handoff', () => {
 		await mountDirector(visitor);
 		visitor.continue();
 		await tick();
-		expect(harness.starts).toHaveLength(1);
 		for (let index = 0; index < 10; index += 1) await frame();
-		const midFlight = mockCamera().lastPoint;
-		expect(midFlight.x).toBeGreaterThan(0);
-		expect(midFlight.x).toBeLessThan(4);
-
-		// A Stop-free selection of the same Presentation is an explicit Cut to the
-		// View the Camera is already travelling to. It must settle now rather than
-		// be mistaken for a duplicate hold-tick and let the five-second Travel run.
+		expect(mockCamera().lastPoint.x).toBeLessThan(4);
 		visitor.selectPresentation('presentation-2');
 		await tick();
 		await frame(0);
-		const settled = mockCamera().lastPoint;
-		expect(settled.x).toBeCloseTo(4, 5);
-		expect(settled.y).toBeCloseTo(1.6, 5);
-		// The in-flight motion was ended, not replaced with a second route.
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
 		expect(harness.starts).toHaveLength(1);
 	});
 
@@ -320,9 +324,6 @@ describe('mounted visitor Camera handoff', () => {
 		await tick();
 		for (let index = 0; index < 10; index += 1) await frame();
 		expect(mockCamera().lastPoint.x).toBeLessThan(4);
-
-		// The host sets this from `prefers-reduced-motion`; an in-flight Travel must
-		// stop animating at the moment the preference applies.
 		visitor.reducedMotion = true;
 		await tick();
 		await frame(0);
@@ -330,414 +331,80 @@ describe('mounted visitor Camera handoff', () => {
 		expect(harness.starts).toHaveLength(1);
 	});
 
-	it('realizes the next authored Travel as a declared handoff when a hold expires mid-flight', async () => {
-		const THREE_NODES: NavigationNodeData[] = [
-			{
-				id: 'view-a',
-				label: 'Entrance',
-				position: [0, 1.6, 0],
-				cameraTarget: [0, 1.6, -1],
-				fov: 54,
-				connectedNodeIds: ['view-b']
-			},
-			{
-				id: 'view-b',
-				label: 'Gallery',
-				position: [4, 1.6, 0],
-				cameraTarget: [4, 1.6, -1],
-				fov: 54,
-				connectedNodeIds: ['view-a', 'view-c']
-			},
-			{
-				id: 'view-c',
-				label: 'Study',
-				position: [8, 1.6, 0],
-				cameraTarget: [8, 1.6, -1],
-				fov: 54,
-				connectedNodeIds: ['view-b']
-			}
-		];
-		const authored = (id: string, from: string, to: string, start: number, end: number, durationSeconds: number) => ({
-			id,
-			fromNodeId: from,
-			toNodeId: to,
-			positionPath: {
-				kind: 'rounded-polyline' as const,
-				anchors: [
-					{ id: `${id}-start`, position: [start, 1.6, 0] as [number, number, number] },
-					{ id: `${id}-end`, position: [end, 1.6, 0] as [number, number, number] }
-				]
-			},
-			clearance: 1.2,
-			timing: { forward: { durationSeconds } }
-		});
-		const navigation: NavigationGraph = {
-			navigationNodes: THREE_NODES,
-			connections: [
-				authored('connection-ab', 'view-a', 'view-b', 0, 4, 5),
-				authored('connection-bc', 'view-b', 'view-c', 4, 8, 2)
-			],
-			nodeById: new Map(THREE_NODES.map((node) => [node.id, node]))
-		};
-		const threeStops = program({
-			entryStopId: 'stop-a',
-			presentations: [
-				{ id: 'presentation-a', label: 'Entrance', viewIds: ['view-a'], explorable: true, defaultViewId: 'view-a', content: [] },
-				{ id: 'presentation-b', label: 'Gallery', viewIds: ['view-b'], explorable: true, defaultViewId: 'view-b', content: [] },
-				{ id: 'presentation-c', label: 'Study', viewIds: ['view-c'], explorable: true, defaultViewId: 'view-c', content: [] }
-			],
-			stops: [
-				{
-					id: 'stop-a',
-					presentationId: 'presentation-a',
-					views: [{ viewId: 'view-a', holdSeconds: null, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-a' },
-					continuation: { kind: 'sequence-next' }
-				},
-				{
-					id: 'stop-b',
-					presentationId: 'presentation-b',
-					views: [{ viewId: 'view-b', holdSeconds: 0.5, step: null }],
-					invocation: { kind: 'travel', connectionId: 'connection-ab' },
-					// Editorial time, not Camera arrival: this expires while the five-second
-					// Travel to B is still in flight.
-					continuation: { kind: 'sequence-next' }
-				},
-				{
-					id: 'stop-c',
-					presentationId: 'presentation-c',
-					views: [{ viewId: 'view-c', holdSeconds: null, step: null }],
-					invocation: { kind: 'travel', connectionId: 'connection-bc' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
-		const visitor = createVisitorRuntimeState({ program: threeStops, options: OPTIONS });
-		const gaps: (string | null)[] = [];
-		visitor.enter();
-		await mountDirector(visitor, (message) => gaps.push(message), navigation);
-
-		visitor.continue();
-		await tick();
-		expect(harness.starts).toHaveLength(1);
-
-		// 40 frames (≈0.67 s): B's 0.5 s hold expires while the 5 s A→B Travel is
-		// still short of B, so the Experience advances to C first.
-		for (let index = 0; index < 40; index += 1) await frame();
-		expect(visitor.currentViewId).toBe('view-c');
-		expect(visitor.state.stopId).toBe('stop-c');
-		expect(gaps.filter((message) => message !== null)).toEqual([]);
-
-		// The B→C connection is realized exactly, as a handoff from the live
-		// A→B pose. The unfinished Travel is not restarted or finished first.
-		expect(harness.starts).toHaveLength(2);
-		const handoff = harness.starts[1] as { edges?: Array<{ connectionId?: string; direction?: string }> };
-		expect(handoff.edges?.[0]).toEqual(
-			expect.objectContaining({ connectionId: 'connection-bc', direction: 'forward' })
-		);
-		const handoffPose = mockCamera().lastPoint;
-		expect(handoffPose.x).toBeGreaterThan(0);
-		expect(handoffPose.x).toBeLessThan(4);
-
-		// The two-second authored motion finishes at C.
-		for (let index = 0; index < 200; index += 1) await frame();
-		const finished = mockCamera().lastPoint;
-		expect(finished.x).toBeCloseTo(8, 5);
-		expect(finished.y).toBeCloseTo(1.6, 5);
-		expect(finished.z).toBeCloseTo(0, 5);
-	});
-
-	it('accepts a declared Travel back to the settled View when it overtakes an in-flight one', async () => {
-		// Two Stops share the same connection in opposite directions: A→B with a
-		// short B hold, then B→A. The second Travel's destination equals the View
-		// the Camera last settled on, but the A→B motion is still in flight, so it
-		// is a new authored Travel, not a duplicate hold tick.
-		const visitor = createVisitorRuntimeState({
-			program: program({
-				presentations: [
-					{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], explorable: true, defaultViewId: 'view-1', content: [] },
-					{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], explorable: true, defaultViewId: 'view-2', content: [] }
-				],
-				stops: [
-					{
-						id: 'stop-1',
-						presentationId: 'presentation-1',
-						views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
-						invocation: { kind: 'cut', viewId: 'view-1' },
-						continuation: { kind: 'sequence-next' }
-					},
-					{
-						id: 'stop-2',
-						presentationId: 'presentation-2',
-						views: [{ viewId: 'view-2', holdSeconds: 0.5, step: null }],
-						invocation: { kind: 'travel', connectionId: 'connection-1' },
-						continuation: { kind: 'sequence-next' }
-					},
-					{
-						id: 'stop-3',
-						presentationId: 'presentation-1',
-						views: [{ viewId: 'view-1', holdSeconds: null, step: null }],
-						invocation: { kind: 'travel', connectionId: 'connection-1' },
-						continuation: { kind: 'end' }
-					}
-				]
-			}),
-			options: OPTIONS
-		});
-		const gaps: (string | null)[] = [];
-		visitor.enter();
-		await mountDirector(visitor, (message) => gaps.push(message));
-
-		visitor.continue();
-		await tick();
-		for (let index = 0; index < 40; index += 1) await frame();
-		expect(visitor.currentViewId).toBe('view-1');
-		expect(visitor.state.stopId).toBe('stop-3');
-		expect(gaps.filter((message) => message !== null)).toEqual([]);
-
-		expect(harness.starts).toHaveLength(2);
-		const handoff = harness.starts[1] as { edges?: Array<{ connectionId?: string; direction?: string }> };
-		expect(handoff.edges?.[0]).toEqual(
-			expect.objectContaining({ connectionId: 'connection-1', direction: 'reverse' })
-		);
-		const handoffPose = mockCamera().lastPoint;
-		expect(handoffPose.x).toBeGreaterThan(0);
-		expect(handoffPose.x).toBeLessThan(4);
-
-		// The reverse motion is five seconds; let it finish at the origin View.
-		for (let index = 0; index < 360; index += 1) await frame();
-		const finished = mockCamera().lastPoint;
-		expect(finished.x).toBeCloseTo(0, 5);
-		expect(finished.y).toBeCloseTo(1.6, 5);
-		expect(finished.z).toBeCloseTo(0, 5);
-	});
-
-	it('cancels an in-flight Travel when an explicit Cut returns to the origin View', async () => {
+	it('pause in run state freezes the Travel and the clock; play resumes both', async () => {
 		const visitor = runtime();
 		visitor.enter();
 		await mountDirector(visitor);
 		visitor.continue();
 		await tick();
-		for (let index = 0; index < 10; index += 1) await frame();
-		expect(mockCamera().lastPoint.x).toBeGreaterThan(0);
-
-		// The Cut target equals the View the Camera left, so the settled-at-target
-		// early return must not swallow it while motion is still in flight.
-		visitor.selectPresentation('presentation-1');
+		for (let index = 0; index < 30; index += 1) await frame();
+		visitor.pause();
 		await tick();
-		await frame(0);
-		const settled = mockCamera().lastPoint;
-		expect(settled.x).toBeCloseTo(0, 5);
-		expect(settled.z).toBeCloseTo(0, 5);
+		const frozen = mockCamera().lastPoint.x;
+		for (let index = 0; index < 120; index += 1) await frame();
+		expect(mockCamera().lastPoint.x).toBe(frozen);
+		expect(visitor.state.phase).toBe('traveling');
+		visitor.play();
+		await tick();
+		for (let index = 0; index < 30; index += 1) await frame();
+		expect(mockCamera().lastPoint.x).toBeGreaterThan(frozen);
 	});
 
-	it('an inactive director neither ticks a held run nor moves the Camera', async () => {
-		// A warm, hidden surface mounts its director before any session exists. Its
-		// run must stay where it is until a session activates it.
+	it('an inactive director neither ticks a staying run nor moves the Camera', async () => {
 		const visitor = runtime();
 		visitor.enter();
-		// Stop 2 holds for one second: the run is in a hold the director would tick.
-		visitor.continue();
 		expect(visitor.state.phase).toBe('holding');
 		await mountDirector(visitor, undefined, graph(), false);
-		const holdBefore = visitor.state.holdRemainingMs;
-		expect(holdBefore).toBeGreaterThan(0);
+		const before = visitor.state.holdRemainingMs;
 		for (let index = 0; index < 60; index += 1) await frame();
-		expect(visitor.state.holdRemainingMs).toBe(holdBefore);
+		expect(visitor.state.holdRemainingMs).toBe(before);
 		expect(harness.starts).toHaveLength(0);
 		expect(harness.tasks.every((task) => task.running() === false)).toBe(true);
 	});
 
-	it('suspends authored hold time while free exploration is active', async () => {
+	it('Explore freezes the stay, plays the authored step and Back restores it', async () => {
 		const visitor = runtime();
 		visitor.enter();
-		visitor.continue();
-		expect(visitor.state.phase).toBe('holding');
-		await mountDirector(visitor, undefined, graph(), true, { suspendGuidance: true });
-		const holdBefore = visitor.state.holdRemainingMs;
-		for (let index = 0; index < 90; index += 1) await frame();
-		expect(visitor.state.holdRemainingMs).toBe(holdBefore);
-		expect(visitor.state.phase).toBe('holding');
-	});
-
-	it('refuses guided keyboard advance during a hold, matching Next', async () => {
-		const visitor = runtime();
-		visitor.enter();
-		visitor.continue();
-		expect(visitor.state.phase).toBe('holding');
-		await mountDirector(visitor, undefined, graph(), true, { guidedInputEnabled: true });
-		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+		await mountDirector(visitor);
+		for (let index = 0; index < 60; index += 1) await frame();
+		const left = visitor.state.holdRemainingMs!;
+		expect(visitor.explore()).toBe(true);
 		await tick();
-		expect(visitor.state.phase).toBe('holding');
-		expect(visitor.state.holdRemainingMs).not.toBeNull();
-	});
-
-	it('starts a fresh neutral run for free exploration after the authored end', () => {
-		const visitor = runtime();
-		visitor.enter();
-		visitor.continue();
-		visitor.tick(1100);
-		expect(visitor.ended).toBe(true);
-		// The completed interpreter would ignore presentation entry; free
-		// exploration must begin on a fresh neutral run.
-		visitor.beginFreeExploration();
-		expect(visitor.ended).toBe(false);
-		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
-		expect(visitor.currentViewId).toBe('view-1');
-	});
-
-	it('keeps an explicit free View over the interpreter default that follows its selection', async () => {
-		const visitor = runtime();
-		visitor.enter();
-		await mountDirector(visitor, undefined, graph(), true, { viewOverride: 'view-2' });
-		await frame(0);
-		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
-		// Selecting the Place triggers an interpreter state write whose Default is
-		// view-2; the override must still own the effective View, not reframe it.
-		visitor.selectPresentation('presentation-2');
+		for (let index = 0; index < 120; index += 1) await frame();
+		expect(visitor.state.resume?.holdRemainingMs).toBe(left);
+		expect(visitor.exploreStep(1)).toBe(true);
 		await tick();
-		await frame(0);
-		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
-	});
-
-	it('realizes the zero-hold Travel a Preview tick crossed before the next Cut', async () => {
-		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [
-						{ viewId: 'view-1', holdSeconds: 1, step: null },
-						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-2' } },
-						{ viewId: 'view-1', holdSeconds: 1, step: { kind: 'cut', viewId: 'view-1' } }
-					],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
-		visitor.enter();
-		await mountDirector(visitor, undefined, graph(), true, { timeAligned: true });
-		for (let index = 0; index < 70; index += 1) await frame();
 		expect(harness.starts).toHaveLength(1);
-		const route = harness.starts[0] as { edges?: Array<{ connectionId?: string; direction?: string }> };
-		expect(route.edges?.[0]).toEqual(expect.objectContaining({ connectionId: 'connection-2', direction: 'forward' }));
-		const mid = mockCamera().lastPoint;
-		expect(mid.x).toBeGreaterThan(0);
-		expect(mid.x).toBeLessThan(4);
-	});
-
-	it('consumes a queued same-View Cut so the next Stop hold can progress', async () => {
-		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [{ viewId: 'view-1', holdSeconds: 0.2, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'sequence-next' }
-				},
-				{
-					id: 'stop-2',
-					presentationId: 'presentation-1',
-					views: [{ viewId: 'view-1', holdSeconds: 0.2, step: null }],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
-		visitor.enter();
-		await mountDirector(visitor, undefined, graph(), true, { timeAligned: true });
-		for (let index = 0; index < 20; index += 1) await frame(0.05);
-		expect(visitor.ended).toBe(true);
-	});
-
-	it('leaving during a queued sequence discards guidance and frames the chosen View', async () => {
-		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [
-						{ viewId: 'view-1', holdSeconds: 1, step: null },
-						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-2' } },
-						{ viewId: 'view-1', holdSeconds: 1, step: { kind: 'cut', viewId: 'view-1' } }
-					],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
-		visitor.enter();
-		const target = document.createElement('div');
-		document.body.appendChild(target);
-		const host = mount(VisitorDirectorHost, {
-			target,
-			props: { graph: graph(), visitor, timeAligned: true }
-		});
-		cleanup = () => unmount(host);
-		await tick();
-		for (let index = 0; index < 70; index += 1) await frame();
-		expect(harness.starts.length).toBeGreaterThan(0);
-		const before = mockCamera().lastPoint.x;
-		expect(before).toBeGreaterThan(0);
-		expect(before).toBeLessThan(4);
-		host.setOverride('view-2');
-		await tick();
-		await frame(0);
-		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
-		// The stale Cut that followed the Travel is not replayed after leaving.
-		await frame(0);
-		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
-	});
-
-	it('free entry and a default Place cancel queued guidance with a null override', async () => {
-		const visitor = runtime({
-			stops: [
-				{
-					id: 'stop-1',
-					presentationId: 'presentation-1',
-					views: [
-						{ viewId: 'view-1', holdSeconds: 1, step: null },
-						{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'travel', connectionId: 'connection-2' } },
-						{ viewId: 'view-1', holdSeconds: 1, step: { kind: 'cut', viewId: 'view-1' } }
-					],
-					invocation: { kind: 'cut', viewId: 'view-1' },
-					continuation: { kind: 'end' }
-				}
-			]
-		});
-		visitor.enter();
-		const target = document.createElement('div');
-		document.body.appendChild(target);
-		const host = mount(VisitorDirectorHost, {
-			target,
-			props: { graph: graph(), visitor, timeAligned: true }
-		});
-		cleanup = () => unmount(host);
-		await tick();
-		for (let index = 0; index < 70; index += 1) await frame();
-		expect(harness.starts.length).toBeGreaterThan(0);
-		const traveling = mockCamera().lastPoint.x;
-		expect(traveling).toBeGreaterThan(0);
-		expect(traveling).toBeLessThan(4);
-
-		// Explore freely keeps freeViewId null, exactly like the surface. The
-		// pending Travel and queued Cut must be cancelled, not played first.
-		host.enterFree();
+		expect((harness.starts[0] as { edges?: Array<{ connectionId?: string }> }).edges?.[0]?.connectionId).toBe('connection-1');
+		visitor.resume();
 		await tick();
 		await frame(0);
 		expect(mockCamera().lastPoint.x).toBeCloseTo(0, 5);
+		expect(visitor.state).toMatchObject({ stopId: 'stop-1', phase: 'holding', holdRemainingMs: left });
+	});
 
-		// The default View of a chosen Place is also an explicit destination even
-		// though the override stays null. It frames immediately and no stale Cut
-		// returns the Camera to the guided View later.
-		host.choosePlace('presentation-2');
+	it('routes the visitor keys: Next always, ← Prev, Space Pause, E Explore, and ← → B in Explore', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		const commands: string[] = [];
+		await mountDirector(visitor, undefined, graph(), true, { guidedInputEnabled: true, onCommand: (command) => commands.push(command) });
+		const press = async (key: string) => {
+			window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+			await tick();
+		};
+		await press('ArrowLeft');
+		await press(' ');
+		await press('e');
+		expect(commands).toEqual(['previous', 'pause', 'explore']);
+		// Next works during a stay.
+		await press('Enter');
+		expect(visitor.state.stopId).toBe('stop-2');
+		visitor.explore();
 		await tick();
-		await frame(0);
-		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
-		for (let index = 0; index < 180; index += 1) await frame();
-		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+		await press('ArrowLeft');
+		await press('ArrowRight');
+		await press('b');
+		expect(commands.slice(3)).toEqual(['view-previous', 'view-next', 'back']);
 	});
 
 	it('an active director runs its task, and the default is active', async () => {
@@ -746,46 +413,4 @@ describe('mounted visitor Camera handoff', () => {
 		await mountDirector(visitor);
 		expect(harness.tasks.every((task) => task.running())).toBe(true);
 	});
-});
-
-it('realizes the Travel after a tick crosses a View before the Camera frames it', async () => {
-	const base = program();
-	const third: NavigationNodeData = {
-		...NODES[1]!, id: 'view-3', position: [8, 1.6, 0], cameraTarget: [8, 1.6, -1],
-		connectedNodeIds: ['view-2']
-	};
-	const nodes = [...NODES, third];
-	const route = {
-		...connection('connection-23', 5),
-		fromNodeId: 'view-2',
-		toNodeId: 'view-3'
-	};
-	const visitor = runtime({
-		presentations: [
-			{ ...base.presentations[0]!, viewIds: ['view-1', 'view-2', 'view-3'] },
-			...base.presentations.slice(1)
-		],
-		stops: [{ ...base.stops[0]!, views: [
-			{ viewId: 'view-1', holdSeconds: 0.5, step: null },
-			{ viewId: 'view-2', holdSeconds: 0, step: { kind: 'cut', viewId: 'view-2' } },
-			{ viewId: 'view-3', holdSeconds: null, step: { kind: 'travel', connectionId: route.id } }
-		] }],
-		localTime: [
-			{ stopId: 'stop-1', viewIndex: 0, holdSeconds: 0.5 },
-			{ stopId: 'stop-1', viewIndex: 1, holdSeconds: 0 }
-		]
-	});
-	const gaps: (string | null)[] = [];
-	visitor.enter();
-	await mountDirector(visitor, (message) => gaps.push(message), {
-		navigationNodes: nodes,
-		connections: [route],
-		nodeById: new Map(nodes.map((node) => [node.id, node]))
-	});
-	await frame(0.5);
-	expect(visitor.currentViewId).toBe('view-3');
-	expect(gaps.filter(Boolean)).toEqual([]);
-	expect(harness.starts).toEqual([expect.objectContaining({
-		edges: [expect.objectContaining({ connectionId: route.id, direction: 'forward' })]
-	})]);
 });

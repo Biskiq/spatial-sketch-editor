@@ -25,18 +25,15 @@
 		bounds = null,
 		runEpoch = 0,
 		active = true,
-		paused = false,
 		viewOverride = null,
 		/** A surface-owned event boundary: free entry, Place choice or restart. */
 		destinationEpoch = 0,
-		/** S30 Preview: honor the authored invocation's exact directed options and timing. */
-		timeAligned = false,
-		/** Whether guided Continue keys may advance the run in this mode. */
+		/** Whether guided Next keys may advance the run in this mode. */
 		guidedInputEnabled = true,
-		/** Free exploration suspends authored hold time without freezing look-around. */
-		suspendGuidance = false,
 		onCameraGap,
-		onTraveling
+		onTraveling,
+		onCommand,
+		onLook
 	}: {
 		graph: NavigationGraph;
 		visitor: VisitorRuntimeState;
@@ -48,11 +45,7 @@
 		 * ticks the run nor requests frames, so a hidden, warm surface stays idle.
 		 */
 		active?: boolean;
-		/** Pause the whole Preview run: no editorial tick and no motion progress. */
-		paused?: boolean;
-		timeAligned?: boolean;
 		guidedInputEnabled?: boolean;
-		suspendGuidance?: boolean;
 		/** A visitor's free View choice: a validated exact Cut, cleared by its host. */
 		viewOverride?: string | null;
 		/**
@@ -62,9 +55,25 @@
 		destinationEpoch?: number;
 		/** Surfaces a typed handoff gap instead of silently re-routing. */
 		onCameraGap?: (message: string | null) => void;
-		/** Reports an in-flight directed Travel so a host can refuse Next honestly. */
+		/** Reports an in-flight directed Travel or queued crossing. */
 		onTraveling?: (traveling: boolean) => void;
+		/** Visitor keys the surface owns: ← Prev, Space Pause, E Explore, and in Explore ← → Views and B Back. */
+		onCommand?: (command: 'previous' | 'pause' | 'explore' | 'back' | 'view-previous' | 'view-next') => void;
+		/** Whether the visitor has looked away from the saved View (drag or W A S D). */
+		onLook?: (looking: boolean) => void;
 	} = $props();
+
+	/*
+	 * One Guide clock (guide-playback plan, slice 4). Every surface — Preview and a
+	 * published release alike — is time-aligned: a Travel starts on its authored
+	 * View with its authored direction, easing and duration, and a stay counts only
+	 * after the Travel lands, when this director confirms the arrival to the run.
+	 * The retired public overtake let holds count during the arrival Travel, so a
+	 * run was shorter than the time the welcome shows. Pause is run state: this
+	 * director reads it from the run and keeps no flag of its own.
+	 */
+	const paused = $derived(visitor.state.paused);
+	const exploring = $derived(visitor.exploring);
 
 	// A free View, free entry, an explicit Place/default choice or a restart
 	// changes the effective invocation outside authored guidance. Stale queued
@@ -72,11 +81,14 @@
 	$effect(() => {
 		void viewOverride;
 		void destinationEpoch;
-		void suspendGuidance;
+		void exploring;
 		queuedMotions = [];
 		activeMotion = null;
 		activeTargetViewId = null;
 		pendingDestinationCut = true;
+		lookYaw = 0;
+		lookPitch = 0;
+		onLook?.(false);
 	});
 
 	$effect(() => {
@@ -189,7 +201,7 @@
 		// Advance one interpreter crossing at a time. If a tick crossed several
 		// zero-length steps, the final invocation alone would swallow the Travels
 		// before it; the queue preserves their authored order and durations.
-		const queuedMotion = timeAligned ? queuedMotions[0] ?? null : null;
+		const queuedMotion = queuedMotions[0] ?? null;
 		if (queuedMotion !== null && activeTargetViewId !== null) return;
 		const targetViewId = queuedMotion?.viewId ?? effectiveViewId;
 		const destinationCut = pendingDestinationCut;
@@ -275,24 +287,17 @@
 			return;
 		}
 		onCameraGap?.(null);
-		// Preview parity (S30): a time-aligned run starts on the authored View and
-		// uses the authored direction, easing and duration. The public surface keeps
-		// its live-pose overtake behavior, where a mid-flight handoff starts here.
+		// One clock: a run starts the Travel on the authored View and uses the
+		// authored direction, easing and duration, so its time is the Camera path's.
 		let directedOptions = undefined;
-		if (timeAligned && invocation.kind === 'travel') {
+		if (invocation.kind === 'travel') {
 			const connection = graph.connections.find((candidate) => candidate.id === invocation.connectionId);
 			if (connection) {
 				const direction = connection.fromNodeId === resolved.originViewId ? 'forward' : 'reverse';
 				directedOptions = getCameraMotionOptions(connection, direction);
 			}
 		}
-		activeMotion = timeAligned
-			? createCameraMotion(resolved.route, undefined, directedOptions)
-			: createCameraMotion(resolved.route, {
-					position: currentPosition,
-					target: currentTarget,
-					fov: motionSample.fov
-				});
+		activeMotion = createCameraMotion(resolved.route, undefined, directedOptions);
 		// A handoff overtook a Travel to `originViewId`: that View is now the
 		// logical origin the Experience left, even though the Camera never
 		// finished reaching it. The next connection is evaluated from there.
@@ -306,13 +311,13 @@
 		(delta) => {
 			if (!cameraRef || !isAuthoredMode()) return;
 			if (paused) return;
-			// Preview parity: a hold is editorial time, but it must not elapse while the
-			// Camera is still realizing the Travel into that Stop. Public keeps its
-			// landed overtake behavior.
-			if (!suspendGuidance && visitor.state.phase === 'holding' && !(timeAligned && (activeTargetViewId !== null || queuedMotions.length > 0))) {
+			// The Guide clock: a stay is editorial time, and it never elapses while the
+			// Camera is still realizing a Travel. Exploring freezes it.
+			const realizing = activeTargetViewId !== null || queuedMotions.length > 0;
+			if (!exploring && !realizing && visitor.state.phase === 'holding') {
 				visitor.tick(delta * 1000);
 				const crossed = visitor.takeTickMotions();
-				if (timeAligned && crossed.length > 0) queuedMotions = [...queuedMotions, ...crossed];
+				if (crossed.length > 0) queuedMotions = [...queuedMotions, ...crossed];
 			}
 			if (activeTargetViewId && activeMotion) {
 				if (activeMotion.durationSeconds === 0) {
@@ -327,7 +332,18 @@
 					activeTargetViewId = null;
 					activeMotion = null;
 				}
-			} else if (!activeTargetViewId) {
+			}
+			// The arrival Travel has landed on the Stop's View: its stay starts now.
+			if (
+				visitor.traveling &&
+				activeTargetViewId === null &&
+				queuedMotions.length === 0 &&
+				cameraViewId !== null &&
+				cameraViewId === visitor.currentViewId
+			) {
+				visitor.arrival();
+			}
+			if (!activeTargetViewId) {
 				let node;
 				try {
 					node = getNode(cameraViewId ?? '', graph);
@@ -394,34 +410,67 @@
 			if (canLookAround() && (key === 'w' || key === 'W')) {
 				event.preventDefault();
 				lookPitch = MathUtils.clamp(lookPitch - lookKeyStep, -lookUpLimit, lookDownLimit);
+				onLook?.(true);
 				return;
 			}
 			if (canLookAround() && (key === 's' || key === 'S')) {
 				event.preventDefault();
 				lookPitch = MathUtils.clamp(lookPitch + lookKeyStep, -lookUpLimit, lookDownLimit);
+				onLook?.(true);
 				return;
 			}
 			if (canLookAround() && (key === 'a' || key === 'A')) {
 				event.preventDefault();
 				lookYaw = MathUtils.clamp(lookYaw + lookKeyStep, -lookYawLimit, lookYawLimit);
+				onLook?.(true);
 				return;
 			}
 			if (canLookAround() && (key === 'd' || key === 'D')) {
 				event.preventDefault();
 				lookYaw = MathUtils.clamp(lookYaw - lookKeyStep, -lookYawLimit, lookYawLimit);
+				onLook?.(true);
 				return;
 			}
-			// Continue is the one editorial advance. There is no node-keyed
-			// previous/next: Guide order is authored, and a Gate is passed only by
-			// this explicit action.
-			if (key === 'ArrowRight' || key === 'Enter') {
-				// A governed mode still owns the key: free exploration must not advance
-				// the guided run, and neither a hold nor an in-flight Travel may be
-				// skipped by the keyboard when the visible Next control refuses it.
-				event.preventDefault();
-				if (guidedInputEnabled && visitor.state.phase !== 'holding' && activeTargetViewId === null && queuedMotions.length === 0) {
-					visitor.continue();
+			// Next is the one editorial advance and is always available at a Stop:
+			// during an arrival Travel it lands now, at a Stop it moves on. Exploring
+			// owns its own keys (the surface), so Next never leaves Explore.
+			if (exploring || (visitor.state.stopId === null && visitor.state.presentationId !== null)) {
+				if (key === 'ArrowLeft') {
+					event.preventDefault();
+					onCommand?.('view-previous');
+					return;
 				}
+				if (key === 'ArrowRight') {
+					event.preventDefault();
+					onCommand?.('view-next');
+					return;
+				}
+				if ((key === 'b' || key === 'B') && exploring) {
+					event.preventDefault();
+					onCommand?.('back');
+				}
+				return;
+			}
+			if (!guidedInputEnabled || visitor.state.stopId === null) return;
+			if (key === 'ArrowRight' || key === 'Enter') {
+				event.preventDefault();
+				queuedMotions = [];
+				visitor.continue();
+				return;
+			}
+			if (key === 'ArrowLeft') {
+				event.preventDefault();
+				onCommand?.('previous');
+				return;
+			}
+			if (key === ' ') {
+				event.preventDefault();
+				onCommand?.('pause');
+				return;
+			}
+			if (key === 'e' || key === 'E') {
+				event.preventDefault();
+				onCommand?.('explore');
 			}
 		};
 
@@ -455,6 +504,8 @@
 				-lookUpLimit,
 				lookDownLimit
 			);
+			// A drag during a Stop is a glance: it never pauses the tour.
+			onLook?.(true);
 		};
 
 		const onPointerEnd = (event: PointerEvent) => {
@@ -491,6 +542,7 @@
 			lookViewId = viewId;
 			lookYaw = 0;
 			lookPitch = 0;
+			onLook?.(false);
 		}
 		if (!canLookAround()) cancelPointerLook();
 		else if (pointerId === null) {
