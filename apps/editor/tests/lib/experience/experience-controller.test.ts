@@ -158,7 +158,7 @@ describe('commands route through commands.ts', () => {
 			})
 		);
 		expect(experienceFocus.experienceId).toBe(created.id);
-		expect(controller.message).toBe('');
+		expect(controller.feedback).toBeNull();
 	});
 
 	it('reorders a Guide with the guide-order intent and nothing else', async () => {
@@ -254,7 +254,7 @@ describe('per-field Stop edits keep the other fields', () => {
 		expect(await controller.setStopStay('stop-1', 0.5)).toBe(false);
 		expect(await controller.setStopStay('stop-1', Number.NaN)).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
-		expect(controller.message).toBe('A stay is at least 1 s.');
+		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'A stay is at least 1 s.' });
 	});
 
 	it('Enter at names a View of the Presentation; the Default is written as null', async () => {
@@ -286,6 +286,25 @@ describe('per-field Stop edits keep the other fields', () => {
 		submitted.mockClear();
 		expect(await controller.setGuidePacing('guide-1', 'automatic')).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
+	});
+
+	it('types a success as a success and a refusal as a refusal, never by its words (G8)', async () => {
+		const { controller } = await mounted();
+		expect(controller.feedback).toBeNull();
+
+		expect(await controller.setGuidePacing('guide-1', 'manual')).toBe(true);
+		expect(controller.feedback).toEqual({
+			kind: 'success',
+			text: 'Manual: every Stop now waits for Next. Each Stop keeps its time, unused, for switching back.'
+		});
+
+		// A refusal is a different kind, not a different set of words.
+		expect(await controller.setStopStay('stop-1', 0.5)).toBe(false);
+		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'A stay is at least 1 s.' });
+
+		// A no-op install is refused, and is never mistaken for an accepted change.
+		expect(await controller.setGuidePacing('guide-1', 'automatic')).toBe(false);
+		expect(controller.feedback?.kind).toBe('refusal');
 	});
 
 	it('the View rail sets a step or a range in one change, adding the straight paths a Travel needs', async () => {
@@ -430,7 +449,7 @@ describe('Capture (D1, D2)', () => {
 			})
 		);
 		expect('views' in (intent.payload as object)).toBe(false);
-		expect(controller.message).toBe('');
+		expect(controller.feedback).toBeNull();
 		// The Card stays on what it showed.
 		expect(controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
 	});
@@ -467,7 +486,10 @@ describe('Capture (D1, D2)', () => {
 
 		const intent = submittedIntent(submitted);
 		expect('views' in (intent.payload as object)).toBe(false);
-		expect(controller.message).toBe('Gallery had no Default View, so this View is now its Default.');
+		expect(controller.feedback).toEqual({
+			kind: 'info',
+			text: 'Gallery had no Default View, so this View is now its Default.'
+		});
 	});
 
 	it('with nothing selected binds no subject, no Guide and no Stop, then selects the new Presentation', async () => {
@@ -526,9 +548,10 @@ describe('Capture (D1, D2)', () => {
 
 		expect(await unevaluated.controller.capture()).toBe(false);
 		expect(unevaluated.submitted).not.toHaveBeenCalled();
-		expect(unevaluated.controller.message).toBe(
-			'The Stage has not evaluated a reading yet; wait for the reading to settle.'
-		);
+		expect(unevaluated.controller.feedback).toEqual({
+			kind: 'refusal',
+			text: 'The Stage has not evaluated a reading yet; wait for the reading to settle.'
+		});
 		expect(unevaluated.controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
 		unevaluated.dispose();
 
@@ -537,7 +560,10 @@ describe('Capture (D1, D2)', () => {
 		});
 		expect(await plan.controller.capture()).toBe(false);
 		expect(plan.submitted).not.toHaveBeenCalled();
-		expect(plan.controller.message).toBe('Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
+		expect(plan.controller.feedback).toEqual({
+			kind: 'refusal',
+			text: 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.'
+		});
 	});
 
 	it('leaves the selection as it was when acceptance refuses the capture', async () => {
@@ -599,7 +625,7 @@ describe('addStop (D8)', () => {
 		expect(await controller.addStop('presentation-1', { firstGuideLabel: '   ' })).toBe(false);
 
 		expect(submitted).not.toHaveBeenCalled();
-		expect(controller.message).toBe('Name the Guide first.');
+		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'Name the Guide first.' });
 		expect(controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
 	});
 
@@ -773,7 +799,7 @@ describe('busy and message', () => {
 		release(installed());
 		await pending;
 		expect(controller.busy).toBe(false);
-		expect(controller.message).toBe('');
+		expect(controller.feedback).toBeNull();
 	});
 
 	it('names a refusal in its own words, without the code, focuses nothing new and clears busy', async () => {
@@ -787,7 +813,10 @@ describe('busy and message', () => {
 
 		await controller.createExperience();
 
-		expect(controller.message).toBe('the snapshot belongs to another host lifetime');
+		expect(controller.feedback).toEqual({
+			kind: 'refusal',
+			text: 'the snapshot belongs to another host lifetime'
+		});
 		expect(controller.busy).toBe(false);
 		expect(experienceFocus.experienceId).toBe('experience-1');
 	});
@@ -798,7 +827,7 @@ describe('busy and message', () => {
 		});
 
 		await controller.setStopStay('stop-1', 3);
-		expect(controller.message).toBe('No change to accept.');
+		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'No change to accept.' });
 	});
 });
 
@@ -965,7 +994,7 @@ describe('the controller module has no DOM at runtime', () => {
 			await mount.controller.createExperience();
 
 			expect(submitted).toHaveBeenCalledTimes(2);
-			expect(mount.controller.message).toBe('');
+			expect(mount.controller.feedback).toBeNull();
 		} finally {
 			vi.unstubAllGlobals();
 		}
@@ -1075,7 +1104,7 @@ describe('R217.S26 — structure commands', () => {
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_GUIDE_UPDATE_KIND);
 		expect(intent.payload).toEqual({ entryStopId: 'stop-2' });
-		expect(controller.message).toBe('The tour now starts at Stop 2.');
+		expect(controller.feedback).toEqual({ kind: 'success', text: 'The tour now starts at Stop 2.' });
 	});
 
 	it('adds to a chosen Guide at its end, and New Guide makes a new active Guide with this Presentation as Stop 1', async () => {
@@ -1138,7 +1167,7 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 		);
 		expect(intent.kind).toBe(EXPERIENCE_STOP_REMOVE_KIND);
 		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
-		expect(controller.message).toBe('Stop 2 removed. Main has 1 Stop.');
+		expect(controller.feedback).toEqual({ kind: 'success', text: 'Stop 2 removed. Main has 1 Stop.' });
 	});
 
 	it('keeps a refused removal disabled with its reason and submits nothing', async () => {

@@ -164,7 +164,7 @@
 					<button type="button" class="btn ghost" onclick={cancelGuideName}>Cancel</button>
 				</div>
 				{#if createReason !== ''}<span id="guide-name-reason" class="sr">{createReason}</span>{/if}
-				{#if controller.message}<p class="note" role="status">{controller.message}</p>{/if}
+				{#if controller.feedback}<p class="note" class:refused={controller.feedback.kind === 'refusal'} role="status">{controller.feedback.text}</p>{/if}
 			</section>
 		{/if}
 
@@ -266,7 +266,7 @@
 		color: var(--shell-ink-2, #4a524c);
 		font-size: 12px;
 	}
-	.note {
+	.note.refused {
 		color: var(--shell-refuse, #7e2718);
 	}
 	.foot-note {

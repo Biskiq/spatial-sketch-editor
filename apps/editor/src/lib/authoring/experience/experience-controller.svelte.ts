@@ -103,6 +103,14 @@ type Submission = Parameters<StageAdapterServices['authoring']['accept']>[0];
 
 export type ExperienceViewChoice = { readonly id: string; readonly label: string };
 
+/**
+ * What a passing line is (fix.md slice 1). The kind is carried by the write that
+ * produced it, never inferred from the text: a success, an informational notice
+ * and a refusal are three different things and are styled as three.
+ */
+export type ExperienceFeedbackKind = 'success' | 'info' | 'refusal';
+export type ExperienceFeedback = { readonly kind: ExperienceFeedbackKind; readonly text: string };
+
 /** The outcome an inline rename field reads: accepted, or refused with the reason to show. */
 /** The ready draft's name until the creator renames it (Experience review 1). */
 export const DRAFT_EXPERIENCE_LABEL = 'Untitled experience';
@@ -165,8 +173,8 @@ export type ExperienceController = {
 	readonly guideStops: readonly ExperienceStop[];
 	readonly viewsOf: ReadonlyMap<string, readonly ExperienceViewChoice[]>;
 	readonly filteredPresentations: readonly ExperiencePresentation[];
-	readonly message: string;
-	readonly messageRefused: boolean;
+	/** The passing line: success, info or refusal, never guessed from its words. */
+	readonly feedback: ExperienceFeedback | null;
 	readonly busy: boolean;
 	/** The Presentation filter the lens's search field writes. */
 	query: string;
@@ -416,6 +424,7 @@ export function createExperienceController(
 		travelEndpoints = next;
 		if (changed.length === 0) return;
 		say(
+			'info',
 			`${changed.join(', ')} ${changed.length === 1 ? 'now joins' : 'now join'} different Views. Check the Camera path.`
 		);
 	});
@@ -506,11 +515,9 @@ export function createExperienceController(
 		);
 	});
 
-	let message = $state('');
-	/** Success lines fade quickly; anything else (a refusal) stays long enough to read. */
-	const accepted = new Set<string>(['Accepted.']);
-	// Feedback is a passing line: success fades quickly, a refusal stays long enough to read.
-	let messageTimer: ReturnType<typeof setTimeout> | undefined;
+	let feedback = $state<ExperienceFeedback | null>(null);
+	// Feedback is a passing line: success and info fade quickly, a refusal stays long enough to read.
+	let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
 	/**
 	 * Experience review 1 — a refusal reaches the creator in their own words: text
 	 * that carries a JSON path, an internal kind or a raw identity is replaced by
@@ -520,13 +527,20 @@ export function createExperienceController(
 		const technical = /\$\.|\([a-z]+(?:-[a-z]+)+\)|[a-z]+:[a-z-]+|"[0-9a-f-]{8,}"|[a-z]+(?:-[a-z]+){2,}/;
 		return technical.test(text) ? "That change didn't go through. Undo is unchanged." : text;
 	}
-	function say(text: string): void {
-		message = text;
-		clearTimeout(messageTimer);
-		const shown = text;
-		messageTimer = setTimeout(() => {
-			if (message === shown) message = '';
-		}, 4000);
+	function say(kind: ExperienceFeedbackKind, text: string): void {
+		clearTimeout(feedbackTimer);
+		if (text === '') {
+			feedback = null;
+			return;
+		}
+		const shown: ExperienceFeedback = { kind, text };
+		feedback = shown;
+		feedbackTimer = setTimeout(
+			() => {
+				if (feedback === shown) feedback = null;
+			},
+			kind === 'refusal' ? 8000 : 4000
+		);
 	}
 	let busy = $state(false);
 
@@ -554,14 +568,14 @@ export function createExperienceController(
 		try {
 			const outcome = await readServices().authoring.accept(builder());
 			if (outcome.kind === 'refused') {
-				say(creatorMessage(outcome.message));
+				say('refusal', creatorMessage(outcome.message));
 				return false;
 			}
 			if (outcome.kind !== 'installed') {
-				say('No change to accept.');
+				say('refusal', 'No change to accept.');
 				return false;
 			}
-			say(success());
+			say('success', success());
 			return true;
 		} finally {
 			busy = false;
@@ -597,18 +611,18 @@ export function createExperienceController(
 	function currentCapturePose() {
 		const evaluation = readServices().stage.evaluation();
 		if (evaluation === null) {
-			say('The Stage has not evaluated a reading yet; wait for the reading to settle.');
+			say('refusal', 'The Stage has not evaluated a reading yet; wait for the reading to settle.');
 			return null;
 		}
 		// Plan is orthographic: its eye/target would record a perspective View the
 		// creator never saw. Capture is a 3D-reading action.
 		if (evaluation.projectionKind !== 'perspective-3d') {
-			say('Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
+			say('refusal', 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
 			return null;
 		}
 		const fov = capturedFovDegrees(evaluation.projectionMatrix);
 		if (fov === null) {
-			say('The Stage projection is degenerate; frame the View again.');
+			say('refusal', 'The Stage projection is degenerate; frame the View again.');
 			return null;
 		}
 		return capturedViewPose({
@@ -683,7 +697,7 @@ export function createExperienceController(
 			})
 		);
 		if (accepted && !hadDefault) {
-			say(`${target.label} had no Default View, so this View is now its Default.`);
+			say('info', `${target.label} had no Default View, so this View is now its Default.`);
 		}
 		return accepted;
 	}
@@ -732,7 +746,7 @@ export function createExperienceController(
 					}),
 				() => ''
 			);
-			if (!accepted) return { kind: 'refused', message };
+			if (!accepted) return { kind: 'refused', message: feedback?.text ?? '' };
 			experienceFocus.select({ kind: 'view', viewId, presentationId: target.id });
 			return { kind: 'placed', presentationId: target.id, viewId, createdPresentation: false };
 		}
@@ -756,7 +770,7 @@ export function createExperienceController(
 				}),
 			() => ''
 		);
-		if (!accepted) return { kind: 'refused', message };
+		if (!accepted) return { kind: 'refused', message: feedback?.text ?? '' };
 		if (experience.newLabel !== null) {
 			experienceFocus.openExperience(experience.id);
 			draftLabel = DRAFT_EXPERIENCE_LABEL;
@@ -788,9 +802,9 @@ export function createExperienceController(
 					target: pose.target,
 					fov: pose.fov
 				}),
-			() => shared.length > 0 ? succeed(`View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.`) : ''
+			() => shared.length > 0 ? `View updated; it also changes ${shared.map((entry) => entry.label).join(', ')}.` : ''
 		);
-		return accepted ? { kind: 'updated' } : { kind: 'refused', message };
+		return accepted ? { kind: 'updated' } : { kind: 'refused', message: feedback?.text ?? '' };
 	}
 
 	async function setViewFraming(
@@ -799,7 +813,7 @@ export function createExperienceController(
 	): Promise<boolean> {
 		const view = snapshot.units.camera.data.views.find((candidate) => candidate.id === viewId);
 		if (view === undefined) {
-			say('That View is not in this project.');
+			say('refusal', 'That View is not in this project.');
 			return false;
 		}
 		const eye: [number, number, number] = [view.eye[0], view.eye[1], view.eye[2]];
@@ -807,14 +821,14 @@ export function createExperienceController(
 		let fov = view.fov;
 		if (framing.fov !== undefined) {
 			if (!Number.isFinite(framing.fov) || framing.fov <= 0 || framing.fov >= 180) {
-				say('That lens is not a supported field of view.');
+				say('refusal', 'That lens is not a supported field of view.');
 				return false;
 			}
 			fov = framing.fov;
 		}
 		if (framing.eyeHeightMetres !== undefined) {
 			if (!Number.isFinite(framing.eyeHeightMetres)) {
-				say('That eye height is not a number.');
+				say('refusal', 'That eye height is not a number.');
 				return false;
 			}
 			const delta = datumMeters + framing.eyeHeightMetres - view.eye[1];
@@ -838,14 +852,14 @@ export function createExperienceController(
 		if (current === null) return false;
 		const experience = current;
 		if (!experience.presentations.some((entry) => entry.id === presentationId)) {
-			say('That Presentation is not in this Experience.');
+			say('refusal', 'That Presentation is not in this Experience.');
 			return false;
 		}
 		const stopId = newId();
 		if (experience.guides.length === 0) {
 			const guideLabel = options.firstGuideLabel?.trim() ?? '';
 			if (guideLabel === '') {
-				say('Name the Guide first.');
+				say('refusal', 'Name the Guide first.');
 				return false;
 			}
 			const guideId = newId();
@@ -1004,7 +1018,7 @@ export function createExperienceController(
 		const stop = current?.stops.find((entry) => entry.id === stopId);
 		if (stop === undefined) return false;
 		if (!Number.isFinite(seconds) || seconds < EXPERIENCE_STAY_MIN_SECONDS) {
-			say(`A stay is at least ${EXPERIENCE_STAY_MIN_SECONDS} s.`);
+			say('refusal', `A stay is at least ${EXPERIENCE_STAY_MIN_SECONDS} s.`);
 			return false;
 		}
 		const rounded = Math.round(seconds * 2) / 2;
@@ -1234,11 +1248,6 @@ export function createExperienceController(
 
 	/* --- R217.S26 structure ------------------------------------------------------ */
 
-	function succeed(text: string): string {
-		accepted.add(text);
-		return text;
-	}
-
 	async function rename(
 		label: string,
 		previous: string | null,
@@ -1250,7 +1259,7 @@ export function createExperienceController(
 		// An unchanged name is no edit, so it adds no history entry.
 		if (trimmed === previous) return { kind: 'accepted' };
 		const ok = await run(() => builder(trimmed), () => '');
-		return ok ? { kind: 'accepted' } : { kind: 'refused', message };
+		return ok ? { kind: 'accepted' } : { kind: 'refused', message: feedback?.text ?? "That change didn't go through." };
 	}
 
 	function renameExperience(label: string): Promise<ExperienceRenameOutcome> {
@@ -1308,7 +1317,7 @@ export function createExperienceController(
 					experienceId: experience.id,
 					entryGuideId: guideId
 				}),
-			() => succeed(`The Experience now opens on ${guide.label}.`)
+			() => `The Experience now opens on ${guide.label}.`
 		);
 	}
 
@@ -1327,7 +1336,7 @@ export function createExperienceController(
 					guideId: guide.id,
 					entryStopId: stopId
 				}),
-			() => succeed(`The tour now starts at Stop ${position}.`)
+			() => `The tour now starts at Stop ${position}.`
 		);
 	}
 
@@ -1350,7 +1359,7 @@ export function createExperienceController(
 					staySeconds: null,
 					continuation: { kind: 'sequence-next', transition: 'cut' }
 				}),
-			() => succeed(`Added as Stop ${guide.stopIds.length + 1} of ${guide.label}.`)
+			() => `Added as Stop ${guide.stopIds.length + 1} of ${guide.label}.`
 		);
 		if (ok) {
 			experienceFocus.openGuide(guideId);
@@ -1364,7 +1373,7 @@ export function createExperienceController(
 		const trimmed = label.trim();
 		if (experience === null) return false;
 		if (trimmed === '') {
-			say(NAME_NEEDED);
+			say('refusal', NAME_NEEDED);
 			return false;
 		}
 		const guideId = newId();
@@ -1382,7 +1391,7 @@ export function createExperienceController(
 					staySeconds: null,
 					continuation: { kind: 'sequence-next', transition: 'cut' }
 				}),
-			() => succeed(`${trimmed} created with ${presentationLabel(presentationId)} as Stop 1.`)
+			() => `${trimmed} created with ${presentationLabel(presentationId)} as Stop 1.`
 		);
 		if (ok) {
 			experienceFocus.openGuide(guideId);
@@ -1497,11 +1506,11 @@ export function createExperienceController(
 		if (experience === null) return false;
 		const preview = removalPreview(target);
 		if (preview.kind === 'refused') {
-			say(preview.reason);
+			say('refusal', preview.reason);
 			return false;
 		}
 		if (!preview.runnable) {
-			say('Choose the new Default View first.');
+			say('refusal', 'Choose the new Default View first.');
 			return false;
 		}
 		const plan = planOf(target);
@@ -1538,7 +1547,7 @@ export function createExperienceController(
 							subject: target.kind,
 							id: target.kind === 'stop' ? target.stopId : target.kind === 'guide' ? target.guideId : target.presentationId
 						}),
-			() => succeed(`${removedName} removed. ${remaining(target, after)}`.trim())
+			() => `${removedName} removed. ${remaining(target, after)}`.trim()
 		);
 		if (ok) {
 			if (selectsParent) experienceFocus.select(parent);
@@ -1624,17 +1633,17 @@ export function createExperienceController(
 		if (current === null) return false;
 		const resolved = resolvePathOccurrence(current, contextGuide, occurrence);
 		if (resolved === null) {
-			say('This move has no destination to travel to.');
+			say('refusal', 'This move has no destination to travel to.');
 			return false;
 		}
 		if (resolved.transition !== 'travel') {
-			say('A Cut has no travel path. Choose Travel first.');
+			say('refusal', 'A Cut has no travel path. Choose Travel first.');
 			return false;
 		}
 		const fromView = snapshot.units.camera.data.views.find((view) => view.id === resolved.fromViewId);
 		const toView = snapshot.units.camera.data.views.find((view) => view.id === resolved.toViewId);
 		if (fromView === undefined || toView === undefined) {
-			say('A View this move needs is missing.');
+			say('refusal', 'A View this move needs is missing.');
 			return false;
 		}
 		const accepted = await run(
@@ -1724,7 +1733,7 @@ export function createExperienceController(
 		if (read === null || read.connectionId === null || read.direction === null) return false;
 		const anchors = proposedPathAnchors(read, null, point, slot, near);
 		if (anchors === null) {
-			say('Insert a point on the selected Camera path.');
+			say('refusal', 'Insert a point on the selected Camera path.');
 			return false;
 		}
 		const accepted = await writePathAnchors(read, anchors);
@@ -1763,7 +1772,7 @@ export function createExperienceController(
 		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
 		if (connection === undefined) return false;
 		if (connection.positionPath.anchors.length === 0) {
-			say('The Camera path is already straight.');
+			say('info', 'The Camera path is already straight.');
 			return false;
 		}
 		const accepted = await writePathAnchors(read, []);
@@ -1775,7 +1784,7 @@ export function createExperienceController(
 		const read = selectedPath;
 		if (read === null || read.connectionId === null || read.direction === null) return false;
 		if (seconds !== null && (!Number.isFinite(seconds) || seconds <= 0)) {
-			say('A duration is a positive number of seconds, or Auto.');
+			say('refusal', 'A duration is a positive number of seconds, or Auto.');
 			return false;
 		}
 		const connection = snapshot.units.camera.data.connections.find((entry) => entry.id === read.connectionId);
@@ -1857,11 +1866,8 @@ export function createExperienceController(
 		get filteredPresentations() {
 			return filteredPresentations;
 		},
-		get message() {
-			return message;
-		},
-		get messageRefused() {
-			return message !== '' && !accepted.has(message);
+		get feedback() {
+			return feedback;
 		},
 		get busy() {
 			return busy;

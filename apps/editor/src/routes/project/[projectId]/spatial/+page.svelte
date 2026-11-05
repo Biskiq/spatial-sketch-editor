@@ -6412,9 +6412,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onCapture={() => void activeExperience?.capture()}
 						onToggleGuide={toggleExperienceGuide}
 					/>
-					{#if notice || activeExperience.message}
-						<p class="experience-feedback" class:refused={!notice && activeExperience.messageRefused} role="status">
-							{notice || activeExperience.message}
+					{#if notice || activeExperience.feedback}
+						<p
+							class="experience-feedback"
+							class:refused={!notice && activeExperience.feedback?.kind === 'refusal'}
+							class:info={!notice && activeExperience.feedback?.kind === 'info'}
+							class:success={!notice && activeExperience.feedback?.kind === 'success'}
+							role="status"
+						>
+							{notice || activeExperience.feedback?.text}
 						</p>
 					{/if}
 					{#if experienceGuideOpen}							<ExperienceGuide
@@ -7061,6 +7067,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font-size: 0.78rem;
 		line-height: 1.35;
 	}
+	/* Kind decides the styling, never the words: a success is never a refusal. */
+	.experience-feedback.success { background: #22503c; }
+	.experience-feedback.info { background: #2c3b44; }
 	.experience-feedback.refused { background: #623639; }
 	.preview-takeover {
 		position: absolute;

@@ -977,9 +977,12 @@ PR #271's branch implements so far.
 
 ### AM-11 implementation status
 
-PR #271's branch (head before the review-2 slices) implements format 4's pacing, stays,
+PR #271's branch implements format 4's pacing, stays,
 invitations, entry Views, Presentation `views`, program v4, the interpreter, Explore and
-Back, and the one Guide clock. It does **not yet** implement the review-2 amendments: it still
+Back, and the one Guide clock. Authoring feedback is typed since slice 1: a line carries
+`success`, `info` or `refusal`, so a success is never styled as a refusal and no string
+whitelist decides, and a success, an info line and a refusal are three different things.
+It does **not yet** implement the review-2 amendments: it still
 reads and writes `Guide.entryStopId` and `Stop.continuation`, stores a Presentation step on the
 View it arrives at, requires `label` to be a string, lacks the membership, same-View and
 after-last refusals, refuses a Stop removal that a Detour uses, joins a new pair only when Cut

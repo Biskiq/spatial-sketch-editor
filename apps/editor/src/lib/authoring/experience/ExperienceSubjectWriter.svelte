@@ -61,7 +61,7 @@
 			<p class="c-note">
 				Creates a Presentation with a first View framed from the current camera. You can add more Views afterwards.
 			</p>
-			{#if controller.message}<p class="note" role="status">{controller.message}</p>{/if}
+			{#if controller.feedback}<p class="note" class:refused={controller.feedback.kind === 'refusal'} role="status">{controller.feedback.text}</p>{/if}
 			<button type="button" class="quiet link" onclick={() => homes.openInWorld()}>Open in World</button>
 		</section>
 
@@ -128,7 +128,7 @@
 		margin: 0;
 		color: var(--shell-ink-2, #4a524c);
 	}
-	.note {
+	.note.refused {
 		color: var(--shell-refuse, #7e2718);
 	}
 	.rows {
