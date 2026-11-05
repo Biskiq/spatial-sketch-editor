@@ -59,6 +59,16 @@
 		return Math.max(34, Math.round(text.length * 6.9 + 12));
 	}
 
+	/** Carry the dash phase across samples belonging to the same outline. */
+	function candidatePath(segments: StageCandidatePreviewView['segments']): string {
+		let previous: readonly [number, number] | undefined;
+		return segments.map(([from, to]) => {
+			const start = previous?.[0] === from[0] && previous[1] === from[1] ? '' : `M${from[0]},${from[1]}`;
+			previous = to;
+			return `${start}L${to[0]},${to[1]}`;
+		}).join('');
+	}
+
 	/**
 	 * The drawing end mark's shape is its snap cue, in ink only (review pass 2
 	 * §1): a ring on a Wall, Junction or Opening, a square on the grid, a dot when
@@ -66,7 +76,7 @@
 	 */
 	function snapShape(name: string | undefined): 'dot' | 'ring' | 'square' | 'closure' {
 		if (name === 'Close Room') return 'closure';
-		if (name === 'Grid') return 'square';
+		if (name === 'Grid' || name === 'Aligned · Grid') return 'square';
 		if (name === 'Junction' || name === 'Wall' || name === 'Opening') return 'ring';
 		return 'dot';
 	}
@@ -244,9 +254,9 @@
 				{/each}
 			{/if}
 			<!-- Drawing is solid draft ink; a proposal is dashed in the ghost colour; a refusal is red dashed. -->
-			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
-				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
-			{/each}
+			{#if candidate.segments.length > 0}
+				<path class="candidate-edge" d={candidatePath(candidate.segments)} />
+			{/if}
 			{#if candidate.drawing && candidate.segments.length > 0}
 				<circle class="end-mark" cx={candidate.segments[0]![0][0]} cy={candidate.segments[0]![0][1]} r="3.4" />
 			{/if}

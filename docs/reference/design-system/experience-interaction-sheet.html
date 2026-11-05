@@ -534,17 +534,283 @@ svg.st .faintcam{opacity:.35}
 .msgs{display:grid;gap:8px;justify-items:start}
 .toast.old{background:#3a3a3d;color:#e8c8c8;text-decoration:line-through;text-decoration-color:rgba(232,200,200,.6)}
 .toast.refuse{background:var(--refusebg);color:var(--refuse);border:1px solid #efd4cb;box-shadow:none;backdrop-filter:none}
+
+/* ---- Review round 3 (§23–§25) ---- */
+/* Plan camera: the Detailed camera seen from above. An outline layer (.o) under the fills makes one
+   ink outline round the whole form, the World sticker finish, with no inner edge lines. */
+svg.st .pc{filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3))}
+svg.st .pc .o{fill:var(--ink);stroke:var(--ink);stroke-width:2.4;stroke-linejoin:round}
+svg.st .pc .t{fill:#fff} svg.st .pc .s{fill:#e4e7e1} svg.st .pc .h{fill:#eceee9} svg.st .pc .btn,svg.st .pc .capf{fill:var(--ink)}
+svg.st .pc.tour .o{fill:var(--forest2);stroke:var(--forest2)} svg.st .pc.tour .t{fill:#f4faf6} svg.st .pc.tour .s{fill:#d2e3d8} svg.st .pc.tour .h{fill:#e2eee6}
+svg.st .pc.sel .o{fill:var(--goldink);stroke:var(--goldink)} svg.st .pc.sel .t{fill:#fff8e6} svg.st .pc.sel .s{fill:#ecd69a} svg.st .pc.sel .h{fill:#f6e7bd} svg.st .pc.sel .btn,svg.st .pc.sel .capf{fill:var(--goldink)}
+svg.st .pc .rim{fill:none;stroke-width:2.2;stroke-linecap:round} svg.st .pc.tour .rim{stroke:var(--leaf)} svg.st .pc.sel .rim{stroke:var(--gold)}
+svg.st .pc.ghost{filter:none;opacity:.62} svg.st .pc.ghost .o{fill:rgba(255,255,255,.4);stroke:var(--ink);stroke-width:1.1;stroke-dasharray:3 2.2}
+svg.st .pc.ghost .t,svg.st .pc.ghost .s,svg.st .pc.ghost .h,svg.st .pc.ghost .btn,svg.st .pc.ghost .capf,svg.st .pc.ghost .rim{display:none}
+svg.st .wedge.t{fill:var(--leaf);fill-opacity:.13;stroke:var(--leaf);stroke-opacity:.65;stroke-width:1}
+svg.st .wedge.gh{fill:none;stroke:var(--ink);stroke-opacity:.42;stroke-width:1;stroke-dasharray:3 3}
+svg.st .offl{stroke:var(--goldink);stroke-width:1.2;stroke-dasharray:3 3}
+svg.st .ghdot{fill:none;stroke:var(--ink);stroke-opacity:.55;stroke-width:1.2;stroke-dasharray:2 2}
+svg.st .keyh{font:600 12px var(--sans);fill:var(--ink)} svg.st .keyt{font:11px var(--sans);fill:var(--ink2)}
+/* World marks reused on the camera (StageOverlay .mark .glyph) */
+svg.st .gm{fill:#fff;stroke:var(--ink);stroke-width:1.1;stroke-linejoin:round;filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3))}
+svg.st .gm.held{fill:var(--goldtint)}
+svg.st .gml{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round}
+/* Bespoke rig alternative */
+svg.st .rring{fill:none;stroke:var(--goldink);stroke-width:1.3;stroke-dasharray:4 3}
+svg.st .rring.hit{stroke:transparent;stroke-width:16;stroke-dasharray:none}
+svg.st .rcap,svg.st .rknob{fill:#fff;stroke:var(--goldink);stroke-width:1.3;filter:drop-shadow(0 1px 1.2px rgba(20,24,20,.3))}
+svg.st .rcap.held,svg.st .rknob.held{fill:var(--gold)}
+svg.st .rarr{fill:none;stroke:var(--goldink);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+svg.st .tick{stroke:var(--goldink);stroke-width:1} svg.st .ticktx{font:500 9.5px var(--sans);fill:var(--goldink)}
+svg.st .railh{font:600 10px var(--sans);letter-spacing:.07em;fill:var(--ink3)}
+svg.st .railv{font:600 10.5px var(--sans);fill:var(--goldink)}
+.adv-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:12px;align-items:start}
+@media (max-width:900px){.adv-grid{grid-template-columns:1fr}}
+.adv-stages{position:relative;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:10px;align-items:start}
+@media (max-width:1120px){.adv-stages{grid-template-columns:1fr}}
+.adv-3dw{position:relative}
+.adv-plan{display:grid;grid-template-columns:minmax(0,600fr) minmax(0,92fr);border-radius:10px;overflow:hidden}
+.adv-plan.norail{grid-template-columns:1fr} .adv-plan.norail #adv-rail{display:none}
+.adv-plan svg.st{border-radius:0}
+.adv-pic{aspect-ratio:16/10;border-radius:9px;overflow:hidden;background:var(--paper);position:relative}
+.adv-pic svg,.adv-pip svg{display:block;width:100%;height:100%}
+.adv-pip{position:absolute;right:10px;top:10px;width:min(176px,40%);aspect-ratio:16/10;border-radius:8px;overflow:hidden;border:2px solid var(--gold);box-shadow:var(--shadow);pointer-events:none;opacity:0;transition:opacity .18s}
+.adv-pip.on{opacity:1}
+.adv-pip b{position:absolute;left:6px;top:6px;background:var(--value);color:#fff;font:500 10.5px var(--sans);border-radius:5px;padding:2px 6px}
+.adv-sw{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.adv-sw b{display:block;font-size:13px} .adv-sw small{display:block;font-size:11.5px;color:var(--ink3)}
+.sw{position:relative;width:36px;height:21px;border-radius:999px;border:0;background:var(--hair2);flex:none;padding:0}
+.sw i{position:absolute;left:2.5px;top:2.5px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0/.2);transition:left .15s}
+.sw[aria-checked=true]{background:var(--forest2)} .sw[aria-checked=true] i{left:17.5px}
+.adv-rows{margin-top:8px}
+.adv-pre{display:flex;gap:4px;flex-wrap:wrap;margin:-2px 0 6px}
+.adv-pre button{border:1px solid var(--hair2);background:#fff;border-radius:999px;padding:2px 8px;font-size:11px;color:var(--ink2)}
+.adv-pre button[aria-pressed=true]{background:var(--goldtint);border-color:var(--gold);color:var(--goldink);font-weight:600}
+.cseg.c3{grid-template-columns:repeat(3,1fr)}
+.adv-card .btn kbd{font:10.5px var(--mono);opacity:.7;margin-left:6px}
+.adv-card .lt-note{font-size:11.5px;color:var(--ink3);margin-top:6px}
+/* Compact Guide */
+.cgstage{position:relative;height:470px;border-radius:12px;overflow:hidden;border:1px solid var(--hair);background:var(--paper)}
+.cgstage>svg.cg-bg{position:absolute;inset:0;width:100%;height:100%}
+.cg-tb{position:absolute;left:12px;top:10px;display:flex;gap:6px}
+.cg-tb span{background:rgba(255,255,255,.86);border:1px solid var(--hair);border-radius:9px;padding:4px 9px;font-size:12px;color:var(--ink2);box-shadow:0 2px 8px rgb(17 41 31/.08)}
+.cg-bottom{position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 12px}
+.cg-bottom .dock2{margin:0}
+.dock2 .dk i.pr{background:rgba(255,255,255,.14);cursor:pointer} .dock2 .dk i.kp{cursor:pointer}
+.cg-meter{position:absolute;left:12px;border-left:1.5px solid var(--goldink);padding-left:7px;font:600 11px/1.25 var(--sans);color:var(--goldink);display:flex;align-items:center;pointer-events:none}
+.cg-meter::before,.cg-meter::after{content:"";position:absolute;left:-5px;width:9px;border-top:1.5px solid var(--goldink)}
+.cg-meter::before{top:0} .cg-meter::after{bottom:0}
+.cg{width:min(820px,100%);background:var(--popdark);border-radius:16px;color:var(--ivory);box-shadow:0 10px 30px rgb(10 24 18/.28);position:relative;text-align:left}
+.cg button{font:inherit;cursor:pointer}
+.cg-h{display:flex;align-items:center;gap:8px;padding:6px 8px 0 14px;min-height:34px}
+.cg-name{font:500 15px var(--serif);white-space:nowrap}
+.cg-cnt{font-size:11.5px;color:var(--quiet);white-space:nowrap}
+.cg-play{width:26px;height:26px;border-radius:50%;background:var(--gold);border:0;display:grid;place-items:center;flex:none;color:var(--forest);font-size:10px;padding:0}
+.cg-time{font-size:11.5px;color:#cfd8d2;font-variant-numeric:tabular-nums;white-space:nowrap} .cg-time b{color:#fff;font-weight:600}
+.cg-tool{border:1px solid #2f4a3e;background:#1a3a2d;color:#e6ece8;border-radius:8px;padding:3px 9px;font-size:12px;white-space:nowrap}
+.cg-x{border:0;background:none;color:#cfd8d2;width:26px;height:26px;border-radius:7px;padding:0;flex:none}
+.cg-x:hover,.cg-tool:hover{background:#25483a}
+.cg-strip{position:relative;min-width:0}
+.cg-sc{position:relative;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain}
+.cg-sc::-webkit-scrollbar{display:none}
+.cg-row{display:flex;align-items:center;width:max-content;min-width:100%;padding:8px 14px 6px}
+.cg-c{flex:none;display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;align-items:center;width:176px;height:50px;padding:5px;background:#fff;color:var(--ink);border:0;border-radius:11px;text-align:left;position:relative;transition:width .2s,height .2s}
+.cg-th{position:relative;height:40px;border-radius:7px;overflow:hidden;background:var(--paper)}
+.cg-th svg{display:block;width:100%;height:100%}
+.cg-no{position:absolute;left:3px;top:3px;min-width:16px;height:16px;border-radius:8px;background:var(--forest);color:#fff;font:600 9.5px/14px var(--sans);text-align:center;padding:0 3px;border:1px solid rgba(255,255,255,.85);font-style:normal}
+.cg-tx{min-width:0;display:grid;gap:1px}
+.cg-tx b{font:500 12.5px/1.2 var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cg-tx small{font-size:10.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.cg-tx small .st{color:var(--forest2);font-weight:600} .cg-tx small em{font-style:italic}
+.cg-pb{position:absolute;left:8px;right:8px;bottom:3px;height:2px;border-radius:1px;overflow:hidden;pointer-events:none} .cg-pb i{display:block;height:100%;background:var(--leaf);width:0}
+.cg-c.sel{box-shadow:0 0 0 2px var(--gold)} .cg-c.play{box-shadow:0 0 0 2px var(--ivory)} .cg-c.sel.play{box-shadow:0 0 0 2px var(--gold),0 0 0 4px var(--ivory)}
+.cg-g{flex:0 0 40px;display:grid;place-items:center;position:relative;align-self:stretch}
+.cg .tchip{font-size:10.5px;padding:1px 6px}
+.cg-g.play .tchip{box-shadow:0 0 0 2px var(--ivory)}
+.cg-ar{position:absolute;top:0;bottom:0;width:58px;display:flex;align-items:center;border:0;padding:0 6px;z-index:2;color:#fff;background:none}
+.cg-ar.l{left:0;justify-content:flex-start;background:linear-gradient(90deg,rgb(17 41 31) 35%,rgb(17 41 31/0))}
+.cg-ar.r{right:0;justify-content:flex-end;background:linear-gradient(270deg,rgb(17 41 31) 35%,rgb(17 41 31/0))}
+.cg-ar span{width:26px;height:26px;border-radius:50%;background:#1a3a2d;border:1px solid #3c5e4f;display:grid;place-items:center;font-size:14px;line-height:1}
+.cg-ar:hover span{background:#25483a}
+.cg-bar{position:relative;display:flex;align-items:center;gap:2px;height:10px;margin:0 14px 10px;cursor:pointer}
+.cg-bar .s{height:6px;border-radius:3px;background:#2d5e48;overflow:hidden} .cg-bar .s i{display:block;height:100%;background:var(--leaf);width:0}
+.cg-bar .m{height:2px;background:#6f8f7f;overflow:hidden} .cg-bar .m i{display:block;height:100%;background:var(--gold);width:0}
+.cg-bar .ph{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--gold);box-shadow:0 0 0 2px rgb(17 41 31/.6);pointer-events:none}
+/* Cards are the timeline */
+.cg.v-tl .cg-bar{display:none}
+.cg.v-tl .cg-row{padding-bottom:16px}
+.cg.v-tl .cg-pb{height:4px;bottom:-8px;left:0;right:0;background:#2d5e48;border-radius:2px}
+.cg.v-tl .cg-g::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:2px;background:var(--trk,#3c5e4f)}
+.cg.v-tl .cg-g .gt{position:absolute;left:0;bottom:2px;height:2px;background:var(--gold);z-index:1;width:0}
+/* Transport beside */
+.cg.v-side{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}
+.cg-lt{display:grid;gap:1px;padding:8px 2px 0 14px;min-width:0;max-width:150px}
+.cg-lt .cg-name{font-size:14px;overflow:hidden;text-overflow:ellipsis}
+.cg-lr{display:flex;align-items:center;gap:6px;margin-top:3px}
+.cg-rt{display:grid;gap:2px;padding:8px 8px 0 0}
+.cg.v-side .cg-bar{grid-column:1/-1}
+.cg.v-side .cg-row{padding-left:8px;padding-right:8px}
+/* Compact, selected opens */
+.cg.v-pill .cg-c{width:auto;max-width:150px;height:32px;grid-template-columns:28px auto;gap:7px;padding:2px 10px 2px 2px;border-radius:9px}
+.cg.v-pill .cg-th{height:28px;border-radius:7px}
+.cg.v-pill .cg-no{left:2px;top:2px;min-width:13px;height:13px;font-size:8.5px;line-height:11px}
+.cg.v-pill .cg-c:not(.sel):not(.play) small{display:none}
+.cg.v-pill .cg-c.sel,.cg.v-pill .cg-c.play{max-width:196px;height:40px;grid-template-columns:48px minmax(0,1fr)}
+.cg.v-pill .cg-c.sel .cg-th,.cg.v-pill .cg-c.play .cg-th{height:32px}
+.cg.v-pill .cg-g{flex-basis:36px}
+/* Captioned pictures */
+.cg.v-cap .cg-c{display:block;width:132px;height:56px;padding:0;overflow:hidden}
+.cg.v-cap .cg-th{position:absolute;inset:0;height:auto;border-radius:11px}
+.cg.v-cap .cg-tx{position:absolute;left:0;right:0;bottom:0;padding:16px 7px 5px;background:linear-gradient(rgb(10 24 18/0),rgb(10 24 18/.82))}
+.cg.v-cap .cg-tx b{color:#fff} .cg.v-cap .cg-tx small{color:#dfe6e1} .cg.v-cap .cg-tx small .st{color:#bfe3cc}
+.cg.v-cap .cg-pb{bottom:0;left:0;right:0;height:3px;z-index:1}
+/* Tall cards (production now) */
+.cg.v-old .cg-h{min-height:44px;padding-top:8px}
+.cg.v-old .cg-c{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:118px;height:auto;padding:5px}
+.cg.v-old .cg-th{height:68px}
+.cg.v-old .cg-pb{display:none}
+.cg.v-old .cg-g{flex-basis:38px}
+.cg.v-old .cg-sc{scrollbar-width:thin;scrollbar-color:rgb(255 255 255/.22) transparent}
+.cg.v-old .cg-sc::-webkit-scrollbar{display:block;height:6px}
+.cg.v-old .cg-sc::-webkit-scrollbar-thumb{background:rgb(255 255 255/.22);border-radius:3px}
+.cg.v-old .cg-row{padding-bottom:10px}
+.cg.v-old .cg-bar{height:20px;margin-bottom:12px}
+.cg.v-old .cg-bar .s{height:12px}
+
+/* ---- Review round 4 (§26–§29) ---- */
+/* View rows in the Stop Card (§26, reused by §29). The Card is 288 px, as in production. */
+.vr-card{width:288px}
+.vr-h{display:flex;align-items:center;gap:6px;font:600 14px var(--sans)}
+.vr-cnt{font:600 11px var(--sans);color:var(--ink2);background:var(--hover);border-radius:999px;padding:1px 7px}
+.vr-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.vr-row{position:relative;display:grid;grid-template-columns:52px minmax(0,1fr) 20px;column-gap:8px;align-items:center;min-height:46px;padding:5px 4px 5px 5px;border:1px solid var(--hair);border-radius:8px;background:#fff}
+.vr-row.old{grid-template-columns:12px 14px 52px minmax(0,1fr) 20px;column-gap:6px;padding-left:2px}
+.vr-row.gh{grid-template-columns:14px 52px minmax(0,1fr) 20px;column-gap:6px;padding-left:3px}
+.vr-grip{color:var(--ink3);font-size:11px;text-align:center}
+.vr-n{position:relative;font:600 12px var(--mono);color:var(--forest);text-align:center}
+.vr-n .gg{position:absolute;inset:0;display:none;color:var(--ink3);cursor:grab}
+.vr-row.gh:hover .vr-n .gg{display:block} .vr-row.gh:hover .vr-n .nn{visibility:hidden}
+.vr-th{position:relative;width:52px;height:36px;border-radius:5px;overflow:hidden;background:var(--paper)}
+.vr-row.np .vr-th,.vr-row.wrap .vr-th{cursor:grab}
+.vr-th svg{display:block;width:100%;height:100%}
+.vr-no{position:absolute;left:2px;top:2px;min-width:15px;height:15px;border-radius:8px;background:var(--forest);color:#fff;font:600 9.5px/13px var(--sans);text-align:center;padding:0 3px;border:1px solid rgba(255,255,255,.85);font-style:normal}
+.vr-gr{position:absolute;inset:0;display:grid;place-items:center;background:rgb(17 41 31/.42);color:#fff;font-size:14px;opacity:0;transition:opacity .12s}
+.vr-row:hover .vr-gr{opacity:1}
+.vr-main{min-width:0;display:grid;gap:3px}
+.vr-name{display:flex;align-items:center;gap:4px;min-width:0}
+.vr-name b{font:500 15px/1.2 var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.vr-row.wrap .vr-name b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.vr-def{color:var(--ink2);font-size:11px;flex:none}
+.vr-tag{flex:none;font:500 11px/1.35 var(--mono);color:var(--forest2);border:1px solid var(--forest2);border-radius:4px;padding:0 4px;font-style:normal}
+.vr-meta{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-size:11.5px;color:var(--ink3);min-width:0}
+.vr-st{display:inline-flex;align-items:center;border:1px solid var(--hair2);border-radius:999px;height:22px;background:#fff}
+.vr-st button{border:0;background:none;width:22px;height:20px;color:var(--ink2);padding:0;border-radius:999px;line-height:1}
+.vr-st button:hover{background:var(--hover)}
+.vr-st b{font:600 11.5px var(--mono);min-width:34px;text-align:center;color:var(--ink)}
+.vr-acts{display:grid;justify-items:center;gap:4px;color:var(--ink3)}
+.vr-acts i{font-style:normal;width:20px;height:18px;display:grid;place-items:center;border-radius:5px;font-size:12px}
+.vr-acts svg{width:13px;height:13px}
+.vr-kind{display:inline-flex;gap:3px}
+.vr-kind button{border:1px solid var(--hair2);background:#fff;border-radius:6px;padding:1px 7px;font-size:11.5px;color:var(--ink2)}
+.vr-kind button[aria-pressed=true]{background:var(--leaftint);border-color:#cfe1d5;color:var(--forest2);font-weight:600}
+.vr-note{font-size:12px;color:var(--ink3);margin:8px 0 0}
+.vr-grid{display:grid;grid-template-columns:288px minmax(0,1fr);gap:14px;align-items:start}
+.vr-names{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--ink2);margin:0 0 8px}
+.vr-names input{font:inherit;font-size:12.5px;border:1px solid var(--hair2);border-radius:7px;padding:4px 8px;width:min(260px,100%)}
+.vr-meas{display:grid;gap:4px;font-size:12px;color:var(--ink2)}
+.vr-bar{position:relative;height:16px;border-radius:4px;background:var(--hover);overflow:hidden}
+.vr-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--leaftint);border-right:2px solid var(--leaf)}
+.vr-bar span{position:absolute;left:6px;top:0;font:600 10.5px/16px var(--sans);color:var(--forest2)}
+/* Presentation ↔ object (§27) */
+.ln-grid{display:grid;grid-template-columns:minmax(0,1fr) 250px 288px;gap:12px;align-items:start}
+.ln-world{display:grid;gap:8px}
+.ln-obj{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid var(--hair);border-radius:10px;padding:6px 8px;background:#fff;font-size:12px;color:var(--ink3)}
+.ln-obj input{font:500 14px var(--serif);border:1px solid var(--hair2);border-radius:7px;padding:3px 7px;min-width:0;width:100%;color:var(--ink)}
+.ln-obj .chip{font-size:11px;border-radius:999px;background:var(--hover);padding:1px 7px;color:var(--ink2);white-space:nowrap}
+.ln-ix{background:var(--index);border:1px solid var(--hair);border-radius:12px;padding:8px 0;font-size:12px}
+.ln-ix .lab{font-size:11px;letter-spacing:.07em;color:var(--ink3);padding:2px 12px 6px;text-transform:uppercase}
+.ln-ix button{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center;width:100%;border:0;background:none;text-align:left;padding:5px 12px}
+.ln-ix button:hover{background:var(--hover)} .ln-ix button[aria-current=true]{background:var(--goldtint)}
+.ln-ix .th{height:30px;border-radius:5px;overflow:hidden;background:var(--paper)} .ln-ix .th svg{display:block;width:100%;height:100%}
+.ln-ix b{display:block;font:500 14.5px/1.2 var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ln-ix small{display:block;color:var(--ink3);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ln-ix small .lk{color:var(--forest2)}
+.ln-card{width:288px}
+.ln-card input.c-name{border:1px solid transparent;border-radius:6px;padding:0 4px;margin-left:-5px;width:100%;background:none;color:var(--ink)}
+.ln-card input.c-name:hover{border-color:var(--hair2)} .ln-card input.c-name:focus{border-color:var(--leaf);outline:0}
+.ln-card input.c-name:disabled{color:var(--ink)}
+.ln-follow{font-size:12px;color:var(--ink3);margin:4px 0 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ln-follow svg{width:12px;height:12px;flex:none}
+.ln-obsec p{margin:0 0 8px;font-size:12.5px;color:var(--ink2)}
+.ln-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12.5px}
+svg.st .ln-o{fill:#4b3a2e;stroke:#2a201a;stroke-width:1.2}
+svg.st .ln-o.d{fill:#8a6a4c}
+svg.st .ln-o.hl{stroke:var(--gold);stroke-width:3}
+svg.st.pick .ln-o{cursor:crosshair} svg.st.pick .ln-o:hover{stroke:var(--gold);stroke-width:3}
+svg.st .ln-t{font:500 10.5px var(--sans);fill:var(--ink2)}
+.ln-planw{position:relative}
+/* Scrub (§28): reuses the §25 Guide classes */
+.sbstage{position:relative;height:250px;border-radius:12px;overflow:hidden;border:1px solid var(--hair);background:var(--paper)}
+.sbstage>svg.cg-bg{position:absolute;inset:0;width:100%;height:100%}
+.sbstage .cg-bottom{bottom:12px}
+.sb .cg-row{padding-bottom:18px}
+.sb .cg-pb{height:4px;bottom:-9px;left:0;right:0;background:#2d5e48;border-radius:2px;overflow:visible}
+.sb .cg-g::after{content:"";position:absolute;left:0;right:0;bottom:3px;height:2px;background:#3c5e4f}
+.sb .cg-g .gt{position:absolute;left:0;bottom:3px;height:2px;background:var(--gold);z-index:1;width:0}
+.sb .cg-pb .tk{position:absolute;top:-2px;width:2px;height:8px;margin-left:-1px;background:var(--ivory);border-radius:1px;opacity:.75}
+.sb .cg-pb .wt{position:absolute;right:-8px;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--popdark);border:1.5px solid var(--quiet);color:var(--ivory);font:700 7px/11px var(--sans);text-align:center;letter-spacing:-.5px}
+.sb.m-rail .cg-row{cursor:default}
+.sb.m-rail .sb-band{position:absolute;left:0;right:0;bottom:0;height:18px;cursor:ew-resize}
+.sb.m-rail .cg-row:hover .cg-pb,.sb.m-rail .cg-row.scrub .cg-pb{height:6px;bottom:-10px}
+.sb-ph{position:absolute;bottom:0;width:2px;height:16px;margin-left:-1px;background:var(--gold);border-radius:1px;box-shadow:0 0 0 2px rgb(17 41 31/.6);pointer-events:none;z-index:3}
+.sb-ph::after{content:"";position:absolute;left:-4px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px rgb(17 41 31/.6)}
+.sb.m-card .cg-c{cursor:ew-resize}
+.sb-hl{position:absolute;top:5px;bottom:5px;width:2px;margin-left:-1px;background:var(--gold);border-radius:1px;pointer-events:none;z-index:2}
+.sb-hair{position:absolute;left:16px;right:16px;bottom:4px;height:3px;display:flex;gap:2px;cursor:ew-resize;border-radius:2px}
+.sb-hair:hover,.sb-hair.scrub{height:6px;bottom:3px}
+.sb-hair span{position:relative;height:100%;background:#2d5e48;border-radius:1.5px;overflow:hidden} .sb-hair span.m{background:#6f8f7f}
+.sb-hair span i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--leaf)} .sb-hair span.m i{background:var(--gold)}
+.sb-hair .hph{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--gold);border-radius:1px;pointer-events:none}
+.sb.m-hair .cg-row{padding-bottom:14px} .sb.m-hair .cg-pb{display:none} .sb.m-hair .cg-g::after,.sb.m-hair .cg-g .gt{display:none}
+.sb.m-old .cg-pb{display:none} .sb.m-old .cg-g::after,.sb.m-old .cg-g .gt{display:none} .sb.m-old .cg-row{padding-bottom:6px}
+.sb .cg-row:focus-visible{outline:2px solid var(--leaf);outline-offset:-2px;border-radius:8px}
+.sb-wait{position:absolute;left:50%;transform:translateX(-50%);top:-30px;background:var(--popdark);color:var(--ivory);font-size:11.5px;border-radius:8px;padding:3px 9px;white-space:nowrap;box-shadow:0 4px 12px rgb(0 0 0/.2)}
+/* Travel time vs hold (§29) */
+.tt-grid{display:grid;grid-template-columns:288px minmax(0,1fr);gap:14px;align-items:start}
+.tt-step{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;margin:-1px 0 -1px 30px;padding:3px 0 3px 16px;min-height:30px;font-size:11.5px;color:var(--ink2)}
+.tt-step::before{content:"";position:absolute;left:0;top:-4px;bottom:-4px;border-left:2px dashed var(--hair2)}
+.tt-step.trav::before{border-left:2px solid var(--gold)}
+.tt-step .lbl{color:var(--ink3)}
+.tt-auto{border:0;background:none;padding:0;font-size:11px;color:var(--forest2);text-decoration:underline;text-decoration-color:var(--hair2)}
+.tt-auto[disabled]{color:var(--ink3);text-decoration:none;cursor:default}
+.tt-play{border:1px solid var(--hair2);background:#fff;border-radius:6px;width:22px;height:20px;padding:0;font-size:8px;color:var(--ink2)}
+.tt-shared{flex-basis:100%;font-size:10.5px;color:var(--ink3)}
+.tt-lbl{color:var(--ink3);min-width:38px}
+.tt-link{border:0;background:none;padding:0;font-size:11.5px;color:var(--forest2);text-decoration:underline;text-decoration-color:var(--hair2)}
+.tt-rib{display:flex;gap:2px;height:26px;margin-top:6px}
+.tt-rib span{display:grid;place-items:center;min-width:0;overflow:hidden;white-space:nowrap;font:600 10.5px var(--sans);border-radius:4px;padding:0 3px;transition:flex .25s}
+.tt-rib .h{background:var(--leaftint);color:var(--forest2)}
+.tt-rib .t{background:var(--gold);color:var(--forest)}
+.tt-rib .c{flex:0 0 3px;background:var(--ink3);padding:0}
+.tt-rib .w{flex:0 0 58px;border:1.5px dashed var(--hair2);color:var(--ink3);background:#fff}
+.tt-rib .fl{animation:ttfl 1s ease-out}
+@keyframes ttfl{0%{box-shadow:0 0 0 3px var(--caution)}100%{box-shadow:0 0 0 3px rgb(200 90 72/0)}}
+.tt-key{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--ink3);margin-top:6px}
+.tt-key i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+@media (max-width:980px){.ln-grid{grid-template-columns:minmax(0,1fr)}.vr-grid,.tt-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
 <header class="top"><h1>Experience review 1 — interaction sheet</h1><span>R217.S26–S30 owner review · 2026-11-03 · ✓ your pick · ★ recommended · struck = current production</span></header>
 <nav class="toc">
-  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a><a href="#s12">12 Environment</a><a href="#s13">13 Experiences</a><a href="#s14">14 Environment home</a><a href="#s15">15 Cursors</a><a href="#s16">16 Turn a View</a><a href="#s17">17 Present this</a><a href="#s18">18 Welcome</a><a href="#s19">19 Shape a path</a><a href="#s20">20 Selection only</a><a href="#s21">21 Look-through motion</a><a href="#s22">22 Messages</a>
+  <a href="#s1">1 Look through</a><a href="#s2">2 Views on the Stage</a><a href="#s3">3 Camera paths</a><a href="#s4">4 Path editing</a><a href="#s5">5 Travel and its Card</a><a href="#s6">6 Guide strip</a><a href="#s7">7 Show</a><a href="#s8">8 Problems and messages</a><a href="#s9">9 Opening</a><a href="#s11">10 Snapshots</a><a href="#s10">11 Preview</a><a href="#s12">12 Environment</a><a href="#s13">13 Experiences</a><a href="#s14">14 Environment home</a><a href="#s15">15 Cursors</a><a href="#s16">16 Turn a View</a><a href="#s17">17 Present this</a><a href="#s18">18 Welcome</a><a href="#s19">19 Shape a path</a><a href="#s20">20 Selection only</a><a href="#s21">21 Look-through motion</a><a href="#s22">22 Messages</a><a href="#s23">23 Plan camera</a><a href="#s24">24 Advanced camera</a><a href="#s25">25 Compact Guide</a><a href="#s26">26 View rows</a><a href="#s27">27 Presentation and object</a><a href="#s28">28 Scrub on the cards</a><a href="#s29">29 Travel time</a>
 </nav>
 <p class="intro">Each row shows what production does now (red line), the proposal (★) and, where useful, one alternative. Try the live parts: drag and scroll in <b>Look through</b>, click Views in <b>2</b>, drag path points and the <b>+</b> handles in <b>4</b>, switch Cut/Travel in <b>5</b>, tick the boxes in <b>7</b>, step through Preview in <b>11</b>, and try the environment presets in <b>12</b> (a new scope proposal). Pick a different option on any row to override ★; the fix plan implements ★ wherever you don't.</p>
 <p class="intro"><b>Your picks (2026-11-03):</b> 1 full Stage + ticks · 2 a real camera body with the frustum and short 2D wedge · 3 ribbon + chevrons · 4, 5, 6 as recommended · 7 light glass, shared by the World and Experience Stage toolbars · Preview tour gets <i>Prev</i> (a Cut back, no travel) · the opening page is redesigned (9).</p>
 <p class="intro"><b>Settled (2026-11-03), implemented in review round 1:</b> 2 the <i>Detailed</i> camera (short wire for unselected Views, the full frustum on the selection) · 9 <i>Forest</i> start page · 12 environment presets, Paper by default · everything else as ★.</p>
 <p class="intro"><b>Review round 2 (2026-11-03), §15–§22:</b> the owner's second live check. ★ is the recommendation; the technical plan is "Review round 2" in fix-plan.md. Try the cursors in <b>15</b>, turn a View in <b>16</b> and bend the path in <b>19</b>.</p>
+<p class="intro"><b>Review round 3 (2026-11-04), §23–§25:</b> the last R217 stretch, for visual review only (nothing here is implemented). Drag cameras in <b>23</b> (the Plan camera and its drag ghost), switch <b>Advanced</b> on in <b>24</b> and set height, tilt and lens on the Stage, and compare compact Guides in <b>25</b> (press ▶, try 12 Stops).</p>
+<p class="intro"><b>Your picks (2026-11-04):</b> 23 ✓ as recommended: the Detailed camera from above, moving live with a ghost · 24 ✓ the World's marks, picture in the <i>Card only</i>: the Card stays clear and readable while a camera is edited · 25 ✓ <i>Cards are the timeline</i>, with no Play-from menu: ▶ plays from the playhead, and pressing a Stop moves the playhead there. Built in the working tree; see "Review round 3" in the fix plan.</p>
 <main>
 
 <!-- 1 · Look through -->
@@ -1178,6 +1444,200 @@ svg.st .faintcam{opacity:.35}
   </ul>
 </section>
 
+<!-- 23 · Plan camera and drag ghost -->
+<section id="s23" class="wide">
+  <h2><span class="n">23</span>Plan draws the same camera, and it moves while you drag<span class="r2new">ROUND 3</span></h2>
+  <p class="now">Now: in Plan a View is a dot with a short wedge, so it doesn't look like the camera you see in 3D. Dragging the dot shows nothing: the View jumps only when you let go.</p>
+  <div class="opts">
+    <span>Plan camera</span><div class="seg" data-key="pcs"><button data-v="full" aria-pressed="true"><span class="star">✓</span> Detailed, from above</button><button data-v="simple" aria-pressed="false">Body + lens</button><button data-v="dot" class="old" aria-pressed="false">Dot + wedge</button></div>
+    <span>While dragging</span><div class="seg" data-key="pcm"><button data-v="ghost" aria-pressed="true"><span class="star">✓</span> Moves live, a ghost stays</button><button data-v="live" aria-pressed="false">Moves live</button><button data-v="release" class="old" aria-pressed="false">Jumps on release</button></div>
+  </div>
+  <div class="pair">
+    <div><div class="cap">Plan · try it</div><svg class="st" viewBox="0 0 600 380" id="pc-svg" tabindex="0" aria-label="Plan: drag a camera to move it, drag the selected frustum to turn it"></svg><p class="r2read" id="pc-read"></p></div>
+    <div><div class="cap">One object, two readings</div><svg class="st camkey" viewBox="0 0 420 380" id="pc-key" aria-label="The Detailed camera in 3D and from above, in its three states"></svg></div>
+  </div>
+  <ul class="rules">
+    <li><b>Plan draws the Detailed camera from above</b>: the body with its viewfinder and shutter button as tones, and the lens barrel pointing where it looks. One ink outline, the sticker finish and the 3D state colours: ink when quiet, forest with a leaf lens rim on the tour, gold when selected. It stays screen-sized like every mark and drops to body + lens, then to a dot, when zoomed far out (§2).</li>
+    <li><b>The wedge starts at the lens</b>, not at the centre: short for every View, the full cone on the selection. The selection shows its eye height beside its name, so Plan says what the stem says in 3D.</li>
+    <li><b>Drag moves it at once.</b> A dashed ghost stays where it started, joined by a line and the distance. Turning by the frustum (§16) leaves a ghost frustum and the angle. Release is one change and one Undo; <kbd>Esc</kbd> during a drag puts it back; <kbd>Shift</kbd> snaps the move to 0.25 m and the turn to 15°.</li>
+  </ul>
+</section>
+
+<!-- 24 · Advanced camera controls -->
+<section id="s24" class="wide">
+  <h2><span class="n">24</span>Advanced: handle the camera itself, without Look through<span class="r2new">ROUND 3</span></h2>
+  <p class="now">Now: Plan moves a View and 3D only turns it. Height, tilt and lens change only inside Look through, so placing a high camera means hopping between 2D, 3D and Look through.</p>
+  <p class="lede">The default stays: you look, press Capture, and Look through to adjust. <b>Advanced</b> is a switch on the selected View's Card for the cases Look through is slow at: a high camera, an exact tilt, a lens change while you see the room around it.</p>
+  <div class="opts">
+    <span>Controls</span><div class="seg" data-key="ac"><button data-v="marks" aria-pressed="true"><span class="star">✓</span> The World's marks</button><button data-v="rig" aria-pressed="false">A camera rig</button><button data-v="card" aria-pressed="false">Card values only</button><button data-v="old" class="old" aria-pressed="false">Turn only</button></div>
+    <span>Picture while dragging</span><div class="seg" data-key="apv"><button data-v="corner" aria-pressed="false"><span class="star">★</span> Stage corner</button><button data-v="card" aria-pressed="true"><span class="star">✓</span> Card only</button></div>
+  </div>
+  <div class="adv-grid">
+    <div class="card ui adv-card" id="adv-card">
+      <div class="c-head"><div class="g"><div class="c-kind">View · <a>Piano</a></div><div class="c-name">High corner</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec" style="border-top:0;padding-top:2px">
+        <div class="adv-pic" id="adv-pic" aria-label="What this View sees"></div>
+        <button class="btn forest full" style="margin-top:8px">Look through<kbd>↵</kbd></button>
+        <div class="lt-note">Look through shows exactly what a visitor sees; Update View keeps it.</div>
+      </div>
+      <div class="c-sec" data-when="ac=marks|rig|card">
+        <div class="adv-sw"><span><b>Advanced</b><small id="adv-swsub">Height, tilt and lens on the Stage</small></span><button class="sw" role="switch" id="adv-sw" aria-checked="true" aria-label="Advanced camera controls"><i></i></button></div>
+        <div class="adv-rows" id="adv-rows">
+          <div class="row"><span class="k">Height</span><span class="step"><button data-st="h:-0.05" aria-label="Lower">−</button><span id="adv-h">2.50 m</span><button data-st="h:0.05" aria-label="Raise">+</button></span></div>
+          <div class="adv-pre" id="adv-pre"><button data-h="1.1">Seated 1.10</button><button data-h="1.65">Standing 1.65</button><button data-h="2.5">High 2.50</button></div>
+          <div class="row"><span class="k">Tilt</span><span class="step"><button data-st="pitch:-2" aria-label="Tilt down">−</button><span id="adv-p">−16°</span><button data-st="pitch:2" aria-label="Tilt up">+</button></span></div>
+          <div class="row"><span class="k">Lens</span><span class="pill" id="adv-fovv">62°</span></div>
+          <div class="cseg c3" id="adv-lens"><button data-f="75" aria-pressed="false">Wide</button><button data-f="55" aria-pressed="false">Normal</button><button data-f="35" aria-pressed="false">Close</button></div>
+          <div class="row" style="margin-top:8px"><button class="tbtn" id="adv-level">Level the camera</button><span class="k" style="font-size:11.5px">each change is one Undo</span></div>
+        </div>
+      </div>
+      <div class="c-sec" data-when="ac=old"><span style="color:var(--ink3);font-size:12.5px">Height, tilt and lens change only inside Look through.</span></div>
+    </div>
+    <div class="adv-stages" id="adv-stages">
+      <div><div class="cap">3D</div><div class="adv-3dw"><svg class="st" viewBox="0 0 640 430" id="adv-3d" aria-label="3D Stage with the selected camera's controls"></svg><div class="adv-pip" id="adv-pip"><b>What it sees</b></div></div></div>
+      <div><div class="cap">Plan</div><div class="adv-plan" id="adv-planw"><svg class="st" viewBox="0 0 600 380" id="adv-plan" aria-label="Plan with the selected camera's controls"></svg><svg class="st" viewBox="0 0 92 380" id="adv-rail" aria-label="Side strip: height and tilt"></svg></div></div>
+      <div class="hinttag" id="adv-tag" hidden></div>
+    </div>
+  </div>
+  <p class="r2read" id="adv-read"></p>
+  <ul class="rules">
+    <li><b>Advanced is a switch on the Card</b>, shown for the selected View only. It's editor session state like a disclosure: it writes nothing, enters no history, and stays on until you turn it off. With it off, the Stage behaves as today.</li>
+    <li>★ <b>The World's own marks</b>, so a camera handles like an object: the four-way cross on its floor spot moves it, the hex lift knob raises it, the bent arrow on the floor turns it. The camera adds two marks on its frustum: a two-way arrow on the top edge tilts it, and corner grips change the lens. Dragging the frustum still turns it (§16). <b>A camera rig</b> is the bespoke alternative: foot ring, stem capsule, round knobs.</li>
+    <li><b>Detents</b>: height snaps to Seated 1.10, Standing 1.65 and High 2.50 m within 6 cm, tilt to level at 0°, lens to Wide · Normal · Close. <kbd>Alt</kbd> drags freely; <kbd>Shift</kbd> snaps the move to 0.25 m, the turn to 15°, the tilt to 5°.</li>
+    <li><b>Plan with Advanced</b>: the camera moves and turns as in §23, the wedge's two ends set the lens, and a narrow side strip at the Stage edge shows the selection's height and tilt. You can drag both, so the whole camera can be set without leaving Plan.</li>
+    <li><b>While a mark is dragged</b>, a small picture of what the camera sees sits in the Stage corner, so you can judge the frame without Look through. It evaluates the same View through the one Camera authority; it isn't a second preview path. The Card's picture follows too.</li>
+    <li>Every drag edits the authored View: one change and one Undo on release, <kbd>Esc</kbd> cancels. Nothing here adds an authored type.</li>
+  </ul>
+</section>
+
+<!-- 25 · Compact Guide -->
+<section id="s25" class="wide">
+  <h2><span class="n">25</span>A shorter Guide that keeps every Stop readable<span class="r2new">ROUND 3</span></h2>
+  <p class="now">Now: the open Guide stacks a header, tall Stop cards (picture over title over timing), a visible scrollbar and the scrub bar. Above the Dock that's about a third of a laptop's Stage.</p>
+  <div class="opts">
+    <span>Layout</span><div class="seg" data-key="cgl"><button data-v="rows" aria-pressed="false"><span class="star">★</span> Wide rows</button><button data-v="tl" aria-pressed="true"><span class="star">✓</span> Cards are the timeline</button><button data-v="side" aria-pressed="false">Transport beside</button><button data-v="pill" aria-pressed="false">Compact, selected opens</button><button data-v="cap" aria-pressed="false">Captioned pictures</button><button data-v="old" class="old" aria-pressed="false">Tall cards</button></div>
+    <span>Stops</span><div class="seg" data-key="cgn"><button data-v="5" aria-pressed="true">5</button><button data-v="12" aria-pressed="false">12, overflowing</button></div>
+    <span>Guide</span><div class="seg" data-key="cgo"><button data-v="open" aria-pressed="true">Open</button><button data-v="closed" aria-pressed="false">Collapsed (unchanged)</button></div>
+  </div>
+  <div class="cgstage ui" id="cg-stage">
+    <svg class="st cg-bg" viewBox="0 0 600 380" preserveAspectRatio="xMidYMin slice" id="cg-bg" aria-hidden="true"></svg>
+    <div class="cg-tb"><span>2D</span><span>Grid</span><span>Show</span></div>
+    <div class="cg-meter" id="cg-meter" hidden></div>
+    <div class="cg-bottom"><div id="cg-guide" style="width:min(820px,100%);display:flex;justify-content:center"></div>
+      <div class="dock2"><span class="dk" aria-label="Experience dock (unchanged)"><i class="on">↖</i><i>⌖</i><i class="sep"></i><i>▣ Capture</i><i class="kp" id="cg-gkey" role="button" tabindex="0">⋯ Guide</i></span></div>
+    </div>
+  </div>
+  <p class="r2read" id="cg-read"></p>
+  <ul class="rules">
+    <li>★ <b>Wide rows</b> (your idea): Stops are 176 × 50 with a 62 × 40 picture beside the title and the Stop's time. The title stays on one line with an ellipsis, with the full name in the tooltip and the Card. The view count moves to the Card; Start and <i>again</i> stay.</li>
+    <li><b>Kept as they are:</b> Cut · Travel · ⚠ gutters between Stops, the scrub bar with its playhead, play, Follow, + Stop, the Dock and the collapsed Guide. The Guide stays min(820 px, Stage) wide.</li>
+    <li><b>No visible scrollbar.</b> Trackpad and touch scroll sideways, a mouse wheel over the strip scrolls it sideways, and the selected or playing Stop is scrolled into view. Arrows appear only when Stops overflow, and only on the side with more; they page by the visible width, over a fade that shows a cut-off card means "more".</li>
+    <li><b>The trade-offs:</b> <i>Cards are the timeline</i> saves the scrub row but loses proportional timing. <i>Transport beside</i> is the shortest of the full-picture layouts but narrows the strip. <i>Compact, selected opens</i> is the shortest but hides most pictures. <i>Captioned pictures</i> keeps big pictures, but text over a picture is harder to read.</li>
+  </ul>
+</section>
+
+<!-- 26 · View rows -->
+<section id="s26" class="wide">
+  <h2><span class="n">26</span>View rows that fit a real name<span class="r2new">ROUND 4</span></h2>
+  <p class="now">Now: a Guided View row spends its left edge on a grip and a number, then marks the first View twice (◆ and <i>Entry</i>). In a 288 px Card that leaves about 62 px, so "Chopin piano" shows as "Chopin …".</p>
+  <div class="opts">
+    <span>Row</span><div class="seg" data-key="vrl"><button data-v="np" aria-pressed="true"><span class="star">★</span> Number on the picture</button><button data-v="gh" aria-pressed="false">Grip on hover</button><button data-v="wrap" aria-pressed="false">Number on the picture, two lines</button><button data-v="old" class="old" aria-pressed="false">Grip + number</button></div>
+    <span>First View</span><div class="seg" data-key="vre"><button data-v="pos" aria-pressed="true"><span class="star">★</span> Its place says it</button><button data-v="diff" aria-pressed="false">◆ only when it isn't first</button><button data-v="both" class="old" aria-pressed="false">◆ + Entry</button></div>
+    <span>Default View</span><div class="seg" data-key="vrd"><button data-v="1" aria-pressed="true">View 1</button><button data-v="2" aria-pressed="false">View 2</button></div>
+  </div>
+  <div class="vr-names"><span>Name of View 1</span><input id="vr-in" value="Chopin piano" aria-label="Name of View 1"><span class="seg" id="vr-pre"><button data-n="Chopin piano" aria-pressed="true">Chopin piano</button><button data-n="Chopin museum, north entrance" aria-pressed="false">A long one</button><button data-n="View 2" aria-pressed="false">View 2</button></span></div>
+  <div class="vr-grid">
+    <div class="card ui vr-card">
+      <div class="c-head"><div class="g"><div class="c-kind">Stop 1 of 3 · Evening tour</div><div class="c-name">Salon</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="vr-h">Guided views<span class="vr-cnt">2</span></div><ol class="vr-list" id="vr-list"></ol><p class="vr-note" id="vr-note"></p></div>
+    </div>
+    <div class="vr-meas" id="vr-meas"></div>
+  </div>
+  <ul class="rules">
+    <li>★ <b>The number sits on the picture</b>, as the Stop number does in the Guide. The grip column goes: you drag a row by its picture (a ⠿ shows on hover), and <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> still reorders. That gives the name about 155 px, so "Chopin piano" fits with room to spare. Longer names end in an ellipsis, with the full name in the tooltip and on the View's Card.</li>
+    <li>★ <b>The first View is the entry because it's first.</b> The badge <i>1</i> already says so, and the note under the list says once that the Stop opens on View 1. The <i>Entry</i> tag goes.</li>
+    <li><b>◆ belongs to the Presentation</b>: it's the View a Presentation opens on outside a Guide. It stays on the Presentation's Card and in the Index (as today), and leaves the Stop's rows. <i>◆ only when it isn't first</i> keeps it in the one case worth knowing: the Stop opens somewhere other than the Presentation's Default.</li>
+    <li><i>Grip on hover</i> keeps the number column and saves only the grip (about 18 px). <i>Two lines</i> lets a long name wrap once, so rows get taller.</li>
+  </ul>
+</section>
+
+<!-- 27 · Presentation and object -->
+<section id="s27" class="wide">
+  <h2><span class="n">27</span>A Presentation follows its object, and a captured one can link to one<span class="r2new">ROUND 4</span></h2>
+  <p class="now">Now: <i>Present this</i> copies the object's name into the Presentation once, Form included ("Shape (Form 2)"). The Presentation does remember which object it is about, but nothing reads the name back, so renaming the object in World never reaches the Index, the Guide or the Stops. A Presentation made by Capture or Place a View, with nothing selected, can never be linked to an object.</p>
+  <div class="opts">
+    <span>Name</span><div class="seg" data-key="lnn"><button data-v="follow" aria-pressed="true"><span class="star">★</span> Follows the object until you rename it</button><button data-v="always" aria-pressed="false">Always the object's name</button><button data-v="copy" class="old" aria-pressed="false">Copied once</button></div>
+    <span>Link</span><div class="seg" data-key="lnk"><button data-v="suggest" aria-pressed="true"><span class="star">★</span> Suggest what it looks at</button><button data-v="pick" aria-pressed="false">Pick on the Stage</button><button data-v="none" class="old" aria-pressed="false">Only Present this</button></div>
+  </div>
+  <div class="ln-grid">
+    <div class="ln-world">
+      <div class="cap" style="margin-top:0">World · rename an object here</div>
+      <label class="ln-obj"><span>Object</span><input id="ln-op" value="Pleyel piano" aria-label="Name of the piano object"><span class="chip">Form 2</span></label>
+      <label class="ln-obj"><span>Object</span><input id="ln-od" value="Writing desk" aria-label="Name of the desk object"><span class="chip">Form 1</span></label>
+      <div class="ln-planw"><svg class="st" viewBox="0 0 300 170" id="ln-plan" aria-label="Plan: two objects and the captured View"></svg><div class="hinttag" id="ln-tag" hidden style="left:8px;top:8px">Click an object to link it · <kbd>Esc</kbd> cancels</div></div>
+    </div>
+    <div><div class="cap" style="margin-top:0">Index</div><div class="ln-ix" id="ln-ix"></div></div>
+    <div><div class="cap" style="margin-top:0">Presentation Card</div><div class="card ui ln-card" id="ln-card"></div></div>
+  </div>
+  <p class="r2read" id="ln-read"></p>
+  <ul class="rules">
+    <li>★ <b>The name follows the object until you type one.</b> A Presentation stores a name only once you rename it. Until then the Index, the Guide's Stops, the Stop Card and the visitor's caption all show the object's current name, so a World rename shows up everywhere at once. Your own name stays put; <i>Use the object's name</i> goes back.</li>
+    <li><b>Form is a fact, not part of the name.</b> "Shape (Form 2)" becomes the name "Shape" with <i>about Shape · Form 2</i> on the kind line, and it follows the object's Form too.</li>
+    <li>★ <b>A captured Presentation suggests its object</b>: the one under the centre of its Default View's picture, else the largest one in frame. One press links it. <i>Pick on the Stage</i> arms a one-shot picker: objects light up on hover and <kbd>Esc</kbd> cancels. Linking and unlinking are each one change and one Undo. Unlinking keeps the current name as the Presentation's own.</li>
+    <li><b>What a link gives you:</b> the live name and Form, <i>Show in World</i> (selects the object), the Presentation listed under <i>Presentations about this</i> when the object is selected, and a clear warning when the object is deleted, which keeps the last name and marks it <i>object removed</i>.</li>
+    <li><b>Cost:</b> the link is the field Presentations already carry (the subject Present this sets). Following needs the stored name to become optional: one Experience format bump, refusing older files, with no migration before beta. Linking later needs one new subject-update change.</li>
+  </ul>
+</section>
+
+<!-- 28 · Scrub on the cards -->
+<section id="s28" class="wide">
+  <h2><span class="n">28</span>Scrub on the cards, with waits and keys<span class="r2new">ROUND 4</span></h2>
+  <p class="now">Now: the open Guide keeps a separate scrub row under the cards. It is the only proportional view of time, the only place a wait shows, and the only keyboard scrubber, so it couldn't simply go.</p>
+  <div class="opts">
+    <span>Scrub</span><div class="seg" data-key="sbm"><button data-v="rail" aria-pressed="true"><span class="star">★</span> The card rail is the scrubber</button><button data-v="card" aria-pressed="false">Drag across a card</button><button data-v="hair" aria-pressed="false">Hairline under the Guide</button><button data-v="old" class="old" aria-pressed="false">Separate scrub row</button></div>
+  </div>
+  <div class="sbstage ui" id="sb-stage">
+    <svg class="st cg-bg" viewBox="0 0 600 380" preserveAspectRatio="xMidYMin slice" id="sb-bg" aria-hidden="true"></svg>
+    <div class="hinttag" id="sb-tip" hidden></div>
+    <div class="cg-bottom"><div id="sb-guide" style="width:min(820px,100%);display:flex;justify-content:center"></div></div>
+  </div>
+  <p class="r2read" id="sb-read"></p>
+  <ul class="rules">
+    <li>★ <b>The rail under the cards is one track.</b> Each card's progress rail and each Travel gutter's line join into a single scrubber. Press on it and drag: the playhead runs across cards and moves continuously. A tooltip gives the time and where it is (<i>0:42 · Stop 3 · Doorway</i>). Pressing a card's picture still starts from that Stop.</li>
+    <li><b>Time isn't proportional on the cards, and they say so.</b> Every Stop is one card wide, so a card's rail is that Stop's own time: ticks mark where each View starts, and a Travel gutter is its own short track. Proportional time moves to the playhead's tooltip and the time readout.</li>
+    <li><b>A wait shows where it happens.</b> A Stop that waits for Next ends its rail with a ⏸ cap. Playing stops there and says <i>Waits for Next — ▶ continues</i>, as the visitor would press Next.</li>
+    <li><b>Keys:</b> the strip is a slider. <kbd>←</kbd>/<kbd>→</kbd> move 1 s, <kbd>Shift</kbd> 5 s, <kbd>PgUp</kbd>/<kbd>PgDn</kbd> go to the previous or next Stop, and <kbd>Home</kbd>/<kbd>End</kbd> go to the ends. <kbd>Space</kbd> plays.</li>
+    <li><i>Drag across a card</i> scrubs inside one Stop, and the picture follows the View under the pointer. It's good for checking a Stop, but you can't sweep the whole tour. <i>Hairline</i> keeps proportional time in a 3 px line on the Guide's bottom edge with no extra height, but it's a small target.</li>
+  </ul>
+</section>
+
+<!-- 29 · Travel time -->
+<section id="s29" class="wide">
+  <h2><span class="n">29</span>A Travel's time is the step's, not the next View's<span class="r2new">ROUND 4</span></h2>
+  <p class="now">Now: View 2's row shows <i>Cut · Travel · ▷</i>, then <i>Hold − 3s +</i>. That stepper is View 2's hold, but it sits under Travel, so changing "the Travel time" changes the hold instead. The Travel's own time is read-only text, and it changes only on the Camera path's Card.</p>
+  <div class="opts">
+    <span>Step</span><div class="seg" data-key="ttl"><button data-v="between" aria-pressed="true"><span class="star">★</span> A step between Views</button><button data-v="pair" aria-pressed="false">Two labelled times in the row</button><button data-v="link" aria-pressed="false">Travel time on its path</button><button data-v="old" class="old" aria-pressed="false">Hold under the step</button></div>
+  </div>
+  <div class="tt-grid">
+    <div class="card ui vr-card">
+      <div class="c-head"><div class="g"><div class="c-kind">Stop 2 of 3 · Evening tour</div><div class="c-name">Salon</div></div><button class="ib" aria-label="More">⋯</button></div>
+      <div class="c-sec"><div class="vr-h">Guided views<span class="vr-cnt">3</span></div><ol class="vr-list" id="tt-list"></ol><p class="vr-note">The Stop opens on View 1. Reordering changes only this Stop.</p></div>
+    </div>
+    <div>
+      <div class="cap" style="margin-top:0">What the visitor gets in this Stop</div>
+      <div class="tt-rib" id="tt-rib"></div>
+      <div class="tt-key"><span><i style="background:var(--leaftint);border:1px solid #cfe1d5"></i>hold at a View</span><span><i style="background:var(--gold)"></i>Travel</span><span><i style="background:var(--ink3);width:3px"></i>Cut</span><span><i style="border:1.5px dashed var(--hair2)"></i>waits for Next</span></div>
+      <p class="r2read" id="tt-read"></p>
+    </div>
+  </div>
+  <ul class="rules">
+    <li>★ <b>The step sits between the two Views it joins</b>, on a line from one picture to the next: <i>Cut</i> or <i>Travel</i>, and for Travel its time with its own stepper. A View's row keeps only its hold. Each number now sits next to what it times.</li>
+    <li><b>Travel time is the Camera path's</b>, set through the path as today (one authority). <i>Auto</i> is the time the path's length gives; stepping sets your own, and <i>Auto</i> goes back. A path can serve more than one step, so the line says when it does: <i>Same path in 2 steps</i>.</li>
+    <li><b>The Stop-to-Stop step works the same way.</b> In <i>After this Stop</i>, a Travel shows its time with a stepper beside the target, not under it.</li>
+    <li><i>Two labelled times</i> keeps everything in the row, labelled <i>Arrive</i> and <i>Hold</i>, so rows get taller. <i>Travel time on its path</i> makes the time a link to the path's Card: the least to build, but still a trip away.</li>
+  </ul>
+</section>
+
 </main>
 <script>
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -1698,6 +2158,452 @@ const CUR=(()=>{
   const g=[['look','Drag','Turn the camera'],['grabbing','Right-drag · Shift-drag · two fingers','Pan: slide sideways and up',1],['select','Scroll · pinch','Move forward and back, smoothly'],['select','Card','Wide · Normal · Close lens']];
   $('#lm-gest').innerHTML=g.map(([c,k,t,n])=>`<div class="${n?'newg':''}"><img src="${CUR[c].uri}" alt=""><span><b>${k}</b><small>${t}${n?' (new)':''}</small></span></div>`).join('');
 })();
+
+/* ---------- Review round 3 helpers ---------- */
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const wrapA=d=>((d%360)+540)%360-180;
+const fmtDeg=n=>`${n>0.5?'+':n<-0.5?'−':''}${Math.abs(Math.round(n))}°`;
+function thumbSvg(env,sc,sx=0,sy=0){return `<svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice"><g transform="translate(${(400+sx).toFixed(1)} ${(250+sy).toFixed(1)}) scale(${(+sc).toFixed(3)}) translate(-400 -250)">${persp(env)}</g></svg>`;}
+/* The World's Stage mark glyphs, as StageOverlay draws them. */
+const GL={move:'M0,-15 L6.4,-8 H2.5 V-2.5 H8 V-6.4 L15,0 L8,6.4 V2.5 H2.5 V8 H6.4 L0,15 L-6.4,8 H-2.5 V2.5 H-8 V6.4 L-15,0 L-8,-6.4 V-2.5 H-2.5 V-8 H-6.4 Z',
+  two:'M-15.5,0 L-7.5,-6.8 V-2.7 H7.5 V-6.8 L15.5,0 L7.5,6.8 V2.7 H-7.5 V6.8 Z',
+  hex:r=>'M'+[0,1,2,3,4,5].map(k=>{const a=(k*60-90)*Math.PI/180;return (r*Math.cos(a)).toFixed(2)+','+(r*Math.sin(a)).toFixed(2);}).join('L')+'Z',
+  curved:(()=>{const R=21,half=36,width=5.4,flare=3.8,head=17,rd=Math.PI/180,at=(rho,an)=>`${(rho*Math.cos(an*rd)).toFixed(2)},${(R+rho*Math.sin(an*rd)).toFixed(2)}`,a0=-90-half,a1=-90+half,p=[at(R,a0-head),at(R+width/2+flare,a0)];
+    for(let a=a0;a<=a1+.01;a+=6)p.push(at(R+width/2,a));p.push(at(R+width/2+flare,a1),at(R,a1+head),at(R-width/2-flare,a1));for(let a=a1;a>=a0-.01;a-=6)p.push(at(R-width/2,a));p.push(at(R-width/2-flare,a0));return 'M'+p.join('L')+'Z';})()};
+/* Plan camera: the Detailed camera seen from above. Local +x is where it looks; +y is its right
+   (the shutter-button side), matching camGlyph's r axis. */
+function planCam(x,y,deg,st,style,extra=''){const sc=st==='sel'?1.12:1,full=style!=='simple';
+  const sh=full?[[-9,-14,15,28,2.5,'t'],[6,-7,11,14,1.2,'s']]:[[-8,-12,14,24,3,'t'],[6,-6,9,12,1.5,'s']];
+  const rect=(r,c)=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" rx="${r[4]}" class="${c}"/>`,fx=full?17:15,hy=full?7:6;
+  let s=`<g class="pc ${st} ${extra}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${deg.toFixed(1)}) scale(${sc})">`;
+  s+=sh.map(r=>rect(r,'o')).join('')+sh.map(r=>rect(r,r[5])).join('');
+  if(full)s+=`<rect x="-6.5" y="-5" width="10" height="10" rx="1.6" class="h"/><circle cx="-2.5" cy="9.6" r="2.1" class="btn"/>`;
+  s+=`<rect x="${fx-1.8}" y="${-hy+1}" width="1.8" height="${2*hy-2}" class="capf"/>`;
+  if(st==='tour'||st==='sel')s+=`<path class="rim" d="M${fx} ${-hy}V${hy}"/>`;
+  return s+'</g>';}
+const lensOf=(style,st)=>(style==='simple'?15:17)*(st==='sel'?1.12:1);
+const htag=(x,y,t)=>{const w=10+t.length*5.9;return `<g class="htag" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><rect x="${-w/2}" y="-9" width="${w}" height="18" rx="5"/><text y="4" text-anchor="middle">${t}</text></g>`;};
+function pcMark(v,isSel,style,o={}){
+  if(style==='dot')return view2d(v,isSel,'wedge');
+  const st=isSel?'sel':v.stop?'tour':'quiet',x=px(v.x),y=pz(v.z),a=rad(v.yaw),lf=lensOf(style,st),lx=x+Math.cos(a)*lf,ly=y+Math.sin(a)*lf,L=isSel?92:v.stop?26:20;
+  let s=`<g data-id="${v.id}">`;
+  s+=`<path class="wedge${isSel?'':v.stop?' t':' q'}" d="${wedge(lx,ly,v.yaw,v.fov||52,L)}" data-part="${isSel?'fr':'body'}" style="cursor:${isSel?'var(--cur-turn)':'pointer'}"/>`;
+  s+=planCam(x,y,v.yaw,st,style);
+  s+=`<circle cx="${x}" cy="${y}" r="18" fill="transparent" data-part="body" style="cursor:${isSel?'var(--cur-move)':'pointer'}"/>`;
+  if(v.stop)s+=`<g class="badge" transform="translate(${x-15},${y-15})"><circle r="7"/><text y="3.3" text-anchor="middle">${v.stop}</text></g>`;
+  if(v.def)s+=`<path class="dmark" d="M${x+14},${y-21}l3.5,3.5l-3.5,3.5l-3.5,-3.5z"/>`;
+  if(isSel&&o.tags!==false){const w=8+v.name.length*6.1;s+=brackets(x,y,19,19)+tag(x,y+33,v.name)+htag(x+w/2+28,y+33,`${v.h.toFixed(2)} m`);}
+  return s+'</g>';}
+
+/* ---------- §23 Plan camera and drag ghost ---------- */
+(()=>{const sec=$('#s23'),svg=$('#pc-svg'),read=$('#pc-read'),key=$('#pc-key');if(!svg)return;
+  const V=VIEWS.map(v=>({...v}));let sel='b',drag=null,last='';
+  function draw(){const sty=sec.dataset.pcs,mode=sec.dataset.pcm;let s=planBase();
+    V.filter(v=>v.id!==sel).forEach(v=>s+=pcMark(v,false,sty));
+    const sv=V.find(v=>v.id===sel);
+    if(drag&&drag.moved&&mode==='ghost'){const g=drag.start,gx=px(g.x),gy=pz(g.z),a=rad(g.yaw),lf=sty==='dot'?0:lensOf(sty,'sel');
+      s+=`<path class="wedge gh" d="${wedge(gx+Math.cos(a)*lf,gy+Math.sin(a)*lf,g.yaw,52,drag.kind==='turn'?92:36)}"/>`;
+      s+=sty==='dot'?`<circle class="ghdot" cx="${gx}" cy="${gy}" r="6.5"/>`:planCam(gx,gy,g.yaw,'sel',sty,'ghost');
+      if(drag.kind==='move'){const cx=px(sv.x),cy=pz(sv.z),d=Math.hypot(sv.x-g.x,sv.z-g.z);
+        if(d>.02)s+=`<line class="offl" x1="${gx}" y1="${gy}" x2="${cx}" y2="${cy}"/>`+htag((gx+cx)/2,(gy+cy)/2-14,`${d.toFixed(2)} m`);}
+      else{const d=wrapA(sv.yaw-g.yaw),R=62,a0=rad(g.yaw),a1=rad(sv.yaw),am=rad(g.yaw+d/2);
+        if(Math.abs(d)>.5)s+=`<path class="turnarc" d="M${gx+R*Math.cos(a0)} ${gy+R*Math.sin(a0)} A${R} ${R} 0 0 ${d>0?1:0} ${gx+R*Math.cos(a1)} ${gy+R*Math.sin(a1)}"/><text class="turntxt" x="${gx+(R+16)*Math.cos(am)}" y="${gy+(R+16)*Math.sin(am)+4}" text-anchor="middle">${fmtDeg(d)}</text>`;}}
+    const shown=drag&&mode==='release'?{...sv,...drag.start}:sv;
+    s+=pcMark(shown,true,sty);
+    svg.innerHTML=s;
+    const n=sv.name;
+    if(drag&&drag.moved){const d=Math.hypot(drag.cur.x-drag.start.x,drag.cur.z-drag.start.z);
+      read.innerHTML=mode==='release'?`Dragging <b>${n}</b> · nothing on the Stage shows it until you let go`:drag.kind==='move'?`Moving <b>${n}</b> · ${d.toFixed(2)} m from where it was · <kbd>Esc</kbd> puts it back`:`Turning <b>${n}</b> · ${fmtDeg(wrapA(drag.cur.yaw-drag.start.yaw))}`;}
+    else read.innerHTML=last||`Drag a camera to move it · drag the selected frustum to turn it · <kbd>Shift</kbd> snaps`;
+    drawKey(sty);}
+  function drawKey(sty){const yaw=rad(28),f=[Math.cos(yaw),0,Math.sin(yaw)],r=[-Math.sin(yaw),0,Math.cos(yaw)],o=iso(0,0,0),cols=[['','Quiet','quiet'],['tour','On the tour','tour'],['sel','Selected','sel']];
+    let s='';cols.forEach(([st3,lab],j)=>{s+=`<text class="keyh" x="${150+j*100}" y="30" text-anchor="middle">${lab}</text>`;});
+    s+=`<text class="keyt" x="16" y="122">3D</text><text class="keyt" x="16" y="262">Plan</text>`;
+    cols.forEach(([st3,,st2],j)=>{const g=camGlyph([0,0,0],f,r,st3,'full'),cx=150+j*100;s+=`<g transform="translate(${cx} 118) scale(2.1) translate(${-o[0]} ${-o[1]})">${g.svg}</g>`;
+      const pv={x:0,z:0,yaw:28,h:1.65,stop:st2==='tour'?2:null,name:''};
+      if(sty==='dot'){s+=`<g transform="translate(${cx-px(0)*2} ${258-pz(0)*2}) scale(2)">${view2d({...pv,id:'k'+j},st2==='sel','wedge',{labels:false}).replace(/<g class="(vtag|badge)[\s\S]*?<\/g>/g,'').replace(/<path class="brk"[^>]*>/,'')}</g>`;}
+      else{const lf=lensOf(sty,st2),a=rad(28);s+=`<g transform="translate(${cx-8} 262) scale(1.5)"><path class="wedge${st2==='sel'?'':st2==='tour'?' t':' q'}" d="${wedge(Math.cos(a)*lf,Math.sin(a)*lf,28,52,st2==='sel'?28:st2==='tour'?18:14)}"/>${planCam(0,0,28,st2,sty)}</g>`;}});
+    s+=`<text class="keyt" x="210" y="346" text-anchor="middle">${sty==='dot'?'Now: a dot, unrelated to the camera above it.':'Same outline, fills and state colours; the wedge starts at the lens.'}</text>`;
+    key.innerHTML=s;}
+  const ptOf=e=>toSvg(svg,e);
+  svg.addEventListener('pointerdown',e=>{const g=e.target.closest('[data-id],[data-view]');if(!g)return;const id=g.dataset.id||g.dataset.view,v=V.find(q=>q.id===id);
+    const part=e.target.dataset.part||(e.target.closest('[data-aim]')?'fr':'body');
+    if(id!==sel){sel=id;last='';drag=null;draw();if(part==='fr')return;}
+    try{svg.setPointerCapture(e.pointerId);}catch{}
+    const q=ptOf(e);drag={kind:part==='fr'?'turn':'move',id,start:{x:v.x,z:v.z,yaw:v.yaw},cur:{x:v.x,z:v.z,yaw:v.yaw},q0:q,a0:Math.atan2(q[1]-pz(v.z),q[0]-px(v.x)),moved:false};svg.style.cursor='var(--cur-grabbing)';});
+  svg.addEventListener('pointermove',e=>{if(!drag)return;const q=ptOf(e),v=V.find(x=>x.id===drag.id);
+    if(!drag.moved&&Math.hypot(q[0]-drag.q0[0],q[1]-drag.q0[1])<3)return;drag.moved=true;
+    if(drag.kind==='move'){let x=drag.start.x+(q[0]-drag.q0[0])/M,z=drag.start.z+(q[1]-drag.q0[1])/M;if(e.shiftKey){x=Math.round(x*4)/4;z=Math.round(z*4)/4;}drag.cur.x=clamp(x,.2,7.8);drag.cur.z=clamp(z,.2,4.8);}
+    else{const a=Math.atan2(q[1]-pz(drag.start.z),q[0]-px(drag.start.x));let y=drag.start.yaw+wrapA((a-drag.a0)*180/Math.PI);if(e.shiftKey)y=Math.round(y/15)*15;drag.cur.yaw=y;}
+    if(sec.dataset.pcm!=='release')Object.assign(v,drag.cur);draw();});
+  function finish(cancel){if(!drag)return;const v=V.find(x=>x.id===drag.id);svg.style.cursor='';
+    if(cancel){Object.assign(v,drag.start);last=`Put back · nothing changed`;}
+    else if(drag.moved){Object.assign(v,drag.cur);const d=Math.hypot(drag.cur.x-drag.start.x,drag.cur.z-drag.start.z);last=drag.kind==='move'?`<b>${v.name}</b> moved ${d.toFixed(2)} m · one change, one Undo`:`<b>${v.name}</b> turned ${fmtDeg(wrapA(drag.cur.yaw-drag.start.yaw))} · one change, one Undo`;}
+    drag=null;draw();}
+  svg.addEventListener('pointerup',()=>finish(false));svg.addEventListener('pointercancel',()=>finish(true));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drag)finish(true);});
+  R.s23=()=>{last='';draw();};})();
+
+/* ---------- §24 Advanced camera controls ---------- */
+/* camGlyph with a free up axis, so the Detailed body tilts with the View. */
+function camGlyphT(E,f,r,u,st){const S=1.3,V=[1,1,1],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],neg=n=>n.map(x=>-x);
+  const at=(a,b,c)=>[0,1,2].map(i=>E[i]+(f[i]*a+r[i]*b+u[i]*c)*S),faces=[];
+  function box(a0,a1,b0,b1,c0,c1,k){const q=[[a0,b0,c0],[a1,b0,c0],[a1,b1,c0],[a0,b1,c0],[a0,b0,c1],[a1,b0,c1],[a1,b1,c1],[a0,b1,c1]].map(p=>at(...p));
+    [[[1,2,6,5],f,'f'],[[0,3,7,4],neg(f),'f'],[[2,3,7,6],r,'s'],[[0,1,5,4],neg(r),'s'],[[4,5,6,7],u,'t'],[[0,1,2,3],neg(u),'s']].forEach(([ix,n,t])=>{if(dot(n,V)>0)faces.push({pts:ix.map(i=>q[i]),cls:`c${t}${k||''}`});});}
+  const n=10,ring=(a,R)=>Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return at(a,Math.cos(t)*R,Math.sin(t)*R);});
+  function tube(l0,R0,l1,R1,cls){const r0=ring(l0,R0),r1=ring(l1,R1);
+    for(let i=0;i<n;i++){const t=(i+.5)/n*Math.PI*2,nn=[0,1,2].map(j=>r[j]*Math.cos(t)+u[j]*Math.sin(t));if(dot(nn,V)>0)faces.push({pts:[r0[i],r0[(i+1)%n],r1[(i+1)%n],r1[i]],cls});}return r1;}
+  box(-.1,.07,-.18,.18,-.12,.12);box(-.07,.05,-.06,.06,.12,.19);box(-.03,.04,.1,.15,.12,.15,' btn');const L1=.22,R1=.09,cap=tube(.07,R1,L1,R1,'cl');
+  const capVisible=dot(f,V)>0;if(capVisible)faces.push({pts:cap,cls:'cap'});
+  const depth=p=>p.reduce((s,q)=>s+dot(q,V),0)/p.length;faces.sort((a,b)=>depth(a.pts)-depth(b.pts));
+  let svg=`<g class="cam ${st}">`+faces.map(fc=>`<polygon class="${fc.cls}" points="${P(fc.pts.map(p=>iso(...p)))}"/>`).join('');
+  if(capVisible){const g=Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return iso(...at(L1+.001,Math.cos(t)*R1*.62,Math.sin(t)*R1*.62));});svg+=`<polygon class="glass" points="${P(g)}"/>`;}
+  return{svg:svg+'</g>',apex:at(L1,0,0)};}
+(()=>{const sec=$('#s24'),s3=$('#adv-3d'),sp=$('#adv-plan'),sr=$('#adv-rail'),tagEl=$('#adv-tag'),read=$('#adv-read'),pip=$('#adv-pip'),pic=$('#adv-pic'),box=$('#adv-stages');if(!s3)return;
+  const C={id:'d',name:'High corner',x:7.0,z:0.8,h:2.5,yaw:158,pitch:-16,fov:62};
+  const O1={id:'a',name:'Piano, keyboard',x:2.3,z:3.9,yaw:-48,h:1.65,stop:1,def:true};
+  const PRE=[[1.1,'Seated'],[1.65,'Standing'],[2.5,'High']],LENS=[[75,'Wide'],[55,'Normal'],[35,'Close']],CEIL=2.6;
+  let on=true,drag=null,pipTimer=0,done='';
+  const mode=()=>sec.dataset.ac,adv=()=>on&&mode()!=='old',handles=()=>adv()&&(mode()==='marks'||mode()==='rig');
+  const preName=h=>(PRE.find(q=>Math.abs(q[0]-h)<.005)||[])[1]||'';
+  const lensName=f=>{const l=LENS.find(q=>Math.abs(q[0]-f)<.5);return l?l[1]:f>65?'wide':f>45?'normal':'close';};
+  const snapH=(h,alt,sh)=>{if(sh)return Math.round(h*20)/20;if(!alt){const p=PRE.find(q=>Math.abs(q[0]-h)<.06);if(p)return p[0];}return h;};
+  const snapF=(f,alt)=>{if(!alt){const l=LENS.find(q=>Math.abs(q[0]-f)<2.5);if(l)return l[0];}return f;};
+  function basis(){const a=rad(C.yaw),p=rad(C.pitch);return{f:[Math.cos(a)*Math.cos(p),Math.sin(p),Math.sin(a)*Math.cos(p)],r:[-Math.sin(a),0,Math.cos(a)],u:[-Math.cos(a)*Math.sin(p),Math.cos(p),-Math.sin(a)*Math.sin(p)]};}
+  const inv=(q,y0)=>{const u=(q[0]-IX)/(.866*K),w=(q[1]-IY+y0*K)/(.5*K);return[(u+w)/2,(w-u)/2];};
+  const add=(A,...t)=>[0,1,2].map(i=>A[i]+t.reduce((s,[v,k])=>s+v[i]*k,0));
+  function geo(){const{f,r,u}=basis(),E=[C.x,C.h,C.z],cam=camGlyphT(E,f,r,u,'sel'),A=cam.apex,d=1.4,w=Math.tan(rad(C.fov/2))*d,hh=w/1.6;
+    const pc=(sx,sy)=>iso(...add(A,[f,d],[r,w*sx],[u,hh*sy]));return{f,r,u,E,cam,A,d,w,hh,pc,cen:iso(...add(A,[f,d]))};}
+  const held=k=>drag&&drag.k===k?' held':'';
+  const ttl=t=>`<title>${t}</title>`;
+  function draw3d(){const m=mode(),H=handles(),G=geo(),{f,r,u,E,A,d,hh,pc}=G,e=iso(...E),fl=iso(C.x,0,C.z),o=iso(...A),cs=[pc(-1,1),pc(1,1),pc(1,-1),pc(-1,-1)],a=rad(C.yaw);
+    let s=isoBase()+view3d(O1,false,'body');
+    s+=`<line class="stem" x1="${e[0]}" y1="${e[1]}" x2="${fl[0]}" y2="${fl[1]}"/><ellipse class="foot" cx="${fl[0]}" cy="${fl[1]}" rx="5" ry="2.6"/>`;
+    if(H&&m==='rig'){const ring=Array.from({length:32},(_,i)=>{const t=i/32*Math.PI*2;return iso(C.x+Math.cos(t)*.42,0,C.z+Math.sin(t)*.42);});
+      s+=`<polygon class="rring" points="${P(ring)}"/><polygon class="rring hit" points="${P(ring)}" data-part="move0" style="cursor:var(--cur-move)">${ttl('Move')}</polygon>`;
+      PRE.forEach(([hv,lab])=>{const t=iso(C.x,hv,C.z);s+=`<line class="tick" x1="${t[0]-5}" y1="${t[1]}" x2="${t[0]+5}" y2="${t[1]}"/><text class="ticktx" x="${t[0]-8}" y="${t[1]+3}" text-anchor="end">${lab}</text>`;});}
+    if(H&&m==='marks'){s+=`<path class="gm${held('move0')}" d="${GL.move}" transform="translate(${fl[0]} ${fl[1]}) scale(.78)" data-part="move0" style="cursor:var(--cur-move)">${ttl('Move')}</path>`;
+      const bw=[C.x-Math.cos(a)*.78,C.z-Math.sin(a)*.78],bk=iso(bw[0],0,bw[1]),rr=iso(bw[0]-Math.sin(a)*.1,0,bw[1]+Math.cos(a)*.1),ang=Math.atan2(rr[1]-bk[1],rr[0]-bk[0]),ly=[-Math.sin(ang),Math.cos(ang)],flip=(ly[0]*(fl[0]-bk[0])+ly[1]*(fl[1]-bk[1]))<0;
+      s+=`<path class="gm${held('yaw')}" d="${GL.curved}" transform="translate(${bk[0].toFixed(1)} ${bk[1].toFixed(1)}) rotate(${(ang*180/Math.PI).toFixed(1)}) scale(.78 ${flip?-.78:.78})" data-part="yaw" style="cursor:var(--cur-turn)">${ttl('Turn')}</path>`;}
+    const fr=cs.map(c=>`<line class="frl sel" x1="${o[0]}" y1="${o[1]}" x2="${c[0]}" y2="${c[1]}"/>`).join('')+`<polygon class="fr sel" points="${P(cs)}" data-part="turn" style="cursor:var(--cur-turn)">${ttl('Drag to turn')}</polygon>`;
+    const body=`<g data-part="${adv()&&m!=='card'?'move':''}" style="cursor:${adv()&&m!=='card'?'var(--cur-move)':'default'}">${G.cam.svg}</g>`;
+    s+=(f[0]+f[2]>0)?body+fr:fr+body;
+    if(H){const tm=iso(...add(A,[f,d],[u,hh+.16])),tu=iso(...add(A,[f,d],[u,hh+.5])),tang=Math.atan2(tu[1]-tm[1],tu[0]-tm[0])*180/Math.PI;
+      if(m==='marks'){s+=`<path class="gm${held('tilt')}" d="${GL.two}" transform="translate(${tm[0].toFixed(1)} ${tm[1].toFixed(1)}) rotate(${tang.toFixed(1)}) scale(.62)" data-part="tilt" style="cursor:ns-resize">${ttl('Tilt')}</path>`;
+        cs.forEach(c=>s+=`<rect class="gm${held('lens')}" x="-4.5" y="-4.5" width="9" height="9" rx="2.2" transform="translate(${c[0].toFixed(1)} ${c[1].toFixed(1)})" data-part="lens" style="cursor:nwse-resize">${ttl('Lens')}</rect>`);
+        const t0=iso(C.x,C.h+.3,C.z),kn=iso(C.x,C.h+.78,C.z);s+=`<line class="gml" x1="${t0[0]}" y1="${t0[1]}" x2="${kn[0]}" y2="${kn[1]}"/><path class="gm${held('lift')}" d="${GL.hex(7)}" transform="translate(${kn[0].toFixed(1)} ${kn[1].toFixed(1)})" data-part="lift" style="cursor:ns-resize">${ttl('Lift: height')}</path>`;}
+      else{const tp=iso(...add(A,[f,d],[u,hh]));s+=`<circle class="rknob${held('tilt')}" cx="${tp[0]}" cy="${tp[1]}" r="6" data-part="tilt" style="cursor:ns-resize">${ttl('Tilt')}</circle>`;
+        cs.forEach(c=>s+=`<circle class="rknob${held('lens')}" cx="${c[0]}" cy="${c[1]}" r="4.5" data-part="lens" style="cursor:nwse-resize">${ttl('Lens')}</circle>`);
+        const mh=iso(C.x,Math.max(.32,C.h*.45),C.z);s+=`<g data-part="lift" style="cursor:ns-resize" transform="translate(${mh[0].toFixed(1)} ${mh[1].toFixed(1)})"><rect class="rcap${held('lift')}" x="-6.5" y="-12" width="13" height="24" rx="6.5"/><path class="rarr" d="M-3 -4 0 -7.5 3 -4M-3 4 0 7.5 3 4"/>${ttl('Height')}</g>`;}}
+    s+=brackets(e[0],e[1],15,12)+tag(e[0]-(H&&m==='marks'?66:0),e[1]-(H&&m==='marks'?20:30),C.name);const mm=[(e[0]+fl[0])/2,(e[1]+fl[1])/2];s+=htag(mm[0]+(H&&m==='rig'?30:24),mm[1],`${C.h.toFixed(2)} m`);
+    s3.innerHTML=s;}
+  function drawPlan(){const m=mode(),H=handles(),x=px(C.x),y=pz(C.z),a=rad(C.yaw),lf=lensOf('full','sel'),lx=x+Math.cos(a)*lf,ly=y+Math.sin(a)*lf,L=92;
+    let s=planBase()+pcMark(O1,false,'full');
+    s+=`<path class="wedge" d="${wedge(lx,ly,C.yaw,C.fov,L)}" data-part="pturn" style="cursor:var(--cur-turn)"/>`+planCam(x,y,C.yaw,'sel','full');
+    s+=`<circle cx="${x}" cy="${y}" r="18" fill="transparent" data-part="pmove" style="cursor:var(--cur-move)"/>`;
+    if(H)[-1,1].forEach(sg=>{const b=a+sg*rad(C.fov/2),kx=lx+Math.cos(b)*L,ky=ly+Math.sin(b)*L;
+      s+=m==='marks'?`<rect class="gm${held('pfov')}" x="-4.5" y="-4.5" width="9" height="9" rx="2.2" transform="translate(${kx.toFixed(1)} ${ky.toFixed(1)})" data-part="pfov" style="cursor:ew-resize">${ttl('Lens')}</rect>`:`<circle class="rknob${held('pfov')}" cx="${kx}" cy="${ky}" r="5" data-part="pfov" style="cursor:ew-resize">${ttl('Lens')}</circle>`;});
+    const w=8+C.name.length*6.1;s+=brackets(x,y,19,19)+tag(x,y+33,C.name)+htag(x+w/2+28,y+33,`${C.h.toFixed(2)} m`);
+    sp.innerHTML=s;$('#adv-planw').classList.toggle('norail',!handles());}
+  const RY=h=>340-h*100,RX=26;
+  function drawRail(){if(!handles()){sr.innerHTML='';return;}const cy=RY(C.h),p=C.pitch,lf=17,lx=RX+lf*Math.cos(rad(-p)),ly=cy+lf*Math.sin(rad(-p)),vf=2*Math.atan(Math.tan(rad(C.fov/2))/1.6)*180/Math.PI;
+    let s=`<rect width="92" height="380" fill="#f1f2ee"/><line x1=".5" y1="0" x2=".5" y2="380" stroke="#cdd2ca"/><text class="railh" x="8" y="18">SIDE</text>`;
+    s+=`<line x1="0" y1="340" x2="92" y2="340" stroke="#1b201c" stroke-width="3"/><line x1="0" y1="${RY(CEIL)}" x2="92" y2="${RY(CEIL)}" stroke="#79817b" stroke-dasharray="3 3"/><text class="keyt" x="88" y="${RY(CEIL)-5}" text-anchor="end" style="font-size:9.5px">ceiling</text>`;
+    PRE.forEach(([hv])=>s+=`<line class="tick" x1="2" y1="${RY(hv)}" x2="9" y2="${RY(hv)}"/>`);
+    s+=`<line class="stem" x1="${RX}" y1="${cy}" x2="${RX}" y2="340"/><path class="wedge" d="${wedge(lx,ly,-p,vf,46)}" data-part="rtilt" style="cursor:ns-resize">${ttl('Tilt')}</path>`;
+    s+=`<g class="pc sel" transform="translate(${RX} ${cy}) rotate(${(-p).toFixed(1)}) scale(1.05)"><rect x="-9" y="-8" width="15" height="16" rx="2.5" class="o"/><rect x="-6.5" y="-12.5" width="10" height="5" rx="1.4" class="o"/><rect x="6" y="-5.5" width="11" height="11" rx="1.2" class="o"/><rect x="-9" y="-8" width="15" height="16" rx="2.5" class="t"/><rect x="-6.5" y="-12.5" width="10" height="5" rx="1.4" class="h"/><rect x="6" y="-5.5" width="11" height="11" rx="1.2" class="s"/><path class="rim" d="M17 -5.5V5.5"/></g>`;
+    s+=`<circle cx="${RX}" cy="${cy}" r="15" fill="transparent" data-part="rlift" style="cursor:ns-resize">${ttl('Height')}</circle>`;
+    s+=`<text class="railv" x="${RX-14}" y="${cy+26}">${C.h.toFixed(2)} m</text><text class="railv" x="${RX-14}" y="${cy+39}" style="fill:var(--ink2);font-weight:500">${preName(C.h)||'tilt'} ${preName(C.h)?'':fmtDeg(p)}</text>`;
+    if(preName(C.h))s+=`<text class="railv" x="${RX-14}" y="${cy+52}" style="fill:var(--ink2);font-weight:500">tilt ${fmtDeg(p)}</text>`;
+    sr.innerHTML=s;}
+  function viewPic(){const sc=1.12*62/C.fov,sx=clamp(-wrapA(C.yaw-158)*6,-320,320)*sc,sy=clamp(C.pitch*5+80-(C.h-2.5)*60,-220,220);return thumbSvg('day',sc,sx,sy);}
+  function syncCard(){$('#adv-h').textContent=C.h.toFixed(2)+' m';$('#adv-p').textContent=fmtDeg(C.pitch);$('#adv-fovv').textContent=`${Math.round(C.fov)}° · ${lensName(C.fov)}`;
+    $$('#adv-pre button').forEach(b=>b.setAttribute('aria-pressed',Math.abs(+b.dataset.h-C.h)<.005));
+    $$('#adv-lens button').forEach(b=>b.setAttribute('aria-pressed',Math.abs(+b.dataset.f-C.fov)<.5));
+    $('#adv-sw').setAttribute('aria-checked',on);$('#adv-rows').hidden=!on;
+    $('#adv-swsub').textContent=!on?'Off: the Stage behaves as today':mode()==='card'?'Height, tilt and lens here; the Stage turns':'Height, tilt and lens on the Stage';
+    pic.innerHTML=viewPic();if(pip.classList.contains('on'))pip.innerHTML='<b>What it sees</b>'+viewPic();}
+  function idle(){const m=mode();if(m==='old')return 'Now: 3D only turns the camera (drag its frustum). Move it in Plan; height, tilt and lens wait for Look through.';
+    if(!on)return 'Advanced is off: Plan moves, 3D turns, as today. Turn it on in the Card.';
+    if(m==='card')return 'The Stage turns the camera; the Card sets height, tilt and lens. Try its steppers and presets.';
+    return m==='marks'?'Drag the <b>cross</b> to move, the <b>hex knob</b> to raise, the <b>bent arrow</b> or the frustum to turn, the <b>top arrow</b> to tilt and the <b>corners</b> for the lens. In Plan, drag the wedge ends and the side strip.':
+      'Drag the <b>foot ring</b> to move, the <b>stem capsule</b> for height, the frustum to turn, its <b>top knob</b> to tilt and its <b>corners</b> for the lens.';}
+  function drawAll(){draw3d();drawPlan();drawRail();syncCard();if(!drag)read.innerHTML=done||idle();}
+  function showPip(){if(sec.dataset.apv!=='corner')return;clearTimeout(pipTimer);pip.classList.add('on');pip.innerHTML='<b>What it sees</b>'+viewPic();}
+  function hidePip(){clearTimeout(pipTimer);pipTimer=setTimeout(()=>pip.classList.remove('on'),900);}
+  function setTag(e,html){if(!html){tagEl.hidden=true;return;}const b=box.getBoundingClientRect();tagEl.hidden=false;tagEl.innerHTML=html;tagEl.style.left=(e.clientX-b.left+16)+'px';tagEl.style.top=(e.clientY-b.top+20)+'px';}
+  function begin(e,svg){const t=e.target.closest('[data-part]');if(!t||!t.dataset.part)return;const k=t.dataset.part;e.preventDefault();try{svg.setPointerCapture(e.pointerId);}catch{}
+    const q=toSvg(svg,e);drag={k,svg,q0:q,c0:{...C}};done='';
+    if(k==='move'||k==='move0'){const p=inv(q,k==='move'?C.h:0);drag.off=[C.x-p[0],C.z-p[1]];}
+    if(k==='turn'||k==='yaw'){const p=inv(q,k==='turn'?C.h:0);drag.a0=Math.atan2(p[1]-C.z,p[0]-C.x);}
+    if(k==='pturn')drag.a0=Math.atan2(q[1]-pz(C.z),q[0]-px(C.x));
+    if(k==='lens'){drag.cen=geo().cen;drag.r0=Math.max(8,Math.hypot(q[0]-drag.cen[0],q[1]-drag.cen[1]));}
+    svg.style.cursor='var(--cur-grabbing)';showPip();drawAll();}
+  function move(e){if(!drag)return;const q=toSvg(drag.svg,e),c0=drag.c0,sh=e.shiftKey,alt=e.altKey;let lab='';
+    switch(drag.k){
+      case 'move':case 'move0':case 'pmove':{let x,z;if(drag.k==='pmove'){x=c0.x+(q[0]-drag.q0[0])/M;z=c0.z+(q[1]-drag.q0[1])/M;}else{const p=inv(q,drag.k==='move'?c0.h:0);x=p[0]+drag.off[0];z=p[1]+drag.off[1];}
+        if(sh){x=Math.round(x*4)/4;z=Math.round(z*4)/4;}C.x=clamp(x,.3,7.7);C.z=clamp(z,.3,4.7);lab=`Moved <b>${Math.hypot(C.x-c0.x,C.z-c0.z).toFixed(2)} m</b>`;break;}
+      case 'lift':case 'rlift':{const dy=(q[1]-drag.q0[1])/(drag.k==='lift'?K:100);C.h=clamp(snapH(c0.h-dy,alt,sh),.3,CEIL);lab=`Height <b>${C.h.toFixed(2)} m</b>${preName(C.h)?' · '+preName(C.h):''}`;break;}
+      case 'turn':case 'yaw':case 'pturn':{const a=drag.k==='pturn'?Math.atan2(q[1]-pz(c0.z),q[0]-px(c0.x)):(p=>Math.atan2(p[1]-c0.z,p[0]-c0.x))(inv(q,drag.k==='turn'?c0.h:0));
+        let y=c0.yaw+wrapA((a-drag.a0)*180/Math.PI);if(sh)y=Math.round(y/15)*15;C.yaw=y;lab=`Turned <b>${fmtDeg(wrapA(C.yaw-c0.yaw))}</b>`;break;}
+      case 'tilt':case 'rtilt':{let p=drag.k==='tilt'?c0.pitch-(q[1]-drag.q0[1])*.45:-Math.atan2(q[1]-RY(c0.h),q[0]-RX)*180/Math.PI;
+        if(sh)p=Math.round(p/5)*5;else if(!alt&&Math.abs(p)<2.5)p=0;C.pitch=clamp(p,-60,45);lab=`Tilt <b>${fmtDeg(C.pitch)}</b>${Math.abs(C.pitch)<.01?' · level':''}`;break;}
+      case 'lens':{const r=Math.hypot(q[0]-drag.cen[0],q[1]-drag.cen[1]);C.fov=clamp(snapF(c0.fov*r/drag.r0,alt),28,100);lab=`Lens <b>${Math.round(C.fov)}°</b> · ${lensName(C.fov)}`;break;}
+      case 'pfov':{const a=Math.atan2(q[1]-pz(c0.z),q[0]-px(c0.x))*180/Math.PI;C.fov=clamp(snapF(2*Math.abs(wrapA(a-c0.yaw)),alt),28,100);lab=`Lens <b>${Math.round(C.fov)}°</b> · ${lensName(C.fov)}`;break;}}
+    setTag(e,lab);read.innerHTML=lab+' · <kbd>Esc</kbd> cancels';showPip();drawAll();}
+  function end(cancel){if(!drag)return;drag.svg.style.cursor='';const c0=drag.c0;if(cancel)Object.assign(C,c0);
+    const changed=Object.keys(c0).some(k=>c0[k]!==C[k]);drag=null;setTag(null,null);hidePip();done=cancel?'Put back · nothing changed':changed?'One change, one Undo · the authored View now has this height, tilt and lens':'';drawAll();}
+  [s3,sp,sr].forEach(svg=>{svg.addEventListener('pointerdown',e=>begin(e,svg));svg.addEventListener('pointermove',move);svg.addEventListener('pointerup',()=>end(false));svg.addEventListener('pointercancel',()=>end(true));});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drag)end(true);});
+  $('#adv-sw').addEventListener('click',()=>{on=!on;done='';drawAll();});
+  $('#adv-card').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;done='';
+    if(b.dataset.st){const[k,v]=b.dataset.st.split(':');C[k]=k==='h'?clamp(Math.round((C.h+ +v)*100)/100,.3,CEIL):clamp(C.pitch+ +v,-60,45);}
+    else if(b.dataset.h)C.h=+b.dataset.h;else if(b.dataset.f)C.fov=+b.dataset.f;else if(b.id==='adv-level')C.pitch=0;else return;
+    done='One change, one Undo';drawAll();});
+  R.s24=()=>{done='';pip.classList.remove('on');drawAll();};})();
+
+/* ---------- §25 Compact Guide ---------- */
+(()=>{const sec=$('#s25'),stage=$('#cg-stage'),host=$('#cg-guide'),meter=$('#cg-meter'),read=$('#cg-read'),gkey=$('#cg-gkey');if(!stage)return;
+  const ALL=[['Pleyel piano','day:1.2:-60',7,{k:'trav',t:6}],['North window','day:1.5:200',6,{k:'cut'}],['Doorway','day:1.8:0',5,{k:'gap'}],['Pleyel piano','day:1.3:-120',7,{k:'trav',t:4},1],['Reading corner','day:1.4:150',6,{k:'trav',t:5}],
+    ['Portrait wall','gold:1.6:-180',5,{k:'cut'}],['Music stand','eve:1.5:60',6,{k:'trav',t:4}],['Garden door','day:1.7:-220',5,{k:'trav',t:6}],['Chandelier','eve:1.9:0',4,{k:'cut'}],['Writing desk','gold:1.4:120',6,{k:'trav',t:5}],['Bust of the composer','day:2:90',5,{k:'cut'}],['Window seat','gold:1.3:-90',8,null]];
+  const thumbCache={};const th=s=>thumbCache[s]||(thumbCache[s]=(([e,sc,sx])=>thumbSvg(e,sc,+sx))(s.split(':')));
+  let t=12,playing=false,raf=0,lastTs=0,sel=1,lastPlay=-1;
+  const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  const stops=()=>ALL.slice(0,+sec.dataset.cgn).map((s,i,a)=>({n:s[0],th:s[1],d:s[2],tr:i<a.length-1?s[3]:null,again:!!s[4],i}));
+  function seq(){const st=stops(),q=[];let acc=0;st.forEach((s,i)=>{q.push({k:'stop',i,a:acc,d:s.d});acc+=s.d;if(s.tr){const d=s.tr.k==='trav'?s.tr.t:0;q.push({k:s.tr.k,i,a:acc,d});acc+=d;}});return{q,T:acc};}
+  const chip=tr=>tr.k==='trav'?`<span class="tchip trav" title="Travel · ${tr.t} s">↗ ${tr.t}s</span>`:tr.k==='cut'?`<span class="tchip cut" title="Cut">✂</span>`:`<span class="tchip gap" title="Travel needs a path">⚠</span>`;
+  function card(s,L){const meta=`${s.i===0?'<span class="st">Start</span> · ':''}${s.again?'<em>again</em> · ':''}${L==='old'?(s.i%3===0?'2 views':'1 view')+' · ':''}${fmt(s.d)}`;
+    return `<button class="cg-c${s.i===sel?' sel':''}" data-i="${s.i}" title="${s.n}"><span class="cg-th">${th(s.th)}<i class="cg-no">${s.i+1}</i></span><span class="cg-tx"><b>${s.n}</b><small>${meta}</small></span><span class="cg-pb"><i></i></span></button>`;}
+  function strip(L){const st=stops();let r='';st.forEach(s=>{r+=card(s,L);if(s.tr)r+=`<span class="cg-g" data-i="${s.i}">${chip(s.tr)}${L==='tl'&&s.tr.k==='trav'?'<span class="gt"></span>':''}</span>`;});
+    return `<div class="cg-strip">${L==='old'?'':'<button class="cg-ar l" aria-label="Earlier Stops" hidden><span>‹</span></button>'}<div class="cg-sc"><div class="cg-row" role="group" aria-label="Stops in Salon tour">${r}</div></div>${L==='old'?'':'<button class="cg-ar r" aria-label="Later Stops" hidden><span>›</span></button>'}</div>`;}
+  function bar(){const{q,T}=seq();return `<div class="cg-bar" title="Scrub">${q.filter(x=>x.k!=='cut'&&x.k!=='gap').map(x=>`<span class="${x.k==='stop'?'s':'m'}" data-a="${x.a}" data-d="${x.d}" style="flex:${x.d}"><i></i></span>`).join('')}<span class="ph"></span></div>`;}
+  const playBtn=()=>`<button class="cg-play" aria-label="${playing?'Pause':'Play'}">${playing?'❚❚':'▶'}</button>`,timeS=()=>{const{T}=seq();return `<span class="cg-time"><b>${fmt(t)}</b> / ${fmt(T)}</span>`;};
+  function guide(L){const n=stops().length;
+    if(L==='side')return `<div class="cg v-side"><div class="cg-lt"><span class="g-eyebrow">GUIDE · ${n} STOPS</span><span class="cg-name">Salon tour</span><span class="cg-lr">${playBtn()}${timeS()}<button class="cg-x" title="Follow the camera">◎</button></span></div>${strip(L)}<div class="cg-rt"><button class="cg-x" title="Add a Stop">＋</button><button class="cg-x" title="Close the Guide" data-close>✕</button></div>${bar()}</div>`;
+    return `<div class="cg v-${L}"><div class="cg-h"><span class="g-eyebrow">GUIDE</span><span class="cg-name">Salon tour</span><span class="cg-cnt">${n} stops</span><span class="g-sp"></span>${playBtn()}${timeS()}<button class="cg-tool">◎ Follow</button><button class="cg-tool">＋ Stop</button><button class="cg-x" title="Close the Guide" data-close>✕</button></div>${strip(L)}${L==='tl'?'':bar()}</div>`;}
+  let oldH=0;
+  function measureOld(){const m=document.createElement('div');m.style.cssText='position:absolute;visibility:hidden;pointer-events:none;left:0;top:0;width:min(820px,100%)';m.innerHTML=guide('old');stage.appendChild(m);oldH=m.firstChild.offsetHeight;m.remove();}
+  function paint(){const{q,T}=seq();let cur=null;
+    q.forEach(it=>{const p=clamp(it.d?(t-it.a)/it.d:(t>=it.a?1:0),0,1),act=playing&&t>=it.a&&t<it.a+Math.max(it.d,.001);
+      if(it.k==='stop'){const c=host.querySelector(`.cg-c[data-i="${it.i}"]`);if(!c)return;c.querySelector('.cg-pb i').style.width=(p*100)+'%';c.classList.toggle('play',act);if(act)cur=c;}
+      else{const g=host.querySelector(`.cg-g[data-i="${it.i}"]`);if(!g)return;g.classList.toggle('play',act);const gt=g.querySelector('.gt');if(gt)gt.style.width=(p*100)+'%';}});
+    host.querySelectorAll('.cg-bar>span[data-a]').forEach(s=>{s.firstChild.style.width=(clamp((t- +s.dataset.a)/+s.dataset.d,0,1)*100)+'%';});
+    const ph=host.querySelector('.cg-bar .ph');if(ph)ph.style.left=`calc(${(t/T*100).toFixed(2)}% - 1px)`;
+    host.querySelectorAll('.cg-time').forEach(el=>el.innerHTML=`<b>${fmt(t)}</b> / ${fmt(T)}`);
+    if(cur&&+cur.dataset.i!==lastPlay){lastPlay=+cur.dataset.i;reveal(cur);}}
+  function reveal(c){const sc=host.querySelector('.cg-sc');if(!sc)return;const l=c.offsetLeft,w=c.offsetWidth;if(l<sc.scrollLeft+24||l+w>sc.scrollLeft+sc.clientWidth-24)sc.scrollTo({left:l-sc.clientWidth/2+w/2,behavior:'smooth'});}
+  function arrows(){const sc=host.querySelector('.cg-sc');if(!sc)return;const over=sc.scrollWidth>sc.clientWidth+2,l=host.querySelector('.cg-ar.l'),r=host.querySelector('.cg-ar.r');
+    if(l)l.hidden=!over||sc.scrollLeft<4;if(r)r.hidden=!over||sc.scrollLeft>sc.scrollWidth-sc.clientWidth-4;}
+  function tick(ts){if(!playing)return;const dt=lastTs?(ts-lastTs)/1000:0;lastTs=ts;const{T}=seq();t=Math.min(T,t+dt*4);if(t>=T){playing=false;lastPlay=-1;render();return;}paint();raf=requestAnimationFrame(tick);}
+  function measure(){const g=host.querySelector('.cg'),L=sec.dataset.cgl,H=stage.clientHeight;
+    if(!g){meter.hidden=true;read.innerHTML=`Collapsed: only the Dock, as today. Press <b>Guide</b> in the Dock to open it.`;return;}
+    const sb=stage.getBoundingClientRect(),gb=g.getBoundingClientRect(),h=Math.round(gb.height),top=gb.top-sb.top;
+    meter.hidden=false;meter.style.top=top+'px';meter.style.height=h+'px';meter.textContent=`${h} px`;
+    const pct=oldH?Math.round((1-h/oldH)*100):0;
+    read.innerHTML=`Guide <b>${h} px</b> tall${L==='old'?'':` · tall cards today <b>${oldH} px</b> · <b>${pct}%</b> shorter`} · clear Stage above it <b>${Math.round(top)} px</b> of ${H}. ${sec.dataset.cgn==='12'&&L!=='old'?'Scroll the strip with a trackpad or wheel, or use the arrows.':'Press ▶ to play; click a Stop to select it.'}`;}
+  function render(){const L=sec.dataset.cgl,open=sec.dataset.cgo==='open';gkey.classList.toggle('pr',open);gkey.setAttribute('aria-pressed',open);
+    host.innerHTML=open?guide(L):'';const sc=host.querySelector('.cg-sc');
+    if(sc){sc.addEventListener('scroll',arrows,{passive:true});sc.addEventListener('wheel',e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)&&sc.scrollWidth>sc.clientWidth){sc.scrollLeft+=e.deltaY;e.preventDefault();}},{passive:false});}
+    paint();arrows();requestAnimationFrame(measure);}
+  host.addEventListener('click',e=>{const b=e.target.closest('button,.cg-bar');if(!b)return;
+    if(b.classList.contains('cg-play')){const{T}=seq();if(!playing&&t>=T)t=0;playing=!playing;lastTs=0;lastPlay=-1;host.querySelectorAll('.cg-play').forEach(p=>{p.textContent=playing?'❚❚':'▶';p.setAttribute('aria-label',playing?'Pause':'Play');});if(playing)raf=requestAnimationFrame(tick);else paint();return;}
+    if(b.classList.contains('cg-ar')){const sc=host.querySelector('.cg-sc');sc.scrollBy({left:(b.classList.contains('l')?-1:1)*(sc.clientWidth-90),behavior:'smooth'});return;}
+    if(b.classList.contains('cg-bar')){const r=b.getBoundingClientRect(),{T}=seq();t=clamp((e.clientX-r.left)/r.width,0,1)*T;paint();return;}
+    if(b.dataset.close!==undefined){setOpen(false);return;}
+    if(b.classList.contains('cg-c')){sel=+b.dataset.i;host.querySelectorAll('.cg-c').forEach(c=>c.classList.toggle('sel',+c.dataset.i===sel));
+      if(sec.dataset.cgl==='tl'){const it=seq().q.find(x=>x.k==='stop'&&x.i===sel);t=it.a;paint();}
+      reveal(b);if(sec.dataset.cgl==='pill')requestAnimationFrame(()=>{arrows();measure();});}});
+  function setOpen(v){const seg=sec.querySelector('[data-key=cgo]');seg.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===(v?'open':'closed')));sec.dataset.cgo=v?'open':'closed';render();}
+  gkey.addEventListener('click',()=>setOpen(sec.dataset.cgo!=='open'));gkey.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setOpen(sec.dataset.cgo!=='open');}});
+  let bg=planBase();[{...VIEWS[0]},{...VIEWS[1]},{...VIEWS[2]}].forEach((v,i)=>bg+=pcMark(v,i===0,'full'));$('#cg-bg').innerHTML=bg;
+  window.addEventListener('resize',()=>{arrows();measure();});
+  R.s25=()=>{const{T}=seq();if(t>T)t=0;measureOld();render();};})();
+
+/* ---------- Review round 4 helpers ---------- */
+const EYE='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>';
+const LINK='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M6.5 9.5l3-3"/><path d="M7.5 4.5l1-1a2.8 2.8 0 014 4l-1 1"/><path d="M8.5 11.5l-1 1a2.8 2.8 0 01-4-4l1-1"/></svg>';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtS=s=>s===null?'—':`${+(+s).toFixed(1)}s`;
+function vrStep(label,val,act){return `<span class="vr-st" role="group" aria-label="${esc(label)}"><button data-act="${act}:-1" aria-label="Less">−</button><b>${val}</b><button data-act="${act}:1" aria-label="More">+</button></span>`;}
+/* One Guided View row. layout: np (number on picture) · gh (grip on hover) · wrap · old (grip + number). */
+function vrRow(o){const L=o.layout;
+  const lead=L==='old'?`<span class="vr-grip" aria-hidden="true">≡</span><span class="vr-n">${o.n}</span>`:L==='gh'?`<span class="vr-n"><span class="nn">${o.n}</span><span class="gg" aria-hidden="true">⠿</span></span>`:'';
+  const badge=L==='np'||L==='wrap'?`<i class="vr-no">${o.n}</i><span class="vr-gr" aria-hidden="true">⠿</span>`:'';
+  return `<li class="vr-row ${L}" title="${esc(o.name)}">${lead}<span class="vr-th">${thumbSvg(...o.th)}${badge}</span><span class="vr-main"><span class="vr-name"><b>${esc(o.name)}</b>${o.marks||''}</span>${(o.lines||[]).join('')}</span><span class="vr-acts"><i title="Look through">${EYE}</i><i title="Leave out">✕</i></span></li>`;}
+
+/* ---------- §26 View rows ---------- */
+(()=>{const sec=$('#s26'),list=$('#vr-list'),note=$('#vr-note'),meas=$('#vr-meas'),inp=$('#vr-in'),pre=$('#vr-pre');if(!sec)return;
+  const holds=[3,3];
+  function rowsHtml(L,E,D,name){const names=[name||'Untitled View','North window'];
+    const rows=names.map((nm,i)=>{const isDef=D===i+1;
+      const def=(E==='both'&&isDef)||(E==='diff'&&isDef&&i>0)?'<span class="vr-def" role="img" aria-label="Default View" title="The Presentation\'s Default View">◆</span>':'';
+      const tag=E==='both'&&i===0?'<em class="vr-tag">Entry</em>':'';
+      const lines=[];
+      if(i>0&&L==='old')lines.push('<span class="vr-meta"><span class="vr-kind"><button aria-pressed="true">Cut</button><button aria-pressed="false">Travel</button><button aria-pressed="false" aria-label="Preview this step">▷</button></span></span>');
+      lines.push(`<span class="vr-meta">Hold ${vrStep('Hold for '+nm,fmtS(holds[i]),'h'+i)}</span>`);
+      return vrRow({n:i+1,name:nm,th:i?['day',1.5,200]:['day',1.3,-60],layout:L,marks:def+tag,lines});});
+    return rows[0]+(L==='old'?'':'<li class="tt-step"><span class="vr-kind"><button aria-pressed="true">Cut</button><button aria-pressed="false">Travel</button></span><span class="lbl">instant</span></li>')+rows[1];}
+  /* Name space: the first row's name line minus its marks, measured in a hidden copy at the Card's width. */
+  let probe=null;
+  function space(L,E,D){if(!probe){probe=document.createElement('ol');probe.className='vr-list';probe.style.cssText='position:absolute;visibility:hidden;pointer-events:none;left:0;top:0';list.parentElement.style.position='relative';list.parentElement.appendChild(probe);}
+    probe.style.width=list.clientWidth+'px';probe.innerHTML=rowsHtml(L,E,D,'x');const b=probe.querySelector('.vr-name b'),nm=b.parentElement;let others=0;[...nm.children].forEach(c=>{if(c!==b)others+=c.offsetWidth+4;});return Math.max(0,Math.round(nm.clientWidth-others));}
+  const textW=(()=>{const c=document.createElement('canvas').getContext('2d');return(t,font)=>{c.font=font;return Math.ceil(c.measureText(t).width);};})();
+  function render(){const L=sec.dataset.vrl,E=sec.dataset.vre,D=+sec.dataset.vrd,name=inp.value.trim();
+    list.innerHTML=rowsHtml(L,E,D,name);
+    note.textContent=E==='both'?'◆ marks the Presentation\'s Default View. Reordering here changes only this Stop.':E==='diff'&&D===2?'◆ is the Presentation\'s Default View. This Stop opens on View 1 instead. Reordering changes only this Stop.':'The Stop opens on View 1. Reordering changes only this Stop.';
+    requestAnimationFrame(measure);}
+  function measure(){const b=list.querySelector('.vr-name b');if(!b)return;const L=sec.dataset.vrl,E=sec.dataset.vre,D=+sec.dataset.vrd;
+    const need=textW(b.textContent,getComputedStyle(b).font),now=space(L,E,D),today=space('old','both',1),max=Math.max(need,now,today,1);
+    const fits=need<=now,two=L==='wrap'&&need<=now*1.85;
+    const bar=(lab,w,cls='')=>`<div><div style="display:flex;justify-content:space-between;gap:8px"><span>${lab}</span><b>${w} px</b></div><div class="vr-bar ${cls}"><i style="width:${(w/max*100).toFixed(1)}%"></i></div></div>`;
+    meas.innerHTML=`<div class="cap" style="margin-top:0">Room for the name in a 288 px Card</div>${bar('Today: grip, number, ◆, Entry',today)}${bar('This choice',now)}${bar(`“${esc(b.textContent)}” needs`,need)}<p class="r2read" style="margin-top:4px">${fits?`<b>Fits</b>, with ${now-need} px to spare.`:two?'<b>Fits on two lines</b>; the row grows to match.':`<b>Cut</b> at about ${Math.round(now/need*100)}% of the name; the full name is in the tooltip and on the View's Card.`}${L!=='old'&&E!=='both'?` That's <b>+${now-today} px</b> over today.`:''}</p>`;}
+  list.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const[k,d]=b.dataset.act.split(':'),i=+k.slice(1);holds[i]=Math.max(0,holds[i]+ +d);render();});
+  inp.addEventListener('input',()=>{pre.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.n===inp.value));render();});
+  pre.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;inp.value=b.dataset.n;pre.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));render();});
+  window.addEventListener('resize',()=>requestAnimationFrame(measure));
+  R.s26=render;})();
+
+/* ---------- §27 Presentation and object ---------- */
+(()=>{const sec=$('#s27'),ix=$('#ln-ix'),cardEl=$('#ln-card'),plan=$('#ln-plan'),tag=$('#ln-tag'),read=$('#ln-read'),inP=$('#ln-op'),inD=$('#ln-od');if(!sec)return;
+  const O={p:{inp:inP,form:'Form 2',room:'Salon',x:176,y:56,w:86,h:44,fill:''},d:{inp:inD,form:'Form 1',room:'Study',x:36,y:116,w:66,h:28,fill:' d'}};
+  const oname=k=>O[k].inp.value.trim()||'Untitled object';
+  const P=[{id:'a',subj:'p',own:null,typed:false,copied:'Pleyel piano (Form 2)',views:2,stops:'Stops 1, 3',th:['day',1.3,-60]},
+    {id:'b',subj:'d',own:null,typed:false,copied:'Writing desk (Form 1)',views:1,stops:'Stop 2',th:['gold',1.4,120]},
+    {id:'c',subj:null,own:'Presentation 3',typed:false,copied:'Presentation 3',views:1,stops:'Not in a Guide',th:['day',1.6,-100],looks:'p'}];
+  let sel='c',picking=false,flashObj=null,msg='Rename an object on the left, or link Presentation 3 on its Card.';
+  const N=()=>sec.dataset.lnn,K=()=>sec.dataset.lnk;
+  function nameOf(p){if(N()==='copy')return p.copied;if(p.subj===null)return p.own;if(N()==='always')return oname(p.subj);return p.own??oname(p.subj);}
+  function drawPlan(){const p=P.find(x=>x.id===sel);let s='<rect width="300" height="170" fill="#e9ebe6"/>';
+    for(let x=0;x<=300;x+=20)s+=`<line class="gl" x1="${x}" y1="0" x2="${x}" y2="170"/>`;for(let y=0;y<=170;y+=20)s+=`<line class="gl" x1="0" y1="${y}" x2="300" y2="${y}"/>`;
+    s+='<rect x="8" y="8" width="284" height="154" fill="none" stroke="#5d625c" stroke-width="3"/>';
+    for(const k of ['p','d']){const o=O[k],hl=(p.subj===k||flashObj===k)&&!picking;s+=`<rect class="ln-o${o.fill}${hl?' hl':''}" data-o="${k}" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" rx="4"/><text class="ln-t" x="${o.x+o.w/2}" y="${o.y+o.h+13}" text-anchor="middle">${esc(oname(k))}</text>`;}
+    const cx=64,cy=40,tx=O.p.x+O.p.w/2,ty=O.p.y+O.p.h/2,deg=Math.atan2(ty-cy,tx-cx)*180/Math.PI,a=rad(deg),cs=sel==='c'?'sel':'quiet';
+    s+=`<path class="wedge${sel==='c'?'':' q'}" d="${wedge(cx+Math.cos(a)*17,cy+Math.sin(a)*17,deg,52,sel==='c'?96:30)}"/>`+planCam(cx,cy,deg,cs,'full');
+    plan.innerHTML=s;plan.classList.toggle('pick',picking);tag.hidden=!picking;}
+  function drawIndex(){ix.innerHTML=`<div class="lab">Presentations ${P.length}</div>`+P.map(p=>{const sub=N()==='copy'?p.stops:p.subj?`<span class="lk">about ${esc(oname(p.subj))}</span> · ${O[p.subj].form}`:'no object';
+    return `<button data-p="${p.id}" aria-current="${p.id===sel}"><span class="th">${thumbSvg(...p.th)}</span><span style="min-width:0"><b>${esc(nameOf(p))}</b><small>${p.views} View${p.views>1?'s':''} · ${sub}</small></span></button>`;}).join('');}
+  function drawCard(){const p=P.find(x=>x.id===sel),o=p.subj&&N()!=='copy'?p.subj:null,lock=N()==='always'&&o;
+    const kind=o?`Presentation · about <a>${esc(oname(o))}</a> · ${O[o].form}`:'Presentation';
+    let follow='';
+    if(o)follow=N()==='always'?`<p class="ln-follow">${LINK} Always ${esc(oname(o))}'s name</p>`:p.own===null?`<p class="ln-follow">${LINK} Follows ${esc(oname(o))}'s name</p>`:`<p class="ln-follow">Named by you · <button class="tbtn" data-a="follow">Use the object's name</button></p>`;
+    let obj;const lab='<div class="c-lab">Object</div>';
+    if(p.subj)obj=`<div class="c-sec ln-obsec">${lab}<p><b>${esc(oname(p.subj))}</b> · ${O[p.subj].form} · ${O[p.subj].room}</p><div class="ln-acts"><button class="tbtn" data-a="show">Show in World</button>${N()==='copy'?'':'<button class="tbtn" data-a="unlink">Unlink</button>'}</div></div>`;
+    else if(K()==='suggest')obj=`<div class="c-sec ln-obsec">${lab}<p>Not about an object. Its Default View looks at <b>${esc(oname(p.looks))}</b>.</p><button class="btn forest full" data-a="link">Link to ${esc(oname(p.looks))}</button><div class="ln-acts" style="margin-top:8px"><button class="tbtn" data-a="pick">${picking?'Picking on the Stage… Esc cancels':'Pick another on the Stage'}</button></div></div>`;
+    else if(K()==='pick')obj=`<div class="c-sec ln-obsec">${lab}<p>Not about an object.</p><button class="btn full" data-a="pick">${picking?'Picking… press Esc to cancel':'Pick on the Stage'}</button></div>`;
+    else obj=`<div class="c-sec ln-obsec">${lab}<p>Made by Capture, so it has no object. Only <i>Present this</i> makes a Presentation about one.</p></div>`;
+    cardEl.innerHTML=`<div class="c-head"><div class="g"><div class="c-kind">${kind}</div><input class="c-name" id="ln-name" value="${esc(nameOf(p))}" ${lock?'disabled title="A linked Presentation takes its object\'s name"':''} aria-label="Presentation name">${follow}</div><button class="ib" aria-label="More">⋯</button></div><div class="c-sec"><div class="c-lab">Views</div><p style="margin:0;font-size:12.5px;color:var(--ink2)">${p.views} View${p.views>1?'s':''} · ${p.stops}</p></div>${obj}`;}
+  function drawRead(){const lead=N()==='copy'?'Copied once (today): renaming an object changes nothing here.':N()==='always'?'Always the object\'s name: linked Presentations can\'t be renamed.':'Follows until renamed: an untouched name tracks the object.';read.innerHTML=`${lead} ${msg}`;}
+  function render(){drawPlan();drawIndex();drawCard();drawRead();}
+  function link(k){const p=P.find(x=>x.id===sel);p.subj=k;if(!p.typed)p.own=null;p.copied=N()==='copy'?oname(k):p.copied;picking=false;msg=`<b>Linked to ${esc(oname(k))}</b>: one change, one Undo.${p.typed?' Your name stays.':' The name now follows the object.'}`;render();}
+  ix.addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;sel=b.dataset.p;picking=false;render();});
+  cardEl.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const p=P.find(x=>x.id===sel),a=b.dataset.a;
+    if(a==='link')link(p.looks);
+    else if(a==='pick'){picking=!picking;msg=picking?'Pick an object on the plan.':'Picking cancelled.';render();}
+    else if(a==='follow'){p.own=null;p.typed=false;msg=`The name follows ${esc(oname(p.subj))} again.`;render();}
+    else if(a==='unlink'){p.own=nameOf(p);p.typed=true;p.looks=p.subj;p.subj=null;msg='<b>Unlinked</b>: it keeps its current name as its own.';render();}
+    else if(a==='show'){flashObj=p.subj;msg=`Show in World selects ${esc(oname(p.subj))}.`;render();setTimeout(()=>{flashObj=null;drawPlan();},1200);}});
+  cardEl.addEventListener('input',e=>{if(e.target.id!=='ln-name')return;const p=P.find(x=>x.id===sel),v=e.target.value;
+    if(N()==='copy')p.copied=v;else{p.own=v;p.typed=true;}msg=p.subj&&N()==='follow'?'<b>Named by you</b>: object renames no longer reach it.':'Renamed.';drawIndex();drawRead();});
+  cardEl.addEventListener('change',e=>{if(e.target.id==='ln-name')drawCard();});
+  plan.addEventListener('click',e=>{const r=e.target.closest('[data-o]');if(!r||!picking)return;link(r.dataset.o);});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&picking){picking=false;msg='Picking cancelled.';render();}});
+  [inP,inD].forEach(el=>el.addEventListener('input',()=>{msg=N()==='copy'?'Nothing else changed: the names were copied when each Presentation was made.':'Every Presentation that follows this object updated at once.';drawPlan();drawIndex();drawCard();drawRead();}));
+  R.s27=()=>{picking=false;render();};})();
+
+/* ---------- §28 Scrub on the cards ---------- */
+(()=>{const sec=$('#s28'),stage=$('#sb-stage'),host=$('#sb-guide'),tip=$('#sb-tip'),read=$('#sb-read');if(!sec)return;
+  const S=[{n:'Pleyel piano',th:['day',1.2,-60],v:[3,4],tr:{k:'trav',t:6}},{n:'North window',th:['day',1.5,200],v:[6],tr:{k:'cut'}},{n:'Doorway',th:['day',1.8,0],v:[5],wait:true,tr:{k:'trav',t:4}},
+    {n:'Pleyel piano',th:['day',1.3,-120],v:[3,4],again:true,tr:{k:'trav',t:5}},{n:'Reading corner',th:['day',1.4,150],v:[6],wait:true}];
+  const sum=a=>a.reduce((x,y)=>x+y,0),fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+  const Q=[];let T=0;S.forEach((s,i)=>{const d=sum(s.v);Q.push({k:'stop',i,a:T,d});T+=d;if(i<S.length-1){const d2=s.tr.k==='trav'?s.tr.t:0;Q.push({k:s.tr.k,i,a:T,d:d2});T+=d2;}});
+  let t=0,playing=false,raf=0,lastTs=0,held=null,scrub=null;
+  const M=()=>sec.dataset.sbm;
+  function viewAt(i,local){const v=S[i].v;let acc=0;for(let k=0;k<v.length;k++){acc+=v[k];if(local<acc||k===v.length-1)return k;}return 0;}
+  function where(x){for(const q of Q){if(x<q.a+q.d||q===Q[Q.length-1]||(q.d===0&&x<=q.a)){if(q.k==='stop'){const s=S[q.i],k=viewAt(q.i,x-q.a);return `Stop ${q.i+1} · ${s.n}${s.v.length>1?` · View ${k+1} of ${s.v.length}`:''}`;}if(q.d>0)return `Travel to Stop ${q.i+2}`;}}return '';}
+  function card(s,i){const d=sum(s.v);let ticks='',acc=0;s.v.slice(0,-1).forEach(h=>{acc+=h;ticks+=`<i class="tk" style="left:${(acc/d*100).toFixed(1)}%"></i>`;});
+    return `<button class="cg-c" data-i="${i}" title="${s.n}"><span class="cg-th">${thumbSvg(...s.th)}<i class="cg-no">${i+1}</i></span><span class="cg-tx"><b>${s.n}</b><small>${i===0?'<span class="st">Start</span> · ':''}${s.again?'<em>again</em> · ':''}${fmt(d)}${s.wait?' · waits':''}</small></span><span class="cg-pb"><i></i>${ticks}${s.wait?'<b class="wt" title="Waits for Next">❚❚</b>':''}</span></button>`;}
+  const timed=()=>Q.filter(x=>x.d>0).map(x=>`<span class="${x.k==='stop'?'s':'m'}" data-a="${x.a}" data-d="${x.d}" style="flex:${x.d}"><i></i></span>`).join('');
+  function guide(){const m=M();let r='';S.forEach((s,i)=>{r+=card(s,i);if(i<S.length-1)r+=`<span class="cg-g" data-i="${i}">${s.tr.k==='trav'?`<span class="tchip trav">↗ ${s.tr.t}s</span>`:'<span class="tchip cut">✂</span>'}<span class="gt"></span></span>`;});
+    const sl=`role="slider" tabindex="0" aria-label="Scrub the Guide" aria-valuemin="0" aria-valuemax="${T}"`;
+    return `<div class="cg sb m-${m}"><div class="cg-h"><span class="g-eyebrow">GUIDE</span><span class="cg-name">Salon tour</span><span class="cg-cnt">${S.length} stops</span><span class="g-sp"></span><button class="cg-play" aria-label="Play">▶</button><span class="cg-time"></span><button class="cg-tool">◎ Follow</button><button class="cg-tool">＋ Stop</button></div>`+
+      `<div class="cg-strip"><div class="cg-sc"><div class="cg-row" style="position:relative" ${m==='rail'||m==='card'?sl:''}>${r}${m==='rail'?'<span class="sb-band"></span><span class="sb-ph"></span>':''}</div></div></div>`+
+      (m==='old'?`<div class="cg-bar" ${sl}>${timed()}<span class="ph"></span></div>`:'')+(m==='hair'?`<div class="sb-hair" ${sl}>${timed().replace(/class="s"/g,'class=""')}<span class="hph"></span></div>`:'')+'</div>';}
+  const row=()=>host.querySelector('.cg-row');
+  function items(){const rr=row().getBoundingClientRect();return Q.map(q=>{const el=host.querySelector(q.k==='stop'?`.cg-c[data-i="${q.i}"]`:`.cg-g[data-i="${q.i}"]`),r=el.getBoundingClientRect();return {...q,l:r.left-rr.left,w:r.width};});}
+  function timeAtX(x){const it=items();if(x<=it[0].l)return 0;for(const q of it){if(x<=q.l+q.w)return q.a+(q.d?clamp((x-q.l)/q.w,0,1)*q.d:0);}return T;}
+  function xAt(tt){const it=items();for(const q of it){if(tt<=q.a+q.d&&(q.d>0||tt===q.a))return q.l+(q.d?(tt-q.a)/q.d*q.w:q.w/2);}const z=it[it.length-1];return z.l+z.w;}
+  function paint(){Q.forEach(q=>{const p=clamp(q.d?(t-q.a)/q.d:(t>=q.a?1:0),0,1);
+      if(q.k==='stop'){const c=host.querySelector(`.cg-c[data-i="${q.i}"]`);c.querySelector('.cg-pb i').style.width=p*100+'%';c.classList.toggle('play',(t>=q.a&&t<q.a+q.d)||held===q.i);}
+      else{const g=host.querySelector(`.cg-g[data-i="${q.i}"] .gt`);if(g)g.style.width=p*100+'%';}});
+    host.querySelectorAll('.cg-bar>span[data-a],.sb-hair>span[data-a]').forEach(s=>{s.firstChild.style.width=(clamp((t- +s.dataset.a)/+s.dataset.d,0,1)*100)+'%';});
+    const ph=host.querySelector('.cg-bar .ph');if(ph)ph.style.left=`calc(${(t/T*100).toFixed(2)}% - 1px)`;
+    const hph=host.querySelector('.sb-hair .hph');if(hph)hph.style.left=(t/T*100).toFixed(2)+'%';
+    const sph=host.querySelector('.sb-ph');if(sph)sph.style.left=xAt(t)+'px';
+    host.querySelectorAll('[role=slider]').forEach(el=>{el.setAttribute('aria-valuenow',t.toFixed(1));el.setAttribute('aria-valuetext',`${fmt(t)}, ${held!==null?`Stop ${held+1} · ${S[held].n} · waits for Next`:where(t)}`);});
+    const tm=host.querySelector('.cg-time');if(tm)tm.innerHTML=`<b>${fmt(t)}</b> / ${fmt(T)}`;
+    host.querySelectorAll('.sb-wait').forEach(w=>w.remove());
+    if(held!==null){const c=host.querySelector(`.cg-c[data-i="${held}"]`);c.insertAdjacentHTML('beforeend','<span class="sb-wait">Waits for Next — ▶ continues</span>');}
+    const pb=host.querySelector('.cg-play');if(pb){pb.textContent=playing?'❚❚':'▶';pb.setAttribute('aria-label',playing?'Pause':'Play');}}
+  function showTip(clientX,label){const sb=stage.getBoundingClientRect(),rr=row().getBoundingClientRect();tip.hidden=false;tip.textContent=label;tip.style.left=clamp(clientX-sb.left-tip.offsetWidth/2,4,sb.width-tip.offsetWidth-4)+'px';tip.style.top=(rr.top-sb.top-30)+'px';}
+  function seek(v,clientX){t=clamp(v,0,T);held=null;paint();if(clientX!==undefined)showTip(clientX,`${fmt(t)} · ${where(t)}`);}
+  function tick(ts){if(!playing)return;const dt=lastTs?(ts-lastTs)/1000:0;lastTs=ts;const nt=Math.min(T,t+dt*3);
+    for(const q of Q)if(q.k==='stop'&&S[q.i].wait){const e=q.a+q.d;if(t<e&&nt>=e){t=e;playing=false;held=q.i;paint();read.innerHTML=`Playback stopped at the end of Stop ${q.i+1}: it <b>waits for Next</b>. Press ▶ to continue, as a visitor presses Next.`;return;}}
+    t=nt;if(t>=T){playing=false;}paint();if(playing)raf=requestAnimationFrame(tick);}
+  function render(){host.innerHTML=guide();tip.hidden=true;paint();
+    const m=M();read.innerHTML=m==='rail'?'Press and drag along the rail under the cards (or focus the strip and use the arrow keys). Press ▶: playback stops at each wait.':m==='card'?'Hover a card to see the View at that point; drag across it to scrub inside that Stop. A plain click starts from the Stop.':m==='hair'?'Drag the thin line on the Guide\'s bottom edge: proportional time, with no extra height.':'Today: a separate row, proportional, with no waits on it.';}
+  host.addEventListener('pointerdown',e=>{const m=M(),band=e.target.closest('.sb-band,.cg-bar,.sb-hair'),c=e.target.closest('.cg-c');
+    if(band){e.preventDefault();scrub={el:band,prop:m!=='rail'};try{band.setPointerCapture(e.pointerId);}catch{}row().classList.add('scrub');band.classList.add('scrub');move(e);return;}
+    if(m==='card'&&c){scrub={card:c,x0:e.clientX,moved:false};try{c.setPointerCapture(e.pointerId);}catch{}}});
+  function move(e){if(!scrub)return;if(scrub.card){if(Math.abs(e.clientX-scrub.x0)>4)scrub.moved=true;if(scrub.moved){const q=Q.find(x=>x.k==='stop'&&x.i===+scrub.card.dataset.i),r=scrub.card.getBoundingClientRect();seek(q.a+clamp((e.clientX-r.left)/r.width,0,1)*q.d,e.clientX);}return;}
+    if(scrub.prop){const r=scrub.el.getBoundingClientRect();seek(clamp((e.clientX-r.left)/r.width,0,1)*T,e.clientX);}else seek(timeAtX(e.clientX-row().getBoundingClientRect().left),e.clientX);}
+  host.addEventListener('pointermove',e=>{if(scrub){move(e);return;}if(M()!=='card')return;const c=e.target.closest('.cg-c');host.querySelectorAll('.sb-hl').forEach(h=>h.remove());
+    if(!c){tip.hidden=true;return;}const i=+c.dataset.i,q=Q.find(x=>x.k==='stop'&&x.i===i),r=c.getBoundingClientRect(),f=clamp((e.clientX-r.left)/r.width,0,1),k=viewAt(i,f*q.d);
+    c.insertAdjacentHTML('beforeend',`<span class="sb-hl" style="left:${(f*100).toFixed(1)}%"></span>`);const th=S[i].th;c.querySelector('.cg-th svg').outerHTML=thumbSvg(th[0],th[1],th[2]+k*140);showTip(e.clientX,`${fmt(q.a+f*q.d)} · ${where(q.a+f*q.d)}`);});
+  host.addEventListener('pointerleave',()=>{if(scrub)return;tip.hidden=true;if(M()==='card'){host.querySelectorAll('.sb-hl').forEach(h=>h.remove());S.forEach((s,i)=>{const sv=host.querySelector(`.cg-c[data-i="${i}"] .cg-th svg`);if(sv)sv.outerHTML=thumbSvg(...s.th);});}});
+  const end=()=>{if(!scrub)return;const wasCard=scrub.card&&!scrub.moved?scrub.card:null;scrub=null;host.querySelectorAll('.scrub').forEach(x=>x.classList.remove('scrub'));tip.hidden=true;
+    if(wasCard){const q=Q.find(x=>x.k==='stop'&&x.i===+wasCard.dataset.i);seek(q.a);}};
+  host.addEventListener('pointerup',end);host.addEventListener('pointercancel',end);
+  host.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.classList.contains('cg-play')){if(!playing&&t>=T)t=0;if(held!==null){held=null;t+=.001;}playing=!playing;lastTs=0;paint();if(playing)raf=requestAnimationFrame(tick);return;}
+    if(b.classList.contains('cg-c')&&M()!=='card'){const q=Q.find(x=>x.k==='stop'&&x.i===+b.dataset.i);seek(q.a);}});
+  host.addEventListener('keydown',e=>{if(e.target.getAttribute('role')!=='slider')return;const starts=Q.filter(q=>q.k==='stop').map(q=>q.a);let v=null;
+    if(e.key==='ArrowRight'||e.key==='ArrowLeft')v=t+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?5:1);
+    else if(e.key==='PageDown')v=starts.find(a=>a>t+.01)??T;else if(e.key==='PageUp')v=[...starts].reverse().find(a=>a<t-.01)??0;
+    else if(e.key==='Home')v=0;else if(e.key==='End')v=T;else if(e.key===' '){e.preventDefault();host.querySelector('.cg-play').click();return;}
+    if(v===null)return;e.preventDefault();seek(v);read.innerHTML=`<b>${fmt(t)}</b> · ${where(t)}`;});
+  let bg=planBase();[{...VIEWS[0]},{...VIEWS[1]},{...VIEWS[2]}].forEach((v,i)=>bg+=pcMark(v,i===0,'full'));$('#sb-bg').innerHTML=bg;
+  window.addEventListener('resize',()=>paint());
+  R.s28=()=>{playing=false;held=null;render();};})();
+
+/* ---------- §29 Travel time vs hold ---------- */
+(()=>{const sec=$('#s29'),list=$('#tt-list'),rib=$('#tt-rib'),read=$('#tt-read');if(!sec)return;
+  const V=[{name:'Piano close',th:['day',1.3,-60],hold:3},{name:'North window',th:['day',1.5,200],hold:3,kind:'trav',tt:null,auto:2.4,shared:2},{name:'Doorway',th:['day',1.8,0],hold:null,kind:'cut',tt:null,auto:1.8,shared:1}];
+  let flash=null,msg='Use the steppers: each change below says what it timed.';
+  const tval=v=>v.tt??v.auto;
+  const kindSeg=(i,v,pv=false)=>`<span class="vr-kind" role="group" aria-label="Step to ${v.name}"><button data-act="k${i}:cut" aria-pressed="${v.kind==='cut'}">Cut</button><button data-act="k${i}:trav" aria-pressed="${v.kind==='trav'}">Travel</button>${pv?'<button aria-pressed="false" aria-label="Preview this step">▷</button>':''}</span>`;
+  const holdLine=(i,v,label)=>`<span class="vr-meta">${label?`<span class="tt-lbl">${label}</span>`:'Hold '}${vrStep('Hold at '+v.name,v.hold===null?'—':fmtS(v.hold),'h'+i)}${v.hold===null?'<span>waits</span>':''}</span>`;
+  const travStep=(i,v)=>`${vrStep('Travel time to '+v.name,fmtS(tval(v)),'t'+i)}${v.tt===null?'<button class="tt-auto" disabled>auto</button>':`<button class="tt-auto" data-act="a${i}:0">Back to auto</button>`}`;
+  function render(){const L=sec.dataset.ttl,old=L==='old';let h='';
+    V.forEach((v,i)=>{const lines=[];
+      if(i>0&&L==='pair')lines.push(`<span class="vr-meta"><span class="tt-lbl">Arrive</span>${kindSeg(i,v)}</span>`+(v.kind==='trav'?`<span class="vr-meta"><span class="tt-lbl"></span>${travStep(i,v)}</span>`:''));
+      if(i>0&&L==='link')lines.push(`<span class="vr-meta">${kindSeg(i,v)}${v.kind==='trav'?`<button class="tt-link" data-act="l${i}:0">${fmtS(tval(v))} on its path ›</button>`:''}</span>`);
+      if(i>0&&old)lines.push(`<span class="vr-meta">${kindSeg(i,v,true)}${v.kind==='trav'?`<b style="color:var(--ink);font:600 11.5px var(--mono)">${fmtS(tval(v))}</b>`:''}</span>`);
+      lines.push(holdLine(i,v,L==='pair'||L==='link'?'Hold':''));
+      if(i>0&&L==='between')h+=`<li class="tt-step ${v.kind}">${kindSeg(i,v)}${v.kind==='trav'?travStep(i,v):'<span class="lbl">instant</span>'}<button class="tt-play" aria-label="Preview this step">▶</button>${v.kind==='trav'&&v.shared>1?`<span class="tt-shared">Same path in ${v.shared} steps</span>`:''}</li>`;
+      h+=vrRow({n:i+1,name:v.name,th:v.th,layout:old?'old':'np',marks:old&&i===0?'<span class="vr-def">◆</span><em class="vr-tag">Entry</em>':'',lines});});
+    list.innerHTML=h;
+    let r='',tot=0;V.forEach((v,i)=>{if(i>0){if(v.kind==='trav'){r+=`<span class="t${flash==='t'+i?' fl':''}" style="flex:${tval(v)}" title="Travel to ${v.name}">↗ ${fmtS(tval(v))}</span>`;tot+=tval(v);}else r+=`<span class="c${flash==='t'+i?' fl':''}" title="Cut to ${v.name}"></span>`;}
+      r+=v.hold===null?`<span class="w${flash==='h'+i?' fl':''}" title="${v.name} waits for Next">waits</span>`:`<span class="h${flash==='h'+i?' fl':''}" style="flex:${Math.max(v.hold,.25)}" title="Hold at ${v.name}">${v.hold?fmtS(v.hold):''}</span>`;tot+=v.hold||0;});
+    rib.innerHTML=r;read.innerHTML=`${msg} <span style="color:var(--ink3)">This Stop runs ${fmtS(tot)}${V[V.length-1].hold===null?', then waits for Next':''}.</span>`;flash=null;}
+  list.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const[k,d]=b.dataset.act.split(':'),i=+k.slice(1),v=V[i],L=sec.dataset.ttl;
+    if(k[0]==='h'){const was=v.hold,n=+d;v.hold=was===null?(n>0?1:null):(was+n<0?(i===V.length-1?null:0):was+n);flash='h'+i;
+      msg=L==='old'&&i>0&&v.kind==='trav'?`<b>That stepper was the hold at ${v.name}</b>: ${fmtS(was)} → ${fmtS(v.hold)}. The Travel stays ${fmtS(tval(v))}, which is today's trap.`:`<b>Hold at ${v.name}</b>: ${fmtS(was)} → ${fmtS(v.hold)}.`;}
+    else if(k[0]==='t'){const was=tval(v);v.tt=Math.max(.5,Math.round((was+.5*+d)*2)/2);flash='t'+i;msg=`<b>Travel to ${v.name}</b>: ${fmtS(was)} → ${fmtS(v.tt)}, set on its Camera path${v.shared>1?`, so the other step that uses the path changes too`:''}.`;}
+    else if(k[0]==='a'){v.tt=null;flash='t'+i;msg=`<b>Travel to ${v.name}</b> is back to auto: ${fmtS(v.auto)} from the path's length.`;}
+    else if(k[0]==='k'){if(v.kind===d)return;v.kind=d;flash='t'+i;msg=`<b>Step to ${v.name}</b> is now a ${d==='trav'?'Travel':'Cut'}.`;}
+    else if(k[0]==='l'){msg=`Opens the Camera path's Card, where the Travel time to ${v.name} is set.`;}
+    render();});
+  R.s29=render;})();
 
 Object.values(R).forEach(f=>f());
 </script>

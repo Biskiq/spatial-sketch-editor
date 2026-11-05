@@ -753,7 +753,9 @@
 	.menu-item.danger:disabled { color: var(--shell-ink-2, #4a524c); }
 	.menu-item.nested { padding-left: 18px; }
 	.submenu { display: grid; gap: 2px; }
-	.back-link { min-height: 0; margin-right: 0.15em; padding: 0; color: var(--shell-ink-2, #4a524c); font-size: 11px; }
+	.back-link { min-height: 0; margin-right: 0; padding: 0; color: var(--shell-ink-2, #4a524c); font-size: 11px; }
+	/* Review round 3: a hairline divides the back link from the kind, never run together. */
+	.back-link::after { content: ''; display: inline-block; width: 1px; height: 10px; margin: 0 0.55em; background: var(--shell-hairline-strong, #cdd2ca); vertical-align: -1px; }
 	.back-link:hover { background: none; color: var(--shell-ink, #1b201c); }
 	.consequence { display: grid; gap: 6px; margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--shell-refuse, #7e2718); border-radius: 8px; background: var(--shell-index, #f6f7f5); font-size: 12px; }
 	.consequence-line { margin: 0; color: var(--shell-ink, #1b201c); line-height: 1.4; }

@@ -1029,7 +1029,7 @@
 		min-height: 28px;
 		padding: 4px 6px 4px 10px;
 		gap: 7px;
-		cursor: grab;
+		cursor: default;
 	}
 	/* Round 2 Index rows read in the sans at 13 px; only the selected row is bold. */
 	.presentation-row .item-name {

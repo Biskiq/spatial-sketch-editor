@@ -60,7 +60,8 @@
 
 	function project(point: Vec3): readonly [number, number] | null {
 		const projected = projectWorld(point, evaluation, evaluation.token);
-		if (projected.kind !== 'projected' || projected.visibility !== 'visible') return null;
+		// Screen ink: SVG clips at the frame, and depth clipping never hides a path (review round 3).
+		if (projected.kind !== 'projected' || projected.visibility === 'behind') return null;
 		return [
 			Math.round((projected.css[0] - evaluation.rect.left) * 10) / 10,
 			Math.round((projected.css[1] - evaluation.rect.top) * 10) / 10
@@ -380,7 +381,7 @@
 </script>
 
 {#if guideOpen}
-<g class="experience-paths" data-experience-paths>
+<g class="experience-paths" class:dragging={drag?.moved} data-experience-paths>
 	{#each drawn as path (path.key)}
 		{#each path.runs as run, index (index)}
 			<polyline class="ribbon {path.state}" points={run.map((point) => `${point[0]},${point[1]}`).join(' ')} />
@@ -584,7 +585,10 @@
 	.anchor-hit {
 		fill: transparent;
 		pointer-events: auto;
-		cursor: var(--cursor-grab, grab);
+		cursor: var(--cursor-select, default);
+	}
+	.dragging :is(.anchor-hit, .route-hit.edit) {
+		cursor: var(--cursor-grabbing, grabbing);
 	}
 	.preview {
 		pointer-events: none;

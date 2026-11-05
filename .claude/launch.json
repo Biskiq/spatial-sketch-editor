@@ -53,6 +53,18 @@
         "docs/roadmap/r217-core-editor-stability/world-shell-recovery"
       ],
       "port": 8861
+    },
+    {
+      "name": "experience-sheet",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8862",
+        "--directory",
+        "docs/reference/design-system"
+      ],
+      "port": 8862
     }
   ]
 }

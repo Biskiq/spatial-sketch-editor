@@ -23,6 +23,7 @@ import {
 	nextLayoutPresetObjectId,
 	planCreateWallFirstOpening,
 	planWallChain,
+	setWorkObserver,
 	type LayoutDocumentWallFirst,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
@@ -720,10 +721,23 @@ describe('Layout Room move', () => {
 		const evaluationId = facade.evaluationId()!;
 		const to: [number, number] = [mark.anchor[0] + 80, mark.anchor[1] + 40];
 		expect(facade.pointerIntent({ phase: 'down', handleId: mark.id, css: mark.anchor, evaluationId }).claimed).toBe(true);
-		facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		const preview = facade.candidatePreviews().find((entry) => entry.id === 'layout-room-move-candidate');
-		expect(preview).toMatchObject({ role: 'subject' });
-		expect(preview!.segments.length).toBeGreaterThan(0);
+		const spans: string[] = [];
+		const observer = setWorkObserver({ span: (name) => spans.push(name), count: () => {} });
+		try {
+			const previewId = 'layout-room-move-candidate';
+			facade.pointerIntent({ phase: 'move', css: [mark.anchor[0] + 35, mark.anchor[1] + 15], evaluationId });
+			const first = facade.candidatePreviews().find((entry) => entry.id === previewId);
+			expect(first?.role).toBe('subject');
+
+			facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+			const next = facade.candidatePreviews().find((entry) => entry.id === previewId);
+			expect(next?.role).toBe('subject');
+			expect(next?.segments).toHaveLength(4);
+			expect(next?.segments).not.toEqual(first?.segments);
+		} finally {
+			setWorkObserver(observer);
+		}
+		expect(spans.filter((name) => name.includes('compile') || name.includes('sampling'))).toEqual([]);
 		expect(facade.snapshot().canonicalJson).toBe(before);
 
 		facade.pointerIntent({ phase: 'up', css: to, evaluationId });

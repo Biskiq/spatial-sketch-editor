@@ -394,7 +394,8 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		const frustum = () => ghost()?.querySelector(reading === '3D' ? '[data-camera-wire]' : '[data-placement-wedge]');
 		const eye = () => reading === '3D'
 			? [ghost()?.querySelector('.stem')?.getAttribute('x1'), ghost()?.querySelector('.stem')?.getAttribute('y1')]
-			: [ghost()?.querySelector('.dot')?.getAttribute('cx'), ghost()?.querySelector('.dot')?.getAttribute('cy')];
+			// Review round 3: the Plan ghost is the Plan camera glyph; its translate is the eye.
+			: (ghost()?.querySelector('[data-plan-camera]')?.getAttribute('transform')?.match(/translate\(([^ ]+) ([^)]+)\)/)?.slice(1, 3) ?? [null, null]);
 		const baseline = stage.snapshot().canonicalJson;
 		const viewIds = new Set(stageCamera(stage.snapshot()).views.map((view) => view.id));
 
@@ -427,6 +428,7 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		pointer('pointermove', surface, 2, ...aim.css);
 		await frame();
 		const previewWire = frustum()?.getAttribute('d');
+		const previewEye = eye().map(Number);
 		expect(previewWire).toBeTruthy();
 		pointer('pointerup', surface, 2, ...aim.css);
 		await vi.waitFor(() => expect(stageCamera(stage.snapshot()).views).toHaveLength(viewIds.size + 1));
@@ -449,8 +451,17 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		};
 		const accepted = firstLeg(acceptedFrustum?.getAttribute('d'));
 		const preview = firstLeg(previewWire);
-		expect(accepted.eye[0]).toBeCloseTo(preview.eye[0]!, 0);
-		expect(accepted.eye[1]).toBeCloseTo(preview.eye[1]!, 0);
+		if (reading === '3D') {
+			expect(accepted.eye[0]).toBeCloseTo(preview.eye[0]!, 0);
+			expect(accepted.eye[1]).toBeCloseTo(preview.eye[1]!, 0);
+		} else {
+			// Review round 3: the Plan wedge starts at the lens front, which sits further out
+			// on the larger selected camera, so the eye is the Plan camera glyph's own position.
+			const acceptedEye = target.querySelector(`[data-view-mark="${view.id}"] [data-plan-camera]`)
+				?.getAttribute('transform')?.match(/translate\(([^ ]+) ([^)]+)\)/)?.slice(1, 3).map(Number) ?? [];
+			expect(acceptedEye[0]).toBeCloseTo(previewEye[0]!, 0);
+			expect(acceptedEye[1]).toBeCloseTo(previewEye[1]!, 0);
+		}
 		expect(accepted.direction[0]).toBeCloseTo(preview.direction[0]!, 2);
 		expect(accepted.direction[1]).toBeCloseTo(preview.direction[1]!, 2);
 		expect((await acceptance().undo()).kind).toBe('installed');
@@ -1169,6 +1180,15 @@ describe('R217.S26 — structure and removal through the route', () => {
 		await frame();
 		menuItem('start-here').click();
 		await vi.waitFor(() => expect(target.querySelector('.experience-feedback')?.textContent).toBe('The tour now starts at Stop 2.'));
+	});
+
+	it('names no back link after stepping between sibling Stops (review round 3)', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		await openStopCard('stop-1');
+		await openStopCard('stop-2');
+		expect(cardKind()).toMatch(/^Stop 2 of 2/);
+		expect(card()!.querySelector('[data-card-back]')).toBeNull();
 	});
 
 	it('Alt+← returns to the previous subject; the kind line shows it as *‹ Stop 2*', async () => {

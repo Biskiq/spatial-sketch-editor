@@ -196,6 +196,19 @@ describe('Stage shell composition', () => {
 		expect(route).not.toMatch(/\.applyIntent\s*\(/);
 	});
 
+	it('captures every pointer through a guarded helper, so a failed capture cannot strand a claim', () => {
+		// `setPointerCapture` throws for a pointer that has already ended. Each press
+		// claims a lease, a press or a session first; a throwing capture then left that
+		// claim held and every later gesture refused. Only the helper and the pinch's
+		// own try may call it.
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const raw = route.match(/\.setPointerCapture\(/g) ?? [];
+		expect(raw).toHaveLength(2);
+		expect(route).toMatch(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/);
+		expect(route).toContain('try { surface.setPointerCapture(event.pointerId); } catch');
+		expect(route).toContain('capture === null || !capturePointer(capture, event.pointerId)');
+	});
+
 	it('renders one geometry set and takes Plan eligibility from the representation, not a second renderer', () => {
 		// The Plan representation (`evaluateLayoutPlan`) is Layout-owned **data**: cut,
 		// projected, hidden and symbol streams with membership and Reveal. The Stage's
@@ -387,13 +400,15 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		expect(lanes).not.toMatch(/submit\(|requestViewingIntent|acquireInspection|\bfit\(|bringIntoView|setPlanParameters|camera\./);
 	});
 
-	it('fades the Card and takes no pointer events while an authored gesture is live, never for navigation', () => {
+	it('fades the Card and takes no pointer events while an authored gesture is live, never for navigation or a camera edit', () => {
 		const card = codeOf('apps/editor/src/lib/authoring/stage/shell/EditorCard.svelte');
 		expect(card).toMatch(/\.card\.gesturing \{[^}]*pointer-events: none;/);
 		expect(card).toMatch(/\.card\.gesturing \{[^}]*opacity: 0\.2;/);
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		// The flag is the live lease the session holds, and a navigation press is excluded.
-		expect(route).toContain('const gesturing = lease !== null && lease.navigation !== true;');
+		// The flag is the live lease the session holds; a navigation press is excluded, and
+		// review round 3 (sheet §24, Card only) keeps the Card clear while a camera is edited.
+		expect(route).toContain("const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');");
+		expect(route).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');
 		expect(route).toContain('gesturing={cardGesturing}');
 	});
 

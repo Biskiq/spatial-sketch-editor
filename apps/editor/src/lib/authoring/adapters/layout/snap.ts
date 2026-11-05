@@ -2,10 +2,9 @@
  * R217.S14 — Layout's **snap policy** for authoring gestures.
  *
  * Layout already owns snap geometry in `layout-core`; this module is only the
- * policy that decides *which* existing resolver a gesture may ask, and what the
- * creator is told when one wins. It computes no candidates and no alternatives:
- * every winner comes from `resolveLayoutSnap` or the
- * `resolveOpeningDragSnap` family, against the captured baseline geometry.
+ * policy that decides what a gesture may snap to and how the winner is shown.
+ * Ink and Openings use the Layout resolver families against captured geometry.
+ * Drag grips add short screen-space acquisition zones to their parameters.
  *
  * The policy follows the target specification's operation table:
  *
@@ -108,8 +107,8 @@ export function resolveInkPointSnap(input: {
 }
 
 /**
- * R217.S15 — the end point's free Junction move: its orthogonal guide from the
- * Wall's other end, then the fixed grid. No Junction or Wall-span target is
+ * A free Wall endpoint can acquire a heading and distance from its opposite
+ * end, with the Layout grid as a fallback. No Junction or Wall-span target is
  * offered here: attaching a point is Ink's job, and the drag is a free X/Z move.
  */
 export function resolveJunctionPointSnap(input: {
@@ -118,8 +117,12 @@ export function resolveJunctionPointSnap(input: {
 	readonly anchor: LayoutVec2;
 	readonly pixelsPerMeter: number;
 	readonly drafting: StageDraftingState;
+	readonly distanceCss?: DragSnapDistance;
 }): LayoutSnapWinner | null {
 	if (draftingSnapIncrementMeters(input.drafting) === null) return null;
+	const distanceCss = input.distanceCss ?? ((a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) * input.pixelsPerMeter);
+	const polar = resolvePlanarDragSnap(input.anchor, input.point, input.drafting, distanceCss);
+	if (polar.aligned && polar.winner !== null) return polar.winner;
 	const resolution = resolveLayoutSnap(
 		input.geometry,
 		input.point,
@@ -131,9 +134,10 @@ export function resolveJunctionPointSnap(input: {
 		},
 		{ allowedKinds: ['orthogonal-guide', 'grid'] }
 	);
-	if (resolution.kind !== 'snap') return null;
+	if (resolution.kind !== 'snap') return polar.winner;
 	const { candidate } = resolution;
-	if (Math.hypot(candidate.point[0] - input.point[0], candidate.point[1] - input.point[1]) * input.pixelsPerMeter > DRAG_GRID_SNAP_CSS_PX) return null;
+	if (candidate.kind === 'grid' && Math.hypot(candidate.point[0] - input.point[0], candidate.point[1] - input.point[1]) > DRAFTING_SNAP_METERS / 4) return polar.winner;
+	if (distanceCss(candidate.point, input.point) > DRAG_GRID_SNAP_CSS_PX) return polar.winner;
 	return {
 		point: [cleanCoordinate(candidate.point[0]), cleanCoordinate(candidate.point[1])],
 		kind: candidate.kind,
@@ -141,22 +145,59 @@ export function resolveJunctionPointSnap(input: {
 	};
 }
 
-/** A drag follows the pointer between grid lines. The grid itself stays at 0.5 m. */
+/** Acquire only near a target, even when a grid cell projects to very few pixels. */
 export const DRAG_GRID_SNAP_CSS_PX = 4;
+type DragSnapDistance = (from: Readonly<LayoutVec2>, to: Readonly<LayoutVec2>) => number;
 
-/** Scalar Wall grips acquire the fixed grid only near an increment. */
+/** Scalar Wall grips stay on their axis and never magnetize a move back to rest. */
 export function snapWallDrag(
 	value: number,
 	drafting: StageDraftingState,
-	metersPerCssPixel: number,
+	distanceCss: (from: number, to: number) => number,
 	minimum = -Infinity
 ): { readonly value: number; readonly snapped: boolean } {
 	const step = draftingSnapIncrementMeters(drafting);
 	if (step === null || value < minimum) return { value, snapped: false };
-	const nearest = Math.max(minimum, cleanCoordinate(Math.round(value / step) * step));
-	return Math.abs(nearest - value) <= DRAG_GRID_SNAP_CSS_PX * metersPerCssPixel
+	const nearest = cleanCoordinate(Math.round(value / step) * step);
+	return nearest !== 0 && nearest >= minimum && Math.abs(nearest - value) <= step / 4 &&
+		distanceCss(nearest, value) <= DRAG_GRID_SNAP_CSS_PX
 		? { value: nearest, snapped: true }
 		: { value, snapped: false };
+}
+
+/** Free planar drags can acquire a heading and a distance in the same sample. */
+export function resolvePlanarDragSnap(
+	origin: Readonly<LayoutVec2>,
+	point: Readonly<LayoutVec2>,
+	drafting: StageDraftingState,
+	distanceCss: DragSnapDistance
+): { readonly point: Readonly<LayoutVec2>; readonly winner: LayoutSnapWinner | null; readonly aligned: boolean } {
+	const dx = point[0] - origin[0];
+	const dz = point[1] - origin[1];
+	const distance = Math.hypot(dx, dz);
+	if (distance === 0 || draftingSnapIncrementMeters(drafting) === null) return { point, winner: null, aligned: false };
+	const angle = Math.atan2(dz, dx);
+	const headingStep = Math.PI / 4;
+	const heading = Math.round(angle / headingStep) * headingStep;
+	const at = (radius: number, direction: number): LayoutVec2 => [
+		cleanCoordinate(origin[0] + Math.cos(direction) * radius),
+		cleanCoordinate(origin[1] + Math.sin(direction) * radius)
+	];
+	const aligned = Math.abs(heading - angle) <= Math.PI / 36 &&
+		distanceCss(point, at(distance, heading)) <= DRAG_GRID_SNAP_CSS_PX;
+	const direction = aligned ? heading : angle;
+	const length = snapWallDrag(distance, drafting, (target) => distanceCss(point, at(target, direction)));
+	if (!aligned && !length.snapped) return { point, winner: null, aligned };
+	const snapped = at(length.value, direction);
+	return {
+		point: snapped,
+		aligned,
+		winner: {
+			point: snapped,
+			kind: length.snapped ? 'grid' : 'orthogonal-guide',
+			name: aligned && length.snapped ? 'Aligned · Grid' : aligned ? 'Aligned' : 'Grid'
+		}
+	};
 }
 
 /** Resolve an Opening slide's start-edge offset, or the raw offset. */

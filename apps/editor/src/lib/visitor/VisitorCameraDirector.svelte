@@ -177,8 +177,7 @@
 			}
 		}
 		pointerId = null;
-		if (isAuthoredMode()) canvas.style.cursor = canLookAround() ? 'grab' : '';
-		else canvas.style.cursor = '';
+		canvas.style.cursor = '';
 	}
 
 	$effect(() => {
@@ -496,7 +495,7 @@
 		if (!canLookAround()) cancelPointerLook();
 		else if (pointerId === null) {
 			try {
-				canvas.style.cursor = 'grab';
+				canvas.style.cursor = '';
 			} catch {
 				// Detached.
 			}

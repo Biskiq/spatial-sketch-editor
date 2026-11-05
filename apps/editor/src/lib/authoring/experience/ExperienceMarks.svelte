@@ -17,6 +17,7 @@
 		type PlacementGhostPose,
 		type ExperienceCameraGlyph,
 		EXPERIENCE_MARK_CAPS,
+		PLAN_SELECTED_SCALE,
 		type ExperienceCameraFrustum,
 		type ExperienceFrustum,
 		type StageBox,
@@ -30,6 +31,7 @@
 		/** R217.S30 — the projected, read-only playback rig; never an authored mark. */
 		rig = null,
 		placementGhost = null,
+		liveEdit = null,
 		onLookThrough,
 		showMarkers = true,
 		showFrustums = true,
@@ -41,8 +43,20 @@
 		endPathDragLease
 	}: {
 		evaluation: ViewportEvaluation;
-		rig?: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number] } | null;
+		rig?: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number } | null;
 		placementGhost?: PlacementGhostPose | null;
+		/**
+		 * Review round 3 (sheet §23): a live marker drag. Its View draws at the provisional
+		 * pose, and a dashed ghost stays at the start pose until release.
+		 */
+		liveEdit?: {
+			readonly viewId: string;
+			readonly kind: 'move' | 'turn';
+			readonly start: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number };
+			readonly eye: readonly [number, number, number];
+			readonly target: readonly [number, number, number];
+			readonly moved: boolean;
+		} | null;
 		onLookThrough?: (viewId: string) => void;
 		/** R217.S29 Show ▾: the four independent flags, all on by default. */
 		showMarkers?: boolean;
@@ -73,7 +87,8 @@
 		guide: controller?.contextGuide ?? null,
 		views: controller?.cameraViews ?? [],
 		evaluation,
-		selection
+		selection,
+		livePose: liveEdit?.moved ? { viewId: liveEdit.viewId, eye: [...liveEdit.eye], target: [...liveEdit.target] } : null
 	}));
 	const relatedPaths = $derived(controller?.current == null
 		? new Set<string>()
@@ -94,18 +109,37 @@
 
 	const placement = $derived(placementGhost === null ? null : projectPlacementGhost(evaluation, placementGhost));
 
-	const rigPoint = $derived.by(() => {
-		if (rig === null) return null;
-		const eye = projectWorld(rig.eye, evaluation, evaluation.token);
-		const target = projectWorld(rig.target, evaluation, evaluation.token);
-		if (eye.kind !== 'projected' || eye.visibility !== 'visible') return null;
-		const local = (point: readonly [number, number]) =>
-			[point[0] - evaluation.rect.left, point[1] - evaluation.rect.top] as const;
-		return {
-			eye: local(eye.css),
-			target: target.kind === 'projected' && target.visibility === 'visible' ? local(target.css) : null
-		};
+	/** The start pose of a live marker drag, drawn as a dashed ghost (sheet §23). */
+	const editGhost = $derived.by(() => {
+		if (liveEdit === null || !liveEdit.moved) return null;
+		const start = projectPlacementGhost(evaluation, {
+			eye: [...liveEdit.start.eye],
+			target: [...liveEdit.start.target],
+			fovYDegrees: liveEdit.start.fov
+		});
+		if (start === null) return null;
+		let distance: { readonly from: StagePoint; readonly to: StagePoint; readonly label: string } | null = null;
+		if (liveEdit.kind === 'move') {
+			const now = projectWorld(liveEdit.eye, evaluation, evaluation.token);
+			const metres = Math.hypot(liveEdit.eye[0] - liveEdit.start.eye[0], liveEdit.eye[2] - liveEdit.start.eye[2]);
+			if (now.kind === 'projected' && metres >= 0.01) {
+				distance = {
+					from: start.eye,
+					to: [now.css[0] - evaluation.rect.left, now.css[1] - evaluation.rect.top],
+					label: `${metres.toFixed(2)} m`
+				};
+			}
+		}
+		return { ...start, distance };
 	});
+
+	/**
+	 * R217.S30 playback rig, review round 3: the same camera and frustum a View draws
+	 * (3D Detailed camera, or the Plan camera and wedge), read-only and never authored.
+	 */
+	const rigGlyph = $derived(rig === null
+		? null
+		: projectPlacementGhost(evaluation, { eye: [...rig.eye], target: [...rig.target], fovYDegrees: rig.fov }));
 
 	function selectView(viewId: string, presentationId: string): void {
 		homes.select({ kind: 'view', viewId, presentationId });
@@ -147,7 +181,30 @@
 	function dotRadius(state: string): number {
 		return state === 'selected' ? 4.6 : state === 'strong' ? 4.2 : 3.6;
 	}
+
+	function planTransform(at: StagePoint, heading: number, state: string): string {
+		const scale = state === 'selected' ? PLAN_SELECTED_SCALE : 1;
+		return `translate(${at[0]} ${at[1]}) rotate(${heading}) scale(${scale})`;
+	}
 </script>
+
+<!--
+	Review round 3 (sheet §23): the Detailed camera seen from above. Local +x is where it
+	looks and +y its shutter-button side. An outline layer under the fills draws one ink
+	outline round the whole form; the lens front sits at PLAN_LENS_PX.
+-->
+{#snippet planCamera(at: StagePoint, heading: number, state: string)}
+	<g class="plan-cam" transform={planTransform(at, heading, state)} data-plan-camera>
+		<rect class="o" x="-9" y="-14" width="15" height="28" rx="2.5" />
+		<rect class="o" x="6" y="-7" width="11" height="14" rx="1.2" />
+		<rect class="body" x="-9" y="-14" width="15" height="28" rx="2.5" />
+		<rect class="barrel" x="6" y="-7" width="11" height="14" rx="1.2" />
+		<rect class="hump" x="-6.5" y="-5" width="10" height="10" rx="1.6" />
+		<circle class="button" cx="-2.5" cy="9.6" r="2.1" />
+		<rect class="lens-cap" x="15.2" y="-6" width="1.8" height="12" />
+		<path class="rim" d="M17 -7V7" />
+	</g>
+{/snippet}
 
 {#snippet detailedCamera(camera: ExperienceCameraGlyph, wire: boolean)}
 	{#if camera.shadow}
@@ -205,14 +262,46 @@
 			endLease={endPathDragLease}
 		/>
 	{/if}
-	{#if rigPoint !== null}
-		<g class="rig" data-camera-rig aria-hidden="true">
-			{#if rigPoint.target !== null}
-				<line x1={rigPoint.eye[0]} y1={rigPoint.eye[1]} x2={rigPoint.target[0]} y2={rigPoint.target[1]} />
+	{#if rigGlyph !== null}
+		<g class="mark strong rig" data-camera-rig aria-hidden="true">
+			{#if rigGlyph.camera}
+				{@render detailedCamera(rigGlyph.camera, true)}
+			{:else}
+				{#if rigGlyph.wedge}
+					<path class="frustum strong" d={wedgePath(rigGlyph.wedge)} data-rig-wedge />
+				{/if}
+				{#if rigGlyph.heading != null}
+					{@render planCamera(rigGlyph.eye, rigGlyph.heading, 'strong')}
+				{:else}
+					<circle class="dot" cx={rigGlyph.eye[0]} cy={rigGlyph.eye[1]} r={dotRadius('strong')} />
+				{/if}
 			{/if}
-			<circle class="rig-halo" cx={rigPoint.eye[0]} cy={rigPoint.eye[1]} r="9" />
-			<circle class="rig-dot" cx={rigPoint.eye[0]} cy={rigPoint.eye[1]} r="4.5" />
-			<text x={rigPoint.eye[0] + 10} y={rigPoint.eye[1] - 10}>Rig</text>
+		</g>
+	{/if}
+	{#if editGhost !== null}
+		<g class="mark edit-ghost" data-view-edit-ghost aria-hidden="true">
+			<g class="ghost-body">
+			{#if editGhost.camera}
+				{@render detailedCamera(editGhost.camera, true)}
+			{:else}
+				{#if editGhost.wedge}
+					<path class="frustum" d={wedgePath(editGhost.wedge)} />
+				{/if}
+				{#if editGhost.heading != null}
+					{@render planCamera(editGhost.eye, editGhost.heading, 'normal')}
+				{:else}
+					<circle class="dot" cx={editGhost.eye[0]} cy={editGhost.eye[1]} r={dotRadius('normal')} />
+				{/if}
+			{/if}
+			</g>
+			{#if editGhost.distance}
+				{@const d = editGhost.distance}
+				<line class="offset" x1={d.from[0]} y1={d.from[1]} x2={d.to[0]} y2={d.to[1]} />
+				<g class="value" transform={`translate(${(d.from[0] + d.to[0]) / 2} ${(d.from[1] + d.to[1]) / 2 - 14})`}>
+					<rect x={-tagWidth(d.label) / 2} y="-9" width={tagWidth(d.label)} height="18" rx="5" />
+					<text y="4" text-anchor="middle">{d.label}</text>
+				</g>
+			{/if}
 		</g>
 	{/if}
 	{#if showMarkers}
@@ -238,6 +327,8 @@
 						<title>Drag to turn this View</title>
 					</path>
 				{/if}
+			{:else if mark.heading != null}
+				{@render planCamera(mark.css, mark.heading, mark.state)}
 			{:else}
 				<circle class="dot" cx={mark.css[0]} cy={mark.css[1]} r={dotRadius(mark.state)} />
 			{/if}
@@ -296,7 +387,11 @@
 				{#if placement.wedge}
 					<path class="frustum selected" d={wedgePath(placement.wedge)} data-placement-wedge />
 				{/if}
-				<circle class="dot" cx={placement.eye[0]} cy={placement.eye[1]} r={dotRadius('selected')} />
+				{#if placement.heading != null}
+					{@render planCamera(placement.eye, placement.heading, 'selected')}
+				{:else}
+					<circle class="dot" cx={placement.eye[0]} cy={placement.eye[1]} r={dotRadius('selected')} />
+				{/if}
 			{/if}
 		</g>
 	{/if}
@@ -367,7 +462,11 @@
 		cursor: var(--cursor-turn, crosshair);
 	}
 	.mark.selected[data-mark-kind='eye'] .hit {
-		cursor: var(--cursor-grab, grab);
+		cursor: var(--cursor-select, default);
+	}
+
+	:global(.stage[data-cursor='grabbing']) .mark.selected[data-mark-kind='eye'] .hit {
+		cursor: var(--cursor-grabbing, grabbing);
 	}
 
 	/* The 3D Detailed camera: one ink outline over white faces. */
@@ -522,24 +621,36 @@
 	.rig {
 		pointer-events: none;
 	}
-	.rig line {
-		stroke: var(--shell-gold, #d4ad45);
-		stroke-width: 1.2;
-		stroke-dasharray: 3 3;
-		opacity: 0.85;
-	}
-	.rig-halo {
-		fill: color-mix(in srgb, var(--shell-gold, #d4ad45) 22%, transparent);
-		stroke: var(--shell-gold, #d4ad45);
-		stroke-width: 1;
-	}
-	.rig-dot {
-		fill: var(--shell-gold, #d4ad45);
-		stroke: #2a2208;
-		stroke-width: 1.2;
-	}
-	.rig text {
-		fill: var(--shell-gold, #d4ad45);
-		font: 600 9px var(--shell-mono, ui-monospace, monospace);
-	}
+
+	/* Review round 3 (sheet §23): the Plan camera, in the 3D sticker finish and states. */
+	.plan-cam { filter: drop-shadow(0 1.2px 1.3px rgba(20, 24, 20, 0.3)); }
+	.plan-cam .o { fill: var(--shell-ink, #1b201c); stroke: var(--shell-ink, #1b201c); stroke-width: 2.4; stroke-linejoin: round; }
+	.plan-cam .body { fill: #fff; }
+	.plan-cam .barrel { fill: #e4e7e1; }
+	.plan-cam .hump { fill: #eceee9; }
+	.plan-cam .button,
+	.plan-cam .lens-cap { fill: var(--shell-ink, #1b201c); }
+	.plan-cam .rim { fill: none; stroke: none; stroke-width: 2.2; stroke-linecap: round; }
+	.mark.strong .plan-cam .o { fill: var(--shell-forest-2, #22503c); stroke: var(--shell-forest-2, #22503c); }
+	.mark.strong .plan-cam .body { fill: #f4faf6; }
+	.mark.strong .plan-cam .barrel { fill: #d2e3d8; }
+	.mark.strong .plan-cam .hump { fill: #e2eee6; }
+	.mark.strong .plan-cam .rim { stroke: var(--shell-leaf, #4f8f6c); }
+	.mark.selected .plan-cam .o { fill: var(--shell-gold-ink, #74560c); stroke: var(--shell-gold-ink, #74560c); }
+	.mark.selected .plan-cam .body { fill: #fff8e6; }
+	.mark.selected .plan-cam .barrel { fill: #ecd69a; }
+	.mark.selected .plan-cam .hump { fill: #f6e7bd; }
+	.mark.selected .plan-cam :is(.button, .lens-cap) { fill: var(--shell-gold-ink, #74560c); }
+	.mark.selected .plan-cam .rim { stroke: var(--shell-gold, #d4ad45); }
+
+	/* The start pose of a live drag: dashed, faint, never pressable. */
+	.edit-ghost { pointer-events: none; }
+	.edit-ghost .ghost-body { opacity: 0.6; }
+	.edit-ghost .plan-cam { filter: none; }
+	.edit-ghost .plan-cam .o { fill: rgb(255 255 255 / 0.4); stroke-width: 1.1; stroke-dasharray: 3 2.2; }
+	.edit-ghost .plan-cam :is(.body, .barrel, .hump, .button, .lens-cap, .rim) { display: none; }
+	.edit-ghost .frustum { fill: none; stroke-dasharray: 3 3; }
+	.edit-ghost .offset { stroke: var(--shell-gold-ink, #74560c); stroke-width: 1.2; stroke-dasharray: 3 3; }
+	.edit-ghost .value rect { fill: rgba(10, 24, 18, 0.82); }
+	.edit-ghost .value text { fill: #fff; font: 500 10.5px var(--shell-sans, system-ui, sans-serif); }
 </style>

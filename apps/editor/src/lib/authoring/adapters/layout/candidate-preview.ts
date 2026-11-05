@@ -240,7 +240,7 @@ export function wallCenterlinePaper(
 		const start = junctions.get(wall.startJunctionId);
 		const end = junctions.get(wall.endJunctionId);
 		if (start === undefined || end === undefined) continue;
-		const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+		const sampled = wall.centerline.kind === 'line' ? undefined : wallCenterlineSamples(wall, start, end, 'forward');
 		const points = sampled === undefined ? [start, end] : sampled.samples.map((sample) => sample.point);
 		for (let index = 1; index < points.length; index += 1) {
 			segments.push([worldPoint(points[index - 1]!, datumMeters), worldPoint(points[index]!, datumMeters)]);

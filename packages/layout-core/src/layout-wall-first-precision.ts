@@ -48,7 +48,7 @@ import {
 	verifySweptBoundsGeometryDelta
 } from './layout-world-index';
 import { layoutWorkingLevelIssue } from './layout-id-capture';
-import { validateWallFirstOpeningSet } from './layout-opening-set';
+import { validateWallFirstOpeningSet, validateWallFirstOpeningSubset } from './layout-opening-set';
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import {
 	reconcileRooms,
@@ -1021,19 +1021,76 @@ export function proposeWallCurveShape(
 	const patch = architectureCandidatePatch(document, intent);
 	if (!patch) return undefined;
 	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
+	return sampleArchitectureProposal(candidate, patch.affectedWallIds);
+}
+
+function sampleArchitectureProposal(
+	candidate: LayoutDocumentWallFirst,
+	wallIds: readonly string[],
+	sampling?: WallSamplingDerivation
+): WallFirstArchitectureProposalWall[] {
 	const proposals: WallFirstArchitectureProposalWall[] = [];
-	for (const wallId of patch.affectedWallIds) {
+	for (const wallId of wallIds) {
 		const wall = candidate.walls.find((entry) => entry.id === wallId);
 		const endpoints = wall ? wallEndpoints(candidate, wall) : undefined;
 		if (!wall || !endpoints) continue;
-		const sampled = wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward');
-		if (!sampled) continue;
-		proposals.push({
-			wallId,
-			points: sampled.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2)
-		});
+		// Straight lines already have their exact render geometry in their endpoints.
+		const points = sampling !== undefined && wall.centerline.kind === 'line'
+			? [endpoints.start, endpoints.end]
+			: (sampling
+				? sampling.samples(wall, endpoints.start, endpoints.end, 'forward')
+				: wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward'))
+				?.samples.map((sample) => sample.point);
+		if (points !== undefined) proposals.push({ wallId, points });
 	}
 	return proposals;
+}
+
+/** A live Wall drag checks local geometry and Opening fit without reconciling or compiling. */
+export function readWallFirstDragProposal(
+	document: LayoutDocumentWallFirst,
+	intent: Extract<WallFirstArchitectureProposalIntent, { kind: 'junction-move' | 'wall-move' }>,
+	sampling: WallSamplingDerivation,
+	scope: WallFirstArchitectureVerdictScope
+): { kind: 'pending'; walls: WallFirstArchitectureProposalWall[] } |
+	{ kind: 'refused'; code: string } {
+	const patch = architectureCandidatePatch(document, intent);
+	if (!patch) return { kind: 'refused', code: 'unsupported_geometry' };
+	const candidate = spliceWallFirstArchitectureCandidate(document, patch);
+	if (exceedsLayoutWallSpan(candidate, patch.affectedWallIds)) return { kind: 'refused', code: 'dimension_out_of_range' };
+	const failure = preflightWallFirstArchitectureCandidate(document, intent, sampling, scope);
+	if (failure) return {
+		kind: 'refused',
+		code: failure.code === 'unsupported_wall_topology' ? 'topology_invalid' : failure.code
+	};
+	if (document.openings.length > 0) {
+		const index = ensureLayoutWorldIndex(document);
+		if (index === undefined) {
+			const [issue] = validateWallFirstOpeningSet(candidate, sampling);
+			if (issue) return { kind: 'refused', code: issue.code };
+		} else {
+			const openings = patch.affectedWallIds.flatMap((id) => index.openingsByWallId.get(id) ?? []);
+			if (openings.length > 0) {
+				const points = new Map<string, LayoutVec2>();
+				const walls = new Map<string, LayoutWall>();
+				for (const wallId of patch.affectedWallIds) {
+					const wallIndex = index.wallIndexById.get(wallId);
+					const wall = wallIndex === undefined ? undefined : candidate.walls[wallIndex];
+					if (wall === undefined) continue;
+					walls.set(wallId, wall);
+					for (const id of [wall.startJunctionId, wall.endJunctionId]) {
+						const point = patch.junctionPoints.get(id) ?? index.pointById.get(id);
+						if (point !== undefined) points.set(id, point);
+					}
+				}
+				const [issue] = validateWallFirstOpeningSubset(
+					candidate, openings.sort((a, b) => a.index - b.index), { pointById: points, wallById: walls }, sampling
+				);
+				if (issue) return { kind: 'refused', code: issue.code };
+			}
+		}
+	}
+	return { kind: 'pending', walls: sampleArchitectureProposal(candidate, patch.affectedWallIds, sampling) };
 }
 
 /**

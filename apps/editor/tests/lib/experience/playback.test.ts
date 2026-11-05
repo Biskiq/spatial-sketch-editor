@@ -14,7 +14,7 @@ import {
 	prepareUnitRuntime,
 	type ExecutionProgram
 } from '@portfolio/project-model/units';
-import type { CameraGraph } from '@portfolio/camera-core';
+import { formatGuideTime, type CameraGraph } from '@portfolio/camera-core';
 import { experienceEnvelope, LOWERING_OPTIONS } from './fixtures';
 import {
 	createExperiencePlayback,
@@ -161,5 +161,34 @@ describe('R217.S30 playback', () => {
 		expect(guide).toContain('--shell-touch-target, 44px');
 		expect(guide).toContain('min-height: 44px');
 		expect(guide).not.toContain('Comes with Camera playback');
+	});
+});
+
+describe('Review round 3 — the Guide reads like a video timeline', () => {
+	it('a pressed Stop moves the playhead into the whole run, paused, and a playing run keeps playing', async () => {
+		const input = await source();
+		const playback = createExperiencePlayback(() => input);
+		playback.seekStop('stop-2');
+		expect(playback.status).toBe('paused');
+		expect(playback.activeStopId).toBe('stop-2');
+		// The run is the Guide's own, from its entry: not a run that starts at Stop 2.
+		expect(playback.map?.stopEntries[0]?.stopId).toBe('stop-1');
+		const entry = playback.map!.stopEntries.find((candidate) => candidate.stopId === 'stop-2')!;
+		expect(playback.elapsedLabel).toBe(formatGuideTime(entry.startSeconds));
+
+		playback.seekStop('stop-1');
+		playback.playPause();
+		expect(playback.status).toBe('playing');
+		playback.seekStop('stop-2');
+		expect(playback.status).toBe('playing');
+		expect(playback.activeStopId).toBe('stop-2');
+	});
+
+	it('has no Play-from menu: ▶ plays from the playhead, and pressing a Stop or a move seeks', () => {
+		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
+		expect(guide).not.toContain('Play from…');
+		expect(guide).not.toContain('transport-menu');
+		expect(guide).toContain("playback.seekStop(stopId, 'start')");
+		expect(guide).toContain("playback.seekStop(stopId, 'end')");
 	});
 });

@@ -913,11 +913,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// Capture on the pressed marker, not the Stage: the SVG circle keeps its
 		// click/double-click target for the whole press, including a no-move click.
 		const capture = event.target instanceof Element ? event.target : null;
-		if (capture === null) {
+		if (capture === null || !capturePointer(capture, event.pointerId)) {
 			session.gesture()?.release();
 			return;
 		}
-		capture.setPointerCapture(event.pointerId);
 		clearHover();
 		viewEdit = {
 			viewId,
@@ -1049,8 +1048,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			notice = 'Point at the Floor to place a View.';
 			return;
 		}
+		if (!capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
 		placementPress = { pointerId: event.pointerId, start: point, css: absoluteCss(event) };
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		placementGhost = placementPose(point, point);
 	}
 
@@ -1117,8 +1116,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function beginReaim(event: PointerEvent): void {
 		if (event.button !== 0 && event.button !== 2) return;
 		if (lookThroughPointers.size >= 2 || (lookThroughPointers.size > 0 && event.pointerType !== 'touch')) return;
+		if (!capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
 		lookThroughPointers.set(event.pointerId, { x: event.clientX, y: event.clientY, truck: event.button === 2 });
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 	}
 
 	function moveReaim(event: PointerEvent): void {
@@ -3051,7 +3050,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// R217.S22 (D36): an authored gesture is a non-navigation lease. The Card fades while
 		// it lives. A navigation press (pan, orbit, zoom) never fades the Card.
 		const lease = session.gesture();
-		const gesturing = lease !== null && lease.navigation !== true;
+		// Review round 3 (sheet §24, Card only): a camera edit keeps the Card clear, so its
+		// framing and picture read beside the camera being moved. Other authored gestures fade it.
+		const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');
+		const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;
 		if (gesturing !== cardGesturing) cardGesturing = gesturing;
 		// Look through renders the real picture inside its 16:10 capture frame; the
 		// same measured rect is both Camera's evaluation and the Canvas scissor.
@@ -3815,6 +3817,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	/** Camera's pointerRay consumes absolute viewport CSS. */
+	/** Capture a pointer, reporting failure instead of throwing: `setPointerCapture`
+	 * throws NotFoundError for a pointer that has already ended, and every caller must
+	 * then roll back whatever lease, press or session it claimed before capturing. */
+	function capturePointer(target: Element, pointerId: number): boolean {
+		try {
+			target.setPointerCapture(pointerId);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	function absoluteCss(event: PointerEvent): [number, number] {
 		return [event.clientX, event.clientY];
 	}
@@ -3866,7 +3880,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				const claimed = hostTool.down({ css, evaluationId: pointerEvaluationId, coarse });
 				refreshHostTools();
 				if (claimed) {
-					(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+					if (!capturePointer(event.currentTarget as HTMLElement, event.pointerId)) {
+						hostTool.cancel();
+						refreshHostTools();
+						return;
+					}
 					if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
 						hostTool.cancel();
 						refreshHostTools();
@@ -3895,8 +3913,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					...(handleId === undefined ? {} : { handleId }),
 					...(handleAdapterId === undefined ? {} : { handleAdapterId })
 				}).claimed) return false;
-				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-				if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+				if (
+					!capturePointer(event.currentTarget as HTMLElement, event.pointerId) ||
+					press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused'
+				) {
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
 					return true;
 				}
@@ -3954,8 +3974,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			notice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
 			return;
 		}
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+		// A capture that throws (the pointer already ended) must hand the lease back,
+		// or every later gesture is refused against a press that no longer exists.
+		if (
+			!capturePointer(event.currentTarget as HTMLElement, event.pointerId) ||
+			press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused'
+		) {
 			// Defensive: the lease said yes but the tracker already has a live press.
 			session.gesture()?.release();
 			return;
@@ -4989,6 +5013,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const target = controller.backTarget;
 		if (target === null) return null;
 		if (parent !== null && JSON.stringify(parent) === JSON.stringify(target)) return null;
+		// Review round 3: stepping between siblings (Stop ‹ › Stop) is not a drill-in, so the
+		// Card names no "back" to the sibling it came from; Alt+← still returns there.
+		if (controller.subject !== null && controller.subject.kind === target.kind) return null;
 		return {
 			label: controller.subjectName(target),
 			onBack: () => {
@@ -5866,6 +5893,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						<ExperienceMarks
 							{evaluation}
 							{placementGhost}
+							liveEdit={viewEdit === null ? null : { viewId: viewEdit.viewId, kind: viewEdit.kind, start: viewEdit.start, eye: viewEdit.eye, target: viewEdit.target, moved: viewEdit.moved }}
 							rig={playback.status === 'idle' ? null : playback.sample}
 							onLookThrough={lookThroughView}
 							{showMarkers}
@@ -5878,16 +5906,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							endPathDragLease={endPathDragLease}
 						/>
 					{/if}
-					{#if viewEditPreview !== null}
-						<svg class="view-edit-preview" data-view-edit-ghost aria-hidden="true">
-							{#if viewEditPreview.turn !== null}
-								<path class="turn-wedge" d={viewEditPreview.turn.wedge} />
-								<path class="turn-arc" d={viewEditPreview.turn.arc} />
-								<text class="turn-angle" x={viewEditPreview.turn.labelAt[0]} y={viewEditPreview.turn.labelAt[1]} text-anchor="middle" dominant-baseline="middle">{viewEditPreview.turn.label}</text>
-							{:else if viewEditPreview.kind === 'move' && viewEditPreview.target !== null}
-								<line x1={viewEditPreview.eye[0]} y1={viewEditPreview.eye[1]} x2={viewEditPreview.target[0]} y2={viewEditPreview.target[1]} />
-							{/if}
-							<circle class="eye" cx={viewEditPreview.eye[0]} cy={viewEditPreview.eye[1]} r="4" />
+					{#if viewEditPreview !== null && viewEditPreview.turn !== null && viewEdit?.moved}
+						<!-- Review round 3 (sheet §23): the View itself turns live and ExperienceMarks
+						     draws the start-pose ghost; this layer adds only the arc and the angle. -->
+						<svg class="view-edit-preview" data-view-edit-turn aria-hidden="true">
+							<path class="turn-arc" d={viewEditPreview.turn.arc} />
+							<text class="turn-angle" x={viewEditPreview.turn.labelAt[0]} y={viewEditPreview.turn.labelAt[1]} text-anchor="middle" dominant-baseline="middle">{viewEditPreview.turn.label}</text>
 						</svg>
 					{/if}
 				</div>
@@ -6370,7 +6394,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		touch-action: none;
 		cursor: var(--cursor-select);
 	}
-	.stage[data-cursor='move'] { cursor: var(--cursor-grab); }
 	.stage[data-cursor='turn'] { cursor: var(--cursor-turn); }
 	.stage[data-cursor='grabbing'] { cursor: var(--cursor-grabbing); }
 	.stage[data-cursor='look'] { cursor: var(--cursor-look); }
@@ -6555,21 +6578,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		height: 100%;
 		overflow: visible;
 		pointer-events: none;
-	}
-	.view-edit-preview line {
-		stroke: var(--shell-gold, #d4ad45);
-		stroke-width: 2;
-		stroke-dasharray: 6 4;
-	}
-	.view-edit-preview .eye {
-		fill: #fff;
-		stroke: var(--shell-gold, #d4ad45);
-		stroke-width: 2;
-	}
-	.view-edit-preview .turn-wedge {
-		fill: color-mix(in srgb, var(--shell-gold, #d4ad45) 22%, transparent);
-		stroke: var(--shell-gold, #d4ad45);
-		stroke-width: 1.4;
 	}
 	.view-edit-preview .turn-arc {
 		fill: none;
@@ -6805,10 +6813,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		color: var(--shell-gold, #d4ad45);
 		font-weight: 600;
 	}
-	/* Look through's one HUD: top left of the Stage, clear of the Card and the toolbar. */
+	/* Center Look through in the part of the Stage that the Index leaves visible. */
 	.mode-pill.through-pill {
-		left: 16px;
-		transform: none;
+		--through-index-cover: var(--index-cover, 0px);
+		left: calc((100% + var(--through-index-cover)) / 2);
+		width: max-content;
+		max-width: calc(100% - var(--through-index-cover) - 1.5rem);
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+	@media (width <= 1100px) {
+		.editor-body[data-index-open='true'] .through-pill {
+			--through-index-cover: min(var(--shell-index-width), 256px, 80%);
+		}
+	}
+	@media (width <= 440px) {
+		.editor-body[data-index-open='true'] .through-pill {
+			/* The narrow Index leaves too little room beside it for the controls. */
+			--through-index-cover: 0px;
+			z-index: 21;
+		}
 	}
 	.through-confirm {
 		position: absolute;

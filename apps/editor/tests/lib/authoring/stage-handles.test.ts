@@ -694,6 +694,6 @@ describe('R217.S14 — candidate outlines follow boundary segments', () => {
 		);
 		expect(overlay).not.toContain('<path class="candidate-fill"');
 		expect(overlay).not.toContain('<path class="candidate-edge" d={polygonPath(polygon)} />');
-		expect(overlay).toContain('<line class="candidate-edge"');
+		expect(overlay).toContain('<path class="candidate-edge" d={candidatePath(candidate.segments)}');
 	});
 });

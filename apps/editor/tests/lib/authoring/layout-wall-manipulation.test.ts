@@ -24,6 +24,7 @@ import {
 	planCreateWallFirstOpening,
 	planExactJunctionMove,
 	planWallChain,
+	setWorkObserver,
 	type LayoutDocumentWallFirst,
 	type LayoutWall,
 	type PlanSourceRef
@@ -58,7 +59,7 @@ import { typedLengthTiming } from '../../../perf/lib/spot-measurement';
 import type { PerfRecord } from '$lib/platform/perf-marks';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { pointerWallRequest } from '$lib/authoring/adapters/layout/wall-gesture';
-import { resolveJunctionPointSnap } from '$lib/authoring/adapters/layout/snap';
+import { resolveJunctionPointSnap, resolvePlanarDragSnap, snapWallDrag } from '$lib/authoring/adapters/layout/snap';
 import { STAGE_MARK_GLYPH_CSS } from '$lib/authoring/stage/stage-handles';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -692,7 +693,15 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const shifted = stageCss(mounted.facade, [3.5, 0.5]);
 
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
-		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
+		const spans: string[] = [];
+		const observer = setWorkObserver({ span: (name) => spans.push(name), count: () => {} });
+		try {
+			mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
+			expect(mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall')).toBe(true);
+		} finally {
+			setWorkObserver(observer);
+		}
+		expect(spans.filter((name) => name.includes('compile'))).toEqual([]);
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.50 m'))).toBe(true);
 		// A body drag moves **both** junctions, so every Wall sharing either endpoint
 		// is reshaped. The overlay must name the full reach, not only the neighbour
@@ -1631,7 +1640,33 @@ describe('R217.S15 — gesture numeric entry', () => {
 });
 
 describe('R217.S15 — Junction snap policy', () => {
-	it('prefers the orthogonal guide from the Wall’s other end, then the 0.5 grid, and Alt frees it', async () => {
+	it('moves freely between targets and cannot snap a short Wall slide back to zero', async () => {
+		const { facade } = await mount();
+		const drafting = facade.drafting();
+		const projected = (a: number, b: number) => Math.abs(a - b) * 60;
+		expect(snapWallDrag(.05, drafting, projected)).toEqual({ value: .05, snapped: false });
+		expect(snapWallDrag(.54, drafting, projected)).toEqual({ value: .5, snapped: true });
+		expect(snapWallDrag(.58, drafting, projected)).toEqual({ value: .58, snapped: false });
+		// Even when zoomed far out, the 4 px radius cannot consume the whole cell.
+		expect(snapWallDrag(.73, drafting, (a, b) => Math.abs(a - b) * 5))
+			.toEqual({ value: .73, snapped: false });
+	});
+
+	it('acquires a diagonal and a distance together, with no quantization between targets', async () => {
+		const { facade } = await mount();
+		const drafting = facade.drafting();
+		const projected = (a: readonly [number, number], b: readonly [number, number]) =>
+			Math.hypot(a[0] - b[0], a[1] - b[1]) * 60;
+		const both = resolvePlanarDragSnap([0, 0], [.72, .70], drafting, projected);
+		expect(both.winner?.name).toBe('Aligned · Grid');
+		expect(both.point[0]).toBeCloseTo(both.point[1], 9);
+		expect(Math.hypot(...both.point)).toBeCloseTo(1, 9);
+		for (const point of [[.13, .08], [.21, .15]] as const) {
+			expect(resolvePlanarDragSnap([0, 0], point, drafting, projected)).toMatchObject({ point, winner: null });
+		}
+	});
+
+	it('combines the alignment guide with a 0.5 m distance, and Alt frees it', async () => {
 		const mounted = await mount();
 		const geometry = mounted.facade.snapshot().domain.geometry;
 		const snap = resolveJunctionPointSnap({
@@ -1642,8 +1677,7 @@ describe('R217.S15 — Junction snap policy', () => {
 			drafting: mounted.facade.drafting()
 		});
 		expect(snap).not.toBeNull();
-		expect(snap!.point[1]).toBeCloseTo(0, 9);
-		expect(['Aligned', 'Grid']).toContain(snap!.name);
+		expect(snap).toMatchObject({ point: [5.5, 0], name: 'Aligned · Grid' });
 
 		mounted.facade.setDrafting({ snapSuspended: true });
 		expect(
