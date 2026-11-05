@@ -391,3 +391,29 @@ The owner's model is a guided tour with optional exploration. **R1, R3 and R4 ab
 - Exploring pauses the Guide and its channels. Coming back resumes the same playhead, where today the Stop starts over.
 
 This means an Experience format 4 and an execution program v4, with format 3 strictly refused. Camera is unchanged. §30 lists ten open product decisions. R2 (§27) and the pointer-capture fix are not affected.
+
+### Refinement before building Round 4 (sheet §31)
+
+§30's model stays. [Sheet §31](../../../reference/design-system/experience-interaction-sheet.html#s31)
+and [guide-playback-plan.md](./guide-playback-plan.md) refine how it plays (proposal, not built):
+
+- Pacing is one Guide field, `automatic` (the default) or `manual`. Per-Stop "until Next" goes, and so do Gates.
+- Next always works. Explore is in the bar at every Stop. Back to the tour restores the playhead and the
+  play or pause, with a 2 s lead-in.
+- A Stop can invite exploring. Ignoring the invitation never interrupts an Automatic tour.
+
+The same format 4 and program v4 bump covers §30 and §31, and Camera is unchanged. §31 answers §30's ten
+open decisions and lists eleven of its own for the owner.
+
+**Owner picks (2026-11-04):** §31 Q1–Q9 as recommended. Q10: no old-version support. Q11: leave room
+for narration only. Control placement goes to [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#s32)
+(proposal).
+
+**Sheet consolidated (2026-11-04):** the interaction sheet now shows one settled design. Superseded
+sections were removed: §6 (old Guide strip, now in §25), §26 (Stop Card View rows), §29 (Travel time vs
+hold) and §30, whose model and contracts are folded into §31. Settled choices are fixed in place, and
+the remaining option rows are demo switches. The section numbers cited in this plan's history still
+refer to the sheet as it was then.
+
+**§32 accepted (2026-11-04):** every recommendation, plus one owner request: a long Presentation View
+list folds to the first 8 Views behind *Show all*, and opened it scrolls in its own box, never the whole Card.
