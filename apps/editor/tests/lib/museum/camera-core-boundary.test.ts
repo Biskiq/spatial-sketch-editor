@@ -55,7 +55,7 @@ function sourceFiles(root: string): string[] {
  * `getFlowLoopConnectionId`) with the Scene order fields; the Camera evaluator
  * below is the surviving route authority.
  */
-describe('one navigation system — single route evaluator', () => {
+describe('[cap:camera.one-authority core] one navigation system — single route evaluator', () => {
   const repoRoot = resolve(appSrc, '../../..');
 
   function packageExportingOwners(symbol: string): string[] {

@@ -180,7 +180,7 @@ function resourceReference(contentRevision: string, kind: string, id: string): S
 	};
 }
 
-describe('F.4 unit acceptance — the enduring lifecycle with a wider admission', () => {
+describe('[cap:experience.atomic-acceptance core] F.4 unit acceptance — the enduring lifecycle with a wider admission', () => {
 	it('installs one compound/unit result through the same coordinator and history', async () => {
 		const registry = createUnitPlannerRegistry<Source>();
 		expect(registry.register(cameraViewPlanner())).toEqual({ kind: 'registered' });

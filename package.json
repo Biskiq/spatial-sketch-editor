@@ -33,6 +33,7 @@
     "test:heavy": "npm run test:heavy -w @portfolio/editor",
     "test:full": "npm run test:full -w @portfolio/editor",
     "test:api": "npm run test -w @biskiq/api",
+    "status": "node tools/harness/status.mjs",
     "perf": "npm run perf -w @portfolio/editor",
     "perf:spot": "npm run perf:spot -w @portfolio/editor",
     "perf:bundle": "npm run perf:bundle -w @portfolio/editor"
