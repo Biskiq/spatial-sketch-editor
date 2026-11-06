@@ -177,6 +177,13 @@ async function selectFirstWall(): Promise<void> {
 }
 
 beforeEach(async () => {
+	// Browser-local app preferences persist across mounts, so a test that changes
+	// one would otherwise seed every later mount's reading transition.
+	try {
+		globalThis.localStorage?.clear();
+	} catch {
+		// A runtime without web storage cannot have persisted a preference.
+	}
 	frames = new Map();
 	frameId = 0;
 	vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { frames.set(++frameId, cb); return frameId; });
