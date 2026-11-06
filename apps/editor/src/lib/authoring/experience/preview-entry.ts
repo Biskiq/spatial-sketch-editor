@@ -157,7 +157,7 @@ export function previewEntryFor(input: {
 
 	// 1. An open Guide starts at its own entry Stop (its authored start, Stop 1 by
 	// default), never at the Stop the editor has focused: the welcome's guided tour
-	// begins there. Lowering with no explicit entry uses the Guide's `entryStopId`.
+	// begins there. Lowering with no explicit entry starts at the Guide's first Stop.
 	const openGuide = focus.guideId === null
 		? null
 		: experience.guides.find((guide) => guide.id === focus.guideId) ?? null;

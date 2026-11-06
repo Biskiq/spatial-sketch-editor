@@ -441,7 +441,7 @@ export function experienceUpdateIntent(input: {
 	);
 }
 
-/** R217.S26 — rename a Guide, choose where it starts (E6), or set its pacing (sheet §31). */
+/** R217.S26 — rename a Guide or set its pacing (sheet §31). */
 export function guideUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;
@@ -449,7 +449,6 @@ export function guideUpdateIntent(input: {
 	readonly experienceId: string;
 	readonly guideId: string;
 	readonly label?: string;
-	readonly entryStopId?: string;
 	readonly pacing?: ExperienceGuidePacing;
 }): AuthoringIntent {
 	return intent(
@@ -459,7 +458,6 @@ export function guideUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'guide', input.guideId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
-			...(input.entryStopId === undefined ? {} : { entryStopId: input.entryStopId }),
 			...(input.pacing === undefined ? {} : { pacing: input.pacing })
 		},
 		[]

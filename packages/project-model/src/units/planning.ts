@@ -922,7 +922,7 @@ export function createCaptureBindPlanner(
 			}
 			if (newGuide !== null) {
 				changes.push(
-					{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId', 'pacing'] },
+					{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'pacing'] },
 					{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }
 				);
 				correspondence.push({
@@ -1085,7 +1085,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 					sourceVersion: request.snapshot.sourceVersion,
 					source: candidate,
 					changes: [
-						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId', 'pacing'] },
+						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'pacing'] },
 						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'] },
 						...(firstGuide ? [{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }] : [])
 					],
@@ -1264,7 +1264,7 @@ const GUIDE_ORDER_PAYLOAD_KEYS = ['guideId', 'stopIds'] as const;
  * Targets: exactly one `experience:experience` reference. The payload must be a
  * permutation of the Guide's authored `stopIds`: insertion and removal have their
  * own operations, and an index-keyed move is exactly the identity confusion this
- * rule prevents. `entryStopId` is untouched.
+ * rule prevents. The Experience's `entryGuideId` is untouched.
  */
 export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
