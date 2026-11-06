@@ -76,11 +76,19 @@ export function parseTap(text) {
 	let failed = 0;
 	let skipped = 0;
 	for (const line of text.split('\n')) {
-		const match = /^(not )?ok\s+\d+/.exec(line);
+		const match = /^\s*(not )?ok\s+\d+/.exec(line);
 		if (!match) continue;
+		// A nested subtest skip still means a contract did not execute; count the
+		// skip, but keep the test total to top-level contracts.
+		if (/#\s*SKIP\b/i.test(line)) {
+			skipped += 1;
+			if (/^\s/.test(line)) continue;
+			tests += 1;
+			continue;
+		}
+		if (/^\s/.test(line)) continue;
 		tests += 1;
-		if (/#\s*SKIP\b/i.test(line)) skipped += 1;
-		else if (match[1]) failed += 1;
+		if (match[1]) failed += 1;
 		else passed += 1;
 	}
 	return { tests, passed, failed, skipped };
