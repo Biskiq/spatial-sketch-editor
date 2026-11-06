@@ -266,16 +266,7 @@
 		<section class="c-sec" aria-labelledby="stop-stay-title">
 			<h3 id="stop-stay-title">Stay</h3>
 			{#if manual}
-				<button
-					type="button"
-					class="link-row"
-					data-stay="until-next"
-					title="Pacing is set on the Guide Card"
-					onclick={() => transportGuideId !== null && homes.select({ kind: 'guide', guideId: transportGuideId })}
-				>
-					<span><b>Until Next</b> · set by the Guide</span>
-					<ShellIcon name="chevronRight" size={12} />
-				</button>
+				<p class="c-foot-note" data-stay="until-next"><b>Until Next</b> · set on the Guide strip.</p>
 				<p class="c-foot-note">Its time, {stayLabel(stop.staySeconds)}, is kept for switching back to Automatic.</p>
 			{:else}
 				<div class="stay-row">

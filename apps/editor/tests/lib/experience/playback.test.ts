@@ -146,9 +146,9 @@ describe('R217.S30 playback', () => {
 		expect(page).toContain('previewMode: (mode, guideId) => void openPreview(mode, guideId)');
 		expect(guide).not.toContain('createExperiencePlayback');
 		expect(guide).toContain('data-view-span');
-		// The Card writers request transport through the host; only the host opens
-		// the target Guide and commands the one clock.
-		expect(readFileSync('src/lib/authoring/experience/ExperienceGuideWriter.svelte', 'utf8')).toContain("playGuide(guideId, { kind: 'start' })");
+		// The strip requests transport through the host; only the host opens the
+		// target Guide and commands the one clock. The Experience Card has no transport.
+		expect(readFileSync('src/lib/authoring/experience/ExperienceExperienceWriter.svelte', 'utf8')).not.toContain('playGuide(');
 		expect(readFileSync('src/lib/authoring/experience/ExperienceStopWriter.svelte', 'utf8')).toContain("kind: 'stop'");
 		expect(readFileSync('src/lib/authoring/experience/ExperienceTransitionWriter.svelte', 'utf8')).toContain("kind: 'move'");
 		expect(page).toContain('playback: () => playback');

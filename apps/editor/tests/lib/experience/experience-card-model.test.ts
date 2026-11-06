@@ -8,8 +8,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	PRESENTATION_WRITER_FIELDS,
 	STOP_WRITER_FIELDS,
-	guideCardModel,
-	guideSourceId,
+	experienceCardModel,
+	experienceSourceId,
 	presentationCardModel,
 	presentationSourceId,
 	stopCardModel,
@@ -181,25 +181,25 @@ describe('transitionCardModel', () => {
 	});
 });
 
-describe('guideCardModel', () => {
-	it('names a Guide with the Guide kind word, its label and its Stop count', () => {
-		const model = guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 3 });
+describe('experienceCardModel', () => {
+	it('names the Experience itself, with its Guide count and no Reaches facts (D-2)', () => {
+		const model = experienceCardModel({ experienceId: 'experience-1', label: 'Walk', guideCount: 2 });
 		expect(model.identity).toEqual({
-			sourceId: guideSourceId('guide-1'),
-			label: 'Tour',
-			kind: 'Guide',
-			status: '3 Stops'
+			sourceId: experienceSourceId('experience-1'),
+			label: 'Walk',
+			kind: 'Experience',
+			status: '2 Guides'
 		});
-		expect(model.identity.sourceId).toBe('experience:guide:guide-1');
+		expect(model.identity.sourceId).toBe('experience:experience:experience-1');
 		expect(model.facts).toEqual([]);
 	});
 
-	it('states an empty Guide as having no Stops yet', () => {
-		expect(guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 0 }).identity.status).toBe('No Stops yet');
+	it('states an Experience with no Guide yet', () => {
+		expect(experienceCardModel({ experienceId: 'experience-1', label: 'Walk', guideCount: 0 }).identity.status).toBe('No Guides yet');
 	});
 
-	it('uses the singular for a single Stop', () => {
-		expect(guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 1 }).identity.status).toBe('1 Stop');
+	it('uses the singular for one Guide', () => {
+		expect(experienceCardModel({ experienceId: 'experience-1', label: 'Walk', guideCount: 1 }).identity.status).toBe('1 Guide');
 	});
 });
 

@@ -755,7 +755,7 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 });
 
 describe('R217.S25 — the Guide instrument (D3)', () => {
-	it('an Index Guide row opens the instrument with that Guide active and selects the Guide Card', async () => {
+	it('an Index Guide row opens the instrument with that Guide active and keeps the Experience Card', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
 		expect(guideRow('guide-1')?.textContent).toContain('Main');
@@ -768,7 +768,9 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(guidePanel()).not.toBeNull();
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('true');
 		expect(guideRow('guide-1')?.querySelector('.chip')?.textContent).toBe('Open');
-		expect(cardKind()).toBe('Guide');
+		// D-2/R33: no Guide Card subject; the Experience Card stays.
+		expect(cardKind()).toBe('Experience');
+		expect(experienceFocus.subject).toEqual({ kind: 'experience' });
 		expect(guidePanel()!.querySelectorAll('[aria-label="Stops in Main"] button.stop-card')).toHaveLength(2);
 	});
 
@@ -780,8 +782,8 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		await frame();
 		expect(guidePanel()).not.toBeNull();
 		expect(guideRow('guide-1')?.querySelector('.chip')?.textContent).toBe('Open');
-		// The key opens context only: no Card subject appears.
-		expect(card()).toBeNull();
+		// The key opens context only: no subject appears, and the Experience Card remains.
+		expect(cardKind()).toBe('Experience');
 		expect(experienceFocus.subject).toBeNull();
 
 		dockGuide().click();
@@ -816,7 +818,7 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(cardKind()).toMatch(/^Stop 1 of 2/);
 
 		await pressEscape();
-		expect(card()).toBeNull();
+		expect(cardKind()).toBe('Experience');
 		expect(experienceFocus.subject).toBeNull();
 		expect(guidePanel()).not.toBeNull();
 
@@ -967,7 +969,7 @@ describe('R217.S25 — one Card selection (D10)', () => {
 		await vi.waitFor(() => expect(experienceFocus.subject).toBeNull());
 		await frame();
 		expect(presentationRows()).toHaveLength(0);
-		expect(card()).toBeNull();
+		expect(cardKind()).toBe('Experience');
 	});
 
 	it('a Stage Wall pick replaces a selected Stop but keeps the active Guide as context', async () => {
@@ -1177,7 +1179,7 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 			'src/lib/authoring/experience/ExperienceStopWriter.svelte',
 			'src/lib/authoring/experience/ExperienceViewWriter.svelte',
 			'src/lib/authoring/experience/ExperienceTransitionWriter.svelte',
-			'src/lib/authoring/experience/ExperienceGuideWriter.svelte',
+			'src/lib/authoring/experience/ExperienceExperienceWriter.svelte',
 			'src/lib/authoring/experience/ExperienceSubjectWriter.svelte',
 			'src/lib/authoring/stage/shell/EditorIndex.svelte',
 			'src/lib/authoring/stage/shell/EditorCard.svelte'
@@ -1234,7 +1236,7 @@ describe('R217.S26 — structure and removal through the route', () => {
 		block.querySelector<HTMLButtonElement>('[data-card-consequence-run]')!.click();
 
 		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stops'));
-		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
+		expect(experienceFocus.subject).toBeNull();
 		expect(target.querySelector('.experience-feedback')?.textContent).toBe('Stop 2 removed. Main has 1 Stop.');
 
 		expect((await acceptance().undo()).kind).toBe('installed');
@@ -1291,16 +1293,13 @@ describe('R217.S26 — structure and removal through the route', () => {
 	});
 });
 
-it('R217.S27 writes welcome text on blur through More on the Guide Card', async () => {
+it('R217.S27/R33 writes welcome text on blur on the Experience Card, its only home', async () => {
 	await remountRouteWith(await seededExperienceProject());
 	await enterExperience();
-	experienceFocus.select({ kind: 'guide', guideId: 'guide-1' });
-	await frame();
-	expect(card()?.querySelector('textarea')).toBeNull();
-	card()!.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
+	experienceFocus.select({ kind: 'experience' });
 	await frame();
 
-	const welcome = card()!.querySelector<HTMLTextAreaElement>('[data-card-more-section] textarea')!;
+	const welcome = card()!.querySelector<HTMLTextAreaElement>('textarea')!;
 	expect(welcome.maxLength).toBe(600);
 	welcome.value = 'Welcome to the gallery.';
 	welcome.dispatchEvent(new Event('input', { bubbles: true }));

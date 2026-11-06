@@ -1,6 +1,6 @@
 <script lang="ts">
 	/** Ephemeral scope locator over accepted source relationships. Selection, scope and Camera requests stay distinct. */
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { membershipLabel } from './index-labels';
 
 	import ShellIcon from './ShellIcon.svelte';
@@ -88,6 +88,47 @@
 	let renamingExperience = $state(false);
 	let experienceDraft = $state('');
 	let renameBusy = $state(false);
+	/* D-2: a Guide's name renames in place on its Index row; its ⋯ menu renames or removes it. */
+	let renamingGuideId = $state<string | null>(null);
+	let guideDraft = $state('');
+	let guideMenuId = $state<string | null>(null);
+	let guideBusy = $state(false);
+	let guideRenameInput = $state<HTMLInputElement | null>(null);
+
+	function startGuideRename(guideId: string, label: string): void {
+		guideMenuId = null;
+		renamingGuideId = guideId;
+		guideDraft = label;
+		void tick().then(() => {
+			guideRenameInput?.focus();
+			guideRenameInput?.select();
+		});
+	}
+	function cancelGuideRename(): void {
+		renamingGuideId = null;
+		guideDraft = '';
+	}
+	async function commitGuideRename(): Promise<void> {
+		const guideId = renamingGuideId;
+		if (guideId === null || guideDraft.trim() === '' || !experience) return;
+		guideBusy = true;
+		const result = await experience.onRenameGuide(guideId, guideDraft.trim());
+		guideBusy = false;
+		if (result.kind === 'accepted') cancelGuideRename();
+	}
+	function onGuideRenameKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			void commitGuideRename();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelGuideRename();
+		}
+	}
+	function toggleGuideMenu(guideId: string): void {
+		guideMenuId = guideMenuId === guideId ? null : guideId;
+	}
 	let renameError = $state<string | null>(null);
 	function startExperienceRename(): void {
 		if (!experience) return;
@@ -253,8 +294,10 @@
 			event.stopPropagation();
 		}
 	}
+	if (event.key === 'Escape' && guideMenuId !== null) guideMenuId = null;
 }} onpointerdown={(event) => {
 	if (!(event.target instanceof Element) || !event.target.closest('.world-location, #world-locations')) locationsOpen = false;
+	if (!(event.target instanceof Element) || !event.target.closest('.guide-menu-wrap')) guideMenuId = null;
 }} />
 
 <nav
@@ -456,21 +499,64 @@
 			<section class="group" aria-labelledby="index-guides">
 				<h3 id="index-guides" class="group-title">Guides</h3>
 				{#each experience.guides as guide (guide.id)}
-					<div class="item" class:selected={guide.selected} class:open={guide.open} data-guide-id={guide.id}>
-						<button
-							type="button"
-							class="guide-row"
-							aria-current={guide.selected ? 'true' : undefined}
-							onclick={() => experience.onOpenGuide(guide.id)}
-						>
-							<ShellIcon name="guide" size={15} />
-							<span class="item-text">
-								<span class="item-name">{guide.label}</span>
-								<span class="item-meta">{guide.stopCount} stops</span>
-							</span>
-							{#if guide.opening}<span class="opens-tag" data-opening-guide>opens</span>{/if}
-							{#if guide.open}<span class="chip">Open</span>{/if}
-						</button>
+					<div class="item" class:open={guide.open} data-guide-id={guide.id}>
+						{#if renamingGuideId === guide.id}
+							<input
+								class="guide-rename-input"
+								type="text"
+								aria-label="Guide name"
+								bind:value={guideDraft}
+								bind:this={guideRenameInput}
+								disabled={guideBusy}
+								onkeydown={onGuideRenameKeydown}
+								onblur={() => void commitGuideRename()}
+							/>
+						{:else}
+							<div class="guide-line">
+								<button
+									type="button"
+									class="guide-row"
+									onclick={() => experience.onOpenGuide(guide.id)}
+								>
+									<ShellIcon name="guide" size={15} />
+									<span class="item-text">
+										<span class="item-name">{guide.label}</span>
+										<span class="item-meta">{guide.stopCount} stops</span>
+									</span>
+									{#if guide.opening}<span class="opens-tag" data-opening-guide>opens</span>{/if}
+									{#if guide.open}<span class="chip">Open</span>{/if}
+								</button>
+								<span class="guide-menu-wrap">
+									<button
+										type="button"
+										class="icon guide-actions-toggle"
+										aria-label={`${guide.label} actions`}
+										aria-haspopup="menu"
+										aria-expanded={guideMenuId === guide.id}
+										onclick={() => toggleGuideMenu(guide.id)}
+									>⋯</button
+									>
+									{#if guideMenuId === guide.id}
+										<div class="menu guide-menu" role="menu" tabindex="-1" aria-label={`${guide.label} actions`}>
+											<button
+												type="button"
+												role="menuitem"
+												onclick={() => startGuideRename(guide.id, guide.label)}>Rename</button
+											>
+											<button
+												type="button"
+												role="menuitem"
+												class="danger"
+												onclick={() => {
+													guideMenuId = null;
+													experience.onRemoveGuide(guide.id);
+												}}>Remove Guide</button
+											>
+										</div>
+									{/if}
+								</span>
+							</div>
+						{/if}
 					</div>
 				{:else}
 					<div class="item">
@@ -983,6 +1069,74 @@
 		background: var(--shell-leaf-tint, #e7f1ea);
 	}
 	/* Round 2 irow: one 28 px line, the stop count on the right. */
+	.guide-line {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+	}
+	.guide-line .guide-row {
+		flex: 1;
+		min-width: 0;
+	}
+	.guide-menu-wrap {
+		position: relative;
+		display: inline-flex;
+		flex: none;
+	}
+	.guide-actions-toggle {
+		width: 24px;
+		height: 24px;
+		min-height: 24px;
+		padding: 0;
+		justify-content: center;
+		opacity: 0;
+	}
+	.item:hover .guide-actions-toggle,
+	.item:focus-within .guide-actions-toggle {
+		opacity: 1;
+	}
+	.guide-menu {
+		position: absolute;
+		top: calc(100% + 2px);
+		right: 0;
+		z-index: 20;
+		display: grid;
+		min-width: 148px;
+		padding: 4px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 8px;
+		background: var(--shell-card, #fff);
+		box-shadow: 0 6px 18px rgb(20 30 24 / 14%);
+	}
+	.guide-menu button {
+		justify-content: flex-start;
+		min-height: 26px;
+		padding: 4px 7px;
+		border: 0;
+		border-radius: 5px;
+		background: transparent;
+		font-size: 11.5px;
+		text-align: left;
+	}
+	.guide-menu button:hover,
+	.guide-menu button:focus-visible {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.guide-menu button.danger {
+		color: var(--shell-refuse, #9b2c2c);
+	}
+	.guide-rename-input {
+		box-sizing: border-box;
+		width: 100%;
+		min-height: 28px;
+		margin: 2px 0;
+		padding: 3px 7px;
+		border: 1px solid var(--shell-forest-raised, #22503c);
+		border-radius: 5px;
+		background: var(--shell-card, #fff);
+		color: var(--shell-ink, #1b201c);
+		font: inherit;
+	}
 	.guide-row {
 		width: 100%;
 		min-height: 28px;

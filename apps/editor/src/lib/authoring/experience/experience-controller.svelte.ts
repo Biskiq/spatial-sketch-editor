@@ -1402,9 +1402,7 @@ export function createExperienceController(
 	/** The parent a removal selects (E4: removing the selected subject selects its parent). */
 	function parentOf(target: ExperienceRemovalTarget): ExperienceSubject | null {
 		if (target.kind === 'view') return { kind: 'presentation', presentationId: target.presentationId };
-		if (target.kind === 'stop' && contextGuide !== null && contextGuide.stopIds.length > 1) {
-			return { kind: 'guide', guideId: contextGuide.id };
-		}
+		// A Stop's parent is the Guide instrument, which is not a Card subject (D-2).
 		return null;
 	}
 
@@ -1415,7 +1413,7 @@ export function createExperienceController(
 			case 'stop':
 				return (subject.kind === 'stop' || subject.kind === 'transition') && subject.stopId === target.stopId;
 			case 'guide':
-				return subject.kind === 'guide' && subject.guideId === target.guideId;
+				return false;
 			case 'presentation':
 				return (subject.kind === 'presentation' || subject.kind === 'view') && subject.presentationId === target.presentationId;
 			case 'view':
@@ -1514,8 +1512,8 @@ export function createExperienceController(
 			case 'stop':
 			case 'transition':
 				return experience.stops.some((entry) => entry.id === candidate.stopId);
-			case 'guide':
-				return experience.guides.some((entry) => entry.id === candidate.guideId);
+			case 'experience':
+				return true;
 		}
 	}
 
@@ -1534,8 +1532,8 @@ export function createExperienceController(
 				return names.stop(candidate.stopId);
 			case 'transition':
 				return `${names.stop(candidate.stopId)} onward`;
-			case 'guide':
-				return names.guide(candidate.guideId);
+			case 'experience':
+				return current?.label ?? 'Experience';
 		}
 	}
 

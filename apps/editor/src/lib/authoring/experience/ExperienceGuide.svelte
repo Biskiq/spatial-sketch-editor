@@ -58,7 +58,6 @@
 	const selectedStopId = $derived(
 		subjectStopId !== null && stops.some((stop) => stop.id === subjectStopId) ? subjectStopId : null
 	);
-	const guideSelected = $derived(subject?.kind === 'guide');
 	/** The Presentation awaiting a first-Guide name (Presentation Add to Guide, or a drop without a name). */
 	const pending = $derived(homes.guideNamePrompt());
 	const pendingLabel = $derived(pending === null ? null : (controller?.presentationLabel(pending) ?? null));
@@ -543,10 +542,6 @@
 		playback.seekStop(stopId, 'end');
 	}
 
-	function selectGuide(): void {
-		if (guide !== null) homes.select({ kind: 'guide', guideId: guide.id });
-	}
-
 	// ---- The + Stop menu ----
 
 	function openMenu(): void {
@@ -961,11 +956,9 @@
 						<button
 							type="button"
 							class="guide-name"
-							class:selected={guideSelected}
-							aria-pressed={guideSelected}
-							title="Show this Guide"
+							title="Rename this Guide"
 							bind:this={nameButton}
-							onclick={selectGuide}
+							onclick={() => void startRename()}
 						>
 							{guide.label}
 						</button>
@@ -1333,9 +1326,6 @@
 	}
 	.guide-name:hover:not(.plain) {
 		border-bottom-color: rgb(255 255 255 / 0.3);
-	}
-	.guide-name.selected {
-		border-bottom-color: var(--shell-leaf-soft, #9fd3b6);
 	}
 	.count {
 		color: var(--shell-ink-quiet, #9fb2a5);
@@ -1806,10 +1796,12 @@
 		.name-input,
 		.chip,
 		.pill-stop {
+			min-height: 44px;
 			min-height: var(--shell-touch-target, 44px);
 		}
 		.icon,
 		.play {
+			width: 44px;
 			min-width: var(--shell-touch-target, 44px);
 		}
 		/* The coarse hit area is 44 px; the visual track stays 8 px. */

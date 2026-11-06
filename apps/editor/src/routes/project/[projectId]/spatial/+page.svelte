@@ -190,7 +190,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
 	import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
 	import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
-	import ExperienceGuideWriter from '$lib/authoring/experience/ExperienceGuideWriter.svelte';
+	import ExperienceExperienceWriter from '$lib/authoring/experience/ExperienceExperienceWriter.svelte';
 	import ExperienceSubjectWriter from '$lib/authoring/experience/ExperienceSubjectWriter.svelte';
 	import {
 		provideExperienceHomes,
@@ -198,7 +198,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	} from '$lib/authoring/experience/experience-homes';
 	import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 	import {
-		guideCardModel,
+		experienceCardModel,
 		presentationCardModel,
 		stopCardModel,
 		subjectCardModel,
@@ -210,6 +210,11 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import type { ComponentProps } from 'svelte';
 	import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
+	import {
+		experienceProblems,
+		loweringProblem,
+		type ExperienceProblem
+	} from '$lib/authoring/experience/experience-problems';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
 	import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
@@ -258,6 +263,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const { diagnostics, closure } = boot.snapshot.domain;
 		return diagnostics.length === 0 && closure.length === 0 ? null : { diagnostics, closure };
 	});
+	/** Plain-language source problems; one validator pass feeds every sentence. */
+	const sourceProblems = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return [] as readonly ExperienceProblem[];
+		return experienceProblems(stageEnvelope(boot.snapshot), boot.snapshot.domain.diagnostics);
+	});
+	/** The last Preview lowering refusal, worded like a source problem. */
+	let previewProblem = $state<ExperienceProblem | null>(null);
 	let facade = $state.raw<StageFacade | null>(null);
 	/**
 	 * The host↔F4 acceptance host for the current project epoch. There is exactly
@@ -528,8 +540,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
 	let expandedPresentationId = $state<string | null>(null);
 	/**
-	 * R217.S25 (D10) — the one Card selection. A Presentation, View, Stop, transition or Guide
-	 * replaces the Stage selection; nothing here moves the Camera.
+	 * R217.S25 (D10) — the one Card selection. A Presentation, View, Stop, transition or the
+	 * Experience replaces the Stage selection; nothing here moves the Camera.
 	 */
 	function selectExperienceSubject(subject: ExperienceSubject | null): void {
 		facade?.select(null);
@@ -1513,8 +1525,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const subject = controller?.subject ?? null;
 		if (controller === null || subject === null) return;
 		const resolves =
-			subject.kind === 'guide'
-				? controller.guides.some((guide) => guide.id === subject.guideId)
+			subject.kind === 'experience'
+				? controller.current !== null
 				: subject.kind === 'view'
 					? controller.selectedView !== null
 					: subject.kind === 'stop' || subject.kind === 'transition'
@@ -1522,12 +1534,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						: controller.selectedPresentation !== null;
 		if (!resolves) untrack(() => experienceFocus.select(null));
 	});
-	// A Guide-type subject (a Stop, a transition or the Guide itself) belongs to the Guide, so its
-	// instrument opens. A Presentation, View or Stage subject never closes it. Lens entry clears the
-	// subject, so this does not fight the closed-on-entry rule in changeLens.
+	// A Stop or transition belongs to the Guide, so its instrument opens. A Presentation, View,
+	// Experience or Stage subject never closes it. Lens entry clears the subject, so this does not
+	// fight the closed-on-entry rule in changeLens.
 	$effect(() => {
 		const kind = activeExperience?.subject?.kind;
-		if (kind !== 'stop' && kind !== 'transition' && kind !== 'guide') return;
+		if (kind !== 'stop' && kind !== 'transition') return;
 		untrack(() => openExperienceGuide());
 	});
 	// The Index opens the selected Presentation's Views. Only its id drives the effect, so a new object
@@ -1703,9 +1715,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				focus
 			});
 			if (entry.kind === 'unavailable') {
+				previewProblem =
+					entry.refusal == null ? null : loweringProblem(stageEnvelope(snapshot), entry.refusal);
 				notice = entry.message;
 				return;
 			}
+			previewProblem = null;
 			perfMark('preview:entry-resolved', { kind: entry.kind });
 			// The visitor surface is its own chunk: the Stage first-load set never
 			// carries it, and a second entry reuses what the first loaded. Only this
@@ -3779,6 +3794,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cardOpen = true;
 	}
 
+	/** Open the Card a problem names; the chip itself never edits the source. */
+	function showProblem(problem: ExperienceProblem): void {
+		if (problem.subject === null) return;
+		if (lens !== 'experience') changeLens('experience');
+		cardOpen = true;
+		const subject = problem.subject;
+		if (subject.kind === 'guide') {
+			// D-2: a Guide has no Card. Show opens its instrument and keeps the Experience Card.
+			const controller = activeExperience;
+			const guide = controller?.guides.find((entry) => entry.id === subject.guideId);
+			if (controller == null || guide === undefined) return;
+			controller.openGuide(guide.id);
+			experienceGuideOpen = true;
+			experienceFocus.select({ kind: 'experience' });
+			return;
+		}
+		experienceFocus.select(subject);
+	}
+
 	function selectSource(sourceId: string): void {
 		const stage = facade;
 		const plan = planView;
@@ -4976,6 +5010,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				onCreateExperience: () => {},
 				onRenameExperience: async () => ({ kind: 'refused' as const }),
 				onOpenGuide: () => {},
+				onRenameGuide: async () => ({ kind: 'refused' as const }),
+				onRemoveGuide: () => {},
 				onSelectPresentation: () => {},
 				onToggleExpand: () => {},
 				onSelectView: () => {}
@@ -5004,7 +5040,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				label: guide.label,
 				stopCount: guide.stopIds.length,
 				open: experienceGuideOpen && guide.id === activeGuideId,
-				selected: subject?.kind === 'guide' && subject.guideId === guide.id,
 				opening: current?.entryGuideId === guide.id
 			})),
 			presentations: controller.filteredPresentations.map((entry) => ({
@@ -5042,16 +5077,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				expandedPresentationId = null;
 				return controller.createExperience(label);
 			},
-			onRenameExperience: (label: string) => controller.renameExperience(label),
-			onOpenGuide: (guideId: string | null) => {
-				if (guideId === null) {
-					experienceGuideOpen = true;
-					return;
-				}
-				controller.openGuide(guideId);
+			onRenameExperience: (label: string) => controller.renameExperience(label),				onOpenGuide: (guideId: string | null) => {
+				if (guideId !== null) controller.openGuide(guideId);
 				experienceGuideOpen = true;
-				selectExperienceSubject({ kind: 'guide', guideId });
+				// D-2: a Guide has no Card; opening it keeps the Experience Card.
+				selectExperienceSubject({ kind: 'experience' });
 			},
+				onRenameGuide: (guideId: string, label: string) => controller.renameGuide(guideId, label),
+				onRemoveGuide: (guideId: string) => void controller.remove({ kind: 'guide', guideId }),
 			onSelectPresentation: (presentationId: string) => {
 				selectExperienceSubject({ kind: 'presentation', presentationId });
 			},
@@ -5340,24 +5373,28 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				back: backOf(controller, { kind: 'stop', stopId: stop.id })
 			};
 		}
-		if (subject?.kind === 'guide') {
-			const guide = controller.guides.find((entry) => entry.id === subject.guideId);
-			if (guide === undefined) return NO_CARD;
-			const model = guideCardModel({ guideId: guide.id, label: guide.label, stopCount: guide.stopIds.length });
+		// D-2: with nothing selected the Card is the Experience Card. A Guide is never a Card
+		// subject; opening one keeps this Card and shows its strip.
+		if (subject?.kind === 'experience' || (subject === null && selection === null)) {
+			const current = controller.current;
+			if (current === null) return NO_CARD;
+			const model = experienceCardModel({
+				experienceId: current.id,
+				label: current.label,
+				guideCount: controller.guides.length
+			});
 			return {
 				...NO_CARD,
 				identity: model.identity,
 				facts: model.facts,
 				nameWriter: experienceNameWriter(
-					() => guide.label,
-					(name: string) => controller.renameGuide(guide.id, name)
+					() => current.label,
+					(name: string) => controller.renameExperience(name)
 				),
-				menu: [removalItem(controller, 'remove-guide', 'Remove Guide', { kind: 'guide', guideId: guide.id })],
-				back: backOf(controller, null),
-				writer: writerOf('Guide', ExperienceGuideWriter)
+				writer: writerOf('Experience', ExperienceExperienceWriter)
 			};
 		}
-		// No Experience subject: the Stage selection is the Card.
+		// No Experience subject, but a Stage pick is: the Stage selection is the Card.
 		const selected = selection;
 		if (selected === null) return NO_CARD;
 		const bring = () => {
@@ -5842,24 +5879,42 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		</div>
 	{/if}
 
-	{#if sourceFindings !== null}
+	{#if sourceFindings !== null || sourceProblems.length > 0 || previewProblem !== null}
 		<!--
 			Experience review 1: source problems are a quiet chip, not a page banner.
-			The creator reads a count and one sentence; ids and paths stay behind
-			Details, for copying into a report.
+			The creator reads a plain sentence and uses *Show* to open the Stop's
+			Transition Card; ids, paths and codes stay in *Copy details*.
 		-->
-		<details class="source-findings" class:blocking={sourceFindings.closure.length > 0} aria-label="Source findings">
+		<details
+			class="source-findings"
+			class:blocking={(sourceFindings?.closure.length ?? 0) > 0}
+			aria-label="Source findings"
+		>
 			<summary>
-				{#if sourceFindings.closure.length > 0}
+				{#if (sourceFindings?.closure.length ?? 0) > 0}
 					<strong>This project can't be saved yet.</strong> Something it needs is missing.
 				{:else}
-					<strong>{sourceFindings.diagnostics.length} to fix</strong>
-					{sourceFindings.diagnostics.length === 1 ? 'A link points at something that is gone.' : 'Some links point at things that are gone.'}
+					<strong>{sourceProblems.length + (previewProblem === null ? 0 : 1)} to review</strong>
+					{previewProblem === null
+						? 'This file needs attention before every move plays.'
+						: 'Preview cannot start from this file.'}
 				{/if}
 				<span class="source-findings-more">Details</span>
 			</summary>
 			<ul>
-				{#each [...sourceFindings.closure, ...sourceFindings.diagnostics].slice(0, 8) as finding (finding.path + finding.code)}
+				{#each (previewProblem === null ? sourceProblems : [previewProblem, ...sourceProblems]).slice(0, 8) as problem (problem.code + problem.detail)}
+					<li data-finding-code={problem.code}>
+						<span
+							>{problem.sentence}{#if problem.fix}<span class="source-problem-fix">{problem.fix}</span>{/if}</span
+						>
+						{#if problem.subject !== null}
+							<button type="button" class="source-problem-show" onclick={() => showProblem(problem)}
+								>Show</button
+							>
+						{/if}
+					</li>
+				{/each}
+				{#each (sourceFindings?.closure ?? []).slice(0, 8) as finding (finding.path + finding.code)}
 					<li data-finding-code={finding.code}>{finding.message}</li>
 				{/each}
 			</ul>
@@ -5867,8 +5922,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				type="button"
 				onclick={() =>
 					void navigator.clipboard?.writeText(
-						[...sourceFindings.closure, ...sourceFindings.diagnostics]
-							.map((finding) => `${finding.path}: ${finding.message} (${finding.code})`)
+						[...(previewProblem === null ? [] : [previewProblem]), ...sourceProblems]
+							.map((problem) => problem.detail)
+							.concat(
+								(sourceFindings?.closure ?? []).map(
+									(finding) => `${finding.path}: ${finding.message} (${finding.code})`
+								)
+							)
 							.join('\n')
 					)}>Copy details</button
 			>

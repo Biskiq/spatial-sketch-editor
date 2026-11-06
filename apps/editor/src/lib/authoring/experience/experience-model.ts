@@ -25,16 +25,16 @@ import {
 } from '@portfolio/project-model/units';
 
 /**
- * The one Card subject (D10). A Stage pick, an Index row, a Guide card or connector, or
+ * The one Card subject (D10). A Stage pick, an Index row, a strip card or connector, or
  * a Card link replaces it; nothing else does. `transition` is a Stop's outgoing
- * continuation.
+ * continuation. `experience` is the Experience itself: the Card of nothing selected.
  */
 export type ExperienceSubject =
 	| { readonly kind: 'presentation'; readonly presentationId: string }
 	| { readonly kind: 'view'; readonly viewId: string; readonly presentationId: string }
 	| { readonly kind: 'stop'; readonly stopId: string }
 	| { readonly kind: 'transition'; readonly stopId: string }
-	| { readonly kind: 'guide'; readonly guideId: string };
+	| { readonly kind: 'experience' };
 
 /** What the View Card reads about one View. The lens is the 35 mm equivalent of the vertical field. */
 export type ExperienceViewFacts = {

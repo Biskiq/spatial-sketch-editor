@@ -72,12 +72,7 @@ describe('R217.S26 visual tokens', () => {
 
 	it('opens is a mono 10 px tag; the strip has no Start tag', () => {
 		expect(source('experience/ExperienceGuide')).not.toContain('.start-tag');
-		for (const [file, selector] of [
-			['stage/shell/EditorIndex', '.opens-tag'],
-			['experience/ExperienceGuideWriter', '.opens-tag']
-		] as const) {
-			expect(rule(source(file), selector), `${file} ${selector}`).toMatch(/font:\s*500 10px\/[\d.]+ var\(--shell-mono/);
-		}
+		expect(rule(source('stage/shell/EditorIndex'), '.opens-tag')).toMatch(/font:\s*500 10px\/[\d.]+ var\(--shell-mono/);
 	});
 
 	it('the strip and View rail mark reorders with a quiet light line, never gold', () => {
@@ -103,7 +98,7 @@ describe('R217.S26 visual tokens', () => {
 		const view = coarse(source('experience/ExperienceViewWriter'));
 		expect(view).toContain('button.also-link');
 		expect(view).toMatch(/min-height:\s*44px/);
-		expect(coarse(source('experience/ExperienceGuideWriter'))).toMatch(/button\s*\{\s*min-height:\s*44px/);
+		expect(coarse(source('experience/ExperienceExperienceWriter'))).toMatch(/\.opens button\s*\{\s*min-height:\s*44px/);
 	});
 });
 
@@ -126,6 +121,6 @@ describe('R217.S27 visual tokens', () => {
 		expect(rule(stop, '.icon-btn')).toMatch(/min-width:\s*44px/);
 		const presentation = source('experience/ExperiencePresentationWriter').split('@media (pointer: coarse)')[1]!;
 		expect(rule(presentation, 'button,\n\t\t.text-input')).toMatch(/min-height:\s*44px/);
-		expect(rule(source('experience/ExperienceGuideWriter'), '.welcome textarea')).toMatch(/min-height:\s*44px/);
+		expect(rule(source('experience/ExperienceExperienceWriter'), '.welcome textarea')).toMatch(/min-height:\s*44px/);
 	});
 });

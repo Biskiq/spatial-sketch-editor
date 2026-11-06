@@ -19,7 +19,7 @@ import ExperiencePresentationWriter from '$lib/authoring/experience/ExperiencePr
 import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
 import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
 import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
-import ExperienceGuideWriter from '$lib/authoring/experience/ExperienceGuideWriter.svelte';
+import ExperienceExperienceWriter from '$lib/authoring/experience/ExperienceExperienceWriter.svelte';
 import type { ExperienceController } from '$lib/authoring/experience/experience-controller.svelte';
 import type { ExperienceHomes } from '$lib/authoring/experience/experience-homes';
 import {
@@ -718,35 +718,33 @@ describe('R217.S26 / G17 — the strip has no Start tag or duplicated time', () 
 		expect(first.getAttribute('aria-label')).not.toContain('starts here');
 		expect(first.querySelector('.stop-time')).toBeNull();
 	});
-});	describe('R217.S26 — the Guide Card sets the Opening Guide (E5)', () => {
-	it('plays a non-opening Guide from its Card while the rail is closed, with the full authored time', async () => {
-		const other = fakeController({ subject: { kind: 'guide', guideId: 'guide-1' } });
-		(other as { current: Experience }).current = { ...EXPERIENCE, entryGuideId: 'guide-elsewhere' };
-		const homes = fakeHomes(other, false, {}, { seconds: 95, guideId: 'guide-1' });
-		const target = mountHome(ExperienceGuideWriter, {}, homes);
+});
+
+describe('R217.S33/R36 — the Experience Card owns welcome and Opens with', () => {
+	it('edits welcome text and hides Opens with while one Guide exists', async () => {
+		const controller = fakeController({ subject: { kind: 'experience' } });
+		const target = mountHome(ExperienceExperienceWriter, {}, fakeHomes(controller));
 		await settle();
-		const play = buttonNamed(target, /^Play from the start/);
-		expect(play.disabled).toBe(false);
-		expect(play.title).toContain('1:35');
-		play.click();
-		expect(homes.playGuide).toHaveBeenCalledWith('guide-1', { kind: 'start' });
+		expect(target.querySelector('[data-opens-with]')).toBeNull();
+		const welcome = target.querySelector<HTMLTextAreaElement>('textarea')!;
+		expect(welcome.maxLength).toBe(600);
+		welcome.value = 'Welcome to the gallery.';
+		welcome.dispatchEvent(new Event('input', { bubbles: true }));
+		await settle();
+		welcome.dispatchEvent(new FocusEvent('blur'));
+		await vi.waitFor(() => expect(controller.setWelcome).toHaveBeenCalledWith('Welcome to the gallery.'));
 	});
 
-	it('shows *opens* on the Opening Guide and offers Make this the opening Guide on another', async () => {
-		const opening = fakeController({ subject: { kind: 'guide', guideId: 'guide-1' } });
-		const first = mountHome(ExperienceGuideWriter, {}, fakeHomes(opening));
+	it('offers Opens with only when two Guides exist, and sets the opening one', async () => {
+		const controller = fakeController({ subject: { kind: 'experience' } });
+		(controller as { guides: GuideRecord[] }).guides = [GUIDE, { ...GUIDE, id: 'guide-2', label: 'Evening', stopIds: [] }];
+		const target = mountHome(ExperienceExperienceWriter, {}, fakeHomes(controller));
 		await settle();
-		expect(first.querySelector('[data-opening-guide]')?.textContent).toBe('opens');
-		expect(first.querySelector('[data-make-opening]')).toBeNull();
-
-		const other = fakeController({ subject: { kind: 'guide', guideId: 'guide-1' } });
-		(other as { current: Experience }).current = { ...EXPERIENCE, entryGuideId: 'guide-elsewhere' };
-		const second = mountHome(ExperienceGuideWriter, {}, fakeHomes(other));
-		await settle();
-		const make = second.querySelector<HTMLButtonElement>('[data-make-opening]')!;
-		expect(make.textContent?.trim()).toBe('Make this the opening Guide');
-		make.click();
-		expect(other.makeOpeningGuide).toHaveBeenCalledWith('guide-1');
+		const options = [...target.querySelectorAll<HTMLElement>('[data-opening-guide-option]')];
+		expect(options.map((option) => option.dataset.openingGuideOption)).toEqual(['guide-1', 'guide-2']);
+		expect(options[0]!.getAttribute('aria-checked')).toBe('true');
+		options[1]!.click();
+		expect(controller.makeOpeningGuide).toHaveBeenCalledWith('guide-2');
 	});
 });
 

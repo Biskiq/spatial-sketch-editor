@@ -747,7 +747,7 @@ describe('one Card subject (D10)', () => {
 		expect(controller.selectedPresentation).toBeNull();
 		expect(controller.selectedView).toBeNull();
 
-		controller.select({ kind: 'guide', guideId: 'guide-1' });
+		controller.select({ kind: 'experience' });
 		flush();
 		expect(controller.selectedStop).toBeNull();
 		expect(controller.selectedPresentation).toBeNull();
@@ -763,7 +763,7 @@ describe('one Card subject (D10)', () => {
 		controller.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
 		expect(experienceFocus.read()).toMatchObject({ stopId: null, presentationId: 'presentation-1' });
 
-		controller.select({ kind: 'guide', guideId: 'guide-1' });
+		controller.select({ kind: 'experience' });
 		expect(experienceFocus.read()).toMatchObject({ stopId: null, presentationId: null });
 	});
 
@@ -1159,7 +1159,7 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 			removeIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' })
 		);
 		expect(intent.kind).toBe(EXPERIENCE_STOP_REMOVE_KIND);
-		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
+		expect(experienceFocus.subject).toBeNull();
 		expect(controller.feedback).toEqual({ kind: 'success', text: 'Stop 2 removed. Main has 1 Stop.' });
 	});
 

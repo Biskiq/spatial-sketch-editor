@@ -1007,9 +1007,13 @@ form a single track (`locateSegmentAt` maps a pointer's whole-track fraction to 
 own local fraction), each gutter reads *↗ 5 s*, cards carry no Start tag, time text or wait glyph,
 the separate scrub bar is gone, the pacing pill opens its own popover, and the Guide's name renames
 in place with a ⋯ menu (Rename, Remove Guide). The strip and the View rail mark selection and
-reorder with quiet forest and light lines; no gold remains on either. It does **not yet** implement the
-later slices: the problems list (4), the strip and one timeline (5), the Experience Card and
-Guide Card retirement (6), the first Guide's *Tour* (7), `label: string | null` with the Scene
-unlink (8), and visitor progress (9). Each lands with a
+reorder with quiet forest and light lines; no gold remains on either. Slice 6 retires the Guide
+Card: `ExperienceGuideWriter` and `guideCardModel` are gone, and a Guide is never a Card subject.
+When nothing is selected the Card is the Experience itself, through
+`ExperienceExperienceWriter`: the welcome text, which has no other editor, and *Opens with* only
+when two or more Guides exist (R33/R36). The Index Guide row renames in place and carries its own
+⋯ menu (Rename, Remove Guide), and opening a Guide from either home keeps the Experience Card and
+shows its strip. It does **not yet** implement the later slices: the first Guide's *Tour* (7),
+`label: string | null` with the Scene unlink (8), and visitor progress (9). Each lands with a
 [fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices),
 and each slice updates this paragraph in the same commit.
