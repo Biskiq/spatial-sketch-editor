@@ -115,13 +115,13 @@ function sourceFor(check: Check) {
 }
 
 function assertions(checks: Check[]) {
-	return {
-		testResults: checks.map((check) => ({
-			name: sourceFor(check),
-			assertionResults: [
-				{
-					fullName: `${markerText(check)} case`,
-					status: check.status ?? (check.stalePass ? 'failed' : 'passed'),
+	return {			testResults: checks.map((check) => ({
+				name: sourceFor(check),
+				assertionResults: [
+					{
+						fullName: `${markerText(check)} case`,
+						title: `${markerText(check)} case`,
+						status: check.status ?? (check.stalePass ? 'failed' : 'passed'),
 					...(check.stalePass
 						? { failureMessages: ['Error: Expect test to fail\n    at runTest (vitest)'] }
 						: {})
@@ -134,8 +134,7 @@ function assertions(checks: Check[]) {
 const SMOKE_SOURCE = join(TEMP, 'suite-smoke.test.ts');
 writeFileSync(SMOKE_SOURCE, "it('suite smoke', () => {});\n");
 
-function runOf(checks: Check[], options: { commit?: string; suite?: string } = {}) {
-	const results = assertions(checks);
+function reportFor(results: any, options: { commit?: string; suite?: string } = {}) {
 	return {
 		commit: options.commit ?? COMMIT,
 		generatedAt: '2026-11-06T10:00:00.000Z',
@@ -160,6 +159,10 @@ function runOf(checks: Check[], options: { commit?: string; suite?: string } = {
 			return { name, status: 'complete', exitCode: 0 };
 		})
 	};
+}
+
+function runOf(checks: Check[], options: { commit?: string; suite?: string } = {}) {
+	return reportFor(assertions(checks), options);
 }
 
 function writeCaseFile(name: string, value: unknown) {
@@ -398,6 +401,12 @@ describe('runner expected-failure semantics', () => {
 				"\tit.fails('[cap:probe.stale core known-failing:#43] unexpected body pass', () => {",
 				'\t\texpect(1).toBe(1);',
 				'\t});',
+				"\tit.fails('[cap:probe.repeat core known-failing:#44] first declaration still fails', () => {",
+				'\t\texpect(1).toBe(2);',
+				'\t});',
+				"\tit('[cap:probe.repeat core known-failing:#44] second declaration plain pass', () => {",
+				'\t\texpect(1).toBe(1);',
+				'\t});',
 				'});',
 				''
 			].join('\n')
@@ -415,7 +424,11 @@ describe('runner expected-failure semantics', () => {
 				{ cwd: join(REPO_ROOT, 'apps/editor'), encoding: 'utf8' }
 			);
 			const results = JSON.parse(readFileSync(outputPath, 'utf8'));
-			const ledger = ledgerOf({ id: 'probe.expected' }, { id: 'probe.stale' });
+			const ledger = ledgerOf(
+				{ id: 'probe.expected' },
+				{ id: 'probe.stale' },
+				{ id: 'probe.repeat' }
+			);
 			const suites = REQUIRED_SUITES.map((name) => {
 				if (name === 'npm test') return { name, status: 'complete', results };
 				if (TEST_SUITES.includes(name)) {
@@ -441,12 +454,68 @@ describe('runner expected-failure semantics', () => {
 
 			expect(row(report, 'probe.expected').failingChecks[0].status).toBe('expected-failing');
 			expect(row(report, 'probe.expected').health).toBe('broken');
-			expect(report.gate.failures).toHaveLength(1);
-			expect(report.gate.failures[0].name).toContain('probe.stale');
-			expect(report.gate.failures[0].reason).toContain('no longer reproduces');
+
+			// Two tests share one marker. The second is a plain passing `it` and must
+			// not borrow the first `it.fails` declaration.
+			const repeat = row(report, 'probe.repeat').failingChecks;
+			expect(
+				repeat.find((check: any) => check.name.includes('first declaration')).status
+			).toBe('expected-failing');
+			expect(
+				repeat.find((check: any) => check.name.includes('second declaration')).status
+			).toBe('stale-marker');
+
+			expect(report.gate.failures).toHaveLength(2);
+			const failingNames = report.gate.failures.map((failure: any) => failure.name).join('\n');
+			expect(failingNames).toContain('probe.stale');
+			expect(failingNames).toContain('second declaration');
 		} finally {
 			rmSync(probePath, { force: true });
 		}
+	});
+
+	it('fails closed for inherited and unsupported marker declarations', () => {
+		const inheritedPath = join(TEMP, 'inherited-marker.test.ts');
+		writeFileSync(
+			inheritedPath,
+			"describe('[cap:cap.inherited core known-failing:#7] group', () => { it('works', () => {}); });\n"
+		);
+		const eachPath = join(TEMP, 'each-marker.test.ts');
+		writeFileSync(
+			eachPath,
+			"it.each([1])('[cap:cap.each core known-failing:#8] case', () => {});\n"
+		);
+		const report = status({
+			ledger: ledgerOf({ id: 'cap.inherited' }, { id: 'cap.each' }),
+			report: reportFor({
+				numTotalTests: 2,
+				testResults: [
+					{
+						name: inheritedPath,
+						assertionResults: [
+							{
+								fullName: '[cap:cap.inherited core known-failing:#7] group works',
+								title: 'works',
+								status: 'passed'
+							}
+						]
+					},
+					{
+						name: eachPath,
+						assertionResults: [
+							{
+								fullName: '[cap:cap.each core known-failing:#8] case',
+								title: '[cap:cap.each core known-failing:#8] case',
+								status: 'passed'
+							}
+						]
+					}
+				]
+			})
+		});
+		expect(row(report, 'cap.inherited').failingChecks[0].status).toBe('stale-marker');
+		expect(row(report, 'cap.each').failingChecks[0].status).toBe('unverified-marker');
+		expect(report.gate.failures).toHaveLength(2);
 	});
 });
 
@@ -567,6 +636,72 @@ describe('a report states its own provenance', () => {
 			)
 		};
 		expectRejected({ ledger, report: commandFailed }, 'completed without exitCode 0');
+
+		// A file lost to a collection failure inside an otherwise good suite.
+		const collectionFailure = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === 'npm test'
+					? {
+							name: suite.name,
+							status: 'complete',
+							results: {
+								numTotalTests: 1,
+								testResults: [
+									...suite.results.testResults,
+									{
+										name: 'collection.test.js',
+										status: 'failed',
+										message: 'import failed',
+										assertionResults: []
+									}
+								]
+							}
+						}
+					: suite
+			)
+		};
+		expectRejected({ ledger, report: collectionFailure }, 'recorded a test file with no assertions');
+
+		// A completed suite that collected nothing cannot ride another suite.
+		const emptySuite = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === 'npm run test:heavy'
+					? {
+							name: suite.name,
+							status: 'complete',
+							results: {
+								testResults: [{ name: 'empty.test.js', assertionResults: [] }]
+							}
+						}
+					: suite
+			)
+		};
+		expectRejected({ ledger, report: emptySuite }, 'recorded a test file with no assertions');
+
+		// Reporter counts that contradict the artifact are not certified either.
+		const zeroCollected = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === 'npm test'
+					? {
+							name: suite.name,
+							status: 'complete',
+							results: {
+								numTotalTests: 0,
+								testResults: [
+									{
+										name: 'ghost.test.js',
+										assertionResults: [{ fullName: 'ghost', status: 'passed' }]
+									}
+								]
+							}
+						}
+					: suite
+			)
+		};
+		expectRejected({ ledger, report: zeroCollected }, 'reported zero collected tests');
 	});
 
 	it('marks a capability regressed only between two complete reports', () => {

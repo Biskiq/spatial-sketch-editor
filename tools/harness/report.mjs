@@ -92,32 +92,64 @@ function assertionOutcome(assertion) {
 	return 'skipped';
 }
 
-const TEST_CALL = /\b(it|test)(\.fails)?\s*\(/g;
+/**
+ * A supported declaration is a test call with a literal title:
+ *
+ *   it.fails('[cap:x core known-failing:#1] title', () => { ... })
+ *   test.fails("...")
+ *
+ * The marker must be in the test's own title. Markers inherited from a
+ * `describe`, parameterized `it.each(...)` titles, template interpolation and
+ * duplicate titles with mixed modes are not attributable to one assertion, so
+ * they fail closed as unverified/stale instead of borrowing a neighbouring
+ * `.fails` declaration.
+ */
+const DECLARATION =
+	/\b(it|test)(\.fails)?\s*\(\s*('(?:\\.|[^'])*'|"(?:\\.|[^"])*"|`(?:\\.|[^`])*`)/g;
+
+/** Test declarations in one file, indexed by their literal title. */
+function declarationsByTitle(source) {
+	const index = new Map();
+	for (const match of source.matchAll(DECLARATION)) {
+		const title = match[3].slice(1, -1);
+		const list = index.get(title) ?? [];
+		list.push(match[2] === '.fails');
+		index.set(title, list);
+	}
+	return index;
+}
 
 /**
- * Is a passing `known-failing` assertion backed by runner expected-failure mode?
+ * Is this passing `known-failing` assertion backed by runner expected-failure
+ * mode?
  *
- * The JSON reporter records `it.fails` only as `status: passed`, so the marker
- * is credible only when the nearest `it(`/`test(` call before it is `.fails(`.
- * Returns `null` when the source (or the marker inside it) is unavailable;
- * callers treat that as unverified rather than passing.
+ * Evidence is bound to the assertion's own title, not the marker text: several
+ * tests legitimately share one capability/issue marker, and a text search would
+ * let a plain test borrow an earlier `it.fails` declaration. The JSON reporter
+ * records `it.fails` only as `status: passed`, so the title must map to a
+ * declaration in its file. Returns `true` only when every declaration of that
+ * title is `.fails`, `false` when they are all plain `it`/`test`, and `null`
+ * when identity is unavailable or ambiguous — callers treat `null` as
+ * unverified rather than passing.
  *
  * @param {string} file
+ * @param {string} title the assertion's own title (describe prefixes excluded)
  * @param {string} markerText the canonical marker, e.g. `[cap:x core known-failing:#1]`
  * @param {(file: string) => string|null} readSource
  * @returns {boolean|null}
  */
-export function declaresExpectedFailure(file, markerText, readSource) {
+export function declaresExpectedFailure(file, title, markerText, readSource) {
+	// A marker inherited from a describe/ancestor is not this assertion's
+	// declaration: it can never prove runner expected-failure mode.
+	if (typeof title !== 'string' || !title.includes(markerText)) return false;
 	if (typeof readSource !== 'function' || typeof file !== 'string' || file.length === 0) return null;
 	const source = readSource(file);
 	if (typeof source !== 'string') return null;
-	const index = source.indexOf(markerText);
-	if (index < 0) return null;
-	let call = null;
-	for (const match of source.slice(0, index).matchAll(TEST_CALL)) call = match;
-	// No call, or the marker sits on a describe/other call: not runner mode.
-	if (call === null) return false;
-	return call[2] === '.fails';
+	const modes = declarationsByTitle(source).get(title);
+	if (!modes || modes.length === 0) return null;
+	if (modes.every(Boolean)) return true;
+	if (modes.some(Boolean)) return null;
+	return false;
 }
 
 /**
@@ -157,7 +189,8 @@ export function collectChecks(results, options = {}) {
 					status = 'failed';
 				} else {
 					const markerText = `[cap:${marker.id} ${marker.level} known-failing:#${marker.knownFailing}]`;
-					const backed = declaresExpectedFailure(file, markerText, readSource);
+					const title = typeof assertion.title === 'string' ? assertion.title : '';
+					const backed = declaresExpectedFailure(file, title, markerText, readSource);
 					status =
 						backed === true
 							? 'expected-failing'
@@ -263,13 +296,31 @@ export function validateRun(run) {
 				);
 				continue;
 			}
+			// Per-suite and per-file evidence: a suite that lost a file to a
+			// collection/startup failure, or collected nothing, cannot be certified
+			// complete just because another suite recorded assertions.
+			if (typeof results.numTotalTests === 'number' && results.numTotalTests === 0) {
+				problems.push(`${where} (${suite.name}) reported zero collected tests`);
+				continue;
+			}
+			let suiteAssertions = 0;
 			for (const fileResult of results.testResults) {
 				if (!Array.isArray(fileResult?.assertionResults)) {
 					problems.push(`${where} (${suite.name}) has a test file without assertions`);
 					continue;
 				}
-				assertions += fileResult.assertionResults.length;
+				if (fileResult.assertionResults.length === 0) {
+					problems.push(
+						`${where} (${suite.name}) recorded a test file with no assertions; a collection or startup failure cannot certify a run`
+					);
+					continue;
+				}
+				suiteAssertions += fileResult.assertionResults.length;
 			}
+			if (suiteAssertions === 0) {
+				problems.push(`${where} (${suite.name}) recorded no assertions`);
+			}
+			assertions += suiteAssertions;
 		} else if (COMMAND_SUITES.includes(suite.name)) {
 			if (suite.exitCode !== 0) {
 				problems.push(`${where} (${suite.name}) completed without exitCode 0`);
