@@ -307,6 +307,70 @@ describe('per-field Stop edits keep the other fields', () => {
 		expect(controller.feedback?.kind).toBe('refusal');
 	});
 
+	it('appends a normalised Cut to the success feedback (R27)', async () => {
+		const afterExperience = withExperience({
+			stops: EXPERIENCE.experiences[0]!.stops.map((stop) =>
+				stop.id === 'stop-1' ? { ...stop, transition: undefined } : stop
+			),
+			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-2', 'stop-1'], pacing: 'automatic' as const }]
+		});
+		const after = await experienceEnvelope({ experience: afterExperience });
+		const { controller } = await mounted({
+			accept: async () => ({
+				...installed(),
+				changes: [{ kind: 'experience.transition.normalised', subjectIds: ['stop-1'], fields: ['transition'] }],
+				source: after
+			})
+		});
+		controller.openGuide('guide-1');
+
+		expect(await controller.moveStop('stop-1', 1)).toBe(true);
+		expect(controller.feedback).toEqual({
+			kind: 'success',
+			text: 'Stop 2 is last, so its Travel became a Cut.'
+		});
+	});
+
+	it('appends the straight path reconciliation adds to the success feedback (R9)', async () => {
+		const fixture = await experienceEnvelope();
+		const after = await experienceEnvelope({
+			camera: {
+				formatVersion: fixture.units.camera.data.formatVersion,
+				views: fixture.units.camera.data.views,
+				connections: [
+					{
+						id: 'connection-new',
+						fromNodeId: 'view-1',
+						toNodeId: 'view-2',
+						clearance: 0.35,
+						positionPath: { kind: 'rounded-polyline', anchors: [] },
+						timing: {
+							forward: { durationSeconds: 4, easing: 'smoothstep' },
+							reverse: { durationSeconds: 3, easing: 'linear' }
+						}
+					}
+				]
+			}
+		});
+		const { controller } = await mounted({
+			experience: withExperience({
+				stops: EXPERIENCE.experiences[0]!.stops.map((stop) => stop.id === 'stop-1' ? { ...stop, transition: 'cut' as const } : stop)
+			}),
+			accept: async () => ({
+				...installed(),
+				changes: [{ kind: 'camera.connection.created', subjectIds: ['connection-new'], fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath'] }],
+				source: after
+			})
+		});
+		controller.openGuide('guide-1');
+
+		expect(await controller.setTransition('stop-1', 'travel')).toBe(true);
+		expect(controller.feedback).toEqual({
+			kind: 'success',
+			text: 'A straight Camera path joins Piano and Gallery.'
+		});
+	});
+
 	it('the View rail sets a step or a range in one change, adding the straight paths a Travel needs', async () => {
 		const three = withPresentationChange('presentation-1', {
 			views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'cut' }]

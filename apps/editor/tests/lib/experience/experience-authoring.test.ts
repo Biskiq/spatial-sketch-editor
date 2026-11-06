@@ -13,6 +13,7 @@ import {
 	captureBindIntent,
 	capturedFovDegrees,
 	capturedViewPose,
+	experienceUpdateIntent,
 	guideOrderIntent,
 	presentationUpdateIntent,
 	stopUpdateIntent
@@ -23,6 +24,7 @@ import {
 	type ExperienceFocus
 } from '$lib/authoring/experience/preview-entry';
 import {
+	CAMERA_UNIT_FORMAT_VERSION,
 	computeEnvelopeSourceContentId,
 	createUnitAcceptanceProfile,
 	serializeProjectEnvelope,
@@ -31,11 +33,11 @@ import {
 
 import { EXPERIENCE, VIEWS, experienceEnvelope } from './fixtures';
 
-async function boot(): Promise<{
+async function boot(initial?: ProjectEnvelope): Promise<{
 	readonly source: ProjectEnvelope;
 	readonly coordinator: ReturnType<typeof createAcceptanceCoordinator<ProjectEnvelope>>;
 }> {
-	const source = await experienceEnvelope();
+	const source = initial ?? (await experienceEnvelope());
 	const profile = createUnitAcceptanceProfile({ compound: true, sessionEpoch: 'session-preview' });
 	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({
 		adapter: profile.adapter,
@@ -118,6 +120,32 @@ describe('capture, binding and Guide order', () => {
 		expect(experienceOf(restored).guides[0]!.stopIds).toEqual(['stop-1', 'stop-2']);
 	});
 
+	it('keeps an imported Travel gap through an unrelated rename when no connection id is captured (G7)', async () => {
+		const source = await experienceEnvelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: VIEWS.map((view) => ({ ...view, connectedViewIds: [] })),
+				connections: []
+			}
+		});
+		const { coordinator } = await boot(source);
+
+		const accepted = await coordinator.accept(
+			experienceUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-rename-gap' },
+				experienceId: 'experience-1',
+				label: 'Renamed walk'
+			})
+		);
+
+		expect(accepted.kind).toBe('accepted');
+		const after = coordinator.acceptedSnapshot().domain.source;
+		expect(experienceOf(after).label).toBe('Renamed walk');
+		expect(after.units.camera.data.connections).toEqual([]);
+	});
+
 	it('reorders a Guide by stable Stop identity and normalises a Travel that would strand last (D-12)', async () => {
 		const { source, coordinator } = await boot();
 		const accepted = await coordinator.accept(
@@ -136,6 +164,49 @@ describe('capture, binding and Guide order', () => {
 		const experience = experienceOf(coordinator.acceptedSnapshot().domain.source);
 		expect(experience.guides[0]!.stopIds).toEqual(['stop-2', 'stop-1']);
 		expect(experience.stops.find((entry) => entry.id === 'stop-1')!.transition).toBeUndefined();
+		// R27: the Cut the planner wrote is part of the accepted plan.
+		if (accepted.kind !== 'accepted') return;
+		expect(accepted.changes).toContainEqual({
+			kind: 'experience.transition.normalised',
+			subjectIds: ['stop-1'],
+			fields: ['transition']
+		});
+	});
+
+	it('surfaces the straight path reconciliation adds as an accepted Camera change (R9)', async () => {
+		const source = await experienceEnvelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: VIEWS.map((view) => ({ ...view, connectedViewIds: [] })),
+				connections: []
+			},
+			experience: {
+				...EXPERIENCE,
+				experiences: EXPERIENCE.experiences.map((entry) => ({
+					...entry,
+					stops: entry.stops.map((stop) => stop.id === 'stop-1' ? { ...stop, transition: 'cut' as const } : stop)
+				}))
+			}
+		});
+		const { coordinator } = await boot(source);
+		const accepted = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-path-change', connections: ['connection-new'] },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				transition: 'travel'
+			})
+		);
+		expect(accepted.kind).toBe('accepted');
+		if (accepted.kind !== 'accepted') return;
+		expect(accepted.changes).toContainEqual({
+			kind: 'camera.connection.created',
+			subjectIds: ['connection-new'],
+			fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath']
+		});
+		expect(coordinator.acceptedSnapshot().domain.source.units.camera.data.connections).toHaveLength(1);
 	});
 
 	it('R15 — Travel → Cut → Travel keeps the path and reuses it', async () => {

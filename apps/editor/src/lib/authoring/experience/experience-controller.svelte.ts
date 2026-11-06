@@ -53,6 +53,7 @@ import {
 	presentationsAboutEntity,
 	reachSummary,
 	resolveContinuation as resolveStopContinuation,
+	stopEntryViewId,
 	stopsGuiding,
 	viewFactsOf,
 	type ExperienceReach,
@@ -71,7 +72,7 @@ import {
 	type ExperiencePathOccurrence,
 	type ExperiencePathRead
 } from './experience-paths';
-import type { ScenePathAnchor } from '@portfolio/project-model';
+import type { OperationChange, ScenePathAnchor } from '@portfolio/project-model';
 import {
 	cameraConnectionCreateIntent,
 	cameraConnectionUpdateIntent,
@@ -539,8 +540,65 @@ export function createExperienceController(
 		return readServices().stage.snapshot().acceptedRevision;
 	}
 
+	/**
+	 * G1–G5 / R9 / R27 — the consequences planning added to an accepted change
+	 * reach the creator: a Cut normalisation or a straight path the edit required.
+	 * One sentence, appended to the action's own success line.
+	 */
+	function planChangeSentence(changes: readonly OperationChange[], source: ProjectEnvelope | undefined): string {
+		if (changes.length === 0 || source === undefined) return '';
+		const experience =
+			source.units.experience.data.experiences.find((entry) => entry.id === current?.id) ??
+			source.units.experience.data.experiences[0];
+		if (experience === undefined) return '';
+		const labelOf = (viewId: string): string =>
+			source.units.camera.data.views.find((view) => view.id === viewId)?.label ?? viewId;
+		const guide = contextGuide === null
+			? undefined
+			: experience.guides.find((entry) => entry.id === contextGuide.id);
+		const placeOf = (stopId: string): number => (guide?.stopIds.indexOf(stopId) ?? -1) + 1;
+		const entryViewOf = (stopId: string): string | null => {
+			const stop = experience.stops.find((entry) => entry.id === stopId);
+			if (stop === undefined) return null;
+			return stopEntryViewId(experience, stop);
+		};
+		const clauses: string[] = [];
+		for (const change of changes) {
+			if (change.kind === 'experience.transition.normalised') {
+				const [stopId, nextStopId] = change.subjectIds;
+				if (stopId === undefined) continue;
+				const fromPlace = placeOf(stopId);
+				if (fromPlace === 0) continue;
+				if (nextStopId === undefined) {
+					clauses.push(`Stop ${fromPlace} is last, so its Travel became a Cut`);
+				} else {
+					const toPlace = placeOf(nextStopId);
+					const view = entryViewOf(stopId);
+					clauses.push(
+						`Stop ${fromPlace} → ${toPlace === 0 ? fromPlace + 1 : toPlace} is now a Cut: both show ${view === null ? 'the same View' : labelOf(view)}`
+					);
+				}
+			} else if (change.kind === 'experience.presentation-view.transition.normalised') {
+				const viewId = change.subjectIds[1];
+				if (viewId !== undefined) clauses.push(`View ${labelOf(viewId)} is last, so its Travel became a Cut`);
+			} else if (change.kind === 'camera.connection.created') {
+				const connectionId = change.subjectIds[0];
+				const connection = source.units.camera.data.connections.find((entry) => entry.id === connectionId);
+				if (connection !== undefined) {
+					clauses.push(`a straight Camera path joins ${labelOf(connection.fromNodeId)} and ${labelOf(connection.toNodeId)}`);
+				}
+			}
+		}
+		if (clauses.length === 0) return '';
+		const [first, ...rest] = clauses;
+		return ` ${first!.charAt(0).toUpperCase()}${first!.slice(1)}${rest.length === 0 ? '' : `; ${rest.join('; ')}`}.`;
+	}
+
 	/** Submit one command; `true` only when the source actually changed. */
-	async function run(builder: () => Submission, success: () => string = () => ''): Promise<boolean> {
+	async function run(
+		builder: () => Submission,
+		success: (changes: readonly OperationChange[]) => string = () => ''
+	): Promise<boolean> {
 		if (busy) return false;
 		busy = true;
 		try {
@@ -553,7 +611,8 @@ export function createExperienceController(
 				say('refusal', 'No change to accept.');
 				return false;
 			}
-			say('success', success());
+			const changes = outcome.changes ?? [];
+			say('success', `${success(changes)}${planChangeSentence(changes, outcome.source)}`.trim());
 			return true;
 		} finally {
 			busy = false;

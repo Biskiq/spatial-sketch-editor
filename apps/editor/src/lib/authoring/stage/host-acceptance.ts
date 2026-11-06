@@ -22,6 +22,7 @@ import {
 	type AuthoringIntent,
 	type CorrespondenceEntry,
 	type DomainPlanner,
+	type OperationChange,
 	type RegistrationOutcome
 } from '@portfolio/project-model';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
@@ -68,6 +69,10 @@ export type StageAcceptOutcome =
 	| {
 			readonly kind: 'installed';
 			readonly install: StageInstalledTransition;
+			/** The accepted plan's semantic changes, for the creator's passing line. */
+			readonly changes?: readonly OperationChange[];
+			/** The accepted source those changes produced. */
+			readonly source?: ProjectEnvelope;
 			/** `null` when the selection survived; otherwise why it did not. */
 			readonly selectionClearedReason: 'subject-retired' | 'no-correspondence' | null;
 	  }
@@ -581,7 +586,9 @@ export function createStageAcceptanceHost(options: {
 				if (installed.kind === 'refused' && needsCompensation(installed.code)) {
 					return { ...installed, compensation: await compensate('accept') };
 				}
-				return installed;
+				return installed.kind === 'installed'
+					? { ...installed, changes: result.changes, source: result.snapshot.domain.source }
+					: installed;
 			} finally {
 				while (consumePreparedCowCandidate(intent.operationId, { baseline: beforeLayout })) { /* release terminal artifacts */ }
 				unregister();

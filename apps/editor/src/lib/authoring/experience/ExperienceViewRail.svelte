@@ -82,7 +82,8 @@
 	}
 	function kindAt(index: number): 'none' | 'cut' | 'travel' | 'gap' {
 		if (index <= 0 || index >= n) return 'none';
-		const view = presentation.views[index]!;
+		// A-1: the step from View index - 1 to index belongs to the View it leaves.
+		const view = presentation.views[index - 1]!;
 		if ((view.transition ?? 'cut') === 'cut') return 'cut';
 		const path = pathAt(index);
 		return path === null || path.state === 'gap' || path.state === 'ambiguous' ? 'gap' : 'travel';

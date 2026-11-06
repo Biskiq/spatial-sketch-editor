@@ -1760,9 +1760,15 @@ type RequiredTravelJoin =
 /**
  * G1–G5, G7, D-12 — reconcile one edited Experience in the same accepted change:
  * write a Cut wherever a Travel can no longer mean anything, then join every
- * remaining Travel pair no Camera connection joins with one straight path from
- * the captured id pool. The planner refuses rather than leave a gap.
+ * pair this edit newly leaves without a Camera connection with one straight path
+ * from the captured id pool. The planner refuses rather than leave a new gap.
  */
+function travelPairKey(pair: { readonly fromViewId: string; readonly toViewId: string }): string {
+	return pair.fromViewId < pair.toViewId
+		? `${pair.fromViewId}\u0000${pair.toViewId}`
+		: `${pair.toViewId}\u0000${pair.fromViewId}`;
+}
+
 function withRequiredTravelPaths(
 	envelope: ProjectEnvelope,
 	candidate: ProjectEnvelope,
@@ -1773,9 +1779,18 @@ function withRequiredTravelPaths(
 	if (experience === undefined) {
 		return { kind: 'refused', code: 'missing-target', message: `experience "${experienceId}" is not in this envelope` };
 	}
+	// Join only a pair this edit newly requires. An imported file may already carry
+	// an unjoined Travel; unrelated edits keep it reported by the problems chip and
+	// do not need a connection id pool to succeed.
+	const before = envelope.units.experience.data.experiences.find((entry) => entry.id === experienceId);
+	const beforePairs = new Set(
+		(before === undefined ? [] : requiredTravelPairs(before, envelope.units.camera.data.connections)).map(travelPairKey)
+	);
 	const normalized = normalizeTransitions(experience);
 	const reconciled = normalized.experience === experience ? candidate : withExperience(candidate, normalized.experience);
-	const pairs = requiredTravelPairs(normalized.experience, reconciled.units.camera.data.connections);
+	const pairs = requiredTravelPairs(normalized.experience, reconciled.units.camera.data.connections).filter(
+		(pair) => !beforePairs.has(travelPairKey(pair))
+	);
 	const joined = withStraightConnections(envelope, reconciled, pairs, connectionIds);
 	if (joined.kind === 'refused') return joined;
 	return { kind: 'joined', envelope: joined.envelope, connections: joined.connections, cuts: normalized.cuts };
@@ -2171,6 +2186,21 @@ function prepared(
 		const joined = withRequiredTravelPaths(envelope, source, experience.id, capturedIds(request.intent, 'connection'));
 		if (joined.kind === 'refused') return refuse(joined.code, joined.message);
 		source = joined.envelope;
+		for (const cut of joined.cuts) {
+			reconciledChanges.push(
+				cut.kind === 'stop'
+					? {
+							kind: 'experience.transition.normalised',
+							subjectIds: cut.nextStopId === undefined ? [cut.stopId] : [cut.stopId, cut.nextStopId],
+							fields: ['transition']
+						}
+					: {
+							kind: 'experience.presentation-view.transition.normalised',
+							subjectIds: [cut.presentationId, cut.viewId],
+							fields: ['transition']
+						}
+			);
+		}
 		const records = connectionRecords(source, joined.connections);
 		reconciledChanges.push(...records.changes);
 		reconciledCorrespondence.push(...records.correspondence);

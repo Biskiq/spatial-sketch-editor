@@ -1629,7 +1629,7 @@
 		background: transparent;
 		color: color-mix(in srgb, var(--shell-caution, #c85a48) 35%, #fff);
 	}
-	/* A selected transition is gold, whatever its kind. */
+	/* A selected transition is the quiet leaf, whatever its kind. */
 	.chip.selected {
 		border-color: var(--shell-leaf-soft, #9fd3b6);
 		background: var(--shell-leaf-soft, #9fd3b6);

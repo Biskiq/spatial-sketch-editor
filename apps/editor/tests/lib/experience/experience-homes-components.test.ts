@@ -571,6 +571,31 @@ describe('R217.S25 — the Transition writer is the one home of Cut and Travel (
 		}
 		expect(target.textContent).toContain('End of tour');
 	});
+
+	it('offers no Cut or Travel switch when both Stops enter the same View (D-7)', async () => {
+		const same = {
+			...EXPERIENCE,
+			stops: STOPS.map((stop) =>
+				stop.id === 'stop-2'
+					? { ...stop, transition: 'cut' as const }
+					: stop.id === 'stop-3'
+						? { ...stop, presentationId: 'gallery', entryViewId: 'gallery-hall' }
+						: stop
+			)
+		};
+		const controller = fakeController({ selectedStopId: 'stop-2' });
+		Object.assign(controller, {
+			current: same,
+			guideStops: guideStopsOf(same, GUIDE),
+			resolveContinuation: (stopId: string) => resolveContinuation(same, GUIDE, stopId)
+		});
+		const target = mountHome(ExperienceTransitionWriter, {}, fakeHomes(controller));
+		await settle();
+
+		expect(target.querySelector('.seg')).toBeNull();
+		expect(target.textContent).toContain('Both Stops show Hall');
+		expect(target.textContent).not.toContain('Travel');
+	});
 });
 
 // ---- The View writer ----
@@ -873,6 +898,36 @@ describe('Sheet §32 — the Presentation Card View list is the rail', () => {
 		keys.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }));
 		expect(controller.movePresentationView).toHaveBeenCalledWith('piano', 'piano-keys', 0);
 		expect(target.textContent).toContain('Listed in Places');
+	});
+
+	it('reads each step from the View it leaves, not the View it arrives at (A-1)', async () => {
+		const steps: ExperiencePresentation = {
+			id: 'steps',
+			label: 'Steps',
+			views: [{ viewId: 'step-a' }, { viewId: 'step-b', transition: 'travel' }, { viewId: 'step-c' }],
+			explorable: true,
+			subject: null,
+			text: null
+		};
+		const controller = fakeController({ subject: { kind: 'presentation', presentationId: 'steps' } });
+		Object.assign(controller, {
+			selectedPresentation: steps,
+			viewsOf: new Map([
+				['steps', [
+					{ id: 'step-a', label: 'A' },
+					{ id: 'step-b', label: 'B' },
+					{ id: 'step-c', label: 'C' }
+				]]
+			])
+		});
+		const target = mountHome(ExperiencePresentationWriter, {}, fakeHomes(controller));
+		await settle();
+
+		const chips = [...target.querySelectorAll<HTMLElement>('.chip')];
+		expect(chips).toHaveLength(2);
+		// The first step leaves step-a (a Cut); the second leaves step-b (the Travel).
+		expect(chips[0]!.querySelector('.kind')?.getAttribute('aria-label')).toBe('Cut: switch to Travel');
+		expect(chips[1]!.querySelector('.kind')?.getAttribute('aria-label')).toBe('Travel with no path');
 	});
 
 	it('folds past 10 Views to the first 8, names what is hidden, and opens to scroll in its own box', async () => {
