@@ -9,7 +9,7 @@
  * payloads.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -20,6 +20,9 @@ const PRODUCE = join(REPO_ROOT, 'tools/harness/produce.mjs');
 const AGGREGATE = join(REPO_ROOT, 'tools/harness/aggregate.mjs');
 const MATRIX = join(REPO_ROOT, 'tools/harness/matrix.mjs');
 const GUARDS = join(REPO_ROOT, 'tools/harness/guards.mjs');
+const LINKED_FIXES = join(REPO_ROOT, 'tools/harness/linked-fixes.mjs');
+const ISSUE_RESPONSE = join(REPO_ROOT, 'tools/harness/issue-response.mjs');
+const STATUS = join(REPO_ROOT, 'tools/harness/status.mjs');
 const MERGE_GATE = join(REPO_ROOT, '.github/workflows/merge-gate.yml');
 const ISSUE_GUARDS = join(REPO_ROOT, '.github/workflows/issue-guards.yml');
 const GOLDENS = join(REPO_ROOT, '.github/workflows/native-form-goldens.yml');
@@ -65,8 +68,12 @@ function tempDir(name: string) {
 	return join(TEMP, `${counter}-${name}`);
 }
 
-function run(script: string, args: string[], cwd = REPO_ROOT) {
-	return spawnSync(process.execPath, [script, ...args], { cwd, encoding: 'utf8' });
+function run(script: string, args: string[], cwd = REPO_ROOT, env: Record<string, string> = {}) {
+	return spawnSync(process.execPath, [script, ...args], {
+		cwd,
+		encoding: 'utf8',
+		env: { ...process.env, ...env }
+	});
 }
 
 function provenance(name: string, overrides: Record<string, unknown> = {}) {
@@ -95,6 +102,55 @@ function provenance(name: string, overrides: Record<string, unknown> = {}) {
 				? { tests: 4, passed: 4, failed: 0, skipped: 0 }
 				: null,
 		...overrides
+	};
+}
+
+/** A fake `gh` over a JSON state file, for the issue-event API path. */
+const FAKE_GH = [
+	'#!/usr/bin/env node',
+	"import { readFileSync, writeFileSync } from 'node:fs';",
+	"const statePath = process.env.FAKE_STATE;",
+	"const state = JSON.parse(readFileSync(statePath, 'utf8'));",
+	'const args = process.argv.slice(2);',
+	'const path = args[1] ?? "";',
+	'const save = () => writeFileSync(statePath, JSON.stringify(state));',
+	"if (path.endsWith('/labels')) {",
+	"\tconst index = args.indexOf('-f');",
+	"\tif (index !== -1 && String(args[index + 1]).startsWith('labels[]=')) {",
+	"\t\tconst label = String(args[index + 1]).slice('labels[]='.length);",
+	'\t\tif (!state.labels.includes(label)) state.labels.push(label);',
+	'\t\tsave();',
+	'\t}',
+	'\tconsole.log(JSON.stringify(state.labels.map((name) => ({ name }))));',
+	'\tprocess.exit(0);',
+	'}',
+	"if (path.includes('/issues/')) {",
+	"\tif (args.includes('PATCH')) {",
+	"\t\tstate.state = 'open';",
+	'\t\tsave();',
+	'\t}',
+	'\tconsole.log(JSON.stringify({ number: 7, state: state.state, labels: state.labels.map((name) => ({ name })) }));',
+	'\tprocess.exit(0);',
+	'}',
+	"if (path.includes('/pulls/')) {",
+	"\tconst number = Number(path.split('/').pop());",
+	"\tconsole.log(JSON.stringify({ number, merged_at: number === 13 ? '2026-11-06T00:00:00Z' : null }));",
+	'\tprocess.exit(0);',
+	'}',
+	"console.log('{}');",
+	''
+].join('\n');
+
+function statusRun() {
+	return {
+		commit: COMMIT,
+		generatedAt: '2026-11-06T10:00:00.000Z',
+		suites: REQUIRED_SUITES.map((name) => {
+			const entry = provenance(name);
+			return entry.results
+				? { name, status: 'complete', results: entry.results }
+				: { name, status: 'complete', exitCode: 0 };
+		})
 	};
 }
 
@@ -455,15 +511,40 @@ describe('hard guards', () => {
 		];
 	}
 
-	it('refuses a removal even when the marker survives in a comment', () => {
+	it('refuses a removal when the whole declaration is commented out', () => {
 		const fixture = fixtureRepo(
-			'guard-comment',
+			'guard-commented-call',
 			"it('[cap:cap.a core] proves critical path', () => {});\n",
-			"// [cap:cap.a core] deleted check copied into comment\n"
+			"// it('[cap:cap.a core] proves critical path', () => {});\n"
 		);
 		const result = run(GUARDS, guardArgs(fixture));
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain('removed tagged check');
+	});
+
+	it('refuses removing an it.fails reproducer', () => {
+		const fixture = fixtureRepo(
+			'guard-fails-removal',
+			"it.fails('[cap:cap.a core known-failing:#42] critical', () => {});\n",
+			'// removed\n'
+		);
+		const result = run(GUARDS, guardArgs(fixture));
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain('removed tagged check');
+	});
+
+	it('refuses removing an unsupported tagged declaration', () => {
+		const unsupported = "it.each([1])('[cap:cap.a core] case', () => {});\n";
+		const removed = fixtureRepo('guard-each-removal', unsupported, '// removed\n');
+		expect(run(GUARDS, guardArgs(removed)).status).toBe(1);
+		const unchanged = fixtureRepo('guard-each-unchanged', unsupported, unsupported);
+		expect(run(GUARDS, guardArgs(unchanged)).status).toBe(0);
+	});
+
+	it('never invents checks from fixture strings', () => {
+		const source = "const sample = \"it('[cap:cap.a core] critical', () => {});\";\n";
+		const fixture = fixtureRepo('guard-fixture-string', source, `${source}// moved\n`);
+		expect(run(GUARDS, guardArgs(fixture)).status).toBe(0);
 	});
 
 	it('refuses replacing a check with a different same-capability test', () => {
@@ -585,7 +666,7 @@ describe('hard guards', () => {
 		writeFileSync(empty, '[]\n');
 		const none = run(GUARDS, ['--event-file', closed, '--linked-fixes', empty]);
 		expect(none.status).toBe(1);
-		expect(none.stderr).toContain('no linked fix');
+		expect(none.stderr).toContain('no linked fixing change');
 
 		const linked = join(TEMP, 'linked.json');
 		writeFileSync(linked, '[12]\n');
@@ -602,6 +683,212 @@ describe('hard guards', () => {
 			}
 		});
 		expect(run(GUARDS, ['--event-file', approved]).status).toBe(0);
+	});
+});
+
+describe('blocking-bug event response', () => {
+	function fakeGh(dir: string) {
+		const statePath = join(dir, 'state.json');
+		const script = join(dir, 'fake-gh.mjs');
+		writeFileSync(script, FAKE_GH);
+		chmodSync(script, 0o755);
+		return { statePath, script };
+	}
+
+	function stateOf(path: string) {
+		return JSON.parse(readFileSync(path, 'utf8'));
+	}
+
+	function eventFile(dir: string, payload: unknown) {
+		const path = join(dir, 'event.json');
+		writeFileSync(path, JSON.stringify(payload));
+		return path;
+	}
+
+	function responseArgs(dir: string, eventPath: string, script: string, linked?: string) {
+		return [
+			'--event-file',
+			eventPath,
+			...(linked ? ['--linked-fixes', linked] : []),
+			'--out',
+			join(dir, 'result.json'),
+			'--gh',
+			script,
+			'--repo',
+			'o/r'
+		];
+	}
+
+	it('restores an unauthorized blocks-core removal and health stays broken', () => {
+		const dir = tempDir('issue-response-remove');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		// GitHub has already applied the removal when the workflow starts.
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['bug', 'cap:cap.x'] }));
+		const eventPath = eventFile(dir, {
+			action: 'unlabeled',
+			label: { name: 'blocks-core' },
+			issue: { number: 7, labels: ['bug', 'cap:cap.x'], state: 'open' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
+			FAKE_STATE: statePath
+		});
+		expect(result.status).toBe(1);
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.restored).toBe(true);
+		expect(stateOf(statePath).labels).toContain('blocks-core');
+
+		// status reads the restored state: the capability stays broken.
+		const ledgerPath = join(dir, 'ledger.json');
+		writeFileSync(
+			ledgerPath,
+			JSON.stringify({
+				schemaVersion: 1,
+				capabilities: [
+					{
+						id: 'cap.x',
+						area: 'T1',
+						summary: 'x',
+						northStar: 'north-star.md#sacred-contracts',
+						surface: ['apps/editor/src/**'],
+						design: null,
+						review: null
+					}
+				]
+			})
+		);
+		const reportPath = join(dir, 'run.json');
+		writeFileSync(reportPath, JSON.stringify(statusRun()));
+		const githubPath = join(dir, 'github.json');
+		writeFileSync(
+			githubPath,
+			JSON.stringify({
+				issues: [
+					{
+						number: 7,
+						title: 'blocking',
+						labels: stateOf(statePath).labels.map((name: string) => ({ name })),
+						assignees: []
+					}
+				],
+				pulls: []
+			})
+		);
+		const status = run(STATUS, [
+			'--ledger',
+			ledgerPath,
+			'--report',
+			reportPath,
+			'--github',
+			githubPath,
+			'--main-head',
+			COMMIT,
+			'--json'
+		]);
+		expect(status.status).toBe(0);
+		const report = JSON.parse(status.stdout);
+		expect(report.complete).toBe(true);
+		expect(report.capabilities[0].health).toBe('broken');
+	});
+
+	it('accepts only a merged fixing PR or a closing commit', () => {
+		const dir = tempDir('issue-response-fixed');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core', 'bug'] }));
+		const timeline = join(dir, 'timeline.json');
+		writeFileSync(
+			timeline,
+			JSON.stringify([
+				[
+					{
+						event: 'cross-referenced',
+						source: { issue: { number: 13, pull_request: {} } }
+					}
+				],
+				[{ event: 'closed', commit_id: 'deadbeef' }]
+			])
+		);
+		const linked = join(dir, 'linked.json');
+		const resolved = run(
+			LINKED_FIXES,
+			['--timeline', timeline, '--repo', 'o/r', '--out', linked, '--gh', script],
+			REPO_ROOT,
+			{ FAKE_STATE: statePath }
+		);
+		expect(resolved.status).toBe(0);
+		expect(JSON.parse(readFileSync(linked, 'utf8'))).toEqual({
+			pullRequests: [{ number: 13, mergedAt: '2026-11-06T00:00:00Z' }],
+			commits: ['deadbeef']
+		});
+
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: { number: 7, labels: ['blocks-core', 'bug'], state: 'closed' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, linked), REPO_ROOT, {
+			FAKE_STATE: statePath
+		});
+		expect(result.status).toBe(0);
+		expect(stateOf(statePath).state).toBe('closed');
+	});
+
+	it('reopens a blocks-core issue closed after only a mention', () => {
+		const dir = tempDir('issue-response-mention');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['blocks-core', 'bug'] }));
+		const timeline = join(dir, 'timeline.json');
+		writeFileSync(
+			timeline,
+			JSON.stringify([
+				[
+					{
+						event: 'cross-referenced',
+						source: { issue: { number: 12, pull_request: {} } }
+					}
+				]
+			])
+		);
+		const linked = join(dir, 'linked.json');
+		run(
+			LINKED_FIXES,
+			['--timeline', timeline, '--repo', 'o/r', '--out', linked, '--gh', script],
+			REPO_ROOT,
+			{ FAKE_STATE: statePath }
+		);
+		expect(JSON.parse(readFileSync(linked, 'utf8'))).toEqual({ pullRequests: [], commits: [] });
+
+		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core', 'bug'] }));
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: { number: 7, labels: ['blocks-core', 'bug'], state: 'closed' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, linked), REPO_ROOT, {
+			FAKE_STATE: statePath
+		});
+		expect(result.status).toBe(1);
+		expect(stateOf(statePath).state).toBe('open');
+	});
+
+	it('treats an unreadable timeline as unknown, never as fixed', () => {
+		const dir = tempDir('issue-response-unreadable');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['blocks-core', 'bug'] }));
+		const broken = join(dir, 'broken.json');
+		writeFileSync(broken, 'not json');
+		const linked = join(dir, 'linked.json');
+		run(
+			LINKED_FIXES,
+			['--timeline', broken, '--repo', 'o/r', '--out', linked, '--gh', script],
+			REPO_ROOT,
+			{ FAKE_STATE: statePath }
+		);
+		expect(JSON.parse(readFileSync(linked, 'utf8')).unreadable).toBe(true);
 	});
 });
 
@@ -627,11 +914,14 @@ describe('workflow contract', () => {
 		expect(goldens).not.toMatch(/\n    paths:/);
 	});
 
-	it('runs issue-event guards from a real GitHub issues event', () => {
+	it('runs issue-event guards with write access and actual fix linkage', () => {
 		const workflow = readFileSync(ISSUE_GUARDS, 'utf8');
 		expect(workflow).toContain('issues:');
 		expect(workflow).toContain('types: [labeled, unlabeled, closed]');
+		expect(workflow).toContain('issues: write');
+		expect(workflow).toContain('--paginate --slurp');
+		expect(workflow).toContain('linked-fixes.mjs');
 		expect(workflow).toContain('--event-file "$GITHUB_EVENT_PATH"');
-		expect(workflow).toContain('--linked-fixes .harness/linked-fixes.json');
+		expect(workflow).toContain('issue-response.mjs');
 	});
 });

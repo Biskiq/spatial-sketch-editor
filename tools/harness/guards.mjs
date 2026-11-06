@@ -2,127 +2,194 @@
 /**
  * Hard guards: removing reassurance needs the owner's explicit label.
  *
- * Two production consumers, both event driven:
+ * Tagged checks are read from the TypeScript/JavaScript syntax tree, not from
+ * raw text: a commented-out call, a string fixture or a documentation sample is
+ * never a check, while `it.fails`, `it.skip`, `it.only` and describe
+ * inheritance are. Unsupported tagged syntax (for example `it.each`) is
+ * recorded as an unsupported claim and therefore also fails closed when it
+ * disappears.
+ *
+ * Check identity is `file + describe path + test title + level`, with marker
+ * text normalised out so retagging remains the same check. A legitimate fix may
+ * turn `it.fails` back into `it` — the tagged check itself stays.
+ *
+ * Two production consumers:
  *
  *   pull_request  `guards.mjs --base <ref> --head <ref> --labels-file <json>`
- *                 protects tagged checks by identity (file + describe path +
- *                 test title + level), so deleting a test while leaving its
- *                 marker in a comment, or replacing it with another
- *                 same-capability test, still counts as a removal. Inherited
- *                 describe tags belong to the tests they enclose.
- *
- *   issues event  `guards.mjs --event-file <payload> --linked-fixes <json>`
- *                 runs on `issues: [labeled, unlabeled, closed]`. Dropping
- *                 `blocks-core`, dropping `bug` from a `blocks-core` issue, or
- *                 closing one without a linked fix needs the issue's own
- *                 `owner-approved-guard-change` label.
- *
- * A failed or unavailable issue read is a violation, never a pass. The issue
- * workflow only takes effect from the default branch, i.e. after #259 merges.
+ *   issues event  `issue-response.mjs` (uses `evaluateIssueEvent` below) which
+ *                 restores an unauthorized label/state change and fails.
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import ts from 'typescript';
+
+import { OWNER_LABEL, evaluateIssueEvent, issueLabels } from './issue-rules.mjs';
 import { parseCapabilityMarkers } from './report.mjs';
 
+export { OWNER_LABEL, evaluateIssueEvent };
+
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
-export const OWNER_LABEL = 'owner-approved-guard-change';
 
-const DECLARATION =
-	/\b(describe|it|test)\s*\(\s*(?:'((?:\\.|[^'])*)'|"((?:\\.|[^"])*)"|`((?:\\.|[^`])*)`)/g;
+const TEST_BASES = new Set(['it', 'test']);
+const SUPPORTED_MODIFIERS = new Set(['fails', 'skip', 'only', 'concurrent', 'todo']);
 
-function skipString(source, start) {
-	const quote = source[start];
-	for (let index = start + 1; index < source.length; index += 1) {
-		if (source[index] === '\\') {
-			index += 1;
-			continue;
-		}
-		if (source[index] === quote) return index;
+function calleeName(expression) {
+	const members = [];
+	let node = expression;
+	while (ts.isPropertyAccessExpression(node)) {
+		members.unshift(node.name.text);
+		node = node.expression;
 	}
-	return source.length;
+	if (!ts.isIdentifier(node)) return null;
+	return { base: node.text, members };
 }
 
-/** Index of the `}` matching the `{` at `open`, or the end of the file. */
-function matchingBrace(source, open) {
-	let depth = 0;
-	for (let index = open; index < source.length; index += 1) {
-		const char = source[index];
-		if (char === "'" || char === '"' || char === '`') {
-			index = skipString(source, index);
-			continue;
-		}
-		if (char === '/' && source[index + 1] === '/') {
-			while (index < source.length && source[index] !== '\n') index += 1;
-			continue;
-		}
-		if (char === '/' && source[index + 1] === '*') {
-			const end = source.indexOf('*/', index + 2);
-			index = end === -1 ? source.length : end + 1;
-			continue;
-		}
-		if (char === '{') depth += 1;
-		else if (char === '}') {
-			depth -= 1;
-			if (depth === 0) return index;
-		}
+function literalTitle(node) {
+	if (!node) return null;
+	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+	return null;
+}
+
+/** Marker-bearing literals inside an unsupported call, so they cannot vanish. */
+function markerLiterals(node, found = []) {
+	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+		if (node.text.includes('[cap:')) found.push(node.text);
+		return found;
 	}
-	return source.length;
+	if (ts.isTemplateExpression(node)) {
+		if (node.head.text.includes('[cap:')) found.push(node.head.text);
+		for (const span of node.templateSpans) {
+			if (span.literal.text.includes('[cap:')) found.push(span.literal.text);
+			markerLiterals(span.expression, found);
+		}
+		return found;
+	}
+	ts.forEachChild(node, (child) => markerLiterals(child, found));
+	return found;
 }
 
 /**
  * Tagged check declarations in one source file.
- *
- * A check's identity is its file, its describe path and its test title. The
- * marker level comes from the test's own title or from an enclosing describe
- * (the installed reporter includes both in the full name). Comments and
- * documentation are never declarations.
  *
  * @param {string} source
  * @param {string} file
  * @returns {{file: string, titlePath: string, capabilityId: string, level: 'core'|'edge', knownFailing: number|null}[]}
  */
 export function taggedChecksIn(source, file = '') {
-	const describes = [];
-	const tests = [];
-	for (const match of source.matchAll(DECLARATION)) {
-		const title = match[2] ?? match[3] ?? match[4] ?? '';
-		const start = /** @type {number} */ (match.index);
-		if (match[1] === 'describe') {
-			const open = source.indexOf('{', start + match[0].length);
-			if (open === -1) continue;
-			describes.push({
-				title,
-				start,
-				end: matchingBrace(source, open),
-				markers: parseCapabilityMarkers(title)
-			});
-		} else {
-			tests.push({ title, start, markers: parseCapabilityMarkers(title) });
-		}
-	}
-
+	const kind = /\.(mjs|cjs|jsx?)$/.test(file) ? ts.ScriptKind.JS : ts.ScriptKind.TS;
+	const sourceFile = ts.createSourceFile(
+		file || 'fixture.ts',
+		source,
+		ts.ScriptTarget.Latest,
+		true,
+		kind
+	);
 	const checks = [];
-	for (const test of tests) {
-		const ancestors = describes.filter(
-			(describe) => describe.start < test.start && test.start < describe.end
-		);
-		const titlePath = [...ancestors.map((describe) => describe.title), test.title].join(' > ');
-		const markers = new Map();
-		for (const marker of [...test.markers, ...ancestors.flatMap((describe) => describe.markers)]) {
-			markers.set(`${marker.id}|${marker.level}|${marker.knownFailing}`, marker);
+
+	/**
+	 * @param {import('typescript').Node} node
+	 * @param {{title: string, markers: any[]}[]} context
+	 */
+	const visit = (node, context) => {
+		if (ts.isCallExpression(node)) {
+			// `it.each([...])('title', …)` and `describe.each` are a call returning
+			// a call. The tagged title lives on the outer call, so record it as an
+			// unsupported claim rather than letting it vanish.
+			if (ts.isCallExpression(node.expression)) {
+				const inner = calleeName(node.expression.expression);
+				if (inner && (TEST_BASES.has(inner.base) || inner.base === 'describe')) {
+					const literals = [];
+					for (const argument of node.arguments) markerLiterals(argument, literals);
+					for (const literal of literals) {
+						for (const marker of parseCapabilityMarkers(literal)) {
+							checks.push({
+								file,
+								titlePath: `unsupported: ${literal}`,
+								capabilityId: marker.id,
+								level: marker.level,
+								knownFailing: marker.knownFailing
+							});
+						}
+					}
+				}
+			}
+			const callee = calleeName(node.expression);
+			if (callee?.base === 'describe') {
+				const title = literalTitle(node.arguments[0]);
+				const supported =
+					title !== null && callee.members.every((member) => member === 'skip' || member === 'only');
+				if (supported) {
+					const markers = parseCapabilityMarkers(title);
+					const next = [...context, { title, markers }];
+					for (const argument of node.arguments) visit(argument, next);
+					return;
+				}
+				for (const argument of node.arguments) {
+					for (const literal of markerLiterals(argument)) {
+						for (const marker of parseCapabilityMarkers(literal)) {
+							checks.push({
+								file,
+								titlePath: `unsupported: ${literal}`,
+								capabilityId: marker.id,
+								level: marker.level,
+								knownFailing: marker.knownFailing
+							});
+						}
+					}
+				}
+				for (const argument of node.arguments) visit(argument, context);
+				return;
+			}
+
+			if (callee && TEST_BASES.has(callee.base)) {
+				const title = literalTitle(node.arguments[0]);
+				const unsupported = callee.members.some(
+					(member) => !SUPPORTED_MODIFIERS.has(member)
+				);
+				const own = title === null ? [] : parseCapabilityMarkers(title);
+				const inherited = context.flatMap((entry) => entry.markers);
+				const markers = new Map();
+				for (const marker of [...own, ...inherited]) {
+					markers.set(`${marker.id}|${marker.level}|${marker.knownFailing}`, marker);
+				}
+				const unsupportedLiterals = [];
+				if (unsupported || title === null) {
+					for (const argument of node.arguments) markerLiterals(argument, unsupportedLiterals);
+				}
+				if (unsupportedLiterals.length > 0) {
+					for (const literal of unsupportedLiterals) {
+						for (const marker of parseCapabilityMarkers(literal)) {
+							checks.push({
+								file,
+								titlePath: `unsupported: ${literal}`,
+								capabilityId: marker.id,
+								level: marker.level,
+								knownFailing: marker.knownFailing
+							});
+						}
+					}
+				} else if (markers.size > 0) {
+					const titlePath = [...context.map((entry) => entry.title), title].join(' > ');
+					for (const marker of markers.values()) {
+						checks.push({
+							file,
+							titlePath,
+							capabilityId: marker.id,
+							level: marker.level,
+							knownFailing: marker.knownFailing
+						});
+					}
+				}
+				for (const argument of node.arguments) visit(argument, context);
+				return;
+			}
 		}
-		for (const marker of markers.values()) {
-			checks.push({
-				file,
-				titlePath,
-				capabilityId: marker.id,
-				level: marker.level,
-				knownFailing: marker.knownFailing
-			});
-		}
-	}
+		ts.forEachChild(node, (child) => visit(child, context));
+	};
+
+	visit(sourceFile, []);
 	return checks;
 }
 
@@ -133,8 +200,6 @@ export function taggedChecksIn(source, file = '') {
  * @param {string} ref
  */
 export function checksAt(repoRoot, ref) {
-	// Only test files can declare a check; documentation, comments and fixture
-	// strings elsewhere are not checks.
 	const listed = spawnSync(
 		'git',
 		[
@@ -145,7 +210,8 @@ export function checksAt(repoRoot, ref) {
 			ref,
 			'--',
 			':(glob)**/*.test.ts',
-			':(glob)**/*.test.mjs'
+			':(glob)**/*.test.mjs',
+			':(glob)**/*.test.js'
 		],
 		{ cwd: repoRoot, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
 	);
@@ -168,9 +234,7 @@ export function checksAt(repoRoot, ref) {
 			encoding: 'utf8',
 			maxBuffer: 32 * 1024 * 1024
 		});
-		if (shown.status !== 0) {
-			throw new Error(`could not read ${path} at ${ref}`);
-		}
+		if (shown.status !== 0) throw new Error(`could not read ${path} at ${ref}`);
 		checks.push(...taggedChecksIn(shown.stdout, path));
 	}
 	return checks;
@@ -197,12 +261,6 @@ function countByIdentity(checks) {
 		counts.set(key, (counts.get(key) ?? 0) + 1);
 	}
 	return counts;
-}
-
-function issueLabels(issue) {
-	return Array.isArray(issue?.labels)
-		? issue.labels.map((label) => (typeof label === 'string' ? label : label?.name))
-		: [];
 }
 
 /**
@@ -232,7 +290,7 @@ export function evaluateGuards({
 			const downgraded =
 				level === 'core' && (after.get(`${file}${KEY}${titlePath}${KEY}edge`) ?? 0) > 0;
 			violations.push({
-				reason: `${downgraded ? 'downgraded' : 'removed'} tagged check ${file}: ${titlePath}`.trim(),
+				reason: `${downgraded ? 'downgraded' : 'removed'} tagged check ${file}: ${titlePath}`,
 				detail: `${level} check identity no longer exists at head; the owner-approved-guard-change label is required`
 			});
 		}
@@ -261,48 +319,6 @@ export function evaluateGuards({
 		}
 	}
 
-	return violations;
-}
-
-/**
- * One GitHub `issues` event. Returns violations rather than throwing, so the
- * workflow fails with the reason and a missing readback is visible.
- *
- * @param {{event: any, linkedFixes?: number[]|null}} input
- */
-export function evaluateIssueEvent({ event, linkedFixes = null }) {
-	const violations = [];
-	const issue = event?.issue ?? {};
-	const labels = issueLabels(issue);
-	const approved = labels.includes(OWNER_LABEL);
-	const action = event?.action;
-	const removed = event?.label?.name;
-
-	if (action === 'unlabeled' && removed === 'blocks-core' && !approved) {
-		violations.push({
-			reason: `issue #${issue.number} dropped blocks-core without owner approval`,
-			detail: 'add the owner-approved-guard-change label to the issue before removing blocks-core'
-		});
-	}
-	if (action === 'unlabeled' && removed === 'bug' && labels.includes('blocks-core') && !approved) {
-		violations.push({
-			reason: `issue #${issue.number} dropped bug while it still claims blocks-core`,
-			detail: 'relabelling must not erase a confirmed blocking bug; the owner-approved-guard-change label is required'
-		});
-	}
-	if (action === 'closed' && labels.includes('blocks-core') && !approved) {
-		if (linkedFixes === null || linkedFixes === undefined) {
-			violations.push({
-				reason: `issue #${issue.number} closed with blocks-core but fix linkage could not be read`,
-				detail: 'the timeline readback failed; refusing to treat an unreadable close as fixed'
-			});
-		} else if (linkedFixes.length === 0) {
-			violations.push({
-				reason: `issue #${issue.number} closed with blocks-core and no linked fix`,
-				detail: 'link the fixing pull request/commit or add the owner-approved-guard-change label'
-			});
-		}
-	}
 	return violations;
 }
 
@@ -361,14 +377,12 @@ function parseArgs(argv) {
 	return options;
 }
 
-/** A missing linked-fixes file is unknown, not "no links". */
 function readLinkedFixes(path) {
 	if (!path) return null;
 	try {
-		const parsed = JSON.parse(readFileSync(path, 'utf8'));
-		return Array.isArray(parsed) ? parsed : null;
+		return JSON.parse(readFileSync(path, 'utf8'));
 	} catch {
-		return null;
+		return { unreadable: true };
 	}
 }
 
@@ -383,9 +397,7 @@ function cli() {
 			linkedFixes: readLinkedFixes(options.linkedFixes)
 		});
 	} else {
-		const labels = options.labels
-			? options.labels.split(',')
-			: readLabels(options.labelsFile);
+		const labels = options.labels ? options.labels.split(',') : readLabels(options.labelsFile);
 		violations = evaluateGuards({
 			base: options.baseMarkers
 				? readJson(options.baseMarkers)
@@ -411,4 +423,5 @@ function cli() {
 	}
 }
 
-cli();
+// Imported by the issue-response helper; only run as a CLI when invoked.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) cli();

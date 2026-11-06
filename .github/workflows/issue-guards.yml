@@ -1,17 +1,21 @@
 # Event-driven hard guards for confirmed blocking bugs. GitHub issues events
 # start this workflow; there is no scheduler and no polling.
 #
+# A read-only failure would leave an unauthorized label removal or closure in
+# place, and status would read the changed issue. This workflow restores the
+# blocking truth (label back, issue reopened) and verifies the resulting state,
+# then fails so the owner action or real fix is still visible.
+#
 # This file only takes effect from the default branch, so it is active after
 # #259 merges — that is the precise activation boundary. On a pull request the
-# `check guards` job covers tagged-check changes; label removal and issue closure
-# are covered here.
+# `check guards` job covers tagged-check changes.
 name: Issue guards
 on:
   issues:
     types: [labeled, unlabeled, closed]
 permissions:
   contents: read
-  issues: read
+  issues: write
 jobs:
   guard:
     name: issue guard
@@ -22,18 +26,35 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Read linked fixes for a closed issue
+      - name: Read the issue timeline (one JSON payload across pages)
         if: github.event.action == 'closed'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p .harness
           gh api "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/timeline" \
-            --paginate \
-            --jq '[.[] | select(.event == "cross-referenced") | select(.source.issue.pull_request != null) | .source.issue.number]' \
-            > .harness/linked-fixes.json
-      - name: Refuse an unapproved blocking-bug change
+            --paginate --slurp > .harness/timeline.json
+      - name: Resolve only actual fixing changes
+        if: github.event.action == 'closed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
-          node tools/harness/guards.mjs
+          node tools/harness/linked-fixes.mjs
+          --timeline .harness/timeline.json
+          --repo "${{ github.repository }}"
+          --out .harness/linked-fixes.json
+      - name: Refuse and restore an unapproved blocking-bug change
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          node tools/harness/issue-response.mjs
           --event-file "$GITHUB_EVENT_PATH"
           --linked-fixes .harness/linked-fixes.json
+          --out .harness/issue-guard-result.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-guard-result
+          path: .harness/issue-guard-result.json
+          if-no-files-found: warn
+          retention-days: 14
