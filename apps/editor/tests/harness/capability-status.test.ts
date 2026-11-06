@@ -593,7 +593,8 @@ describe('health follows current evidence, not maturity', () => {
 			{ id: 'cap.core-fail' },
 			{ id: 'cap.edge-fail' },
 			{ id: 'cap.blocked' },
-			{ id: 'cap.bug' }
+			{ id: 'cap.bug' },
+			{ id: 'cap.relabelled' }
 		);
 		const report = status({
 			ledger,
@@ -601,7 +602,8 @@ describe('health follows current evidence, not maturity', () => {
 				{ cap: 'cap.core-fail', status: 'failed' },
 				{ cap: 'cap.edge-fail', level: 'edge', status: 'failed' },
 				{ cap: 'cap.blocked' },
-				{ cap: 'cap.bug' }
+				{ cap: 'cap.bug' },
+				{ cap: 'cap.relabelled' }
 			]),
 			github: {
 				issues: [
@@ -616,6 +618,13 @@ describe('health follows current evidence, not maturity', () => {
 						title: 'a visual defect',
 						labels: [{ name: 'bug' }, { name: 'cap:cap.bug' }],
 						assignees: []
+					},
+					{
+						// Dropping `bug` must not erase the blocking claim.
+						number: 3,
+						title: 'relabelled main-journey failure',
+						labels: [{ name: 'blocks-core' }, { name: 'cap:cap.relabelled' }],
+						assignees: []
 					}
 				],
 				pulls: []
@@ -626,6 +635,7 @@ describe('health follows current evidence, not maturity', () => {
 		expect(row(report, 'cap.edge-fail').health).toBe('degraded');
 		expect(row(report, 'cap.blocked').maturity).toBe('working');
 		expect(row(report, 'cap.blocked').health).toBe('broken');
+		expect(row(report, 'cap.relabelled').health).toBe('broken');
 		expect(row(report, 'cap.bug').health).toBe('degraded');
 		expect(row(report, 'cap.bug').flags).toEqual([2]);
 	});

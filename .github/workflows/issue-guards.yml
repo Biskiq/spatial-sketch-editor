@@ -1,0 +1,39 @@
+# Event-driven hard guards for confirmed blocking bugs. GitHub issues events
+# start this workflow; there is no scheduler and no polling.
+#
+# This file only takes effect from the default branch, so it is active after
+# #259 merges — that is the precise activation boundary. On a pull request the
+# `check guards` job covers tagged-check changes; label removal and issue closure
+# are covered here.
+name: Issue guards
+on:
+  issues:
+    types: [labeled, unlabeled, closed]
+permissions:
+  contents: read
+  issues: read
+jobs:
+  guard:
+    name: issue guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Read linked fixes for a closed issue
+        if: github.event.action == 'closed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p .harness
+          gh api "repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/timeline" \
+            --paginate \
+            --jq '[.[] | select(.event == "cross-referenced") | select(.source.issue.pull_request != null) | .source.issue.number]' \
+            > .harness/linked-fixes.json
+      - name: Refuse an unapproved blocking-bug change
+        run: >-
+          node tools/harness/guards.mjs
+          --event-file "$GITHUB_EVENT_PATH"
+          --linked-fixes .harness/linked-fixes.json

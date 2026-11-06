@@ -86,6 +86,12 @@ export const COMMAND_SUITES = SUITES.filter((suite) => suite.kind === 'command')
 	(suite) => suite.name
 );
 
+/** How a production provenance record's command must start. */
+export function expectedCommand(suite) {
+	if (suite.kind === 'vitest') return suite.args.join(' ');
+	return `npm run ${suite.script}`;
+}
+
 /** @param {string} name */
 export function suiteFor(name) {
 	const suite = SUITES.find((entry) => entry.name === name);

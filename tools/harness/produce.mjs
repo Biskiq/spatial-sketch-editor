@@ -169,6 +169,9 @@ async function main() {
 	const provenance = {
 		suite: suite.name,
 		command: [command, ...args].join(' '),
+		// Test-only command overrides remain visible, and the aggregate refuses
+		// to certify a run whose evidence came from one.
+		override: options.override.length > 0,
 		commit: options.commit ?? headCommit(),
 		startedAt: startedAt.toISOString(),
 		completedAt: completedAt.toISOString(),

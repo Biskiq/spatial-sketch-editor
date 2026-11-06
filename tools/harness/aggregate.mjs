@@ -1,21 +1,37 @@
 #!/usr/bin/env node
 /**
- * Turn per-suite provenance into one run artifact, and refuse to certify it.
+ * Turn per-suite provenance into one certifiable run — or refuse.
  *
- * Every required suite must be present exactly once, must come from one tested
- * commit, and must satisfy the report engine's evidence contract (`validateRun`).
- * A missing artifact, a suite that never started, a collection failure or a
- * runtime/hook error leaves that suite incomplete or absent — so the aggregate
- * fails and the required `merge gate` check is red.
+ * Certification checks are cumulative and independent:
+ *
+ *   provenance  every required suite exactly once, one commit, contract command,
+ *               no test-only override, no producer error or interrupt
+ *   evidence    `validateRun`: real reporter/TAP artifacts, no runtime/hook
+ *               failures, no collection losses, zero skipped API contracts
+ *   markers     `gateFailures`: a stale or unverified known-failing marker, a
+ *               failing/skipped tagged check, never reads green just because the
+ *               runner exited zero
  *
  * Usage:
- *   node tools/harness/aggregate.mjs --dir artifacts --out report.json [--commit <sha>]
+ *   node tools/harness/aggregate.mjs --dir artifacts --out report.json --commit <sha>
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-import { validateRun } from './report.mjs';
-import { REQUIRED_SUITES } from './suites.mjs';
+import { collectChecks, gateFailures, validateRun } from './report.mjs';
+import { REQUIRED_SUITES, expectedCommand, suiteFor } from './suites.mjs';
+
+const COMMIT = /^[0-9a-f]{7,40}$/;
+const STATUSES = new Set(['complete', 'failed', 'interrupted']);
+
+/** Runner-mode verification reads the checkout the producer ran in. */
+function readSource(file) {
+	try {
+		return readFileSync(file, 'utf8');
+	} catch {
+		return null;
+	}
+}
 
 /**
  * @param {string} dir
@@ -28,12 +44,14 @@ export function aggregate(dir, options = {}) {
 	/** @type {string[]} */
 	let files = [];
 	try {
-		files = readdirSync(dir).filter((name) => name.endsWith('.json'));
+		files = readdirSync(dir).filter(
+			(name) => name.endsWith('.json') && !name.endsWith('.vitest.json')
+		);
 	} catch (error) {
 		problems.push(`artifact directory unreadable: ${error.message}`);
 	}
+
 	for (const file of files) {
-		if (file.endsWith('.vitest.json')) continue;
 		let provenance;
 		try {
 			provenance = JSON.parse(readFileSync(join(dir, file), 'utf8'));
@@ -56,6 +74,37 @@ export function aggregate(dir, options = {}) {
 		bySuite.set(provenance.suite, provenance);
 	}
 
+	// One record's evidence never supplies another's. Each record must stand on
+	// its own: its own tested commit, its own command, its own exit status.
+	for (const [name, provenance] of bySuite) {
+		const suite = suiteFor(name);
+		if (provenance.override === true) {
+			problems.push(`${name}: a test-only command override cannot certify a run`);
+		}
+		if (typeof provenance.commit !== 'string' || !COMMIT.test(provenance.commit)) {
+			problems.push(`${name}: provenance has no tested commit`);
+		} else if (options.commit && provenance.commit !== options.commit) {
+			problems.push(`${name}: provenance is for ${provenance.commit}, not ${options.commit}`);
+		}
+		if (typeof provenance.command !== 'string') {
+			problems.push(`${name}: provenance has no recorded command`);
+		} else if (!provenance.command.startsWith(expectedCommand(suite))) {
+			problems.push(`${name}: command does not match the suite contract`);
+		}
+		if (typeof provenance.exitCode !== 'number') {
+			problems.push(`${name}: provenance has no exit code`);
+		}
+		if (!STATUSES.has(provenance.status)) {
+			problems.push(`${name}: provenance has an unknown status`);
+		}
+		if (provenance.error) {
+			problems.push(`${name}: producer reported ${provenance.error}`);
+		}
+		if (provenance.signal) {
+			problems.push(`${name}: runner was interrupted by ${provenance.signal}`);
+		}
+	}
+
 	const commits = [...new Set([...bySuite.values()].map((entry) => entry.commit).filter(Boolean))];
 	const commit = options.commit ?? commits[0] ?? null;
 	if (commits.length > 1) {
@@ -71,7 +120,7 @@ export function aggregate(dir, options = {}) {
 		const status =
 			provenance.status === 'complete' && provenance.exitCode === 0
 				? 'complete'
-				: provenance.status === 'interrupted'
+				: provenance.status === 'interrupted' || provenance.signal
 					? 'interrupted'
 					: 'failed';
 		return {
@@ -87,10 +136,21 @@ export function aggregate(dir, options = {}) {
 	// such a run as valid evidence about capabilities.
 	for (const entry of suites) {
 		if (entry.status !== 'complete') {
-			problems.push(
-				`${entry.name} is ${entry.status}; the merge gate requires a complete run`
-			);
+			problems.push(`${entry.name} is ${entry.status}; the merge gate requires a complete run`);
 		}
+	}
+
+	// The marker contract is part of the gate, not only of the report: a stale
+	// marker or a skipped tagged check leaves the suite green, so it can only be
+	// caught here.
+	const checks = [];
+	for (const provenance of bySuite.values()) {
+		if (Array.isArray(provenance.results?.testResults)) {
+			checks.push(...collectChecks(provenance.results, { readSource }));
+		}
+	}
+	for (const failure of gateFailures(checks)) {
+		problems.push(`${failure.file || 'tagged check'}: ${failure.reason}`);
 	}
 
 	const run = {

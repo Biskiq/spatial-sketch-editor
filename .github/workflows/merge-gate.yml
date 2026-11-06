@@ -19,24 +19,28 @@ concurrency:
 env:
   CI: '1'
 jobs:
+  prepare:
+    name: prepare matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.suites.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: suites
+        run: echo "matrix=$(node tools/harness/matrix.mjs)" >> "$GITHUB_OUTPUT"
+
   suite:
     name: ${{ matrix.suite }}
+    needs: prepare
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { suite: 'npm run check', slug: check }
-          - { suite: 'npm run test:arch', slug: test-arch }
-          - { suite: 'npm test', slug: test }
-          - { suite: 'npm run test:heavy', slug: test-heavy }
-          - { suite: 'npm run build', slug: build }
-          - { suite: 'npm run check:api', slug: check-api }
-          - { suite: 'npm run check:camera-core', slug: check-camera-core }
-          - { suite: 'npm run check:layout-core', slug: check-layout-core }
-          - { suite: 'npm run check:geometry-core', slug: check-geometry-core }
-          - { suite: 'npm run check:project-model', slug: check-project-model }
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

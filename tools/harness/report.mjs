@@ -546,9 +546,9 @@ export function buildReport({
 		const linkedIssues = issues.filter(
 			(issue) => Array.isArray(issue?.labels) && issue.labels.includes(`cap:${entry.id}`)
 		);
-		const blocking = linkedIssues.some(
-			(issue) => issue.labels.includes('bug') && issue.labels.includes('blocks-core')
-		);
+		// `blocks-core` carries the blocking claim by itself: relabelling a bug
+		// to drop `bug` must not turn a main-journey failure healthy.
+		const blocking = linkedIssues.some((issue) => issue.labels.includes('blocks-core'));
 		const confirmed = linkedIssues.some((issue) => issue.labels.includes('bug'));
 
 		const reviewCurrent = reviewIsCurrent(
