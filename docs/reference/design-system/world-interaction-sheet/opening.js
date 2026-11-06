@@ -1,4 +1,4 @@
-// Review-only entry; rebuild with the command in opening-design-review.md.
+// Visual-reference entry; rebuild instructions are in docs/roadmap/r217-core-editor-stability/world-shell-recovery/opening-design-review.md.
 // G, glyph and knob are the existing interaction sheet's sticker vocabulary.
 /* global G, glyph, knob */
 import {

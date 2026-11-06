@@ -1,6 +1,6 @@
 # World shell recovery
 
-**Status: implementation authorized by the owner and delivered for inspection; visual/UX acceptance remains pending and belongs exclusively to the owner.**
+**Status:** the owner-accepted World interaction language ([acceptance record](./review-pass-2-plan.md#10-owner-review-round-3-2026-11-02)) is consolidated in the [World interaction reference](../../../reference/design-system/world-interaction-sheet.html). This promotion is documentation-only and does not close a production slice or phase.
 
 Base: `08602245` (merged `main`, after S24), branch `codex/r217-visual-correction`.
 This is a dedicated World presentation recovery, not S25 or a new geometry slice.
@@ -10,7 +10,7 @@ visual baseline, with the explicitly preserved later decisions. Existing PLATE,
 plans and sign-offs supply constraints and conflicts; they do not lower that
 baseline. The approved planning documents below retain their proposal wording as
 the planning record; the owner’s implementation instruction supplies approval.
-Historical records and governing visual references remain unchanged.
+Historical plans retain their implementation and acceptance evidence; the consolidated visual reference removes comparison and review-round material.
 
 - [Measured design specification](./design-specification.md): source tokens,
   dimensions, composition, responsive rules and interaction states.
@@ -19,9 +19,9 @@ Historical records and governing visual references remain unchanged.
 - [Implementation plan](./implementation-plan.md): concrete replacements,
   disclosure/navigation work, retired paths, sequencing and functional checks.
 - [Owner review pass 1](./review-pass-1-plan.md): separate follow-up plan, accepted owner decisions and acceptance record. Implementation and non-browser functional verification are delivered; visual acceptance remains pending.
-- [Owner review pass 2](./review-pass-2-plan.md): second review plan (drawing ink, dashed ghosts, refusal, Card More/`•••`, rename, sticker gizmos, two-knob height stem, chip scale, gear Room labels and per-view Paper) with its [interaction sheet](./review-pass-2-interaction-sheet.html), which becomes the World visual-language authority once settled. Planned; awaiting owner release.
+- [Owner review pass 2](./review-pass-2-plan.md): second review plan (drawing ink, dashed ghosts, refusal, Card More/`•••`, rename, sticker gizmos, two-knob height stem, chip scale, gear Room labels and per-view Paper) with its [World interaction reference](../../../reference/design-system/world-interaction-sheet.html). The owner accepted this visual language on 2026-11-02; it is now consolidated under `reference/design-system`. Production code and tests remain behavioral authority.
 
-Opening follow-up for PR #270: [design and implementation boundary](./opening-design-review.md), with interactive section 9 in the existing sheet. Proposal only; awaiting owner review before production expansion.
+Opening follow-up for PR #270: [design and implementation boundary](./opening-design-review.md), with its [Opening specimen](../../../reference/design-system/world-interaction-sheet.html#s-opening). The visual specimen is preserved in the consolidated reference; this promotion authorizes no production expansion.
 
 ## Review basis
 
