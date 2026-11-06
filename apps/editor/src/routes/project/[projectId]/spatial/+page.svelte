@@ -732,24 +732,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	$effect(() => () => {
 		if (playbackEntryStandpoint !== null) restorePlaybackEntry();
 	});
-	$effect(() => {
-		if (playback.status !== 'playing' || playbackSuppressed) return;
-		let last = performance.now();
-		let frame = 0;
-		const step = (now: number) => {
-			const delta = (now - last) / 1000;
-			last = now;
-			playback.tick(delta);
-			frame = requestAnimationFrame(step);
-		};
-		frame = requestAnimationFrame(step);
-		return () => cancelAnimationFrame(frame);
-	});
-	// The one Camera write: an evaluated pose only during Follow. Plain play and
-	// scrub move the playhead and rig puck, never the inspection.
-	$effect(() => {
+	/**
+	 * The playback clock runs inside the Stage's own frame loop (`advancePlayback`,
+	 * called just before the Camera is evaluated), so a Follow pose is written and
+	 * drawn in the same frame. A second rAF loop raced the Stage's and landed some
+	 * poses a frame late, which read as judder.
+	 */
+	let playbackClock: number | null = null;
+	let lastFollowSample: typeof playback.sample = null;
+	function writeFollowSample(): void {
 		const sample = playback.sample;
-		if (sample === null || !shouldWritePlaybackSample(playback.following, playbackSuppressed)) return;
+		if (sample === null || !shouldWritePlaybackSample(playback.following, playbackSuppressed)) {
+			lastFollowSample = null;
+			return;
+		}
+		if (sample === lastFollowSample) return;
+		lastFollowSample = sample;
 		const accepted = applyPlaybackView({
 			eye: [sample.eye[0], sample.eye[1], sample.eye[2]],
 			target: [sample.target[0], sample.target[1], sample.target[2]],
@@ -758,6 +756,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// A refused write stops the run instead of letting the playhead drift on
 		// a Camera the Stage no longer owns.
 		if (!accepted) playback.fail('The Stage refused the playback camera.');
+	}
+	function advancePlayback(now: number): void {
+		if (playback.status !== 'playing' || playbackSuppressed) {
+			playbackClock = null;
+		} else {
+			if (playbackClock !== null) playback.tick((now - playbackClock) / 1000);
+			playbackClock = now;
+		}
+		writeFollowSample();
+	}
+	// A seek, a Stop press or Follow turning on while paused writes at once; the
+	// frame loop covers playing.
+	$effect(() => {
+		void playback.sample;
+		void playback.following;
+		untrack(() => writeFollowSample());
 	});
 	$effect(() => {
 		const onKey = (event: KeyboardEvent) => {
@@ -3352,6 +3366,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						acceptRect(next);
 					}
 				}
+				advancePlayback(performance.now());
 				refresh();
 			} finally {
 				frame = requestAnimationFrame(tick);
