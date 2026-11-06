@@ -17,7 +17,7 @@ Useful functional assertions remain evidence, not current shell acceptance.
 The original repository failures below are historical. This was review-ready
 prototype evidence, with no merge-readiness, PR closure or major-phase closure claim.
 
-The [C1–C8 replacement contract](../plans/experience-v2-prototype/conformance-plan.md)
+The [C1–C8 replacement contract](../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/conformance-plan.md)
 owns this record. [S0–S9 acceptance](./EXPERIENCE-ACCEPTANCE.md), its plan and specimens remain
 unchanged historical evidence. This prototype establishes no production format or cutover.
 

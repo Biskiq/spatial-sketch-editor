@@ -41,7 +41,7 @@ direction is accepted; the editor still runs the landed PLATE chrome until an ex
   Experience into **PLATE §0.8–§0.8.3**, the normative destination shell authority.
   This package retains the final design record and specimens; the World executable adopts it under #112.
 - Preserves accepted **V2 Experience semantics**
-  ([final V2 synthesis](../integrated-experience-authoring/design/Prototype-V2-final-synthesis.md))
+  ([final V2 synthesis](../../docs/archive/prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md))
   and **P26 journeys A–F, capabilities and interaction laws**
   ([World Authoring Prototype](../spatial-authoring/README.md)).
 - Supersedes predecessor **P26 shell/chrome/tool exposure/disclosure** where the
@@ -70,7 +70,7 @@ direction is accepted; the editor still runs the landed PLATE chrome until an ex
 - Accepted/frozen by [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111)
   on `world-workspace-redesign`.
 - Design inputs are not duplicated here. The four V2 boards remain in
-  [`../integrated-experience-authoring/Design-QAs/`](../integrated-experience-authoring/Design-QAs/),
+  [`../integrated-experience-authoring/Design-QAs/`](../../docs/archive/prototypes/integrated-experience-authoring/Design-QAs),
   while the original six P26 input rasters are recoverable through the
   [World acceptance preservation anchor](../spatial-authoring/qa/ACCEPTANCE.md#preservation).
   Unique material evidence remains under

@@ -22,5 +22,5 @@ production cutover.
 Current Scene | Camera shell behavior and Scene-encoded Camera data remain landed
 descriptions until explicit migration. The interior-View-to-Stop meaning and
 detour lifecycle were carried into Prototype V2 design as hypotheses; the
-accepted direction is now the [final V2 synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md),
+accepted direction is now the [final V2 synthesis](../../archive/prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md),
 and the next step is repo-aware reconciliation and implementation planning.

@@ -25,7 +25,7 @@ Exact source routing and provenance:
   -> designer-packet/references/02-same-project-other-lens.png (unaltered copy).
   This deliberately demonstrates cross-lens selection continuity, not ordinary
   Experience or a Paper tool proposal. Captions correct overly amber lens styling.
-- prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md:
+- docs/archive/prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md:
   finalized Experience product/shell model and stable landmarks. No V2 task board
   was included: it would add unrelated detail to the narrow Paper problem.
 - docs/reference/design-system/editor-shell-and-visual-system.md:

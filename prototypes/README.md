@@ -60,19 +60,20 @@ production authority; their documentation is still a route a reader follows.
 | **Production shell wireframe** | Round 2 wireframe (visual-language pass, atlas board, tours, live A/B alternatives) of the integrated World and Experience production shell: **owner-ratified 2026-10-23 as the destination shell** and kept as accepted visual/behavioral evidence; promoted into PLATE, not itself authority or a contract ([record](../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md)) | [README](./production-shell-wireframe/README.md) · [DESIGN-NOTE](./production-shell-wireframe/DESIGN-NOTE.md) |
 | **Product foundation** | Current production implementation and its contracts; the linked references distinguish landed capabilities from the destination. Prototype resemblance alone never authorizes reuse | [architecture](../docs/reference/architecture.md) · [shell destination](../docs/reference/design-system/editor-shell-and-visual-system.md) |
 
-Other retained evidence stays in its existing directories:
+Other retained evidence, live or archived:
 
-- [UX3/V3 proposal](./experience-ux-v3/design/README.md)
-  and [15 generated PNGs](./experience-ux-v3/README.md): superseded design/rationale,
-  with the standalone plan inactive. No PNG/layout-equivalence acceptance.
-- [Integrated Experience V2](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
-  and [earlier Design-QAs](./integrated-experience-authoring/Design-QAs/README.md):
+- [UX3/V3 rationale](../docs/archive/prototypes/experience-ux-v3/design/README.md):
+  superseded design/rationale, with the standalone plan inactive. Its fifteen
+  layout PNGs, compositor and capture pipeline were removed 2026-11-06 and remain
+  only at pinned Git locators. No PNG/layout-equivalence acceptance.
+- [Integrated Experience V2](../docs/archive/prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
+  and [earlier Design-QAs](../docs/archive/prototypes/integrated-experience-authoring/Design-QAs/README.md):
   historical Experience design and functional evidence.
 - [World shell round](./world-experience-shell-round/README.md): earlier accepted
   discovery/procedure/return rationale and specimens; Production shell Round 2
   supersedes conflicting shell treatment.
-- [Experience Authoring donor](./experience-authoring/README.md): runnable
-  behavioral/regression evidence, no current UX authority.
+- [Experience Authoring donor](../docs/archive/prototypes/experience-authoring/README.md):
+  archived runnable behavioral/regression evidence, no current UX authority.
 - [Paper commission](./paper-authoring-commission/designer-packet/COMMISSION.md):
   original brief and accepted proposal rationale. [PA0–PA12](./paper-authoring-commission/plans/inactive-adoption-plan.md)
   is inactive/unimplemented; #115 is parallel-track planning.
@@ -108,13 +109,13 @@ cd prototypes/production-shell-wireframe && python3 serve.py 8850
 # World Spatial Interaction Reference — no build step, vendored Three.js
 cd prototypes/spatial-authoring && python3 -m http.server 8826   # http://localhost:8826/
 
-# Experience Authoring Prototype — Vite + Vitest + Playwright
-cd prototypes/experience-authoring && npm install && npm run dev
-
 # Objects & Assemblies prototype — no build step, vendored Three.js
 python3 -m http.server 8832 --bind 127.0.0.1 --directory prototypes/object-composition-prototype
 # Open http://127.0.0.1:8832/
 ```
+
+The archived Experience Authoring donor remains runnable for regression only:
+`cd docs/archive/prototypes/experience-authoring && npm install && npm run dev`.
 
 Serve each on its own port; more than one may be running at once, so treat a
 port in use as another prototype's server rather than an error to clear.

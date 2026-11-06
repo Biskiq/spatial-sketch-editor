@@ -91,6 +91,6 @@ then clears the selection, then closes the Guide.
 
 Evidence consulted: round 1 — the existing application behaviour as described in
 [`../spatial-authoring/README.md`](../spatial-authoring/README.md) and the earlier
-[Design-QA boards](../integrated-experience-authoring/Design-QAs/README.md). Round 2 — the
-[UX3 boards](../experience-ux-v3/README.md) and its shell/visual specification, and the accepted
+[Design-QA boards](../../docs/archive/prototypes/integrated-experience-authoring/Design-QAs/README.md). Round 2 — the
+[UX3 boards](../../docs/archive/prototypes/experience-ux-v3/README.md) and its shell/visual specification, and the accepted
 [World shell synthesis](../world-experience-shell-round/design/design-synthesis.md).

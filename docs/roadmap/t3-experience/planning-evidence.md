@@ -168,8 +168,9 @@ Baseline `e90a58224443bdbf44114d7285d55c983b79cc84`. Consulted: `docs/reference/
 `docs/reference/north-star.md`, `docs/reference/design-system/editor-shell-and-visual-system.md`,
 `docs/operations/tech-debt/README.md`, `docs/archive/roadmap/parallel-track-cutover/implementation-plan.md`
 §2.2/§4.3/§5.1/§7.2/§8.4/§9.1, the archived P25 compact, and the prototype plans under
-`prototypes/experience-ux-v3/design/`, `prototypes/spatial-authoring/plans/experience-v2-prototype/`,
-`prototypes/spatial-authoring/plans/unified-design-reconciliation/` and
+`docs/archive/prototypes/experience-ux-v3/design/`,
+`docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/`,
+`docs/archive/prototypes/spatial-authoring/plans/unified-design-reconciliation/` and
 `prototypes/spatial-authoring/plans/world-authoring-prototype.md`. Retiring-roadmap sources are cited
 in the recoverable form `git show e90a58224443bdbf44114d7285d55c983b79cc84:<path>` rather than as live
 routes.

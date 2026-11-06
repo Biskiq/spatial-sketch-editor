@@ -22,7 +22,7 @@ World-only. They protect Camera, history, selection and World continuity.
 
 C1–C8 and C9.1–C9.9 remain recorded functionality acceptance: MP1–MP4 were accepted
 by the owner for functionality (MP3/MP4 2026-10-11), and #113 is closed.
-[C9 recovery](./plans/experience-v2-prototype/authoring-completeness-plan.md)
+[C9 recovery](../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md)
 and [C9 evidence](./qa/EXPERIENCE-C9-EVIDENCE.md) preserve that boundary.
 No production interface, codec, Camera evaluator, snapshot history or renderer
 strategy is promoted from this static prototype.
@@ -70,7 +70,7 @@ Experience. Its optional Next demonstrations use ordinary commands; outcomes are
 advisory, never acceptance. Back/Skip/close/reopen author nothing. Read-only Preview
 guidance remains separate from authored Guides. Reset/Load Example/Load Conformance
 are explicit prototype facilities; they never silently play or move Camera.
-The [Experience donor](../experience-authoring/README.md) remains runnable regression
+The [Experience donor](../../docs/archive/prototypes/experience-authoring/README.md) remains runnable regression
 evidence, and old design boards stay in their existing directories.
 
 **Baton:** #114 accepted unified design → #115 parallel-track planning cutover →

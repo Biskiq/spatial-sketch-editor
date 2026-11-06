@@ -38,6 +38,14 @@ PR #115 (WP4) kept the archive deliberately small. It holds:
   architecture cycle, and the `slice-closeout`/`phase-closeout` skills. Live routing is
   [`../workflow.md`](../workflow.md), [`../../focus.md`](../../focus.md) and
   [`../operations/README.md`](../operations/README.md).
+- `prototypes/` — superseded prototype evidence archived 2026-11-06: the runnable
+  [Experience donor](./prototypes/experience-authoring/README.md), the
+  [Integrated Experience V2 design and Design-QAs](./prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md),
+  the [UX3/V3 rationale](./prototypes/experience-ux-v3/design/README.md), and the inactive
+  [Experience V2 plans](./prototypes/spatial-authoring/plans/experience-v2-prototype/implementation-plan.md)
+  and [P26 specification](./prototypes/spatial-authoring/design/visual-system-refinement/specification-plan.md).
+  The UX3 boards, gallery, specimens and capture scripts were removed; their pixels and
+  source remain at pinned Git locators.
 
 The rest of the baseline archive (shipped phase diaries, handoffs, superseded
 plans, retired strategy snapshots, old shell and design specs) was deleted by

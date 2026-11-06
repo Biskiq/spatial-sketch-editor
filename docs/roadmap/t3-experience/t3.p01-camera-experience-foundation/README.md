@@ -71,7 +71,7 @@ Read the [T3 evidence](../planning-evidence.md),
 [Camera contract](../../../reference/components/camera-tour.md),
 [World | Experience amendment](../../../reference/decisions/world-experience-reconciliation-2026-09-29.md)
 and [PLATE Experience expression](../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression).
-The historical [V2 synthesis](../../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
+The historical [V2 synthesis](../../../archive/prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
 supplies repeated-use/reach evidence; its retired shell, arrays and path keys are not formats.
 
 | Surviving evidence | Finding and planning consequence |

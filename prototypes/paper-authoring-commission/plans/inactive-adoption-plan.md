@@ -152,13 +152,13 @@ Each slice records:
 
 ### PA0 · Preflight and seams (no behaviour change)
 
-- **Updated entry authority:** reconcile against the [replacement C1–C8 conformance plan](../../spatial-authoring/plans/experience-v2-prototype/conformance-plan.md)
+- **Updated entry authority:** reconcile against the [replacement C1–C8 conformance plan](../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/conformance-plan.md)
   and [fresh conformance evidence](../../spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
   C8 in-scope acceptance is complete (2026-10-04) and #113's C9 capability is owner-accepted
   for functionality (2026-10-11); the separate missing-fixture repository blocker remains.
   PA0 inherits the tested executable and current proof after **#114** lands (its Experience UX
-  is now in [V3 design review](../../experience-ux-v3/design/README.md),
-  with one [superseding proposed plan](../../experience-ux-v3/design/implementation-plan.md)
+  is now in [V3 design review](../../../docs/archive/prototypes/experience-ux-v3/design/README.md),
+  with one [superseding proposed plan](../../../docs/archive/prototypes/experience-ux-v3/design/implementation-plan.md)
   awaiting ratification); PA0 consumes the eventual accepted #114 tree, not the old
   UX0–UX7 target;
   no Paper work starts in #113 or #114.

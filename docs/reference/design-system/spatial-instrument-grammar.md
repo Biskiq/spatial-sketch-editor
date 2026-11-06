@@ -371,8 +371,8 @@ techniques are optional within the semantic species and distinctions above:
   and [QA package](../../../prototypes/world-experience-shell-round/QA-package/):
   temporary readings, measured-axis honesty, selection/task distinction, one writer,
   local refusal, repair and narrow task continuity.
-- [Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
-  and [Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/):
+- [Experience UX reconciliation](../../archive/prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
+  and [Design-QAs](../../archive/prototypes/integrated-experience-authoring/Design-QAs):
   historical Camera/coordination distinctions and advanced Outside/Through
   precision specimens; their old shell/constellation layouts are superseded.
 - [Production shell wireframe, Round 2](../../../prototypes/production-shell-wireframe/README.md)

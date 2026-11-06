@@ -117,8 +117,8 @@ unfinished frontier; the durable owner owns established deferred diagnosis.
 
 ## Complete
 
-Promote before delete (only verified reusable knowledge — see
-`docs/README.md` §Progressive project knowledge; no doc change merely for
+Promote before delete (only verified reusable knowledge — see the durable owner
+routed from [`docs/README.md`](../../../docs/README.md); no doc change merely for
 completeness):
 
 ```text

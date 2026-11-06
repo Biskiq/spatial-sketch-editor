@@ -91,7 +91,7 @@ git fetch origin refs/pull/111/head && git show 39edeb38:<path>
 ```
 
 The removed `designer-visuals.local/` copies were duplicates of already-retained
-canonical inputs ([V2 boards](../../integrated-experience-authoring/Design-QAs/),
+canonical inputs ([V2 boards](../../../docs/archive/prototypes/integrated-experience-authoring/Design-QAs),
 P26 references under `docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/`
 and [`spatial-authoring/screens/`](../../spatial-authoring/screens/)); they need no
 separate anchor.
