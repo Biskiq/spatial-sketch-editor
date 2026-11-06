@@ -60,10 +60,9 @@ owns the definition; this adds no lifecycle status.
 so the halt has spent its condition and no longer blocks those inheritors. **Satisfying the halt
 released nothing by itself.** `T1.P02.S02` and `T2.P02.S03` were then released on 2026-10-27
 ([record](../reference/decisions/next-wave-authorization-2026-10-27.md)) and have since run: S02
-shipped as `owner-override` on PR #201, and S03 was accepted 2026-10-27, closing `T2.P02`. The Core
-Editor Stability acceptance plan still needs its own owner release and its own reviews before any
-implementation starts; a cleared dependency is not an authorization, and the
-[release list](./now.md) remains owner-written.
+shipped as `owner-override` on PR #201, and S03 was accepted 2026-10-27, closing `T2.P02`. Core Editor Stability was subsequently accepted by the owner at #271's merge (`ce4e232c`);
+its separate S11 execution is waived, with [evidence limits recorded](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+The [release list](./now.md) remains owner-written; the immediate next scope is #259's harness implementation.
 
 ## Track register
 
@@ -79,14 +78,17 @@ owns lifecycle only and never copies their content.
 | T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
 | T5 | approved | [T5 — Expressive Geometry](./t5-expressive-geometry/README.md) |
 | R115 | shipped | [R115 — PR #115 architecture reset](./parallel-track-cutover/README.md) |
-| R217 | in-progress | [R217 — Core Editor Stability](./r217-core-editor-stability/README.md) |
+| R217 | shipped | [R217 — Core Editor Stability](./r217-core-editor-stability/README.md) |
 
 - **R115 is a repository phase, not a fifth track.** It is registered here directly because it
   has no parent track; its sole child is `R115.S01` and its own README owns that child.
 - **R217 is a repository phase**, registered here on the owner's 2026-10-28 ruling
   ([record](../reference/decisions/core-editor-stability-planning-2026-10-28.md), D4). All track
   phases were closed and its work crosses T1, T2, T3 and T5, which keep ownership and review per
-  slice. Its own README owns its eleven slices; nothing in it is released.
+  slice. Its own README owns its slice register. **Closed, Core Product Stability accepted**
+  effective at PR #271 merge `ce4e232c` (2026-11-06), by the owner after hands-on integrated
+  review; [S11 is owner-accepted by override, separate execution waived](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+  No R217 gate or closeout remains; [#259 implementation](./lean-harness-proposal.md) is next.
 - **`planning`** means the track's roadmap and evidence exist and no capability phase is
   registered or authorized. It is the honest state after PR #115: planning evidence is
   recorded, implementation is not authorized.
@@ -129,8 +131,12 @@ ratified amendments.
 | F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — | — |
 | T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | accepted | T1.P01.S02 | `apps/editor/src/lib/authoring/stage`, `packages/camera-core/src/viewport.ts`, `packages/layout-core/src/layout-plan-representation.ts` | `apps/editor/tests/lib/authoring/stage-consumer-probes.test.ts`, `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md` | `ab8504aa` | `T1.viewport-projection@1:viewport-projection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/capability-viewport-projection-v1.md` |
 | T3.camera-experience-cutover | 1 | capability | T3 | [AM-9](../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover) | superseded | T3.P01.S04 | `packages/project-model/src/units`, `packages/project-model/src/units/experience`, `apps/api/src`, `apps/editor/src/lib/visitor` | `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `apps/editor/tests/lib/experience/experience-runtime.test.ts`, `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`, `apps/api/tests/migration-fence.test.mjs` | `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/acceptance.md` | `06a8aac8fa601de6c808c4d7014b6f360516e648` | — |
-| T3.camera-experience-cutover | 2 | capability | T3 | [AM-10](../reference/composition-execution.md#am-10-guided-views-and-visitor-reach) | implemented | R217.S27 | `packages/project-model/src/units`, `packages/project-model/src/units/experience`, `apps/api/src`, `apps/editor/src/lib/visitor` | `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `apps/editor/tests/lib/experience/experience-runtime.test.ts`, `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`, `apps/api/tests/migration-fence.test.mjs` | — | — | — |
+| T3.camera-experience-cutover | 2 | capability | T3 | [AM-11](../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) | accepted | R217.S27 | `packages/project-model/src/units`, `packages/project-model/src/units/experience`, `apps/api/src`, `apps/editor/src/lib/visitor` | `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `apps/editor/tests/lib/experience/experience-runtime.test.ts`, `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`, `apps/api/tests/migration-fence.test.mjs` | `docs/roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md` | `ce4e232c6b0eac85d24ec56d9176be5cfc8ce169` | — |
 | T4.prepared-reader | — | capability | T4 | — | undrafted | — | — | — | — | — | — |
+
+The current `T3.camera-experience-cutover@2` row points to AM-11's landed Experience format 4 /
+Program v4 and the owner's integrated product acceptance at #271. Its acceptance record explicitly
+distinguishes that review from waived separate S11 execution; it fabricates no conformance run.
 
 **Legend (enforced by `apps/editor/tests/docs/parallel-track-gates.test.ts`):**
 

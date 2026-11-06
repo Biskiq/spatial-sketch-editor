@@ -6,6 +6,11 @@ each phase README (slice child status and order) and the
 [gate register](../roadmap/README.md#gate-register). Never synchronize another track's handoff, and
 never treat stale baton text as a blocker.
 
+**Current route:** [#259 harness implementation](../roadmap/lean-harness-proposal.md) is the
+immediate next step. [R217 status and owner acceptance/waiver](../roadmap/r217-core-editor-stability/README.md)
+supersede older R217 work in per-track batons; no S11, A–Q or R217 closeout is pending. This
+navigation does not synchronize or replace another track's handoff.
+
 ```text
 NOT:  status · a plan · another track's state
 OWNS: the per-track baton routes

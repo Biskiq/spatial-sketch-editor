@@ -1,9 +1,10 @@
 # R217.S11 — Integrated final gate: implementation plan
 
-**Slice:** R217.S11 · **Status:** approved (plan); released by the [campaign record](../../../reference/decisions/r217-convergence-campaign-2026-10-30.md) when PR #230 merges; acceptance and merge stay with the owner · **Phase:**
-[R217](../README.md) · [slice register](../README.md#slice-register) · **Writer:** T1 ·
-**Reviewers:** T2, T3, T5 and an independent reviewer · **Runbook:**
-[T1 operations](../../../operations/t1-spatial-world/README.md)
+**Slice:** R217.S11 · **Status:** **owner-accepted by override; separate gate execution waived**,
+effective at PR #271 merge `ce4e232c`, 2026-11-06. The owner personally tested and accepted the
+integrated product, including final Experience changes. [Acceptance and evidence limits](./acceptance.md)
+own this disposition. **Phase:** [R217](../README.md), closed. The plan below preserves the
+original verification design; it is not future work, an executed checklist or a #259 prerequisite.
 
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1

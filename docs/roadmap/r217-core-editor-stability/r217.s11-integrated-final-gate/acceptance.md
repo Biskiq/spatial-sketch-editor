@@ -1,14 +1,37 @@
 # R217.S11 — acceptance record: Integrated final gate
 
-**Slice:** R217.S11 · **Status:** approved (plan); no acceptance recorded · **Plan:**
-[implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
-[R217](../README.md) · **Declared** `FINAL PHASE GATE` artifact of R217
+**Slice:** R217.S11 · **Status:** owner-accepted by override (`owner-override`);
+separate gate execution waived · **Effective revision:** PR #271 merge `ce4e232c`, 2026-11-06 ·
+**Plan:** [implementation-plan.md](./implementation-plan.md) (historical verification design) ·
+**Phase:** [R217](../README.md) · **Declared** `FINAL PHASE GATE` artifact of R217
 
-This artifact is the phase's declared final-gate artifact, but it records no evidence. It is the
-destination of the integration routes declared by `R217.S01`–`S10` and `R217.S12`–`S25`: the exhaustive integrated
-acceptance of Core Editor Stability shell coherence lives here, not in their records.
+## Owner ruling
 
-**Blocking carried evidence:** any approved-model browser row that R217.S17 records as owed must pass here. It stays open until it is recorded with its revision, or the owner explicitly waives it.
+On 2026-11-06 the owner explicitly ruled: **R217 is complete and closed; Core Product Stability
+is accepted**, effective at the merge of [PR #271](https://github.com/Biskiq/spatial-sketch-editor/pull/271)
+(`ce4e232c6b0eac85d24ec56d9176be5cfc8ce169`). The owner personally tested and accepted the
+integrated product, including the final Experience changes.
 
-The slice has not been released, implemented, reviewed or accepted. This record claims no result,
-tested revision, gate state or commit.
+**R217.S11 is owner-accepted by override; separate gate execution is waived because the owner
+already performed and accepted the hands-on product review.** Stability verification was not
+abandoned. No separate S11 ceremony, A–Q manual rerun, acceptance plan or R217 closeout remains
+a future prerequisite. PR #259's implementation is the immediate next step, with its own
+independent CI, architecture, regression, review and verification requirements.
+
+## Evidence and limits
+
+- **Owner evidence:** hands-on acceptance of the integrated product at the effective merge above.
+  This is owner product acceptance, not an independent automated verdict.
+- **Existing executed evidence:** the slice records and
+  [#271's verification summary](../experience-review/fix.md#verification-for-owner-acceptance)
+  retain their actual tested revisions, automated results and reference/browser observations.
+- **Not separately executed:** this record does not assert a new S11 command run, per-journey
+  J1–J21 result, A–Q checklist result, Safari/native-touch matrix result, DB/import check, seam
+  review, bundle scan or measurement. Any individual check without existing execution evidence
+  remains unexecuted/unevidenced; the waived separate execution is not a pass.
+- **Preservation:** the historical S11 plan and carried evidence (including S17's approved-model
+  browser rows) remain useful regression/research material. They no longer block R217 acceptance
+  or #259. No code, product test or architectural invariant is retired by this ruling.
+
+This file reconciles the owner's decision inside #259. It initiates no separate closeout,
+new PR, tag, gate version or production activation.

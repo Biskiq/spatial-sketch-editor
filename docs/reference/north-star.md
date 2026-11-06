@@ -17,7 +17,15 @@ target capability below is presented as shipped. Open mechanism decisions (encod
 kernel implementation, level mechanism, channel operators) are named as open, not
 invented here.
 
-**Current shell (2026-10-27):** PR #115 removed the earlier editable
+**Current product acceptance (2026-11-06):** R217 is closed and **Core Product Stability is
+accepted**, effective at PR #271 merge `ce4e232c`. The owner personally tested and accepted the
+integrated product, including the final Experience changes. [S11 is owner-accepted by override;
+separate execution waived](../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+No unexecuted individual check is claimed as passed. [#259 implementation](../roadmap/lean-harness-proposal.md)
+is next, with independent verification; acceptance of this bounded milestone does not claim full
+destination coverage. AM-11 owns the landed Experience format 4 / Program v4 semantics.
+
+**Earlier shell implementation summary (2026-10-27):** PR #115 removed the earlier editable
 `Spatial` workspace (`Scene | Camera` × `Plan | 3D`). The rebuilt Stage at
 `/project/:id/spatial` offers an explicit starter gallery or a genuinely empty start, Plan/3D
 inspection and selection, a native Layout plinth, dimension edits of existing Walls and

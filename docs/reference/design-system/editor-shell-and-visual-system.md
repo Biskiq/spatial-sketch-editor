@@ -21,15 +21,18 @@ justify the rule it changes; a feature brief must not casually reinterpret it.
 
 The destination is **World | Experience over one project**. This is design authority,
 not authorization to cut over the editor. PR #115 removed the earlier full authoring
-shell and its descriptive composition contract. T1.P01.S02 restores a partial,
-read-only Stage shell; it does not implement this destination composition. Later
-tracks still need to build the unified shell against this contract. Prototype adoption
-and production delivery have their own plans and acceptance gates.
+shell and its descriptive composition contract. R217 subsequently rebuilt the shared authoring
+shell and World/Experience loops. The owner personally tested and accepted the integrated product,
+including final Experience changes, effective at PR #271 merge `ce4e232c` (2026-11-06).
+**R217 is closed; Core Product Stability accepted.** [S11 is owner-accepted by override; separate
+execution waived](../../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+This does not claim execution of every planned check or delivery of all destination depth.
+AM-11 owns current Experience semantics; the accepted interaction sheets remain visual evidence.
 
 | State | Meaning after Round 2 |
 | --- | --- |
 | **Accepted destination** | The Round 2 unified shell, promoted below: Head, scope-model Index, Stage, overlay Card and one lower column (dock → palette → Instrument); the rays-and-points manipulation vocabulary and mark language; the pointer-tool roster; Experience authoring in the same shell with the #114 Experience semantics |
-| **Implemented production** | Partial read-only Stage shell from T1.P01.S02 and the landed T1 adapters (including the Dimensions instrument; the pointer rail is planned, not landed). The unified composition and its authoring behavior remain unimplemented; landed behavior is current until a consuming slice cuts it over (see the [ratification record](../decisions/production-shell-round-2-ratification-2026-10-23.md#cutover-and-landed-behavior)); this ratification itself implements no product UI |
+| **Implemented production** | R217 shared Head/Index/Card/lower working edge, World drafting/manipulation and Experience authoring/Preview through AM-11, owner-accepted at #271 merge `ce4e232c`. Useful destination depth remains future work; the [R217 acceptance record](../../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md) distinguishes product review from waived separate S11 execution |
 | **Preserved semantics/architecture** | Domain ownership, Camera evaluation, validity, source history and isolation remain governed by their owners |
 | **Deferred depth/refinements** | Feature-level decisions, retained alternatives and open usability problems are listed under [Open implementation and usability choices](#open-implementation-and-usability-choices-03--076); they are not unfinished shell gates. #115 plans parallel tracks; it does not implement them |
 

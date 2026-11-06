@@ -8,11 +8,20 @@ remain in force until the replacement is enforced and #259 merges. Implementatio
 stages inside this PR, without separate proposal approvals, planning rounds or closeout PRs.
 After implementation, preserve this plan as history rather than a second live work entry.
 
+**Owner ruling, 2026-11-06:** R217 is complete and closed, with Core Product Stability accepted
+effective at #271's merge (`ce4e232c`). The owner personally tested and accepted the integrated
+product, including the final Experience changes. R217.S11 is **owner-accepted by override;
+separate gate execution waived** because that hands-on product review already occurred. This
+records product acceptance, not a claim that each planned automated, browser/device or seam check
+was separately executed. Historical evidence remains; no R217 gate, A–Q rerun, acceptance plan or
+closeout remains ahead of #259. The harness retains its own CI, architecture, regression and
+verification requirements below.
+
 | Verified baseline | Consequence for #259 |
 | --- | --- |
 | R217.S25 is shipped: [phase register](./r217-core-editor-stability/README.md#slice-register), PR #261, owner acceptance at `703712d7` | S24/S25 are no longer future prerequisites; no additional S25 closeout is requested |
-| S26–S30 code and the Experience corrections are on `main`; [#271](https://github.com/Biskiq/spatial-sketch-editor/pull/271) merged as `ce4e232c` | Seed against Experience unit format 4 / Program v4, not the earlier placeholder shell or format 3. Merge does not by itself record the outstanding owner journeys A–Q as passed |
-| [S11](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md) has no acceptance; phase/Experience records still carry manual acceptance | Carry the substantive proof below. Do not infer R217 closure or make reconciliation wait for routine paperwork |
+| S26–S30 code and the Experience corrections are on `main`; [#271](https://github.com/Biskiq/spatial-sketch-editor/pull/271) merged as `ce4e232c` | Seed against Experience unit format 4 / Program v4, not the earlier placeholder shell or format 3. Owner personally tested and accepted the integrated product, including #271, effective at this merge; individual unexecuted checks are not claimed as passed |
+| **R217: closed, Core Product Stability accepted** at `ce4e232c`; [S11](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md) is owner-accepted by override | Separate S11 execution is waived because the owner performed and accepted the product review. S11, A–Q and R217 closeout are not future prerequisites; #259 implementation is next |
 | [#266](https://github.com/Biskiq/spatial-sketch-editor/pull/266) is an open research-only draft at `e2e3aea7` | Register proposed T5 capability coverage; ratify no Studio UX, modeling source or implementation release |
 | Only `.github/workflows/native-form-goldens.yml` is checked in; active [default-branch ruleset](https://github.com/Biskiq/spatial-sketch-editor/rules/22803329) requires PRs and prevents deletion/force-push, but has no required status checks | Add and enforce the complete merge gate in #259. An active ruleset is not evidence that CI is required |
 
@@ -364,9 +373,9 @@ defect, not permission to expand this PR into feature work.
 
 | Paths / concern | Verified drift and recommended hardening | Dependencies / proof |
 | --- | --- | --- |
-| `docs/reference/design-system/editor-shell-and-visual-system.md` introduction, state table, typography | Still says partial read-only Stage, Dimensions instrument and no landed shell. Replace with the actual R217 shared Head/Index/Card/lower edge, World tools and Experience homes; distinguish remaining destination depth. Remove obsolete rebuild-from-zero guidance | `apps/editor/src/lib/authoring/stage/shell/`, `apps/editor/src/lib/authoring/experience/ExperienceHomesHost.svelte`, R217 S20–S25 and world-shell-recovery evidence; do not mark every destination capability shipped |
+| `docs/reference/design-system/editor-shell-and-visual-system.md` introduction, state table, typography | The owner-acceptance update reconciles the introduction/state table to the landed R217 shell. Remaining typography/rebuild-from-zero wording still needs focused hardening; preserve the accepted shared homes and distinguish remaining destination depth | `apps/editor/src/lib/authoring/stage/shell/`, `apps/editor/src/lib/authoring/experience/ExperienceHomesHost.svelte`, R217 S20–S25 and world-shell-recovery evidence; do not mark every destination capability shipped |
 | PLATE Experience information homes, Guide/Stops, playback and advanced authoring; `docs/reference/components/camera-tour.md` | Older Stop View sequences, explicit continuation/Gates and generic Preview prose conflict with AM-11's implemented linear Guide. Describe one Stop entry/stay, Guide pacing/order, strip-owned Guide editing, Experience Card welcome/opening Guide, explicit Look through, automatic Camera-path reconciliation, paused/seeking Preview and public autoplay. Retain one Camera evaluator and one writable home | AM-11; `packages/project-model/src/units/types.ts`, `units/planning.ts`, `units/experience/{lowering,interpreter}.ts`; `ExperienceGuide.svelte`, `ExperienceStopWriter.svelte` and `ExperienceExperienceWriter.svelte` under `apps/editor/src/lib/authoring/experience/`. The wider ratified Gates destination is the owner conflict below, not a feature to restore |
-| `docs/reference/composition-execution.md` AM-11 implementation status; `docs/roadmap/README.md` cutover row; R217 phase/`now.md` | Branch-only/not-on-main wording and format-3/@2 provider descriptions lag #271. Record actual format 4 / Program v4 and merged code, leaving manual A–Q and S11 acceptance unclaimed. Preserve the in-place amendment/refusal notice as history; do not invent a converter | `EXPERIENCE_UNIT_FORMAT_VERSION` in `packages/project-model/src/units/types.ts`, strict reader in `units/validate.ts`, lowering and #271 merge. Update current locators; earlier plans/acceptance records stay historical |
+| `docs/reference/composition-execution.md` AM-11 implementation status; `docs/roadmap/README.md` cutover row; R217 phase/`now.md` | Owner-acceptance reconciliation records format 4 / Program v4, the accepted current cutover, R217 closure and S11 execution waiver. Verify remaining locators against that baseline during implementation; preserve the in-place amendment/refusal history and never invent per-check passes or a converter | `EXPERIENCE_UNIT_FORMAT_VERSION` in `packages/project-model/src/units/types.ts`, strict reader in `units/validate.ts`, lowering and #271 merge. Update current locators; earlier plans/acceptance records stay historical |
 | `apps/editor/src/lib/authoring/stage/shell/shell-roles.css`, `EditorHead.svelte`, `EditorCard.svelte`, `StageDock.svelte`, spatial route and Experience components | Shared roles exist, while literal type/control metrics remain in components. Inventory equivalent values and consume existing roles where equivalent; preserve exceptions with a concrete use. Fix the stale roles comment describing draft ink as white when the token and accepted World grammar are black | Existing `--shell-text-*`, control/Head sizes and material roles; shell composition/coarse-target tests and accepted sheets. Preserve calibrated density, narrow layout, 44 px coarse targets and current behavior; no new scaling system or visual restyle |
 | Shared homes/lower-edge composition and World `Soon` controls | Keep Card/Instrument avoidance, canonical selection, gesture fade, lens return, F4 history and session-only preferences. The disabled Card actions/Base/Top remain explicit unbuilt capabilities, not active features or arbitrary deletion candidates | `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts`, `stage-shell-coarse-targets.test.ts`, `editor-host-no-write.test.ts`; S11 exposure list, seam checks and matrix. Tag existing guarantees; repair only a demonstrated defect |
 | `docs/reference/design-system/world-interaction-sheet.html`, `world-interaction-sheet/{opening.js,opening.bundle.js}`, `experience-interaction-sheet.html` | Keep the accepted pair and World offline bundle/source together. Opening source imports real Layout planners plus production Paper/refusal helpers; its rebuild instructions still live in a roadmap review document. Put the exact rebuild recipe beside the source before archiving that review | `docs/roadmap/r217-core-editor-stability/world-shell-recovery/opening-design-review.md`; verify the source/bundle and offline specimen after any move. The SVG/state/clocks remain demonstrations, never Camera/runtime or persisted-format authorities |
@@ -410,8 +419,8 @@ on the same defect. No prototype-derived product authority or new archive-exclus
 | `docs/roadmap/now.md`, `cross-track-execution.md`; `docs/operations/current.md` and per-area `current.md` | **Archive at workflow cutover.** Repeated permission/DAG/baton text already disagrees with merged #271 and shipped S25. Replace discovery with focus + status/claims, retaining unresolved residuals as flags. This audit does not rewrite another area's baton |
 | Closed phase trees: `docs/roadmap/t1-spatial-world/{t1.p01-stage-foundation,t1.p02-native-wall-creation}/`, `t2-composition/{t2.p01-supported-composition,t2.p02-own-model-import}/`, `t3-experience/{t3.p01-camera-experience-foundation,t3.p02-capture-and-cut-preview,t3.p03-shared-acceptance-and-measurement,t3.p04-project-lifecycle}/`, `t5-expressive-geometry/t5.p01-drawn-native-objects/` | **Archive** closed plan/acceptance/evidence packets after preserving live contract and test/fixture consumers. Keep short area context pointing to code/contracts; do not copy their registers into the ledger as claimed maturity. T4's unimplemented prepared release plan is future scope, not a closed packet |
 | `docs/roadmap/parallel-track-cutover/`, `docs/operations/architecture-cycle.md`, `docs/operations/README.md`, per-area runbooks; `.agents/skills/{slice-closeout,phase-closeout}/` | **Archive/retire** obsolete process at the same cutover as its test assertions. Keep useful development/testing commands in existing contributor/test docs, checkpoint workflow and browser hygiene. The tests manual still cites §7.4/§7.7 in the cutover plan: inline the complete required command contract there before retiring that route |
-| `docs/roadmap/r217-core-editor-stability/{post-s10-convergence,s12-s15-corrections,post-s19-owner-manual-review,world-shell-recovery,r217.s26-experience-authoring-depth,experience-review}/` | **Archive historical plans/round logs once current rules and open evidence are extracted.** Reference sheets already replace the redundant roadmap HTML retired by #271: do not plan to delete it again. Keep S11's pending proof discoverable and carry A–Q/residuals honestly. Opening rebuild recipe must survive the move |
-| Shipped R217 slice plan stubs/acceptance packets and `docs/roadmap/core-editor-stability.md` | **Archive historical packets** after ledger/test/reference mapping; **keep pending integrated obligations** until fulfilled or explicitly waived. No routine phase-close record/PR is added, and a documentation sweep does not claim acceptance |
+| `docs/roadmap/r217-core-editor-stability/{post-s10-convergence,s12-s15-corrections,post-s19-owner-manual-review,world-shell-recovery,r217.s26-experience-authoring-depth,experience-review}/` | **Archive historical plans/round logs once current rules and open evidence are extracted.** Reference sheets already replace the redundant roadmap HTML retired by #271: do not plan to delete it again. Preserve the owner acceptance/waiver and historical A–Q/check evidence; neither is a future R217 prerequisite. Opening rebuild recipe must survive the move |
+| Shipped R217 slice plan stubs/acceptance packets and `docs/roadmap/core-editor-stability.md` | **Archive historical packets** after ledger/test/reference mapping; **keep the owner acceptance/waiver and useful historical evidence**. R217 is closed by the owner's ruling at #271; no future integrated gate or routine phase-close record/PR is required |
 | `docs/reference/decisions/*authorization*.md`, `r217-convergence-campaign-2026-10-30.md`; T5 `e0-execution-plan.md` and G0 proposal packets | **Archive** permission-only/withdrawn execution history and superseded alternatives once normative conclusions are linked from existing references. **Keep** ratified North Star/F/shell/T5 decision provenance and the adopted T5 umbrella. Extract unresolved performance/import/activation residuals; closed phase status never proves them resolved |
 
 Pruning must update every affected inbound link, embedded asset and command in the same #259 diff,
@@ -465,33 +474,21 @@ on its own, and no closeout PR or further planning round is required.
 4. **Workflow cutover and bounded pruning:** install the tier table, existing plan rules, focus,
    claims/flags and on-demand skills; replace retired process assertions and route-coverage
    sentinels atomically with their replacements. Apply the §I Keep/Archive/Remove inventory,
-   updating imports/links/scripts together. Keep useful evidence and unresolved obligations;
+   updating imports/links/scripts together. Keep useful evidence and the explicit R217 acceptance/waiver;
    no arbitrary deletion quota, separate approvals or per-phase closeout sweeps.
-5. **Verify the integrated result in this PR.** Demonstrate both regression/report paths, stale and
-   incomplete reports, zero-core behavior, review invalidation, claim collision handling and hard
-   guards. Preserve **R217.S11 as substantive proof**, expressed as tagged tests and this PR's
-   checklist rather than another acceptance/closeout document. Its
-   [current plan](./r217-core-editor-stability/r217.s11-integrated-final-gate/implementation-plan.md)
-   carries obligations that must remain visible until fulfilled or explicitly waived:
-   - the complete merge gate, including DB-backed API tests with zero skips;
-   - journeys J1–J17 across the pointer and viewport matrix, as tagged end-to-end tests wherever
-     automatable;
-   - the owner-run Safari cells and the native-touch cell, or an explicit owner waiver;
-   - visitor, public and preview isolation plus the build-chunk scan;
-   - Sheet extension, mark/planner admission, Paper layer-mask and domain-winner picking seam
-     reviews, as tests where possible;
-   - the real-import evidence R217.S17 carried to J15;
-   - the Stage route brotli delta since the phase base, exposure list for disabled/unbuilt controls,
-     and the red-dash Eraser/refusal watch; the performance mandate remains suspended;
-   - independent integrated review and owner walkthrough, including the still-unrecorded #271 A–Q
-     journeys. Extend the old World-heavy matrix to the landed Experience loop; do not restore
-     removed range/bulk editing, Stop View sequences or explicit continuation to satisfy old prose.
+5. **Verify #259's implementation independently.** Demonstrate both regression/report paths,
+   stale and incomplete reports, zero-core behavior, review invalidation, claim collision handling
+   and hard guards. Run the complete CI contract from stage 2, including architecture/isolation,
+   regression coverage, editor build/checks and DB-backed API checks with zero skips, plus affected
+   package checks. Verify the accepted reference specimens and surviving pruning consumers.
 
-   Evidence and screenshots live in #259. Record existing evidence with its tested revision and
-   rerun affected proof against the final integrated head; old evidence is never a fresh pass by
-   assertion. An unevidenced obligation stays open and prevents an integrated acceptance claim.
-   Only an explicit owner ruling retires a substantive obligation. Do not mark R217 accepted or
-   closed merely because the harness merges; its outstanding proof remains discoverable.
+   R217 is already closed and Core Product Stability accepted at `ce4e232c`. S11's separate
+   execution is waived by owner override after hands-on integrated product acceptance, not because
+   stability verification was abandoned. Its historical plan/checklist and #271's A–Q remain useful
+   evidence and regression material, with no claim that every individual cell/check ran. They are
+   not a future gate, walkthrough, waiver request or closeout prerequisite for #259. Do not copy
+   them into #259 as mandatory R217 acceptance work. #259's own changed-code verification and
+   independent review remain required, and existing product tests/architecture guarantees stay.
 6. **One owner merge of #259 (Tier 2).** Final review includes the seed, enforcement and cutover;
    no earlier proposal-only merge. Autonomous Tier 0/1 merges begin only after the required gate
    is active. If repository administration access prevents installing it, report that concrete
@@ -601,25 +598,16 @@ contract remains intact. No guarantee disappears unnamed.
 - #259 is the single harness implementation PR, with enforcement before cutover; no extra plan,
   approval or routine closeout PR. The accepted sheets and offline Opening specimen remain usable,
   and every pruned packet's surviving consumers resolve.
-- This reconciliation changes only the proposal/PR description; none of the future implementation
-  demonstrations above is claimed as already passed.
+- This planning update records the owner's R217 acceptance and waiver in relevant existing status
+  and reference records. No future harness implementation demonstration is claimed as passed.
 
 ## Open questions for the owner
 
-The risk tiers, first-commit plans, creator-recognizable ledger entries, one-PR staging and context
-strategy are settled, not questions for another review round. Only these evidence/authority gaps
-remain; none blocks preparing #259's implementation:
+The harness decisions and R217 acceptance are settled. #259 implementation is the immediate next
+step; no S11 execution, A–Q rerun or R217 closeout remains as a prerequisite.
 
-1. **#271 manual acceptance.** Git proves the merge, while the phase, AM-11 status and final plan
-   still say browser journeys A–Q are pending. Record any actual owner acceptance with scope and
-   revision; otherwise carry the journeys as open proof. Do not infer acceptance from merge or
-   reopen the accepted interaction design.
-2. **Older ratified Gates/continuation wording.** AM-11 explicitly supersedes it for format 4,
-   while PLATE/Camera and older ratified direction retain broader destination statements. Recommend
-   reconciling the landed descriptions to AM-11 now and marking any broader future interaction
-   direction as unresolved, with the owner's narrow ratified-text cleanup in this PR. No new
-   implementation gate, restored Gates feature or silent North Star amendment follows from #259.
-3. **Existing S11 waivers, only if needed.** Keep Safari/native touch, real-import and all other
-   carried obligations by default. An unavailable device or evidence gap needs an explicit scoped
-   waiver to claim acceptance; the harness introduces no additional approval round. T5 Studio's
-   proposed UX/source choices stay flags on that capability group, not decisions for this prune.
+**Older ratified Gates/continuation wording** remains the narrow reference concern: AM-11
+supersedes it for format 4, while older destination statements remain. Reconcile landed descriptions
+to AM-11 and flag any broader future-direction ambiguity without restoring removed behavior or
+silently amending the North Star. This does not reopen accepted R217 product review or block
+#259 implementation. T5 Studio's proposed UX/source choices remain flags on that capability group.

@@ -4,17 +4,19 @@
 
 A scope absent from this table is held. A row states the condition under which the runbook start step may begin. It does not record that the condition has already been met.
 
-**Sequence:** PR #258 (World shell recovery) merged, owner World visual acceptance 2026-11-02 → next `R217.S25` → PR #259 documentation prune → `R217.S11` integrated final gate.
+**Immediate next step:** implement [PR #259's reconciled harness plan](./lean-harness-proposal.md)
+in that same PR. This is the owner's explicit next scope, outside the retired R217 slice sequence;
+it does not create a new slice or gate. This update is planning-only; implementation has not begun.
+
+**R217: closed, Core Product Stability accepted**, effective at PR #271 merge `ce4e232c`
+(2026-11-06). The owner personally tested and accepted the integrated product, including the final
+Experience changes. [S11 is owner-accepted by override; separate gate execution is waived](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+No S11 run, A–Q rerun or R217 closeout is a future prerequisite; unexecuted individual checks are
+not represented as passed. #259 keeps its own CI, architecture, regression and verification duties.
+R217's completed scope rows are removed by this owner ruling; earlier release provenance remains below.
 
 | Scope | Condition | Plan |
 | --- | --- | --- |
-| `R217.S25` | released by the owner's merge of PR #230 under the [campaign record](../reference/decisions/r217-convergence-campaign-2026-10-30.md); starts when its plan's dependencies have merged, with consumed gates and active scopes rechecked at the trusted base; the record's owner checkpoints apply | [Experience shared homes](./r217-core-editor-stability/r217.s25-experience-shared-homes/implementation-plan.md) |
-| `R217.S26` | released by the owner's direction of 2026-11-03 under the approved [S26 plan](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md) (R1: no separate doc approval); starts on `main` after PR #262, with consumed gates and active scopes rechecked at the trusted base; acceptance is deferred to the owner's end-to-end review after R217.S30 | [Structure and removal](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md#r217s26--structure-and-removal) |
-| `R217.S27` | released by the owner's direction of 2026-11-03 under the approved [S26 plan](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md). Starts from the S26 merge (`4ad500c8`) with consumed gates and scopes rechecked at that base. Owner acceptance follows R217.S30. | [Guided Views and visitor reach](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md#r217s27--guided-views-and-visitor-reach) |
-| `R217.S28` | released by the owner's direction of 2026-11-03 under the approved [S26 plan](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md), including the bounded extension of the existing camera-core evaluation path for exact View eye/target/FOV and fixed-eye re-aim. Starts from the S27 merge (`f00c17e1`) with consumed gates and scopes rechecked at that base. Owner manual acceptance follows the S26 plan's final slice. | [Views on the Stage](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md#r217s28--views-on-the-stage) |
-| `R217.S29` | released by the owner's direction of 2026-11-03 under the approved [S26 plan](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md). Starts from the verified S28 merge (`535e4bd1`) with consumed gates and scopes rechecked at that base. Owner manual acceptance (X29.1–X29.7) is deferred until the owner's end-to-end review after the final S26 plan slice; R217.S11 owns the integrated journeys. | [Camera paths](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md#r217s29--camera-paths) |
-| `R217.S30` | released by the owner's direction of 2026-11-03 under the approved [S26 plan](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md). Starts from the verified S29 merge (`2635b904`) after rechecking consumed gates and active scopes at that base. Owner manual acceptance for S26–S30 follows S30 under R3. | [Timeline, playback and Preview](./r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md#r217s30--timeline-playback-and-preview) |
-| `R217.S11` | released by the owner's merge of PR #230 under the [campaign record](../reference/decisions/r217-convergence-campaign-2026-10-30.md); runs after R217.S12–S25 have merged; its acceptance, merge and phase close stay with the owner | [Integrated final gate](./r217-core-editor-stability/r217.s11-integrated-final-gate/implementation-plan.md) |
 
 Shipped scopes pruned 2026-11-02 by owner direction: `R217.S01`–`S05`, `S10`, `S12`–`S24` and `T5.P01.S01`–`S04` have merged; each slice's own acceptance record and the tags keep its evidence. The provenance paragraphs below describe rows as of their own releases.
 

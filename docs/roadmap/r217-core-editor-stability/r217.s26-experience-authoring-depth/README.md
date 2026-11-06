@@ -1,6 +1,9 @@
 # R217.S26 — Experience authoring depth: planning workspace
 
-**Status: approved by the owner, 2026-11-03.** Exception for these slices: no separate doc approval;
+**Status: implemented and owner-accepted at PR #271 merge `ce4e232c`, 2026-11-06.**
+R217 is closed, Core Product Stability accepted; [S11 separate execution is waived by owner override](../r217.s11-integrated-final-gate/acceptance.md).
+This workspace preserves the original scope, decisions and evidence, not future prerequisites.
+Original owner approval: 2026-11-03. Exception for these slices: no separate doc approval;
 each slice's PR carries its plan, code and tests, and the owner accepts it in the PR
 ([rulings](./owner-decisions.md#owner-rulings-2026-11-03-final-planning-follow-up-for-pr-262)).
 
@@ -9,7 +12,8 @@ creator workflow those placeholders stand for — Presentation → Views → Gui
 playback → Preview — inside the accepted Round 2 shell, with Conservatory's content and interaction,
 on the existing Camera and Experience authorities, harvesting every Conservatory capability so no
 prototype needs harvesting again. It is delivered as five bounded slices, **R217.S26–R217.S30**,
-before the final gate R217.S11, which then certifies R217 as a stable product milestone.
+and the final #271 corrections. The owner has accepted the integrated product; S11 is
+owner-accepted by override with separate execution waived, not a further certification step.
 
 **Authorities** (unchanged from the [S25 harvest](../r217.s25-experience-shared-homes/design-harvest.md), D13):
 

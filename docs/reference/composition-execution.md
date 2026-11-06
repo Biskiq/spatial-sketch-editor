@@ -908,10 +908,10 @@ cuts over to Experience unit format 4 and `ExecutionProgram@4`. Format 3 and `Ex
 are refused with `unsupported_format_version`, with no converter. AM-10's Stop View sequences,
 per-View holds, Gates and Guide Card welcome are superseded. The owner's second review
 (2026-11-05, [fix.md](../roadmap/r217-core-editor-stability/experience-review/fix.md) §2) amends
-format 4 in place: format 4 has never been on `main`, so there is no bump, migration or
-compatibility reader, and a file written before the amendment is refused. The rules below are
-normative for format 4. [Implementation status](#am-11-implementation-status) says which of them
-PR #271's branch implements so far.
+format 4 in place before it first reached `main` at #271's merge (`ce4e232c`): there was no
+bump, migration or compatibility reader, and a file written before the amendment is refused.
+The rules below are normative for format 4. [Implementation status](#am-11-implementation-status)
+describes the landed implementation accepted by the owner at that merge.
 
 **Authored format 4**
 
@@ -978,7 +978,7 @@ PR #271's branch implements so far.
 
 ### AM-11 implementation status
 
-PR #271's branch implements format 4's pacing, stays,
+PR #271, merged at `ce4e232c`, implements format 4's pacing, stays,
 invitations, entry Views, Presentation `views`, program v4, the interpreter, Explore and
 Back, and the one Guide clock. Authoring feedback is typed since slice 1: a line carries
 `success`, `info` or `refusal`, so a success is never styled as a refusal and no string
@@ -1043,5 +1043,9 @@ later Default reordering, including a View that was the Default when chosen.
 
 Every rule in this AM-11 implementation status is implemented on PR #271. The slice 10 final
 gate reran the complete editor suite (3,932 tests), the architecture suite (209 tests),
-`npm run check` (0 errors) and `npm run build` (passed). The owner's browser journeys A–Q are
-the remaining manual acceptance, and no merge occurs before they pass.
+`npm run check` (0 errors) and `npm run build` (passed). On 2026-11-06 the owner explicitly
+confirmed hands-on acceptance of the integrated product, including the final Experience changes,
+effective at #271's merge. **R217 is closed; Core Product Stability is accepted.**
+[S11 is owner-accepted by override; separate gate execution waived](../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md)
+because that product review already occurred. A–Q is not future work; no separately unexecuted
+check is represented as passed, and #259 retains its independent verification requirements.

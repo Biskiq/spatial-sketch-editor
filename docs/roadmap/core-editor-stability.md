@@ -1,14 +1,19 @@
 # Core Editor Stability — pre-publication product milestone
 
-**Status:** the milestone was set by owner ruling R1-D on 2026-10-17
-([record](../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)).
-The owner approved its direction and ruled on K1–K4 on 2026-10-17 ([rulings](../reference/decisions/next-batch-authorization-2026-10-17.md#core-editor-stability-rulings-2026-10-17)).
-The criteria below implement those rulings but remain **proposed pending explicit owner
-confirmation**. On 2026-10-28 the owner added the Shell coherence row (D1 in the
-[Core Editor Stability planning rulings](../reference/decisions/core-editor-stability-planning-2026-10-28.md));
-R217 is its planned owner. Independent re-review does not itself ratify the exact milestone criteria. This
-page is a milestone definition, not a gate, phase, slice or authorization; it changes no register.
-All T4 work waits for this milestone's recorded acceptance.
+**Status:** **Core Product Stability accepted; R217 closed**, effective at PR #271's merge
+(`ce4e232c`, 2026-11-06). The owner personally tested and accepted the integrated product, including
+the final Experience changes. [R217.S11 is owner-accepted by override; separate gate execution
+waived](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md) because that
+hands-on product review already occurred. This does not mark unexecuted individual checks passed.
+
+The milestone originated in owner ruling R1-D on 2026-10-17
+([record](../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17));
+the owner added Shell coherence on 2026-10-28
+([rulings](../reference/decisions/core-editor-stability-planning-2026-10-28.md)). The criteria and
+planning snapshot below preserve that history. No separate acceptance plan, S11 execution,
+manual-journey rerun or phase closeout remains. [#259 implementation](./lean-harness-proposal.md)
+is the immediate next step, with independent verification requirements; no T4 production scope
+is implicitly released by this milestone acceptance.
 
 **What it means.** A creator can build, compose (including one of their own models), author, preview,
 save and reopen a real project in the editor, safely, responsively and repeatably, with no publication.
@@ -18,31 +23,21 @@ area below. Advanced features and polish are not automatic prerequisites.
 
 ## Acceptance route
 
-This milestone has its own acceptance route, the
-[product milestone acceptance](../operations/README.md#product-milestone-acceptance) event. It is
-deliberately **not** the gate-based product integration acceptance: that procedure accepts a versioned
-gate-register row, and this milestone is never a gate.
+The owner's explicit acceptance at #271's merge supersedes the former separate milestone-plan
+and S11 ceremony. The existing [S11 acceptance record](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md)
+records the product review, owner override and limits of execution evidence. No integration
+workspace, additional gate version, separate approval or closeout PR is needed.
 
-1. When the contributing work below has shipped, the owner authorizes one acceptance plan, written as
-   `plan.md` in `docs/roadmap/integration/core-editor-stability/`. Neither the directory nor its files
-   exist before that authorization. The plan fixes the journeys, fixture
-   projects and observations that evidence each criterion.
-2. Evidence runs on one integrated tree at a recorded revision. That covers the complete merge gate,
-   the browser journeys and responsiveness observations below, and independent review.
-3. Acceptance is recorded only in that directory's `acceptance.md`, with
-   this page's status line updated. No gate row, version or capability is created or changed, and the
-   capability checker is untouched. No phase or track closes.
-4. The acceptance unblocks only the *eligibility* to request renewed T4 planning (R1-D). Every later
-   step still needs its own owner authorization.
+<a id="criteria-proposed"></a>
 
-## Criteria (proposed)
+## Accepted product criteria and historical planning snapshot
 
-Each criterion is independently verifiable on the integrated tree. "Planned owner" names the landed
-provider, registered plan or proposed continuation; an unregistered continuation is not permission.
-The convergence additions below, like the exact milestone criteria, remain proposed until explicit
-owner confirmation.
+The integrated product is owner-accepted. The original scope and provider/evidence snapshot below
+is historical, not a current task list or a per-row claim that all proposed checks ran. AM-11 owns
+the final Experience semantics, superseding older continuation wording. Current R217 status and
+execution limits live in its acceptance record; useful original evidence is retained.
 
-| Area | Required (basic, useful) | Not required | Planned owner | Today |
+| Area | Required (basic, useful) | Not required | Historical planned owner | Historical preacceptance evidence |
 | --- | --- | --- | --- | --- |
 | Layout editing | Select and inspect in Plan and 3D; Wall height/thickness and Opening dimensions; straight-Wall length, angle and move preserving shared Junctions; the native plinth | Arch rise, profiles, Section/Unroll, levels/structures | Closed T1.P01: S07 → S04 → S05 → S06 | Shipped; T1.P01 closed 2026-10-21 after S06 (PR #168) |
 | Layout creation | From empty or the starter: draw straight Walls into closed enclosures with derived Rooms/floors, add Openings, delete Walls; explicit connections, never coordinate adoption; canonical Layout compiler authority | Curved-Wall drawing, non-enclosing rings, levels, overhead forms | Intended owner: **T1**, C1's proposed bounded native-Wall creation/role cutover after the landed F2 cutover (K3) ([T1.P01 §next boundary](./t1-spatial-world/t1.p01-stage-foundation/README.md#deliberately-deferred-scope-and-next-boundary)) | Partial: `T1.P02.S01` shipped Layout identity capture and format 6 derived Wall roles; drawing is not implemented and follows `T1.P02.S05` legacy retirement, then S02–S04 ([phase register](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register)) |
@@ -59,16 +54,9 @@ owner confirmation.
 | Basic responsiveness | Reproducible measured evidence on named fixture sizes for load, edit, Undo/Redo and Save, plus applicable consuming-slice delivery/compile/drag/commit/import/Preview/memory observations; no stale state, lost input or duplicate application | Benchmark infrastructure as an independent prerequisite when equivalent reproducible manual measurements establish the same evidence; the retired bench harness | Consuming slices plus the integrated milestone acceptance plan; H0's shipped on-demand harness/bundle workflow supplies support | Convergence Node measurements expose Layout drag/commit/Undo risk pending calibrated browser evidence; consuming-slice fixes and integrated evidence remain outstanding |
 | Isolation | Visitor/public/preview boundaries green; no editor machinery in public chunks | — | Existing arch/build boundaries, with shipped H0 repairs | Closed P01 acceptance is recorded; convergence identified stale boundary patterns that need repair and fresh integrated verification |
 
-The [current post-Batch-E coordination](./cross-track-execution.md#next-parallel-batch)
-routes the owner-released retirement, import/placement and Capture/Preview acceptance lanes.
-T1 drawing and later gates and all T4 work remain held until their own release; T3.P04/C3 is
-released as [`T3.P04.S01`](./t3-experience/t3.p04-project-lifecycle/README.md) and no longer held.
-Feature-specific shell integration follows Round 2 within each consuming slice's bounded
-scope; ratifying the shell does not authorize its entire implementation.
-
-These released slices are evidence toward the milestone, not its acceptance. The exact
-criteria above still need owner confirmation and the acceptance route still needs separate
-authorization. Advanced vertical/part/attachment work is not added as a prerequisite.
+The older released lanes and partial-provider descriptions above record the planning baseline.
+R217's integrated product acceptance now satisfies this milestone. Advanced vertical/part/attachment
+work remains outside its scope; future work follows its own authorization and #259's cutover.
 
 ## Sequencing findings
 
@@ -91,6 +79,5 @@ to the milestone only by an explicit owner amendment of this page. Part addressi
 assemblies, attached composition, advanced vertical architecture and overhead families likewise
 remain outside this milestone. A benchmark harness is not independently required if equivalent
 reproducible manual measurements supply the consuming-slice and integrated performance evidence.
-When an acceptance plan for this milestone is owner-approved, its basic-responsiveness evidence is
-one [M/L spot check](../reference/decisions/performance-spot-check-2026-10-28.md) on the final
-integrated revision. That check is not a standing gate before the plan exists.
+The earlier proposed final M/L spot check was part of the superseded separate acceptance design.
+It is not future R217 work and is not claimed as executed by the owner acceptance ruling.

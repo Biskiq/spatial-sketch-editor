@@ -1,8 +1,10 @@
 # Experience final reconciliation: defect ledger and implementation plan (sheet §33)
 
-**Status:** implemented on PR #271, including the owner-directed simplification of 2026-11-06.
-The automated gate passes; browser journeys A–Q remain for the owner's final visual and browser
-acceptance. No merge or slice acceptance is claimed.
+**Status:** implemented and owner-accepted, effective at PR #271 merge `ce4e232c` (2026-11-06),
+including the final simplification and Experience changes. The owner personally tested and accepted
+the integrated product; **R217 is closed, Core Product Stability accepted**.
+[S11 is owner-accepted by override; separate execution waived](../r217.s11-integrated-final-gate/acceptance.md).
+The historical A–Q/checklists below are not future prerequisites or individual executed-pass claims.
 **PR:** Biskiq/spatial-sketch-editor#271 on `claude/eloquent-goldberg-yrasgu`.
 **Contract:** [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return).
 **Visual reference:** [Experience interaction sheet](../../../reference/design-system/experience-interaction-sheet.html).
@@ -255,7 +257,7 @@ Slice 1 goes first and is small. Slice 2 then fixes the model that everything el
 | **CP-B · Reconciling planners** | Slice 3 | The compound `writes: ['camera']` admissions for guide-order, stop-create, guide-create, stop-remove and guide-remove; the captured connection-id pool; `normalizeTransitions` and `requiredTravelPairs`; the "no ordinary edit lowers to a refusal" property test |
 | **CP-C · Scene → Experience write** | The first commit of slice 8 | The `delete-one` compound admission, `unlinkSceneSubject`, the consequence, one Undo, and the registry test that refuses any other Scene → Experience write (A-3) |
 
-- **One final acceptance gate** (§9), run once on the finished branch. Only then is PR #271 accepted and merged by the owner, and R217.S11 begins.
+- **Historical final acceptance design** (§9): #271 is now merged and the integrated product owner-accepted at `ce4e232c`; S11's separate execution is waived, not a next step.
 
 Against revision 1: *Continuation pruning* (old slice 6) is absorbed into slice 2, which deletes rather than hides. The Guide Card slice becomes a removal. Slice 2 is new and moves reconciliation one step later, but makes it simpler, because there are no explicit continuations to join.
 
@@ -351,7 +353,9 @@ Not in this round, and not to be grown into by accident:
 
 ## 9. Final gate
 
-PR #271 can be accepted, and R217.S11 can begin, only when:
+The following preserves the original #271 verification design. The owner subsequently accepted
+the integrated product at `ce4e232c`; no S11 start or A–Q rerun remains. Individual entries below
+are not new execution claims:
 
 1. Slices 1–9 are merged on this branch, with every G-row in §1.1–§1.2 closed or explicitly waived by the owner.
 2. R1–R39 pass as automated tests where they're testable, and in the browser otherwise.
@@ -374,5 +378,6 @@ arrival → stay, revisit and Explore/Back progress, proportional Preview segmen
 The consolidated sheet was checked in Chromium at 1440 px and 390 px: Stage demonstrations
 render, View folding and individual transitions work, Guide naming and pacing work, and
 visitor Free Explore, Places, pause and return work. No script errors, broken internal
-anchors or narrow page overflow remain. This is HTML-reference QA; the owner's production
-visual and browser journeys A–Q remain outstanding. No merge or slice-closeout is claimed.
+anchors or narrow page overflow remain. This is the recorded HTML-reference QA, distinct from
+the owner's later hands-on acceptance of the integrated product at #271's merge. A–Q is not
+outstanding future work; no separate per-journey execution verdict is inferred from that acceptance.

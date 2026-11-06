@@ -64,6 +64,12 @@ private projection, navigation graph, selection store or independent pose interp
 
 ## Next parallel batch
 
+**Current owner ruling, 2026-11-06:** [R217 is closed and Core Product Stability accepted](./r217-core-editor-stability/README.md),
+effective at PR #271 merge `ce4e232c`. S11 separate execution is waived after hands-on owner
+product review, with no per-check execution inferred. [#259 implementation](./lean-harness-proposal.md)
+is the immediate next scope. The batch/DAG material below is historical allocation evidence, not
+a future R217 acceptance prerequisite.
+
 **Integrated base:** the post-Batch-E lanes are shipped on `main` at `696af6ea`: T1.P02.S05
 (PR #183), T3.P02.S02 (PR #184) and T2.P02.S02 (PR #185, acceptance recorded by PR #186). Their
 scoped owner-overrides, deferred rows and residuals live in their acceptance records. This is
@@ -94,7 +100,7 @@ flowchart TD
   B --> C["T3.P04.S01 rename/delete — shipped; T3.P04 closed 2026-10-25"]
   B --> T5["T5.P01 drawn native objects — registered; S01 plan approved, held until released"]
   IF --> T5
-  F --> CES["Core Editor Stability criteria + acceptance plan require owner approval"]
+  F --> CES["Core Product Stability accepted at ce4e232c; R217 closed"]
   IF --> CES
   C --> CES
   CES --> T4["Only accepted milestone permits requesting renewed T4 planning"]
@@ -230,15 +236,10 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 - **T1/T2 continuation:** face-frame provider/solve-once wall placement, part admission and
   annotation, vertical/coordinate qualification and overhead families are planning triggers
   in the owning tracks. They are not accepted providers or newly released scopes.
-- **Core Editor Stability and T4:** owned by [the milestone](./core-editor-stability.md) and the
-  [T4 baton](../operations/t4-release/current.md); this batch neither accepts the milestone nor
-  creates its acceptance workspace. Its shell-coherence work is the repository phase
-  [R217](./r217-core-editor-stability/README.md), registered 2026-10-28 with no slice released;
-  it starts after `T5.P01.S03` merges and serializes its Stage, route and Scene adapter edits
-  under the protocol above. Post-S10 slices S12–S25 were registered there on 2026-10-30. When the
-  owner merges PR #230, its [campaign record](../reference/decisions/r217-convergence-campaign-2026-10-30.md) replaces this
-  section's track-by-track writers and reviews for that batch, keeping architecture owners,
-  serialized shared files and the merge gate.
+- **Core Editor Stability and T4:** [the milestone](./core-editor-stability.md) is owner-accepted
+  and [R217](./r217-core-editor-stability/README.md) closed, effective at #271 merge `ce4e232c`.
+  S11's separate execution is waived after the owner's integrated product review; its old batch
+  start/closeout conditions are spent. This accepts no new T4 production scope. #259 is next.
 - **Cycle/closure:** no track completion, owner architecture verdict, phase closure or baseline
   is created here. Re-arming a mechanism in its consuming slice is not a verdict.
 

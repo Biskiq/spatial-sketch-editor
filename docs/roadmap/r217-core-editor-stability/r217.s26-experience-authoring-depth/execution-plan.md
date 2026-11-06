@@ -1,6 +1,10 @@
 # R217.S26 — execution plan: Experience authoring depth
 
-**Status: approved by the owner, 2026-11-03 ([R1](./owner-decisions.md#owner-rulings-2026-11-03-final-planning-follow-up-for-pr-262)).**
+**Status: implemented and owner-accepted at PR #271 merge `ce4e232c`, 2026-11-06.**
+R217 is closed; [S11 is owner-accepted by override, separate execution waived](../r217.s11-integrated-final-gate/acceptance.md).
+The scope, verification designs and journeys below are historical, superseded where AM-11 and
+the final Experience review changed them; they are not future gates or fresh pass claims.
+Original approval: 2026-11-03 ([R1](./owner-decisions.md#owner-rulings-2026-11-03-final-planning-follow-up-for-pr-262)).
 Exception for these slices: no separate doc approval. Each block is that slice's plan. The
 [inventory](./capability-inventory.md) owns the gap evidence and the Conservatory harvest closure; the
 [decisions](./owner-decisions.md) own the owner directions (OD1–OD6) and the open choices.
@@ -367,16 +371,20 @@ DOMAIN: Guide time map in camera-core beside experience-controllers.ts (E2); vis
 
 ## 6. R217, S11 and milestone sequencing
 
-Proposed for the owner's registration ([E1](./owner-decisions.md#e1), OD1). Nothing here edits the S11
-plan or the milestone before that.
+S26–S30 and the final Experience corrections are implemented and owner-accepted, effective at
+PR #271 merge `ce4e232c` (2026-11-06). R217 is closed and Core Product Stability accepted.
+[S11 is owner-accepted by override; separate execution waived](../r217.s11-integrated-final-gate/acceptance.md)
+because the owner personally performed and accepted integrated product review. The earlier J18–J21
+extension proposal and per-slice journey designs remain historical evidence design, not executed
+results or future prerequisites. No separate reconciliation/lock/closeout ceremony remains.
+[#259 implementation](../../lean-harness-proposal.md) is next and keeps its independent CI,
+architecture, regression and verification requirements.
 
-- **Total order:** S25 (merged) → PR #259 documentation prune → S26 → S27 → S28 → S29 → S30 → S11.
-- **Milestone:** R217 certifies a stable product. The milestone's *Camera/Experience authoring* row
-  moves advanced path authoring and transport from *Not required* to required. R217's outcome gains
-  Experience authoring depth. Its non-goal *Experience Guide and Path redesign* gains *(S26–S30 build
-  the accepted design)*.
-- **S11:** the dependency becomes *R217.S01–S10 and R217.S12–S30 accepted*. It stays lightweight
-  (R2), with no additional acceptance rounds, and gains four owner-run journeys:
+### Historical proposed J18–J21 extension
+
+These were proposed journey designs, not separately executed results; AM-11 supersedes their
+older Stop View/continuation assumptions. The owner acceptance/waiver above disposes of the
+separate ceremony while retaining these cases as research/regression material.
 
 | # | Journey |
 | --- | --- |
@@ -385,14 +393,6 @@ plan or the milestone before that.
 | J20 | **Paths and playback.** x-paths: Add a Camera path, shape it, set duration, Play, scrub, Follow, Preview this move, then the visitor Preview end to end |
 | J21 | **Removal across reload.** Remove a Stop, the Default View and a Presentation; Undo, Redo, Save and reload; nothing orphaned |
 
-- **Register rows:** each slice's own PR adds its register row and gate-test entry. S27's row records
-  the format change and `T3.camera-experience-cutover@2`, and the register sentence *No slice … changes
-  a persisted format* gains that exception.
-- **Ownership:** the T3 row gains S26–S30 and the T1 row gains S28–S29.
-- **Exception for these slices: no separate doc approval** (R1). Each slice's PR carries its plan,
-  code, contract updates and tests; the owner accepts it in the PR (R3).
-- **After the final slice:** once everything is accepted, the owner triggers reconciliation, lock and
-  promotion (OD6); this plan does not prepare it.
 
 ## 7. Shared-file order
 
