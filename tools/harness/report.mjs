@@ -315,10 +315,38 @@ export function validateRun(run) {
 					);
 					continue;
 				}
+				// A runtime/hook failure is not attributable to an assertion, so it has
+				// no capability row where health could show it. Reject it instead of
+				// certifying green from assertions that all passed.
+				if (typeof fileResult.message === 'string' && fileResult.message.trim().length > 0) {
+					problems.push(
+						`${where} (${suite.name}) recorded an unhandled or hook error at file level`
+					);
+					continue;
+				}
+				if (
+					fileResult.status === 'failed' &&
+					!fileResult.assertionResults.some((assertion) => assertion?.status === 'failed')
+				) {
+					problems.push(
+						`${where} (${suite.name}) recorded a failed test file without a failing assertion (unhandled or hook error)`
+					);
+					continue;
+				}
 				suiteAssertions += fileResult.assertionResults.length;
 			}
 			if (suiteAssertions === 0) {
 				problems.push(`${where} (${suite.name}) recorded no assertions`);
+			}
+			if (
+				results.success === false &&
+				results.numFailedTests === 0 &&
+				typeof results.numFailedTestSuites === 'number' &&
+				results.numFailedTestSuites > 0
+			) {
+				problems.push(
+					`${where} (${suite.name}) reported a failed suite without a failing test (unhandled or hook error)`
+				);
 			}
 			assertions += suiteAssertions;
 		} else if (COMMAND_SUITES.includes(suite.name)) {

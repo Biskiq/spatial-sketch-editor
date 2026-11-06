@@ -474,6 +474,55 @@ describe('runner expected-failure semantics', () => {
 		}
 	});
 
+	it('rejects a real runner runtime failure that no assertion accounts for', () => {
+		const probeName = `zz-runtime-probe-${process.pid}.test.ts`;
+		const probePath = join(REPO_ROOT, 'apps/editor/tests/harness', probeName);
+		const outputPath = join(TEMP, 'runtime-result.json');
+		writeFileSync(
+			probePath,
+			[
+				"import { afterAll, expect, it } from 'vitest';",
+				'',
+				'afterAll(() => {',
+				"\tthrow new Error('teardown failed');",
+				'});',
+				'',
+				"it('passes', () => {",
+				'\texpect(1).toBe(1);',
+				'});',
+				''
+			].join('\n')
+		);
+		try {
+			const run = spawnSync(
+				'npx',
+				[
+					'vitest',
+					'run',
+					`tests/harness/${probeName}`,
+					'--reporter=json',
+					`--outputFile=${outputPath}`
+				],
+				{ cwd: join(REPO_ROOT, 'apps/editor'), encoding: 'utf8' }
+			);
+			// The installed runner itself exits 1 for the teardown error.
+			expect(run.status).toBe(1);
+			const results = JSON.parse(readFileSync(outputPath, 'utf8'));
+			const result = spawnSync(
+				process.execPath,
+				statusCommand({
+					ledger: ledgerOf({ id: 'cap.teardown' }),
+					report: reportFor(results)
+				}),
+				{ encoding: 'utf8' }
+			);
+			expect(result.status).toBe(1);
+			expect(result.stderr).toContain('unhandled or hook error');
+		} finally {
+			rmSync(probePath, { force: true });
+		}
+	});
+
 	it('fails closed for inherited and unsupported marker declarations', () => {
 		const inheritedPath = join(TEMP, 'inherited-marker.test.ts');
 		writeFileSync(
@@ -702,6 +751,35 @@ describe('a report states its own provenance', () => {
 			)
 		};
 		expectRejected({ ledger, report: zeroCollected }, 'reported zero collected tests');
+
+		// A runtime/hook failure with only passing assertions cannot certify green:
+		// there is no capability row where that failure could show as health.
+		const runtimeFailure = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === 'npm test'
+					? {
+							name: suite.name,
+							status: 'complete',
+							results: {
+								success: false,
+								numFailedTestSuites: 1,
+								numFailedTests: 0,
+								numTotalTests: 1,
+								testResults: [
+									{
+										name: 'teardown.test.js',
+										status: 'failed',
+										message: 'teardown failed',
+										assertionResults: [{ fullName: 'passes', status: 'passed' }]
+									}
+								]
+							}
+						}
+					: suite
+			)
+		};
+		expectRejected({ ledger, report: runtimeFailure }, 'unhandled or hook error');
 	});
 
 	it('marks a capability regressed only between two complete reports', () => {
