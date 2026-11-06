@@ -14,10 +14,12 @@
  *
  * Usage:
  *   node tools/harness/aggregate.mjs --dir artifacts --out report.json --commit <sha>
+ *     [--ledger capabilities.json] [--issues open-issues.json]
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
+import { validateLedger } from './ledger.mjs';
 import { collectChecks, gateFailures, validateRun } from './report.mjs';
 import { REQUIRED_SUITES, expectedCommand, suiteFor } from './suites.mjs';
 
@@ -35,7 +37,7 @@ function readSource(file) {
 
 /**
  * @param {string} dir
- * @param {{commit?: string|null, now?: Date}} [options]
+ * @param {{commit?: string|null, ledger?: string|null, issues?: string|null, now?: Date}} [options]
  */
 export function aggregate(dir, options = {}) {
 	const problems = [];
@@ -158,12 +160,40 @@ export function aggregate(dir, options = {}) {
 		generatedAt: (options.now ?? new Date()).toISOString(),
 		suites
 	};
+	// The artifact carries the definitions and issue state that produced this
+	// run. A later status scan can then compare like with like at the previous
+	// commit instead of rebuilding history from today's ledger and live bugs.
+	if (options.ledger) {
+		try {
+			const snapshot = JSON.parse(readFileSync(resolve(options.ledger), 'utf8'));
+			const ledgerProblems = validateLedger(snapshot);
+			if (ledgerProblems.length > 0) {
+				problems.push(`ledger snapshot is invalid: ${ledgerProblems[0]}`);
+			} else {
+				run.ledger = snapshot;
+			}
+		} catch (error) {
+			problems.push(`ledger snapshot is unreadable: ${error.message}`);
+		}
+	}
+	if (options.issues) {
+		try {
+			const snapshot = JSON.parse(readFileSync(resolve(options.issues), 'utf8'));
+			if (!Array.isArray(snapshot)) {
+				problems.push('issue snapshot must be an array');
+			} else {
+				run.issues = snapshot;
+			}
+		} catch (error) {
+			problems.push(`issue snapshot is unreadable: ${error.message}`);
+		}
+	}
 	problems.push(...validateRun(run));
 	return { run, problems };
 }
 
 function parseArgs(argv) {
-	const options = { dir: null, out: 'report.json', commit: null };
+	const options = { dir: null, out: 'report.json', commit: null, ledger: null, issues: null };
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		const next = () => {
@@ -174,6 +204,8 @@ function parseArgs(argv) {
 		if (arg === '--dir') options.dir = next();
 		else if (arg === '--out') options.out = next();
 		else if (arg === '--commit') options.commit = next();
+		else if (arg === '--ledger') options.ledger = next();
+		else if (arg === '--issues') options.issues = next();
 		else throw new Error(`unknown argument: ${arg}`);
 	}
 	if (!options.dir) throw new Error('--dir is required');
@@ -183,7 +215,11 @@ function parseArgs(argv) {
 function cli() {
 	const options = parseArgs(process.argv.slice(2));
 	const dir = resolve(options.dir);
-	const { run, problems } = aggregate(dir, { commit: options.commit });
+	const { run, problems } = aggregate(dir, {
+		commit: options.commit,
+		ledger: options.ledger,
+		issues: options.issues
+	});
 	if (problems.length > 0) {
 		for (const problem of problems) console.error(`harness gate: ${problem}`);
 		console.error(

@@ -208,6 +208,48 @@ describe('gate aggregation', () => {
 		expect(report.suites.every((suite: any) => suite.status === 'complete')).toBe(true);
 	});
 
+	it('carries the tested ledger and issue snapshot for historical comparison', () => {
+		const dir = tempDir('aggregate-snapshot');
+		writeProvenance(dir, fullRun());
+		const ledgerPath = join(TEMP, 'snapshot-ledger.json');
+		writeFileSync(
+			ledgerPath,
+			JSON.stringify({
+				schemaVersion: 1,
+				capabilities: [
+					{
+						id: 'cap.a',
+						area: 'T1',
+						summary: 'A',
+						northStar: 'north-star.md#sacred-contracts',
+						surface: ['apps/editor/src/**'],
+						design: null,
+						review: null
+					}
+				]
+			})
+		);
+		const issuesPath = join(TEMP, 'snapshot-issues.json');
+		writeFileSync(issuesPath, JSON.stringify([{ number: 7, title: 'bug', labels: [], assignees: [] }]));
+		const out = join(TEMP, 'snapshot-report.json');
+		const result = run(AGGREGATE, [
+			'--dir',
+			dir,
+			'--out',
+			out,
+			'--commit',
+			COMMIT,
+			'--ledger',
+			ledgerPath,
+			'--issues',
+			issuesPath
+		]);
+		expect(result.status).toBe(0);
+		const report = JSON.parse(readFileSync(out, 'utf8'));
+		expect(report.ledger.capabilities[0].id).toBe('cap.a');
+		expect(report.issues).toEqual([{ number: 7, title: 'bug', labels: [], assignees: [] }]);
+	});
+
 	it('refuses a run with a missing suite', () => {
 		const dir = tempDir('aggregate-missing');
 		writeProvenance(
@@ -1325,6 +1367,9 @@ describe('workflow contract', () => {
 		expect(workflow).toContain('name: merge gate');
 		expect(workflow).toContain('name: check guards');
 		expect(workflow).toContain('postgres:16');
+		expect(workflow).toContain('gh issue list --state open');
+		expect(workflow).toContain('--ledger capabilities.json');
+		expect(workflow).toContain('--issues .harness/open-issues.json');
 		expect(workflow).toMatch(/\non:\n  pull_request:\n  push:\n/);
 		expect(workflow).not.toMatch(/\n    paths:/);
 

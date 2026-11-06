@@ -40,6 +40,28 @@ function ghJson(args, cwd) {
 	return JSON.parse(gh(args, cwd));
 }
 
+/**
+ * Read the actual remote main head. A checkout's cached `origin/main` can lag
+ * behind GitHub, so default discovery must not use it as current evidence.
+ *
+ * @param {string} repoRoot
+ * @returns {{commit: string|null, reason: string|null}}
+ */
+export function readRemoteMain(repoRoot) {
+	try {
+		const payload = ghJson(['api', 'repos/{owner}/{repo}/commits/main'], repoRoot);
+		if (typeof payload?.sha !== 'string' || !SHA.test(payload.sha)) {
+			return { commit: null, reason: 'remote main response has no valid commit' };
+		}
+		return { commit: payload.sha, reason: null };
+	} catch (error) {
+		return {
+			commit: null,
+			reason: `remote main read failed: ${error.message.split('\n')[0]}`
+		};
+	}
+}
+
 function isMainRun(run) {
 	return (
 		typeof run === 'object' &&

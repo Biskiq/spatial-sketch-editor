@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 import { validateLedger } from './ledger.mjs';
 import { buildReport, REQUIRED_SUITES, validateRun } from './report.mjs';
-import { discoverMainEvidence } from './discover.mjs';
+import { discoverMainEvidence, readRemoteMain } from './discover.mjs';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -135,6 +135,7 @@ function parseArgs(argv) {
 		ledger: null,
 		report: null,
 		mainRef: 'origin/main',
+		mainRefExplicit: false,
 		mainHead: null,
 		json: false,
 		offline: false,
@@ -151,7 +152,10 @@ function parseArgs(argv) {
 		};
 		if (arg === '--ledger') options.ledger = next();
 		else if (arg === '--report') options.report = next();
-		else if (arg === '--main-ref') options.mainRef = next();
+		else if (arg === '--main-ref') {
+			options.mainRef = next();
+			options.mainRefExplicit = true;
+		}
 		else if (arg === '--main-head') options.mainHead = next();
 		else if (arg === '--changed-paths') options.changedPaths = next();
 		else if (arg === '--github') options.github = next();
@@ -165,13 +169,64 @@ function parseArgs(argv) {
 	return options;
 }
 
-function mainHeadFor(options) {
-	if (options.mainHead) return options.mainHead;
+/** Resolve main, using GitHub for the default online path. */
+function mainInfoFor(options) {
+	if (options.mainHead) return { commit: options.mainHead, source: 'explicit-main-head', reason: null };
+	if (options.mainRefExplicit || options.offline || options.report !== null || options.github !== null) {
+		const source = options.mainRefExplicit ? 'explicit-main-ref' : 'local-ref';
+		try {
+			return { commit: run('git', ['rev-parse', options.mainRef], options.repoRoot), source, reason: null };
+		} catch {
+			return { commit: null, source, reason: `could not resolve ${options.mainRef}` };
+		}
+	}
+	const remote = readRemoteMain(options.repoRoot);
+	return { commit: remote.commit, source: 'remote-main', reason: remote.reason };
+}
+
+/** A tested commit must exist locally for history and tested-source reads. */
+function ensureCommit(repoRoot, commit) {
+	if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit)) return false;
 	try {
-		return run('git', ['rev-parse', options.mainRef], options.repoRoot);
+		run('git', ['cat-file', '-e', `${commit}^{commit}`], repoRoot);
+		return true;
+	} catch {
+		// A stale checkout may not contain the new main commit yet.
+	}
+	try {
+		run('git', ['fetch', '--quiet', '--no-tags', 'origin', 'main'], repoRoot);
+	} catch {
+		return false;
+	}
+	try {
+		run('git', ['cat-file', '-e', `${commit}^{commit}`], repoRoot);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** The definitions captured in an aggregate artifact, if valid. */
+function ledgerFromRun(run) {
+	if (!run || typeof run.ledger !== 'object' || run.ledger === null) return null;
+	return validateLedger(run.ledger).length === 0 ? run.ledger : null;
+}
+
+/** The definitions committed with a tested main/report commit. */
+function ledgerAtCommit(repoRoot, commit) {
+	if (typeof commit !== 'string') return null;
+	try {
+		const ledger = JSON.parse(run('git', ['show', `${commit}:capabilities.json`], repoRoot));
+		return validateLedger(ledger).length === 0 ? ledger : null;
 	} catch {
 		return null;
 	}
+}
+
+/** Normalize the historical issue snapshot captured with an aggregate. */
+function issuesFromRun(run) {
+	if (!Array.isArray(run?.issues)) return null;
+	return normaliseGithub({ issues: run.issues }).issues;
 }
 
 /**
@@ -314,7 +369,13 @@ function printReport(report, now) {
 	lines.push(`  main     ${head}`);
 	const source = report.evidence?.source ?? 'unknown';
 	lines.push(`  source   ${source}${report.evidence?.current?.runId ? ` run ${report.evidence.current.runId}` : ''}`);
+	if (report.evidence?.definitions?.current?.source) {
+		lines.push(`  definitions ${report.evidence.definitions.current.source}`);
+	}
 	if (report.evidence?.reason) lines.push(`  evidence ${report.evidence.reason}`);
+	if (report.evidence?.comparison?.available === false && report.evidence.comparison.reason) {
+		lines.push(`  compare  unavailable: ${report.evidence.comparison.reason}`);
+	}
 	lines.push(`  complete ${report.complete ? 'yes' : 'no'}`);
 	lines.push(
 		`  suites   ${
@@ -388,22 +449,26 @@ function main() {
 	}
 
 	const ledgerPath = options.ledger ?? join(options.repoRoot, 'capabilities.json');
+	const onlineDiscovery = options.report === null && !options.offline && options.github === null;
 
-	let ledger;
-	try {
-		ledger = readJson(ledgerPath, 'capabilities ledger');
-	} catch (error) {
-		process.stderr.write(`status: ${error.message}\n`);
-		return 1;
-	}
-	const problems = validateLedger(ledger);
-	if (problems.length > 0) {
-		process.stderr.write(`status: invalid capability ledger (${ledgerPath})\n`);
-		for (const problem of problems) process.stderr.write(`  - ${problem}\n`);
-		return 1;
+	let localLedger = null;
+	if (!onlineDiscovery || options.ledger !== null) {
+		try {
+			localLedger = readJson(ledgerPath, 'capabilities ledger');
+		} catch (error) {
+			process.stderr.write(`status: ${error.message}\n`);
+			return 1;
+		}
+		const ledgerProblems = validateLedger(localLedger);
+		if (ledgerProblems.length > 0) {
+			process.stderr.write(`status: invalid capability ledger (${ledgerPath})\n`);
+			for (const problem of ledgerProblems) process.stderr.write(`  - ${problem}\n`);
+			return 1;
+		}
 	}
 
-	const mainHead = mainHeadFor(options);
+	const mainInfo = mainInfoFor(options);
+	const mainHead = mainInfo.commit;
 	const github = readGithub(options);
 	let discovery = { current: null, previous: null, reason: null };
 	let reportRun = null;
@@ -420,14 +485,20 @@ function main() {
 			}
 			reportReason = `no report at ${options.report}`;
 		}
-	} else if (!options.offline && options.github === null && mainHead !== null) {
+	} else if (onlineDiscovery) {
 		// A fresh checkout has no local report. Discover only a successful push
 		// run whose report commit is the exact main head; a PR synthetic merge is
-		// never eligible.
-		discovery = discoverMainEvidence({ repoRoot: options.repoRoot, mainHead });
-		reportRun = discovery.current?.run ?? null;
+		// never eligible. If the remote head cannot be read, do not fall back to
+		// a cached local ref or a local report: freshness is unknown.
 		reportSource = 'github-main';
-		reportReason = discovery.reason;
+		if (mainHead === null) {
+			reportReason = mainInfo.reason ?? 'main head is unknown';
+		} else {
+			if (mainInfo.source === 'remote-main') ensureCommit(options.repoRoot, mainHead);
+			discovery = discoverMainEvidence({ repoRoot: options.repoRoot, mainHead });
+			reportRun = discovery.current?.run ?? null;
+			reportReason = discovery.reason;
+		}
 	} else {
 		reportSource = options.offline ? 'local-offline' : 'local';
 		const localPath = join(options.repoRoot, '.harness/report.json');
@@ -450,37 +521,100 @@ function main() {
 		}
 	}
 
+	let currentLedger = localLedger;
+	let currentLedgerSource = options.ledger !== null ? 'explicit' : 'local';
+	if (reportSource === 'github-main' && options.ledger === null) {
+		const artifactLedger = ledgerFromRun(reportRun);
+		if (artifactLedger !== null) {
+			currentLedger = artifactLedger;
+			currentLedgerSource = 'artifact';
+		} else {
+			const committedLedger = ledgerAtCommit(options.repoRoot, mainHead);
+			if (committedLedger !== null) {
+				currentLedger = committedLedger;
+				currentLedgerSource = 'commit';
+			} else {
+				// The artifact/commit carry the tested definitions. Only when both
+				// are unavailable do we fall back to the checkout, and say so.
+				if (localLedger === null) {
+					try {
+						const fallback = readJson(ledgerPath, 'capabilities ledger');
+						if (validateLedger(fallback).length === 0) localLedger = fallback;
+					} catch {
+						// Leave definitions unavailable rather than inventing them.
+					}
+				}
+				currentLedger = localLedger ?? { schemaVersion: 1, capabilities: [] };
+				currentLedgerSource = localLedger === null ? 'unavailable' : 'local-fallback';
+			}
+		}
+	}
+	if (currentLedger === null) currentLedger = { schemaVersion: 1, capabilities: [] };
+
 	let previous = null;
+	let previousEvidence = null;
+	let comparisonReason = null;
 	if (options.previous) {
 		previous = readJson(options.previous, 'previous report');
+		previousEvidence = {
+			source: 'explicit',
+			commit: previous?.testedCommit ?? null,
+			ledger: null,
+			issues: null
+		};
+		if (previous?.complete !== true) comparisonReason = 'explicit previous report is incomplete';
 	} else if (discovery.previous?.run) {
 		const previousRun = discovery.previous.run;
-		const previousChangedPaths = readChangedPaths(ledger.capabilities, {
-			repoRoot: options.repoRoot,
-			mainHead: previousRun.commit
-		});
-		// The artifact is a raw complete run, not a status report. Build the
-		// comparable historical health/maturity from the same ledger and checks.
-		previous = buildReport({
-			ledger,
-			run: previousRun,
-			mainHead: previousRun.commit,
-			issues: github.issues,
-			claims: github.claims,
-			previous: null,
-			changedPaths: previousChangedPaths,
-			readSource: sourceReaderFor(options.repoRoot, previousRun.commit),
-			live: { flags: false, claims: false }
-		});
+		const previousArtifactLedger = ledgerFromRun(previousRun);
+		const previousLedger =
+			previousArtifactLedger ?? ledgerAtCommit(options.repoRoot, previousRun.commit);
+		const previousIssues = issuesFromRun(previousRun);
+		if (previousLedger === null) {
+			comparisonReason = 'previous artifact has no captured ledger definitions';
+		} else if (previousIssues === null) {
+			comparisonReason = 'previous artifact has no captured issue evidence';
+		} else {
+			const previousChangedPaths = readChangedPaths(previousLedger.capabilities, {
+				repoRoot: options.repoRoot,
+				mainHead: previousRun.commit
+			});
+			// Historical maturity/health comes from the definitions and issue
+			// snapshot captured at that run, never today's ledger/live bugs.
+			previous = buildReport({
+				ledger: previousLedger,
+				run: previousRun,
+				mainHead: previousRun.commit,
+				issues: previousIssues,
+				claims: [],
+				previous: null,
+				changedPaths: previousChangedPaths,
+				readSource: sourceReaderFor(options.repoRoot, previousRun.commit),
+				live: { flags: false, claims: false }
+			});
+			previousEvidence = {
+				source: 'artifact',
+				commit: previousRun.commit,
+				ledger: previousArtifactLedger === null ? 'commit' : 'artifact',
+				issues: 'captured'
+			};
+			if (previous.complete !== true) {
+				comparisonReason = 'previous report did not certify the tested commit';
+			}
+		}
+	} else {
+		comparisonReason =
+			reportSource === 'github-main'
+				? 'no complete ancestor main report'
+				: 'no previous complete report';
 	}
 
-	const changedPaths = readChangedPaths(ledger.capabilities, {
+	const changedPaths = readChangedPaths(currentLedger.capabilities, {
 		repoRoot: options.repoRoot,
 		mainHead,
 		changedPathsPath: options.changedPaths
 	});
 	const report = buildReport({
-		ledger,
+		ledger: currentLedger,
 		run: reportRun,
 		mainHead,
 		issues: github.issues,
@@ -493,18 +627,36 @@ function main() {
 	report.evidence = {
 		source: reportSource,
 		reason: reportReason,
+		main: { source: mainInfo.source, commit: mainHead, reason: mainInfo.reason },
+		definitions: {
+			current: {
+				source: currentLedgerSource,
+				commit:
+					currentLedgerSource === 'artifact' || currentLedgerSource === 'commit'
+						? mainHead
+						: null
+			},
+			previous: previousEvidence
+		},
+		comparison: {
+			available: previous !== null && previous.complete === true,
+			reason: comparisonReason
+		},
 		current: reportRun === null ? null : {
 			runId: discovery.current?.runId ?? null,
 			url: discovery.current?.url ?? null,
 			commit: reportRun.commit,
 			artifactId: discovery.current?.artifactId ?? null
 		},
-		previous: discovery.previous === null ? null : {
-			runId: discovery.previous.runId,
-			url: discovery.previous.url,
-			commit: discovery.previous.run.commit,
-			artifactId: discovery.previous.artifactId
-		}
+		previous:
+			previous === null || discovery.previous === null
+				? null
+				: {
+						runId: discovery.previous.runId,
+						url: discovery.previous.url,
+						commit: discovery.previous.run.commit,
+						artifactId: discovery.previous.artifactId
+					}
 	};
 
 	if (options.json) {
