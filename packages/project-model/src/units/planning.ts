@@ -1037,7 +1037,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			const newStop: ExperienceStop = {
 				id: stopId,
 				presentationId,
-				entryViewId: entry === defaultViewId ? null : entry,
+				entryViewId: entryViewId ?? null,
 				staySeconds,
 				invitation: null,
 				...(transition === undefined ? {} : { transition })
@@ -1172,7 +1172,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			const newStop: ExperienceStop = {
 				id: stopId,
 				presentationId,
-				entryViewId: entry === defaultViewId ? null : entry,
+				entryViewId: entryViewId ?? null,
 				staySeconds,
 				invitation: null,
 				...(transition === undefined ? {} : { transition })
@@ -1638,10 +1638,10 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			if (entryViewId !== null && !presentationViewIds(presentation).includes(entryViewId)) {
 				return refuse('invalid-payload', `entry view "${entryViewId}" is not one of presentation "${presentation.id}"'s views`);
 			}
-			// Naming the Default as the entry is the same visit as following it: the
-			// Stop keeps following the Default through a later reorder.
+			// A named entry stays pinned through reorder, even when it is currently
+			// the Default. Only an explicit null follows the Presentation’s View 1.
 			const nextEntry = entryPresent
-				? entryViewId === presentationDefaultViewId(presentation) ? null : entryViewId
+				? entryViewId
 				: previous.entryViewId;
 			const updated: ExperienceStop = {
 				id: previous.id,

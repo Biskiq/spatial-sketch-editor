@@ -15,6 +15,8 @@ import {
 	capturedViewPose,
 	experienceUpdateIntent,
 	guideOrderIntent,
+	guideCreateIntent,
+	stopCreateIntent,
 	presentationUpdateIntent,
 	stopUpdateIntent
 } from '$lib/authoring/experience/commands';
@@ -242,6 +244,46 @@ describe('capture, binding and Guide order', () => {
 		expect(after.units.camera.data.connections[0]!.id).toBe(source.units.camera.data.connections[0]!.id);
 	});
 
+
+	it.each(['guide-create', 'stop-create', 'stop-update'] as const)(
+		'%s preserves an explicitly chosen Default View through reorder and persistence',
+		async (operation) => {
+			const initial = await experienceEnvelope({ experience: {
+				...EXPERIENCE,
+				experiences: EXPERIENCE.experiences.map((experience) => ({
+					...experience,
+					presentations: experience.presentations.map((presentation) => presentation.id === 'presentation-1'
+						? { ...presentation, views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] }
+						: presentation)
+				}))
+			} });
+			const { source, coordinator } = await boot(initial);
+			const common = {
+				envelope: source, revision: coordinator.acceptedRevision(), experienceId: 'experience-1',
+				entryViewId: 'view-1', transition: 'cut' as const
+			};
+			const stopId = operation === 'stop-update' ? 'stop-1' : 'stop-pinned';
+			const intent = operation === 'guide-create'
+				? guideCreateIntent({ ...common, ids: { operation: 'op-pin', guide: 'guide-pinned', stop: stopId }, presentationId: 'presentation-1', label: 'Pinned' })
+				: operation === 'stop-create'
+					? stopCreateIntent({ ...common, ids: { operation: 'op-pin', stop: stopId }, presentationId: 'presentation-1', guideId: 'guide-1', afterStopId: null })
+					: stopUpdateIntent({ ...common, ids: { operation: 'op-pin' }, stopId });
+			expect((await coordinator.accept(intent)).kind).toBe('accepted');
+			const pinned = coordinator.acceptedSnapshot().domain.source;
+			expect(experienceOf(pinned).stops.find((stop) => stop.id === stopId)!.entryViewId).toBe('view-1');
+			expect((await coordinator.accept(presentationUpdateIntent({
+				envelope: pinned, revision: coordinator.acceptedRevision(), ids: { operation: 'op-reorder' },
+				experienceId: 'experience-1', presentationId: 'presentation-1',
+				views: [{ viewId: 'view-2' }, { viewId: 'view-1' }]
+			}))).kind).toBe('accepted');
+			const saved = JSON.parse(serializeProjectEnvelope(coordinator.acceptedSnapshot().domain.source));
+			const experience = experienceOf(saved);
+			expect(experience.presentations[0]!.views[0]!.viewId).toBe('view-2');
+			expect(experience.stops.find((stop) => stop.id === stopId)!.entryViewId).toBe('view-1');
+			// Existing Stops that follow the Default keep that authored intent.
+			if (operation !== 'stop-update') expect(experience.stops.find((stop) => stop.id === 'stop-1')!.entryViewId).toBeNull();
+		}
+	);
 	it('refuses a Stop entry View that is not one of its Presentation views', async () => {
 		const { source, coordinator } = await boot();
 		const refused = await coordinator.accept(

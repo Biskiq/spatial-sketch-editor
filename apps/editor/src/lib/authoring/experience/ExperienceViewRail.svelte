@@ -7,14 +7,13 @@
 	 * sits on the spine between two rows and is edited right there: one press on
 	 * ✂/↗ switches the kind (a new Travel adds a straight path, one Undo); pressing
 	 * the time opens a small editor between the rows, and ↑↓ on a focused time
-	 * steps it by 0.5 s. A Travel with no path shows ⚠ with its fix. Shift-press a
-	 * second View selects a range for All Cut or All Travel (one Undo). Reorder by
+	 * steps it by 0.5 s. A Travel with no path shows ⚠ with its fix. Reorder by
 	 * dragging ⠿ or with Alt+↑↓; a View moved to the top becomes the Default.
 	 *
 	 * Past 10 Views the list folds to the first 8 behind *Show all N Views*, which
 	 * names what is hidden; opened, it scrolls in its own box of about 12 rows.
-	 * Selecting, editing or moving a View past row 8 opens it. The fold, the
-	 * range and the open editor are session state, never saved.
+	 * Selecting, editing or moving a View past row 8 opens it. The fold and the
+	 * open editor are session state, never saved.
 	 */
 	import { tick } from 'svelte';
 	import type { ExperiencePresentation } from '@portfolio/project-model/units';
@@ -28,7 +27,6 @@
 		views,
 		selectedViewId,
 		onSelect,
-		onLookThrough,
 		onShapePath
 	}: {
 		controller: ExperienceController;
@@ -36,7 +34,6 @@
 		views: readonly ExperienceViewChoice[];
 		selectedViewId: string | null;
 		onSelect: (viewId: string) => void;
-		onLookThrough: (viewId: string) => void;
 		onShapePath: (toViewId: string) => void;
 	} = $props();
 
@@ -48,8 +45,6 @@
 
 	let open = $state(false);
 	let edit = $state<number | null>(null);
-	let anchor = $state<number | null>(null);
-	let range = $state<readonly [number, number] | null>(null);
 	let draggingViewId = $state<string | null>(null);
 	let dropAt = $state<{ readonly index: number; readonly after: boolean } | null>(null);
 	let listEl = $state<HTMLOListElement | null>(null);
@@ -58,8 +53,6 @@
 		void presentation.id;
 		open = false;
 		edit = null;
-		anchor = null;
-		range = null;
 	});
 
 	const n = $derived(presentation.views.length);
@@ -68,7 +61,7 @@
 	// Selecting, editing or moving a View past row 8 opens the list.
 	$effect(() => {
 		if (!canFold || open) return;
-		const deepest = Math.max(selectedIndex, edit ?? -1, range === null ? -1 : Math.max(...range));
+		const deepest = Math.max(selectedIndex, edit ?? -1);
 		if (deepest >= FOLD_TO) open = true;
 	});
 	const shown = $derived(canFold && !open ? FOLD_TO : n);
@@ -144,17 +137,6 @@
 
 	const busy = $derived(controller.busy);
 
-	function selectRow(index: number, event: MouseEvent): void {
-		const viewId = presentation.views[index]!.viewId;
-		if (event.shiftKey && anchor !== null && anchor !== index) {
-			range = [Math.min(anchor, index), Math.max(anchor, index)];
-			return;
-		}
-		anchor = index;
-		range = null;
-		onSelect(viewId);
-	}
-
 	function toggleKind(index: number): void {
 		if (busy) return;
 		const kind = kindAt(index);
@@ -168,10 +150,7 @@
 		if (busy) return;
 		void controller.setPresentationStep(presentation.id, index, kind);
 	}
-	function setRange(kind: 'cut' | 'travel'): void {
-		if (busy || range === null) return;
-		void controller.setPresentationStep(presentation.id, range[0] + 1, kind, range[1]);
-	}
+
 	function fixGap(index: number): void {
 		// Writing Travel again adds the missing straight path in the same change.
 		const view = presentation.views[index];
@@ -211,7 +190,6 @@
 		if (to < 0 || to >= n) return;
 		const viewId = presentation.views[index]!.viewId;
 		edit = null;
-		range = null;
 		if (to >= FOLD_TO) open = true;
 		void controller.movePresentationView(presentation.id, viewId, to).then(() => refocus(viewId));
 	}
@@ -246,14 +224,12 @@
 		if (from < to) to -= 1;
 		if (from === -1 || from === to) return;
 		edit = null;
-		range = null;
 		void controller.movePresentationView(presentation.id, dragged, to);
 	}
 	function toggleFold(): void {
 		open = !open;
 		if (!open) {
 			if (edit !== null && edit >= FOLD_TO) edit = null;
-			range = null;
 		}
 	}
 </script>
@@ -327,25 +303,15 @@
 		<span>Views</span><span class="n" aria-label={`${n} Views`}>{n}</span>
 		<span class="sum">{counts.travel} Travel · {counts.cut} Cut{#if counts.gap > 0} · <b class="gapn">⚠ {counts.gap}</b>{/if}</span>
 	</div>
-	{#if range !== null}
-		<div class="bulk" role="group" aria-label="Range">
-			<span>Views {range[0] + 1}–{range[1] + 1} · {range[1] - range[0]} {range[1] - range[0] === 1 ? 'connection' : 'connections'}</span>
-			<button type="button" disabled={busy} onclick={() => setRange('cut')}>All Cut</button>
-			<button type="button" disabled={busy} onclick={() => setRange('travel')}>All Travel</button>
-			<button type="button" class="x" aria-label="Clear the range" onclick={() => (range = null)}>✕</button>
-		</div>
-	{/if}
 	{#if n === 0}
 		<p class="empty">No Views yet. Capture in the dock adds the first.</p>
 	{:else}
 		<ol class="rail" class:scroll={canFold && open} bind:this={listEl}>
 			{#each presentation.views.slice(0, shown) as view, index (view.viewId)}
 				{#if edit === index && index > 0}{@render editor(index)}{/if}
-				{@const inRange = range !== null && index >= range[0] && index <= range[1]}
 				<li
 					class="row"
 					class:sel={selectedViewId === view.viewId}
-					class:rg={inRange}
 					class:dragging={draggingViewId === view.viewId}
 					class:drop-before={dropAt?.index === index && !dropAt.after}
 					class:drop-after={dropAt?.index === index && dropAt.after}
@@ -363,11 +329,7 @@
 						aria-label={`View ${index + 1}: ${label(view.viewId)}${index === 0 ? ', the Default' : ''}`}
 						aria-pressed={selectedViewId === view.viewId}
 						aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-						onclick={(event) => selectRow(index, event)}
-						ondblclick={(event) => {
-							event.preventDefault();
-							onLookThrough(view.viewId);
-						}}
+						onclick={() => onSelect(view.viewId)}
 						onkeydown={(event) => onRowKey(event, index)}
 					>
 						<span class="th"><ExperienceSnapshot label={label(view.viewId)} viewId={view.viewId} ratio="row" /><i>{index + 1}</i></span>
@@ -451,34 +413,6 @@
 	.gapn {
 		color: var(--shell-caution, #c85a48);
 	}
-	.bulk {
-		position: sticky;
-		top: 0;
-		z-index: 4;
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		margin-top: 6px;
-		padding: 5px 6px 5px 10px;
-		border-radius: 8px;
-		background: var(--shell-forest, #11291f);
-		color: #fff;
-		font-size: 11.5px;
-	}
-	.bulk span {
-		flex: 1;
-	}
-	.bulk button {
-		padding: 2px 8px;
-		border: 0;
-		border-radius: 6px;
-		background: rgb(255 255 255 / 16%);
-		color: #fff;
-	}
-	.bulk .x {
-		background: none;
-		color: #cfd8d2;
-	}
 	.rail {
 		margin: 8px 0 0;
 		padding: 0;
@@ -505,9 +439,6 @@
 	}
 	.row.sel {
 		background: var(--shell-gold-tint, #f8efd6);
-	}
-	.row.rg {
-		background: var(--shell-leaf-tint, #e7f1ea);
 	}
 	.row.dragging {
 		opacity: 0.4;

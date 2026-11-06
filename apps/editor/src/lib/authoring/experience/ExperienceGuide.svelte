@@ -1080,7 +1080,6 @@
 						>
 						{#if guideMenuOpen}
 							<div class="menu guide-menu" role="menu" tabindex="-1" aria-label="Guide actions" onkeydown={onGuideMenuKeydown}>
-								<button type="button" role="menuitem" class="menu-item" onclick={() => void startRename()}>Rename</button>
 								<button type="button" role="menuitem" class="menu-item danger" onclick={() => void removeCurrentGuide()}>Remove Guide</button>
 							</div>
 						{/if}

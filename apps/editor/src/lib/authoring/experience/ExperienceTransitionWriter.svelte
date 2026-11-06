@@ -259,21 +259,6 @@
 {/if}
 
 <style>
-	.next-to {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 6px 12px;
-		font-size: 12px;
-	}
-	.next-to select {
-		flex: 1;
-		min-height: 28px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
-		border-radius: 7px;
-		background: var(--shell-card, #fff);
-		font: inherit;
-	}
 	.writer {
 		display: flex;
 		flex-direction: column;

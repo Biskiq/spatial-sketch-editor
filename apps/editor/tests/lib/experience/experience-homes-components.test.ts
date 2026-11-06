@@ -199,7 +199,7 @@ function fakeController(options: ControllerOptions = {}) {
 		setStopEntry: vi.fn(async (_stopId: string, _viewId: string | null) => true),
 		setStopStay: vi.fn(async (_stopId: string, _seconds: number) => true),
 		setStopInvitation: vi.fn(async (_stopId: string, _invitation: { readonly prompt: string | null } | null) => true),
-		setPresentationStep: vi.fn(async (_presentationId: string, _toIndex: number, _kind: 'cut' | 'travel', _throughIndex?: number) => true),
+		setPresentationStep: vi.fn(async (_presentationId: string, _toIndex: number, _kind: 'cut' | 'travel') => true),
 		movePresentationView: vi.fn(async (_presentationId: string, _viewId: string, _index: number) => true),
 		setExplorable: vi.fn(async (_presentationId: string, _explorable: boolean) => true),
 		setWelcome: vi.fn(async (_body: string) => true),
@@ -439,17 +439,15 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 });
 
 describe('R217.S25 — the Guide adds a Stop from a Presentation', () => {
-	it('renames in place from the Guide actions menu and keeps Escape as a cancel', async () => {
+	it('renames by clicking the Guide name, keeps Escape as a cancel, and offers only removal in the menu', async () => {
 		const controller = fakeController();
 		const target = mountHome(ExperienceGuide, { onClose: () => {} }, fakeHomes(controller));
 		await settle();
 
 		buttonNamed(target, 'Guide actions').click();
 		await settle();
-		const rename = [...target.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
-			(item) => item.textContent?.trim() === 'Rename'
-		)!;
-		rename.click();
+		expect([...target.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent?.trim())).toEqual(['Remove Guide']);
+		target.querySelector<HTMLButtonElement>('[title="Rename this Guide"]')!.click();
 		await settle();
 		const input = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
 		expect(input.value).toBe('Main');
@@ -461,11 +459,7 @@ describe('R217.S25 — the Guide adds a Stop from a Presentation', () => {
 		await settle();
 		expect(controller.renameGuide).toHaveBeenCalledWith('guide-1', 'Walkthrough');
 
-		buttonNamed(target, 'Guide actions').click();
-		await settle();
-		[...target.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-			.find((item) => item.textContent?.trim() === 'Rename')!
-			.click();
+		target.querySelector<HTMLButtonElement>('[title="Rename this Guide"]')!.click();
 		await settle();
 		const again = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
 		again.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -876,6 +870,8 @@ describe('Sheet §32 — the Stop Card holds only this visit', () => {
 		await settle();
 		target.querySelector<HTMLButtonElement>('[data-entry-view="piano-keys"]')!.click();
 		expect(controller.setStopEntry).toHaveBeenCalledWith('stop-1', 'piano-keys');
+		target.querySelector<HTMLButtonElement>('[data-entry-view="piano-wide"]')!.click();
+		expect(controller.setStopEntry).toHaveBeenLastCalledWith('stop-1', 'piano-wide');
 		const untilNext = target.querySelector<HTMLButtonElement>('[data-stay="until-next"]')!;
 		expect(untilNext.textContent).toContain('Until Next');
 		expect(target.querySelector('[data-stay="seconds"]')).toBeNull();
@@ -885,7 +881,8 @@ describe('Sheet §32 — the Stop Card holds only this visit', () => {
 describe('Sheet §32 — the Presentation Card View list is the rail', () => {
 	it('numbers the Views, marks View 1 the Default and switches a connection on the spine with one press', async () => {
 		const controller = fakeController({ selectedPresentationId: 'piano', subject: { kind: 'presentation', presentationId: 'piano' } });
-		const target = mountHome(ExperiencePresentationWriter, {}, fakeHomes(controller));
+		const homes = fakeHomes(controller);
+		const target = mountHome(ExperiencePresentationWriter, {}, homes);
 		await settle();
 		const rows = [...target.querySelectorAll('[data-view-rail] li.row')];
 		expect(rows).toHaveLength(2);
@@ -897,6 +894,11 @@ describe('Sheet §32 — the Presentation Card View list is the rail', () => {
 		keys.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true }));
 		expect(controller.movePresentationView).toHaveBeenCalledWith('piano', 'piano-keys', 0);
 		expect(target.textContent).toContain('Listed in Places');
+		keys.click();
+		expect(homes.select).toHaveBeenLastCalledWith({ kind: 'view', viewId: 'piano-keys', presentationId: 'piano' });
+		expect(homes.lookThrough).not.toHaveBeenCalled();
+		expect(controller.setPresentationStep).toHaveBeenCalledTimes(1);
+
 	});
 
 	it('reads each step from the View it leaves, not the View it arrives at (A-1)', async () => {
@@ -958,11 +960,9 @@ describe('Sheet §32 — the Presentation Card View list is the rail', () => {
 		expect(rail.getAttribute('data-fold')).toBe('open');
 		expect(rail.querySelectorAll('li.row')).toHaveLength(12);
 		expect(rail.querySelector('ol.rail')!.classList.contains('scroll')).toBe(true);
-		// A Shift-press range sets All Cut or All Travel at once.
-		target.querySelector<HTMLButtonElement>('[data-rail-view="many-2"]')!.click();
-		target.querySelector<HTMLButtonElement>('[data-rail-view="many-4"]')!.dispatchEvent(new MouseEvent('click', { shiftKey: true, bubbles: true }));
+		buttonNamed(target, /Show the first 8/).click();
 		await settle();
-		buttonNamed(target, 'All Travel').click();
-		expect(controller.setPresentationStep).toHaveBeenCalledWith('many', 2, 'travel', 3);
+		expect(rail.getAttribute('data-fold')).toBe('folded');
+		expect(rail.querySelectorAll('li.row')).toHaveLength(8);
 	});
 });

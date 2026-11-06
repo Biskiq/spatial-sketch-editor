@@ -57,6 +57,8 @@ describe('visitor progress', () => {
 		visitor.pause();
 		visitor.explore();
 		const exploring = visitorProgressFor(visitor.program, visitor.state).segments[0]!.fill;
+		expect(exploring).toBeCloseTo(0.9);
+		expect(visitorProgressFor(visitor.program, visitor.state).segments[0]!.current).toBe(true);
 		visitor.tick(3000);
 		expect(visitorProgressFor(visitor.program, visitor.state).segments[0]!.fill).toBe(exploring);
 		visitor.resume();
@@ -64,7 +66,7 @@ describe('visitor progress', () => {
 		expect(resumed).toBeLessThan(exploring);
 	});
 
-	it('R21: a Travel fills the connector into the arriving segment', () => {
+	it('Travel fills before arrival; the destination stay starts empty, including on a revisit', () => {
 		const visitor = runtime(program({
 			stops: program().stops.map((stop, index) => index === 1 ? { ...stop, invocation: { kind: 'travel' as const, connectionId: 'connection-12' } } : stop)
 		}));
@@ -72,7 +74,16 @@ describe('visitor progress', () => {
 		visitor.continue();
 		expect(visitor.traveling).toBe(true);
 		const progress = visitorProgressFor(visitor.program, visitor.state, { travelProgress: 0.4 });
-		expect(progress.segments[1]).toMatchObject({ current: true, travelFill: 0.4 });
+		expect(progress.segments[1]).toMatchObject({ current: true, visited: true, travelFill: 0.4, fill: 0 });
+		visitor.tick(2000);
+		expect(visitorProgressFor(visitor.program, visitor.state).segments[1]!.fill).toBe(0);
+		visitor.arrival();
+		expect(visitorProgressFor(visitor.program, visitor.state).segments[1]).toMatchObject({ travelFill: 1, fill: 0 });
+		visitor.tick(1000);
+		expect(visitorProgressFor(visitor.program, visitor.state).segments[1]!.fill).toBeCloseTo(0.2);
+		visitor.navigate('stop-1');
+		visitor.continue();
+		expect(visitorProgressFor(visitor.program, visitor.state, { travelProgress: 0.3 }).segments[1]).toMatchObject({ visited: true, travelFill: 0.3, fill: 0 });
 	});
 
 	it('sheet §33 F: only an arrival by Travel draws a connector; a Cut is a hairline gap', () => {

@@ -80,9 +80,6 @@
 		if (presentation === null) return;
 		homes.select({ kind: 'view', viewId, presentationId: presentation.id });
 	}
-	function lookThrough(viewId: string): void {
-		homes.lookThrough(viewId);
-	}
 	function selectStop(stopId: string): void {
 		homes.select({ kind: 'stop', stopId });
 	}
@@ -134,7 +131,6 @@
 				{views}
 				{selectedViewId}
 				onSelect={selectView}
-				onLookThrough={lookThrough}
 				onShapePath={(toViewId) => controller.selectPath({ kind: 'step', presentationId: presentation.id, toViewId })}
 			/>
 			<p class="foot-note">The order is a suggestion: visitors step it with ‹ › while exploring. Capture in the dock adds a View at the end.</p>

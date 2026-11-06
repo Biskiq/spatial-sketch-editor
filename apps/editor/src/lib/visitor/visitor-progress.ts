@@ -46,9 +46,10 @@ export function visitorProgressFor(
 		const stop = stopById.get(stopId);
 		return stop === undefined ? [] : [stop];
 	});
-	const currentIndex = state.stopId === null
+	const activeStopId = state.resume?.stopId ?? state.stopId;
+	const currentIndex = activeStopId === null
 		? null
-		: orderedStops.findIndex((stop) => stop.id === state.stopId);
+		: orderedStops.findIndex((stop) => stop.id === activeStopId);
 	const visitedStops = new Set(state.visited.map((visit) => visit.stopId));
 	const presentationLabels = new Map(
 		program.presentations.map((presentation) => [presentation.id, presentation.label])
@@ -60,7 +61,9 @@ export function visitorProgressFor(
 		const visited = visitedStops.has(stop.id);
 		const liveTravel = current && state.phase === 'traveling';
 		const travelFill = index === 0 ? 0 : liveTravel ? travelProgress : visited ? 1 : 0;
-		let fill = visited ? 1 : 0;
+		// A visit is recorded when Travel starts, before the destination stay.
+		// Only departed occurrences use the full, passed-segment treatment.
+		let fill = visited && !current ? 1 : 0;
 		if (current && program.pacing === 'manual') fill = 0;
 		if (current && visited && program.pacing === 'automatic' && state.phase !== 'traveling') {
 			const stay = stop.staySeconds;

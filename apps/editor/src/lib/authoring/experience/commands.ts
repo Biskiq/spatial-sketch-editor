@@ -76,7 +76,7 @@ export type CommandIds = {
 	readonly guide?: string;
 	/** R217.S29 — a captured Camera connection id. */
 	readonly connection?: string;
-	/** Several captured Camera connection ids, for a range set to All Travel. */
+	/** Captured Camera connection ids for automatic Travel path reconciliation. */
 	readonly connections?: readonly string[];
 };
 

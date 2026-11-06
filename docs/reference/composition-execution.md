@@ -920,7 +920,8 @@ PR #271's branch implements so far.
   There is no start Stop, no explicit continuation and no early End. Every Stop is listed by
   exactly one Guide, exactly once (`stop-guide-membership`).
 - **A Stop is one visit:** a Presentation, an entry View (`entryViewId`, `null` follows the
-  Presentation's Default), a finite stay of at least 1 s, an optional invitation (`{ prompt }`,
+  Presentation's Default; a named View stays pinned even when it is currently the Default),
+  a finite stay of at least 1 s, an optional invitation (`{ prompt }`,
   `prompt` at most 80 code points), and an optional outgoing `transition` (`cut` or `travel`,
   absent means Cut): the step to the next Stop in its Guide. The last Stop has none
   (`travel-after-last`), and a Travel between two Stops that enter the same View is refused
@@ -1007,7 +1008,7 @@ in *Copy details*. Slice 5 makes the strip one timeline: the cards' rails and th
 form a single track (`locateSegmentAt` maps a pointer's whole-track fraction to a segment and its
 own local fraction), each gutter reads *↗ 5 s*, cards carry no Start tag, time text or wait glyph,
 the separate scrub bar is gone, the pacing pill opens its own popover, and the Guide's name renames
-in place with a ⋯ menu (Rename, Remove Guide). The strip and the View rail mark selection and
+in place; its ⋯ menu offers Remove Guide. The strip and the View rail mark selection and
 reorder with quiet forest and light lines; no gold remains on either. Slice 6 retires the Guide
 Card: `ExperienceGuideWriter` and `guideCardModel` are gone, and a Guide is never a Card subject.
 When nothing is selected the Card is the Experience itself, through
@@ -1022,13 +1023,19 @@ only with a Scene-entity subject, lowering writes the effective name into the pr
 section links, follows and unlinks, and Scene `delete-one` unlinks every Presentation about a
 removed object in the same accepted change. Slice 9 gives the visitor one continuous segmented
 progress bar in Guide order: each segment is a Stop occurrence, `state.visited` marks only the
-Stops actually reached, an Automatic stay fills its segment while paused or exploring and Back
-restores the lead-in, only the live Camera Travel fills its connector from the director's
-existing transition fraction, and Manual leaves the current segment outlined with no stay fill.
-A revisit has its own segment and a Places jump leaves skipped Stops, and the connectors into
-them, empty (R21–R23); the bar reads the same interpreter state as the tour controls.
+Stops actually entered, without treating the destination stay as complete. During Travel only its
+connector fills; after arrival the destination stay starts at zero. Pause and Explore freeze the
+active or suspended stay; Back restores its lead-in. The Camera director supplies Travel progress,
+and Manual outlines the current segment with no stay fill. Each Stop occurrence has its own
+segment. Prev/Next follows the Guide; Places supports free exploration and Back resumes the Guide.
+No direct Stop-jump UI is required. The bar reads the same interpreter state as the tour controls.
+
+The final simplification removes range selection, bulk transition editing and the strip's duplicate
+Rename menu item. View-list folding remains intentional; single click opens the View Card and
+Look through remains explicit. Guide/Stop creation and entry editing preserve a named View through
+later Default reordering, including a View that was the Default when chosen.
 
 Every rule in this AM-11 implementation status is implemented on PR #271. The slice 10 final
-gate reran the complete editor suite (3,915 tests), the architecture suite (209 tests),
+gate reran the complete editor suite (3,925 tests), the architecture suite (209 tests),
 `npm run check` (0 errors) and `npm run build` (passed). The owner's browser journeys A–Q are
 the remaining manual acceptance, and no merge occurs before they pass.

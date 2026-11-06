@@ -125,7 +125,7 @@
 
 	function chooseEntry(viewId: string): void {
 		if (controller === null || stop === null || controller.busy) return;
-		void controller.setStopEntry(stop.id, viewId === defaultViewId ? null : viewId);
+		void controller.setStopEntry(stop.id, viewId);
 	}
 
 	function stepStay(direction: -1 | 1): void {

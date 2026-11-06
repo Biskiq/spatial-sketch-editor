@@ -242,8 +242,8 @@ export type ExperienceController = {
 	setStopStay(stopId: string, seconds: number): Promise<boolean>;
 	/** Stop Card · Invite to explore: `null` is off. */
 	setStopInvitation(stopId: string, invitation: { readonly prompt: string | null } | null): Promise<boolean>;
-	/** Presentation Card spine: Cut or Travel into View `toIndex`, or a range through `throughIndex`, as one Undo. */
-	setPresentationStep(presentationId: string, toIndex: number, kind: 'cut' | 'travel', throughIndex?: number): Promise<boolean>;
+	/** Presentation Card spine: Cut or Travel into View `toIndex`, as one Undo. */
+	setPresentationStep(presentationId: string, toIndex: number, kind: 'cut' | 'travel'): Promise<boolean>;
 	/** Presentation Card reorder: View 1 is the Default. */
 	movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean>;
 	setExplorable(presentationId: string, explorable: boolean): Promise<boolean>;
@@ -1053,7 +1053,7 @@ export function createExperienceController(
 		const stop = current?.stops.find((entry) => entry.id === stopId);
 		const presentation = current?.presentations.find((entry) => entry.id === stop?.presentationId);
 		if (stop === undefined || presentation === undefined) return false;
-		const entry = viewId === null || viewId === presentation.views[0]?.viewId ? null : viewId;
+		const entry = viewId;
 		if (entry === stop.entryViewId) return false;
 		if (entry !== null && !presentation.views.some((view) => view.viewId === entry)) return false;
 		return updateStop(stopId, { entryViewId: entry });
@@ -1118,28 +1118,19 @@ export function createExperienceController(
 		);
 	}
 
-	/**
-	 * Presentation Card · the spine: set the step out of the View before `toIndex`
-	 * (one, or the range `toIndex..throughIndex`) to Cut or Travel. A new Travel
-	 * with no path adds the straight one in the same Undo.
-	 */
+	/** Set one outgoing step; reconciliation adds any required Camera path atomically. */
 	async function setPresentationStep(
 		presentationId: string,
 		toIndex: number,
-		kind: 'cut' | 'travel',
-		throughIndex: number = toIndex
+		kind: 'cut' | 'travel'
 	): Promise<boolean> {
 		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
-		if (presentation === undefined) return false;
-		const from = Math.max(0, Math.min(toIndex, throughIndex) - 1);
-		const to = Math.min(presentation.views.length - 2, Math.max(toIndex, throughIndex) - 1);
-		if (toIndex <= 0 || from > to) return false;
-		const views = presentation.views.map((view, index) => (index >= from && index <= to ? { viewId: view.viewId, transition: kind } : view));
-		const count = to - from + 1;
+		if (presentation === undefined || !Number.isInteger(toIndex) || toIndex <= 0 || toIndex >= presentation.views.length) return false;
+		const views = presentation.views.map((view, index) =>
+			index === toIndex - 1 ? { viewId: view.viewId, transition: kind } : view
+		);
 		return writePresentationViews(presentationId, views, () =>
-			count > 1
-				? `${count} connections are ${kind === 'travel' ? 'Travel' : 'Cut'}. One Undo.`
-				: `${kind === 'travel' ? 'Travel' : 'Cut'}. Exploring adds no Guide time.`
+			`${kind === 'travel' ? 'Travel' : 'Cut'}. Exploring adds no Guide time.`
 		);
 	}
 

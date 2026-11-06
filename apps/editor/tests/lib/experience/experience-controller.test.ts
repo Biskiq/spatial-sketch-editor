@@ -257,14 +257,17 @@ describe('per-field Stop edits keep the other fields', () => {
 		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'A stay is at least 1 s.' });
 	});
 
-	it('Enter at names a View of the Presentation; the Default is written as null', async () => {
+	it('Enter at preserves a named View even when it is currently the Default', async () => {
 		const two = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
 		const { controller, submitted } = await mounted({ experience: two });
 		expect(await controller.setStopEntry('stop-1', 'view-2')).toBe(true);
 		expect(submittedIntent(submitted).payload).toEqual({ entryViewId: 'view-2' });
 		submitted.mockClear();
-		// Already following the Default: no change.
-		expect(await controller.setStopEntry('stop-1', 'view-1')).toBe(false);
+		// Choosing the current Default pins it; only an explicit null follows reorders.
+		expect(await controller.setStopEntry('stop-1', 'view-1')).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ entryViewId: 'view-1' });
+		submitted.mockClear();
+		expect(await controller.setStopEntry('stop-1', null)).toBe(false);
 		expect(await controller.setStopEntry('stop-1', 'view-absent')).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
 	});
@@ -371,7 +374,7 @@ describe('per-field Stop edits keep the other fields', () => {
 		});
 	});
 
-	it('the View rail sets a step or a range in one change, adding the straight paths a Travel needs', async () => {
+	it('the View rail sets one outgoing step in one change', async () => {
 		const three = withPresentationChange('presentation-1', {
 			views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'cut' }]
 		});
@@ -382,7 +385,7 @@ describe('per-field Stop edits keep the other fields', () => {
 		expect(intent.payload).toEqual({ views: [{ viewId: 'view-1', transition: 'travel' }, { viewId: 'view-2' }] });
 		submitted.mockClear();
 		// Travel → Cut is a real change, written on the View it leaves.
-		expect(await controller.setPresentationStep('presentation-1', 1, 'cut', 1)).toBe(true);
+		expect(await controller.setPresentationStep('presentation-1', 1, 'cut')).toBe(true);
 		expect(submittedIntent(submitted).payload).toEqual({ views: [{ viewId: 'view-1', transition: 'cut' }, { viewId: 'view-2' }] });
 	});
 
