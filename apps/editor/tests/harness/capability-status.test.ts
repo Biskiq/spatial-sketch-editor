@@ -4,18 +4,25 @@
  * rules that make that honest:
  *
  * - a capability with no core check never reads `working`;
- * - a skipped check and a stale `known-failing` marker count as failing;
+ * - installed-runner `it.fails` semantics: a live reproducer keeps health
+ *   failing while the gate stays green, a stale marker and an ordinary failing
+ *   tagged test keep the gate red, and an unverifiable marker is never trusted;
+ * - a skipped check counts as failing;
  * - an open `blocks-core` bug breaks health before any reproducer exists;
- * - a report from another commit, or with a suite that did not complete, reads
- *   `unknown` instead of presenting old results as current;
- * - an owner review expires when a later merge touches the capability surface;
- * - two claims on one capability are reported, not silently resolved.
+ * - a report from another commit, with an incomplete suite, or with absent /
+ *   truncated test evidence reads `unknown` or is rejected, never green;
+ * - an owner review expires when intervening `main` history touched the
+ *   capability surface (including a later revert), and when the review commit
+ *   is not part of main's history;
+ * - claims from draft PRs and from any assignee are visible, including
+ *   collisions.
  *
- * The cases drive the real CLI on fixture ledgers and recorded runs, so the
- * printed provenance and the exit contract are exercised too.
+ * Cases drive the real CLI on fixture ledgers, recorded runs and a temporary
+ * git repository, so provenance, git history and the exit contract are
+ * exercised rather than simulated.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -52,8 +59,27 @@ type Check = {
 	level?: 'core' | 'edge';
 	status?: string;
 	knownFailing?: number;
+	/** The assertion body unexpectedly passed under `it.fails`. */
+	stalePass?: boolean;
+	/** How the source declares the test; defaults to `it.fails`. */
+	source?: 'fails' | 'plain' | 'missing';
 	title?: string;
 };
+
+/** The merge-gate suite contract the workflow records; a run must cover it. */
+const REQUIRED_SUITES = [
+	'npm run check',
+	'npm run test:arch',
+	'npm test',
+	'npm run test:heavy',
+	'npm run build',
+	'npm run check:api',
+	'npm run test:api'
+];
+
+const TEST_SUITES = ['npm test', 'npm run test:arch', 'npm run test:heavy', 'npm run test:api'];
+
+let fixtureCount = 0;
 
 function ledgerOf(...capabilities: Capability[]) {
 	return {
@@ -70,42 +96,69 @@ function ledgerOf(...capabilities: Capability[]) {
 	};
 }
 
+function markerText(check: Check) {
+	const level = check.level ?? 'core';
+	const suffix =
+		check.knownFailing === undefined ? '' : ` known-failing:#${check.knownFailing}`;
+	return `[cap:${check.cap} ${level}${suffix}]`;
+}
+
+/** An assertion's source file, so runner-mode verification is real. */
+function sourceFor(check: Check) {
+	fixtureCount += 1;
+	if (check.knownFailing === undefined) return join(TEMP, 'untagged-source.test.ts');
+	if (check.source === 'missing') return join(TEMP, `missing-${fixtureCount}.test.ts`);
+	const kind = check.source === 'plain' ? 'it' : 'it.fails';
+	const path = join(TEMP, `source-${fixtureCount}.test.ts`);
+	writeFileSync(path, `${kind}('${markerText(check)} case', () => {});\n`);
+	return path;
+}
+
 function assertions(checks: Check[]) {
 	return {
-		testResults: [
-			{
-				name: 'tests/example.test.ts',
-				assertionResults: checks.map((check) => ({
-					fullName: `[cap:${check.cap} ${check.level ?? 'core'}${
-						check.knownFailing !== undefined ? ` known-failing:#${check.knownFailing}` : ''
-					}] ${check.title ?? 'proves it'}`,
-					status: check.status ?? 'passed'
-				}))
-			}
-		]
+		testResults: checks.map((check) => ({
+			name: sourceFor(check),
+			assertionResults: [
+				{
+					fullName: `${markerText(check)} case`,
+					status: check.status ?? (check.stalePass ? 'failed' : 'passed'),
+					...(check.stalePass
+						? { failureMessages: ['Error: Expect test to fail\n    at runTest (vitest)'] }
+						: {})
+				}
+			]
+		}))
 	};
 }
 
-/** The merge-gate suite contract the workflow records; a run must cover it. */
-const REQUIRED_SUITES = [
-	'npm run check',
-	'npm run test:arch',
-	'npm test',
-	'npm run test:heavy',
-	'npm run build',
-	'npm run check:api',
-	'npm run test:api'
-];
+const SMOKE_SOURCE = join(TEMP, 'suite-smoke.test.ts');
+writeFileSync(SMOKE_SOURCE, "it('suite smoke', () => {});\n");
 
 function runOf(checks: Check[], options: { commit?: string; suite?: string } = {}) {
+	const results = assertions(checks);
 	return {
 		commit: options.commit ?? COMMIT,
 		generatedAt: '2026-11-06T10:00:00.000Z',
-		suites: REQUIRED_SUITES.map((name) => ({
-			name,
-			status: name === 'npm test' ? (options.suite ?? 'complete') : 'complete',
-			...(name === 'npm test' ? { results: assertions(checks) } : {})
-		}))
+		suites: REQUIRED_SUITES.map((name) => {
+			if (name === 'npm test') {
+				return { name, status: options.suite ?? 'complete', results };
+			}
+			if (TEST_SUITES.includes(name)) {
+				return {
+					name,
+					status: 'complete',
+					results: {
+						testResults: [
+							{
+								name: SMOKE_SOURCE,
+								assertionResults: [{ fullName: 'suite smoke', status: 'passed' }]
+							}
+						]
+					}
+				};
+			}
+			return { name, status: 'complete', exitCode: 0 };
+		})
 	};
 }
 
@@ -121,11 +174,12 @@ type StatusInput = {
 	report?: unknown;
 	previous?: unknown;
 	mainHead?: string;
+	repoRoot?: string;
 	changedPaths?: Record<string, string[] | null>;
 	github?: unknown;
 };
 
-function status(input: StatusInput) {
+function statusCommand(input: StatusInput) {
 	const ledgerPath = writeCaseFile('capabilities.json', input.ledger);
 	const args = [
 		STATUS,
@@ -141,20 +195,30 @@ function status(input: StatusInput) {
 			? join(TEMP, 'absent-report.json')
 			: writeCaseFile('report.json', input.report)
 	);
+	if (input.repoRoot) args.push('--repo-root', input.repoRoot);
 	if (input.previous !== undefined) args.push('--previous', writeCaseFile('previous.json', input.previous));
 	if (input.changedPaths !== undefined) {
 		args.push('--changed-paths', writeCaseFile('changed.json', input.changedPaths));
 	}
 	if (input.github !== undefined) args.push('--github', writeCaseFile('github.json', input.github));
 	else args.push('--offline');
+	return args;
+}
 
-	return JSON.parse(execFileSync(process.execPath, args, { encoding: 'utf8' }));
+function status(input: StatusInput) {
+	return JSON.parse(execFileSync(process.execPath, statusCommand(input), { encoding: 'utf8' }));
 }
 
 function row(report: any, id: string) {
 	const found = report.capabilities.find((entry: any) => entry.id === id);
 	if (!found) throw new Error(`expected a report row for ${id}`);
 	return found;
+}
+
+function expectRejected(input: StatusInput, message: string) {
+	const result = spawnSync(process.execPath, statusCommand(input), { encoding: 'utf8' });
+	expect(result.status).toBe(1);
+	expect(result.stderr).toContain(message);
 }
 
 describe('the capability ledger is definitions only', () => {
@@ -262,19 +326,127 @@ describe('maturity comes from tagged checks', () => {
 		expect(row(report, 'cap.polished').reviewCurrent).toBe(false);
 		expect(row(report, 'cap.polished').maturity).toBe('working');
 	});
+});
 
-	it('treats a stale known-failing marker and a skip as failing checks', () => {
-		const ledger = ledgerOf({ id: 'cap.stale' }, { id: 'cap.skipped' });
+describe('runner expected-failure semantics', () => {
+	it('keeps a live reproducer failing for health and green for the gate', () => {
 		const report = status({
-			ledger,
+			ledger: ledgerOf({ id: 'cap.live' }),
+			report: runOf([{ cap: 'cap.live', knownFailing: 42 }])
+		});
+		expect(row(report, 'cap.live').health).toBe('broken');
+		expect(row(report, 'cap.live').maturity).toBe('missing');
+		expect(row(report, 'cap.live').failingChecks[0].status).toBe('expected-failing');
+		expect(report.gate.failures).toEqual([]);
+	});
+
+	it('fails the gate for a stale marker, a plain failing tagged test and an unverified marker', () => {
+		const report = status({
+			ledger: ledgerOf(
+				{ id: 'cap.stale' },
+				{ id: 'cap.plain-pass' },
+				{ id: 'cap.unverified' },
+				{ id: 'cap.ordinary' },
+				{ id: 'cap.skipped' }
+			),
 			report: runOf([
-				{ cap: 'cap.stale', knownFailing: 42 },
-				{ cap: 'cap.skipped', status: 'skipped' }
+				// `it.fails` body unexpectedly passed: JSON says failed.
+				{ cap: 'cap.stale', knownFailing: 1, stalePass: true },
+				// Passing markdown on a plain `it`: not runner expected-failure mode.
+				{ cap: 'cap.plain-pass', knownFailing: 2, source: 'plain' },
+				// Passing marker whose source cannot be read.
+				{ cap: 'cap.unverified', knownFailing: 3, source: 'missing' },
+				// A marked test that failed ordinarily is not expected failure either.
+				{ cap: 'cap.ordinary', knownFailing: 4, status: 'failed' },
+				{ cap: 'cap.skipped', knownFailing: 5, status: 'skipped' }
 			])
 		});
-		expect(row(report, 'cap.stale').health).toBe('broken');
-		expect(row(report, 'cap.skipped').health).toBe('broken');
-		expect(row(report, 'cap.stale').checks.core.passing).toBe(0);
+
+		const statuses = Object.fromEntries(
+			report.capabilities.map((entry: any) => [entry.id, entry.failingChecks[0]?.status])
+		);
+		expect(statuses['cap.stale']).toBe('stale-marker');
+		expect(statuses['cap.plain-pass']).toBe('stale-marker');
+		expect(statuses['cap.unverified']).toBe('unverified-marker');
+		expect(statuses['cap.ordinary']).toBe('failed');
+		expect(statuses['cap.skipped']).toBe('skipped');
+		expect(report.gate.failures).toHaveLength(5);
+		expect(report.gate.failures.map((failure: any) => failure.reason).join('\n')).toContain(
+			'is not backed by it.fails'
+		);
+		expect(report.gate.failures.map((failure: any) => failure.reason).join('\n')).toContain(
+			'no longer reproduces'
+		);
+	});
+
+	it('exercises the installed Vitest runner end-to-end', () => {
+		// The JSON reporter is the contract this harness reads. Run the installed
+		// runner on both `it.fails` outcomes rather than trusting hand-written
+		// statuses, then feed its real artifact through the CLI.
+		const probeName = `zz-runner-probe-${process.pid}.test.ts`;
+		const probePath = join(REPO_ROOT, 'apps/editor/tests/harness', probeName);
+		const outputPath = join(TEMP, 'runner-result.json');
+		writeFileSync(
+			probePath,
+			[
+				"import { describe, expect, it } from 'vitest';",
+				'',
+				"describe('probe', () => {",
+				"\tit.fails('[cap:probe.expected core known-failing:#42] expected body failure', () => {",
+				'\t\texpect(1).toBe(2);',
+				'\t});',
+				"\tit.fails('[cap:probe.stale core known-failing:#43] unexpected body pass', () => {",
+				'\t\texpect(1).toBe(1);',
+				'\t});',
+				'});',
+				''
+			].join('\n')
+		);
+		try {
+			spawnSync(
+				'npx',
+				[
+					'vitest',
+					'run',
+					`tests/harness/${probeName}`,
+					'--reporter=json',
+					`--outputFile=${outputPath}`
+				],
+				{ cwd: join(REPO_ROOT, 'apps/editor'), encoding: 'utf8' }
+			);
+			const results = JSON.parse(readFileSync(outputPath, 'utf8'));
+			const ledger = ledgerOf({ id: 'probe.expected' }, { id: 'probe.stale' });
+			const suites = REQUIRED_SUITES.map((name) => {
+				if (name === 'npm test') return { name, status: 'complete', results };
+				if (TEST_SUITES.includes(name)) {
+					return {
+						name,
+						status: 'complete',
+						results: {
+							testResults: [
+								{
+									name: SMOKE_SOURCE,
+									assertionResults: [{ fullName: 'suite smoke', status: 'passed' }]
+								}
+							]
+						}
+					};
+				}
+				return { name, status: 'complete', exitCode: 0 };
+			});
+			const report = status({
+				ledger,
+				report: { commit: COMMIT, generatedAt: '2026-11-06T10:00:00.000Z', suites }
+			});
+
+			expect(row(report, 'probe.expected').failingChecks[0].status).toBe('expected-failing');
+			expect(row(report, 'probe.expected').health).toBe('broken');
+			expect(report.gate.failures).toHaveLength(1);
+			expect(report.gate.failures[0].name).toContain('probe.stale');
+			expect(report.gate.failures[0].reason).toContain('no longer reproduces');
+		} finally {
+			rmSync(probePath, { force: true });
+		}
 	});
 });
 
@@ -299,17 +471,17 @@ describe('health follows current evidence, not maturity', () => {
 					{
 						number: 1,
 						title: 'the main journey is broken',
-						labels: ['bug', 'blocks-core', 'cap:cap.blocked'],
+						labels: [{ name: 'bug' }, { name: 'blocks-core' }, { name: 'cap:cap.blocked' }],
 						assignees: []
 					},
 					{
 						number: 2,
 						title: 'a visual defect',
-						labels: ['bug', 'cap:cap.bug'],
+						labels: [{ name: 'bug' }, { name: 'cap:cap.bug' }],
 						assignees: []
 					}
 				],
-				claims: []
+				pulls: []
 			}
 		});
 
@@ -359,6 +531,44 @@ describe('a report states its own provenance', () => {
 		expect(row(truncated, 'cap.a').health).toBe('unknown');
 	});
 
+	it('rejects evidence that cannot certify a run', () => {
+		const ledger = ledgerOf({ id: 'cap.a' });
+		const valid = runOf([{ cap: 'cap.a' }]);
+
+		expectRejected(
+			{ ledger, report: { ...valid, generatedAt: undefined } },
+			'generatedAt must be an ISO timestamp'
+		);
+
+		const noResults = {
+			...valid,
+			suites: REQUIRED_SUITES.map((name) =>
+				TEST_SUITES.includes(name)
+					? { name, status: 'complete' }
+					: { name, status: 'complete', exitCode: 0 }
+			)
+		};
+		expectRejected({ ledger, report: noResults }, 'completed without a Vitest reporter artifact');
+
+		const collectedNothing = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === 'npm test'
+					? { name: suite.name, status: 'complete', results: { testResults: [] } }
+					: suite
+			)
+		};
+		expectRejected({ ledger, report: collectedNothing }, 'recorded no test files');
+
+		const commandFailed = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === 'npm run build' ? { ...suite, exitCode: 1 } : suite
+			)
+		};
+		expectRejected({ ledger, report: commandFailed }, 'completed without exitCode 0');
+	});
+
 	it('marks a capability regressed only between two complete reports', () => {
 		const ledger = ledgerOf({ id: 'cap.a' });
 		const previous = status({
@@ -384,21 +594,97 @@ describe('a report states its own provenance', () => {
 	});
 });
 
+describe('owner reviews follow intervening main history', () => {
+	function git(directory: string, ...args: string[]) {
+		return execFileSync(
+			'git',
+			['-c', 'user.name=Harness', '-c', 'user.email=harness@example.test', ...args],
+			{ cwd: directory, encoding: 'utf8' }
+		).trim();
+	}
+	function commit(directory: string, message: string) {
+		git(directory, 'add', '-A');
+		git(directory, 'commit', '-qm', message);
+		return git(directory, 'rev-parse', 'HEAD');
+	}
+
+	const repo = mkdtempSync(join(TEMP, 'repo-'));
+	git(repo, 'init', '-q');
+	mkdirSync(join(repo, 'apps/editor/src'), { recursive: true });
+	const surface = join(repo, 'apps/editor/src/a.ts');
+	const notes = join(repo, 'notes.txt');
+	writeFileSync(surface, 'base\n');
+	writeFileSync(notes, 'base\n');
+	const base = commit(repo, 'base');
+	writeFileSync(surface, 'changed\n');
+	commit(repo, 'surface change');
+	writeFileSync(surface, 'base\n');
+	const reverted = commit(repo, 'revert surface');
+	writeFileSync(notes, 'changed\n');
+	const unrelated = commit(repo, 'unrelated change');
+	git(repo, 'checkout', '-q', '-b', 'side', base);
+	writeFileSync(surface, 'side\n');
+	const outside = commit(repo, 'surface on an unmerged branch');
+	git(repo, 'checkout', '-q', unrelated);
+
+	const reviewAt = (implementation: string) => ({
+		implementation,
+		design: 'r1',
+		date: '2026-11-01',
+		verdict: 'accepted'
+	});
+	const ledger = ledgerOf(
+		{ id: 'cap.reverted', design: { reference: 'docs/design.md', revision: 'r1' }, review: reviewAt(base) },
+		{ id: 'cap.unrelated', design: { reference: 'docs/design.md', revision: 'r1' }, review: reviewAt(reverted) },
+		{ id: 'cap.outside', design: { reference: 'docs/design.md', revision: 'r1' }, review: reviewAt(outside) },
+		{ id: 'cap.head', design: { reference: 'docs/design.md', revision: 'r1' }, review: reviewAt(unrelated) }
+	);
+
+	it('expires on a reverted surface change and on an unmerged review commit', () => {
+		const report = status({
+			ledger,
+			report: runOf([{ cap: 'cap.head' }], { commit: unrelated }),
+			mainHead: unrelated,
+			repoRoot: repo
+		});
+		expect(row(report, 'cap.reverted').reviewCurrent).toBe(false);
+		expect(row(report, 'cap.outside').reviewCurrent).toBe(false);
+	});
+
+	it('keeps a review current for unrelated changes and for an unchanged head', () => {
+		const report = status({
+			ledger,
+			report: runOf([{ cap: 'cap.head' }], { commit: unrelated }),
+			mainHead: unrelated,
+			repoRoot: repo
+		});
+		expect(row(report, 'cap.unrelated').reviewCurrent).toBe(true);
+		expect(row(report, 'cap.head').reviewCurrent).toBe(true);
+	});
+});
+
 describe('claims are visible, including collisions', () => {
-	it('lists duplicate claims instead of picking a winner', () => {
+	it('lists draft PRs and issues assigned to any agent, and flags duplicates', () => {
 		const report = status({
 			ledger: ledgerOf({ id: 'layout.a' }),
 			report: runOf([{ cap: 'layout.a' }]),
 			github: {
-				issues: [],
-				claims: [
-					{ number: 7, title: 'layout.a — draw walls', kind: 'pull' },
-					{ number: 8, title: 'layout.a again', kind: 'pull' }
+				issues: [
+					{
+						number: 9,
+						title: 'layout.a is already claimed elsewhere',
+						labels: [],
+						assignees: [{ login: 'other-agent' }]
+					}
+				],
+				pulls: [
+					{ number: 7, title: 'layout.a — draw walls', isDraft: true, assignees: [] },
+					{ number: 8, title: 'layout.a again', isDraft: true, assignees: [] }
 				]
 			}
 		});
-		expect(row(report, 'layout.a').claims).toEqual([7, 8]);
-		expect(report.duplicateClaims).toEqual([{ capabilityId: 'layout.a', numbers: [7, 8] }]);
+		expect(row(report, 'layout.a').claims).toEqual([7, 8, 9]);
+		expect(report.duplicateClaims).toEqual([{ capabilityId: 'layout.a', numbers: [7, 8, 9] }]);
 	});
 });
 

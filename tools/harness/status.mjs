@@ -12,19 +12,22 @@
  *   node tools/harness/status.mjs --offline            # skip live GitHub reads
  *   node tools/harness/status.mjs --report <path>      # a recorded run
  *   node tools/harness/status.mjs --main-head <sha>    # explicit compare point
+ *   node tools/harness/status.mjs --repo-root <path>   # deterministic git fixtures
  *
- * Exit codes: 0 report printed (including all-unknown), 1 invalid ledger or
- * malformed report. The report distinguishes "no complete run" from a green
- * one; it never upgrades missing evidence into a pass.
+ * Exit codes: 0 report printed (including all-unknown), 1 invalid ledger,
+ * malformed report evidence, or an unreadable input. The report distinguishes
+ * "no complete run" from a green one; it never upgrades missing evidence into a
+ * pass.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { validateLedger } from './ledger.mjs';
-import { buildReport, REQUIRED_SUITES } from './report.mjs';
+import { buildReport, REQUIRED_SUITES, validateRun } from './report.mjs';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const DEFAULT_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 function readJson(path, label) {
 	const text = readFileSync(path, 'utf8');
@@ -39,10 +42,20 @@ function run(command, args, cwd) {
 	return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
+/** Read a source file for runner-mode verification; absence is `null`. */
+function readSource(file) {
+	try {
+		return readFileSync(file, 'utf8');
+	} catch {
+		return null;
+	}
+}
+
 function parseArgs(argv) {
 	const options = {
-		ledger: `${ROOT}capabilities.json`,
-		report: `${ROOT}.harness/report.json`,
+		repoRoot: DEFAULT_ROOT,
+		ledger: null,
+		report: null,
 		mainRef: 'origin/main',
 		mainHead: null,
 		json: false,
@@ -65,6 +78,7 @@ function parseArgs(argv) {
 		else if (arg === '--changed-paths') options.changedPaths = next();
 		else if (arg === '--github') options.github = next();
 		else if (arg === '--previous') options.previous = next();
+		else if (arg === '--repo-root') options.repoRoot = next();
 		else if (arg === '--json') options.json = true;
 		else if (arg === '--offline') options.offline = true;
 		else if (arg === '--help' || arg === '-h') options.help = true;
@@ -76,64 +90,77 @@ function parseArgs(argv) {
 function mainHeadFor(options) {
 	if (options.mainHead) return options.mainHead;
 	try {
-		return run('git', ['rev-parse', options.mainRef], ROOT);
+		return run('git', ['rev-parse', options.mainRef], options.repoRoot);
 	} catch {
 		return null;
 	}
 }
 
+/**
+ * Normalize `gh ... --json` output (issue/PR objects with `{name}` labels and
+ * `{login}` assignees) into the report's shape.
+ *
+ * Claims are visible for every assignee and every draft PR title that names a
+ * capability — the collision scan must reveal work another agent already holds,
+ * not just work assigned to the current credential.
+ */
+export function normaliseGithub(payload) {
+	const labelsOf = (labels) =>
+		(labels ?? [])
+			.map((label) => (typeof label === 'string' ? label : label?.name))
+			.filter((name) => typeof name === 'string' && name.length > 0);
+	const assigneesOf = (assignees) =>
+		(assignees ?? [])
+			.map((person) => (typeof person === 'string' ? person : person?.login))
+			.filter((login) => typeof login === 'string' && login.length > 0);
+
+	const issues = (Array.isArray(payload?.issues) ? payload.issues : []).map((issue) => ({
+		number: issue.number,
+		title: issue.title,
+		labels: labelsOf(issue.labels),
+		assignees: assigneesOf(issue.assignees)
+	}));
+	const pulls = (Array.isArray(payload?.pulls) ? payload.pulls : []).map((pull) => ({
+		number: pull.number,
+		title: pull.title,
+		isDraft: pull.isDraft === true,
+		assignees: assigneesOf(pull.assignees)
+	}));
+
+	const claims = [];
+	for (const pull of pulls) {
+		if (pull.isDraft) claims.push({ number: pull.number, title: pull.title, kind: 'pull' });
+	}
+	for (const issue of issues) {
+		if (issue.assignees.length > 0) {
+			claims.push({ number: issue.number, title: issue.title, kind: 'issue' });
+		}
+	}
+	return { available: true, reason: null, issues, claims };
+}
+
 /** Live flags and claims. Absence is reported as unavailable, never as empty. */
 function readGithub(options) {
 	if (options.github) {
-		const fixture = readJson(options.github, 'github fixture');
-		return {
-			available: true,
-			reason: null,
-			issues: fixture.issues ?? [],
-			claims: fixture.claims ?? []
-		};
+		return normaliseGithub(readJson(options.github, 'github fixture'));
 	}
 	if (options.offline) return { available: false, reason: '--offline', issues: [], claims: [] };
 	try {
-		let login = null;
-		try {
-			login = run('gh', ['api', 'user', '--jq', '.login'], ROOT);
-		} catch {
-			login = null;
-		}
 		const issues = JSON.parse(
 			run(
 				'gh',
 				['issue', 'list', '--state', 'open', '--limit', '200', '--json', 'number,title,labels,assignees'],
-				ROOT
+				options.repoRoot
 			)
 		);
 		const pulls = JSON.parse(
 			run(
 				'gh',
 				['pr', 'list', '--state', 'open', '--limit', '200', '--json', 'number,title,isDraft,assignees'],
-				ROOT
+				options.repoRoot
 			)
 		);
-		const normaliseIssue = (issue) => ({
-			number: issue.number,
-			title: issue.title,
-			labels: (issue.labels ?? []).map((label) => (typeof label === 'string' ? label : label.name)),
-			assignees: (issue.assignees ?? []).map((person) =>
-				typeof person === 'string' ? person : person.login
-			)
-		});
-		const claims = [];
-		for (const pull of pulls) {
-			if (pull.isDraft === true) claims.push({ number: pull.number, title: pull.title, kind: 'pull' });
-		}
-		for (const issue of issues) {
-			const assigned = issue.assignees ?? [];
-			if (assigned.length === 0) continue;
-			if (login !== null && !assigned.includes(login)) continue;
-			claims.push({ number: issue.number, title: issue.title, kind: 'issue' });
-		}
-		return { available: true, reason: null, issues: issues.map(normaliseIssue), claims };
+		return normaliseGithub({ issues, pulls });
 	} catch (error) {
 		return {
 			available: false,
@@ -144,18 +171,41 @@ function readGithub(options) {
 	}
 }
 
-/** Changed paths since each review's implementation, or null when unknown. */
-function readChangedPaths(capabilities, options) {
-	if (options.changedPaths) {
-		return new Map(Object.entries(readJson(options.changedPaths, 'changed-paths file')));
+/**
+ * Paths main history touched since each review's implementation, or `null` when
+ * that history cannot be established.
+ *
+ * This uses `git log --name-only impl..mainHead` rather than an endpoint diff:
+ * a surface change that was later reverted still expired the review, and local
+ * branch work outside main must not expire it. Ancestry is verified first; a
+ * review commit that is not part of main's history is treated as stale.
+ */
+export function readChangedPaths(capabilities, { repoRoot, mainHead, changedPathsPath = null }) {
+	if (changedPathsPath) {
+		return new Map(Object.entries(readJson(changedPathsPath, 'changed-paths file')));
 	}
 	const map = new Map();
 	for (const entry of capabilities) {
 		const review = entry.review;
 		if (!review || typeof review.implementation !== 'string') continue;
+		if (!mainHead) {
+			map.set(entry.id, null);
+			continue;
+		}
 		try {
-			const output = run('git', ['diff', '--name-only', `${review.implementation}..HEAD`], ROOT);
-			map.set(entry.id, output.length === 0 ? [] : output.split('\n'));
+			run('git', ['merge-base', '--is-ancestor', review.implementation, mainHead], repoRoot);
+		} catch {
+			map.set(entry.id, null);
+			continue;
+		}
+		try {
+			const output = run(
+				'git',
+				['log', '--format=', '--name-only', `${review.implementation}..${mainHead}`],
+				repoRoot
+			);
+			const paths = [...new Set(output.split('\n').map((line) => line.trim()).filter(Boolean))].sort();
+			map.set(entry.id, paths);
 		} catch {
 			map.set(entry.id, null);
 		}
@@ -205,6 +255,7 @@ function printReport(report, now) {
 			report.live.flags && report.live.claims ? 'gh' : 'unavailable (status is limited, not clean)'
 		}`
 	);
+	lines.push(`  gate     ${report.gate.failures.length} failing check(s)`);
 	if (report.duplicateClaims.length > 0) {
 		lines.push(
 			`  duplicate claims: ${report.duplicateClaims
@@ -234,8 +285,11 @@ function printReport(report, now) {
 				claims
 		);
 		for (const check of entry.failingChecks) {
-			lines.push(`  failing: ${check.level} ${check.name} (${check.file})`);
+			lines.push(`  failing: ${check.level} ${check.name} (${check.file}) [${check.status}]`);
 		}
+	}
+	for (const failure of report.gate.failures) {
+		lines.push(`  gate: ${failure.name} — ${failure.reason}`);
 	}
 	lines.push('');
 	lines.push('! = regressed since the previous complete report');
@@ -246,28 +300,31 @@ function main() {
 	const options = parseArgs(process.argv.slice(2));
 	if (options.help) {
 		process.stdout.write(
-			'Usage: node tools/harness/status.mjs [--json] [--offline] [--report <path>] [--ledger <path>] [--main-ref <ref>] [--main-head <sha>] [--changed-paths <json>]\n'
+			'Usage: node tools/harness/status.mjs [--json] [--offline] [--report <path>] [--ledger <path>] [--main-ref <ref>] [--main-head <sha>] [--repo-root <path>] [--changed-paths <json>] [--github <json>] [--previous <json>]\n'
 		);
 		return 0;
 	}
 
+	const ledgerPath = options.ledger ?? join(options.repoRoot, 'capabilities.json');
+	const reportPath = options.report ?? join(options.repoRoot, '.harness/report.json');
+
 	let ledger;
 	try {
-		ledger = readJson(options.ledger, 'capabilities ledger');
+		ledger = readJson(ledgerPath, 'capabilities ledger');
 	} catch (error) {
 		process.stderr.write(`status: ${error.message}\n`);
 		return 1;
 	}
 	const problems = validateLedger(ledger);
 	if (problems.length > 0) {
-		process.stderr.write(`status: invalid capability ledger (${options.ledger})\n`);
+		process.stderr.write(`status: invalid capability ledger (${ledgerPath})\n`);
 		for (const problem of problems) process.stderr.write(`  - ${problem}\n`);
 		return 1;
 	}
 
 	let reportRun = null;
 	try {
-		reportRun = readJson(options.report, 'harness report');
+		reportRun = readJson(reportPath, 'harness report');
 	} catch (error) {
 		// A missing report is honest absence, not a failure: everything is unknown.
 		if (error?.code !== 'ENOENT') {
@@ -275,18 +332,32 @@ function main() {
 			return 1;
 		}
 	}
+	if (reportRun !== null) {
+		const evidenceProblems = validateRun(reportRun);
+		if (evidenceProblems.length > 0) {
+			process.stderr.write(`status: unusable harness report (${reportPath})\n`);
+			for (const problem of evidenceProblems) process.stderr.write(`  - ${problem}\n`);
+			return 1;
+		}
+	}
 
 	const github = readGithub(options);
 	const previous = options.previous ? readJson(options.previous, 'previous report') : null;
-	const changedPaths = readChangedPaths(ledger.capabilities, options);
+	const mainHead = mainHeadFor(options);
+	const changedPaths = readChangedPaths(ledger.capabilities, {
+		repoRoot: options.repoRoot,
+		mainHead,
+		changedPathsPath: options.changedPaths
+	});
 	const report = buildReport({
 		ledger,
 		run: reportRun,
-		mainHead: mainHeadFor(options),
+		mainHead,
 		issues: github.issues,
 		claims: github.claims,
 		previous,
 		changedPaths,
+		readSource,
 		live: { flags: github.available, claims: github.available }
 	});
 
