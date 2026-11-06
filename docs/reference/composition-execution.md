@@ -986,9 +986,15 @@ Slice 2 lands the linear Guide model: `Guide.entryStopId` and `ExperienceContinu
 deleted, `Stop.transition` is the outgoing step, `stop-guide-membership`, `travel-after-last`
 and `travel-same-view` are refused, Presentation steps are outgoing edges, lowering's entry is
 `options.entryStopId ?? order[0]` and every program Stop emits `sequence-next`, and removing a
-Stop or Guide removes its Detours. It does **not yet** implement the later slices: Travel
-reconciliation on every endpoint-changing edit (slice 3), the problems list (4), the strip and
-one timeline (5), the Experience Card and Guide Card retirement (6), the first Guide's *Tour*
-(7), `label: string | null` with the Scene unlink (8), and visitor progress (9). Each lands
-with a [fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices),
+Stop or Guide removes its Detours. Slice 3 reconciles Travel in every accepted Experience change: `normalizeTransitions` writes a
+Cut wherever a Travel can no longer mean anything, `requiredTravelPairs` names every remaining
+pair no Camera connection joins, and the planners add one straight path per pair from the
+captured id pool in the same change, under compound `writes: ['camera']` admissions. The Guide
+order, both creation intents, the Stop update, the Presentation update and every removal plan
+use it, so no ordinary edit lowers to `travel-gap`, `travel-same-view` or `travel-after-last`,
+and one Undo removes the edit, its Cuts and its paths together. It does **not yet** implement the
+later slices: the problems list (4), the strip and one timeline (5), the Experience Card and
+Guide Card retirement (6), the first Guide's *Tour* (7), `label: string | null` with the Scene
+unlink (8), and visitor progress (9). Each lands with a
+[fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices),
 and each slice updates this paragraph in the same commit.

@@ -392,39 +392,6 @@ export function createExperienceController(
 		return current.guides.find((guide) => guide.id === current.entryGuideId) ?? null;
 	});
 	const guideStops = $derived(current === null ? [] : guideStopsOf(current, contextGuide));
-	// R217.S29 endpoint-change notice: a stopped-sequence edit that changes a
-	// Travel's pair keeps its Camera path; name the affected Travels rather than
-	// silently leaving a connection addressing Views the tour no longer joins.
-	let travelEndpoints = new Map<string, string>();
-	$effect(() => {
-		const experience = current;
-		const guide = contextGuide;
-		if (experience === null || guide === null) return;
-		const travels = new Map(
-			experiencePathOccurrences(experience, guide)
-				.filter((entry) => entry.occurrence.kind === 'transition' && entry.transition === 'travel')
-				.map((entry) => [entry.stopId, entry])
-		);
-		const next = new Map<string, string>();
-		const changed: string[] = [];
-		for (const [index, stopId] of guide.stopIds.entries()) {
-			if (index >= guide.stopIds.length - 1) break;
-			const entry = travels.get(stopId);
-			if (entry === undefined) continue;
-			const label = `Travel ${index + 1} → ${index + 2}`;
-			const signature = `${entry.fromViewId} -> ${entry.toViewId}`;
-			next.set(label, signature);
-			const previous = travelEndpoints.get(label);
-			if (previous !== undefined && previous !== signature) changed.push(label);
-		}
-		travelEndpoints = next;
-		if (changed.length === 0) return;
-		say(
-			'info',
-			`${changed.join(', ')} ${changed.length === 1 ? 'now joins' : 'now join'} different Views. Check the Camera path.`
-		);
-	});
-
 	// R217.S29 — the Path action's occurrence and its one derived Camera read. The
 	// occurrence is a selection *within* the Card subject, never a second authority.
 	let pathOccurrence = $state<ExperiencePathOccurrence | null>(null);
@@ -863,7 +830,7 @@ export function createExperienceController(
 				guideCreateIntent({
 					envelope: snapshot,
 					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId },
+					ids: { operation: newId(), guide: guideId, stop: stopId, connections: [newId()] },
 					experienceId: experience.id,
 					presentationId,
 					label: guideLabel,
@@ -892,7 +859,7 @@ export function createExperienceController(
 			stopCreateIntent({
 				envelope: snapshot,
 				revision: revision(),
-				ids: { operation: newId(), stop: stopId },
+				ids: { operation: newId(), stop: stopId, connections: [newId()] },
 				experienceId: experience.id,
 				presentationId,
 				guideId: guide.id,
@@ -925,7 +892,7 @@ export function createExperienceController(
 			guideOrderIntent({
 				envelope: snapshot,
 				revision: revision(),
-				ids: { operation: newId() },
+				ids: { operation: newId(), connections: order.map(() => newId()) },
 				experienceId: experience.id,
 				guideId: guide.id,
 				stopIds: order
@@ -1343,7 +1310,7 @@ export function createExperienceController(
 				guideCreateIntent({
 					envelope: snapshot,
 					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId },
+					ids: { operation: newId(), guide: guideId, stop: stopId, connections: [newId()] },
 					experienceId: experience.id,
 					presentationId,
 					label: trimmed,
@@ -1493,7 +1460,7 @@ export function createExperienceController(
 					? viewRemoveIntent({
 							envelope: snapshot,
 							revision: revision(),
-							ids: { operation: newId() },
+							ids: { operation: newId(), connections: [newId(), newId()] },
 							experienceId: experience.id,
 							presentationId: target.presentationId,
 							viewId: target.viewId,
@@ -1502,7 +1469,7 @@ export function createExperienceController(
 					: removeIntent({
 							envelope: snapshot,
 							revision: revision(),
-							ids: { operation: newId() },
+							ids: { operation: newId(), connections: [newId(), newId()] },
 							experienceId: experience.id,
 							subject: target.kind,
 							id: target.kind === 'stop' ? target.stopId : target.kind === 'guide' ? target.guideId : target.presentationId

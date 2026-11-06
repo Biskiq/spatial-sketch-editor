@@ -100,6 +100,9 @@ import {
 	planPresentationRemoval,
 	planPresentationViewRemoval,
 	planStopRemoval,
+	normalizeTransitions,
+	requiredTravelPairs,
+	type ExperienceNormalisedCut,
 	type ExperienceRemovalPlan
 } from './experience-structure';
 
@@ -978,7 +981,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 	return {
 		id: 'unit.experience-guide-create',
 		kind: EXPERIENCE_GUIDE_CREATE_KIND,
-		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
@@ -1124,7 +1127,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 	return {
 		id: 'unit.experience-stop-create',
 		kind: EXPERIENCE_STOP_CREATE_KIND,
-		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
@@ -1270,7 +1273,7 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 	return {
 		id: 'unit.experience-guide-order',
 		kind: EXPERIENCE_GUIDE_ORDER_KIND,
-		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
@@ -1392,9 +1395,19 @@ function withStraightConnections(
 			sameUnorderedPair(connection, pair.fromViewId, pair.toViewId)
 		);
 		if (joined) continue;
-		const result = withStraightConnection(envelope, current, pair, connectionIds[next] ?? null);
+		// A pool is shared by every stage of one change, so skip the ids an
+		// earlier stage already consumed rather than reusing them.
+		let connectionId: string | null = null;
+		while (next < connectionIds.length) {
+			const candidateId = connectionIds[next]!;
+			next += 1;
+			if (!allIds(current).has(candidateId)) {
+				connectionId = candidateId;
+				break;
+			}
+		}
+		const result = withStraightConnection(envelope, current, pair, connectionId);
 		if (result.kind === 'refused') return result;
-		next += 1;
 		current = result.envelope;
 		if (result.connection !== null) created.push(result.connection);
 	}
@@ -1740,7 +1753,7 @@ function withStraightConnection(
 	if (candidate.units.camera.data.connections.some((connection) => sameUnorderedPair(connection, fromView.id, toView.id))) {
 		return { kind: 'joined', envelope: candidate, connection: null };
 	}
-	if (connectionId === null || allIds(envelope).has(connectionId)) {
+	if (connectionId === null || allIds(candidate).has(connectionId)) {
 		return { kind: 'refused', code: 'invalid-identity', message: 'The captured Camera connection id is missing or already used' };
 	}
 	const connection: SceneConnection = {
@@ -1773,6 +1786,39 @@ function withStraightConnection(
 			}
 		}
 	};
+}
+
+type RequiredTravelJoin =
+	| {
+			readonly kind: 'joined';
+			readonly envelope: ProjectEnvelope;
+			readonly connections: SceneConnection[];
+			readonly cuts: readonly ExperienceNormalisedCut[];
+	  }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
+
+/**
+ * G1–G5, G7, D-12 — reconcile one edited Experience in the same accepted change:
+ * write a Cut wherever a Travel can no longer mean anything, then join every
+ * remaining Travel pair no Camera connection joins with one straight path from
+ * the captured id pool. The planner refuses rather than leave a gap.
+ */
+function withRequiredTravelPaths(
+	envelope: ProjectEnvelope,
+	candidate: ProjectEnvelope,
+	experienceId: string,
+	connectionIds: readonly string[]
+): RequiredTravelJoin {
+	const experience = candidate.units.experience.data.experiences.find((entry) => entry.id === experienceId);
+	if (experience === undefined) {
+		return { kind: 'refused', code: 'missing-target', message: `experience "${experienceId}" is not in this envelope` };
+	}
+	const normalized = normalizeTransitions(experience);
+	const reconciled = normalized.experience === experience ? candidate : withExperience(candidate, normalized.experience);
+	const pairs = requiredTravelPairs(normalized.experience, reconciled.units.camera.data.connections);
+	const joined = withStraightConnections(envelope, reconciled, pairs, connectionIds);
+	if (joined.kind === 'refused') return joined;
+	return { kind: 'joined', envelope: joined.envelope, connections: joined.connections, cuts: normalized.cuts };
 }
 
 /** Create one straight Camera connection between two existing Views. */
@@ -2177,15 +2223,29 @@ function prepared(
 	changes: OperationChange[],
 	correspondence: CorrespondenceEntry[]
 ): PlannerOutcome<ProjectEnvelope> {
+	const envelope = envelopeOf(request);
+	let source = candidate;
+	const reconciledChanges = [...changes];
+	const reconciledCorrespondence = [...correspondence];
+	for (const experience of source.units.experience.data.experiences) {
+		const before = envelope.units.experience.data.experiences.find((entry) => entry.id === experience.id);
+		if (before === undefined || before === experience) continue;
+		const joined = withRequiredTravelPaths(envelope, source, experience.id, capturedIds(request.intent, 'connection'));
+		if (joined.kind === 'refused') return refuse(joined.code, joined.message);
+		source = joined.envelope;
+		const records = connectionRecords(source, joined.connections);
+		reconciledChanges.push(...records.changes);
+		reconciledCorrespondence.push(...records.correspondence);
+	}
 	return {
 		kind: 'prepared',
 		candidate: {
 			operationId: request.intent.operationId,
 			sourceKind: request.snapshot.sourceKind,
 			sourceVersion: request.snapshot.sourceVersion,
-			source: candidate,
-			changes,
-			correspondence,
+			source,
+			changes: reconciledChanges,
+			correspondence: reconciledCorrespondence,
 			diagnostics: []
 		}
 	};
@@ -2406,7 +2466,7 @@ export function createExperienceStopRemovePlanner(): DomainPlanner<ProjectEnvelo
 	return {
 		id: 'unit.experience-stop-remove',
 		kind: EXPERIENCE_STOP_REMOVE_KIND,
-		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {
@@ -2432,7 +2492,7 @@ export function createExperienceGuideRemovePlanner(): DomainPlanner<ProjectEnvel
 	return {
 		id: 'unit.experience-guide-remove',
 		kind: EXPERIENCE_GUIDE_REMOVE_KIND,
-		admission: { domain: 'experience', compound: false, units: true, resources: false },
+		admission: { domain: 'experience', compound: true, writes: ['camera'], units: true, resources: false },
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {

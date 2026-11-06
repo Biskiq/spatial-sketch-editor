@@ -66,11 +66,9 @@ describe('R217.S26 x-fixture browser seeder', () => {
 			fetchImpl: fetchImpl as unknown as typeof fetch
 		});
 		expect(seed.name).toBe('x-paths');
-		expect(seed.project.units.camera.data.connections.map((connection) => connection.id)).toEqual([
-			'x-path-shared',
-			'x-path-step',
-			'x-path-door'
-		]);
+		expect(seed.project.units.camera.data.connections.map((connection) => connection.id).sort()).toEqual(
+			['x-path-door', 'x-path-shared', 'x-path-step']
+		);
 		expect(seed.project.units.layout.data.openings).toHaveLength(1);
 		await seed.cleanup();
 	});

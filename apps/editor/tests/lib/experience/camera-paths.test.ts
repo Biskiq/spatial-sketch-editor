@@ -119,7 +119,7 @@ describe('R217.S29 Camera paths', () => {
 		expect(step.transition).toBe('travel');
 	});
 
-	it('admits independent Travel pairs through Save and runtime, with Cut and a cross-group gap', async () => {
+	it('admits independent Travel pairs through Save and runtime, and joins a cross-group Travel in the same change', async () => {
 		const { fixture, coordinator, accept, op } = await pathsFixture();
 		const project = fixture.project;
 		const experience = project.units.experience.data.experiences[0]!;
@@ -152,11 +152,9 @@ describe('R217.S29 Camera paths', () => {
 			}
 		}
 		expect(components).toBe(2);
-		expect(project.units.camera.data.connections.map((connection) => connection.id)).toEqual([
-			'x-path-shared',
-			'x-path-step',
-			'x-path-door'
-		]);
+		expect(project.units.camera.data.connections.map((connection) => connection.id).sort()).toEqual(
+			['x-path-door', 'x-path-shared', 'x-path-step']
+		);
 
 		const prepared = prepareUnitRuntime(project);
 		if (prepared.kind !== 'ready') throw new Error('x-paths did not prepare');
@@ -217,34 +215,35 @@ describe('R217.S29 Camera paths', () => {
 			occurrence: { kind: 'step', presentationId: 'x-window', toViewId: 'x-window-path-inside' }
 		})?.connectionId).toBe('x-path-door');
 
-		// A Travel requested across the two components is the existing typed gap;
-		// it adds no connection and lowering refuses it rather than borrowing one.
+		// A Travel requested across the two components joins them in the same change:
+		// no ordinary edit leaves a gap (G7), so its pair takes a straight path and
+		// lowering plays it.
+		const crossPathId = op('cross-group-path');
 		const requested = await accept(
 			stopUpdateIntent({
 				envelope: coordinator.acceptedSnapshot().domain.source,
 				revision: coordinator.acceptedRevision(),
-				ids: { operation: op('cross-group-travel') },
+				ids: { operation: op('cross-group-travel'), connections: [crossPathId] },
 				experienceId: fixture.ids.experienceId!,
 				stopId: stopIds[1]!,
 				transition: 'travel'
 			})
 		);
 		expect(requested.kind).toBe('accepted');
-		const gapProject = coordinator.acceptedSnapshot().domain.source;
-		expect(gapProject.units.camera.data.connections).toHaveLength(3);
-		const gapPrepared = prepareUnitRuntime(gapProject);
-		if (gapPrepared.kind !== 'ready') throw new Error('the cross-group Travel did not prepare');
-		const gapExperience = gapPrepared.envelope.units.experience.data.experiences[0]!;
-		const gap = readExperiencePath({
-			experience: gapExperience,
-			guide: gapExperience.guides[0]!,
-			graph: gapPrepared.graph,
+		const joinedProject = coordinator.acceptedSnapshot().domain.source;
+		expect(joinedProject.units.camera.data.connections).toHaveLength(4);
+		const joinedPrepared = prepareUnitRuntime(joinedProject);
+		if (joinedPrepared.kind !== 'ready') throw new Error('the cross-group Travel did not prepare');
+		const joinedExperience = joinedPrepared.envelope.units.experience.data.experiences[0]!;
+		const joined = readExperiencePath({
+			experience: joinedExperience,
+			guide: joinedExperience.guides[0]!,
+			graph: joinedPrepared.graph,
 			occurrence: { kind: 'transition', stopId: stopIds[1]! }
 		});
-		expect(gap?.state).toBe('gap');
-		expect(gap?.connectionId).toBeNull();
-		const gapLowered = lowerExperienceProgram(gapProject, loweringOptions);
-		expect(gapLowered).toMatchObject({ kind: 'refused', code: 'travel-gap' });
+		expect(joined?.state).toBe('ready');
+		expect(joined?.connectionId).toBe(crossPathId);
+		expect(lowerExperienceProgram(joinedProject, loweringOptions).kind).toBe('lowered');
 	});
 
 	it('the walled in-Stop Travel warns until its point moves through the doorway', async () => {
@@ -603,32 +602,17 @@ describe('R217.S29 Camera paths', () => {
 		const destinationId = fixture.ids.stopIds[1]!;
 		const stop = experience.stops.find((entry) => entry.id === stopId)!;
 		const destination = experience.stops.find((entry) => entry.id === destinationId)!;
-		const entryOf = (target: typeof stop) =>
-			target.entryViewId ?? experience.presentations.find((entry) => entry.id === target.presentationId)!.views[0]!.viewId;
-		const fromView = project.units.camera.data.views.find((entry) => entry.id === entryOf(stop))!;
-		const toView = project.units.camera.data.views.find((entry) => entry.id === entryOf(destination))!;
-
 		const travelled = await accept(
 			stopUpdateIntent({
 				envelope: project,
 				revision: coordinator.acceptedRevision(),
-				ids: { operation: op('salon-travel') },
+				ids: { operation: op('salon-travel'), connections: ['x-salon-path'] },
 				experienceId: experience.id,
 				stopId,
 				transition: 'travel'
 			})
 		);
 		expect(travelled.kind).toBe('accepted');
-		const created = await accept(
-			cameraConnectionCreateIntent({
-				envelope: coordinator.acceptedSnapshot().domain.source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: op('salon-path'), connection: 'x-salon-path' },
-				fromView,
-				toView
-			})
-		);
-		expect(created.kind).toBe('accepted');
 
 		const prepared = prepareUnitRuntime(coordinator.acceptedSnapshot().domain.source);
 		if (prepared.kind !== 'ready') throw new Error('the salon path did not prepare');
@@ -653,11 +637,13 @@ describe('R217.S29 Camera paths', () => {
 		const stop = experience.stops.find((entry) => entry.id === fixture.ids.stopIds[0]!)!;
 		const destination = experience.stops.find((entry) => entry.id === fixture.ids.stopIds[4]!)!;
 		const before = project.units.camera.data.connections.length;
+		// x-salon keeps one other unjoined Travel (the piano's explore step), so the
+		// same accepted change joins both remaining pairs and one Undo removes both.
 		const travelled = await accept(
 			stopUpdateIntent({
 				envelope: project,
 				revision: coordinator.acceptedRevision(),
-				ids: { operation: op('travel-with-path'), connection: 'x-salon-implicit' },
+				ids: { operation: op('travel-with-path'), connections: ['x-salon-implicit', op('salon-extra-1'), op('salon-extra-2'), op('salon-extra-3')] },
 				experienceId: experience.id,
 				stopId: stop.id,
 				transition: 'travel',
@@ -669,7 +655,7 @@ describe('R217.S29 Camera paths', () => {
 		);
 		if (travelled.kind !== 'accepted') throw new Error(JSON.stringify(travelled));
 		const after = coordinator.acceptedSnapshot().domain.source;
-		expect(after.units.camera.data.connections).toHaveLength(before + 1);
+		expect(after.units.camera.data.connections).toHaveLength(before + 2);
 		expect(after.units.camera.data.connections.some((entry) => entry.id === 'x-salon-implicit')).toBe(true);
 		expect(after.units.experience.data.experiences[0]!.stops.find((entry) => entry.id === stop.id)!.transition).toBe('travel');
 

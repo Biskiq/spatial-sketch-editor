@@ -357,3 +357,59 @@ export function planPresentationViewRemoval(
 	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), [viewId], consequences);
 	return plannedRemoval(next, releasedCamera, consequences);
 }
+
+
+/** One unordered pair of distinct Views a remaining Travel joins. */
+export type ExperienceTravelPair = { readonly fromViewId: string; readonly toViewId: string };
+
+function travelPairKey(a: string, b: string): string {
+	return a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
+}
+
+/**
+ * D-12 / A-2 — every distinct pair a remaining Travel joins, Guide edges and
+ * Presentation steps alike, in sorted order. Same-View pairs are never Travels.
+ */
+export function travelPairs(experience: Experience): ExperienceTravelPair[] {
+	const pairs = new Map<string, ExperienceTravelPair>();
+	const add = (fromViewId: string, toViewId: string): void => {
+		if (fromViewId === toViewId) return;
+		const key = travelPairKey(fromViewId, toViewId);
+		if (!pairs.has(key)) pairs.set(key, { fromViewId, toViewId });
+	};
+	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
+	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
+	const entryViewOf = (stop: ExperienceStop): string | null =>
+		stopEntryViewId(stop, presentationById.get(stop.presentationId));
+	for (const guide of experience.guides) {
+		for (let index = 0; index + 1 < guide.stopIds.length; index += 1) {
+			const from = stopById.get(guide.stopIds[index]!);
+			const to = stopById.get(guide.stopIds[index + 1]!);
+			if (from === undefined || to === undefined || from.transition !== 'travel') continue;
+			const fromView = entryViewOf(from);
+			const toView = entryViewOf(to);
+			if (fromView !== null && toView !== null) add(fromView, toView);
+		}
+	}
+	for (const presentation of experience.presentations) {
+		for (let index = 0; index + 1 < presentation.views.length; index += 1) {
+			const view = presentation.views[index]!;
+			if (view.transition === 'travel') add(view.viewId, presentation.views[index + 1]!.viewId);
+		}
+	}
+	return [...pairs.values()].sort((a, b) =>
+		a.fromViewId === b.fromViewId ? a.toViewId.localeCompare(b.toViewId) : a.fromViewId.localeCompare(b.fromViewId)
+	);
+}
+
+/**
+ * G1–G5 — the pairs a remaining Travel uses that no Camera connection joins yet,
+ * in either direction. The planners add one straight path per pair, in this order.
+ */
+export function requiredTravelPairs(
+	experience: Experience,
+	connections: readonly { readonly fromNodeId: string; readonly toNodeId: string }[]
+): ExperienceTravelPair[] {
+	const joined = new Set(connections.map((connection) => travelPairKey(connection.fromNodeId, connection.toNodeId)));
+	return travelPairs(experience).filter((pair) => !joined.has(travelPairKey(pair.fromViewId, pair.toViewId)));
+}

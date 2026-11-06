@@ -771,8 +771,8 @@ describe('R217.S26 — the structure and removal planners in the one admission p
 	const S26 = {
 		'experience-update': null,
 		'experience-guide-update': null,
-		'experience-stop-remove': null,
-		'experience-guide-remove': null,
+		'experience-stop-remove': ['camera'],
+		'experience-guide-remove': ['camera'],
 		'experience-presentation-view-remove': ['camera'],
 		'experience-presentation-remove': ['camera']
 	} as const;

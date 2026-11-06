@@ -173,7 +173,7 @@ describe('commands route through commands.ts', () => {
 			guideOrderIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId },
+				ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				guideId: 'guide-1',
 				stopIds: ['stop-2', 'stop-1']
@@ -222,7 +222,7 @@ describe('commands route through commands.ts', () => {
 			guideOrderIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId },
+				ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				guideId: 'guide-1',
 				stopIds: ['stop-2', 'stop-1']
@@ -638,7 +638,7 @@ describe('addStop (D8)', () => {
 			guideCreateIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId, guide, stop },
+				ids: { operation: intent.operationId, guide, stop, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				presentationId: 'presentation-1',
 				label: 'Morning route',
@@ -665,7 +665,7 @@ describe('addStop (D8)', () => {
 			stopCreateIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId, stop },
+				ids: { operation: intent.operationId, stop, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				presentationId: 'presentation-2',
 				guideId: 'guide-1',
@@ -1156,7 +1156,7 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 		expect(await controller.remove({ kind: 'stop', stopId: 'stop-2' })).toBe(true);
 		const intent = submittedIntent(submitted);
 		expect(intent).toEqual(
-			removeIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' })
+			removeIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' })
 		);
 		expect(intent.kind).toBe(EXPERIENCE_STOP_REMOVE_KIND);
 		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });

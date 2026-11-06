@@ -284,7 +284,8 @@ export function guideCreateIntent(input: {
 		},
 		[
 			{ kind: 'guide', id: input.ids.guide! },
-			{ kind: 'stop', id: input.ids.stop! }
+			{ kind: 'stop', id: input.ids.stop! },
+			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 		]
 	);
 }
@@ -315,7 +316,10 @@ export function stopCreateIntent(input: {
 			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
 			...(input.transition === null ? {} : { transition: input.transition })
 		},
-		[{ kind: 'stop', id: input.ids.stop! }]
+		[
+			{ kind: 'stop', id: input.ids.stop! },
+			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
+		]
 	);
 }
 
@@ -334,7 +338,7 @@ export function guideOrderIntent(input: {
 		input.revision,
 		[experienceReference(input.envelope, input.experienceId)],
 		{ guideId: input.guideId, stopIds: [...input.stopIds] },
-		[]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 
@@ -375,9 +379,9 @@ export function presentationUpdateIntent(input: {
 		},
 		[
 			...(input.view === undefined ? [] : [{ kind: 'view', id: input.ids.view! }]),
-			...(input.travelPaths === undefined
+			...(input.travelPaths === undefined && input.ids.connections === undefined
 				? []
-				: connectionIds.slice(0, input.travelPaths.length).map((id) => ({ kind: 'connection', id })))
+				: connectionIds.slice(0, input.travelPaths?.length ?? connectionIds.length).map((id) => ({ kind: 'connection', id })))
 		]
 	);
 }
@@ -409,9 +413,11 @@ export function stopUpdateIntent(input: {
 			...(input.transition === undefined ? {} : { transition: input.transition }),
 			...(input.travelPath === undefined ? {} : { travelPath: input.travelPath })
 		},
-		input.travelPath === undefined || input.ids.connection === undefined
-			? []
-			: [{ kind: 'connection', id: input.ids.connection }]
+		input.ids.connections !== undefined
+			? input.ids.connections.map((id) => ({ kind: 'connection' as const, id }))
+			: input.travelPath === undefined || input.ids.connection === undefined
+				? []
+				: [{ kind: 'connection' as const, id: input.ids.connection }]
 	);
 }
 
@@ -643,7 +649,7 @@ export function removeIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, input.subject, input.id)],
 		{},
-		[]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 
@@ -663,7 +669,7 @@ export function viewRemoveIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
 		{ viewId: input.viewId, ...(input.defaultViewId === null ? {} : { defaultViewId: input.defaultViewId }) },
-		[]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 

@@ -226,10 +226,12 @@ async function updateStop(
 		readonly staySeconds?: number;
 		readonly invitation?: { readonly prompt: string | null } | null;
 		readonly transition?: ExperienceTransitionKind | null;
+		readonly connections?: readonly string[];
 	}
 ): Promise<void> {
+	const { connections, ...stopFields } = fields;
 	await a.accept(
-		stopUpdateIntent({ envelope: a.now(), revision: a.revision(), ids: { operation: a.op('stop-update') }, experienceId: EXPERIENCE_ID, stopId, ...fields })
+		stopUpdateIntent({ envelope: a.now(), revision: a.revision(), ids: { operation: a.op('stop-update'), connections: connections ?? Array.from({ length: 8 }, () => a.op('connection')) }, experienceId: EXPERIENCE_ID, stopId, ...stopFields })
 	);
 }
 
@@ -237,12 +239,13 @@ async function updateStop(
 async function presentationViews(
 	a: Authoring,
 	presentationId: string,
-	edit: (views: readonly ExperiencePresentationView[]) => readonly ExperiencePresentationView[]
+	edit: (views: readonly ExperiencePresentationView[]) => readonly ExperiencePresentationView[],
+	connections: readonly string[] = Array.from({ length: 8 }, () => a.op('connection'))
 ): Promise<void> {
 	const presentation = a.now().units.experience.data.experiences[0]!.presentations.find((entry) => entry.id === presentationId)!;
 	const views = edit(presentation.views);
 	await a.accept(
-		presentationUpdateIntent({ envelope: a.now(), revision: a.revision(), ids: { operation: a.op('views') }, experienceId: EXPERIENCE_ID, presentationId, views })
+		presentationUpdateIntent({ envelope: a.now(), revision: a.revision(), ids: { operation: a.op('views'), connections: [...connections] }, experienceId: EXPERIENCE_ID, presentationId, views })
 	);
 }
 
@@ -366,48 +369,23 @@ export async function buildXFixture(name: XFixtureName, projectId: string = `pro
 			const inside = views.find((entry) => entry.viewId === 'x-window-path-inside')!;
 			const rest = views.filter((entry) => entry !== outside && entry !== inside);
 			return [...rest, { viewId: outside.viewId, transition: 'travel' }, { viewId: inside.viewId }];
-		});
+		}, ['x-path-door']);
 		// Stop 1 enters the piano's profile and follows the Guide order by Cut; only the
 		// revisit at Stop 4 leaves by Travel, so one authored pair owns the path.
 		await updateStop(a, stopIds[0]!, { entryViewId: 'x-piano-view-2' });
 		await updateStop(a, stopIds[3]!, {
 			entryViewId: 'x-piano-view-2',
-			transition: 'travel'
+			transition: 'travel',
+			connections: ['x-path-shared']
 		});
 		const view = (id: string) => a.now().units.camera.data.views.find((entry) => entry.id === id)!;
-		await a.accept(
-			cameraConnectionCreateIntent({
-				envelope: a.now(),
-				revision: a.revision(),
-				ids: { operation: a.op('path-shared'), connection: 'x-path-shared' },
-				fromView: view('x-piano-view-2'),
-				toView: view('x-corner-view-1')
-			})
-		);
-		await a.accept(
-			cameraConnectionCreateIntent({
-				envelope: a.now(),
-				revision: a.revision(),
-				ids: { operation: a.op('path-step'), connection: 'x-path-step' },
-				fromView: view('x-piano-view-1'),
-				toView: view('x-piano-view-2')
-			})
-		);
 		// The piano's own explore step from its keyboard to its profile travels.
 		await presentationViews(a, piano, (views) =>
-			views.map((entry) => (entry.viewId === 'x-piano-view-1' ? { viewId: entry.viewId, transition: 'travel' } : entry))
+			views.map((entry) => (entry.viewId === 'x-piano-view-1' ? { viewId: entry.viewId, transition: 'travel' } : entry)),
+			['x-path-step']
 		);
 		// The walled pair is its own connected component: the shared/step pair and
 		// the wall/door pair stay independent Camera paths, with no bridge edge.
-		await a.accept(
-			cameraConnectionCreateIntent({
-				envelope: a.now(),
-				revision: a.revision(),
-				ids: { operation: a.op('path-door'), connection: 'x-path-door' },
-				fromView: view('x-window-path-outside'),
-				toView: view('x-window-path-inside')
-			})
-		);
 		await a.accept(
 			cameraConnectionUpdateIntent({
 				envelope: a.now(),
