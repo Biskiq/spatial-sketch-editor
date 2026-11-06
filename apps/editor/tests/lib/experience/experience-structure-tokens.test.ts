@@ -82,9 +82,10 @@ describe('R217.S26 visual tokens', () => {
 			expect(guideCaret).toContain(declaration);
 		}
 		const rail = source('experience/ExperienceViewRail');
-		expect(rule(rail, '.row.drop-before')).toContain('rgb(238 241 236');
-		expect(rule(rail, '.row.drop-after')).toContain('rgb(238 241 236');
-		expect(rail).not.toContain('--shell-gold');
+		// Sheet §32 B: the rail's selection, open connection and drop line are gold.
+		expect(rule(rail, '.row.drop-before')).toContain('--shell-gold');
+		expect(rule(rail, '.row.drop-after')).toContain('--shell-gold');
+		expect(rule(rail, '.chip.on')).toContain('--shell-gold');
 		expect(rule(rail, '.row')).toMatch(/height:\s*38px/);
 	});
 
