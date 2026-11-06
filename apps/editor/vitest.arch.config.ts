@@ -2,8 +2,9 @@
 //
 // Run whole before every PR and at every acceptance gate. Never path-gated — a
 // Plan or store change can break a camera drawer / visitor boundary through
-// shared code. No tracked CI workflow enforces this yet; the reviewed plan and
-// `tests/README.md` ("What a change requires") are the mechanism.
+// shared code. `.github/workflows/merge-gate.yml` runs it unconditionally for
+// every PR and `main`; the reviewed plan and `tests/README.md` ("What a change
+// requires") remain the agent-facing contract.
 import { defineConfig } from 'vitest/config';
 
 import { ARCH_FILES } from './test-lanes';

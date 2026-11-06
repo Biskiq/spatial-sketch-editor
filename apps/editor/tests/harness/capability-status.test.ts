@@ -74,10 +74,15 @@ const REQUIRED_SUITES = [
 	'npm run test:heavy',
 	'npm run build',
 	'npm run check:api',
-	'npm run test:api'
+	'npm run test:api',
+	'npm run check:camera-core',
+	'npm run check:layout-core',
+	'npm run check:geometry-core',
+	'npm run check:project-model'
 ];
 
-const TEST_SUITES = ['npm test', 'npm run test:arch', 'npm run test:heavy', 'npm run test:api'];
+const TEST_SUITES = ['npm test', 'npm run test:arch', 'npm run test:heavy'];
+const TAP_SUITE = 'npm run test:api';
 
 let fixtureCount = 0;
 
@@ -154,6 +159,13 @@ function reportFor(results: any, options: { commit?: string; suite?: string } = 
 							}
 						]
 					}
+				};
+			}
+			if (name === TAP_SUITE) {
+				return {
+					name,
+					status: 'complete',
+					results: { tests: 1, passed: 1, failed: 0, skipped: 0 }
 				};
 			}
 			return { name, status: 'complete', exitCode: 0 };
@@ -443,6 +455,13 @@ describe('runner expected-failure semantics', () => {
 								}
 							]
 						}
+					};
+				}
+				if (name === TAP_SUITE) {
+					return {
+						name,
+						status: 'complete',
+						results: { tests: 1, passed: 1, failed: 0, skipped: 0 }
 					};
 				}
 				return { name, status: 'complete', exitCode: 0 };
@@ -751,6 +770,36 @@ describe('a report states its own provenance', () => {
 			)
 		};
 		expectRejected({ ledger, report: zeroCollected }, 'reported zero collected tests');
+
+		// The DB-backed API contract must prove it executed with zero skips: a
+		// missing database produces a green node:test run that skipped contracts.
+		const skippedApi = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === TAP_SUITE
+					? {
+							name: suite.name,
+							status: 'complete',
+							results: { tests: 3, passed: 2, failed: 0, skipped: 1 }
+						}
+					: suite
+			)
+		};
+		expectRejected({ ledger, report: skippedApi }, 'requires zero skips');
+
+		const emptyApi = {
+			...valid,
+			suites: valid.suites.map((suite: any) =>
+				suite.name === TAP_SUITE
+					? {
+							name: suite.name,
+							status: 'complete',
+							results: { tests: 0, passed: 0, failed: 0, skipped: 0 }
+						}
+					: suite
+			)
+		};
+		expectRejected({ ledger, report: emptyApi }, 'recorded no executed tests');
 
 		// A runtime/hook failure with only passing assertions cannot certify green:
 		// there is no capability row where that failure could show as health.

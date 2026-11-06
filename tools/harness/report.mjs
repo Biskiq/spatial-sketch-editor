@@ -1,3 +1,5 @@
+import { COMMAND_SUITES, REQUIRED_SUITES, TAP_SUITES, VITEST_SUITES } from './suites.mjs';
+
 /**
  * Capability report — status is computed, never claimed.
  *
@@ -40,21 +42,10 @@ const MATURITY_RANK = { missing: 0, partial: 1, working: 2, polished: 3 };
 const HEALTH_RANK = { broken: 0, degraded: 1, unknown: 2, healthy: 3 };
 
 /** The merge gate: every suite must complete for a report to be current. */
-export const REQUIRED_SUITES = [
-	'npm run check',
-	'npm run test:arch',
-	'npm test',
-	'npm run test:heavy',
-	'npm run build',
-	'npm run check:api',
-	'npm run test:api'
-];
+export { REQUIRED_SUITES };
 
 /** Suites that complete by producing a Vitest JSON reporter artifact. */
-export const TEST_SUITES = ['npm test', 'npm run test:arch', 'npm run test:heavy', 'npm run test:api'];
-
-/** Suites that complete by exiting zero with no reporter artifact. */
-export const COMMAND_SUITES = ['npm run check', 'npm run build', 'npm run check:api'];
+export const TEST_SUITES = VITEST_SUITES;
 
 const COMMIT = /^[0-9a-f]{7,40}$/;
 
@@ -349,6 +340,26 @@ export function validateRun(run) {
 				);
 			}
 			assertions += suiteAssertions;
+		} else if (TAP_SUITES.includes(suite.name)) {
+			// The DB-backed API contract runs under node:test. A skipped contract
+			// ("Postgres unreachable") exits zero, so the skip count is part of the
+			// evidence: zero is the only acceptable value.
+			const results = suite.results;
+			if (typeof results !== 'object' || results === null) {
+				problems.push(`${where} (${suite.name}) completed without a TAP summary`);
+				continue;
+			}
+			if (!Number.isInteger(results.tests) || results.tests <= 0) {
+				problems.push(`${where} (${suite.name}) recorded no executed tests`);
+			}
+			if (results.skipped !== 0) {
+				problems.push(
+					`${where} (${suite.name}) recorded ${results.skipped ?? 'unknown'} skipped tests; the API gate requires zero skips`
+				);
+			}
+			if (typeof results.failed === 'number' && results.failed !== 0) {
+				problems.push(`${where} (${suite.name}) recorded ${results.failed} failed tests`);
+			}
 		} else if (COMMAND_SUITES.includes(suite.name)) {
 			if (suite.exitCode !== 0) {
 				problems.push(`${where} (${suite.name}) completed without exitCode 0`);
