@@ -1,10 +1,13 @@
 <script lang="ts">
-	import { tick, type Snippet } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-	import { EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS, type ExperienceStop } from '@portfolio/project-model/units';
+	import {
+		EXPERIENCE_INVITATION_PROMPT_MAX_LENGTH,
+		EXPERIENCE_STAY_MIN_SECONDS,
+		type ExperienceStop
+	} from '@portfolio/project-model/units';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
-	import ExperiencePathMovement from './ExperiencePathMovement.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
 	import { experienceHomes } from './experience-homes';
 	import { formatPathSeconds } from './experience-paths';
@@ -19,36 +22,27 @@
 		more?: Snippet<[Snippet?]>;
 	} = $props();
 
-	type Continuation = NonNullable<ReturnType<ExperienceController['resolveContinuation']>>;
-	type Target = 'next' | 'end' | { readonly stopId: string };
-	type MenuName = 'next';
-	type MenuItem = {
-		readonly id: string;
-		readonly label: string;
-		readonly hint: string | null;
-		readonly checked: boolean;
-		/** Why the item cannot be chosen; null when it can. */
-		readonly reason: string | null;
-		readonly run: () => void;
-	};
-
-	/** Past this many Views left out of the Stop, they fold behind a disclosure (Conservatory). */
-	const FOLD_VIEWS_AFTER = 4;
+	/**
+	 * The Stop Card (sheet §31, §32) holds only what belongs to this visit: Enter at,
+	 * Stay (Automatic) or Until Next (Manual, set by the Guide), and Invite to explore.
+	 * How the tour arrives and leaves is shown as Connections, each a link to its
+	 * Transition Card, where it is edited. Pacing is the Guide Card's.
+	 */
 	const BUSY_REASON = 'Wait for the last change to save';
 	const NOT_IN_GUIDE_REASON = 'This Stop is not in the open Guide';
-	const LAST_VIEW_REASON = 'A Stop shows at least one View';
-	const GUIDED_VIEW_MIME = 'application/x-biskiq-guided-view';
+	/** An invitation on a stay shorter than this shows only briefly. */
+	const SHORT_INVITE_SECONDS = 6;
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
 	const stop = $derived(controller?.selectedStop ?? null);
 	const guide = $derived(controller?.guideStops ?? []);
 	const transportGuideId = $derived(stop === null ? null : homes.guideForStop(stop.id));
-	const transportPosition = $derived.by(() => {
-		if (stop === null || transportGuideId === null || controller === null) return 0;
-		const guide = controller.guides.find((entry) => entry.id === transportGuideId);
-		return guide === undefined ? 0 : guide.stopIds.indexOf(stop.id) + 1;
-	});
+	const transportGuide = $derived(controller?.guides.find((entry) => entry.id === transportGuideId) ?? null);
+	const transportPosition = $derived(
+		stop === null || transportGuide === null ? 0 : transportGuide.stopIds.indexOf(stop.id) + 1
+	);
+	const manual = $derived((controller?.contextGuide ?? transportGuide)?.pacing === 'manual');
 	/** The Stop's one-based place in the open Guide, or 0 when the Guide does not list it. */
 	const position = $derived(stop === null ? 0 : guide.findIndex((entry) => entry.id === stop.id) + 1);
 	const presentation = $derived(
@@ -59,69 +53,15 @@
 	const views = $derived(
 		stop === null || controller === null ? [] : (controller.viewsOf.get(stop.presentationId) ?? [])
 	);
-	const defaultViewId = $derived(presentation?.defaultViewId ?? null);
-	const entryId = $derived(stop?.views[0]?.viewId);
+	const defaultViewId = $derived(presentation?.views[0]?.viewId ?? null);
+	const entryId = $derived(stop?.entryViewId ?? defaultViewId);
 	const entryName = $derived(views.find((view) => view.id === entryId)?.label ?? 'Missing View');
-	const guided = $derived(stop?.views ?? []);
-	const selectedStep = $derived(controller?.pathOccurrence?.kind === 'step' ? controller.pathOccurrence : null);
-	const selectedStepPath = $derived(selectedStep === null ? null : (controller?.selectedPath ?? null));
-	const selectedStepReason = $derived(
-		selectedStepPath === null
-			? null
-			: selectedStepPath.state === 'gap'
-				? 'Add a Camera path for this step'
-				: selectedStepPath.state === 'ambiguous'
-					? 'More than one Camera path joins these Views'
-					: null
-	);
-	const otherViews = $derived(views.filter((view) => !guided.some((entry) => entry.viewId === view.id)));
-	const folded = $derived(otherViews.length > FOLD_VIEWS_AFTER);
-	let othersOpen = $state(false);
 	/** A Presentation an earlier Stop of the Guide already visits reads *again* (harvest §2.4). */
 	const again = $derived(
 		stop !== null &&
 			position > 1 &&
 			guide.slice(0, position - 1).some((entry) => entry.presentationId === stop.presentationId)
 	);
-	const isLast = $derived(position > 0 && position === guide.length);
-
-	const continuation = $derived(
-		controller === null || stop === null ? null : (controller.resolveContinuation(stop.id) as Continuation | null)
-	);
-
-	function nameOf(target: ExperienceStop | undefined): string {
-		if (target === undefined) return 'Missing Stop';
-		return controller?.presentationLabel(target.presentationId) ?? '';
-	}
-	function placeOf(stopId: string): number {
-		return guide.findIndex((entry) => entry.id === stopId) + 1;
-	}
-
-	/** The chip names where Next goes: the Stop's place and Presentation, or End (D11). */
-	const chip = $derived.by(() => {
-		if (controller === null || continuation === null) return { place: null as number | null, name: '' };
-		if (continuation.kind === 'end') return { place: null, name: 'End' };
-		const name = nameOf(controller.current?.stops.find((entry) => entry.id === continuation.stopId));
-		return continuation.position === null
-			? { place: null, name: `${name} (outside this Guide)` }
-			: { place: continuation.position, name };
-	});
-	const transitionName = $derived(
-		continuation === null || continuation.kind === 'end'
-			? null
-			: continuation.transition === 'travel'
-				? 'Travel'
-				: 'Cut'
-	);
-
-	/** Stop order for the Next menu: the open Guide first, then Stops it does not list. */
-	const stopChoices = $derived.by((): readonly ExperienceStop[] => {
-		if (controller === null || stop === null) return [];
-		const listed = new Set(guide.map((entry) => entry.id));
-		const unlisted = (controller.current?.stops ?? []).filter((entry) => !listed.has(entry.id));
-		return [...guide, ...unlisted].filter((entry) => entry.id !== stop.id);
-	});
-
 	const previous = $derived(position > 1 ? (guide[position - 2] ?? null) : null);
 	const following = $derived(position > 0 && position < guide.length ? (guide[position] ?? null) : null);
 	const previousReason = $derived(
@@ -130,243 +70,130 @@
 	const followingReason = $derived(
 		position === 0 ? NOT_IN_GUIDE_REASON : position === guide.length ? 'This is the last Stop' : null
 	);
-
 	const busyReason = $derived(controller?.busy === true ? BUSY_REASON : null);
 
-	const nextItems = $derived.by((): MenuItem[] => {
-		if (controller === null || stop === null || continuation === null) return [];
-		const explicit = continuation.explicit;
-		const chosen = continuation.kind === 'end' ? null : continuation.stopId;
-		const items: MenuItem[] = [
-			{
-				id: 'next',
-				label: 'Next in the Guide',
-				hint: null,
-				checked: !explicit,
-				reason: position === 0 ? NOT_IN_GUIDE_REASON : busyReason,
-				run: () => setNext('next')
-			}
-		];
-		for (const target of stopChoices) {
-			const place = placeOf(target.id);
-			items.push({
-				id: `stop-${target.id}`,
-				label: place > 0 ? `Stop ${place} · ${nameOf(target)}` : nameOf(target),
-				hint: place > 0 ? null : 'Outside this Guide',
-				checked: explicit && chosen === target.id,
-				reason: busyReason,
-				run: () => setNext({ stopId: target.id })
-			});
+	/** One connection read for the Connections links: kind, time and where it goes. */
+	type ConnectionRead = {
+		readonly fromStopId: string;
+		readonly label: string;
+		readonly kind: 'cut' | 'travel' | 'end';
+		readonly seconds: string | null;
+		readonly gap: boolean;
+	};
+	function connectionFrom(source: ExperienceStop | null): ConnectionRead | null {
+		if (controller === null || source === null) return null;
+		const resolved = controller.resolveContinuation(source.id);
+		if (resolved === null) return null;
+		if (resolved.kind === 'end') {
+			return { fromStopId: source.id, label: 'The tour ends', kind: 'end', seconds: null, gap: false };
 		}
-		items.push({
-			id: 'end',
-			label: 'End',
-			hint: null,
-			checked: explicit && continuation.kind === 'end',
-			reason: busyReason,
-			run: () => setNext('end')
-		});
-		return items;
+		const path = controller.pathFor({ kind: 'transition', stopId: source.id });
+		const place = resolved.position === null ? '' : `Stop ${resolved.position} · `;
+		const target = controller.current?.stops.find((entry) => entry.id === resolved.stopId);
+		const sourcePlace = guide.findIndex((entry) => entry.id === source.id) + 1;
+		const label = target?.id === stop?.id
+			? `${sourcePlace > 0 ? `Stop ${sourcePlace} · ` : ''}${controller.presentationLabel(source.presentationId)}`
+			: `${place}${target === undefined ? 'Missing Stop' : controller.presentationLabel(target.presentationId)}`;
+		return {
+			fromStopId: source.id,
+			label,
+			kind: resolved.transition,
+			seconds: resolved.transition === 'travel' && path?.state === 'ready' ? formatPathSeconds(path.seconds) : null,
+			gap: resolved.transition === 'travel' && (path === null || path.state === 'gap' || path.state === 'ambiguous')
+		};
+	}
+	/**
+	 * The connection that arrives here: the previous Stop's when it continues to
+	 * this one, else the first Stop of the Guide that jumps here. A Stop no
+	 * connection reaches says so rather than borrowing its neighbour's.
+	 */
+	const arrivingFrom = $derived.by((): ExperienceStop | null => {
+		if (controller === null || stop === null || position <= 1) return null;
+		const reaches = (source: ExperienceStop) => {
+			const resolved = controller.resolveContinuation(source.id);
+			return resolved !== null && resolved.kind !== 'end' && resolved.stopId === stop.id;
+		};
+		if (previous !== null && reaches(previous)) return previous;
+		return guide.find((entry) => entry.id !== stop.id && reaches(entry)) ?? null;
 	});
+	const incoming = $derived(connectionFrom(arrivingFrom));
+	const outgoing = $derived(stop === null || position === 0 ? null : connectionFrom(stop));
 
 	function selectStop(target: ExperienceStop | null): void {
 		if (target !== null) homes.select({ kind: 'stop', stopId: target.id });
 	}
 
-	function setNext(target: Target): void {
-		if (controller === null || stop === null) return;
-		void controller.setContinuation(stop.id, target);
-	}
-
-	function holdAt(index: number): number | null {
-		return guided[index]?.holdSeconds ?? (index < guided.length - 1 ? EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS : null);
-	}
-
-	/** R217.S29 — a step inside a Stop is a Cut or a Travel, stored beside its hold. */
-	function setStepTransition(viewId: string, transition: 'cut' | 'travel'): void {
-		if (controller === null || stop === null) return;
-		const views = stop.views.map((view) =>
-			view.viewId === viewId ? { ...view, transition } : view
-		);
-		void controller.setStopViews(stop.id, views);
-		// The Path tool targets this step's own occurrence, not the Stop transition.
-		controller.selectPath(transition === 'travel' ? { kind: 'step', stopId: stop.id, toViewId: viewId } : null);
-	}
-
-	function stepSeconds(viewId: string): string {
-		if (controller === null || stop === null) return '—';
-		const path = controller.pathFor?.({ kind: 'step', stopId: stop.id, toViewId: viewId });
-		return path?.state === 'ready' ? formatPathSeconds(path.seconds) : '—';
-	}
-
-	function selectStep(viewId: string, transition: 'cut' | 'travel', event: MouseEvent): void {
-		event.stopPropagation();
-		if (controller === null || stop === null) return;
-		const shot = stop.views.find((view) => view.viewId === viewId);
-		const current = shot?.transition ?? 'cut';
-		// Pressing the chosen kind again only selects this step's own path. A click on
-		// the nested row never writes a no-op or selects a different subject.
-		if (current === transition) {
-			if (transition === 'travel') {
-				controller.selectPath({ kind: 'step', stopId: stop.id, toViewId: viewId });
-			}
-			return;
-		}
-		setStepTransition(viewId, transition);
-	}
-
-	function stepHold(viewId: string, current: number | null, direction: 1 | -1): void {
+	function chooseEntry(viewId: string): void {
 		if (controller === null || stop === null || controller.busy) return;
-		const next = direction === 1 ? (current ?? 0) + 1 : current === 0 ? null : Math.max(0, (current ?? 0) - 1);
-		void controller.setViewHold(stop.id, viewId, next);
+		void controller.setStopEntry(stop.id, viewId);
 	}
 
-	let draggingViewId = $state<string | null>(null);
-	let dropAt = $state<{ viewId: string; after: boolean } | null>(null);
-
-	function onViewKey(event: KeyboardEvent, viewId: string): void {
-		if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
-		event.preventDefault();
-		event.stopPropagation();
+	function stepStay(direction: -1 | 1): void {
 		if (controller === null || stop === null || controller.busy) return;
-		void controller.moveGuidedView(stop.id, viewId, event.key === 'ArrowUp' ? -1 : 1);
+		const step = stop.staySeconds < 10 || (stop.staySeconds === 10 && direction === -1) ? 1 : 5;
+		void controller.setStopStay(stop.id, Math.max(EXPERIENCE_STAY_MIN_SECONDS, stop.staySeconds + direction * step));
 	}
 
-	function onShotDragStart(event: DragEvent, viewId: string): void {
-		if (controller?.busy || event.dataTransfer === null || guided.length < 2) {
-			event.preventDefault();
-			return;
-		}
-		draggingViewId = viewId;
-		event.dataTransfer.setData(GUIDED_VIEW_MIME, viewId);
-		event.dataTransfer.effectAllowed = 'move';
-	}
-
-	function onShotDragOver(event: DragEvent, viewId: string): void {
-		if (draggingViewId === null || controller?.busy) return;
+	function onStayKey(event: KeyboardEvent): void {
+		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
 		event.preventDefault();
-		if (draggingViewId === viewId) {
-			dropAt = null;
-			return;
-		}
-		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		dropAt = { viewId, after: event.clientY > box.top + box.height / 2 };
+		stepStay(event.key === 'ArrowUp' ? 1 : -1);
 	}
 
-	function endShotDrag(): void {
-		draggingViewId = null;
-		dropAt = null;
+	function toggleInvitation(): void {
+		if (controller === null || stop === null || controller.busy) return;
+		void controller.setStopInvitation(stop.id, stop.invitation === null ? { prompt: null } : null);
 	}
 
-	function onShotDrop(event: DragEvent, viewId: string): void {
-		if (draggingViewId === null) return;
-		event.preventDefault();
-		const dragged = draggingViewId;
-		const target = dropAt;
-		endShotDrag();
-		if (stop === null || controller === null || controller.busy || target?.viewId !== viewId) return;
-		const index = guided.filter((view) => view.viewId !== dragged).findIndex((view) => view.viewId === viewId);
-		if (index >= 0) void controller.moveGuidedViewTo(stop.id, dragged, index + (target.after ? 1 : 0));
-	}
-
-	/** Menus: one open at a time; Esc closes and returns focus to its trigger. */
-	let openMenu = $state<MenuName | null>(null);
-	let menuElement = $state<HTMLDivElement | null>(null);
-	const triggers = $state<Record<MenuName, HTMLButtonElement | null>>({ next: null });
-
+	let promptDraft = $state('');
 	$effect(() => {
-		void stop?.id;
-		openMenu = null;
-		othersOpen = false;
-		endShotDrag();
+		promptDraft = stop?.invitation?.prompt ?? '';
 	});
-
-	async function openMenuFor(name: MenuName): Promise<void> {
-		openMenu = name;
-		await tick();
-		const target =
-			menuElement?.querySelector<HTMLElement>('[aria-checked="true"]:not(:disabled)') ??
-			menuElement?.querySelector<HTMLElement>('[role="menuitemradio"]:not(:disabled)');
-		target?.focus();
+	function commitPrompt(): void {
+		if (controller === null || stop === null || stop.invitation === null) return;
+		const prompt = promptDraft.trim() === '' ? null : promptDraft.trim();
+		if (prompt === stop.invitation.prompt) return;
+		void controller.setStopInvitation(stop.id, { prompt });
 	}
-
-	function closeMenu(returnFocus: boolean): void {
-		const name = openMenu;
-		openMenu = null;
-		if (returnFocus && name !== null) triggers[name]?.focus();
-	}
-
-	function toggleMenu(name: MenuName): void {
-		if (openMenu === name) closeMenu(true);
-		else void openMenuFor(name);
-	}
-
-	function chooseItem(item: MenuItem): void {
-		if (item.reason !== null) return;
-		closeMenu(true);
-		item.run();
-	}
-
-	function onMenuKey(event: KeyboardEvent): void {
-		const menu = event.currentTarget as HTMLElement;
-		const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitemradio"]:not(:disabled)')];
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			event.stopPropagation();
-			closeMenu(true);
-			return;
-		}
-		if (event.key === 'Tab') {
-			closeMenu(false);
-			return;
-		}
-		if (items.length === 0) return;
-		const index = items.indexOf(document.activeElement as HTMLElement);
-		if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-			event.preventDefault();
-			const step = event.key === 'ArrowDown' ? 1 : -1;
-			items[(index + step + items.length) % items.length]?.focus();
-		} else if (event.key === 'Home' || event.key === 'End') {
-			event.preventDefault();
-			items[event.key === 'Home' ? 0 : items.length - 1]?.focus();
-		}
-	}
-
-	function onOutside(event: PointerEvent): void {
-		if (openMenu === null || !(event.target instanceof Element)) return;
-		if (event.target.closest(`[data-menu-wrap="${openMenu}"]`) === null) closeMenu(false);
-	}
+	const moreViews = $derived(Math.max(0, views.length - 1));
+	const defaultPrompt = $derived(
+		moreViews > 0 ? `Take a closer look · ${moreViews} more ${moreViews === 1 ? 'view' : 'views'}` : 'Look around'
+	);
+	const stayLabel = (seconds: number) => (Number.isInteger(seconds) ? `${seconds} s` : `${seconds.toFixed(1)} s`);
 </script>
 
-<svelte:window onpointerdowncapture={onOutside} />
-
-{#snippet choiceMenu(title: string, items: readonly MenuItem[])}
-	<div class="popover">
-		<p class="popover-title" aria-hidden="true">{title}</p>
-		<div class="menu" role="menu" aria-label={title} tabindex="-1" bind:this={menuElement} onkeydown={onMenuKey}>
-			{#each items as item (item.id)}
-				<button
-					type="button"
-					class="menu-item"
-					role="menuitemradio"
-					aria-checked={item.checked}
-					disabled={item.reason !== null}
-					title={item.reason ?? undefined}
-					onclick={() => chooseItem(item)}
-				>
-					<span class="menu-label">{item.label}</span>
-					{#if item.hint}<span class="hint-text">{item.hint}</span>{/if}
-					{#if item.checked}<ShellIcon name="check" size={13} />{/if}
-					{#if item.reason}<span class="sr-only">{item.reason}</span>{/if}
-				</button>
-			{/each}
-		</div>
-	</div>
+{#snippet connectionLink(direction: 'In' | 'Out', connection: ConnectionRead | null, emptyText: string)}
+	<li class="conn">
+		<span class="conn-dir">{direction}</span>
+		{#if connection === null}
+			<span class="c-note">{emptyText}</span>
+		{:else if connection.kind === 'end'}
+			<button type="button" class="link-row" onclick={() => homes.select({ kind: 'transition', stopId: connection.fromStopId })}>
+				<span>{connection.label}</span>
+				<ShellIcon name="chevronRight" size={12} />
+			</button>
+		{:else}
+			<button
+				type="button"
+				class="link-row"
+				data-connection={direction.toLowerCase()}
+				title="Open this transition's Card, where it is edited"
+				onclick={() => homes.select({ kind: 'transition', stopId: connection.fromStopId })}
+			>
+				<ShellIcon name={connection.kind === 'travel' ? 'travel' : 'cut'} size={13} />
+				<span>
+					{connection.kind === 'travel' ? 'Travel' : 'Cut'}{connection.seconds === null ? '' : ` · ${connection.seconds}`}
+					{#if connection.gap}<b class="warn" title="Travel needs a path">⚠</b>{/if}
+				</span>
+				<span class="conn-to">{direction === 'In' ? 'from' : 'to'} {connection.label}</span>
+				<ShellIcon name="chevronRight" size={12} />
+			</button>
+		{/if}
+	</li>
 {/snippet}
 
 {#if controller !== null && stop !== null}
 	<div class="writer" data-experience-writer="stop">
-		<!-- Review round 3: the Stop's ‹ › steppers sit beside what it visits, not on a row of their own. -->
 		<div class="visits-row">
 		<button
 			type="button"
@@ -375,7 +202,7 @@
 			onclick={() => homes.select({ kind: 'presentation', presentationId: stop.presentationId })}
 		>
 			<span class="visits-thumb">
-				<ExperienceSnapshot label={entryName} ratio="stop" />
+				<ExperienceSnapshot label={entryName} viewId={entryId ?? undefined} ratio="stop" />
 				{#if position > 0}<span class="num lg">{position}</span>{/if}
 			</span>
 			<span class="visits-txt">
@@ -391,221 +218,121 @@
 					class="icon-btn"
 					aria-label="Previous Stop"
 					title={previousReason ?? 'Previous Stop'}
-					aria-describedby={previousReason === null ? undefined : 'stop-previous-reason'}
 					disabled={previous === null}
 					onclick={() => selectStop(previous)}
 				>
 					<ShellIcon name="chevronLeft" size={14} />
-					{#if previousReason}<span id="stop-previous-reason" class="sr-only">{previousReason}</span>{/if}
 				</button>
 				<button
 					type="button"
 					class="icon-btn"
 					aria-label="Next Stop"
 					title={followingReason ?? 'Next Stop'}
-					aria-describedby={followingReason === null ? undefined : 'stop-following-reason'}
 					disabled={following === null}
 					onclick={() => selectStop(following)}
 				>
 					<ShellIcon name="chevronRight" size={14} />
-					{#if followingReason}<span id="stop-following-reason" class="sr-only">{followingReason}</span>{/if}
 				</button>
 			</span>
 		</section>
 		</div>
 		{#if position === 0}<p class="where">Not in the open Guide</p>{/if}
 
-		<section class="c-sec" aria-labelledby="stop-views-title">
-			<div class="c-sec-head">
-				<h3 id="stop-views-title">Guided views<span class="n">{guided.length}</span></h3>
-			</div>
-			<ol class="shots">
-				{#each guided as shot, index (shot.viewId)}
-					{@const label = views.find((view) => view.id === shot.viewId)?.label ?? 'Missing View'}
-					{@const hold = holdAt(index)}
-					{@const leaveReason = guided.length === 1 ? LAST_VIEW_REASON : busyReason}
-					{@const shorterReason = busyReason ?? (hold === null
-						? 'No hold is set'
-						: hold === 0 && index < guided.length - 1 ? 'The hold is already zero' : null)}
-					<li
-						class="shot"
-						class:dragging={draggingViewId === shot.viewId}
-						class:drop-before={dropAt?.viewId === shot.viewId && !dropAt.after}
-						class:drop-after={dropAt?.viewId === shot.viewId && dropAt.after}
-						ondragover={(event) => onShotDragOver(event, shot.viewId)}
-						ondrop={(event) => onShotDrop(event, shot.viewId)}
-						data-guided-view={shot.viewId}
-					>
-						<span class="grip" draggable={!controller.busy && guided.length > 1}
-							ondragstart={(event) => onShotDragStart(event, shot.viewId)} ondragend={endShotDrag}
-							title="Drag to reorder" aria-hidden="true">
-							<ShellIcon name="menu" size={12} />
-						</span>
-						<span class="shot-n">{index + 1}</span>
-						<span class="shot-thumb"><ExperienceSnapshot {label} viewId={shot.viewId} ratio="row" /></span>
-						<span class="shot-main">
-							<span class="shot-name">
-								<button type="button" class="name-btn" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-									onkeydown={(event) => onViewKey(event, shot.viewId)}
-									onclick={() => homes.select({ kind: 'view', viewId: shot.viewId, presentationId: stop.presentationId })}
-								>{label}</button>
-								{#if shot.viewId === defaultViewId}<span class="def" role="img" aria-label="Default View">◆</span>{/if}
-								{#if index === 0}<em class="tag">Entry</em>{/if}
-							</span>
-								{#if index > 0}
-									<span class="step-kind" role="group" aria-label={`Step to ${label}`}>
-										<button type="button" aria-pressed={(shot.transition ?? 'cut') === 'cut'} disabled={busyReason !== null}
-											title={busyReason ?? 'Cut'} onclick={(event) => selectStep(shot.viewId, 'cut', event)}>Cut</button>
-										<button type="button" aria-pressed={(shot.transition ?? 'cut') === 'travel'} disabled={busyReason !== null}
-											title={busyReason ?? 'Travel'} onclick={(event) => selectStep(shot.viewId, 'travel', event)}>Travel</button>
-										{#if (shot.transition ?? 'cut') === 'travel'}
-											<b class="step-seconds">{stepSeconds(shot.viewId)}</b>
-											{#if controller.pathFor?.({ kind: 'step', stopId: stop.id, toViewId: shot.viewId })?.state === 'gap'}
-												<button
-													type="button"
-													class="step-add"
-													aria-label={`Add a Camera path to ${label}`}
-													title="Add a Camera path"
-													disabled={busyReason !== null}
-													onclick={(event) => {
-														event.stopPropagation();
-														void controller?.createPath({ kind: 'step', stopId: stop.id, toViewId: shot.viewId });
-													}}
-												>+ Path</button>
-											{/if}
-										{/if}
-										<button type="button" class="step-preview" title="Preview this step" aria-label={`Preview the step to ${label}`}
-											disabled={transportGuideId === null || stop === null}
-											onclick={(event) => {
-												event.stopPropagation();
-												if (transportGuideId !== null && stop !== null) homes.playGuide(transportGuideId, { kind: 'move', occurrence: { kind: 'step', stopId: stop.id, toViewId: shot.viewId } });
-											}}><ShellIcon name="play" size={9} /></button>
-									</span>
-								{/if}
-								<span class="shot-meta">
-								<span class="hold-lbl">Hold</span>
-								<span class="stepper" role="group" aria-label={`Hold for ${label}`}>
-									<button type="button" aria-label="Shorter hold"
-										title={shorterReason ?? 'Shorter hold'}
-										disabled={shorterReason !== null} onclick={() => stepHold(shot.viewId, hold, -1)}>
-										<ShellIcon name="minus" size={11} />
-									</button>
-									<b class="value" aria-live="polite" title={hold === null ? 'Waits for Next' : undefined}>
-										{hold === null ? '—' : `${hold}s`}
-									</b>
-									<button type="button" aria-label="Longer hold" title={busyReason ?? 'Longer hold'}
-										disabled={busyReason !== null} onclick={() => stepHold(shot.viewId, hold, 1)}>
-										<ShellIcon name="plus" size={11} />
-									</button>
-								</span>
-							</span>
-						</span>
-						<span class="shot-acts">
-						<button type="button" class="icon-btn shot-look" title="Look through this View"
-							aria-label={`Look through ${label}`}
-							onclick={(event) => { event.stopPropagation(); homes.lookThrough(shot.viewId); }}>
-							<ShellIcon name="eye" size={11} />
-						</button>
-						<button type="button" class="icon-btn shot-x" disabled={leaveReason !== null}
-							title={leaveReason ?? 'Leave out'} aria-label={`Leave out ${label}`}
-							onclick={() => void controller.leaveOutView(stop.id, shot.viewId)}>
-							<ShellIcon name="close" size={11} />
-							{#if leaveReason}<span class="sr-only">{leaveReason}</span>{/if}
-						</button>
-						</span>
-					</li>
-				{/each}
-			</ol>
-
-			{#if otherViews.length > 0}
-				{#if folded}
+		<section class="c-sec" aria-labelledby="stop-entry-title">
+			<h3 id="stop-entry-title">Enter at</h3>
+			<div class="entry-list" role="radiogroup" aria-labelledby="stop-entry-title">
+				{#each views as view, index (view.id)}
 					<button
 						type="button"
-						class="disc"
-						aria-expanded={othersOpen}
-						onclick={() => (othersOpen = !othersOpen)}
+						class="entry"
+						role="radio"
+						aria-checked={view.id === entryId}
+						disabled={busyReason !== null}
+						title={busyReason ?? (index === 0 ? 'The Default: View 1 of the Presentation' : `Enter at ${view.label}`)}
+						data-entry-view={view.id}
+						onclick={() => chooseEntry(view.id)}
 					>
-						<ShellIcon name={othersOpen ? 'chevronDown' : 'chevronRight'} size={12} />
-						Not in this Stop ({otherViews.length})
+						<span class="entry-n">{index + 1}</span>
+						<span class="entry-name">{view.label}</span>
+						{#if index === 0}<em class="tag">Default</em>{/if}
 					</button>
-				{:else}
-					<div class="c-sub">Not in this Stop</div>
-				{/if}
-				{#if !folded || othersOpen}
-					<ul class="shots out">
-						{#each otherViews as view (view.id)}
-							<li class="shot is-out">
-								<span class="shot-thumb"><ExperienceSnapshot label={view.label} viewId={view.id} ratio="row" /></span>
-								<span class="shot-name">
-									<button
-										type="button"
-										class="name-btn"
-										onclick={() => homes.select({ kind: 'view', viewId: view.id, presentationId: stop.presentationId })}
-										>{view.label}</button
-									>
-									{#if view.id === defaultViewId}<span class="def" role="img" aria-label="Default View">◆</span>{/if}
-								</span>
-								<button type="button" class="btn xs include" disabled={busyReason !== null} title={busyReason ?? undefined}
-									aria-label={`Include ${view.label}`} onclick={() => void controller.includeView(stop.id, view.id)}>
-									Include
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			{/if}
-			<p class="c-foot-note"><span class="def" aria-hidden="true">◆</span> marks the Presentation's Default View. Reordering here changes only this Stop.</p>
+				{/each}
+			</div>
+			<p class="c-foot-note">
+				{stop.entryViewId === null ? 'Follows the Presentation’s View 1 when you reorder.' : 'Enters here on this visit; the Default stays View 1.'}
+			</p>
 		</section>
 
-		{#if selectedStep !== null && selectedStep.stopId === stop.id}
-			<ExperiencePathMovement
-				path={selectedStepPath}
-				pathReason={selectedStepReason}
-				{busyReason}
-				occurrence={selectedStep}
-			/>
-		{/if}
-
-		<section class="c-sec" aria-labelledby="stop-after-title">
-			<h3 id="stop-after-title">After this Stop</h3>
-			{#if position === 0}
-				<p class="c-note">This Stop is not in this Guide.</p>
-			{:else if continuation === null}
-				<p class="c-note">Open this Stop's Guide to see where Next goes.</p>
+		<section class="c-sec" aria-labelledby="stop-stay-title">
+			<h3 id="stop-stay-title">Stay</h3>
+			{#if manual}
+				<p class="c-foot-note" data-stay="until-next"><b>Until Next</b> · set on the Guide strip.</p>
+				<p class="c-foot-note">Its time, {stayLabel(stop.staySeconds)}, is kept for switching back to Automatic.</p>
 			{:else}
-				<div class="after">
-					<div class="after-next" data-menu-wrap="next">
-						<span class="an-lbl">Visitor presses <b>Next</b></span>
-						<ShellIcon name="chevronRight" size={12} />
-						<button
-							type="button"
-							class="stop-link"
-							aria-haspopup="menu"
-							aria-expanded={openMenu === 'next'}
-							bind:this={triggers.next}
-							onclick={() => toggleMenu('next')}
-						>
-							{#if chip.place !== null}<span class="num">{chip.place}</span>{/if}
-							<span class="stop-link-name">{chip.name}</span>
-							<ShellIcon name="chevronDown" size={11} />
+				<div class="stay-row">
+					<span class="stepper" role="group" aria-label="Stay">
+						<button type="button" aria-label="Shorter stay"
+							disabled={busyReason !== null || stop.staySeconds <= EXPERIENCE_STAY_MIN_SECONDS}
+							title={busyReason ?? 'Shorter stay'} onclick={() => stepStay(-1)}>
+							<ShellIcon name="minus" size={11} />
 						</button>
-						{#if openMenu === 'next'}{@render choiceMenu('Next goes to', nextItems)}{/if}
-					</div>
-					{#if continuation.kind === 'end'}
-						<p class="c-note">{isLast ? 'Last Stop. The tour ends here.' : 'The tour ends after this Stop.'}</p>
-					{:else}
-						<button
-							type="button"
-							class="link-row"
-							onclick={() => homes.select({ kind: 'transition', stopId: stop.id })}
-						>
-							<ShellIcon name={continuation.transition === 'travel' ? 'travel' : 'cut'} size={13} />
-							<span>{transitionName} · transition</span>
-							<ShellIcon name="chevronRight" size={12} />
+						<b class="value" tabindex="0" role="spinbutton" aria-label="Stay in seconds"
+							aria-valuenow={stop.staySeconds} aria-valuemin={EXPERIENCE_STAY_MIN_SECONDS}
+							onkeydown={onStayKey} data-stay="seconds">{stayLabel(stop.staySeconds)}</b>
+						<button type="button" aria-label="Longer stay" disabled={busyReason !== null}
+							title={busyReason ?? 'Longer stay'} onclick={() => stepStay(1)}>
+							<ShellIcon name="plus" size={11} />
 						</button>
-					{/if}
+					</span>
+					<span class="c-note">then the tour moves on</span>
 				</div>
 			{/if}
+		</section>
+
+		<section class="c-sec" aria-labelledby="stop-invite-title">
+			<div class="switch-row">
+				<span>
+					<span id="stop-invite-title" class="h3">Invite to explore</span>
+					<small>{moreViews > 0 ? `${moreViews} more ${moreViews === 1 ? 'View' : 'Views'} here` : 'One View: invites looking around'}</small>
+				</span>
+				<button
+					type="button"
+					class="switch"
+					role="switch"
+					aria-checked={stop.invitation !== null}
+					aria-labelledby="stop-invite-title"
+					disabled={busyReason !== null}
+					onclick={toggleInvitation}
+				><i></i></button>
+			</div>
+			{#if stop.invitation !== null}
+				<label class="prompt">
+					<span>Prompt</span>
+					<input
+						type="text"
+						maxlength={EXPERIENCE_INVITATION_PROMPT_MAX_LENGTH}
+						placeholder={defaultPrompt}
+						bind:value={promptDraft}
+						onblur={commitPrompt}
+						onkeydown={(event) => {
+							if (event.key === 'Enter') (event.currentTarget as HTMLInputElement).blur();
+						}}
+					/>
+				</label>
+				{#if !manual && stop.staySeconds < SHORT_INVITE_SECONDS}
+					<p class="warn-note">Short stay: the invitation shows for only {stayLabel(stop.staySeconds)}.</p>
+				{/if}
+				<p class="c-foot-note">Shows when the Stop arrives and leaves with it. Ignoring it never pauses the tour.</p>
+			{/if}
+			<p class="c-foot-note">Visitors can always press <b>Explore</b>. It pauses the tour and adds no time.</p>
+		</section>
+
+		<section class="c-sec" aria-labelledby="stop-connections-title">
+			<h3 id="stop-connections-title">Connections</h3>
+			<ul class="conns">
+				{@render connectionLink('In', incoming, position <= 1 ? 'The tour starts here' : 'No Stop continues here')}
+				{@render connectionLink('Out', outgoing, position === 0 ? NOT_IN_GUIDE_REASON : 'No connection')}
+			</ul>
 		</section>
 
 		<section class="c-sec row-end" aria-label="Playback">
@@ -621,6 +348,150 @@
 {/if}
 
 <style>
+	.entry-list {
+		display: grid;
+		gap: 2px;
+	}
+	.entry {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 30px;
+		padding: 0 8px;
+		border: 1px solid transparent;
+		border-radius: 7px;
+		background: none;
+		text-align: left;
+	}
+	.entry:hover:not(:disabled) {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.entry[aria-checked='true'] {
+		border-color: var(--shell-forest-raised, #22503c);
+		background: var(--shell-selected, #e8efe9);
+	}
+	.entry-n {
+		display: inline-grid;
+		place-items: center;
+		min-width: 18px;
+		height: 18px;
+		border-radius: 9px;
+		background: var(--shell-hover, #eef0ed);
+		font-size: 10.5px;
+		font-weight: 600;
+	}
+	.entry-name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.stay-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.switch-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+	}
+	.switch-row .h3 {
+		display: block;
+		font-size: 12px;
+		font-weight: 600;
+	}
+	.switch-row small {
+		color: var(--shell-ink-3, #6b736d);
+		font-size: 11px;
+	}
+	.switch {
+		position: relative;
+		flex: none;
+		width: 32px;
+		height: 18px;
+		padding: 0;
+		border: 0;
+		border-radius: 9px;
+		background: var(--shell-hairline-strong, #cdd2ca);
+	}
+	.switch i {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 14px;
+		height: 14px;
+		border-radius: 7px;
+		background: #fff;
+		transition: transform 120ms ease;
+	}
+	.switch[aria-checked='true'] {
+		background: var(--shell-forest-raised, #22503c);
+	}
+	.switch[aria-checked='true'] i {
+		transform: translateX(14px);
+	}
+	.prompt {
+		display: grid;
+		gap: 3px;
+		margin-top: 8px;
+		font-size: 11px;
+		color: var(--shell-ink-3, #6b736d);
+	}
+	.prompt input {
+		min-height: 28px;
+		padding: 0 8px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 7px;
+		font: inherit;
+		font-size: 12px;
+		color: var(--shell-ink, #1b201c);
+	}
+	.warn-note {
+		margin: 6px 0 0;
+		color: #8a5a00;
+		font-size: 11px;
+	}
+	.conns {
+		display: grid;
+		gap: 2px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.conn {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.conn-dir {
+		flex: none;
+		width: 26px;
+		color: var(--shell-ink-3, #6b736d);
+		font-size: 10.5px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+	.conn .link-row {
+		flex: 1;
+		min-width: 0;
+	}
+	.conn-to {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		color: var(--shell-ink-3, #6b736d);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.warn {
+		margin-left: 4px;
+		color: #a3650a;
+	}
+
 	.writer {
 		display: flex;
 		flex-direction: column;
@@ -640,17 +511,6 @@
 	button:focus-visible {
 		outline: 2px solid var(--shell-forest-raised, #22503c);
 		outline-offset: 1px;
-	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		margin: -1px;
-		padding: 0;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
-		border: 0;
 	}
 	.icon-btn {
 		display: inline-grid;
@@ -684,13 +544,6 @@
 	.btn:hover:not(:disabled) {
 		background: var(--shell-hover, #eef0ed);
 	}
-	.btn.xs {
-		min-height: 24px;
-		padding: 0 8px;
-		font-size: 11px;
-		border-radius: 6px;
-		box-shadow: none;
-	}
 	.btn.ghost {
 		padding: 0 8px;
 		border-color: transparent;
@@ -720,32 +573,6 @@
 	.stop-nav .step {
 		flex-direction: column;
 		margin: 0;
-	}
-	.step-kind {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-	}
-	.step-kind button {
-		min-height: 20px;
-		padding: 0 6px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 5px;
-		background: var(--shell-card, #fff);
-		color: var(--shell-ink-2, #4a524c);
-		font-size: 10px;
-	}
-	.step-kind button[aria-pressed='true'] {
-		background: var(--shell-leaf-tint, #e8f1ea);
-		color: var(--shell-forest-raised, #22503c);
-	}
-	.step-seconds {
-		font: 600 10px var(--shell-mono, ui-monospace, monospace);
-		color: var(--shell-ink-3, #79817b);
-	}
-	.step-add {
-		color: var(--shell-caution, #b5682d);
-		border-color: var(--shell-caution, #b5682d);
 	}
 	.step {
 		display: inline-flex;
@@ -781,11 +608,6 @@
 		height: 24px;
 		border-radius: 12px;
 		font-size: 12px;
-	}
-	.def {
-		flex: none;
-		color: var(--shell-ink-2, #4a524c);
-		font-size: 10px;
 	}
 
 	/* Visits: the Presentation this Stop visits. */
@@ -859,26 +681,6 @@
 		font: 650 12.5px/1.2 var(--shell-sans, system-ui);
 		color: var(--shell-ink, #1b201c);
 	}
-	.c-sec h3 .n {
-		margin-left: 6px;
-		padding: 1px 6px;
-		border-radius: 8px;
-		background: var(--shell-hover, #eef0ed);
-		color: var(--shell-ink-3, #79817b);
-		font-size: 10.5px;
-		font-weight: 600;
-	}
-	.c-sec-head {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-	}
-	.c-sub {
-		margin: 12px 0 6px;
-		color: var(--shell-ink-2, #4a524c);
-		font-size: 11.5px;
-		font-weight: 600;
-	}
 	.c-foot-note {
 		display: flex;
 		gap: 5px;
@@ -903,132 +705,6 @@
 		padding-bottom: 10px;
 	}
 
-	/* Shots */
-	.shots {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-	/* Review round 3: a View row is a grid. The name gets the whole first line; the
-	   step and the hold sit under it; eye and × stack at the right edge. */
-	.shot {
-		position: relative;
-		display: grid;
-		grid-template-columns: 12px 14px 52px minmax(0, 1fr) auto;
-		align-items: center;
-		column-gap: 6px;
-		min-height: 42px;
-		padding: 5px 4px 5px 2px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 8px;
-		background: var(--shell-card, #fff);
-	}
-	.shot.dragging {
-		border-color: var(--shell-gold, #d4ad45);
-		box-shadow: var(--shell-shadow);
-	}
-	.grip {
-		display: inline-flex;
-		flex: none;
-		color: var(--shell-ink-3, #79817b);
-	}
-	.grip[draggable="true"] {
-		cursor: default;
-	}
-	.shot-n {
-		flex: none;
-		width: 14px;
-		text-align: center;
-		color: var(--shell-forest, #11291f);
-		font: 600 12px var(--shell-mono, ui-monospace, monospace);
-		font-variant-numeric: tabular-nums;
-	}
-	.shot-thumb {
-		display: inline-flex;
-		flex: none;
-	}
-	.shot-thumb :global(.snapshot.row) {
-		width: 52px;
-		height: 36px;
-		border-radius: 5px;
-	}
-	.shot.is-out .shot-thumb :global(.snapshot.row) {
-		width: 46px;
-		height: 30px;
-	}
-	.shot.drop-before::before,
-	.shot.drop-after::after {
-		position: absolute;
-		z-index: 1;
-		right: 0;
-		left: 0;
-		height: 2px;
-		border-radius: 1px;
-		background: var(--shell-gold, #d4ad45);
-		content: '';
-		pointer-events: none;
-	}
-	.shot.drop-before::before { top: -3px; }
-	.shot.drop-after::after { bottom: -3px; }
-	.shot-main {
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
-	}
-	.shot-name {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		min-width: 0;
-	}
-	.shot-name .name-btn {
-		flex: 0 1 auto;
-	}
-	.shot-acts {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0;
-	}
-	.step-kind {
-		flex-wrap: wrap;
-		row-gap: 3px;
-	}
-	.step-preview {
-		display: inline-grid;
-		place-items: center;
-		width: 20px;
-		padding: 0;
-	}
-	.shot-meta {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-	.hold-lbl {
-		color: var(--shell-ink-3, #79817b);
-		font-size: 10.5px;
-	}
-	.name-btn {
-		min-width: 0;
-		padding: 0;
-		border: 0;
-		background: none;
-		font: 500 12px var(--shell-sans, system-ui);
-		text-align: left;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	button.name-btn:hover {
-		color: var(--shell-forest-raised, #22503c);
-		text-decoration: underline;
-		text-decoration-color: var(--shell-hairline-strong, #cdd2ca);
-	}
 	/* The entry tag reads like the Guide's *Start* tag: small, outlined, not a slab. */
 	.tag {
 		flex: none;
@@ -1068,101 +744,8 @@
 		text-align: center;
 		font: 600 11px var(--shell-mono, ui-monospace, monospace);
 	}
-	.shot-x {
-		flex: none;
-		width: 24px;
-		height: 24px;
-		opacity: 0.55;
-	}
-	.shot-x:not(:disabled):is(:hover, :focus-visible) { opacity: 1; }
-	.shot.is-out {
-		grid-template-columns: 46px minmax(0, 1fr) auto;
-		padding-left: 6px;
-		border-style: dashed;
-		background: transparent;
-	}
-	.shot.is-out .shot-thumb {
-		opacity: 0.6;
-		filter: saturate(0.3);
-	}
-	.shot.is-out .name-btn {
-		color: var(--shell-ink-2, #4a524c);
-	}
-	.include {
-		flex: none;
-	}
-	.disc {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		width: 100%;
-		min-height: 28px;
-		margin-top: 10px;
-		padding: 0 4px;
-		border: 0;
-		border-radius: 6px;
-		background: none;
-		color: var(--shell-ink-2, #4a524c);
-		font-size: 11.5px;
-		font-weight: 600;
-		text-align: left;
-	}
-	.disc:hover {
-		background: var(--shell-hover, #eef0ed);
-	}
 
-	/* After this Stop */
-	.after {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-	.after-next {
-		position: relative;
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 6px;
-		padding: 8px 10px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 8px;
-		background: var(--shell-leaf-tint, #e7f1ea);
-		color: var(--shell-forest-raised, #22503c);
-	}
-	.an-lbl {
-		color: var(--shell-ink-2, #4a524c);
-		font-size: 11.5px;
-	}
-	.an-lbl b {
-		color: var(--shell-ink, #1b201c);
-	}
-	.stop-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		max-width: 100%;
-		min-height: 26px;
-		padding: 0 8px 0 3px;
-		border: 0;
-		border-radius: 13px;
-		background: var(--shell-card, #fff);
-		box-shadow: inset 0 0 0 1px var(--shell-hairline-strong, #cdd2ca);
-		color: var(--shell-forest, #11291f);
-		font-size: 12px;
-		font-weight: 600;
-	}
-	.stop-link:not(:has(.num)) {
-		padding-left: 10px;
-	}
-	.stop-link[aria-expanded='true'] {
-		box-shadow: inset 0 0 0 1px var(--shell-ink-3, #79817b);
-	}
-	.stop-link-name {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
+	/* Connections */
 	.link-row {
 		display: flex;
 		align-items: center;
@@ -1188,85 +771,12 @@
 	}
 
 	/* Menus */
-	.popover {
-		position: absolute;
-		top: calc(100% + 4px);
-		left: 0;
-		right: 0;
-		z-index: 5;
-		padding: 4px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
-		border-radius: 8px;
-		background: var(--shell-card, #fff);
-		box-shadow: var(--shell-shadow);
-	}
-	.popover-title {
-		margin: 2px 6px 4px;
-		color: var(--shell-ink-3, #79817b);
-		font: 600 10.5px var(--shell-sans, system-ui);
-	}
-	.menu {
-		display: flex;
-		flex-direction: column;
-	}
-	.menu-item {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		width: 100%;
-		min-height: 28px;
-		padding: 4px 6px;
-		border: 0;
-		border-radius: 5px;
-		background: transparent;
-		font-size: 12px;
-		text-align: left;
-	}
-	.menu-item:hover:not(:disabled) {
-		background: var(--shell-hover, #eef0ed);
-	}
-	.menu-item[aria-checked='true'] {
-		font-weight: 600;
-	}
-	.menu-label {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.hint-text {
-		color: var(--shell-ink-3, #79817b);
-		font-size: 11px;
-	}
 	@media (pointer: coarse) {
 		button {
 			min-height: 44px;
 		}
-		.step-kind button,
-		.step-add {
-			min-width: 44px;
-			min-height: 44px;
-		}
-		.shot button,
 		.icon-btn {
 			min-width: 44px;
-		}
-		.shot {
-			display: grid;
-			grid-template-columns: 44px auto auto minmax(0, 1fr) auto;
-		}
-		.shot.is-out { grid-template-columns: auto minmax(0, 1fr) auto; }
-		.shot-name { flex-wrap: wrap; }
-		.grip {
-			display: inline-grid;
-			place-items: center;
-			min-height: 44px;
-		}
-		.shot-main { display: contents; }
-		.shot-meta {
-			grid-column: 1 / -1;
-			grid-row: 2;
 		}
 		.stepper { height: auto; }
 	}

@@ -13,7 +13,10 @@ import {
 	captureBindIntent,
 	capturedFovDegrees,
 	capturedViewPose,
+	experienceUpdateIntent,
 	guideOrderIntent,
+	guideCreateIntent,
+	stopCreateIntent,
 	presentationUpdateIntent,
 	stopUpdateIntent
 } from '$lib/authoring/experience/commands';
@@ -23,6 +26,7 @@ import {
 	type ExperienceFocus
 } from '$lib/authoring/experience/preview-entry';
 import {
+	CAMERA_UNIT_FORMAT_VERSION,
 	computeEnvelopeSourceContentId,
 	createUnitAcceptanceProfile,
 	serializeProjectEnvelope,
@@ -31,11 +35,11 @@ import {
 
 import { EXPERIENCE, VIEWS, experienceEnvelope } from './fixtures';
 
-async function boot(): Promise<{
+async function boot(initial?: ProjectEnvelope): Promise<{
 	readonly source: ProjectEnvelope;
 	readonly coordinator: ReturnType<typeof createAcceptanceCoordinator<ProjectEnvelope>>;
 }> {
-	const source = await experienceEnvelope();
+	const source = initial ?? (await experienceEnvelope());
 	const profile = createUnitAcceptanceProfile({ compound: true, sessionEpoch: 'session-preview' });
 	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({
 		adapter: profile.adapter,
@@ -93,16 +97,15 @@ describe('capture, binding and Guide order', () => {
 		const experience = experienceOf(installed);
 		expect(experience.presentations.find((entry) => entry.id === 'presentation-new')).toMatchObject({
 			label: 'Entrance',
-			viewIds: ['view-new'],
+			views: [{ viewId: 'view-new' }],
 			explorable: true,
-			defaultViewId: 'view-new',
 			subject: null,
 			text: { kind: 'plain', body: 'Welcome.' }
 		});
 		const stop = experience.stops.find((entry) => entry.id === 'stop-new');
 		expect(stop).toMatchObject({
 			presentationId: 'presentation-new',
-			continuation: { kind: 'sequence-next', transition: 'cut' }
+			transition: 'cut'
 		});
 		// Insertion after stop-2 appends by stable Stop identity, never by array index.
 		expect(experience.guides[0]!.stopIds).toEqual(['stop-1', 'stop-2', 'stop-new']);
@@ -119,7 +122,33 @@ describe('capture, binding and Guide order', () => {
 		expect(experienceOf(restored).guides[0]!.stopIds).toEqual(['stop-1', 'stop-2']);
 	});
 
-	it('reorders a Guide by stable Stop identity without rewriting a Stop', async () => {
+	it('keeps an imported Travel gap through an unrelated rename when no connection id is captured (G7)', async () => {
+		const source = await experienceEnvelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: VIEWS.map((view) => ({ ...view, connectedViewIds: [] })),
+				connections: []
+			}
+		});
+		const { coordinator } = await boot(source);
+
+		const accepted = await coordinator.accept(
+			experienceUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-rename-gap' },
+				experienceId: 'experience-1',
+				label: 'Renamed walk'
+			})
+		);
+
+		expect(accepted.kind).toBe('accepted');
+		const after = coordinator.acceptedSnapshot().domain.source;
+		expect(experienceOf(after).label).toBe('Renamed walk');
+		expect(after.units.camera.data.connections).toEqual([]);
+	});
+
+	it('reorders a Guide by stable Stop identity and normalises a Travel that would strand last (D-12)', async () => {
 		const { source, coordinator } = await boot();
 		const accepted = await coordinator.accept(
 			guideOrderIntent({
@@ -131,15 +160,130 @@ describe('capture, binding and Guide order', () => {
 				stopIds: ['stop-2', 'stop-1']
 			})
 		);
+		// stop-1 leaves by Travel; putting it last would strand that Travel, so the
+		// planner writes the Cut for the caller instead of refusing the reorder.
 		expect(accepted.kind).toBe('accepted');
 		const experience = experienceOf(coordinator.acceptedSnapshot().domain.source);
 		expect(experience.guides[0]!.stopIds).toEqual(['stop-2', 'stop-1']);
-		// Order is the only thing this operation writes: entry and Stop fields stay
-		// exactly as authored.
-		expect(experience.guides[0]!.entryStopId).toBe('stop-1');
-		expect(experience.stops.map((entry) => entry.id)).toEqual(['stop-1', 'stop-2']);
+		expect(experience.stops.find((entry) => entry.id === 'stop-1')!.transition).toBeUndefined();
+		// R27: the Cut the planner wrote is part of the accepted plan.
+		if (accepted.kind !== 'accepted') return;
+		expect(accepted.changes).toContainEqual({
+			kind: 'experience.transition.normalised',
+			subjectIds: ['stop-1'],
+			fields: ['transition']
+		});
 	});
 
+	it('surfaces the straight path reconciliation adds as an accepted Camera change (R9)', async () => {
+		const source = await experienceEnvelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: VIEWS.map((view) => ({ ...view, connectedViewIds: [] })),
+				connections: []
+			},
+			experience: {
+				...EXPERIENCE,
+				experiences: EXPERIENCE.experiences.map((entry) => ({
+					...entry,
+					stops: entry.stops.map((stop) => stop.id === 'stop-1' ? { ...stop, transition: 'cut' as const } : stop)
+				}))
+			}
+		});
+		const { coordinator } = await boot(source);
+		const accepted = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-path-change', connections: ['connection-new'] },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				transition: 'travel'
+			})
+		);
+		expect(accepted.kind).toBe('accepted');
+		if (accepted.kind !== 'accepted') return;
+		expect(accepted.changes).toContainEqual({
+			kind: 'camera.connection.created',
+			subjectIds: ['connection-new'],
+			fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath']
+		});
+		expect(coordinator.acceptedSnapshot().domain.source.units.camera.data.connections).toHaveLength(1);
+	});
+
+	it('R15 — Travel → Cut → Travel keeps the path and reuses it', async () => {
+		const { source, coordinator } = await boot();
+		const connections = source.units.camera.data.connections.length;
+
+		const cut = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-r15-cut' },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				transition: 'cut'
+			})
+		);
+		expect(cut.kind).toBe('accepted');
+
+		const travel = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: coordinator.acceptedSnapshot().domain.source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-r15-travel' },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				transition: 'travel'
+			})
+		);
+		expect(travel.kind).toBe('accepted');
+		const after = coordinator.acceptedSnapshot().domain.source;
+		expect(experienceOf(after).stops.find((stop) => stop.id === 'stop-1')!.transition).toBe('travel');
+		expect(after.units.camera.data.connections).toHaveLength(connections);
+		expect(after.units.camera.data.connections[0]!.id).toBe(source.units.camera.data.connections[0]!.id);
+	});
+
+
+	it.each(['guide-create', 'stop-create', 'stop-update'] as const)(
+		'%s preserves an explicitly chosen Default View through reorder and persistence',
+		async (operation) => {
+			const initial = await experienceEnvelope({ experience: {
+				...EXPERIENCE,
+				experiences: EXPERIENCE.experiences.map((experience) => ({
+					...experience,
+					presentations: experience.presentations.map((presentation) => presentation.id === 'presentation-1'
+						? { ...presentation, views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] }
+						: presentation)
+				}))
+			} });
+			const { source, coordinator } = await boot(initial);
+			const common = {
+				envelope: source, revision: coordinator.acceptedRevision(), experienceId: 'experience-1',
+				entryViewId: 'view-1', transition: 'cut' as const
+			};
+			const stopId = operation === 'stop-update' ? 'stop-1' : 'stop-pinned';
+			const intent = operation === 'guide-create'
+				? guideCreateIntent({ ...common, ids: { operation: 'op-pin', guide: 'guide-pinned', stop: stopId }, presentationId: 'presentation-1', label: 'Pinned' })
+				: operation === 'stop-create'
+					? stopCreateIntent({ ...common, ids: { operation: 'op-pin', stop: stopId }, presentationId: 'presentation-1', guideId: 'guide-1', afterStopId: null })
+					: stopUpdateIntent({ ...common, ids: { operation: 'op-pin' }, stopId });
+			expect((await coordinator.accept(intent)).kind).toBe('accepted');
+			const pinned = coordinator.acceptedSnapshot().domain.source;
+			expect(experienceOf(pinned).stops.find((stop) => stop.id === stopId)!.entryViewId).toBe('view-1');
+			expect((await coordinator.accept(presentationUpdateIntent({
+				envelope: pinned, revision: coordinator.acceptedRevision(), ids: { operation: 'op-reorder' },
+				experienceId: 'experience-1', presentationId: 'presentation-1',
+				views: [{ viewId: 'view-2' }, { viewId: 'view-1' }]
+			}))).kind).toBe('accepted');
+			const saved = JSON.parse(serializeProjectEnvelope(coordinator.acceptedSnapshot().domain.source));
+			const experience = experienceOf(saved);
+			expect(experience.presentations[0]!.views[0]!.viewId).toBe('view-2');
+			expect(experience.stops.find((stop) => stop.id === stopId)!.entryViewId).toBe('view-1');
+			// Existing Stops that follow the Default keep that authored intent.
+			if (operation !== 'stop-update') expect(experience.stops.find((stop) => stop.id === 'stop-1')!.entryViewId).toBeNull();
+		}
+	);
 	it('refuses a Stop entry View that is not one of its Presentation views', async () => {
 		const { source, coordinator } = await boot();
 		const refused = await coordinator.accept(
@@ -149,7 +293,7 @@ describe('capture, binding and Guide order', () => {
 				ids: { operation: 'op-invalid-entry' },
 				experienceId: 'experience-1',
 				stopId: 'stop-2',
-				views: [{ viewId: 'view-1' }]
+				entryViewId: 'view-1'
 			})
 		);
 		expect(refused.kind).toBe('rejected');
@@ -188,53 +332,23 @@ describe('capture, binding and Guide order', () => {
 		expect(coordinator.history().depth).toBe(2);
 	});
 
-	it('refuses clearing a Default View a Stop still enters at', async () => {
+	it('keeps View 1 as the Default: a Views write that drops or adds a View is refused', async () => {
 		const { source, coordinator } = await boot();
-		// stop-1 names no entry View, so its own entry is presentation-1's Default.
-		const refused = await coordinator.accept(
-			presentationUpdateIntent({
-				envelope: source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-no-default' },
-				experienceId: 'experience-1',
-				presentationId: 'presentation-1',
-				defaultViewId: null
-			})
-		);
-		expect(refused.kind).toBe('rejected');
+		for (const views of [[], [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'cut' as const }]]) {
+			const refused = await coordinator.accept(
+				presentationUpdateIntent({
+					envelope: source,
+					revision: coordinator.acceptedRevision(),
+					ids: { operation: `op-views-${views.length}` },
+					experienceId: 'experience-1',
+					presentationId: 'presentation-1',
+					views
+				})
+			);
+			expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-order' });
+		}
+		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).presentations[0]!.views).toEqual([{ viewId: 'view-1' }]);
 		expect(coordinator.history().depth).toBe(1);
-
-		// Giving the Stop its own entry View does not make the Default clearable: the
-		// Stop still enters through its Presentation, which would be left without an
-		// enterable Default View.
-		const entry = await coordinator.accept(
-			stopUpdateIntent({
-				envelope: source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-entry-view' },
-				experienceId: 'experience-1',
-				stopId: 'stop-1',
-				views: [{ viewId: 'view-1' }]
-			})
-		);
-		expect(entry.kind).toBe('accepted');
-		const stillEntered = await coordinator.accept(
-			presentationUpdateIntent({
-				envelope: coordinator.acceptedSnapshot().domain.source,
-				revision: coordinator.acceptedRevision(),
-				ids: { operation: 'op-no-default-with-entry' },
-				experienceId: 'experience-1',
-				presentationId: 'presentation-1',
-				defaultViewId: null
-			})
-		);
-		// `planner-rejected` is the coordinator's code for a planner refusal; the
-		// planner's own `invalid-payload` stays in `reason`.
-		expect(stillEntered).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
-		if (stillEntered.kind !== 'rejected') return;
-		expect(stillEntered.message).toContain('keep a Default View');
-		expect(experienceOf(coordinator.acceptedSnapshot().domain.source).presentations[0]!.defaultViewId).toBe('view-1');
-		expect(coordinator.history().depth).toBe(2);
 	});
 });
 
@@ -308,9 +422,12 @@ describe('Preview entry rule', () => {
 				entry.id === 'experience-1'
 					? {
 							...entry,
+							stops: entry.stops.map((stop) =>
+								stop.id === 'stop-1' ? { ...stop, transition: 'cut' as const } : stop
+							),
 							guides: [
-								...entry.guides,
-								{ id: 'guide-2', label: 'Other', stopIds: ['stop-2'], entryStopId: 'stop-2' }
+								{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const },
+								{ id: 'guide-2', label: 'Other', stopIds: ['stop-2'], pacing: 'automatic' as const }
 							]
 						}
 					: entry
@@ -373,9 +490,8 @@ describe('Preview entry rule', () => {
 							{
 								id: 'presentation-no-default',
 								label: 'Study',
-								viewIds: ['view-1'],
+								views: [],
 								explorable: true,
-								defaultViewId: null,
 								subject: null,
 								text: null
 							}

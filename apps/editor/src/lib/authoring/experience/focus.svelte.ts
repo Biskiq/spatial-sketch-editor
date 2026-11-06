@@ -10,7 +10,7 @@
  * There is no second selection. `stopId` and `presentationId` are views of the subject,
  * so a remembered Stop or Presentation can never outlive the selection that replaced
  * it: a Stop or transition subject names a Stop, a Presentation or View subject names a
- * Presentation, and a Guide subject names neither.
+ * Presentation, and the Experience subject names neither.
  *
  * A project replacement resets it, because the identities it names belong to the
  * source that was replaced.

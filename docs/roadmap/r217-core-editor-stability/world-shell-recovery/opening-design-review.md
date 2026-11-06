@@ -1,10 +1,10 @@
 # Opening design — PR #270 owner review
 
-Proposal, 2026-11-04. The World shell has not been formally promoted. Production
+Proposal, 2026-11-04. The accepted World visual language is now consolidated under the design-system reference. Production
 code and domain contracts remain the functional authority. This addition changes
 no production source, persisted format, track status or S11 acceptance.
 
-Open [section 9 of the existing interaction sheet](./review-pass-2-interaction-sheet.html#s-opening).
+Open [Opening specimen in the World interaction reference](../../../reference/design-system/world-interaction-sheet.html#s-opening).
 The adjacent bundle is required when copying the sheet. It opens directly from disk.
 Choose Door/Window, hover the Wall, click to place, then drag the sticker grips.
 For keyboard placement, open More, enter Offset, then Place. Width/height remain
@@ -74,8 +74,9 @@ One session intent separates **tool**, **target surface**, **intended reading** 
 
 ## Specimen implementation and verification
 
-[Source](./opening-design.js) imports current Layout planners and production
-refusal wording. [Bundle](./opening-design.bundle.js) packages them for offline
+[Source](../../../reference/design-system/world-interaction-sheet/opening.js) imports current Layout planners, production Plan symbols and production
+refusal wording. The HTML keeps the styles used by this external bundle, including cutouts,
+transparent hit areas and dashed Door swings. [Bundle](../../../reference/design-system/world-interaction-sheet/opening.bundle.js) packages them for offline
 review. Geometry on screen is schematic SVG; there is one host and session-local
 state, no F.4 coordinator, undo stack, persistence, production raycast or compiled
 Opening mesh. In particular this is real planner validation, not a full editor.
@@ -84,9 +85,13 @@ The other sheet sections retain their existing illustrative screen maths.
 Rebuild from repository root after changing the specimen or imported planners:
 
 ```sh
-node -e "require('esbuild').buildSync({entryPoints:['docs/roadmap/r217-core-editor-stability/world-shell-recovery/opening-design.js'],bundle:true,minify:true,format:'iife',define:{'import.meta.env.DEV':'false'},outfile:'docs/roadmap/r217-core-editor-stability/world-shell-recovery/opening-design.bundle.js'})"
+node -e "require('esbuild').buildSync({entryPoints:['docs/reference/design-system/world-interaction-sheet/opening.js'],bundle:true,minify:true,format:'iife',define:{'import.meta.env.DEV':'false'},outfile:'docs/reference/design-system/world-interaction-sheet/opening.bundle.js'})"
 ```
 
 Minimal verification: bundle builds cleanly; jsdom smoke exercises initialization,
 Door/Window creation, overlap/bounds refusals, cancellation, view switching,
-disclosure and reset. `npm run test:arch` passes all 23 files / 207 tests, including documentation references; `git diff --check` is clean. Owner handles visual acceptance; no browser QA campaign.
+disclosure and reset. Browser smoke verifies Plan and 3D cutouts, transparent hit areas,
+production Door/Window symbols, placement, keyboard sliding and a 390 px layout without
+overflow or browser errors. The production Plan contract passes all 26 tests;
+`npm run test:arch` passes all 23 files / 209 tests, including documentation references.
+`git diff --check` is clean. Final visual acceptance remains with the owner.

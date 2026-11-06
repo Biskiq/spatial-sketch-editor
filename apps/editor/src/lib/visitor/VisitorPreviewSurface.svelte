@@ -12,6 +12,9 @@ import { PCFShadowMap } from 'three';
 	import type { ExecutionProgram, ExperienceInterpreterOptions } from '@portfolio/project-model/units';
 	import { formatGuideTime } from '@portfolio/camera-core';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
+	import { visitorProgressFor } from './visitor-progress';
+	import { guideRunFromProgram, guideTimeMapForProgram } from './guide-run-map';
+	import VisitorTimeline from './VisitorTimeline.svelte';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
@@ -90,15 +93,19 @@ import { PCFShadowMap } from 'three';
 			: createVisitorRuntimeState({ program, options: experienceOptions });
 	});
 	let cameraGap = $state<string | null>(null);
+	/** The live Camera Travel's existing transition fraction, for the connector. */
+	let travelProgress = $state(0);
 	let surfaceMode = $state<'welcome' | 'guided' | 'free'>(initialVisitorSurfaceMode(mode, startMode));
-	let paused = $state(false);
 	let placesOpen = $state(false);
+	/** Invitations hidden with ✕, by occurrence: dismissing lasts one visit. Session only. */
+	let dismissedInvitations = $state<ReadonlySet<string>>(new Set());
+	/** The visitor has dragged away from the saved View while exploring. */
+	let lookingAround = $state(false);
 	let freeViewId = $state<string | null>(null);
 	/** Bumped for every explicit destination boundary, even when the override is null. */
 	let destinationEpoch = $state(0);
 	/** The authored run is over and the end screen owns the surface. */
 	let showEnd = $state(false);
-	let traveling = $state(false);
 	const freePresentations = $derived(visitorState?.freePresentations ?? []);
 	const currentStopNumber = $derived.by(() => {
 		const stopId = visitorState?.state.stopId ?? null;
@@ -119,8 +126,9 @@ import { PCFShadowMap } from 'three';
 		// A published route enters the tour; an editor Preview keeps its welcome
 		// chooser. Neither inherits a previous run's mode.
 		surfaceMode = initialVisitorSurfaceMode(mode, startMode);
-		paused = false;
 		placesOpen = false;
+		dismissedInvitations = new Set();
+		lookingAround = false;
 		freeViewId = null;
 		showEnd = false;
 	});
@@ -131,9 +139,10 @@ import { PCFShadowMap } from 'three';
 	});
 	function chooseGuided(): void {
 		if (visitorState === null || visitorState.program.entryStopId === null) return;
+		visitorState.start(null);
+		if (mode === 'preview') visitorState.pause();
 		surfaceMode = 'guided';
 		showEnd = false;
-		paused = false;
 	}
 	function chooseFree(): void {
 		// A completed interpreter ignores presentation entry. Continue after the
@@ -143,31 +152,71 @@ import { PCFShadowMap } from 'three';
 		showEnd = false;
 		placesOpen = true;
 		freeViewId = null;
-		paused = false;
 		destinationEpoch += 1;
 	}
+	/**
+	 * Explore (sheet §31): always in the bar at an arrived Stop, and the
+	 * invitation's own button. It freezes the Guide clock and keeps the Stop
+	 * occurrence; during an arrival Travel it lands first.
+	 */
+	function explore(): void {
+		if (visitorState?.explore() !== true) return;
+		placesOpen = false;
+		lookingAround = false;
+		freeViewId = null;
+		destinationEpoch += 1;
+	}
+	function dismissInvitation(): void {
+		const occurrenceId = visitorState?.state.occurrenceId ?? null;
+		if (occurrenceId === null) return;
+		dismissedInvitations = new Set([...dismissedInvitations, occurrenceId]);
+	}
+	/** Back to the tour: a Cut to the Stop's View, with its playhead and play state. */
 	function backToTheTour(): void {
 		if (visitorState?.canResume === true) visitorState.resume();
 		surfaceMode = 'guided';
 		showEnd = false;
+		placesOpen = false;
+		lookingAround = false;
 		freeViewId = null;
-		paused = false;
 		destinationEpoch += 1;
 	}
 	function goPrevious(): void {
 		// Prev is a Cut: the Experience moves to the previous Stop, and the destination
-		// boundary settles the Camera on that Stop's first View with no travel back.
+		// boundary settles the Camera on that Stop's entry View with no travel back.
 		if (visitorState?.previousStop() !== true) return;
 		showEnd = false;
 		freeViewId = null;
 		destinationEpoch += 1;
 	}
+	function toggleTourPlayback(): void {
+		if (visitorState?.ended) {
+			visitorState.restart();
+			visitorState.play();
+		} else visitorState?.togglePause();
+	}
+
+	function goNext(): void {
+		visitorState?.continue();
+	}
+	function exploreStep(direction: -1 | 1): void {
+		if (visitorState?.exploreStep(direction) === true) lookingAround = false;
+	}
+	function exploreTo(viewId: string): void {
+		if (visitorState?.exploreView(viewId) === true) lookingAround = false;
+	}
+	/** ⟲ cuts back to the last saved View after looking around. */
+	function backToSavedView(): void {
+		lookingAround = false;
+		destinationEpoch += 1;
+	}
 	function startAgain(): void {
 		visitorState?.restart();
+		if (mode === 'preview') visitorState?.pause();
 		surfaceMode = 'guided';
 		showEnd = false;
-		paused = false;
 		freeViewId = null;
+		dismissedInvitations = new Set();
 		destinationEpoch += 1;
 	}
 	function startGuidedFromFree(): void {
@@ -178,30 +227,108 @@ import { PCFShadowMap } from 'three';
 		if (visitorState.ended || visitorState.state.stopId === null) {
 			visitorState.beginFreeExploration();
 			visitorState.start(null);
+			if (mode === 'preview') visitorState.pause();
 		}
 		surfaceMode = 'guided';
 		showEnd = false;
 		freeViewId = null;
-		paused = false;
 		destinationEpoch += 1;
 	}
+	/** Places: open a Presentation at View 1, keeping the one resume point. */
 	function choosePlace(presentationId: string): void {
 		freeViewId = null;
 		showEnd = false;
-		paused = false;
 		if (visitorState?.selectPresentation(presentationId) === true) {
 			placesOpen = false;
+			lookingAround = false;
 			destinationEpoch += 1;
 		}
 	}
 	function chooseView(presentationId: string, viewId: string): void {
-		if (visitorState?.selectPresentation(presentationId) !== true) return;
-		freeViewId = viewId;
+		if (visitorState?.selectPresentation(presentationId, viewId) !== true) return;
+		freeViewId = null;
 		placesOpen = false;
 		showEnd = false;
-		paused = false;
+		lookingAround = false;
 		destinationEpoch += 1;
 	}
+	/** Visitor keys (plan): ← Prev, Space Pause, E Explore; in Explore ← → step Views and B goes back. */
+	function onVisitorCommand(command: 'previous' | 'pause' | 'explore' | 'back' | 'view-previous' | 'view-next'): void {
+		if (visitorState === null) return;
+		if (command === 'previous') goPrevious();
+		else if (command === 'pause') toggleTourPlayback();
+		else if (command === 'explore') explore();
+		else if (command === 'back') backToTheTour();
+		else if (command === 'view-previous') exploreStep(-1);
+		else exploreStep(1);
+	}
+	const exploringPresentation = $derived(
+		visitorState !== null && visitorState.state.stopId === null ? visitorState.currentPresentation : null
+	);
+	const currentExploreViewId = $derived(visitorState?.state.viewId ?? null);
+	const atStop = $derived(
+		visitorState !== null &&
+			visitorState.state.stopId !== null &&
+			(visitorState.state.phase === 'holding' || visitorState.state.phase === 'ready')
+	);
+	const invitationShown = $derived(
+		visitorState !== null &&
+			atStop &&
+			visitorState.invitation !== null &&
+			!dismissedInvitations.has(visitorState.state.occurrenceId ?? '')
+	);
+	const stopViewCount = $derived(
+		visitorState?.currentStop === null || visitorState === null
+			? 0
+			: visitorState.program.presentations.find((entry) => entry.id === visitorState.currentStop?.presentationId)?.viewIds.length ?? 0
+	);
+	const invitationText = $derived.by(() => {
+		const prompt = visitorState?.invitation?.prompt?.trim() ?? '';
+		if (prompt !== '') return prompt;
+		const more = stopViewCount - 1;
+		return more > 0 ? `Take a closer look · ${more} more ${more === 1 ? 'view' : 'views'}` : 'Look around';
+	});
+	const remainingText = $derived.by(() => {
+		if (visitorState === null || visitorState.state.stopId === null) return '';
+		if (visitorState.traveling) return `Moving to Stop ${currentStopNumber}`;
+		if (visitorState.pacing === 'manual') return "Press Next when you're ready";
+		const left = Math.max(0, Math.ceil((visitorState.state.holdRemainingMs ?? 0) / 1000));
+		return visitorState.paused ? `Paused · ${left} s left here` : `${left} s left here`;
+	});
+	const resumeClock = $derived.by(() => {
+		const resume = visitorState?.state.resume ?? null;
+		if (resume === null || visitorState === null) return '';
+		const stop = visitorState.program.stops.find((entry) => entry.id === resume.stopId);
+		if (stop === undefined || stop.staySeconds === null || resume.holdRemainingMs === null) return '';
+		return `, ${Math.max(0, Math.ceil(resume.holdRemainingMs / 1000))} s left`;
+	});
+	const isLastStop = $derived(visitorState !== null && currentStopNumber === visitorState.program.stops.length);
+	const guideOrder = $derived.by(() => {
+		if (visitorState === null) return undefined;
+		const run = guideRunFromProgram({
+			program: visitorState.program,
+			transitions: experienceOptions?.transitions ?? []
+		});
+		return run.kind === 'ready' ? run.occurrences.map((occurrence) => occurrence.stopId) : undefined;
+	});
+	const timelineMap = $derived.by(() => {
+		if (visitorState === null) return null;
+		const result = guideTimeMapForProgram({ program: visitorState.program, transitions: experienceOptions?.transitions ?? [], graph });
+		return result.kind === 'ready' ? result.map : null;
+	});
+	const progress = $derived(
+		visitorState === null
+			? null
+			: visitorProgressFor(visitorState.program, visitorState.state, {
+					order: guideOrder,
+					travelProgress,
+					arrivesByTravel: new Set(
+						(experienceOptions?.transitions ?? [])
+							.filter((entry) => entry.invocation.kind === 'travel')
+							.map((entry) => entry.toStopId)
+					)
+				})
+	);
 	$effect(() => {
 		if (visitorState === null) return;
 		visitorState.reducedMotion = reducedMotion;
@@ -220,7 +347,11 @@ import { PCFShadowMap } from 'three';
 		// start() reads the run state it replaces; untracked, so the new state never re-runs this.
 		const runtime = visitorState;
 		const entry = entryPresentationId;
-		untrack(() => runtime.start(entry));
+		untrack(() => {
+			const entering = !runtime.state.entered;
+			runtime.start(entry);
+			if (entering && mode === 'preview' && surfaceMode === 'guided') runtime.pause();
+		});
 	});
 	/**
 	 * This entry's first presented opportunity.
@@ -256,10 +387,10 @@ import { PCFShadowMap } from 'three';
 		mode === 'public'
 			? isZeroNode
 				? 'Published project. No guided Experience: drag to orbit, wheel to zoom, right-drag to pan.'
-				: 'Published project. Press Right Arrow or Enter to continue, W A S D or drag to look around.'
+				: 'Published project. Right Arrow or Enter is Next, Left Arrow is Previous, Space pauses, E explores; in Explore, Left and Right step Views and B goes back to the tour. W A S D or drag to look around.'
 			: isZeroNode
 				? 'Visitor preview. No guided Experience: drag to orbit, wheel to zoom, right-drag to pan. Press Escape to exit preview.'
-				: 'Visitor preview. Press Right Arrow or Enter to continue, W A S D or drag to look around. Press Escape to exit preview.'
+				: 'Visitor preview. Right Arrow or Enter is Next, Left Arrow is Previous, Space pauses, E explores; in Explore, Left and Right step Views and B goes back to the tour. W A S D or drag to look around. Press Escape to exit preview.'
 	);
 	const publicTitle = $derived((title ?? '').trim() || 'Published project');
 
@@ -316,14 +447,13 @@ import { PCFShadowMap } from 'three';
 					bounds={geometry.bounds ?? null}
 					{runEpoch}
 					{active}
-					paused={paused || surfaceMode === 'welcome'}
-					timeAligned={mode === 'preview'}
-					guidedInputEnabled={surfaceMode === 'guided' && !paused && !visitorState.ended}
-					suspendGuidance={surfaceMode === 'free'}
+					guidedInputEnabled={surfaceMode === 'guided' && !visitorState.ended}
 					viewOverride={freeViewId}
 					{destinationEpoch}
 					onCameraGap={(message) => (cameraGap = message)}
-					onTraveling={(value) => (traveling = value)}
+					onTravelProgress={(fraction) => (travelProgress = fraction)}
+					onCommand={onVisitorCommand}
+					onLook={(value) => (lookingAround = value)}
 				/>
 			{/if}
 			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
@@ -353,7 +483,7 @@ import { PCFShadowMap } from 'three';
 					onclick={chooseGuided}
 				>
 					<strong>Take the guided tour</strong>
-					<span>{guideStopCount} {guideStopCount === 1 ? 'stop' : 'stops'} · about {formatGuideTime(guideSeconds)}</span>
+					<span>{guideStopCount} {guideStopCount === 1 ? 'stop' : 'stops'} · {visitorState?.pacing === 'manual' ? 'at your own pace' : `about ${formatGuideTime(guideSeconds)}`}</span>
 				</button>
 				<button type="button" class="choice" disabled={freePresentations.length === 0} onclick={chooseFree}>
 					<strong>Explore freely</strong>
@@ -362,31 +492,62 @@ import { PCFShadowMap } from 'three';
 			</div>
 		</section>
 	{/if}
-	{#if surfaceMode === 'guided' && visitorState !== null && !visitorState.ended && visitorState.state.stopId !== null}
-		<nav class="visitor-guided" aria-label="Tour controls">
-			<div class="guided-caption">
-				<p class="overline">Guided tour · Stop {currentStopNumber} of {visitorState.program.stops.length}</p>
-				<strong class="guided-title">{visitorState.currentPresentation?.label ?? 'The tour'}</strong>
-				<div class="prog" aria-hidden="true">
-					{#each visitorState.program.stops as stop, index (stop.id)}
-						<i class:done={index + 1 < currentStopNumber} class:current={index + 1 === currentStopNumber}></i>
-					{/each}
-				</div>
-			</div>
-			<div class="guided-actions">
-				<button
-					type="button"
-					class="vbtn"
-					disabled={currentStopNumber <= 1}
-					title={currentStopNumber <= 1 ? 'This is the first Stop' : 'Cut to the previous Stop'}
-					onclick={goPrevious}>← Prev</button
-				>
-				<button type="button" class="vbtn gold" onclick={() => (paused = !paused)}>{paused ? 'Play' : 'Pause'}</button>
-				<button type="button" class="vbtn" disabled={visitorState.state.phase === 'holding' || traveling}
-					title={traveling ? 'The authored movement is still arriving' : visitorState.state.phase === 'holding' ? 'The authored hold is still playing' : 'Next stop'}
-					onclick={() => visitorState?.continue()}>Next stop →</button>
-				<button type="button" class="vbtn" onclick={() => visitorState?.finish()}>Finish tour</button>
-				<button type="button" class="vbtn" onclick={chooseFree}>Explore freely</button>
+	{#if surfaceMode === 'guided' && visitorState !== null && (mode === 'preview' || !visitorState.ended) && visitorState.state.stopId !== null}
+		{#if invitationShown}
+			<!-- The invitation is a hint: polite, never takes focus, never pauses the tour. -->
+			<aside class="visitor-invitation" role="status" aria-live="polite" aria-label="Invitation to explore">
+				<button type="button" class="invitation-close" aria-label="Hide for this visit" onclick={dismissInvitation}>✕</button>
+				<strong>{invitationText}</strong>
+				<small>
+					{visitorState.currentPresentation?.label ?? ''} · {visitorState.pacing === 'manual'
+						? "then press Next when you're ready"
+						: "the tour carries on if you don't"}
+				</small>
+				<button type="button" class="vbtn gold" onclick={explore}>Explore</button>
+			</aside>
+		{/if}
+		<!-- Sheet §33 F: a small caption, and one glass HUD with the segmented bar. -->
+		<p class="visitor-caption">
+			Stop {currentStopNumber} of {visitorState.program.stops.length}<b>{visitorState.currentPresentation?.label ?? 'The tour'}</b>
+		</p>
+		<nav class="visitor-hud" aria-label="Tour controls">
+			{#if progress !== null && timelineMap !== null && timelineMap.segments.length > 0}
+				<VisitorTimeline map={timelineMap} visitor={visitorState} {progress} interactive={mode === 'preview'} />
+			{/if}
+			<div class="hud-row">
+				<span class="hud-title">
+					<b>{visitorState.currentPresentation?.label ?? 'The tour'}</b>
+					<span class="hud-status" aria-live="off">· {remainingText}</span>
+				</span>
+				<span class="hud-actions">
+					<button
+						type="button"
+						class="hbtn"
+						disabled={currentStopNumber <= 1}
+						title={currentStopNumber <= 1 ? 'This is the first Stop' : 'Cut to the previous Stop'}
+						onclick={goPrevious}>← Prev</button
+					>
+					{#if visitorState.pacing === 'automatic'}
+						<button type="button" class="hbtn" aria-pressed={visitorState.paused || visitorState.ended} onclick={toggleTourPlayback}
+							>{visitorState.paused || visitorState.ended ? '▶ Play' : '❚❚ Pause'}</button
+						>
+					{/if}
+					<button
+						type="button"
+						class="hbtn"
+						class:pri={visitorState.pacing === 'manual'}
+						disabled={visitorState.ended}
+						title={visitorState.traveling ? 'Arrive now' : isLastStop ? 'Finish the tour' : 'Go to the next Stop'}
+						onclick={goNext}>{isLastStop && !visitorState.traveling ? 'Finish' : 'Next →'}</button
+					>
+					<button
+						type="button"
+						class="hbtn"
+						disabled={visitorState.ended}
+						title={visitorState.traveling ? 'Arrive first, then explore' : 'Pause the tour and explore'}
+						onclick={explore}>◎ Explore{stopViewCount > 1 ? ` · ${stopViewCount} views` : ''}</button
+					>
+				</span>
 			</div>
 		</nav>
 	{/if}
@@ -420,19 +581,71 @@ import { PCFShadowMap } from 'three';
 						</div>
 					</section>
 				{/each}
+				{#if freePresentations.length === 0}<p class="places-empty">Nothing is listed in Places.</p>{/if}
 			</aside>
 		{/if}
-		<nav class="visitor-free" aria-label="Free exploration">
-			<p class="explore-hint">Drag to look around · click the floor to walk</p>
-			{#if visitorState.canResume}
-				<button type="button" class="vbtn gold" onclick={backToTheTour}>
-					↩ Back to the tour{resumeStopNumber > 0 ? ` · Stop ${resumeStopNumber}` : ''}
-				</button>
+		<nav class="visitor-free" aria-label={visitorState.exploring ? 'Exploring' : 'Free exploration'}>
+			{#if exploringPresentation !== null}
+				<div class="explore-caption">
+					<p class="overline">{visitorState.exploring ? 'Exploring · the tour is paused' : 'Exploring'}</p>
+					<strong class="guided-title">{exploringPresentation.label}</strong>
+				</div>
+				{#if exploringPresentation.viewIds.length > 1}
+					<div class="explore-strip" role="group" aria-label={`${exploringPresentation.label}: Views`}>
+						<button
+							type="button"
+							class="vbtn"
+							aria-label="Previous View"
+							disabled={visitorState.state.viewIndex === 0}
+							onclick={() => exploreStep(-1)}>‹</button
+						>
+						{#each exploringPresentation.viewIds as viewId, index (viewId)}
+							{#if index > 0}
+								<em class="explore-step" title={exploringPresentation.steps[index - 1]?.kind === 'travel' ? 'Travel' : 'Cut'}
+									>{exploringPresentation.steps[index - 1]?.kind === 'travel' ? '↗' : '✂'}</em
+								>
+							{/if}
+							<button
+								type="button"
+								class="explore-view"
+								aria-current={!lookingAround && viewId === currentExploreViewId}
+								onclick={() => exploreTo(viewId)}>{index + 1} · {viewLabels?.get(viewId) ?? viewId}</button
+							>
+						{/each}
+						<button
+							type="button"
+							class="vbtn"
+							aria-label="Next View"
+							disabled={visitorState.state.viewIndex === exploringPresentation.viewIds.length - 1}
+							onclick={() => exploreStep(1)}>›</button
+						>
+					</div>
+				{:else}
+					<p class="explore-hint">One View: drag the picture to look around.</p>
+				{/if}
+			{:else}
+				<p class="explore-hint">Choose a place · each opens at View 1</p>
 			{/if}
-			{#if visitorState.program.entryStopId !== null && !visitorState.canResume}
-				<button type="button" class="vbtn" onclick={startGuidedFromFree}>Start the guided tour</button>
-			{/if}
-			<button type="button" class="vbtn" onclick={() => (placesOpen = !placesOpen)} aria-expanded={placesOpen}>Places</button>
+			<div class="explore-actions">
+				{#if visitorState.canResume}
+					<button type="button" class="vbtn gold" onclick={backToTheTour}>
+						↩ Back to the tour{resumeStopNumber > 0 ? ` · Stop ${resumeStopNumber}${resumeClock}` : ''}
+					</button>
+				{/if}
+				{#if visitorState.program.entryStopId !== null && !visitorState.canResume}
+					<button type="button" class="vbtn" onclick={startGuidedFromFree}>Start the guided tour</button>
+				{/if}
+				{#if lookingAround && currentExploreViewId !== null}
+					<button type="button" class="vbtn" onclick={backToSavedView}>⟲ Back to {viewLabels?.get(currentExploreViewId) ?? 'the View'}</button>
+				{/if}
+				<button type="button" class="vbtn" onclick={() => (placesOpen = !placesOpen)} aria-expanded={placesOpen}>☰ Places</button>
+				<button type="button" class="vbtn" disabled title="Walking needs a Camera free-move controller: later">Walk</button>
+				{#if exploringPresentation !== null}
+					<span class="guided-remaining">
+						{exploringPresentation.viewIds.length > 1 ? `View ${(visitorState.state.viewIndex ?? 0) + 1} of ${exploringPresentation.viewIds.length} · ` : ''}your pace, no timer
+					</span>
+				{/if}
+			</div>
 		</nav>
 	{/if}
 	{#if cameraGap}
@@ -689,68 +902,217 @@ import { PCFShadowMap } from 'three';
 		border-color: transparent;
 		filter: brightness(1.05);
 	}
-	/* ---- Guided tour bar in a bottom gradient ---- */
-	.visitor-guided {
+	/* ---- Guided tour (sheet §33 F): a small caption and one glass HUD ---- */
+	.visitor-caption {
 		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: 16px;
-		padding: 56px 24px 22px;
-		background: linear-gradient(to top, rgb(17 41 31 / 0.94) 35%, rgb(17 41 31 / 0));
+		left: 20px;
+		top: 68px;
+		margin: 0;
+		color: #fff;
+		font: 500 12px var(--visitor-sans);
+		text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
+		pointer-events: none;
+		z-index: 6;
+	}
+	.visitor-caption b {
+		display: block;
+		font: 500 20px/1.2 var(--visitor-serif);
+	}
+	.visitor-hud,
+	.visitor-free {
+		position: absolute;
+		left: 16px;
+		right: 16px;
+		bottom: 16px;
+		display: grid;
+		gap: 10px;
+		padding: 12px 14px;
+		border-radius: 14px;
+		background: rgb(14 30 25 / 0.86);
+		-webkit-backdrop-filter: blur(12px);
+		backdrop-filter: blur(12px);
 		color: var(--visitor-ivory);
 		z-index: 6;
 	}
-	.guided-caption {
-		display: grid;
-		gap: 4px;
-		min-width: 0;
-	}
-	.guided-caption .overline {
-		margin: 0;
-	}
-	.guided-title {
-		font: 500 26px/1.15 var(--visitor-serif);
-	}
-	.prog {
-		display: flex;
-		gap: 4px;
-		margin-top: 8px;
-	}
-	.prog i {
-		display: block;
-		width: 26px;
-		height: 4px;
-		border-radius: 2px;
-		background: rgb(243 240 228 / 22%);
-	}
-	.prog i.done {
-		background: rgb(243 240 228 / 70%);
-	}
-	.prog i.current {
-		background: var(--visitor-gold);
-	}
-	.guided-actions {
+	.hud-row {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
-		justify-content: flex-end;
+		align-items: center;
+		gap: 8px 12px;
+		font: 500 13px var(--visitor-sans);
 	}
-	/* ---- Exploring: hint, way back to the tour, Places ---- */
-	.visitor-free {
+	.hud-title {
+		min-width: 0;
+	}
+	.hud-title b {
+		font: 500 17px var(--visitor-serif);
+	}
+	.hud-status {
+		color: var(--visitor-quiet, #9fb2a5);
+		white-space: nowrap;
+	}
+	.hud-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-left: auto;
+	}
+	.hbtn {
+		min-height: 32px;
+		padding: 0 12px;
+		border: 1px solid rgb(243 240 228 / 25%);
+		border-radius: 9px;
+		background: rgb(255 255 255 / 6%);
+		color: var(--visitor-ivory);
+		font: 500 13px var(--visitor-sans);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.hbtn:hover:not(:disabled) {
+		background: rgb(255 255 255 / 14%);
+	}
+	.hbtn:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.hbtn.pri {
+		border-color: var(--visitor-ivory);
+		background: var(--visitor-ivory);
+		color: var(--visitor-forest);
+		font-weight: 600;
+	}
+	.hbtn:focus-visible {
+		outline: 2px solid #9fd0b2;
+		outline-offset: 1px;
+	}
+	/* Exploring shares the HUD panel and its compact buttons. */
+	.guided-title {
+		font: 500 17px var(--visitor-serif);
+	}
+	.guided-remaining {
+		color: var(--visitor-quiet, #9fb2a5);
+		font: 500 12px var(--visitor-sans);
+		white-space: nowrap;
+	}
+	.visitor-free .overline {
+		margin: 0;
+		color: var(--visitor-quiet, #9fb2a5);
+		font: 500 12px var(--visitor-sans);
+		letter-spacing: 0;
+		text-transform: none;
+	}
+	.visitor-free .vbtn {
+		min-height: 32px;
+		padding: 0 12px;
+		border-radius: 9px;
+		background: rgb(255 255 255 / 6%);
+		font: 500 13px var(--visitor-sans);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+	.visitor-free .vbtn.gold {
+		border-color: var(--visitor-ivory);
+		background: var(--visitor-ivory);
+		color: var(--visitor-forest);
+		font-weight: 600;
+	}
+	/* ---- The invitation: a card beside Explore; a hint, never a stop ---- */
+	.visitor-invitation {
 		position: absolute;
-		left: 24px;
 		right: 24px;
-		bottom: 24px;
+		bottom: 112px;
+		display: grid;
+		gap: 6px;
+		width: min(260px, calc(100% - 48px));
+		padding: 10px 12px 12px;
+		border: 1px solid rgb(212 173 69 / 55%);
+		border-radius: 12px;
+		background: rgb(10 24 18 / 0.88);
+		box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
+		color: #fff;
+		z-index: 7;
+		animation: visitor-invite 0.35s ease-out;
+	}
+	.visitor-invitation strong {
+		padding-right: 22px;
+		font: 500 15px/1.2 var(--visitor-serif);
+	}
+	.visitor-invitation small {
+		color: #cfd8d2;
+		font: 500 12px var(--visitor-sans);
+	}
+	.visitor-invitation .vbtn {
+		justify-self: start;
+	}
+	.invitation-close {
+		position: absolute;
+		top: 4px;
+		right: 4px;
+		width: 28px;
+		height: 28px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: #cfd8d2;
+		cursor: pointer;
+	}
+	.invitation-close:hover {
+		background: rgb(255 255 255 / 10%);
+	}
+	@keyframes visitor-invite {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.visitor-invitation {
+			animation: none;
+		}
+	}
+	/* ---- Exploring: the Presentation's Views, Back to the tour, Places ---- */
+	.explore-caption {
+		display: grid;
+		gap: 4px;
+	}
+	.explore-caption .overline {
+		margin: 0;
+	}
+	.explore-strip,
+	.explore-actions {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px;
-		z-index: 6;
+	}
+	.explore-strip {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+	}
+	.explore-view {
+		flex: none;
+		min-height: 40px;
+		padding: 0 12px;
+		border: 1px solid rgb(243 240 228 / 22%);
+		border-radius: 8px;
+		background: var(--visitor-glass);
+		color: var(--visitor-ivory);
+		font: 500 12px var(--visitor-sans);
+		cursor: pointer;
+	}
+	.explore-view[aria-current='true'] {
+		border-color: var(--visitor-gold);
+		box-shadow: inset 0 0 0 1px var(--visitor-gold);
+	}
+	.explore-step {
+		flex: none;
+		color: rgb(243 240 228 / 60%);
+		font-style: normal;
+	}
+	.places-empty {
+		margin: 0;
+		font: 500 12px var(--visitor-sans);
+		opacity: 0.8;
 	}
 	.explore-hint {
 		margin: 0;
@@ -846,18 +1208,18 @@ import { PCFShadowMap } from 'three';
 		.choices {
 			grid-template-columns: 1fr;
 		}
-		.visitor-guided {
-			padding: 48px 16px 16px;
-			align-items: stretch;
-			flex-direction: column;
-		}
-		.guided-actions {
-			justify-content: flex-start;
-		}
+		.visitor-hud,
 		.visitor-free {
-			left: 12px;
-			right: 12px;
-			bottom: 16px;
+			left: 10px;
+			right: 10px;
+			bottom: 10px;
+		}
+		.hud-actions {
+			margin-left: 0;
+		}
+		.visitor-invitation {
+			right: 16px;
+			bottom: 220px;
 		}
 		.visitor-places {
 			width: 100%;

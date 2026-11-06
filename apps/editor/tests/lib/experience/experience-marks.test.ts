@@ -60,16 +60,14 @@ function experience(viewIds: readonly string[], guided: readonly string[]): Expe
 			{
 				id: 'pres',
 				label: 'Presentation',
-				viewIds,
-				defaultViewId: viewIds[0] ?? null,
+				views: viewIds.map((viewId, index) => (index === 0 ? { viewId } : { viewId, transition: 'cut' as const })),
 				subject: null,
 				text: null,
 				explorable: true
 			}
 		],
-		stops: [{ id: 'stop', presentationId: 'pres', views: guided.map((viewId) => ({ viewId })) }],
-		guides: [{ id: 'guide', label: 'Guide', stopIds: ['stop'], entryStopId: 'stop' }],
-		gates: [],
+		stops: [{ id: 'stop', presentationId: 'pres', entryViewId: guided[0] === viewIds[0] ? null : (guided[0] ?? null), staySeconds: 5, invitation: null }],
+		guides: [{ id: 'guide', label: 'Guide', stopIds: ['stop'], pacing: 'automatic' as const }],
 		detours: []
 	};
 }
@@ -78,21 +76,22 @@ it('relates the Views and Camera paths owned by each selection', () => {
 	const base = experience(['a', 'b', 'c'], ['a', 'b']);
 	const exp: Experience = {
 		...base,
+		presentations: [{ ...base.presentations[0]!, views: [{ viewId: 'a' }, { viewId: 'b', transition: 'travel' }, { viewId: 'c', transition: 'cut' }] }],
 		stops: [
-			{ id: 'stop', presentationId: 'pres', views: [{ viewId: 'a' }, { viewId: 'b', transition: 'travel' }] },
-			{ id: 'next', presentationId: 'pres', views: [{ viewId: 'c' }] }
+			{ id: 'stop', presentationId: 'pres', entryViewId: null, staySeconds: 5, invitation: null },
+			{ id: 'next', presentationId: 'pres', entryViewId: 'c', staySeconds: 5, invitation: null }
 		]
 	};
 	const guide = { ...base.guides[0]!, stopIds: ['stop', 'next'] };
-	const step = 'step:stop:b';
+	const step = 'step:pres:b';
 	const transition = 'transition:stop';
 	expect(relatedToSelection({ presentationId: 'pres' }, exp, guide)).toEqual({ views: new Set(['a', 'b', 'c']), paths: new Set() });
-	expect(relatedToSelection({ viewId: 'b' }, exp, guide)).toEqual({ views: new Set(['b']), paths: new Set([step, transition]) });
+	expect(relatedToSelection({ viewId: 'b' }, exp, guide)).toEqual({ views: new Set(['b']), paths: new Set([step, 'step:pres:c']) });
 	expect(relatedToSelection({ stopId: 'next' }, exp, guide)).toEqual({ views: new Set(['c']), paths: new Set([transition]) });
 	expect(relatedToSelection({ path: { kind: 'transition', stopId: 'stop' } }, exp, guide)).toEqual({
-		views: new Set(['b', 'c']), paths: new Set([transition])
+		views: new Set(['a', 'c']), paths: new Set([transition])
 	});
-	expect(relatedToSelection({ path: { kind: 'step', stopId: 'stop', toViewId: 'b' } }, exp, guide)).toEqual({
+	expect(relatedToSelection({ path: { kind: 'step', presentationId: 'pres', toViewId: 'b' } }, exp, guide)).toEqual({
 		views: new Set(['a', 'b']), paths: new Set([step])
 	});
 });

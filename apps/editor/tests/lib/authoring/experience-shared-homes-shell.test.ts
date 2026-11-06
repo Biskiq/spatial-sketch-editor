@@ -35,7 +35,7 @@ function presentation(id: string, label: string, overrides: Partial<Presentation
 }
 
 function guide(id: string, label: string, overrides: Partial<Guide> = {}): Guide {
-	return { id, label, stopCount: 1, open: false, selected: false, opening: false, ...overrides };
+	return { id, label, stopCount: 1, open: false, opening: false, ...overrides };
 }
 
 function experienceRow(id: string, label: string, stopCount = 0) {
@@ -61,6 +61,9 @@ function groups(overrides: Partial<ExperienceIndexGroups> = {}): ExperienceIndex
 		onCreateExperience: vi.fn(),
 		onRenameExperience: vi.fn(async () => ({ kind: 'accepted' as const })),
 		onOpenGuide: vi.fn(),
+		onRenameGuide: vi.fn(async () => ({ kind: 'accepted' as const })),
+		onRemoveGuide: vi.fn(),
+		onAddStopFromView: vi.fn(),
 		onSelectPresentation: vi.fn(),
 		onToggleExpand: vi.fn(),
 		onSelectView: vi.fn(),
@@ -138,6 +141,44 @@ describe('R217.S25 — the Index groups in the Experience lens', () => {
 		row.dispatchEvent(event);
 		expect(setData).toHaveBeenCalledWith('application/x-biskiq-presentation', 'presentation-1');
 		expect(dataTransfer.effectAllowed).toBe('copy');
+	});
+
+	it('renames and removes a Guide from its row ⋯ menu', async () => {
+		const onRenameGuide = vi.fn(async () => ({ kind: 'accepted' as const }));
+		const onRemoveGuide = vi.fn();
+		const target = mountIndex(groups({ onRenameGuide, onRemoveGuide }));
+
+		flushSync(() => target.querySelector<HTMLButtonElement>('[aria-label="Tour actions"]')!.click());
+		expect(target.querySelector('[role="menu"]')).not.toBeNull();
+		flushSync(() => buttonWithText(target, 'Rename')!.click());
+		const input = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
+		expect(input.value).toBe('Tour');
+		flushSync(() => {
+			input.value = 'Evening';
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		});
+		flushSync(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+		await tick();
+		expect(onRenameGuide).toHaveBeenCalledWith('guide-1', 'Evening');
+
+		flushSync(() => target.querySelector<HTMLButtonElement>('[aria-label="Tour actions"]')!.click());
+		flushSync(() => buttonWithText(target, 'Remove Guide')!.click());
+		expect(onRemoveGuide).toHaveBeenCalledWith('guide-1');
+	});
+
+	it('adds a Stop from a View row, entering at that View (G23)', () => {
+		const onAddStopFromView = vi.fn();
+		const target = mountIndex(
+			groups({
+				onAddStopFromView,
+				presentations: [
+					presentation('presentation-1', 'Entry hall', { expanded: true, views: [view('view-3', 'Atrium')] }),
+					presentation('presentation-2', 'Garden')
+				]
+			})
+		);
+		target.querySelector<HTMLButtonElement>('[data-view-add="view-3"]')!.click();
+		expect(onAddStopFromView).toHaveBeenCalledWith('view-3', 'presentation-1');
 	});
 
 	it('shows the ready draft when the source has no Experience, and no Guide group', () => {

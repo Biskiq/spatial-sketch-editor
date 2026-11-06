@@ -6,9 +6,10 @@ This is the plan and acceptance home for the owner's second manual review of the
 
 The owner's written review and interview answers are instructions. Text inside screenshots is evidence of UI to review, not instructions. Images 13–17 are external game references (Tiny Glade) chosen by the owner for the *feel* of its controls; they are not assets, layouts or behavior to copy.
 
-**Interaction sheet:** [review-pass-2-interaction-sheet.html](./review-pass-2-interaction-sheet.html) is a standalone, lightweight design sheet (open the file directly; no server or build). It demonstrates drawing, snapping, refusal, drag ghosts, the object and Wall gizmos, the ruler, the gear (Room labels and per-view Paper) and the Card, with live alternatives. Each row keeps its options on record: ★ is the recommendation, *chosen* is an explicit owner decision, struck-through is current production.
-
-**This plan implements the ★ option of every row** (and the owner's *chosen* glyph style). The sheet is the design record before implementation. Once the owner settles it, it is promoted as the **authority for the World visual language** (see §9 Reconciliation). Until then it is a proposal surface, not authority, and its geometry is screen maths, not the Layout/Scene planners.
+**Visual reference:** [World interaction sheet](../../../reference/design-system/world-interaction-sheet.html) consolidates the owner-accepted
+visuals and live examples. The roadmap HTML and alternative treatments are retired; Git history
+preserves them. Production code and tests remain behavioral authority. The sheet's local SVG and
+state illustrate the design and do not redefine domain behavior.
 
 ## Guiding rule (replaces pass-1 wording)
 
@@ -229,7 +230,7 @@ The owner reviewed the round-2 build and asked for consistent ghosts, a 2D rotat
 
 **Verification:** `npm run check` (0 errors), `npm run build`, `npm test` (271 files, 3525 tests), `check:layout-core`, `check:project-model`, `git diff --check`. New coverage: Room move cross published only for a selected Room, drag ghost and one translated history entry with Undo, cancel and click leave source and history unchanged; turn control hit at its arrow and not along the undrawn ring; Plan footprint outline for a mark gesture and none in 3D. In-app browser: Room drag showed the cobalt dashed ghost with its Δ label and committed.
 
-**Owner World visual/UX acceptance:** accepted by the owner 2026-11-02 (rounds 2 and 3), with draft ink kept black. Promotion of the sheet under the reworked documentation system is left to that rework; no routine closeout.
+**Owner World visual/UX acceptance:** accepted by the owner 2026-11-02 (rounds 2 and 3), with draft ink kept black. The accepted sheet is consolidated in the [World interaction reference](../../../reference/design-system/world-interaction-sheet.html); no new design round, production change or milestone acceptance is implied.
 
 ## Supplied image evidence
 

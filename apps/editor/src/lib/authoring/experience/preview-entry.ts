@@ -68,7 +68,12 @@ export type PreviewEntry =
 			readonly options?: ExperienceInterpreterOptions;
 			readonly transitions?: readonly ExperienceProgramTransition[];
 	  }
-	| { readonly kind: 'unavailable'; readonly message: string };
+	| {
+			readonly kind: 'unavailable';
+			readonly message: string;
+			/** The lowering refusal that stopped Preview, for the problems chip. */
+			readonly refusal?: ExperienceLoweringRefusal | null;
+	  };
 
 /** An entry Preview can actually enter; the Head never stores an unavailable one. */
 export type EnterablePreviewEntry = Exclude<PreviewEntry, { readonly kind: 'unavailable' }>;
@@ -76,6 +81,17 @@ export type EnterablePreviewEntry = Exclude<PreviewEntry, { readonly kind: 'unav
 function titleOf(envelope: ProjectEnvelope, experienceId: string): string {
 	const experience = envelope.units.experience.data.experiences.find((entry) => entry.id === experienceId);
 	return experience?.label ?? experienceId;
+}
+
+function effectiveName(
+	envelope: ProjectEnvelope,
+	presentation: ProjectEnvelope['units']['experience']['data']['experiences'][number]['presentations'][number]
+): string {
+	const subject = presentation.subject;
+	const subjectName = subject !== null && subject.domain === 'scene' && subject.subject.kind === 'entity'
+		? envelope.units.scene.data.entities.find((entity) => entity.id === subject.subject.id)?.name ?? null
+		: null;
+	return presentation.label ?? subjectName ?? 'Untitled Presentation';
 }
 
 function unavailableFrom(
@@ -89,7 +105,7 @@ function unavailableFrom(
 		const presentation = experience.presentations.find((candidate) => candidate.id === entry.presentationId);
 		return {
 			presentationId: entry.presentationId,
-			label: presentation?.label ?? entry.presentationId,
+			label: presentation === undefined ? entry.presentationId : effectiveName(envelope, presentation),
 			reason:
 				entry.reason === 'no-default-view'
 					? 'No Default View is set, so this Presentation cannot be entered.'
@@ -141,7 +157,6 @@ export function previewEntryFor(input: {
 		runId,
 		runEpoch: input.epoch,
 		sourceContentId: input.sourceContentId,
-		gates: experience.gates.map((gate) => gate.presentationId),
 		detours: experience.detours.map((detour) => ({
 			fromStopId: detour.fromStopId,
 			toStopId: detour.toStopId,
@@ -158,7 +173,7 @@ export function previewEntryFor(input: {
 
 	// 1. An open Guide starts at its own entry Stop (its authored start, Stop 1 by
 	// default), never at the Stop the editor has focused: the welcome's guided tour
-	// begins there. Lowering with no explicit entry uses the Guide's `entryStopId`.
+	// begins there. Lowering with no explicit entry starts at the Guide's first Stop.
 	const openGuide = focus.guideId === null
 		? null
 		: experience.guides.find((guide) => guide.id === focus.guideId) ?? null;
@@ -167,7 +182,7 @@ export function previewEntryFor(input: {
 			...baseLowering,
 			guideId: openGuide.id
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		return {
 			kind: 'program',
 			experienceId: experience.id,
@@ -188,7 +203,7 @@ export function previewEntryFor(input: {
 			// Stops and transitions must not refuse or shape this preview.
 			guideId: null
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		const presentation = lowered.program.presentations.find((entry) => entry.id === focus.presentationId);
 		if (presentation === undefined) {
 			const reason = unavailableFrom(lowered, envelope, experience.id).find(
@@ -229,7 +244,7 @@ export function previewEntryFor(input: {
 			...baseLowering,
 			guideId: experience.entryGuideId
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		return {
 			kind: 'program',
 			experienceId: experience.id,
@@ -244,7 +259,7 @@ export function previewEntryFor(input: {
 
 	// 4. No Guide at all: the visitor list of enterable Presentations.
 	const lowered = lowerExperienceProgram(envelope, baseLowering);
-	if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+	if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 	return {
 		kind: 'presentations',
 		experienceId: experience.id,
@@ -263,5 +278,5 @@ export function previewEntryFor(input: {
 /** Program invocation a Presentation entry realizes: a Cut to its Default View. */
 export function presentationEntryInvocation(program: ExecutionProgram, presentationId: string): ProgramInvocation | null {
 	const presentation = program.presentations.find((entry) => entry.id === presentationId);
-	return presentation === undefined ? null : { kind: 'cut', viewId: presentation.defaultViewId };
+	return presentation === undefined ? null : { kind: 'cut', viewId: presentation.viewIds[0]! };
 }

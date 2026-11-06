@@ -22,6 +22,32 @@ export function coincidentWaitMarkers(
 	);
 }
 
+/** One segment of the strip's single track, as a fraction of the track's width. */
+export type SegmentLane = { readonly id: string; readonly widthFraction: number };
+
+/**
+ * R217.S30 / slice 5 — map a pointer's fraction of the whole track to the
+ * segment under it and that segment's own local fraction. Cards of different
+ * stay lengths therefore each map their own span; the caller multiplies the
+ * local fraction by the segment's duration.
+ */
+export function locateSegmentAt(
+	lanes: readonly SegmentLane[],
+	fraction: number
+): { readonly segmentId: string; readonly localFraction: number } | null {
+	const at = Math.max(0, Math.min(1, fraction));
+	let start = 0;
+	for (const [index, lane] of lanes.entries()) {
+		const width = Math.max(0, lane.widthFraction);
+		const end = start + width;
+		if (at < end || index === lanes.length - 1) {
+			return { segmentId: lane.id, localFraction: width <= 0 ? 0 : Math.max(0, Math.min(1, (at - start) / width)) };
+		}
+		start = end;
+	}
+	return null;
+}
+
 /**
  * The wait a press should select. A press on a group selects the next one after
  * the current cursor (wrapping), so each stacked wait is reachable without

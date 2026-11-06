@@ -61,7 +61,7 @@
 			<p class="c-note">
 				Creates a Presentation with a first View framed from the current camera. You can add more Views afterwards.
 			</p>
-			{#if controller.message}<p class="note" role="status">{controller.message}</p>{/if}
+			{#if controller.feedback}<p class="note" class:refused={controller.feedback.kind === 'refusal'} role="status">{controller.feedback.text}</p>{/if}
 			<button type="button" class="quiet link" onclick={() => homes.openInWorld()}>Open in World</button>
 		</section>
 
@@ -78,10 +78,10 @@
 								class="link-row"
 								onclick={() => homes.select({ kind: 'presentation', presentationId: presentation.id })}
 							>
-								<span class="lr-thumb"><ExperienceSnapshot label={presentation.label} /></span>
+								<span class="lr-thumb"><ExperienceSnapshot label={controller.presentationLabel(presentation.id)} /></span>
 								<span class="lr-text">
-									<span class="row-name">{presentation.label}</span>
-									<span class="row-meta">{plural(presentation.viewIds.length, 'View')}</span>
+									<span class="row-name">{controller.presentationLabel(presentation.id)}</span>
+									<span class="row-meta">{plural(presentation.views.length, 'View')}</span>
 								</span>
 								<span class="lr-chev"><ShellIcon name="chevronRight" size={13} /></span>
 							</button>
@@ -128,7 +128,7 @@
 		margin: 0;
 		color: var(--shell-ink-2, #4a524c);
 	}
-	.note {
+	.note.refused {
 		color: var(--shell-refuse, #7e2718);
 	}
 	.rows {

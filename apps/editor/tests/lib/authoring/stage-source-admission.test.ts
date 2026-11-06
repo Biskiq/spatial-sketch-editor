@@ -441,9 +441,8 @@ describe('source admission', () => {
 						{
 							id: 'presentation-1',
 							label: 'Entry',
-							viewIds: ['view-absent'],
+							views: [{ viewId: 'view-absent' }],
 							explorable: true,
-							defaultViewId: 'view-absent',
 							subject: null,
 							text: null
 						}
@@ -452,12 +451,11 @@ describe('source admission', () => {
 						{
 							id: 'stop-1',
 							presentationId: 'presentation-1',
-							views: [{ viewId: 'view-absent', holdSeconds: 0 }],
-							continuation: { kind: 'end' }
+							entryViewId: null, staySeconds: 5, invitation: null,
+							transition: 'cut'
 						}
 					],
-					guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
-					gates: [],
+					guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], pacing: 'automatic' as const }],
 					detours: []
 				}
 			]

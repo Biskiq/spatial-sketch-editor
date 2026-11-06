@@ -25,6 +25,8 @@ import type {
 } from '../f4';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
+import { unlinkSceneSubjects } from '../units/experience-structure';
+import type { ExperienceUnitPayload } from '../units/types';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
 import type { ProjectEnvelope } from '../units/types';
 import type { SemanticReference } from '../references/types';
@@ -74,6 +76,15 @@ import {
 const SCENE_PLANNER_ADMISSION: PlannerAdmission = Object.freeze({
 	domain: 'scene',
 	compound: false,
+	units: false,
+	resources: false
+});
+
+/** A-3: `delete-one` is the only Scene operation that also writes Experience. */
+const SCENE_DELETE_ADMISSION: PlannerAdmission = Object.freeze({
+	domain: 'scene',
+	compound: true,
+	writes: ['experience'] as const,
 	units: false,
 	resources: false
 });
@@ -244,7 +255,12 @@ function scenePlanner(
 	return {
 		id: `scene.${kind}`,
 		kind,
-		admission: kind === 'place-object' ? SCENE_PLACEMENT_ADMISSION : SCENE_PLANNER_ADMISSION,
+		admission:
+			kind === 'place-object'
+				? SCENE_PLACEMENT_ADMISSION
+				: kind === 'delete-one'
+					? SCENE_DELETE_ADMISSION
+					: SCENE_PLANNER_ADMISSION,
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare
@@ -473,6 +489,18 @@ function planExistingObject(
 			[]
 		);
 	}
+	if (kind === 'delete-one' && result.kind === 'candidate') {
+		const removed = context.scene.entities
+			.filter((entity) => !result.scene.entities.some((candidate) => candidate.id === entity.id))
+			.map((entity) => ({ entityId: entity.id, effectiveName: entity.name }));
+		return toOutcome(
+			request,
+			kind,
+			result,
+			null,
+			removed.length === 0 ? null : unlinkPresentations(request, removed)
+		);
+	}
 	return toOutcome(request, kind, result);
 }
 
@@ -558,17 +586,35 @@ function planOperation(
 	}
 }
 
+function unlinkPresentations(
+	request: PlannerRequest<ProjectEnvelope>,
+	removed: readonly { readonly entityId: string; readonly effectiveName: string }[]
+): ExperienceUnitPayload | null {
+	const data = request.snapshot.domain.source.units.experience.data;
+	let changed = false;
+	const experiences = data.experiences.map((experience) => {
+		const next = unlinkSceneSubjects(experience, removed);
+		if (next !== experience) changed = true;
+		return next;
+	});
+	return changed ? { ...data, experiences } : null;
+}
+
 function toOutcome(
 	request: PlannerRequest<ProjectEnvelope>,
 	kind: SceneOperationKind,
 	result: SceneOperationResult,
-	resourceEntry: CreatorModelResourceEntry | null = null
+	resourceEntry: CreatorModelResourceEntry | null = null,
+	unlinkedExperience: ExperienceUnitPayload | null = null
 ): PlannerOutcome<ProjectEnvelope> {
 	if (result.kind === 'rejected') {
 		return rejected(result.code, result.message, result.diagnostics.map((issue) => issue.message));
 	}
 	const sceneSource = replaceUnitData(request.snapshot.domain.source, 'scene', result.scene);
-	const source = resourceEntry === null ? sceneSource : withCreatorModelResource(sceneSource, resourceEntry);
+	const experiencedSource = unlinkedExperience === null
+		? sceneSource
+		: replaceUnitData(sceneSource, 'experience', unlinkedExperience);
+	const source = resourceEntry === null ? experiencedSource : withCreatorModelResource(experiencedSource, resourceEntry);
 	if (source === null) {
 		return rejected(
 			'invalid-value',
@@ -587,6 +633,15 @@ function toOutcome(
 				subjectIds: [result.entityId],
 				fields: [...result.fields]
 			},
+			...(unlinkedExperience === null
+				? []
+				: [
+						{
+							kind: 'experience-presentations-unlinked',
+							subjectIds: [result.entityId],
+							fields: ['presentations']
+						}
+					]),
 			...(resourceEntry === null
 				? []
 				: [

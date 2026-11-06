@@ -1,11 +1,12 @@
-// Review-only entry; rebuild with the command in opening-design-review.md.
+// Visual-reference entry; rebuild instructions are in docs/roadmap/r217-core-editor-stability/world-shell-recovery/opening-design-review.md.
 // G, glyph and knob are the existing interaction sheet's sticker vocabulary.
 /* global G, glyph, knob */
 import {
-  createEmptyWallFirstLayoutDocument, planWallChain, mintLayoutIdCapture,
+  createEmptyWallFirstLayoutDocument, compileWallFirstLayoutGeometry, planWallChain, mintLayoutIdCapture,
   planCreateWallFirstOpening, planUpdateWallFirstOpening, WALL_OPENING_DEFAULTS
 } from '@portfolio/layout-core';
 import { buildArchProfile } from '../../../../packages/layout-core/src/layout-geometry-openings.ts';
+import { openingPlanSymbol } from '../../../../apps/editor/src/lib/authoring/stage/paper-plan.ts';
 import { openingRefusalWords } from '../../../../apps/editor/src/lib/authoring/adapters/layout/refusals.ts';
 
 const q = s => document.querySelector(s), svg = q('#op-stage');
@@ -79,11 +80,14 @@ function shape(o, cls) {
   const threshold = path([[a,near], [end,near], [end,far], [a,far]]);
   if (cls === 'op-cut') return `<path d="${threshold}" class="op-cut"/>`;
   if (cls.includes('ghost') || cls === 'refused') return `<path d="${threshold}" class="${cls}"/>`;
-  const jambs = `M${a} ${near}V${far}M${end} ${near}V${far}`;
-  const symbol = o.kind === 'door'
-    ? `${jambs}M${a} ${near}V${near-w*76}M${a} ${near-w*76}A${w*76} ${w*76} 0 0 1 ${end} ${near}`
-    : `${jambs}M${a} ${190-thick*.2}H${end}M${a} ${190+thick*.2}H${end}`;
-  return `<path d="${symbol}" class="${cls} op-symbol"/>`;
+  // Reuse the production drawing over canonical compiled geometry: no separate swing/glazing model.
+  const wall = compileWallFirstLayoutGeometry(doc).geometry.walls.find(wall => wall.wallId === wallId);
+  const opening = wall?.openings.find(opening => opening.openingId === o.id);
+  if (!wall || !opening) return '';
+  const symbol = openingPlanSymbol(opening, wall);
+  const lines = segments => segments.map(([a,b]) => `M${65+a[0]*76} ${190+a[1]*76}L${65+b[0]*76} ${190+b[1]*76}`).join('');
+  return `<path d="${lines(symbol.segments)}" class="${cls} op-symbol" data-opening-symbol="${o.kind}"/>` +
+    (symbol.dashedSegments.length ? `<path d="${lines(symbol.dashedSegments)}" class="${cls} op-symbol op-swing"/>` : '');
 }
 const labels = {
   uniform: 'Scale width and height uniformly', offset: 'Slide along Wall', width: 'Resize from right edge', leftEdge: 'Resize from left edge · right edge stays fixed',

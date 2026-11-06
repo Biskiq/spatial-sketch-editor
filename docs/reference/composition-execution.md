@@ -900,3 +900,148 @@ The cutover supersedes AM-9's runtime defaults for Stop entry, holds and free ex
   Default. The Guide can still reach a closed Presentation.
 - An Experience's optional welcome is plain text limited to 600 code points. It is authored
   under More on the Guide Card. The lowered program carries the text for the visitor.
+
+## AM-11 Guide pacing, explore and return
+
+The R217 Experience review's [guide-playback plan](../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
+cuts over to Experience unit format 4 and `ExecutionProgram@4`. Format 3 and `ExecutionProgram@3`
+are refused with `unsupported_format_version`, with no converter. AM-10's Stop View sequences,
+per-View holds, Gates and Guide Card welcome are superseded. The owner's second review
+(2026-11-05, [fix.md](../roadmap/r217-core-editor-stability/experience-review/fix.md) §2) amends
+format 4 in place: format 4 has never been on `main`, so there is no bump, migration or
+compatibility reader, and a file written before the amendment is refused. The rules below are
+normative for format 4. [Implementation status](#am-11-implementation-status) says which of them
+PR #271's branch implements so far.
+
+**Authored format 4**
+
+- **A Guide is one linear order:** `id`, `label`, `stopIds` and `pacing` (`automatic` or `manual`;
+  Manual keeps every stay unused). The first Stop starts the Guide and the last Stop ends it.
+  There is no start Stop, no explicit continuation and no early End. Every Stop is listed by
+  exactly one Guide, exactly once (`stop-guide-membership`).
+- **A Stop is one visit:** a Presentation, an entry View (`entryViewId`, `null` follows the
+  Presentation's Default; a named View stays pinned even when it is currently the Default),
+  a finite stay of at least 1 s, an optional invitation (`{ prompt }`,
+  `prompt` at most 80 code points), and an optional outgoing `transition` (`cut` or `travel`,
+  absent means Cut): the step to the next Stop in its Guide. The last Stop has none
+  (`travel-after-last`), and a Travel between two Stops that enter the same View is refused
+  (`travel-same-view`).
+- **A Presentation** carries `label`, ordered `views`, `subject`, `text` and `explorable`. Its
+  first View is the Default. Each View may carry an outgoing `transition`, the step to the next
+  View, and the last View has none. Steps add no Guide time. Removing View 1 makes the next View
+  the Default; a Stop that entered at a removed View follows the Default. `label` is the
+  creator's own name, or `null` for the linked Scene entity's live name, which is admitted
+  only with a Scene-entity `subject`.
+- **One rule for every edge:** a Cut or Travel belongs to the item it leaves, in a Guide and in a
+  Presentation alike. Travel must resolve to exactly one existing Camera connection joining the
+  two Views, in either direction. Lowering reports gaps and ambiguous connections, and binds only
+  Camera identities.
+- **The Experience** carries `entryGuideId`, an explicit Opening Guide that is `null` exactly
+  when there is no Guide, and a plain-text `welcome` of at most 600 code points, authored on the
+  Experience Card. Detours keep their shape and runtime.
+
+**Authoring invariants** (every accepted Experience change; Camera owns the paths)
+
+- An edit that leaves a Travel with no next item, or with the same View on both sides, writes a
+  Cut in the same change. A Travel setting is never kept dormant or restored later.
+- An edit that gives a Travel a new pair of different Views reuses the connection that joins the
+  pair (either direction), or adds a straight connection in the same change. Planners use
+  captured connection ids and refuse `travel-paths-incomplete` rather than leave a gap. No
+  Experience edit deletes, retargets or reshapes a Camera connection.
+- Removing a Stop, or a Guide's Stops, removes the Detours that name them in the same change.
+- Creating the first Guide sets `entryGuideId`. Removing the Opening Guide moves it to the next
+  Guide, or to `null`. The first Stop added to an Experience with no Guide creates a Guide with
+  a default label in the same change.
+- Removing a Scene entity (`delete-one`) is one compound change that also unlinks every
+  Presentation about it, storing its effective name as `label`, through a pure Experience
+  helper. This is the only Scene → Experience write. Nothing in World chrome marks an entity as
+  linked.
+
+**Program and runtime**
+
+- The program carries `pacing`, each Stop's resolved `entryViewId`, `staySeconds` (`null`
+  exactly when Manual) and `invitation`, each Presentation's resolved `label` and `steps`
+  (`steps[i]` runs from `viewIds[i]` to `viewIds[i + 1]`), and one local-time entry per timed
+  Stop. A Travel gap on a Presentation step refuses lowering like a Guide edge. `entryStopId` is
+  the Guide's first Stop, or the editor's preview start, which is never authored.
+- Lowering emits only `sequence-next` continuations. The program keeps its `stop` and `end`
+  kinds, and the interpreter keeps handling them, as runtime capability with no authored source.
+- The interpreter starts a stay only after its arrival completes (a Travel is `traveling` until
+  the host confirms `arrival`). Next always works: it lands an arrival now, ends a stay, or
+  continues a wait. Pause and play are run state. Explore (`enter-presentation` from a Stop)
+  freezes the clock and keeps the occurrence suspended; `explore-view` plays the authored step to
+  a neighbour and Cuts otherwise; `resume` restores the same occurrence, its remaining stay (with
+  a 2 s lead-in) and its play state, without re-running arrival actions.
+- One Guide clock: the visitor-safe `guide-run-map` adapter passes one View per Stop to the
+  unchanged Camera time map, and every visitor surface is time-aligned (the public overtake is
+  retired), so a run's arrival times equal the map's.
+
+### AM-11 implementation status
+
+PR #271's branch implements format 4's pacing, stays,
+invitations, entry Views, Presentation `views`, program v4, the interpreter, Explore and
+Back, and the one Guide clock. Authoring feedback is typed since slice 1: a line carries
+`success`, `info` or `refusal`, so a success is never styled as a refusal and no string
+whitelist decides, and a success, an info line and a refusal are three different things.
+Slice 2 lands the linear Guide model: `Guide.entryStopId` and `ExperienceContinuation` are
+deleted, `Stop.transition` is the outgoing step, `stop-guide-membership`, `travel-after-last`
+and `travel-same-view` are refused, Presentation steps are outgoing edges, lowering's entry is
+`options.entryStopId ?? order[0]` and every program Stop emits `sequence-next`, and removing a
+Stop or Guide removes its Detours. Slice 3 reconciles Travel in every accepted Experience change: `normalizeTransitions` writes a
+Cut wherever a Travel can no longer mean anything, `requiredTravelPairs` names every remaining
+pair no Camera connection joins, and `prepared()` adds one straight path per pair from the
+captured id pool in the same change, under compound `writes: ['camera']` admissions. Every
+endpoint-changing planner — Guide order, both creation intents, the Stop update, the
+Presentation update and every removal plan — routes through `prepared()`, and the controller
+sizes one `connectionPool()` for all of them: the Experience's Travel uses (Stop transitions
+plus Presentation View transitions) plus one, so no hand-sized array can starve an Enter-at or
+Default change. The Stop update carries only its new entry View, never a Travel path. A seeded
+property test runs twenty sequences of reorders, inserts, entry changes, View reorders and
+removals over Travels, a repeated Presentation and a Detour, asserts every accepted change
+lowers without `travel-gap`, `travel-same-view`, `travel-after-last` or
+`stop-guide-membership`, checks exact Undo and Redo on every sampled accumulating step, and
+removes the Stop that takes the Detour (R29). Slice 4 words every source finding for the creator:
+`experience-problems.ts` maps validator diagnostics and lowering refusals to `{ sentence,
+subject, fix, detail }` using Guide Stop numbers, Guide and Presentation names and Camera View
+labels; the chip's *Show* opens the Stop's Transition Card, and codes, paths and ids appear only
+in *Copy details*. Slice 5 makes the strip one timeline: the cards' rails and the Travel gutters
+form a single track (`locateSegmentAt` maps a pointer's whole-track fraction to a segment and its
+own local fraction), each gutter reads *↗ 5 s*, cards carry no Start tag, time text or wait glyph,
+the separate scrub bar is gone, the pacing pill opens its own popover, and the Guide's name renames
+in place; its ⋯ menu offers Remove Guide. The strip and the View rail mark selection and
+reorder with quiet forest and light lines; no gold remains on either. Slice 6 retires the Guide
+Card: `ExperienceGuideWriter` and `guideCardModel` are gone, and a Guide is never a Card subject.
+When nothing is selected the Card is the Experience itself, through
+`ExperienceExperienceWriter`: the welcome text, which has no other editor, and *Opens with* only
+when two or more Guides exist (R33/R36). The Index Guide row renames in place and carries its own
+⋯ menu (Rename, Remove Guide), and opening a Guide from either home keeps the Experience Card and
+shows its strip. Slice 7 closes View → Stop: every creation command carries `entryViewId`, each
+View row offers ＋ Stop, a View dragged from the rail onto the strip becomes a Stop entering it,
+and the first Stop creates the Guide *Tour* with no naming prompt; further Index Guides are
+*Tour 2*, *Tour 3*. Slice 8 makes a Presentation follow its Scene object: `label: null` is admitted
+only with a Scene-entity subject, lowering writes the effective name into the program, the About
+section links, follows and unlinks, and Scene `delete-one` unlinks every Presentation about a
+removed object in the same accepted change. Slice 9 gives the visitor one continuous segmented
+progress bar in Guide order: each segment is a Stop occurrence, `state.visited` marks only the
+Stops actually entered, without treating the destination stay as complete. During Travel only its
+connector fills; after arrival the destination stay starts at zero. Pause and Explore freeze the
+active or suspended stay; Back restores its lead-in. The Camera director supplies Travel progress,
+and Manual outlines the current segment with no stay fill. Each Stop occurrence has its own
+segment. Prev/Next follows the Guide; Places supports free exploration and Back resumes the Guide.
+No direct Stop-jump UI is required. The bar reads the same interpreter state as the tour controls.
+Preview starts paused and exposes a duration-proportional timeline: stays and Travel share one
+seconds-to-width scale; Cuts and Manual waits remain compact markers. Pointer drag and keyboard
+seeking replay the same reducer to the sought occurrence and sample Camera’s existing motion.
+A paused seek stays paused; a drag begun during playback resumes on release. The timeline stays
+available after completion for rewind. Manual arrival Travel can be paused while seeking; its
+stay still waits for Next with no invented duration. Public entry retains autoplay and read-only progress.
+
+The final simplification removes range selection, bulk transition editing and the strip's duplicate
+Rename menu item. View-list folding remains intentional; single click opens the View Card and
+Look through remains explicit. Guide/Stop creation and entry editing preserve a named View through
+later Default reordering, including a View that was the Default when chosen.
+
+Every rule in this AM-11 implementation status is implemented on PR #271. The slice 10 final
+gate reran the complete editor suite (3,932 tests), the architecture suite (209 tests),
+`npm run check` (0 errors) and `npm run build` (passed). The owner's browser journeys A–Q are
+the remaining manual acceptance, and no merge occurs before they pass.

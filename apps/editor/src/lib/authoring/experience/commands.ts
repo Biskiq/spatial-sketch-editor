@@ -9,15 +9,16 @@
  *
  * The commands construct no order: `guide-order` is a permutation of authored Stop
  * ids, and no other command touches Guide order. A Presentation's View order is
- * likewise only ever a permutation of its authored `viewIds`.
+ * likewise only ever a permutation of its authored Views.
  */
 
 import type { AuthoringIntent } from '@portfolio/project-model';
 import type { ScenePathAnchor, SemanticReference } from '@portfolio/project-model';
 import type {
 	Experience,
-	ExperienceContinuation,
-	ExperienceGuidedView,
+	ExperienceGuidePacing,
+	ExperienceInvitation,
+	ExperiencePresentationView,
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import {
@@ -37,7 +38,8 @@ import {
 	EXPERIENCE_STOP_REMOVE_KIND,
 	EXPERIENCE_STOP_UPDATE_KIND,
 	EXPERIENCE_UPDATE_KIND,
-	type CameraView
+	type CameraView,
+	type ExperienceTransitionKind
 } from '@portfolio/project-model/units';
 
 export type CapturedViewPose = {
@@ -74,6 +76,8 @@ export type CommandIds = {
 	readonly guide?: string;
 	/** R217.S29 — a captured Camera connection id. */
 	readonly connection?: string;
+	/** Captured Camera connection ids for automatic Travel path reconciliation. */
+	readonly connections?: readonly string[];
 };
 
 function intent(
@@ -183,16 +187,10 @@ export function captureBindIntent(input: {
 	readonly ids: CommandIds;
 	readonly experienceId: string;
 	readonly view: CapturedViewPose;
-	readonly presentationLabel: string;
+	readonly presentationLabel: string | null;
 	readonly subjectEntityId: string | null;
 	readonly text: { kind: 'plain'; body: string } | null;
 	readonly guideId: string | null;
-	/**
-	 * Create the Experience's first Guide and this Stop as its initial Stop.
-	 * Only meaningful without `guideId`: the capture then installs View +
-	 * Presentation + Guide + Stop as one accepted result.
-	 */
-	readonly firstGuideLabel?: string | null;
 	readonly afterStopId: string | null;
 	/**
 	 * Experience review 1 (ready draft): create the Experience `experienceId` in the
@@ -200,22 +198,12 @@ export function captureBindIntent(input: {
 	 */
 	readonly newExperienceLabel?: string | null;
 }): AuthoringIntent {
-	const firstGuideLabel = input.firstGuideLabel ?? null;
 	const newExperienceLabel = input.newExperienceLabel ?? null;
-	if (firstGuideLabel !== null && input.guideId !== null) {
-		throw new Error('captureBindIntent: a capture authors either an existing Guide Stop or a first Guide, never both');
-	}
 	const allocated: AuthoringIntent['allocatedIds'][number][] = [
 		{ kind: 'view', id: input.ids.view! },
 		{ kind: 'presentation', id: input.ids.presentation! }
 	];
 	if (input.guideId !== null) allocated.push({ kind: 'stop', id: input.ids.stop! });
-	if (firstGuideLabel !== null) {
-		if (input.ids.guide === undefined) {
-			throw new Error('captureBindIntent: a first Guide needs a captured guide id');
-		}
-		allocated.push({ kind: 'stop', id: input.ids.stop! }, { kind: 'guide', id: input.ids.guide });
-	}
 	if (newExperienceLabel !== null) allocated.push({ kind: 'experience', id: input.experienceId });
 	return intent(
 		EXPERIENCE_CAPTURE_BIND_KIND,
@@ -232,16 +220,15 @@ export function captureBindIntent(input: {
 			},
 			// A Guide-free capture sends no Stop at all; it never manufactures a Guide
 			// or a Stop to hang one on.
-			...(input.guideId === null && firstGuideLabel === null
+			...(input.guideId === null
 				? { stop: null }
 				: {
 						stop: {
 							guideId: input.guideId,
 							afterStopId: input.guideId === null ? null : input.afterStopId,
-							continuation: { kind: 'sequence-next', transition: 'cut' }
+							transition: 'cut'
 						}
 					}),
-			...(firstGuideLabel === null ? {} : { firstGuide: { label: firstGuideLabel } }),
 			...(newExperienceLabel === null ? {} : { newExperience: { label: newExperienceLabel } })
 		},
 		allocated
@@ -263,8 +250,8 @@ export function guideCreateIntent(input: {
 	readonly presentationId: string;
 	readonly label: string;
 	readonly entryViewId: string | null;
-	readonly holdSeconds: number | null;
-	readonly continuation: ExperienceContinuation | null;
+	readonly staySeconds?: number | null;
+	readonly transition: ExperienceTransitionKind | null;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_GUIDE_CREATE_KIND,
@@ -275,12 +262,13 @@ export function guideCreateIntent(input: {
 			label: input.label,
 			presentationId: input.presentationId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
-			...(input.holdSeconds === null ? {} : { holdSeconds: input.holdSeconds }),
-			...(input.continuation === null ? {} : { continuation: input.continuation })
+			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
+			...(input.transition === null ? {} : { transition: input.transition })
 		},
 		[
 			{ kind: 'guide', id: input.ids.guide! },
-			{ kind: 'stop', id: input.ids.stop! }
+			{ kind: 'stop', id: input.ids.stop! },
+			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 		]
 	);
 }
@@ -295,8 +283,8 @@ export function stopCreateIntent(input: {
 	readonly guideId: string;
 	readonly afterStopId: string | null;
 	readonly entryViewId: string | null;
-	readonly holdSeconds: number | null;
-	readonly continuation: ExperienceContinuation | null;
+	readonly staySeconds?: number | null;
+	readonly transition: ExperienceTransitionKind | null;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_STOP_CREATE_KIND,
@@ -308,10 +296,13 @@ export function stopCreateIntent(input: {
 			guideId: input.guideId,
 			afterStopId: input.afterStopId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
-			...(input.holdSeconds === null ? {} : { holdSeconds: input.holdSeconds }),
-			...(input.continuation === null ? {} : { continuation: input.continuation })
+			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
+			...(input.transition === null ? {} : { transition: input.transition })
 		},
-		[{ kind: 'stop', id: input.ids.stop! }]
+		[
+			{ kind: 'stop', id: input.ids.stop! },
+			...(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
+		]
 	);
 }
 
@@ -330,7 +321,7 @@ export function guideOrderIntent(input: {
 		input.revision,
 		[experienceReference(input.envelope, input.experienceId)],
 		{ guideId: input.guideId, stopIds: [...input.stopIds] },
-		[]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 
@@ -341,14 +332,22 @@ export function presentationUpdateIntent(input: {
 	readonly ids: CommandIds;
 	readonly experienceId: string;
 	readonly presentationId: string;
-	readonly label?: string;
+	/** `null` follows the linked Scene entity's live name. */
+	readonly label?: string | null;
+	/** Relink to a Scene entity, or unlink with `null` and an own label. */
+	readonly subject?: SemanticReference | null;
 	readonly explorable?: boolean;
 	readonly text?: { kind: 'plain'; body: string } | null;
 	readonly view?: CapturedViewPose;
-	readonly defaultViewId?: string | null;
-	/** A permutation of the Presentation's authored `viewIds` (R217.S26). */
-	readonly viewIds?: readonly string[];
+	/**
+	 * The ordered Views with their Cut/Travel steps: the same Views (a reorder or a
+	 * step change). View 1 is the Default.
+	 */
+	readonly views?: readonly ExperiencePresentationView[];
+	/** View pairs a Travel step needs a straight Camera path for (one Undo). */
+	readonly travelPaths?: readonly { readonly fromViewId: string; readonly toViewId: string }[];
 }): AuthoringIntent {
+	const connectionIds = input.ids.connections ?? (input.ids.connection === undefined ? [] : [input.ids.connection]);
 	return intent(
 		EXPERIENCE_PRESENTATION_UPDATE_KIND,
 		input.ids,
@@ -356,27 +355,36 @@ export function presentationUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
+			...(input.subject === undefined ? {} : { subject: input.subject }),
 			...(input.explorable === undefined ? {} : { explorable: input.explorable }),
 			...(input.text === undefined ? {} : { text: input.text }),
 			...(input.view === undefined ? {} : { view: input.view }),
-			...(input.defaultViewId === undefined ? {} : { defaultViewId: input.defaultViewId }),
-			...(input.viewIds === undefined ? {} : { viewIds: [...input.viewIds] })
+			...(input.views === undefined ? {} : { views: input.views.map((view) => ({ ...view })) }),
+			...(input.travelPaths === undefined || input.travelPaths.length === 0
+				? {}
+				: { travelPaths: input.travelPaths.map((pair) => ({ ...pair })) })
 		},
-		input.view === undefined ? [] : [{ kind: 'view', id: input.ids.view! }]
+		[
+			...(input.view === undefined ? [] : [{ kind: 'view', id: input.ids.view! }]),
+			...(input.travelPaths === undefined && input.ids.connections === undefined
+				? []
+				: connectionIds.slice(0, input.travelPaths?.length ?? connectionIds.length).map((id) => ({ kind: 'connection', id })))
+		]
 	);
 }
 
-/** Replace one Stop's View sequence or continuation. */
+/** Edit one Stop's entry View, stay, invitation or continuation. */
 export function stopUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: { readonly projectId: string; readonly revisionId: string };
 	readonly ids: CommandIds;
 	readonly experienceId: string;
 	readonly stopId: string;
-	readonly views?: readonly ExperienceGuidedView[];
-	readonly continuation?: ExperienceContinuation | null;
-	/** Travel: the straight Camera path this change adds when the pair has none (one Undo). */
-	readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
+	/** `null` follows the Presentation's Default. */
+	readonly entryViewId?: string | null;
+	readonly staySeconds?: number;
+	readonly invitation?: ExperienceInvitation | null;
+	readonly transition?: ExperienceTransitionKind | null;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_STOP_UPDATE_KIND,
@@ -384,13 +392,12 @@ export function stopUpdateIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, 'stop', input.stopId)],
 		{
-			...(input.views === undefined ? {} : { views: input.views }),
-			...(input.continuation === undefined ? {} : { continuation: input.continuation }),
-			...(input.travelPath === undefined ? {} : { travelPath: input.travelPath })
+			...(input.entryViewId === undefined ? {} : { entryViewId: input.entryViewId }),
+			...(input.staySeconds === undefined ? {} : { staySeconds: input.staySeconds }),
+			...(input.invitation === undefined ? {} : { invitation: input.invitation }),
+			...(input.transition === undefined ? {} : { transition: input.transition })
 		},
-		input.travelPath === undefined || input.ids.connection === undefined
-			? []
-			: [{ kind: 'connection', id: input.ids.connection }]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 
@@ -420,7 +427,7 @@ export function experienceUpdateIntent(input: {
 	);
 }
 
-/** R217.S26 — rename a Guide or choose where it starts (E6). */
+/** R217.S26 — rename a Guide or set its pacing (sheet §31). */
 export function guideUpdateIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;
@@ -428,7 +435,7 @@ export function guideUpdateIntent(input: {
 	readonly experienceId: string;
 	readonly guideId: string;
 	readonly label?: string;
-	readonly entryStopId?: string;
+	readonly pacing?: ExperienceGuidePacing;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_GUIDE_UPDATE_KIND,
@@ -437,7 +444,7 @@ export function guideUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'guide', input.guideId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
-			...(input.entryStopId === undefined ? {} : { entryStopId: input.entryStopId })
+			...(input.pacing === undefined ? {} : { pacing: input.pacing })
 		},
 		[]
 	);
@@ -622,11 +629,11 @@ export function removeIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, input.subject, input.id)],
 		{},
-		[]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 
-/** R217.S26 (E4) — remove one View from one Presentation; the Default needs its successor named. */
+/** R217.S26 (E4) — remove one View from one Presentation; removing View 1 makes the next View the Default unless one is named. */
 export function viewRemoveIntent(input: {
 	readonly envelope: ProjectEnvelope;
 	readonly revision: Revision;
@@ -642,7 +649,7 @@ export function viewRemoveIntent(input: {
 		input.revision,
 		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
 		{ viewId: input.viewId, ...(input.defaultViewId === null ? {} : { defaultViewId: input.defaultViewId }) },
-		[]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 

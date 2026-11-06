@@ -593,7 +593,7 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		const experience = source.experiences[0]!;
 		const shared = {
 			...source, experiences: [{ ...experience, presentations: experience.presentations.map(presentation =>
-				presentation.id === 'presentation-2' ? { ...presentation, viewIds: [...presentation.viewIds, 'view-1'] } : presentation
+				presentation.id === 'presentation-2' ? { ...presentation, views: [...presentation.views, { viewId: 'view-1', transition: 'cut' as const }] } : presentation
 			) }]
 		};
 		await remountRouteWith(await seededExperienceProject(shared));
@@ -755,7 +755,7 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 });
 
 describe('R217.S25 — the Guide instrument (D3)', () => {
-	it('an Index Guide row opens the instrument with that Guide active and selects the Guide Card', async () => {
+	it('an Index Guide row opens the instrument with that Guide active and keeps the Experience Card', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
 		expect(guideRow('guide-1')?.textContent).toContain('Main');
@@ -768,7 +768,9 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(guidePanel()).not.toBeNull();
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('true');
 		expect(guideRow('guide-1')?.querySelector('.chip')?.textContent).toBe('Open');
-		expect(cardKind()).toBe('Guide');
+		// D-2/R33: no Guide Card subject; the Experience Card stays.
+		expect(cardKind()).toBe('Experience');
+		expect(experienceFocus.subject).toEqual({ kind: 'experience' });
 		expect(guidePanel()!.querySelectorAll('[aria-label="Stops in Main"] button.stop-card')).toHaveLength(2);
 	});
 
@@ -780,8 +782,8 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		await frame();
 		expect(guidePanel()).not.toBeNull();
 		expect(guideRow('guide-1')?.querySelector('.chip')?.textContent).toBe('Open');
-		// The key opens context only: no Card subject appears.
-		expect(card()).toBeNull();
+		// The key opens context only: no subject appears, and the Experience Card remains.
+		expect(cardKind()).toBe('Experience');
 		expect(experienceFocus.subject).toBeNull();
 
 		dockGuide().click();
@@ -816,7 +818,7 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(cardKind()).toMatch(/^Stop 1 of 2/);
 
 		await pressEscape();
-		expect(card()).toBeNull();
+		expect(cardKind()).toBe('Experience');
 		expect(experienceFocus.subject).toBeNull();
 		expect(guidePanel()).not.toBeNull();
 
@@ -872,7 +874,11 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 	});
 
 	it('a Stop card keeps its menu: Move earlier and Move later reorder the active Guide', async () => {
-		await remountRouteWith(await seededExperienceProject());
+		// A first Stop that travels cannot become last (travel-after-last), so this
+		// reorder fixture Cuts into its successor and the move is legal.
+		const reorderable = structuredClone(EXPERIENCE) as typeof EXPERIENCE;
+		reorderable.experiences[0]!.stops.find((stop) => stop.id === 'stop-1')!.transition = 'cut';
+		await remountRouteWith(await seededExperienceProject(reorderable));
 		await enterExperience();
 		dockGuide().click();
 		await frame();
@@ -948,6 +954,35 @@ describe('R217.S25 — one Card selection (D10)', () => {
 		expect(experienceFocus.read().presentationId).toBe('presentation-1');
 	});
 
+	it('Pick on the Stage links in one shot, while Esc cancels the pick', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		presentationRow('presentation-1')!.click();
+		await frame();
+		control('Pick on the Stage').click();
+		await frame();
+
+		await selectSceneEntityOnStage();
+		await vi.waitFor(() => expect(cardKind()).toMatch(/^Presentation/));
+		expect(experienceFocus.read().presentationId).toBe('presentation-1');
+		expect(card()!.textContent).toContain('Following the object\'s name');
+
+		// One shot: the next Stage pick is an ordinary Scene selection, not another link.
+		await selectSceneEntityOnStage();
+		await frame();
+		expect(cardKind()).toBe('Scene object');
+
+		presentationRow('presentation-2')!.click();
+		await frame();
+		control('Pick on the Stage').click();
+		await frame();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await frame();
+		await selectSceneEntityOnStage();
+		await frame();
+		expect(cardKind()).toBe('Scene object');
+	});
+
 	it('an undone Presentation clears the subject that named it, so no stale or blank Card remains', async () => {
 		await enterExperience();
 		await createExperience();
@@ -963,7 +998,7 @@ describe('R217.S25 — one Card selection (D10)', () => {
 		await vi.waitFor(() => expect(experienceFocus.subject).toBeNull());
 		await frame();
 		expect(presentationRows()).toHaveLength(0);
-		expect(card()).toBeNull();
+		expect(cardKind()).toBe('Experience');
 	});
 
 	it('a Stage Wall pick replaces a selected Stop but keeps the active Guide as context', async () => {
@@ -1040,11 +1075,12 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await setThreeD();
 
 		await pressCapture();
-		await vi.waitFor(() => expect(card()!.querySelectorAll('[data-view-tile]')).toHaveLength(2));
+		await vi.waitFor(() => expect(card()!.querySelectorAll('[data-rail-view]')).toHaveLength(2));
 		expect(presentationRows()).toHaveLength(2);
-		const tiles = [...card()!.querySelectorAll<HTMLElement>('[data-view-tile]')];
-		expect(tiles[0]!.getAttribute('aria-label')).toContain('Default View');
-		expect(tiles[1]!.getAttribute('aria-label')).not.toContain('Default View');
+		// The new View is appended to the rail after View 1, the Default.
+		const rows = [...card()!.querySelectorAll<HTMLElement>('[data-rail-view]')];
+		expect(rows[0]!.getAttribute('aria-label')).toContain('the Default');
+		expect(rows[1]!.getAttribute('aria-label')).not.toContain('the Default');
 		expect(cardKind()).toBe('Presentation');
 		expect(experienceFocus.read().presentationId).toBe('presentation-1');
 		expect(guideRow('guide-1')?.textContent).toContain('2 stops');
@@ -1093,7 +1129,7 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		expect(guideRow('guide-1')?.textContent).toContain('2 stops');
 	}, 15000);
 
-	it('Add to Guide with no Guide asks the first Guide name inline in the Presentation writer, then makes the Guide', async () => {
+	it('Add to Guide with no Guide creates Tour and its first Stop, with no prompt (D-9)', async () => {
 		await enterExperience();
 		await createExperience();
 		await setThreeD();
@@ -1101,26 +1137,18 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await vi.waitFor(() => expect(presentationRows()).toHaveLength(1));
 
 		control('Add to Guide').click();
-		await frame();
-
-		const naming = card()!.querySelector('section[aria-label="Name the new Guide"]');
-		expect(naming).not.toBeNull();
-		const name = naming!.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
-		name.value = 'Tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelector('[data-guide-id]')).not.toBeNull());
 		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('Tour');
-		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('1 stops');
+		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('1 stop ');
+		expect(card()!.querySelector('section[aria-label="Name the new Guide"]')).toBeNull();
 		// The new Stop is the subject: its Card carries the Stop writer and the Guide's Stop menu.
 		expect(cardKind()).toMatch(/^Stop 1 of 1/);
 		expect(card()!.querySelector('[data-experience-writer="stop"]')).not.toBeNull();
 		expect(card()!.textContent).not.toContain('Save Stop');
 	});
 
-	it('Add to Guide with no Guide opens the Guide instrument on the new Guide', async () => {
+	it('Add to Guide with no Guide opens the Guide instrument on Tour', async () => {
 		await enterExperience();
 		await createExperience();
 		await setThreeD();
@@ -1129,12 +1157,6 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		expect(guidePanel()).toBeNull();
 
 		control('Add to Guide').click();
-		await frame();
-		const name = card()!.querySelector<HTMLInputElement>('section[aria-label="Name the new Guide"] input[aria-label="Guide name"]')!;
-		name.value = 'Tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelector('[data-experience-guide]')).not.toBeNull());
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('true');
@@ -1172,7 +1194,7 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 			'src/lib/authoring/experience/ExperienceStopWriter.svelte',
 			'src/lib/authoring/experience/ExperienceViewWriter.svelte',
 			'src/lib/authoring/experience/ExperienceTransitionWriter.svelte',
-			'src/lib/authoring/experience/ExperienceGuideWriter.svelte',
+			'src/lib/authoring/experience/ExperienceExperienceWriter.svelte',
 			'src/lib/authoring/experience/ExperienceSubjectWriter.svelte',
 			'src/lib/authoring/stage/shell/EditorIndex.svelte',
 			'src/lib/authoring/stage/shell/EditorCard.svelte'
@@ -1228,8 +1250,8 @@ describe('R217.S26 — structure and removal through the route', () => {
 		expect(block.textContent).toContain('Removes Stop 2. Gallery stays.');
 		block.querySelector<HTMLButtonElement>('[data-card-consequence-run]')!.click();
 
-		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stops'));
-		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
+		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stop '));
+		expect(experienceFocus.subject).toBeNull();
 		expect(target.querySelector('.experience-feedback')?.textContent).toBe('Stop 2 removed. Main has 1 Stop.');
 
 		expect((await acceptance().undo()).kind).toBe('installed');
@@ -1246,34 +1268,13 @@ describe('R217.S26 — structure and removal through the route', () => {
 		menuItem('add-to-guide').click();
 		await frame();
 		menuItem('new-guide').click();
-		await frame();
-		const name = card()!.querySelector<HTMLInputElement>('section[aria-label="Name the new Guide"] input[aria-label="Guide name"]')!;
-		name.value = 'Short tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelectorAll('[data-guide-id]')).toHaveLength(2));
 		const rows = [...target.querySelectorAll('[data-guide-id]')];
 		expect(rows.map((row) => row.querySelector('[data-opening-guide]') !== null)).toEqual([true, false]);
-		expect(rows[1]!.textContent).toContain('Short tour');
+		expect(rows[1]!.textContent).toContain('Tour 2');
 		expect(rows[1]!.querySelector('.chip')?.textContent).toBe('Open');
-		expect(cardKind()).toMatch(/^Stop 1 of 1 · Short tour/);
-	});
-
-	it('Start the tour here moves the start, and the Stop menu says when it already is', async () => {
-		await remountRouteWith(await seededExperienceProject());
-		await enterExperience();
-		await openStopCard('stop-1');
-		openMenu();
-		await frame();
-		expect(menuItem('start-here').disabled).toBe(true);
-		expect(menuItem('start-here').title).toBe('The tour already starts here');
-		await openStopCard('stop-2');
-		openMenu();
-		await frame();
-		menuItem('start-here').click();
-		await vi.waitFor(() => expect(target.querySelector('.experience-feedback')?.textContent).toBe('The tour now starts at Stop 2.'));
+		expect(cardKind()).toMatch(/^Stop 1 of 1 · Tour 2/);
 	});
 
 	it('names no back link after stepping between sibling Stops (review round 3)', async () => {
@@ -1301,16 +1302,13 @@ describe('R217.S26 — structure and removal through the route', () => {
 	});
 });
 
-it('R217.S27 writes welcome text on blur through More on the Guide Card', async () => {
+it('R217.S27/R33 writes welcome text on blur on the Experience Card, its only home', async () => {
 	await remountRouteWith(await seededExperienceProject());
 	await enterExperience();
-	experienceFocus.select({ kind: 'guide', guideId: 'guide-1' });
-	await frame();
-	expect(card()?.querySelector('textarea')).toBeNull();
-	card()!.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
+	experienceFocus.select({ kind: 'experience' });
 	await frame();
 
-	const welcome = card()!.querySelector<HTMLTextAreaElement>('[data-card-more-section] textarea')!;
+	const welcome = card()!.querySelector<HTMLTextAreaElement>('textarea')!;
 	expect(welcome.maxLength).toBe(600);
 	welcome.value = 'Welcome to the gallery.';
 	welcome.dispatchEvent(new Event('input', { bubbles: true }));

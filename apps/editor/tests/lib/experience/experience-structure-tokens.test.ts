@@ -70,23 +70,23 @@ describe('R217.S26 visual tokens', () => {
 		expect(rule(index, '.crumb-error')).toMatch(/color:\s*var\(--shell-refuse/);
 	});
 
-	it('Start and opens are mono 10 px tags', () => {
-		for (const [file, selector] of [
-			['experience/ExperienceGuide', '.start-tag'],
-			['stage/shell/EditorIndex', '.opens-tag'],
-			['experience/ExperienceGuideWriter', '.opens-tag']
-		] as const) {
-			expect(rule(source(file), selector), `${file} ${selector}`).toMatch(/font:\s*500 10px\/[\d.]+ var\(--shell-mono/);
-		}
+	it('opens is a mono 10 px tag; the strip has no Start tag', () => {
+		expect(source('experience/ExperienceGuide')).not.toContain('.start-tag');
+		expect(rule(source('stage/shell/EditorIndex'), '.opens-tag')).toMatch(/font:\s*500 10px\/[\d.]+ var\(--shell-mono/);
 	});
 
-	it('the View reorder caret is the Stop cards’ gold caret', () => {
-		const guideCaret = rule(source('experience/ExperienceGuide'), '.caret');
-		const viewCaret = rule(source('experience/ExperiencePresentationWriter'), '.vtile.caret-before::before,\n\t.vtile.caret-after::after');
-		for (const declaration of ['width: 3px', 'border-radius: 2px', 'background: var(--shell-gold, #d4ad45)']) {
+	it('the strip and View rail mark reorders with a quiet light line, never gold', () => {
+		const guide = source('experience/ExperienceGuide');
+		const guideCaret = rule(guide, '.caret');
+		for (const declaration of ['width: 3px', 'border-radius: 2px', 'var(--shell-leaf-soft, #9fd3b6)']) {
 			expect(guideCaret).toContain(declaration);
-			expect(viewCaret).toContain(declaration);
 		}
+		const rail = source('experience/ExperienceViewRail');
+		// Sheet §32 B: the rail's selection, open connection and drop line are gold.
+		expect(rule(rail, '.row.drop-before')).toContain('--shell-gold');
+		expect(rule(rail, '.row.drop-after')).toContain('--shell-gold');
+		expect(rule(rail, '.chip.on')).toContain('--shell-gold');
+		expect(rule(rail, '.row')).toMatch(/height:\s*38px/);
 	});
 
 	it('every new control keeps a 44 px coarse-pointer target', () => {
@@ -99,19 +99,16 @@ describe('R217.S26 visual tokens', () => {
 		const view = coarse(source('experience/ExperienceViewWriter'));
 		expect(view).toContain('button.also-link');
 		expect(view).toMatch(/min-height:\s*44px/);
-		expect(coarse(source('experience/ExperienceGuideWriter'))).toMatch(/button\s*\{\s*min-height:\s*44px/);
+		expect(coarse(source('experience/ExperienceExperienceWriter'))).toMatch(/\.opens button\s*\{\s*min-height:\s*44px/);
 	});
 });
 
 describe('R217.S27 visual tokens', () => {
 	it('uses the shell roles and the guided row metrics', () => {
 		const stop = source('experience/ExperienceStopWriter');
-		expect(rule(stop, '.shot')).toMatch(/min-height:\s*42px/);
-		expect(rule(stop, '.shot-n')).toMatch(/width:\s*14px/);
-		expect(rule(stop, '.shot-thumb :global(.snapshot.row)')).toMatch(/width:\s*52px;\s*height:\s*36px/);
-		expect(rule(stop, '.shot.is-out .shot-thumb :global(.snapshot.row)')).toMatch(/width:\s*46px;\s*height:\s*30px/);
-		expect(rule(stop, '.shot-x')).toMatch(/width:\s*24px;\s*height:\s*24px/);
-		expect(rule(stop, '.shot.drop-before::before,\n\t.shot.drop-after::after')).toContain('var(--shell-gold');
+		expect(rule(stop, '.entry')).toMatch(/min-height:\s*30px/);
+		expect(rule(stop, ".entry[aria-checked='true']")).toContain('var(--shell-forest-raised');
+		expect(rule(stop, ".switch[aria-checked='true']")).toContain('var(--shell-forest-raised');
 		const presentation = source('experience/ExperiencePresentationWriter');
 		expect(rule(presentation, '.explorable')).toMatch(/min-height:\s*28px/);
 		expect(rule(presentation, ".explorable[aria-checked='true'] .switch-track")).toContain('var(--shell-forest-raised');
@@ -122,9 +119,9 @@ describe('R217.S27 visual tokens', () => {
 	it('keeps shot controls, the free exploration switch and welcome field at 44 px for coarse pointers', () => {
 		const stop = source('experience/ExperienceStopWriter').split('@media (pointer: coarse)')[1]!;
 		expect(rule(stop, 'button')).toMatch(/min-height:\s*44px/);
-		expect(rule(stop, '.shot button,\n\t\t.icon-btn')).toMatch(/min-width:\s*44px/);
+		expect(rule(stop, '.icon-btn')).toMatch(/min-width:\s*44px/);
 		const presentation = source('experience/ExperiencePresentationWriter').split('@media (pointer: coarse)')[1]!;
 		expect(rule(presentation, 'button,\n\t\t.text-input')).toMatch(/min-height:\s*44px/);
-		expect(rule(source('experience/ExperienceGuideWriter'), '.welcome textarea')).toMatch(/min-height:\s*44px/);
+		expect(rule(source('experience/ExperienceExperienceWriter'), '.welcome textarea')).toMatch(/min-height:\s*44px/);
 	});
 });

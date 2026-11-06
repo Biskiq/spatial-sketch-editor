@@ -11,8 +11,8 @@
 	 *
 	 * It holds no Experience state. Every read goes through the controller and every write
 	 * through a controller command; selecting goes through the homes' one `select`, which
-	 * never moves the Camera. Its own state is local: whether the cards are compact, the
-	 * typed first-Guide name, the open + Stop menu, and the drag in progress.
+	 * never moves the Camera. Its own state is local: whether the cards are compact,
+	 * the open + Stop menu, and the drag in progress.
 	 */
 	import { tick, untrack } from 'svelte';
 	import { formatGuideTime } from '@portfolio/camera-core';
@@ -40,6 +40,7 @@
 
 	/** What the Index's Presentation rows put on the drag (contract: agent B). */
 	const PRESENTATION_MIME = 'application/x-biskiq-presentation';
+	const VIEW_MIME = 'application/x-biskiq-presentation-view';
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
@@ -47,6 +48,8 @@
 	const hasGuide = $derived((controller?.guides.length ?? 0) > 0);
 	const guide = $derived(controller?.currentGuide ?? null);
 	const stops = $derived(controller?.guideStops ?? []);
+	/** The Guide's pacing (sheet §31): edited on the Guide Card, shown here. */
+	const pacing = $derived((guide ?? controller?.contextGuide)?.pacing ?? 'automatic');
 	const presentations = $derived(current?.presentations ?? []);
 	const busy = $derived(controller?.busy ?? false);
 	const subject = $derived(controller?.subject ?? null);
@@ -56,14 +59,7 @@
 	const selectedStopId = $derived(
 		subjectStopId !== null && stops.some((stop) => stop.id === subjectStopId) ? subjectStopId : null
 	);
-	const guideSelected = $derived(subject?.kind === 'guide');
-	/** The Presentation awaiting a first-Guide name (Presentation Add to Guide, or a drop without a name). */
-	const pending = $derived(homes.guideNamePrompt());
-	const pendingLabel = $derived(pending === null ? null : (controller?.presentationLabel(pending) ?? null));
-
 	let compact = $state(false);
-	let guideName = $state('');
-	let nameInput = $state<HTMLInputElement | null>(null);
 	let menuOpen = $state(false);
 	let menuWrap = $state<HTMLElement | null>(null);
 	let addButton = $state<HTMLButtonElement | null>(null);
@@ -72,6 +68,16 @@
 	let barEl = $state<HTMLElement | null>(null);
 	/** Cards the pointer has focused last, so the roving tab stop survives a cleared selection. */
 	let focusedStopId = $state<string | null>(null);
+	let renaming = $state(false);
+	let renameValue = $state('');
+	let renameInput = $state<HTMLInputElement | null>(null);
+	let nameButton = $state<HTMLButtonElement | null>(null);
+	let guideMenuOpen = $state(false);
+	let guideMenuWrap = $state<HTMLElement | null>(null);
+	let guideMenuButton = $state<HTMLButtonElement | null>(null);
+	let pacingOpen = $state(false);
+	let pacingWrap = $state<HTMLElement | null>(null);
+	let pacingButton = $state<HTMLButtonElement | null>(null);
 
 	// ---- R217.S30: the Stage owns the one ephemeral playback session ----
 
@@ -105,15 +111,59 @@
 		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
 		return segment === undefined ? null : segment.startSeconds + cursor.elapsedSeconds;
 	});
-	function stopProgress(stopId: string): number {
-		const entry = stopTimes.get(stopId);
-		const at = elapsedSeconds;
-		if (entry === undefined || at === null) return 0;
-		const span = entry.endSeconds - entry.startSeconds;
-		if (at >= entry.endSeconds) return 100;
-		if (at <= entry.startSeconds) return 0;
-		return span <= 0 ? 100 : ((at - entry.startSeconds) / span) * 100;
+	/**
+	 * The Travel into a Stop. Camera's time map files an arrival under the Stop it
+	 * reaches, but on the strip it belongs to the gutter before that Stop, so the
+	 * card's own rail is only its stay.
+	 */
+	function arrivalTravel(stopId: string | undefined): { startSeconds: number; durationSeconds: number } | null {
+		if (stopId === undefined) return null;
+		const segment = playback.map?.segments.find(
+			(entry) => entry.kind === 'travel' && entry.stopId === stopId && entry.viewIndex === 0
+		);
+		return segment === undefined ? null : segment;
 	}
+	/** A Stop's stay on the clock: its occurrence without the Travel that brought it. */
+	function staySpan(stopId: string): { start: number; end: number } | null {
+		const entry = stopTimes.get(stopId);
+		if (entry === undefined) return null;
+		const arrival = arrivalTravel(stopId);
+		return { start: entry.startSeconds + (arrival?.durationSeconds ?? 0), end: entry.endSeconds };
+	}
+	/** The Travel drawn in the gutter after `stopId`: the next Stop's arrival. */
+	function gutterTravel(stopId: string): { start: number; end: number } | null {
+		const index = stops.findIndex((stop) => stop.id === stopId);
+		const travel = index < 0 ? null : arrivalTravel(stops[index + 1]?.id);
+		return travel === null ? null : { start: travel.startSeconds, end: travel.startSeconds + travel.durationSeconds };
+	}
+	function spanProgress(span: { start: number; end: number } | null): number {
+		const at = elapsedSeconds;
+		if (span === null || at === null) return 0;
+		if (at >= span.end) return 100;
+		if (at < span.start) return 0;
+		return span.end <= span.start ? 100 : ((at - span.start) / (span.end - span.start)) * 100;
+	}
+	function stopProgress(stopId: string): number {
+		return spanProgress(staySpan(stopId));
+	}
+	/** The Travel gutter's own fill, so the card rails and gutters form one track. */
+	function travelProgress(stopId: string): number {
+		return spanProgress(gutterTravel(stopId));
+	}
+	/** Where the one playhead sits: the lane (card or gutter) holding the cursor. */
+	const playheadLane = $derived.by((): { id: string; pct: number } | null => {
+		const map = playback.map;
+		const cursor = playback.cursor;
+		if (map === null || cursor === null) return null;
+		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
+		if (segment === undefined) return null;
+		if (segment.kind === 'travel' && segment.viewIndex === 0) {
+			const index = stops.findIndex((stop) => stop.id === segment.stopId);
+			const before = index > 0 ? stops[index - 1] : undefined;
+			if (before !== undefined) return { id: `travel:${before.id}`, pct: travelProgress(before.id) };
+		}
+		return { id: `hold:${segment.stopId}`, pct: stopProgress(segment.stopId) };
+	});
 	/** Each hold is one View's span; its own label/time stays readable on the bar. */
 	const timelineSegments = $derived.by(() => {
 		const map = playback.map;
@@ -177,10 +227,28 @@
 		playback.setFollow(true);
 	}
 
+	/**
+	 * The card or Travel gutter under the pointer, with the pointer's fraction
+	 * across it. Between lanes (a Cut gutter) it snaps to the nearer edge.
+	 */
+	function laneAt(clientX: number): { id: string; localFraction: number } | null {
+		if (rowEl === null) return null;
+		let best: { id: string; localFraction: number; distance: number } | null = null;
+		for (const element of rowEl.querySelectorAll<HTMLElement>('[data-track-id]')) {
+			const id = element.dataset.trackId ?? '';
+			const rect = element.getBoundingClientRect();
+			if (id === '' || rect.width <= 0) continue;
+			const localFraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			const distance = clientX < rect.left ? rect.left - clientX : clientX > rect.right ? clientX - rect.right : 0;
+			if (best === null || distance < best.distance) best = { id, localFraction, distance };
+		}
+		return best === null ? null : { id: best.id, localFraction: best.localFraction };
+	}
+
 	function scrubAt(clientX: number): void {
 		const map = playback.map;
 		if (barEl === null || map === null) return;
-		const rect = barEl.getBoundingClientRect();
+		const rect = (rowEl ?? barEl).getBoundingClientRect();
 		const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 		// A wait is its own addressable occurrence even at zero width. Coincident
 		// waits cycle on repeated presses, so each stacked occurrence is reachable.
@@ -193,12 +261,64 @@
 			playback.seekSegment(waitId);
 			return;
 		}
+		// The single track is the card row: each card and Travel gutter maps its own
+		// span under the pointer, so a 4 s card and a 12 s card scrub at their own rates.
+		const located = laneAt(clientX);
+		if (located !== null) {
+			const [kind, stopId] = located.id.split(':');
+			const span = stopId === undefined ? null : kind === 'travel' ? gutterTravel(stopId) : staySpan(stopId);
+			if (span !== null) {
+				playback.seek(span.start + located.localFraction * (span.end - span.start));
+				return;
+			}
+		}
 		playback.seek(fraction * map.totalSeconds);
+	}
+
+	let scrubbing = false;
+	let scrubTip = $state<{ x: number; text: string } | null>(null);
+	function tipAt(clientX: number): void {
+		const map = playback.map;
+		if (!scrubbing || barEl === null || map === null) return;
+		const at = elapsedSeconds ?? 0;
+		const index = stops.findIndex((stop) => {
+			const span = staySpan(stop.id);
+			const travel = gutterTravel(stop.id);
+			return span !== null && at < (travel?.end ?? span.end);
+		});
+		const number = index < 0 ? stops.length : index + 1;
+		const stop = stops[number - 1];
+		const name = stop === undefined || controller === null ? '' : ` · ${controller.presentationLabel(stop.presentationId)}`;
+		const rect = barEl.getBoundingClientRect();
+		scrubTip = { x: Math.max(0, Math.min(rect.width, clientX - rect.left)), text: `${playback.elapsedLabel} · Stop ${number}${name}` };
+	}
+	function onTrackPointerDown(event: PointerEvent): void {
+		if (!canPlay) return;
+		scrubbing = true;
+		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+		scrubAt(event.clientX);
+		void tick().then(() => tipAt(event.clientX));
+	}
+	function onTrackPointerMove(event: PointerEvent): void {
+		if (!scrubbing) return;
+		scrubAt(event.clientX);
+		void tick().then(() => tipAt(event.clientX));
+	}
+	function onTrackPointerUp(event: PointerEvent): void {
+		if (!scrubbing) return;
+		scrubbing = false;
+		scrubTip = null;
+		(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
 	}
 
 	function onBarKeydown(event: KeyboardEvent): void {
 		const map = playback.map;
 		if (map === null) return;
+		if (event.key === ' ' || event.key === 'Spacebar') {
+			event.preventDefault();
+			playPause();
+			return;
+		}
 		if (map.totalSeconds <= 0) {
 			const queue = map.segments.filter((segment) => segment.kind === 'wait');
 			if (queue.length === 0 || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
@@ -212,9 +332,13 @@
 		const current = playback.cursor;
 		const segment = current === null ? null : map.segments.find((entry) => entry.id === current.segmentId);
 		const elapsed = segment === undefined || segment === null || current === null ? 0 : segment.startSeconds + current.elapsedSeconds;
+		const step = event.shiftKey ? 5 : 1;
 		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 			event.preventDefault();
-			playback.seek(elapsed + (event.key === 'ArrowLeft' ? -1 : 1));
+			playback.seek(elapsed + (event.key === 'ArrowLeft' ? -step : step));
+		} else if (event.key === 'PageUp' || event.key === 'PageDown') {
+			event.preventDefault();
+			playback.seek(elapsed + (event.key === 'PageUp' ? -10 : 10));
 		} else if (event.key === 'Home' || event.key === 'End') {
 			event.preventDefault();
 			playback.seek(event.key === 'Home' ? 0 : map.totalSeconds);
@@ -259,11 +383,10 @@
 		readonly viewId: string | null;
 		readonly number: number;
 		readonly label: string;
-		readonly viewCount: number;
-		readonly hold: string | null;
-		readonly again: boolean;
-		/** R217.S26 (E6): the Guide's start Stop carries the *Start* tag. */
-		readonly start: boolean;
+		/** Views to explore beyond the entry (+N on the card). */
+		readonly more: number;
+		/** ✦: the Stop invites exploring. */
+		readonly invites: boolean;
 		readonly name: string;
 		readonly connector: Connector | null;
 	};
@@ -276,12 +399,17 @@
 		if (controller === null) return [];
 		return stops.map((stop, index) => {
 			const number = index + 1;
-			const label = controller.presentationLabel(stop.presentationId);
-			const again = stops.slice(0, index).some((earlier) => earlier.presentationId === stop.presentationId);
-			const viewId = stop.views[0]?.viewId ?? null;
-			const viewCount = stop.views.length;
-			const finalHold = stop.views.at(-1)?.holdSeconds;
-			const hold = finalHold === undefined ? null : `${finalHold}s`;
+			const presentation = controller.current?.presentations.find((entry) => entry.id === stop.presentationId);
+			const viewId = stop.entryViewId ?? presentation?.views[0]?.viewId ?? null;
+			// Sheet §33 A: a Presentation visited more than once names its entry View on
+			// every visit (Pleyel piano · From the window), so the visits stay distinct.
+			const repeated = stops.filter((other) => other.presentationId === stop.presentationId).length > 1;
+			const viewName = viewId === null ? null : (controller.viewsOf?.get(stop.presentationId)?.find((view) => view.id === viewId)?.label ?? null);
+			const label = repeated && viewName !== null
+				? `${controller.presentationLabel(stop.presentationId)} · ${viewName}`
+				: controller.presentationLabel(stop.presentationId);
+			const more = Math.max(0, (presentation?.views.length ?? 1) - 1);
+			const invites = stop.invitation !== null;
 			const resolved = controller.resolveContinuation(stop.id);
 			const gaps = controller.travelGapsByStop.get(stop.id) ?? [];
 			let connector: Connector | null = null;
@@ -294,7 +422,8 @@
 						? `Stop ${resolved.position}`
 						: 'a Stop outside this Guide';
 				const path = resolved.transition === 'travel' ? controller.pathFor?.({ kind: 'transition', stopId: stop.id }) ?? null : null;
-				const seconds = path?.state === 'ready' ? ` · ${formatPathSeconds(path.seconds)}` : '';
+				const seconds = path?.state === 'ready' ? formatPathSeconds(path.seconds) : null;
+				const nameSeconds = seconds === null ? '' : ` · ${seconds}`;
 				const attention = gap ? '. Travel has no Camera connection yet' : '';
 				connector = {
 					shape: resolved.kind,
@@ -302,21 +431,22 @@
 					// names its Stop, and a Travel's seconds live in the accessible name.
 					text:
 						resolved.kind === 'adjacent'
-							? resolved.transition
+							? resolved.transition === 'travel'
+								? `↗ ${seconds ?? ''}`.trim()
+								: resolved.transition
 							: resolved.position === null
 								? '→'
 								: `→ ${resolved.position}`,
-					name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${resolved.transition === 'travel' ? seconds : ''}${attention}`,
+				name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${resolved.transition === 'travel' ? nameSeconds : ''}${attention}`,
 					transition: resolved.transition,
 					gap
 				};
 			}
-			const start = controller.contextGuide?.entryStopId === stop.id;
 			const spoken = [`Stop ${number}`, label];
-			if (start) spoken.push('the tour starts here');
-			if (again) spoken.push('again');
-			spoken.push(`${viewCount} ${viewCount === 1 ? 'view' : 'views'}`);
-			return { stopId: stop.id, viewId, number, label, viewCount, hold, again, start, name: spoken.join(', '), connector };
+			if (invites) spoken.push('invites exploring');
+			if (more > 0) spoken.push(`${more} more ${more === 1 ? 'view' : 'views'} to explore`);
+			if (pacing === 'manual') spoken.push('waits for Next');
+			return { stopId: stop.id, viewId, number, label, more, invites, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -327,7 +457,6 @@
 
 	const addReason = $derived.by((): string | null => {
 		if (busy) return 'Saving the last change';
-		if (!hasGuide && guideName.trim() === '') return 'Name the Guide first';
 		if (presentations.length === 0) return 'Add a Presentation first';
 		return null;
 	});
@@ -338,24 +467,16 @@
 
 	// ---- Writing: adding Stops ----
 
-	async function addStop(presentationId: string, afterStopId?: string): Promise<boolean> {
+	async function addStop(presentationId: string, afterStopId?: string, entryViewId: string | null = null): Promise<boolean> {
 		if (controller === null) return false;
-		const options: { afterStopId?: string; firstGuideLabel?: string } = {};
+		const options: { afterStopId?: string; entryViewId: string | null } = { entryViewId };
 		if (afterStopId !== undefined) options.afterStopId = afterStopId;
-		if (!hasGuide) options.firstGuideLabel = guideName.trim();
-		const accepted = await controller.addStop(presentationId, Object.keys(options).length > 0 ? options : undefined);
-		if (accepted && homes.guideNamePrompt() !== null) homes.requestGuideName(null);
-		return accepted;
+		return controller.addStop(presentationId, options);
 	}
 
-	/** The first Stop of an empty Guide: needs the Guide's name when there is no Guide yet (D8). */
-	async function addFirstStop(presentationId: string): Promise<void> {
-		if (!hasGuide && guideName.trim() === '') {
-			homes.requestGuideName(presentationId);
-			nameInput?.focus();
-			return;
-		}
-		await addStop(presentationId);
+	/** The first Stop of an empty Guide; the controller creates Tour (D-9). */
+	async function addFirstStop(presentationId: string, entryViewId: string | null = null): Promise<void> {
+		await addStop(presentationId, undefined, entryViewId);
 	}
 
 	async function chooseFromMenu(presentationId: string): Promise<void> {
@@ -363,22 +484,98 @@
 		await addStop(presentationId);
 	}
 
-	async function commitPending(): Promise<void> {
-		if (pending === null || guideName.trim() === '' || busy) return;
-		await addStop(pending);
+	// ---- Slice 5: rename, Guide actions and the pacing popover ----
+
+	async function startRename(): Promise<void> {
+		if (guide === null) return;
+		guideMenuOpen = false;
+		renameValue = guide.label;
+		renaming = true;
+		await tick();
+		renameInput?.focus();
+		renameInput?.select();
 	}
 
-	function onNameKeydown(event: KeyboardEvent): void {
+	async function commitRename(): Promise<void> {
+		if (!renaming) return;
+		renaming = false;
+		if (guide === null || renameValue.trim() === '') {
+			await tick();
+			nameButton?.focus();
+			return;
+		}
+		await controller?.renameGuide(guide.id, renameValue);
+		await tick();
+		nameButton?.focus();
+	}
+
+	function cancelRename(): void {
+		renaming = false;
+		renameValue = '';
+		void tick().then(() => nameButton?.focus());
+	}
+
+	function onRenameKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			void commitPending();
+			void commitRename();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelRename();
 		}
 	}
 
-	// Asked for a name: put the cursor where it is typed.
-	$effect(() => {
-		if (pending !== null && !hasGuide && nameInput !== null) nameInput.focus();
-	});
+	function toggleGuideMenu(): void {
+		guideMenuOpen = !guideMenuOpen;
+		if (!guideMenuOpen) return;
+		void tick().then(() => guideMenuWrap?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+	}
+
+	function closeGuideMenu(): void {
+		guideMenuOpen = false;
+		guideMenuButton?.focus();
+	}
+
+	async function removeCurrentGuide(): Promise<void> {
+		if (guide === null) return;
+		guideMenuOpen = false;
+		await controller?.remove({ kind: 'guide', guideId: guide.id });
+	}
+
+	function onGuideMenuKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			event.stopPropagation();
+			closeGuideMenu();
+			return;
+		}
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const items = [...(guideMenuWrap?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+		const at = items.indexOf(document.activeElement as HTMLElement);
+		items[event.key === 'ArrowDown' ? Math.min(items.length - 1, at + 1) : Math.max(0, at - 1)]?.focus();
+	}
+
+	async function choosePacing(next: 'automatic' | 'manual'): Promise<void> {
+		if (guide === null) return;
+		pacingOpen = false;
+		await controller?.setGuidePacing(guide.id, next);
+		pacingButton?.focus();
+	}
+
+	function onPacingKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			event.stopPropagation();
+			pacingOpen = false;
+			pacingButton?.focus();
+			return;
+		}
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const items = [...(pacingWrap?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])];
+		const at = items.indexOf(document.activeElement as HTMLElement);
+		items[event.key === 'ArrowDown' ? Math.min(items.length - 1, at + 1) : Math.max(0, at - 1)]?.focus();
+	}
 
 	// ---- Selection ----
 
@@ -390,10 +587,6 @@
 		homes.select({ kind: 'transition', stopId });
 		// Review round 3: the move after a Stop starts where that Stop ends.
 		playback.seekStop(stopId, 'end');
-	}
-
-	function selectGuide(): void {
-		if (guide !== null) homes.select({ kind: 'guide', guideId: guide.id });
 	}
 
 	// ---- The + Stop menu ----
@@ -410,6 +603,8 @@
 
 	function onWindowPointerDown(event: PointerEvent): void {
 		if (menuOpen && menuWrap !== null && !menuWrap.contains(event.target as Node)) closeMenu();
+		if (guideMenuOpen && guideMenuWrap !== null && !guideMenuWrap.contains(event.target as Node)) guideMenuOpen = false;
+		if (pacingOpen && pacingWrap !== null && !pacingWrap.contains(event.target as Node)) pacingOpen = false;
 	}
 
 	function onMenuKeydown(event: KeyboardEvent): void {
@@ -731,8 +926,12 @@
 		return event.dataTransfer?.types.includes(PRESENTATION_MIME) ?? false;
 	}
 
+	function isViewDrag(event: DragEvent): boolean {
+		return event.dataTransfer?.types.includes(VIEW_MIME) ?? false;
+	}
+
 	function onDragOver(event: DragEvent): void {
-		if (!isPresentationDrag(event)) return;
+		if (!isPresentationDrag(event) && !isViewDrag(event)) return;
 		const target = dropTarget(event);
 		if (target === null) {
 			clearCaret();
@@ -762,14 +961,32 @@
 	}
 
 	function onDrop(event: DragEvent): void {
-		if (!isPresentationDrag(event)) return;
-		const presentationId = event.dataTransfer?.getData(PRESENTATION_MIME) ?? '';
 		const target = dropTarget(event);
+		if (isPresentationDrag(event)) {
+			const presentationId = event.dataTransfer?.getData(PRESENTATION_MIME) ?? '';
+			clearCaret();
+			if (presentationId === '' || target === null) return;
+			event.preventDefault();
+			if (target.kind === 'first') void addFirstStop(presentationId);
+			else void addStop(presentationId, target.afterStopId);
+			return;
+		}
+		if (!isViewDrag(event)) return;
+		const raw = event.dataTransfer?.getData(VIEW_MIME) ?? '';
 		clearCaret();
-		if (presentationId === '' || target === null) return;
+		if (raw === '' || target === null) return;
+		let dropped: { readViewId?: unknown; viewId?: unknown; presentationId?: unknown };
+		try {
+			dropped = JSON.parse(raw) as typeof dropped;
+		} catch {
+			return;
+		}
+		const viewId = typeof dropped.viewId === 'string' ? dropped.viewId : null;
+		const presentationId = typeof dropped.presentationId === 'string' ? dropped.presentationId : null;
+		if (viewId === null || presentationId === null) return;
 		event.preventDefault();
-		if (target.kind === 'first') void addFirstStop(presentationId);
-		else void addStop(presentationId, target.afterStopId);
+		if (target.kind === 'first') void addFirstStop(presentationId, viewId);
+		else void addStop(presentationId, target.afterStopId, viewId);
 	}
 </script>
 
@@ -794,30 +1011,80 @@
 			<span class="kicker">Guide</span>
 			{#if hasGuide}
 				{#if guide !== null}
-					<button
-						type="button"
-						class="guide-name"
-						class:selected={guideSelected}
-						aria-pressed={guideSelected}
-						title="Show this Guide's Card"
-						onclick={selectGuide}
-					>
-						{guide.label}
-					</button>
+					{#if renaming}
+						<input
+							class="name-input rename-input"
+							type="text"
+							aria-label="Guide name"
+							bind:value={renameValue}
+							bind:this={renameInput}
+							onkeydown={onRenameKeydown}
+							onblur={() => void commitRename()}
+						/>
+					{:else}
+						<button
+							type="button"
+							class="guide-name"
+							title="Rename this Guide"
+							bind:this={nameButton}
+							onclick={() => void startRename()}
+						>
+							{guide.label}
+						</button>
+					{/if}
 				{:else}
 					<span class="guide-name plain">Guide</span>
 				{/if}
 				<span class="count">{stops.length} {stops.length === 1 ? 'stop' : 'stops'}</span>
-			{:else}
-				<input
-					class="name-input"
-					type="text"
-					placeholder="Name this Guide"
-					aria-label="Guide name"
-					bind:value={guideName}
-					bind:this={nameInput}
-					onkeydown={onNameKeydown}
-				/>
+				{#if guide !== null}
+					<span class="pacing-wrap" bind:this={pacingWrap}>
+						<button
+							type="button"
+							class="pacing-label"
+							data-pacing-label={pacing}
+							bind:this={pacingButton}
+							aria-haspopup="menu"
+							aria-expanded={pacingOpen}
+							title="Pacing"
+							onclick={() => (pacingOpen = !pacingOpen)}
+						>{pacing === 'manual' ? 'Manual · waits for Next' : 'Automatic'} ›</button
+						>
+						{#if pacingOpen}
+							<div class="pacing-menu" role="menu" tabindex="-1" aria-label="Pacing" onkeydown={onPacingKeydown}>
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={pacing === 'automatic'}
+									onclick={() => void choosePacing('automatic')}>Automatic</button
+								>
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={pacing === 'manual'}
+									onclick={() => void choosePacing('manual')}>Manual · waits for Next</button
+								>
+							</div>
+						{/if}
+					</span>
+					<span class="guide-menu-wrap" bind:this={guideMenuWrap}>
+						<button
+							type="button"
+							class="icon"
+							bind:this={guideMenuButton}
+							aria-label="Guide actions"
+							aria-haspopup="menu"
+							aria-expanded={guideMenuOpen}
+							title="Guide actions"
+							onclick={toggleGuideMenu}
+						>⋯</button
+						>
+						{#if guideMenuOpen}
+							<div class="menu guide-menu" role="menu" tabindex="-1" aria-label="Guide actions" onkeydown={onGuideMenuKeydown}>
+								<button type="button" role="menuitem" class="menu-item danger" onclick={() => void removeCurrentGuide()}>Remove Guide</button>
+							</div>
+						{/if}
+					</span>
+				{/if}
 			{/if}
 			<span class="spacer"></span>
 			{#if stops.length > 0}
@@ -875,7 +1142,7 @@
 					<div class="menu" role="menu" aria-label="Add a Presentation as a Stop" tabindex="-1" onkeydown={onMenuKeydown}>
 						{#each presentations as presentation (presentation.id)}
 							<button type="button" role="menuitem" class="menu-item" onclick={() => void chooseFromMenu(presentation.id)}>
-								<span class="menu-label">{presentation.label}</span>
+								<span class="menu-label">{controller.presentationLabel(presentation.id)}</span>
 								{#if inGuide(presentation.id)}<span class="menu-hint">again</span>{/if}
 							</button>
 						{/each}
@@ -902,25 +1169,7 @@
 
 		{#if stops.length === 0}
 			<div class="empty" class:over={emptyOver}>
-				<p>Choose <b>+ Stop</b>, or drag a Presentation here from the Index.</p>
-				{#if pending !== null && !hasGuide}
-					<p class="empty-note">
-						{#if guideName.trim() === ''}
-							Name the Guide, then press Enter to add {pendingLabel ?? 'it'}.
-						{:else}
-							Press Enter to add {pendingLabel ?? 'it'} as the first Stop.
-						{/if}
-					</p>
-					<button
-						type="button"
-						class="tool"
-						disabled={guideName.trim() === '' || busy}
-						title={guideName.trim() === '' ? 'Name the Guide first' : undefined}
-						onclick={() => void commitPending()}
-					>
-						Add {pendingLabel ?? 'it'}
-					</button>
-				{/if}
+				<p>Choose <b>+ Stop</b>, or drag a Presentation or View here from the Index.</p>
 			</div>
 		{:else}
 			{#if !compact}
@@ -939,6 +1188,7 @@
 								class:selected
 								class:dragging={isDragging}
 								data-stop-id={card.stopId}
+								data-track-id={`hold:${card.stopId}`}
 								aria-pressed={selected}
 								aria-label={card.name}
 								tabindex={rovingStopId === card.stopId ? 0 : -1}
@@ -954,20 +1204,21 @@
 								<span class="stop-text">
 									<span class="stop-name" title={card.label}>{card.label}</span>
 									<span class="stop-meta">
-										{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
-										{#if card.again}<em>again</em><span aria-hidden="true"> · </span>{/if}
-										{#if stopTimes.get(card.stopId) !== undefined}
-											<span class="stop-time" data-stop-time>{formatGuideTime(stopTimes.get(card.stopId)!.endSeconds - stopTimes.get(card.stopId)!.startSeconds)}</span>
-										{:else}
-											<span>{card.viewCount} {card.viewCount === 1 ? 'view' : 'views'}</span>
-										{/if}
+										{#if card.invites}<span class="badge invite" title="Invites exploring" data-invite-badge>✦</span>{/if}
+										{#if card.more > 0}<span class="badge more" title={`${card.more} more ${card.more === 1 ? 'View' : 'Views'} to explore`}>+{card.more}</span>{/if}
 									</span>
 								</span>
 								<!-- Review round 3 (sheet §25): each Stop card carries its own part of the timeline. -->
-								<span class="stop-progress" aria-hidden="true"><i style:width="{stopProgress(card.stopId)}%"></i></span>
+								<span class="stop-progress" data-view-span={card.viewId ?? undefined} aria-hidden="true"
+									><i style:width="{stopProgress(card.stopId)}%"></i>{#if playheadLane?.id === `hold:${card.stopId}`}<b class="knob" style:left="{playheadLane.pct}%"></b>{/if}</span
+								>
 							</button>
-							<span class="slot" class:adjacent={card.connector?.shape === 'adjacent'}>
-								{#if card.connector !== null}
+							<span
+								class="slot"
+								class:adjacent={card.connector?.shape === 'adjacent'}
+								data-track-id={card.connector?.transition === 'travel' ? `travel:${card.stopId}` : undefined}
+							>
+								{#if card.connector !== null && card.connector.shape !== 'end'}
 									{@const connector = card.connector}
 									<button
 										type="button"
@@ -988,25 +1239,17 @@
 										{:else if connector.gap}
 											<span aria-hidden="true">⚠</span>
 										{:else if connector.transition === 'travel'}
-											<svg class="glyph" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4h9M7.2 1.8 9.4 4l-2.2 2.2" /></svg>
+											<span class="gutter-time">{connector.text}</span>
 										{:else}
 											<svg class="glyph" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1 4h10" stroke-dasharray="0.1 2.3" /></svg>
 										{/if}
 									</button>
-									{#if connector.gap && controller !== null}
-										<button
-											type="button"
-											class="chip-add"
-											aria-label={`Add a Camera path from Stop ${card.number} to the next`}
-											title="Add a Camera path"
-											onpointerdown={(event) => event.stopPropagation()}
-											onclick={(event) => {
-												event.stopPropagation();
-												void controller?.createPath({ kind: 'transition', stopId: card.stopId });
-											}}
+									{#if connector.transition === 'travel'}
+										<span class="slot-progress" aria-hidden="true"
+											><i style:width="{travelProgress(card.stopId)}%"></i>{#if playheadLane?.id === `travel:${card.stopId}`}<b class="knob" style:left="{playheadLane.pct}%"></b>{/if}</span
 										>
-											+
-										</button>
+									{:else if connector.transition === 'cut'}
+										<span class="slot-cut" aria-hidden="true"></span>
 									{/if}
 								{/if}
 							</span>
@@ -1016,16 +1259,11 @@
 						{/if}
 					</div>
 				</div>
-				{#if more.right}
-					<button type="button" class="more-arrow right" aria-label="Later Stops" title="Later Stops" onclick={() => pageCards(1)}><span aria-hidden="true">›</span></button>
-				{/if}
-				</div>
-			{/if}
-
-			<div class="scrub" data-playback-timeline>
 				<div
-					class="bar-hit"
+					class="track-hit"
+					bind:this={barEl}
 					role="slider"
+					data-playback-timeline
 					tabindex={canPlay ? 0 : -1}
 					aria-label="Guide timeline"
 					aria-valuemin={0}
@@ -1033,43 +1271,21 @@
 					aria-valuenow={Math.round((playback.map?.totalSeconds ?? 0) * (playheadPct / 100))}
 					aria-valuetext={`${playback.elapsedLabel} of ${playback.totalLabel}${playback.map === null ? '' : playback.map.waitCount === 0 ? '' : ` ${playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}`}`}
 					aria-disabled={!canPlay}
-					onpointerdown={(event) => scrubAt(event.clientX)}
+					onpointerdown={onTrackPointerDown}
+					onpointermove={onTrackPointerMove}
+					onpointerup={onTrackPointerUp}
+					onpointercancel={onTrackPointerUp}
 					onkeydown={onBarKeydown}
-				>
-					<div class="bar" bind:this={barEl} aria-hidden="true">
-						{#each timelineSegments as segment (segment.id)}
-							<span
-								class="seg {segment.kind}"
-								class:active={segment.active}
-								data-view-span={segment.kind === 'hold' ? segment.viewId : undefined}
-								title={segment.label}
-								aria-label={segment.label}
-								style:left="{segment.left}%"
-								style:width="{segment.width}%"
-							>
-								{#if segment.kind === 'travel'}
-									<svg class="chev" viewBox="0 0 6 8" aria-hidden="true"><path d="M1.5 1 4.5 4 1.5 7" /></svg>
-								{:else if segment.number !== null}
-									<span class="seg-no">{segment.number}</span>
-								{/if}
-							</span>
-						{/each}
-						{#each timelineWaits as wait (wait.id)}
-							<span class="hatch" style:left="{wait.left}%"></span>
-						{/each}
-						{#if playback.cursor !== null && playback.map !== null}
-							<span class="playhead" style:left="{playheadPct}%"></span>
-						{/if}
-						{#if inView !== null && !compact}
-							<span
-								class="bracket"
-								style:left="{(inView.first / stops.length) * 100}%"
-								style:width="{((inView.last - inView.first + 1) / stops.length) * 100}%"
-							></span>
-						{/if}
-					</div>
+				></div>
+				{#if scrubTip !== null}
+					<span class="scrub-tip" style:left="{scrubTip.x}px" role="status">{scrubTip.text}</span>
+				{/if}
+				{#if more.right}
+					<button type="button" class="more-arrow right" aria-label="Later Stops" title="Later Stops" onclick={() => pageCards(1)}><span aria-hidden="true">›</span></button>
+				{/if}
 				</div>
-			</div>
+			{/if}
+
 			{#if playback.following}
 				<div class="follow-pill" role="status">
 					<span class="live-dot" aria-hidden="true"></span>
@@ -1086,6 +1302,29 @@
 {/if}
 
 <style>
+	.pacing-label {
+		min-height: 24px;
+		padding: 0 8px;
+		border: 1px solid rgb(255 255 255 / 28%);
+		border-radius: 999px;
+		background: none;
+		color: inherit;
+		font: 500 11px var(--shell-sans, system-ui);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.pacing-label:hover {
+		background: rgb(255 255 255 / 10%);
+	}
+	.badge {
+		margin-left: 4px;
+		color: var(--shell-ink-3, #6b736d);
+		font-size: 10.5px;
+		font-weight: 600;
+	}
+	.badge.invite {
+		color: var(--shell-leaf-soft, #9fd3b6);
+	}
 	.status {
 		margin: 0;
 		color: var(--shell-ink-quiet, #9fb2a5);
@@ -1136,9 +1375,6 @@
 	}
 	.guide-name:hover:not(.plain) {
 		border-bottom-color: rgb(255 255 255 / 0.3);
-	}
-	.guide-name.selected {
-		border-bottom-color: var(--shell-gold, #d4ad45);
 	}
 	.count {
 		color: var(--shell-ink-quiet, #9fb2a5);
@@ -1208,12 +1444,12 @@
 	}
 	.guide button:focus-visible,
 	.guide input:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
 		outline-offset: 1px;
 		box-shadow: none;
 	}
 	.guide ::selection {
-		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 38%, transparent);
+		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
 		color: inherit;
 	}
 
@@ -1287,10 +1523,6 @@
 	.empty b {
 		color: #fff;
 		font-weight: 600;
-	}
-	.empty .empty-note {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font-size: 11.5px;
 	}
 
 	/* ---- Stop cards and connectors ---- */
@@ -1366,16 +1598,19 @@
 		padding: 5px 5px 7px;
 		border: 2px solid transparent;
 		border-radius: 8px;
-		background: #f3f4ef;
-		color: var(--shell-ink, #1b201c);
+		background: #16352a;
+		color: var(--shell-ink-light, #eef1ec);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
 		user-select: none;
 	}
+	.stop-card:hover {
+		background: #1d4033;
+	}
 	.stop-card.selected {
 		border-color: var(--shell-gold, #d4ad45);
-		background: var(--shell-card, #fff);
+		background: #234b3a;
 	}
 	.stop-card.dragging {
 		position: relative;
@@ -1404,32 +1639,87 @@
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		line-height: 1.35;
-		color: var(--shell-ink-3, #79817b);
+		color: #b9cbbf;
 		font-size: 10.5px;
 		font-variant-numeric: tabular-nums;
 	}
-	.stop-progress {
+	/* One track (sheet §33 A): each card's rail is its stay, each Travel gutter its Travel. */
+	.stop-progress,
+	.slot-progress {
 		position: absolute;
-		left: 6px;
-		right: 6px;
 		bottom: 3px;
-		height: 2px;
-		border-radius: 1px;
-		overflow: hidden;
+		height: 3px;
+		border-radius: 2px;
+		background: rgb(255 255 255 / 0.14);
 		pointer-events: none;
 	}
-	.stop-progress i {
-		display: block;
-		height: 100%;
-		background: var(--shell-leaf, #4f8f6c);
+	.stop-progress {
+		left: 6px;
+		right: 6px;
 	}
-	.stop-meta em {
-		font-style: italic;
+	.slot-progress {
+		left: 0;
+		right: 0;
+		border-radius: 0;
+	}
+	.stop-progress i,
+	.slot-progress i {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		border-radius: inherit;
+		background: var(--shell-gold, #d4ad45);
+	}
+	/* A Cut takes no time: a dotted hairline the playhead jumps over. */
+	.slot-cut {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 4px;
+		border-top: 1px dotted rgb(255 255 255 / 0.3);
+		pointer-events: none;
+	}
+	.knob {
+		position: absolute;
+		top: 50%;
+		z-index: 1;
+		width: 10px;
+		height: 10px;
+		margin: -5px 0 0 -5px;
+		border: 2px solid var(--shell-forest, #11291f);
+		border-radius: 50%;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.knob::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		top: 6px;
+		width: 2px;
+		height: 12px;
+		margin-left: -1px;
+		border-radius: 1px;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.scrub-tip {
+		position: absolute;
+		bottom: 16px;
+		z-index: 4;
+		transform: translateX(-50%);
+		padding: 3px 7px;
+		border-radius: 6px;
+		background: #fff;
+		color: var(--shell-forest, #11291f);
+		font: 500 11px var(--shell-sans, system-ui, sans-serif);
+		white-space: nowrap;
+		pointer-events: none;
+		box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 	}
 	.slot {
 		position: relative;
-		flex: 0 0 38px;
-		width: 38px;
+		flex: 0 0 58px;
+		width: 58px;
 		display: grid;
 		place-items: center;
 	}
@@ -1450,7 +1740,7 @@
 		justify-content: center;
 		height: 18px;
 		min-width: 24px;
-		max-width: 36px;
+		max-width: 56px;
 		padding: 0 5px;
 		border: 1px solid transparent;
 		border-radius: 999px;
@@ -1472,7 +1762,8 @@
 		background: transparent;
 	}
 	.chip.travel {
-		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 45%, var(--shell-forest, #11291f));
+		background: var(--shell-gold, #d4ad45);
+		color: var(--shell-forest, #11291f);
 	}
 	.chip.jump,
 	.chip.end {
@@ -1483,52 +1774,11 @@
 		background: transparent;
 		color: color-mix(in srgb, var(--shell-caution, #c85a48) 35%, #fff);
 	}
-	/* A selected transition is gold, whatever its kind. */
+	/* A selected transition: gold, ringed in ivory (owner review, 5 Nov). */
 	.chip.selected {
-		border-color: var(--shell-gold, #d4ad45);
 		background: var(--shell-gold, #d4ad45);
 		color: var(--shell-forest, #11291f);
-	}
-	/* The + sits under the gap chip, inside the gutter's width. */
-	.chip-add {
-		position: absolute;
-		left: 50%;
-		top: calc(50% + 14px);
-		transform: translateX(-50%);
-		width: 20px;
-		height: 20px;
-		min-width: 20px;
-		min-height: 20px;
-		padding: 0;
-		border: 1px solid var(--caution, #b5682d);
-		border-radius: 50%;
-		background: var(--shell-forest, #11291f);
-		color: var(--caution, #b5682d);
-		font: inherit;
-		font-size: 14px;
-		line-height: 1;
-		cursor: pointer;
-	}
-	/* Touch: a 44 px tall target that still fits the 38 px gutter; it sits under the taller touch chip. */
-	@media (pointer: coarse) {
-		.chip-add {
-			top: calc(50% + 24px);
-			width: 44px;
-			height: 44px;
-			min-width: 44px;
-			min-height: 44px;
-			border-radius: 999px;
-		}
-	}
-
-	/* R217.S26: the *Start* tag, a mono 10 px tag like the Index's *opens*. */
-	.start-tag {
-		margin-right: 4px;
-		padding: 0 4px;
-		border: 1px solid currentColor;
-		border-radius: 3px;
-		font: 500 10px/1.4 var(--shell-mono, ui-monospace, monospace);
-		letter-spacing: 0.02em;
+		box-shadow: 0 0 0 2px var(--shell-ivory, #f3f0e4);
 	}
 	.caret {
 		position: absolute;
@@ -1537,7 +1787,7 @@
 		width: 3px;
 		margin-left: -1.5px;
 		border-radius: 2px;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-leaf-soft, #9fd3b6);
 		pointer-events: none;
 	}
 
@@ -1549,101 +1799,11 @@
 		flex: none;
 	}
 	.tool.on {
-		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 38%, transparent);
+		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
 		color: #fff;
 	}
-	.bar-hit {
-		display: flex;
-		flex: 1;
-		align-items: center;
-		min-width: 0;
-		min-height: 24px;
-		cursor: pointer;
-		touch-action: none;
-	}
-	.bar-hit:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
-		outline-offset: 2px;
-		border-radius: 6px;
-	}
-	.bar-hit .bar {
-		position: relative;
-		display: block;
-		width: 100%;
-		height: 8px;
-		border-radius: 4px;
-		background: rgb(255 255 255 / 0.14);
-		overflow: hidden;
-	}
-	.bar-hit .seg {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		box-sizing: border-box;
-		border-right: 1px solid rgb(17 41 31 / 0.65);
-		/* A hold is hatched: time spent on a Stop, not a link. */
-		background: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.4) 0 1.5px, rgb(255 255 255 / 0.1) 1.5px 4px);
-	}
 	/* A travel is a solid link with a chevron. */
-	.bar-hit .seg.travel {
-		display: grid;
-		place-items: center;
-		background: var(--shell-leaf, #4f8f6c);
-	}
-	.bar-hit .seg .chev {
-		width: 6px;
-		height: 8px;
-		fill: none;
-		stroke: var(--shell-ink-light, #eef1ec);
-		stroke-width: 1.4;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
 	/* The Stop number sits at the start of the Stop's first hold. */
-	.bar-hit .seg-no {
-		position: absolute;
-		left: 0;
-		top: 0;
-		min-width: 9px;
-		height: 8px;
-		padding: 0 2px;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #eef1ec);
-		font: 600 7.5px/8px var(--shell-sans, system-ui, sans-serif);
-		text-align: center;
-		border-radius: 0 0 2px 0;
-	}
-	.bar-hit .seg.active {
-		background: var(--shell-gold, #d4ad45);
-		box-shadow: 0 0 8px 1px color-mix(in srgb, var(--shell-gold, #d4ad45) 70%, transparent);
-	}
-	.bar-hit .seg.active .chev {
-		stroke: var(--shell-forest, #11291f);
-	}
-	.bar-hit .hatch {
-		position: absolute;
-		top: -2px;
-		bottom: -2px;
-		width: 5px;
-		margin-left: -2.5px;
-		border-radius: 1px;
-		background: repeating-linear-gradient(
-			45deg,
-			var(--shell-gold, #d4ad45) 0 1px,
-			transparent 1px 2.5px
-		);
-		opacity: 0.95;
-	}
-	.bar-hit .playhead {
-		position: absolute;
-		top: -3px;
-		bottom: -3px;
-		width: 1px;
-		margin-left: -0.5px;
-		background: var(--shell-gold, #d4ad45);
-		box-shadow: 0 0 4px color-mix(in srgb, var(--shell-gold, #d4ad45) 80%, transparent);
-		pointer-events: none;
-	}
 	.total {
 		flex: none;
 		color: var(--shell-ink-light, #eef1ec);
@@ -1652,10 +1812,7 @@
 	}
 	.total .waits {
 		margin-left: 4px;
-		color: var(--shell-gold, #d4ad45);
-	}
-	.stop-time {
-		font: 500 10px var(--shell-mono, ui-monospace, monospace);
+		color: var(--shell-leaf-soft, #9fd3b6);
 	}
 	.follow-pill {
 		position: absolute;
@@ -1677,7 +1834,7 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-leaf-soft, #9fd3b6);
 	}
 	.pause-glyph {
 		font: 600 9px/1 var(--shell-sans, system-ui, sans-serif);
@@ -1699,51 +1856,17 @@
 	}
 
 	/* ---- Stop-order bar ---- */
-	.scrub {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 4px 12px 10px;
-	}
 	.play {
 		display: grid;
 		place-items: center;
 		flex: none;
-		width: 31px;
+		width: 26px;
 		height: 26px;
 		padding: 0;
 		border: 0;
-		border-radius: 7px;
-		background: var(--shell-gold, #d4ad45);
-		color: #2a2208;
-	}
-	.bar {
-		position: relative;
-		display: flex;
-		flex: 1;
-		gap: 0;
-		height: 8px;
-		min-width: 0;
-		border-radius: 4px;
-		background: rgb(255 255 255 / 0.12);
-	}
-	.bracket {
-		position: absolute;
-		top: -3px;
-		bottom: -3px;
-		border: 1.5px solid rgb(255 255 255 / 0.7);
-		border-radius: 5px;
-		pointer-events: none;
-	}
-	.bar-caret {
-		position: absolute;
-		top: -4px;
-		bottom: -4px;
-		width: 3px;
-		margin-left: -1.5px;
-		border-radius: 2px;
-		background: var(--shell-gold, #d4ad45);
-		pointer-events: none;
+		border-radius: 50%;
+		background: var(--shell-ivory, #f3f0e4);
+		color: var(--shell-forest, #11291f);
 	}
 
 	.visually-hidden {
@@ -1772,15 +1895,75 @@
 		.name-input,
 		.chip,
 		.pill-stop {
+			min-height: 44px;
 			min-height: var(--shell-touch-target, 44px);
 		}
 		.icon,
 		.play {
+			width: 44px;
 			min-width: var(--shell-touch-target, 44px);
 		}
 		/* The coarse hit area is 44 px; the visual track stays 8 px. */
-		.bar-hit {
-			min-height: var(--shell-touch-target, 44px);
-		}
+	}
+
+	.gutter-time {
+		font-size: 9px;
+		letter-spacing: -0.01em;
+	}
+	.track-hit {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 14px;
+		z-index: 2;
+		cursor: pointer;
+		touch-action: none;
+	}
+	.track-hit:focus-visible {
+		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+	.pacing-wrap,
+	.guide-menu-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+	.pacing-menu,
+	.guide-menu {
+		position: absolute;
+		right: 0;
+		bottom: calc(100% + 8px);
+		z-index: 6;
+		display: flex;
+		flex-direction: column;
+		min-width: 190px;
+		padding: 4px;
+		border: 1px solid rgb(255 255 255 / 0.1);
+		border-radius: 10px;
+		background: var(--shell-popup-dark, rgba(17, 41, 31, 0.97));
+		box-shadow: 0 10px 28px rgb(0 0 0 / 0.32);
+	}
+	.pacing-menu button {
+		padding: 6px 8px;
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 12px;
+		text-align: left;
+		cursor: pointer;
+	}
+	.pacing-menu button:hover,
+	.pacing-menu button:focus-visible {
+		background: rgb(255 255 255 / 0.1);
+	}
+	.pacing-menu button[aria-checked='true'] {
+		color: var(--shell-leaf-soft, #9fd3b6);
+	}
+	.menu-item.danger {
+		color: #f0a99e;
 	}
 </style>

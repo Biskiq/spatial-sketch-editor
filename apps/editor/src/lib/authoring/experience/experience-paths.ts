@@ -42,15 +42,18 @@ import type { Vec3 } from '@portfolio/camera-core';
 /** One Guided move, addressed by authored identity only. */
 export type ExperiencePathOccurrence =
 	| { readonly kind: 'transition'; readonly stopId: string }
-	| { readonly kind: 'step'; readonly stopId: string; readonly toViewId: string };
+	/** A Presentation's explore step into `toViewId` from its previous View. */
+	| { readonly kind: 'step'; readonly presentationId: string; readonly toViewId: string };
 
 export type ResolvedPathOccurrence = {
 	readonly occurrence: ExperiencePathOccurrence;
 	readonly fromViewId: string;
 	readonly toViewId: string;
 	readonly transition: ExperienceTransitionKind;
-	/** The Stop the occurrence belongs to (the source Stop for a transition). */
-	readonly stopId: string;
+	/** The source Stop of a transition; null for a Presentation step. */
+	readonly stopId: string | null;
+	/** The Presentation a step belongs to; null for a transition. */
+	readonly presentationId: string | null;
 	/** The destination Stop for a transition; null for a step. */
 	readonly toStopId: string | null;
 };
@@ -86,7 +89,7 @@ export type ExperiencePathRead = {
 export function occurrenceKey(occurrence: ExperiencePathOccurrence): string {
 	return occurrence.kind === 'transition'
 		? `transition:${occurrence.stopId}`
-		: `step:${occurrence.stopId}:${occurrence.toViewId}`;
+		: `step:${occurrence.presentationId}:${occurrence.toViewId}`;
 }
 
 export function sameOccurrence(
@@ -107,31 +110,38 @@ export function resolvePathOccurrence(
 	guide: ExperienceGuide | null,
 	occurrence: ExperiencePathOccurrence
 ): ResolvedPathOccurrence | null {
-	const stop = stopOf(experience, occurrence.stopId);
-	if (stop === null) return null;
-	if (occurrence.kind === 'transition') {
-		const resolved = resolveContinuation(experience, guide, stop.id);
-		if (resolved === null || resolved.kind === 'end') return null;
-		const destination = stopOf(experience, resolved.stopId);
-		if (destination === null) return null;
+	if (occurrence.kind === 'step') {
+		const presentation = experience.presentations.find((entry) => entry.id === occurrence.presentationId);
+		if (presentation === undefined) return null;
+		const index = presentation.views.findIndex((view) => view.viewId === occurrence.toViewId);
+		if (index <= 0) return null;
 		return {
 			occurrence,
-			fromViewId: stopExitViewId(stop),
-			toViewId: stopEntryViewId(destination),
-			transition: resolved.transition,
-			stopId: stop.id,
-			toStopId: destination.id
+			fromViewId: presentation.views[index - 1]!.viewId,
+			toViewId: presentation.views[index]!.viewId,
+			transition: presentation.views[index - 1]!.transition ?? 'cut',
+			stopId: null,
+			presentationId: presentation.id,
+			toStopId: null
 		};
 	}
-	const index = stop.views.findIndex((view) => view.viewId === occurrence.toViewId);
-	if (index <= 0) return null;
+	const stop = stopOf(experience, occurrence.stopId);
+	if (stop === null) return null;
+	const resolved = resolveContinuation(experience, guide, stop.id);
+	if (resolved === null || resolved.kind === 'end') return null;
+	const destination = stopOf(experience, resolved.stopId);
+	if (destination === null) return null;
+	const fromViewId = stopExitViewId(experience, stop);
+	const toViewId = stopEntryViewId(experience, destination);
+	if (fromViewId === null || toViewId === null) return null;
 	return {
 		occurrence,
-		fromViewId: stop.views[index - 1]!.viewId,
-		toViewId: stop.views[index]!.viewId,
-		transition: stop.views[index]!.transition ?? 'cut',
+		fromViewId,
+		toViewId,
+		transition: resolved.transition,
 		stopId: stop.id,
-		toStopId: null
+		presentationId: null,
+		toStopId: destination.id
 	};
 }
 
@@ -143,15 +153,20 @@ export function experiencePathOccurrences(
 	const occurrences: ResolvedPathOccurrence[] = [];
 	// A visible route belongs to the open Guide: iterate its actual Stop order,
 	// including a nonadjacent Next and every in-Stop Travel.
-	for (const stop of guide === null ? experience.stops : guideStopsOf(experience, guide)) {
+	const stops = guide === null ? experience.stops : guideStopsOf(experience, guide);
+	for (const stop of stops) {
 		const transition = resolvePathOccurrence(experience, guide, { kind: 'transition', stopId: stop.id });
 		if (transition !== null) occurrences.push(transition);
-		for (const view of stop.views.slice(1)) {
-			const step = resolvePathOccurrence(experience, guide, {
-				kind: 'step',
-				stopId: stop.id,
-				toViewId: view.viewId
-			});
+	}
+	// Each Presentation's explore steps, once: those the Guide's Stops use, or all
+	// of them when no Guide is open.
+	const presentationIds = guide === null
+		? experience.presentations.map((presentation) => presentation.id)
+		: [...new Set(stops.map((stop) => stop.presentationId))];
+	for (const presentationId of presentationIds) {
+		const presentation = experience.presentations.find((entry) => entry.id === presentationId);
+		for (const view of presentation?.views.slice(1) ?? []) {
+			const step = resolvePathOccurrence(experience, guide, { kind: 'step', presentationId, toViewId: view.viewId });
 			if (step !== null) occurrences.push(step);
 		}
 	}
@@ -431,5 +446,5 @@ export function occurrenceLabel(read: ResolvedPathOccurrence, guideNames: readon
 		const index = guideNames.indexOf(read.occurrence.stopId);
 		return index >= 0 ? `Stop ${index + 1} → ${index + 2}` : 'a Stop transition';
 	}
-	return 'a step inside a Stop';
+	return 'a step in a Presentation';
 }

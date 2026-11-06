@@ -46,7 +46,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
 export const SCENE_UNIT_FORMAT_VERSION = 5 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
-export const EXPERIENCE_UNIT_FORMAT_VERSION = 3 as const;
+export const EXPERIENCE_UNIT_FORMAT_VERSION = 4 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 2 as const;
 
 /** The five admitted unit domains, in stable order. */
@@ -197,7 +197,12 @@ export const EXPERIENCE_TEXT_KINDS = ['plain'] as const;
  */
 export const EXPERIENCE_TEXT_MAX_LENGTH = 4000;
 export const EXPERIENCE_WELCOME_MAX_LENGTH = 600;
-export const EXPERIENCE_STEP_DEFAULT_HOLD_SECONDS = 3;
+/** A Stop's stay is always finite and at least this long (sheet §31). */
+export const EXPERIENCE_STAY_MIN_SECONDS = 1;
+/** The stay a new Stop is given; Manual pacing keeps it unused. */
+export const EXPERIENCE_STAY_DEFAULT_SECONDS = 5;
+/** An invitation prompt's bound, in code points. */
+export const EXPERIENCE_INVITATION_PROMPT_MAX_LENGTH = 80;
 
 export type ExperiencePresentationText = {
 	kind: 'plain';
@@ -205,25 +210,60 @@ export type ExperiencePresentationText = {
 };
 
 /**
+ * One View of a Presentation, in the Presentation's suggested order.
+ *
+ * `transition` is the authored step **to the next View** — Cut (absent means
+ * Cut) or Travel along the Camera path that joins the pair. A Cut or Travel
+ * belongs to the item it leaves, in a Presentation exactly as in a Guide (A-1),
+ * so the last View has none. A step adds no Guide time: it is played only while
+ * a visitor explores.
+ */
+export type ExperiencePresentationView = {
+	viewId: string;
+	transition?: ExperienceTransitionKind;
+};
+
+/**
  * A labelled Presentation: the visitor-facing use of the Camera Views it names.
  *
- * `viewIds` is display order only — it is never Guide order and never
- * connectivity. `defaultViewId` is one of them or `null`; an unset Default is an
- * honest state that cannot be entered. `subject` is an F.1 semantic reference
- * with no component (a Scene entity or a Layout element), or `null` for an
- * environment or region Presentation; no Room or clone is invented to host it.
- * Two Presentations may share one View, and one Presentation may be used by
- * several Stops.
+ * `views` is the Presentation's own suggested order, which visitors step with
+ * ‹ ›. It is never Guide order and never connectivity. The first View is the
+ * Default; an empty list is an honest state that cannot be entered. `subject` is
+ * an F.1 semantic reference with no component (a Scene entity or a Layout
+ * element), or `null` for an environment or region Presentation; no Room or
+ * clone is invented to host it. Two Presentations may share one View, and one
+ * Presentation may be used by several Stops. `explorable` is *Listed in Places*.
  */
 export type ExperiencePresentation = {
 	id: string;
-	label: string;
-	viewIds: readonly string[];
-	defaultViewId: string | null;
+	/** The own name. `null` follows the linked Scene entity's live name (G24). */
+	label: string | null;
+	views: readonly ExperiencePresentationView[];
 	subject: SemanticReference | null;
 	text: ExperiencePresentationText | null;
 	explorable: boolean;
 };
+
+/**
+ * The name a Presentation shows: its own name when it has one, otherwise the
+ * linked subject's live name (G24). A Presentation with neither has no name.
+ */
+export function presentationDisplayName(
+	presentation: Pick<ExperiencePresentation, 'label'>,
+	subjectName: string | null
+): string {
+	return presentation.label ?? subjectName ?? 'Untitled Presentation';
+}
+
+/** The Default View of a Presentation: its first View, or `null` when it has none. */
+export function presentationDefaultViewId(presentation: Pick<ExperiencePresentation, 'views'>): string | null {
+	return presentation.views[0]?.viewId ?? null;
+}
+
+/** The ordered View ids of a Presentation. */
+export function presentationViewIds(presentation: Pick<ExperiencePresentation, 'views'>): string[] {
+	return presentation.views.map((view) => view.viewId);
+}
 
 /** The authored approach to a Stop: a Cut (the default) or a supported Travel. */
 export const EXPERIENCE_TRANSITIONS = ['cut', 'travel'] as const;
@@ -231,55 +271,63 @@ export const EXPERIENCE_TRANSITIONS = ['cut', 'travel'] as const;
 export type ExperienceTransitionKind = (typeof EXPERIENCE_TRANSITIONS)[number];
 
 /**
- * How execution continues after a Stop. `sequence-next` follows the guide's
- * order; an explicit `stop` overrides it once, including a nonadjacent target;
- * `end` finishes the run.
+ * The authored step a Stop leaves by: Cut (absent means Cut) or Travel along the
+ * one Camera path that joins its exit View to the next Stop's entry View.
  *
- * The edge's `transition` is the authored Cut/Travel selector for arriving at
- * its target: absent means `cut`. Experience never silently cuts when a Travel
- * is unsupported and never searches the Camera graph; the gap is reported.
+ * The step belongs to the Stop it leaves, so the last Stop of a Guide has none.
+ * Experience never silently cuts when a Travel is unsupported and never searches
+ * the Camera graph; the gap is reported.
  */
-export type ExperienceContinuation =
-	| { kind: 'sequence-next'; transition?: ExperienceTransitionKind }
-	| { kind: 'stop'; stopId: string; transition?: ExperienceTransitionKind }
-	| { kind: 'end' };
 
-/** A View in one Stop. The transition arrives at this View and is absent on entry. */
-export type ExperienceGuidedView = {
-	viewId: string;
-	holdSeconds?: number;
-	transition?: ExperienceTransitionKind;
+/**
+ * A Stop's invitation to explore. It shows on arrival and leaves with the Stop;
+ * `prompt` is the creator's words, or `null` for the default wording.
+ */
+export type ExperienceInvitation = {
+	prompt: string | null;
 };
 
 /**
- * A Stop is a stable authored occurrence identity — never an array index, a
- * label, a Room, a pose or a Camera view id. Visiting one Stop twice starts two
- * fresh runs that share this identity.
+ * A Stop is one visit to one Presentation: an entry View, one stay and an
+ * optional invitation. It is a stable authored occurrence identity — never an
+ * array index, a label, a Room, a pose or a Camera view id. Visiting one Stop
+ * twice starts two fresh runs that share this identity.
+ *
+ * `entryViewId` overrides the Presentation's Default (`null` follows the
+ * Default, including after a reorder). `staySeconds` is always finite and at
+ * least `EXPERIENCE_STAY_MIN_SECONDS`; Manual pacing ignores it and keeps it.
  */
 export type ExperienceStop = {
 	id: string;
 	presentationId: string;
-	views: readonly ExperienceGuidedView[];
-	/** Default continuation is the guide sequence; this field overrides it. */
-	continuation?: ExperienceContinuation;
+	entryViewId: string | null;
+	staySeconds: number;
+	invitation: ExperienceInvitation | null;
+	/** The step to the next Stop in its Guide; absent means Cut. Never on the last. */
+	transition?: ExperienceTransitionKind;
 };
 
-/** One Guide: an ordered list of stable Stop IDs with exactly one entry. */
+/** The View a Stop enters at: its own override, else its Presentation's Default. */
+export function stopEntryViewId(
+	stop: Pick<ExperienceStop, 'entryViewId'>,
+	presentation: Pick<ExperiencePresentation, 'views'> | null | undefined
+): string | null {
+	return stop.entryViewId ?? (presentation ? presentationDefaultViewId(presentation) : null);
+}
+
+/** How a Guide plays: Automatic moves on when each stay ends; Manual waits for Next. */
+export const EXPERIENCE_GUIDE_PACINGS = ['automatic', 'manual'] as const;
+export type ExperienceGuidePacing = (typeof EXPERIENCE_GUIDE_PACINGS)[number];
+
+/**
+ * One Guide: one linear order of stable Stop IDs and its pacing. The first Stop
+ * starts the Guide and the last one ends it, so there is no start Stop.
+ */
 export type ExperienceGuide = {
 	id: string;
 	label: string;
 	stopIds: readonly string[];
-	entryStopId: string;
-};
-
-/**
- * An explicit blocking Gate on one Presentation: the visitor must continue
- * deliberately. A Gate is authored, never inferred — legacy direct-entry
- * prohibition is not the same meaning and is never renamed into one.
- */
-export type ExperienceGate = {
-	id: string;
-	presentationId: string;
+	pacing: ExperienceGuidePacing;
 };
 
 /** An explicit choice/return relationship; never a guessed detour policy. */
@@ -300,8 +348,6 @@ export type Experience = {
 	presentations: readonly ExperiencePresentation[];
 	stops: readonly ExperienceStop[];
 	guides: readonly ExperienceGuide[];
-	/** Explicit, possibly empty: gates are authored, never inferred. */
-	gates: readonly ExperienceGate[];
 	/** Explicit, possibly empty: detours are authored, never inferred. */
 	detours: readonly ExperienceDetour[];
 };

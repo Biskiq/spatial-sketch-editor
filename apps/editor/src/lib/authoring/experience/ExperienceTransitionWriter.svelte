@@ -14,8 +14,9 @@
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import ExperiencePathMovement from './ExperiencePathMovement.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
-	import { stopEntryViewId, stopExitViewId } from './experience-model';
+	import { stopEntryViewId as entryOf, stopExitViewId as exitOf } from './experience-model';
 	import { experienceHomes } from './experience-homes';
+	import { occurrenceLabel } from './experience-paths';
 
 
 	let {
@@ -91,6 +92,18 @@
 					? BUSY_REASON
 					: null
 	);
+	/** D-7: two Stops on the same View have nowhere to travel; offer no switch. */
+	const sameView = $derived.by((): string | null => {
+		if (stop === null || destination === null) return null;
+		const from = stopExitViewId(stop);
+		const to = stopEntryViewId(destination);
+		return from !== null && from === to ? viewLabelOf(stop, from) : null;
+	});
+
+	const stopEntryViewId = (target: ExperienceStop): string =>
+		(controller?.current == null ? null : entryOf(controller.current, target)) ?? '';
+	const stopExitViewId = (target: ExperienceStop): string =>
+		(controller?.current == null ? null : exitOf(controller.current, target)) ?? '';
 
 	function viewLabelOf(target: ExperienceStop, viewId: string): string {
 		const view = controller?.viewsOf.get(target.presentationId)?.find((entry) => entry.id === viewId);
@@ -115,30 +128,39 @@
 {#if controller !== null && stop !== null}
 	<div class="writer" data-experience-writer="transition">
 		<div class="c-actions">
-			<div class="seg wide" role="group" aria-label="Transition">
-				<button
-					type="button"
-					aria-pressed={transition === 'cut'}
-					disabled={segmentReason !== null}
-					title={segmentReason ?? 'Cut'}
-					onclick={() => setTransition('cut')}
-				>
+			{#if sameView !== null}
+				<div class="same-view" role="status">
 					<ShellIcon name="cut" size={13} />
-					Cut
-					{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
-				</button>
-				<button
-					type="button"
-					aria-pressed={transition === 'travel'}
-					disabled={segmentReason !== null}
-					title={segmentReason ?? 'Travel'}
-					onclick={() => setTransition('travel')}
-				>
-					<ShellIcon name="travel" size={13} />
-					Travel
-					{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
-				</button>
-			</div>
+					<b>Cut</b>
+					<span aria-hidden="true">·</span>
+					<span>Both Stops show {sameView}</span>
+				</div>
+			{:else}
+				<div class="seg wide" role="group" aria-label="Transition">
+					<button
+						type="button"
+						aria-pressed={transition === 'cut'}
+						disabled={segmentReason !== null}
+						title={segmentReason ?? 'Cut'}
+						onclick={() => setTransition('cut')}
+					>
+						<ShellIcon name="cut" size={13} />
+						Cut
+						{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
+					</button>
+					<button
+						type="button"
+						aria-pressed={transition === 'travel'}
+						disabled={segmentReason !== null}
+						title={segmentReason ?? 'Travel'}
+						onclick={() => setTransition('travel')}
+					>
+						<ShellIcon name="travel" size={13} />
+						Travel
+						{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
+					</button>
+				</div>
+			{/if}
 		</div>
 
 		<section class="ends" aria-label="Leaves and arrives">
@@ -190,10 +212,12 @@
 			{/if}
 		</section>
 
-		{#if sharedCount > 0}
+		{#if sharedCount > 0 && path !== null}
 			<div class="meta-row">
-				<span class="chip" title="Other moves that use this same Camera path">
-					Also used by {sharedCount} {sharedCount === 1 ? 'move' : 'moves'}
+				<span class="chip" title="This path's time is one Camera fact: a change reaches each use">
+					×{sharedCount + 1} · Same path in {sharedCount + 1} places, also {path.sharedUses
+						.map((use) => occurrenceLabel(use, controller.guideStops.map((entry) => entry.id)))
+						.join(', ')}: a change reaches each.
 				</span>
 			</div>
 		{/if}
@@ -288,6 +312,20 @@
 	.seg.wide {
 		display: flex;
 		width: 100%;
+	}
+	.same-view {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 30px;
+		padding: 0 10px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 8px;
+		background: var(--shell-hover, #eef0ed);
+		color: var(--shell-ink-2, #4a524c);
+	}
+	.same-view b {
+		color: var(--shell-forest-raised, #22503c);
 	}
 	.seg button {
 		display: inline-flex;

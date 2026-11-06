@@ -1,16 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>World Interaction Sheet</title>
-<!--
-  Review pass 2 proposal sheet (see review-pass-2-plan.md). Standalone: open the file directly.
-  Becomes the World visual-language authority once the owner settles it; options stay on record.
-  A design surface, not production architecture: geometry here is a few lines of screen maths,
-  not the Layout/Scene planners. ★ marks the recommendation; struck-through options are retired
-  production behaviour kept only for comparison.
--->
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>World — interaction sheet</title>
+
 <style>
 :root{--ink:#1b201c;--ink2:#4a524c;--mute:#747b75;--gold:#d4ad45;--goldink:#74560c;--goldtint:#f8efd6;--leaf:#4f8f6c;--problem:#7e2718;--hair:#e3e5df;--hair2:#cfd3cb;--forest:#1f2f2a;--ivory:#f3f0e4;--hover:#f0f1ee}
 body{margin:0;background:#f5f5f1;color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -18,35 +13,23 @@ body{margin:0;background:#f5f5f1;color:var(--ink);font:14px/1.45 system-ui,-appl
 .tone-pale{--paper:#e9ece6;--grid:rgba(27,32,28,.07);--grid2:rgba(27,32,28,.16)}
 .tone-cream{--paper:#f3eee2;--grid:rgba(70,52,20,.08);--grid2:rgba(70,52,20,.17)}
 .tone-sage{--paper:#d9dfd4;--grid:rgba(27,40,30,.09);--grid2:rgba(27,40,30,.19)}
-/* Gizmo styles: one glyph set, four treatments. */
-body.gz-white{--gz-fill:#fff;--gz-stroke:none;--gz-sw:0;--gz-filter:drop-shadow(0 0 .6px rgba(8,22,16,.95)) drop-shadow(0 0 1.8px rgba(8,22,16,.4));--gzl:#fff;--gzl-filter:drop-shadow(0 0 .7px rgba(8,22,16,.95));--chip-on:#1b201c;--chip-on-icon:#fff;--chip-icon:#1b201c}
 body.gz-sticker{--gz-fill:#fff;--gz-stroke:#1b201c;--gz-sw:1.1px;--gz-filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3));--gzl:#1b201c;--gzl-filter:drop-shadow(0 0 .7px rgba(255,255,255,.95));--chip-on:#1b201c;--chip-on-icon:#fff;--chip-icon:#1b201c}
-body.gz-glade{--gz-fill:#fff;--gz-stroke:none;--gz-sw:0;--gz-filter:drop-shadow(0 1.6px 2px rgba(45,32,20,.55)) drop-shadow(0 0 .5px rgba(45,32,20,.55));--gzl:#fff;--gzl-filter:drop-shadow(0 1px 1.4px rgba(45,32,20,.65));--chip-on:#1b201c;--chip-on-icon:#fff;--chip-icon:#1b201c}
-body.gz-ink{--gz-fill:#1b201c;--gz-stroke:#fff;--gz-sw:1.1px;--gz-filter:drop-shadow(0 1px 1.4px rgba(0,0,0,.25));--gzl:#1b201c;--gzl-filter:none;--chip-on:#fff;--chip-on-icon:#1b201c;--chip-icon:#fff}
-/* Ink: what is drawn. Ghost: what a gesture proposes. Both are switchable (review pass 3). */
 body{--draft:#1b201c;--draft-halo:none;--ghost:var(--draft);--ghost-halo:var(--draft-halo)}
-body.ink-white{--draft:#fff;--draft-halo:drop-shadow(0 0 .6px rgba(8,22,16,.95)) drop-shadow(0 0 1.6px rgba(8,22,16,.35))}
 body.ghost-cobalt{--ghost:#2a62d6;--ghost-halo:drop-shadow(0 0 .7px rgba(255,255,255,.95)) drop-shadow(0 0 1.4px rgba(255,255,255,.5))}
-body.ghost-violet{--ghost:#7b45d8;--ghost-halo:drop-shadow(0 0 .7px rgba(255,255,255,.95)) drop-shadow(0 0 1.4px rgba(255,255,255,.5))}
 .gz{fill:var(--gz-fill);stroke:var(--gz-stroke);stroke-width:var(--gz-sw);stroke-linejoin:round;filter:var(--gz-filter)}
 .gzl{fill:none;stroke:var(--gzl);stroke-width:1.5;filter:var(--gzl-filter);stroke-linecap:round}
 .gzl.dash{stroke-dasharray:4 3.5}
 .chip-icon{fill:none;stroke:var(--chip-icon);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .chip.on .gz{fill:var(--chip-on)} .chip.on .chip-icon{stroke:var(--chip-on-icon)}
-.old-knob{fill:#1b201c;stroke:#fff;stroke-width:2.4}
-.old-arrow{fill:none;stroke:#1b201c;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
-.old-ring{fill:none;stroke:#1b201c;stroke-width:1.3}
 
 header{position:sticky;top:0;z-index:20;background:var(--forest);color:var(--ivory);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center}
 header h1{font:600 15px/1.2 system-ui;margin:0 8px 0 0}
-.ctl{display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap}
 .seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--hair2);border-radius:8px;overflow:hidden;background:#fff}
 header .seg{border-color:#3f5249;background:#263a31}
 .seg button{border:0;background:none;padding:5px 9px;font:inherit;font-size:12px;color:var(--ink2);cursor:pointer;white-space:nowrap}
 header .seg button{color:#dcdccf}
 .seg button:hover{background:var(--hover)} header .seg button:hover{background:#30463b}
 .seg button[aria-pressed=true]{background:var(--ivory);color:var(--ink);font-weight:600}
-.seg button.retired{text-decoration:line-through;text-decoration-color:rgba(126,39,24,.6)}
 .seg button:focus-visible,.cbtn:focus-visible,.ib:focus-visible{outline:2px solid var(--leaf);outline-offset:-2px}
 .star{color:#b8901f}
 .intro{max-width:1240px;margin:14px auto 0;padding:0 16px;color:var(--ink2);font-size:13px}
@@ -70,8 +53,6 @@ svg.stage:focus-visible{box-shadow:0 0 0 2px var(--leaf)}
 .tag.bad rect{fill:var(--problem)}
 .inkl{stroke:var(--draft);filter:var(--draft-halo);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .ghost{stroke:var(--ghost);filter:var(--ghost-halo);stroke-width:1.5;fill:none;stroke-dasharray:6 4;stroke-linecap:round;stroke-linejoin:round}
-.ghost.tint{fill:var(--ghost);fill-opacity:.08}
-.ghostm{fill:var(--paper);stroke:var(--ghost);stroke-width:1.6;filter:var(--ghost-halo)}
 .ghost.dots{stroke-dasharray:1 4;stroke-width:1.5}
 .refused{stroke:var(--problem);stroke-width:2;stroke-dasharray:6 4;fill:none;stroke-linecap:round}
 .wall2d{stroke:var(--ink);stroke-width:8;stroke-linecap:square;fill:none}
@@ -82,13 +63,11 @@ svg.stage:focus-visible{box-shadow:0 0 0 2px var(--leaf)}
 .room-name{font:500 12px system-ui;fill:var(--ink2)} .room-area{font:11px ui-monospace,Menlo,monospace;fill:var(--ink2)}
 .room-fill{fill:rgba(27,32,28,.035)}
 .sel-edge{fill:none;stroke:var(--gold);stroke-width:2;stroke-linejoin:round}
-.bang circle{fill:#fff;stroke:var(--problem);stroke-width:1.5} .bang text{fill:var(--problem);font:700 12px system-ui}
 .scalebar rect{stroke:var(--ink);stroke-width:1} .scalebar text{font:11px ui-monospace,Menlo,monospace;fill:var(--ink)}
 .tick{stroke:var(--draft);filter:var(--draft-halo);stroke-width:1.6;stroke-linecap:round}
-.swatchdot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
 
 /* Glyph key */
-.keycap{font:600 11.5px system-ui;fill:var(--ink2)} .keysub{font:11px system-ui;fill:var(--mute)}
+.keycap{font:600 11.5px system-ui;fill:var(--ink2)}
 
 /* Card mock */
 .cardrow{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
@@ -135,10 +114,6 @@ svg.stage:focus-visible{box-shadow:0 0 0 2px var(--leaf)}
 .menu hr{border:0;border-top:1px solid var(--hair);margin:4px 6px}
 .menu .erase{color:#a8321d}
 .note{font-size:12px;color:var(--mute);max-width:520px}
-table.fut{border-collapse:collapse;font-size:12.5px;width:100%;margin-top:4px}
-table.fut th,table.fut td{border-top:1px solid var(--hair);padding:6px 8px;text-align:left;vertical-align:top}
-table.fut th{color:var(--ink2);font-weight:600}
-.futwrap{flex:1;min-width:280px}
 
 /* Gear panel mock */
 .gear{width:230px;background:#fff;border:1px solid var(--hair2);border-radius:12px;box-shadow:0 8px 24px rgba(20,30,25,.12);padding:8px 12px;font-size:13.5px}
@@ -174,212 +149,143 @@ table.fut th{color:var(--ink2);font-weight:600}
 @media (max-width:600px){header{position:static}.cardwrap{width:100%}}
 /* Opening section reuses the sheet's palette, Card and sticker tokens. */
 .op-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
-.op-concept{margin-top:18px;border-top:1px solid var(--hair);padding-top:12px;color:var(--ink2)}
-.op-concept summary{cursor:pointer;font-weight:600}
+/* These selectors also serve elements generated by the external Opening bundle. */
 #op-stage .op-cut{fill:var(--paper);stroke:none}
-#op-stage [data-grip]{cursor:grab} #op-stage [data-id]{cursor:pointer}
 #op-stage .op-symbol{stroke-width:1.15;fill:none;stroke-linecap:round;stroke-linejoin:round}
+#op-stage .op-swing{stroke-dasharray:4 3}
 #op-stage .op-hit{fill:transparent;stroke:none;pointer-events:all}
 #op-stage .op-handle:hover .gz{stroke-width:1.5}
 #op-stage .op-handle:focus{outline:none}
 #op-stage .op-handle:focus-visible .gz{stroke:var(--leaf);stroke-width:2.2}
+#op-stage [data-grip]{cursor:grab} #op-stage [data-id]{cursor:pointer}
 .op-toolbar{gap:8px}
 .op-toolbar .seg button{display:inline-flex;align-items:center;gap:6px;min-height:32px}
 .op-toolbar .seg svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
 .op-toolbar #op-view{margin-left:auto}
 #s-opening button:focus-visible,#s-opening summary:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
 @media(max-width:850px){.op-layout{grid-template-columns:1fr}.op-layout .card{max-width:400px}}
+
+nav.toc{max-width:1160px;margin:16px auto;display:flex;gap:8px;flex-wrap:wrap;padding:0 16px}nav.toc a{color:var(--ink);border:1px solid var(--hair);background:white;border-radius:999px;padding:5px 12px;text-decoration:none;font-size:12px}header>span{color:#b6c9bd;font-size:12px}section{scroll-margin-top:90px;min-width:0}.cardrow{grid-template-columns:minmax(0,1fr)}.cardwrap{max-width:380px}button:focus-visible,a:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+@media(max-width:720px){header{position:static;align-items:flex-start;flex-direction:column}main{grid-template-columns:minmax(0,1fr);padding:10px}.labrow,.cardrow,.op-layout{grid-template-columns:minmax(0,1fr)}.gearcol,.card,.mini{min-width:0;max-width:100%}.op-toolbar{flex-wrap:wrap}.op-toolbar #op-view{margin-left:0}.op-toolbar .seg{flex-wrap:wrap}h2{flex-wrap:wrap}.intro{padding:0 16px}.stage{max-width:100%}section{overflow:hidden}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
 </head>
 <body class="gz-sticker ink-black ghost-cobalt">
-<header>
-  <h1>World · interaction sheet <span style="font-weight:400;opacity:.7">review pass 3</span></h1>
-  <div class="ctl">Gizmo style
-    <div class="seg" data-key="style" role="group" aria-label="Gizmo style">
-      <button data-v="white">A · White + halo</button><button data-v="sticker">B · Sticker <span class="star">★ chosen</span></button><button data-v="glade">C · Soft shadow</button><button data-v="ink">D · Ink</button>
-    </div>
-  </div>
-  <div class="ctl">Ink
-    <div class="seg" data-key="ink" role="group" aria-label="Drawing ink">
-      <button data-v="black">Black <span class="star">★ chosen</span></button><button data-v="white">White</button>
-    </div>
-  </div>
-  <div class="ctl">Ghost
-    <div class="seg" data-key="ghostColor" role="group" aria-label="Ghost colour">
-      <button data-v="ink">Same as ink</button><button data-v="cobalt"><span class="swatchdot" style="background:#2a62d6"></span>A · Cobalt <span class="star">★</span></button><button data-v="violet"><span class="swatchdot" style="background:#7b45d8"></span>B · Violet</button>
-    </div>
-  </div>
-  <div class="ctl" style="opacity:.8">Paper is chosen per view in the gear (section 6)</div>
-</header>
+<header><h1>World — interaction sheet</h1><span>Visual and interaction reference</span></header>
 
-<p class="intro status"><b>Round 3 (2026-11-02):</b> the owner accepted round 2 except the ghosts. This round proposes one ghost language for every transform — Walls, Rooms and objects, in 2D and 3D — in a colour of its own, and a White ink to match the white controls; the turn ring is removed (only the bent two-way arrow stays); Rooms become movable. New: the <b>Ink</b> and <b>Ghost</b> switches in the header and section 8. <b>Ghost colour: ★ A · Cobalt</b> — a hue no other state uses (gold is selection, red is refusal, green is focus), so a proposal never reads as drawn ink, and it holds contrast on all three Papers (about 4.6:1) and, with its thin white halo, on dark materials. <b>B · Violet</b> is the alternative if cobalt reads too close to a link. <b>Ink: chosen Black</b> — the owner kept black draft ink to match the 2D black ink; White with a dark hairline halo stays on record.</p>
-<p class="intro status"><b>Status:</b> owner review, round 2 (2026-11-02). Once the owner settles it, this sheet is promoted as the <b>authority for the World visual language</b>: marks, glyphs, ink, ghosts, refusal, Paper and the Card's shape. Every row keeps its alternatives on record. <span class="star">★</span> is the recommendation and is what round 2 implements; <b>chosen</b> marks an explicit owner decision; <s>struck</s> is current production, kept only to compare. Geometry on this page is screen maths, not the Layout/Scene planners.</p>
-<p class="intro"><b>Clear, visually pleasing, self-explanatory.</b> Every control's shape says what it does: an arrow drags that way, a curved arrow turns, a knob on a stem lifts, a four-way cross moves, a chip toggles a mode. Drawing is solid ink (black or white); a proposal is dashed in the ghost colour, for every subject and in both views; a refusal is red dashed; selection is gold. Every stage below is live: drag, draw and click. The header switch restyles every gizmo; the gear (section 6) sets the Paper for 2D and 3D.</p>
 
+<nav aria-label="World demonstrations" class="toc"><a href="#s-key">Glyph set</a><a href="#s-draw">Draw</a><a href="#s-ghost">Drag preview</a><a href="#s-obj">Object gizmo</a><a href="#s-wall">Wall handles</a><a href="#s-ruler">Ruler</a><a href="#s-labels">Gear</a><a href="#s-card">Card</a><a href="#s-tx">Transform ghosts</a><a href="#s-opening">Door &amp; Window</a></nav><p class="intro">Accepted World controls, marks, drawing and transform feedback. Drag, draw and select in the live examples. Black ink marks drawing; cobalt dashes show a proposal; red dashes show refusal; gold marks selection. <b>Production code and tests remain the behavioral authority.</b> This sheet illustrates the visual and interaction language; its local state and schematic SVG are demonstration mechanisms.</p>
 <main>
 <section class="wide" id="s-key">
-  <h2>0 · Glyph set <small>the same eight shapes on the four surfaces they must read on</small></h2>
-  <p class="lede">Judge contrast here first: Paper, a pale Wall, the gold selection and a dark material.</p>
-  <svg class="stage" id="sv-key" viewBox="0 0 1060 330" role="img" aria-label="Glyph set on four backgrounds"></svg>
+<h2>Glyph set <small>the same control shapes on the four surfaces they must read on</small></h2>
+<p class="lede">Judge contrast here first: Paper, a pale Wall, the gold selection and a dark material.</p>
+<svg aria-label="Glyph set on four backgrounds" class="stage" id="sv-key" role="img" viewbox="0 0 1060 330"></svg>
 </section>
-
 <section id="s-draw">
-  <h2>1 · Draw <small>ink, snap cue, refusal</small> <button class="reset" data-reset="draw">Reset</button></h2>
-  <p class="lede">One black line, a black end mark, one length tag. The end mark's <b>shape</b> is the snap cue: ● free · ○ on a Wall or end · □ on the grid. Swing a segment across the Wall: placed segments stay; only the live one turns red dashed.</p>
-  <div class="opts">Refusal
-    <div class="seg" data-key="refuse" role="group" aria-label="Refusal presentation">
-      <button data-v="reason">A · Reason in the tag <span class="star">★</span></button><button data-v="len">B · Red length, reason on click</button><button data-v="bang" class="retired">Current · ! marker</button>
-    </div>
-  </div>
-  <svg class="stage" id="sv-draw" viewBox="0 0 560 340" tabindex="0" aria-label="Drawing stage"></svg>
-  <p class="hint">Click to place · double-click or <kbd>Enter</kbd> to finish · click the first dot to close a Room · <kbd>Backspace</kbd> removes a point · <kbd>Esc</kbd> cancels.</p>
-</section>
+<h2>Draw <small>ink, snap cue, refusal</small> <button class="reset" data-reset="draw">Reset</button></h2>
+<p class="lede">One black line, a black end mark, one length tag. The end mark's <b>shape</b> is the snap cue: ● free · ○ on a Wall or end · □ on the grid. Swing a segment across the Wall: placed segments stay; only the live one turns red dashed.</p>
 
+<svg aria-label="Drawing stage" class="stage" id="sv-draw" tabindex="0" viewbox="0 0 560 340"></svg>
+<p class="hint">Click to place · double-click or <kbd>Enter</kbd> to finish · click the first dot to close a Room · <kbd>Backspace</kbd> removes a point · <kbd>Esc</kbd> cancels.</p>
+</section>
 <section id="s-ghost">
-  <h2>2 · Drag preview <small>ghost of a Wall edit (2D)</small> <button class="reset" data-reset="ghost">Reset</button></h2>
-  <p class="lede">The source stays put. The proposal is one dashed centreline per changed Wall — the same line you drew, dashed in the ghost colour. Rooms and objects use the same dashed language (section 8). Drag an end knob or the two-way arrow.</p>
-  <div class="opts">Ghost
-    <div class="seg" data-key="ghost" role="group" aria-label="Ghost presentation">
-      <button data-v="line">A · One dashed centreline <span class="star">★</span></button><button data-v="band">B · Dashed line + faint band</button><button data-v="outline" class="retired">Current · dotted thickness outline</button>
-    </div>
-  </div>
-  <svg class="stage" id="sv-ghost" viewBox="0 0 560 320" aria-label="Wall drag stage"></svg>
-  <p class="hint">Drag ● to move a junction (the neighbour follows) · drag ⟷ to slide the Wall · <kbd>Esc</kbd> while dragging cancels.</p>
-</section>
+<h2>Drag preview <small>ghost of a Wall edit (2D)</small> <button class="reset" data-reset="ghost">Reset</button></h2>
+<p class="lede">The source stays put. The proposal is one dashed centreline per changed Wall — the same line you drew, dashed in the ghost colour. Rooms and objects use the same dashed language in Transform ghosts. Drag an end knob or the two-way arrow.</p>
 
+<svg aria-label="Wall drag stage" class="stage" id="sv-ghost" viewbox="0 0 560 320"></svg>
+<p class="hint">Drag ● to move a junction (the neighbour follows) · drag ⟷ to slide the Wall · <kbd>Esc</kbd> while dragging cancels.</p>
+</section>
 <section id="s-obj">
-  <h2>3 · Object gizmo <small>move, turn, W·D·H (3D)</small> <button class="reset" data-reset="obj">Reset</button></h2>
-  <p class="lede">No ring: one bent two-way arrow beside the object turns it, and travels with it as it turns. Every gesture shows the object's dashed edges at the proposed pose in the ghost colour; the object itself stays put until release. The chip does two things: <b>click</b> shows the W·D·H arrows and the height stem, <b>drag</b> scales the whole object uniformly. The stem has two knobs: the top one moves the top, the bottom one lifts the object off its support (objects only). Values are deltas from where the gesture began.</p>
-  <div class="opts">Turn arrow
-    <div class="seg" data-key="turn" role="group" aria-label="Turn glyph">
-      <button data-v="bent">A · Bent two-way arrow, no ring <span class="star">★ chosen</span></button><button data-v="bent2">B · Two bent arrows, opposite corners</button><button data-v="curved" class="retired">Current · ring + bent arrow</button>
-    </div>
-    <span style="margin-left:6px">Bottom knob</span>
-    <div class="seg" data-key="lift" role="group" aria-label="Bottom knob">
-      <button data-v="whole">A · Lifts the whole thing <span class="star">★</span></button><button data-v="base">B · Moves the base only</button>
-    </div>
-  </div>
-  <svg class="stage" id="sv-obj" viewBox="0 0 560 330" aria-label="Object gizmo stage"></svg>
-  <p class="hint">Drag the bent arrow to turn (15° steps, hold <kbd>Alt</kbd> for free) · drag ✥ to move · drag the chip to scale · click the chip, then drag the face arrows or either ⬢ · <kbd>Esc</kbd> cancels.</p>
-</section>
+<h2>Object gizmo <small>move, turn, W·D·H (3D)</small> <button class="reset" data-reset="obj">Reset</button></h2>
+<p class="lede">No ring: one bent two-way arrow beside the object turns it, and travels with it as it turns. Every gesture shows the object's dashed edges at the proposed pose in the ghost colour; the object itself stays put until release. The chip does two things: <b>click</b> shows the W·D·H arrows and the height stem, <b>drag</b> scales the whole object uniformly. The stem has two knobs: the top one moves the top, the bottom one lifts the object off its support (objects only). Values are deltas from where the gesture began.</p>
 
+<svg aria-label="Object gizmo stage" class="stage" id="sv-obj" viewbox="0 0 560 330"></svg>
+<p class="hint">Drag the bent arrow to turn (15° steps, hold <kbd>Alt</kbd> for free) · drag ✥ to move · drag the chip to scale · click the chip, then drag the face arrows or either ⬢ · <kbd>Esc</kbd> cancels.</p>
+</section>
 <section id="s-wall">
-  <h2>4 · Wall handles <small>3D</small> <button class="reset" data-reset="wall">Reset</button></h2>
-  <p class="lede">End knobs change length (the joined Wall follows). The stem beyond the free end has the top knob only: Walls cannot be lifted (no Wall Base yet). The arrow on the cap sets thickness, the arrow on the face slides the Wall. No black disc under any arrow.</p>
-  <div class="opts">Knob
-    <div class="seg" data-key="knob" role="group" aria-label="Knob style">
-      <button data-v="disc">A · Small disc <span class="star">★</span></button><button data-v="hex">B · Hexagon</button><button data-v="old" class="retired">Current · black disc, white ring</button>
-    </div>
-  </div>
-  <svg class="stage" id="sv-wall" viewBox="0 0 560 330" aria-label="Wall handles stage"></svg>
-  <p class="hint">Length and slide show the one dashed centreline; top and lift show the dashed centre plane; thickness shows the two dashed faces on the cap. </p>
-</section>
+<h2>Wall handles <small>3D</small> <button class="reset" data-reset="wall">Reset</button></h2>
+<p class="lede">End knobs change length (the joined Wall follows). The stem beyond the free end has the top knob only: Walls cannot be lifted (no Wall Base yet). The arrow on the cap sets thickness, the arrow on the face slides the Wall. No black disc under any arrow.</p>
 
+<svg aria-label="Wall handles stage" class="stage" id="sv-wall" viewbox="0 0 560 330"></svg>
+<p class="hint">Length and slide show the one dashed centreline; top and lift show the dashed centre plane; thickness shows the two dashed faces on the cap. </p>
+</section>
 <section id="s-ruler">
-  <h2>5 · Ruler <small>measure and scale</small> <button class="reset" data-reset="ruler">Reset</button></h2>
-  <p class="lede">Ink on Paper in both readings (the header Ink switch). The ends use the same snap shapes as drawing.</p>
-  <div class="opts">Ends
-    <div class="seg" data-key="rulerEnd" role="group" aria-label="Ruler ends">
-      <button data-v="ticks">A · End ticks <span class="star">★</span></button><button data-v="marks">B · Snap marks</button>
-    </div>
-  </div>
-  <svg class="stage" id="sv-ruler" viewBox="0 0 560 300" aria-label="Ruler stage"></svg>
-  <p class="hint">Drag anywhere to measure · <kbd>Esc</kbd> clears.</p>
-</section>
+<h2>Ruler <small>measure and scale</small> <button class="reset" data-reset="ruler">Reset</button></h2>
+<p class="lede">Ink on Paper in both readings (black drawing ink). The ends use the same snap shapes as drawing.</p>
 
+<svg aria-label="Ruler stage" class="stage" id="sv-ruler" viewbox="0 0 560 300"></svg>
+<p class="hint">Drag anywhere to measure · <kbd>Esc</kbd> clears.</p>
+</section>
 <section class="wide" id="s-labels">
-  <h2>6 · Gear <small>Room labels and Paper, per view</small></h2>
-  <p class="lede">The gear holds view preferences for this viewer, never project data. Room labels: 2D on, 3D off by default. Paper is picked per view from three reference tones, so the 2D plan and the 3D board can mix and match. Each Paper row opens up into a swatch tray inside the panel (the panel grows) instead of a dropdown. Double-click a 2D label to rename it in place (optional; the Card title is the primary rename).</p>
-  <div class="labrow">
-    <div class="gearcol">
-      <button class="gear-btn" aria-expanded="true" aria-label="View settings" title="View settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
-      <div class="gear" role="group" aria-label="View settings">
-        <h3>Room labels</h3>
-        <label class="sw">In 2D <input type="checkbox" id="lab2d" checked></label>
-        <label class="sw">In 3D <input type="checkbox" id="lab3d"></label>
-        <h3 style="margin-top:10px">Paper</h3>
-        <div class="prow" data-view="p2"></div>
-        <div class="prow" data-view="p3"></div>
-      </div>
-    </div>
-    <div class="mini"><p class="cap">2D plan</p><svg class="stage" id="sv-l2" viewBox="0 0 300 200" aria-label="2D Room labels"></svg></div>
-    <div class="mini"><p class="cap">3D board</p><svg class="stage" id="sv-l3" viewBox="0 0 300 200" aria-label="3D Room labels"></svg></div>
-  </div>
-  <p class="hint">Every stage on this sheet follows these two choices: Draw, Drag preview, Ruler and the 2D mini use the 2D Paper; the gizmo stages, the glyph key and the 3D mini use the 3D Paper.</p>
+<h2>Gear <small>Room labels and Paper, per view</small></h2>
+<p class="lede">The gear holds view preferences for this viewer, never project data. Room labels: 2D on, 3D off by default. Paper is picked per view from three Paper tones, so the 2D plan and the 3D board can mix and match. Each Paper row opens up into a swatch tray inside the panel (the panel grows) instead of a dropdown. Double-click a 2D label to rename it in place (optional; the Card title is the primary rename).</p>
+<div class="labrow">
+<div class="gearcol">
+<button aria-expanded="true" aria-label="View settings" class="gear-btn" title="View settings"><svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewbox="0 0 24 24" width="18"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></button>
+<div aria-label="View settings" class="gear" role="group">
+<h3>Room labels</h3>
+<label class="sw">In 2D <input checked="" id="lab2d" type="checkbox"/></label>
+<label class="sw">In 3D <input id="lab3d" type="checkbox"/></label>
+<h3 style="margin-top:10px">Paper</h3>
+<div class="prow" data-view="p2"></div>
+<div class="prow" data-view="p3"></div>
+</div>
+</div>
+<div class="mini"><p class="cap">2D plan</p><svg aria-label="2D Room labels" class="stage" id="sv-l2" viewbox="0 0 300 200"></svg></div>
+<div class="mini"><p class="cap">3D board</p><svg aria-label="3D Room labels" class="stage" id="sv-l3" viewbox="0 0 300 200"></svg></div>
+</div>
+<p class="hint">Every stage on this sheet follows these two choices: Draw, Drag preview, Ruler and the 2D mini use the 2D Paper; the gizmo stages, the glyph key and the 3D mini use the 3D Paper.</p>
 </section>
-
 <section class="wide" id="s-card">
-  <h2>7 · Card <small>primary numbers, More expands, ••• holds functions, double-click renames</small></h2>
-  <div class="opts">Subject
-    <div class="seg" data-key="subject" role="group" aria-label="Card subject">
-      <button data-v="wall">Wall</button><button data-v="object">Object</button><button data-v="room">Room</button>
-    </div>
-  </div>
-  <div class="cardrow">
-    <div>
-      <div class="cardwrap" id="cardwrap"></div>
-      <p class="note" id="cardnote" style="margin-top:8px">Double-click the name to rename · <b>More</b> grows the Card · <b>•••</b> opens subject functions; greyed items are placeholders.</p>
-    </div>
-    <div class="futwrap">
-      <p class="lede" style="margin-bottom:4px"><b>Numbers to foresee.</b> The More grid takes three per row, so these can arrive without redesign. Only the bold ones exist today.</p>
-      <table class="fut">
-        <thead><tr><th>Subject</th><th>Always</th><th>More · Dimensions</th><th>More · Relations</th></tr></thead>
-        <tbody>
-          <tr><td>Wall</td><td><b>Length</b>, <b>Height</b></td><td>Base, Top, <b>Thick</b>, offset to neighbour, face area, angle to neighbour</td><td><b>Bounds Room</b>, Openings hosted, joined to</td></tr>
-          <tr><td>Opening</td><td><b>Width</b>, <b>Height</b></td><td>Sill, head, offset from Wall end, reveal depth</td><td><b>Host Wall</b>, Rooms it connects</td></tr>
-          <tr><td>Object</td><td><b>Width</b>, <b>Depth</b>, <b>Height</b></td><td>Elevation above support, uniform scale</td><td>On Room / Free (membership)</td></tr>
-          <tr><td>Room</td><td><b>Area</b></td><td>Ceiling height, perimeter, floor level, volume</td><td>Bounding Walls, Openings, objects inside</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
+<h2>Card <small>primary numbers, More expands, ••• holds functions, double-click renames</small></h2>
+<div class="opts">Subject
+    <div aria-label="Card subject" class="seg" data-key="subject" role="group">
+<button data-v="wall">Wall</button><button data-v="object">Object</button><button data-v="room">Room</button>
+</div>
+</div>
+<div class="cardrow">
+<div>
+<div class="cardwrap" id="cardwrap"></div>
+<p class="note" id="cardnote" style="margin-top:8px">Double-click the name to rename · <b>More</b> grows the Card · <b>•••</b> opens subject functions; greyed items are placeholders.</p>
+</div>
 
+</div>
+</section>
 <section class="wide" id="s-tx">
-  <h2>8 · Transform ghosts <small>one language for Walls, Rooms and objects (2D shown; 3D draws the same lines)</small> <button class="reset" data-reset="tx">Reset</button></h2>
-  <p class="lede">While a gesture is live, the subject stays where it is and its proposal is drawn <b>dashed in the ghost colour</b>; releasing commits it as one Undo step, <kbd>Esc</kbd> drops it. Walls and Rooms show their dashed centrelines. Objects show their dashed outline: the footprint in 2D, the box edges in 3D (section 3). A turn shows the same outline at the new angle. A refusal turns the ghost red dashed with its reason. Moving a Room moves its connected group: Rooms that share a Wall travel together, because they cannot be pulled apart without detaching architecture.</p>
-  <div class="opts">Object ghost
-    <div class="seg" data-key="tx" role="group" aria-label="Object ghost">
-      <button data-v="outline">A · Dashed outline <span class="star">★</span></button><button data-v="tint">B · Dashed outline + faint tint</button><button data-v="current" class="retired">Current · solid body in 3D, marks only in 2D</button>
-    </div>
-    <span style="margin-left:6px">Objects in a moved Room</span>
-    <div class="seg" data-key="roomFollow" role="group" aria-label="Objects in a moved Room">
-      <button data-v="walls">A · Stay put <span class="star">★ this PR</span></button><button data-v="follow">B · Follow the Room</button>
-    </div>
-  </div>
-  <svg class="stage" id="sv-tx" viewBox="0 0 1060 360" aria-label="Transform ghosts stage"></svg>
-  <p class="hint">Drag ✥ on a Room to move its group · drag ✥ on an object (or its body) to move it · drag its bent arrow to turn it (15° steps, <kbd>Alt</kbd> for free) · drag the Wall's ⟷ to slide it · drop anywhere to commit · drag a Room onto the free Wall to see a refusal.</p>
-  <p class="note" style="max-width:none"><b>Objects in a moved Room.</b> A Room and its Walls are Layout; furniture is Scene, placed in the world and owned by no Room. <b>A</b> keeps that split: the Room moves, objects stay (move them after). <b>B</b> moves objects standing in the Room with it as one Undo step; it needs one change that spans Layout and Scene, so it is a larger follow-up.</p>
+<h2>Transform ghosts <small>one language for Walls, Rooms and objects (2D shown; 3D draws the same lines)</small> <button class="reset" data-reset="tx">Reset</button></h2>
+<p class="lede">While a gesture is live, the subject stays where it is and its proposal is drawn <b>dashed in the ghost colour</b>; releasing commits it as one Undo step, <kbd>Esc</kbd> drops it. Walls and Rooms show their dashed centrelines. Objects show their dashed outline: the footprint in 2D, the box edges in 3D in Object gizmo. A turn shows the same outline at the new angle. A refusal turns the ghost red dashed with its reason. Moving a Room moves its connected group: Rooms that share a Wall travel together, because they cannot be pulled apart without detaching architecture.</p>
+
+<svg aria-label="Transform ghosts stage" class="stage" id="sv-tx" viewbox="0 0 1060 360"></svg>
+<p class="hint">Drag ✥ on a Room to move its group · drag ✥ on an object (or its body) to move it · drag its bent arrow to turn it (15° steps, <kbd>Alt</kbd> for free) · drag the Wall's ⟷ to slide it · drop anywhere to commit · drag a Room onto the free Wall to see a refusal.</p>
+<p class="note" style="max-width:none">A Room and its connected Walls move as a Layout group. Scene objects keep their world placement and stay put when the Room moves.</p>
 </section>
 <section class="wide" id="s-opening">
-  <h2>9. Door &amp; Window <small>PR #270 · proposal for owner review</small></h2>
-  <p class="lede">Choose in Ink. Aim at a Wall. Click to place. Select an Opening to slide it or reveal its dimensions.</p>
-  <div class="opts op-toolbar">
-    <div class="seg" id="op-tools" role="group" aria-label="Tool"><button data-tool="select" aria-pressed="false">Select</button><button data-tool="opening" aria-pressed="true">Ink › Opening</button></div>
-    <div class="seg" id="op-kind" role="group" aria-label="Opening kind">
-      <button data-kind="door" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 4A16 16 0 0 1 20 20M4 20H20"/></svg>Door</button>
-      <button data-kind="window" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V17M20 7V17M4 10H20M4 14H20"/></svg>Window</button>
-    </div>
-    <div class="seg" id="op-profile" role="group" aria-label="Opening profile">
-      <button data-profile="rectangular" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V3H19V21Z"/></svg>Rectangular</button>
-      <button data-profile="rounded" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V10A7 7 0 0 1 19 10V21Z"/></svg>Rounded</button>
-      <button data-profile="pointed" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V10L12 3L19 10V21Z"/></svg>Pointed</button>
-    </div>
-    <div class="seg" id="op-view" role="group" aria-label="View"><button data-view="plan" aria-pressed="true">Plan</button><button data-view="space" aria-pressed="false">3D</button></div>
-    <button class="reset" id="op-reset">Reset specimen</button>
-  </div>
-  <div class="op-layout"><div><svg class="stage tone-pale" id="op-stage" viewBox="0 0 760 400" tabindex="0" aria-label="Opening specimen. Hover the Wall to preview; click to place. Use the offset field and Place button for keyboard placement."></svg><p id="op-status" class="hint" role="status" aria-live="polite"></p><p class="hint">Door: a thin swing arc. Window: glazing contained within Wall thickness. The swing is a Plan symbol; handing is not edited in this specimen.</p></div>
-  <div class="card"><div class="c-head"><div class="grow"><div class="c-kind">Opening · Wall 1</div><div class="c-name" id="op-title">Door</div></div></div><div class="c-fields two" id="op-fields"></div><div class="c-acts"><button class="cbtn" id="op-place">Place</button><button class="cbtn" id="op-cancel">Cancel</button><span class="sp"></span><button class="cbtn" id="op-more" aria-expanded="false">More ▾</button></div><div class="c-more" id="op-secondary" hidden><div class="c-fields two" id="op-extra-fields"></div><div class="rel"><div><span>Host</span><span>Wall 1 · 8.00 m</span></div><div><span>Head</span><span id="op-head"></span></div><div><span>Profile</span><span id="op-profile-name">Rectangular</span></div><p class="note">Width and height stay at hand. Sill and offset are in More; their Stage grips offer direct manipulation.</p></div></div></div></div>
-  <p class="note" style="max-width:none">Technical specimen: real Layout create/update planners and refusal wording; schematic SVG projection, one host Wall, session-only state. It does not exercise production hit testing, F.4 history or the compiled renderer. Drag a sticker grip; release accepts a valid candidate, Esc cancels. Each width arrow moves its adjacent edge and keeps the opposite edge fixed. Height changes the top; sill lifts the Opening with height preserved. The left-edge specimen uses the core planner’s combined offset/width patch; production gesture wiring remains for review. Profile silhouettes use the existing Layout compiler definitions; this is a proposed palette, not production wiring.</p>
-  <details class="op-concept"><summary>Future concept · one Pen, explicit surface and reading — not available in PR #270</summary><p>Keep the Ink/Pen entry and palette. Before drawing, show <b>Surface: Floor / Plan · Reading: Wall, Room or Shape</b>, or <b>Surface: Wall 1, front face · Reading: Opening profile</b>. Door/Window remain explicit intent, never guessed from a stroke.</p><ol><li>Hover reveals the eligible surface. An edge or overlapping face asks you to choose the host; no stroke starts while ambiguous.</li><li>Press locks the host face, its frame and the chosen reading for the whole gesture. Leaving the face refuses or cancels; it never turns into Floor drawing.</li><li>Box, Round and Sketch can eventually offer different editable profiles. Only domain-admitted readings are enabled. A rejected stroke stays an Opening attempt with a repair or explicit cancel.</li></ol><p><b>Concept only:</b> no face drawing, Round/Sketch cuts, boolean geometry or recognition is implemented here. T1 owns the Opening and host constraints; future T5 integration may supply profile editing without acquiring Opening ownership.</p></details>
+<h2>Door &amp; Window </h2>
+<p class="lede">Choose in Ink. Aim at a Wall. Click to place. Select an Opening to slide it or reveal its dimensions.</p>
+<div class="opts op-toolbar">
+<div aria-label="Tool" class="seg" id="op-tools" role="group"><button aria-pressed="false" data-tool="select">Select</button><button aria-pressed="true" data-tool="opening">Ink › Opening</button></div>
+<div aria-label="Opening kind" class="seg" id="op-kind" role="group">
+<button aria-pressed="true" data-kind="door"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 20V4M4 4A16 16 0 0 1 20 20M4 20H20"></path></svg>Door</button>
+<button aria-pressed="false" data-kind="window"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 7V17M20 7V17M4 10H20M4 14H20"></path></svg>Window</button>
+</div>
+<div aria-label="Opening profile" class="seg" id="op-profile" role="group">
+<button aria-pressed="true" data-profile="rectangular"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 21V3H19V21Z"></path></svg>Rectangular</button>
+<button aria-pressed="false" data-profile="rounded"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 21V10A7 7 0 0 1 19 10V21Z"></path></svg>Rounded</button>
+<button aria-pressed="false" data-profile="pointed"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 21V10L12 3L19 10V21Z"></path></svg>Pointed</button>
+</div>
+<div aria-label="View" class="seg" id="op-view" role="group"><button aria-pressed="true" data-view="plan">Plan</button><button aria-pressed="false" data-view="space">3D</button></div>
+<button class="reset" id="op-reset">Reset specimen</button>
+</div>
+<div class="op-layout"><div><svg aria-label="Opening specimen. Hover the Wall to preview; click to place. Use the offset field and Place button for keyboard placement." class="stage tone-pale" id="op-stage" tabindex="0" viewbox="0 0 760 400"></svg><p aria-live="polite" class="hint" id="op-status" role="status"></p><p class="hint">Plan symbols use the production drawing: a Door leaf with a dashed swing arc, and Window glazing inside Wall thickness. Handing is not edited in this specimen.</p></div>
+<div class="card"><div class="c-head"><div class="grow"><div class="c-kind">Opening · Wall 1</div><div class="c-name" id="op-title">Door</div></div></div><div class="c-fields two" id="op-fields"></div><div class="c-acts"><button class="cbtn" id="op-place">Place</button><button class="cbtn" id="op-cancel">Cancel</button><span class="sp"></span><button aria-expanded="false" class="cbtn" id="op-more">More ▾</button></div><div class="c-more" hidden="" id="op-secondary"><div class="c-fields two" id="op-extra-fields"></div><div class="rel"><div><span>Host</span><span>Wall 1 · 8.00 m</span></div><div><span>Head</span><span id="op-head"></span></div><div><span>Profile</span><span id="op-profile-name">Rectangular</span></div><p class="note">Width and height stay at hand. Sill and offset are in More; their Stage grips offer direct manipulation.</p></div></div></div></div>
+<p class="note" style="max-width:none">The Opening specimen uses the real Layout planners, production Plan symbols and refusal wording with a schematic SVG projection and local state. It illustrates placement, slide, edge resize, height and sill controls; production tests own the full editor behavior.</p>
+
 </section>
-
 </main>
-
 <script>
 'use strict';
 const $ = (s) => document.querySelector(s);
-const S = { style: 'sticker', ink: 'black', ghostColor: 'cobalt', p2: 'pale', p3: 'pale', lift: 'whole', refuse: 'reason', ghost: 'line', tx: 'outline', roomFollow: 'walls', turn: 'bent', knob: 'disc', rulerEnd: 'ticks', subject: 'wall', lab2d: true, lab3d: false };
+const S = { p2: 'pale', p3: 'pale', subject: 'wall', lab2d: true, lab3d: false };
 
 // ---------- shared maths ----------
 const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -396,7 +302,7 @@ function proj(p, a, b) { const ab = sub(b, a), L = dot(ab, ab) || 1; const t = M
 function crosses(a, b, c, d) {
   const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
   const e = 1e-6, o1 = o(c, d, a), o2 = o(c, d, b), o3 = o(a, b, c), o4 = o(a, b, d);
-  return ((o1 > e && o2 < -e) || (o1 < -e && o2 > e)) && ((o3 > e && o4 < -e) || (o3 < -e && o4 > e));
+  return ((o1 > e && o2 < -0.000001) || (o1 < -0.000001 && o2 > e)) && ((o3 > e && o4 < -0.000001) || (o3 < -0.000001 && o4 > e));
 }
 function makeIso(s, cx, cy) {
   const iso = (x, y, z = 0) => [cx + (x - y) * 0.866 * s, cy + (x + y) * 0.5 * s - z * s];
@@ -442,9 +348,9 @@ const G = {
     // A curved two-way arrow whose middle sits at (0,0) with tangent +x; it bends toward +y.
     const R = 21, half = 36, w = 5.4, e = 3.8, ha = 17, r = Math.PI / 180;
     const at = (rho, a) => [rho * Math.cos(a * r), R + rho * Math.sin(a * r)];
-    const a0 = -90 - half, a1 = -90 + half, pts = [at(R, a0 - ha), at(R + w / 2 + e, a0)];
-    for (let a = a0; a <= a1 + 0.01; a += 6) pts.push(at(R + w / 2, a));
-    pts.push(at(R + w / 2 + e, a1), at(R, a1 + ha), at(R - w / 2 - e, a1));
+    const a0 = -90 - half, a1 = -54, pts = [at(R, a0 - ha), at(R + w / 2 + e, a0)];
+    for (let a = a0; a <= -53.99; a += 6) pts.push(at(R + w / 2, a));
+    pts.push(at(R + w / 2 + e, a1), at(R, -37), at(R - w / 2 - e, a1));
     for (let a = a1; a >= a0 - 0.01; a -= 6) pts.push(at(R - w / 2, a));
     pts.push(at(R - w / 2 - e, a0));
     return 'M' + pts.map(P).join('L') + 'Z';
@@ -453,7 +359,7 @@ const G = {
 function glyph(path, p, angle = 0, hov = false, extra = '') {
   return `<path class="gz" d="${path}" transform="translate(${P(p)}) rotate(${angle.toFixed(1)}) scale(${hov ? 1.15 : 1})${extra}"/>`;
 }
-function knob(p, hov = false, style = S.knob) {
+function knob(p, hov = false, style = 'disc') {
   if (style === 'hex') return glyph(G.hex, p, 0, hov);
   if (style === 'old') return `<circle class="old-knob" cx="${p[0]}" cy="${p[1]}" r="${hov ? 7 : 6.2}"/>`;
   return `<circle class="gz" cx="${p[0]}" cy="${p[1]}" r="${hov ? 6.4 : 5.4}"/>`;
@@ -472,22 +378,21 @@ function heightStem(base, top, hovTop, hovBot) {
 function renderKey() {
   const svg = $('#sv-key');
   const rows = [['Paper (3D)', 'var(--paper)'], ['Wall', '#d7cdb9'], ['Selected', '#d4ad45'], ['Dark material', '#3c3a36']];
-  const cols = ['Drag a face', 'Slide / thickness', 'Move', 'Turn', 'Turn (alt)', 'Top · lift', 'End / joint', 'W·D·H · drag scales'];
+  const cols = ['Drag a face', 'Slide / thickness', 'Move', 'Turn', 'Top · lift', 'End / joint', 'W·D·H · drag scales'];
   let s = `<rect width="1060" height="330" fill="#fff"/>`;
-  cols.forEach((c, i) => { s += `<text class="keycap" x="${190 + i * 110}" y="22" text-anchor="middle">${c}</text>`; });
+  cols.forEach((c, i) => { s += `<text class="keycap" x="${190 + i * 125}" y="22" text-anchor="middle">${c}</text>`; });
   rows.forEach(([name, fill], r) => {
     const y = 34 + r * 72;
     s += `<rect x="0" y="${y}" width="1060" height="68" rx="8" style="fill:${fill}"/>`;
     s += `<text class="keycap" x="16" y="${y + 38}" style="fill:${r === 3 ? '#e8e6df' : 'var(--ink2)'}">${name}</text>`;
-    const cy = y + 34, X = (i) => 190 + i * 110;
+    const cy = y + 34, X = (i) => 190 + i * 125;
     s += glyph(G.arrow, [X(0) - 8, cy]);
     s += glyph(G.two, [X(1), cy]);
     s += glyph(G.move, [X(2), cy]);
-    s += `<path class="gzl" d="M${X(3) - 30},${cy + 14} Q${X(3)},${cy - 8} ${X(3) + 30},${cy + 14}"/>` + glyph(G.curved, [X(3), cy + 2], 0);
-    s += `<path class="gzl" d="M${X(4) - 30},${cy + 14} Q${X(4)},${cy - 8} ${X(4) + 30},${cy + 14}"/>` + glyph(G.tri, [X(4) + 2, cy + 3], 0);
-    s += heightStem([X(5), cy + 18], [X(5), cy - 16], false, false);
-    s += knob([X(6), cy], false, 'disc');
-    s += chip([X(7), cy], r === 2, false);
+    s += glyph(G.curved, [X(3), cy], 0);
+    s += heightStem([X(4), cy + 18], [X(4), cy - 16], false, false);
+    s += knob([X(5), cy], false, 'disc');
+    s += chip([X(6), cy], r === 2, false);
   });
   svg.innerHTML = s;
 }
@@ -529,17 +434,13 @@ function renderDraw() {
   if (cur) {
     const last = pts[pts.length - 1];
     if (last) {
-      if (reason && S.refuse === 'bang') s += `<line class="ghost dots" x1="${last[0]}" y1="${last[1]}" x2="${cur.p[0]}" y2="${cur.p[1]}"/>`;
-      else s += `<line class="${reason ? 'refused' : 'inkl'}" x1="${last[0]}" y1="${last[1]}" x2="${cur.p[0]}" y2="${cur.p[1]}"/>`;
+      s += `<line class="${reason ? 'refused' : 'inkl'}" x1="${last[0]}" y1="${last[1]}" x2="${cur.p[0]}" y2="${cur.p[1]}"/>`;
     }
-    if (reason && S.refuse === 'bang') {
-      s += `<g class="bang" transform="translate(${P(cur.p)})"><circle r="9"/><text y="4.5" text-anchor="middle">!</text></g>`;
-      s += tag(cur.p[0] + 14, cur.p[1] - 30, 'This would cross or meet another Wal…');
-    } else {
+    {
       s += endMark(cur.p, cur.kind, !!reason);
       if (last) {
         const len = (d2(last, cur.p) / PXM).toFixed(2) + ' m';
-        const showReason = reason && (S.refuse === 'reason' || Date.now() - DR.flash < 1400);
+        const showReason = reason && (true);
         s += tag(cur.p[0] + 12, cur.p[1] - 30, showReason ? reason : len, !!reason);
       }
     }
@@ -594,15 +495,12 @@ function renderGhost() {
     const changed = [0, 1, 2].filter((i) => d2(C[i], Pt[i]) + d2(C[i + 1], Pt[i + 1]) > 0.5);
     for (const i of changed) {
       const a = C[i], b = C[i + 1];
-      if (S.ghost === 'outline') {
-        const n = mul(unit([-(b[1] - a[1]), b[0] - a[0]]), 4);
-        s += `<path class="ghost dots" d="M${P(add(a, n))}L${P(add(b, n))}M${P(sub(a, n))}L${P(sub(b, n))}"/>`;
-      } else {
-        if (S.ghost === 'band') s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="var(--ink)" stroke-opacity=".08" stroke-width="8"/>`;
+      {
+
         s += `<line class="ghost" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
       }
     }
-    if (S.ghost !== 'outline') [1, 2].forEach((i) => { if (d2(C[i], Pt[i]) > 0.5) s += endMark(C[i], 'ring'); });
+    [1, 2].forEach((i) => { if (d2(C[i], Pt[i]) > 0.5) s += endMark(C[i], 'ring'); });
   }
   const H = ghostHandles(C || Pt);
   for (const h of H) {
@@ -683,8 +581,7 @@ const RING_LOCAL = 90; // the turn arrow's angle in the object's own frame
 function applyStem(base, k, dm) {
   const c = { ...base };
   if (k === 'h') c.h = Math.max(0.1, base.h + dm);
-  else if (S.lift === 'whole') c.z = Math.max(0, base.z + dm);
-  else { const dz = Math.max(-base.z, Math.min(base.h - 0.1, dm)); c.z = base.z + dz; c.h = base.h - dz; }
+  else c.z = Math.max(0, base.z + dm);
   return c;
 }
 function stemTag(base, c, k) {
@@ -697,10 +594,8 @@ function renderObj() {
   const ring = []; for (let i = 0; i <= 72; i++) { const a = i / 72 * Math.PI * 2; ring.push(iso(g.x + rr * Math.cos(a), g.y + rr * Math.sin(a), 0.01)); }
   OB.ring = ring;
   const ringHov = OB.hov === 'turn' || k === 'turn';
-  const ringed = S.turn === 'curved' || S.turn === 'tri' || S.turn === 'old';
-  if (!ringed) OB.ring = [];
-  else if (S.turn === 'old') s += `<polyline class="old-ring" points="${ring.map(P).join(' ')}"/>`;
-  else s += `<polyline class="gzl" style="stroke-width:${ringHov ? 2.2 : 1.5}px" points="${ring.map(P).join(' ')}"/>`;
+  const ringed = false;
+  OB.ring = [];
   // a lifted object keeps a dashed footprint on its support
   if (g.z > 0.01) s += `<polygon class="ghost" points="${oCorners(g).map((p) => P(iso(...p, 0))).join(' ')}"/><path class="ghost" d="M${P(iso(g.x, g.y, 0))}L${P(iso(g.x, g.y, g.z))}"/>`;
   s += prism(iso, oCorners(o), o.z, o.z + o.h, OFILL) + selOutline(iso, oCorners(o), o.z, o.z + o.h);
@@ -708,21 +603,9 @@ function renderObj() {
   // turn arrow: travels with the object
   const ga = (g.rot + RING_LOCAL) * Math.PI / 180, gw = [g.x + rr * Math.cos(ga), g.y + rr * Math.sin(ga), 0.01];
   const gp = iso(...gw), tan = screenDir(iso, gw, [-Math.sin(ga), Math.cos(ga)]), toC = sub(iso(g.x, g.y, 0), gp);
-  if (S.turn === 'curved' || S.turn === 'bent' || S.turn === 'bent2') {
+  {
     s += glyph(G.curved, gp, deg(tan), ringHov, dot([-tan[1], tan[0]], toC) < 0 ? ' scale(1,-1)' : '');
-    if (S.turn === 'bent2') {
-      const gw2 = [g.x - rr * Math.cos(ga), g.y - rr * Math.sin(ga), 0.01], gp2 = iso(...gw2);
-      const tan2 = screenDir(iso, gw2, [Math.sin(ga), -Math.cos(ga)]), toC2 = sub(iso(g.x, g.y, 0), gp2);
-      s += glyph(G.curved, gp2, deg(tan2), ringHov, dot([-tan2[1], tan2[0]], toC2) < 0 ? ' scale(1,-1)' : '');
-      H.push({ k: 'turn', p: gp2, r: 16 });
-    }
-  }
-  else if (S.turn === 'tri') s += glyph(G.tri, gp, deg(tan), ringHov);
-  else {
-    // production: two open heads meeting at a fixed screen position, whatever the turn
-    const i0 = 30, a = ring[i0 - 4], b = ring[i0 - 1], c = ring[i0 + 4], d = ring[i0 + 1];
-    const head = (from, tip) => { const dd = unit(sub(tip, from)), n = [-dd[1], dd[0]], base = sub(tip, mul(dd, 7)); return `<polyline class="old-arrow" points="${P(add(base, mul(n, 4.5)))} ${P(tip)} ${P(sub(base, mul(n, 4.5)))}"/>`; };
-    s += head(a, b) + head(c, d);
+
   }
   H.push({ k: 'turn', p: gp, r: 16 });
   // move cross at the top centre, aligned with the object
@@ -888,8 +771,7 @@ function renderRuler() {
   if (RU.a && RU.b && d2(RU.a, RU.b) > 2) {
     const a = RU.a, b = RU.b, dd = unit(sub(b, a)), n = [-dd[1], dd[0]];
     s += `<line class="inkl" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
-    if (S.rulerEnd === 'ticks') s += [a, b].map((p) => `<path class="tick" d="M${P(add(p, mul(n, 7)))}L${P(sub(p, mul(n, 7)))}"/>`).join('');
-    else s += endMark(a, RU.ka) + endMark(b, RU.kb);
+    s += [a, b].map((p) => `<path class="tick" d="M${P(add(p, mul(n, 7)))}L${P(sub(p, mul(n, 7)))}"/>`).join('');
     const m = mul(add(a, b), 0.5), off = n[1] > 0 ? mul(n, -16) : mul(n, 16), txt = (d2(a, b) / PXM).toFixed(2) + ' m';
     s += tag(m[0] + off[0] - txt.length * 3.5 - 7, m[1] + off[1] - 10, txt);
   }
@@ -1050,13 +932,13 @@ function renderTx() {
   for (const o of TX.objs) s += `<polygon points="${oPoly(o).map(P).join(' ')}" fill="#cfc6b6" stroke="var(--ink2)" stroke-width="1"/>`;
   // ghost
   const bad = C?.refusal;
-  const cls = bad ? 'refused' : `ghost${S.tx === 'tint' ? ' tint' : ''}`;
-  if (C && S.tx !== 'current') {
+  const cls = bad ? 'refused' : `ghost${''}`;
+  if (C && true) {
     if (C.kind === 'room') {
       const seen2 = []; let d = '';
       for (const r of C.rooms) for (const [a, b] of roomEdges(r)) { if (seen2.some(([c, e]) => (d2(a, c) < 1 && d2(b, e) < 1) || (d2(a, e) < 1 && d2(b, c) < 1))) continue; seen2.push([a, b]); d += `M${P(a)}L${P(b)}`; }
       s += `<path class="${bad ? 'refused' : 'ghost'}" d="${d}"/>`;
-      if (S.roomFollow === 'follow') for (const o of C.objs) s += `<polygon class="${cls}" points="${oPoly(o).map(P).join(' ')}"/>`;
+
     } else if (C.kind === 'wall') s += `<line class="ghost" x1="${C.free[0][0]}" y1="${C.free[0][1]}" x2="${C.free[1][0]}" y2="${C.free[1][1]}"/>`;
     else s += `<polygon class="${cls}" points="${oPoly(C.obj).map(P).join(' ')}"/>`;
   }
@@ -1123,7 +1005,7 @@ function renderTx() {
   const end = (commit) => {
     if (!TX.drag) return; const C = TX.cand;
     if (commit && C && !C.refusal) {
-      if (C.kind === 'room') { TX.rooms = TX.rooms.map((rm, i) => ({ ...rm, r: C.rooms[i] })); if (S.roomFollow === 'follow') TX.objs = TX.objs.map((o) => C.objs.find((q) => q.id === o.id) || o); }
+      if (C.kind === 'room') { TX.rooms = TX.rooms.map((rm, i) => ({ ...rm, r: C.rooms[i] }));  }
       else if (C.kind === 'wall') TX.free = C.free;
       else TX.objs = TX.objs.map((o, i) => (i === C.i ? C.obj : o));
     }
@@ -1135,7 +1017,7 @@ function renderTx() {
 })();
 
 // ---------- 6b · Paper in the gear ----------
-const TONES = { pale: 'Current', cream: 'Warm cream', sage: 'Deeper sage' };
+const TONES = { pale: 'Paper', cream: 'Warm cream', sage: 'Deeper sage' };
 const STAGES = { p2: ['#sv-draw', '#sv-ghost', '#sv-ruler', '#sv-l2', '#sv-tx'], p3: ['#sv-key', '#sv-obj', '#sv-wall', '#sv-l3'] };
 let paperOpen = null;
 function buildGear() {
@@ -1144,7 +1026,7 @@ function buildGear() {
     const v = row.dataset.view;
     row.innerHTML = `<button class="pbtn" aria-expanded="false" aria-controls="tray-${v}"><span class="swatch"></span><span class="plabel">${v === 'p2' ? '2D plan' : '3D board'}</span><span class="pname"></span>${chev}</button>` +
       `<div class="tray" id="tray-${v}"><div class="tray-in"><div class="tiles" role="group" aria-label="${v === 'p2' ? '2D' : '3D'} Paper">` +
-      Object.entries(TONES).map(([k, n]) => `<button class="tile" data-tone="${k}" tabindex="-1"><span class="tile-sw tone-${k}"></span><span>${n}${k === 'pale' ? ' ★' : ''}</span></button>`).join('') +
+      Object.entries(TONES).map(([k, n]) => `<button class="tile" data-tone="${k}" tabindex="-1"><span class="tile-sw tone-${k}"></span><span>${n}</span></button>`).join('') +
       `</div></div></div>`;
     row.querySelector('.pbtn').addEventListener('click', () => { paperOpen = paperOpen === v ? null : v; updateGear(); });
     row.querySelectorAll('.tile').forEach((t) => t.addEventListener('click', () => { S[v] = t.dataset.tone; updateGear(); applyTones(); }));
@@ -1168,9 +1050,6 @@ function renderAll() { renderKey(); renderDraw(); renderGhost(); renderObj(); re
 function setOpt(key, v) {
   S[key] = v;
   document.querySelectorAll(`.seg[data-key="${key}"] button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
-  if (key === 'style') document.body.className = document.body.className.replace(/gz-\w+/, 'gz-' + v);
-  if (key === 'ink') document.body.className = document.body.className.replace(/ink-\w+/, 'ink-' + v);
-  if (key === 'ghostColor') document.body.className = document.body.className.replace(/ghost-\w+/, 'ghost-' + v);
   if (key === 'subject') { CS.menu = false; CS.renaming = false; CS.err = ''; }
   renderAll();
 }
@@ -1185,6 +1064,6 @@ document.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('cli
 }));
 renderAll();
 </script>
-<script src="opening-design.bundle.js"></script>
+<script src="world-interaction-sheet/opening.bundle.js"></script>
 </body>
 </html>

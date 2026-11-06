@@ -42,10 +42,12 @@ import {
 	type Vec3
 } from '@portfolio/project-model';
 import {
+	EXPERIENCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
 	type CameraFreeSceneDocument,
+	type ExperienceUnitPayload,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import {
@@ -160,14 +162,16 @@ const TOUR_CAMERA = {
 
 function projectWith(
 	scene: CameraFreeSceneDocument,
-	elevation = 0
+	elevation = 0,
+	experience?: ExperienceUnitPayload
 ): Promise<ProjectEnvelope> {
 	return createUnitProject({
 		id: 'project-1',
 		name: 'Gallery',
 		layout: supportedLayout(elevation),
 		scene,
-		camera: TOUR_CAMERA
+		camera: TOUR_CAMERA,
+		...(experience === undefined ? {} : { experience })
 	});
 }
 
@@ -382,6 +386,13 @@ function supportCandidates(
 describe('scene operation planners — registration', () => {
 	it('registers exactly the twelve Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
+		expect(
+			planners.flatMap((planner) =>
+				'writes' in planner.admission && planner.admission.writes?.includes('experience')
+					? [planner.kind]
+					: []
+			)
+		).toEqual(['delete-one']);
 		expect(planners.map((planner) => planner.kind)).toEqual([
 			'place-object',
 			'create-form',
@@ -399,14 +410,18 @@ describe('scene operation planners — registration', () => {
 		for (const planner of planners) {
 			// `place-object` is the single Scene planner that declares typed-resource
 			// staging: a creator model's first placement installs its resource, exact
-			// lock and entity as one accepted result. Every other Scene operation
-			// keeps Scene-only admission.
-			expect(planner.admission).toEqual({
-				domain: 'scene',
-				compound: false,
-				units: false,
-				resources: planner.kind === 'place-object'
-			});
+			// lock and entity as one accepted result. `delete-one` is the only Scene →
+			// Experience write (A-3); every other operation keeps Scene-only admission.
+			expect(planner.admission).toEqual(
+				planner.kind === 'delete-one'
+					? { domain: 'scene', compound: true, writes: ['experience'], units: false, resources: false }
+					: {
+							domain: 'scene',
+							compound: false,
+							units: false,
+							resources: planner.kind === 'place-object'
+						}
+			);
 			expect(planner.sourceKinds).toEqual([UNIT_SOURCE_KIND]);
 			expect(planner.sourceVersions).toEqual([UNIT_SOURCE_VERSION]);
 		}
@@ -749,6 +764,51 @@ describe('scene operation planners — poses and ownership', () => {
 		expect(dropped.candidate.source.units.scene.data.clusters).toEqual([
 			{ id: 'cluster-keep', name: 'Keep', memberIds: ['entity-a', 'entity-b', 'entity-c'] }
 		]);
+	});
+
+	it('unlinks every Presentation about the removed object in the same candidate (A-3)', async () => {
+		const empty: ExperienceUnitPayload = { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [] };
+		const entity = box('entity-a', [3, 0.5, 2]);
+		const base = await projectWith(sceneWith([entity]), 0, empty);
+		const subject = {
+			version: 1 as const,
+			domain: 'scene' as const,
+			revision: { kind: 'exact' as const, contentRevision: base.units.scene.header.contentRevision },
+			subject: { kind: 'entity', id: 'entity-a' },
+			instancePath: [],
+			location: { kind: 'project-root' as const },
+			componentId: null,
+			capabilityId: null
+		};
+		const experience: ExperienceUnitPayload = {
+			formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+			experiences: [{
+				id: 'experience-1',
+				label: 'Tour',
+				entryGuideId: null,
+				welcome: null,
+				presentations: [{ id: 'presentation-1', label: null, views: [], subject, text: null, explorable: true }],
+				stops: [],
+				guides: [],
+				detours: []
+			}]
+		};
+		const snapshot = await snapshotOf(await projectWith(sceneWith([entity]), 0, experience));
+		const result = prepare(
+			'delete-one',
+			snapshot,
+			intent({ kind: 'delete-one', operationId: 'op-unlink', snapshot, targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')], payload: { entityId: 'entity-a' } })
+		);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const unlinked = result.candidate.source.units.experience.data.experiences[0]!.presentations[0]!;
+		expect(unlinked.subject).toBeNull();
+		expect(unlinked.label).toBe('entity-a');
+		expect(result.candidate.changes).toContainEqual({
+			kind: 'experience-presentations-unlinked',
+			subjectIds: ['entity-a'],
+			fields: ['presentations']
+		});
 	});
 });
 

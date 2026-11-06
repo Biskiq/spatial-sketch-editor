@@ -55,7 +55,6 @@ export function removalLines(
 	const removedStops = consequences.filter((entry) => entry.kind === 'stop-removed');
 	const deletedViews = consequences.filter((entry) => entry.kind === 'view-deleted');
 	const deletedPaths = consequences.filter((entry) => entry.kind === 'connection-deleted');
-	const removedGates = consequences.filter((entry) => entry.kind === 'gate-removed');
 	if (target.kind === 'stop') {
 		lines.push(`Removes ${names.stop(target.stopId)}. ${names.presentation(removedStops[0]?.presentationId ?? '')} stays.`);
 	} else if (target.kind === 'guide') {
@@ -68,8 +67,7 @@ export function removalLines(
 		const extras = [
 			removedStops.length > 0 ? `its ${plural(removedStops.length, 'Stop', 'Stops')}` : null,
 			deletedViews.length > 0 ? plural(deletedViews.length, 'Camera View', 'Camera Views') : null,
-			deletedPaths.length > 0 ? plural(deletedPaths.length, 'Camera path', 'Camera paths') : null,
-			removedGates.length > 0 ? plural(removedGates.length, 'Gate', 'Gates') : null
+			deletedPaths.length > 0 ? plural(deletedPaths.length, 'Camera path', 'Camera paths') : null
 		].filter((entry): entry is string => entry !== null);
 		lines.push(
 			extras.length === 0
@@ -95,17 +93,11 @@ export function removalLines(
 					`${names.view(consequence.viewId)} stays: still used by ${consequence.usedByPresentationIds.map((id) => names.presentation(id)).join(', ')}.`
 				);
 				break;
-			case 'stop-view-removed':
-				lines.push(`${names.stop(consequence.stopId)} leaves out ${names.view(consequence.viewId)}.`);
-				break;
 			case 'stop-entry-fallback':
 				lines.push(`${names.stop(consequence.stopId)} enters at the Default View instead.`);
 				break;
-			case 'continuation-fallback':
-				lines.push(`${names.stop(consequence.stopId)} no longer continues to ${names.stop(consequence.removedStopId)}; it follows the Guide order.`);
-				break;
-			case 'guide-start-moved':
-				lines.push(`${names.guide(consequence.guideId)} now starts at ${names.stop(consequence.toStopId)}.`);
+			case 'detour-removed':
+				lines.push('A Detour that used it is removed too.');
 				break;
 			case 'opening-guide-moved':
 				lines.push(

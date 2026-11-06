@@ -38,8 +38,10 @@ import {
 } from '@portfolio/project-model';
 import {
 	replaceUnitData,
+	serializeProjectEnvelope,
 	validateProjectEnvelope,
 	type CameraFreeSceneDocument,
+	type ExperienceUnitPayload,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 import {
@@ -64,6 +66,7 @@ import {
 	proofIntent
 } from './__fixtures__/f4-current-source-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { EXPERIENCE } from '../experience/fixtures';
 import {
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
@@ -295,6 +298,8 @@ async function boot(
 		readonly projectId?: string;
 		/** Extra admitted definitions, e.g. an approved creator model's. */
 		readonly definitions?: readonly NormalizedPlacementDefinition[];
+		/** Replace the default empty Experience exactly, e.g. with a linked Presentation. */
+		readonly experience?: (envelope: ProjectEnvelope) => ExperienceUnitPayload;
 	} = {}
 ) {
 	const revision = {
@@ -302,13 +307,17 @@ async function boot(
 		revisionId: BOOT_REVISION.revisionId
 	};
 	const { project, layoutObjectId } = conformanceProject(options.elevation ?? ELEVATION, revision.projectId);
-	const envelope = await createUnitProject({
+	const projectInput = {
 		id: project.id,
 		name: project.name,
 		acceptedRevision: revision,
 		layout: project.layout,
 		scene: project.scene
-	});
+	};
+	let envelope = await createUnitProject(projectInput);
+	if (options.experience !== undefined) {
+		envelope = await createUnitProject({ ...projectInput, experience: options.experience(envelope) });
+	}
 	const admitted = await admitUnitProject(envelope, revision);
 	if (admitted.kind !== 'admitted') {
 		throw new Error(`the conformance project was not admitted: ${JSON.stringify(admitted.issues)}`);
@@ -839,6 +848,55 @@ describe('Scene operations through the F.4 coordinator', () => {
 		const redo = await coordinator.redo();
 		expect(redo.kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(afterDelete.canonicalJson);
+	});
+
+	it('R34: delete-one unlinks with the last effective name, and one Undo restores object, link and label', async () => {
+		const linked = (envelope: ProjectEnvelope): ExperienceUnitPayload => ({
+			...EXPERIENCE,
+			experiences: EXPERIENCE.experiences.map((experience) => ({
+				...experience,
+				presentations: experience.presentations.map((presentation, index) =>
+					index === 0
+						? {
+								...presentation,
+								label: null,
+								subject: {
+									version: 1 as const,
+									domain: 'scene' as const,
+									revision: { kind: 'exact' as const, contentRevision: envelope.units.scene.header.contentRevision },
+									subject: { kind: 'entity' as const, id: 'entity-b' },
+									instancePath: [],
+									location: { kind: 'project-root' as const },
+									componentId: null,
+									capabilityId: null
+								}
+							}
+						: presentation
+				)
+			}))
+		});
+		const { coordinator } = await boot({ experience: linked });
+		const before = serializeProjectEnvelope(coordinator.current().source);
+		const state = now(coordinator);
+		const deleted = await coordinator.accept(
+			sceneIntent({
+				kind: 'delete-one',
+				operationId: 'op-delete-linked',
+				intentRevision: state.intentRevision,
+				contentId: state.contentId,
+				entityId: 'entity-b',
+				payload: { entityId: 'entity-b' }
+			})
+		);
+		expect(deleted.kind).toBe('accepted');
+		const unlinked = coordinator.current().source.units.experience.data.experiences[0]!.presentations[0]!;
+		expect(unlinked).toMatchObject({ subject: null, label: 'entity-b' });
+		expect(coordinator.current().source.units.scene.data.entities.map((entity) => entity.id)).not.toContain('entity-b');
+
+		const undone = await coordinator.undo();
+		expect(undone.kind).toBe('restored');
+		expect(serializeProjectEnvelope(coordinator.current().source)).toBe(before);
+		expect(coordinator.current().source.units.experience.data.experiences[0]!.presentations[0]!.label).toBeNull();
 	});
 
 	it('refuses a mutation-control candidate the adapter admits, through the T2 record-scope guard', async () => {

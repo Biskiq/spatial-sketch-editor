@@ -190,7 +190,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import ExperienceViewWriter from '$lib/authoring/experience/ExperienceViewWriter.svelte';
 	import ExperienceStopWriter from '$lib/authoring/experience/ExperienceStopWriter.svelte';
 	import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
-	import ExperienceGuideWriter from '$lib/authoring/experience/ExperienceGuideWriter.svelte';
+	import ExperienceExperienceWriter from '$lib/authoring/experience/ExperienceExperienceWriter.svelte';
 	import ExperienceSubjectWriter from '$lib/authoring/experience/ExperienceSubjectWriter.svelte';
 	import {
 		provideExperienceHomes,
@@ -198,7 +198,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	} from '$lib/authoring/experience/experience-homes';
 	import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 	import {
-		guideCardModel,
+		experienceCardModel,
 		presentationCardModel,
 		stopCardModel,
 		subjectCardModel,
@@ -210,6 +210,11 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import type { ComponentProps } from 'svelte';
 	import type { ExperienceIndexGroups } from '$lib/authoring/stage/shell/experience-index-groups';
 	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
+	import {
+		experienceProblems,
+		loweringProblem,
+		type ExperienceProblem
+	} from '$lib/authoring/experience/experience-problems';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
 	import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
@@ -258,6 +263,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const { diagnostics, closure } = boot.snapshot.domain;
 		return diagnostics.length === 0 && closure.length === 0 ? null : { diagnostics, closure };
 	});
+	/** Plain-language source problems; one validator pass feeds every sentence. */
+	const sourceProblems = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return [] as readonly ExperienceProblem[];
+		return experienceProblems(stageEnvelope(boot.snapshot), boot.snapshot.domain.diagnostics);
+	});
+	/** The last Preview lowering refusal, worded like a source problem. */
+	let previewProblem = $state<ExperienceProblem | null>(null);
 	let facade = $state.raw<StageFacade | null>(null);
 	/**
 	 * The host↔F4 acceptance host for the current project epoch. There is exactly
@@ -322,6 +334,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		redoUnavailableReason: 'Nothing to redo.'
 	});
 	let selection = $state<StageSelectionEntry | null>(null);
+	/** A one-shot Stage pick for linking a Presentation; Esc cancels it. */
+	let stagePickPresentationId = $state<string | null>(null);
 	/** The hovered subject's echoed entry; never the primary selection. */
 	let hoverSelection = $state<StageSelectionEntry | null>(null);
 	/** R217.S15 — whether the pointer is over a draggable selected Wall body or grip. */
@@ -343,6 +357,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	});
 	function changeLens(next: 'world' | 'experience'): void {
 		// A lens switch invalidates any Present-this framing run still waiting.
+		stagePickPresentationId = null;
 
 		// Preview returns to the lens it was entered from; a lens switch ends it.
 		closePreview();
@@ -362,7 +377,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				// With no Experience there is no Card for a carried-over World selection, so it goes too.
 				if (experienceController?.current == null && selection !== null) closeSelection();
 			}
-			guideNamePrompt = null;
 		}
 		// Arming the Experience dock's Guide key is not a mode: the lens owns it.
 	}
@@ -523,15 +537,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let showPaths = $state(true);
 	let showLabels = $state(true);
 	const showOffCount = $derived([showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length);
-	/** The Presentation awaiting a first-Guide name (D8); null when none is asking. */
-	let guideNamePrompt = $state<string | null>(null);
 	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
 	let expandedPresentationId = $state<string | null>(null);
 	/**
-	 * R217.S25 (D10) — the one Card selection. A Presentation, View, Stop, transition or Guide
-	 * replaces the Stage selection; nothing here moves the Camera.
+	 * R217.S25 (D10) — the one Card selection. A Presentation, View, Stop, transition or the
+	 * Experience replaces the Stage selection; nothing here moves the Camera.
 	 */
 	function selectExperienceSubject(subject: ExperienceSubject | null): void {
+		stagePickPresentationId = null;
 		facade?.select(null);
 		selection = null;
 		experienceController?.select(subject);
@@ -719,24 +732,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	$effect(() => () => {
 		if (playbackEntryStandpoint !== null) restorePlaybackEntry();
 	});
-	$effect(() => {
-		if (playback.status !== 'playing' || playbackSuppressed) return;
-		let last = performance.now();
-		let frame = 0;
-		const step = (now: number) => {
-			const delta = (now - last) / 1000;
-			last = now;
-			playback.tick(delta);
-			frame = requestAnimationFrame(step);
-		};
-		frame = requestAnimationFrame(step);
-		return () => cancelAnimationFrame(frame);
-	});
-	// The one Camera write: an evaluated pose only during Follow. Plain play and
-	// scrub move the playhead and rig puck, never the inspection.
-	$effect(() => {
+	/**
+	 * The playback clock runs inside the Stage's own frame loop (`advancePlayback`,
+	 * called just before the Camera is evaluated), so a Follow pose is written and
+	 * drawn in the same frame. A second rAF loop raced the Stage's and landed some
+	 * poses a frame late, which read as judder.
+	 */
+	let playbackClock: number | null = null;
+	let lastFollowSample: typeof playback.sample = null;
+	function writeFollowSample(): void {
 		const sample = playback.sample;
-		if (sample === null || !shouldWritePlaybackSample(playback.following, playbackSuppressed)) return;
+		if (sample === null || !shouldWritePlaybackSample(playback.following, playbackSuppressed)) {
+			lastFollowSample = null;
+			return;
+		}
+		if (sample === lastFollowSample) return;
+		lastFollowSample = sample;
 		const accepted = applyPlaybackView({
 			eye: [sample.eye[0], sample.eye[1], sample.eye[2]],
 			target: [sample.target[0], sample.target[1], sample.target[2]],
@@ -745,6 +756,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// A refused write stops the run instead of letting the playhead drift on
 		// a Camera the Stage no longer owns.
 		if (!accepted) playback.fail('The Stage refused the playback camera.');
+	}
+	function advancePlayback(now: number): void {
+		if (playback.status !== 'playing' || playbackSuppressed) {
+			playbackClock = null;
+		} else {
+			if (playbackClock !== null) playback.tick((now - playbackClock) / 1000);
+			playbackClock = now;
+		}
+		writeFollowSample();
+	}
+	// A seek, a Stop press or Follow turning on while paused writes at once; the
+	// frame loop covers playing.
+	$effect(() => {
+		void playback.sample;
+		void playback.following;
+		untrack(() => writeFollowSample());
 	});
 	$effect(() => {
 		const onKey = (event: KeyboardEvent) => {
@@ -1457,12 +1484,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			experienceGuideOpen = open;
 		},
 		select: selectExperienceSubject,
-		guideNamePrompt: () => guideNamePrompt,
-		requestGuideName: (presentationId) => {
-			guideNamePrompt = presentationId;
-		},
 		sceneSubject: () => experienceSceneSubject,
 		openInWorld: () => changeLens('world'),
+		pickStageSubject: (presentationId) => {
+			if (lens !== 'experience') return false;
+			stagePickPresentationId = presentationId;
+			notice = 'Pick a Stage object to link. Esc cancels.';
+			return true;
+		},
 		advancedCamera: {
 			on: () => advancedCamera,
 			set: (on) => { advancedCamera = on; },
@@ -1513,8 +1542,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const subject = controller?.subject ?? null;
 		if (controller === null || subject === null) return;
 		const resolves =
-			subject.kind === 'guide'
-				? controller.guides.some((guide) => guide.id === subject.guideId)
+			subject.kind === 'experience'
+				? controller.current !== null
 				: subject.kind === 'view'
 					? controller.selectedView !== null
 					: subject.kind === 'stop' || subject.kind === 'transition'
@@ -1522,12 +1551,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						: controller.selectedPresentation !== null;
 		if (!resolves) untrack(() => experienceFocus.select(null));
 	});
-	// A Guide-type subject (a Stop, a transition or the Guide itself) belongs to the Guide, so its
-	// instrument opens. A Presentation, View or Stage subject never closes it. Lens entry clears the
-	// subject, so this does not fight the closed-on-entry rule in changeLens.
+	// A Stop or transition belongs to the Guide, so its instrument opens. A Presentation, View,
+	// Experience or Stage subject never closes it. Lens entry clears the subject, so this does not
+	// fight the closed-on-entry rule in changeLens.
 	$effect(() => {
 		const kind = activeExperience?.subject?.kind;
-		if (kind !== 'stop' && kind !== 'transition' && kind !== 'guide') return;
+		if (kind !== 'stop' && kind !== 'transition') return;
 		untrack(() => openExperienceGuide());
 	});
 	// The Index opens the selected Presentation's Views. Only its id drives the effect, so a new object
@@ -1703,9 +1732,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				focus
 			});
 			if (entry.kind === 'unavailable') {
+				previewProblem =
+					entry.refusal == null ? null : loweringProblem(stageEnvelope(snapshot), entry.refusal);
 				notice = entry.message;
 				return;
 			}
+			previewProblem = null;
 			perfMark('preview:entry-resolved', { kind: entry.kind });
 			// The visitor surface is its own chunk: the Stage first-load set never
 			// carries it, and a second entry reuses what the first loaded. Only this
@@ -2204,7 +2236,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewSurface = null;
 		adapterServices = null;
 		experienceFocus.reset();
-		guideNamePrompt = null;
 		expandedPresentationId = null;
 		// The previous facade's listeners are dropped before its replacement exists,
 		// so a disposal-time notification cannot write through the new facade.
@@ -3335,6 +3366,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						acceptRect(next);
 					}
 				}
+				advancePlayback(performance.now());
 				refresh();
 			} finally {
 				frame = requestAnimationFrame(tick);
@@ -3725,6 +3757,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * subject leaves the current Card selection alone.
 	 */
 	function syncPrimarySelection(next: StageSelectionEntry | null): void {
+		const pick = stagePickPresentationId;
+		if (
+			pick !== null &&
+			next !== null &&
+			next.reference.domain === 'scene' &&
+			next.reference.subject.kind === 'entity'
+		) {
+			stagePickPresentationId = null;
+			selection = null;
+			cardOpen = true;
+			void activeExperience?.linkPresentation(pick, next.reference.subject.id).then((accepted) => {
+				if (accepted) selectExperienceSubject({ kind: 'presentation', presentationId: pick });
+			});
+			return;
+		}
 		const keyOf = (entry: StageSelectionEntry | null) =>
 			entry === null
 				? ''
@@ -3741,6 +3788,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function selectHit(hit: StageSourceHit): void {
 		const stage = facade;
 		if (stage === null) return;
+		const pick = stagePickPresentationId;
+		if (
+			pick !== null &&
+			hit.reference !== undefined &&
+			hit.reference.domain === 'scene' &&
+			hit.reference.subject.kind === 'entity'
+		) {
+			stagePickPresentationId = null;
+			selection = null;
+			cardOpen = true;
+			void activeExperience?.linkPresentation(pick, hit.reference.subject.id);
+			return;
+		}
 		if (hit.reference !== undefined) {
 			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
 			selection = primaryEntry(stage.selectionState());
@@ -3777,6 +3837,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		selection = null;
 		experienceFocus.select(null);
 		cardOpen = true;
+	}
+
+	/** Open the Card a problem names; the chip itself never edits the source. */
+	function showProblem(problem: ExperienceProblem): void {
+		if (problem.subject === null) return;
+		if (lens !== 'experience') changeLens('experience');
+		cardOpen = true;
+		const subject = problem.subject;
+		if (subject.kind === 'guide') {
+			// D-2: a Guide has no Card. Show opens its instrument and keeps the Experience Card.
+			const controller = activeExperience;
+			const guide = controller?.guides.find((entry) => entry.id === subject.guideId);
+			if (controller == null || guide === undefined) return;
+			controller.openGuide(guide.id);
+			experienceGuideOpen = true;
+			experienceFocus.select({ kind: 'experience' });
+			return;
+		}
+		experienceFocus.select(subject);
 	}
 
 	function selectSource(sourceId: string): void {
@@ -4498,6 +4577,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// S28 Esc precedence: a live marker gesture, then place, then Look through,
 		// then the Card's own unwinding.
 		if (event.key === 'Escape' && lens === 'experience') {
+			if (stagePickPresentationId !== null) {
+				event.preventDefault();
+				event.stopPropagation();
+				stagePickPresentationId = null;
+				notice = 'Pick cancelled.';
+				return;
+			}
 			if (pendingViewWrite !== null) {
 				event.preventDefault();
 				event.stopPropagation();
@@ -4976,6 +5062,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				onCreateExperience: () => {},
 				onRenameExperience: async () => ({ kind: 'refused' as const }),
 				onOpenGuide: () => {},
+				onRenameGuide: async () => ({ kind: 'refused' as const }),
+				onRemoveGuide: () => {},
+				onAddStopFromView: () => {},
 				onSelectPresentation: () => {},
 				onToggleExpand: () => {},
 				onSelectView: () => {}
@@ -5004,13 +5093,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				label: guide.label,
 				stopCount: guide.stopIds.length,
 				open: experienceGuideOpen && guide.id === activeGuideId,
-				selected: subject?.kind === 'guide' && subject.guideId === guide.id,
 				opening: current?.entryGuideId === guide.id
 			})),
 			presentations: controller.filteredPresentations.map((entry) => ({
 				id: entry.id,
-				label: entry.label,
-				viewCount: entry.viewIds.length,
+				label: controller.presentationDisplayName(entry.id),
+				viewCount: entry.views.length,
 				explorable: entry.explorable,
 				stopNumbers: stopNumbers.get(entry.id) ?? [],
 				selected: subject?.kind === 'presentation' && subject.presentationId === entry.id,
@@ -5019,7 +5107,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					id: view.id,
 					label: view.label,
 					onTour: controller.viewStops(view.id).length > 0,
-					isDefault: entry.defaultViewId === view.id,
+					isDefault: entry.views[0]?.viewId === view.id,
 					selected:
 						subject?.kind === 'view' && subject.viewId === view.id && subject.presentationId === entry.id
 				}))
@@ -5032,27 +5120,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			},
 			onOpenExperience: (experienceId: string) => {
 				controller.openExperience(experienceId);
-				guideNamePrompt = null;
-				expandedPresentationId = null;
+					expandedPresentationId = null;
 				cardOpen = true;
 			},
 			onCreateExperience: (label?: string) => {
 				// A pending name prompt or an expanded row belongs to the Experience it was opened in.
-				guideNamePrompt = null;
-				expandedPresentationId = null;
+					expandedPresentationId = null;
 				return controller.createExperience(label);
 			},
-			onRenameExperience: (label: string) => controller.renameExperience(label),
-			onOpenGuide: (guideId: string | null) => {
-				if (guideId === null) {
-					experienceGuideOpen = true;
-					return;
-				}
-				controller.openGuide(guideId);
+			onRenameExperience: (label: string) => controller.renameExperience(label),				onOpenGuide: (guideId: string | null) => {
+				if (guideId !== null) controller.openGuide(guideId);
 				experienceGuideOpen = true;
-				selectExperienceSubject({ kind: 'guide', guideId });
+				// D-2: a Guide has no Card; opening it keeps the Experience Card.
+				selectExperienceSubject({ kind: 'experience' });
 			},
-			onSelectPresentation: (presentationId: string) => {
+				onRenameGuide: (guideId: string, label: string) => controller.renameGuide(guideId, label),				onRemoveGuide: (guideId: string) => void controller.remove({ kind: 'guide', guideId }),
+				onAddStopFromView: (viewId: string, presentationId: string) => {
+					void controller.addStop(presentationId, { entryViewId: viewId });
+				},
+				onSelectPresentation: (presentationId: string) => {
 				selectExperienceSubject({ kind: 'presentation', presentationId });
 			},
 			onToggleExpand: (presentationId: string) => {
@@ -5188,11 +5274,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			const subjectLabel = reference === null ? null : referenceLabel(reference as StageSelectionEntry['reference']);
 			const model = presentationCardModel({
 				presentationId: presentation.id,
-				label: presentation.label,
+				label: controller.presentationDisplayName(presentation.id),
 				hasSubject: reference !== null && subjectLabel !== null,
-				viewCount: presentation.viewIds.length,
+				viewCount: presentation.views.length,
 				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
-				hasDefaultView: presentation.defaultViewId !== null
+				hasDefaultView: presentation.views.length > 0
 			});
 			// E5: Add to Guide ▸ — the Guides, the active one first, with *again* where the
 			// Presentation already has a Stop, then New Guide…, which asks the name inline (D8).
@@ -5218,9 +5304,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						id: 'new-guide',
 						label: 'New Guide…',
 						...busyReason,
-						run: () => {
-							guideNamePrompt = presentation.id;
-						}
+						run: () => void controller.createGuide(presentation.id)
 					}
 				]
 			};
@@ -5229,7 +5313,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				identity: model.identity,
 				facts: model.facts,
 				nameWriter: experienceNameWriter(
-					() => presentation.label,
+					() => controller.presentationDisplayName(presentation.id),
 					(name: string) => controller.renamePresentation(presentation.id, name)
 				),
 				menu: [
@@ -5315,20 +5399,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					);
 				}
 			}
-			// E6: Start the tour here changes the context Guide's start; order is untouched.
-			if (position !== null) {
-				const isStart = controller.contextGuide?.entryStopId === stop.id;
-				items.push({
-					id: 'start-here',
-					label: 'Start the tour here',
-					...(controller.busy
-						? { disabled: true, reason: 'Wait for the current change' }
-						: isStart
-							? { disabled: true, reason: 'The tour already starts here' }
-							: {}),
-					run: () => void controller.setGuideStart(stop.id)
-				});
-			}
 			items.push(removalItem(controller, 'remove-stop', 'Remove Stop', { kind: 'stop', stopId: stop.id }));
 			return {
 				...NO_CARD,
@@ -5354,24 +5424,28 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				back: backOf(controller, { kind: 'stop', stopId: stop.id })
 			};
 		}
-		if (subject?.kind === 'guide') {
-			const guide = controller.guides.find((entry) => entry.id === subject.guideId);
-			if (guide === undefined) return NO_CARD;
-			const model = guideCardModel({ guideId: guide.id, label: guide.label, stopCount: guide.stopIds.length });
+		// D-2: with nothing selected the Card is the Experience Card. A Guide is never a Card
+		// subject; opening one keeps this Card and shows its strip.
+		if (subject?.kind === 'experience' || (subject === null && selection === null)) {
+			const current = controller.current;
+			if (current === null) return NO_CARD;
+			const model = experienceCardModel({
+				experienceId: current.id,
+				label: current.label,
+				guideCount: controller.guides.length
+			});
 			return {
 				...NO_CARD,
 				identity: model.identity,
 				facts: model.facts,
 				nameWriter: experienceNameWriter(
-					() => guide.label,
-					(name: string) => controller.renameGuide(guide.id, name)
+					() => current.label,
+					(name: string) => controller.renameExperience(name)
 				),
-				menu: [removalItem(controller, 'remove-guide', 'Remove Guide', { kind: 'guide', guideId: guide.id })],
-				back: backOf(controller, null),
-				writer: writerOf('Guide', ExperienceGuideWriter)
+				writer: writerOf('Experience', ExperienceExperienceWriter)
 			};
 		}
-		// No Experience subject: the Stage selection is the Card.
+		// No Experience subject, but a Stage pick is: the Stage selection is the Card.
 		const selected = selection;
 		if (selected === null) return NO_CARD;
 		const bring = () => {
@@ -5856,24 +5930,42 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		</div>
 	{/if}
 
-	{#if sourceFindings !== null}
+	{#if sourceFindings !== null || sourceProblems.length > 0 || previewProblem !== null}
 		<!--
 			Experience review 1: source problems are a quiet chip, not a page banner.
-			The creator reads a count and one sentence; ids and paths stay behind
-			Details, for copying into a report.
+			The creator reads a plain sentence and uses *Show* to open the Stop's
+			Transition Card; ids, paths and codes stay in *Copy details*.
 		-->
-		<details class="source-findings" class:blocking={sourceFindings.closure.length > 0} aria-label="Source findings">
+		<details
+			class="source-findings"
+			class:blocking={(sourceFindings?.closure.length ?? 0) > 0}
+			aria-label="Source findings"
+		>
 			<summary>
-				{#if sourceFindings.closure.length > 0}
+				{#if (sourceFindings?.closure.length ?? 0) > 0}
 					<strong>This project can't be saved yet.</strong> Something it needs is missing.
 				{:else}
-					<strong>{sourceFindings.diagnostics.length} to fix</strong>
-					{sourceFindings.diagnostics.length === 1 ? 'A link points at something that is gone.' : 'Some links point at things that are gone.'}
+					<strong>{sourceProblems.length + (previewProblem === null ? 0 : 1)} to review</strong>
+					{previewProblem === null
+						? 'This file needs attention before every move plays.'
+						: 'Preview cannot start from this file.'}
 				{/if}
 				<span class="source-findings-more">Details</span>
 			</summary>
 			<ul>
-				{#each [...sourceFindings.closure, ...sourceFindings.diagnostics].slice(0, 8) as finding (finding.path + finding.code)}
+				{#each (previewProblem === null ? sourceProblems : [previewProblem, ...sourceProblems]).slice(0, 8) as problem (problem.code + problem.detail)}
+					<li data-finding-code={problem.code}>
+						<span
+							>{problem.sentence}{#if problem.fix}<span class="source-problem-fix">{problem.fix}</span>{/if}</span
+						>
+						{#if problem.subject !== null}
+							<button type="button" class="source-problem-show" onclick={() => showProblem(problem)}
+								>Show</button
+							>
+						{/if}
+					</li>
+				{/each}
+				{#each (sourceFindings?.closure ?? []).slice(0, 8) as finding (finding.path + finding.code)}
 					<li data-finding-code={finding.code}>{finding.message}</li>
 				{/each}
 			</ul>
@@ -5881,8 +5973,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				type="button"
 				onclick={() =>
 					void navigator.clipboard?.writeText(
-						[...sourceFindings.closure, ...sourceFindings.diagnostics]
-							.map((finding) => `${finding.path}: ${finding.message} (${finding.code})`)
+						[...(previewProblem === null ? [] : [previewProblem]), ...sourceProblems]
+							.map((problem) => problem.detail)
+							.concat(
+								(sourceFindings?.closure ?? []).map(
+									(finding) => `${finding.path}: ${finding.message} (${finding.code})`
+								)
+							)
 							.join('\n')
 					)}>Copy details</button
 			>
@@ -6412,9 +6509,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onCapture={() => void activeExperience?.capture()}
 						onToggleGuide={toggleExperienceGuide}
 					/>
-					{#if notice || activeExperience.message}
-						<p class="experience-feedback" class:refused={!notice && activeExperience.messageRefused} role="status">
-							{notice || activeExperience.message}
+					{#if notice || activeExperience.feedback}
+						<p
+							class="experience-feedback"
+							class:refused={!notice && activeExperience.feedback?.kind === 'refusal'}
+							class:info={!notice && activeExperience.feedback?.kind === 'info'}
+							class:success={!notice && activeExperience.feedback?.kind === 'success'}
+							role="status"
+						>
+							{notice || activeExperience.feedback?.text}
 						</p>
 					{/if}
 					{#if experienceGuideOpen}							<ExperienceGuide
@@ -7061,6 +7164,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font-size: 0.78rem;
 		line-height: 1.35;
 	}
+	/* Kind decides the styling, never the words: a success is never a refusal. */
+	.experience-feedback.success { background: #22503c; }
+	.experience-feedback.info { background: #2c3b44; }
 	.experience-feedback.refused { background: #623639; }
 	.preview-takeover {
 		position: absolute;

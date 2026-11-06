@@ -49,21 +49,19 @@ function experience(id: string, stopId: string): Experience {
 		id,
 		label: id,
 		welcome: null,
-		entryGuideId: null,
+		entryGuideId: 'guide-1',
 		presentations: [
 			{
 				id: `presentation:${id}`,
 				label: id,
-				viewIds: ['view-1'],
+				views: [{ viewId: 'view-1' }],
 				explorable: true,
-				defaultViewId: 'view-1',
 				subject: null,
 				text: null
 			}
 		],
-		stops: [{ id: stopId, presentationId: `presentation:${id}`, views: [{ viewId: 'view-1' }], continuation: { kind: 'end' } }],
-		guides: [],
-		gates: [],
+		stops: [{ id: stopId, presentationId: `presentation:${id}`, entryViewId: null, staySeconds: 5, invitation: null, transition: 'cut' }],
+		guides: [{ id: 'guide-1', label: 'Main', stopIds: [stopId], pacing: 'automatic' as const }],
 		detours: []
 	};
 }

@@ -1,8 +1,8 @@
 /**
  * The shared Card's identity and facts for each Experience subject (R217.S25).
  *
- * Every Experience subject (a Presentation, a View, a Stop, a Stop's transition, a Guide and
- * a Scene object) is shown through the one Card. Each helper here returns the Card's kind
+ * Every Experience subject (a Presentation, a View, a Stop, a Stop's transition, the Experience
+ * itself and a Scene object) is shown through the one Card. Each helper here returns the Card's kind
  * word, its name and status, and the few facts the Card lists in More. The helpers are pure
  * functions over plain values: the route reads the controller and passes labels, counts and
  * positions in, and nothing here names a DOM, a Svelte rune or a source writer.
@@ -47,8 +47,8 @@ export function transitionSourceId(stopId: string): string {
 	return `experience:transition:${stopId}`;
 }
 
-export function guideSourceId(guideId: string): string {
-	return `experience:guide:${guideId}`;
+export function experienceSourceId(experienceId: string): string {
+	return `experience:experience:${experienceId}`;
 }
 
 export function subjectSourceId(entityId: string): string {
@@ -168,18 +168,19 @@ export function transitionCardModel(input: {
 	};
 }
 
-export function guideCardModel(input: {
-	readonly guideId: string;
+/** The Experience itself: the Card when nothing is selected (D-2). */
+export function experienceCardModel(input: {
+	readonly experienceId: string;
 	readonly label: string;
-	readonly stopCount: number;
+	readonly guideCount: number;
 }): ExperienceCardModel {
-	const { guideId, label, stopCount } = input;
+	const { experienceId, label, guideCount } = input;
 	return {
 		identity: {
-			sourceId: guideSourceId(guideId),
+			sourceId: experienceSourceId(experienceId),
 			label,
-			kind: 'Guide',
-			status: stopCount === 0 ? 'No Stops yet' : plural(stopCount, 'Stop')
+			kind: 'Experience',
+			status: guideCount === 0 ? 'No Guides yet' : plural(guideCount, 'Guide')
 		},
 		facts: []
 	};

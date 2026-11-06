@@ -568,7 +568,7 @@ const DOCUMENT = await createUnitProject({
 		]
 	},
 	experience: {
-		formatVersion: 3,
+		formatVersion: 4,
 		experiences: [
 			{
 				id: 'experience-1',
@@ -579,16 +579,14 @@ const DOCUMENT = await createUnitProject({
 					{
 						id: 'presentation-1',
 						label: 'Entry',
-						viewIds: ['node-1'],
+						views: [{ viewId: 'node-1' }],
 						explorable: true,
-						defaultViewId: 'node-1',
 						subject: null,
 						text: null
 					}
 				],
-				stops: [{ id: 'stop-1', views: [{ viewId: 'node-1' }], presentationId: 'presentation-1', continuation: { kind: 'end' } }],
-				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
-				gates: [],
+				stops: [{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', transition: 'cut' }],
+				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const }],
 				detours: []
 			}
 		]

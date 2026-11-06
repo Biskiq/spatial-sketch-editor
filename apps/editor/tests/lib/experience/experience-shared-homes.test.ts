@@ -25,7 +25,7 @@ const HOME_FILES = [
 	path.join(EXPERIENCE_DIR, 'ExperienceViewWriter.svelte'),
 	path.join(EXPERIENCE_DIR, 'ExperienceStopWriter.svelte'),
 	path.join(EXPERIENCE_DIR, 'ExperienceTransitionWriter.svelte'),
-	path.join(EXPERIENCE_DIR, 'ExperienceGuideWriter.svelte'),
+	path.join(EXPERIENCE_DIR, 'ExperienceExperienceWriter.svelte'),
 	path.join(EXPERIENCE_DIR, 'ExperienceSubjectWriter.svelte'),
 	path.join(EXPERIENCE_DIR, 'ExperienceSnapshot.svelte'),
 	path.join(EXPERIENCE_DIR, 'experience-card-model.ts'),
@@ -41,7 +41,7 @@ const CARD_WRITER_FILES = [
 	path.join(EXPERIENCE_DIR, 'ExperienceViewWriter.svelte'),
 	path.join(EXPERIENCE_DIR, 'ExperienceStopWriter.svelte'),
 	path.join(EXPERIENCE_DIR, 'ExperienceTransitionWriter.svelte'),
-	path.join(EXPERIENCE_DIR, 'ExperienceGuideWriter.svelte'),
+	path.join(EXPERIENCE_DIR, 'ExperienceExperienceWriter.svelte'),
 	path.join(EXPERIENCE_DIR, 'ExperienceSubjectWriter.svelte')
 ];
 
@@ -146,14 +146,13 @@ describe('R217.S25 — the Experience home map', () => {
 		expect(callers).toEqual(['ExperienceTransitionWriter.svelte']);
 	});
 
-	it('no Card writer closes or toggles the Guide, and only ExperienceGuideWriter.svelte opens it', () => {
-		// Closing belongs to the dock Guide key and the instrument ×; opening is the Guide writer's Add stop.
+	it('no Card writer closes, toggles or opens the Guide: the dock and the strip own it', () => {
 		const closesOrToggles = CARD_WRITER_FILES.filter((file) =>
 			/setGuideOpen\(\s*(false|!)|guideOpen|guide-toggle|aria-label="Guide"|>\s*Guide\s*</.test(codeOf(file))
 		).map(relativeToRepo);
 		expect(closesOrToggles).toEqual([]);
 		const openers = CARD_WRITER_FILES.filter((file) => /setGuideOpen\(/.test(codeOf(file))).map((file) => path.basename(file));
-		expect(openers).toEqual(['ExperienceGuideWriter.svelte']);
+		expect(openers).toEqual([]);
 	});
 
 	it('draws the lower-edge dock as Select, Place a View, Capture and Guide, with Place armed', () => {
