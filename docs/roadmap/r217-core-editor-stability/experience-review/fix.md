@@ -1,6 +1,6 @@
 # Experience final reconciliation: defect ledger and implementation plan (sheet §33)
 
-**Status:** revision 3, 2026-11-05. The owner approved the design (§33) and every decision in §2. This is the implementation plan for PR #271. Documentation and contracts only so far: no product code has changed in this round.
+**Status:** revision 3, 2026-11-05. The owner approved the design (§33) and every decision in §2. This is the implementation plan for PR #271. Slices 1–2 of §4 have landed on PR #271; slices 3–10 remain.
 **PR:** Biskiq/spatial-sketch-editor#271 on `claude/eloquent-goldberg-yrasgu`, open and not accepted. Every slice lands on this PR, with the commits and review checkpoints in §4.1, and one [final gate](#9-final-gate) precedes the merge. R217.S11 does not begin until then.
 **Contract:** [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) is the normative Experience format 4 and runtime contract. Its *Implementation status* list says which rules the branch already implements; each slice updates that list in the same commit.
 **Design:** [sheet §33](../../../reference/design-system/experience-interaction-sheet.html#s33), with interactive prototypes A–G, the linear-Guide table (H), the ownership table and the change table.

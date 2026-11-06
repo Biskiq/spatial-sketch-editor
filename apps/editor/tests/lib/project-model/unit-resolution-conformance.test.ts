@@ -49,7 +49,7 @@ function experience(id: string, stopId: string): Experience {
 		id,
 		label: id,
 		welcome: null,
-		entryGuideId: null,
+		entryGuideId: 'guide-1',
 		presentations: [
 			{
 				id: `presentation:${id}`,
@@ -60,8 +60,8 @@ function experience(id: string, stopId: string): Experience {
 				text: null
 			}
 		],
-		stops: [{ id: stopId, presentationId: `presentation:${id}`, entryViewId: null, staySeconds: 5, invitation: null, continuation: { kind: 'end' } }],
-		guides: [],
+		stops: [{ id: stopId, presentationId: `presentation:${id}`, entryViewId: null, staySeconds: 5, invitation: null, transition: 'cut' }],
+		guides: [{ id: 'guide-1', label: 'Main', stopIds: [stopId], pacing: 'automatic' as const }],
 		detours: []
 	};
 }

@@ -37,13 +37,13 @@ import {
 import type {
 	CameraView,
 	Experience,
-	ExperienceContinuation,
 	ExperienceGuide,
 	ExperienceGuidePacing,
 	ExperienceInvitation,
 	ExperiencePresentationView,
 	ExperiencePresentation,
 	ExperienceStop,
+	ExperienceTransitionKind,
 	ProjectEnvelope
 } from '@portfolio/project-model/units';
 import { experienceFocus } from './focus.svelte';
@@ -232,9 +232,7 @@ export type ExperienceController = {
 	movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean>;
 	setExplorable(presentationId: string, explorable: boolean): Promise<boolean>;
 	setWelcome(body: string): Promise<boolean>;
-	/** Where Next goes. Keeps the Stop's Cut/Travel choice. */
-	setContinuation(stopId: string, target: 'next' | 'end' | { readonly stopId: string }): Promise<boolean>;
-	/** Cut or Travel on the continuation. Does nothing for End. */
+	/** Cut or Travel to the next Stop in its Guide. The last Stop has no step. */
 	setTransition(stopId: string, transition: 'cut' | 'travel'): Promise<boolean>;
 	/** Choose the occurrence the Path action reads; step occurrences live inside a Stop. */
 	selectPath(occurrence: ExperiencePathOccurrence | null): void;
@@ -269,8 +267,6 @@ export type ExperienceController = {
 	renameView(viewId: string, label: string): Promise<ExperienceRenameOutcome>;
 	/** The Guide Card's Make this the opening Guide. */
 	makeOpeningGuide(guideId: string): Promise<boolean>;
-	/** Start the tour here (E6): the context Guide's start Stop. Order is untouched. */
-	setGuideStart(stopId: string): Promise<boolean>;
 	/** E5: a Stop of this Presentation at the end of a chosen Guide, which becomes active. */
 	addToGuide(presentationId: string, guideId: string): Promise<boolean>;
 	/** E5: New Guide… — a new, active Guide with this Presentation as its Stop 1. */
@@ -459,7 +455,7 @@ export function createExperienceController(
 			program: lowered.program,
 			transitions: lowered.transitions,
 			graph: acceptedGraph,
-			entryStopId: guide.entryStopId
+			entryStopId: guide.stopIds[0]!
 		};
 	}
 	const playbackSource = $derived.by((): PlaybackSource | null =>
@@ -873,7 +869,7 @@ export function createExperienceController(
 					label: guideLabel,
 					entryViewId: null,
 					staySeconds: null,
-					continuation: { kind: 'sequence-next', transition: 'cut' }
+					transition: 'cut'
 				})
 			);
 			if (accepted) {
@@ -903,7 +899,7 @@ export function createExperienceController(
 				afterStopId,
 				entryViewId: null,
 				staySeconds: null,
-				continuation: { kind: 'sequence-next', transition: 'cut' }
+				transition: 'cut'
 			})
 		);
 		// A refused insert must not select a Stop the accepted source does not carry.
@@ -956,7 +952,7 @@ export function createExperienceController(
 			readonly entryViewId?: string | null;
 			readonly staySeconds?: number;
 			readonly invitation?: ExperienceInvitation | null;
-			readonly continuation?: ExperienceContinuation | null;
+			readonly transition?: ExperienceTransitionKind | null;
 			readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
 		}
 	): Promise<boolean> {
@@ -1047,28 +1043,29 @@ export function createExperienceController(
 		const experience = current;
 		const presentation = experience.presentations.find((entry) => entry.id === presentationId);
 		if (presentation === undefined) return false;
-		const normalized = views.map((view, index) =>
-			index === 0
-				? { viewId: view.viewId }
-				: { viewId: view.viewId, transition: view.transition ?? ('cut' as const) }
-		);
-		if (JSON.stringify(normalized) === JSON.stringify(presentation.views.map((view, index) => (index === 0 ? { viewId: view.viewId } : { viewId: view.viewId, transition: view.transition ?? 'cut' })))) {
+		// A step belongs to the View it leaves (A-1), and the last View has none (D-12).
+		const normalize = (list: readonly ExperiencePresentationView[]) =>
+			list.map((view, index) =>
+				index === list.length - 1 || view.transition === undefined
+					? { viewId: view.viewId }
+					: { viewId: view.viewId, transition: view.transition }
+			);
+		const normalized = normalize(views);
+		if (JSON.stringify(normalized) === JSON.stringify(normalize(presentation.views))) {
 			return false;
 		}
 		// A new Travel adds its straight path in the same change (§5), one Undo.
 		const connections = snapshot.units.camera.data.connections;
 		const travelPaths = normalized.flatMap((view, index) => {
-			if (index === 0 || view.transition !== 'travel') return [];
-			const from = normalized[index - 1]!.viewId;
+			if (index === normalized.length - 1 || view.transition !== 'travel') return [];
+			const to = normalized[index + 1]!.viewId;
 			const joined = connections.some(
 				(connection) =>
-					(connection.fromNodeId === from && connection.toNodeId === view.viewId) ||
-					(connection.fromNodeId === view.viewId && connection.toNodeId === from)
+					(connection.fromNodeId === view.viewId && connection.toNodeId === to) ||
+					(connection.fromNodeId === to && connection.toNodeId === view.viewId)
 			);
-			return joined ? [] : [{ fromViewId: from, toViewId: view.viewId }];
+			return joined ? [] : [{ fromViewId: view.viewId, toViewId: to }];
 		});
-		const added = presentation.views.flatMap((view, index) => (index > 0 && view.transition === 'travel' ? [] : [view.viewId]));
-		void added;
 		return run(
 			() =>
 				presentationUpdateIntent({
@@ -1085,9 +1082,9 @@ export function createExperienceController(
 	}
 
 	/**
-	 * Presentation Card · the spine: set the step into View `toIndex` (one or a
-	 * range `toIndex..throughIndex`) to Cut or Travel. A new Travel with no path
-	 * adds the straight one in the same Undo.
+	 * Presentation Card · the spine: set the step out of the View before `toIndex`
+	 * (one, or the range `toIndex..throughIndex`) to Cut or Travel. A new Travel
+	 * with no path adds the straight one in the same Undo.
 	 */
 	async function setPresentationStep(
 		presentationId: string,
@@ -1097,9 +1094,9 @@ export function createExperienceController(
 	): Promise<boolean> {
 		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
 		if (presentation === undefined) return false;
-		const from = Math.max(1, Math.min(toIndex, throughIndex));
-		const to = Math.min(presentation.views.length - 1, Math.max(toIndex, throughIndex));
-		if (from > to) return false;
+		const from = Math.max(0, Math.min(toIndex, throughIndex) - 1);
+		const to = Math.min(presentation.views.length - 2, Math.max(toIndex, throughIndex) - 1);
+		if (toIndex <= 0 || from > to) return false;
 		const views = presentation.views.map((view, index) => (index >= from && index <= to ? { viewId: view.viewId, transition: kind } : view));
 		const count = to - from + 1;
 		return writePresentationViews(presentationId, views, () =>
@@ -1110,9 +1107,9 @@ export function createExperienceController(
 	}
 
 	/**
-	 * Presentation Card · reorder (drag, or Alt+↑↓). Each View keeps its own
-	 * Cut/Travel into it; moving a View to the top makes it the Default, and Stops
-	 * without their own entry follow it.
+	 * Presentation Card · reorder (drag, or Alt+↑↓). Each View keeps the Cut/Travel
+	 * it leaves by; moving a View to the top makes it the Default, and Stops without
+	 * their own entry follow it.
 	 */
 	async function movePresentationView(presentationId: string, viewId: string, index: number): Promise<boolean> {
 		const presentation = current?.presentations.find((entry) => entry.id === presentationId);
@@ -1132,47 +1129,29 @@ export function createExperienceController(
 		);
 	}
 
-	/** The Cut/Travel choice a continuation carries; End carries none. */
-	function transitionOf(continuation: ExperienceContinuation | undefined) {
-		return continuation === undefined || continuation.kind === 'end' ? undefined : continuation.transition;
-	}
-
-	async function setContinuation(
-		stopId: string,
-		target: 'next' | 'end' | { readonly stopId: string }
-	): Promise<boolean> {
-		const stop = current?.stops.find((entry) => entry.id === stopId);
-		if (stop === undefined) return false;
-		const transition = transitionOf(stop.continuation);
-		const carried = transition === undefined ? {} : { transition };
-		const continuation: ExperienceContinuation =
-			target === 'end'
-				? { kind: 'end' }
-				: target === 'next'
-					? { kind: 'sequence-next', ...carried }
-					: { kind: 'stop', stopId: target.stopId, ...carried };
-		return updateStop(stopId, { continuation });
-	}
-
-	/** Cut or Travel needs a next Stop: an End continuation, explicit or on the Guide's last Stop, has none. */
+	/**
+	 * Cut or Travel to the next Stop in the context Guide. The last Stop has no next
+	 * Stop, so it has no outgoing step at all (D-12); a Travel between two Stops that
+	 * enter the same View is refused and stays a Cut (D-7).
+	 */
 	async function setTransition(stopId: string, transition: 'cut' | 'travel'): Promise<boolean> {
 		const stop = current?.stops.find((entry) => entry.id === stopId);
-		if (current === null || stop === undefined) return false;
-		const existing = stop.continuation;
-		// Explicit End is narrowed here; the implicit one (the Guide's last Stop) is read through the Guide.
-		if (existing?.kind === 'end' || resolveStopContinuation(current, contextGuide, stopId)?.kind === 'end') {
-			return false;
-		}
-		const continuation: ExperienceContinuation =
-			existing === undefined ? { kind: 'sequence-next', transition } : { ...existing, transition };
+		const guide = contextGuide;
+		if (current === null || stop === undefined || guide === null) return false;
+		const at = guide.stopIds.indexOf(stopId);
+		if (at === -1 || at === guide.stopIds.length - 1) return false;
+		if ((stop.transition ?? 'cut') === transition) return false;
 		// Travel makes its path: the straight Camera connection rides in the same
 		// accepted change, so Travel plays at once and one Undo takes both back.
-		const resolved = transition === 'travel' ? resolvePathOccurrence(current, contextGuide, { kind: 'transition', stopId }) : null;
+		const resolved = transition === 'travel'
+			? resolvePathOccurrence(current, guide, { kind: 'transition', stopId })
+			: null;
+		if (transition === 'travel' && (resolved === null || resolved.fromViewId === resolved.toViewId)) return false;
 		const travelPath =
 			resolved === null || resolved.fromViewId === resolved.toViewId
 				? undefined
 				: { fromViewId: resolved.fromViewId, toViewId: resolved.toViewId };
-		return updateStop(stopId, { continuation, ...(travelPath === undefined ? {} : { travelPath }) });
+		return updateStop(stopId, { transition, ...(travelPath === undefined ? {} : { travelPath }) });
 	}
 
 	/**
@@ -1321,25 +1300,6 @@ export function createExperienceController(
 		);
 	}
 
-	async function setGuideStart(stopId: string): Promise<boolean> {
-		const experience = current;
-		const guide = contextGuide;
-		if (experience === null || guide === null || !guide.stopIds.includes(stopId) || guide.entryStopId === stopId) return false;
-		const position = guide.stopIds.indexOf(stopId) + 1;
-		return run(
-			() =>
-				guideUpdateIntent({
-					envelope: snapshot,
-					revision: revision(),
-					ids: { operation: newId() },
-					experienceId: experience.id,
-					guideId: guide.id,
-					entryStopId: stopId
-				}),
-			() => `The tour now starts at Stop ${position}.`
-		);
-	}
-
 	async function addToGuide(presentationId: string, guideId: string): Promise<boolean> {
 		const experience = current;
 		const guide = experience?.guides.find((entry) => entry.id === guideId);
@@ -1357,7 +1317,7 @@ export function createExperienceController(
 					afterStopId: null,
 					entryViewId: null,
 					staySeconds: null,
-					continuation: { kind: 'sequence-next', transition: 'cut' }
+					transition: 'cut'
 				}),
 			() => `Added as Stop ${guide.stopIds.length + 1} of ${guide.label}.`
 		);
@@ -1389,7 +1349,7 @@ export function createExperienceController(
 					label: trimmed,
 					entryViewId: null,
 					staySeconds: null,
-					continuation: { kind: 'sequence-next', transition: 'cut' }
+					transition: 'cut'
 				}),
 			() => `${trimmed} created with ${presentationLabel(presentationId)} as Stop 1.`
 		);
@@ -1945,7 +1905,6 @@ export function createExperienceController(
 		movePresentationView,
 		setExplorable,
 		setWelcome,
-		setContinuation,
 		setTransition,
 		pathFor: (occurrence: ExperiencePathOccurrence) =>
 			current === null
@@ -1975,7 +1934,6 @@ export function createExperienceController(
 		renameGuide,
 		renameView,
 		makeOpeningGuide,
-		setGuideStart,
 		addToGuide,
 		createGuide,
 		alsoIn,

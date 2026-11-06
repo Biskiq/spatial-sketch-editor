@@ -96,11 +96,8 @@ export function removalLines(
 			case 'stop-entry-fallback':
 				lines.push(`${names.stop(consequence.stopId)} enters at the Default View instead.`);
 				break;
-			case 'continuation-fallback':
-				lines.push(`${names.stop(consequence.stopId)} no longer continues to ${names.stop(consequence.removedStopId)}; it follows the Guide order.`);
-				break;
-			case 'guide-start-moved':
-				lines.push(`${names.guide(consequence.guideId)} now starts at ${names.stop(consequence.toStopId)}.`);
+			case 'detour-removed':
+				lines.push('A Detour that used it is removed too.');
 				break;
 			case 'opening-guide-moved':
 				lines.push(

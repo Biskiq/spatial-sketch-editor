@@ -16,7 +16,6 @@ import type { AuthoringIntent } from '@portfolio/project-model';
 import type { ScenePathAnchor, SemanticReference } from '@portfolio/project-model';
 import type {
 	Experience,
-	ExperienceContinuation,
 	ExperienceGuidePacing,
 	ExperienceInvitation,
 	ExperiencePresentationView,
@@ -39,7 +38,8 @@ import {
 	EXPERIENCE_STOP_REMOVE_KIND,
 	EXPERIENCE_STOP_UPDATE_KIND,
 	EXPERIENCE_UPDATE_KIND,
-	type CameraView
+	type CameraView,
+	type ExperienceTransitionKind
 } from '@portfolio/project-model/units';
 
 export type CapturedViewPose = {
@@ -242,7 +242,7 @@ export function captureBindIntent(input: {
 						stop: {
 							guideId: input.guideId,
 							afterStopId: input.guideId === null ? null : input.afterStopId,
-							continuation: { kind: 'sequence-next', transition: 'cut' }
+							transition: 'cut'
 						}
 					}),
 			...(firstGuideLabel === null ? {} : { firstGuide: { label: firstGuideLabel } }),
@@ -268,7 +268,7 @@ export function guideCreateIntent(input: {
 	readonly label: string;
 	readonly entryViewId: string | null;
 	readonly staySeconds?: number | null;
-	readonly continuation: ExperienceContinuation | null;
+	readonly transition: ExperienceTransitionKind | null;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_GUIDE_CREATE_KIND,
@@ -280,7 +280,7 @@ export function guideCreateIntent(input: {
 			presentationId: input.presentationId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
 			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
-			...(input.continuation === null ? {} : { continuation: input.continuation })
+			...(input.transition === null ? {} : { transition: input.transition })
 		},
 		[
 			{ kind: 'guide', id: input.ids.guide! },
@@ -300,7 +300,7 @@ export function stopCreateIntent(input: {
 	readonly afterStopId: string | null;
 	readonly entryViewId: string | null;
 	readonly staySeconds?: number | null;
-	readonly continuation: ExperienceContinuation | null;
+	readonly transition: ExperienceTransitionKind | null;
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_STOP_CREATE_KIND,
@@ -313,7 +313,7 @@ export function stopCreateIntent(input: {
 			afterStopId: input.afterStopId,
 			...(input.entryViewId === null ? {} : { entryViewId: input.entryViewId }),
 			...(input.staySeconds == null ? {} : { staySeconds: input.staySeconds }),
-			...(input.continuation === null ? {} : { continuation: input.continuation })
+			...(input.transition === null ? {} : { transition: input.transition })
 		},
 		[{ kind: 'stop', id: input.ids.stop! }]
 	);
@@ -393,7 +393,7 @@ export function stopUpdateIntent(input: {
 	readonly entryViewId?: string | null;
 	readonly staySeconds?: number;
 	readonly invitation?: ExperienceInvitation | null;
-	readonly continuation?: ExperienceContinuation | null;
+	readonly transition?: ExperienceTransitionKind | null;
 	/** Travel: the straight Camera path this change adds when the pair has none (one Undo). */
 	readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
 }): AuthoringIntent {
@@ -406,7 +406,7 @@ export function stopUpdateIntent(input: {
 			...(input.entryViewId === undefined ? {} : { entryViewId: input.entryViewId }),
 			...(input.staySeconds === undefined ? {} : { staySeconds: input.staySeconds }),
 			...(input.invitation === undefined ? {} : { invitation: input.invitation }),
-			...(input.continuation === undefined ? {} : { continuation: input.continuation }),
+			...(input.transition === undefined ? {} : { transition: input.transition }),
 			...(input.travelPath === undefined ? {} : { travelPath: input.travelPath })
 		},
 		input.travelPath === undefined || input.ids.connection === undefined

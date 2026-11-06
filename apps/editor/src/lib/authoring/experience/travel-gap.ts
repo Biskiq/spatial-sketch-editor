@@ -18,7 +18,7 @@ export function travelGapMessages(
 	if (stopIndex < 0) return [];
 	const validation = validateProjectEnvelope(envelope);
 	if (!validation.success) return [];
-	const prefix = `$.units.experience.data.experiences[${experienceIndex}].stops[${stopIndex}].continuation`;
+	const prefix = `$.units.experience.data.experiences[${experienceIndex}].stops[${stopIndex}].transition`;
 	return validation.diagnostics
 		.filter((entry) => entry.code === 'travel-gap' && entry.path.startsWith(prefix))
 		.map((entry) => entry.message);
@@ -42,7 +42,7 @@ export function travelGapMessagesByStop(
 	const prefix = `$.units.experience.data.experiences[${experienceIndex}].stops[`;
 	for (const entry of validation.diagnostics) {
 		if (entry.code !== 'travel-gap' || !entry.path.startsWith(prefix)) continue;
-		const stopIndex = Number(/^(\d+)\]\.continuation/.exec(entry.path.slice(prefix.length))?.[1]);
+		const stopIndex = Number(/^(\d+)\]\.transition/.exec(entry.path.slice(prefix.length))?.[1]);
 		const stop = Number.isInteger(stopIndex) ? stops[stopIndex] : undefined;
 		if (stop === undefined) continue;
 		gaps.set(stop.id, [...(gaps.get(stop.id) ?? []), entry.message]);

@@ -872,7 +872,11 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 	});
 
 	it('a Stop card keeps its menu: Move earlier and Move later reorder the active Guide', async () => {
-		await remountRouteWith(await seededExperienceProject());
+		// A first Stop that travels cannot become last (travel-after-last), so this
+		// reorder fixture Cuts into its successor and the move is legal.
+		const reorderable = structuredClone(EXPERIENCE) as typeof EXPERIENCE;
+		reorderable.experiences[0]!.stops.find((stop) => stop.id === 'stop-1')!.transition = 'cut';
+		await remountRouteWith(await seededExperienceProject(reorderable));
 		await enterExperience();
 		dockGuide().click();
 		await frame();
@@ -1260,21 +1264,6 @@ describe('R217.S26 — structure and removal through the route', () => {
 		expect(rows[1]!.textContent).toContain('Short tour');
 		expect(rows[1]!.querySelector('.chip')?.textContent).toBe('Open');
 		expect(cardKind()).toMatch(/^Stop 1 of 1 · Short tour/);
-	});
-
-	it('Start the tour here moves the start, and the Stop menu says when it already is', async () => {
-		await remountRouteWith(await seededExperienceProject());
-		await enterExperience();
-		await openStopCard('stop-1');
-		openMenu();
-		await frame();
-		expect(menuItem('start-here').disabled).toBe(true);
-		expect(menuItem('start-here').title).toBe('The tour already starts here');
-		await openStopCard('stop-2');
-		openMenu();
-		await frame();
-		menuItem('start-here').click();
-		await vi.waitFor(() => expect(target.querySelector('.experience-feedback')?.textContent).toBe('The tour now starts at Stop 2.'));
 	});
 
 	it('names no back link after stepping between sibling Stops (review round 3)', async () => {

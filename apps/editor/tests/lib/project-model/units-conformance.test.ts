@@ -189,10 +189,10 @@ function experience(id: string, viewId: string): Experience {
 				entryViewId: null,
 				staySeconds: 5,
 				invitation: null,
-				continuation: { kind: 'end' }
+				transition: 'cut'
 			}
 		],
-		guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }],
+		guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], pacing: 'automatic' as const }],
 		detours: []
 	};
 }
@@ -489,14 +489,14 @@ describe('references, lock diagnostics and closure', () => {
 								id: 'stop-1',
 								entryViewId: null, staySeconds: 5, invitation: null,
 								presentationId: 'presentation-1',
-								continuation: { kind: 'sequence-next', transition: 'travel' }
+								transition: 'travel'
 							},
-							{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', continuation: { kind: 'end' } },
+							{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', transition: 'cut' },
 							{
 								id: 'stop-3',
 								entryViewId: null, staySeconds: 5, invitation: null,
 								presentationId: 'presentation-3',
-								continuation: { kind: 'sequence-next', transition: 'travel' }
+								transition: 'travel'
 							}
 						],
 						guides: [
@@ -504,7 +504,7 @@ describe('references, lock diagnostics and closure', () => {
 								id: 'guide-1',
 								label: 'Guide',
 								stopIds: ['stop-1', 'stop-3', 'stop-2'],
-								entryStopId: 'stop-1', pacing: 'automatic' as const
+								pacing: 'automatic' as const
 							}
 						]
 					}
@@ -518,13 +518,13 @@ describe('references, lock diagnostics and closure', () => {
 		// stop-2 under the Guide order (no connection, one finding). Under the array
 		// order the same source would report stop-1 → stop-2 and miss stop-3's edge.
 		expect(validated.diagnostics.map((entry) => entry.path)).toEqual([
-			'$.units.experience.data.experiences[0].stops[2].continuation.transition'
+			'$.units.experience.data.experiences[0].stops[2].transition'
 		]);
 		expect(validated.diagnostics[0]!.code).toBe('travel-gap');
 		expect(validated.diagnostics[0]!.message).toContain('stop "stop-2"');
 	});
 
-	it('reports no Travel gap when a guided Stop is the last of its Guide', async () => {
+	it('refuses a last Stop that authors a Travel (D-12)', async () => {
 		const base = experience('experience-a', 'view-1');
 		const presentation = (id: string, viewId: string) => ({
 			id,
@@ -534,10 +534,10 @@ describe('references, lock diagnostics and closure', () => {
 			subject: null,
 			text: null
 		});
-		const built = await envelope({
+		await expect(envelope({
 			camera: {
 				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
-				views: [entryView('view-1'), entryView('view-2'), entryView('view-3')],
+				views: [entryView('view-1'), entryView('view-2')],
 				connections: []
 			},
 			experience: {
@@ -545,34 +545,18 @@ describe('references, lock diagnostics and closure', () => {
 				experiences: [
 					{
 						...base,
-						presentations: [
-							presentation('presentation-1', 'view-1'),
-							presentation('presentation-2', 'view-2'),
-							presentation('presentation-3', 'view-3')
-						],
+						presentations: [presentation('presentation-1', 'view-1'), presentation('presentation-2', 'view-2')],
 						stops: [
-							{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'end' } },
-							// stop-2 is the last Stop of the Guide and still authors a Travel: its
-							// `sequence-next` edge ends the run. stop-3 follows it only in the array.
-							{
-								id: 'stop-2',
-								entryViewId: null, staySeconds: 5, invitation: null,
-								presentationId: 'presentation-2',
-								continuation: { kind: 'sequence-next', transition: 'travel' }
-							},
-							{ id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-3', continuation: { kind: 'end' } }
+							{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', transition: 'cut' },
+							// The Guide ends at stop-2, so its authored Travel has no next Stop.
+							{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', transition: 'travel' }
 						],
-						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1', pacing: 'automatic' as const }]
+						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1', 'stop-2'], pacing: 'automatic' as const }]
 					}
 				]
 			}
-		});
-		const validated = validateProjectEnvelope(readBack(built));
-		expect(validated.success).toBe(true);
-		if (!validated.success) return;
-		expect(validated.diagnostics).toEqual([]);
+		})).rejects.toThrow('travel-after-last');
 	});
-
 	it('keeps the envelope source-content digest independent of the accepted revision', async () => {
 		const built = await envelope();
 		const other = { ...built, acceptedRevision: { projectId: 'project-1', revisionId: 'revision-9' } };
@@ -713,9 +697,10 @@ describe('validateExperiencePayload refusals', () => {
 		},
 		{
 			name: 'a Default View with an incoming step',
-			code: 'entry-step-transition',
+			code: 'travel-after-last',
 			input: () => experiencePayload((value) => ({
-				...value, presentations: [{ ...value.presentations[0]!, views: [{ viewId: 'view-1', transition: 'cut' }] }]
+				...value,
+				presentations: [{ ...value.presentations[0]!, views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'travel' }] }]
 			}))
 		},
 		{
@@ -789,12 +774,12 @@ describe('validateExperiencePayload refusals', () => {
 				}))
 		},
 		{
-			name: 'an end continuation carrying a transition',
+			name: 'a Stop carrying the removed continuation key',
 			code: 'unknown-key',
 			input: () =>
 				experiencePayload((value) => ({
 					...value,
-					stops: [{ ...value.stops[0]!, continuation: { kind: 'end', transition: 'cut' } }]
+					stops: [{ ...value.stops[0]!, continuation: { kind: 'end' } }]
 				}))
 		},
 		{
@@ -803,7 +788,7 @@ describe('validateExperiencePayload refusals', () => {
 			input: () =>
 				experiencePayload((value) => ({
 					...value,
-					stops: [{ ...value.stops[0]!, continuation: { kind: 'sequence-next', transition: 'bezier' } }]
+					stops: [{ ...value.stops[0]!, transition: 'bezier' }]
 				}))
 		},
 		{

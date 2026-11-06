@@ -143,9 +143,9 @@ export function guideStopsOf(experience: Experience, guide: ExperienceGuide | nu
 }
 
 /**
- * Resolve one Stop's continuation against a Guide (D11): the sequence's next Stop, a
- * chosen Stop (adjacent only when it is the next one, otherwise a jump), or the End.
- * A sequence-next on the last Stop ends the Experience.
+ * Where a Stop goes next, read against a Guide: the Stop after it in the order,
+ * leaving by its own Cut or Travel. The last Stop ends the Guide, and there is no
+ * explicit choice left to disagree with the order (D-1).
  */
 export function resolveContinuation(
 	experience: Experience,
@@ -156,23 +156,8 @@ export function resolveContinuation(
 	if (stop === undefined) return null;
 	const order = guide?.stopIds ?? [];
 	const at = order.indexOf(stopId);
+	const transition = stop.transition ?? 'cut';
 	const next = at === -1 ? undefined : order[at + 1];
-	const continuation = stop.continuation;
-	if (continuation?.kind === 'end') return { kind: 'end', explicit: true };
-	const transition = continuation?.transition ?? 'cut';
-	if (continuation?.kind === 'stop') {
-		if (continuation.stopId === next) {
-			return { kind: 'adjacent', stopId: next, position: at + 2, transition, explicit: true };
-		}
-		const index = order.indexOf(continuation.stopId);
-		return {
-			kind: 'jump',
-			stopId: continuation.stopId,
-			position: index === -1 ? null : index + 1,
-			transition,
-			explicit: true
-		};
-	}
 	if (next === undefined) return { kind: 'end', explicit: false };
 	return { kind: 'adjacent', stopId: next, position: at + 2, transition, explicit: false };
 }

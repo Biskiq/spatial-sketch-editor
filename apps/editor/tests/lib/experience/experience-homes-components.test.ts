@@ -69,18 +69,18 @@ const PRESENTATIONS: readonly ExperiencePresentation[] = [
 ];
 
 const STOPS: readonly ExperienceStop[] = [
-	{ id: 'stop-1', presentationId: 'piano', entryViewId: null, staySeconds: 5, invitation: null, continuation: { kind: 'sequence-next', transition: 'cut' } },
-	{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'gallery', continuation: { kind: 'sequence-next', transition: 'travel' } },
-	{ id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'garden', continuation: { kind: 'stop', stopId: 'stop-5', transition: 'cut' } },
-	{ id: 'stop-4', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'piano', continuation: { kind: 'sequence-next' } },
-	{ id: 'stop-5', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'gallery', continuation: { kind: 'end' } }
+	{ id: 'stop-1', presentationId: 'piano', entryViewId: null, staySeconds: 5, invitation: null, transition: 'cut' },
+	{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'gallery', transition: 'travel' },
+	{ id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'garden', transition: 'cut' },
+	{ id: 'stop-4', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'piano', transition: 'cut' },
+	{ id: 'stop-5', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'gallery', transition: 'cut' }
 ];
 
 const GUIDE: GuideRecord = {
 	id: 'guide-1',
 	label: 'Main',
 	stopIds: ['stop-1', 'stop-2', 'stop-3', 'stop-4', 'stop-5'],
-	entryStopId: 'stop-1', pacing: 'automatic' as const
+	pacing: 'automatic' as const
 };
 
 const EXPERIENCE: Experience = {
@@ -374,16 +374,16 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 		expect(travel.parentElement?.classList.contains('adjacent')).toBe(true);
 	});
 
-	it('shows a jump as the destination Stop number and never as an adjacent connector', async () => {
+	it('draws every step as an adjacent connector, never a jump chip', async () => {
 		const homes = fakeHomes(fakeController());
 		const target = mountHome(ExperienceGuide, { onClose: () => {} }, homes);
 		await settle();
 
-		const jump = chipAfter(target, 'stop-3');
-		expect(jump.textContent?.trim()).toBe('→ 5');
-		expect(jump.classList.contains('jump')).toBe(true);
-		expect(jump.getAttribute('aria-label')).toBe('Stop 3 continues to Stop 5 by Cut');
-		expect(jump.parentElement?.classList.contains('adjacent')).toBe(false);
+		const next = chipAfter(target, 'stop-3');
+		expect(next.textContent?.trim()).toBe('');
+		expect(next.classList.contains('jump')).toBe(false);
+		expect(next.getAttribute('aria-label')).toBe('Stop 3 continues to Stop 4 by Cut');
+		expect(next.parentElement?.classList.contains('adjacent')).toBe(true);
 	});
 
 	it('ends the row with End after the card that holds the last Stop', async () => {

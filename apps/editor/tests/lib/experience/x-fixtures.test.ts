@@ -41,7 +41,7 @@ describe('R217.S26 x-fixtures', () => {
 		expect(stops[3]!.entryViewId).toBe('x-piano-view-2');
 		expect(experience.presentations.find((entry) => entry.id === 'x-piano')!.views.map((view) => view.viewId)).toEqual(['x-piano-view-1', 'x-piano-view-2', 'x-piano-view-3']);
 		expect(guide.pacing).toBe('automatic');
-		expect(stops[0]!.continuation).toEqual({ kind: 'stop', stopId: ids.stopIds[4], transition: 'cut' });
+		expect(guide.stopIds).toEqual(stops.map((stop) => stop.id));
 	});
 
 	it('x-long: the salon world with a 30-Stop Guide', async () => {

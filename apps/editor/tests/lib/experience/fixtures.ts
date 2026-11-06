@@ -90,7 +90,7 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 					entryViewId: null,
 					staySeconds: 1,
 					invitation: null,
-					continuation: { kind: 'sequence-next', transition: 'travel' }
+					transition: 'travel'
 				},
 				{
 					id: 'stop-2',
@@ -98,11 +98,11 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 					entryViewId: null,
 					staySeconds: 2,
 					invitation: null,
-					continuation: { kind: 'end' }
+					transition: 'cut'
 				}
 			],
 			guides: [
-				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1', pacing: 'automatic' }
+				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], pacing: 'automatic' }
 			],
 			detours: []
 		}

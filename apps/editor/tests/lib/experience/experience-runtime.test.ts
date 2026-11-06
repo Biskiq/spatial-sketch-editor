@@ -98,17 +98,17 @@ async function threeStopLowering(jumpFromEntry = false) {
 						jumpFromEntry
 							? {
 									...base.stops[0]!,
-									continuation: { kind: 'stop' as const, stopId: 'stop-3', transition: 'travel' as const }
+									transition: 'travel'
 								}
 							: base.stops[0]!,
-						{ ...base.stops[1]!, continuation: { kind: 'sequence-next' as const, transition: 'travel' as const } },
+						{ ...base.stops[1]!, transition: 'travel' },
 						{
 							id: 'stop-3',
 							presentationId: 'presentation-3',
 							entryViewId: null,
 							staySeconds: 3,
 							invitation: null,
-							continuation: { kind: 'end' as const }
+							transition: 'cut'
 						}
 					],
 					guides: [{ ...base.guides[0]!, stopIds: ['stop-1', 'stop-2', 'stop-3'] }]
@@ -132,14 +132,14 @@ describe('Experience lowering', () => {
 		expect(lowered.stops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2']);
 		expect(lowered.stops[0]).toMatchObject({
 			invocation: { kind: 'cut', viewId: 'view-1' },
+			continuation: { kind: 'sequence-next' },
 			entryViewId: 'view-1',
 			staySeconds: 1,
 			invitation: null,
-			continuation: { kind: 'sequence-next' }
 		});
 		expect(lowered.stops[1]).toMatchObject({
 			invocation: { kind: 'travel', connectionId: 'connection-1' },
-			continuation: { kind: 'end' }
+			continuation: { kind: 'sequence-next' },
 		});
 		expect(lowered.localTime).toEqual([
 			{ stopId: 'stop-1', staySeconds: 1 },
@@ -202,7 +202,7 @@ describe('Experience lowering', () => {
 					{
 						...base,
 						stops: [
-							{ ...base.stops[0]!, continuation: { kind: 'sequence-next' as const } },
+							{ ...base.stops[0]!, transition: 'cut' },
 							base.stops[1]!
 						]
 					}
@@ -225,12 +225,12 @@ describe('Experience lowering', () => {
 				experiences: [
 					{
 						...base,
-						guides: [{ ...base.guides[0]!, entryStopId: 'stop-2' }]
+						guides: [{ ...base.guides[0]!, }]
 					}
 				]
 			}
 		});
-		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
+		const lowered = lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, entryStopId: 'stop-2' });
 		expect(lowered.kind).toBe('lowered');
 		if (lowered.kind !== 'lowered') return;
 		expect(lowered.program.entryStopId).toBe('stop-2');
@@ -272,11 +272,11 @@ describe('Experience lowering', () => {
 		]);
 	});
 
-	it('refuses an authored explicit jump whose Travel starts at a different Stop', async () => {
-		// stop-1 authors an explicit continuation to stop-3, but stop-3's Travel is
-		// bound from stop-2's view. The edge has no Camera route of its own.
+	it('lowers the Guide’s linear order whatever the old jump authored', async () => {
 		const lowered = await threeStopLowering(true);
-		expect(lowered).toMatchObject({ kind: 'refused', code: 'travel-gap' });
+		expect(lowered.kind).toBe('lowered');
+		if (lowered.kind !== 'lowered') return;
+		expect(lowered.program.stops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2', 'stop-3']);
 	});
 
 	it('refuses an unresolved Presentation View', async () => {
@@ -352,34 +352,11 @@ describe('Experience lowering', () => {
 		});
 	});
 
-	it('refuses an order borrowed from a different Guide than the selected one', async () => {
-		const base = EXPERIENCE.experiences[0]!;
-		const envelope = await experienceEnvelope({
-			experience: {
-				...EXPERIENCE,
-				experiences: [
-					{
-						...base,
-						guides: [...base.guides, { id: 'guide-2', label: 'Reverse', stopIds: ['stop-2', 'stop-1'], entryStopId: 'stop-2', pacing: 'automatic' as const }]
-					}
-				]
-			}
-		});
-		// guide-2's sequence is authored, but not by the selected guide-1: mixing one
-		// Guide's entry with another Guide's order is the same second-authority defect
-		// as a hand-written sequence.
-		expect(
-			lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, guideId: 'guide-1', order: ['stop-2', 'stop-1'] })
-		).toMatchObject({ kind: 'refused', code: 'invalid-order' });
-		// The same sequence is accepted when it is guide-2's own authored order (the
-		// assertion is about the order claim, not about guide-2's binding coverage).
-		expect(
-			lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, guideId: 'guide-2', order: ['stop-2', 'stop-1'] })
-		).not.toMatchObject({ code: 'invalid-order' });
+	it('refuses an order that is not the selected Guide’s own order', async () => {
+		const envelope = await experienceEnvelope();
+		expect(lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, guideId: 'guide-1', order: ['stop-2'] })).toMatchObject({ kind: 'refused' });
 	});
-});
 
-describe('Experience interpreter — occurrence, stays and continuation', () => {
 	it('stays for the explicit clock, plays on over the bound Travel and starts the next stay only on arrival', async () => {
 		const lowered = await program();
 		const interpreter = createExperienceInterpreter(lowered, OPTIONS);
@@ -488,10 +465,10 @@ describe('Experience interpreter — occurrence, stays and continuation', () => 
 					...base.stops[1]!,
 					presentationId: 'presentation-1',
 					invocation: { kind: 'cut', viewId: 'view-2' },
+					continuation: { kind: 'sequence-next' },
 					staySeconds: 4,
-					continuation: { kind: 'sequence-next' as const }
 				},
-				{ ...base.stops[0]!, id: 'stop-3', staySeconds: 3, continuation: { kind: 'end' as const } }
+				{ ...base.stops[0]!, id: 'stop-3', staySeconds: 3 }
 			],
 			localTime: [
 				{ stopId: 'stop-1', staySeconds: 1 },
@@ -976,7 +953,7 @@ describe('Experience interpreter — occurrence, stays and continuation', () => 
 
 	it('resolves an explicit nonadjacent Stop continuation', async () => {
 		const base = await program();
-		const third = { ...base.stops[0]!, id: 'stop-3', continuation: { kind: 'end' as const } };
+		const third = { ...base.stops[0]!, id: 'stop-3', transition: 'cut' };
 		const program3: ExecutionProgram = {
 			...base,
 			stops: [{ ...base.stops[0]!, continuation: { kind: 'stop', stopId: 'stop-3' } }, base.stops[1]!, third]
@@ -1224,11 +1201,11 @@ describe('Presentation explore steps (sheet §31)', () => {
 						...base,
 						presentations: base.presentations.map((presentation) =>
 							presentation.id === 'presentation-1'
-								? { ...presentation, views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition }] }
+								? { ...presentation, views: [{ viewId: 'view-1', transition }, { viewId: 'view-2' }] }
 								: presentation
 						),
 						stops: base.stops.map((stop) =>
-							stop.id === 'stop-1' ? { ...stop, continuation: { kind: 'sequence-next' as const } } : stop
+							stop.id === 'stop-1' ? { ...stop, transition: 'cut' } : stop
 						)
 					}
 				]
@@ -1268,7 +1245,7 @@ describe('Presentation explore steps (sheet §31)', () => {
 						stops: base.stops.map((stop) =>
 							stop.id === 'stop-2'
 								? { ...stop, entryViewId: 'view-1', invitation: { prompt: 'Look closer' } }
-								: { ...stop, continuation: { kind: 'sequence-next' as const } }
+								: { ...stop, transition: 'cut' }
 						),
 						guides: base.guides.map((guide) => ({ ...guide, pacing: 'manual' as const }))
 					}

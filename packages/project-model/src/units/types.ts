@@ -212,10 +212,11 @@ export type ExperiencePresentationText = {
 /**
  * One View of a Presentation, in the Presentation's suggested order.
  *
- * `transition` is the authored step into this View from the previous one, Cut
- * (absent means Cut) or Travel along the Camera path that joins the pair. The
- * first View has no step. A step adds no Guide time: it is played only while a
- * visitor explores.
+ * `transition` is the authored step **to the next View** — Cut (absent means
+ * Cut) or Travel along the Camera path that joins the pair. A Cut or Travel
+ * belongs to the item it leaves, in a Presentation exactly as in a Guide (A-1),
+ * so the last View has none. A step adds no Guide time: it is played only while
+ * a visitor explores.
  */
 export type ExperiencePresentationView = {
 	viewId: string;
@@ -258,18 +259,13 @@ export const EXPERIENCE_TRANSITIONS = ['cut', 'travel'] as const;
 export type ExperienceTransitionKind = (typeof EXPERIENCE_TRANSITIONS)[number];
 
 /**
- * How execution continues after a Stop. `sequence-next` follows the guide's
- * order; an explicit `stop` overrides it once, including a nonadjacent target;
- * `end` finishes the run.
+ * The authored step a Stop leaves by: Cut (absent means Cut) or Travel along the
+ * one Camera path that joins its exit View to the next Stop's entry View.
  *
- * The edge's `transition` is the authored Cut/Travel selector for arriving at
- * its target: absent means `cut`. Experience never silently cuts when a Travel
- * is unsupported and never searches the Camera graph; the gap is reported.
+ * The step belongs to the Stop it leaves, so the last Stop of a Guide has none.
+ * Experience never silently cuts when a Travel is unsupported and never searches
+ * the Camera graph; the gap is reported.
  */
-export type ExperienceContinuation =
-	| { kind: 'sequence-next'; transition?: ExperienceTransitionKind }
-	| { kind: 'stop'; stopId: string; transition?: ExperienceTransitionKind }
-	| { kind: 'end' };
 
 /**
  * A Stop's invitation to explore. It shows on arrival and leaves with the Stop;
@@ -295,8 +291,8 @@ export type ExperienceStop = {
 	entryViewId: string | null;
 	staySeconds: number;
 	invitation: ExperienceInvitation | null;
-	/** Default continuation is the guide sequence; this field overrides it. */
-	continuation?: ExperienceContinuation;
+	/** The step to the next Stop in its Guide; absent means Cut. Never on the last. */
+	transition?: ExperienceTransitionKind;
 };
 
 /** The View a Stop enters at: its own override, else its Presentation's Default. */
@@ -311,12 +307,14 @@ export function stopEntryViewId(
 export const EXPERIENCE_GUIDE_PACINGS = ['automatic', 'manual'] as const;
 export type ExperienceGuidePacing = (typeof EXPERIENCE_GUIDE_PACINGS)[number];
 
-/** One Guide: an ordered list of stable Stop IDs with exactly one entry, and its pacing. */
+/**
+ * One Guide: one linear order of stable Stop IDs and its pacing. The first Stop
+ * starts the Guide and the last one ends it, so there is no start Stop.
+ */
 export type ExperienceGuide = {
 	id: string;
 	label: string;
 	stopIds: readonly string[];
-	entryStopId: string;
 	pacing: ExperienceGuidePacing;
 };
 

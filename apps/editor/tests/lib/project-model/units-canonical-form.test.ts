@@ -76,10 +76,10 @@ function parts(): Omit<ProjectEnvelopeInput, 'acceptedRevision' | 'dependencyLoc
 								id: 'stop-1',
 								presentationId: 'presentation-1',
 								entryViewId: null, staySeconds: 2, invitation: null,
-								continuation: { kind: 'end' }
+								transition: 'cut'
 							}
 						],
-						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }],
+						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], pacing: 'automatic' as const }],
 						detours: []
 					}
 				]
@@ -222,7 +222,7 @@ describe('the envelope source-content digest', () => {
 									id: 'stop-1',
 									presentationId: 'presentation-1',
 									entryViewId: null, staySeconds: 3, invitation: null,
-									continuation: { kind: 'end' }
+									transition: 'cut'
 								}
 							]
 						}

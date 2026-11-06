@@ -67,7 +67,7 @@ function experience(viewIds: readonly string[], guided: readonly string[]): Expe
 			}
 		],
 		stops: [{ id: 'stop', presentationId: 'pres', entryViewId: guided[0] === viewIds[0] ? null : (guided[0] ?? null), staySeconds: 5, invitation: null }],
-		guides: [{ id: 'guide', label: 'Guide', stopIds: ['stop'], entryStopId: 'stop', pacing: 'automatic' as const }],
+		guides: [{ id: 'guide', label: 'Guide', stopIds: ['stop'], pacing: 'automatic' as const }],
 		detours: []
 	};
 }

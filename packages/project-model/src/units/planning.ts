@@ -26,7 +26,7 @@
  * - `experience-presentation-update` and `experience-stop-update` edit the bounded
  *   editorial fields: a Presentation's label, text, subject, Default (a newly
  *   captured View rebinds it deliberately) and View order (a permutation of its
- *   `viewIds`), free-exploration reach, and a Stop's guided Views and continuation.
+ *   `viewIds`), free-exploration reach, and a Stop's guided Views and outgoing step.
  * - `experience-update` and `experience-guide-update` (R217.S26) edit an
  *   Experience's label, welcome and Opening Guide, and a Guide's label and start Stop.
  * - `experience-stop-remove`, `experience-presentation-view-remove`,
@@ -83,7 +83,6 @@ import {
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	type CameraView,
 	type Experience,
-	type ExperienceContinuation,
 	type ExperienceGuide,
 	type ExperiencePresentation,
 	type ExperiencePresentationText,
@@ -118,7 +117,7 @@ export const EXPERIENCE_GUIDE_CREATE_KIND = 'experience-guide-create';
 export const EXPERIENCE_GUIDE_ORDER_KIND = 'experience-guide-order';
 /** Edit one Presentation's label, text, subject or Default View. */
 export const EXPERIENCE_PRESENTATION_UPDATE_KIND = 'experience-presentation-update';
-/** Edit one Stop's entry View, hold or continuation edge. */
+/** Edit one Stop's entry View, stay, invitation or outgoing step. */
 export const EXPERIENCE_STOP_UPDATE_KIND = 'experience-stop-update';
 /** Edit one Experience's label or Opening Guide. */
 export const EXPERIENCE_UPDATE_KIND = 'experience-update';
@@ -283,8 +282,7 @@ export function createCameraViewUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 
 /* --- shared payload readers ------------------------------------------------ */
 
-const CONTINUATION_KEYS = ['kind', 'stopId', 'transition'] as const;
-const STOP_PAYLOAD_KEYS = ['staySeconds', 'continuation', 'guideId', 'afterStopId'] as const;
+const STOP_PAYLOAD_KEYS = ['staySeconds', 'transition', 'guideId', 'afterStopId'] as const;
 const COMPOUND_PAYLOAD_KEYS = ['view', 'presentation', 'stop', 'firstGuide', 'resource', 'newExperience'] as const;
 const FIRST_GUIDE_PAYLOAD_KEYS = ['label'] as const;
 const PRESENTATION_PAYLOAD_KEYS = ['label', 'subject', 'text'] as const;
@@ -333,41 +331,19 @@ function readSubjectPayload(reader: ShapeReader, input: unknown, path: string): 
 	return { ok: true, value: read.value };
 }
 
-function readTransition(reader: ShapeReader, input: unknown, path: string, kind: 'sequence-next' | 'stop' | 'end'): ExperienceTransitionKind | null {
-	if (kind === 'end') {
-		if (input !== undefined) {
-			reader.problem(path, 'unknown-key', `${path} is not part of the end continuation`);
-			return null;
-		}
-		return 'cut';
-	}
-	if (input === undefined) return 'cut';
+/** An edge's authored Cut/Travel selector; absent means Cut. */
+function readOptionalTransition(
+	reader: ShapeReader,
+	input: unknown,
+	path: string
+): ExperienceTransitionKind | undefined | null {
+	if (input === undefined || input === null) return undefined;
 	return reader.tag(input, path, EXPERIENCE_TRANSITIONS) as ExperienceTransitionKind | null;
-}
-
-function readContinuation(reader: ShapeReader, input: unknown, path: string): ExperienceContinuation | null {
-	const record = reader.object(input, path, CONTINUATION_KEYS);
-	if (record === null) return null;
-	const kind = reader.tag(record.kind, `${path}.kind`, ['sequence-next', 'stop', 'end']);
-	if (kind === null) return null;
-	if (kind === 'end') {
-		if (readTransition(reader, record.transition, `${path}.transition`, 'end') === null) return null;
-		return { kind: 'end' };
-	}
-	const transition = readTransition(reader, record.transition, `${path}.transition`, kind as 'sequence-next' | 'stop');
-	if (transition === null) return null;
-	if (kind === 'sequence-next') {
-		if (record.stopId !== undefined) reader.problem(`${path}.stopId`, 'unknown-key', `${path}.stopId is not part of the sequence-next continuation`);
-		return { kind: 'sequence-next', transition };
-	}
-	const stopId = reader.opaqueId(record.stopId, `${path}.stopId`);
-	if (stopId === null) return null;
-	return { kind: 'stop', stopId, transition };
 }
 
 type StopPayload = {
 	readonly staySeconds: number;
-	readonly continuation: ExperienceContinuation | undefined;
+	readonly transition: ExperienceTransitionKind | undefined;
 	/** The existing Guide the Stop joins, or `null` when the capture creates the first Guide. */
 	readonly guideId: string | null;
 	readonly afterStopId: string | null;
@@ -377,7 +353,7 @@ function readStopPayload(reader: ShapeReader, input: unknown, path: string): Sto
 	const record = reader.object(input, path, STOP_PAYLOAD_KEYS);
 	if (record === null) return null;
 	const staySeconds = record.staySeconds === undefined ? EXPERIENCE_STAY_DEFAULT_SECONDS : readStaySeconds(reader, record.staySeconds, `${path}.staySeconds`);
-	const continuation = record.continuation === undefined ? undefined : readContinuation(reader, record.continuation, `${path}.continuation`);
+	const transition = readOptionalTransition(reader, record.transition, `${path}.transition`);
 	const guideId = record.guideId === null || record.guideId === undefined
 		? null
 		: reader.opaqueId(record.guideId, `${path}.guideId`);
@@ -387,8 +363,8 @@ function readStopPayload(reader: ShapeReader, input: unknown, path: string): Sto
 		if (parsed === null) return null;
 		afterStopId = parsed;
 	}
-	if (staySeconds === null || continuation === null) return null;
-	return { staySeconds, continuation: continuation ?? undefined, guideId, afterStopId };
+	if (staySeconds === null || transition === null) return null;
+	return { staySeconds, transition, guideId, afterStopId };
 }
 
 /** The first Guide's authored label; its identities are the intent's captured ids. */
@@ -729,23 +705,7 @@ export function createCaptureBindPlanner(
 				} else {
 					insertionIndex = guide.stopIds.length;
 				}
-				const authoredContinuation = stop.continuation;
-				if (
-					authoredContinuation !== undefined &&
-					authoredContinuation.kind === 'stop' &&
-					!experience.stops.some((candidate) => candidate.id === authoredContinuation.stopId)
-				) {
-					return refuse('missing-target', `the new Stop continues to stop "${authoredContinuation.stopId}", which this Experience does not carry`);
-				}
 			} else if (stop !== null) {
-				const authoredContinuation = stop.continuation;
-				if (
-					authoredContinuation !== undefined &&
-					authoredContinuation.kind === 'stop' &&
-					!experience.stops.some((candidate) => candidate.id === authoredContinuation.stopId)
-				) {
-					return refuse('missing-target', `the new Stop continues to stop "${authoredContinuation.stopId}", which this Experience does not carry`);
-				}
 			}
 
 			const newView: CameraView = { id: viewId, label: view.label, eye: view.eye, target: view.target, fov: view.fov, connectedViewIds: [] };
@@ -766,12 +726,12 @@ export function createCaptureBindPlanner(
 							entryViewId: null,
 							staySeconds: stop.staySeconds,
 							invitation: null,
-							...(stop.continuation === undefined ? {} : { continuation: stop.continuation })
+							...(stop.transition === undefined ? {} : { transition: stop.transition })
 						};
 			const newGuide: ExperienceGuide | null =
 				firstGuide === null || firstGuideId === null || newStop === null
 					? null
-					: { id: firstGuideId, label: firstGuide.label, stopIds: [newStop.id], entryStopId: newStop.id, pacing: 'automatic' };
+					: { id: firstGuideId, label: firstGuide.label, stopIds: [newStop.id], pacing: 'automatic' };
 			const guides = newGuide === null
 				? experience.guides.map((candidate) =>
 						guide !== null && candidate.id === guide.id && newStop !== null
@@ -972,7 +932,7 @@ export function createCaptureBindPlanner(
 				});
 			}
 			if (newStop !== null) {
-				changes.push({ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'continuation'] });
+				changes.push({ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'] });
 				if (guide !== null) changes.push({ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] });
 				correspondence.push({
 					relation: 'created',
@@ -998,7 +958,7 @@ export function createCaptureBindPlanner(
 
 /* --- Guide creation -------------------------------------------------------- */
 
-const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'staySeconds', 'continuation', 'pacing'] as const;
+const GUIDE_CREATE_PAYLOAD_KEYS = ['label', 'presentationId', 'entryViewId', 'staySeconds', 'transition', 'pacing'] as const;
 
 /**
  * Create one Guide of an Experience and its initial distinct Stop.
@@ -1036,16 +996,14 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			const pacing = payload.pacing === undefined
 				? 'automatic'
 				: (reader.tag(payload.pacing, '$.payload.pacing', EXPERIENCE_GUIDE_PACINGS) as ExperienceGuidePacing | null);
-			const continuation = payload.continuation === undefined || payload.continuation === null
-				? undefined
-				: readContinuation(reader, payload.continuation, '$.payload.continuation');
+			const transition = readOptionalTransition(reader, payload.transition, '$.payload.transition');
 			if (
 				label === null ||
 				presentationId === null ||
 				(entryViewProvided && entryViewId === null) ||
 				staySeconds === null ||
 				pacing === null ||
-				continuation === null
+				transition === null
 			) {
 				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
 			}
@@ -1077,9 +1035,6 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 			if (!presentationViewIds(presentation).includes(entry)) {
 				return refuse('invalid-payload', `entry view "${entry}" is not one of presentation "${presentation.id}"'s views`);
 			}
-			if (continuation !== undefined && continuation.kind === 'stop' && !experience.stops.some((candidate) => candidate.id === continuation.stopId)) {
-				return refuse('missing-target', `the new Stop continues to stop "${continuation.stopId}", which this Experience does not carry`);
-			}
 			const guideId = capturedId(request.intent, 'guide');
 			const stopId = capturedId(request.intent, 'stop');
 			if (guideId === null || stopId === null) {
@@ -1098,9 +1053,9 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 				entryViewId: entry === defaultViewId ? null : entry,
 				staySeconds,
 				invitation: null,
-				...(continuation === undefined || continuation === null ? {} : { continuation })
+				...(transition === undefined ? {} : { transition })
 			};
-			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], entryStopId: newStop.id, pacing };
+			const newGuide: ExperienceGuide = { id: guideId, label, stopIds: [newStop.id], pacing };
 			const updatedExperience: Experience = {
 				...experience,
 				entryGuideId: firstGuide ? newGuide.id : experience.entryGuideId,
@@ -1131,7 +1086,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 					source: candidate,
 					changes: [
 						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'entryStopId', 'pacing'] },
-						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'continuation'] },
+						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'] },
 						...(firstGuide ? [{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }] : [])
 					],
 					correspondence: [
@@ -1155,7 +1110,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 
 /* --- Reuse a Presentation at a distinct Stop ------------------------------- */
 
-const STOP_CREATE_PAYLOAD_KEYS = ['presentationId', 'guideId', 'afterStopId', 'entryViewId', 'staySeconds', 'continuation'] as const;
+const STOP_CREATE_PAYLOAD_KEYS = ['presentationId', 'guideId', 'afterStopId', 'entryViewId', 'staySeconds', 'transition'] as const;
 
 /**
  * Create one Stop for an existing Presentation and insert it into a Guide.
@@ -1163,7 +1118,7 @@ const STOP_CREATE_PAYLOAD_KEYS = ['presentationId', 'guideId', 'afterStopId', 'e
  * Targets: exactly one `experience:experience` reference. The Stop's entry View
  * is the payload's `entryViewId` or its Presentation's Default, so one
  * Presentation reused at two Stops can enter at two different Views while the
- * holds and continuation edges stay per Stop.
+ * stays and outgoing steps stay per Stop.
  */
 export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
@@ -1186,9 +1141,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			const staySeconds = payload.staySeconds === undefined
 				? EXPERIENCE_STAY_DEFAULT_SECONDS
 				: readStaySeconds(reader, payload.staySeconds, '$.payload.staySeconds');
-			const continuation = payload.continuation === undefined
-				? undefined
-				: readContinuation(reader, payload.continuation, '$.payload.continuation');
+			const transition = readOptionalTransition(reader, payload.transition, '$.payload.transition');
 			let afterStopId: string | null = null;
 			if (payload.afterStopId !== undefined && payload.afterStopId !== null) {
 				const parsed = reader.opaqueId(payload.afterStopId, '$.payload.afterStopId');
@@ -1199,7 +1152,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 				presentationId === null ||
 				guideId === null ||
 				staySeconds === null ||
-				continuation === null ||
+				transition === null ||
 				(entryViewProvided && entryViewId === null)
 			) {
 				return refuse('invalid-payload', 'The Stop payload is not a valid shape', reader.issues);
@@ -1227,9 +1180,6 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 			if (!presentationViewIds(presentation).includes(entry)) {
 				return refuse('invalid-payload', `entry view "${entry}" is not one of presentation "${presentation.id}"'s views`);
 			}
-			if (continuation !== undefined && continuation.kind === 'stop' && !experience.stops.some((candidate) => candidate.id === continuation.stopId)) {
-				return refuse('missing-target', `the new Stop continues to stop "${continuation.stopId}", which this Experience does not carry`);
-			}
 			let insertionIndex = guide.stopIds.length;
 			if (afterStopId !== null) {
 				const at = guide.stopIds.indexOf(afterStopId);
@@ -1249,7 +1199,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 				entryViewId: entry === defaultViewId ? null : entry,
 				staySeconds,
 				invitation: null,
-				...(continuation === undefined || continuation === null ? {} : { continuation })
+				...(transition === undefined ? {} : { transition })
 			};
 			const guides = experience.guides.map((candidate) =>
 				candidate.id === guide.id
@@ -1287,7 +1237,7 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 					sourceVersion: request.snapshot.sourceVersion,
 					source: candidate,
 					changes: [
-						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'continuation'] },
+						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'] },
 						{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }
 					],
 					correspondence: [
@@ -1635,7 +1585,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 	};
 }
 
-const STOP_UPDATE_PAYLOAD_KEYS = ['entryViewId', 'staySeconds', 'invitation', 'continuation', 'travelPath'] as const;
+const STOP_UPDATE_PAYLOAD_KEYS = ['entryViewId', 'staySeconds', 'invitation', 'transition', 'travelPath'] as const;
 const STOP_TRAVEL_PATH_KEYS = ['fromViewId', 'toViewId'] as const;
 
 function presentationOfStop(experience: Experience, stop: ExperienceStop): ExperiencePresentation | null {
@@ -1644,7 +1594,7 @@ function presentationOfStop(experience: Experience, stop: ExperienceStop): Exper
 
 /**
  * Edit one Stop's own visit facts — its entry View, its stay, its invitation —
- * or its continuation, in one intent.
+ * or its outgoing step, in one intent.
  *
  * `entryViewId: null` follows the Presentation's Default; a named entry must be
  * one of its Views. `staySeconds` is finite and at least 1 s. `invitation` is
@@ -1673,20 +1623,18 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			const staySeconds = stayPresent ? readStaySeconds(reader, payload.staySeconds, '$.payload.staySeconds') : null;
 			const invitationPresent = payload.invitation !== undefined;
 			const invitation = invitationPresent ? readInvitation(reader, payload.invitation, '$.payload.invitation') : null;
-			const continuationPresent = payload.continuation !== undefined;
-			const continuation = !continuationPresent || payload.continuation === null
-				? null
-				: readContinuation(reader, payload.continuation, '$.payload.continuation');
+			const transitionPresent = payload.transition !== undefined;
+			const transition = transitionPresent ? readOptionalTransition(reader, payload.transition, '$.payload.transition') : undefined;
 			if (
 				reader.issues.length !== 0 ||
 				(entryPresent && payload.entryViewId !== null && entryViewId === null) ||
 				(stayPresent && staySeconds === null) ||
 				(invitation !== null && !invitation.ok) ||
-				(continuationPresent && payload.continuation !== null && continuation === null)
+				transition === null
 			) {
 				return refuse('invalid-payload', 'The Stop payload is not a valid shape', reader.issues);
 			}
-			if (!entryPresent && !stayPresent && !invitationPresent && !continuationPresent) {
+			if (!entryPresent && !stayPresent && !invitationPresent && !transitionPresent) {
 				return refuse('invalid-payload', 'the Stop payload names no field to change');
 			}
 			let travelPath: ViewPair | null = null;
@@ -1717,14 +1665,6 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			if (entryViewId !== null && !presentationViewIds(presentation).includes(entryViewId)) {
 				return refuse('invalid-payload', `entry view "${entryViewId}" is not one of presentation "${presentation.id}"'s views`);
 			}
-			if (
-				continuationPresent &&
-				continuation !== null &&
-				continuation.kind === 'stop' &&
-				!container.stops.some((candidate) => candidate.id === continuation.stopId)
-			) {
-				return refuse('missing-target', `the continuation names stop "${continuation.stopId}", which this Experience does not carry`);
-			}
 			// Naming the Default as the entry is the same visit as following it: the
 			// Stop keeps following the Default through a later reorder.
 			const nextEntry = entryPresent
@@ -1736,9 +1676,9 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 				entryViewId: nextEntry,
 				staySeconds: staySeconds ?? previous.staySeconds,
 				invitation: invitation !== null && invitation.ok ? invitation.value : previous.invitation,
-				...(continuationPresent
-					? continuation === null ? {} : { continuation }
-					: previous.continuation === undefined ? {} : { continuation: previous.continuation })
+				...(transitionPresent
+					? transition === undefined ? {} : { transition }
+					: previous.transition === undefined ? {} : { transition: previous.transition })
 			};
 			const candidate = withExperience(envelope, {
 				...container,
@@ -1756,7 +1696,7 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			if (updated.entryViewId !== previous.entryViewId) changedFields.push('entryViewId');
 			if (updated.staySeconds !== previous.staySeconds) changedFields.push('staySeconds');
 			if (JSON.stringify(updated.invitation) !== JSON.stringify(previous.invitation)) changedFields.push('invitation');
-			if (JSON.stringify(updated.continuation) !== JSON.stringify(previous.continuation)) changedFields.push('continuation');
+			if (updated.transition !== previous.transition) changedFields.push('transition');
 			const records = connectionRecords(source, joined.connections);
 			return prepared(
 				request,
@@ -2316,15 +2256,15 @@ export function createExperienceUpdatePlanner(): DomainPlanner<ProjectEnvelope> 
 	};
 }
 
-const GUIDE_UPDATE_KEYS = ['label', 'entryStopId', 'pacing'] as const;
+const GUIDE_UPDATE_KEYS = ['label', 'pacing'] as const;
 
 /**
  * Edit one Guide's label, its start Stop or its pacing (sheet §31: Automatic
  * moves on when each stay ends; Manual waits for Next and keeps every stay).
  *
  * Targets: exactly one `experience:guide` reference scoped by its Experience.
- * `entryStopId` is one of the Guide's ordered Stops; it is independent of order,
- * so reordering never moves the start and this never reorders (E6).
+ * A Guide has no start Stop: its first ordered Stop starts it, so this never
+ * reorders and reordering never moves the start (D-1, E6).
  */
 export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
@@ -2339,14 +2279,13 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 			const payload = reader.object(request.intent.payload, '$.payload', GUIDE_UPDATE_KEYS);
 			if (payload === null) return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
 			const label = payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
-			const entryStopId = payload.entryStopId === undefined ? undefined : reader.opaqueId(payload.entryStopId, '$.payload.entryStopId');
 			const pacing = payload.pacing === undefined
 				? undefined
 				: (reader.tag(payload.pacing, '$.payload.pacing', EXPERIENCE_GUIDE_PACINGS) as ExperienceGuidePacing | null);
-			if (label === null || entryStopId === null || pacing === null) {
+			if (label === null || pacing === null) {
 				return refuse('invalid-payload', 'The Guide payload is not a valid shape', reader.issues);
 			}
-			if (label === undefined && entryStopId === undefined && pacing === undefined) {
+			if (label === undefined && pacing === undefined) {
 				return refuse('invalid-payload', 'the Guide payload names no field to change');
 			}
 			if (label !== undefined && label.trim() === '') return refuse('invalid-payload', 'A name is needed');
@@ -2360,13 +2299,9 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 			}
 			const previous = container.guides.find((candidate) => candidate.id === target.subject.id);
 			if (previous === undefined) return refuse('missing-target', `guide "${target.subject.id}" is not in experience "${container.id}"`);
-			if (entryStopId !== undefined && !previous.stopIds.includes(entryStopId)) {
-				return refuse('invalid-payload', `stop "${entryStopId}" is not one of guide "${previous.id}"'s ordered stops`);
-			}
 			const updated: ExperienceGuide = {
 				...previous,
 				label: label ?? previous.label,
-				entryStopId: entryStopId ?? previous.entryStopId,
 				pacing: pacing ?? previous.pacing
 			};
 			const candidate = withExperience(envelope, {
@@ -2375,7 +2310,6 @@ export function createExperienceGuideUpdatePlanner(): DomainPlanner<ProjectEnvel
 			});
 			const fields: string[] = [];
 			if (updated.label !== previous.label) fields.push('label');
-			if (updated.entryStopId !== previous.entryStopId) fields.push('entryStopId');
 			if (updated.pacing !== previous.pacing) fields.push('pacing');
 			return prepared(request, candidate, [{ kind: 'experience.guide.updated', subjectIds: [updated.id], fields }], [
 				{
@@ -2428,14 +2362,11 @@ function removalRecord(
 			case 'default-changed':
 				changes.push({ kind: 'experience.presentation.updated', subjectIds: [consequence.presentationId], fields: ['views'] });
 				break;
-			case 'continuation-fallback':
-				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['continuation'] });
+			case 'detour-removed':
+				changes.push({ kind: 'experience.detour.removed', subjectIds: [consequence.detourId], fields: [] });
 				break;
 			case 'stop-entry-fallback':
 				changes.push({ kind: 'experience.stop.updated', subjectIds: [consequence.stopId], fields: ['entryViewId'] });
-				break;
-			case 'guide-start-moved':
-				changes.push({ kind: 'experience.guide.updated', subjectIds: [consequence.guideId], fields: ['entryStopId'] });
 				break;
 			case 'opening-guide-moved':
 				changes.push({ kind: 'experience.updated', subjectIds: [experienceId], fields: ['entryGuideId'] });

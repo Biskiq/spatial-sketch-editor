@@ -57,7 +57,7 @@ function experience(stops: ExperienceStop[], stopIds = stops.map((stop) => stop.
 		entryGuideId: 'g-1',
 		presentations: PRESENTATIONS,
 		stops,
-		guides: [{ id: 'g-1', label: 'Main', stopIds, entryStopId: stopIds[0]!, pacing: 'automatic' }],
+		guides: [{ id: 'g-1', label: 'Main', stopIds, pacing: 'automatic' }],
 		detours: []
 	};
 }
@@ -176,13 +176,13 @@ describe('reachSummary', () => {
 
 describe('resolveContinuation', () => {
 	const stops: ExperienceStop[] = [
-		{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'sequence-next', transition: 'travel' } },
-		{ id: 's-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2', continuation: { kind: 'stop', stopId: 's-4' } },
-		{ id: 's-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'stop', stopId: 's-4', transition: 'travel' } },
-		{ id: 's-4', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2', continuation: { kind: 'end' } },
-		{ id: 's-5', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'sequence-next' } },
+		{ id: 's-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', transition: 'travel' },
+		{ id: 's-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2', transition: 'cut' },
+		{ id: 's-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', transition: 'travel' },
+		{ id: 's-4', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2', transition: 'cut' },
+		{ id: 's-5', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', transition: 'cut' },
 		{ id: 's-6', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-2' },
-		{ id: 's-7', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', continuation: { kind: 'stop', stopId: 's-1' } }
+		{ id: 's-7', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'p-1', transition: 'cut' }
 	];
 	const value = experience(stops, ['s-1', 's-2', 's-3', 's-4', 's-5', 's-6']);
 	const guide = guideOf(value);
@@ -199,22 +199,17 @@ describe('resolveContinuation', () => {
 		expect(resolve('s-5')).toEqual({ kind: 'adjacent', stopId: 's-6', position: 6, transition: 'cut', explicit: false });
 	});
 
-	it('resolves a chosen Stop that is not the neighbour as a jump', () => {
-		expect(resolve('s-2')).toEqual({ kind: 'jump', stopId: 's-4', position: 4, transition: 'cut', explicit: true });
-	});
-
-	it('resolves a chosen Stop that IS the neighbour as adjacent, and keeps it explicit', () => {
+	it('resolves every Stop from the Guide’s order, never from an authored target (D-12)', () => {
 		expect(resolve('s-3')).toEqual({
 			kind: 'adjacent',
 			stopId: 's-4',
 			position: 4,
 			transition: 'travel',
-			explicit: true
+			explicit: false
 		});
 	});
 
-	it('resolves an explicit End and a sequence-next on the last Stop to End', () => {
-		expect(resolve('s-4')).toEqual({ kind: 'end', explicit: true });
+	it('resolves the last Stop of the Guide as its end, with no authored end', () => {
 		expect(resolve('s-6')).toEqual({ kind: 'end', explicit: false });
 	});
 
@@ -232,22 +227,10 @@ describe('resolveContinuation', () => {
 		});
 	});
 
-	it('resolves a target outside the Guide as a jump with no position', () => {
-		expect(resolveContinuation(value, guide, 's-7')).toEqual({
-			kind: 'jump',
-			stopId: 's-1',
-			position: 1,
-			transition: 'cut',
-			explicit: true
-		});
+	it('treats a Stop the Guide does not order as the run’s end, never a jump (D-12)', () => {
+		expect(resolveContinuation(value, guide, 's-7')).toEqual({ kind: 'end', explicit: false });
 		const away = experience(stops, ['s-1', 's-2', 's-3']);
-		expect(resolveContinuation(away, guideOf(away), 's-3')).toEqual({
-			kind: 'jump',
-			stopId: 's-4',
-			position: null,
-			transition: 'travel',
-			explicit: true
-		});
+		expect(resolveContinuation(away, guideOf(away), 's-3')).toEqual({ kind: 'end', explicit: false });
 	});
 
 	it('is null for a Stop the Experience does not carry, and ends with no Guide', () => {

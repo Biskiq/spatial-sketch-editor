@@ -98,19 +98,6 @@
 	const stopExitViewId = (target: ExperienceStop): string =>
 		(controller?.current == null ? null : exitOf(controller.current, target)) ?? '';
 
-	/** Where Next goes from this Stop: the Guide's next Stop, a chosen Stop, or the End. */
-	const nextValue = $derived(
-		continuation === null || !continuation.explicit
-			? 'next'
-			: continuation.kind === 'end'
-				? 'end'
-				: `stop:${continuation.stopId}`
-	);
-	function chooseNext(value: string): void {
-		if (controller === null || stop === null) return;
-		void controller.setContinuation(stop.id, value === 'next' ? 'next' : value === 'end' ? 'end' : { stopId: value.slice(5) });
-	}
-
 	function viewLabelOf(target: ExperienceStop, viewId: string): string {
 		const view = controller?.viewsOf.get(target.presentationId)?.find((entry) => entry.id === viewId);
 		return view?.label ?? 'Missing View';
@@ -208,19 +195,6 @@
 				</span>
 			{/if}
 		</section>
-
-		{#if !isEnd && continuation !== null}
-			<label class="next-to">
-				<span>Next goes to</span>
-				<select value={nextValue} disabled={controller.busy} onchange={(event) => chooseNext((event.currentTarget as HTMLSelectElement).value)}>
-					<option value="next">The next Stop in the Guide</option>
-					{#each (controller.current?.stops ?? []).filter((entry) => entry.id !== stop.id) as target (target.id)}
-						<option value={`stop:${target.id}`}>{placeOf(target) > 0 ? `Stop ${placeOf(target)} · ` : ''}{controller.presentationLabel(target.presentationId)}</option>
-					{/each}
-					<option value="end">End of the tour</option>
-				</select>
-			</label>
-		{/if}
 
 		{#if sharedCount > 0 && path !== null}
 			<div class="meta-row">

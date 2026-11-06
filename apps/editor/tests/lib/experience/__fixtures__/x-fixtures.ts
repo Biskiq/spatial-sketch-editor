@@ -27,7 +27,7 @@ import {
 	createUnitAcceptanceProfile,
 	serializeProjectEnvelope,
 	validateProjectEnvelope,
-	type ExperienceContinuation,
+	type	ExperienceTransitionKind,
 	type ExperiencePresentationView,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
@@ -197,7 +197,7 @@ async function guide(a: Authoring, guideId: string, label: string, presentationI
 			presentationId: presentationIds[0]!,
 			label,
 			entryViewId: null,
-			continuation: { kind: 'sequence-next', transition: 'cut' }
+			transition: 'cut'
 		})
 	);
 	for (let index = 1; index < presentationIds.length; index += 1) {
@@ -211,7 +211,7 @@ async function guide(a: Authoring, guideId: string, label: string, presentationI
 				guideId,
 				afterStopId: stopIds[index - 1]!,
 				entryViewId: null,
-					continuation: { kind: 'sequence-next', transition: 'cut' }
+					transition: 'cut'
 			})
 		);
 	}
@@ -225,7 +225,7 @@ async function updateStop(
 		readonly entryViewId?: string | null;
 		readonly staySeconds?: number;
 		readonly invitation?: { readonly prompt: string | null } | null;
-		readonly continuation?: ExperienceContinuation | null;
+		readonly transition?: ExperienceTransitionKind | null;
 	}
 ): Promise<void> {
 	await a.accept(
@@ -240,7 +240,7 @@ async function presentationViews(
 	edit: (views: readonly ExperiencePresentationView[]) => readonly ExperiencePresentationView[]
 ): Promise<void> {
 	const presentation = a.now().units.experience.data.experiences[0]!.presentations.find((entry) => entry.id === presentationId)!;
-	const views = edit(presentation.views).map((view, index) => (index === 0 ? { viewId: view.viewId } : view));
+	const views = edit(presentation.views);
 	await a.accept(
 		presentationUpdateIntent({ envelope: a.now(), revision: a.revision(), ids: { operation: a.op('views') }, experienceId: EXPERIENCE_ID, presentationId, views })
 	);
@@ -337,8 +337,8 @@ export async function buildXFixture(name: XFixtureName, projectId: string = `pro
 			ids: { sceneObjectId: SCENE_OBJECT_ID, experienceId: EXPERIENCE_ID, guideId: 'x-long-guide', presentationIds, stopIds, sharedViewId: 'x-door-view-2' }
 		};
 	}
-	// x-salon: six Stops with a revisit (Stop 4 revisits the piano), a hold-less Stop
-	// (Stop 2) and a nonadjacent continuation (Stop 1 → Stop 5).
+	// x-salon: six Stops in one linear order with a revisit (Stop 4 revisits the piano)
+	// and a hold-less Stop (Stop 2).
 	const [piano, window, door, corner, wall] = presentationIds as [string, string, string, string, string];
 	const stopIds = await guide(a, 'x-salon-guide', 'Salon tour', [piano, window, door, piano, corner, wall]);
 	for (const [index, stopId] of stopIds.entries()) {
@@ -352,7 +352,6 @@ export async function buildXFixture(name: XFixtureName, projectId: string = `pro
 	// Stop 2 invites exploring its three Views; Stop 4 revisits the piano and enters at its profile.
 	await updateStop(a, stopIds[1]!, { invitation: { prompt: null } });
 	await updateStop(a, stopIds[3]!, { entryViewId: 'x-piano-view-2', staySeconds: 10 });
-	await updateStop(a, stopIds[0]!, { continuation: { kind: 'stop', stopId: stopIds[4]!, transition: 'cut' } });
 	if (name === 'x-paths') {
 		// Stops 1 and 4 both enter (and so leave) at the piano's profile View and
 		// Travel to Stop 5 (the corner): one direct Camera path shared by two Guided
@@ -366,15 +365,14 @@ export async function buildXFixture(name: XFixtureName, projectId: string = `pro
 			const outside = views.find((entry) => entry.viewId === 'x-window-path-outside')!;
 			const inside = views.find((entry) => entry.viewId === 'x-window-path-inside')!;
 			const rest = views.filter((entry) => entry !== outside && entry !== inside);
-			return [...rest, { viewId: outside.viewId, transition: 'cut' }, { viewId: inside.viewId, transition: 'travel' }];
+			return [...rest, { viewId: outside.viewId, transition: 'travel' }, { viewId: inside.viewId }];
 		});
-		await updateStop(a, stopIds[0]!, {
-			entryViewId: 'x-piano-view-2',
-			continuation: { kind: 'stop', stopId: stopIds[4]!, transition: 'travel' }
-		});
+		// Stop 1 enters the piano's profile and follows the Guide order by Cut; only the
+		// revisit at Stop 4 leaves by Travel, so one authored pair owns the path.
+		await updateStop(a, stopIds[0]!, { entryViewId: 'x-piano-view-2' });
 		await updateStop(a, stopIds[3]!, {
 			entryViewId: 'x-piano-view-2',
-			continuation: { kind: 'stop', stopId: stopIds[4]!, transition: 'travel' }
+			transition: 'travel'
 		});
 		const view = (id: string) => a.now().units.camera.data.views.find((entry) => entry.id === id)!;
 		await a.accept(
@@ -397,7 +395,7 @@ export async function buildXFixture(name: XFixtureName, projectId: string = `pro
 		);
 		// The piano's own explore step from its keyboard to its profile travels.
 		await presentationViews(a, piano, (views) =>
-			views.map((entry) => (entry.viewId === 'x-piano-view-2' ? { viewId: entry.viewId, transition: 'travel' } : entry))
+			views.map((entry) => (entry.viewId === 'x-piano-view-1' ? { viewId: entry.viewId, transition: 'travel' } : entry))
 		);
 		// The walled pair is its own connected component: the shared/step pair and
 		// the wall/door pair stay independent Camera paths, with no bridge edge.

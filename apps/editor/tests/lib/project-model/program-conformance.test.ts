@@ -29,8 +29,8 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 		],
 		welcome: null,
 		experienceId: 'experience-a',
-		pacing: 'automatic',
 		entryStopId: 'stop-1',
+		pacing: 'automatic',
 		presentations: [
 			{
 				id: 'presentation-1',
@@ -50,7 +50,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 				staySeconds: 2,
 				invitation: { prompt: 'Look closer' },
 				invocation: { kind: 'cut', viewId: 'view-1' },
-				continuation: { kind: 'sequence-next' }
+				continuation: { kind: 'sequence-next' },
 			},
 			{
 				id: 'stop-2',
@@ -59,7 +59,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 				staySeconds: 3,
 				invitation: null,
 				invocation: { kind: 'travel', connectionId: 'connection-1' },
-				continuation: { kind: 'stop', stopId: 'stop-1' }
+				continuation: { kind: 'sequence-next' },
 			},
 			// A second visit to one Presentation, sharing no Stop identity with stop-1.
 			{
@@ -69,7 +69,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 				staySeconds: 1,
 				invitation: { prompt: null },
 				invocation: { kind: 'cut', viewId: 'view-1' },
-				continuation: { kind: 'end' }
+				continuation: { kind: 'sequence-next' },
 			}
 		],
 		state: [
@@ -192,7 +192,7 @@ describe('the strict invocation, timing and continuation rules', () => {
 		expect(codes({ ...program(), stops: stay(undefined) })).toContain('non-finite-number');
 
 		const badContinuation = program().stops.map((stop) =>
-			stop.id === 'stop-1' ? { ...stop, continuation: { kind: 'loop' } } : stop
+			stop.id === 'stop-1' ? { ...stop, continuation: { kind: 'bogus' } } : stop
 		);
 		expect(codes({ ...program(), stops: badContinuation })).toContain('unknown-tag');
 	});
@@ -212,7 +212,7 @@ describe('the strict invocation, timing and continuation rules', () => {
 
 	it('refuses an entry that names no stop and a non-null entry with no stops', () => {
 		expect(codes({ ...program(), entryStopId: 'stop-absent' })).toContain('missing-stop');
-		expect(codes({ ...program(), stops: [], entryStopId: 'stop-1', localTime: [] })).toContain('missing-stop');
+		expect(codes({ ...program(), entryStopId: 'stop-absent', stops: [], localTime: [] })).toContain('missing-stop');
 	});
 
 	it('refuses a continuation to a stop the program does not carry', () => {

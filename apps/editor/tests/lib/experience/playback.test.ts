@@ -42,8 +42,8 @@ async function source(pacing: 'automatic' | 'manual' = 'automatic'): Promise<Pla
 		program: lowered.program,
 		transitions: lowered.transitions,
 		graph: run.graph as unknown as CameraGraph,
-		entryStopId: 'stop-1'
-	};
+		entryStopId: lowered.program.entryStopId,
+		};
 }
 
 describe('R217.S30 playback', () => {

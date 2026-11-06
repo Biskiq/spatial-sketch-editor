@@ -5315,20 +5315,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					);
 				}
 			}
-			// E6: Start the tour here changes the context Guide's start; order is untouched.
-			if (position !== null) {
-				const isStart = controller.contextGuide?.entryStopId === stop.id;
-				items.push({
-					id: 'start-here',
-					label: 'Start the tour here',
-					...(controller.busy
-						? { disabled: true, reason: 'Wait for the current change' }
-						: isStart
-							? { disabled: true, reason: 'The tour already starts here' }
-							: {}),
-					run: () => void controller.setGuideStart(stop.id)
-				});
-			}
 			items.push(removalItem(controller, 'remove-stop', 'Remove Stop', { kind: 'stop', stopId: stop.id }));
 			return {
 				...NO_CARD,

@@ -113,10 +113,10 @@ async function envelope(): Promise<ProjectEnvelope> {
 							id: 'stop-entry',
 							entryViewId: null, staySeconds: 5, invitation: null,
 							presentationId: 'presentation-entry',
-							continuation: { kind: 'sequence-next', transition: 'cut' }
+							transition: 'cut'
 						}
 					],
-							guides: [{ id: 'guide-main', label: 'Guide', stopIds: ['stop-entry'], entryStopId: 'stop-entry', pacing: 'automatic' as const }],
+							guides: [{ id: 'guide-main', label: 'Guide', stopIds: ['stop-entry'], pacing: 'automatic' as const }],
 							detours: []
 						}
 					]

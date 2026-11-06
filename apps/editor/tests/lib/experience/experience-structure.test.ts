@@ -101,8 +101,10 @@ describe('experience-update', () => {
 		await s.coordinator.accept(
 			guideCreateIntent({
 				envelope: s.now(), revision: s.revision(), ids: { operation: 'op-g2', guide: 'short', stop: 'short-1' }, experienceId: 'x-experience',
-				presentationId: 'x-window', label: 'Short tour', entryViewId: null, staySeconds: null, continuation: null
-			})
+				presentationId: 'x-window', label: 'Short tour', entryViewId: null, staySeconds: null, 
+			
+			transition: null
+})
 		);
 		// E5: a later Guide is not the Opening Guide until chosen.
 		expect(s.experience().entryGuideId).toBe('x-salon-guide');
@@ -135,31 +137,26 @@ describe('experience-update', () => {
 });
 
 describe('experience-guide-update', () => {
-	it('renames a Guide and moves its start without touching its order (E6)', async () => {
+	it('renames a Guide without touching its order or rewriting a Stop (E6)', async () => {
 		const s = await salon();
 		const stops = s.ids.stopIds;
 		const renamed = await s.coordinator.accept(
 			guideUpdateIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-g' }, experienceId: 'x-experience', guideId: 'x-salon-guide', label: 'Evening tour' })
 		);
 		expect(renamed.kind).toBe('accepted');
-		const started = await s.coordinator.accept(
-			guideUpdateIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-s' }, experienceId: 'x-experience', guideId: 'x-salon-guide', entryStopId: stops[2]! })
-		);
-		expect(started.kind).toBe('accepted');
-		expect(s.experience().guides[0]).toMatchObject({ label: 'Evening tour', entryStopId: stops[2], stopIds: stops });
-		// Reordering never moves the start: drag Stop 3 to the end.
-		const reordered = [...stops.filter((id) => id !== stops[2]), stops[2]!];
+		expect(s.experience().guides[0]).toMatchObject({ label: 'Evening tour', stopIds: stops });
+		// Reordering never rewrites a Stop: the Stops themselves stay as authored.
+		const before = s.experience().stops;
 		await s.coordinator.accept(
-			guideOrderIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-o' }, experienceId: 'x-experience', guideId: 'x-salon-guide', stopIds: reordered })
+			guideOrderIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-o' }, experienceId: 'x-experience', guideId: 'x-salon-guide', stopIds: [...stops].reverse() })
 		);
-		expect(s.experience().guides[0]!.entryStopId).toBe(stops[2]);
+		expect(s.experience().stops).toEqual(before);
 	});
 
 	it('refuses a start Stop the Guide does not order', async () => {
 		const s = await salon();
 		const intent = guideUpdateIntent({
-			envelope: s.now(), revision: s.revision(), ids: { operation: 'op-bad' }, experienceId: 'x-experience', guideId: 'x-salon-guide', entryStopId: 'stop-elsewhere'
-		});
+			envelope: s.now(), revision: s.revision(), ids: { operation: 'op-bad' }, experienceId: 'x-experience', guideId: 'x-salon-guide', });
 		expect(intent.kind).toBe(EXPERIENCE_GUIDE_UPDATE_KIND);
 		refusedWith(await s.coordinator.accept(intent), 'invalid-payload');
 	});
@@ -241,25 +238,22 @@ describe('experience-stop-remove (E4)', () => {
 		expect(s.experience().stops.some((stop) => stop.id === target)).toBe(false);
 	});
 
-	it('falls a continuation that targeted the removed Stop back to the Guide order, keeping its Cut/Travel', async () => {
+	it('removes a Stop and keeps the Guide’s remaining order, with no continuation to fall back', async () => {
 		const s = await salon();
 		const [first, , , , fifth] = s.ids.stopIds;
 		const plan = planStopRemoval(s.experience(), fifth!);
-		expect(plan.kind === 'planned' && plan.consequences).toContainEqual({ kind: 'continuation-fallback', stopId: first, removedStopId: fifth });
+		expect(plan.kind === 'planned' && plan.consequences).toContainEqual({ kind: 'stop-removed', stopId: fifth, presentationId: 'x-corner' });
 		await s.coordinator.accept(removeIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-rm5' }, experienceId: 'x-experience', subject: 'stop', id: fifth! }));
-		expect(s.experience().stops.find((stop) => stop.id === first)!.continuation).toEqual({ kind: 'sequence-next', transition: 'cut' });
+		expect(s.experience().guides[0]!.stopIds).toEqual(s.ids.stopIds.filter((id) => id !== fifth));
 	});
 
-	it('moves the start to the following Stop, or the preceding one when the start was last', async () => {
+	it('removes a Stop and keeps the remaining order, first or last', async () => {
 		const s = await salon();
 		const stops = s.ids.stopIds;
 		await s.coordinator.accept(removeIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-first' }, experienceId: 'x-experience', subject: 'stop', id: stops[0]! }));
-		expect(s.experience().guides[0]!.entryStopId).toBe(stops[1]);
-		await s.coordinator.accept(
-			guideUpdateIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-last' }, experienceId: 'x-experience', guideId: 'x-salon-guide', entryStopId: stops[5]! })
-		);
+		expect(s.experience().guides[0]!.stopIds).toEqual(stops.slice(1));
 		await s.coordinator.accept(removeIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-rm-last' }, experienceId: 'x-experience', subject: 'stop', id: stops[5]! }));
-		expect(s.experience().guides[0]!.entryStopId).toBe(stops[4]);
+		expect(s.experience().guides[0]!.stopIds).toEqual(stops.slice(1, 5));
 	});
 
 	it('refuses the only Stop of a Guide and a Stop a Detour uses, installing nothing', async () => {
@@ -267,7 +261,7 @@ describe('experience-stop-remove (E4)', () => {
 			await experienceEnvelope({
 				experience: {
 					...EXPERIENCE,
-					experiences: [{ ...EXPERIENCE.experiences[0]!, guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }] }]
+					experiences: [{ ...EXPERIENCE.experiences[0]!, stops: [{ id: 'stop-1', presentationId: 'presentation-1', entryViewId: null, staySeconds: 1, invitation: null }], guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const }] }]
 				}
 			})
 		);
@@ -283,12 +277,11 @@ describe('experience-stop-remove (E4)', () => {
 				}
 			})
 		);
-		refusedWith(
-			await detoured.coordinator.accept(removeIntent({ envelope: detoured.now(), revision: detoured.revision(), ids: { operation: 'op-det' }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' })),
-			'detour-uses-stop'
-		);
+		// A-6: removing the Stop removes its Detour in the same change instead of refusing.
+		expect((await detoured.coordinator.accept(removeIntent({ envelope: detoured.now(), revision: detoured.revision(), ids: { operation: 'op-det' }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' }))).kind).toBe('accepted');
+		expect(detoured.experience().detours).toEqual([]);
 		expect(single.depth()).toBe(1);
-		expect(detoured.depth()).toBe(1);
+		expect(detoured.depth()).toBe(2);
 	});
 });
 
@@ -302,7 +295,7 @@ const SHARED: ExperienceUnitPayload = {
 				{ ...EXPERIENCE.experiences[0]!.presentations[0]!, views: [{ viewId: 'view-1' }, { viewId: 'view-2' }]},
 				EXPERIENCE.experiences[0]!.presentations[1]!
 			],
-			stops: [{ ...EXPERIENCE.experiences[0]!.stops[0]!, entryViewId: null, staySeconds: 5, invitation: null }, EXPERIENCE.experiences[0]!.stops[1]!]
+			stops: [{ ...EXPERIENCE.experiences[0]!.stops[0]!, entryViewId: null, staySeconds: 5, invitation: null, transition: 'cut' as const }, EXPERIENCE.experiences[0]!.stops[1]!]
 		}
 	]
 };
@@ -390,7 +383,7 @@ describe('experience-presentation-remove (E4)', () => {
 			await experienceEnvelope({
 				experience: {
 					...EXPERIENCE,
-					experiences: [{ ...EXPERIENCE.experiences[0]!, guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }] }]
+					experiences: [{ ...EXPERIENCE.experiences[0]!, stops: [{ id: 'stop-1', presentationId: 'presentation-1', entryViewId: null, staySeconds: 1, invitation: null }], guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const }] }]
 				}
 			})
 		);
@@ -408,8 +401,10 @@ describe('experience-guide-remove (E4)', () => {
 		await s.coordinator.accept(
 			guideCreateIntent({
 				envelope: s.now(), revision: s.revision(), ids: { operation: 'op-g2', guide: 'short', stop: 'short-1' }, experienceId: 'x-experience',
-				presentationId: 'x-window', label: 'Short tour', entryViewId: null, staySeconds: null, continuation: null
-			})
+				presentationId: 'x-window', label: 'Short tour', entryViewId: null, staySeconds: null, 
+			
+			transition: null
+})
 		);
 		const intent = removeIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-rg' }, experienceId: 'x-experience', subject: 'guide', id: 'x-salon-guide' });
 		expect(intent.kind).toBe(EXPERIENCE_GUIDE_REMOVE_KIND);
@@ -423,7 +418,7 @@ describe('experience-guide-remove (E4)', () => {
 		reloads(s.now());
 	});
 
-	it('keeps the Stops another Guide also orders', async () => {
+	it('removes only the Stops of the Guide it removes (A-5)', async () => {
 		const s = await boot(
 			await experienceEnvelope({
 				experience: {
@@ -431,9 +426,12 @@ describe('experience-guide-remove (E4)', () => {
 					experiences: [
 						{
 							...EXPERIENCE.experiences[0]!,
+							stops: EXPERIENCE.experiences[0]!.stops.map((stop) =>
+								stop.id === 'stop-1' ? { ...stop, transition: 'cut' as const } : stop
+							),
 							guides: [
-								{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1', pacing: 'automatic' as const },
-								{ id: 'guide-2', label: 'Second', stopIds: ['stop-2'], entryStopId: 'stop-2', pacing: 'automatic' as const }
+								{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const },
+								{ id: 'guide-2', label: 'Second', stopIds: ['stop-2'], pacing: 'automatic' as const }
 							]
 						}
 					]

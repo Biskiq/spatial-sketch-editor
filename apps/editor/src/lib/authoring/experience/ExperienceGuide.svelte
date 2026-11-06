@@ -315,7 +315,7 @@
 					gap
 				};
 			}
-			const start = controller.contextGuide?.entryStopId === stop.id;
+			const start = controller.contextGuide?.stopIds[0] === stop.id;
 			const spoken = [`Stop ${number}`, label];
 			if (start) spoken.push('the tour starts here');
 			if (again) spoken.push('again');

@@ -14,8 +14,8 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 		capabilities: [],
 		welcome: null,
 		experienceId: 'experience-1',
-		pacing: 'manual',
 		entryStopId: 'stop-1',
+		pacing: 'manual',
 		presentations: [
 			{
 				id: 'presentation-1',
@@ -43,7 +43,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 				staySeconds: null,
 				invitation: { prompt: null },
 				invocation: { kind: 'cut', viewId: 'view-1' },
-				continuation: { kind: 'sequence-next' }
+				continuation: { kind: 'sequence-next' },
 			},
 			{
 				id: 'stop-2',
@@ -52,7 +52,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 				staySeconds: null,
 				invitation: null,
 				invocation: { kind: 'cut', viewId: 'view-2' },
-				continuation: { kind: 'end' }
+				continuation: { kind: 'sequence-next' },
 			}
 		],
 		state: [],

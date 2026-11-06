@@ -452,10 +452,10 @@ describe('source admission', () => {
 							id: 'stop-1',
 							presentationId: 'presentation-1',
 							entryViewId: null, staySeconds: 5, invitation: null,
-							continuation: { kind: 'end' }
+							transition: 'cut'
 						}
 					],
-					guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }],
+					guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], pacing: 'automatic' as const }],
 					detours: []
 				}
 			]

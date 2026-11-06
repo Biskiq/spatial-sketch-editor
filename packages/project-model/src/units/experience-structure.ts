@@ -8,10 +8,8 @@
  * the creator confirms, so the summary shown and the operation run can never
  * disagree. Nothing here is replaced silently:
  *
- * - a continuation that targeted a removed Stop falls back to the Guide order
- *   (`sequence-next`, its Cut/Travel choice kept), named;
- * - a Guide's start that was removed moves to the Stop that followed it (or
- *   preceded it, when it was last), named;
+ * - the Detours that name a removed Stop (or a Stops a removed Guide took) go in
+ *   the same change, named (A-6);
  * - a Stop that entered at a removed View enters at its Presentation's Default
  *   (`entryViewId: null`), named;
  * - removing a Presentation's first View makes the next View the Default, named;
@@ -28,9 +26,9 @@
 
 import {
 	presentationViewIds,
+	stopEntryViewId,
 	type CameraUnitPayload,
 	type Experience,
-	type ExperienceContinuation,
 	type ExperienceGuide,
 	type ExperiencePresentationView,
 	type ExperienceStop
@@ -39,8 +37,7 @@ import {
 /** One named effect of a removal, in the order the removal applies it. */
 export type ExperienceRemovalConsequence =
 	| { readonly kind: 'stop-removed'; readonly stopId: string; readonly presentationId: string }
-	| { readonly kind: 'continuation-fallback'; readonly stopId: string; readonly removedStopId: string }
-	| { readonly kind: 'guide-start-moved'; readonly guideId: string; readonly fromStopId: string; readonly toStopId: string }
+	| { readonly kind: 'detour-removed'; readonly detourId: string }
 	| { readonly kind: 'stop-entry-fallback'; readonly stopId: string; readonly viewId: string }
 	| { readonly kind: 'default-changed'; readonly presentationId: string; readonly fromViewId: string; readonly toViewId: string }
 	| { readonly kind: 'view-deleted'; readonly viewId: string }
@@ -55,7 +52,6 @@ export type ExperienceRemovalConsequence =
 export type ExperienceRemovalRefusalCode =
 	| 'missing-target'
 	| 'guide-keeps-a-stop'
-	| 'detour-uses-stop'
 	| 'presentation-keeps-a-view'
 	| 'invalid-default';
 
@@ -91,12 +87,12 @@ function removeStops(
 	consequences: ExperienceRemovalConsequence[]
 ): Experience | Refusal {
 	if (stopIds.size === 0) return experience;
-	const detour = experience.detours.find(
-		(entry) => stopIds.has(entry.fromStopId) || stopIds.has(entry.toStopId) || stopIds.has(entry.returnToStopId)
-	);
-	if (detour !== undefined) {
-		return refused('detour-uses-stop', `A Detour uses this Stop; remove the Detour first`);
-	}
+	// A-6 — a Detour that names a removed Stop goes with it, in the same change.
+	const detours = experience.detours.filter((entry) => {
+		const uses = stopIds.has(entry.fromStopId) || stopIds.has(entry.toStopId) || stopIds.has(entry.returnToStopId);
+		if (uses) consequences.push({ kind: 'detour-removed', detourId: entry.id });
+		return !uses;
+	});
 	const guides: ExperienceGuide[] = [];
 	for (const guide of experience.guides) {
 		if (removedGuideIds.has(guide.id)) {
@@ -109,15 +105,7 @@ function removeStops(
 			continue;
 		}
 		if (kept.length === 0) return refused('guide-keeps-a-stop', GUIDE_KEEPS_A_STOP_REASON);
-		let entryStopId = guide.entryStopId;
-		if (stopIds.has(entryStopId)) {
-			const at = guide.stopIds.indexOf(entryStopId);
-			const after = guide.stopIds.slice(at + 1).find((stopId) => !stopIds.has(stopId));
-			const before = [...guide.stopIds.slice(0, at)].reverse().find((stopId) => !stopIds.has(stopId));
-			entryStopId = (after ?? before)!;
-			consequences.push({ kind: 'guide-start-moved', guideId: guide.id, fromStopId: guide.entryStopId, toStopId: entryStopId });
-		}
-		guides.push({ ...guide, stopIds: kept, entryStopId });
+		guides.push({ ...guide, stopIds: kept });
 	}
 	const stops: ExperienceStop[] = [];
 	for (const stop of experience.stops) {
@@ -125,19 +113,9 @@ function removeStops(
 			consequences.push({ kind: 'stop-removed', stopId: stop.id, presentationId: stop.presentationId });
 			continue;
 		}
-		const continuation = stop.continuation;
-		if (continuation?.kind === 'stop' && stopIds.has(continuation.stopId)) {
-			const fallback: ExperienceContinuation =
-				continuation.transition === undefined
-					? { kind: 'sequence-next' }
-					: { kind: 'sequence-next', transition: continuation.transition };
-			consequences.push({ kind: 'continuation-fallback', stopId: stop.id, removedStopId: continuation.stopId });
-			stops.push({ ...stop, continuation: fallback });
-			continue;
-		}
 		stops.push(stop);
 	}
-	return { ...experience, stops, guides };
+	return { ...experience, stops, guides, detours };
 }
 
 /**
@@ -184,6 +162,77 @@ function replaceExperience(experiences: readonly Experience[], next: Experience)
 	return experiences.map((entry) => (entry.id === next.id ? next : entry));
 }
 
+/** One Travel a normalisation turned into a Cut, for the creator's feedback line. */
+export type ExperienceNormalisedCut =
+	| { readonly kind: 'stop'; readonly stopId: string; readonly nextStopId?: string }
+	| { readonly kind: 'presentation-view'; readonly presentationId: string; readonly viewId: string };
+
+/**
+ * A-2 / D-12 — write a Cut wherever a Travel can no longer mean anything: on a
+ * Guide's last Stop, on a Presentation's last View, and between two Stops that
+ * enter the same View. Nothing remembers the earlier Travel; the Camera path is
+ * never deleted, so choosing Travel again reuses its shape and time.
+ *
+ * `cuts` names exactly the steps this call changed, so an accepted edit can say
+ * what it did. Pure: no id is allocated, no clock is read.
+ */
+export function normalizeTransitions(experience: Experience): {
+	readonly experience: Experience;
+	readonly cuts: readonly ExperienceNormalisedCut[];
+} {
+	const cuts: ExperienceNormalisedCut[] = [];
+	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
+	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
+	const entryViewOf = (stop: ExperienceStop): string | null =>
+		stopEntryViewId(stop, presentationById.get(stop.presentationId));
+	const cleared = new Set<string>();
+	for (const guide of experience.guides) {
+		const lastStopId = guide.stopIds.at(-1);
+		if (lastStopId !== undefined && stopById.get(lastStopId)?.transition === 'travel') cleared.add(lastStopId);
+		for (let index = 0; index + 1 < guide.stopIds.length; index += 1) {
+			const from = stopById.get(guide.stopIds[index]!);
+			const to = stopById.get(guide.stopIds[index + 1]!);
+			if (from === undefined || to === undefined || from.transition !== 'travel') continue;
+			const fromView = entryViewOf(from);
+			const toView = entryViewOf(to);
+			if (fromView === null || fromView !== toView) continue;
+			cleared.add(from.id);
+		}
+	}
+	for (const guide of experience.guides) {
+		for (const [index, stopId] of guide.stopIds.entries()) {
+			if (!cleared.has(stopId)) continue;
+			const nextStopId = guide.stopIds[index + 1];
+			cuts.push(nextStopId === undefined ? { kind: 'stop', stopId } : { kind: 'stop', stopId, nextStopId });
+		}
+	}
+	const presentations = experience.presentations.map((presentation) => {
+		const views = presentation.views.map((view) => ({ ...view }));
+		const last = views.length - 1;
+		if (last >= 0 && views[last]!.transition === 'travel') {
+			delete views[last]!.transition;
+			cuts.push({ kind: 'presentation-view', presentationId: presentation.id, viewId: views[last]!.viewId });
+		}
+		return { ...presentation, views };
+	});
+	if (cleared.size === 0 && cuts.length === 0) return { experience, cuts };
+	const stops = experience.stops.map((stop) => {
+		if (!cleared.has(stop.id)) return stop;
+		const { transition: _dropped, ...rest } = stop;
+		return rest;
+	});
+	return { experience: { ...experience, stops, presentations }, cuts };
+}
+
+/** A removal's one result: its plan, with every dangling Travel already a Cut. */
+function plannedRemoval(
+	experience: Experience,
+	camera: Pick<CameraUnitPayload, 'views' | 'connections'> | null,
+	consequences: ExperienceRemovalConsequence[]
+): ExperienceRemovalPlan {
+	return { kind: 'planned', experience: normalizeTransitions(experience).experience, camera, consequences };
+}
+
 /** E4 — remove one Stop from the Experience and from every Guide that orders it. */
 export function planStopRemoval(experience: Experience, stopId: string): ExperienceRemovalPlan {
 	if (!experience.stops.some((stop) => stop.id === stopId)) {
@@ -192,7 +241,7 @@ export function planStopRemoval(experience: Experience, stopId: string): Experie
 	const consequences: ExperienceRemovalConsequence[] = [];
 	const next = removeStops(experience, new Set([stopId]), new Set(), consequences);
 	if ('kind' in next) return next;
-	return { kind: 'planned', experience: next, camera: null, consequences };
+	return plannedRemoval(next, null, consequences);
 }
 
 /**
@@ -217,7 +266,7 @@ export function planGuideRemoval(experience: Experience, guideId: string): Exper
 		entryGuideId = successor?.id ?? null;
 		consequences.push({ kind: 'opening-guide-moved', fromGuideId: guideId, toGuideId: entryGuideId });
 	}
-	return { kind: 'planned', experience: { ...next, guides, entryGuideId }, camera: null, consequences };
+	return plannedRemoval({ ...next, guides, entryGuideId }, null, consequences);
 }
 
 /**
@@ -246,7 +295,7 @@ export function planPresentationRemoval(
 		presentations: withoutStops.presentations.filter((entry) => entry.id !== presentationId)
 	};
 	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), presentationViewIds(presentation), consequences);
-	return { kind: 'planned', experience: next, camera: releasedCamera, consequences };
+	return plannedRemoval(next, releasedCamera, consequences);
 }
 
 /**
@@ -278,6 +327,11 @@ export function planPresentationViewRemoval(
 	if (presentation.views.length === 1) return refused('presentation-keeps-a-view', PRESENTATION_KEEPS_A_VIEW_REASON);
 	const consequences: ExperienceRemovalConsequence[] = [{ kind: 'view-removed', presentationId, viewId }];
 	let views: ExperiencePresentationView[] = presentation.views.filter((view) => view.viewId !== viewId);
+	if (at === presentation.views.length - 1 && views.length > 0) {
+		// A step leaves the View it is authored on, so the new last View has none.
+		const { transition: _dropped, ...previous } = views[views.length - 1]!;
+		views = [...views.slice(0, -1), previous];
+	}
 	if (at === 0) {
 		const chosen = newDefaultViewId ?? views[0]!.viewId;
 		const chosenAt = views.findIndex((view) => view.viewId === chosen);
@@ -301,5 +355,5 @@ export function planPresentationViewRemoval(
 		stops
 	};
 	const releasedCamera = releaseViews(camera, replaceExperience(experiences, next), [viewId], consequences);
-	return { kind: 'planned', experience: next, camera: releasedCamera, consequences };
+	return plannedRemoval(next, releasedCamera, consequences);
 }

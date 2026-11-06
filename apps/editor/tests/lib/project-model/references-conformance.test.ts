@@ -585,8 +585,8 @@ const DOCUMENT = await createUnitProject({
 						text: null
 					}
 				],
-				stops: [{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'end' } }],
-				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1', pacing: 'automatic' as const }],
+				stops: [{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', transition: 'cut' }],
+				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const }],
 				detours: []
 			}
 		]

@@ -101,7 +101,7 @@ describe('capture, binding and Guide order', () => {
 		const stop = experience.stops.find((entry) => entry.id === 'stop-new');
 		expect(stop).toMatchObject({
 			presentationId: 'presentation-new',
-			continuation: { kind: 'sequence-next', transition: 'cut' }
+			transition: 'cut'
 		});
 		// Insertion after stop-2 appends by stable Stop identity, never by array index.
 		expect(experience.guides[0]!.stopIds).toEqual(['stop-1', 'stop-2', 'stop-new']);
@@ -118,7 +118,7 @@ describe('capture, binding and Guide order', () => {
 		expect(experienceOf(restored).guides[0]!.stopIds).toEqual(['stop-1', 'stop-2']);
 	});
 
-	it('reorders a Guide by stable Stop identity without rewriting a Stop', async () => {
+	it('reorders a Guide by stable Stop identity and refuses an order that would strand a Travel last (D-12)', async () => {
 		const { source, coordinator } = await boot();
 		const accepted = await coordinator.accept(
 			guideOrderIntent({
@@ -130,12 +130,11 @@ describe('capture, binding and Guide order', () => {
 				stopIds: ['stop-2', 'stop-1']
 			})
 		);
-		expect(accepted.kind).toBe('accepted');
+		// stop-1 leaves by Travel; putting it last would strand that Travel, so slice 2
+		// refuses instead of normalising it (slice 3 writes the Cut for me).
+		expect(accepted.kind).toBe('rejected');
 		const experience = experienceOf(coordinator.acceptedSnapshot().domain.source);
-		expect(experience.guides[0]!.stopIds).toEqual(['stop-2', 'stop-1']);
-		// Order is the only thing this operation writes: entry and Stop fields stay
-		// exactly as authored.
-		expect(experience.guides[0]!.entryStopId).toBe('stop-1');
+		expect(experience.guides[0]!.stopIds).toEqual(['stop-1', 'stop-2']);
 		expect(experience.stops.map((entry) => entry.id)).toEqual(['stop-1', 'stop-2']);
 	});
 
@@ -277,9 +276,12 @@ describe('Preview entry rule', () => {
 				entry.id === 'experience-1'
 					? {
 							...entry,
+							stops: entry.stops.map((stop) =>
+								stop.id === 'stop-1' ? { ...stop, transition: 'cut' as const } : stop
+							),
 							guides: [
-								...entry.guides,
-								{ id: 'guide-2', label: 'Other', stopIds: ['stop-2'], entryStopId: 'stop-2', pacing: 'automatic' as const }
+								{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const },
+								{ id: 'guide-2', label: 'Other', stopIds: ['stop-2'], pacing: 'automatic' as const }
 							]
 						}
 					: entry

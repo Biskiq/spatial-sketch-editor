@@ -119,7 +119,7 @@ export function resolvePathOccurrence(
 			occurrence,
 			fromViewId: presentation.views[index - 1]!.viewId,
 			toViewId: presentation.views[index]!.viewId,
-			transition: presentation.views[index]!.transition ?? 'cut',
+			transition: presentation.views[index - 1]!.transition ?? 'cut',
 			stopId: null,
 			presentationId: presentation.id,
 			toStopId: null

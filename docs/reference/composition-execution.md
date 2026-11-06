@@ -982,11 +982,13 @@ invitations, entry Views, Presentation `views`, program v4, the interpreter, Exp
 Back, and the one Guide clock. Authoring feedback is typed since slice 1: a line carries
 `success`, `info` or `refusal`, so a success is never styled as a refusal and no string
 whitelist decides, and a success, an info line and a refusal are three different things.
-It does **not yet** implement the review-2 amendments: it still
-reads and writes `Guide.entryStopId` and `Stop.continuation`, stores a Presentation step on the
-View it arrives at, requires `label` to be a string, lacks the membership, same-View and
-after-last refusals, refuses a Stop removal that a Detour uses, joins a new pair only when Cut
-switches to Travel, keeps Scene `delete-one` single-domain, and asks for the first Guide's name.
-Each lands with a [fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices)
-(the model with slice 2, reconciliation with slice 3, the first Guide with slice 7, `label` and
-the Scene unlink with slice 8), and each slice updates this paragraph in the same commit.
+Slice 2 lands the linear Guide model: `Guide.entryStopId` and `ExperienceContinuation` are
+deleted, `Stop.transition` is the outgoing step, `stop-guide-membership`, `travel-after-last`
+and `travel-same-view` are refused, Presentation steps are outgoing edges, lowering's entry is
+`options.entryStopId ?? order[0]` and every program Stop emits `sequence-next`, and removing a
+Stop or Guide removes its Detours. It does **not yet** implement the later slices: Travel
+reconciliation on every endpoint-changing edit (slice 3), the problems list (4), the strip and
+one timeline (5), the Experience Card and Guide Card retirement (6), the first Guide's *Tour*
+(7), `label: string | null` with the Scene unlink (8), and visitor progress (9). Each lands
+with a [fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices),
+and each slice updates this paragraph in the same commit.

@@ -216,7 +216,7 @@ export function lowerExperienceProgram(
 			return refuse('unknown-stop', `the lowering order names Stop "${stopId}", which this Experience does not carry`, stopId);
 		}
 	}
-	const entryStopId = options.entryStopId ?? selectedGuide?.entryStopId ?? order[0] ?? null;
+	const entryStopId = options.entryStopId ?? order[0] ?? null;
 	if (order.length === 0 && entryStopId !== null) {
 		return refuse('missing-entry', 'an empty program cannot declare an entry Stop');
 	}
@@ -304,12 +304,14 @@ export function lowerExperienceProgram(
 		// is only ever bound to the authored pair its selector names.
 		const viewIds: string[] = [];
 		const steps: ProgramInvocation[] = [];
-		let authoredPrevious: string | null = null;
-		for (const view of presentation.views) {
+		for (const [position, view] of presentation.views.entries()) {
 			const resolved = resolves(context, reference('camera', 'view', view.viewId, cameraRevision, []));
 			if (resolved && viewIds.length > 0) {
 				const previous = viewIds.at(-1)!;
-				const transition = previous === authoredPrevious ? view.transition : 'cut';
+				// A step leaves the View it is authored on; a dropped View makes its
+				// surviving neighbours a Cut, never a borrowed Travel.
+				const authoredPrevious = presentation.views[position - 1];
+				const transition = authoredPrevious?.viewId === previous ? authoredPrevious.transition : 'cut';
 				const step = resolveApproach(
 					previous,
 					view.viewId,
@@ -321,7 +323,6 @@ export function lowerExperienceProgram(
 				steps.push(step.invocation);
 			}
 			if (resolved) viewIds.push(view.viewId);
-			authoredPrevious = view.viewId;
 		}
 		presentations.push({
 			id: presentation.id,
@@ -341,23 +342,13 @@ export function lowerExperienceProgram(
 	// A Stop is one visit: it leaves from the View it entered at.
 	const exitViewOf = entryViewOf;
 	/**
-	 * The transition an adjacent pair authors. Only a `sequence-next` continuation
-	 * (or its absence) describes Guide adjacency; a Stop that continues elsewhere is
-	 * not the authored edge into the next list entry, which is then a Cut.
+	 * The step an adjacent pair authors: the leaving Stop's own `transition` (A-1).
+	 * The last Stop has none, so a Guide never leaves its end by a Travel.
 	 */
 	const adjacentTransition = (
 		previous: Experience['stops'][number],
-		target: Experience['stops'][number]
-	) => {
-		const continuation = previous.continuation;
-		if (continuation === undefined || continuation.kind === 'sequence-next') {
-			return continuation?.transition ?? ('cut' as const);
-		}
-		if (continuation.kind === 'stop' && continuation.stopId === target.id) {
-			return continuation.transition ?? ('cut' as const);
-		}
-		return 'cut' as const;
-	};
+		_target: Experience['stops'][number]
+	) => previous.transition ?? ('cut' as const);
 	const stops: ProgramStop[] = [];
 	const localTime: ProgramLocalTime[] = [];
 	for (const [occurrence, stopId] of order.entries()) {
@@ -409,17 +400,9 @@ export function lowerExperienceProgram(
 			staySeconds,
 			invitation: stop.invitation === null ? null : { prompt: stop.invitation.prompt },
 			invocation: approach.invocation,
-			continuation: toProgramContinuation(stop.continuation)
+			// A-4 — lowering emits only `sequence-next`; the order is the route.
+			continuation: { kind: 'sequence-next' }
 		});
-	}
-	for (const stop of stops) {
-		if (stop.continuation.kind === 'stop' && !order.includes(stop.continuation.stopId)) {
-			return refuse(
-				'unknown-stop',
-				`Stop "${stop.id}" continues to Stop "${stop.continuation.stopId}", which is not in the lowered order`,
-				stop.id
-			);
-		}
 	}
 
 	// Every authored edge is validated against the real Camera connections: Guide
@@ -439,28 +422,6 @@ export function lowerExperienceProgram(
 	for (const [index, stop] of stops.entries()) {
 		if (index === 0) continue;
 		addTransition(stops[index - 1]!.id, stop.id, stop.invocation);
-	}
-	for (const stop of stops) {
-		if (stop.continuation.kind !== 'stop') continue;
-		const targetId = stop.continuation.stopId;
-		const target = stops.find((entry) => entry.id === targetId);
-		const authored = stopById.get(stop.id)!;
-		const targetStop = stopById.get(targetId);
-		if (target === undefined || targetStop === undefined) continue;
-		const authoredContinuation = authored.continuation;
-		const transition =
-			authoredContinuation !== undefined && authoredContinuation.kind === 'stop'
-				? authoredContinuation.transition
-				: undefined;
-		const approach = resolveApproach(
-			exitViewOf(authored),
-			entryViewOf(targetStop),
-			targetId,
-			transition,
-			`The explicit continuation from Stop "${stop.id}" to "${targetId}"`
-		);
-		if (approach.kind === 'refused') return approach;
-		addTransition(stop.id, targetId, approach.invocation);
 	}
 	for (const detour of experience.detours) {
 		// A detour authored on a Stop outside this Guide's order is not an edge of
@@ -512,12 +473,6 @@ export function lowerExperienceProgram(
 		transitions: [...transitionByKey.values()],
 		unavailablePresentations
 	};
-}
-
-function toProgramContinuation(continuation: Experience['stops'][number]['continuation']): ProgramContinuation {
-	if (continuation === undefined || continuation.kind === 'sequence-next') return { kind: 'sequence-next' };
-	if (continuation.kind === 'end') return { kind: 'end' };
-	return { kind: 'stop', stopId: continuation.stopId };
 }
 
 /** Narrow helper for a caller that wants the refusal's own diagnostic list. */

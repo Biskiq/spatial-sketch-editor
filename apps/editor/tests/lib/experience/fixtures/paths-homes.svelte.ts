@@ -39,14 +39,14 @@ const STOP: ExperienceStop = {
 	entryViewId: null,
 	staySeconds: 5,
 	invitation: null,
-	continuation: { kind: 'end' }
+	transition: 'cut'
 };
 
 const GUIDE: ExperienceGuide = {
 	id: 'guide-1',
 	label: 'Main',
 	stopIds: ['stop-1'],
-	entryStopId: 'stop-1', pacing: 'automatic' as const
+	pacing: 'automatic' as const
 };
 
 const EXPERIENCE: Experience = {
@@ -58,7 +58,7 @@ const EXPERIENCE: Experience = {
 		{
 			id: 'piano',
 			label: 'Piano',
-			views: [{ viewId: 'view-one' }, { viewId: 'view-two', transition: 'travel' }],
+			views: [{ viewId: 'view-one', transition: 'travel' }, { viewId: 'view-two' }],
 			explorable: true,
 			subject: null,
 			text: null

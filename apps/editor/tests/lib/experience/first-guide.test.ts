@@ -78,7 +78,7 @@ describe('first Guide creation', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: { kind: 'sequence-next', transition: 'cut' }
+				transition: 'cut'
 			})
 		);
 		expect(accepted.kind).toBe('accepted');
@@ -91,12 +91,12 @@ describe('first Guide creation', () => {
 		// The first Guide is named the Experience's entry Guide explicitly.
 		expect(experience.entryGuideId).toBe('guide-new');
 		expect(experience.guides).toEqual([
-			{ id: 'guide-new', label: 'Main', stopIds: ['stop-new'], entryStopId: 'stop-new', pacing: 'automatic' as const }
+			{ id: 'guide-new', label: 'Main', stopIds: ['stop-new'], pacing: 'automatic' as const }
 		]);
 		// A fresh Stop identity that enters the Presentation's own Default View and
 		// copies no Camera truth: the Camera unit is untouched.
 		expect(experience.stops).toEqual([
-			{ id: 'stop-new', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } }
+			{ id: 'stop-new', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', transition: 'cut' }
 		]);
 		expect(installed.units.camera.data.views).toEqual(VIEWS);
 		expect(installed.units.camera.data.connections).toEqual(source.units.camera.data.connections);
@@ -144,7 +144,7 @@ describe('first Guide creation', () => {
 		const experience = experienceOf(installed);
 		expect(experience.entryGuideId).toBe('guide-new');
 		expect(experience.guides).toEqual([
-			{ id: 'guide-new', label: 'Entrance walk', stopIds: ['stop-new'], entryStopId: 'stop-new', pacing: 'automatic' as const }
+			{ id: 'guide-new', label: 'Entrance walk', stopIds: ['stop-new'], pacing: 'automatic' as const }
 		]);
 		expect(experience.stops[0]).toMatchObject({ id: 'stop-new', presentationId: 'presentation-new', entryViewId: null, staySeconds: 5, invitation: null });
 		expect(installed.units.camera.data.views.map((view) => view.id)).toEqual(['view-1', 'view-2', 'view-new']);
@@ -169,8 +169,9 @@ describe('first Guide creation', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: null
-			})
+			
+			transition: null
+})
 		);
 		expect(first.kind).toBe('accepted');
 		const depth = coordinator.history().depth;
@@ -185,8 +186,9 @@ describe('first Guide creation', () => {
 				label: 'Second',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: null
-			})
+			
+			transition: null
+})
 		);
 		// The `guide-exists` refusal is lifted: a later Guide is one more accepted entry,
 		// and the first Guide stays the one the Experience opens on.
@@ -194,7 +196,7 @@ describe('first Guide creation', () => {
 		expect(coordinator.history().depth).toBe(depth + 1);
 		const experience = experienceOf(coordinator.acceptedSnapshot().domain.source);
 		expect(experience.guides.map((guide) => guide.id)).toEqual(['guide-1-new', 'guide-2-new']);
-		expect(experience.guides[1]).toMatchObject({ label: 'Second', stopIds: ['stop-2-new'], entryStopId: 'stop-2-new', pacing: 'automatic' as const });
+		expect(experience.guides[1]).toMatchObject({ label: 'Second', stopIds: ['stop-2-new'], pacing: 'automatic' as const });
 		expect(experience.entryGuideId).toBe('guide-1-new');
 		// One Undo removes the second Guide and its Stop together.
 		await coordinator.undo();
@@ -233,8 +235,9 @@ describe('first Guide creation', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: null
-			})
+			
+			transition: null
+})
 		);
 		expect(noEntry).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'missing-entry' });
 		expect(coordinator.history().depth).toBe(1);
@@ -249,8 +252,9 @@ describe('first Guide creation', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: null
-			})
+			
+			transition: null
+})
 		);
 		expect(duplicate).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'duplicate-identity' });
 		expect(coordinator.history().depth).toBe(1);
@@ -277,7 +281,7 @@ describe('first Guide creation', () => {
 			...guideFree,
 			payload: {
 				...(guideFree.payload as Record<string, unknown>),
-				stop: { guideId: null, afterStopId: null, continuation: { kind: 'sequence-next', transition: 'cut' } }
+				stop: { guideId: null, afterStopId: null, transition: 'cut' }
 			} as typeof guideFree.payload,
 			allocatedIds: [...guideFree.allocatedIds, { kind: 'stop', id: 'stop-orphan' }]
 		};
@@ -322,7 +326,7 @@ describe('first Guide creation', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: { kind: 'sequence-next', transition: 'cut' }
+				transition: 'cut'
 			})
 		);
 		const beforeReuse = coordinator.acceptedSnapshot().domain.source;
@@ -337,7 +341,7 @@ describe('first Guide creation', () => {
 				afterStopId: 'stop-1-new',
 				entryViewId: null,
 				staySeconds: 2,
-				continuation: { kind: 'end' }
+				transition: 'cut'
 			})
 		);
 		expect(accepted.kind).toBe('accepted');
@@ -360,11 +364,9 @@ describe('first Guide and capture-side refusals', () => {
 	// Every refusal here is a planner refusal: the coordinator reports it as
 	// `planner-rejected` with the planner's own reason, and the accepted source and
 	// history are exactly what they were before the attempt.
-	it('refuses a first Guide whose continuation names a Stop the Experience does not carry', async () => {
+	it('creates a first Guide as one linear order, with no continuation to name (D-12)', async () => {
 		const { source, coordinator } = await boot();
-		const before = coordinator.acceptedSnapshot().domain.source;
-		const depth = coordinator.history().depth;
-		const refused = await coordinator.accept(
+		const created = await coordinator.accept(
 			guideCreateIntent({
 				envelope: source,
 				revision: coordinator.acceptedRevision(),
@@ -374,12 +376,12 @@ describe('first Guide and capture-side refusals', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: { kind: 'stop', stopId: 'stop-missing', transition: 'cut' }
+				transition: 'cut'
 			})
 		);
-		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'missing-target' });
-		expect(coordinator.history().depth).toBe(depth);
-		expect(coordinator.acceptedSnapshot().domain.source).toEqual(before);
+		expect(created.kind).toBe('accepted');
+		const experience = coordinator.acceptedSnapshot().domain.source.units.experience.data.experiences[0]!;
+		expect(experience.guides.at(-1)).toMatchObject({ id: 'guide-new', stopIds: ['stop-new'] });
 	});
 
 	it('refuses a first Guide whose initial Stop has a negative hold', async () => {
@@ -398,8 +400,9 @@ describe('first Guide and capture-side refusals', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: 0.5,
-				continuation: null
-			})
+			
+			transition: null
+})
 		);
 		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'invalid-payload' });
 		expect(coordinator.history().depth).toBe(depth);
@@ -418,8 +421,9 @@ describe('first Guide and capture-side refusals', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: null
-			})
+			
+			transition: null
+})
 		);
 		const before = coordinator.acceptedSnapshot().domain.source;
 		const depth = coordinator.history().depth;
@@ -455,8 +459,9 @@ describe('first Guide and capture-side refusals', () => {
 				label: 'Main',
 				entryViewId: null,
 				staySeconds: null,
-				continuation: null
-			})
+			
+			transition: null
+})
 		);
 		const before = coordinator.acceptedSnapshot().domain.source;
 		const depth = coordinator.history().depth;
@@ -511,7 +516,7 @@ describe('first Guide and capture-side refusals', () => {
 			...guideFree,
 			payload: {
 				...(guideFree.payload as Record<string, unknown>),
-				stop: { guideId: null, afterStopId: 'stop-earlier', continuation: { kind: 'sequence-next', transition: 'cut' } }
+				stop: { guideId: null, afterStopId: 'stop-earlier', transition: 'cut' }
 			} as typeof guideFree.payload
 		};
 		const refused = await coordinator.accept(tampered);
