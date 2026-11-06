@@ -74,8 +74,9 @@ One session intent separates **tool**, **target surface**, **intended reading** 
 
 ## Specimen implementation and verification
 
-[Source](../../../reference/design-system/world-interaction-sheet/opening.js) imports current Layout planners and production
-refusal wording. [Bundle](../../../reference/design-system/world-interaction-sheet/opening.bundle.js) packages them for offline
+[Source](../../../reference/design-system/world-interaction-sheet/opening.js) imports current Layout planners, production Plan symbols and production
+refusal wording. The HTML keeps the styles used by this external bundle, including cutouts,
+transparent hit areas and dashed Door swings. [Bundle](../../../reference/design-system/world-interaction-sheet/opening.bundle.js) packages them for offline
 review. Geometry on screen is schematic SVG; there is one host and session-local
 state, no F.4 coordinator, undo stack, persistence, production raycast or compiled
 Opening mesh. In particular this is real planner validation, not a full editor.
@@ -89,4 +90,8 @@ node -e "require('esbuild').buildSync({entryPoints:['docs/reference/design-syste
 
 Minimal verification: bundle builds cleanly; jsdom smoke exercises initialization,
 Door/Window creation, overlap/bounds refusals, cancellation, view switching,
-disclosure and reset. `npm run test:arch` passes all 23 files / 207 tests, including documentation references; `git diff --check` is clean. Owner handles visual acceptance; no browser QA campaign.
+disclosure and reset. Browser smoke verifies Plan and 3D cutouts, transparent hit areas,
+production Door/Window symbols, placement, keyboard sliding and a 390 px layout without
+overflow or browser errors. The production Plan contract passes all 26 tests;
+`npm run test:arch` passes all 23 files / 209 tests, including documentation references.
+`git diff --check` is clean. Final visual acceptance remains with the owner.
