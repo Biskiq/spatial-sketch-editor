@@ -64,6 +64,8 @@ export type ExperienceIndexGroups = {
 	/** D-2: the Index Guide row renames in place and removes through its ⋯ menu. */
 	onRenameGuide(guideId: string, label: string): Promise<{ readonly kind: 'accepted' | 'refused'; readonly message?: string }>;
 	onRemoveGuide(guideId: string): void;
+	/** G23/D-9: a View row's ＋ Stop creates its Stop entering that View, and Tour if no Guide exists. */
+	onAddStopFromView(viewId: string, presentationId: string): void;
 	onSelectPresentation(presentationId: string): void;
 	onToggleExpand(presentationId: string): void;
 	onSelectView(viewId: string, presentationId: string): void;

@@ -247,8 +247,6 @@ function fakeHomes(
 		guideOpen: () => guideOpen,
 		setGuideOpen: vi.fn<(open: boolean) => void>(),
 		select: vi.fn<(subject: ExperienceSubject | null) => void>(),
-		guideNamePrompt: (): string | null => null,
-		requestGuideName: vi.fn<(presentationId: string | null) => void>(),
 		sceneSubject: () => null,
 		openInWorld: vi.fn(),
 		lookThroughViewId: () => through.viewId ?? null,
@@ -494,21 +492,16 @@ describe('R217.S25 — the Guide adds a Stop from a Presentation', () => {
 		expect(target.querySelector('[aria-label="Pacing"]')).toBeNull();
 	});
 
-	it('keeps + Stop disabled until the new Guide is named, then adds the chosen Presentation with that name', async () => {
+	it('adds the chosen Presentation as the first Stop with no naming prompt (D-9)', async () => {
 		const controller = fakeController({ guided: false });
 		const homes = fakeHomes(controller);
 		const target = mountHome(ExperienceGuide, { onClose: () => {} }, homes);
 		await settle();
 
+		expect(target.querySelector('input[aria-label="Guide name"]')).toBeNull();
 		const add = buttonNamed(target, 'Stop');
-		expect(add.disabled).toBe(true);
-		expect(reasonOf(add)).toBe('Name the Guide first');
-
-		typeInto(target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!, 'Walk');
-		await settle();
-		expect(buttonNamed(target, 'Stop').disabled).toBe(false);
-
-		buttonNamed(target, 'Stop').click();
+		expect(add.disabled).toBe(false);
+		add.click();
 		await settle();
 		const gallery = [...target.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
 			(item) => item.querySelector('.menu-label')?.textContent === 'Gallery'
@@ -517,7 +510,7 @@ describe('R217.S25 — the Guide adds a Stop from a Presentation', () => {
 		gallery!.click();
 		await settle();
 
-		expect(controller.addStop).toHaveBeenCalledWith('gallery', { firstGuideLabel: 'Walk' });
+		expect(controller.addStop).toHaveBeenCalledWith('gallery', { entryViewId: null });
 	});
 });
 
@@ -769,23 +762,38 @@ describe('R217.S26 — the View Card says where else a shared View is used', () 
 });
 
 
-describe('R217.S26 — New Guide… asks the name inline beside existing Guides (E5)', () => {
-	it('creates a new Guide through createGuide, not the first-Guide path', async () => {
+describe('R217.S36 / G23 — a View dropped on the strip becomes a Stop entering it', () => {
+	it('passes the dragged View as the first Stop\u2019s entry', async () => {
+		const controller = fakeController({ guided: false });
+		const target = mountHome(ExperienceGuide, { onClose: () => {} }, fakeHomes(controller));
+		await settle();
+		const empty = target.querySelector<HTMLElement>('.empty')!;
+		const data = {
+			types: ['application/x-biskiq-presentation-view'],
+			getData: (type: string) =>
+				type === 'application/x-biskiq-presentation-view'
+					? JSON.stringify({ viewId: 'piano-keys', presentationId: 'piano' })
+					: ''
+		};
+		for (const type of ['dragover', 'drop']) {
+			const event = new Event(type, { bubbles: true, cancelable: true });
+			Object.defineProperty(event, 'dataTransfer', { value: data });
+			empty.dispatchEvent(event);
+		}
+		await settle();
+		expect(controller.addStop).toHaveBeenCalledWith('piano', { entryViewId: 'piano-keys' });
+	});
+});
+
+describe('R217.S36 — Add to Guide creates the first Tour with no prompt (D-9)', () => {
+	it('adds the Presentation as a Stop; the controller names the first Guide Tour', async () => {
 		const controller = fakeController({ selectedPresentationId: 'gallery' });
-		const homes = { ...fakeHomes(controller), guideNamePrompt: () => 'gallery' };
-		const target = mountHome(ExperiencePresentationWriter, {}, homes);
+		const target = mountHome(ExperiencePresentationWriter, {}, fakeHomes(controller));
 		await settle();
-		const input = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
-		const create = buttonNamed(target, 'Create Guide');
-		expect(create.disabled).toBe(true);
-		expect(reasonOf(create)).toBe('A name is needed');
-		input.value = 'Short tour';
-		input.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(target.querySelector('input[aria-label="Guide name"]')).toBeNull();
+		buttonNamed(target, 'Add to Guide').click();
 		await settle();
-		create.click();
-		await settle();
-		expect(controller.createGuide).toHaveBeenCalledWith('gallery', 'Short tour');
-		expect(controller.addStop).not.toHaveBeenCalled();
+		expect(controller.addStop).toHaveBeenCalledWith('gallery');
 	});
 });
 

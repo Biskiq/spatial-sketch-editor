@@ -467,7 +467,7 @@
 							{#if presentation.expanded}
 								<ul class="view-list">
 									{#each presentation.views.slice(0, 8) as view (view.id)}
-										<li>
+										<li class="view-line">
 											<button
 												type="button"
 												class="view-row"
@@ -480,6 +480,14 @@
 												<span class="view-name">{view.label}</span>
 												{#if view.isDefault}<span class="default-mark" title="Default View" aria-hidden="true">◆</span>{/if}
 											</button>
+											<button
+												type="button"
+												class="view-add"
+												data-view-add={view.id}
+												aria-label={`Add Stop from ${view.label}`}
+												title={`Add a Stop that enters at ${view.label}`}
+												onclick={() => experience.onAddStopFromView(view.id, presentation.id)}
+											>+ Stop</button>
 										</li>
 									{/each}
 									{#if presentation.views.length > 8}
@@ -1200,6 +1208,34 @@
 		list-style: none;
 	}
 	/* Round 2 nested irow: 14 px indent, then the row's own 10 px. */
+	.view-line {
+		display: flex;
+		align-items: center;
+	}
+	.view-line .view-row {
+		flex: 1;
+		min-width: 0;
+	}
+	.view-add {
+		flex: none;
+		min-height: 24px;
+		padding: 0 6px;
+		border: 0;
+		border-radius: 5px;
+		background: transparent;
+		color: var(--shell-ink-3, #79817b);
+		font: 500 10.5px/1 var(--shell-sans, system-ui);
+		white-space: nowrap;
+		opacity: 0;
+	}
+	.view-line:hover .view-add,
+	.view-add:focus-visible {
+		opacity: 1;
+		color: var(--shell-forest-3, #2d5e48);
+	}
+	.view-add:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
 	.view-row {
 		width: 100%;
 		min-height: 28px;

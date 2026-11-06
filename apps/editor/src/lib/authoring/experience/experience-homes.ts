@@ -32,9 +32,6 @@ export type ExperienceHomes = {
 	readonly setGuideOpen: (open: boolean) => void;
 	/** One Card selection: clears the Stage selection, sets the Experience subject, shows the Card. */
 	readonly select: (subject: ExperienceSubject | null) => void;
-	/** Presentation awaiting a first-Guide name (D8), or null. */
-	readonly guideNamePrompt: () => string | null;
-	readonly requestGuideName: (presentationId: string | null) => void;
 	/** The Scene entity the Card shows in the Experience lens (subject Card), or null. Reactive. */
 	readonly sceneSubject: () => { readonly entityId: string; readonly label: string } | null;
 	/** Switch to the World lens keeping the Scene selection ("Open in World"). */

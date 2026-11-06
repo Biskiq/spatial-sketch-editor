@@ -613,22 +613,10 @@ describe('Capture (D1, D2)', () => {
 describe('addStop (D8)', () => {
 	const noGuide = withExperience({ welcome: null, entryGuideId: null, stops: [], guides: [] });
 
-	it('needs a trimmed Guide name before it creates the first Guide', async () => {
-		const { controller, submitted } = await mounted({ experience: noGuide });
-		controller.select({ kind: 'presentation', presentationId: 'presentation-1' });
-
-		expect(await controller.addStop('presentation-1')).toBe(false);
-		expect(await controller.addStop('presentation-1', { firstGuideLabel: '   ' })).toBe(false);
-
-		expect(submitted).not.toHaveBeenCalled();
-		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'Name the Guide first.' });
-		expect(controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
-	});
-
-	it('creates the first Guide and its Stop, makes the Guide active and selects the Stop', async () => {
+	it('creates Tour and its first Stop with no naming prompt, carrying the entry View', async () => {
 		const { controller, submitted, envelope } = await mounted({ experience: noGuide });
 
-		expect(await controller.addStop('presentation-1', { firstGuideLabel: '  Morning route ' })).toBe(true);
+		expect(await controller.addStop('presentation-1', { entryViewId: 'view-2' })).toBe(true);
 
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_GUIDE_CREATE_KIND);
@@ -641,14 +629,21 @@ describe('addStop (D8)', () => {
 				ids: { operation: intent.operationId, guide, stop, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				presentationId: 'presentation-1',
-				label: 'Morning route',
-				entryViewId: null,
+				label: 'Tour',
+				entryViewId: 'view-2',
 				staySeconds: null,
 				transition: 'cut'
 			})
 		);
 		expect(experienceFocus.guideId).toBe(guide);
 		expect(controller.subject).toEqual({ kind: 'stop', stopId: stop });
+	});
+
+	it('names a further Guide Tour 2, then the next free Tour n', async () => {
+		const { controller, submitted } = await mounted();
+
+		expect(await controller.createGuide('presentation-2')).toBe(true);
+		expect((submittedIntent(submitted).payload as { label: string }).label).toBe('Tour 2');
 	});
 
 	it('inserts after the selected Stop when it is in the active Guide', async () => {
@@ -1100,7 +1095,7 @@ describe('R217.S26 — structure commands', () => {
 		expect(submittedIntent(submitted).payload).toEqual({ entryGuideId: 'guide-2' });
 	});
 
-	it('adds to a chosen Guide at its end, and New Guide makes a new active Guide with this Presentation as Stop 1', async () => {
+	it('adds to a chosen Guide at its end, and New Guide makes a new, automatically named active Guide', async () => {
 		const { controller, submitted } = await mounted();
 		await controller.addToGuide('presentation-2', 'guide-1');
 		let intent = submittedIntent(submitted);
@@ -1109,14 +1104,12 @@ describe('R217.S26 — structure commands', () => {
 		expect(experienceFocus.guideId).toBe('guide-1');
 
 		submitted.mockClear();
-		expect(await controller.createGuide('presentation-2', '')).toBe(false);
-		expect(submitted).not.toHaveBeenCalled();
-		await controller.createGuide('presentation-2', 'Short tour');
+		await controller.createGuide('presentation-2');
 		intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_GUIDE_CREATE_KIND);
 		const guide = intent.allocatedIds.find((entry) => entry.kind === 'guide')!.id;
 		const stop = intent.allocatedIds.find((entry) => entry.kind === 'stop')!.id;
-		expect(intent.payload).toMatchObject({ label: 'Short tour', presentationId: 'presentation-2' });
+		expect(intent.payload).toMatchObject({ label: 'Tour 2', presentationId: 'presentation-2' });
 		expect(experienceFocus.guideId).toBe(guide);
 		expect(experienceFocus.subject).toEqual({ kind: 'stop', stopId: stop });
 	});

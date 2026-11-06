@@ -1013,7 +1013,10 @@ When nothing is selected the Card is the Experience itself, through
 `ExperienceExperienceWriter`: the welcome text, which has no other editor, and *Opens with* only
 when two or more Guides exist (R33/R36). The Index Guide row renames in place and carries its own
 ⋯ menu (Rename, Remove Guide), and opening a Guide from either home keeps the Experience Card and
-shows its strip. It does **not yet** implement the later slices: the first Guide's *Tour* (7),
-`label: string | null` with the Scene unlink (8), and visitor progress (9). Each lands with a
+shows its strip. Slice 7 closes View → Stop: every creation command carries `entryViewId`, each
+View row offers ＋ Stop, a View dragged from the rail onto the strip becomes a Stop entering it,
+and the first Stop creates the Guide *Tour* with no naming prompt; further Index Guides are
+*Tour 2*, *Tour 3*. It does **not yet** implement the later slices: `label: string | null` with
+the Scene unlink (8), and visitor progress (9). Each lands with a
 [fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices),
 and each slice updates this paragraph in the same commit.

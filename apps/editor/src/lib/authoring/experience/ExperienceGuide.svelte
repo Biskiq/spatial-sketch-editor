@@ -40,6 +40,7 @@
 
 	/** What the Index's Presentation rows put on the drag (contract: agent B). */
 	const PRESENTATION_MIME = 'application/x-biskiq-presentation';
+	const VIEW_MIME = 'application/x-biskiq-presentation-view';
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
@@ -58,13 +59,7 @@
 	const selectedStopId = $derived(
 		subjectStopId !== null && stops.some((stop) => stop.id === subjectStopId) ? subjectStopId : null
 	);
-	/** The Presentation awaiting a first-Guide name (Presentation Add to Guide, or a drop without a name). */
-	const pending = $derived(homes.guideNamePrompt());
-	const pendingLabel = $derived(pending === null ? null : (controller?.presentationLabel(pending) ?? null));
-
 	let compact = $state(false);
-	let guideName = $state('');
-	let nameInput = $state<HTMLInputElement | null>(null);
 	let menuOpen = $state(false);
 	let menuWrap = $state<HTMLElement | null>(null);
 	let addButton = $state<HTMLButtonElement | null>(null);
@@ -384,7 +379,6 @@
 
 	const addReason = $derived.by((): string | null => {
 		if (busy) return 'Saving the last change';
-		if (!hasGuide && guideName.trim() === '') return 'Name the Guide first';
 		if (presentations.length === 0) return 'Add a Presentation first';
 		return null;
 	});
@@ -395,47 +389,22 @@
 
 	// ---- Writing: adding Stops ----
 
-	async function addStop(presentationId: string, afterStopId?: string): Promise<boolean> {
+	async function addStop(presentationId: string, afterStopId?: string, entryViewId: string | null = null): Promise<boolean> {
 		if (controller === null) return false;
-		const options: { afterStopId?: string; firstGuideLabel?: string } = {};
+		const options: { afterStopId?: string; entryViewId: string | null } = { entryViewId };
 		if (afterStopId !== undefined) options.afterStopId = afterStopId;
-		if (!hasGuide) options.firstGuideLabel = guideName.trim();
-		const accepted = await controller.addStop(presentationId, Object.keys(options).length > 0 ? options : undefined);
-		if (accepted && homes.guideNamePrompt() !== null) homes.requestGuideName(null);
-		return accepted;
+		return controller.addStop(presentationId, options);
 	}
 
-	/** The first Stop of an empty Guide: needs the Guide's name when there is no Guide yet (D8). */
-	async function addFirstStop(presentationId: string): Promise<void> {
-		if (!hasGuide && guideName.trim() === '') {
-			homes.requestGuideName(presentationId);
-			nameInput?.focus();
-			return;
-		}
-		await addStop(presentationId);
+	/** The first Stop of an empty Guide; the controller creates Tour (D-9). */
+	async function addFirstStop(presentationId: string, entryViewId: string | null = null): Promise<void> {
+		await addStop(presentationId, undefined, entryViewId);
 	}
 
 	async function chooseFromMenu(presentationId: string): Promise<void> {
 		closeMenu();
 		await addStop(presentationId);
 	}
-
-	async function commitPending(): Promise<void> {
-		if (pending === null || guideName.trim() === '' || busy) return;
-		await addStop(pending);
-	}
-
-	function onNameKeydown(event: KeyboardEvent): void {
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			void commitPending();
-		}
-	}
-
-	// Asked for a name: put the cursor where it is typed.
-	$effect(() => {
-		if (pending !== null && !hasGuide && nameInput !== null) nameInput.focus();
-	});
 
 	// ---- Slice 5: rename, Guide actions and the pacing popover ----
 
@@ -879,8 +848,12 @@
 		return event.dataTransfer?.types.includes(PRESENTATION_MIME) ?? false;
 	}
 
+	function isViewDrag(event: DragEvent): boolean {
+		return event.dataTransfer?.types.includes(VIEW_MIME) ?? false;
+	}
+
 	function onDragOver(event: DragEvent): void {
-		if (!isPresentationDrag(event)) return;
+		if (!isPresentationDrag(event) && !isViewDrag(event)) return;
 		const target = dropTarget(event);
 		if (target === null) {
 			clearCaret();
@@ -910,14 +883,32 @@
 	}
 
 	function onDrop(event: DragEvent): void {
-		if (!isPresentationDrag(event)) return;
-		const presentationId = event.dataTransfer?.getData(PRESENTATION_MIME) ?? '';
 		const target = dropTarget(event);
+		if (isPresentationDrag(event)) {
+			const presentationId = event.dataTransfer?.getData(PRESENTATION_MIME) ?? '';
+			clearCaret();
+			if (presentationId === '' || target === null) return;
+			event.preventDefault();
+			if (target.kind === 'first') void addFirstStop(presentationId);
+			else void addStop(presentationId, target.afterStopId);
+			return;
+		}
+		if (!isViewDrag(event)) return;
+		const raw = event.dataTransfer?.getData(VIEW_MIME) ?? '';
 		clearCaret();
-		if (presentationId === '' || target === null) return;
+		if (raw === '' || target === null) return;
+		let dropped: { readViewId?: unknown; viewId?: unknown; presentationId?: unknown };
+		try {
+			dropped = JSON.parse(raw) as typeof dropped;
+		} catch {
+			return;
+		}
+		const viewId = typeof dropped.viewId === 'string' ? dropped.viewId : null;
+		const presentationId = typeof dropped.presentationId === 'string' ? dropped.presentationId : null;
+		if (viewId === null || presentationId === null) return;
 		event.preventDefault();
-		if (target.kind === 'first') void addFirstStop(presentationId);
-		else void addStop(presentationId, target.afterStopId);
+		if (target.kind === 'first') void addFirstStop(presentationId, viewId);
+		else void addStop(presentationId, target.afterStopId, viewId);
 	}
 </script>
 
@@ -1017,16 +1008,6 @@
 						{/if}
 					</span>
 				{/if}
-			{:else}
-				<input
-					class="name-input"
-					type="text"
-					placeholder="Name this Guide"
-					aria-label="Guide name"
-					bind:value={guideName}
-					bind:this={nameInput}
-					onkeydown={onNameKeydown}
-				/>
 			{/if}
 			<span class="spacer"></span>
 			{#if stops.length > 0}
@@ -1111,25 +1092,7 @@
 
 		{#if stops.length === 0}
 			<div class="empty" class:over={emptyOver}>
-				<p>Choose <b>+ Stop</b>, or drag a Presentation here from the Index.</p>
-				{#if pending !== null && !hasGuide}
-					<p class="empty-note">
-						{#if guideName.trim() === ''}
-							Name the Guide, then press Enter to add {pendingLabel ?? 'it'}.
-						{:else}
-							Press Enter to add {pendingLabel ?? 'it'} as the first Stop.
-						{/if}
-					</p>
-					<button
-						type="button"
-						class="tool"
-						disabled={guideName.trim() === '' || busy}
-						title={guideName.trim() === '' ? 'Name the Guide first' : undefined}
-						onclick={() => void commitPending()}
-					>
-						Add {pendingLabel ?? 'it'}
-					</button>
-				{/if}
+				<p>Choose <b>+ Stop</b>, or drag a Presentation or View here from the Index.</p>
 			</div>
 		{:else}
 			{#if !compact}
@@ -1474,10 +1437,6 @@
 	.empty b {
 		color: #fff;
 		font-weight: 600;
-	}
-	.empty .empty-note {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font-size: 11.5px;
 	}
 
 	/* ---- Stop cards and connectors ---- */

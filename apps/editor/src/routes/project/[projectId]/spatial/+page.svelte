@@ -374,7 +374,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				// With no Experience there is no Card for a carried-over World selection, so it goes too.
 				if (experienceController?.current == null && selection !== null) closeSelection();
 			}
-			guideNamePrompt = null;
 		}
 		// Arming the Experience dock's Guide key is not a mode: the lens owns it.
 	}
@@ -535,8 +534,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let showPaths = $state(true);
 	let showLabels = $state(true);
 	const showOffCount = $derived([showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length);
-	/** The Presentation awaiting a first-Guide name (D8); null when none is asking. */
-	let guideNamePrompt = $state<string | null>(null);
 	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
 	let expandedPresentationId = $state<string | null>(null);
 	/**
@@ -1469,10 +1466,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			experienceGuideOpen = open;
 		},
 		select: selectExperienceSubject,
-		guideNamePrompt: () => guideNamePrompt,
-		requestGuideName: (presentationId) => {
-			guideNamePrompt = presentationId;
-		},
 		sceneSubject: () => experienceSceneSubject,
 		openInWorld: () => changeLens('world'),
 		advancedCamera: {
@@ -2219,7 +2212,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewSurface = null;
 		adapterServices = null;
 		experienceFocus.reset();
-		guideNamePrompt = null;
 		expandedPresentationId = null;
 		// The previous facade's listeners are dropped before its replacement exists,
 		// so a disposal-time notification cannot write through the new facade.
@@ -5012,6 +5004,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				onOpenGuide: () => {},
 				onRenameGuide: async () => ({ kind: 'refused' as const }),
 				onRemoveGuide: () => {},
+				onAddStopFromView: () => {},
 				onSelectPresentation: () => {},
 				onToggleExpand: () => {},
 				onSelectView: () => {}
@@ -5067,14 +5060,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			},
 			onOpenExperience: (experienceId: string) => {
 				controller.openExperience(experienceId);
-				guideNamePrompt = null;
-				expandedPresentationId = null;
+					expandedPresentationId = null;
 				cardOpen = true;
 			},
 			onCreateExperience: (label?: string) => {
 				// A pending name prompt or an expanded row belongs to the Experience it was opened in.
-				guideNamePrompt = null;
-				expandedPresentationId = null;
+					expandedPresentationId = null;
 				return controller.createExperience(label);
 			},
 			onRenameExperience: (label: string) => controller.renameExperience(label),				onOpenGuide: (guideId: string | null) => {
@@ -5083,9 +5074,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				// D-2: a Guide has no Card; opening it keeps the Experience Card.
 				selectExperienceSubject({ kind: 'experience' });
 			},
-				onRenameGuide: (guideId: string, label: string) => controller.renameGuide(guideId, label),
-				onRemoveGuide: (guideId: string) => void controller.remove({ kind: 'guide', guideId }),
-			onSelectPresentation: (presentationId: string) => {
+				onRenameGuide: (guideId: string, label: string) => controller.renameGuide(guideId, label),				onRemoveGuide: (guideId: string) => void controller.remove({ kind: 'guide', guideId }),
+				onAddStopFromView: (viewId: string, presentationId: string) => {
+					void controller.addStop(presentationId, { entryViewId: viewId });
+				},
+				onSelectPresentation: (presentationId: string) => {
 				selectExperienceSubject({ kind: 'presentation', presentationId });
 			},
 			onToggleExpand: (presentationId: string) => {
@@ -5251,9 +5244,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						id: 'new-guide',
 						label: 'New Guide…',
 						...busyReason,
-						run: () => {
-							guideNamePrompt = presentation.id;
-						}
+						run: () => void controller.createGuide(presentation.id)
 					}
 				]
 			};

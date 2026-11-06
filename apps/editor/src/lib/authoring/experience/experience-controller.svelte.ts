@@ -208,12 +208,13 @@ export type ExperienceController = {
 	/** Subject Card Present this: a new Presentation about this Scene entity, from the 3D framing, no Stop. */
 	presentThis(entityId: string, label: string): Promise<boolean>;
 	/**
-	 * D8: the first Guide (needs `firstGuideLabel`) or a Stop in the active Guide.
-	 * `afterStopId` undefined: after the selected Stop when it is in the Guide, else at the end.
+	 * D-9: with no Guide, the first Stop creates Tour automatically. `entryViewId` is the View
+	 * the Stop enters at. `afterStopId` undefined: after the selected Stop when it is in the
+	 * Guide, else at the end.
 	 */
 	addStop(
 		presentationId: string,
-		options?: { readonly afterStopId?: string; readonly firstGuideLabel?: string }
+		options?: { readonly afterStopId?: string; readonly entryViewId?: string | null }
 	): Promise<boolean>;
 	/** A guide-order permutation of the active Guide. */
 	moveStopTo(stopId: string, index: number): Promise<boolean>;
@@ -270,7 +271,7 @@ export type ExperienceController = {
 	/** E5: a Stop of this Presentation at the end of a chosen Guide, which becomes active. */
 	addToGuide(presentationId: string, guideId: string): Promise<boolean>;
 	/** E5: New Guide… — a new, active Guide with this Presentation as its Stop 1. */
-	createGuide(presentationId: string, label: string): Promise<boolean>;
+	createGuide(presentationId: string, entryViewId?: string | null): Promise<boolean>;
 	/** Other Presentations that list this View, for *Also in*. */
 	alsoIn(viewId: string, presentationId: string): readonly ExperiencePresentation[];
 	/** A permutation of one Presentation's View order. */
@@ -810,7 +811,7 @@ export function createExperienceController(
 
 	async function addStop(
 		presentationId: string,
-		options: { readonly afterStopId?: string; readonly firstGuideLabel?: string } = {}
+		options: { readonly afterStopId?: string; readonly entryViewId?: string | null } = {}
 	): Promise<boolean> {
 		if (current === null) return false;
 		const experience = current;
@@ -820,11 +821,7 @@ export function createExperienceController(
 		}
 		const stopId = newId();
 		if (experience.guides.length === 0) {
-			const guideLabel = options.firstGuideLabel?.trim() ?? '';
-			if (guideLabel === '') {
-				say('refusal', 'Name the Guide first.');
-				return false;
-			}
+			// D-9: the first Stop creates the first Guide, named Tour, with no prompt.
 			const guideId = newId();
 			const accepted = await run(() =>
 				guideCreateIntent({
@@ -833,8 +830,8 @@ export function createExperienceController(
 					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
 					experienceId: experience.id,
 					presentationId,
-					label: guideLabel,
-					entryViewId: null,
+					label: 'Tour',
+					entryViewId: options.entryViewId ?? null,
 					staySeconds: null,
 					transition: 'cut'
 				})
@@ -864,7 +861,7 @@ export function createExperienceController(
 				presentationId,
 				guideId: guide.id,
 				afterStopId,
-				entryViewId: null,
+				entryViewId: options.entryViewId ?? null,
 				staySeconds: null,
 				transition: 'cut'
 			})
@@ -1262,7 +1259,7 @@ export function createExperienceController(
 		);
 	}
 
-	async function addToGuide(presentationId: string, guideId: string): Promise<boolean> {
+	async function addToGuide(presentationId: string, guideId: string, entryViewId: string | null = null): Promise<boolean> {
 		const experience = current;
 		const guide = experience?.guides.find((entry) => entry.id === guideId);
 		if (experience == null || guide === undefined) return false;
@@ -1277,7 +1274,7 @@ export function createExperienceController(
 					presentationId,
 					guideId,
 					afterStopId: null,
-					entryViewId: null,
+					entryViewId,
 					staySeconds: null,
 					transition: 'cut'
 				}),
@@ -1290,13 +1287,15 @@ export function createExperienceController(
 		return ok;
 	}
 
-	async function createGuide(presentationId: string, label: string): Promise<boolean> {
+	async function createGuide(presentationId: string, entryViewId: string | null = null): Promise<boolean> {
 		const experience = current;
-		const trimmed = label.trim();
 		if (experience === null) return false;
-		if (trimmed === '') {
-			say('refusal', NAME_NEEDED);
-			return false;
+		const used = new Set(experience.guides.map((guide) => guide.label.trim().toLowerCase()));
+		let n = experience.guides.length + 1;
+		let label = n === 1 ? 'Tour' : `Tour ${n}`;
+		while (used.has(label.toLowerCase())) {
+			n += 1;
+			label = `Tour ${n}`;
 		}
 		const guideId = newId();
 		const stopId = newId();
@@ -1308,12 +1307,12 @@ export function createExperienceController(
 					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
 					experienceId: experience.id,
 					presentationId,
-					label: trimmed,
-					entryViewId: null,
+					label,
+					entryViewId,
 					staySeconds: null,
 					transition: 'cut'
 				}),
-			() => `${trimmed} created with ${presentationLabel(presentationId)} as Stop 1.`
+			() => `${label} created with ${presentationLabel(presentationId)} as Stop 1.`
 		);
 		if (ok) {
 			experienceFocus.openGuide(guideId);

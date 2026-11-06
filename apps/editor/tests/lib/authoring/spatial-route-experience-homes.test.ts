@@ -1100,7 +1100,7 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		expect(guideRow('guide-1')?.textContent).toContain('2 stops');
 	}, 15000);
 
-	it('Add to Guide with no Guide asks the first Guide name inline in the Presentation writer, then makes the Guide', async () => {
+	it('Add to Guide with no Guide creates Tour and its first Stop, with no prompt (D-9)', async () => {
 		await enterExperience();
 		await createExperience();
 		await setThreeD();
@@ -1108,26 +1108,18 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await vi.waitFor(() => expect(presentationRows()).toHaveLength(1));
 
 		control('Add to Guide').click();
-		await frame();
-
-		const naming = card()!.querySelector('section[aria-label="Name the new Guide"]');
-		expect(naming).not.toBeNull();
-		const name = naming!.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
-		name.value = 'Tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelector('[data-guide-id]')).not.toBeNull());
 		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('Tour');
 		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('1 stops');
+		expect(card()!.querySelector('section[aria-label="Name the new Guide"]')).toBeNull();
 		// The new Stop is the subject: its Card carries the Stop writer and the Guide's Stop menu.
 		expect(cardKind()).toMatch(/^Stop 1 of 1/);
 		expect(card()!.querySelector('[data-experience-writer="stop"]')).not.toBeNull();
 		expect(card()!.textContent).not.toContain('Save Stop');
 	});
 
-	it('Add to Guide with no Guide opens the Guide instrument on the new Guide', async () => {
+	it('Add to Guide with no Guide opens the Guide instrument on Tour', async () => {
 		await enterExperience();
 		await createExperience();
 		await setThreeD();
@@ -1136,12 +1128,6 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		expect(guidePanel()).toBeNull();
 
 		control('Add to Guide').click();
-		await frame();
-		const name = card()!.querySelector<HTMLInputElement>('section[aria-label="Name the new Guide"] input[aria-label="Guide name"]')!;
-		name.value = 'Tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelector('[data-experience-guide]')).not.toBeNull());
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('true');
@@ -1253,19 +1239,13 @@ describe('R217.S26 — structure and removal through the route', () => {
 		menuItem('add-to-guide').click();
 		await frame();
 		menuItem('new-guide').click();
-		await frame();
-		const name = card()!.querySelector<HTMLInputElement>('section[aria-label="Name the new Guide"] input[aria-label="Guide name"]')!;
-		name.value = 'Short tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelectorAll('[data-guide-id]')).toHaveLength(2));
 		const rows = [...target.querySelectorAll('[data-guide-id]')];
 		expect(rows.map((row) => row.querySelector('[data-opening-guide]') !== null)).toEqual([true, false]);
-		expect(rows[1]!.textContent).toContain('Short tour');
+		expect(rows[1]!.textContent).toContain('Tour 2');
 		expect(rows[1]!.querySelector('.chip')?.textContent).toBe('Open');
-		expect(cardKind()).toMatch(/^Stop 1 of 1 · Short tour/);
+		expect(cardKind()).toMatch(/^Stop 1 of 1 · Tour 2/);
 	});
 
 	it('names no back link after stepping between sibling Stops (review round 3)', async () => {

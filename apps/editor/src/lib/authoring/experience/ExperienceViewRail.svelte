@@ -220,13 +220,14 @@
 		void controller.movePresentationView(presentation.id, viewId, to).then(() => refocus(viewId));
 	}
 	function onDragStart(event: DragEvent, viewId: string): void {
-		if (busy || event.dataTransfer === null || n < 2) {
+		if (busy || event.dataTransfer === null || n < 1) {
 			event.preventDefault();
 			return;
 		}
 		draggingViewId = viewId;
-		event.dataTransfer.setData(VIEW_MIME, viewId);
-		event.dataTransfer.effectAllowed = 'move';
+		// G23: the Guide reads the View's own Presentation, so a View can become a Stop.
+		event.dataTransfer.setData(VIEW_MIME, JSON.stringify({ viewId, presentationId: presentation.id }));
+		event.dataTransfer.effectAllowed = 'copyMove';
 	}
 	function onDragOver(event: DragEvent, index: number): void {
 		if (draggingViewId === null) return;

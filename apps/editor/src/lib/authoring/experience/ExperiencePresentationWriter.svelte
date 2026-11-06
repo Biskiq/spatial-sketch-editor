@@ -66,41 +66,11 @@
 		await controller.updatePresentationText(presentation.id, textDraft);
 	}
 
-	/** D8: the first Guide's name, asked inline once the Presentation's Add to Guide asked for one. */
-	const namingHere = $derived(presentation !== null && homes.guideNamePrompt() === presentation.id);
-	let guideName = $state('');
-	$effect(() => {
-		if (!namingHere) return;
-		untrack(() => {
-			guideName = '';
-		});
-	});
-	const guideNameTrimmed = $derived(guideName.trim());
-	const createReason = $derived(
-		controller?.busy ? 'Wait for the current change' : guideNameTrimmed === '' ? 'A name is needed' : ''
-	);
-	/** The first Guide (D8), or New Guide… beside existing ones (E5): a new, active Guide either way. */
-	const firstGuide = $derived((controller?.guides.length ?? 0) === 0);
-	async function createGuide(): Promise<void> {
-		if (controller === null || presentation === null || createReason !== '') return;
-		const accepted = firstGuide
-			? await controller.addStop(presentation.id, { firstGuideLabel: guideNameTrimmed })
-			: await controller.createGuide(presentation.id, guideNameTrimmed);
-		if (accepted) homes.requestGuideName(null);
-	}
-	function cancelGuideName(): void {
-		homes.requestGuideName(null);
-	}
-	function focusOnMount(node: HTMLInputElement): void {
-		node.focus();
-	}
-
-	/** D8: the first Guide asks its name inline; otherwise the Presentation becomes a Stop. */
+	/** D-9: Add to Guide makes a Stop; with no Guide the controller creates Tour, with no prompt. */
 	const addReason = $derived(controller?.busy ? 'Wait for the current change' : '');
 	function addToGuide(): void {
 		if (controller === null || presentation === null || addReason !== '') return;
-		if (controller.guides.length === 0) homes.requestGuideName(presentation.id);
-		else void controller.addStop(presentation.id);
+		void controller.addStop(presentation.id);
 	}
 
 	function selectView(viewId: string): void {
@@ -130,43 +100,6 @@
 			</button>
 			{#if addReason !== ''}<span id="add-guide-reason" class="sr">{addReason}</span>{/if}
 		</div>
-
-		{#if namingHere}
-			<section class="sec" aria-label="Name the new Guide">
-				<h3 class="sec-title">Name the new Guide</h3>
-				<input
-					class="text-input"
-					type="text"
-					aria-label="Guide name"
-					placeholder="Guide name"
-					bind:value={guideName}
-					use:focusOnMount
-					onkeydown={(event) => {
-						if (event.key === 'Enter') {
-							event.preventDefault();
-							void createGuide();
-						} else if (event.key === 'Escape') {
-							event.preventDefault();
-							event.stopPropagation();
-							cancelGuideName();
-						}
-					}}
-				/>
-				<div class="row-actions">
-					<button
-						type="button"
-						class="btn primary"
-						disabled={createReason !== ''}
-						title={createReason || 'Create the Guide with this Presentation as its first Stop'}
-						aria-describedby={createReason !== '' ? 'guide-name-reason' : undefined}
-						onclick={() => void createGuide()}>Create Guide</button
-					>
-					<button type="button" class="btn ghost" onclick={cancelGuideName}>Cancel</button>
-				</div>
-				{#if createReason !== ''}<span id="guide-name-reason" class="sr">{createReason}</span>{/if}
-				{#if controller.feedback}<p class="note" class:refused={controller.feedback.kind === 'refusal'} role="status">{controller.feedback.text}</p>{/if}
-			</section>
-		{/if}
 
 		<section class="sec" aria-label="Views">
 			<ExperienceViewRail
@@ -261,14 +194,6 @@
 		color: var(--shell-ink-3, #79817b);
 		font: 600 11px/1.3 var(--shell-sans, system-ui);
 	}
-	.note {
-		margin: 0;
-		color: var(--shell-ink-2, #4a524c);
-		font-size: 12px;
-	}
-	.note.refused {
-		color: var(--shell-refuse, #7e2718);
-	}
 	.foot-note {
 		margin: 0;
 		color: var(--shell-ink-3, #79817b);
@@ -349,15 +274,6 @@
 		padding: 0 11px;
 		font-weight: 600;
 	}
-	button.btn.primary {
-		border-color: var(--shell-forest-raised, #22503c);
-		background: var(--shell-forest-raised, #22503c);
-		color: #fff;
-	}
-	button.btn.ghost {
-		border-color: transparent;
-		background: transparent;
-	}
 	button.chip {
 		min-height: 20px;
 		padding: 0 7px;
@@ -416,9 +332,6 @@
 	}
 	@media (pointer: coarse) {
 		button,
-		.text-input {
-			min-height: 44px;
-		}
 		button.chip {
 			min-height: 36px;
 		}
