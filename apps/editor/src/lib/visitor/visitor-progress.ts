@@ -17,6 +17,8 @@ export type VisitorProgressSegment = {
 	readonly fill: number;
 	/** The connector arriving at this segment, filled once that arrival happened. */
 	readonly travelFill: number;
+	/** The arrival is a Travel (a short track); otherwise a Cut (a hairline gap). */
+	readonly travels: boolean;
 };
 
 export type VisitorProgress = {
@@ -32,7 +34,12 @@ function clampFraction(value: number): number {
 export function visitorProgressFor(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
-	options: { readonly order?: readonly string[]; readonly travelProgress?: number } = {}
+	options: {
+		readonly order?: readonly string[];
+		readonly travelProgress?: number;
+		/** Stops whose arrival is a Travel. */
+		readonly arrivesByTravel?: ReadonlySet<string>;
+	} = {}
 ): VisitorProgress {
 	const stopById = new Map(program.stops.map((stop) => [stop.id, stop]));
 	const orderedStops = (options.order ?? program.stops.map((stop) => stop.id)).flatMap((stopId) => {
@@ -66,7 +73,8 @@ export function visitorProgressFor(
 			current,
 			outline: current && program.pacing === 'manual',
 			fill,
-			travelFill
+			travelFill,
+			travels: index > 0 && (options.arrivesByTravel?.has(stop.id) ?? false)
 		};
 	});
 	return {

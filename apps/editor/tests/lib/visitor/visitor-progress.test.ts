@@ -75,6 +75,16 @@ describe('visitor progress', () => {
 		expect(progress.segments[1]).toMatchObject({ current: true, travelFill: 0.4 });
 	});
 
+	it('sheet §33 F: only an arrival by Travel draws a connector; a Cut is a hairline gap', () => {
+		const visitor = runtime(program());
+		visitor.enter();
+		const ids = visitor.program.stops.map((stop) => stop.id);
+		const progress = visitorProgressFor(visitor.program, visitor.state, { arrivesByTravel: new Set([ids[1]!]) });
+		expect(progress.segments[0]!.travels).toBe(false);
+		expect(progress.segments[1]!.travels).toBe(true);
+		expect(progress.segments.slice(2).every((segment) => !segment.travels)).toBe(true);
+	});
+
 	it('R22: Manual outlines the current segment and leaves it unfilled', () => {
 		const manual = program({
 			pacing: 'manual',

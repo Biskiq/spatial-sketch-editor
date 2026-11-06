@@ -302,7 +302,15 @@ import { PCFShadowMap } from 'three';
 	const progress = $derived(
 		visitorState === null
 			? null
-			: visitorProgressFor(visitorState.program, visitorState.state, { order: guideOrder, travelProgress })
+			: visitorProgressFor(visitorState.program, visitorState.state, {
+					order: guideOrder,
+					travelProgress,
+					arrivesByTravel: new Set(
+						(experienceOptions?.transitions ?? [])
+							.filter((entry) => entry.invocation.kind === 'travel')
+							.map((entry) => entry.toStopId)
+					)
+				})
 	);
 	$effect(() => {
 		if (visitorState === null) return;
@@ -477,53 +485,60 @@ import { PCFShadowMap } from 'three';
 				<button type="button" class="vbtn gold" onclick={explore}>Explore</button>
 			</aside>
 		{/if}
-		<nav class="visitor-guided" aria-label="Tour controls">
-			<div class="guided-caption">
-				<p class="overline">Guided tour · Stop {currentStopNumber} of {visitorState.program.stops.length}</p>
-				<strong class="guided-title">{visitorState.currentPresentation?.label ?? 'The tour'}</strong>
-				{#if progress !== null}
-					<div class="prog" role="progressbar" aria-label="Tour progress"
-						aria-valuemin={0} aria-valuemax={progress.segments.length} aria-valuenow={progress.visitedCount}>
-						{#each progress.segments as segment, index (segment.stopId)}
-							{#if index > 0}
-								<span class="prog-link" class:filled={segment.travelFill === 1} aria-hidden="true"></span>
-							{/if}
-							<span class="prog-seg" class:done={segment.visited} class:current={segment.current}
-								class:outline={segment.outline} data-progress-stop={segment.stopId}
-								title={segment.label} aria-current={segment.current ? 'step' : undefined}>
-								<i style={`--fill:${segment.fill}`}></i>
-							</span>
-						{/each}
-					</div>
-				{/if}
-			</div>
-			<div class="guided-actions">
-				<button
-					type="button"
-					class="vbtn"
-					disabled={currentStopNumber <= 1}
-					title={currentStopNumber <= 1 ? 'This is the first Stop' : 'Cut to the previous Stop'}
-					onclick={goPrevious}>← Prev</button
-				>
-				{#if visitorState.pacing === 'automatic'}
-					<button type="button" class="vbtn" aria-pressed={visitorState.paused} onclick={() => visitorState?.togglePause()}
-						>{visitorState.paused ? '▶ Play' : '❚❚ Pause'}</button
+		<!-- Sheet §33 F: a small caption, and one glass HUD with the segmented bar. -->
+		<p class="visitor-caption">
+			Stop {currentStopNumber} of {visitorState.program.stops.length}<b>{visitorState.currentPresentation?.label ?? 'The tour'}</b>
+		</p>
+		<nav class="visitor-hud" aria-label="Tour controls">
+			{#if progress !== null}
+				<div class="prog" class:frozen={visitorState.paused} role="progressbar" aria-label="Tour progress"
+					aria-valuemin={0} aria-valuemax={progress.segments.length} aria-valuenow={progress.visitedCount}>
+					{#each progress.segments as segment, index (segment.stopId)}
+						{#if index > 0}
+							<span class="prog-link" class:travel={segment.travels} aria-hidden="true"
+								><i style={`--fill:${segment.travelFill}`}></i></span
+							>
+						{/if}
+						<span class="prog-seg" class:done={segment.visited} class:current={segment.current}
+							class:outline={segment.outline} data-progress-stop={segment.stopId}
+							title={segment.label} aria-current={segment.current ? 'step' : undefined}>
+							<i style={`--fill:${segment.fill}`}></i>
+						</span>
+					{/each}
+				</div>
+			{/if}
+			<div class="hud-row">
+				<span class="hud-title">
+					<b>{visitorState.currentPresentation?.label ?? 'The tour'}</b>
+					<span class="hud-status" aria-live="off">· {remainingText}</span>
+				</span>
+				<span class="hud-actions">
+					<button
+						type="button"
+						class="hbtn"
+						disabled={currentStopNumber <= 1}
+						title={currentStopNumber <= 1 ? 'This is the first Stop' : 'Cut to the previous Stop'}
+						onclick={goPrevious}>← Prev</button
 					>
-				{/if}
-				<button
-					type="button"
-					class="vbtn"
-					class:gold={visitorState.pacing === 'manual'}
-					title={visitorState.traveling ? 'Arrive now' : isLastStop ? 'Finish the tour' : 'Go to the next Stop'}
-					onclick={goNext}>{isLastStop && !visitorState.traveling ? 'Finish' : 'Next →'}</button
-				>
-				<button
-					type="button"
-					class="vbtn"
-					title={visitorState.traveling ? 'Arrive first, then explore' : 'Pause the tour and explore'}
-					onclick={explore}>◎ Explore{stopViewCount > 1 ? ` · ${stopViewCount} views` : ' · look around'}</button
-				>
-				<span class="guided-remaining" aria-live="off">{remainingText}</span>
+					{#if visitorState.pacing === 'automatic'}
+						<button type="button" class="hbtn" aria-pressed={visitorState.paused} onclick={() => visitorState?.togglePause()}
+							>{visitorState.paused ? '▶ Play' : '❚❚ Pause'}</button
+						>
+					{/if}
+					<button
+						type="button"
+						class="hbtn"
+						class:pri={visitorState.pacing === 'manual'}
+						title={visitorState.traveling ? 'Arrive now' : isLastStop ? 'Finish the tour' : 'Go to the next Stop'}
+						onclick={goNext}>{isLastStop && !visitorState.traveling ? 'Finish' : 'Next →'}</button
+					>
+					<button
+						type="button"
+						class="hbtn"
+						title={visitorState.traveling ? 'Arrive first, then explore' : 'Pause the tour and explore'}
+						onclick={explore}>◎ Explore{stopViewCount > 1 ? ` · ${stopViewCount} views` : ''}</button
+					>
+				</span>
 			</div>
 		</nav>
 	{/if}
@@ -878,87 +893,175 @@ import { PCFShadowMap } from 'three';
 		border-color: transparent;
 		filter: brightness(1.05);
 	}
-	/* ---- Guided tour bar in a bottom gradient ---- */
-	.visitor-guided {
+	/* ---- Guided tour (sheet §33 F): a small caption and one glass HUD ---- */
+	.visitor-caption {
 		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		flex-wrap: wrap;
-		gap: 16px;
-		padding: 56px 24px 22px;
-		background: linear-gradient(to top, rgb(17 41 31 / 0.94) 35%, rgb(17 41 31 / 0));
+		left: 20px;
+		top: 68px;
+		margin: 0;
+		color: #fff;
+		font: 500 12px var(--visitor-sans);
+		text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
+		pointer-events: none;
+		z-index: 6;
+	}
+	.visitor-caption b {
+		display: block;
+		font: 500 20px/1.2 var(--visitor-serif);
+	}
+	.visitor-hud,
+	.visitor-free {
+		position: absolute;
+		left: 16px;
+		right: 16px;
+		bottom: 16px;
+		display: grid;
+		gap: 10px;
+		padding: 12px 14px;
+		border-radius: 14px;
+		background: rgb(14 30 25 / 0.86);
+		-webkit-backdrop-filter: blur(12px);
+		backdrop-filter: blur(12px);
 		color: var(--visitor-ivory);
 		z-index: 6;
 	}
-	.guided-caption {
-		display: grid;
-		gap: 4px;
+	.hud-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px 12px;
+		font: 500 13px var(--visitor-sans);
+	}
+	.hud-title {
 		min-width: 0;
 	}
-	.guided-caption .overline {
-		margin: 0;
+	.hud-title b {
+		font: 500 17px var(--visitor-serif);
 	}
-	.guided-title {
-		font: 500 26px/1.15 var(--visitor-serif);
+	.hud-status {
+		color: var(--visitor-quiet, #9fb2a5);
+		white-space: nowrap;
 	}
+	.hud-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-left: auto;
+	}
+	.hbtn {
+		min-height: 32px;
+		padding: 0 12px;
+		border: 1px solid rgb(243 240 228 / 25%);
+		border-radius: 9px;
+		background: rgb(255 255 255 / 6%);
+		color: var(--visitor-ivory);
+		font: 500 13px var(--visitor-sans);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.hbtn:hover:not(:disabled) {
+		background: rgb(255 255 255 / 14%);
+	}
+	.hbtn:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+	.hbtn.pri {
+		border-color: var(--visitor-ivory);
+		background: var(--visitor-ivory);
+		color: var(--visitor-forest);
+		font-weight: 600;
+	}
+	.hbtn:focus-visible {
+		outline: 2px solid #9fd0b2;
+		outline-offset: 1px;
+	}
+	/* One thin segmented bar: equal Stop segments, Travel as a short connector, Cut as a gap. */
 	.prog {
 		display: flex;
 		align-items: center;
-		margin-top: 8px;
-		width: min(360px, 100%);
+		height: 6px;
+	}
+	.prog.frozen {
+		opacity: 0.45;
 	}
 	.prog-seg {
 		position: relative;
 		flex: 1 1 0;
-		height: 6px;
+		min-width: 14px;
+		height: 4px;
 		overflow: hidden;
-		border-radius: 3px;
-		background: rgb(243 240 228 / 22%);
+		border-radius: 2px;
+		background: rgb(243 240 228 / 20%);
 	}
-	.prog-seg i {
-		display: block;
-		height: 100%;
+	.prog-seg i,
+	.prog-link i {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
 		width: calc(100% * var(--fill));
-		background: rgb(243 240 228 / 78%);
-		transition: width 180ms linear;
+		background: rgb(243 240 228 / 85%);
 	}
 	.prog-seg.current i {
-		background: var(--visitor-gold);
+		background: #cfe9d8;
 	}
 	.prog-seg.outline {
-		box-shadow: inset 0 0 0 1.5px var(--visitor-gold);
+		background: transparent;
+		box-shadow: inset 0 0 0 1px rgb(243 240 228 / 75%);
 	}
 	.prog-link {
-		flex: 0 0 8px;
-		height: 3px;
-		background: rgb(243 240 228 / 18%);
+		position: relative;
+		flex: none;
+		width: 3px;
 	}
-	.prog-link.filled {
-		background: rgb(243 240 228 / 70%);
+	.prog-link.travel {
+		width: 12px;
+		height: 2px;
+		margin: 0 2px;
+		overflow: hidden;
+		border-radius: 1px;
+		background: rgb(243 240 228 / 20%);
 	}
-	.guided-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		justify-content: flex-end;
+	.prog-link:not(.travel) i {
+		display: none;
 	}
-	.guided-actions {
-		align-items: center;
+	/* Exploring shares the HUD panel and its compact buttons. */
+	.guided-title {
+		font: 500 17px var(--visitor-serif);
 	}
 	.guided-remaining {
-		color: rgb(243 240 228 / 72%);
+		color: var(--visitor-quiet, #9fb2a5);
 		font: 500 12px var(--visitor-sans);
 		white-space: nowrap;
+	}
+	.visitor-free .overline {
+		margin: 0;
+		color: var(--visitor-quiet, #9fb2a5);
+		font: 500 12px var(--visitor-sans);
+		letter-spacing: 0;
+		text-transform: none;
+	}
+	.visitor-free .vbtn {
+		min-height: 32px;
+		padding: 0 12px;
+		border-radius: 9px;
+		background: rgb(255 255 255 / 6%);
+		font: 500 13px var(--visitor-sans);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+	.visitor-free .vbtn.gold {
+		border-color: var(--visitor-ivory);
+		background: var(--visitor-ivory);
+		color: var(--visitor-forest);
+		font-weight: 600;
 	}
 	/* ---- The invitation: a card beside Explore; a hint, never a stop ---- */
 	.visitor-invitation {
 		position: absolute;
 		right: 24px;
-		bottom: 128px;
+		bottom: 112px;
 		display: grid;
 		gap: 6px;
 		width: min(260px, calc(100% - 48px));
@@ -1009,18 +1112,6 @@ import { PCFShadowMap } from 'three';
 		}
 	}
 	/* ---- Exploring: the Presentation's Views, Back to the tour, Places ---- */
-	.visitor-free {
-		position: absolute;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		display: grid;
-		gap: 10px;
-		padding: 48px 24px 22px;
-		background: linear-gradient(to top, rgb(17 41 31 / 0.94) 40%, rgb(17 41 31 / 0));
-		color: var(--visitor-ivory);
-		z-index: 6;
-	}
 	.explore-caption {
 		display: grid;
 		gap: 4px;
@@ -1158,16 +1249,14 @@ import { PCFShadowMap } from 'three';
 		.choices {
 			grid-template-columns: 1fr;
 		}
-		.visitor-guided {
-			padding: 48px 16px 16px;
-			align-items: stretch;
-			flex-direction: column;
-		}
-		.guided-actions {
-			justify-content: flex-start;
-		}
+		.visitor-hud,
 		.visitor-free {
-			padding: 40px 16px 16px;
+			left: 10px;
+			right: 10px;
+			bottom: 10px;
+		}
+		.hud-actions {
+			margin-left: 0;
 		}
 		.visitor-invitation {
 			right: 16px;
