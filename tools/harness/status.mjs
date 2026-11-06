@@ -7,9 +7,9 @@
  * flags and claims. Nothing here writes status; every value is derived.
  *
  * Usage:
- *   npm run status
+ *   npm run status                                  # discover main-head evidence with gh
  *   node tools/harness/status.mjs --json
- *   node tools/harness/status.mjs --offline            # skip live GitHub reads
+ *   node tools/harness/status.mjs --offline            # local .harness/report.json, no GitHub reads
  *   node tools/harness/status.mjs --report <path>      # a recorded run
  *   node tools/harness/status.mjs --main-head <sha>    # explicit compare point
  *   node tools/harness/status.mjs --repo-root <path>   # deterministic git fixtures
@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 import { validateLedger } from './ledger.mjs';
 import { buildReport, REQUIRED_SUITES, validateRun } from './report.mjs';
+import { discoverMainEvidence } from './discover.mjs';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -42,13 +43,90 @@ function run(command, args, cwd) {
 	return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
-/** Read a source file for runner-mode verification; absence is `null`. */
-function readSource(file) {
-	try {
-		return readFileSync(file, 'utf8');
-	} catch {
-		return null;
+/** Normalize a reporter path from a local or CI checkout. */
+function normalizeReporterPath(file) {
+	if (file.startsWith('file://')) {
+		try {
+			return fileURLToPath(file).replace(/\\/g, '/');
+		} catch {
+			return null;
+		}
 	}
+	return file.replace(/\\/g, '/');
+}
+
+/** Candidate repository-relative paths for an absolute CI reporter path. */
+function reporterCandidates(file) {
+	const normalized = normalizeReporterPath(file);
+	if (normalized === null) return [];
+	const candidates = new Set([normalized]);
+	if (normalized.startsWith('/')) {
+		const parts = normalized.split('/').filter(Boolean);
+		for (let index = 0; index < parts.length; index += 1) {
+			candidates.add(parts.slice(index).join('/'));
+		}
+	}
+	if (!normalized.includes('/')) {
+		candidates.add(`apps/editor/${normalized}`);
+		candidates.add(`apps/api/${normalized}`);
+	}
+	return [...candidates];
+}
+
+/**
+ * Read a reporter's source from the commit the report tested.
+ *
+ * A CI reporter records an absolute path under `/home/runner/work/...`; that
+ * path does not exist on another machine. Resolve its repository-relative
+ * suffix in the tested commit, so a known-failing marker is verified against
+ * exactly the source that produced the artifact. A local fixture path is used
+ * only when the report's commit is unavailable in this checkout.
+ */
+function sourceReaderFor(repoRoot, commit) {
+	const cache = new Map();
+	let commitKnown = null;
+	const hasCommit = () => {
+		if (commitKnown !== null) return commitKnown;
+		if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit)) {
+			commitKnown = false;
+			return false;
+		}
+		try {
+			run('git', ['cat-file', '-e', `${commit}^{commit}`], repoRoot);
+			commitKnown = true;
+		} catch {
+			commitKnown = false;
+		}
+		return commitKnown;
+	};
+	return (file) => {
+		if (typeof file !== 'string' || file.length === 0) return null;
+		if (cache.has(file)) return cache.get(file);
+		if (hasCommit()) {
+			for (const candidate of reporterCandidates(file)) {
+				try {
+					const source = run('git', ['show', `${commit}:${candidate}`], repoRoot);
+					cache.set(file, source);
+					return source;
+				} catch {
+					// Try the next suffix of the CI path.
+				}
+			}
+			cache.set(file, null);
+			return null;
+		}
+		const normalized = normalizeReporterPath(file);
+		let source = null;
+		if (normalized !== null) {
+			try {
+				source = readFileSync(normalized, 'utf8');
+			} catch {
+				// A local fixture or exact checkout path is optional.
+			}
+		}
+		cache.set(file, source);
+		return source;
+	};
 }
 
 function parseArgs(argv) {
@@ -234,6 +312,9 @@ function printReport(report, now) {
 		`  tested   ${tested}  ${formatAge(report.generatedAt, now)}${report.generatedAt ? ` (${report.generatedAt})` : ''}`
 	);
 	lines.push(`  main     ${head}`);
+	const source = report.evidence?.source ?? 'unknown';
+	lines.push(`  source   ${source}${report.evidence?.current?.runId ? ` run ${report.evidence.current.runId}` : ''}`);
+	if (report.evidence?.reason) lines.push(`  evidence ${report.evidence.reason}`);
 	lines.push(`  complete ${report.complete ? 'yes' : 'no'}`);
 	lines.push(
 		`  suites   ${
@@ -300,13 +381,13 @@ function main() {
 	const options = parseArgs(process.argv.slice(2));
 	if (options.help) {
 		process.stdout.write(
-			'Usage: node tools/harness/status.mjs [--json] [--offline] [--report <path>] [--ledger <path>] [--main-ref <ref>] [--main-head <sha>] [--repo-root <path>] [--changed-paths <json>] [--github <json>] [--previous <json>]\n'
+			'Usage: node tools/harness/status.mjs [--json] [--offline] [--report <path>] [--ledger <path>] [--main-ref <ref>] [--main-head <sha>] [--repo-root <path>] [--changed-paths <json>] [--github <json>] [--previous <json>]\n' +
+			'  default: discover a successful main-head Merge gate run with gh; --offline uses .harness/report.json\n'
 		);
 		return 0;
 	}
 
 	const ledgerPath = options.ledger ?? join(options.repoRoot, 'capabilities.json');
-	const reportPath = options.report ?? join(options.repoRoot, '.harness/report.json');
 
 	let ledger;
 	try {
@@ -322,28 +403,77 @@ function main() {
 		return 1;
 	}
 
+	const mainHead = mainHeadFor(options);
+	const github = readGithub(options);
+	let discovery = { current: null, previous: null, reason: null };
 	let reportRun = null;
-	try {
-		reportRun = readJson(reportPath, 'harness report');
-	} catch (error) {
-		// A missing report is honest absence, not a failure: everything is unknown.
-		if (error?.code !== 'ENOENT') {
-			process.stderr.write(`status: ${error.message}\n`);
-			return 1;
+	let reportSource = 'explicit';
+	let reportReason = null;
+	if (options.report !== null) {
+		try {
+			reportRun = readJson(options.report, 'harness report');
+		} catch (error) {
+			// A missing report is honest absence, not a failure: everything is unknown.
+			if (error?.code !== 'ENOENT') {
+				process.stderr.write(`status: ${error.message}\n`);
+				return 1;
+			}
+			reportReason = `no report at ${options.report}`;
+		}
+	} else if (!options.offline && options.github === null && mainHead !== null) {
+		// A fresh checkout has no local report. Discover only a successful push
+		// run whose report commit is the exact main head; a PR synthetic merge is
+		// never eligible.
+		discovery = discoverMainEvidence({ repoRoot: options.repoRoot, mainHead });
+		reportRun = discovery.current?.run ?? null;
+		reportSource = 'github-main';
+		reportReason = discovery.reason;
+	} else {
+		reportSource = options.offline ? 'local-offline' : 'local';
+		const localPath = join(options.repoRoot, '.harness/report.json');
+		try {
+			reportRun = readJson(localPath, 'harness report');
+		} catch (error) {
+			if (error?.code !== 'ENOENT') {
+				process.stderr.write(`status: ${error.message}\n`);
+				return 1;
+			}
+			reportReason = `no local report at ${localPath}`;
 		}
 	}
-	if (reportRun !== null) {
+	if (reportRun !== null && reportSource !== 'github-main') {
 		const evidenceProblems = validateRun(reportRun);
 		if (evidenceProblems.length > 0) {
-			process.stderr.write(`status: unusable harness report (${reportPath})\n`);
+			process.stderr.write(`status: unusable harness report\n`);
 			for (const problem of evidenceProblems) process.stderr.write(`  - ${problem}\n`);
 			return 1;
 		}
 	}
 
-	const github = readGithub(options);
-	const previous = options.previous ? readJson(options.previous, 'previous report') : null;
-	const mainHead = mainHeadFor(options);
+	let previous = null;
+	if (options.previous) {
+		previous = readJson(options.previous, 'previous report');
+	} else if (discovery.previous?.run) {
+		const previousRun = discovery.previous.run;
+		const previousChangedPaths = readChangedPaths(ledger.capabilities, {
+			repoRoot: options.repoRoot,
+			mainHead: previousRun.commit
+		});
+		// The artifact is a raw complete run, not a status report. Build the
+		// comparable historical health/maturity from the same ledger and checks.
+		previous = buildReport({
+			ledger,
+			run: previousRun,
+			mainHead: previousRun.commit,
+			issues: github.issues,
+			claims: github.claims,
+			previous: null,
+			changedPaths: previousChangedPaths,
+			readSource: sourceReaderFor(options.repoRoot, previousRun.commit),
+			live: { flags: false, claims: false }
+		});
+	}
+
 	const changedPaths = readChangedPaths(ledger.capabilities, {
 		repoRoot: options.repoRoot,
 		mainHead,
@@ -357,9 +487,25 @@ function main() {
 		claims: github.claims,
 		previous,
 		changedPaths,
-		readSource,
+		readSource: sourceReaderFor(options.repoRoot, reportRun?.commit ?? null),
 		live: { flags: github.available, claims: github.available }
 	});
+	report.evidence = {
+		source: reportSource,
+		reason: reportReason,
+		current: reportRun === null ? null : {
+			runId: discovery.current?.runId ?? null,
+			url: discovery.current?.url ?? null,
+			commit: reportRun.commit,
+			artifactId: discovery.current?.artifactId ?? null
+		},
+		previous: discovery.previous === null ? null : {
+			runId: discovery.previous.runId,
+			url: discovery.previous.url,
+			commit: discovery.previous.run.commit,
+			artifactId: discovery.previous.artifactId
+		}
+	};
 
 	if (options.json) {
 		process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

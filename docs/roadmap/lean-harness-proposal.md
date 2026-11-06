@@ -179,8 +179,11 @@ Agents open flags whenever they hit one; that is the self-aware maintenance loop
 lands as a short conclusion linked from its issue and, when it settles something, as a decision or
 a ledger change.
 
-A single command (`npm run status`) prints the report's commit, age and completeness, then, per
-capability: maturity, health, regressions, failing checks, open flags and claims. That is the lean scan a new agent starts from.
+A single command (`npm run status`) discovers the complete report from the successful `Merge gate`
+push run for the current main head via `gh`, then prints the report's commit, age and completeness,
+and, per capability: maturity, health, regressions, failing checks, open flags and claims. Pass
+`--report`/`--previous` for explicit artifacts, or `--offline` to use `.harness/report.json`. That is
+the lean scan a new agent starts from.
 
 ### C — Autonomy by risk tier
 
