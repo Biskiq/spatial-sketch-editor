@@ -11,7 +11,7 @@ its checks prove. Not a required plan step and not a scheduled agent.
 ## Boundaries
 
 ```text
-TARGET      capabilities reported working or polished (the hardest claims first)
+TARGET      capabilities reported working or polished (main journeys before edges)
 EVIDENCE    a failing tagged test or a bug issue per defect
 NO NEW UX   never invent a feature, control or interaction to "fix" an observation
 NO GUESSING record uncertainty as ambiguous/needs-decision instead of deciding it
@@ -25,8 +25,10 @@ NO GUESSING record uncertainty as ambiguous/needs-decision instead of deciding i
    realistic viewport; try the second occurrence, repeated visits, cancel/undo/redo, stale data,
    narrow/coarse targets and reload. Use `browser-hygiene` when driving a browser.
 3. **Classify what you see.**
-   - Automatable defect → add an expected-failure reproducer tagged
-     `[cap:<id> core known-failing:#<issue>]` linked to a `bug` issue.
+   - Automatable defect → add an `it.fails` reproducer tagged
+     `[cap:<id> <core|edge> known-failing:#<issue>]` linked to a `bug` issue. Use `core` only when
+     the defect breaks the main journey; an edge-case defect uses `edge`, so it does not read as a
+     broken capability solely because it was automation-friendly.
    - Cannot automate yet → open a `bug` issue with exact steps, observed result and evidence.
    - Undecided product choice or missing design → open `needs-decision`, `needs-ux`, `ambiguous` or
      `needs-research`; do not build a speculative control.

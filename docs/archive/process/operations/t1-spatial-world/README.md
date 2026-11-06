@@ -21,7 +21,7 @@ EVENTS:  ../README.md                                  (completion · integratio
   shim-retirement decision**; routine closeout only confirms that the accepted evidence contains no
   unowned remaining shim, and it introduces no production edit.
 - **One writable owner per concern.** Track objectives and the phase register live in
-  [`../../roadmap/t1-spatial-world/README.md`](../../roadmap/t1-spatial-world/README.md); phase
+  [`../../roadmap/t1-spatial-world/README.md`](../../../../roadmap/t1-spatial-world/README.md); phase
   scope, the slice register and `PHASE CLOSE` live in the phase README; current assignments live
   in the baton. Link them; never mirror their content.
 - The canonical architectural compiler stays single, and Layout-owned representation consumes its
@@ -42,11 +42,11 @@ EVENTS:  ../README.md                                  (completion · integratio
 
 The change stays in the owning authority (AGENTS.md rules 1, 2 and 6). Add the test that fails
 when the new behavior breaks. Do not copy a gate conformance suite into the slice. Run the
-verification tier the slice plan declares. The [test manual](../../../apps/editor/tests/README.md)
+verification tier the slice plan declares. The [test manual](../../../../../apps/editor/tests/README.md)
 owns the acceptance bar, and `npm test` is never narrowed.
 
 A requirement change discovered during work goes to the reviewer, or back through the F amendment
-path ([`../../roadmap/f-foundation-contracts/README.md`](../../roadmap/f-foundation-contracts/README.md))
+path ([`../../roadmap/f-foundation-contracts/README.md`](../../../../roadmap/f-foundation-contracts/README.md))
 — never into a phase-local encoding.
 
 ## Test families
@@ -54,11 +54,11 @@ path ([`../../roadmap/f-foundation-contracts/README.md`](../../roadmap/f-foundat
 - kernel correctness (`@portfolio/layout-core`, `@portfolio/project-model`) in the fast and heavy
   lanes; the arch lane stays unconditional;
 - the Layout geometry, wall-mesh shell and camera-core boundaries in
-  [`test-lanes.ts`](../../../apps/editor/test-lanes.ts);
+  [`test-lanes.ts`](../../../../../apps/editor/test-lanes.ts);
 - dense geometry and numerical sweeps stay dense (tests/README rules 12–14, 21).
 
 Tier, evidence and escalation are owned by
-[`apps/editor/tests/README.md`](../../../apps/editor/tests/README.md) ("What a change requires" and
+[`apps/editor/tests/README.md`](../../../../../apps/editor/tests/README.md) ("What a change requires" and
 the focused ladder). A PR #115 checkpoint keeps the complete §7.4 contract; after #115 a
 per-implementation-PR merge keeps its declared full gate.
 
@@ -75,9 +75,9 @@ REPLAN           new goal, completion handoff or orphaned obligation → ../READ
 
 ## Scoped debt and interruption
 
-A deferred defect goes to [`../tech-debt/README.md`](../tech-debt/README.md) with this track or its
+A deferred defect goes to [`../tech-debt/README.md`](../../../../operations/tech-debt/README.md) with this track or its
 phase named as `Owner`; a deferred-retirement row stays in the track README with its exact
 condition. Interrupted substantial work uses `work-checkpoint` and
-[`../checkpoints/README.md`](../checkpoints/README.md): the checkpoint carries the track/phase/slice
+[`../checkpoints/README.md`](../../../../operations/checkpoints/README.md): the checkpoint carries the track/phase/slice
 identity, the resume route, which verification tier ran with its tested revision and diff, and the
 integration gate still owed. A focused green run is never inherited as acceptance.

@@ -6,28 +6,28 @@ procedure; this file records the convention and the boundary.
 ```text
 CREATE: only when substantial work is interrupted and expensive to reconstruct.
 UPDATE: same task → same checkpoint.
-RESUME: the owning track's baton points to the active checkpoint.
-COMPLETE: promote durable findings, delete the checkpoint, remove the RESUME pointer.
+RESUME: the active draft pull request/task/handoff points to the checkpoint.
+COMPLETE: promote durable findings, delete the checkpoint, clear the explicit pointer.
 ```
 
 **Not authority.** A checkpoint is neither status nor durable knowledge: product
-status lives in [`docs/roadmap/README.md`](../../roadmap/README.md), the baton in the
-owning track's `operations/<track>/current.md` (routed from
-[`docs/archive/process/operations-current-2026-11-06.md`](../../archive/process/operations-current-2026-11-06.md)), and landed truth in
-[`docs/reference/`](../../reference/). Nothing is promoted out of a checkpoint by
-being written there — promotion is a separate, reviewed edit to the owning document.
+status lives in [`docs/roadmap/README.md`](../../roadmap/README.md) and computed
+`npm run status`, claims in the active draft pull request or issue, and landed
+truth in [`docs/reference/`](../../reference/). Nothing is promoted out of a
+checkpoint by being written there — promotion is a separate, reviewed edit to the
+owning document.
 
-**Record what cannot be re-derived.** A checkpoint carries the track/phase/slice
-identity and the resume route, plus:
+**Record what cannot be re-derived.** A checkpoint carries the task identity and
+resume route, plus:
 
-- which **verification tier** actually ran, with its tested revision (commit or tree)
-  and the working-diff identity at that time;
-- the integration gate it still owes, if any.
+- what verification actually ran, with its tested revision (commit or tree) and
+  the working-diff identity at that time;
+- the acceptance it still owes, if any.
 
-A focused green run is never inherited as full acceptance: a checkpoint that recorded
-only a focused run says so, and the required acceptance run is still owed (see
-[`apps/editor/tests/README.md`](../../../apps/editor/tests/README.md) → "What a change
-requires").
+A focused green run is never inherited as full acceptance: a checkpoint that
+recorded only a focused run says so, and the required acceptance run is still
+owed (see [`apps/editor/tests/README.md`](../../../apps/editor/tests/README.md) →
+"What a change requires").
 
 ```text
 NO:

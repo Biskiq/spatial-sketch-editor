@@ -1,10 +1,10 @@
 # Roadmap — status and registration authority
 
 **Role:** the roadmap owns **track and phase lifecycle**, the **track register**, the
-**gate register**, the [release list](./now.md) and future work. Operational procedure lives in the track runbooks
-([`../operations/`](../operations/)); current assignments live in each track's baton, routed from
-[`../operations/current.md`](../operations/current.md); closed-work procedures live in the
-event sections of [`../operations/README.md`](../operations/README.md).
+**gate register**, the [release list](./release-list-2026-11-06.md) and future work. Operational procedure lives in the track runbooks
+([`../operations/`](../../operations)); current assignments live in each track's baton, routed from
+[`../operations/current.md`](../process/operations-current-2026-11-06.md); closed-work procedures live in the
+event sections of [`../operations/README.md`](../process/operations-README-2026-11-06.md).
 
 ```text
 NORMAL ROUTE: roadmap/README → requested track README → phase README → exact artifact
@@ -33,17 +33,17 @@ fabricates a merge, an acceptance or a closure.
 ## Production implementation hold
 
 **Owner direction, 2026-10-22:** production implementation is held across tracks, following the
-[ratified convergence round](../reference/decisions/product-convergence-ratification-2026-10-22.md) establishing direction and architectural commitments. The
-[current coordination](./cross-track-execution.md#next-parallel-batch) routes the next batch/DAG. Earlier authorization records and accepted
+[ratified convergence round](../../reference/decisions/product-convergence-ratification-2026-10-22.md) establishing direction and architectural commitments. The
+[current coordination](./cross-track-execution-2026-11-06.md#next-parallel-batch) routes the next batch/DAG. Earlier authorization records and accepted
 gate/phase evidence remain valid history; they do not release this hold. Research, documentation
 and bounded disposable probes may proceed within their commissioned step. Research and
 reconciliation are complete; the hold still applies to every implementation scope absent from
-the [release list](./now.md).
+the [release list](./release-list-2026-11-06.md).
 
 Only explicit owner release permits named implementation scopes to start or resume. A research
 result, contract ratification or merge of PR #173 alone is not that release. Keep existing lifecycle
 vocabulary and registered states; do not invent a new gate or a `held` lifecycle status.
-Only an owner release writes the [release list](./now.md), including pruning a row whose slice has shipped.
+Only an owner release writes the [release list](./release-list-2026-11-06.md), including pruning a row whose slice has shipped.
 A closeout does not.
 
 **Performance-first halt (owner direction, 2026-10-24, temporary).** `T1.P02.S06` runs before every
@@ -52,17 +52,17 @@ re-baselined hard rows: T1.P02's drawing, Opening and final gate, T2.P02's final
 Editor Stability acceptance plan with T4 behind it. No direct inheritor is released or started until S06
 is accepted and merged, unless the owner records an explicit ruling to lift the halt earlier.
 Strictly unrelated work continues only through its own owner release. The
-[decision record](../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+[decision record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 owns the definition; this adds no lifecycle status.
 
 **Halt satisfied (2026-10-27).** `T1.P02.S06` is accepted AC-qualified (2026-10-27) and merged as
-`6af62eb4` ([acceptance stub](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)),
+`6af62eb4` ([acceptance stub](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)),
 so the halt has spent its condition and no longer blocks those inheritors. **Satisfying the halt
 released nothing by itself.** `T1.P02.S02` and `T2.P02.S03` were then released on 2026-10-27
-([record](../reference/decisions/next-wave-authorization-2026-10-27.md)) and have since run: S02
+([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)) and have since run: S02
 shipped as `owner-override` on PR #201, and S03 was accepted 2026-10-27, closing `T2.P02`. Core Editor Stability was subsequently accepted by the owner at #271's merge (`ce4e232c`);
-its separate S11 execution is waived, with [evidence limits recorded](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
-The [release list](./now.md) remains owner-written; #259's harness implementation is in progress, with no green claimed.
+its separate S11 execution is waived, with [evidence limits recorded](../../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+The [release list](./release-list-2026-11-06.md) remains owner-written; #259's harness implementation is in progress, with no green claimed.
 
 ## Track register
 
@@ -72,23 +72,23 @@ owns lifecycle only and never copies their content.
 
 | Track | Status | Roadmap |
 | --- | --- | --- |
-| T1 | approved | [T1 — Spatial world](./t1-spatial-world/README.md) |
-| T2 | approved | [T2 — Composition](./t2-composition/README.md) |
-| T3 | approved | [T3 — Experience](./t3-experience/README.md) |
-| T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
-| T5 | approved | [T5 — Expressive Geometry](./t5-expressive-geometry/README.md) |
+| T1 | approved | [T1 — Spatial world](../../roadmap/t1-spatial-world/README.md) |
+| T2 | approved | [T2 — Composition](../../roadmap/t2-composition/README.md) |
+| T3 | approved | [T3 — Experience](../../roadmap/t3-experience/README.md) |
+| T4 | planning | [T4 — Release and delivery](../../roadmap/t4-release/README.md) |
+| T5 | approved | [T5 — Expressive Geometry](../../roadmap/t5-expressive-geometry/README.md) |
 | R115 | shipped | [R115 — PR #115 architecture reset](./parallel-track-cutover/README.md) |
-| R217 | shipped | [R217 — Core Editor Stability](./r217-core-editor-stability/README.md) |
+| R217 | shipped | [R217 — Core Editor Stability](../../roadmap/r217-core-editor-stability/README.md) |
 
 - **R115 is a repository phase, not a fifth track.** It is registered here directly because it
   has no parent track; its sole child is `R115.S01` and its own README owns that child.
 - **R217 is a repository phase**, registered here on the owner's 2026-10-28 ruling
-  ([record](../reference/decisions/core-editor-stability-planning-2026-10-28.md), D4). All track
+  ([record](../../reference/decisions/core-editor-stability-planning-2026-10-28.md), D4). All track
   phases were closed and its work crosses T1, T2, T3 and T5, which keep ownership and review per
   slice. Its own README owns its slice register. **Closed, Core Product Stability accepted**
   effective at PR #271 merge `ce4e232c` (2026-11-06), by the owner after hands-on integrated
-  review; [S11 is owner-accepted by override, separate execution waived](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
-  No R217 gate or closeout remains; [#259 implementation](./lean-harness-proposal.md) is in progress, not yet verified.
+  review; [S11 is owner-accepted by override, separate execution waived](../../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+  No R217 gate or closeout remains; [#259 implementation](../../roadmap/lean-harness-proposal.md) is in progress, not yet verified.
 - **`planning`** means the track's roadmap and evidence exist and no capability phase is
   registered or authorized. It is the honest state after PR #115: planning evidence is
   recorded, implementation is not authorized.
@@ -102,16 +102,16 @@ owns lifecycle only and never copies their content.
 
 ## T5 direction and next evidence
 
-The [T5 G0 ruling](../reference/decisions/t5-g0-ratification-2026-10-27.md) promoted durable
+The [T5 G0 ruling](../../reference/decisions/t5-g0-ratification-2026-10-27.md) promoted durable
 creative-depth principles into the owning references. The owner then withdrew the E0
-guide/arrangement experiment, and the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)
-adopts the [T5 umbrella plan](./t5-expressive-geometry/umbrella-plan.md) as T5's direction on merge:
+guide/arrangement experiment, and the [T5 planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)
+adopts the [T5 umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) as T5's direction on merge:
 native forms as Scene truth, created by drawing in World and refined in Object Focus, a scope on the
 one Stage, reusable across a creator's projects through My Objects. T5 is `approved` with one
 registered phase,
-[T5.P01 Drawn native objects](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md). No F
+[T5.P01 Drawn native objects](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md). No F
 interface gate is added and nothing is released: the first slice starts only from an owner
-[release-list](./now.md) row. Later phases are planned in the umbrella plan and registered on their
+[release-list](./release-list-2026-11-06.md) row. Later phases are planned in the umbrella plan and registered on their
 entry evidence.
 
 ## Gate register
@@ -119,19 +119,19 @@ entry evidence.
 One row per **gate and major version**. A gate is an exact cross-domain interface (F) or a
 declared capability cutover; it is never a milestone, a phase or a status mirror. The register
 records interface and evidence identity only — F semantics stay owned by
-[`../reference/composition-execution.md`](../reference/composition-execution.md) and its
+[`../reference/composition-execution.md`](../../reference/composition-execution.md) and its
 ratified amendments.
 
 | Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit | Accepted capabilities |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | accepted | T1.P01.S01 | `packages/project-model/src/references` | `apps/editor/tests/lib/project-model/references-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F1.reference@1:references-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-references-v1.md`; `F1.reference@1:unit-resolution-v1` active — `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/capability-unit-resolution-v1.md` |
-| F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | accepted | T3.P01.S01 | `packages/project-model/src/units` | `apps/editor/tests/lib/project-model/units-conformance.test.ts` | `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/acceptance.md` | `6dcb6d6d` | `F2.unit-envelope@1:unit-envelope-v1` active — `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/capability-unit-envelope-v1.md` |
-| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | accepted | T1.P01.S01 | `packages/project-model/src/channels` | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F3.channels@1:inspection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-inspection-v1.md`, `F3.channels@1:camera-handoff-v1` active — `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s06-experience-runtime-and-camera-handoff/capability-camera-handoff-v1.md` |
-| F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | accepted | T1.P01.S03 | `packages/project-model/src/f4`, `packages/project-model/src/save`, `packages/project-model/src/units` | `apps/editor/tests/lib/authoring/f4-acceptance.test.ts`, `apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts`, `apps/editor/tests/lib/authoring/f4-public-isolation.test.ts`, `apps/editor/tests/lib/project-model/save-protocol.test.ts`, `apps/editor/tests/lib/authoring/unit-acceptance-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md` | `8ec0c5f1` | `F4.intent-acceptance@1:acceptance-invariants-v1 active — docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/capability-acceptance-invariants-v1.md, F4.intent-acceptance@1:local-single-domain-v1 retired — docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/capability-local-single-domain-v1.md, F4.intent-acceptance@1:conditional-save-current-v1 retired — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s02-early-conditional-save/capability-conditional-save-current-v1.md, F4.intent-acceptance@1:unit-acceptance-v1 active — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/capability-unit-acceptance-v1.md, F4.intent-acceptance@1:conditional-save-units-v1 active — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/capability-conditional-save-units-v1.md |
-| F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — | — |
-| T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | accepted | T1.P01.S02 | `apps/editor/src/lib/authoring/stage`, `packages/camera-core/src/viewport.ts`, `packages/layout-core/src/layout-plan-representation.ts` | `apps/editor/tests/lib/authoring/stage-consumer-probes.test.ts`, `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md` | `ab8504aa` | `T1.viewport-projection@1:viewport-projection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/capability-viewport-projection-v1.md` |
-| T3.camera-experience-cutover | 1 | capability | T3 | [AM-9](../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover) | superseded | T3.P01.S04 | `packages/project-model/src/units`, `packages/project-model/src/units/experience`, `apps/api/src`, `apps/editor/src/lib/visitor` | `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `apps/editor/tests/lib/experience/experience-runtime.test.ts`, `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`, `apps/api/tests/migration-fence.test.mjs` | `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/acceptance.md` | `06a8aac8fa601de6c808c4d7014b6f360516e648` | — |
-| T3.camera-experience-cutover | 2 | capability | T3 | [AM-11](../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) | accepted | R217.S27 | `packages/project-model/src/units`, `packages/project-model/src/units/experience`, `apps/api/src`, `apps/editor/src/lib/visitor` | `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `apps/editor/tests/lib/experience/experience-runtime.test.ts`, `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`, `apps/api/tests/migration-fence.test.mjs` | `docs/roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md` | `ce4e232c6b0eac85d24ec56d9176be5cfc8ce169` | — |
+| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../../reference/composition-execution.md#am-1-f1-references-v1) | accepted | T1.P01.S01 | `packages/project-model/src/references` | `apps/editor/tests/lib/project-model/references-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F1.reference@1:references-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-references-v1.md`; `F1.reference@1:unit-resolution-v1` active — `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/capability-unit-resolution-v1.md` |
+| F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | accepted | T3.P01.S01 | `packages/project-model/src/units` | `apps/editor/tests/lib/project-model/units-conformance.test.ts` | `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/acceptance.md` | `6dcb6d6d` | `F2.unit-envelope@1:unit-envelope-v1` active — `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/capability-unit-envelope-v1.md` |
+| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | accepted | T1.P01.S01 | `packages/project-model/src/channels` | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F3.channels@1:inspection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-inspection-v1.md`, `F3.channels@1:camera-handoff-v1` active — `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s06-experience-runtime-and-camera-handoff/capability-camera-handoff-v1.md` |
+| F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | accepted | T1.P01.S03 | `packages/project-model/src/f4`, `packages/project-model/src/save`, `packages/project-model/src/units` | `apps/editor/tests/lib/authoring/f4-acceptance.test.ts`, `apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts`, `apps/editor/tests/lib/authoring/f4-public-isolation.test.ts`, `apps/editor/tests/lib/project-model/save-protocol.test.ts`, `apps/editor/tests/lib/authoring/unit-acceptance-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md` | `8ec0c5f1` | `F4.intent-acceptance@1:acceptance-invariants-v1 active — docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/capability-acceptance-invariants-v1.md, F4.intent-acceptance@1:local-single-domain-v1 retired — docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/capability-local-single-domain-v1.md, F4.intent-acceptance@1:conditional-save-current-v1 retired — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s02-early-conditional-save/capability-conditional-save-current-v1.md, F4.intent-acceptance@1:unit-acceptance-v1 active — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/capability-unit-acceptance-v1.md, F4.intent-acceptance@1:conditional-save-units-v1 active — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/capability-conditional-save-units-v1.md |
+| F5.release-envelope | — | foundation | composition-execution.md | [F.5](../../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — | — |
+| T1.viewport-projection | 1 | capability | T1 | [AM-5](../../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | accepted | T1.P01.S02 | `apps/editor/src/lib/authoring/stage`, `packages/camera-core/src/viewport.ts`, `packages/layout-core/src/layout-plan-representation.ts` | `apps/editor/tests/lib/authoring/stage-consumer-probes.test.ts`, `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md` | `ab8504aa` | `T1.viewport-projection@1:viewport-projection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/capability-viewport-projection-v1.md` |
+| T3.camera-experience-cutover | 1 | capability | T3 | [AM-9](../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover) | superseded | T3.P01.S04 | `packages/project-model/src/units`, `packages/project-model/src/units/experience`, `apps/api/src`, `apps/editor/src/lib/visitor` | `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `apps/editor/tests/lib/experience/experience-runtime.test.ts`, `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`, `apps/api/tests/migration-fence.test.mjs` | `docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/acceptance.md` | `06a8aac8fa601de6c808c4d7014b6f360516e648` | — |
+| T3.camera-experience-cutover | 2 | capability | T3 | [AM-11](../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) | accepted | R217.S27 | `packages/project-model/src/units`, `packages/project-model/src/units/experience`, `apps/api/src`, `apps/editor/src/lib/visitor` | `apps/editor/tests/lib/project-model/units-conformance.test.ts`, `apps/editor/tests/lib/experience/experience-runtime.test.ts`, `apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts`, `apps/api/tests/migration-fence.test.mjs` | `docs/roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md` | `ce4e232c6b0eac85d24ec56d9176be5cfc8ce169` | — |
 | T4.prepared-reader | — | capability | T4 | — | undrafted | — | — | — | — | — | — |
 
 The current `T3.camera-experience-cutover@2` row points to AM-11's landed Experience format 4 /
@@ -177,9 +177,9 @@ distinguishes that review from waived separate S11 execution; it fabricates no c
   this register. A consumer of a `superseded` row is ineligible until it re-declares the new
   version; `shipped` slices keep their historical version. The finer capability-scope rule
   (`Accepted capabilities` / `Requires`, including a retired scope being ineligible) is defined
-  by the [capability-readiness rule](./f-foundation-contracts/README.md#capability-readiness)
+  by the [capability-readiness rule](../../roadmap/f-foundation-contracts/README.md#capability-readiness)
   and is enforced, with the rules above, by
-  [`parallel-track-gates.test.ts`](../../apps/editor/tests/docs/parallel-track-gates.test.ts)
+  [`parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/workflow-cutover.test.ts)
   (`capabilityProblems`); a `Requires` names an exact `Gate@Version:capability-vN` scope of a
   gate the same row already declares in `Consumes`, resolved with its prerequisite closure.
 
@@ -196,7 +196,7 @@ distinguishes that review from waived separate S11 execution; it fabricates no c
 The routine slice sequence is implementation → review → acceptance → closeout → merge, using
 the recorded acceptance without re-running gates just to close. A substantive change introduced
 at closeout reopens only the affected review. **All four cross-track event procedures are owned by the
-event sections of [`../operations/README.md`](../operations/README.md)**; this table states the
+event sections of [`../operations/README.md`](../process/operations-README-2026-11-06.md)**; this table states the
 lifecycle consequence and routes.
 
 ## Closed phases
@@ -205,39 +205,39 @@ lifecycle consequence and routes.
 stabilization — closed 2026-09-29 by owner ruling after P23B.9's correctness and
 performance-regression gate was accepted and P23B.10's closeout made the phase closable) are
 shipped and closed. Their closure provenance, format-cutover records, Room lineage and algorithm
-decisions are archived under [`../archive/technical/p23/`](../archive/technical/p23/) and
-[`../archive/technical/p23b/`](../archive/technical/p23b/). No P-level execution route remains:
+decisions are archived under [`../archive/technical/p23/`](../technical/p23) and
+[`../archive/technical/p23b/`](../technical/p23b). No P-level execution route remains:
 PR #115 replaced that sequence with the tracks above.
 
 ## Current coordination and proposal provenance
 
 **Where things stand (2026-10-28).** A routing index, not a status authority: each phase
-README's slice register owns child status, [now.md](./now.md) owns launch conditions, and the
-[current coordination](./cross-track-execution.md#next-parallel-batch) owns the DAG, shared-file
+README's slice register owns child status, [now.md](./release-list-2026-11-06.md) owns launch conditions, and the
+[current coordination](./cross-track-execution-2026-11-06.md#next-parallel-batch) owns the DAG, shared-file
 writers and merge order. Update this index only in the coordination change that moves a row.
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed 2026-10-21); [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) (closed 2026-10-28; S01–S06 shipped) | — | Next T1 planning/authorization (face-frame provider, vertical foundation, coordinate qualification, overhead admission) | No active T1 phase. T1.P02 closed after S04's accepted final gate at `46a31c81` and PR #210 merge `eb0931d6`; no performance benchmark, unmeasured rows stay unmeasured. A successor needs an owner release row. |
-| T2 | T2.P01 (closed 2026-10-20); [T2.P02](./t2-composition/t2.p02-own-model-import/README.md#slice-register) (closed 2026-10-27; S01–S03 shipped) | — | Next T2 phase planning/authorization (component identity/resolution/admission and revision correspondence) | No active T2 phase; the closed phase's formal performance rows are deferred to named T2 follow-ups, not passed |
-| T3 | [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](./t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
-| T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](./core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
-| T5 | — | — | [T5.P01](./t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) closed 2026-10-28; S01–S04 shipped; no active T5 phase | T5.P01 closed by owner ruling after S03's accepted final gate (PR #218, P1 merge `25e1bd8f`); next is owner T5 planning/authorization; T5 is not complete. The one authorized spot measured not-usable M/L under load and is not a performance pass; E0 withdrawn ([planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
+| T1 | T1.P01 (closed 2026-10-21); [T1.P02](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) (closed 2026-10-28; S01–S06 shipped) | — | Next T1 planning/authorization (face-frame provider, vertical foundation, coordinate qualification, overhead admission) | No active T1 phase. T1.P02 closed after S04's accepted final gate at `46a31c81` and PR #210 merge `eb0931d6`; no performance benchmark, unmeasured rows stay unmeasured. A successor needs an owner release row. |
+| T2 | T2.P01 (closed 2026-10-20); [T2.P02](../../roadmap/t2-composition/t2.p02-own-model-import/README.md#slice-register) (closed 2026-10-27; S01–S03 shipped) | — | Next T2 phase planning/authorization (component identity/resolution/admission and revision correspondence) | No active T2 phase; the closed phase's formal performance rows are deferred to named T2 follow-ups, not passed |
+| T3 | [T3.P01](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
+| T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](../../roadmap/core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
+| T5 | — | — | [T5.P01](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) closed 2026-10-28; S01–S04 shipped; no active T5 phase | T5.P01 closed by owner ruling after S03's accepted final gate (PR #218, P1 merge `25e1bd8f`); next is owner T5 planning/authorization; T5 is not complete. The one authorized spot measured not-usable M/L under load and is not a performance pass; E0 withdrawn ([planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
 
-Release provenance is the [performance foundation decision](../reference/decisions/performance-foundation-authorization-2026-10-24.md);
-the shipped post-Batch-E lanes keep the [post-Batch-E decision](../reference/decisions/post-batch-e-authorization-2026-10-23.md);
-T5's G0 approval is the [expressive geometry decision](../reference/decisions/t5-g0-approval-2026-10-27.md);
-its bounded direction promotion is the [G0 ratification](../reference/decisions/t5-g0-ratification-2026-10-27.md);
-its E0 withdrawal and first-phase planning is the [T5 planning record](../reference/decisions/t5-object-focus-planning-2026-10-27.md);
-the next-wave release is the [next-wave authorization](../reference/decisions/next-wave-authorization-2026-10-27.md);
-the T1 continuation is the [T1.P02.S03 authorization](../reference/decisions/t1-p02-s03-authorization-2026-10-27.md);
-the T1 final-gate release is the [T1.P02.S04 authorization](../reference/decisions/t1-p02-s04-authorization-2026-10-28.md).
-Everything omitted from [now.md](./now.md) stays under the production hold. No gate, track or
+Release provenance is the [performance foundation decision](../../reference/decisions/performance-foundation-authorization-2026-10-24.md);
+the shipped post-Batch-E lanes keep the [post-Batch-E decision](../../reference/decisions/post-batch-e-authorization-2026-10-23.md);
+T5's G0 approval is the [expressive geometry decision](../../reference/decisions/t5-g0-approval-2026-10-27.md);
+its bounded direction promotion is the [G0 ratification](../../reference/decisions/t5-g0-ratification-2026-10-27.md);
+its E0 withdrawal and first-phase planning is the [T5 planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md);
+the next-wave release is the [next-wave authorization](../../reference/decisions/next-wave-authorization-2026-10-27.md);
+the T1 continuation is the [T1.P02.S03 authorization](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md);
+the T1 final-gate release is the [T1.P02.S04 authorization](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md).
+Everything omitted from [now.md](./release-list-2026-11-06.md) stays under the production hold. No gate, track or
 phase lifecycle changes here.
 
 Earlier convergence and batch proposals/protocols are preserved as
-[historical coordination evidence](../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md),
-including their [2026-10-22 planning proposal](../archive/roadmap/coordination-2026-10/next-batch-2026-10-22.md).
+[historical coordination evidence](./coordination-2026-10/cross-track-execution-2026-10-23.md),
+including their [2026-10-22 planning proposal](./coordination-2026-10/next-batch-2026-10-22.md).
 Their authorization and ratification provenance remains in the decision records; they are
 not additional live “next” lists. The gate register and phase acceptance records retain
 accepted historical identities. No proposal or prototype substitutes for release or evidence.
@@ -246,10 +246,10 @@ accepted historical identities. No proposal or prototype substitutes for release
 
 The following entries register no new phase or slice and grant no implementation permission.
 
-- **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
+- **Three.js dependency maintenance** — [scoped upgrade plan](../../roadmap/threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,
   independently reviewed and accepted, merged into `main` as `74efb98b`
-  (PR #122); delivery state in the [acceptance record](./threejs-upgrade/acceptance.md).
+  (PR #122); delivery state in the [acceptance record](../../roadmap/threejs-upgrade/acceptance.md).
   Not a track, phase or gate. Dependency modernization and compatibility
   fixes only; retained-renderer verification is separate from future T1
   Stage integration.

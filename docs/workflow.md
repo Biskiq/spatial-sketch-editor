@@ -43,17 +43,20 @@ Tier 2  a retained hard rule, the North Star, an approved design or the ledger's
         → the owner decides before merge
 ```
 
-Tier 2 is never merged by an agent. Tier 0 and Tier 1 merge on the required green gate. Autonomous
-merges begin only after that gate is enforced on `main`.
+Tier 0 and Tier 1 merge on the required green gate after one fresh-context review; Tier 2 waits
+for the owner's decision. This workflow takes effect after the owner merges #259; until then the
+current rules apply, and #259 itself remains owner-final-check/owner-merge only.
 
 ## Work units and plans
 
 - The unit of work is a pull request that adds or passes checks for one or more capability ids.
 - **A plan is written when the work needs one:** multi-PR work, Tier 2 work, or any work where an
   implementer would otherwise invent an interaction, algorithm or data shape. The plan is the first
-  commit of the work's own draft pull request and the same pull request implements it. Sections, as
-  needed: Goal, Design, Scope, Specification, Checks, Flags, Risks. Detail is set by the
-  no-invention test, not by length.
+  commit of the work's own draft pull request. It is reviewed in that draft before code is written
+  (by the owner for Tier 2, otherwise by a fresh-context agent), then the same pull request
+  implements it. Sections, as needed: Goal, Design, Scope, Specification, Checks, Flags, Risks.
+  Detail is set by the no-invention test, not by length. On merge, durable decisions move into the
+  owning reference contract or code comments, and the plan file moves to the archive.
 - **One review round:** a fresh-context reviewer receives the diff, the touched areas' `AGENTS.md`,
   the linked design and the capability checks. P0/P1 findings block; P2 and below become issues
   unless trivial.
@@ -70,9 +73,11 @@ requests; whoever merges second rebases.
 
 ## On-demand skills
 
-None runs on a schedule. `work-checkpoint` preserves interrupted work; `gardener` moves dead or
-closed material to the archive and opens one reviewable pull request; `breaker` explores `working`
-and `polished` capabilities and turns each defect into a failing tagged test or `bug` issue.
+None runs on a schedule. `work-checkpoint` preserves interrupted work; `owner-checkpoint`
+summarizes significant changes, status movements, Tier 1 merges, ranked flags and next unclaimed
+work for the owner; `gardener` moves dead or closed material to the archive and opens one
+reviewable pull request; `breaker` explores `working` and `polished` capabilities and turns each
+defect into a failing tagged test or `bug` issue.
 
 ## Retired process
 

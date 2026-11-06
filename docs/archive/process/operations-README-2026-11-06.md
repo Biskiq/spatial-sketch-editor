@@ -12,9 +12,9 @@ LOAD: only when one of the four events is actually invoked
 ```
 
 Ordinary slice work never loads this file. A slice's own route is
-[`current.md`](./current.md) (navigation) → the owning track's baton → its phase README → its plan,
+[`current.md`](./operations-current-2026-11-06.md) (navigation) → the owning track's baton → its phase README → its plan,
 with the track runbook's start step
-and the [gate register](../roadmap/README.md#gate-register) for eligibility.
+and the [gate register](../roadmap/roadmap-register-2026-11-06.md#gate-register) for eligibility.
 
 ## Track completion
 
@@ -53,7 +53,7 @@ section's separate outcome.
 
 ## Product milestone acceptance
 
-A product milestone (for example [Core Editor Stability](../roadmap/core-editor-stability.md)) is a
+A product milestone (for example [Core Editor Stability](../../roadmap/core-editor-stability.md)) is a
 named, owner-approved state of the product's usefulness. It is **not** a gate. It has no version,
 provider, `Requires` scope or register row, and accepting it changes no gate state or capability
 readiness. It is evidenced as a whole product workflow, not as a sum of accepted providers.
@@ -96,7 +96,7 @@ NOT:        no silent re-scope of an in-progress phase, no new status store, no 
 ```
 
 Replanning is not the route for a defect fixed in place (that is the owning plan) or for a
-recorded debt (that is [`tech-debt/README.md`](./tech-debt/README.md)).
+recorded debt (that is [`tech-debt/README.md`](../../operations/tech-debt/README.md)).
 
 ## Related routes
 

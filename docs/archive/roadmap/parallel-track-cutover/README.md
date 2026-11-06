@@ -1,8 +1,8 @@
 # R115 — PR #115 architecture reset (repository phase)
 
 **Phase:** R115 · **Status:** shipped (closed 2026-10-14) · **Registered in** the
-[track register](../README.md#track-register) as a repository phase, not a track.
-**Sole child:** `R115.S01`. **Baton:** [`../../operations/current.md`](../../operations/current.md)
+[track register](../roadmap-register-2026-11-06.md#track-register) as a repository phase, not a track.
+**Sole child:** `R115.S01`. **Baton:** [`../../operations/current.md`](../../process/operations-current-2026-11-06.md)
 
 ```text
 SCOPE: the frozen-lane isolation, aggressive pruning and parallel-track cutover of PR #115
@@ -23,7 +23,7 @@ stub's anchor.
 | R115.S01 | shipped | — | — | — | [implementation-plan.md](./implementation-plan.md) | [acceptance.md](./acceptance.md) | owner-authorized 2026-10-13; implementation execution authorized through WP7; closed 2026-10-14 by `slice-closeout`; the record was compacted to its closed-work stub 2026-10-14 by `phase-closeout` (recovery in the stub) |
 
 - **Consumes** is empty: the reset consumes no gate version. Every gate in the
-  [gate register](../README.md#gate-register) is still `undrafted`, correctly.
+  [gate register](../roadmap-register-2026-11-06.md#gate-register) is still `undrafted`, correctly.
 - **Requires** is empty: the reset requires no accepted capability scope.
 - **Effects** is empty: this phase performs no Camera authoring migration.
 
@@ -59,4 +59,4 @@ Owner ratification: closed by owner ruling 2026-10-14 (owner-invoked R115 phase-
 `slice-closeout` closed `R115.S01` on 2026-10-14 and made this phase `closable`. The owner then
 invoked `phase-closeout`, which wrote this block and the global track register's `shipped` row.
 R115 has no track whose phase row it would write instead, so its row in the
-[track register](../README.md#track-register) is its machine-readable closed state.
+[track register](../roadmap-register-2026-11-06.md#track-register) is its machine-readable closed state.

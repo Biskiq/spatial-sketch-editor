@@ -21,7 +21,7 @@ EVENTS:  ../README.md                                  (completion · integratio
   shim-retirement decision**; routine closeout only confirms that the accepted evidence contains no
   unowned remaining shim, and it introduces no production edit.
 - **One writable owner per concern.** Track objectives and the phase register live in
-  [`../../roadmap/t2-composition/README.md`](../../roadmap/t2-composition/README.md); phase scope,
+  [`../../roadmap/t2-composition/README.md`](../../../../roadmap/t2-composition/README.md); phase scope,
   the slice register and `PHASE CLOSE` live in the phase README; current assignments live in the
   baton.
 - **Scene placement mutates Scene only.** Layout is consulted for support and never mutated by a
@@ -43,7 +43,7 @@ EVENTS:  ../README.md                                  (completion · integratio
 
 The change stays in the owning authority (AGENTS.md rules 1, 2 and 6). Add the test that fails
 when the new behavior breaks. Do not copy a gate conformance suite into the slice. Run the
-verification tier the slice plan declares. The [test manual](../../../apps/editor/tests/README.md)
+verification tier the slice plan declares. The [test manual](../../../../../apps/editor/tests/README.md)
 owns the acceptance bar, and `npm test` is never narrowed.
 
 A Scene-level requirement that needs a shared interface goes through the F amendment path; T2
@@ -52,16 +52,16 @@ never mints a parallel format.
 ## Test families
 
 - `@portfolio/project-model` Scene codec, world-local validation and writer suites, with the
-  project-model boundary in [`test-lanes.ts`](../../../apps/editor/test-lanes.ts) unconditional;
+  project-model boundary in [`test-lanes.ts`](../../../../../apps/editor/test-lanes.ts) unconditional;
 - the kernel-level Scene transform/validation contract in
-  [`scene-content.md`](../../reference/components/scene-content.md) and the wall-mesh shell
+  [`scene-content.md`](../../../../reference/components/scene-content.md) and the wall-mesh shell
   boundary for shared render modules;
 - dense assembly and material/light matrices in the heavy lane;
 - the real-Postgres API suites when a change reaches Save/Load, assets or publication, executed
   with a reachable database and **zero skips**.
 
 Tier, evidence and escalation are owned by
-[`apps/editor/tests/README.md`](../../../apps/editor/tests/README.md) ("What a change requires" and
+[`apps/editor/tests/README.md`](../../../../../apps/editor/tests/README.md) ("What a change requires" and
 the focused ladder).
 
 ## Review, closeout and event routes
@@ -77,9 +77,9 @@ REPLAN           new goal, completion handoff or orphaned obligation → ../READ
 
 ## Scoped debt and interruption
 
-A deferred defect goes to [`../tech-debt/README.md`](../tech-debt/README.md) with this track or its
+A deferred defect goes to [`../tech-debt/README.md`](../../../../operations/tech-debt/README.md) with this track or its
 phase named as `Owner` (TD-1's remaining obligations are carried in the track README and the
 planning evidence). Interrupted substantial work uses `work-checkpoint` and
-[`../checkpoints/README.md`](../checkpoints/README.md): the checkpoint carries the track/phase/slice
+[`../checkpoints/README.md`](../../../../operations/checkpoints/README.md): the checkpoint carries the track/phase/slice
 identity, the resume route, which verification tier ran with its tested revision and diff, and the
 integration gate still owed. A focused green run is never inherited as acceptance.

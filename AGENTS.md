@@ -95,5 +95,6 @@ review, merge on green CI, owner check at the next checkpoint. **Tier 2** hard-r
 approved-design or ledger-shape change, incompatible format, check removal, owner review,
 production activation, licence or new dependency → owner decides before merge.
 
-On-demand skills: `work-checkpoint`, `gardener` (archive-only) and `breaker`. No schedules. The
+On-demand skills: `work-checkpoint`, `owner-checkpoint`, `gardener` (archive-only) and `breaker`.
+No schedules. The
 full process contract is [`docs/workflow.md`](./docs/workflow.md).

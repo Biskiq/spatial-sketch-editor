@@ -100,11 +100,15 @@ describe('the replacement workflow is routed', () => {
 			'`bug`',
 			'Claim:',
 			'A plan is written when the work needs one',
+			'reviewed in that draft before code is written',
+			'Tier 2 waits',
+			"for the owner's decision",
 			'Merging is the closeout'
 		]) {
 			expect(workflow, marker).toContain(marker);
 		}
 		expect(read('focus.md')).toMatch(/Current priority:/);
+		expect(read('focus.md')).toContain('**Hold:**');
 	});
 
 	it('routes "what next" through status and focus, not the retired release list', () => {
@@ -148,13 +152,20 @@ describe('retired process routes are gone and archived', () => {
 });
 
 describe('on-demand skills', () => {
-	it('keeps checkpointing and installs gardener and breaker without schedules', () => {
-		expect(existsSync(resolve(REPO_ROOT, '.agents/skills/work-checkpoint/SKILL.md'))).toBe(true);
+	it('keeps recovery, owner checkpointing, gardening and breaking without schedules', () => {
+		const checkpoint = read('.agents/skills/work-checkpoint/SKILL.md');
+		expect(checkpoint).toContain('active draft pull request');
+		expect(checkpoint).not.toMatch(/baton/i);
+		const owner = read('.agents/skills/owner-checkpoint/SKILL.md');
+		expect(owner).toContain('Tier 1');
+		expect(owner).toContain('ranked');
+		expect(owner).toContain('unclaimed');
 		const gardener = read('.agents/skills/gardener/SKILL.md');
 		const breaker = read('.agents/skills/breaker/SKILL.md');
 		expect(gardener).toContain('ARCHIVE ONLY');
 		expect(gardener).toContain('never delete outright');
 		expect(breaker).toContain('failing tagged test');
+		expect(breaker).toContain('<core|edge>');
 		for (const skill of [gardener, breaker]) {
 			expect(skill.toLowerCase()).toContain('not a required');
 		}

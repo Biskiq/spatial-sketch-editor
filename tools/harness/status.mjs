@@ -358,16 +358,36 @@ function formatAge(generatedAt, now) {
 	return `${Math.round(hours / 24)}d old`;
 }
 
-/** The owner-editable priority file, if present. Absence is not an error. */
+/**
+ * The owner-editable priority and hold file, if present. Absence is not an error.
+ *
+ * A hold may wrap over more than one line; keep the whole short intent, including
+ * the question/end condition, rather than returning only the first non-heading line.
+ */
 function readFocus(repoRoot) {
 	try {
 		const text = readFileSync(join(repoRoot, 'focus.md'), 'utf8');
-		return (
-			text
-				.split('\n')
-				.map((line) => line.trim())
-				.find((line) => line.length > 0 && !line.startsWith('#')) ?? null
-		);
+		const fields = { priority: null, hold: null };
+		let current = null;
+		for (const raw of text.split('\n')) {
+			const line = raw.trim();
+			if (line.length === 0 || line.startsWith('#') || line.startsWith('---')) {
+				current = null;
+				continue;
+			}
+			const labelled = /^\*\*(Current priority|Hold):\*\*\s*(.*)$/i.exec(line);
+			if (labelled) {
+				current = labelled[1].toLowerCase() === 'current priority' ? 'priority' : 'hold';
+				fields[current] = labelled[2].trim();
+				continue;
+			}
+			if (current === null || line.startsWith('**')) {
+				current = null;
+				continue;
+			}
+			fields[current] = `${fields[current]} ${line}`.trim();
+		}
+		return fields.priority || fields.hold ? fields : null;
 	} catch {
 		return null;
 	}
@@ -674,12 +694,14 @@ function main() {
 					}
 	};
 
+	const focus = readFocus(options.repoRoot);
+	report.focus = focus;
 	if (options.json) {
 		process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 	} else {
 		process.stdout.write(`${printReport(report, new Date())}\n`);
-		const focus = readFocus(options.repoRoot);
-		if (focus) process.stdout.write(`focus      ${focus}\n`);
+		if (focus?.priority) process.stdout.write(`focus      ${focus.priority}\n`);
+		if (focus?.hold) process.stdout.write(`hold       ${focus.hold}\n`);
 		if (!github.available) {
 			process.stdout.write(`\nflags/claims unavailable: ${github.reason}\n`);
 		}

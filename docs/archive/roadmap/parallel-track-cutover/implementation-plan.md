@@ -31,11 +31,11 @@
 
 The live authorities are unchanged:
 
-- [North Star](../../reference/north-star.md)
-- [architecture](../../reference/architecture.md)
-- [F](../../reference/composition-execution.md)
-- the [September 27 ratification](../../reference/decisions/northstar-ratification-2026-09-27.md) and its [World | Experience amendment](../../reference/decisions/world-experience-reconciliation-2026-09-29.md)
-- the [PLATE shell/visual contract](../../reference/design-system/editor-shell-and-visual-system.md) and the [spatial-instrument grammar](../../reference/design-system/spatial-instrument-grammar.md)
+- [North Star](../../../reference/north-star.md)
+- [architecture](../../../reference/architecture.md)
+- [F](../../../reference/composition-execution.md)
+- the [September 27 ratification](../../../reference/decisions/northstar-ratification-2026-09-27.md) and its [World | Experience amendment](../../../reference/decisions/world-experience-reconciliation-2026-09-29.md)
+- the [PLATE shell/visual contract](../../../reference/design-system/editor-shell-and-visual-system.md) and the [spatial-instrument grammar](../../../reference/design-system/spatial-instrument-grammar.md)
 
 Prototypes supply interaction evidence only. They never supply production formats, history or evaluators. Aggressive pruning does not reopen product direction.
 
@@ -408,7 +408,7 @@ remove every new-product consumer of legacy payloads.
 
 - Tests are classified by the guarantee they protect, not by location.
 - A test **deleted with its subject** needs no successor. Its subject is gone, and the capability-loss list (§4.4) records the absence.
-- An **extracted or replacement** assertion follows the existing successor rules in [`tests/README.md`](../../../apps/editor/tests/README.md#successors-and-deletion): same-defect proof, call-site proof where wiring matters, mutation evidence.
+- An **extracted or replacement** assertion follows the existing successor rules in [`tests/README.md`](../../../../apps/editor/tests/README.md#successors-and-deletion): same-defect proof, call-site proof where wiring matters, mutation evidence.
 - **No `skip`, no `todo`, no expected-failure markers, no snapshot regeneration without a recorded semantic reason, and no fixture deletion when the fixture still protects a retained kernel.**
 
 ### 7.2 Matrix

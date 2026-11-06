@@ -1,13 +1,13 @@
 # Current — baton navigation
 
 **Navigation only.** This file routes current work; it holds no status. The program release list is
-[`../roadmap/now.md`](../roadmap/now.md). A baton is one track. Authoritative status lives in
+[`../roadmap/now.md`](../roadmap/release-list-2026-11-06.md). A baton is one track. Authoritative status lives in
 each phase README (slice child status and order) and the
-[gate register](../roadmap/README.md#gate-register). Never synchronize another track's handoff, and
+[gate register](../roadmap/roadmap-register-2026-11-06.md#gate-register). Never synchronize another track's handoff, and
 never treat stale baton text as a blocker.
 
-**Current route:** [#259 harness implementation](../roadmap/lean-harness-proposal.md) is the
-immediate next step. [R217 status and owner acceptance/waiver](../roadmap/r217-core-editor-stability/README.md)
+**Current route:** [#259 harness implementation](../../roadmap/lean-harness-proposal.md) is the
+immediate next step. [R217 status and owner acceptance/waiver](../../roadmap/r217-core-editor-stability/README.md)
 supersede older R217 work in per-track batons; no S11, A–Q or R217 closeout is pending. This
 navigation does not synchronize or replace another track's handoff.
 

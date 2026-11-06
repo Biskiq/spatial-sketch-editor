@@ -21,7 +21,7 @@ EVENTS:  ../README.md                                  (completion · integratio
   shim-retirement decision**; routine closeout only confirms that the accepted evidence contains no
   unowned remaining shim, and it introduces no production edit.
 - **One writable owner per concern.** Track objectives and the phase register live in
-  [`../../roadmap/t4-release/README.md`](../../roadmap/t4-release/README.md); phase scope, the
+  [`../../roadmap/t4-release/README.md`](../../../../roadmap/t4-release/README.md); phase scope, the
   slice register and `PHASE CLOSE` live in the phase README; current assignments live in the baton.
 - **The reader is separate.** The release reader is independently versioned and never depends on
   the changing authoring validator; publication is closed over its resources before it serves, and
@@ -42,7 +42,7 @@ EVENTS:  ../README.md                                  (completion · integratio
 
 The change stays in the owning authority (AGENTS.md rules 1, 2 and 6). Add the test that fails
 when the new behavior breaks. Do not copy a gate conformance suite into the slice. Run the
-verification tier the slice plan declares. The [test manual](../../../apps/editor/tests/README.md)
+verification tier the slice plan declares. The [test manual](../../../../../apps/editor/tests/README.md)
 owns the acceptance bar, and `npm test` is never narrowed.
 
 The prepared-reader cutover consumes the ratified F.5 envelope as an exact gate version before it
@@ -55,13 +55,13 @@ is eligible; it replaces the strict snapshot reader atomically rather than runni
   checkpoint, never a pass;
 - the visitor suites — cold runtime, public route, identity isolation — plus the vite
   public-surface boundary plugin test, all unconditional in
-  [`test-lanes.ts`](../../../apps/editor/test-lanes.ts) because no lane or build can see a broken
+  [`test-lanes.ts`](../../../../../apps/editor/test-lanes.ts) because no lane or build can see a broken
   `/p/:publicationId` entry point;
 - browser checks on the retained product routes (sign-in entry, project hub, the read-only spatial
   Stage and a cold `/p/:id`), recorded as manual evidence when they are the only coverage.
 
 Tier, evidence and escalation are owned by
-[`apps/editor/tests/README.md`](../../../apps/editor/tests/README.md) ("What a change requires" and
+[`apps/editor/tests/README.md`](../../../../../apps/editor/tests/README.md) ("What a change requires" and
 the focused ladder).
 
 ## Review, closeout and event routes
@@ -77,9 +77,9 @@ REPLAN           new goal, completion handoff or orphaned obligation → ../READ
 
 ## Scoped debt and interruption
 
-A deferred defect goes to [`../tech-debt/README.md`](../tech-debt/README.md) with this track or its
+A deferred defect goes to [`../tech-debt/README.md`](../../../../operations/tech-debt/README.md) with this track or its
 phase named as `Owner`; the snapshot-reader retirement row stays in the track README with its exact
 condition. Interrupted substantial work uses `work-checkpoint` and
-[`../checkpoints/README.md`](../checkpoints/README.md): the checkpoint carries the track/phase/slice
+[`../checkpoints/README.md`](../../../../operations/checkpoints/README.md): the checkpoint carries the track/phase/slice
 identity, the resume route, which verification tier ran with its tested revision and diff, and the
 integration gate still owed. A focused green run is never inherited as acceptance.
