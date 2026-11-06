@@ -12,6 +12,7 @@ import { PCFShadowMap } from 'three';
 	import type { ExecutionProgram, ExperienceInterpreterOptions } from '@portfolio/project-model/units';
 	import { formatGuideTime } from '@portfolio/camera-core';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
+	import { visitorProgressFor } from './visitor-progress';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
@@ -287,6 +288,9 @@ import { PCFShadowMap } from 'three';
 		return `, ${Math.max(0, Math.ceil(resume.holdRemainingMs / 1000))} s left`;
 	});
 	const isLastStop = $derived(visitorState !== null && currentStopNumber === visitorState.program.stops.length);
+	const progress = $derived(
+		visitorState === null ? null : visitorProgressFor(visitorState.program, visitorState.state)
+	);
 	$effect(() => {
 		if (visitorState === null) return;
 		visitorState.reducedMotion = reducedMotion;
@@ -463,11 +467,21 @@ import { PCFShadowMap } from 'three';
 			<div class="guided-caption">
 				<p class="overline">Guided tour · Stop {currentStopNumber} of {visitorState.program.stops.length}</p>
 				<strong class="guided-title">{visitorState.currentPresentation?.label ?? 'The tour'}</strong>
-				<div class="prog" aria-hidden="true">
-					{#each visitorState.program.stops as stop, index (stop.id)}
-						<i class:done={index + 1 < currentStopNumber} class:current={index + 1 === currentStopNumber}></i>
-					{/each}
-				</div>
+				{#if progress !== null}
+					<div class="prog" role="progressbar" aria-label="Tour progress"
+						aria-valuemin={0} aria-valuemax={progress.segments.length} aria-valuenow={progress.visitedCount}>
+						{#each progress.segments as segment, index (segment.stopId)}
+							{#if index > 0}
+								<span class="prog-link" class:filled={segment.travelFill === 1} aria-hidden="true"></span>
+							{/if}
+							<span class="prog-seg" class:done={segment.visited} class:current={segment.current}
+								class:outline={segment.outline} data-progress-stop={segment.stopId}
+								title={segment.label} aria-current={segment.current ? 'step' : undefined}>
+								<i style={`--fill:${segment.fill}`}></i>
+							</span>
+						{/each}
+					</div>
+				{/if}
 			</div>
 			<div class="guided-actions">
 				<button
@@ -879,21 +893,38 @@ import { PCFShadowMap } from 'three';
 	}
 	.prog {
 		display: flex;
-		gap: 4px;
+		align-items: center;
 		margin-top: 8px;
+		width: min(360px, 100%);
 	}
-	.prog i {
-		display: block;
-		width: 26px;
-		height: 4px;
-		border-radius: 2px;
+	.prog-seg {
+		position: relative;
+		flex: 1 1 0;
+		height: 6px;
+		overflow: hidden;
+		border-radius: 3px;
 		background: rgb(243 240 228 / 22%);
 	}
-	.prog i.done {
-		background: rgb(243 240 228 / 70%);
+	.prog-seg i {
+		display: block;
+		height: 100%;
+		width: calc(100% * var(--fill));
+		background: rgb(243 240 228 / 78%);
+		transition: width 180ms linear;
 	}
-	.prog i.current {
+	.prog-seg.current i {
 		background: var(--visitor-gold);
+	}
+	.prog-seg.outline {
+		box-shadow: inset 0 0 0 1.5px var(--visitor-gold);
+	}
+	.prog-link {
+		flex: 0 0 8px;
+		height: 3px;
+		background: rgb(243 240 228 / 18%);
+	}
+	.prog-link.filled {
+		background: rgb(243 240 228 / 70%);
 	}
 	.guided-actions {
 		display: flex;

@@ -1019,7 +1019,10 @@ and the first Stop creates the Guide *Tour* with no naming prompt; further Index
 *Tour 2*, *Tour 3*. Slice 8 makes a Presentation follow its Scene object: `label: null` is admitted
 only with a Scene-entity subject, lowering writes the effective name into the program, the About
 section links, follows and unlinks, and Scene `delete-one` unlinks every Presentation about a
-removed object in the same accepted change. It does **not yet** implement visitor progress (9),
-which lands with a
-[fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices),
-and each slice updates this paragraph in the same commit.
+removed object in the same accepted change. Slice 9 gives the visitor one continuous segmented
+progress bar in Guide order: each segment is a Stop occurrence, `state.visited` marks only the
+Stops actually reached, an Automatic stay fills its segment while paused or exploring and Back
+restores the lead-in, a Travel fills the connector into its arriving segment, and Manual leaves
+the current segment outlined with no stay fill. A revisit has its own segment and a Places jump
+does not mark skipped Stops visited (R21–R23); the bar reads the same interpreter state as the
+tour controls.
