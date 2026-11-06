@@ -1026,3 +1026,8 @@ restores the lead-in, a Travel fills the connector into its arriving segment, an
 the current segment outlined with no stay fill. A revisit has its own segment and a Places jump
 does not mark skipped Stops visited (R21–R23); the bar reads the same interpreter state as the
 tour controls.
+
+Every rule in this AM-11 implementation status is implemented on PR #271. The slice 10 final
+gate reran the complete editor suite (3,915 tests), the architecture suite (209 tests),
+`npm run check` (0 errors) and `npm run build` (passed). The owner's browser journeys A–Q are
+the remaining manual acceptance, and no merge occurs before they pass.
