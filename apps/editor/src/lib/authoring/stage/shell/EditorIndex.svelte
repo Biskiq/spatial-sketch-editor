@@ -529,7 +529,7 @@
 									<ShellIcon name="guide" size={15} />
 									<span class="item-text">
 										<span class="item-name">{guide.label}</span>
-										<span class="item-meta">{guide.stopCount} stops</span>
+										<span class="item-meta">{guide.stopCount} {guide.stopCount === 1 ? 'stop' : 'stops'}</span>
 									</span>
 									{#if guide.opening}<span class="opens-tag" data-opening-guide>opens</span>{/if}
 									{#if guide.open}<span class="chip">Open</span>{/if}

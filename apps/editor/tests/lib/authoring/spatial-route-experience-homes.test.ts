@@ -1140,7 +1140,7 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 
 		await vi.waitFor(() => expect(target.querySelector('[data-guide-id]')).not.toBeNull());
 		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('Tour');
-		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('1 stops');
+		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('1 stop ');
 		expect(card()!.querySelector('section[aria-label="Name the new Guide"]')).toBeNull();
 		// The new Stop is the subject: its Card carries the Stop writer and the Guide's Stop menu.
 		expect(cardKind()).toMatch(/^Stop 1 of 1/);
@@ -1250,7 +1250,7 @@ describe('R217.S26 — structure and removal through the route', () => {
 		expect(block.textContent).toContain('Removes Stop 2. Gallery stays.');
 		block.querySelector<HTMLButtonElement>('[data-card-consequence-run]')!.click();
 
-		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stops'));
+		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stop '));
 		expect(experienceFocus.subject).toBeNull();
 		expect(target.querySelector('.experience-feedback')?.textContent).toBe('Stop 2 removed. Main has 1 Stop.');
 

@@ -387,7 +387,6 @@
 		readonly more: number;
 		/** ✦: the Stop invites exploring. */
 		readonly invites: boolean;
-		readonly again: boolean;
 		readonly name: string;
 		readonly connector: Connector | null;
 	};
@@ -400,10 +399,15 @@
 		if (controller === null) return [];
 		return stops.map((stop, index) => {
 			const number = index + 1;
-			const label = controller.presentationLabel(stop.presentationId);
-			const again = stops.slice(0, index).some((earlier) => earlier.presentationId === stop.presentationId);
 			const presentation = controller.current?.presentations.find((entry) => entry.id === stop.presentationId);
 			const viewId = stop.entryViewId ?? presentation?.views[0]?.viewId ?? null;
+			// Sheet §33 A: a Presentation visited more than once names its entry View on
+			// every visit (Pleyel piano · From the window), so the visits stay distinct.
+			const repeated = stops.filter((other) => other.presentationId === stop.presentationId).length > 1;
+			const viewName = viewId === null ? null : (controller.viewsOf?.get(stop.presentationId)?.find((view) => view.id === viewId)?.label ?? null);
+			const label = repeated && viewName !== null
+				? `${controller.presentationLabel(stop.presentationId)} · ${viewName}`
+				: controller.presentationLabel(stop.presentationId);
 			const more = Math.max(0, (presentation?.views.length ?? 1) - 1);
 			const invites = stop.invitation !== null;
 			const resolved = controller.resolveContinuation(stop.id);
@@ -439,11 +443,10 @@
 				};
 			}
 			const spoken = [`Stop ${number}`, label];
-			if (again) spoken.push('again');
 			if (invites) spoken.push('invites exploring');
 			if (more > 0) spoken.push(`${more} more ${more === 1 ? 'view' : 'views'} to explore`);
 			if (pacing === 'manual') spoken.push('waits for Next');
-			return { stopId: stop.id, viewId, number, label, more, invites, again, name: spoken.join(', '), connector };
+			return { stopId: stop.id, viewId, number, label, more, invites, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -1202,7 +1205,6 @@
 								<span class="stop-text">
 									<span class="stop-name" title={card.label}>{card.label}</span>
 									<span class="stop-meta">
-										{#if card.again}<em>again</em><span aria-hidden="true"> · </span>{/if}
 										{#if card.invites}<span class="badge invite" title="Invites exploring" data-invite-badge>✦</span>{/if}
 										{#if card.more > 0}<span class="badge more" title={`${card.more} more ${card.more === 1 ? 'View' : 'Views'} to explore`}>+{card.more}</span>{/if}
 									</span>
@@ -1714,9 +1716,6 @@
 		white-space: nowrap;
 		pointer-events: none;
 		box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
-	}
-	.stop-meta em {
-		font-style: italic;
 	}
 	.slot {
 		position: relative;
