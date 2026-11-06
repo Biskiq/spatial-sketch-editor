@@ -22,7 +22,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. **Reset** restores the baseline room and clears authored work; **Load example** loads a complete, editable Experience. Neither starts playback. Use **Reviewer Presenter** to author from a clean state.
+Open http://127.0.0.1:3000. **Reset** restores the baseline room and clears authored work; **Load example** loads a complete, editable Experience. Neither starts playback. Use **Reviewer Presenter** to author from a clean state.
 
 ## Quickstart (low floor)
 

@@ -123,6 +123,10 @@ Every file in this folder, with its role from the module header.
 | [atlas-static.html](./atlas-static.html) | Offline static atlas snapshot (built by `tools/build-static-atlas.mjs`) |
 | [README.md](./README.md) | This file |
 
+The `tools/` generators resolve Playwright from the archived Experience donor
+(`docs/archive/prototypes/experience-authoring/node_modules`). Install it there
+first: `npm install --prefix docs/archive/prototypes/experience-authoring`.
+
 ## Prototype shortcuts
 
 Snapshot Undo, painter's-algorithm SVG, approximated lasso, heuristic stroke reading, mock Camera interpolation, the centroid-based finite Slice cut, mock dense data and no persistence are implementation shortcuts. They are listed in DESIGN-NOTE §8, are not proposals, and imply no file format, evaluator, Camera algorithm or production architecture. Production behavior is governed by the ratified contracts in `docs/`.
