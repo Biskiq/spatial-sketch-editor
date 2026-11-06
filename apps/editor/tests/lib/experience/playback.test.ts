@@ -171,8 +171,9 @@ describe('R217.S30 playback', () => {
 		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
 		expect(guide).toContain('data-playback-timeline');
 		expect(guide).toContain('data-playback-total');
-		expect(guide).not.toContain('--shell-gold');
-		expect(guide).toContain('height: 2px');
+		// Owner review (5 Nov): the strip's highlight is gold, and its one track is a 3 px rail.
+		expect(guide).toContain('--shell-gold');
+		expect(guide).toContain('height: 3px');
 		expect(guide).toContain('--shell-touch-target, 44px');
 		expect(guide).toContain('min-height: 44px');
 		expect(guide).not.toContain('Comes with Camera playback');

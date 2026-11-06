@@ -385,16 +385,15 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 		expect(next.parentElement?.classList.contains('adjacent')).toBe(true);
 	});
 
-	it('ends the row with End after the card that holds the last Stop', async () => {
+	it('draws no End mark after the last Stop: the last Stop is the end (sheet §33 A)', async () => {
 		const homes = fakeHomes(fakeController());
 		const target = mountHome(ExperienceGuide, { onClose: () => {} }, homes);
 		await settle();
 
-		const end = chipAfter(target, 'stop-5');
-		expect(end.textContent?.trim()).toBe('End');
-		const row = target.querySelector('.row');
-		expect(row?.lastElementChild).toBe(end.parentElement);
-		expect(end.parentElement?.previousElementSibling?.getAttribute('data-stop-id')).toBe('stop-5');
+		const last = target.querySelector('[data-stop-id="stop-5"]');
+		const slot = last?.nextElementSibling;
+		expect(slot?.querySelector('[data-connector]')).toBeNull();
+		expect(target.querySelector('.row')?.textContent).not.toMatch(/\bEnd\b/);
 	});
 
 	it('marks a Travel with a gap as needing attention', async () => {

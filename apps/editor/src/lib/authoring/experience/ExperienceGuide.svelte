@@ -21,7 +21,7 @@
 	import { experienceHomes } from './experience-homes';
 	import { formatPathSeconds } from './experience-paths';
 	import type { ExperiencePlayback } from './playback.svelte';
-	import { locateSegmentAt, resolveWaitScrub } from './timeline-scrub';
+	import { resolveWaitScrub } from './timeline-scrub';
 
 	let {
 		onClose,
@@ -111,25 +111,59 @@
 		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
 		return segment === undefined ? null : segment.startSeconds + cursor.elapsedSeconds;
 	});
-	function stopProgress(stopId: string): number {
+	/**
+	 * The Travel into a Stop. Camera's time map files an arrival under the Stop it
+	 * reaches, but on the strip it belongs to the gutter before that Stop, so the
+	 * card's own rail is only its stay.
+	 */
+	function arrivalTravel(stopId: string | undefined): { startSeconds: number; durationSeconds: number } | null {
+		if (stopId === undefined) return null;
+		const segment = playback.map?.segments.find(
+			(entry) => entry.kind === 'travel' && entry.stopId === stopId && entry.viewIndex === 0
+		);
+		return segment === undefined ? null : segment;
+	}
+	/** A Stop's stay on the clock: its occurrence without the Travel that brought it. */
+	function staySpan(stopId: string): { start: number; end: number } | null {
 		const entry = stopTimes.get(stopId);
+		if (entry === undefined) return null;
+		const arrival = arrivalTravel(stopId);
+		return { start: entry.startSeconds + (arrival?.durationSeconds ?? 0), end: entry.endSeconds };
+	}
+	/** The Travel drawn in the gutter after `stopId`: the next Stop's arrival. */
+	function gutterTravel(stopId: string): { start: number; end: number } | null {
+		const index = stops.findIndex((stop) => stop.id === stopId);
+		const travel = index < 0 ? null : arrivalTravel(stops[index + 1]?.id);
+		return travel === null ? null : { start: travel.startSeconds, end: travel.startSeconds + travel.durationSeconds };
+	}
+	function spanProgress(span: { start: number; end: number } | null): number {
 		const at = elapsedSeconds;
-		if (entry === undefined || at === null) return 0;
-		const span = entry.endSeconds - entry.startSeconds;
-		if (at >= entry.endSeconds) return 100;
-		if (at <= entry.startSeconds) return 0;
-		return span <= 0 ? 100 : ((at - entry.startSeconds) / span) * 100;
+		if (span === null || at === null) return 0;
+		if (at >= span.end) return 100;
+		if (at < span.start) return 0;
+		return span.end <= span.start ? 100 : ((at - span.start) / (span.end - span.start)) * 100;
+	}
+	function stopProgress(stopId: string): number {
+		return spanProgress(staySpan(stopId));
 	}
 	/** The Travel gutter's own fill, so the card rails and gutters form one track. */
 	function travelProgress(stopId: string): number {
-		const segment = playback.map?.segments.find((entry) => entry.kind === 'travel' && entry.stopId === stopId);
-		const at = elapsedSeconds;
-		if (segment === undefined || at === null) return 0;
-		const end = segment.startSeconds + segment.durationSeconds;
-		if (at >= end) return 100;
-		if (at <= segment.startSeconds) return 0;
-		return segment.durationSeconds <= 0 ? 100 : ((at - segment.startSeconds) / segment.durationSeconds) * 100;
+		return spanProgress(gutterTravel(stopId));
 	}
+	/** Where the one playhead sits: the lane (card or gutter) holding the cursor. */
+	const playheadLane = $derived.by((): { id: string; pct: number } | null => {
+		const map = playback.map;
+		const cursor = playback.cursor;
+		if (map === null || cursor === null) return null;
+		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
+		if (segment === undefined) return null;
+		if (segment.kind === 'travel' && segment.viewIndex === 0) {
+			const index = stops.findIndex((stop) => stop.id === segment.stopId);
+			const before = index > 0 ? stops[index - 1] : undefined;
+			if (before !== undefined) return { id: `travel:${before.id}`, pct: travelProgress(before.id) };
+		}
+		return { id: `hold:${segment.stopId}`, pct: stopProgress(segment.stopId) };
+	});
 	/** Each hold is one View's span; its own label/time stays readable on the bar. */
 	const timelineSegments = $derived.by(() => {
 		const map = playback.map;
@@ -193,12 +227,22 @@
 		playback.setFollow(true);
 	}
 
-	/** The cards and Travel gutters under the one track, in DOM order. */
-	function trackSegments(): { id: string; width: number }[] {
-		if (rowEl === null) return [];
-		return [...rowEl.querySelectorAll<HTMLElement>('[data-track-id]')]
-			.map((element) => ({ id: element.dataset.trackId ?? '', width: element.getBoundingClientRect().width }))
-			.filter((segment) => segment.id !== '' && segment.width > 0);
+	/**
+	 * The card or Travel gutter under the pointer, with the pointer's fraction
+	 * across it. Between lanes (a Cut gutter) it snaps to the nearer edge.
+	 */
+	function laneAt(clientX: number): { id: string; localFraction: number } | null {
+		if (rowEl === null) return null;
+		let best: { id: string; localFraction: number; distance: number } | null = null;
+		for (const element of rowEl.querySelectorAll<HTMLElement>('[data-track-id]')) {
+			const id = element.dataset.trackId ?? '';
+			const rect = element.getBoundingClientRect();
+			if (id === '' || rect.width <= 0) continue;
+			const localFraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			const distance = clientX < rect.left ? rect.left - clientX : clientX > rect.right ? clientX - rect.right : 0;
+			if (best === null || distance < best.distance) best = { id, localFraction, distance };
+		}
+		return best === null ? null : { id: best.id, localFraction: best.localFraction };
 	}
 
 	function scrubAt(clientX: number): void {
@@ -218,22 +262,53 @@
 			return;
 		}
 		// The single track is the card row: each card and Travel gutter maps its own
-		// span, so the pointer's local fraction is multiplied by that segment's duration.
-		const segments = trackSegments();
-		const total = segments.reduce((sum, segment) => sum + segment.width, 0);
-		const located = locateSegmentAt(
-			segments.map((segment) => ({ id: segment.id, widthFraction: segment.width / total })),
-			fraction
-		);
+		// span under the pointer, so a 4 s card and a 12 s card scrub at their own rates.
+		const located = laneAt(clientX);
 		if (located !== null) {
-			const [kind, stopId] = located.segmentId.split(':');
-			const segment = map.segments.find((entry) => entry.kind === kind && entry.stopId === stopId);
-			if (segment !== undefined) {
-				playback.seek(segment.startSeconds + located.localFraction * segment.durationSeconds);
+			const [kind, stopId] = located.id.split(':');
+			const span = stopId === undefined ? null : kind === 'travel' ? gutterTravel(stopId) : staySpan(stopId);
+			if (span !== null) {
+				playback.seek(span.start + located.localFraction * (span.end - span.start));
 				return;
 			}
 		}
 		playback.seek(fraction * map.totalSeconds);
+	}
+
+	let scrubbing = false;
+	let scrubTip = $state<{ x: number; text: string } | null>(null);
+	function tipAt(clientX: number): void {
+		const map = playback.map;
+		if (!scrubbing || barEl === null || map === null) return;
+		const at = elapsedSeconds ?? 0;
+		const index = stops.findIndex((stop) => {
+			const span = staySpan(stop.id);
+			const travel = gutterTravel(stop.id);
+			return span !== null && at < (travel?.end ?? span.end);
+		});
+		const number = index < 0 ? stops.length : index + 1;
+		const stop = stops[number - 1];
+		const name = stop === undefined || controller === null ? '' : ` · ${controller.presentationLabel(stop.presentationId)}`;
+		const rect = barEl.getBoundingClientRect();
+		scrubTip = { x: Math.max(0, Math.min(rect.width, clientX - rect.left)), text: `${playback.elapsedLabel} · Stop ${number}${name}` };
+	}
+	function onTrackPointerDown(event: PointerEvent): void {
+		if (!canPlay) return;
+		scrubbing = true;
+		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+		scrubAt(event.clientX);
+		void tick().then(() => tipAt(event.clientX));
+	}
+	function onTrackPointerMove(event: PointerEvent): void {
+		if (!scrubbing) return;
+		scrubAt(event.clientX);
+		void tick().then(() => tipAt(event.clientX));
+	}
+	function onTrackPointerUp(event: PointerEvent): void {
+		if (!scrubbing) return;
+		scrubbing = false;
+		scrubTip = null;
+		(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
 	}
 
 	function onBarKeydown(event: KeyboardEvent): void {
@@ -1133,14 +1208,16 @@
 									</span>
 								</span>
 								<!-- Review round 3 (sheet §25): each Stop card carries its own part of the timeline. -->
-								<span class="stop-progress" data-view-span={card.viewId ?? undefined} aria-hidden="true"><i style:width="{stopProgress(card.stopId)}%"></i></span>
+								<span class="stop-progress" data-view-span={card.viewId ?? undefined} aria-hidden="true"
+									><i style:width="{stopProgress(card.stopId)}%"></i>{#if playheadLane?.id === `hold:${card.stopId}`}<b class="knob" style:left="{playheadLane.pct}%"></b>{/if}</span
+								>
 							</button>
 							<span
 								class="slot"
 								class:adjacent={card.connector?.shape === 'adjacent'}
 								data-track-id={card.connector?.transition === 'travel' ? `travel:${card.stopId}` : undefined}
 							>
-								{#if card.connector !== null}
+								{#if card.connector !== null && card.connector.shape !== 'end'}
 									{@const connector = card.connector}
 									<button
 										type="button"
@@ -1168,8 +1245,10 @@
 									</button>
 									{#if connector.transition === 'travel'}
 										<span class="slot-progress" aria-hidden="true"
-											><i style:width="{travelProgress(card.stopId)}%"></i></span
+											><i style:width="{travelProgress(card.stopId)}%"></i>{#if playheadLane?.id === `travel:${card.stopId}`}<b class="knob" style:left="{playheadLane.pct}%"></b>{/if}</span
 										>
+									{:else if connector.transition === 'cut'}
+										<span class="slot-cut" aria-hidden="true"></span>
 									{/if}
 								{/if}
 							</span>
@@ -1191,9 +1270,15 @@
 					aria-valuenow={Math.round((playback.map?.totalSeconds ?? 0) * (playheadPct / 100))}
 					aria-valuetext={`${playback.elapsedLabel} of ${playback.totalLabel}${playback.map === null ? '' : playback.map.waitCount === 0 ? '' : ` ${playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}`}`}
 					aria-disabled={!canPlay}
-					onpointerdown={(event) => scrubAt(event.clientX)}
+					onpointerdown={onTrackPointerDown}
+					onpointermove={onTrackPointerMove}
+					onpointerup={onTrackPointerUp}
+					onpointercancel={onTrackPointerUp}
 					onkeydown={onBarKeydown}
 				></div>
+				{#if scrubTip !== null}
+					<span class="scrub-tip" style:left="{scrubTip.x}px" role="status">{scrubTip.text}</span>
+				{/if}
 				{#if more.right}
 					<button type="button" class="more-arrow right" aria-label="Later Stops" title="Later Stops" onclick={() => pageCards(1)}><span aria-hidden="true">›</span></button>
 				{/if}
@@ -1519,8 +1604,11 @@
 		cursor: pointer;
 		user-select: none;
 	}
+	.stop-card:hover {
+		background: #1d4033;
+	}
 	.stop-card.selected {
-		border-color: var(--shell-leaf-soft, #9fd3b6);
+		border-color: var(--shell-gold, #d4ad45);
 		background: #234b3a;
 	}
 	.stop-card.dragging {
@@ -1554,28 +1642,86 @@
 		font-size: 10.5px;
 		font-variant-numeric: tabular-nums;
 	}
-	.stop-progress {
+	/* One track (sheet §33 A): each card's rail is its stay, each Travel gutter its Travel. */
+	.stop-progress,
+	.slot-progress {
 		position: absolute;
-		left: 6px;
-		right: 6px;
 		bottom: 3px;
-		height: 2px;
-		border-radius: 1px;
-		overflow: hidden;
+		height: 3px;
+		border-radius: 2px;
+		background: rgb(255 255 255 / 0.14);
 		pointer-events: none;
 	}
-	.stop-progress i {
-		display: block;
-		height: 100%;
-		background: var(--shell-leaf, #4f8f6c);
+	.stop-progress {
+		left: 6px;
+		right: 6px;
+	}
+	.slot-progress {
+		left: 0;
+		right: 0;
+		border-radius: 0;
+	}
+	.stop-progress i,
+	.slot-progress i {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		border-radius: inherit;
+		background: var(--shell-gold, #d4ad45);
+	}
+	/* A Cut takes no time: a dotted hairline the playhead jumps over. */
+	.slot-cut {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 4px;
+		border-top: 1px dotted rgb(255 255 255 / 0.3);
+		pointer-events: none;
+	}
+	.knob {
+		position: absolute;
+		top: 50%;
+		z-index: 1;
+		width: 10px;
+		height: 10px;
+		margin: -5px 0 0 -5px;
+		border: 2px solid var(--shell-forest, #11291f);
+		border-radius: 50%;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.knob::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		top: 6px;
+		width: 2px;
+		height: 12px;
+		margin-left: -1px;
+		border-radius: 1px;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.scrub-tip {
+		position: absolute;
+		bottom: 16px;
+		z-index: 4;
+		transform: translateX(-50%);
+		padding: 3px 7px;
+		border-radius: 6px;
+		background: #fff;
+		color: var(--shell-forest, #11291f);
+		font: 500 11px var(--shell-sans, system-ui, sans-serif);
+		white-space: nowrap;
+		pointer-events: none;
+		box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 	}
 	.stop-meta em {
 		font-style: italic;
 	}
 	.slot {
 		position: relative;
-		flex: 0 0 52px;
-		width: 52px;
+		flex: 0 0 58px;
+		width: 58px;
 		display: grid;
 		place-items: center;
 	}
@@ -1596,7 +1742,7 @@
 		justify-content: center;
 		height: 18px;
 		min-width: 24px;
-		max-width: 50px;
+		max-width: 56px;
 		padding: 0 5px;
 		border: 1px solid transparent;
 		border-radius: 999px;
@@ -1618,7 +1764,8 @@
 		background: transparent;
 	}
 	.chip.travel {
-		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 45%, var(--shell-forest, #11291f));
+		background: var(--shell-gold, #d4ad45);
+		color: var(--shell-forest, #11291f);
 	}
 	.chip.jump,
 	.chip.end {
@@ -1629,11 +1776,11 @@
 		background: transparent;
 		color: color-mix(in srgb, var(--shell-caution, #c85a48) 35%, #fff);
 	}
-	/* A selected transition is the quiet leaf, whatever its kind. */
+	/* A selected transition: gold, ringed in ivory (owner review, 5 Nov). */
 	.chip.selected {
-		border-color: var(--shell-leaf-soft, #9fd3b6);
-		background: var(--shell-leaf-soft, #9fd3b6);
+		background: var(--shell-gold, #d4ad45);
 		color: var(--shell-forest, #11291f);
+		box-shadow: 0 0 0 2px var(--shell-ivory, #f3f0e4);
 	}
 	.caret {
 		position: absolute;
@@ -1715,13 +1862,13 @@
 		display: grid;
 		place-items: center;
 		flex: none;
-		width: 31px;
+		width: 26px;
 		height: 26px;
 		padding: 0;
 		border: 0;
-		border-radius: 7px;
-		background: var(--shell-leaf-soft, #9fd3b6);
-		color: #2a2208;
+		border-radius: 50%;
+		background: var(--shell-ivory, #f3f0e4);
+		color: var(--shell-forest, #11291f);
 	}
 
 	.visually-hidden {
@@ -1761,21 +1908,6 @@
 		/* The coarse hit area is 44 px; the visual track stays 8 px. */
 	}
 
-	.slot-progress {
-		position: absolute;
-		left: 4px;
-		right: 4px;
-		bottom: 3px;
-		height: 2px;
-		border-radius: 1px;
-		overflow: hidden;
-		pointer-events: none;
-	}
-	.slot-progress i {
-		display: block;
-		height: 100%;
-		background: var(--shell-leaf, #4f8f6c);
-	}
 	.gutter-time {
 		font-size: 9px;
 		letter-spacing: -0.01em;
@@ -1785,7 +1917,7 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		height: 10px;
+		height: 14px;
 		z-index: 2;
 		cursor: pointer;
 		touch-action: none;
