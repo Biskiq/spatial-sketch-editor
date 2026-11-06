@@ -41,7 +41,7 @@ import {
 	stopUpdateIntent,
 	viewRenameIntent
 } from '$lib/authoring/experience/commands';
-import { travelGapMessages } from '$lib/authoring/experience/travel-gap';
+import { travelGapMessages } from '$lib/authoring/experience/experience-problems';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { mountExperienceController, snapshotCell } from './__fixtures__/experience-controller-root.svelte';
 import { EXPERIENCE, experienceEnvelope } from './fixtures';

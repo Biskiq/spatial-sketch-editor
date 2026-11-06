@@ -138,6 +138,39 @@ describe('capture, binding and Guide order', () => {
 		expect(experience.stops.find((entry) => entry.id === 'stop-1')!.transition).toBeUndefined();
 	});
 
+	it('R15 — Travel → Cut → Travel keeps the path and reuses it', async () => {
+		const { source, coordinator } = await boot();
+		const connections = source.units.camera.data.connections.length;
+
+		const cut = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-r15-cut' },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				transition: 'cut'
+			})
+		);
+		expect(cut.kind).toBe('accepted');
+
+		const travel = await coordinator.accept(
+			stopUpdateIntent({
+				envelope: coordinator.acceptedSnapshot().domain.source,
+				revision: coordinator.acceptedRevision(),
+				ids: { operation: 'op-r15-travel' },
+				experienceId: 'experience-1',
+				stopId: 'stop-1',
+				transition: 'travel'
+			})
+		);
+		expect(travel.kind).toBe('accepted');
+		const after = coordinator.acceptedSnapshot().domain.source;
+		expect(experienceOf(after).stops.find((stop) => stop.id === 'stop-1')!.transition).toBe('travel');
+		expect(after.units.camera.data.connections).toHaveLength(connections);
+		expect(after.units.camera.data.connections[0]!.id).toBe(source.units.camera.data.connections[0]!.id);
+	});
+
 	it('refuses a Stop entry View that is not one of its Presentation views', async () => {
 		const { source, coordinator } = await boot();
 		const refused = await coordinator.accept(

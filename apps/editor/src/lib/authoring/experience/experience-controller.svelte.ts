@@ -60,7 +60,7 @@ import {
 	type ExperienceViewFacts,
 	type ResolvedContinuation
 } from './experience-model';
-import { travelGapMessagesByStop } from './travel-gap';
+import { travelGapMessagesByStop } from './experience-problems';
 import {
 	experiencePathOccurrences,
 	readExperiencePath,

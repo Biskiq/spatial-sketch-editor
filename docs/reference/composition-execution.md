@@ -998,7 +998,11 @@ Default change. The Stop update carries only its new entry View, never a Travel 
 property test runs reorders, inserts, entry changes, View reorders and a removal over Travels, a
 repeated Presentation and a Detour, and asserts every accepted change lowers without
 `travel-gap`, `travel-same-view`, `travel-after-last` or `stop-guide-membership`, and that one
-Undo restores the exact envelope. It does **not yet** implement the
+Undo restores the exact envelope. Slice 4 words every source finding for the creator:
+`experience-problems.ts` maps validator diagnostics and lowering refusals to `{ sentence,
+subject, fix, detail }` using Guide Stop numbers, Guide and Presentation names and Camera View
+labels; the chip's *Show* opens the Stop's Transition Card, and codes, paths and ids appear only
+in *Copy details*. It does **not yet** implement the
 later slices: the problems list (4), the strip and one timeline (5), the Experience Card and
 Guide Card retirement (6), the first Guide's *Tour* (7), `label: string | null` with the Scene
 unlink (8), and visitor progress (9). Each lands with a

@@ -68,7 +68,12 @@ export type PreviewEntry =
 			readonly options?: ExperienceInterpreterOptions;
 			readonly transitions?: readonly ExperienceProgramTransition[];
 	  }
-	| { readonly kind: 'unavailable'; readonly message: string };
+	| {
+			readonly kind: 'unavailable';
+			readonly message: string;
+			/** The lowering refusal that stopped Preview, for the problems chip. */
+			readonly refusal?: ExperienceLoweringRefusal | null;
+	  };
 
 /** An entry Preview can actually enter; the Head never stores an unavailable one. */
 export type EnterablePreviewEntry = Exclude<PreviewEntry, { readonly kind: 'unavailable' }>;
@@ -166,7 +171,7 @@ export function previewEntryFor(input: {
 			...baseLowering,
 			guideId: openGuide.id
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		return {
 			kind: 'program',
 			experienceId: experience.id,
@@ -187,7 +192,7 @@ export function previewEntryFor(input: {
 			// Stops and transitions must not refuse or shape this preview.
 			guideId: null
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		const presentation = lowered.program.presentations.find((entry) => entry.id === focus.presentationId);
 		if (presentation === undefined) {
 			const reason = unavailableFrom(lowered, envelope, experience.id).find(
@@ -228,7 +233,7 @@ export function previewEntryFor(input: {
 			...baseLowering,
 			guideId: experience.entryGuideId
 		});
-		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+		if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 		return {
 			kind: 'program',
 			experienceId: experience.id,
@@ -243,7 +248,7 @@ export function previewEntryFor(input: {
 
 	// 4. No Guide at all: the visitor list of enterable Presentations.
 	const lowered = lowerExperienceProgram(envelope, baseLowering);
-	if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered) };
+	if (lowered.kind === 'refused') return { kind: 'unavailable', message: refusalMessage(lowered), refusal: lowered };
 	return {
 		kind: 'presentations',
 		experienceId: experience.id,
