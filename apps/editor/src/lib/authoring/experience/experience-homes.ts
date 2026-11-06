@@ -36,6 +36,8 @@ export type ExperienceHomes = {
 	readonly sceneSubject: () => { readonly entityId: string; readonly label: string } | null;
 	/** Switch to the World lens keeping the Scene selection ("Open in World"). */
 	readonly openInWorld: () => void;
+	/** Arm the Stage for one object pick to link a Presentation; Esc cancels. */
+	readonly pickStageSubject?: (presentationId: string) => boolean;
 	/** Editor-only disclosure and the selected View's live gesture. */
 	readonly advancedCamera?: {
 		readonly on: () => boolean;

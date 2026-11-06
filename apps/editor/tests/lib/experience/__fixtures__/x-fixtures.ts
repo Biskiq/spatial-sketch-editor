@@ -164,7 +164,6 @@ async function present(a: Authoring, id: string, label: string, view: ReturnType
 			subjectEntityId: about ? SCENE_OBJECT_ID : null,
 			text: null,
 			guideId: null,
-			firstGuideLabel: null,
 			afterStopId: null
 		})
 	);

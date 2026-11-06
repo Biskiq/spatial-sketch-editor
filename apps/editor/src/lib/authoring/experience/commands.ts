@@ -191,12 +191,6 @@ export function captureBindIntent(input: {
 	readonly subjectEntityId: string | null;
 	readonly text: { kind: 'plain'; body: string } | null;
 	readonly guideId: string | null;
-	/**
-	 * Create the Experience's first Guide and this Stop as its initial Stop.
-	 * Only meaningful without `guideId`: the capture then installs View +
-	 * Presentation + Guide + Stop as one accepted result.
-	 */
-	readonly firstGuideLabel?: string | null;
 	readonly afterStopId: string | null;
 	/**
 	 * Experience review 1 (ready draft): create the Experience `experienceId` in the
@@ -204,22 +198,12 @@ export function captureBindIntent(input: {
 	 */
 	readonly newExperienceLabel?: string | null;
 }): AuthoringIntent {
-	const firstGuideLabel = input.firstGuideLabel ?? null;
 	const newExperienceLabel = input.newExperienceLabel ?? null;
-	if (firstGuideLabel !== null && input.guideId !== null) {
-		throw new Error('captureBindIntent: a capture authors either an existing Guide Stop or a first Guide, never both');
-	}
 	const allocated: AuthoringIntent['allocatedIds'][number][] = [
 		{ kind: 'view', id: input.ids.view! },
 		{ kind: 'presentation', id: input.ids.presentation! }
 	];
 	if (input.guideId !== null) allocated.push({ kind: 'stop', id: input.ids.stop! });
-	if (firstGuideLabel !== null) {
-		if (input.ids.guide === undefined) {
-			throw new Error('captureBindIntent: a first Guide needs a captured guide id');
-		}
-		allocated.push({ kind: 'stop', id: input.ids.stop! }, { kind: 'guide', id: input.ids.guide });
-	}
 	if (newExperienceLabel !== null) allocated.push({ kind: 'experience', id: input.experienceId });
 	return intent(
 		EXPERIENCE_CAPTURE_BIND_KIND,
@@ -236,7 +220,7 @@ export function captureBindIntent(input: {
 			},
 			// A Guide-free capture sends no Stop at all; it never manufactures a Guide
 			// or a Stop to hang one on.
-			...(input.guideId === null && firstGuideLabel === null
+			...(input.guideId === null
 				? { stop: null }
 				: {
 						stop: {
@@ -245,7 +229,6 @@ export function captureBindIntent(input: {
 							transition: 'cut'
 						}
 					}),
-			...(firstGuideLabel === null ? {} : { firstGuide: { label: firstGuideLabel } }),
 			...(newExperienceLabel === null ? {} : { newExperience: { label: newExperienceLabel } })
 		},
 		allocated

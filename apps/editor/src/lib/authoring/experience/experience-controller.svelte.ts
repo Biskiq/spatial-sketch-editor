@@ -637,7 +637,6 @@ export function createExperienceController(
 				subjectEntityId,
 				text: null,
 				guideId: null,
-				firstGuideLabel: null,
 				afterStopId: null,
 				newExperienceLabel: experience.newLabel
 			})
@@ -745,7 +744,6 @@ export function createExperienceController(
 					subjectEntityId: null,
 					text: null,
 					guideId: null,
-					firstGuideLabel: null,
 					afterStopId: null,
 					newExperienceLabel: experience.newLabel
 				}),

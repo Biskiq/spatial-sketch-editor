@@ -11,8 +11,8 @@
 	 *
 	 * It holds no Experience state. Every read goes through the controller and every write
 	 * through a controller command; selecting goes through the homes' one `select`, which
-	 * never moves the Camera. Its own state is local: whether the cards are compact, the
-	 * typed first-Guide name, the open + Stop menu, and the drag in progress.
+	 * never moves the Camera. Its own state is local: whether the cards are compact,
+	 * the open + Stop menu, and the drag in progress.
 	 */
 	import { tick, untrack } from 'svelte';
 	import { formatGuideTime } from '@portfolio/camera-core';
@@ -1635,11 +1635,6 @@
 		background: var(--shell-leaf-soft, #9fd3b6);
 		color: var(--shell-forest, #11291f);
 	}
-	/* The + sits under the gap chip, inside the gutter's width. */
-	/* Touch: a 44 px tall target that still fits the 38 px gutter; it sits under the taller touch chip. */
-	@media (pointer: coarse) {
-	}
-
 	.caret {
 		position: absolute;
 		top: 0;

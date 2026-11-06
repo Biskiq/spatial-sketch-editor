@@ -249,6 +249,7 @@ function fakeHomes(
 		select: vi.fn<(subject: ExperienceSubject | null) => void>(),
 		sceneSubject: () => null,
 		openInWorld: vi.fn(),
+		pickStageSubject: vi.fn(() => true),
 		lookThroughViewId: () => through.viewId ?? null,
 		lookThroughMoved: () => through.moved ?? false,
 		lookThroughFraming: () =>
@@ -794,6 +795,18 @@ describe('R217.S36 — Add to Guide creates the first Tour with no prompt (D-9)'
 		buttonNamed(target, 'Add to Guide').click();
 		await settle();
 		expect(controller.addStop).toHaveBeenCalledWith('gallery');
+	});
+});
+
+describe('R217.S37 — link a Presentation from the Stage', () => {
+	it('arms one Stage pick from About instead of a select', async () => {
+		const controller = fakeController({ selectedPresentationId: 'piano', subject: { kind: 'presentation', presentationId: 'piano' } });
+		const homes = fakeHomes(controller);
+		const target = mountHome(ExperiencePresentationWriter, {}, homes);
+		await settle();
+		expect(target.querySelector('select[aria-label="Stage object"]')).toBeNull();
+		buttonNamed(target, 'Pick on the Stage').click();
+		expect(homes.pickStageSubject).toHaveBeenCalledWith('piano');
 	});
 });
 

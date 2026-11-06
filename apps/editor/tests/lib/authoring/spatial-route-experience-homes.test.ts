@@ -954,6 +954,35 @@ describe('R217.S25 — one Card selection (D10)', () => {
 		expect(experienceFocus.read().presentationId).toBe('presentation-1');
 	});
 
+	it('Pick on the Stage links in one shot, while Esc cancels the pick', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		presentationRow('presentation-1')!.click();
+		await frame();
+		control('Pick on the Stage').click();
+		await frame();
+
+		await selectSceneEntityOnStage();
+		await vi.waitFor(() => expect(cardKind()).toMatch(/^Presentation/));
+		expect(experienceFocus.read().presentationId).toBe('presentation-1');
+		expect(card()!.textContent).toContain('Following the object\'s name');
+
+		// One shot: the next Stage pick is an ordinary Scene selection, not another link.
+		await selectSceneEntityOnStage();
+		await frame();
+		expect(cardKind()).toBe('Scene object');
+
+		presentationRow('presentation-2')!.click();
+		await frame();
+		control('Pick on the Stage').click();
+		await frame();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await frame();
+		await selectSceneEntityOnStage();
+		await frame();
+		expect(cardKind()).toBe('Scene object');
+	});
+
 	it('an undone Presentation clears the subject that named it, so no stale or blank Card remains', async () => {
 		await enterExperience();
 		await createExperience();

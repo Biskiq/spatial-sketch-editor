@@ -334,6 +334,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		redoUnavailableReason: 'Nothing to redo.'
 	});
 	let selection = $state<StageSelectionEntry | null>(null);
+	/** A one-shot Stage pick for linking a Presentation; Esc cancels it. */
+	let stagePickPresentationId = $state<string | null>(null);
 	/** The hovered subject's echoed entry; never the primary selection. */
 	let hoverSelection = $state<StageSelectionEntry | null>(null);
 	/** R217.S15 — whether the pointer is over a draggable selected Wall body or grip. */
@@ -355,6 +357,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	});
 	function changeLens(next: 'world' | 'experience'): void {
 		// A lens switch invalidates any Present-this framing run still waiting.
+		stagePickPresentationId = null;
 
 		// Preview returns to the lens it was entered from; a lens switch ends it.
 		closePreview();
@@ -541,6 +544,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * Experience replaces the Stage selection; nothing here moves the Camera.
 	 */
 	function selectExperienceSubject(subject: ExperienceSubject | null): void {
+		stagePickPresentationId = null;
 		facade?.select(null);
 		selection = null;
 		experienceController?.select(subject);
@@ -1468,6 +1472,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		select: selectExperienceSubject,
 		sceneSubject: () => experienceSceneSubject,
 		openInWorld: () => changeLens('world'),
+		pickStageSubject: (presentationId) => {
+			if (lens !== 'experience') return false;
+			stagePickPresentationId = presentationId;
+			notice = 'Pick a Stage object to link. Esc cancels.';
+			return true;
+		},
 		advancedCamera: {
 			on: () => advancedCamera,
 			set: (on) => { advancedCamera = on; },
@@ -3732,6 +3742,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * subject leaves the current Card selection alone.
 	 */
 	function syncPrimarySelection(next: StageSelectionEntry | null): void {
+		const pick = stagePickPresentationId;
+		if (
+			pick !== null &&
+			next !== null &&
+			next.reference.domain === 'scene' &&
+			next.reference.subject.kind === 'entity'
+		) {
+			stagePickPresentationId = null;
+			selection = null;
+			cardOpen = true;
+			void activeExperience?.linkPresentation(pick, next.reference.subject.id).then((accepted) => {
+				if (accepted) selectExperienceSubject({ kind: 'presentation', presentationId: pick });
+			});
+			return;
+		}
 		const keyOf = (entry: StageSelectionEntry | null) =>
 			entry === null
 				? ''
@@ -3748,6 +3773,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function selectHit(hit: StageSourceHit): void {
 		const stage = facade;
 		if (stage === null) return;
+		const pick = stagePickPresentationId;
+		if (
+			pick !== null &&
+			hit.reference !== undefined &&
+			hit.reference.domain === 'scene' &&
+			hit.reference.subject.kind === 'entity'
+		) {
+			stagePickPresentationId = null;
+			selection = null;
+			cardOpen = true;
+			void activeExperience?.linkPresentation(pick, hit.reference.subject.id);
+			return;
+		}
 		if (hit.reference !== undefined) {
 			stage.setSelection({ ordered: [{ reference: hit.reference }], primary: hit.reference });
 			selection = primaryEntry(stage.selectionState());
@@ -4524,6 +4562,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// S28 Esc precedence: a live marker gesture, then place, then Look through,
 		// then the Card's own unwinding.
 		if (event.key === 'Escape' && lens === 'experience') {
+			if (stagePickPresentationId !== null) {
+				event.preventDefault();
+				event.stopPropagation();
+				stagePickPresentationId = null;
+				notice = 'Pick cancelled.';
+				return;
+			}
 			if (pendingViewWrite !== null) {
 				event.preventDefault();
 				event.stopPropagation();

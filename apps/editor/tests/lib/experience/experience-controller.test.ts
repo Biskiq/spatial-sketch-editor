@@ -522,7 +522,6 @@ describe('Capture (D1, D2)', () => {
 				subjectEntityId: null,
 				text: null,
 				guideId: null,
-				firstGuideLabel: null,
 				afterStopId: null
 			})
 		);
@@ -602,7 +601,6 @@ describe('Capture (D1, D2)', () => {
 				subjectEntityId: 'entity-1',
 				text: null,
 				guideId: null,
-				firstGuideLabel: null,
 				afterStopId: null
 			})
 		);

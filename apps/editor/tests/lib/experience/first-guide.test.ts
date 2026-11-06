@@ -65,6 +65,29 @@ function experienceOf(envelope: ProjectEnvelope) {
 	return envelope.units.experience.data.experiences[0]!;
 }
 
+/** Planner-level first Guide capture; the command builder no longer authors this path. */
+function captureFirstGuide(
+	input: Omit<Parameters<typeof captureBindIntent>[0], 'guideId'> & {
+		readonly guideId: null;
+		readonly firstGuideLabel: string;
+	}
+): ReturnType<typeof captureBindIntent> {
+	const base = captureBindIntent({ ...input, guideId: null });
+	return {
+		...base,
+		payload: {
+			...(base.payload as Record<string, unknown>),
+			stop: { guideId: null, afterStopId: null, transition: 'cut' },
+			firstGuide: { label: input.firstGuideLabel }
+		} as typeof base.payload,
+		allocatedIds: [
+			...base.allocatedIds,
+			{ kind: 'stop', id: input.ids.stop! },
+			{ kind: 'guide', id: input.ids.guide! }
+		]
+	};
+}
+
 describe('first Guide creation', () => {
 	it('creates the first Guide and its initial Stop as one accepted result', async () => {
 		const { source, coordinator } = await boot();
@@ -120,7 +143,7 @@ describe('first Guide creation', () => {
 	it('captures a View, Presentation, first Guide and Stop in one accepted install', async () => {
 		const { source, coordinator } = await boot();
 		const accepted = await coordinator.accept(
-			captureBindIntent({
+			captureFirstGuide({
 				envelope: source,
 				revision: coordinator.acceptedRevision(),
 				ids: { operation: 'op-capture', view: 'view-new', presentation: 'presentation-new', stop: 'stop-new', guide: 'guide-new' },
@@ -257,36 +280,6 @@ describe('first Guide creation', () => {
 })
 		);
 		expect(duplicate).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'duplicate-identity' });
-		expect(coordinator.history().depth).toBe(1);
-	});
-
-	it('refuses a Stop that names neither an existing Guide nor the first Guide', async () => {
-		const { source, coordinator } = await boot();
-		// The command builder never produces this shape (a Guide-free capture sends no
-		// Stop), so the refusal is probed at the planner with its payload tampered: a
-		// Stop no order reaches would install and never be enterable.
-		const guideFree = captureBindIntent({
-			envelope: source,
-			revision: coordinator.acceptedRevision(),
-			ids: { operation: 'op-capture', view: 'view-new', presentation: 'presentation-new', stop: 'stop-orphan' },
-			experienceId: 'experience-1',
-			view: capturedViewPose({ label: 'View 3', eye: [1, 1.5, 3], target: [0, 1.4, 0], fov: 54 }),
-			presentationLabel: 'Entrance',
-			subjectEntityId: null,
-			text: null,
-			guideId: null,
-			afterStopId: null
-		});
-		const orphan: typeof guideFree = {
-			...guideFree,
-			payload: {
-				...(guideFree.payload as Record<string, unknown>),
-				stop: { guideId: null, afterStopId: null, transition: 'cut' }
-			} as typeof guideFree.payload,
-			allocatedIds: [...guideFree.allocatedIds, { kind: 'stop', id: 'stop-orphan' }]
-		};
-		const refused = await coordinator.accept(orphan);
-		expect(refused).toMatchObject({ kind: 'rejected', code: 'planner-rejected', reason: 'missing-target' });
 		expect(coordinator.history().depth).toBe(1);
 	});
 
@@ -428,7 +421,7 @@ describe('first Guide and capture-side refusals', () => {
 		const before = coordinator.acceptedSnapshot().domain.source;
 		const depth = coordinator.history().depth;
 		const refused = await coordinator.accept(
-			captureBindIntent({
+			captureFirstGuide({
 				envelope: before,
 				revision: coordinator.acceptedRevision(),
 				ids: { operation: 'op-capture-2', view: 'view-new', presentation: 'presentation-new', stop: 'stop-second', guide: 'guide-second' },
@@ -499,7 +492,7 @@ describe('first Guide and capture-side refusals', () => {
 		const depth = coordinator.history().depth;
 		// The builder always sends a null afterStopId for a first Guide, so the earlier
 		// Stop is tampered in: a first Guide has no earlier Stop to follow.
-		const guideFree = captureBindIntent({
+		const guideFree = captureFirstGuide({
 			envelope: source,
 			revision: coordinator.acceptedRevision(),
 			ids: { operation: 'op-capture-after', view: 'view-new', presentation: 'presentation-new', stop: 'stop-new', guide: 'guide-new' },

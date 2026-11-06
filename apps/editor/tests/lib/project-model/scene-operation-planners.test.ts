@@ -386,6 +386,13 @@ function supportCandidates(
 describe('scene operation planners — registration', () => {
 	it('registers exactly the twelve Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
+		expect(
+			planners.flatMap((planner) =>
+				'writes' in planner.admission && planner.admission.writes?.includes('experience')
+					? [planner.kind]
+					: []
+			)
+		).toEqual(['delete-one']);
 		expect(planners.map((planner) => planner.kind)).toEqual([
 			'place-object',
 			'create-form',

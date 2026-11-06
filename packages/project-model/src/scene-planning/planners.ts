@@ -25,7 +25,7 @@ import type {
 } from '../f4';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import { replaceUnitData } from '../units/envelope';
-import { unlinkSceneSubject } from '../units/experience-structure';
+import { unlinkSceneSubjects } from '../units/experience-structure';
 import type { ExperienceUnitPayload } from '../units/types';
 import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
 import type { ProjectEnvelope } from '../units/types';
@@ -490,13 +490,15 @@ function planExistingObject(
 		);
 	}
 	if (kind === 'delete-one' && result.kind === 'candidate') {
-		const target = context.scene.entities.find((entity) => entity.id === subject.entityId);
+		const removed = context.scene.entities
+			.filter((entity) => !result.scene.entities.some((candidate) => candidate.id === entity.id))
+			.map((entity) => ({ entityId: entity.id, effectiveName: entity.name }));
 		return toOutcome(
 			request,
 			kind,
 			result,
 			null,
-			target === undefined ? null : unlinkPresentations(request, subject.entityId, target.name)
+			removed.length === 0 ? null : unlinkPresentations(request, removed)
 		);
 	}
 	return toOutcome(request, kind, result);
@@ -586,13 +588,12 @@ function planOperation(
 
 function unlinkPresentations(
 	request: PlannerRequest<ProjectEnvelope>,
-	entityId: string,
-	effectiveName: string
+	removed: readonly { readonly entityId: string; readonly effectiveName: string }[]
 ): ExperienceUnitPayload | null {
 	const data = request.snapshot.domain.source.units.experience.data;
 	let changed = false;
 	const experiences = data.experiences.map((experience) => {
-		const next = unlinkSceneSubject(experience, entityId, effectiveName);
+		const next = unlinkSceneSubjects(experience, removed);
 		if (next !== experience) changed = true;
 		return next;
 	});

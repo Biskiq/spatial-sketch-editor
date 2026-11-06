@@ -33,6 +33,7 @@ import {
 	presentationDisplayName,
 	serializeProjectEnvelope,
 	unlinkSceneSubject,
+	unlinkSceneSubjects,
 	validateProjectEnvelope,
 	type Experience,
 	type ExperienceUnitPayload,
@@ -471,12 +472,54 @@ describe('following a Scene subject (G24, A-3)', () => {
 				{ ...EXPERIENCE.experiences[0]!.presentations[1]!, label: 'Other' }
 			]
 		};
+		const ownName: Experience = {
+			...experience,
+			presentations: [
+				...experience.presentations,
+				{ ...experience.presentations[0]!, label: 'Grand piano', subject: reference }
+			]
+		};
 		const next = unlinkSceneSubject(experience, 'piano', 'Pleyel piano');
 		expect(next.presentations[0]).toMatchObject({ label: 'Pleyel piano', subject: null });
 		expect(next.presentations[0]!.views).toEqual(experience.presentations[0]!.views);
 		expect(next.stops).toBe(experience.stops);
 		expect(next.presentations[1]).toBe(experience.presentations[1]);
+		expect(unlinkSceneSubject(ownName, 'piano', 'Pleyel piano').presentations[2]).toMatchObject({
+			label: 'Grand piano',
+			subject: null
+		});
 		expect(unlinkSceneSubject(experience, 'absent', 'No object')).toBe(experience);
+	});
+
+	it('unlinks every removed entity, including descendants, keeping own names', () => {
+		const reference = (entityId: string) => ({
+			version: 1 as const,
+			domain: 'scene' as const,
+			revision: { kind: 'exact' as const, contentRevision: 'scene-revision' },
+			subject: { kind: 'entity' as const, id: entityId },
+			instancePath: [],
+			location: { kind: 'project-root' as const },
+			componentId: null,
+			capabilityId: null
+		});
+		const base = EXPERIENCE.experiences[0]!;
+		const experience: Experience = {
+			...base,
+			presentations: [
+				{ ...base.presentations[0]!, label: null, subject: reference('parent') },
+				{ ...base.presentations[1]!, label: 'Child name', subject: reference('child') },
+				{ ...base.presentations[2]!, label: null, subject: reference('untouched') }
+			]
+		};
+		const next = unlinkSceneSubjects(experience, [
+			{ entityId: 'parent', effectiveName: 'Parent' },
+			{ entityId: 'child', effectiveName: 'Child' }
+		]);
+		expect(next.presentations.map((presentation) => [presentation.label, presentation.subject])).toEqual([
+			['Parent', null],
+			['Child name', null],
+			[null, reference('untouched')]
+		]);
 	});
 });
 

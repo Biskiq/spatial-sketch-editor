@@ -381,9 +381,21 @@ export function unlinkSceneSubject(
 			return presentation;
 		}
 		changed = true;
-		return { ...presentation, subject: null, label: effectiveName };
+		return { ...presentation, subject: null, label: presentation.label ?? effectiveName };
 	});
 	return changed ? { ...experience, presentations } : experience;
+}
+
+/** Unlink every removed entity, preserving each Presentation's own name. */
+export function unlinkSceneSubjects(
+	experience: Experience,
+	removed: readonly { readonly entityId: string; readonly effectiveName: string }[]
+): Experience {
+	let next = experience;
+	for (const entity of removed) {
+		next = unlinkSceneSubject(next, entity.entityId, entity.effectiveName);
+	}
+	return next;
 }
 
 /** One unordered pair of distinct Views a remaining Travel joins. */
