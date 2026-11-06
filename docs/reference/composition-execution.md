@@ -988,11 +988,17 @@ and `travel-same-view` are refused, Presentation steps are outgoing edges, lower
 `options.entryStopId ?? order[0]` and every program Stop emits `sequence-next`, and removing a
 Stop or Guide removes its Detours. Slice 3 reconciles Travel in every accepted Experience change: `normalizeTransitions` writes a
 Cut wherever a Travel can no longer mean anything, `requiredTravelPairs` names every remaining
-pair no Camera connection joins, and the planners add one straight path per pair from the
-captured id pool in the same change, under compound `writes: ['camera']` admissions. The Guide
-order, both creation intents, the Stop update, the Presentation update and every removal plan
-use it, so no ordinary edit lowers to `travel-gap`, `travel-same-view` or `travel-after-last`,
-and one Undo removes the edit, its Cuts and its paths together. It does **not yet** implement the
+pair no Camera connection joins, and `prepared()` adds one straight path per pair from the
+captured id pool in the same change, under compound `writes: ['camera']` admissions. Every
+endpoint-changing planner — Guide order, both creation intents, the Stop update, the
+Presentation update and every removal plan — routes through `prepared()`, and the controller
+sizes one `connectionPool()` for all of them: the Experience's Travel uses (Stop transitions
+plus Presentation View transitions) plus one, so no hand-sized array can starve an Enter-at or
+Default change. The Stop update carries only its new entry View, never a Travel path. A seeded
+property test runs reorders, inserts, entry changes, View reorders and a removal over Travels, a
+repeated Presentation and a Detour, and asserts every accepted change lowers without
+`travel-gap`, `travel-same-view`, `travel-after-last` or `stop-guide-membership`, and that one
+Undo restores the exact envelope. It does **not yet** implement the
 later slices: the problems list (4), the strip and one timeline (5), the Experience Card and
 Guide Card retirement (6), the first Guide's *Tour* (7), `label: string | null` with the Scene
 unlink (8), and visitor progress (9). Each lands with a

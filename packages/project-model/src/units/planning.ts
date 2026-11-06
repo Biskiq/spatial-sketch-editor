@@ -492,26 +492,15 @@ export function createExperienceCreatePlanner(): DomainPlanner<ProjectEnvelope> 
 					}
 				}
 			};
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes: [
+			return prepared(request, candidate, [
 						{ kind: 'experience.created', subjectIds: [created.id], fields: ['label', 'entryGuideId'] }
-					],
-					correspondence: [
+					], [
 						{
 							relation: 'created',
 							before: null,
 							after: reference('experience', 'experience', created.id, [], revisionOf(candidate, 'experience'))
 						}
-					],
-					diagnostics: []
-				}
-			};
+					]);
 		}
 	};
 }
@@ -943,18 +932,7 @@ export function createCaptureBindPlanner(
 					after: reference('experience', 'stop', newStop.id, [experience.id], revisionOf(candidate, 'experience'))
 				});
 			}
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes,
-					correspondence,
-					diagnostics: []
-				}
-			};
+			return prepared(request, candidate, changes, correspondence);
 		}
 	};
 }
@@ -1080,19 +1058,11 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 					}
 				}
 			};
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes: [
+			return prepared(request, candidate, [
 						{ kind: 'experience.guide.created', subjectIds: [newGuide.id], fields: ['label', 'stopIds', 'pacing'] },
 						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'] },
 						...(firstGuide ? [{ kind: 'experience.updated', subjectIds: [experience.id], fields: ['entryGuideId'] }] : [])
-					],
-					correspondence: [
+					], [
 						{
 							relation: 'created',
 							before: null,
@@ -1103,10 +1073,7 @@ export function createExperienceGuideCreatePlanner(): DomainPlanner<ProjectEnvel
 							before: null,
 							after: reference('experience', 'stop', newStop.id, [experience.id], revisionOf(candidate, 'experience'))
 						}
-					],
-					diagnostics: []
-				}
-			};
+					]);
 		}
 	};
 }
@@ -1232,27 +1199,16 @@ export function createExperienceStopCreatePlanner(): DomainPlanner<ProjectEnvelo
 					}
 				}
 			};
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes: [
+			return prepared(request, candidate, [
 						{ kind: 'experience.stop.created', subjectIds: [newStop.id], fields: ['presentationId', 'entryViewId', 'staySeconds', 'invitation', 'transition'] },
 						{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }
-					],
-					correspondence: [
+					], [
 						{
 							relation: 'created',
 							before: null,
 							after: reference('experience', 'stop', newStop.id, [experience.id], revisionOf(candidate, 'experience'))
 						}
-					],
-					diagnostics: []
-				}
-			};
+					]);
 		}
 	};
 }
@@ -1326,24 +1282,13 @@ export function createExperienceGuideOrderPlanner(): DomainPlanner<ProjectEnvelo
 					}
 				}
 			};
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes: [{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }],
-					correspondence: [
+			return prepared(request, candidate, [{ kind: 'experience.guide.updated', subjectIds: [guide.id], fields: ['stopIds'] }], [
 						{
 							relation: 'preserved',
 							before: reference('experience', 'guide', guide.id, [experience.id], revisionOf(envelope, 'experience')),
 							after: reference('experience', 'guide', guide.id, [experience.id], revisionOf(candidate, 'experience'))
 						}
-					],
-					diagnostics: []
-				}
-			};
+					]);
 		}
 	};
 }
@@ -2047,30 +1992,19 @@ export function createCameraConnectionCreatePlanner(): DomainPlanner<ProjectEnve
 					}
 				}
 			};
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes: [
+			return prepared(request, candidate, [
 						{
 							kind: 'camera.connection.created',
 							subjectIds: [connection.id],
 							fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath']
 						}
-					],
-					correspondence: [
+					], [
 						{
 							relation: 'created',
 							before: null,
 							after: reference('camera', 'connection', connection.id, [], revisionOf(candidate, 'camera'))
 						}
-					],
-					diagnostics: []
-				}
-			};
+					]);
 		}
 	};
 }
@@ -2157,24 +2091,13 @@ export function createCameraConnectionUpdatePlanner(): DomainPlanner<ProjectEnve
 					}
 				}
 			};
-			return {
-				kind: 'prepared',
-				candidate: {
-					operationId: request.intent.operationId,
-					sourceKind: request.snapshot.sourceKind,
-					sourceVersion: request.snapshot.sourceVersion,
-					source: candidate,
-					changes: [{ kind: 'camera.connection.updated', subjectIds: [updated.id], fields: changedFields }],
-					correspondence: [
+			return prepared(request, candidate, [{ kind: 'camera.connection.updated', subjectIds: [updated.id], fields: changedFields }], [
 						{
 							relation: 'preserved',
 							before: reference('camera', 'connection', previous.id, [], revisionOf(envelope, 'camera')),
 							after: reference('camera', 'connection', previous.id, [], revisionOf(candidate, 'camera'))
 						}
-					],
-					diagnostics: []
-				}
-			};
+					]);
 		}
 	};
 }

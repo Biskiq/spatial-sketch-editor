@@ -398,8 +398,6 @@ export function stopUpdateIntent(input: {
 	readonly staySeconds?: number;
 	readonly invitation?: ExperienceInvitation | null;
 	readonly transition?: ExperienceTransitionKind | null;
-	/** Travel: the straight Camera path this change adds when the pair has none (one Undo). */
-	readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
 }): AuthoringIntent {
 	return intent(
 		EXPERIENCE_STOP_UPDATE_KIND,
@@ -410,14 +408,9 @@ export function stopUpdateIntent(input: {
 			...(input.entryViewId === undefined ? {} : { entryViewId: input.entryViewId }),
 			...(input.staySeconds === undefined ? {} : { staySeconds: input.staySeconds }),
 			...(input.invitation === undefined ? {} : { invitation: input.invitation }),
-			...(input.transition === undefined ? {} : { transition: input.transition }),
-			...(input.travelPath === undefined ? {} : { travelPath: input.travelPath })
+			...(input.transition === undefined ? {} : { transition: input.transition })
 		},
-		input.ids.connections !== undefined
-			? input.ids.connections.map((id) => ({ kind: 'connection' as const, id }))
-			: input.travelPath === undefined || input.ids.connection === undefined
-				? []
-				: [{ kind: 'connection' as const, id: input.ids.connection }]
+		(input.ids.connections ?? []).map((id) => ({ kind: 'connection' as const, id }))
 	);
 }
 

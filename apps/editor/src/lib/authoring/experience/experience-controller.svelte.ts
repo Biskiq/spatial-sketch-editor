@@ -830,7 +830,7 @@ export function createExperienceController(
 				guideCreateIntent({
 					envelope: snapshot,
 					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId, connections: [newId()] },
+					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
 					experienceId: experience.id,
 					presentationId,
 					label: guideLabel,
@@ -859,7 +859,7 @@ export function createExperienceController(
 			stopCreateIntent({
 				envelope: snapshot,
 				revision: revision(),
-				ids: { operation: newId(), stop: stopId, connections: [newId()] },
+				ids: { operation: newId(), stop: stopId, connections: connectionPool() },
 				experienceId: experience.id,
 				presentationId,
 				guideId: guide.id,
@@ -892,7 +892,7 @@ export function createExperienceController(
 			guideOrderIntent({
 				envelope: snapshot,
 				revision: revision(),
-				ids: { operation: newId(), connections: order.map(() => newId()) },
+				ids: { operation: newId(), connections: connectionPool() },
 				experienceId: experience.id,
 				guideId: guide.id,
 				stopIds: order
@@ -909,6 +909,19 @@ export function createExperienceController(
 		return moveStopTo(stopId, to);
 	}
 
+	/** One captured connection id per Travel use in the Experience, plus one. */
+	function connectionPool(): string[] {
+		const experience = current;
+		const travels = experience === null
+			? 0
+			: experience.stops.filter((stop) => stop.transition === 'travel').length +
+				experience.presentations.reduce(
+					(total, presentation) => total + presentation.views.filter((view) => view.transition === 'travel').length,
+					0
+				);
+		return Array.from({ length: travels + 1 }, () => newId());
+	}
+
 	/**
 	 * One Stop edit that sends only the changed field: planning keeps every omitted field
 	 * and clears one with an explicit null.
@@ -920,7 +933,6 @@ export function createExperienceController(
 			readonly staySeconds?: number;
 			readonly invitation?: ExperienceInvitation | null;
 			readonly transition?: ExperienceTransitionKind | null;
-			readonly travelPath?: { readonly fromViewId: string; readonly toViewId: string };
 		}
 	): Promise<boolean> {
 		if (current === null) return false;
@@ -931,7 +943,7 @@ export function createExperienceController(
 				stopUpdateIntent({
 					envelope: snapshot,
 					revision: revision(),
-					ids: { operation: newId(), ...(fields.travelPath === undefined ? {} : { connection: newId() }) },
+					ids: { operation: newId(), connections: connectionPool() },
 					experienceId: experience.id,
 					stopId,
 					...fields
@@ -1021,28 +1033,15 @@ export function createExperienceController(
 		if (JSON.stringify(normalized) === JSON.stringify(normalize(presentation.views))) {
 			return false;
 		}
-		// A new Travel adds its straight path in the same change (§5), one Undo.
-		const connections = snapshot.units.camera.data.connections;
-		const travelPaths = normalized.flatMap((view, index) => {
-			if (index === normalized.length - 1 || view.transition !== 'travel') return [];
-			const to = normalized[index + 1]!.viewId;
-			const joined = connections.some(
-				(connection) =>
-					(connection.fromNodeId === view.viewId && connection.toNodeId === to) ||
-					(connection.fromNodeId === to && connection.toNodeId === view.viewId)
-			);
-			return joined ? [] : [{ fromViewId: view.viewId, toViewId: to }];
-		});
 		return run(
 			() =>
 				presentationUpdateIntent({
 					envelope: snapshot,
 					revision: revision(),
-					ids: { operation: newId(), connections: travelPaths.map(() => newId()) },
+					ids: { operation: newId(), connections: connectionPool() },
 					experienceId: experience.id,
 					presentationId,
-					views: normalized,
-					travelPaths
+					views: normalized
 				}),
 			message
 		);
@@ -1108,17 +1107,13 @@ export function createExperienceController(
 		const at = guide.stopIds.indexOf(stopId);
 		if (at === -1 || at === guide.stopIds.length - 1) return false;
 		if ((stop.transition ?? 'cut') === transition) return false;
-		// Travel makes its path: the straight Camera connection rides in the same
-		// accepted change, so Travel plays at once and one Undo takes both back.
+		// A Travel between two Stops that enter the same View stays a Cut, and a
+		// Travel's straight path is added by reconciliation in the same change.
 		const resolved = transition === 'travel'
 			? resolvePathOccurrence(current, guide, { kind: 'transition', stopId })
 			: null;
 		if (transition === 'travel' && (resolved === null || resolved.fromViewId === resolved.toViewId)) return false;
-		const travelPath =
-			resolved === null || resolved.fromViewId === resolved.toViewId
-				? undefined
-				: { fromViewId: resolved.fromViewId, toViewId: resolved.toViewId };
-		return updateStop(stopId, { transition, ...(travelPath === undefined ? {} : { travelPath }) });
+		return updateStop(stopId, { transition });
 	}
 
 	/**
@@ -1310,7 +1305,7 @@ export function createExperienceController(
 				guideCreateIntent({
 					envelope: snapshot,
 					revision: revision(),
-					ids: { operation: newId(), guide: guideId, stop: stopId, connections: [newId()] },
+					ids: { operation: newId(), guide: guideId, stop: stopId, connections: connectionPool() },
 					experienceId: experience.id,
 					presentationId,
 					label: trimmed,
@@ -1460,7 +1455,7 @@ export function createExperienceController(
 					? viewRemoveIntent({
 							envelope: snapshot,
 							revision: revision(),
-							ids: { operation: newId(), connections: [newId(), newId()] },
+							ids: { operation: newId(), connections: connectionPool() },
 							experienceId: experience.id,
 							presentationId: target.presentationId,
 							viewId: target.viewId,
@@ -1469,7 +1464,7 @@ export function createExperienceController(
 					: removeIntent({
 							envelope: snapshot,
 							revision: revision(),
-							ids: { operation: newId(), connections: [newId(), newId()] },
+							ids: { operation: newId(), connections: connectionPool() },
 							experienceId: experience.id,
 							subject: target.kind,
 							id: target.kind === 'stop' ? target.stopId : target.kind === 'guide' ? target.guideId : target.presentationId

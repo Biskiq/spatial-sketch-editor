@@ -118,7 +118,7 @@ describe('capture, binding and Guide order', () => {
 		expect(experienceOf(restored).guides[0]!.stopIds).toEqual(['stop-1', 'stop-2']);
 	});
 
-	it('reorders a Guide by stable Stop identity and refuses an order that would strand a Travel last (D-12)', async () => {
+	it('reorders a Guide by stable Stop identity and normalises a Travel that would strand last (D-12)', async () => {
 		const { source, coordinator } = await boot();
 		const accepted = await coordinator.accept(
 			guideOrderIntent({
@@ -130,12 +130,12 @@ describe('capture, binding and Guide order', () => {
 				stopIds: ['stop-2', 'stop-1']
 			})
 		);
-		// stop-1 leaves by Travel; putting it last would strand that Travel, so slice 2
-		// refuses instead of normalising it (slice 3 writes the Cut for me).
-		expect(accepted.kind).toBe('rejected');
+		// stop-1 leaves by Travel; putting it last would strand that Travel, so the
+		// planner writes the Cut for the caller instead of refusing the reorder.
+		expect(accepted.kind).toBe('accepted');
 		const experience = experienceOf(coordinator.acceptedSnapshot().domain.source);
-		expect(experience.guides[0]!.stopIds).toEqual(['stop-1', 'stop-2']);
-		expect(experience.stops.map((entry) => entry.id)).toEqual(['stop-1', 'stop-2']);
+		expect(experience.guides[0]!.stopIds).toEqual(['stop-2', 'stop-1']);
+		expect(experience.stops.find((entry) => entry.id === 'stop-1')!.transition).toBeUndefined();
 	});
 
 	it('refuses a Stop entry View that is not one of its Presentation views', async () => {

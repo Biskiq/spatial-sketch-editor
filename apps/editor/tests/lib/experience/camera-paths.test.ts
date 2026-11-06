@@ -637,8 +637,6 @@ describe('R217.S29 Camera paths', () => {
 		const stop = experience.stops.find((entry) => entry.id === fixture.ids.stopIds[0]!)!;
 		const destination = experience.stops.find((entry) => entry.id === fixture.ids.stopIds[4]!)!;
 		const before = project.units.camera.data.connections.length;
-		// x-salon keeps one other unjoined Travel (the piano's explore step), so the
-		// same accepted change joins both remaining pairs and one Undo removes both.
 		const travelled = await accept(
 			stopUpdateIntent({
 				envelope: project,
@@ -646,16 +644,12 @@ describe('R217.S29 Camera paths', () => {
 				ids: { operation: op('travel-with-path'), connections: ['x-salon-implicit', op('salon-extra-1'), op('salon-extra-2'), op('salon-extra-3')] },
 				experienceId: experience.id,
 				stopId: stop.id,
-				transition: 'travel',
-				travelPath: {
-					fromViewId: stop.entryViewId ?? experience.presentations.find((entry) => entry.id === stop.presentationId)!.views[0]!.viewId,
-					toViewId: destination.entryViewId ?? experience.presentations.find((entry) => entry.id === destination.presentationId)!.views[0]!.viewId
-				}
+				transition: 'travel'
 			})
 		);
 		if (travelled.kind !== 'accepted') throw new Error(JSON.stringify(travelled));
 		const after = coordinator.acceptedSnapshot().domain.source;
-		expect(after.units.camera.data.connections).toHaveLength(before + 2);
+		expect(after.units.camera.data.connections).toHaveLength(before + 1);
 		expect(after.units.camera.data.connections.some((entry) => entry.id === 'x-salon-implicit')).toBe(true);
 		expect(after.units.experience.data.experiences[0]!.stops.find((entry) => entry.id === stop.id)!.transition).toBe('travel');
 

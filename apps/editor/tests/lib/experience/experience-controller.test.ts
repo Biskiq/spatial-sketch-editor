@@ -243,7 +243,7 @@ describe('per-field Stop edits keep the other fields', () => {
 			stopUpdateIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId },
+				ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				stopId: 'stop-1',
 				staySeconds: 4
