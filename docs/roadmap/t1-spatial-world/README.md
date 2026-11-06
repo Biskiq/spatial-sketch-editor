@@ -50,7 +50,7 @@ reconciliation, precision) still proven and the visitor/public boundary still gr
 | Layout authoring | native plinth, Wall/Opening precision and existing straight-Wall length/angle/move shipped; shared F4 Undo/Redo and conditional Save | bounded native Wall creation after legacy vocabulary retirement, followed by later architectural capabilities |
 | Compiler | one canonical compiler in `@portfolio/layout-core` | unchanged ownership; representation consumes its output and never reconstructs topology |
 
-The [closed P01 outcome](./t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary) and
+The [closed P01 outcome](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary) and
 [F2 persistence contract](../../reference/components/persistence.md#one-source-format-f2-clean-epoch)
 describe this landed tree; production epoch activation remains a separate owner-controlled step.
 Future schema/authoring changes remain proposals until their explicit cutover.
@@ -64,7 +64,7 @@ propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand
 baseline, then C1 native Walls alongside C2 own-model import and the held T3 Capture/Preview scope.
 T1 can plan C1 while H0 is planned: C1 keeps one datum, captures non-reusing IDs, builds on the shipped Wall-role
 cutover and carries its compile/drag/commit/Undo performance proof. It is registered as
-[T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md) (batch E,
+[T1.P02 — Native Wall creation](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md) (batch E,
 [record](../../reference/decisions/batch-e-authorization-2026-10-22.md)): the owner accepted its drawing policy, authorized `T1.P02.S01` and released it from
 the hold, starting only after `T3.P03.S01` merges. On 2026-10-23 the owner released S05 legacy retirement
 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); it shipped by PR #183. On 2026-10-24 the owner
@@ -139,8 +139,8 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T1.P01 | shipped | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
-| T1.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md) |
+| T1.P01 | shipped | — | [T1.P01 — Stage and authoring foundation](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/README.md) |
+| T1.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T1.P02 — Native Wall creation](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md) |
 
 The `Depends on` column stays empty for T1.P01: the phase's first slice, `T1.P01.S01`, is itself
 the sole provider of `F1.reference@1` and `F3.channels@1`, so listing either as a phase dependency
@@ -185,9 +185,9 @@ scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026
 
 - `layout-core` **legacy floors/rooms types, `layout-codec`, `layout-room-frame` and the legacy
   `compileLayoutGeometry` adapter** — *discharged by
-  [T1.P02.S05](./t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/acceptance.md)*
+  [T1.P02.S05](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/acceptance.md)*
   (PR #183; accepted 2026-10-23 as `owner-override`). The format-6 wall-first reader is the only
-  Layout reader; the S01 [stop-and-report recovery](./t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md#recovery)
+  Layout reader; the S01 [stop-and-report recovery](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md#recovery)
   keeps the measured blockers.
 - `layout-core` legacy generation (`layout-compat`, `layout-migration`, `layout-migration-math`)
   was removed by PR #115 with no successor detector; nothing here re-introduces one.

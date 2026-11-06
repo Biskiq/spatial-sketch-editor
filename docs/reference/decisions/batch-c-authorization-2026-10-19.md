@@ -16,8 +16,8 @@ The reasoning is in the [batch C proposal](../../archive/roadmap/coordination-20
 
 | Slice | Phase | Plan | Consumes / Requires (unchanged) |
 | --- | --- | --- | --- |
-| `T1.P01.S05`: Existing straight-Wall manipulation (architecture-cycle terminal) | T1.P01 | [plan](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `viewport-projection-v1` |
-| `T2.P01.S04`: Bounded composition loop, the T2.P01 final phase gate | T2.P01 | [plan](../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `conditional-save-current-v1`, `viewport-projection-v1` |
+| `T1.P01.S05`: Existing straight-Wall manipulation (architecture-cycle terminal) | T1.P01 | [plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `viewport-projection-v1` |
+| `T2.P01.S04`: Bounded composition loop, the T2.P01 final phase gate | T2.P01 | [plan](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `conditional-save-current-v1`, `viewport-projection-v1` |
 
 **Prerequisites, verified against `main` `5fee2a2d` (post-PR #147).** Every consumed gate is
 `accepted` and every required scope is `active`:
@@ -61,8 +61,8 @@ own trusted base.
 
 Applied 2026-10-19 on PR #155, after the owner's approval:
 
-1. The S05 row in the [T1.P01 slice register](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#slice-register)
-   and the S04 row in the [T2.P01 slice register](../../roadmap/t2-composition/t2.p01-supported-composition/README.md#slice-register)
+1. The S05 row in the [T1.P01 slice register](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/README.md#slice-register)
+   and the S04 row in the [T2.P01 slice register](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/README.md#slice-register)
    moved to `approved`, and each Authorization cell links this record.
 2. The phase and track status lines, both plans' status and readiness lines and the cross-track
    header now say "authorized 2026-10-19 as batch C".

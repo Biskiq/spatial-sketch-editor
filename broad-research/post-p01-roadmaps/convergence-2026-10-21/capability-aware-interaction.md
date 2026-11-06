@@ -57,7 +57,7 @@ Start at [docs router](../../../docs/README.md), then read only these concerns a
 | [Camera contract](../../../docs/reference/components/camera-tour.md) | Current F2 ownership and Guide-free access; Camera is the sole viewing evaluator. |
 | [F contract](../../../docs/reference/composition-execution.md) | F.1 component/resource references, F.2 domain admission, F.3 contributions, F.4 compound acceptance, session logic, AM-3/6/9; extension points for only the first consumer's missing kinds. |
 | [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md) | §0.8.1 Presentation/subject/Preview, discovery ownership and final conformance test. Presentation is reusable composition, not a Scene container. |
-| [T3.P02](../../../docs/roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md) | Bounded outcome, exclusions and slice register: S01 approved; S02 proposed. Rich controls/general animation orchestration are excluded. |
+| [T3.P02](../../../docs/archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md) | Bounded outcome, exclusions and slice register: S01 approved; S02 proposed. Rich controls/general animation orchestration are excluded. |
 | Production evidence | `packages/project-model/src/{units/types.ts,units/experience/{lowering,interpreter,companion}.ts,program/types.ts,channels/{families,camera-output,handoff,negotiate,types}.ts,references/unit-resolution.ts,scene.ts}`, `apps/editor/src/lib/museum/assets/{AssetModel.svelte,model-utils.ts,instance-material-remap.ts}`, `apps/editor/assets-source/pipeline/normalize-asset.sh`. |
 | P1 evidence limit | Resolved by owner statement (above): the executable is intentionally absent; its mechanisms were not inspected. |
 

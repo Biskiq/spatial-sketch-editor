@@ -65,8 +65,8 @@ Find; their Card exposes Move, Turn, Place on floor, per-axis Size, Duplicate an
 through existing Scene planners/F4. Preview preserves visitor isolation and return to Stage
 preserves selection. Publication still refuses a form in the cold release check; T4 owns any
 admission. Limits and the codec rules are above; implementation evidence routes through the
-[T5.P01.S01 acceptance and evidence stub](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
-and [T5.P01.S02 acceptance record](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s02-shape-reading-and-sizing/acceptance.md),
+[T5.P01.S01 acceptance and evidence stub](../../archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/acceptance.md)
+and [T5.P01.S02 acceptance record](../../archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s02-shape-reading-and-sizing/acceptance.md),
 with the [reference decision](../decisions/t5-object-focus-planning-2026-10-27.md) owning the plan.
 
 **Current authoring.** The T2 Scene adapter places, edits, resizes, duplicates and deletes through
@@ -80,7 +80,7 @@ Preview pixels, stay unrun in its acceptance stub. The visitor reader remains ca
 `apps/editor/src/lib/museum/`, with catalogue policy in
 `apps/editor/src/lib/content/scene-validation.ts`. The directory name is not a separate product.
 Open and Download use F2 source JSON. Publication UI remains absent; the
-[bounded capture/Guide/Preview loop](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome)
+[bounded capture/Guide/Preview loop](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome)
 does not admit general Camera path authoring.
 
 ## Validation and transform contract (current)

@@ -1,7 +1,7 @@
 # Cinematic-scale computational strategy (S06 research input)
 
 Status: research handoff, written 2026-10-24 for
-[T1.P02.S06](../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md).
+[T1.P02.S06](../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md).
 **Not** a contract, plan, roadmap change or decision. It authorizes no format, semantics, rendering
 architecture, scope or benchmark pass. Every move outside S06's released scope is an owner
 decision, listed in [§7](#7-what-s06-establishes-now-and-what-the-owner-decides).

@@ -552,7 +552,7 @@ resource staging, validation, hashing, first pick and presented frames. Retain o
 byte-budgeted caches; dispose canceled results and detached resources. A stalled kernel must permit
 the UI to cancel/abandon the job and reclaim its worker without losing accepted source.
 
-[S06 acceptance](../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
+[S06 acceptance](../../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
 is the baseline, not a T5 benchmark. Its grid-M slowest-run p95s were 16.3 ms input-to-preview,
 25.51 ms commit and 12.21 ms Undo/Redo on the recorded M2/16 GiB/Chrome/AC setup (product
 `d89554b1`, harness `25d61deb`). Its L cold open remained about 5.06 s; canonicalization still

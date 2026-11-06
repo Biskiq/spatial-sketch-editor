@@ -355,7 +355,7 @@ consumer; independent output validation; no product-licence decision driven by g
   another reason beyond speed and licence to keep canonical solid evaluation in Manifold.
 
 **Performance.** Adopt G0's proposed decision targets, object envelope, stress case and memory target
-(G0 §7) and S06's [measurement method](../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md).
+(G0 §7) and S06's [measurement method](../../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md).
 Strata add a structural locality claim that work counters can assert:
 
 | Edit | Recomputes | Must not recompute |

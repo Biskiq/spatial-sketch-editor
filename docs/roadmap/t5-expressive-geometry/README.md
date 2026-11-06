@@ -23,7 +23,7 @@ integration strategy.
 
 ## Bounded objectives
 
-1. **Drawn native objects** ([T5.P01](./t5.p01-drawn-native-objects/README.md)). Native form source,
+1. **Drawn native objects** ([T5.P01](../../archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md)). Native form source,
    deterministic evaluation and Scene admission; creation from an Ink outline; per-axis sizing; and
    reuse across projects through My Objects, which inserts editable copies.
 2. **Object Focus** (planned as T5.P02 in the umbrella plan). Sections, outline revision and
@@ -87,7 +87,7 @@ investment.
   [depth research](../../../broad-research/spatial-modeling-depth-research-2026-10-25.md) and
   [Vellum](../../../prototypes/p3-vellum/DESIGN.md) — creative and technical evidence, not
   production authority.
-- [S06 acceptance](../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
+- [S06 acceptance](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
   — measurement method and baseline; not evidence that new geometry meets browser budgets.
 - [PLATE](../../reference/design-system/editor-shell-and-visual-system.md) — ratified shell
   authority; Object Focus obeys it.
@@ -96,7 +96,7 @@ investment.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T5.P01 | shipped | — | [Drawn native objects](./t5.p01-drawn-native-objects/README.md) |
+| T5.P01 | shipped | — | [Drawn native objects](../../archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md) |
 
 ## Workflow and authorization route
 

@@ -15,10 +15,10 @@ scope stays in its own plan. It copies none of them.
 
 | Slice | Phase | Plan | Consumes / Requires at authorization |
 | --- | --- | --- | --- |
-| `T1.P01.S02` — Shell, Stage and viewport provider | T1.P01 (registered 2026-10-15) | [plan](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | `F1.reference@1`, `F3.channels@1` / `references-v1`, `inspection-v1` |
-| `T1.P01.S03` — Local acceptance and history foundation | T1.P01 | [plan](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | `F1.reference@1` / `references-v1` |
-| `T2.P01.S01` — Deterministic candidates and canonical floor support | T2.P01 (registered here) | [plan](../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | `F1.reference@1` / `references-v1` |
-| `T3.P01.S01` — Shared unit and program codecs | T3.P01 (registered here) | [plan](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | `F1.reference@1`, `F3.channels@1` / `references-v1`, `inspection-v1` |
+| `T1.P01.S02` — Shell, Stage and viewport provider | T1.P01 (registered 2026-10-15) | [plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | `F1.reference@1`, `F3.channels@1` / `references-v1`, `inspection-v1` |
+| `T1.P01.S03` — Local acceptance and history foundation | T1.P01 | [plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | `F1.reference@1` / `references-v1` |
+| `T2.P01.S01` — Deterministic candidates and canonical floor support | T2.P01 (registered here) | [plan](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | `F1.reference@1` / `references-v1` |
+| `T3.P01.S01` — Shared unit and program codecs | T3.P01 (registered here) | [plan](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | `F1.reference@1`, `F3.channels@1` / `references-v1`, `inspection-v1` |
 
 Every consumed gate and required scope is `accepted` on the trusted base: post-PR #126 `main`
 (`6964c2dc`), where the accepted F1/F3 implementation commit `ee463d0b` is an ancestor. Each slice

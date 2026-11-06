@@ -55,7 +55,7 @@ kept below the paragraph as superseded text:
 The anchor choice is PR #149's option A: one ratified interface neighbourhood, resolvable by the
 register validator. The section was appended after AM-8 in
 [composition-execution.md](../composition-execution.md#ratified-amendments). The proposal's
-§2 explains each simplification relative to PR #149's [gate draft](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/preflight/gate-draft.md).
+§2 explains each simplification relative to PR #149's [gate draft](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/preflight/gate-draft.md).
 
 The ratified text is now
 [AM-9 in composition-execution.md](../composition-execution.md#am-9-shared-camera-and-experience-cutover).
@@ -74,7 +74,7 @@ PR #149's D1 option C. No compatibility disposition remains to review.
 
 ## R5 — Authorize `T3.P01.S04`
 
-Authorize S04 under its revised [plan](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md),
+Authorize S04 under its revised [plan](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md),
 with these conditions:
 
 - **Phase A** may start at authorization, on T3-owned files only, per the
@@ -107,7 +107,7 @@ Applied 2026-10-19 on PR #155, after the owner's approval:
    and the sole-providers line name AM-9.
 2. The gate register row is `ratified` at version 1, with the AM-9 anchor and provider
    `T3.P01.S04`.
-3. The S04 row in the [T3.P01 slice register](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#slice-register)
+3. The S04 row in the [T3.P01 slice register](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/README.md#slice-register)
    is `approved` and links this record. The phase and track status lines, the S04 plan and its
    authorization path read ratified/authorized.
 4. The [K2 row](../../roadmap/core-editor-stability.md) records the gap as approved under R4.

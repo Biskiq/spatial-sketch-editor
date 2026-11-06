@@ -13,9 +13,9 @@ merged on `main` (coordination trusted base `93ec96cadb752dd1c24bdea3b97570763d7
 
 | Scope | Outcome | Plan |
 | --- | --- | --- |
-| T1.P02.S05 | Legacy Layout retirement before native drawing | [plan](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md) |
-| T2.P02.S02 | Own-model import, review, approval, rendering and placement | [plan](../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/implementation-plan.md) |
-| T3.P02.S02 | First Guide, explicit Camera handover/return and exhaustive creator-loop final gate | [plan](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md) |
+| T1.P02.S05 | Legacy Layout retirement before native drawing | [plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md) |
+| T2.P02.S02 | Own-model import, review, approval, rendering and placement | [plan](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/t2.p02.s02-import-review-approve-place/implementation-plan.md) |
+| T3.P02.S02 | First Guide, explicit Camera handover/return and exhaustive creator-loop final gate | [plan](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md) |
 
 The Batch E start prerequisites are shipped. Each lane rechecks exact accepted gates and active
 scopes at its trusted base through its runbook, uses the reviewed shared-file ownership map,

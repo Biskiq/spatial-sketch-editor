@@ -6,7 +6,7 @@ withdrawn [E0 execution plan](./e0-execution-plan.md). It is roadmap authority, 
 contract: the [North Star](../../reference/north-star.md#creative-freedom-and-depth), the
 [architecture obligations](../../reference/architecture.md#expressive-creation-and-revision-destination),
 the Scene, persistence and assets contracts, F and PLATE keep their authority, and landed contracts
-keep describing current behavior. Only [T5.P01](./t5.p01-drawn-native-objects/README.md) is
+keep describing current behavior. Only [T5.P01](../../archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md) is
 registered. Later phases are planned here and registered when their predecessor's evidence supports
 them. Nothing here is released.
 
@@ -396,5 +396,5 @@ needs them.
 | [Expressive form research](../../../broad-research/expressive-3d-form-sculpting-hybrid-modeling-2026-10-27.md) | Intent above generated geometry, representation islands, deformation as an operator family, asynchronous browser architecture | A semantic graph as the first source model; an implicit-first substrate |
 | [G0 reconciled proposal](./g0-reconciled-proposal/README.md) and [kernel assessment](./g0-architecture-proposal/kernel-evidence.md) | Source/derivative separation, object-space binding, determinism obligations, library dispositions | Guide and band composition as the first investment; the R1–R5 milestones |
 | E0 ([withdrawn plan](./e0-execution-plan.md), PR #206) | Relocating controls is not a creative advantage | Its fixture, prototype and relationship machinery |
-| [S06 acceptance](../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md) | Measurement method and baseline | Any claim that new geometry meets budgets |
+| [S06 acceptance](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md) | Measurement method and baseline | Any claim that new geometry meets budgets |
 | Landed code | Scene planners' captured-input pattern and record scope, F4 unit acceptance and history, the shared Scene renderer, Plan footprint and hit paths, the robust orientation adapter, `WorkingPlane` for upright sheets | Layout's curve algebra and compiler, which stay Layout's |

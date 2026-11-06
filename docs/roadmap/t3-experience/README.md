@@ -60,7 +60,7 @@ No old-source converter, dual writer or Camera-order authority remains.
 ## Planning continuation
 
 Batch E's H0 correction and first capture shipped. The phase's final gate,
-[T3.P02.S02](./t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md),
+[T3.P02.S02](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md),
 added first Guide creation, resolved the Preview Camera output/return-ticket residual against the
 existing phase laws, and proved the complete creator loop, accessibility/isolation and performance
 on the integrated tree; it was accepted 2026-10-24
@@ -69,12 +69,12 @@ on the integrated tree; it was accepted 2026-10-24
 items keep the owners named in each phase README
 ([closure decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
 
-[C3 / T3.P04](./t3.p04-project-lifecycle/README.md) is **closed 2026-10-25** after its sole child
+[C3 / T3.P04](../../archive/roadmap/closed-phases/t3-experience/t3.p04-project-lifecycle/README.md) is **closed 2026-10-25** after its sole child
 `T3.P04.S01` shipped and passed its final gate on 2026-10-25. The accepted capability is project
 rename/delete, guarded replacement and project-owned model cleanup, implemented on T3
 persistence/API/client and the reviewed T1 shell. The T1 and T2 review prerequisites were satisfied;
 the final independent review and exhaustive integrated evidence are recorded in the
-[acceptance artifact](./t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
+[acceptance artifact](../../archive/roadmap/closed-phases/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
 This phase was strictly unrelated to the performance-first halt and introduced no gate/version or
 release authorization.
 
@@ -101,15 +101,15 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T3.P01 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
-| T3.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | [T3.P02 — First Capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md) |
-| T3.P03 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P03 — Shared acceptance, isolation and measurement](./t3.p03-shared-acceptance-and-measurement/README.md) |
-| T3.P04 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P04 — Project lifecycle](./t3.p04-project-lifecycle/README.md) |
+| T3.P01 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/README.md) |
+| T3.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | [T3.P02 — First Capture and Cut Preview](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md) |
+| T3.P03 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P03 — Shared acceptance, isolation and measurement](../../archive/roadmap/closed-phases/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) |
+| T3.P04 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P04 — Project lifecycle](../../archive/roadmap/closed-phases/t3-experience/t3.p04-project-lifecycle/README.md) |
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
 source/runtime cutover phase (S01–S06, final gate S04), with its
-[F amendment drafts](./t3.p01-camera-experience-foundation/f-amendment-proposals.md) as planning
+[F amendment drafts](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/f-amendment-proposals.md) as planning
 evidence. **`T3.P01.S01`** shipped 2026-10-16 (PR #131) and **`T3.P01.S02`** shipped 2026-10-16 (PR
 #133). **`T3.P01.S03`** shipped 2026-10-17 through its registered split, **`T3.P01.S05`** (PR #140)
 and **`T3.P01.S06`** (PR #141), which accepted `unit-acceptance-v1`, `conditional-save-units-v1` and

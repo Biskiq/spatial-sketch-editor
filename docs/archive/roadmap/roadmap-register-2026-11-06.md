@@ -56,7 +56,7 @@ Strictly unrelated work continues only through its own owner release. The
 owns the definition; this adds no lifecycle status.
 
 **Halt satisfied (2026-10-27).** `T1.P02.S06` is accepted AC-qualified (2026-10-27) and merged as
-`6af62eb4` ([acceptance stub](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)),
+`6af62eb4` ([acceptance stub](closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)),
 so the halt has spent its condition and no longer blocks those inheritors. **Satisfying the halt
 released nothing by itself.** `T1.P02.S02` and `T2.P02.S03` were then released on 2026-10-27
 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)) and have since run: S02
@@ -109,7 +109,7 @@ adopts the [T5 umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan
 native forms as Scene truth, created by drawing in World and refined in Object Focus, a scope on the
 one Stage, reusable across a creator's projects through My Objects. T5 is `approved` with one
 registered phase,
-[T5.P01 Drawn native objects](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md). No F
+[T5.P01 Drawn native objects](closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md). No F
 interface gate is added and nothing is released: the first slice starts only from an owner
 [release-list](./release-list-2026-11-06.md) row. Later phases are planned in the umbrella plan and registered on their
 entry evidence.
@@ -218,11 +218,11 @@ writers and merge order. Update this index only in the coordination change that 
 
 | Track | Shipped | Released — next | Held — awaiting owner authorization | Blocked on |
 | --- | --- | --- | --- | --- |
-| T1 | T1.P01 (closed 2026-10-21); [T1.P02](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) (closed 2026-10-28; S01–S06 shipped) | — | Next T1 planning/authorization (face-frame provider, vertical foundation, coordinate qualification, overhead admission) | No active T1 phase. T1.P02 closed after S04's accepted final gate at `46a31c81` and PR #210 merge `eb0931d6`; no performance benchmark, unmeasured rows stay unmeasured. A successor needs an owner release row. |
-| T2 | T2.P01 (closed 2026-10-20); [T2.P02](../../roadmap/t2-composition/t2.p02-own-model-import/README.md#slice-register) (closed 2026-10-27; S01–S03 shipped) | — | Next T2 phase planning/authorization (component identity/resolution/admission and revision correspondence) | No active T2 phase; the closed phase's formal performance rows are deferred to named T2 follow-ups, not passed |
-| T3 | [T3.P01](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
+| T1 | T1.P01 (closed 2026-10-21); [T1.P02](closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register) (closed 2026-10-28; S01–S06 shipped) | — | Next T1 planning/authorization (face-frame provider, vertical foundation, coordinate qualification, overhead admission) | No active T1 phase. T1.P02 closed after S04's accepted final gate at `46a31c81` and PR #210 merge `eb0931d6`; no performance benchmark, unmeasured rows stay unmeasured. A successor needs an owner release row. |
+| T2 | T2.P01 (closed 2026-10-20); [T2.P02](closed-phases/t2-composition/t2.p02-own-model-import/README.md#slice-register) (closed 2026-10-27; S01–S03 shipped) | — | Next T2 phase planning/authorization (component identity/resolution/admission and revision correspondence) | No active T2 phase; the closed phase's formal performance rows are deferred to named T2 follow-ups, not passed |
+| T3 | [T3.P01](closed-phases/t3-experience/t3.p01-camera-experience-foundation/README.md) (closed 2026-10-20); [T3.P02](closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md) and [T3.P03](closed-phases/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) (closed 2026-10-24); [T3.P04](closed-phases/t3-experience/t3.p04-project-lifecycle/README.md) (closed 2026-10-25) | — | — | All registered T3 phases closed. T3.P04 closed by owner ruling 2026-10-25 after T3.P04.S01 shipped and passed its final gate; its owner-ratified contract, satisfied T1/T2 prerequisites, independent review and exhaustive gate are recorded in the phase acceptance artifact; next is owner planning |
 | T4 | — | — | All T4 planning and implementation (frozen, R1-D) | [Core Editor Stability](../../roadmap/core-editor-stability.md) acceptance; its criteria await owner confirmation and its acceptance plan needs separate owner authorization |
-| T5 | — | — | [T5.P01](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) closed 2026-10-28; S01–S04 shipped; no active T5 phase | T5.P01 closed by owner ruling after S03's accepted final gate (PR #218, P1 merge `25e1bd8f`); next is owner T5 planning/authorization; T5 is not complete. The one authorized spot measured not-usable M/L under load and is not a performance pass; E0 withdrawn ([planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
+| T5 | — | — | [T5.P01](closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md#slice-register) closed 2026-10-28; S01–S04 shipped; no active T5 phase | T5.P01 closed by owner ruling after S03's accepted final gate (PR #218, P1 merge `25e1bd8f`); next is owner T5 planning/authorization; T5 is not complete. The one authorized spot measured not-usable M/L under load and is not a performance pass; E0 withdrawn ([planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)) |
 
 Release provenance is the [performance foundation decision](../../reference/decisions/performance-foundation-authorization-2026-10-24.md);
 the shipped post-Batch-E lanes keep the [post-Batch-E decision](../../reference/decisions/post-batch-e-authorization-2026-10-23.md);

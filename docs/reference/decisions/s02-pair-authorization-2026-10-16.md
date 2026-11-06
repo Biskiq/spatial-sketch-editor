@@ -17,8 +17,8 @@ scope stays in its own plan.
 
 | Slice | Phase | Plan | Consumes / Requires at authorization |
 | --- | --- | --- | --- |
-| `T2.P01.S02`: Scene operations and shared history | T2.P01 | [plan](../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1` / `references-v1`, `local-single-domain-v1` |
-| `T3.P01.S02`: Early conditional Save | T3.P01 | [plan](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s02-early-conditional-save/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1` / `references-v1`, `local-single-domain-v1` |
+| `T2.P01.S02`: Scene operations and shared history | T2.P01 | [plan](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1` / `references-v1`, `local-single-domain-v1` |
+| `T3.P01.S02`: Early conditional Save | T3.P01 | [plan](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s02-early-conditional-save/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1` / `references-v1`, `local-single-domain-v1` |
 
 Every consumed gate and required scope is `accepted` on the trusted base, post-PR #129 `main`
 (`1315b1a2`). `F1.reference@1:references-v1` was accepted at `ee463d0b`.

@@ -35,17 +35,17 @@ semantics.
 `/project/:id/spatial` offers an explicit starter gallery or a genuinely empty start, Plan/3D
 inspection and selection, a native Layout plinth, dimension edits of existing Walls and
 Openings, and straight-Wall pose
-([T1.P01](../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary)).
+([T1.P01](../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary)).
 It also places upright native and verified catalogue objects on compiled floor support and
 moves, yaws, resizes, duplicates and deletes them
-([T2.P01](../roadmap/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
+([T2.P01](../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
 One local accepted history with Undo/Redo, unit F4 acceptance and conditional cloud Save runs
 over the Camera/Experience source cutover and its shared execution interpreter
-([T3.P01](../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#bounded-outcome)).
-The later bounded loops add [straight-Wall drawing, closure, division and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
-[straight Wall-hosted door and window placement and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/acceptance.md),
-[single-model GLB import](../roadmap/t2-composition/t2.p02-own-model-import/README.md#outcome)
-and [Camera capture, Presentation/Guide authoring and isolated Cut Preview](../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
+([T3.P01](../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/README.md#bounded-outcome)).
+The later bounded loops add [straight-Wall drawing, closure, division and deletion](../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
+[straight Wall-hosted door and window placement and deletion](../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/acceptance.md),
+[single-model GLB import](../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md#outcome)
+and [Camera capture, Presentation/Guide authoring and isolated Cut Preview](../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
 The shared shell also provides a location chip and browser-local viewing settings in the Head, a
 zero-width collapsed locator Index, contextual Card and centered lower task edge. Narrow desktop
 and iPad use an overlay Index and an invoked Card; Camera vertical framing stays fixed as the

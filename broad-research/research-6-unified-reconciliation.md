@@ -142,7 +142,7 @@ a three-step ladder:
 | Own content | The asset API stores PNG, WebP or JPEG ([asset-persistence.ts](../apps/api/src/asset-persistence.ts)). No GLB path. `TypedResource` has kinds `texture` and `asset`, and no scale, pivot or provenance fields. | — | No editor caller | — | Images server-only; GLB conceptual (K1) |
 | Images and text as content | A textured `plane` primitive is the only image form, with no text entity ([scene.ts](../packages/project-model/src/scene.ts)). Program content is text-only. | Presentation text has no authored home (S06 residual) | — | — | Conceptual |
 | Experience source (Presentations, Stops, Guides) | Experience@1 codec and validation (T3.P01.S01) | Unit acceptance (S05) | No product importer of `units` or `program` | Cutover pending (T3.P01.S04) | Accepted-inactive |
-| Lowering, interpreter and companion | [lowering.ts](../packages/project-model/src/units/experience/lowering.ts), [interpreter.ts](../packages/project-model/src/units/experience/interpreter.ts), [companion.ts](../packages/project-model/src/units/experience/companion.ts) (S06) | Text, Cut/Travel bindings, state, lifecycle and channel policy are closed-fixture inputs ([S06 residuals](../docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md#residuals)) | Tests only | Deterministic replay | Accepted-inactive; Guide-free broken (§2.2) |
+| Lowering, interpreter and companion | [lowering.ts](../packages/project-model/src/units/experience/lowering.ts), [interpreter.ts](../packages/project-model/src/units/experience/interpreter.ts), [companion.ts](../packages/project-model/src/units/experience/companion.ts) (S06) | Text, Cut/Travel bindings, state, lifecycle and channel policy are closed-fixture inputs ([S06 residuals](../docs/archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md#residuals)) | Tests only | Deterministic replay | Accepted-inactive; Guide-free broken (§2.2) |
 | Camera profile controllers | [experience-controllers.ts](../packages/camera-core/src/experience-controllers.ts): guided, free (release and rejoin only) and reduced motion | Emit intents; Camera evaluates | Tests only. The live visitor orbits, or steps nodes ([VisitorCameraDirector.svelte](../apps/editor/src/lib/visitor/VisitorCameraDirector.svelte)). | — | Accepted-inactive; **no movement controller** |
 | F.1 reference resolution | Unit-backed resolution over the F.2 envelope ([unit-resolution.ts](../packages/project-model/src/references/unit-resolution.ts)) | Owner frames are refused ("a Room without an authored frame is not one"); component identity is refused | Live for selection | Retired subjects never retarget | Partial: no wall-face or Room frame |
 | F.4 correspondence | `CorrespondenceEntry` carries relation, before and after | Layout precision emits only `preserved` and `created` | Selection requalification, live | Kept for each of 100 editor history states ([history.ts](../apps/editor/src/lib/authoring/f4/history.ts)). Never saved, and has no parametric part. | Partial |
@@ -180,7 +180,7 @@ capabilities are mostly wiring over tested kernels, plus a few small, missing se
 - **The gap sits inside existing proposed scope.**
   - Core Editor Stability's proposed `Camera/Experience authoring` and `Isolated Preview` rows already
     say "bind a Presentation plus an optional Stop" and require Preview "through the shared lowering".
-  - The [T3.P02 proposal](../docs/roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md) repeats
+  - The [T3.P02 proposal](../docs/archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md) repeats
     "optional Guide Stop".
   - So as planned, P02 would let creators author Presentations that its own Preview silently drops.
 - **Requirement versus mechanism (Judgment).**
@@ -217,7 +217,7 @@ capabilities are mostly wiring over tested kernels, plus a few small, missing se
   refuses `'floor-supported'` placement and movement with `no-support`.
 - T2.P01 chose this boundary deliberately: "Genuinely empty Layout … Place refuses and offers Start
   gallery … Neither a datum nor T1's plinth is support"
-  ([T2.P01](../docs/roadmap/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
+  ([T2.P01](../docs/archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
 - **Inside the milestone it is coherent**, because Starter Gallery and K3 supply Rooms.
 - **Beyond the milestone it contradicts the ratified destination.** That destination says a creator
   importing one model "should reach composition and direction immediately"
@@ -291,15 +291,15 @@ Report it through the router's triage; do not fix product code here.**
     Save (`POST /api/projects` / `PUT /api/projects/:id`, `401` when unauthenticated) and does **not**
     promise `sessionStorage` draft handoff; the phrase "pending sign-in drafts resume" / "resume of the
     sign-in Save draft" appears in the
-    [T1.P01.S04 acceptance record](../docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/acceptance.md)
+    [T1.P01.S04 acceptance record](../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/acceptance.md)
     and in the `Error recovery` acceptance-area row of
     [`core-editor-stability.md`](../docs/roadmap/core-editor-stability.md).
   - **Ownership, authorization and verification boundary:**
-    [`T1.P01.S06`](../docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md)
+    [`T1.P01.S06`](../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md)
     is the **integrated final verification gate** (`Produces: Recorded phase integration acceptance only`),
     not an implementation slice, and must not have its scope implicitly expanded to add auth or
     persistence wiring. In the roadmap, **T3** (`T3.P01.S04`,
-    [`implementation-plan.md`](../docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md))
+    [`implementation-plan.md`](../docs/archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md))
     owns cutting `platform/project-persistence.ts` and `/routes/+page.svelte` over to the v2 unit
     envelope, while **T1** owns the `/project/:id/spatial` Head Save shell (which required an explicit
     narrow host-integration exception in `T1.P01.S04`). Neither track's current authorization covers new
@@ -537,7 +537,7 @@ T1's obligation is relationship-generic. It is not needed for that:
 
 | Proposal | From | Problem | What survives |
 | --- | --- | --- | --- |
-| A new `CompositionalAdvisory` / `Needs Review` tier via **AM-9** | #152 | The four-state report is already ratified. **AM-9 is taken:** the merged S04 preflight proposes it as "Shared Camera and Experience cutover" ([gate draft](../docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/preflight/gate-draft.md)). | Implement the ratified states with the first persisted relationship. |
+| A new `CompositionalAdvisory` / `Needs Review` tier via **AM-9** | #152 | The four-state report is already ratified. **AM-9 is taken:** the merged S04 preflight proposes it as "Shared Camera and Experience cutover" ([gate draft](../docs/archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/preflight/gate-draft.md)). | Implement the ratified states with the first persisted relationship. |
 | `Needs Review` as a general rule ("acknowledge and publish") | #152 | Whether release is blocked depends on the selected program and profile, and a warning cannot waive an executable failure (#151) | Keep it per profile at T4 |
 | `SceneSurfaceAnchor` with a cached authoritative transform; Room-floor and wall-face `FrameResolver`s | #152 | Two pose authorities. AM-1: "a Room without an authored frame cannot qualify". E2: Room hosts carry membership only. | Option A1, then consider B if X2a reveals a need and any warranted X2b comparison supports it (§4.3) |
 | `floorOffset` on derived Rooms | #152 | Conflicts with P23.6H/I, where Wall height is measured from the Floor elevation ([persistence](../docs/reference/components/persistence.md)) | A question for T1 levels planning |

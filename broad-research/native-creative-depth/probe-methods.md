@@ -96,7 +96,7 @@ The production output is **richer** than the kernel routes. It has normals, metr
    - choose the tessellation density of arched heads;
    - use an honestly labelled preview level of detail.
 
-   Those levers sit on the compile and representation path that [S06](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) owns.
+   Those levers sit on the compile and representation path that [S06](../../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) owns.
 
 ## 5. Results: other probes
 

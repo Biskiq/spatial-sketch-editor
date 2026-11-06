@@ -10,7 +10,7 @@ releases nothing: the [release list](../../archive/roadmap/release-list-2026-11-
 This record owns what was decided and what merging does. The
 [T5 umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) owns the architecture and
 roadmap; the [T5 track README](../../roadmap/t5-expressive-geometry/README.md) owns objectives and
-the phase register; [T5.P01](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md)
+the phase register; [T5.P01](../../archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md)
 owns its slice register.
 
 ## Owner ruling: E0 withdrawn
@@ -134,7 +134,7 @@ Merging is the owner's approval of:
    and assets contract's dependency-licensing sentences at the T5 licensing amendment;
 3. registration of `T5.P01` — Drawn native objects — with its slice register, its final gate and the
    T5 runbook and baton, and the approval of the
-   [first slice plan](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md);
+   [first slice plan](../../archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md);
    the My Objects slice `T5.P01.S04` is registered as proposed;
 4. the execution-structure gate's admission of T5 batons, runbooks and release-list rows
    (`apps/editor/tests/docs/workflow-cutover.test.ts`), so a T5 release row can be written

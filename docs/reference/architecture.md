@@ -38,9 +38,9 @@ apps/editor (product)            frozen Chopin project (separate)
   candidates through one F4 host and chronological history. The Head owns conditional Save,
   conflict/Reload and explicit sign-in Save recovery. One Canvas and one viewport evaluation
   serve both readings. Later bounded work adds
-  [Wall creation](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
-  [single-model GLB import](../roadmap/t2-composition/t2.p02-own-model-import/README.md#outcome)
-  and [Camera capture/Experience authoring/Cut Preview](../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
+  [Wall creation](../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
+  [single-model GLB import](../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md#outcome)
+  and [Camera capture/Experience authoring/Cut Preview](../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
   Those records retain their evidence limits; publication still requires T4.
   Owner-run production activation remains separate from landed code.
 - **Frozen, separate projects are outside product scope.** No product file
@@ -597,7 +597,7 @@ latency as well as main-thread responsiveness, within the one compiler.
 **Decisions intentionally left to consumers.** Native drawing must explicitly decide nested,
 overlapping, collinear and intentionally non-enclosing cases before C1 implementation; silent
 duplicate floors/solids are unacceptable. C1's answer is the owner-accepted
-[T1.P02 drawing policy](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
+[T1.P02 drawing policy](../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
 (batch E, E3), which applies as T1.P02's slices land it. The current per-area generated-ceiling fallback remains
 until an explicit closure-policy decision. Room-switch is a proposed alternative that removes a
 whole Room's fallback, including after merges; mandatory explicit gaps preserve the per-area

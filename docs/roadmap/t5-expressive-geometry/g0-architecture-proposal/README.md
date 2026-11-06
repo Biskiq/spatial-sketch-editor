@@ -66,7 +66,7 @@ inside that direction, not a new editor or a sixth catch-all authored domain.
 | [Spatial-modeling research](../../../../broad-research/spatial-modeling-depth-research-2026-10-25.md) and [native-depth synthesis](../../../../broad-research/native-creative-depth/synthesis-and-direction.md), PR #192 | Profiles, paths, repetition, meaningful frames and finish produce real creative value | The proposed exclusion of arbitrary booleans, free surfaces and retained operation graphs is too restrictive for this commission |
 | [Architectural depth study](../../../../prototypes/p3-depth/DESIGN.md), PR #195; [Vellum](../../../../prototypes/p3-vellum/DESIGN.md) | A roof field over a plan and a walk/rail rule derive complex results from few controls; contextual interpretation and legible consequences | The depth prototype uses floating-point arrangements and banded curved sections; its refusal of non-height-field roofs or complex joinery is not a permanent product boundary |
 | [Expressive form/sculpting research](../../../../broad-research/expressive-3d-form-sculpting-hybrid-modeling-2026-10-27.md), PR #200 | Semantic operations, representation boundaries, spatially bound edits and graded survival | It establishes ingredients, not a tested integrated engine; “hybrid” alone does not decide what to build |
-| [S06 acceptance](../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md), PR #190 | Canonical compilation, retained structures and representation, locality instrumentation and honest end-to-end measurement | Local derivation does not make acceptance, first picking or drawing independent of total project size |
+| [S06 acceptance](../../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md), PR #190 | Canonical compilation, retained structures and representation, locality instrumentation and honest end-to-end measurement | Local derivation does not make acceptance, first picking or drawing independent of total project size |
 | [World-scale study](../../../../broad-research/all-visible-editing-and-town-overview.md), PR #189 | Separate semantic work, transport, retained memory and presentation costs | Its scale and speedup objectives are historical hypotheses, not S06 certification |
 
 I reject two inherited shortcuts. First, excluding generated geometry from authored truth does
@@ -381,7 +381,7 @@ S06's recorded baseline is already valuable: on its M workload, warm input-to-pr
 16.3 ms, accepted commit 25.51 ms and Undo/Redo 12.21 ms (slowest run p95s). These were recorded on
 Apple M2, 16 GiB, Chrome 156.0.8078.48, AC, at product `d89554b1`, harness `25d61deb`; they are
 **historical S06 results, not new T5 measurements**. Its L cold open remained about 5.06 s, and
-canonicalization still touched the whole document. The [acceptance record](../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
+canonicalization still touched the whole document. The [acceptance record](../../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
 owns exact provenance, omitted rows and AC qualification; the
 [performance contract](../../../reference/components/performance.md) owns method and commands via
 the [test manual](../../../../apps/editor/tests/README.md#product-convergence-performance-workflow).

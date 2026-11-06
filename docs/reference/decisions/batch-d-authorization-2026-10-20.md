@@ -102,7 +102,7 @@ Disposition, as instructed:
 ## D3 — `T3.P02` is registered and `S01` is authorized
 
 `T3.P02 — First Capture and Cut Preview` is registered as a real phase at
-[`../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md`](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md),
+[`../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md`](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md),
 reconciled against the accepted F2 cutover rather than copied from the 2026-10-16 proposal. Its
 registration precondition — an accepted `T3.camera-experience-cutover@1` — is met at `06a8aac8`.
 
@@ -209,7 +209,7 @@ Owner: repository owner (authorized in the 2026-10-20 post-cutover commission)  
 ## D1 corrective amendment — owner-approved October 20, 2026
 
 During the PR #168 takeover, the owner explicitly approved the narrow
-[TD-11/TD-12 amendment](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/d1-amendment.md),
+[TD-11/TD-12 amendment](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/d1-amendment.md),
 then separately approved its supplemental Index-selection cloneability correction. The linked record
 owns the exact bounded increments. No other D1–D4 scope or Batch D ownership changed. The owner later
 requested that further independent review stop and the checkpoint be pushed for their own review;

@@ -15,7 +15,7 @@ coordinated T4 cutover. T3 owns the sole authored-source conversion and visitor 
 T4 reuses its ExecutionProgram codec/lowering/interpreter. No default legacy Experience identity map.
 
 Use the [coordinated provider/readiness/DAG proposal](../../archive/roadmap/cross-track-execution-2026-11-06.md) and
-[T3 unit/program draft](../t3-experience/t3.p01-camera-experience-foundation/f-amendment-proposals.md). F5 provider work needs the shared program codec, not T3 activation;
+[T3 unit/program draft](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/f-amendment-proposals.md). F5 provider work needs the shared program codec, not T3 activation;
 offline lowering/storage can use closed F2 fixtures and accepted runtime primitives. Final public
 activation consumes accepted T3 S04, never completion of T3 authoring/track. These remain proposals.
 Planning proceeds on the landed r186 base: the separate

@@ -36,8 +36,8 @@ Verified at this base:
 | --- | --- | --- | --- |
 | E1 | Register `T3.P03`, `T1.P02` and `T2.P02` | Phase-register rows, phase READMEs with slice registers, final gates, `PHASE CLOSE Stage: active`, acceptance stubs and plans for every child | Any gate, version, capability entry or architecture-cycle window |
 | E2 | Authorize `T3.P03.S01` and `T3.P03.S02`; release `T3.P03` from the hold | The two slice plans as written | Any product feature, source format or gate change |
-| E3 | Accept the C1 drawing and enclosure policy | The five rules in [T1.P02](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22), as written | Nested courtyards, hole semantics and non-enclosing rings |
-| E4 | Accept the C2 upload, retention and derivative bounds | [T2.P02](../../roadmap/t2-composition/t2.p02-own-model-import/README.md#upload-retention-and-derivative-bounds-owner-accepted-2026-10-22) S01 and S02 | Server-side derivative processing |
+| E3 | Accept the C1 drawing and enclosure policy | The five rules in [T1.P02](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22), as written | Nested courtyards, hole semantics and non-enclosing rings |
+| E4 | Accept the C2 upload, retention and derivative bounds | [T2.P02](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md#upload-retention-and-derivative-bounds-owner-accepted-2026-10-22) S01 and S02 | Server-side derivative processing |
 | E5 | Accept `T3.P02.S01`'s finalized convergence scope | The S01 plan's finalized scope, the Experience format draft and the shell draft's Preview entry rule | Settling the format draft's two open points (implementation review settles them) |
 | E6 | Reference A hardware for hard performance rows | The owner designates a Reference A machine and its operator | A Reference B substitution, which would amend the ratified performance contract |
 | E7 | Authorize `T1.P02.S01` and `T2.P02.S01`; release them and `T3.P02.S01` from the hold | Each starts only after `T3.P03.S01` merges | Every later child of the three phases, and `T3.P02.S02` |
@@ -46,9 +46,9 @@ Verified at this base:
 
 | Phase | Track | Children | Final gate |
 | --- | --- | --- | --- |
-| [`T3.P03` — Shared acceptance, isolation and measurement](../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) | T3 (H0) | S01 planner scope and build isolation, S02 measurement workflow and final gate | `T3.P03.S02` |
-| [`T1.P02` — Native Wall creation](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md) | T1 (C1) | S01 Layout identity and format cutover, S02 draw/close/divide/delete, S03 Opening family, S04 integrated final gate | `T1.P02.S04` |
-| [`T2.P02` — Own model import](../../roadmap/t2-composition/t2.p02-own-model-import/README.md) | T2 (C2) | S01 model resource storage and admission, S02 import/review/approve/place, S03 integrated final gate | `T2.P02.S03` |
+| [`T3.P03` — Shared acceptance, isolation and measurement](../../archive/roadmap/closed-phases/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) | T3 (H0) | S01 planner scope and build isolation, S02 measurement workflow and final gate | `T3.P03.S02` |
+| [`T1.P02` — Native Wall creation](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md) | T1 (C1) | S01 Layout identity and format cutover, S02 draw/close/divide/delete, S03 Opening family, S04 integrated final gate | `T1.P02.S04` |
+| [`T2.P02` — Own model import](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md) | T2 (C2) | S01 model resource storage and admission, S02 import/review/approve/place, S03 integrated final gate | `T2.P02.S03` |
 
 The registration declares only consumers. Every child consumes accepted gates and requires active
 scopes at the base above, and no child provides a gate. The registers carry the exact `Consumes` and
@@ -74,7 +74,7 @@ S01 merges first. S02 may run in parallel with the released first-wave slices; i
 
 ## E3 — The C1 drawing and enclosure policy is accepted
 
-The [five rules](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
+The [five rules](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
 are accepted as written:
 
 1. Every closed ring encloses.
@@ -104,11 +104,11 @@ The alternative, server-side derivative processing, is declined for the first wa
 
 The following are accepted:
 
-- the [finalized convergence scope](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md#finalized-convergence-scope-owner-accepted-2026-10-22),
+- the [finalized convergence scope](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md#finalized-convergence-scope-owner-accepted-2026-10-22),
   including Guide-free Preview entry;
-- the [Experience format draft](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/experience-format-draft.md),
+- the [Experience format draft](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/experience-format-draft.md),
   as the format S01 implements;
-- the [shell draft's](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/shell-draft.md)
+- the [shell draft's](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/shell-draft.md)
   Preview entry rule.
 
 The two open points in the format draft are settled at implementation review: the text length bound
@@ -155,7 +155,7 @@ The first acceptances that bind such rows are:
 from the hold.
 
 **Start gate.** Each of the three starts only when `T3.P03.S01` has merged on `main`. Its row in the
-[T3.P03 slice register](../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md#slice-register)
+[T3.P03 slice register](../../archive/roadmap/closed-phases/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md#slice-register)
 then reads `shipped` at the starting slice's trusted base. The condition is recorded in each slice's
 `Authorization` cell and checked with the runbook start step's eligibility reading of that row.
 

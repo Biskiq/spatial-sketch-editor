@@ -232,11 +232,11 @@ unnecessary copying by accident.
 
 ## 6. Reproduction and falsification
 
-The [S06 implementation record](../t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md#persistent-representation-takeover)
+The [S06 implementation record](../../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md#persistent-representation-takeover)
 owns the final measured tables and limitations. The
-[review handoff](../t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#current-independent-review-boundary)
+[review handoff](../../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#current-independent-review-boundary)
 maps each invariant to source and focused falsifiers. The
-[evidence directory](../t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/evidence/persistent-2026-10-25/README.md)
+[evidence directory](../../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/evidence/persistent-2026-10-25/README.md)
 contains raw samples, complete named counters, allocation estimates, memory observations, oracle
 digests, baseline instrumentation and replay commands.
 

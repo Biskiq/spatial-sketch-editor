@@ -56,12 +56,12 @@ single child and releases it on [the release list](../../archive/roadmap/release
 
 | Scope | Outcome | Plan |
 | --- | --- | --- |
-| T3.P04.S01 | Owner-scoped project rename and delete with stale/conflict protection, project-scoped resource cleanup, and a bounded T1-reviewed shell patch | [plan](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) |
+| T3.P04.S01 | Owner-scoped project rename and delete with stale/conflict protection, project-scoped resource cleanup, and a bounded T1-reviewed shell patch | [plan](../../archive/roadmap/closed-phases/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) |
 
 The release was recorded when this documentation PR merged on `main`; the runbook re-verified every
 consumed gate and scope at the implementation's own trusted base. Its planning review against
 current `main`, and the issues it resolved or escalated, are recorded in the
-[planning resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md).
+[planning resolution](../../archive/roadmap/closed-phases/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md).
 
 **Two owner reviews of the planning resolution (2026-10-24) corrected the deletion mechanism and
 raised two contract questions.** The owner ratified both on 2026-10-25 in
@@ -71,7 +71,7 @@ refuses only while a publication is **active**, removing the retained inactive p
 unpublication. They are now current behavior; the owning persistence contract records the result.
 
 The same reviews corrected the durable-cleanup design in the
-[resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md):
+[resolution](../../archive/roadmap/closed-phases/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md):
 a revocable write fence over every project-owned object writer with an enforced write bound (F1), a
 persisted key inventory that includes the approved revision's source copies (F2), and a
 project-scoped listing (F3). These are mechanism corrections, not new scope; the resolution names
@@ -89,7 +89,7 @@ harness ownership were not changed.
 
 PR #191's final independent review 5644765570 accepted the implementation at `550f8a9b` with no
 open correctness finding. The exhaustive integrated gate and formal slice acceptance are recorded in
-the [T3.P04.S01 acceptance artifact](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
+the [T3.P04.S01 acceptance artifact](../../archive/roadmap/closed-phases/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/acceptance.md).
 T3.P04 is CLOSABLE and remains active pending the separate owner phase-close decision. No T3 track
 completion, F2 production activation, publication activation, deployment or architecture-cycle
 transition is implied.

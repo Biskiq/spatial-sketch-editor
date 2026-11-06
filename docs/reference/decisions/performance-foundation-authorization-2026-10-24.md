@@ -23,26 +23,26 @@ over. maximum 3 times”. The sequence the owner set is:
 S06 is therefore capped at three full benchmark passes, all owner-run on the reference machine.
 Agents run no full pass; a fourth needs an explicit owner ruling. For a contaminated or aborted
 pass, the owner rules whether it counts and whether to rerun it; it is never silently repeated. The
-[slice plan](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md#benchmark-sequence-owner-run-at-most-three-passes)
+[slice plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md#benchmark-sequence-owner-run-at-most-three-passes)
 owns the details.
 
 This record captures a **bounded replanning** event (a new owner-authorized goal, per
 [operations](../../archive/process/operations-README-2026-11-06.md#bounded-replanning)) and an owner release. The
 [current coordination](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch) owns execution
-coordination. The [slice plan](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)
+coordination. The [slice plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)
 owns scope and evidence.
 
 ## Registered, authorized and released scope
 
 This coordination registers **T1.P02.S06 — Performance foundation** in
-[T1.P02](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register), after
+[T1.P02](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register), after
 S05 and before S02. It authorizes and releases exactly this one implementation scope. The scope
 starts once this documentation PR is merged on `main` (coordination trusted base
 `696af6ea3b4750432383cda2a90d4f002b9ed783`):
 
 | Scope | Outcome | Plan |
 | --- | --- | --- |
-| T1.P02.S06 | A peak-first, setup-free measurement method; L/XL and realistic-load workloads; per-stage scaling evidence; algorithmic fixes inside the one compiler and its consumers; a permissive-only math/geometry library exploration | [plan](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) |
+| T1.P02.S06 | A peak-first, setup-free measurement method; L/XL and realistic-load workloads; per-stage scaling evidence; algorithmic fixes inside the one compiler and its consumers; a permissive-only math/geometry library exploration | [plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) |
 
 S06 belongs to C1 because the [performance contract](../components/performance.md#acceptance-and-workflow)
 gives C1 the compile/admission deduplication and the measured optimization experiment. S06 does
@@ -96,7 +96,7 @@ machine while S06 is measuring. The slice plan's machine lock enforces this.
   experiment inside the one compiler. S02 keeps recording the rows for its own new drawing flows on
   S06's method. The “preview equals planner output” semantics question stays an owner decision.
 - **From T3.P02.S02's deferred Scope A to S06, as measurement.** The
-  [owner ruling](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/acceptance.md#owner-ruling--performance-and-unrun-rows-deferred-2026-10-24)
+  [owner ruling](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/acceptance.md#owner-ruling--performance-and-unrun-rows-deferred-2026-10-24)
   named a separate performance and scale exploration. S06 is that exploration, and it measures:
   - the traced Preview first frame and capture/bind completion;
   - the M-workload F10 rows;

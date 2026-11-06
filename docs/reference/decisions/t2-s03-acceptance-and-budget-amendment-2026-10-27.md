@@ -4,8 +4,8 @@
 `b9ba493b`, amended the Stage route first-load JS hard budget from ≤400 to ≤425 KiB br, deferred the
 unverified formal performance rows to named follow-up owners, and directed `T2.P02` to close.
 
-This record is decision provenance. The [acceptance artifact](../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)
-owns the gate evidence; the [phase README](../../roadmap/t2-composition/t2.p02-own-model-import/README.md)
+This record is decision provenance. The [acceptance artifact](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)
+owns the gate evidence; the [phase README](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md)
 owns lifecycle and the `PHASE CLOSE` block; [performance.md](../components/performance.md) owns the
 amended row; the [release list](../../archive/roadmap/release-list-2026-11-06.md) owns permission. No track completion, gate
 version, format, package or production state is created here.
@@ -30,7 +30,7 @@ the acceptance record asserts. The creator-model manipulation finding is repaire
 
 ## Stage first-load budget amendment
 
-The owner ruled the evidence-backed [amendment proposal](../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/delivery-budget-proposal.md)
+The owner ruled the evidence-backed [amendment proposal](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/delivery-budget-proposal.md)
 in favour of the measured floor:
 
 ```text

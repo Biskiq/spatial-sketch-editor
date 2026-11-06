@@ -63,7 +63,7 @@ baseline, then C1 native Walls, C2 own-GLB import and Capture/Preview. Batch E l
 shipped; remaining scopes follow the [next parallel batch](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch). It is whole-object editor import with retained original bytes/hash,
 recipe identity/version and a parts-safe derivative; no components are admitted or addressable, qualified
 references keep `componentId: null`, and no T4 dependency is introduced. It is registered as
-[T2.P02 — Own model import](./t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md))
+[T2.P02 — Own model import](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md))
 and **closed 2026-10-27**: the upload, retention and derivative bounds are accepted, S01–S03 shipped,
 and S03's final gate was accepted by owner ruling with the Stage first-load budget amended to ≤425
 KiB br ([decision](../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)).
@@ -97,12 +97,12 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T2.P01 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P01 — Supported object composition](./t2.p01-supported-composition/README.md) |
-| T2.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P02 — Own model import](./t2.p02-own-model-import/README.md) |
+| T2.P01 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P01 — Supported object composition](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/README.md) |
+| T2.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P02 — Own model import](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md) |
 
 T2.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
-[interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md).
+[interface/reconciliation drafts](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/contracts.md).
 **`T2.P01.S01`** shipped 2026-10-16; it consumed the accepted
 `F1.reference@1` alone. **`T2.P01.S02`** shipped 2026-10-17, consuming `F1.reference@1` and
 `F4.intent-acceptance@1`; its authorization is the owner decision of 2026-10-16
@@ -123,7 +123,7 @@ written, and `T2.P02` **closed 2026-10-27**. S01 shipped with owner-override acc
 merge-gate evidence; S02 was owner-authorized, released 2026-10-23
 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and accepted
 2026-10-24; S03 was released 2026-10-27 and **accepted by owner ruling 2026-10-27 at `b9ba493b`**
-([acceptance](./t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)), with the
+([acceptance](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)), with the
 Stage first-load budget amended to ≤425 KiB br and the formal performance rows deferred to the named
 T2 follow-ups, never recorded as passes
 ([decision](../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)).

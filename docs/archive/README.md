@@ -32,6 +32,9 @@ PR #115 (WP4) kept the archive deliberately small. It holds:
 - `roadmap/coordination-2026-10/` — the dated October 2026 batch proposals, convergence
   packages and the pre-consolidation cross-track protocols, archived 2026-10-23. Their
   relative links were written from `docs/roadmap/`.
+- `roadmap/closed-phases/` — the closed T1.P01/P02, T2.P01/P02, T3.P01–P04 and T5.P01
+  planning, acceptance and evidence packets, archived 2026-11-06. Their area READMEs stay
+  live for current contracts and routing; these are historical records, not capability status.
 - `roadmap/` and `process/` — the 2026-11-06 workflow cutover: the former roadmap register
   (`roadmap-register-2026-11-06.md`), release list (`release-list-2026-11-06.md`),
   cross-track execution, parallel-track cutover, operations event procedures and batons,

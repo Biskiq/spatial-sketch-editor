@@ -122,7 +122,7 @@ destination is never presented as shipped.
   slice scope is unchanged by this record. Under PLATE's feature design loop those read as the
   dock's tools (Ink; Ink on a wall face) and are reconciled at each slice's shell-draft review
   as a named design decision. See the alignment notes in the
-  [T1.P02 shell draft](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/shell-draft.md).
+  [T1.P02 shell draft](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/shell-draft.md).
 - No format, gate, track or phase status changes. The production hold stands.
 
 ## Evidence

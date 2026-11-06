@@ -162,7 +162,7 @@ geometry becomes editable. The current encoding stores an authored
 2. whether a closed ring may ever be intentionally non-enclosing.
 
 **Decided 2026-10-22** ([batch E](../../reference/decisions/batch-e-authorization-2026-10-22.md),
-E3, in the [T1.P02 drawing policy](./t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)):
+E3, in the [T1.P02 drawing policy](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)):
 
 1. no migration — Layout format 6 drops the authored role, readers refuse format 5, and fixtures that
    encoded a deliberate `partition` are rebuilt as geometry (pre-baseline rule);
@@ -242,11 +242,11 @@ codec vocabulary rather than dead legacy residue, eight test files exercise the 
 adapter through fixtures the tests README forbids deleting, the arch lane pins the current module
 map, and one room type is still referenced by the parallel-track reader owner. The measured
 blockers, the remaining work and the state left intact are the
-[stop-and-report](t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md).
+[stop-and-report](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md).
 
 
 **Registered successor (owner-released 2026-10-23):**
-[T1.P02.S05 — Legacy Layout retirement](t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md)
+[T1.P02.S05 — Legacy Layout retirement](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/implementation-plan.md)
 now owns the complete proposed retirement scope, including fixture successors and the bounded
 cross-track registry/frame exception. It is released but not yet implemented or accepted. Its acceptance
 and merge precede S02; the phase register owns order/status. The S01 recovery anchor above remains

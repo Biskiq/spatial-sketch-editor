@@ -8,7 +8,7 @@
  * from its boundary Wall heights.
  *
  * The pre-conversion compiled observations for every case are committed at
- * `docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/observations/legacy-compiled-observations.json`
+ * `docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s05-legacy-layout-retirement/observations/legacy-compiled-observations.json`
  * (captured at the trusted base `fff7dc14`) so a semantic delta is reviewable.
  *
  * Identities deliberately keep the previous names: a Wall is

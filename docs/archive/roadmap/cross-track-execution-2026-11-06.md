@@ -82,7 +82,7 @@ and the [T5 track](../../roadmap/t5-expressive-geometry/README.md) has its
 [G0 direction ratified](../../reference/decisions/t5-g0-ratification-2026-10-27.md). The owner then
 withdrew E0, and the [T5 planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)
 adopts the [umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) and registers
-[T5.P01](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md) on merge, releasing
+[T5.P01](closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md) on merge, releasing
 nothing. The owner also released the next wave — `T1.P02.S02` drawing
 and `T2.P02.S03` import final gate — on 2026-10-27
 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)). The current
@@ -108,8 +108,8 @@ flowchart TD
 
 | Lane (released, now shipped) | Owning plan | Bounded responsibility / outcome |
 | --- | --- | --- |
-| T1.P02.S06 | [Performance foundation](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) | Peak-first, setup-free measurement on the M2; L/XL and realistic-load workloads; per-stage scaling evidence; algorithm work inside the one compiler and its consumers with equal-output proof; full-permissive library exploration; transferred S02 and T3 performance obligations; no product feature or format change |
-| T3.P04.S01 | [Project rename and delete](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) | Owner-scoped rename/delete, project-scoped resource cleanup and a bounded T1-reviewed shell patch; implementation started after [the release](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md) merged. R1/R2 were owner-ratified 2026-10-25 (see C3 below); T2's API handoff gates shared API edits, while T1 review and `T1.P02.S06`'s recorded claim gate the shell patch. The 2026-10-24 planning resolution retains proposal and cleanup history; no gate or format change |
+| T1.P02.S06 | [Performance foundation](closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) | Peak-first, setup-free measurement on the M2; L/XL and realistic-load workloads; per-stage scaling evidence; algorithm work inside the one compiler and its consumers with equal-output proof; full-permissive library exploration; transferred S02 and T3 performance obligations; no product feature or format change |
+| T3.P04.S01 | [Project rename and delete](closed-phases/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/implementation-plan.md) | Owner-scoped rename/delete, project-scoped resource cleanup and a bounded T1-reviewed shell patch; implementation started after [the release](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md) merged. R1/R2 were owner-ratified 2026-10-25 (see C3 below); T2's API handoff gates shared API edits, while T1 review and `T1.P02.S06`'s recorded claim gate the shell patch. The 2026-10-24 planning resolution retains proposal and cleanup history; no gate or format change |
 
 **Performance-first halt — satisfied 2026-10-27.** The [decision record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 defines S06's direct inheritors: T1.P02 S02/S03/S04, T2.P02.S03, and Core Editor Stability with T4
@@ -126,9 +126,9 @@ through its own owner release.
 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)). Both plans are complete and
 both plan reviews are recorded — S02 with the T3 Head/F4 shell-allocation review and the T2/T3
 contribution-compatibility review
-([review](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/plan-review.md)),
+([review](closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/plan-review.md)),
 S03 with its final-gate review
-([review](../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/plan-review.md)).
+([review](closed-phases/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/plan-review.md)).
 Each starts after this PR merges on its own trusted base; the standing implementation reviews
 (T3 for S02's Head/F4 diff, the owning track for any T2/T3 adapter edit) and every acceptance,
 performance and independent-review requirement are unchanged. The [release list](./release-list-2026-11-06.md) carries
@@ -144,7 +144,7 @@ outline: the complete plan and its plan review are recorded before implementatio
 after the batch PR #199 merges, on its own trusted base, rechecking every consumed gate and active
 scope; `T1.P02.S04` stays held for its own release.
 
-T1's execution order is owned by the [T1.P02 register](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
+T1's execution order is owned by the [T1.P02 register](closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#slice-register);
 the roadmap's [where-things-stand index](./roadmap-register-2026-11-06.md#current-coordination-and-proposal-provenance)
 routes shipped, held and blocked scopes. No lane may implement a sibling's held scope to
 satisfy its own acceptance.
@@ -211,13 +211,13 @@ closeout updates only the owning baton; cross-track status stays in its owning r
   performance investigations are owner-initiated only after an observed slowdown. Keep each
   acceptance's explicit unmeasured rows; none is an acceptance prerequisite. S06's measured rows and
   omissions remain historical evidence in its [acceptance
-  stub](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md).
+  stub](closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md).
   Battery qualification, grid-XL timing, the sweep latency rows and S01's F2 S/M open timings stay
   **unmeasured, not passes**, and are no longer assigned to S04. S06's own follow-ons (FO-1 … FO-5)
   remain historical and create no obligation here. No benchmark is authorized by this coordination;
   correctness, architecture and functional evidence are unaffected.
 - **T5:** [Expressive Geometry](../../roadmap/t5-expressive-geometry/README.md) is `approved` with one
-  registered phase, [T5.P01](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md); E0 is
+  registered phase, [T5.P01](closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md); E0 is
   withdrawn and the [umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) owns direction.
   T5.P01's first slice changes the Scene unit format and planners; its `T2.P02.S03`
   prerequisite merged with PR #199, and it lands under T2 review; its Ink reading
@@ -226,12 +226,12 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 - **Activation:** accepted source/runtime code is available to consumers independently of a
   deployed epoch activation. Activation remains an owner-run operation with the accepted
   publication gap and recovery policy; no deployment or activation is claimed here.
-- **C3 (shipped):** [T3.P04](../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md) closed 2026-10-25
+- **C3 (shipped):** [T3.P04](closed-phases/t3-experience/t3.p04-project-lifecycle/README.md) closed 2026-10-25
   after `T3.P04.S01` rename/delete shipped in PR #191 (`aa1db37a`). Its T2 API handoff,
   write-lease fence, T1 shell review and earlier serialization against S06 are closed-work evidence,
   not outstanding start conditions for this batch. R1/R2 were owner-ratified 2026-10-25
   ([review on PR #188](https://github.com/Biskiq/spatial-sketch-editor/pull/188#pullrequestreview-5641779932));
-  the [planning resolution](../../roadmap/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
+  the [planning resolution](closed-phases/t3-experience/t3.p04-project-lifecycle/t3.p04.s01-project-rename-and-delete/planning-resolution-2026-10-24.md)
   retains the prior proposal and cleanup corrections. C3 contributes no new released scope here.
 - **T1/T2 continuation:** face-frame provider/solve-once wall placement, part admission and
   annotation, vertical/coordinate qualification and overhead families are planning triggers

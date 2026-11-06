@@ -16,8 +16,8 @@ AM-1–AM-8 and PLATE are unchanged, lifecycle and gate identity stay in the
 
 | Slice | Phase | Plan | Consumes / Requires at authorization |
 | --- | --- | --- | --- |
-| `T1.P01.S04`: Existing Layout precision, with the Head Save integration | T1.P01 | [plan](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `conditional-save-current-v1`, `viewport-projection-v1` |
-| `T2.P01.S03`: First coherent editing surface | T2.P01 | [plan](../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `viewport-projection-v1` |
+| `T1.P01.S04`: Existing Layout precision, with the Head Save integration | T1.P01 | [plan](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `conditional-save-current-v1`, `viewport-projection-v1` |
+| `T2.P01.S03`: First coherent editing surface | T2.P01 | [plan](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/implementation-plan.md) | `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` / `references-v1`, `local-single-domain-v1`, `viewport-projection-v1` |
 
 **Prerequisites, verified against post-PR #142 `main` (`a8e4d45e`).** Every consumed gate is
 `accepted` and every required scope is `active` in the [gate register](../../roadmap/README.md#gate-register):
@@ -49,7 +49,7 @@ re-checks eligibility at its own trusted base (`git merge-base HEAD main`), whic
 ## Explicit non-implications
 
 - **No other slice is authorized.** `T1.P01.S05`–`S06`, `T2.P01.S04` and `T3.P01.S04` stay `proposed`.
-  T3.P01.S04 has its own [authorization path](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path),
+  T3.P01.S04 has its own [authorization path](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path),
   and nothing in batch B shortens it.
 - **No T4 work of any kind.** Ruling R1-D stands: T4 stays `planning` until Core Editor Stability is
   accepted and the owner renews authorization.

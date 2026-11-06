@@ -31,7 +31,7 @@ below, not the entry.
 TD-11/TD-12 were found by the S06 browser leg and initially exceeded the TD-10-only code scope.
 The owner explicitly ratified their narrow corrective amendment during the PR #168 takeover, then
 separately approved the TD-13 Index correction. The exact scope and provenance are recorded in the
-[S06 amendment](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/d1-amendment.md).
+[S06 amendment](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/d1-amendment.md).
 
 ---
 

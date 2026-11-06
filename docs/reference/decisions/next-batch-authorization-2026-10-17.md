@@ -33,7 +33,7 @@ the docs-only `T4.P01.S01`) needs a registered phase row. The register checker r
 row — `proposed` included — whose `Consumes` names a gate version that does not exist. `T4.P01.S03`–`S05`
 consume `F5.release-envelope@1` (still `undrafted`, no version), and the final gate S05 also consumes the
 undrafted `T3.camera-experience-cutover@1`. Dropping those from `Consumes` would be the dishonest
-registration the [T3.P02 proposal](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md)
+registration the [T3.P02 proposal](../../archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md)
 already refused. The proposal missed this; it is recorded as the proposal's error, not the owner's.
 The proposal listed resolutions R1–R3. *Historical:* this hold stood until the owner ruled R1-D below,
 which replaces it.
@@ -52,7 +52,7 @@ R3, so the F5 drafting does not run either.
 | F5 and `T4.prepared-reader` | Stay `undrafted`. No F5 drafting, ratification (D8) or provider wiring. |
 | T4 slices | None is registered or authorized. No temporary final gate and no checker change (R2/R3 are not taken). |
 | Resumption | Two separate owner acts, in this order, and only after Core Editor Stability has a recorded acceptance: (1) renewed authorization of T4 **planning**, which re-validates the frozen drafts against then-current `main`; (2) separately, T4 registration and any implementation authorization. |
-| T3 obligations kept | The T3.P01.S04 source/release **inventory**, migration/refusal coverage, quiescence/recovery plan and **publication compatibility disposition** (AM-7; [S04 plan](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#prerequisite)) are unchanged by this deferral. Because T4's prepared delivery now follows Core Editor Stability, any publication gap the owner accepts at T3.P01.S04 runs until T4's prepared-reader cutover. Existing publications need a concrete disposition before activation, and the public and owner publication routes must report honest unavailability throughout. |
+| T3 obligations kept | The T3.P01.S04 source/release **inventory**, migration/refusal coverage, quiescence/recovery plan and **publication compatibility disposition** (AM-7; [S04 plan](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#prerequisite)) are unchanged by this deferral. Because T4's prepared delivery now follows Core Editor Stability, any publication gap the owner accepts at T3.P01.S04 runs until T4's prepared-reader cutover. Existing publications need a concrete disposition before activation, and the public and owner publication routes must report honest unavailability throughout. |
 | Retained delivery path | The P22 authored-snapshot reader and API publication format stay as the T4 README records ("retire at the T4 prepared-reader cutover"). The deferral neither deletes nor extends them beyond what T3.P01.S04's disposition allows. |
 
 ## Core Editor Stability rulings (2026-10-17)
