@@ -1,5 +1,9 @@
 # North star — ratified product direction
 
+> **Covers:** product intent, semantic authorities, visitor experience and expression direction.
+> **Invariants:** one Camera authority, distinct domains, authored truth excludes session state.
+> **Governs:** product direction; current behavior and sequencing stay with code/tests and the tracker.
+
 **Read when:** choosing product direction, defining long-term scope, or reviewing
 pitches. **Current implementation priorities and sequencing live in the tracker:**
 [`../roadmap/README.md`](../roadmap/README.md).
@@ -22,8 +26,9 @@ accepted**, effective at PR #271 merge `ce4e232c`. The owner personally tested a
 integrated product, including the final Experience changes. [S11 is owner-accepted by override;
 separate execution waived](../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
 No unexecuted individual check is claimed as passed. [#259 implementation](../roadmap/lean-harness-proposal.md)
-is next, with independent verification; acceptance of this bounded milestone does not claim full
-destination coverage. AM-11 owns the landed Experience format 4 / Program v4 semantics.
+is in progress, with independent verification still required; acceptance of this bounded milestone
+does not claim full destination coverage. AM-11 owns the landed Experience format 4 / Program v4
+semantics.
 
 **Earlier shell implementation summary (2026-10-27):** PR #115 removed the earlier editable
 `Spatial` workspace (`Scene | Camera` × `Plan | 3D`). The rebuilt Stage at

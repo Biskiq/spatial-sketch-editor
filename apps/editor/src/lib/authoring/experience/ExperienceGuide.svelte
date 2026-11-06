@@ -1328,7 +1328,7 @@
 	.status {
 		margin: 0;
 		color: var(--shell-ink-quiet, #9fb2a5);
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 	}
 	.guide {
 		position: relative;
@@ -1364,7 +1364,7 @@
 		border-bottom: 2px solid transparent;
 		background: transparent;
 		color: #fff;
-		font: 15px var(--shell-serif, Georgia, serif);
+		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia, serif);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1391,7 +1391,7 @@
 		border-radius: 7px;
 		background: rgb(255 255 255 / 0.07);
 		color: #fff;
-		font: 15px var(--shell-serif, Georgia, serif);
+		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia, serif);
 	}
 	.name-input::placeholder {
 		color: #9fbcaa;
@@ -1410,7 +1410,7 @@
 		background: rgb(255 255 255 / 0.09);
 		color: inherit;
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		white-space: nowrap;
 		cursor: pointer;
 	}
@@ -1952,7 +1952,7 @@
 		background: transparent;
 		color: inherit;
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		text-align: left;
 		cursor: pointer;
 	}

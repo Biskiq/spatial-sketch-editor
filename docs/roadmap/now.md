@@ -4,9 +4,10 @@
 
 A scope absent from this table is held. A row states the condition under which the runbook start step may begin. It does not record that the condition has already been met.
 
-**Immediate next step:** implement [PR #259's reconciled harness plan](./lean-harness-proposal.md)
-in that same PR. This is the owner's explicit next scope, outside the retired R217 slice sequence;
-it does not create a new slice or gate. This update is planning-only; implementation has not begun.
+**Immediate next step:** [PR #259's reconciled harness plan](./lean-harness-proposal.md) is being
+implemented in that same PR. This is the owner's explicit next scope, outside the retired R217 slice
+sequence; it creates no new slice or gate. Implementation is in progress; no green or CI completion
+is claimed here.
 
 **R217: closed, Core Product Stability accepted**, effective at PR #271 merge `ce4e232c`
 (2026-11-06). The owner personally tested and accepted the integrated product, including the final

@@ -239,7 +239,8 @@ closeout updates only the owning baton; cross-track status stays in its owning r
 - **Core Editor Stability and T4:** [the milestone](./core-editor-stability.md) is owner-accepted
   and [R217](./r217-core-editor-stability/README.md) closed, effective at #271 merge `ce4e232c`.
   S11's separate execution is waived after the owner's integrated product review; its old batch
-  start/closeout conditions are spent. This accepts no new T4 production scope. #259 is next.
+  start/closeout conditions are spent. This accepts no new T4 production scope. #259 implementation
+  is in progress, with no green claimed.
 - **Cycle/closure:** no track completion, owner architecture verdict, phase closure or baseline
   is created here. Re-arming a mechanism in its consuming slice is not a verdict.
 

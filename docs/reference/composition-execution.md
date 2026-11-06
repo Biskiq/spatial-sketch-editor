@@ -1,5 +1,10 @@
 # Composition and execution foundation (F) — target contract
 
+> **Covers:** identities/references, unit envelopes, channels, F4 acceptance, release shapes.
+> **Invariants:** qualified identity, expected revision, one accepted result, distinct domain owners.
+> **Governs:** common persisted/cross-domain formats; domain contracts own meaning and validity.
+> **Current behavior:** landed unit versions and amendments; target-only rules are labeled.
+
 **Read when:** designing identity/reference, persisted domain units, typed
 channels or representation parameters, cross-domain acceptance, typed session
 declarations, or a release envelope; deciding whether a proposed format belongs
@@ -22,10 +27,10 @@ without changing default exclusive rejection; F.4 separates authored validity
 from executable closure; session events are run-scoped; F.5 names Presentations.
 These are later refinements, not claims about the September 27 record.
 
-**Implementation: none of this contract is shipped.** Each
-section labels current behavior where a cutover applies; current encodings are
-cutover obligations, not limits, and the destination is never presented as
-shipped.
+**Implementation status varies by section.** F.1–F.4 and the accepted unit envelope/cutovers are
+landed; later target shapes and open mechanisms are not. Each section labels current behavior where
+a cutover applies. Current encodings are obligations, not limits, and a destination is never
+presented as shipped merely because its contract is ratified.
 
 **Authority and scope:** normative for new design. This contract owns the common
 cross-domain shapes; domain contracts own the meaning and validity of their own
@@ -530,11 +535,12 @@ generic object bag admits hidden domains or renderer/session state.
 | `DependencyLock` | `{formatVersion, entries}`: deterministic set keyed by qualified identity/instance scope; exact unit/resource content revisions and required capability/version per entry; external bytes additionally pin hash/MIME/size/immutable locator. |
 | `UnresolvedBinding` | Typed authored diagnostic retaining the original F.1 reference and repair status in the owning domain — never a fabricated resolved pin. Executable closure is distinguished from structural failure. |
 
-Admitted unit versions: envelope format 1; Layout payload 5; Scene 2 (Camera-free); Camera 1;
-Experience 1; typed resources 1. The source-content digest excludes acceptedRevision and
-session/history/receipt metadata; unit contentRevision hashes canonical domain data only.
-The Camera codec split lands in the same cutover as the Experience order cutover (one
-`navigationNodes` migration), as previously ratified.
+Admitted unit versions at the current landed cutover: envelope format 1; Layout payload 6;
+Scene 5 (Camera-free); Camera 1; Experience 4; typed resources 2. The source-content digest
+excludes acceptedRevision and session/history/receipt metadata; unit contentRevision hashes
+canonical domain data only. The Camera codec split and Experience order cutover landed together
+(one `navigationNodes` migration), as previously ratified; this section's envelope rules are
+unchanged.
 
 **Consumers:** T3 coordination, T4 source/program codecs. **Conformance:** empty and
 two-Experience round trips, required-kind/version refusal, reference/lock diagnostics and
@@ -874,6 +880,9 @@ accepted provider identities and history; a new incompatible interface receives 
 and normal gate registration/conformance. Ratified shapes never manufacture implemented readiness.
 
 ## AM-10 Guided Views and visitor reach
+
+> Historical: AM-11 supersedes this format-3 model for Experience format 4. Kept as evidence,
+> not current behavior.
 
 R217.S27 provides `T3.camera-experience-cutover@2` with Experience unit format 3 and
 `ExecutionProgram@3`. The strict readers refuse older versions with `unsupported_format_version`.

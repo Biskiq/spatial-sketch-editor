@@ -1,5 +1,10 @@
 # Museum Editor — destination shell and visual-system contract (PLATE)
 
+> **Covers:** shell composition, information homes, material, typography, state grammar and return.
+> **Invariants:** one Stage, one canonical selection, one Camera authority, one Card writer.
+> **Governs:** editor shell implementation; domain meaning stays with its contract.
+> **Current behavior:** code/tests; this document owns the destination and accepted invariants.
+
 > **Production shell Round 2 ratified by the owner (2026-10-23, PR #181).** The
 > [production shell wireframe, Round 2](../../../prototypes/production-shell-wireframe/README.md)
 > (reviewed at `9621b1cd`) and its departures D1–D16 are the authoritative destination
@@ -10,8 +15,9 @@
 > Paper §0.8.4 and this document's own earlier composition. Conservatory's Experience
 > semantics (Presentation, View, Guide, Stop, Cut/Travel, Camera ownership) are domain
 > behavior, not shell design, and are unchanged. The wireframe is accepted visual and
-> behavioral evidence; its mock mechanisms are not contracts. This ratification changes
-> destination design, not production implementation or persisted formats.
+> behavioral evidence; its mock mechanisms are not contracts. R217 subsequently implemented
+> the owner-accepted subset; production behavior and tests, not this destination, establish
+> what is currently shipped.
 
 **Status: owner-ratified destination shell authority.** This document is the complete
 contract for new Museum Editor shell design: composition, disclosure, information
@@ -19,15 +25,16 @@ homes, material, typography, control hierarchy, state language and return behavi
 Future feature design extends this shell. A proposed shell change must identify and
 justify the rule it changes; a feature brief must not casually reinterpret it.
 
-The destination is **World | Experience over one project**. This is design authority,
-not authorization to cut over the editor. PR #115 removed the earlier full authoring
-shell and its descriptive composition contract. R217 subsequently rebuilt the shared authoring
-shell and World/Experience loops. The owner personally tested and accepted the integrated product,
+The destination is **World | Experience over one project**. This contract owns shell design;
+code and tests establish current behavior. PR #115 removed the earlier full authoring shell and its
+descriptive composition contract. R217 rebuilt a bounded shared shell, World drafting and
+Experience authoring/Preview. The owner personally tested and accepted that integrated product,
 including final Experience changes, effective at PR #271 merge `ce4e232c` (2026-11-06).
 **R217 is closed; Core Product Stability accepted.** [S11 is owner-accepted by override; separate
 execution waived](../../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
-This does not claim execution of every planned check or delivery of all destination depth.
-AM-11 owns current Experience semantics; the accepted interaction sheets remain visual evidence.
+The accepted product is not the whole destination: this document retains target composition and
+invariants, while code/tests describe what shipped. AM-11 owns landed Experience semantics; the
+accepted interaction sheets remain visual evidence, not a second production evaluator.
 
 | State | Meaning after Round 2 |
 | --- | --- |
@@ -62,7 +69,7 @@ Camera authoring. Neither lens is a new semantic document. Layout owns architect
 and its runtime-safe representation; Scene owns objects and world presentation;
 Camera owns Views, connectivity, routes, framing, projection and evaluation;
 Experience owns Presentations, Guide occurrences/order, Cues and their pauses,
-continuation and contextual orchestration. Typed resources remain independently owned.
+transitions and contextual orchestration. Typed resources remain independently owned.
 The distinct LayoutDocument/SceneDocument encodings and the current frame/transform
 contracts are unchanged. The ratified world-local placement with explicit internal
 frames remains the destination; this shell ratification introduces no mandatory Room
@@ -708,15 +715,15 @@ direct design.
 
 Experience authors visitor meaning and occurrences in the shared shell. Camera
 owns Views, framing, projection, connectivity, path geometry and evaluation;
-Experience owns Presentation use/roles, Guide composition, Stops, holds and
-continuation. Selecting a View, Stop or related subject does not move the Camera.
+Experience owns Presentation use/roles, Guide composition, Stops, holds, pacing and
+outgoing transitions. Selecting a View, Stop or related subject does not move the Camera.
 
 | Concept | Preserved contract |
 | --- | --- |
 | **Presentation** | A reusable visitor-facing composition about subjects, a region or the environment; not a Scene container or Camera target |
 | **View** | A Camera composition used by a Presentation. Camera owns the composition; Experience owns its use and Default/entry role |
 | **Guide / Stop** | An optional Guide orders distinct Stop occurrences of Presentations. Repeated visits may differ without changing the shared Presentation |
-| **Transition / Guide edge** | Experience continuation with Cut/Travel policy, resolving the actual destination; it references Camera support and owns no movement geometry |
+| **Transition / Guide edge** | Experience's outgoing Stop transition with Cut/Travel policy, resolving the next Stop in the linear Guide; it references Camera support and owns no movement geometry |
 | **Camera Path** | Camera-owned movement support between Views, with generated endpoints and authored interior connection anchors; reusable independently of Guide order |
 | **Coordination / Cues** | Experience timing, actions and pauses evaluated over Camera movement. They author no pose, route or second animation model |
 
@@ -727,15 +734,16 @@ and cross-domain shapes, with exact interfaces ratified alongside first consumer
 
 ### Information homes
 
-**Stage carries spatial work, Card the selected identity and its contextual
-operations, and the invoked Guide instrument composition and playback.**
+**Stage carries spatial work; Card carries the selected identity, or the Experience itself when
+nothing is selected; the invoked Guide strip carries composition, editing and playback.** The
+Experience Card owns welcome text and the Opening Guide choice when it has two or more Guides.
 
 | Context | Stage | Card | Task instrument |
 | --- | --- | --- | --- |
 | **Empty / ordinary Experience** | The world and useful orientation; no assumed active Guide | Absent without inspection context | Absent until invoked |
 | **Presentation / View** | Truthful Camera markers and direct spatial manipulation where supported | Presentation thumbnails/Default/uses, or selected View image and Look through/capture operations | An already-open Guide may remain available |
 | **Scene subject** | Its own geometry and canonical identity | Subject identity, deliberate Present this and usage; deeper capability on invocation | Existing context stays distinct from selection |
-| **Guide / Stop** | Relevant entry Views and context, with visibility disclosure | Selected occurrence, included Views, holds and continuation | One active Guide: Stop sequencing, transitions and playback |
+| **Guide / Stop** | Relevant entry Views and context, with visibility disclosure | Selected Stop and its one entry View, stay, invitation and outgoing Cut/Travel | One active Guide: the strip owns order, Stop editing, Cut/Travel and playback; Camera paths reconcile automatically when an endpoint changes |
 | **Transition / Camera Path** | Evaluated path and direct editing of authored interior points | Movement policy, Camera reach, selected point or repair | The same Guide context; no mandatory topology/Journey workbench |
 | **Look through / Follow** | The evaluated Camera image, with an explicit authoring exit | Only relevant identity/actions; composition remains reviewable | Playback uses the same invocation and clock |
 | **Preview** | Isolated visitor execution | — | — |
@@ -808,37 +816,24 @@ are preserved even when the prototypes do not demonstrate their full depth.
 
 ### Guide, Stops and Guide edges
 
-**A Guide is an invoked authoring context, not a permanent global bar.** It opens
-deliberately from a Guide or relevant composition action. There is **one active
-Guide context at a time**. It may stay open while inspecting/editing related
-Presentations and Views; a selection change alone does not dismiss it or select
-the Guide. Closing it ends its instrument, playback and Guide-only Stage helpers
-together. Stored Guides remain authored truth.
+**A Guide is an invoked authoring context, not a permanent global bar.** It opens from an Index
+row, a View's **Stop** action or another relevant composition action. There is **one active Guide
+context at a time**. Selection changes do not dismiss it or silently select the Guide. The strip is
+the Guide's editing home: name, order, Stop cards, pacing, Cut/Travel and playback. Closing it ends
+its instrument, playback and Guide-only Stage helpers together; stored Guides remain authored truth.
 
-The instrument integrates recognizable Stop items, reorder/insert/repeat/remove
-operations, Cut/Travel, Camera Path access and playback. Long Guides retain
-orientation, reach and practical sequencing without requiring another Guide
-editor. Horizontal scrolling and overview-timeline presentation remain refinable.
+**A Stop is one visit to one Presentation.** It carries one entry View (or follows the Presentation
+Default), one finite stay, an optional invitation and one optional outgoing Cut/Travel. It does not
+own a second View sequence or a copy of Camera framing. The Experience Card is the Card when
+nothing is selected; it owns welcome text and, when there is more than one Guide, the Opening Guide.
+With one Guide the opening is automatic and is not shown as a choice.
 
-A Stop visibly **visits a Presentation**. Its included Views, occurrence-local
-sequence/entry and holds can differ from another visit; editing them preserves
-the Presentation's Default and other occurrences. Concrete encoding, legacy
-entry-policy migration and first-consumer interfaces belong to T3/F planning,
-not the mock shot-list structure.
-
-Continuation resolves actual Experience semantics. Guide order may supply its
-default, but accepted explicit continuation, Gates and visitor choices are not
-abolished by the mock's simple Next rule. A nonadjacent destination, End, gap or
-needs-repair is named honestly. A connector represents adjacency only when the
-resolved destination is that neighbor. Changing entry/exit Views re-resolves
-Camera support and discloses changed reach/gaps; it does not drag an unrelated
-path into a new relationship.
-
-**Cut** performs no Camera travel and creates no movement geometry. Existing
-Camera support remains independently inspectable/editable where supported; Cut
-does not delete it or transfer its ownership. **Travel**
-uses Camera-owned support; reuse, preparation and gaps follow Camera/domain
-validity. Experience does not reconstruct routes from Stop tiles.
+**One linear Guide order.** The first Stop starts the tour and the last ends it; there is no start
+Stop, explicit continuation node, Gate or early End in Experience format 4. A Cut makes no Camera
+travel. A Travel must resolve one existing Camera connection; changing a Stop entry or Presentation
+Default re-resolves the affected pair and automatically reuses or prepares the Camera path in the
+same accepted change. Gaps and ambiguous connections are named honestly. A broader Gates direction
+remains a recorded owner uncertainty, not permission to restore removed controls in this work.
 
 ### Camera Path and Journey postures
 
@@ -877,11 +872,11 @@ is inferred from a grip or specimen.
 
 ### Advanced authoring
 
-Narration/captions, behaviors, offers, automatic View changes, Gates, branching,
-mid-route coordination and richer precision retain their domain semantics and
-useful regression evidence. The prototypes demonstrate a minimum authoring loop,
-not their removal. Their interaction depth needs future track slices; it does
-not reopen the accepted shell or become an unfinished #114 design gate.
+Narration/captions, behaviors, offers, automatic View changes, branching, mid-route coordination
+and richer precision remain future domain depth, not current format-4 authoring. Useful scenarios
+and regression evidence stay; none authorizes a new timeline, schema or Gate in this work. The
+wider ratified Gates destination is a recorded uncertainty, not permission to add a feature or
+restore the removed continuation model.
 
 Existing Cues retain station-based binding through Camera support; the mock's
 suggestion to drop beats at a time does not authorize authored seconds, arbitrary
@@ -890,15 +885,17 @@ contexts and the single-writer/ownership rules.
 
 ### Visitor Preview
 
-Preview runs the visitor experience with isolated session state and no editor
-machinery. Guided and free exploration use the same authored world,
-Presentations and Camera Views through their owners. Their exact entry,
-availability and return policies require domain planning; prototype switches
-and end-of-tour behavior are not automatically ratified semantics.
+Preview runs the visitor experience with isolated session state and no editor machinery. Guided and
+free exploration use the same authored world, Presentations and Camera Views through their owners.
+Editor Preview starts paused and exposes a duration-proportional seek timeline: a paused seek stays
+paused, a drag begun during playback resumes on release, and the timeline remains available after
+completion for rewind. Public entry retains autoplay and read-only progress. Manual waits remain
+waits with no invented duration.
 
-Visitor controls use visitor meaning, with an obvious Exit Preview. Preview exit
-restores the authoring context through its authorities. Look through and Follow
-remain authoring contexts and do not impersonate visitor execution.
+Visitor controls use visitor meaning, with an obvious Exit Preview. Preview exit restores the
+authoring context through its authorities. Look through and Follow remain authoring contexts and do
+not impersonate visitor execution. Responsive crop, end-of-tour and narrow-aspect refinements remain
+open usability work, not unfinished shell acceptance.
 
 ### Experience visual language
 
@@ -1149,13 +1146,11 @@ utilities and inline actions retain distinct roles; pressed/selected state does
 not invent a size tier. Density is calibrated as a complete composition with
 long names, thumbnails, precision values and keyboard focus visible.
 
-The earlier 9/10/11/12/13/15/20 px ladder, 30/26/24/20 px control heights and
-fitted Tool Tray micro-tier describe prior calibration and landed evidence.
-They do not force the destination into the previous chrome or permit
-tiny ordinary text. There is no landed production shell to preserve after #115 —
-the previous calibration was removed with the editor shell — so PLATE calibrates
-fresh metrics at its rebuild, preserving contrast, usable targets and semantic
-hierarchy.
+The landed shell exposes shared roles in `shell-roles.css`: body, utility and identity text plus a
+30 px control height, with component-local 10–12.5 px exceptions where a denser reading is
+deliberate. That is accepted current calibration, not a mandate to flatten every component to one
+size. Preserve the settled contrast, 44 px coarse-pointer targets and semantic rank; a new local
+metric needs a concrete fit or legibility reason.
 
 Preserve settled identity and Plan drafting/icon semantics where those tools
 apply. A shell change does not require a wholesale icon redraw. Wall/shape/Opening

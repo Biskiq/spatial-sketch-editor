@@ -2,9 +2,23 @@
 
 Biskiq is an attempt to combine spatial sketching, object arrangement, and interactive visitor experiences in one browser editor.
 
-The prototypes below are separate demos. They are not connected into one editor yet.
+The product editor lives in `apps/editor` and `apps/api`; the prototypes below are separate demos and
+research evidence, not production authority.
 
 ![Vellum, Smart Wall, Conservatory and the unified shell](docs/assets/readme/cover.jpg)
+
+## First ten minutes
+
+1. Install Node 20+ and run `npm install`.
+2. Copy `.env.example` to `.env`, then `npm run dev` for the editor and API, or `npm run dev:editor`
+   for the editor alone. Open the local URL Vite prints.
+3. Run `npm run status` to see current capability health, open flags and claims. A missing main-branch
+   report is reported as unknown, not as green.
+4. Read [`AGENTS.md`](AGENTS.md), the [`glossary`](docs/glossary.md), and the header/authority box in
+   the [`North Star`](docs/reference/north-star.md). Use the [`path map`](docs/path-map.md) for a
+   code area; read only the routed section you need.
+5. Pick an unclaimed capability. Check open issues and draft pull requests before claiming it, then
+   name the capability in your issue/PR. See [`docs/README.md`](docs/README.md) for the full route.
 
 ## Prototypes
 

@@ -2,14 +2,14 @@
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
 **Last reviewed:** 2026-10-28 (T5.P01.S04 My Objects insertion in review, on the S02 Shape reading
-and per-axis sizing and the S01 native-form and Scene 4 baseline; production activation remains
+and per-axis sizing and the S01 native-form and Scene 5 baseline; production activation remains
 owner-controlled)
 
 ---
 
 ## Current implementation
 
-The live Scene is the world-local Scene 4 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 5 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
@@ -217,7 +217,7 @@ this contract creates no new operation list or implementation obligation for T2.
 
 **Owner-ratified destination, 2026-10-22, PR #173.** See the
 [ratification record](../decisions/product-convergence-ratification-2026-10-22.md). This is destination
-wording for new consumers; current Scene unit format 4 still refuses attachments and components.
+wording for new consumers; current Scene unit format 5 still refuses attachments and components.
 [Review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 **Placement and attachment.** Solve-once surface placement writes an ordinary world pose and

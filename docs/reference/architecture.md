@@ -1,5 +1,9 @@
 # Architecture — ownership and boundaries
 
+> **Covers:** semantic owners, product/frozen-project boundary, routes and platform boundary.
+> **Invariants:** Layout, Scene, Camera, Experience and resources stay distinct authorities.
+> **Governs:** ownership questions; domain contracts own their details.
+
 **Read when:** ownership questions, product vs frozen-project boundary, or which code owns a concern.
 For a specific surface, go straight to the matching contract doc (table below).
 
@@ -117,9 +121,9 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 | Authority | Owns | Current encoding (until cutover) |
 |---|---|---|
 | **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 6`: Junctions, Walls, persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path |
-| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 4 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
+| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 5 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
-| **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 3, collection-capable); capture, Presentations, Guides, Stop-local View sequences and visitor reach |
+| **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/pacing, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 4, collection-capable); Presentations, linear Guides, one entry View/stay per Stop, invitations, detours and visitor reach |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | `units.resources.data` and the exact dependency lock; bytes stay in the P20 registry/private storage; general ingest remains future work |
 | **Project coordination** | Accepted revision, dependency lock, cross-domain validation, coherent history, release preparation, deterministic typed intents (F.4) | `ProjectEnvelope`, unit F4 acceptance, one chronological history, local expected revision and durable saved-base CAS; source and cloud revision identities are distinct |
 | **Execution session** | Active runs, clocks, channel control, visitor choices, media position — isolated per preview/visitor/session | The bounded Cut Preview uses an isolated session through the shared Experience interpreter; session state is never written back to authored definitions; public prepared delivery remains gated by T4 |

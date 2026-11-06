@@ -6,8 +6,8 @@ product review, including the final Experience changes. **R217.S11: owner-accept
 separate gate execution waived.** The [acceptance record](./r217.s11-integrated-final-gate/acceptance.md)
 records the decision and evidence limits; individual unexecuted checks are not passed by assertion.
 **Registered in** the [track register](../README.md#track-register) as a repository phase.
-**Milestone:** [Core Editor Stability](../core-editor-stability.md). **Next:** implement
-[PR #259's harness plan](../lean-harness-proposal.md); no R217 gate or closeout is pending.
+**Milestone:** [Core Editor Stability](../core-editor-stability.md). **Next:** [PR #259's harness
+plan](../lean-harness-proposal.md) is in implementation; no R217 gate or closeout is pending.
 
 R217 is named after its planning PR, as R115 is. It is a shared phase because every current track
 phase is closed and the work crosses T1, T2, T3 and T5 boundaries. **Ownership does not move.** Each

@@ -135,8 +135,8 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 4: the landed world-local records without the navigation
- * graph, now carrying native forms. `formatVersion: 5` is the payload's own
+ * Camera-free Scene 5: the landed world-local records without the navigation
+ * graph, carrying native forms and optional world presentation. `formatVersion: 5` is the payload's own
  * version and matches the unit header. A model names a catalogue asset or a
  * `model` resource of the same envelope; the fallback vocabulary includes the
  * generic footprint box.

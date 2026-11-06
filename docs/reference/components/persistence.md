@@ -1,5 +1,9 @@
 # Persistence and schema
 
+> **Covers:** project envelope, unit versions, Save/Load, assets, publication delivery.
+> **Invariants:** strict admitted versions, no converter/fallback, conditional append-only Save.
+> **Governs:** persisted source and delivery contracts; current versions are listed below.
+
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
 **Last reviewed:** 2026-10-31 (local credential migration 009). The code contract below describes
@@ -81,7 +85,7 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 6, Scene 4, Camera 1, Experience 4 and resources 2.
+`units`. Unit payload versions are Layout 6, Scene 5, Camera 1, Experience 4 and resources 2.
 Experience 4 (guide-playback plan, R217 Experience review) replaces Stop View sequences with one
 entry View, a stay and an optional invitation per Stop, gives each Guide a `pacing`, gives each
 Presentation ordered `views` (the first is the Default) and retires Gates; format 3 is refused
@@ -89,15 +93,17 @@ with no converter. The owner's second review amends format 4 in place, with no b
 for the earlier shape ([AM-11](../composition-execution.md#am-11-guide-pacing-explore-and-return)):
 a Guide is one linear order with no start Stop, a Stop carries an optional outgoing
 `transition` instead of a `continuation`, a View's step is the step to the next View, and a
-Presentation's `label` may be `null` to follow its linked Scene entity. AM-11's implementation
-status says which of these the PR #271 branch implements so far.
+Presentation's `label` may be `null` to follow its linked Scene entity. The implementation status
+records the rules landed at #271; no earlier shape is admitted or converted.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
-Scene 4 carries `textures`, `materials`, `entities` and optional `clusters`; it carries no Camera
-or editorial fields. Format 4 adds the `form` entity, whose authored source (generator, outline,
-extent, per-axis scale, next key) is stored verbatim; generated geometry is never serialized, and a
-reader refuses format 3 rather than converting it. Camera carries Views and connections. Connection endpoints are generated,
+**Scene 5** carries `textures`, `materials`, `entities`, optional `clusters` and optional
+`environment`; it carries no Camera or editorial fields. Scene 4 introduced the `form` entity,
+whose authored source (generator, outline, extent, per-axis scale, next key) is stored verbatim;
+Scene 5 adds world presentation (the fixed `paper`/`daylight`/`golden-hour`/`dusk` environment
+preset). Generated geometry is never serialized, and a reader refuses older Scene formats rather
+than converting them. Camera carries Views and connections. Connection endpoints are generated,
 only interior anchors are authored, and directional framing envelopes retain their kernel rules.
 `validateProjectEnvelope` separates structural issues, repairable authored diagnostics and
 executable resource closure. The Stage discloses diagnostics and closure for inspection without
@@ -222,7 +228,7 @@ catalogue `assetId`s or a model resource pinned in the same envelope. T2.P02.S01
 staging and immutable approved model revisions in the project registry; Save verifies each model's
 derivative/source pins, recipe, report digest and placement against an approved revision owned by
 that project, refusing the save without changing the stored version when they disagree. Resources
-format 2 carries the model resource and lock; Scene format 4 may reference it. The visitor/public
+format 2 carries the model resource and lock; Scene format 5 may reference it. The visitor/public
 reader remains catalogue-only. T2.P02.S02 adds the import and placement flow that writes these revisions
 and their Scene references through the S01 routes and Save verification, which it reuses unchanged.
 

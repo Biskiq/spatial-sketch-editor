@@ -62,7 +62,7 @@ released nothing by itself.** `T1.P02.S02` and `T2.P02.S03` were then released o
 ([record](../reference/decisions/next-wave-authorization-2026-10-27.md)) and have since run: S02
 shipped as `owner-override` on PR #201, and S03 was accepted 2026-10-27, closing `T2.P02`. Core Editor Stability was subsequently accepted by the owner at #271's merge (`ce4e232c`);
 its separate S11 execution is waived, with [evidence limits recorded](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
-The [release list](./now.md) remains owner-written; the immediate next scope is #259's harness implementation.
+The [release list](./now.md) remains owner-written; #259's harness implementation is in progress, with no green claimed.
 
 ## Track register
 
@@ -88,7 +88,7 @@ owns lifecycle only and never copies their content.
   slice. Its own README owns its slice register. **Closed, Core Product Stability accepted**
   effective at PR #271 merge `ce4e232c` (2026-11-06), by the owner after hands-on integrated
   review; [S11 is owner-accepted by override, separate execution waived](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
-  No R217 gate or closeout remains; [#259 implementation](./lean-harness-proposal.md) is next.
+  No R217 gate or closeout remains; [#259 implementation](./lean-harness-proposal.md) is in progress, not yet verified.
 - **`planning`** means the track's roadmap and evidence exist and no capability phase is
   registered or authorized. It is the honest state after PR #115: planning evidence is
   recorded, implementation is not authorized.
