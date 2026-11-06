@@ -2,7 +2,7 @@
 
 > Child packets, acceptance records and evidence are archived under
 > [`docs/archive/roadmap/r217-core-editor-stability/`](../../archive/roadmap/r217-core-editor-stability/).
-> This page remains the current R217 context.
+> This page remains the current R217 closure context; its retained execution body below is historical.
 
 **Phase:** R217 · **Status:** **closed — Core Product Stability accepted**, effective at
 PR #271's merge (`ce4e232c`, 2026-11-06), by the owner's explicit ruling after hands-on integrated
@@ -13,12 +13,20 @@ records the decision and evidence limits; individual unexecuted checks are not p
 **Milestone:** [Core Editor Stability](../../archive/roadmap/core-editor-stability.md). **Next:** [PR #259's harness
 plan](../lean-harness-proposal.md) is in implementation; no R217 gate or closeout is pending.
 
-R217 is named after its planning PR, as R115 is. It is a shared phase because every current track
-phase is closed and the work crosses T1, T2, T3 and T5 boundaries. **Ownership does not move.** Each
-slice has one writer from the track that owns the concern, runs through that track's runbook start
-step, and records its work in that track's baton. The other tracks review as listed in
-[Ownership and review](#ownership-and-review). **Exception:** R217.S11–S25 run under one convergence
-integrator through the [campaign record](../../archive/roadmap/r217-core-editor-stability/r217-convergence-campaign-2026-10-30.md); architecture ownership is unchanged.
+---
+
+> **Historical execution record — not current instructions.** Everything below from “R217 is named…”
+> records how R217 was planned, executed and closed. Its track runbook/baton start, campaign release
+> on PR #230, gate rechecks and phase-close steps are retained as evidence, not as a live procedure.
+> New work follows [workflow.md](../../workflow.md); [#259](../lean-harness-proposal.md) remains the
+> present implementation priority. No R217 execution, gate, A–Q walkthrough or closeout is pending.
+
+R217 was named after its planning PR, as R115 is. It was a shared phase because every current track
+phase is closed and the work crosses T1, T2, T3 and T5 boundaries. **Ownership did not move.** Each
+slice had one writer from the track that owned the concern, ran through that track's runbook start
+step, and recorded its work in that track's baton. The other tracks reviewed as listed in
+[Ownership and review](#ownership-and-review). **Exception:** R217.S11–S25 ran under one convergence
+integrator through the [campaign record](../../archive/roadmap/r217-core-editor-stability/r217-convergence-campaign-2026-10-30.md); architecture ownership was unchanged.
 
 ## Post-S10 convergence plan
 

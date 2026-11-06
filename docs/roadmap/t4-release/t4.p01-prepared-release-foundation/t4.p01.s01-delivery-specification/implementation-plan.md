@@ -1,9 +1,11 @@
 # T4.P01.S01 — Delivery specification (docs-only): implementation plan draft
 
-**Slice:** T4.P01.S01 · **Status:** draft for a phase that is not yet registered. It is frozen by owner ruling R1-D
-(2026-10-17, [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)) until Core Editor Stability is accepted. It holds no
-permission. **Phase:**
-[T4.P01 draft](../README.md) · **Track:** [T4](../../README.md) · **Runbook:**
+**Slice:** T4.P01.S01 · **Status:** draft for a phase that is not yet registered. It is frozen evidence,
+not work in progress. The R1-D condition (2026-10-17,
+[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17))
+is fulfilled by the owner's acceptance at #271 (`ce4e232c`); [#259](../../../../roadmap/lean-harness-proposal.md)
+is the present implementation priority. It holds no permission. **Phase:**
+[T4.P01 draft](../README.md) · **Track:** [T4](../../README.md) · **Historical operations record:**
 [T4 operations](../../../../archive/process/operations/t4-release/README.md)
 
 ```text

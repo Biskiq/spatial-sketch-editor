@@ -2,15 +2,32 @@
 
 **Status:** registration-ready draft, 2026-10-17. It is **not registered**: no row exists in the
 [T4 phase register](../README.md#phase-register), and nothing here is a phase, slice, gate version
-or authorization. **Frozen — deferred by owner ruling R1-D (2026-10-17, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)).**
-All T4 planning and implementation waits for [Core Editor Stability](../../../archive/roadmap/core-editor-stability.md).
-The earlier D6/D7 approval and its hold ([history](../../../archive/roadmap/coordination-2026-10/next-batch-2026-10-17.md#application-hold-d6d7))
-are superseded. On resumption this draft is re-validated against then-current `main` before any use.
+or authorization. **Frozen evidence — not work in progress.** Owner ruling R1-D (2026-10-17,
+[record](../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17))
+deferred T4 until [Core Editor Stability](../../../archive/roadmap/core-editor-stability.md) was
+accepted; that condition is fulfilled by the owner's acceptance at
+[#271](https://github.com/Biskiq/spatial-sketch-editor/pull/271) (`ce4e232c`). [#259](../../lean-harness-proposal.md)
+is the present implementation priority. This draft authorizes nothing: F5.release-envelope and
+T4.prepared-reader remain undrafted, the prepared reader is unimplemented, and production activation
+remains Tier 2 and owner-controlled. The earlier D6/D7 approval, its hold
+([history](../../../archive/roadmap/coordination-2026-10/next-batch-2026-10-17.md#application-hold-d6d7))
+and the D6–D8 sequence below are retained as provenance, not current authorization. Re-validate this
+draft against then-current `main` before any use.
 Routes: [T4](../README.md) · [first-phase proposal](../first-phase-proposal.md) (scope and rationale,
-not repeated here) · [runbook](../../../archive/process/operations/t4-release/README.md) ·
-[gate register](../../README.md#gate-register).
+not repeated here) · [archived T4 operations record](../../../archive/process/operations/t4-release/README.md) ·
+[historical gate register](../../README.md#gate-register).
 
-## Registration is not authorization
+## Current route
+
+After the owner merges #259, owner-prompted T4 work uses the common [workflow](../../../workflow.md):
+focus, a claim, the applicable risk tier and, where required, a plan reviewed in the work's own pull
+request. The old renewed-planning-authorization and separate registration/implementation sequence is
+historical procedure, not a queue or prerequisite.
+
+## Registration is not authorization (historical procedure)
+
+The D6/D7/D8 sequence below records the 2026-10-17 registration proposal. It does not direct current
+work.
 
 | Step | What it does | What it does not do |
 | --- | --- | --- |

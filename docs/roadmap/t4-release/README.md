@@ -93,10 +93,16 @@ No T4 phase is registered. A phase is added here by an authorized plan, with its
 A registration-ready draft of the first phase exists:
 [T4.P01 — Prepared release foundation](./t4.p01-prepared-release-foundation/README.md), proposed
 2026-10-17. It reconciles the [first-phase proposal](./first-phase-proposal.md) against current
-`main` and drafts the docs-only S01 plan. **All T4 planning and implementation is deferred** by owner ruling R1-D of 2026-10-17
-([record](../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)) until [Core Editor Stability](../../archive/roadmap/core-editor-stability.md) is accepted.
-The draft is frozen evidence, not a row in this register, and it authorizes nothing. Resumption needs
-renewed owner authorization of planning first, then a separate registration/implementation decision.
+`main` and drafts the docs-only S01 plan. **It is frozen, unregistered evidence, not a row in this
+register, and it authorizes nothing.** The R1-D condition is fulfilled: [Core Editor
+Stability](../../archive/roadmap/core-editor-stability.md) is accepted by the owner at
+[#271](https://github.com/Biskiq/spatial-sketch-editor/pull/271) (`ce4e232c`). [#259](../lean-harness-proposal.md)
+is the present implementation priority. After the owner merges #259, owner-prompted T4 work uses the
+same [workflow](../../workflow.md): focus, a claim, the applicable risk tier and, where that tier
+requires one, a plan reviewed in the work's own pull request. The old renewed-planning-authorization
+and separate registration/implementation sequence is not reinstated. F5.release-envelope and
+T4.prepared-reader remain undrafted, the prepared reader is unimplemented, and production activation
+remains Tier 2 and owner-controlled. This reconciliation starts no T4 work and ratifies no draft.
 
 ## Starting foundation
 
