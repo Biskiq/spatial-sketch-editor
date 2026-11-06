@@ -750,7 +750,7 @@ function tick(
 }
 
 function setPaused(program: ExecutionProgram, state: ExperienceRunState, paused: boolean): ExperienceReduceResult {
-	if (paused && (program.pacing !== 'automatic' || state.stopId === null)) return ignored(state);
+	if (paused && ((program.pacing !== 'automatic' && state.phase !== 'traveling') || state.stopId === null)) return ignored(state);
 	if (state.paused === paused) return ignored(state);
 	return accepted({ ...state, paused }, []);
 }

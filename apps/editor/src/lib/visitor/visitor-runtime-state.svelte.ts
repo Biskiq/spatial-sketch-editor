@@ -27,6 +27,9 @@ import {
 	type ProgramInvocation
 } from '@portfolio/project-model/units';
 
+import type { GuideTimeCursor, GuideTimeMap } from '@portfolio/camera-core';
+import { seekGuideRun } from './guide-seek';
+
 /** One Camera move the interpreter advanced through inside a single tick. */
 export type VisitorTickMotion = {
 	readonly invocation: ProgramInvocation;
@@ -49,6 +52,19 @@ export class VisitorRuntimeState {
 	private pendingMilliseconds = 0;
 	/** Camera moves the reducer crossed without pausing; the time-aligned director drains them. */
 	private queuedMotions: VisitorTickMotion[] = [];
+	/** One explicit Preview seek, consumed by the director through Camera's existing motion. */
+	seekPosition = $state.raw<ReturnType<typeof seekGuideRun>>(null);
+
+	seek(map: GuideTimeMap, cursor: GuideTimeCursor): boolean {
+		const position = seekGuideRun(this.program, this.options, map, cursor);
+		if (position === null) return false;
+		this.pendingMilliseconds = 0;
+		this.queuedMotions = [];
+		this.state = position.state;
+		this.seekPosition = position;
+		return true;
+	}
+
 
 	constructor({ program, options }: VisitorRuntimeInput) {
 		this.program = program;
@@ -105,7 +121,7 @@ export class VisitorRuntimeState {
 		this.state = this.reduce({ kind: 'arrival', ...this.runIdentity() }).state;
 	}
 
-	/** Automatic only: freeze the Guide clock, mid-Travel included. */
+	/** Freeze timed playback, including Manual arrival Travel. A Manual stay already waits. */
 	pause() {
 		this.state = this.reduce({ kind: 'pause', ...this.runIdentity() }).state;
 	}
@@ -232,6 +248,7 @@ export class VisitorRuntimeState {
 	 * terminal phase would ignore `enterPresentation`.
 	 */
 	beginFreeExploration() {
+		this.seekPosition = null;
 		this.pendingMilliseconds = 0;
 		this.queuedMotions = [];
 		this.state = createExperienceRun(this.program, this.options);
@@ -242,6 +259,7 @@ export class VisitorRuntimeState {
 	 * It rewinds this run to its authored entry; it never mints a second run.
 	 */
 	restart() {
+		this.seekPosition = null;
 		this.queuedMotions = [];
 		this.state = this.reduce({ kind: 'reset', ...this.runIdentity() }).state;
 	}

@@ -13,9 +13,13 @@ retain Show all / Show the first 8. View clicks open the View Card, with explici
 The strip name renames inline and its ⋯ offers Remove Guide. Index-row Rename remains useful
 without opening a Guide. No range selection, bulk editing or additional selection mode.
 A named entry View stays pinned even when currently the Default; only `null` follows the Default.
-Visitor Travel fills before arrival and the stay starts empty after arrival. Prev/Next follows
-the linear Guide; Places is Free Explore. The earlier direct Stop-jump finding is withdrawn;
-no new jumping UI is required.
+Visitor Travel fills before arrival and the stay starts empty after arrival. Preview starts paused,
+uses actual stay/Travel seconds for timeline widths, and supports pointer and keyboard seeking,
+including rewind after completion. A paused seek stays paused; dragging during playback resumes
+on release. Camera sampling and the Experience reducer remain the only evaluators. Public entry
+retains its autoplay and read-only progress. Prev/Next follows the linear Guide; Places is Free
+Explore. The earlier direct Stop-jump finding is withdrawn; no separate jumping UI is required.
+
 
 ## 1. Gap ledger
 
@@ -327,7 +331,7 @@ Journeys A–H are re-run without *Starts at*; any step that used it starts the 
 - **K · Change where a Stop enters.** On a Stop with a Travel in and out, change *Enter at*. Both Travels still play. Change it to the View the Stop before it shows: that step becomes a Cut, and its Transition Card offers no Travel.
 - **L · Pacing from the strip.** Open the pill and choose Manual with the keyboard. Focus returns to the pill. The feedback is green. Play: it stops at each ⏸, and ▶ continues. Switch back: the stays are as they were.
 - **M · The object's name.** Present a World object. Rename it in World, and check every place it shows. Type your own name, rename the object again (yours stays), then press *Use the object's name*. Unlink. Link with *Pick on the Stage*, then press <kbd>Esc</kbd> once mid-pick. Select the object in World: nothing there mentions the Presentation. Remove the object: the Presentation, its Views and Stops stay, it reads as unlinked with its last name, and nothing warns. Undo.
-- **N · Visitor progress.** Preview an Automatic Guide that visits one Presentation twice. Watch Travel fill while the destination stay is empty; arrival starts that stay at zero. Pause, Explore, then Back with little time left. Use Places for free exploration and Back to resume the Guide. Prev/Next remains linear. Switch to Manual and preview again.
+- **N · Visitor progress.** Preview an Automatic Guide that visits one Presentation twice: it starts paused. Verify stay and Travel widths follow their seconds, scrub into a Travel, rewind, then press Play. Rewind again after completion. Watch Travel fill while the destination stay is empty; arrival starts that stay at zero. Pause, Explore, then Back with little time left. Use Places for free exploration and Back to resume the Guide. Prev/Next remains linear. Switch to Manual and preview again.
 - **O · A file the editor didn't write.** Open a project file whose Stop carries `continuation`, or whose Guide carries `entryStopId`. It's refused with a plain sentence, and nothing is repaired on read.
 - **P · Problems.** Make two Stops on the same View: the Transition Card shows a Cut and offers no Travel. Open an imported file with a duplicate path: the chip names the Stops and Views, *Show* opens the Card, and *Copy details* has the ids.
 - **Q · No Guide Card.** With nothing selected, the Card is the Experience Card: change the welcome. With one Guide there is no *Opens with*. Add a second Guide from the Index (*Tour 2*): *Opens with* appears. Press the Guide's name on the strip, rename it, and press <kbd>Esc</kbd> on a second try. Remove a second Guide from the strip's ⋯, then Undo.
@@ -339,7 +343,7 @@ Not in this round, and not to be grown into by accident:
 - Narration and audio; walking or free movement in Explore; published hosting and sharing; analytics.
 - **Branching with consequences**, choice points, Detour authoring UI and mixed pacing (one wait in an Automatic Guide). Detours keep their data and runtime (D-8); nothing is added for them beyond the removal cascade.
 - Pruning program v4's `stop` and `end` continuations: they stay (A-4).
-- Visitor scrubbing; per-visit Travel time; automatic deletion of unused paths (D-5).
+- Public visitor scrubbing; per-visit Travel time; automatic deletion of unused paths (D-5).
 - Layout-element subjects for §27. Preview still does not resolve them (`unresolved-subject`); §33 links Scene entities only, and D-4's unlink applies to Scene removal only.
 - Any Camera authority, evaluation or `guide-time-map.ts` change; any interpreter rewrite; any second timer.
 - Multi-select of Stops, Guide duplication, and Stop copy and paste.
@@ -360,12 +364,12 @@ PR #271 can be accepted, and R217.S11 can begin, only when:
 
 ### Verification for owner acceptance
 
-The final simplification passes `npm test` (3,925 tests, including heavy contracts),
+The final simplification passes `npm test` (3,932 tests, including heavy contracts),
 `npm run test:arch` (209 tests, including documentation references), `npm run check`
 (0 errors; 4 existing visitor accessibility warnings), `npm run check:project-model`
 and `npm run build`. Targeted regressions cover single-step editing, Guide rename,
 View-list folding, pinned Default View identity across all three planners, and Travel →
-arrival → stay, revisit and Explore/Back progress.
+arrival → stay, revisit and Explore/Back progress, proportional Preview segments, paused entry, pointer/keyboard seek and rewind after completion.
 
 The consolidated sheet was checked in Chromium at 1440 px and 390 px: Stage demonstrations
 render, View folding and individual transitions work, Guide naming and pacing work, and

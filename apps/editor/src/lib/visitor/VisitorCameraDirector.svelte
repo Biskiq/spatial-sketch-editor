@@ -115,6 +115,7 @@
 	const currentPosition = motionSample.position;
 	const currentTarget = motionSample.target;
 	let cameraViewId: string | null = null;
+	let handledSeek: VisitorRuntimeState['seekPosition'] = null;
 
 	function setNeutralFrame() {
 		currentPosition.set(0, 8, 12);
@@ -125,6 +126,7 @@
 	function frameFor(viewId: string | null) {
 		if (viewId === null) {
 			setNeutralFrame();
+			writeCameraSample();
 			return;
 		}
 		// The graph is derived from the F.2 Camera unit. A View that is absent from
@@ -135,11 +137,13 @@
 			node = getNode(viewId, graph);
 		} catch {
 			setNeutralFrame();
+			writeCameraSample();
 			return;
 		}
 		currentPosition.set(...node.position);
 		currentTarget.set(...node.cameraTarget);
 		motionSample.fov = node.fov;
+		writeCameraSample();
 	}
 
 	// svelte-ignore state_referenced_locally
@@ -198,8 +202,39 @@
 		canvas.style.cursor = '';
 	}
 
+	function writeCameraSample(): void {
+		if (!cameraRef) return;
+		cameraRef.position.copy(currentPosition);
+		cameraRef.lookAt(currentTarget);
+		if (Math.abs(cameraRef.fov - motionSample.fov) > CAMERA_FOV_UPDATE_EPSILON) {
+			cameraRef.fov = motionSample.fov;
+			cameraRef.updateProjectionMatrix();
+		}
+	}
+
 	$effect(() => {
 		if (!active) return;
+		// Read destination dependencies even when this pass consumes a seek.
+		void effectiveViewId;
+		void visitor.currentInvocation;
+		const seek = visitor.seekPosition;
+		if (seek !== null && seek !== handledSeek) {
+			handledSeek = seek;
+			queuedMotions = [];
+			pendingDestinationCut = false;
+			lookYaw = 0;
+			lookPitch = 0;
+			const segment = seek.segment;
+			activeMotion = segment.kind === 'travel' ? segment.motion : null;
+			activeTargetViewId = segment.kind === 'travel' ? segment.viewId : null;
+			cameraViewId = segment.kind === 'travel' ? segment.fromViewId : segment.viewId;
+			transitionProgress = segment.kind === 'travel' && segment.durationSeconds > 0 ? seek.elapsedSeconds / segment.durationSeconds : 1;
+			if (activeMotion) sampleCameraMotion(activeMotion, transitionProgress, motionSample);
+			else frameFor(segment.viewId);
+			writeCameraSample();
+			onCameraGap?.(null);
+			return;
+		}
 		// Only a changed Presentation view starts Camera motion. The Experience
 		// interpreter owns why the visitor moved; this owns how the Camera gets
 		// there. A Cut (or reduced motion) is instant; a Travel animates the
@@ -372,12 +407,7 @@
 				lookDirection.setFromSpherical(lookSpherical);
 				currentTarget.copy(currentPosition).add(lookDirection);
 			}
-			cameraRef.position.copy(currentPosition);
-			cameraRef.lookAt(currentTarget);
-			if (Math.abs(cameraRef.fov - motionSample.fov) > CAMERA_FOV_UPDATE_EPSILON) {
-				cameraRef.fov = motionSample.fov;
-				cameraRef.updateProjectionMatrix();
-			}
+			writeCameraSample();
 		},
 		{ running: () => active }
 	);

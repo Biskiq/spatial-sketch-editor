@@ -63,9 +63,9 @@ export function visitorProgressFor(
 		const travelFill = index === 0 ? 0 : liveTravel ? travelProgress : visited ? 1 : 0;
 		// A visit is recorded when Travel starts, before the destination stay.
 		// Only departed occurrences use the full, passed-segment treatment.
-		let fill = visited && !current ? 1 : 0;
+		let fill = visited && (!current || state.phase === 'completed') ? 1 : 0;
 		if (current && program.pacing === 'manual') fill = 0;
-		if (current && visited && program.pacing === 'automatic' && state.phase !== 'traveling') {
+		if (current && visited && program.pacing === 'automatic' && state.phase !== 'traveling' && state.phase !== 'completed') {
 			const stay = stop.staySeconds;
 			fill = stay === null || wait === null ? 0 : clampFraction(1 - wait / (stay * 1000));
 		}

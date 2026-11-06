@@ -1029,6 +1029,12 @@ active or suspended stay; Back restores its lead-in. The Camera director supplie
 and Manual outlines the current segment with no stay fill. Each Stop occurrence has its own
 segment. Prev/Next follows the Guide; Places supports free exploration and Back resumes the Guide.
 No direct Stop-jump UI is required. The bar reads the same interpreter state as the tour controls.
+Preview starts paused and exposes a duration-proportional timeline: stays and Travel share one
+seconds-to-width scale; Cuts and Manual waits remain compact markers. Pointer drag and keyboard
+seeking replay the same reducer to the sought occurrence and sample Camera’s existing motion.
+A paused seek stays paused; a drag begun during playback resumes on release. The timeline stays
+available after completion for rewind. Manual arrival Travel can be paused while seeking; its
+stay still waits for Next with no invented duration. Public entry retains autoplay and read-only progress.
 
 The final simplification removes range selection, bulk transition editing and the strip's duplicate
 Rename menu item. View-list folding remains intentional; single click opens the View Card and
@@ -1036,6 +1042,6 @@ Look through remains explicit. Guide/Stop creation and entry editing preserve a 
 later Default reordering, including a View that was the Default when chosen.
 
 Every rule in this AM-11 implementation status is implemented on PR #271. The slice 10 final
-gate reran the complete editor suite (3,925 tests), the architecture suite (209 tests),
+gate reran the complete editor suite (3,932 tests), the architecture suite (209 tests),
 `npm run check` (0 errors) and `npm run build` (passed). The owner's browser journeys A–Q are
 the remaining manual acceptance, and no merge occurs before they pass.

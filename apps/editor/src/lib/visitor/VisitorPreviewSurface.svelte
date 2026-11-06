@@ -13,7 +13,8 @@ import { PCFShadowMap } from 'three';
 	import { formatGuideTime } from '@portfolio/camera-core';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import { visitorProgressFor } from './visitor-progress';
-	import { guideRunFromProgram } from './guide-run-map';
+	import { guideRunFromProgram, guideTimeMapForProgram } from './guide-run-map';
+	import VisitorTimeline from './VisitorTimeline.svelte';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
@@ -138,6 +139,8 @@ import { PCFShadowMap } from 'three';
 	});
 	function chooseGuided(): void {
 		if (visitorState === null || visitorState.program.entryStopId === null) return;
+		visitorState.start(null);
+		if (mode === 'preview') visitorState.pause();
 		surfaceMode = 'guided';
 		showEnd = false;
 	}
@@ -186,6 +189,13 @@ import { PCFShadowMap } from 'three';
 		freeViewId = null;
 		destinationEpoch += 1;
 	}
+	function toggleTourPlayback(): void {
+		if (visitorState?.ended) {
+			visitorState.restart();
+			visitorState.play();
+		} else visitorState?.togglePause();
+	}
+
 	function goNext(): void {
 		visitorState?.continue();
 	}
@@ -202,6 +212,7 @@ import { PCFShadowMap } from 'three';
 	}
 	function startAgain(): void {
 		visitorState?.restart();
+		if (mode === 'preview') visitorState?.pause();
 		surfaceMode = 'guided';
 		showEnd = false;
 		freeViewId = null;
@@ -216,6 +227,7 @@ import { PCFShadowMap } from 'three';
 		if (visitorState.ended || visitorState.state.stopId === null) {
 			visitorState.beginFreeExploration();
 			visitorState.start(null);
+			if (mode === 'preview') visitorState.pause();
 		}
 		surfaceMode = 'guided';
 		showEnd = false;
@@ -244,7 +256,7 @@ import { PCFShadowMap } from 'three';
 	function onVisitorCommand(command: 'previous' | 'pause' | 'explore' | 'back' | 'view-previous' | 'view-next'): void {
 		if (visitorState === null) return;
 		if (command === 'previous') goPrevious();
-		else if (command === 'pause') visitorState.togglePause();
+		else if (command === 'pause') toggleTourPlayback();
 		else if (command === 'explore') explore();
 		else if (command === 'back') backToTheTour();
 		else if (command === 'view-previous') exploreStep(-1);
@@ -299,6 +311,11 @@ import { PCFShadowMap } from 'three';
 		});
 		return run.kind === 'ready' ? run.occurrences.map((occurrence) => occurrence.stopId) : undefined;
 	});
+	const timelineMap = $derived.by(() => {
+		if (visitorState === null) return null;
+		const result = guideTimeMapForProgram({ program: visitorState.program, transitions: experienceOptions?.transitions ?? [], graph });
+		return result.kind === 'ready' ? result.map : null;
+	});
 	const progress = $derived(
 		visitorState === null
 			? null
@@ -330,7 +347,11 @@ import { PCFShadowMap } from 'three';
 		// start() reads the run state it replaces; untracked, so the new state never re-runs this.
 		const runtime = visitorState;
 		const entry = entryPresentationId;
-		untrack(() => runtime.start(entry));
+		untrack(() => {
+			const entering = !runtime.state.entered;
+			runtime.start(entry);
+			if (entering && mode === 'preview' && surfaceMode === 'guided') runtime.pause();
+		});
 	});
 	/**
 	 * This entry's first presented opportunity.
@@ -471,7 +492,7 @@ import { PCFShadowMap } from 'three';
 			</div>
 		</section>
 	{/if}
-	{#if surfaceMode === 'guided' && visitorState !== null && !visitorState.ended && visitorState.state.stopId !== null}
+	{#if surfaceMode === 'guided' && visitorState !== null && (mode === 'preview' || !visitorState.ended) && visitorState.state.stopId !== null}
 		{#if invitationShown}
 			<!-- The invitation is a hint: polite, never takes focus, never pauses the tour. -->
 			<aside class="visitor-invitation" role="status" aria-live="polite" aria-label="Invitation to explore">
@@ -490,22 +511,8 @@ import { PCFShadowMap } from 'three';
 			Stop {currentStopNumber} of {visitorState.program.stops.length}<b>{visitorState.currentPresentation?.label ?? 'The tour'}</b>
 		</p>
 		<nav class="visitor-hud" aria-label="Tour controls">
-			{#if progress !== null}
-				<div class="prog" class:frozen={visitorState.paused} role="progressbar" aria-label="Tour progress"
-					aria-valuemin={0} aria-valuemax={progress.segments.length} aria-valuenow={progress.visitedCount}>
-					{#each progress.segments as segment, index (segment.stopId)}
-						{#if index > 0}
-							<span class="prog-link" class:travel={segment.travels} aria-hidden="true"
-								><i style={`--fill:${segment.travelFill}`}></i></span
-							>
-						{/if}
-						<span class="prog-seg" class:done={segment.visited} class:current={segment.current}
-							class:outline={segment.outline} data-progress-stop={segment.stopId}
-							title={segment.label} aria-current={segment.current ? 'step' : undefined}>
-							<i style={`--fill:${segment.fill}`}></i>
-						</span>
-					{/each}
-				</div>
+			{#if progress !== null && timelineMap !== null && timelineMap.segments.length > 0}
+				<VisitorTimeline map={timelineMap} visitor={visitorState} {progress} interactive={mode === 'preview'} />
 			{/if}
 			<div class="hud-row">
 				<span class="hud-title">
@@ -521,20 +528,22 @@ import { PCFShadowMap } from 'three';
 						onclick={goPrevious}>← Prev</button
 					>
 					{#if visitorState.pacing === 'automatic'}
-						<button type="button" class="hbtn" aria-pressed={visitorState.paused} onclick={() => visitorState?.togglePause()}
-							>{visitorState.paused ? '▶ Play' : '❚❚ Pause'}</button
+						<button type="button" class="hbtn" aria-pressed={visitorState.paused || visitorState.ended} onclick={toggleTourPlayback}
+							>{visitorState.paused || visitorState.ended ? '▶ Play' : '❚❚ Pause'}</button
 						>
 					{/if}
 					<button
 						type="button"
 						class="hbtn"
 						class:pri={visitorState.pacing === 'manual'}
+						disabled={visitorState.ended}
 						title={visitorState.traveling ? 'Arrive now' : isLastStop ? 'Finish the tour' : 'Go to the next Stop'}
 						onclick={goNext}>{isLastStop && !visitorState.traveling ? 'Finish' : 'Next →'}</button
 					>
 					<button
 						type="button"
 						class="hbtn"
+						disabled={visitorState.ended}
 						title={visitorState.traveling ? 'Arrive first, then explore' : 'Pause the tour and explore'}
 						onclick={explore}>◎ Explore{stopViewCount > 1 ? ` · ${stopViewCount} views` : ''}</button
 					>
@@ -975,56 +984,6 @@ import { PCFShadowMap } from 'three';
 	.hbtn:focus-visible {
 		outline: 2px solid #9fd0b2;
 		outline-offset: 1px;
-	}
-	/* One thin segmented bar: equal Stop segments, Travel as a short connector, Cut as a gap. */
-	.prog {
-		display: flex;
-		align-items: center;
-		height: 6px;
-	}
-	.prog.frozen {
-		opacity: 0.45;
-	}
-	.prog-seg {
-		position: relative;
-		flex: 1 1 0;
-		min-width: 14px;
-		height: 4px;
-		overflow: hidden;
-		border-radius: 2px;
-		background: rgb(243 240 228 / 20%);
-	}
-	.prog-seg i,
-	.prog-link i {
-		position: absolute;
-		left: 0;
-		top: 0;
-		bottom: 0;
-		width: calc(100% * var(--fill));
-		background: rgb(243 240 228 / 85%);
-	}
-	.prog-seg.current i {
-		background: #cfe9d8;
-	}
-	.prog-seg.outline {
-		background: transparent;
-		box-shadow: inset 0 0 0 1px rgb(243 240 228 / 75%);
-	}
-	.prog-link {
-		position: relative;
-		flex: none;
-		width: 3px;
-	}
-	.prog-link.travel {
-		width: 12px;
-		height: 2px;
-		margin: 0 2px;
-		overflow: hidden;
-		border-radius: 1px;
-		background: rgb(243 240 228 / 20%);
-	}
-	.prog-link:not(.travel) i {
-		display: none;
 	}
 	/* Exploring shares the HUD panel and its compact buttons. */
 	.guided-title {

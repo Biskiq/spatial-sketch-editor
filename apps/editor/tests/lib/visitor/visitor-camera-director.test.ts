@@ -64,6 +64,7 @@ import type {
 import type { NavigationGraph, NavigationNodeData } from '@portfolio/project-model';
 import VisitorCameraDirector from '$lib/visitor/VisitorCameraDirector.svelte';
 import { createVisitorRuntimeState, type VisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.svelte';
+import { guideTimeMapForProgram } from '$lib/visitor/guide-run-map';
 import VisitorRuntimeProbe from './fixtures/VisitorRuntimeProbe.svelte';
 
 const OPTIONS: ExperienceInterpreterOptions = {
@@ -237,6 +238,52 @@ async function frame(delta = 1 / 60): Promise<void> {
 }
 
 describe('mounted visitor Camera handoff', () => {
+	it('seeks a paused Travel through Camera, rewinds a stay, and plays from the sought position', async () => {
+		const transitions = [{ fromStopId: 'stop-1', toStopId: 'stop-2', invocation: { kind: 'travel' as const, connectionId: 'connection-2' } }];
+		const visitor = createVisitorRuntimeState({ program: program(), options: { ...OPTIONS, transitions } });
+		visitor.enter(); visitor.pause();
+		await mountDirector(visitor);
+		expect(mockCamera().lastPoint.y).toBe(1.6);
+		const derived = guideTimeMapForProgram({ program: visitor.program, transitions, graph: graph() });
+		if (derived.kind !== 'ready') throw Error('map not ready');
+		const travel = derived.map.segments.find((segment) => segment.kind === 'travel')!;
+		const firstStay = derived.map.segments.find((segment) => segment.kind === 'hold')!;
+		expect(visitor.seek(derived.map, { segmentId: travel.id, elapsedSeconds: 2.5 })).toBe(true);
+		await tick();
+		expect(visitor.state).toMatchObject({ stopId: 'stop-2', phase: 'traveling', paused: true, holdRemainingMs: null });
+		const midpoint = mockCamera().lastPoint;
+		expect(midpoint.x).toBeGreaterThan(0); expect(midpoint.x).toBeLessThan(4);
+		await frame(1);
+		expect(mockCamera().lastPoint).toEqual(midpoint);
+		visitor.play(); await tick(); await frame(2.5);
+		expect(visitor.state).toMatchObject({ stopId: 'stop-2', phase: 'holding', holdRemainingMs: 1000 });
+		expect(visitor.seek(derived.map, { segmentId: firstStay.id, elapsedSeconds: 10 })).toBe(true);
+		await tick();
+		expect(visitor.state).toMatchObject({ stopId: 'stop-1', phase: 'holding', holdRemainingMs: 20000, paused: true });
+		expect(mockCamera().lastPoint.x).toBe(0);
+		visitor.play(); await tick(); await frame(1);
+		expect(visitor.state.holdRemainingMs).toBe(19000);
+	});
+
+
+	it('seeks a Manual Travel without inventing a stay duration; Next lands at its wait', async () => {
+		const transitions = [{ fromStopId: 'stop-1', toStopId: 'stop-2', invocation: { kind: 'travel' as const, connectionId: 'connection-2' } }];
+		const manual = program({ pacing: 'manual', stops: program().stops.map((stop) => ({ ...stop, staySeconds: null })) });
+		const visitor = createVisitorRuntimeState({ program: manual, options: { ...OPTIONS, transitions } });
+		visitor.enter(); await mountDirector(visitor);
+		const derived = guideTimeMapForProgram({ program: manual, transitions, graph: graph() });
+		if (derived.kind !== 'ready') throw Error('map not ready');
+		const travel = derived.map.segments.find((segment) => segment.kind === 'travel')!;
+		expect(visitor.seek(derived.map, { segmentId: travel.id, elapsedSeconds: 2 })).toBe(true);
+		await tick();
+		const pose = mockCamera().lastPoint;
+		await frame(1);
+		expect(mockCamera().lastPoint).toEqual(pose);
+		expect(visitor.state).toMatchObject({ phase: 'traveling', paused: true, holdRemainingMs: null });
+		visitor.continue(); await tick(); await frame();
+		expect(visitor.state).toMatchObject({ phase: 'ready', paused: false, holdRemainingMs: null });
+	});
+
 	it('renders runtime progress, proving the interpreter state is reactive', async () => {
 		const visitor = runtime();
 		visitor.enter();

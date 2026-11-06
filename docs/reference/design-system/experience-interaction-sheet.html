@@ -680,6 +680,7 @@ section{min-width:0}button:focus-visible,a:focus-visible,input:focus-visible{out
 
 @media(max-width:720px){header.top{position:static}.toc a{white-space:normal;max-width:100%}.ltwrap .hud{width:calc(100% - 16px);max-width:100%;flex-wrap:wrap;white-space:normal;border-radius:12px;font-size:10px;gap:4px}.ltwrap .hud button{font-size:10px;padding:3px 6px}.fz-vp{width:100%;height:350px;min-width:0;aspect-ratio:auto}.fz-xstrip{max-width:100%;overflow:auto}.showpop{left:8px;max-width:calc(100% - 16px)}#showplan{display:none}.fz-own{grid-template-columns:minmax(0,1fr)}}
 .fz-places{position:absolute;inset:45px 12px auto;z-index:5;background:var(--forest);color:var(--ivory);border-radius:12px;padding:12px;display:flex;gap:6px;flex-wrap:wrap}.fz-places>b{width:calc(100% - 50px)}.fz-invite{position:absolute;top:56px;left:12px;max-width:245px;background:var(--forest);color:var(--ivory);padding:12px;border-radius:12px;font-size:12px}.fz-invite p{margin:6px 0}
+.fz-prog{height:18px;cursor:ew-resize;touch-action:none}.fz-prog .s,.fz-prog .k.t{min-width:2px;width:auto}.fz-prog:focus-visible{outline:2px solid #9fd0b2;outline-offset:3px}
 </style>
 </head>
 <body>
@@ -1127,7 +1128,7 @@ section{min-width:0}button:focus-visible,a:focus-visible,input:focus-visible{out
 <li><b>Travel</b> fills the short connector between two segments. A Cut has a hairline gap and nothing to fill.</li>
 <li><b>Manual</b> shows the current segment outlined, with <i>Next when you're ready</i>, and no fill, because there's no time to show.</li>
 <li><b>Pause and Explore freeze it.</b> Explore dims the bar while the explore strip is up. <i>Back to the tour</i> restores the same fill and the same play, pause or wait. Back's 2 s lead-in shows as the fill stepping back a little.</li>
-<li>Segments are equal widths with a minimum, not proportional to time, so a 2 s stay is still visible. The final segment fills, and the end card follows.</li>
+<li>Timed spans are proportional to seconds: a long Travel has the same scale as a long stay. Cuts remain small gaps; Manual waits use a compact marker. Preview starts paused. Drag the timeline to rewind or seek, then press Play; scrubbing during playback resumes when released.</li>
 <li>Progress reflects the running tour. Travel fills the connector first; the destination stay remains empty until arrival, then fills from zero. Pause and Explore freeze the stay. A recorded visit does not complete a stay.</li>
 </ul>
 </div>
@@ -2115,7 +2116,7 @@ function vrStep(label,val,act){return `<span class="vr-st" role="group" aria-lab
   const run=()=>stops().map((st,j)=>({st,gi:j}));
   function edgeInto(j){const R=run();if(j===0)return null;return edges()[R[j].gi-1];}
   const travIn=j=>{const e=edgeInto(j);return e&&travelOK(e)?e.cx.t:0;};
-  function vStart(){V={mode:'tour',j:0,phase:S.G.pacing==='manual'?'wait':'stay',local:0,paused:false,ex:false,saved:null,xv:null};vRender();vAnnounce();vLoop();vp.focus();}
+  function vStart(){V={mode:'tour',j:0,phase:S.G.pacing==='manual'?'wait':'stay',local:0,paused:true,ex:false,saved:null,xv:null};vRender();vAnnounce();vLoop();vp.focus();}
   function vAdvance(){const R=run();if(V.j>=R.length-1){V.mode='end';vRender();vread.textContent='The tour is over. Keep exploring, or start again.';return;}
     V.j++;V.local=0;V.phase=travIn(V.j)>0?'travel':(S.G.pacing==='manual'?'wait':'stay');vRender();vAnnounce();}
   function vLand(){V.phase=S.G.pacing==='manual'?'wait':'stay';V.local=0;}
@@ -2133,7 +2134,7 @@ function vrStep(label,val,act){return `<span class="vr-st" role="group" aria-lab
     vhud.hidden=false;const o=R[V.j],P=S.P[o.st.p],man=S.G.pacing==='manual',last=V.j===R.length-1;
     vbg.innerHTML=thumb(V.ex&&V.xv?V.xv:entryOf(o.st));
     vcap.innerHTML=V.ex?`Exploring<b>${esc(pname(o.st.p))}</b>`:`Stop ${V.j+1} of ${R.length}<b>${esc(pname(o.st.p))}</b>`;
-    const prog=`<div class="fz-prog${V.ex||V.paused?' frozen':''}" aria-hidden="true">${R.map((r,j)=>`${j?`<span class="k${travIn(j)>0?' t':''}">${travIn(j)>0?`<i data-vt="${j}"></i>`:''}</span>`:''}<span class="s${j===V.j?' here':''}${j===V.j&&man&&V.phase==='wait'?' wait':''}"><i data-vs="${j}"></i></span>`).join('')}</div>`;
+    const prog=`<div class="fz-prog${V.ex||V.paused?' frozen':''}" role="slider" tabindex="0" aria-label="Tour timeline">${R.map((r,j)=>`${j?`<span class="k${travIn(j)>0?' t':''}" data-vtravel="${j}" style="flex:${travIn(j)>0?travIn(j)+' 1 0':'0 0 1px'}">${travIn(j)>0?`<i data-vt="${j}"></i>`:''}</span>`:''}<span class="s${j===V.j?' here':''}${j===V.j&&man&&V.phase==='wait'?' wait':''}" data-vseg="${j}" style="flex:${man?'0 0 14px':r.st.stay+' 1 0'}"><i data-vs="${j}"></i></span>`).join('')}</div>`;
     if(V.ex){const vi=P.views.indexOf(V.xv);vhud.innerHTML=`${prog}<div class="fz-vtop"><span class="q">Exploring · the tour is waiting at Stop ${V.j+1}</span><div class="fz-xstrip" role="group" aria-label="${esc(pname(o.st.p))}: Views"><button class="fz-vb" data-v="xp" ${vi<=0?'disabled':''} aria-label="Previous View">‹</button>${P.views.map(v=>`<button class="v${v===V.xv?' on':''}" data-xv="${v}" aria-label="${esc(VW[v].n)}">${thumb(v)}</button>`).join('')}<button class="fz-vb" data-v="xn" ${vi>=P.views.length-1?'disabled':''} aria-label="Next View">›</button></div><div class="fz-vbtns"><button class="fz-vb pri" data-v="back">Back to the tour</button></div></div>`;}
     else vhud.innerHTML=`${prog}<div class="fz-vtop"><span><b>${esc(pname(o.st.p))}</b> <span class="q" id="fz-vst"></span></span><div class="fz-vbtns"><button class="fz-vb" data-v="prev" ${V.j===0?'disabled':''}>← Prev</button>${man?'':`<button class="fz-vb" data-v="pause" aria-pressed="${V.paused}">${V.paused?'▶ Play':'❚❚ Pause'}</button>`}<button class="fz-vb${man?' pri':''}" data-v="next">${last&&V.phase!=='travel'?'Finish':'Next →'}</button><button class="fz-vb" data-v="explore">◎ Explore${P.views.length>1?` · ${P.views.length} views`:''}</button></div></div>`;
     vhud.insertAdjacentHTML('beforeend','<button class="fz-vb" data-v="places">Places</button>');
@@ -2158,12 +2159,21 @@ function vrStep(label,val,act){return `<span class="vr-st" role="group" aria-lab
       if(c==='xp'||c==='xn'){const P=S.P[V.xp],at=P.views.indexOf(V.xv)+(c==='xn'?1:-1);if(at>=0&&at<P.views.length){V.xv=P.views[at];vRender();}}return;
     }
     if(V.mode!=='tour')return;
-    if(c==='next'){if(V.phase==='travel'){vLand();vRender();vread.textContent='Arrived now: Next during a Travel lands at once.';}else vAdvance();}
+    if(c==='next'){V.paused=false;if(V.phase==='travel'){vLand();vRender();vread.textContent='Arrived now: Next during a Travel lands at once.';}else vAdvance();}
     else if(c==='prev'&&V.j>0){V.j--;vLand();vRender();vAnnounce();}
     else if(c==='pause'&&S.G.pacing==='automatic'){V.paused=!V.paused;vRender();vread.textContent=V.paused?'Paused. The bar holds still.':'Playing.';}
     else if(c==='explore'){if(V.phase==='travel')vLand();V.saved={phase:V.phase,local:V.local,paused:V.paused};V.ex=true;V.xv=entryOf(R[V.j].st);vRender();vread.textContent=`Exploring ${pname(R[V.j].st.p)}. The bar is frozen; the tour waits.`;}
     else if(c==='back'){const s=V.saved,st=R[V.j].st;V.ex=false;V.phase=s.phase;V.paused=s.paused;V.local=s.phase==='stay'&&st.stay-s.local<2?Math.max(0,st.stay-2):s.local;V.saved=null;V.xv=null;vRender();vread.textContent=`Back to the tour at Stop ${V.j+1}, ${V.paused?'still paused':S.G.pacing==='manual'?'still waiting for Next':'carrying on'}, with the same progress.`;}
     else if(c==='xp'||c==='xn'){const P=S.P[R[V.j].st.p],vi=P.views.indexOf(V.xv)+(c==='xn'?1:-1);if(vi>=0&&vi<P.views.length){V.xv=P.views[vi];vRender();}}}
+  function visitorSeek(clientX){const bar=vp.querySelector('.fz-prog');if(!bar||V.ex)return;
+    const parts=[...bar.querySelectorAll('[data-vseg],[data-vtravel]')];let best=null,dist=Infinity;
+    for(const part of parts){const b=part.getBoundingClientRect(),d=Math.max(b.left-clientX,clientX-b.right,0);if(d<dist){best=part;dist=d;}}
+    if(!best)return;const b=best.getBoundingClientRect(),fraction=Math.max(0,Math.min(1,(clientX-b.left)/(b.width||1)));
+    V.j=+(best.dataset.vseg??best.dataset.vtravel);V.phase=best.dataset.vtravel!==undefined&&travIn(V.j)>0?'travel':S.G.pacing==='manual'?'wait':'stay';
+    V.local=fraction*(V.phase==='travel'?travIn(V.j):V.phase==='stay'?run()[V.j].st.stay:0);V.paused=true;vRender();vAnnounce();}
+  vp.addEventListener('pointerdown',e=>{if(!e.target.closest('.fz-prog')||V.mode!=='tour')return;e.preventDefault();const wasPlaying=!V.paused;visitorSeek(e.clientX);
+    const move=event=>visitorSeek(event.clientX),up=()=>{removeEventListener('pointermove',move);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);if(wasPlaying){V.paused=false;vLoop();vRender();}};
+    addEventListener('pointermove',move);addEventListener('pointerup',up);addEventListener('pointercancel',up);});
   vp.addEventListener('click',e=>{const b=e.target.closest('[data-v],[data-xv],[data-place]');if(!b)return;if(b.dataset.place){enterPlace(b.dataset.place);return;}if(b.dataset.xv){V.xv=b.dataset.xv;vRender();return;}vCmd(b.dataset.v);});
   vp.addEventListener('keydown',e=>{const k={' ':'pause',ArrowRight:'next',ArrowLeft:'prev',e:'explore',E:'explore',b:'back',B:'back',Escape:'back'}[e.key];if(!k||!['tour','free'].includes(V.mode))return;if(V.mode==='free'){e.preventDefault();vCmd(k==='next'?'xn':k==='prev'?'xp':k);return;}if(V.ex&&(k==='next'||k==='prev')){e.preventDefault();vCmd(k==='next'?'xn':'xp');return;}if(!V.ex&&k==='back')return;if(V.ex&&k!=='back')return;e.preventDefault();vCmd(k);});
   $('#fz-vrun').addEventListener('click',e=>{const b=e.target.closest('[data-vr]');if(!b)return;if(b.dataset.vr==='start')vStart();else{cancelAnimationFrame(vraf);V={mode:'welcome'};vRender();vread.textContent='';}});
