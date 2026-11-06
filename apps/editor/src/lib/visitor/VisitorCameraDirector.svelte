@@ -32,6 +32,7 @@
 		guidedInputEnabled = true,
 		onCameraGap,
 		onTraveling,
+		onTravelProgress,
 		onCommand,
 		onLook
 	}: {
@@ -57,6 +58,8 @@
 		onCameraGap?: (message: string | null) => void;
 		/** Reports an in-flight directed Travel or queued crossing. */
 		onTraveling?: (traveling: boolean) => void;
+		/** Reports the existing transition progress (0–1) of the live Camera Travel. */
+		onTravelProgress?: (progress: number) => void;
 		/** Visitor keys the surface owns: ← Prev, Space Pause, E Explore, and in Explore ← → Views and B Back. */
 		onCommand?: (command: 'previous' | 'pause' | 'explore' | 'back' | 'view-previous' | 'view-next') => void;
 		/** Whether the visitor has looked away from the saved View (drag or W A S D). */
@@ -151,6 +154,9 @@
 	let activeMotion: CameraMotion | null = null;
 	let activeTargetViewId: string | null = $state(null);
 	let transitionProgress: number = $state(1);
+	$effect(() => {
+		onTravelProgress?.(transitionProgress);
+	});
 	/** Ordered Camera moves a single interpreter tick crossed (Preview only). */
 	let queuedMotions = $state<VisitorTickMotion[]>([]);
 	/** The next effective View is an explicit destination: settle it as a Cut. */

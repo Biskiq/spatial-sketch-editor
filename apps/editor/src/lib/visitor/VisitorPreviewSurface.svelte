@@ -13,6 +13,7 @@ import { PCFShadowMap } from 'three';
 	import { formatGuideTime } from '@portfolio/camera-core';
 	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import { visitorProgressFor } from './visitor-progress';
+	import { guideRunFromProgram } from './guide-run-map';
 	import { initialVisitorSurfaceMode } from './visitor-entry';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
@@ -91,6 +92,8 @@ import { PCFShadowMap } from 'three';
 			: createVisitorRuntimeState({ program, options: experienceOptions });
 	});
 	let cameraGap = $state<string | null>(null);
+	/** The live Camera Travel's existing transition fraction, for the connector. */
+	let travelProgress = $state(0);
 	let surfaceMode = $state<'welcome' | 'guided' | 'free'>(initialVisitorSurfaceMode(mode, startMode));
 	let placesOpen = $state(false);
 	/** Invitations hidden with ✕, by occurrence: dismissing lasts one visit. Session only. */
@@ -288,8 +291,18 @@ import { PCFShadowMap } from 'three';
 		return `, ${Math.max(0, Math.ceil(resume.holdRemainingMs / 1000))} s left`;
 	});
 	const isLastStop = $derived(visitorState !== null && currentStopNumber === visitorState.program.stops.length);
+	const guideOrder = $derived.by(() => {
+		if (visitorState === null) return undefined;
+		const run = guideRunFromProgram({
+			program: visitorState.program,
+			transitions: experienceOptions?.transitions ?? []
+		});
+		return run.kind === 'ready' ? run.occurrences.map((occurrence) => occurrence.stopId) : undefined;
+	});
 	const progress = $derived(
-		visitorState === null ? null : visitorProgressFor(visitorState.program, visitorState.state)
+		visitorState === null
+			? null
+			: visitorProgressFor(visitorState.program, visitorState.state, { order: guideOrder, travelProgress })
 	);
 	$effect(() => {
 		if (visitorState === null) return;
@@ -409,6 +422,7 @@ import { PCFShadowMap } from 'three';
 					viewOverride={freeViewId}
 					{destinationEpoch}
 					onCameraGap={(message) => (cameraGap = message)}
+					onTravelProgress={(fraction) => (travelProgress = fraction)}
 					onCommand={onVisitorCommand}
 					onLook={(value) => (lookingAround = value)}
 				/>

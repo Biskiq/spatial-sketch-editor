@@ -995,10 +995,11 @@ Presentation update and every removal plan — routes through `prepared()`, and 
 sizes one `connectionPool()` for all of them: the Experience's Travel uses (Stop transitions
 plus Presentation View transitions) plus one, so no hand-sized array can starve an Enter-at or
 Default change. The Stop update carries only its new entry View, never a Travel path. A seeded
-property test runs reorders, inserts, entry changes, View reorders and a removal over Travels, a
-repeated Presentation and a Detour, and asserts every accepted change lowers without
-`travel-gap`, `travel-same-view`, `travel-after-last` or `stop-guide-membership`, and that one
-Undo restores the exact envelope. Slice 4 words every source finding for the creator:
+property test runs twenty sequences of reorders, inserts, entry changes, View reorders and
+removals over Travels, a repeated Presentation and a Detour, asserts every accepted change
+lowers without `travel-gap`, `travel-same-view`, `travel-after-last` or
+`stop-guide-membership`, checks exact Undo and Redo on every sampled accumulating step, and
+removes the Stop that takes the Detour (R29). Slice 4 words every source finding for the creator:
 `experience-problems.ts` maps validator diagnostics and lowering refusals to `{ sentence,
 subject, fix, detail }` using Guide Stop numbers, Guide and Presentation names and Camera View
 labels; the chip's *Show* opens the Stop's Transition Card, and codes, paths and ids appear only
@@ -1022,10 +1023,10 @@ section links, follows and unlinks, and Scene `delete-one` unlinks every Present
 removed object in the same accepted change. Slice 9 gives the visitor one continuous segmented
 progress bar in Guide order: each segment is a Stop occurrence, `state.visited` marks only the
 Stops actually reached, an Automatic stay fills its segment while paused or exploring and Back
-restores the lead-in, a Travel fills the connector into its arriving segment, and Manual leaves
-the current segment outlined with no stay fill. A revisit has its own segment and a Places jump
-does not mark skipped Stops visited (R21–R23); the bar reads the same interpreter state as the
-tour controls.
+restores the lead-in, only the live Camera Travel fills its connector from the director's
+existing transition fraction, and Manual leaves the current segment outlined with no stay fill.
+A revisit has its own segment and a Places jump leaves skipped Stops, and the connectors into
+them, empty (R21–R23); the bar reads the same interpreter state as the tour controls.
 
 Every rule in this AM-11 implementation status is implemented on PR #271. The slice 10 final
 gate reran the complete editor suite (3,915 tests), the architecture suite (209 tests),

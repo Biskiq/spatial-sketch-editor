@@ -71,8 +71,8 @@ describe('visitor progress', () => {
 		visitor.enter();
 		visitor.continue();
 		expect(visitor.traveling).toBe(true);
-		const progress = visitorProgressFor(visitor.program, visitor.state);
-		expect(progress.segments[1]).toMatchObject({ current: true, travelFill: 1 });
+		const progress = visitorProgressFor(visitor.program, visitor.state, { travelProgress: 0.4 });
+		expect(progress.segments[1]).toMatchObject({ current: true, travelFill: 0.4 });
 	});
 
 	it('R22: Manual outlines the current segment and leaves it unfilled', () => {
@@ -96,6 +96,7 @@ describe('visitor progress', () => {
 		const progress = visitorProgressFor(visitor.program, visitor.state);
 		expect(progress.segments.map((segment) => segment.stopId)).toEqual(['stop-1', 'stop-2', 'stop-3']);
 		expect(progress.segments.map((segment) => segment.visited)).toEqual([true, false, true]);
+		expect(progress.segments[1]).toMatchObject({ fill: 0, travelFill: 0 });
 		expect(progress.segments[2]).toMatchObject({ current: true, travelFill: 1 });
 	});
 });
