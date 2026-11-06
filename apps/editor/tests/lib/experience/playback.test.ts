@@ -171,8 +171,8 @@ describe('R217.S30 playback', () => {
 		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
 		expect(guide).toContain('data-playback-timeline');
 		expect(guide).toContain('data-playback-total');
-		expect(guide).toContain('--shell-gold');
-		expect(guide).toContain('height: 8px');
+		expect(guide).not.toContain('--shell-gold');
+		expect(guide).toContain('height: 2px');
 		expect(guide).toContain('--shell-touch-target, 44px');
 		expect(guide).toContain('min-height: 44px');
 		expect(guide).not.toContain('Comes with Camera playback');

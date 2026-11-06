@@ -21,7 +21,7 @@
 	import { experienceHomes } from './experience-homes';
 	import { formatPathSeconds } from './experience-paths';
 	import type { ExperiencePlayback } from './playback.svelte';
-	import { resolveWaitScrub } from './timeline-scrub';
+	import { locateSegmentAt, resolveWaitScrub } from './timeline-scrub';
 
 	let {
 		onClose,
@@ -74,6 +74,16 @@
 	let barEl = $state<HTMLElement | null>(null);
 	/** Cards the pointer has focused last, so the roving tab stop survives a cleared selection. */
 	let focusedStopId = $state<string | null>(null);
+	let renaming = $state(false);
+	let renameValue = $state('');
+	let renameInput = $state<HTMLInputElement | null>(null);
+	let nameButton = $state<HTMLButtonElement | null>(null);
+	let guideMenuOpen = $state(false);
+	let guideMenuWrap = $state<HTMLElement | null>(null);
+	let guideMenuButton = $state<HTMLButtonElement | null>(null);
+	let pacingOpen = $state(false);
+	let pacingWrap = $state<HTMLElement | null>(null);
+	let pacingButton = $state<HTMLButtonElement | null>(null);
 
 	// ---- R217.S30: the Stage owns the one ephemeral playback session ----
 
@@ -115,6 +125,16 @@
 		if (at >= entry.endSeconds) return 100;
 		if (at <= entry.startSeconds) return 0;
 		return span <= 0 ? 100 : ((at - entry.startSeconds) / span) * 100;
+	}
+	/** The Travel gutter's own fill, so the card rails and gutters form one track. */
+	function travelProgress(stopId: string): number {
+		const segment = playback.map?.segments.find((entry) => entry.kind === 'travel' && entry.stopId === stopId);
+		const at = elapsedSeconds;
+		if (segment === undefined || at === null) return 0;
+		const end = segment.startSeconds + segment.durationSeconds;
+		if (at >= end) return 100;
+		if (at <= segment.startSeconds) return 0;
+		return segment.durationSeconds <= 0 ? 100 : ((at - segment.startSeconds) / segment.durationSeconds) * 100;
 	}
 	/** Each hold is one View's span; its own label/time stays readable on the bar. */
 	const timelineSegments = $derived.by(() => {
@@ -179,10 +199,18 @@
 		playback.setFollow(true);
 	}
 
+	/** The cards and Travel gutters under the one track, in DOM order. */
+	function trackSegments(): { id: string; width: number }[] {
+		if (rowEl === null) return [];
+		return [...rowEl.querySelectorAll<HTMLElement>('[data-track-id]')]
+			.map((element) => ({ id: element.dataset.trackId ?? '', width: element.getBoundingClientRect().width }))
+			.filter((segment) => segment.id !== '' && segment.width > 0);
+	}
+
 	function scrubAt(clientX: number): void {
 		const map = playback.map;
 		if (barEl === null || map === null) return;
-		const rect = barEl.getBoundingClientRect();
+		const rect = (rowEl ?? barEl).getBoundingClientRect();
 		const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
 		// A wait is its own addressable occurrence even at zero width. Coincident
 		// waits cycle on repeated presses, so each stacked occurrence is reachable.
@@ -195,12 +223,33 @@
 			playback.seekSegment(waitId);
 			return;
 		}
+		// The single track is the card row: each card and Travel gutter maps its own
+		// span, so the pointer's local fraction is multiplied by that segment's duration.
+		const segments = trackSegments();
+		const total = segments.reduce((sum, segment) => sum + segment.width, 0);
+		const located = locateSegmentAt(
+			segments.map((segment) => ({ id: segment.id, widthFraction: segment.width / total })),
+			fraction
+		);
+		if (located !== null) {
+			const [kind, stopId] = located.segmentId.split(':');
+			const segment = map.segments.find((entry) => entry.kind === kind && entry.stopId === stopId);
+			if (segment !== undefined) {
+				playback.seek(segment.startSeconds + located.localFraction * segment.durationSeconds);
+				return;
+			}
+		}
 		playback.seek(fraction * map.totalSeconds);
 	}
 
 	function onBarKeydown(event: KeyboardEvent): void {
 		const map = playback.map;
 		if (map === null) return;
+		if (event.key === ' ' || event.key === 'Spacebar') {
+			event.preventDefault();
+			playPause();
+			return;
+		}
 		if (map.totalSeconds <= 0) {
 			const queue = map.segments.filter((segment) => segment.kind === 'wait');
 			if (queue.length === 0 || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
@@ -214,9 +263,13 @@
 		const current = playback.cursor;
 		const segment = current === null ? null : map.segments.find((entry) => entry.id === current.segmentId);
 		const elapsed = segment === undefined || segment === null || current === null ? 0 : segment.startSeconds + current.elapsedSeconds;
+		const step = event.shiftKey ? 5 : 1;
 		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 			event.preventDefault();
-			playback.seek(elapsed + (event.key === 'ArrowLeft' ? -1 : 1));
+			playback.seek(elapsed + (event.key === 'ArrowLeft' ? -step : step));
+		} else if (event.key === 'PageUp' || event.key === 'PageDown') {
+			event.preventDefault();
+			playback.seek(elapsed + (event.key === 'PageUp' ? -10 : 10));
 		} else if (event.key === 'Home' || event.key === 'End') {
 			event.preventDefault();
 			playback.seek(event.key === 'Home' ? 0 : map.totalSeconds);
@@ -266,8 +319,6 @@
 		/** ✦: the Stop invites exploring. */
 		readonly invites: boolean;
 		readonly again: boolean;
-		/** R217.S26 (E6): the Guide's start Stop carries the *Start* tag. */
-		readonly start: boolean;
 		readonly name: string;
 		readonly connector: Connector | null;
 	};
@@ -298,7 +349,8 @@
 						? `Stop ${resolved.position}`
 						: 'a Stop outside this Guide';
 				const path = resolved.transition === 'travel' ? controller.pathFor?.({ kind: 'transition', stopId: stop.id }) ?? null : null;
-				const seconds = path?.state === 'ready' ? ` · ${formatPathSeconds(path.seconds)}` : '';
+				const seconds = path?.state === 'ready' ? formatPathSeconds(path.seconds) : null;
+				const nameSeconds = seconds === null ? '' : ` · ${seconds}`;
 				const attention = gap ? '. Travel has no Camera connection yet' : '';
 				connector = {
 					shape: resolved.kind,
@@ -306,23 +358,23 @@
 					// names its Stop, and a Travel's seconds live in the accessible name.
 					text:
 						resolved.kind === 'adjacent'
-							? resolved.transition
+							? resolved.transition === 'travel'
+								? `↗ ${seconds ?? ''}`.trim()
+								: resolved.transition
 							: resolved.position === null
 								? '→'
 								: `→ ${resolved.position}`,
-					name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${resolved.transition === 'travel' ? seconds : ''}${attention}`,
+				name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${resolved.transition === 'travel' ? nameSeconds : ''}${attention}`,
 					transition: resolved.transition,
 					gap
 				};
 			}
-			const start = controller.contextGuide?.stopIds[0] === stop.id;
 			const spoken = [`Stop ${number}`, label];
-			if (start) spoken.push('the tour starts here');
 			if (again) spoken.push('again');
 			if (invites) spoken.push('invites exploring');
 			if (more > 0) spoken.push(`${more} more ${more === 1 ? 'view' : 'views'} to explore`);
 			if (pacing === 'manual') spoken.push('waits for Next');
-			return { stopId: stop.id, viewId, number, label, more, invites, again, start, name: spoken.join(', '), connector };
+			return { stopId: stop.id, viewId, number, label, more, invites, again, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -386,6 +438,99 @@
 		if (pending !== null && !hasGuide && nameInput !== null) nameInput.focus();
 	});
 
+	// ---- Slice 5: rename, Guide actions and the pacing popover ----
+
+	async function startRename(): Promise<void> {
+		if (guide === null) return;
+		guideMenuOpen = false;
+		renameValue = guide.label;
+		renaming = true;
+		await tick();
+		renameInput?.focus();
+		renameInput?.select();
+	}
+
+	async function commitRename(): Promise<void> {
+		if (!renaming) return;
+		renaming = false;
+		if (guide === null || renameValue.trim() === '') {
+			await tick();
+			nameButton?.focus();
+			return;
+		}
+		await controller?.renameGuide(guide.id, renameValue);
+		await tick();
+		nameButton?.focus();
+	}
+
+	function cancelRename(): void {
+		renaming = false;
+		renameValue = '';
+		void tick().then(() => nameButton?.focus());
+	}
+
+	function onRenameKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			void commitRename();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelRename();
+		}
+	}
+
+	function toggleGuideMenu(): void {
+		guideMenuOpen = !guideMenuOpen;
+		if (!guideMenuOpen) return;
+		void tick().then(() => guideMenuWrap?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+	}
+
+	function closeGuideMenu(): void {
+		guideMenuOpen = false;
+		guideMenuButton?.focus();
+	}
+
+	async function removeCurrentGuide(): Promise<void> {
+		if (guide === null) return;
+		guideMenuOpen = false;
+		await controller?.remove({ kind: 'guide', guideId: guide.id });
+	}
+
+	function onGuideMenuKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			event.stopPropagation();
+			closeGuideMenu();
+			return;
+		}
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const items = [...(guideMenuWrap?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+		const at = items.indexOf(document.activeElement as HTMLElement);
+		items[event.key === 'ArrowDown' ? Math.min(items.length - 1, at + 1) : Math.max(0, at - 1)]?.focus();
+	}
+
+	async function choosePacing(next: 'automatic' | 'manual'): Promise<void> {
+		if (guide === null) return;
+		pacingOpen = false;
+		await controller?.setGuidePacing(guide.id, next);
+		pacingButton?.focus();
+	}
+
+	function onPacingKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			event.stopPropagation();
+			pacingOpen = false;
+			pacingButton?.focus();
+			return;
+		}
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const items = [...(pacingWrap?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])];
+		const at = items.indexOf(document.activeElement as HTMLElement);
+		items[event.key === 'ArrowDown' ? Math.min(items.length - 1, at + 1) : Math.max(0, at - 1)]?.focus();
+	}
+
 	// ---- Selection ----
 
 	function selectStop(stopId: string): void {
@@ -416,6 +561,8 @@
 
 	function onWindowPointerDown(event: PointerEvent): void {
 		if (menuOpen && menuWrap !== null && !menuWrap.contains(event.target as Node)) closeMenu();
+		if (guideMenuOpen && guideMenuWrap !== null && !guideMenuWrap.contains(event.target as Node)) guideMenuOpen = false;
+		if (pacingOpen && pacingWrap !== null && !pacingWrap.contains(event.target as Node)) pacingOpen = false;
 	}
 
 	function onMenuKeydown(event: KeyboardEvent): void {
@@ -800,29 +947,82 @@
 			<span class="kicker">Guide</span>
 			{#if hasGuide}
 				{#if guide !== null}
-					<button
-						type="button"
-						class="guide-name"
-						class:selected={guideSelected}
-						aria-pressed={guideSelected}
-						title="Show this Guide's Card"
-						onclick={selectGuide}
-					>
-						{guide.label}
-					</button>
+					{#if renaming}
+						<input
+							class="name-input rename-input"
+							type="text"
+							aria-label="Guide name"
+							bind:value={renameValue}
+							bind:this={renameInput}
+							onkeydown={onRenameKeydown}
+							onblur={() => void commitRename()}
+						/>
+					{:else}
+						<button
+							type="button"
+							class="guide-name"
+							class:selected={guideSelected}
+							aria-pressed={guideSelected}
+							title="Show this Guide"
+							bind:this={nameButton}
+							onclick={selectGuide}
+						>
+							{guide.label}
+						</button>
+					{/if}
 				{:else}
 					<span class="guide-name plain">Guide</span>
 				{/if}
 				<span class="count">{stops.length} {stops.length === 1 ? 'stop' : 'stops'}</span>
 				{#if guide !== null}
-					<!-- §32: the pacing is shown here and edited on the Guide Card. -->
-					<button
-						type="button"
-						class="pacing-label"
-						data-pacing-label={pacing}
-						title="Pacing is set on the Guide Card"
-						onclick={selectGuide}
-					>{pacing === 'manual' ? 'Manual · waits for Next' : 'Automatic'} ›</button>
+					<span class="pacing-wrap" bind:this={pacingWrap}>
+						<button
+							type="button"
+							class="pacing-label"
+							data-pacing-label={pacing}
+							bind:this={pacingButton}
+							aria-haspopup="menu"
+							aria-expanded={pacingOpen}
+							title="Pacing"
+							onclick={() => (pacingOpen = !pacingOpen)}
+						>{pacing === 'manual' ? 'Manual · waits for Next' : 'Automatic'} ›</button
+						>
+						{#if pacingOpen}
+							<div class="pacing-menu" role="menu" tabindex="-1" aria-label="Pacing" onkeydown={onPacingKeydown}>
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={pacing === 'automatic'}
+									onclick={() => void choosePacing('automatic')}>Automatic</button
+								>
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={pacing === 'manual'}
+									onclick={() => void choosePacing('manual')}>Manual · waits for Next</button
+								>
+							</div>
+						{/if}
+					</span>
+					<span class="guide-menu-wrap" bind:this={guideMenuWrap}>
+						<button
+							type="button"
+							class="icon"
+							bind:this={guideMenuButton}
+							aria-label="Guide actions"
+							aria-haspopup="menu"
+							aria-expanded={guideMenuOpen}
+							title="Guide actions"
+							onclick={toggleGuideMenu}
+						>⋯</button
+						>
+						{#if guideMenuOpen}
+							<div class="menu guide-menu" role="menu" tabindex="-1" aria-label="Guide actions" onkeydown={onGuideMenuKeydown}>
+								<button type="button" role="menuitem" class="menu-item" onclick={() => void startRename()}>Rename</button>
+								<button type="button" role="menuitem" class="menu-item danger" onclick={() => void removeCurrentGuide()}>Remove Guide</button>
+							</div>
+						{/if}
+					</span>
 				{/if}
 			{:else}
 				<input
@@ -955,6 +1155,7 @@
 								class:selected
 								class:dragging={isDragging}
 								data-stop-id={card.stopId}
+								data-track-id={`hold:${card.stopId}`}
 								aria-pressed={selected}
 								aria-label={card.name}
 								tabindex={rovingStopId === card.stopId ? 0 : -1}
@@ -970,21 +1171,19 @@
 								<span class="stop-text">
 									<span class="stop-name" title={card.label}>{card.label}</span>
 									<span class="stop-meta">
-										{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
 										{#if card.again}<em>again</em><span aria-hidden="true"> · </span>{/if}
-										{#if pacing === 'manual'}
-											<span class="stop-time wait-cap" data-stop-time title="Waits for Next">⏸</span>
-										{:else if stopTimes.get(card.stopId) !== undefined}
-											<span class="stop-time" data-stop-time>{formatGuideTime(stopTimes.get(card.stopId)!.endSeconds - stopTimes.get(card.stopId)!.startSeconds)}</span>
-										{/if}
 										{#if card.invites}<span class="badge invite" title="Invites exploring" data-invite-badge>✦</span>{/if}
 										{#if card.more > 0}<span class="badge more" title={`${card.more} more ${card.more === 1 ? 'View' : 'Views'} to explore`}>+{card.more}</span>{/if}
 									</span>
 								</span>
 								<!-- Review round 3 (sheet §25): each Stop card carries its own part of the timeline. -->
-								<span class="stop-progress" aria-hidden="true"><i style:width="{stopProgress(card.stopId)}%"></i></span>
+								<span class="stop-progress" data-view-span={card.viewId ?? undefined} aria-hidden="true"><i style:width="{stopProgress(card.stopId)}%"></i></span>
 							</button>
-							<span class="slot" class:adjacent={card.connector?.shape === 'adjacent'}>
+							<span
+								class="slot"
+								class:adjacent={card.connector?.shape === 'adjacent'}
+								data-track-id={card.connector?.transition === 'travel' ? `travel:${card.stopId}` : undefined}
+							>
 								{#if card.connector !== null}
 									{@const connector = card.connector}
 									<button
@@ -1006,25 +1205,15 @@
 										{:else if connector.gap}
 											<span aria-hidden="true">⚠</span>
 										{:else if connector.transition === 'travel'}
-											<svg class="glyph" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4h9M7.2 1.8 9.4 4l-2.2 2.2" /></svg>
+											<span class="gutter-time">{connector.text}</span>
 										{:else}
 											<svg class="glyph" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1 4h10" stroke-dasharray="0.1 2.3" /></svg>
 										{/if}
 									</button>
-									{#if connector.gap && controller !== null}
-										<button
-											type="button"
-											class="chip-add"
-											aria-label={`Add a Camera path from Stop ${card.number} to the next`}
-											title="Add a Camera path"
-											onpointerdown={(event) => event.stopPropagation()}
-											onclick={(event) => {
-												event.stopPropagation();
-												void controller?.createPath({ kind: 'transition', stopId: card.stopId });
-											}}
+									{#if connector.transition === 'travel'}
+										<span class="slot-progress" aria-hidden="true"
+											><i style:width="{travelProgress(card.stopId)}%"></i></span
 										>
-											+
-										</button>
 									{/if}
 								{/if}
 							</span>
@@ -1034,16 +1223,11 @@
 						{/if}
 					</div>
 				</div>
-				{#if more.right}
-					<button type="button" class="more-arrow right" aria-label="Later Stops" title="Later Stops" onclick={() => pageCards(1)}><span aria-hidden="true">›</span></button>
-				{/if}
-				</div>
-			{/if}
-
-			<div class="scrub" data-playback-timeline>
 				<div
-					class="bar-hit"
+					class="track-hit"
+					bind:this={barEl}
 					role="slider"
+					data-playback-timeline
 					tabindex={canPlay ? 0 : -1}
 					aria-label="Guide timeline"
 					aria-valuemin={0}
@@ -1053,41 +1237,13 @@
 					aria-disabled={!canPlay}
 					onpointerdown={(event) => scrubAt(event.clientX)}
 					onkeydown={onBarKeydown}
-				>
-					<div class="bar" bind:this={barEl} aria-hidden="true">
-						{#each timelineSegments as segment (segment.id)}
-							<span
-								class="seg {segment.kind}"
-								class:active={segment.active}
-								data-view-span={segment.kind === 'hold' ? segment.viewId : undefined}
-								title={segment.label}
-								aria-label={segment.label}
-								style:left="{segment.left}%"
-								style:width="{segment.width}%"
-							>
-								{#if segment.kind === 'travel'}
-									<svg class="chev" viewBox="0 0 6 8" aria-hidden="true"><path d="M1.5 1 4.5 4 1.5 7" /></svg>
-								{:else if segment.number !== null}
-									<span class="seg-no">{segment.number}</span>
-								{/if}
-							</span>
-						{/each}
-						{#each timelineWaits as wait (wait.id)}
-							<span class="hatch" style:left="{wait.left}%"></span>
-						{/each}
-						{#if playback.cursor !== null && playback.map !== null}
-							<span class="playhead" style:left="{playheadPct}%"></span>
-						{/if}
-						{#if inView !== null && !compact}
-							<span
-								class="bracket"
-								style:left="{(inView.first / stops.length) * 100}%"
-								style:width="{((inView.last - inView.first + 1) / stops.length) * 100}%"
-							></span>
-						{/if}
-					</div>
+				></div>
+				{#if more.right}
+					<button type="button" class="more-arrow right" aria-label="Later Stops" title="Later Stops" onclick={() => pageCards(1)}><span aria-hidden="true">›</span></button>
+				{/if}
 				</div>
-			</div>
+			{/if}
+
 			{#if playback.following}
 				<div class="follow-pill" role="status">
 					<span class="live-dot" aria-hidden="true"></span>
@@ -1125,10 +1281,7 @@
 		font-weight: 600;
 	}
 	.badge.invite {
-		color: var(--shell-gold, #b48a1e);
-	}
-	.wait-cap {
-		color: var(--shell-ink-3, #6b736d);
+		color: var(--shell-leaf-soft, #9fd3b6);
 	}
 	.status {
 		margin: 0;
@@ -1182,7 +1335,7 @@
 		border-bottom-color: rgb(255 255 255 / 0.3);
 	}
 	.guide-name.selected {
-		border-bottom-color: var(--shell-gold, #d4ad45);
+		border-bottom-color: var(--shell-leaf-soft, #9fd3b6);
 	}
 	.count {
 		color: var(--shell-ink-quiet, #9fb2a5);
@@ -1252,12 +1405,12 @@
 	}
 	.guide button:focus-visible,
 	.guide input:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
 		outline-offset: 1px;
 		box-shadow: none;
 	}
 	.guide ::selection {
-		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 38%, transparent);
+		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
 		color: inherit;
 	}
 
@@ -1410,16 +1563,16 @@
 		padding: 5px 5px 7px;
 		border: 2px solid transparent;
 		border-radius: 8px;
-		background: #f3f4ef;
-		color: var(--shell-ink, #1b201c);
+		background: #16352a;
+		color: var(--shell-ink-light, #eef1ec);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
 		user-select: none;
 	}
 	.stop-card.selected {
-		border-color: var(--shell-gold, #d4ad45);
-		background: var(--shell-card, #fff);
+		border-color: var(--shell-leaf-soft, #9fd3b6);
+		background: #234b3a;
 	}
 	.stop-card.dragging {
 		position: relative;
@@ -1448,7 +1601,7 @@
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		line-height: 1.35;
-		color: var(--shell-ink-3, #79817b);
+		color: #b9cbbf;
 		font-size: 10.5px;
 		font-variant-numeric: tabular-nums;
 	}
@@ -1472,8 +1625,8 @@
 	}
 	.slot {
 		position: relative;
-		flex: 0 0 38px;
-		width: 38px;
+		flex: 0 0 52px;
+		width: 52px;
 		display: grid;
 		place-items: center;
 	}
@@ -1494,7 +1647,7 @@
 		justify-content: center;
 		height: 18px;
 		min-width: 24px;
-		max-width: 36px;
+		max-width: 50px;
 		padding: 0 5px;
 		border: 1px solid transparent;
 		border-radius: 999px;
@@ -1529,51 +1682,15 @@
 	}
 	/* A selected transition is gold, whatever its kind. */
 	.chip.selected {
-		border-color: var(--shell-gold, #d4ad45);
-		background: var(--shell-gold, #d4ad45);
+		border-color: var(--shell-leaf-soft, #9fd3b6);
+		background: var(--shell-leaf-soft, #9fd3b6);
 		color: var(--shell-forest, #11291f);
 	}
 	/* The + sits under the gap chip, inside the gutter's width. */
-	.chip-add {
-		position: absolute;
-		left: 50%;
-		top: calc(50% + 14px);
-		transform: translateX(-50%);
-		width: 20px;
-		height: 20px;
-		min-width: 20px;
-		min-height: 20px;
-		padding: 0;
-		border: 1px solid var(--caution, #b5682d);
-		border-radius: 50%;
-		background: var(--shell-forest, #11291f);
-		color: var(--caution, #b5682d);
-		font: inherit;
-		font-size: 14px;
-		line-height: 1;
-		cursor: pointer;
-	}
 	/* Touch: a 44 px tall target that still fits the 38 px gutter; it sits under the taller touch chip. */
 	@media (pointer: coarse) {
-		.chip-add {
-			top: calc(50% + 24px);
-			width: 44px;
-			height: 44px;
-			min-width: 44px;
-			min-height: 44px;
-			border-radius: 999px;
-		}
 	}
 
-	/* R217.S26: the *Start* tag, a mono 10 px tag like the Index's *opens*. */
-	.start-tag {
-		margin-right: 4px;
-		padding: 0 4px;
-		border: 1px solid currentColor;
-		border-radius: 3px;
-		font: 500 10px/1.4 var(--shell-mono, ui-monospace, monospace);
-		letter-spacing: 0.02em;
-	}
 	.caret {
 		position: absolute;
 		top: 0;
@@ -1581,7 +1698,7 @@
 		width: 3px;
 		margin-left: -1.5px;
 		border-radius: 2px;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-leaf-soft, #9fd3b6);
 		pointer-events: none;
 	}
 
@@ -1593,101 +1710,11 @@
 		flex: none;
 	}
 	.tool.on {
-		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 38%, transparent);
+		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
 		color: #fff;
 	}
-	.bar-hit {
-		display: flex;
-		flex: 1;
-		align-items: center;
-		min-width: 0;
-		min-height: 24px;
-		cursor: pointer;
-		touch-action: none;
-	}
-	.bar-hit:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
-		outline-offset: 2px;
-		border-radius: 6px;
-	}
-	.bar-hit .bar {
-		position: relative;
-		display: block;
-		width: 100%;
-		height: 8px;
-		border-radius: 4px;
-		background: rgb(255 255 255 / 0.14);
-		overflow: hidden;
-	}
-	.bar-hit .seg {
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		box-sizing: border-box;
-		border-right: 1px solid rgb(17 41 31 / 0.65);
-		/* A hold is hatched: time spent on a Stop, not a link. */
-		background: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.4) 0 1.5px, rgb(255 255 255 / 0.1) 1.5px 4px);
-	}
 	/* A travel is a solid link with a chevron. */
-	.bar-hit .seg.travel {
-		display: grid;
-		place-items: center;
-		background: var(--shell-leaf, #4f8f6c);
-	}
-	.bar-hit .seg .chev {
-		width: 6px;
-		height: 8px;
-		fill: none;
-		stroke: var(--shell-ink-light, #eef1ec);
-		stroke-width: 1.4;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
 	/* The Stop number sits at the start of the Stop's first hold. */
-	.bar-hit .seg-no {
-		position: absolute;
-		left: 0;
-		top: 0;
-		min-width: 9px;
-		height: 8px;
-		padding: 0 2px;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #eef1ec);
-		font: 600 7.5px/8px var(--shell-sans, system-ui, sans-serif);
-		text-align: center;
-		border-radius: 0 0 2px 0;
-	}
-	.bar-hit .seg.active {
-		background: var(--shell-gold, #d4ad45);
-		box-shadow: 0 0 8px 1px color-mix(in srgb, var(--shell-gold, #d4ad45) 70%, transparent);
-	}
-	.bar-hit .seg.active .chev {
-		stroke: var(--shell-forest, #11291f);
-	}
-	.bar-hit .hatch {
-		position: absolute;
-		top: -2px;
-		bottom: -2px;
-		width: 5px;
-		margin-left: -2.5px;
-		border-radius: 1px;
-		background: repeating-linear-gradient(
-			45deg,
-			var(--shell-gold, #d4ad45) 0 1px,
-			transparent 1px 2.5px
-		);
-		opacity: 0.95;
-	}
-	.bar-hit .playhead {
-		position: absolute;
-		top: -3px;
-		bottom: -3px;
-		width: 1px;
-		margin-left: -0.5px;
-		background: var(--shell-gold, #d4ad45);
-		box-shadow: 0 0 4px color-mix(in srgb, var(--shell-gold, #d4ad45) 80%, transparent);
-		pointer-events: none;
-	}
 	.total {
 		flex: none;
 		color: var(--shell-ink-light, #eef1ec);
@@ -1696,10 +1723,7 @@
 	}
 	.total .waits {
 		margin-left: 4px;
-		color: var(--shell-gold, #d4ad45);
-	}
-	.stop-time {
-		font: 500 10px var(--shell-mono, ui-monospace, monospace);
+		color: var(--shell-leaf-soft, #9fd3b6);
 	}
 	.follow-pill {
 		position: absolute;
@@ -1721,7 +1745,7 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-leaf-soft, #9fd3b6);
 	}
 	.pause-glyph {
 		font: 600 9px/1 var(--shell-sans, system-ui, sans-serif);
@@ -1743,12 +1767,6 @@
 	}
 
 	/* ---- Stop-order bar ---- */
-	.scrub {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 4px 12px 10px;
-	}
 	.play {
 		display: grid;
 		place-items: center;
@@ -1758,36 +1776,8 @@
 		padding: 0;
 		border: 0;
 		border-radius: 7px;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-leaf-soft, #9fd3b6);
 		color: #2a2208;
-	}
-	.bar {
-		position: relative;
-		display: flex;
-		flex: 1;
-		gap: 0;
-		height: 8px;
-		min-width: 0;
-		border-radius: 4px;
-		background: rgb(255 255 255 / 0.12);
-	}
-	.bracket {
-		position: absolute;
-		top: -3px;
-		bottom: -3px;
-		border: 1.5px solid rgb(255 255 255 / 0.7);
-		border-radius: 5px;
-		pointer-events: none;
-	}
-	.bar-caret {
-		position: absolute;
-		top: -4px;
-		bottom: -4px;
-		width: 3px;
-		margin-left: -1.5px;
-		border-radius: 2px;
-		background: var(--shell-gold, #d4ad45);
-		pointer-events: none;
 	}
 
 	.visually-hidden {
@@ -1823,8 +1813,81 @@
 			min-width: var(--shell-touch-target, 44px);
 		}
 		/* The coarse hit area is 44 px; the visual track stays 8 px. */
-		.bar-hit {
-			min-height: var(--shell-touch-target, 44px);
-		}
+	}
+
+	.slot-progress {
+		position: absolute;
+		left: 4px;
+		right: 4px;
+		bottom: 3px;
+		height: 2px;
+		border-radius: 1px;
+		overflow: hidden;
+		pointer-events: none;
+	}
+	.slot-progress i {
+		display: block;
+		height: 100%;
+		background: var(--shell-leaf, #4f8f6c);
+	}
+	.gutter-time {
+		font-size: 9px;
+		letter-spacing: -0.01em;
+	}
+	.track-hit {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 10px;
+		z-index: 2;
+		cursor: pointer;
+		touch-action: none;
+	}
+	.track-hit:focus-visible {
+		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+	.pacing-wrap,
+	.guide-menu-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+	.pacing-menu,
+	.guide-menu {
+		position: absolute;
+		right: 0;
+		bottom: calc(100% + 8px);
+		z-index: 6;
+		display: flex;
+		flex-direction: column;
+		min-width: 190px;
+		padding: 4px;
+		border: 1px solid rgb(255 255 255 / 0.1);
+		border-radius: 10px;
+		background: var(--shell-popup-dark, rgba(17, 41, 31, 0.97));
+		box-shadow: 0 10px 28px rgb(0 0 0 / 0.32);
+	}
+	.pacing-menu button {
+		padding: 6px 8px;
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 12px;
+		text-align: left;
+		cursor: pointer;
+	}
+	.pacing-menu button:hover,
+	.pacing-menu button:focus-visible {
+		background: rgb(255 255 255 / 0.1);
+	}
+	.pacing-menu button[aria-checked='true'] {
+		color: var(--shell-leaf-soft, #9fd3b6);
+	}
+	.menu-item.danger {
+		color: #f0a99e;
 	}
 </style>

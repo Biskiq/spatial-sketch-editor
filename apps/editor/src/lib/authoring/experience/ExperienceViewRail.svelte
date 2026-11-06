@@ -486,16 +486,16 @@
 		background: var(--shell-selected, #e8efe9);
 	}
 	.row.rg {
-		background: rgb(212 173 69 / 14%);
+		background: rgb(79 143 108 / 14%);
 	}
 	.row.dragging {
 		opacity: 0.45;
 	}
 	.row.drop-before {
-		box-shadow: inset 0 2px 0 var(--shell-gold, #d4ad45);
+		box-shadow: inset 0 2px 0 rgb(238 241 236 / 78%);
 	}
 	.row.drop-after {
-		box-shadow: inset 0 -2px 0 var(--shell-gold, #d4ad45);
+		box-shadow: inset 0 -2px 0 rgb(238 241 236 / 78%);
 	}
 	.spine {
 		position: relative;

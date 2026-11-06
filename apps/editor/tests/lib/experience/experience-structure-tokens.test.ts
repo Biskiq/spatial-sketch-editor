@@ -70,9 +70,9 @@ describe('R217.S26 visual tokens', () => {
 		expect(rule(index, '.crumb-error')).toMatch(/color:\s*var\(--shell-refuse/);
 	});
 
-	it('Start and opens are mono 10 px tags', () => {
+	it('opens is a mono 10 px tag; the strip has no Start tag', () => {
+		expect(source('experience/ExperienceGuide')).not.toContain('.start-tag');
 		for (const [file, selector] of [
-			['experience/ExperienceGuide', '.start-tag'],
 			['stage/shell/EditorIndex', '.opens-tag'],
 			['experience/ExperienceGuideWriter', '.opens-tag']
 		] as const) {
@@ -80,14 +80,16 @@ describe('R217.S26 visual tokens', () => {
 		}
 	});
 
-	it('the View rail marks a reorder drop with the shell gold', () => {
-		const guideCaret = rule(source('experience/ExperienceGuide'), '.caret');
-		for (const declaration of ['width: 3px', 'border-radius: 2px', 'background: var(--shell-gold, #d4ad45)']) {
+	it('the strip and View rail mark reorders with a quiet light line, never gold', () => {
+		const guide = source('experience/ExperienceGuide');
+		const guideCaret = rule(guide, '.caret');
+		for (const declaration of ['width: 3px', 'border-radius: 2px', 'var(--shell-leaf-soft, #9fd3b6)']) {
 			expect(guideCaret).toContain(declaration);
 		}
 		const rail = source('experience/ExperienceViewRail');
-		expect(rule(rail, '.row.drop-before')).toContain('var(--shell-gold');
-		expect(rule(rail, '.row.drop-after')).toContain('var(--shell-gold');
+		expect(rule(rail, '.row.drop-before')).toContain('rgb(238 241 236');
+		expect(rule(rail, '.row.drop-after')).toContain('rgb(238 241 236');
+		expect(rail).not.toContain('--shell-gold');
 		expect(rule(rail, '.row')).toMatch(/height:\s*38px/);
 	});
 

@@ -1002,7 +1002,12 @@ Undo restores the exact envelope. Slice 4 words every source finding for the cre
 `experience-problems.ts` maps validator diagnostics and lowering refusals to `{ sentence,
 subject, fix, detail }` using Guide Stop numbers, Guide and Presentation names and Camera View
 labels; the chip's *Show* opens the Stop's Transition Card, and codes, paths and ids appear only
-in *Copy details*. It does **not yet** implement the
+in *Copy details*. Slice 5 makes the strip one timeline: the cards' rails and the Travel gutters
+form a single track (`locateSegmentAt` maps a pointer's whole-track fraction to a segment and its
+own local fraction), each gutter reads *↗ 5 s*, cards carry no Start tag, time text or wait glyph,
+the separate scrub bar is gone, the pacing pill opens its own popover, and the Guide's name renames
+in place with a ⋯ menu (Rename, Remove Guide). The strip and the View rail mark selection and
+reorder with quiet forest and light lines; no gold remains on either. It does **not yet** implement the
 later slices: the problems list (4), the strip and one timeline (5), the Experience Card and
 Guide Card retirement (6), the first Guide's *Tour* (7), `label: string | null` with the Scene
 unlink (8), and visitor progress (9). Each lands with a

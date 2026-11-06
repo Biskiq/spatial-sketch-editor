@@ -429,7 +429,8 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 
 		// S30 supersedes the ordinal bar: the track is time-scaled, so a fake
 		// controller without a lowered program has no timed segments to draw.
-		expect(target.querySelector('.scrub .bar') !== null).toBe(true);
+		expect(target.querySelector('.track-hit') !== null).toBe(true);
+		expect(target.querySelector('.scrub')).toBeNull();
 		expect(target.querySelector('[data-playback-total]')?.textContent ?? '').toMatch(/\d+:\d{2}\s*\/\s*\d+:\d{2}/);
 
 		const play = buttonNamed(target, 'Play');
@@ -440,6 +441,59 @@ describe('R217.S25 — the Guide connectors name the resolved destination (D11)'
 });
 
 describe('R217.S25 — the Guide adds a Stop from a Presentation', () => {
+	it('renames in place from the Guide actions menu and keeps Escape as a cancel', async () => {
+		const controller = fakeController();
+		const target = mountHome(ExperienceGuide, { onClose: () => {} }, fakeHomes(controller));
+		await settle();
+
+		buttonNamed(target, 'Guide actions').click();
+		await settle();
+		const rename = [...target.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+			(item) => item.textContent?.trim() === 'Rename'
+		)!;
+		rename.click();
+		await settle();
+		const input = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
+		expect(input.value).toBe('Main');
+
+		input.value = 'Walkthrough';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await settle();
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await settle();
+		expect(controller.renameGuide).toHaveBeenCalledWith('guide-1', 'Walkthrough');
+
+		buttonNamed(target, 'Guide actions').click();
+		await settle();
+		[...target.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+			.find((item) => item.textContent?.trim() === 'Rename')!
+			.click();
+		await settle();
+		const again = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
+		again.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		await settle();
+		expect(controller.renameGuide).toHaveBeenCalledTimes(1);
+		expect(target.querySelector('input[aria-label="Guide name"]')).toBeNull();
+	});
+
+	it('edits pacing from the strip popover and closes it on choice', async () => {
+		const controller = fakeController();
+		const target = mountHome(ExperienceGuide, { onClose: () => {} }, fakeHomes(controller));
+		await settle();
+
+		const pill = target.querySelector<HTMLButtonElement>('[data-pacing-label]')!;
+		expect(pill.getAttribute('aria-expanded')).toBe('false');
+		pill.click();
+		await settle();
+		const manual = [...target.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].find((item) =>
+			item.textContent?.includes('Manual')
+		)!;
+		manual.click();
+		await settle();
+		expect(controller.setGuidePacing).toHaveBeenCalledWith('guide-1', 'manual');
+		expect(target.querySelector('[aria-label="Pacing"]')).toBeNull();
+	});
+
 	it('keeps + Stop disabled until the new Guide is named, then adds the chosen Presentation with that name', async () => {
 		const controller = fakeController({ guided: false });
 		const homes = fakeHomes(controller);
@@ -654,13 +708,15 @@ describe('R217.S25 — the Experience dock', () => {
 
 // ---- R217.S26: structure in the homes ----
 
-describe('R217.S26 — the Guide shows where the tour starts (E6)', () => {
-	it('tags only the start Stop with Start, and says so to assistive technology', async () => {
+describe('R217.S26 / G17 — the strip has no Start tag or duplicated time', () => {
+	it('leaves Stop 1 unmarked and keeps the card free of its own time', async () => {
 		const target = mountHome(ExperienceGuide, { onClose: () => {} }, fakeHomes(fakeController()));
 		await settle();
-		const tagged = [...target.querySelectorAll('.stop-card')].filter((card) => card.querySelector('[data-start-tag]') !== null);
-		expect(tagged.map((card) => card.getAttribute('data-stop-id'))).toEqual(['stop-1']);
-		expect(tagged[0]!.getAttribute('aria-label')).toContain('the tour starts here');
+		expect(target.querySelector('[data-start-tag]')).toBeNull();
+		expect(target.querySelector('[data-stop-time]')).toBeNull();
+		const first = target.querySelector('.stop-card[data-stop-id="stop-1"]')!;
+		expect(first.getAttribute('aria-label')).not.toContain('starts here');
+		expect(first.querySelector('.stop-time')).toBeNull();
 	});
 });	describe('R217.S26 — the Guide Card sets the Opening Guide (E5)', () => {
 	it('plays a non-opening Guide from its Card while the rail is closed, with the full authored time', async () => {
