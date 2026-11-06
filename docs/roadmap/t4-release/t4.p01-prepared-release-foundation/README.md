@@ -7,7 +7,7 @@ All T4 planning and implementation waits for [Core Editor Stability](../../core-
 The earlier D6/D7 approval and its hold ([history](../../../archive/roadmap/coordination-2026-10/next-batch-2026-10-17.md#application-hold-d6d7))
 are superseded. On resumption this draft is re-validated against then-current `main` before any use.
 Routes: [T4](../README.md) · [first-phase proposal](../first-phase-proposal.md) (scope and rationale,
-not repeated here) · [runbook](../../../operations/t4-release/README.md) ·
+not repeated here) · [runbook](../../../archive/process/operations/t4-release/README.md) ·
 [gate register](../../README.md#gate-register).
 
 ## Registration is not authorization

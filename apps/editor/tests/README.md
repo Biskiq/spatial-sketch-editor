@@ -226,18 +226,13 @@ checked-in baseline or ledger to re-record. Their historical measurements stay
 recoverable at the baseline SHA, and the owner statement records the
 benchmark's purpose as fulfilled.)
 
-The lane also carries the **execution-structure gate**
-(`tests/docs/parallel-track-gates.test.ts`): the track and gate registers, the
-phase slice register, the router's fresh-agent routes and the architecture
-cycle's state/mechanism tables. It enforces the gate-version rules (exact
-`Gate@Version` references, one provider per version, accepted-only
-prerequisites, the trusted-base check that stops a consumer satisfying its own
-prerequisite in its own diff), the final-gate and verification-tier rules, the
-exposure-window opening rule and the two closeout skills' evidence preflight —
-with an in-memory negative fixture for every rule and positive controls for the
-cases that must stay eligible. Its subject is the execution structure itself,
-which no build, lane report or type check can see, so only an unconditional lane
-can hold it.
+The lane also carries the **workflow cutover gate**
+(`tests/docs/workflow-cutover.test.ts`): the capability ledger's definitions and
+North-Star anchors, the compact router's live routes, the focus file, the
+archived retired-process routes and the on-demand skill set. Repository routing is not
+visible to any build, lane report or type check, so only an unconditional lane
+can hold it. Gate and track identities remain recorded in `docs/roadmap/README.md`
+as contract evidence; they are not permission.
 
 `npm test` still runs the complete suite and is never narrowed. The arch lane
 is never path-gated: a Plan or store change can break a camera drawer or
@@ -251,9 +246,14 @@ original lane model and the final measurements
 
 Verification is triggered by **what changed**, not only by production-code
 edits. A test edit is a change like any other and lands through the same
-contract its subject does. This is the §7.7 ladder
-(`docs/roadmap/parallel-track-cutover/implementation-plan.md` §7.7) made
-concrete for this tree; it adds no workflow, runner or CI job.
+contract its subject does. The complete merge-gate contract is:
+`npm run check`, `npm run test:arch`, `npm test`, `npm run test:heavy`,
+`npm run build`, `npm run check:api`, DB-backed `npm run test:api` with zero
+skips, and the affected package checks (`check:layout-core`,
+`check:project-model`, `check:camera-core`, `check:geometry-core`). It runs
+unconditionally for every PR and `main` in `.github/workflows/merge-gate.yml`;
+the arch lane is never path-gated. Focused runs are iteration feedback and never
+stand in for acceptance evidence.
 
 | Changed | Required before the change is judged green |
 | --- | --- |
@@ -271,30 +271,15 @@ declared complete verification contract — the §7.4 contract **including
 not a demand to run every heavy suite after every edit: focused runs are
 iteration feedback and never stand in for acceptance evidence (rule 25).
 
-### Slice verification tiers (the PR #115 WP5 cutover)
+### Verification depth
 
-A reviewed slice plan declares its own tier, and the tier decides what closeout
-must see:
-
-```text
-VERIFICATION: iteration | affected-subsystem | architecture-integration | exhaustive
-INTEGRATION ROUTE: <the phase's declared gate or integration plan>   (when not exhaustive)
-```
-
-A narrowed tier must resolve its replacement **integration route** — normally its
-phase's declared `FINAL PHASE GATE`, whose plan must itself declare exhaustive
-verification — and the phase cannot become `closable` until that integrated result
-is recorded. A one-slice implementation PR still needs the full gate before merge.
-PR #115 checkpoints are always `exhaustive`: this cutover narrows focused iteration
-and docs/planning slices, never a checkpoint. The gates test fails a missing
-integration route or a narrowed final gate, and `slice-closeout` refuses a close
-whose required evidence is missing.
-
-No tracked CI workflow enforces any of this today — there is no
-`.github/workflows` in the repository, and the older lane comments' "in CI"
-promise was never installed. The reviewed plan and the acceptance record are the
-enforcement mechanism until a CI integration is separately authorized. Do not
-describe an automatic trigger as existing unless one is verified in the tree.
+Merging the pull request is the closeout: there is no phase/slice acceptance
+document, release row, baton or closeout pull request. Focused runs are
+iteration feedback; the complete merge-gate contract under [What a change
+requires](#what-a-change-requires) is the acceptance evidence, and the final
+integrated run happens at the pull request gate. A documentation-only change
+still runs the documentation and architecture gates; it does not fabricate
+product runs.
 
 ### Correctness tests vs performance benchmarks
 

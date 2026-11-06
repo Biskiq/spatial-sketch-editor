@@ -11,7 +11,7 @@ on `chore/threejs-upgrade`; the worktree was clean at inspection.
 This proposal is an unscheduled maintenance unit, not a T1 capability phase,
 an F-interface provider or authorization to rebuild the editor. The
 [roadmap](../README.md#track-register) and
-[current baton](../../operations/current.md) retain their existing lifecycle.
+[current baton](../../archive/process/operations-current-2026-11-06.md) retain their existing lifecycle.
 The current implementation and destination remain distinct under the
 [architecture contract](../../reference/architecture.md).
 
@@ -331,9 +331,9 @@ shadow/loader change shows a material slowdown; do not resurrect `/dev/perf`.
 ### Final implementation gate
 
 Dependencies affect the shared graph; use exhaustive acceptance. The
-[test manual](../../../apps/editor/tests/README.md#slice-verification-tiers-the-pr-115-wp5-cutover)
+[test manual](../../../apps/editor/tests/README.md#verification-depth)
 and retained
-[verification ladder](../parallel-track-cutover/implementation-plan.md#77-verification-ladder-and-future-slice-acceptance)
+[verification ladder](../../archive/roadmap/parallel-track-cutover/implementation-plan.md#77-verification-ladder-and-future-slice-acceptance)
 require the complete pre-merge contract, including API DB tests. Root commands
 cover the editor only. Run from the repository root:
 

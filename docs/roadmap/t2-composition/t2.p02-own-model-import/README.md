@@ -5,14 +5,14 @@ S01, S02 and S03 are shipped; S03's final gate was accepted at `b9ba493b` with t
 amended to ≤425 KiB br JS and the formal performance rows deferred to named owners
 ([acceptance](./t2.p02.s03-integrated-final-gate/acceptance.md);
 [decision](../../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)).
-Released scopes and their conditions are the [release list](../../now.md); the
+Released scopes and their conditions are the [release list](../../../archive/roadmap/release-list-2026-11-06.md); the
 [production hold](../../README.md#production-implementation-hold) covers every scope that list
 omits · **Track:** [T2](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) ·
-**Runbook:** [T2 operations](../../../operations/t2-composition/README.md) · **Design:**
+**Runbook:** [T2 operations](../../../archive/process/operations/t2-composition/README.md) · **Design:**
 [shell draft](./shell-draft.md)
 
 This phase is C2 of the convergence first wave. The
-[current coordination](../../cross-track-execution.md#shared-files-and-merge-protocol) owns sequencing,
+[current coordination](../../../archive/roadmap/cross-track-execution-2026-11-06.md#shared-files-and-merge-protocol) owns sequencing,
 shared files and merge order. The historical [batch E protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22)
 and [coordination proposal](../../../archive/roadmap/coordination-2026-10/next-batch-2026-10-22.md) keep the gap findings behind S01.
 
@@ -85,7 +85,7 @@ Every consumed gate is `accepted` and every required scope is `active` at each s
 each slice rechecks them through the runbook start step. No slice here provides a gate. S01, S02 and
 S03 are shipped; the bounded T1 host review was accepted 2026-10-24. `T2.P02` is **closed 2026-10-27**
 and the next T2 work is a planning/authorization decision, not an active slice. See the
-[next parallel batch](../../cross-track-execution.md#next-parallel-batch).
+[next parallel batch](../../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch).
 
 ```text
 FINAL PHASE GATE: T2.P02.S03 → ./t2.p02.s03-integrated-final-gate/acceptance.md

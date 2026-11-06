@@ -35,7 +35,7 @@ The owner also required four revisions, and all are in the phase README:
 
 ## What it does not do
 
-It releases no slice and writes no row to [the release list](../../roadmap/now.md). Each slice
+It releases no slice and writes no row to [the release list](../../archive/roadmap/release-list-2026-11-06.md). Each slice
 starts only from a later owner release. It creates no gate, gate version, persisted format,
 milestone acceptance plan or acceptance workspace, and it closes no track or phase. The
 [production hold](../../roadmap/README.md#production-implementation-hold) still covers every scope

@@ -110,7 +110,7 @@ scope: a library item is an owner-scoped, immutable, content-addressed revision 
 following T2's identity and persistence rules, and inserting it creates a detached copy with a new
 authored identity. T5 does not edit model or import code paths. It serializes Scene-unit, resource
 and API edits with T2's writers under the
-[shared-file protocol](../cross-track-execution.md#shared-files-and-merge-protocol).
+[shared-file protocol](../../archive/roadmap/cross-track-execution-2026-11-06.md#shared-files-and-merge-protocol).
 
 **F4.** Every form edit is a typed, serializable Scene intent planned by a pure planner from
 captured inputs and accepted through unit F4: one history entry per accepted edit, conditional Save,

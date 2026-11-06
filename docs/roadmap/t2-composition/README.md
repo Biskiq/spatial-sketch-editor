@@ -4,8 +4,8 @@
 all four children shipped (`T2.P01.S01` 2026-10-16, `S02` 2026-10-17, `S03` 2026-10-18 (batch B),
 `S04` final gate 2026-10-20, PR #157); `T2.P02` (own model import) registered 2026-10-22 as batch E
 and **closed 2026-10-27**, with S01–S03 shipped and S03 accepted by owner ruling
-([track register](../README.md#track-register)) · **Runbook:**
-[`../../operations/t2-composition/README.md`](../../operations/t2-composition/README.md)
+([track register](../README.md#track-register)) · **Workflow:**
+[`../../workflow.md`](../../workflow.md) · **Focus:** [`../../../focus.md`](../../../focus.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) ·
 **Contracts:** [`scene-content.md`](../../reference/components/scene-content.md),
 [`assets.md`](../../reference/components/assets.md),
@@ -55,12 +55,12 @@ Landed contracts keep describing current behaviour until their explicit cutover.
 
 ## Planning continuation
 
-Current sequencing is the [next parallel batch](../cross-track-execution.md#next-parallel-batch).
+Current sequencing is the [next parallel batch](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch).
 Historically, the [convergence batch and next planning wave](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
 and [main convergence plan](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#proposed-next-engineering-batch)
 propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
 baseline, then C1 native Walls, C2 own-GLB import and Capture/Preview. Batch E launch slices are now
-shipped; remaining scopes follow the [next parallel batch](../cross-track-execution.md#next-parallel-batch). It is whole-object editor import with retained original bytes/hash,
+shipped; remaining scopes follow the [next parallel batch](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch). It is whole-object editor import with retained original bytes/hash,
 recipe identity/version and a parts-safe derivative; no components are admitted or addressable, qualified
 references keep `componentId: null`, and no T4 dependency is introduced. It is registered as
 [T2.P02 — Own model import](./t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md))

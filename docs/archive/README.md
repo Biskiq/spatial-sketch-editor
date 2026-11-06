@@ -8,8 +8,10 @@ archived document conflicts with the live tree, the live tree wins.
 | Doc | Role |
 | --- | --- |
 | [`../README.md`](../README.md) | Documentation router (navigation, rules, meta) |
-| [`../roadmap/README.md`](../roadmap/README.md) | Roadmap status and track register |
-| [`../operations/current.md`](../operations/current.md) | Current work baton |
+| [`../roadmap/README.md`](../roadmap/README.md) | Roadmap areas and historical register anchors |
+| [`../workflow.md`](../workflow.md) | Workflow: focus, claims, flags, tiers, plans |
+| [`../../focus.md`](../../focus.md) | Current priority and holds |
+| [`../operations/README.md`](../operations/README.md) | Retained operational procedures |
 | [`../reference/north-star.md`](../reference/north-star.md) | Product direction |
 | [`../reference/architecture.md`](../reference/architecture.md) | Ownership and boundaries |
 
@@ -28,9 +30,14 @@ PR #115 (WP4) kept the archive deliberately small. It holds:
   JSON captures, kept **byte-identical** because a separate comparison declares
   them as its baseline.
 - `roadmap/coordination-2026-10/` — the dated October 2026 batch proposals, convergence
-  packages and the pre-consolidation cross-track protocols, archived 2026-10-23 when
-  [`../roadmap/cross-track-execution.md`](../roadmap/cross-track-execution.md) became the
-  single current coordination route. Their relative links were written from `docs/roadmap/`.
+  packages and the pre-consolidation cross-track protocols, archived 2026-10-23. Their
+  relative links were written from `docs/roadmap/`.
+- `roadmap/` and `process/` — the 2026-11-06 workflow cutover: the former roadmap register
+  (`roadmap-register-2026-11-06.md`), release list (`release-list-2026-11-06.md`),
+  cross-track execution, parallel-track cutover, operations event procedures and batons,
+  architecture cycle, and the `slice-closeout`/`phase-closeout` skills. Live routing is
+  [`../workflow.md`](../workflow.md), [`../../focus.md`](../../focus.md) and
+  [`../operations/README.md`](../operations/README.md).
 
 The rest of the baseline archive (shipped phase diaries, handoffs, superseded
 plans, retired strategy snapshots, old shell and design specs) was deleted by

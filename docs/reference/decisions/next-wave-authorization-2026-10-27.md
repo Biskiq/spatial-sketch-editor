@@ -11,7 +11,7 @@ This record is decision provenance, like the [batch E](./batch-e-authorization-2
 [post-Batch-E](./post-batch-e-authorization-2026-10-23.md) records. It ratifies no contract and
 creates no gate, format, budget, package or phase. Lifecycle stays in the
 [roadmap registers](../../roadmap/README.md); each slice's scope stays in its own plan; the
-[release list](../../roadmap/now.md) owns permission.
+[release list](../../archive/roadmap/release-list-2026-11-06.md) owns permission.
 
 **Base.** `origin/main` `4dcd53e9`, the merge of PR #189. PR #198 carries this record, the two plan
 reviews and the register/release-list reconciliation.
@@ -45,7 +45,7 @@ step.
 
 ## Release-list reconciliation
 
-The owner release prunes two **verified shipped** rows from the [release list](../../roadmap/now.md):
+The owner release prunes two **verified shipped** rows from the [release list](../../archive/roadmap/release-list-2026-11-06.md):
 
 - `T1.P02.S06` — performance foundation, accepted AC-qualified 2026-10-27 and shipped on PR #190
   (`6af62eb4`);
@@ -68,7 +68,7 @@ records.
 
 ## Not authorized or changed
 
-- `T1.P02.S03`, `T1.P02.S04` and every other scope omitted from the [release list](../../roadmap/now.md)
+- `T1.P02.S03`, `T1.P02.S04` and every other scope omitted from the [release list](../../archive/roadmap/release-list-2026-11-06.md)
   stay under the [production hold](../../roadmap/README.md#production-implementation-hold);
 - T4 stays frozen (R1-D) behind [Core Editor Stability](../../roadmap/core-editor-stability.md);
 - no phase closes, no gate, format, budget or package changes, no deployment, no epoch activation;

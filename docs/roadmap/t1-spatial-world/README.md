@@ -5,8 +5,8 @@ creation) registered 2026-10-22 as batch E; S01 shipped by scoped owner-override
 S05 legacy retirement owner-released 2026-10-23 ([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and shipped; S06 performance foundation owner-released 2026-10-24 ahead of drawing ([record](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)), accepted AC-qualified 2026-10-27 and merged as `6af62eb4` (PR #190); S02 drawing was released 2026-10-27 ([record](../../reference/decisions/next-wave-authorization-2026-10-27.md)), accepted as `owner-override` and shipped on PR #201; S03 Opening was released 2026-10-27 ([record](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md)) and shipped on PR #209; under the [2026-10-28 performance-mandate suspension](../../reference/decisions/performance-mandate-suspension-2026-10-28.md), their unmeasured performance rows are historical evidence, not passes or S04 prerequisites; S04 integrated final gate was released 2026-10-28 ([record](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)), accepted/shipped by the owner at `46a31c81`, and P1-merged in `eb0931d6`; T1.P02 closed 2026-10-28 by owner ruling; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
 shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
-not complete ([track register](../README.md#track-register)) · **Runbook:**
-[`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md)
+not complete ([track register](../README.md#track-register)) · **Workflow:**
+[`../../workflow.md`](../../workflow.md) · **Focus:** [`../../../focus.md`](../../../focus.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T1.viewport-projection` ([gate register](../README.md#gate-register)) ·
 **Contracts:** [`architecture.md`](../../reference/architecture.md),
@@ -57,7 +57,7 @@ Future schema/authoring changes remain proposals until their explicit cutover.
 
 ## Planning continuation
 
-Current sequencing is the [next parallel batch](../cross-track-execution.md#next-parallel-batch).
+Current sequencing is the [next parallel batch](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch).
 Historically, the [convergence batch and next planning wave](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
 and [main convergence plan](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#proposed-next-engineering-batch)
 propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
@@ -225,4 +225,4 @@ levels, structures and overhead forms remain later work.
 - **TD-5**'s lesson — do not deep-proxy compiled geometry; measure against the input the editor
   actually hands in.
 
-T1.P01 also routes the [coordinated T1–T4 allocation/readiness/DAG](../cross-track-execution.md); its F amendments and readiness rule are owner-ratified 2026-10-15, while the allocation itself registers no gate, phase or slice.
+T1.P01 also routes the [coordinated T1–T4 allocation/readiness/DAG](../../archive/roadmap/cross-track-execution-2026-11-06.md); its F amendments and readiness rule are owner-ratified 2026-10-15, while the allocation itself registers no gate, phase or slice.

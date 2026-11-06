@@ -4,7 +4,7 @@
 (2026-10-17, [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)) until Core Editor Stability is accepted. It holds no
 permission. **Phase:**
 [T4.P01 draft](../README.md) · **Track:** [T4](../../README.md) · **Runbook:**
-[T4 operations](../../../../operations/t4-release/README.md)
+[T4 operations](../../../../archive/process/operations/t4-release/README.md)
 
 ```text
 CONSUMES: —

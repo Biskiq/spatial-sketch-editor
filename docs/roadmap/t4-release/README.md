@@ -1,8 +1,8 @@
 # T4 — Release and delivery
 
 **Track:** T4 · **Status:** planning — obligations recorded, **no implementation authorized**
-([track register](../README.md#track-register)) · **Runbook:**
-[`../../operations/t4-release/README.md`](../../operations/t4-release/README.md) · **Gates
+([track register](../README.md#track-register)) · **Workflow:**
+[`../../workflow.md`](../../workflow.md) · **Focus:** [`../../../focus.md`](../../../focus.md) · **Gates
 owned:** `T4.prepared-reader` ([gate register](../README.md#gate-register)) ·
 **Contracts:** [`persistence.md`](../../reference/components/persistence.md),
 [`composition-execution.md`](../../reference/composition-execution.md) (F.5),

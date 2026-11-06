@@ -1,16 +1,16 @@
 # T1.P02 — Native Wall creation
 
 **Phase:** T1.P02 · **Status:** registered 2026-10-22 and **closed 2026-10-28** by owner ruling after S04's final gate. Released scopes and their conditions are
-the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
+the [release list](../../../archive/roadmap/release-list-2026-11-06.md). The [production hold](../../README.md#production-implementation-hold)
 covers every scope that list omits. S01, S02, S03, S04, S05 and S06 are shipped; S06 was accepted 2026-10-27
 as AC-qualified (its milestone gate passed 2026-10-26 and the T3/T2 shared-boundary review is
 recorded). S02 was released 2026-10-27 ([record](../../../reference/decisions/next-wave-authorization-2026-10-27.md)), accepted as `owner-override` and shipped on PR #201; S03 is shipped as `owner-override` on PR #209 with its browser rerun waived and Stage bundle exception recorded; under the [2026-10-28 performance-mandate suspension](../../../reference/decisions/performance-mandate-suspension-2026-10-28.md), S01/S02/S03/S06's unmeasured performance rows stay **unmeasured**, not passes, and are no longer S04 prerequisites; S04 is `shipped`, owner-authorized 2026-10-28 ([record](../../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md)), accepted by owner 2026-10-28 ([acceptance](./t1.p02.s04-integrated-final-gate/acceptance.md)) at `46a31c81`, and P1-merged in `eb0931d6`; the explicit closeout trigger supplied the owner review/waiver, and the owner directed phase close on 2026-10-28. T1.P02 is **closed**; T1 is not complete · **Track:** [T1](../README.md) ·
 **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
-[T1 operations](../../../operations/t1-spatial-world/README.md) · **Design:**
+[T1 operations](../../../archive/process/operations/t1-spatial-world/README.md) · **Design:**
 [shell draft](./shell-draft.md)
 
 This phase is C1 of the convergence first wave. The
-[current coordination](../../cross-track-execution.md#next-parallel-batch) owns authorized
+[current coordination](../../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch) owns authorized
 sequencing and shared-file allocation; the
 [batch E decision](../../../reference/decisions/batch-e-authorization-2026-10-22.md)
 owns historical authorization. Execution order is
@@ -180,4 +180,4 @@ S04 cannot erase the recorded Stage 456.0 KiB br hard-budget miss.
   face-frame query (next wave), compound acceptance of new cross-domain operations.
 - **Architecture cycle:** the T1.P01 window is closed with the owner verdict still owed; this phase
   configures no window. S02 re-wires Junction commits, so its closeout records M4 as re-armed in the
-  [mechanism register](../../../operations/architecture-cycle.md#mechanism-register).
+  [mechanism register](../../../archive/process/architecture-cycle-2026-11-06.md#mechanism-register).

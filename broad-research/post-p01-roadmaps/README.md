@@ -24,7 +24,7 @@ not blanket acceptance of each prototype feature or its implementation. The arch
 round's historical synthesis, exact next-batch scopes and owner decision packet. This record keeps
 the single capability disposition ledger and RR question index; neither is a live work register.
 
-**Commission as of 2026-10-22 (historical; current sequencing: [coordination](../../docs/roadmap/cross-track-execution.md#next-parallel-batch)):** follow the [five-step scope](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#scope-and-sequence)
+**Commission as of 2026-10-22 (historical; current sequencing: [coordination](../../docs/archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch)):** follow the [five-step scope](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#scope-and-sequence)
 in PR #173: revise scope/briefs → independent research → product/design/architecture and contract
 reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
 The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
@@ -210,7 +210,7 @@ additional acceptance rounds imposed on every prototype.
 Use [F extension points](../../docs/reference/composition-execution.md#extension-points-and-version-negotiation),
 [PLATE conformance](../../docs/reference/design-system/editor-shell-and-visual-system.md#conformance-test-for-future-design),
 the [gate register](../../docs/roadmap/README.md#gate-register) and
-[bounded replanning](../../docs/operations/README.md#bounded-replanning). No speculative amendment
+[bounded replanning](../../docs/archive/process/operations-README-2026-11-06.md#bounded-replanning). No speculative amendment
 catalogue is required before a first consumer exposes a real gap.
 
 The owning contract/design amendments and the canonical roadmap/DAG reconciliation are deliverables

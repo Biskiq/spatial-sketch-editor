@@ -36,7 +36,7 @@ intent is right. The cost has outgrown it:
   not deletion quotas.
 - R217 keeps separate plans, acceptance packets and closed-plan stubs. Merge anchors have received
   their own pull requests (for example #257 after #256).
-- [The release list](./now.md) stores permission as paragraphs of authorization history.
+- [The release list](../archive/roadmap/release-list-2026-11-06.md) stores permission as paragraphs of authorization history.
 - Agents follow the rules too literally: slices end in documentation-only acceptance plus bug
   fixes, closeouts stall waiting for review, and planning requests cross-track review.
 - Planning reconciled approved designs down to the current shell instead of building the design,
@@ -320,8 +320,8 @@ Risks        what could go wrong and how it would show
 - Durable knowledge discovered while planning goes into reference contracts or a one-page decision
   record, never into a plan.
 
-The [slice-closeout skill](../../.agents/skills/slice-closeout/SKILL.md) and
-[phase-closeout skill](../../.agents/skills/phase-closeout/SKILL.md) retire; the
+The [slice-closeout skill](../archive/process/skills/slice-closeout/SKILL.md) and
+[phase-closeout skill](../archive/process/skills/phase-closeout/SKILL.md) retire; the
 [work-checkpoint skill](../../.agents/skills/work-checkpoint/SKILL.md) stays for long resumable work.
 
 ### G — Context without reading rules
@@ -419,9 +419,9 @@ on the same defect. No prototype-derived product authority or new archive-exclus
 
 | Current paths | Disposition / dependency treatment |
 | --- | --- |
-| `docs/roadmap/now.md`, `cross-track-execution.md`; `docs/operations/current.md` and per-area `current.md` | **Archive at workflow cutover.** Repeated permission/DAG/baton text already disagrees with merged #271 and shipped S25. Replace discovery with focus + status/claims, retaining unresolved residuals as flags. This audit does not rewrite another area's baton |
+| `docs/archive/roadmap/release-list-2026-11-06.md`, `cross-track-execution.md`; `docs/archive/process/operations-current-2026-11-06.md` and per-area `current.md` | **Archive at workflow cutover.** Repeated permission/DAG/baton text already disagrees with merged #271 and shipped S25. Replace discovery with focus + status/claims, retaining unresolved residuals as flags. This audit does not rewrite another area's baton |
 | Closed phase trees: `docs/roadmap/t1-spatial-world/{t1.p01-stage-foundation,t1.p02-native-wall-creation}/`, `t2-composition/{t2.p01-supported-composition,t2.p02-own-model-import}/`, `t3-experience/{t3.p01-camera-experience-foundation,t3.p02-capture-and-cut-preview,t3.p03-shared-acceptance-and-measurement,t3.p04-project-lifecycle}/`, `t5-expressive-geometry/t5.p01-drawn-native-objects/` | **Archive** closed plan/acceptance/evidence packets after preserving live contract and test/fixture consumers. Keep short area context pointing to code/contracts; do not copy their registers into the ledger as claimed maturity. T4's unimplemented prepared release plan is future scope, not a closed packet |
-| `docs/roadmap/parallel-track-cutover/`, `docs/operations/architecture-cycle.md`, `docs/operations/README.md`, per-area runbooks; `.agents/skills/{slice-closeout,phase-closeout}/` | **Archive/retire** obsolete process at the same cutover as its test assertions. Keep useful development/testing commands in existing contributor/test docs, checkpoint workflow and browser hygiene. The tests manual still cites §7.4/§7.7 in the cutover plan: inline the complete required command contract there before retiring that route |
+| `docs/archive/roadmap/parallel-track-cutover/`, `docs/archive/process/architecture-cycle-2026-11-06.md`, `docs/operations/README.md`, per-area runbooks; `.agents/skills/{slice-closeout,phase-closeout}/` | **Archive/retire** obsolete process at the same cutover as its test assertions. Keep useful development/testing commands in existing contributor/test docs, checkpoint workflow and browser hygiene. The tests manual still cites §7.4/§7.7 in the cutover plan: inline the complete required command contract there before retiring that route |
 | `docs/roadmap/r217-core-editor-stability/{post-s10-convergence,s12-s15-corrections,post-s19-owner-manual-review,world-shell-recovery,r217.s26-experience-authoring-depth,experience-review}/` | **Archive historical plans/round logs once current rules and open evidence are extracted.** Reference sheets already replace the redundant roadmap HTML retired by #271: do not plan to delete it again. Preserve the owner acceptance/waiver and historical A–Q/check evidence; neither is a future R217 prerequisite. Opening rebuild recipe must survive the move |
 | Shipped R217 slice plan stubs/acceptance packets and `docs/roadmap/core-editor-stability.md` | **Archive historical packets** after ledger/test/reference mapping; **keep the owner acceptance/waiver and useful historical evidence**. R217 is closed by the owner's ruling at #271; no future integrated gate or routine phase-close record/PR is required |
 | `docs/reference/decisions/*authorization*.md`, `r217-convergence-campaign-2026-10-30.md`; T5 `e0-execution-plan.md` and G0 proposal packets | **Archive** permission-only/withdrawn execution history and superseded alternatives once normative conclusions are linked from existing references. **Keep** ratified North Star/F/shell/T5 decision provenance and the adopted T5 umbrella. Extract unresolved performance/import/activation residuals; closed phase status never proves them resolved |
@@ -500,7 +500,7 @@ on its own, and no closeout PR or further planning round is required.
    T4 the “first” new-rules area or imposing an unrequested T5 pause.
 
 **Test migration.** Replace router/baton/release/closeout/cycle process assertions in
-`apps/editor/tests/docs/parallel-track-gates.test.ts` with checks of ledger validity, report/guard
+`apps/editor/tests/docs/workflow-cutover.test.ts` with checks of ledger validity, report/guard
 behavior and replacement routing in the same #259 cutover. Preserve interface, format, ownership
 and isolation guarantees in durable tests; retiring the register does not retire domain validity.
 The docs helper's `REQUIRED_WALKED_DOCUMENTS` in

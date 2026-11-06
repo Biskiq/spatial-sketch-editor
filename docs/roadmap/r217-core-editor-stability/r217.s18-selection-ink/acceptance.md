@@ -49,7 +49,7 @@ Tested revision: `f92e1211`. Product working tree identity: `git diff -- apps pa
 `72f958ef825914edf544cd0539cc7e3fa4d25b1e2ffb08513aa9e792eb990c75`, identical before and after every
 verification run. The slice plan declares `affected-subsystem`. The implementation-PR merge gate is
 the full §7.4 contract, including `test:heavy`, per the [test manual](../../../../apps/editor/tests/README.md)
-("What a change requires") and the [runbook](../../../operations/t1-spatial-world/README.md). The full
+("What a change requires") and the [runbook](../../../archive/process/operations/t1-spatial-world/README.md). The full
 gate was run, so the tier was never narrowed.
 
 | Command | Result |

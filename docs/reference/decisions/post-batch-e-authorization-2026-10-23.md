@@ -3,7 +3,7 @@
 **Status: owner-authorized.** The owner explicitly instructed: “authorize and release the
 recommended parallel batch” and rescinded the previous copyleft choice: “no decision made on
 this for now.” This record captures that release event; the
-[next parallel batch](../../roadmap/cross-track-execution.md#next-parallel-batch) owns execution
+[next parallel batch](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch) owns execution
 coordination and each slice plan owns scope and evidence.
 
 ## Authorized and released scopes
@@ -25,7 +25,7 @@ on then-current `main`. T1's S05 must be accepted and merged before its held dra
 starts. Bounded host/API integration patches retain their named domain-owner review.
 
 This owner release prunes the five shipped Batch E entries from
-[the release list](../../roadmap/now.md): T3.P03.S01, T3.P03.S02, T1.P02.S01, T2.P02.S01 and
+[the release list](../../archive/roadmap/release-list-2026-11-06.md): T3.P03.S01, T3.P03.S02, T1.P02.S01, T2.P02.S01 and
 T3.P02.S01. Their historical authorization remains the
 [Batch E record](./batch-e-authorization-2026-10-22.md), phase registers and acceptance records.
 Pruning does not reopen, repeat or revoke shipped work.

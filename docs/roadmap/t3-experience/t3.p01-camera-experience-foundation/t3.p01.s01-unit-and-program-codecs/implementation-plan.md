@@ -2,7 +2,7 @@
 
 **Slice:** T3.P01.S01 · **Status:** shipped (accepted 2026-10-16; implementation PR #131) ·
 **Phase:** [T3.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
-[T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
+[T3](../../README.md) · **Runbook:** [T3 operations](../../../../archive/process/operations/t3-experience/README.md)
 
 ```text
 CONSUMES: F1.reference@1, F3.channels@1

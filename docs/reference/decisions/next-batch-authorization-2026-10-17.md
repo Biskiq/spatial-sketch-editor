@@ -63,7 +63,7 @@ named owner plans through normal phase registration and slice authorization.
 
 | # | Ruling | Intended owner |
 | --- | --- | --- |
-| Route | The milestone has its own acceptance route, the [product milestone acceptance](../../operations/README.md#product-milestone-acceptance) event, with evidence under `docs/roadmap/integration/core-editor-stability/`. It creates no gate row and changes no capability checker. The gate-based integration procedure is not claimed to cover it. | Owner authorizes the acceptance plan |
+| Route | The milestone has its own acceptance route, the [product milestone acceptance](../../archive/process/operations-README-2026-11-06.md#product-milestone-acceptance) event, with evidence under `docs/roadmap/integration/core-editor-stability/`. It creates no gate row and changes no capability checker. The gate-based integration procedure is not claimed to cover it. | Owner authorizes the acceptance plan |
 | Workflow | The milestone requires a useful self-contained creator workflow, not a collection of accepted core providers. Its browser acceptance includes basic responsiveness (no blocked interaction, stale state or lost input on a realistic project), with no new benchmark infrastructure. | Acceptance plan |
 | K1 | One bounded editor-side GLB import is required before the milestone. There is no T4 release closure, and advanced ingest stays deferred. | T2 (after T3.P01.S04) |
 | K2 | Temporary publication unavailability is accepted in principle. The actual gap is approved only at T3.P01.S04, after the live inventory and compatibility review. There is no blanket approval. | Owner, at T3.P01.S04 |

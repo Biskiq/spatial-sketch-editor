@@ -109,7 +109,7 @@ Overall gate state cannot prove incremental capability scope. Two additive field
 **Accepted capabilities** on each gate/version row and **Requires** on each consumer slice row,
 the latter naming the exact `Gate@Version:capability-vN` strings with their prerequisite closure.
 Enforcement is installed by `T1.P01.S01` and runs with the other register rules in
-[`parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/parallel-track-gates.test.ts)
+[`parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/workflow-cutover.test.ts)
 (`capabilityProblems`, arch lane) over the live [gate register](../README.md#gate-register); this
 section owns the rule, the checker implements it, and the register's own legend carries the entry
 and record grammar.

@@ -3,7 +3,7 @@
 **Slice:** T3.P03.S02 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E2,
 [record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
 hold; starts after S01 merges; not implemented · **Phase:** [T3.P03](../README.md) ·
-[slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md) ·
+[slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../archive/process/operations/t3-experience/README.md) ·
 **Contracts:** [performance](../../../../reference/components/performance.md),
 [test workflow](../../../../../apps/editor/tests/README.md#product-convergence-performance-workflow)
 

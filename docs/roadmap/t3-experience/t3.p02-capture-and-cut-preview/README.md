@@ -4,11 +4,11 @@
 shipped, the final gate `T3.P02.S02` accepted as `owner-override` (2026-10-24), and the phase closed
 by the owner-invoked closeout that carries the `PHASE CLOSE` block below
 ([owner decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
-Released scopes and their conditions are the [release list](../../now.md); the
+Released scopes and their conditions are the [release list](../../../archive/roadmap/release-list-2026-11-06.md); the
 [production hold](../../README.md#production-implementation-hold) covers every scope that list
 omits, and this phase's closure releases nothing · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
-[T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
+[T3 operations](../../../archive/process/operations/t3-experience/README.md) · **Contracts:**
 [AM-9](../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover),
 [Camera contract](../../../reference/components/camera-tour.md), [PLATE Experience
 expression](../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
@@ -51,8 +51,8 @@ them and released S01 from the production hold on 2026-10-22 (batch E, [record](
 S01 starts only after H0's shared correction, `T3.P03.S01`, is merged on `main`; the
 [batch E protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22) recorded the
 sequencing for that historical batch. The [post-Batch-E release](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)
-authorizes S02 per the release list (`docs/roadmap/now.md`); the
-[next parallel batch](../../cross-track-execution.md#next-parallel-batch) owns current sequencing.
+authorizes S02 per the release list (`docs/archive/roadmap/release-list-2026-11-06.md`); the
+[next parallel batch](../../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch) owns current sequencing.
 
 ## Bounded outcome
 
@@ -186,7 +186,7 @@ Verification commands and tiers are owned by
 [the test manual](../../../../apps/editor/tests/README.md#what-a-change-requires). S01 was authorized
 under the [batch D protocol](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-d-2026-10-20) and shipped
 under the [batch E rules](../../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#batch-e-shared-files-and-merge-order) (historical).
-S02 runs under the [current shared-file and merge protocol](../../cross-track-execution.md#shared-files-and-merge-protocol):
+S02 runs under the [current shared-file and merge protocol](../../../archive/roadmap/cross-track-execution-2026-11-06.md#shared-files-and-merge-protocol):
 one writer per shared file, additive registration elsewhere, the complete merge gate rerun on
 then-current `main`, independent review per slice, and each slice's own closeout and P1 merge commit. No architecture-cycle window is proposed: the T1.P01 window is closed, T3 slices are not
 exposures of it, and this phase claims no mechanism verdict.

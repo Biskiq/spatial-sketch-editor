@@ -14,12 +14,12 @@ integrated gate, then accepted and shipped 2026-10-21 by routine `slice-closeout
 owner-override in PR #168 (implementation `d63bdb6c`) ·
 **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
-[T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
-[`../../../operations/t1-spatial-world/current.md`](../../../operations/t1-spatial-world/current.md)
+[T1 operations](../../../archive/process/operations/t1-spatial-world/README.md) · **Baton:**
+[`../../../archive/process/operations/t1-spatial-world/current.md`](../../../archive/process/operations/t1-spatial-world/current.md)
 
 **Basis:** the F amendments and the capability-readiness rule this phase implements are
 owner-ratified 2026-10-15 ([decision record](../../../reference/decisions/f-ratification-2026-10-15.md)).
-The [coordinated allocation/readiness/DAG](../../cross-track-execution.md) and the
+The [coordinated allocation/readiness/DAG](../../../archive/roadmap/cross-track-execution-2026-11-06.md) and the
 [exact interface drafts](./interfaces.md) govern this phase's recommendations; the allocation is
 coordination, never a registration. The phase's implementation permissions are exactly S01
 (2026-10-15), S02/S03 (2026-10-16,
@@ -244,7 +244,7 @@ the phase-close anchor. T1.P01 is shipped in the T1 phase register. No T1 track 
 
 ## Bounded architecture-cycle window
 
-Configured window ([bounded-window rules](../../../operations/architecture-cycle.md#bounded-window-rules)):
+Configured window ([bounded-window rules](../../../archive/process/architecture-cycle-2026-11-06.md#bounded-window-rules)):
 
 | Exposure slice | Real exposure already justified by capability work | Expected evidence |
 | --- | --- | --- |
@@ -257,7 +257,7 @@ M3's installed curve proof remains green. M4's birth/join/noding editor half is 
 its later owner verdict must say not-exposed if this boundary stands. M6/M7 are observed
 through ordinary start/closeout routing, not an additional audit slice.
 
-This configuration **closed on 2026-10-19** ([state](../../../operations/architecture-cycle.md)):
+This configuration **closed on 2026-10-19** ([state](../../../archive/process/architecture-cycle-2026-11-06.md)):
 S05's closeout recorded its exposure row and met the closure predicate (S02 and S04 accepted), so the
 cycle is `PHASE_3_EVALUATE` with readiness `owner-verdict-owed`. S02's first authorized
 implementation had opened the window on 2026-10-16 through the runbook's start step, and `Opened by`
@@ -274,7 +274,7 @@ start opens nothing and adds no exposure row. Do not grow the exposure list to f
 
 ## Dependencies and owner decisions
 
-Exact [interfaces](./interfaces.md) and the [coordinated allocation/readiness amendment](../../cross-track-execution.md)
+Exact [interfaces](./interfaces.md) and the [coordinated allocation/readiness amendment](../../../archive/roadmap/cross-track-execution-2026-11-06.md)
 are ratified; the recommended sole providers are F1/F3 T1 S01; F4 T1 S03; F2 T3 S01;
 F5 T4 S02. T3 S02 is an extension for conditional Save, not another F4 provider.
 T3 S05/S06 (the S03 split) supplied the unit/Save/handoff capability records T3 S04 activation consumes. Any

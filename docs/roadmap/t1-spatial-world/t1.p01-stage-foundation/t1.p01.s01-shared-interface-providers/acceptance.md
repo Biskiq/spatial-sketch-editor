@@ -22,7 +22,7 @@ NOT:       a product contract · a plan · a status store · authority for new w
 `@portfolio/project-model` exports the shared `references-v1` (`src/references/`) and
 `inspection-v1` (`src/channels/`) interfaces with their conformance suites, together with the
 accepted-capabilities / Requires readiness enforcement in the arch lane's execution-structure gate
-(`apps/editor/tests/docs/parallel-track-gates.test.ts`, `capabilityProblems`). No Stage, live Camera
+(`apps/editor/tests/docs/workflow-cutover.test.ts`, `capabilityProblems`). No Stage, live Camera
 controller, local history, source migration or downstream slice behaviour was implemented.
 
 ## Accepted contract
@@ -76,7 +76,7 @@ validation       apps/editor/tests/lib/project-model/references-conformance.test
                  apps/editor/tests/lib/project-model/channels-conformance.test.ts
                  apps/editor/tests/lib/project-model/camera-output-conformance.test.ts
                  apps/editor/tests/lib/project-model-boundary.test.ts        runtime-safe import direction
-                 apps/editor/tests/docs/parallel-track-gates.test.ts         readiness enforcement (capabilityProblems)
+                 apps/editor/tests/docs/workflow-cutover.test.ts         readiness enforcement (capabilityProblems)
 records          ./capability-references-v1.md · ./capability-inspection-v1.md
 plan / routing   ./implementation-plan.md · ../README.md · ../../../README.md#gate-register
 ```

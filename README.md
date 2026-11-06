@@ -101,7 +101,8 @@ Default ports: Vellum 5191, Smart Wall 5175, Conservatory 8841, shell 8850. The 
 - Cloud Save/Load uses local username and password accounts. No account is preconfigured; create one from the editor's sign-in screen. The editor still supports guest/local editing without the API.
 - [Documentation](docs/orientation.md)
 - [Tests](apps/editor/tests/README.md)
-- [Roadmap](docs/roadmap/now.md)
+- [Workflow](docs/workflow.md)
+- [Roadmap](docs/roadmap/README.md)
 - [Contributing](CONTRIBUTING.MD)
 
 Production code lives in `apps/` and `packages/`. The demos live in `prototypes/`.

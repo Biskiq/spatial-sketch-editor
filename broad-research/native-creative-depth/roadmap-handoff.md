@@ -343,7 +343,7 @@ Each brief is written so that a later planning agent can turn it into a plan onc
 
 ## 7. Reconciliation with current authorities and roadmap
 
-- **Production hold.** Every implementation scope absent from the [release list](../../docs/roadmap/now.md) stays held. This package releases nothing. It is not a release under the [production hold](../../docs/roadmap/README.md#production-implementation-hold).
+- **Production hold.** Every implementation scope absent from the [release list](../../docs/archive/roadmap/release-list-2026-11-06.md) stays held. This package releases nothing. It is not a release under the [production hold](../../docs/roadmap/README.md#production-implementation-hold).
 - **Performance-first halt.** Wall drawing and Openings inherit S06. Tranche A therefore waits for S06 acceptance, and proofs that need drawing use prototype drawing until then.
 - **Observation: curved hosts are unplanned.** The geometry is production, but the creator workflow has gaps:
   - Opening create and delete are planned in layout-core but not wired to the editor.
@@ -358,7 +358,7 @@ Each brief is written so that a later planning agent can turn it into a plan onc
   - The convergence ratification's family-by-family growth, typed refusals and correspondence transport are assumed.
   - The Scene destination's definitions, attachment and opaque part identity are assumed.
   - The North Star's agent surface and non-goals are respected. D1 proposes clarifying wording, not a reversal.
-- **Where results would be registered.** An owner who accepts these proofs as research proposals would record them under the roadmap's [unscheduled proposals](../../docs/roadmap/README.md#unscheduled-proposals-and-maintenance-evidence). Current coordination stays in [cross-track execution](../../docs/roadmap/cross-track-execution.md). This package edits neither.
+- **Where results would be registered.** An owner who accepts these proofs as research proposals would record them under the roadmap's [unscheduled proposals](../../docs/archive/roadmap/roadmap-register-2026-11-06.md#unscheduled-proposals-and-maintenance-evidence). Current coordination stays in [cross-track execution](../../docs/archive/roadmap/cross-track-execution-2026-11-06.md). This package edits neither.
 
 ## 8. How a planning agent should use this package
 

@@ -4,7 +4,7 @@
 `T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (authorized 2026-10-17 as batch B, [record](../../../reference/decisions/batch-b-authorization-2026-10-17.md));
 S04, the declared final gate, authorized 2026-10-19 as batch C ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and shipped 2026-10-20 (PR #157, `99c38033`) · **Track:** [T2](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
-[T2 operations](../../../operations/t2-composition/README.md) ·
+[T2 operations](../../../archive/process/operations/t2-composition/README.md) ·
 **Contracts:** [contract drafts](./contracts.md),
 [AM-1–AM-5](../../../reference/composition-execution.md#ratified-amendments)
 

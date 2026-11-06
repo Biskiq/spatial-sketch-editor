@@ -12,7 +12,7 @@ neither changes F nor establishes a parallel T2 reference/envelope/history proto
 ## Common identity and frame interfaces
 
 Prefer the [T1 source-independent interface draft](../../t1-spatial-world/t1.p01-stage-foundation/interfaces.md) and
-[coordinated readiness proposal](../../cross-track-execution.md).
+[coordinated readiness proposal](../../../archive/roadmap/cross-track-execution-2026-11-06.md).
 Use shared SemanticReference/SnapshotIdentity/DerivedSourceRef and explicit frame qualification.
 Scene operation payloads use canonical domain transform types, not a new runtime channel family. T2 adds requirements,
 not another encoding:

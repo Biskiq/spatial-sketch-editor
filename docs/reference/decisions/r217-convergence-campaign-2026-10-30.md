@@ -37,4 +37,4 @@ Browser-only visual calibration isn't a checkpoint. The integrator decides it wi
 
 ## Stop and revocation
 
-The owner can pause or end the campaign at any time by saying so, or by removing rows from the [release list](../../roadmap/now.md). A failed merge gate, a reverted slice or two consecutive review rounds with the same P0–P1 finding also stop the campaign until the owner has been told.
+The owner can pause or end the campaign at any time by saying so, or by removing rows from the [release list](../../archive/roadmap/release-list-2026-11-06.md). A failed merge gate, a reverted slice or two consecutive review rounds with the same P0–P1 finding also stop the campaign until the owner has been told.

@@ -27,8 +27,8 @@ pass, the owner rules whether it counts and whether to rerun it; it is never sil
 owns the details.
 
 This record captures a **bounded replanning** event (a new owner-authorized goal, per
-[operations](../../operations/README.md#bounded-replanning)) and an owner release. The
-[current coordination](../../roadmap/cross-track-execution.md#next-parallel-batch) owns execution
+[operations](../../archive/process/operations-README-2026-11-06.md#bounded-replanning)) and an owner release. The
+[current coordination](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch) owns execution
 coordination. The [slice plan](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)
 owns scope and evidence.
 
@@ -145,7 +145,7 @@ their source and license are recorded.
 ## Limits
 
 This record prunes the three shipped post-Batch-E rows (T1.P02.S05, T2.P02.S02 and T3.P02.S02)
-from [the release list](../../roadmap/now.md). Their history remains in the
+from [the release list](../../archive/roadmap/release-list-2026-11-06.md). Their history remains in the
 [post-Batch-E record](./post-batch-e-authorization-2026-10-23.md), the phase registers and the
 acceptance records.
 

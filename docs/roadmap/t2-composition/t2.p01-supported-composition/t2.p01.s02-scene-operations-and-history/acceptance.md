@@ -69,7 +69,7 @@ Owner acceptance was recorded on 2026-10-17 from the deliberate `slice-closeout`
 independent-review prerequisite was resolved separately and is recorded in
 [independent-review.md](./independent-review.md). The required merge method is a merge commit so the
 historical anchor stays reachable. Post-merge verification follows the
-[preservation procedure](../../../../../.agents/skills/slice-closeout/references/preservation.md#anchor-mechanics).
+[preservation procedure](../../../../../docs/archive/process/skills/slice-closeout/references/preservation.md#anchor-mechanics).
 
 Recovery of the full acceptance record:
 

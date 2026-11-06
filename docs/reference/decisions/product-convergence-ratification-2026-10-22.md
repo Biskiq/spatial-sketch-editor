@@ -64,5 +64,5 @@ implementation/resumption. Merging PR #173 releases no named scope. T4 remains d
 R1-D and P4 remains deferred. At ratification the canonical
 [batch and DAG](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
 owned future planning, provider dependencies, file ownership and launch sequencing; that concern
-now lives in [current coordination](../../roadmap/cross-track-execution.md#next-parallel-batch). This record
+now lives in [current coordination](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch). This record
 neither merges the PR nor closes a phase, track or architecture cycle.

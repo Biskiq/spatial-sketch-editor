@@ -6,7 +6,7 @@ against this repository.
 fixed yet** — with the evidence needed to fix it without re-deriving it.
 **Not** a plan, not a status tracker and not current working-tree state: those live
 in [`docs/roadmap/README.md`](../../roadmap/README.md) and in the track batons routed from
-[`docs/operations/current.md`](../current.md).
+[`docs/archive/process/operations-current-2026-11-06.md`](../../archive/process/operations-current-2026-11-06.md).
 
 Entry template:
 
@@ -251,9 +251,9 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 
 ## TD-20 — the slice-closeout reference points to an archive section that does not exist
 
-Status        open
+Status        retired 2026-11-06 — the slice-closeout skill retired with the workflow cutover
 Found         2026-11-01, R217.S23 close-out (step 8, when `references/preservation.md` was read)
-Owner         the slice-closeout skill (`.agents/skills/slice-closeout/references/preservation.md`), its owner; not a track
+Owner         archived preservation reference (`docs/archive/process/skills/slice-closeout/references/preservation.md`); no active owner
 Symptom       The preservation reference sends a close to `docs/archive/README.md` ("Closed-work evidence") for the evidence
               path and manifest mechanics. That section does not exist, so a close that follows the pointer finds nothing.
               R217.S22 and R217.S23 wrote their `CLOSED.md` manifests by example.

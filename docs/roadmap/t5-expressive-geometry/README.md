@@ -4,8 +4,8 @@
 the owner's merge ([record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)); G0
 direction ratified ([record](../../reference/decisions/t5-g0-ratification-2026-10-27.md)); E0
 withdrawn; nothing released ([track register](../README.md#track-register)) · **Gates owned:** none ·
-**Direction:** [umbrella plan](./umbrella-plan.md) · **Phase register:** below · **Operations:**
-[T5 runbook](../../operations/t5-expressive-geometry/README.md)
+**Direction:** [umbrella plan](./umbrella-plan.md) · **Phase register:** below · **Workflow:**
+[workflow](../../workflow.md) · **Focus:** [focus.md](../../../focus.md)
 
 ## Mission
 
@@ -98,18 +98,16 @@ investment.
 | --- | --- | --- | --- |
 | T5.P01 | shipped | — | [Drawn native objects](./t5.p01-drawn-native-objects/README.md) |
 
-## Operations and authorization route
+## Workflow and authorization route
 
-The [T5 runbook](../../operations/t5-expressive-geometry/README.md) owns procedure and its
-[baton](../../operations/t5-expressive-geometry/current.md) owns current work.
+The [workflow](../../workflow.md) owns procedure and [focus.md](../../../focus.md) owns current work.
 
 ```text
 DIRECTION          umbrella plan (roadmap authority) under the ratified references
 REGISTRATION       T5.P01 and its slice register; later phases registered on their entry evidence
-RELEASE            an explicit owner release-list row per slice before production implementation
-START              the runbook start step at the slice's own trusted base
-CLOSE              slice-closeout; phase close is owner-invoked
+AUTHORIZATION      the workflow risk tier and an owner batch start
+START              the slice's own trusted base
+CLOSE              merging is the closeout
 ```
 
-The [production hold](../README.md#production-implementation-hold) and [release list](../now.md)
-retain their authority. Registration and merging the planning PR release no production scope.
+No production hold is open. Permission follows the [risk tiers](../../workflow.md#risk-tiers-the-highest-applicable-tier-wins); registration and merging a planning PR release no production scope.

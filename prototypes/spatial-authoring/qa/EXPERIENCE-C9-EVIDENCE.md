@@ -179,7 +179,7 @@ and shared structural seams. No acceptance, merge, phase closure or production c
     `EXPERIENCE-ACCEPTANCE.md` (declares the deleted fixture path per the documented
     `EVIDENCE-PATHS` convention), new `composition-check.sh`, `creator-check.sh`,
     `composition-mutation-check.sh`, new `EXPERIENCE-C9-EVIDENCE.md` (this record)
-  - docs: `docs/operations/current.md`,
+  - docs: `docs/archive/process/operations-current-2026-11-06.md`,
     EVIDENCE-PATHS: start — files this 2026-10-11 pass touched, as written then; the checkpoint
     was retired at #113 closeout (status → P25 README, recipes → PR #114 plan §9)
     `docs/operations/checkpoints/pr113-experience-v2.md`,

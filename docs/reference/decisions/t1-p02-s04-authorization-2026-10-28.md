@@ -5,7 +5,7 @@
 the gate's verification, fixes and evidence, and directed that it proceed without a separate
 authorization PR. The owner also directed that the work be committed, pushed and opened as an
 implementation PR ready for independent review. That authorization is recorded here and in the
-[release list](../../roadmap/now.md); the owner's message is the approval this record preserves.
+[release list](../../archive/roadmap/release-list-2026-11-06.md); the owner's message is the approval this record preserves.
 
 This record is decision provenance, like the [S03](./t1-p02-s03-authorization-2026-10-27.md),
 [next-wave](./next-wave-authorization-2026-10-27.md),
@@ -13,7 +13,7 @@ This record is decision provenance, like the [S03](./t1-p02-s03-authorization-20
 [batch E](./batch-e-authorization-2026-10-22.md) records. It ratifies no contract and creates no
 gate, format, budget, package or phase. Lifecycle stays in the
 [roadmap registers](../../roadmap/README.md); the slice's scope stays in its own plan; the
-[release list](../../roadmap/now.md) owns permission.
+[release list](../../archive/roadmap/release-list-2026-11-06.md) owns permission.
 
 **Base.** `origin/main` `db7e5cd9` — the merge of PR #209, which shipped `T1.P02.S03`
 (acceptance anchor `cbdb4785`; `T1.P02.S02` shipped earlier on PR #201). `T1.P02.S01`, `S05`, `S06`,
@@ -33,7 +33,7 @@ rule and P1 merge rule are unchanged.
 
 | Scope | Condition | Plan |
 | --- | --- | --- |
-| `T1.P02.S04` — Integrated final gate | Released. Owner-authorized 2026-10-28 from the trusted base `db7e5cd9`, with no separate authorization PR required; the final verification base is `1e6e73aa` (PR #208), evidence at `d1fe6e5c`. Exhaustive independent acceptance of native Wall creation on the integrated tree; the original release included the deferred performance rows, and the 2026-10-28 amendment below suspends that recheck, leaving correctness and functional acceptance as the current condition. Starts through the [T1 runbook](../../operations/t1-spatial-world/README.md) eligibility step, rechecking every consumed gate and active scope at its own trusted base. | [Integrated final gate](./../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md) |
+| `T1.P02.S04` — Integrated final gate | Released. Owner-authorized 2026-10-28 from the trusted base `db7e5cd9`, with no separate authorization PR required; the final verification base is `1e6e73aa` (PR #208), evidence at `d1fe6e5c`. Exhaustive independent acceptance of native Wall creation on the integrated tree; the original release included the deferred performance rows, and the 2026-10-28 amendment below suspends that recheck, leaving correctness and functional acceptance as the current condition. Starts through the [T1 runbook](../../archive/process/operations/t1-spatial-world/README.md) eligibility step, rechecking every consumed gate and active scope at its own trusted base. | [Integrated final gate](./../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s04-integrated-final-gate/implementation-plan.md) |
 
 ## Preserved
 
@@ -55,7 +55,7 @@ rule and P1 merge rule are unchanged.
 - every hard budget, the one-compiler rule, the serialized shared `units/**` merge rule and each
   lane's own recorded shared-file claim;
 - the [production hold](../../roadmap/README.md#production-implementation-hold) for every scope the
-  [release list](../../roadmap/now.md) omits.
+  [release list](../../archive/roadmap/release-list-2026-11-06.md) omits.
 
 ## Not authorized or changed
 

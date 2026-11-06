@@ -621,7 +621,7 @@ Repository links below use inspected revisions where applicable. Product and com
 - **B1:** [North Star](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/reference/north-star.md).
 - **B2:** [Destination shell and visual-system contract](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/reference/design-system/editor-shell-and-visual-system.md).
 - **B3:** [Architecture](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/reference/architecture.md).
-- **B4:** [Release list](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/roadmap/now.md).
+- **B4:** [Release list](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/archive/roadmap/release-list-2026-11-06.md).
 - **B5:** [S06 performance foundation implementation plan](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md).
 - **B6:** [Integrated product synthesis](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/broad-research/biskiq-integrated-product-synthesis.md), [research index](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/broad-research/README.md), [designer brief](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/broad-research/p3-designer-brief.md), and relevant sections of [creative scene composition](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/broad-research/creative-scene-composition-ux.md). Research inputs, not independent proof of their quantitative claims.
 - **B7:** [Geometry library harvest and licensing supersession](https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/broad-research/geometry-library-harvest.md).
@@ -702,7 +702,7 @@ Repository links below use inspected revisions where applicable. Product and com
 [B1]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/reference/north-star.md
 [B2]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/reference/design-system/editor-shell-and-visual-system.md
 [B3]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/reference/architecture.md
-[B4]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/roadmap/now.md
+[B4]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/archive/roadmap/release-list-2026-11-06.md
 [B5]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
 [B6]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/broad-research/biskiq-integrated-product-synthesis.md
 [B7]: https://github.com/Biskiq/spatial-sketch-editor/blob/976323da9e18e96978649e595bc555021964631a/broad-research/geometry-library-harvest.md

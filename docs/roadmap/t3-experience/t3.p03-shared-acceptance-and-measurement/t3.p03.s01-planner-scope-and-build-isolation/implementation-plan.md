@@ -5,7 +5,7 @@
 hold; implemented on `t3/p03-s01-planner-scope-build-isolation`, closed out with acceptance
 `owner-override` ([closed acceptance stub](./acceptance.md)) ·
 **Phase:** [T3.P03](../README.md) ·
-[slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
+[slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../archive/process/operations/t3-experience/README.md)
 
 ```text
 CONSUMES: F2.unit-envelope@1, F4.intent-acceptance@1

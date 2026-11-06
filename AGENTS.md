@@ -2,8 +2,9 @@
 
 **Bootstrap:** [`docs/README.md`](./docs/README.md) (router). **Human start:**
 [`README.md`](./README.md#first-ten-minutes). **Status:** `npm run status`.
-**Glossary:** [`docs/glossary.md`](./docs/glossary.md). **Path map:**
-[`docs/path-map.md`](./docs/path-map.md).
+**Workflow:** [`docs/workflow.md`](./docs/workflow.md) (claims, flags, risk tiers, plans).
+**Focus:** [`focus.md`](./focus.md). **Glossary:** [`docs/glossary.md`](./docs/glossary.md).
+**Path map:** [`docs/path-map.md`](./docs/path-map.md).
 
 For product truth, read the smallest routed contract or area context that answers the task. Code and
 tests state current behavior; reference contracts and approved designs state invariants and targets;
@@ -76,13 +77,23 @@ the North Star states intent. Do not read the archive unless current evidence ne
 10. **No agent footer in commits** — when asked to commit, the message is the message: never append a
     `Generated with …` line or a `Co-Authored-By: <agent>` trailer for any tool, guide or harness.
 
-## Working loop
+## Workflow
 
-```text
-UNDERSTAND: smallest routed context + the touched area's AGENTS.md; state change, impact, proof
-CHECK: npm run status for current health, open flags and claims
-CLAIM: issue or draft PR naming the capability; recheck after creating it
-CHANGE: code/tests first; keep domain owners and one-writer rules intact
-VERIFY: the affected contract, then the lane required by apps/editor/tests/README.md
-REPORT: evidence, limitations and status movement; leave history to Git
-```
+**Status** is computed: `npm run status` prints report provenance, maturity, health, flags and
+claims. **Focus and holds** live in [`focus.md`](./focus.md); change that file only by an owner
+commit. **Claims** are a draft PR or self-assigned issue whose title names the capability id; check
+open issues and draft PRs before and immediately after claiming. **Flags** are issues labelled
+`needs-decision`, `needs-ux`, `needs-research`, `ambiguous` or `bug` plus the capability: proceed
+only on a reversible default, otherwise pick other work. **Plans** are written only for multi-PR,
+Tier 2 or invention-risking work, as the first commit of the work's own draft PR. Merging is the
+closeout: no acceptance document, anchor PR, closeout PR or phase-close record.
+
+**Tiers** (highest wins): **Tier 0** ordinary work → one fresh-context review, merge on green CI.
+**Tier 1** contract details within the hard rules, visitor/public or shared shell surface, or a
+persisted-format change the previous reader can still read (or with a tested recovery) → agent
+review, merge on green CI, owner check at the next checkpoint. **Tier 2** hard-rule, North Star,
+approved-design or ledger-shape change, incompatible format, check removal, owner review,
+production activation, licence or new dependency → owner decides before merge.
+
+On-demand skills: `work-checkpoint`, `gardener` (archive-only) and `breaker`. No schedules. The
+full process contract is [`docs/workflow.md`](./docs/workflow.md).

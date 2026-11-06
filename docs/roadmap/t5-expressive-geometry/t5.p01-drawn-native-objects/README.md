@@ -4,10 +4,10 @@
 gate; S01–S04 shipped. T5 remains approved and is not complete. Registered by the T5 planning PR on
 the owner's merge
 ([record](../../../reference/decisions/t5-object-focus-planning-2026-10-27.md)). Merging releases
-nothing: released scopes and their conditions are the [release list](../../now.md), and the
+nothing: released scopes and their conditions are the [release list](../../../archive/roadmap/release-list-2026-11-06.md), and the
 [production hold](../../README.md#production-implementation-hold) covers every scope that list
 omits · **Track:** [T5](../README.md) · **Direction:** [umbrella plan](../umbrella-plan.md) ·
-**Runbook:** [T5 operations](../../../operations/t5-expressive-geometry/README.md)
+**Runbook:** [T5 operations](../../../archive/process/operations/t5-expressive-geometry/README.md)
 
 ## Outcome
 
@@ -104,7 +104,7 @@ window.
 - **Scene writer order.** S01 edits the Scene unit types, codec, validation and planners that
   `T2.P02.S03` touched. `T2.P02.S03` merged with PR #199 and T2.P02 closed on 2026-10-27, so no
   T2 writer holds those files now; a new T2 Scene writer serializes with S01. Later T2 Scene work rebases on S01's format 4 under the
-  [shared-file protocol](../../cross-track-execution.md#shared-files-and-merge-protocol).
+  [shared-file protocol](../../../archive/roadmap/cross-track-execution-2026-11-06.md#shared-files-and-merge-protocol).
 - **Library scope.** S04 lands the library scope of the typed resource system for the `form` kind
   only, under T2 review (D8), with an `apps/api` migration serialized with other API writers.
 - **Reviews.** T2 reviews every Scene unit, codec, planner, Scene-adapter, library-scope and API

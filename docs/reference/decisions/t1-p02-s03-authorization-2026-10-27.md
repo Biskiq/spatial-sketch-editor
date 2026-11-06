@@ -9,7 +9,7 @@ This record is decision provenance, like the [next-wave](./next-wave-authorizati
 [batch E](./batch-e-authorization-2026-10-22.md) records. It ratifies no contract and creates no
 gate, format, budget, package or phase. Lifecycle stays in the
 [roadmap registers](../../roadmap/README.md); the slice's scope stays in its own plan; the
-[release list](../../roadmap/now.md) owns permission.
+[release list](../../archive/roadmap/release-list-2026-11-06.md) owns permission.
 
 **Base.** `origin/main` `6b815770`: the [next-wave release](./next-wave-authorization-2026-10-27.md)
 merged (PR #198), `T1.P02.S02` shipped on PR #201 (merge commit `ce159a1e`; anchor `36c18db9` and
@@ -32,7 +32,7 @@ prepared on its own PR (#199), which carries this record.
 - `T1.P02.S02`'s acceptance, its 456.0 KiB br Stage known miss and its formal performance family,
   which remain `T1.P02.S04`'s and are neither re-opened nor discharged here;
 - the [production hold](../../roadmap/README.md#production-implementation-hold) for every scope the
-  [release list](../../roadmap/now.md) omits.
+  [release list](../../archive/roadmap/release-list-2026-11-06.md) omits.
 
 ## Not authorized or changed
 

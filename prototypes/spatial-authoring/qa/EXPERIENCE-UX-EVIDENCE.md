@@ -198,7 +198,7 @@ measurement records; it changes no implementation code.
 docs/reference/design-system/editor-shell-and-visual-system.md
 docs/roadmap/README.md
 docs/roadmap/p25-experience/README.md
-docs/operations/current.md
+docs/archive/process/operations-current-2026-11-06.md
 prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md
 docs/archive/roadmap/p25-experience/p25-unified-design/p23b-browser-report.json
 docs/archive/roadmap/p25-experience/p25-unified-design/p23b-validation-result.json

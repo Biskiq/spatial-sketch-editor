@@ -52,7 +52,7 @@ that another scope now owns stay with that scope:
 ## 3. T3.P04.S01 authorization and release
 
 `T3.P04` was registered as planning-only post-Batch-E coordination. The owner now authorizes its
-single child and releases it on [the release list](../../roadmap/now.md):
+single child and releases it on [the release list](../../archive/roadmap/release-list-2026-11-06.md):
 
 | Scope | Outcome | Plan |
 | --- | --- | --- |

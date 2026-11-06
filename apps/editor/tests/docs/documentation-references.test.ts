@@ -141,13 +141,13 @@ describe('the reference grammar', () => {
 		const source = [
 			'```text',
 			'EXECUTION: the baton is F',
-			'           (→ ../operations/current.md). T1 planning follows.',
+			'           (→ ../archive/process/operations-current-2026-11-06.md). T1 planning follows.',
 			'```',
 			'',
 			'and `docs/README.md` is the entry point'
 		].join('\n');
 		expect(extractReferences(source).map((reference) => [reference.line, reference.raw])).toEqual([
-			[3, '../operations/current.md'],
+			[3, '../archive/process/operations-current-2026-11-06.md'],
 			[6, 'docs/README.md']
 		]);
 	});
@@ -166,7 +166,7 @@ describe('the reference grammar', () => {
 		// gets pasted into, not to the skill file that documents it.
 		const source = [
 			'```text',
-			'META: Architecture cycle — <action> → ../operations/architecture-cycle.md',
+			'META: Architecture cycle — <action> → ../archive/process/architecture-cycle-2026-11-06.md',
 			'```'
 		].join('\n');
 		expect(extractReferences(source)).toEqual([]);
@@ -219,7 +219,7 @@ describe('the reference grammar', () => {
 		expect(references.map((reference) => [reference.kind, reference.raw])).toEqual([
 			['link', './does-not-exist.md']
 		]);
-		const referencing = resolve(REPO_ROOT, 'docs/operations/current.md');
+		const referencing = resolve(REPO_ROOT, 'docs/archive/process/operations-current-2026-11-06.md');
 		expect(resolveReference(referencing, references[0])).toBe('missing file');
 	});
 

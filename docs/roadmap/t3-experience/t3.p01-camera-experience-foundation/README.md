@@ -6,7 +6,7 @@
 with its original obligations reconciled; `T3.P01.S05` shipped with both unit capabilities accepted
 and `T3.P01.S06` with `camera-handoff-v1` accepted; S04 authorized 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md)) · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
-[T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
+[T3 operations](../../../archive/process/operations/t3-experience/README.md) · **Contracts:**
 [AM-2, AM-4, AM-6, AM-7](../../../reference/composition-execution.md#ratified-amendments),
 [F amendment drafts](./f-amendment-proposals.md)
 
@@ -321,7 +321,7 @@ retires current-source normal admission and scope. No ordinary Undo crosses that
 
 ## Minimum T1/T2/T4 dependencies
 
-The [coordinated matrix/DAG and capability-readiness amendment](../../cross-track-execution.md) defines the common
+The [coordinated matrix/DAG and capability-readiness amendment](../../../archive/roadmap/cross-track-execution-2026-11-06.md) defines the common
 assignments. T1 S01 supplies F1/F3; T1 S03 alone provides the initial local F4. T3 S01 provides F2,
 S02 adds early conditional Save independently of F2, and the S03 split (S05: unit acceptance and
 unit Save; S06: runtime and Camera handoff) extended unit/Save/handoff conformance before activation. Required base and extension capabilities must be accepted at trusted

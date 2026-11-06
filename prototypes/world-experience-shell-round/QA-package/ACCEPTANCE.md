@@ -102,7 +102,7 @@ separate anchor.
 prose compacted:                2 files (external brief, internal commission record) — Git anchors above
 duplicate evidence removed:     10 PNG input copies (canonical sources retained)
 durable promotions:             2 homes (PLATE shared/World + V2 Experience shell and return requirements; North Star lens-switch/Camera-exposure reconciliation)
-routing updated:                6 live documents (prototypes/README, docs/README, roadmap/README, P25 README, P26 README, operations/current.md)
+routing updated:                6 live documents (prototypes/README, docs/README, roadmap/README, P25 README, P26 README, archive/process/operations-current-2026-11-06.md)
 new live → removed-file links:  0
 manual-owed verification rows:  0
 remaining deferred items:       4 (workspace README)

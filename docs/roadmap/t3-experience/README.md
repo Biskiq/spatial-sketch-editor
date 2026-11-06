@@ -6,8 +6,8 @@ through its split halves `S05` (PR #140) and `S06` (PR #141), and the final gate
 (PR #158, `9a457f6b`)); `T3.P02` registered 2026-10-20 and **closed 2026-10-24** (final gate
 `T3.P02.S02`), `T3.P03` (H0) registered 2026-10-22 as batch E and **closed 2026-10-24** (final gate
 `T3.P03.S02`), and `T3.P04` registered 2026-10-22, authorized as `T3.P04.S01` on 2026-10-24, and
-**closed 2026-10-25** ([phase register](#phase-register)) · **Runbook:**
-[`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
+**closed 2026-10-25** ([phase register](#phase-register)) · **Workflow:**
+[`../../workflow.md`](../../workflow.md) · **Focus:** [`../../../focus.md`](../../../focus.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
 **Contracts:** [`camera-tour.md`](../../reference/components/camera-tour.md),
@@ -130,7 +130,7 @@ precondition — an accepted `T3.camera-experience-cutover@1` — was met by `T3
 2026-10-22 [production hold](../README.md#production-implementation-hold). Batch E
 ([record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7) accepted its finalized convergence scope and released it, starting only
 after `T3.P03.S01` merges. `T3.P02.S02`, the phase's final gate, was owner-authorized and released 2026-10-23
-([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/roadmap/now.md`); `T3.P02.S01` is shipped. `Depends on` lists the external gates its slices consume; `F2.unit-envelope@1`,
+([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)), starting per the release list (`docs/archive/roadmap/release-list-2026-11-06.md`); `T3.P02.S01` is shipped. `Depends on` lists the external gates its slices consume; `F2.unit-envelope@1`,
 `F3.channels@1` and the F4 unit scopes come from `T3.P01`'s accepted outputs, and
 `T3.camera-experience-cutover@1` from `T3.P01.S04`. Both children shipped and the phase
 **closed 2026-10-24** (its `PHASE CLOSE` block and the

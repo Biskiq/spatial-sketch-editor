@@ -358,6 +358,21 @@ function formatAge(generatedAt, now) {
 	return `${Math.round(hours / 24)}d old`;
 }
 
+/** The owner-editable priority file, if present. Absence is not an error. */
+function readFocus(repoRoot) {
+	try {
+		const text = readFileSync(join(repoRoot, 'focus.md'), 'utf8');
+		return (
+			text
+				.split('\n')
+				.map((line) => line.trim())
+				.find((line) => line.length > 0 && !line.startsWith('#')) ?? null
+		);
+	} catch {
+		return null;
+	}
+}
+
 function printReport(report, now) {
 	const tested = report.testedCommit ? report.testedCommit.slice(0, 12) : '(none)';
 	const head = report.mainHead ? report.mainHead.slice(0, 12) : '(unknown)';
@@ -663,6 +678,8 @@ function main() {
 		process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 	} else {
 		process.stdout.write(`${printReport(report, new Date())}\n`);
+		const focus = readFocus(options.repoRoot);
+		if (focus) process.stdout.write(`focus      ${focus}\n`);
 		if (!github.available) {
 			process.stdout.write(`\nflags/claims unavailable: ${github.reason}\n`);
 		}

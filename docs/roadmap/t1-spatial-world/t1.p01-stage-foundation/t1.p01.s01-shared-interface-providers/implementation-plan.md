@@ -3,7 +3,7 @@
 **Slice:** T1.P01.S01 · **Status:** shipped (owner-authorized 2026-10-15; independently accepted at
 `ee463d0b`; closed 2026-10-16 by `slice-closeout`) — accepted outputs
 `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1`
-**Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
+**Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:** [T1 operations](../../../../archive/process/operations/t1-spatial-world/README.md)
 
 ```text
 CONSUMES: — (this slice supplies its own gate, so it consumes no F1/F3 prerequisite)

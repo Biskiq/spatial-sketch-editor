@@ -21,7 +21,7 @@ carry accepted final-gate evidence. No later commit invalidated those facts.
 ## Phase closures recorded with this batch
 
 Both closures are owner events carried by the same 2026-10-20 authorization, executed as their own
-documentation PRs under `.agents/skills/phase-closeout`:
+documentation PRs under `docs/archive/process/skills/phase-closeout`:
 
 | Phase | Final gate | Closure PR | State |
 | --- | --- | --- | --- |

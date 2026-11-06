@@ -74,5 +74,5 @@ Owner request, 2026-10-16, against post-PR #126 `main` (`6964c2dc`). The reconci
 (`parallel-four-slice-authorization`) carries the register changes, the reconciled plans and the
 evidence; independent review precedes merge, and no implementation or orchestration starts before
 it merges. Its only non-Markdown change is the execution-structure gate's live `Requires` pin in
-`apps/editor/tests/docs/parallel-track-gates.test.ts`, updated to the registrations above; the
+`apps/editor/tests/docs/workflow-cutover.test.ts`, updated to the registrations above; the
 gate's rules are unchanged.

@@ -9,7 +9,7 @@ This is decision provenance, like the [S04 authorization](./t1-p02-s04-authoriza
 [next-wave release](./next-wave-authorization-2026-10-27.md). It ratifies no contract and creates no
 gate, format, package, phase, track completion or performance pass. Lifecycle stays in the
 [roadmap](../../roadmap/README.md); the phase README owns closure; the
-[release list](../../roadmap/now.md) owns permission.
+[release list](../../archive/roadmap/release-list-2026-11-06.md) owns permission.
 
 **Base.** `origin/main` `eb0931d6` — the PR #210 merge, which shipped `T1.P02.S04` from its accepted
 final gate at `46a31c81`; the phase-close record is carried by PR #211.

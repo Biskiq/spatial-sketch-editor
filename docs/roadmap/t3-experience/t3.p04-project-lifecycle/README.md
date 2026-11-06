@@ -3,8 +3,8 @@
 **Phase:** T3.P04 · **Status:** **closed 2026-10-25** — registered 2026-10-22; its single child
 `T3.P04.S01` shipped, its final gate was accepted, and the phase closed by owner ruling 2026-10-25
 (PHASE CLOSE below) · **Track:** [T3](../README.md) ·
-**Runbook:** [T3 operations](../../../operations/t3-experience/README.md) · **Coordination:**
-[next parallel batch](../../cross-track-execution.md#next-parallel-batch)
+**Runbook:** [T3 operations](../../../archive/process/operations/t3-experience/README.md) · **Coordination:**
+[next parallel batch](../../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch)
 
 This is the separate C3 project rename/delete obligation assigned to T3 persistence/API and
 T1 shell integration by K4 in [Core Editor Stability](../../core-editor-stability.md#sequencing-findings).

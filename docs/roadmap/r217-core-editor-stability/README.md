@@ -21,7 +21,7 @@ integrator through the [campaign record](../../reference/decisions/r217-converge
 The owner-requested [convergence audit and plan](./post-s10-convergence/README.md) records the
 findings and the target specification. The owner accepted [decisions O1–O9](./post-s10-convergence/owner-decisions.md)
 on 2026-10-30 and directed that the resulting work be registered here, under
-[bounded replanning](../../operations/README.md#bounded-replanning), as R217.S12–S25. The
+[bounded replanning](../../archive/process/operations-README-2026-11-06.md#bounded-replanning), as R217.S12–S25. The
 [campaign record](../../reference/decisions/r217-convergence-campaign-2026-10-30.md) releases them together, and S11, when the owner merges
 PR #230. It does not close R217. Those rulings amend landed contracts only at each slice's cutover.
 
@@ -161,7 +161,7 @@ baseline.
 Each slice records its shared-file claim (writer, expected patch base, reviewer) in its writer's
 baton before editing `stage-facade.ts`, `StageCanvas.svelte`, the spatial route or another track's
 adapter. Lanes merge one at a time under the
-[shared-file protocol](../cross-track-execution.md#shared-files-and-merge-protocol).
+[shared-file protocol](../../archive/roadmap/cross-track-execution-2026-11-06.md#shared-files-and-merge-protocol).
 
 ## Sequencing
 

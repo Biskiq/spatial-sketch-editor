@@ -4,11 +4,11 @@
 shipped, the final gate `T3.P03.S02` accepted as `owner-override` (2026-10-23), and the phase closed
 by the owner-invoked closeout that carries the `PHASE CLOSE` block below
 ([owner decision](../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
-Released scopes and their conditions are the [release list](../../now.md); the
+Released scopes and their conditions are the [release list](../../../archive/roadmap/release-list-2026-11-06.md); the
 [production hold](../../README.md#production-implementation-hold) covers every scope that list
 omits, and this phase's closure releases nothing · **Track:**
 [T3](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
-[T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
+[T3 operations](../../../archive/process/operations/t3-experience/README.md) · **Contracts:**
 [F.4 destination](../../../reference/composition-execution.md#product-convergence-destination),
 [performance](../../../reference/components/performance.md)
 

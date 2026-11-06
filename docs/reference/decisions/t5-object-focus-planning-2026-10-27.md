@@ -5,7 +5,7 @@ registration of `T5.P01` and the approval of its first slice plan are proposed b
 PR and take effect only when the owner merges it. Two owner amendments made in that PR's review —
 [T5 dependency licensing](#owner-amendment-t5-dependency-licensing) and
 [reusable native objects](#owner-amendment-reusable-native-objects) — take effect with it. Merging
-releases nothing: the [release list](../../roadmap/now.md) is unchanged and owner-written.
+releases nothing: the [release list](../../archive/roadmap/release-list-2026-11-06.md) is unchanged and owner-written.
 
 This record owns what was decided and what merging does. The
 [T5 umbrella plan](../../roadmap/t5-expressive-geometry/umbrella-plan.md) owns the architecture and
@@ -137,7 +137,7 @@ Merging is the owner's approval of:
    [first slice plan](../../roadmap/t5-expressive-geometry/t5.p01-drawn-native-objects/t5.p01.s01-native-form-source-and-evaluation/implementation-plan.md);
    the My Objects slice `T5.P01.S04` is registered as proposed;
 4. the execution-structure gate's admission of T5 batons, runbooks and release-list rows
-   (`apps/editor/tests/docs/parallel-track-gates.test.ts`), so a T5 release row can be written
+   (`apps/editor/tests/docs/workflow-cutover.test.ts`), so a T5 release row can be written
    without a further test change;
 5. the two owner amendments above.
 
@@ -170,6 +170,6 @@ and T2 definition/attachment consumption.
 ## Release step for the first slice
 
 When the owner chooses to start `T5.P01.S01`, the release is one owner edit: add its row to the
-[release list](../../roadmap/now.md) — condition "no concurrent T2 Scene-unit writer (its `T2.P02.S03` prerequisite merged with
+[release list](../../archive/roadmap/release-list-2026-11-06.md) — condition "no concurrent T2 Scene-unit writer (its `T2.P02.S03` prerequisite merged with
 PR #199); recheck consumed gates and active scopes at its own trusted base" — linking its plan. The coding agent then starts through the
-[T5 runbook](../../operations/t5-expressive-geometry/README.md) start step.
+[T5 runbook](../../archive/process/operations/t5-expressive-geometry/README.md) start step.

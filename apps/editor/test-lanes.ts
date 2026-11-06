@@ -60,12 +60,11 @@ export const ARCH_FILES: string[] = [
 	// references `legacy/`. The frozen project was externalized (§3.7), so this
 	// is now the standing repository-side proof that nothing reintroduced it.
 	'tests/lib/legacy-isolation.test.ts',
-	// PR #115 §9.4/§11: the execution-structure gate. It reads the track and gate registers, the
-	// phase slice register, the router's fresh-agent routes and the cycle's state/mechanism
-	// tables, and it is the only enforcement of the version/eligibility rules, the trusted-base
-	// prerequisite check and the exposure-window opening rule, so it belongs to an unconditional
-	// lane. Its subject is the repository's execution structure, exactly like the docs gate below.
-	'tests/docs/parallel-track-gates.test.ts',
+	// The workflow cutover gate: the capability ledger and North-Star anchors, the compact
+	// router's live routes, the focus file, archived retired-process routes and the on-demand skills.
+	// Its subject is repository routing, which no build or type check can see, so only the
+	// unconditional lane can hold it.
+	'tests/docs/workflow-cutover.test.ts',
 	// T1.P01.S03: the F.4 editor-only isolation boundary — the public route's
 	// module graph stays free of the acceptance coordinator and its history while
 	// the shared contract package stays reachable. Nothing imports an F4 editor

@@ -1,7 +1,7 @@
 # T1 — Spatial world: planning evidence and obligations
 
 **Status:** evidence and obligations for the T1 track, consolidated by #115 WP4
-([implementation-plan.md](../parallel-track-cutover/implementation-plan.md) §8.4). This is
+([implementation-plan.md](../../archive/roadmap/parallel-track-cutover/implementation-plan.md) §8.4). This is
 **not** an implementation plan and it authorizes no implementation. An obligation stated here
 is picked up by a later, separately authorized T1 phase plan; nothing here is ratified by being
 written down. Where a source left a choice open, it stays open and says so.
@@ -18,7 +18,7 @@ and [`prototypes/paper-authoring-commission/`](../../../prototypes/paper-authori
 [architecture.md](../../reference/architecture.md) and
 [north-star.md](../../reference/north-star.md), the
 [tech-debt ledger](../../operations/tech-debt/README.md), and
-[implementation-plan.md](../parallel-track-cutover/implementation-plan.md) §4.3/§4.4/§5.1/§7.2.
+[implementation-plan.md](../../archive/roadmap/parallel-track-cutover/implementation-plan.md) §4.3/§4.4/§5.1/§7.2.
 
 ## 1. Division of evidence (World / Conservatory / Paper)
 
@@ -184,7 +184,7 @@ prerequisite for truthful relations or one-shot fixes.
 
 ## 13. §7.2 successor obligations
 
-Carried from the #115 test/architecture disposition ([implementation-plan.md](../parallel-track-cutover/implementation-plan.md) §7.2):
+Carried from the #115 test/architecture disposition ([implementation-plan.md](../../archive/roadmap/parallel-track-cutover/implementation-plan.md) §7.2):
 
 - **Editor/visitor mesh parity** — re-established at the first editor Stage renderer, honouring
   the rule that no editor helper enters `MuseumScene` or visitor imports.
@@ -216,7 +216,7 @@ actually hands in.
 ## 16. Routes to retained authoring modules
 
 T1 owns the retained pure Layout and accessibility seams relocated by #115
-([implementation-plan.md](../parallel-track-cutover/implementation-plan.md) §4.3):
+([implementation-plan.md](../../archive/roadmap/parallel-track-cutover/implementation-plan.md) §4.3):
 
 - [`apps/editor/src/lib/authoring/layout`](../../../apps/editor/src/lib/authoring/layout) —
   hit resolution against compiled query records with a locked priority, and exact-value

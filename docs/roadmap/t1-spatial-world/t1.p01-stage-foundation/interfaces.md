@@ -301,7 +301,7 @@ presented as an already conforming F.2 envelope or resource lock.
 
 T3 S01 is the sole proposed F2 unit/envelope/lock provider; T4 S02 provides F5 using T3's shared
 ExecutionProgram codec. Their scopes and readiness are reconciled in
-[cross-track allocation](../../cross-track-execution.md#provider-and-acceptance-matrix). This phase exports no
+[cross-track allocation](../../../archive/roadmap/cross-track-execution-2026-11-06.md#provider-and-acceptance-matrix). This phase exports no
 prepared program, new publication format or authoring machinery to visitor releases, and
 neither consumes nor provides `F2.unit-envelope` or `F5.release-envelope`. If implementation
 finds it needs a new persisted header, resource lock or cross-domain unit format, stop that

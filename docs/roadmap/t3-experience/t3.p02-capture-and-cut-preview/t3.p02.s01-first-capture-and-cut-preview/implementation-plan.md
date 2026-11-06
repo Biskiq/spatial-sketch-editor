@@ -5,7 +5,7 @@
 ([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) preserved.
 This plan remains live because its declared exhaustive integration route is T3.P02.S02 ·
 **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
-**Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
+**Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../archive/process/operations/t3-experience/README.md)
 
 The historical batch D authorization and approved state are preserved as provenance. S01's
 acceptance ruling and closeout status live in the [acceptance record](./acceptance.md) and

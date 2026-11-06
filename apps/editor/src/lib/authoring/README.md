@@ -5,7 +5,7 @@ presentation layer, the Layout editor adapters and the Scene-embedded camera
 navigation graph all went with it.
 
 A module survived that deletion only if it met **all four** criteria
-(`docs/roadmap/parallel-track-cutover/implementation-plan.md` §4.3):
+(`docs/archive/roadmap/parallel-track-cutover/implementation-plan.md` §4.3):
 
 1. it is **pure** — no Svelte, no runes, no store;
 2. it does **not** depend on the old shell/session types (`editor-types`,
@@ -16,7 +16,7 @@ A module survived that deletion only if it met **all four** criteria
 That is a retention test, not a maturity claim. These modules are kept **by
 criteria, not by consumer count**: most have no product importer today, because
 the authoring UI is a T-track capability to rebuild
-(`docs/roadmap/parallel-track-cutover/acceptance.md`, now the closed-work stub — the #115 retention disposition a6 is in its recovered body).
+(`docs/archive/roadmap/parallel-track-cutover/acceptance.md`, now the closed-work stub — the #115 retention disposition a6 is in its recovered body).
 
 | Directory | Retained modules | Why it survived | Later owner |
 | --- | --- | --- | --- |

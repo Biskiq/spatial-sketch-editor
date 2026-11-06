@@ -7,7 +7,7 @@ unverified formal performance rows to named follow-up owners, and directed `T2.P
 This record is decision provenance. The [acceptance artifact](../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)
 owns the gate evidence; the [phase README](../../roadmap/t2-composition/t2.p02-own-model-import/README.md)
 owns lifecycle and the `PHASE CLOSE` block; [performance.md](../components/performance.md) owns the
-amended row; the [release list](../../roadmap/now.md) owns permission. No track completion, gate
+amended row; the [release list](../../archive/roadmap/release-list-2026-11-06.md) owns permission. No track completion, gate
 version, format, package or production state is created here.
 
 ## Accepted gate
