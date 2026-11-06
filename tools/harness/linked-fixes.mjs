@@ -9,6 +9,10 @@
  * keeps only that closer. An open issue has no active closure, so evidence is
  * empty rather than a past fix.
  *
+ * `readClosure` is also used by the issue response when its saved evidence is
+ * for an older closure than the live issue — a newer close must be evaluated
+ * from its own closure, never from the previous file.
+ *
  * Output shape:
  *
  *   { pullRequests: [{number, mergedAt}], commits: [oid], closedAt }
@@ -21,6 +25,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const QUERY = `
 query ($owner: String!, $name: String!, $number: Int!) {
@@ -43,6 +48,52 @@ query ($owner: String!, $name: String!, $number: Int!) {
   }
 }
 `;
+
+/**
+ * Closure-specific evidence for the issue's latest close.
+ *
+ * @param {{gh: string, repo: string, issue: number}} options
+ */
+export function readClosure({ gh, repo, issue }) {
+	const [owner, name] = repo.split('/');
+	const raw = execFileSync(
+		gh,
+		[
+			'api',
+			'graphql',
+			'-f',
+			`query=${QUERY}`,
+			'-F',
+			`owner=${owner}`,
+			'-F',
+			`name=${name}`,
+			'-F',
+			`number=${issue}`
+		],
+		{ encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
+	);
+	const data = JSON.parse(raw)?.data?.repository?.issue;
+	if (!data || !Array.isArray(data.timelineItems?.nodes)) {
+		throw new Error('closure read returned no issue timeline');
+	}
+	if (data.state !== 'CLOSED') {
+		return { pullRequests: [], commits: [], closedAt: null };
+	}
+	const closures = data.timelineItems.nodes
+		.filter((node) => node && typeof node.createdAt === 'string')
+		.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+	const latest = closures[0] ?? null;
+	const closer = latest?.closer ?? null;
+	const pullRequests = [];
+	const commits = [];
+	if (closer?.__typename === 'PullRequest' && closer.mergedAt) {
+		pullRequests.push({ number: closer.number, mergedAt: closer.mergedAt });
+	}
+	if (closer?.__typename === 'Commit' && typeof closer.oid === 'string') {
+		commits.push(closer.oid);
+	}
+	return { pullRequests, commits, closedAt: latest?.createdAt ?? null };
+}
 
 function parseArgs(argv) {
 	const options = { issue: null, repo: null, out: null, gh: 'gh' };
@@ -71,45 +122,7 @@ function main() {
 	mkdirSync(dirname(out), { recursive: true });
 	let result;
 	try {
-		const [owner, name] = options.repo.split('/');
-		const raw = execFileSync(
-			options.gh,
-			[
-				'api',
-				'graphql',
-				'-f',
-				`query=${QUERY}`,
-				'-F',
-				`owner=${owner}`,
-				'-F',
-				`name=${name}`,
-				'-F',
-				`number=${options.issue}`
-			],
-			{ encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
-		);
-		const issue = JSON.parse(raw)?.data?.repository?.issue;
-		if (!issue || !Array.isArray(issue.timelineItems?.nodes)) {
-			throw new Error('closure read returned no issue timeline');
-		}
-		if (issue.state !== 'CLOSED') {
-			result = { pullRequests: [], commits: [], closedAt: null };
-		} else {
-			const closures = issue.timelineItems.nodes
-				.filter((node) => node && typeof node.createdAt === 'string')
-				.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
-			const latest = closures[0] ?? null;
-			const closer = latest?.closer ?? null;
-			const pullRequests = [];
-			const commits = [];
-			if (closer?.__typename === 'PullRequest' && closer.mergedAt) {
-				pullRequests.push({ number: closer.number, mergedAt: closer.mergedAt });
-			}
-			if (closer?.__typename === 'Commit' && typeof closer.oid === 'string') {
-				commits.push(closer.oid);
-			}
-			result = { pullRequests, commits, closedAt: latest?.createdAt ?? null };
-		}
+		result = readClosure(options);
 	} catch (error) {
 		result = { unreadable: true, reason: error.message.split('\n')[0] };
 	}
@@ -117,4 +130,4 @@ function main() {
 	console.log(`linked fixes: ${out}`);
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

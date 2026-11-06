@@ -679,7 +679,7 @@ describe('blocking-bug event response', () => {
 		"const state = JSON.parse(readFileSync(statePath, 'utf8'));",
 		'state.reads = state.reads || 0;',
 		'const save = () => writeFileSync(statePath, JSON.stringify(state));',
-		'const issue = () => ({ number: 7, state: state.state, labels: state.labels.map((name) => ({ name })) });',
+		'const issue = () => ({ number: 7, state: state.state, closed_at: state.closed_at || null, labels: state.labels.map((name) => ({ name })) });',
 		"const graphql = args[0] === 'api' && args[1] === 'graphql';",
 		"const path = args[1] || '';",
 		"const labelPost = path.endsWith('/labels') && args.includes('-f');",
@@ -925,7 +925,14 @@ describe('blocking-bug event response', () => {
 		const dir = tempDir('issue-response-fixing-pr');
 		mkdirSync(dir, { recursive: true });
 		const { statePath, script } = fakeGh(dir);
-		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core', 'bug'] }));
+		writeFileSync(
+			statePath,
+			JSON.stringify({
+				state: 'closed',
+				closed_at: '2026-11-06T00:00:00Z',
+				labels: ['blocks-core', 'bug']
+			})
+		);
 		const graphqlFixture = closure(dir, [
 			{
 				createdAt: '2026-11-06T00:00:00Z',
@@ -950,13 +957,22 @@ describe('blocking-bug event response', () => {
 		expect(record.superseded).toBe('fixing-closure');
 		expect(stateOf(statePath).state).toBe('closed');
 		expect(calls(dir)().some((line) => line.includes('PATCH'))).toBe(false);
+		// Matching closed_at means the saved evidence is current: no refresh read.
+		expect(calls(dir)().some((line) => line.startsWith('api graphql'))).toBe(false);
 	});
 
 	it('accepts a closure whose closer is a fixing commit', () => {
 		const dir = tempDir('issue-response-fixing-commit');
 		mkdirSync(dir, { recursive: true });
 		const { statePath, script } = fakeGh(dir);
-		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core'] }));
+		writeFileSync(
+			statePath,
+			JSON.stringify({
+				state: 'closed',
+				closed_at: '2026-11-06T00:00:00Z',
+				labels: ['blocks-core']
+			})
+		);
 		const graphqlFixture = closure(dir, [
 			{ createdAt: '2026-11-06T00:00:00Z', closer: { __typename: 'Commit', oid: 'deadbeef' } }
 		]);
@@ -980,7 +996,14 @@ describe('blocking-bug event response', () => {
 		const dir = tempDir('issue-response-unrelated-mention');
 		mkdirSync(dir, { recursive: true });
 		const { statePath, script } = fakeGh(dir);
-		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core', 'bug'] }));
+		writeFileSync(
+			statePath,
+			JSON.stringify({
+				state: 'closed',
+				closed_at: '2026-11-06T00:00:00Z',
+				labels: ['blocks-core', 'bug']
+			})
+		);
 		// A merged PR mentioned the issue, but this closure has no closer.
 		const graphqlFixture = closure(dir, [{ createdAt: '2026-11-06T00:00:00Z', closer: null }]);
 		const { linked, payload } = resolveFixes(dir, script, statePath, graphqlFixture);
@@ -1004,7 +1027,14 @@ describe('blocking-bug event response', () => {
 		const dir = tempDir('issue-response-old-fix');
 		mkdirSync(dir, { recursive: true });
 		const { statePath, script } = fakeGh(dir);
-		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core'] }));
+		writeFileSync(
+			statePath,
+			JSON.stringify({
+				state: 'closed',
+				closed_at: '2026-02-01T00:00:00Z',
+				labels: ['blocks-core']
+			})
+		);
 		const graphqlFixture = closure(dir, [
 			{ createdAt: '2026-01-01T00:00:00Z', closer: { __typename: 'PullRequest', number: 9, mergedAt: '2026-01-01T00:00:00Z' } },
 			{ createdAt: '2026-02-01T00:00:00Z', closer: null }
@@ -1023,6 +1053,144 @@ describe('blocking-bug event response', () => {
 			}).status
 		).toBe(1);
 		expect(stateOf(statePath).state).toBe('open');
+	});
+
+	it('refreshes stale fix evidence when a newer manual close replaced it', () => {
+		const dir = tempDir('issue-response-stale-fix');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(
+			statePath,
+			JSON.stringify({
+				state: 'closed',
+				closed_at: '2026-11-06T02:00:00Z',
+				labels: ['blocks-core', 'bug']
+			})
+		);
+		// Saved evidence proves the older fixing closure, not the live one.
+		const saved = join(dir, 'saved.json');
+		writeFileSync(
+			saved,
+			JSON.stringify({
+				pullRequests: [{ number: 13, mergedAt: '2026-11-06T00:00:00Z' }],
+				commits: [],
+				closedAt: '2026-11-06T00:00:00Z'
+			})
+		);
+		const graphqlFixture = closure(dir, [
+			{ createdAt: '2026-11-06T02:00:00Z', closer: null }
+		]);
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: {
+				number: 7,
+				labels: ['blocks-core', 'bug'],
+				state: 'closed',
+				closed_at: '2026-11-06T00:00:00Z'
+			},
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, saved), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_GRAPHQL: graphqlFixture,
+			FAKE_LOG: join(dir, 'calls.log')
+		});
+		expect(result.status).toBe(1);
+		expect(stateOf(statePath).state).toBe('open');
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.closure.refreshed).toBe(true);
+		expect(record.closure.liveClosedAt).toBe('2026-11-06T02:00:00Z');
+		expect(record.violations[0].reason).toContain('no linked fixing change');
+		expect(calls(dir)().some((line) => line.startsWith('api graphql'))).toBe(true);
+	});
+
+	it('refreshes stale no-fix evidence when a newer fixing close replaced it', () => {
+		const dir = tempDir('issue-response-stale-no-fix');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(
+			statePath,
+			JSON.stringify({
+				state: 'closed',
+				closed_at: '2026-11-06T02:00:00Z',
+				labels: ['blocks-core', 'bug']
+			})
+		);
+		// Saved evidence is the older manual close; the live closure is a fix.
+		const saved = join(dir, 'saved.json');
+		writeFileSync(
+			saved,
+			JSON.stringify({ pullRequests: [], commits: [], closedAt: '2026-11-06T00:00:00Z' })
+		);
+		const graphqlFixture = closure(dir, [
+			{
+				createdAt: '2026-11-06T02:00:00Z',
+				closer: { __typename: 'PullRequest', number: 13, mergedAt: '2026-11-06T02:00:00Z' }
+			}
+		]);
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: {
+				number: 7,
+				labels: ['blocks-core', 'bug'],
+				state: 'closed',
+				closed_at: '2026-11-06T00:00:00Z'
+			},
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, saved), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_GRAPHQL: graphqlFixture,
+			FAKE_LOG: join(dir, 'calls.log')
+		});
+		expect(result.status).toBe(0);
+		expect(stateOf(statePath).state).toBe('closed');
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.superseded).toBe('fixing-closure');
+		expect(record.closure.refreshed).toBe(true);
+		expect(calls(dir)().some((line) => line.includes('PATCH'))).toBe(false);
+	});
+
+	it('does not verify a changed closure from stale evidence when refresh fails', () => {
+		const dir = tempDir('issue-response-refresh-fail');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(
+			statePath,
+			JSON.stringify({
+				state: 'closed',
+				closed_at: '2026-11-06T02:00:00Z',
+				labels: ['blocks-core', 'bug']
+			})
+		);
+		const saved = join(dir, 'saved.json');
+		writeFileSync(
+			saved,
+			JSON.stringify({
+				pullRequests: [{ number: 13, mergedAt: '2026-11-06T00:00:00Z' }],
+				commits: [],
+				closedAt: '2026-11-06T00:00:00Z'
+			})
+		);
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: {
+				number: 7,
+				labels: ['blocks-core', 'bug'],
+				state: 'closed',
+				closed_at: '2026-11-06T00:00:00Z'
+			},
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, saved), REPO_ROOT, {
+			FAKE_STATE: statePath
+		});
+		expect(result.status).toBe(1);
+		expect(stateOf(statePath).state).toBe('open');
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.closure.refreshed).toBe(true);
+		expect(record.fixEvidence).toBe('unreadable');
+		expect(record.violations[0].reason).toContain('could not be read');
 	});
 
 	it('treats a failed closure read as unreadable and still restores', () => {

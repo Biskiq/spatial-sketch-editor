@@ -5,13 +5,18 @@
  * A failing read-only workflow does not undo an unauthorized label removal or
  * closure, and `npm run status` would read the changed state and clear health.
  * This evaluates the live issue before touching it, so an owner approval or a
- * real fixing closure that arrived while the job was queued is respected:
+ * real fixing closure that arrived while the job was queued is respected. Fix
+ * evidence is bound to the live closure: if the saved `closedAt` is not the
+ * issue's current `closed_at`, the closure is re-read before evaluating, so a
+ * newer manual close is never certified by an old fix and a newer fixing close
+ * is never reopened on old no-fix evidence.
  *
  *   - read current issue state;
- *   - evaluate it against the closure's actual fix evidence;
+ *   - refresh evidence when the live closure changed, then evaluate it;
  *   - if no violation remains, report it superseded and write nothing;
- *   - otherwise revalidate immediately before writing, then restore the
- *     removed `blocks-core`/`bug` label or reopen an unauthorized close;
+ *   - otherwise revalidate (refreshing again if needed) immediately before
+ *     writing, then restore the removed `blocks-core`/`bug` label or reopen an
+ *     unauthorized close;
  *   - read back and only claim `restored` when the blocking state is confirmed.
  *
  * Exit codes: 0 no violation or superseded, 1 restored (owner approval or a real
@@ -27,6 +32,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 import { OWNER_LABEL, evaluateIssueEvent, hasFixEvidence, issueLabels } from './issue-rules.mjs';
+import { readClosure } from './linked-fixes.mjs';
 
 function parseArgs(argv) {
 	const options = {
@@ -78,19 +84,56 @@ function supersededReason(event, issue, linkedFixes) {
 	return 'superseded';
 }
 
+function sameClosure(evidence, issue) {
+	return (
+		evidence &&
+		evidence.unreadable !== true &&
+		typeof evidence.closedAt === 'string' &&
+		typeof issue.closed_at === 'string' &&
+		Date.parse(evidence.closedAt) === Date.parse(issue.closed_at)
+	);
+}
+
+/**
+ * Return evidence for the live closure. Saved evidence is kept only when its
+ * `closedAt` is the issue's current `closed_at`; otherwise the closure is
+ * re-read, and a failed refresh is explicitly unreadable (never trusted).
+ */
+function currentEvidence(event, issue, saved, options) {
+	if (
+		event.action !== 'closed' ||
+		issue.state !== 'closed' ||
+		sameClosure(saved, issue)
+	) {
+		return { evidence: saved, refreshed: false };
+	}
+	try {
+		return {
+			evidence: readClosure({ gh: options.gh, repo: options.repo, issue: event.issue.number }),
+			refreshed: true
+		};
+	} catch (error) {
+		return {
+			evidence: { unreadable: true, reason: error.message.split('\n')[0] },
+			refreshed: true
+		};
+	}
+}
+
 function main() {
 	const options = parseArgs(process.argv.slice(2));
 	const out = resolve(options.out);
 	mkdirSync(dirname(out), { recursive: true });
 	const event = readJson(options.eventFile);
-	const linkedFixes = readJson(options.linkedFixes);
+	const savedEvidence = readJson(options.linkedFixes);
 	const result = {
 		action: event?.action ?? null,
 		issue: event?.issue?.number ?? null,
 		violations: [],
 		superseded: null,
 		restored: null,
-		fixEvidence: linkedFixes?.unreadable === true ? 'unreadable' : 'readable'
+		fixEvidence: savedEvidence?.unreadable === true ? 'unreadable' : 'readable',
+		closure: { savedClosedAt: savedEvidence?.closedAt ?? null, liveClosedAt: null, refreshed: false }
 	};
 	const finish = (exitCode) => {
 		writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);
@@ -127,15 +170,19 @@ function main() {
 		finish(2);
 		return;
 	}
-	result.violations = evaluateIssueEvent({ event: { ...event, issue: current }, linkedFixes });
+	result.closure.liveClosedAt = current.closed_at ?? null;
+	let ensured = currentEvidence(event, current, savedEvidence, options);
+	result.closure.refreshed = ensured.refreshed;
+	result.fixEvidence = ensured.evidence?.unreadable === true ? 'unreadable' : 'readable';
+	result.violations = evaluateIssueEvent({ event: { ...event, issue: current }, linkedFixes: ensured.evidence });
 	if (result.violations.length === 0) {
-		result.superseded = supersededReason(event, current, linkedFixes);
+		result.superseded = supersededReason(event, current, ensured.evidence);
 		finish(0);
 		return;
 	}
 
 	// Revalidate immediately before writing: the queue delay may have delivered
-	// an owner approval or a real fixing closure.
+	// an owner approval or a different closure.
 	try {
 		current = readIssue();
 	} catch (error) {
@@ -143,9 +190,13 @@ function main() {
 		finish(2);
 		return;
 	}
-	result.violations = evaluateIssueEvent({ event: { ...event, issue: current }, linkedFixes });
+	ensured = currentEvidence(event, current, ensured.evidence, options);
+	result.closure.liveClosedAt = current.closed_at ?? null;
+	result.closure.refreshed = result.closure.refreshed || ensured.refreshed;
+	result.fixEvidence = ensured.evidence?.unreadable === true ? 'unreadable' : 'readable';
+	result.violations = evaluateIssueEvent({ event: { ...event, issue: current }, linkedFixes: ensured.evidence });
 	if (result.violations.length === 0) {
-		result.superseded = supersededReason(event, current, linkedFixes);
+		result.superseded = supersededReason(event, current, ensured.evidence);
 		finish(0);
 		return;
 	}
