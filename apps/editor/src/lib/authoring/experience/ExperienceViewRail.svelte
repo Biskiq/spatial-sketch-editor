@@ -407,8 +407,11 @@
 </div>
 
 <style>
+	/* One column that never scrolls sideways (sheet §32 B): every row shrinks to the Card. */
 	.rail-host {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		min-width: 0;
 		gap: 4px;
 		font-size: 12px;
 	}
@@ -436,6 +439,10 @@
 		font-weight: 500;
 	}
 	.sum {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 		margin-left: auto;
 		color: var(--shell-ink-3, #6b736d);
 		font-size: 11px;
@@ -661,8 +668,10 @@
 	}
 	.editor {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		min-width: 0;
 		gap: 6px;
-		margin: 2px 0 2px 34px;
+		margin: 2px 0 2px 24px;
 		padding: 8px;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 8px;
@@ -674,12 +683,21 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 6px;
+		min-width: 0;
 		font-size: 11px;
+	}
+	.ed-head b {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.ed-row {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 8px;
+		gap: 6px;
+		min-width: 0;
 	}
 	.seg,
 	.stepper {
@@ -694,17 +712,20 @@
 		padding: 0 8px;
 		border: 0;
 		background: none;
+		white-space: nowrap;
 	}
 	.seg button[aria-pressed='true'] {
 		background: var(--shell-forest-raised, #22503c);
 		color: #fff;
 	}
 	.stepper b {
+		white-space: nowrap;
 		min-width: 40px;
 		align-self: center;
 		text-align: center;
 	}
 	.auto {
+		white-space: nowrap;
 		min-height: 26px;
 		padding: 0 8px;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
