@@ -16,7 +16,7 @@ owns its slice register.
 ## Owner ruling: E0 withdrawn
 
 The owner rejected the E0 guide/arrangement experiment as insufficiently valuable for T5's
-direction. The [E0 execution plan](../../roadmap/t5-expressive-geometry/e0-execution-plan.md)
+direction. The [E0 execution plan](../../archive/roadmap/t5-expressive-geometry/e0-execution-plan.md)
 (PR #205) is withdrawn and superseded; it stays at its path as historical evidence with a
 withdrawal notice. [PR #206](https://github.com/Biskiq/spatial-sketch-editor/pull/206), which
 implemented its disposable `prototypes/e0-spatial-playground`, was closed without merge on
@@ -53,7 +53,7 @@ a bounded tool set and a faithful return — are kept inside that scope.
 
 Biskiq's product licence remains undecided, and this amendment selects none. For dependencies
 admitted through T5 plans, it supersedes the
-[2026-10-23 permissive-only admission rule](./post-batch-e-authorization-2026-10-23.md#licensing-direction):
+[2026-10-23 permissive-only admission rule](../../archive/roadmap/authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction):
 
 - **Permissive licences** stay admissible as before, recorded in the admitting slice's acceptance.
 - **Weak-copyleft licences** (LGPL-2.1, LGPL-3.0 and MPL-2.0, including LGPL with an exception such
@@ -64,7 +64,7 @@ admitted through T5 plans, it supersedes the
   licences still stop and are reported to the owner.
 
 Other tracks keep the 2026-10-23 rule. The 2026-10-23 record and the
-[S06 narrowing](./performance-foundation-authorization-2026-10-24.md#full-permissive-licensing) are
+[S06 narrowing](../../archive/roadmap/authorization-history/performance-foundation-authorization-2026-10-24.md#full-permissive-licensing) are
 preserved as written; S06 is shipped and its narrower list stays its own.
 
 **Weak-copyleft admission review.** The admitting slice plan documents, and its acceptance records:

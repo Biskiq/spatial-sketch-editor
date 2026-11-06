@@ -2,7 +2,7 @@
 
 **Status:** **split direction approved 2026-10-17 by delegated owner decision; both follow-ups
 registered and owner-authorized the same day as `T3.P01.S05` and `T3.P01.S06`**
-([record](../../../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)). This
+([record](../../../../authorization-history/s03-split-followup-authorization-2026-10-17.md)). This
 document records the decision to divide S03's remaining obligations into two registered slices; it
 does **not** accept any capability or close S03. The
 [implementation plan](implementation-plan.md) required the implementer to propose a registered
@@ -129,7 +129,7 @@ The follow-up requirement above is discharged. The owner authorized the two halv
 registered with numeric ids in the [T3.P01 slice register](../README.md#slice-register) as
 **`T3.P01.S05` — Unit acceptance and unit Save** and **`T3.P01.S06` — Experience runtime and Camera
 handoff**, with plans and acceptance stubs written at registration. The authorization provenance is
-[the follow-up record](../../../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md).
+[the follow-up record](../../../../authorization-history/s03-split-followup-authorization-2026-10-17.md).
 The capability allocation moves `unit-acceptance-v1`/`conditional-save-units-v1` to S05 and
 `camera-handoff-v1` to S06; their prerequisite sets are unchanged. S03 stayed the in-progress umbrella
 and closed on 2026-10-17, after both halves were accepted and shipped (PR #140 and PR #141) and its

@@ -63,13 +63,13 @@ baseline, then C1 native Walls, C2 own-GLB import and Capture/Preview. Batch E l
 shipped; remaining scopes follow the [next parallel batch](../../archive/roadmap/cross-track-execution-2026-11-06.md#next-parallel-batch). It is whole-object editor import with retained original bytes/hash,
 recipe identity/version and a parts-safe derivative; no components are admitted or addressable, qualified
 references keep `componentId: null`, and no T4 dependency is introduced. It is registered as
-[T2.P02 — Own model import](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md))
+[T2.P02 — Own model import](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md) (batch E, [record](../../archive/roadmap/authorization-history/batch-e-authorization-2026-10-22.md))
 and **closed 2026-10-27**: the upload, retention and derivative bounds are accepted, S01–S03 shipped,
 and S03's final gate was accepted by owner ruling with the Stage first-load budget amended to ≤425
 KiB br ([decision](../../reference/decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md)).
 The formal performance rows are deferred to the named T2 follow-ups, not passed. `T1.P02.S06` is
 accepted and merged (`6af62eb4`), so the
-[performance-first halt](../../reference/decisions/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
+[performance-first halt](../../archive/roadmap/authorization-history/performance-foundation-authorization-2026-10-24.md#performance-first-halt-temporary)
 is satisfied.
 
 The next planning wave pairs T1's face-frame query with T2 solve-once wall placement, and T1 Stage
@@ -101,27 +101,27 @@ register owns lifecycle only.
 | T2.P02 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P02 — Own model import](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/README.md) |
 
 T2.P01 is registered by the owner decision of 2026-10-16
-([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
+([record](../../archive/roadmap/authorization-history/parallel-slice-authorization-2026-10-16.md)), with its
 [interface/reconciliation drafts](../../archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/contracts.md).
 **`T2.P01.S01`** shipped 2026-10-16; it consumed the accepted
 `F1.reference@1` alone. **`T2.P01.S02`** shipped 2026-10-17, consuming `F1.reference@1` and
 `F4.intent-acceptance@1`; its authorization is the owner decision of 2026-10-16
-([record](../../reference/decisions/s02-pair-authorization-2026-10-16.md)).
+([record](../../archive/roadmap/authorization-history/s02-pair-authorization-2026-10-16.md)).
 `Depends on` lists the external gates the phase's later slices consume. **`T2.P01.S03`** was
-owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)), after
+owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../archive/roadmap/authorization-history/batch-b-authorization-2026-10-17.md)), after
 `T1.viewport-projection@1` was accepted through `T1.P01.S07`, and shipped 2026-10-18 (PR #147). S04 was
-owner-authorized 2026-10-19 as batch C ([record](../../reference/decisions/batch-c-authorization-2026-10-19.md)); its T1 Head Save
+owner-authorized 2026-10-19 as batch C ([record](../../archive/roadmap/authorization-history/batch-c-authorization-2026-10-19.md)); its T1 Head Save
 prerequisite shipped through `T1.P01.S04` (PR #148). S04's final gate was accepted 2026-10-19 and
 shipped in PR #157 (`99c38033`), and the owner closed the phase on 2026-10-20 (its PHASE CLOSE block).
 
 **T2 is not complete.** Phase closure ends one bounded phase; the track's remaining objectives
 (materials/lights depth, attachments, definitions and later component identity/admission) stay ahead
 of it. **`T2.P02` was registered 2026-10-22** as the K1 bounded editor-side import (batch E,
-[record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E4/E7), superseding the
+[record](../../archive/roadmap/authorization-history/batch-e-authorization-2026-10-22.md), E1/E4/E7), superseding the
 closed phase's deferred-table sentence that tied it to T4 delivery; the closed record is left as
 written, and `T2.P02` **closed 2026-10-27**. S01 shipped with owner-override acceptance and recorded
 merge-gate evidence; S02 was owner-authorized, released 2026-10-23
-([record](../../reference/decisions/post-batch-e-authorization-2026-10-23.md)) and accepted
+([record](../../archive/roadmap/authorization-history/post-batch-e-authorization-2026-10-23.md)) and accepted
 2026-10-24; S03 was released 2026-10-27 and **accepted by owner ruling 2026-10-27 at `b9ba493b`**
 ([acceptance](../../archive/roadmap/closed-phases/t2-composition/t2.p02-own-model-import/t2.p02.s03-integrated-final-gate/acceptance.md)), with the
 Stage first-load budget amended to ≤425 KiB br and the formal performance rows deferred to the named

@@ -11,7 +11,7 @@
 [next parallel batch](../../../cross-track-execution-2026-11-06.md#next-parallel-batch)
 
 This is the separate C3 project rename/delete obligation assigned to T3 persistence/API and
-T1 shell integration by K4 in [Core Editor Stability](../../../../../roadmap/core-editor-stability.md#sequencing-findings).
+T1 shell integration by K4 in [Core Editor Stability](../../../core-editor-stability.md#sequencing-findings).
 It was authorized and released as `T3.P04.S01` on 2026-10-24 after T3's Capture/Preview integrated
 final gate; it is strictly unrelated to the performance-first halt and does not block the immediate
 parallel batch. The milestone's criteria and acceptance route remain separate owner decisions.
@@ -29,7 +29,7 @@ publication, prepared delivery or schema migration is implied.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P04.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [accepted 2026-10-25 (closed-work stub)](t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized 2026-10-24 ([record](../../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)); its shipped row was pruned from the release list by the [next-wave release](../../../../../reference/decisions/next-wave-authorization-2026-10-27.md); accepted after final independent PR #191 review ([review](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5644765570)) and the exhaustive integrated gate recorded in the acceptance artifact; merged in PR #191 (`aa1db37a`); phase **closed 2026-10-25** (PHASE CLOSE below) |
+| T3.P04.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Project rename and delete](t3.p04.s01-project-rename-and-delete/implementation-plan.md) | [accepted 2026-10-25 (closed-work stub)](t3.p04.s01-project-rename-and-delete/acceptance.md) | owner-authorized 2026-10-24 ([record](../../../authorization-history/t3-phase-close-and-p04-authorization-2026-10-24.md)); its shipped row was pruned from the release list by the [next-wave release](../../../authorization-history/next-wave-authorization-2026-10-27.md); accepted after final independent PR #191 review ([review](https://github.com/Biskiq/spatial-sketch-editor/pull/191#pullrequestreview-5644765570)) and the exhaustive integrated gate recorded in the acceptance artifact; merged in PR #191 (`aa1db37a`); phase **closed 2026-10-25** (PHASE CLOSE below) |
 
 ```text
 FINAL PHASE GATE: T3.P04.S01 → ./t3.p04.s01-project-rename-and-delete/acceptance.md

@@ -161,7 +161,7 @@ geometry becomes editable. The current encoding stores an authored
 1. how to migrate existing `partition` Walls; and
 2. whether a closed ring may ever be intentionally non-enclosing.
 
-**Decided 2026-10-22** ([batch E](../../reference/decisions/batch-e-authorization-2026-10-22.md),
+**Decided 2026-10-22** ([batch E](../../archive/roadmap/authorization-history/batch-e-authorization-2026-10-22.md),
 E3, in the [T1.P02 drawing policy](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)):
 
 1. no migration — Layout format 6 drops the authored role, readers refuse format 5, and fixtures that

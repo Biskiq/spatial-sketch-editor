@@ -53,7 +53,7 @@ section's separate outcome.
 
 ## Product milestone acceptance
 
-A product milestone (for example [Core Editor Stability](../../roadmap/core-editor-stability.md)) is a
+A product milestone (for example [Core Editor Stability](../roadmap/core-editor-stability.md)) is a
 named, owner-approved state of the product's usefulness. It is **not** a gate. It has no version,
 provider, `Requires` scope or register row, and accepting it changes no gate state or capability
 readiness. It is evidenced as a whole product workflow, not as a sum of accepted providers.

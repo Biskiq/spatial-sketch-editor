@@ -4,9 +4,9 @@
 `T1.P02` and a separate owner release update that prunes the verified shipped `T1.P02.S04` row. The
 owner's message is the approval this record preserves.
 
-This is decision provenance, like the [S04 authorization](./t1-p02-s04-authorization-2026-10-28.md),
-[S03 authorization](./t1-p02-s03-authorization-2026-10-27.md) and
-[next-wave release](./next-wave-authorization-2026-10-27.md). It ratifies no contract and creates no
+This is decision provenance, like the [S04 authorization](../../archive/roadmap/authorization-history/t1-p02-s04-authorization-2026-10-28.md),
+[S03 authorization](../../archive/roadmap/authorization-history/t1-p02-s03-authorization-2026-10-27.md) and
+[next-wave release](../../archive/roadmap/authorization-history/next-wave-authorization-2026-10-27.md). It ratifies no contract and creates no
 gate, format, package, phase, track completion or performance pass. Lifecycle stays in the
 [roadmap](../../roadmap/README.md); the phase README owns closure; the
 [release list](../../archive/roadmap/release-list-2026-11-06.md) owns permission.
@@ -34,7 +34,7 @@ final gate at `46a31c81`; the phase-close record is carried by PR #211.
   at `eb0931d6`. `closed/T1.P02.S04` is pushed at `46a31c81`; `closed/T1.P02` is the local phase tag
   at `eb0931d6`.
 - The live S04 register row records this prune and points here; the historical release permission and
-  evidence remain in the [S04 authorization](./t1-p02-s04-authorization-2026-10-28.md).
+  evidence remain in the [S04 authorization](../../archive/roadmap/authorization-history/t1-p02-s04-authorization-2026-10-28.md).
 
 ## Not authorized
 

@@ -15,15 +15,15 @@ and `T3.P01.S06` with `camera-handoff-v1` accepted; S04 authorized 2026-10-19 ([
 [F amendment drafts](f-amendment-proposals.md)
 
 Registered by the owner decision of 2026-10-16
-([record](../../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) so that its first
+([record](../../../authorization-history/parallel-slice-authorization-2026-10-16.md)) so that its first
 slice, `T3.P01.S01`, can run in parallel with `T1.P01.S02`, `T1.P01.S03` and `T2.P01.S01`. That is
 the phase's first implementation permission. S02 was authorized by the later owner decision of
-2026-10-16 ([record](../../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)), in parallel
+2026-10-16 ([record](../../../authorization-history/s02-pair-authorization-2026-10-16.md)), in parallel
 with `T2.P01.S02`. S03 was authorized on 2026-10-17
 ([record](../../../../../reference/decisions/next-batch-authorization-2026-10-17.md)), in parallel with
 `T1.P01.S07`; S04 was later authorized on 2026-10-19 ([record](../../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md)). On the same day the owner authorized S03's two
 follow-ups, `T3.P01.S05` and `T3.P01.S06`, after PR #138's preparatory increment and its approved
-split direction ([record](../../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)).
+split direction ([record](../../../authorization-history/s03-split-followup-authorization-2026-10-17.md)).
 The split moved execution ownership only; every original S03 obligation stayed registered. S05 was
 accepted and shipped 2026-10-17 (PR #140) and S06 on 2026-10-17 (PR #141); S03's
 [reconciliation](t3.p01.s03-compound-and-runtime-preparation/acceptance.md) closes the umbrella.
@@ -145,11 +145,11 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P01.S01 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — accepted, closed in PR #131 |
-| T3.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](t3.p01.s02-early-conditional-save/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); accepted 2026-10-16 from recorded independent-review evidence; output `F4.intent-acceptance@1:conditional-save-current-v1` accepted |
+| T3.P01.S01 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../authorization-history/parallel-slice-authorization-2026-10-16.md)) — accepted, closed in PR #131 |
+| T3.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](t3.p01.s02-early-conditional-save/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../authorization-history/s02-pair-authorization-2026-10-16.md)); accepted 2026-10-16 from recorded independent-review evidence; output `F4.intent-acceptance@1:conditional-save-current-v1` accepted |
 | T3.P01.S03 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); umbrella for its [registered split](t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) — accepted and shipped 2026-10-17 (PRs #140/#141); every original criterion reconciled to the half slices |
-| T3.P01.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:acceptance-invariants-v1 | — | [Unit acceptance and unit Save](t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md) | [record](t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #140) — `unit-acceptance-v1` and `conditional-save-units-v1` accepted; first half of the S03 split |
-| T3.P01.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1 | — | [Experience runtime and Camera handoff](t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md) | [record](t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #141) — `camera-handoff-v1` accepted; second half of the S03 split |
+| T3.P01.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:acceptance-invariants-v1 | — | [Unit acceptance and unit Save](t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md) | [record](t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../authorization-history/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #140) — `unit-acceptance-v1` and `conditional-save-units-v1` accepted; first half of the S03 split |
+| T3.P01.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1 | — | [Experience runtime and Camera handoff](t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md) | [record](t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../authorization-history/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #141) — `camera-handoff-v1` accepted; second half of the S03 split |
 | T3.P01.S04 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover (closed stub)](t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [final-gate acceptance record (closed stub)](t3.p01.s04-live-ownership-cutover/acceptance.md) | owner-authorized 2026-10-19 ([record](../../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md), R5); independent implementation review ACCEPT at `06a8aac8fa601de6c808c4d7014b6f360516e648` (Phase A + B, no blocking findings); routine slice-closeout 2026-10-20; final gate accepted; merged as a P1 merge commit `9a457f6b` (PR #158) with the plan anchor verified after merge; phase **closed 2026-10-20** (PHASE CLOSE below) |
 
 `references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 and S02 are now shipped
@@ -416,10 +416,10 @@ exclusions. The evidence lives at the gate artifact's recovery anchor.
   [pair protocol](../../../coordination-2026-10/cross-track-execution-2026-10-23.md#parallel-pair-2026-10-16); `T3.P01.S03` (2026-10-17,
   [record](../../../../../reference/decisions/next-batch-authorization-2026-10-17.md)), executed through its
   registered split `T3.P01.S05` (PR #140) and `T3.P01.S06` (PR #141)
-  ([record](../../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)) and closed
+  ([record](../../../authorization-history/s03-split-followup-authorization-2026-10-17.md)) and closed
   as the reconciled umbrella. All five are shipped.
 - **Save ownership (settled 2026-10-16,
-  [record](../../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)):** S02 owns the
+  [record](../../../authorization-history/s02-pair-authorization-2026-10-16.md)):** S02 owns the
   protocol, the server path, the client and the framework-free client Save state; T1 owns the Head
   integration in its host↔F4 wiring slice (`T1.P01.S04` by default), which enables Save only with
   `conditional-save-current-v1` accepted at its own trusted base. S02 builds no shell control, and

@@ -58,7 +58,7 @@ weak-copyleft libraries after a documented compatibility, distribution and compl
 ## E0: withdrawn
 
 The owner rejected the E0 guide/arrangement experiment as insufficiently valuable for T5's
-direction. The [E0 execution plan](./e0-execution-plan.md) is withdrawn and superseded by the
+direction. The [E0 execution plan](../../archive/roadmap/t5-expressive-geometry/e0-execution-plan.md) is withdrawn and superseded by the
 [umbrella plan](./umbrella-plan.md), and PR #206 closed without merge on 2026-10-27. The
 [planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-ruling-e0-withdrawn)
 keeps the retrievable evidence and its one finding: relocating controls is not a creative advantage.
@@ -71,16 +71,16 @@ investment.
   contract.
 - [Planning record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md) — E0
   withdrawal, owner decisions and the first slice's release step.
-- [E0 execution plan](./e0-execution-plan.md) — withdrawn; historical.
+- [E0 execution plan](../../archive/roadmap/t5-expressive-geometry/e0-execution-plan.md) — withdrawn; historical.
 - [G0 ratification](../../reference/decisions/t5-g0-ratification-2026-10-27.md) — provenance and
   limits; live rules belong to the owning references it routes.
-- [Original G0 commission](./g0-foundation-architecture-commission.md) and
+- [Original G0 commission](../../archive/roadmap/t5-expressive-geometry/g0-foundation-architecture-commission.md) and
   [original approval](../../reference/decisions/t5-g0-approval-2026-10-27.md) — historical planning
   mandate.
-- [Latest reconciled proposal](./g0-reconciled-proposal/README.md),
-  [first architecture proposal](./g0-architecture-proposal/README.md),
-  [independent stratified-form proposal](./g0-independent-proposal/README.md) and
-  [kernel assessment](./g0-architecture-proposal/kernel-evidence.md) — historical analysis; the
+- [Latest reconciled proposal](../../archive/roadmap/t5-expressive-geometry/g0-reconciled-proposal/README.md),
+  [first architecture proposal](../../archive/roadmap/t5-expressive-geometry/g0-architecture-proposal/README.md),
+  [independent stratified-form proposal](../../archive/roadmap/t5-expressive-geometry/g0-independent-proposal/README.md) and
+  [kernel assessment](../../archive/roadmap/t5-expressive-geometry/g0-architecture-proposal/kernel-evidence.md) — historical analysis; the
   umbrella plan's evidence table says what it reuses.
 - [Native Form Lab](../../../prototypes/native-form-lab/README.md),
   [native object shaping](../../../prototypes/native-object-shaping/UX-SPEC.md),

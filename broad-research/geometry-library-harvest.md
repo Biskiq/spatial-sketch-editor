@@ -10,12 +10,12 @@ general roof engine. None of this blocks the single-datum Wall-creation batch (C
 
 
 **Licensing supersession — 2026-10-23.** The owner rescinded the copyleft choice; product licensing
-is undecided ([ruling](../docs/reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)).
+is undecided ([ruling](../docs/archive/roadmap/authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction)).
 The package licence observations and historical measurements below remain evidence. The former
 copyleft-model compatibility analysis is historical conditional analysis, not present product
 licensing or dependency-admission permission. Any candidate's compatibility with the eventual
 product licence must be resolved before shipping (meanwhile the owner's
-[permissive-only admission ruling](../docs/reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)
+[permissive-only admission ruling](../docs/archive/roadmap/authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction)
 governs new dependencies); neither technical fit alone nor a wrapper's
 licence establishes admissibility of its embedded dependencies.
 

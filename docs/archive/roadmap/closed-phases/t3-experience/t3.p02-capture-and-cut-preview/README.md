@@ -7,7 +7,7 @@
 **Phase:** T3.P02 · **Status:** **closed 2026-10-24** — registered 2026-10-20; both children
 shipped, the final gate `T3.P02.S02` accepted as `owner-override` (2026-10-24), and the phase closed
 by the owner-invoked closeout that carries the `PHASE CLOSE` block below
-([owner decision](../../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
+([owner decision](../../../authorization-history/t3-phase-close-and-p04-authorization-2026-10-24.md)).
 Released scopes and their conditions are the [release list](../../../release-list-2026-11-06.md); the
 [production hold](../../../../../roadmap/README.md#production-implementation-hold) covers every scope that list
 omits, and this phase's closure releases nothing · **Track:** [T3](../../../../../roadmap/t3-experience/README.md) · **Roadmap:**
@@ -51,10 +51,10 @@ performance evidence before consuming-slice acceptance. It preserves the complet
 capture/Guide/history/Save scope and S02's exhaustive final gate. The S01 plan carries the
 finalized scope, its [Experience format draft](t3.p02.s01-first-capture-and-cut-preview/experience-format-draft.md)
 and its [shell draft](t3.p02.s01-first-capture-and-cut-preview/shell-draft.md); the owner accepted
-them and released S01 from the production hold on 2026-10-22 (batch E, [record](../../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7).
+them and released S01 from the production hold on 2026-10-22 (batch E, [record](../../../authorization-history/batch-e-authorization-2026-10-22.md), E5/E7).
 S01 starts only after H0's shared correction, `T3.P03.S01`, is merged on `main`; the
 [batch E protocol](../../../coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-e-2026-10-22) recorded the
-sequencing for that historical batch. The [post-Batch-E release](../../../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)
+sequencing for that historical batch. The [post-Batch-E release](../../../authorization-history/post-batch-e-authorization-2026-10-23.md)
 authorizes S02 per the release list (`docs/archive/roadmap/release-list-2026-11-06.md`); the
 [next parallel batch](../../../cross-track-execution-2026-11-06.md#next-parallel-batch) owns current sequencing.
 
@@ -110,8 +110,8 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | camera-authoring-migration | [First capture and Cut Preview](t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | [record](t3.p02.s01-first-capture-and-cut-preview/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); historical Batch E permission 2026-10-22 ([record](../../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7); start condition T3.P03.S01 merge satisfied by PR #176; accepted/shipped 2026-10-23 as `owner-override` at integrated revision `1bb281bb16dc839588e4174514b240de6c52bf79` |
-| T3.P02.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate (closed stub)](t3.p02.s02-integrated-final-gate/implementation-plan.md) | [final-gate acceptance record (closed stub)](t3.p02.s02-integrated-final-gate/acceptance.md) | owner-authorized 2026-10-23 in the post-Batch-E release ([record](../../../../../reference/decisions/post-batch-e-authorization-2026-10-23.md)); accepted and shipped 2026-10-24 as `owner-override` at merged revision `335820d6060302cac1e78b9c08c75f25f7605201` (merge `bf6b2e1f`, PR 184); phase **closed 2026-10-24** (PHASE CLOSE below); performance and unrun rows deferred by owner ruling |
+| T3.P02.S01 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | camera-authoring-migration | [First capture and Cut Preview](t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | [record](t3.p02.s01-first-capture-and-cut-preview/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../authorization-history/batch-d-authorization-2026-10-20.md), D3); historical Batch E permission 2026-10-22 ([record](../../../authorization-history/batch-e-authorization-2026-10-22.md), E5/E7); start condition T3.P03.S01 merge satisfied by PR #176; accepted/shipped 2026-10-23 as `owner-override` at integrated revision `1bb281bb16dc839588e4174514b240de6c52bf79` |
+| T3.P02.S02 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate (closed stub)](t3.p02.s02-integrated-final-gate/implementation-plan.md) | [final-gate acceptance record (closed stub)](t3.p02.s02-integrated-final-gate/acceptance.md) | owner-authorized 2026-10-23 in the post-Batch-E release ([record](../../../authorization-history/post-batch-e-authorization-2026-10-23.md)); accepted and shipped 2026-10-24 as `owner-override` at merged revision `335820d6060302cac1e78b9c08c75f25f7605201` (merge `bf6b2e1f`, PR 184); phase **closed 2026-10-24** (PHASE CLOSE below); performance and unrun rows deferred by owner ruling |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `9a457f6b`; each
 slice re-verifies them at its own trusted base through the runbook start step. `F2.unit-envelope@1`
@@ -145,7 +145,7 @@ Preview first frame, capture/bind completion ≤ 100 ms, the M-workload F10 rows
 reference-machine run, the H0 trace-method ruling and the Stage initial-load delta. Owner replanning on
 2026-10-24 transferred these rows, as measurement, to
 [T1.P02.S06](../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)
-([record](../../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#transferred-obligations)). A miss in
+([record](../../../authorization-history/performance-foundation-authorization-2026-10-24.md#transferred-obligations)). A miss in
 T3-owned code returns to T3, and the H0 trace-method ruling stays with the owner. Unrun: Ask Rule, Experience paused editing, the dense 20/50-View and 15/30-Stop
 fixtures, the browser Preview-replacement probe, the browser Save/download/reload journey, touch/coarse pointer,
 DOM reach without raycast, the partial shared-Camera row and the Travel/detour browser rows. Their record is the

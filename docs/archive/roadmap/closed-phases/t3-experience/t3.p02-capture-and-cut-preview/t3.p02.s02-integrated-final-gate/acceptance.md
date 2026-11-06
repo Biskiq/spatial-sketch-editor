@@ -49,7 +49,7 @@ The owner ruled "mark the performance deferred", then deferred every unrun row. 
 The terms and the follow-up scope are in the full record at the anchor.
 
 **Scope A — performance (transferred to [`T1.P02.S06`](../../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md)
-as measurement by the [performance foundation decision](../../../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#transferred-obligations)):**
+as measurement by the [performance foundation decision](../../../../authorization-history/performance-foundation-authorization-2026-10-24.md#transferred-obligations)):**
 the traced Preview first frame; capture/bind result completion ≤ 100 ms; the M-workload F10 rows;
 the F13 re-measure; the owner reference-machine run; the Stage initial-load delta. A miss in
 T3-owned code returns to T3. The H0 trace-method ruling stays with the owner. The F10 rows remain

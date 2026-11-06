@@ -24,7 +24,7 @@ any other gate, grid-XL/sweep rows are not owed, and no benchmark is authorized.
 unmeasured/uncertified, never passes.
 
 `T1.P02.S06` was an owner-authorized, released child of T1.P02
-([record](../../../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md)). Its
+([record](../../../../authorization-history/performance-foundation-authorization-2026-10-24.md)). Its
 measurement method, optimizations and evidence are landed; this slice provides no gate for another
 slice and is not the phase's final gate.
 

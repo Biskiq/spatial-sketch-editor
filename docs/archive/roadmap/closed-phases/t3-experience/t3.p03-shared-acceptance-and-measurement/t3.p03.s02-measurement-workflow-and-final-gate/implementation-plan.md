@@ -1,7 +1,7 @@
 # T3.P03.S02 — Measurement workflow and final gate: implementation plan
 
 **Slice:** T3.P03.S02 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E2,
-[record](../../../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
+[record](../../../../authorization-history/batch-e-authorization-2026-10-22.md)) and released from the
 hold; starts after S01 merges; not implemented · **Phase:** [T3.P03](../README.md) ·
 [slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../../process/operations/t3-experience/README.md) ·
 **Contracts:** [performance](../../../../../../reference/components/performance.md),
@@ -47,7 +47,7 @@ DevTools evidence and states its limits.
 6. **Results.** Raw results stay outside Git; the acceptance record summarizes machine, browser,
    power, cache, network, workload, commit, CPU rate and limitations. The baseline and the
    calibration-page median are recorded on the designated reference machine, the owner's MacBook
-   Air M2 with 16 GB ([batch E, E6 amendment](../../../../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); runs on any other machine are pre-flight
+   Air M2 with 16 GB ([batch E, E6 amendment](../../../../authorization-history/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); runs on any other machine are pre-flight
    unless calibrated against it.
 
 No CI job, schedule, registry or Vitest timing assertion is added. The retired P23B bench machinery is

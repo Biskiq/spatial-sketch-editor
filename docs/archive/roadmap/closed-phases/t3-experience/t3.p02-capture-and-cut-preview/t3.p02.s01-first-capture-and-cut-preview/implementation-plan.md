@@ -2,7 +2,7 @@
 
 **Slice:** T3.P02.S01 · **Status:** shipped as `owner-override` at integrated revision
 `1bb281bb16dc839588e4174514b240de6c52bf79`; historical batch D authorization
-([record](../../../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) preserved.
+([record](../../../../authorization-history/batch-d-authorization-2026-10-20.md), D3) preserved.
 This plan remains live because its declared exhaustive integration route is T3.P02.S02 ·
 **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
 **Track:** [T3](../../../../../../roadmap/t3-experience/README.md) · **Runbook:** [T3 operations](../../../../../process/operations/t3-experience/README.md)
@@ -14,7 +14,7 @@ acceptance ruling and closeout status live in the [acceptance record](acceptance
 ## Finalized convergence scope (owner-accepted 2026-10-22)
 
 The owner accepted this scope, the Experience format draft and the shell draft's Preview entry rule
-in batch E ([record](../../../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5). The 2026-10-22 ratified clarifications are resolved against the
+in batch E ([record](../../../../authorization-history/batch-e-authorization-2026-10-22.md), E5). The 2026-10-22 ratified clarifications are resolved against the
 landed code as follows:
 
 - **Formats.** The [Experience format draft](experience-format-draft.md) is the slice's format:
@@ -156,7 +156,7 @@ Before S01 acceptance, record capture/bind result completion, first/repeated Pre
 return, delivered Preview bytes and repeated enter/exit memory behavior against
 [the ratified performance reference](../../../../../../reference/components/performance.md). Hard F10 rows
 are accepted on the designated reference machine, the owner's MacBook Air M2 with 16 GB
-([batch E, E6 amendment](../../../../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); the lazy-chunk delivery row needs no machine. The phase final
+([batch E, E6 amendment](../../../../authorization-history/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); the lazy-chunk delivery row needs no machine. The phase final
 gate rechecks the integrated result; it does not defer a hard miss.
 
 ## Shared-file ownership

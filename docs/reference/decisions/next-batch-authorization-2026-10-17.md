@@ -8,7 +8,7 @@ review. D6/D7 were first approved but held ([Application hold](#application-hold
 all T4 work.
 
 This record is decision provenance, like the
-[2026-10-16 S02 pair record](./s02-pair-authorization-2026-10-16.md). It changes no ratified contract:
+[2026-10-16 S02 pair record](../../archive/roadmap/authorization-history/s02-pair-authorization-2026-10-16.md). It changes no ratified contract:
 AM-1–AM-8 and PLATE are unchanged, lifecycle and gate identity stay in the
 [roadmap register](../../roadmap/README.md#gate-register), and each slice's scope stays in its plan.
 
@@ -41,7 +41,7 @@ which replaces it.
 ## Ruling R1-D: T4 deferral (2026-10-17)
 
 The owner ratified D1–D5 and ruled **R1-D**: **all T4 planning and implementation is deferred until
-[Core Editor Stability](../../roadmap/core-editor-stability.md) is accepted.** This is a product-priority
+[Core Editor Stability](../../archive/roadmap/core-editor-stability.md) is accepted.** This is a product-priority
 deferral, not a dependency finding. It supersedes D6/D7 and the hold above. It does not select R1, R2 or
 R3, so the F5 drafting does not run either.
 
@@ -57,7 +57,7 @@ R3, so the F5 drafting does not run either.
 
 ## Core Editor Stability rulings (2026-10-17)
 
-After re-review, the owner approved the [Core Editor Stability](../../roadmap/core-editor-stability.md)
+After re-review, the owner approved the [Core Editor Stability](../../archive/roadmap/core-editor-stability.md)
 direction and ruled on its sequencing findings. None of these rulings authorizes implementation. Each
 named owner plans through normal phase registration and slice authorization.
 
@@ -85,8 +85,8 @@ named owner plans through normal phase registration and slice authorization.
 **Later outcome (dated pointer, not a revision of the rulings above).** S07 shipped in PR #137, and its
 acceptance recorded `T1.viewport-projection@1:viewport-projection-v1` accepted at `ab8504aa`. Batch B
 (`T1.P01.S04` ∥ `T2.P01.S03`) was then authorized by its own
-[2026-10-17 batch B record](./batch-b-authorization-2026-10-17.md). T3.P01.S03 shipped through its
-registered split ([record](./s03-split-followup-authorization-2026-10-17.md)). R1-D is unchanged.
+[2026-10-17 batch B record](../../archive/roadmap/authorization-history/batch-b-authorization-2026-10-17.md). T3.P01.S03 shipped through its
+registered split ([record](../../archive/roadmap/authorization-history/s03-split-followup-authorization-2026-10-17.md)). R1-D is unchanged.
 
 ## Provenance
 

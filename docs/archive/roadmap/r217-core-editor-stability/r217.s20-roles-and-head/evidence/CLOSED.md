@@ -2,8 +2,8 @@
 
 Browser captures and measurements from the S20 acceptance runs at tested revision `b5f1440b`, preserved
 byte-for-byte from the live tree by `git mv`. The live acceptance record links here for every capture.
-Nothing in this folder is an authority: the [acceptance record](../../../../../roadmap/r217-core-editor-stability/r217.s20-roles-and-head/acceptance.md)
-owns the results and the [plan stub](../../../../../roadmap/r217-core-editor-stability/r217.s20-roles-and-head/implementation-plan.md)
+Nothing in this folder is an authority: the [acceptance record](../acceptance.md)
+owns the results and the [plan stub](../implementation-plan.md)
 owns the recovery line for the approved plan.
 
 ## 2026-11-01-browser

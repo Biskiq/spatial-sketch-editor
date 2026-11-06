@@ -83,7 +83,7 @@ Drawing, measuring, texturing and hosting all become 2D problems in an exact fra
 
 ## 3. Operation feasibility
 
-**Licence.** The column applies the current admission rule ([licensing direction](../../docs/reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). That rule names MIT, BSD, ISC, Apache-2.0 and Zlib as examples. BSL-1.0 (Clipper2) and the Unlicense (robust-predicates) are permissive. They are not named in the examples, so a released lane would record them explicitly.
+**Licence.** The column applies the current admission rule ([licensing direction](../../docs/archive/roadmap/authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction)). That rule names MIT, BSD, ISC, Apache-2.0 and Zlib as examples. BSL-1.0 (Clipper2) and the Unlicense (robust-predicates) are permissive. They are not named in the examples, so a released lane would record them explicitly.
 
 **Sources.** Timings marked *probe* are local, as described above. Licences were checked against package or repository licence files.
 

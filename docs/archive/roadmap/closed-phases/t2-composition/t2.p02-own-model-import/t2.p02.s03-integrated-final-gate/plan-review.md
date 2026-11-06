@@ -1,7 +1,7 @@
 # T2.P02.S03 — plan review
 
 AUTHORITY: NONE — the phase README owns slice status; the [release list](../../../../release-list-2026-11-06.md) entry and
-the [next-wave authorization record](../../../../../../reference/decisions/next-wave-authorization-2026-10-27.md)
+the [next-wave authorization record](../../../../authorization-history/next-wave-authorization-2026-10-27.md)
 own the release. This artifact records a **pre-build plan review** completed in the 2026-10-27 owner
 coordination round. This plan-level assessment is not a GitHub review submission or an integrated
 acceptance verdict; the slice still owes its independent implementation/acceptance review.
@@ -55,7 +55,7 @@ new API capability, no new gate, format or budget, and no C3 claim.
 ## Verdict
 
 **Pass.** The release is recorded in the
-[next-wave authorization record](../../../../../../reference/decisions/next-wave-authorization-2026-10-27.md)
+[next-wave authorization record](../../../../authorization-history/next-wave-authorization-2026-10-27.md)
 and the [release list](../../../../release-list-2026-11-06.md), with all existing acceptance and merge-gate requirements
 unchanged.
 

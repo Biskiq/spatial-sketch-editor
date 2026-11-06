@@ -913,11 +913,11 @@ The cutover supersedes AM-9's runtime defaults for Stop entry, holds and free ex
 
 ## AM-11 Guide pacing, explore and return
 
-The R217 Experience review's [guide-playback plan](../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
+The R217 Experience review's [guide-playback plan](../archive/roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
 cuts over to Experience unit format 4 and `ExecutionProgram@4`. Format 3 and `ExecutionProgram@3`
 are refused with `unsupported_format_version`, with no converter. AM-10's Stop View sequences,
 per-View holds, Gates and Guide Card welcome are superseded. The owner's second review
-(2026-11-05, [fix.md](../roadmap/r217-core-editor-stability/experience-review/fix.md) §2) amends
+(2026-11-05, [fix.md](../archive/roadmap/r217-core-editor-stability/experience-review/fix.md) §2) amends
 format 4 in place before it first reached `main` at #271's merge (`ce4e232c`): there was no
 bump, migration or compatibility reader, and a file written before the amendment is refused.
 The rules below are normative for format 4. [Implementation status](#am-11-implementation-status)
@@ -1056,6 +1056,6 @@ gate reran the complete editor suite (3,932 tests), the architecture suite (209 
 `npm run check` (0 errors) and `npm run build` (passed). On 2026-11-06 the owner explicitly
 confirmed hands-on acceptance of the integrated product, including the final Experience changes,
 effective at #271's merge. **R217 is closed; Core Product Stability is accepted.**
-[S11 is owner-accepted by override; separate gate execution waived](../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md)
+[S11 is owner-accepted by override; separate gate execution waived](../archive/roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md)
 because that product review already occurred. A–Q is not future work; no separately unexecuted
 check is represented as passed, and #259 retains its independent verification requirements.

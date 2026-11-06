@@ -66,7 +66,7 @@ empty until S04 is implemented and accepted.
 
 ## R4 — K2 publication gap approved, empty by construction
 
-[K2](../../roadmap/core-editor-stability.md) accepted temporary publication unavailability in
+[K2](../../archive/roadmap/core-editor-stability.md) accepted temporary publication unavailability in
 principle, and left the actual gap to be approved at S04. R1 makes the covered publication set empty,
 because every publication and release row is removed at activation. The gap approved here is
 therefore *no publishing from activation until `T4.P01.S05`*, with the behavior AM-9 states. This is
@@ -110,7 +110,7 @@ Applied 2026-10-19 on PR #155, after the owner's approval:
 3. The S04 row in the [T3.P01 slice register](../../archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/README.md#slice-register)
    is `approved` and links this record. The phase and track status lines, the S04 plan and its
    authorization path read ratified/authorized.
-4. The [K2 row](../../roadmap/core-editor-stability.md) records the gap as approved under R4.
+4. The [K2 row](../../archive/roadmap/core-editor-stability.md) records the gap as approved under R4.
 5. The conditional banners in the T3.P01 README, the S04 plan and the
    [cross-track execution](../../archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#source-first-migration-and-activation-ownership)
    section became ratified provenance. The cross-track AM-7 restatements were rewritten in AM-9

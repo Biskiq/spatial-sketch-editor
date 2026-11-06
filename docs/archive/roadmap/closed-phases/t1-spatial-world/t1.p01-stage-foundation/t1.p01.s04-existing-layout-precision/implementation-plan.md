@@ -4,7 +4,7 @@
 AUTHORITY: NONE — this is closed work. Current truth lives in the phase README's slice register,
            the gate register and the slice's accepted record.
 STATUS:    ACCEPTED 2026-10-18 (PR #148). Owner-authorized 2026-10-17 as batch B
-           ([record](../../../../../../reference/decisions/batch-b-authorization-2026-10-17.md)); the Head
+           ([record](../../../../authorization-history/batch-b-authorization-2026-10-17.md)); the Head
            Save mount and the composition-root gaps resolved under the owner's
            [narrow host-integration exception](../../../../../../reference/decisions/t1-s04-host-integration-2026-10-17.md).
            Routine `slice-closeout` replaced the approved plan body with this stub.

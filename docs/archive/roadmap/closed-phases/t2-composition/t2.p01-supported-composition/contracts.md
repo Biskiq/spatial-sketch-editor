@@ -6,7 +6,7 @@ are now owner-ratified in [AM-1–AM-5](../../../../../reference/composition-exe
 and F1/F3 are landed and accepted; where a draft here differs from a ratified amendment or a landed
 export, those win. The floor-support query's ownership is decided: Layout-owned, built by
 `T2.P01.S01` in `@portfolio/layout-core` under T1 review
-([decision](../../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)). This document
+([decision](../../../authorization-history/parallel-slice-authorization-2026-10-16.md)). This document
 neither changes F nor establishes a parallel T2 reference/envelope/history protocol.
 
 ## Common identity and frame interfaces

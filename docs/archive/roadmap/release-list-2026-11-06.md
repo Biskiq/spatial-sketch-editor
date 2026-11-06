@@ -11,7 +11,7 @@ is claimed here.
 
 **R217: closed, Core Product Stability accepted**, effective at PR #271 merge `ce4e232c`
 (2026-11-06). The owner personally tested and accepted the integrated product, including the final
-Experience changes. [S11 is owner-accepted by override; separate gate execution is waived](../../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+Experience changes. [S11 is owner-accepted by override; separate gate execution is waived](r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
 No S11 run, A–Q rerun or R217 closeout is a future prerequisite; unexecuted individual checks are
 not represented as passed. #259 keeps its own CI, architecture, regression and verification duties.
 R217's completed scope rows are removed by this owner ruling; earlier release provenance remains below.
@@ -23,10 +23,10 @@ Shipped scopes pruned 2026-11-02 by owner direction: `R217.S01`–`S05`, `S10`, 
 
 R217 campaign provenance: the owner directed one standing authorization for R217.S11–S25, and these
 rows take effect only when the owner merges PR #230, which carries them. The
-[campaign record](../../reference/decisions/r217-convergence-campaign-2026-10-30.md) owns the conditions and owner checkpoints.
+[campaign record](r217-core-editor-stability/r217-convergence-campaign-2026-10-30.md) owns the conditions and owner checkpoints.
 
 Provenance: the
-[T1.P02.S04 authorization](../../reference/decisions/t1-p02-s04-authorization-2026-10-28.md) releases
+[T1.P02.S04 authorization](authorization-history/t1-p02-s04-authorization-2026-10-28.md) releases
 the phase's integrated final gate and prunes one **verified shipped** row — `T1.P02.S03` (accepted
 `owner-override` 2026-10-28 and shipped on PR #209, merge commit `db7e5cd9`; acceptance anchor
 `cbdb4785`). The [2026-10-28 performance-mandate
@@ -37,10 +37,10 @@ by the owner's implementation authorization on 2026-10-27 after that verificatio
 **verified shipped** row — `T2.P02.S03` (accepted `owner-override` and shipped 2026-10-27 on PR #199,
 merge commit `a674eedb`, anchor `221facc4` and tags `closed/T2.P02.S03` and `closed/T2.P02` verified
 reachable). The
-[T1.P02.S03 authorization](../../reference/decisions/t1-p02-s03-authorization-2026-10-27.md),
-[next-wave owner release](../../reference/decisions/next-wave-authorization-2026-10-27.md),
-[performance foundation](../../reference/decisions/performance-foundation-authorization-2026-10-24.md)
-and [post-Batch-E](../../reference/decisions/post-batch-e-authorization-2026-10-23.md) records keep the
+[T1.P02.S03 authorization](authorization-history/t1-p02-s03-authorization-2026-10-27.md),
+[next-wave owner release](authorization-history/next-wave-authorization-2026-10-27.md),
+[performance foundation](authorization-history/performance-foundation-authorization-2026-10-24.md)
+and [post-Batch-E](authorization-history/post-batch-e-authorization-2026-10-23.md) records keep the
 earlier permission history, and each pruned row's own acceptance record keeps its evidence.
 
 The
@@ -63,6 +63,6 @@ The owner directly authorized recovery and repair of the existing `R217.S05` PR 
 2026-10-29, with slice closeout conditional on an acceptable independent review. This narrowly
 scoped row records that authorization; it does not authorize omitted work or a merge.
 
-T3 provenance: the [phase-close and P04 authorization decision](../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)
+T3 provenance: the [phase-close and P04 authorization decision](authorization-history/t3-phase-close-and-p04-authorization-2026-10-24.md)
 closed `T3.P02` and `T3.P03` and released `T3.P04.S01`; that scope shipped, closed 2026-10-25 and no
 longer holds a row. Gate identities stay in the [gate register](./roadmap-register-2026-11-06.md#gate-register).

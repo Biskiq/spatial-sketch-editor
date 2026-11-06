@@ -6,7 +6,7 @@ AUTHORITY: NONE — this is closed work. Current truth lives in the phase README
 STATUS:    ACCEPTED and SHIPPED 2026-10-18 via PR #148 (owner accepted the implementation at
            `2d37adef`; routine `slice-closeout` ran on the same branch and records the outcome here).
            Owner-authorized 2026-10-17 as batch B
-           ([record](../../../../../../reference/decisions/batch-b-authorization-2026-10-17.md)); the Head
+           ([record](../../../../authorization-history/batch-b-authorization-2026-10-17.md)); the Head
            Save mount and the three composition-root gaps were closed under the owner's
            [narrow host-integration exception](../../../../../../reference/decisions/t1-s04-host-integration-2026-10-17.md).
            Three review rounds; the last blocking finding was fixed and its delta re-confirmed.

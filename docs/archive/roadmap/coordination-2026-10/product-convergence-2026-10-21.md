@@ -6,7 +6,7 @@
 > **Licensing supersession — 2026-10-23:** this archived record retains the former copyleft
 > assumption as history. The owner rescinded that choice; product licensing is undecided.
 > Its GPL-family product recommendations and inferred dependency admissibility are not current
-> decisions. See the [owner ruling](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction).
+> decisions. See the [owner ruling](../authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction).
 
 **Convergence round completed for merge review, 2026-10-22.** PR #173 covers focused research,
 product/design/architecture reconciliation, owning-contract amendments and the concurrent

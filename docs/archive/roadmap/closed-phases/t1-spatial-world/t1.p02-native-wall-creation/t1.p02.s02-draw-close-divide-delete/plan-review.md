@@ -1,7 +1,7 @@
 # T1.P02.S02 — plan review: shared Head/F4 and T2/T3 contribution compatibility
 
 AUTHORITY: NONE — the phase README owns slice status; the [release list](../../../../release-list-2026-11-06.md) entry and
-the [next-wave authorization record](../../../../../../reference/decisions/next-wave-authorization-2026-10-27.md)
+the [next-wave authorization record](../../../../authorization-history/next-wave-authorization-2026-10-27.md)
 own the release. This artifact records a **pre-build plan review** completed in the 2026-10-27 owner
 coordination round against the contracts and code named below. This is a recorded plan-level
 compatibility assessment, not a separately submitted GitHub review or independent T2/T3 owner
@@ -19,7 +19,7 @@ edit — remain merge-time obligations and are not discharged here.
 - [Shell draft — bounded S02 cutover](../shell-draft.md) — dock Select/Ink, the Card migration of
   ordinary Layout facts, the bounded Find in Head access and the contributor-home audit.
 - The registration prerequisites the [slice register](../README.md#slice-register), the
-  [batch E decision](../../../../../../reference/decisions/batch-e-authorization-2026-10-22.md) (E1) and
+  [batch E decision](../../../../authorization-history/batch-e-authorization-2026-10-22.md) (E1) and
   the [current coordination](../../../../cross-track-execution-2026-11-06.md#next-parallel-batch) name: the T3
   review of the shared Head/F4 shell allocation and the T2/T3 contribution-compatibility review.
 
@@ -107,7 +107,7 @@ Findings: **compatible as planned; no blocking incompatibility at plan level.**
 ## 6. Verdict and what remains
 
 **Verdict: pass for the plan, with the conditions above.** The release is recorded in the
-[next-wave authorization record](../../../../../../reference/decisions/next-wave-authorization-2026-10-27.md)
+[next-wave authorization record](../../../../authorization-history/next-wave-authorization-2026-10-27.md)
 and the [release list](../../../../release-list-2026-11-06.md). S02 starts after that coordination PR merges, on its own
 trusted base, with:
 

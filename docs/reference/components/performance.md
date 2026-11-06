@@ -70,7 +70,7 @@ Power Mode off, operated by the repository owner. Runs on it need no CPU throttl
 It is stronger than laptop A, so a pass there is a pass on this machine, not proof on an A-class
 laptop; the owner accepted that trade-off. Wherever this contract says "reference A" for running or
 accepting a hard row, it means this machine. Provenance:
-[batch E record](../decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named).
+[batch E record](../../archive/roadmap/authorization-history/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named).
 
 **Browser matrix.** Chrome stable (pinned major, recorded `chrome://version`) is **primary and
 gating** on A and B. Safari (current, on B) and Firefox stable (on A) are **secondary**: they run

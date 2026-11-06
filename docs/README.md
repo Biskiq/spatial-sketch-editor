@@ -45,7 +45,7 @@ expand only when the task or a concrete contradiction requires it.
   [Experience sheet](./reference/design-system/experience-interaction-sheet.html)
 - [Capability ledger](../capabilities.json) · [Focus](../focus.md) · [Roadmap](./roadmap/README.md) ·
   [Operations](./operations/README.md) · [Prototypes](../prototypes/README.md)
-- [PR #259 harness plan](./roadmap/lean-harness-proposal.md) · [R217 acceptance](./roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md)
+- [PR #259 harness plan](./roadmap/lean-harness-proposal.md) · [R217 acceptance](archive/roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md)
 
 Authority is resolved by concern. A shell design or approved target does not outrank domain
 invariants; a stale descriptive document never outranks code/tests. When they materially disagree,

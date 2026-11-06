@@ -23,5 +23,5 @@ Verify the bundle builds, then exercise initialization, Door/Window creation, ov
 cancellation, view switching and reset. Browser smoke should cover Plan/3D cutouts, transparent hit
 areas, production Door/Window symbols, placement, keyboard sliding and a 390 px layout without
 overflow or browser errors. The historical review remains at
-[Opening design review](../../../roadmap/r217-core-editor-stability/world-shell-recovery/opening-design-review.md);
+[Opening design review](../../../archive/roadmap/r217-core-editor-stability/world-shell-recovery/opening-design-review.md);
 this file owns the live rebuild recipe.

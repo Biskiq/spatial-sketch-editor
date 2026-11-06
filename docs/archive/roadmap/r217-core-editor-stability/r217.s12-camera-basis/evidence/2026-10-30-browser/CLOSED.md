@@ -2,8 +2,8 @@
 
 Byte-identical copies of the eight Chromium captures recorded in the S12 acceptance record on
 2026-10-30. Images were copied unmodified during closeout; the live slice path holds the compact
-[acceptance stub](../../../../../../roadmap/r217-core-editor-stability/r217.s12-camera-basis/acceptance.md)
-and the [evidence pointer stub](../../../../../../roadmap/r217-core-editor-stability/r217.s12-camera-basis/evidence/README.md).
+[acceptance stub](../../acceptance.md)
+and the [evidence pointer stub](../README.md).
 
 The project is the canonical starter **Enclosed room**, 1440×900 CSS px. The captures are settled
 endpoints: a Wall on screen-left before the flip remains left in Plan, the selection/Card and armed

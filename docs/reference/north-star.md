@@ -24,7 +24,7 @@ invented here.
 **Current product acceptance (2026-11-06):** R217 is closed and **Core Product Stability is
 accepted**, effective at PR #271 merge `ce4e232c`. The owner personally tested and accepted the
 integrated product, including the final Experience changes. [S11 is owner-accepted by override;
-separate execution waived](../roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+separate execution waived](../archive/roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
 No unexecuted individual check is claimed as passed. [#259 implementation](../roadmap/lean-harness-proposal.md)
 is in progress, with independent verification still required; acceptance of this bounded milestone
 does not claim full destination coverage. AM-11 owns the landed Experience format 4 / Program v4
@@ -1187,7 +1187,7 @@ or explain an unresolved reference without silently guessing a replacement.
 regular laptop through [the proposed performance contract](./components/performance.md).
 Resolve demonstrated material costs inside the consuming slice, preserving architectural
 expressiveness. Product licensing is undecided: the owner rescinded the copyleft choice
-([2026-10-23 ruling](./decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Established
+([2026-10-23 ruling](../archive/roadmap/authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Established
 libraries remain candidates when justified by correctness, capability and performance; dependency
 licence compatibility must be established for the eventual product licence and shipped build;
 until then new dependencies follow the owner's permissive-only admission ruling (same record), except that T5

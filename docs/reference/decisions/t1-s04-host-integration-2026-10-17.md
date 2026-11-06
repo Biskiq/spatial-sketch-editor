@@ -5,7 +5,7 @@ Save integration needs, and closes the three gaps its implementation review repo
 batch-B authorization and grants no capability, gate or acceptance state.
 
 **Context.** Batch B authorized S04 including the PLATE Head Save integration
-([record](./batch-b-authorization-2026-10-17.md), ruling D3). The slice plan also said the slice
+([record](../../archive/roadmap/authorization-history/batch-b-authorization-2026-10-17.md), ruling D3). The slice plan also said the slice
 "edits no host core, route or shell module", an instruction written for adapter contributions. The
 two cannot both hold: mounting `T3.P01.S02`'s `createSaveState` needs the per-epoch coordinator and the
 project's saved-base metadata, both owned by the route host. Review also found that the Card name

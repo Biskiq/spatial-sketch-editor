@@ -5,21 +5,21 @@
 > under `docs/roadmap/t2-composition/`.
 
 **Phase:** T2.P01 · **Status:** closed 2026-10-20 — registered 2026-10-16; `T2.P01.S01` shipped 2026-10-16;
-`T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (authorized 2026-10-17 as batch B, [record](../../../../../reference/decisions/batch-b-authorization-2026-10-17.md));
-S04, the declared final gate, authorized 2026-10-19 as batch C ([record](../../../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and shipped 2026-10-20 (PR #157, `99c38033`) · **Track:** [T2](../../../../../roadmap/t2-composition/README.md) · **Roadmap:**
+`T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (authorized 2026-10-17 as batch B, [record](../../../authorization-history/batch-b-authorization-2026-10-17.md));
+S04, the declared final gate, authorized 2026-10-19 as batch C ([record](../../../authorization-history/batch-c-authorization-2026-10-19.md)) and shipped 2026-10-20 (PR #157, `99c38033`) · **Track:** [T2](../../../../../roadmap/t2-composition/README.md) · **Roadmap:**
 [gate register](../../../../../roadmap/README.md#gate-register) · **Runbook:**
 [T2 operations](../../../../process/operations/t2-composition/README.md) ·
 **Contracts:** [contract drafts](contracts.md),
 [AM-1–AM-5](../../../../../reference/composition-execution.md#ratified-amendments)
 
 Registered by the owner decision of 2026-10-16
-([record](../../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) so that its
+([record](../../../authorization-history/parallel-slice-authorization-2026-10-16.md)) so that its
 first slice, `T2.P01.S01`, can run in parallel with `T1.P01.S02`, `T1.P01.S03` and `T3.P01.S01`.
 S02 was authorized by the later owner decision of 2026-10-16
-([record](../../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)), in parallel with
+([record](../../../authorization-history/s02-pair-authorization-2026-10-16.md)), in parallel with
 `T3.P01.S02`. S03 was authorized by the owner decision of 2026-10-17
-([record](../../../../../reference/decisions/batch-b-authorization-2026-10-17.md)), in parallel with `T1.P01.S04` as batch B; S04 was authorized on 2026-10-19 as batch C
-([record](../../../../../reference/decisions/batch-c-authorization-2026-10-19.md)).
+([record](../../../authorization-history/batch-b-authorization-2026-10-17.md)), in parallel with `T1.P01.S04` as batch B; S04 was authorized on 2026-10-19 as batch C
+([record](../../../authorization-history/batch-c-authorization-2026-10-19.md)).
 
 **Phase outcome.** Rebuild a small, complete object-arranging experience over the current Scene
 format: upright floor-supported objects, one canonical placement, Plan/3D selection, horizontal
@@ -152,10 +152,10 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T2.P01.S01 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Deterministic candidates and canonical floor support](t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | [record](t2.p01.s01-candidates-and-floor-support/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 with independent implementation review and focused T1/Layout sign-off |
-| T2.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Scene operations and shared history](t2.p01.s02-scene-operations-and-history/implementation-plan.md) | [record](t2.p01.s02-scene-operations-and-history/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); owner acceptance via deliberate closeout invocation on 2026-10-17; independent review resolved separately (see record) |
-| T2.P01.S03 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [First coherent editing surface](t2.p01.s03-first-editing-surface/implementation-plan.md) | [record](t2.p01.s03-first-editing-surface/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../../../../reference/decisions/batch-b-authorization-2026-10-17.md)); acceptance refreshed 2026-10-18 after pointer Move repair and independent delta review; anchor `2747f169` / tag `closed/T2.P01.S03` (local only) |
-| T2.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record (closed-work stub)](t2.p01.s04-bounded-composition-loop/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T1.P01.S05` ([record](../../../../../reference/decisions/batch-c-authorization-2026-10-19.md)); scope correction C4; accepted 2026-10-19 via deliberate closeout invocation, final gate PASSED; merged in #157 as `99c38033`; anchor `ca516743` / tag `closed/T2.P01.S04` (pushed); phase **closed 2026-10-20** (PHASE CLOSE below) |
+| T2.P01.S01 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Deterministic candidates and canonical floor support](t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | [record](t2.p01.s01-candidates-and-floor-support/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../authorization-history/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 with independent implementation review and focused T1/Layout sign-off |
+| T2.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Scene operations and shared history](t2.p01.s02-scene-operations-and-history/implementation-plan.md) | [record](t2.p01.s02-scene-operations-and-history/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../authorization-history/s02-pair-authorization-2026-10-16.md)); owner acceptance via deliberate closeout invocation on 2026-10-17; independent review resolved separately (see record) |
+| T2.P01.S03 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [First coherent editing surface](t2.p01.s03-first-editing-surface/implementation-plan.md) | [record](t2.p01.s03-first-editing-surface/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../../authorization-history/batch-b-authorization-2026-10-17.md)); acceptance refreshed 2026-10-18 after pointer Move repair and independent delta review; anchor `2747f169` / tag `closed/T2.P01.S03` (local only) |
+| T2.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record (closed-work stub)](t2.p01.s04-bounded-composition-loop/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T1.P01.S05` ([record](../../../authorization-history/batch-c-authorization-2026-10-19.md)); scope correction C4; accepted 2026-10-19 via deliberate closeout invocation, final gate PASSED; merged in #157 as `99c38033`; anchor `ca516743` / tag `closed/T2.P01.S04` (pushed); phase **closed 2026-10-20** (PHASE CLOSE below) |
 
 `F1.reference@1:references-v1` was accepted at `ee463d0b` and S01 shipped in PR #130. S02's
 `local-single-domain-v1` (with `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor
@@ -163,13 +163,13 @@ of post-PR #129 `main`, so S02 was eligible. S03 also needed `viewport-projectio
 host↔F4 wiring. By owner rulings D1/D2 of 2026-10-17 ([record](../../../../../reference/decisions/next-batch-authorization-2026-10-17.md)), both come from `T1.P01.S07`:
 it owns the wiring, and its acceptance records the viewport capability, with `T1.P01.S02` as provider.
 S03's exact launch conditions were verified at authorization
-([batch B record](../../../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and are kept in
+([batch B record](../../../authorization-history/batch-b-authorization-2026-10-17.md)) and are kept in
 its now-closed plan. S07 shipped in PR #137 with `viewport-projection-v1` accepted at `ab8504aa`, and the
-owner authorized S03 as batch B on 2026-10-17 ([record](../../../../../reference/decisions/batch-b-authorization-2026-10-17.md)). S04 additionally needs `T3.P01.S02`'s
-`conditional-save-current-v1` (accepted) **and** T1's Head Save integration, which is `T1.P01.S04`'s by ruling D3 (assignment origin: decision 1 of the [S02 pair record](../../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
+owner authorized S03 as batch B on 2026-10-17 ([record](../../../authorization-history/batch-b-authorization-2026-10-17.md)). S04 additionally needs `T3.P01.S02`'s
+`conditional-save-current-v1` (accepted) **and** T1's Head Save integration, which is `T1.P01.S04`'s by ruling D3 (assignment origin: decision 1 of the [S02 pair record](../../../authorization-history/s02-pair-authorization-2026-10-16.md)). Every prerequisite
 is judged at the slice's own trusted base. Both hold on `main` `5fee2a2d` (T1.P01.S04 shipped in PR
 #148). S04 is owner-authorized 2026-10-19 as batch C with `T1.P01.S05`
-([record](../../../../../reference/decisions/batch-c-authorization-2026-10-19.md)), with a scope correction that reuses T1's shipped source JSON and *Reload remote* controls.
+([record](../../../authorization-history/batch-c-authorization-2026-10-19.md)), with a scope correction that reuses T1's shipped source JSON and *Reload remote* controls.
 
 `T3.P01.S04` has since migrated the landed T1/T2 callers and unfinished plans to accepted F2
 `unit-envelope-v1`, F1 `unit-resolution-v1` and F4 `unit-acceptance-v1` from T3.P01.S01/S05, with
@@ -257,7 +257,7 @@ also require real-Postgres checks with zero skips; they are not planned here.
 
 | Deferred capability | Reason and concrete continuation gate |
 | --- | --- |
-| Single-model ingest | **Owner ruling K1 (2026-10-17, [Core Editor Stability](../../../../../roadmap/core-editor-stability.md)):** a bounded editor-side GLB import, with no T4 release closure, is a T2-owned prerequisite of that milestone, planned after `T3.P01.S04`. The release-closure half below stays after T4. Next bounded T2 phase: one flat GLB plus maps, retained source/provenance, explicit scale/pivot/footprint capabilities, stage/approve then place/reload/preview/publish. Needs accepted F.1/F.2 resource/lock interfaces, F.4 staged acceptance and T4 delivery integration; must precede the first audience trial. No provider search, full assembly correspondence or marketplace prerequisite. |
+| Single-model ingest | **Owner ruling K1 (2026-10-17, [Core Editor Stability](../../../core-editor-stability.md)):** a bounded editor-side GLB import, with no T4 release closure, is a T2-owned prerequisite of that milestone, planned after `T3.P01.S04`. The release-closure half below stays after T4. Next bounded T2 phase: one flat GLB plus maps, retained source/provenance, explicit scale/pivot/footprint capabilities, stage/approve then place/reload/preview/publish. Needs accepted F.1/F.2 resource/lock interfaces, F.4 staged acceptance and T4 delivery integration; must precede the first audience trial. No provider search, full assembly correspondence or marketplace prerequisite. |
 | Broader materials and lights | Preserve current rendering/values; later phases own selected-subset/shared edit reach, tint/reset, supported metric mapping, truthful light units and explicit undoable repair. Their UI is unnecessary for a trustworthy object-arranging boundary. |
 | Wall/ceiling/object support and persistent attachments | Need host frames, stable reference qualification, move/delete/revision consequences and atomic history. Temporary floor support is no attachment schema. |
 | Full 3D transforms and arbitrary projections | Free elevation, pitch/roll, object-local axis tools, planes with orientation-aware projection and edits in Section/Unroll require declared representation/inverse eligibility. Ordinary upright floor placement proves less and ships earlier. |

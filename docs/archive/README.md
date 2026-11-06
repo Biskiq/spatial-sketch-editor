@@ -35,6 +35,17 @@ PR #115 (WP4) kept the archive deliberately small. It holds:
 - `roadmap/closed-phases/` — the closed T1.P01/P02, T2.P01/P02, T3.P01–P04 and T5.P01
   planning, acceptance and evidence packets, archived 2026-11-06. Their area READMEs stay
   live for current contracts and routing; these are historical records, not capability status.
+- `roadmap/r217-core-editor-stability/` — the archived R217 child packets, acceptance and evidence,
+  including post-S10 convergence, post-S19 owner review, World shell recovery, the S12–S15
+  corrections batch, the S26 Experience workspace and the convergence campaign record. The
+  [live R217 page](../roadmap/r217-core-editor-stability/README.md) remains current context; the
+  closed [Core Editor Stability milestone](./roadmap/core-editor-stability.md) is beside this family.
+- `roadmap/authorization-history/` — the 13 permission-only batch and slice authorization records
+  archived 2026-11-06. [`../reference/decisions/next-batch-authorization-2026-10-17.md`](../reference/decisions/next-batch-authorization-2026-10-17.md)
+  stays live because it owns the current R1-D/T4 deferral rulings.
+- `roadmap/t5-expressive-geometry/` — the withdrawn T5 E0 execution plan and G0 commission,
+  architecture proposal, independent proposal, reconciled proposal and kernel evidence. The
+  [T5 umbrella](../roadmap/t5-expressive-geometry/umbrella-plan.md) remains live.
 - `roadmap/` and `process/` — the 2026-11-06 workflow cutover: the former roadmap register
   (`roadmap-register-2026-11-06.md`), release list (`release-list-2026-11-06.md`),
   cross-track execution, parallel-track cutover, operations event procedures and batons,

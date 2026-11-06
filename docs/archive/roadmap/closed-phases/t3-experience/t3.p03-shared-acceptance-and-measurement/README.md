@@ -7,7 +7,7 @@
 **Phase:** T3.P03 · **Status:** **closed 2026-10-24** — registered 2026-10-22; both children
 shipped, the final gate `T3.P03.S02` accepted as `owner-override` (2026-10-23), and the phase closed
 by the owner-invoked closeout that carries the `PHASE CLOSE` block below
-([owner decision](../../../../../reference/decisions/t3-phase-close-and-p04-authorization-2026-10-24.md)).
+([owner decision](../../../authorization-history/t3-phase-close-and-p04-authorization-2026-10-24.md)).
 Released scopes and their conditions are the [release list](../../../release-list-2026-11-06.md); the
 [production hold](../../../../../roadmap/README.md#production-implementation-hold) covers every scope that list
 omits, and this phase's closure releases nothing · **Track:**
@@ -44,8 +44,8 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P03.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Planner scope and build isolation](t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) | [record](t3.p03.s01-planner-scope-and-build-isolation/acceptance.md) | historical Batch E permission 2026-10-22 ([record](../../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); merges first; accepted 2026-10-22 as `owner-override` (independent-review verdict waived, [ruling](t3.p03.s01-planner-scope-and-build-isolation/acceptance.md#owner-ruling--independent-review-verdict-waived-2026-10-22)) |
-| T3.P03.S02 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Measurement workflow and final gate](t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | [final-gate acceptance record (closed stub)](t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md) | historical Batch E permission 2026-10-22 ([record](../../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); accepted and shipped 2026-10-23 as `owner-override` at `eabd4b889bdb52d0b149b6f58aab6c4788e39952`; phase **closed 2026-10-24** (PHASE CLOSE below); open trace/hard-row/calibration items remain explicitly unclaimed |
+| T3.P03.S01 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Planner scope and build isolation](t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) | [record](t3.p03.s01-planner-scope-and-build-isolation/acceptance.md) | historical Batch E permission 2026-10-22 ([record](../../../authorization-history/batch-e-authorization-2026-10-22.md), E2); merges first; accepted 2026-10-22 as `owner-override` (independent-review verdict waived, [ruling](t3.p03.s01-planner-scope-and-build-isolation/acceptance.md#owner-ruling--independent-review-verdict-waived-2026-10-22)) |
+| T3.P03.S02 | shipped | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Measurement workflow and final gate](t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | [final-gate acceptance record (closed stub)](t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md) | historical Batch E permission 2026-10-22 ([record](../../../authorization-history/batch-e-authorization-2026-10-22.md), E2); accepted and shipped 2026-10-23 as `owner-override` at `eabd4b889bdb52d0b149b6f58aab6c4788e39952`; phase **closed 2026-10-24** (PHASE CLOSE below); open trace/hard-row/calibration items remain explicitly unclaimed |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
 slice rechecks them at its own trusted base through the runbook start step. Neither slice provides a
@@ -73,7 +73,7 @@ Preservation: the gate artifact is a closed-work stub at its own path; its accep
 ```
 
 **Transferred obligations** (owner replanning, 2026-10-24,
-[record](../../../../../reference/decisions/performance-foundation-authorization-2026-10-24.md#transferred-obligations)).
+[record](../../../authorization-history/performance-foundation-authorization-2026-10-24.md#transferred-obligations)).
 S02's unbuilt L/XL fixtures and its unrun M/L drag rows are now measured by
 [T1.P02.S06](../../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md).
 S06 edits the shared harness and fixtures with T3 review. S02's other open trace, hard-row and
@@ -92,7 +92,7 @@ deduplication (C1 owns it), any CI job, schedule or benchmark registry, and any 
 in Vitest.
 
 **Reference hardware.** S02 records its baseline and calibration median on the designated
-reference machine, the owner's MacBook Air M2 with 16 GB ([batch E, E6 amendment](../../../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)).
+reference machine, the owner's MacBook Air M2 with 16 GB ([batch E, E6 amendment](../../../authorization-history/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)).
 Laptop A stays the accessibility target the budgets describe.
 
 T3 has no architecture-cycle window; neither slice is an exposure. Production activation of the F2

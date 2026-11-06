@@ -366,7 +366,7 @@ the product writes the authored role today; the cutover retires creator-chosen
 roles as creator-facing operations, and Layout must decide two things then:
 migrating existing `partition` Walls, and whether a closed ring may ever be
 intentionally non-enclosing. The owner decided both for C1 on 2026-10-22
-([batch E](./decisions/batch-e-authorization-2026-10-22.md), E3): Layout format 6 drops the
+([batch E](../archive/roadmap/authorization-history/batch-e-authorization-2026-10-22.md), E3): Layout format 6 drops the
 authored role with no migration under the pre-baseline rule, and every closed ring encloses.
 `T1.P02.S01` landed format 6 with derived Wall roles on 2026-10-23 (PR #179).
 Division keeps the landed Room reconciliation (P23.8 lineage:

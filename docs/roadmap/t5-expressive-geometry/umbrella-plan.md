@@ -2,7 +2,7 @@
 
 **Status:** T5's planning direction, adopted when the owner merges the T5 planning PR
 ([record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)). It supersedes the
-withdrawn [E0 execution plan](./e0-execution-plan.md). It is roadmap authority, not a reference
+withdrawn [E0 execution plan](../../archive/roadmap/t5-expressive-geometry/e0-execution-plan.md). It is roadmap authority, not a reference
 contract: the [North Star](../../reference/north-star.md#creative-freedom-and-depth), the
 [architecture obligations](../../reference/architecture.md#expressive-creation-and-revision-destination),
 the Scene, persistence and assets contracts, F and PLATE keep their authority, and landed contracts
@@ -394,7 +394,7 @@ needs them.
 | [Shape focus specification](../../../prototypes/native-object-shaping/UX-SPEC.md) | Creation semantics (outline, positive depth, Flip side), whole-object sizing about the base, current-body shaping with reach, kept parts, transaction and failure rules, the geometric contract | Its split layout as a given; its prototype tolerances as standards |
 | [Native Form Lab](../../../prototypes/native-form-lab/FINDINGS.md) | Keyed controls and key lifetimes, preview equal to commit, refusal without mutation, role addressing for later anchors | Operation choice, carrier editing and coordinate lists in the creative path |
 | [Expressive form research](../../../broad-research/expressive-3d-form-sculpting-hybrid-modeling-2026-10-27.md) | Intent above generated geometry, representation islands, deformation as an operator family, asynchronous browser architecture | A semantic graph as the first source model; an implicit-first substrate |
-| [G0 reconciled proposal](./g0-reconciled-proposal/README.md) and [kernel assessment](./g0-architecture-proposal/kernel-evidence.md) | Source/derivative separation, object-space binding, determinism obligations, library dispositions | Guide and band composition as the first investment; the R1–R5 milestones |
-| E0 ([withdrawn plan](./e0-execution-plan.md), PR #206) | Relocating controls is not a creative advantage | Its fixture, prototype and relationship machinery |
+| [G0 reconciled proposal](../../archive/roadmap/t5-expressive-geometry/g0-reconciled-proposal/README.md) and [kernel assessment](../../archive/roadmap/t5-expressive-geometry/g0-architecture-proposal/kernel-evidence.md) | Source/derivative separation, object-space binding, determinism obligations, library dispositions | Guide and band composition as the first investment; the R1–R5 milestones |
+| E0 ([withdrawn plan](../../archive/roadmap/t5-expressive-geometry/e0-execution-plan.md), PR #206) | Relocating controls is not a creative advantage | Its fixture, prototype and relationship machinery |
 | [S06 acceptance](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md) | Measurement method and baseline | Any claim that new geometry meets budgets |
 | Landed code | Scene planners' captured-input pattern and record scope, F4 unit acceptance and history, the shared Scene renderer, Plan footprint and hit paths, the robust orientation adapter, `WorkingPlane` for upright sheets | Layout's curve algebra and compiler, which stay Layout's |

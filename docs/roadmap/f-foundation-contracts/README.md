@@ -7,7 +7,7 @@ interface ownership, required/optional extensions), and the exact interfaces AM-
 [`../../reference/composition-execution.md`](../../reference/composition-execution.md);
 implementation is authorized only for registered slices: `T1.P01.S01` (owner decision 2026-10-15,
 shipped) and `T1.P01.S02`, `T1.P01.S03`, `T2.P01.S01` and `T3.P01.S01` (owner decision 2026-10-16,
-[record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), each through its
+[record](../../archive/roadmap/authorization-history/parallel-slice-authorization-2026-10-16.md)), each through its
 track's phase register.
 
 **Goal:** settle the bounded cross-domain contract shapes for the ratified

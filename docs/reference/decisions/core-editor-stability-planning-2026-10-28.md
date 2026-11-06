@@ -8,7 +8,7 @@ merges that PR. This record is provenance; each ruling lives in the section it g
 
 | # | Ruling | Folded into |
 | --- | --- | --- |
-| D1 | Shell coherence becomes a Core Editor Stability criterion | [Milestone criteria](../../roadmap/core-editor-stability.md#criteria-proposed), the "Shell coherence" row |
+| D1 | Shell coherence becomes a Core Editor Stability criterion | [Milestone criteria](../../archive/roadmap/core-editor-stability.md#criteria-proposed), the "Shell coherence" row |
 | D2 | Build the Height Sheet (the slicer control) as a functional foundation. Plan cut height is enough for v1, and fuller section behaviour remains future scope | [R217 Height Sheet foundation](../../roadmap/r217-core-editor-stability/README.md#height-sheet-foundation-and-the-slice-seam) |
 | D3 | The dock set for this phase is Select, Ink (Line, Box), Measure, Eraser (one subject per click) and the Library | [R217 scope rulings](../../roadmap/r217-core-editor-stability/README.md#scope-rulings) |
 | D4 | The work lives in a shared repository phase, not a track phase, because every current track phase is closed and the work crosses track boundaries. T1, T2, T3 and T5 keep ownership and review of their concerns | [Track register](../../roadmap/README.md#track-register), the R217 row; [R217 ownership](../../roadmap/r217-core-editor-stability/README.md#ownership-and-review) |

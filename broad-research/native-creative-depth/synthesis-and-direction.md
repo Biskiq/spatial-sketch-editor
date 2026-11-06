@@ -95,7 +95,7 @@ The creator never meets a face that will not form, a profile that twists, a tole
 | Spatial Ink on arbitrary planes, editable profiles and extrusion, components and patterns, revolve and sweep, recipes, kernel comparison | **Proposed** (original study) | [study §4](../spatial-modeling-depth-research-2026-10-25.md#4-the-capabilities-worth-deepening) | Re-weighted in [§3](#3-what-this-package-confirms-and-challenges-in-the-original-study) |
 | Clipper2 for 2D booleans and offsets; Manifold if CSG is needed | **Proposed** (harvest) | [harvest §5](../geometry-library-harvest.md#5-recommendation-matrix-reconciled-2026-10-22) | The same 2D offset kernel has wide leverage: trim, rounding, reveals, text |
 | Kernel substrate, correspondence algorithms, invalidation and cache design, history implementation | **Open mechanism decisions** | [technology gates](../../docs/reference/north-star.md#technology-gates) | No kernel or algorithm choice is implied by this package |
-| Product licence | **Undecided**; admission is permissive-only | [licensing direction](../../docs/reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction) | Blocked: OCCT (LGPL), web-ifc (MPL), CGAL (GPL), libfive (MPL or GPL) |
+| Product licence | **Undecided**; admission is permissive-only | [licensing direction](../../docs/archive/roadmap/authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction) | Blocked: OCCT (LGPL), web-ifc (MPL), CGAL (GPL), libfive (MPL or GPL) |
 
 ## 3. What this package confirms and challenges in the original study
 

@@ -293,7 +293,7 @@ Report it through the router's triage; do not fix product code here.**
     sign-in Save draft" appears in the
     [T1.P01.S04 acceptance record](../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/acceptance.md)
     and in the `Error recovery` acceptance-area row of
-    [`core-editor-stability.md`](../docs/roadmap/core-editor-stability.md).
+    [`core-editor-stability.md`](../docs/archive/roadmap/core-editor-stability.md).
   - **Ownership, authorization and verification boundary:**
     [`T1.P01.S06`](../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md)
     is the **integrated final verification gate** (`Produces: Recorded phase integration acceptance only`),
@@ -829,7 +829,7 @@ or ruled.
 | PR #153's brief and addendum | Brief at `12001607`; addendum unpublished | Replaced by this document |
 | The owner's review of the three PRs | 2026-10-18 | Treated as hypotheses to test, not conclusions. It prompted the Guide-free check, the five-way E2 split and the five directions in §5. |
 | [Research 6](./biskiq-integrated-product-synthesis.md) and the five studies in this folder | As merged in PR #150 | Evaluated synthesis; study anchors cited inline |
-| Ratified authorities: [North Star](../docs/reference/north-star.md), [decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md), [F contract](../docs/reference/composition-execution.md), [shell contract](../docs/reference/design-system/editor-shell-and-visual-system.md#visitor-preview), [roadmap](../docs/roadmap/README.md), [Core Editor Stability](../docs/roadmap/core-editor-stability.md), [rulings](../docs/reference/decisions/next-batch-authorization-2026-10-17.md#core-editor-stability-rulings-2026-10-17) | At `26290839` | Boundaries, authorization and gate state |
+| Ratified authorities: [North Star](../docs/reference/north-star.md), [decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md), [F contract](../docs/reference/composition-execution.md), [shell contract](../docs/reference/design-system/editor-shell-and-visual-system.md#visitor-preview), [roadmap](../docs/roadmap/README.md), [Core Editor Stability](../docs/archive/roadmap/core-editor-stability.md), [rulings](../docs/reference/decisions/next-batch-authorization-2026-10-17.md#core-editor-stability-rulings-2026-10-17) | At `26290839` | Boundaries, authorization and gate state |
 
 ### 7.2 Verification run for this document
 

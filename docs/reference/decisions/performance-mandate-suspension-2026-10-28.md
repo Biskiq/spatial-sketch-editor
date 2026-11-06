@@ -7,8 +7,8 @@ workloads, metric definitions, budgets and historical results, but no slice, pha
 owes a benchmark pass as an acceptance prerequisite.
 
 This record is decision provenance, like the
-[performance-foundation authorization](./performance-foundation-authorization-2026-10-24.md) and
-the [S04 authorization](./t1-p02-s04-authorization-2026-10-28.md). It changes no product behavior,
+[performance-foundation authorization](../../archive/roadmap/authorization-history/performance-foundation-authorization-2026-10-24.md) and
+the [S04 authorization](../../archive/roadmap/authorization-history/t1-p02-s04-authorization-2026-10-28.md). It changes no product behavior,
 format, gate, package or correctness requirement. It supersedes every standing statement that a
 performance row must be measured before acceptance, including the S04 performance recheck and the
 deferred S01/S02/S03/S06 rows.

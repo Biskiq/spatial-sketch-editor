@@ -2,8 +2,8 @@
 
 Byte-identical copies of the thirteen Chromium captures recorded in the S14 acceptance record on
 2026-10-30. Images were moved unmodified during closeout; the live slice path holds the
-[acceptance record](../../../../../../roadmap/r217-core-editor-stability/r217.s14-live-feedback/acceptance.md)
-and the [evidence pointer stub](../../../../../../roadmap/r217-core-editor-stability/r217.s14-live-feedback/evidence/README.md).
+[acceptance record](../../acceptance.md)
+and the [evidence pointer stub](../README.md).
 
 The project is the canonical starter **Enclosed room**, DPR 1, at 1440 × 900, 1280 × 800,
 1180 × 820 and 820 × 1180 CSS px. The captures were taken at revision `90ceaf9b`; the later

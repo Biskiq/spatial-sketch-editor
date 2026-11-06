@@ -6,7 +6,7 @@ accepted gate. The F.1/F.3/F.4 shapes and `T1.viewport-projection` are owner-rat
 ([record](../../../../../reference/decisions/f-ratification-2026-10-15.md)). F.1 and F.3 are now landed and
 accepted (S01, `ee463d0b`): **where this draft differs from the landed `references-v1`/`inspection-v1`
 surface, the landed surface wins** and the difference is noted inline
-([2026-10-16 reconciliation](../../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)).
+([2026-10-16 reconciliation](../../../authorization-history/parallel-slice-authorization-2026-10-16.md)).
 `T1.viewport-projection` is accepted at version 1 through S07, and F.4 is accepted through S03; the
 draft shapes below remain the phase's interface record, not a second contract. Shared F semantics remain owned by
 [composition-execution.md](../../../../../reference/composition-execution.md); gate identity remains

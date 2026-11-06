@@ -21,7 +21,7 @@ and slice identifiers below remain valid as history.
 | R217 | shipped | [R217 — Core Editor Stability](./r217-core-editor-stability/README.md) |
 
 R217 is closed; Core Product Stability was accepted at #271 (`ce4e232c`), with S11
-[owner-accepted by override and separate execution waived](./r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
+[owner-accepted by override and separate execution waived](../archive/roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md).
 That is product acceptance, not a claim that every individual check ran. R115 is a repository phase,
 not a track.
 
