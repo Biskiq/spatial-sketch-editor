@@ -7,9 +7,9 @@ fall short of [Conservatory](../../../../prototypes/experience-ux-alternative/RE
 one correction pass the S26–S30 register rows allow for. The owner is the only acceptance: each round is
 one PR from the latest `main`, and the owner accepts it by using the editor.
 
-**Design sheet:** [design-sheet.html](./design-sheet.html). Open the file directly; it needs no server.
-Each row shows what production does now, the recommendation (★), the owner's pick (✓) and sometimes one
-alternative. This plan builds the ✓ option where the owner picked one and ★ elsewhere.
+**Visual reference:** [Experience interaction sheet](../../../reference/design-system/experience-interaction-sheet.html).
+It consolidates the accepted demonstrations. Production code and tests remain behavioral authority;
+Git history preserves the research variants cited by this historical plan.
 
 **Design settled 2026-11-03** (Detailed camera, Forest start page, everything else ★). The sheet is
 promoted to [reference](../../../reference/design-system/experience-interaction-sheet.html). R1–R5 were
@@ -273,7 +273,7 @@ Owner picked the recommended options on 2026-11-03. Both are implemented on this
 ## Review round 2 (2026-11-03, owner live check)
 
 **Not accepted yet.** The owner's second live check found eleven gaps. Visual answers are in the
-[design sheet](./design-sheet.html) §15–§22. This section is the technical plan. The working tree
+[Experience interaction sheet](../../../reference/design-system/experience-interaction-sheet.html) §15–§22. This section is the technical plan. The working tree
 implements the round. The [handoff](./round-2-wip.md) records the follow-up fixes and browser checks.
 The owner accepts the round by using the editor.
 
@@ -396,7 +396,7 @@ This means an Experience format 4 and an execution program v4, with format 3 str
 
 ### Refinement before building Round 4 (sheet §31)
 
-§30's model stays. [Sheet §31](../../../reference/design-system/experience-interaction-sheet.html#s31)
+§30's model stays. [Sheet §31](../../../reference/design-system/experience-interaction-sheet.html#fz-f)
 and [guide-playback-plan.md](./guide-playback-plan.md) refine how it plays (proposal, not built):
 
 - Pacing is one Guide field, `automatic` (the default) or `manual`. Per-Stop "until Next" goes, and so do Gates.
@@ -408,7 +408,7 @@ The same format 4 and program v4 bump covers §30 and §31, and Camera is unchan
 open decisions and lists eleven of its own for the owner.
 
 **Owner picks (2026-11-04):** §31 Q1–Q9 as recommended. Q10: no old-version support. Q11: leave room
-for narration only. Control placement goes to [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#s32)
+for narration only. Control placement goes to [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#fz-own)
 (proposal).
 
 **Sheet consolidated (2026-11-04):** the interaction sheet now shows one settled design. Superseded

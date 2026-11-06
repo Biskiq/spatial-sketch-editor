@@ -1,18 +1,21 @@
 # Experience final reconciliation: defect ledger and implementation plan (sheet §33)
 
-**Status:** revision 3, 2026-11-05; final gate recorded 2026-11-06. The owner approved the design (§33) and every decision in §2. This is the implementation plan for PR #271. Slices 1–10 of §4 have landed on PR #271. The automated final gate passed — `npm test` 3,915 tests, `npm run test:arch` 209 tests, `npm run check` 0 errors and `npm run build` succeeded — and the browser journeys A–Q remain for the owner's manual acceptance.
-**PR:** Biskiq/spatial-sketch-editor#271 on `claude/eloquent-goldberg-yrasgu`, open and not accepted. Every slice lands on this PR, with the commits and review checkpoints in §4.1, and one [final gate](#9-final-gate) precedes the merge. R217.S11 does not begin until then.
-**Contract:** [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) is the normative Experience format 4 and runtime contract. Its *Implementation status* list says which rules the branch already implements; each slice updates that list in the same commit.
-**Design:** [sheet §33](../../../reference/design-system/experience-interaction-sheet.html#s33), with interactive prototypes A–G, the linear-Guide table (H), the ownership table and the change table.
-**History:** [fix-plan.md](./fix-plan.md) (review 1) and [guide-playback-plan.md](./guide-playback-plan.md) (§31/§32, slices 1–7) stay as the record. This file is the implementation-ready plan for the current round.
-
-**Evidence used:** the PR #271 code at head `da61716d`; sheet §5, §25, §27, §28, §31 and §32; the existing contracts ([composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return)); and a throwaway reproduction test, run once and then deleted (§1.1). The owner's screenshots are not in the repository. The dark compact reference is taken from the sheet's own forest strip (§32 A), which matches the owner's description.
-
-### What revisions 2 and 3 change
-
-The owner approved the rest of §33 and decided the open questions (§2, D-1 to D-8), then added four rules in the same spirit (D-9 to D-12). The Guide becomes **one linear sequence**: the first Stop starts, the last Stop ends, and the order is the route. Rather than hiding *Starts at*, *Next goes to* and an early End, they leave format 4. The Guide Card is retired, because each Guide setting already has a home on the strip or the Experience Card. A Travel exists only between two different Views, and never after the last Stop, so any edit that would break either rule writes a Cut. Removing a linked World object unlinks its Presentation and keeps the name, and World never marks an object as linked. The first Stop creates the first Guide, named *Tour*, with no prompt; a single Guide is the Opening Guide without asking. The slices are recut around a new model slice (§4, slice 2). Revision 3 records the owner's answers to the architectural questions (§2.2, A-1 to A-8). It folds them into AM-11 and the persistence reference, and adds the commit and checkpoint plan (§4.1). Superseded options and conditionals are removed, not kept as alternatives.
-
-The sheet's visitor-HUD defect is also fixed. A global `.cur` rule from an earlier section (white, `min-height: 150px`) leaked into the current progress segment and drew a pale box over the HUD. That was a sheet defect only, not a product one.
+**Status:** implemented on PR #271, including the owner-directed simplification of 2026-11-06.
+The automated gate passes; browser journeys A–Q remain for the owner's final visual and browser
+acceptance. No merge or slice acceptance is claimed.
+**PR:** Biskiq/spatial-sketch-editor#271 on `claude/eloquent-goldberg-yrasgu`.
+**Contract:** [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return).
+**Visual reference:** [Experience interaction sheet](../../../reference/design-system/experience-interaction-sheet.html).
+One consolidated sheet illustrates the accepted interactions; production code and tests remain
+behavioral authority. The earlier HTML is retired; Git history preserves variants and review rounds.
+**Scope:** individual Cut/Travel editing with automatic Camera path reconciliation; long View lists
+retain Show all / Show the first 8. View clicks open the View Card, with explicit Look through.
+The strip name renames inline and its ⋯ offers Remove Guide. Index-row Rename remains useful
+without opening a Guide. No range selection, bulk editing or additional selection mode.
+A named entry View stays pinned even when currently the Default; only `null` follows the Default.
+Visitor Travel fills before arrival and the stay starts empty after arrival. Prev/Next follows
+the linear Guide; Places is Free Explore. The earlier direct Stop-jump finding is withdrawn;
+no new jumping UI is required.
 
 ## 1. Gap ledger
 
@@ -166,7 +169,7 @@ These were the open tradeoffs of revision 2 (T-1 to T-8). Each is now a rule, an
   - the separate `.scrub` bar removed;
   - one segmented track, with per-segment pointer mapping (extend `timeline-scrub.ts` from a fraction of the whole width to a segment plus a local fraction);
   - the pacing popover;
-  - the header name renamed in place (<kbd>Enter</kbd>, <kbd>Esc</kbd>, blur) and a ⋯ menu with Rename and Remove Guide;
+  - the header name renamed in place (<kbd>Enter</kbd>, <kbd>Esc</kbd>, blur) and a ⋯ menu with Remove Guide;
   - the **+** gap button removed.
 - `ExperienceGuideWriter.svelte`: **deleted**.
 - New `ExperienceExperienceWriter.svelte`: the name, the welcome, and *Opens with* only when there are two or more Guides (D-10).
@@ -186,7 +189,7 @@ These were the open tradeoffs of revision 2 (T-1 to T-8). Each is now a rule, an
   - Order comes from `guideRunFromProgram` (`visitor/guide-run-map.ts`).
   - The stay fill comes from the run state's `holdRemainingMs` and the Stop's `staySeconds`.
   - The Travel fill comes from a new `onTravelProgress(fraction)` callback on `VisitorCameraDirector.svelte`, which reports its existing `transitionProgress`. There is no new timer.
-  - Segments mark *visited*, not *index below current*, so a Places jump doesn't fill skipped Stops.
+  - Segments distinguish an active arrival Travel from its stay: a recorded visit never pre-fills the destination stay. Explore reads the suspended occurrence and freezes its partial stay; Back restores it with the lead-in.
 
 **Not touched:**
 - `packages/camera-core` (authority, evaluation, `guide-time-map.ts`)
@@ -290,7 +293,7 @@ Against revision 1: *Continuation pruning* (old slice 6) is absorbed into slice 
 | R13 | Imported file with two paths on one pair | `travel-ambiguous` worded with View labels; *Show*; nothing guessed |
 | R14 | Imported file with a Travel gap | Plain sentence with Stop numbers; *Show*; ids only in *Copy details* |
 | R15 | Travel → Cut → Travel | The path kept, then reused |
-| R16 | View → Stop for View 3 of a Presentation; the Default moves later | The Stop keeps entering View 3 |
+| R16 | View → Stop for any named View, including the current Default; the Default moves later | The Stop keeps entering View 3 |
 | R17 | Following Presentation; the World object is renamed | The Index, strip, Stop, Transition and Presentation Cards, caption and Places all change; no Experience write |
 | R18 | Own name; then *Use the object's name*; then unlink | The own name stays put through renames; following resumes; unlinking stores the current name; one Undo each |
 | R19 | Linked object removed in World | The Presentation is unlinked with its last effective name, its Views and Stops intact, in the same change as the removal; no warning |
@@ -324,7 +327,7 @@ Journeys A–H are re-run without *Starts at*; any step that used it starts the 
 - **K · Change where a Stop enters.** On a Stop with a Travel in and out, change *Enter at*. Both Travels still play. Change it to the View the Stop before it shows: that step becomes a Cut, and its Transition Card offers no Travel.
 - **L · Pacing from the strip.** Open the pill and choose Manual with the keyboard. Focus returns to the pill. The feedback is green. Play: it stops at each ⏸, and ▶ continues. Switch back: the stays are as they were.
 - **M · The object's name.** Present a World object. Rename it in World, and check every place it shows. Type your own name, rename the object again (yours stays), then press *Use the object's name*. Unlink. Link with *Pick on the Stage*, then press <kbd>Esc</kbd> once mid-pick. Select the object in World: nothing there mentions the Presentation. Remove the object: the Presentation, its Views and Stops stay, it reads as unlinked with its last name, and nothing warns. Undo.
-- **N · Visitor progress.** Preview an Automatic Guide that visits one Presentation twice. Watch a Travel fill. Pause, Explore, then Back with little time left. Jump forward with Places. Switch to Manual and preview again.
+- **N · Visitor progress.** Preview an Automatic Guide that visits one Presentation twice. Watch Travel fill while the destination stay is empty; arrival starts that stay at zero. Pause, Explore, then Back with little time left. Use Places for free exploration and Back to resume the Guide. Prev/Next remains linear. Switch to Manual and preview again.
 - **O · A file the editor didn't write.** Open a project file whose Stop carries `continuation`, or whose Guide carries `entryStopId`. It's refused with a plain sentence, and nothing is repaired on read.
 - **P · Problems.** Make two Stops on the same View: the Transition Card shows a Cut and offers no Travel. Open an imported file with a duplicate path: the chip names the Stops and Views, *Show* opens the Card, and *Copy details* has the ids.
 - **Q · No Guide Card.** With nothing selected, the Card is the Experience Card: change the welcome. With one Guide there is no *Opens with*. Add a second Guide from the Index (*Tour 2*): *Opens with* appears. Press the Guide's name on the strip, rename it, and press <kbd>Esc</kbd> on a second try. Remove a second Guide from the strip's ⋯, then Undo.
@@ -354,3 +357,18 @@ PR #271 can be accepted, and R217.S11 can begin, only when:
 6. AM-11's *Implementation status* in [composition-execution.md](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return) shows every rule as implemented, the persistence reference matches, and sheet §33 matches what shipped.
 7. Checkpoints CP-A, CP-B and CP-C were each reviewed by the owner, and any finding from them is closed.
 8. PR #271's description lists the slices' commits, the checkpoints and A-7's notice about old development files.
+
+### Verification for owner acceptance
+
+The final simplification passes `npm test` (3,925 tests, including heavy contracts),
+`npm run test:arch` (209 tests, including documentation references), `npm run check`
+(0 errors; 4 existing visitor accessibility warnings), `npm run check:project-model`
+and `npm run build`. Targeted regressions cover single-step editing, Guide rename,
+View-list folding, pinned Default View identity across all three planners, and Travel →
+arrival → stay, revisit and Explore/Back progress.
+
+The consolidated sheet was checked in Chromium at 1440 px and 390 px: Stage demonstrations
+render, View folding and individual transitions work, Guide naming and pacing work, and
+visitor Free Explore, Places, pause and return work. No script errors, broken internal
+anchors or narrow page overflow remain. This is HTML-reference QA; the owner's production
+visual and browser journeys A–Q remain outstanding. No merge or slice-closeout is claimed.

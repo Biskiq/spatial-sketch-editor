@@ -13,12 +13,12 @@ ACTIVE: none. No T3 slice or phase is in progress or authorized.
 NEXT:  Owner decision on next T3 planning or milestone integration. No next phase is registered in the T3 phase register or global roadmap.
 ROUTE: ../../roadmap/t3-experience/README.md →
        ../../roadmap/t3-experience/t3.p04-project-lifecycle/README.md
-R217:  Experience review guide-playback plan (../../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
-       slices 1–7 implemented on claude/eloquent-goldberg-yrasgu (PR Biskiq/spatial-sketch-editor#271).
-       Owner review 2 approved sheet §33 and the plan in
-       ../../roadmap/r217-core-editor-stability/experience-review/fix.md (revision 3, 2026-11-05):
-       slices 1–10 land on PR #271 with checkpoints CP-A, CP-B and CP-C, then one final gate.
-       No review-2 slice has started. Merge, S11 and slice-closeout stay with the owner.
+R217:  PR #271 (claude/eloquent-goldberg-yrasgu) implements the Experience review correction
+       and the owner's 2026-11-06 simplification. Automated verification passes; final visual
+       and browser acceptance remains with the owner. No merge, S11 start or slice-closeout.
+       PLAN: ../../roadmap/r217-core-editor-stability/experience-review/fix.md
+       REFERENCE: ../../reference/design-system/experience-interaction-sheet.html
+       Code/tests own behavior; one consolidated HTML owns visual/demo evidence. Earlier HTML retired.
 BLOCKER: none.
 CARRY: F2 production epoch activation remains a separate owner-operated procedure.
        No track completion, milestone acceptance or cycle transition is claimed.

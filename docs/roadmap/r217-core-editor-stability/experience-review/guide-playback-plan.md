@@ -2,9 +2,10 @@
 
 **Status:** accepted 2026-11-04; implemented in slices 1–7 on `claude/eloquent-goldberg-yrasgu` (owner acceptance of journeys A–H pending). The landed contract is [composition-execution AM-11](../../../reference/composition-execution.md#am-11-guide-pacing-explore-and-return).
 **Superseded in part (2026-11-05)** by [fix.md](./fix.md), the owner's second review: the Guide's start Stop, explicit continuations, the Guide Card and the welcome's place are replaced there and in AM-11. This plan is kept as the record of slices 1–7; where it disagrees with fix.md or AM-11, they win.
-**Design:** [sheet §31](../../../reference/design-system/experience-interaction-sheet.html#s31), with
-interactive journeys A–H, and [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#s32)
-for where each setting is edited (open for review).
+**Visual reference:** [visitor playback](../../../reference/design-system/experience-interaction-sheet.html#fz-f)
+and [interaction homes](../../../reference/design-system/experience-interaction-sheet.html#fz-own).
+Production code and tests remain behavioral authority. Historical section numbers below identify
+this plan's original review, available in Git history.
 **Parent:** [fix-plan.md](./fix-plan.md), "Revised model before building Round 4". This plan
 replaces per-Stop "until Next" with Guide pacing and retires Gates.
 
@@ -67,7 +68,7 @@ One bump: Experience format 4 and program v4. Format 3 is strictly refused, and 
 | 3 | Interpreter | `units/experience/{interpreter,companion}.ts` | `experience/experience-runtime`: Next ends a stay; Manual waits; pause/explore freeze ticks; resume keeps the occurrence, remaining stay and play state; lead-in; Places keeps one resume point; no Gates | 2 |
 | 4 | One Guide clock | Move the pure `playback-map.ts` adapter to a visitor-safe module (for example `apps/editor/src/lib/visitor/guide-run-map.ts`) that the editor imports. Make `VisitorCameraDirector.svelte` time-aligned everywhere (retire the public overtake, where holds count during Travel). | `experience/guide-time-map`, `playback`; `visitor/visitor-camera-director`; a new parity test: a replayed run's arrival times equal the map's Stop entries; visitor boundary tests | 2, 3 |
 | 5 | Visitor Preview | `visitor/{VisitorPreviewSurface.svelte,visitor-runtime-state.svelte.ts,VisitorCameraDirector.svelte}`: a bar per pacing, Explore always (settle when travelling), the invitation (`role=status`, polite, never takes focus), the explore strip, Places, Back, welcome copy | `visitor/visitor-runtime-state`, `visitor-camera-director`, `preview-surface-closure` | 3, 4 |
-| 6 | Editor Cards | `authoring/experience/`, one Card field per setting (sheet §32): `ExperienceGuideWriter` (Pacing), `ExperienceStopWriter` (Enter at, Stay or *Until Next* linking to the Guide Card, Invite, *Connections* links), `ExperiencePresentationWriter` (the View rail: order and Default, Cut/Travel and time on the spine, range set, reorder, folding past 10 Views; Listed in Places; Used by), `ExperienceGuide` (✦ and +N badges, Manual caps, a pacing label that opens the Guide Card), `ExperienceTransitionWriter` (Guide connections only, path uses), `commands.ts`, `experience-controller.svelte.ts`, `experience-card-model.ts`, `experience-removal.ts`. New intents: `setGuidePacing`, `setStopInvitation`, `setStopEntry`, `setStopStay`, `setPresentationStep`, `movePresentationView`. Retire `setViewHold`, `setStopViews` and the Guided views list. | `experience/experience-controller`, `experience-card-model`, `experience-authoring`, `first-guide`, `timeline-scrub`; `authoring/spatial-route-experience-homes` | 1, 4 |
+| 6 | Editor Cards | `authoring/experience/`, one Card field per setting (sheet §32): `ExperienceGuideWriter` (Pacing), `ExperienceStopWriter` (Enter at, Stay or *Until Next* linking to the Guide Card, Invite, *Connections* links), `ExperiencePresentationWriter` (the View rail: order and Default, Cut/Travel and time on the spine, individual transition editing, reorder, folding past 10 Views; Listed in Places; Used by), `ExperienceGuide` (✦ and +N badges, Manual caps, a pacing label that opens the Guide Card), `ExperienceTransitionWriter` (Guide connections only, path uses), `commands.ts`, `experience-controller.svelte.ts`, `experience-card-model.ts`, `experience-removal.ts`. New intents: `setGuidePacing`, `setStopInvitation`, `setStopEntry`, `setStopStay`, `setPresentationStep`, `movePresentationView`. Retire `setViewHold`, `setStopViews` and the Guided views list. | `experience/experience-controller`, `experience-card-model`, `experience-authoring`, `first-guide`, `timeline-scrub`; `authoring/spatial-route-experience-homes` | 1, 4 |
 | 7 | Acceptance | Journeys A–H below, in the browser; lanes per [`apps/editor/tests/README.md`](../../../../apps/editor/tests/README.md) for the touched families | — | all |
 
 Slices 5 and 6 can run in parallel once 4 lands; 6 can start its Card work after 1.
@@ -128,16 +129,16 @@ for Preview and release.
 - **Q10:** no old-version support. Format 3 is strictly refused, with no converter (risk 3 is accepted).
 - **Q11:** leave room for narration only. Nothing in this plan builds audio. Data and clock shapes must
   not block a per-Stop clip on the Guide clock.
-- **Control placement:** [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#s32)
+- **Control placement:** [sheet §32](../../../reference/design-system/experience-interaction-sheet.html#fz-own)
   gives every setting one owner and one Card field; other surfaces show the value and link to it.
   Accepted with every recommendation; slice 6 follows it.
 
 ## Control placement (sheet §32, accepted 2026-11-04)
 
 - **A Guide connection** opens its Transition Card, the one place its Cut/Travel and time are edited.
-  The Stop Card shows *Connections* links; the strip header shows the pacing and links to the Guide Card.
+  The Stop Card shows *Connections* links; the strip header edits pacing from its popover.
 - **The Presentation View list** is the rail: one row per View, the connection on the spine with its
-  time, range set, reorder. Past 10 Views it folds to the first 8 with *Show all N Views*, which names
+  time, individual transition editing, reorder. Past 10 Views it folds to the first 8 with *Show all N Views*, which names
   what's hidden (count, Cut/Travel, ⚠, Stops entering there); opened, it scrolls in its own box of about
   12 rows. Selecting, editing or moving a View past row 8 opens it. The fold state is session state.
 - **Shared path time** is edited at the connection you're on, showing ×N and the uses.
