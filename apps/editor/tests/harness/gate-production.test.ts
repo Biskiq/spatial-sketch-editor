@@ -9,7 +9,7 @@
  * payloads.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -104,42 +104,6 @@ function provenance(name: string, overrides: Record<string, unknown> = {}) {
 		...overrides
 	};
 }
-
-/** A fake `gh` over a JSON state file, for the issue-event API path. */
-const FAKE_GH = [
-	'#!/usr/bin/env node',
-	"import { readFileSync, writeFileSync } from 'node:fs';",
-	"const statePath = process.env.FAKE_STATE;",
-	"const state = JSON.parse(readFileSync(statePath, 'utf8'));",
-	'const args = process.argv.slice(2);',
-	'const path = args[1] ?? "";',
-	'const save = () => writeFileSync(statePath, JSON.stringify(state));',
-	"if (path.endsWith('/labels')) {",
-	"\tconst index = args.indexOf('-f');",
-	"\tif (index !== -1 && String(args[index + 1]).startsWith('labels[]=')) {",
-	"\t\tconst label = String(args[index + 1]).slice('labels[]='.length);",
-	'\t\tif (!state.labels.includes(label)) state.labels.push(label);',
-	'\t\tsave();',
-	'\t}',
-	'\tconsole.log(JSON.stringify(state.labels.map((name) => ({ name }))));',
-	'\tprocess.exit(0);',
-	'}',
-	"if (path.includes('/issues/')) {",
-	"\tif (args.includes('PATCH')) {",
-	"\t\tstate.state = 'open';",
-	'\t\tsave();',
-	'\t}',
-	'\tconsole.log(JSON.stringify({ number: 7, state: state.state, labels: state.labels.map((name) => ({ name })) }));',
-	'\tprocess.exit(0);',
-	'}',
-	"if (path.includes('/pulls/')) {",
-	"\tconst number = Number(path.split('/').pop());",
-	"\tconsole.log(JSON.stringify({ number, merged_at: number === 13 ? '2026-11-06T00:00:00Z' : null }));",
-	'\tprocess.exit(0);',
-	'}',
-	"console.log('{}');",
-	''
-].join('\n');
 
 function statusRun() {
 	return {
@@ -484,17 +448,22 @@ describe('hard guards', () => {
 		return execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
 	}
 
-	function fixtureRepo(name: string, base: string, head: string) {
+	function fixtureRepo(
+		name: string,
+		base: string,
+		head: string,
+		file = 'apps/editor/tests/a.test.ts'
+	) {
 		const repo = tempDir(name);
 		mkdirSync(join(repo, 'apps/editor/tests'), { recursive: true });
 		git(repo, 'init', '-q');
 		git(repo, 'config', 'user.email', 'fixture@example.com');
 		git(repo, 'config', 'user.name', 'Fixture');
-		writeFileSync(join(repo, 'apps/editor/tests/a.test.ts'), base);
+		writeFileSync(join(repo, file), base);
 		git(repo, 'add', '.');
 		git(repo, 'commit', '-qm', 'base');
 		const baseSha = git(repo, 'rev-parse', 'HEAD');
-		writeFileSync(join(repo, 'apps/editor/tests/a.test.ts'), head);
+		writeFileSync(join(repo, file), head);
 		git(repo, 'add', '.');
 		git(repo, 'commit', '-q', '--allow-empty', '-m', 'head');
 		return { repo, baseSha, headSha: git(repo, 'rev-parse', 'HEAD') };
@@ -539,6 +508,18 @@ describe('hard guards', () => {
 		expect(run(GUARDS, guardArgs(removed)).status).toBe(1);
 		const unchanged = fixtureRepo('guard-each-unchanged', unsupported, unsupported);
 		expect(run(GUARDS, guardArgs(unchanged)).status).toBe(0);
+	});
+
+	it('guards tagged declarations in spec files too', () => {
+		const fixture = fixtureRepo(
+			'guard-spec',
+			"it('[cap:cap.a core] spec works', () => {});\n",
+			'// removed\n',
+			'apps/editor/tests/a.spec.ts'
+		);
+		const result = run(GUARDS, guardArgs(fixture));
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain('removed tagged check');
 	});
 
 	it('never invents checks from fixture strings', () => {
@@ -687,6 +668,54 @@ describe('hard guards', () => {
 });
 
 describe('blocking-bug event response', () => {
+	/** A fake `gh` over a JSON state file: REST issue reads/writes plus GraphQL. */
+	const FAKE_GH = [
+		'#!/usr/bin/env node',
+		"import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';",
+		'const statePath = process.env.FAKE_STATE;',
+		'const logPath = process.env.FAKE_LOG;',
+		'const args = process.argv.slice(2);',
+		"if (logPath) appendFileSync(logPath, args.join(' ') + '\\n');",
+		"const state = JSON.parse(readFileSync(statePath, 'utf8'));",
+		'state.reads = state.reads || 0;',
+		'const save = () => writeFileSync(statePath, JSON.stringify(state));',
+		'const issue = () => ({ number: 7, state: state.state, labels: state.labels.map((name) => ({ name })) });',
+		"const graphql = args[0] === 'api' && args[1] === 'graphql';",
+		"const path = args[1] || '';",
+		"const labelPost = path.endsWith('/labels') && args.includes('-f');",
+		"const patch = path.includes('/issues/') && args.includes('PATCH');",
+		"const get = path.includes('/issues/') && !labelPost && !patch && !graphql;",
+		"const fail = process.env.FAKE_FAIL || '';",
+		'if (graphql) {',
+		"  if (fail === 'graphql') { console.error('graphql 502'); process.exit(1); }",
+		'  const fixture = process.env.FAKE_GRAPHQL;',
+		"  if (!fixture || !existsSync(fixture)) { console.error('graphql unavailable'); process.exit(1); }",
+		"  process.stdout.write(readFileSync(fixture, 'utf8'));",
+		'  process.exit(0);',
+		'}',
+		"if (fail === 'all-writes' && (labelPost || patch)) { console.error('write 403'); process.exit(1); }",
+		'if (labelPost) {',
+		"  const index = args.indexOf('-f');",
+		"  const label = String(args[index + 1]).slice('labels[]='.length);",
+		'  if (!state.labels.includes(label)) state.labels.push(label);',
+		'  save();',
+		'  console.log(JSON.stringify(issue()));',
+		'  process.exit(0);',
+		'}',
+		"if (patch) { state.state = 'open'; save(); console.log(JSON.stringify(issue())); process.exit(0); }",
+		'if (get) {',
+		'  state.reads += 1;',
+		'  save();',
+		"  const approveOn = Number(process.env.FAKE_APPROVE_ON_READ || 0);",
+		"  if (approveOn && state.reads >= approveOn && !state.labels.includes('owner-approved-guard-change')) { state.labels.push('owner-approved-guard-change'); save(); }",
+		"  if (fail === 'readback' && state.reads >= 4) { console.error('readback 500'); process.exit(1); }",
+		'  console.log(JSON.stringify(issue()));',
+		'  process.exit(0);',
+		'}',
+		"console.log('{}');",
+		''
+	].join('\n');
+
 	function fakeGh(dir: string) {
 		const statePath = join(dir, 'state.json');
 		const script = join(dir, 'fake-gh.mjs');
@@ -719,6 +748,42 @@ describe('blocking-bug event response', () => {
 		];
 	}
 
+	function calls(dir: string) {
+		const path = join(dir, 'calls.log');
+		return () => (existsSync(path) ? readFileSync(path, 'utf8').trim().split('\n') : []);
+	}
+
+	/** GraphQL closure fixture: ClosedEvent nodes as GitHub returns them. */
+	function closure(dir: string, nodes: unknown[], issueState = 'CLOSED') {
+		const path = join(dir, 'graphql.json');
+		writeFileSync(
+			path,
+			JSON.stringify({
+				data: {
+					repository: { issue: { state: issueState, timelineItems: { nodes } } }
+				}
+			})
+		);
+		return path;
+	}
+
+	function resolveFixes(
+		dir: string,
+		script: string,
+		statePath: string,
+		graphqlFixture: string,
+		env: Record<string, string> = {}
+	) {
+		const linked = join(dir, 'linked.json');
+		const result = run(
+			LINKED_FIXES,
+			['--issue', '7', '--repo', 'o/r', '--out', linked, '--gh', script],
+			REPO_ROOT,
+			{ FAKE_STATE: statePath, FAKE_GRAPHQL: graphqlFixture, ...env }
+		);
+		return { result, linked, payload: JSON.parse(readFileSync(linked, 'utf8')) };
+	}
+
 	it('restores an unauthorized blocks-core removal and health stays broken', () => {
 		const dir = tempDir('issue-response-remove');
 		mkdirSync(dir, { recursive: true });
@@ -731,13 +796,27 @@ describe('blocking-bug event response', () => {
 			issue: { number: 7, labels: ['bug', 'cap:cap.x'], state: 'open' },
 			repository: { full_name: 'o/r' }
 		});
+		const logPath = join(dir, 'calls.log');
 		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
-			FAKE_STATE: statePath
+			FAKE_STATE: statePath,
+			FAKE_LOG: logPath
 		});
 		expect(result.status).toBe(1);
 		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
 		expect(record.restored).toBe(true);
+		expect(record.superseded).toBe(null);
 		expect(stateOf(statePath).labels).toContain('blocks-core');
+
+		// Every write follows a live read.
+		const logged = calls(dir)();
+		const firstRead = logged.findIndex(
+			(line) => line.includes('/issues/7') && !line.includes('/labels') && !line.includes('PATCH')
+		);
+		const firstWrite = logged.findIndex(
+			(line) => line.includes('/labels') || line.includes('PATCH')
+		);
+		expect(firstRead).toBeGreaterThanOrEqual(0);
+		expect(firstWrite).toBeGreaterThan(firstRead);
 
 		// status reads the restored state: the capability stays broken.
 		const ledgerPath = join(dir, 'ledger.json');
@@ -792,36 +871,70 @@ describe('blocking-bug event response', () => {
 		expect(report.capabilities[0].health).toBe('broken');
 	});
 
-	it('accepts only a merged fixing PR or a closing commit', () => {
-		const dir = tempDir('issue-response-fixed');
+	it('respects owner approval already present when the queued event runs', () => {
+		const dir = tempDir('issue-response-approved');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(
+			statePath,
+			JSON.stringify({ state: 'open', labels: ['bug', 'owner-approved-guard-change'] })
+		);
+		const eventPath = eventFile(dir, {
+			action: 'unlabeled',
+			label: { name: 'blocks-core' },
+			issue: { number: 7, labels: ['bug'], state: 'open' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_LOG: join(dir, 'calls.log')
+		});
+		expect(result.status).toBe(0);
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.superseded).toBe('owner-approved');
+		expect(record.restored).toBe(null);
+		const logged = calls(dir)();
+		expect(logged.some((line) => line.includes('/labels') || line.includes('PATCH'))).toBe(false);
+	});
+
+	it('respects owner approval that arrives between the guard reads', () => {
+		const dir = tempDir('issue-response-approved-late');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['bug'] }));
+		const eventPath = eventFile(dir, {
+			action: 'unlabeled',
+			label: { name: 'blocks-core' },
+			issue: { number: 7, labels: ['bug'], state: 'open' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_LOG: join(dir, 'calls.log'),
+			FAKE_APPROVE_ON_READ: '2'
+		});
+		expect(result.status).toBe(0);
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.superseded).toBe('owner-approved');
+		const logged = calls(dir)();
+		expect(logged.filter((line) => line.includes('/issues/7') && !line.includes('/labels'))).toHaveLength(2);
+		expect(logged.some((line) => line.includes('/labels') || line.includes('PATCH'))).toBe(false);
+	});
+
+	it('accepts a closure whose closer is a merged fixing PR', () => {
+		const dir = tempDir('issue-response-fixing-pr');
 		mkdirSync(dir, { recursive: true });
 		const { statePath, script } = fakeGh(dir);
 		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core', 'bug'] }));
-		const timeline = join(dir, 'timeline.json');
-		writeFileSync(
-			timeline,
-			JSON.stringify([
-				[
-					{
-						event: 'cross-referenced',
-						source: { issue: { number: 13, pull_request: {} } }
-					}
-				],
-				[{ event: 'closed', commit_id: 'deadbeef' }]
-			])
-		);
-		const linked = join(dir, 'linked.json');
-		const resolved = run(
-			LINKED_FIXES,
-			['--timeline', timeline, '--repo', 'o/r', '--out', linked, '--gh', script],
-			REPO_ROOT,
-			{ FAKE_STATE: statePath }
-		);
-		expect(resolved.status).toBe(0);
-		expect(JSON.parse(readFileSync(linked, 'utf8'))).toEqual({
-			pullRequests: [{ number: 13, mergedAt: '2026-11-06T00:00:00Z' }],
-			commits: ['deadbeef']
-		});
+		const graphqlFixture = closure(dir, [
+			{
+				createdAt: '2026-11-06T00:00:00Z',
+				closer: { __typename: 'PullRequest', number: 13, mergedAt: '2026-11-06T01:00:00Z' }
+			}
+		]);
+		const { linked, payload } = resolveFixes(dir, script, statePath, graphqlFixture);
+		expect(payload.pullRequests).toHaveLength(1);
+		expect(payload.commits).toHaveLength(0);
 
 		const eventPath = eventFile(dir, {
 			action: 'closed',
@@ -829,39 +942,50 @@ describe('blocking-bug event response', () => {
 			repository: { full_name: 'o/r' }
 		});
 		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, linked), REPO_ROOT, {
-			FAKE_STATE: statePath
+			FAKE_STATE: statePath,
+			FAKE_LOG: join(dir, 'calls.log')
 		});
 		expect(result.status).toBe(0);
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.superseded).toBe('fixing-closure');
+		expect(stateOf(statePath).state).toBe('closed');
+		expect(calls(dir)().some((line) => line.includes('PATCH'))).toBe(false);
+	});
+
+	it('accepts a closure whose closer is a fixing commit', () => {
+		const dir = tempDir('issue-response-fixing-commit');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core'] }));
+		const graphqlFixture = closure(dir, [
+			{ createdAt: '2026-11-06T00:00:00Z', closer: { __typename: 'Commit', oid: 'deadbeef' } }
+		]);
+		const { linked, payload } = resolveFixes(dir, script, statePath, graphqlFixture);
+		expect(payload.commits).toEqual(['deadbeef']);
+
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: { number: 7, labels: ['blocks-core'], state: 'closed' },
+			repository: { full_name: 'o/r' }
+		});
+		expect(
+			run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, linked), REPO_ROOT, {
+				FAKE_STATE: statePath
+			}).status
+		).toBe(0);
 		expect(stateOf(statePath).state).toBe('closed');
 	});
 
-	it('reopens a blocks-core issue closed after only a mention', () => {
-		const dir = tempDir('issue-response-mention');
+	it('rejects a merged unrelated mention of the issue', () => {
+		const dir = tempDir('issue-response-unrelated-mention');
 		mkdirSync(dir, { recursive: true });
 		const { statePath, script } = fakeGh(dir);
-		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['blocks-core', 'bug'] }));
-		const timeline = join(dir, 'timeline.json');
-		writeFileSync(
-			timeline,
-			JSON.stringify([
-				[
-					{
-						event: 'cross-referenced',
-						source: { issue: { number: 12, pull_request: {} } }
-					}
-				]
-			])
-		);
-		const linked = join(dir, 'linked.json');
-		run(
-			LINKED_FIXES,
-			['--timeline', timeline, '--repo', 'o/r', '--out', linked, '--gh', script],
-			REPO_ROOT,
-			{ FAKE_STATE: statePath }
-		);
-		expect(JSON.parse(readFileSync(linked, 'utf8'))).toEqual({ pullRequests: [], commits: [] });
-
 		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core', 'bug'] }));
+		// A merged PR mentioned the issue, but this closure has no closer.
+		const graphqlFixture = closure(dir, [{ createdAt: '2026-11-06T00:00:00Z', closer: null }]);
+		const { linked, payload } = resolveFixes(dir, script, statePath, graphqlFixture);
+		expect(payload).toEqual({ pullRequests: [], commits: [], closedAt: '2026-11-06T00:00:00Z' });
+
 		const eventPath = eventFile(dir, {
 			action: 'closed',
 			issue: { number: 7, labels: ['blocks-core', 'bug'], state: 'closed' },
@@ -872,23 +996,157 @@ describe('blocking-bug event response', () => {
 		});
 		expect(result.status).toBe(1);
 		expect(stateOf(statePath).state).toBe('open');
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.violations[0].reason).toContain('no linked fixing change');
 	});
 
-	it('treats an unreadable timeline as unknown, never as fixed', () => {
+	it('does not let an earlier fix certify a later manual close', () => {
+		const dir = tempDir('issue-response-old-fix');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core'] }));
+		const graphqlFixture = closure(dir, [
+			{ createdAt: '2026-01-01T00:00:00Z', closer: { __typename: 'PullRequest', number: 9, mergedAt: '2026-01-01T00:00:00Z' } },
+			{ createdAt: '2026-02-01T00:00:00Z', closer: null }
+		]);
+		const { linked, payload } = resolveFixes(dir, script, statePath, graphqlFixture);
+		expect(payload).toEqual({ pullRequests: [], commits: [], closedAt: '2026-02-01T00:00:00Z' });
+
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: { number: 7, labels: ['blocks-core'], state: 'closed' },
+			repository: { full_name: 'o/r' }
+		});
+		expect(
+			run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, linked), REPO_ROOT, {
+				FAKE_STATE: statePath
+			}).status
+		).toBe(1);
+		expect(stateOf(statePath).state).toBe('open');
+	});
+
+	it('treats a failed closure read as unreadable and still restores', () => {
+		const dir = tempDir('issue-response-failed-read');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core', 'bug'] }));
+		const graphqlFixture = closure(dir, []);
+		const { linked, payload } = resolveFixes(dir, script, statePath, graphqlFixture, {
+			FAKE_FAIL: 'graphql'
+		});
+		expect(payload.unreadable).toBe(true);
+
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: { number: 7, labels: ['blocks-core', 'bug'], state: 'closed' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script, linked), REPO_ROOT, {
+			FAKE_STATE: statePath
+		});
+		expect(result.status).toBe(1);
+		expect(stateOf(statePath).state).toBe('open');
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.fixEvidence).toBe('unreadable');
+		expect(record.violations[0].reason).toContain('could not be read');
+		expect(record.restored).toBe(true);
+	});
+
+	it('treats an unreadable closure payload as unknown, never as fixed', () => {
 		const dir = tempDir('issue-response-unreadable');
 		mkdirSync(dir, { recursive: true });
 		const { statePath, script } = fakeGh(dir);
-		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['blocks-core', 'bug'] }));
+		writeFileSync(statePath, JSON.stringify({ state: 'closed', labels: ['blocks-core'] }));
 		const broken = join(dir, 'broken.json');
 		writeFileSync(broken, 'not json');
-		const linked = join(dir, 'linked.json');
-		run(
-			LINKED_FIXES,
-			['--timeline', broken, '--repo', 'o/r', '--out', linked, '--gh', script],
-			REPO_ROOT,
-			{ FAKE_STATE: statePath }
-		);
-		expect(JSON.parse(readFileSync(linked, 'utf8')).unreadable).toBe(true);
+		const { linked, payload } = resolveFixes(dir, script, statePath, broken);
+		expect(payload.unreadable).toBe(true);
+		expect(linked.length).toBeGreaterThan(0);
+	});
+
+	it('leaves an already-restored issue untouched on duplicate delivery', () => {
+		const dir = tempDir('issue-response-duplicate');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['blocks-core', 'bug'] }));
+		const eventPath = eventFile(dir, {
+			action: 'unlabeled',
+			label: { name: 'blocks-core' },
+			issue: { number: 7, labels: ['bug'], state: 'open' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_LOG: join(dir, 'calls.log')
+		});
+		expect(result.status).toBe(0);
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.superseded).toBe('already-restored');
+		const logged = calls(dir)();
+		expect(logged).toHaveLength(1);
+		expect(logged[0]).not.toContain('/labels');
+	});
+
+	it('does not reopen an issue that a later event already reopened', () => {
+		const dir = tempDir('issue-response-reopened');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['blocks-core', 'bug'] }));
+		const eventPath = eventFile(dir, {
+			action: 'closed',
+			issue: { number: 7, labels: ['blocks-core', 'bug'], state: 'closed' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_LOG: join(dir, 'calls.log')
+		});
+		expect(result.status).toBe(0);
+		expect(JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8')).superseded).toBe('not-closed');
+		expect(calls(dir)().some((line) => line.includes('PATCH'))).toBe(false);
+	});
+
+	it('fails honestly when the restoration write fails', () => {
+		const dir = tempDir('issue-response-write-fail');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['bug'] }));
+		const eventPath = eventFile(dir, {
+			action: 'unlabeled',
+			label: { name: 'blocks-core' },
+			issue: { number: 7, labels: ['bug'], state: 'open' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_FAIL: 'all-writes'
+		});
+		expect(result.status).toBe(2);
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.restored).toBe(false);
+		expect(record.error).toContain('403');
+		expect(stateOf(statePath).labels).not.toContain('blocks-core');
+	});
+
+	it('fails honestly when the readback cannot confirm restoration', () => {
+		const dir = tempDir('issue-response-readback-fail');
+		mkdirSync(dir, { recursive: true });
+		const { statePath, script } = fakeGh(dir);
+		writeFileSync(statePath, JSON.stringify({ state: 'open', labels: ['bug'] }));
+		const eventPath = eventFile(dir, {
+			action: 'unlabeled',
+			label: { name: 'blocks-core' },
+			issue: { number: 7, labels: ['bug'], state: 'open' },
+			repository: { full_name: 'o/r' }
+		});
+		const result = run(ISSUE_RESPONSE, responseArgs(dir, eventPath, script), REPO_ROOT, {
+			FAKE_STATE: statePath,
+			FAKE_FAIL: 'readback'
+		});
+		expect(result.status).toBe(2);
+		const record = JSON.parse(readFileSync(join(dir, 'result.json'), 'utf8'));
+		expect(record.restored).toBe(false);
+		expect(record.error).toContain('500');
 	});
 });
 
@@ -914,13 +1172,15 @@ describe('workflow contract', () => {
 		expect(goldens).not.toMatch(/\n    paths:/);
 	});
 
-	it('runs issue-event guards with write access and actual fix linkage', () => {
+	it('runs issue-event guards with write access and closure-specific evidence', () => {
 		const workflow = readFileSync(ISSUE_GUARDS, 'utf8');
-		expect(workflow).toContain('issues:');
 		expect(workflow).toContain('types: [labeled, unlabeled, closed]');
 		expect(workflow).toContain('issues: write');
-		expect(workflow).toContain('--paginate --slurp');
+		expect(workflow).toContain('continue-on-error: true');
 		expect(workflow).toContain('linked-fixes.mjs');
+		expect(workflow).toContain('--issue');
+		expect(workflow).not.toContain('--paginate');
+		expect(workflow).toMatch(/name: Refuse and restore[^]*?\n\s+if: always\(\)/);
 		expect(workflow).toContain('--event-file "$GITHUB_EVENT_PATH"');
 		expect(workflow).toContain('issue-response.mjs');
 	});

@@ -1,27 +1,51 @@
 #!/usr/bin/env node
 /**
- * What actually fixed a closed issue, from its timeline.
+ * What actually closed the issue, from GitHub's closure event.
  *
- * A `cross-referenced` event only means "mentioned": that is not a fix. This
- * helper keeps a pull request only when it is merged, keeps a closing commit
- * SHA, and records an explicit unreadable result when the readback fails.
+ * A `cross-referenced` mention is not a fix, and a historical fix does not
+ * certify a later manual close. GitHub's `ClosedEvent.closer` is closure
+ * specific: a merged pull request or a commit for the closure being evaluated,
+ * or null for a manual close. This queries the issue's latest ClosedEvent and
+ * keeps only that closer. An open issue has no active closure, so evidence is
+ * empty rather than a past fix.
  *
- * The timeline is read by `gh api --paginate --slurp`, so every page is a valid
- * JSON element of one array. The output shape is:
+ * Output shape:
  *
- *   { pullRequests: [{number, mergedAt}], commits: [sha] }
+ *   { pullRequests: [{number, mergedAt}], commits: [oid], closedAt }
  *   { unreadable: true }                              // a read failed
  *
  * Usage:
- *   node tools/harness/linked-fixes.mjs --timeline timeline.json \
+ *   node tools/harness/linked-fixes.mjs --issue 7 \
  *     --repo Biskiq/spatial-sketch-editor --out linked-fixes.json
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+const QUERY = `
+query ($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      state
+      timelineItems(last: 50, itemTypes: [CLOSED_EVENT]) {
+        nodes {
+          ... on ClosedEvent {
+            createdAt
+            closer {
+              __typename
+              ... on PullRequest { number mergedAt }
+              ... on Commit { oid }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+`;
+
 function parseArgs(argv) {
-	const options = { timeline: null, repo: null, out: null, gh: 'gh' };
+	const options = { issue: null, repo: null, out: null, gh: 'gh' };
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		const next = () => {
@@ -29,21 +53,16 @@ function parseArgs(argv) {
 			if (index >= argv.length) throw new Error(`${arg} needs a value`);
 			return argv[index];
 		};
-		if (arg === '--timeline') options.timeline = next();
+		if (arg === '--issue') options.issue = Number(next());
 		else if (arg === '--repo') options.repo = next();
 		else if (arg === '--out') options.out = next();
 		else if (arg === '--gh') options.gh = next();
 		else throw new Error(`unknown argument: ${arg}`);
 	}
-	if (!options.timeline || !options.repo || !options.out) {
-		throw new Error('--timeline, --repo and --out are required');
+	if (!Number.isInteger(options.issue) || !options.repo || !options.out) {
+		throw new Error('--issue, --repo and --out are required');
 	}
 	return options;
-}
-
-/** @param {string} gh @param {string[]} args */
-function ghJson(gh, args) {
-	return JSON.parse(execFileSync(gh, args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }));
 }
 
 function main() {
@@ -52,24 +71,45 @@ function main() {
 	mkdirSync(dirname(out), { recursive: true });
 	let result;
 	try {
-		const pages = JSON.parse(readFileSync(options.timeline, 'utf8'));
-		const events = (Array.isArray(pages) ? pages : [pages]).flat();
-		const mentioned = new Set();
-		const commits = new Set();
-		for (const event of events) {
-			if (event?.event === 'cross-referenced' && event.source?.issue?.pull_request) {
-				mentioned.add(event.source.issue.number);
-			}
-			if (event?.event === 'closed' && typeof event.commit_id === 'string') {
-				commits.add(event.commit_id);
-			}
+		const [owner, name] = options.repo.split('/');
+		const raw = execFileSync(
+			options.gh,
+			[
+				'api',
+				'graphql',
+				'-f',
+				`query=${QUERY}`,
+				'-F',
+				`owner=${owner}`,
+				'-F',
+				`name=${name}`,
+				'-F',
+				`number=${options.issue}`
+			],
+			{ encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
+		);
+		const issue = JSON.parse(raw)?.data?.repository?.issue;
+		if (!issue || !Array.isArray(issue.timelineItems?.nodes)) {
+			throw new Error('closure read returned no issue timeline');
 		}
-		const pullRequests = [];
-		for (const number of mentioned) {
-			const pull = ghJson(options.gh, ['api', `repos/${options.repo}/pulls/${number}`]);
-			if (pull.merged_at) pullRequests.push({ number, mergedAt: pull.merged_at });
+		if (issue.state !== 'CLOSED') {
+			result = { pullRequests: [], commits: [], closedAt: null };
+		} else {
+			const closures = issue.timelineItems.nodes
+				.filter((node) => node && typeof node.createdAt === 'string')
+				.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+			const latest = closures[0] ?? null;
+			const closer = latest?.closer ?? null;
+			const pullRequests = [];
+			const commits = [];
+			if (closer?.__typename === 'PullRequest' && closer.mergedAt) {
+				pullRequests.push({ number: closer.number, mergedAt: closer.mergedAt });
+			}
+			if (closer?.__typename === 'Commit' && typeof closer.oid === 'string') {
+				commits.push(closer.oid);
+			}
+			result = { pullRequests, commits, closedAt: latest?.createdAt ?? null };
 		}
-		result = { pullRequests, commits: [...commits] };
 	} catch (error) {
 		result = { unreadable: true, reason: error.message.split('\n')[0] };
 	}

@@ -211,7 +211,9 @@ export function checksAt(repoRoot, ref) {
 			'--',
 			':(glob)**/*.test.ts',
 			':(glob)**/*.test.mjs',
-			':(glob)**/*.test.js'
+			':(glob)**/*.test.js',
+			':(glob)**/*.spec.ts',
+			':(glob)**/*.spec.js'
 		],
 		{ cwd: repoRoot, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
 	);

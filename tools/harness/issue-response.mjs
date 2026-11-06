@@ -4,24 +4,29 @@
  *
  * A failing read-only workflow does not undo an unauthorized label removal or
  * closure, and `npm run status` would read the changed state and clear health.
- * On a violation this restores the blocking truth with the minimum change:
+ * This evaluates the live issue before touching it, so an owner approval or a
+ * real fixing closure that arrived while the job was queued is respected:
  *
- *   - re-add the removed `blocks-core`/`bug` label;
- *   - reopen a `blocks-core` issue closed without a fixing change;
+ *   - read current issue state;
+ *   - evaluate it against the closure's actual fix evidence;
+ *   - if no violation remains, report it superseded and write nothing;
+ *   - otherwise revalidate immediately before writing, then restore the
+ *     removed `blocks-core`/`bug` label or reopen an unauthorized close;
+ *   - read back and only claim `restored` when the blocking state is confirmed.
  *
- * then reads the issue back and only reports success when the state actually
- * shows the blocking label / open state. Exit codes: 0 no violation, 1 restored
- * (owner approval or a real fix still required), 2 restoration/readback failed.
+ * Exit codes: 0 no violation or superseded, 1 restored (owner approval or a real
+ * fix still required), 2 event/read/write/readback failure — never a claim of
+ * restoration without a confirmed readback.
  *
  * Usage:
  *   node tools/harness/issue-response.mjs --event-file event.json \
- *     --linked-fixes linked-fixes.json --out result.json [--rsvp 7] [--gh gh]
+ *     --linked-fixes linked-fixes.json --out result.json [--gh gh]
  */
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-import { evaluateIssueEvent } from './issue-rules.mjs';
+import { OWNER_LABEL, evaluateIssueEvent, hasFixEvidence, issueLabels } from './issue-rules.mjs';
 
 function parseArgs(argv) {
 	const options = {
@@ -64,66 +69,118 @@ function ghJson(gh, args) {
 	return JSON.parse(execFileSync(gh, args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }));
 }
 
-function labelsOf(issue) {
-	return Array.isArray(issue?.labels)
-		? issue.labels.map((label) => (typeof label === 'string' ? label : label?.name))
-		: [];
+function supersededReason(event, issue, linkedFixes) {
+	const labels = issueLabels(issue);
+	if (labels.includes(OWNER_LABEL)) return 'owner-approved';
+	if (event.action === 'closed' && issue.state !== 'closed') return 'not-closed';
+	if (event.action === 'unlabeled' && labels.includes(event.label?.name)) return 'already-restored';
+	if (event.action === 'closed' && hasFixEvidence(linkedFixes) > 0) return 'fixing-closure';
+	return 'superseded';
 }
 
 function main() {
 	const options = parseArgs(process.argv.slice(2));
-	const event = readJson(options.eventFile);
-	const linkedFixes = readJson(options.linkedFixes);
-	const issuesPath = `repos/${options.repo}/issues/${event.issue.number}`;
-	const violations = evaluateIssueEvent({ event, linkedFixes });
-
-	const result = { action: event.action, issue: event.issue.number, violations, restored: null };
-	let exitCode = 0;
-	if (violations.length > 0) {
-		exitCode = 1;
-		try {
-			const restoreLabels = [];
-			if (event.action === 'unlabeled') {
-				restoreLabels.push(event.label?.name === 'bug' ? 'bug' : 'blocks-core');
-			}
-			for (const label of restoreLabels) {
-				ghJson(options.gh, ['api', `${issuesPath}/labels`, '-f', `labels[]=${label}`]);
-			}
-			if (event.action === 'closed') {
-				ghJson(options.gh, ['api', issuesPath, '-X', 'PATCH', '-f', 'state=open']);
-			}
-
-			const current = ghJson(options.gh, ['api', issuesPath]);
-			const labels = labelsOf(current);
-			const needsBlocking = event.action !== 'labeled';
-			if (needsBlocking && !labels.includes('blocks-core')) {
-				ghJson(options.gh, ['api', `${issuesPath}/labels`, '-f', 'labels[]=blocks-core']);
-			}
-			const confirmed = ghJson(options.gh, ['api', issuesPath]);
-			const confirmedLabels = labelsOf(confirmed);
-			result.state = { state: confirmed.state, labels: confirmedLabels };
-			result.restored =
-				confirmedLabels.includes('blocks-core') &&
-				(event.action !== 'closed' || confirmed.state === 'open');
-			if (!result.restored) exitCode = 2;
-		} catch (error) {
-			result.restored = false;
-			result.error = error.message.split('\n')[0];
-			exitCode = 2;
-		}
-	}
-
 	const out = resolve(options.out);
 	mkdirSync(dirname(out), { recursive: true });
-	writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);
-	for (const violation of violations) console.error(`guard: ${violation.reason}`);
-	if (result.restored) {
-		console.error(
-			'guard: blocking state restored; owner approval or a linked fixing change is still required'
-		);
+	const event = readJson(options.eventFile);
+	const linkedFixes = readJson(options.linkedFixes);
+	const result = {
+		action: event?.action ?? null,
+		issue: event?.issue?.number ?? null,
+		violations: [],
+		superseded: null,
+		restored: null,
+		fixEvidence: linkedFixes?.unreadable === true ? 'unreadable' : 'readable'
+	};
+	const finish = (exitCode) => {
+		writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);
+		for (const violation of result.violations) console.error(`guard: ${violation.reason}`);
+		if (result.superseded) console.error(`guard: event superseded (${result.superseded})`);
+		if (result.restored) {
+			console.error(
+				'guard: blocking state restored; owner approval or a linked fixing change is still required'
+			);
+		}
+		if (result.error) console.error(`guard: ${result.error}`);
+		process.exitCode = exitCode;
+	};
+
+	if (!event || event.unreadable || !event.issue?.number) {
+		result.error = 'issue event could not be read';
+		finish(2);
+		return;
 	}
-	if (result.error) console.error(`guard: restoration failed: ${result.error}`);
-	process.exitCode = exitCode;
+	if (event.action !== 'unlabeled' && event.action !== 'closed') {
+		result.superseded = 'not-a-guard-event';
+		finish(0);
+		return;
+	}
+
+	const issuesPath = `repos/${options.repo}/issues/${event.issue.number}`;
+	const readIssue = () => ghJson(options.gh, ['api', issuesPath]);
+
+	let current;
+	try {
+		current = readIssue();
+	} catch (error) {
+		result.error = `could not read current issue state: ${error.message.split('\n')[0]}`;
+		finish(2);
+		return;
+	}
+	result.violations = evaluateIssueEvent({ event: { ...event, issue: current }, linkedFixes });
+	if (result.violations.length === 0) {
+		result.superseded = supersededReason(event, current, linkedFixes);
+		finish(0);
+		return;
+	}
+
+	// Revalidate immediately before writing: the queue delay may have delivered
+	// an owner approval or a real fixing closure.
+	try {
+		current = readIssue();
+	} catch (error) {
+		result.error = `could not revalidate before writing: ${error.message.split('\n')[0]}`;
+		finish(2);
+		return;
+	}
+	result.violations = evaluateIssueEvent({ event: { ...event, issue: current }, linkedFixes });
+	if (result.violations.length === 0) {
+		result.superseded = supersededReason(event, current, linkedFixes);
+		finish(0);
+		return;
+	}
+
+	try {
+		if (event.action === 'unlabeled') {
+			const removed = event.label?.name;
+			if (removed && !issueLabels(current).includes(removed)) {
+				ghJson(options.gh, ['api', `${issuesPath}/labels`, '-f', `labels[]=${removed}`]);
+			}
+		}
+		if (event.action === 'closed') {
+			ghJson(options.gh, ['api', issuesPath, '-X', 'PATCH', '-f', 'state=open']);
+		}
+		const afterWrite = readIssue();
+		if (!issueLabels(afterWrite).includes('blocks-core')) {
+			ghJson(options.gh, ['api', `${issuesPath}/labels`, '-f', 'labels[]=blocks-core']);
+		}
+		const confirmed = readIssue();
+		result.state = { state: confirmed.state, labels: issueLabels(confirmed) };
+		result.restored =
+			issueLabels(confirmed).includes('blocks-core') &&
+			(event.action !== 'closed' || confirmed.state === 'open');
+		if (!result.restored) {
+			result.error = 'readback did not confirm the blocking state';
+			finish(2);
+			return;
+		}
+		finish(1);
+	} catch (error) {
+		result.restored = false;
+		const detail = String(error.stderr || error.message).trim().split('\n')[0];
+		result.error = detail;
+		finish(2);
+	}
 }
 
 main();
