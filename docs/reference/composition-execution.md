@@ -1016,7 +1016,10 @@ when two or more Guides exist (R33/R36). The Index Guide row renames in place an
 shows its strip. Slice 7 closes View → Stop: every creation command carries `entryViewId`, each
 View row offers ＋ Stop, a View dragged from the rail onto the strip becomes a Stop entering it,
 and the first Stop creates the Guide *Tour* with no naming prompt; further Index Guides are
-*Tour 2*, *Tour 3*. It does **not yet** implement the later slices: `label: string | null` with
-the Scene unlink (8), and visitor progress (9). Each lands with a
+*Tour 2*, *Tour 3*. Slice 8 makes a Presentation follow its Scene object: `label: null` is admitted
+only with a Scene-entity subject, lowering writes the effective name into the program, the About
+section links, follows and unlinks, and Scene `delete-one` unlinks every Presentation about a
+removed object in the same accepted change. It does **not yet** implement visitor progress (9),
+which lands with a
 [fix.md slice](../roadmap/r217-core-editor-stability/experience-review/fix.md#4-implementation-slices),
 and each slice updates this paragraph in the same commit.

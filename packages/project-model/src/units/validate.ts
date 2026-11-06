@@ -571,7 +571,7 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 		const value = reader.object(entry, entryPath, PRESENTATION_KEYS);
 		if (value === null) return null;
 		const presentationId = reader.opaqueId(value.id, `${entryPath}.id`);
-		const presentationLabel = reader.string(value.label, `${entryPath}.label`);
+		const presentationLabel = value.label === null ? null : reader.string(value.label, `${entryPath}.label`);
 		const views = readPresentationViews(reader, value.views, `${entryPath}.views`);
 		const text = value.text === null ? null : readExperienceText(reader, value.text, `${entryPath}.text`);
 		const explorable = reader.boolean(value.explorable, `${entryPath}.explorable`);
@@ -610,9 +610,18 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 			}
 			subject = read.value;
 		}
+		// A following name is only meaningful with a linked Scene entity (G24).
+		if (
+			presentationLabel === null &&
+			value.label === null &&
+			(subject === null || subject.domain !== 'scene' || subject.subject.kind !== 'entity')
+		) {
+			reader.problem(`${entryPath}.label`, 'label-follows-subject', 'A Presentation follows its object\'s name only when it names a Scene entity; every other Presentation needs its own name.');
+			return null;
+		}
 		if (
 			presentationId === null ||
-			presentationLabel === null ||
+			(value.label !== null && presentationLabel === null) ||
 			views === null ||
 			explorable === null ||
 			(value.text !== null && text === null)

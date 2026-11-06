@@ -359,6 +359,33 @@ export function planPresentationViewRemoval(
 }
 
 
+/**
+ * A-3 — a removed Scene object unlinks every Presentation about it. The
+ * Presentation keeps its last effective name as its own name; its Views and
+ * Stops are untouched. The same accepted change installs this result.
+ */
+export function unlinkSceneSubject(
+	experience: Experience,
+	entityId: string,
+	effectiveName: string
+): Experience {
+	let changed = false;
+	const presentations = experience.presentations.map((presentation) => {
+		const subject = presentation.subject;
+		if (
+			subject === null ||
+			subject.domain !== 'scene' ||
+			subject.subject.kind !== 'entity' ||
+			subject.subject.id !== entityId
+		) {
+			return presentation;
+		}
+		changed = true;
+		return { ...presentation, subject: null, label: effectiveName };
+	});
+	return changed ? { ...experience, presentations } : experience;
+}
+
 /** One unordered pair of distinct Views a remaining Travel joins. */
 export type ExperienceTravelPair = { readonly fromViewId: string; readonly toViewId: string };
 

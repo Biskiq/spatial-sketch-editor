@@ -42,7 +42,13 @@ import type {
 	ProgramStateDeclaration,
 	ProgramStop
 } from '../../program/types';
-import { presentationDefaultViewId, stopEntryViewId, type Experience, type ProjectEnvelope } from '../types';
+import {
+	presentationDefaultViewId,
+	presentationDisplayName,
+	stopEntryViewId,
+	type Experience,
+	type ProjectEnvelope
+} from '../types';
 
 /** The family the selected Experience's run owns while it is executing. */
 const CAMERA_CHANNEL_FAMILY = CAMERA_SESSION_INSPECTION_FAMILY_ID;
@@ -324,9 +330,14 @@ export function lowerExperienceProgram(
 			}
 			if (resolved) viewIds.push(view.viewId);
 		}
+		const subjectName = presentation.subject !== null &&
+			presentation.subject.domain === 'scene' &&
+			presentation.subject.subject.kind === 'entity'
+			? envelope.units.scene.data.entities.find((entity) => entity.id === presentation.subject!.subject.id)?.name ?? null
+			: null;
 		presentations.push({
 			id: presentation.id,
-			label: presentation.label,
+			label: presentationDisplayName(presentation, subjectName),
 			viewIds,
 			steps,
 			explorable: presentation.explorable,

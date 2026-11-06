@@ -576,7 +576,7 @@ describe('Capture (D1, D2)', () => {
 		expect(controller.subject).toBeNull();
 	});
 
-	it('Present this binds the named Scene entity with the given label and no Stop, then selects it', async () => {
+	it('Present this binds the named Scene entity with no copied label and no Stop, then selects it', async () => {
 		const { controller, submitted, envelope } = await mounted({ evaluation: perspectiveReading().evaluation });
 
 		expect(await controller.presentThis('entity-1', 'Grand piano')).toBe(true);
@@ -598,7 +598,7 @@ describe('Capture (D1, D2)', () => {
 					target: [0, 1.4, 0],
 					fov: capturedFovDegrees(perspectiveReading().projection)!
 				}),
-				presentationLabel: 'Grand piano',
+				presentationLabel: null,
 				subjectEntityId: 'entity-1',
 				text: null,
 				guideId: null,

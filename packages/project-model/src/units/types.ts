@@ -236,12 +236,24 @@ export type ExperiencePresentationView = {
  */
 export type ExperiencePresentation = {
 	id: string;
-	label: string;
+	/** The own name. `null` follows the linked Scene entity's live name (G24). */
+	label: string | null;
 	views: readonly ExperiencePresentationView[];
 	subject: SemanticReference | null;
 	text: ExperiencePresentationText | null;
 	explorable: boolean;
 };
+
+/**
+ * The name a Presentation shows: its own name when it has one, otherwise the
+ * linked subject's live name (G24). A Presentation with neither has no name.
+ */
+export function presentationDisplayName(
+	presentation: Pick<ExperiencePresentation, 'label'>,
+	subjectName: string | null
+): string {
+	return presentation.label ?? subjectName ?? 'Untitled Presentation';
+}
 
 /** The Default View of a Presentation: its first View, or `null` when it has none. */
 export function presentationDefaultViewId(presentation: Pick<ExperiencePresentation, 'views'>): string | null {

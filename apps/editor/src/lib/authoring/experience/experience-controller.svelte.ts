@@ -28,6 +28,7 @@ import { stageEnvelope } from '../stage/unit-stage-source';
 import {
 	EXPERIENCE_STAY_MIN_SECONDS,
 	lowerExperienceProgram,
+	presentationDisplayName as displayPresentationName,
 	planGuideRemoval,
 	planPresentationRemoval,
 	planPresentationViewRemoval,
@@ -85,6 +86,7 @@ import {
 	guideUpdateIntent,
 	presentationUpdateIntent,
 	removeIntent,
+	sceneEntitySubject,
 	stopCreateIntent,
 	stopUpdateIntent,
 	viewRemoveIntent,
@@ -179,6 +181,18 @@ export type ExperienceController = {
 	/** The Presentation filter the lens's search field writes. */
 	query: string;
 	presentationLabel(presentationId: string): string;
+	/** The Presentation's own name, or the linked Scene entity's live name. */
+	presentationDisplayName(presentationId: string): string;
+	/** The linked Scene entity's live name, or null when unlinked. */
+	presentationSubjectName(presentationId: string): string | null;
+	/** Scene entities the About picker can link this Presentation to. */
+	readonly linkCandidates: readonly { readonly id: string; readonly label: string }[];
+	/** Link to a Scene entity and follow its live name. */
+	linkPresentation(presentationId: string, entityId: string): Promise<boolean>;
+	/** Store the current effective name as the own name and unlink. */
+	unlinkPresentation(presentationId: string): Promise<boolean>;
+	/** Resume following a linked Scene entity's live name. */
+	followPresentation(presentationId: string): Promise<boolean>;
 	/** Select the one Card subject (or clear it). Nothing here touches the Stage selection. */
 	select(subject: ExperienceSubject | null): void;
 	/** Focus an Experience the lens's selector names. */
@@ -474,7 +488,7 @@ export function createExperienceController(
 		if (needle === '') return current.presentations;
 		return current.presentations.filter(
 			(entry) =>
-				entry.label.toLowerCase().includes(needle) ||
+				presentationDisplayName(entry.id).toLowerCase().includes(needle) ||
 				(viewsOf.get(entry.id) ?? []).some((view) => view.label.toLowerCase().includes(needle))
 		);
 	});
@@ -617,7 +631,9 @@ export function createExperienceController(
 				ids: { operation: newId(), view: newId(), presentation: presentationId },
 				experienceId: experience.id,
 				view,
-				presentationLabel: presentationLabelText ?? `Presentation ${experience.presentations + 1}`,
+				presentationLabel:
+					presentationLabelText ??
+					(subjectEntityId === null ? `Presentation ${experience.presentations + 1}` : null),
 				subjectEntityId,
 				text: null,
 				guideId: null,
@@ -682,12 +698,13 @@ export function createExperienceController(
 
 	async function presentThisFramed(
 		entityId: string,
-		label: string,
+		_label: string,
 		pose: { readonly eye: readonly [number, number, number]; readonly target: readonly [number, number, number]; readonly fov: number }
 	): Promise<boolean> {
+		// G24: the Presentation follows the object's live name; the copied label is gone.
 		return captureNewPresentation(
 			entityId,
-			label,
+			null,
 			capturedViewPose({ label: viewLabel(), eye: pose.eye, target: pose.target, fov: pose.fov })
 		);
 	}
@@ -753,7 +770,7 @@ export function createExperienceController(
 		if (view === undefined) return { kind: 'refused', message: 'That View is not in this project' };
 		const shared = alsoIn(viewId, presentationId);
 		if (shared.length > 0 && options.confirmShared !== true) {
-			return { kind: 'needs-confirmation', alsoIn: shared.map((presentation) => presentation.label) };
+			return { kind: 'needs-confirmation', alsoIn: shared.map((presentation) => presentationDisplayName(presentation.id)) };
 		}
 		const accepted = await run(
 			() =>
@@ -805,8 +822,8 @@ export function createExperienceController(
 		);
 	}
 
-	async function presentThis(entityId: string, label: string): Promise<boolean> {
-		return captureNewPresentation(entityId, label);
+	async function presentThis(entityId: string, _label?: string): Promise<boolean> {
+		return captureNewPresentation(entityId, null);
 	}
 
 	async function addStop(
@@ -1121,7 +1138,7 @@ export function createExperienceController(
 		if (current === null) return Promise.resolve({ kind: 'refused', message: 'There is no Experience to rename a Presentation in.' });
 		const experience = current;
 		const presentation = experience.presentations.find((entry) => entry.id === presentationId) ?? null;
-		return rename(label, presentation?.label ?? null, (trimmed) =>
+		return rename(label, presentation === null ? null : presentationDisplayName(presentationId), (trimmed) =>
 			presentationUpdateIntent({
 				envelope: snapshot,
 				revision: revision(),
@@ -1492,7 +1509,7 @@ export function createExperienceController(
 				const presentation = after.presentations.find((entry) => entry.id === target.presentationId);
 				return presentation === undefined
 					? ''
-					: `${presentation.label} has ${presentation.views.length} ${presentation.views.length === 1 ? 'View' : 'Views'}.`;
+					: `${presentationDisplayName(presentation.id)} has ${presentation.views.length} ${presentation.views.length === 1 ? 'View' : 'Views'}.`;
 			}
 		}
 	}
@@ -1721,8 +1738,80 @@ export function createExperienceController(
 		);
 	}
 
+	function presentationSubjectName(presentationId: string): string | null {
+		const reference = current?.presentations.find((entry) => entry.id === presentationId)?.subject ?? null;
+		if (reference === null || reference.domain !== 'scene' || reference.subject.kind !== 'entity') return null;
+		return snapshot.units.scene.data.entities.find((entity) => entity.id === reference.subject.id)?.name ?? null;
+	}
+
+	function presentationDisplayName(presentationId: string): string {
+		const presentation = current?.presentations.find((entry) => entry.id === presentationId) ?? null;
+		if (presentation === null) return presentationId;
+		return displayPresentationName(presentation, presentationSubjectName(presentationId));
+	}
+
 	function presentationLabel(presentationId: string): string {
-		return current?.presentations.find((entry) => entry.id === presentationId)?.label ?? presentationId;
+		return presentationDisplayName(presentationId);
+	}
+
+	const linkCandidates = $derived(
+		snapshot.units.scene.data.entities.map((entity) => ({ id: entity.id, label: entity.name }))
+	);
+
+	async function linkPresentation(presentationId: string, entityId: string): Promise<boolean> {
+		const experience = current;
+		if (experience === null) return false;
+		if (!snapshot.units.scene.data.entities.some((entity) => entity.id === entityId)) return false;
+		return run(
+			() =>
+				presentationUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					experienceId: experience.id,
+					presentationId,
+					subject: sceneEntitySubject(snapshot, entityId),
+					label: null
+				}),
+			() => `Linked to ${snapshot.units.scene.data.entities.find((entity) => entity.id === entityId)?.name ?? 'the object'}.`
+		);
+	}
+
+	async function unlinkPresentation(presentationId: string): Promise<boolean> {
+		const experience = current;
+		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
+		if (experience === null || presentation === undefined || presentation.subject === null) return false;
+		return run(
+			() =>
+				presentationUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					experienceId: experience.id,
+					presentationId,
+					subject: null,
+					label: presentationDisplayName(presentationId)
+				}),
+			() => 'Unlinked from its object.'
+		);
+	}
+
+	async function followPresentation(presentationId: string): Promise<boolean> {
+		const experience = current;
+		const presentation = experience?.presentations.find((entry) => entry.id === presentationId);
+		if (experience === null || presentation === undefined || presentation.subject === null || presentation.label === null) return false;
+		return run(
+			() =>
+				presentationUpdateIntent({
+					envelope: snapshot,
+					revision: revision(),
+					ids: { operation: newId() },
+					experienceId: experience.id,
+					presentationId,
+					label: null
+				}),
+			() => 'Following the object\'s name.'
+		);
 	}
 
 	function openGuide(guideId: string): void {
@@ -1798,6 +1887,14 @@ export function createExperienceController(
 			query = next;
 		},
 		presentationLabel,
+		presentationDisplayName,
+		presentationSubjectName,
+		get linkCandidates() {
+			return linkCandidates;
+		},
+		linkPresentation,
+		unlinkPresentation,
+		followPresentation,
 		get cameraViews() {
 			return snapshot.units.camera.data.views;
 		},

@@ -1065,7 +1065,7 @@
 					<div class="menu" role="menu" aria-label="Add a Presentation as a Stop" tabindex="-1" onkeydown={onMenuKeydown}>
 						{#each presentations as presentation (presentation.id)}
 							<button type="button" role="menuitem" class="menu-item" onclick={() => void chooseFromMenu(presentation.id)}>
-								<span class="menu-label">{presentation.label}</span>
+								<span class="menu-label">{controller.presentationLabel(presentation.id)}</span>
 								{#if inGuide(presentation.id)}<span class="menu-hint">again</span>{/if}
 							</button>
 						{/each}

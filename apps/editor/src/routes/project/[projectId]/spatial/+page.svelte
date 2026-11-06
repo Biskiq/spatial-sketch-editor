@@ -5037,7 +5037,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			})),
 			presentations: controller.filteredPresentations.map((entry) => ({
 				id: entry.id,
-				label: entry.label,
+				label: controller.presentationDisplayName(entry.id),
 				viewCount: entry.views.length,
 				explorable: entry.explorable,
 				stopNumbers: stopNumbers.get(entry.id) ?? [],
@@ -5214,7 +5214,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			const subjectLabel = reference === null ? null : referenceLabel(reference as StageSelectionEntry['reference']);
 			const model = presentationCardModel({
 				presentationId: presentation.id,
-				label: presentation.label,
+				label: controller.presentationDisplayName(presentation.id),
 				hasSubject: reference !== null && subjectLabel !== null,
 				viewCount: presentation.views.length,
 				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
@@ -5253,7 +5253,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				identity: model.identity,
 				facts: model.facts,
 				nameWriter: experienceNameWriter(
-					() => presentation.label,
+					() => controller.presentationDisplayName(presentation.id),
 					(name: string) => controller.renamePresentation(presentation.id, name)
 				),
 				menu: [

@@ -39,6 +39,17 @@
 		presentation === null ? [] : (controller?.viewsOf.get(presentation.id) ?? [])
 	);
 	const selectedViewId = $derived(controller?.selectedView?.id ?? null);
+	const subjectName = $derived(
+		presentation === null ? null : (controller?.presentationSubjectName(presentation.id) ?? null)
+	);
+	const linked = $derived(presentation?.subject !== null && presentation?.subject !== undefined);
+	let linkTarget = $state('');
+	$effect(() => {
+		void presentation?.id;
+		untrack(() => {
+			linkTarget = '';
+		});
+	});
 
 	/** Stops of this Presentation in Guide order. A shared View can appear elsewhere. */
 	const tourStops = $derived((controller?.guideStops ?? []).flatMap((stop, index) =>
@@ -101,6 +112,35 @@
 			{#if addReason !== ''}<span id="add-guide-reason" class="sr">{addReason}</span>{/if}
 		</div>
 
+		<section class="sec" aria-label="About">
+			<h3 class="sec-title">About</h3>
+			{#if linked}
+				<p class="about-name">{subjectName ?? 'A linked object'}</p>
+				<div class="about-actions">
+					{#if presentation.label === null}
+						<span class="follow-state">Following the object's name</span>
+					{:else}
+						<button type="button" class="quiet" disabled={controller.busy}
+							onclick={() => void controller.followPresentation(presentation.id)}>Use the object's name</button>
+					{/if}
+					<button type="button" class="quiet" disabled={controller.busy}
+						onclick={() => void controller.unlinkPresentation(presentation.id)}>Unlink</button>
+				</div>
+			{:else}
+				<p class="foot-note">Not linked. Link it to a Stage object to follow that object's name.</p>
+				<div class="about-actions">
+					<select aria-label="Stage object" bind:value={linkTarget} disabled={controller.busy}>
+						<option value="">Choose a Stage object</option>
+						{#each controller.linkCandidates as candidate (candidate.id)}
+							<option value={candidate.id}>{candidate.label}</option>
+						{/each}
+					</select>
+					<button type="button" class="quiet" disabled={controller.busy || linkTarget === ''}
+						onclick={() => { const target = linkTarget; if (target !== '') void controller.linkPresentation(presentation.id, target); }}>Link</button>
+				</div>
+			{/if}
+		</section>
+
 		<section class="sec" aria-label="Views">
 			<ExperienceViewRail
 				{controller}
@@ -155,6 +195,7 @@
 			<label class="field">
 				<span class="sec-title">Information text</span>
 				<textarea
+					class="text-input"
 					rows="2"
 					maxlength="4000"
 					bind:value={textDraft}
@@ -200,7 +241,34 @@
 		font-size: 10.5px;
 		line-height: 1.4;
 	}
-	.row-actions,
+	.about-name {
+		margin: 0;
+		font-weight: 600;
+	}
+	.about-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px;
+	}
+	.about-actions select {
+		min-width: 0;
+		flex: 1 1 140px;
+		min-height: 26px;
+	}
+	.follow-state {
+		color: var(--shell-ink-3, #79817b);
+		font-size: 11px;
+	}
+	.quiet {
+		border: 0;
+		background: none;
+		color: var(--shell-ink-2, #4c544e);
+		font: inherit;
+		text-decoration: underline;
+		cursor: pointer;
+		min-height: 26px;
+	}
 	.chips {
 		display: flex;
 		flex-wrap: wrap;
@@ -332,8 +400,11 @@
 	}
 	@media (pointer: coarse) {
 		button,
-		button.chip {
-			min-height: 36px;
+		.text-input {
+			min-height: 44px;
+		}
+		select {
+			min-height: 44px;
 		}
 	}
 </style>

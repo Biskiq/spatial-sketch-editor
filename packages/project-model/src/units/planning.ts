@@ -544,7 +544,11 @@ export function createCaptureBindPlanner(
 			if (payload === null) return refuse('invalid-payload', 'The capture payload is not a valid shape', reader.issues);
 			const view = readViewPose(reader, payload.view, '$.payload.view');
 			const presentationPayload = reader.object(payload.presentation, '$.payload.presentation', PRESENTATION_PAYLOAD_KEYS);
-			const presentationLabel = presentationPayload === null ? null : reader.string(presentationPayload.label, '$.payload.presentation.label');
+			const presentationLabel = presentationPayload === null
+				? undefined
+				: presentationPayload.label === null
+					? null
+					: reader.string(presentationPayload.label, '$.payload.presentation.label');
 			const text = presentationPayload === null || presentationPayload.text === null
 				? null
 				: readExperienceText(reader, presentationPayload.text, '$.payload.presentation.text');
@@ -569,7 +573,9 @@ export function createCaptureBindPlanner(
 			if (
 				view === null ||
 				presentationPayload === null ||
-				presentationLabel === null ||
+				presentationLabel === undefined ||
+				(subject.ok && presentationLabel === null &&
+					(subject.value === null || subject.value.domain !== 'scene' || subject.value.subject.kind !== 'entity')) ||
 				subject.ok === false ||
 				(presentationPayload.text !== null && text === null) ||
 				(requestedStop && stop === null) ||
@@ -1403,7 +1409,12 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 			const reader = new ShapeReader();
 			const payload = reader.object(request.intent.payload, '$.payload', PRESENTATION_UPDATE_KEYS);
 			if (payload === null) return refuse('invalid-payload', 'The Presentation payload is not a valid shape', reader.issues);
-			const label = payload.label === undefined ? undefined : reader.string(payload.label, '$.payload.label');
+			const labelPresent = payload.label !== undefined;
+			const label = payload.label === null
+				? null
+				: payload.label === undefined
+					? undefined
+					: reader.string(payload.label, '$.payload.label');
 			const textPresent = payload.text !== undefined;
 			const text = !textPresent || payload.text === null
 				? null
@@ -1426,7 +1437,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				explorable === null ||
 				(viewsPresent && views === null) ||
 				travelPaths === null ||
-				(label === null && payload.label !== undefined) ||
+				(labelPresent && payload.label !== null && label === null) ||
 				(textPresent && payload.text !== null && text === null) ||
 				(subject !== null && subject.ok === false) ||
 				(viewPresent && view === null)
@@ -1434,7 +1445,7 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				return refuse('invalid-payload', 'The Presentation payload is not a valid shape', reader.issues);
 			}
 			if (
-				payload.label === undefined &&
+				!labelPresent &&
 				!textPresent &&
 				!subjectPresent &&
 				!viewPresent &&
@@ -1481,9 +1492,13 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 				createdView = { id: viewId, label: view.label, eye: view.eye, target: view.target, fov: view.fov, connectedViewIds: [] };
 				nextViews = [...nextViews, nextViews.length === 0 ? { viewId } : { viewId, transition: 'cut' }];
 			}
+			const nextSubject = subject === null ? previous.subject : subject.value;
+			if (label === null && (nextSubject === null || nextSubject.domain !== 'scene' || nextSubject.subject.kind !== 'entity')) {
+				return refuse('invalid-payload', 'A Presentation follows its object\'s name only when it names a Scene entity; every other Presentation needs its own name.');
+			}
 			const updated: ExperiencePresentation = {
 				id: previous.id,
-				label: label ?? previous.label,
+				label: labelPresent ? (label ?? null) : previous.label,
 				views: nextViews,
 				subject: subject === null ? previous.subject : subject.value,
 				text: textPresent ? text : previous.text,

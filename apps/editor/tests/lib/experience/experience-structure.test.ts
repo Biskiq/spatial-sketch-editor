@@ -30,7 +30,9 @@ import {
 	computeEnvelopeSourceContentId,
 	createUnitAcceptanceProfile,
 	planStopRemoval,
+	presentationDisplayName,
 	serializeProjectEnvelope,
+	unlinkSceneSubject,
 	validateProjectEnvelope,
 	type Experience,
 	type ExperienceUnitPayload,
@@ -441,6 +443,40 @@ describe('experience-guide-remove (E4)', () => {
 		await s.coordinator.accept(removeIntent({ envelope: s.now(), revision: s.revision(), ids: { operation: 'op-g1' }, experienceId: 'experience-1', subject: 'guide', id: 'guide-1' }));
 		expect(s.experience().stops.map((stop) => stop.id)).toEqual(['stop-2']);
 		expect(s.experience().entryGuideId).toBe('guide-2');
+	});
+});
+
+describe('following a Scene subject (G24, A-3)', () => {
+	it('shows the object\'s live name when the Presentation has none of its own', () => {
+		expect(presentationDisplayName({ label: null }, 'Pleyel piano')).toBe('Pleyel piano');
+		expect(presentationDisplayName({ label: 'Grand piano' }, 'Pleyel piano')).toBe('Grand piano');
+		expect(presentationDisplayName({ label: null }, null)).toBe('Untitled Presentation');
+	});
+
+	it('unlinks with the last effective name and leaves Views and Stops intact', () => {
+		const reference = {
+			version: 1 as const,
+			domain: 'scene' as const,
+			revision: { kind: 'exact' as const, contentRevision: 'scene-revision' },
+			subject: { kind: 'entity', id: 'piano' },
+			instancePath: [],
+			location: { kind: 'project-root' as const },
+			componentId: null,
+			capabilityId: null
+		};
+		const experience: Experience = {
+			...EXPERIENCE.experiences[0]!,
+			presentations: [
+				{ ...EXPERIENCE.experiences[0]!.presentations[0]!, label: null, subject: reference },
+				{ ...EXPERIENCE.experiences[0]!.presentations[1]!, label: 'Other' }
+			]
+		};
+		const next = unlinkSceneSubject(experience, 'piano', 'Pleyel piano');
+		expect(next.presentations[0]).toMatchObject({ label: 'Pleyel piano', subject: null });
+		expect(next.presentations[0]!.views).toEqual(experience.presentations[0]!.views);
+		expect(next.stops).toBe(experience.stops);
+		expect(next.presentations[1]).toBe(experience.presentations[1]);
+		expect(unlinkSceneSubject(experience, 'absent', 'No object')).toBe(experience);
 	});
 });
 

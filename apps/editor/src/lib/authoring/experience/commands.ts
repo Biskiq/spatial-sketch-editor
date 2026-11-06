@@ -187,7 +187,7 @@ export function captureBindIntent(input: {
 	readonly ids: CommandIds;
 	readonly experienceId: string;
 	readonly view: CapturedViewPose;
-	readonly presentationLabel: string;
+	readonly presentationLabel: string | null;
 	readonly subjectEntityId: string | null;
 	readonly text: { kind: 'plain'; body: string } | null;
 	readonly guideId: string | null;
@@ -349,7 +349,10 @@ export function presentationUpdateIntent(input: {
 	readonly ids: CommandIds;
 	readonly experienceId: string;
 	readonly presentationId: string;
-	readonly label?: string;
+	/** `null` follows the linked Scene entity's live name. */
+	readonly label?: string | null;
+	/** Relink to a Scene entity, or unlink with `null` and an own label. */
+	readonly subject?: SemanticReference | null;
 	readonly explorable?: boolean;
 	readonly text?: { kind: 'plain'; body: string } | null;
 	readonly view?: CapturedViewPose;
@@ -369,6 +372,7 @@ export function presentationUpdateIntent(input: {
 		[experienceMemberReference(input.envelope, input.experienceId, 'presentation', input.presentationId)],
 		{
 			...(input.label === undefined ? {} : { label: input.label }),
+			...(input.subject === undefined ? {} : { subject: input.subject }),
 			...(input.explorable === undefined ? {} : { explorable: input.explorable }),
 			...(input.text === undefined ? {} : { text: input.text }),
 			...(input.view === undefined ? {} : { view: input.view }),

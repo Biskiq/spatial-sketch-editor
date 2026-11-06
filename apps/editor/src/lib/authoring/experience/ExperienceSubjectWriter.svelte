@@ -78,9 +78,9 @@
 								class="link-row"
 								onclick={() => homes.select({ kind: 'presentation', presentationId: presentation.id })}
 							>
-								<span class="lr-thumb"><ExperienceSnapshot label={presentation.label} /></span>
+								<span class="lr-thumb"><ExperienceSnapshot label={controller.presentationLabel(presentation.id)} /></span>
 								<span class="lr-text">
-									<span class="row-name">{presentation.label}</span>
+									<span class="row-name">{controller.presentationLabel(presentation.id)}</span>
 									<span class="row-meta">{plural(presentation.views.length, 'View')}</span>
 								</span>
 								<span class="lr-chev"><ShellIcon name="chevronRight" size={13} /></span>

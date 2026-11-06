@@ -83,6 +83,17 @@ function titleOf(envelope: ProjectEnvelope, experienceId: string): string {
 	return experience?.label ?? experienceId;
 }
 
+function effectiveName(
+	envelope: ProjectEnvelope,
+	presentation: ProjectEnvelope['units']['experience']['data']['experiences'][number]['presentations'][number]
+): string {
+	const subject = presentation.subject;
+	const subjectName = subject !== null && subject.domain === 'scene' && subject.subject.kind === 'entity'
+		? envelope.units.scene.data.entities.find((entity) => entity.id === subject.subject.id)?.name ?? null
+		: null;
+	return presentation.label ?? subjectName ?? 'Untitled Presentation';
+}
+
 function unavailableFrom(
 	lowered: Extract<ReturnType<typeof lowerExperienceProgram>, { kind: 'lowered' }>,
 	envelope: ProjectEnvelope,
@@ -94,7 +105,7 @@ function unavailableFrom(
 		const presentation = experience.presentations.find((candidate) => candidate.id === entry.presentationId);
 		return {
 			presentationId: entry.presentationId,
-			label: presentation?.label ?? entry.presentationId,
+			label: presentation === undefined ? entry.presentationId : effectiveName(envelope, presentation),
 			reason:
 				entry.reason === 'no-default-view'
 					? 'No Default View is set, so this Presentation cannot be entered.'
