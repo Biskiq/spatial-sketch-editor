@@ -1,12 +1,13 @@
 Museum Editor — independent Paper commission preparation
 Prepared 2026-10-02. INTERNAL: do not include this file in the designer handoff.
+Archived 2026-11-06 with the package; paths below were updated to the archive locations.
 
 HANDOFF
 Copy only designer-packet/: COMMISSION.md and references/ (six PNGs).
 The packet contains one Markdown file, with its brief, outputs, fixed/open sheet,
 visual-language sheet, visual captions and manifest consolidated at the owner's
 request. No designer was contacted and no Paper proposal was produced.
-This is a bounded successor-design commission workspace under prototypes/;
+This is a bounded successor-design commission workspace under docs/archive/prototypes/;
 it records no new acceptance, contract change or production cutover.
 
 SOURCE SNAPSHOT
@@ -15,13 +16,13 @@ Local finalized records were inspected; no production capability survey was used
 
 Exact source routing and provenance:
 - docs/README.md and prototypes/README.md: authority and retained-artifact routes.
-- prototypes/world-experience-shell-round/design/design-synthesis.md:
+- docs/archive/prototypes/world-experience-shell-round/design/design-synthesis.md:
   design thesis; shared Head/Index/Stage/Card/Instrument responsibilities;
   visual expression and QA raster-drift notes. Final World shell design accepted
   alongside finalized V2 Experience, 2026-10-01.
-- prototypes/world-experience-shell-round/QA-package/01-world-ordinary-piano.png
+- docs/archive/prototypes/world-experience-shell-round/QA-package/01-world-ordinary-piano.png
   -> designer-packet/references/01-world-at-rest.png (unaltered copy).
-- prototypes/world-experience-shell-round/QA-package/08-experience-foreign-world-piano.png
+- docs/archive/prototypes/world-experience-shell-round/QA-package/08-experience-foreign-world-piano.png
   -> designer-packet/references/02-same-project-other-lens.png (unaltered copy).
   This deliberately demonstrates cross-lens selection continuity, not ordinary
   Experience or a Paper tool proposal. Captions correct overly amber lens styling.

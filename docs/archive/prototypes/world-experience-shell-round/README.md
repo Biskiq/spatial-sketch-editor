@@ -1,37 +1,39 @@
-# World | Experience shell round — retained accepted design record
+# World | Experience shell round — archived accepted design record
 
 **Audience:** agents + humans.
-**Hub:** [`../README.md`](../README.md) (prototype family) · [`../../docs/README.md`](../../docs/README.md) (documentation router).
+**Archived:** 2026-11-06. Historical accepted design evidence; this is not a live
+prototype or current shell authority. PLATE remains the normative shell contract.
+**Hub:** [prototype hub](../../../../prototypes/README.md) · [documentation router](../../../README.md).
 
-**Round 2 reconciliation (2026-10-23):** [Production shell Round 2](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md) now supersedes any shell treatment below that conflicts with PLATE (Instrument-hosted Find, Look and Dimensions, permanent Deck/Card treatment). Discovery, procedure and return rationale remain evidence.
+**Round 2 reconciliation (2026-10-23):** [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) now supersedes any shell treatment below that conflicts with PLATE (Instrument-hosted Find, Look and Dimensions, permanent Deck/Card treatment). Discovery, procedure and return rationale remain evidence.
 
-**#114 reconciliation (2026-10-13):** [Conservatory](../experience-ux-alternative/README.md)
+**#114 reconciliation (2026-10-13):** [Conservatory](../../../../prototypes/experience-ux-alternative/README.md)
 is the accepted unified UX/shared visual shell, promoted into
-[PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md).
+[PLATE](../../../reference/design-system/editor-shell-and-visual-system.md).
 This earlier accepted World record retains valid discovery, procedure, repair
 and return rationale; conflicting permanent Card/Deck/color treatment is superseded.
 Paper retains 2D authoring depth and V2 retains A–F spatial behavior. The historical
 freeze and adoption account below is preserved as provenance.
 
-**Status:** **finalized / frozen World design, promoted into durable destination
+**Status:** **archived; finalized / frozen World design, promoted into durable destination
 shell design alongside V2 Experience** (PR #111, 2026-10-01). The independent design
 round is complete: its
-[final synthesis](./design/design-synthesis.md) and canonical
-[visual QA package](./QA-package/) are the durable outputs. The commissioning
+[final synthesis](design/design-synthesis.md) and canonical
+[visual QA package](QA-package) are the durable outputs. The commissioning
 briefs and the copied designer-input rasters are retired to Git history. The
-direction is accepted; the editor still runs the landed PLATE chrome until an explicit production cutover. The [World Authoring Prototype](../spatial-authoring/README.md) now adopts this design in place under #112; its [executable acceptance](../spatial-authoring/qa/ACCEPTANCE.md) is separate from this design freeze.
+direction is accepted; the editor still runs the landed PLATE chrome until an explicit production cutover. The [World Authoring Prototype](../../../../prototypes/spatial-authoring/README.md) now adopts this design in place under #112; its [executable acceptance](../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md) is separate from this design freeze.
 
 ## Canonical artifacts
 
-- [design/design-synthesis.md](./design/design-synthesis.md) — the canonical
+- [design/design-synthesis.md](design/design-synthesis.md) — the canonical
   accepted design artifact: shared-shell landmarks, ordinary vs invoked World,
   Look vs Details, Owner/Source/Reach, repair, lens crossing, Esc ladder, narrow
   desktop, accessibility, the accepted QA index and the final product laws.
-- [QA-package/](./QA-package/) — ten semantically named boards, one per
+- [QA-package/](QA-package) — ten semantically named boards, one per
   demonstrated contract. The synthesis links each board from its QA table;
   known image-generation drift is recorded there and is **not** normative — a
   raster never outranks the written contract.
-- [QA-package/ACCEPTANCE.md](./QA-package/ACCEPTANCE.md) — acceptance/closeout
+- [QA-package/ACCEPTANCE.md](QA-package/ACCEPTANCE.md) — acceptance/closeout
   record: outcome, verification evidence at the final head, deferred questions
   and the explicit next step.
 
@@ -41,20 +43,20 @@ direction is accepted; the editor still runs the landed PLATE chrome until an ex
   Experience into **PLATE §0.8–§0.8.3**, the normative destination shell authority.
   This package retains the final design record and specimens; the World executable adopts it under #112.
 - Preserves accepted **V2 Experience semantics**
-  ([final V2 synthesis](../../docs/archive/prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md))
+  ([final V2 synthesis](../integrated-experience-authoring/design/Prototype-V2-final-synthesis.md))
   and **P26 journeys A–F, capabilities and interaction laws**
-  ([World Authoring Prototype](../spatial-authoring/README.md)).
+  ([World Authoring Prototype](../../../../prototypes/spatial-authoring/README.md)).
 - Supersedes predecessor **P26 shell/chrome/tool exposure/disclosure** where the
   synthesis explicitly covers them. P26 remains the deep World behavioral oracle.
 - Does **not** supersede product/domain ownership contracts. The ratified
-  destination direction ([North Star](../../docs/reference/north-star.md),
-  [architecture](../../docs/reference/architecture.md),
-  [F composition/execution](../../docs/reference/composition-execution.md)) and
+  destination direction ([North Star](../../../reference/north-star.md),
+  [architecture](../../../reference/architecture.md),
+  [F composition/execution](../../../reference/composition-execution.md)) and
   the component contracts remain normative wherever they disagree.
 - Does **not** establish persistence, formats or implementation mechanisms. It is
   not persisted-format authority and not production implementation authority.
 - Does **not** itself authorize a production cutover. The durable shell contract
-  ([PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+  ([PLATE](../../../reference/design-system/editor-shell-and-visual-system.md)
   §0.8–§0.8.3) owns shared/World laws, the Experience expression and explicit
   parked-procedure return; production implementation
   remains gated by F and the re-derived track plans.
@@ -70,12 +72,12 @@ direction is accepted; the editor still runs the landed PLATE chrome until an ex
 - Accepted/frozen by [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111)
   on `world-workspace-redesign`.
 - Design inputs are not duplicated here. The four V2 boards remain in
-  [`../integrated-experience-authoring/Design-QAs/`](../../docs/archive/prototypes/integrated-experience-authoring/Design-QAs),
+  [`../integrated-experience-authoring/Design-QAs/`](../integrated-experience-authoring/Design-QAs),
   while the original six P26 input rasters are recoverable through the
-  [World acceptance preservation anchor](../spatial-authoring/qa/ACCEPTANCE.md#preservation).
+  [World acceptance preservation anchor](../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md#preservation).
   Unique material evidence remains under
-  [`../spatial-authoring/design/visual-system-refinement/qa`](../spatial-authoring/design/visual-system-refinement/qa);
-  [`../spatial-authoring/screens/`](../spatial-authoring/screens/) now contains current executable specimens.
+  [`../spatial-authoring/design/visual-system-refinement/qa`](../../../../prototypes/spatial-authoring/design/visual-system-refinement/qa);
+  [`../spatial-authoring/screens/`](../../../../prototypes/spatial-authoring/screens) now contains current executable specimens.
 
 ## Deferred to repository-aware reconciliation
 
@@ -99,9 +101,9 @@ Implementation-dependent questions this design round deliberately leaves open:
 
 ## Next step
 
-#112 World adoption is accepted: [current executable](../spatial-authoring/README.md),
-[QA acceptance](../spatial-authoring/qa/ACCEPTANCE.md) and
-[closed plan](../spatial-authoring/plans/world-authoring-prototype.md).
+#112 World adoption is accepted: [current executable](../../../../prototypes/spatial-authoring/README.md),
+[QA acceptance](../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md) and
+[closed plan](../../../../prototypes/spatial-authoring/plans/world-authoring-prototype.md).
 #113 is closed with functionality acceptance; V2 Experience and World ↔ Experience
 continuity stay regression evidence. The current baton is #114 accepted unified
 design → #115 parallel-track planning → foundation-gated production implementation.

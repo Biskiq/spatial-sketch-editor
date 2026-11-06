@@ -2,6 +2,9 @@
 
 Independent design commission · 2 October 2026
 
+**Archived 2026-11-06.** Historical commission packet and evidence; no designer was
+contacted and this packet is not a current brief.
+
 **Given this product, its accepted shell, visual language and interaction
 philosophy, what should a mature 2D spatial-authoring surface be?**
 
@@ -168,7 +171,7 @@ differences; scene content, labels, dimensions and exact handles are illustrativ
 
 ### 01 · Ordinary World
 
-![Accepted World shell at rest](./references/01-world-at-rest.png)
+![Accepted World shell at rest](references/01-world-at-rest.png)
 
 Head above, Index left, dominant Stage, selected-identity Card right. The same
 piano reads as selected across all three surfaces. No specialist task surface at
@@ -179,7 +182,7 @@ material/control character above.
 
 ### 02 · Another lens, the same project
 
-![Experience retaining the selected World subject](./references/02-same-project-other-lens.png)
+![Experience retaining the selected World subject](references/02-same-project-other-lens.png)
 
 The Index changes context while the shell, piano identity and standpoint remain
 recognizable. This is a continuity specimen, not ordinary Experience’s starting
@@ -189,14 +192,14 @@ The same amber-lens correction applies.
 
 ### 03 · Spatial mat
 
-![Prototype model on the dark spatial mat](./references/03-spatial-mat.png)
+![Prototype model on the dark spatial mat](references/03-spatial-mat.png)
 
 Dark ground, quiet grid, pale architectural mass and content within a place.
 Depth and physical character establish the spatial counterpart to Paper.
 
 ### 04 · Measured plan
 
-![Prototype plan without editing instruments](./references/04-paper-plan.png)
+![Prototype plan without editing instruments](references/04-paper-plan.png)
 
 The same prototype place from above: technical edges, quiet surfaces, spatial
 labels and scale reference. Read 03 → 04 as two working conditions of one place.
@@ -205,7 +208,7 @@ is context, not a finished Paper workspace; reference 06 supplies the grid detai
 
 ### 05 · Paper in space
 
-![Drafting sheet on a curved spatial subject](./references/05-paper-in-space.png)
+![Drafting sheet on a curved spatial subject](references/05-paper-in-space.png)
 
 Vellum and grid remain attached to a spatial subject. Ochre identifies the selected
 opening; slate dashed references mark view-only displacement. This intermediate
@@ -213,7 +216,7 @@ reading explains material continuity, not a required geometry operation.
 
 ### 06 · Paper, selection and local precision
 
-![Flat drafting detail with contour and local measures](./references/06-paper-selection-detail.png)
+![Flat drafting detail with contour and local measures](references/06-paper-selection-detail.png)
 
 Paper and grid survive selection. Contour, local handles and mechanical readouts
 make measured work legible without flooding the sheet. Translate this hierarchy

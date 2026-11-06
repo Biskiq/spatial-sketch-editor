@@ -1053,4 +1053,4 @@ posture's return (§5.5).
 [boards]: ../../../../../reference/design-system/editor-shell-and-visual-system.md#experience-qa-boards
 [c9-proof]: ../../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md
 [prototype]: ../../../../../../prototypes/spatial-authoring/README.md
-[paper]: ../../../../../../prototypes/paper-authoring-commission/plans/inactive-adoption-plan.md
+[paper]: ../../../paper-authoring-commission/plans/inactive-adoption-plan.md

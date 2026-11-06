@@ -367,8 +367,8 @@ source/identity/transaction behavior.
 The following artifacts retain rationale and visual evidence; their literal drawing
 techniques are optional within the semantic species and distinctions above:
 
-- [World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md)
-  and [QA package](../../../prototypes/world-experience-shell-round/QA-package/):
+- [World synthesis](../../archive/prototypes/world-experience-shell-round/design/design-synthesis.md)
+  and [QA package](../../archive/prototypes/world-experience-shell-round/QA-package):
   temporary readings, measured-axis honesty, selection/task distinction, one writer,
   local refusal, repair and narrow task continuity.
 - [Experience UX reconciliation](../../archive/prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)

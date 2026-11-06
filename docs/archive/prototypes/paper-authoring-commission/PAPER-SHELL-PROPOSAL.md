@@ -1,23 +1,26 @@
 # Paper authoring shell — destination proposal
 
-> **Superseded in part (2026-10-23).** [Production shell Round 2](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md) replaces this proposal's pointer rail and Select/Draw/Opening/Place/Measure/More families, the Dimensions Instrument, Find-lists-no-subjects, the Paper reading switch and the Sheet-as-configuration-home. Its Wall semantics, drafting words, precision ladder intent and rationale remain evidence. PLATE wins wherever this differs.
+> **Archived 2026-11-06.** Historical design evidence; this is not a live prototype or
+> active plan. Its proposal is superseded as described below; PLATE remains authoritative.
+
+> **Superseded in part (2026-10-23).** [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) replaces this proposal's pointer rail and Select/Draw/Opening/Place/Measure/More families, the Dimensions Instrument, Find-lists-no-subjects, the Paper reading switch and the Sheet-as-configuration-home. Its Wall semantics, drafting words, precision ladder intent and rationale remain evidence. PLATE wins wherever this differs.
 
 > **Status: accepted by the owner 2026-10-03 and promoted.** The four refinement reviews (§21) are
 > accepted; every owner call takes its recommended option, with the Wall-semantics ruling of §9 and
 > §20 call 9 (§20). The durable destination contract is now
-> [PLATE §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination),
+> [PLATE §0.8.4](../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination),
 > which wins wherever this file differs. This file remains the rationale and design evidence. Nothing
 > here is built or shipped, it proposes no persisted format, and the landed editor keeps its current
-> shell until an explicit cutover. The [Paper adoption plan](./plans/inactive-adoption-plan.md)
+> shell until an explicit cutover. The [Paper adoption plan](plans/inactive-adoption-plan.md)
 > is inactive historical evidence; PA0–PA12 is unimplemented and is not #115 work.
 > #114 reconciles only conflicting shell/exposure: Conservatory supplies overlay
 > Card, Index and shared visual/instrument treatment; Paper retains authoring depth.
 > The original proposal below remains as accepted in 2026-10-03, not rewritten as
 > though those later shell choices were always present.
 >
-> **Builds on** the accepted [World Authoring Prototype](../spatial-authoring/README.md) (#112),
+> **Builds on** the accepted [World Authoring Prototype](../../../../prototypes/spatial-authoring/README.md) (#112),
 > inside the accepted World | Experience shell
-> ([PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md) §0.8).
+> ([PLATE](../../../reference/design-system/editor-shell-and-visual-system.md) §0.8).
 > **Covers** the World lens's Paper reading (plan Paper and a wall laid flat) and every shell
 > region around it. The Experience Deck and #113 are out of scope.
 
@@ -74,18 +77,18 @@ refinement reviews in §21.
 
 ## 2. Authority, evidence and limits
 
-**Normative inputs.** The [ratified decision record](../../docs/reference/decisions/northstar-ratification-2026-09-27.md)
-and the [World | Experience amendment](../../docs/reference/decisions/world-experience-reconciliation-2026-09-29.md);
+**Normative inputs.** The [ratified decision record](../../../reference/decisions/northstar-ratification-2026-09-27.md)
+and the [World | Experience amendment](../../../reference/decisions/world-experience-reconciliation-2026-09-29.md);
 PLATE §0.7–§0.8.2 (shared and World laws, parking), §2.12 (one writable owner per fact), §4.4
 (working surfaces and grid), §18.3 (state language) and §19 (precision near the gesture);
-[architecture](../../docs/reference/architecture.md) (separate Layout, Scene, Camera and Experience
+[architecture](../../../reference/architecture.md) (separate Layout, Scene, Camera and Experience
 authorities, Rooms derived from architecture, one Camera authority); the
-[persistence](../../docs/reference/components/persistence.md) history contract; and
-[F](../../docs/reference/composition-execution.md) compound acceptance (F.4).
+[persistence](../../../reference/components/persistence.md) history contract; and
+[F](../../../reference/composition-execution.md) compound acceptance (F.4).
 
 **Behavioural evidence.** The World Authoring Prototype and journeys A–F
-([implementer reference](../spatial-authoring/IMPLEMENTER-REFERENCE.md),
-[acceptance](../spatial-authoring/qa/ACCEPTANCE.md)); the
+([implementer reference](../../../../prototypes/spatial-authoring/IMPLEMENTER-REFERENCE.md),
+[acceptance](../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md)); the
 [World shell synthesis](../world-experience-shell-round/design/design-synthesis.md), including its
 Browse and Search contract (§4) and the accepted
 [dense search board](../world-experience-shell-round/QA-package/02-world-dense-search-recovery.png).
@@ -104,7 +107,7 @@ The wall-first model and planners it builds on are in
 
 **Peer and packet evidence.** Two PDF peer proposals and an untracked React proposal
 (*museum-editor-2d-authoring*) are audited in §18, not averaged. The
-[commission packet](./designer-packet/COMMISSION.md) contributes its Paper plan and selection-detail
+[commission packet](designer-packet/COMMISSION.md) contributes its Paper plan and selection-detail
 references where they agree with PLATE. Its task model is not adopted.
 
 **Not decided here.** Any schema: Space, Level, Zone, annotation, constraint or reference. The
@@ -616,7 +619,7 @@ Keymapping can live in Settings later. There is no Keys button.
 | ⌘\ | Hide side panels |
 
 The audit against the prototype's bindings and production's numeric-entry rules is settled in the
-[Paper adoption plan](./plans/inactive-adoption-plan.md)
+[Paper adoption plan](plans/inactive-adoption-plan.md)
 §Keymap. `/` keeps the prototype's subject search and ⌘K moves to Find; snap has no letter key,
 because S stays the prototype's square-up. The prototype's `o` (open), `m` (mirror) and `p`
 (precision) move: Dimensions becomes ↵, Unroll is reached from Look, and mirror becomes a control
@@ -1375,7 +1378,7 @@ This is the separation an implementation plan has to respect. It is not that pla
    walls for the Wall-role ruling to be executable.
 6. Rebind `o`, `m` and `p` as in §12, and move ⌘K from search to Find.
 
-The [Paper adoption plan](./plans/inactive-adoption-plan.md)
+The [Paper adoption plan](plans/inactive-adoption-plan.md)
 turns this list into ordered slices.
 
 **Prototype-only assumptions not to carry forward.** The fixed Plan framing, the last-pose restore,

@@ -264,7 +264,7 @@ or orbit control is fabricated merely to resemble the board.
 ## Companion and transition review
 
 All companion captures were inspected at full-window scale on the frozen executable.
-The [World ordinary specimen](../../world-experience-shell-round/QA-package/01-world-ordinary-piano.png)
+The [World ordinary specimen](../../../docs/archive/prototypes/world-experience-shell-round/QA-package/01-world-ordinary-piano.png)
 calibrates shared Head, locator, dominant Stage and quiet canonical Card; its richer Scene
 geometry and World task semantics do not redefine Experience. The fresh [World capture](../screens/experience-conformance/world-current.png) is reached by
 selecting North wall in the actual Index, preserving standpoint. Retained World shell/continuity

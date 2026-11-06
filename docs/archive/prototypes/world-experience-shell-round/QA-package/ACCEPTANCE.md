@@ -2,6 +2,7 @@
 
 **Accepted:** 2026-10-01 · [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111) ·
 branch `world-workspace-redesign`.
+**Archived:** 2026-11-06 · historical acceptance/closeout record; no live prototype.
 **Nature:** finalized/frozen World and V2 Experience shell requirements, owner-promoted
 into the durable destination shell contract. The syntheses/QA retain design records
 and specimens; production implementation and cutover remain separately gated.
@@ -30,7 +31,7 @@ and specimens; production implementation and cutover remain separately gated.
 ## Explicit next step
 
 Bounded successor PR #112: adopt the frozen unified shell into
-[`../../spatial-authoring/`](../../spatial-authoring/README.md), preserving P26
+[`../../spatial-authoring/`](../../../../../prototypes/spatial-authoring/README.md), preserving P26
 journeys A–F and behavioral laws, then run executable/visual QA. #112 is
 prototype adoption — not production T1 implementation and not an F substitute.
 
@@ -74,6 +75,8 @@ executable/visual prototype adoption acceptance belongs to #112.
 
 ## Pruned commission material (recovery)
 
+EVIDENCE-PATHS: start — source paths at commit 39edeb38, before this package moved to the archive
+
 The external designer brief and the internal sourceful commission record were
 removed from the live tree in commit `15f13ccc`; their last full bodies are at
 `39edeb388940408cf4c28f75e61af684c5bc0211`. Recovery:
@@ -90,10 +93,12 @@ from the PR ref instead:
 git fetch origin refs/pull/111/head && git show 39edeb38:<path>
 ```
 
+EVIDENCE-PATHS: end
+
 The removed `designer-visuals.local/` copies were duplicates of already-retained
-canonical inputs ([V2 boards](../../../docs/archive/prototypes/integrated-experience-authoring/Design-QAs),
+canonical inputs ([V2 boards](../../integrated-experience-authoring/Design-QAs),
 P26 references under `docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/`
-and [`spatial-authoring/screens/`](../../spatial-authoring/screens/)); they need no
+and [`spatial-authoring/screens/`](../../../../../prototypes/spatial-authoring/screens)); they need no
 separate anchor.
 
 ## Preservation summary

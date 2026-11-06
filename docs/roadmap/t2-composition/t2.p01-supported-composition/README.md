@@ -87,9 +87,9 @@ Prototype evidence has different roles:
 - [World prototype implementer reference](../../../../prototypes/spatial-authoring/IMPLEMENTER-REFERENCE.md)
   informs Stage continuity, legible handles and return/cancel behavior. Its Camera/projection and
   fixture Scene behavior do not supply a production viewport or placement authority.
-- [Accepted World design record](../../../../prototypes/world-experience-shell-round/README.md),
+- [Accepted World design record](../../../archive/prototypes/world-experience-shell-round/README.md),
   [Conservatory](../../../../prototypes/experience-ux-alternative/README.md) and
-  [Paper proposal](../../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md)
+  [Paper proposal](../../../archive/prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md)
   inform the ratified [shared shell](../../../reference/design-system/editor-shell-and-visual-system.md)
   and [spatial instrument grammar](../../../reference/design-system/spatial-instrument-grammar.md).
   Earlier permanent inspector/chrome treatment is superseded. Detailed 3D object tools remain a

@@ -6,16 +6,16 @@
 This is the canonical final synthesis **for this World | Experience shell design
 round** and the direction the next bounded prototype PR adopts. Its shell requirements,
 together with the finalized V2 Experience design, are promoted into
-[PLATE §0.8](../../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111),
+[PLATE §0.8](../../../../reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111),
 the normative durable home for new shell design. This synthesis preserves the final
 design record and specimens. It remains subject to the ratified product/domain
-invariants ([North Star](../../../docs/reference/north-star.md),
-[architecture](../../../docs/reference/architecture.md),
-[F composition/execution](../../../docs/reference/composition-execution.md) and the
+invariants ([North Star](../../../../reference/north-star.md),
+[architecture](../../../../reference/architecture.md),
+[F composition/execution](../../../../reference/composition-execution.md) and the
 component contracts), which govern wherever this document disagrees with them. It is
 **not** persisted-format authority, **not** production implementation authority, and
 **not** itself authorization to cut over production; the editor still runs the landed
-PLATE-era shell. The [QA boards](../QA-package/) are specimens, not contracts, and a raster never
+PLATE-era shell. The [QA boards](../QA-package) are specimens, not contracts, and a raster never
 outranks the written contract. Round routes: [workspace README](../README.md) ·
 [acceptance record](../QA-package/ACCEPTANCE.md).
 
@@ -681,7 +681,7 @@ retarget. A resumed Instrument and its reading activate together from the curren
 standpoint, without restoring a parked Camera pose. Put it back uses canonical
 navigation's current return context, not an obsolete standpoint from before the
 other lens's movement. The common rule, including Experience task parking, is
-[PLATE §0.8.2](../../../docs/reference/design-system/editor-shell-and-visual-system.md#082-parked-procedure-and-lens-return).
+[PLATE §0.8.2](../../../../reference/design-system/editor-shell-and-visual-system.md#082-parked-procedure-and-lens-return).
 
 **Does not happen**
 

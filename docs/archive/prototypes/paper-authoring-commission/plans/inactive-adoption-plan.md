@@ -1,10 +1,10 @@
 # World Paper authoring — prototype adoption plan
 
-> **INACTIVE / HISTORICAL PLAN (2026-10-13, #114).** PA0–PA12 was never
+> **ARCHIVED / INACTIVE / HISTORICAL PLAN (2026-10-13, #114; archived 2026-11-06).** PA0–PA12 was never
 > started and is no longer the #115 mandate. The accepted
-> [Paper depth contract](../../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+> [Paper depth contract](../../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
 > remains intact inside Conservatory's reconciled shared shell.
-> [#115](../../../docs/roadmap/README.md) replaces sequential P-level
+> [#115](../../../../roadmap/README.md) replaces sequential P-level
 > capability planning with T1/T2/T3/T4; it does not implement this prototype plan.
 > The original plan body below preserves research, technical seams and provenance;
 > its proposed sequence, “review-ready” and slice instructions are historical.
@@ -14,14 +14,14 @@ owner-decided sequence places this plan as **PR #115, after #113 and #114**: #11
 #113 Experience V2 + real World ↔ Experience continuity → #114 Experience UX implementation →
 #115 Paper PA0–PA12 → prototype detour closes → F exact-interface amendments → T1/T2/T3/T4
 (§11 item 7, §12; #114 inserted 2026-10-11). Requirements below are unchanged by that insertion.
-Contract: [PLATE §0.8.4](../../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+Contract: [PLATE §0.8.4](../../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
 (normative), within PLATE §0.8–§0.8.3; Wall-role domain destination in
-[architecture](../../../docs/reference/architecture.md) §Ownership.
+[architecture](../../../../reference/architecture.md) §Ownership.
 Rationale and specimens: [Paper shell proposal](../PAPER-SHELL-PROPOSAL.md).
-Executable home: [World Authoring Prototype](../../spatial-authoring/README.md)
-([implementer reference](../../spatial-authoring/IMPLEMENTER-REFERENCE.md),
-[QA](../../spatial-authoring/qa/README.md),
-[acceptance](../../spatial-authoring/qa/ACCEPTANCE.md)).
+Executable home: [World Authoring Prototype](../../../../../prototypes/spatial-authoring/README.md)
+([implementer reference](../../../../../prototypes/spatial-authoring/IMPLEMENTER-REFERENCE.md),
+[QA](../../../../../prototypes/spatial-authoring/qa/README.md),
+[acceptance](../../../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md)).
 
 This plan adopts the accepted World Paper shell into `prototypes/spatial-authoring/` as an
 **executable interaction reference and design laboratory, not production architecture**. It
@@ -152,13 +152,13 @@ Each slice records:
 
 ### PA0 · Preflight and seams (no behaviour change)
 
-- **Updated entry authority:** reconcile against the [replacement C1–C8 conformance plan](../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/conformance-plan.md)
-  and [fresh conformance evidence](../../spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
+- **Updated entry authority:** reconcile against the [replacement C1–C8 conformance plan](../../spatial-authoring/plans/experience-v2-prototype/conformance-plan.md)
+  and [fresh conformance evidence](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
   C8 in-scope acceptance is complete (2026-10-04) and #113's C9 capability is owner-accepted
   for functionality (2026-10-11); the separate missing-fixture repository blocker remains.
   PA0 inherits the tested executable and current proof after **#114** lands (its Experience UX
-  is now in [V3 design review](../../../docs/archive/prototypes/experience-ux-v3/design/README.md),
-  with one [superseding proposed plan](../../../docs/archive/prototypes/experience-ux-v3/design/implementation-plan.md)
+  is now in [V3 design review](../../experience-ux-v3/design/README.md),
+  with one [superseding proposed plan](../../experience-ux-v3/design/implementation-plan.md)
   awaiting ratification); PA0 consumes the eventual accepted #114 tree, not the old
   UX0–UX7 target;
   no Paper work starts in #113 or #114.

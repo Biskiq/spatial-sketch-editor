@@ -45,7 +45,7 @@ The goal is a spatial authoring system whose complexity expands around the creat
 
 The Head / Index / Stage / Card / contextual Deck composition and Experience
 disclosure are the finalized Experience expression. The completed
-[World shell synthesis](../../../../../prototypes/world-experience-shell-round/design/design-synthesis.md)
+[World shell synthesis](../../world-experience-shell-round/design/design-synthesis.md)
 supplies the complementary World design while preserving P26 journeys A–F.
 Both are promoted through PLATE; the next bounded PR (#112) adopts the World shell
 into the spatial-authoring prototype before V2 Experience/cross-lens implementation.

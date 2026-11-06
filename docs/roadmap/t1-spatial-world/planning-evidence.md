@@ -12,7 +12,7 @@ P26 continuous-spatial-authoring umbrella and P26 research (archived at
 synthesis (deleted by #115; recover it with
 `git show e90a58224443bdbf44114d7285d55c983b79cc84:docs/roadmap/p26-spatial-depth/research/synthesis/p26-architectural-spatial-depth-synthesis.md`),
 the P26 protected design plans under [`prototypes/spatial-authoring/`](../../../prototypes/spatial-authoring/)
-and [`prototypes/paper-authoring-commission/`](../../../prototypes/paper-authoring-commission/),
+and [`docs/archive/prototypes/paper-authoring-commission/`](../../archive/prototypes/paper-authoring-commission),
 [PLATE](../../reference/design-system/editor-shell-and-visual-system.md) with its
 [spatial instrument grammar](../../reference/design-system/spatial-instrument-grammar.md),
 [architecture.md](../../reference/architecture.md) and

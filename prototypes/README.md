@@ -52,7 +52,7 @@ production authority; their documentation is still a route a reader follows.
 | **Smart Wall (P2)** | Accepted intuitive spatial manipulation and revision: reshape a wall while artwork arrangement and lighting respond | [p2-smart-wall](./p2-smart-wall/README.md) |
 | **Vellum (P3)** | Accepted expressive architectural sketching and revision; Make/Tell/Visit also demonstrates a visitor walk | [p3-vellum](./p3-vellum/README.md) |
 | **Conservatory** | Experience authoring semantics and reproducible scenario fixtures; its shell chrome and visual treatment are superseded by Production shell Round 2 (below) | [experience-ux-alternative](./experience-ux-alternative/README.md) |
-| **World Paper design** | Historical rationale for 2D authoring depth; its rail, families and Dimensions Instrument are superseded by Round 2 (the PLATE anchor is kept) | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
+| **World Paper design** | Historical rationale for 2D authoring depth; its rail, families and Dimensions Instrument are superseded by Round 2 (the PLATE anchor is kept) | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](../docs/archive/prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
 | **V2 Spatial Authoring** | World Spatial Interaction Reference: Plan ↔ 3D continuity, Rotunda Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look/return and World journeys A–F/QA. Experience V2 is historical functional/regression evidence | [spatial-authoring](./spatial-authoring/README.md) · [#114 branch-diff disposition](./spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition) |
 | **Object Composition** | Supporting unratified inspection, assembly, provenance, reach and repair research; no product/model/shell authority | [object-composition-prototype](./object-composition-prototype/README.md) |
 | **Native Form Lab** | Exploratory editable extrusion, revolution, sweep and authored-role identity journeys; not a production or shell authority | [README](./native-form-lab/README.md) · [FINDINGS](./native-form-lab/FINDINGS.md) |
@@ -69,13 +69,13 @@ Other retained evidence, live or archived:
 - [Integrated Experience V2](../docs/archive/prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
   and [earlier Design-QAs](../docs/archive/prototypes/integrated-experience-authoring/Design-QAs/README.md):
   historical Experience design and functional evidence.
-- [World shell round](./world-experience-shell-round/README.md): earlier accepted
-  discovery/procedure/return rationale and specimens; Production shell Round 2
+- [World shell round](../docs/archive/prototypes/world-experience-shell-round/README.md): archived
+  accepted discovery/procedure/return rationale and specimens; Production shell Round 2
   supersedes conflicting shell treatment.
 - [Experience Authoring donor](../docs/archive/prototypes/experience-authoring/README.md):
   archived runnable behavioral/regression evidence, no current UX authority.
-- [Paper commission](./paper-authoring-commission/designer-packet/COMMISSION.md):
-  original brief and accepted proposal rationale. [PA0–PA12](./paper-authoring-commission/plans/inactive-adoption-plan.md)
+- [Paper commission](../docs/archive/prototypes/paper-authoring-commission/designer-packet/COMMISSION.md):
+  archived original brief and accepted proposal rationale. [PA0–PA12](../docs/archive/prototypes/paper-authoring-commission/plans/inactive-adoption-plan.md)
   is inactive/unimplemented; #115 is parallel-track planning.
 
 ## Authority semantics
@@ -126,8 +126,8 @@ port in use as another prototype's server rather than an error to clear.
   `1dfeb5d72e2d57cfd791cf14a3db9216581b0d63` and intentionally placed here by the
   owner in [PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111),
   2026-10-01; accepted/frozen by that same PR. The commissioning briefs and
-  designer-input copies are preserved in Git history only; the workspace
-  [README](./world-experience-shell-round/README.md) records the durable
+  designer-input copies are preserved in Git history only; the archived workspace
+  [README](../docs/archive/prototypes/world-experience-shell-round/README.md) records the durable
   provenance and authority boundary.
 - **Spatial Authoring Prototype** — moved here 2026-09-29 from
   `docs/roadmap/p26-spatial-depth/Final-Design-Prototype/`, where it was the P26
