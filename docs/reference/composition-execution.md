@@ -147,16 +147,17 @@ Unit contract:
 **own codec-bounded unit in the project envelope** (the separate-unit choice).
 Camera is a never-merged authority whose evaluation and format must version
 independently of Scene. The co-location is only shared storage, not a semantic
-link: in `packages/project-model/src/scene.ts`, Camera data (`navigationNodes`,
-`connections`) references only other Camera nodes plus world positions/targets
-— no Scene entity references — so separating it is a low-cost move with no
-cross-reference rewrite. The **split lands in the same cutover as the
-Experience order cutover** (`nextNodeId` / `previousNodeId` / `holdSeconds`
-leave Camera nodes; legacy `lockInteraction` is migration input to explicit
-Experience Gates, continuation or interaction policy): one migration of
-`navigationNodes`, not two. The **landed current encoding remains Camera data
-inside `project.scene`** until that cutover; the co-location is a cutover
-obligation, not the destination.
+link: in the pre-cutover `packages/project-model/src/scene.ts`, Camera data
+(`navigationNodes`, `connections`) referenced only other Camera nodes plus world
+positions/targets — no Scene entity references — so separating it was a
+low-cost move with no cross-reference rewrite. The ratified cutover landed the
+split with the Experience order cutover (`nextNodeId` / `previousNodeId` /
+`holdSeconds` leave Camera nodes; legacy `lockInteraction` is migration input
+to explicit Experience Gates, continuation or interaction policy): one
+migration of `navigationNodes`, not two. **Historical pre-cutover encoding:**
+Camera data lived inside `project.scene` until that cutover; the co-location
+was a cutover obligation, not the destination. The landed split is Camera 1 as
+its own unit and Camera-free Scene 5 (see Current implementation below).
 
 The Experience unit is collection-capable and owns Presentations,
 Experience-wide Interactions and optional Guides whose Stops reference

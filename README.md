@@ -10,8 +10,10 @@ research evidence, not production authority.
 ## First ten minutes
 
 1. Install Node 20+ and run `npm install`.
-2. Copy `.env.example` to `.env`, then `npm run dev` for the editor and API, or `npm run dev:editor`
-   for the editor alone. Open the local URL Vite prints.
+2. Copy `.env.example` to `.env` and set its local values. Start the backend with `npm run stack:up`,
+   then `npm run dev` for the editor (`npm run dev:editor` starts it without loading `.env` into the
+   shell). Open the local URL Vite prints. See [`docs/local-development.md`](docs/local-development.md)
+   for a host Postgres instead of Docker.
 3. Run `npm run status` to see current capability health, open flags and claims. A missing main-branch
    report is reported as unknown, not as green.
 4. Read [`AGENTS.md`](AGENTS.md), the [`glossary`](docs/glossary.md), and the header/authority box in

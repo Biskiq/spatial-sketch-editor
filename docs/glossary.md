@@ -2,7 +2,7 @@
 
 > **Covers:** the terms a new contributor meets first. **Authority:** the routed contract wins when
 > this summary is insufficient. **Read next:** [architecture](./reference/architecture.md),
-> [composition](./composition-execution.md), [shell](./reference/design-system/editor-shell-and-visual-system.md).
+> [composition](./reference/composition-execution.md), [shell](./reference/design-system/editor-shell-and-visual-system.md).
 
 | Term | Meaning |
 | --- | --- |

@@ -740,7 +740,7 @@ Experience Card owns welcome text and the Opening Guide choice when it has two o
 
 | Context | Stage | Card | Task instrument |
 | --- | --- | --- | --- |
-| **Empty / ordinary Experience** | The world and useful orientation; no assumed active Guide | Absent without inspection context | Absent until invoked |
+| **Empty / ordinary Experience** | The world and useful orientation; no assumed active Guide | The Experience itself: name, Guide count, welcome text and the Opening Guide choice when two or more Guides; absent only when the project has no Experience | Absent until invoked |
 | **Presentation / View** | Truthful Camera markers and direct spatial manipulation where supported | Presentation thumbnails/Default/uses, or selected View image and Look through/capture operations | An already-open Guide may remain available |
 | **Scene subject** | Its own geometry and canonical identity | Subject identity, deliberate Present this and usage; deeper capability on invocation | Existing context stays distinct from selection |
 | **Guide / Stop** | Relevant entry Views and context, with visibility disclosure | Selected Stop and its one entry View, stay, invitation and outgoing Cut/Travel | One active Guide: the strip owns order, Stop editing, Cut/Travel and playback; Camera paths reconcile automatically when an endpoint changes |

@@ -2,7 +2,8 @@
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
 **Last reviewed:** 2026-10-28 (T5.P01.S04 My Objects insertion in review, on the S02 Shape reading
-and per-axis sizing and the S01 native-form and Scene 5 baseline; production activation remains
+and per-axis sizing and the S01 native-form and Scene 4 baseline — that date's evidence, before the
+Scene 5 world-presentation cutover. Current behavior is below; production activation remains
 owner-controlled)
 
 ---

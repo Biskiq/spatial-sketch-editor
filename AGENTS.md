@@ -42,8 +42,9 @@ the North Star states intent. Do not read the archive unless current evidence ne
    projection and evaluation; Experience owns visitor-facing composition and editorial occurrences;
    typed resources form their own independently versioned system. Never hide a new domain inside
    another document. World-local project placement with explicit internal frames; no mandatory Room
-   frame. The current Layout + Scene documents, their format numbers, and Camera storage inside Scene
-   are the landed encoding until their explicit cutover — current, not the destination.
+   frame. The landed F2 encoding is separate Layout, Camera-free Scene 5, Camera 1, Experience 4 and
+   resources 2 units. Camera data inside `project.scene` was the pre-cutover encoding (historical, not
+   the destination); the separate Camera unit is the landed split.
 3. **Authored truth excludes generated/render/session state** — authored connection anchors are
    interior only; node-view endpoints are generated at runtime, never authored; generated geometry,
    Three objects, renderer handles, selection and history are never serialized. Immutable,

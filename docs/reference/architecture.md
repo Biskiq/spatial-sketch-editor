@@ -304,8 +304,8 @@ interior-only.
 |---------|-----------------|
 | Junctions, Walls, Room boundaries, Wall-hosted openings | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
-| Scene models, primitives, lights, materials, native form sources | `project.scene` / `SceneDocument` (`@portfolio/project-model`) |
-| Camera nodes, connections, paths, view tracks | `project.scene` (until the Camera codec cutover) |
+| Scene models, primitives, lights, materials, native form sources | `units.scene.data` / Scene 5 (`@portfolio/project-model`) |
+| Camera nodes, connections, paths, view tracks | `units.camera.data` / Camera 1 (`@portfolio/project-model`) |
 | Derived geometry | pure `compileWallFirstLayoutGeometry()` → `compileLayoutGeometrySource` (`@portfolio/layout-core`) |
 | Derived native-form meshes | `@portfolio/geometry-core` (`evaluateProfile` → `extrudeProfile`, `formMeshDigest`); normals and metre UVs are editor render derivatives |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |

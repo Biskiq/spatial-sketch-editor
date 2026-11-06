@@ -12,7 +12,7 @@
  * imported by the project-model root barrel: an F.2 envelope is reached through
  * its own package subpath, which `T3.P01.S04` activated.
  *
- * The Scene unit is Camera-free Scene 4: the world-local record grammar
+ * The Scene unit is Camera-free Scene 5: the world-local record grammar
  * (textures, materials, entities, clusters) with the navigation graph moved out
  * to the Camera and Experience units, and native forms admitted as entities.
  * The Camera unit keeps the
