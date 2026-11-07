@@ -48,7 +48,11 @@ jobs:
       - name: Materialize main for repository-history tests
         run: |
           git fetch origin main:refs/remotes/origin/main
-          git branch --force main refs/remotes/origin/main
+          if [ "$(git symbolic-ref --short -q HEAD)" = "main" ]; then
+            test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"
+          else
+            git branch --force main refs/remotes/origin/main
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
