@@ -177,6 +177,13 @@ async function selectFirstWall(): Promise<void> {
 }
 
 beforeEach(async () => {
+	// Browser-local app preferences persist across mounts, so a test that changes
+	// one would otherwise seed every later mount's reading transition.
+	try {
+		globalThis.localStorage?.clear();
+	} catch {
+		// A runtime without web storage cannot have persisted a preference.
+	}
 	frames = new Map();
 	frameId = 0;
 	vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => { frames.set(++frameId, cb); return frameId; });
@@ -189,7 +196,7 @@ beforeEach(async () => {
 	Object.defineProperty(HTMLElement.prototype, 'setPointerCapture', { configurable: true, value: () => { } });
 	await mountRoute();
 	await selectFirstWall();
-	target.querySelector<HTMLButtonElement>('.facets button[aria-label="wall"]')?.click();
+	target.querySelector<HTMLButtonElement>('.facets button[aria-label="Walls"]')?.click();
 	await tick();
 	// T1.P02.S02: the Wall's own Card carries its fields and a handle press is direct
 	// manipulation, so this contract runs with **no** contributed task open — an
@@ -1512,7 +1519,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 });
 
 describe('R217.S15 — Stage cursor truth', () => {
-	it('shows move over the selected Wall and grab over anything else', async () => {
+	it('shows move over the selected Wall and the Select cursor over other subjects', async () => {
 		const body = projected([3.5, 0, -4]);
 		pointer('pointermove', body);
 		await frame();
@@ -1521,7 +1528,7 @@ describe('R217.S15 — Stage cursor truth', () => {
 		const other = anotherWall();
 		pointer('pointermove', other.css);
 		await frame();
-		expect(stage().dataset.cursor).toBe('grab');
+		expect(stage().dataset.cursor).toBe('select');
 	});
 });
 
@@ -1619,10 +1626,8 @@ describe('R217.S16 — selected Opening body priority', () => {
 		const nearEnd = projected([pointAt(0.04)[0], 0, pointAt(0.04)[1]]);
 		const local = [nearEnd[0] - RECT.left, nearEnd[1] - RECT.top] as [number, number];
 		const evaluationId = facade().evaluationId()!;
-		expect(facade().hitMark({ css: local, coarse: false })).toBeNull();
-		expect(facade().idleHoverIntent({ phase: 'move', css: local, evaluationId, coarse: false })).toMatchObject({
-			id: 'layout-junction-hover', adapterId: 'layout'
-		});
+		expect(facade().hitMark({ css: local, coarse: false })).toMatchObject({ id: 'layout-opening-width-start' });
+		expect(facade().idleHoverIntent({ phase: 'move', css: local, evaluationId, coarse: false })).toBeNull();
 
 		const pointerDown = nearEnd;
 		pointer('pointerdown', pointerDown);
@@ -1811,6 +1816,57 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 	}
 it('keeps Line and Box in the column and invokes precision upward',async()=>{await openInk();const row=target.querySelector('[data-layout-ink-palette] .keys')!;expect(row.querySelector('[data-ink-wall-mode="line"]')).not.toBeNull();expect(row.querySelector('[data-ink-wall-mode="box"]')).not.toBeNull();expect(target.querySelector('[data-ink-x]')).toBeNull();await press('[data-ink-point-toggle]');expect(target.querySelectorAll('[data-ink-x]')).toHaveLength(1);});
 
+	it('previews the planner’s Room as the pointer returns to a draft Junction and accepts it on click', async () => {
+		await openInk();
+		const before = facade().snapshot().canonicalJson;
+		const rooms = () => JSON.parse(facade().snapshot().canonicalJson).units.layout.data.rooms.length as number;
+		const roomsBefore = rooms();
+		// Free space beside the starter enclosure (x 0..7): a nested loop is refused.
+		const corners = [[-1, -1], [-0.5, -1], [-0.5, -3], [-1, -3]] as const;
+		for (const [x, z] of corners) {
+			const at = projected([x, 0, z]);
+			pointer('pointerdown', at);
+			pointer('pointerup', at);
+			await frame();
+		}
+		const first = projected([-1, 0, -1]);
+		const nearStart = [first[0] + 5, first[1] + 3] as const;
+		pointer('pointermove', nearStart);
+		// One frame resolves the hover; the next draws the surface it changed.
+		await frame();
+		await frame();
+		expect(target.querySelector('[data-snap-shape="closure"]')).not.toBeNull();
+		expect(target.querySelector('.candidate-room')).not.toBeNull();
+		expect(target.querySelector('[data-candidate-id="layout-candidate-chain"]')?.textContent).toContain('Creates 1 Room');
+		expect(facade().snapshot().canonicalJson).toBe(before);
+
+		pointer('pointerdown', nearStart);
+		pointer('pointerup', nearStart);
+		await vi.waitFor(() => expect(rooms()).toBe(roomsBefore + 1));
+		await settled();
+		expect(target.querySelector('[data-snap-shape="closure"]')).toBeNull();
+	});
+
+	it('opens Rooms and Free objects from Project and returns by breadcrumb without changing selection', async () => {
+		const index = target.querySelector('#plate-index')!;
+		const toggle = index.querySelector<HTMLButtonElement>('button[aria-label="Project locations"]')!;
+		const before = facade().selectionState();
+		expect(index.querySelector('summary')).toBeNull();
+		expect(index.querySelector('#world-locations')).toBeNull();
+		toggle.click();
+		await tick();
+		const locations = [...index.querySelectorAll<HTMLButtonElement>('#world-locations button')];
+		expect(locations.map((button) => button.textContent?.trim())).toEqual(['Free objects', 'Draft Room 1']);
+		locations[1]!.click();
+		await tick();
+		expect(index.querySelector('.crumbs [aria-current]')?.textContent).toBe('Draft Room 1');
+		expect(indexRowOf(index as HTMLElement, STARTER_WALL_2)).not.toBeNull();
+		expect(facade().selectionState()).toEqual(before);
+		[...index.querySelectorAll<HTMLButtonElement>('.crumbs button')].find((button) => button.textContent?.trim() === 'Project')!.click();
+		await tick();
+		expect(index.querySelector('.crumbs [aria-current]')?.getAttribute('aria-label')).toBe('Project locations');
+	});
+
 	it('draws the typed path through the row, and Finish, Backtrack and Cancel act on the chain', async () => {
 		await openInk();
 		await press('[data-ink-point-toggle]');
@@ -1865,7 +1921,8 @@ it('retains Box/Line choices while disclosure changes',async()=>{await openInk()
 		await press('[data-ink-reading-opening]');
 		expect(target.querySelector('[data-ink-thickness]')).toBeNull();
 		expect(target.querySelector('[data-ink-finish]')).toBeNull();
-		expect(target.querySelector('[data-ink-options-toggle]')!.getAttribute('aria-expanded')).toBe('true');
+		await vi.waitFor(() => expect(target.querySelector('[data-layout-opening-palette]')).not.toBeNull());
+		expect(target.querySelector('[data-ink-options-toggle]')).toBeNull();
 	});
 
 	it('refuses an invalid Wall option in words, and accepts a valid one, through the Options disclosure', async () => {

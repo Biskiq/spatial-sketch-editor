@@ -21,6 +21,7 @@
 	 */
 	import type { StageMarkView } from '../stage-handles';
 	import type { StageCandidatePreviewView } from '../stage-facade';
+	import StageSticker from './StageSticker.svelte';
 
 	let {
 		markers,
@@ -58,76 +59,30 @@
 		return Math.max(34, Math.round(text.length * 6.9 + 12));
 	}
 
+	/** Carry the dash phase across samples belonging to the same outline. */
+	function candidatePath(segments: StageCandidatePreviewView['segments']): string {
+		let previous: readonly [number, number] | undefined;
+		return segments.map(([from, to]) => {
+			const start = previous?.[0] === from[0] && previous[1] === from[1] ? '' : `M${from[0]},${from[1]}`;
+			previous = to;
+			return `${start}L${to[0]},${to[1]}`;
+		}).join('');
+	}
+
 	/**
 	 * The drawing end mark's shape is its snap cue, in ink only (review pass 2
 	 * §1): a ring on a Wall, Junction or Opening, a square on the grid, a dot when
 	 * free or merely aligned.
 	 */
-	function snapShape(name: string | undefined): 'dot' | 'ring' | 'square' {
-		if (name === 'Grid') return 'square';
+	function snapShape(name: string | undefined): 'dot' | 'ring' | 'square' | 'closure' {
+		if (name === 'Close Room') return 'closure';
+		if (name === 'Grid' || name === 'Aligned · Grid') return 'square';
 		if (name === 'Junction' || name === 'Wall' || name === 'Opening') return 'ring';
 		return 'dot';
 	}
 
-	/** The sticker glyph set. Each path is drawn about its own origin. */
-	const GLYPH = {
-		/** A chunky arrow, tail at the origin, pointing +x. */
-		arrow: 'M0,-2.7 H8 V-6.8 L16.5,0 L8,6.8 V2.7 H0 Z',
-		/** A two-way arrow centred on the origin. */
-		two: 'M-15.5,0 L-7.5,-6.8 V-2.7 H7.5 V-6.8 L15.5,0 L7.5,6.8 V2.7 H-7.5 V6.8 Z',
-		/** The four-way move cross. */
-		move: 'M0,-15 L6.4,-8 H2.5 V-2.5 H8 V-6.4 L15,0 L8,6.4 V2.5 H2.5 V8 H6.4 L0,15 L-6.4,8 H-2.5 V2.5 H-8 V6.4 L-15,0 L-8,-6.4 V-2.5 H-2.5 V-8 H-6.4 Z',
-		hex: hexPath(7),
-		hexSmall: hexPath(5.6),
-		curved: curvedArrowPath()
-	} as const;
-
-	function hexPath(radius: number): string {
-		return `M${[0, 1, 2, 3, 4, 5].map((k) => {
-			const angle = ((k * 60 - 90) * Math.PI) / 180;
-			return `${(radius * Math.cos(angle)).toFixed(2)},${(radius * Math.sin(angle)).toFixed(2)}`;
-		}).join('L')}Z`;
-	}
-
-	/** One curved two-way arrow; its middle sits at the origin with tangent +x and it bends toward +y. */
-	function curvedArrowPath(): string {
-		const R = 21, half = 36, width = 5.4, flare = 3.8, head = 17, rad = Math.PI / 180;
-		const at = (rho: number, angle: number) => `${(rho * Math.cos(angle * rad)).toFixed(2)},${(R + rho * Math.sin(angle * rad)).toFixed(2)}`;
-		const a0 = -90 - half, a1 = -90 + half;
-		const points = [at(R, a0 - head), at(R + width / 2 + flare, a0)];
-		for (let angle = a0; angle <= a1 + 0.01; angle += 6) points.push(at(R + width / 2, angle));
-		points.push(at(R + width / 2 + flare, a1), at(R, a1 + head), at(R - width / 2 - flare, a1));
-		for (let angle = a1; angle >= a0 - 0.01; angle -= 6) points.push(at(R - width / 2, angle));
-		points.push(at(R - width / 2 - flare, a0));
-		return `M${points.join('L')}Z`;
-	}
-
 	function headingOf(direction: readonly [number, number] | null | undefined): number {
 		return direction == null ? 0 : (Math.atan2(direction[1], direction[0]) * 180) / Math.PI;
-	}
-
-	function glyphTransform(at: readonly [number, number], angle: number): string {
-		return `translate(${at[0]} ${at[1]}) rotate(${angle.toFixed(1)})`;
-	}
-
-	/**
-	 * A glyph's path at a size: the coordinates themselves are scaled (absolute
-	 * M/L/H/V only), so no SVG transform ever scales anything on the Stage.
-	 * Emphasis (hover/held) grows the glyph by 15 %.
-	 */
-	function sized(d: string, emphasised: boolean, sx = 1, sy = sx): string {
-		const k = emphasised ? 1.15 : 1;
-		let command = '';
-		let index = 0;
-		return d.replace(/([MLHVZ])|(-?\d*\.?\d+)/g, (_match, letter: string | undefined, number: string | undefined) => {
-			if (letter !== undefined) {
-				command = letter;
-				index = 0;
-				return letter;
-			}
-			const factor = command === 'H' ? sx : command === 'V' ? sy : index++ % 2 === 0 ? sx : sy;
-			return String(Number((Number(number) * factor * k).toFixed(2)));
-		});
 	}
 
 	/** Where the arrow glyph of a one-way ray starts, so its point lands on the tip. */
@@ -236,10 +191,15 @@
 			data-candidate-id={candidate.id}
 			data-candidate-role={candidate.role}
 		>
+			{#if candidate.snap?.name === 'Close Room'}
+				{#each candidate.polygons as polygon, index (`${candidate.id}:room:${index}`)}
+					<polygon class="candidate-room" points={polygon.map(([x, y]) => `${x},${y}`).join(' ')} />
+				{/each}
+			{/if}
 			<!-- Drawing is solid draft ink; a proposal is dashed in the ghost colour; a refusal is red dashed. -->
-			{#each candidate.segments as segment, index (`${candidate.id}:segment:${index}`)}
-				<line class="candidate-edge" x1={segment[0][0]} y1={segment[0][1]} x2={segment[1][0]} y2={segment[1][1]} />
-			{/each}
+			{#if candidate.segments.length > 0}
+				<path class="candidate-edge" d={candidatePath(candidate.segments)} />
+			{/if}
 			{#if candidate.drawing && candidate.segments.length > 0}
 				<circle class="end-mark" cx={candidate.segments[0]![0][0]} cy={candidate.segments[0]![0][1]} r="3.4" />
 			{/if}
@@ -247,6 +207,7 @@
 				{@const shape = snapShape(candidate.snap.name)}
 				<g class="candidate-snap end-mark-group" data-snap-name={candidate.snap.name} data-snap-shape={shape} transform={`translate(${candidate.snap.css[0]} ${candidate.snap.css[1]})`}>
 					{#if shape === 'square'}<rect class="end-mark hollow" x="-4" y="-4" width="8" height="8" />
+					{:else if shape === 'closure'}<circle class="close-room-ring" r="8" /><circle class="close-room-center" r="3" />
 					{:else if shape === 'ring'}<circle class="end-mark hollow" r="4.6" />
 					{:else}<circle class="end-mark" r="3.4" />{/if}
 					<title>{candidate.snap.name}</title>
@@ -286,6 +247,7 @@
 		{@const tail = mark.tail}
 		{@const emphasised = mark.hovered || mark.active}
 		{@const label = refusalAtPointer || candidates.some(candidate => candidate.labels.length > 0) ? '' : mark.refusal ?? mark.tag}
+		{#if !mark.hidden}
 		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 		<g
 			class="mark"
@@ -307,43 +269,40 @@
 			<title>{mark.label}</title>
 			{#if mark.role === 'disclose'}
 				<!-- The W·D·H chip: click shows the size grips; a drag scales (where the domain allows). -->
-				<g class="chip" class:open={mark.open} transform={glyphTransform(mark.anchor, 0)}>
+				<g class="chip" class:open={mark.open} transform={`translate(${mark.anchor[0]} ${mark.anchor[1]})`}>
 					<rect class="toggle-hit" x="-22" y="-22" width="44" height="44" />
 					<rect class="glyph" x="-12" y="-12" width="24" height="24" rx="7" />
 					<path class="chip-icon" d="M-5,5 L5,-5 M-5,5 h4.2 M-5,5 v-4.2 M5,-5 h-4.2 M5,-5 v4.2" />
 				</g>
 			{:else if mark.glyph === 'top-knob' || mark.glyph === 'lift-knob'}
-				{#if mark.stem}
-					<line class="glyph-line" x1={mark.stem[0]} y1={mark.stem[1]} x2={mark.anchor[0]} y2={mark.anchor[1]} />
-				{/if}
-				<path class="glyph" class:held={mark.active} d={sized(mark.glyph === 'top-knob' ? GLYPH.hex : GLYPH.hexSmall, emphasised)} transform={glyphTransform(mark.anchor, 0)} />
+				<StageSticker kind={mark.glyph === 'top-knob' ? 'hex' : 'hexSmall'} at={mark.anchor} stem={mark.stem} {emphasised} held={mark.active} />
 			{:else if mark.cross}
-				<path class="glyph" class:held={mark.active} d={sized(GLYPH.move, emphasised)} transform={glyphTransform(mark.anchor, headingOf(mark.direction))} />
+				<StageSticker kind="move" at={mark.anchor} angle={headingOf(mark.direction)} scale={mark.glyphScale} {emphasised} held={mark.active} />
 			{:else if mark.kind === 'ray' || mark.kind === 'track'}
 				{#if tail !== null}
 					{@const reach = Math.hypot(tip[0] - mark.anchor[0], tip[1] - mark.anchor[1])}
 					{#if reach <= 22}
-						<path class="glyph" class:held={mark.active} d={sized(GLYPH.two, emphasised, Math.max(0.6, reach / 15.5))} transform={glyphTransform(mark.anchor, headingOf(mark.direction))} />
+						<StageSticker kind="two" at={mark.anchor} angle={headingOf(mark.direction)} scale={Math.max(0.6, reach / 15.5)} {emphasised} held={mark.active} />
 					{:else}
 						<!-- A long track: its guide, with one arrow at each end. -->
 						<line class="glyph-line dash" x1={tail[0]} y1={tail[1]} x2={tip[0]} y2={tip[1]} />
-						<path class="glyph" class:held={mark.active} d={sized(GLYPH.arrow, emphasised, 0.8)} transform={glyphTransform(arrowTail(mark.anchor, tip), headingOf(mark.direction))} />
-						<path class="glyph" class:held={mark.active} d={sized(GLYPH.arrow, emphasised, 0.8)} transform={glyphTransform(arrowTail(mark.anchor, tail), headingOf(mark.direction) + 180)} />
+						<StageSticker kind="arrow" at={arrowTail(mark.anchor, tip)} angle={headingOf(mark.direction)} scale={0.8} {emphasised} held={mark.active} />
+						<StageSticker kind="arrow" at={arrowTail(mark.anchor, tail)} angle={headingOf(mark.direction) + 180} scale={0.8} {emphasised} held={mark.active} />
 					{/if}
 				{:else}
 					{@const glyphAt = arrowTail(mark.anchor, tip)}
 					<line class="glyph-line dash" x1={mark.anchor[0]} y1={mark.anchor[1]} x2={glyphAt[0]} y2={glyphAt[1]} />
-					<path class="glyph" class:held={mark.active} d={sized(GLYPH.arrow, emphasised)} transform={glyphTransform(glyphAt, headingOf(mark.direction))} />
+					<StageSticker kind="arrow" at={glyphAt} angle={headingOf(mark.direction)} {emphasised} held={mark.active} />
 				{/if}
 			{:else if mark.kind === 'ring'}
 				<!-- No ring (review pass 3): one bent two-way arrow, carried by the subject's
 				     own frame, is the whole Turn control. The ring stays only as the plane
 				     the turn is measured in. -->
 				{#if mark.ringGlyph}
-					<path class="glyph turn" class:held={mark.active} d={sized(GLYPH.curved, emphasised, 1, mark.ringGlyph.flip ? -1 : 1)} transform={glyphTransform(mark.ringGlyph.at, mark.ringGlyph.angle)} />
+					<StageSticker kind="curved" at={mark.ringGlyph.at} angle={mark.ringGlyph.angle} flip={mark.ringGlyph.flip} {emphasised} held={mark.active} />
 				{/if}
 			{:else}
-				<circle class="glyph knob" class:held={mark.active} cx={mark.anchor[0]} cy={mark.anchor[1]} r={emphasised ? 6.4 : 5.4} />
+				<StageSticker kind="point" at={mark.anchor} {emphasised} held={mark.active} />
 			{/if}
 
 			{#if emphasised && label !== '' && mark.role !== 'disclose'}
@@ -354,6 +313,7 @@
 				</g>
 			{/if}
 		</g>
+		{/if}
 	{/each}
 
 	{#if hostTools?.measure}
@@ -467,6 +427,9 @@
 	.candidate.refused .candidate-edge { stroke: var(--overlay-problem); filter: none; stroke-width: 2; stroke-dasharray: 6 4; }
 	.end-mark { fill: var(--overlay-ghost); stroke: var(--overlay-ghost); stroke-width: 1.6; filter: var(--overlay-ghost-halo); }
 	.candidate.drawing .end-mark { fill: var(--overlay-draft); stroke: var(--overlay-draft); filter: var(--overlay-draft-halo); }
+	.candidate-room { fill: var(--shell-leaf, #4f8f6c); fill-opacity: 0.2; }
+	.close-room-ring { fill: #fff; stroke: var(--shell-forest-2, #22503c); stroke-width: 2; }
+	.close-room-center { fill: var(--shell-forest-2, #22503c); }
 	.end-mark.hollow { fill: #fff; }
 	.candidate.refused .end-mark { fill: var(--overlay-problem); stroke: var(--overlay-problem); filter: none; }
 
@@ -488,7 +451,6 @@
 		stroke-linejoin: round;
 		filter: drop-shadow(0 1.2px 1.3px rgba(20, 24, 20, 0.3));
 	}
-	.mark .glyph.held { fill: #f8efd6; }
 	.mark .glyph-line {
 		fill: none;
 		stroke: var(--overlay-ink);

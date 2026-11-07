@@ -8,8 +8,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	PRESENTATION_WRITER_FIELDS,
 	STOP_WRITER_FIELDS,
-	guideCardModel,
-	guideSourceId,
+	experienceCardModel,
+	experienceSourceId,
 	presentationCardModel,
 	presentationSourceId,
 	stopCardModel,
@@ -134,7 +134,7 @@ describe('stopCardModel', () => {
 });
 
 describe('transitionCardModel', () => {
-	it('labels an adjacent continuation as the next Stop', () => {
+	it('labels the next Stop in the Guide by its place', () => {
 		const model = transitionCardModel({
 			stopId: 'stop-2',
 			fromPosition: 2,
@@ -150,33 +150,23 @@ describe('transitionCardModel', () => {
 		expect(model.identity.sourceId).toBe('experience:transition:stop-2');
 	});
 
-	it('labels a jump to a later Stop of the Guide by its place', () => {
+	it('labels a Travel step as Travel between the two Stops', () => {
 		const model = transitionCardModel({
 			stopId: 'stop-2',
 			fromPosition: 2,
 			guideLabel: 'Tour',
-			continuation: { kind: 'jump', stopId: 'stop-5', position: 5, transition: 'travel', explicit: true }
+			continuation: { kind: 'adjacent', stopId: 'stop-3', position: 3, transition: 'travel', explicit: false }
 		});
-		expect(model.identity.label).toBe('Stop 2 → Stop 5');
+		expect(model.identity.label).toBe('Stop 2 → Stop 3');
 		expect(model.identity.status).toBe('Travel');
 	});
 
-	it('labels a jump to a Stop outside the active Guide as another Guide', () => {
+	it('labels the last Stop’s continuation as End', () => {
 		const model = transitionCardModel({
 			stopId: 'stop-2',
 			fromPosition: 2,
 			guideLabel: 'Tour',
-			continuation: { kind: 'jump', stopId: 'stop-9', position: null, transition: 'cut', explicit: true }
-		});
-		expect(model.identity.label).toBe("Stop 2 → another Guide's Stop");
-	});
-
-	it('labels an end continuation as End', () => {
-		const model = transitionCardModel({
-			stopId: 'stop-2',
-			fromPosition: 2,
-			guideLabel: 'Tour',
-			continuation: { kind: 'end', explicit: true }
+			continuation: { kind: 'end', explicit: false }
 		});
 		expect(model.identity.label).toBe('Stop 2 → End');
 		expect(model.identity.status).toBe('End');
@@ -191,25 +181,25 @@ describe('transitionCardModel', () => {
 	});
 });
 
-describe('guideCardModel', () => {
-	it('names a Guide with the Guide kind word, its label and its Stop count', () => {
-		const model = guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 3 });
+describe('experienceCardModel', () => {
+	it('names the Experience itself, with its Guide count and no Reaches facts (D-2)', () => {
+		const model = experienceCardModel({ experienceId: 'experience-1', label: 'Walk', guideCount: 2 });
 		expect(model.identity).toEqual({
-			sourceId: guideSourceId('guide-1'),
-			label: 'Tour',
-			kind: 'Guide',
-			status: '3 Stops'
+			sourceId: experienceSourceId('experience-1'),
+			label: 'Walk',
+			kind: 'Experience',
+			status: '2 Guides'
 		});
-		expect(model.identity.sourceId).toBe('experience:guide:guide-1');
+		expect(model.identity.sourceId).toBe('experience:experience:experience-1');
 		expect(model.facts).toEqual([]);
 	});
 
-	it('states an empty Guide as having no Stops yet', () => {
-		expect(guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 0 }).identity.status).toBe('No Stops yet');
+	it('states an Experience with no Guide yet', () => {
+		expect(experienceCardModel({ experienceId: 'experience-1', label: 'Walk', guideCount: 0 }).identity.status).toBe('No Guides yet');
 	});
 
-	it('uses the singular for a single Stop', () => {
-		expect(guideCardModel({ guideId: 'guide-1', label: 'Tour', stopCount: 1 }).identity.status).toBe('1 Stop');
+	it('uses the singular for one Guide', () => {
+		expect(experienceCardModel({ experienceId: 'experience-1', label: 'Walk', guideCount: 1 }).identity.status).toBe('1 Guide');
 	});
 });
 

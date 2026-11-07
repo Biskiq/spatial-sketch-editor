@@ -42,7 +42,7 @@
 	.scale-bar {
 		position: absolute;
 		bottom: 12px;
-		left: 12px;
+		left: calc(12px + var(--index-cover, 0px));
 		display: inline-flex;
 		flex-direction: column;
 		align-items: flex-start;

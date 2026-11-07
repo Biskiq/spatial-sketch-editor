@@ -14,7 +14,15 @@
  */
 import { getContext, setContext } from 'svelte';
 import type { ExperienceController } from './experience-controller.svelte';
+import type { ExperiencePlayback } from './playback.svelte';
 import type { ExperienceSubject } from './experience-model';
+import type { AdvancedViewFraming, AuthoredViewPose } from './experience-view-edit';
+import type { ExperiencePathOccurrence } from './experience-paths';
+
+export type ExperienceGuideTransport =
+	| { readonly kind: 'start' }
+	| { readonly kind: 'stop'; readonly stopId: string }
+	| { readonly kind: 'move'; readonly occurrence: ExperiencePathOccurrence };
 
 export type ExperienceHomes = {
 	/** The live controller, or null while the Experience lens is not mounted. */
@@ -24,13 +32,21 @@ export type ExperienceHomes = {
 	readonly setGuideOpen: (open: boolean) => void;
 	/** One Card selection: clears the Stage selection, sets the Experience subject, shows the Card. */
 	readonly select: (subject: ExperienceSubject | null) => void;
-	/** Presentation awaiting a first-Guide name (D8), or null. */
-	readonly guideNamePrompt: () => string | null;
-	readonly requestGuideName: (presentationId: string | null) => void;
 	/** The Scene entity the Card shows in the Experience lens (subject Card), or null. Reactive. */
 	readonly sceneSubject: () => { readonly entityId: string; readonly label: string } | null;
 	/** Switch to the World lens keeping the Scene selection ("Open in World"). */
 	readonly openInWorld: () => void;
+	/** Arm the Stage for one object pick to link a Presentation; Esc cancels. */
+	readonly pickStageSubject?: (presentationId: string) => boolean;
+	/** Editor-only disclosure and the selected View's live gesture. */
+	readonly advancedCamera?: {
+		readonly on: () => boolean;
+		readonly set: (on: boolean) => void;
+		readonly eligible: (viewId: string) => boolean;
+		readonly busy: () => boolean;
+		readonly pose: (viewId: string) => AuthoredViewPose | null;
+		readonly write: (viewId: string, edit: AdvancedViewFraming) => Promise<void>;
+	};
 	/** R217.S28 — the View the Stage's provisional through-camera shows, or null. */
 	readonly lookThroughViewId: () => string | null;
 	readonly lookThroughMoved: () => boolean;
@@ -44,6 +60,16 @@ export type ExperienceHomes = {
 	readonly captureProvisional: () => Promise<void>;
 	/** Present this through Camera's visible framing (E9), or arm placement in Plan. */
 	readonly presentThis: (entityId: string, label: string) => Promise<void>;
+	/** R217.S30 — the Stage-owned playback session, or null before the lens mounts. */
+	readonly playback: () => ExperiencePlayback | null;
+	/** Open Preview deliberately in guided or free exploration, for this Guide. */
+	readonly previewMode: (mode: 'guided' | 'free', guideId: string | null) => void;
+	/** The Guide's full authored run time, even while the rail is closed. */
+	readonly guideSeconds: (guideId: string) => number | null;
+	/** The Guide that lists a Stop, preferring the active Guide. */
+	readonly guideForStop: (stopId: string) => string | null;
+	/** Card transport: open/target the Guide, then start the requested action. */
+	readonly playGuide: (guideId: string, action: ExperienceGuideTransport) => void;
 };
 
 const HOMES = Symbol('experience-homes');

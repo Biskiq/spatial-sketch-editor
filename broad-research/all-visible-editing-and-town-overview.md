@@ -575,11 +575,11 @@ OCCT and PostGIS are design references, not candidates under S06's full-permissi
 | Lighting | Filament `34388e76bec4` [froxelizer][filament-froxels]; [Epic shadow page invalidation][virtual-shadows] | Bound light/shadow influence independently of semantic k; no claim of free dynamic GI |
 | Shipped Three.js | [BatchedMesh][three-batch-source], [renderer fallback][three-renderer], [InstancedMesh raycast][three-instance-source], [WebGLInfo][three-info], [directional shadow defaults][three-directional-shadow] | Object/mesh counts differ from driver calls, GPU time, bytes and actual exposure; r186 mechanisms checked against installed 0.186.1 in the earlier inspection |
 
-[s06]: ../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
-[s06-acceptance]: ../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
+[s06]: ../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md
+[s06-acceptance]: ../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md
 [perf]: ../docs/reference/components/performance.md
 [strategy]: ./cinematic-scale-computational-strategy.md
-[h0]: ../docs/roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md#measured-pre-flight-rows-no-budget-accepted
+[h0]: ../docs/archive/roadmap/closed-phases/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md#measured-pre-flight-rows-no-budget-accepted
 [architecture]: ../docs/reference/architecture.md
 [stage-canvas]: ../apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte
 [stage-camera]: ../apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte
@@ -624,7 +624,7 @@ OCCT and PostGIS are design references, not candidates under S06's full-permissi
 [meshopt]: https://github.com/zeux/meshoptimizer/blob/f0a684f11ead064e176775c9b796f82a55910e92/README.md#simplification
 [meshopt-license]: https://github.com/zeux/meshoptimizer/blob/f0a684f11ead064e176775c9b796f82a55910e92/LICENSE.md
 
-[experiment-proposal]: ../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/scale-measurement-proposal.md
+[experiment-proposal]: ../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/scale-measurement-proposal.md
 [f4-immutable]: ../packages/project-model/src/f4/immutable.ts
 [unit-canonical]: ../packages/project-model/src/units/canonical.ts
 [wall-precision]: ../packages/layout-core/src/layout-wall-first-precision.ts

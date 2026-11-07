@@ -4,8 +4,9 @@
  * canonical writer, so the tests read the shapes a real reader accepts rather
  * than a hand-written object that happens to parse.
  *
- * Experience 2 authors everything lowering needs: Presentation `viewIds`/Default,
- * Presentation text, and the Cut/Travel choice on the continuation edge. There is
+ * Experience 4 authors everything lowering needs: Presentation `views` (the
+ * first is the Default), Presentation text, each Stop's entry, stay and
+ * invitation, the Guide's pacing, and the Cut/Travel choice on the continuation edge. There is
  * no host-supplied binding or content list to add beside it.
  */
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
@@ -68,18 +69,16 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 				{
 					id: 'presentation-1',
 					label: 'Piano',
-					viewIds: ['view-1'],
+					views: [{ viewId: 'view-1' }],
 					explorable: true,
-					defaultViewId: 'view-1',
 					subject: null,
 					text: { kind: 'plain', body: 'The piano.' }
 				},
 				{
 					id: 'presentation-2',
 					label: 'Gallery',
-					viewIds: ['view-2'],
+					views: [{ viewId: 'view-2' }],
 					explorable: true,
-					defaultViewId: 'view-2',
 					subject: null,
 					text: null
 				}
@@ -88,15 +87,23 @@ export const EXPERIENCE: ExperienceUnitPayload = {
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
-					views: [{ viewId: 'view-1', holdSeconds: 0.5 }],
-					continuation: { kind: 'sequence-next', transition: 'travel' }
+					entryViewId: null,
+					staySeconds: 1,
+					invitation: null,
+					transition: 'travel'
 				},
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{
+					id: 'stop-2',
+					presentationId: 'presentation-2',
+					entryViewId: null,
+					staySeconds: 2,
+					invitation: null,
+					transition: 'cut'
+				}
 			],
 			guides: [
-				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' }
+				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], pacing: 'automatic' }
 			],
-			gates: [],
 			detours: []
 		}
 	]

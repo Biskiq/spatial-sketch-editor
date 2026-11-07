@@ -701,14 +701,14 @@
 		background: var(--shell-forest, #11291f);
 		color: var(--shell-ink-light, #eef1ec);
 		min-width: 0;
-		font: 13px/1.35 var(--shell-sans, system-ui);
+		font: var(--shell-text-body, 13px)/1.35 var(--shell-sans, system-ui);
 	}
 	button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		gap: 6px;
-		height: 30px;
+		height: var(--shell-control-height, 30px);
 		padding: 0 8px;
 		border: 0;
 		border-radius: 7px;
@@ -740,7 +740,7 @@
 		max-width: 180px;
 		color: #fff;
 		padding: 0 4px;
-		font: 15px var(--shell-serif, Georgia);
+		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia);
 	}
 	.project-text {
 		overflow: hidden;
@@ -803,7 +803,7 @@
 		max-width: 320px;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		background: rgb(255 255 255 / 0.08);
 	}
 	.actions {
@@ -845,7 +845,7 @@
 		color: var(--shell-ink-light, #eef1ec);
 		box-shadow: var(--shell-shadow);
 		clip-path: none;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		white-space: normal;
 	}
 	.reason-line {
@@ -857,7 +857,7 @@
 		align-items: center;
 		gap: 6px;
 		width: 250px;
-		height: 30px;
+		height: var(--shell-control-height, 30px);
 		padding: 0 8px;
 		border-radius: 8px;
 		background: rgb(255 255 255 / 0.1);
@@ -916,7 +916,7 @@
 		justify-content: flex-start;
 		width: 100%;
 		height: auto;
-		min-height: 30px;
+		min-height: var(--shell-control-height, 30px);
 		padding: 5px 8px;
 		text-align: left;
 		white-space: normal;
@@ -941,7 +941,7 @@
 	}
 	.find-empty {
 		margin: 8px;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 	}
 	.primary {
 		padding: 0 11px;

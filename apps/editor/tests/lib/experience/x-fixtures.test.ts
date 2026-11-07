@@ -28,17 +28,20 @@ describe('R217.S26 x-fixtures', () => {
 		expect(experience.presentations.filter((entry) => entry.subject !== null).map((entry) => entry.subject?.subject.id)).toEqual([
 			'x-pleyel-piano'
 		]);
-		const listing = experience.presentations.filter((entry) => entry.viewIds.includes(ids.sharedViewId!));
+		const listing = experience.presentations.filter((entry) => entry.views.some((view) => view.viewId === ids.sharedViewId));
 		expect(listing.map((entry) => entry.id)).toEqual(['x-door', 'x-wall']);
 		const guide = experience.guides[0]!;
 		expect(experience.entryGuideId).toBe(guide.id);
 		expect(guide.stopIds).toEqual(ids.stopIds);
 		const stops = guide.stopIds.map((stopId) => experience.stops.find((stop) => stop.id === stopId)!);
 		expect(stops.map((stop) => stop.presentationId)).toEqual(['x-piano', 'x-window', 'x-door', 'x-piano', 'x-corner', 'x-wall']);
-		// The hold-less Stop and the nonadjacent continuation.
-		expect(stops.map((stop) => stop.views.at(-1)?.holdSeconds ?? null)).toEqual([4, null, 4, 4, 4, 4]);
-		expect(stops[3]!.views.map((view) => view.viewId)).toEqual(['x-piano-view-1', 'x-piano-view-2', 'x-piano-view-3']);
-		expect(stops[0]!.continuation).toEqual({ kind: 'stop', stopId: ids.stopIds[4], transition: 'cut' });
+		// Stays, Stop 2's invitation, Stop 4's second visit at the piano's profile, and the nonadjacent continuation.
+		expect(stops.map((stop) => stop.staySeconds)).toEqual([4, 5, 4, 10, 4, 4]);
+		expect(stops.map((stop) => stop.invitation)).toEqual([null, { prompt: null }, null, null, null, null]);
+		expect(stops[3]!.entryViewId).toBe('x-piano-view-2');
+		expect(experience.presentations.find((entry) => entry.id === 'x-piano')!.views.map((view) => view.viewId)).toEqual(['x-piano-view-1', 'x-piano-view-2', 'x-piano-view-3']);
+		expect(guide.pacing).toBe('automatic');
+		expect(guide.stopIds).toEqual(stops.map((stop) => stop.id));
 	});
 
 	it('x-long: the salon world with a 30-Stop Guide', async () => {
@@ -52,7 +55,7 @@ describe('R217.S26 x-fixtures', () => {
 		const { project } = await buildXFixture('x-dense');
 		const experience = experienceOf(project);
 		expect(experience.presentations).toHaveLength(40);
-		expect(experience.presentations[0]!.viewIds).toHaveLength(50);
+		expect(experience.presentations[0]!.views).toHaveLength(50);
 		expect(experience.guides).toEqual([]);
 	});
 });

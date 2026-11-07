@@ -103,7 +103,7 @@ export function worldScopeRows(
 	const rows = model.rows.filter(
 		(row) =>
 			(scope === 'project' || row.relations.includes(scope)) && row.context !== scope &&
-			(facet === 'all' || row.group === facet) &&
+			(facet === 'all' || row.group === facet || (facet === 'objects' && (row.group === 'object' || row.group === 'scene'))) &&
 			(!needle || `${row.label} ${row.kind} ${row.sourceId}`.toLowerCase().includes(needle))
 	);
 	// All at project/Floor shows Rooms and loose subjects; explicit facets flatten the scope.

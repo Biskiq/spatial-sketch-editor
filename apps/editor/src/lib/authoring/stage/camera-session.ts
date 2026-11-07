@@ -150,8 +150,19 @@ export type CameraSession = {
 	reaimLookThroughRay(ray: PointerRay): boolean;
 	/** Step the provisional lens at a fixed eye and target. */
 	stepLookThroughLens(fovYDegrees: number): boolean;
+	/** Turn the provisional view in place by bounded yaw/pitch deltas (drag). */
+	turnLookThrough(deltaYawRadians: number, deltaPitchRadians: number): boolean;
+	/** Step the provisional eye and target together along the level aim (scroll). */
+	stepLookThrough(deltaMeters: number): boolean;
+	truckLookThrough(deltaRightMeters: number, deltaUpMeters: number): boolean;
 	/** Move eye and target together to a floor-relative eye height. */
 	setLookThroughEyeHeight(eyeHeightMetres: number, floorDatumMeters?: number): boolean;
+	/**
+	 * R217.S30 — the exact settled inspection standpoint **and reading** a Follow
+	 * run restores. A pose copy is not enough: Plan/3D posture is part of it.
+	 */
+	captureStandpoint(): ViewportCameraState;
+	restoreStandpoint(state: ViewportCameraState): boolean;
 	/** The provisional pose, for Update View or Capture while through. */
 	provisionalView(): LookThroughView | null;
 	/** Update View: the provisional pose becomes the authored one. */
@@ -161,7 +172,7 @@ export type CameraSession = {
 	evaluation(): ViewportEvaluation | null;
 	evaluationId(): string | null;
 	/** Evaluate at the explicit clock and keep the result as the current output. */
-	evaluate(rect: ViewportRect, clockSeconds: number): ViewportEvaluationResult;
+	evaluate(rect: ViewportRect, clockSeconds: number, minimumGroundReachMeters?: number): ViewportEvaluationResult;
 	/** Submit one viewing intent through the authority. */
 	applyIntent(intent: ViewingIntent, clockSeconds: number): ViewingIntentResult;
 	/**
@@ -305,7 +316,7 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 		state: () => currentState,
 		evaluation: () => currentEvaluation,
 		evaluationId: () => (currentEvaluation === null ? null : evaluationIdOf(currentEvaluation)),
-		evaluate(rect, clockSeconds) {
+		evaluate(rect, clockSeconds, minimumGroundReachMeters) {
 			// A frame clock that has run past a reading flip's endpoint applies it
 			// exactly once *here*, at the frame that realises it. Without this the
 			// settled reading would lag the rendered one until some unrelated intent
@@ -317,7 +328,10 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			const radius = sceneRadiusOf(boundsUnion(bounds, contentBounds), currentState.pose.target);
 			if (radius !== currentState.sceneRadiusMeters) currentState = { ...currentState, sceneRadiusMeters: radius };
 			generation += 1;
-			const result = evaluateViewport(currentState, rect, clockSeconds, generation);
+			const evaluationState = minimumGroundReachMeters === undefined
+				? currentState
+				: { ...currentState, minimumGroundReachMeters };
+			const result = evaluateViewport(evaluationState, rect, clockSeconds, generation);
 			currentEvaluation = result.kind === 'evaluated' ? result.evaluation : null;
 			return result;
 		},
@@ -476,6 +490,24 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			lookThroughState = { ...lookThroughState, moved: true };
 			return true;
 		},
+		turnLookThrough(deltaYawRadians, deltaPitchRadians) {
+			if (lookThroughState === null) return false;
+			if (!applyLookThroughIntent({ kind: 'turn', deltaYawRadians, deltaPitchRadians })) return false;
+			lookThroughState = { ...lookThroughState, moved: true };
+			return true;
+		},
+		stepLookThrough(deltaMeters) {
+			if (lookThroughState === null) return false;
+			if (!applyLookThroughIntent({ kind: 'step', deltaMeters })) return false;
+			lookThroughState = { ...lookThroughState, moved: true };
+			return true;
+		},
+		truckLookThrough(deltaRightMeters, deltaUpMeters) {
+			if (lookThroughState === null) return false;
+			if (!applyLookThroughIntent({ kind: 'truck', deltaRightMeters, deltaUpMeters })) return false;
+			lookThroughState = { ...lookThroughState, moved: true };
+			return true;
+		},
 		stepLookThroughLens(fovYDegrees) {
 			if (lookThroughState === null) return false;
 			if (!applyLookThroughIntent({ kind: 'lens', fovYDegrees })) return false;
@@ -493,6 +525,15 @@ export function createCameraSession(input: CameraSessionInput): CameraSession {
 			return true;
 		},
 		provisionalView,
+		captureStandpoint: () => currentState,
+		restoreStandpoint(state) {
+			// Follow never starts through Look through, and a restored entry is the
+			// whole settled inspection: pose, reading and ground datum.
+			if (lookThroughState !== null) return false;
+			currentState = state;
+			currentEvaluation = null;
+			return true;
+		},
 		commitLookThrough() {
 			const provisional = provisionalView();
 			if (lookThroughState === null || provisional === null) return null;

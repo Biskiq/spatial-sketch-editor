@@ -303,7 +303,7 @@ describe('T1.P02.S03 — Opening placement', () => {
 		selectSubject(mounted.facade, 'wall', mounted.wallId);
 		const controller = armInk(mounted.facade);
 		controller.setReading('opening');
-		controller.setOpeningOptions({ kind: 'window', width: 1.2, height: 1.2, sillHeight: 1 });
+		controller.setOpeningOptions({ kind: 'window', profile: 'pointed', width: 1.2, height: 1.2, sillHeight: 1 });
 		expect(inkSurface()!.snapshot().opening).toMatchObject({
 			hostId: mounted.wallId,
 			canPlace: false
@@ -315,6 +315,7 @@ describe('T1.P02.S03 — Opening placement', () => {
 		expect(created).toMatchObject({
 			wallId: mounted.wallId,
 			kind: 'window',
+			profile: 'pointed',
 			width: 1.2,
 			height: 1.2,
 			sillHeight: 1

@@ -1,8 +1,0 @@
-# T1 current work
-
-PHASE: R217 Core Editor Stability (repository phase; see [the phase README](../../roadmap/r217-core-editor-stability/README.md)).
-ACTIVE: R217.S28 Views on the Stage, implementation landed on `r217-s28-views-on-stage` (writer T3 with this T1 shared-file claim), based on S27's merge `f00c17e1`. Claim: `stage-facade.ts`, `StageSelectionLayer.svelte`/`StageCanvas.svelte`, `StageSnapshotRenderer.svelte`, the spatial route, `ExperienceDock.svelte`, `ExperienceGuide.svelte`, the Card writers, `experience-controller.svelte.ts`/`commands.ts`, `camera-session.ts`, and the owner-approved bounded `packages/camera-core/src/viewport.ts` extension for exact authored eye/target/FOV and fixed-eye re-aim. Reviewer: coordinator (T1 reviews the mark layer, Camera seam and render host).
-NEXT: Start Camera paths from the verified S28 merge. Owner manual acceptance (X28.1–X28.8) is deferred until after the final S26 plan slice (R3). R217.S11 owns the integrated journeys.
-ROUTE: [R217 phase README](../../roadmap/r217-core-editor-stability/README.md#slice-register) · [Views on the Stage](../../roadmap/r217-core-editor-stability/r217.s26-experience-authoring-depth/execution-plan.md#r217s28--views-on-the-stage).
-BLOCKER: none.
-CARRY: slice residuals stay in each acceptance record (S17A–S25), not here. Open items carried from the post-S19 review and the drift register: the [post-S19 report](../../roadmap/r217-core-editor-stability/post-s19-owner-manual-review/report.md); [tech debt](../tech-debt/README.md), including TD-19 (favicon 404). Durable Room assignment, Level navigation and persisted Scene/form/Room name writers remain capability work.

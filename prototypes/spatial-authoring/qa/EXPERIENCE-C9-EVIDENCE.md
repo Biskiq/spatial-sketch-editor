@@ -179,13 +179,13 @@ and shared structural seams. No acceptance, merge, phase closure or production c
     `EXPERIENCE-ACCEPTANCE.md` (declares the deleted fixture path per the documented
     `EVIDENCE-PATHS` convention), new `composition-check.sh`, `creator-check.sh`,
     `composition-mutation-check.sh`, new `EXPERIENCE-C9-EVIDENCE.md` (this record)
-  - docs: `docs/operations/current.md`,
+  - docs: `docs/workflow.md`,
     EVIDENCE-PATHS: start — files this 2026-10-11 pass touched, as written then; the checkpoint
     was retired at #113 closeout (status → P25 README, recipes → PR #114 plan §9)
     `docs/operations/checkpoints/pr113-experience-v2.md`,
     `docs/roadmap/p25-experience/README.md`,
     EVIDENCE-PATHS: end
-    `../plans/experience-v2-prototype/authoring-completeness-plan.md`
+    `../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md`
     (first pass; the second pass updates the last three plus this record)
 
 ## Product work covered
@@ -930,7 +930,7 @@ retired that workload; they are not current blocker status.
 
 ### Donor oracle (reported separately from successor parity)
 
-`prototypes/experience-authoring`: `npm run typecheck` rc=0; `npm test` **62/62** rc=0;
+`docs/archive/prototypes/experience-authoring`: `npm run typecheck` rc=0; `npm test` **62/62** rc=0;
 `npm run build` rc=0 (one 898kB chunk-size warning, no error); Playwright e2e **21/21
 passed** (1.1m) on an owned Vite server, which was stopped afterwards; `.last-run.json`
 reports `{"status":"passed","failedTests":[]}`; the donor tree is unchanged.
@@ -1192,7 +1192,7 @@ EVIDENCE-PATHS: end
 - C9.6 now supports bounded View/Presentation removal and repair. Automatic offer execution remains excluded, and parent pause/bookmark policies remain experimental.
 - No merge, phase closure, production acceptance or Paper work is claimed or performed. The six-QA reconciliation is a docs/design lock only; the executable still shows the earlier expression.
 
-[plan]: ../plans/experience-v2-prototype/authoring-completeness-plan.md
+[plan]: ../../../docs/archive/prototypes/spatial-authoring/plans/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
 
 ## Closeout preservation — #113 (2026-10-11)
@@ -1204,7 +1204,7 @@ reference promotions:            3   PLATE §0.8.1 (A1/A2/A4/A5/A6 + QA notes) �
                                      spatial-instrument grammar (Cue triple, occurrence lane, chip rule) ·
                                      PR #114 plan (§2/§3, UX2/UX4–UX7, QA 2/4, risks, deferred, MP recipes)
 renderable evidence archived:    0 files (six QA boards + two precision specimens stay live in
-                                     prototypes/integrated-experience-authoring/Design-QAs/ as #114 acceptance input)
+                                     docs/archive/prototypes/integrated-experience-authoring/Design-QAs/ as #114 acceptance input; archived 2026-11-06)
 evidence stubs / manifests:      0   no live path moved
 transient artifacts removed:     1   docs/operations/checkpoints/pr113-experience-v2.md (durable status →
                                      P25 README, MP recipes → PR #114 plan §9; never archived raw)

@@ -1,6 +1,6 @@
 #Production shell wireframe
 
-**Status: Round 2 ratified by the owner (2026-10-23); this prototype is accepted visual and behavioral evidence.** The promoted design lives in [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md) and the [spatial-instrument grammar](../../docs/reference/design-system/spatial-instrument-grammar.md); provenance and the D1–D16 dispositions are in the [ratification record](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md). This folder is still not authority and not an npm workspace: prototype shortcuts (listed below and in DESIGN-NOTE §8) never become contracts, and where this folder and `docs/` differ, `docs/` wins.
+**Status: Round 2 ratified by the owner (2026-10-23); this prototype is accepted visual and behavioral evidence.** The promoted design lives in [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md) and the [spatial-instrument grammar](../../docs/reference/design-system/spatial-instrument-grammar.md); provenance and the D1–D16 dispositions are in the [ratification record](../../docs/reference/design-system/editor-shell-and-visual-system.md). This folder is still not authority and not an npm workspace: prototype shortcuts (listed below and in DESIGN-NOTE §8) never become contracts, and where this folder and `docs/` differ, `docs/` wins.
 
 ## Purpose
 
@@ -122,6 +122,10 @@ Every file in this folder, with its role from the module header.
 | [story.html](./story.html) | Generated walkthrough storyboard (built by `tools/build-story.mjs`) |
 | [atlas-static.html](./atlas-static.html) | Offline static atlas snapshot (built by `tools/build-static-atlas.mjs`) |
 | [README.md](./README.md) | This file |
+
+The `tools/` generators resolve Playwright from the archived Experience donor
+(`docs/archive/prototypes/experience-authoring/node_modules`). Install it there
+first: `npm install --prefix docs/archive/prototypes/experience-authoring`.
 
 ## Prototype shortcuts
 

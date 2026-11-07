@@ -18,7 +18,12 @@
 	import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
 	import type { StageSelectionEntry } from '../semantic-selection';
 	import { buildPaperPlan, type PaperReveal } from '../paper-plan';
-	import { createPaperMarkScene, paperMarkSet, type PaperMarkSceneResources } from '../paper-marks';
+	import {
+		createPaperMarkScene,
+		paperDrawingForSelection,
+		paperMarkSet,
+		type PaperMarkSceneResources
+	} from '../paper-marks';
 	import { createPaperScene, type PaperSceneResources } from '../paper-scene';
 
 	let {
@@ -69,13 +74,16 @@
 		void revision;
 		return buildPaperPlan(plan, compiled, footprints, { isFootprintMounted, datumMeters });
 	});
+	// A selected Opening is drawn once in selection gold: its normal black symbol
+	// lines leave Paper and are replaced by the matching gold PaperMark contours.
+	const sceneDrawing = $derived.by(() => paperDrawingForSelection(drawing, selection));
 
 	// The selection is a filter over the drawing Paper already owns; a pan does not
 	// rebuild it, and the entries can never disagree with what is drawn underneath.
 	const marks = $derived.by(() => paperMarkSet(drawing, selection, hover, hoverTone));
 
 	$effect(() => {
-		const built = createPaperScene(drawing, [1, 1], datumMeters);
+		const built = createPaperScene(sceneDrawing, [1, 1], datumMeters);
 		resources = built;
 		scene.add(built.group);
 		invalidate();

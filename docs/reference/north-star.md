@@ -1,64 +1,18 @@
-# North star — ratified product direction
+# North Star — product direction
 
-**Read when:** choosing product direction, defining long-term scope, or reviewing
-pitches. **Current implementation priorities and sequencing live in the tracker:**
-[`../roadmap/README.md`](../roadmap/README.md).
+**Owns:** the full creative destination, product principles, non-goals and capability admission.
+Architecture owns semantic boundaries; domain and shared contracts own technical detail; approved
+UX designs own their desired state. Implementation limits do not narrow an approved design.
+Routine implementation does not change this reference. Change it for an actual product-contract
+change, accepted design promotion, material contradiction or deliberate audit.
 
-**Authority:** this document carries the promoted, live statements of the ratified
-2026-09-27 direction as refined by the
-[`2026-09-29 World | Experience amendment`](./decisions/world-experience-reconciliation-2026-09-29.md);
-the [September 27 decision record](./decisions/northstar-ratification-2026-09-27.md)
-is historical decision provenance and the normative baseline. The
-[T5 G0 ratification](./decisions/t5-g0-ratification-2026-10-27.md) refines creative depth
-and its evidence boundary. Where this document
-and pre-ratification reference/roadmap text conflict, the ratified direction wins.
-Landed contracts keep describing current behavior until their explicit cutover; no
-target capability below is presented as shipped. Open mechanism decisions (encodings,
-kernel implementation, level mechanism, channel operators) are named as open, not
-invented here.
+Core Product Stability is the owner-accepted starting point: room and shape creation, direct
+manipulation, Camera and Experience authoring and visitor Preview. The complete destination below
+is not a claim of shipped capability. Prepared public publishing and advanced Object Studio remain
+future work. Automated evidence status is separate from owner product acceptance.
 
-**Current shell (2026-10-27):** PR #115 removed the earlier editable
-`Spatial` workspace (`Scene | Camera` × `Plan | 3D`). The rebuilt Stage at
-`/project/:id/spatial` offers an explicit starter gallery or a genuinely empty start, Plan/3D
-inspection and selection, a native Layout plinth, dimension edits of existing Walls and
-Openings, and straight-Wall pose
-([T1.P01](../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary)).
-It also places upright native and verified catalogue objects on compiled floor support and
-moves, yaws, resizes, duplicates and deletes them
-([T2.P01](../roadmap/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
-One local accepted history with Undo/Redo, unit F4 acceptance and conditional cloud Save runs
-over the Camera/Experience source cutover and its shared execution interpreter
-([T3.P01](../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#bounded-outcome)).
-The later bounded loops add [straight-Wall drawing, closure, division and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s02-draw-close-divide-delete/acceptance.md),
-[straight Wall-hosted door and window placement and deletion](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/acceptance.md),
-[single-model GLB import](../roadmap/t2-composition/t2.p02-own-model-import/README.md#outcome)
-and [Camera capture, Presentation/Guide authoring and isolated Cut Preview](../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md#bounded-outcome).
-The shared shell also provides a location chip and browser-local viewing settings in the Head, a
-zero-width collapsed locator Index, contextual Card and centered lower task edge. Narrow desktop
-and iPad use an overlay Index and an invoked Card; Camera vertical framing stays fixed as the
-viewport changes. Paper/Shaded is a preference for the later Paper Plan consumer; editor motion
-speed affects inspection time, while visitor Preview keeps its own timing.
-Their acceptance records retain owner overrides, unrun rows and deferred evidence; this is no
-claim of general modeling or complete destination coverage. Publication reads stay unavailable
-under AM-9 until T4's prepared reader. Sign-in, the project hub and the API remain.
-`Experience`, `Assets`
-and `Publish` are the project-level concerns from the 2026-08-31 shell ratification —
-**Experience depth beyond the bounded loop remains destination**, and Publish has no product
-authoring surface; asset import does not provide a general resource library UI. Composition,
-material, typography and control metrics are owned by
-[`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md);
-shell changes still require focused capability/design planning. Current labels do not
-constrain the destination data model or future creative scope. **Destination
-product framing (owner-directed reconciliation, 2026-09-29):** creators work
-through **World | Experience** lenses over one project. World is not a
-`WorldDocument`; it exposes Layout/Scene truth, typed resources and Camera
-inspection. Experience exposes visitor-facing composition and may delegate
-View/framing/movement edits to the canonical Camera authority. The replacement
-shell's accepted destination composition is recorded in the shell contract
-([`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md)
-§0.8); the bounded landed shell does not implement the full destination.
 
-## Ratified north star
+## Product destination
 
 > Biskiq is a browser-native environment for creating, composing, inspecting, directing, and publishing editable spatial experiences. Creators work with meaningful spaces, objects, components, light, sound, and information, and shape how an audience explores and participates. A project may start from native architecture, imported content, reusable components, or an experience idea; no Room, tour, or external modeling workflow is mandatory.
 >
@@ -103,7 +57,6 @@ generator.
 
 ### Creative freedom and depth
 
-**Ratified destination, 2026-10-27** ([decision provenance](./decisions/t5-g0-ratification-2026-10-27.md)).
 These principles guide new design; they neither describe shipped T5 functionality nor select its
 implementation.
 
@@ -144,8 +97,10 @@ by technique. They must earn admission through this boundary.
 Where this document describes implemented behavior it says **current**; where it
 describes the ratified destination it says **destination**. The destination is
 not shipped. Foundation contract shapes are registered in the roadmap
-([`../roadmap/f-foundation-contracts/README.md`](../roadmap/f-foundation-contracts/README.md));
+([`../roadmap/f-foundation-contracts/README.md`](composition-execution.md));
 capability planning follows them.
+
+
 
 ## Composition, behavior, and direction model
 
@@ -201,6 +156,8 @@ set are planning choices. This sanctioned declarative tier replaces the earlier
 blanket rejection of variables or conditions; scripts remain the separately
 governed extension-module exception. A future stateful simulation must expose its
 state, stepping, replay limits and resource budget explicitly.
+
+
 
 ## Ownership, authority, and lifetimes
 
@@ -286,228 +243,23 @@ layout and present algorithms do not define the architecture; the authorities
 above do. Editor camera trails, temporary selections, hidden authoring aids and
 pending gestures never become visitor behavior incidentally.
 
+
+
 ## Build — World architecture
 
-Build creates and refines canonical architecture using Plan for construction and
-any legible standpoint for precision. The shipped, closed P23 foundation is
-**current**: wall-first, first-class Junctions/Walls, Wall-hosted Openings,
-boundary/partition roles and persistent Rooms reconciled over derived
-boundary-Wall faces, with world-local Layout objects.
-
-**Destination (re-derived under F as track T1).** One continuous spatial world:
-Plan↔3D authoring, contextual representations, circular/vertical architecture,
-sections and peeling, level-qualified contexts, and runtime-safe Layout
-representation evaluation. The accepted P26 prototype — the **Spatial Authoring
-Prototype** at `prototypes/spatial-authoring/` — keeps journeys A–F as the
-experience/QA authority for this direction (recorded in the
-[T1 spatial-world evidence](../roadmap/t1-spatial-world/planning-evidence.md);
-family boundary →
-[`prototypes/README.md`](../../prototypes/README.md)); its architecture is
-re-derived from F, not inherited, and its implementation shortcuts are not
-production contracts. Multi-level UI and visitor reveal authoring may ship later,
-but their semantic ownership and runtime boundary are established now. The old
-editor-only and single-floor restrictions are superseded.
-
-**Wall role is derived (destination, owner ruling 2026-10-03).** The Wall is the
-authored primitive. Creators draw spatial geometry; whether a Wall bounds an
-enclosure, divides a room or stands free is derived from the resulting topology
-and explained, never chosen before drawing. Rooms stay derived, and dividing a
-room is drawing a Wall across it. The current authored `boundary`/`partition`
-role stays the landed encoding until an explicit Layout cutover
-([architecture](./architecture.md) §Ownership); the creator-facing expression
-is [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
-
-`LayoutRoom` is the current enclosed-region minimum, not the universal spatial
-abstraction. The destination distinguishes physical architecture (Walls,
-Openings, floors/elements), derived spatial topology (faces, adjacency,
-enclosure) and a semantic spatial model (Space, Site, Building, Level, Zone).
-Indoor Rooms are one kind of semantic Space; future outdoor/open regions must not
-require pretending the world is one giant Room. Hierarchical containment stays
-conceptually separate from cross-cutting Zones, and Zones are not transform
-ownership. The exact future schema is not ratified yet; do not invent
-implementation types ahead of planning.
-
-The wall-first ownership principle is:
-
-```text
-Walls/Junctions → physical architecture + explicit connectivity
-Rooms           → persistent semantic enclosed regions
-Openings        → hosted by canonical Walls
-Layout objects  → document-level/project-world-local
-```
-
-Geometry/topology may derive candidate faces, but product reconciliation owns
-persistent Room identity. Proximity may suggest a snap/join; it never becomes
-implicit authored topology or ownership by itself. Every addition extends the
-Layout domain and the single canonical compiler; it never creates a second
-mesh-authoring or geometry authority, and Layout-owned representation
-algorithms are runtime-safe from their first implementation so editor and
-visitor can share them.
-
-Broader depth (stairs, railings, richer parametric components, arbitrary curve
-intersection and noding, NURBS/CAD curve operations, roof helpers, general
-constraint sophistication) is demand/evidence-gated. Architectural extensions remain Layout-owned;
-native object depth follows the [creative-depth admission boundary](#creative-freedom-and-depth).
-UV/rigging and general character-animation authoring remain external workflows.
+Detailed obligations live in [Build — World architecture](components/layout.md).
 
 ## Stage — World composition and shared assets
 
-Scene owns scene-object composition: imported models, primitives, materials,
-lights, placement, transforms, visibility, authored object properties,
-environment/atmosphere, render settings and spatial audio emitters as
-destination. Plan Arrange and 3D expose supported operations through the same
-continuous spatial system according to representation and capability; a
-destination does not change the owning authority.
-
-**Destination composition model.** Distinguish a source definition, placed
-instance, internal component, organizational group and attachment. World-local
-roots remain the default; internal components may use declared parent-relative
-frames, and attachment is a typed relationship with a host and parameters.
-Proximity and grouping never imply ownership or connectivity. Shared source
-resources do not share mutable pose, materials, playback or overrides.
-
-- **Definitions and instances:** an object definition exposes an intrinsic
-  interface (what it can do, parameter meaning, limits, affected channels,
-  required components). Placed instances supply configuration, compatible
-  per-component overrides and default behavior parameters. A Scene behavior
-  binding may start a bounded ambient behavior when that Scene's execution
-  context starts, through the common conductor — never a private animation loop
-  writing around channel ownership.
-- **Reusable performances and Experience Presentations are separate from the
-  instance baseline.** Portable performance resources compose capabilities with
-  optional or required Camera, light, media and content roles. Experience-owned
-  Presentations supply visitor meaning and bind supported uses to concrete
-  subjects; neither is an instance baseline or a second copy of intrinsic
-  capability.
-- **Two override mechanisms:** composition overrides establish the effective
-  instance baseline (definition defaults → selected variant → allowed instance
-  overrides); invocation overrides supply parameters, bindings, time mapping and
-  supported local specialization without mutating that baseline. A captured
-  visible pose becomes authored intent only through an explicit validated
-  capture operation with a stated target scope.
-- **Resources:** references need logical identity plus an exact revision or
-  content identity, with a project dependency lock. Availability, authorization
-  and retention travel with reuse — an authorized shared reference or a vendored
-  immutable copy, never a fragile pointer into another project's private store.
-  Identical immutable bytes in two packages are delivery copies of one revision.
-  Detaching for independent editing creates a new authored identity. A library
-  update is an offered revision requiring acceptance and impact review; existing
-  projects and releases keep their locked revisions.
-
-**Truthful ingest (destination).** Ingest declares which structure, clips,
-material slots, pivots and metadata survived and which operations are supported.
-Retain source bytes and conversion provenance where later reprocessing requires
-them. A flat model remains useful at object level; an optimized render hierarchy
-does not establish durable component identity. Native procedural definitions
-retain parameters and an explicit correspondence policy. Names and indices may
-locate data within a source revision; they do not prove continuity across
-re-export — revision-qualified identity and a supported mapping policy are ours
-to supply. A render-ready derivative must not be advertised as a preserved
-semantic assembly without a separate preservation contract.
-
-**Current implementation:** P20 project-scoped texture registry + private R2
-bytes; P20.2 cloud texture upload/list/use; P22 release manifests pin verified
-object keys; static catalogue models declare canonical footprint metadata; Scene
-clusters are named same-room member groups with no prefab/definition model; GLB
-import and provider search remain deferred. The current registry is a
-project-scoped implementation, not the destination resource system.
+Detailed obligations live in [Stage — World composition and shared assets](components/scene-content.md).
 
 ## Direct — Camera direction
 
-**Enduring guarantee:** Camera keeps connectivity, routes, framing, projection
-and evaluation as one authority. Every profile controller — guided travel, free
-look, reduced motion, film, future XR — realizes viewing intent through it. The
-current `camera-route.ts` + `camera-motion.ts` mechanism, its curve/guard model,
-duration-dependent guards and source filenames are replaceable implementation,
-not the destination and not the motion ceiling. Travel, orbit, track, lens/focus
-and retimed invocation can extend the vocabulary. No controller supplies a second
-pose/FOV interpolation authority.
-
-The camera graph answers **where can the experience move?** and authored
-connectivity remains explicit. Sequence-like direction answers **which connected
-traversal is presented**. Higher-level direction may describe intent such as a
-reveal, orbit, push-in, rest, hero view or establishing view; assisted direction
-resolves into the same inspectable project state, and manual position, path,
-target/orientation, FOV, timing and framing remain available with free mixing of
-manual and assisted control.
-
-**Cutover (destination).** Editorial occurrences, order, holds, interaction
-locks and detours move to Experience ownership. Camera retains possible spatial
-traversal, intrinsic movement profiles, framing/projection and evaluation;
-invocation time mapping is evaluated through Camera. Selecting a cut does not
-invent a spatial edge; selecting travel must resolve a supported route or report
-a gap. A read-only compatibility adapter may interpret legacy node order during
-migration; two editable order systems may not coexist. The new interface must
-prove retiming, seeking, projection and guard
-behavior together — a serialized prepared form is a conformance obligation, and
-dumping the current Three-object motion is not a design. Node links and
-Experience order must never remain coequal writable authorities.
-
-**Cues follow their source.** Camera emits its own progress markers; performances
-own their cues; Experience owns the visitor-facing interaction bindings that
-listen to them. Spatial Camera does not become the owner of every performance
-event, and Experience bindings evaluate against canonical evaluation, never a
-copied timeline.
+Detailed obligations live in [Direct — Camera direction](components/camera-tour.md).
 
 ## Experience lens — visitor-facing composition
 
-Experience is a distinct authored semantic domain: the visitor-facing composition
-of Presentations, Experience-wide Interactions, optional Guides and Stops with
-stable occurrence identity, editorial order, content/localization/UI
-configuration, choices and contextual invocation bindings. It answers:
-
-> How does the visitor understand, navigate, and participate in the authored
-> spatial experience?
-
-Experience workspace/UI depth is future work; the ownership model and cardinality
-are ratified now. A project may hold several Experiences over one shared world,
-and one package may include several with explicit selection/transition semantics.
-A simple UI may initially expose one Experience and simple choices. The persisted
-Experience unit is a ratified destination shape (F.2;
-[`composition-execution.md`](./composition-execution.md)) — not a designed
-schema, codec, or backend slice.
-
-Experience references Camera Views and routes without duplicating poses, paths,
-projection/FOV truth or an interpolation system; it owns occurrences, order,
-holds, continuation and explicit Gates. Its
-`Event → Target → Action` interaction model composes existing project meaning
-rather than compensating for missing Spatial capabilities. It must not create
-`ExperienceScene`, `ExperienceCameraGraph`, `ExperienceCameraPath`,
-`ExperienceRenderer` or equivalent second authorities.
-
-**Identity and execution (destination).** Presentation identity names reusable
-meaning; Stop identity names one authored Guide occurrence; a session invocation
-names one actual visit. Repeated Stops can reference one Presentation, and
-repeated visits to one Stop are distinct invocations. Activity runs have their
-own runtime identities and lifetimes. A subject/domain capability supplies
-intrinsic behavior, an optional typed performance resource supplies portable
-choreography, Experience authors an Activity invocation, and an execution
-session runs it. Experience cannot invent a capability absent from its owner.
-Execution duration, automatic readiness and progression permission are separate;
-only an explicit Gate blocks an otherwise valid manual continuation. Exploration
-releases guided Camera control; rejoin uses the current Camera pose and does not
-silently resume autoplay. The precise detour lifecycle remains a Prototype V2
-hypothesis, not an accepted default.
-
-**Repair and readiness (destination).** A valid authored project may retain an
-explicit unresolved subject, capability, View or resource binding so it can be
-inspected and repaired. Missing and intentional keep-current-viewpoint are
-distinct states. No resolver silently retargets by name, proximity or Room
-containment, and no repair erases the affected Presentation or Stop. Preview
-disables or refuses affected required behavior; publication requires executable
-closure for the selected program and supported profile. Cross-domain acceptance
-remains atomic under F.4.
-
-Representative direction:
-
-```text
-Experience
-├─ Presentations → focus, explanation, View uses, Activities, Interactions
-├─ Experience-wide Interactions
-└─ Guide (optional) → Stops referencing Presentations
-   └─ editorial order, continuation, holds and Gates
-       references World subjects, Camera Views and typed resources
-```
+Detailed obligations live in [Experience lens — visitor-facing composition](components/experience.md).
 
 ## Same world, different authoring lens
 
@@ -532,128 +284,23 @@ Camera standpoint carry across, and a switch never captures a View, creates a
 Presentation or relation, opens a Guide, moves the Camera, or substitutes another
 selected identity.
 
+
+
 ## Camera authority vs Experience interaction authority
 
-```text
-Camera (authority)                      Experience (authority)
-─────────────────────────────           ─────────────────────────────
-connectivity / routes                   Presentations and Stops
-paths / anchors / topology              guided order, holds, detours
-framing / projection                    Gates / continuation / interaction policy
-motion evaluation                       content, localization, UI config
-intrinsic movement profiles             invocation bindings
-progress markers / cues*                interaction bindings to markers
-```
-
-\* Cue ownership follows the source: Camera emits its own progress markers,
-performances own their cues, Experience owns interaction bindings to them.
-
-Experience may expose progressive View, framing and movement authoring, but each
-edit delegates to canonical Camera operations and evaluation. It never stores
-Camera pose, path, projection/FOV truth or a second graph. Transient World
-inspection becomes durable Camera intent only through explicit capture. The
-destination location and depth of Camera controls follow the promoted shell design
-([PLATE §0.8.1](./design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression));
-exact metrics and V2's remaining usability experiments stay explicit there. Camera
-ownership is unchanged by lens exposure or shell promotion.
-
-Never:
-
-```text
-Experience UI → independent XYZ/FOV interpolation
-Experience order → a second writable order authority beside Camera node links
-Experience timing → a copied duplicate of Camera timing
-```
-
-Motion accessibility changes presentation, not spatial truth: reduced/no-motion
-preferences select a supported presentation (for example a cut or reduced
-transition) that preserves meaning, without alternate camera graphs or duplicate
-Presentation state.
+Detailed obligations live in [Camera authority vs Experience interaction authority](components/experience.md).
 
 ## Interaction and behavior authoring
 
-Interaction is the semantic behavior model of the Experience surface: a
-lightweight, typed layer for common spatial and web behaviors without requiring
-general-purpose application code. The authoring grammar stays close to
-`Event → Target → Action`; the ratified direction adds typed session state and
-bounded deterministic declarative expressions (see
-[Composition, behavior, and direction model](#composition-behavior-and-direction-model))
-for guards, derived values and choice availability. State transitions and
-effects occur through explicit actions, never through expression evaluation, and
-variant constraints remain validated by their owning domain. Scripts are the
-separately governed extension-module exception, not the ordinary requirement.
-
-```text
-Enter → Gallery → Play Audio → gallery-narration.mp3
-Click → Piano → Play Audio → nocturne.mp3
-Reach → Camera C → Show → Painting Info
-Cue Reached → Piano Reveal → Show → Piano Info
-```
-
-Prefer semantic triggers over raw seconds (`Enter/Leave Room`, `Sequence
-Start/End`, `Reach Camera`, `Transition Start/End`, `Cue Reached`, `Click
-Object`). Advanced temporal triggers evaluate against canonical authored
-transition/timeline state, never a copied copy; a relative trigger like "at 60%"
-re-evaluates when the source duration changes. Authoring should autocomplete from
-the actual project and from capabilities supported by the selected object or
-resource, and invalid operations should be rejected semantically.
+Detailed obligations live in [Interaction and behavior authoring](components/experience.md).
 
 ## Web experience layer
 
-Published experiences may combine 3D content with ordinary web content where
-that serves the experience: text, images, panels, buttons, links, audio/video,
-forms, responsive overlays, and page/view navigation. In the destination model
-this surface is authored in Experience; graphics and rich media may be created
-externally and imported, and the editor owns how they participate in the spatial
-experience. The product does not become a Figma/Canva-style 2D design suite, a
-general web-code IDE, a Webflow-like website builder, or a traditional
-landing-page builder.
+Detailed obligations live in [Web experience layer](components/experience.md).
 
 ## Preview and publish
 
-Publishing compiles an accepted project revision, selected Experience(s), and a
-delivery profile into a **visitor-safe prepared package** with an explicit
-semantic runtime contract, closed resource graph and verifiable provenance:
-
-```text
-accepted revision × selected Experience(s) × delivery profile
-→ versioned release reader
-→ compatible visitor runtime
-→ interactive · embed · presenter · stills/film adapters
-```
-
-Each published Experience has its own mutable publication pointer to an immutable
-release and entry point. Semantic locations survive republishing while their
-subjects persist; pinned release addresses preserve historical context; removal
-or incompatible replacement returns an explicit result rather than silently
-redirecting. A release may include several Experiences with explicit
-selection/transition semantics; a simple UI may expose one.
-
-**Release formats are separate from source formats.** The release reader consumes
-prepared visitor data and never invokes the changing authoring validator or
-historical authoring compilers. Visitors never receive editor session
-infrastructure: selection, undo/redo, gizmos, Inspector, editor shell state,
-authoring stores, or asset-management UI. The package excludes editor tools,
-unresolved drafts, private source assets, credentials and arbitrary
-author-supplied executable code by default. A native **editable project export**
-remains a separate artifact containing supported source and resources; a visitor
-package does not promise reconstruction of the editable project.
-
-**Delivery-derivative exception.** Immutable, versioned, reproducible delivery
-derivatives are permitted outside authored documents (they were formerly
-forbidden by a blanket rule). Generated Camera endpoints may exist in a compiled
-delivery descriptor; they remain forbidden as a second authored set of connection
-anchors. Three objects, GPU handles, selection and transient editor state remain
-excluded.
-
-**Baselines** — see [Release and Source Baselines](#release-and-source-baselines).
-
-**Current implementation:** P22 stores an authored `ProjectDocument` snapshot plus
-an asset manifest, and the public read path revalidates it with deployed code;
-cold preparation also uses deployed decode/compiler code. That path is current
-behavior to be cut over, not the destination. Its `RuntimeScene`/`RuntimeConnection`
-forms, including resolved Camera poses/paths, are starting evidence, not schemas
-to freeze or serialize blindly.
+Detailed obligations live in [Preview and publish](components/persistence.md).
 
 ## Developer and export direction
 
@@ -679,6 +326,8 @@ creates an independently held copy: hosted Unpublish can stop future managed
 delivery but cannot revoke previously downloaded bytes. Portable playback and
 irrevocable centralized revocation cannot both be guaranteed for the same
 exported bytes.
+
+
 
 ## Accounts, backend, and collaboration
 
@@ -709,6 +358,8 @@ authored truth or silently approve a successor revision. Live presentation
 coordinates an ordered input stream and release-qualified typed session snapshots
 and clocks; late join/reconnect restore supported session state without
 concurrent editing of the project.
+
+
 
 ## AI and agent surface
 
@@ -744,221 +395,19 @@ Transport (in-process TypeScript, MCP, REST, WebMCP) stays replaceable; no
 custom planner, chat UI, generic agent framework or large MCP surface is required
 for that proof.
 
+
+
 ## Shared authoring operations
 
-Human UI and agent/API clients should be clients of the same deterministic
-authoring behavior. New authoring capability should be expressible as a
-deterministic domain operation independent of its toolbar/button presentation
-wherever practical, with this shape:
-
-```text
-semantic intent (typed, serializable)
-→ explicit inputs + expected project revision
-→ validation/preconditions across affected domains and resource locks
-→ deterministic candidate mutation
-→ one atomic accepted result + one undo result
-→ render/runtime
-```
-
-Cross-domain mutation is a separate transaction boundary from runtime evaluation.
-For "insert kit, attach to Wall, capture a Camera View, bind it to a Presentation,
-optionally create a Stop": prepare domain
-candidates against one expected project revision, stage required resource
-revisions, validate the composed result, then accept all domains and the
-dependency lock together with one undo result. Renderers and publication see one
-coherent accepted snapshot. Failed validation preserves the previous project;
-failed uploads may leave collectable staged bytes, never a half-installed kit.
-Naive stale writers are rejected by the expected-revision precondition. First
-implementation of this compound acceptance lands with the Experience cutover
-(capture a View, bind a Presentation and optionally add a Stop in one acceptance)
-— it is not deferred
-to component or kit work.
-
-No complete generic command framework is claimed to exist today, and none is
-created by this direction. Extract domain operations incrementally as real
-capabilities require them, against the surviving kernel semantics and the
-destination authority model. The current F4 host has one chronological history shared by
-Layout/Scene and the bounded Camera/Experience loop; its
-[persistence contract](./components/persistence.md) owns the cap and Save behavior. Several
-independent commits are never presented as one transaction. T5 extends no acceptance scope here.
+Detailed obligations live in [Shared authoring operations](composition-execution.md).
 
 ## Sacred contracts
 
-1. **Semantic spatial authoring with evidence-led depth.** Architectural construction extends
-   Layout and its single canonical compiler; object form and composition retain Scene ownership.
-   The [creative-depth principles](#creative-freedom-and-depth) govern specialized capability
-   admission without creating a separate general-purpose modeling application.
-2. **One project, World | Experience lenses.** The landed `Spatial` shell
-   (`Scene | Camera` × `Plan | 3D`) was removed by #115; the bounded shared Stage
-   authoring loops above have since landed. The destination
-   creator-facing framing is World | Experience over one project, not a
-   `WorldDocument` or a merger of semantic authorities. Shell composition,
-   navigation and Camera control placement are left to focused design;
-   visual-system roles remain owned by the shell contract.
-3. **Distinct, never-merged semantic authorities; world-local placement.**
-   Layout, Scene, Camera, Experience and typed resources are separate
-   authorities and are never merged or hidden inside one another. Scene/Camera
-   physical placement is project/world-local with explicit internal component
-   frames and no mandatory Room frame. The current F2 units are codec-bounded;
-   future source kinds require their owning contracts and explicit cutover, not a second
-   format inferred from a prototype. There is no legacy Room-local
-   compatibility read path: versionless room-frame
-   payloads are not decoded.
-4. **One canonical architectural compiler.** Architectural geometry and queries
-   come from the single canonical compiler (or its evolved successor), never
-   from competing consumer-specific reconstructions. Layout-owned runtime-safe
-   representation algorithms consume its output; shared kernel dataflow and
-   release lowering are not a second geometry authority.
-5. **One Camera authority.** Connectivity, routes, framing, projection and
-   evaluation have one authority; every profile controller and Experience
-   navigation intent resolves through it, and no second navigation, motion or
-   pose/FOV interpolation model exists. Experience owns occurrences, order,
-   holds, explicit Gates, interaction policy and continuation; invocation time mapping evaluates
-   through Camera. Cue ownership follows the source: Camera emits its own
-   progress markers, performances own their cues, Experience owns interaction
-   bindings to them. Current filenames and the curve/guard mechanism are
-   replaceable implementation.
-6. **Topology and Sequence stay different.** Connections describe possible
-   movement; Sequence describes ordered guided traversal. Neither silently
-   rewrites the other.
-7. **Deterministic selection/history.** Selection identity is canonical across
-   representations; one completed user/agent command or gesture produces one
-   logical transaction/history result where history applies. Compound
-   cross-domain acceptance (F.4) implements this boundary for the shared project;
-   future geometry consumers keep the same obligation.
-8. **Portable, versioned project truth; separate release formats.** The native
-   editable project export is versioned and atomic; publishing compiles accepted
-   source into separately versioned visitor packages instead of treating the
-   authoring schema as the delivery format. Account save, cloud persistence,
-   publishing and AI operate on the same authored model rather than inventing
-   incompatible copies. Immutable delivery derivatives are explicit and are not
-   authored truth.
-9. **Visitor/editor isolation.** Published/visitor runtimes consume safe project
-   data and runtime modules; editor session, selection, history, gizmo,
-   import-management and authoring infrastructure never leak into the visitor
-   surface. Runtime-safe domain evaluators (for example Layout representation)
-   are shared with visitor runtimes — isolation is about editor machinery, not
-   about forking domain mathematics into editor-only code.
-10. **Greenfield product lane, and separate frozen projects.** New projects
-    start from the product's own format. A frozen, separately deployed project —
-    such as the Chopin museum — is not a migration source for editor selection,
-    history or workspace state, and the product neither imports nor serves it.
-    The product supports exactly one document format (wall-first Layout with a
-    world-local Scene): there is no legacy reader, detector, classifier or
-    migration path, and no compatibility obligation for formats the retired
-    editor wrote. Recoverable history is a Git concern, never a product reader.
-11. **Experience references World — and owns its own layer.** Experience binds
-    to existing subjects, Camera views and routes and composes visitor-facing
-    meaning, editorial occurrences, order, holds, continuation and interaction
-    bindings; it never creates duplicate camera positions, graphs, sequences,
-    paths, room definitions, scene objects or layout geometry, and it never
-    performs independent camera interpolation. Experience controls may edit
-    Camera truth through canonical Camera operations; declared time mapping is
-    evaluated through Camera.
-12. **One typed resource system with explicit identity.** Project and library
-    scopes share one typed resource system with revisions, dependency locks and
-    no per-mode or per-owner stores; a project-local definition may be inline
-    initially provided it has the same identity, scope and reference semantics
-    as a later library resource. Delivery copies of one immutable revision are
-    not competing mutable definitions.
-13. **One semantic authoring path per intent.** Human UI, automation, and
-    future agent/API clients converge on the same validated project mutation
-    semantics wherever practical. Agent authoring must not create a parallel
-    Scene/Layout/Camera/Experience representation, bypass domain authority, or
-    produce a second history model. This coexists with contract 7.
-14. **Connectivity is explicit.** Junction IDs own Wall connectivity. Proximity
-    may offer a snap/join but never silently becomes authored topology, Room
-    ownership, or semantic adjacency.
-15. **Persistent Room identity is product-owned.** Geometry/topology may derive
-    candidate enclosed faces; it never independently allocates/recreates
-    persistent semantic Rooms. Identity reconciliation/history is deterministic.
-    Under the owner-accepted independent-placement policy, geometric
-    coincidence, containment or shared interior alone cannot transfer Room
-    identity or join independent components. A predecessor Room is carried to a
-    candidate face only through operation lineage proved by canonical
-    Wall/Junction identity; unrelated Room identities, boundary references,
-    associated-object ownership and hosted Opening bindings remain unchanged.
+Detailed obligations live in [Sacred contracts](architecture.md).
 
 ## Release and Source Baselines
 
-**Release Baseline (destination; not yet declared).** Required when external
-publication is promised durable. It names the release formats/profiles, retained
-dependency closure, supported behavior/window, runtime patch/deprecation policy,
-and managed-delivery promises. Its reader consumes prepared visitor data without
-invoking the authoring validator or historical authoring compilers. Before it is
-declared, provenance must be verifiable — retained source revision and dependency
-lock connected to build identity and output hashes through controlled build
-records or equivalent attestation. A self-asserted manifest is not sufficient
-evidence of that linkage.
-
-**Source Baseline (destination; not yet ratified).** Ratified only after F's
-formats land and the supported composition/Experience units stabilize. It
-establishes durable editable-project and resource migration/version-support
-obligations. It is independent of release durability: an already supported
-visitor package does not force every intermediate source schema to become
-permanent.
-
-**Before the Source Baseline**, development formats may change without
-accumulating historical readers. Real trial creators' accepted projects receive
-bounded, scripted migrations as named pre-baseline exceptions with covered data,
-validation, recovery and retirement criteria — they are not disposable fixtures.
-Merging a development schema does not itself create permanent compatibility;
-strict canonical validation remains required. Any earlier explicit durability
-promise still needs its own documented cutover treatment.
-
-```text
-pre-baseline development data → no compatibility guarantee
-Release Baseline → visitor release durability obligations
-Source Baseline (after F lands) → editable source migration/version support
-```
-
-### Development-stage schema compatibility (pre-baseline)
-
-Until the relevant baseline is declared, development schemas may break: new
-work does not add migration layers, tolerant historical decoders, multi-version
-canonical types, compatibility-only visitor branches or legacy writer support by
-default, and obsolete compatibility code is removed rather than carried forward
-solely because an earlier development revision existed. Reaching `main` does not
-by itself create a backward-compatibility obligation; merge history records what
-the code did, not a durability claim about what users own.
-
-A migration or compatibility path before a baseline requires an explicit
-product reason and acceptance criterion — externally distributed project files
-that must remain usable, a published snapshot intentionally declared durable, an
-intentional import format or external integration, or production data that
-cannot reasonably be reset — documented explicitly. Existing migration code is
-not itself evidence that compatibility remains required.
-
-```text
-LEGACY ADAPTER EXISTS
-≠
-LEGACY FORMAT IS A SUPPORTED PRODUCT CONTRACT
-```
-
-A pre-baseline reader may legitimately exist because internal demo content,
-benchmark goldens or another not-yet-migrated internal asset still depends on
-the older representation: a development dependency with a named owner and a
-planned removal path, documented as temporary — not a promise that the format
-keeps loading. This does not weaken canonical validation: current documents are
-validated strictly, deterministic operations preserve ownership/history
-invariants, and editor/visitor parity remains required. Intentional format
-conversion (an importer that deliberately converts an external or separately
-supported format into canonical project state) is a product capability, not
-backward compatibility.
-
-Keep four compatibility concerns distinct: editable-project schema, release
-representation, evaluator semantics, and host/delivery API. A runtime build may
-support several semantic profiles and a release declares those it requires; a
-matching major version alone is insufficient if a required capability is absent.
-Unsupported required behavior fails clearly, and an authored fallback may satisfy
-a declared alternative profile. A changed implementation that alters supported
-behavior needs a semantic version boundary, an explicit migration/rebuild, or a
-documented deprecation decision — never a silent reinterpretation of an immutable
-release. Conformance covers semantic traces and selected visual/numerical
-tolerances, not eternal pixel identity.
-
-*(This split replaces the former single Compatibility Baseline concept; earlier
-statements of one milestone no longer describe the destination.)*
+Detailed obligations live in [Release and Source Baselines](components/persistence.md).
 
 ## Technology gates
 
@@ -991,6 +440,8 @@ Current production choices remain deliberate rather than ideological:
   compilation placement, correspondence algorithms, invalidation/cache design
   and history implementation (snapshot/op-log/CRDT) remain **open** mechanism
   decisions within the ratified F shapes.
+
+
 
 ## Permanent non-goals
 
@@ -1028,6 +479,8 @@ mesh controls or sculpting techniques; neither is it committed scope. General-pu
 retopology, UV/rig authoring, character animation and arbitrary shader/node authoring remain external
 workflows. Imported or generated results remain welcome with truthful supported capabilities.
 
+
+
 ## Deferred scope is not a non-goal
 
 The following may be valuable long-term even when intentionally absent from
@@ -1062,6 +515,8 @@ current implementation slices:
 Absence from today's tracker means **not scheduled yet**, not rejected by the
 product vision. Sequencing is owned by [`../roadmap/README.md`](../roadmap/README.md).
 
+
+
 ## Agent-readiness acceptance direction
 
 Future architectural acceptance principles — not claims that they all pass
@@ -1087,6 +542,8 @@ today:
 10. Project changes remain serializable/versionable and contain no
     renderer/Three objects.
 
+
+
 ## Strategic success test
 
 The AI/reuse thesis is falsifiable. Eventually compare the same capable model,
@@ -1109,46 +566,11 @@ client, reviewer, or audience**: creator/audience trials around the first
 complete revision loop (import or build → place → direct → publish → receive
 feedback → revise → re-share), with real creator material.
 
-## Final conceptual hierarchy
 
-The destination converges on:
-
-```text
-User Workspace
-└─ Project
-   ├─ World lens → Layout + Scene source truth; Camera inspection
-   ├─ Experience lens → Experiences (one or several)
-   │  ├─ Presentations → visitor meaning, content, View/Activity uses
-   │  ├─ Experience-wide Interactions
-   │  └─ optional Guides → Stops → Presentations; order, Gates
-   ├─ Camera authority → Views, connectivity, routes, framing, evaluation
-   ├─ Typed resources (project + library scopes)
-   └─ Publish → per-Experience pointers → immutable releases
-```
-
-The authority flow:
-
-```text
-Layout / Scene / Camera author domain truth
-        ↓
-Experience references it and owns visitor meaning, occurrences, order
-        ↓
-shared composition/execution resolves bindings, channels, session logic
-        ↓
-canonical visitor runtime executes the prepared release
-```
-
-**Same project, same world, same cameras, same resources, same runtime —
-different authoring lenses.** Domain document count and storage layout do not
-define the product; semantic authorities do. Human and agent clients operate the
-same inspectable capabilities, and the destination is never presented as shipped.
 
 ## Product convergence destination
 
-**Owner-ratified destination, 2026-10-22, PR #173.** See the
-[ratification record](./decisions/product-convergence-ratification-2026-10-22.md). The accepted P1–P3
 creative findings motivate this direction; they do not adopt prototype encodings or chrome.
-[Review manifest](../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 **Draw, arrange, explain, revise.** A creator can build architecture, compose their own objects,
 explain an object or an admitted part, and revise that work without losing identity or unrelated
@@ -1174,12 +596,12 @@ or explain an unresolved reference without silently guessing a replacement.
 regular laptop through [the proposed performance contract](./components/performance.md).
 Resolve demonstrated material costs inside the consuming slice, preserving architectural
 expressiveness. Product licensing is undecided: the owner rescinded the copyleft choice
-([2026-10-23 ruling](./decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Established
+([2026-10-23 ruling](../workflow.md)). Established
 libraries remain candidates when justified by correctness, capability and performance; dependency
 licence compatibility must be established for the eventual product licence and shipped build;
 until then new dependencies follow the owner's permissive-only admission ruling (same record), except that T5
 may adopt weak-copyleft libraries after a documented compatibility, distribution and compliance review
-([T5 licensing amendment](./decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)). Shared shell rules remain PLATE-owned.
+([T5 licensing amendment](components/assets.md)). Shared shell rules remain PLATE-owned.
 Precise integration of new prototype capabilities develops in each consuming slice through a
 reviewable draft, build, browser observation and revision; unfinished feature layout does not
 block unrelated capability planning.

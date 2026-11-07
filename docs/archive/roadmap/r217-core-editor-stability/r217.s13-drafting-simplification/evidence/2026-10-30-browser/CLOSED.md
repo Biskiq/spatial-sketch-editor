@@ -2,8 +2,8 @@
 
 Byte-identical copies of the fourteen Chromium captures and the downloaded source JSON recorded in
 the S13 acceptance record on 2026-10-30. Images and JSON were copied unmodified during closeout; the
-live slice path holds the [acceptance record](../../../../../../roadmap/r217-core-editor-stability/r217.s13-drafting-simplification/acceptance.md)
-and the [evidence pointer stub](../../../../../../roadmap/r217-core-editor-stability/r217.s13-drafting-simplification/evidence/README.md).
+live slice path holds the [acceptance record](../../acceptance.md)
+and the [evidence pointer stub](../README.md).
 
 The project is the canonical starter **Enclosed room**, DPR 1, at 1440 × 900, 1280 × 800,
 1180 × 820 and 820 × 1180 CSS px. The captures are settled endpoints. Mid-fade continuity and the

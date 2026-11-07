@@ -54,7 +54,15 @@ function stripQuery(specifier: string): string {
 
 /** The reason `file` references `legacy/`, or null when it is clean. */
 function legacyReference(file: string): string | null {
-	const source = readFileSync(file, 'utf8');
+	let source: string;
+	try {
+		source = readFileSync(file, 'utf8');
+	} catch (error) {
+		// A temporary test fixture can disappear between the directory walk and
+		// this read; a file that no longer exists was not a product reference.
+		if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') return null;
+		throw error;
+	}
 	for (const specifier of parseModuleSpecifiers(source)) {
 		if (specifier === 'legacy' || specifier.startsWith('legacy/')) return `import ${specifier}`;
 		if (specifier.startsWith('.')) {

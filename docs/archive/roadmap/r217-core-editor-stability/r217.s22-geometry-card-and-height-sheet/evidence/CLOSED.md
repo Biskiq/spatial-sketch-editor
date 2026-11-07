@@ -2,8 +2,8 @@
 
 Browser captures and measurements from the S22 acceptance runs at tested revision `fb57a662`, preserved
 byte-for-byte from the live tree by `git mv`. The live acceptance record links here for every capture.
-Nothing in this folder is an authority: the [acceptance record](../../../../../roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/acceptance.md)
-owns the results, the review and the acceptance, and the [plan stub](../../../../../roadmap/r217-core-editor-stability/r217.s22-geometry-card-and-height-sheet/implementation-plan.md)
+Nothing in this folder is an authority: the [acceptance record](../acceptance.md)
+owns the results, the review and the acceptance, and the [plan stub](../implementation-plan.md)
 owns the recovery line for the approved plan.
 
 Runs: a Vite dev server on `localhost:5173` and a scratch API on `localhost:8790`, both no longer listening at

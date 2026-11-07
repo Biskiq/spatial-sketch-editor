@@ -25,7 +25,7 @@ function sourceFiles(root: string): string[] {
 	return files;
 }
 
-describe('project-model package boundary', () => {
+describe('[cap:project.envelope core] project-model package boundary', () => {
 	it('exposes the portable package primitives directly', async () => {
 		expect(await sha256Bytes(new Uint8Array())).toMatch(/^sha256-[0-9a-f]{64}$/);
 		expect(await derivePackageId([])).toMatch(/^package-[0-9a-f]{12}$/);
@@ -54,7 +54,7 @@ describe('project-model package boundary', () => {
 			camera: { unitId: 'project:camera', data: { formatVersion: 1, views: [], connections: [] } },
 			experience: {
 				unitId: 'project:experience',
-				data: { formatVersion: 3, experiences: [] }
+				data: { formatVersion: 4, experiences: [] }
 			},
 			resources: { unitId: 'project:resources', data: { formatVersion: units.RESOURCE_UNIT_FORMAT_VERSION, resources: [] } }
 		});

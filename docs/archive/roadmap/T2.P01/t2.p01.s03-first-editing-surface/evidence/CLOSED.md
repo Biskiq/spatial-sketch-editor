@@ -6,7 +6,7 @@ unmodified from the local browser QA capture. Shift-drag used Chrome input event
 during pointer movement. Browser video capture was unavailable because FFmpeg was not installed.
 
 The full gesture trace, exact planner refusal, tested diff identity and verification results are in
-the live [S03 acceptance record](../../../../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md).
+the live [S03 acceptance record](../../../closed-phases/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md).
 The record is compacted to its closeout stub; the refreshed-Chrome detail lives in the preserved
 acceptance body:
 

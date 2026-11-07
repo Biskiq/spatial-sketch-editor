@@ -1,12 +1,4 @@
 <script lang="ts">
-	/**
-	 * The Experience lower-edge dock (R217.S25): Select, Place a View, Path, Capture and Guide,
-	 * in the same forest bar and key grammar as the World dock. Place a View arms the Stage's
-	 * placement gesture; Path remains a disabled key with its reason in title and in a hidden
-	 * description until path editing lands. Capture submits through the controller's one
-	 * acceptance port; Guide opens or closes the invoked Guide instrument above it. It holds
-	 * no state: the route passes the open flag and the handlers.
-	 */
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 
 	let {
@@ -50,25 +42,12 @@
 		class:place-armed={placeArmed}
 		aria-pressed={placeArmed}
 		aria-label="Place a View"
-		title={placeArmed ? 'Place a View: drag toward what the View sees · Esc' : 'Place a View where the camera stands'}
+		title={placeArmed ? 'Place a View: click to place or drag to aim · Esc' : 'Place a View where the camera stands'}
 		data-dock-tool="place-view"
 		onclick={onPlaceView}
 	>
 		<ShellIcon name="camera" size={18} />
 	</button>
-	{#if guideOpen}
-		<button
-			type="button"
-			class="key"
-			disabled
-			aria-label="Path"
-			title="Comes with path editing"
-			aria-describedby="experience-dock-path-reason"
-			data-dock-tool="path"
-		>
-			<ShellIcon name="path" size={18} />
-		</button>
-	{/if}
 	<span class="separator" aria-hidden="true"></span>
 	<button
 		type="button"
@@ -95,9 +74,6 @@
 		<ShellIcon name="guide" size={18} />
 		<span class="label">Guide</span>
 	</button>
-	{#if guideOpen}
-		<span id="experience-dock-path-reason" class="visually-hidden">Comes with path editing</span>
-	{/if}
 	{#if captureDisabled && captureReason}
 		<span id="experience-dock-capture-reason" class="visually-hidden">{captureReason}</span>
 	{/if}

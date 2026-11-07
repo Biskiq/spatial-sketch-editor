@@ -41,7 +41,7 @@ import {
 	stopUpdateIntent,
 	viewRenameIntent
 } from '$lib/authoring/experience/commands';
-import { travelGapMessages } from '$lib/authoring/experience/travel-gap';
+import { travelGapMessages } from '$lib/authoring/experience/experience-problems';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { mountExperienceController, snapshotCell } from './__fixtures__/experience-controller-root.svelte';
 import { EXPERIENCE, experienceEnvelope } from './fixtures';
@@ -158,7 +158,7 @@ describe('commands route through commands.ts', () => {
 			})
 		);
 		expect(experienceFocus.experienceId).toBe(created.id);
-		expect(controller.message).toBe('Accepted.');
+		expect(controller.feedback).toBeNull();
 	});
 
 	it('reorders a Guide with the guide-order intent and nothing else', async () => {
@@ -173,7 +173,7 @@ describe('commands route through commands.ts', () => {
 			guideOrderIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId },
+				ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				guideId: 'guide-1',
 				stopIds: ['stop-2', 'stop-1']
@@ -183,8 +183,8 @@ describe('commands route through commands.ts', () => {
 
 	it('moves a Stop to an index as a permutation, and refuses a move that changes nothing', async () => {
 		const three = withExperience({
-			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }],
-			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2', 'stop-3'], entryStopId: 'stop-1' }]
+			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' }],
+			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2', 'stop-3'], pacing: 'automatic' as const }]
 		});
 		const { controller, submitted } = await mounted({ experience: three });
 		controller.openGuide('guide-1');
@@ -222,7 +222,7 @@ describe('commands route through commands.ts', () => {
 			guideOrderIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId },
+				ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				guideId: 'guide-1',
 				stopIds: ['stop-2', 'stop-1']
@@ -232,82 +232,199 @@ describe('commands route through commands.ts', () => {
 });
 
 describe('per-field Stop edits keep the other fields', () => {
-	it('sends the sequence with its updated hold', async () => {
+	it('Stay writes only the stay, rounded to 0.5 s, and refuses a stay under 1 s', async () => {
 		const { controller, submitted, envelope } = await mounted();
 
-		expect(await controller.setViewHold('stop-1', 'view-1', 2)).toBe(true);
-
+		expect(await controller.setStopStay('stop-1', 4.2)).toBe(true);
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_STOP_UPDATE_KIND);
-		expect(intent.payload).toEqual({ views: [{ viewId: 'view-1', holdSeconds: 2 }] });
+		expect(intent.payload).toEqual({ staySeconds: 4 });
 		expect(intent).toEqual(
 			stopUpdateIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId },
+				ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				stopId: 'stop-1',
-				views: [{ viewId: 'view-1', holdSeconds: 2 }]
+				staySeconds: 4
 			})
 		);
-	});
-
-	it('clears the hold by omitting it from the sequence, and refuses a hold that is not a finite non-negative number', async () => {
-		const { controller, submitted } = await mounted();
-
-		await controller.setViewHold('stop-1', 'view-1', null);
-		expect(submittedIntent(submitted).payload).toEqual({ views: [{ viewId: 'view-1' }] });
 
 		submitted.mockClear();
-		expect(await controller.setViewHold('stop-1', 'view-1', -1)).toBe(false);
-		expect(await controller.setViewHold('stop-1', 'view-1', Number.NaN)).toBe(false);
+		expect(await controller.setStopStay('stop-1', 0.5)).toBe(false);
+		expect(await controller.setStopStay('stop-1', Number.NaN)).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
-		expect(controller.message).toBe('A hold is a finite number of seconds, or blank for none.');
+		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'A stay is at least 1 s.' });
 	});
 
-	it('submits a whole sequence and refuses to leave out the last View', async () => {
-		const { controller, submitted } = await mounted();
-		expect(await controller.leaveOutView('stop-1', 'view-1')).toBe(false);
-		expect(controller.message).toBe('A Stop shows at least one View');
-		expect(submitted).not.toHaveBeenCalled();
-
-		const views = [{ viewId: 'view-1', holdSeconds: 3 }];
-		expect(await controller.setStopViews('stop-1', views)).toBe(true);
-		expect(submittedIntent(submitted).payload).toEqual({ views });
-	});
-
-	it('changes where Next goes and keeps the transition', async () => {
-		const { controller, submitted } = await mounted();
-
-		await controller.setContinuation('stop-1', 'end');
-		expect(submittedIntent(submitted).payload).toEqual({ continuation: { kind: 'end' } });
-
+	it('Enter at preserves a named View even when it is currently the Default', async () => {
+		const two = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
+		const { controller, submitted } = await mounted({ experience: two });
+		expect(await controller.setStopEntry('stop-1', 'view-2')).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ entryViewId: 'view-2' });
 		submitted.mockClear();
-		await controller.setContinuation('stop-1', { stopId: 'stop-2' });
-		expect(submittedIntent(submitted).payload).toEqual({
-			continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' }
+		// Choosing the current Default pins it; only an explicit null follows reorders.
+		expect(await controller.setStopEntry('stop-1', 'view-1')).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ entryViewId: 'view-1' });
+		submitted.mockClear();
+		expect(await controller.setStopEntry('stop-1', null)).toBe(false);
+		expect(await controller.setStopEntry('stop-1', 'view-absent')).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
+	});
+
+	it('Invite to explore turns on with the default prompt, and an empty prompt is the default', async () => {
+		const { controller, submitted } = await mounted();
+		expect(await controller.setStopInvitation('stop-1', { prompt: null })).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ invitation: { prompt: null } });
+		submitted.mockClear();
+		expect(await controller.setStopInvitation('stop-1', null)).toBe(false);
+		expect(await controller.setStopInvitation('stop-2', { prompt: '  Look at the keys ' })).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ invitation: { prompt: 'Look at the keys' } });
+	});
+
+	it('Pacing is written on the Guide, once', async () => {
+		const { controller, submitted } = await mounted();
+		expect(await controller.setGuidePacing('guide-1', 'manual')).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ pacing: 'manual' });
+		submitted.mockClear();
+		expect(await controller.setGuidePacing('guide-1', 'automatic')).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
+	});
+
+	it('types a success as a success and a refusal as a refusal, never by its words (G8)', async () => {
+		const { controller } = await mounted();
+		expect(controller.feedback).toBeNull();
+
+		expect(await controller.setGuidePacing('guide-1', 'manual')).toBe(true);
+		expect(controller.feedback).toEqual({
+			kind: 'success',
+			text: 'Manual: every Stop now waits for Next. Each Stop keeps its time, unused, for switching back.'
 		});
 
-		submitted.mockClear();
-		await controller.setContinuation('stop-1', 'next');
-		expect(submittedIntent(submitted).payload).toEqual({
-			continuation: { kind: 'sequence-next', transition: 'travel' }
+		// A refusal is a different kind, not a different set of words.
+		expect(await controller.setStopStay('stop-1', 0.5)).toBe(false);
+		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'A stay is at least 1 s.' });
+
+		// A no-op install is refused, and is never mistaken for an accepted change.
+		expect(await controller.setGuidePacing('guide-1', 'automatic')).toBe(false);
+		expect(controller.feedback?.kind).toBe('refusal');
+	});
+
+	it('appends a normalised Cut to the success feedback (R27)', async () => {
+		const afterExperience = withExperience({
+			stops: EXPERIENCE.experiences[0]!.stops.map((stop) =>
+				stop.id === 'stop-1' ? { ...stop, transition: undefined } : stop
+			),
+			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-2', 'stop-1'], pacing: 'automatic' as const }]
 		});
+		const after = await experienceEnvelope({ experience: afterExperience });
+		const { controller } = await mounted({
+			accept: async () => ({
+				...installed(),
+				changes: [{ kind: 'experience.transition.normalised', subjectIds: ['stop-1'], fields: ['transition'] }],
+				source: after
+			})
+		});
+		controller.openGuide('guide-1');
+
+		expect(await controller.moveStop('stop-1', 1)).toBe(true);
+		expect(controller.feedback).toEqual({
+			kind: 'success',
+			text: 'Stop 2 is last, so its Travel became a Cut.'
+		});
+	});
+
+	it('appends the straight path reconciliation adds to the success feedback (R9)', async () => {
+		const fixture = await experienceEnvelope();
+		const after = await experienceEnvelope({
+			camera: {
+				formatVersion: fixture.units.camera.data.formatVersion,
+				views: fixture.units.camera.data.views,
+				connections: [
+					{
+						id: 'connection-new',
+						fromNodeId: 'view-1',
+						toNodeId: 'view-2',
+						clearance: 0.35,
+						positionPath: { kind: 'rounded-polyline', anchors: [] },
+						timing: {
+							forward: { durationSeconds: 4, easing: 'smoothstep' },
+							reverse: { durationSeconds: 3, easing: 'linear' }
+						}
+					}
+				]
+			}
+		});
+		const { controller } = await mounted({
+			experience: withExperience({
+				stops: EXPERIENCE.experiences[0]!.stops.map((stop) => stop.id === 'stop-1' ? { ...stop, transition: 'cut' as const } : stop)
+			}),
+			accept: async () => ({
+				...installed(),
+				changes: [{ kind: 'camera.connection.created', subjectIds: ['connection-new'], fields: ['fromNodeId', 'toNodeId', 'clearance', 'positionPath'] }],
+				source: after
+			})
+		});
+		controller.openGuide('guide-1');
+
+		expect(await controller.setTransition('stop-1', 'travel')).toBe(true);
+		expect(controller.feedback).toEqual({
+			kind: 'success',
+			text: 'A straight Camera path joins Piano and Gallery.'
+		});
+	});
+
+	it('the View rail sets one outgoing step in one change', async () => {
+		const three = withPresentationChange('presentation-1', {
+			views: [{ viewId: 'view-1' }, { viewId: 'view-2', transition: 'cut' }]
+		});
+		const { controller, submitted } = await mounted({ experience: three });
+		expect(await controller.setPresentationStep('presentation-1', 1, 'travel')).toBe(true);
+		const intent = submittedIntent(submitted);
+		// view-1 and view-2 are joined by connection-1, so no path is added.
+		expect(intent.payload).toEqual({ views: [{ viewId: 'view-1', transition: 'travel' }, { viewId: 'view-2' }] });
+		submitted.mockClear();
+		// Travel → Cut is a real change, written on the View it leaves.
+		expect(await controller.setPresentationStep('presentation-1', 1, 'cut')).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({ views: [{ viewId: 'view-1', transition: 'cut' }, { viewId: 'view-2' }] });
+	});
+
+	it('moving a View to the top makes it the Default; each View keeps its own step', async () => {
+		const two = withPresentationChange('presentation-1', {
+			views: [{ viewId: 'view-1', transition: 'travel' }, { viewId: 'view-2' }]
+		});
+		const { controller, submitted } = await mounted({ experience: two });
+		expect(await controller.movePresentationView('presentation-1', 'view-2', 0)).toBe(true);
+		expect(submittedIntent(submitted).payload).toEqual({
+			views: [{ viewId: 'view-2' }, { viewId: 'view-1' }]
+		});
+	});
+
+	it('writes the outgoing step on the Stop that leaves, and refuses one after the last Stop (D-1, D-12)', async () => {
+		const { controller, submitted } = await mounted();
+
+		expect(await controller.setTransition('stop-1', 'cut')).toBe(true);
+		expect(submittedIntent(submitted).payload).toMatchObject({ transition: 'cut' });
+
+		submitted.mockClear();
+		// The last Stop has no next Stop, so it has no outgoing step at all.
+		expect(await controller.setTransition('stop-2', 'travel')).toBe(false);
+		expect(submitted).not.toHaveBeenCalled();
 	});
 
 	it('changes the transition and keeps the target', async () => {
 		const jump = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2' } },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', transition: 'cut' },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', transition: 'cut' }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: jump });
 
 		await controller.setTransition('stop-1', 'travel');
 
-		expect(submittedIntent(submitted).payload).toEqual({
-			continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' }
+		expect(submittedIntent(submitted).payload).toMatchObject({
+			transition: 'travel'
 		});
 	});
 
@@ -316,16 +433,16 @@ describe('per-field Stop edits keep the other fields', () => {
 		// authored default (a cut sequence-next) and the edit rewrites it.
 		const bare = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2' }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2' }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: bare });
 
 		await controller.setTransition('stop-1', 'travel');
 
-		expect(submittedIntent(submitted).payload).toEqual({
-			continuation: { kind: 'sequence-next', transition: 'travel' }
+		expect(submittedIntent(submitted).payload).toMatchObject({
+			transition: 'travel'
 		});
 	});
 
@@ -340,8 +457,8 @@ describe('per-field Stop edits keep the other fields', () => {
 		// stop-2 has no continuation: as the Guide's last Stop it reads as an implicit End, which has no next Stop.
 		const implicit = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'sequence-next', transition: 'cut' } },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2' }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', transition: 'cut' },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2' }
 			]
 		});
 		const { controller, submitted } = await mounted({ experience: implicit });
@@ -351,23 +468,24 @@ describe('per-field Stop edits keep the other fields', () => {
 		expect(submitted).not.toHaveBeenCalled();
 
 		expect(await controller.setTransition('stop-1', 'travel')).toBe(true);
-		expect(submittedIntent(submitted).payload).toEqual({
-			continuation: { kind: 'sequence-next', transition: 'travel' }
+		expect(submittedIntent(submitted).payload).toMatchObject({
+			transition: 'travel'
 		});
 	});
 
 	it('names an unknown Stop as no change', async () => {
 		const { controller, submitted } = await mounted();
 
-		expect(await controller.setViewHold('missing', 'view-1', 1)).toBe(false);
-		expect(await controller.setContinuation('missing', 'end')).toBe(false);
+		expect(await controller.setStopStay('missing', 3)).toBe(false);
+		expect(await controller.setStopEntry('missing', 'view-1')).toBe(false);
+		expect(await controller.setStopInvitation('missing', null)).toBe(false);
 		expect(await controller.setTransition('missing', 'cut')).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
 	});
 });
 
 describe('Capture (D1, D2)', () => {
-	it('captures into the selected Presentation and sends its existing Default so it is kept', async () => {
+	it('captures into the selected Presentation, appended after its Default', async () => {
 		const { controller, submitted, envelope } = await mounted({ evaluation: perspectiveReading().evaluation });
 		controller.select({ kind: 'presentation', presentationId: 'presentation-1' });
 
@@ -388,12 +506,11 @@ describe('Capture (D1, D2)', () => {
 					eye: [0, 1.6, 2],
 					target: [0, 1.4, 0],
 					fov: capturedFovDegrees(perspectiveReading().projection)!
-				}),
-				defaultViewId: 'view-1'
+				})
 			})
 		);
-		expect((intent.payload as { defaultViewId?: string }).defaultViewId).toBe('view-1');
-		expect(controller.message).toBe('Accepted.');
+		expect('views' in (intent.payload as object)).toBe(false);
+		expect(controller.feedback).toBeNull();
 		// The Card stays on what it showed.
 		expect(controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
 	});
@@ -407,17 +524,19 @@ describe('Capture (D1, D2)', () => {
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_PRESENTATION_UPDATE_KIND);
 		expect(intent.targets[0]!.subject).toEqual({ kind: 'presentation', id: 'presentation-2' });
-		expect((intent.payload as { defaultViewId?: string }).defaultViewId).toBe('view-2');
+		expect('views' in (intent.payload as object)).toBe(false);
 	});
 
 	it('omits the Default when there is none, so the new View fills it, and says so', async () => {
-		const unset = withPresentationChange('presentation-2', { defaultViewId: null });
+		const unset = withPresentationChange('presentation-2', { views: [] });
 		const noStops: ExperienceUnitPayload = {
 			...unset,
 			experiences: unset.experiences.map((experience) => ({
 				...experience,
-				stops: experience.stops.filter((stop) => stop.presentationId !== 'presentation-2'),
-				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }]
+				stops: experience.stops
+					.filter((stop) => stop.presentationId !== 'presentation-2')
+					.map(({ transition: _transition, ...stop }) => stop),
+				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const }]
 			}))
 		};
 		const { controller, submitted } = await mounted({
@@ -429,8 +548,11 @@ describe('Capture (D1, D2)', () => {
 		expect(await controller.capture()).toBe(true);
 
 		const intent = submittedIntent(submitted);
-		expect('defaultViewId' in (intent.payload as object)).toBe(false);
-		expect(controller.message).toBe('Gallery had no Default View, so this View is now its Default.');
+		expect('views' in (intent.payload as object)).toBe(false);
+		expect(controller.feedback).toEqual({
+			kind: 'info',
+			text: 'Gallery had no Default View, so this View is now its Default.'
+		});
 	});
 
 	it('with nothing selected binds no subject, no Guide and no Stop, then selects the new Presentation', async () => {
@@ -467,7 +589,6 @@ describe('Capture (D1, D2)', () => {
 				subjectEntityId: null,
 				text: null,
 				guideId: null,
-				firstGuideLabel: null,
 				afterStopId: null
 			})
 		);
@@ -489,9 +610,10 @@ describe('Capture (D1, D2)', () => {
 
 		expect(await unevaluated.controller.capture()).toBe(false);
 		expect(unevaluated.submitted).not.toHaveBeenCalled();
-		expect(unevaluated.controller.message).toBe(
-			'The Stage has not evaluated a reading yet; wait for the reading to settle.'
-		);
+		expect(unevaluated.controller.feedback).toEqual({
+			kind: 'refusal',
+			text: 'The Stage has not evaluated a reading yet; wait for the reading to settle.'
+		});
 		expect(unevaluated.controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
 		unevaluated.dispose();
 
@@ -500,7 +622,10 @@ describe('Capture (D1, D2)', () => {
 		});
 		expect(await plan.controller.capture()).toBe(false);
 		expect(plan.submitted).not.toHaveBeenCalled();
-		expect(plan.controller.message).toBe('Capture needs the 3D reading: switch to 3D, frame the View, then capture.');
+		expect(plan.controller.feedback).toEqual({
+			kind: 'refusal',
+			text: 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.'
+		});
 	});
 
 	it('leaves the selection as it was when acceptance refuses the capture', async () => {
@@ -517,7 +642,7 @@ describe('Capture (D1, D2)', () => {
 		expect(controller.subject).toBeNull();
 	});
 
-	it('Present this binds the named Scene entity with the given label and no Stop, then selects it', async () => {
+	it('Present this binds the named Scene entity with no copied label and no Stop, then selects it', async () => {
 		const { controller, submitted, envelope } = await mounted({ evaluation: perspectiveReading().evaluation });
 
 		expect(await controller.presentThis('entity-1', 'Grand piano')).toBe(true);
@@ -539,11 +664,10 @@ describe('Capture (D1, D2)', () => {
 					target: [0, 1.4, 0],
 					fov: capturedFovDegrees(perspectiveReading().projection)!
 				}),
-				presentationLabel: 'Grand piano',
+				presentationLabel: null,
 				subjectEntityId: 'entity-1',
 				text: null,
 				guideId: null,
-				firstGuideLabel: null,
 				afterStopId: null
 			})
 		);
@@ -554,22 +678,10 @@ describe('Capture (D1, D2)', () => {
 describe('addStop (D8)', () => {
 	const noGuide = withExperience({ welcome: null, entryGuideId: null, stops: [], guides: [] });
 
-	it('needs a trimmed Guide name before it creates the first Guide', async () => {
-		const { controller, submitted } = await mounted({ experience: noGuide });
-		controller.select({ kind: 'presentation', presentationId: 'presentation-1' });
-
-		expect(await controller.addStop('presentation-1')).toBe(false);
-		expect(await controller.addStop('presentation-1', { firstGuideLabel: '   ' })).toBe(false);
-
-		expect(submitted).not.toHaveBeenCalled();
-		expect(controller.message).toBe('Name the Guide first.');
-		expect(controller.subject).toEqual({ kind: 'presentation', presentationId: 'presentation-1' });
-	});
-
-	it('creates the first Guide and its Stop, makes the Guide active and selects the Stop', async () => {
+	it('creates Tour and its first Stop with no naming prompt, carrying the entry View', async () => {
 		const { controller, submitted, envelope } = await mounted({ experience: noGuide });
 
-		expect(await controller.addStop('presentation-1', { firstGuideLabel: '  Morning route ' })).toBe(true);
+		expect(await controller.addStop('presentation-1', { entryViewId: 'view-2' })).toBe(true);
 
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_GUIDE_CREATE_KIND);
@@ -579,17 +691,24 @@ describe('addStop (D8)', () => {
 			guideCreateIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId, guide, stop },
+				ids: { operation: intent.operationId, guide, stop, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				presentationId: 'presentation-1',
-				label: 'Morning route',
-				entryViewId: null,
-				holdSeconds: null,
-				continuation: { kind: 'sequence-next', transition: 'cut' }
+				label: 'Tour',
+				entryViewId: 'view-2',
+				staySeconds: null,
+				transition: 'cut'
 			})
 		);
 		expect(experienceFocus.guideId).toBe(guide);
 		expect(controller.subject).toEqual({ kind: 'stop', stopId: stop });
+	});
+
+	it('names a further Guide Tour 2, then the next free Tour n', async () => {
+		const { controller, submitted } = await mounted();
+
+		expect(await controller.createGuide('presentation-2')).toBe(true);
+		expect((submittedIntent(submitted).payload as { label: string }).label).toBe('Tour 2');
 	});
 
 	it('inserts after the selected Stop when it is in the active Guide', async () => {
@@ -606,14 +725,14 @@ describe('addStop (D8)', () => {
 			stopCreateIntent({
 				envelope,
 				revision: REVISION,
-				ids: { operation: intent.operationId, stop },
+				ids: { operation: intent.operationId, stop, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) },
 				experienceId: 'experience-1',
 				presentationId: 'presentation-2',
 				guideId: 'guide-1',
 				afterStopId: 'stop-1',
 				entryViewId: null,
-				holdSeconds: null,
-				continuation: { kind: 'sequence-next', transition: 'cut' }
+				staySeconds: null,
+				transition: 'cut'
 			})
 		);
 		expect(controller.subject).toEqual({ kind: 'stop', stopId: stop });
@@ -644,7 +763,11 @@ describe('addStop (D8)', () => {
 
 	it('does not insert after a selected Stop that is not in the Guide', async () => {
 		const stray = withExperience({
-			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1' }]
+			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' }],
+			guides: [
+				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], pacing: 'automatic' as const },
+				{ id: 'guide-2', label: 'Other', stopIds: ['stop-3'], pacing: 'automatic' as const }
+			]
 		});
 		const { controller, submitted } = await mounted({ experience: stray });
 		controller.openGuide('guide-1');
@@ -684,7 +807,7 @@ describe('one Card subject (D10)', () => {
 		expect(controller.selectedPresentation).toBeNull();
 		expect(controller.selectedView).toBeNull();
 
-		controller.select({ kind: 'guide', guideId: 'guide-1' });
+		controller.select({ kind: 'experience' });
 		flush();
 		expect(controller.selectedStop).toBeNull();
 		expect(controller.selectedPresentation).toBeNull();
@@ -700,7 +823,7 @@ describe('one Card subject (D10)', () => {
 		controller.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
 		expect(experienceFocus.read()).toMatchObject({ stopId: null, presentationId: 'presentation-1' });
 
-		controller.select({ kind: 'guide', guideId: 'guide-1' });
+		controller.select({ kind: 'experience' });
 		expect(experienceFocus.read()).toMatchObject({ stopId: null, presentationId: null });
 	});
 
@@ -736,7 +859,7 @@ describe('busy and message', () => {
 		release(installed());
 		await pending;
 		expect(controller.busy).toBe(false);
-		expect(controller.message).toBe('Accepted.');
+		expect(controller.feedback).toBeNull();
 	});
 
 	it('names a refusal in its own words, without the code, focuses nothing new and clears busy', async () => {
@@ -750,7 +873,10 @@ describe('busy and message', () => {
 
 		await controller.createExperience();
 
-		expect(controller.message).toBe('the snapshot belongs to another host lifetime');
+		expect(controller.feedback).toEqual({
+			kind: 'refusal',
+			text: 'the snapshot belongs to another host lifetime'
+		});
 		expect(controller.busy).toBe(false);
 		expect(experienceFocus.experienceId).toBe('experience-1');
 	});
@@ -760,8 +886,8 @@ describe('busy and message', () => {
 			accept: async () => ({ kind: 'no-op', revision: REVISION }) as unknown as Outcome
 		});
 
-		await controller.setDefaultView('presentation-1', 'view-1');
-		expect(controller.message).toBe('No change to accept.');
+		await controller.setStopStay('stop-1', 3);
+		expect(controller.feedback).toEqual({ kind: 'refusal', text: 'No change to accept.' });
 	});
 });
 
@@ -788,7 +914,7 @@ describe('derived reading and the route-supplied ports', () => {
 		expect(controller.currentGuide).toBeNull();
 		expect(controller.contextGuide?.id).toBe('guide-1');
 		expect(controller.guideStops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2']);
-		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2, index: 0 }]);
+		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2 }]);
 		expect(controller.resolveContinuation('stop-1')).toMatchObject({ kind: 'adjacent', stopId: 'stop-2', position: 2 });
 		expect(controller.reach()).toEqual({ presentations: 2, views: 2, freePresentations: 2, freeViews: 2, hiddenViews: 0, viewsOnlyFree: 0 });
 
@@ -867,9 +993,9 @@ describe('derived reading and the route-supplied ports', () => {
 			transition: 'travel',
 			explicit: false
 		});
-		expect(controller.resolveContinuation('stop-2')).toEqual({ kind: 'end', explicit: true });
+		expect(controller.resolveContinuation('stop-2')).toEqual({ kind: 'end', explicit: false });
 		expect(controller.resolveContinuation('missing')).toBeNull();
-		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2, index: 0 }]);
+		expect(controller.viewStops('view-2')).toEqual([{ stopId: 'stop-2', position: 2 }]);
 		expect(controller.presentationsAbout('entity-1').map((entry) => entry.id)).toEqual(['presentation-1']);
 		expect(controller.presentationsAbout('other')).toEqual([]);
 		expect(controller.reach()).toEqual({ presentations: 2, views: 2, freePresentations: 2, freeViews: 2, hiddenViews: 0, viewsOnlyFree: 0 });
@@ -889,7 +1015,7 @@ describe('derived reading and the route-supplied ports', () => {
 			...EXPERIENCE,
 			experiences: [
 				...EXPERIENCE.experiences,
-				{ id: 'experience-2', label: 'Second', welcome: null, entryGuideId: null, presentations: [], stops: [], guides: [], gates: [], detours: [] }
+				{ id: 'experience-2', label: 'Second', welcome: null, entryGuideId: null, presentations: [], stops: [], guides: [], detours: [] }
 			]
 		};
 		const replaced: ProjectEnvelope = await experienceEnvelope({ experience: second });
@@ -924,11 +1050,11 @@ describe('the controller module has no DOM at runtime', () => {
 			mount.controller.select({ kind: 'stop', stopId: 'stop-1' });
 			mount.flush();
 
-			await mount.controller.setViewHold('stop-1', 'view-1', 1);
+			await mount.controller.setStopStay('stop-1', 3);
 			await mount.controller.createExperience();
 
 			expect(submitted).toHaveBeenCalledTimes(2);
-			expect(mount.controller.message).toBe('Accepted.');
+			expect(mount.controller.feedback).toBeNull();
 		} finally {
 			vi.unstubAllGlobals();
 		}
@@ -978,12 +1104,13 @@ describe('Presentation edits', () => {
 		expect(submittedIntent(submitted).payload).toEqual({ text: null });
 	});
 
-	it('Make default sends only the Default View', async () => {
-		const { controller, submitted } = await mounted();
+	it('Make default moves the View to the top: View 1 is the Default', async () => {
+		const many = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1', transition: 'travel' }, { viewId: 'view-2' }] });
+		const { controller, submitted } = await mounted({ experience: many });
 
-		await controller.setDefaultView('presentation-1', 'view-1');
+		await controller.setDefaultView('presentation-1', 'view-2');
 
-		expect(submittedIntent(submitted).payload).toEqual({ defaultViewId: 'view-1' });
+		expect(submittedIntent(submitted).payload).toEqual({ views: [{ viewId: 'view-2' }, { viewId: 'view-1' }] });
 	});
 });
 
@@ -1017,30 +1144,23 @@ describe('R217.S26 — structure commands', () => {
 		expect(intent.payload).toEqual({ label: 'Afternoon walk' });
 	});
 
-	it('makes a Guide the Opening Guide and moves a Guide’s start, never when it already is', async () => {
+	it('makes a Guide the Opening Guide, never when it already is', async () => {
 		const two = withExperience({
 			guides: [
-				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' },
-				{ id: 'guide-2', label: 'Short', stopIds: ['stop-2'], entryStopId: 'stop-2' }
-			]
+				{ id: 'guide-1', label: 'Main', stopIds: ['stop-1', 'stop-2'], pacing: 'automatic' as const },
+				{ id: 'guide-2', label: 'Short', stopIds: ['stop-3'], pacing: 'automatic' as const }
+			],
+			stops: [...EXPERIENCE.experiences[0]!.stops, { id: 'stop-3', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1' }]
 		});
 		const { controller, submitted } = await mounted({ experience: two });
 		expect(await controller.makeOpeningGuide('guide-1')).toBe(false);
-		expect(await controller.setGuideStart('stop-1')).toBe(false);
 		expect(submitted).not.toHaveBeenCalled();
 
 		await controller.makeOpeningGuide('guide-2');
 		expect(submittedIntent(submitted).payload).toEqual({ entryGuideId: 'guide-2' });
-
-		submitted.mockClear();
-		await controller.setGuideStart('stop-2');
-		const intent = submittedIntent(submitted);
-		expect(intent.kind).toBe(EXPERIENCE_GUIDE_UPDATE_KIND);
-		expect(intent.payload).toEqual({ entryStopId: 'stop-2' });
-		expect(controller.message).toBe('The tour now starts at Stop 2.');
 	});
 
-	it('adds to a chosen Guide at its end, and New Guide makes a new active Guide with this Presentation as Stop 1', async () => {
+	it('adds to a chosen Guide at its end, and New Guide makes a new, automatically named active Guide', async () => {
 		const { controller, submitted } = await mounted();
 		await controller.addToGuide('presentation-2', 'guide-1');
 		let intent = submittedIntent(submitted);
@@ -1049,20 +1169,18 @@ describe('R217.S26 — structure commands', () => {
 		expect(experienceFocus.guideId).toBe('guide-1');
 
 		submitted.mockClear();
-		expect(await controller.createGuide('presentation-2', '')).toBe(false);
-		expect(submitted).not.toHaveBeenCalled();
-		await controller.createGuide('presentation-2', 'Short tour');
+		await controller.createGuide('presentation-2');
 		intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_GUIDE_CREATE_KIND);
 		const guide = intent.allocatedIds.find((entry) => entry.kind === 'guide')!.id;
 		const stop = intent.allocatedIds.find((entry) => entry.kind === 'stop')!.id;
-		expect(intent.payload).toMatchObject({ label: 'Short tour', presentationId: 'presentation-2' });
+		expect(intent.payload).toMatchObject({ label: 'Tour 2', presentationId: 'presentation-2' });
 		expect(experienceFocus.guideId).toBe(guide);
 		expect(experienceFocus.subject).toEqual({ kind: 'stop', stopId: stop });
 	});
 
 	it('reorders a Presentation’s Views as a permutation and refuses a move that changes nothing', async () => {
-		const many = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+		const many = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
 		const { controller, submitted } = await mounted({ experience: many });
 		expect(await controller.moveView('presentation-1', 'view-1', -1)).toBe(false);
 		expect(await controller.moveViewTo('presentation-1', 'view-1', 0)).toBe(false);
@@ -1070,7 +1188,7 @@ describe('R217.S26 — structure commands', () => {
 		await controller.moveView('presentation-1', 'view-1', 1);
 		const intent = submittedIntent(submitted);
 		expect(intent.kind).toBe(EXPERIENCE_PRESENTATION_UPDATE_KIND);
-		expect(intent.payload).toEqual({ viewIds: ['view-2', 'view-1'] });
+		expect(intent.payload).toEqual({ views: [{ viewId: 'view-2' }, { viewId: 'view-1' }] });
 	});
 });
 
@@ -1078,8 +1196,8 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 	it('previews a Stop removal with the named fallback, then removes it and selects the Guide', async () => {
 		const jumping = withExperience({
 			stops: [
-				{ id: 'stop-1', views: [{ viewId: 'view-1' }], presentationId: 'presentation-1', continuation: { kind: 'stop', stopId: 'stop-2', transition: 'travel' } },
-				{ id: 'stop-2', views: [{ viewId: 'view-2' }], presentationId: 'presentation-2', continuation: { kind: 'end' } }
+				{ id: 'stop-1', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-1', transition: 'travel' },
+				{ id: 'stop-2', entryViewId: null, staySeconds: 5, invitation: null, presentationId: 'presentation-2', transition: 'cut' }
 			]
 		});
 		const { controller, submitted, envelope } = await mounted({ experience: jumping });
@@ -1087,7 +1205,7 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 		const preview = controller.removalPreview({ kind: 'stop', stopId: 'stop-2' });
 		expect(preview).toEqual({
 			kind: 'ready',
-			lines: ['Removes Stop 2. Gallery stays.', 'Stop 1 no longer continues to Stop 2; it follows the Guide order.'],
+			lines: ['Removes Stop 2. Gallery stays.'],
 			chooseDefault: null,
 			runnable: true
 		});
@@ -1096,15 +1214,18 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 		expect(await controller.remove({ kind: 'stop', stopId: 'stop-2' })).toBe(true);
 		const intent = submittedIntent(submitted);
 		expect(intent).toEqual(
-			removeIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' })
+			removeIntent({ envelope, revision: REVISION, ids: { operation: intent.operationId, connections: intent.allocatedIds.filter((entry) => entry.kind === 'connection').map((entry) => entry.id) }, experienceId: 'experience-1', subject: 'stop', id: 'stop-2' })
 		);
 		expect(intent.kind).toBe(EXPERIENCE_STOP_REMOVE_KIND);
-		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
-		expect(controller.message).toBe('Stop 2 removed. Main has 1 Stop.');
+		expect(experienceFocus.subject).toBeNull();
+		expect(controller.feedback).toEqual({ kind: 'success', text: 'Stop 2 removed. Main has 1 Stop.' });
 	});
 
 	it('keeps a refused removal disabled with its reason and submits nothing', async () => {
-		const single = withExperience({ guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }] });
+		const single = withExperience({
+			stops: [{ id: 'stop-1', presentationId: 'presentation-1', entryViewId: null, staySeconds: 1, invitation: null }],
+			guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], pacing: 'automatic' as const }]
+		});
 		const { controller, submitted } = await mounted({ experience: single });
 		expect(controller.removalPreview({ kind: 'stop', stopId: 'stop-1' })).toEqual({
 			kind: 'refused',
@@ -1117,13 +1238,13 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 		expect(submitted).not.toHaveBeenCalled();
 	});
 
-	it('asks for the new Default before a Default View can be removed, with no automatic choice', async () => {
-		const many = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+	it('removing View 1 makes the next View the Default, and names it', async () => {
+		const many = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
 		const { controller, submitted } = await mounted({ experience: many });
 		controller.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
 		const asking = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1' });
-		expect(asking).toMatchObject({ kind: 'ready', chooseDefault: [{ id: 'view-2', label: 'Gallery' }], runnable: false });
-		expect(await controller.remove({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1' })).toBe(false);
+		expect(asking).toMatchObject({ kind: 'ready', chooseDefault: [{ id: 'view-2', label: 'Gallery' }], runnable: true });
+		expect(asking.kind === 'ready' && asking.lines).toContain('Gallery becomes the Default View.');
 		expect(submitted).not.toHaveBeenCalled();
 
 		const chosen = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-1', newDefaultViewId: 'view-2' });
@@ -1137,7 +1258,7 @@ describe('R217.S26 — removal reads its plan, then runs it once', () => {
 	});
 
 	it('names a shared View as still used instead of deleting it', async () => {
-		const shared = withPresentationChange('presentation-1', { viewIds: ['view-1', 'view-2'] });
+		const shared = withPresentationChange('presentation-1', { views: [{ viewId: 'view-1' }, { viewId: 'view-2' }] });
 		const { controller } = await mounted({ experience: shared });
 		const preview = controller.removalPreview({ kind: 'view', presentationId: 'presentation-1', viewId: 'view-2' });
 		expect(preview.kind === 'ready' && preview.lines).toEqual([

@@ -1,400 +1,622 @@
-# T5 umbrella plan — native forms and Object Focus
+# T5 Expressive Geometry — implementation umbrella
 
-**Status:** T5's planning direction, adopted when the owner merges the T5 planning PR
-([record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md)). It supersedes the
-withdrawn [E0 execution plan](./e0-execution-plan.md). It is roadmap authority, not a reference
-contract: the [North Star](../../reference/north-star.md#creative-freedom-and-depth), the
-[architecture obligations](../../reference/architecture.md#expressive-creation-and-revision-destination),
-the Scene, persistence and assets contracts, F and PLATE keep their authority, and landed contracts
-keep describing current behavior. Only [T5.P01](./t5.p01-drawn-native-objects/README.md) is
-registered. Later phases are planned here and registered when their predecessor's evidence supports
-them. Nothing here is released.
+**PR #266 · planning only · reviewed against main `cda02e61` (2026-11-07).**
+This is the single proposed T5 direction. It replaces the earlier native-form/Object Focus plan
+and the research proposal's C1–C6 experimental promotion sequence. The
+[Studio journeys](./object-studio-design.md) specify its UX. The
+[evidence note](../../../broad-research/native-modeling-freedom/PROPOSAL.md) retains the alternatives;
+research and prototype designs are supporting evidence, not competing implementation instructions.
+Nothing here records an owner approval, changes a codec, admits a dependency or activates production.
 
-## 1. Recommendation
+## Direction and ceiling
 
-T5 delivers **native forms**: Scene objects whose shape is authored source — a drawn outline given
-depth, then refined through an ordered set of object-space operations. Creators make them by
-drawing in World and refine them in **Object Focus**, a scope on the same Stage. A small
-runtime-safe kernel evaluates every form deterministically for the Stage, Preview and, later,
-delivery. Creators save a form to **My Objects** and insert editable copies of it into their other
-projects. Creators never manage mesh topology, construction order or a feature tree. The source
-keeps what their edits mean, so revision, Undo, Save and reopen stay dependable.
+Make Object Studio a deliberate, first-class place to create and refine an object **inside the
+existing editor**. Standalone and World-origin entries use the same Stage, tools, selected subject,
+Camera, acceptance, history and Save. A route is an entry address, not a new semantic document or
+renderer. Quick World shapes remain useful without entering Studio.
 
-| # | Commitment | Consequence |
-| --- | --- | --- |
-| A1 | Object Focus is a **scope on the one Stage**, not a workspace application | Same selection, Card, dock, history, Save and Camera; a state pill and Put back; no route, canvas, document or second host |
-| A2 | A native form is **Scene truth**: T5 builds the capability, Scene keeps the meaning | A new entity kind in the Scene unit, written by T5 under T2 review; no T5 document, writer or history |
-| A3 | Edits bind to **authored controls and object space**, never to generated topology | Earlier controls can be revised and later work re-evaluates deterministically; admitted operations need no topological naming; lost support refuses or reports repair |
-| A4 | **One form pipeline with admitted representation routes**, not a universal kernel | P01–P02 use analytic generators, explicit meshes and closed-form spatial maps in TypeScript; solids, implicit masses and B-rep enter only for a named capability with its own route and evidence |
-| A5 | Canonical evaluation is **deterministic by construction** and validated at acceptance | Exactly rounded IEEE arithmetic in a fixed order gives bit-identical geometry in every engine; changed canonical output moves the format version |
-| A6 | **Integrate in place, prove at gates** | Accepted slices merge into the product behind Scene admission; creator entry points appear at named slices; each phase ends at an exhaustive final gate; no parallel studio or prototype to port |
-| A7 | **Native objects are reusable across projects** ([owner amendment](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)) | Save to My Objects keeps the authored source as a library-scope typed resource; inserting creates an editable copy with a new identity, refined independently; shared instances and updates wait |
+Grow depth in this order: a dependable Studio journey; revision of existing profile controls;
+separately addressable parts and reusable assemblies; bounded shape operations; then additional
+modeling families where evidence justifies them. Each shipped writer produces savable canonical
+source. There is no fixture-only modeling mode in the product, second Undo stack, or later bulk
+promotion from an experimental document.
 
-**Rejected now:** a separate studio route or shell; polygon modeling (vertex, edge and face
-editing, retopology, UV unwrapping) as the creator model; a universal implicit or B-rep substrate;
-a node graph, feature tree or modifier stack as a prerequisite; topology-addressed features such as
-"fillet this edge"; sculpt brushes as the foundation; whole-scene solving; inference or generation
-as a dependency of direct editing. Each rejection names a cost the plan avoids; none forbids a
-technique that later earns admission (§6.4).
+The intended ceiling includes distinctive furniture, casework, lamps, signage, display equipment,
+sculptural objects and assemblies as complex as a piano. A lid and its casing must remain separate
+parts if a future interaction will move the lid. A single fused mesh cannot supply that meaning.
+Conversely, an object made from five bodies does not require a boolean kernel. Architectural roofs,
+walls and openings remain Layout elements even when they use similar geometric operations.
 
-## 2. The studio hypothesis, challenged
+This is a growth path, not a promise to model every example with the first tools. No general CAD
+constraint solver, arbitrary B-rep editing, mesh-element editor, rigging system, node graph or
+animation timeline is required upfront. None of the choices below forecloses a later, explicitly
+admitted representation for a demonstrated creative need.
 
-The working direction — a dedicated Object Focus workspace for creating, shaping and refining 3D
-objects — is right about **depth** and wrong, as architecture, about **place**.
+## Baseline on current main
 
-- A separate workspace with its own route, canvas or shell would fork the one Stage, selection and
-  history that [PLATE's invariants](../../reference/design-system/editor-shell-and-visual-system.md#authority-and-invariants)
-  and the architecture require ("Focus is an editing scope, not another Scene, persisted domain or
-  renderer"). It would also be built twice: once as a studio, then again when integrated.
-- Creation belongs where the object will live. Drawing on the floor, an upright sheet or a wall face
-  in context is the drawing-first principle and PLATE's ratified Ink **Shape** reading
-  ([World authoring](../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)).
-  Focus deepens an existing object; it is not the only place an object can begin.
-- Object-first creators need no studio either: World without architecture is an empty floor, and a
-  project need not contain Rooms.
-
-What survives from the studio idea fits the scope: the object framed and isolated through a Camera
-viewing intent, surrounding work receding as read-only context, a neutral backdrop as a viewing
-setting, object-relative sections on paper, a bounded tool set, and a return that restores the
-prior view. The visible verb is decided in P02's design loop; the
-[Shape focus specification](../../../prototypes/native-object-shaping/UX-SPEC.md) recommends
-**Shape**. Whether sections take the Stage (PLATE's default for Edit shape) or sit beside the 3D
-view (the specification's split; PLATE's [retained inset alternative](../../reference/design-system/editor-shell-and-visual-system.md#retained-alternatives-round-2))
-is a named P02 decision.
-
-## 3. Capability ceiling
-
-The ceiling is a continuum from a quick drawn outline to a distinctive, precise and revisable object
-of the kinds spatial experiences need — plinths, display fixtures, furniture, lamps, signage,
-canopies, sculptural pieces — composed into World with the rest of the project.
-
-| Capability | Creative barrier removed | Route | Where |
-| --- | --- | --- | --- |
-| Draw a body from an outline (Line, Box, Round, Sketch) on the floor, an upright sheet or a Wall face, with a visible depth | Native objects are four primitives or imports | R1 | P01 (Wall faces once T1's face-frame query exists) |
-| Place, turn and size per axis; Undo, Save, reopen, Preview | — composition of native forms in World | R1 | P01 |
-| Revise the outline; inspect true sections; reshape a contour stretch with visible reach; keep a part; exact section dimensions | Refinement needs an external tool or a redraw | R1 | P02 |
-| Cut and add bodies: holes, slots, recesses, joined parts | Topology fixed by the first outline | R2 | Conditional |
-| Revolve a profile, sweep a section along a drawn spine, inflate an outline; bend, twist, taper | Turned, tubular and organic forms | R1 | Conditional |
-| Save a form to My Objects; insert editable copies into other projects | Objects must be redrawn in every project | R1 with T2's resource system | P01 |
-| Anchors on a form; attached objects follow shaping; shared forms and library instances with offered updates | Composition does not survive refinement; repeated objects are edited one by one | R1 with T2 | Conditional |
-| Smooth blending and carving of masses | Soft joins and carved masses | R3 | Conditional |
-| Reshape imported geometry with the same reach-bounded operations, with declared lost guarantees | Imported content is take-it-or-leave-it | R1 | Conditional |
-| Prepared native-form derivatives for publication | — | with T4 | T4 |
-
-Engineering CAD, simulation, character production and general DCC parity remain outside the
-product, as the North Star states. A conditional capability names its barrier, beats a simpler
-alternative (materials, imports, existing controls) and meets §7's criteria, under the North Star's
-evidence-led admission.
-
-## 4. Responsibilities and boundaries
-
-| Concern | Owner | T5's role |
-| --- | --- | --- |
-| Native-form semantics: Scene unit entity, codec, planners and validation | Scene (T2 authority) | T5 writes the native-form parts under T2 review; T2 keeps Scene meaning, other entity kinds and definitions/instances |
-| Typed resources, project and library scopes | T2 | T5 lands the library scope for the `form` kind (My Objects) under T2 review, decision D8 |
-| Reusable geometric numerics, `@portfolio/geometry-core` | T5 | Owns it; it carries no domain meaning, renderer or DOM |
-| Stage host, selection, Ink, readings and the Focus scope capability | T1 | T5 lands bounded seams as T1-reviewed patches, or consumes T1-provided ones |
-| F4 acceptance, history, Save and Head | F4 owners / T3 | T5 consumes them; any F4 change is a T3-reviewed amendment |
-| Camera framing and navigation | Camera / T3 | Focus framing is a viewing intent through the one Camera authority |
-| Architecture: Walls, Openings, Rooms, roofs | Layout (T1) | Unchanged; a form never becomes architecture; Layout may later adopt geometry-core inside its own compiler |
-| Shell composition and visual language | PLATE | Focus obeys it; new chrome needs a named retained-alternative decision or an owner shell ruling |
-| Visitor delivery and publication | T4 | Forms evaluate through a runtime-safe kernel; publication derivatives are T4's |
-
-**World.** Forms are created, placed, sized and composed with architecture in World. Object Focus
-is entered from a selected form and returns to World. The World | Experience framing is unchanged.
-
-**T2.** Native forms are Scene object content. P01 stores each form's source inline on its entity;
-shared forms wait for T2's definition/instance cutover, which a later T5 phase consumes rather than
-invents. My Objects is the first bounded consumer of the typed resource system's ratified library
-scope: a library item is an owner-scoped, immutable, content-addressed revision of a form's source,
-following T2's identity and persistence rules, and inserting it creates a detached copy with a new
-authored identity. T5 does not edit model or import code paths. It serializes Scene-unit, resource
-and API edits with T2's writers under the
-[shared-file protocol](../cross-track-execution.md#shared-files-and-merge-protocol).
-
-**F4.** Every form edit is a typed, serializable Scene intent planned by a pure planner from
-captured inputs and accepted through unit F4: one history entry per accepted edit, conditional Save,
-Undo by restoration. P01 and P02 evaluate synchronously within the per-edit budget and need no F4
-change. Route R2 may need asynchronous preparation; that is proposed to T3 as an additive F4 scope
-only when its phase is planned.
-
-**Stage.** Forms render through the shared Scene renderer and are picked through the Stage adapter
-contract. P01 slice S02 needs Ink to accept readings from more than one domain (today Ink is the
-Layout adapter's task). P02 needs a scoped-editing host capability, object-relative readings and
-surface hits on evaluated forms beyond the planar AM-5 seam. Each is a T1-reviewed seam declared as a
-host capability that an adapter requires or refuses.
-
-**PLATE.** Creation is the Ink **Shape** reading. Size uses rays and points with the Card as the
-one writer. Focus is a temporary reading with a state pill and Put back. Refusals follow PLATE's
-grammar; keyboard and numeric equivalents are first-class.
-
-**Camera and Experience.** Geometry never writes Camera pose or editorial order. Experience may
-later reference form anchors through F.1, when that phase exists.
-
-## 5. Architecture
-
-### 5.1 Form source
-
-```text
-form                     a Scene entity kind
-├── generator            one body from authored controls     P01: extrude(plane, keyed outline, extent)
-├── operations[]         ordered, object-space, typed         P02: reshape, keep, release; later cut, add …
-├── scale                per axis, about the base origin      applied after operations
-└── nextKey              monotonic allocator for control keys
-```
-
-The source holds controls, not geometry. The generator owns keyed controls, such as outline anchors.
-Each operation records the frozen result of its preparation — for a reshape, its section frame,
-reach and compact displacement field — so evaluation replays the stack without solving, inferring
-or reading caches. Order is meaningful and kept; there is no graph, no fixed strata, and no
-operation the creator must choose by name. New capabilities add generator or operation kinds:
-additive codec growth with a format bump under the
-[pre-baseline rule](../../reference/north-star.md#development-stage-schema-compatibility-pre-baseline).
-
-Per-axis scale is form source, not an entity transform. Resizing never rewrites drawn controls, so
-repeated resizes cannot drift them, and it scales refinements proportionally, as the Shape focus
-specification requires. Forms carry no entity-level scale, so size has one writer.
-
-### 5.2 Binding and identity
-
-- **Controls have keys with lifetimes.** Outline anchors carry keys allocated from `nextKey`. A
-  removed key is never reallocated in the accepted lineage, and Undo restores exact keys. Generated
-  faces, vertices and triangle indices are never addresses.
-- **Operations bind to object space.** A reshape is an object-relative plane, a reach and a
-  displacement field; a keep is a material region captured at declaration. Revising an earlier
-  control re-evaluates later operations where they are in the object, and the result is validated.
-  A candidate that would fold, collapse or change a kept part refuses with its reason. The declared
-  promise is: **shaping stays where it is in the object**.
-- **Anchors, when admitted,** bind to generator surface coordinates (edge key, parameter, height
-  fraction) and travel through operations: exactly through spatial maps, and through cuts only
-  while they remain on surviving surface, otherwise unresolved with a typed repair. Proximity or an
-  unchanged label never proves continuity.
-
-### 5.3 Evaluation
-
-```text
-source → generator body → operations in order → scale → validation → form result
-form result = closed oriented mesh · regions (caps, sides by edge key) · bounds · footprint · contact
-```
-
-One evaluator serves preview and acceptance, Stage, Preview and future delivery. Results are cached
-by source identity and evaluator version. Nothing derived — meshes, sections, BVHs, normals, UVs —
-is serialized. A material change does not re-evaluate shape, and rigid placement does not
-re-evaluate the form.
-
-### 5.4 Computation strategy: admitted routes
-
-| Route | Representation and method | Admission | Libraries |
-| --- | --- | --- | --- |
-| **R1** | Analytic generators, explicit triangle meshes and closed-form spatial maps with deviation-driven refinement; exact predicates for decisions | P01–P02; synchronous TypeScript in `@portfolio/geometry-core`; runtime-safe | `robust-predicates` and `earcut` (both already in the tree, Unlicense and ISC); an editor-side BVH for picks and self-intersection (`three-mesh-bvh`, MIT) when P02 needs it |
-| **R2** | Closed-solid combination (cut, add) with provenance mapped back to regions | Conditional phase; worker; lazy chunk; F4 asynchronous review | Manifold (Apache-2.0) first candidate, release and closure pinned |
-| **R3** | Local implicit composition (smooth union and subtraction) contoured into R1 meshes | Conditional on R2 evidence and a named barrier | A small in-house field evaluator, Manifold's level-set contouring, or an MPL candidate (Fidget, libfive) after the [weak-copyleft review](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing) |
-| **R4** | A B-rep island for exact trims, fillets, offsets and exchange | A named precision consumer only | OCCT (LGPL-2.1 with exception) as the leading candidate and Truck (Apache-2.0) as the permissive comparison, judged as below; nothing selected |
-
-A route is admitted with its accuracy policy, cost envelope and conversion statement. Each form keeps
-one authored source; conversions between routes are explicit, one-directional and never silent.
-
-**Library licensing.** Under the [T5 licensing amendment](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing), permissive libraries are admitted
-as before and weak-copyleft libraries (LGPL, MPL) are eligible after a documented compatibility,
-distribution and compliance review in the admitting slice plan. Licence category alone neither
-admits nor excludes a candidate.
-
-**Evaluating an R4 kernel (OCCT or an alternative).** When a named precision capability needs a
-B-rep route, its plan compares candidates on:
-
-| Criterion | Evidence required |
+| Evidence | Consequence for this plan |
 | --- | --- |
-| Capability | The named operations (for example trims, fillets, offsets, shelling, STEP exchange and healing) on a corpus from that capability, with failure modes and how they surface as refusals |
-| Browser performance | On the designated reference machine: download size (brotli), compile and instantiate time, peak memory, and worker latency for the named operations; lazy loading outside the Stage first-load and visitor load sets unless a declared capability needs it |
-| Integration cost | Worker and asynchronous F4 preparation, conversion to R1 meshes with provenance to regions, determinism of a pinned WASM build (a build change is a format-version event), build and upgrade burden |
-| Compliance | The weak-copyleft review: a separately loaded, replaceable module, notices, the exact source and build instructions, and compatibility with every plausible product licence |
+| [F2 and persistence](../../reference/components/persistence.md#one-source-format-f2-clean-epoch): envelope 1, Layout 6, Scene 5, Camera 1, Experience 4, resources 2 | Scene 4 is historical. Scene 5 is already shipped; a later shaping cutover cannot be called “promotion to Scene 5.” Recheck versions before each format PR. |
+| [Scene form source](../../../packages/project-model/src/scene.ts), [planners](../../../packages/project-model/src/scene-planning/planners.ts) | One extruded keyed outline, positive extent, `form.scale` and `nextKey`. Create, size, name, ordinary transforms, duplicate, delete and detached library insertion exist. Outline revision, holes, operation lists and assemblies do not. |
+| [geometry-core](../../../packages/geometry-core/src/index.ts) and [extrusion](../../../packages/geometry-core/src/extrude.ts) | Runtime-safe TS profile/extrusion evaluator, evaluator version 1, with `earcut` and `robust-predicates`. It is not a general solid kernel. Current footprint and render layout assume one extruded ring. |
+| [Form library](../../../packages/project-model/src/library/form-library.ts) | Payload 1 is immutable, content addressed, owner scoped, single-form source. It is not mutable draft storage or a shared-instance update mechanism. |
+| [Boot](../../../apps/editor/src/lib/authoring/stage/boot-state.ts), [support](../../../packages/project-model/src/scene-planning/support.ts) | Empty-Layout projects and datum support already exist. `create` and `open` are different intents; a missing project must never turn into a new draft. |
+| [F.1](../../reference/composition-execution.md#f1-identity-and-reference) and [Scene destination](../../reference/components/scene-content.md#ratified-destination-not-shipped) | Whole Scene entities resolve; non-null components currently refuse. Clusters and Three children are not assemblies. Definitions, components and their providers need a real first consumer. |
+| [Host acceptance](../../../apps/editor/src/lib/authoring/stage/host-acceptance.ts), [Camera session](../../../apps/editor/src/lib/authoring/stage/camera-session.ts) | Reuse unit F4 and the one Camera-output protocol. Source changes invalidate old inspection tickets; return after editing needs a revalidated Camera intent, not replay of a stale ticket. |
+| [Acceptance coordinator](../../../apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts), [unit preparation](../../../packages/project-model/src/units/acceptance.ts) | Planner preparation currently returns a synchronous `PrepareResult`. The async host install does not make expensive worker-backed preparation an implemented capability. |
+| [Renderer](../../../apps/editor/src/lib/museum/entities/form-geometry.ts), [Scene contract](../../reference/components/scene-content.md#current-implementation) | Stage and visitor Preview render native forms. Public release still refuses them. The renderer infers cap/side layout from extrusion buffers; arbitrary meshes cannot simply be passed through it. |
+| [Workflow](../../workflow.md), [test contract](../../../apps/editor/tests/README.md) | Capability PRs and risk tiers replace phase authorization. No hold is inferred from old research. Documentation/architecture gates apply here; implementation PRs retain the full repository merge contract. |
 
-No kernel is installed or selected before such a plan is approved.
-Layout keeps its landed geometry; adopting geometry-core inside the canonical compiler would be a
-deliberate T1 decision.
+The live status read matched main `cda02e61` with a complete report and no failing gate checks;
+the Studio rows had no tagged checks or claims. This is baseline evidence, not a stored maturity
+declaration. Issue [#272](https://github.com/Biskiq/spatial-sketch-editor/issues/272) remains relevant
+to metadata scope enforcement. Every new planner must prove unchanged envelope metadata as well as
+unchanged foreign units; it must not depend on that gap. Issues
+[#274](https://github.com/Biskiq/spatial-sketch-editor/issues/274) (focus restoration) and
+[#273](https://github.com/Biskiq/spatial-sketch-editor/issues/273) (stale browser locators) inform the
+actual return/keyboard tests, not a new project-wide prerequisite bundle.
 
-### 5.5 Determinism, tolerances and validity
+## Architectural decisions
 
-- Canonical evaluation uses only exactly rounded IEEE-754 operations — `+ − × ÷`, `Math.sqrt`,
-  comparisons, `Math.abs/min/max/floor/ceil/round/sign` — in a fixed order. `Math.sin/cos/tan`,
-  `exp/log/pow`, `hypot`, `atan2` and `cbrt` are excluded from canonical paths; angles needed later
-  (revolve) use a fixed in-house polynomial. JavaScript performs no fused multiply-add, so a source
-  gives bit-identical canonical geometry in every engine. A source-scan test enforces the rule.
-- Units are metres. Minimum feature 1 mm; coordinates within ±50 m; dimensions up to 100 m; bounded
-  control counts. Constants live in geometry-core and are restated by each admitted capability.
-- Exact predicates decide outline validity at load and at acceptance. Tolerance-based mesh validity
-  (fold, self-intersection) is decided at acceptance; reopening re-evaluates and reports, and never
-  silently refuses or rewrites accepted source.
-- Changed canonical output for an accepted source is a semantic change: it moves the Scene format
-  version and regenerates the goldens. It is never a silent reinterpretation.
+### Ownership and sharing
 
-### 5.6 Acceptance and sessions
+| Concern | Owning authority and implementation seam |
+| --- | --- |
+| Object composition, form meaning, shape-operation source, component capabilities | **Scene / T2.** Runtime-safe codecs, planners and validation in `@portfolio/project-model`; T5 supplies the modeling capability. No T5 unit or Studio document. |
+| Pure profile, solid, deformation and validation algorithms | **T5 / geometry-core.** Plain numeric input/output, no Scene IDs, resources, renderer, DOM, selection or history. Add a separate package/subpath only when a real dependency boundary requires it. |
+| Library identities, immutable revisions, closure and access | **Typed resources / T2**, with shared project-model and API readers. Scene defines the meaning of an object-definition payload. Do not duplicate the resource service for Studio. |
+| Architectural elements, host surfaces, support and compiled geometry | **Layout / T1.** One compiler and owner-qualified frame queries. A Scene form cannot be used as a hidden architectural wall or opening. |
+| Stage host, picking, gesture lease, readings and shell composition | **Shared editor / T1 and approved shell.** Domain adapters own legal edits; Studio scopes exposure and context, not domain validity. |
+| Framing, inspection, projection, spatial return | **Camera.** Camera-owned viewing intents through the existing session/facade. Never a Studio orbit controller or pose tween. |
+| Atomic installation, revisions, history, Save | **F4 and persistence.** Reuse the shared coordinator; cross-unit operations register their actual scope. Async geometry does not create an alternate acceptance path. |
+| Future interactions, timed use and visitor composition | **Experience and shared F.3 execution.** Scene exposes intrinsic capabilities; Experience binds/invokes them. Studio does not introduce a private animation loop. |
+| Visitor Preview and public prepared derivatives | **Runtime domain evaluators / T4 delivery.** Share geometry semantics; exclude authoring infrastructure. Public admission is separate from authoring a form. |
 
-A stroke, a candidate reshape, a slice position and Focus itself are session state. Create or Apply
-turns the frozen candidate into one intent; the planner re-evaluates and validates it against the
-expected revision, and F4 installs one result. Cancellation, refusal, stale results and no-ops add
-no history. A preview never becomes a different accepted body.
+T1/T2/T5 are areas, not review silos or permission gates. One capability PR may change all necessary
+seams. Share numeric algorithms and common identity/acceptance interfaces; keep Scene operations,
+Layout compiler meaning, Camera evaluation and UI gestures domain specific. Similar-looking
+“extrude” gestures do not justify a universal domain command or a second architectural compiler.
 
-### 5.7 Performance envelope
+### One editable source per body
 
-The numbers below are the historical form envelope. The comprehensive matrix that would have
-measured them is suspended. The current editor check is the
-[M/L spot workflow](../../reference/decisions/performance-spot-check-2026-10-28.md), which does not
-use these form workloads and does not certify them. An unmeasured form row stays unmeasured.
+Retain the landed profile/extrusion source for existing forms. Add bounded source constructs only
+with their first consumer. The selected extension direction is **authored generator plus typed,
+ordered shape operations**, evaluated from source; a general mutable planar B-rep is not selected
+as the foundation. Direct interaction is compatible with this representation: pulling a known
+extrusion cap can change extent, while a recess can own an explicit cutter. Interaction need not
+expose construction order to the creator.
 
-Forms were specified against the [performance contract](../../reference/components/performance.md#budgets)
-on the designated reference machine with Laptop A reported:
+The first operation-bearing form has these semantic fields (future codec work, not a current type):
 
-- form evaluation for one pointer move within the per-edit evaluation row (≤ 4 ms S, ≤ 8 ms M),
-  applied to the edited form;
-- drag preview p95 ≤ 33 ms (S) and ≤ 50 ms (M); commit and Undo/Redo completion ≤ 100 ms; no
-  main-thread task over 50 ms in ordinary interaction;
-- Stage first-load JS within the ≤ 425 KiB br hard row (owner-amended 2026-10-27; 422.3 KiB br,
-  2.7 KiB headroom, at `T2.P02.S03`) and ≤ 25 KiB br growth per slice, so form and library code
-  stays lazy; R2 and R3 modules lazy, and outside the visitor load set unless a
-  declared visitor capability requires them;
-- P01 workloads: S = 10 forms of up to 32 anchors, M = 60 forms of up to 128 anchors in the M
-  fixture, plus a 256-anchor worst-case outline. P02 adds shaped forms (up to 32 operations and
-  100k triangles) and sessions longer than the 100-entry history.
+```text
+generator      supported analytic source, including its keyed controls
+operations[]   stable operation ID + discriminated kind + complete authored parameters
+scale          existing positive per-axis whole-form size, applied last
+```
 
-## 6. Phase roadmap
+An operation list describes current editable meaning, **not chronological Undo events**. Revising
+an operation replaces its parameters under the same identity; removing it is an explicit edit.
+Reopening needs neither session history nor an old mesh. There is no reorder UI, arbitrary expression
+language, cyclic dependency graph or generic plugin registry. Operands are owned local source,
+not a hidden live reference to another Scene entity. Public relationships require F.1 semantics.
 
-### 6.1 Sequence
+Existing `form.scale` remains the single whole-body size writer. Shape operations use the unscaled
+object frame; controls displayed in physical metres convert through that scale. Rigid entity
+placement follows evaluation and does not change body source. Proportional Size explicitly scales
+all refinements. Stretch is a distinct operation with a narrower preservation promise.
+
+An upstream revision re-evaluates the whole affected body. It either preserves the admitted operation
+meaning and validity or refuses the candidate, naming the operation and repair action. Do not silently
+drop, reorder, retarget, flatten or bake downstream work. Unsupported advanced controls stay absent;
+the persistent source remains editable beyond the 100-entry session history.
+
+### Assemblies, reuse and future behavior
+
+Assemblies are the first consumer of Scene definitions/components, not a T5-only parts format.
+Choose immutable **project-local typed object-definition resources** with explicit content revisions
+and locks; placed Scene object instances reference them. Definition payloads carry a root frame and
+stable component IDs, local rigid transforms, and supported leaf content. They are source, not a
+Three hierarchy or a second Scene document. The initial admitted leaf is a native form with ordinary
+catalogue appearance; nested definitions, external model dependencies and shared edits wait.
+
+Initial assemblies are flat and independently owned: one placed root uses one local definition.
+Editing creates a new immutable definition revision and updates that instance's reference/lock in
+one registered Scene/resources F4 operation. Reuse creates a new editable identity and remaps internal
+references. It does not turn every duplicate into a live shared instance. The storage/interface uses
+the existing resource system even though shared updates are deliberately unavailable initially.
+
+The logical definition ID survives an ordinary edit; its content revision changes. The current
+envelope retains the revisions its exact locks require, not an ever-growing table of every edit.
+Undo snapshots and saved project versions preserve their own earlier source/locks. No new long-term
+revision store, garbage collector across projects or cloud Undo service is required by this consumer.
+
+No per-axis assembly transform is added. Root Move/Turn act rigidly; a component's own form size is
+its only shape scale. The local origin is an explicit pivot; preserve it when geometry changes.
+This keeps a later rotating lid or sliding drawer possible without joints, timelines, constraints
+or behavior channels now. A later capability can expose component transform/visibility/material
+channels through F.3; execution remains separate from authored shape and never writes generated
+vertices back into source.
+
+### Identity, topology and revision
+
+Separate four identities: accepted project revision; immutable source/content revision; authored
+subject/control/operation identity; and evaluation generation. Equal content is not the same subject.
+A copied object gets new authored identities even when its geometry is byte-identical.
+
+- Keep existing whole-entity IDs and outline keys for edits that preserve them. The first profile
+  revision changes existing controls only; it does not add/delete keys. `nextKey` restored by Undo
+  is not evidence of non-reuse across Undo branches and reloads.
+- New components, hole loops and shape operations receive fresh opaque IDs captured before planning
+  through the shared allocation pattern (the current Scene callers use UUIDs). Never allocate from
+  current occupancy, array position, a label, time alone or a mesh digest. Reject duplicate supplied
+  IDs. An Undo restores the same subject; a new command after Undo supplies new IDs. Any later
+  topology-changing profile editor must settle key lifetimes before exposing durable control refs.
+- A pick is generation qualified. Generated triangles, vertices and face numbers expire on
+  re-evaluation. Resolve a supported hit to a source role such as cap, source edge, cutter operation
+  or component; otherwise allow whole-body selection/inspection only.
+- Owner correspondence has explicit preserved, split, merged, retired and unresolved outcomes.
+  A split may preserve a role set without identifying a unique face. No consumer chooses a fragment
+  by nearest position, area, order or a reused `faceID`. Persistent attachments and per-face material
+  bindings wait for their own lifetime and repair contract.
+- Pure frame capture and following differ. Early tools may capture an object-local plane once.
+  They must disclose that it does not follow a later changed support surface. No inferred attachment
+  is serialized. Layout surface frames come only from Layout; junction caps are not wall-side hosts.
+
+This bounds the topological naming problem; it does not claim to solve it generally. Whole-body and
+component identity are enough for the first capabilities. Arbitrary face identity is not a
+prerequisite for useful objects or future part animation.
+
+### Evaluation and geometry validity
 
 ```mermaid
 flowchart LR
-  S1["P01.S01 form source, evaluation, Scene admission"] --> S2["P01.S02 Shape reading and sizing"]
-  S2 --> G1["P01.S03 final gate"]
-  S1 --> S4["P01.S04 My Objects: save and insert copies"]
-  S4 --> G1
-  S1 --> F3["P02.S03 shaping truth"]
-  G1 --> F1["P02.S01 Focus scope and sections"]
-  F1 --> F2["P02.S02 outline revision"]
-  F2 --> F4["P02.S04 shaping interaction"]
-  F3 --> F4
-  F4 --> G2["P02.S05 final gate"]
-  G2 --> C["Conditional phases, 6.4"]
+  UI[Studio or World intent] --> P[Scene planner with captured inputs]
+  P --> G[Runtime-safe geometry evaluation]
+  G --> V[Domain validity and dependent-reference checks]
+  V --> F[F4 atomic accepted source]
+  F --> S[Head Save and library snapshots]
+  F --> E[Same domain evaluator]
+  E --> R[Stage and visitor Preview adapters]
+  F --> D[T4 prepared delivery when admitted]
 ```
 
-P02 is registered when P01's first slice is accepted, so its headless shaping slice can run beside
-P01's creation slice. Its interaction slices wait for the P01 gate, because Focus builds on the
-accepted creation journey.
+For each body, evaluation returns positions/indices, explicit surface provenance, geometric
+adjacency or a render-vertex-to-topology map, bounds, contact and an honest projected footprint.
+Holes and disconnected projections require rings/regions; a single convex hull or bounding box is
+not silently substituted for hit or placement truth. A coarse selection proxy is labelled and is
+never a geometric oracle. Normals, UVs, acceleration structures and Three objects are derivatives.
 
-### 6.2 T5.P01 — Drawn native objects (registered)
+Do not assume the current `FormMesh` buffer ordering is a general interface. The first holes/operation
+consumer must extend the evaluator result and update rendering, Plan footprint/hits, support,
+contact, picking, caches and Preview together. Define cap/side UV and seam behavior explicitly;
+generic result geometry cannot rely on “the first N vertices are the base.” Existing unmodified
+forms retain their pinned output unless a reviewed semantic version change says otherwise.
 
-**Outcome.** A creator draws a closed outline with Ink in World, reads it as a Shape, pulls its depth
-and creates a native object. They place, turn and size it, see it identically in Plan, 3D and
-Preview, and keep it exactly through Undo, Redo, Save and cold reopen. They save it to My Objects,
-insert an editable copy in another project and refine it independently.
+For hole extrusions, caps use their profile-plane coordinates and each loop's sides use its own
+arclength/depth in metres; duplicate the closing UV seam while preserving geometric adjacency.
+For stretch, carry each subdivided triangle's source-surface parameters through the map; its texture
+stretches with that surface, with whole-object Size retaining its declared sizing semantics. The
+solid-route research must decide cut-surface UV provenance before admission; whole-body material
+selection alone does not answer texture mapping. It must either retain validated operand surface
+coordinates or explicitly scope the first solid writer to untextured materials with truthful UI.
 
-| Slice | Delivers | Exposes to creators | Depends on |
+Validation is capability specific. For admitted solid results require finite bounded coordinates,
+consistent orientation, no open/T-junction/non-manifold geometric edges, no self-intersections,
+positive intended volume, and supported component count. Check topology after accounting for
+intentional render-vertex duplication at normal/UV seams; index-edge counting alone rejects valid
+current extrusions. Never weld by an arbitrary epsilon to make the test pass.
+
+Manifoldness and a nonzero volume do not prove the intended shape. Use independent geometric
+oracles for the admitted families: analytic extrusion volume, planar containment, exact predicates,
+component/section expectations, and operation-specific bounds/volume relations. A cut can validly
+split a body in a general modeler, but the first single-body cut capability refuses that result.
+Do not invent a universal validator that claims to catch every erroneous boolean.
+
+### Determinism and precision
+
+Retain the landed evaluator's restrictions and goldens. Canonical source bytes, IDs, ordering,
+reference resolution, F4 outcomes and exact Undo restoration remain exact. For any new evaluator,
+pin the algorithm, dependency/build version, tessellation policy, ordering/tie-break rules and
+tolerances. Runtime rounding into GPU buffers cannot feed back into source or the next edit.
+
+Basic IEEE arithmetic plus a source scan is not sufficient proof for a new TS/WASM pipeline.
+The [ECMAScript specification](https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-math.sqrt)
+specifies square-root rounding and distinguishes implementation-approximated transcendental
+functions; it does not certify our dependencies, serialization, traversal order or worker results.
+Use literal-input golden fixtures on the existing Linux x64 job and the local runner; new canonical
+operations additionally require matching results in a second browser engine. Do not weaken a
+failing exact oracle to a tolerance. Narrow the operation, fix the deterministic path, or ask for
+an explicit contract change. A changed canonical result for accepted source requires a reviewed
+version/compatibility decision, not just regenerated goldens.
+
+Keep metre units and the landed limits for existing forms: 3–256 anchors, 1 mm minimum control edge
+and scaled dimension, ±50 m control coordinates, extent up to 100 m, positive scale in [0.01, 100].
+These are not a universal CAD precision claim. New operations state their own feature separation,
+approximation and count bounds; exact predicates classify topology, while quantitative tolerances
+bound approximation. Integer polygon kernels need an explicit scale, overflow limit and round-trip
+error policy. Float64 source cannot undo a Float32 conversion already made at a library boundary.
+
+### Transactions, async work and persistence
+
+One gesture or explicit Apply captures one typed serializable intent against one accepted revision.
+Preview is a candidate from the same planner/evaluator used for acceptance. Cancel, refusal, no-op,
+lost pointer capture and stale result install nothing and create no history. Acceptance validates
+actual changed units and unchanged project metadata; one compound operation gives one Undo result.
+
+For an asynchronous operator, preparation is identified by project ID, session epoch, expected
+revision, target/source content identities, complete parameters, evaluator version and request ID.
+Latest preview wins. Source change, Undo, target deletion, project replacement, Studio exit or worker
+restart invalidates outstanding work. A completed worker result is never itself a write permission.
+Recheck identity and domain validity before F4 installs. Timeout/cancel/failure leaves the last
+accepted source intact. Bound the queue to one in-flight job plus one newest request; release
+transferred buffers and WASM handles on every terminal path.
+
+The first solid consumer extends the shared preparation contract to accept a `PrepareResult` or
+its Promise, awaits it in the existing F4 coordinator, and repeats the expected-revision/session
+checks after the await before installation. Preserve synchronous planners; update every affected
+preview, acceptance and source-admission caller with typed handling and call-site tests. There is
+no separate async history/coordinator or worker-owned write path. Separate strict structural parsing from expensive
+geometric validation without bypassing either. Browser worker, headless/API validation and visitor
+Preview use the same pinned runtime-safe evaluator. No client-supplied “valid mesh” bypasses server
+source validation, and no synchronous WASM fallback is silently installed on the interaction path.
+
+Save always captures accepted canonical source with the existing saved-base precondition. Pending
+geometry is not included; applying it while Save is in flight leaves the newer source dirty. Local
+expected revision and cloud saved base remain different identities. Reopen evaluates accepted source
+and reports incompatibility/failure without rewriting it. Retain original recoverable source bytes;
+never silently replace a failed body with a proxy and call it valid.
+
+The first format-changing PR lists every reader: Scene/resources codecs, library canonical writer,
+API validation, source download/open, Preview, references, fixtures and any release reader. Bump only
+affected unit/payload contracts. Adding Scene environment did not change form payload 1; similarly,
+adding an assembly kind need not invalidate unchanged single-form items. Changing common form source
+does require compatible library handling. Use the current strict pre-baseline policy unless the
+owner chooses a tested recovery/migration exception. No reset, old-data deletion, beta declaration
+or blanket “one final format bump” is authorized here.
+
+### Cost and delivery boundaries
+
+Evaluate changed bodies and affected dependents only. Cache by complete source content and evaluator
+version, with bounded retention; key instance/world bounds separately by pose. Material, Camera and
+rigid placement changes must not remesh a body. Preview buffers are replaceable and do not accumulate
+in source history. Operation/count limits are semantic resource bounds, not timing benchmarks.
+The new operation pipeline caps every intermediate and final result at 100,000 triangles; check
+growth before subdivision/allocation or abort without acceptance. Per-body limits compose with
+definition/component limits and input-byte limits. The initial counts below are conservative
+admission bounds to be tested, not measured claims of interactive speed or a licence to allocate
+all bodies at their worst case on each pointer move.
+
+Lazy-load Studio tools and later optional kernels. Test both import closure and the built chunk
+graph: a dynamic import is not proof of isolation, and entry wiring is not literally zero bytes.
+Keep authoring controllers out of visitor/public imports. Preview may load a runtime-safe geometry
+worker when a supported source needs it; do not place that shared worker under an editor-only import
+closure. Public releases remain refused until T4 admits a prepared derivative or runtime route.
+Recommend immutable prepared meshes plus source/build/provenance hashes for static publication;
+future animated parameters may need a declared runtime evaluator in that delivery profile.
+
+The [performance policy](../../reference/components/performance.md) controls measurements. Do not
+reinstate the historical 425 KiB, 4/8 ms or p95 matrix as acceptance gates. Record structural load
+boundaries, bounded work and deterministic invalidation tests. Report observed stalls honestly and
+use only an owner-initiated investigation or an authorized spot-check trigger for timing work.
+Old kernel microbenchmarks do not certify integrated editor or visitor responsiveness.
+
+## Capability sequence
+
+These are product outcomes and implementation PRs, not authorization stages. PRs can subdivide a
+capability at the integration seams below; do not label a headless helper as a working creator
+journey. Every dependency is semantic, not an area handoff. Keep the remaining sequence here rather
+than opening a new umbrella in each PR. A capability's draft holds only its concrete implementation
+plan and any newly resolved decisions; remove completed planning text at merge.
+
+| Order / capability | Dependency | Useful completion | Risk and stopping boundary |
 | --- | --- | --- | --- |
-| S01 | Native form source, evaluation and Scene admission: geometry-core, Scene unit 4 `form`, codec, `create-form` and `set-form-size` planners, existing Scene operations on forms, shared renderer, Plan footprint, selection | Nothing new (opened documents and tests) | `T2.P02.S03` merged (PR #199; T2.P02 closed 2026-10-27) |
-| S02 | One Ink with readings from several domains; the Shape reading on the floor and an upright sheet (and a Wall face, if T1's face-frame query has landed); depth ray and Create; per-axis size rays and Card writers | Creation and sizing | S01; a T1-reviewed Ink reading seam |
-| S04 | My Objects: the `form` library payload and owner-scoped library storage; Save to My Objects; insert an editable copy (`place-form-copy`); remove | Cross-project reuse | S01; T2 agreement on the library scope (D8); may run beside S02 |
-| S03 | Integrated final gate (keeps its id; S04 was added by owner amendment) | — | S01, S02, S04 |
+| **1. `studio.dual-entry`** | Owner decision O1; landed core | Enter from World or directly, create/size, Save/reopen, return and reuse with existing source | Shared shell Tier 1; approval of a changed approved UX is Tier 2. No new modeling source or dependency. |
+| **2. `studio.profile-revision`** | 1 | Change existing outline controls and extrusion depth; reopen and continue | No topology/key allocation or new persisted fields. Refuse invalid profiles. |
+| **3. `scene.object-definition`** | 1, 2 and O2 | Promote a form to a flat, editable multi-part object with durable components | First Scene/resource/component consumer; incompatible formats are Tier 2. No nested or shared-instance edits. |
+| **4. `studio.assembly-reuse`** | 3 | Save an assembly snapshot and insert/open independent editable copies | Typed resource/library/API closure; no mutable library drafts or offered shared updates. |
+| **5. `studio.profile-holes`** | 2 and O2 | Make and revise a pierced panel/frame from one extruded profile with holes | First profile topology extension; all renderer/footprint consumers updated together. |
+| **6. `studio.stretch`** | 5's generalized result seam and O2 | Lengthen a bounded band while geometry outside it translates rigidly or stays fixed | First ordered shape operation. No universal thickness/angle preservation claim. |
+| **Research: `studio.geometry-research`** | Named blocked recess/solid-combination task | Decide a bounded solid route with reproducible correctness evidence | No product UI or acceptance shortcut. New dependency still needs owner approval. Can run independently of 3–6 when useful. |
+| **7. `studio.solid-combine`** | Positive research result, generalized result seam, O2/O3 | Saved, revisable local cutter/adder operations in the same Studio | Async admission + API/Preview parity. Refuse unsupported results; no automatic general face editing. |
 
-**Phase acceptance.** §7 at P01 scope: closed oriented meshes for the whole outline corpus;
-refusals in words with no partial source; bit-identical evaluation in V8 and a second engine;
-Undo/Save/reopen identity; the cross-project reuse journey with Save and cold reopen of both
-projects; S and M budgets on the reference machine; visitor isolation; and an owner walkthrough
-creating three different objects from an empty project, one reused in a second project.
+Definitions in [the capability ledger](../../../capabilities.json) are planning coverage, with no
+owner implementation review or maturity assigned. Existing `studio.dual-entry` and
+`studio.geometry-research` keep their identities. The old engine/experimental/demo/promotion rows
+are replaced by creator outcomes; there are no tagged checks or live claims to reassign for them
+at this baseline. A demonstration is evidence for these capabilities, not a separate capability
+that makes all prior work count as accepted.
+`studio.geometry-research` identifies research work and its flags; headless evidence does not count
+as a core creator journey for `studio.solid-combine` or any other product capability.
 
-### 6.3 T5.P02 — Object Focus: refine and shape (planned)
+### First capability: studio.dual-entry
 
-**Outcome.** From a selected form the creator enters Object Focus, inspects true sections in Front,
-Side and Top, revises the outline, reshapes a contour stretch with visible reach, keeps a part, types
-exact section dimensions, Applies or Discards each change as one undo step, and returns to World.
-Successive edits in different orientations compose; resizing scales refinements; an outline edit
-after shaping re-evaluates spatially or refuses; everything survives Save and reopen. A shaped form
-saves to My Objects with its operations and inserts as an editable copy.
+**Outcome:** a creator makes and sizes a native form directly in Studio, saves and resumes it,
+reuses it in another project, and edits an existing World form without changing its identity or
+placement on entry/return. This deliberately proves the full lifecycle before new geometry.
 
-**My Objects across P02's format change.** P02's change to the form encoding moves the library
-payload format. Until beta there is no versioning ([ruling](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)):
-items saved earlier stay listed as unusable with Remove available, and P02's acceptance checks that
-they refuse insertion cleanly. Migrations start at beta.
+Implement in two small PRs if needed, keeping this capability incomplete until both journeys pass:
 
-| Slice | Delivers | Notes |
+1. World-origin scope and direct empty-project entry. Add a lazy Studio controller, explicit
+   session entry target and origin, shared chrome gating, non-pickable context, Camera framing and
+   validated return. Expose only existing form commands and creation gestures. Direct `/studio`
+   creates an empty-Layout project through the normal create intent; opening uses the normal load
+   path. The query posture never changes source admission.
+2. Resume and copy journeys. Add `Open in Studio` on project rows, explicit root choice for projects
+   with multiple forms, `Open editable copy` from My Objects and `Place copy in World` using the
+   existing immutable form payload and destination placement path. Save the source project before
+   a cross-project switch or retain it in place if Save fails; cancellation loses no accepted work.
+
+The [journey specification](./object-studio-design.md) fixes visible actions, pending-edit policy,
+same-project and cross-project placement, direct URL behavior, scope and responsive acceptance.
+Do not create a schema field saying a project “is Studio.” Every project remains discoverable in
+Projects; `Open in Studio` chooses a posture. No persisted primary-object guess or mutable draft
+library is required.
+
+**Concrete seams:** existing spatial route orchestrates; `boot-state.ts` admits; `stage-facade.ts`
+and `camera-session.ts` realize viewing intent; `EditorHead`, `EditorCard`, `StageDock` and the
+Scene adapter supply the existing controls. A new authoring-only Studio module owns session scope
+and gesture cleanup. `form-card-command.ts`, Scene planners, `host-acceptance.ts`, Head Save and
+the form-library client remain the writers. Reuse the import/placement capture pattern, not the
+model-import schema. Avoid growing another all-purpose host inside the already large route.
+
+**Core acceptance:** zero-Room direct entry → Box/Free → size/name → one Undo/Redo → Save → cold
+reopen via `Open in Studio`; World form → Edit in Studio → size → Back to World with same root and
+revalidated view; Save to My Objects → open editable copy → modify → insert in a second project,
+with original, snapshot and copy remaining independent; ordinary quick World creation still works.
+
+**Edge acceptance:** new/open distinction and unknown URL target; forbidden/missing project;
+cancelled login or conflict during source Save; pending invalid gesture on exit; Preview and return;
+Undo deleting the scoped root; project replacement and late async library read; source edit between
+framing and return; duplicate clicks during insertion; keyboard focus restoration and reduced motion.
+Navigation creates no source history; each accepted edit/insertion creates exactly one result.
+
+**Stop:** any separate editable draft, history, selection or Camera; accepted work that cannot Save;
+transient candidate described as saved; old ticket reuse after editing; implicit insertion on return;
+or a shell restriction used to omit standalone entry. Resolve inside the PR or flag the exact conflict.
+Do not add holes, face editing, parts or a kernel to rescue this capability.
+
+### Profile revision
+
+Provide `Edit outline` on an eligible form. Invoke the generator's plane as an orthographic reading
+through Camera; keep one active reading and one Card. This is **generator editing**, not a section
+through an arbitrary current body. Existing anchors can move by drag or numeric U/V and toggle their
+existing smooth flag; extent is a positive numeric/drag edit. Key count/order, `nextKey`, plane,
+entity orientation and whole-form scale remain unchanged. Apply installs the whole candidate once;
+Discard restores it. Add/remove/reorder controls and changing a plan form into an elevation form
+are explicit later work, not hidden in a move.
+During this task, an extent control displays physical extrusion depth and converts through the
+current scale; the ordinary Size writer for that fact is unmounted. This is a mutually exclusive
+editing posture, not two simultaneous controls for the same dimension.
+
+Add typed Scene intents carrying target, changed existing keys/values and captured expected revision.
+Validate the full candidate with the existing profile/extrusion evaluator, current limits and
+support/contact policy. On an elevation form, preserve the resting support using the evaluated
+contact exactly as sizing does; on a lifted form preserve the declared lift. No topology addressed
+bindings are admitted. My Objects payload 1 already stores these source fields and remains unchanged.
+
+Extend profile/Scene planner, source codec, Card and paper-agreement suites. Prove concave and smooth
+outlines, invalid crossing/collinearity/minimum edge refusal, both planes, lifted support, repeated
+revision, exact source restoration and cold reopen. Show one meaningful case: turn a rectangular
+plinth into an asymmetric display profile without redrawing or losing World identity. Stop before
+an operation requires adding keys or a new source representation.
+
+### Local object definitions and components
+
+Use `scene.object-definition` for the first assembly consumer. Promote a selected native form in
+place: keep the Scene root ID and world pose, move its source into the first component at identity
+local pose, and add the owned definition resource and exact lock atomically. No existing reference
+to the whole root changes target. Do not silently group every intersecting form.
+
+First operations: promote, add a newly created native-form component, select root/component, rename,
+rigidly move/turn a component in the declared root frame, revise its form, duplicate/remove a component,
+and duplicate/delete the root. A component does not independently snap to a Room floor; root placement
+resolves support from the union's contact. Component edits preserve the root pivot/pose and may
+change its contact; any explicit “Place on floor” re-grounds the root as one command. No auto-resize
+or recenter moves other parts.
+
+The definition payload is a bounded table of 1–128 native-form components with stable IDs, names,
+local position/rotation, form source and supported appearance. No nested instance reference,
+component-level resource lock, behavior, constraint or arbitrary metadata bag. Root Scene instances
+reference an exact definition revision through the existing lock semantics. Register the F.1
+component provider for selection/validation; unsupported F.3 component behaviors still refuse.
+Removing the last component refuses with Delete object available; it does not leave an empty,
+unevaluable definition. Part-local pitch/roll are supported rigid transforms; the root's first
+World placement remains upright with yaw and support-owned Y, matching the landed placement family.
+
+Implement source/resource codecs and compound planners with runtime evaluation first, then Parts
+navigation and scoped writers in the same capability. Instance rendering, bounds, projected hits,
+selection, Find, Preview and deletion consequences must consume the component provider. Root
+rename/placement need not clone a definition. An attempted edit of a multiply used definition
+refuses until explicit detach/shared-edit semantics exist; initial duplication always detaches.
+
+Acceptance object: a table with top, apron and four individually named legs. Change one leg, move
+the whole table and change the top profile; all other component IDs and local source survive Undo,
+Save and reopen. Delete/Undo/recreate a part with the same name and prove it is a new identity;
+stale component references do not resolve to it. Prove unchanged Layout/Camera/Experience,
+metadata scope, atomic Scene/resources/lock installation, no dangling pins and Preview parity.
+Stop on guessed child identity, a second selection, inherited root nonuniform scale/shear, or any
+required silently shared edit. O2 must settle the format compatibility disposition before merge.
+
+### Assembly reuse
+
+Extend the typed library with an immutable object-definition payload and exact closure, using the
+same owner authorization and canonical hashing service. Preserve the single-form kind. First
+payloads contain the bounded native-form component definition and catalogue appearance only;
+imports, textures and other private-resource dependencies are refused rather than copied incompletely.
+
+`Save to My Objects` captures the accepted definition revision. `Open editable copy` and `Insert copy`
+allocate a new root, definition and component identities, remap all internal references and admit
+their exact lock in one destination F4 operation. Repeated inserts never share mutable definitions.
+Names/order do not supply the remapping. Deleting the snapshot cannot break existing copies.
+
+Prove two copies in two projects, independent revisions to one component, payload hash verification,
+authorization, unsupported-version listing/removal, cancellation, and atomic rollback on invalid
+closure. API/library tests run against the database as the test contract requires. Stop if a private
+source-project URL or a mutable “latest” reference is needed. Shared instances and offered library
+updates are a later Scene capability, not a shortcut for reuse here.
+
+### Profiles with holes
+
+Extend the extrusion generator with explicitly authored, stable-ID inner loops; retain the outer
+outline and its keys. First holes are straight closed polygons, 3 or more vertices per loop, at most
+8 holes and 256 total control vertices. Each hole lies strictly inside the outer profile, with at
+least 1 mm separation from it and every other hole; crossing, touching, nesting and zero-area loops
+refuse. Coordinates and extrusion limits remain those of the existing profile. Do not infer a hole
+from an unrelated stroke. Explicit `Draw hole` and selected-loop edit/delete own these operations.
+Separation is checked in evaluated object metres after `form.scale`; source controls also obey
+the existing profile limits. Whole-object Size must revalidate the new feature-separation promise.
+Within one loop, moving vertices preserves its keyed order and count. Replacing the contour creates
+a new loop identity; removing and redrawing it never reuses the old ID. Topology-changing control
+insertion is not silently added to the earlier fixed-key profile editor.
+
+Use exact orientation/intersection tests and declared distance checks before triangulation. Feed
+validated rings to the existing triangulator; explicitly subdivide cap edges wherever a retained
+boundary vertex lies on them and use the identical boundary subdivision for sides. Validate the
+resulting geometric adjacency, coverage and analytic signed area × depth. Do not assume earcut
+guarantees a conforming mesh. If this bounded route cannot produce valid output, stop with the
+failing fixture; do not silently repair source or install another library.
+
+Land the generalized result/UV/provenance/footprint seam with all callers before admitting the new
+source. The source/library version PR and UI PR may be separate, but an admitted source must already
+load, Save and render correctly in Stage and Preview. Acceptance: a frame/pierced panel with a moved
+hole; concave outer ring; collinear boundaries; near-touch refusal; transformed/elevation cases;
+analytic volume and Plan holes; Undo/cold reopen/library round-trip. Stop on T-junctions, cap gaps,
+hole-filled hit proxies or old renderer assumptions.
+
+### Bounded stretch
+
+Add the first source operation `stretch`: stable ID, local axis, two ordered band coordinates
+`a < b`, and displacement `d`. For the chosen axis coordinate `q`, evaluate from the preceding
+source result:
+
+```text
+q <= a:  q' = q
+a < q < b: q' = q + d * (q - a) / (b - a)
+q >= b:  q' = q + d
+```
+
+Other coordinates stay unchanged; the low side is the fixed anchor. Require positive remaining
+band width of at least 1 mm after final axis scale, an initial unscaled band width of at least 1 mm,
+positive-extent overlap with the body, and all resulting form limits. Split triangles at both band planes
+before applying the piecewise affine map, preserving provenance and shared intersections; otherwise
+a triangle spanning a kink would not represent the intended surface. Validate each intermediate
+result. Start with at most 16 stretch operations, no automatic reordering or inferred constraints.
+
+The UI shows axis, band and fixed side; numeric fields own the same values. Preview/Apply evaluates
+the full source from the generator, never the last Float32 mesh. Earlier profile/operation edits
+replay in object space. Geometry outside the band is rigidly translated or unchanged; oblique
+members crossing it can change angle/thickness. Do not label this universal “preserve thickness.”
+Proportional Size remains available and visibly different.
+
+Acceptance: a portal body widened from 1.2 m to 2 m with 60 mm vertical end members outside the band;
+an oblique-member counterexample that discloses changed geometry; compression refusal at collapse;
+20 alternating upstream revisions with no mesh round-trip drift; exact Undo, cold reopen and My
+Objects continuity. Stop if general constraint solving, automatic keep-regions or planar B-rep
+reconstruction is needed. A simpler per-part move/resize is the comparison for an assembly.
+
+### Solid-route research and admitted cut/add
+
+The research PR answers one question: can a bounded, source-replayed cut/add family reliably serve
+recessed casework that profile holes and assemblies cannot express conveniently? Use the retained
+corpus and a pinned Manifold build as a **candidate**, subject to O3. Do not build an entire planar
+direct modeler merely to compare it. A small face-operation experiment may falsify the source route;
+its winner must include revision and persistence, not just an attractive first edit.
+
+Required research outputs are reproducible fixtures, source and build identities, verdicts and an
+explicit admit/narrow/reject recommendation. Compare source replay with chained mesh round-trips;
+record actual binding precision rather than assuming every Manifold API is Float32. Include 20
+upstream revisions, operand-order variants, coplanar/grazing contacts (the retained #1888 case),
+thin walls, near-coincident faces, holes and disconnected output. Check source-role provenance and
+all claimed preservation. Volume/manifold checks alone are not a sufficient oracle. Performance
+measurement follows policy; it is not a new required benchmark suite.
+
+Bound the investigation to one pinned candidate and this corpus. Admission requires all named
+supported cases to match their independent oracles, unsupported/ambiguous cases to refuse without
+mutation, revision/source round-trips to preserve meaning, and repeated/cross-engine canonical
+results to agree. The report fixes binding precision, tolerance envelope, UV/provenance policy and
+the admitted input family before implementation starts. Canonical buffer ordering may remove
+incidental kernel enumeration differences; it may not round away coordinate errors or change
+connectivity. If those obligations fail, return a narrower supported family or a rejection with
+the failing fixture, rather than beginning another general-kernel project under the same claim.
+
+If admitted, the first cut/add source operation owns one local extrusion operand plus its rigid
+pose, with a stable operation ID and explicit `cut`/`add` kind. Operands are captured once in the
+object frame; they do not follow a later face implicitly. Limit to 8 solid operations and 100,000
+result triangles per body initially. Accept only a nonempty, connected supported solid. Disjoint
+add, a cut that disconnects the body, total removal, uncertain contacts and budget overflow refuse.
+A newly drawn operand remains a ghost until Apply; it is never a hidden placed Scene object.
+Revising the base or an operand replays the complete program and either validates or refuses with
+the offending operation. No automatic removal of a now-ineffective cut.
+
+Implementation order: runtime-safe evaluator and independent validators; generalized surface and
+appearance mapping (initially whole-body material only); awaited source admission/F4/Save/API and
+Preview; strict versioned source/library writers; then the 3D cutter/adder task and source-operation
+editing. Exact field names are codec implementation detail; these semantics are fixed. Do not merge
+a product writer that can only export fixtures. Acceptance includes a recessed vitrine, revised
+cutter depth and upstream size, async races, crash/retry, Save during preparation, cold reopen and
+independent library copies. Stop if the selected build cannot meet determinism/validity or if
+repair requires a second authored mesh/B-rep. Keep the earlier capabilities usable and record the
+failed case; do not expand the kernel project by default.
+
+## Later depth, with bounded next decisions
+
+These are deliberately **not implementation-ready promises**. Their next executable work is a
+bounded design/research PR with the outputs below; no implementation agent should invent the
+missing mechanism while coding another capability.
+
+| Need | Next investigation and decision | Stop / simpler alternative |
 | --- | --- | --- |
-| S01 | Focus scope and section reading: a scoped-editing host capability (enter and return, context recession, pick filtering, framing intent, state pill), object-relative sections from a runtime-safe section query, slice position, Card facts | T1-reviewed seam; inspection only |
-| S02 | Outline revision in Focus: move, insert and remove anchors, straighten, smooth corners, exact entry; key lifetimes | First Focus writer |
-| S03 | Shaping truth, headless: `reshape`, `keep` and `release` operations, frozen displacement fields, deviation-driven refinement, fold, collapse and self-intersection validation, section target fit, corpus and budgets | Can run beside P01 S02 once registered |
-| S04 | Shaping interaction: stretch selection, oversketch, Straighten/Arc/Smooth, reach, Keep part, the pending candidate bar, refusals, the pending-exit choice, resize after shaping | The [Shape focus specification](../../../prototypes/native-object-shaping/UX-SPEC.md) is the starting design, through the feature design loop |
-| S05 | Integrated final gate | — |
+| Soft local reshaping and Keep | Compare one section-driven deformation on a sculptural chair back; specify field, reach, injectivity/self-intersection proof, preservation quantity/frame/lifetime, source editing and holes/multiple-contour UX | Do not equate a mask with preservation. The old prototype's single-contour restriction is an honest first scope, not a global Studio limit. No mandatory split view or automatic section on entry. |
+| Turned and tubular forms | Specify one revolve family, then a separate sweep family: authored profile/path keys, seams, frame transport, curvature limits, deterministic tessellation and revision | A sample position buffer is not a valid closed solid. Do not add revolve, sweep and loft in one foundational engine PR. |
+| Inset, bevel and direct planar face edits | Demonstrate a named blocked task; compare authored profile/cutter control with planar face source, including split/merge correspondence and upstream revision | No arbitrary edge fillet or degree-four face solver by implication. Explicit scalar planes do not solve incidence or topological naming. |
+| Shared assemblies, nesting and variants | Scene consumer specifies acyclic definition references, revision lock/closure, explicit edit reach, detach/update and component correspondence | Independent copies already work; do not add global reactive graphs or propagate edits silently. |
+| Surface anchors and architectural following | Layout/Scene consumer specifies owner frame, parameterization, reference lifetime and deletion/repair policy | Solve-once placement needs no attachment. T5 cannot reconstruct wall side frames or solve architecture itself. |
+| Animation and interaction | A real lid/drawer consumer registers Scene component capability and F.3 channel behavior, then Experience invocation and reset/conflict semantics | No Studio animation authority, physics or rig infrastructure prebuilt for hypothetical consumers. |
+| Smooth masses, sculpting, B-rep or imported-mesh editing | Named creative barrier, supported input family, loss/recovery policy, conversion fidelity and complete runtime/licence comparison | No silent conversion of authored controls into generated mesh. OCCT/MPL candidates are eligible under the existing review policy, not selected or categorically forbidden. |
 
-**Settled inside P02, not before:** section presentation (takeover or split), the visible verb,
-whether a Throughout reshape on the generator's own plane is stored as an outline edit, the
-displacement-field representation and reach profile, and the self-intersection strategy. The
-[Shape focus geometric contract](../../../prototypes/native-object-shaping/UX-SPEC.md#11-geometric-contract-for-implementation)
-is the starting obligation set.
+## Verification and review
 
-### 6.4 Conditional phases
+Each implementation PR carries capability-tagged core and edge checks. Extend existing owning
+suites rather than mirroring implementation in new tests. Pure helpers need caller evidence where
+scope, identity or lifecycle depends on wiring. Useful existing homes:
 
-None is registered or promised; each starts from an owner decision citing its entry evidence.
+| Contract | Existing checks to extend |
+| --- | --- |
+| Strict source, planner and evaluator parity | [Scene form codec](../../../apps/editor/tests/lib/content/scene-form-codec.test.ts), [form evaluation](../../../apps/editor/tests/lib/content/form-evaluation.test.ts), [geometry-core](../../../apps/editor/tests/lib/geometry-core/), [units](../../../apps/editor/tests/lib/project-model/units-conformance.test.ts) |
+| Revision, scope, Undo and Save | [host acceptance](../../../apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts), [unit acceptance](../../../apps/editor/tests/lib/authoring/unit-acceptance-conformance.test.ts), [Save journey](../../../apps/editor/tests/lib/authoring/head-save-journey.test.ts), [Save call sites](../../../apps/editor/tests/lib/authoring/save-call-sites.test.ts) |
+| Entry, selection, Plan and render continuity | [boot states](../../../apps/editor/tests/lib/authoring/stage-boot-states.test.ts), [resume](../../../apps/editor/tests/lib/authoring/spatial-route-resume-save.test.ts), [paper agreement](../../../apps/editor/tests/lib/authoring/native-form-paper-agreement.test.ts), [form geometry](../../../apps/editor/tests/lib/museum/form-geometry.test.ts) |
+| F.1 components and immutable reuse | [resolution](../../../apps/editor/tests/lib/project-model/unit-resolution-conformance.test.ts), [form library](../../../apps/editor/tests/lib/project-model/form-library.test.ts), [API library](../../../apps/api/tests/form-library.test.mjs), [API Save](../../../apps/api/tests/save-units.test.mjs) |
 
-| Candidate | Entry evidence | Outcome | Principal risk |
-| --- | --- | --- | --- |
-| Composite forms (R2) | P01 and P02 walkthroughs record holes, slots or joined parts as blocked intentions | Cut and add bodies; provenance to regions; upstream revision through combination | WASM size, asynchronous F4, provenance stability, delivery derivatives |
-| Generators and deformers (R1) | Turned, tubular or organic intentions blocked with P02's tools | Revolve, sweep along a drawn spine, inflate; bend, twist and taper as operations | Frame stability along spines; refinement cost |
-| Related and reused forms (with T2) | T2's definition/instance and attachment cutovers accepted; repeated or attached objects in real work | Anchors; attached objects follow shaping; shared forms with local or shared edits; My Objects items used as shared library instances with offered updates | Cross-domain F4 and F.1 lifetime amendments |
-| Smooth masses (R3) | Composite forms accepted and soft joins still blocked | Smooth union and subtraction contoured into meshes | Weak-copyleft compliance if an MPL kernel is chosen, contouring fidelity, cost |
-| Imported-geometry shaping (R1) | Creators adapt imports rather than redraw them | P02's operations over imported meshes, with declared lost guarantees | Import mesh quality; T2 resource lifecycle |
+New component/operator tests belong beside their owning contracts. Browser tests prove real creator
+journeys, keyboard/touch paths and failure recovery; headless proofs do not establish usable Studio
+UX. Follow the [test contract](../../../apps/editor/tests/README.md#what-a-change-requires) for the
+full repository gate, package checks and zero-skip DB-backed API verification. Run the unconditional
+architecture lane, visitor/public isolation, one Camera, one history and scope boundaries. Do not
+run a formal performance battery as a substitute for correctness or UX.
 
-Publication of native forms follows T4's prepared-delivery plan; Preview uses the runtime-safe
-evaluator meanwhile.
+First capability browser cases use wide 1440×900, narrow 820×1180 and short 1280×720 layouts,
+keyboard-only and coarse pointer paths, plus reduced motion. Later capabilities repeat the changed
+journeys in that shell. A piano or chair illustration is ambition; table/vitrine/portal fixtures
+only establish the specific operations demonstrated. No unmeasured timing or unrun acceptance row
+is recorded as passing.
 
-## 7. Integration strategy
+For this documentation PR, run documentation and architecture checks, review relative links and
+the diff against current main, and verify that no source, schema, lockfile or dependency changed.
+The owner requested a solo review: this pass is not represented as an independent fresh-context
+review or an owner UX approval. #266 stays unmerged.
 
-### 7.1 Model
+## Owner decisions
 
-There is no studio to port. T5 code lands in production packages and the one Stage from its first
-slice, behind Scene admission, at three levels:
-
-1. **Code integration.** A slice merges only after its own acceptance and the complete merge gate,
-   so `main` never carries an unaccepted capability.
-2. **Creator exposure.** Entry points appear at named slices: P01 S02 (creation and sizing), P01 S04
-   (My Objects), P02 S01
-   (Focus inspection), P02 S02 and S04 (Focus writers). Before them, forms are reachable only through
-   opened documents and tests.
-3. **Phase proof.** Each phase's exhaustive final gate proves the integrated capability on the
-   integrated tree before the phase can become closable.
-
-### 7.2 What must be proven
-
-| Family | Required before a capability is integrated | Proven at |
+| Decision | Recommended disposition | Needed when; consequence of no decision |
 | --- | --- | --- |
-| Functional geometry | Every accepted form evaluates to a closed, consistently outward-oriented 2-manifold with positive volume. A corpus of valid and invalid sources — concave, near-degenerate, collinear runs, minimum features, limits — passes or refuses with typed reasons. Footprint, contact and bounds agree with the mesh; Plan, 3D and Preview draw the same result | Each slice; the corpus grows with each capability |
-| Dependable revision | One accepted edit is one history entry; preview equals commit; Undo and Redo restore exact source and keys; refused, cancelled, stale or no-op edits add no history; Save and cold reopen reproduce identical evaluation; a session longer than the 100-entry history keeps every control editable; a My Objects copy is identical to its saved source, and edits to the copy, the original or the saved item never reach each other, across projects and through Save and reopen | Each writer slice; phase-gate journeys |
-| Performance | §5.7's rows on the designated machine with the peak-first method; no regression of existing hard rows; bundle growth recorded | Slice evidence; phase-gate recheck |
-| Source compatibility | Strict codec with format bump and regenerated fixtures; golden evaluation digests pinned per format version; bit-identical canonical evaluation in V8 and at least one other engine; no derived data persisted; a semantic change requires a format bump; the My Objects payload format moves with the Scene form encoding, and until beta older items are refused and listed as unusable, never migrated or misread | Each format-changing slice; phase gate |
-| Ownership | T2 review of Scene unit, codec, planner, library-scope and API changes; owner-only access to My Objects; T1 review of Stage seams; T3 review of any F4, Head or Save change; the unconditional architecture lane (visitor isolation, package direction, F4 public isolation); geometry-core free of domain meaning, renderer and DOM | Each slice |
-| User experience | PLATE conformance (one writer per fact, state pill and Put back, refusal grammar, keyboard and numeric paths, narrow and short shells, reduced motion); the feature design loop in a real browser; owner walkthroughs — three different objects from an empty project (P01), then one object refined to an intended form and deliberately revised in a later session (P02) — with blocked intentions recorded | Exposure slices; phase gate |
+| **O1 — Studio product/UX target** | Approve the exact dual-entry journeys and shared-host Studio posture in [the UX specification](./object-studio-design.md): direct launch, in-place World edit, scoped dock and later Parts; 3D first with invoked readings | Resolve with #266's owner review, before the first Studio implementation. These are proposed changes/extensions to approved shell scope, not facts inferred from current code. If not approved, retain core World behavior and revise this plan; do not quietly ship a reduced journey. |
+| **O2 — First source compatibility cutover** | Keep current strict pre-baseline readers; make each affected format change explicit, preserve unsupported original data and offer existing source recovery/removal. Decide any migration exception against actual data before that PR merges | Required for assemblies, holes, operations and their library payload changes. Does not block dual entry or existing-control revision. This plan does not settle beta versus Source Baseline or authorize data deletion. |
+| **O3 — Optional kernel admission** | Keep existing TS dependencies for the first capabilities. Consider one pinned Manifold artifact only after the bounded solid research scope and distribution/licence review are concrete | Required before installing a new dependency and again for the capability's adoption decision. A negative result stops solid-combine; Studio, profiles and assemblies continue. No Clipper2/OCCT adoption is implied. |
 
-### 7.3 What blocks integration
-
-Lost accepted work; an invalid accepted body; a preview that differs from the accepted result;
-silent retargeting or repair; changed canonical output without a version change; a hard budget miss
-without an owner disposition; editor machinery in visitor chunks; a second selection, history,
-Camera or writer. Any of these stops the slice. It is fixed inside the slice or escalated, never
-waived by the slice itself.
-
-## 8. Owner decisions
-
-The [decision record](../../reference/decisions/t5-object-focus-planning-2026-10-27.md#owner-decisions)
-lists the decisions this plan needs, the defaults that apply on merge and the release step for the
-first slice. It also records the owner's two amendments: T5 dependency licensing and reusable
-native objects. Manifold admission, asynchronous F4 preparation, the weak-copyleft review of any
-OCCT, Fidget or libfive candidate, and T2 definition/attachment consumption belong to the phase that
-needs them.
-
-## 9. Evidence and reuse
-
-| Source | Reused | Not reused |
-| --- | --- | --- |
-| [Shape focus specification](../../../prototypes/native-object-shaping/UX-SPEC.md) | Creation semantics (outline, positive depth, Flip side), whole-object sizing about the base, current-body shaping with reach, kept parts, transaction and failure rules, the geometric contract | Its split layout as a given; its prototype tolerances as standards |
-| [Native Form Lab](../../../prototypes/native-form-lab/FINDINGS.md) | Keyed controls and key lifetimes, preview equal to commit, refusal without mutation, role addressing for later anchors | Operation choice, carrier editing and coordinate lists in the creative path |
-| [Expressive form research](../../../broad-research/expressive-3d-form-sculpting-hybrid-modeling-2026-10-27.md) | Intent above generated geometry, representation islands, deformation as an operator family, asynchronous browser architecture | A semantic graph as the first source model; an implicit-first substrate |
-| [G0 reconciled proposal](./g0-reconciled-proposal/README.md) and [kernel assessment](./g0-architecture-proposal/kernel-evidence.md) | Source/derivative separation, object-space binding, determinism obligations, library dispositions | Guide and band composition as the first investment; the R1–R5 milestones |
-| E0 ([withdrawn plan](./e0-execution-plan.md), PR #206) | Relocating controls is not a creative advantage | Its fixture, prototype and relationship machinery |
-| [S06 acceptance](../t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md) | Measurement method and baseline | Any claim that new geometry meets budgets |
-| Landed code | Scene planners' captured-input pattern and record scope, F4 unit acceptance and history, the shared Scene renderer, Plan footprint and hit paths, the robust orientation adapter, `WorkingPlane` for upright sheets | Layout's curve algebra and compiler, which stay Layout's |
+Approval of this planning PR can settle O1 by approving the linked target as written or by editing
+it. O2/O3 remain explicit later consumer decisions; they are not a global release gate. Promote
+enduring approved Studio rules into the existing shell reference with implementation, replacing
+superseded text. Do not create a decision-record tier, phase registry, acceptance document or
+closeout PR. After #266 is approved and merged, check live claims, claim `studio.dual-entry` in an
+implementation PR and execute its specification. No further T5 umbrella or general kernel design
+is needed to begin.

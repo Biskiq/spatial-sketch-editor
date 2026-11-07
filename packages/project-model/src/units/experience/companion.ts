@@ -60,10 +60,10 @@ export type ExperienceCompanion = {
 		readonly escapeReturnsTo: 'canvas';
 	} | null;
 	/**
-	 * The explicit Continue control, or `null` when no occurrence is current. A
-	 * Gate is not passable by arriving again: the DOM/keyboard visitor needs this
-	 * one reachable action, and `reason` explains a control that is present but not
-	 * yet available (a running hold).
+	 * The explicit Next control, or `null` when no occurrence is current. Next is
+	 * always available at a Stop (sheet §31): during an arrival it lands now, during
+	 * a stay it moves on, and while waiting it continues. `reason` stays for a
+	 * control that a host disables.
 	 */
 	readonly continueControl: {
 		readonly available: boolean;
@@ -140,9 +140,9 @@ export function buildExperienceCompanion(
 		continueControl: current === null
 			? null
 			: {
-					available: state.phase === 'blocked' || state.phase === 'ready',
-					label: 'Continue',
-					reason: state.phase === 'holding' ? 'This Stop is still holding.' : null,
+					available: true,
+					label: 'Next',
+					reason: null,
 					stopId: current.stopId,
 					occurrenceId: current.occurrenceId
 				},
@@ -151,7 +151,7 @@ export function buildExperienceCompanion(
 			presentationId: presentation.id,
 			label: presentation.label,
 			viewIds: presentation.viewIds,
-			defaultViewId: presentation.defaultViewId,
+			defaultViewId: presentation.viewIds[0]!,
 			stopIds: program.stops
 				.filter((stop) => stop.presentationId === presentation.id)
 				.map((stop) => stop.id)
@@ -170,8 +170,8 @@ function announcements(program: ExecutionProgram, state: ExperienceRunState): st
 	const lines: string[] = [];
 	if (state.phase === 'completed') lines.push('The Experience is complete.');
 	if (state.phase === 'cancelled') lines.push('The Experience was cancelled.');
-	if (state.phase === 'blocked') lines.push('Continue is required to proceed.');
-	if (state.phase === 'holding') lines.push('This Stop holds before the next one.');
+	if (state.paused) lines.push('The tour is paused.');
+	else if (state.stopId !== null && state.phase === 'ready') lines.push('Press Next to continue.');
 	if (state.stopId !== null && state.phase !== 'completed' && state.phase !== 'cancelled') {
 		const index = program.stops.findIndex((stop) => stop.id === state.stopId);
 		lines.push(`Stop ${index + 1} of ${program.stops.length}.`);

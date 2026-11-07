@@ -24,6 +24,7 @@ import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { primitiveEntity } from './__fixtures__/f4-current-source-fixtures';
 import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
 import { stageCamera, stageExperience } from '$lib/authoring/stage/unit-stage-source';
+import { registerStageSnapshotRenderer, type SnapshotRequest } from '$lib/authoring/stage/stage-snapshots';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
 import { CONNECTIONS, EXPERIENCE, VIEWS } from '../experience/fixtures';
@@ -156,9 +157,17 @@ function cardKind(): string | null {
 	return words.textContent?.trim() ?? null;
 }
 
-/** The Index's Experience crumb: its name, or null before any Experience exists. */
+/** The Index's current Experience row: its name, or null before any Experience exists (the draft). */
 function experienceName(): string | null {
-	return target.querySelector('[aria-current="location"]')?.textContent ?? null;
+	return target.querySelector('[data-experience-row] [aria-current="location"] .exp-name')?.textContent ?? null;
+}
+
+/** Experience review 1: the list's + opens an inline name; Enter creates it. */
+async function newExperienceInline(): Promise<void> {
+	control('New Experience').click();
+	await frame();
+	const input = target.querySelector<HTMLInputElement>('input[aria-label="New Experience name"]')!;
+	input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 }
 
 function presentationRow(presentationId: string): HTMLButtonElement | null {
@@ -196,14 +205,14 @@ async function remountRouteWith(source: unknown): Promise<void> {
 }
 
 /** The starter Layout, the Camera's two Views, a Presentation pair with one Guide, and one Scene entity. */
-async function seededExperienceProject(): Promise<unknown> {
+async function seededExperienceProject(experience = EXPERIENCE): Promise<unknown> {
 	return createUnitProject({
 		id: 'project-1',
 		name: 'Experience homes',
 		layout: buildStarterEnclosureLayout(),
 		scene: { ...createEmptyUnitSceneDocument(), entities: [primitiveEntity(0)] },
 		camera: { formatVersion: CAMERA_UNIT_FORMAT_VERSION, views: VIEWS, connections: CONNECTIONS },
-		experience: EXPERIENCE
+		experience
 	});
 }
 
@@ -214,9 +223,9 @@ async function enterExperience(): Promise<void> {
 	await vi.waitFor(() => expect(target.querySelector('#index-presentations')).not.toBeNull());
 }
 
-/** Create the first Experience through the Index's crumb menu (New Experience). */
+/** Create the first Experience through the Index's Experiences list (+). */
 async function createExperience(): Promise<void> {
-	control('New Experience').click();
+	await newExperienceInline();
 	await vi.waitFor(() => expect(experienceName()).toBe('Experience 1'));
 	await frame();
 }
@@ -241,6 +250,12 @@ async function setThreeD(): Promise<void> {
 	control('3D').click();
 	await frame();
 	await settleReading('3d');
+}
+
+async function setTwoD(): Promise<void> {
+	control('2D').click();
+	await frame();
+	await settleReading('plan');
 }
 
 /** Dock Capture. Capture is accepted asynchronously, so callers wait on the outcome they expect. */
@@ -306,10 +321,10 @@ afterEach(() => {
 });
 
 describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
-	function aimMarker(): { mark: SVGGElement; hit: SVGCircleElement; viewId: string } {
-		const mark = target.querySelector<SVGGElement>('[data-view-mark][data-mark-kind="aim"]');
-		const hit = mark?.querySelector<SVGCircleElement>('.hit') ?? null;
-		if (mark === null || hit === null) throw new Error('no aim marker rendered');
+	function turnMarker(): { mark: SVGGElement; hit: SVGPathElement; viewId: string } {
+		const mark = target.querySelector<SVGGElement>('[data-view-mark][data-mark-kind="turn"]');
+		const hit = mark?.querySelector<SVGPathElement>('[data-turn-grip]') ?? null;
+		if (mark === null || hit === null) throw new Error('no turn grip rendered');
 		return { mark, hit, viewId: mark.getAttribute('data-view-mark')! };
 	}
 
@@ -321,10 +336,9 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 	}
 
 	function markerPoint(): [number, number] {
-		const { hit, mark } = aimMarker();
-		const cx = Number(hit.getAttribute('cx'));
-		const cy = Number(hit.getAttribute('cy'));
-		return [RECT.left + cx, RECT.top + cy];
+		const { hit } = turnMarker();
+		const coordinates = hit.getAttribute('d')!.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+		return [RECT.left + (coordinates[0]! + coordinates[2]!) / 2, RECT.top + (coordinates[1]! + coordinates[3]!) / 2];
 	}
 
 	async function withSvgPointerCapture(run: () => Promise<void>): Promise<void> {
@@ -348,7 +362,7 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		}
 	}
 
-	it('opens the new Presentation name after placing a View', async () => {
+	it('places a View on click and opens the new Presentation name', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
 		await setThreeD();
@@ -358,15 +372,102 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		const id = stage.evaluationId();
 		if (id === null) throw new Error('no evaluation');
 		const start = stage.projectWorld([1, 0, 1], id);
-		const end = stage.projectWorld([2, 0, 1], id);
-		if (start.kind !== 'projected' || end.kind !== 'projected') throw new Error('floor point not projected');
+		if (start.kind !== 'projected') throw new Error('floor point not projected');
 		const surface = target.querySelector<HTMLElement>('.stage')!;
 		pointer('pointerdown', surface, 1, start.css[0], start.css[1]);
-		pointer('pointermove', surface, 1, end.css[0], end.css[1]);
-		pointer('pointerup', surface, 1, end.css[0], end.css[1]);
+		pointer('pointerup', surface, 1, start.css[0], start.css[1]);
 		for (let pumped = 0; pumped < 120 && target.querySelector('input.rename-input') === null; pumped += 1) await frame();
 		await vi.waitFor(() => expect(target.querySelector('input.rename-input')).not.toBeNull());
-	});
+	}, 15000);
+
+	it.each(['3D', '2D'] as const)('anchors the %s placement ghost, commits its aimed pose once, and cancels with Escape', async (reading) => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		if (reading === '3D') await setThreeD();
+		else await setTwoD();
+		const stage = facade();
+		const id = stage.evaluationId()!;
+		const start = stage.projectWorld([1, 0, 1], id);
+		const aim = stage.projectWorld([3, 0, 1], id);
+		if (start.kind !== 'projected' || aim.kind !== 'projected') throw new Error('Floor points must project');
+		const surface = target.querySelector<HTMLElement>('.stage')!;
+		const ghost = () => target.querySelector('[data-view-placement-ghost]');
+		const frustum = () => ghost()?.querySelector(reading === '3D' ? '[data-camera-wire]' : '[data-placement-wedge]');
+		const eye = () => reading === '3D'
+			? [ghost()?.querySelector('.stem')?.getAttribute('x1'), ghost()?.querySelector('.stem')?.getAttribute('y1')]
+			// Review round 3: the Plan ghost is the Plan camera glyph; its translate is the eye.
+			: (ghost()?.querySelector('[data-plan-camera]')?.getAttribute('transform')?.match(/translate\(([^ ]+) ([^)]+)\)/)?.slice(1, 3) ?? [null, null]);
+		const baseline = stage.snapshot().canonicalJson;
+		const viewIds = new Set(stageCamera(stage.snapshot()).views.map((view) => view.id));
+
+		dockKey('place-view').click();
+		await frame();
+		pointer('pointerdown', surface, 1, ...start.css);
+		await frame();
+		expect(Boolean(ghost()?.querySelector('[data-camera-glyph]'))).toBe(reading === '3D');
+		expect(ghost()?.querySelector('[role="button"]')).toBeNull();
+		const startWire = frustum()?.getAttribute('d');
+		const startEye = eye();
+		expect(startWire).toBeTruthy();
+		expect(startEye.every(Boolean)).toBe(true);
+		pointer('pointermove', surface, 1, ...aim.css);
+		await frame();
+		expect(eye()).toEqual(startEye);
+		expect(frustum()?.getAttribute('d')).not.toBe(startWire);
+		expect(stage.snapshot().canonicalJson).toBe(baseline);
+
+		await pressEscape();
+		pointer('pointerup', surface, 1, ...aim.css);
+		await frame();
+		expect(ghost()).toBeNull();
+		expect(stage.snapshot().canonicalJson).toBe(baseline);
+		expect((await acceptance().undo()).kind).not.toBe('installed');
+
+		dockKey('place-view').click();
+		await frame();
+		pointer('pointerdown', surface, 2, ...start.css);
+		pointer('pointermove', surface, 2, ...aim.css);
+		await frame();
+		const previewWire = frustum()?.getAttribute('d');
+		const previewEye = eye().map(Number);
+		expect(previewWire).toBeTruthy();
+		pointer('pointerup', surface, 2, ...aim.css);
+		await vi.waitFor(() => expect(stageCamera(stage.snapshot()).views).toHaveLength(viewIds.size + 1));
+		await frame();
+		expect(ghost()).toBeNull();
+		const view = stageCamera(stage.snapshot()).views.find((candidate) => !viewIds.has(candidate.id))!;
+		expect(view.eye[0]).toBeCloseTo(1);
+		expect(view.eye[2]).toBeCloseTo(1);
+		expect(view.target[0]).toBeGreaterThan(view.eye[0]);
+		expect(view.target[2]).toBeCloseTo(view.eye[2]);
+		const acceptedFrustum = reading === '3D'
+			? target.querySelector(`[data-view-mark="${view.id}"] [data-camera-wire]`)
+			: target.querySelector(`[data-view-frustum="${view.id}"]`);
+		// The accepted View is no longer the selected ghost, so its frustum may be
+		// shorter; it keeps the ghost's eye and aim direction.
+		const firstLeg = (d: string | null | undefined) => {
+			const [x0, y0, x1, y1] = (d ?? '').match(/-?\d+(?:\.\d+)?/g)!.slice(0, 4).map(Number) as [number, number, number, number];
+			const length = Math.hypot(x1 - x0, y1 - y0);
+			return { eye: [x0, y0], direction: [(x1 - x0) / length, (y1 - y0) / length] };
+		};
+		const accepted = firstLeg(acceptedFrustum?.getAttribute('d'));
+		const preview = firstLeg(previewWire);
+		if (reading === '3D') {
+			expect(accepted.eye[0]).toBeCloseTo(preview.eye[0]!, 0);
+			expect(accepted.eye[1]).toBeCloseTo(preview.eye[1]!, 0);
+		} else {
+			// Review round 3: the Plan wedge starts at the lens front, which sits further out
+			// on the larger selected camera, so the eye is the Plan camera glyph's own position.
+			const acceptedEye = target.querySelector(`[data-view-mark="${view.id}"] [data-plan-camera]`)
+				?.getAttribute('transform')?.match(/translate\(([^ ]+) ([^)]+)\)/)?.slice(1, 3).map(Number) ?? [];
+			expect(acceptedEye[0]).toBeCloseTo(previewEye[0]!, 0);
+			expect(acceptedEye[1]).toBeCloseTo(previewEye[1]!, 0);
+		}
+		expect(accepted.direction[0]).toBeCloseTo(preview.direction[0]!, 2);
+		expect(accepted.direction[1]).toBeCloseTo(preview.direction[1]!, 2);
+		expect((await acceptance().undo()).kind).toBe('installed');
+		expect(stageCamera(stage.snapshot()).views.map((candidate) => candidate.id)).toEqual([...viewIds]);
+	}, 15000);
 
 	it('reserves a 3D glyph press for its mark and keeps it out of Stage navigation', async () => {
 		await remountRouteWith(await seededExperienceProject());
@@ -385,16 +486,21 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		expect(experienceFocus.subject).toEqual({ kind: 'view', viewId, presentationId: 'presentation-1' });
 	});
 
-	it('authors one aim update, ignores a second pointer, and preserves click/double-click without authoring', async () => {
+	it('authors one turn update, ignores a second pointer, and preserves click/double-click without authoring', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
-		const { viewId } = aimMarker();
+		// The turn grip appears on the selected View.
+		target.querySelector<SVGCircleElement>('[data-view-mark][data-mark-kind="eye"] .hit')!.dispatchEvent(
+			new MouseEvent('click', { bubbles: true, cancelable: true })
+		);
+		await vi.waitFor(() => turnMarker());
+		const { viewId } = turnMarker();
 		const before = stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!;
 		const beforeTarget = [...before.target];
 
 		await withSvgPointerCapture(async () => {
 			const [x, y] = markerPoint();
-			const { hit } = aimMarker();
+			const { hit } = turnMarker();
 			pointer('pointerdown', hit, 1, x, y);
 			await frame();
 			pointer('pointerdown', hit, 2, x, y);
@@ -405,17 +511,21 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 			pointer('pointerup', hit, 1, x + 30, y + 12);
 			await frame();
 		});
-		let afterAimTarget: readonly number[] = [];
+		let afterTurnTarget: readonly number[] = [];
 		await vi.waitFor(() => {
 			const after = stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!;
 			expect(after.target).not.toEqual(beforeTarget);
-			afterAimTarget = [...after.target];
+			expect(after.eye).toEqual(before.eye);
+			expect(after.target[1]).toBe(before.target[1]);
+			expect(after.fov).toBe(before.fov);
+			afterTurnTarget = [...after.target];
 		});
 
 		// A click on the marker still selects the View, and a double-click opens Look through.
 		await withSvgPointerCapture(async () => {
-			const { hit } = aimMarker();
-			const [x, y] = markerPoint();
+			const hit = target.querySelector<SVGCircleElement>('[data-view-mark][data-mark-kind="eye"] .hit')!;
+			const x = RECT.left + Number(hit.getAttribute('cx'));
+			const y = RECT.top + Number(hit.getAttribute('cy'));
 			pointer('pointerdown', hit, 1, x, y);
 			pointer('pointerup', hit, 1, x, y);
 			hit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -424,7 +534,134 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 			await frame();
 		});
 		expect(target.querySelector('[data-through-frame]')).not.toBeNull();
-		expect(stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!.target).toEqual(afterAimTarget);
+		expect(stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!.target).toEqual(afterTurnTarget);
+	});
+
+	it('renders the Advanced Card picture only after a drag is accepted', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		experienceFocus.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
+		await frame();
+		control('Advanced').click();
+		await frame();
+
+		const render = vi.fn(async (request: SnapshotRequest) =>
+			`/snapshot-${request.pose.target[0]}.png`
+		);
+		const unregister = registerStageSnapshotRenderer(render);
+		try {
+			const picture = () => card()?.querySelector('.hero img')?.getAttribute('src');
+			await vi.waitFor(() => expect(picture()).toBe('/snapshot-0.png'));
+			const baseline = facade().snapshot().canonicalJson;
+			const before = picture();
+
+			await withSvgPointerCapture(async () => {
+				for (const cancel of [true, false]) {
+					const [x, y] = markerPoint();
+					const { hit } = turnMarker();
+					render.mockClear();
+					pointer('pointerdown', hit, 1, x, y);
+					pointer('pointermove', hit, 1, x + 30, y + 12);
+					await frame();
+					expect(target.querySelector('[data-view-edit-ghost]')).not.toBeNull();
+					expect(picture()).toBe(before);
+					expect(render).not.toHaveBeenCalled();
+					if (cancel) await pressEscape();
+					pointer('pointerup', hit, 1, x + 30, y + 12);
+					await frame();
+					if (cancel) {
+						expect(facade().snapshot().canonicalJson).toBe(baseline);
+						expect(picture()).toBe(before);
+						expect(render).not.toHaveBeenCalled();
+					}
+				}
+			});
+
+			await vi.waitFor(() => {
+				const accepted = stageCamera(facade().snapshot()).views.find(view => view.id === 'view-1')!;
+				expect(accepted.target[0]).not.toBe(0);
+				expect(picture()).toBe(`/snapshot-${accepted.target[0]}.png`);
+				expect(render.mock.calls.filter(([request]) => request.viewId === 'view-1')).toHaveLength(1);
+			});
+		} finally {
+			unregister();
+		}
+	});
+
+	it('discloses Advanced in Plan without a write, and confirms a shared edit once', async () => {
+		const source = structuredClone(EXPERIENCE);
+		const experience = source.experiences[0]!;
+		const shared = {
+			...source, experiences: [{ ...experience, presentations: experience.presentations.map(presentation =>
+				presentation.id === 'presentation-2' ? { ...presentation, views: [...presentation.views, { viewId: 'view-1', transition: 'cut' as const }] } : presentation
+			) }]
+		};
+		await remountRouteWith(await seededExperienceProject(shared));
+		await enterExperience();
+		experienceFocus.select({ kind: 'view', viewId: 'view-1', presentationId: 'presentation-1' });
+		await frame();
+		const baseline = facade().snapshot().canonicalJson;
+		const advanced = control('Advanced');
+		expect(advanced.getAttribute('aria-checked')).toBe('false');
+		advanced.click();
+		await frame();
+		expect(advanced.getAttribute('aria-checked')).toBe('true');
+		expect(target.querySelector('[data-advanced-handle="lift"]')).toBeNull();
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+
+		const dialog = () => target.querySelector('[aria-label="Update a shared View"]');
+		control('Raise camera').click();
+		await vi.waitFor(() => expect(dialog()?.textContent).toContain('Also changes Gallery'));
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		await pressEscape();
+		expect(dialog()).toBeNull();
+		expect((await acceptance().undo()).kind).not.toBe('installed');
+
+		control('Raise camera').click();
+		await vi.waitFor(() => expect(dialog()).not.toBeNull());
+		dialog()!.querySelector<HTMLButtonElement>('button')!.click();
+		await vi.waitFor(() => {
+			const view = stageCamera(facade().snapshot()).views.find(candidate => candidate.id === 'view-1')!;
+			expect(view.eye[1]).toBeCloseTo(VIEWS[0]!.eye[1] + 0.05);
+			expect(view.target[1]).toBeCloseTo(VIEWS[0]!.target[1] + 0.05);
+		});
+		expect((await acceptance().undo()).kind).toBe('installed');
+		expect(facade().snapshot().canonicalJson).toBe(baseline);
+		expect((await acceptance().undo()).kind).not.toBe('installed');
+	});
+
+	it('moves in proportion to small wheel deltas and pans the provisional View with Shift-drag', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		const hit = target.querySelector<SVGCircleElement>('[data-view-mark][data-mark-kind="eye"] .hit')!;
+		hit.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+		await frame();
+
+		const camera = facade().camera;
+		const surface = target.querySelector<HTMLElement>('.stage')!;
+		const before = camera.provisionalView()!;
+		surface.dispatchEvent(new WheelEvent('wheel', { deltaY: -5, bubbles: true, cancelable: true }));
+		await frame();
+		const first = camera.provisionalView()!;
+		surface.dispatchEvent(new WheelEvent('wheel', { deltaY: -10, bubbles: true, cancelable: true }));
+		await frame();
+		const second = camera.provisionalView()!;
+		const distance = (a: readonly number[], b: readonly number[]) => Math.hypot(...a.map((value, axis) => value - b[axis]!));
+		expect(distance(first.eye, before.eye)).toBeCloseTo(0.02);
+		expect(distance(second.eye, first.eye)).toBeCloseTo(0.04);
+		expect(second.fovYDegrees).toBe(before.fovYDegrees);
+
+		pointer('pointerdown', surface, 1, 400, 250);
+		const move = new MouseEvent('pointermove', { shiftKey: true, clientX: 460, clientY: 270, bubbles: true });
+		Object.defineProperty(move, 'pointerId', { value: 1 });
+		surface.dispatchEvent(move);
+		pointer('pointerup', surface, 1, 460, 270);
+		const panned = camera.provisionalView()!;
+		expect(distance(panned.eye, second.eye)).toBeGreaterThan(0.01);
+		expect(panned.fovYDegrees).toBe(second.fovYDegrees);
+		for (const [axis, coordinate] of panned.target.entries()) {
+			expect(coordinate - second.target[axis]!).toBeCloseTo(panned.eye[axis]! - second.eye[axis]!);
+		}
 	});
 });
 
@@ -442,22 +679,35 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(pickers).toHaveLength(0);
 	});
 
-	it('shows the Presentations group with the crumb create when no Experience exists, and the dock keys', async () => {
+	it('authors the World environment before opening Experience and reads it in both lenses', async () => {
+		const chip = () => target.querySelector<HTMLButtonElement>('[data-environment-chip]')!;
+		expect(chip().textContent).toContain('Paper');
+		chip().click();
+		await frame();
+		target.querySelector<HTMLButtonElement>('[data-environment="golden-hour"]')!.click();
+		await vi.waitFor(() => expect(chip().textContent).toContain('Golden hour'));
+
+		await enterExperience();
+		expect(chip().textContent).toContain('Golden hour');
+		expect((await acceptance().undo()).kind).toBe('installed');
+		await vi.waitFor(() => expect(chip().textContent).toContain('Paper'));
+	});
+
+	it('shows the ready draft and the list + when no Experience exists, and the dock keys', async () => {
 		await enterExperience();
 		expect(experienceName()).toBeNull();
-		expect(target.querySelector('.index-empty')?.textContent).toBe('No Experience yet');
-		expect(target.querySelector('[aria-label="Switch or create Experience"]')).not.toBeNull();
+		expect(target.querySelector('[data-experience-draft]')?.textContent).toContain('Untitled experience');
 		expect(control('New Experience')).toBeDefined();
-		expect(target.textContent).toContain('Create an Experience from the menu above to start presenting.');
+		expect(target.textContent).toContain('Nothing presented yet. Start from the Stage.');
 		// The search always heads the Index, so the top row is never empty.
 		expect(target.querySelector('input[aria-label="Find a Presentation or View"]')).not.toBeNull();
-		// The dock: Select, Place a View, Capture and Guide. Path shows only with a Guide open.
+		// The dock: Select, Place a View, Capture and Guide.
 		const keys = [...target.querySelectorAll<HTMLElement>('[data-experience-dock] [data-dock-tool]')].map((key) => key.dataset.dockTool);
 		expect(keys).toEqual(['select', 'place-view', 'capture', 'guide']);
 		expect(target.querySelector('[data-stage-dock]')).toBeNull();
 	});
 
-	it('creates the Experience through the crumb menu, and the Index then shows its Guide group', async () => {
+	it('creates the Experience through the list +, and the Index then shows its Guide group', async () => {
 		await enterExperience();
 		await createExperience();
 		expect(target.querySelector('#index-guides')).not.toBeNull();
@@ -469,12 +719,11 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 	it('keeps New Experience available after the first and preserves multi-Experience switching', async () => {
 		await enterExperience();
 		await createExperience();
-		control('New Experience').click();
+		await newExperienceInline();
 		await vi.waitFor(() => expect(experienceName()).toBe('Experience 2'));
 
-		const switcher = target.querySelector<HTMLDetailsElement>('.siblings')!;
-		const first = [...switcher.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Experience 1');
-		expect(first).toBeDefined();
+		const first = target.querySelector<HTMLButtonElement>('[data-experience-row] .exp-open:not([aria-current])');
+		expect(first?.textContent).toContain('Experience 1');
 		first!.click();
 		await frame();
 		expect(experienceName()).toBe('Experience 1');
@@ -506,7 +755,7 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 });
 
 describe('R217.S25 — the Guide instrument (D3)', () => {
-	it('an Index Guide row opens the instrument with that Guide active and selects the Guide Card', async () => {
+	it('an Index Guide row opens the instrument with that Guide active and keeps the Experience Card', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
 		expect(guideRow('guide-1')?.textContent).toContain('Main');
@@ -519,7 +768,9 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(guidePanel()).not.toBeNull();
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('true');
 		expect(guideRow('guide-1')?.querySelector('.chip')?.textContent).toBe('Open');
-		expect(cardKind()).toBe('Guide');
+		// D-2/R33: no Guide Card subject; the Experience Card stays.
+		expect(cardKind()).toBe('Experience');
+		expect(experienceFocus.subject).toEqual({ kind: 'experience' });
 		expect(guidePanel()!.querySelectorAll('[aria-label="Stops in Main"] button.stop-card')).toHaveLength(2);
 	});
 
@@ -531,8 +782,8 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		await frame();
 		expect(guidePanel()).not.toBeNull();
 		expect(guideRow('guide-1')?.querySelector('.chip')?.textContent).toBe('Open');
-		// The key opens context only: no Card subject appears.
-		expect(card()).toBeNull();
+		// The key opens context only: no subject appears, and the Experience Card remains.
+		expect(cardKind()).toBe('Experience');
 		expect(experienceFocus.subject).toBeNull();
 
 		dockGuide().click();
@@ -567,7 +818,7 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		expect(cardKind()).toMatch(/^Stop 1 of 2/);
 
 		await pressEscape();
-		expect(card()).toBeNull();
+		expect(cardKind()).toBe('Experience');
 		expect(experienceFocus.subject).toBeNull();
 		expect(guidePanel()).not.toBeNull();
 
@@ -623,7 +874,11 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 	});
 
 	it('a Stop card keeps its menu: Move earlier and Move later reorder the active Guide', async () => {
-		await remountRouteWith(await seededExperienceProject());
+		// A first Stop that travels cannot become last (travel-after-last), so this
+		// reorder fixture Cuts into its successor and the move is legal.
+		const reorderable = structuredClone(EXPERIENCE) as typeof EXPERIENCE;
+		reorderable.experiences[0]!.stops.find((stop) => stop.id === 'stop-1')!.transition = 'cut';
+		await remountRouteWith(await seededExperienceProject(reorderable));
 		await enterExperience();
 		dockGuide().click();
 		await frame();
@@ -699,6 +954,35 @@ describe('R217.S25 — one Card selection (D10)', () => {
 		expect(experienceFocus.read().presentationId).toBe('presentation-1');
 	});
 
+	it('Pick on the Stage links in one shot, while Esc cancels the pick', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		presentationRow('presentation-1')!.click();
+		await frame();
+		control('Pick on the Stage').click();
+		await frame();
+
+		await selectSceneEntityOnStage();
+		await vi.waitFor(() => expect(cardKind()).toMatch(/^Presentation/));
+		expect(experienceFocus.read().presentationId).toBe('presentation-1');
+		expect(card()!.textContent).toContain('Following the object\'s name');
+
+		// One shot: the next Stage pick is an ordinary Scene selection, not another link.
+		await selectSceneEntityOnStage();
+		await frame();
+		expect(cardKind()).toBe('Scene object');
+
+		presentationRow('presentation-2')!.click();
+		await frame();
+		control('Pick on the Stage').click();
+		await frame();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await frame();
+		await selectSceneEntityOnStage();
+		await frame();
+		expect(cardKind()).toBe('Scene object');
+	});
+
 	it('an undone Presentation clears the subject that named it, so no stale or blank Card remains', async () => {
 		await enterExperience();
 		await createExperience();
@@ -714,7 +998,7 @@ describe('R217.S25 — one Card selection (D10)', () => {
 		await vi.waitFor(() => expect(experienceFocus.subject).toBeNull());
 		await frame();
 		expect(presentationRows()).toHaveLength(0);
-		expect(card()).toBeNull();
+		expect(cardKind()).toBe('Experience');
 	});
 
 	it('a Stage Wall pick replaces a selected Stop but keeps the active Guide as context', async () => {
@@ -791,11 +1075,12 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await setThreeD();
 
 		await pressCapture();
-		await vi.waitFor(() => expect(card()!.querySelectorAll('[data-view-tile]')).toHaveLength(2));
+		await vi.waitFor(() => expect(card()!.querySelectorAll('[data-rail-view]')).toHaveLength(2));
 		expect(presentationRows()).toHaveLength(2);
-		const tiles = [...card()!.querySelectorAll<HTMLElement>('[data-view-tile]')];
-		expect(tiles[0]!.getAttribute('aria-label')).toContain('Default View');
-		expect(tiles[1]!.getAttribute('aria-label')).not.toContain('Default View');
+		// The new View is appended to the rail after View 1, the Default.
+		const rows = [...card()!.querySelectorAll<HTMLElement>('[data-rail-view]')];
+		expect(rows[0]!.getAttribute('aria-label')).toContain('the Default');
+		expect(rows[1]!.getAttribute('aria-label')).not.toContain('the Default');
 		expect(cardKind()).toBe('Presentation');
 		expect(experienceFocus.read().presentationId).toBe('presentation-1');
 		expect(guideRow('guide-1')?.textContent).toContain('2 stops');
@@ -832,21 +1117,19 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await setThreeD();
 		await selectSceneEntityOnStage();
 
-		// E9 frames through Camera first. `waitForFraming` awaits requestAnimationFrame,
-		// which this suite stubs, so pump the route's frames instead of real-timing it.
+		const standpoint = facade().camera.state().pose;
 		control('Present this').click();
-		// Pump the stubbed animation frames through Camera framing, then let the
-		// asynchronous acceptance install the new Presentation.
 		for (let pumped = 0; pumped < 240 && presentationRows().length < 3; pumped += 1) await frame();
 		await vi.waitFor(() => expect(presentationRows()).toHaveLength(3), { timeout: 6000 });
 		expect(presentationRows()).toHaveLength(3);
 
+		expect(facade().camera.state().pose).toEqual(standpoint);
 		expect(cardKind()).toContain('Presentation · about');
 		expect(card()!.querySelector('.kind-link')).not.toBeNull();
 		expect(guideRow('guide-1')?.textContent).toContain('2 stops');
 	}, 15000);
 
-	it('Add to Guide with no Guide asks the first Guide name inline in the Presentation writer, then makes the Guide', async () => {
+	it('Add to Guide with no Guide creates Tour and its first Stop, with no prompt (D-9)', async () => {
 		await enterExperience();
 		await createExperience();
 		await setThreeD();
@@ -854,26 +1137,18 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		await vi.waitFor(() => expect(presentationRows()).toHaveLength(1));
 
 		control('Add to Guide').click();
-		await frame();
-
-		const naming = card()!.querySelector('section[aria-label="Name the new Guide"]');
-		expect(naming).not.toBeNull();
-		const name = naming!.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
-		name.value = 'Tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelector('[data-guide-id]')).not.toBeNull());
 		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('Tour');
-		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('1 stops');
+		expect(target.querySelector('[data-guide-id] .guide-row')?.textContent).toContain('1 stop ');
+		expect(card()!.querySelector('section[aria-label="Name the new Guide"]')).toBeNull();
 		// The new Stop is the subject: its Card carries the Stop writer and the Guide's Stop menu.
 		expect(cardKind()).toMatch(/^Stop 1 of 1/);
 		expect(card()!.querySelector('[data-experience-writer="stop"]')).not.toBeNull();
 		expect(card()!.textContent).not.toContain('Save Stop');
 	});
 
-	it('Add to Guide with no Guide opens the Guide instrument on the new Guide', async () => {
+	it('Add to Guide with no Guide opens the Guide instrument on Tour', async () => {
 		await enterExperience();
 		await createExperience();
 		await setThreeD();
@@ -882,12 +1157,6 @@ describe('R217.S25 — Capture and Present this (D1, D2)', () => {
 		expect(guidePanel()).toBeNull();
 
 		control('Add to Guide').click();
-		await frame();
-		const name = card()!.querySelector<HTMLInputElement>('section[aria-label="Name the new Guide"] input[aria-label="Guide name"]')!;
-		name.value = 'Tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelector('[data-experience-guide]')).not.toBeNull());
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('true');
@@ -925,13 +1194,17 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 			'src/lib/authoring/experience/ExperienceStopWriter.svelte',
 			'src/lib/authoring/experience/ExperienceViewWriter.svelte',
 			'src/lib/authoring/experience/ExperienceTransitionWriter.svelte',
-			'src/lib/authoring/experience/ExperienceGuideWriter.svelte',
+			'src/lib/authoring/experience/ExperienceExperienceWriter.svelte',
 			'src/lib/authoring/experience/ExperienceSubjectWriter.svelte',
 			'src/lib/authoring/stage/shell/EditorIndex.svelte',
 			'src/lib/authoring/stage/shell/EditorCard.svelte'
 		];
 		for (const file of homes) {
-			expect(readFileSync(file, 'utf8'), file).not.toMatch(/aria-label="Preview"|>Preview</);
+			// S30 Card actions may say Preview (a move or a mode), but no home owns
+			// another Preview *entry*: they command the same Head-owned route through
+			// the homes callback, never `openPreview`/`data-head-preview` themselves.
+			const source = readFileSync(file, 'utf8');
+			expect(source, file).not.toMatch(/data-head-preview|onEnterPreview|openPreview/);
 		}
 	});
 
@@ -977,8 +1250,8 @@ describe('R217.S26 — structure and removal through the route', () => {
 		expect(block.textContent).toContain('Removes Stop 2. Gallery stays.');
 		block.querySelector<HTMLButtonElement>('[data-card-consequence-run]')!.click();
 
-		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stops'));
-		expect(experienceFocus.subject).toEqual({ kind: 'guide', guideId: 'guide-1' });
+		await vi.waitFor(() => expect(guideRow('guide-1')?.textContent).toContain('1 stop '));
+		expect(experienceFocus.subject).toBeNull();
 		expect(target.querySelector('.experience-feedback')?.textContent).toBe('Stop 2 removed. Main has 1 Stop.');
 
 		expect((await acceptance().undo()).kind).toBe('installed');
@@ -995,34 +1268,22 @@ describe('R217.S26 — structure and removal through the route', () => {
 		menuItem('add-to-guide').click();
 		await frame();
 		menuItem('new-guide').click();
-		await frame();
-		const name = card()!.querySelector<HTMLInputElement>('section[aria-label="Name the new Guide"] input[aria-label="Guide name"]')!;
-		name.value = 'Short tour';
-		name.dispatchEvent(new Event('input', { bubbles: true }));
-		await frame();
-		control('Create Guide').click();
 
 		await vi.waitFor(() => expect(target.querySelectorAll('[data-guide-id]')).toHaveLength(2));
 		const rows = [...target.querySelectorAll('[data-guide-id]')];
 		expect(rows.map((row) => row.querySelector('[data-opening-guide]') !== null)).toEqual([true, false]);
-		expect(rows[1]!.textContent).toContain('Short tour');
+		expect(rows[1]!.textContent).toContain('Tour 2');
 		expect(rows[1]!.querySelector('.chip')?.textContent).toBe('Open');
-		expect(cardKind()).toMatch(/^Stop 1 of 1 · Short tour/);
+		expect(cardKind()).toMatch(/^Stop 1 of 1 · Tour 2/);
 	});
 
-	it('Start the tour here moves the start, and the Stop menu says when it already is', async () => {
+	it('names no back link after stepping between sibling Stops (review round 3)', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
 		await openStopCard('stop-1');
-		openMenu();
-		await frame();
-		expect(menuItem('start-here').disabled).toBe(true);
-		expect(menuItem('start-here').title).toBe('The tour already starts here');
 		await openStopCard('stop-2');
-		openMenu();
-		await frame();
-		menuItem('start-here').click();
-		await vi.waitFor(() => expect(target.querySelector('.experience-feedback')?.textContent).toBe('The tour now starts at Stop 2.'));
+		expect(cardKind()).toMatch(/^Stop 2 of 2/);
+		expect(card()!.querySelector('[data-card-back]')).toBeNull();
 	});
 
 	it('Alt+← returns to the previous subject; the kind line shows it as *‹ Stop 2*', async () => {
@@ -1041,16 +1302,13 @@ describe('R217.S26 — structure and removal through the route', () => {
 	});
 });
 
-it('R217.S27 writes welcome text on blur through More on the Guide Card', async () => {
+it('R217.S27/R33 writes welcome text on blur on the Experience Card, its only home', async () => {
 	await remountRouteWith(await seededExperienceProject());
 	await enterExperience();
-	experienceFocus.select({ kind: 'guide', guideId: 'guide-1' });
-	await frame();
-	expect(card()?.querySelector('textarea')).toBeNull();
-	card()!.querySelector<HTMLButtonElement>('[data-card-more]')!.click();
+	experienceFocus.select({ kind: 'experience' });
 	await frame();
 
-	const welcome = card()!.querySelector<HTMLTextAreaElement>('[data-card-more-section] textarea')!;
+	const welcome = card()!.querySelector<HTMLTextAreaElement>('textarea')!;
 	expect(welcome.maxLength).toBe(600);
 	welcome.value = 'Welcome to the gallery.';
 	welcome.dispatchEvent(new Event('input', { bubbles: true }));

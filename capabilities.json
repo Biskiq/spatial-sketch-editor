@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [
+    {
+      "id": "layout.wall-draw-close",
+      "area": "T1",
+      "summary": "Draw straight Walls, close a loop into a Room, divide and delete Walls",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/stage/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.opening-hosted",
+      "area": "T1",
+      "summary": "Place and remove door and window Openings hosted by straight Walls",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/stage/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.canonical-compiler",
+      "area": "T1",
+      "summary": "Architectural geometry and queries come from one canonical compiler, and Layout representation stays runtime-safe",
+      "northStar": "north-star.md#sacred-contracts",
+      "surface": ["packages/layout-core/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.multi-level",
+      "area": "T1",
+      "summary": "Levels, placed structures, reusable architectural definitions and validated alternatives through the canonical compiler",
+      "northStar": "north-star.md#ownership-authority-and-lifetimes",
+      "surface": ["packages/layout-core/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "scene.place-transform",
+      "area": "T2",
+      "summary": "Place upright native and verified catalogue objects on compiled floor support, then move, yaw, resize, duplicate and delete them",
+      "northStar": "north-star.md#stage--world-composition-and-shared-assets",
+      "surface": ["packages/project-model/src/units/**", "apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "scene.model-import",
+      "area": "T2",
+      "summary": "Import a single GLB model and report truthfully which structure and capabilities survived",
+      "northStar": "north-star.md#stage--world-composition-and-shared-assets",
+      "surface": ["apps/editor/src/lib/content/**", "apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "scene.object-definition",
+      "area": "T2",
+      "summary": "Distinguish object definitions, placed instances, internal components, groups and explicit attachments",
+      "northStar": "north-star.md#stage--world-composition-and-shared-assets",
+      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/content/**", "apps/editor/src/lib/museum/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "camera.one-authority",
+      "area": "T3",
+      "summary": "One Camera authority owns connectivity, routes, framing, projection and evaluation, with no second navigation or pose/FOV interpolation model",
+      "northStar": "north-star.md#direct--camera-direction",
+      "surface": ["packages/camera-core/src/**", "apps/editor/src/lib/visitor/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "experience.format4-program",
+      "area": "T3",
+      "summary": "Author Camera/Experience source in format 4 / Program v4 with Presentations, an optional Guide and an isolated Cut Preview",
+      "northStar": "north-star.md#experience-lens--visitor-facing-composition",
+      "surface": [
+        "packages/project-model/src/units/**",
+        "apps/editor/src/lib/authoring/experience/**"
+      ],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "experience.atomic-acceptance",
+      "area": "T3",
+      "summary": "Cross-domain Camera/Experience changes accept atomically and produce one undo result (F.4)",
+      "northStar": "north-star.md#shared-authoring-operations",
+      "surface": ["apps/editor/src/lib/authoring/**", "packages/project-model/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "project.envelope",
+      "area": "T4",
+      "summary": "One codec-bounded project envelope holds Layout, Scene, Camera, Experience and resource units with an accepted revision and dependency lock",
+      "northStar": "north-star.md#ownership-authority-and-lifetimes",
+      "surface": ["packages/project-model/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "project.cloud-save",
+      "area": "T4",
+      "summary": "Conditional cloud Save validates the captured revision against its saved base and reports a conflict instead of overwriting",
+      "northStar": "north-star.md#accounts-backend-and-collaboration",
+      "surface": ["apps/api/src/**", "apps/editor/src/lib/platform/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "release.visitor-isolation",
+      "area": "T4",
+      "summary": "Visitor and public routes carry no editor session, selection, history or authoring machinery",
+      "northStar": "north-star.md#sacred-contracts",
+      "surface": ["apps/editor/src/lib/visitor/**", "apps/editor/src/routes/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "release.prepared-package",
+      "area": "T4",
+      "summary": "Compile an accepted revision and selected Experiences into a visitor-safe prepared package with closed resources and verifiable provenance",
+      "northStar": "north-star.md#preview-and-publish",
+      "surface": ["apps/editor/src/lib/visitor/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.dual-entry",
+      "area": "T5",
+      "summary": "Create and edit native objects through standalone and World-origin Studio, with canonical Save, resume, return and independent copy placement",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["apps/editor/src/routes/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/platform/**", "packages/project-model/src/**", "packages/camera-core/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.profile-revision",
+      "area": "T5",
+      "summary": "Revise existing native-form outline controls and extrusion depth without redrawing or losing identity, Undo or saved editability",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/content/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.assembly-reuse",
+      "area": "T5",
+      "summary": "Save a native assembly to My Objects and open or place independent editable copies with complete source and component identity",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/platform/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.profile-holes",
+      "area": "T5",
+      "summary": "Create and revise pierced native panels and frames with explicit profile holes that survive Save, Preview and reuse",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.stretch",
+      "area": "T5",
+      "summary": "Stretch a declared local band of a native body with explicit fixed and translated regions, predictable revision and saved source",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.geometry-research",
+      "area": "T5",
+      "summary": "Bounded solid-route research establishes reproducible revision, precision, provenance and refusal evidence for a named modeling need",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["broad-research/native-modeling-freedom/**", "packages/geometry-core/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.solid-combine",
+      "area": "T5",
+      "summary": "Cut and add local solids through canonical source operations with validated results, dependable revision, Save and Preview",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/**", "apps/editor/src/lib/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    }
+  ]
+}

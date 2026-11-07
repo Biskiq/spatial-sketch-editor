@@ -103,12 +103,24 @@ export function focalLengthMmToFovDegrees(focalLengthMm: number): number {
 	return fov;
 }
 
-/** Match a FOV value against known lens presets (within 0.1° tolerance). */
+/** Focal length in mm of a vertical FOV, on the same 24 mm sensor-height convention as the presets. */
+export function fovDegreesToFocalLengthMm(fovDegrees: number): number {
+	const tangent = Math.tan((fovDegrees * Math.PI) / 360);
+	if (!Number.isFinite(tangent) || tangent <= 0) return Number.NaN;
+	return LENS_SENSOR_HEIGHT_MM / 2 / tangent;
+}
+
+/** Tolerance, in mm of focal length, within which a View's lens counts as a preset. */
+const LENS_PRESET_MATCH_TOLERANCE_MM = 1;
+
+/** Match a FOV value against known lens presets (focal length within 1 mm). */
 export function findMatchingLensPreset(
 	fovDegrees: number
 ): LensPreset | null {
+	const focalLengthMm = fovDegreesToFocalLengthMm(fovDegrees);
+	if (!Number.isFinite(focalLengthMm)) return null;
 	for (const preset of CAMERA_LENS_PRESETS) {
-		if (Math.abs(fovDegrees - preset.verticalFovDegrees) < 0.1) {
+		if (Math.abs(focalLengthMm - preset.focalLengthMm) <= LENS_PRESET_MATCH_TOLERANCE_MM) {
 			return preset;
 		}
 	}

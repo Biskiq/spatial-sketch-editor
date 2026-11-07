@@ -561,7 +561,7 @@
 		background: #fff;
 		color: var(--shell-ink, #1b201c);
 		box-shadow: var(--shell-shadow);
-		font: 13px/1.35 var(--shell-sans, system-ui);
+		font: var(--shell-text-body, 13px)/1.35 var(--shell-sans, system-ui);
 		transition: opacity 140ms;
 	}
 
@@ -733,7 +733,7 @@
 		background: var(--shell-card, white);
 		box-shadow: var(--shell-shadow);
 	}
-	.subject-actions button { justify-content: flex-start; min-height: 30px; }
+	.subject-actions button { justify-content: flex-start; min-height: var(--shell-control-height, 30px); }
 	.subject-actions hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--shell-hairline, #e1e4de); }
 	.soon { justify-content: space-between !important; color: var(--shell-ink-2, #4a524c); cursor: default; }
 	.soon:hover { background: transparent; }
@@ -742,7 +742,7 @@
 	.menu-item:disabled:hover { background: transparent; }
 	.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 	.soon-cue { margin-left: auto; padding: 0 5px; border-radius: 4px; background: var(--shell-index, #f6f7f5); font-size: 10px; letter-spacing: .02em; }
-	.footer .more { gap: 3px; font-size: 12px; color: var(--shell-ink-2, #4a524c); }
+	.footer .more { gap: 3px; font-size: var(--shell-text-utility, 12px); color: var(--shell-ink-2, #4a524c); }
 	.chev { display: inline-block; transition: transform 120ms; }
 	.chev.open { transform: rotate(180deg); }
 	.more-section { padding: 6px 0 4px; border-top: 1px solid var(--shell-hairline, #e1e4de); }
@@ -753,7 +753,9 @@
 	.menu-item.danger:disabled { color: var(--shell-ink-2, #4a524c); }
 	.menu-item.nested { padding-left: 18px; }
 	.submenu { display: grid; gap: 2px; }
-	.back-link { min-height: 0; margin-right: 0.15em; padding: 0; color: var(--shell-ink-2, #4a524c); font-size: 11px; }
+	.back-link { min-height: 0; margin-right: 0; padding: 0; color: var(--shell-ink-2, #4a524c); font-size: 11px; }
+	/* Review round 3: a hairline divides the back link from the kind, never run together. */
+	.back-link::after { content: ''; display: inline-block; width: 1px; height: 10px; margin: 0 0.55em; background: var(--shell-hairline-strong, #cdd2ca); vertical-align: -1px; }
 	.back-link:hover { background: none; color: var(--shell-ink, #1b201c); }
 	.consequence { display: grid; gap: 6px; margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--shell-refuse, #7e2718); border-radius: 8px; background: var(--shell-index, #f6f7f5); font-size: 12px; }
 	.consequence-line { margin: 0; color: var(--shell-ink, #1b201c); line-height: 1.4; }

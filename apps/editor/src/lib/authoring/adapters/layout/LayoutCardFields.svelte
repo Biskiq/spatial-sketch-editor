@@ -66,7 +66,7 @@
 		)
 	);
 	const primaryFields = $derived.by(() => {
-		const ids = instrument?.subject.kind === 'wall' ? ['length', 'height'] : ['width', 'height', 'sillHeight'];
+		const ids = instrument?.subject.kind === 'wall' ? ['length', 'height'] : ['width', 'height'];
 		return ids.flatMap(id => ordinaryFields.filter(field => field.id === id));
 	});
 
@@ -230,7 +230,7 @@
 						</label>
 					{/each}
 				{/if}
-				{#each ordinaryFields.filter(field => instrument.subject.kind === 'wall' ? field.id === 'thickness' : field.id === 'offset') as field (field.id)}
+				{#each ordinaryFields.filter(field => instrument.subject.kind === 'wall' ? field.id === 'thickness' : field.id === 'offset' || field.id === 'sillHeight') as field (field.id)}
 					{@render fieldRow(field.id === 'thickness' ? { ...field, label: 'Thick' } : field)}
 				{/each}
 			</div>

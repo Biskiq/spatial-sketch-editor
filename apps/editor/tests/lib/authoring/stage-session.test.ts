@@ -402,6 +402,29 @@ describe('stage session — the reduced-motion endpoint rule', () => {
 	});
 });
 
+describe('stage session — Follow standpoint capture and restore', () => {
+	it('restores the exact pose and reading, not just a re-framed pose', async () => {
+		const session = createStageSession({ sessionEpoch: 'session-standpoint' });
+		session.replace(await admit(await enclosureProject(PROJECT_ID)));
+		const snapshot = session.current()!;
+		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:standpoint' });
+		const entry = camera.captureStandpoint();
+		expect(entry.reading).toBe('3d');
+
+		const rect = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
+		camera.applyIntent({ kind: 'set-view', eye: [9, 4, 9], target: [0, 1, 0], fovYDegrees: 32 }, 2);
+		camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, Number.POSITIVE_INFINITY);
+		camera.evaluate(rect, Number.POSITIVE_INFINITY);
+		expect(camera.state().reading).toBe('plan');
+		expect(camera.state().pose).not.toEqual(entry.pose);
+
+		expect(camera.restoreStandpoint(entry)).toBe(true);
+		expect(camera.state().pose).toEqual(entry.pose);
+		expect(camera.state().reading).toBe(entry.reading);
+		expect(camera.state().displayGroundYMeters).toBe(entry.displayGroundYMeters);
+	});
+});
+
 describe('stage session — Look-through return across a content rebase', () => {
 	it('restores the exact standpoint and reading on the new source revision', async () => {
 		const session = createStageSession({ sessionEpoch: 'session-look-through' });

@@ -1,5 +1,6 @@
 <script lang="ts">
 	/** Ephemeral scope locator over accepted source relationships. Selection, scope and Camera requests stay distinct. */
+	import { tick, untrack } from 'svelte';
 	import { membershipLabel } from './index-labels';
 
 	import ShellIcon from './ShellIcon.svelte';
@@ -43,23 +44,39 @@
 	} = $props();
 	let facet = $state('all');
 	let limit = $state(40);
-	const result = $derived(worldScopeRows(model, scope, facet, query, limit));
-	const current = $derived(model.contexts.find((c) => c.id === scope) ?? model.contexts[0]!);
-	const crumbs = $derived(
-		model.contexts.filter(
-			(c) => c.id === 'project' || c.id === scope
-		)
+	const result = $derived(worldScopeRows(model, scope, query.trim() ? 'all' : facet, query, limit));
+	const project = $derived(model.contexts[0]!);
+	const location = $derived(model.contexts.find((context) => context.id === scope));
+	const locations = $derived(model.contexts.filter((context) => context.parent === 'project'));
+	let locationsOpen = $state(false);
+	function changeScope(next: WorldScope): void {
+		locationsOpen = false;
+		facet = 'all';
+		onScope(next);
+	}
+
+	const kinds = [
+		{ id: 'room-floor', label: 'Rooms', icon: 'plan' },
+		{ id: 'wall', label: 'Walls', icon: 'wall' },
+		{ id: 'opening', label: 'Openings', icon: 'opening' },
+		{ id: 'objects', label: 'Objects', icon: 'object' }
+	];
+	const rowKind = (group: string) => kinds.find((kind) =>
+		kind.id === (group === 'object' || group === 'scene' ? 'objects' : group)
 	);
-	const siblings = $derived(
-		model.contexts.filter((c) => c.parent === current.parent && c.id !== scope)
-	);
-	const facets = $derived([
-		...new Set(
-			model.rows
-				.filter((r) => scope === 'project' || r.relations.includes(scope))
-				.map((r) => r.group)
-		)
-	]);
+	const groups = $derived.by(() => {
+		if (query.trim() === '' && facet !== 'all') return [{ label: `${rowKind(facet)?.label ?? facet} in ${scope === 'project' ? 'the project' : location?.label}`, rows: result.rows, count: result.total }];
+		if (query.trim() !== '' || !scope.startsWith('room:')) return [{ label: '', rows: result.rows, count: result.total }];
+		return [
+			{ label: 'Walls', id: 'wall' },
+			{ label: 'Openings', id: 'opening' },
+			{ label: 'In the room', id: 'objects' }
+		].map(({ label, id }) => ({
+			label,
+			rows: result.rows.filter((row) => rowKind(row.group)?.id === id),
+			count: worldScopeRows(model, scope, id, query, 0).total
+		})).filter((group) => group.rows.length > 0);
+	});
 	$effect(() => {
 		void scope;
 		void query;
@@ -71,10 +88,51 @@
 	let renamingExperience = $state(false);
 	let experienceDraft = $state('');
 	let renameBusy = $state(false);
+	/* D-2: a Guide's name renames in place on its Index row; its ⋯ menu renames or removes it. */
+	let renamingGuideId = $state<string | null>(null);
+	let guideDraft = $state('');
+	let guideMenuId = $state<string | null>(null);
+	let guideBusy = $state(false);
+	let guideRenameInput = $state<HTMLInputElement | null>(null);
+
+	function startGuideRename(guideId: string, label: string): void {
+		guideMenuId = null;
+		renamingGuideId = guideId;
+		guideDraft = label;
+		void tick().then(() => {
+			guideRenameInput?.focus();
+			guideRenameInput?.select();
+		});
+	}
+	function cancelGuideRename(): void {
+		renamingGuideId = null;
+		guideDraft = '';
+	}
+	async function commitGuideRename(): Promise<void> {
+		const guideId = renamingGuideId;
+		if (guideId === null || guideDraft.trim() === '' || !experience) return;
+		guideBusy = true;
+		const result = await experience.onRenameGuide(guideId, guideDraft.trim());
+		guideBusy = false;
+		if (result.kind === 'accepted') cancelGuideRename();
+	}
+	function onGuideRenameKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			void commitGuideRename();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelGuideRename();
+		}
+	}
+	function toggleGuideMenu(guideId: string): void {
+		guideMenuId = guideMenuId === guideId ? null : guideId;
+	}
 	let renameError = $state<string | null>(null);
 	function startExperienceRename(): void {
-		if (!experience?.current) return;
-		experienceDraft = experience.current.label;
+		if (!experience) return;
+		experienceDraft = experience.current?.label ?? experience.draftLabel;
 		renameError = null;
 		renamingExperience = true;
 	}
@@ -93,9 +151,90 @@
 			renameBusy = false;
 		}
 	}
+	function renameKeys(event: KeyboardEvent): void {
+		if (event.key === 'Enter') { event.preventDefault(); void commitExperienceName(); }
+		else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); renamingExperience = false; renameError = null; }
+	}
+
+	/*
+	 * Experience review 1 — the Experiences list. Folded, it shows the current
+	 * Experience and the most recently opened ones (at most EXPERIENCE_FOLD_ROWS);
+	 * "Show all" lists every one in authored order inside a capped scroll, with a
+	 * filter from EXPERIENCE_FILTER_FROM. The fold choice is a per-browser convenience.
+	 */
+	const EXPERIENCE_FOLD_ROWS = 3;
+	const EXPERIENCE_FILTER_FROM = 8;
+	const EXPANDED_KEY = 'museum.index.experiences-expanded';
+	function readExpanded(): boolean {
+		try {
+			return globalThis.localStorage?.getItem(EXPANDED_KEY) === 'true';
+		} catch {
+			return false;
+		}
+	}
+	let expanded = $state(readExpanded());
+	function setExpanded(next: boolean): void {
+		expanded = next;
+		experienceFilter = '';
+		try {
+			globalThis.localStorage?.setItem(EXPANDED_KEY, String(next));
+		} catch {
+			// A blocked store only forgets the choice.
+		}
+	}
+	let experienceFilter = $state('');
+	let recentExperienceIds = $state<string[]>([]);
+	$effect(() => {
+		const id = experience?.current?.id ?? null;
+		if (id === null) return;
+		untrack(() => {
+			recentExperienceIds = [id, ...recentExperienceIds.filter((entry) => entry !== id)].slice(0, 12);
+		});
+	});
+	const shownExperiences = $derived.by(() => {
+		const all = experience?.experiences ?? [];
+		if (expanded || all.length <= EXPERIENCE_FOLD_ROWS) {
+			const needle = experienceFilter.trim().toLowerCase();
+			return needle === '' ? all : all.filter((entry) => entry.label.toLowerCase().includes(needle) || entry.id === experience?.current?.id);
+		}
+		const byId = new Map(all.map((entry) => [entry.id, entry]));
+		const order = [...recentExperienceIds, ...all.map((entry) => entry.id)];
+		const picked: typeof all[number][] = [];
+		for (const id of order) {
+			const entry = byId.get(id);
+			if (entry !== undefined && !picked.includes(entry)) picked.push(entry);
+			if (picked.length === EXPERIENCE_FOLD_ROWS) break;
+		}
+		return picked;
+	});
+	function experienceMeta(entry: { readonly stopCount: number; readonly presentationCount: number }): string {
+		if (entry.stopCount > 0) return `${entry.stopCount} ${entry.stopCount === 1 ? 'stop' : 'stops'}`;
+		if (entry.presentationCount > 0) return `${entry.presentationCount} presented`;
+		return 'empty';
+	}
+
+	let creatingName = $state<string | null>(null);
+	function startCreate(): void {
+		if (!experience) return;
+		renamingExperience = false;
+		creatingName = `Experience ${experience.experiences.length + 1}`;
+	}
+	async function commitCreate(): Promise<void> {
+		if (!experience || creatingName === null) return;
+		const name = creatingName.trim();
+		creatingName = null;
+		if (name === '') return;
+		await experience.onCreateExperience(name);
+	}
+
 	function focusSelect(input: HTMLInputElement) {
 		input.focus();
 		input.select();
+	}
+
+	/** A Presentation row's snapshot shows its default View, or its first View when none is marked. */
+	function representativeViewId(views: readonly { readonly id: string; readonly isDefault: boolean }[]): string | null {
+		return (views.find((view) => view.isDefault) ?? views[0])?.id ?? null;
 	}
 
 	/** A Presentation row's Stop numbers: the first three, then how many follow. */
@@ -147,6 +286,20 @@
 	}
 </script>
 
+<svelte:window onkeydown={(event) => {
+	if (event.key === 'Escape' && locationsOpen) {
+		locationsOpen = false;
+		if (event.target instanceof HTMLElement && event.target.closest('#plate-index')) {
+			document.getElementById('world-location-toggle')?.focus();
+			event.stopPropagation();
+		}
+	}
+	if (event.key === 'Escape' && guideMenuId !== null) guideMenuId = null;
+}} onpointerdown={(event) => {
+	if (!(event.target instanceof Element) || !event.target.closest('.world-location, #world-locations')) locationsOpen = false;
+	if (!(event.target instanceof Element) || !event.target.closest('.guide-menu-wrap')) guideMenuId = null;
+}} />
+
 <nav
 	id="plate-index"
 	class="plate-index"
@@ -173,51 +326,88 @@
 				><ShellIcon name="chevronLeft" size={15} /></button
 			>
 		</div>
-		<div class="crumbs" role="group" aria-label="Experience">
-			{#if experience.current !== null && renamingExperience}
-				<input
-					class="crumb-input"
-					aria-label="Experience name"
-					value={experienceDraft}
-					disabled={renameBusy}
-					use:focusSelect
-					oninput={(event) => (experienceDraft = event.currentTarget.value)}
-					onblur={() => { if (!renameBusy) void commitExperienceName(); }}
-					onkeydown={(event) => {
-						if (event.key === 'Enter') { event.preventDefault(); void commitExperienceName(); }
-						else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); renamingExperience = false; renameError = null; }
-					}}
-				/>
-			{:else if experience.current !== null}
-				<span class="crumb" aria-current="location">{experience.current.label}</span>
-			{:else}
-				<span class="index-empty">No Experience yet</span>
-			{/if}
-			<details class="siblings">
-				<summary aria-label="Switch or create Experience"
-					><ShellIcon name="chevronDown" size={12} /></summary
+		<!-- Experience review 1: the Experiences of this World, listed like a file's pages. -->
+		<section class="group experiences" aria-labelledby="index-experiences" data-experience-list>
+			<h3 id="index-experiences" class="group-title group-title-row">
+				<span>Experiences <span class="count">{experience.experiences.length || ''}</span></span>
+				<button
+					type="button"
+					class="group-add"
+					aria-label="New Experience"
+					title="New Experience"
+					disabled={experience.busy || creatingName !== null}
+					onclick={startCreate}><ShellIcon name="plus" size={14} /></button
 				>
-				<div>
-					{#if experience.current !== null}<button
-							type="button"
-							class="menu-rename"
-							disabled={experience.busy}
-							onclick={(event) => { startExperienceRename(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Rename…</button
-						>{/if}
-					{#each experience.experiences.filter((entry) => entry.id !== experience.current?.id) as entry (entry.id)}<button
-							type="button"
-							onclick={(event) => { experience.onOpenExperience(entry.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{entry.label}</button
-						>{/each}
-					<button
-						type="button"
-						class="menu-create"
-						disabled={experience.busy}
-						onclick={(event) => { experience.onCreateExperience(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>New Experience</button
-					>
-				</div>
-			</details>
-		</div>
-		{#if renameError}<p class="crumb-error" role="alert">{renameError}</p>{/if}
+			</h3>
+			{#if expanded && experience.experiences.length > EXPERIENCE_FILTER_FROM}
+				<label class="exp-filter"
+					><ShellIcon name="search" size={13} /><input
+						type="search"
+						aria-label="Filter Experiences"
+						placeholder="Filter Experiences"
+						bind:value={experienceFilter}
+					/></label
+				>
+			{/if}
+			<ul class="group-items exp-list" class:scrolls={expanded && experience.experiences.length > EXPERIENCE_FOLD_ROWS}>
+				{#if experience.current === null}
+					<li class="exp-row current draft" data-experience-draft>
+						{#if renamingExperience}
+							<input class="crumb-input" aria-label="Experience name" value={experienceDraft} disabled={renameBusy} use:focusSelect
+								oninput={(event) => (experienceDraft = event.currentTarget.value)}
+								onblur={() => { if (!renameBusy) void commitExperienceName(); }}
+								onkeydown={renameKeys} />
+						{:else}
+							<button type="button" class="exp-open" aria-current="location" ondblclick={startExperienceRename} title="Double-click to rename"
+								><i class="exp-ic"></i><span class="exp-name">{experience.draftLabel}</span><span class="exp-meta">draft</span></button
+							>
+						{/if}
+					</li>
+				{/if}
+				{#each shownExperiences as entry (entry.id)}
+					{@const isCurrent = entry.id === experience.current?.id}
+					<li class="exp-row" class:current={isCurrent} data-experience-row={entry.id}>
+						{#if isCurrent && renamingExperience}
+							<input class="crumb-input" aria-label="Experience name" value={experienceDraft} disabled={renameBusy} use:focusSelect
+								oninput={(event) => (experienceDraft = event.currentTarget.value)}
+								onblur={() => { if (!renameBusy) void commitExperienceName(); }}
+								onkeydown={renameKeys} />
+						{:else}
+							<button
+								type="button"
+								class="exp-open"
+								aria-current={isCurrent ? 'location' : undefined}
+								onclick={() => { if (!isCurrent) experience.onOpenExperience(entry.id); }}
+								ondblclick={() => { if (isCurrent) startExperienceRename(); }}
+								><i class="exp-ic"></i><span class="exp-name">{entry.label}</span><span class="exp-meta">{experienceMeta(entry)}</span></button
+							>
+							{#if isCurrent}
+								<button type="button" class="exp-more" aria-label={`Rename ${entry.label}`} title="Rename" disabled={experience.busy}
+									onclick={startExperienceRename}><ShellIcon name="more" size={14} /></button
+								>
+							{/if}
+						{/if}
+					</li>
+				{/each}
+				{#if creatingName !== null}
+					<li class="exp-row current creating">
+						<input class="crumb-input" aria-label="New Experience name" value={creatingName} disabled={experience.busy} use:focusSelect
+							oninput={(event) => (creatingName = event.currentTarget.value)}
+							onblur={() => { if (!experience.busy) void commitCreate(); }}
+							onkeydown={(event) => {
+								if (event.key === 'Enter') { event.preventDefault(); void commitCreate(); }
+								else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); creatingName = null; }
+							}} />
+					</li>
+				{/if}
+			</ul>
+			{#if experience.experiences.length > EXPERIENCE_FOLD_ROWS}
+				<button type="button" class="exp-more-toggle" aria-expanded={expanded} onclick={() => setExpanded(!expanded)}
+					>{expanded ? 'Show less' : `Show all ${experience.experiences.length}`}<ShellIcon name={expanded ? 'chevronUp' : 'chevronDown'} size={12} /></button
+				>
+			{/if}
+			{#if renameError}<p class="crumb-error" role="alert">{renameError}</p>{/if}
+		</section>
 		<section class="group" aria-labelledby="index-presentations">
 			<h3 id="index-presentations" class="group-title">
 				Presentations <span class="count">{experience.totalPresentations}</span>
@@ -225,7 +415,7 @@
 			{#if experience.pending}
 				<p class="index-empty">The Experience lens mounts with the admitted project source.</p>
 			{:else if experience.current === null}
-				<p class="index-empty">Create an Experience from the menu above to start presenting.</p>
+				<p class="index-empty">Nothing presented yet. Start from the Stage.</p>
 			{:else if experience.presentations.length === 0}
 				<p class="index-empty">
 					{experience.query.trim() === ''
@@ -255,7 +445,7 @@
 										onRename(presentation.id);
 									}}
 								>
-									<ExperienceSnapshot label={presentation.label} ratio="row" selected={presentation.selected} />
+									<ExperienceSnapshot label={presentation.label} viewId={representativeViewId(presentation.views)} ratio="row" selected={presentation.selected} />
 									<span class="item-text">
 										<span class="item-name">{presentation.label}</span>
 										<span class="item-meta"
@@ -277,7 +467,7 @@
 							{#if presentation.expanded}
 								<ul class="view-list">
 									{#each presentation.views.slice(0, 8) as view (view.id)}
-										<li>
+										<li class="view-line">
 											<button
 												type="button"
 												class="view-row"
@@ -290,6 +480,14 @@
 												<span class="view-name">{view.label}</span>
 												{#if view.isDefault}<span class="default-mark" title="Default View" aria-hidden="true">◆</span>{/if}
 											</button>
+											<button
+												type="button"
+												class="view-add"
+												data-view-add={view.id}
+												aria-label={`Add Stop from ${view.label}`}
+												title={`Add a Stop that enters at ${view.label}`}
+												onclick={() => experience.onAddStopFromView(view.id, presentation.id)}
+											>+ Stop</button>
 										</li>
 									{/each}
 									{#if presentation.views.length > 8}
@@ -309,21 +507,64 @@
 			<section class="group" aria-labelledby="index-guides">
 				<h3 id="index-guides" class="group-title">Guides</h3>
 				{#each experience.guides as guide (guide.id)}
-					<div class="item" class:selected={guide.selected} class:open={guide.open} data-guide-id={guide.id}>
-						<button
-							type="button"
-							class="guide-row"
-							aria-current={guide.selected ? 'true' : undefined}
-							onclick={() => experience.onOpenGuide(guide.id)}
-						>
-							<ShellIcon name="guide" size={15} />
-							<span class="item-text">
-								<span class="item-name">{guide.label}</span>
-								<span class="item-meta">{guide.stopCount} stops</span>
-							</span>
-							{#if guide.opening}<span class="opens-tag" data-opening-guide>opens</span>{/if}
-							{#if guide.open}<span class="chip">Open</span>{/if}
-						</button>
+					<div class="item" class:open={guide.open} data-guide-id={guide.id}>
+						{#if renamingGuideId === guide.id}
+							<input
+								class="guide-rename-input"
+								type="text"
+								aria-label="Guide name"
+								bind:value={guideDraft}
+								bind:this={guideRenameInput}
+								disabled={guideBusy}
+								onkeydown={onGuideRenameKeydown}
+								onblur={() => void commitGuideRename()}
+							/>
+						{:else}
+							<div class="guide-line">
+								<button
+									type="button"
+									class="guide-row"
+									onclick={() => experience.onOpenGuide(guide.id)}
+								>
+									<ShellIcon name="guide" size={15} />
+									<span class="item-text">
+										<span class="item-name">{guide.label}</span>
+										<span class="item-meta">{guide.stopCount} {guide.stopCount === 1 ? 'stop' : 'stops'}</span>
+									</span>
+									{#if guide.opening}<span class="opens-tag" data-opening-guide>opens</span>{/if}
+									{#if guide.open}<span class="chip">Open</span>{/if}
+								</button>
+								<span class="guide-menu-wrap">
+									<button
+										type="button"
+										class="icon guide-actions-toggle"
+										aria-label={`${guide.label} actions`}
+										aria-haspopup="menu"
+										aria-expanded={guideMenuId === guide.id}
+										onclick={() => toggleGuideMenu(guide.id)}
+									>⋯</button
+									>
+									{#if guideMenuId === guide.id}
+										<div class="menu guide-menu" role="menu" tabindex="-1" aria-label={`${guide.label} actions`}>
+											<button
+												type="button"
+												role="menuitem"
+												onclick={() => startGuideRename(guide.id, guide.label)}>Rename</button
+											>
+											<button
+												type="button"
+												role="menuitem"
+												class="danger"
+												onclick={() => {
+													guideMenuId = null;
+													experience.onRemoveGuide(guide.id);
+												}}>Remove Guide</button
+											>
+										</div>
+									{/if}
+								</span>
+							</div>
+						{/if}
 					</div>
 				{:else}
 					<div class="item">
@@ -338,9 +579,10 @@
 			</section>
 		{/if}
 		{:else}
-		<div class="index-search">
+
+		<div class="index-search world-search">
 			<label
-				><ShellIcon name="search" size={15} />
+				><ShellIcon name="search" size={14} />
 				<input
 					id="plate-index-search"
 					type="search"
@@ -354,50 +596,56 @@
 			>
 		</div>
 		<div class="crumbs" role="group" aria-label="Location">
-			{#each crumbs as crumb (crumb.id)}<button
-					type="button"
-					aria-current={scope === crumb.id ? 'location' : undefined}
-					onclick={() => onScope(crumb.id)}>{crumb.label}</button
-				>{#if crumb.id !== scope}<ShellIcon name="chevronRight" size={12} />{/if}{/each}
-			{#if siblings.length}<details class="siblings">
-					<summary aria-label="Switch sibling location"
-						><ShellIcon name="chevronDown" size={12} /></summary
-					>
-					<div>
-						{#each siblings as sibling (sibling.id)}<button
-								type="button"
-								onclick={(event) => { onScope(sibling.id); event.currentTarget.closest('details')?.removeAttribute('open'); }}>{sibling.label}</button
-							>{/each}
-					</div>
-				</details>{/if}
+			<span class="crumb world-location">
+				{#if scope !== 'project'}
+					<button type="button" title={project.label} onclick={() => changeScope('project')}>Project</button>
+				{/if}
+				{#if locations.length > 0}
+					<button type="button" class:current={scope === 'project'} class:location-toggle={scope !== 'project'}
+						id="world-location-toggle" aria-label="Project locations" title={project.label}
+						aria-current={scope === 'project' ? 'location' : undefined} aria-expanded={locationsOpen}
+						aria-controls={locationsOpen ? 'world-locations' : undefined} onclick={() => (locationsOpen = !locationsOpen)}>
+						{#if scope === 'project'}Project{/if}
+						<ShellIcon name="chevronDown" size={11} />
+					</button>
+				{:else if scope === 'project'}
+					<span class="crumb current" aria-current="location">Project</span>
+				{/if}
+			</span>
+			{#if scope !== 'project'}
+				<span aria-hidden="true">›</span>
+				<span class="crumb current" aria-current="location">{location?.label}</span>
+			{/if}
 		</div>
-		<div class="facets" role="group" aria-label="Subject kinds">
-			<button type="button" aria-pressed={facet === 'all'} onclick={() => (facet = 'all')}
-				>All</button
-			>{#each facets as kind}<button
-					type="button"
-					aria-label={kind.replace('-', ' ')}
-					title={kind.replace('-', ' ')}
-					aria-pressed={facet === kind}
-					onclick={() => (facet = kind)}
-					><ShellIcon
-						name={kind === 'wall'
-							? 'wall'
-							: kind === 'opening'
-								? 'opening'
-								: kind === 'scene'
-									? 'object'
-									: 'plan'}
-						size={16}
-					/></button
-				>{/each}
-		</div>
-
-		{#if scope === 'project' && model.rows.some(row => row.relations.includes('free'))}
-			<button type="button" class="floor-scope" onclick={() => onScope('free')}><ShellIcon name="object" size={16} />Free objects <ShellIcon name="chevronRight" size={15} /></button>
+		{#if locationsOpen && locations.length > 0}
+			<div id="world-locations" class="location-list" role="group" aria-label="Project locations">
+				{#each locations as entry (entry.id)}
+					<button type="button" aria-current={scope === entry.id ? 'location' : undefined}
+						onclick={() => { changeScope(entry.id); document.getElementById('world-location-toggle')?.focus(); }}>
+						<ShellIcon name={entry.id === 'free' ? 'object' : 'plan'} size={15} />{entry.label}
+					</button>
+				{/each}
+			</div>
 		{/if}
+		{#if query.trim() === ''}
+			<div class="facets" role="group" aria-label="Subject kinds">
+				<button type="button" aria-pressed={facet === 'all'} onclick={() => (facet = 'all')}>All</button>
+				{#each kinds as kind}
+					{@const count = worldScopeRows(model, scope, kind.id, '', 0).total}
+					<button type="button" aria-label={kind.label} title={`${kind.label} · ${count} here`}
+						aria-pressed={facet === kind.id} onclick={() => (facet = kind.id)}>
+						<ShellIcon name={kind.icon} size={14} />
+					</button>
+				{/each}
+			</div>
+		{/if}
+		<div class="world-list">
+		{#each groups as group (group.label)}
+			{#if group.label}
+				<h3 class="group-title world-group"><span>{group.label}</span><span>{group.count}</span></h3>
+			{/if}
 		<ul class="group-items">
-			{#each result.rows as item (item.sourceId)}
+			{#each group.rows as item (item.sourceId)}
 				<li
 					class="item"
 					data-source-id={item.sourceId}
@@ -422,14 +670,8 @@
 							}}
 						>
 							<ShellIcon
-								name={item.group === 'wall'
-									? 'wall'
-									: item.group === 'opening'
-										? 'opening'
-										: item.group === 'scene'
-											? 'object'
-											: 'plan'}
-								size={16}
+								name={rowKind(item.group)?.icon ?? 'dot'}
+								size={15}
 							/>
 							<span class="item-name" class:generated={!item.authored}>{item.label}</span>
 							{#if item.revealed || !item.eligible}
@@ -441,21 +683,17 @@
 						{#if item.membership !== 'included' || item.revealed}
 							<button type="button" class="item-actions-toggle" aria-label={`${item.revealed ? 'Hide' : 'Reveal'} ${item.label}`} onclick={() => onReveal(item.sourceId)}><ShellIcon name="eye" size={15} /></button>
 						{/if}
-						{#if item.context}<button
-								type="button"
-								class="scope-entry"
-								aria-label={`Go into ${item.label}`}
-								onclick={() => onScope(item.context!)}
-								><span class="room-count">{worldScopeRows(model, item.context!, 'all', '', Number.MAX_SAFE_INTEGER).rows.filter(row => row.context !== item.context).length}</span><ShellIcon name="chevronRight" size={15} /></button
-							>{/if}
+
 					</div>
 
 				</li>
 			{/each}
 		</ul>
-		{#if result.total > result.rows.length}<button type="button" onclick={() => (limit += 40)}
+		{/each}
+		{#if result.total > result.rows.length}<button type="button" class="world-more" onclick={() => (limit += 40)}
 				>Show more ({result.total - result.rows.length})</button
 			>{:else if result.total === 0}<p class="index-empty">No matching subjects</p>{/if}
+		</div>
 		{/if}
 	{/if}
 </nav>
@@ -521,22 +759,129 @@
 		font: 12px var(--shell-sans, system-ui);
 	}
 
-	.crumbs {
+	/* Experience review 1 — the Experiences list, in the Index's own row grammar. */
+	.group-title-row {
 		display: flex;
 		align-items: center;
-		flex-wrap: wrap;
-		gap: 3px;
-		padding: 0 10px 6px;
-		font-size: 12px;
+		justify-content: space-between;
+		padding-right: 6px;
 	}
-	.crumbs button {
-		padding: 2px 4px;
+	.group-add {
+		display: grid;
+		place-items: center;
+		width: 22px;
+		height: 22px;
+		min-height: 22px;
+		padding: 0;
+		border-radius: 6px;
+		color: var(--shell-ink-3, #79817b);
 	}
-	.crumbs [aria-current] {
+	.group-add:hover:not(:disabled) {
+		background: var(--shell-hover, #eef0ed);
+		color: var(--shell-ink, #1b201c);
+	}
+	.exp-list.scrolls {
+		max-height: 224px;
+		overflow-y: auto;
+		box-shadow: inset 0 -8px 8px -8px rgb(0 0 0 / 0.12);
+	}
+	.exp-row {
+		display: flex;
+		align-items: center;
+		min-height: 28px;
+	}
+	.exp-row.current {
+		background: var(--shell-gold-tint, #f8efd6);
+	}
+	.exp-open {
+		flex: 1;
+		min-width: 0;
+		min-height: 28px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 4px 8px 4px 12px;
+		border-radius: 0;
+		text-align: left;
+		font: 400 13px/1.35 var(--shell-sans, system-ui);
+	}
+	.exp-row:not(.current) .exp-open:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.exp-ic {
+		flex: none;
+		width: 9px;
+		height: 9px;
+		border: 1.5px solid var(--shell-ink-3, #79817b);
+		border-radius: 2px;
+	}
+	.exp-row.current .exp-ic {
+		border-color: var(--shell-gold-ink, #74560c);
+		background: var(--shell-gold, #d4ad45);
+	}
+	.exp-name {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.exp-row.current .exp-name {
 		font-weight: 600;
 	}
-	.siblings {
-		position: relative;
+	.exp-row.draft .exp-name {
+		font-style: italic;
+		color: var(--shell-ink-2, #4a524c);
+	}
+	.exp-meta {
+		flex: none;
+		color: var(--shell-ink-3, #79817b);
+		font-size: 11px;
+	}
+	.exp-more {
+		width: 26px;
+		padding: 0;
+		justify-content: center;
+		opacity: 0;
+	}
+	.exp-row:hover .exp-more,
+	.exp-row:focus-within .exp-more {
+		opacity: 1;
+	}
+	.exp-row .crumb-input {
+		margin: 3px 8px 3px 12px;
+		border: 0;
+		border-bottom: 2px solid var(--shell-gold, #d4ad45);
+		border-radius: 0;
+		background: none;
+		font: 600 13px/1.35 var(--shell-sans, system-ui);
+		outline: none;
+	}
+	.exp-filter {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin: 2px 8px 4px;
+		padding: 0 8px;
+		height: 26px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 7px;
+		background: #fff;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.exp-more-toggle {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		width: 100%;
+		min-height: 26px;
+		padding: 0 12px;
+		color: var(--shell-ink-3, #79817b);
+		font: 500 12px var(--shell-sans, system-ui);
+	}
+	.exp-more-toggle:hover {
+		background: var(--shell-hover, #eef0ed);
+		color: var(--shell-ink, #1b201c);
 	}
 	/* R217.S26: the crumb's inline rename uses the crumb's own metrics. */
 	.crumb-input {
@@ -563,36 +908,58 @@
 		font: 500 10px/1.5 var(--shell-mono, ui-monospace, monospace);
 		letter-spacing: 0.02em;
 	}
-	.siblings summary {
-		cursor: pointer;
-		list-style: none;
-	}
 
-	.siblings div {
-		position: absolute;
-		z-index: 30;
-		top: 24px;
-		left: -80px;
-		width: 180px;
-		display: grid;
-		padding: 6px;
-		background: white;
+
+	.world-search input { font-size: 12.5px; }
+	.world-search > button { width: 28px; height: 28px; padding: 0; justify-content: center; }
+	.crumbs {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 2px 3px;
+		padding: 0 10px 6px;
+		font-size: 12px;
+		color: var(--shell-ink-3, #79817b);
+	}
+	.crumb { display: inline-flex; align-items: center; }
+	.crumb > button, .crumb.current { padding: 2px 4px; }
+	.crumb > button { min-height: 0; color: var(--shell-ink-2, #4a524c); border-radius: 5px; }
+	.crumb > .current, .crumb.current { color: var(--shell-ink, #1b201c); font-weight: 600; }
+	.crumb > .location-toggle { padding: 2px; color: var(--shell-ink-3, #79817b); }
+	.location-list {
+		flex: none;
+		margin: 0 10px 6px;
+		padding: 3px;
+		max-height: 220px;
+		overflow: auto;
+		background: #fff;
 		border: 1px solid var(--shell-hairline, #e1e4de);
 		border-radius: 8px;
-		box-shadow: var(--shell-shadow);
+		box-shadow: 0 1px 2px #0001, 0 8px 24px #0002;
 	}
-
+	.location-list button { width: 100%; padding: 4px 8px; min-height: 0; text-align: left; font-size: 12px; }
+	.location-list [aria-current] { background: var(--shell-leaf-tint, #e7f1ea); font-weight: 600; }
+	.world-list { flex: 1; overflow: auto; padding-bottom: 14px; }
+	.world-group { display: flex; justify-content: space-between; }
+	.world-list .item-row { color: var(--shell-ink-3, #79817b); font-weight: 400; }
+	.world-list .item-name { color: var(--shell-ink, #1b201c); }
+	.world-list .selected .item-name { font-weight: 600; }
+	.world-list .item:hover:not(.selected) { background: rgb(0 0 0 / 3.5%); }
+	.world-list .item-row:hover { background: transparent; }
+	.world-more { margin: 4px 10px 4px 12px; font-size: 12px; color: var(--shell-forest-2, #22503c); }
 	.facets {
 		display: flex;
 		gap: 2px;
 		margin: 0 8px 4px;
 		padding: 2px;
 		border-radius: 7px;
-		background: #eaede7;
+		background: #eceee9;
 	}
 	.facets button {
 		flex: 1;
-		justify-content: center;
+		display: grid;
+		place-items: center;
+		font-size: 11.5px;
 		height: 24px;
 		min-height: 24px;
 		padding: 0 4px;
@@ -601,7 +968,7 @@
 	.facets [aria-pressed='true'] {
 		background: #fff;
 		color: var(--shell-ink, #1b201c);
-		box-shadow: 0 1px 2px #0002;
+		box-shadow: 0 0 0 1px var(--shell-hairline-strong, #cdd2ca);
 	}
 	.group-items {
 		list-style: none;
@@ -645,12 +1012,6 @@
 	.item:focus-within .item-actions-toggle {
 		opacity: 1;
 	}
-	.scope-entry {
-		min-width: 40px;
-		justify-content: center;
-		padding: 0;
-		margin-right: 4px;
-	}
 
 	.badge {
 		font-size: 10px;
@@ -671,21 +1032,6 @@
 	}
 	.index-search .hide-index {
 		margin-left: auto;
-	}
-	.siblings div button {
-		width: 100%;
-		min-height: 28px;
-		justify-content: flex-start;
-	}
-	.siblings div .menu-create {
-		margin-top: 4px;
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 0 0 6px 6px;
-	}
-	.siblings div button:disabled {
-		background: transparent;
-		color: var(--shell-ink-3, #79817b);
-		cursor: default;
 	}
 	.group-title .count {
 		margin-left: 4px;
@@ -731,6 +1077,74 @@
 		background: var(--shell-leaf-tint, #e7f1ea);
 	}
 	/* Round 2 irow: one 28 px line, the stop count on the right. */
+	.guide-line {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+	}
+	.guide-line .guide-row {
+		flex: 1;
+		min-width: 0;
+	}
+	.guide-menu-wrap {
+		position: relative;
+		display: inline-flex;
+		flex: none;
+	}
+	.guide-actions-toggle {
+		width: 24px;
+		height: 24px;
+		min-height: 24px;
+		padding: 0;
+		justify-content: center;
+		opacity: 0;
+	}
+	.item:hover .guide-actions-toggle,
+	.item:focus-within .guide-actions-toggle {
+		opacity: 1;
+	}
+	.guide-menu {
+		position: absolute;
+		top: calc(100% + 2px);
+		right: 0;
+		z-index: 20;
+		display: grid;
+		min-width: 148px;
+		padding: 4px;
+		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border-radius: 8px;
+		background: var(--shell-card, #fff);
+		box-shadow: 0 6px 18px rgb(20 30 24 / 14%);
+	}
+	.guide-menu button {
+		justify-content: flex-start;
+		min-height: 26px;
+		padding: 4px 7px;
+		border: 0;
+		border-radius: 5px;
+		background: transparent;
+		font-size: 11.5px;
+		text-align: left;
+	}
+	.guide-menu button:hover,
+	.guide-menu button:focus-visible {
+		background: var(--shell-hover, #eef0ed);
+	}
+	.guide-menu button.danger {
+		color: var(--shell-refuse, #9b2c2c);
+	}
+	.guide-rename-input {
+		box-sizing: border-box;
+		width: 100%;
+		min-height: 28px;
+		margin: 2px 0;
+		padding: 3px 7px;
+		border: 1px solid var(--shell-forest-raised, #22503c);
+		border-radius: 5px;
+		background: var(--shell-card, #fff);
+		color: var(--shell-ink, #1b201c);
+		font: inherit;
+	}
 	.guide-row {
 		width: 100%;
 		min-height: 28px;
@@ -777,7 +1191,7 @@
 		min-height: 28px;
 		padding: 4px 6px 4px 10px;
 		gap: 7px;
-		cursor: grab;
+		cursor: default;
 	}
 	/* Round 2 Index rows read in the sans at 13 px; only the selected row is bold. */
 	.presentation-row .item-name {
@@ -794,6 +1208,34 @@
 		list-style: none;
 	}
 	/* Round 2 nested irow: 14 px indent, then the row's own 10 px. */
+	.view-line {
+		display: flex;
+		align-items: center;
+	}
+	.view-line .view-row {
+		flex: 1;
+		min-width: 0;
+	}
+	.view-add {
+		flex: none;
+		min-height: 24px;
+		padding: 0 6px;
+		border: 0;
+		border-radius: 5px;
+		background: transparent;
+		color: var(--shell-ink-3, #79817b);
+		font: 500 10.5px/1 var(--shell-sans, system-ui);
+		white-space: nowrap;
+		opacity: 0;
+	}
+	.view-line:hover .view-add,
+	.view-add:focus-visible {
+		opacity: 1;
+		color: var(--shell-forest-3, #2d5e48);
+	}
+	.view-add:hover {
+		background: var(--shell-hover, #eef0ed);
+	}
 	.view-row {
 		width: 100%;
 		min-height: 28px;
@@ -853,12 +1295,13 @@
 	@media (pointer: coarse) {
 		button,
 		.facets button,
+		.crumb > button,
+		.location-list button,
 		.index-search label,
 		input {
 			min-height: 44px;
 		}
-		.item-actions-toggle,
-		.scope-entry {
+		.item-actions-toggle {
 			min-width: 44px;
 			opacity: 1;
 		}

@@ -12,7 +12,7 @@
  * externals and never enter the closure, which is what makes the closure a
  * property of this repository rather than of `node_modules`.
  *
- * Owners: WP0 manifests (`docs/roadmap/parallel-track-cutover/acceptance.md`),
+ * Owners: WP0 manifests (`docs/archive/roadmap/parallel-track-cutover/acceptance.md`),
  * the product-side `legacy/` isolation test, and WP3R's post-prune
  * reassessment. One implementation, so a count recorded at the baseline and a
  * count taken after pruning are the same measurement.

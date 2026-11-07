@@ -114,33 +114,42 @@ export function createPaperScene(
 	}
 	for (const [treatment, lines] of treatments) {
 		const style = PAPER_LINE_STYLE[treatment as Exclude<PaperTreatment, 'room-floor' | 'footprint'>];
-		const positions = linePositions(lines);
-		if (positions.length === 0) continue;
-		const geometry = new LineSegmentsGeometry();
-		geometry.setPositions(positions);
-		const material = new LineMaterial({
-			color: new Color(style.ink).getHex(),
-			linewidth: style.widthCssPx,
-			transparent: true,
-			opacity: style.opacity,
-			depthTest: false,
-			depthWrite: false,
-			// PLATE inks are semantic colors: the renderer's tone mapping would shift
-			// the vellum and the ink away from the shell's own values.
-			toneMapped: false,
-			dashed: style.dashed,
-			dashSize: style.dashSizeMeters,
-			gapSize: style.gapSizeMeters
-		});
-		material.resolution.set(resolution[0], resolution[1]);
-		const object = new LineSegments2(geometry, material);
-		object.computeLineDistances();
-		object.renderOrder = lines[0]!.layer;
-		object.frustumCulled = false;
-		object.layers.set(STAGE_OVERLAY_LAYER);
-		group.add(object);
-		disposables.push(geometry, material);
-		addFade(material, style.opacity, 'lines');
+		const dashGroups = new Map<boolean, PaperLineDraw[]>();
+		for (const line of lines) {
+			const dashed = line.dashed ?? style.dashed;
+			const batch = dashGroups.get(dashed) ?? [];
+			batch.push(line);
+			dashGroups.set(dashed, batch);
+		}
+		for (const [dashed, batch] of dashGroups) {
+			const positions = linePositions(batch);
+			if (positions.length === 0) continue;
+			const geometry = new LineSegmentsGeometry();
+			geometry.setPositions(positions);
+			const material = new LineMaterial({
+				color: new Color(style.ink).getHex(),
+				linewidth: style.widthCssPx,
+				transparent: true,
+				opacity: style.opacity,
+				depthTest: false,
+				depthWrite: false,
+				// PLATE inks are semantic colors: the renderer's tone mapping would shift
+				// the vellum and the ink away from the shell's own values.
+				toneMapped: false,
+				dashed,
+				dashSize: style.dashSizeMeters,
+				gapSize: style.gapSizeMeters
+			});
+			material.resolution.set(resolution[0], resolution[1]);
+			const object = new LineSegments2(geometry, material);
+			if (dashed) object.computeLineDistances();
+			object.renderOrder = batch[0]!.layer;
+			object.frustumCulled = false;
+			object.layers.set(STAGE_OVERLAY_LAYER);
+			group.add(object);
+			disposables.push(geometry, material);
+			addFade(material, style.opacity, 'lines');
+		}
 	}
 
 	// One batch per ink/order preserves the exact polygon triangles while keeping

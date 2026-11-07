@@ -30,6 +30,7 @@ import type {
 	SceneWaypoint
 } from '../scene';
 import type { SceneDocumentIssue } from './index';
+import type { ResolvedSceneValidationOptions } from '../scene-validation';
 import type { JsonRecord } from './readers';
 import {
 	addIssue,
@@ -600,7 +601,11 @@ export function assertUnique(
 export function distance(a: Vec3, b: Vec3) {
 	return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
-export function validateSemantics(document: SceneDocument, issues: SceneDocumentIssue[]) {
+export function validateSemantics(
+	document: SceneDocument,
+	issues: SceneDocumentIssue[],
+	options: Pick<ResolvedSceneValidationOptions, 'connectivity'>
+) {
 	const entities = document.entities;
 	assertUnique(entities, 'scene entity', '$.entities', issues);
 	assertUnique(document.navigationNodes, 'navigation node', '$.navigationNodes', issues);
@@ -753,12 +758,13 @@ export function validateSemantics(document: SceneDocument, issues: SceneDocument
 	}
 
 	// B0 (S10.1 closeout) — standalone placement authoring state: an isolated
-	// free node (no connections yet) is valid. Every node that holds at least
-	// one edge must still belong to the single connected graph.
+	// free node (no connections yet) is valid. A direct Scene document still
+	// requires every edge-bearing node to belong to one connected graph; only
+	// the Camera-unit context explicitly admits independent components.
 	const connectedNodeIds = document.navigationNodes
 		.filter((node) => node.connectedNodeIds.length > 0)
 		.map((node) => node.id);
-	if (connectedNodeIds.length > 0) {
+	if (options.connectivity === 'single-component' && connectedNodeIds.length > 0) {
 		const visited = new Set<string>();
 		const queue = [connectedNodeIds[0]!];
 		while (queue.length) {

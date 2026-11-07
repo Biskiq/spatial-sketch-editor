@@ -12,9 +12,12 @@
 	import type { ExperienceStop } from '@portfolio/project-model/units';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
+	import ExperiencePathMovement from './ExperiencePathMovement.svelte';
 	import type { ExperienceController } from './experience-controller.svelte';
-	import { stopEntryViewId, stopExitViewId } from './experience-model';
+	import { stopEntryViewId as entryOf, stopExitViewId as exitOf } from './experience-model';
 	import { experienceHomes } from './experience-homes';
+	import { occurrenceLabel } from './experience-paths';
+
 
 	let {
 		secondary,
@@ -31,13 +34,13 @@
 	const END_REASON = 'The tour ends here';
 	const NOT_IN_GUIDE_REASON = 'This Stop is not in the open Guide';
 	const BUSY_REASON = 'Wait for the last change to save';
-	const CAMERA_REASON = 'Comes with Camera playback';
-	const PATH_REASON = 'Comes with path editing';
+	const CUT_PATH_REASON = 'A Cut has no travel path';
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
 	/** The subject's Stop: this transition leaves from it. */
 	const stop = $derived(controller?.selectedStop ?? null);
+	const transportGuideId = $derived(stop === null ? null : homes.guideForStop(stop.id));
 	const continuation = $derived(
 		controller === null || stop === null ? null : (controller.resolveContinuation(stop.id) as Continuation | null)
 	);
@@ -57,6 +60,28 @@
 	const travelGaps = $derived(
 		stop === null || controller === null ? [] : (controller.travelGapsByStop.get(stop.id) ?? [])
 	);
+	/** R217.S29 — this transition's one derived Camera path read. */
+	const path = $derived(
+		controller?.pathOccurrence?.kind === 'transition' && controller.pathOccurrence.stopId === stop?.id
+			? controller.selectedPath
+			: null
+	);
+	/** Other moves that share this Camera path, shown as a small "Also used by" chip. */
+	const sharedCount = $derived(travelling && path !== null ? path.sharedUses.length : 0);
+	const busyReason = $derived(controller?.busy === true ? BUSY_REASON : null);
+	/** Path is editable only for a supported Travel; a gap offers the one add action. */
+	const pathReason = $derived(
+		busyReason ??
+			(isEnd
+				? END_REASON
+				: transition === 'cut'
+					? CUT_PATH_REASON
+					: path?.state === 'gap'
+						? 'Add a Camera path for this move'
+						: path?.state === 'ambiguous'
+							? 'More than one Camera path joins these Views'
+							: null)
+	);
 
 	const segmentReason = $derived(
 		isEnd
@@ -67,6 +92,18 @@
 					? BUSY_REASON
 					: null
 	);
+	/** D-7: two Stops on the same View have nowhere to travel; offer no switch. */
+	const sameView = $derived.by((): string | null => {
+		if (stop === null || destination === null) return null;
+		const from = stopExitViewId(stop);
+		const to = stopEntryViewId(destination);
+		return from !== null && from === to ? viewLabelOf(stop, from) : null;
+	});
+
+	const stopEntryViewId = (target: ExperienceStop): string =>
+		(controller?.current == null ? null : entryOf(controller.current, target)) ?? '';
+	const stopExitViewId = (target: ExperienceStop): string =>
+		(controller?.current == null ? null : exitOf(controller.current, target)) ?? '';
 
 	function viewLabelOf(target: ExperienceStop, viewId: string): string {
 		const view = controller?.viewsOf.get(target.presentationId)?.find((entry) => entry.id === viewId);
@@ -91,48 +128,56 @@
 {#if controller !== null && stop !== null}
 	<div class="writer" data-experience-writer="transition">
 		<div class="c-actions">
-			<div class="seg wide" role="group" aria-label="Transition">
-				<button
-					type="button"
-					aria-pressed={transition === 'cut'}
-					disabled={segmentReason !== null}
-					title={segmentReason ?? 'Cut'}
-					onclick={() => setTransition('cut')}
-				>
+			{#if sameView !== null}
+				<div class="same-view" role="status">
 					<ShellIcon name="cut" size={13} />
-					Cut
-					{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
-				</button>
-				<button
-					type="button"
-					aria-pressed={transition === 'travel'}
-					disabled={segmentReason !== null}
-					title={segmentReason ?? 'Travel'}
-					onclick={() => setTransition('travel')}
-				>
-					<ShellIcon name="travel" size={13} />
-					Travel
-					{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
-				</button>
-			</div>
+					<b>Cut</b>
+					<span aria-hidden="true">·</span>
+					<span>Both Stops show {sameView}</span>
+				</div>
+			{:else}
+				<div class="seg wide" role="group" aria-label="Transition">
+					<button
+						type="button"
+						aria-pressed={transition === 'cut'}
+						disabled={segmentReason !== null}
+						title={segmentReason ?? 'Cut'}
+						onclick={() => setTransition('cut')}
+					>
+						<ShellIcon name="cut" size={13} />
+						Cut
+						{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
+					</button>
+					<button
+						type="button"
+						aria-pressed={transition === 'travel'}
+						disabled={segmentReason !== null}
+						title={segmentReason ?? 'Travel'}
+						onclick={() => setTransition('travel')}
+					>
+						<ShellIcon name="travel" size={13} />
+						Travel
+						{#if segmentReason}<span class="sr-only">{segmentReason}</span>{/if}
+					</button>
+				</div>
+			{/if}
 		</div>
 
-		<section class="ends" aria-label="Ends">
+		<section class="ends" aria-label="Leaves and arrives">
 			<button type="button" class="end" onclick={() => homes.select({ kind: 'stop', stopId: stop.id })}>
+				<small class="end-tag">Leaves</small>
 				<span class="end-img">
-					<ExperienceSnapshot label={viewLabelOf(stop, stopExitViewId(stop))} />
+					<ExperienceSnapshot
+						label={viewLabelOf(stop, stopExitViewId(stop))}
+						viewId={stopExitViewId(stop)}
+					/>
 					{#if fromPlace > 0}<span class="num">{fromPlace}</span>{/if}
 				</span>
-				<small>leaves from</small>
 				<b>{viewLabelOf(stop, stopExitViewId(stop))}</b>
 			</button>
-			<span class="ends-mid">
-				{#if transition !== null}
-					<ShellIcon name={transition === 'cut' ? 'cut' : 'travel'} size={16} />
-					<small>{transition === 'cut' ? 'cut' : 'travel'}</small>
-				{:else}
-					<ShellIcon name="chevronRight" size={16} />
-				{/if}
+			<span class="ends-mid" aria-hidden="true">
+				<ShellIcon name="chevronRight" size={16} />
+				{#if transition !== null}<small>{transition === 'cut' ? 'Cut' : 'Travel'}</small>{/if}
 			</span>
 			{#if destination !== null}
 				<button
@@ -140,60 +185,61 @@
 					class="end"
 					onclick={() => homes.select({ kind: 'stop', stopId: destination.id })}
 				>
+					<small class="end-tag"
+						>Arrives{#if toPlace === 0} · outside this Guide{/if}</small
+					>
 					<span class="end-img">
-						<ExperienceSnapshot label={viewLabelOf(destination, stopEntryViewId(destination))} />
+						<ExperienceSnapshot
+							label={viewLabelOf(destination, stopEntryViewId(destination))}
+							viewId={stopEntryViewId(destination)}
+						/>
 						{#if toPlace > 0}<span class="num">{toPlace}</span>{/if}
 					</span>
-					<small>arrives at{#if toPlace === 0} · outside this Guide{/if}</small>
 					<b>{viewLabelOf(destination, stopEntryViewId(destination))}</b>
 				</button>
 			{:else if isEnd}
 				<span class="end static">
+					<small class="end-tag">Arrives</small>
 					<span class="end-img finish"><ShellIcon name="pin" size={16} /></span>
-					<small>arrives at</small>
 					<b>End of tour</b>
 				</span>
 			{:else}
 				<span class="end static">
+					<small class="end-tag">Arrives</small>
 					<span class="end-img finish"><ShellIcon name="warning" size={16} /></span>
-					<small>arrives at</small>
 					<b class="muted">The next Stop is missing from this Experience.</b>
 				</span>
 			{/if}
 		</section>
 
+		{#if sharedCount > 0 && path !== null}
+			<div class="meta-row">
+				<span class="chip" title="This path's time is one Camera fact: a change reaches each use">
+					×{sharedCount + 1} · Same path in {sharedCount + 1} places, also {path.sharedUses
+						.map((use) => occurrenceLabel(use, controller.guideStops.map((entry) => entry.id)))
+						.join(', ')}: a change reaches each.
+				</span>
+			</div>
+		{/if}
+
 		{#if travelling && !isEnd}
-			<section class="c-sec" aria-labelledby="transition-movement-title">
-				<h3 id="transition-movement-title">Movement</h3>
-				<div class="field">
-					<span class="f-lbl" id="transition-duration-label">Duration</span>
-					<span class="stepper" role="group" aria-labelledby="transition-duration-label">
-						<button type="button" disabled title={CAMERA_REASON} aria-label="Shorter duration">
-							<ShellIcon name="minus" size={11} /><span class="sr-only">{CAMERA_REASON}</span>
-						</button>
-						<b class="value">—</b>
-						<button type="button" disabled title={CAMERA_REASON} aria-label="Longer duration">
-							<ShellIcon name="plus" size={11} /><span class="sr-only">{CAMERA_REASON}</span>
-						</button>
-					</span>
-				</div>
-				<div class="field">
-					<span class="f-lbl">Path</span>
-					<span class="f-val muted" title={PATH_REASON} aria-disabled="true">{PATH_REASON}</span>
-				</div>
-				{#if travelGaps.length > 0}
-					<!-- The validator's finding names ids; the Card says the same thing in the author's words. -->
-					<div class="gaps" role="alert">
-						<div class="alert">
-							<ShellIcon name="warning" size={13} /><span
-								>Travel needs a Camera connection from “{viewLabelOf(stop, stopExitViewId(stop))}” to “{destination === null
-									? 'the next View'
-									: viewLabelOf(destination, stopEntryViewId(destination))}”. Connections come with path editing.</span
-							>
-						</div>
+			<ExperiencePathMovement
+				{path}
+				{pathReason}
+				{busyReason}
+				occurrence={{ kind: 'transition', stopId: stop.id }}
+			/>
+			{#if travelGaps.length > 0}
+				<div class="gaps" role="alert">
+					<div class="alert">
+						<ShellIcon name="warning" size={13} /><span
+							>Travel needs a Camera connection from “{viewLabelOf(stop, stopExitViewId(stop))}” to “{destination === null
+								? 'the next View'
+								: viewLabelOf(destination, stopEntryViewId(destination))}”. Add a Camera path for this move.</span
+						>
 					</div>
-				{/if}
-			</section>
+				</div>
+			{/if}
 		{:else if isEnd}
 			<p class="c-note">This is the last Stop, so the tour ends here. There is no move to author.</p>
 		{:else}
@@ -202,7 +248,9 @@
 
 		{#if !isEnd}
 			<section class="c-sec row-end" aria-label="Playback">
-				<button type="button" class="btn" disabled title={CAMERA_REASON}>Preview this move<span class="sr-only">{CAMERA_REASON}</span><ShellIcon name="play" size={12} /></button>
+				<button type="button" class="btn" disabled={transportGuideId === null || stop === null}
+					title={transportGuideId === null ? 'There is no Guide to play' : 'Preview this move'}
+					onclick={() => transportGuideId !== null && stop !== null && homes.playGuide(transportGuideId, { kind: 'move', occurrence: { kind: 'transition', stopId: stop.id } })}>Preview this move<ShellIcon name="play" size={12} /></button>
 			</section>
 		{/if}
 
@@ -264,6 +312,20 @@
 	.seg.wide {
 		display: flex;
 		width: 100%;
+	}
+	.same-view {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 30px;
+		padding: 0 10px;
+		border: 1px solid var(--shell-hairline, #e1e4de);
+		border-radius: 8px;
+		background: var(--shell-hover, #eef0ed);
+		color: var(--shell-ink-2, #4a524c);
+	}
+	.same-view b {
+		color: var(--shell-forest-raised, #22503c);
 	}
 	.seg button {
 		display: inline-flex;
@@ -334,20 +396,22 @@
 		border-radius: 9px;
 		background: var(--shell-forest, #11291f);
 		color: #fff;
-		font: 600 10.5px/1 var(--shell-mono, ui-monospace, monospace);
+		font: 600 11px/1 var(--shell-sans, system-ui, sans-serif);
 	}
-	.end small {
+	.end-tag {
 		color: var(--shell-ink-3, #79817b);
-		font-size: 10px;
+		font: 600 10px/1.2 var(--shell-sans, system-ui, sans-serif);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 	.end b {
-		font: 600 11.5px var(--shell-serif, serif);
+		font: 600 12px/1.3 var(--shell-serif, 'Iowan Old Style', Palatino, Georgia, serif);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.end b.muted {
-		font: 11px var(--shell-sans, system-ui);
+		font: 11px/1.4 var(--shell-sans, system-ui, sans-serif);
 		white-space: normal;
 	}
 	button.end:hover b {
@@ -358,10 +422,29 @@
 		flex-direction: column;
 		align-items: center;
 		gap: 2px;
-		padding-top: 14px;
+		align-self: start;
+		/* Sits level with the snapshot tiles, below the Leaves / Arrives tags. */
+		padding-top: 40px;
 		color: var(--shell-forest-raised, #22503c);
-		font-size: 10px;
-		font-weight: 600;
+	}
+	.ends-mid small {
+		font: 600 10px/1 var(--shell-sans, system-ui, sans-serif);
+	}
+	.meta-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 8px 12px 0;
+	}
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		min-height: 20px;
+		padding: 0 8px;
+		border-radius: 999px;
+		background: var(--shell-gold-tint, #f6efd9);
+		color: var(--shell-gold-ink, #74560c);
+		font: 500 11px/1.2 var(--shell-sans, system-ui, sans-serif);
 	}
 
 	/* Sections */
@@ -370,53 +453,11 @@
 		flex-direction: column;
 		padding: 12px 12px 4px;
 	}
-	.c-sec h3 {
-		margin: 0 0 6px;
-		font: 650 12.5px/1.2 var(--shell-sans, system-ui);
-	}
 	.c-note {
 		margin: 12px 12px 0;
 		color: var(--shell-ink-2, #4a524c);
 		font-size: 12px;
 		line-height: 1.5;
-	}
-	.field {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
-		min-height: 32px;
-	}
-	.f-lbl {
-		color: var(--shell-ink-2, #4a524c);
-	}
-	.f-val {
-		font-variant-numeric: tabular-nums;
-		font-size: 11.5px;
-	}
-	.stepper {
-		display: inline-flex;
-		align-items: center;
-		height: 24px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
-		border-radius: 7px;
-		background: var(--shell-card, #fff);
-	}
-	.stepper button {
-		display: inline-grid;
-		place-items: center;
-		width: 22px;
-		height: 22px;
-		padding: 0;
-		border: 0;
-		border-radius: 6px;
-		background: none;
-		color: var(--shell-ink-3, #79817b);
-	}
-	.stepper .value {
-		min-width: 30px;
-		text-align: center;
-		font: 600 11px var(--shell-mono, ui-monospace, monospace);
 	}
 	.gaps {
 		display: flex;

@@ -11,15 +11,26 @@
 	 *
 	 * It holds no Experience state. Every read goes through the controller and every write
 	 * through a controller command; selecting goes through the homes' one `select`, which
-	 * never moves the Camera. Its own state is local: whether the cards are compact, the
-	 * typed first-Guide name, the open + Stop menu, and the drag in progress.
+	 * never moves the Camera. Its own state is local: whether the cards are compact,
+	 * the open + Stop menu, and the drag in progress.
 	 */
 	import { tick, untrack } from 'svelte';
+	import { formatGuideTime } from '@portfolio/camera-core';
 	import ShellIcon from '../stage/shell/ShellIcon.svelte';
 	import ExperienceSnapshot from './ExperienceSnapshot.svelte';
 	import { experienceHomes } from './experience-homes';
+	import { formatPathSeconds } from './experience-paths';
+	import type { ExperiencePlayback } from './playback.svelte';
+	import { resolveWaitScrub } from './timeline-scrub';
 
-	let { onClose }: { onClose: () => void } = $props();
+	let {
+		onClose,
+		playback
+	}: {
+		onClose: () => void;
+		/** The Stage-owned ephemeral playback host: this panel only reads and commands it. */
+		playback: ExperiencePlayback;
+	} = $props();
 
 	instances += 1;
 	const instanceId = `experience-guide-${instances}`;
@@ -29,6 +40,7 @@
 
 	/** What the Index's Presentation rows put on the drag (contract: agent B). */
 	const PRESENTATION_MIME = 'application/x-biskiq-presentation';
+	const VIEW_MIME = 'application/x-biskiq-presentation-view';
 
 	const homes = experienceHomes();
 	const controller = $derived(homes.controller());
@@ -36,6 +48,8 @@
 	const hasGuide = $derived((controller?.guides.length ?? 0) > 0);
 	const guide = $derived(controller?.currentGuide ?? null);
 	const stops = $derived(controller?.guideStops ?? []);
+	/** The Guide's pacing (sheet §31): edited on the Guide Card, shown here. */
+	const pacing = $derived((guide ?? controller?.contextGuide)?.pacing ?? 'automatic');
 	const presentations = $derived(current?.presentations ?? []);
 	const busy = $derived(controller?.busy ?? false);
 	const subject = $derived(controller?.subject ?? null);
@@ -45,15 +59,7 @@
 	const selectedStopId = $derived(
 		subjectStopId !== null && stops.some((stop) => stop.id === subjectStopId) ? subjectStopId : null
 	);
-	const selectedStopIndex = $derived(stops.findIndex((stop) => stop.id === selectedStopId));
-	const guideSelected = $derived(subject?.kind === 'guide');
-	/** The Presentation awaiting a first-Guide name (Presentation Add to Guide, or a drop without a name). */
-	const pending = $derived(homes.guideNamePrompt());
-	const pendingLabel = $derived(pending === null ? null : (controller?.presentationLabel(pending) ?? null));
-
 	let compact = $state(false);
-	let guideName = $state('');
-	let nameInput = $state<HTMLInputElement | null>(null);
 	let menuOpen = $state(false);
 	let menuWrap = $state<HTMLElement | null>(null);
 	let addButton = $state<HTMLButtonElement | null>(null);
@@ -62,6 +68,306 @@
 	let barEl = $state<HTMLElement | null>(null);
 	/** Cards the pointer has focused last, so the roving tab stop survives a cleared selection. */
 	let focusedStopId = $state<string | null>(null);
+	let renaming = $state(false);
+	let renameValue = $state('');
+	let renameInput = $state<HTMLInputElement | null>(null);
+	let nameButton = $state<HTMLButtonElement | null>(null);
+	let guideMenuOpen = $state(false);
+	let guideMenuWrap = $state<HTMLElement | null>(null);
+	let guideMenuButton = $state<HTMLButtonElement | null>(null);
+	let pacingOpen = $state(false);
+	let pacingWrap = $state<HTMLElement | null>(null);
+	let pacingButton = $state<HTMLButtonElement | null>(null);
+
+	// ---- R217.S30: the Stage owns the one ephemeral playback session ----
+
+	const canPlay = $derived(playback.map !== null || (controller?.playbackSource ?? null) !== null);
+	const stopTimes = $derived(
+		new Map((playback.map?.stopEntries ?? []).map((entry) => [entry.stopId, entry]))
+	);
+	const followPosition = $derived(
+		playback.activeStopId === null
+			? null
+			: stops.findIndex((stop) => stop.id === playback.activeStopId) + 1
+	);
+	const playheadPct = $derived.by(() => {
+		const map = playback.map;
+		const cursor = playback.cursor;
+		if (map === null || cursor === null) return 0;
+		if (map.totalSeconds <= 0) {
+			const index = map.segments.findIndex((entry) => entry.id === cursor.segmentId);
+			return map.segments.length <= 1 ? 0 : (Math.max(0, index) / (map.segments.length - 1)) * 100;
+		}
+		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
+		return segment === undefined
+			? 0
+			: ((segment.startSeconds + cursor.elapsedSeconds) / map.totalSeconds) * 100;
+	});
+	/** The playhead in seconds, for each Stop card's own progress (review round 3). */
+	const elapsedSeconds = $derived.by(() => {
+		const map = playback.map;
+		const cursor = playback.cursor;
+		if (map === null || cursor === null) return null;
+		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
+		return segment === undefined ? null : segment.startSeconds + cursor.elapsedSeconds;
+	});
+	/**
+	 * The Travel into a Stop. Camera's time map files an arrival under the Stop it
+	 * reaches, but on the strip it belongs to the gutter before that Stop, so the
+	 * card's own rail is only its stay.
+	 */
+	function arrivalTravel(stopId: string | undefined): { startSeconds: number; durationSeconds: number } | null {
+		if (stopId === undefined) return null;
+		const segment = playback.map?.segments.find(
+			(entry) => entry.kind === 'travel' && entry.stopId === stopId && entry.viewIndex === 0
+		);
+		return segment === undefined ? null : segment;
+	}
+	/** A Stop's stay on the clock: its occurrence without the Travel that brought it. */
+	function staySpan(stopId: string): { start: number; end: number } | null {
+		const entry = stopTimes.get(stopId);
+		if (entry === undefined) return null;
+		const arrival = arrivalTravel(stopId);
+		return { start: entry.startSeconds + (arrival?.durationSeconds ?? 0), end: entry.endSeconds };
+	}
+	/** The Travel drawn in the gutter after `stopId`: the next Stop's arrival. */
+	function gutterTravel(stopId: string): { start: number; end: number } | null {
+		const index = stops.findIndex((stop) => stop.id === stopId);
+		const travel = index < 0 ? null : arrivalTravel(stops[index + 1]?.id);
+		return travel === null ? null : { start: travel.startSeconds, end: travel.startSeconds + travel.durationSeconds };
+	}
+	function spanProgress(span: { start: number; end: number } | null): number {
+		const at = elapsedSeconds;
+		if (span === null || at === null) return 0;
+		if (at >= span.end) return 100;
+		if (at < span.start) return 0;
+		return span.end <= span.start ? 100 : ((at - span.start) / (span.end - span.start)) * 100;
+	}
+	function stopProgress(stopId: string): number {
+		return spanProgress(staySpan(stopId));
+	}
+	/** The Travel gutter's own fill, so the card rails and gutters form one track. */
+	function travelProgress(stopId: string): number {
+		return spanProgress(gutterTravel(stopId));
+	}
+	/** Where the one playhead sits: the lane (card or gutter) holding the cursor. */
+	const playheadLane = $derived.by((): { id: string; pct: number } | null => {
+		const map = playback.map;
+		const cursor = playback.cursor;
+		if (map === null || cursor === null) return null;
+		const segment = map.segments.find((entry) => entry.id === cursor.segmentId);
+		if (segment === undefined) return null;
+		if (segment.kind === 'travel' && segment.viewIndex === 0) {
+			const index = stops.findIndex((stop) => stop.id === segment.stopId);
+			const before = index > 0 ? stops[index - 1] : undefined;
+			if (before !== undefined) return { id: `travel:${before.id}`, pct: travelProgress(before.id) };
+		}
+		return { id: `hold:${segment.stopId}`, pct: stopProgress(segment.stopId) };
+	});
+	/** Each hold is one View's span; its own label/time stays readable on the bar. */
+	const timelineSegments = $derived.by(() => {
+		const map = playback.map;
+		if (map === null) return [];
+		// Each drawn hold is one View's span. A Stop's first drawn hold carries its
+		// number at the segment start; travel links carry none.
+		const numbered = new Set<string>();
+		return map.segments
+			.filter((segment) => segment.durationSeconds > 0)
+			.map((segment) => {
+				const index = stops.findIndex((stop) => stop.id === segment.stopId);
+				const first = segment.kind === 'hold' && index >= 0 && !numbered.has(segment.stopId);
+				if (first) numbered.add(segment.stopId);
+				return {
+					id: segment.id,
+					kind: segment.kind,
+					viewId: segment.viewId,
+					number: first ? index + 1 : null,
+					label: segment.kind === 'hold' ? `View ${segment.viewId} · ${formatGuideTime(segment.durationSeconds)}` : `${segment.kind} · ${formatGuideTime(segment.durationSeconds)}`,
+					left: map.totalSeconds <= 0 ? 0 : (segment.startSeconds / map.totalSeconds) * 100,
+					width: map.totalSeconds <= 0 ? 100 : (segment.durationSeconds / map.totalSeconds) * 100,
+					active:
+						playback.activeStopId === segment.stopId &&
+						(playback.status === 'playing' || playback.status === 'waiting')
+				};
+			});
+	});
+	const timelineWaits = $derived.by(() => {
+		const map = playback.map;
+		if (map === null) return [];
+		const waits = map.segments.filter((segment) => segment.kind === 'wait');
+		if (map.totalSeconds <= 0) {
+			// Time cannot place zero-width waits. They still occupy one addressable
+			// point each so an all-wait Guide remains scrub- and click-reachable.
+			return waits.map((segment, index) => ({
+				id: segment.id,
+				left: waits.length <= 1 ? 0 : (index / (waits.length - 1)) * 100
+			}));
+		}
+		return waits.map((segment) => ({ id: segment.id, left: (segment.startSeconds / map.totalSeconds) * 100 }));
+	});
+
+	function playPause(): void {
+		playback.playPause();
+	}
+
+	/** The Stage captures the entry standpoint; this panel only asks Follow to end. */
+	function restoreStandpoint(): void {
+		playback.setFollow(false);
+	}
+
+	function toggleFollow(): void {
+		if (playback.following) {
+			restoreStandpoint();
+			return;
+		}
+		if (!canPlay) return;
+		if (playback.map === null) playback.playFromStart();
+		if (playback.status === 'idle' || playback.status === 'ended') playback.playPause();
+		if (playback.status === 'idle' || playback.status === 'ended' || playback.map === null) return;
+		playback.setFollow(true);
+	}
+
+	/**
+	 * The card or Travel gutter under the pointer, with the pointer's fraction
+	 * across it. Between lanes (a Cut gutter) it snaps to the nearer edge.
+	 */
+	function laneAt(clientX: number): { id: string; localFraction: number } | null {
+		if (rowEl === null) return null;
+		let best: { id: string; localFraction: number; distance: number } | null = null;
+		for (const element of rowEl.querySelectorAll<HTMLElement>('[data-track-id]')) {
+			const id = element.dataset.trackId ?? '';
+			const rect = element.getBoundingClientRect();
+			if (id === '' || rect.width <= 0) continue;
+			const localFraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			const distance = clientX < rect.left ? rect.left - clientX : clientX > rect.right ? clientX - rect.right : 0;
+			if (best === null || distance < best.distance) best = { id, localFraction, distance };
+		}
+		return best === null ? null : { id: best.id, localFraction: best.localFraction };
+	}
+
+	function scrubAt(clientX: number): void {
+		const map = playback.map;
+		if (barEl === null || map === null) return;
+		const rect = (rowEl ?? barEl).getBoundingClientRect();
+		const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+		// A wait is its own addressable occurrence even at zero width. Coincident
+		// waits cycle on repeated presses, so each stacked occurrence is reachable.
+		const waitId = resolveWaitScrub({
+			waits: timelineWaits,
+			fractionPercent: fraction * 100,
+			currentSegmentId: playback.cursor?.segmentId ?? null
+		});
+		if (waitId !== null) {
+			playback.seekSegment(waitId);
+			return;
+		}
+		// The single track is the card row: each card and Travel gutter maps its own
+		// span under the pointer, so a 4 s card and a 12 s card scrub at their own rates.
+		const located = laneAt(clientX);
+		if (located !== null) {
+			const [kind, stopId] = located.id.split(':');
+			const span = stopId === undefined ? null : kind === 'travel' ? gutterTravel(stopId) : staySpan(stopId);
+			if (span !== null) {
+				playback.seek(span.start + located.localFraction * (span.end - span.start));
+				return;
+			}
+		}
+		playback.seek(fraction * map.totalSeconds);
+	}
+
+	let scrubbing = false;
+	let scrubTip = $state<{ x: number; text: string } | null>(null);
+	function tipAt(clientX: number): void {
+		const map = playback.map;
+		if (!scrubbing || barEl === null || map === null) return;
+		const at = elapsedSeconds ?? 0;
+		const index = stops.findIndex((stop) => {
+			const span = staySpan(stop.id);
+			const travel = gutterTravel(stop.id);
+			return span !== null && at < (travel?.end ?? span.end);
+		});
+		const number = index < 0 ? stops.length : index + 1;
+		const stop = stops[number - 1];
+		const name = stop === undefined || controller === null ? '' : ` · ${controller.presentationLabel(stop.presentationId)}`;
+		const rect = barEl.getBoundingClientRect();
+		scrubTip = { x: Math.max(0, Math.min(rect.width, clientX - rect.left)), text: `${playback.elapsedLabel} · Stop ${number}${name}` };
+	}
+	function onTrackPointerDown(event: PointerEvent): void {
+		if (!canPlay) return;
+		scrubbing = true;
+		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+		scrubAt(event.clientX);
+		void tick().then(() => tipAt(event.clientX));
+	}
+	function onTrackPointerMove(event: PointerEvent): void {
+		if (!scrubbing) return;
+		scrubAt(event.clientX);
+		void tick().then(() => tipAt(event.clientX));
+	}
+	function onTrackPointerUp(event: PointerEvent): void {
+		if (!scrubbing) return;
+		scrubbing = false;
+		scrubTip = null;
+		(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+	}
+
+	function onBarKeydown(event: KeyboardEvent): void {
+		const map = playback.map;
+		if (map === null) return;
+		if (event.key === ' ' || event.key === 'Spacebar') {
+			event.preventDefault();
+			playPause();
+			return;
+		}
+		if (map.totalSeconds <= 0) {
+			const queue = map.segments.filter((segment) => segment.kind === 'wait');
+			if (queue.length === 0 || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+			event.preventDefault();
+			const at = queue.findIndex((segment) => segment.id === playback.cursor?.segmentId);
+			const delta = event.key === 'ArrowLeft' ? -1 : 1;
+			const next = queue[(Math.max(0, at) + delta + queue.length) % queue.length];
+			playback.seekSegment(next!.id);
+			return;
+		}
+		const current = playback.cursor;
+		const segment = current === null ? null : map.segments.find((entry) => entry.id === current.segmentId);
+		const elapsed = segment === undefined || segment === null || current === null ? 0 : segment.startSeconds + current.elapsedSeconds;
+		const step = event.shiftKey ? 5 : 1;
+		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+			event.preventDefault();
+			playback.seek(elapsed + (event.key === 'ArrowLeft' ? -step : step));
+		} else if (event.key === 'PageUp' || event.key === 'PageDown') {
+			event.preventDefault();
+			playback.seek(elapsed + (event.key === 'PageUp' ? -10 : 10));
+		} else if (event.key === 'Home' || event.key === 'End') {
+			event.preventDefault();
+			playback.seek(event.key === 'Home' ? 0 : map.totalSeconds);
+		}
+	}
+
+	function onWindowKeydown(event: KeyboardEvent): void {
+		if (event.defaultPrevented) return;
+		if (event.key !== 'Escape' || !playback.following) return;
+		event.preventDefault();
+		restoreStandpoint();
+	}
+
+	// Plain play and scrub never write the Camera. The Stage applies a sample
+	// only while Follow is on, and Space lives there with the same guards.
+	$effect(() => {
+		const activeStopId = playback.activeStopId;
+		if (activeStopId === null || compact) return;
+		void tick().then(() => {
+			const cards = rowEl?.querySelectorAll<HTMLElement>('[data-stop-id]') ?? [];
+			for (const card of cards) {
+				if (card.dataset.stopId !== activeStopId) continue;
+				// jsdom has no layout; the browser's scrollIntoView is optional here.
+				if (typeof card.scrollIntoView === 'function') {
+					card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+				}
+			}
+		});
+	});
 
 	// ---- Reading: cards, connectors, reasons ----
 
@@ -77,11 +383,10 @@
 		readonly viewId: string | null;
 		readonly number: number;
 		readonly label: string;
-		readonly viewCount: number;
-		readonly hold: string | null;
-		readonly again: boolean;
-		/** R217.S26 (E6): the Guide's start Stop carries the *Start* tag. */
-		readonly start: boolean;
+		/** Views to explore beyond the entry (+N on the card). */
+		readonly more: number;
+		/** ✦: the Stop invites exploring. */
+		readonly invites: boolean;
 		readonly name: string;
 		readonly connector: Connector | null;
 	};
@@ -94,12 +399,17 @@
 		if (controller === null) return [];
 		return stops.map((stop, index) => {
 			const number = index + 1;
-			const label = controller.presentationLabel(stop.presentationId);
-			const again = stops.slice(0, index).some((earlier) => earlier.presentationId === stop.presentationId);
-			const viewId = stop.views[0]?.viewId ?? null;
-			const viewCount = stop.views.length;
-			const finalHold = stop.views.at(-1)?.holdSeconds;
-			const hold = finalHold === undefined ? null : `${finalHold}s`;
+			const presentation = controller.current?.presentations.find((entry) => entry.id === stop.presentationId);
+			const viewId = stop.entryViewId ?? presentation?.views[0]?.viewId ?? null;
+			// Sheet §33 A: a Presentation visited more than once names its entry View on
+			// every visit (Pleyel piano · From the window), so the visits stay distinct.
+			const repeated = stops.filter((other) => other.presentationId === stop.presentationId).length > 1;
+			const viewName = viewId === null ? null : (controller.viewsOf?.get(stop.presentationId)?.find((view) => view.id === viewId)?.label ?? null);
+			const label = repeated && viewName !== null
+				? `${controller.presentationLabel(stop.presentationId)} · ${viewName}`
+				: controller.presentationLabel(stop.presentationId);
+			const more = Math.max(0, (presentation?.views.length ?? 1) - 1);
+			const invites = stop.invitation !== null;
 			const resolved = controller.resolveContinuation(stop.id);
 			const gaps = controller.travelGapsByStop.get(stop.id) ?? [];
 			let connector: Connector | null = null;
@@ -111,26 +421,32 @@
 					resolved.kind === 'adjacent' || resolved.position !== null
 						? `Stop ${resolved.position}`
 						: 'a Stop outside this Guide';
+				const path = resolved.transition === 'travel' ? controller.pathFor?.({ kind: 'transition', stopId: stop.id }) ?? null : null;
+				const seconds = path?.state === 'ready' ? formatPathSeconds(path.seconds) : null;
+				const nameSeconds = seconds === null ? '' : ` · ${seconds}`;
 				const attention = gap ? '. Travel has no Camera connection yet' : '';
 				connector = {
 					shape: resolved.kind,
+					// The gutter is 38 px: an adjacent link is drawn as its glyph, a jump
+					// names its Stop, and a Travel's seconds live in the accessible name.
 					text:
 						resolved.kind === 'adjacent'
-							? resolved.transition
+							? resolved.transition === 'travel'
+								? `↗ ${seconds ?? ''}`.trim()
+								: resolved.transition
 							: resolved.position === null
-								? '→ elsewhere'
+								? '→'
 								: `→ ${resolved.position}`,
-					name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${attention}`,
+				name: `Stop ${number} continues to ${target} by ${transitionWord(resolved.transition)}${resolved.transition === 'travel' ? nameSeconds : ''}${attention}`,
 					transition: resolved.transition,
 					gap
 				};
 			}
-			const start = controller.contextGuide?.entryStopId === stop.id;
 			const spoken = [`Stop ${number}`, label];
-			if (start) spoken.push('the tour starts here');
-			if (again) spoken.push('again');
-			spoken.push(`${viewCount} ${viewCount === 1 ? 'view' : 'views'}`);
-			return { stopId: stop.id, viewId, number, label, viewCount, hold, again, start, name: spoken.join(', '), connector };
+			if (invites) spoken.push('invites exploring');
+			if (more > 0) spoken.push(`${more} more ${more === 1 ? 'view' : 'views'} to explore`);
+			if (pacing === 'manual') spoken.push('waits for Next');
+			return { stopId: stop.id, viewId, number, label, more, invites, name: spoken.join(', '), connector };
 		});
 	});
 
@@ -141,7 +457,6 @@
 
 	const addReason = $derived.by((): string | null => {
 		if (busy) return 'Saving the last change';
-		if (!hasGuide && guideName.trim() === '') return 'Name the Guide first';
 		if (presentations.length === 0) return 'Add a Presentation first';
 		return null;
 	});
@@ -152,24 +467,16 @@
 
 	// ---- Writing: adding Stops ----
 
-	async function addStop(presentationId: string, afterStopId?: string): Promise<boolean> {
+	async function addStop(presentationId: string, afterStopId?: string, entryViewId: string | null = null): Promise<boolean> {
 		if (controller === null) return false;
-		const options: { afterStopId?: string; firstGuideLabel?: string } = {};
+		const options: { afterStopId?: string; entryViewId: string | null } = { entryViewId };
 		if (afterStopId !== undefined) options.afterStopId = afterStopId;
-		if (!hasGuide) options.firstGuideLabel = guideName.trim();
-		const accepted = await controller.addStop(presentationId, Object.keys(options).length > 0 ? options : undefined);
-		if (accepted && homes.guideNamePrompt() !== null) homes.requestGuideName(null);
-		return accepted;
+		return controller.addStop(presentationId, options);
 	}
 
-	/** The first Stop of an empty Guide: needs the Guide's name when there is no Guide yet (D8). */
-	async function addFirstStop(presentationId: string): Promise<void> {
-		if (!hasGuide && guideName.trim() === '') {
-			homes.requestGuideName(presentationId);
-			nameInput?.focus();
-			return;
-		}
-		await addStop(presentationId);
+	/** The first Stop of an empty Guide; the controller creates Tour (D-9). */
+	async function addFirstStop(presentationId: string, entryViewId: string | null = null): Promise<void> {
+		await addStop(presentationId, undefined, entryViewId);
 	}
 
 	async function chooseFromMenu(presentationId: string): Promise<void> {
@@ -177,22 +484,98 @@
 		await addStop(presentationId);
 	}
 
-	async function commitPending(): Promise<void> {
-		if (pending === null || guideName.trim() === '' || busy) return;
-		await addStop(pending);
+	// ---- Slice 5: rename, Guide actions and the pacing popover ----
+
+	async function startRename(): Promise<void> {
+		if (guide === null) return;
+		guideMenuOpen = false;
+		renameValue = guide.label;
+		renaming = true;
+		await tick();
+		renameInput?.focus();
+		renameInput?.select();
 	}
 
-	function onNameKeydown(event: KeyboardEvent): void {
+	async function commitRename(): Promise<void> {
+		if (!renaming) return;
+		renaming = false;
+		if (guide === null || renameValue.trim() === '') {
+			await tick();
+			nameButton?.focus();
+			return;
+		}
+		await controller?.renameGuide(guide.id, renameValue);
+		await tick();
+		nameButton?.focus();
+	}
+
+	function cancelRename(): void {
+		renaming = false;
+		renameValue = '';
+		void tick().then(() => nameButton?.focus());
+	}
+
+	function onRenameKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			void commitPending();
+			void commitRename();
+		} else if (event.key === 'Escape') {
+			event.preventDefault();
+			event.stopPropagation();
+			cancelRename();
 		}
 	}
 
-	// Asked for a name: put the cursor where it is typed.
-	$effect(() => {
-		if (pending !== null && !hasGuide && nameInput !== null) nameInput.focus();
-	});
+	function toggleGuideMenu(): void {
+		guideMenuOpen = !guideMenuOpen;
+		if (!guideMenuOpen) return;
+		void tick().then(() => guideMenuWrap?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+	}
+
+	function closeGuideMenu(): void {
+		guideMenuOpen = false;
+		guideMenuButton?.focus();
+	}
+
+	async function removeCurrentGuide(): Promise<void> {
+		if (guide === null) return;
+		guideMenuOpen = false;
+		await controller?.remove({ kind: 'guide', guideId: guide.id });
+	}
+
+	function onGuideMenuKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			event.stopPropagation();
+			closeGuideMenu();
+			return;
+		}
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const items = [...(guideMenuWrap?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+		const at = items.indexOf(document.activeElement as HTMLElement);
+		items[event.key === 'ArrowDown' ? Math.min(items.length - 1, at + 1) : Math.max(0, at - 1)]?.focus();
+	}
+
+	async function choosePacing(next: 'automatic' | 'manual'): Promise<void> {
+		if (guide === null) return;
+		pacingOpen = false;
+		await controller?.setGuidePacing(guide.id, next);
+		pacingButton?.focus();
+	}
+
+	function onPacingKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') {
+			event.stopPropagation();
+			pacingOpen = false;
+			pacingButton?.focus();
+			return;
+		}
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const items = [...(pacingWrap?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])];
+		const at = items.indexOf(document.activeElement as HTMLElement);
+		items[event.key === 'ArrowDown' ? Math.min(items.length - 1, at + 1) : Math.max(0, at - 1)]?.focus();
+	}
 
 	// ---- Selection ----
 
@@ -202,10 +585,8 @@
 
 	function selectTransition(stopId: string): void {
 		homes.select({ kind: 'transition', stopId });
-	}
-
-	function selectGuide(): void {
-		if (guide !== null) homes.select({ kind: 'guide', guideId: guide.id });
+		// Review round 3: the move after a Stop starts where that Stop ends.
+		playback.seekStop(stopId, 'end');
 	}
 
 	// ---- The + Stop menu ----
@@ -222,6 +603,8 @@
 
 	function onWindowPointerDown(event: PointerEvent): void {
 		if (menuOpen && menuWrap !== null && !menuWrap.contains(event.target as Node)) closeMenu();
+		if (guideMenuOpen && guideMenuWrap !== null && !guideMenuWrap.contains(event.target as Node)) guideMenuOpen = false;
+		if (pacingOpen && pacingWrap !== null && !pacingWrap.contains(event.target as Node)) pacingOpen = false;
 	}
 
 	function onMenuKeydown(event: KeyboardEvent): void {
@@ -280,9 +663,32 @@
 	/** The cards scrolled into view, as first and last index; null when they all show. */
 	let inView = $state<{ first: number; last: number } | null>(null);
 
+	/** Review round 3: the strip has no visible scrollbar; arrows show only on a side with more. */
+	let more = $state<{ left: boolean; right: boolean }>({ left: false, right: false });
+
+	function pageCards(direction: -1 | 1): void {
+		const scroller = scrollerEl;
+		if (scroller === null) return;
+		scroller.scrollBy({ left: direction * Math.max(120, scroller.clientWidth - 96), behavior: 'smooth' });
+	}
+
+	/** A mouse wheel over the strip scrolls it sideways; trackpads already send deltaX. */
+	function onCardsWheel(event: WheelEvent): void {
+		const scroller = scrollerEl;
+		if (scroller === null || scroller.scrollWidth <= scroller.clientWidth) return;
+		if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+		scroller.scrollLeft += event.deltaY;
+		event.preventDefault();
+	}
+
 	function measureView(): void {
 		const scroller = scrollerEl;
 		const els = cardEls();
+		if (scroller !== null) {
+			const left = scroller.scrollLeft > 2;
+			const right = scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 2;
+			if (left !== more.left || right !== more.right) more = { left, right };
+		}
 		if (scroller === null || els.length === 0) {
 			inView = null;
 			return;
@@ -487,6 +893,9 @@
 	function onCardClick(stopId: string): void {
 		if (suppressClick) return;
 		selectStop(stopId);
+		// Review round 3: like a video timeline, pressing a Stop moves the playhead to it;
+		// ▶ then plays from there, with no Play-from menu to choose from.
+		playback.seekStop(stopId, 'start');
 	}
 
 	// ---- Insert by dropping a Presentation from the Index ----
@@ -517,8 +926,12 @@
 		return event.dataTransfer?.types.includes(PRESENTATION_MIME) ?? false;
 	}
 
+	function isViewDrag(event: DragEvent): boolean {
+		return event.dataTransfer?.types.includes(VIEW_MIME) ?? false;
+	}
+
 	function onDragOver(event: DragEvent): void {
-		if (!isPresentationDrag(event)) return;
+		if (!isPresentationDrag(event) && !isViewDrag(event)) return;
 		const target = dropTarget(event);
 		if (target === null) {
 			clearCaret();
@@ -548,18 +961,36 @@
 	}
 
 	function onDrop(event: DragEvent): void {
-		if (!isPresentationDrag(event)) return;
-		const presentationId = event.dataTransfer?.getData(PRESENTATION_MIME) ?? '';
 		const target = dropTarget(event);
+		if (isPresentationDrag(event)) {
+			const presentationId = event.dataTransfer?.getData(PRESENTATION_MIME) ?? '';
+			clearCaret();
+			if (presentationId === '' || target === null) return;
+			event.preventDefault();
+			if (target.kind === 'first') void addFirstStop(presentationId);
+			else void addStop(presentationId, target.afterStopId);
+			return;
+		}
+		if (!isViewDrag(event)) return;
+		const raw = event.dataTransfer?.getData(VIEW_MIME) ?? '';
 		clearCaret();
-		if (presentationId === '' || target === null) return;
+		if (raw === '' || target === null) return;
+		let dropped: { readViewId?: unknown; viewId?: unknown; presentationId?: unknown };
+		try {
+			dropped = JSON.parse(raw) as typeof dropped;
+		} catch {
+			return;
+		}
+		const viewId = typeof dropped.viewId === 'string' ? dropped.viewId : null;
+		const presentationId = typeof dropped.presentationId === 'string' ? dropped.presentationId : null;
+		if (viewId === null || presentationId === null) return;
 		event.preventDefault();
-		if (target.kind === 'first') void addFirstStop(presentationId);
-		else void addStop(presentationId, target.afterStopId);
+		if (target.kind === 'first') void addFirstStop(presentationId, viewId);
+		else void addStop(presentationId, target.afterStopId, viewId);
 	}
 </script>
 
-<svelte:window onpointerdown={onWindowPointerDown} />
+<svelte:window onpointerdown={onWindowPointerDown} onkeydown={onWindowKeydown} />
 
 {#if controller === null}
 	<p class="status" role="status">The Experience lens mounts with the admitted project source.</p>
@@ -580,38 +1011,113 @@
 			<span class="kicker">Guide</span>
 			{#if hasGuide}
 				{#if guide !== null}
-					<button
-						type="button"
-						class="guide-name"
-						class:selected={guideSelected}
-						aria-pressed={guideSelected}
-						title="Show this Guide's Card"
-						onclick={selectGuide}
-					>
-						{guide.label}
-					</button>
+					{#if renaming}
+						<input
+							class="name-input rename-input"
+							type="text"
+							aria-label="Guide name"
+							bind:value={renameValue}
+							bind:this={renameInput}
+							onkeydown={onRenameKeydown}
+							onblur={() => void commitRename()}
+						/>
+					{:else}
+						<button
+							type="button"
+							class="guide-name"
+							title="Rename this Guide"
+							bind:this={nameButton}
+							onclick={() => void startRename()}
+						>
+							{guide.label}
+						</button>
+					{/if}
 				{:else}
 					<span class="guide-name plain">Guide</span>
 				{/if}
 				<span class="count">{stops.length} {stops.length === 1 ? 'stop' : 'stops'}</span>
-			{:else}
-				<input
-					class="name-input"
-					type="text"
-					placeholder="Name this Guide"
-					aria-label="Guide name"
-					bind:value={guideName}
-					bind:this={nameInput}
-					onkeydown={onNameKeydown}
-				/>
+				{#if guide !== null}
+					<span class="pacing-wrap" bind:this={pacingWrap}>
+						<button
+							type="button"
+							class="pacing-label"
+							data-pacing-label={pacing}
+							bind:this={pacingButton}
+							aria-haspopup="menu"
+							aria-expanded={pacingOpen}
+							title="Pacing"
+							onclick={() => (pacingOpen = !pacingOpen)}
+						>{pacing === 'manual' ? 'Manual · waits for Next' : 'Automatic'} ›</button
+						>
+						{#if pacingOpen}
+							<div class="pacing-menu" role="menu" tabindex="-1" aria-label="Pacing" onkeydown={onPacingKeydown}>
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={pacing === 'automatic'}
+									onclick={() => void choosePacing('automatic')}>Automatic</button
+								>
+								<button
+									type="button"
+									role="menuitemradio"
+									aria-checked={pacing === 'manual'}
+									onclick={() => void choosePacing('manual')}>Manual · waits for Next</button
+								>
+							</div>
+						{/if}
+					</span>
+					<span class="guide-menu-wrap" bind:this={guideMenuWrap}>
+						<button
+							type="button"
+							class="icon"
+							bind:this={guideMenuButton}
+							aria-label="Guide actions"
+							aria-haspopup="menu"
+							aria-expanded={guideMenuOpen}
+							title="Guide actions"
+							onclick={toggleGuideMenu}
+						>⋯</button
+						>
+						{#if guideMenuOpen}
+							<div class="menu guide-menu" role="menu" tabindex="-1" aria-label="Guide actions" onkeydown={onGuideMenuKeydown}>
+								<button type="button" role="menuitem" class="menu-item danger" onclick={() => void removeCurrentGuide()}>Remove Guide</button>
+							</div>
+						{/if}
+					</span>
+				{/if}
 			{/if}
 			<span class="spacer"></span>
+			{#if stops.length > 0}
+				<span class="transport-cluster">
+					<button
+						type="button"
+						class="play"
+						disabled={!canPlay}
+						aria-label={playback.status === 'playing' ? 'Pause' : 'Play'}
+						title={canPlay ? (playback.status === 'playing' ? 'Pause (Space)' : 'Play (Space)') : 'There is no Guide to play'}
+						aria-describedby={canPlay ? undefined : playReasonId}
+						onclick={playPause}
+					>
+						{#if playback.status === 'playing'}
+							<span class="pause-glyph" aria-hidden="true">❚❚</span>
+						{:else}
+							<ShellIcon name="play" size={13} />
+						{/if}
+					</button>
+					<span class="total" data-playback-total>
+						{playback.elapsedLabel} / {playback.totalLabel}{#if playback.map !== null && playback.map.waitCount > 0}<span class="waits">{playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}</span>{/if}
+					</span>
+				</span>
+			{/if}
 			<button
 				type="button"
 				class="tool"
-				disabled
-				title="Comes with Camera playback"
-				aria-describedby={followReasonId}
+				class:on={playback.following}
+				disabled={!canPlay}
+				title={playback.following ? 'Stop following the camera' : 'Follow the camera'}
+				aria-pressed={playback.following}
+				aria-describedby={playback.following ? followReasonId : undefined}
+				onclick={toggleFollow}
 			>
 				<ShellIcon name="camera" size={13} />
 				<span class="word">Follow</span>
@@ -636,7 +1142,7 @@
 					<div class="menu" role="menu" aria-label="Add a Presentation as a Stop" tabindex="-1" onkeydown={onMenuKeydown}>
 						{#each presentations as presentation (presentation.id)}
 							<button type="button" role="menuitem" class="menu-item" onclick={() => void chooseFromMenu(presentation.id)}>
-								<span class="menu-label">{presentation.label}</span>
+								<span class="menu-label">{controller.presentationLabel(presentation.id)}</span>
 								{#if inGuide(presentation.id)}<span class="menu-hint">again</span>{/if}
 							</button>
 						{/each}
@@ -663,29 +1169,15 @@
 
 		{#if stops.length === 0}
 			<div class="empty" class:over={emptyOver}>
-				<p>Choose <b>+ Stop</b>, or drag a Presentation here from the Index.</p>
-				{#if pending !== null && !hasGuide}
-					<p class="empty-note">
-						{#if guideName.trim() === ''}
-							Name the Guide, then press Enter to add {pendingLabel ?? 'it'}.
-						{:else}
-							Press Enter to add {pendingLabel ?? 'it'} as the first Stop.
-						{/if}
-					</p>
-					<button
-						type="button"
-						class="tool"
-						disabled={guideName.trim() === '' || busy}
-						title={guideName.trim() === '' ? 'Name the Guide first' : undefined}
-						onclick={() => void commitPending()}
-					>
-						Add {pendingLabel ?? 'it'}
-					</button>
-				{/if}
+				<p>Choose <b>+ Stop</b>, or drag a Presentation or View here from the Index.</p>
 			</div>
 		{:else}
 			{#if !compact}
-				<div class="cards" bind:this={scrollerEl} onscroll={measureView}>
+				<div class="cards-wrap">
+				{#if more.left}
+					<button type="button" class="more-arrow left" aria-label="Earlier Stops" title="Earlier Stops" onclick={() => pageCards(-1)}><span aria-hidden="true">‹</span></button>
+				{/if}
+				<div class="cards" bind:this={scrollerEl} onscroll={measureView} onwheel={onCardsWheel}>
 					<div class="row" role="group" aria-label={guide !== null ? `Stops in ${guide.label}` : 'Stops'} bind:this={rowEl}>
 						{#each cards as card, index (card.stopId)}
 							{@const selected = selectedStopId === card.stopId && subject?.kind === 'stop'}
@@ -696,6 +1188,7 @@
 								class:selected
 								class:dragging={isDragging}
 								data-stop-id={card.stopId}
+								data-track-id={`hold:${card.stopId}`}
 								aria-pressed={selected}
 								aria-label={card.name}
 								tabindex={rovingStopId === card.stopId ? 0 : -1}
@@ -708,20 +1201,29 @@
 								onfocus={() => (focusedStopId = card.stopId)}
 							>
 								<ExperienceSnapshot label={card.label} viewId={card.viewId} number={card.number} ratio="stop" />
-								<span class="stop-name">{card.label}</span>
-								<span class="stop-meta">
-									{#if card.start}<span class="start-tag" data-start-tag>Start</span>{/if}
-									{#if card.again}<em>again</em>{/if}
-									{#if card.again}<span aria-hidden="true"> · </span>{/if}
-									<span>{card.viewCount} {card.viewCount === 1 ? 'view' : 'views'}</span>
+								<span class="stop-text">
+									<span class="stop-name" title={card.label}>{card.label}</span>
+									<span class="stop-meta">
+										{#if card.invites}<span class="badge invite" title="Invites exploring" data-invite-badge>✦</span>{/if}
+										{#if card.more > 0}<span class="badge more" title={`${card.more} more ${card.more === 1 ? 'View' : 'Views'} to explore`}>+{card.more}</span>{/if}
+									</span>
 								</span>
+								<!-- Review round 3 (sheet §25): each Stop card carries its own part of the timeline. -->
+								<span class="stop-progress" data-view-span={card.viewId ?? undefined} aria-hidden="true"
+									><i style:width="{stopProgress(card.stopId)}%"></i>{#if playheadLane?.id === `hold:${card.stopId}`}<b class="knob" style:left="{playheadLane.pct}%"></b>{/if}</span
+								>
 							</button>
-							<span class="slot" class:adjacent={card.connector?.shape === 'adjacent'}>
-								{#if card.connector !== null}
+							<span
+								class="slot"
+								class:adjacent={card.connector?.shape === 'adjacent'}
+								data-track-id={card.connector?.transition === 'travel' ? `travel:${card.stopId}` : undefined}
+							>
+								{#if card.connector !== null && card.connector.shape !== 'end'}
 									{@const connector = card.connector}
 									<button
 										type="button"
 										class="chip {connector.shape}"
+										data-connector={card.stopId}
 										class:cut={connector.transition === 'cut'}
 										class:travel={connector.transition === 'travel'}
 										class:gap={connector.gap}
@@ -732,8 +1234,23 @@
 										tabindex={rovingStopId === card.stopId ? 0 : -1}
 										onclick={() => selectTransition(card.stopId)}
 									>
-										{connector.text}
+										{#if connector.shape !== 'adjacent'}
+											{connector.text}
+										{:else if connector.gap}
+											<span aria-hidden="true">⚠</span>
+										{:else if connector.transition === 'travel'}
+											<span class="gutter-time">{connector.text}</span>
+										{:else}
+											<svg class="glyph" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M1 4h10" stroke-dasharray="0.1 2.3" /></svg>
+										{/if}
 									</button>
+									{#if connector.transition === 'travel'}
+										<span class="slot-progress" aria-hidden="true"
+											><i style:width="{travelProgress(card.stopId)}%"></i>{#if playheadLane?.id === `travel:${card.stopId}`}<b class="knob" style:left="{playheadLane.pct}%"></b>{/if}</span
+										>
+									{:else if connector.transition === 'cut'}
+										<span class="slot-cut" aria-hidden="true"></span>
+									{/if}
 								{/if}
 							</span>
 						{/each}
@@ -742,57 +1259,76 @@
 						{/if}
 					</div>
 				</div>
+				<div
+					class="track-hit"
+					bind:this={barEl}
+					role="slider"
+					data-playback-timeline
+					tabindex={canPlay ? 0 : -1}
+					aria-label="Guide timeline"
+					aria-valuemin={0}
+					aria-valuemax={Math.round(playback.map?.totalSeconds ?? 0)}
+					aria-valuenow={Math.round((playback.map?.totalSeconds ?? 0) * (playheadPct / 100))}
+					aria-valuetext={`${playback.elapsedLabel} of ${playback.totalLabel}${playback.map === null ? '' : playback.map.waitCount === 0 ? '' : ` ${playback.map.waitCount === 1 ? '+ 1 wait' : `+ ${playback.map.waitCount} waits`}`}`}
+					aria-disabled={!canPlay}
+					onpointerdown={onTrackPointerDown}
+					onpointermove={onTrackPointerMove}
+					onpointerup={onTrackPointerUp}
+					onpointercancel={onTrackPointerUp}
+					onkeydown={onBarKeydown}
+				></div>
+				{#if scrubTip !== null}
+					<span class="scrub-tip" style:left="{scrubTip.x}px" role="status">{scrubTip.text}</span>
+				{/if}
+				{#if more.right}
+					<button type="button" class="more-arrow right" aria-label="Later Stops" title="Later Stops" onclick={() => pageCards(1)}><span aria-hidden="true">›</span></button>
+				{/if}
+				</div>
 			{/if}
 
-			<div class="scrub">
-				<button
-					type="button"
-					class="play"
-					disabled
-					aria-label="Play"
-					title="Comes with Camera playback"
-					aria-describedby={playReasonId}
-				>
-					<ShellIcon name="play" size={13} />
-				</button>
-				<div
-					class="bar"
-					role="img"
-					aria-label={selectedStopIndex >= 0
-						? `${stops.length} Stops in order, Stop ${selectedStopIndex + 1} selected`
-						: `${stops.length} Stops in order`}
-					bind:this={barEl}
-				>
-					{#each stops as stop, index (stop.id)}
-						<span class="seg" class:selected={selectedStopId === stop.id}>
-							{#if cards[index]?.hold}<span class="seg-hold">{cards[index]?.hold}</span>{/if}
-						</span>
-					{/each}
-					{#if inView !== null && !compact}
-						<span
-							class="bracket"
-							style:left="{(inView.first / stops.length) * 100}%"
-							style:width="{((inView.last - inView.first + 1) / stops.length) * 100}%"
-						></span>
-					{/if}
-					{#if barCaretPct !== null}
-						<span class="bar-caret" style:left="{barCaretPct}%"></span>
-					{/if}
+			{#if playback.following}
+				<div class="follow-pill" role="status">
+					<span class="live-dot" aria-hidden="true"></span>
+					<span>Following the camera{followPosition === null || followPosition <= 0 ? '' : ` · travelling to Stop ${followPosition}`}</span>
+					<button type="button" class="pill-stop" onclick={restoreStandpoint}>Stop following <span class="kbd">Esc</span></button>
 				</div>
-			</div>
+			{/if}
 		{/if}
 
-		<span id={followReasonId} class="visually-hidden">Comes with Camera playback</span>
-		<span id={playReasonId} class="visually-hidden">Comes with Camera playback</span>
+		<span id={followReasonId} class="visually-hidden">Following the camera · Stop following Esc</span>
+		<span id={playReasonId} class="visually-hidden">There is no Guide to play</span>
 		{#if addReason !== null}<span id={addReasonId} class="visually-hidden">{addReason}</span>{/if}
 	</div>
 {/if}
 
 <style>
+	.pacing-label {
+		min-height: 24px;
+		padding: 0 8px;
+		border: 1px solid rgb(255 255 255 / 28%);
+		border-radius: 999px;
+		background: none;
+		color: inherit;
+		font: 500 11px var(--shell-sans, system-ui);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+	.pacing-label:hover {
+		background: rgb(255 255 255 / 10%);
+	}
+	.badge {
+		margin-left: 4px;
+		color: var(--shell-ink-3, #6b736d);
+		font-size: 10.5px;
+		font-weight: 600;
+	}
+	.badge.invite {
+		color: var(--shell-leaf-soft, #9fd3b6);
+	}
 	.status {
 		margin: 0;
 		color: var(--shell-ink-quiet, #9fb2a5);
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 	}
 	.guide {
 		position: relative;
@@ -828,7 +1364,7 @@
 		border-bottom: 2px solid transparent;
 		background: transparent;
 		color: #fff;
-		font: 15px var(--shell-serif, Georgia, serif);
+		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia, serif);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -839,9 +1375,6 @@
 	}
 	.guide-name:hover:not(.plain) {
 		border-bottom-color: rgb(255 255 255 / 0.3);
-	}
-	.guide-name.selected {
-		border-bottom-color: var(--shell-gold, #d4ad45);
 	}
 	.count {
 		color: var(--shell-ink-quiet, #9fb2a5);
@@ -858,7 +1391,7 @@
 		border-radius: 7px;
 		background: rgb(255 255 255 / 0.07);
 		color: #fff;
-		font: 15px var(--shell-serif, Georgia, serif);
+		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia, serif);
 	}
 	.name-input::placeholder {
 		color: #9fbcaa;
@@ -877,7 +1410,7 @@
 		background: rgb(255 255 255 / 0.09);
 		color: inherit;
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		white-space: nowrap;
 		cursor: pointer;
 	}
@@ -911,9 +1444,13 @@
 	}
 	.guide button:focus-visible,
 	.guide input:focus-visible {
-		outline: 2px solid var(--shell-ink-light, #eef1ec);
+		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
 		outline-offset: 1px;
 		box-shadow: none;
+	}
+	.guide ::selection {
+		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
+		color: inherit;
 	}
 
 	/* ---- + Stop menu: opens upward, over the Stage, since the Guide sits at the lower edge ---- */
@@ -987,52 +1524,93 @@
 		color: #fff;
 		font-weight: 600;
 	}
-	.empty .empty-note {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font-size: 11.5px;
-	}
 
 	/* ---- Stop cards and connectors ---- */
+	/* Review round 3 (sheet §25): no visible scrollbar; trackpad, touch and wheel still
+	   scroll, and arrows over a fade appear only on a side that has more Stops. */
+	.cards-wrap {
+		position: relative;
+		min-width: 0;
+	}
 	.cards {
 		overflow-x: auto;
-		padding: 8px 0 4px;
-		scrollbar-width: thin;
-		scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+		overflow-y: hidden;
+		padding: 8px 0 6px;
+		scrollbar-width: none;
+		overscroll-behavior-x: contain;
 	}
-	.cards::-webkit-scrollbar { height: 6px; }
-	.cards::-webkit-scrollbar-track { background: transparent; }
-	.cards::-webkit-scrollbar-thumb {
-		border-radius: 6px;
-		background: rgb(255 255 255 / 0.22);
+	.cards::-webkit-scrollbar { display: none; }
+	.more-arrow {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		z-index: 3;
+		display: flex;
+		align-items: center;
+		width: 56px;
+		padding: 0 6px;
+		border: 0;
+		color: #fff;
+		cursor: pointer;
 	}
-	.cards::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.38); }
+	.more-arrow.left {
+		left: 0;
+		justify-content: flex-start;
+		background: linear-gradient(90deg, rgb(17 41 31) 35%, rgb(17 41 31 / 0));
+	}
+	.more-arrow.right {
+		right: 0;
+		justify-content: flex-end;
+		background: linear-gradient(270deg, rgb(17 41 31) 35%, rgb(17 41 31 / 0));
+	}
+	.more-arrow span {
+		display: grid;
+		place-items: center;
+		width: 26px;
+		height: 26px;
+		border: 1px solid #3c5e4f;
+		border-radius: 50%;
+		background: #1a3a2d;
+		font-size: 15px;
+		line-height: 1;
+	}
+	.more-arrow:hover span { background: #25483a; }
 	.row {
 		position: relative;
 		display: flex;
 		align-items: stretch;
+		/* Border-box: the padding sits inside the 100 %, so one Stop never overflows the strip. */
+		box-sizing: border-box;
 		width: max-content;
 		min-width: 100%;
 		padding: 0 12px;
 	}
+	/* Review round 3 (sheet §25): a wide row card, the picture beside the title and time. */
 	.stop-card {
+		position: relative;
 		flex: none;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		width: 118px;
-		padding: 5px;
+		display: grid;
+		grid-template-columns: 62px minmax(0, 1fr);
+		align-items: center;
+		gap: 8px;
+		width: 176px;
+		min-height: 50px;
+		padding: 5px 5px 7px;
 		border: 2px solid transparent;
 		border-radius: 8px;
-		background: #f3f4ef;
-		color: var(--shell-ink, #1b201c);
+		background: #16352a;
+		color: var(--shell-ink-light, #eef1ec);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
 		user-select: none;
 	}
+	.stop-card:hover {
+		background: #1d4033;
+	}
 	.stop-card.selected {
 		border-color: var(--shell-gold, #d4ad45);
-		background: var(--shell-card, #fff);
+		background: #234b3a;
 	}
 	.stop-card.dragging {
 		position: relative;
@@ -1041,29 +1619,109 @@
 		opacity: 0.92;
 		box-shadow: 0 8px 20px rgb(0 0 0 / 0.35);
 	}
+	.stop-card :global(.snapshot.stop) {
+		width: 62px;
+		height: 40px;
+	}
+	.stop-text {
+		display: grid;
+		gap: 2px;
+		min-width: 0;
+	}
 	.stop-name {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
 		overflow: hidden;
-		font: 12.5px/1.15 var(--shell-serif, Georgia, serif);
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		font: 12.5px/1.2 var(--shell-serif, Georgia, serif);
 	}
 	.stop-meta {
-		min-height: 1.35em;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 		line-height: 1.35;
-		color: var(--shell-ink-3, #79817b);
+		color: #b9cbbf;
 		font-size: 10.5px;
+		font-variant-numeric: tabular-nums;
 	}
-	.stop-meta em {
-		font-style: italic;
+	/* One track (sheet §33 A): each card's rail is its stay, each Travel gutter its Travel. */
+	.stop-progress,
+	.slot-progress {
+		position: absolute;
+		bottom: 3px;
+		height: 3px;
+		border-radius: 2px;
+		background: rgb(255 255 255 / 0.14);
+		pointer-events: none;
+	}
+	.stop-progress {
+		left: 6px;
+		right: 6px;
+	}
+	.slot-progress {
+		left: 0;
+		right: 0;
+		border-radius: 0;
+	}
+	.stop-progress i,
+	.slot-progress i {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		border-radius: inherit;
+		background: var(--shell-gold, #d4ad45);
+	}
+	/* A Cut takes no time: a dotted hairline the playhead jumps over. */
+	.slot-cut {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 4px;
+		border-top: 1px dotted rgb(255 255 255 / 0.3);
+		pointer-events: none;
+	}
+	.knob {
+		position: absolute;
+		top: 50%;
+		z-index: 1;
+		width: 10px;
+		height: 10px;
+		margin: -5px 0 0 -5px;
+		border: 2px solid var(--shell-forest, #11291f);
+		border-radius: 50%;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.knob::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		top: 6px;
+		width: 2px;
+		height: 12px;
+		margin-left: -1px;
+		border-radius: 1px;
+		background: var(--shell-gold, #d4ad45);
+	}
+	.scrub-tip {
+		position: absolute;
+		bottom: 16px;
+		z-index: 4;
+		transform: translateX(-50%);
+		padding: 3px 7px;
+		border-radius: 6px;
+		background: #fff;
+		color: var(--shell-forest, #11291f);
+		font: 500 11px var(--shell-sans, system-ui, sans-serif);
+		white-space: nowrap;
+		pointer-events: none;
+		box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 	}
 	.slot {
 		position: relative;
-		flex: none;
+		flex: 0 0 58px;
+		width: 58px;
 		display: grid;
 		place-items: center;
-		width: 44px;
 	}
 	/* Adjacency is drawn only for a connector whose destination is the neighbour (D11). */
 	.slot.adjacent::before {
@@ -1074,22 +1732,38 @@
 		top: 50%;
 		border-top: 1px solid rgb(255 255 255 / 0.28);
 	}
+	/* The link lives in the fixed gutter: a glyph pill, never wider than the 38 px slot. */
 	.chip {
 		position: relative;
-		padding: 2px 6px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 18px;
+		min-width: 24px;
+		max-width: 56px;
+		padding: 0 5px;
 		border: 1px solid transparent;
-		border-radius: 10px;
-		background: color-mix(in srgb, #fff 8%, var(--shell-forest, #11291f));
+		border-radius: 999px;
+		background: color-mix(in srgb, #fff 10%, var(--shell-forest, #11291f));
 		color: var(--shell-ink-light, #eef1ec);
-		font: 11px var(--shell-mono, ui-monospace, monospace);
+		font: 600 10px/1 var(--shell-mono, ui-monospace, monospace);
 		white-space: nowrap;
+		overflow: hidden;
 		cursor: pointer;
 	}
+	.chip .glyph {
+		display: block;
+		width: 12px;
+		height: 8px;
+	}
+	/* Cut is a dotted line; Travel is a solid arrow on the leaf green. */
 	.chip.cut {
-		border: 1px dashed rgb(255 255 255 / 0.35);
+		border: 1px dashed rgb(255 255 255 / 0.4);
+		background: transparent;
 	}
 	.chip.travel {
-		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 40%, var(--shell-forest, #11291f));
+		background: var(--shell-gold, #d4ad45);
+		color: var(--shell-forest, #11291f);
 	}
 	.chip.jump,
 	.chip.end {
@@ -1097,20 +1771,14 @@
 	}
 	.chip.gap {
 		border: 1px dashed var(--shell-caution, #c85a48);
-		background: color-mix(in srgb, var(--shell-caution, #c85a48) 28%, var(--shell-forest, #11291f));
+		background: transparent;
 		color: color-mix(in srgb, var(--shell-caution, #c85a48) 35%, #fff);
 	}
+	/* A selected transition: gold, ringed in ivory (owner review, 5 Nov). */
 	.chip.selected {
-		box-shadow: 0 0 0 2px var(--shell-gold, #d4ad45);
-	}
-	/* R217.S26: the *Start* tag, a mono 10 px tag like the Index's *opens*. */
-	.start-tag {
-		margin-right: 4px;
-		padding: 0 4px;
-		border: 1px solid currentColor;
-		border-radius: 3px;
-		font: 500 10px/1.4 var(--shell-mono, ui-monospace, monospace);
-		letter-spacing: 0.02em;
+		background: var(--shell-gold, #d4ad45);
+		color: var(--shell-forest, #11291f);
+		box-shadow: 0 0 0 2px var(--shell-ivory, #f3f0e4);
 	}
 	.caret {
 		position: absolute;
@@ -1119,87 +1787,86 @@
 		width: 3px;
 		margin-left: -1.5px;
 		border-radius: 2px;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-leaf-soft, #9fd3b6);
 		pointer-events: none;
 	}
 
-	/* ---- Stop-order bar ---- */
-	.scrub {
+	/* ---- R217.S30: time timeline ---- */
+	.transport-cluster {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		flex: none;
+	}
+	.tool.on {
+		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
+		color: #fff;
+	}
+	/* A travel is a solid link with a chevron. */
+	/* The Stop number sits at the start of the Stop's first hold. */
+	.total {
+		flex: none;
+		color: var(--shell-ink-light, #eef1ec);
+		font: 500 11px/1.2 var(--shell-mono, ui-monospace, monospace);
+		white-space: nowrap;
+	}
+	.total .waits {
+		margin-left: 4px;
+		color: var(--shell-leaf-soft, #9fd3b6);
+	}
+	.follow-pill {
+		position: absolute;
+		left: 50%;
+		bottom: calc(100% + 10px);
+		transform: translateX(-50%);
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 4px 12px 10px;
+		gap: 8px;
+		padding: 4px 4px 4px 12px;
+		border-radius: 20px;
+		background: var(--shell-glass-dark, rgba(14, 30, 25, 0.8));
+		color: var(--shell-ink-light, #eef1ec);
+		font: 12px var(--shell-sans, system-ui, sans-serif);
+		white-space: nowrap;
+		z-index: 4;
 	}
+	.live-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--shell-leaf-soft, #9fd3b6);
+	}
+	.pause-glyph {
+		font: 600 9px/1 var(--shell-sans, system-ui, sans-serif);
+		letter-spacing: 1px;
+	}
+	.pill-stop {
+		height: 28px;
+		padding: 0 10px;
+		border: 0;
+		border-radius: 14px;
+		background: rgb(255 255 255 / 0.12);
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+	}
+	.kbd {
+		color: var(--shell-ink-quiet, #9fb2a5);
+		font-size: 11px;
+	}
+
+	/* ---- Stop-order bar ---- */
 	.play {
 		display: grid;
 		place-items: center;
 		flex: none;
-		width: 31px;
+		width: 26px;
 		height: 26px;
 		padding: 0;
 		border: 0;
-		border-radius: 7px;
-		background: var(--shell-gold, #d4ad45);
-		color: #2a2208;
-	}
-	.bar {
-		position: relative;
-		display: flex;
-		flex: 1;
-		gap: 0;
-		height: 8px;
-		min-width: 0;
-		border-radius: 4px;
-		background: rgb(255 255 255 / 0.12);
-	}
-	.seg {
-		flex: 1 1 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		container-type: inline-size;
-		min-width: 0;
-		overflow: hidden;
-		border-right: 1px solid rgb(17 41 31 / 0.6);
-		background: rgb(255 255 255 / 0.22);
-	}
-	.seg.selected {
-		background: var(--shell-gold, #d4ad45);
-	}
-	/* The hold is written on its segment only while the segment is wide enough for it. */
-	/* Round 2's 8 px bar has no room for text: a Stop's hold reads on its card. */
-	.seg-hold {
-		display: none !important;
-		font: 600 8px/1 var(--shell-mono, ui-monospace, monospace);
-		color: #e3eee7;
-		white-space: nowrap;
-		pointer-events: none;
-	}
-	@container (min-width: 24px) {
-		.seg-hold {
-			display: block;
-		}
-	}
-	.seg.selected .seg-hold {
-		color: #2a2208;
-	}
-	.bracket {
-		position: absolute;
-		top: -3px;
-		bottom: -3px;
-		border: 1.5px solid rgb(255 255 255 / 0.7);
-		border-radius: 5px;
-		pointer-events: none;
-	}
-	.bar-caret {
-		position: absolute;
-		top: -4px;
-		bottom: -4px;
-		width: 3px;
-		margin-left: -1.5px;
-		border-radius: 2px;
-		background: var(--shell-gold, #d4ad45);
-		pointer-events: none;
+		border-radius: 50%;
+		background: var(--shell-ivory, #f3f0e4);
+		color: var(--shell-forest, #11291f);
 	}
 
 	.visually-hidden {
@@ -1226,12 +1893,77 @@
 		.icon,
 		.play,
 		.name-input,
-		.chip {
+		.chip,
+		.pill-stop {
+			min-height: 44px;
 			min-height: var(--shell-touch-target, 44px);
 		}
 		.icon,
 		.play {
+			width: 44px;
 			min-width: var(--shell-touch-target, 44px);
 		}
+		/* The coarse hit area is 44 px; the visual track stays 8 px. */
+	}
+
+	.gutter-time {
+		font-size: 9px;
+		letter-spacing: -0.01em;
+	}
+	.track-hit {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 14px;
+		z-index: 2;
+		cursor: pointer;
+		touch-action: none;
+	}
+	.track-hit:focus-visible {
+		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+	.pacing-wrap,
+	.guide-menu-wrap {
+		position: relative;
+		display: inline-flex;
+	}
+	.pacing-menu,
+	.guide-menu {
+		position: absolute;
+		right: 0;
+		bottom: calc(100% + 8px);
+		z-index: 6;
+		display: flex;
+		flex-direction: column;
+		min-width: 190px;
+		padding: 4px;
+		border: 1px solid rgb(255 255 255 / 0.1);
+		border-radius: 10px;
+		background: var(--shell-popup-dark, rgba(17, 41, 31, 0.97));
+		box-shadow: 0 10px 28px rgb(0 0 0 / 0.32);
+	}
+	.pacing-menu button {
+		padding: 6px 8px;
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: var(--shell-text-utility, 12px);
+		text-align: left;
+		cursor: pointer;
+	}
+	.pacing-menu button:hover,
+	.pacing-menu button:focus-visible {
+		background: rgb(255 255 255 / 0.1);
+	}
+	.pacing-menu button[aria-checked='true'] {
+		color: var(--shell-leaf-soft, #9fd3b6);
+	}
+	.menu-item.danger {
+		color: #f0a99e;
 	}
 </style>

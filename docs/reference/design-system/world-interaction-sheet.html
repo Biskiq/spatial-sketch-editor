@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>World — interaction sheet</title>
+
+<style>
+:root{--ink:#1b201c;--ink2:#4a524c;--mute:#747b75;--gold:#d4ad45;--goldink:#74560c;--goldtint:#f8efd6;--leaf:#4f8f6c;--problem:#7e2718;--hair:#e3e5df;--hair2:#cfd3cb;--forest:#1f2f2a;--ivory:#f3f0e4;--hover:#f0f1ee}
+body{margin:0;background:#f5f5f1;color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+/* Paper: three reference tones, chosen per view in the gear. */
+.tone-pale{--paper:#e9ece6;--grid:rgba(27,32,28,.07);--grid2:rgba(27,32,28,.16)}
+.tone-cream{--paper:#f3eee2;--grid:rgba(70,52,20,.08);--grid2:rgba(70,52,20,.17)}
+.tone-sage{--paper:#d9dfd4;--grid:rgba(27,40,30,.09);--grid2:rgba(27,40,30,.19)}
+body.gz-sticker{--gz-fill:#fff;--gz-stroke:#1b201c;--gz-sw:1.1px;--gz-filter:drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3));--gzl:#1b201c;--gzl-filter:drop-shadow(0 0 .7px rgba(255,255,255,.95));--chip-on:#1b201c;--chip-on-icon:#fff;--chip-icon:#1b201c}
+body{--draft:#1b201c;--draft-halo:none;--ghost:var(--draft);--ghost-halo:var(--draft-halo)}
+body.ghost-cobalt{--ghost:#2a62d6;--ghost-halo:drop-shadow(0 0 .7px rgba(255,255,255,.95)) drop-shadow(0 0 1.4px rgba(255,255,255,.5))}
+.gz{fill:var(--gz-fill);stroke:var(--gz-stroke);stroke-width:var(--gz-sw);stroke-linejoin:round;filter:var(--gz-filter)}
+.gzl{fill:none;stroke:var(--gzl);stroke-width:1.5;filter:var(--gzl-filter);stroke-linecap:round}
+.gzl.dash{stroke-dasharray:4 3.5}
+.chip-icon{fill:none;stroke:var(--chip-icon);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.chip.on .gz{fill:var(--chip-on)} .chip.on .chip-icon{stroke:var(--chip-on-icon)}
+
+header{position:sticky;top:0;z-index:20;background:var(--forest);color:var(--ivory);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center}
+header h1{font:600 15px/1.2 system-ui;margin:0 8px 0 0}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--hair2);border-radius:8px;overflow:hidden;background:#fff}
+header .seg{border-color:#3f5249;background:#263a31}
+.seg button{border:0;background:none;padding:5px 9px;font:inherit;font-size:12px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+header .seg button{color:#dcdccf}
+.seg button:hover{background:var(--hover)} header .seg button:hover{background:#30463b}
+.seg button[aria-pressed=true]{background:var(--ivory);color:var(--ink);font-weight:600}
+.seg button:focus-visible,.cbtn:focus-visible,.ib:focus-visible{outline:2px solid var(--leaf);outline-offset:-2px}
+.star{color:#b8901f}
+.intro{max-width:1240px;margin:14px auto 0;padding:0 16px;color:var(--ink2);font-size:13px}
+.intro b{color:var(--ink)}
+.intro.status{background:#fff;border:1px solid var(--hair);border-radius:10px;padding:10px 14px;box-sizing:border-box;max-width:1208px}
+main{max-width:1240px;margin:0 auto;padding:14px 16px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px}
+section{background:#fff;border:1px solid var(--hair);border-radius:14px;padding:14px;min-width:0}
+section.wide{grid-column:1/-1}
+h2{font:600 15px/1.3 system-ui;margin:0 0 3px}
+h2 small{font-weight:400;color:var(--mute);font-size:12px;margin-left:6px}
+.lede{margin:0 0 10px;color:var(--ink2);font-size:13px}
+.opts{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px;font-size:12px;color:var(--ink2);align-items:center}
+svg.stage{display:block;width:100%;height:auto;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none;outline:none;background:var(--paper)}
+svg.stage:focus-visible{box-shadow:0 0 0 2px var(--leaf)}
+.hint{font-size:12px;color:var(--mute);margin:8px 2px 0}
+.hint kbd{font:11px ui-monospace,Menlo,monospace;border:1px solid var(--hair2);border-radius:4px;padding:0 4px;background:#fafaf7}
+.reset{float:right;font-size:12px;border:1px solid var(--hair2);background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--ink2)}
+.reset:hover{background:var(--hover)}
+.paper{fill:var(--paper)} .gridl{stroke:var(--grid);fill:none} .gridl2{stroke:var(--grid2);fill:none}
+.tag rect{fill:var(--ink)} .tag text{fill:#fff;font:500 11.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+.tag.bad rect{fill:var(--problem)}
+.inkl{stroke:var(--draft);filter:var(--draft-halo);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ghost{stroke:var(--ghost);filter:var(--ghost-halo);stroke-width:1.5;fill:none;stroke-dasharray:6 4;stroke-linecap:round;stroke-linejoin:round}
+.ghost.dots{stroke-dasharray:1 4;stroke-width:1.5}
+.refused{stroke:var(--problem);stroke-width:2;stroke-dasharray:6 4;fill:none;stroke-linecap:round}
+.wall2d{stroke:var(--ink);stroke-width:8;stroke-linecap:square;fill:none}
+.wall2d.sel{stroke:var(--gold)}
+.endm{fill:var(--draft);stroke:var(--draft);stroke-width:1.6;filter:var(--draft-halo)}
+.endm.hollow{fill:var(--paper)}
+.endm.bad{fill:var(--problem);stroke:var(--problem)} .endm.bad.hollow{fill:var(--paper)}
+.room-name{font:500 12px system-ui;fill:var(--ink2)} .room-area{font:11px ui-monospace,Menlo,monospace;fill:var(--ink2)}
+.room-fill{fill:rgba(27,32,28,.035)}
+.sel-edge{fill:none;stroke:var(--gold);stroke-width:2;stroke-linejoin:round}
+.scalebar rect{stroke:var(--ink);stroke-width:1} .scalebar text{font:11px ui-monospace,Menlo,monospace;fill:var(--ink)}
+.tick{stroke:var(--draft);filter:var(--draft-halo);stroke-width:1.6;stroke-linecap:round}
+
+/* Glyph key */
+.keycap{font:600 11.5px system-ui;fill:var(--ink2)}
+
+/* Card mock */
+.cardrow{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.cardwrap{position:relative;width:340px;max-width:100%}
+.card{background:#fff;border:1px solid var(--hair2);border-radius:16px;box-shadow:0 8px 28px rgba(20,30,25,.12);overflow:hidden}
+.c-head{display:flex;align-items:flex-start;gap:4px;padding:14px 12px 8px 18px}
+.c-head .grow{flex:1;min-width:0}
+.c-kind{font-size:13px;color:var(--mute)}
+.c-kind a{color:var(--ink2);text-decoration:underline;text-decoration-color:var(--hair2);cursor:pointer}
+.c-name{font:500 25px/1.15 Georgia,"Iowan Old Style","Times New Roman",serif;margin-top:2px;border-radius:5px;padding:1px 3px;margin-left:-3px;cursor:text;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-name:hover{background:var(--hover)}
+.c-name:focus-visible{outline:2px solid var(--leaf)}
+.c-name input{font:inherit;width:100%;box-sizing:border-box;border:1px solid var(--hair2);border-radius:5px;padding:0 3px;color:inherit}
+.c-err{font-size:12px;color:var(--problem);margin-top:2px}
+.ib{border:0;background:none;border-radius:7px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--ink2)}
+.ib:hover{background:var(--hover)}
+.ib[aria-expanded=true]{background:var(--goldtint)}
+.c-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(0,1fr));gap:8px 10px;padding:4px 18px 14px}
+.c-fields.two{grid-template-columns:1fr 1fr} .c-fields.three{grid-template-columns:1fr 1fr 1fr}
+.fld label{display:block;font-size:12.5px;color:var(--ink2);margin-bottom:3px}
+.fld .box{display:flex;align-items:center;border:1px solid var(--hair2);border-radius:8px;background:#fafaf7;padding:0 8px;height:34px}
+.fld .box:focus-within{border-color:var(--leaf);box-shadow:0 0 0 2px rgba(79,143,108,.18)}
+.fld input{border:0;background:none;font:14px ui-monospace,Menlo,monospace;width:100%;min-width:0;color:var(--ink);outline:none}
+.fld .u{font-size:12px;color:var(--mute)}
+.fld.tbd .box{background:repeating-linear-gradient(135deg,#f6f6f2 0 6px,#f0f0eb 6px 12px);border-style:dashed}
+.fld.tbd input{color:var(--mute)}
+.fld.ro .box{background:none;border-color:transparent;padding-left:0}
+.c-acts{display:flex;align-items:center;gap:2px;border-top:1px solid var(--hair);padding:6px 10px 6px 12px}
+.c-acts .sp{flex:1}
+.cbtn{border:0;background:none;font:inherit;font-size:14px;color:var(--ink2);padding:6px 8px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.cbtn:hover{background:var(--hover)}
+.c-more{border-top:1px solid var(--hair)}
+.c-sub{font-size:12.5px;font-weight:600;color:var(--ink2);padding:12px 18px 0}
+.rel{padding:6px 18px 14px}
+.rel div{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:14px}
+.rel span:first-child{color:var(--ink2)}
+.rel a{color:#2f5c45;text-decoration:underline;text-decoration-color:rgba(47,92,69,.35);cursor:pointer}
+.menu{position:absolute;top:44px;right:10px;width:260px;background:#fff;border:1px solid var(--hair2);border-radius:12px;box-shadow:0 10px 30px rgba(20,30,25,.18);padding:6px;z-index:5}
+.menu .mh{font-size:11.5px;color:var(--mute);padding:6px 10px 2px;text-transform:none}
+.menu button{display:flex;width:100%;align-items:center;justify-content:space-between;border:0;background:none;font:inherit;font-size:14.5px;padding:8px 10px;border-radius:7px;color:var(--ink);cursor:pointer;text-align:left}
+.menu button:hover:not(:disabled){background:var(--hover)}
+.menu button:disabled{color:#a5aaa4;cursor:default}
+.menu .soon{font-size:10.5px;border:1px solid var(--hair2);border-radius:999px;padding:0 6px;color:var(--mute)}
+.menu hr{border:0;border-top:1px solid var(--hair);margin:4px 6px}
+.menu .erase{color:#a8321d}
+.note{font-size:12px;color:var(--mute);max-width:520px}
+
+/* Gear panel mock */
+.gear{width:230px;background:#fff;border:1px solid var(--hair2);border-radius:12px;box-shadow:0 8px 24px rgba(20,30,25,.12);padding:8px 12px;font-size:13.5px}
+.gear h3{font:600 12px system-ui;color:var(--mute);margin:4px 0 6px}
+.sw{display:flex;align-items:center;justify-content:space-between;padding:6px 0;cursor:pointer}
+.sw input{appearance:none;width:34px;height:20px;border-radius:999px;background:#d4d8d1;position:relative;cursor:pointer;margin:0;transition:background .15s}
+.sw input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.sw input:checked{background:var(--ink)} .sw input:checked::after{left:16px}
+.sw input:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+.labrow{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.gearcol{display:flex;flex-direction:column;align-items:flex-end;gap:6px;width:260px;max-width:100%}
+.gear-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--hair2);background:#fff;display:grid;place-items:center;color:var(--ink);cursor:pointer}
+.gear-btn[aria-expanded=true]{background:var(--hover)}
+.gearcol .gear{width:100%;box-sizing:border-box}
+.pbtn{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;padding:7px 6px;margin:0 -6px;border-radius:7px;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer;box-sizing:content-box}
+.pbtn:hover{background:var(--hover)} .pbtn:focus-visible{outline:2px solid var(--leaf)}
+.swatch{width:18px;height:18px;border-radius:5px;background:var(--paper);box-shadow:inset 0 0 0 1px rgba(27,32,28,.2);flex:none}
+.plabel{flex:1;text-align:left} .pname{color:var(--mute);font-size:12.5px}
+.pbtn svg{transition:transform .2s ease;color:var(--mute)} .pbtn[aria-expanded=true] svg{transform:rotate(180deg)}
+.tray{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s ease}
+.tray.open{grid-template-rows:1fr}
+.tray-in{overflow:hidden;min-height:0}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px 0 12px}
+.tile{border:0;background:none;padding:0;cursor:pointer;font:inherit;font-size:11.5px;color:var(--ink2);display:flex;flex-direction:column;gap:5px;text-align:center}
+.tile-sw{height:48px;border-radius:9px;background-color:var(--paper);background-image:linear-gradient(var(--grid2) 1px,transparent 1px),linear-gradient(90deg,var(--grid2) 1px,transparent 1px);background-size:12px 12px;background-position:-1px -1px;box-shadow:inset 0 0 0 1px rgba(27,32,28,.14);transition:box-shadow .12s}
+.tile:hover .tile-sw{box-shadow:inset 0 0 0 1px rgba(27,32,28,.14),0 2px 7px rgba(20,30,25,.16)}
+.tile.on .tile-sw{box-shadow:0 0 0 2px var(--ink)}
+.tile.on{color:var(--ink);font-weight:600}
+.tile:focus-visible{outline:2px solid var(--leaf);outline-offset:3px;border-radius:9px}
+.labrow .mini{flex:1;min-width:220px;position:relative}
+.mini .cap{font-size:12px;color:var(--mute);margin:0 0 4px 2px}
+.lab-input{position:absolute;font:500 12px system-ui;width:90px;border:1px solid var(--leaf);border-radius:4px;padding:1px 4px;transform:translate(-50%,-50%);text-align:center}
+@media (max-width:600px){header{position:static}.cardwrap{width:100%}}
+/* Opening section reuses the sheet's palette, Card and sticker tokens. */
+.op-layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;align-items:start}
+/* These selectors also serve elements generated by the external Opening bundle. */
+#op-stage .op-cut{fill:var(--paper);stroke:none}
+#op-stage .op-symbol{stroke-width:1.15;fill:none;stroke-linecap:round;stroke-linejoin:round}
+#op-stage .op-swing{stroke-dasharray:4 3}
+#op-stage .op-hit{fill:transparent;stroke:none;pointer-events:all}
+#op-stage .op-handle:hover .gz{stroke-width:1.5}
+#op-stage .op-handle:focus{outline:none}
+#op-stage .op-handle:focus-visible .gz{stroke:var(--leaf);stroke-width:2.2}
+#op-stage [data-grip]{cursor:grab} #op-stage [data-id]{cursor:pointer}
+.op-toolbar{gap:8px}
+.op-toolbar .seg button{display:inline-flex;align-items:center;gap:6px;min-height:32px}
+.op-toolbar .seg svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.op-toolbar #op-view{margin-left:auto}
+#s-opening button:focus-visible,#s-opening summary:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+@media(max-width:850px){.op-layout{grid-template-columns:1fr}.op-layout .card{max-width:400px}}
+
+nav.toc{max-width:1160px;margin:16px auto;display:flex;gap:8px;flex-wrap:wrap;padding:0 16px}nav.toc a{color:var(--ink);border:1px solid var(--hair);background:white;border-radius:999px;padding:5px 12px;text-decoration:none;font-size:12px}header>span{color:#b6c9bd;font-size:12px}section{scroll-margin-top:90px;min-width:0}.cardrow{grid-template-columns:minmax(0,1fr)}.cardwrap{max-width:380px}button:focus-visible,a:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+@media(max-width:720px){header{position:static;align-items:flex-start;flex-direction:column}main{grid-template-columns:minmax(0,1fr);padding:10px}.labrow,.cardrow,.op-layout{grid-template-columns:minmax(0,1fr)}.gearcol,.card,.mini{min-width:0;max-width:100%}.op-toolbar{flex-wrap:wrap}.op-toolbar #op-view{margin-left:0}.op-toolbar .seg{flex-wrap:wrap}h2{flex-wrap:wrap}.intro{padding:0 16px}.stage{max-width:100%}section{overflow:hidden}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+</head>
+<body class="gz-sticker ink-black ghost-cobalt">
+<header><h1>World — interaction sheet</h1><span>Visual and interaction reference</span></header>
+
+
+<nav aria-label="World demonstrations" class="toc"><a href="#s-key">Glyph set</a><a href="#s-draw">Draw</a><a href="#s-ghost">Drag preview</a><a href="#s-obj">Object gizmo</a><a href="#s-wall">Wall handles</a><a href="#s-ruler">Ruler</a><a href="#s-labels">Gear</a><a href="#s-card">Card</a><a href="#s-tx">Transform ghosts</a><a href="#s-opening">Door &amp; Window</a></nav><p class="intro">Accepted World controls, marks, drawing and transform feedback. Drag, draw and select in the live examples. Black ink marks drawing; cobalt dashes show a proposal; red dashes show refusal; gold marks selection. <b>Production code and tests remain the behavioral authority.</b> This sheet illustrates the visual and interaction language; its local state and schematic SVG are demonstration mechanisms.</p>
+<main>
+<section class="wide" id="s-key">
+<h2>Glyph set <small>the same control shapes on the four surfaces they must read on</small></h2>
+<p class="lede">Judge contrast here first: Paper, a pale Wall, the gold selection and a dark material.</p>
+<svg aria-label="Glyph set on four backgrounds" class="stage" id="sv-key" role="img" viewbox="0 0 1060 330"></svg>
+</section>
+<section id="s-draw">
+<h2>Draw <small>ink, snap cue, refusal</small> <button class="reset" data-reset="draw">Reset</button></h2>
+<p class="lede">One black line, a black end mark, one length tag. The end mark's <b>shape</b> is the snap cue: ● free · ○ on a Wall or end · □ on the grid. Swing a segment across the Wall: placed segments stay; only the live one turns red dashed.</p>
+
+<svg aria-label="Drawing stage" class="stage" id="sv-draw" tabindex="0" viewbox="0 0 560 340"></svg>
+<p class="hint">Click to place · double-click or <kbd>Enter</kbd> to finish · click the first dot to close a Room · <kbd>Backspace</kbd> removes a point · <kbd>Esc</kbd> cancels.</p>
+</section>
+<section id="s-ghost">
+<h2>Drag preview <small>ghost of a Wall edit (2D)</small> <button class="reset" data-reset="ghost">Reset</button></h2>
+<p class="lede">The source stays put. The proposal is one dashed centreline per changed Wall — the same line you drew, dashed in the ghost colour. Rooms and objects use the same dashed language in Transform ghosts. Drag an end knob or the two-way arrow.</p>
+
+<svg aria-label="Wall drag stage" class="stage" id="sv-ghost" viewbox="0 0 560 320"></svg>
+<p class="hint">Drag ● to move a junction (the neighbour follows) · drag ⟷ to slide the Wall · <kbd>Esc</kbd> while dragging cancels.</p>
+</section>
+<section id="s-obj">
+<h2>Object gizmo <small>move, turn, W·D·H (3D)</small> <button class="reset" data-reset="obj">Reset</button></h2>
+<p class="lede">No ring: one bent two-way arrow beside the object turns it, and travels with it as it turns. Every gesture shows the object's dashed edges at the proposed pose in the ghost colour; the object itself stays put until release. The chip does two things: <b>click</b> shows the W·D·H arrows and the height stem, <b>drag</b> scales the whole object uniformly. The stem has two knobs: the top one moves the top, the bottom one lifts the object off its support (objects only). Values are deltas from where the gesture began.</p>
+
+<svg aria-label="Object gizmo stage" class="stage" id="sv-obj" viewbox="0 0 560 330"></svg>
+<p class="hint">Drag the bent arrow to turn (15° steps, hold <kbd>Alt</kbd> for free) · drag ✥ to move · drag the chip to scale · click the chip, then drag the face arrows or either ⬢ · <kbd>Esc</kbd> cancels.</p>
+</section>
+<section id="s-wall">
+<h2>Wall handles <small>3D</small> <button class="reset" data-reset="wall">Reset</button></h2>
+<p class="lede">End knobs change length (the joined Wall follows). The stem beyond the free end has the top knob only: Walls cannot be lifted (no Wall Base yet). The arrow on the cap sets thickness, the arrow on the face slides the Wall. No black disc under any arrow.</p>
+
+<svg aria-label="Wall handles stage" class="stage" id="sv-wall" viewbox="0 0 560 330"></svg>
+<p class="hint">Length and slide show the one dashed centreline; top and lift show the dashed centre plane; thickness shows the two dashed faces on the cap. </p>
+</section>
+<section id="s-ruler">
+<h2>Ruler <small>measure and scale</small> <button class="reset" data-reset="ruler">Reset</button></h2>
+<p class="lede">Ink on Paper in both readings (black drawing ink). The ends use the same snap shapes as drawing.</p>
+
+<svg aria-label="Ruler stage" class="stage" id="sv-ruler" viewbox="0 0 560 300"></svg>
+<p class="hint">Drag anywhere to measure · <kbd>Esc</kbd> clears.</p>
+</section>
+<section class="wide" id="s-labels">
+<h2>Gear <small>Room labels and Paper, per view</small></h2>
+<p class="lede">The gear holds view preferences for this viewer, never project data. Room labels: 2D on, 3D off by default. Paper is picked per view from three Paper tones, so the 2D plan and the 3D board can mix and match. Each Paper row opens up into a swatch tray inside the panel (the panel grows) instead of a dropdown. Double-click a 2D label to rename it in place (optional; the Card title is the primary rename).</p>
+<div class="labrow">
+<div class="gearcol">
+<button aria-expanded="true" aria-label="View settings" class="gear-btn" title="View settings"><svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewbox="0 0 24 24" width="18"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></button>
+<div aria-label="View settings" class="gear" role="group">
+<h3>Room labels</h3>
+<label class="sw">In 2D <input checked="" id="lab2d" type="checkbox"/></label>
+<label class="sw">In 3D <input id="lab3d" type="checkbox"/></label>
+<h3 style="margin-top:10px">Paper</h3>
+<div class="prow" data-view="p2"></div>
+<div class="prow" data-view="p3"></div>
+</div>
+</div>
+<div class="mini"><p class="cap">2D plan</p><svg aria-label="2D Room labels" class="stage" id="sv-l2" viewbox="0 0 300 200"></svg></div>
+<div class="mini"><p class="cap">3D board</p><svg aria-label="3D Room labels" class="stage" id="sv-l3" viewbox="0 0 300 200"></svg></div>
+</div>
+<p class="hint">Every stage on this sheet follows these two choices: Draw, Drag preview, Ruler and the 2D mini use the 2D Paper; the gizmo stages, the glyph key and the 3D mini use the 3D Paper.</p>
+</section>
+<section class="wide" id="s-card">
+<h2>Card <small>primary numbers, More expands, ••• holds functions, double-click renames</small></h2>
+<div class="opts">Subject
+    <div aria-label="Card subject" class="seg" data-key="subject" role="group">
+<button data-v="wall">Wall</button><button data-v="object">Object</button><button data-v="room">Room</button>
+</div>
+</div>
+<div class="cardrow">
+<div>
+<div class="cardwrap" id="cardwrap"></div>
+<p class="note" id="cardnote" style="margin-top:8px">Double-click the name to rename · <b>More</b> grows the Card · <b>•••</b> opens subject functions; greyed items are placeholders.</p>
+</div>
+
+</div>
+</section>
+<section class="wide" id="s-tx">
+<h2>Transform ghosts <small>one language for Walls, Rooms and objects (2D shown; 3D draws the same lines)</small> <button class="reset" data-reset="tx">Reset</button></h2>
+<p class="lede">While a gesture is live, the subject stays where it is and its proposal is drawn <b>dashed in the ghost colour</b>; releasing commits it as one Undo step, <kbd>Esc</kbd> drops it. Walls and Rooms show their dashed centrelines. Objects show their dashed outline: the footprint in 2D, the box edges in 3D in Object gizmo. A turn shows the same outline at the new angle. A refusal turns the ghost red dashed with its reason. Moving a Room moves its connected group: Rooms that share a Wall travel together, because they cannot be pulled apart without detaching architecture.</p>
+
+<svg aria-label="Transform ghosts stage" class="stage" id="sv-tx" viewbox="0 0 1060 360"></svg>
+<p class="hint">Drag ✥ on a Room to move its group · drag ✥ on an object (or its body) to move it · drag its bent arrow to turn it (15° steps, <kbd>Alt</kbd> for free) · drag the Wall's ⟷ to slide it · drop anywhere to commit · drag a Room onto the free Wall to see a refusal.</p>
+<p class="note" style="max-width:none">A Room and its connected Walls move as a Layout group. Scene objects keep their world placement and stay put when the Room moves.</p>
+</section>
+<section class="wide" id="s-opening">
+<h2>Door &amp; Window </h2>
+<p class="lede">Choose in Ink. Aim at a Wall. Click to place. Select an Opening to slide it or reveal its dimensions.</p>
+<div class="opts op-toolbar">
+<div aria-label="Tool" class="seg" id="op-tools" role="group"><button aria-pressed="false" data-tool="select">Select</button><button aria-pressed="true" data-tool="opening">Ink › Opening</button></div>
+<div aria-label="Opening kind" class="seg" id="op-kind" role="group">
+<button aria-pressed="true" data-kind="door"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 20V4M4 4A16 16 0 0 1 20 20M4 20H20"></path></svg>Door</button>
+<button aria-pressed="false" data-kind="window"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 7V17M20 7V17M4 10H20M4 14H20"></path></svg>Window</button>
+</div>
+<div aria-label="Opening profile" class="seg" id="op-profile" role="group">
+<button aria-pressed="true" data-profile="rectangular"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 21V3H19V21Z"></path></svg>Rectangular</button>
+<button aria-pressed="false" data-profile="rounded"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 21V10A7 7 0 0 1 19 10V21Z"></path></svg>Rounded</button>
+<button aria-pressed="false" data-profile="pointed"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 21V10L12 3L19 10V21Z"></path></svg>Pointed</button>
+</div>
+<div aria-label="View" class="seg" id="op-view" role="group"><button aria-pressed="true" data-view="plan">Plan</button><button aria-pressed="false" data-view="space">3D</button></div>
+<button class="reset" id="op-reset">Reset specimen</button>
+</div>
+<div class="op-layout"><div><svg aria-label="Opening specimen. Hover the Wall to preview; click to place. Use the offset field and Place button for keyboard placement." class="stage tone-pale" id="op-stage" tabindex="0" viewbox="0 0 760 400"></svg><p aria-live="polite" class="hint" id="op-status" role="status"></p><p class="hint">Plan symbols use the production drawing: a Door leaf with a dashed swing arc, and Window glazing inside Wall thickness. Handing is not edited in this specimen.</p></div>
+<div class="card"><div class="c-head"><div class="grow"><div class="c-kind">Opening · Wall 1</div><div class="c-name" id="op-title">Door</div></div></div><div class="c-fields two" id="op-fields"></div><div class="c-acts"><button class="cbtn" id="op-place">Place</button><button class="cbtn" id="op-cancel">Cancel</button><span class="sp"></span><button aria-expanded="false" class="cbtn" id="op-more">More ▾</button></div><div class="c-more" hidden="" id="op-secondary"><div class="c-fields two" id="op-extra-fields"></div><div class="rel"><div><span>Host</span><span>Wall 1 · 8.00 m</span></div><div><span>Head</span><span id="op-head"></span></div><div><span>Profile</span><span id="op-profile-name">Rectangular</span></div><p class="note">Width and height stay at hand. Sill and offset are in More; their Stage grips offer direct manipulation.</p></div></div></div></div>
+<p class="note" style="max-width:none">The Opening specimen uses the real Layout planners, production Plan symbols and refusal wording with a schematic SVG projection and local state. It illustrates placement, slide, edge resize, height and sill controls; production tests own the full editor behavior.</p>
+
+</section>
+</main>
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const S = { p2: 'pale', p3: 'pale', subject: 'wall', lab2d: true, lab3d: false };
+
+// ---------- shared maths ----------
+const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const mul = (a, k) => [a[0] * k, a[1] * k];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+const unit = (a) => { const l = Math.hypot(a[0], a[1]) || 1; return [a[0] / l, a[1] / l]; };
+const deg = (a) => Math.atan2(a[1], a[0]) * 180 / Math.PI;
+const P = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+const sgn = (n, d = 2) => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(d);
+function svgPt(svg, e) { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; const q = p.matrixTransform(svg.getScreenCTM().inverse()); return [q.x, q.y]; }
+function proj(p, a, b) { const ab = sub(b, a), L = dot(ab, ab) || 1; const t = Math.max(0, Math.min(1, dot(sub(p, a), ab) / L)); const q = add(a, mul(ab, t)); return { p: q, d: d2(p, q), t }; }
+function crosses(a, b, c, d) {
+  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  const e = 1e-6, o1 = o(c, d, a), o2 = o(c, d, b), o3 = o(a, b, c), o4 = o(a, b, d);
+  return ((o1 > e && o2 < -0.000001) || (o1 < -0.000001 && o2 > e)) && ((o3 > e && o4 < -0.000001) || (o3 < -0.000001 && o4 > e));
+}
+function makeIso(s, cx, cy) {
+  const iso = (x, y, z = 0) => [cx + (x - y) * 0.866 * s, cy + (x + y) * 0.5 * s - z * s];
+  iso.inv = (p) => { const a = (p[0] - cx) / (0.866 * s), b = (p[1] - cy) / (0.5 * s); return [(a + b) / 2, (b - a) / 2]; };
+  iso.s = s;
+  return iso;
+}
+
+// ---------- shared drawing vocabulary ----------
+function paper(id, w, h) {
+  return `<defs><pattern id="${id}" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" class="gridl"/></pattern>` +
+    `<pattern id="${id}M" width="80" height="80" patternUnits="userSpaceOnUse"><rect width="80" height="80" fill="url(#${id})"/><path d="M80 0H0V80" class="gridl2"/></pattern></defs>` +
+    `<rect class="paper" width="${w}" height="${h}"/><rect width="${w}" height="${h}" fill="url(#${id}M)"/>`;
+}
+function isoGrid(iso, w, h, n = 9) {
+  let s = `<rect class="paper" width="${w}" height="${h}"/>`;
+  for (let k = -n; k <= n; k++) {
+    const c = k % 2 === 0 ? 'gridl2' : 'gridl';
+    const a = iso(k, -n), b = iso(k, n), c2 = iso(-n, k), d = iso(n, k);
+    s += `<path class="${c}" d="M${P(a)}L${P(b)}M${P(c2)}L${P(d)}"/>`;
+  }
+  return s;
+}
+function tag(x, y, text, bad = false, W = 560) {
+  const w = text.length * 7 + 14; x = Math.max(4, Math.min(W - w - 4, x)); y = Math.max(4, y);
+  return `<g class="tag${bad ? ' bad' : ''}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><rect width="${w}" height="20" rx="3"/><text x="7" y="14">${text}</text></g>`;
+}
+/** Black end mark: its shape is the snap cue. */
+function endMark(p, kind, bad = false) {
+  const c = `endm${bad ? ' bad' : ''}`;
+  if (kind === 'ring') return `<circle class="${c} hollow" cx="${p[0]}" cy="${p[1]}" r="4.6"/>`;
+  if (kind === 'square') return `<rect class="${c} hollow" x="${p[0] - 4}" y="${p[1] - 4}" width="8" height="8"/>`;
+  return `<circle class="${c}" cx="${p[0]}" cy="${p[1]}" r="3.4"/>`;
+}
+const G = {
+  arrow: 'M0,-2.7 H8 V-6.8 L16.5,0 L8,6.8 V2.7 H0 Z',
+  two: 'M-15.5,0 L-7.5,-6.8 V-2.7 H7.5 V-6.8 L15.5,0 L7.5,6.8 V2.7 H-7.5 V6.8 Z',
+  move: 'M0,-15 L6.4,-8 H2.5 V-2.5 H8 V-6.4 L15,0 L8,6.4 V2.5 H2.5 V8 H6.4 L0,15 L-6.4,8 H-2.5 V2.5 H-8 V6.4 L-15,0 L-8,-6.4 V-2.5 H-2.5 V-8 H-6.4 Z',
+  tri: 'M-5.5,-6 L7.5,0 L-5.5,6 Z',
+  hex: (() => { const r = 7; return 'M' + [0, 1, 2, 3, 4, 5].map((k) => { const a = (k * 60 - 90) * Math.PI / 180; return P([r * Math.cos(a), r * Math.sin(a)]); }).join('L') + 'Z'; })(),
+  hexS: (() => { const r = 5.6; return 'M' + [0, 1, 2, 3, 4, 5].map((k) => { const a = (k * 60 - 90) * Math.PI / 180; return P([r * Math.cos(a), r * Math.sin(a)]); }).join('L') + 'Z'; })(),
+  curved: (() => {
+    // A curved two-way arrow whose middle sits at (0,0) with tangent +x; it bends toward +y.
+    const R = 21, half = 36, w = 5.4, e = 3.8, ha = 17, r = Math.PI / 180;
+    const at = (rho, a) => [rho * Math.cos(a * r), R + rho * Math.sin(a * r)];
+    const a0 = -90 - half, a1 = -54, pts = [at(R, a0 - ha), at(R + w / 2 + e, a0)];
+    for (let a = a0; a <= -53.99; a += 6) pts.push(at(R + w / 2, a));
+    pts.push(at(R + w / 2 + e, a1), at(R, -37), at(R - w / 2 - e, a1));
+    for (let a = a1; a >= a0 - 0.01; a -= 6) pts.push(at(R - w / 2, a));
+    pts.push(at(R - w / 2 - e, a0));
+    return 'M' + pts.map(P).join('L') + 'Z';
+  })(),
+};
+function glyph(path, p, angle = 0, hov = false, extra = '') {
+  return `<path class="gz" d="${path}" transform="translate(${P(p)}) rotate(${angle.toFixed(1)}) scale(${hov ? 1.15 : 1})${extra}"/>`;
+}
+function knob(p, hov = false, style = 'disc') {
+  if (style === 'hex') return glyph(G.hex, p, 0, hov);
+  if (style === 'old') return `<circle class="old-knob" cx="${p[0]}" cy="${p[1]}" r="${hov ? 7 : 6.2}"/>`;
+  return `<circle class="gz" cx="${p[0]}" cy="${p[1]}" r="${hov ? 6.4 : 5.4}"/>`;
+}
+function chip(p, on, hov) {
+  const t = `translate(${P(p)}) scale(${hov ? 1.08 : 1})`;
+  return `<g class="chip${on ? ' on' : ''}" transform="${t}"><rect class="gz" x="-12" y="-12" width="24" height="24" rx="7"/>` +
+    `<path class="chip-icon" d="M-5,5 L5,-5 M-5,5 h4.2 M-5,5 v-4.2 M5,-5 h-4.2 M5,-5 v4.2"/></g>`;
+}
+/** Two knobs on one stem: the top one moves the top, the bottom one lifts the subject off its support. */
+function heightStem(base, top, hovTop, hovBot) {
+  return `<path class="gzl" d="M${P(base)}L${P(top)}"/>` + glyph(G.hexS, base, 0, hovBot) + glyph(G.hex, top, 0, hovTop);
+}
+
+// ---------- 0 · glyph key ----------
+function renderKey() {
+  const svg = $('#sv-key');
+  const rows = [['Paper (3D)', 'var(--paper)'], ['Wall', '#d7cdb9'], ['Selected', '#d4ad45'], ['Dark material', '#3c3a36']];
+  const cols = ['Drag a face', 'Slide / thickness', 'Move', 'Turn', 'Top · lift', 'End / joint', 'W·D·H · drag scales'];
+  let s = `<rect width="1060" height="330" fill="#fff"/>`;
+  cols.forEach((c, i) => { s += `<text class="keycap" x="${190 + i * 125}" y="22" text-anchor="middle">${c}</text>`; });
+  rows.forEach(([name, fill], r) => {
+    const y = 34 + r * 72;
+    s += `<rect x="0" y="${y}" width="1060" height="68" rx="8" style="fill:${fill}"/>`;
+    s += `<text class="keycap" x="16" y="${y + 38}" style="fill:${r === 3 ? '#e8e6df' : 'var(--ink2)'}">${name}</text>`;
+    const cy = y + 34, X = (i) => 190 + i * 125;
+    s += glyph(G.arrow, [X(0) - 8, cy]);
+    s += glyph(G.two, [X(1), cy]);
+    s += glyph(G.move, [X(2), cy]);
+    s += glyph(G.curved, [X(3), cy], 0);
+    s += heightStem([X(4), cy + 18], [X(4), cy - 16], false, false);
+    s += knob([X(5), cy], false, 'disc');
+    s += chip([X(6), cy], r === 2, false);
+  });
+  svg.innerHTML = s;
+}
+
+// ---------- 1 · draw ----------
+const DRAW0 = () => ({ walls: [[[380, 40], [380, 300]], [[380, 300], [540, 300]]], rooms: [], pts: [], cur: null, flash: 0 });
+let DR = DRAW0();
+const PXM = 40; // 2D stages: 40 px per metre, 0.5 m grid
+function snap2d(p, walls, ends = []) {
+  let best = null;
+  for (const q of [...walls.flatMap((w) => w), ...ends]) { const d = d2(p, q); if (d < 12 && (!best || d < best.d)) best = { p: q, kind: 'ring', d }; }
+  if (best) return best;
+  for (const [a, b] of walls) { const pr = proj(p, a, b); if (pr.d < 9 && (!best || pr.d < best.d)) best = { p: pr.p, kind: 'ring', d: pr.d }; }
+  if (best) return best;
+  const g = [Math.round(p[0] / 20) * 20, Math.round(p[1] / 20) * 20];
+  return d2(p, g) < 7 ? { p: g, kind: 'square' } : { p, kind: 'dot' };
+}
+function drawRefusal() {
+  const { pts, cur } = DR; if (!pts.length || !cur) return null;
+  const a = pts[pts.length - 1], b = cur.p;
+  if (DR.walls.some(([c, d]) => crosses(a, b, c, d))) return 'Crosses a wall';
+  for (let i = 0; i < pts.length - 2; i++) if (crosses(a, b, pts[i], pts[i + 1])) return 'Crosses itself';
+  return null;
+}
+function area(poly) { let s = 0; poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]; s += p[0] * q[1] - q[0] * p[1]; }); return Math.abs(s) / 2; }
+function centroid(poly) { return mul(poly.reduce((a, p) => add(a, p), [0, 0]), 1 / poly.length); }
+function roomLabel(c, name, a) { return `<g class="roomlab"><text class="room-name" x="${c[0]}" y="${c[1] - 2}" text-anchor="middle">${name}</text><text class="room-area" x="${c[0]}" y="${c[1] + 13}" text-anchor="middle">${a.toFixed(1)} m²</text></g>`; }
+function renderDraw() {
+  const { pts, cur } = DR; let s = paper('pd', 560, 340);
+  for (const r of DR.rooms) { s += `<polygon class="room-fill" points="${r.pts.map(P).join(' ')}"/>`; }
+  s += `<path class="wall2d" d="${DR.walls.map(([a, b]) => `M${P(a)}L${P(b)}`).join('')}"/>`;
+  if (S.lab2d) for (const r of DR.rooms) s += roomLabel(centroid(r.pts), r.name, area(r.pts) / (PXM * PXM));
+  const reason = drawRefusal();
+  if (pts.length) {
+    if (pts.length > 1) s += `<polyline class="inkl" points="${pts.map(P).join(' ')}"/>`;
+    pts.slice(1).forEach((p) => { s += `<circle cx="${p[0]}" cy="${p[1]}" r="2.2" fill="var(--ink)"/>`; });
+    s += `<circle cx="${pts[0][0]}" cy="${pts[0][1]}" r="3.4" fill="var(--ink)"/>`;
+  }
+  if (cur) {
+    const last = pts[pts.length - 1];
+    if (last) {
+      s += `<line class="${reason ? 'refused' : 'inkl'}" x1="${last[0]}" y1="${last[1]}" x2="${cur.p[0]}" y2="${cur.p[1]}"/>`;
+    }
+    {
+      s += endMark(cur.p, cur.kind, !!reason);
+      if (last) {
+        const len = (d2(last, cur.p) / PXM).toFixed(2) + ' m';
+        const showReason = reason && (true);
+        s += tag(cur.p[0] + 12, cur.p[1] - 30, showReason ? reason : len, !!reason);
+      }
+    }
+  }
+  $('#sv-draw').innerHTML = s;
+}
+function drawFinish(close = false) {
+  const pts = DR.pts;
+  if (pts.length >= 2) {
+    for (let i = 0; i < pts.length - 1; i++) DR.walls.push([pts[i], pts[i + 1]]);
+    if (close) { DR.walls.push([pts[pts.length - 1], pts[0]]); DR.rooms.push({ pts: pts.slice(), name: `Room ${DR.rooms.length + 1}` }); }
+  }
+  DR.pts = []; renderDraw();
+}
+(function bindDraw() {
+  const svg = $('#sv-draw');
+  svg.addEventListener('pointermove', (e) => {
+    const p = svgPt(svg, e), pts = DR.pts;
+    DR.cur = snap2d(p, DR.walls, pts.slice(0, Math.max(0, pts.length - 1)));
+    renderDraw();
+  });
+  svg.addEventListener('pointerleave', () => { DR.cur = null; renderDraw(); });
+  svg.addEventListener('pointerenter', () => svg.focus({ preventScroll: true }));
+  svg.addEventListener('click', (e) => {
+    if (e.detail >= 2) { drawFinish(); return; }
+    const cur = DR.cur; if (!cur) return;
+    if (drawRefusal()) { DR.flash = Date.now(); renderDraw(); setTimeout(renderDraw, 1450); return; }
+    const pts = DR.pts;
+    if (pts.length >= 3 && d2(cur.p, pts[0]) < 1) { drawFinish(true); return; }
+    if (pts.length && d2(cur.p, pts[pts.length - 1]) < 2) return;
+    pts.push(cur.p); renderDraw();
+  });
+  svg.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') drawFinish();
+    else if (e.key === 'Escape') { DR.pts = []; renderDraw(); }
+    else if (e.key === 'Backspace') { DR.pts.pop(); renderDraw(); e.preventDefault(); }
+  });
+})();
+
+// ---------- 2 · ghost ----------
+const GHOST0 = () => ({ P: [[90, 70], [330, 70], [330, 250], [500, 250]], drag: null, cand: null, hov: null });
+let GH = GHOST0();
+function ghostHandles(Pt) {
+  const m = mul(add(Pt[1], Pt[2]), 0.5);
+  return [{ k: 1, p: Pt[1] }, { k: 2, p: Pt[2] }, { k: 'par', p: [m[0] + 26, m[1]] }];
+}
+function renderGhost() {
+  const Pt = GH.P, C = GH.cand; let s = paper('pg', 560, 320);
+  s += `<path class="wall2d" d="M${P(Pt[0])}L${P(Pt[1])}M${P(Pt[2])}L${P(Pt[3])}"/>`;
+  s += `<path class="wall2d sel" d="M${P(Pt[1])}L${P(Pt[2])}"/>`;
+  if (C) {
+    const changed = [0, 1, 2].filter((i) => d2(C[i], Pt[i]) + d2(C[i + 1], Pt[i + 1]) > 0.5);
+    for (const i of changed) {
+      const a = C[i], b = C[i + 1];
+      {
+
+        s += `<line class="ghost" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
+      }
+    }
+    [1, 2].forEach((i) => { if (d2(C[i], Pt[i]) > 0.5) s += endMark(C[i], 'ring'); });
+  }
+  const H = ghostHandles(C || Pt);
+  for (const h of H) {
+    const hov = GH.hov === h.k || (GH.drag && GH.drag.k === h.k);
+    s += h.k === 'par' ? glyph(G.two, h.p, 0, hov) : knob(h.p, hov);
+  }
+  if (GH.drag && C) {
+    const p = GH.drag.at;
+    if (GH.drag.k === 'par') s += tag(p[0] + 14, p[1] - 30, `Δ ${sgn((C[1][0] - Pt[1][0]) / PXM)} m`);
+    else { const L0 = d2(Pt[1], Pt[2]) / PXM, L1 = d2(C[1], C[2]) / PXM; s += tag(p[0] + 14, p[1] - 30, `Δ ${sgn(L1 - L0)} m → ${L1.toFixed(2)} m`); }
+  }
+  $('#sv-ghost').innerHTML = s;
+}
+(function bindGhost() {
+  const svg = $('#sv-ghost');
+  const hit = (p) => { const h = ghostHandles(GH.P).find((h) => d2(p, h.p) < 15); return h ? h.k : null; };
+  svg.addEventListener('pointerdown', (e) => {
+    const p = svgPt(svg, e), k = hit(p); if (k == null) return;
+    GH.drag = { k, p0: p, at: p }; svg.setPointerCapture(e.pointerId); renderGhost();
+  });
+  svg.addEventListener('pointermove', (e) => {
+    const p = svgPt(svg, e);
+    if (!GH.drag) { const k = hit(p); if (k !== GH.hov) { GH.hov = k; svg.style.cursor = k == null ? 'default' : 'grab'; renderGhost(); } return; }
+    GH.drag.at = p; const d = sub(p, GH.drag.p0), C = GH.P.map((q) => q.slice());
+    const snap = (v) => Math.round(v / 10) * 10;
+    if (GH.drag.k === 'par') { const dx = snap(d[0]); C[1][0] += dx; C[2][0] += dx; }
+    else { const i = GH.drag.k; C[i] = [snap(GH.P[i][0] + d[0]), snap(GH.P[i][1] + d[1])]; }
+    GH.cand = C; renderGhost();
+  });
+  const end = (commit) => { if (!GH.drag) return; if (commit && GH.cand) GH.P = GH.cand; GH.drag = null; GH.cand = null; renderGhost(); };
+  svg.addEventListener('pointerup', () => end(true));
+  svg.addEventListener('pointercancel', () => end(false));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') end(false); });
+})();
+
+// ---------- 3D helpers ----------
+/** Draws a prism with footprint `c` (CCW corners) from z0 to z1, back faces culled. */
+function prism(iso, c, z0, z1, fill, outline = '') {
+  let s = ''; const faces = [];
+  for (let i = 0; i < c.length; i++) {
+    const a = c[i], b = c[(i + 1) % c.length], n = [b[1] - a[1], -(b[0] - a[0])];
+    if (n[0] + n[1] > 1e-6) faces.push({ a, b, n, depth: a[0] + a[1] + b[0] + b[1] });
+  }
+  faces.sort((p, q) => p.depth - q.depth);
+  for (const f of faces) {
+    const poly = [iso(...f.a, z0), iso(...f.b, z0), iso(...f.b, z1), iso(...f.a, z1)];
+    s += `<polygon points="${poly.map(P).join(' ')}" fill="${f.n[0] > f.n[1] ? fill.r : fill.l}"${outline ? ` class="${outline}"` : ''} stroke-linejoin="round"/>`;
+  }
+  s += `<polygon points="${c.map((p) => P(iso(...p, z1))).join(' ')}" fill="${fill.t}"/>`;
+  return s;
+}
+function prismEdges(iso, c, z0, z1, cls) {
+  const top = c.map((p) => iso(...p, z1)), base = c.map((p) => iso(...p, z0));
+  return `<polygon class="${cls}" points="${top.map(P).join(' ')}"/><polygon class="${cls}" points="${base.map(P).join(' ')}"/>` +
+    c.map((_, i) => `<line class="${cls}" x1="${base[i][0]}" y1="${base[i][1]}" x2="${top[i][0]}" y2="${top[i][1]}"/>`).join('');
+}
+function selOutline(iso, c, z0, z1) {
+  // the visible silhouette and the top face, in gold
+  let s = `<polygon class="sel-edge" points="${c.map((p) => P(iso(...p, z1))).join(' ')}"/>`;
+  for (let i = 0; i < c.length; i++) {
+    const a = c[i], b = c[(i + 1) % c.length], n = [b[1] - a[1], -(b[0] - a[0])];
+    if (n[0] + n[1] > 1e-6) s += `<polygon class="sel-edge" points="${[iso(...a, z0), iso(...b, z0), iso(...b, z1), iso(...a, z1)].map(P).join(' ')}"/>`;
+  }
+  return s;
+}
+const screenDir = (iso, p, dir) => unit(sub(iso(p[0] + dir[0] * 0.3, p[1] + dir[1] * 0.3, (p[2] || 0) + (dir[2] || 0) * 0.3), iso(p[0], p[1], p[2] || 0)));
+const ppm = (iso, p, dir) => Math.hypot(...sub(iso(p[0] + dir[0], p[1] + dir[1], (p[2] || 0) + (dir[2] || 0)), iso(p[0], p[1], p[2] || 0)));
+
+// ---------- 3 · object gizmo ----------
+const OISO = makeIso(60, 280, 200);
+const OBJ0 = () => ({ o: { x: 0, y: 0, z: 0, w: 2.4, d: 1.2, h: 0.7, rot: 20 }, cand: null, drag: null, hov: null, wdh: false, handles: [], ring: [] });
+let OB = OBJ0();
+const OFILL = { t: '#8a8278', l: '#756d63', r: '#655e56' };
+const oFrame = (o) => { const r = o.rot * Math.PI / 180; return { u: [Math.cos(r), Math.sin(r)], v: [-Math.sin(r), Math.cos(r)] }; };
+const oCorners = (o) => { const { u, v } = oFrame(o); return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [o.x + u[0] * a * o.w / 2 + v[0] * b * o.d / 2, o.y + u[1] * a * o.w / 2 + v[1] * b * o.d / 2]); };
+const RING_LOCAL = 90; // the turn arrow's angle in the object's own frame
+/** Lift/height semantics for the two stem knobs (A: the bottom lifts the whole subject). */
+function applyStem(base, k, dm) {
+  const c = { ...base };
+  if (k === 'h') c.h = Math.max(0.1, base.h + dm);
+  else c.z = Math.max(0, base.z + dm);
+  return c;
+}
+function stemTag(base, c, k) {
+  return k === 'h' ? `Δ ${sgn(c.z + c.h - base.z - base.h)} m → ${c.h.toFixed(2)} m` : `Δ ${sgn(c.z - base.z)} m · base ${c.z.toFixed(2)} m`;
+}
+function renderObj() {
+  const iso = OISO, o = OB.o, g = OB.cand || o, k = OB.drag?.k; let s = isoGrid(iso, 560, 330);
+  const rr = Math.max(g.w, g.d) / 2 + 0.45, H = [];
+  // the ring lies on the support, even when the object is lifted
+  const ring = []; for (let i = 0; i <= 72; i++) { const a = i / 72 * Math.PI * 2; ring.push(iso(g.x + rr * Math.cos(a), g.y + rr * Math.sin(a), 0.01)); }
+  OB.ring = ring;
+  const ringHov = OB.hov === 'turn' || k === 'turn';
+  const ringed = false;
+  OB.ring = [];
+  // a lifted object keeps a dashed footprint on its support
+  if (g.z > 0.01) s += `<polygon class="ghost" points="${oCorners(g).map((p) => P(iso(...p, 0))).join(' ')}"/><path class="ghost" d="M${P(iso(g.x, g.y, 0))}L${P(iso(g.x, g.y, g.z))}"/>`;
+  s += prism(iso, oCorners(o), o.z, o.z + o.h, OFILL) + selOutline(iso, oCorners(o), o.z, o.z + o.h);
+  if (OB.cand) s += prismEdges(iso, oCorners(g), g.z, g.z + g.h, 'ghost');
+  // turn arrow: travels with the object
+  const ga = (g.rot + RING_LOCAL) * Math.PI / 180, gw = [g.x + rr * Math.cos(ga), g.y + rr * Math.sin(ga), 0.01];
+  const gp = iso(...gw), tan = screenDir(iso, gw, [-Math.sin(ga), Math.cos(ga)]), toC = sub(iso(g.x, g.y, 0), gp);
+  {
+    s += glyph(G.curved, gp, deg(tan), ringHov, dot([-tan[1], tan[0]], toC) < 0 ? ' scale(1,-1)' : '');
+
+  }
+  H.push({ k: 'turn', p: gp, r: 16 });
+  // move cross at the top centre, aligned with the object
+  const zt = g.z + g.h, mc = iso(g.x, g.y, zt), du = screenDir(iso, [g.x, g.y, zt], [...oFrame(g).u, 0]);
+  s += glyph(G.move, mc, deg(du), OB.hov === 'move' || k === 'move');
+  H.push({ k: 'move', p: mc, r: 17 });
+  // W·D·H: arrows on the visible faces and the two-knob stem
+  if (OB.wdh) {
+    const { u, v } = oFrame(g);
+    for (const [hk, ax, half, sg] of [['+u', u, g.w / 2, 1], ['-u', u, g.w / 2, -1], ['+v', v, g.d / 2, 1], ['-v', v, g.d / 2, -1]]) {
+      const n = mul(ax, sg); if (n[0] + n[1] <= 0.05) continue;
+      const fc = [g.x + n[0] * half, g.y + n[1] * half, g.z + g.h / 2], sd = screenDir(iso, fc, [...n, 0]), fp = iso(...fc);
+      const tail = add(fp, mul(sd, 6)), at = add(fp, mul(sd, 16));
+      s += `<path class="gzl dash" d="M${P(tail)}L${P(at)}"/>` + glyph(G.arrow, at, deg(sd), OB.hov === hk || k === hk);
+      H.push({ k: hk, p: add(at, mul(sd, 8)), r: 14, n, fc, sd });
+    }
+    const right = oCorners(g).reduce((a, b) => (iso(...b, 0)[0] > iso(...a, 0)[0] ? b : a));
+    const sb0 = iso(...right, g.z), st0 = iso(...right, zt), sb = [sb0[0] + 30, sb0[1]], st = [st0[0] + 30, st0[1]];
+    s += heightStem(sb, st, OB.hov === 'h' || k === 'h', OB.hov === 'lift' || k === 'lift');
+    H.push({ k: 'h', p: st, r: 13 }, { k: 'lift', p: sb, r: 13 });
+  }
+  // the mode chip: click shows W·D·H, drag scales uniformly
+  const cs = oCorners(g).map((p) => iso(...p, zt)), top = cs.reduce((a, b) => (b[1] < a[1] ? b : a));
+  const cp = [top[0] + 4, top[1] - 26];
+  s += chip(cp, OB.wdh, OB.hov === 'chip' || k === 'scale');
+  H.push({ k: 'chip', p: cp, r: 14 });
+  OB.handles = H;
+  if (OB.drag && OB.cand) {
+    const p = OB.drag.at, c = OB.cand; let t = '';
+    if (k === 'turn') { const d = ((c.rot - o.rot) % 360 + 540) % 360 - 180; t = `Δθ ${sgn(d, 0)}°`; }
+    else if (k === 'move') t = `Δx ${sgn(c.x - o.x)} · Δz ${sgn(c.y - o.y)} m`;
+    else if (k === 'h' || k === 'lift') t = stemTag(o, c, k);
+    else if (k === 'scale') t = `× ${(c.h / o.h).toFixed(2)}`;
+    else if (k.endsWith('u')) t = `Δ ${sgn(c.w - o.w)} m → ${c.w.toFixed(2)} m`;
+    else t = `Δ ${sgn(c.d - o.d)} m → ${c.d.toFixed(2)} m`;
+    s += tag(p[0] + 16, p[1] - 32, t);
+  }
+  $('#sv-obj').innerHTML = s;
+}
+(function bindObj() {
+  const svg = $('#sv-obj');
+  const hit = (p) => {
+    for (const k of ['chip', 'h', 'lift', '+u', '-u', '+v', '-v', 'turn', 'move']) { const h = OB.handles.find((x) => x.k === k); if (h && d2(p, h.p) < h.r) return h; }
+    for (let i = 0; i < OB.ring.length - 1; i++) if (proj(p, OB.ring[i], OB.ring[i + 1]).d < 7) return { k: 'turn' };
+    return null;
+  };
+  svg.addEventListener('pointerdown', (e) => {
+    const p = svgPt(svg, e), h = hit(p); if (!h) return;
+    const o = OB.o, centre = OISO(o.x, o.y, o.z + o.h / 2);
+    OB.drag = { ...h, p0: p, at: p, a0: deg(sub(OISO.inv(p), [o.x, o.y])), centre, r0: Math.max(8, d2(p, centre)), moved: false };
+    svg.setPointerCapture(e.pointerId);
+    if (h.k !== 'chip') { OB.cand = { ...o }; renderObj(); }
+  });
+  svg.addEventListener('pointermove', (e) => {
+    const p = svgPt(svg, e);
+    if (!OB.drag) { const h = hit(p), k = h ? h.k : null; if (k !== OB.hov) { OB.hov = k; svg.style.cursor = k ? (k === 'chip' ? 'pointer' : 'grab') : 'default'; renderObj(); } return; }
+    const D = OB.drag, o = OB.o; let c = { ...o }; D.at = p; const dp = sub(p, D.p0);
+    if (D.k === 'chip') { if (d2(p, D.p0) < 4) return; D.k = 'scale'; D.moved = true; }
+    if (D.k === 'scale') {
+      const f = Math.max(0.25, Math.round(d2(p, D.centre) / D.r0 * 20) / 20); c.w = o.w * f; c.d = o.d * f; c.h = o.h * f;
+    } else if (D.k === 'turn') {
+      let d = deg(sub(OISO.inv(p), [o.x, o.y])) - D.a0; if (!e.altKey) d = Math.round(d / 15) * 15; c.rot = o.rot + d;
+    } else if (D.k === 'move') {
+      const w0 = OISO.inv(D.p0), w1 = OISO.inv(p); c.x = o.x + Math.round((w1[0] - w0[0]) * 10) / 10; c.y = o.y + Math.round((w1[1] - w0[1]) * 10) / 10;
+    } else if (D.k === 'h' || D.k === 'lift') c = applyStem(o, D.k, Math.round(-dp[1] / OISO.s * 20) / 20);
+    else {
+      const m = Math.round(dot(dp, D.sd) / ppm(OISO, D.fc, [...D.n, 0]) * 20) / 20;
+      const isU = D.k.endsWith('u'), size = Math.max(0.2, (isU ? o.w : o.d) + m), dm = size - (isU ? o.w : o.d);
+      if (isU) c.w = size; else c.d = size;
+      c.x = o.x + D.n[0] * dm / 2; c.y = o.y + D.n[1] * dm / 2;
+    }
+    OB.cand = c; renderObj();
+  });
+  const end = (commit) => {
+    if (!OB.drag) return;
+    if (OB.drag.k === 'chip' && commit) OB.wdh = !OB.wdh;
+    else if (commit && OB.cand) OB.o = OB.cand;
+    OB.drag = null; OB.cand = null; renderObj();
+  };
+  svg.addEventListener('pointerup', () => end(true));
+  svg.addEventListener('pointercancel', () => end(false));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') end(false); });
+})();
+
+// ---------- 4 · wall handles ----------
+const WISO = makeIso(42, 270, 210);
+const WALL0 = () => ({ w: { x0: -2.6, x1: 1.8, y: 0, t: 0.24, z: 0, h: 1.6 }, cand: null, drag: null, hov: null, handles: [] });
+let WL = WALL0();
+const WFILL = { t: '#efe7d4', l: '#d8cfbc', r: '#c8bea9' };
+const wCorners = (w) => [[w.x0, w.y - w.t / 2], [w.x1 + w.t / 2, w.y - w.t / 2], [w.x1 + w.t / 2, w.y + w.t / 2], [w.x0, w.y + w.t / 2]];
+const nCorners = (w) => [[w.x1 - w.t / 2, w.y + w.t / 2], [w.x1 + w.t / 2, w.y + w.t / 2], [w.x1 + w.t / 2, w.y + 2.6], [w.x1 - w.t / 2, w.y + 2.6]];
+function renderWall() {
+  const iso = WISO, w = WL.w, g = WL.cand || w, k = WL.drag?.k; let s = isoGrid(iso, 560, 330);
+  const zt = g.z + g.h;
+  s += prism(iso, wCorners(w), w.z, w.z + w.h, WFILL) + selOutline(iso, wCorners(w), w.z, w.z + w.h);
+  s += prism(iso, nCorners(w), 0, 1.6, WFILL);
+  if (WL.cand) {
+    const plane = `<polygon class="ghost" points="${[iso(g.x0, g.y, g.z), iso(g.x1, g.y, g.z), iso(g.x1, g.y, zt), iso(g.x0, g.y, zt)].map(P).join(' ')}"/>`;
+    if (k === 'h') s += plane;
+    else if (k === 't') s += `<path class="ghost" d="M${P(iso(g.x0, g.y - g.t / 2, zt))}L${P(iso(g.x1, g.y - g.t / 2, zt))}M${P(iso(g.x0, g.y + g.t / 2, zt))}L${P(iso(g.x1, g.y + g.t / 2, zt))}"/>`;
+    else {
+      s += `<path class="ghost" d="M${P(iso(g.x0, g.y, 0))}L${P(iso(g.x1, g.y, 0))}L${P(iso(g.x1, g.y + 2.6, 0))}"/>`;
+      s += endMark(iso(g.x1, g.y, 0), 'ring');
+    }
+  }
+  const H = [], hv = (n) => WL.hov === n || k === n;
+  const e0 = iso(g.x0, g.y, zt), e1 = iso(g.x1, g.y, zt);
+  s += knob(e0, hv('x0')) + knob(e1, hv('x1'));
+  H.push({ k: 'x0', p: e0, r: 13, dir: [1, 0, 0] }, { k: 'x1', p: e1, r: 13, dir: [1, 0, 0] });
+  // the two-knob stem stands just beyond the free end
+  const sb = iso(g.x0 - 0.55, g.y, g.z), st = iso(g.x0 - 0.55, g.y, zt);
+  // Walls have no lift: the stem keeps only its top knob
+  s += `<path class="gzl" d="M${P(sb)}L${P(st)}"/>` + glyph(G.hex, st, 0, hv('h')); H.push({ k: 'h', p: st, r: 13 });
+  const xm = (g.x0 + g.x1) / 2;
+  const tc = iso(xm - 1.1, g.y, zt), ty = screenDir(iso, [xm - 1.1, g.y, zt], [0, 1, 0]);
+  s += glyph(G.two, tc, deg(ty), hv('t'), ' scale(.82)'); H.push({ k: 't', p: tc, r: 13, dir: [0, 1, 0] });
+  const mc0 = [xm + 1.0, g.y + g.t / 2, g.z + 0.45], mc = iso(...mc0), my = screenDir(iso, mc0, [0, 1, 0]);
+  const mpos = add(mc, mul(my, 16));
+  s += glyph(G.two, mpos, deg(my), hv('y')); H.push({ k: 'y', p: mpos, r: 14, dir: [0, 1, 0] });
+  WL.handles = H;
+  if (WL.drag && WL.cand) {
+    const p = WL.drag.at, c = WL.cand; let t;
+    if (k === 'h') t = stemTag(w, c, k);
+    else if (k === 't') t = `Δ ${sgn(c.t - w.t)} m → ${c.t.toFixed(2)} m`;
+    else if (k === 'y') t = `Δ ${sgn(c.y - w.y)} m`;
+    else { const L0 = w.x1 - w.x0, L1 = c.x1 - c.x0; t = `Δ ${sgn(L1 - L0)} m → ${L1.toFixed(2)} m`; }
+    s += tag(p[0] + 16, p[1] - 32, t);
+  }
+  $('#sv-wall').innerHTML = s;
+}
+(function bindWall() {
+  const svg = $('#sv-wall');
+  const hit = (p) => WL.handles.find((h) => d2(p, h.p) < h.r) || null;
+  svg.addEventListener('pointerdown', (e) => {
+    const p = svgPt(svg, e), h = hit(p); if (!h) return;
+    WL.drag = { ...h, p0: p, at: p }; WL.cand = { ...WL.w }; svg.setPointerCapture(e.pointerId); renderWall();
+  });
+  svg.addEventListener('pointermove', (e) => {
+    const p = svgPt(svg, e);
+    if (!WL.drag) { const h = hit(p), k = h ? h.k : null; if (k !== WL.hov) { WL.hov = k; svg.style.cursor = k ? 'grab' : 'default'; renderWall(); } return; }
+    const D = WL.drag, w = WL.w, dp = sub(p, D.p0); let c = { ...w }; D.at = p;
+    const m = D.dir ? Math.round(dot(dp, screenDir(WISO, [0, 0, 0], D.dir)) / ppm(WISO, [0, 0, 0], D.dir) * 20) / 20 : 0;
+    if (D.k === 'x0') c.x0 = Math.min(w.x1 - 0.5, w.x0 + m);
+    else if (D.k === 'x1') c.x1 = Math.max(w.x0 + 0.5, w.x1 + m);
+    else if (D.k === 'h') c = applyStem(w, 'h', Math.round(-dp[1] / WISO.s * 20) / 20);
+    else if (D.k === 't') c.t = Math.max(0.08, Math.min(0.8, Math.round((w.t + 2 * m) * 100) / 100));
+    else if (D.k === 'y') c.y = w.y + m;
+    WL.cand = c; renderWall();
+  });
+  const end = (commit) => { if (!WL.drag) return; if (commit && WL.cand) WL.w = WL.cand; WL.drag = null; WL.cand = null; renderWall(); };
+  svg.addEventListener('pointerup', () => end(true));
+  svg.addEventListener('pointercancel', () => end(false));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') end(false); });
+})();
+
+// ---------- 5 · ruler ----------
+const RULER_WALLS = [[[60, 60], [300, 60]], [[300, 60], [300, 220]], [[300, 220], [60, 220]], [[60, 220], [60, 60]]];
+const RULER0 = () => ({ a: null, b: null, ka: 'dot', kb: 'dot', live: false });
+let RU = RULER0();
+function renderRuler() {
+  let s = paper('pr', 560, 300);
+  s += `<path class="wall2d" d="${RULER_WALLS.map(([a, b]) => `M${P(a)}L${P(b)}`).join('')}"/>`;
+  if (RU.a && RU.b && d2(RU.a, RU.b) > 2) {
+    const a = RU.a, b = RU.b, dd = unit(sub(b, a)), n = [-dd[1], dd[0]];
+    s += `<line class="inkl" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
+    s += [a, b].map((p) => `<path class="tick" d="M${P(add(p, mul(n, 7)))}L${P(sub(p, mul(n, 7)))}"/>`).join('');
+    const m = mul(add(a, b), 0.5), off = n[1] > 0 ? mul(n, -16) : mul(n, 16), txt = (d2(a, b) / PXM).toFixed(2) + ' m';
+    s += tag(m[0] + off[0] - txt.length * 3.5 - 7, m[1] + off[1] - 10, txt);
+  }
+  // scale bar: 0 · 1 · 2 m
+  s += `<g class="scalebar" transform="translate(24 270)"><rect width="40" height="6" fill="var(--ink)"/><rect x="40" width="40" height="6" fill="var(--paper)"/><text x="0" y="-5">0</text><text x="36" y="-5">1</text><text x="74" y="-5">2 m</text></g>`;
+  $('#sv-ruler').innerHTML = s;
+}
+(function bindRuler() {
+  const svg = $('#sv-ruler');
+  svg.addEventListener('pointerdown', (e) => { const sn = snap2d(svgPt(svg, e), RULER_WALLS); RU = { a: sn.p, ka: sn.kind, b: sn.p, kb: sn.kind, live: true }; svg.setPointerCapture(e.pointerId); renderRuler(); });
+  svg.addEventListener('pointermove', (e) => { if (!RU.live) return; const sn = snap2d(svgPt(svg, e), RULER_WALLS); RU.b = sn.p; RU.kb = sn.kind; renderRuler(); });
+  svg.addEventListener('pointerup', () => { RU.live = false; });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !RU.live) { RU = RULER0(); renderRuler(); } });
+})();
+
+// ---------- 6 · Room labels ----------
+const LROOMS = [{ name: 'Room 3', r: [0, 0, 4, 3] }, { name: 'Room 4', r: [4, 0, 7, 3] }];
+function renderLabels() {
+  // 2D: 30 px per metre
+  const k = 30, ox = 45, oy = 50; let s = paper('pl', 300, 200);
+  for (const room of LROOMS) {
+    const [x0, y0, x1, y1] = room.r.map((v) => v * k);
+    s += `<rect x="${ox + x0}" y="${oy + y0}" width="${x1 - x0}" height="${y1 - y0}" fill="none" stroke="var(--ink)" stroke-width="6"/>`;
+  }
+  if (S.lab2d) LROOMS.forEach((room, i) => {
+    const [x0, y0, x1, y1] = room.r, a = (x1 - x0) * (y1 - y0);
+    s += `<g data-room="${i}" style="cursor:text">${roomLabel([ox + (x0 + x1) / 2 * k, oy + (y0 + y1) / 2 * k], room.name, a)}</g>`;
+  });
+  $('#sv-l2').innerHTML = s;
+  // 3D
+  const iso = makeIso(22, 150, 60); let t = isoGrid(iso, 300, 200, 10);
+  const segs = [];
+  for (const room of LROOMS) { const [x0, y0, x1, y1] = room.r; segs.push([[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[x1, y1], [x0, y1]], [[x0, y1], [x0, y0]]); }
+  const T = 0.1, uniq = []; for (const sg of segs) if (!uniq.some((u) => d2(u[0], sg[1]) < 1e-6 && d2(u[1], sg[0]) < 1e-6)) uniq.push(sg);
+  const boxes = uniq.map(([a, b]) => { const x0 = Math.min(a[0], b[0]) - T, x1 = Math.max(a[0], b[0]) + T, y0 = Math.min(a[1], b[1]) - T, y1 = Math.max(a[1], b[1]) + T; return { c: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], d: (x0 + x1 + y0 + y1) / 2 }; });
+  boxes.sort((p, q) => p.d - q.d).forEach((b) => { t += prism(iso, b.c, 0, 1.1, WFILL); });
+  if (S.lab3d) LROOMS.forEach((room) => { const [x0, y0, x1, y1] = room.r; const c = iso((x0 + x1) / 2, (y0 + y1) / 2, 0); t += roomLabel(c, room.name, (x1 - x0) * (y1 - y0)); });
+  $('#sv-l3').innerHTML = t;
+}
+(function bindLabels() {
+  $('#lab2d').addEventListener('change', (e) => { S.lab2d = e.target.checked; renderLabels(); renderDraw(); });
+  $('#lab3d').addEventListener('change', (e) => { S.lab3d = e.target.checked; renderLabels(); });
+  const svg = $('#sv-l2');
+  svg.addEventListener('dblclick', (e) => {
+    const g = e.target.closest('[data-room]'); if (!g) return;
+    const i = +g.dataset.room, box = g.getBoundingClientRect(), host = svg.parentElement.getBoundingClientRect();
+    const inp = document.createElement('input'); inp.className = 'lab-input'; inp.value = LROOMS[i].name; inp.setAttribute('aria-label', 'Room name');
+    inp.style.left = (box.left + box.width / 2 - host.left) + 'px'; inp.style.top = (box.top + 8 - host.top) + 'px';
+    svg.parentElement.appendChild(inp); inp.select();
+    const done = (ok) => { if (ok && inp.value.trim()) LROOMS[i].name = inp.value.trim(); inp.remove(); renderLabels(); };
+    inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') done(true); if (ev.key === 'Escape') done(false); });
+    inp.addEventListener('blur', () => done(false));
+  });
+})();
+
+// ---------- 7 · Card ----------
+const CARDS = {
+  wall: { kind: 'Wall · bounds <a data-go="room">Room 3</a>', name: 'Wall 111', cols: 'two',
+    primary: [['Length', '6.09', 'm'], ['Height', '3.00', 'm']],
+    more: [['Base', '', 'm', 'tbd'], ['Top', '', 'm', 'tbd'], ['Thick', '0.20', 'm']],
+    rel: [['Bounds', '<a data-go="room">Room 3</a>'], ['Joined to', 'Wall 110 · Wall 112'], ['Openings', '1 door']],
+    menu: [['View', ['Face this wall', 'Unroll the room', 'Section through here']], ['Look', ['Paint…']], ['Story', ['Present this in Experience']]] },
+  object: { kind: 'Object · on <a data-go="room">Room 2</a>', name: 'Bench', cols: 'three',
+    primary: [['Width', '1.80', 'm'], ['Depth', '0.45', 'm'], ['Height', '0.45', 'm']],
+    more: [['Elevation', '', 'm', 'tbd'], ['Scale', '', '×', 'tbd']],
+    rel: [['On', '<a data-go="room">Room 2</a> · Auto']],
+    menu: [['View', ['Face this', 'Section through here']], ['Look', ['Paint…']], ['Make', ['Duplicate']], ['Story', ['Present this in Experience']]] },
+  room: { kind: 'Room', name: 'Room 3', cols: 'two',
+    primary: [['Area', '24.1', 'm²', 'ro'], ['Ceiling', '', 'm', 'tbd']],
+    more: [['Perimeter', '19.8', 'm', 'ro'], ['Floor level', '', 'm', 'tbd'], ['Volume', '', 'm³', 'tbd']],
+    rel: [['Walls', '4'], ['Openings', '1 door · 2 windows'], ['Objects', '3']],
+    menu: [['View', ['Unroll the room', 'Section through here']], ['Look', ['Paint floor…']], ['Story', ['Present this in Experience']]] },
+};
+const LIVE = new Set(['Duplicate']);
+const CS = { more: { wall: false, object: false, room: false }, menu: false, renaming: false, err: '' };
+const ICON = {
+  frame: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4"/></svg>',
+  dots: '<svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><circle cx="3.5" cy="9" r="1.6"/><circle cx="9" cy="9" r="1.6"/><circle cx="14.5" cy="9" r="1.6"/></svg>',
+  close: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg>',
+  chev: (up) => `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="${up ? 'M2.5 7.5L6 4l3.5 3.5' : 'M2.5 4.5L6 8l3.5-3.5'}"/></svg>`,
+};
+function field([label, value, unit, kind]) {
+  const tbd = kind === 'tbd', ro = kind === 'ro';
+  return `<div class="fld${tbd ? ' tbd' : ''}${ro ? ' ro' : ''}"${tbd ? ' title="Coming later"' : ''}><label>${label}</label><div class="box"><input value="${tbd ? '—' : value}" aria-label="${label}"${tbd || ro ? ' readonly tabindex="-1"' : ''}><span class="u">${unit}</span></div></div>`;
+}
+function renderCard() {
+  const c = CARDS[S.subject], open = CS.more[S.subject];
+  const nameHtml = CS.renaming ? `<input id="nameIn" value="${c.name}" aria-label="Name">` : c.name;
+  let h = `<div class="card"><div class="c-head"><div class="grow"><div class="c-kind">${c.kind}</div>` +
+    `<div class="c-name" tabindex="0" role="button" aria-label="${c.name}, double-click to rename" id="cname">${nameHtml}</div>${CS.err ? `<div class="c-err">${CS.err}</div>` : ''}</div>` +
+    `<button class="ib" id="dots" aria-label="Functions" aria-haspopup="menu" aria-expanded="${CS.menu}">${ICON.dots}</button><button class="ib" aria-label="Close">${ICON.close}</button></div>` +
+    `<div class="c-fields ${c.cols}">${c.primary.map(field).join('')}</div>` +
+    `<div class="c-acts"><button class="cbtn" aria-label="Bring into view" title="Bring into view">${ICON.frame}</button><span class="sp"></span>` +
+    `<button class="cbtn" id="more" aria-expanded="${open}">More ${ICON.chev(open)}</button></div>`;
+  if (open) h += `<div class="c-more"><div class="c-sub">Dimensions</div><div class="c-fields three" style="padding-top:8px">${c.more.map(field).join('')}</div>` +
+    `<div class="c-sub" style="padding-top:2px">Relations</div><div class="rel">${c.rel.map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join('')}</div></div>`;
+  h += `</div>`;
+  if (CS.menu) {
+    h += `<div class="menu" role="menu">`;
+    for (const [grp, items] of c.menu) {
+      h += `<div class="mh">${grp}</div>`;
+      for (const it of items) h += LIVE.has(it) ? `<button role="menuitem">${it}</button>` : `<button role="menuitem" disabled aria-disabled="true">${it}<span class="soon">Soon</span></button>`;
+    }
+    h += `<hr><button role="menuitem" class="erase" id="erase">Erase <span style="font-size:12px;color:var(--mute)">⌫</span></button></div>`;
+  }
+  const wrap = $('#cardwrap'); wrap.innerHTML = h;
+  if (CS.renaming) { const i = $('#nameIn'); i.focus(); i.select(); }
+}
+function commitName(v) {
+  const c = CARDS[S.subject]; v = v.trim();
+  if (!v) { CS.err = 'A name can’t be empty'; CS.renaming = false; renderCard(); return; }
+  c.name = v; if (S.subject === 'room') { CARDS.wall.rel[0][1] = `<a data-go="room">${v}</a>`; CARDS.wall.kind = `Wall · bounds <a data-go="room">${v}</a>`; }
+  CS.err = ''; CS.renaming = false; renderCard();
+}
+(function bindCard() {
+  const wrap = $('#cardwrap');
+  wrap.addEventListener('dblclick', (e) => { if (e.target.closest('#cname') && !CS.renaming) { CS.renaming = true; CS.menu = false; CS.err = ''; renderCard(); } });
+  wrap.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t.closest('#more')) { CS.more[S.subject] = !CS.more[S.subject]; renderCard(); return; }
+    if (t.closest('#dots')) { CS.menu = !CS.menu; renderCard(); return; }
+    if (t.closest('#erase')) { CS.menu = false; renderCard(); $('#cardnote').textContent = 'Erase is the one delete home: it runs the real delete and one Undo restores it.'; return; }
+    const go = t.closest('[data-go]'); if (go) { setOpt('subject', go.dataset.go); return; }
+    if (CS.menu && !t.closest('.menu')) { CS.menu = false; renderCard(); }
+  });
+  wrap.addEventListener('keydown', (e) => {
+    if (e.target.id === 'nameIn') { if (e.key === 'Enter') commitName(e.target.value); if (e.key === 'Escape') { CS.renaming = false; renderCard(); $('#cname').focus(); } return; }
+    if (e.target.id === 'cname' && (e.key === 'Enter' || e.key === 'F2')) { e.preventDefault(); CS.renaming = true; renderCard(); return; }
+    if (e.key === 'Escape') { if (CS.menu) { CS.menu = false; renderCard(); $('#dots').focus(); } else if (CS.more[S.subject]) { CS.more[S.subject] = false; renderCard(); } }
+  });
+  wrap.addEventListener('focusout', (e) => { if (e.target.id === 'nameIn' && CS.renaming) setTimeout(() => { if (CS.renaming) { CS.renaming = false; renderCard(); } }, 0); });
+  document.addEventListener('pointerdown', (e) => { if (CS.menu && !e.target.closest('#cardwrap')) { CS.menu = false; renderCard(); } });
+})();
+
+// ---------- 8 · transform ghosts ----------
+// 2D, 40 px per metre. Rooms are rectangles here; the product derives them from Walls.
+const TX0 = () => ({
+  rooms: [{ name: 'Living', r: [80, 60, 330, 300] }, { name: 'Study', r: [330, 60, 500, 300] }],
+  free: [[660, 60], [660, 300]],
+  objs: [{ id: 'sofa', name: 'Sofa', x: 225, y: 262, w: 110, d: 40, rot: 0 }, { id: 'table', name: 'Table', x: 820, y: 180, w: 90, d: 56, rot: 20 }],
+  cand: null, drag: null, hov: null, handles: []
+});
+let TX = TX0();
+const oPoly = (o) => { const r = o.rot * Math.PI / 180, u = [Math.cos(r), Math.sin(r)], v = [-u[1], u[0]]; return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [o.x + u[0] * a * o.w / 2 + v[0] * b * o.d / 2, o.y + u[1] * a * o.w / 2 + v[1] * b * o.d / 2]); };
+const roomEdges = (r) => { const [x0, y0, x1, y1] = r; return [[[x0, y0], [x1, y0]], [[x1, y0], [x1, y1]], [[x1, y1], [x0, y1]], [[x0, y1], [x0, y0]]]; };
+const shift = (r, d) => [r[0] + d[0], r[1] + d[1], r[2] + d[0], r[3] + d[1]];
+const inside = (o, r) => o.x > r[0] && o.x < r[2] && o.y > r[1] && o.y < r[3];
+function txTurnAt(o) { const r = o.rot * Math.PI / 180, R = Math.hypot(o.w, o.d) / 2 + 16, a = r - Math.PI / 4; return { p: [o.x + R * Math.cos(a), o.y + R * Math.sin(a)], ang: a * 180 / Math.PI + 90 }; }
+function renderTx() {
+  const C = TX.cand, k = TX.drag?.k; let s = paper('ptx', 1060, 360);
+  const allR = TX.rooms.map((rm) => rm.r);
+  // Walls: each Room edge once (a shared Wall is drawn once), and the free Wall
+  const seen = []; let walls = '';
+  for (const r of allR) for (const [a, b] of roomEdges(r)) { if (seen.some(([c, d]) => (d2(a, c) < 1 && d2(b, d) < 1) || (d2(a, d) < 1 && d2(b, c) < 1))) continue; seen.push([a, b]); walls += `M${P(a)}L${P(b)}`; }
+  s += `<path class="wall2d" d="${walls}"/><path class="wall2d" d="M${P(TX.free[0])}L${P(TX.free[1])}"/>`;
+  TX.rooms.forEach((rm) => { const [x0, y0, x1, y1] = rm.r; s += roomLabel([(x0 + x1) / 2, (y0 + y1) / 2 - 14], rm.name, (x1 - x0) * (y1 - y0) / (PXM * PXM)); });
+  // objects: solid source
+  for (const o of TX.objs) s += `<polygon points="${oPoly(o).map(P).join(' ')}" fill="#cfc6b6" stroke="var(--ink2)" stroke-width="1"/>`;
+  // ghost
+  const bad = C?.refusal;
+  const cls = bad ? 'refused' : `ghost${''}`;
+  if (C && true) {
+    if (C.kind === 'room') {
+      const seen2 = []; let d = '';
+      for (const r of C.rooms) for (const [a, b] of roomEdges(r)) { if (seen2.some(([c, e]) => (d2(a, c) < 1 && d2(b, e) < 1) || (d2(a, e) < 1 && d2(b, c) < 1))) continue; seen2.push([a, b]); d += `M${P(a)}L${P(b)}`; }
+      s += `<path class="${bad ? 'refused' : 'ghost'}" d="${d}"/>`;
+
+    } else if (C.kind === 'wall') s += `<line class="ghost" x1="${C.free[0][0]}" y1="${C.free[0][1]}" x2="${C.free[1][0]}" y2="${C.free[1][1]}"/>`;
+    else s += `<polygon class="${cls}" points="${oPoly(C.obj).map(P).join(' ')}"/>`;
+  }
+  // handles: drawn at the proposal while a gesture is live, so they travel with it
+  const H = [], hv = (n) => TX.hov === n || k === n;
+  TX.rooms.forEach((rm, i) => {
+    const r = C?.kind === 'room' ? C.rooms[i] : rm.r, c = [(r[0] + r[2]) / 2, (r[1] + r[3]) / 2 + 30];
+    s += glyph(G.move, c, 0, hv('room' + i)); H.push({ k: 'room' + i, p: c, r: 16 });
+  });
+  TX.objs.forEach((o0, i) => {
+    const o = C?.kind === 'obj' && C.i === i ? C.obj : o0;
+    s += glyph(G.move, [o.x, o.y], o.rot, hv('obj' + i)); H.push({ k: 'obj' + i, p: [o.x, o.y], r: 16 });
+    const t = txTurnAt(o); s += glyph(G.curved, t.p, t.ang, hv('turn' + i)); H.push({ k: 'turn' + i, p: t.p, r: 16 });
+  });
+  const fw = C?.kind === 'wall' ? C.free : TX.free, fm = [fw[0][0] + 22, (fw[0][1] + fw[1][1]) / 2];
+  s += glyph(G.two, fm, 0, hv('wall')); H.push({ k: 'wall', p: fm, r: 15 });
+  TX.handles = H;
+  if (TX.drag && C) {
+    const p = TX.drag.at; let t;
+    if (C.refusal) t = C.refusal;
+    else if (C.kind === 'room') t = `Δx ${sgn(C.d[0] / PXM)} · Δz ${sgn(C.d[1] / PXM)} m${C.rooms.length > 1 ? ' · 2 Rooms' : ''}`;
+    else if (C.kind === 'wall') t = `Δ ${sgn((C.free[0][0] - TX.free[0][0]) / PXM)} m`;
+    else if (k.startsWith('turn')) t = `Δθ ${sgn(((C.obj.rot - TX.objs[C.i].rot) % 360 + 540) % 360 - 180, 0)}°`;
+    else t = `Δx ${sgn((C.obj.x - TX.objs[C.i].x) / PXM)} · Δz ${sgn((C.obj.y - TX.objs[C.i].y) / PXM)} m`;
+    s += tag(p[0] + 16, p[1] - 32, t, !!C.refusal, 1060);
+  }
+  $('#sv-tx').innerHTML = s;
+}
+(function bindTx() {
+  const svg = $('#sv-tx');
+  const hit = (p) => {
+    const h = TX.handles.find((x) => d2(p, x.p) < x.r); if (h) return h.k;
+    const i = TX.objs.findIndex((o) => { const q = oPoly(o); let c = false; for (let a = 0, b = 3; a < 4; b = a++) if ((q[a][1] > p[1]) !== (q[b][1] > p[1]) && p[0] < (q[b][0] - q[a][0]) * (p[1] - q[a][1]) / (q[b][1] - q[a][1]) + q[a][0]) c = !c; return c; });
+    return i >= 0 ? 'obj' + i : null;
+  };
+  const snap = (v) => Math.round(v / 20) * 20;
+  svg.addEventListener('pointerdown', (e) => {
+    const p = svgPt(svg, e), k = hit(p); if (!k) return;
+    let a0 = 0; if (k.startsWith('turn')) { const o = TX.objs[+k.slice(4)]; a0 = deg(sub(p, [o.x, o.y])); }
+    TX.drag = { k, p0: p, at: p, a0 }; svg.setPointerCapture(e.pointerId); renderTx();
+  });
+  svg.addEventListener('pointermove', (e) => {
+    const p = svgPt(svg, e);
+    if (!TX.drag) { const k = hit(p); if (k !== TX.hov) { TX.hov = k; svg.style.cursor = k ? 'grab' : 'default'; renderTx(); } return; }
+    const D = TX.drag, d = sub(p, D.p0); D.at = p;
+    if (d2(p, D.p0) < 4) { TX.cand = null; renderTx(); return; }
+    if (D.k.startsWith('room')) {
+      const dd = [snap(d[0]), snap(d[1])];
+      const rooms = TX.rooms.map((rm) => shift(rm.r, dd));
+      const objs = TX.objs.filter((o) => TX.rooms.some((rm) => inside(o, rm.r))).map((o) => ({ ...o, x: o.x + dd[0], y: o.y + dd[1] }));
+      const fx = TX.free[0][0], hitsFree = rooms.some((r) => r[0] < fx + 4 && r[2] > fx - 4);
+      TX.cand = { kind: 'room', d: dd, rooms, objs, refusal: hitsFree ? 'Rooms would cross a Wall' : null };
+    } else if (D.k === 'wall') {
+      const dx = snap(d[0]); TX.cand = { kind: 'wall', free: TX.free.map((q) => [q[0] + dx, q[1]]) };
+    } else if (D.k.startsWith('turn')) {
+      const i = +D.k.slice(4), o = TX.objs[i]; let a = deg(sub(p, [o.x, o.y])) - D.a0; if (!e.altKey) a = Math.round(a / 15) * 15;
+      TX.cand = { kind: 'obj', i, obj: { ...o, rot: o.rot + a } };
+    } else {
+      const i = +D.k.slice(3), o = TX.objs[i];
+      TX.cand = { kind: 'obj', i, obj: { ...o, x: o.x + snap(d[0]) / 2, y: o.y + snap(d[1]) / 2 } };
+    }
+    renderTx();
+  });
+  const end = (commit) => {
+    if (!TX.drag) return; const C = TX.cand;
+    if (commit && C && !C.refusal) {
+      if (C.kind === 'room') { TX.rooms = TX.rooms.map((rm, i) => ({ ...rm, r: C.rooms[i] }));  }
+      else if (C.kind === 'wall') TX.free = C.free;
+      else TX.objs = TX.objs.map((o, i) => (i === C.i ? C.obj : o));
+    }
+    TX.drag = null; TX.cand = null; renderTx();
+  };
+  svg.addEventListener('pointerup', () => end(true));
+  svg.addEventListener('pointercancel', () => end(false));
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') end(false); });
+})();
+
+// ---------- 6b · Paper in the gear ----------
+const TONES = { pale: 'Paper', cream: 'Warm cream', sage: 'Deeper sage' };
+const STAGES = { p2: ['#sv-draw', '#sv-ghost', '#sv-ruler', '#sv-l2', '#sv-tx'], p3: ['#sv-key', '#sv-obj', '#sv-wall', '#sv-l3'] };
+let paperOpen = null;
+function buildGear() {
+  const chev = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg>';
+  document.querySelectorAll('.prow').forEach((row) => {
+    const v = row.dataset.view;
+    row.innerHTML = `<button class="pbtn" aria-expanded="false" aria-controls="tray-${v}"><span class="swatch"></span><span class="plabel">${v === 'p2' ? '2D plan' : '3D board'}</span><span class="pname"></span>${chev}</button>` +
+      `<div class="tray" id="tray-${v}"><div class="tray-in"><div class="tiles" role="group" aria-label="${v === 'p2' ? '2D' : '3D'} Paper">` +
+      Object.entries(TONES).map(([k, n]) => `<button class="tile" data-tone="${k}" tabindex="-1"><span class="tile-sw tone-${k}"></span><span>${n}</span></button>`).join('') +
+      `</div></div></div>`;
+    row.querySelector('.pbtn').addEventListener('click', () => { paperOpen = paperOpen === v ? null : v; updateGear(); });
+    row.querySelectorAll('.tile').forEach((t) => t.addEventListener('click', () => { S[v] = t.dataset.tone; updateGear(); applyTones(); }));
+  });
+}
+function updateGear() {
+  document.querySelectorAll('.prow').forEach((row) => {
+    const v = row.dataset.view, open = paperOpen === v;
+    row.querySelector('.pbtn').setAttribute('aria-expanded', String(open));
+    row.querySelector('.swatch').className = `swatch tone-${S[v]}`;
+    row.querySelector('.pname').textContent = TONES[S[v]];
+    row.querySelector('.tray').classList.toggle('open', open);
+    row.querySelectorAll('.tile').forEach((t) => { const on = t.dataset.tone === S[v]; t.classList.toggle('on', on); t.setAttribute('aria-pressed', String(on)); t.tabIndex = open ? 0 : -1; });
+  });
+}
+function applyTones() { for (const v of ['p2', 'p3']) for (const id of STAGES[v]) $(id).setAttribute('class', `stage tone-${S[v]}`); }
+buildGear(); updateGear(); applyTones();
+
+// ---------- options and resets ----------
+function renderAll() { renderKey(); renderDraw(); renderGhost(); renderObj(); renderWall(); renderRuler(); renderLabels(); renderCard(); renderTx(); }
+function setOpt(key, v) {
+  S[key] = v;
+  document.querySelectorAll(`.seg[data-key="${key}"] button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  if (key === 'subject') { CS.menu = false; CS.renaming = false; CS.err = ''; }
+  renderAll();
+}
+document.querySelectorAll('.seg[data-key]').forEach((seg) => {
+  const key = seg.dataset.key;
+  seg.querySelectorAll('button').forEach((b) => { b.setAttribute('aria-pressed', String(b.dataset.v === S[key])); b.addEventListener('click', () => setOpt(key, b.dataset.v)); });
+});
+document.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('click', () => {
+  const k = b.dataset.reset;
+  if (k === 'draw') DR = DRAW0(); if (k === 'ghost') GH = GHOST0(); if (k === 'obj') OB = OBJ0(); if (k === 'wall') WL = WALL0(); if (k === 'ruler') RU = RULER0(); if (k === 'tx') TX = TX0();
+  renderAll();
+}));
+renderAll();
+</script>
+<script src="world-interaction-sheet/opening.bundle.js"></script>
+</body>
+</html>

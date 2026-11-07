@@ -1,33 +1,15 @@
 # Scene codec layout
 
 **Read when:** working inside `packages/project-model/src/scene-codec/` or the app Scene seam.
-**Last reviewed:** 2026-10-13 (#115 WP4 — current-format-only readers; `apps/museum` and the editor facade gone)
+**Last reviewed:** 2026-11-03 (S29 Camera-unit connectivity context)
 
 ---
 
-## Boundary status (ratified 2026-09-27; current-format-only since #115)
+## Codec boundary
 
-This file documents the **current** Scene codec internals. Under the ratified
-destination (F.2), Scene remains one codec-bounded unit inside the project
-envelope, while Camera moves to its own codec-bounded unit and the Experience
-unit is added — all governed by
-[`../composition-execution.md`](../composition-execution.md). The release reader
-never consumes these authoring codecs (release formats are separate from source
-formats, F.5), so this boundary can evolve without creating visitor
-compatibility obligations. Do not grow compound-acceptance or release logic
-here: compound cross-domain acceptance belongs to F.4 (one expected revision,
-typed intents, one atomic accepted result and undo) and release lowering to
-F.5. See [`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md)
-and [`persistence.md`](./persistence.md).
-
-Five files, one public surface. The canonical Scene is **world-local
-(`formatVersion: 1`)** only: project/world coordinates, no `roomId`. There is
-deliberately **no legacy shape and no legacy path** — #115 removed the versionless
-room-local form together with its identification/conversion facade, so the
-readers accept the current format and nothing else. Malformed, incomplete or
-unrecognised input fails ordinary current-format validation; there is no
-`unsupported_generation` diagnostic, no legacy detector or classifier, and no
-compatibility facade.
+Scene 5 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
+by the Camera codec is not a second authored Scene authority. Camera and Experience are separate
+units today. Release readers do not consume authoring codecs. Compound acceptance belongs to F.4.
 
 ```text
 packages/project-model/src/scene-codec/
@@ -40,20 +22,22 @@ packages/project-model/src/scene-codec/
 
 ## Boundary rule
 
-- **Only `index.ts` is public.** Package consumers import from `@portfolio/project-model`. The app seam is `apps/editor/src/lib/content/scene.ts`, which re-exports the barrel and supplies the catalogue validation options from `apps/editor/src/lib/content/scene-validation.ts`. The pre-#115 editable shell and separate `apps/museum` app are gone; T1.P01.S02's read-only Stage consumes this same seam. No consumer imports the siblings.
+- **Only `index.ts` is public.** Package consumers import from `@portfolio/project-model`. The app seam is `apps/editor/src/lib/content/scene.ts`, which re-exports the barrel and supplies the catalogue validation options from `apps/editor/src/lib/content/scene-validation.ts`. The pre-#115 editable shell and separate `apps/museum` app are gone; The Stage consumes this same seam. No consumer imports the siblings.
 - `scene.ts` also exposes `resolveSceneDocument(input)` as the app-side resolution seam. It wraps the package entry with the catalogue options; it takes **no** Room registry, because a current-format Scene carries no Room ownership and its values are already project/world coordinates.
 - The boundary is **convention, not enforced by the module system.** The `@internal` JSDoc tags are the contract: they forbid sibling imports. The app seam is a thin adapter, not a second codec; restructuring the five files is safe as long as the package `index.ts` surface is unchanged.
 - Public surface (frozen): `SceneDocumentIssue`, `SceneDocumentValidationResult`, `SceneDocumentValidationError`, `cameraSceneConnectionTimingFailureReason`, `validateSceneDocument`, `parseSceneDocumentJson`, `serializeSceneDocument`.
 
-## Removed with the current-format cutover
+## Connectivity context
 
-- the legacy Scene decoder branch and the versionless room-local acceptance path;
-- the compatibility/migration facades `project-compat`, `scene-world-conversion` and `standalone-scene-import`, and the legacy `createEmptyProject`;
-- `placementToModelEntity` (it built a `roomId`, which the current format forbids) and the orphaned `getNode` re-export — consumers import `getNode` from `@portfolio/camera-core` directly;
-- the Room-registry parameter on Scene resolution.
-
-None of these has a replacement detector. The retired behavior is recoverable at
-the baseline (`git show e90a58224443bdbf44114d7285d55c983b79cc84:<path>`).
+`SceneValidationOptions.connectivity` defaults to `single-component`: a direct Scene
+document still requires every edge-bearing navigation node to belong to one connected
+graph. The Camera unit explicitly uses the `independent-components` policy through
+the one named `CAMERA_UNIT_SCENE_VALIDATION` constant; Camera-unit admission and its
+runtime Scene projection force that policy after merging host catalogue options. Only
+the global reachability walk is skipped in that context — reciprocal adjacency, one
+direct edge per unordered pair, endpoint/anchor/timing/pose checks and unknown-field
+refusal are unchanged. The choice is an internal validation context, never an authored
+setting, and it introduces no second graph or route evaluator.
 
 ## Dependency direction
 

@@ -6,7 +6,7 @@ The complete pre-consolidation file is recoverable with
 The sections below preserve the batch protocols and the then-current recommendation; they
 are evidence, not present launch permission or live status. Decision records remain under
 `docs/reference/decisions/`. Its copyleft licensing mentions are history: the owner rescinded that
-choice and licensing is [undecided](../../../reference/decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction).
+choice and licensing is [undecided](../authorization-history/post-batch-e-authorization-2026-10-23.md#licensing-direction).
 Relative links were written from `docs/roadmap/`. Current allocation and dependencies live in
 [Cross-track coordination](../../../roadmap/cross-track-execution.md).
 

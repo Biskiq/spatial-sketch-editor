@@ -19,6 +19,7 @@ import {
 	PAPER_SELECTION_EDGE_INK,
 	PAPER_SELECTION_INK,
 	createPaperMarkScene,
+	paperDrawingForSelection,
 	paperMarkSet
 } from '$lib/authoring/stage/paper-marks';
 import {
@@ -548,6 +549,42 @@ describe('R217.S18 — union tint of a Scene subject', () => {
 });
 
 describe('R217.S07 — Paper mark overlay', () => {
+	it('replaces a selected Opening symbol with gold solid and dashed ink', () => {
+		const source = DRAWING.lines.find((line) => line.sourceId === OPENING_ID)!;
+		const drawing: PaperPlanDrawing = {
+			...DRAWING,
+			lines: [
+				...DRAWING.lines.filter((line) => line.sourceId !== OPENING_ID),
+				{ ...source, key: 'opening-leaf', segments: [[[1.2, 0], [1.2, 0.9]]], dashed: false },
+				{ ...source, key: 'opening-swing', segments: [[[1.2, 0.9], [2.1, 0]]], dashed: true }
+			]
+		};
+		const selected = entry('layout', 'opening', OPENING_ID);
+		const baseDrawing = paperDrawingForSelection(drawing, selected);
+		expect(baseDrawing.lines.some((line) => line.sourceId === OPENING_ID)).toBe(false);
+		expect(baseDrawing.lines.some((line) => line.sourceId === WALL_ID)).toBe(true);
+		const marks = paperMarkSet(drawing, selected, null);
+		expect(marks.selection.selectedOpening).toBe(true);
+		const resources = createPaperMarkScene(marks, [800, 600]);
+		try {
+			const lines = resources.group.children.filter(
+				(child): child is LineSegments2 => child instanceof LineSegments2 && child.renderOrder === PAPER_MARK_LAYER.selectionLine
+			);
+			expect(lines).toHaveLength(2);
+			expect(lines.map((line) => (line.material as LineMaterial).dashed).sort()).toEqual([false, true]);
+			for (const line of lines) {
+				const material = line.material as LineMaterial;
+				expect(material.color.getHexString()).toBe(PAPER_SELECTION_INK.slice(1));
+				expect(material.linewidth).toBe(2);
+			}
+			expect(resources.group.children.some(
+				(child) => child instanceof LineSegments2 && child.renderOrder === PAPER_MARK_LAYER.selectionHalo
+			)).toBe(false);
+		} finally {
+			resources.dispose();
+		}
+	});
+
 	it('repaints selected canonical cut bands in gold with one dark-gold perimeter', () => {
 		const resources = createPaperMarkScene(paperMarkSet(DRAWING, entry('layout', 'wall', WALL_ID), null), [800, 600]);
 		try {

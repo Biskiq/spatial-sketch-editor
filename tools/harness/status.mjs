@@ -1,0 +1,712 @@
+#!/usr/bin/env node
+/**
+ * `npm run status` — the lean scan a new agent starts from.
+ *
+ * Prints the report's provenance (tested commit, age, suite completeness), then
+ * one row per capability: maturity, health, regressions, failing checks, open
+ * flags and claims. Nothing here writes status; every value is derived.
+ *
+ * Usage:
+ *   npm run status                                  # discover main-head evidence with gh
+ *   node tools/harness/status.mjs --json
+ *   node tools/harness/status.mjs --offline            # local .harness/report.json, no GitHub reads
+ *   node tools/harness/status.mjs --report <path>      # a recorded run
+ *   node tools/harness/status.mjs --main-head <sha>    # explicit compare point
+ *   node tools/harness/status.mjs --repo-root <path>   # deterministic git fixtures
+ *
+ * Exit codes: 0 report printed (including all-unknown), 1 invalid ledger,
+ * malformed report evidence, or an unreadable input. The report distinguishes
+ * "no complete run" from a green one; it never upgrades missing evidence into a
+ * pass.
+ */
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { validateLedger } from './ledger.mjs';
+import { buildReport, REQUIRED_SUITES, validateRun } from './report.mjs';
+import { discoverMainEvidence, readRemoteMain } from './discover.mjs';
+
+const DEFAULT_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+
+function readJson(path, label) {
+	const text = readFileSync(path, 'utf8');
+	try {
+		return JSON.parse(text);
+	} catch (error) {
+		throw new Error(`${label} is not valid JSON: ${error.message}`);
+	}
+}
+
+function run(command, args, cwd) {
+	return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+
+/** Normalize a reporter path from a local or CI checkout. */
+function normalizeReporterPath(file) {
+	if (file.startsWith('file://')) {
+		try {
+			return fileURLToPath(file).replace(/\\/g, '/');
+		} catch {
+			return null;
+		}
+	}
+	return file.replace(/\\/g, '/');
+}
+
+/** Candidate repository-relative paths for an absolute CI reporter path. */
+function reporterCandidates(file) {
+	const normalized = normalizeReporterPath(file);
+	if (normalized === null) return [];
+	const candidates = new Set([normalized]);
+	if (normalized.startsWith('/')) {
+		const parts = normalized.split('/').filter(Boolean);
+		for (let index = 0; index < parts.length; index += 1) {
+			candidates.add(parts.slice(index).join('/'));
+		}
+	}
+	if (!normalized.includes('/')) {
+		candidates.add(`apps/editor/${normalized}`);
+		candidates.add(`apps/api/${normalized}`);
+	}
+	return [...candidates];
+}
+
+/**
+ * Read a reporter's source from the commit the report tested.
+ *
+ * A CI reporter records an absolute path under `/home/runner/work/...`; that
+ * path does not exist on another machine. Resolve its repository-relative
+ * suffix in the tested commit, so a known-failing marker is verified against
+ * exactly the source that produced the artifact. A local fixture path is used
+ * only when the report's commit is unavailable in this checkout.
+ */
+function sourceReaderFor(repoRoot, commit) {
+	const cache = new Map();
+	let commitKnown = null;
+	const hasCommit = () => {
+		if (commitKnown !== null) return commitKnown;
+		if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit)) {
+			commitKnown = false;
+			return false;
+		}
+		try {
+			run('git', ['cat-file', '-e', `${commit}^{commit}`], repoRoot);
+			commitKnown = true;
+		} catch {
+			commitKnown = false;
+		}
+		return commitKnown;
+	};
+	return (file) => {
+		if (typeof file !== 'string' || file.length === 0) return null;
+		if (cache.has(file)) return cache.get(file);
+		if (hasCommit()) {
+			for (const candidate of reporterCandidates(file)) {
+				try {
+					const source = run('git', ['show', `${commit}:${candidate}`], repoRoot);
+					cache.set(file, source);
+					return source;
+				} catch {
+					// Try the next suffix of the CI path.
+				}
+			}
+			cache.set(file, null);
+			return null;
+		}
+		const normalized = normalizeReporterPath(file);
+		let source = null;
+		if (normalized !== null) {
+			try {
+				source = readFileSync(normalized, 'utf8');
+			} catch {
+				// A local fixture or exact checkout path is optional.
+			}
+		}
+		cache.set(file, source);
+		return source;
+	};
+}
+
+function parseArgs(argv) {
+	const options = {
+		repoRoot: DEFAULT_ROOT,
+		ledger: null,
+		report: null,
+		mainRef: 'origin/main',
+		mainRefExplicit: false,
+		mainHead: null,
+		json: false,
+		offline: false,
+		changedPaths: null,
+		github: null,
+		previous: null
+	};
+	for (let index = 0; index < argv.length; index += 1) {
+		const arg = argv[index];
+		const next = () => {
+			index += 1;
+			if (index >= argv.length) throw new Error(`${arg} needs a value`);
+			return argv[index];
+		};
+		if (arg === '--ledger') options.ledger = next();
+		else if (arg === '--report') options.report = next();
+		else if (arg === '--main-ref') {
+			options.mainRef = next();
+			options.mainRefExplicit = true;
+		}
+		else if (arg === '--main-head') options.mainHead = next();
+		else if (arg === '--changed-paths') options.changedPaths = next();
+		else if (arg === '--github') options.github = next();
+		else if (arg === '--previous') options.previous = next();
+		else if (arg === '--repo-root') options.repoRoot = next();
+		else if (arg === '--json') options.json = true;
+		else if (arg === '--offline') options.offline = true;
+		else if (arg === '--help' || arg === '-h') options.help = true;
+		else throw new Error(`unknown argument: ${arg}`);
+	}
+	return options;
+}
+
+/** Resolve main, using GitHub for the default online path. */
+function mainInfoFor(options) {
+	if (options.mainHead) return { commit: options.mainHead, source: 'explicit-main-head', reason: null };
+	if (options.mainRefExplicit || options.offline || options.report !== null || options.github !== null) {
+		const source = options.mainRefExplicit ? 'explicit-main-ref' : 'local-ref';
+		try {
+			return { commit: run('git', ['rev-parse', options.mainRef], options.repoRoot), source, reason: null };
+		} catch {
+			return { commit: null, source, reason: `could not resolve ${options.mainRef}` };
+		}
+	}
+	const remote = readRemoteMain(options.repoRoot);
+	return { commit: remote.commit, source: 'remote-main', reason: remote.reason };
+}
+
+/** A tested commit must exist locally for history and tested-source reads. */
+function ensureCommit(repoRoot, commit) {
+	if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit)) return false;
+	try {
+		run('git', ['cat-file', '-e', `${commit}^{commit}`], repoRoot);
+		return true;
+	} catch {
+		// A stale checkout may not contain the new main commit yet.
+	}
+	try {
+		run('git', ['fetch', '--quiet', '--no-tags', 'origin', 'main'], repoRoot);
+	} catch {
+		return false;
+	}
+	try {
+		run('git', ['cat-file', '-e', `${commit}^{commit}`], repoRoot);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** The definitions captured in an aggregate artifact, if valid. */
+function ledgerFromRun(run) {
+	if (!run || typeof run.ledger !== 'object' || run.ledger === null) return null;
+	return validateLedger(run.ledger).length === 0 ? run.ledger : null;
+}
+
+/** The definitions committed with a tested main/report commit. */
+function ledgerAtCommit(repoRoot, commit) {
+	if (typeof commit !== 'string') return null;
+	try {
+		const ledger = JSON.parse(run('git', ['show', `${commit}:capabilities.json`], repoRoot));
+		return validateLedger(ledger).length === 0 ? ledger : null;
+	} catch {
+		return null;
+	}
+}
+
+/** Normalize the historical issue snapshot captured with an aggregate. */
+function issuesFromRun(run) {
+	if (!Array.isArray(run?.issues)) return null;
+	return normaliseGithub({ issues: run.issues }).issues;
+}
+
+/**
+ * Normalize `gh ... --json` output (issue/PR objects with `{name}` labels and
+ * `{login}` assignees) into the report's shape.
+ *
+ * Claims are visible for every assignee and every draft PR title that names a
+ * capability — the collision scan must reveal work another agent already holds,
+ * not just work assigned to the current credential.
+ */
+export function normaliseGithub(payload) {
+	const labelsOf = (labels) =>
+		(labels ?? [])
+			.map((label) => (typeof label === 'string' ? label : label?.name))
+			.filter((name) => typeof name === 'string' && name.length > 0);
+	const assigneesOf = (assignees) =>
+		(assignees ?? [])
+			.map((person) => (typeof person === 'string' ? person : person?.login))
+			.filter((login) => typeof login === 'string' && login.length > 0);
+
+	const issues = (Array.isArray(payload?.issues) ? payload.issues : []).map((issue) => ({
+		number: issue.number,
+		title: issue.title,
+		labels: labelsOf(issue.labels),
+		assignees: assigneesOf(issue.assignees)
+	}));
+	const pulls = (Array.isArray(payload?.pulls) ? payload.pulls : []).map((pull) => ({
+		number: pull.number,
+		title: pull.title,
+		isDraft: pull.isDraft === true,
+		assignees: assigneesOf(pull.assignees)
+	}));
+
+	const claims = [];
+	for (const pull of pulls) {
+		if (pull.isDraft) claims.push({ number: pull.number, title: pull.title, kind: 'pull' });
+	}
+	for (const issue of issues) {
+		if (issue.assignees.length > 0) {
+			claims.push({ number: issue.number, title: issue.title, kind: 'issue' });
+		}
+	}
+	return { available: true, reason: null, issues, claims };
+}
+
+/** Live flags and claims. Absence is reported as unavailable, never as empty. */
+function readGithub(options) {
+	if (options.github) {
+		return normaliseGithub(readJson(options.github, 'github fixture'));
+	}
+	if (options.offline) return { available: false, reason: '--offline', issues: [], claims: [] };
+	try {
+		const issues = JSON.parse(
+			run(
+				'gh',
+				['issue', 'list', '--state', 'open', '--limit', '200', '--json', 'number,title,labels,assignees'],
+				options.repoRoot
+			)
+		);
+		const pulls = JSON.parse(
+			run(
+				'gh',
+				['pr', 'list', '--state', 'open', '--limit', '200', '--json', 'number,title,isDraft,assignees'],
+				options.repoRoot
+			)
+		);
+		return normaliseGithub({ issues, pulls });
+	} catch (error) {
+		return {
+			available: false,
+			reason: error?.message?.split('\n')[0] ?? 'gh unavailable',
+			issues: [],
+			claims: []
+		};
+	}
+}
+
+/**
+ * Paths main history touched since each review's implementation, or `null` when
+ * that history cannot be established.
+ *
+ * This uses `git log --name-only impl..mainHead` rather than an endpoint diff:
+ * a surface change that was later reverted still expired the review, and local
+ * branch work outside main must not expire it. Ancestry is verified first; a
+ * review commit that is not part of main's history is treated as stale.
+ */
+export function readChangedPaths(capabilities, { repoRoot, mainHead, changedPathsPath = null }) {
+	if (changedPathsPath) {
+		return new Map(Object.entries(readJson(changedPathsPath, 'changed-paths file')));
+	}
+	const map = new Map();
+	for (const entry of capabilities) {
+		const review = entry.review;
+		if (!review || typeof review.implementation !== 'string') continue;
+		if (!mainHead) {
+			map.set(entry.id, null);
+			continue;
+		}
+		try {
+			run('git', ['merge-base', '--is-ancestor', review.implementation, mainHead], repoRoot);
+		} catch {
+			map.set(entry.id, null);
+			continue;
+		}
+		try {
+			const output = run(
+				'git',
+				['log', '--format=', '--name-only', `${review.implementation}..${mainHead}`],
+				repoRoot
+			);
+			const paths = [...new Set(output.split('\n').map((line) => line.trim()).filter(Boolean))].sort();
+			map.set(entry.id, paths);
+		} catch {
+			map.set(entry.id, null);
+		}
+	}
+	return map;
+}
+
+function formatAge(generatedAt, now) {
+	if (!generatedAt) return 'unknown age';
+	const then = Date.parse(generatedAt);
+	if (Number.isNaN(then)) return 'unknown age';
+	const minutes = Math.max(0, Math.round((now.getTime() - then) / 60000));
+	if (minutes < 1) return 'just now';
+	if (minutes < 60) return `${minutes}m old`;
+	const hours = Math.round(minutes / 60);
+	if (hours < 48) return `${hours}h old`;
+	return `${Math.round(hours / 24)}d old`;
+}
+
+/**
+ * The owner-editable priority and hold file, if present. Absence is not an error.
+ *
+ * A hold may wrap over more than one line; keep the whole short intent, including
+ * the question/end condition, rather than returning only the first non-heading line.
+ */
+function readFocus(repoRoot) {
+	try {
+		const text = readFileSync(join(repoRoot, 'focus.md'), 'utf8');
+		const fields = { priority: null, hold: null };
+		let current = null;
+		for (const raw of text.split('\n')) {
+			const line = raw.trim();
+			if (line.length === 0 || line.startsWith('#') || line.startsWith('---')) {
+				current = null;
+				continue;
+			}
+			const labelled = /^\*\*(Current priority|Hold):\*\*\s*(.*)$/i.exec(line);
+			if (labelled) {
+				current = labelled[1].toLowerCase() === 'current priority' ? 'priority' : 'hold';
+				fields[current] = labelled[2].trim();
+				continue;
+			}
+			if (current === null || line.startsWith('**')) {
+				current = null;
+				continue;
+			}
+			fields[current] = `${fields[current]} ${line}`.trim();
+		}
+		return fields.priority || fields.hold ? fields : null;
+	} catch {
+		return null;
+	}
+}
+
+function printReport(report, now) {
+	const tested = report.testedCommit ? report.testedCommit.slice(0, 12) : '(none)';
+	const head = report.mainHead ? report.mainHead.slice(0, 12) : '(unknown)';
+	const lines = [];
+	lines.push('harness status — PR #259');
+	lines.push(
+		`  tested   ${tested}  ${formatAge(report.generatedAt, now)}${report.generatedAt ? ` (${report.generatedAt})` : ''}`
+	);
+	lines.push(`  main     ${head}`);
+	const source = report.evidence?.source ?? 'unknown';
+	lines.push(`  source   ${source}${report.evidence?.current?.runId ? ` run ${report.evidence.current.runId}` : ''}`);
+	if (report.evidence?.definitions?.current?.source) {
+		lines.push(`  definitions ${report.evidence.definitions.current.source}`);
+	}
+	if (report.evidence?.reason) lines.push(`  evidence ${report.evidence.reason}`);
+	if (report.evidence?.comparison?.available === false && report.evidence.comparison.reason) {
+		lines.push(`  compare  unavailable: ${report.evidence.comparison.reason}`);
+	}
+	lines.push(`  complete ${report.complete ? 'yes' : 'no'}`);
+	lines.push(
+		`  suites   ${
+			report.suites.length === 0
+				? '(none recorded)'
+				: report.suites.map((suite) => `${suite.name}: ${suite.status}`).join(', ')
+		}`
+	);
+	if (!report.complete) {
+		const missing = REQUIRED_SUITES.filter(
+			(name) => !report.suites.some((suite) => suite.name === name && suite.status === 'complete')
+		);
+		lines.push(
+			`  unknown  no current complete run; ${missing.length > 0 ? `missing: ${missing.join(', ')}` : 'run is not for the current main head'}`
+		);
+	}
+	lines.push(
+		`  live     flags+claims: ${
+			report.live.flags && report.live.claims ? 'gh' : 'unavailable (status is limited, not clean)'
+		}`
+	);
+	lines.push(`  gate     ${report.gate.failures.length} failing check(s)`);
+	if (report.duplicateClaims.length > 0) {
+		lines.push(
+			`  duplicate claims: ${report.duplicateClaims
+				.map((entry) => `${entry.capabilityId} (#${entry.numbers.join(', #')})`)
+				.join('; ')}`
+		);
+	}
+	lines.push('');
+	lines.push(
+		'capability'.padEnd(36) +
+			'maturity'.padEnd(10) +
+			'health'.padEnd(10) +
+			'checks'.padEnd(14) +
+			'flags'.padEnd(10) +
+			'claims'
+	);
+	for (const entry of report.capabilities) {
+		const checks = `c ${entry.checks.core.passing}/${entry.checks.core.total} e ${entry.checks.edge.passing}/${entry.checks.edge.total}`;
+		const flags = entry.flags.length > 0 ? entry.flags.map((n) => `#${n}`).join(',') : '-';
+		const claims = entry.claims.length > 0 ? entry.claims.map((n) => `#${n}`).join(',') : '-';
+		lines.push(
+			entry.id.padEnd(36) +
+				`${entry.maturity}${entry.regressed ? '!' : ''}`.padEnd(10) +
+				entry.health.padEnd(10) +
+				checks.padEnd(14) +
+				flags.padEnd(10) +
+				claims
+		);
+		for (const check of entry.failingChecks) {
+			lines.push(`  failing: ${check.level} ${check.name} (${check.file}) [${check.status}]`);
+		}
+	}
+	for (const failure of report.gate.failures) {
+		lines.push(`  gate: ${failure.name} — ${failure.reason}`);
+	}
+	lines.push('');
+	lines.push('! = regressed since the previous complete report');
+	return lines.join('\n');
+}
+
+function main() {
+	const options = parseArgs(process.argv.slice(2));
+	if (options.help) {
+		process.stdout.write(
+			'Usage: node tools/harness/status.mjs [--json] [--offline] [--report <path>] [--ledger <path>] [--main-ref <ref>] [--main-head <sha>] [--repo-root <path>] [--changed-paths <json>] [--github <json>] [--previous <json>]\n' +
+			'  default: discover a successful main-head Merge gate run with gh; --offline uses .harness/report.json\n'
+		);
+		return 0;
+	}
+
+	const ledgerPath = options.ledger ?? join(options.repoRoot, 'capabilities.json');
+	const onlineDiscovery = options.report === null && !options.offline && options.github === null;
+
+	let localLedger = null;
+	if (!onlineDiscovery || options.ledger !== null) {
+		try {
+			localLedger = readJson(ledgerPath, 'capabilities ledger');
+		} catch (error) {
+			process.stderr.write(`status: ${error.message}\n`);
+			return 1;
+		}
+		const ledgerProblems = validateLedger(localLedger);
+		if (ledgerProblems.length > 0) {
+			process.stderr.write(`status: invalid capability ledger (${ledgerPath})\n`);
+			for (const problem of ledgerProblems) process.stderr.write(`  - ${problem}\n`);
+			return 1;
+		}
+	}
+
+	const mainInfo = mainInfoFor(options);
+	const mainHead = mainInfo.commit;
+	const github = readGithub(options);
+	let discovery = { current: null, previous: null, reason: null };
+	let reportRun = null;
+	let reportSource = 'explicit';
+	let reportReason = null;
+	if (options.report !== null) {
+		try {
+			reportRun = readJson(options.report, 'harness report');
+		} catch (error) {
+			// A missing report is honest absence, not a failure: everything is unknown.
+			if (error?.code !== 'ENOENT') {
+				process.stderr.write(`status: ${error.message}\n`);
+				return 1;
+			}
+			reportReason = `no report at ${options.report}`;
+		}
+	} else if (onlineDiscovery) {
+		// A fresh checkout has no local report. Discover only a successful push
+		// run whose report commit is the exact main head; a PR synthetic merge is
+		// never eligible. If the remote head cannot be read, do not fall back to
+		// a cached local ref or a local report: freshness is unknown.
+		reportSource = 'github-main';
+		if (mainHead === null) {
+			reportReason = mainInfo.reason ?? 'main head is unknown';
+		} else {
+			if (mainInfo.source === 'remote-main') ensureCommit(options.repoRoot, mainHead);
+			discovery = discoverMainEvidence({ repoRoot: options.repoRoot, mainHead });
+			reportRun = discovery.current?.run ?? null;
+			reportReason = discovery.reason;
+		}
+	} else {
+		reportSource = options.offline ? 'local-offline' : 'local';
+		const localPath = join(options.repoRoot, '.harness/report.json');
+		try {
+			reportRun = readJson(localPath, 'harness report');
+		} catch (error) {
+			if (error?.code !== 'ENOENT') {
+				process.stderr.write(`status: ${error.message}\n`);
+				return 1;
+			}
+			reportReason = `no local report at ${localPath}`;
+		}
+	}
+	if (reportRun !== null && reportSource !== 'github-main') {
+		const evidenceProblems = validateRun(reportRun);
+		if (evidenceProblems.length > 0) {
+			process.stderr.write(`status: unusable harness report\n`);
+			for (const problem of evidenceProblems) process.stderr.write(`  - ${problem}\n`);
+			return 1;
+		}
+	}
+
+	let currentLedger = localLedger;
+	let currentLedgerSource = options.ledger !== null ? 'explicit' : 'local';
+	if (reportSource === 'github-main' && options.ledger === null) {
+		const artifactLedger = ledgerFromRun(reportRun);
+		if (artifactLedger !== null) {
+			currentLedger = artifactLedger;
+			currentLedgerSource = 'artifact';
+		} else {
+			const committedLedger = ledgerAtCommit(options.repoRoot, mainHead);
+			if (committedLedger !== null) {
+				currentLedger = committedLedger;
+				currentLedgerSource = 'commit';
+			} else {
+				// The artifact/commit carry the tested definitions. Only when both
+				// are unavailable do we fall back to the checkout, and say so.
+				if (localLedger === null) {
+					try {
+						const fallback = readJson(ledgerPath, 'capabilities ledger');
+						if (validateLedger(fallback).length === 0) localLedger = fallback;
+					} catch {
+						// Leave definitions unavailable rather than inventing them.
+					}
+				}
+				currentLedger = localLedger ?? { schemaVersion: 1, capabilities: [] };
+				currentLedgerSource = localLedger === null ? 'unavailable' : 'local-fallback';
+			}
+		}
+	}
+	if (currentLedger === null) currentLedger = { schemaVersion: 1, capabilities: [] };
+
+	let previous = null;
+	let previousEvidence = null;
+	let comparisonReason = null;
+	if (options.previous) {
+		previous = readJson(options.previous, 'previous report');
+		previousEvidence = {
+			source: 'explicit',
+			commit: previous?.testedCommit ?? null,
+			ledger: null,
+			issues: null
+		};
+		if (previous?.complete !== true) comparisonReason = 'explicit previous report is incomplete';
+	} else if (discovery.previous?.run) {
+		const previousRun = discovery.previous.run;
+		const previousArtifactLedger = ledgerFromRun(previousRun);
+		const previousLedger =
+			previousArtifactLedger ?? ledgerAtCommit(options.repoRoot, previousRun.commit);
+		const previousIssues = issuesFromRun(previousRun);
+		if (previousLedger === null) {
+			comparisonReason = 'previous artifact has no captured ledger definitions';
+		} else if (previousIssues === null) {
+			comparisonReason = 'previous artifact has no captured issue evidence';
+		} else {
+			const previousChangedPaths = readChangedPaths(previousLedger.capabilities, {
+				repoRoot: options.repoRoot,
+				mainHead: previousRun.commit
+			});
+			// Historical maturity/health comes from the definitions and issue
+			// snapshot captured at that run, never today's ledger/live bugs.
+			previous = buildReport({
+				ledger: previousLedger,
+				run: previousRun,
+				mainHead: previousRun.commit,
+				issues: previousIssues,
+				claims: [],
+				previous: null,
+				changedPaths: previousChangedPaths,
+				readSource: sourceReaderFor(options.repoRoot, previousRun.commit),
+				live: { flags: false, claims: false }
+			});
+			previousEvidence = {
+				source: 'artifact',
+				commit: previousRun.commit,
+				ledger: previousArtifactLedger === null ? 'commit' : 'artifact',
+				issues: 'captured'
+			};
+			if (previous.complete !== true) {
+				comparisonReason = 'previous report did not certify the tested commit';
+			}
+		}
+	} else {
+		comparisonReason =
+			reportSource === 'github-main'
+				? 'no complete ancestor main report'
+				: 'no previous complete report';
+	}
+
+	const changedPaths = readChangedPaths(currentLedger.capabilities, {
+		repoRoot: options.repoRoot,
+		mainHead,
+		changedPathsPath: options.changedPaths
+	});
+	const report = buildReport({
+		ledger: currentLedger,
+		run: reportRun,
+		mainHead,
+		issues: github.issues,
+		claims: github.claims,
+		previous,
+		changedPaths,
+		readSource: sourceReaderFor(options.repoRoot, reportRun?.commit ?? null),
+		live: { flags: github.available, claims: github.available }
+	});
+	report.evidence = {
+		source: reportSource,
+		reason: reportReason,
+		main: { source: mainInfo.source, commit: mainHead, reason: mainInfo.reason },
+		definitions: {
+			current: {
+				source: currentLedgerSource,
+				commit:
+					currentLedgerSource === 'artifact' || currentLedgerSource === 'commit'
+						? mainHead
+						: null
+			},
+			previous: previousEvidence
+		},
+		comparison: {
+			available: previous !== null && previous.complete === true,
+			reason: comparisonReason
+		},
+		current: reportRun === null ? null : {
+			runId: discovery.current?.runId ?? null,
+			url: discovery.current?.url ?? null,
+			commit: reportRun.commit,
+			artifactId: discovery.current?.artifactId ?? null
+		},
+		previous:
+			previous === null || discovery.previous === null
+				? null
+				: {
+						runId: discovery.previous.runId,
+						url: discovery.previous.url,
+						commit: discovery.previous.run.commit,
+						artifactId: discovery.previous.artifactId
+					}
+	};
+
+	const focus = readFocus(options.repoRoot);
+	report.focus = focus;
+	if (options.json) {
+		process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+	} else {
+		process.stdout.write(`${printReport(report, new Date())}\n`);
+		if (focus?.priority) process.stdout.write(`focus      ${focus.priority}\n`);
+		if (focus?.hold) process.stdout.write(`hold       ${focus.hold}\n`);
+		if (!github.available) {
+			process.stdout.write(`\nflags/claims unavailable: ${github.reason}\n`);
+		}
+	}
+	return 0;
+}
+
+process.exitCode = main();

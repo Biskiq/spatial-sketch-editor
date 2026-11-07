@@ -24,13 +24,13 @@ not blanket acceptance of each prototype feature or its implementation. The arch
 round's historical synthesis, exact next-batch scopes and owner decision packet. This record keeps
 the single capability disposition ledger and RR question index; neither is a live work register.
 
-**Commission as of 2026-10-22 (historical; current sequencing: [coordination](../../docs/roadmap/cross-track-execution.md#next-parallel-batch)):** follow the [five-step scope](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#scope-and-sequence)
+**Commission as of 2026-10-22 (historical; current sequencing: [coordination](../../docs/workflow.md)):** follow the [five-step scope](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#scope-and-sequence)
 in PR #173: revise scope/briefs → independent research → product/design/architecture and contract
 reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
-The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
+The [production implementation hold](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#production-implementation-hold)
 includes previously authorized work. Step 2's research results (2026-10-22) are in the three
 packets indexed in §5; they amend no contract. Step 3's core destination is owner-ratified 2026-10-22
-([record](../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)); step 4 now updates the [canonical batch/DAG](../../docs/archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
+([record](../../docs/reference/north-star.md)); step 4 now updates the [canonical batch/DAG](../../docs/archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#convergence-batch-and-next-planning-wave)
 and affected roadmaps. The owning references carry the ratified core destination, with named consumer choices
 still deferred in the ratification manifest. Reconciliation stays in this PR. Merging alone does
 not release implementation.
@@ -79,8 +79,8 @@ not amend a ratified format or accept a future prototype.
 | E · Expressive architecture | Ambitious spatial sketching, verticality, Section, Reveal, Unroll, roofs and interior ceilings | P3 explores meaningful gestures beyond flat caps; production geometry remains a separate decision |
 
 Normative architectural direction comes from the
-[North Star ratification](../../docs/reference/decisions/northstar-ratification-2026-09-27.md),
-[World | Experience amendment](../../docs/reference/decisions/world-experience-reconciliation-2026-09-29.md),
+[North Star ratification](../../docs/reference/north-star.md),
+[World | Experience amendment](../../docs/reference/north-star.md),
 [North Star](../../docs/reference/north-star.md),
 [F contract and ratified amendments](../../docs/reference/composition-execution.md) and
 [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md).
@@ -209,8 +209,8 @@ additional acceptance rounds imposed on every prototype.
 
 Use [F extension points](../../docs/reference/composition-execution.md#extension-points-and-version-negotiation),
 [PLATE conformance](../../docs/reference/design-system/editor-shell-and-visual-system.md#conformance-test-for-future-design),
-the [gate register](../../docs/roadmap/README.md#gate-register) and
-[bounded replanning](../../docs/operations/README.md#bounded-replanning). No speculative amendment
+the [gate register](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#gate-register) and
+[bounded replanning](../../docs/workflow.md). No speculative amendment
 catalogue is required before a first consumer exposes a real gap.
 
 The owning contract/design amendments and the canonical roadmap/DAG reconciliation are deliverables

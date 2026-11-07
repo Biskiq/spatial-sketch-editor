@@ -35,13 +35,18 @@ function presentation(id: string, label: string, overrides: Partial<Presentation
 }
 
 function guide(id: string, label: string, overrides: Partial<Guide> = {}): Guide {
-	return { id, label, stopCount: 1, open: false, selected: false, opening: false, ...overrides };
+	return { id, label, stopCount: 1, open: false, opening: false, ...overrides };
+}
+
+function experienceRow(id: string, label: string, stopCount = 0) {
+	return { id, label, stopCount, presentationCount: 0 };
 }
 
 function groups(overrides: Partial<ExperienceIndexGroups> = {}): ExperienceIndexGroups {
 	return {
 		pending: false,
-		experiences: [{ id: 'experience-1', label: 'Experience 1' }],
+		experiences: [experienceRow('experience-1', 'Experience 1')],
+		draftLabel: 'Untitled experience',
 		current: { id: 'experience-1', label: 'Experience 1' },
 		guides: [guide('guide-1', 'Tour', { stopCount: 2 })],
 		presentations: [
@@ -56,6 +61,9 @@ function groups(overrides: Partial<ExperienceIndexGroups> = {}): ExperienceIndex
 		onCreateExperience: vi.fn(),
 		onRenameExperience: vi.fn(async () => ({ kind: 'accepted' as const })),
 		onOpenGuide: vi.fn(),
+		onRenameGuide: vi.fn(async () => ({ kind: 'accepted' as const })),
+		onRemoveGuide: vi.fn(),
+		onAddStopFromView: vi.fn(),
 		onSelectPresentation: vi.fn(),
 		onToggleExpand: vi.fn(),
 		onSelectView: vi.fn(),
@@ -105,7 +113,7 @@ describe('R217.S25 — the Index groups in the Experience lens', () => {
 		const target = mountIndex(groups());
 		expect(target.querySelector('input[aria-label="Filter places and things"]')).toBeNull();
 		expect(target.querySelector('.facets')).toBeNull();
-		expect(target.querySelector('[aria-current="location"]')?.textContent).toBe('Experience 1');
+		expect(target.querySelector('[aria-current="location"] .exp-name')?.textContent).toBe('Experience 1');
 		expect(target.querySelector('#index-presentations')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Presentations 2');
 		expect(target.querySelector('#index-guides')?.textContent).toContain('Guides');
 	});
@@ -135,43 +143,106 @@ describe('R217.S25 — the Index groups in the Experience lens', () => {
 		expect(dataTransfer.effectAllowed).toBe('copy');
 	});
 
-	it('offers New Experience in the crumb menu when the source has no Experience, and no Guide group', () => {
-		const onCreateExperience = vi.fn();
-		const target = mountIndex(groups({ experiences: [], current: null, presentations: [], guides: [], onCreateExperience }));
-		expect(target.textContent).toContain('No Experience yet');
-		expect(target.textContent).toContain('Create an Experience from the menu above to start presenting.');
-		const menu = target.querySelector('.crumbs details.siblings')!;
-		const create = buttonWithText(menu, 'New Experience');
-		expect(create).toBeDefined();
-		create!.click();
-		expect(onCreateExperience).toHaveBeenCalledOnce();
+	it('renames and removes a Guide from its row ⋯ menu', async () => {
+		const onRenameGuide = vi.fn(async () => ({ kind: 'accepted' as const }));
+		const onRemoveGuide = vi.fn();
+		const target = mountIndex(groups({ onRenameGuide, onRemoveGuide }));
+
+		flushSync(() => target.querySelector<HTMLButtonElement>('[aria-label="Tour actions"]')!.click());
+		expect(target.querySelector('[role="menu"]')).not.toBeNull();
+		flushSync(() => buttonWithText(target, 'Rename')!.click());
+		const input = target.querySelector<HTMLInputElement>('input[aria-label="Guide name"]')!;
+		expect(input.value).toBe('Tour');
+		flushSync(() => {
+			input.value = 'Evening';
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		});
+		flushSync(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+		await tick();
+		expect(onRenameGuide).toHaveBeenCalledWith('guide-1', 'Evening');
+
+		flushSync(() => target.querySelector<HTMLButtonElement>('[aria-label="Tour actions"]')!.click());
+		flushSync(() => buttonWithText(target, 'Remove Guide')!.click());
+		expect(onRemoveGuide).toHaveBeenCalledWith('guide-1');
+	});
+
+	it('adds a Stop from a View row, entering at that View (G23)', () => {
+		const onAddStopFromView = vi.fn();
+		const target = mountIndex(
+			groups({
+				onAddStopFromView,
+				presentations: [
+					presentation('presentation-1', 'Entry hall', { expanded: true, views: [view('view-3', 'Atrium')] }),
+					presentation('presentation-2', 'Garden')
+				]
+			})
+		);
+		target.querySelector<HTMLButtonElement>('[data-view-add="view-3"]')!.click();
+		expect(onAddStopFromView).toHaveBeenCalledWith('view-3', 'presentation-1');
+	});
+
+	it('shows the ready draft when the source has no Experience, and no Guide group', () => {
+		const target = mountIndex(groups({ experiences: [], current: null, presentations: [], guides: [] }));
+		expect(target.querySelector('[data-experience-draft]')?.textContent).toContain('Untitled experience');
+		expect(target.textContent).toContain('Nothing presented yet. Start from the Stage.');
+		expect(target.querySelector('[aria-label="New Experience"]')).not.toBeNull();
 		expect(target.querySelector('#index-guides')).toBeNull();
 	});
 
-	it('keeps New Experience reachable with a populated Index and retains Experience switching', () => {
-		const onCreateExperience = vi.fn();
+	it('creates an Experience inline from the list +, and Esc cancels', async () => {
+		const onCreateExperience = vi.fn(async () => true);
+		const target = mountIndex(groups({ onCreateExperience }));
+		flushSync(() => target.querySelector<HTMLButtonElement>('[aria-label="New Experience"]')!.click());
+		const input = target.querySelector<HTMLInputElement>('input[aria-label="New Experience name"]')!;
+		expect(input.value).toBe('Experience 2');
+		flushSync(() => {
+			input.value = 'Morning walk';
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		});
+		flushSync(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+		await tick();
+		expect(onCreateExperience).toHaveBeenCalledWith('Morning walk');
+		flushSync(() => target.querySelector<HTMLButtonElement>('[aria-label="New Experience"]')!.click());
+		const again = target.querySelector<HTMLInputElement>('input[aria-label="New Experience name"]')!;
+		flushSync(() => again.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+		expect(target.querySelector('input[aria-label="New Experience name"]')).toBeNull();
+		expect(onCreateExperience).toHaveBeenCalledOnce();
+	});
+
+	it('switches Experience with one click on its row', () => {
 		const onOpenExperience = vi.fn();
 		const target = mountIndex(
 			groups({
-				experiences: [
-					{ id: 'experience-1', label: 'Experience 1' },
-					{ id: 'experience-2', label: 'Experience 2' }
-				],
-				onCreateExperience,
+				experiences: [experienceRow('experience-1', 'Experience 1'), experienceRow('experience-2', 'Experience 2', 4)],
 				onOpenExperience
 			})
 		);
-		const menu = target.querySelector('.crumbs details.siblings')!;
-		expect(menu.querySelector('summary')?.getAttribute('aria-label')).toBe('Switch or create Experience');
-		const create = buttonWithText(menu, 'New Experience');
-		expect(create).toBeDefined();
-		create!.click();
-		expect(onCreateExperience).toHaveBeenCalledOnce();
-
-		const sibling = buttonWithText(menu, 'Experience 2');
-		expect(sibling).toBeDefined();
-		sibling!.click();
+		const row = target.querySelector('[data-experience-row="experience-2"] .exp-open') as HTMLButtonElement;
+		expect(row.textContent).toContain('4 stops');
+		row.click();
 		expect(onOpenExperience).toHaveBeenCalledWith('experience-2');
+	});
+
+	it('folds many Experiences to three rows, and Show all lists every one with a filter', () => {
+		globalThis.localStorage?.removeItem('museum.index.experiences-expanded');
+		const many = Array.from({ length: 14 }, (_, index) => experienceRow(`experience-${index + 1}`, `Experience ${index + 1}`));
+		const target = mountIndex(groups({ experiences: many, current: { id: 'experience-9', label: 'Experience 9' } }));
+		const rows = () => [...target.querySelectorAll('[data-experience-row]')].map((row) => row.getAttribute('data-experience-row'));
+		expect(rows()).toEqual(['experience-9', 'experience-1', 'experience-2']);
+		const toggle = target.querySelector<HTMLButtonElement>('.exp-more-toggle')!;
+		expect(toggle.textContent).toContain('Show all 14');
+		flushSync(() => toggle.click());
+		expect(rows()).toHaveLength(14);
+		expect(target.querySelector('.exp-list')?.classList.contains('scrolls')).toBe(true);
+		const filter = target.querySelector<HTMLInputElement>('input[aria-label="Filter Experiences"]')!;
+		flushSync(() => {
+			filter.value = 'Experience 1';
+			filter.dispatchEvent(new Event('input', { bubbles: true }));
+		});
+		expect(rows()).toEqual(['experience-1', 'experience-9', 'experience-10', 'experience-11', 'experience-12', 'experience-13', 'experience-14']);
+		flushSync(() => target.querySelector<HTMLButtonElement>('.exp-more-toggle')!.click());
+		expect(rows()).toHaveLength(3);
+		globalThis.localStorage?.removeItem('museum.index.experiences-expanded');
 	});
 
 	it('says no Presentation exists yet, and distinguishes a filter that matches nothing', () => {
@@ -334,9 +405,9 @@ describe('R217.S26 — every Guide in the Index, with *opens* on the Opening Gui
 	});
 });
 
-describe('R217.S26 — Rename… opens the Experience crumb inline', () => {
+describe('R217.S26 — Rename opens the current Experience row inline', () => {
 	function startRename(target: HTMLElement): HTMLInputElement {
-		const rename = buttonWithText(target, 'Rename…')!;
+		const rename = target.querySelector<HTMLButtonElement>('[aria-label="Rename Experience 1"]')!;
 		flushSync(() => rename.click());
 		return target.querySelector<HTMLInputElement>('input[aria-label="Experience name"]')!;
 	}

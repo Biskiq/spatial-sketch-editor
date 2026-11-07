@@ -116,6 +116,10 @@ describe('S03 recorded pre-change selection differential', () => {
 			// had hit. Every winner and every other field is unchanged.
 			// R217.S27 updates only generation IDs because Experience 3 changes
 			// the source hashes. All sampled geometry and winners stay pinned.
+			// Experience review 1 updates only generation IDs and the Scene content
+			// revision, because Scene moves to format 5. Winners stay pinned.
+			// The guide-playback plan updates only generation IDs, because
+			// Experience 4 changes the source hashes. Winners stay pinned.
 			expect(actual).toEqual(expected);
 		}
 	});

@@ -1,63 +1,32 @@
-# Archived docs
+# Historical evidence
 
-History, kept for provenance. **Not active implementation authority** — if an
-archived document conflicts with the live tree, the live tree wins.
+This is an opt-in evidence collection, not a product specification, workflow or status store.
+Start with the [documentation router](../README.md); use history only for a concrete evidence question.
+Git and pull-request history retain deleted authorization records, completed plans and prior contracts.
 
-## Live authority
+## Retention purposes
 
-| Doc | Role |
+| Evidence family | Concrete purpose |
 | --- | --- |
-| [`../README.md`](../README.md) | Documentation router (navigation, rules, meta) |
-| [`../roadmap/README.md`](../roadmap/README.md) | Roadmap status and track register |
-| [`../operations/current.md`](../operations/current.md) | Current work baton |
-| [`../reference/north-star.md`](../reference/north-star.md) | Product direction |
-| [`../reference/architecture.md`](../reference/architecture.md) | Ownership and boundaries |
+| [Core Product Stability owner acceptance](./roadmap/r217-core-editor-stability/r217.s11-integrated-final-gate/acceptance.md) | Owner hands-on acceptance at #271 (`ce4e232c`) and waiver of separate S11 execution; unexecuted checks remain unexecuted. |
+| [R217 evidence](./roadmap/r217-core-editor-stability/) | Actual browser observations, reference specimens, tested revisions, reproduction recipes and disclosed limits. Old execution instructions are historical inputs, never future prerequisites. |
+| [Closed capability evidence](./roadmap/closed-phases/) | Actual tests, fixtures, experimental findings and bounded acceptance observations whose useful failures must not be lost. Old phase registers confer no capability status. |
+| [Prototype evidence](./prototypes/) | Runnable regression donor, accepted design specimens and unique interaction findings. A mock evaluator, data model or history mechanism is never a production contract. |
+| [Technical investigations](./technical/) and [geometry/identity research](./roadmap/p23/foundation-research/) | Counterexamples, mathematical findings, numerical tolerances, independent oracles and implementation evidence. |
+| [Fixed comparison captures](./roadmap/p25-experience/p25-unified-design/) | Byte-preserved comparator JSON where a separate comparison names the baseline. |
 
-## What is here
+Retain source revisions, environment, methods, raw observations, fixtures, expected failures and
+limitations needed to interpret these artifacts. A deterministic generated intermediate need not
+survive merely because it once accompanied a run; a non-reproducible historical observation may.
+Keep assets/tests with an executable. Unsupported or unrun cases never become passes by retention.
 
-PR #115 (WP4) kept the archive deliberately small. It holds:
+## Recovery
 
-- `technical/` — the closed-record evidence WP4 archived rather than deleted,
-  grouped by subject: `p23/`, `p23b/`, `composition/`, `experience/`, `spatial/`,
-  `editor-shell/` and `architecture-cycle/`. These are the closure provenance,
-  format-cutover records, residual research and protected design specimens that
-  the plan required to survive their phase or planning tree (§8.3–§8.5).
-- `roadmap/p23/foundation-research/` — the robust-geometry and room-identity
-  migrations, kept in place as the foundation's own research record.
-- `roadmap/p25-experience/p25-unified-design/` — the two accepted UX comparator
-  JSON captures, kept **byte-identical** because a separate comparison declares
-  them as its baseline.
-- `roadmap/coordination-2026-10/` — the dated October 2026 batch proposals, convergence
-  packages and the pre-consolidation cross-track protocols, archived 2026-10-23 when
-  [`../roadmap/cross-track-execution.md`](../roadmap/cross-track-execution.md) became the
-  single current coordination route. Their relative links were written from `docs/roadmap/`.
+Use `git log --all -- <path>` and `git show <revision>:<path>` to recover a removed file.
+The pre-reset repository is `e90a58224443bdbf44114d7285d55c983b79cc84`; the pre-final-prune
+#259 tree is `5d7d7f3e679f79360c2a5bfb21814f45d4b49d75`. No replacement stubs are required.
+Historical paths quoted inside evidence describe the recorded tree, not today's public routes.
 
-The rest of the baseline archive (shipped phase diaries, handoffs, superseded
-plans, retired strategy snapshots, old shell and design specs) was deleted by
-WP4 with a Git recovery route instead of a copy. Nothing here is a live route,
-and no live document routes a reader through archived material as current
-authority.
-
-## How to recover deleted material
-
-Git holds every deleted baseline file, and no replacement stubs were created.
-
-```text
-BASELINE SHA   e90a58224443bdbf44114d7285d55c983b79cc84   the pre-#115 tree
-git show e90a58224443bdbf44114d7285d55c983b79cc84:<path>  → the file as it was
-
-Archived MOVE   docs/archive/technical/<subject>/<file>   the record itself,
-                                                          with its own layout kept
-```
-
-A document that needed a deleted file's content cites it in the
-`git show <baseline>:<path>` form rather than linking it. Records whose quoted
-paths are no longer openable declare them in an `EVIDENCE-PATHS: start … end`
-region (see [`../README.md`](../README.md) → "Historical paths in a record"),
-which exempts written paths but never a real link or anchor.
-
-## How to read
-
-Prefer the live route in [`../README.md`](../README.md) first. Enter here only
-when the task needs historical rationale, or when bounded current evidence
-cannot resolve a material provenance question.
+References own enduring rules. Approved UX owns its approved target scope; experiments supply
+supporting or challenging evidence, not a competing authority. Archive only material with an
+identifiable retention purpose; prior approval or age alone is insufficient.

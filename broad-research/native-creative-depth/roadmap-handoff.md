@@ -1,5 +1,9 @@
 # Native creative depth: roadmap handoff
 
+**Historical research handoff.** The [T5 umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md)
+now owns the implementation sequence. These briefs and alternatives remain supporting evidence;
+their architecture-cycle/phase prerequisites are retired, and are not instructions to implementers.
+
 **Research date:** 25 October 2026  
 **Status:** A handoff for a future planning agent and the owner. It releases no scope, assigns no phase, ratifies no architecture and admits no dependency.  
 **Package:** [Native creative depth](./README.md)
@@ -107,7 +111,7 @@ flowchart TD
 
 - An arrow means "requires evidence or a decision from". No arrow means no dependency is declared; the graph neither schedules nor authorizes a scope.
 - Proofs can start before any production work. Prototypes need only a commission.
-- Tranche A's Wall drawing remains behind the released S06 performance foundation, under the existing [performance-first halt](../../docs/roadmap/README.md#production-implementation-hold).
+- Tranche A's Wall drawing remains behind the released S06 performance foundation, under the existing [performance-first halt](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#production-implementation-hold).
 
 ## 4. Owner decisions
 
@@ -343,7 +347,7 @@ Each brief is written so that a later planning agent can turn it into a plan onc
 
 ## 7. Reconciliation with current authorities and roadmap
 
-- **Production hold.** Every implementation scope absent from the [release list](../../docs/roadmap/now.md) stays held. This package releases nothing. It is not a release under the [production hold](../../docs/roadmap/README.md#production-implementation-hold).
+- **Production hold.** Every implementation scope absent from the [release list](../../docs/workflow.md) stays held. This package releases nothing. It is not a release under the [production hold](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#production-implementation-hold).
 - **Performance-first halt.** Wall drawing and Openings inherit S06. Tranche A therefore waits for S06 acceptance, and proofs that need drawing use prototype drawing until then.
 - **Observation: curved hosts are unplanned.** The geometry is production, but the creator workflow has gaps:
   - Opening create and delete are planned in layout-core but not wired to the editor.
@@ -358,7 +362,7 @@ Each brief is written so that a later planning agent can turn it into a plan onc
   - The convergence ratification's family-by-family growth, typed refusals and correspondence transport are assumed.
   - The Scene destination's definitions, attachment and opaque part identity are assumed.
   - The North Star's agent surface and non-goals are respected. D1 proposes clarifying wording, not a reversal.
-- **Where results would be registered.** An owner who accepts these proofs as research proposals would record them under the roadmap's [unscheduled proposals](../../docs/roadmap/README.md#unscheduled-proposals-and-maintenance-evidence). Current coordination stays in [cross-track execution](../../docs/roadmap/cross-track-execution.md). This package edits neither.
+- **Where results would be registered.** An owner who accepts these proofs as research proposals would record them under the roadmap's [unscheduled proposals](../../docs/archive/roadmap/roadmap-register-2026-11-06.md#unscheduled-proposals-and-maintenance-evidence). Current coordination stays in [cross-track execution](../../docs/workflow.md). This package edits neither.
 
 ## 8. How a planning agent should use this package
 

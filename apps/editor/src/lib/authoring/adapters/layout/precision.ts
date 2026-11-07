@@ -29,14 +29,11 @@
  */
 
 import {
-	activeLayoutCompileSession,
 	materializeLayoutSourceForCapture,
 	createLayoutCompileSession,
 	deriveLayoutWallRole,
-	ensureLayoutWorldIndex,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
-	lookupIncidentWallsOrdered,
 	lookupIndexedJunction,
 	lookupIndexedObject,
 	lookupIndexedOpening,
@@ -61,8 +58,7 @@ import {
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
-	type LayoutVec2,
-	type PrecisionPlan
+	type LayoutVec2
 } from '@portfolio/layout-core';
 import type {
 	AuthoringIntent,
@@ -216,10 +212,9 @@ function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope
 /**
  * One process-local compile store for this adapter's planners.
  *
- * Every layout planner compiles the candidate it is about to accept. A precision
- * drag runs one plan per pointer sample, and each sample moves one Junction, one
- * Wall thickness or one Opening — so the session lets a sample reuse every entity
- * the previous sample did not move (T1.P02.S06 D.3 / H1).
+ * Every layout planner compiles the candidate it is about to accept. Live scalar
+ * and Opening edits also plan from the accepted baseline. The session reuses
+ * entities whose authored inputs did not change (T1.P02.S06 D.3 / H1).
  *
  * Sharing it cannot change a plan: a reused entity is one whose authored inputs
  * are unchanged, which is the retention proof the canonical compiler checks per
@@ -235,15 +230,6 @@ function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope
  * owns one for its own lifetime, released with the host's closure.
  */
 const plannerCompileSession = createLayoutCompileSession();
-
-/**
- * Warm the shared planner index and incremental compile session on `document`
- * (used at gesture press so even the first drag frame avoids cold index setup).
- */
-export function warmLayoutPlannerBaseline(document: LayoutDocumentWallFirst): void {
-	ensureLayoutWorldIndex(document);
-	plannerCompileSession.seedFromCompiled(document);
-}
 
 /**
  * One Layout planner over the adapter's shared compile session.
@@ -842,133 +828,6 @@ export type WallNeighbourPreview = {
 	/** The point the edited junction moved this neighbour to. */
 	readonly point: LayoutVec2;
 };
-
-export type WallManipulationPlan =
-	| {
-			readonly kind: 'planned';
-			readonly wall: WallFrame;
-			/**
-			 * The planner's exact candidate document. Preview compiles this and
-			 * release submits the same request, so both describe one solve.
-			 */
-			readonly document: LayoutDocumentWallFirst;
-			/** Neighbours the candidate reshaped, never a second solve. */
-			readonly neighbours: readonly WallNeighbourPreview[];
-	  }
-	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
-
-/** The authored point of one Junction, or `null` when the document has none. */
-function junctionPoint(document: LayoutDocumentWallFirst, junctionId: string): LayoutVec2 | null {
-	const junction = lookupIndexedJunction(document, junctionId);
-	return junction === undefined ? null : [junction.point[0], junction.point[1]];
-}
-
-/**
- * The junction points a request moves, named from the baseline's own identity.
- *
- * A length/angle edit moves the endpoint opposite the fixed one; a rigid
- * translation moves **both**. The planner applies exactly that set, so this
- * names the reach without re-deriving connectivity or a second motion.
- */
-function movedJunctionIds(
-	baseline: LayoutDocumentWallFirst,
-	wallId: string,
-	request: WallManipulationRequest,
-	fixed: FixedWallEndpoint
-): readonly string[] {
-	const wall = lookupIndexedWall(baseline, wallId);
-	if (wall === undefined) return [];
-	if (request.kind === 'junction') return [request.junctionId];
-	if (request.kind === 'move') return [wall.startJunctionId, wall.endJunctionId];
-	return [fixed === 'start' ? wall.endJunctionId : wall.startJunctionId];
-}
-
-/**
- * The neighbours a canonical candidate actually reshaped.
- *
- * Every Wall incident to a moved junction is re-derived by the retained
- * planner. This read reports those Walls and the candidate point the junction
- * moved them to, so the overlay can show the reach instead of claiming the
- * planner's validation is a preview. It reads Junction points rather than
- * Wall frames, so a curved neighbour — which has no straight frame — is still
- * named at the point the edit moved it to.
- */
-function wallNeighbourPreviews(
-	baseline: LayoutDocumentWallFirst,
-	candidate: LayoutDocumentWallFirst,
-	wallId: string,
-	moved: readonly string[]
-): readonly WallNeighbourPreview[] {
-	const candidateWalls = lookupIncidentWallsOrdered(candidate, moved) ?? candidate.walls;
-	const previews: WallNeighbourPreview[] = [];
-	for (const neighbour of candidateWalls) {
-		if (neighbour.id === wallId) continue;
-		for (const junctionId of moved) {
-			if (neighbour.startJunctionId !== junctionId && neighbour.endJunctionId !== junctionId) continue;
-			const after = junctionPoint(candidate, junctionId);
-			const before = junctionPoint(baseline, junctionId);
-			if (after === null || before === null) continue;
-			if (Math.hypot(after[0] - before[0], after[1] - before[1]) <= 1e-12) continue;
-			previews.push({ wallId: neighbour.id, point: after });
-			break;
-		}
-	}
-	return previews;
-}
-
-/**
- * The one preview/commit solve for a Wall gesture or typed value.
- *
- * It calls the retained planner on the immutable baseline and returns the
- * candidate's own frame. Preview and commit therefore cannot disagree: both are
- * the planner's output, never a second interpolation of the pointer.
- */
-export function planWallManipulation(
-	baseline: LayoutDocumentWallFirst,
-	wallId: string,
-	request: WallManipulationRequest,
-	fixed: FixedWallEndpoint
-): WallManipulationPlan {
-	const run = (): WallManipulationPlan => {
-		let plan: PrecisionPlan;
-		if (request.kind === 'length') {
-			plan = planExactWallLength(baseline, { wallId, length: request.length, fixedEndpoint: fixed });
-		} else if (request.kind === 'angle') {
-			plan = planExactWallAngle(baseline, { wallId, angle: request.angleRadians, fixedEndpoint: fixed });
-		} else if (request.kind === 'junction') {
-			plan = planExactJunctionMove(baseline, request.junctionId, request.point);
-		} else {
-			plan = planRigidWallMove(baseline, wallId, request.delta);
-		}
-		if (plan.kind === 'rejected') {
-			return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
-		}
-		const wall = wallFrame(plan.document, wallId);
-		if (wall === null) {
-			return {
-				kind: 'refused',
-				code: 'unsupported-geometry',
-				message: 'The candidate Wall has no straight frame to preview.'
-			};
-		}
-		return {
-			kind: 'planned',
-			wall,
-			document: plan.document,
-			neighbours: wallNeighbourPreviews(
-				baseline,
-				plan.document,
-				wallId,
-				movedJunctionIds(baseline, wallId, request, fixed)
-			)
-		};
-	};
-	if (activeLayoutCompileSession()) return run();
-	return withLayoutCompileSession(plannerCompileSession, () => {
-		plannerCompileSession.seedFromCompiled(baseline);
-		return run();
-	});
-}
 
 /**
  * One F.4 intent for a Wall manipulation, with captured identity and revision.

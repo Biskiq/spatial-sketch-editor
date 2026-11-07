@@ -88,7 +88,7 @@
 		border-radius: 8px;
 		background: var(--shell-forest);
 		color: var(--shell-ink-light);
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		box-shadow: var(--shell-shadow);
 	}
 	.unavailable-reason[hidden] {

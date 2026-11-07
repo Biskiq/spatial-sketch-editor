@@ -1,9 +1,38 @@
+import { Box3, Ray, Vector3 } from 'three';
+import { compiledOpeningFaceLoops } from './opening-faces';
 import { projectWorld, pointerRay, intersectWorkingPlane, type Vec3, type ViewportEvaluation, type ViewportEvaluationToken, type PointerRay } from '@portfolio/camera-core';
 import { indexedCompiledWall, eligiblePlanFragments, pointInPolygon, type CompiledLayoutGeometry, type LayoutVec2, type PlanEvaluation, type PlanFragment, type PlanFragmentGeometry } from '@portfolio/layout-core';
 import { createPlanPickIndex, type PlanPickBox, type PlanPickIndex } from './plan-pick-index';
 import type { StageAdapterContext, StageDomainPick, StagePickQuery } from '../stage/stage-facade';
 import { fragmentLayer } from '../stage/paper-plan';
 import type { PlanEvaluationResult } from '@portfolio/layout-core';
+
+/** The aperture faces and the reveals between them are pickable, but never drawn. */
+function openingRayHit(ray: Ray, faces: readonly Vector3[][]): Vector3 | null {
+	const [front, back] = faces;
+	if (front === undefined || back === undefined) return null;
+	const point = new Vector3();
+	let nearest: Vector3 | null = null;
+	let depth = Infinity;
+	function test(a: Vector3, b: Vector3, c: Vector3): void {
+		if (ray.intersectTriangle(a, b, c, false, point) === null) return;
+		const distance = ray.origin.distanceToSquared(point);
+		if (distance >= depth) return;
+		depth = distance;
+		nearest = point.clone();
+	}
+	for (const face of faces) {
+		for (let i = 1; i + 1 < face.length; i++) test(face[0]!, face[i]!, face[i + 1]!);
+	}
+	for (let i = 0; i < front.length; i++) {
+		const j = (i + 1) % front.length;
+		test(front[i]!, front[j]!, back[j]!);
+		test(front[i]!, back[j]!, back[i]!);
+	}
+	return nearest;
+}
+
+type LayoutPickContext = Pick<StageAdapterContext, 'snapshot' | 'evaluation' | 'pickScene'>;
 
 const PLAN_HIT_TOLERANCE_CSS_PX = 8;
 /** The closest point on one CSS segment to a CSS point, as a `[distance, amount]` pair. */
@@ -337,7 +366,7 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 	};
 	const pickIndexes = new WeakMap<PlanEvaluation, RetainedPickIndex>();
 
-	function pickIndexFor(plan: PlanEvaluation, context: StageAdapterContext): RetainedPickIndex {
+	function pickIndexFor(plan: PlanEvaluation, context: LayoutPickContext): RetainedPickIndex {
 		const existing = pickIndexes.get(plan);
 		if (existing !== undefined) return existing;
 		const geometry = context.snapshot.domain.geometry;
@@ -354,6 +383,29 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 		const retained: RetainedPickIndex = { index: createPlanPickIndex(boxes), fragments };
 		pickIndexes.set(plan, retained);
 		return retained;
+	}
+
+	const openingTargets = new WeakMap<RetainedPickIndex, readonly {
+		fragment: PlanFragment;
+		faces: Vector3[][];
+		bounds: Box3;
+	}[]>();
+
+	function openingTargetsFor(retained: RetainedPickIndex, geometry: CompiledLayoutGeometry) {
+		const cached = openingTargets.get(retained);
+		if (cached !== undefined) return cached;
+		const fragments = new Map(retained.fragments.filter((fragment) => fragment.ref.sourceKind === 'opening')
+			.map((fragment) => [fragment.ref.sourceId, fragment]));
+		const elevations = new Map(geometry.floors.map((floor) => [floor.floorId, floor.elevation]));
+		const targets = geometry.walls.flatMap((wall) => wall.openings.flatMap((opening) => {
+			const fragment = fragments.get(opening.openingId);
+			if (fragment === undefined) return [];
+			const faces = compiledOpeningFaceLoops(wall, opening, elevations.get(wall.floorId) ?? 0)
+				.map((face) => face.map((point) => new Vector3(...point)));
+			return [{ fragment, faces, bounds: new Box3().setFromPoints(faces.flat()) }];
+		}));
+		openingTargets.set(retained, targets);
+		return targets;
 	}
 
 	/**
@@ -445,7 +497,7 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 				? 'A plinth cannot be erased; Layout has no delete for its objects.'
 				: null;
 
-	return (query: StagePickQuery, context: StageAdapterContext): StageDomainPick | null => {
+	return (query: StagePickQuery, context: LayoutPickContext): StageDomainPick | null => {
 		const evaluation = context.evaluation;
 		const css: [number, number] = [query.css[0] + evaluation.rect.left, query.css[1] + evaluation.rect.top];
 		if (!css.every(Number.isFinite)) return null;
@@ -458,20 +510,45 @@ export function createPlanPickProvider(planFor: () => PlanEvaluationResult) {
 		};
 		const retained = pickIndexFor(result.plan, context);
 		const erasing = query.purpose === 'tool' && query.tool?.kind === 'erase';
+		const pickOpeningIn3D = evaluation.renderedReading !== 'plan' &&
+			(query.purpose !== 'tool' || erasing) && (query.tool === null || erasing);
+		if (pickOpeningIn3D) {
+			const rayResult = pointerRay(css, evaluation, token);
+			if (rayResult.kind === 'ray') {
+				const { origin, direction } = rayResult.ray;
+				const ray = new Ray(new Vector3(...origin), new Vector3(...direction));
+				let nearest: StageDomainPick | null = null;
+				for (const { fragment, faces, bounds } of openingTargetsFor(retained, context.snapshot.domain.geometry)) {
+					if (!ray.intersectsBox(bounds)) continue;
+					const point = openingRayHit(ray, faces);
+					if (point === null) continue;
+					const depthMeters = ray.origin.distanceTo(point);
+					if (depthMeters >= (nearest?.depthMeters ?? Infinity)) continue;
+					nearest = {
+						hit: { sourceId: fragment.ref.sourceId, sourceKind: 'opening',
+							generationId: fragment.ref.generationId, stream: fragment.ref.stream,
+							subRef: fragment.ref.subRef, worldPoint: point.toArray() },
+						depthMeters, cssDistance: 0, planLayer: fragmentLayer(fragment), refusal: null
+					};
+				}
+				if (nearest !== null) {
+					const drawn = context.pickScene(rayResult.ray);
+					if (drawn === null || nearest.depthMeters! <= drawn.distanceMeters + 1e-5) return nearest;
+				}
+			}
+		}
 		const openingOverHost = erasing || (evaluation.renderedReading === 'plan' && query.purpose === 'select' && query.tool === null);
 		type Ranked = { readonly fragment: PlanFragment; readonly pick: NonNullable<ReturnType<typeof cssDistanceToSurfaces>> };
 		let winner: Ranked | null = null;
 		for (const index of retained.index.candidates(css, PLAN_HIT_TOLERANCE_CSS_PX, project)) {
 			const fragment = retained.fragments[index];
-			if (fragment === undefined) continue;
+			if (fragment === undefined || (pickOpeningIn3D && fragment.ref.sourceKind === 'opening')) continue;
 			const surfaces = pickSurfacesOf(fragment, context.snapshot.domain.geometry, context.snapshot.domain.datumMeters);
 			const pick = cssDistanceToSurfaces(css, surfaces, project);
 			if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 			if (winner === null) {
 				winner = { fragment, pick };
-				// Plan Select and Eraser name an Opening over its own host Wall. Other
-				// Plan queries and 3D Select keep Layout's first candidate, preserving
-				// Wall-first priority before Stage arbitrates between domain winners.
+				// Plan Select and Eraser name an Opening over its own host Wall.
 				if (!openingOverHost || fragment.ref.sourceKind !== 'wall') break;
 				continue;
 			}

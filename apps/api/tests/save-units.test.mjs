@@ -161,7 +161,7 @@ test('the live Save entry admits the F.2 unit capture directly', async () => {
 	assert.equal(stored.rows[0].sourceFormat, 'unit-envelope-v1');
 });
 
-/** One native form, in the T5.P01.S01 Scene format 4 source shape. */
+/** One native form in the landed Scene format 5 source shape; T5.P01.S01 introduced this native-form shape at format 4. */
 const NATIVE_FORM = {
 	kind: 'form',
 	id: 'entity-form',
@@ -201,12 +201,12 @@ test('a Scene unit carrying a native form saves canonically and reloads identica
 		'SELECT document FROM project_versions WHERE project_id = $1 AND version = 1',
 		[projectId]
 	);
-	// Format 4 is the only admitted Scene format now, and Save stores exactly
+	// Scene format 5 is the only admitted format now, and Save stores exactly
 	// the captured canonical bytes — the form source is never re-derived.
-	assert.equal(SCENE_UNIT_FORMAT_VERSION, 4);
+	assert.equal(SCENE_UNIT_FORMAT_VERSION, 5);
 	const storedScene = stored.rows[0].document.units.scene;
 	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
-	assert.equal(storedScene.header.formatVersion, 4);
+	assert.equal(storedScene.header.formatVersion, 5);
 	assert.deepEqual(storedScene.data.entities, canonicalScene.data.entities);
 	assert.deepEqual(storedScene.data.entities, [NATIVE_FORM]);
 });

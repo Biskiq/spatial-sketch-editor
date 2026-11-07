@@ -462,16 +462,3 @@ export function matGroundFor(evaluation: ViewportEvaluation, datumMeters: number
 		]
 	};
 }
-
-/**
- * PLATE draws no grid in Shaded Plan. The preference applies to the Plan reading
- * only; the mat in 3D keeps its grid when that preference is set.
- */
-export function gridIsVisible(input: {
-	readonly grid: boolean;
-	readonly appearance: 'paper' | 'shaded';
-	readonly renderedReading: string | null;
-}): boolean {
-	if (!input.grid) return false;
-	return !(input.appearance === 'shaded' && input.renderedReading === 'plan');
-}

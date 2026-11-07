@@ -3,9 +3,9 @@
  * table (PR #115 §9.4/§11).
  *
  * The repository's execution structure is authored as tables a human reads and a
- * test enforces: the track register and gate register in `docs/roadmap/README.md`,
- * a phase README's slice register, a track README's phase register, and the cycle's
- * state and mechanism tables in `docs/operations/architecture-cycle.md`. Two
+ * test enforces: a track README's phase register, a phase README's slice register, and the
+ * archived gate/cycle registers in `docs/archive/roadmap/roadmap-register-2026-11-06.md` and
+ * `docs/archive/process/architecture-cycle-2026-11-06.md`. Two
  * parsers for one grammar would mean two holes (`tests/README.md` rule 7), so the
  * grammar lives here once.
  *

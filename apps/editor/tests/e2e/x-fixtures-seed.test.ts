@@ -50,4 +50,26 @@ describe('R217.S26 x-fixture browser seeder', () => {
 		expect(del.init?.method).toBe('DELETE');
 		expect(JSON.parse(String(del.init?.body))).toEqual({ precondition: { kind: 'expected-saved-base', token: 'base-1' } });
 	});
+
+	it('recognizes x-paths and saves its shared, step and walled Camera connections', async () => {
+		const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+			if (url.endsWith('/test-auth/session')) {
+				return jsonResponse({ authenticated: true, user: { id: 'google:e2e-agent-admin' } }, 201, `${sessionPair}; Path=/`);
+			}
+			return init?.method === 'PUT' ? jsonResponse({ savedBaseToken: 'base-path' }) : jsonResponse({});
+		});
+		const seed = await seedXBrowserProject({
+			name: 'x-paths',
+			apiOrigin: API,
+			editorOrigin: EDITOR,
+			testAuthSecret: 'e2e-test-secret-with-enough-length',
+			fetchImpl: fetchImpl as unknown as typeof fetch
+		});
+		expect(seed.name).toBe('x-paths');
+		expect(seed.project.units.camera.data.connections.map((connection) => connection.id).sort()).toEqual(
+			['x-path-door', 'x-path-shared', 'x-path-step']
+		);
+		expect(seed.project.units.layout.data.openings).toHaveLength(1);
+		await seed.cleanup();
+	});
 });

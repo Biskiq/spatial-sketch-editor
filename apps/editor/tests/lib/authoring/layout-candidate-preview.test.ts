@@ -28,6 +28,7 @@ import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance'
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/paper-plan';
+import { openingFacePaper } from '$lib/authoring/adapters/layout/candidate-preview';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface, type InkController } from '$lib/authoring/adapters/layout/ink';
@@ -508,9 +509,10 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		for (const point of points) expect(point[1]).toBeCloseTo(datum, 9);
 	});
 
-	it('matches the compiled Paper drawing of the Opening placement release commits', async () => {
+	it('matches the compiled Plan drawing of the Opening placement release commits', async () => {
 		const mounted = await mount();
-		settle(mounted.facade, mounted.rect);
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, 0);
+		settle(mounted.facade, mounted.rect, 10);
 		const baseline = mounted.facade.snapshot().canonicalJson;
 		armInk(mounted.facade).setReading('opening');
 		const evaluationId = mounted.facade.evaluationId()!;
@@ -541,6 +543,33 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		for (const [index, segment] of preview.segments.entries()) {
 			expectPointsClose(segment, accepted.segments[index]!);
 		}
+	});
+
+	it('matches the exact planner candidate on both 3D Wall faces through acceptance', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, mounted.rect);
+		expect(mounted.facade.camera.evaluation()?.settledReading).toBe('3d');
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade).setReading('opening');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const at = stageCss(mounted, [3, 0]);
+		expect(mounted.facade.hoverIntent({ phase: 'move', css: at, evaluationId })).toBe(true);
+		const preview = candidate(mounted, 'layout-candidate-opening');
+		const worldPreview = worldCandidates.find((entry) => entry.id === 'layout-candidate-opening')!;
+		expect(preview.polygons).toEqual([]);
+		expect(worldPreview.segments.length).toBe(8);
+		const previewPoints = worldPreview.segments.flat();
+		const datum = mounted.facade.snapshot().domain.datumMeters;
+		expect(Math.min(...previewPoints.map((point) => point[1]))).toBeCloseTo(datum, 6);
+		expect(Math.max(...previewPoints.map((point) => point[1]))).toBeCloseTo(datum + 2.1, 6);
+		expect(new Set(previewPoints.map((point) => point[2])).size).toBe(2);
+
+		mounted.facade.pointerIntent({ phase: 'down', css: at, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: at, evaluationId });
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		const created = acceptedLayout(mounted.facade).openings.find((entry) => entry.id !== mounted.openingId)!;
+		const acceptedFace = openingFacePaper(acceptedLayout(mounted.facade), new Set([created.id]), datum);
+		expect(worldPreview.segments).toEqual(acceptedFace.segments);
 	});
 });
 
@@ -619,8 +648,10 @@ describe('R217.S14 — refusals and snap words', () => {
 		expect(refused).toBeDefined();
 		expect(refused!.role).toBe('refused');
 		expect(refused!.polygons).toEqual([]);
-		expect(refused!.segments).toEqual([]);
+		expect(refused!.segments.length).toBeGreaterThan(0);
 		expect(refused!.labels[0]?.text.length).toBeGreaterThan(10);
+		const rawGhost = worldCandidates.find((entry) => entry.id === 'layout-candidate-opening-refused')!;
+		expect(Math.max(...rawGhost.segments.flat().map((point) => point[0]))).toBeGreaterThan(6);
 		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-opening')).toBe(false);
 	});
 

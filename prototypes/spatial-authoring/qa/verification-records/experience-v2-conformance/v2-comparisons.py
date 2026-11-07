@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 root=Path('/Users/tony/Documents/Biskiq/spatial-sketch-editor')
 out=root/'prototypes/spatial-authoring/screens/experience-conformance'
-boards=root/'prototypes/integrated-experience-authoring/Design-QAs'
+boards=root/'docs/archive/prototypes/integrated-experience-authoring/Design-QAs'
 font=ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf',22)
 def pair(a,b,name,left='Original Design-QA board',right='Current product-reachable state',width=1440):
     images=[Image.open(p).convert('RGB') for p in (a,b)]

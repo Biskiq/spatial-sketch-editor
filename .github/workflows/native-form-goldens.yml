@@ -1,11 +1,8 @@
 name: Native form Linux x64 goldens
+# Unconditional on pull requests: this job is a required check, and a required
+# context whose workflow was skipped by a path filter stays pending forever.
 on:
   pull_request:
-    paths:
-      - '.github/workflows/native-form-goldens.yml'
-      - 'packages/geometry-core/**'
-      - 'apps/editor/tests/lib/geometry-core/**'
-      - 'package-lock.json'
 permissions:
   contents: read
 jobs:

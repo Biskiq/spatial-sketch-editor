@@ -2,7 +2,7 @@
 
 <!-- EVIDENCE-PATHS: start -->
 
-**Plan:** [`specification-plan.md`](../specification-plan.md) §9.
+**Plan:** [`specification-plan.md`](../../../../../docs/archive/prototypes/spatial-authoring/design/visual-system-refinement/specification-plan.md) §9.
 **Status:** implementation applied and machine-verified; **owner visual acceptance recorded 2026-09-29**.
 **Parent revision:** `674b2294` (P23B.8 closeout).
 **Implementation revision:** `731a66c0` — *P26 demo: apply the visual-system refinement (mat, vellum, ink, ochre)*,

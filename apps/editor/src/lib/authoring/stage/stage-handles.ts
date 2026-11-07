@@ -26,6 +26,7 @@
  * tested in the node environment.
  */
 import type { Vec3 } from '@portfolio/camera-core';
+import type { StageResizeCursor } from './stage-glyphs';
 
 export type StageHandleKind = 'ray' | 'point' | 'ring' | 'track';
 
@@ -48,7 +49,25 @@ export type StageHandleBase = {
 	 * `glyph` names a stem knob instead of the default glyph for its kind: the
 	 * height stem's top knob or its bottom (lift) knob (review pass 2 §6).
 	 */
-	readonly draw?: { readonly ray?:number; readonly twoWayHalf?:number; readonly pointRadius?:number; readonly cross?:boolean; readonly glyph?: 'top-knob' | 'lift-knob' };
+	readonly draw?: {
+		readonly ray?: number;
+		readonly twoWayHalf?: number;
+		readonly pointRadius?: number;
+		readonly cross?: boolean;
+		readonly glyph?: 'top-knob' | 'lift-knob';
+		/** Hide the Stage mark itself while retaining its admitted pointer target. */
+		readonly hidden?: boolean;
+		/** A cursor-only affordance whose path is shared with the sticker vocabulary. */
+		readonly resizeCursor?: StageResizeCursor;
+		/** Optional scale for the existing four-way move glyph. */
+		readonly glyphScale?: number;
+	};
+	/** Extra projected hit segments, used when the pointer target is not a visible mark. */
+	readonly hitSegments?: readonly (readonly [Vec3, Vec3])[];
+	/** Exact CSS-pixel hit radius for this handle, independent of camera zoom. */
+	readonly hitRadiusCss?: number;
+	/** Consecutive handles in this group arbitrate by nearest hit, with order breaking ties. */
+	readonly hitGroup?: string;
 	/**
 	 * A knob's stem: the world point its stem line runs to (the other end of the
 	 * subject's height). Drawing only; the gesture still measures `axis`.
@@ -298,6 +317,12 @@ export type StageMarkView = {
 	/** A stem knob's other end, in Stage-local CSS. */
 	readonly stem?: readonly [number, number] | null;
 	readonly glyph?: 'top-knob' | 'lift-knob' | null;
+	readonly glyphScale?: number;
+	/** Cursor-only resize mark. Its SVG icon remains hidden. */
+	readonly resizeCursor?: StageResizeCursor;
+	readonly hidden: boolean;
+	readonly hitSegments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly hitRadiusCss?: number;
 	/** A disclosure that also drags (the W·D·H chip): the adapter claims its press. */
 	readonly drags?: boolean;
 	readonly tag: string;
@@ -427,7 +452,8 @@ function projectedAxis(
 	anchor: readonly [number, number],
 	axis: Vec3,
 	worldAnchor: Vec3,
-	project: (point: Vec3) => readonly [number, number] | null
+	project: (point: Vec3) => readonly [number, number] | null,
+	minimumCssStep = MIN_AXIS_CSS
 ): readonly [number, number] | null {
 	for (const step of [1, 0.25, 0.05]) {
 		const projected = project([
@@ -439,7 +465,7 @@ function projectedAxis(
 		const dx = projected[0] - anchor[0];
 		const dy = projected[1] - anchor[1];
 		const length = Math.hypot(dx, dy);
-		if (length >= MIN_AXIS_CSS) return [dx / length, dy / length];
+		if (length >= minimumCssStep) return [dx / length, dy / length];
 	}
 	return null;
 }
@@ -614,7 +640,15 @@ export function projectStageHandles(input: {
 		let direction: readonly [number, number] | null = null;
 		if (descriptor.kind === 'point' && descriptor.axis !== undefined) {
 			const axis = normalize(descriptor.axis);
-			direction = axis === null ? null : projectedAxis(projected, axis, descriptor.anchor, project);
+			direction = axis === null
+				? null
+				: projectedAxis(
+						projected,
+						axis,
+						descriptor.anchor,
+						project,
+						descriptor.draw?.resizeCursor === undefined ? MIN_AXIS_CSS : 0.1
+					);
 		} else if (tip !== null) {
 			const length = Math.hypot(tip[0] - anchor[0], tip[1] - anchor[1]);
 			direction = length === 0 ? null : [(tip[0] - anchor[0]) / length, (tip[1] - anchor[1]) / length];
@@ -629,6 +663,13 @@ export function projectStageHandles(input: {
 				: finiteCssPair(screenOffset)
 					? [stemProjected[0] + screenOffset[0], stemProjected[1] + screenOffset[1]]
 					: stemProjected;
+		const hitSegments = (descriptor.hitSegments ?? []).flatMap(([start, end]) => {
+			const projectedStart = project(start);
+			const projectedEnd = project(end);
+			return projectedStart === null || projectedEnd === null
+				? []
+				: [[projectedStart, projectedEnd] as const];
+		});
 		const open = descriptor.role === 'disclose' && input.openDisclosures.has(descriptor.id);
 		views.push({
 			adapterId: input.adapterId,
@@ -639,6 +680,15 @@ export function projectStageHandles(input: {
 			ringGlyph,
 			stem: stemPoint,
 			glyph: descriptor.draw?.glyph ?? null,
+			glyphScale: Number.isFinite(descriptor.draw?.glyphScale)
+				? Math.min(1.5, Math.max(0.25, descriptor.draw!.glyphScale!))
+				: 1,
+			resizeCursor: descriptor.draw?.resizeCursor,
+			hidden: descriptor.draw?.hidden === true,
+			hitSegments,
+			...(Number.isFinite(descriptor.hitRadiusCss)
+				? { hitRadiusCss: Math.min(120, Math.max(1, descriptor.hitRadiusCss!)) }
+				: {}),
 			drags: descriptor.role === 'disclose' && descriptor.drags === true,
 			role: descriptor.role,
 			kind: descriptor.kind,
@@ -661,41 +711,70 @@ export function projectStageHandles(input: {
 }
 
 /**
- * The mark under a pointer. Descriptor order is the domain's own order, so the
- * first hit is the earliest mark the domain published — never a z-index guess
- * the host invented.
+ * The mark under a pointer. Descriptor order is the domain's own order. A
+ * contiguous `hitGroup` may arbitrate overlapping targets by distance; exact
+ * ties still go to the first descriptor, never to a z-index guess.
  */
+function stageMarkHitDistance(
+	mark: StageMarkView,
+	css: readonly [number, number],
+	radius: number
+): number | null {
+	let distance = Number.POSITIVE_INFINITY;
+	for (const [start, end] of mark.hitSegments) {
+		distance = Math.min(distance, distanceToSegment(css, start, end));
+	}
+	if (mark.kind === 'point') {
+		distance = Math.min(distance, Math.hypot(css[0] - mark.anchor[0], css[1] - mark.anchor[1]));
+	} else if (mark.kind === 'ring') {
+		if (mark.ringGlyph != null) {
+			// The ring is not drawn (review pass 3): its bent arrow is the control,
+			// with a knob's reach so a press on the body beside it stays a body grab.
+			distance = Math.min(distance, Math.hypot(css[0] - mark.ringGlyph.at[0], css[1] - mark.ringGlyph.at[1]));
+		} else if (mark.ring !== null) {
+			for (let index = 0; index < mark.ring.length; index += 1) {
+				distance = Math.min(
+					distance,
+					distanceToSegment(css, mark.ring[index]!, mark.ring[(index + 1) % mark.ring.length]!)
+				);
+			}
+		}
+	} else if (mark.tip !== null) {
+		distance = Math.min(distance, distanceToSegment(css, mark.anchor, mark.tip));
+		if (mark.tail !== null) distance = Math.min(distance, distanceToSegment(css, mark.anchor, mark.tail));
+	}
+	return distance <= radius ? distance : null;
+}
+
 export function hitStageMark(
 	marks: readonly StageMarkView[],
 	query: StageMarkQuery
 ): StageMarkHit | null {
-	const radius = stageMarkHitRadiusCss(query.coarse);
-	for (const mark of marks) {
-		let hit = false;
-		if (mark.kind === 'point' || mark.kind === 'ring') {
-			if (mark.kind === 'point') {
-				hit = Math.hypot(query.css[0] - mark.anchor[0], query.css[1] - mark.anchor[1]) <= radius;
-			} else if (mark.ringGlyph != null) {
-				// The ring is not drawn (review pass 3): its bent arrow is the control,
-				// with a knob's reach so a press on the body beside it stays a body grab.
-				hit = Math.hypot(query.css[0] - mark.ringGlyph.at[0], query.css[1] - mark.ringGlyph.at[1]) <= radius;
-			} else if (mark.ring !== null) {
-				hit = mark.ring.some(
-					(point, index) =>
-						distanceToSegment(
-							query.css,
-							point,
-							mark.ring![(index + 1) % mark.ring!.length]!
-						) <= radius
-				);
-			}
-		} else if (mark.tip !== null) {
-			hit = distanceToSegment(query.css, mark.anchor, mark.tip) <= radius;
-			if (!hit && mark.tail !== null) {
-				hit = distanceToSegment(query.css, mark.anchor, mark.tail) <= radius;
-			}
+	const defaultRadius = stageMarkHitRadiusCss(query.coarse);
+	for (let index = 0; index < marks.length;) {
+		const mark = marks[index]!;
+		const group = mark.descriptor.hitGroup;
+		if (group === undefined) {
+			const distance = stageMarkHitDistance(mark, query.css, mark.hitRadiusCss ?? defaultRadius);
+			if (distance !== null) return { adapterId: mark.adapterId, id: mark.id, role: mark.role, mark };
+			index += 1;
+			continue;
 		}
-		if (hit) return { adapterId: mark.adapterId, id: mark.id, role: mark.role, mark };
+		let winner: StageMarkView | null = null;
+		let winnerDistance = Number.POSITIVE_INFINITY;
+		let end = index;
+		while (end < marks.length && marks[end]!.descriptor.hitGroup === group) {
+			const candidate = marks[end]!;
+			const distance = stageMarkHitDistance(candidate, query.css, candidate.hitRadiusCss ?? defaultRadius);
+			// Strictly less keeps domain order as the deterministic equal-distance tie-break.
+			if (distance !== null && distance < winnerDistance) {
+				winner = candidate;
+				winnerDistance = distance;
+			}
+			end += 1;
+		}
+		if (winner !== null) return { adapterId: winner.adapterId, id: winner.id, role: winner.role, mark: winner };
+		index = end;
 	}
 	return null;
 }

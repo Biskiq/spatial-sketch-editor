@@ -2,7 +2,7 @@
 
 **Read when:** catalogue, licences, model preparation and validation, project texture registry,
 published release delivery.
-**Last reviewed:** 2026-10-28 (T5.P01.S04 `form` library scope in review; T5 destination promotion;
+**Last reviewed:** 2026-10-28 (implemented `form` library scope; T5 destination promotion;
 current single-model import remains bounded by T2.P02 and its acceptance evidence). Landed
 contracts keep describing current behavior until their explicit cutover; T5 admits no resource or
 dependency here.
@@ -30,13 +30,13 @@ revision but never prove continuity across re-export.
 **First creator loop.** Truthful single-model creator import (retained source,
 provenance and explicit supported capabilities) moves into the first
 creator/audience loop under the re-derived T2 track
-([`../../roadmap/t2-composition/planning-evidence.md`](../../roadmap/t2-composition/planning-evidence.md))
+([`../../roadmap/t2-composition/planning-evidence.md`](scene-content.md))
 — it is not contingent on a complete asset pipeline, and static-only catalogue supply is no longer
 the scope ceiling.
 
 ## Expressive capability admission (destination)
 
-The [T5 G0 ruling](../decisions/t5-g0-ratification-2026-10-27.md) extends no current import or
+The [T5 G0 ruling](assets.md) extends no current import or
 resource capability. Native and imported content expose honest supported edit sets through their
 owning domains. Imported work need not acquire invented construction history or be converted into
 a preferred native representation to remain useful.
@@ -79,9 +79,9 @@ existing binary store; failure leaves the current project unchanged. Provider se
 delete/GC remain deferred. Built-ins retain catalogue identity — do not invent registry behavior for
 them.
 
-## My Objects `form` library scope (T5.P01.S04, in review)
+## My Objects form library scope
 
-The first consumer of the ratified **library scope**, landing in review, is one typed `form` item,
+The first consumer of the ratified **library scope**, implemented, is one typed `form` item,
 owned by the signed-in creator, not by a project. Its payload is format 1
 `{ formatVersion, kind: 'form', name, form, materialId, castShadow, receiveShadow }`; `form` is the
 Scene native-form source verbatim, including controls, keys, per-axis scale and `nextKey`. It is
@@ -102,7 +102,7 @@ copy is ordinary native-form Scene truth afterwards.
 
 Until beta an item records the format it was written with. An older-format item stays listed and
 removable, is marked as made with an earlier development version, and is refused at insertion; it
-is never migrated or misread ([owner ruling](../decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-reusable-native-objects)).
+is never migrated or misread ([owner ruling](assets.md)).
 
 ## Creator model resource storage (T2.P02.S01)
 
@@ -115,7 +115,7 @@ it does not create the derivative. Approved revisions remain while project versi
 project deletion cleanup belongs to the later C3 work.
 
 The F2 resources unit (format 2) carries a model resource with derivative and source pins, recipe,
-report digest and placement definition. Scene format 4 may name a catalogue asset or a model resource
+report digest and placement definition. Scene format 5 may name a catalogue asset or a model resource
 locked in the same envelope. Editor host admission resolves that resource in the envelope, and Save
 checks its complete pin against an approved revision owned by the same project. The visitor/public
 release path remains catalogue-only. The import procedure that produces these revisions is described in
@@ -159,7 +159,7 @@ It is a project-scoped implementation, not the
 destination resource system: its storage unit and revision/lock model are governed
 by F.2/F.1 under the contract's interface-ownership rule (see
 [`../composition-execution.md`](../composition-execution.md); decision context
-[`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md)).
+[North Star](../north-star.md)).
 
 ---
 
@@ -232,10 +232,6 @@ are not applied again.
 
 ## Product convergence destination
 
-**Owner-ratified destination, 2026-10-22, PR #173.** See the
-[ratification record](../decisions/product-convergence-ratification-2026-10-22.md). Existing catalogue
-preparation remains a current procedure; it does not define creator-import capability.
-[Review manifest](../../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
 A creator import retains source bytes, content hash, and recipe identity/version. Its render
 derivative preserves addressable source structure and capability meaning, or carries sufficient
@@ -247,11 +243,54 @@ A single-mesh source can still be annotated at a point. Catalogue optimizers are
 creator import unchanged without that qualification.
 
 Product licensing is undecided; the owner rescinded the copyleft choice
-([2026-10-23 ruling](../decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction)). Evaluate
+([2026-10-23 ruling](../../workflow.md)). Evaluate
 established libraries on correctness, capability and measured browser cost inside the canonical
 ownership boundaries. Their admissibility cannot be assumed from the former copyleft direction.
 While licensing is undecided, a new dependency is admitted only under the owner's
-[permissive-only ruling](../decisions/post-batch-e-authorization-2026-10-23.md#licensing-direction), recorded in the consuming slice's
+[permissive-only ruling](../../workflow.md), recorded in the consuming slice's
 acceptance; this selects no licence file. For T5, weak-copyleft libraries (LGPL, MPL) are eligible
 after a documented compatibility, distribution and compliance review
-([T5 licensing amendment](../decisions/t5-object-focus-planning-2026-10-27.md#owner-amendment-t5-dependency-licensing)).
+([T5 licensing amendment](assets.md)).
+
+## Dependency licensing
+
+Biskiq's product licence remains undecided, and this amendment selects none. For dependencies admitted through T5 plans:
+
+- **Permissive licences** stay admissible as before, recorded in the admitting slice's acceptance.
+- **Weak-copyleft licences** (LGPL-2.1, LGPL-3.0 and MPL-2.0, including LGPL with an exception such
+  as OCCT's) are eligible for consideration and adoption after the documented review below. The
+  review is part of the admitting slice plan, which the owner approves before the library is
+  installed.
+- **Strong copyleft** (GPL, AGPL), source-available or field-of-use terms, and missing or unclear
+  licences still stop and are reported to the owner.
+
+Other capability areas retain permissive-only admission. Existing narrower dependency admissions remain scoped to their consumers.
+
+**Weak-copyleft admission review.** The admitting slice plan documents, and its acceptance records:
+
+1. **Identification:** the SPDX expression and any exception, the exact pinned version, and the
+   licence of every shipped component, including vendored and WASM-compiled sources.
+2. **Distribution:** how the code reaches users — browser bundle, separately loaded WASM module,
+   worker or server only. Delivery to a browser is distribution.
+3. **Obligations and how each is met:** licence text and notices shipped with the product; the
+   corresponding source of the exact version and of any modification offered. For LGPL, the
+   library ships as a separately loaded, replaceable module with build instructions, so a user can
+   substitute a modified build. For MPL, modified covered files stay separate and their source is
+   offered.
+4. **Compatibility:** the dependency forecloses no plausible product licence (proprietary,
+   permissive or copyleft), any MPL "Incompatible With Secondary Licenses" designation is checked,
+   and no strong-copyleft component is shipped.
+5. **Modification policy:** unmodified upstream is preferred; any patch is published with its
+   source.
+6. **Change:** a version, licence or distribution change repeats the review.
+
+A candidate whose obligations cannot be met in the shipped build stops. Where the review leaves real
+doubt, it stops for the owner, who may seek legal review. The review identifies obligations; it does
+not by itself select a library.
+
+**OCCT.** OCCT (LGPL-2.1 with the Open CASCADE exception) is a legitimate future candidate for the
+B-rep route, not blocked by its licence category. It is judged against capability, browser
+performance, integration cost and compliance obligations when a named precision capability needs
+it ([T5 capability admission](../../roadmap/t5-expressive-geometry/umbrella-plan.md#later-depth-with-bounded-next-decisions)).
+The same applies to MPL implicit-field candidates such as Fidget and libfive. Nothing is installed or
+selected.

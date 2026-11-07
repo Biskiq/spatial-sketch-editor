@@ -13,7 +13,7 @@ creative evidence. Neither replaces a live plan.
 **Convergence scope, revised 2026-10-22:** the [convergence plan](../../docs/archive/roadmap/coordination-2026-10/product-convergence-2026-10-21.md#scope-and-sequence)
 includes research, product/design/architecture and contract reconciliation, and the canonical
 roadmap/DAG with a re-derived next batch, all in PR #173. The
-[owner production hold](../../docs/roadmap/README.md#production-implementation-hold) includes
+[owner production hold](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#production-implementation-hold) includes
 existing authorizations. Step 1 updates scope/briefs only. The source/gap map below remains dated
 evidence, not an activation checklist; P4 remains deferred.
 
@@ -40,19 +40,19 @@ Read these when planning or starting work. Do not copy their current status into
 
 | Concern | Canonical owner and route |
 | --- | --- |
-| T1 Stage host, native architecture and Layout authoring | [T1 track](../../docs/roadmap/t1-spatial-world/README.md), [P01 slice register and remaining gate](../../docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#slice-register), [T1 baton](../../docs/operations/t1-spatial-world/current.md), [runbook](../../docs/operations/t1-spatial-world/README.md) |
-| T2 ordinary object composition and ingest | [T2 track](../../docs/roadmap/t2-composition/README.md), [P01 slice register/final gate](../../docs/roadmap/t2-composition/t2.p01-supported-composition/README.md#slice-register), [T2 baton](../../docs/operations/t2-composition/current.md), [runbook](../../docs/operations/t2-composition/README.md) |
-| T3 Camera/Experience, acceptance/Save and cutover | [T3 track](../../docs/roadmap/t3-experience/README.md), [P01 slice register](../../docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#slice-register), [S04 plan](../../docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md), [T3 baton](../../docs/operations/t3-experience/current.md), [runbook](../../docs/operations/t3-experience/README.md) |
-| Current-source work and shared-file/caller cutover coordination | [Batch-C authorization](../../docs/reference/decisions/batch-c-authorization-2026-10-19.md), [cross-track execution](../../docs/archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19); these own the authorized work and freeze/order constraints |
-| Exact interfaces, providers and eligibility | [Gate register](../../docs/roadmap/README.md#gate-register), [F contract](../../docs/reference/composition-execution.md); a ratified interface is not an accepted provider |
-| Core Editor Stability, K1/K3/K4 and integrated acceptance | [Milestone definition](../../docs/roadmap/core-editor-stability.md) and [milestone acceptance procedure](../../docs/operations/README.md#product-milestone-acceptance); proposed criteria are not automatically confirmed |
-| Unfinished correctness obligations | [Tech-debt ledger](../../docs/operations/tech-debt/README.md), owning plans and their acceptance residuals; fixes/verification remain with their named owners |
-| Future registration and scope change | [Bounded replanning](../../docs/operations/README.md#bounded-replanning), track and phase registers; no AC-number approval queue here |
-| T4 delivery boundary | [R1-D](../../docs/reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17), [T4 track](../../docs/roadmap/t4-release/README.md) |
+| T1 Stage host, native architecture and Layout authoring | [T1 track](../../docs/reference/components/layout.md), [P01 slice register and remaining gate](../../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p01-stage-foundation/README.md#slice-register), [T1 baton](../../docs/workflow.md), [runbook](../../docs/workflow.md) |
+| T2 ordinary object composition and ingest | [T2 track](../../docs/reference/components/scene-content.md), [P01 slice register/final gate](../../docs/archive/roadmap/closed-phases/t2-composition/t2.p01-supported-composition/README.md#slice-register), [T2 baton](../../docs/workflow.md), [runbook](../../docs/workflow.md) |
+| T3 Camera/Experience, acceptance/Save and cutover | [T3 track](../../docs/reference/components/experience.md), [P01 slice register](../../docs/archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/README.md#slice-register), [S04 plan](../../docs/archive/roadmap/closed-phases/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md), [T3 baton](../../docs/workflow.md), [runbook](../../docs/workflow.md) |
+| Current-source work and shared-file/caller cutover coordination | [Batch-C authorization](../../docs/workflow.md), [cross-track execution](../../docs/archive/roadmap/coordination-2026-10/cross-track-execution-2026-10-23.md#authorized-batch-c-2026-10-19); these own the authorized work and freeze/order constraints |
+| Exact interfaces, providers and eligibility | [Gate register](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#gate-register), [F contract](../../docs/reference/composition-execution.md); a ratified interface is not an accepted provider |
+| Core Editor Stability, K1/K3/K4 and integrated acceptance | [Milestone definition](../../docs/archive/roadmap/core-editor-stability.md) and [milestone acceptance procedure](../../docs/workflow.md); proposed criteria are not automatically confirmed |
+| Unfinished correctness obligations | [Tech-debt ledger](../../docs/workflow.md), owning plans and their acceptance residuals; fixes/verification remain with their named owners |
+| Future registration and scope change | [Bounded replanning](../../docs/workflow.md), track and phase registers; no AC-number approval queue here |
+| T4 delivery boundary | [R1-D](../../docs/reference/architecture.md), [T4 track](../../docs/roadmap/t4-release/README.md) |
 
 **Cutover correction.** The
-[October 19 ratification](../../docs/reference/decisions/t3-cutover-ratification-2026-10-19.md) and
-[AM-9](../../docs/reference/composition-execution.md#am-9-shared-camera-and-experience-cutover)
+[October 19 ratification](../../docs/reference/components/persistence.md) and
+[AM-9](../../docs/reference/composition-execution.md#f2-persisted-units-and-the-project-envelope)
 supersede the old AM-7 migration path. Do not revive inventory, converters, migration-coverage packets
 or quiescence/backup/restore rehearsals as remaining requirements. The clean source epoch, caller
 retirement, current-format-only admission, recovery and publication gap are governed by AM-9/S04.
@@ -79,7 +79,7 @@ The milestone's older “Today” cells are not a substitute for the phase regis
 | Canonical Layout manipulation and ordinary Scene composition | Accepted semantics and concrete editor workflows already justify manipulation, numeric precision, resize, duplicate/delete and source-replacement behavior | T1/T2 live P01 scope. Inspect surviving planners and callers; do not implement parallel geometry or widen a final gate |
 | Atomic acceptance, chronological Undo/Redo, conditional Save and recovery | Every accepted edit needs revision safety; multiple clients strengthen an existing requirement | T1 host/T3 acceptance and persistence with T2 consumers. Expected revision, session lifetime and saved-base CAS remain distinct |
 | Camera/Experience source cutover | Removes competing ownership and enables the next authorized consumers | T3 S04/AM-9; preserve scope retirement, Guide-free access and visitor isolation |
-| First capture and coherent Cut Preview | Presentation identity, optional Guide/Stop and shared Camera evaluation are ratified; creator Preview is needed without publication | [T3.P02 candidate](../../docs/roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md). Its first consumer owns missing authored homes for selector/text/state/lifecycle; no automatic P1 control authoring |
+| First capture and coherent Cut Preview | Presentation identity, optional Guide/Stop and shared Camera evaluation are ratified; creator Preview is needed without publication | [T3.P02 candidate](../../docs/archive/roadmap/closed-phases/t3-experience/t3.p02-capture-and-cut-preview/README.md). Its first consumer owns missing authored homes for selector/text/state/lifecycle; no automatic P1 control authoring |
 | Bounded own-model import | A creator's own flat GLB is part of the stability direction, independent of semantic component reuse | T2 K1: upload/validate/stage, explicit scale/pivot/footprint, approve/place/Save/reload, F2 locks. No T4 closure or inferred component capability |
 | Bounded Wall creation and Openings | Useful native construction follows settled Wall-first ownership | T1 K3 after cutover: explicit topology, derived Rooms/floors, one compiler. Its plan resolves unit/canonical identity and legacy retirement obligations |
 | Rename/delete and ordinary project lifecycle | Necessary project management, independent of creative prototype outcomes | T3 persistence/API in separate K4 scope, T1 shell. Name authority and replacement behavior belong to that consumer |

@@ -14,12 +14,15 @@
 import {
 	compileWallFirstLayoutGeometry,
 	evaluateLayoutPlan,
+	buildArchProfile,
 	type LayoutDocumentWallFirst,
+	type LayoutWallOpening,
 	type LayoutVec2,
 	type PlanEvaluation,
 	wallCenterlineSamples
 } from '@portfolio/layout-core';
 
+import { compiledOpeningFaceLoops, openingFaceLoops, openingLoopSegments, wallPointAtDistance } from '../../layout/opening-faces';
 import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/paper-plan';
 import type { StageCandidatePreview } from '$lib/authoring/stage/stage-facade';
 
@@ -37,6 +40,107 @@ export type LayoutCandidatePaper = {
 
 function worldPoint(point: LayoutVec2, datumMeters: number): Vec3 {
 	return [point[0], datumMeters, point[1]];
+}
+
+type OpeningGhostValues = Pick<LayoutWallOpening, 'kind' | 'profile' | 'offset' | 'width' | 'height' | 'sillHeight'>;
+
+/** The candidate's compiled profile outline on both Wall faces in the 3D reading. */
+export function openingFacePaper(
+	document: LayoutDocumentWallFirst,
+	openingIds: ReadonlySet<string>,
+	datumMeters: number
+): CandidatePaperGeometry {
+	const compiled = compileWallFirstLayoutGeometry(document).geometry;
+	const segments: CandidatePaperGeometry['segments'][number][] = [];
+	for (const wall of compiled.walls) {
+		for (const opening of wall.openings) {
+			if (!openingIds.has(opening.openingId)) continue;
+			segments.push(...openingLoopSegments(compiledOpeningFaceLoops(wall, opening, datumMeters)));
+		}
+	}
+	return { polygons: [], segments };
+}
+
+/** A rejected placement stays at the raw typed/pointer dimensions and is never clamped. */
+export function openingAttemptFacePaper(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	values: OpeningGhostValues,
+	datumMeters: number
+): CandidatePaperGeometry {
+	const wall = compileWallFirstLayoutGeometry(document).geometry.walls.find((candidate) => candidate.wallId === wallId);
+	if (wall === undefined) return { polygons: [], segments: [] };
+	const profile = values.profile === 'rectangular'
+		? { topBoundary: [[0, values.height], [values.width, values.height]] as LayoutVec2[] }
+		: buildArchProfile(values.profile, values.width, values.height).profile;
+	const envelope = [[0, values.height], [values.width, values.height]] as LayoutVec2[];
+	return { polygons: [], segments: openingLoopSegments(openingFaceLoops(wall, values, datumMeters, profile?.topBoundary ?? envelope)) };
+}
+
+/** The rejected Plan attempt's wall-local symbol, built from its exact raw dimensions. */
+export function openingAttemptPlanPaper(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	values: OpeningGhostValues,
+	datumMeters: number
+): CandidatePaperGeometry {
+	const wall = compileWallFirstLayoutGeometry(document).geometry.walls.find((candidate) => candidate.wallId === wallId);
+	if (wall === undefined) return { polygons: [], segments: [] };
+	if (values.kind === 'window') {
+		const segments: [Vec3, Vec3][] = [];
+		const start = wallPointAtDistance(wall, values.offset);
+		const end = wallPointAtDistance(wall, values.offset + values.width);
+		if (start !== null && end !== null) {
+			for (const location of [start, end]) {
+				const normal: LayoutVec2 = [-location.tangent[1], location.tangent[0]];
+				segments.push([
+					[location.point[0] - normal[0] * wall.thickness / 2, datumMeters, location.point[1] - normal[1] * wall.thickness / 2],
+					[location.point[0] + normal[0] * wall.thickness / 2, datumMeters, location.point[1] + normal[1] * wall.thickness / 2]
+				]);
+			}
+		}
+		for (const side of [-1, 1]) {
+			const points: Vec3[] = [];
+			for (let index = 0; index <= 6; index += 1) {
+				const location = wallPointAtDistance(wall, values.offset + values.width * index / 6);
+				if (location === null) continue;
+				const normal: LayoutVec2 = [-location.tangent[1], location.tangent[0]];
+				points.push([location.point[0] + normal[0] * wall.thickness * side * 0.2, datumMeters, location.point[1] + normal[1] * wall.thickness * side * 0.2]);
+			}
+			for (let index = 1; index < points.length; index += 1) segments.push([points[index - 1]!, points[index]!]);
+		}
+		return { polygons: [], segments };
+	}
+	const start = wallPointAtDistance(wall, values.offset);
+	const end = wallPointAtDistance(wall, values.offset + values.width);
+	const center = wallPointAtDistance(wall, values.offset + values.width / 2);
+	if (start === null || end === null || center === null) return { polygons: [], segments: [] };
+	const tangent = center.tangent;
+	const normal: LayoutVec2 = [-tangent[1], tangent[0]];
+	const arc: Vec3[] = [];
+	for (let index = 0; index <= 18; index += 1) {
+		const angle = index / 18 * Math.PI / 2;
+		arc.push([
+			start.point[0] + tangent[0] * values.width * Math.cos(angle) + normal[0] * values.width * Math.sin(angle),
+			datumMeters,
+			start.point[1] + tangent[1] * values.width * Math.cos(angle) + normal[1] * values.width * Math.sin(angle)
+		]);
+	}
+	const hinge: Vec3 = [start.point[0], datumMeters, start.point[1]];
+	const leafEnd: Vec3 = [start.point[0] + tangent[0] * values.width, datumMeters, start.point[1] + tangent[1] * values.width];
+	const startNormal: LayoutVec2 = [-start.tangent[1], start.tangent[0]];
+	const endNormal: LayoutVec2 = [-end.tangent[1], end.tangent[0]];
+	const jambs: [Vec3, Vec3][] = [
+		[
+			[start.point[0] - startNormal[0] * wall.thickness / 2, datumMeters, start.point[1] - startNormal[1] * wall.thickness / 2],
+			[start.point[0] + startNormal[0] * wall.thickness / 2, datumMeters, start.point[1] + startNormal[1] * wall.thickness / 2]
+		],
+		[
+			[end.point[0] - endNormal[0] * wall.thickness / 2, datumMeters, end.point[1] - endNormal[1] * wall.thickness / 2],
+			[end.point[0] + endNormal[0] * wall.thickness / 2, datumMeters, end.point[1] + endNormal[1] * wall.thickness / 2]
+		]
+	];
+	return { polygons: [], segments: [...jambs, ...arc.slice(1).map((point, index) => [arc[index]!, point] as const), [hinge, leafEnd]] };
 }
 
 /**
@@ -136,7 +240,7 @@ export function wallCenterlinePaper(
 		const start = junctions.get(wall.startJunctionId);
 		const end = junctions.get(wall.endJunctionId);
 		if (start === undefined || end === undefined) continue;
-		const sampled = wallCenterlineSamples(wall, start, end, 'forward');
+		const sampled = wall.centerline.kind === 'line' ? undefined : wallCenterlineSamples(wall, start, end, 'forward');
 		const points = sampled === undefined ? [start, end] : sampled.samples.map((sample) => sample.point);
 		for (let index = 1; index < points.length; index += 1) {
 			segments.push([worldPoint(points[index - 1]!, datumMeters), worldPoint(points[index]!, datumMeters)]);

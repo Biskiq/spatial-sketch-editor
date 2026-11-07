@@ -25,14 +25,13 @@ UPDATE:
 - preserve still-valid ESTABLISHED / EVIDENCE / RULED OUT
 
 POINT:
-- the owning track's baton RESUME → checkpoint path
+- the active draft pull request, task or handoff names the checkpoint explicitly
 - NEXT = resume checkpoint
 
 COMPLETE:
 - promote durable findings
 - delete checkpoint
-- remove RESUME pointer
-- advance the owning track's baton if a clean boundary was reached
+- clear the explicit pointer in the active pull request/task/handoff
 ```
 
 ## Schema
@@ -40,8 +39,8 @@ COMPLETE:
 ```text
 # <task> — checkpoint
 
-IDENTITY: <track> · <phase> · <slice>        # e.g. T1 · T1.P01 · T1.P01.S03
-RESUME ROUTE: <phase README → exact plan/artifact this checkpoint continues>
+TASK: <capability id / draft PR / task>
+RESUME ROUTE: <active PR/task/handoff → exact plan, contract or artifact this continues>
 TYPE:
 STATUS: paused
 GOAL:
@@ -69,9 +68,9 @@ CURRENT:
 - present reasoning frontier / partial implementation state
 
 VERIFICATION:
-- tier that actually ran (iteration | affected-subsystem | architecture-integration | exhaustive)
+- what actually ran (focused | affected-subsystem | architecture-integration | exhaustive)
 - tested revision (commit or tree) and the working-diff identity at that time
-- the integration gate this work still owes, if any
+- the acceptance still owed, if any
 
 NEXT:
 1. exact next action
@@ -94,22 +93,22 @@ NEXT may not silently broaden beyond GOAL / CONSTRAINTS
 ```
 
 A focused green run is never inherited as acceptance: a checkpoint that recorded only a focused run
-says so, and the required acceptance run stays owed. **Lifecycle stays in the READMEs** (track and
-phase registers) and **prerequisites in the gate register** (`docs/roadmap/README.md`) — a checkpoint
-mirrors neither; it carries identity, the resume route and the verification record only.
+says so, and the required acceptance run stays owed. **Lifecycle belongs to the live work item**
+(the draft pull request, issue or owner handoff) and **durable contracts own their facts** — a
+checkpoint mirrors neither; it carries the task identity, resume route and verification record only.
 
 No chain-of-thought prose. Conclusions, evidence, decisions, next actions only.
 
 If investigation discovers a product/scope decision is required: record it as
 OPEN/BLOCKER, do not invent the decision.
 
-If durable tech-debt/research already owns part of the diagnosis: reference it,
+If a capability-linked issue or durable research already owns part of the diagnosis: reference it,
 do not rediscover or copy it into the checkpoint. The checkpoint owns the
 unfinished frontier; the durable owner owns established deferred diagnosis.
 
 ## Resume
 
-- Read the owning track's baton → checkpoint.
+- Read the active draft pull request/task/handoff → checkpoint.
 - Inspect live Git state.
 - START: checkpoint READ / EVIDENCE targets.
 - EXPAND: bounded new files/symbols/tests allowed when NEXT or new evidence
@@ -118,17 +117,15 @@ unfinished frontier; the durable owner owns established deferred diagnosis.
 
 ## Complete
 
-Promote before delete (only verified reusable knowledge — see
-`docs/README.md` §Progressive project knowledge; no doc change merely for
+Promote before delete (only verified reusable knowledge — see the durable owner
+routed from [`docs/README.md`](../../../docs/README.md); no doc change merely for
 completeness):
 
 ```text
-bug deferred → operations/tech-debt/
+bug deferred → capability-linked GitHub issue
 research completed → owning research/synthesis artifact
 landed behavior → reference/*
-verification/rulings → closeout/archive
-phase/child status/order → phase README
-current resume/next unit → the owning track's operations/<track>/current.md
+durable decision → owning reference contract or one-page decision record
 active plan-specific state → the owning active plan (only if that plan owns it)
 ```
 

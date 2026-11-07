@@ -94,12 +94,12 @@
 </script>
 
 <svelte:head>
-	<title>Sign in · Museum Editor</title>
+	<title>Sign in · Biskiq Editor</title>
 </svelte:head>
 
 <main class="login-page">
 	<section class="login-card" aria-labelledby="login-title">
-		<p class="eyebrow">Museum Editor</p>
+		<p class="eyebrow">Biskiq Editor</p>
 		<h1 id="login-title">{mode === 'enroll' ? 'Set up your password' : mode === 'register' ? 'Create an account' : 'Sign in'}</h1>
 		<p class="lede">
 			{mode === 'enroll'
