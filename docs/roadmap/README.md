@@ -11,7 +11,7 @@ owns claims/review; [focus](../../focus.md) owns current priority.
 | Proposed work | Read when pursuing it |
 | --- | --- |
 | Prepared visitor publication | [Release and delivery](./t4-release/README.md) |
-| Native geometric depth / Object Studio | [Native geometry and Studio](./t5-expressive-geometry/README.md) |
+| Native geometric depth / Object Studio | [T5 umbrella and first capability](./t5-expressive-geometry/README.md) |
 
 These proposals preserve unresolved choices and substantive technical design. They do not
 establish shipped capabilities, implementation permission or a second authority beside references.

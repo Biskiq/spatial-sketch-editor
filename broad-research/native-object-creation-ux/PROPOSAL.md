@@ -2,6 +2,12 @@
 
 **UX proposal · PR #244 review revision · 2026-11-01 · owner review**
 
+**Retained research, superseded as an implementation proposal.** The
+[T5 umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) and its
+[Studio journeys](../../docs/roadmap/t5-expressive-geometry/object-studio-design.md) reconcile this
+proposal. The storyboard and alternatives below remain evidence; their draft-storage suggestions,
+P02 sequence and pending decisions are historical, not another current plan or approval.
+
 Reviewed independently against merged `main` at `239ab893`, including R217.S17A and S19. Research documentation and static artwork only: no contract ratification, implementation, release or roadmap change. [Visual storyboard](./STORYBOARD.md) · [PNG and prompt provenance](./mockup-prompts.md).
 
 ## Recommendation
@@ -23,7 +29,7 @@ Creators need to discover deeper work from an ordinary selection, recognize thei
 | **Shipped — P01 and S17A** | [P01 closure](../../docs/archive/roadmap/closed-phases/t5-expressive-geometry/t5.p01-drawn-native-objects/README.md), [S17A acceptance](../../docs/archive/roadmap/r217-core-editor-stability/r217.s17a-shape-drawing-simplification/acceptance.md), [owner decisions O10/O11](../../docs/archive/roadmap/r217-core-editor-stability/post-s10-convergence/owner-decisions.md): Pen/Ink is architectural; Objects unifies Box, Round, Free, Sphere, available Models, My Objects and Import. No Room is required. |
 | **Shipped — creation/selection** | [Objects instrument](../../apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte), [commit adapter](../../apps/editor/src/lib/authoring/adapters/scene.adapter.ts): creation selects the form **and reopens placement**; it does not automatically switch to Select or Focus. The current form Card has no Edit object action. |
 | **Shipped — bounded reuse** | [My Objects](../../apps/editor/src/lib/authoring/adapters/scene/library/MyObjectsSection.svelte), [Scene contract](../../docs/reference/components/scene-content.md): single-form snapshots insert independent copies. Imported models are whole-model subjects; render children are not editable authored parts. Assemblies and standalone object drafts are not shipped. |
-| **Planned — P02** | [T5 umbrella §6.3](../../docs/roadmap/t5-expressive-geometry/object-studio-design.md): selected-form entry, sections, outline revision, shaping with explicit reach/acceptance, and return. It does not deliver assemblies or a standalone lifecycle. |
+| **Historical P02 proposal** | The earlier plan covered selected-form entry, sections, outline revision and shaping, but lacked assemblies and a standalone lifecycle. The [current T5 umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) replaces that sequence. |
 | **Ratified — shared authorities** | [Architecture](../../docs/reference/architecture.md), [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md): one Stage, canonical selection, Camera, source history and Card writer; distinct Scene/Layout/resource responsibilities. World Index is a scope locator, not an outline tree. |
 | **Proposed here** | Edit object discovery, contextual entry/return, unplaced New object, focused Parts navigation, draft discovery and direct editable-copy entry. All await owner judgment and owning-track design. |
 

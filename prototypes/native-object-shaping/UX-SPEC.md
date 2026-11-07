@@ -2,6 +2,12 @@
 
 **Native object creation and deliberate refinement · UX design specification · 26 October 2026**
 
+**Prototype evidence.** Product planning now follows the
+[T5 umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md) and its
+[Studio journeys](../../docs/roadmap/t5-expressive-geometry/object-studio-design.md). This prototype's
+mandatory section split, creation gestures and single-contour shaping restriction are not product
+requirements. Its geometric obligations and refusal examples remain supporting evidence.
+
 **Design decision:** create and compose in the Scene; enter **Shape** to refine the same body through a linked drawing and spatial view. Cross-sections are temporary instruments for inspecting and changing an existing volume. They are not the object's construction history.
 
 **Status:** implementation-ready **prototype design**, not production ratification. This specification supersedes the competing-direction program in the [earlier proposal](./exploration-proposal.md). Implement this direction as one coherent experience. Subsequent implementation and review must establish geometric robustness and creator comprehension; neither has been demonstrated here. The figures are authored UX states, not screenshots of a functioning prototype.

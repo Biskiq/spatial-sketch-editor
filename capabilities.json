@@ -60,7 +60,7 @@
       "area": "T2",
       "summary": "Distinguish object definitions, placed instances, internal components, groups and explicit attachments",
       "northStar": "north-star.md#stage--world-composition-and-shared-assets",
-      "surface": ["packages/project-model/src/units/**"],
+      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/content/**", "apps/editor/src/lib/museum/**", "apps/api/src/**"],
       "design": null,
       "review": null
     },
@@ -133,54 +133,63 @@
     {
       "id": "studio.dual-entry",
       "area": "T5",
-      "summary": "World-origin and standalone Object Studio entry with framing/return and canonical Scene operations (proposed #266 coverage; not implemented)",
+      "summary": "Create and edit native objects through standalone and World-origin Studio, with canonical Save, resume, return and independent copy placement",
       "northStar": "north-star.md#creative-freedom-and-depth",
-      "surface": ["apps/editor/src/lib/authoring/**"],
+      "surface": ["apps/editor/src/routes/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/platform/**", "packages/project-model/src/**", "packages/camera-core/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.profile-revision",
+      "area": "T5",
+      "summary": "Revise existing native-form outline controls and extrusion depth without redrawing or losing identity, Undo or saved editability",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/content/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.assembly-reuse",
+      "area": "T5",
+      "summary": "Save a native assembly to My Objects and open or place independent editable copies with complete source and component identity",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/platform/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.profile-holes",
+      "area": "T5",
+      "summary": "Create and revise pierced native panels and frames with explicit profile holes that survive Save, Preview and reuse",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.stretch",
+      "area": "T5",
+      "summary": "Stretch a declared local band of a native body with explicit fixed and translated regions, predictable revision and saved source",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/**", "apps/api/src/**"],
       "design": null,
       "review": null
     },
     {
       "id": "studio.geometry-research",
       "area": "T5",
-      "summary": "Headless Stretch and Manifold experiments with drift, grazing and shear falsifiers (proposed #266 coverage; research evidence only)",
+      "summary": "Bounded solid-route research establishes reproducible revision, precision, provenance and refusal evidence for a named modeling need",
       "northStar": "north-star.md#creative-freedom-and-depth",
-      "surface": ["apps/editor/src/lib/authoring/**"],
+      "surface": ["broad-research/native-modeling-freedom/**", "packages/geometry-core/src/**"],
       "design": null,
       "review": null
     },
     {
-      "id": "studio.modeling-engine",
+      "id": "studio.solid-combine",
       "area": "T5",
-      "summary": "UI-free modeling operators, holes, offset and push-pull with a fair incumbent comparison (proposed #266 coverage; not implemented)",
+      "summary": "Cut and add local solids through canonical source operations with validated results, dependable revision, Save and Preview",
       "northStar": "north-star.md#creative-freedom-and-depth",
-      "surface": ["apps/editor/src/lib/authoring/**"],
-      "design": null,
-      "review": null
-    },
-    {
-      "id": "studio.experimental-modeling",
-      "area": "T5",
-      "summary": "Fixture-only experimental modeling with explicit local history and leave guards (proposed #266 coverage; not implemented)",
-      "northStar": "north-star.md#creative-freedom-and-depth",
-      "surface": ["apps/editor/src/lib/authoring/**"],
-      "design": null,
-      "review": null
-    },
-    {
-      "id": "studio.integrated-demonstration",
-      "area": "T5",
-      "summary": "Live Studio demonstration over C1–C4 plus headless C2–C3 evidence (proposed #266 coverage; owner choices remain open)",
-      "northStar": "north-star.md#creative-freedom-and-depth",
-      "surface": ["apps/editor/src/lib/authoring/**"],
-      "design": null,
-      "review": null
-    },
-    {
-      "id": "studio.canonical-promotion",
-      "area": "T5",
-      "summary": "Conditional source/library/delivery cutover after the Studio design and source choices are decided (proposed #266 coverage; no Scene v5 promotion)",
-      "northStar": "north-star.md#creative-freedom-and-depth",
-      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**"],
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/**", "apps/editor/src/lib/**", "apps/api/src/**"],
       "design": null,
       "review": null
     }
