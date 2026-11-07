@@ -3,7 +3,10 @@
 **Current T5 planning:** the [Expressive Geometry umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md)
 reconciles this package. Keep its studies, counterexamples and probes as dated evidence; the old
 handoff/tranche sequence does not compete with that plan. Current dependency and performance
-policies supersede the dated licence exclusions and benchmark prerequisites below.
+policies supersede the dated licence exclusions and benchmark prerequisites below. The umbrella
+also replaces this study's categorical source/tool exclusions: authored control topology is allowed,
+ordinal pattern positions are not durable identity, and expert depth need not remain inside a
+profile/carrier/rule-only UI. Those original recommendations remain dated evidence, not constraints.
 
 **Research date:** 25 October 2026  
 **Status:** Research and recommendations. No architecture ratification, production implementation, dependency adoption, or roadmap release.  

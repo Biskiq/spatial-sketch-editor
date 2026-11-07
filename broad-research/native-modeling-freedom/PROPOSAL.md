@@ -21,15 +21,43 @@ retains the complete C1–C6 wording for comparison.
 
 ## Technical judgments and evidence limits
 
-**Representation.** Authored profile/operation source is the default because it preserves meaningful
-parameters without making generated mesh history authoritative. It supports direct interaction
-without a visible feature tree. It can become awkward for many interacting operations, so its
-bounded operation families must be tested under upstream revision, not just forward creation.
-The alternative — explicit planar faces, loops and Float64 planes — can make direct face editing
-natural, but adds incidence, non-planarity, split/merge correspondence and source-conversion costs.
-Re-deriving vertices from three planes does not determine a four-or-more-plane junction or solve
-which new face is the old subject. A bounded experiment may still justify that representation for
-a named need; it does not justify selecting it as the universal foundation now.
+**Representation.** Profile/operation source remains appropriate for profiles, cutters and ordered
+refinement; treating it as the default for every future body was too restrictive. The current
+[persistence contract](../../docs/reference/components/persistence.md#editable-source-and-revision-destination)
+permits deliberately authored geometric controls. The distinction is authored source versus derived
+tessellation, not analytic parameters versus every other representation. A control net, explicit
+control topology, B-rep or field recipe can be source when its supported editing/validity/lifetime
+contract is admitted. One active source per body prevents competing writers; it does not require
+one source kind for the application. The umbrella now specifies a bounded control-surface consumer
+and typed family/result-class seams, without adopting a universal kernel or conversion engine.
+
+Explicit planar faces, loops and Float64 planes can make direct editing natural, but add incidence,
+non-planarity, split/merge correspondence and conversion costs. Re-deriving vertices from three
+planes does not determine a four-or-more-plane junction or solve which new face is the old subject.
+The [hybrid-form research](../expressive-3d-form-sculpting-hybrid-modeling-2026-10-27.md#implications-for-biskiq-and-competing-architectural-interpretations)
+provides the strongest counterweight to “all generators” and “all meshes”: a coherent authored
+source can evaluate through several representations with explicit conversion boundaries. The
+umbrella retains that possibility and rejects prebuilding a universal semantic graph or making
+every hand edit a procedural node. Complexity alone is not a rejection reason; the claimed
+creative/revision capability must justify it. Mesh provenance does not establish persistent identity;
+a one-way conversion needs source recovery beyond the session Undo cap.
+
+**Procedural composition.** The retained
+[original study](../spatial-modeling-depth-research-2026-10-25.md#43-repetition-more-authored-intent-less-repetitive-labor)
+and [identity analysis](../native-creative-depth/geometry-identity-and-performance.md#5-identity-and-correspondence)
+identify repetition, continuing relationships and stable member addressability as more than render
+instancing. The umbrella turns those into concrete local affine bindings, linear repetition and
+linked definition-use capabilities. It corrects the old ordinal-slot suggestion: ordinals may place
+members, but newly created members cannot inherit a retired subject's identity. Suppression and
+retirement have distinct semantics. A list of body refinements cannot substitute for a branching
+composition dependency graph, nor does a graph require a node editor or general solver upfront.
+
+**Studio depth.** One active root is a scope, not one object per project. The initial viewport,
+fixed controls and compact operation list are first-consumer bounds, not permanent bans on advanced
+sets, dependency tools or surface editing. The approved shell already separates task focus from
+canonical selection and permits invoked work with broader span. Future tools must preserve those
+invariants; they need not mimic the current shell's limited implementation. This review adds no
+separate research effort or new probe results.
 
 **Determinism.** Retain the current kernel's exact goldens and arithmetic restrictions. The
 [ECMAScript numeric specification](https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-math.sqrt)
@@ -93,6 +121,9 @@ are concrete future correctness/revision cases, not a compulsory benchmark or de
 | --- | --- |
 | Single plinth, pierced panel and open frame | Does a profile or profile-with-holes suffice? Do Plan, 3D, contact, Save and reopen agree? |
 | Multi-part table and later piano lid | Can parts be named and revised independently without fusing away future behavior targets? |
+| Parametric table and repeated slats | Does a declared width relationship preserve leg thickness, and do 12 → 8 → 12 members retire/newly allocate identities without moving references by ordinal? |
+| Faceted control net beside an extruded frame | Can two source families coexist, keep their actual edit sets, and survive reuse without invented generator history or surface thickness? |
+| Two linked definition instances | Do shared revision, per-use override and detach have explicit reach and distinct qualified component addresses? |
 | Recessed/rebated vitrine | Does a positioned source cutter beat a direct planar operation on both creation and later revision? |
 | Portal widened 1.2 m → 2 m with 60 mm end members | Can a bounded stretch leave end members intact? Compare proportional size and part editing. |
 | Splayed member crossing a stretch band | Does the tool honestly disclose changed angle/thickness rather than claiming preservation? |

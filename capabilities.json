@@ -158,6 +158,33 @@
       "review": null
     },
     {
+      "id": "studio.parametric-assembly",
+      "area": "T5",
+      "summary": "Drive assembly dimensions and placement through explicit typed parameters and repeat parts with stable member identities",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "scene.definition-instances",
+      "area": "T2",
+      "summary": "Reuse pinned local object definitions through explicit linked instances, scoped overrides, shared edits and independent detachment",
+      "northStar": "north-star.md#stage--world-composition-and-shared-assets",
+      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.control-surface",
+      "area": "T5",
+      "summary": "Create and revise an authored control surface as a distinct native source with truthful surface semantics, assembly reuse and saved editability",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "packages/geometry-core/src/**", "apps/editor/src/lib/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "studio.profile-holes",
       "area": "T5",
       "summary": "Create and revise pierced native panels and frames with explicit profile holes that survive Save, Preview and reuse",

@@ -1,5 +1,10 @@
 # Geometry, identity and performance for native form
 
+> **Current interpretation:** the [T5 umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md)
+> reconciles this dated study. Authored control geometry is permitted; generated tessellation stays
+> derived. Tool exclusions and ordinal-member recommendations below are not product restrictions.
+> Current contracts and the umbrella's qualified identity/conversion rules govern implementation.
+
 **Research date:** 25 October 2026  
 **Status:** Research evidence, local disposable probes and inference. No architecture ratification, production implementation, dependency adoption, or roadmap release.  
 **Package:** [Native creative depth](./README.md) · labels follow the package's [evidence conventions](./README.md#3-how-to-read-the-evidence)

@@ -1,20 +1,23 @@
 # T5 — Expressive geometry
 
-T5 grows from native shapes into revisable objects, assemblies and geometric refinement.
+T5 grows native creation into revisable objects, procedural assemblies, controlled surfaces and
+geometric refinement for sophisticated spatial experiences.
 Basic shape creation, direct manipulation and independent My Objects copies are already landed.
 
 **One direction:** the [umbrella plan](./umbrella-plan.md) replaces the earlier native-form plan
 and PR #266's experimental C1–C6 sequence. Its [Studio journey specification](./object-studio-design.md)
 is the UX part of that same plan, not an alternative architecture.
 
-**Start after #266 is approved:** `studio.dual-entry` — World-origin and standalone Studio over
+**Start after #266 merges:** `studio.dual-entry` — World-origin and standalone Studio over
 the existing Scene, Camera, history and Save. The plan gives implementation seams, acceptance cases
-and the owner UX decision required before implementation. Geometry research, assemblies and a new
-source format are not prerequisites for this first capability.
+and the target UX; no separate T5 approval cycle is required. Geometry research, assemblies and a new
+source format are not prerequisites for this first capability. The same plan defines parametric
+assemblies, linked instances and controlled surfaces as concrete extensions; ordered generator
+operations are one representation family, not the creative ceiling.
 
 This is planned work, not a claim of implementation or owner acceptance. The plan's
-[owner decisions](./umbrella-plan.md#owner-decisions) distinguish the choice needed for the first
-capability from choices needed only by later consumers. Claims, flags and review follow the
+[owner decisions](./umbrella-plan.md#owner-decisions) distinguish the settled planning direction
+from compatibility/dependency choices needed only by later consumers. Claims, flags and review follow the
 [workflow](../../workflow.md); maturity and health come from `npm run status`.
 
 Durable authority remains in the [North Star](../../reference/north-star.md),
