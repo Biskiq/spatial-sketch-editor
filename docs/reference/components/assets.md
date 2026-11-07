@@ -291,6 +291,6 @@ not by itself select a library.
 **OCCT.** OCCT (LGPL-2.1 with the Open CASCADE exception) is a legitimate future candidate for the
 B-rep route, not blocked by its licence category. It is judged against capability, browser
 performance, integration cost and compliance obligations when a named precision capability needs
-it ([umbrella plan §5.4](../../roadmap/t5-expressive-geometry/object-studio-design.md)).
+it ([T5 capability admission](../../roadmap/t5-expressive-geometry/umbrella-plan.md#later-depth-with-bounded-next-decisions)).
 The same applies to MPL implicit-field candidates such as Fidget and libfive. Nothing is installed or
 selected.

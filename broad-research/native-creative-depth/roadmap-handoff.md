@@ -1,5 +1,9 @@
 # Native creative depth: roadmap handoff
 
+**Historical research handoff.** The [T5 umbrella](../../docs/roadmap/t5-expressive-geometry/umbrella-plan.md)
+now owns the implementation sequence. These briefs and alternatives remain supporting evidence;
+their architecture-cycle/phase prerequisites are retired, and are not instructions to implementers.
+
 **Research date:** 25 October 2026  
 **Status:** A handoff for a future planning agent and the owner. It releases no scope, assigns no phase, ratifies no architecture and admits no dependency.  
 **Package:** [Native creative depth](./README.md)

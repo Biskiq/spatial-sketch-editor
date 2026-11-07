@@ -87,7 +87,7 @@ implementation.
 Interaction design, source/geometry representations, kernels, milestone definitions, slice counts,
 sequencing and specific implementation direction remain TBD where evidence is insufficient. The
 workflow advantage is a hypothesis. The E0 experiment was withdrawn on 2026-10-27; T5's planning
-direction is its [umbrella plan](../roadmap/t5-expressive-geometry/object-studio-design.md), which is
+direction is its [umbrella plan](../roadmap/t5-expressive-geometry/umbrella-plan.md), which is
 roadmap authority, not a reference contract. Sculpting, surface
 refinement or deliberately authored geometric controls are neither promised nor excluded solely
 by technique. They must earn admission through this boundary.
