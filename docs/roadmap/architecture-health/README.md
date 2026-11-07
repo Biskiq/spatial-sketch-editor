@@ -28,11 +28,11 @@ all-purpose host inside the already large route"; this proposal makes that instr
 | R5 Scene datum-plane hits through the Stage intersect | Foundation PR, commit 3 | One ray→plane semantics for Studio's Scene gestures | Small |
 | R3 Project-session controller out of the route | Foundation PR, commit 4 | Studio's save-before-switch and open-in-Studio call one owner | ~1,000 route lines move |
 | R2 Experience lens interaction layer out of the route | Foundation PR, commit 5 | Studio lands as a module, not ~1–2k more route lines and 40+ more lens branches | ~1,500 route lines move |
+| R6 Landing and Projects routes stop loading Three | Foundation PR, commit 6 | Measured: `/` and `/projects` load the 729 KB Three chunk | Small |
+| R7 Lazy Experience lens | Foundation PR, commit 7 | World first load excludes Experience authoring | Small, measured |
+| R8 One presentation-token source | Foundation PR, commit 8 | Prerequisite for skins; removes 589 duplicated fallbacks | Mechanical |
 | R9 Unit planners grouped by owner | Folded into `scene.object-definition` | Registration follows ownership | Small |
 | R10 Representation-family dispatch | Folded into the first T5 result-seam consumer | The one T5-driven seam that also serves extensions | Part of a capability |
-| R6 Landing and Projects routes stop loading Three | Independent | Measured: `/` and `/projects` load the 729 KB Three chunk | Small |
-| R7 Lazy Experience lens | Independent, after the foundation PR | World first load excludes Experience authoring | Small, measured |
-| R8 One presentation-token source | Independent; before any skin work | Prerequisite for skins; removes 589 duplicated fallbacks | Mechanical |
 
 **Deferred, with reasons below:** splitting `layout.adapter.ts`, renaming/merging `lib/museum`,
 API route modularization, any plugin manifest/loader/sandbox, runtime skin switching and
@@ -297,7 +297,7 @@ leave the PR as a draft and report back, not improvise.
 
 ### Foundation PR before `studio.dual-entry` — Tier 1 (shared shell surface, Save/resume paths)
 
-Behavior-neutral. It is reviewed one commit at a time, and every commit keeps the full lane green, so
+No visible behavior change. It is reviewed one commit at a time, and every commit keeps the full lane green, so
 a reviewer (or `git bisect`) can follow each step. Commits, in this order:
 
 1. **Retarget route source-text checks; fix stale guidance (R1).** Give each assertion that pins the
@@ -322,10 +322,27 @@ a reviewer (or `git bisect`) can follow each step. Commits, in this order:
    `playback`, `spatial-route-gesture` and the Experience browser flows pass. The route keeps no
    Experience-specific functions, and its lens branches reduce to layer dispatch and slot selection.
    The spatial-route bundle report stays within ±1 %.
-6. **Closeout.** Promote the enduring rules into the references: route as composition root and the
+6. **Landing and Projects stop loading Three (R6).** Lazy-import the validating pending-capture
+   path, or use a narrower `project-model` subpath. Add `--forbid` bundle-report assertions that `/`
+   and `/projects` load no Three. *Proof:* the bundle report shows Three gone from both first loads;
+   the login-return and pending-capture flows pass. *Stop:* the auth-return resume flow needs
+   synchronous validation.
+7. **Lazy Experience lens (R7).** Load the lens layer and the Experience homes on first lens entry,
+   with idle prefetch. *Proof:* a measured drop in spatial-route first load; Experience browser flows
+   pass; no new loading state. *Stop:* any visible delay or loading UI — drop this commit and flag
+   `needs-ux` rather than holding the PR.
+8. **One presentation-token source (R8).** Move the PLATE roles to an app-level token sheet with the
+   same values and remove the `var()` fallbacks. Derive the Three instrument paint from one TS table,
+   checked equal to the CSS. Add a check forbidding bare hex outside the token and runtime
+   look-table files. *Proof:* every resolved colour is unchanged (token diff empty; screenshots of
+   the shell, landing, Projects and a published visit match); new check green. Mechanical, so it
+   goes last: it touches the files earlier commits moved. *Stop:* any value change — values belong
+   to the approved design.
+9. **Closeout.** Promote the enduring rules into the references: route as composition root and the
    posture layer go into [Shared Stage interface](../../reference/composition-execution.md#shared-stage-interface),
-   and the adapter port goes into [Extension points](../../reference/composition-execution.md#extension-points-and-version-negotiation).
-   Then delete this proposal and its roadmap row. With owner approval, file R6–R8 as issues.
+   the adapter port goes into [Extension points](../../reference/composition-execution.md#extension-points-and-version-negotiation),
+   and the token-source rule goes beside the shell rules it governs. Then delete this proposal and
+   its roadmap row.
 
 Overall acceptance: `check`, `test`, `test:arch`, `build` and the touched browser flows pass; the
 change adds no persisted-format, API, Camera write path, Stage adapter contract change or dependency.
@@ -339,8 +356,7 @@ change adds no persisted-format, API, Camera write path, Stage adapter contract 
   - A retargeted read that can never fail.
 - *Stop and split:*
   - Any visible behavior change, or any check that cannot keep its predicate (Tier 2).
-  - A diff that review cannot hold. The commit boundaries above are the split points: land commits
-    1–4 alone and commit 5 as a second PR.
+  - Commit 7 hitting its own stop is dropped from the PR, not a reason to hold it.
 
 Do not open Studio route work while this PR is open; both edit the same route regions.
 
@@ -352,23 +368,6 @@ Do not open Studio route work while this PR is open; both edit the same route re
   existing `scene-environment-set` planner there with them (R9).
 - **First result-seam consumer (capability 7 or 8):** shapes the seam as a first-party
   representation-family table (R10, B6).
-
-### Independent (not on the T5 path)
-
-- **R6 — Landing/Projects bundle** · Tier 0. Lazy-import the validating pending-capture path, or use
-  a narrower `project-model` subpath. Add `--forbid` bundle-report assertions that `/` and `/projects`
-  load no Three. Stop if the auth-return resume flow needs synchronous validation.
-- **R7 — Lazy Experience lens** · Tier 0, after the foundation PR. Load the lens layer and the
-  Experience homes on first lens entry, with idle prefetch. Accept only with a measured reduction in
-  spatial-route first load and no new loading state (otherwise flag `needs-ux`).
-- **R8 — One token source** · Tier 1 (shared shell rules; values unchanged).
-  - Move the PLATE roles to an app-level token sheet with the same values, and remove the `var()`
-    fallbacks.
-  - Derive the Three instrument paint from one TS table, checked equal to the CSS.
-  - Add a check forbidding bare hex outside the token and runtime look-table files.
-
-  This is mechanical work, suitable for a cheaper agent. Stop on any value change: the values belong
-  to the approved design.
 
 ### Deferred
 
