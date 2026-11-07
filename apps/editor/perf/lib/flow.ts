@@ -31,8 +31,10 @@ export async function openProjectFromHub(page: Page): Promise<string> {
 	// sign-in bootstrap leaves this state only after the hub's onMount.
 	await expect(page.getByText('Checking sign-in…', { exact: true })).toBeHidden();
 	const origin = await page.evaluate(() => performance.timeOrigin);
+	const markStart = await page.evaluate(() => performance.now());
 	await page.getByRole('button', { name: 'New Project' }).click();
-	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
+	await expect(page.locator('[aria-label="Spatial stage"] canvas').first()).toBeVisible();
+	await waitForMark(page, 'f2:create-empty', 20_000, markStart);
 	expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin);
 	const match = /\/project\/([^/]+)\/spatial/.exec(new URL(page.url()).pathname);
 	if (match === null) throw new Error('New Project did not open a project');
@@ -113,9 +115,15 @@ export async function drawInkEnclosure(page: Page): Promise<void> {
  * canonical admission path. The returned ledger slice covers the open.
  */
 export async function openSourceJson(page: Page, project: FixtureProject, timeoutMs = LARGE_TIER_WAIT_MS): Promise<void> {
+	const markStart = await page.evaluate(() => performance.now());
+	const projectTrigger = page.locator('[data-head-project]');
+	if ((await projectTrigger.getAttribute('aria-expanded')) !== 'true') await projectTrigger.click();
+	await page.getByRole('button', { name: 'Open source JSON', exact: true }).click();
+	const replacement = page.getByRole('alertdialog', { name: 'Replace project' });
+	await expect(replacement).toBeVisible();
 	const [chooser] = await Promise.all([
 		page.waitForEvent('filechooser'),
-		page.getByRole('button', { name: 'Open source JSON' }).click()
+		replacement.getByRole('button', { name: 'Replace', exact: true }).click()
 	]);
 	const input = chooser.element();
 	try {
@@ -136,30 +144,30 @@ export async function openSourceJson(page: Page, project: FixtureProject, timeou
 	}
 	// A wait bound, not a budget: XL and the opening-heavy C10 sweep can exceed
 	// the default. E5 passes C10 its own measured bound; F2 keeps this one.
-	await waitForMark(page, 'f2:open-admitted', timeoutMs);
+	await waitForMark(page, 'f2:open-admitted', timeoutMs, markStart);
 	await expect(page.locator('canvas').first()).toBeVisible();
 }
 
-export async function waitForMark(page: Page, name: string, timeout = 20_000): Promise<LedgerRecord> {
+export async function waitForMark(page: Page, name: string, timeout = 20_000, afterTime = -1): Promise<LedgerRecord> {
 	await page.waitForFunction(
-		(markName) =>
-			(window as Window & { __BISKIQ_PERF_RECORDS__?: { name: string }[] }).__BISKIQ_PERF_RECORDS__?.some(
-				(record) => record.name === markName
+		({ markName, after }) =>
+			(window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] }).__BISKIQ_PERF_RECORDS__?.some(
+				(record) => record.name === markName && record.time > after
 			) === true,
-		name,
+		{ markName: name, after: afterTime },
 		{ timeout, polling: 50 }
 	);
-	// One record, not the whole ledger: this runs on every setup open, and a
-	// ledger copies the frame clock and every record over CDP on each read.
-	const record = await page.evaluate((markName) => {
+	// A timestamp survives eviction from the bounded ledger. Return just the
+	// matching record rather than copying the entire ledger over CDP.
+	const record = await page.evaluate(({ markName, after }) => {
 		const records = (window as Window & { __BISKIQ_PERF_RECORDS__?: LedgerRecord[] }).__BISKIQ_PERF_RECORDS__;
 		if (records === undefined) return null;
 		for (let index = records.length - 1; index >= 0; index -= 1) {
 			const candidate = records[index]!;
-			if (candidate.name === markName) return candidate;
+			if (candidate.name === markName && candidate.time > after) return candidate;
 		}
 		return null;
-	}, name);
+	}, { markName: name, after: afterTime });
 	if (record === null) throw new Error(`mark ${name} was not recorded`);
 	return record;
 }
@@ -172,7 +180,8 @@ export async function waitForMark(page: Page, name: string, timeout = 20_000): P
  * ordinary fields render in the selection Card.
  */
 export async function selectFirstWall(page: Page): Promise<void> {
-	const wallRow = page.locator('button.item-row', { hasText: 'Wall' }).first();
+	await page.getByRole('group', { name: 'Subject kinds' }).getByRole('button', { name: 'Walls', exact: true }).click();
+	const wallRow = page.getByRole('navigation', { name: 'Project locator' }).getByRole('button', { name: /^Wall / }).first();
 	await expect(wallRow).toBeVisible();
 	await wallRow.click();
 	await expect(handleLocator(page, 'Wall end')).toBeVisible();
@@ -274,18 +283,17 @@ export async function selectWallById(page: Page, wallId: string): Promise<void> 
 }
 
 function handleLocator(page: Page, title: string) {
-	return page.locator('svg.overlay g.marker', { has: page.locator('title', { hasText: title }) });
+	return page.locator('svg.overlay g.mark', { has: page.locator('title', { hasText: title }) });
 }
 
 /** The viewport point of an overlay handle (SVG translate plus the overlay box). */
 export async function handlePoint(page: Page, title: string): Promise<{ x: number; y: number }> {
 	const marker = handleLocator(page, title);
-	const transform = await marker.getAttribute('transform');
-	const overlay = await page.locator('svg.overlay').boundingBox();
-	if (transform === null || overlay === null) throw new Error(`handle ${title} has no position`);
-	const match = /translate\(([-\d.]+)[ ,]([-\d.]+)\)/.exec(transform);
-	if (match === null) throw new Error(`unexpected transform: ${transform}`);
-	return { x: overlay.x + Number(match[1]), y: overlay.y + Number(match[2]) };
+	const glyph = marker.locator('circle.glyph.knob');
+	await expect(glyph).toBeVisible();
+	const box = await glyph.boundingBox();
+	if (box === null) throw new Error(`handle ${title} has no position`);
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
 /**
