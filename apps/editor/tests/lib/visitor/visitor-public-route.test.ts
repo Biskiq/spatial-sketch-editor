@@ -67,7 +67,7 @@ function bytesResponse(bytes: Uint8Array, mime: string): Response {
 	});
 }
 
-describe('P22.3 public release client', () => {
+describe('[cap:release.visitor-isolation core] P22.3 public release client', () => {
 	it('rejects malformed publication IDs without fetching', async () => {
 		const fetchImpl = vi.fn(async () => jsonResponse({}));
 		await expect(fetchPublicRelease({ publicationId: 'not-a-uuid', apiOrigin: 'https://api.test', fetchImpl })).rejects.toMatchObject({

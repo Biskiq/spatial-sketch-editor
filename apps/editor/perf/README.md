@@ -77,7 +77,7 @@ Commit the measurement implementation, build, and start a fresh preview before t
 
 PR #213 remains an open design-review record. Its draft's twelve-sample range rule, contamination
 retry and harness-preservation adoption paragraph are superseded by the
-[spot-check decision](../../../docs/reference/decisions/performance-spot-check-2026-10-28.md).
+[spot-check decision](../../../docs/reference/components/performance.md).
 They are not active instructions and must not be merged over this implementation.
 
 ## What remains in this directory
@@ -113,9 +113,9 @@ trace collection as a requirement of the performance run, and the `perf:bench`, 
 `perf:scale` commands.
 
 Historical results of those runs stay in the
-[S06 acceptance record](../../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
+[S06 acceptance record](../../../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md)
 and the [performance contract](../../../docs/reference/components/performance.md). Deleting the
 runner does not change those results, and it does not turn an unmeasured row into a pass.
 
-Policy: [spot-check decision](../../../docs/reference/decisions/performance-spot-check-2026-10-28.md).
+Policy: [spot-check decision](../../../docs/reference/components/performance.md).
 The comprehensive mandate remains suspended.

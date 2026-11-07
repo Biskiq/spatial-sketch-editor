@@ -400,7 +400,7 @@
 	}
 	.switch-row .h3 {
 		display: block;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		font-weight: 600;
 	}
 	.switch-row small {
@@ -446,7 +446,7 @@
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 7px;
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		color: var(--shell-ink, #1b201c);
 	}
 	.warn-note {
@@ -496,7 +496,7 @@
 		display: flex;
 		flex-direction: column;
 		color: var(--shell-ink, #1b201c);
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 	}
 	button {
 		position: relative;
@@ -537,7 +537,7 @@
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 7px;
 		background: var(--shell-card, #fff);
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		font-weight: 500;
 		white-space: nowrap;
 	}
@@ -607,7 +607,7 @@
 		min-width: 24px;
 		height: 24px;
 		border-radius: 12px;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 	}
 
 	/* Visits: the Presentation this Stop visits. */
@@ -693,7 +693,7 @@
 	.c-note {
 		margin: 6px 0 0;
 		color: var(--shell-ink-2, #4a524c);
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		line-height: 1.5;
 	}
 	.c-sec.row-end {
@@ -756,7 +756,7 @@
 		border: 1px solid var(--shell-hairline, #e1e4de);
 		border-radius: 8px;
 		background: var(--shell-card, #fff);
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 		text-align: left;
 	}
 	.link-row > span {

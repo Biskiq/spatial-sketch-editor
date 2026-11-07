@@ -37,12 +37,12 @@ call sites that drive the interaction whenever a planner is wired into a gesture
   and reuse ratchet, so its historical results do not cover a newly wired adapter.
 - **S06 Bench 1** at `1c5e530c` isolated the cost of compiling and rebuilding representation
   per pointer move, duplicate work on commit, and cold Open dominated by Stage mount.
-  [Bench 1 characterization](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/characterization.md)
+  [Bench 1 characterization](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/characterization.md)
 - **Bench 2** was diagnostic. The optimization work indexed geometry joins and topology
   pairs, retained compiler and mesh results, shared the validated envelope across
   acceptance, and stopped unnecessary shadow and idle draws. Git anchors `9d2a594d`,
   `91df34e0`, `8fc7bb31`, `6e4df860`, and `fef72f4e`.
-  [Bench 2 and its review handoff](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#bench-23-strategy-implemented-diagnostic-bench-2-2026-10-26)
+  [Bench 2 and its review handoff](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/review-handoff.md#bench-23-strategy-implemented-diagnostic-bench-2-2026-10-26)
 - **The S06 milestone replaced formal Bench 3.** The frozen candidate `d89554b1`
   included persistent source and historical roots, spatial picking, and incremental
   Plan maintenance. The accepted milestone was AC-qualified. Cold Open, full
@@ -50,5 +50,5 @@ call sites that drive the interaction whenever a planner is wired into a gesture
   costs. The later M/L spot check separately measured admission and matching
   presentation. A 1,000-Room compile or a milestone result does not certify current
   1,000-Room drag feel.
-  [S06 acceptance and attribution](../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md) ·
-  [Corrected M/L spot check](../evidence/lean-ml-spot-2026-10-28/README.md#corrected-timings)
+  [S06 acceptance and attribution](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md) ·
+  [Corrected M/L spot check](../../archive/research/performance-spot-check/README.md)

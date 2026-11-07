@@ -3,7 +3,7 @@
 Byte-identical copies of the three Chromium captures from the S04 acceptance record. The manual
 session exercised 3D, Paper and Shaded Plan, a selected Wall, an Ink-placed door and a native
 primitive. Images were copied unmodified during closeout; the live slice paths now hold the compact
-[acceptance stub](../../../../../roadmap/r217-core-editor-stability/r217.s04-paper-plan/acceptance.md).
+[acceptance stub](../acceptance.md).
 
 | Capture | State shown | Bytes | SHA-256 |
 | --- | --- | ---: | --- |

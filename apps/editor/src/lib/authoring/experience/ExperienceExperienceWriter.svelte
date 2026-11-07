@@ -91,7 +91,7 @@
 	.writer {
 		display: flex;
 		flex-direction: column;
-		font-size: 12px;
+		font-size: var(--shell-text-utility, 12px);
 	}
 	.sec {
 		display: flex;
@@ -131,7 +131,7 @@
 	.opens button {
 		display: grid;
 		gap: 2px;
-		min-height: 30px;
+		min-height: var(--shell-control-height, 30px);
 		padding: 7px 9px;
 		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
 		border-radius: 8px;

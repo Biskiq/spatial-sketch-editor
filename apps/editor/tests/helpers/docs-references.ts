@@ -86,30 +86,18 @@ export const NON_DOCUMENTATION_PREFIXES = ['docs/archive/', 'Repo-Audit/'] as co
 export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/README.md',
 	'AGENTS.md',
+	'focus.md',
+	'docs/workflow.md',
 	'docs/reference/architecture.md',
 	'docs/reference/composition-execution.md',
 	'docs/reference/design-system/editor-shell-and-visual-system.md',
 	'docs/reference/design-system/spatial-instrument-grammar.md',
 	'docs/reference/north-star.md',
-	// PR #115's WP5 added `docs/operations/README.md` (the event procedures) here.
+	'docs/reference/components/experience.md',
+	'docs/roadmap/t4-release/prepared-release-design.md',
+	'docs/roadmap/t5-expressive-geometry/object-studio-design.md',
 	'docs/operations/README.md',
-	// The global baton is navigation only; each track's own baton is the handoff a
-	// task reads and replaces, so a baton outside the walk is a blind spot in the
-	// very gate that protects the current-work routes.
-	'docs/operations/current.md',
-	'docs/operations/t1-spatial-world/current.md',
-	'docs/operations/t2-composition/current.md',
-	'docs/operations/t3-experience/current.md',
-	'docs/operations/t4-release/current.md',
-	'docs/operations/tech-debt/README.md',
 	'docs/roadmap/README.md',
-	// WP6: each track roadmap is a live route from the global track register, and the
-	// R115 phase README is the current work package's own slice register.
-	'docs/roadmap/t1-spatial-world/README.md',
-	'docs/roadmap/t2-composition/README.md',
-	'docs/roadmap/t3-experience/README.md',
-	'docs/roadmap/t4-release/README.md',
-	'docs/roadmap/parallel-track-cutover/README.md',
 	'apps/editor/tests/README.md'
 ] as const;
 
@@ -219,7 +207,7 @@ const PLACEHOLDER_MARKER = /<[A-Za-z][^<>\n]*>|\{[A-Za-z][^{}\n]*\}/;
  */
 const EVIDENCE_MARKER = /^[ \t>]*EVIDENCE-PATHS:[ \t]*(start|end)\b.*$/gim;
 
-/** The arrow form routers use for a routed path: `(→ ../../operations/current.md)`. */
+/** The arrow form routers use for a routed path: `(→ ../../archive/process/operations-current-2026-11-06.md)`. */
 const ARROW_PATH = /\(→[ \t]*([^)\n]+)\)/g;
 
 /** A written-out relative path outside any inline-code span. */

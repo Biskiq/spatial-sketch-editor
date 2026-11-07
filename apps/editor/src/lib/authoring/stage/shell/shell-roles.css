@@ -25,9 +25,8 @@
 	--shell-caution-bg: #f7ede8;
 	--shell-refuse: #7e2718;
 	--shell-refuse-bg: #fdf3f0;
-	/* Review pass 3: drawn ink is white with a dark hairline halo (the sticker
-	   controls' treatment); a gesture's proposal is cobalt, a hue no other state
-	   uses, with a white halo for dark materials. */
+	/* Drawn ink is black, matching the accepted World grammar; a gesture's proposal
+	   is cobalt, a hue no other state uses, with a white halo for dark materials. */
 	--shell-draft-ink: #1b201c;
 	--shell-draft-halo: none;
 	--shell-ghost: #2a62d6;

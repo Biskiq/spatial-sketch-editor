@@ -1,51 +1,17 @@
-# Composition and execution foundation (F) — target contract
+# Composition and execution — shared contracts
 
-**Read when:** designing identity/reference, persisted domain units, typed
-channels or representation parameters, cross-domain acceptance, typed session
-declarations, or a release envelope; deciding whether a proposed format belongs
-to the common foundation.
+**Owns:** cross-domain identity, units, channels, atomic acceptance, execution and prepared-release
+interfaces. Domains own meaning and validity; [architecture](architecture.md) owns boundaries.
+One shared format serves all consumers. The first consumer drafts a missing interface; owner review
+accepts its contract and shared code implements it. Replace the relevant clause when changing an
+interface; do not append amendment histories. Incompatible semantic changes require deliberate
+versioning. Numeric tolerances and calibration remain provider conformance parameters unless fixed
+here. Implementation grows incrementally; an accepted future contract is not proof of readiness.
 
-**Status:** ratified target contract. The owner-ratified decision record
-([`decisions/northstar-ratification-2026-09-27.md`](./decisions/northstar-ratification-2026-09-27.md)
-§§5–6, §10) settles F.1–F.5's shapes; this document writes them. F.1–F.5 were
-written 2026-09-27 and **owner-ratified 2026-09-27 with amendments (Camera
-cutover timing, interface ownership, required/optional extensions).** The exact interfaces
-AM-1–AM-8 below were **owner-ratified 2026-10-15**
-([decision record](./decisions/f-ratification-2026-10-15.md)). AM-9 (the Camera/Experience cutover)
-was **owner-ratified 2026-10-19** ([decision record](./decisions/t3-cutover-ratification-2026-10-19.md))
-and supersedes AM-7, which is retained as superseded provenance.
-
-**Owner-directed [reconciliation amendment](./decisions/world-experience-reconciliation-2026-09-29.md), 2026-09-29:** F.1 distinguishes
-Presentation/Stop/visit identity and repairable authored bindings; F.2 names
-the Experience composition shape; F.3 permits declared replacement/handoff
-without changing default exclusive rejection; F.4 separates authored validity
-from executable closure; session events are run-scoped; F.5 names Presentations.
-These are later refinements, not claims about the September 27 record.
-
-**Implementation: none of this contract is shipped.** Each
-section labels current behavior where a cutover applies; current encodings are
-cutover obligations, not limits, and the destination is never presented as
-shipped.
-
-**Authority and scope:** normative for new design. This contract owns the common
-cross-domain shapes; domain contracts own the meaning and validity of their own
-data. It does not replace domain contracts or the semantic authority table in
-[`architecture.md`](./architecture.md). Byte encodings, containers, algorithms,
-kernel substrate and module boundaries stay implementation decisions
-(§Open mechanisms). Exact cross-domain interfaces — reference and resolution
-result, unit header, project envelope, authoring intent with expected revision,
-release manifest — follow this ownership rule: the first consumer that needs an
-interface **drafts it in its plan, but the interface is ratified as an explicit
-amendment to this contract and lands in shared code**, never in phase-local
-code. Parallel tracks reuse the ratified interface; none may mint its own.
-
-**Why this exists before capability planning:** machinery can grow one consumer
-at a time; formats cannot. A phase that mints its own references, units,
-channels or acceptance path creates exactly the pairwise reconciliation this
-foundation prevents. Consumers must share these formats from their first new
-persisted or cross-domain implementation. F is bounded contract-writing, not
-another architecture research cycle and not a requirement to implement the
-complete kernel.
+Current source versions: envelope 1, Layout 6, Scene 5, Camera 1, Experience 4, resources 2;
+ExecutionProgram 4. Strict readers reject other versions without conversion. F.1–F.4 are implemented;
+F.5 prepared publication remains future work. [Experience](components/experience.md) owns the current
+Guide/Stop model and runtime semantics.
 
 ## F.1 Identity and reference
 
@@ -101,13 +67,34 @@ establish identity across revisions or re-exports.
 
 **Current implementation:** the F2 Stage uses unit-qualified F1 resolution for selection and
 operations. Resource IDs and locks retain exact revision/pin identity. Publication reads remain
-unavailable under AM-9 until T4's prepared reader. Unit resolvers resolve a placed Scene entity but
+unavailable under strict source admission until T4's prepared reader. Unit resolvers resolve a placed Scene entity but
 refuse a non-null `componentId`; no component provider is landed. Landed Layout planners allocate
 Wall, Junction and Layout-object IDs by current occupancy, so a delete or Undo followed by a new
 create can re-mint an earlier ID.
 
 **Extension point:** reference kinds, each declaring target scope, validation
 and resolution/repair semantics.
+
+
+### Reference interface
+
+Exact reference interface `references-v1`. All IDs are opaque nonempty stable strings; ordering
+is stable ID ordering, never a parsed display label.
+
+| Element | Ratified meaning |
+| --- | --- |
+| `SemanticReference@1` | `version: 1`; `domain` ∈ Layout, Scene, Camera, Experience or a declared typed-resource kind (unsupported required domain/kind is incompatible); `revision` tagged `exact {contentRevision}` or `project-lock {projectId}` resolved against the supplied accepted snapshot and lock — no ambient latest, and a resolution records its concrete revision; `subject {kind, id}` stable canonical subject; `instancePath` ordered stable instance IDs (empty denotes the root); `location` tagged `project-root` or `layout-location {levelId, structureInstancePath}`; `componentId`/`capabilityId` explicit nullable stable identity (unknown returns a typed result, never nearest/name matching). |
+| Resolution result | `resolved` with canonical subject, concrete revision and owner; or `missing \| removed \| incompatible \| unauthorized \| repair-required` with original reference, code/message and explicit repair actions. Resolvers perform no repair as a read effect. |
+| `SnapshotIdentity@1` | `{acceptedRevision, sourceContentId}` with a separate host SessionEpoch. AcceptedRevision is opaque `{projectId, revisionId}`, fresh on every source change including Undo/Redo. Neither digest nor epoch is the revision token. |
+| `FrameReference@1` | Project-world or an owner-qualified frame identity/reference and revision. The owning domain resolves origin/orientation/datum and validates point/vector conversion; a Room without an authored frame cannot qualify. |
+| `DerivedSourceRef@1` | `{source, generationId, stream, subRef?}`, runtime-only. Selection stores the canonical source, never fragment identity; fragment details expire on recompile. |
+
+Current resolvers admit supported domain subjects. An unsupported component or capability returns an explicit typed result; selection requalification uses owner correspondence, never proximity.
+
+**Consumers:** all tracks. **Conformance:** fixtures for nonzero floor qualification, root
+Scene, stable instance-path round trips, generation invalidation, missing/unauthorized/
+unsupported resolution and refusal of nearest/name repair.
+
 
 ## F.2 Persisted units and the project envelope
 
@@ -138,20 +125,7 @@ Unit contract:
 - Codec boundaries prescribe neither database tables nor physical files nor one
   blob per resource; storage is implementation.
 
-**Camera's codec boundary — decision (F.2, owner-ratified):** Camera is its
-**own codec-bounded unit in the project envelope** (the separate-unit choice).
-Camera is a never-merged authority whose evaluation and format must version
-independently of Scene. The co-location is only shared storage, not a semantic
-link: in `packages/project-model/src/scene.ts`, Camera data (`navigationNodes`,
-`connections`) references only other Camera nodes plus world positions/targets
-— no Scene entity references — so separating it is a low-cost move with no
-cross-reference rewrite. The **split lands in the same cutover as the
-Experience order cutover** (`nextNodeId` / `previousNodeId` / `holdSeconds`
-leave Camera nodes; legacy `lockInteraction` is migration input to explicit
-Experience Gates, continuation or interaction policy): one migration of
-`navigationNodes`, not two. The **landed current encoding remains Camera data
-inside `project.scene`** until that cutover; the co-location is a cutover
-obligation, not the destination.
+**Camera has its own independently versioned codec-bounded unit.**
 
 The Experience unit is collection-capable and owns Presentations,
 Experience-wide Interactions and optional Guides whose Stops reference
@@ -171,11 +145,32 @@ families/operators, evaluator and release lowering, effects, and conformance
 fixtures — then gets its own unit. Never hide a new domain inside an existing
 document merely because it has storage space.
 
-**Current implementation (T3.P01.S04):** the five codec-bounded F2 units are the live source
-for boot, Open, starter/empty, Download, Stage operations and Head Save. Camera is separate from
-Scene; Experience carries editorial order. Only declared versions are admitted. The clean epoch
-uses migration 005's structural fence, with deployment activation a separate owner-run action.
-PR #158 review remains pending; this describes implementation, not production activation.
+
+### Unit envelope interface
+
+Exact envelope interface `unit-envelope-v1`. Strict validation rejects unknown keys, non-finite
+or out-of-range values, unsupported format/kind versions and duplicate/conflicting pins. No
+generic object bag admits hidden domains or renderer/session state.
+
+| Element | Ratified meaning |
+| --- | --- |
+| AcceptedRevision | Opaque `{projectId, revisionId}`; equality only, never currency inferred from label, date or publication version. |
+| `UnitHeader` | `{domain, unitId, formatVersion, contentRevision}`: one stable codec identity per admitted domain; header/payload version mismatch rejects. |
+| `DomainUnit` | `{header, data}`: one domain-owned validator/codec/evaluator boundary. Physical files, tables and blob-per-resource layouts are not prescribed. |
+| `ProjectEnvelope` | `{formatVersion, id, name, acceptedRevision, dependencyLock, units}` with exactly one Layout, Scene, Camera, Experience and typed-resource unit; Experience and resource payloads are collections. |
+| `DependencyLock` | `{formatVersion, entries}`: deterministic set keyed by qualified identity/instance scope; exact unit/resource content revisions and required capability/version per entry; external bytes additionally pin hash/MIME/size/immutable locator. |
+| `UnresolvedBinding` | Typed authored diagnostic retaining the original F.1 reference and repair status in the owning domain — never a fabricated resolved pin. Executable closure is distinguished from structural failure. |
+
+Admitted unit versions at the current landed cutover: envelope format 1; Layout payload 6;
+Scene 5 (Camera-free); Camera 1; Experience 4; typed resources 2. The source-content digest
+excludes acceptedRevision and session/history/receipt metadata; unit contentRevision hashes
+canonical domain data only. The Camera codec split and Experience order cutover landed together
+(one ownership split); source admission uses only the current units.
+
+**Consumers:** T3 coordination, T4 source/program codecs. **Conformance:** empty and
+two-Experience round trips, required-kind/version refusal, reference/lock diagnostics and
+genuine resource pins.
+
 
 ## F.3 Channels and representation parameters
 
@@ -233,6 +228,33 @@ domain-internal and replaceable under these shapes.
 **Extension point:** channel families and operators, each declaring semantics,
 validation, conflict/arbitration rules and conformance.
 
+
+### Inspection and Camera output interface
+
+Exact channel interface `inspection-v1` with the shared Camera-output protocol. F.3 validates
+shapes, negotiation and conflict rules; it exposes no unrestricted setters.
+
+| Element | Ratified meaning |
+| --- | --- |
+| `ChannelAddress@1` | `{ownerReference, instancePath, componentId, capabilityId, propertyId, frame}` with no delimiter-string parsing; `frame` is a shared FrameReference@1. |
+| `ChannelDescriptor@1` | Value type, units, finite range/categorical values, output/session scope, supported operators/interpolation, required/optional capability, invalidation inputs and validator identity. |
+| `ChannelContribution@1` | Descriptor/address, typed value, invocation identity and monotonic accepted run epoch — separate from the authored baseline. |
+| Layout ordinary Plan family | Cut height relative to an explicit datum (finite meters); depth finite meters > 0, required; optional explicit finite lateral span/crop; source-kind filter; source-qualified Reveal set (set union over declared identities only). Re-evaluate on accepted Layout revision, parameters, generation or frame change. |
+| Camera session inspection family | Finite target in project-world meters, azimuth/elevation radians, positive target-plane frame height, reading/projection policy and motion policy inputs. One exclusive resolved controller per output; accepted ordered replacement/handoff. Camera evaluates pose/projection; no generic pose/FOV interpolation. |
+
+Competing exclusive contributions reject with domain/address/owners and an actionable reason;
+replacement invalidates older run cleanup and a wrong-epoch completion cannot clear the active
+output. Camera-output tickets `{outputId, sourceRevision, sessionEpoch, ownerId, runEpoch}`
+govern inspection, guided/free navigation, Follow, Look-through and Preview through
+acquire/request/replace/return/cancel; return validates current source/output context and
+refuses with a reason otherwise. Exactly one Camera output owner exists per viewport/session.
+
+**Consumers:** T1 viewport; T3 extends `camera-handoff-v1` conformance without a second
+provider. **Conformance:** finite default/depth absence, invalid units/frame/range, unknown
+required vs optional-unsupported families, conflict, replacement and stale cleanup, plus
+runtime-safe import direction.
+
+
 ## F.4 Compound acceptance
 
 An authoring operation is a **deterministic function of one expected project
@@ -258,9 +280,7 @@ Acceptance sequence:
   identities (AM-4): a local intent compares its `expectedRevision` against the
   local accepted revision, while cloud persistence compares a captured accepted
   source against a durable saved-base token. The saved-base token is not the
-  local revision. Today's cloud Save (row lock + version append) serializes
-  writes but lets a stale full-document writer overwrite newer intent; that gap
-  is the F.4 cutover obligation before simultaneous human/agent writers.
+  local revision. Conditional cloud Save implements this durable saved-base comparison.
 - **One coherent snapshot.** Renderers, preview and publication see the accepted
   snapshot; they never observe a partially applied cross-domain change.
 - **Authored validity versus executable closure.** A composed project may
@@ -273,14 +293,7 @@ Acceptance sequence:
 - **Human UI and agents use the same operations, diagnostics and
   expected-revision rule.** Temporary invalid gestures stay local previews;
   accepted cross-domain work and publication require coherent validity.
-- **First implementation is staged.** The acceptance boundary first lands in a
-  bounded local form — registered Layout/Scene planners over the current source,
-  extended by conditional Save (AM-4) — and that local stage proves no compound,
-  unit or cloud readiness. The **first compound Camera/Experience acceptance**
-  arrives later through T3 at the source/runtime cutover, where one compound
-  authoring intent can capture a Camera View, bind it to a Presentation and, when
-  a Guide occurrence is requested, create a Stop referencing that Presentation in
-  one acceptance. Do not defer the contract to component or kit work.
+- **Compound authoring is implemented.** A single operation can capture a Camera View, bind a Presentation and create a Stop with one acceptance and Undo result.
 
 This contract fixes the acceptance boundary, not the history mechanism. Event
 sourcing, CRDTs, branch merge and selective actor undo remain separate
@@ -291,17 +304,71 @@ bounded chronological history across Layout and Scene; Undo/Redo mint fresh revi
 expected revision and durable saved-base CAS remain separate preconditions. Head Save captures
 exact source/revision/operation identity, preserves conflicts and ambiguous retries, and offers
 captured F2 sign-in recovery explicitly. See [persistence](./components/persistence.md).
-The Stage host admits compound installs through `unit-acceptance-v1`. Landed Layout and Scene
-planners declare single-domain scope. The landed compound planners are the Experience planners that
-may write Camera, each declaring Camera as its extra write domain: the Presentation-and-Stop create,
-the Presentation update (a captured View) and, from R217.S26, the View and Presentation removals,
-which delete a Camera View and its connections only when no other Presentation lists it. The other
-R217.S26 Experience operations (Experience and Guide update, Stop and Guide removal) are
-single-domain. Acceptance holds a
-candidate's actual changed unit domains to the producing planner's own declared scope — its
-`domain` plus a compound planner's `writes` — so a single-domain planner cannot change a
-neighbouring authority even where the host admits compound installs (AM-4). History reinstalls
-accepted states, so Undo restores a many-to-one migration exactly.
+The Stage host admits compound installs through `unit-acceptance-v1`. Each planner declares its
+own domain and any extra `writes`. Acceptance compares actual changed domains against that
+scope: host-wide compound permission never grants a single-domain planner extra authority.
+Experience changes reconcile Camera Travel paths atomically as specified by the
+[Experience contract](components/experience.md). Undo restores the accepted source exactly.
+
+
+### Acceptance and Save interface
+
+Exact acceptance interface. F.4 records an enduring acceptance layer plus a current-source
+admission that later retires; local editing remains immediate and persistence is conditional and
+explicit.
+
+| Element | Ratified meaning |
+| --- | --- |
+| `AuthoringIntent@1` | Version, registered kind, operation ID, expected AcceptedRevision, qualified targets, typed serializable payload and captured inputs/allocated IDs. Deterministic: no clock, random, network, closure, gesture or renderer handle enters planning. |
+| `AcceptedSnapshot@1` | Validated read facade with accepted revision, source-content identity, admitted source-kind/version and domain read access. No required signature embeds the current ProjectDocument or an F.2 encoding. |
+| `prepareIntent` | Evaluates against the unchanged expected baseline and returns validated candidate changes with correspondence/diagnostics, or typed rejection. Planners stay operation-specific; no universal planner base class. |
+| `AcceptanceResult@1` | Accepted `{operationId, beforeRevision, afterRevision, snapshot, changes, correspondence, undoResult}`, no-op `{operationId, revision}`, or rejected `{operationId, code, expectedRevision, actualRevision when authorized, diagnostics}`. One logical install and one undo result. |
+| `acceptance-invariants-v1` | The enduring shared acceptance layer on this same F.4 entry: one opaque accepted revision per accepted change, canonical content-digest comparison, one atomic validated install with exactly one undo result, stale/ABA rejection and one bounded chronological history. Established with T1.P01.S03 and **never retired**; it is the prerequisite of `local-single-domain-v1`, `unit-acceptance-v1` and `conditional-save-units-v1`. |
+| `local-single-domain-v1` | Current-source adapter admission: registered Layout or Scene planners over the current source adapter, complete current-project validation, unchanged-domain/resource enforcement and refusal of multi-domain, new-unit, external-staging and resource-changing operations. Requires `acceptance-invariants-v1` and **retires with the current-source adapter at T3.P01.S04**. Proves neither unit/resource compound acceptance nor cloud Save. |
+| History | One 100-entry chronological snapshot stack through the same boundary. Undo/Redo validates, installs once with fresh identity, preserves unrelated contents and truncates redo after new edits. No-op, refusal, cancel and stale results add nothing. Replacement starts a new baseline. |
+| `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. It requires `local-single-domain-v1` and retires with the current-source adapter at T3.P01.S04. |
+| `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (provided by T3.P01.S05 and used by the live T3.P01.S04 callers). They require F.2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so unit acceptance stays eligible after the source transition. |
+
+**Per-planner scope is current behavior.** `PlannerAdmission` states the planner's `domain` and
+`compound`, plus an optional `writes` list of the extra unit domains a compound planner may change,
+using the same domain identifiers as `domain`; the permitted semantic write set is
+`domain` ∪ `writes`. A compound planner must declare at least one `writes` domain, each distinct,
+other than its own `domain` and admitted by the registry's profile, or registration refuses it; a
+single-domain planner that declares `writes` is refused rather than silently ignored. Acceptance derives the changed unit domains from
+the candidate's unit content revisions, not from the intent's targets, so an untargeted operation is
+checked too, and refuses any candidate outside that planner's write set with one typed rejection.
+The adapter-wide compound flag is only the host's grant, never a planner's licence. Resource-unit and
+resource-lock changes still require both the host's staging grant and the planner's `resources`
+grant. A scope refusal installs nothing: source, revision and history are unchanged.
+
+**Current-source content identity.** The single project-model export hashes UTF-8 canonical
+authored-content JSON with `sha256Bytes` (`sha256-<hex>`): strict normalized source, ID-keyed
+Layout identity maps ordered, and only `layout.identity.cursor` omitted. The cursor is persisted
+allocation bookkeeping; identity assignments remain authored and affect the digest. Full canonical
+source retains the cursor for Save/Load and exact Undo/Redo. Equal digests therefore do not prove
+full-source byte equality: exact history restoration and changed-payload Save retries must also
+compare the full captured source. This current-source rule does not define F2 unit hashing.
+
+**Local revision and cloud saved base are separate identities.** Local acceptance rejects a stale
+writer by comparing `AuthoringIntent@1.expectedRevision` against the local `AcceptedRevision`; it
+never contacts the server. Cloud persistence is a separate, explicit step: `SaveAcceptedSource@1`
+captures one immutable locally accepted source/revision/digest and is compared atomically against
+the durable **saved-base token** through `create-only` or `expected-saved-base {token}`. The
+saved-base token **is not** the local `AcceptedRevision`, not a SQL version ordinal and not a
+publication pointer revision. The server recomputes the digest and runs the same shared
+validation boundary; retry receipts, dirty state and conflict preservation are as in the
+`conditional-save-current-v1` row. Human UI and agents use the same operations, diagnostics and
+rule; no edit is executed server-per-gesture and Save adds no second history.
+
+**Retirement is per scope and terminal.** A retired adapter admission cannot be required by a new consumer. Enduring acceptance invariants persist across source transitions. No permanent legacy admission or parallel registry is permitted.
+
+**Consumers:** T1/T2 local editing; T3 Save/unit extensions. **Conformance:** captured-input
+determinism, local stale/ABA rejection, real Layout/Scene registration, exact mixed
+chronological Undo/Redo, redo depth/truncation, full-validation rollback, unsupported
+compound/resource refusal, untouched Camera bytes, bypass-sensitive caller proof and real-DB
+same-base contention (one winner), create collision, retry mismatch and stale-response/dirty
+behavior for Save.
+
 
 ## Session state and declarative logic
 
@@ -332,7 +399,7 @@ are part of this foundation.
 - Syntax, UI and the initial operator set are planning choices. Scripts remain
   the separately governed extension-module exception.
 
-**Current behavior:** the AM-6 shared interpreter is landed (T3.P01). It has typed
+**Current behavior:** the shared interpreter is implemented. It has typed
 boolean/choice declarations with initial/reset values, a deterministic reducer over explicit
 events, bounded literal/state-read/equality/conjunction guards, and `runId`/`runEpoch` rejection of
 stale events. A same-run reset rewinds the current run without a new epoch, so a completion issued
@@ -343,6 +410,7 @@ superseded (see [`north-star.md`](./north-star.md) §Composition, behavior, and
 direction model).
 
 **Extension point:** session-state types; program node kinds.
+
 
 ## F.5 Release envelope and program slots
 
@@ -403,12 +471,13 @@ Rules:
   clearly; an immutable release is never silently reinterpreted by a changed
   implementation.
 
-**Current implementation:** AM-9 retires the P22 authored-document reader. Publish/Update return
+**Current implementation:** the authored-document reader is retired. Publish/Update return
 `prepared-reader-required` and public reads return honest 404 with `no-store`. Prepared delivery
 remains T4's obligation; no compatibility fallback is served.
 
 **Extension point:** program node kinds; profile capabilities;
 contract-version negotiation.
+
 
 ## Extension points and version negotiation
 
@@ -441,12 +510,13 @@ not fixed here; they are set when the relevant interface is ratified as an F
 amendment (§Authority and scope). This contract fixes the slots and the
 negotiation rule.
 
+
 ## Consumer obligations
 
 - Share these formats from the first new persisted or cross-domain
   implementation; do not mint a feature-local reference, unit, channel or
   acceptance format. Where an interface does not exist yet, draft it in the
-  consuming plan and ratify it as an amendment to this contract; the
+  consuming plan and promote the accepted interface into this contract; the
   implementation lands in shared code.
 - Reuse canonical domain evaluation. Visitor runtimes use the same runtime-safe
   evaluators as editor preview — no forked domain mathematics, no dependency on
@@ -455,6 +525,7 @@ negotiation rule.
   chunks.
 - Record implementation status truthfully: landed behavior stays labeled
   current until its explicit cutover.
+
 
 ## Open mechanisms (implementation decisions — not fixed here)
 
@@ -467,174 +538,12 @@ component/clip/media sets; audience-record storage; device/XR profiles. These
 conform to the shapes above and are settled by focused capability planning —
 never by inventing a parallel format.
 
-**Changing this contract:** guarantees and shapes change only through an
-explicit owner amendment; incompatible semantic changes require deliberate
-versioning. Implementation evidence may justify a smaller kernel, adopted
+**Changing this contract:** guarantees and shapes change only by explicit owner decision; incompatible semantic changes require deliberate versioning. Implementation evidence may justify a smaller kernel, adopted
 substrate, different packaging or more precomputation while preserving these
 contracts.
 
-## Ratified amendments
 
-**Status:** **owner-ratified 2026-10-15**
-([decision record](./decisions/f-ratification-2026-10-15.md)); these amendments carry the same
-normative force as the sections above. Each amendment names its exact interface version, sole
-provider assignment, consumer list and conformance requirements. Provider assignments are
-planning authority, not implementation evidence: no shared code, exports, fixtures, acceptance
-records or implementation commits are claimed here, and the gate register records `ratified`
-with empty evidence columns until providers land. Incompatible semantic changes require a new
-major with the old row `superseded`; compatible optional admissions keep the major with new
-capability evidence. Numeric conformance tolerances and calibration defaults stay provider
-conformance parameters unless an amendment states otherwise.
-
-Sole providers (planning assignment; register provider column wires at phase registration):
-F1/F3 → T1.P01.S01 · F4 → T1.P01.S03 (Save/unit extensions T3.P01.S02/S03) · F2 and the
-ExecutionProgram codec → T3.P01.S01 · F5 → T4.P01.S02 · viewport seam → T1.P01.S02 ·
-source/runtime cutover → T3.P01.S04 (contract AM-9) · prepared reader → T4.P01.S05. Behavioral-gate owners are
-unchanged: viewport T1, cutover T3, reader T4.
-
-## AM-1 F1 references v1
-
-Exact reference interface `references-v1`. All IDs are opaque nonempty stable strings; ordering
-is stable ID ordering, never a parsed display label.
-
-| Element | Ratified meaning |
-| --- | --- |
-| `SemanticReference@1` | `version: 1`; `domain` ∈ Layout, Scene, Camera, Experience or a declared typed-resource kind (unsupported required domain/kind is incompatible); `revision` tagged `exact {contentRevision}` or `project-lock {projectId}` resolved against the supplied accepted snapshot and lock — no ambient latest, and a resolution records its concrete revision; `subject {kind, id}` stable canonical subject; `instancePath` ordered stable instance IDs (empty denotes the root); `location` tagged `project-root` or `layout-location {levelId, structureInstancePath}`; `componentId`/`capabilityId` explicit nullable stable identity (unknown returns a typed result, never nearest/name matching). |
-| Resolution result | `resolved` with canonical subject, concrete revision and owner; or `missing \| removed \| incompatible \| unauthorized \| repair-required` with original reference, code/message and explicit repair actions. Resolvers perform no repair as a read effect. |
-| `SnapshotIdentity@1` | `{acceptedRevision, sourceContentId}` with a separate host SessionEpoch. AcceptedRevision is opaque `{projectId, revisionId}`, fresh on every source change including Undo/Redo. Neither digest nor epoch is the revision token. |
-| `FrameReference@1` | Project-world or an owner-qualified frame identity/reference and revision. The owning domain resolves origin/orientation/datum and validates point/vector conversion; a Room without an authored frame cannot qualify. |
-| `DerivedSourceRef@1` | `{source, generationId, stream, subRef?}`, runtime-only. Selection stores the canonical source, never fragment identity; fragment details expire on recompile. |
-
-Current-domain resolvers admit Layout, Scene and read-only current Camera subjects; Experience
-and resource subjects stay explicitly unresolved until their providers land. Project-lock
-resolution without an admitted F.2 lock reader returns `incompatible`; no dependency lock is
-manufactured. Selection requalification across revisions uses explicit acceptance
-correspondence; missing/retired subjects never retarget by proximity.
-
-**Consumers:** all tracks. **Conformance:** fixtures for nonzero floor qualification, root
-Scene, stable instance-path round trips, generation invalidation, missing/unauthorized/
-unsupported resolution and refusal of nearest/name repair.
-
-## AM-2 F2 unit envelope v1
-
-Exact envelope interface `unit-envelope-v1`. Strict validation rejects unknown keys, non-finite
-or out-of-range values, unsupported format/kind versions and duplicate/conflicting pins. No
-generic object bag admits hidden domains or renderer/session state.
-
-| Element | Ratified meaning |
-| --- | --- |
-| AcceptedRevision | Opaque `{projectId, revisionId}`; equality only, never currency inferred from label, date or publication version. |
-| `UnitHeader` | `{domain, unitId, formatVersion, contentRevision}`: one stable codec identity per admitted domain; header/payload version mismatch rejects. |
-| `DomainUnit` | `{header, data}`: one domain-owned validator/codec/evaluator boundary. Physical files, tables and blob-per-resource layouts are not prescribed. |
-| `ProjectEnvelope` | `{formatVersion, id, name, acceptedRevision, dependencyLock, units}` with exactly one Layout, Scene, Camera, Experience and typed-resource unit; Experience and resource payloads are collections. |
-| `DependencyLock` | `{formatVersion, entries}`: deterministic set keyed by qualified identity/instance scope; exact unit/resource content revisions and required capability/version per entry; external bytes additionally pin hash/MIME/size/immutable locator. |
-| `UnresolvedBinding` | Typed authored diagnostic retaining the original F.1 reference and repair status in the owning domain — never a fabricated resolved pin. Executable closure is distinguished from structural failure. |
-
-Admitted unit versions: envelope format 1; Layout payload 5; Scene 2 (Camera-free); Camera 1;
-Experience 1; typed resources 1. The source-content digest excludes acceptedRevision and
-session/history/receipt metadata; unit contentRevision hashes canonical domain data only.
-The Camera codec split lands in the same cutover as the Experience order cutover (one
-`navigationNodes` migration), as previously ratified.
-
-**Consumers:** T3 coordination, T4 source/program codecs. **Conformance:** empty and
-two-Experience round trips, required-kind/version refusal, reference/lock diagnostics and
-genuine resource pins.
-
-## AM-3 F3 inspection and Camera output v1
-
-Exact channel interface `inspection-v1` with the shared Camera-output protocol. F.3 validates
-shapes, negotiation and conflict rules; it exposes no unrestricted setters.
-
-| Element | Ratified meaning |
-| --- | --- |
-| `ChannelAddress@1` | `{ownerReference, instancePath, componentId, capabilityId, propertyId, frame}` with no delimiter-string parsing; `frame` is a shared FrameReference@1. |
-| `ChannelDescriptor@1` | Value type, units, finite range/categorical values, output/session scope, supported operators/interpolation, required/optional capability, invalidation inputs and validator identity. |
-| `ChannelContribution@1` | Descriptor/address, typed value, invocation identity and monotonic accepted run epoch — separate from the authored baseline. |
-| Layout ordinary Plan family | Cut height relative to an explicit datum (finite meters); depth finite meters > 0, required; optional explicit finite lateral span/crop; source-kind filter; source-qualified Reveal set (set union over declared identities only). Re-evaluate on accepted Layout revision, parameters, generation or frame change. |
-| Camera session inspection family | Finite target in project-world meters, azimuth/elevation radians, positive target-plane frame height, reading/projection policy and motion policy inputs. One exclusive resolved controller per output; accepted ordered replacement/handoff. Camera evaluates pose/projection; no generic pose/FOV interpolation. |
-
-Competing exclusive contributions reject with domain/address/owners and an actionable reason;
-replacement invalidates older run cleanup and a wrong-epoch completion cannot clear the active
-output. Camera-output tickets `{outputId, sourceRevision, sessionEpoch, ownerId, runEpoch}`
-govern inspection, guided/free navigation, Follow, Look-through and Preview through
-acquire/request/replace/return/cancel; return validates current source/output context and
-refuses with a reason otherwise. Exactly one Camera output owner exists per viewport/session.
-
-**Consumers:** T1 viewport; T3 extends `camera-handoff-v1` conformance without a second
-provider. **Conformance:** finite default/depth absence, invalid units/frame/range, unknown
-required vs optional-unsupported families, conflict, replacement and stale cleanup, plus
-runtime-safe import direction.
-
-## AM-4 F4 local acceptance Save and retirement v1
-
-Exact acceptance interface. F.4 records an enduring acceptance layer plus a current-source
-admission that later retires; local editing remains immediate and persistence is conditional and
-explicit.
-
-| Element | Ratified meaning |
-| --- | --- |
-| `AuthoringIntent@1` | Version, registered kind, operation ID, expected AcceptedRevision, qualified targets, typed serializable payload and captured inputs/allocated IDs. Deterministic: no clock, random, network, closure, gesture or renderer handle enters planning. |
-| `AcceptedSnapshot@1` | Validated read facade with accepted revision, source-content identity, admitted source-kind/version and domain read access. No required signature embeds the current ProjectDocument or an F.2 encoding. |
-| `prepareIntent` | Evaluates against the unchanged expected baseline and returns validated candidate changes with correspondence/diagnostics, or typed rejection. Planners stay operation-specific; no universal planner base class. |
-| `AcceptanceResult@1` | Accepted `{operationId, beforeRevision, afterRevision, snapshot, changes, correspondence, undoResult}`, no-op `{operationId, revision}`, or rejected `{operationId, code, expectedRevision, actualRevision when authorized, diagnostics}`. One logical install and one undo result. |
-| `acceptance-invariants-v1` | The enduring shared acceptance layer on this same F.4 entry: one opaque accepted revision per accepted change, canonical content-digest comparison, one atomic validated install with exactly one undo result, stale/ABA rejection and one bounded chronological history. Established with T1.P01.S03 and **never retired**; it is the prerequisite of `local-single-domain-v1`, `unit-acceptance-v1` and `conditional-save-units-v1`. |
-| `local-single-domain-v1` | Current-source adapter admission: registered Layout or Scene planners over the current source adapter, complete current-project validation, unchanged-domain/resource enforcement and refusal of multi-domain, new-unit, external-staging and resource-changing operations. Requires `acceptance-invariants-v1` and **retires with the current-source adapter at T3.P01.S04**. Proves neither unit/resource compound acceptance nor cloud Save. |
-| History | One 100-entry chronological snapshot stack through the same boundary. Undo/Redo validates, installs once with fresh identity, preserves unrelated contents and truncates redo after new edits. No-op, refusal, cancel and stale results add nothing. Replacement starts a new baseline. |
-| `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. It requires `local-single-domain-v1` and retires with the current-source adapter at T3.P01.S04. |
-| `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (provided by T3.P01.S05 and used by the live T3.P01.S04 callers). They require F.2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so unit acceptance stays eligible after the source transition. |
-
-**Per-planner scope is current behavior.** `PlannerAdmission` states the planner's `domain` and
-`compound`, plus an optional `writes` list of the extra unit domains a compound planner may change,
-using the same domain identifiers as `domain`; the permitted semantic write set is
-`domain` ∪ `writes`. A compound planner must declare at least one `writes` domain, each distinct,
-other than its own `domain` and admitted by the registry's profile, or registration refuses it; a
-single-domain planner that declares `writes` is refused rather than silently ignored. Acceptance derives the changed unit domains from
-the candidate's unit content revisions, not from the intent's targets, so an untargeted operation is
-checked too, and refuses any candidate outside that planner's write set with one typed rejection.
-The adapter-wide compound flag is only the host's grant, never a planner's licence. Resource-unit and
-resource-lock changes still require both the host's staging grant and the planner's `resources`
-grant. A scope refusal installs nothing: source, revision and history are unchanged.
-
-**Current-source content identity.** The single project-model export hashes UTF-8 canonical
-authored-content JSON with `sha256Bytes` (`sha256-<hex>`): strict normalized source, ID-keyed
-Layout identity maps ordered, and only `layout.identity.cursor` omitted. The cursor is persisted
-allocation bookkeeping; identity assignments remain authored and affect the digest. Full canonical
-source retains the cursor for Save/Load and exact Undo/Redo. Equal digests therefore do not prove
-full-source byte equality: exact history restoration and changed-payload Save retries must also
-compare the full captured source. This current-source rule does not define F2 unit hashing.
-
-**Local revision and cloud saved base are separate identities.** Local acceptance rejects a stale
-writer by comparing `AuthoringIntent@1.expectedRevision` against the local `AcceptedRevision`; it
-never contacts the server. Cloud persistence is a separate, explicit step: `SaveAcceptedSource@1`
-captures one immutable locally accepted source/revision/digest and is compared atomically against
-the durable **saved-base token** through `create-only` or `expected-saved-base {token}`. The
-saved-base token **is not** the local `AcceptedRevision`, not a SQL version ordinal and not a
-publication pointer revision. The server recomputes the digest and runs the same shared
-validation boundary; retry receipts, dirty state and conflict preservation are as in the
-`conditional-save-current-v1` row. Human UI and agents use the same operations, diagnostics and
-rule; no edit is executed server-per-gesture and Save adds no second history.
-
-**Retirement is per scope and terminal (ratified):** retirement retires one named scope, never the
-F.4 gate and never the enduring `acceptance-invariants-v1` layer, which persists across the source
-transition and stays the prerequisite of the unit capabilities. The retiring scopes are the
-current-source adapter admission (`local-single-domain-v1` current-source planning/validation and
-`conditional-save-current-v1` persistence), which T3.P01.S04 removes together with all their
-callers. The retired scope keeps its historical evidence and conformance record on the same F.4
-entry — no parallel registry, no permanent legacy admission — but after retirement no new or
-in-progress consumer may Require it, while shipped slices retain their recorded scope and evidence.
-The unit capabilities therefore stay eligible by requiring `acceptance-invariants-v1` and F.2
-instead of the retiring admission, and the checker must reject a `Requires` naming a retired scope
-while accepting one naming the active enduring scope (see the capability-readiness rule in
-[`../roadmap/f-foundation-contracts/README.md`](../roadmap/f-foundation-contracts/README.md#capability-readiness)).
-
-**Consumers:** T1/T2 local editing; T3 Save/unit extensions. **Conformance:** captured-input
-determinism, local stale/ABA rejection, real Layout/Scene registration, exact mixed
-chronological Undo/Redo, redo depth/truncation, full-validation rollback, unsupported
-compound/resource refusal, untouched Camera bytes, bypass-sensitive caller proof and real-DB
-same-base contention (one winner), create collision, retry mismatch and stale-response/dirty
-behavior for Save.
-
-## AM-5 Shared Stage and starter gallery v1
+## Shared Stage interface
 
 Exact viewport seam `viewport-projection-v1` with the shared Stage host protocol and the
 canonical starter gallery. Ordinary project-world Plan/3D only; Section, peel, arbitrary surface
@@ -654,7 +563,7 @@ inverses, Scene support resolution and Camera authoring are excluded.
 | Projection endpoints | Exact orthographic Plan; perspective 3D; Camera-evaluated projective transition (no near-orthographic FOV substitute, no shell tween, no second Plan transform). Flip preserves target and target-plane height, settles azimuth at the nearest 90° (lower-detent tie) and returns to the last working elevation about the current target. Aspect change preserves target, orientation and vertical framing scale. |
 | Shadow selection | The Stage Canvas selects its shadow-map type explicitly (`PCFShadowMap` on the landed r186 base); no boolean `shadows` resolving to the removed PCFSoft filtering path. |
 | Replacement and lifetime | Validate first, then atomically cancel writers, clear selection/task/return context and swap project/session under a new epoch. Stale loads and Camera completions cannot affect the replacement; no project-specific singleton survives. Adapters, buffers, listeners, leases and pending callbacks dispose exactly once. |
-| Starter gallery | Canonical current-format source template: one rectangular enclosure, real reconciled Room/floor polygon and floor datum, no Scene objects and no Camera/Experience content. Validated boot with explicit project-replacement guard. General Wall drawing and the derived-role/schema cutover are deferred and are not prerequisites for compiled-floor support. |
+| Starter gallery | Canonical current-format source template: one rectangular enclosure, real reconciled Room/floor polygon and floor datum, no Scene objects and no Camera/Experience content. Validated boot with explicit project-replacement guard. Wall drawing and derived Wall roles are implemented; advanced geometry remains future scope. |
 
 An evaluation's **generation advances on every drawn frame**, so it names a frame, not a reading: a
 proposal spans frames and is identified by the output, host session, accepted source revision and
@@ -670,12 +579,11 @@ selection/history/runes/DOM into shared packages.
 changes; Layout correspondence with reasoned depth/crop/Reveal behavior; T2/T3-style consumer
 probes; replacement teardown; shell/isolation; narrow, long-name and reduced-motion states.
 
-## AM-6 Execution program and visitor profile v1
 
-The first shared program codec was `ExecutionProgram@1`. [AM-10](#am-10-guided-views-and-visitor-reach)
-records the current codec. The bounded first visitor profile still applies. The codec is
-derived from accepted Experience/Camera/source identities — never another editable order format
-— and its standalone import closure carries delivery validation only.
+## Execution program interface
+
+The shared codec is `ExecutionProgram@4`, derived from accepted Experience/Camera/source identities.
+It is never another editable order format and its standalone import closure carries delivery validation only.
 
 Required fields: kind/version and required/optional capabilities; selected Experience/entry
 with labelled Presentations and content records; stable Stop occurrences and Camera invocation
@@ -694,7 +602,7 @@ the same thing in Preview and publication; unsupported required program/state/op
 refuses. Later optional kinds extend the declared codec/profile with accepted conformance;
 changed existing meaning requires a versioned cutover.
 
-One Experience interpreter (future T3.P01.S03) and one Camera engine serve both paths: editor
+One Experience interpreter and one Camera engine serve both paths: editor
 Preview uses the same semantic lowering and evaluation, while release Preview executes the
 actual prepared package. T4 persists the lowered program as an immutable delivery derivative
 and creates no second interpreter.
@@ -703,42 +611,8 @@ and creates no second interpreter.
 fixtures covering repeated Stops/runs, initialization/reset, guard failure, finite hold/Continue,
 directed Travel/gap, Cut and stale handoff cleanup.
 
-## AM-7 Source migration v1
 
-**Status: superseded by [AM-9](#am-9-shared-camera-and-experience-cutover) (ratified 2026-10-19,
-[record](./decisions/t3-cutover-ratification-2026-10-19.md)) — not invoked.** The owner ruled every
-saved source, version, publication and resource disposable before the Source Baseline, so the F.2
-migration exception has no covered data. No converter, inventory or reverse path exists. The cutover
-is AM-9's clean source epoch. The bullets below are retained as superseded provenance.
-
-Single source-conversion policy for the Camera/Experience transition (future T3.P01.S04).
-Conversion is a named pre-baseline exception, not a multi-format decoder.
-
-- **Prepare without installing.** The sole read-only converter takes the strict post-#115
-  document pair plus captured IDs, policy decisions and staged pins, and produces all unit
-  candidates with a mapping report and domain plus composed authored validation. Ambiguity and
-  refusal are reported before acceptance; unresolved required bindings refuse execution.
-- **Quiesce and accept once.** Block writes during the transition; capture one expected migration
-  baseline and CAS-install Camera extraction, Experience order, Scene removal and locks together.
-  No intermediate Camera-only or order-only state exists. A lost CAS race changes nothing.
-- **Activate one source epoch.** Deploy new readers, API admission and runtime together; old
-  clients fail with version/revision-required diagnostics. No format sniffing, transparent reader
-  fallback or writable feature flag. New bootstrap emits only the new format.
-- **Retire immediately.** Remove Scene/Camera legacy order fields, flow-order exports, node-keyed
-  visitor orchestration and every current-source F4/Save/Stage/starter adapter with all its
-  callers. Only the bounded read-only converter knows the old fields, owned by T3; it retires
-  when the covered migration inventory is completed or discharged and recovery is verified,
-  before the Source Baseline. No reverse serializer, dual write or indefinite migration reader.
-- **Recover deliberately.** Failure before activation leaves prior state untouched. After
-  activation, restore the backed-up pre-cutover source plus matching deployment as a coordinated
-  rollback, or roll forward; never reverse-convert edited new-format data. Source Undo restores
-  new-format authored contents with a fresh revision and never reactivates the retired schema.
-- **Inventory first.** S04 approval requires actual source/project/version/publication counts,
-  format coverage, backups, quiescence and a recovery plan. A publication gap additionally
-  requires verified inventory and explicit owner acceptance at activation; covered releases
-  without a concrete compatibility disposition block activation.
-
-## AM-8 Prepared delivery direction v1
+## Prepared delivery contract
 
 Approved release architecture for T4; the exact F5 envelope/profile/payload codecs and
 canonicalization are provider work for T4.P01.S02 (F5 stays `undrafted` until then). No prepared
@@ -772,71 +646,10 @@ authored reader. Post-barrier rollback prefers a prior compatible prepared runti
   publication UI; bounded T2 single-model ingest follows with accepted F.1/F.2 resource identity,
   staged F.4 acceptance and T4 resource delivery.
 
-## AM-9 Shared Camera and Experience cutover
-
-**Status:** **owner-ratified 2026-10-19** ([decision record](./decisions/t3-cutover-ratification-2026-10-19.md), R3); it
-supersedes AM-7 for the T3 cutover. Register: `T3.camera-experience-cutover@1`, superseded by [AM-10](#am-10-guided-views-and-visitor-reach).
-
-Behavioral contract of `T3.camera-experience-cutover@1`. Sole provider `T3.P01.S04`. Consumers:
-T3.P02, `T1.P01.S06` and later T1/T2 phases on F2 units (K1, K3), and `T4.prepared-reader@1`.
-Prerequisites at the provider's trusted base: `unit-resolution-v1`, `unit-envelope-v1`,
-`camera-handoff-v1`, `unit-acceptance-v1` and `conditional-save-units-v1`, plus the enduring
-`acceptance-invariants-v1`.
-
-- **Authorities after activation.** Camera owns View identity, framing, projection, connectivity,
-  route geometry and intrinsic directed motion/evaluation. Experience owns Presentations, Stop
-  identity, Guide order, holds, continuation, Gates and invocation time mapping. Scene and Camera
-  structural types carry no editorial order, hold, detour or lock field. Each source/session has
-  exactly one Experience order writer and one Camera output owner. A Presentation may exist without
-  a Guide: lowering and DOM navigation keep it reachable.
-- **Clean source epoch (no migration).** No saved source is covered (owner ruling 2026-10-19, [record](./decisions/t3-cutover-ratification-2026-10-19.md)), so
-  F.2's migration exception is not invoked and no converter exists. Activation is one forward schema
-  migration, serialized against concurrent runners. In one transaction it removes all authored
-  project data (sources, versions, receipts, resources, publications, releases) and installs a schema
-  that structurally admits only the F2 envelope, so a writer that predates it fails. Unreferenced
-  object bytes are then purged, only after the epoch is recorded, only under the deployment's
-  configured namespace, and only for keys the API wrote; a shared bucket, a foreign namespace or an
-  object of unknown provenance refuses the purge instead of being deleted. New bootstrap and the starter emit only F2.
-- **Current-format-only admission.** API admission, editor boot, import, session drafts and Save
-  accept only declared F2 versions. Old clients, old files, old drafts, mixed roots and unknown
-  versions fail with typed version diagnostics. There is no format sniffing, transparent fallback,
-  dual write or writable feature flag. Skew between independently deployed API and editor builds
-  refuses; it never misreads.
-- **Retirement.** `local-single-domain-v1` and `conditional-save-current-v1` retire, with every
-  caller, under AM-4's per-scope retirement rule. `acceptance-invariants-v1` persists. Also removed:
-  the Scene Camera fields, legacy flow-order exports and their callers, node-keyed visitor
-  orchestration, and the inactive converter module.
-- **Acceptance and history.** Every project starts at a new-format baseline, and no Undo crosses the
-  format boundary. AM-4's unit acceptance and Save semantics apply unchanged: one validated install
-  with one undo result, fresh revisions, a saved-base CAS with one winner, receipts, and conflict
-  preservation.
-- **Runtime defaults at @1.** Holds and Gates start at editorial arrival. Lowering takes closed
-  invocation bindings. Authored homes for the Cut/Travel selector, presentation text, state and
-  lifecycle are later F2 unit amendments, owned by their first authoring consumer (T3.P02). They are
-  not part of this version.
-- **Publication gap.** Until `T4.P01.S05`, Publish and Update return `prepared-reader-required`.
-  Every public read returns an honest not-found or unavailable result, status and Unpublish stay
-  truthful, and `/p/` plus visitor isolation stay real. Prepared delivery remains T4's.
-- **Recovery.** A failed migration transaction changes nothing. After activation, recovery rolls
-  forward. There is no reverse serializer or old-format reader.
-
-**Conformance.**
-
-- Admission refusals: old-format document, old-client Save, old file, old draft, mixed roots and
-  unknown version.
-- Reset migration: one transaction, idempotent rerun, and a single winner under two runners.
-- Structural refusal of a pre-epoch writer after the reset.
-- `/p/` not-found for prior IDs, and Publish returning `prepared-reader-required`.
-- Atomic compound acceptance and Undo/Redo.
-- Real-Postgres Save contention with zero skips.
-- Motion/continuation parity, session/handoff independence and accessibility parity.
-- One evaluation authority and one order writer.
-- No retired-scope caller, and no editor machinery in public chunks.
 
 ## Product convergence destination
 
-**Owner-ratified destination, 2026-10-22, PR #173.** See the
-[ratification record](./decisions/product-convergence-ratification-2026-10-22.md). These obligations
+[ratification record](north-star.md). These obligations
 prepare the next consumers; landed codecs, admitted versions, capabilities and behavior above
 remain current. [Review manifest](../archive/roadmap/coordination-2026-10/product-convergence-2026-10-21-amendments.md).
 
@@ -873,175 +686,41 @@ version/capability and older-reader behavior decision. None is pre-labelled addi
 accepted provider identities and history; a new incompatible interface receives its own version
 and normal gate registration/conformance. Ratified shapes never manufacture implemented readiness.
 
-## AM-10 Guided Views and visitor reach
 
-R217.S27 provides `T3.camera-experience-cutover@2` with Experience unit format 3 and
-`ExecutionProgram@3`. The strict readers refuse older versions with `unsupported_format_version`.
-The cutover supersedes AM-9's runtime defaults for Stop entry, holds and free exploration.
+## Shared authoring operations
 
-- A Stop authors a nonempty ordered sequence of distinct Camera Views from its Presentation.
-  The first View is the entry and the last is the exit. The Presentation's Default remains
-  independent of the Stop's sequence. Removing a View from a Presentation removes it from
-  each affected Stop. A Stop left empty gets a single View at the resulting Default.
-- Each View may author a hold in seconds. Lowering fills an absent intermediate hold with
-  3 seconds. The interpreter carries leftover tick time across steps. A timed final View
-  can auto-continue after the hold expires. An untimed final View waits for Next, and a Gate
-  always requires explicit continuation.
-- A step's optional transition arrives at that View and is absent on the first View.
-  The default is Cut. Travel must resolve to exactly one existing Camera connection. A
-  continuation Travel connects the source Stop's exit to the target Stop's entry. Lowering
-  reports gaps or ambiguous connections and binds only Camera identities. Camera owns pose,
-  route evaluation and motion duration.
-- The program contains the resolved View sequence, step invocations, and local-time entries
-  keyed by Stop identity and zero-based View index. The first View uses the Stop's arrival
-  invocation. Authored and lowered data carry neither the current View index nor the run clock.
-- Presentations opt into free exploration with `explorable`, which defaults to true at
-  creation. The visitor lists open Presentations in authored order and enters each at its
-  Default. The Guide can still reach a closed Presentation.
-- An Experience's optional welcome is plain text limited to 600 code points. It is authored
-  under More on the Guide Card. The lowered program carries the text for the visitor.
+Human UI and agent/API clients should be clients of the same deterministic
+authoring behavior. New authoring capability should be expressible as a
+deterministic domain operation independent of its toolbar/button presentation
+wherever practical, with this shape:
 
-## AM-11 Guide pacing, explore and return
+```text
+semantic intent (typed, serializable)
+→ explicit inputs + expected project revision
+→ validation/preconditions across affected domains and resource locks
+→ deterministic candidate mutation
+→ one atomic accepted result + one undo result
+→ render/runtime
+```
 
-The R217 Experience review's [guide-playback plan](../roadmap/r217-core-editor-stability/experience-review/guide-playback-plan.md)
-cuts over to Experience unit format 4 and `ExecutionProgram@4`. Format 3 and `ExecutionProgram@3`
-are refused with `unsupported_format_version`, with no converter. AM-10's Stop View sequences,
-per-View holds, Gates and Guide Card welcome are superseded. The owner's second review
-(2026-11-05, [fix.md](../roadmap/r217-core-editor-stability/experience-review/fix.md) §2) amends
-format 4 in place: format 4 has never been on `main`, so there is no bump, migration or
-compatibility reader, and a file written before the amendment is refused. The rules below are
-normative for format 4. [Implementation status](#am-11-implementation-status) says which of them
-PR #271's branch implements so far.
+Cross-domain mutation is a separate transaction boundary from runtime evaluation.
+For "insert kit, attach to Wall, capture a Camera View, bind it to a Presentation,
+optionally create a Stop": prepare domain
+candidates against one expected project revision, stage required resource
+revisions, validate the composed result, then accept all domains and the
+dependency lock together with one undo result. Renderers and publication see one
+coherent accepted snapshot. Failed validation preserves the previous project;
+failed uploads may leave collectable staged bytes, never a half-installed kit.
+Naive stale writers are rejected by the expected-revision precondition. First
+implementation of this compound acceptance lands with the Experience cutover
+(capture a View, bind a Presentation and optionally add a Stop in one acceptance)
+— it is not deferred
+to component or kit work.
 
-**Authored format 4**
-
-- **A Guide is one linear order:** `id`, `label`, `stopIds` and `pacing` (`automatic` or `manual`;
-  Manual keeps every stay unused). The first Stop starts the Guide and the last Stop ends it.
-  There is no start Stop, no explicit continuation and no early End. Every Stop is listed by
-  exactly one Guide, exactly once (`stop-guide-membership`).
-- **A Stop is one visit:** a Presentation, an entry View (`entryViewId`, `null` follows the
-  Presentation's Default; a named View stays pinned even when it is currently the Default),
-  a finite stay of at least 1 s, an optional invitation (`{ prompt }`,
-  `prompt` at most 80 code points), and an optional outgoing `transition` (`cut` or `travel`,
-  absent means Cut): the step to the next Stop in its Guide. The last Stop has none
-  (`travel-after-last`), and a Travel between two Stops that enter the same View is refused
-  (`travel-same-view`).
-- **A Presentation** carries `label`, ordered `views`, `subject`, `text` and `explorable`. Its
-  first View is the Default. Each View may carry an outgoing `transition`, the step to the next
-  View, and the last View has none. Steps add no Guide time. Removing View 1 makes the next View
-  the Default; a Stop that entered at a removed View follows the Default. `label` is the
-  creator's own name, or `null` for the linked Scene entity's live name, which is admitted
-  only with a Scene-entity `subject`.
-- **One rule for every edge:** a Cut or Travel belongs to the item it leaves, in a Guide and in a
-  Presentation alike. Travel must resolve to exactly one existing Camera connection joining the
-  two Views, in either direction. Lowering reports gaps and ambiguous connections, and binds only
-  Camera identities.
-- **The Experience** carries `entryGuideId`, an explicit Opening Guide that is `null` exactly
-  when there is no Guide, and a plain-text `welcome` of at most 600 code points, authored on the
-  Experience Card. Detours keep their shape and runtime.
-
-**Authoring invariants** (every accepted Experience change; Camera owns the paths)
-
-- An edit that leaves a Travel with no next item, or with the same View on both sides, writes a
-  Cut in the same change. A Travel setting is never kept dormant or restored later.
-- An edit that gives a Travel a new pair of different Views reuses the connection that joins the
-  pair (either direction), or adds a straight connection in the same change. Planners use
-  captured connection ids and refuse `travel-paths-incomplete` rather than leave a gap. No
-  Experience edit deletes, retargets or reshapes a Camera connection.
-- Removing a Stop, or a Guide's Stops, removes the Detours that name them in the same change.
-- Creating the first Guide sets `entryGuideId`. Removing the Opening Guide moves it to the next
-  Guide, or to `null`. The first Stop added to an Experience with no Guide creates a Guide with
-  a default label in the same change.
-- Removing a Scene entity (`delete-one`) is one compound change that also unlinks every
-  Presentation about it, storing its effective name as `label`, through a pure Experience
-  helper. This is the only Scene → Experience write. Nothing in World chrome marks an entity as
-  linked.
-
-**Program and runtime**
-
-- The program carries `pacing`, each Stop's resolved `entryViewId`, `staySeconds` (`null`
-  exactly when Manual) and `invitation`, each Presentation's resolved `label` and `steps`
-  (`steps[i]` runs from `viewIds[i]` to `viewIds[i + 1]`), and one local-time entry per timed
-  Stop. A Travel gap on a Presentation step refuses lowering like a Guide edge. `entryStopId` is
-  the Guide's first Stop, or the editor's preview start, which is never authored.
-- Lowering emits only `sequence-next` continuations. The program keeps its `stop` and `end`
-  kinds, and the interpreter keeps handling them, as runtime capability with no authored source.
-- The interpreter starts a stay only after its arrival completes (a Travel is `traveling` until
-  the host confirms `arrival`). Next always works: it lands an arrival now, ends a stay, or
-  continues a wait. Pause and play are run state. Explore (`enter-presentation` from a Stop)
-  freezes the clock and keeps the occurrence suspended; `explore-view` plays the authored step to
-  a neighbour and Cuts otherwise; `resume` restores the same occurrence, its remaining stay (with
-  a 2 s lead-in) and its play state, without re-running arrival actions.
-- One Guide clock: the visitor-safe `guide-run-map` adapter passes one View per Stop to the
-  unchanged Camera time map, and every visitor surface is time-aligned (the public overtake is
-  retired), so a run's arrival times equal the map's.
-
-### AM-11 implementation status
-
-PR #271's branch implements format 4's pacing, stays,
-invitations, entry Views, Presentation `views`, program v4, the interpreter, Explore and
-Back, and the one Guide clock. Authoring feedback is typed since slice 1: a line carries
-`success`, `info` or `refusal`, so a success is never styled as a refusal and no string
-whitelist decides, and a success, an info line and a refusal are three different things.
-Slice 2 lands the linear Guide model: `Guide.entryStopId` and `ExperienceContinuation` are
-deleted, `Stop.transition` is the outgoing step, `stop-guide-membership`, `travel-after-last`
-and `travel-same-view` are refused, Presentation steps are outgoing edges, lowering's entry is
-`options.entryStopId ?? order[0]` and every program Stop emits `sequence-next`, and removing a
-Stop or Guide removes its Detours. Slice 3 reconciles Travel in every accepted Experience change: `normalizeTransitions` writes a
-Cut wherever a Travel can no longer mean anything, `requiredTravelPairs` names every remaining
-pair no Camera connection joins, and `prepared()` adds one straight path per pair from the
-captured id pool in the same change, under compound `writes: ['camera']` admissions. Every
-endpoint-changing planner — Guide order, both creation intents, the Stop update, the
-Presentation update and every removal plan — routes through `prepared()`, and the controller
-sizes one `connectionPool()` for all of them: the Experience's Travel uses (Stop transitions
-plus Presentation View transitions) plus one, so no hand-sized array can starve an Enter-at or
-Default change. The Stop update carries only its new entry View, never a Travel path. A seeded
-property test runs twenty sequences of reorders, inserts, entry changes, View reorders and
-removals over Travels, a repeated Presentation and a Detour, asserts every accepted change
-lowers without `travel-gap`, `travel-same-view`, `travel-after-last` or
-`stop-guide-membership`, checks exact Undo and Redo on every sampled accumulating step, and
-removes the Stop that takes the Detour (R29). Slice 4 words every source finding for the creator:
-`experience-problems.ts` maps validator diagnostics and lowering refusals to `{ sentence,
-subject, fix, detail }` using Guide Stop numbers, Guide and Presentation names and Camera View
-labels; the chip's *Show* opens the Stop's Transition Card, and codes, paths and ids appear only
-in *Copy details*. Slice 5 makes the strip one timeline: the cards' rails and the Travel gutters
-form a single track (`locateSegmentAt` maps a pointer's whole-track fraction to a segment and its
-own local fraction), each gutter reads *↗ 5 s*, cards carry no Start tag, time text or wait glyph,
-the separate scrub bar is gone, the pacing pill opens its own popover, and the Guide's name renames
-in place; its ⋯ menu offers Remove Guide. The strip and the View rail mark selection and
-reorder with quiet forest and light lines; no gold remains on either. Slice 6 retires the Guide
-Card: `ExperienceGuideWriter` and `guideCardModel` are gone, and a Guide is never a Card subject.
-When nothing is selected the Card is the Experience itself, through
-`ExperienceExperienceWriter`: the welcome text, which has no other editor, and *Opens with* only
-when two or more Guides exist (R33/R36). The Index Guide row renames in place and carries its own
-⋯ menu (Rename, Remove Guide), and opening a Guide from either home keeps the Experience Card and
-shows its strip. Slice 7 closes View → Stop: every creation command carries `entryViewId`, each
-View row offers ＋ Stop, a View dragged from the rail onto the strip becomes a Stop entering it,
-and the first Stop creates the Guide *Tour* with no naming prompt; further Index Guides are
-*Tour 2*, *Tour 3*. Slice 8 makes a Presentation follow its Scene object: `label: null` is admitted
-only with a Scene-entity subject, lowering writes the effective name into the program, the About
-section links, follows and unlinks, and Scene `delete-one` unlinks every Presentation about a
-removed object in the same accepted change. Slice 9 gives the visitor one continuous segmented
-progress bar in Guide order: each segment is a Stop occurrence, `state.visited` marks only the
-Stops actually entered, without treating the destination stay as complete. During Travel only its
-connector fills; after arrival the destination stay starts at zero. Pause and Explore freeze the
-active or suspended stay; Back restores its lead-in. The Camera director supplies Travel progress,
-and Manual outlines the current segment with no stay fill. Each Stop occurrence has its own
-segment. Prev/Next follows the Guide; Places supports free exploration and Back resumes the Guide.
-No direct Stop-jump UI is required. The bar reads the same interpreter state as the tour controls.
-Preview starts paused and exposes a duration-proportional timeline: stays and Travel share one
-seconds-to-width scale; Cuts and Manual waits remain compact markers. Pointer drag and keyboard
-seeking replay the same reducer to the sought occurrence and sample Camera’s existing motion.
-A paused seek stays paused; a drag begun during playback resumes on release. The timeline stays
-available after completion for rewind. Manual arrival Travel can be paused while seeking; its
-stay still waits for Next with no invented duration. Public entry retains autoplay and read-only progress.
-
-The final simplification removes range selection, bulk transition editing and the strip's duplicate
-Rename menu item. View-list folding remains intentional; single click opens the View Card and
-Look through remains explicit. Guide/Stop creation and entry editing preserve a named View through
-later Default reordering, including a View that was the Default when chosen.
-
-Every rule in this AM-11 implementation status is implemented on PR #271. The slice 10 final
-gate reran the complete editor suite (3,932 tests), the architecture suite (209 tests),
-`npm run check` (0 errors) and `npm run build` (passed). The owner's browser journeys A–Q are
-the remaining manual acceptance, and no merge occurs before they pass.
+No complete generic command framework is claimed to exist today, and none is
+created by this direction. Extract domain operations incrementally as real
+capabilities require them, against the surviving kernel semantics and the
+destination authority model. The current F4 host has one chronological history shared by
+Layout/Scene and the bounded Camera/Experience loop; its
+[persistence contract](./components/persistence.md) owns the cap and Save behavior. Several
+independent commits are never presented as one transaction. T5 extends no acceptance scope here.

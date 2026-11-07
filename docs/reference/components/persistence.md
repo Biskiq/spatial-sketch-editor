@@ -1,5 +1,9 @@
 # Persistence and schema
 
+> **Covers:** project envelope, unit versions, Save/Load, assets, publication delivery.
+> **Invariants:** strict admitted versions, no converter/fallback, conditional append-only Save.
+> **Governs:** persisted source and delivery contracts; current versions are listed below.
+
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
 **Last reviewed:** 2026-10-31 (local credential migration 009). The code contract below describes
@@ -55,7 +59,6 @@ versioned F amendments. Camera and Experience already have distinct codec-bounde
 
 ## Editable source and revision (destination)
 
-**Ratified obligations, 2026-10-27** ([record](../decisions/t5-g0-ratification-2026-10-27.md)).
 Future expressive capabilities must retain the domain-owned source needed for their admitted edits
 and declared relationships. Deliberately authored geometric controls may be source; generated
 tessellation, renderer handles, session caches and chronological history remain outside authored
@@ -81,23 +84,19 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 6, Scene 4, Camera 1, Experience 4 and resources 2.
-Experience 4 (guide-playback plan, R217 Experience review) replaces Stop View sequences with one
-entry View, a stay and an optional invitation per Stop, gives each Guide a `pacing`, gives each
-Presentation ordered `views` (the first is the Default) and retires Gates; format 3 is refused
-with no converter. The owner's second review amends format 4 in place, with no bump or reader
-for the earlier shape ([AM-11](../composition-execution.md#am-11-guide-pacing-explore-and-return)):
-a Guide is one linear order with no start Stop, a Stop carries an optional outgoing
-`transition` instead of a `continuation`, a View's step is the step to the next View, and a
-Presentation's `label` may be `null` to follow its linked Scene entity. AM-11's implementation
-status says which of these the PR #271 branch implements so far.
+`units`. Unit payload versions are Layout 6, Scene 5, Camera 1, Experience 4 and resources 2.
+[Experience 4](experience.md#current-authoring-and-runtime-contract) defines linear Guides,
+entry Views, stays, invitations, outgoing transitions and Presentation naming. Earlier shapes
+are refused without conversion.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
-Scene 4 carries `textures`, `materials`, `entities` and optional `clusters`; it carries no Camera
-or editorial fields. Format 4 adds the `form` entity, whose authored source (generator, outline,
-extent, per-axis scale, next key) is stored verbatim; generated geometry is never serialized, and a
-reader refuses format 3 rather than converting it. Camera carries Views and connections. Connection endpoints are generated,
+**Scene 5** carries `textures`, `materials`, `entities`, optional `clusters` and optional
+`environment`; it carries no Camera or editorial fields. Scene 4 introduced the `form` entity,
+whose authored source (generator, outline, extent, per-axis scale, next key) is stored verbatim;
+Scene 5 adds world presentation (the fixed `paper`/`daylight`/`golden-hour`/`dusk` environment
+preset). Generated geometry is never serialized, and a reader refuses older Scene formats rather
+than converting them. Camera carries Views and connections. Connection endpoints are generated,
 only interior anchors are authored, and directional framing envelopes retain their kernel rules.
 `validateProjectEnvelope` separates structural issues, repairable authored diagnostics and
 executable resource closure. The Stage discloses diagnostics and closure for inspection without
@@ -194,7 +193,7 @@ advisory lock; rerun is a no-op and pre-epoch writers refuse. Namespace-owned R2
 owner action after the epoch; unknown or foreign keys refuse the purge. No production data reset
 or deployment is implied by this source contract. Activation follows AM-9's owner-run runbook.
 
-**My Objects library storage (T5.P01.S04, in review).** Migration 008 adds
+**My Objects library storage.** Migration 008 adds
 `form_library_items`, the library-scope storage for the `form` kind. It is owner-scoped, not project
 data: `owner_id` references `users`, while no project/release/asset foreign key exists, so deleting
 a project leaves its items. Each row carries a server logical id, name, kind, payload format number,
@@ -222,7 +221,7 @@ catalogue `assetId`s or a model resource pinned in the same envelope. T2.P02.S01
 staging and immutable approved model revisions in the project registry; Save verifies each model's
 derivative/source pins, recipe, report digest and placement against an approved revision owned by
 that project, refusing the save without changing the stored version when they disagree. Resources
-format 2 carries the model resource and lock; Scene format 4 may reference it. The visitor/public
+format 2 carries the model resource and lock; Scene format 5 may reference it. The visitor/public
 reader remains catalogue-only. T2.P02.S02 adds the import and placement flow that writes these revisions
 and their Scene references through the S01 routes and Save verification, which it reuses unchanged.
 
@@ -238,3 +237,151 @@ still render a legacy session scale vector lossily until a later format version.
 **Fidelity:** independent (per-axis) scale may be lossy for visitors; the editor-only mesh
 desync (until a shared factory/bake) went with the editor mesh path; there is no automatic
 repository writeback.
+
+## Library compatibility and baseline decision
+
+My Objects stores authored source, never generated mesh. Inserting creates a detached editable copy
+with a new identity; later changes to the item, source or copy do not propagate to the others.
+Each item records a strict format number. An older-format item remains listed and removable but
+cannot be inserted; there is no tolerant reader or upgrader before the baseline.
+The owner commitment is that project/library versioning and migrations begin at an owner-declared
+beta baseline. How that commitment relates to the separately declared Source Baseline remains an
+explicit unresolved decision; no baseline is declared by this documentation consolidation.
+
+## Source epoch activation safeguards
+
+Deployment activation is an owner-controlled action, not a permission granted by documentation.
+Migration 005 fences pre-epoch writers and is serialized, transactional and idempotent. A failed
+transaction changes nothing; post-activation recovery rolls forward without a reverse serializer.
+Byte cleanup happens only after the epoch is recorded, only in the configured namespace and only
+for keys the API wrote. Shared buckets, foreign namespaces and unknown provenance refuse cleanup.
+The historical disposable-data ruling for that cutover never authorizes a future destructive reset.
+
+## Preview and publish
+
+Publishing compiles an accepted project revision, selected Experience(s), and a
+delivery profile into a **visitor-safe prepared package** with an explicit
+semantic runtime contract, closed resource graph and verifiable provenance:
+
+```text
+accepted revision × selected Experience(s) × delivery profile
+→ versioned release reader
+→ compatible visitor runtime
+→ interactive · embed · presenter · stills/film adapters
+```
+
+Each published Experience has its own mutable publication pointer to an immutable
+release and entry point. Semantic locations survive republishing while their
+subjects persist; pinned release addresses preserve historical context; removal
+or incompatible replacement returns an explicit result rather than silently
+redirecting. A release may include several Experiences with explicit
+selection/transition semantics; a simple UI may expose one.
+
+**Release formats are separate from source formats.** The release reader consumes
+prepared visitor data and never invokes the changing authoring validator or
+historical authoring compilers. Visitors never receive editor session
+infrastructure: selection, undo/redo, gizmos, Inspector, editor shell state,
+authoring stores, or asset-management UI. The package excludes editor tools,
+unresolved drafts, private source assets, credentials and arbitrary
+author-supplied executable code by default. A native **editable project export**
+remains a separate artifact containing supported source and resources; a visitor
+package does not promise reconstruction of the editable project.
+
+**Delivery-derivative exception.** Immutable, versioned, reproducible delivery
+derivatives are permitted outside authored documents (they were formerly
+forbidden by a blanket rule). Generated Camera endpoints may exist in a compiled
+delivery descriptor; they remain forbidden as a second authored set of connection
+anchors. Three objects, GPU handles, selection and transient editor state remain
+excluded.
+
+**Baselines** — see [Release and Source Baselines](#release-and-source-baselines).
+
+**Current implementation:** P22 stores an authored `ProjectDocument` snapshot plus
+an asset manifest, and the public read path revalidates it with deployed code;
+cold preparation also uses deployed decode/compiler code. That path is current
+behavior to be cut over, not the destination. Its `RuntimeScene`/`RuntimeConnection`
+forms, including resolved Camera poses/paths, are starting evidence, not schemas
+to freeze or serialize blindly.
+
+
+
+## Release and Source Baselines
+
+**Release Baseline (destination; not yet declared).** Required when external
+publication is promised durable. It names the release formats/profiles, retained
+dependency closure, supported behavior/window, runtime patch/deprecation policy,
+and managed-delivery promises. Its reader consumes prepared visitor data without
+invoking the authoring validator or historical authoring compilers. Before it is
+declared, provenance must be verifiable — retained source revision and dependency
+lock connected to build identity and output hashes through controlled build
+records or equivalent attestation. A self-asserted manifest is not sufficient
+evidence of that linkage.
+
+**Source Baseline (destination; not yet ratified).** Ratified only after F's
+formats land and the supported composition/Experience units stabilize. It
+establishes durable editable-project and resource migration/version-support
+obligations. It is independent of release durability: an already supported
+visitor package does not force every intermediate source schema to become
+permanent.
+
+**Before the Source Baseline**, development formats may change without
+accumulating historical readers. Real trial creators' accepted projects receive
+bounded, scripted migrations as named pre-baseline exceptions with covered data,
+validation, recovery and retirement criteria — they are not disposable fixtures.
+Merging a development schema does not itself create permanent compatibility;
+strict canonical validation remains required. Any earlier explicit durability
+promise still needs its own documented cutover treatment.
+
+```text
+pre-baseline development data → no compatibility guarantee
+Release Baseline → visitor release durability obligations
+Source Baseline (after F lands) → editable source migration/version support
+```
+
+### Development-stage schema compatibility (pre-baseline)
+
+Until the relevant baseline is declared, development schemas may break: new
+work does not add migration layers, tolerant historical decoders, multi-version
+canonical types, compatibility-only visitor branches or legacy writer support by
+default, and obsolete compatibility code is removed rather than carried forward
+solely because an earlier development revision existed. Reaching `main` does not
+by itself create a backward-compatibility obligation; merge history records what
+the code did, not a durability claim about what users own.
+
+A migration or compatibility path before a baseline requires an explicit
+product reason and acceptance criterion — externally distributed project files
+that must remain usable, a published snapshot intentionally declared durable, an
+intentional import format or external integration, or production data that
+cannot reasonably be reset — documented explicitly. Existing migration code is
+not itself evidence that compatibility remains required.
+
+```text
+LEGACY ADAPTER EXISTS
+≠
+LEGACY FORMAT IS A SUPPORTED PRODUCT CONTRACT
+```
+
+A pre-baseline reader may legitimately exist because internal demo content,
+benchmark goldens or another not-yet-migrated internal asset still depends on
+the older representation: a development dependency with a named owner and a
+planned removal path, documented as temporary — not a promise that the format
+keeps loading. This does not weaken canonical validation: current documents are
+validated strictly, deterministic operations preserve ownership/history
+invariants, and editor/visitor parity remains required. Intentional format
+conversion (an importer that deliberately converts an external or separately
+supported format into canonical project state) is a product capability, not
+backward compatibility.
+
+Keep four compatibility concerns distinct: editable-project schema, release
+representation, evaluator semantics, and host/delivery API. A runtime build may
+support several semantic profiles and a release declares those it requires; a
+matching major version alone is insufficient if a required capability is absent.
+Unsupported required behavior fails clearly, and an authored fallback may satisfy
+a declared alternative profile. A changed implementation that alters supported
+behavior needs a semantic version boundary, an explicit migration/rebuild, or a
+documented deprecation decision — never a silent reinterpretation of an immutable
+release. Conformance covers semantic traces and selected visual/numerical
+tolerances, not eternal pixel identity.
+
+*(This split replaces the former single Compatibility Baseline concept; earlier
+statements of one milestone no longer describe the destination.)*

@@ -2,8 +2,8 @@
 
 Browser captures and measurements from the S21 acceptance runs at tested revision `edfab667`, preserved
 byte-for-byte from the live tree by `git mv`. The live acceptance record links here for every capture.
-Nothing in this folder is an authority: the [acceptance record](../../../../../roadmap/r217-core-editor-stability/r217.s21-index-and-card/acceptance.md)
-owns the results, the review and the acceptance, and the [plan stub](../../../../../roadmap/r217-core-editor-stability/r217.s21-index-and-card/implementation-plan.md)
+Nothing in this folder is an authority: the [acceptance record](../acceptance.md)
+owns the results, the review and the acceptance, and the [plan stub](../implementation-plan.md)
 owns the recovery line for the approved plan.
 
 ## 2026-11-01-browser

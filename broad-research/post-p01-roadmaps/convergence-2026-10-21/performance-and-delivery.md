@@ -3,7 +3,7 @@
 Status: decision input for draft PR #173, 2026-10-22, at HEAD `3e8342a3` on
 `codex/product-convergence-2026-10-21`. Planning/research only: no ratification, dependency
 adoption, benchmark workflow, CI gate or implementation authorization. The
-[owner production hold](../../../docs/roadmap/README.md#production-implementation-hold) applies.
+[owner production hold](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#production-implementation-hold) applies.
 `git diff 78cafc3a 3e8342a3 -- apps packages` is empty, so every source observation holds for the
 sibling packets' revisions too. Disposable probes live in [`probes/performance/`](./probes/performance/README.md).
 
@@ -26,7 +26,7 @@ installed and no browser was launched).
 
 **Ratification update, 2026-10-22:** the owner accepted the core performance contract and explicitly
 authorized its permanent on-demand browser/bundle workflow
-([record](../../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)).
+([record](../../../docs/reference/north-star.md)).
 The proposal labels below retain research provenance; the owning reference now governs. The
 workflow is not installed, browser/GPU results remain unrun, and H0 implementation stays held.
 
@@ -296,25 +296,25 @@ extrapolation to ≈ 60 MiB (inference).
 ## Reference baseline (proposal)
 
 The single proposed baseline, calibration procedure and browser/network profiles now live in
-[the owning performance reference](../../../docs/reference/components/performance.md#reference-baseline),
+[the owning performance reference](../../../docs/archive/research/performance-method.md#reference-baseline),
 owner-ratified 2026-10-22 in PR #173. No reference-A browser measurement is claimed here.
 
 ## Representative workloads (proposal)
 
 The proposed S/M/L/XL workload table lives in
-[the performance reference](../../../docs/reference/components/performance.md#representative-workloads).
+[the performance reference](../../../docs/archive/research/performance-method.md#representative-workloads).
 The measured grid fixtures above remain evidence for their Layout portion, not complete browser workloads.
 
 ## Complete user flows to measure (proposal; Not run)
 
 Flow IDs F1–F13 and their matching-input/presented-result metric definitions live in
-[the performance reference](../../../docs/reference/components/performance.md#complete-user-flows-to-measure).
+[the performance reference](../../../docs/archive/research/performance-method.md#complete-user-flows-to-measure).
 Event Timing excludes pointermove; worker completion is measured through its matching final
 presented result. All browser/GPU flows remain unrun in this research round.
 
 ## Budgets (proposal)
 
-[The owning budget table](../../../docs/reference/components/performance.md#budgets) is owner-ratified
+[The owning budget table](../../../docs/archive/research/performance-method.md#budgets) is owner-ratified
 2026-10-22; it is the one source for proposed hard/target values. The measured M/L envelopes
 are 123,741 / 500,917 bytes. At N1's 5 Mbit/s upload they need at least 198 / 801 ms just to upload,
 before escaping, RTT and server work. Save's 100 ms hard proposal concerns local visible feedback;

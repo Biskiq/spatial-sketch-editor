@@ -18,7 +18,7 @@ The first revision of this package compared a 40-opening wall built as a Manifol
 **They cannot support:**
 
 - browser latency, or anything about reference laptops A and B;
-- a verdict on any [performance budget](../../docs/reference/components/performance.md#budgets), which is boundary-inclusive and measured in Chrome on the designated machine;
+- a verdict on any [performance budget](../../docs/archive/research/performance-method.md#budgets), which is boundary-inclusive and measured in Chrome on the designated machine;
 - a verdict for or against Rust/WASM. No custom Rust/WASM module was built or measured, and only one Biskiq hot path was probed;
 - determinism across browsers or CPU architectures;
 - memory high-water marks.
@@ -96,7 +96,7 @@ The production output is **richer** than the kernel routes. It has normals, metr
    - choose the tessellation density of arched heads;
    - use an honestly labelled preview level of detail.
 
-   Those levers sit on the compile and representation path that [S06](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) owns.
+   Those levers sit on the compile and representation path that [S06](../../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/implementation-plan.md) owns.
 
 ## 5. Results: other probes
 

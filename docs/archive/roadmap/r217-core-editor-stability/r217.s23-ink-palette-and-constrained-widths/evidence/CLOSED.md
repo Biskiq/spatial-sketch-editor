@@ -1,6 +1,6 @@
 # R217.S23 browser evidence (archived)
 
-Browser captures and measurements from the S23 acceptance runs at tested revision `a7598a55`, preserved byte-for-byte from the live tree by `git mv`. The live acceptance record links here for every capture. Nothing in this folder is an authority: the [acceptance record](../../../../../roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/acceptance.md) owns the results, the review and the acceptance, and the [plan stub](../../../../../roadmap/r217-core-editor-stability/r217.s23-ink-palette-and-constrained-widths/implementation-plan.md) owns the recovery line for the approved plan.
+Browser captures and measurements from the S23 acceptance runs at tested revision `a7598a55`, preserved byte-for-byte from the live tree by `git mv`. The live acceptance record links here for every capture. Nothing in this folder is an authority: the [acceptance record](../acceptance.md) owns the results, the review and the acceptance, and the [plan stub](../implementation-plan.md) owns the recovery line for the approved plan.
 
 Runs: a Vite dev server on `127.0.0.1:5173` and a scratch API on `localhost:8790`, both released after the runs, and the scratch database `biskiq_r217_s23`, dropped at the end. Browser passes ran in headed Chromium (Playwright 1.63, `headless: false`): fine pointer, and coarse pointer by touch emulation. Widths: 1440×900, 1280×800, 1180×820, 820×1180. Each state exists with the Height Sheet on the right (the default) and, with the suffix `-sheet-left`, on the left.
 

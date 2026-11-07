@@ -12,7 +12,7 @@
  * imported by the project-model root barrel: an F.2 envelope is reached through
  * its own package subpath, which `T3.P01.S04` activated.
  *
- * The Scene unit is Camera-free Scene 4: the world-local record grammar
+ * The Scene unit is Camera-free Scene 5: the world-local record grammar
  * (textures, materials, entities, clusters) with the navigation graph moved out
  * to the Camera and Experience units, and native forms admitted as entities.
  * The Camera unit keeps the
@@ -135,8 +135,8 @@ export type DependencyLock = {
 export type LayoutUnitPayload = LayoutDocumentWallFirst;
 
 /**
- * Camera-free Scene 4: the landed world-local records without the navigation
- * graph, now carrying native forms. `formatVersion: 5` is the payload's own
+ * Camera-free Scene 5: the landed world-local records without the navigation
+ * graph, carrying native forms and optional world presentation. `formatVersion: 5` is the payload's own
  * version and matches the unit header. A model names a catalogue asset or a
  * `model` resource of the same envelope; the fallback vocabulary includes the
  * generic footprint box.

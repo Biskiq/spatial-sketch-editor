@@ -1,16 +1,22 @@
 # Camera and tour
 
-**Read when:** camera nodes, connections, route/path evaluation, framing envelopes, motion guards, guided visitor runtime.
-**Last reviewed:** 2026-11-03 (S30 Guide time map, playback and visitor Preview modes)
+> **Covers:** Camera nodes, connections, route/path evaluation, framing, guards, guided runtime.
+> **Invariants:** one Camera evaluator; Experience owns order/holds/pacing; endpoints are generated.
+> **Governs:** `packages/camera-core`, Camera/Experience unit semantics and visitor playback.
+> **Read next:** [F / AM-11](experience.md#current-authoring-and-runtime-contract).
+
+**Read when:** camera nodes, connections, route/path evaluation, framing envelopes, motion guards,
+guided visitor runtime.
+**Last reviewed:** 2026-11-06 (AM-11 format 4 / Program v4 and accepted Preview).
 
 ---
 
 | Term | Meaning |
 |------|---------|
-| Camera node | Eye / target / FOV (world-local; `roomId` absent — legacy room-local only) |
+| Camera node / View | Eye / target / FOV (world-local; `roomId` absent — legacy room-local only) |
 | Connection | Edge; JSON stores **interior** anchors only |
 | Path kinds | `rounded-polyline` · `auto-bezier` (no tangent handles) |
-| Order | Experience Guide Stop order; Camera connectivity never determines editorial order |
+| Order | Experience Guide order; Camera connectivity never determines editorial order |
 | View | Camera-owned spatial attention: pose/framing (or explicitly adaptive subject framing), projection and evaluation |
 
 Defaults: eye **1.65 m**, target **1.25 m**, distance **3 m**, clearance **0.35 m**.
@@ -39,89 +45,76 @@ inputs. The visitor cold runtime
 (`apps/editor/src/lib/visitor/visitor-cold-runtime.ts`) evaluates released
 documents through this same authority, and the visitor-only app components are
 `VisitorCameraDirector.svelte`, `VisitorEntities.svelte`, `VisitorLayoutShell.svelte`
-and `VisitorPreviewSurface.svelte`. The public `/p/:publicationId` route currently receives an honest 404 under AM-9; T4 owns the
-prepared-reader activation. No old-source fallback is served. In the editor, Preview entry and return run through the F3 Camera-output ticket (`enterPreview`, `returnPreview`, `cancelPreview`); the visitor surface is built when the Experience lens opens and stays hidden, inert and on-demand between sessions, so an entry starts a run over the already-built scene and issues no draw while hidden.
+and `VisitorPreviewSurface.svelte`. The public `/p/:publicationId` route currently receives an honest
+404 under strict source admission; T4 owns the prepared-reader activation. No old-source fallback is served.
 
-**What #115 removed.** The editor's Camera surfaces are gone with the editor shell:
-there is no Camera Plan, no camera timeline or transport, no camera-graph
-authoring surface (node/edge placement, connection drawing, order labels,
-anchors, per-direction Timing inspector), no sequence preview, and no preview
-grammar. `/museum` and `/museum/editor` are not served by this product — they live
-in the owner's external standalone project, and the frozen folder is no longer in
-this repository. Retired authoring behavior is recoverable at the baseline
-(`git show e90a58224443bdbf44114d7285d55c983b79cc84:<path>`); no dormant copy
-remains in the tree.
+In the editor, Preview entry and return run through the F3 Camera-output ticket (`enterPreview`,
+`returnPreview`, `cancelPreview`); the visitor surface is built when the Experience lens opens and
+stays hidden, inert and on-demand between sessions, so an entry starts a run over the already-built
+scene and issues no draw while hidden. Editor Preview starts paused; public entry retains autoplay.
 
-## Current vs destination (ratified 2026-09-27; reconciled 2026-09-29)
+## Current implementation and destination
 
-**Current implementation (T3.P01.S04, S29 connectivity, S30 playback).** The
-Guide time map is one pure derived read in
-`packages/camera-core/src/guide-time-map.ts`: holds are authored seconds, Cut,
-zero hold and an untimed final View's *wait* occupy zero elapsed seconds while
-staying addressable, and a Travel carries Camera's exact directed motion. It is
-the only source for the timeline bar, the Guide tour time, each Stop time, scrub
-and playback; it owns no frame loop, state or serialized field, and reduced
-motion settles to the destination without changing the authored seconds. The
-editor's ephemeral playback session is host view state: an accepted edit
-invalidates it, refused edits do not, and nothing it does enters F4, history or
-Save. Preview opens the welcome chooser for a guided Experience, keeps the
-lowered entry Stop (or direct Presentation entry when no Guide is open), and
-realizes guided/free/Places/return/end through the same interpreter and Camera
-sampling the visitor uses; visitor chunks still import no editor module.
- F2 Camera Views/connections supply the live
-graph; Experience Presentations/Stops/Guides supply editorial order, holds and continuation. One
-Camera unit may carry independent Travel pairs (A–B and C–D); they need no bridge edge, and a Cut
-authorizes no Camera edge. Camera-unit admission and the visitor's Scene projection force the one
-Camera-unit connectivity policy, while a direct Scene document keeps its single-component default.
-The visitor store runs the shared interpreter. Guide-free Presentations remain selectable without
-fabricated Stops. Cut and reduced motion settle through the same Camera authority; Travel resolves
-the exact authored connection and direction. An in-flight handoff uses only the Experience-declared
-predecessor View and the live pose; unrelated connectivity is a typed gap. Authored Cut/Travel
-controls, text, state and lifecycle homes are T3.P02 amendments. Public reads remain unavailable
-until T4's reader.
+**Current implementation (Experience format 4 / Program v4, owner-accepted at `ce4e232c`).** The
+Guide time map is one pure derived read in `packages/camera-core/src/guide-time-map.ts`: a Stop's stay
+is authored seconds or a Manual wait, Cut occupies zero elapsed seconds, and Travel carries Camera's
+exact directed motion. It is the only source for the Guide strip, tour time, each Stop time, scrub
+and playback; it owns no frame loop, state or serialized field, and reduced motion settles to the
+destination without changing authored seconds. The editor's ephemeral playback session is host view
+state: an accepted edit invalidates it, refused edits do not, and nothing it does enters F4, history
+or Save.
 
-**Destination.** Camera keeps connectivity, routes, framing, projection and
-evaluation as one authority; every profile controller realizes viewing intent
-through it and no second navigation, motion or pose/FOV interpolation authority
-exists. Editorial occurrences, order, holds, explicit Gates, interaction policy
-and detours move to **Experience** at cutover; Camera keeps possible spatial
-traversal and evaluation, and Experience's declared invocation time mapping is
-evaluated through Camera. Selecting a cut never invents a spatial edge, and
-selecting travel must resolve a supported route or report a gap. **Cue ownership
-follows the source:** Camera emits its own progress markers, performances own
-their cues, Experience owns the interaction bindings that listen to them. Node
-links and Experience order must never remain coequal writable authorities. See
-[`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md),
+Preview opens the welcome chooser for a guided Experience, starts at the Guide's first Stop (or the
+Preview start chosen by the host), and realizes guided/free/Places/return/end through the same
+interpreter and Camera sampling the visitor uses; visitor chunks still import no editor module.
+Experience Presentations/Stops/Guides supply editorial order, entry Views, stays, invitations and
+outgoing Cut/Travel. One Camera unit may carry independent Travel pairs (A–B and C–D); they need no
+bridge edge, and a Cut authorizes no Camera edge. Camera-unit admission and the visitor's Scene
+projection force the one Camera-unit connectivity policy, while a direct Scene document keeps its
+single-component default. The visitor store runs the shared interpreter. Guide-free Presentations
+remain selectable without fabricated Stops. Cut and reduced motion settle through the same Camera
+authority; Travel resolves the exact authored connection and direction. An in-flight handoff uses
+only the Experience-declared predecessor View and the live pose; unrelated connectivity is a typed
+gap. Public reads remain unavailable until T4's reader.
+
+**Destination.** Camera keeps connectivity, routes, framing, projection and evaluation as one
+authority; every profile controller realizes viewing intent through it and no second navigation,
+motion or pose/FOV interpolation authority exists. Experience owns editorial occurrences, order,
+holds, pacing, invitations and contextual orchestration; Camera keeps possible spatial traversal
+and evaluation. Selecting Cut never invents a spatial edge, and selecting Travel must resolve a
+supported route or report a gap. **Cue ownership follows the source:** Camera emits its own progress
+markers, performances own their cues, Experience owns the interaction bindings that listen to them.
+Node links and Experience order must never remain coequal writable authorities. See
+[North Star](../north-star.md),
 [`../north-star.md`](../north-star.md) §Direct and
 [`../composition-execution.md`](../composition-execution.md) F.1/F.2.
 
-**View and invocation (destination).** A View is Camera-owned spatial attention:
-pose/framing or explicitly adaptive subject framing, projection and evaluation
-stay here. A Presentation or Stop may reference a View, supply supported entry
-context and invocation time mapping, or deliberately keep the current viewpoint;
-it never copies Camera truth. A missing referenced View is a repairable unresolved
-binding, distinct from intentional keep-viewpoint. Transient World inspection
-does not become an authored View without explicit capture. Experience may expose
-progressive View/framing/movement controls, but all writes and evaluation go
-through Camera authority. The
+**View and invocation.** A View is Camera-owned spatial attention: pose/framing or explicitly
+adaptive subject framing, projection and evaluation stay here. A Presentation or Stop may reference
+a View, supply supported entry context and invocation time mapping, or deliberately keep the current
+viewpoint; it never copies Camera truth. A missing referenced View is a repairable unresolved
+binding, distinct from intentional keep-viewpoint. Transient World inspection does not become an
+authored View without explicit capture. Experience may expose progressive View/framing/movement
+controls, but all writes and evaluation go through Camera authority. The
 [destination shell](../design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 owns their disclosure, information homes and Outside/Through/Plan postures. The
 [spatial-instrument grammar](../design-system/spatial-instrument-grammar.md#camera-framing-instruments)
-owns truthful observer/target/framing representation, grips and precision feedback;
-it introduces no orbit constraint or additional Camera operation.
+owns truthful observer/target/framing representation, grips and precision feedback; it introduces no
+orbit constraint or additional Camera operation.
 
 ### Order: Experience Guide order only
 
-Camera owns Views, connectivity/routes, framing/projection and movement
-evaluation. Experience owns Presentations, Stops, Guide editorial
-order/continuation/Gates and Camera invocation context. Legacy node
-`nextNodeId`/`previousNodeId` order, node `holdSeconds`, `detourOfNodeId` and
-`lockInteraction` were **retired by `T3.P01.S04`**: the Scene/Camera types and
-codec no longer admit them, their flow-order exports are gone and the converter
-was removed. No writable node order coexists with Experience Guide order.
-Exploration releases guided Camera control; rejoin evaluates from the current
-pose and leaves autoplay paused. The exact detour explanation lifecycle is
-reserved for Prototype V2.
+Camera owns Views, connectivity/routes, framing/projection and movement evaluation. Experience owns
+Presentations, Stops, Guide editorial order, pacing, entry Views, stays and outgoing Cut/Travel.
+Legacy node `nextNodeId`/`previousNodeId` order, node `holdSeconds`, `detourOfNodeId` and
+`lockInteraction` were **retired by `T3.P01.S04`**: the Scene/Camera types and codec no longer admit
+them, their flow-order exports are gone and the converter was removed. No writable node order
+coexists with Experience Guide order. A Guide is one linear order; there is no start Stop, explicit
+continuation node or authored Gate in format 4.
+
+Exploration releases guided Camera control; rejoin evaluates from the current pose and leaves
+autoplay paused. Detours keep their runtime shape; a Stop or Guide removal removes the Detours that
+name it in the same accepted change.
 
 ### Envelope, guards and framing (current kernel behavior)
 
@@ -161,17 +154,60 @@ floor.
 
 ## Visitor guided runtime
 
-The visitor plays the open-chain order (loop derived); free nodes are reached by
-BFS; transitioning suppresses free navigation. Guided playback is the current
-release behavior: it walks the authored order through `camera-core` evaluation
-and, at the T3 cutover, walks Experience-owned order instead while Camera keeps
-the geometry, framing and timing. The visitor surface is the strict cold runtime
-on `/p/:publicationId`; there is no editor preview to compare against, because
-there is no editor surface.
+The visitor runs the authored linear Guide through the shared interpreter and one Camera
+evaluation. There is no second clock or free-navigation node graph.
+
+- A Stop authors a Presentation, one entry View (or the Presentation Default), one finite stay and
+  an optional invitation. The first Stop starts the Guide; the last ends it.
+- Automatic pacing advances after the stay. Manual pacing waits for Next. A timed Travel is a
+  Camera-evaluated step; a Cut settles immediately. Explore suspends the occurrence without losing
+  its remaining stay; resume restores the same occurrence and play state.
+- A Presentation's Views are its ordered composition. A View's outgoing Cut/Travel is the step to
+  the next View; Presentation steps add no Guide time and can be explored from a Stop.
+- The program carries `pacing`, resolved `entryViewId`, `staySeconds` (null exactly for Manual),
+  invitations and Presentation steps. It carries no current View index or run clock.
+- The visitor lists explorable Presentations and enters each at its Default. The opening Guide is
+  explicit on the Experience; Guide-free Presentations remain reachable without a fabricated Stop.
+- Editor Preview starts paused and seeks by replaying the same reducer and sampling Camera's existing
+  motion. Public entry retains autoplay and read-only progress.
+- A missing Travel connection is a typed gap, never a fabricated path. Reduced motion settles to the
+  same destination without changing the authored stay or order.
 
 Limits: no collision/navmesh; synthesized look; guarded deletes.
 
-Experience consumers reference this canonical camera graph/route/motion
-evaluation; they do not implement another one, and at the ratified cutover they
-take over editorial order/occurrences, holds, explicit Gates, interaction policy
-and detours.
+## Direct — Camera direction
+
+**Enduring guarantee:** Camera keeps connectivity, routes, framing, projection
+and evaluation as one authority. Every profile controller — guided travel, free
+look, reduced motion, film, future XR — realizes viewing intent through it. The
+current `camera-route.ts` + `camera-motion.ts` mechanism, its curve/guard model,
+duration-dependent guards and source filenames are replaceable implementation,
+not the destination and not the motion ceiling. Travel, orbit, track, lens/focus
+and retimed invocation can extend the vocabulary. No controller supplies a second
+pose/FOV interpolation authority.
+
+The camera graph answers **where can the experience move?** and authored
+connectivity remains explicit. Sequence-like direction answers **which connected
+traversal is presented**. Higher-level direction may describe intent such as a
+reveal, orbit, push-in, rest, hero view or establishing view; assisted direction
+resolves into the same inspectable project state, and manual position, path,
+target/orientation, FOV, timing and framing remain available with free mixing of
+manual and assisted control.
+
+**Cutover (destination).** Editorial occurrences, order, holds, interaction
+locks and detours move to Experience ownership. Camera retains possible spatial
+traversal, intrinsic movement profiles, framing/projection and evaluation;
+invocation time mapping is evaluated through Camera. Selecting a cut does not
+invent a spatial edge; selecting travel must resolve a supported route or report
+a gap. A read-only compatibility adapter may interpret legacy node order during
+migration; two editable order systems may not coexist. The new interface must
+prove retiming, seeking, projection and guard
+behavior together — a serialized prepared form is a conformance obligation, and
+dumping the current Three-object motion is not a design. Node links and
+Experience order must never remain coequal writable authorities.
+
+**Cues follow their source.** Camera emits its own progress markers; performances
+own their cues; Experience owns the visitor-facing interaction bindings that
+listen to them. Spatial Camera does not become the owner of every performance
+event, and Experience bindings evaluate against canonical evaluation, never a
+copied timeline.

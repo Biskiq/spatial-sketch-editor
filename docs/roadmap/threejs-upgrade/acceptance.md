@@ -4,7 +4,6 @@
 **Baseline:** `61baf02873a63d37e3f5a3e2992396f387600d38` (PR #116 merge).
 **Implementation head:** `e0b7369e` · **Merged into `main` as:** `74efb98b` (merge commit; parents `61baf028` + `e0b7369e`).
 **Disposition:** independently reviewed and accepted; merged. This is the single authoritative acceptance record for the upgrade.
-**Plan:** [implementation-plan.md](./implementation-plan.md) — historical planning record; this document carries the delivery state.
 
 ## 1. Execution route (review ratification)
 

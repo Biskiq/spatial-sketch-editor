@@ -11,7 +11,7 @@
 //   node prototypes/production-shell-wireframe/tools/build-static-atlas.mjs --base http://127.0.0.1:8850
 //
 // Without --base the script serves this folder itself on an ephemeral port and stops it on exit.
-// It uses Playwright from prototypes/experience-authoring/node_modules.
+// It uses Playwright from the archived Experience donor's node_modules.
 
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
@@ -24,7 +24,7 @@ const ROOT = resolve(TOOL_DIR, '..'); // prototypes/production-shell-wireframe
 const REPO = resolve(ROOT, '..', '..');
 const OUT = join(ROOT, 'atlas-static.html');
 
-const require = createRequire(join(REPO, 'prototypes', 'experience-authoring', 'build-static-atlas.cjs'));
+const require = createRequire(join(REPO, 'docs', 'archive', 'prototypes', 'experience-authoring', 'build-static-atlas.cjs'));
 const { chromium } = require('playwright');
 
 const MIME = {

@@ -1,0 +1,173 @@
+# The repository merge gate. It runs every PR and every push to main, with no
+# path filter: a docs-only change can still break the architecture lane.
+#
+# Each job name is a stable check name. `merge gate` is the single aggregator
+# that fails when any required suite's provenance is missing, failed or
+# incomplete; `check guards` refuses an unapproved check removal/downgrade.
+# The default-branch ruleset must require those two contexts (plus the retained
+# native-form goldens job) before autonomous merges start — see the #259 packet.
+name: Merge gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: merge-gate-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  CI: '1'
+jobs:
+  prepare:
+    name: prepare matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.suites.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: suites
+        run: echo "matrix=$(node tools/harness/matrix.mjs)" >> "$GITHUB_OUTPUT"
+
+  suite:
+    name: ${{ matrix.suite }}
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Materialize main for repository-history tests
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          git branch --force main refs/remotes/origin/main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Generate SvelteKit types
+        run: npm exec -w @portfolio/editor -- svelte-kit sync
+      - name: Produce suite provenance
+        run: node tools/harness/produce.mjs --suite "${{ matrix.suite }}" --artifact-dir .harness/artifacts
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-${{ matrix.slug }}
+          path: .harness/artifacts
+          if-no-files-found: warn
+          retention-days: 14
+
+  api:
+    name: npm run test:api
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: biskiq
+          POSTGRES_PASSWORD: biskiq
+          POSTGRES_DB: biskiq
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U biskiq"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://biskiq:biskiq@localhost:5432/biskiq
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Produce suite provenance
+        run: node tools/harness/produce.mjs --suite "npm run test:api" --artifact-dir .harness/artifacts
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-test-api
+          path: .harness/artifacts
+          if-no-files-found: warn
+          retention-days: 14
+
+  guards:
+    name: check guards
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" --depth=1
+      - name: Read the pull request's labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p .harness
+          gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
+            --jq '[.[].name]' > .harness/pr-labels.json
+      - name: Refuse unapproved check removal or downgrade
+        run: >-
+          node tools/harness/guards.mjs
+          --base "origin/${{ github.base_ref }}"
+          --head HEAD
+          --labels-file .harness/pr-labels.json
+
+  gate:
+    name: merge gate
+    if: always()
+    needs: [suite, api, guards]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: harness-*
+          path: artifacts
+          merge-multiple: true
+      - name: Capture open issue evidence for historical comparison
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p .harness
+          gh issue list --state open --limit 200 --json number,title,labels,assignees > .harness/open-issues.json.tmp \
+            && mv .harness/open-issues.json.tmp .harness/open-issues.json
+      - name: Aggregate provenance and refuse an uncertifiable run
+        run: |
+          args=(--dir artifacts --out report.json --commit "$GITHUB_SHA" --ledger capabilities.json)
+          if [ -f .harness/open-issues.json ]; then args+=(--issues .harness/open-issues.json); fi
+          node tools/harness/aggregate.mjs "${args[@]}"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-report
+          path: report.json
+          if-no-files-found: warn
+          retention-days: 14

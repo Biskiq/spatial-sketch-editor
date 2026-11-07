@@ -5,7 +5,7 @@ presentation layer, the Layout editor adapters and the Scene-embedded camera
 navigation graph all went with it.
 
 A module survived that deletion only if it met **all four** criteria
-(`docs/roadmap/parallel-track-cutover/implementation-plan.md` §4.3):
+(`docs/archive/roadmap/parallel-track-cutover/implementation-plan.md` §4.3):
 
 1. it is **pure** — no Svelte, no runes, no store;
 2. it does **not** depend on the old shell/session types (`editor-types`,
@@ -16,7 +16,7 @@ A module survived that deletion only if it met **all four** criteria
 That is a retention test, not a maturity claim. These modules are kept **by
 criteria, not by consumer count**: most have no product importer today, because
 the authoring UI is a T-track capability to rebuild
-(`docs/roadmap/parallel-track-cutover/acceptance.md`, now the closed-work stub — the #115 retention disposition a6 is in its recovered body).
+(`docs/archive/roadmap/parallel-track-cutover/acceptance.md`, now the closed-work stub — the #115 retention disposition a6 is in its recovered body).
 
 | Directory | Retained modules | Why it survived | Later owner |
 | --- | --- | --- | --- |
@@ -34,9 +34,9 @@ Restoring a dedicated contract per module is a T1/T2/T3 obligation, recorded
 rather than assumed.
 
 The obligations these modules serve are recorded in the track planning evidence:
-`docs/roadmap/t1-spatial-world/planning-evidence.md`,
-`docs/roadmap/t2-composition/planning-evidence.md` and
-`docs/roadmap/t3-experience/planning-evidence.md`.
+`docs/reference/components/layout.md`,
+`docs/reference/components/scene-content.md` and
+`docs/reference/components/experience.md`.
 
 **Not here:** unreviewed copies of deleted code. Anything removed from
 `lib/editor/` is recoverable from Git at the baseline SHA

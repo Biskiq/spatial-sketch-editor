@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = resolve(ROOT, '..', '..');
-const require = createRequire(join(REPO, 'prototypes', 'experience-authoring', 'x.cjs'));
+const require = createRequire(join(REPO, 'docs', 'archive', 'prototypes', 'experience-authoring', 'x.cjs'));
 const { chromium } = require('playwright');
 
 // [atlas key, chapter, title, caption]

@@ -4,7 +4,7 @@ Byte-identical copies of the ten captures from the S07 acceptance record: the Ch
 the Round 2 selected-Wall reconciliation, the Paper selection/hover checks, 3D hover and numeric
 typing at a mark, plus the wireframe frame they were compared against. Images were copied
 unmodified during closeout; the live slice paths now hold the compact
-[acceptance stub](../../../../../roadmap/r217-core-editor-stability/r217.s07-selection-and-mark-layer/acceptance.md).
+[acceptance stub](../acceptance.md).
 
 | Capture | State shown | Bytes | SHA-256 |
 | --- | --- | ---: | --- |

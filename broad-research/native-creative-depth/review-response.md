@@ -179,8 +179,8 @@ The coverage thresholds are decision points for the owner, not sourced numbers.
 **Checked.**
 
 - The production compiler and mesher, including the probe in [probe methods §4](./probe-methods.md#4-results-the-matched-40-opening-wall).
-- The T1.P02 [README](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md) and the [S03 outline](../../docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/implementation-plan.md).
-- The [release list](../../docs/roadmap/now.md).
+- The T1.P02 [README](../../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/README.md) and the [S03 outline](../../docs/archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s03-opening-family/implementation-plan.md).
+- The [release list](../../docs/workflow.md).
 
 **Verdict: accepted. The gap is larger than the review says.**
 

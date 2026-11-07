@@ -25,7 +25,7 @@ function sourceFiles(root: string): string[] {
 	return files;
 }
 
-describe('project-model package boundary', () => {
+describe('[cap:project.envelope core] project-model package boundary', () => {
 	it('exposes the portable package primitives directly', async () => {
 		expect(await sha256Bytes(new Uint8Array())).toMatch(/^sha256-[0-9a-f]{64}$/);
 		expect(await derivePackageId([])).toMatch(/^package-[0-9a-f]{12}$/);

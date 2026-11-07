@@ -115,7 +115,7 @@ function packageFilesDefining(signature: string): string[] {
 	return PACKAGE_SOURCE_FILES.filter((file) => sourceOf(file).includes(signature)).map((file) => file.slice(layoutDir.length + 1));
 }
 
-describe('G1 geometry boundary', () => {
+describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 	it('keeps layout-core independent of all portfolio packages', () => {
 		const forbidden = (source: string) => importSpecifiers(stripComments(source)).filter((specifier) => specifier.startsWith('@portfolio/'));
 		expect(forbidden("import { shape } from '@portfolio/geometry-core';")).toEqual(['@portfolio/geometry-core']);

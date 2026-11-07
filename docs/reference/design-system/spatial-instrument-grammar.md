@@ -1,20 +1,11 @@
-# Museum Editor — spatial-instrument grammar
+# Spatial instrument grammar
 
-> **Round 2 reconciliation (2026-10-23, PR #181):** the
-> [shell contract](./editor-shell-and-visual-system.md) owns the ratified Round 2 shell.
-> Its [mark language](./editor-shell-and-visual-system.md#spatial-mark-language) is
-> expressed here as [rays and points](#rays-and-points), replacing the earlier knob and
-> gizmo handles. Camera markers, direct path editing and playback below consume that shell
-> (from the #114 reconciliation); UX3/V3 and split Path/Journey surfaces are historical.
-> Truthful geometry, hit/manipulation laws, Camera evaluation and World readings
-> remain intact. Advanced precision is capability depth, not permanent chrome.
-
-**Status: soft-frozen destination reference for Stage-local representation and
-interaction.** Feature designers use this with the
-[shell contract](./editor-shell-and-visual-system.md) and their product/domain
-brief. It makes the accepted working-surface grammar reusable without consulting
-historical QA. Extending it requires an explicit reason for any changed rule.
-It does not declare implementation or a production cutover.
+**Authority:** approved Stage-local representation and interaction grammar. The
+[shell contract](./editor-shell-and-visual-system.md) owns composition and visual roles;
+domains own meaning, validity and evaluation. This document owns truthful spatial marks,
+manipulation affordances, precision, layering and hit legibility. It is a design target,
+not a claim that every described capability is implemented. Approved design leads implementation;
+feature work does not silently reinterpret it to match current code.
 
 ## Responsibility boundary
 
@@ -31,8 +22,7 @@ domain about what an operation means. Rays and points are a shared representatio
 vocabulary, not a universal gizmo framework, schema, renderer/API prescription, new
 operation registry or navigation authority.
 Layout, Scene, Camera and Experience may require different instruments.
-The editor's domain-specific graphics and input policies were removed with the editor
-shell in #115; related T-track slices re-establish their own conformant policies here.
+Feature adapters implement their domain-specific input policy within this grammar.
 
 ## Spatial truth and affordance admission
 
@@ -283,8 +273,8 @@ explicit return distinguish Through from visitor Preview.
 
 Plan locates Views and Camera support at map scale. Directional View markers are a
 schematic reading of evaluated framing, not permission to invent a finite projection
-shape, FOV writer or path. The removed Camera Plan's framing restrictions are
-historical implementation evidence, not a current constraint.
+shape, FOV writer or path. Implementation-specific framing restrictions do not redefine
+the approved design target.
 
 View markers locate the **actual evaluated observer and aim**, with legible
 Camera relationships across Plan and 3D. Screen-sized glyphs and density aids may
@@ -292,15 +282,16 @@ clarify them without implying a false metric position, authored orbit, order or
 connectivity. Presentation thumbnails and an accessible inventory reach every
 View even when markers overlap. Default/entry roles are explicit, not inferred
 from marker arrangement. Guide Stop labels are occurrence context, not Camera
-node order. The old compressed constellation is historical UX evidence.
+node order. A schematic constellation does not replace the truthful spatial representation.
 
 ## Camera Paths and Journey projections
 
 <a id="camera-routes-and-experience-coordination-projections"></a>
 
 Camera supplies the path (connection), authored interior path points, generated
-endpoints/samples, pace, stations and evaluated timing. Experience supplies the Guide edge's
-choice of Cut/Travel and its station-bound Cues and pauses. The shell decides when
+endpoints/samples, pace, stations and evaluated timing. Experience supplies the Guide edge's choice of Cut/Travel and current Stop stays.
+Station-bound Cues and richer coordination are approved destination depth, not current
+format-4 authoring; their representation does not admit a new schema. The shell decides when
 path editing, playback and advanced coordination are disclosed in the invoked Guide
 context ([PLATE §0.8.1](./editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)).
 This reference owns their spatial and linked visual grammar.
@@ -317,15 +308,12 @@ This reference owns their spatial and linked visual grammar.
 
 Shape carries the species: ● Camera endpoint, ○ Camera path point, ◆ Experience Cue. Derived
 samples are not marked at all, so an open circle always means an operative path point.
-This replaces the earlier filled-diamond anchor baseline; the operative-versus-derived and
-Camera-versus-Experience distinctions it protected are unchanged. Exact radii and
-silhouettes are not frozen.
+Exact radii and silhouettes are calibration choices; operative/derived and Camera/Experience distinctions remain binding.
 
 Path geometry is edited directly on Stage. Point insertion is deliberate and
 distinguishable from selection; exact gesture/arming is a delivery choice.
 Playback reads the same evaluated geometry with an explicit editing lifecycle.
-The old straightened topology lane and separate Journey Deck are not required
-destination surfaces. Advanced coordination retains station identity: departure,
+Advanced coordination retains station identity: departure,
 an authored path point, named marker or arrival, never a generated sample. A Cue
 binds within its Guide occurrence and Camera support rather than to authored
 seconds. Pace/geometry edits preserve that binding or report an explicit invalid
@@ -364,30 +352,10 @@ readings. A control list, decorative rig, matching label or literal ring is insu
 QA must inspect actual visible relationships and reachable gestures as well as
 source/identity/transaction behavior.
 
-The following artifacts retain rationale and visual evidence; their literal drawing
-techniques are optional within the semantic species and distinctions above:
-
-- [World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md)
-  and [QA package](../../../prototypes/world-experience-shell-round/QA-package/):
-  temporary readings, measured-axis honesty, selection/task distinction, one writer,
-  local refusal, repair and narrow task continuity.
-- [Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
-  and [Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/):
-  historical Camera/coordination distinctions and advanced Outside/Through
-  precision specimens; their old shell/constellation layouts are superseded.
-- [Production shell wireframe, Round 2](../../../prototypes/production-shell-wireframe/README.md)
-  and its [atlas](../../../prototypes/production-shell-wireframe/atlas.html): the accepted
-  mark language and manipulation vocabulary, one live scripted state per frame; its
-  painter's-algorithm SVG, centroid Slice cut and heuristic stroke reading are not contracts.
-- [Conservatory](../../../prototypes/experience-ux-alternative/README.md): accepted
-  visual Camera authoring, direct Stage paths, contextual visibility and integrated
-  Guide playback, promoted into PLATE; its chrome is superseded by Round 2 and its mock
-  evaluator is not a contract.
-- Landed visual specifications (removed with the editor shell in #115), the
-  [Camera graphics/input contract](../components/camera-tour.md) and the
-  [Scene transform adapters](../components/scene-content.md): exact geometry,
-  selection, hit arbitration and cancellation policies belong to their domain
-  contracts, not to this grammar.
+The [World interaction sheet](./world-interaction-sheet.html),
+[Experience interaction sheet](./experience-interaction-sheet.html) and
+[approved shell specimens](./editor-shell-and-visual-system.md#design-evidence) provide
+falsifiable examples. Prototype drawing techniques are not mandated mechanisms.
 
 No universal orbit, gizmo framework, hit priority, all-values rig or new domain constraint
 is introduced; rays and points are vocabulary, not machinery. Exact instrument geometry and domain-specific alternatives remain

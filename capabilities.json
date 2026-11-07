@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [
+    {
+      "id": "layout.wall-draw-close",
+      "area": "T1",
+      "summary": "Draw straight Walls, close a loop into a Room, divide and delete Walls",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/stage/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.opening-hosted",
+      "area": "T1",
+      "summary": "Place and remove door and window Openings hosted by straight Walls",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/stage/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.canonical-compiler",
+      "area": "T1",
+      "summary": "Architectural geometry and queries come from one canonical compiler, and Layout representation stays runtime-safe",
+      "northStar": "north-star.md#sacred-contracts",
+      "surface": ["packages/layout-core/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.multi-level",
+      "area": "T1",
+      "summary": "Levels, placed structures, reusable architectural definitions and validated alternatives through the canonical compiler",
+      "northStar": "north-star.md#ownership-authority-and-lifetimes",
+      "surface": ["packages/layout-core/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "scene.place-transform",
+      "area": "T2",
+      "summary": "Place upright native and verified catalogue objects on compiled floor support, then move, yaw, resize, duplicate and delete them",
+      "northStar": "north-star.md#stage--world-composition-and-shared-assets",
+      "surface": ["packages/project-model/src/units/**", "apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "scene.model-import",
+      "area": "T2",
+      "summary": "Import a single GLB model and report truthfully which structure and capabilities survived",
+      "northStar": "north-star.md#stage--world-composition-and-shared-assets",
+      "surface": ["apps/editor/src/lib/content/**", "apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "scene.object-definition",
+      "area": "T2",
+      "summary": "Distinguish object definitions, placed instances, internal components, groups and explicit attachments",
+      "northStar": "north-star.md#stage--world-composition-and-shared-assets",
+      "surface": ["packages/project-model/src/units/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "camera.one-authority",
+      "area": "T3",
+      "summary": "One Camera authority owns connectivity, routes, framing, projection and evaluation, with no second navigation or pose/FOV interpolation model",
+      "northStar": "north-star.md#direct--camera-direction",
+      "surface": ["packages/camera-core/src/**", "apps/editor/src/lib/visitor/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "experience.format4-program",
+      "area": "T3",
+      "summary": "Author Camera/Experience source in format 4 / Program v4 with Presentations, an optional Guide and an isolated Cut Preview",
+      "northStar": "north-star.md#experience-lens--visitor-facing-composition",
+      "surface": [
+        "packages/project-model/src/units/**",
+        "apps/editor/src/lib/authoring/experience/**"
+      ],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "experience.atomic-acceptance",
+      "area": "T3",
+      "summary": "Cross-domain Camera/Experience changes accept atomically and produce one undo result (F.4)",
+      "northStar": "north-star.md#shared-authoring-operations",
+      "surface": ["apps/editor/src/lib/authoring/**", "packages/project-model/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "project.envelope",
+      "area": "T4",
+      "summary": "One codec-bounded project envelope holds Layout, Scene, Camera, Experience and resource units with an accepted revision and dependency lock",
+      "northStar": "north-star.md#ownership-authority-and-lifetimes",
+      "surface": ["packages/project-model/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "project.cloud-save",
+      "area": "T4",
+      "summary": "Conditional cloud Save validates the captured revision against its saved base and reports a conflict instead of overwriting",
+      "northStar": "north-star.md#accounts-backend-and-collaboration",
+      "surface": ["apps/api/src/**", "apps/editor/src/lib/platform/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "release.visitor-isolation",
+      "area": "T4",
+      "summary": "Visitor and public routes carry no editor session, selection, history or authoring machinery",
+      "northStar": "north-star.md#sacred-contracts",
+      "surface": ["apps/editor/src/lib/visitor/**", "apps/editor/src/routes/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "release.prepared-package",
+      "area": "T4",
+      "summary": "Compile an accepted revision and selected Experiences into a visitor-safe prepared package with closed resources and verifiable provenance",
+      "northStar": "north-star.md#preview-and-publish",
+      "surface": ["apps/editor/src/lib/visitor/**", "apps/api/src/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.dual-entry",
+      "area": "T5",
+      "summary": "World-origin and standalone Object Studio entry with framing/return and canonical Scene operations (proposed #266 coverage; not implemented)",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.geometry-research",
+      "area": "T5",
+      "summary": "Headless Stretch and Manifold experiments with drift, grazing and shear falsifiers (proposed #266 coverage; research evidence only)",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.modeling-engine",
+      "area": "T5",
+      "summary": "UI-free modeling operators, holes, offset and push-pull with a fair incumbent comparison (proposed #266 coverage; not implemented)",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.experimental-modeling",
+      "area": "T5",
+      "summary": "Fixture-only experimental modeling with explicit local history and leave guards (proposed #266 coverage; not implemented)",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.integrated-demonstration",
+      "area": "T5",
+      "summary": "Live Studio demonstration over C1–C4 plus headless C2–C3 evidence (proposed #266 coverage; owner choices remain open)",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "studio.canonical-promotion",
+      "area": "T5",
+      "summary": "Conditional source/library/delivery cutover after the Studio design and source choices are decided (proposed #266 coverage; no Scene v5 promotion)",
+      "northStar": "north-star.md#creative-freedom-and-depth",
+      "surface": ["packages/project-model/src/**", "apps/editor/src/lib/authoring/**"],
+      "design": null,
+      "review": null
+    }
+  ]
+}
