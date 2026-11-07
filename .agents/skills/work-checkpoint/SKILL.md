@@ -102,7 +102,7 @@ No chain-of-thought prose. Conclusions, evidence, decisions, next actions only.
 If investigation discovers a product/scope decision is required: record it as
 OPEN/BLOCKER, do not invent the decision.
 
-If durable tech-debt/research already owns part of the diagnosis: reference it,
+If a capability-linked issue or durable research already owns part of the diagnosis: reference it,
 do not rediscover or copy it into the checkpoint. The checkpoint owns the
 unfinished frontier; the durable owner owns established deferred diagnosis.
 
@@ -122,7 +122,7 @@ routed from [`docs/README.md`](../../../docs/README.md); no doc change merely fo
 completeness):
 
 ```text
-bug deferred → operations/tech-debt/
+bug deferred → capability-linked GitHub issue
 research completed → owning research/synthesis artifact
 landed behavior → reference/*
 durable decision → owning reference contract or one-page decision record

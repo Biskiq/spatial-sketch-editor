@@ -15,7 +15,7 @@ public visitor route, and the editor's tests. Shared domain math belongs to its 
   existing semantic role is equivalent. Preserve coarse-pointer targets and narrow layouts.
 - `visitor/*` and public chunks import no editor-only machinery. Runtime-safe domain evaluators may be
   shared; editor session/authoring code may not.
-- Experience authoring follows [AM-11](../../docs/reference/composition-execution.md#am-11-guide-pacing-explore-and-return):
+- Experience authoring follows [AM-11](../../docs/reference/components/experience.md#current-authoring-and-runtime-contract):
   linear Guide order, one entry View/stay per Stop, strip-owned Guide editing, one Camera evaluator.
 
 ## Commands

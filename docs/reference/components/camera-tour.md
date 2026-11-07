@@ -3,7 +3,7 @@
 > **Covers:** Camera nodes, connections, route/path evaluation, framing, guards, guided runtime.
 > **Invariants:** one Camera evaluator; Experience owns order/holds/pacing; endpoints are generated.
 > **Governs:** `packages/camera-core`, Camera/Experience unit semantics and visitor playback.
-> **Read next:** [F / AM-11](../composition-execution.md#am-11-guide-pacing-explore-and-return).
+> **Read next:** [F / AM-11](experience.md#current-authoring-and-runtime-contract).
 
 **Read when:** camera nodes, connections, route/path evaluation, framing envelopes, motion guards,
 guided visitor runtime.
@@ -46,19 +46,12 @@ inputs. The visitor cold runtime
 documents through this same authority, and the visitor-only app components are
 `VisitorCameraDirector.svelte`, `VisitorEntities.svelte`, `VisitorLayoutShell.svelte`
 and `VisitorPreviewSurface.svelte`. The public `/p/:publicationId` route currently receives an honest
-404 under AM-9; T4 owns the prepared-reader activation. No old-source fallback is served.
+404 under strict source admission; T4 owns the prepared-reader activation. No old-source fallback is served.
 
 In the editor, Preview entry and return run through the F3 Camera-output ticket (`enterPreview`,
 `returnPreview`, `cancelPreview`); the visitor surface is built when the Experience lens opens and
 stays hidden, inert and on-demand between sessions, so an entry starts a run over the already-built
 scene and issues no draw while hidden. Editor Preview starts paused; public entry retains autoplay.
-
-**What #115 removed.** The earlier full editor shell, including a separate Camera Plan, graph
-authoring surface and sequence preview, was removed. R217 rebuilt a bounded Camera/Experience
-authoring loop inside the Guide and Preview. `/museum` and `/museum/editor` are not served by this
-product — they live in the owner's external standalone project, and the frozen folder is no longer in
-this repository. Retired authoring behavior is recoverable at the baseline
-(`git show e90a58224443bdbf44114d7285d55c983b79cc84:<path>`); no dormant copy remains in the tree.
 
 ## Current implementation and destination
 
@@ -92,7 +85,7 @@ and evaluation. Selecting Cut never invents a spatial edge, and selecting Travel
 supported route or report a gap. **Cue ownership follows the source:** Camera emits its own progress
 markers, performances own their cues, Experience owns the interaction bindings that listen to them.
 Node links and Experience order must never remain coequal writable authorities. See
-[`../decisions/northstar-ratification-2026-09-27.md`](../decisions/northstar-ratification-2026-09-27.md),
+[`../decisions/northstar-ratification-2026-09-27.md`](../north-star.md),
 [`../north-star.md`](../north-star.md) §Direct and
 [`../composition-execution.md`](../composition-execution.md) F.1/F.2.
 
@@ -181,3 +174,40 @@ evaluation. There is no second clock or free-navigation node graph.
   same destination without changing the authored stay or order.
 
 Limits: no collision/navmesh; synthesized look; guarded deletes.
+
+## Direct — Camera direction
+
+**Enduring guarantee:** Camera keeps connectivity, routes, framing, projection
+and evaluation as one authority. Every profile controller — guided travel, free
+look, reduced motion, film, future XR — realizes viewing intent through it. The
+current `camera-route.ts` + `camera-motion.ts` mechanism, its curve/guard model,
+duration-dependent guards and source filenames are replaceable implementation,
+not the destination and not the motion ceiling. Travel, orbit, track, lens/focus
+and retimed invocation can extend the vocabulary. No controller supplies a second
+pose/FOV interpolation authority.
+
+The camera graph answers **where can the experience move?** and authored
+connectivity remains explicit. Sequence-like direction answers **which connected
+traversal is presented**. Higher-level direction may describe intent such as a
+reveal, orbit, push-in, rest, hero view or establishing view; assisted direction
+resolves into the same inspectable project state, and manual position, path,
+target/orientation, FOV, timing and framing remain available with free mixing of
+manual and assisted control.
+
+**Cutover (destination).** Editorial occurrences, order, holds, interaction
+locks and detours move to Experience ownership. Camera retains possible spatial
+traversal, intrinsic movement profiles, framing/projection and evaluation;
+invocation time mapping is evaluated through Camera. Selecting a cut does not
+invent a spatial edge; selecting travel must resolve a supported route or report
+a gap. A read-only compatibility adapter may interpret legacy node order during
+migration; two editable order systems may not coexist. The new interface must
+prove retiming, seeking, projection and guard
+behavior together — a serialized prepared form is a conformance obligation, and
+dumping the current Three-object motion is not a design. Node links and
+Experience order must never remain coequal writable authorities.
+
+**Cues follow their source.** Camera emits its own progress markers; performances
+own their cues; Experience owns the visitor-facing interaction bindings that
+listen to them. Spatial Camera does not become the owner of every performance
+event, and Experience bindings evaluate against canonical evaluation, never a
+copied timeline.

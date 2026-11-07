@@ -6,7 +6,7 @@
 
 These proofs test the [synthesis](./synthesis-and-direction.md) before any production commitment. They refine the original study's [Experiments 1–6](../spatial-modeling-depth-research-2026-10-25.md#11-a-bounded-research-and-prototype-program) and do not replace them. Each proof below names the experiment it sharpens.
 
-The roadmap allows research, documentation and bounded disposable probes within a commissioned step ([production hold](../../docs/roadmap/README.md#production-implementation-hold)). Each proof here would need such a commission.
+The roadmap allows research, documentation and bounded disposable probes within a commissioned step ([production hold](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#production-implementation-hold)). Each proof here would need such a commission.
 
 ## 1. Portfolio, ranked by decision value
 
@@ -29,8 +29,8 @@ The roadmap allows research, documentation and bounded disposable probes within 
 
 ## 2. Shared method
 
-- **Reference hardware.** Hard rows run on the reference machine, an M2 with 16 GB. Reference laptops A (x86, 8 GB) and B (M1, 8 GB) remain the accessibility targets the budgets describe; a pass on the M2 is not proof on an A-class laptop ([performance contract](../../docs/reference/components/performance.md#reference-baseline)). Follow the S06 owner-run benchmark method and pass limits. Report boundary-inclusive latency: input, evaluation, transfer, buffer upload and visible frame. See the [performance foundation decision](../../docs/archive/roadmap/authorization-history/performance-foundation-authorization-2026-10-24.md).
-- **Budgets.** Compare against the [ratified contract](../../docs/reference/components/performance.md#budgets). S, M and L are **project scales** (a starter room, a pavilion gallery, a museum wing), not machines. All are judged on the designated M2 in Chrome:
+- **Reference hardware.** Hard rows run on the reference machine, an M2 with 16 GB. Reference laptops A (x86, 8 GB) and B (M1, 8 GB) remain the accessibility targets the budgets describe; a pass on the M2 is not proof on an A-class laptop ([performance contract](../../docs/archive/research/performance-method.md#reference-baseline)). Follow the S06 owner-run benchmark method and pass limits. Report boundary-inclusive latency: input, evaluation, transfer, buffer upload and visible frame. See the [performance foundation decision](../../docs/workflow.md).
+- **Budgets.** Compare against the [ratified contract](../../docs/archive/research/performance-method.md#budgets). S, M and L are **project scales** (a starter room, a pavilion gallery, a museum wing), not machines. All are judged on the designated M2 in Chrome:
   - drag input to matching preview, p95 ≤33, 50 and 100 ms at S, M and L;
   - per-edit Layout evaluation, compile plus representation for one pointer move, ≤4, 8 and 16 ms at S, M and L, Hard at M;
   - commit ≤100 ms;

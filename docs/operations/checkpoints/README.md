@@ -11,8 +11,7 @@ COMPLETE: promote durable findings, delete the checkpoint, clear the explicit po
 ```
 
 **Not authority.** A checkpoint is neither status nor durable knowledge: product
-status lives in [`docs/roadmap/README.md`](../../roadmap/README.md) and computed
-`npm run status`, claims in the active draft pull request or issue, and landed
+status is computed by `npm run status`, claims in the active draft pull request or issue, and landed
 truth in [`docs/reference/`](../../reference/). Nothing is promoted out of a
 checkpoint by being written there — promotion is a separate, reviewed edit to the
 owning document.

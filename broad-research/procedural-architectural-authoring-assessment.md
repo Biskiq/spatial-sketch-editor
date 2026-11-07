@@ -292,7 +292,7 @@ into acceptance criteria.
 
 **Where a durable reconciliation would go, if the owner wants one:** this report is
 research input next to the study it assesses. A later decision-input note would sit beside
-[T1's planning evidence](../docs/roadmap/t1-spatial-world/planning-evidence.md) (evidence,
+[T1's planning evidence](../docs/reference/components/layout.md) (evidence,
 not authority) and should be written *after* P3's experiments. A record in
 [`docs/reference/decisions/`](../docs/reference/decisions/) follows only if the owner ratifies
 RR-1 or RR-2 ([research triggers](./post-p01-roadmaps/README.md)). Nothing here promotes these

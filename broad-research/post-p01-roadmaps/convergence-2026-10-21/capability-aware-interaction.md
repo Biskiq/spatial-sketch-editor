@@ -9,7 +9,7 @@ baseline evidence stands. Results are in [§Step 2 results](#step-2-results) and
 [handoff](#handoff-to-the-convergence-lead); disposable probes are under
 [`probes/capability/`](./probes/capability/README.md). Results feed combined contract/design and canonical
 roadmap/DAG reconciliation in PR #173. The
-[owner production hold](../../../docs/roadmap/README.md#production-implementation-hold) includes
+[owner production hold](https://github.com/Biskiq/spatial-sketch-editor/blob/5d7d7f3e/docs/roadmap/README.md#production-implementation-hold) includes
 T3.P02 despite its earlier authorization; research or merge cannot release that hold.
 
 ## Decision and first consumer
@@ -317,7 +317,7 @@ Run probes in a disposable research harness outside production workspaces. Dispo
 | [F.2 `#f2-persisted-units-and-the-project-envelope`](../../../docs/reference/composition-execution.md#f2-persisted-units-and-the-project-envelope) | Amend when consumed: model resource revision carries source + derivative pins, recipe and component table; Experience unit gains annotation records and Presentation subject/annotation uses (additive). |
 | [F.3 `#f3-channels-and-representation-parameters`](../../../docs/reference/composition-execution.md#f3-channels-and-representation-parameters) | Correct stale "Current behavior"; add rule: a component-qualified family's owner validator must resolve `componentId` through the owner provider (negotiation alone admits dangling ids). |
 | [Session logic `#session-state-and-declarative-logic`](../../../docs/reference/composition-execution.md#session-state-and-declarative-logic) | Correct stale "Current behavior" (AM-6 reducer/state/guards landed); add: visitor Reset of async work starts a new run/epoch. |
-| [F.5 `#f5-release-envelope-and-program-slots`](../../../docs/reference/composition-execution.md#f5-release-envelope-and-program-slots) / [AM-6](../../../docs/reference/composition-execution.md#am-6-execution-program-and-visitor-profile-v1) | Later optional kinds: `annotation` content record with compiled locator; Presentation-entry (Stop-free) execution. |
+| [F.5 `#f5-release-envelope-and-program-slots`](../../../docs/reference/composition-execution.md#f5-release-envelope-and-program-slots) / [AM-6](../../../docs/reference/composition-execution.md#execution-program-interface) | Later optional kinds: `annotation` content record with compiled locator; Presentation-entry (Stop-free) execution. |
 | [PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) "Information homes" Scene-subject row, "Scene subjects" | Amend: part-qualified subject selection and annotation through the Card ("deeper capability on invocation"); single-mesh objects show no part affordance. Retain Presentation definition. |
 | [North Star `#composition-behavior-and-direction-model`](../../../docs/reference/north-star.md#composition-behavior-and-direction-model), [`#experience-lens--visitor-facing-composition`](../../../docs/reference/north-star.md#experience-lens--visitor-facing-composition) | **Retain** Subject ("supported component") and Guide-free Presentation; optionally add the owner's three-context statement as accepted direction. |
 

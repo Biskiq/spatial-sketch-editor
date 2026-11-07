@@ -1,0 +1,296 @@
+# Historical performance method and budgets
+
+Historical measurement definitions; not operative acceptance policy.
+
+## Reference baseline
+
+**Reference laptop A — "regular x86 laptop" (primary for budgets).** 4-core / 8-thread mid-range
+x86 at 15–28 W (Intel Core i5-1135G7 class), integrated **Intel Iris Xe** (80/96 EU),
+**8 GB** dual-channel RAM (16 GB variant also recorded), 1920×1080 internal panel at 60 Hz,
+**DPR 1.0**, Windows 11, balanced power plan, **on battery and on mains** (budgets are judged on
+battery, the worse case). **Reference laptop B — Apple M1 MacBook Air, 8 GB**, 2560×1600 at DPR 2
+(the renderer's DPR cap applies), macOS current, Safari and Chrome.
+
+**Designated reference machine (owner amendment, 2026-10-22).** Laptops A and B above stay the
+accessibility target that the budgets describe. Hard rows are run and accepted on one designated
+machine: the owner's **Apple MacBook Air M2** (Mac14,2; 8-core CPU, 4 performance and 4
+efficiency; 10-core GPU; **16 GB** unified memory; 2560×1664 built-in display), on battery with Low
+Power Mode off, operated by the repository owner. Runs on it need no CPU throttling or calibration.
+It is stronger than laptop A, so a pass there is a pass on this machine, not proof on an A-class
+laptop; the owner accepted that trade-off. Wherever this contract says "reference A" for running or
+accepting a hard row, it means this machine. Provenance:
+[batch E record](../../archive/roadmap/authorization-history/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named).
+
+**Browser matrix.** Chrome stable (pinned major, recorded `chrome://version`) is **primary and
+gating** on A and B. Safari (current, on B) and Firefox stable (on A) are **secondary**: they run
+the same flows and must meet the *hard* gates for correctness-visible behavior (no context loss,
+no unbounded long task, no leak) but report frame/latency numbers as targets. Edge inherits Chrome.
+
+**Network profiles for the viewer cold load** (CDP `Network.emulateNetworkConditions`, applied
+per request, cache disabled for cold):
+
+- **N0 local** — unthrottled loopback (developer iteration only; never a gate).
+- **N1 broadband** — 20 Mbit/s down, 5 Mbit/s up, 40 ms RTT. Gating profile for viewer and editor.
+- **N2 constrained** — 1.6 Mbit/s down, 750 kbit/s up, 150 ms RTT (a proposed constrained profile). Reported for the viewer only; a target, not a gate.
+
+**Reproducing on a developer machine (workflow authorized; not yet installed or run).**
+
+1. **Pinned browser:** Playwright-managed Chromium *and* branded Chrome stable (`channel: 'chrome'`),
+   versions recorded with every result; Playwright's own browser cache, never the user's profile;
+   a fresh persistent context per run; extensions off; `--disable-background-timer-throttling`
+   off (default) so results match users.
+2. **CPU calibration against the reference:** run a fixed calibration page (the `fixtures.ts`
+   grid-7 compile + the Stage's admission, bundled exactly as production) 20× on the designated
+   reference machine in Chrome, record the median; on another developer machine pick the CDP
+   `Emulation.setCPUThrottlingRate` (1.5–4, step 0.25) whose median lands within ±10 % of the
+   reference median.
+   Recalibrate per browser major and per machine; store the rate with results. If no rate matches,
+   report no calibrated equivalence and use reference hardware; do not extrapolate a pass. CPU throttling does
+   not emulate GPU, memory bandwidth, or thermal behavior: **GPU, frame-time and GPU-memory gates
+   are only accepted from reference hardware runs**; throttled developer runs are pre-flight.
+3. **Fixed viewport/DPR:** 1920×1080 CSS at DPR 1 for A-equivalence; 1440×900 at DPR 2 for
+   B-equivalence; window not occluded (a background tab throttles rAF).
+4. **Cache states:** *cold* = new context + `Network.clearBrowserCache` + `clearBrowserCookies` +
+   service workers none; *warm* = same context, second navigation (HTTP cache + V8 code cache
+   populated); *repeat-use* = 10 open/close cycles in one context.
+5. **Runs and statistics:** 1 discarded warm-up + **≥ 10 measured runs** per flow × workload ×
+   cache state. Frame/input flows include **≥ 600 frames / ≥ 60 input samples per run**. Report
+   sample counts, median, p75, p95, p99 and max, per-run values and run-to-run spread. A budget
+   uses the statistic named in its row; timing milestones below use p95 unless stated otherwise.
+   Pooling must retain every input's presented/superseded/unresolved status, not discard slow
+   unfinished work. With only 10 milestone samples, p95/p99 are coarse tail estimates (often the
+   maximum); report that limit rather than imply precise population percentiles. Report page INP
+   separately from per-operation completion timing. Record SHA, build hash, workload id, browser,
+   CPU rate, power state and display Hz.
+
+### S06 milestone decision method (owner amendment, 2026-10-26)
+
+**Retained as method history, not a current acceptance gate.** The 2026-10-28 suspension removes
+the mandatory strategy this section served; no new milestone pass is authorized.
+
+T1.P02.S06 may discharge its hard rows with a **decision-driven milestone gate** instead of the
+formal 10-run method above. This amendment is scoped to the S06 milestone: the formal sample plan,
+the budgets, the workload definitions and every historical Bench 1/Bench 2 meaning remain unchanged,
+and a later slice that needs formal statistics still uses the 10-run method. The milestone is S06
+acceptance evidence only. It is **not** production-scale, grid-XL, rare-tail or ultimate
+geometry/rendering certification.
+
+**What one sample is.** A run is one independent measured repetition: a fresh cold context, or one
+more run in the warm/repeat-use context. Pointer events inside one run are not independent
+experiments. A row's decision values are one statistic per run (that run's p95), never pooled
+pointer samples.
+
+**Decision rule.** With the contract budget `B` and each independent run's p95 `r`:
+
+- **Clear pass:** at least three independent runs exist and every `r` is at most `0.75 B`
+  (25 % headroom). The row is decided; no further runs are spent.
+- **Clear failure:** at least three independent runs exist and every `r` exceeds `B`. A demonstrated
+  violation; no further runs are spent. A row that cannot produce three usable runs by its bound is
+  a failure of evidence, never a pass.
+- **Borderline or unstable:** anything else. Exactly one more independent run is requested at a
+  time, to a bound of 10 runs (F7: 5). At the bound the contract's own pooled p95 decides
+  (`pooled ≤ B`): a pass is accepted with the run-to-run instability recorded, never presented as a
+  stable result.
+
+Frame-interval rows use the display floor as their budget (16.7 ms at 60 Hz) and therefore pass at
+`B` ± 0.05 ms of display-clock tolerance rather than at 25 % below it; a 25 % band below a refresh
+interval is a band no observed frame can enter. The F7 row also checks the contract's p99 and
+zero-long-task clauses. F3's frame-time row is measured from the drag's own presentation
+interval(s), not inferred from F7. The F13 row keeps the contract's ten measured cycles and compares growth normalised to the
+ten-cycle basis. The first measured cycle is a one-time first-load sample for both cold (the Stage
+first load) and repeat-use (the first open after the discarded warm-up); steady growth starts at
+the second measured cycle. Live WebGL contexts remain uncaptured and are recorded as such.
+
+**Coverage.** The milestone uses Bench 2's representative interactions and lean cache-state
+coverage: F2 cold+warm at S/M; F3/F4/F8 warm at S/M/L (cold and repeat-use are one-run checks); F7
+warm at S/M; F13 cold+repeat-use ten-cycle growth at S/M/L; the per-edit Layout evaluation at M;
+the full E5 correctness matrix. Cold/repeat-use F3/F4/F8, F2 repeat-use, F7 cold/repeat-use, A.6
+old-method rows, the delayed-preview proof, grid-XL, realistic-L and the sweep latency rows are
+**not** milestone measurements; the manifest and each row name them as omitted, and no omitted row
+may be read as passing. Bench 1's method proofs stand for the correlation and old-method evidence.
+
+**Evidence record.** The bench manifest is the only pass-scoped acceptance authority. It records
+the exact plan, the machine, power and contamination state, every decision row's deciding values,
+verdict and rule, the omitted rows, and the bound reached. Deciding values are each independent
+run's p95 where a row reports runs individually (F2, F7), and each clause's slowest-run p95 with its
+run count for the composite drag rows (F3/F4/F8 and the per-edit evaluation), whose full per-run
+array is not retained; the pooled samples are recorded in every case. For a pass, the slowest run
+is the rule's input (`worst ≤ 0.75 B`), so the verdict is decidable from the record; the run-to-run
+distribution of the composite drag clauses is a recorded limitation, not a hidden sample. A
+per-flow report is never acceptance evidence on its own. A contaminated, aborted, smoke or reduced pass is never reinterpreted as a
+pass, and a decision row that is `borderline` or `undecided` at the end of a pass prevents
+acceptance evidence rather than being omitted. Small-sample p95s are decision aids, not precise
+tail estimates.
+
+**Post-milestone attribution limit (2026-10-27).** The milestone gate does not certify canvas pick or
+continuous pan CPU; those are attribution, not acceptance rows. A targeted two-revision check found
+that continuous pan is the large genuine win (about half the main-thread work per move at L, a
+quarter at S), that the spatial pick index trades a slower first click for faster repeats and a 3.3×
+faster late-order target, and that the local edit's Plan locality is hidden by unchanged
+whole-project compile materialisation, membership assembly and commit work. The same check showed an
+accepted edit discards the index and complete Plan output, and the next pick rebuilds them. The
+milestone PASS is
+unchanged. Future performance slices that claim interaction-locality gains must include a continuous
+pan CPU row and a pick-after-commit row (counting index builds and fragment materialisations), not
+only the existing drag/orbit rows.
+
+## Representative workloads
+
+Derived from the museum/pavilion use case and the first-wave slices. The measured grid fixtures
+stand in for the Layout part until real pavilion fixtures exist; counts are per project.
+
+| | **S — starter room** | **M — pavilion gallery (expected typical)** | **L — museum wing (expected maximum)** | **XL — stress (above max)** |
+|---|---|---|---|---|
+| Walls / Openings / Rooms | 4–24 / 4–24 / 1–9 (starter, grid-3) | ≈ 112 / 112 / 49 (grid-7) | ≈ 420 / 420 / 196 (grid-14) | ≈ 840 / 0–840 / 400 (grid-20) |
+| Structures / datums / overheads (after CD-4) | 1 / 1 / 0–1 | 2 / 3 / 4 (roof, suspended ceiling, mezzanine slab, void) | 4 / 6 / 10 | 8 / 12 / 30 |
+| Scene objects / distinct GLBs | 5 / 3 | 60 / 15 | 200 / 40 | 500 / 80 |
+| Model bytes / triangles | ≈ 1 MiB / 30 k | ≈ 8 MiB catalogue-class (meshopt+webp, 200–550 KiB each) + 2 creator GLBs ≈ 15 MiB uncompressed with 2K maps / ≈ 600 k | ≈ 40 MiB / 1.5 M | ≈ 100 MiB / 3 M (incl. chandelier-class 100 k-tri models) |
+| Texture bytes on disk / est. GPU | ≤ 4 MiB / ≤ 64 MiB | ≤ 48 MiB / ≤ 256 MiB | ≤ 128 MiB / ≤ 512 MiB | ≤ 300 MiB / > 1 GiB (expected to degrade) |
+| Views / Presentations / Stops | 3 / 1 / 0–3 | 20 / 8 / 15 (S01 dense fixture) | 50 / 20 / 30 (S01 dense fixture) | 100 / 60 / 60 |
+| Part annotations (CD-5/6) | 0 | 30 | 150 | 500 |
+| Experiences | 1 | 1–2 | 2 | 4 |
+
+Every flow runs **cold** and **repeated** (warm and repeat-use). S and M gate; L gates the hard
+budgets marked "L" below; XL is report-only and must merely degrade gracefully (no crash, no context
+loss, no single main-thread block > 1 s, an honest progress/refusal state).
+
+## Complete user flows to measure
+
+Each flow is a named sequence of `performance.mark`s from the product (the P23.11 helper's
+successor, enabled only by a harness flag, never shipped as a dependency) plus CDP-derived input,
+frame and memory data. "First interactive frame" = first presented architectural frame after
+which a pointer event is handled within 50 ms; a lone rAF callback is not proof of presentation.
+
+**Measurement contract (ratified; API constraints checked 2026-10-22).**
+
+- **Continuous drag:** Event Timing excludes `pointermove`, `touchmove`, `wheel` and `drag`
+  ([W3C events exposed](https://www.w3.org/TR/event-timing/#sec-events-exposed)). Assign a monotonic
+  input sequence and normalized `event.timeStamp` to each sample; carry that sequence through
+  coalescing, planner/worker output, preview installation and render submission. Correlate the
+  render mark with the trace's presented frame containing that matching preview. Measure input
+  timestamp → matching preview presentation, including queueing, solve, transfer and rendering.
+  Record superseded inputs and the age of the latest presented input separately; dropping queued
+  samples cannot turn unfinished work into zero latency. After the final input, measure time to
+  its matching final preview. F3/F6 budgets bind delivered-preview latency, the age of inputs
+  awaiting a preview during active input, and final-preview completion. An rAF-only estimate is
+  labelled an approximation and cannot alone establish the hard presentation gate.
+- **Acceptance and asynchronous completion:** correlate the command/operation ID and accepted
+  revision with the first presented frame containing its final result. Record submission,
+  accepted, installed and presented milestones independently. A spinner, acknowledgement or an
+  unrelated next paint does not end the result-completion interval.
+- **Discrete responsiveness:** use Event Timing for eligible clicks/taps/keys and report page INP
+  separately. INP concerns next-paint responsiveness, not every eventual asynchronous effect
+  ([INP definition and limits](https://web.dev/articles/inp)); it cannot replace either completion
+  interval above. Enable a stated Event Timing threshold and report its censoring/rounding limits.
+
+| # | Flow | Start → end marks | Metrics |
+|---|---|---|---|
+| F1 | Editor startup | navigation start (`/projects` or `/editor`) → hub interactive → Stage route first interactive frame on the starter | FCP, LCP, TBT/long tasks, JS bytes/requests per route cold+warm, first interactive frame |
+| F2 | Project open | Open (hub card or Open JSON) → source admitted → first architectural frame → first interactive frame | admission (parse/validate/compile/runtime), mesh build, first render, JS heap after GC |
+| F3 | Native Wall drawing (C1) | pointerdown → sequenced pointermoves → matching previews presented → pointerup → accepted revision presented | input-to-matching-preview latency, superseded inputs/latest-preview age, final-preview completion, preview solve time, frame time p95/p99, long tasks, release-to-final-result completion, discrete Event Timing separately |
+| F4 | Wall/Opening edit (C1, precision) | typed value command → accepted → matching revision presented | command-to-final-result completion; accept + install + mesh rebuild split; discrete responsiveness separately |
+| F5 | Object import/admission (C2) | file chosen → staged/validated → derivative ready → approved → placed → painted | main-thread long tasks during parse/decode/upload, worker time, peak JS heap, GPU memory delta, time to placed |
+| F6 | Object placement (C2) | sequenced drag inputs → matching placed-object previews presented; duplicate/delete → matching accepted result presented | continuous input-to-matching-preview and command completion latency, picking time, frame time p95/p99 |
+| F7 | Orbit/navigation (Stage) | 10 s scripted orbit + dolly + pan at S/M/L | frame time p50/p95/p99, draw calls, triangles, GPU time (EXT_disjoint_timer_query where available) |
+| F8 | Undo/Redo | 20 alternating Undo/Redo after F3/F4 → each restored revision presented | command-to-restored-result completion, recompile/admission time; discrete responsiveness separately |
+| F9 | Save | Save click → local feedback presented → durable receipt → idle | local-feedback latency, main-thread blocking, serialize + hash time, actual wire bytes, upload/RTT/server time, durable-receipt latency |
+| F10 | Capture + Preview (T3.P02.S01) | capture View → bind Presentation (accepted result presented) → enter Preview → first preview frame → play Cut Guide → return | capture/bind result completion, discrete responsiveness separately, Preview chunk bytes (first and repeat entry), entry/return completion, frame time in Preview, history/selection intact |
+| F11 | Viewer cold load | navigation start `/p/:id` → release fetched → first architectural frame (LCP-like) → first navigable frame → models streamed | TTFB, LCP, first-navigable, TBT, bytes by kind (JS/CSS/payload/models/textures) per network profile, compile/prepare time |
+| F12 | Viewer navigation + Presentation | scripted guided travel, free look, Presentation enter/advance/exit, reduced-motion variant | frame time p95/p99, input latency, transition dropped frames |
+| F13 | Repeated open/close (leaks) | Stage: open → edit ×20 → close to hub, ×10; viewer: enter/exit Presentation ×20; Preview enter/exit ×20 | JS heap after forced GC per cycle, `renderer.info.memory` geometries/textures, live WebGL contexts, detached DOM nodes |
+
+## Budgets
+
+**Hard** = the historical definition of a row that had to pass before the consuming slice's
+acceptance on the designated reference machine (Chrome), else the slice resolved it. **Target** =
+the historical report-only row whose miss needed a written disposition. **Both are suspended as
+acceptance prerequisites by the 2026-10-28 amendment** and are retained as reference criteria for a
+future owner-initiated investigation. Continuous latency ends at the matching preview's
+presentation; operation completion ends at the accepted result's presentation, as defined above.
+Discrete Event Timing/INP is reported separately. Frame budgets use rAF-to-rAF intervals on a
+60 Hz display and do not substitute for matching-result presentation latency.
+
+**Budget basis.** These are owner-ratified Biskiq acceptance targets, not claims that browser
+performance has already been measured on the reference hardware. The research packet retains
+the measured Node/build evidence and its limitations.
+
+| Flow / metric | S | M | L | Kind |
+|---|---|---|---|---|
+| Delivery: Stage route first-load JS (br, cold) | ≤ 425 KiB | same | same | **Hard** (owner-amended 2026-10-27 from ≤400; no growth > 25 KiB br per slice without a recorded reason) |
+| Delivery: visitor `/p` first-load JS (br) before first architectural frame | ≤ 250 KiB | same | same | Target now, **Hard** at T4 cutover |
+| Delivery: landing `/` and hub `/projects` JS (br) | ≤ 80 KiB | — | — | Target |
+| Delivery: Preview chunk (T3.P02.S01) | lazy; not in Stage first-load set | — | — | **Hard** |
+| Delivery: editor-only/solver modules in visitor load set | editor machinery absent; runtime-safe solvers only where visitor execution requires them (named, justified) | — | — | **Hard** |
+| Delivery: warm repeat visit JS transferred | ≈ 0 (immutable cache hits) | — | — | **Hard** |
+| Editor startup F1: Stage first interactive frame, cold N1 | ≤ 3.0 s | — | — | **Hard** |
+| Project open F2: data-in-hand → first interactive frame | ≤ 300 ms | ≤ 800 ms | ≤ 2.0 s | **Hard** S/M, Target L |
+| Wall drag F3: input-to-matching-preview latency / latest-input age / final-preview completion p95 | ≤ 33 ms | ≤ 50 ms | ≤ 100 ms | **Hard** S/M/L |
+| Wall drag F3: frame time p95 / p99; main-thread long tasks | ≤ 16.7 / 33 ms; 0 > 50 ms | ≤ 20 / 33 ms; 0 > 50 ms | ≤ 33 / 50 ms; ≤ 1 per drag | **Hard** S/M, Target L |
+| Commit F4 (accept + install + mesh + final-result presentation), command-completion p95 | ≤ 100 ms | ≤ 100 ms | ≤ 200 ms | **Hard** |
+| Undo/Redo F8, command-to-restored-result completion p95 | ≤ 100 ms | ≤ 100 ms | ≤ 200 ms | **Hard** |
+| Per-edit Layout evaluation budget (compile + representation) for one pointer move | ≤ 4 ms | ≤ 8 ms | ≤ 16 ms | **Hard** M (applies wherever evaluation runs) |
+| Orbit/navigation F7/F12: frame time p95 / p99 | ≤ 16.7 / 25 ms | ≤ 16.7 / 33 ms | ≤ 33 / 50 ms | **Hard** S/M, Target L |
+| Draw calls (Stage and viewer) | ≤ 200 | ≤ 1,000 | ≤ 2,500 | Target (trigger for E-6) |
+| Object import F5: main-thread long tasks during admission | 0 > 50 ms; none > 100 ms | same | same | **Hard** |
+| Object import F5: chosen → placed (local file, excl. upload) | ≤ 2 s for 5 MiB | ≤ 5 s for 25 MiB | — | Target |
+| Placement F6: input-to-matching-preview / completion latency p95; picking per event | ≤ 33 ms; ≤ 2 ms | ≤ 50 ms; ≤ 4 ms | ≤ 100 ms; ≤ 8 ms | **Hard** S/M |
+| Save F9: main-thread work; local feedback presented p95 | ≤ 50 ms; ≤ 100 ms | same | ≤ 100 ms; ≤ 100 ms | **Hard** |
+| Save F9: click → durable receipt p95 at N1 | ≤ 8 × B_wire / R_up + 2 × RTT + 500 ms | same formula | same formula | Target; hard promotion requires service baseline and owner decision |
+| Capture/bind F10 final-result completion p95; Preview entry first frame (repeat / first use) | ≤ 100 ms; ≤ 300 ms / ≤ 800 ms | same | ≤ 200 ms; ≤ 500 ms / ≤ 1.2 s | **Hard** S/M |
+| Viewer cold F11: first architectural frame (LCP-like) at N1 | ≤ 2.5 s | ≤ 2.5 s | ≤ 4.0 s | **Hard** S/M from T4, Target L; N2 reported |
+| Viewer cold F11: first navigable frame at N1 | ≤ 3.0 s | ≤ 3.5 s | ≤ 6 s | **Hard** S/M from T4 |
+| Viewer F11 first-frame payload (excl. JS) | ≤ 1.5 MiB | ≤ 4 MiB | ≤ 10 MiB | Target; rest streamed |
+| JS heap after GC — editor, project open | ≤ 120 MiB | ≤ 200 MiB | ≤ 400 MiB | Target; **Hard** "no OOM/tab crash" at XL |
+| JS heap after GC — after 100 edits (history full) | +≤ 30 MiB | +≤ 80 MiB | +≤ 250 MiB | Target |
+| JS heap — viewer | ≤ 100 MiB | ≤ 150 MiB | ≤ 300 MiB | Target |
+| GPU memory estimate (textures + buffers) | ≤ 128 MiB | ≤ 384 MiB | ≤ 768 MiB | **Hard** M on A 8 GB (shared memory) |
+| Leaks F13: heap growth over 10 cycles (after GC); GPU resources | ≤ 5 MiB; geometries/textures back to baseline; 1 live context | same | ≤ 10 MiB | **Hard** |
+
+**Stage first-load amendment (owner ruling, 2026-10-27).** The Stage route first-load JS row was
+raised from ≤400 to ≤425 KiB br when `T2.P02.S03` was accepted: the integrated production route
+measured 422.3 KiB br at `b9ba493b` after the Import procedure and model renderer were removed from
+first load. The 25 KiB per-slice growth rule is unchanged, the visitor `/p` row is unchanged, and the
+amendment is not retroactive — `T1.P02.S02`'s 456.0 KiB br at `64b9435d` remains a recorded miss at
+that revision and is carried to `T1.P02.S04`. Provenance:
+[decision record](../decisions/t2-s03-acceptance-and-budget-amendment-2026-10-27.md).
+
+**Save receipt target.** `B_wire` is the actual request-body byte count; `R_up` is the declared
+upload bit rate in bits/ms and RTT is in ms. The formula explicitly allows upload time, two RTTs
+for transport overhead and a 500 ms local/server target allowance; record those components and
+confirm the allowance against the API before accepting a hard receipt gate. Production currently
+sends the full canonical source as an uncompressed JSON PUT
+(the current project persistence client). The ≤ 100 ms hard requirement concerns visible
+local feedback that saving started, never a claim that durable storage has acknowledged it.
+
+## Acceptance and workflow
+
+**Suspended as an acceptance requirement on 2026-10-28.** No consuming slice records performance
+evidence before acceptance, no final gate rechecks integrated flows, and no hard miss or target
+blocks acceptance. If the owner initiates an investigation after an observed slowdown, that
+investigation records its own hardware/profile, workload, browser/build/commit, cache and power
+state, measured result and limitations; it is evidence for the slowdown it studies, not a revived
+mandatory gate. T4-only rows and future vertical/part rows likewise bind nothing until an
+owner-initiated investigation names them.
+
+The historical workflow below is retained for that future use: each consuming slice recorded
+hardware/profile, workload, browser/build/commit, cache and power state, measured result, budget
+and disposition before acceptance; hard misses were resolved inside the slice and targets required
+a disposition; the phase final gate rechecked integrated flows and could not defer an earlier hard
+miss. Those obligations are no longer current.
+
+Profile first. Remove duplicated work, qualify incremental invalidation, use bounded revision-keyed
+caches, workers for whole pure stages, compiled derivatives and delivery splitting where measured.
+Preserve one compiler and prove equal output for optimized paths with meaningful correctness
+differentials. A worker must meet matching-result completion deadlines as well as main-thread
+budgets; moving a slow solve off-thread alone does not establish timely results.
+
+The permanent on-demand Playwright/CDP harness and bundle report are explicitly owner-authorized
+by the decision record above under [the test contract](../../../apps/editor/tests/README.md#correctness-tests-vs-performance-benchmarks).
+They live outside default test lanes and add no CI timing gate, schedule or benchmark registry.
+Equivalent manual DevTools measurements may supply evidence until the authorized workflow is installed,
+with limitations stated. Existing public source-closure coverage already excludes all authoring
+machinery; align the public and Preview build patterns without weakening that protection.
+
+H0 prepares shared enforcement and measurement; C1 owns compile/admission deduplication and its
+measured optimization experiment. Exact phase/slice registration and named release from the
+production hold still precede implementation. Ratifying this contract alone releases no scope.

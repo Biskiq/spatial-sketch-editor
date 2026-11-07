@@ -302,7 +302,7 @@ the execution structure rather than a benchmark: **no** permanent benchmark
 workflow, registry, scheduled job or CI gate exists, and adding one needs
 separate owner authorization. Harnesses and historical evidence are preserved
 for a future owner-commissioned investigation.
-[Decision record](../../../docs/reference/decisions/performance-mandate-suspension-2026-10-28.md).
+[Decision record](../../../docs/reference/components/performance.md).
 
 ## Focused verification
 
@@ -362,9 +362,9 @@ ids). Ownership and permission checks apply unchanged.
 ## Product convergence performance workflow
 
 **The mandatory comprehensive workflow is suspended.** The
-[2026-10-28 suspension](../../../docs/reference/decisions/performance-mandate-suspension-2026-10-28.md)
+[2026-10-28 suspension](../../../docs/reference/components/performance.md)
 remains in force for the F2/F3/F4/F8/F13 matrix, battery certification and the former multi-hour
-suite. The [spot-check decision](../../../docs/reference/decisions/performance-spot-check-2026-10-28.md)
+suite. The [spot-check decision](../../../docs/reference/components/performance.md)
 authorizes `npm run perf:spot` at the four triggers named there. It is not a routine per-slice gate
 and it is not a CI job.
 

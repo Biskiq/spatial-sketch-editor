@@ -1,19 +1,9 @@
-# Operations — retained procedures
+# Operational routes
 
-**Role:** the operational procedures that survive the workflow cutover. **Not:** a baton, release
-list, DAG, architecture cycle or closeout route. **Status:** `npm run status`. **Workflow:**
-[`../workflow.md`](../workflow.md). **Focus:** [`../../focus.md`](../../focus.md).
+- [Workflow](../workflow.md): claims, flags, risk tiers and review.
+- [Checkpoints](./checkpoints/README.md): transient recovery for interrupted work.
+- [Local development](../local-development.md) and [tests](../../apps/editor/tests/README.md).
+- Confirmed defects live in capability-linked GitHub issues; `npm run status` reports flags/claims.
+- The browser-hygiene skill owns browser/session lifecycle.
 
-| Need | Read |
-| --- | --- |
-| Interrupted substantial work | [`checkpoints/README.md`](./checkpoints/README.md) and the `work-checkpoint` skill |
-| Deferred defect with evidence | [`tech-debt/README.md`](./tech-debt/README.md) |
-| Browser/session lifecycle | the `browser-hygiene` skill |
-| Local setup and commands | [`../local-development.md`](../local-development.md) · [`../../apps/editor/tests/README.md`](../../apps/editor/tests/README.md) |
-| Claims, flags, tiers, plans | [`../workflow.md`](../workflow.md) |
-| Product status | `npm run status` |
-
-The event procedures (track completion, integration/milestone acceptance, bounded replanning), the
-global and per-track batons, the architecture cycle and the `slice-closeout`/`phase-closeout` skills
-retired on 2026-11-06. Their records are historical evidence under
-[`../archive/process/`](../archive/process/); merging is the closeout.
+These are procedures, not product authority or a parallel status ledger.

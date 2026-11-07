@@ -34,9 +34,9 @@ Restoring a dedicated contract per module is a T1/T2/T3 obligation, recorded
 rather than assumed.
 
 The obligations these modules serve are recorded in the track planning evidence:
-`docs/roadmap/t1-spatial-world/planning-evidence.md`,
-`docs/roadmap/t2-composition/planning-evidence.md` and
-`docs/roadmap/t3-experience/planning-evidence.md`.
+`docs/reference/components/layout.md`,
+`docs/reference/components/scene-content.md` and
+`docs/reference/components/experience.md`.
 
 **Not here:** unreviewed copies of deleted code. Anything removed from
 `lib/editor/` is recoverable from Git at the baseline SHA

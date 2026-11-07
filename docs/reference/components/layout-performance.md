@@ -51,4 +51,4 @@ call sites that drive the interaction whenever a planner is wired into a gesture
   presentation. A 1,000-Room compile or a milestone result does not certify current
   1,000-Room drag feel.
   [S06 acceptance and attribution](../../archive/roadmap/closed-phases/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s06-performance-foundation/acceptance.md) ·
-  [Corrected M/L spot check](../evidence/lean-ml-spot-2026-10-28/README.md#corrected-timings)
+  [Corrected M/L spot check](../../archive/research/performance-spot-check/README.md)

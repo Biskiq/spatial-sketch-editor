@@ -47,7 +47,7 @@ to change it, and neither did this one. The real problems sit closer to the crea
   are hard-coded and differ materially between editor and visitor, and no assisted framing, surface
   placement, alignment or replace operation is planned before the milestone. The decision record warns
   that semantic structure "will not compensate for weak direct manipulation or unattractive output"
-  ([decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md#a-focused-entry-without-a-narrow-ontology)).
+  ([decision record](../docs/reference/north-star.md)).
 
 **Preferred direction — avoiding another narrow convergence (Judgment).**
 
@@ -116,7 +116,7 @@ category it set out to transcend.
 2. **Upgrading to live hosting stays explicit.** An explicit live attachment (`B`) remains an opt-in
    upgrade once T1 publishes split/dissolve/merge correspondence.
 3. **Upgrading stays cheap.** Before a baseline, schemas may break without migration layers
-   ([North Star](../docs/reference/north-star.md#development-stage-schema-compatibility-pre-baseline)).
+   ([North Star](../docs/reference/components/persistence.md)).
 4. **Live hosting is feasible when needed.** E2 shows this, once T1 meets the identity and correspondence obligations in §2.3.
 5. **Integrity needs something to protect.** Revision integrity protects nothing until creators can get
    their content in and show it.
@@ -147,7 +147,7 @@ a three-step ladder:
 | F.1 reference resolution | Unit-backed resolution over the F.2 envelope ([unit-resolution.ts](../packages/project-model/src/references/unit-resolution.ts)) | Owner frames are refused ("a Room without an authored frame is not one"); component identity is refused | Live for selection | Retired subjects never retarget | Partial: no wall-face or Room frame |
 | F.4 correspondence | `CorrespondenceEntry` carries relation, before and after | Layout precision emits only `preserved` and `created` | Selection requalification, live | Kept for each of 100 editor history states ([history.ts](../apps/editor/src/lib/authoring/f4/history.ts)). Never saved, and has no parametric part. | Partial |
 | F.3 channels | Two families: `layout.plan@1` and `camera.session-inspection@1` ([families.ts](../packages/project-model/src/channels/families.ts)) | Negotiation works for those two | Inspection, live | — | Partial; no Scene or Experience families |
-| Revision impact report | Ratified as four states (unchanged, recomputed, needs review, unresolved) over a reverse dependency index ([decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md#representation-revision-and-atomic-authoring)) | — | — | — | Conceptual |
+| Revision impact report | Ratified as four states (unchanged, recomputed, needs review, unresolved) over a reverse dependency index ([decision record](../docs/reference/north-star.md)) | — | — | — | Conceptual |
 | Visual defaults | No authored environment | — | Hard-coded lights, different in the editor and the visitor (§2.2) | — | Gap |
 | Publication | P22 authored snapshot, through the API | T4 deferred; F5 undrafted | `/p/[publicationId]` live | — | End-to-end (legacy path) |
 | Visitor isolation | Boundary suites | — | — | — | **End-to-end:** arch lane 163/163 |
@@ -221,7 +221,7 @@ capabilities are mostly wiring over tested kernels, plus a few small, missing se
 - **Inside the milestone it is coherent**, because Starter Gallery and K3 supply Rooms.
 - **Beyond the milestone it contradicts the ratified destination.** That destination says a creator
   importing one model "should reach composition and direction immediately"
-  ([decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md#a-focused-entry-without-a-narrow-ontology)).
+  ([decision record](../docs/reference/north-star.md)).
   It also blocks objects placed on T1 plinths and object-only creators (product, education).
 - **Post-stability solution options compared:**
   1. **Option R1 · Explicit `floor-datum` support (recommended with R2):** when no derived `room-floor`
@@ -411,10 +411,10 @@ texts already contain each part of it:
 - **Revision policy is relationship-specific.** In the record's words: "retain locked Camera framing …
   recompute explicitly assisted framing; follow proved component correspondence … review content when
   its subject changes". It reports unchanged, recomputed, needs review or unresolved
-  ([decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md#representation-revision-and-atomic-authoring)).
+  ([decision record](../docs/reference/north-star.md)).
 - **Each computation declares its reads and outputs.** A reverse dependency index serves invalidation
   and impact reporting. Cycles are rejected unless a declared solver defines them
-  ([dependencies](../docs/reference/decisions/northstar-ratification-2026-09-27.md#dependencies-invalidation-and-deterministic-evaluation)).
+  ([dependencies](../docs/reference/north-star.md)).
 
 **Reconciled position (Judgment).**
 
@@ -600,7 +600,7 @@ itself an authored scroll-first Experience.** The ratified texts admit both:
 
 - **The decision record.** "A scroll driver maps progress to supported direction", and drivers "share
   evaluation, not necessarily identical session state"
-  ([hosting and embeds](../docs/reference/decisions/northstar-ratification-2026-09-27.md#hosting-embeds-live-sessions-film-and-sdks)).
+  ([hosting and embeds](../docs/reference/north-star.md)).
 - **The North Star's web experience layer.** It lets Experience author "text, images, panels, buttons,
   links, audio/video, forms, responsive overlays, and page/view navigation". It also rules out "a
   Webflow-like website builder"
@@ -829,7 +829,7 @@ or ruled.
 | PR #153's brief and addendum | Brief at `12001607`; addendum unpublished | Replaced by this document |
 | The owner's review of the three PRs | 2026-10-18 | Treated as hypotheses to test, not conclusions. It prompted the Guide-free check, the five-way E2 split and the five directions in §5. |
 | [Research 6](./biskiq-integrated-product-synthesis.md) and the five studies in this folder | As merged in PR #150 | Evaluated synthesis; study anchors cited inline |
-| Ratified authorities: [North Star](../docs/reference/north-star.md), [decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md), [F contract](../docs/reference/composition-execution.md), [shell contract](../docs/reference/design-system/editor-shell-and-visual-system.md#visitor-preview), [roadmap](../docs/roadmap/README.md), [Core Editor Stability](../docs/archive/roadmap/core-editor-stability.md), [rulings](../docs/reference/decisions/next-batch-authorization-2026-10-17.md#core-editor-stability-rulings-2026-10-17) | At `26290839` | Boundaries, authorization and gate state |
+| Ratified authorities: [North Star](../docs/reference/north-star.md), [decision record](../docs/reference/north-star.md), [F contract](../docs/reference/composition-execution.md), [shell contract](../docs/reference/design-system/editor-shell-and-visual-system.md#visitor-preview), [roadmap](../docs/roadmap/README.md), [Core Editor Stability](../docs/archive/roadmap/core-editor-stability.md), [rulings](../docs/reference/architecture.md) | At `26290839` | Boundaries, authorization and gate state |
 
 ### 7.2 Verification run for this document
 

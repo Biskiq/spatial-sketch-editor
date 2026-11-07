@@ -55,14 +55,13 @@ current rules apply, and #259 itself remains owner-final-check/owner-merge only.
   commit of the work's own draft pull request. It is reviewed in that draft before code is written
   (by the owner for Tier 2, otherwise by a fresh-context agent), then the same pull request
   implements it. Sections, as needed: Goal, Design, Scope, Specification, Checks, Flags, Risks.
-  Detail is set by the no-invention test, not by length. On merge, durable decisions move into the
-  owning reference contract or code comments, and the plan file moves to the archive.
+  Detail is set by the no-invention test, not by length. Before final merge, promote genuinely enduring rules where needed and delete the completed plan.
+  Git/PR history retains its review. Archive only evidence with a concrete retention purpose.
 - **One review round:** a fresh-context reviewer receives the diff, the touched areas' `AGENTS.md`,
   the linked design and the capability checks. P0/P1 findings block; P2 and below become issues
   unless trivial.
 - **Merging is the closeout.** No acceptance documents, release rows, batons, phase-close records or
-  closeout pull requests. Durable decisions move into the owning reference contract or a one-page
-  decision record.
+  closeout pull requests. No dated decision-record tier is created. Canonical references directly state the resulting rules.
 
 ## Areas, not gates
 
@@ -79,8 +78,16 @@ work for the owner; `gardener` moves dead or closed material to the archive and 
 reviewable pull request; `breaker` explores `working` and `polished` capabilities and turns each
 defect into a failing tagged test or `bug` issue.
 
-## Retired process
+## Design and reference maintenance
 
-The release list, current-coordination DAG, global/per-track batons, architecture cycle and
-`slice-closeout`/`phase-closeout` skills were retired on 2026-11-06. Their history is under
-[`archive/`](./archive/); nothing there is current authority.
+An explicitly owner-approved UX is target authority for its approved scope. Plan backward from it;
+never lower it to match current code or shell limitations. Surface genuine conflicts with hard
+invariants for owner judgment. Proposed research does not establish design approval.
+
+Implementation acceptance triggers deliberate promotion of genuinely enduring rules when needed.
+References describe enduring principles, ownership, interfaces and invariants. Update them only for
+an actual contract change, accepted design promotion, material contradiction or deliberate audit;
+routine implementation does not trigger reference edits. Replace superseded text rather than append
+an amendment or reconciliation chain. Delete obsolete authorization paperwork and completed plans
+after extracting unique obligations. Keep substantive research, alternatives, counterexamples and
+runnable experiments opt-in. Archive only evidence with an explicit retention purpose; Git is history.

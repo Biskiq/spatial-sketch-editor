@@ -8,7 +8,7 @@ revision: `426698573e883bc3a16b265ff9efc5be744c5fec`, including subsequent Index
 highlight CSS changes at `41a4c4dd` and `42669857`; interaction code is unchanged
 since Round 2.
 
-> **Superseded for shell chrome (2026-10-23).** [Production shell Round 2](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md) replaces this prototype's shell composition, rail, material and visual treatment. This prototype remains evidence for Experience semantics (Presentation, View, Guide, Stop, Cut/Travel) and reproducible scenario fixtures; "minimum UX/visual direction" above is historical.
+> **Superseded for shell chrome (2026-10-23).** [Production shell Round 2](../../docs/reference/design-system/editor-shell-and-visual-system.md) replaces this prototype's shell composition, rail, material and visual treatment. This prototype remains evidence for Experience semantics (Presentation, View, Guide, Stop, Cut/Travel) and reproducible scenario fixtures; "minimum UX/visual direction" above is historical.
 
 The promoted [PLATE contract](../../docs/reference/design-system/editor-shell-and-visual-system.md)
 owns accepted principles, shell treatment, Experience authoring and

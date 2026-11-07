@@ -6,13 +6,13 @@ local production build at loopback. Later evidence/documentation commits do not 
 
 ## Scope and retained attempts
 
-This repairs measurement correctness under the existing [M/L decision](../../decisions/performance-spot-check-2026-10-28.md).
+This repairs measurement correctness under the existing [M/L decision](../../../reference/components/performance.md).
 The comprehensive benchmark remains suspended. No S/XL run, census, long input capture, leak loop,
 cool-down or performance optimization was performed. Historical S06/Bench evidence is unchanged.
 
-- [Initial validation attempt](./incomplete-5f4dab10.json): verified preview at `5f4dab10`, 16.6 s, one session per tier. Both labels were incomplete. The selected Wall claimed manipulation instead of picking; pan could receive an older frame timestamp. Those pick/pan rows are invalid and supply no feel claim. Every observation is retained.
+- [Initial validation attempt](incomplete-5f4dab10.json): verified preview at `5f4dab10`, 16.6 s, one session per tier. Both labels were incomplete. The selected Wall claimed manipulation instead of picking; pan could receive an older frame timestamp. Those pick/pan rows are invalid and supply no feel claim. Every observation is retained.
 - The harness was repaired and a [one-Room browser regression](../../../../apps/editor/perf/flows/spot-wiring.spec.ts) proved the real chooser, typed acceptance, matching render, before/after wall hits and pan clock. This is correctness QA, not another M/L session.
-- [Completed spot check](./spot-d5097580.json): `SPOT_REQUIRE_VERIFIED=1 npm run perf:spot`, exit 0, 16.561 s wall time, 5 ms cached-workload setup. One M and one L session, four drag and four pan attempts each, no warm-up discarded and no additional session requested. All observations and request reasons are retained.
+- [Completed spot check](spot-d5097580.json): `SPOT_REQUIRE_VERIFIED=1 npm run perf:spot`, exit 0, 16.561 s wall time, 5 ms cached-workload setup. One M and one L session, four drag and four pan attempts each, no warm-up discarded and no additional session requested. All observations and request reasons are retained.
 
 ## Corrected timings
 
@@ -62,11 +62,11 @@ reinstated performance gate.
 
 ## Verification
 
-See the [verification record](./verification.json). Final results: 2,876 tests across 226 files
+See the [verification record](verification.json). Final results: 2,876 tests across 226 files
 (including heavy correctness), 188 architecture checks, 76 focused instrumentation checks, editor
 and package/API type checks, production build, 115 DB-backed API tests with zero skips, four
 integrated functional browser journeys with 26 recorded checks, and the one-Room wiring regression.
-The [four-route smoke](./routes.json) recorded no page exceptions. The initial concurrent full-suite
+The [four-route smoke](routes.json) recorded no page exceptions. The initial concurrent full-suite
 repeat timed out in the existing 400-Room correctness case; complete repeats without browser
 contention passed. The original timeout limit was unchanged.
 

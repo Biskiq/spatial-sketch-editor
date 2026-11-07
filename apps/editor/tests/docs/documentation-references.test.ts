@@ -82,7 +82,7 @@ describe('documentation references', () => {
 		const narrowed = [resolve(REPO_ROOT, 'docs/README.md')];
 		const missing = missingWalkedDocuments(narrowed);
 		expect(missing).toContain('AGENTS.md');
-		expect(missing).toContain('docs/roadmap/t1-spatial-world/README.md');
+		expect(missing).toContain('docs/reference/components/experience.md');
 		expect(missing).toContain('apps/editor/tests/README.md');
 		expect(walkedLocalSkills(narrowed)).toBe(false);
 	});

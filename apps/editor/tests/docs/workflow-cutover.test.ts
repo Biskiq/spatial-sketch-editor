@@ -12,6 +12,7 @@
  * existing architecture suites. This file adds only the cutover guarantee.
  */
 import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -120,18 +121,19 @@ describe('the replacement workflow is routed', () => {
 	});
 });
 
-describe('retired process routes are gone and archived', () => {
+describe('retired process routes stay recoverable outside live authority', () => {
 	it('removes every retired route', () => {
 		for (const route of RETIRED_ROUTES) {
 			expect(existsSync(resolve(REPO_ROOT, route)), route).toBe(false);
 		}
 	});
 
-	it('keeps the old->new archive mapping as evidence', () => {
-		for (const [route, archive] of Object.entries(ARCHIVED_ROUTES)) {
-			expect(existsSync(resolve(REPO_ROOT, archive)), `${route} → ${archive}`).toBe(true);
+	it('keeps retired procedures recoverable in Git and routes their replacement', () => {
+		for (const archive of Object.values(ARCHIVED_ROUTES)) {
+			expect(() => execFileSync('git', ['cat-file', '-e', `5d7d7f3e:${archive}`], { cwd: REPO_ROOT })).not.toThrow();
 		}
-		expect(read('docs/operations/README.md')).toContain('retired on 2026-11-06');
+		expect(read('docs/workflow.md')).toContain('Merging is the closeout');
+		expect(read('docs/operations/README.md')).toContain('workflow');
 	});
 
 	it('has no live document pointing at a retired route', () => {

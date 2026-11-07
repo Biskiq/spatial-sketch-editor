@@ -93,14 +93,11 @@ export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/reference/design-system/editor-shell-and-visual-system.md',
 	'docs/reference/design-system/spatial-instrument-grammar.md',
 	'docs/reference/north-star.md',
+	'docs/reference/components/experience.md',
+	'docs/roadmap/t4-release/prepared-release-design.md',
+	'docs/roadmap/t5-expressive-geometry/object-studio-design.md',
 	'docs/operations/README.md',
-	'docs/operations/tech-debt/README.md',
 	'docs/roadmap/README.md',
-	'docs/roadmap/t1-spatial-world/README.md',
-	'docs/roadmap/t2-composition/README.md',
-	'docs/roadmap/t3-experience/README.md',
-	'docs/roadmap/t4-release/README.md',
-	'docs/roadmap/t5-expressive-geometry/README.md',
 	'apps/editor/tests/README.md'
 ] as const;
 
