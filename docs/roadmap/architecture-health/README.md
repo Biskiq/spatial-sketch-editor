@@ -4,10 +4,11 @@
 This proposal changes no production code, check, format or dependency. It sequences maintainability
 work *around* the [T5 umbrella plan](../t5-expressive-geometry/umbrella-plan.md); it is not a
 second roadmap and does not reorder T5 capabilities. Each recommended pull request names its own
-[risk tier](../../workflow.md#risk-tiers-the-highest-applicable-tier-wins). Durable rules stay in
-the [architecture](../../reference/architecture.md) and
-[composition](../../reference/composition-execution.md) references; promote from here only what an
-accepted implementation actually makes enduring, then delete this proposal.
+[risk tier](../../workflow.md#risk-tiers-the-highest-applicable-tier-wins). It is temporary: one
+foundation PR implements the pre-Studio work, promotes the enduring rules into the
+[architecture](../../reference/architecture.md) and
+[composition](../../reference/composition-execution.md) references and deletes this proposal; the
+T5-time items already live as one-line seams in the T5 plan.
 
 ## Decision summary
 
@@ -22,16 +23,16 @@ all-purpose host inside the already large route"; this proposal makes that instr
 
 | Change | When | Value | Size |
 | --- | --- | --- | --- |
-| R1 Retarget route source-text checks to follow code | Before `studio.dual-entry` | Unblocks every extraction below without weakening a check | Test-only |
-| R2 Experience lens interaction layer out of the route | Before Studio PR 1 | Studio lands as a module, not ~1–2k more route lines and 40+ more lens branches | ~1,500 route lines move |
-| R3 Project-session controller out of the route | Before Studio PR 2 (resume/copy) | Studio's save-before-switch and open-in-Studio call one owner | ~1,000 route lines move |
-| R4 Narrow adapter port + import boundary check | Any time; ideally before Studio PR 1 | Enforces the existing "no private Stage imports" contract; first plugin-SDK seam | Types + one arch test |
-| R5 Scene datum-plane hits through the Stage intersect | With or just before Studio PR 1 | One ray→plane semantics for Studio's Scene gestures | Small |
+| R1 Retarget route source-text checks to follow code | Foundation PR, commit 1 | Unblocks every extraction below without weakening a check | Test-only |
+| R4 Narrow adapter port + import boundary check | Foundation PR, commit 2 | Enforces the existing "no private Stage imports" contract; first plugin-SDK seam | Types + one arch test |
+| R5 Scene datum-plane hits through the Stage intersect | Foundation PR, commit 3 | One ray→plane semantics for Studio's Scene gestures | Small |
+| R3 Project-session controller out of the route | Foundation PR, commit 4 | Studio's save-before-switch and open-in-Studio call one owner | ~1,000 route lines move |
+| R2 Experience lens interaction layer out of the route | Foundation PR, commit 5 | Studio lands as a module, not ~1–2k more route lines and 40+ more lens branches | ~1,500 route lines move |
+| R9 Unit planners grouped by owner | Folded into `scene.object-definition` | Registration follows ownership | Small |
+| R10 Representation-family dispatch | Folded into the first T5 result-seam consumer | The one T5-driven seam that also serves extensions | Part of a capability |
 | R6 Landing and Projects routes stop loading Three | Independent | Measured: `/` and `/projects` load the 729 KB Three chunk | Small |
-| R7 Lazy Experience lens | After R2 | World first load excludes Experience authoring | Small, measured |
+| R7 Lazy Experience lens | Independent, after the foundation PR | World first load excludes Experience authoring | Small, measured |
 | R8 One presentation-token source | Independent; before any skin work | Prerequisite for skins; removes 589 duplicated fallbacks | Mechanical |
-| R9 Unit planners grouped by owner | With `scene.object-definition` | Registration follows ownership | Small |
-| R10 Representation-family dispatch | Inside the first T5 result-seam consumer | The one T5-driven seam that also serves extensions | Part of a capability |
 
 **Deferred, with reasons below:** splitting `layout.adapter.ts`, renaming/merging `lib/museum`,
 API route modularization, any plugin manifest/loader/sandbox, runtime skin switching and
@@ -287,85 +288,87 @@ would later contribute to, so getting its shape right serves both.
 
 ## Implementation sequence
 
-Each PR is independently mergeable, behavior-neutral unless stated, and keeps the
-[editor test contract](../../../apps/editor/tests/README.md) as its merge requirement. "Stop" means
-park the PR as a draft and report, not improvise.
+The work needed before Studio lands as **one scoped foundation PR**. After it merges, T5 starts from
+a clean route and needs nothing from this proposal. The T5 items are already written into the
+[T5 umbrella plan](../t5-expressive-geometry/umbrella-plan.md) as one-line seams, so later
+capabilities read only their own plan. The
+[editor test contract](../../../apps/editor/tests/README.md) is the merge requirement. "Stop" means
+leave the PR as a draft and report back, not improvise.
 
-### Before `studio.dual-entry`
+### Foundation PR before `studio.dual-entry` — Tier 1 (shared shell surface, Save/resume paths)
 
-**R1 — Retarget route source-text checks and fix stale guidance** · Tier 0 (Tier 2 if any check
-would be weakened)
+Behavior-neutral. It is reviewed one commit at a time, and every commit keeps the full lane green, so
+a reviewer (or `git bisect`) can follow each step. Commits, in this order:
 
-- *Scope:* give each route-pinning assertion a target that follows the code — a named-module read
-  (route plus the modules it composes) or a mounted behavioral assertion with the same predicate.
-  Update `lib/authoring/README.md` and the `catalog.ts` header to describe the live tree.
-- *Acceptance:* every one of the ~70 assertions maps 1:1 to a retargeted assertion with an equal or
-  stronger predicate (list the mapping in the PR); full test contract green; no production diff.
-- *Risks:* silently weakening an invariant; a retargeted read that can never fail.
-- *Stop:* any assertion that cannot keep its predicate — leave it unchanged and flag it.
+1. **Retarget route source-text checks; fix stale guidance (R1).** Give each assertion that pins the
+   route a target that follows the code. That is either a named-module read (the route plus the
+   modules it composes) or a mounted behavioral assertion with the same predicate. Update
+   `lib/authoring/README.md` and the `catalog.ts` header to describe the live tree. *Proof:* map each
+   of the ~70 assertions 1:1 to its retarget, with an equal or stronger predicate (the PR lists the
+   mapping), and change no production code in this commit.
+2. **Adapter port and import boundary (R4, B5).** Define `StageAdapterPort` and `StageTaskPort` as
+   types, move `evaluationIdOf` behind them, and add an architecture-lane check on adapter imports.
+   *Proof:* all three adapters compile against the port; no runtime diff.
+3. **Scene datum-plane hits through `context.intersect` (R5).** *Proof:* the Scene placement, Turn and
+   Plan footprint suites pass unchanged, and refusals keep their wording.
+4. **Project-session controller (R3, B4).** *Proof:* `spatial-route-source-replacement`,
+   `spatial-route-resume-save`, `stage-boot-states`, `head-save-journey` and the `project-lifecycle`
+   and `lifecycle-regression` browser flows pass unchanged. Create and open stay distinct, and a stale
+   load cannot install over a replacement.
+5. **Posture layer and Experience lens (R2, B2).** Move Experience playback, View edit, placement,
+   re-aim, Look through, Preview warm/open, Experience pointer/click/wheel/key precedence, and Card
+   and Index wiring into `lib/authoring/experience/experience-lens.svelte.ts`, plus one lens layer
+   component where markup moves. *Proof:* `spatial-route-experience-homes`, `experience-shared-homes`,
+   `playback`, `spatial-route-gesture` and the Experience browser flows pass. The route keeps no
+   Experience-specific functions, and its lens branches reduce to layer dispatch and slot selection.
+   The spatial-route bundle report stays within ±1 %.
+6. **Closeout.** Promote the enduring rules into the references: route as composition root and the
+   posture layer go into [Shared Stage interface](../../reference/composition-execution.md#shared-stage-interface),
+   and the adapter port goes into [Extension points](../../reference/composition-execution.md#extension-points-and-version-negotiation).
+   Then delete this proposal and its roadmap row. With owner approval, file R6–R8 as issues.
 
-**R2 — Experience lens interaction layer** · Tier 1 (shared shell surface)
+Overall acceptance: `check`, `test`, `test:arch`, `build` and the touched browser flows pass; the
+change adds no persisted-format, API, Camera write path, Stage adapter contract change or dependency.
 
-- *Scope:* introduce `StagePostureLayer` (B2) and move the route's Experience playback, View edit,
-  placement, re-aim, Look through, Preview warm/open, Experience pointer/click/wheel/key precedence
-  and Experience Card/Index wiring into `lib/authoring/experience/experience-lens.svelte.ts` plus,
-  where markup moves, one lens layer component. The route dispatches to the active layer. Optionally
-  split into two PRs: playback/Preview first, then View editing and Look through.
-- *Acceptance:* `spatial-route-experience-homes`, `experience-shared-homes`, `playback`,
-  `spatial-route-gesture` and the Experience browser flows pass unchanged (or via R1 retargets);
-  the route has no Experience-specific functions and its lens branches reduce to layer dispatch
-  and slot selection; bundle report for the spatial route within ±1 %; `check`, `test:arch`,
-  `build` green.
-- *Risks:* `$effect` ordering and teardown moving out of the component; pointer-precedence changes
-  (look-through re-aim, placement, View marks before adapters); Esc semantics; replacement teardown
-  of a live playback or Look through.
-- *Stop:* any visible behavior change, any new Camera write path, or a need to change the Stage
-  adapter contract.
+- *Risks:*
+  - `$effect` ordering and lifetime once effects leave the component.
+  - Pointer precedence: look-through re-aim, placement and View marks must still run before adapters.
+  - Esc semantics.
+  - Teardown of a live playback or Look through on replacement.
+  - Epoch and currency checks split across modules.
+  - A retargeted read that can never fail.
+- *Stop and split:*
+  - Any visible behavior change, or any check that cannot keep its predicate (Tier 2).
+  - A diff that review cannot hold. The commit boundaries above are the split points: land commits
+    1–4 alone and commit 5 as a second PR.
 
-**R3 — Project-session controller** · Tier 1 (Save/resume paths)
+Do not open Studio route work while this PR is open; both edit the same route regions.
 
-- *Scope:* B4. Can run in parallel with R2 (disjoint route regions; coordinate the merge).
-- *Acceptance:* `spatial-route-source-replacement`, `spatial-route-resume-save`,
-  `stage-boot-states`, `head-save-journey` and the `project-lifecycle`/`lifecycle-regression`
-  browser flows unchanged; create vs open stays distinct; a stale load cannot install over a
-  replacement.
-- *Risks:* epoch/currency checks split across modules; the saved base surviving into a new epoch.
-- *Stop:* any persisted-format, API or Save-precondition change.
+### Folded into T5 (one-line seams already in the umbrella plan)
 
-**R4 — Adapter port and import boundary** · Tier 0 (adds a check)
+- **`studio.dual-entry`:** Studio is a second posture layer, and the host gains a session-only
+  subject scope (B3); PR 2 uses the project-session controller for save-before-switch.
+- **`scene.object-definition`:** registers its planners from the Scene adapter, and moves the
+  existing `scene-environment-set` planner there with them (R9).
+- **First result-seam consumer (capability 7 or 8):** shapes the seam as a first-party
+  representation-family table (R10, B6).
 
-- *Scope:* B5; move the one value import (`evaluationIdOf`) behind the port.
-- *Acceptance:* new architecture-lane check; Layout/Scene/Experience adapters compile against the
-  port; no runtime diff.
-- *Stop:* a use that genuinely needs a private member — expose it on the port deliberately instead.
+### Independent (not on the T5 path)
 
-### Inside `studio.dual-entry`
+- **R6 — Landing/Projects bundle** · Tier 0. Lazy-import the validating pending-capture path, or use
+  a narrower `project-model` subpath. Add `--forbid` bundle-report assertions that `/` and `/projects`
+  load no Three. Stop if the auth-return resume flow needs synchronous validation.
+- **R7 — Lazy Experience lens** · Tier 0, after the foundation PR. Load the lens layer and the
+  Experience homes on first lens entry, with idle prefetch. Accept only with a measured reduction in
+  spatial-route first load and no new loading state (otherwise flag `needs-ux`).
+- **R8 — One token source** · Tier 1 (shared shell rules; values unchanged).
+  - Move the PLATE roles to an app-level token sheet with the same values, and remove the `var()`
+    fallbacks.
+  - Derive the Three instrument paint from one TS table, checked equal to the CSS.
+  - Add a check forbidding bare hex outside the token and runtime look-table files.
 
-- **Studio PR 1** (World-origin scope and direct entry) implements B3 and a `studio-scope` posture
-  layer; it should also carry **R5** (Scene datum-plane hits through `context.intersect` with an
-  explicit frame) or land R5 just before it. Acceptance for R5: Scene placement, Turn and Plan
-  footprint suites unchanged; refusals keep their words.
-- **Studio PR 2** (resume and copy) uses the R3 controller for save-before-switch and
-  `Open in Studio`.
-
-### Alongside T5 (no T5 dependency either way)
-
-- **R6 — Landing/Projects bundle** · Tier 0. Lazy-import the validating pending-capture path (or a
-  narrower `project-model` subpath); add `--forbid` bundle-report assertions that `/` and
-  `/projects` load no Three. Stop if the auth-return resume flow needs synchronous validation.
-- **R7 — Lazy Experience lens** · Tier 0, after R2. Load the lens layer and Experience homes on
-  first lens entry with idle prefetch. Accept only with a measured spatial-route first-load
-  reduction and no new loading state (otherwise `needs-ux`).
-- **R8 — One token source** · Tier 1 (shared shell rules; values unchanged). Move PLATE roles to an
-  app-level token sheet with the same values, remove `var()` fallbacks, derive Three instrument
-  paint from one TS table checked equal to the CSS, and add a check forbidding bare hex outside
-  token and runtime look-table files. Mechanical; suitable for a cheaper agent. Stop on any value
-  change — values belong to the approved design.
-- **R9 — Planners grouped by owner** · Tier 0, with `scene.object-definition`. Split
-  `units/planning.ts` into Camera, Experience and Scene modules; the owning adapter registers each
-  bundle.
-- **R10 — Representation-family dispatch** · tier of its capability, inside the first T5
-  result-seam consumer (B6).
+  This is mechanical work, suitable for a cheaper agent. Stop on any value change: the values belong
+  to the approved design.
 
 ### Deferred
 
@@ -387,10 +390,9 @@ would be weakened)
   bundle forbids, R8 literal ban — all architecture-lane, fast.
 - **Runtime:** posture layers and the project-session controller are plain `.svelte.ts` rune
   controllers constructed by the route, so the reactive graph is the same shape. The real risk is
-  effect lifetime; each PR proves teardown on replacement and route unmount exactly once.
-- **T5 disruption:** R1–R4 touch the route and adapters that Studio PR 1 will also touch. Land them
-  before Studio PR 1 is opened, or rebase Studio onto them; do not run them concurrently with Studio
-  route work.
+  effect lifetime; the foundation PR proves teardown on replacement and route unmount exactly once.
+- **T5 disruption:** the foundation PR touches the route and adapters that Studio PR 1 will also
+  touch. Merge it before Studio route work starts; do not run them concurrently.
 
 ## Extension readiness — direction, not implementation
 
@@ -419,8 +421,8 @@ safe to admit; isolation (worker/iframe) is a Tier 2 decision with its own resea
 
 ## Owner decisions this proposal needs
 
-1. Accept R1–R3 as prerequisites for `studio.dual-entry` (recommended), or let Studio PR 1 start on
-   the current route and absorb the cost there.
+1. Accept the single foundation PR as the prerequisite for `studio.dual-entry` (recommended), or
+   let Studio PR 1 start on the current route and absorb the cost there.
 2. Accept the route-local posture layer (B2) now, with host arbitration deferred to a third consumer.
 3. For later, not now: skin scope (instrument colours fixed?), preservation of unknown optional
    units, and the third-party trust model.

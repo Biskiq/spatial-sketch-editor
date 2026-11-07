@@ -448,7 +448,9 @@ plan and any newly resolved decisions; remove completed planning text at merge.
 
 The numbering gives a default implementation order, not a mandatory serial chain. After profile
 revision, holes can proceed without waiting for assemblies; surface/procedural capabilities do not
-wait for a solid kernel. The first result-seam consumer owns that integration PR; later consumers
+wait for a solid kernel. The first result-seam consumer owns that integration PR and shapes it as a first-party table keyed
+by representation family (evaluation, footprint/bounds for pick and Paper, one renderer entry
+shared by Stage and visitor), not a plugin registry; later consumers
 extend its declared capabilities, not a competing geometry pipeline. Format/dependency review follows
 the normal workflow at the actual consuming PR, with the dispositions at the end of this plan.
 
@@ -494,6 +496,9 @@ Scene adapter supply the existing controls. A new authoring-only Studio module o
 and gesture cleanup. `form-card-command.ts`, Scene planners, `host-acceptance.ts`, Head Save and
 the form-library client remain the writers. Reuse the import/placement capture pattern, not the
 model-import schema. Avoid growing another all-purpose host inside the already large route.
+Build on the pre-Studio foundation PR: Studio is a second route-local posture layer beside the
+Experience lens, the host gains a session-only subject scope whose domains drop out-of-scope pick
+candidates themselves (no host post-filter), and PR 2's save-before-switch calls the project-session controller.
 
 **Core acceptance:** zero-Room direct entry → Box/Free → size/name → one Undo/Redo → Save → cold
 reopen via `Open in Studio`; World form → Edit in Studio → size → Back to World with same root and
@@ -542,7 +547,8 @@ an operation requires adding keys or a new source representation.
 Use `scene.object-definition` for the first assembly consumer. Promote a selected native form in
 place: keep the Scene root ID and world pose, move its source into the first component at identity
 local pose, and add the owned definition resource and exact lock atomically. No existing reference
-to the whole root changes target. Do not silently group every intersecting form.
+to the whole root changes target. Do not silently group every intersecting form. Register its
+planners from the Scene adapter and move `scene-environment-set` there with them.
 
 First operations: promote, add a newly created native-form component, select root/component, rename,
 rigidly move/turn a component in the declared root frame, revise its form, duplicate/remove a component,
