@@ -49,7 +49,12 @@ jobs:
         run: |
           git fetch origin main:refs/remotes/origin/main
           if [ "$(git symbolic-ref --short -q HEAD)" = "main" ]; then
-            test "$(git rev-parse HEAD)" = "$(git rev-parse refs/remotes/origin/main)"
+            current=$(git rev-parse HEAD)
+            remote=$(git rev-parse refs/remotes/origin/main)
+            if [ "$current" != "$remote" ]; then
+              echo "::error::checked-out main $current does not match origin/main $remote" >&2
+              exit 1
+            fi
           else
             git branch --force main refs/remotes/origin/main
           fi
