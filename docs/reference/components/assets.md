@@ -159,7 +159,7 @@ It is a project-scoped implementation, not the
 destination resource system: its storage unit and revision/lock model are governed
 by F.2/F.1 under the contract's interface-ownership rule (see
 [`../composition-execution.md`](../composition-execution.md); decision context
-[`../decisions/northstar-ratification-2026-09-27.md`](../north-star.md)).
+[North Star](../north-star.md)).
 
 ---
 

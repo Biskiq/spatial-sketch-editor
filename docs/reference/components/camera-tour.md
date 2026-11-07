@@ -85,7 +85,7 @@ and evaluation. Selecting Cut never invents a spatial edge, and selecting Travel
 supported route or report a gap. **Cue ownership follows the source:** Camera emits its own progress
 markers, performances own their cues, Experience owns the interaction bindings that listen to them.
 Node links and Experience order must never remain coequal writable authorities. See
-[`../decisions/northstar-ratification-2026-09-27.md`](../north-star.md),
+[North Star](../north-star.md),
 [`../north-star.md`](../north-star.md) §Direct and
 [`../composition-execution.md`](../composition-execution.md) F.1/F.2.
 

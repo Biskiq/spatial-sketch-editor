@@ -294,6 +294,6 @@ into acceptance criteria.
 research input next to the study it assesses. A later decision-input note would sit beside
 [T1's planning evidence](../docs/reference/components/layout.md) (evidence,
 not authority) and should be written *after* P3's experiments. A record in
-[`docs/reference/decisions/`](../docs/reference/decisions/) follows only if the owner ratifies
+the owning [canonical reference](../docs/reference/architecture.md) follows only if the owner ratifies
 RR-1 or RR-2 ([research triggers](./post-p01-roadmaps/README.md)). Nothing here promotes these
 recommendations into `docs/reference/` or the T1 roadmap.
