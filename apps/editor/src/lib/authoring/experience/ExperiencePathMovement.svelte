@@ -129,14 +129,14 @@
 		display: grid;
 		gap: 8px;
 		padding: 10px 12px 12px;
-		border-bottom: 1px solid var(--shell-hairline, #e1e4de);
+		border-bottom: 1px solid var(--shell-hairline);
 	}
 	h3 {
 		margin: 0;
-		font: 600 11px var(--shell-sans, ui-sans-serif, sans-serif);
+		font: 600 11px var(--shell-sans);
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 	}
 	.field {
 		display: flex;
@@ -146,16 +146,16 @@
 	}
 	.f-lbl {
 		flex: 0 0 72px;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 11px;
 	}
 	.f-val {
 		min-width: 0;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font-size: 12px;
 	}
 	.muted {
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 	}
 	.stepper {
 		display: inline-flex;
@@ -165,9 +165,9 @@
 	.stepper button,
 	.small {
 		min-height: 24px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 5px;
-		background: var(--shell-card, #fff);
+		background: var(--shell-card);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
@@ -179,7 +179,7 @@
 	.value {
 		min-width: 74px;
 		text-align: center;
-		font: 600 11px var(--shell-mono, ui-monospace, monospace);
+		font: 600 11px var(--shell-mono);
 	}
 	.small {
 		padding: 0 8px;
@@ -193,17 +193,17 @@
 	.btn {
 		min-height: 28px;
 		padding: 0 9px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 6px;
-		background: var(--shell-card, #fff);
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-card);
+		color: var(--shell-ink);
 		font: inherit;
 		font-size: 11px;
 		cursor: pointer;
 	}
 	.btn.refuse {
-		border-color: var(--shell-caution, #b5682d);
-		color: var(--shell-caution, #b5682d);
+		border-color: var(--shell-caution);
+		color: var(--shell-caution);
 	}
 	.alert {
 		display: flex;
@@ -211,13 +211,13 @@
 		gap: 6px;
 		padding: 6px 8px;
 		border-radius: 6px;
-		background: var(--shell-caution-bg, #fdf3f0);
-		color: var(--shell-caution, #b5682d);
+		background: var(--shell-caution-bg);
+		color: var(--shell-caution);
 		font-size: 11px;
 	}
 	.shared-note {
 		margin: 0;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 11px;
 	}
 	button:disabled {
@@ -225,7 +225,7 @@
 		cursor: default;
 	}
 	button:focus-visible {
-		outline: 2px solid var(--shell-forest-raised, #22503c);
+		outline: 2px solid var(--shell-forest-raised);
 		outline-offset: 1px;
 	}
 	.sr-only {

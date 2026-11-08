@@ -125,14 +125,14 @@
 		background: rgb(255 255 255 / 0.08);
 	}
 	.key.armed {
-		background: var(--shell-ivory, #f3f0e4);
-		color: var(--shell-forest, #11291f);
+		background: var(--shell-ivory);
+		color: var(--shell-forest);
 		box-shadow: 0 1px 3px #0004;
 	}
 	/* Place a View is an armed Stage tool, not a second Select: a leaf, not the ivory key. */
 	.key.place-armed {
-		background: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 55%, var(--shell-forest, #11291f));
-		box-shadow: inset 0 0 0 1px var(--shell-leaf, #4f8f6c);
+		background: color-mix(in srgb, var(--shell-leaf) 55%, var(--shell-forest));
+		box-shadow: inset 0 0 0 1px var(--shell-leaf);
 	}
 	/* Guide open is a pressed key, not a second armed tool: Select stays the one armed key. */
 	.key[aria-pressed='true']:not(.armed) {
@@ -143,7 +143,7 @@
 		cursor: default;
 	}
 	.key:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 1px;
 	}
 	.visually-hidden {
@@ -159,8 +159,8 @@
 	}
 	@media (pointer: coarse) {
 		.key {
-			height: var(--shell-touch-target, 44px);
-			width: var(--shell-touch-target, 44px);
+			height: var(--shell-touch-target);
+			width: var(--shell-touch-target);
 		}
 		.key.labeled {
 			width: auto;

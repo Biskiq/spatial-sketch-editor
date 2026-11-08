@@ -28,6 +28,7 @@ import {
 	type PlanStream
 } from '@portfolio/layout-core';
 import type { PlanSceneProjection } from '$lib/authoring/scene/plan-scene-footprint';
+import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
 
 /**
  * Stage render layers.
@@ -42,8 +43,8 @@ export const STAGE_WORLD_LAYER = 0;
 export const STAGE_OVERLAY_LAYER = 2;
 
 /** PLATE §Semantic color / §Material and working surfaces reference calibrations. */
-export const PAPER_INK = '#1b201c';
-export const PAPER_GROUND_INK = '#e9ebe6';
+export const PAPER_INK = SPATIAL_PAINT_ROLES.ink;
+export const PAPER_GROUND_INK = SPATIAL_PAINT_ROLES.paper;
 
 /**
  * Review pass 2 §7: the reference Paper tones a viewer may choose per view in
@@ -57,7 +58,7 @@ export const PAPER_TONES = {
 } as const;
 export type PaperTone = keyof typeof PAPER_TONES;
 export const PAPER_TONE_IDS = Object.keys(PAPER_TONES) as readonly PaperTone[];
-export const MAT_BACKGROUND_INK = '#1d3a33';
+export const MAT_BACKGROUND_INK = SPATIAL_PAINT_ROLES.mat;
 
 /**
  * Plan draw order, low to high. The numbers are the resolver's Plan ranks too.

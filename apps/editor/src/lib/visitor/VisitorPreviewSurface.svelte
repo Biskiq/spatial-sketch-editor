@@ -656,13 +656,13 @@ import { PCFShadowMap } from 'three';
 
 <style>
 	.visitor-preview {
-		--visitor-forest: #11291f;
+		--visitor-forest: var(--shell-forest);
 		--visitor-glass: rgba(14, 30, 25, 0.78);
-		--visitor-gold: #d4ad45;
-		--visitor-gold-ink: #74560c;
-		--visitor-ivory: #f3f0e4;
-		--visitor-serif: 'Iowan Old Style', Palatino, Georgia, serif;
-		--visitor-sans: var(--shell-sans, system-ui, sans-serif);
+		--visitor-gold: var(--shell-gold);
+		--visitor-gold-ink: var(--shell-gold-ink);
+		--visitor-ivory: var(--shell-ivory);
+		--visitor-serif: var(--shell-serif);
+		--visitor-sans: var(--shell-sans);
 		position: relative;
 		width: 100%;
 		height: 100%;
@@ -908,7 +908,7 @@ import { PCFShadowMap } from 'three';
 		left: 20px;
 		top: 68px;
 		margin: 0;
-		color: #fff;
+		color: var(--shell-white);
 		font: 500 12px var(--visitor-sans);
 		text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
 		pointer-events: none;
@@ -948,7 +948,7 @@ import { PCFShadowMap } from 'three';
 		font: 500 17px var(--visitor-serif);
 	}
 	.hud-status {
-		color: var(--visitor-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 		white-space: nowrap;
 	}
 	.hud-actions {
@@ -990,13 +990,13 @@ import { PCFShadowMap } from 'three';
 		font: 500 17px var(--visitor-serif);
 	}
 	.guided-remaining {
-		color: var(--visitor-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 		font: 500 12px var(--visitor-sans);
 		white-space: nowrap;
 	}
 	.visitor-free .overline {
 		margin: 0;
-		color: var(--visitor-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 		font: 500 12px var(--visitor-sans);
 		letter-spacing: 0;
 		text-transform: none;
@@ -1029,7 +1029,7 @@ import { PCFShadowMap } from 'three';
 		border-radius: 12px;
 		background: rgb(10 24 18 / 0.88);
 		box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
-		color: #fff;
+		color: var(--shell-white);
 		z-index: 7;
 		animation: visitor-invite 0.35s ease-out;
 	}

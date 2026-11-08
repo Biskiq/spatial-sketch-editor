@@ -1,57 +1,14 @@
-/* Shared editor presentation roles extracted from accepted Round 2. */
+/*
+ * Shared editor presentation roles — **consumption**, not ownership.
+ *
+ * The roles themselves live in `$lib/design/presentation-tokens.css` at `:root`,
+ * so the landing page, Projects and the visitor surfaces read the same values the
+ * editor shell does. This file only applies them to the editor host and keeps the
+ * shell's box-sizing and focus ring consistent.
+ */
 .editor-host {
-	--shell-forest: #11291f;
-	--shell-forest-raised: #22503c;
-	--shell-forest-3: #2d5e48;
-	--shell-leaf: #4f8f6c;
-	--shell-leaf-tint: #e7f1ea;
-	--shell-hover: #eef0ed;
-	--shell-hairline: #e1e4de;
-	--shell-hairline-strong: #cdd2ca;
-	--shell-ink-light: #eef1ec;
-	--shell-ink-quiet: #9fb2a5;
-	--shell-ink: #1b201c;
-	--shell-ink-2: #4a524c;
-	--shell-ink-3: #79817b;
-	--shell-paper: #e9ebe6;
-	--shell-index: #f6f7f5;
-	--shell-card: #ffffff;
-	--shell-mat: #1d3a33;
-	--shell-ivory: #f3f0e4;
-	--shell-gold: #d4ad45;
-	--shell-gold-ink: #74560c;
-	--shell-gold-tint: #f8efd6;
-	--shell-caution: #c85a48;
-	--shell-caution-bg: #f7ede8;
-	--shell-refuse: #7e2718;
-	--shell-refuse-bg: #fdf3f0;
-	/* Drawn ink is black, matching the accepted World grammar; a gesture's proposal
-	   is cobalt, a hue no other state uses, with a white halo for dark materials. */
-	--shell-draft-ink: #1b201c;
-	--shell-draft-halo: none;
-	--shell-ghost: #2a62d6;
-	--shell-ghost-halo: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1.4px rgba(255, 255, 255, 0.5));
-	--shell-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-	--shell-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-	--shell-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-	--shell-text-body: 13px;
-	--shell-text-utility: 12px;
-	--shell-text-identity: 15px;
-	--shell-head-height: 44px;
-	--shell-control-height: 30px;
-	--shell-index-width: 256px;
-	--shell-card-width: 288px;
-	--shell-control-surface: #fafbf9;
-	--shell-glass-light: rgba(255, 255, 255, 0.94);
-	--shell-glass-dark: rgba(14, 30, 25, 0.8);
-	--shell-dock-surface: rgba(17, 41, 31, 0.95);
-	--shell-popup-dark: rgba(17, 41, 31, 0.97);
-	--shell-value-surface: rgba(10, 24, 18, 0.82);
-	--shell-sheet-knob: #fbfaf2;
-	--shell-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.12);
-	--shell-furniture-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.07);
 	font-family: var(--shell-sans);
-	font-size: 13px;
+	font-size: var(--shell-text-body);
 	line-height: 1.35;
 }
 .editor-host

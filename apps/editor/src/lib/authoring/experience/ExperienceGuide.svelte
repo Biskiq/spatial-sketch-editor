@@ -1309,7 +1309,7 @@
 		border-radius: 999px;
 		background: none;
 		color: inherit;
-		font: 500 11px var(--shell-sans, system-ui);
+		font: 500 11px var(--shell-sans);
 		white-space: nowrap;
 		cursor: pointer;
 	}
@@ -1318,17 +1318,17 @@
 	}
 	.badge {
 		margin-left: 4px;
-		color: var(--shell-ink-3, #6b736d);
+		color: var(--shell-ink-3);
 		font-size: 10.5px;
 		font-weight: 600;
 	}
 	.badge.invite {
-		color: var(--shell-leaf-soft, #9fd3b6);
+		color: var(--shell-leaf-soft);
 	}
 	.status {
 		margin: 0;
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-ink-quiet);
+		font-size: var(--shell-text-utility);
 	}
 	.guide {
 		position: relative;
@@ -1337,8 +1337,8 @@
 		/* Round 2: a fixed 820 px instrument, whatever the number of Stops; the Card stops above it. */
 		width: min(820px, 100%);
 		border-radius: 12px;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--shell-forest);
+		color: var(--shell-ink-light);
 		box-shadow: 0 12px 30px rgb(0 0 0 / 0.28);
 	}
 
@@ -1351,7 +1351,7 @@
 		border-bottom: 1px solid rgb(255 255 255 / 0.08);
 	}
 	.kicker {
-		font: 600 10px var(--shell-sans, system-ui, sans-serif);
+		font: 600 10px var(--shell-sans);
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
 		color: #9fbcaa;
@@ -1363,8 +1363,8 @@
 		border: 0;
 		border-bottom: 2px solid transparent;
 		background: transparent;
-		color: #fff;
-		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia, serif);
+		color: var(--shell-white);
+		font: var(--shell-text-identity) var(--shell-serif);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1377,7 +1377,7 @@
 		border-bottom-color: rgb(255 255 255 / 0.3);
 	}
 	.count {
-		color: var(--shell-ink-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 		font-size: 11.5px;
 		white-space: nowrap;
 	}
@@ -1390,8 +1390,8 @@
 		border: 1px solid rgb(255 255 255 / 0.18);
 		border-radius: 7px;
 		background: rgb(255 255 255 / 0.07);
-		color: #fff;
-		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia, serif);
+		color: var(--shell-white);
+		font: var(--shell-text-identity) var(--shell-serif);
 	}
 	.name-input::placeholder {
 		color: #9fbcaa;
@@ -1410,7 +1410,7 @@
 		background: rgb(255 255 255 / 0.09);
 		color: inherit;
 		font: inherit;
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 		white-space: nowrap;
 		cursor: pointer;
 	}
@@ -1444,12 +1444,12 @@
 	}
 	.guide button:focus-visible,
 	.guide input:focus-visible {
-		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
+		outline: 2px solid var(--shell-leaf-soft);
 		outline-offset: 1px;
 		box-shadow: none;
 	}
 	.guide ::selection {
-		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
+		background: color-mix(in srgb, var(--shell-leaf-soft) 38%, transparent);
 		color: inherit;
 	}
 
@@ -1472,7 +1472,7 @@
 		padding: 4px;
 		border: 1px solid rgb(255 255 255 / 0.1);
 		border-radius: 10px;
-		background: var(--shell-popup-dark, rgba(17, 41, 31, 0.97));
+		background: var(--shell-popup-dark);
 		box-shadow: 0 10px 28px rgb(0 0 0 / 0.32);
 	}
 	.menu-item {
@@ -1493,11 +1493,11 @@
 		background: rgb(255 255 255 / 0.1);
 	}
 	.menu-label {
-		font: 13px var(--shell-serif, Georgia, serif);
+		font: 13px var(--shell-serif);
 	}
 	.menu-hint {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font: italic 11px var(--shell-sans, system-ui, sans-serif);
+		color: var(--shell-ink-quiet);
+		font: italic 11px var(--shell-sans);
 	}
 
 	/* ---- Empty Guide ---- */
@@ -1513,7 +1513,7 @@
 		text-align: center;
 	}
 	.empty.over {
-		border-color: var(--shell-ink-light, #eef1ec);
+		border-color: var(--shell-ink-light);
 		background: rgb(255 255 255 / 0.06);
 	}
 	.empty p {
@@ -1521,7 +1521,7 @@
 		font-size: 12.5px;
 	}
 	.empty b {
-		color: #fff;
+		color: var(--shell-white);
 		font-weight: 600;
 	}
 
@@ -1550,7 +1550,7 @@
 		width: 56px;
 		padding: 0 6px;
 		border: 0;
-		color: #fff;
+		color: var(--shell-white);
 		cursor: pointer;
 	}
 	.more-arrow.left {
@@ -1599,7 +1599,7 @@
 		border: 2px solid transparent;
 		border-radius: 8px;
 		background: #16352a;
-		color: var(--shell-ink-light, #eef1ec);
+		color: var(--shell-ink-light);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
@@ -1609,7 +1609,7 @@
 		background: #1d4033;
 	}
 	.stop-card.selected {
-		border-color: var(--shell-gold, #d4ad45);
+		border-color: var(--shell-gold);
 		background: #234b3a;
 	}
 	.stop-card.dragging {
@@ -1632,7 +1632,7 @@
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
-		font: 12.5px/1.2 var(--shell-serif, Georgia, serif);
+		font: 12.5px/1.2 var(--shell-serif);
 	}
 	.stop-meta {
 		overflow: hidden;
@@ -1669,7 +1669,7 @@
 		top: 0;
 		bottom: 0;
 		border-radius: inherit;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 	}
 	/* A Cut takes no time: a dotted hairline the playhead jumps over. */
 	.slot-cut {
@@ -1687,9 +1687,9 @@
 		width: 10px;
 		height: 10px;
 		margin: -5px 0 0 -5px;
-		border: 2px solid var(--shell-forest, #11291f);
+		border: 2px solid var(--shell-forest);
 		border-radius: 50%;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 	}
 	.knob::after {
 		content: '';
@@ -1700,7 +1700,7 @@
 		height: 12px;
 		margin-left: -1px;
 		border-radius: 1px;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 	}
 	.scrub-tip {
 		position: absolute;
@@ -1709,9 +1709,9 @@
 		transform: translateX(-50%);
 		padding: 3px 7px;
 		border-radius: 6px;
-		background: #fff;
-		color: var(--shell-forest, #11291f);
-		font: 500 11px var(--shell-sans, system-ui, sans-serif);
+		background: var(--shell-white);
+		color: var(--shell-forest);
+		font: 500 11px var(--shell-sans);
 		white-space: nowrap;
 		pointer-events: none;
 		box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
@@ -1744,9 +1744,9 @@
 		padding: 0 5px;
 		border: 1px solid transparent;
 		border-radius: 999px;
-		background: color-mix(in srgb, #fff 10%, var(--shell-forest, #11291f));
-		color: var(--shell-ink-light, #eef1ec);
-		font: 600 10px/1 var(--shell-mono, ui-monospace, monospace);
+		background: color-mix(in srgb, var(--shell-white) 10%, var(--shell-forest));
+		color: var(--shell-ink-light);
+		font: 600 10px/1 var(--shell-mono);
 		white-space: nowrap;
 		overflow: hidden;
 		cursor: pointer;
@@ -1762,23 +1762,23 @@
 		background: transparent;
 	}
 	.chip.travel {
-		background: var(--shell-gold, #d4ad45);
-		color: var(--shell-forest, #11291f);
+		background: var(--shell-gold);
+		color: var(--shell-forest);
 	}
 	.chip.jump,
 	.chip.end {
 		border: 1px solid rgb(255 255 255 / 0.22);
 	}
 	.chip.gap {
-		border: 1px dashed var(--shell-caution, #c85a48);
+		border: 1px dashed var(--shell-caution);
 		background: transparent;
-		color: color-mix(in srgb, var(--shell-caution, #c85a48) 35%, #fff);
+		color: color-mix(in srgb, var(--shell-caution) 35%, var(--shell-white));
 	}
 	/* A selected transition: gold, ringed in ivory (owner review, 5 Nov). */
 	.chip.selected {
-		background: var(--shell-gold, #d4ad45);
-		color: var(--shell-forest, #11291f);
-		box-shadow: 0 0 0 2px var(--shell-ivory, #f3f0e4);
+		background: var(--shell-gold);
+		color: var(--shell-forest);
+		box-shadow: 0 0 0 2px var(--shell-ivory);
 	}
 	.caret {
 		position: absolute;
@@ -1787,7 +1787,7 @@
 		width: 3px;
 		margin-left: -1.5px;
 		border-radius: 2px;
-		background: var(--shell-leaf-soft, #9fd3b6);
+		background: var(--shell-leaf-soft);
 		pointer-events: none;
 	}
 
@@ -1799,20 +1799,20 @@
 		flex: none;
 	}
 	.tool.on {
-		background: color-mix(in srgb, var(--shell-leaf-soft, #9fd3b6) 38%, transparent);
-		color: #fff;
+		background: color-mix(in srgb, var(--shell-leaf-soft) 38%, transparent);
+		color: var(--shell-white);
 	}
 	/* A travel is a solid link with a chevron. */
 	/* The Stop number sits at the start of the Stop's first hold. */
 	.total {
 		flex: none;
-		color: var(--shell-ink-light, #eef1ec);
-		font: 500 11px/1.2 var(--shell-mono, ui-monospace, monospace);
+		color: var(--shell-ink-light);
+		font: 500 11px/1.2 var(--shell-mono);
 		white-space: nowrap;
 	}
 	.total .waits {
 		margin-left: 4px;
-		color: var(--shell-leaf-soft, #9fd3b6);
+		color: var(--shell-leaf-soft);
 	}
 	.follow-pill {
 		position: absolute;
@@ -1824,9 +1824,9 @@
 		gap: 8px;
 		padding: 4px 4px 4px 12px;
 		border-radius: 20px;
-		background: var(--shell-glass-dark, rgba(14, 30, 25, 0.8));
-		color: var(--shell-ink-light, #eef1ec);
-		font: 12px var(--shell-sans, system-ui, sans-serif);
+		background: var(--shell-glass-dark);
+		color: var(--shell-ink-light);
+		font: 12px var(--shell-sans);
 		white-space: nowrap;
 		z-index: 4;
 	}
@@ -1834,10 +1834,10 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--shell-leaf-soft, #9fd3b6);
+		background: var(--shell-leaf-soft);
 	}
 	.pause-glyph {
-		font: 600 9px/1 var(--shell-sans, system-ui, sans-serif);
+		font: 600 9px/1 var(--shell-sans);
 		letter-spacing: 1px;
 	}
 	.pill-stop {
@@ -1851,7 +1851,7 @@
 		cursor: pointer;
 	}
 	.kbd {
-		color: var(--shell-ink-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 		font-size: 11px;
 	}
 
@@ -1865,8 +1865,8 @@
 		padding: 0;
 		border: 0;
 		border-radius: 50%;
-		background: var(--shell-ivory, #f3f0e4);
-		color: var(--shell-forest, #11291f);
+		background: var(--shell-ivory);
+		color: var(--shell-forest);
 	}
 
 	.visually-hidden {
@@ -1896,12 +1896,12 @@
 		.chip,
 		.pill-stop {
 			min-height: 44px;
-			min-height: var(--shell-touch-target, 44px);
+			min-height: var(--shell-touch-target);
 		}
 		.icon,
 		.play {
 			width: 44px;
-			min-width: var(--shell-touch-target, 44px);
+			min-width: var(--shell-touch-target);
 		}
 		/* The coarse hit area is 44 px; the visual track stays 8 px. */
 	}
@@ -1921,7 +1921,7 @@
 		touch-action: none;
 	}
 	.track-hit:focus-visible {
-		outline: 2px solid var(--shell-leaf-soft, #9fd3b6);
+		outline: 2px solid var(--shell-leaf-soft);
 		outline-offset: 2px;
 		border-radius: 4px;
 	}
@@ -1942,7 +1942,7 @@
 		padding: 4px;
 		border: 1px solid rgb(255 255 255 / 0.1);
 		border-radius: 10px;
-		background: var(--shell-popup-dark, rgba(17, 41, 31, 0.97));
+		background: var(--shell-popup-dark);
 		box-shadow: 0 10px 28px rgb(0 0 0 / 0.32);
 	}
 	.pacing-menu button {
@@ -1952,7 +1952,7 @@
 		background: transparent;
 		color: inherit;
 		font: inherit;
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 		text-align: left;
 		cursor: pointer;
 	}
@@ -1961,7 +1961,7 @@
 		background: rgb(255 255 255 / 0.1);
 	}
 	.pacing-menu button[aria-checked='true'] {
-		color: var(--shell-leaf-soft, #9fd3b6);
+		color: var(--shell-leaf-soft);
 	}
 	.menu-item.danger {
 		color: #f0a99e;

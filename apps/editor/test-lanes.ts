@@ -65,6 +65,11 @@ export const ARCH_FILES: string[] = [
 	// Its subject is repository routing, which no build or type check can see, so only the
 	// unconditional lane can hold it.
 	'tests/docs/workflow-cutover.test.ts',
+	// Presentation-token ownership: one source for shared design roles, no drift
+	// copies of a role value and no unreachable fallback. Rendered output cannot see
+	// a second copy while both values agree, so only the unconditional lane can
+	// hold it.
+	'tests/lib/design/presentation-tokens.test.ts',
 	// T1.P01.S03: the F.4 editor-only isolation boundary — the public route's
 	// module graph stays free of the acceptance coordinator and its history while
 	// the shared contract package stays reachable. Nothing imports an F4 editor

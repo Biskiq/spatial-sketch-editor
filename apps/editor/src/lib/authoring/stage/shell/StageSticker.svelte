@@ -87,16 +87,16 @@
 
 <style>
 	.glyph {
-		fill: #fff;
-		stroke: var(--shell-ink, #1b201c);
+		fill: var(--shell-white);
+		stroke: var(--shell-ink);
 		stroke-width: 1.1;
 		stroke-linejoin: round;
 		filter: drop-shadow(0 1.2px 1.3px rgba(20,24,20,.3));
 		pointer-events: none;
 	}
-	.glyph.held { fill: var(--shell-gold-tint, #f8efd6); }
+	.glyph.held { fill: var(--shell-gold-tint); }
 	.stem {
-		stroke: var(--shell-ink, #1b201c);
+		stroke: var(--shell-ink);
 		stroke-width: 1.5;
 		stroke-linecap: round;
 		filter: drop-shadow(0 0 .7px rgba(255,255,255,.95));

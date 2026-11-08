@@ -154,8 +154,8 @@
 		aspect-ratio: 16 / 10;
 		border: 2px solid transparent;
 		border-radius: 6px;
-		background: var(--shell-mat, #e1e4dc);
-		color: var(--shell-ink-3, #79817b);
+		background: var(--shell-mat);
+		color: var(--shell-ink-3);
 		overflow: hidden;
 	}
 	.snapshot.stop {
@@ -173,7 +173,7 @@
 		border-radius: 4px;
 	}
 	.snapshot.selected {
-		border-color: var(--shell-gold, #d4ad45);
+		border-color: var(--shell-gold);
 	}
 	.snapshot img {
 		position: absolute;
@@ -188,8 +188,8 @@
 		left: 3px;
 		padding: 0 4px;
 		border-radius: 4px;
-		background: var(--shell-forest, #1d3b2f);
-		color: #fff;
-		font: 600 10px/1.4 var(--shell-mono, ui-monospace, monospace);
+		background: var(--shell-forest);
+		color: var(--shell-white);
+		font: 600 10px/1.4 var(--shell-mono);
 	}
 </style>

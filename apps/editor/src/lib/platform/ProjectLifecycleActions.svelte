@@ -294,9 +294,9 @@
 	.lifecycle.head {
 		--lifecycle-ink: #f3f4ee;
 		--lifecycle-muted: #aebbb0;
-		--lifecycle-edge: #2f4a3d;
-		--lifecycle-focus: #d4ad45;
-		--lifecycle-surface: #11291f;
+		--lifecycle-edge: var(--shell-hairline-dark);
+		--lifecycle-focus: var(--shell-gold);
+		--lifecycle-surface: var(--shell-forest);
 		--lifecycle-control: #1c3a2c;
 	}
 	.buttons, .dialog-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
@@ -335,7 +335,7 @@
 	dialog label { font-weight: 650; }
 	dialog input { min-height: 2.5rem; padding: 0.4rem 0.55rem; border: 1px solid var(--lifecycle-edge); border-radius: 0.35rem; background: #0e1512; color: var(--lifecycle-ink); font: inherit; }
 	.dialog-actions { justify-content: flex-end; margin-top: 0.25rem; }
-	.warning { padding: 0.65rem; border-left: 3px solid #d4ad45; background: #443b2180; color: #fff0ba !important; }
+	.warning { padding: 0.65rem; border-left: 3px solid var(--shell-gold); background: #443b2180; color: #fff0ba !important; }
 	.error-message { color: #ffd0c8 !important; }
 	@media (pointer: coarse) {
 		.buttons button, .dialog-actions button { min-width: 44px; min-height: 44px; }

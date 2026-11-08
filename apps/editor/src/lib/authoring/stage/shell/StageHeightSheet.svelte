@@ -517,8 +517,8 @@
 		right: 10px;
 		z-index: 8;
 		width: 40px;
-		color: var(--shell-ink, #1b201c);
-		font: 11px/1.35 var(--shell-mono, monospace);
+		color: var(--shell-ink);
+		font: 11px/1.35 var(--shell-mono);
 	}
 	.sheet.left {
 		right: auto;
@@ -543,14 +543,14 @@
 		width: 2px;
 		border-radius: 1px;
 		background: rgb(27 32 28 / 0.2);
-		box-shadow: 0 0 1px #fff;
+		box-shadow: 0 0 1px var(--shell-white);
 	}
 	.tick {
 		position: absolute;
 		left: 50%;
 		width: 10px;
 		height: 1.5px;
-		background: var(--shell-ink-3, #79817b);
+		background: var(--shell-ink-3);
 		transform: translate(-50%, 50%);
 	}
 	.tick.datum {
@@ -567,8 +567,8 @@
 		min-width: 40px;
 		padding: 0 5px;
 		border-radius: 11px;
-		background: var(--shell-sheet-knob, #fbfaf2);
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-sheet-knob);
+		color: var(--shell-ink);
 		box-shadow: 0 1px 4px #0006;
 		font-size: 10.5px;
 		font-weight: 600;
@@ -586,11 +586,11 @@
 		right: 0;
 		padding: 2px 5px;
 		border-radius: 4px;
-		background: var(--shell-sheet-knob, #fbfaf2);
+		background: var(--shell-sheet-knob);
 		box-shadow: 0 1px 2px #0002;
 		white-space: nowrap;
 		transform: translateY(50%);
-		font: 11px var(--shell-sans, system-ui);
+		font: 11px var(--shell-sans);
 	}
 	.add {
 		position: absolute;
@@ -604,7 +604,7 @@
 		border: 0;
 		border-radius: 50%;
 		background: #11291fdd;
-		color: #fff;
+		color: var(--shell-white);
 		cursor: pointer;
 	}
 	.pin {
@@ -623,10 +623,10 @@
 	.pin-dot {
 		width: 8px;
 		height: 8px;
-		border: 1px solid #fff;
+		border: 1px solid var(--shell-white);
 		border-radius: 50%;
-		background: var(--shell-ink-3, #79817b);
-		box-shadow: 0 0 1px var(--shell-forest, #11291f);
+		background: var(--shell-ink-3);
+		box-shadow: 0 0 1px var(--shell-forest);
 	}
 	.numeric,
 	.pin-context {
@@ -635,10 +635,10 @@
 		z-index: 20;
 		width: 180px;
 		padding: 8px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 8px;
-		background: #fff;
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-white);
+		color: var(--shell-ink);
 		box-shadow: var(--shell-shadow);
 	}
 	.numeric label {
@@ -650,16 +650,16 @@
 		width: 100%;
 		height: 26px;
 		padding: 0 6px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 6px;
-		font: 12px var(--shell-mono, monospace);
+		font: 12px var(--shell-mono);
 	}
 	.numeric button,
 	.pin-context button {
 		min-height: 26px;
 		border: 0;
 		border-radius: 6px;
-		background: var(--shell-leaf-tint, #e7f1ea);
+		background: var(--shell-leaf-tint);
 		cursor: pointer;
 	}
 	.snap {
@@ -670,7 +670,7 @@
 		padding: 4px 6px;
 		border-radius: 5px;
 		background: #11291fdd;
-		color: #fff;
+		color: var(--shell-white);
 	}
 	.hint {
 		position: absolute;
@@ -680,8 +680,8 @@
 		max-width: 256px;
 		padding: 8px;
 		border-radius: 8px;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--shell-forest);
+		color: var(--shell-ink-light);
 		font-size: 12px;
 		pointer-events: none;
 	}

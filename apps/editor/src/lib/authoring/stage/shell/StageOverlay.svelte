@@ -399,12 +399,12 @@
 		height: 100%;
 		pointer-events: none;
 		overflow: visible;
-		--overlay-ink: var(--shell-ink, #1b201c);
-		--overlay-draft: var(--shell-draft-ink, #1b201c);
-		--overlay-draft-halo: var(--shell-draft-halo, none);
-		--overlay-ghost: var(--shell-ghost, #2a62d6);
-		--overlay-ghost-halo: var(--shell-ghost-halo, none);
-		--overlay-problem: #7e2718;
+		--overlay-ink: var(--shell-ink);
+		--overlay-draft: var(--stage-ink);
+		--overlay-draft-halo: var(--stage-ink-halo);
+		--overlay-ghost: var(--stage-proposal);
+		--overlay-ghost-halo: var(--stage-proposal-halo);
+		--overlay-problem: var(--shell-refuse);
 	}
 	.task-marker circle {
 		fill: none;
@@ -427,25 +427,25 @@
 	.candidate.refused .candidate-edge { stroke: var(--overlay-problem); filter: none; stroke-width: 2; stroke-dasharray: 6 4; }
 	.end-mark { fill: var(--overlay-ghost); stroke: var(--overlay-ghost); stroke-width: 1.6; filter: var(--overlay-ghost-halo); }
 	.candidate.drawing .end-mark { fill: var(--overlay-draft); stroke: var(--overlay-draft); filter: var(--overlay-draft-halo); }
-	.candidate-room { fill: var(--shell-leaf, #4f8f6c); fill-opacity: 0.2; }
-	.close-room-ring { fill: #fff; stroke: var(--shell-forest-2, #22503c); stroke-width: 2; }
-	.close-room-center { fill: var(--shell-forest-2, #22503c); }
-	.end-mark.hollow { fill: #fff; }
+	.candidate-room { fill: var(--shell-leaf); fill-opacity: 0.2; }
+	.close-room-ring { fill: var(--shell-white); stroke: var(--shell-forest-raised); stroke-width: 2; }
+	.close-room-center { fill: var(--shell-forest-raised); }
+	.end-mark.hollow { fill: var(--shell-white); }
 	.candidate.refused .end-mark { fill: var(--overlay-problem); stroke: var(--overlay-problem); filter: none; }
 
 	.tag rect { fill: var(--overlay-ink); stroke: none; }
 	.tag.bad rect { fill: var(--overlay-problem); }
 	.tag text.refused { fill: #f0b3ab; }
 	.tag text {
-		fill: #fff;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		fill: var(--shell-white);
+		font-family: var(--shell-mono);
 		font-size: 11px;
 		letter-spacing: 0.02em;
 	}
 
 	/* The sticker glyph set: white body, fine ink keyline, small soft shadow. */
 	.mark .glyph {
-		fill: #fff;
+		fill: var(--shell-white);
 		stroke: var(--overlay-ink);
 		stroke-width: 1.1;
 		stroke-linejoin: round;
@@ -462,11 +462,11 @@
 	.mark .chip .toggle-hit { fill: transparent; stroke: none; filter: none; }
 	.mark .chip-icon { fill: none; stroke: var(--overlay-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 	.mark .chip.open .glyph { fill: var(--overlay-ink); }
-	.mark .chip.open .chip-icon { stroke: #fff; }
+	.mark .chip.open .chip-icon { stroke: var(--shell-white); }
 	.mark.disclose { pointer-events: auto; cursor: pointer; }
 	/* A pointer click never paints the browser's focus ring; the keyboard still gets one. */
 	.mark.disclose:focus { outline: none; }
-	.mark.disclose:focus-visible .chip .glyph { stroke: var(--leaf, #4f8f6c); stroke-width: 2.2; }
+	.mark.disclose:focus-visible .chip .glyph { stroke: var(--shell-leaf); stroke-width: 2.2; }
 
 	.dimension .dimension-line {
 		fill: none;
@@ -478,6 +478,6 @@
 	.dimension.live .dimension-line { stroke-dasharray: 4 3; }
 	.dimension .halo { fill: none; stroke: rgba(255, 255, 255, 0.7); stroke-width: 3.4; stroke-linecap: round; }
 
-	.room-label text { fill: #4a524c; font: 12px system-ui; paint-order: stroke; stroke: #fff; stroke-width: 2px; stroke-opacity: .75; }
+	.room-label text { fill: var(--shell-ink-2); font: 12px system-ui; paint-order: stroke; stroke: var(--shell-white); stroke-width: 2px; stroke-opacity: .75; }
 	.room-label .area { font: 11px ui-monospace, monospace; }
 </style>

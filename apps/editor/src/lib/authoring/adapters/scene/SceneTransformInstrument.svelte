@@ -888,7 +888,7 @@
 	}
 
 	label > span {
-		color: var(--shell-ink-quiet, #9fb2a2);
+		color: var(--shell-ink-quiet);
 		font-size: 0.65rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -898,9 +898,9 @@
 	button {
 		font: inherit;
 		padding: 0.2rem 0.4rem;
-		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
+		border: 1px solid var(--shell-ink-quiet);
 		border-radius: 0.3rem;
-		background: var(--shell-forest-raised, #22503c);
+		background: var(--shell-forest-raised);
 		color: inherit;
 	}
 
@@ -926,7 +926,7 @@
 	}
 
 	.hint {
-		color: var(--shell-ink-quiet, #9fb2a2);
+		color: var(--shell-ink-quiet);
 	}
 
 	.feedback {
@@ -946,14 +946,14 @@
 		width: 100%;
 		border: 2px solid transparent;
 		border-radius: 8px;
-		background: #fff;
-		color: var(--shell-ink, #1b201c);
-		font: 600 11px var(--shell-sans, system-ui);
+		background: var(--shell-white);
+		color: var(--shell-ink);
+		font: 600 11px var(--shell-sans);
 	}
 	.objects-tiles button[aria-pressed='true'],
 	.objects-models button[aria-pressed='true'] {
-		border-color: var(--shell-gold, #d4ad45);
-		background: var(--shell-gold-tint, #f8efd6);
+		border-color: var(--shell-gold);
+		background: var(--shell-gold-tint);
 	}
 	.objects-models {
 		display: grid;

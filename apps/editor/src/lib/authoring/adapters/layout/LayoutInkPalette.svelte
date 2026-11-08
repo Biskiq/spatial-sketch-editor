@@ -346,7 +346,7 @@
 	.ink-palette {
 		position: relative;
 		color: #d9e2da;
-		font: 12px var(--shell-sans, system-ui);
+		font: 12px var(--shell-sans);
 	}
 	.keys {
 		display: flex;
@@ -424,9 +424,9 @@
 		border: 1px solid #ffffff44;
 		border-radius: 6px;
 		padding: 0 6px;
-		background: var(--shell-forest, #11291f);
+		background: var(--shell-forest);
 		color: white;
-		font: 12px var(--shell-mono, monospace);
+		font: 12px var(--shell-mono);
 	}
 	.refusal {
 		position: absolute;
@@ -436,15 +436,15 @@
 		padding: 8px;
 		margin: 0;
 		border-radius: 8px;
-		background: var(--shell-refuse-bg, #fdf3f0);
-		color: var(--shell-refuse, #7e2718);
+		background: var(--shell-refuse-bg);
+		color: var(--shell-refuse);
 	}
 	.error {
 		margin: 0;
 		color: #f0a98c;
 	}
 	.unit {
-		color: var(--shell-ink-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 	}
 	@media (pointer: coarse) {
 		.key,

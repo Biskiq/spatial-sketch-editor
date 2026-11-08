@@ -1,0 +1,126 @@
+/*
+ * Biskiq presentation roles — the one authoritative source for shared design
+ * roles.
+ *
+ * Values come from the approved PLATE design (accepted Round 2) and are not
+ * changed by moving them here. This file owns *shared* roles only:
+ *
+ *  - `--shell-*`  shell, furniture and page roles (surfaces, ink, states, type,
+ *                 geometry, elevation) consumed by the editor shell, landing,
+ *                 login, Projects and the visitor surfaces;
+ *  - `--stage-*`  spatial drawing and instrument roles (draft ink, proposal,
+ *                 selection, grid, paper, mat). `stage-paint.ts` is the same
+ *                 table for Three.js paint, and a test holds the two together;
+ *  - `--cursor-*` the approved cursor family, declared in `cursors.css`.
+ *
+ * Rules for every consumer:
+ *
+ *  1. Consume the role; never repeat its value. A literal hex that equals a
+ *     role here is a drift copy, not a component choice.
+ *  2. Do not add a `var()` fallback. These roles are declared at `:root`, so a
+ *     fallback is unreachable code at best and a second value at worst.
+ *  3. A value that is genuinely local to one instrument or to one authored
+ *     Experience look stays local and is written with a comment naming why. It
+ *     does not become a new shared role.
+ *
+ * Skins may re-declare these roles (for example under `[data-theme]`), which is
+ * why components consume them instead of importing TS constants. This file does
+ * not implement skin switching or a plugin runtime.
+ */
+:root {
+	/* Chassis: the forest that the Stage and the pages sit on. */
+	--shell-forest: #11291f;
+	--shell-forest-raised: #22503c;
+	--shell-forest-3: #2d5e48;
+	--shell-leaf: #4f8f6c;
+	--shell-leaf-tint: #e7f1ea;
+	--shell-leaf-soft: #9fd3b6;
+	--shell-hover: #eef0ed;
+	--shell-selected: #e8efe9;
+
+	/* Lines and rules. */
+	--shell-hairline: #e1e4de;
+	--shell-hairline-strong: #cdd2ca;
+	/* The dark chassis line: dialogs and instruments on forest surfaces. */
+	--shell-hairline-dark: #2f4a3d;
+
+	/* Ink. */
+	--shell-ink-light: #eef1ec;
+	--shell-ink-quiet: #9fb2a5;
+	--shell-ink: #1b201c;
+	--shell-ink-2: #4a524c;
+	--shell-ink-3: #79817b;
+	/* Pure white marks and highlights, distinct from a card surface. */
+	--shell-white: #ffffff;
+
+	/* Surfaces. */
+	--shell-paper: #e9ebe6;
+	--shell-index: #f6f7f5;
+	--shell-card: #ffffff;
+	--shell-mat: #1d3a33;
+	--shell-ivory: #f3f0e4;
+	--shell-control-surface: #fafbf9;
+	--shell-sheet-knob: #fbfaf2;
+
+	/* Gold: selection and the primary accent. */
+	--shell-gold: #d4ad45;
+	--shell-gold-ink: #74560c;
+	--shell-gold-tint: #f8efd6;
+
+	/* States. Caution is recoverable; refuse is a hard stop. */
+	--shell-caution: #c85a48;
+	--shell-caution-bg: #f7ede8;
+	--shell-refuse: #7e2718;
+	--shell-refuse-bg: #fdf3f0;
+
+	/* Glass and translucent furniture. */
+	--shell-glass-light: rgba(255, 255, 255, 0.94);
+	--shell-glass-dark: rgba(14, 30, 25, 0.8);
+	--shell-dock-surface: rgba(17, 41, 31, 0.95);
+	--shell-popup-dark: rgba(17, 41, 31, 0.97);
+	--shell-value-surface: rgba(10, 24, 18, 0.82);
+
+	/* Type. */
+	--shell-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--shell-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+	--shell-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+	--shell-text-body: 13px;
+	--shell-text-utility: 12px;
+	--shell-text-identity: 15px;
+
+	/* Geometry. */
+	--shell-head-height: 44px;
+	--shell-control-height: 30px;
+	--shell-index-width: 256px;
+	--shell-card-width: 288px;
+	/* The coarse pointer target; the editor host raises it on touch. */
+	--shell-touch-target: 44px;
+
+	/* Elevation. */
+	--shell-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.12);
+	--shell-furniture-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.07);
+
+	/*
+	 * Spatial drawing grammar. Drawn ink is black, matching the accepted World
+	 * grammar; a gesture's proposal is cobalt, a hue no other state uses, with a
+	 * white halo for dark materials. `stage-paint.ts` mirrors these values for
+	 * Three.js paint and the shapes below; `presentation-tokens.test.ts` fails if
+	 * the two tables drift.
+	 */
+	--stage-ink: #1b201c;
+	--stage-ink-halo: none;
+	--stage-proposal: #2a62d6;
+	--stage-proposal-halo: drop-shadow(0 0 0.7px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 1.4px rgba(255, 255, 255, 0.5));
+	--stage-selection: #d4ad45;
+	--stage-hover: #4f8f6c;
+	--stage-erase: #d0412d;
+	--stage-paper: #e9ebe6;
+	--stage-mat: #1d3a33;
+	--stage-grid-minor: #9fb2a2;
+	--stage-grid-major: #809984;
+	--stage-grid-mat-minor: #2b5147;
+	--stage-grid-mat-major: #3c6a5c;
+	/* The dark instrument chassis reads quieter than the shell's ink. */
+	--stage-instrument-ink-quiet: #98a89c;
+	--stage-instrument-hairline: var(--shell-hairline-dark);
+}

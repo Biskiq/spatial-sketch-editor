@@ -190,7 +190,7 @@ describe('R217.S30 playback', () => {
 		// Owner review (5 Nov): the strip's highlight is gold, and its one track is a 3 px rail.
 		expect(guide).toContain('--shell-gold');
 		expect(guide).toContain('height: 3px');
-		expect(guide).toContain('--shell-touch-target, 44px');
+		expect(guide).toContain('--shell-touch-target');
 		expect(guide).toContain('min-height: 44px');
 		expect(guide).not.toContain('Comes with Camera playback');
 	});

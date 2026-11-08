@@ -120,19 +120,11 @@
 		max-height: min(24rem, 60vh);
 		border: 1px solid rgb(255 255 255 / 0.09);
 		border-radius: 12px;
-		background: var(--shell-forest, #11291f);
+		background: var(--shell-forest);
 		box-shadow: 0 0.5rem 1.5rem rgb(6 20 14 / 45%);
-		color: var(--shell-ink-light, #f3f4ee);
-		font-family: var(
-			--shell-sans,
-			Inter,
-			ui-sans-serif,
-			system-ui,
-			-apple-system,
-			'Segoe UI',
-			sans-serif
-		);
-		font-size: var(--shell-text-utility, 12px);
+		color: var(--shell-ink-light);
+		font-family: var(--shell-sans);
+		font-size: var(--shell-text-utility);
 	}
 
 	.instrument-head {
@@ -141,14 +133,14 @@
 		gap: 0.5rem;
 		min-width: 0;
 		padding: 0.1rem 0.2rem 0.1rem 0.5rem;
-		border-bottom: 1px solid var(--shell-hairline, #2f4a3d);
+		border-bottom: 1px solid var(--shell-hairline);
 	}
 
 	.title {
 		margin: 0;
 		min-width: 0;
 		overflow: hidden;
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 		font-weight: 600;
 		line-height: 1.3;
 		text-overflow: ellipsis;
@@ -165,7 +157,7 @@
 
 	.target-key {
 		flex: none;
-		color: var(--shell-ink-quiet, #9fb2a2);
+		color: var(--shell-ink-quiet);
 		font-size: 0.62rem;
 		font-weight: 700;
 		letter-spacing: 0.08em;
@@ -184,10 +176,10 @@
 		min-width: 1.5rem;
 		min-height: 1.5rem;
 		padding: 0 0.35rem;
-		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
+		border: 1px solid var(--shell-ink-quiet);
 		border-radius: 0.35rem;
-		background: var(--shell-forest-raised, #22503c);
-		color: var(--shell-ink-light, #f3f4ee);
+		background: var(--shell-forest-raised);
+		color: var(--shell-ink-light);
 		font: inherit;
 		line-height: 1;
 		cursor: pointer;
@@ -198,7 +190,7 @@
 	}
 
 	.about[aria-expanded='true'] {
-		border-color: var(--shell-ink-light, #f3f4ee);
+		border-color: var(--shell-ink-light);
 	}
 
 	.close {
@@ -207,12 +199,12 @@
 
 	.about:hover,
 	.close:hover {
-		border-color: var(--shell-ink-light, #f3f4ee);
+		border-color: var(--shell-ink-light);
 	}
 
 	.about:focus-visible,
 	.close:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 1px;
 	}
 
@@ -223,12 +215,12 @@
 		gap: 0.2rem 0.6rem;
 		margin: 0;
 		padding: 0.35rem 0.6rem;
-		border-bottom: 1px solid var(--shell-hairline, #2f4a3d);
-		font-size: var(--shell-text-utility, 12px);
+		border-bottom: 1px solid var(--shell-hairline);
+		font-size: var(--shell-text-utility);
 	}
 
 	.about-facts dt {
-		color: var(--shell-ink-quiet, #9fb2a2);
+		color: var(--shell-ink-quiet);
 	}
 
 	.about-facts dd {
@@ -269,8 +261,8 @@
 	@media (pointer: coarse) {
 		.about,
 		.close {
-			min-width: var(--shell-touch-target, 44px);
-			min-height: var(--shell-touch-target, 44px);
+			min-width: var(--shell-touch-target);
+			min-height: var(--shell-touch-target);
 		}
 	}
 	.palette {
