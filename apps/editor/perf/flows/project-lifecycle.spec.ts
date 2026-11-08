@@ -588,7 +588,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		expect(JSON.stringify((persistedDirty.document as any).units.layout.data)).not.toBe(JSON.stringify((savedBeforeEdit.document as any).units.layout.data));
 		await openProjectMenu(page);
 		const downloaded = page.waitForEvent('download');
-		await page.getByRole('button', { name: 'Download source JSON', exact: true }).click();
+		await page.locator('[data-head-download]').click();
 		const sourceDownload = await downloaded;
 		const downloadedJson = JSON.parse(await readFile((await sourceDownload.path())!, 'utf8')) as ApiJson;
 		expect(downloadedJson.name).toBe('S01 dirty rename');
@@ -620,7 +620,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		await waitForAcceptedResult(page, beforeDeleteEdit);
 		await openProjectMenu(page);
 		const recoverableDownload = page.waitForEvent('download');
-		await page.getByRole('button', { name: 'Download source JSON', exact: true }).click();
+		await page.locator('[data-head-download]').click();
 		const recovered = JSON.parse(await readFile((await (await recoverableDownload).path())!, 'utf8')) as ApiJson;
 		expect(recovered.id).toBe(projectId);
 		const currentDelete = page.getByRole('button', { name: 'Delete S01 dirty rename', exact: true });
@@ -726,7 +726,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		await waitForAcceptedResult(page, dirtyPending);
 		await openProjectMenu(page);
 		const pendingDownload = page.waitForEvent('download');
-		await page.getByRole('button', { name: 'Download source JSON', exact: true }).click();
+		await page.locator('[data-head-download]').click();
 		await readFile((await (await pendingDownload).path())!, 'utf8');
 		await page.getByRole('button', { name: 'Delete ' + pendingFixture.envelope.name, exact: true }).click();
 		const pendingDialog = page.getByRole('dialog', { name: `Delete ${pendingFixture.envelope.name}?` });

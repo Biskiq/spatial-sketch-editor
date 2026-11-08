@@ -7,7 +7,7 @@
  * injection is reached — the harness observes the same UI a creator does.
  */
 
-import { expect, type Dialog, type Page } from '@playwright/test';
+import { expect, type Dialog, type Download, type Page } from '@playwright/test';
 
 import type { FixtureProject } from './fixtures';
 import type { LedgerRecord } from './ledger';
@@ -90,9 +90,7 @@ export async function drawInkEnclosure(page: Page): Promise<void> {
 	] as const;
 	for (let index = 0; index < points.length; index += 1) {
 		const [x, z] = points[index]!;
-		await page.locator('[data-ink-x]').fill(String(x));
-		await page.locator('[data-ink-z]').fill(String(z));
-		await page.locator('[data-ink-add-point]').click();
+		await addInkPoint(page, x, z);
 		await expect
 			.poll(
 				() =>
@@ -114,11 +112,36 @@ export async function drawInkEnclosure(page: Page): Promise<void> {
  * F2's explicit Open: the source-JSON entry, a real file chooser and the
  * canonical admission path. The returned ledger slice covers the open.
  */
+/** Open the Head's project-procedure menu and leave it visible. */
+export async function openProjectMenu(page: Page): Promise<void> {
+	const trigger = page.locator('[data-head-project]');
+	await expect(trigger).toBeVisible();
+	if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
+	await expect(page.getByRole('group', { name: 'Project actions' })).toBeVisible();
+}
+
+/** Download the accepted source through the Head's project menu. */
+export async function downloadSourceJson(page: Page): Promise<Download> {
+	await openProjectMenu(page);
+	const download = page.waitForEvent('download');
+	await page.locator('[data-head-download]').click();
+	return download;
+}
+
+/** Run one operation through the Head's Find combobox. */
+export async function runFindCommand(page: Page, command: string): Promise<void> {
+	const input = page.getByRole('combobox', { name: 'Find a subject, tool or operation' });
+	await expect(input).toBeVisible();
+	await input.fill(command);
+	const option = page.getByRole('option', { name: new RegExp(`\\b${command}\\b`, 'i') }).first();
+	await expect(option).toBeVisible();
+	await option.getByRole('button').click();
+}
+
 export async function openSourceJson(page: Page, project: FixtureProject, timeoutMs = LARGE_TIER_WAIT_MS): Promise<void> {
 	const markStart = await page.evaluate(() => performance.now());
-	const projectTrigger = page.locator('[data-head-project]');
-	if ((await projectTrigger.getAttribute('aria-expanded')) !== 'true') await projectTrigger.click();
-	await page.getByRole('button', { name: 'Open source JSON', exact: true }).click();
+	await openProjectMenu(page);
+	await page.locator('[data-head-source]').click();
 	const replacement = page.getByRole('alertdialog', { name: 'Replace project' });
 	await expect(replacement).toBeVisible();
 	const [chooser] = await Promise.all([
@@ -237,18 +260,31 @@ export async function waitForCameraSettled(page: Page, timeoutMs = 20_000): Prom
 	throw new Error(`the Stage camera did not settle within ${timeoutMs / 1000} s`);
 }
 
-/** The shipped Fit control: every footprint in frame. Setup, outside the timed windows. */
+/** The shipped Fit command: every footprint in frame. Setup, outside the timed windows. */
 export async function fitStage(page: Page): Promise<void> {
-	await page.locator('.stage-actions').getByRole('button', { name: 'Fit', exact: true }).click();
+	await runFindCommand(page, 'Fit');
 	await waitForCameraSettled(page);
 }
 
 /** The shipped reading toggle (Plan or 3D), waited until the reading has settled. */
 export async function setStageReading(page: Page, reading: 'Plan' | '3D'): Promise<void> {
-	const button = page.locator('.stage-actions').getByRole('button', { name: reading, exact: true });
+	const button = page.locator(`[data-drafting-reading="${reading === 'Plan' ? 'plan' : '3d'}"]`);
+	await expect(button).toBeVisible();
 	await button.click();
 	await expect(button).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 });
 	await waitForCameraSettled(page);
+}
+
+/** Type one exact Ink point through the palette's Point disclosure. */
+export async function addInkPoint(page: Page, x: number, z: number): Promise<void> {
+	const xInput = page.locator('[data-ink-x]');
+	if (!(await xInput.isVisible().catch(() => false))) {
+		await page.locator('[data-ink-point-toggle]').click();
+	}
+	await expect(xInput).toBeVisible();
+	await xInput.fill(String(x));
+	await page.locator('[data-ink-z]').fill(String(z));
+	await page.locator('[data-ink-add-point]').click();
 }
 
 /**

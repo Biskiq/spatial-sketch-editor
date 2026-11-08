@@ -17,7 +17,17 @@ import { resolve } from 'node:path';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
-import { acceptedResultCount, uniqueProjectId, waitForAcceptedResult } from '../lib/flow';
+import {
+	acceptedResultCount,
+	addInkPoint,
+	downloadSourceJson,
+	fitStage,
+	openProjectMenu,
+	runFindCommand,
+	setStageReading,
+	uniqueProjectId,
+	waitForAcceptedResult
+} from '../lib/flow';
 import { perfInitScript } from '../lib/ledger';
 
 const apiOrigin = process.env.PERF_API_ORIGIN;
@@ -154,18 +164,12 @@ async function waitForCameraSettled(page: Page, timeout = 20_000): Promise<void>
 }
 
 async function fitPlan(page: Page): Promise<void> {
-	await page.locator('.stage-actions').getByRole('button', { name: 'Fit', exact: true }).click();
-	await waitForCameraSettled(page);
-	await page.locator('.stage-actions').getByRole('button', { name: 'Plan', exact: true }).click();
-	await expect(page.locator('.stage-actions').getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-pressed', 'true');
-	await waitForCameraSettled(page);
+	await fitStage(page);
+	await setReading(page, 'Plan');
 }
 
 async function setReading(page: Page, reading: 'Plan' | '3D'): Promise<void> {
-	const button = page.locator('.stage-actions').getByRole('button', { name: reading, exact: true });
-	await button.click();
-	await expect(button).toHaveAttribute('aria-pressed', 'true');
-	await waitForCameraSettled(page);
+	await setStageReading(page, reading);
 }
 
 async function armInk(page: Page): Promise<void> {
@@ -253,9 +257,7 @@ async function clickWorldAndWait(page: Page, point: readonly [number, number, nu
 }
 
 async function typePoint(page: Page, x: number, z: number, count: number): Promise<void> {
-	await page.locator('[data-ink-x]').fill(String(x));
-	await page.locator('[data-ink-z]').fill(String(z));
-	await page.locator('[data-ink-add-point]').click();
+	await addInkPoint(page, x, z);
 	await waitForPoints(page, count);
 }
 
@@ -265,10 +267,7 @@ async function finishWithEnter(page: Page): Promise<void> {
 }
 
 async function downloadSource(page: Page): Promise<Record<string, any>> {
-	const [download] = await Promise.all([
-		page.waitForEvent('download'),
-		page.getByRole('button', { name: 'Download source JSON', exact: true }).click()
-	]);
+	const download = await downloadSourceJson(page);
 	const path = await download.path();
 	if (path === null) throw new Error('the source download produced no local path');
 	return JSON.parse(await readFile(path, 'utf8')) as Record<string, any>;
@@ -732,12 +731,7 @@ test('shell: narrow reduced-motion layout, Find, contributed-task arbitration an
 		expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 		rows.push(row('shell.narrow', 'narrow, reduced-motion shell', 'passed', `900×700; Card and lower column do not intersect; no horizontal page overflow`, page, '900x700', true, await capture(page, 't1-s02-shell-narrow.png')));
 
-		await page.locator('[data-head-find] summary').click();
-		const find = page.locator('[data-head-find] input[type="search"]');
-		await find.fill('Ink');
-		const findEntry = page.locator('[data-head-find] button', { hasText: 'Ink' }).first();
-		await expect(findEntry).toBeVisible();
-		await findEntry.click();
+		await runFindCommand(page, 'Ink');
 		await expect(page.locator('[data-dock-tool="layout-ink"]')).toHaveAttribute('aria-pressed', 'true');
 		rows.push(row('shell.find', 'Head Find reaches the dock tool', 'passed', 'the contributed Ink entry armed the dock tool', page, '900x700', true));
 		await page.locator('[data-dock-select]').click();
@@ -800,7 +794,8 @@ test('shell: narrow reduced-motion layout, Find, contributed-task arbitration an
 			nativeConfirm = dialog.message();
 			await dialog.accept();
 		});
-		await page.locator('.stage-actions').getByRole('button', { name: 'Open source JSON', exact: true }).click();
+		await openProjectMenu(page);
+		await page.locator('[data-head-source]').click();
 		const replace = page.getByRole('alertdialog', { name: 'Replace project' });
 		await expect(replace).toBeVisible();
 		await replace.getByRole('button', { name: 'Cancel', exact: true }).click();

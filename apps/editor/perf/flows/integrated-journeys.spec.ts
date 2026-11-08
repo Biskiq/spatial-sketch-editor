@@ -163,7 +163,7 @@ test.describe('integrated Capture / Guide / Preview journeys', () => {
 			await expect(page.locator(DOCK)).toHaveCount(0);
 			await expect(page.locator(HEAD_PREVIEW)).toHaveCount(0);
 			await expect(page.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);
-			await expect(page.getByRole('button', { name: 'Plan', exact: true })).toHaveCount(0);
+			await expect(page.locator('[data-drafting-reading="plan"]')).toHaveCount(0);
 			await expect(page.locator('.visitor-pill')).toContainText('Viewing Current Draft');
 			await expect(page.locator('nav[aria-label="Presentations"]').getByRole('button', { name: 'Presentation 1' })).toBeVisible();
 			// Preview writes no source while a creator is only looking.

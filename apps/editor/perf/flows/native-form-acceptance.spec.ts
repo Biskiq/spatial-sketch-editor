@@ -9,7 +9,17 @@ import { createUnitProject } from '../../tests/lib/authoring/__fixtures__/unit-e
 import { freshCapture } from '../../tests/lib/layout/__fixtures__/layout-id-capture';
 import { loginAs } from '../../tests/e2e/test-auth';
 import { newMeasuredSession } from '../lib/browser';
-import { acceptedResultCount, commandPresentation, gotoCreateIntent, setStageReading, uniqueProjectId, waitForCameraSettled } from '../lib/flow';
+import {
+	acceptedResultCount,
+	commandPresentation,
+	downloadSourceJson,
+	gotoCreateIntent,
+	openProjectMenu,
+	runFindCommand,
+	setStageReading,
+	uniqueProjectId,
+	waitForCameraSettled
+} from '../lib/flow';
 import { readLedger } from '../lib/ledger';
 
 const apiOrigin = process.env.PERF_API_ORIGIN!;
@@ -33,7 +43,7 @@ async function fixture(id: string) {
 		scene: { formatVersion: 1, entities: [form('plan', 2.5), form('elevation', 6)], materials: [], textures: [], navigationNodes: [], connections: [] } });
 }
 async function download(page: Page) {
-	const [file] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download source JSON', exact: true }).click()]);
+	const file = await downloadSourceJson(page);
 	const path = await file.path();
 	if (path === null) throw new Error('source download missing');
 	return JSON.parse(await readFile(path, 'utf8'));
@@ -100,7 +110,8 @@ test('native forms are selectable and operable through Stage, Plan, Index, Find 
 		await page.getByRole('button', { name: 'Begin empty', exact: true }).click();
 		const source = await fixture(id);
 		const chooser = page.waitForEvent('filechooser');
-		await page.getByRole('button', { name: 'Open source JSON', exact: true }).click();
+		await openProjectMenu(page);
+		await page.locator('[data-head-source]').click();
 		await page.getByRole('alertdialog', { name: 'Replace project' }).getByRole('button', { name: 'Replace', exact: true }).click();
 		await (await chooser).setFiles({ name: 'native-forms.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)) });
 		await expect(page.getByRole('heading', { name: 'Native form acceptance', exact: true })).toBeVisible();
@@ -116,11 +127,8 @@ test('native forms are selectable and operable through Stage, Plan, Index, Find 
 		await expect(page.locator(CARD)).toContainText('form-elevation');
 		await page.screenshot({ path: resolve(resultsDir, 'native-form-plan-selection.png') });
 		await selectFromIndex(page, 'plan acceptance form');
-		await page.locator('[data-head-find] summary').click();
-		await page.locator('[data-head-find] input').fill('elevation acceptance form');
-		await page.locator('[data-head-find] button', { hasText: 'elevation acceptance form' }).click();
+		await runFindCommand(page, 'elevation acceptance form');
 		await expect(page.locator(CARD)).toContainText('form-elevation');
-		await page.locator('[data-head-find] summary').click();
 		await selectFromIndex(page, 'plan acceptance form');
 		const before = await download(page);
 		await page.getByLabel('Form X (m)', { exact: true }).fill('3');
@@ -225,7 +233,8 @@ test('native form M cold open and Size/Undo/Redo measurements', async ({ browser
 				await gotoCreateIntent(page, id);
 				await page.getByRole('button', { name: 'Begin empty', exact: true }).click();
 				const chooser = page.waitForEvent('filechooser');
-				await page.getByRole('button', { name: 'Open source JSON', exact: true }).click();
+				await openProjectMenu(page);
+				await page.locator('[data-head-source]').click();
 				await page.getByRole('alertdialog', { name: 'Replace project' }).getByRole('button', { name: 'Replace', exact: true }).click();
 				await (await chooser).setFiles({ name: 'native-form-m.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)) });
 				await expect(page.getByRole('heading', { name: 'Native form M workload', exact: true })).toBeVisible();
