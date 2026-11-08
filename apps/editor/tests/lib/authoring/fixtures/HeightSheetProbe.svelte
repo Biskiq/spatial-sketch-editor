@@ -7,12 +7,14 @@
 		heightMeters = 1.2,
 		pins = [],
 		ticks = [],
-		onSetHeight
+		onSetHeight,
+		onAddPin = () => {}
 	}: {
 		heightMeters?: number;
 		pins?: readonly number[];
 		ticks?: readonly StageHeightTick[];
 		onSetHeight: (heightMeters: number, cause: StageHeightCause) => void;
+		onAddPin?: () => void;
 	} = $props();
 </script>
 
@@ -22,6 +24,7 @@
 	{pins}
 	snapIncrement={0.1}
 	{onSetHeight}
+	{onAddPin}
 	onActiveChange={() => {}}
 	onResetSubscribe={() => () => {}}
 />

@@ -486,17 +486,27 @@ test('Height Sheet stays visual and pointer-operable while Ink owns the Stage', 
 		await expect(page.locator('[data-stage-height-sheet] .numeric')).toHaveCount(0);
 		await expect(page.locator('[data-stage-height-sheet] .pin-context')).toHaveCount(0);
 		await expect(page.locator('[data-pin-hint]')).toHaveCount(0);
-		await expect(page.locator('button[aria-label^="Pin the height"]')).toHaveCount(0);
+		const addPin = page.locator('[data-stage-height-sheet] button[aria-label^="Pin the height"]');
+		await expect(addPin).toHaveCount(1);
+		await expect(page.locator('[data-stage-height-sheet] .pin-dot')).toHaveCount(0);
+		const removeControls = page.locator('[data-stage-height-sheet] button', { hasText: 'Remove pin' });
+		await expect(removeControls).toHaveCount(0);
 
 		const sliderValue = async (): Promise<number> => Number(await track.getAttribute('aria-valuenow'));
 		const beforeHeight = await sliderValue();
+		await addPin.click();
+		await expect(page.locator('[data-stage-height-sheet] .pin-dot')).toHaveCount(1);
+		await expect(page.locator('[data-stage-height-sheet] .pin-dot').first()).toHaveCSS(
+			'background-color',
+			'rgb(255, 255, 255)'
+		);
 		const knobBox = await knob.boundingBox();
 		if (knobBox === null) throw new Error('the Height Sheet knob has no box');
 		expect(knobBox.width).toBe(40);
 		await installPointerTrace(page);
 		await page.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y + knobBox.height / 2);
 		await page.mouse.down();
-		await page.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y - 40, { steps: 4 });
+		await page.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y + 120, { steps: 4 });
 		await page.mouse.up();
 		await expect.poll(sliderValue).not.toBe(beforeHeight);
 		const afterHeight = await sliderValue();
@@ -507,6 +517,12 @@ test('Height Sheet stays visual and pointer-operable while Ink owns the Stage', 
 			);
 		});
 		expect(rawTrace.length, 'the knob did not receive the drag pointerdown').toBeGreaterThan(0);
+		const pin = page.locator('[data-stage-height-sheet] .pin');
+		await expect(pin).toHaveCount(1);
+		await pin.click();
+		await expect.poll(sliderValue).toBe(beforeHeight);
+		await expect(page.locator('[data-stage-height-sheet] .pin-context')).toHaveCount(0);
+		const jumpHeight = await sliderValue();
 
 		await writeEvidence({
 			revision: REVISION,
@@ -523,9 +539,12 @@ test('Height Sheet stays visual and pointer-operable while Ink owns the Stage', 
 					datumWidth: '22px',
 					datumHeight: '2.5px',
 					datumBackground: 'rgb(255,255,255)',
-					editingControls: 0,
+					addPinButton: true,
+					pinCreated: true,
+					removeControls: 0,
 					heightBefore: beforeHeight,
-					heightAfter: afterHeight,
+					heightAfterDrag: afterHeight,
+					heightAfterPinJump: jumpHeight,
 					knobPointerDownTarget: rawTrace[0]?.target ?? null
 				}
 			}

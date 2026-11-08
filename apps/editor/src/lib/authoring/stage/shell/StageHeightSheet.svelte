@@ -11,6 +11,7 @@
 <script lang="ts">
 	/** Session-only height rail and neutral pins. No source, history or selection writes. */
 	import { onMount } from 'svelte';
+	import ShellIcon from './ShellIcon.svelte';
 	import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from '../plan-parameters';
 	import type { StageHeightCause, StageHeightTick } from '../stage-height-sheet';
 
@@ -29,6 +30,7 @@
 		drawing = false,
 		laneRef = $bindable(null),
 		onSetHeight,
+		onAddPin,
 		onActiveChange,
 		onResetSubscribe
 	}: {
@@ -43,6 +45,8 @@
 		/** The Sheet's own lane box, so the host can publish its measured width. */
 		laneRef?: HTMLElement | null;
 		onSetHeight: (heightMeters: number, cause: StageHeightCause) => void;
+		/** Creates a session pin at the current working height. Removal stays unexposed. */
+		onAddPin: () => void;
 		onActiveChange: (active: boolean) => void;
 		onResetSubscribe: (onReset: () => void) => () => void;
 	} = $props();
@@ -379,6 +383,17 @@
 				>{heightMeters.toFixed(2)}</span
 			>
 		</div>
+		<button
+			type="button"
+			class="add"
+			style={`bottom: ${percentOf(heightMeters)}%`}
+			aria-label={`Pin the height at ${heightMeters.toFixed(2)} metres`}
+			title="Pin this height for the session"
+			onpointerdown={stopPointer}
+			onclick={() => onAddPin()}
+		>
+			<ShellIcon name="pin" size={12} />
+		</button>
 	</div>
 
 	{#if snapName !== null}
@@ -423,7 +438,8 @@
 		inset: -11px -2px;
 		border-radius: 12px;
 	}
-	.sheet.drawing .pin {
+	.sheet.drawing .pin,
+	.sheet.drawing .add {
 		pointer-events: auto;
 	}
 	.rail-wrap {
@@ -515,6 +531,21 @@
 		border-radius: 50%;
 		background: #fff;
 	}
+	.add {
+		position: absolute;
+		right: calc(100% + 3px);
+		display: grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
+		padding: 0;
+		transform: translateY(50%);
+		border: 0;
+		border-radius: 50%;
+		background: #11291fdd;
+		color: #fff;
+		cursor: pointer;
+	}
 	.snap {
 		position: absolute;
 		bottom: -30px;
@@ -536,6 +567,17 @@
 			pointer-events: auto;
 			min-width: 44px;
 			min-height: 44px;
+		}
+		.add {
+			width: 44px;
+			height: 44px;
+			background: transparent;
+		}
+		.add :global(svg) {
+			padding: 4px;
+			box-sizing: content-box;
+			border-radius: 50%;
+			background: #11291fdd;
 		}
 	}
 </style>

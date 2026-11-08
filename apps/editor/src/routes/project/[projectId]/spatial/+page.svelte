@@ -761,6 +761,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		heightSheet.set(heightMetersValue, cause);
 		heightMeters = heightSheet.height();
 	}
+	/** Session-only pin creation; pin removal is intentionally unexposed. */
+	function addHeightPin(): void {
+		heightSheet.addPin(heightMeters);
+		heightPins = heightSheet.pins();
+	}
 	function setHeightPlaneActive(active: boolean): void {
 		if (heightPlaneTimer !== null) {
 			clearTimeout(heightPlaneTimer);
@@ -3849,6 +3854,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 								drawing={task?.kind === 'layout-ink'}
 								bind:laneRef={sheetLaneEl}
 								onSetHeight={setHeight}
+								onAddPin={addHeightPin}
 								onActiveChange={setHeightPlaneActive}
 								onResetSubscribe={(onReset: () => void) =>
 									heightSheet.subscribeReset('height-sheet-control', onReset)}

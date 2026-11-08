@@ -206,14 +206,17 @@ describe('R217.S22 — the Height Sheet control', () => {
 	function mountSheet(props: { heightMeters?: number; pins?: readonly number[] } = {}) {
 		const target = document.createElement('div');
 		document.body.append(target);
-		const calls = { heights: [] as Array<[number, StageHeightCause]> };
+		const calls = { heights: [] as Array<[number, StageHeightCause]>, adds: 0 };
 		const component = mount(HeightSheetProbe, {
 			target,
 			props: {
 				heightMeters: props.heightMeters ?? 1.2,
 				pins: props.pins ?? [],
 				ticks: ticksOf(),
-				onSetHeight: (height: number, cause: StageHeightCause) => calls.heights.push([height, cause])
+				onSetHeight: (height: number, cause: StageHeightCause) => calls.heights.push([height, cause]),
+				onAddPin: () => {
+					calls.adds += 1;
+				}
 			}
 		});
 		cleanup = () => void unmount(component);
@@ -240,7 +243,7 @@ describe('R217.S22 — the Height Sheet control', () => {
 		expect(source).toMatch(/\.knob\s*\{[^}]*box-sizing:\s*border-box;[^}]*height:\s*22px;[^}]*min-width:\s*40px;/s);
 	});
 
-	it('has no click-to-edit card and no exposed pin CRUD', async () => {
+	it('keeps the pin button, opens no card and exposes no pin removal', async () => {
 		const { target, calls } = mountSheet({ pins: [0.4] });
 		const slider = target.querySelector<HTMLElement>('[role="slider"]')!;
 		slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
@@ -250,7 +253,12 @@ describe('R217.S22 — the Height Sheet control', () => {
 		expect(target.querySelector('form')).toBeNull();
 		expect(target.querySelector('.numeric')).toBeNull();
 		expect(target.querySelector('.pin-context')).toBeNull();
-		expect(target.querySelector('button[aria-label^="Pin the height"]')).toBeNull();
+		const add = target.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]');
+		expect(add).not.toBeNull();
+		add!.click();
+		await tick();
+		expect(calls.adds).toBe(1);
+		expect(calls.heights).toEqual([]);
 		expect([...target.querySelectorAll('button')].some((button) => button.textContent?.includes('Remove pin'))).toBe(false);
 	});
 
