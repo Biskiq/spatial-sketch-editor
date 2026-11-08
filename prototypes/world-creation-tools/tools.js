@@ -11,6 +11,7 @@ const T = {
   draft: null, live: [], amend: null, ghosts: [], tag: null, flash: null,
   pointer: null, pressed: false, space: false, measure: null, lastIntent: null,
   objRot: 0, sel: null, shelf: SHELF_DEFAULT.slice(),
+  famLast: {}, sunDrag: false,
 };
 const H_WALL = { low: 1.2, room: 3, tall: 4.5 };
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -28,7 +29,9 @@ function opt(id, tool = T.tool) {
 }
 function setOpt(id, v, tool = T.tool) {
   (T.opts[tool] = T.opts[tool] || {})[id] = v;
-  if (tool === T.tool && T.draft && (id === 'shape' || id === 'item' || id === 'brush')) cancelDraft(true);
+  // A building definition sets the footprint shape and storeys it is usually drawn with.
+  if (tool === 'building' && id === 'def' && BUILDING_DEFS[v]) { T.opts.building.shape = BUILDING_DEFS[v].shape; T.opts.building.floors = BUILDING_DEFS[v].floors; }
+  if (tool === T.tool && T.draft && (id === 'shape' || id === 'item' || id === 'brush' || id === 'mode' || id === 'def')) cancelDraft(true);
   if (id === 'item') T.artGhost = null;
   VIEW.dirty = true; uiSync();
 }
@@ -39,7 +42,7 @@ function groupsOf(tool = T.tool) {
 }
 /* A thing picked from the Library joins the shelf at the front; the oldest leaves. */
 function shelfPut(v) { if (!T.shelf.includes(v)) T.shelf = [v, ...T.shelf].slice(0, SHELF_DEFAULT.length); }
-const isStream = () => T.tool === 'ground' && opt('brush') === 'stream';
+const isStream = () => T.tool === 'water' && opt('mode') === 'stream';
 /* Pointer input goes to the shared shape machinery (not to a tool's own move/down/up). */
 function shapeInput() { return !(T.draft && T.draft.kind) && (DRAWING.has(T.tool) || isStream()); }
 function setState(s) { if (T.state !== s) { T.state = s; T.stateAt = performance.now(); uiSync(); } }
@@ -523,9 +526,9 @@ function chainBase(gm) { let lo = Infinity; for (const p of geomPoints(gm)) lo =
 IMPL.building = {
   begin() { return newShape(opt('shape')); },
   spec(gm) {
-    const floors = +opt('floors'), roof = opt('roof'), windows = opt('windows');
-    if (gm.circle) return { shape: 'circle', c: gm.circle.c, r: gm.circle.r, floors, roof: roof === 'flat' ? 'flat' : 'cone', windows };
-    return { shape: 'poly', pts: gm.pts, floors, roof: gm.pts.length !== 4 && roof === 'gable' ? 'hip' : roof, windows };
+    const D = BUILDING_DEFS[opt('def')] || BUILDING_DEFS.cottage, floors = +opt('floors'), roof = D.roof, windows = D.windows, style = D.label;
+    if (gm.circle) return { shape: 'circle', c: gm.circle.c, r: gm.circle.r, floors, roof: roof === 'flat' ? 'flat' : 'cone', windows, style };
+    return { shape: 'poly', pts: gm.pts, floors, roof: roof === 'cone' ? 'hip' : gm.pts.length !== 4 && roof === 'gable' ? 'hip' : roof, windows, style };
   },
   foot(spec) { return spec.shape === 'circle' ? G.circlePoly(spec.c, spec.r, 28) : spec.pts; },
   plan(gm) { const spec = this.spec(gm); return { spec, ...planBuilding(world, this.foot(spec)) }; },
@@ -538,7 +541,7 @@ IMPL.building = {
     if (!gm.closed || (gm.pts.length < 3 && !gm.circle)) return refuse(null, 'A footprint needs three corners');
     const plan = this.plan(gm);
     if (plan.refused) { const c = G.centroid(this.foot(plan.spec)); return refuse({ ...c, z: hAt(c.x, c.y) + 3 }, `Refused · ${plan.refused}`); }
-    const spec = plan.spec, foot = this.foot(spec), label = spec.shape === 'circle' ? 'Raise a round tower' : `Raise a ${spec.floors}-storey building`;
+    const spec = plan.spec, foot = this.foot(spec), label = `Raise a ${spec.style.toLowerCase()}${spec.floors > 1 ? `, ${spec.floors} storeys` : ''}`;
     let id = null;
     commitAmendable(label, plan.cons, (w, cons) => {
       const g = groundRange(foot, w); let base = g.hi;
@@ -548,7 +551,7 @@ IMPL.building = {
       for (const c of cons) if (c.type === 'bdoor' && c.accepted) addOpening(w, { hostKind: 'building', hostId: b.id, edge: c.edge, s: c.s, floor: 0, kind: 'door', origin: 'crossing path' });
       const cl = cons.find((c) => c.type === 'clear'); if (cl && cl.accepted) w.plants = w.plants.filter((p) => !(G.inPoly(p, foot) || G.distPoly(p, foot.concat([foot[0]])).d < 0.4));
       id = b.id; return b;
-    }, (cons) => ({ intent: 'layout.structure.place', definition: 'Cottage', footprint: spec.shape === 'circle' ? { circle: pt2(spec.c), r: r2(spec.r) } : spec.pts.map(pt2), storeys: spec.floors, roof: spec.roof, windows: spec.windows, consequences: consIntent(cons) }));
+    }, (cons) => ({ intent: 'layout.structure.place', definition: spec.style, footprint: spec.shape === 'circle' ? { circle: pt2(spec.c), r: r2(spec.r) } : spec.pts.map(pt2), storeys: spec.floors, roof: spec.roof, windows: spec.windows, consequences: consIntent(cons) }));
     finishCommit(label, [id]);
   },
   tag(gm, d) {
@@ -904,9 +907,6 @@ function lightAim(ev) {
 }
 IMPL.light = {
   move(ev) {
-    if (T.drag && T.drag.type === 'sun') { world.sun = skyArc().hourAt(ev.sx); setTag(null); VIEW.dirty = true; uiSync(); return; }
-    if (onSkyArc(ev)) { T.ghosts = []; setTag(null); VIEW.cv.style.cursor = 'grab'; T.sunHover = true; setState('aim'); VIEW.dirty = true; return; }
-    T.sunHover = false; VIEW.cv.style.cursor = 'crosshair';
     const a = lightAim(ev); T.ghosts = [];
     if (a.l) T.ghosts = [{ kind: 'light', obj: { ...a.l, aimAt: a.aimAt ? a.aimAt.id : null }, hl: a.ok ? 'ghost' : 'refuse' }];
     T.live = a.aimAt ? [{ id: 'aimlive', type: 'aim', at: artCentre(a.aimAt), options: ['once', 'keep', 'none'], choice: 'once', labels: { once: `Aim at ${a.aimAt.name} once`, keep: `Keep aimed at ${a.aimAt.name}`, none: 'Don’t aim' }, icon: 'aim', target: a.aimAt.id }] : [];
@@ -916,7 +916,6 @@ IMPL.light = {
     VIEW.dirty = true;
   },
   down(ev) {
-    if (onSkyArc(ev)) { T.drag = { type: 'sun' }; liveBegin(); world.sun = skyArc().hourAt(ev.sx); setState('draft'); VIEW.dirty = true; uiSync(); return true; }
     const a = lightAim(ev);
     if (!a.ok) { if (a.refuse) refuse(a.at, `Refused · ${a.refuse}`); return true; }
     const l = a.l, kind = l.kind, label = `Place a ${TOOLS.light.palette[0].options.find((o) => o.v === kind).label.split(' (')[0].toLowerCase()}`;
@@ -932,14 +931,13 @@ IMPL.light = {
     finishCommit(label, []);
     return true;
   },
-  up() {
-    if (T.drag && T.drag.type === 'sun') {
-      T.drag = null;
-      liveEnd(`Set the hour to ${hh(world.sun)}`, { intent: 'scene.environment.setHour', hour: r2(world.sun) });
-      T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; T.amend = null; setState('commit'); uiSync();
-    }
-  },
 };
+/* The sun: dragged on the sky arc while the Sky is open, whatever tool is armed. One undo step. */
+function setHour(t, label) {
+  liveBegin(); world.sun = clamp(t, 5, 21);
+  liveEnd(label || `Set the hour to ${hh(world.sun)}`, { intent: 'scene.environment.setHour', hour: r2(world.sun) });
+  T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; VIEW.dirty = true; uiSync();
+}
 
 /* Brush tools: Ground, Water (pond), Plants, Paint on the ground, Erase scrub. */
 function brushRadius(tool = T.tool) { return BRUSH_R[opt('size', tool)] || 3; }
@@ -949,7 +947,7 @@ function brushTick() {
   const st = T.brush; if (!st || !T.pointer) return;
   const g = clampWS(T.pointer.g), R = brushRadius(), e = T.pointer.e || {};
   st.frames++;
-  if (T.tool === 'ground' && opt('brush') === 'pond') {
+  if (T.tool === 'water') {
     const kept = paintWater(world, g, R * 0.75, st.surface, opt('depth') === 'deep' ? 1.2 : 0.5);
     if (kept) st.kept.add(kept.name);
     const before = world.plants.length; world.plants = world.plants.filter((p) => isNaN(waterAt(p.x, p.y))); st.count += before - world.plants.length;
@@ -984,7 +982,7 @@ function brushBegin(ev, extra = {}) {
 }
 function brushEnd() {
   const st = T.brush; T.brush = null; if (!st) return;
-  const tool = T.tool, pond = tool === 'ground' && opt('brush') === 'pond'; let label = 'Brush', intent = {}, infos = [];
+  const tool = T.tool, pond = tool === 'water'; let label = 'Brush', intent = {}, infos = [];
   if (pond) {
     label = 'Paint a pond'; intent = { intent: 'landscape.water.paint', surface: r2(st.surface), depth: opt('depth') };
     for (const n of st.kept) infos.push({ id: cid(), info: true, at: T.pointer.g, icon: 'keep', label: `Keeps clear of ${n}` });
@@ -1043,14 +1041,23 @@ IMPL.ground = {
   move(ev) {
     const mode = opt('brush');
     if (mode === 'terrace') return terraceMove(ev);
-    if (mode === 'stream') { setTag(null); return; }
     const name = TOOLS.ground.palette[0].options.find((o) => o.v === mode).label.split(/ \(|:/)[0];
-    const text = mode === 'pond' ? `Pond · ${fmt(brushRadius() * 0.75, 1)} m` : `${name} · ${brushRadius()} m`;
+    const text = `${name} · ${brushRadius()} m`;
     setTag(T.brush ? null : ev.g, T.brush ? null : text, 'live'); setState(T.brush ? 'draft' : 'aim'); VIEW.dirty = true;
   },
   down(ev) { if (opt('brush') === 'terrace') return terraceDown(ev); brushBegin(ev); return true; },
   up(ev) { if (opt('brush') === 'terrace') return terraceUp(ev); brushEnd(); },
-  /* Stream mode: a drawn stroke becomes lowered ground with a surface. */
+};
+/* Water: Pond paints a level surface into lowered ground; Stream is a drawn stroke. */
+IMPL.water = {
+  begin() { return newShape('free'); },
+  move(ev) {
+    if (opt('mode') === 'stream') { setTag(null); return; }
+    setTag(T.brush ? null : ev.g, T.brush ? null : `Pond · ${fmt(brushRadius() * 0.75, 1)} m`, 'live'); setState(T.brush ? 'draft' : 'aim'); VIEW.dirty = true;
+  },
+  down(ev) { brushBegin(ev); return true; },
+  up() { brushEnd(); },
+  /* Stream: a drawn stroke becomes lowered ground with a surface. */
   finishStream(gm) {
     const pts = G.resample(gm.pts, 0.5), R = brushRadius() * 0.45, depth = opt('depth') === 'deep' ? 1.2 : 0.5;
     const surf = pts.map((p) => hAt(p.x, p.y) - 0.08);
@@ -1240,7 +1247,7 @@ function drawingFinish(e) {
   const d = T.draft, impl = IMPL[T.tool];
   const gm = shapeGeom(d, true, e);
   if (!gm) return cancelDraft();
-  if (T.tool === 'ground') return IMPL.ground.finishStream(gm);
+  if (T.tool === 'water') return IMPL.water.finishStream(gm);
   impl.finish(gm);
 }
 
@@ -1254,6 +1261,7 @@ function bindStage(cv) {
     cv.setPointerCapture(e.pointerId);
     const ev = evAt(e); T.pointer = ev; T.pressed = true;
     if (e.button === 1 || T.space || (e.shiftKey && T.tool === 'select')) { CAMDRAG = { x: e.clientX, y: e.clientY, pan: e.shiftKey || VIEW.plan }; return; }
+    if (typeof UI !== 'undefined' && UI.sky && !T.draft && onSkyArc(ev)) { T.sunDrag = true; liveBegin(); world.sun = skyArc().hourAt(ev.sx); VIEW.dirty = true; uiSync(); return; }
     if (T.amend && !T.draft) { T.amend = null; uiSync(); }
     if (T.state === 'refuse' || T.state === 'commit' || T.state === 'cancel') setTag(null);
     const tool = T.tool, impl = IMPL[tool];
@@ -1279,6 +1287,10 @@ function bindStage(cv) {
       else { CAM.az = CAM_T.az = CAM.az - dx * 0.007; if (!VIEW.plan) CAM.el = CAM_T.el = clamp(CAM.el + dy * 0.005, 0.32, 1.5); }
       VIEW.dirty = true; return;
     }
+    if (T.sunDrag) { world.sun = skyArc().hourAt(ev.sx); VIEW.dirty = true; uiSync(); return; }
+    const skyHover = typeof UI !== 'undefined' && UI.sky && !T.draft && onSkyArc(ev);
+    if (skyHover !== !!T.sunHover) { T.sunHover = skyHover; VIEW.cv.style.cursor = skyHover ? 'grab' : T.tool === 'select' ? 'default' : 'crosshair'; VIEW.dirty = true; }
+    if (skyHover) return;
     const tool = T.tool, impl = IMPL[tool];
     if (shapeInput()) {
       const raw = clampWS(ev.g);
@@ -1296,6 +1308,11 @@ function bindStage(cv) {
     T.pressed = false;
     if (CAMDRAG) { CAMDRAG = null; return; }
     const ev = evAt(e); T.pointer = ev;
+    if (T.sunDrag) {
+      T.sunDrag = false;
+      liveEnd(`Set the hour to ${hh(world.sun)}`, { intent: 'scene.environment.setHour', hour: r2(world.sun) });
+      T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; uiSync(); VIEW.dirty = true; return;
+    }
     const tool = T.tool, impl = IMPL[tool];
     if (T.draft && shapeInput()) {
       const sp = T.draft.shape === 'free' ? { p: clampWS(ev.g) } : snapPoint(ev.g, e);
@@ -1329,7 +1346,7 @@ function escLadder(fromRightClick) {
   if (T.measure) { T.measure = null; T.draft = null; setTag(null); setState('cancel'); VIEW.dirty = true; return 'draft'; }
   if (T.draft) { cancelDraft(); return 'draft'; }
   if (fromRightClick) return null;
-  if (typeof UI !== 'undefined' && UI.lib) { UI.lib = null; uiSync(); return 'library'; }
+  if (typeof UI !== 'undefined' && (UI.lib || UI.sky)) { UI.lib = null; UI.sky = false; uiSync(); return 'library'; }
   if (T.amend) { T.amend = null; VIEW.dirty = true; uiSync(); return 'tokens'; }
   if (T.sel) { selectId(null); return 'selection'; }
   if (typeof UI !== 'undefined' && UI.paletteOpen && TOOLS[T.tool].palette.length) { UI.paletteOpen = false; uiSync(); return 'palette'; }
@@ -1340,6 +1357,7 @@ function armTool(id) {
   if (TOOLS[id].disabled) { toast(`${TOOLS[id].name} is unchanged from the approved sheet and not prototyped here`); return; }
   if (T.draft) cancelDraft(true);
   if (T.brush) { liveCancel(); T.brush = null; }
+  const fam = familyOf(id); if (fam) T.famLast[fam.id] = id;
   T.tool = id; T.cursor = null; T.ghosts = []; T.live = []; T.artGhost = null; T.groundGhost = null; T.amend = null; T.measure = null; T.drag = null;
   HL.hover = null; HL.paint = null; HL.extra.clear();
   if (id !== 'select') { T.sel = null; HL.sel = null; }
@@ -1433,8 +1451,8 @@ function drawOverlay(ctx) {
   // brushes
   if (ptr && !CAMDRAG) {
     const g = clampWS(ptr.g);
-    if (tool === 'ground' && !['terrace', 'stream', 'pond'].includes(opt('brush'))) brushRing(ctx, g, brushRadius(), C.ink);
-    if (tool === 'ground' && opt('brush') === 'pond') brushRing(ctx, g, brushRadius() * 0.75, '#2f6f86', 'rgba(90,160,180,.18)');
+    if (tool === 'ground' && opt('brush') !== 'terrace') brushRing(ctx, g, brushRadius(), C.ink);
+    if (tool === 'water' && opt('mode') === 'pond') brushRing(ctx, g, brushRadius() * 0.75, '#2f6f86', 'rgba(90,160,180,.18)');
     if (tool === 'plants') brushRing(ctx, g, brushRadius(), ptr.e.shiftKey ? C.erase : '#3f6e4a', ptr.e.shiftKey ? 'rgba(208,65,45,.08)' : 'rgba(80,140,90,.10)');
     if (tool === 'paint' && T.aimRes && T.aimRes.ground) brushRing(ctx, g, brushRadius(), C.ink, col(MATERIALS[opt('material')].color, 1, 0.45));
     if (tool === 'erase' && !HL.hover && (T.brush || world.plants.some((p) => G.dist(p, g) < 1.2))) brushRing(ctx, g, 1.2, C.erase, 'rgba(208,65,45,.08)');
@@ -1485,19 +1503,19 @@ function drawOverlay(ctx) {
     }
     if (r && r.kind === 'lights' && r.item.aimAt) { const a = world.art.find((x) => x.id === r.item.aimAt), lp = lightPos(r.item); if (a && lp) line3(ctx, [lp, artCentre(a)], C.goldDeep, 1.4, [4, 3]); }
   }
-  // sky arc (Light tool)
-  if (tool === 'light') {
+  // sky arc (while the Sky is open in the head)
+  if (typeof UI !== 'undefined' && UI.sky) {
     const sk = skyArc();
     ctx.save();
     ctx.beginPath();
     for (let k = 0; k <= 64; k++) { const p = sk.pos(5 + (16 * k) / 64); k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
-    ctx.strokeStyle = SUN.night > 0.5 ? 'rgba(243,240,228,.5)' : 'rgba(17,41,31,.35)'; ctx.lineWidth = 1.4; ctx.setLineDash([2, 5]); ctx.stroke(); ctx.setLineDash([]);
-    for (const t of [6, 12, 18]) { const p = sk.pos(t); ctx.beginPath(); ctx.moveTo(p.x, p.y - 5); ctx.lineTo(p.x, p.y + 5); ctx.stroke(); ctx.font = '11px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = SUN.night > 0.5 ? 'rgba(243,240,228,.75)' : 'rgba(17,41,31,.6)'; ctx.textAlign = 'center'; ctx.fillText(t === 12 ? 'noon' : t === 6 ? 'sunrise' : 'sunset', p.x, p.y + 18); }
+    ctx.strokeStyle = SUN.night > 0.5 ? 'rgba(251,246,234,.5)' : 'rgba(19,38,27,.35)'; ctx.lineWidth = 1.4; ctx.setLineDash([2, 5]); ctx.stroke(); ctx.setLineDash([]);
+    for (const t of [6, 12, 18]) { const p = sk.pos(t); ctx.beginPath(); ctx.moveTo(p.x, p.y - 5); ctx.lineTo(p.x, p.y + 5); ctx.stroke(); ctx.font = '11px "DM Mono", ui-monospace, Menlo, monospace'; ctx.fillStyle = SUN.night > 0.5 ? 'rgba(251,246,234,.75)' : 'rgba(19,38,27,.6)'; ctx.textAlign = 'center'; ctx.fillText(t === 12 ? 'noon' : t === 6 ? 'sunrise' : 'sunset', p.x, p.y + 18); }
     const sp = sk.pos(world.sun), night = SUN.night > 0.5;
-    ctx.beginPath(); ctx.arc(sp.x, sp.y, T.sunHover || (T.drag && T.drag.type === 'sun') ? 13 : 11, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, T.sunHover || T.sunDrag ? 13 : 11, 0, Math.PI * 2);
     ctx.fillStyle = night ? '#e8e4d4' : '#f2c14e'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = night ? '#9aa3b8' : '#b07d12'; ctx.stroke();
     if (night) { ctx.beginPath(); ctx.arc(sp.x + 4, sp.y - 3, 9, 0, Math.PI * 2); ctx.fillStyle = '#3a4566'; ctx.fill(); }
-    ctx.font = '600 11px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = night ? '#f3f0e4' : '#11291f'; ctx.textAlign = 'center'; ctx.fillText(hh(world.sun), sp.x, sp.y - 18);
+    ctx.font = '600 11px "DM Mono", ui-monospace, Menlo, monospace'; ctx.fillStyle = night ? '#fbf6ea' : '#13261b'; ctx.textAlign = 'center'; ctx.fillText(hh(world.sun), sp.x, sp.y - 18);
     ctx.restore();
   }
 }

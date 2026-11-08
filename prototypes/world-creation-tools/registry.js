@@ -6,32 +6,67 @@
  * persisted format: it is the proposal's capability description (shell "capability placement").
  *
  * Where a capability lives is decided by one rule:
- *   Dock key       its own gesture and its own target, used across scene types
+ *   Dock key       a family: one owner and one kind of making (Build, Form, Landscape, Furnish)
+ *   Tool           its own gesture and its own target, inside its family (Walls, Water, Lights)
  *   Palette        a variant of the armed tool's gesture (shape, kind, size, finish)
  *   Library        catalogue content you pick from (objects, lights, plants, definitions, materials)
  *   Selection      an operation on something that already exists (roof a room, turn, replace)
+ *   Head           the world's look and ways of reading it (Sky, Plan, Paper/Living, Measure)
+ * Nouns get words (families, tools); variants get pictures (palette options).
  */
 
 const FAMILIES = [
   {
-    id: 'build', name: 'Build', icon: 'fam-build', mark: '#d9b98b',
+    id: 'build', name: 'Build', icon: 'fam-build', mark: '#d4835c',
     owner: 'Layout',
-    blurb: 'Architecture: walls and the rooms they close, whole buildings, openings and stairs.',
-    tools: ['walls', 'building', 'opening', 'stair'],
+    blurb: 'Architecture: walls and the rooms they close, openings, stairs and whole buildings.',
+    tools: ['walls', 'opening', 'stair', 'building'],
+    grows: ['Level', 'Railing', 'Column grid'],
   },
   {
-    id: 'furnish', name: 'Furnish', icon: 'fam-furnish', mark: '#c3b4db',
+    id: 'form', name: 'Form', icon: 'fam-form', mark: '#ead9b2',
     owner: 'Scene',
-    blurb: 'What stands in the world: things from the shelf, forms you compose yourself, and light.',
-    tools: ['object', 'form', 'light'],
+    blurb: 'Solids you draw yourself: stages, pedestals, drums, columns, sculpture. Draw it here; pick it in Furnish.',
+    tools: ['form'],
+    grows: ['Carve', 'Sweep', 'Lathe', 'Array'],
   },
   {
-    id: 'land', name: 'Landscape', icon: 'fam-land', mark: '#9fc58d',
+    id: 'land', name: 'Landscape', icon: 'fam-land', mark: '#9dbb73',
     owner: 'Needs an owner',
-    blurb: 'The ground and what grows on it: terrain and water, paths, plants.',
-    tools: ['ground', 'path', 'plants'],
+    blurb: 'The ground and what flows and grows on it: terrain, water, paths and plants.',
+    tools: ['ground', 'water', 'path', 'plants'],
+    grows: ['Hedge', 'Fence', 'Rocks'],
+  },
+  {
+    id: 'furnish', name: 'Furnish', icon: 'fam-furnish', mark: '#e3b75f',
+    owner: 'Scene',
+    blurb: 'Things you pick, not draw: objects, frames and lights from the shelf and the Library.',
+    tools: ['object', 'light'],
+    grows: ['Media', 'Sound', 'Trigger zone'],
   },
 ];
+const familyOf = (id) => FAMILIES.find((f) => f.tools.includes(id)) || null;
+
+/* Building definitions: Library content. Picking one sets Building's footprint shape and storeys;
+   roof and windows come from the definition and stay editable per building in the Card. */
+const BUILDING_DEFS = {
+  cottage: { label: 'Cottage', icon: 'def-cottage', shape: 'box', floors: '2', roof: 'gable', windows: 'regular' },
+  tower: { label: 'Tower', icon: 'def-tower', shape: 'circle', floors: '3', roof: 'cone', windows: 'sparse' },
+  pavilion: { label: 'Pavilion', icon: 'def-pavilion', shape: 'box', floors: '1', roof: 'flat', windows: 'none' },
+  barn: { label: 'Long barn', icon: 'def-barn', shape: 'outline', floors: '1', roof: 'hip', windows: 'sparse' },
+};
+
+/* The Sky: the world's hour and look. Scene environment, set from the head, not a dock tool. */
+const SKY_PRESETS = [
+  { id: 'dawn', label: 'Dawn', t: 6.5, a: '#f1cfb4', b: '#c9d3e0' },
+  { id: 'morning', label: 'Morning', t: 9, a: '#f4ead2', b: '#d3e1dc' },
+  { id: 'noon', label: 'Noon', t: 12.5, a: '#f7f1e2', b: '#dfe8e0' },
+  { id: 'afternoon', label: 'Afternoon', t: 15.5, a: '#f5e6c8', b: '#e1e2cc' },
+  { id: 'golden', label: 'Golden hour', t: 18, a: '#f2c88e', b: '#e9a77d' },
+  { id: 'dusk', label: 'Dusk', t: 19.5, a: '#8d7fa0', b: '#3d4766' },
+  { id: 'night', label: 'Night', t: 21, a: '#2c3552', b: '#161d30' },
+];
+const skyPresetAt = (t) => SKY_PRESETS.reduce((best, p) => (Math.abs(p.t - t) < Math.abs(best.t - t) ? p : best), SKY_PRESETS[0]);
 
 /* Shared stroke shapes. One meaning, one key, in every drawing tool: 3 is always Box. */
 const SHAPES = {
@@ -133,23 +168,19 @@ const TOOLS = {
   },
   building: {
     name: 'Building', key: 'B', icon: 'building', family: 'build',
-    makes: 'A whole building from its footprint: walls, roof and windows, generated and still editable.',
-    target: 'Ground or a terrace', gesture: 'Box, Circle or Outline footprint; it rises as you draw',
+    makes: 'A whole building from a definition and a footprint: walls, roof and windows, generated and still editable.',
+    target: 'Ground or a terrace', gesture: 'Pick a definition, then draw its footprint; it rises as you draw',
     result: 'A placed Layout structure from a building definition', owner: 'Layout (placed structure)',
     proposes: ['Plinth or level the ground on a slope', 'Door where a path meets it', 'Refuses overlapping buildings'],
     area: 'T5', today: null,
     palette: [
+      { id: 'def', label: 'Definition', kind: 'seg', default: 'cottage',
+        options: Object.entries(BUILDING_DEFS).map(([v, d]) => ({ v, icon: d.icon, label: d.label })) },
       shapeGroup(['box', 'circle', 'outline']),
       { id: 'floors', label: 'Storeys', kind: 'seg', default: '2', options: [
         { v: '1', text: '1', label: 'One storey' }, { v: '2', text: '2', label: 'Two storeys' }, { v: '3', text: '3', label: 'Three storeys' },
       ] },
-      { id: 'roof', label: 'Roof', kind: 'seg', default: 'gable', options: [
-        { v: 'gable', icon: 'roof-gable', label: 'Gable' }, { v: 'hip', icon: 'roof-hip', label: 'Hip' },
-        { v: 'flat', icon: 'roof-flat', label: 'Flat' }, { v: 'cone', icon: 'roof-cone', label: 'Cone (round footprints)' },
-      ] },
-      { id: 'windows', label: 'Windows', kind: 'seg', default: 'regular', options: [
-        { v: 'none', icon: 'win-none', label: 'No windows' }, { v: 'sparse', icon: 'win-sparse', label: 'Sparse' }, { v: 'regular', icon: 'win-regular', label: 'Regular rhythm' },
-      ] },
+      { id: 'library', label: 'More', kind: 'action', icon: 'library', text: 'Library', note: 'Every building definition, and your own' },
     ],
   },
   opening: {
@@ -183,7 +214,7 @@ const TOOLS = {
 
   // ── Furnish ──────────────────────────────────────────────────────────────
   object: {
-    name: 'Object', key: 'F', icon: 'object', family: 'furnish',
+    name: 'Objects', key: 'F', icon: 'object', family: 'furnish',
     makes: 'Furniture, plinths, vitrines and frames from a shelf of recent things; the Library holds the rest.',
     target: 'Ground, a floor, the top of a form; a wall face for frames', gesture: 'Click places one; drag lays an evenly spaced row; R turns 15°',
     result: 'Placed Scene instances; a frame is attached to its wall by hanging', owner: 'Scene',
@@ -199,7 +230,7 @@ const TOOLS = {
     ],
   },
   form: {
-    name: 'Form', key: 'D', icon: 'form', family: 'furnish',
+    name: 'Form', key: 'D', icon: 'form', family: 'form',
     makes: 'Solids you compose yourself: a stage, a pedestal, a drum, a stepped mass, a sculpture.',
     target: 'Ground, a floor, the top of another form', gesture: 'Draw a Box, Circle or Outline, pull up its height, click to set',
     result: 'A composed Scene object, placed', owner: 'Scene (composed object)',
@@ -212,39 +243,53 @@ const TOOLS = {
     ],
   },
   light: {
-    name: 'Light', key: 'L', icon: 'light', family: 'furnish',
-    makes: 'Light fixtures, and the sun. Drag the sun across the sky arc to change the hour.',
-    target: 'Ground, a wall, inside a room (pendant), the sky arc (sun)', gesture: 'Click to place; drag the sun',
-    result: 'Scene lights; the sun is Scene environment', owner: 'Scene',
+    name: 'Lights', key: 'L', icon: 'light', family: 'furnish',
+    makes: 'Light fixtures: spots, pendants, wall lights and lamps. The sun is the Sky, in the head.',
+    target: 'Ground, a wall, inside a room (pendant)', gesture: 'Click to place',
+    result: 'Scene lights', owner: 'Scene',
     proposes: ['Aim a spot at a nearby frame: once, or keep aimed (explicit)', 'Refuses a pendant with nothing to hang from'],
     area: 'T2', today: null,
     palette: [
       { id: 'kind', label: 'Fixture', kind: 'seg', default: 'spot', options: [
-        { v: 'spot', icon: 'light-spot', label: 'Spot' }, { v: 'pendant', icon: 'light-pendant', label: 'Pendant (inside a room)' },
-        { v: 'wall', icon: 'light-wall', label: 'Wall light' }, { v: 'lamp', icon: 'light-lamp', label: 'Floor lamp' },
+        { v: 'spot', icon: 'light-spot', label: 'Spot', key: '1' }, { v: 'pendant', icon: 'light-pendant', label: 'Pendant (inside a room)', key: '2' },
+        { v: 'wall', icon: 'light-wall', label: 'Wall light', key: '3' }, { v: 'lamp', icon: 'light-lamp', label: 'Floor lamp', key: '4' },
       ] },
+      { id: 'library', label: 'More', kind: 'action', icon: 'library', text: 'Library', note: 'Every fixture' },
     ],
   },
 
   // ── Landscape ────────────────────────────────────────────────────────────
   ground: {
     name: 'Ground', key: 'G', icon: 'ground', family: 'land',
-    makes: 'Raised, lowered, flattened and smoothed ground, flat terraces, ponds and streams.',
-    target: 'Ground', gesture: 'Hold to brush (Shift inverts); Terrace: draw, then pull; Stream: drag a stroke',
-    result: 'A terrain edit; water is lowered ground with a surface', owner: 'Needs an owner (Landscape)',
-    proposes: ['Buildings keep their datum; their plinth follows', 'Paths re-drape (they belong to the ground)', 'Water: a bridge where a path now crosses it'],
+    makes: 'Raised, lowered, flattened and smoothed ground, and flat terraces.',
+    target: 'Ground', gesture: 'Hold to brush (Shift inverts); Terrace: draw, then pull',
+    result: 'A terrain edit', owner: 'Needs an owner (Landscape)',
+    proposes: ['Buildings keep their datum; their plinth follows', 'Paths re-drape (they belong to the ground)'],
     area: 'Landscape', today: null,
     palette: [
       { id: 'brush', label: 'Mode', kind: 'seg', default: 'raise', options: [
         { v: 'raise', icon: 'raise', label: 'Raise (Shift lowers)', key: '1' }, { v: 'lower', icon: 'lower', label: 'Lower (Shift raises)', key: '2' },
         { v: 'flatten', icon: 'flatten', label: 'Flatten to where you start', key: '3' }, { v: 'smooth', icon: 'smooth', label: 'Smooth', key: '4' },
         { v: 'terrace', icon: 'terrace', label: 'Terrace: draw, then pull', key: '5' },
-        { v: 'pond', icon: 'water-pond', label: 'Pond: hold to paint water', key: '6', gap: true }, { v: 'stream', icon: 'water-stream', label: 'Stream: drag a stroke', key: '7' },
       ] },
-      { id: 'depth', label: 'Depth', kind: 'seg', default: 'shallow', when: (v) => v('brush') === 'pond' || v('brush') === 'stream', options: [
+      sizeGroup('m', (v) => v('brush') !== 'terrace'),
+    ],
+  },
+  water: {
+    name: 'Water', key: 'A', icon: 'water', family: 'land',
+    makes: 'Ponds and streams: lowered ground with a level surface that fills what it meets.',
+    target: 'Ground', gesture: 'Pond: hold to paint; Stream: drag a stroke downhill',
+    result: 'A terrain edit with a water surface', owner: 'Needs an owner (Landscape)',
+    proposes: ['A bridge or stepping stones where a path now crosses it', 'Keeps clear of buildings', 'Drowns plants it covers'],
+    area: 'Landscape', today: null,
+    palette: [
+      { id: 'mode', label: 'Water', kind: 'seg', default: 'pond', options: [
+        { v: 'pond', icon: 'water-pond', label: 'Pond: hold to paint water', key: '1' }, { v: 'stream', icon: 'water-stream', label: 'Stream: drag a stroke', key: '2' },
+      ] },
+      { id: 'depth', label: 'Depth', kind: 'seg', default: 'shallow', options: [
         { v: 'shallow', icon: 'depth-shallow', label: 'Shallow · 0.5 m' }, { v: 'deep', icon: 'depth-deep', label: 'Deep · 1.2 m' },
       ] },
-      sizeGroup('m', (v) => v('brush') !== 'terrace' && v('brush') !== 'stream'),
+      sizeGroup('m', (v) => v('mode') === 'pond'),
     ],
   },
   path: {
@@ -280,6 +325,7 @@ const TOOLS = {
         { v: 'sparse', icon: 'dens-sparse', label: 'Sparse' }, { v: 'full', icon: 'dens-full', label: 'Full' },
       ] },
       sizeGroup('m'),
+      { id: 'library', label: 'More', kind: 'action', icon: 'library', text: 'Library', note: 'Every species' },
     ],
   },
 
@@ -337,13 +383,8 @@ const LIBRARY = [
     items: TOOLS.light.palette[0].options.map((o) => ({ v: o.v, icon: o.icon, label: o.label.split(' (')[0] })) },
   { id: 'plants', name: 'Plants', tool: 'plants', opt: 'kind',
     items: TOOLS.plants.palette[0].options.map((o) => ({ v: o.v, icon: o.icon, label: o.label })) },
-  { id: 'buildings', name: 'Buildings', tool: 'building', blurb: 'Definitions. Every placed copy follows its definition.',
-    items: [
-      { v: 'cottage', icon: 'def-cottage', label: 'Cottage', opts: { shape: 'box', floors: '2', roof: 'gable', windows: 'regular' } },
-      { v: 'tower', icon: 'def-tower', label: 'Tower', opts: { shape: 'circle', floors: '3', roof: 'cone', windows: 'sparse' } },
-      { v: 'pavilion', icon: 'def-pavilion', label: 'Pavilion', opts: { shape: 'box', floors: '1', roof: 'flat', windows: 'none' } },
-      { v: 'barn', icon: 'def-barn', label: 'Long barn', opts: { shape: 'outline', floors: '1', roof: 'hip', windows: 'sparse' } },
-    ] },
+  { id: 'buildings', name: 'Buildings', tool: 'building', opt: 'def', blurb: 'Definitions. Every placed copy follows its definition; picking one arms Building.',
+    items: Object.entries(BUILDING_DEFS).map(([v, d]) => ({ v, icon: d.icon, label: d.label })) },
   { id: 'materials', name: 'Materials', tool: 'paint', opt: 'material',
     items: Object.entries(MATERIALS).map(([v, m]) => ({ v, color: m.color, label: m.label })) },
 ];
@@ -355,13 +396,13 @@ const INTERACTIONS = {
     ['Walls', ['Joins at the end', 'Refused: crosses it', 'Doorway where they cross', 'Sits on the ground', '—', '—', '—', '—', 'Closing a run makes one, and offers a roof']],
     ['Building', ['Refused: crosses it', 'Refused: overlaps', 'Door where it meets', 'Plinth, or level the ground', 'Keeps clear', 'Clears plants in its footprint', '—', '—', '—']],
     ['Opening', ['Cut in its face', 'Cut on the storey you point at', '—', '—', '—', '—', '—', 'Refused: overlaps', 'Connects two Rooms (derived)']],
-    ['Object', ['Backs onto it (placement only)', 'Refused: inside it', '—', 'Stands on the ground', 'Refused', '—', 'Stands on top', '—', 'Stands on its floor']],
-    ['Object · frame', ['Hangs on it; a row skips openings', 'Refused: generated walls', '—', '—', '—', '—', '—', 'Refused: overlaps', '—']],
+    ['Objects', ['Backs onto it (placement only)', 'Refused: inside it', '—', 'Stands on the ground', 'Refused', '—', 'Stands on top', '—', 'Stands on its floor']],
+    ['Objects · frame', ['Hangs on it; a row skips openings', 'Refused: generated walls', '—', '—', '—', '—', '—', 'Refused: overlaps', '—']],
     ['Form', ['—', 'Refused: overlaps', '—', 'Grounds at its lowest corner', '—', 'Clears them', 'Rests on top', '—', 'Stands on its floor']],
-    ['Light', ['Wall light mounts on it', '—', '—', '—', '—', '—', 'Stands on top', 'Aim once, or keep aimed', 'Pendant hangs from it']],
+    ['Lights', ['Wall light mounts on it', '—', '—', '—', '—', '—', 'Stands on top', 'Aim once, or keep aimed', 'Pendant hangs from it']],
     ['Path', ['Doorway, or a gate in a low wall', 'Door', 'Joins it', 'Steps, or a ramp', 'Bridge, or stepping stones', 'Clears them', '—', '—', '—']],
     ['Ground', ['Wall keeps its datum', 'Keeps its datum; plinth follows', 'Re-drapes (it belongs to the ground)', '—', '—', 'Ride the ground', 'Keeps its base', '—', '—']],
-    ['Ground · water', ['Keeps clear', 'Keeps clear', 'Bridge, or stepping stones', 'Fills to its level', '—', 'Drowns them', '—', '—', '—']],
+    ['Water', ['Keeps clear', 'Keeps clear', 'Bridge, or stepping stones', 'Fills to its level', '—', 'Drowns them', '—', '—', '—']],
     ['Paint', ['Face, wall, room or all like it', 'Asks: this one or the whole definition', 'Surface', 'Ground brush', '—', '—', 'Whole form, or all like it', '—', 'Floor']],
   ],
 };
@@ -381,7 +422,7 @@ const STATE_EXITS = [
 
 const ESC_LADDER = [
   'Cancel the live draft (Backspace removes one point)',
-  'Close the Library',
+  'Close the Library or the Sky',
   'Dismiss the amend tokens',
   'Clear the selection',
   'Collapse the palette',

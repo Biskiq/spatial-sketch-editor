@@ -4,6 +4,11 @@
  * Canvas 2D axonometric projection of the simulated world: terrain slab, ground layer
  * (floors, paths, shadows), depth-sorted items, night pass and glows, then the tool overlay.
  * A drawing device for the proposal, not a renderer design.
+ *
+ * Two profiles of the same world (Living Draft): Living is illustrated — sage and moss ground,
+ * warm light, ink edges on what is built, a cut slab hatched like a section. Paper is the
+ * same world as a technical drawing — parchment tones by value, flat light, stronger ink,
+ * no hour. A profile is a way of looking, never saved into the world.
  */
 
 const CAM = { az: -0.62, el: 0.92, scale: 21, tx: 0, ty: -1 };
@@ -13,12 +18,19 @@ const VIEW = { cv: null, ctx: null, w: 1, h: 1, dpr: 1, cx: 0, cy: 0, dirty: tru
 const HL = { sel: null, hover: null, hoverMode: 'hover', extra: new Map(), paint: null };
 let SUN = null;
 let GLOWS = [];
+let PROFILE = 'living';
+function setProfile(p) { PROFILE = p === 'paper' ? 'paper' : 'living'; VIEW.dirty = true; }
+const PAPER = () => PROFILE === 'paper';
 
 const C = {
-  paper: '#e9ebe6', ink: '#1b201c', gold: '#d4ad45', goldDeep: '#a7801a', cobalt: '#2a62d6',
-  erase: '#d0412d', refusal: '#7e2718', inspect: '#e6c42e', soil: '#8c7658', soilDeep: '#6d5a43',
-  floor: '#dccbab', glass: '#43554f', door: '#4c3c2c', opening: '#2f342e', frame: '#4a4136',
+  paper: '#f5ecd9', ink: '#26231d', gold: '#d4ad45', goldDeep: '#a7801a', cobalt: '#2a62d6',
+  erase: '#c8462f', refusal: '#7e2718', inspect: '#f2d000', soil: '#b39873', soilDeep: '#7c6448',
+  floor: '#e2cfa8', glass: '#45574f', door: '#5a3f2a', opening: '#2f342e', frame: '#4a4136',
+  turf: '#7f9150', forest: '#13261b',
 };
+/* Ink on what is built: the drafting line. Stronger on Paper, softer at night. */
+const EDGE = () => (PAPER() ? 'rgba(38,35,29,.82)' : `rgba(38,35,29,${0.5 - 0.25 * (SUN ? SUN.night : 0)})`);
+const EDGE_W = () => (PAPER() ? 1.05 : 0.85);
 const MATS3 = { wood: '#a57b52', dark: '#4b4038', white: '#efede6', bronze: '#8f6b3a', fabric: '#7d8ea3', stone: '#aaa59a', leaf: '#5f8f5b', glass: '#d3e2e2' };
 const SURFACE = { gravel: '#d8cdb7', stone: '#bfbab0', boards: '#b4946d' };
 
@@ -29,7 +41,18 @@ function rgbOf(hex) {
   if (!v) { const n = parseInt(hex.slice(1), 16); v = [(n >> 16) & 255, (n >> 8) & 255, n & 255]; _rgb.set(hex, v); }
   return v;
 }
+/* Paper maps every colour to a parchment tone by its value, keeping a trace of its hue. */
+const _paper = new Map();
+function paperTone(hex) {
+  let v = _paper.get(hex);
+  if (!v) {
+    const [r, g, b] = rgbOf(hex), L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    v = mixHex(hex, mixHex('#c4b593', '#fbf6ea', clamp((L - 0.18) / 0.74, 0, 1)), 0.86); _paper.set(hex, v);
+  }
+  return v;
+}
 function col(hex, f = 1, a = 1) {
+  if (PROFILE === 'paper') hex = paperTone(hex);
   const [r, g, b] = rgbOf(hex);
   const R = Math.min(255, r * f) | 0, Gc = Math.min(255, g * f) | 0, B = Math.min(255, b * f) | 0;
   return a < 1 ? `rgba(${R},${Gc},${B},${a})` : `rgb(${R},${Gc},${B})`;
@@ -39,8 +62,8 @@ function mixHex(a, b, t) {
   const h = (i) => Math.round(A[i] + (B[i] - A[i]) * t).toString(16).padStart(2, '0');
   return '#' + h(0) + h(1) + h(2);
 }
-const HL_TINT = { sel: ['#efcf63', 0.36], erase: ['#e0604c', 0.5], hover: ['#ffffff', 0.16], inspect: ['#f2dc5d', 0.42], ghost: ['#9fb8ec', 0.25], refuse: ['#d0412d', 0.45] };
-const HL_LINE = { sel: [C.goldDeep, 2.2], erase: [C.erase, 2.2], hover: ['rgba(27,32,28,.55)', 1.25], inspect: ['#c9a400', 1.8], ghost: [C.cobalt, 1.4], refuse: [C.erase, 1.8] };
+const HL_TINT = { sel: ['#efcf63', 0.36], erase: ['#e0604c', 0.5], hover: ['#ffffff', 0.16], inspect: ['#f2dc5d', 0.42], ghost: ['#9fb8ec', 0.25], refuse: ['#c8462f', 0.45] };
+const HL_LINE = { sel: [C.goldDeep, 2.2], erase: [C.erase, 2.2], hover: ['rgba(38,35,29,.6)', 1.25], inspect: ['#c9a400', 1.8], ghost: [C.cobalt, 1.4], refuse: [C.erase, 1.8] };
 function hlOf(id) {
   if (id == null) return null;
   if (HL.extra.has(id)) return HL.extra.get(id);
@@ -133,7 +156,7 @@ function sunInfo(t) {
 }
 function lam(n) {
   const d = n.x * SUN.v3.x + n.y * SUN.v3.y + (n.z || 0) * SUN.v3.z;
-  return 0.64 + 0.42 * Math.max(0, d);
+  return PROFILE === 'paper' ? 0.88 + 0.13 * Math.max(0, d) : 0.66 + 0.4 * Math.max(0, d);
 }
 
 // ── drawing helpers ───────────────────────────────────────────────────────────
@@ -187,20 +210,26 @@ function drawSlab(ctx) {
   for (const s of sides) {
     if (!facesViewer(s.n)) continue;
     const top = []; for (let k = 0; k <= 40; k++) { const p = G.lerp(s.a, s.b, k / 40); top.push({ x: p.x, y: p.y, z: hAt(p.x, p.y) }); }
-    const f = lam(s.n);
-    fillPoly3(ctx, top.concat([{ ...s.b, z: bottom }, { ...s.a, z: bottom }]), col(C.soil, f));
+    const f = lam(s.n), body = top.concat([{ ...s.b, z: bottom }, { ...s.a, z: bottom }]);
+    fillPoly3(ctx, body, col(C.soil, f));
+    // the cut: hatched like a section, as the ground is drawn on a sheet
+    ctx.save(); path3(ctx, body); ctx.clip();
+    const pa = P(s.a.x, s.a.y, bottom), pb = P(s.b.x, s.b.y, bottom), x0 = Math.min(pa.x, pb.x) - 400, x1 = Math.max(pa.x, pb.x) + 40;
+    const y1 = Math.max(pa.y, pb.y) + 10, step = PAPER() ? 6 : 7;
+    ctx.beginPath(); for (let x = x0; x < x1; x += step) { ctx.moveTo(x, y1); ctx.lineTo(x + 400, y1 - 400); }
+    ctx.strokeStyle = col(C.soilDeep, 1, PAPER() ? 0.5 : 0.32); ctx.lineWidth = 0.8; ctx.stroke(); ctx.restore();
     const band = top.map((p) => ({ ...p, z: p.z - 0.35 }));
-    fillPoly3(ctx, top.concat(band.slice().reverse()), col('#6f8f5a', f));
-    line3(ctx, [{ ...s.a, z: bottom + 0.9 }, { ...s.b, z: bottom + 0.9 }], col(C.soilDeep, f, 0.5), 1);
+    fillPoly3(ctx, top.concat(band.slice().reverse()), col(C.turf, f));
+    path3(ctx, body); ctx.strokeStyle = EDGE(); ctx.lineWidth = EDGE_W(); ctx.stroke();
   }
 }
 
 function terrainBase(i, j, z, paint) {
   if (paint) return MATERIALS[paint] ? MATERIALS[paint].color : '#a7bf87';
   const n = hash2(i, j);
-  let c = mixHex('#adc58c', '#9fbb83', n);
-  if (z > 0) c = mixHex(c, '#c9cd95', clamp(z / 6, 0, 0.6));
-  else if (z < 0) c = mixHex(c, '#8eab7c', clamp(-z / 3, 0, 0.6));
+  let c = mixHex('#b6c595', '#a9bc8a', n);
+  if (z > 0) c = mixHex(c, '#d8d09e', clamp(z / 6, 0, 0.6));
+  else if (z < 0) c = mixHex(c, '#8fa77c', clamp(-z / 3, 0, 0.6));
   return c;
 }
 function drawTerrain(ctx) {
@@ -222,7 +251,7 @@ function drawTerrain(ctx) {
     const h00 = h[k00], h10 = h[k10], h01 = h[k01], h11 = h[k11];
     const dx = (h10 + h11 - h00 - h01) / 2, dy = (h01 + h11 - h00 - h10) / 2, nl = Math.hypot(dx, dy, 1);
     const dot = (-dx * sv.x - dy * sv.y + sv.z) / nl;
-    const f = clamp(1 + 1.25 * (dot - sv.z), 0.62, 1.22);
+    const f = PROFILE === 'paper' ? clamp(1 + 0.45 * (dot - sv.z), 0.88, 1.06) : clamp(1 + 1.25 * (dot - sv.z), 0.62, 1.22);
     const z = (h00 + h10 + h01 + h11) / 4;
     const fill = col(terrainBase(i, j, z, t.paint[c]), f);
     ctx.beginPath();
@@ -234,16 +263,16 @@ function drawTerrain(ctx) {
       const depth = clamp((wl - Math.min(h00, h10, h01, h11)) / 1.4, 0, 1);
       const x0 = i - H, y0 = j - H;
       path3(ctx, [{ x: x0, y: y0, z: wl }, { x: x0 + 1, y: y0, z: wl }, { x: x0 + 1, y: y0 + 1, z: wl }, { x: x0, y: y0 + 1, z: wl }]);
-      const wc = col(mixHex('#a9d3d6', '#3f7d95', depth), 0.96 + 0.08 * hash2(i + 3, j));
+      const wc = col(mixHex('#b4d4cf', '#4f8696', depth), 0.96 + 0.08 * hash2(i + 3, j));
       ctx.fillStyle = wc; ctx.fill(); ctx.strokeStyle = wc; ctx.lineWidth = 0.7; ctx.stroke();
     }
   }
   // grid
-  const a = VIEW.plan ? 1 : 0.55;
+  const a = VIEW.plan || PAPER() ? 1 : 0.6, paper = PAPER();
   ctx.lineWidth = 1;
   for (let k = 0; k <= N; k++) {
     const major = k % 5 === 0;
-    ctx.strokeStyle = major ? `rgba(128,153,132,${0.42 * a})` : `rgba(159,178,162,${0.26 * a})`;
+    ctx.strokeStyle = paper ? (major ? 'rgba(38,35,29,.24)' : 'rgba(38,35,29,.1)') : major ? `rgba(98,117,66,${0.34 * a})` : `rgba(127,145,80,${0.17 * a})`;
     ctx.beginPath();
     for (let m = 0; m <= N; m++) { const q = vIdx(k, m) * 2; m ? ctx.lineTo(PV[q], PV[q + 1]) : ctx.moveTo(PV[q], PV[q + 1]); }
     ctx.stroke(); ctx.beginPath();
@@ -351,7 +380,7 @@ function drawShadows(ctx) {
     const pts = a < 0 ? s.slice().reverse() : s;
     pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.closePath();
   }
-  ctx.fillStyle = `rgba(34,48,38,${0.17 * SUN.day})`; ctx.fill('nonzero');
+  ctx.fillStyle = PAPER() ? 'rgba(38,35,29,.07)' : `rgba(52,46,30,${0.16 * SUN.day})`; ctx.fill('nonzero');
 }
 
 // ── walls ─────────────────────────────────────────────────────────────────────
@@ -407,8 +436,11 @@ function drawWall(ctx, wl, opts = {}) {
         const paintMat = paintOf(wl.id, 'face', vis) || mat;
         const face = col(tintFor(paintMat, hl), lam(fn) * 0.97);
         fillPoly3(ctx, [{ ...A, z: base - 0.25 }, { ...B, z: base - 0.25 }, { ...B, z: top }, { ...A, z: top }], face);
+        line3(ctx, [{ ...A, z: base }, { ...B, z: base }], EDGE(), EDGE_W() * 0.8);
         const topC = col(tintFor(mixHex(mat, '#ffffff', 0.3), hl), 1.02);
-        fillPoly3(ctx, [{ ...pL, z: top }, { ...qL, z: top }, { ...qR, z: top }, { ...pR, z: top }], topC, col(mat, 0.8), 0.7);
+        fillPoly3(ctx, [{ ...pL, z: top }, { ...qL, z: top }, { ...qR, z: top }, { ...pR, z: top }], topC, topC, 0.7);
+        line3(ctx, [{ ...pL, z: top }, { ...qL, z: top }], EDGE(), EDGE_W());
+        line3(ctx, [{ ...pR, z: top }, { ...qR, z: top }], EDGE(), EDGE_W());
       } });
     }
     // end caps
@@ -416,7 +448,7 @@ function drawWall(ctx, wl, opts = {}) {
       const at = G.atLen(pts, s), cn = G.mul(at.dir, sgn); if (!facesViewer(cn)) continue;
       const n = G.left(at.dir), a = G.add(at.p, G.mul(n, half)), b = G.sub(at.p, G.mul(n, half));
       pieces.push({ d: depthOf(at.p.x, at.p.y, base + wl.height / 2) - 0.01, draw() {
-        fillPoly3(ctx, [{ ...a, z: base - 0.25 }, { ...b, z: base - 0.25 }, { ...b, z: top }, { ...a, z: top }], col(tintFor(MATERIALS[wl.mat[0]].color, hl), lam(cn) * 0.9));
+        fillPoly3(ctx, [{ ...a, z: base - 0.25 }, { ...b, z: base - 0.25 }, { ...b, z: top }, { ...a, z: top }], col(tintFor(MATERIALS[wl.mat[0]].color, hl), lam(cn) * 0.9), EDGE(), EDGE_W());
       } });
     }
   }
@@ -480,7 +512,7 @@ function drawRoofFaces(ctx, faces, wallMat, roofMat, hl, ghost) {
   for (const { f } of sorted) {
     const n = newellNormal(f.pts), base = f.part === 'gable' ? wallMat : roofMat;
     const tone = f.part === 'roofflat' ? mixHex(base, '#ffffff', 0.25) : base;
-    fillPoly3(ctx, f.pts, col(tintFor(tone, hl), lam(n)), col(tone, lam(n) * 0.8), 0.8);
+    fillPoly3(ctx, f.pts, col(tintFor(tone, hl), lam(n)), EDGE(), EDGE_W());
   }
   if (hl && HL_LINE[hl]) for (const { f } of sorted) { path3(ctx, f.pts); ctx.setLineDash(ghost ? [6, 4] : []); ctx.lineWidth = HL_LINE[hl][1] * 0.8; ctx.strokeStyle = HL_LINE[hl][0]; ctx.stroke(); ctx.setLineDash([]); }
 }
@@ -489,14 +521,14 @@ function drawBuilding(ctx, b, opts = {}) {
   const lo = opts.lo ?? groundRange(foot).lo;
   const vis = edges.filter((e) => facesViewer(e.out)).sort((p, q) => { const a = G.mid(p.a, p.b), c = G.mid(q.a, q.b); return depthOf(c.x, c.y) - depthOf(a.x, a.y); });
   if (z0 - lo > 0.04) {
-    for (const e of vis) fillPoly3(ctx, [{ ...e.a, z: lo - 0.2 }, { ...e.b, z: lo - 0.2 }, { ...e.b, z: z0 }, { ...e.a, z: z0 }], col(tintFor('#b8b1a1', hl), lam(e.out)));
+    for (const e of vis) fillPoly3(ctx, [{ ...e.a, z: lo - 0.2 }, { ...e.b, z: lo - 0.2 }, { ...e.b, z: z0 }, { ...e.a, z: z0 }], col(tintFor('#c2b69c', hl), lam(e.out)), EDGE(), EDGE_W() * 0.8);
   }
   const wins = opts.ghost ? [] : bWindows(b), doors = opts.ghost ? [] : world.openings.filter((o) => o.hostKind === 'building' && o.hostId === b.id);
   for (const e of vis) {
     const matKey = b.overrides[e.i] || b.mat, base = MATERIALS[matKey] ? MATERIALS[matKey].color : '#f1e6cf';
     const paintMat = paintOf(b.id, 'face', e.i) || base;
     const f = lam(e.out);
-    fillPoly3(ctx, [{ ...e.a, z: z0 }, { ...e.b, z: z0 }, { ...e.b, z: z0 + H }, { ...e.a, z: z0 + H }], col(tintFor(paintMat, hl), f));
+    fillPoly3(ctx, [{ ...e.a, z: z0 }, { ...e.b, z: z0 }, { ...e.b, z: z0 + H }, { ...e.a, z: z0 + H }], col(tintFor(paintMat, hl), f), EDGE(), EDGE_W());
     for (let k = 1; k < b.floors && k * STOREY < H; k++) line3(ctx, [{ ...e.a, z: z0 + k * STOREY }, { ...e.b, z: z0 + k * STOREY }], col(base, f * 0.82), 1.2);
     const onFace = (u, v, ex = 0.02) => ({ x: e.a.x + e.dir.x * u + e.out.x * ex, y: e.a.y + e.dir.y * u + e.out.y * ex, z: z0 + v });
     for (const w of wins) {
@@ -553,8 +585,15 @@ function drawForm(ctx, f, opts = {}) {
     const m = G.mid(a, b); faces.push({ a, b, out, d: depthOf(m.x, m.y, (z0 + z1) / 2) });
   }
   faces.sort((p, q) => q.d - p.d);
-  for (const fc of faces) fillPoly3(ctx, [{ ...fc.a, z: z0 }, { ...fc.b, z: z0 }, { ...fc.b, z: z1 }, { ...fc.a, z: z1 }], col(tintFor(color, hl), lam(fc.out)), col(color, lam(fc.out) * 0.8), 0.6);
-  fillPoly3(ctx, pts.map((p) => ({ ...p, z: z1 })), col(tintFor(color, hl), lam({ x: 0, y: 0, z: 1 }) * 1.04), col(color, 0.82), 0.6);
+  for (const fc of faces) {
+    const c = col(tintFor(color, hl), lam(fc.out));
+    fillPoly3(ctx, [{ ...fc.a, z: z0 }, { ...fc.b, z: z0 }, { ...fc.b, z: z1 }, { ...fc.a, z: z1 }], c, c, 0.6);
+    line3(ctx, [{ ...fc.a, z: z0 }, { ...fc.b, z: z0 }], EDGE(), EDGE_W() * 0.8);
+  }
+  // silhouette verticals: where a visible side meets a hidden one
+  if (pts.length <= 12) for (const fc of faces) for (const q of [fc.a, fc.b]) line3(ctx, [{ ...q, z: z0 }, { ...q, z: z1 }], EDGE(), EDGE_W() * 0.8);
+  else for (const fc of faces) { const prevHidden = !faces.some((g) => g.b === fc.a), nextHidden = !faces.some((g) => g.a === fc.b); if (prevHidden) line3(ctx, [{ ...fc.a, z: z0 }, { ...fc.a, z: z1 }], EDGE(), EDGE_W()); if (nextHidden) line3(ctx, [{ ...fc.b, z: z0 }, { ...fc.b, z: z1 }], EDGE(), EDGE_W()); }
+  fillPoly3(ctx, pts.map((p) => ({ ...p, z: z1 })), col(tintFor(color, hl), lam({ x: 0, y: 0, z: 1 }) * 1.04), EDGE(), EDGE_W());
   if (hl && HL_LINE[hl]) { path3(ctx, pts.map((p) => ({ ...p, z: z1 }))); ctx.setLineDash(hl === 'ghost' ? [5, 4] : []); ctx.lineWidth = HL_LINE[hl][1]; ctx.strokeStyle = HL_LINE[hl][0]; ctx.stroke(); ctx.setLineDash([]); }
 }
 function drawBox(ctx, corners2, z0, z1, color, hl) {
@@ -562,10 +601,11 @@ function drawBox(ctx, corners2, z0, z1, color, hl) {
   for (let i = 0; i < n; i++) {
     const a = corners2[i], b = corners2[(i + 1) % n], d = G.norm(G.sub(b, a)), out = { x: d.y, y: -d.x };
     if (!facesViewer(out)) continue;
-    fillPoly3(ctx, [{ ...a, z: z0 }, { ...b, z: z0 }, { ...b, z: z1 }, { ...a, z: z1 }], col(tintFor(color, hl), lam(out)), col(color, lam(out) * 0.78), 0.6);
+    fillPoly3(ctx, [{ ...a, z: z0 }, { ...b, z: z0 }, { ...b, z: z1 }, { ...a, z: z1 }], col(tintFor(color, hl), lam(out)), BOX_EDGE(), 0.6);
   }
-  fillPoly3(ctx, corners2.map((p) => ({ ...p, z: z1 })), col(tintFor(color, hl), lam({ x: 0, y: 0, z: 1 }) * 1.04), col(color, 0.8), 0.6);
+  fillPoly3(ctx, corners2.map((p) => ({ ...p, z: z1 })), col(tintFor(color, hl), lam({ x: 0, y: 0, z: 1 }) * 1.04), BOX_EDGE(), 0.6);
 }
+const BOX_EDGE = () => (PAPER() ? 'rgba(38,35,29,.7)' : 'rgba(38,35,29,.36)');
 function rotPt(o, r, lx, ly) { return { x: o.x + lx * Math.cos(r) - ly * Math.sin(r), y: o.y + lx * Math.sin(r) + ly * Math.cos(r) }; }
 function drawObject(ctx, o, opts = {}) {
   const def = OBJECTS[o.item], z = o.z ?? objBase(o.x, o.y), hl = opts.hl || hlOf(o.id);
@@ -647,13 +687,14 @@ function drawPlant(ctx, p, hl) {
     const b = P(p.x, p.y, z), t = P(p.x, p.y, z + 1.5 * s);
     ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(t.x, t.y); ctx.strokeStyle = '#6b5139'; ctx.lineWidth = Math.max(1.2, 0.2 * s * sc); ctx.stroke();
     const k = P(p.x, p.y, z + 2.5 * s), r = 1.1 * s * sc;
-    ctx.beginPath(); ctx.arc(k.x, k.y, r, 0, Math.PI * 2); ctx.fillStyle = col(tintFor(c, hl), 0.92); ctx.fill();
-    if (p.v > 0.45) { ctx.beginPath(); ctx.arc(k.x + r * 0.35, k.y - r * 0.55, r * 0.62, 0, Math.PI * 2); ctx.fillStyle = col(tintFor(c, hl), 0.98); ctx.fill(); }
+    const crown = PAPER() ? '#eee5cf' : c, ink = PAPER() ? 'rgba(38,35,29,.7)' : 'rgba(30,44,30,.32)';
+    ctx.beginPath(); ctx.arc(k.x, k.y, r, 0, Math.PI * 2); ctx.fillStyle = col(tintFor(crown, hl), 0.92); ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 0.9; ctx.stroke();
+    if (p.v > 0.45) { ctx.beginPath(); ctx.arc(k.x + r * 0.35, k.y - r * 0.55, r * 0.62, 0, Math.PI * 2); ctx.fillStyle = col(tintFor(crown, hl), 0.98); ctx.fill(); ctx.stroke(); }
     const hp = P(p.x + SUN.h.x * 0.45 * s, p.y + SUN.h.y * 0.45 * s, z + 2.85 * s);
     ctx.beginPath(); ctx.arc(hp.x, hp.y, r * 0.5, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,250,220,${0.16 + 0.12 * SUN.day})`; ctx.fill();
   } else if (p.kind === 'shrub') {
     const k = P(p.x, p.y, z + 0.42 * s), r = 0.55 * s * sc;
-    ctx.beginPath(); ctx.ellipse(k.x, k.y, r, r * 0.82, 0, 0, Math.PI * 2); ctx.fillStyle = col(tintFor(c, hl), 0.95); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(k.x, k.y, r, r * 0.82, 0, 0, Math.PI * 2); ctx.fillStyle = col(tintFor(PAPER() ? '#eee5cf' : c, hl), 0.95); ctx.fill(); ctx.strokeStyle = PAPER() ? 'rgba(38,35,29,.6)' : 'rgba(30,44,30,.26)'; ctx.lineWidth = 0.8; ctx.stroke();
     ctx.beginPath(); ctx.ellipse(k.x - r * 0.25, k.y - r * 0.3, r * 0.45, r * 0.32, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,250,220,.18)'; ctx.fill();
   } else if (p.kind === 'flower') {
     for (let i = 0; i < 4; i++) {
@@ -717,7 +758,7 @@ function collectItems(items) {
 
 // ── night and glows ──────────────────────────────────────────────────────────
 function drawGlows(ctx) {
-  const night = SUN.night;
+  const night = PAPER() ? 0 : SUN.night;
   if (night > 0.02) {
     ctx.globalCompositeOperation = 'multiply';
     ctx.fillStyle = mixHex('#ffffff', '#2f3c66', night * 0.76);
@@ -745,16 +786,28 @@ function drawGlows(ctx) {
 }
 
 function skyFill(ctx) {
+  if (PAPER()) { ctx.fillStyle = '#f8f1e2'; ctx.fillRect(0, 0, VIEW.w, VIEW.h); return; }
   const g = ctx.createLinearGradient(0, 0, 0, VIEW.h);
   const warm = SUN.warm * SUN.day;
-  g.addColorStop(0, mixHex(mixHex('#e4e8e2', '#f2dcc0', warm * 0.8), '#1d2740', SUN.night * 0.85));
-  g.addColorStop(1, mixHex(C.paper, '#2a3550', SUN.night * 0.8));
+  g.addColorStop(0, mixHex(mixHex('#efe6d0', '#f1c999', warm * 0.75), '#1d2740', SUN.night * 0.85));
+  g.addColorStop(1, mixHex(mixHex(C.paper, '#f4dcc0', warm * 0.5), '#2a3550', SUN.night * 0.8));
   ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW.w, VIEW.h);
+}
+/* Paper grain over the whole Stage, fixed to the screen like the sheet it is drawn on. */
+let GRAIN = null;
+function grainFill(ctx) {
+  if (!GRAIN) {
+    const c = document.createElement('canvas'); c.width = c.height = 160;
+    const g = c.getContext('2d'), im = g.createImageData(160, 160);
+    for (let i = 0; i < im.data.length; i += 4) { const v = Math.random(); im.data[i] = 92; im.data[i + 1] = 74; im.data[i + 2] = 44; im.data[i + 3] = v > 0.5 ? (v - 0.5) * 36 : 0; }
+    g.putImageData(im, 0, 0); GRAIN = ctx.createPattern(c, 'repeat');
+  }
+  ctx.fillStyle = GRAIN; ctx.fillRect(0, 0, VIEW.w, VIEW.h);
 }
 
 function render() {
   const ctx = VIEW.ctx; if (!ctx) return;
-  camPrep(); SUN = sunInfo(world.sun); GLOWS = [];
+  camPrep(); SUN = sunInfo(PAPER() ? 11 : world.sun); GLOWS = []; // Paper has no hour: a drawing is lit from the upper left
   ctx.setTransform(VIEW.dpr, 0, 0, VIEW.dpr, 0, 0);
   skyFill(ctx);
   drawSlab(ctx);
@@ -769,6 +822,7 @@ function render() {
   items.sort((a, b) => b.d - a.d);
   for (const it of items) { if (it.alpha != null) ctx.globalAlpha = it.alpha; it.draw(ctx); ctx.globalAlpha = 1; }
   drawGlows(ctx);
+  grainFill(ctx);
   if (typeof drawOverlay === 'function') drawOverlay(ctx);
   VIEW.dirty = false;
 }

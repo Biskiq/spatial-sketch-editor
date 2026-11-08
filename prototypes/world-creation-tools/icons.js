@@ -1,9 +1,10 @@
 'use strict';
 /*
- * World creation tools — icon set.
- * One 24 × 24 grid, 1.5 px strokes, round caps. Every glyph is inner SVG markup so a
- * glyph can mix paths, circles and rects. Drawn for the dark forest dock (white ink)
- * and reused on paper in the system sheet (dark ink): colour comes from currentColor.
+ * World creation tools — icon set, in two voices.
+ * Hero icons (dock keys only): a monoline drawing over an offset wash of the key's colour,
+ * like a pencil line over a misregistered print. Eight of them, one per dock key.
+ * Palette icons: one 24 × 24 grid, 1.5 px strokes, round caps, colour from currentColor.
+ * Every glyph is inner SVG markup so a glyph can mix paths, circles and rects.
  */
 const ICONS = {
   // ── utilities ──────────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ const ICONS = {
   // ── families (collapsed dock keys) ─────────────────────────────────────────
   'fam-build': '<path d="M3 20.2h18"/><path d="M5 20.2v-8.4l5-4.4 5 4.4v8.4"/><path d="M15 13h5v7.2"/><path d="M8.6 20.2v-4h2.8v4"/>',
   'fam-furnish': '<path d="M5.6 12V8.4a2 2 0 0 1 2-2h8.8a2 2 0 0 1 2 2V12"/><path d="M3.6 12.6a1.5 1.5 0 0 1 3 0v2.6h10.8v-2.6a1.5 1.5 0 0 1 3 0V18H3.6z"/><path d="M6 18v2.2M18 18v2.2"/>',
+  'fam-form': '<path d="M3.5 19.5h17v-3h-17z"/><path d="M6.5 16.5v-5h6v5"/><circle cx="16.4" cy="13.2" r="3.2"/>',
   'fam-land': '<path d="M2.6 19.4c3.4-4.8 6-6.8 9.4-6.8 2.1 0 3.9.8 5.6 2.3 1.4 1.2 2.6 2.7 3.8 4.5z"/><path d="M16.2 13V9.2"/><circle cx="16.2" cy="6.6" r="2.6"/>',
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -180,3 +182,24 @@ function icon(name, size = 20, extra = '') {
   const body = ICONS[name] || ICONS.info;
   return `<svg class="ico" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${body}</svg>`;
 }
+
+/* Hero icons: [line, wash]. The wash is drawn first, offset down and right, in --wash. */
+const HERO = {
+  select: ['<path d="M6 3.6 18.4 11l-5.5 1.6 3.2 5.6-2.4 1.4-3.2-5.6L6.2 18.4z"/>', '<path d="M6 3.6 18.4 11l-5.5 1.6 3.2 5.6-2.4 1.4-3.2-5.6L6.2 18.4z"/>'],
+  'fam-build': ['<path d="M2.8 20.4h18.4"/><path d="M5.2 20.4v-9.2l6-5.2 6 5.2v9.2"/><path d="M17.2 14.2h3.4v6.2"/><path d="M9.6 20.4v-4.4h3.2v4.4"/><path d="M8.2 12.4h1.4M12.8 12.4h1.4"/>', '<path d="M5.2 20.4v-9.2l6-5.2 6 5.2v9.2z"/>'],
+  'fam-form': ['<path d="M3.2 20h17.6v-3.2H3.2z"/><path d="M5.8 16.8v-6.2h6.4v6.2"/><circle cx="16.6" cy="13.4" r="3.4"/><path d="M5.8 10.6 8 8.4h6.4l-2.2 2.2M14.4 8.4v6.2l-2.2 2.2" opacity=".7"/>', '<rect x="5.8" y="10.6" width="6.4" height="6.2"/><circle cx="16.6" cy="13.4" r="3.4"/>'],
+  'fam-land': ['<path d="M2.4 19.8c3.2-4.8 6.2-6.8 9.6-6.8s6.4 2 9.6 6.8"/><path d="M16.2 13.6V10"/><circle cx="16.2" cy="7.4" r="2.6"/><path d="M5.6 19.8c1.2-1.4 2.2-2.2 3.4-2.6" opacity=".6"/>', '<path d="M2.4 19.8c3.2-4.8 6.2-6.8 9.6-6.8s6.4 2 9.6 6.8z"/><circle cx="16.2" cy="7.4" r="2.6"/>'],
+  'fam-furnish': ['<path d="M6 12.2V8.2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4"/><path d="M3.8 12.8a1.5 1.5 0 0 1 3 0v2.4h10.4v-2.4a1.5 1.5 0 0 1 3 0V18H3.8z"/><path d="M6 18v2.4M18 18v2.4"/>', '<path d="M6 15.2V8.2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v7z"/>'],
+  paint: ['<rect x="4" y="3.6" width="13" height="5.4" rx="1.2"/><path d="M17 6.3h2.8v5.4h-8.3v2.8"/><rect x="10" y="14.4" width="3" height="6.2" rx=".8"/>', '<rect x="4" y="3.6" width="13" height="5.4" rx="1.2"/>'],
+  erase: ['<path d="m14.4 4.4 5.2 5.2-9.4 9.6H5.6l-2.1-2.1a1.4 1.4 0 0 1 0-2z"/><path d="m8.6 10.2 5.2 5.2M10.2 19.2h10"/>', '<path d="m14.4 4.4 5.2 5.2-5.8 5.8-5.2-5.2z"/>'],
+  library: ['<path d="M3 20h18"/><path d="M4.6 20V4.6h3.2V20M7.8 20V7h3.2v13"/><path d="m13.2 8.2 3-.9 3.8 12.7-3 .9z"/>', '<path d="M7.8 20V7h3.2v13z"/><path d="m13.2 8.2 3-.9 3.8 12.7-3 .9z"/>'],
+};
+
+/** A dock key's hero icon: wash in var(--wash), line in currentColor. */
+function heroIcon(name, size = 26) {
+  const [line, wash] = HERO[name] || [ICONS[name] || ICONS.info, ''];
+  return `<svg class="ico hero" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><g class="hw" transform="translate(1.3 1.4)" fill="var(--wash, #b7c6ad)">${wash}</g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${line}</g></svg>`;
+}
+
+/* The mark: a drafting set-square with a leaf growing through it. Precise drawing, living world. */
+const BRAND_MARK = '<svg class="mark" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.6 18.6c0-6.4 4.2-10.8 12-11.4-.4 7.6-5 11.4-12 11.4z" fill="#9dbb73"/><path d="M3.4 3.4v17.2h17.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.4 9.4 14.6 20.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/><path d="M8.6 18.6c3.2-3.4 6.6-6.8 10-9.6" fill="none" stroke="#13261b" stroke-width="1.1" stroke-linecap="round" opacity=".55"/></svg>';

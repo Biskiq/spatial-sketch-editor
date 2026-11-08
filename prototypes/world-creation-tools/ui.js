@@ -2,11 +2,13 @@
 /*
  * World creation tools — the shell around the Stage.
  *
- * One instrument at the lower edge: a forest dock tier and, above it, one ivory tier that
- * holds whichever of three things is current — the armed tool's palette, the selection's
- * actions (Select armed), or the Library. The armed key is the tab that tier hangs from.
- * The head carries the project, history and the view cluster; the Card shows the
- * selection's properties. The dark strip at the very top and the readout in the lower
+ * One instrument at the lower edge. The forest dock carries eight labelled keys: Select, four
+ * families (Build, Form, Landscape, Furnish), Paint, Erase and the Library. A family key arms
+ * the tool you last used in it. Above the dock, one parchment tier holds whichever thing is
+ * current: the armed family's tools as words and the armed tool's options as pictures, the
+ * selection's actions (Select armed), or the Library. The armed key is the tab that tier
+ * hangs from. The head carries the project, history, the view cluster and the Sky; the Card
+ * shows the selection's properties. The dark strip at the very top and the readout on the
  * left are instruments for reviewing the proposal, not proposed product UI.
  */
 
@@ -20,13 +22,14 @@ const KIND_NAME = { walls: 'Wall', rooms: 'Room (derived)', openings: 'Opening',
 const TRY = {
   select: ['Click inside a closed room: the tier above the dock offers it a roof.', 'Studio: click the Stage, then drag it. The drum on it moves too.', 'Click the Cottage, then drag the gold square above its roof to change storeys.', 'Select a garden wall and pull the gold knob on its top to bend it.'],
   walls: ['Draw a Box (3) of room-height walls: closing it offers a roof. Open is the default; click the token to change it.', 'Pick Circle (4) and drag out a round room: the roof offer becomes Dome or Flat.', 'Draw a Line across the Garden path: a doorway is proposed where they cross.'],
-  building: ['Press K, open Buildings and pick the Tower: the palette is set for a round footprint.', 'Drag a Box on the hill to the east: choose Plinth or Level the ground on the token.', 'Draw a footprint across the Garden path to get a door where it meets.'],
+  building: ['Pick Tower in the palette: the footprint turns round and it rises three storeys as you drag.', 'Slope: drag a Box across the terrace edge: choose Plinth or Level the ground on the token.', 'Draw a footprint across the Garden path to get a door where it meets.'],
   opening: ['Hover the Tower: the opening lands on the storey you point at.', 'Try a door on an upper storey to see the refusal.', 'Arch (3) through a gallery wall connects two rooms.'],
   stair: ['Hillside scenario: drag from the foot of the terrace up onto it.', 'Studio: drag from the floor up onto the Stage.'],
   object: ['Drag across open ground: a row of the shelf item, evenly spaced. It skips what is in the way and says so.', 'Gallery: pick Frame (6), then drag along a long wall to hang a row. It skips the door.', 'Press K for the Library. Picking a vitrine puts it on the shelf.', 'Studio: place a plinth on the Stage. It stands on top.'],
   form: ['Studio: draw a Box on the Stage, move up to pull its height, click to set. It rests on the Stage.', 'Circle (4) and a tall pull makes a column; the name follows the proportions.', 'Select a form, then Duplicate. Things you compose can be saved to the Library.'],
-  light: ['Drag the sun across the sky arc to dusk, or click a point on the arc.', 'Place a Spot near a frame, then change the token after release: once, keep aimed, or not aimed.', 'A pendant outside a room refuses: nothing to hang from.'],
-  ground: ['Hold over open ground to raise it; Shift lowers. [ and ] change the brush.', 'Pond (6): hold across the Garden path. A bridge token appears after the stroke.', 'Stream (7): drag a stroke down the hill.', 'Terrace (5): drag a shape, move up to lift it, click to set.'],
+  light: ['Gallery: place a Spot near a frame, then change the token after release: once, keep aimed, or not aimed.', 'A pendant outside a room refuses: nothing to hang from.', 'The sun is not a light: open Sky in the head and drag it to dusk.'],
+  ground: ['Hold over open ground to raise it; Shift lowers. [ and ] change the brush.', 'Terrace (5): drag a shape, move up to lift it, click to set.', 'Water is next door in Landscape: press A.'],
+  water: ['Village: hold across the Garden path to paint a pond. A bridge token appears after the stroke.', 'Stream (2): drag a stroke down the hill. It follows the ground.', 'Meadow: a deep pond, then Path (P) across it.'],
   path: ['Draw from the Cottage across the meadow to the garden wall: a gate, steps or a bridge are proposed where they happen.', 'After release, click a token to change it. Still one undo step.'],
   plants: ['Hold to scatter trees; they skip the path, water, buildings and forms.', 'Click once for a single plant. Shift-hold clears.'],
   paint: ['Reach: Room or building, then click the Cottage. It asks: only this one, or every Cottage.', 'Studio: Reach Whole wall or form, then click the Drum.', 'Hold Alt over a wall to sample its material.'],
@@ -51,14 +54,15 @@ const SEL_HINT = {
 };
 
 const UI = {
-  ready: false, paletteOpen: true, lib: null, view: 'stage', spec: false, scenario: 'village',
+  ready: false, paletteOpen: true, lib: null, sky: false, skyLive: false, view: 'stage', spec: false, scenario: 'village',
   lastTool: null, trySeq: 0, edgeH: 150,
   sig: {}, els: {}, toks: new Map(), toastT: null,
 
   init() {
-    this.els = { dock: $('#dock'), palette: $('#palette'), edge: $('#edge'), tip: $('#tip'), head: $('#head'), headR: $('#headR'), card: $('#card'), spec: $('#spec'), readout: $('#readout'), overlay: $('#overlay'), tag: $('#tag'), toasts: $('#toasts'), stageView: $('#stageView'), sheetView: $('#sheetView') };
+    this.els = { dock: $('#dock'), palette: $('#palette'), edge: $('#edge'), tip: $('#tip'), head: $('#head'), headR: $('#headR'), sky: $('#skypop'), card: $('#card'), spec: $('#spec'), readout: $('#readout'), overlay: $('#overlay'), tag: $('#tag'), toasts: $('#toasts'), stageView: $('#stageView'), sheetView: $('#sheetView') };
     document.addEventListener('click', (e) => this.onClick(e));
     document.addEventListener('change', (e) => this.onChange(e));
+    document.addEventListener('input', (e) => this.onInput(e));
     window.addEventListener('keydown', (e) => { if (this.view === 'stage') { onKey(e); this.sync(); } });
     window.addEventListener('keyup', (e) => { if (this.view === 'stage') onKeyUp(e); });
     window.addEventListener('resize', () => { resizeStage(); VIEW.dirty = true; });
@@ -77,11 +81,20 @@ const UI = {
     if (b && TOOLS[b]) armTool(b);
     this.sync();
   },
+  capture() {
+    const keep = PROFILE, sky = this.sky, out = {};
+    this.sky = false;
+    try { for (const p of ['living', 'paper']) { setProfile(p); render(); out[p] = VIEW.cv.toDataURL('image/jpeg', 0.82); } }
+    finally { setProfile(keep); this.sky = sky; VIEW.dirty = true; }
+    return out;
+  },
   updateHash() {
     const h = this.view === 'sheet' ? '#sheet' : `#${this.scenario}${T.tool !== 'select' ? '/' + T.tool : ''}`;
     if (location.hash !== h) history.replaceState(null, '', h);
   },
   setView(v) {
+    // The sheet shows the Stage in both profiles: take the two pictures while it is still on screen.
+    if (v === 'sheet' && !this.sheetDone && this.view === 'stage' && VIEW.w > 300) this.shots = this.capture();
     this.view = v;
     this.els.stageView.hidden = v !== 'stage'; this.els.sheetView.hidden = v !== 'sheet';
     document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === v));
@@ -92,10 +105,19 @@ const UI = {
 
   // ── events ────────────────────────────────────────────────────────────────
   onClick(e) {
-    const el = e.target.closest('[data-tool],[data-opt],[data-action],[data-view],[data-sel],[data-edit],[data-tok],[data-act],[data-lib],[data-lib-cat]');
+    const el = e.target.closest('[data-tool],[data-family],[data-sub],[data-sky],[data-opt],[data-action],[data-view],[data-sel],[data-edit],[data-tok],[data-act],[data-lib],[data-lib-cat]');
     if (!el) return;
     const d = el.dataset;
     if (d.view) { this.setView(d.view); return; }
+    if (d.family) {
+      // A family key arms the tool last used in it; pressed again, it folds its tier.
+      const f = FAMILIES.find((x) => x.id === d.family);
+      if (f.tools.includes(T.tool) && !this.lib) this.paletteOpen = !this.paletteOpen;
+      else armTool(T.famLast[f.id] || f.tools[0]);
+      this.sync(); return;
+    }
+    if (d.sub) { if (d.sub !== T.tool) armTool(d.sub); this.sync(); return; }
+    if (d.sky) { const p = SKY_PRESETS.find((x) => x.id === d.sky); setHour(p.t, `Sky to ${p.label.toLowerCase()}`); return; }
     if (d.tool) {
       const t = TOOLS[d.tool];
       // The armed key folds its tier away and back; a view tool toggles back to Select.
@@ -113,9 +135,11 @@ const UI = {
     const a = d.action;
     if (a === 'undo') doUndo();
     else if (a === 'redo') doRedo();
-    else if (a === 'plan') { setPlan(!VIEW.plan); this.sync(); }
+    else if (a === 'plan') { setPlan(d.v ? d.v === 'plan' : !VIEW.plan); this.sync(); }
+    else if (a === 'profile') { setProfile(d.v); this.sync(); }
+    else if (a === 'sky') { this.sky = !this.sky; if (this.sky) this.lib = null; VIEW.dirty = true; this.sync(); }
     else if (a === 'spec') { this.spec = !this.spec; document.body.classList.toggle('spec-open', this.spec); this.sync(); }
-    else if (a === 'library') this.openLibrary();
+    else if (a === 'library') { this.sky = false; this.openLibrary(); }
     else if (a === 'library-close') { this.lib = null; this.sync(); }
     else if (a === 'reset') { loadScenario(this.scenario); armTool('select'); this.toast('Scenario reset'); }
     else if (a === 'readout') { this.roMin = !this.roMin; this.sync(); }
@@ -124,6 +148,17 @@ const UI = {
   },
   onChange(e) {
     if (e.target.id === 'scenario') { this.scenario = e.target.value; loadScenario(this.scenario); armTool('select'); this.updateHash(); }
+    if (e.target.id === 'hour' && this.skyLive) {
+      this.skyLive = false;
+      liveEnd(`Set the hour to ${hh(world.sun)}`, { intent: 'scene.environment.setHour', hour: r2(world.sun) });
+      T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; this.sync();
+    }
+  },
+  /* The hour slider edits live; the step is recorded when it is let go (one undo step). */
+  onInput(e) {
+    if (e.target.id !== 'hour') return;
+    if (!this.skyLive) { liveBegin(); this.skyLive = true; }
+    world.sun = +e.target.value; VIEW.dirty = true; this.sync();
   },
   amendToken(id) {
     if (!T.amend) return;
@@ -164,7 +199,8 @@ const UI = {
     const tip = this.els.tip; let cur = null, timer = null, hidAt = 0;
     const show = (el) => {
       const d = el.dataset;
-      tip.innerHTML = `<b>${esc(d.tip)}</b>${d.k ? `<kbd>${esc(d.k)}</kbd>` : ''}${d.d ? `<span>${esc(d.d)}</span>` : ''}`;
+      const subs = d.subs ? `<ul>${d.subs.split('|').map((x) => { const [n, k] = x.split(':'); return `<li>${esc(n)}<kbd>${esc(k)}</kbd></li>`; }).join('')}</ul>` : '';
+      tip.innerHTML = `<b>${esc(d.tip)}</b>${d.k ? `<kbd>${esc(d.k)}</kbd>` : ''}${d.d ? `<span>${esc(d.d)}</span>` : ''}${subs}`;
       tip.hidden = false;
       const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
       const x = clamp(r.left + r.width / 2 - tw / 2, 8, innerWidth - tw - 8);
@@ -188,7 +224,7 @@ const UI = {
     if (!this.ready) return;
     if (T.tool !== this.lastTool) { this.lastTool = T.tool; this.trySeq = 0; }
     if (this.lib && this.lib.mode === 'replace' && !(T.sel === this.lib.target && byId(world, T.sel))) this.lib = null;
-    this.renderDock(); this.renderTier(); this.renderHead(); this.renderReadout(); this.renderCard(); this.renderSpec();
+    this.renderDock(); this.renderTier(); this.renderHead(); this.renderSky(); this.renderReadout(); this.renderCard(); this.renderSpec();
     document.body.dataset.armed = T.tool;
     document.querySelectorAll('.proto [data-action="spec"]').forEach((b) => b.setAttribute('aria-pressed', this.spec));
     this.updateHash();
@@ -196,20 +232,28 @@ const UI = {
 
   tierOpen() { return !!this.lib || this.paletteOpen; },
 
-  /* The dock tier's markup, shared with the System sheet's specimens. */
-  dockHtml(tool, libOpen) {
-    const key = (id) => {
-      const t = TOOLS[id], armed = tool === id;
-      const cls = armed ? (libOpen ? ' held' : ' armed') : '';
-      return `<button class="key${cls}${t.disabled ? ' off' : ''}" data-tool="${id}" aria-pressed="${armed}" aria-label="${esc(t.name)} (${t.key})" data-tip="${esc(t.name)}" data-k="${t.key}" data-d="${esc(firstSentence(t.makes))}">${icon(t.icon, 22)}</button>`;
+  /* The dock's markup, shared with the System sheet's stills. Words for nouns: every key is
+     labelled. A family key carries one dot per tool in it; the filled dot is the one it arms. */
+  dockHtml(tool, libOpen, famLast = T.famLast) {
+    const cls = (on) => (on ? (libOpen ? ' held' : ' armed') : '');
+    const solo = (id) => {
+      const t = TOOLS[id], on = tool === id;
+      return `<button class="key${cls(on)}" data-tool="${id}" aria-pressed="${on}" aria-label="${esc(t.name)} (${t.key})" data-tip="${esc(t.name)}" data-k="${t.key}" data-d="${esc(firstSentence(t.makes))}">${heroIcon(t.icon, 26)}<span class="kl">${esc(t.name)}</span></button>`;
     };
-    const grp = (ids, f) => `<div class="dg"${f ? ` style="--mark:${f.mark}"` : ''}><div class="dk">${ids.map(key).join('')}</div>${f ? `<span class="cap">${f.name}</span>` : ''}</div>`;
-    const lib = `<div class="dg"><div class="dk"><button class="key${libOpen ? ' armed' : ''}" data-action="library" aria-pressed="${libOpen}" aria-label="Library (K)" data-tip="Library" data-k="K" data-d="Everything you place, by kind: objects, lights, plants, building definitions and materials.">${icon('library', 22)}</button></div></div>`;
-    return grp(UTILITY_LEFT) + FAMILIES.map((f) => grp(f.tools, f)).join('') + grp(UTILITY_RIGHT) + lib;
+    const fam = (f) => {
+      const on = f.tools.includes(tool), cur = on ? tool : famLast[f.id] || f.tools[0];
+      const dots = f.tools.length > 1 ? `<span class="kd" aria-hidden="true">${f.tools.map((id) => `<i${id === cur ? ' class="on"' : ''}></i>`).join('')}</span>` : '';
+      const subs = f.tools.map((id) => `${TOOLS[id].name}:${TOOLS[id].key}`).join('|');
+      const k = f.tools.length === 1 ? TOOLS[f.tools[0]].key : '';
+      return `<button class="key fam${cls(on)}" data-family="${f.id}" style="--wash:${f.mark}" aria-pressed="${on}" aria-label="${esc(f.name)}: ${esc(f.tools.map((id) => TOOLS[id].name).join(', '))}" data-tip="${esc(f.name)}" data-k="${k}" data-d="${esc(f.blurb)}"${f.tools.length > 1 ? ` data-subs="${esc(subs)}"` : ''}>${heroIcon(f.icon, 26)}<span class="kl"${f.id === 'land' ? ' data-s="Land"' : ''}>${esc(f.name)}</span>${dots}</button>`;
+    };
+    const lib = `<button class="key${libOpen ? ' armed' : ''}" data-action="library" style="--wash:#d8c29a" aria-pressed="${libOpen}" aria-label="Library (K)" data-tip="Library" data-k="K" data-d="Everything you pick: objects, fixtures, plants, building definitions, materials, and what you save.">${heroIcon('library', 26)}<span class="kl">Library</span></button>`;
+    const sep = '<i class="dsep" aria-hidden="true"></i>';
+    return `<div class="dgrp">${UTILITY_LEFT.map(solo).join('')}</div>${sep}<div class="dgrp">${FAMILIES.map(fam).join('')}</div>${sep}<div class="dgrp">${UTILITY_RIGHT.map(solo).join('')}</div>${sep}<div class="dgrp">${lib}</div>`;
   },
 
   renderDock() {
-    this.gate('dock', [T.tool, !!this.lib, this.tierOpen()].join('|'), () => {
+    this.gate('dock', [T.tool, !!this.lib, this.tierOpen(), JSON.stringify(T.famLast)].join('|'), () => {
       this.els.dock.innerHTML = this.dockHtml(T.tool, !!this.lib);
       this.els.edge.classList.toggle('joined', this.tierOpen());
     });
@@ -218,12 +262,11 @@ const UI = {
   paletteHint() {
     const t = TOOLS[T.tool], has = (id) => (t.palette || []).some((g) => g.id === id);
     if (T.tool === 'ground') {
-      const b = opt('brush');
-      if (b === 'terrace') return 'Drag a shape, then move up or down to set its height. Click to set it.';
-      if (b === 'pond') return 'Hold to paint a pond. It keeps its level and fills what it meets.';
-      if (b === 'stream') return 'Drag a stroke. The stream follows the ground down.';
+      if (opt('brush') === 'terrace') return 'Drag a shape, then move up or down to set its height. Click to set it.';
       return 'Hold to brush; Shift inverts. [ and ] change the size.';
     }
+    if (T.tool === 'water') return opt('mode') === 'stream' ? 'Drag a stroke. The stream follows the ground down and asks for a bridge where a path crosses.' : 'Hold to paint a pond. It keeps its level and fills what it meets. [ and ] change the size.';
+    if (T.tool === 'building') { const D = BUILDING_DEFS[opt('def')]; return `${D.label}: ${SHAPES[opt('shape')].hint.replace(/\.$/, '')}. It rises as you draw; roof and windows come from the definition.`; }
     if (T.tool === 'object') return isWallItem(opt('item')) ? 'Point at a wall face and click to hang. Drag along the wall for an evenly spaced row.' : 'Click to place; drag to lay a row. R turns 15°. K opens the Library.';
     if (T.tool === 'form') return `${SHAPES[opt('shape')].hint} Then move up to pull its height, and click to set.`;
     if (has('shape')) return SHAPES[opt('shape')].hint;
@@ -260,12 +303,14 @@ const UI = {
       const btns = g.options.map((o) => `<button class="opt${cur === o.v ? ' on' : ''}${o.gap ? ' gap' : ''}" data-opt="${g.id}" data-v="${o.v}" role="radio" aria-checked="${cur === o.v}" aria-label="${esc(o.label)}" data-tip="${esc(o.label)}" data-k="${o.key || ''}">${o.icon ? icon(o.icon, 20) : `<span class="tx">${o.text}</span>`}</button>`).join('');
       return `<div class="pg">${lab}<div class="opts" role="radiogroup" aria-label="${g.label}">${btns}</div></div>`;
     };
-    const groups = groupsOf();
-    return `<div class="prow"><div class="pn"><b>${t.name}</b><kbd>${t.key}</kbd></div>${groups.map(groupHtml).join('')}</div><p class="hint">${esc(this.paletteHint())}</p>`;
+    const groups = groupsOf(), f = familyOf(T.tool);
+    // Nouns get words: the family's tools as a row of names. The armed one is underlined in moss.
+    const subs = (f ? f.tools : [T.tool]).map((id) => `<button class="sub${id === T.tool ? ' on' : ''}" data-sub="${id}" role="tab" aria-selected="${id === T.tool}" data-tip="${esc(TOOLS[id].name)}" data-k="${TOOLS[id].key}" data-d="${esc(firstSentence(TOOLS[id].makes))}">${esc(TOOLS[id].name)}<kbd>${TOOLS[id].key}</kbd></button>`).join('');
+    return `<div class="prow"><div class="subs" role="tablist" aria-label="${f ? esc(f.name) : 'Tool'}"${f ? ` style="--wash:${f.mark}"` : ''}>${subs}</div>${groups.length ? '<i class="psep" aria-hidden="true"></i>' : ''}${groups.map(groupHtml).join('')}</div><p class="hint">${esc(this.paletteHint())}</p>`;
   },
 
   selectionHtml(r) {
-    if (!r) return `<div class="prow"><div class="pn"><b>Select</b><kbd>V</kbd></div></div><p class="hint">Click anything to see what you can do with it. Drag a gold mark to reshape; drag empty ground to orbit.</p>`;
+    if (!r) return `<div class="prow"><div class="subs"><button class="sub on" data-sub="select" role="tab" aria-selected="true">Select<kbd>V</kbd></button></div></div><p class="hint">Click anything to see what you can do with it. Drag a gold mark to reshape; drag empty ground to orbit.</p>`;
     const it = r.item, id = it.id;
     const act = (a, ic, text, tip) => `<button class="act" data-act="${a}" data-id="${id}" data-tip="${esc(text)}" data-d="${esc(tip || '')}">${icon(ic, 18)}<span>${text}</span></button>`;
     const choice = (label, a, cur, options) => {
@@ -288,7 +333,7 @@ const UI = {
     else if (r.kind === 'forms') body = acts(act('duplicate', 'duplicate', 'Duplicate', 'A copy beside it, then selected.'), act('save', 'library', 'Save to Library', 'Keep this form as a reusable thing you place with Object.'), act('paint', 'paint', 'Paint', 'Arms Paint, reaching the whole form.'));
     else if (r.kind === 'buildings') body = acts(act('paint', 'paint', 'Paint', 'Arms Paint. A shared style asks before it changes every copy.'));
     else if (r.kind === 'lights' && it.aimAt) body = acts(act('stopAim', 'aim', 'Stop aiming', 'Keeps the direction; drops the relationship.'));
-    return `<div class="prow"><div class="pn"><b>${esc(it.name)}</b><span>${KIND_NAME[r.kind]}</span></div>${body}${canErase ? erase : ''}</div><p class="hint">${esc(SEL_HINT[r.kind] || '')}</p>`;
+    return `<div class="prow"><div class="pn sel"><i class="pip" aria-hidden="true"></i><b>${esc(it.name)}</b><span>${KIND_NAME[r.kind]}</span></div>${body ? '<i class="psep" aria-hidden="true"></i>' : ''}${body}${canErase ? erase : ''}</div><p class="hint">${esc(SEL_HINT[r.kind] || '')}</p>`;
   },
 
   libraryHtml() {
@@ -304,14 +349,37 @@ const UI = {
   },
 
   renderHead() {
-    const u = HIST.undo[HIST.undo.length - 1], r = HIST.redo[HIST.redo.length - 1];
-    this.gate('head', [this.scenario, u && u.label, r && r.label, HIST.undo.length, VIEW.plan, T.tool].join('|'), () => {
-      this.els.head.innerHTML = `<span class="brand">Biskiq</span><span class="proj"><b>${esc(SCENARIOS[this.scenario].name)}</b><span>World</span></span>
-        <span class="hist"><button data-action="undo" ${u ? '' : 'disabled'} aria-label="Undo" data-tip="${u ? `Undo ${esc(u.label)}` : 'Nothing to undo'}" data-k="⌘Z">${icon('undo', 18)}</button><button data-action="redo" ${r ? '' : 'disabled'} aria-label="Redo" data-tip="${r ? `Redo ${esc(r.label)}` : 'Nothing to redo'}" data-k="⇧⌘Z">${icon('redo', 18)}</button></span>`;
-      // The view cluster: ways of looking at and reading the world. None of them makes anything.
+    const u = HIST.undo[HIST.undo.length - 1], r = HIST.redo[HIST.redo.length - 1], pre = skyPresetAt(world.sun);
+    this.gate('head', [this.scenario, u && u.label, r && r.label, HIST.undo.length, VIEW.plan, T.tool, PROFILE, hh(world.sun), this.sky].join('|'), () => {
+      this.els.head.innerHTML = `<span class="brand" aria-label="Biskiq">${BRAND_MARK}<span>Biskiq</span></span><span class="proj"><b>${esc(SCENARIOS[this.scenario].name)}</b><span>World</span></span>
+        <span class="hist"><button class="hb" data-action="undo" ${u ? '' : 'disabled'} aria-label="Undo" data-tip="${u ? `Undo ${esc(u.label)}` : 'Nothing to undo'}" data-k="⌘Z">${icon('undo', 18)}</button><button class="hb" data-action="redo" ${r ? '' : 'disabled'} aria-label="Redo" data-tip="${r ? `Redo ${esc(r.label)}` : 'Nothing to redo'}" data-k="⇧⌘Z">${icon('redo', 18)}</button></span>`;
+      // The view cluster: ways of looking at and reading the world, and the world's sky. None makes anything.
       const vt = (id) => { const t = TOOLS[id]; return `<button class="hb${t.disabled ? ' off' : ''}" data-tool="${id}" aria-pressed="${T.tool === id}" aria-label="${t.name} (${t.key})" data-tip="${t.name}" data-k="${t.key}" data-d="${esc(firstSentence(t.makes))}">${icon(t.icon, 18)}</button>`; };
-      this.els.headR.innerHTML = `<button class="hb tx" data-action="plan" aria-pressed="${VIEW.plan}" data-tip="${VIEW.plan ? 'Back to 3D' : 'Plan view'}" data-d="Every tool works in both.">${VIEW.plan ? '3D' : 'Plan'}</button>${VIEW_TOOLS.map(vt).join('')}`;
+      const seg = (a, cur, opts, tip) => `<span class="hseg" role="group" data-tip="${esc(tip[0])}" data-d="${esc(tip[1])}">${opts.map(([v, text]) => `<button data-action="${a}" data-v="${v}" aria-pressed="${cur === v}">${text}</button>`).join('')}</span>`;
+      this.els.headR.innerHTML = `${seg('plan', VIEW.plan ? 'plan' : '3d', [['3d', '3D'], ['plan', 'Plan']], ['Plan or 3D', 'Every tool works in both.'])}${seg('profile', PROFILE, [['living', 'Living'], ['paper', 'Paper']], ['Living or Paper', 'Living is the illustrated world; Paper is the same world as a technical drawing. A way of looking, never saved into the world.'])}<i class="hsep" aria-hidden="true"></i>${VIEW_TOOLS.map(vt).join('')}<i class="hsep" aria-hidden="true"></i>
+        <button class="skychip" data-action="sky" aria-expanded="${this.sky}" style="--a:${pre.a};--b:${pre.b}" data-tip="Sky" data-d="The hour and the light. Scene environment: one undo step per change.">${icon('sun', 18)}<span class="sk-h">${hh(world.sun)}</span><span class="sk-n">${esc(pre.label)}</span></button>`;
     });
+  },
+
+  /* The Sky: a popover under its chip. Built once per opening so the slider keeps its drag;
+     the hour, the sun on the stage and the preset follow it live. */
+  renderSky() {
+    const el = this.els.sky;
+    if (!this.sky || this.view !== 'stage') { el.hidden = true; this.sig.sky = null; return; }
+    const pre = skyPresetAt(world.sun);
+    if (this.sig.sky !== 'open') {
+      this.sig.sky = 'open';
+      el.innerHTML = `<header><b>Sky</b><span>Scene environment</span><button class="x" data-action="sky" aria-label="Close the Sky (Esc)" data-tip="Close" data-k="Esc">${icon('close', 16)}</button></header>
+        <div class="presets" role="radiogroup" aria-label="Time of day">${SKY_PRESETS.map((p) => `<button class="pre" data-sky="${p.id}" role="radio" style="--a:${p.a};--b:${p.b}"><i></i><span>${p.label}</span></button>`).join('')}</div>
+        <label class="hour"><span>Hour</span><input id="hour" type="range" min="5" max="21" step="0.25" aria-label="Hour of the day"><output></output></label>
+        <p class="hint">Drag the sun along the arc over the Stage, or pick a time. Each change is one undo step.</p>
+        <p class="grows">Grows here: weather, season, fog, the night sky.</p>`;
+    }
+    const inp = el.querySelector('#hour');
+    if (document.activeElement !== inp || !this.skyLive) inp.value = world.sun;
+    el.querySelector('output').textContent = hh(world.sun);
+    el.querySelectorAll('.pre').forEach((b) => { const on = b.dataset.sky === pre.id && Math.abs(pre.t - world.sun) < 0.5; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+    el.hidden = false;
   },
 
   renderReadout() {
@@ -441,6 +509,7 @@ const SEL_ACT = {
 };
 
 // ── the selection Card: properties of the selected thing ──────────────────────
+const WINDOW_OPTIONS = [{ v: 'none', icon: 'win-none', label: 'No windows' }, { v: 'sparse', icon: 'win-sparse', label: 'Few windows' }, { v: 'regular', icon: 'win-regular', label: 'Regular windows' }];
 const segBtns = (edit, id, cur, opts) => `<div class="seg sm">${opts.map(([v, t, title]) => `<button class="opt${String(cur) === String(v) ? ' on' : ''}" data-edit="${edit}" data-id="${id}" data-v="${v}" data-tip="${esc(title || t)}"><span class="tx">${t}</span></button>`).join('')}</div>`;
 const iconSeg = (edit, id, cur, options) => `<div class="seg sm">${options.map((o) => `<button class="opt${cur === o.v ? ' on' : ''}" data-edit="${edit}" data-id="${id}" data-v="${o.v}" data-tip="${esc(o.label)}">${o.icon ? icon(o.icon, 18) : `<span class="tx">${o.text}</span>`}</button>`).join('')}</div>`;
 const link = (id) => { const r = byId(world, id); return r ? `<button class="ln" data-sel="${id}">${esc(r.item.name)}</button>` : ''; };
@@ -460,7 +529,7 @@ function cardHtml(r) {
     row('Storeys', segBtns('storeys', id, it.floors, [[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']]));
     const roofs = it.shape === 'circle' ? [['cone', 'Cone'], ['flat', 'Flat']] : [['gable', 'Gable'], ['hip', 'Hip'], ['flat', 'Flat']];
     row('Roof', segBtns('broof', id, it.roof, roofs));
-    row('Windows', iconSeg('windows', id, it.windows, TOOLS.building.palette.find((g) => g.id === 'windows').options));
+    row('Windows', iconSeg('windows', id, it.windows, WINDOW_OPTIONS));
     row('Walls', `${swatch(it.mat)}${Object.keys(it.overrides).length ? ` · ${Object.keys(it.overrides).length} face override` : ''}`);
     const twins = world.buildings.filter((b) => b.style === it.style).length;
     row('Definition', `${esc(it.style)} <small>${twins} placed</small>`);
