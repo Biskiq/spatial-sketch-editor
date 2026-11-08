@@ -34,12 +34,22 @@ const PRESENTATION_PREFIXES = [
 ];
 const SKIP_FILES = [tokenFileRel(), cursorFileRel()];
 const SKIP_PREFIXES = ['routes/dev/'];
+/**
+ * The visitor presentation owns its own roles. Its values intentionally match
+ * the approved PLATE defaults today, so the value-drift rule does not apply;
+ * the independence test below forbids it from consuming editor roles.
+ */
+const INDEPENDENT_PREFIXES = ['lib/visitor/'];
+
+function relPath(file: string): string {
+	return relative(SRC, file).split('\\').join('/');
+}
 
 function tokenFileRel(): string {
-	return relative(SRC, TOKEN_FILE).split('\\').join('/');
+	return relPath(TOKEN_FILE);
 }
 function cursorFileRel(): string {
-	return relative(SRC, CURSOR_FILE).split('\\').join('/');
+	return relPath(CURSOR_FILE);
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -59,6 +69,27 @@ function declarations(css: string): Map<string, string> {
 		found.set(match[1], normalize(match[2]));
 	}
 	return found;
+}
+
+/**
+ * Declarations inside the first `:root { … }` block, and nothing else.
+ *
+ * Canonical defaults are the base block. A future `[data-theme]` shell override
+ * must not replace them in this map, or the parity check would compare a skin.
+ */
+function rootDeclarations(css: string): Map<string, string> {
+	const start = css.search(/:root\s*\{/);
+	if (start === -1) return declarations(css);
+	const open = css.indexOf('{', start);
+	let depth = 0;
+	for (let index = open; index < css.length; index += 1) {
+		if (css[index] === '{') depth += 1;
+		else if (css[index] === '}') {
+			depth -= 1;
+			if (depth === 0) return declarations(css.slice(open + 1, index));
+		}
+	}
+	return declarations(css.slice(open + 1));
 }
 
 function normalize(value: string): string {
@@ -83,7 +114,7 @@ function stripDataUris(css: string): string {
 const CANONICAL_FILES = [TOKEN_FILE, CURSOR_FILE];
 const canonical = new Map<string, string>();
 for (const file of CANONICAL_FILES) {
-	for (const [name, value] of declarations(readFileSync(file, 'utf8'))) canonical.set(name, value);
+	for (const [name, value] of rootDeclarations(readFileSync(file, 'utf8'))) canonical.set(name, value);
 }
 
 const presentationFiles = walk(SRC).filter((file) => {
@@ -138,6 +169,8 @@ describe('presentation token ownership', () => {
 		}
 		const copies: string[] = [];
 		for (const file of presentationFiles) {
+			const rel = relPath(file);
+			if (INDEPENDENT_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
 			const css = presentationCss(file, readFileSync(file, 'utf8'));
 			const lines = css.split('\n');
 			lines.forEach((line, index) => {
@@ -164,6 +197,40 @@ describe('presentation token ownership', () => {
 		expect(redeclared).toEqual([]);
 	});
 
+	it('keeps the visitor presentation independent of editor skin and spatial roles', () => {
+		const coupled: string[] = [];
+		for (const file of presentationFiles) {
+			const rel = relPath(file);
+			if (!INDEPENDENT_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
+			const css = presentationCss(file, readFileSync(file, 'utf8'));
+			for (const match of css.matchAll(/var\(\s*(--(?:shell|stage|cursor)-[a-z0-9-]+)/gi)) {
+				coupled.push(`${rel}: ${match[1]}`);
+			}
+		}
+		expect(coupled).toEqual([]);
+	});
+
+	it('allows theme overrides for shell roles only, never spatial paint', () => {
+		// Comments mention [data-theme]; only a real selector block is an override.
+		const css = readFileSync(TOKEN_FILE, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+		const stageRoles = new Set(Object.values(SPATIAL_PAINT_CSS_VAR));
+		const overrides: string[] = [];
+		for (const match of css.matchAll(/\[data-theme[^{]*\{([^}]*)\}/gi)) {
+			for (const declaration of match[1].matchAll(/(--[a-z0-9-]+)\s*:/gi)) {
+				const name = declaration[1];
+				if (!name.startsWith('--shell-')) overrides.push(`${name} (theme override)`);
+				if (stageRoles.has(name)) overrides.push(`${name} (spatial role)`);
+			}
+		}
+		// A stage role is declared only in the base :root block.
+		const withoutBase = css.replace(/:root\s*\{[\s\S]*?\n\}/, '');
+		for (const name of stageRoles) {
+			if (new RegExp(`${name}\\s*:`).test(withoutBase)) overrides.push(`${name} (outside :root)`);
+		}
+		expect(overrides).toEqual([]);
+		expect(rootDeclarations(css).size).toBeGreaterThan(0);
+	});
+
 	it('keeps the retired duplicate names out of the tree', () => {
 		const retired = [
 			'--shell-forest-2',
@@ -172,7 +239,6 @@ describe('presentation token ownership', () => {
 			'--shell-draft-halo',
 			'--shell-ghost',
 			'--shell-ghost-halo',
-			'--visitor-quiet',
 			'--head-ink-quiet',
 			'--chassis-hairline'
 		];

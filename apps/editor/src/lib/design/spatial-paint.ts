@@ -12,8 +12,10 @@
  * holds the two tables equal. Three.js paint is derived from this table instead of
  * restating the hex, so a spatial style can change in one place.
  *
- * Future spatial styles may replace these values (for example a darker
- * instrument grammar); nothing here implements that switching.
+ * A future spatial style changes this table and the base `--stage-*`
+ * declarations together. It cannot be a CSS-only `[data-theme]` override:
+ * Three.js consumes these numbers, not the custom properties, and the ownership
+ * guard would reject the drift. Shell-only skins do not affect this table.
  */
 export const SPATIAL_PAINT_ROLES = Object.freeze({
 	/** Drawn marks and instrument linework. */

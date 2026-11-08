@@ -23,9 +23,19 @@
  *     Experience look stays local and is written with a comment naming why. It
  *     does not become a new shared role.
  *
- * Skins may re-declare these roles (for example under `[data-theme]`), which is
- * why components consume them instead of importing TS constants. This file does
- * not implement skin switching or a plugin runtime.
+ * Boundaries for a future skin:
+ *
+ *  - `--shell-*` may be re-declared under `[data-theme]`: those roles paint DOM
+ *    chrome only, so a CSS-only skin is sufficient.
+ *  - `--stage-*` may not be overridden by a skin. Three.js paint is compiled
+ *    from `spatial-paint.ts`, so a spatial style changes the TS table and these
+ *    base declarations together; a CSS-only override would desynchronize the
+ *    DOM overlay from the 3D view and is rejected by the ownership guard.
+ *  - `--visitor-*` is the published-visit presentation's own contract, declared
+ *    in `VisitorPreviewSurface.svelte`; it is intentionally independent of
+ *    editor skins.
+ *
+ * This file does not implement skin switching or a plugin runtime.
  */
 :root {
 	/* Chassis: the forest that the Stage and the pages sit on. */
@@ -105,7 +115,9 @@
 	 * grammar; a gesture's proposal is cobalt, a hue no other state uses, with a
 	 * white halo for dark materials. `stage-paint.ts` mirrors these values for
 	 * Three.js paint and the shapes below; `presentation-tokens.test.ts` fails if
-	 * the two tables drift.
+	 * the two tables drift. These base declarations are the only place a stage
+	 * role may be declared: a `[data-theme]` block is for shell roles, never
+	 * spatial paint.
 	 */
 	--stage-ink: #1b201c;
 	--stage-ink-halo: none;
