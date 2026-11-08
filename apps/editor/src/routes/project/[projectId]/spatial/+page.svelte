@@ -183,6 +183,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import { createExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
 import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
 import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
+import { removalItem, backOf, experienceNameWriter } from '$lib/authoring/experience/experience-card-wiring';
 import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
 		enterPreview,
@@ -3067,76 +3068,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		back: null
 	};
 
-	/**
-	 * R217.S26 (E4) — a danger item for one removal. Its consequence block reads the same plan the
-	 * removal planner installs; an item the plan refuses stays disabled with the reason as its hint.
-	 * A Default View's removal asks for the new Default in the block (no automatic choice).
-	 */
-	function removalItem(
-		controller: ExperienceController,
-		id: string,
-		label: string,
-		target: ExperienceRemovalTarget
-	): ExperienceCardMenuItem {
-		const withChoice = (choice: string | null): ExperienceRemovalTarget =>
-			target.kind === 'view' ? { ...target, newDefaultViewId: choice } : target;
-		const initial = controller.removalPreview(target);
-		return {
-			id,
-			label,
-			danger: true,
-			...(controller.busy
-				? { disabled: true, reason: 'Wait for the current change' }
-				: initial.kind === 'refused'
-					? { disabled: true, reason: initial.reason }
-					: {}),
-			consequence: {
-				read: (choice) => {
-					const preview = controller.removalPreview(withChoice(choice));
-					if (preview.kind === 'refused') return preview;
-					return {
-						kind: 'ready',
-						lines: preview.lines,
-						choose: preview.chooseDefault === null ? null : { label: 'New Default View', options: preview.chooseDefault },
-						runnable: preview.runnable
-					};
-				},
-				run: (choice) => controller.remove(withChoice(choice))
-			}
-		};
-	}
-
-	/**
-	 * R217.S26 (E17): the kind line's *‹ Back* when the previous subject is not the kind line's
-	 * own parent link (a View's Presentation is already its kind link).
-	 */
-	function backOf(controller: ExperienceController, parent: ExperienceSubject | null): ShownCard['back'] {
-		const target = controller.backTarget;
-		if (target === null) return null;
-		if (parent !== null && JSON.stringify(parent) === JSON.stringify(target)) return null;
-		// Review round 3: stepping between siblings (Stop ‹ › Stop) is not a drill-in, so the
-		// Card names no "back" to the sibling it came from; Alt+← still returns there.
-		if (controller.subject !== null && controller.subject.kind === target.kind) return null;
-		return {
-			label: controller.subjectName(target),
-			onBack: () => {
-				controller.back();
-				cardOpen = true;
-			}
-		};
-	}
-
-	/** The Experience rename fields commit on Enter or blur and refuse an empty name (R217.S26). */
-	function experienceNameWriter(value: () => string, commit: (name: string) => Promise<{ readonly kind: string; readonly message?: string }>): ShownCard['nameWriter'] {
-		return {
-			get value() {
-				return value();
-			},
-			commit,
-			commitOnBlur: true,
-			emptyMessage: NAME_NEEDED
-		};
-	}
+	const cardBack = (controller: ExperienceController, parent: Parameters<typeof backOf>[1]) =>
+		backOf(controller, parent, () => { cardOpen = true; });
 
 	/**
 	 * R217.S25 (D10) — the one Card the Experience lens shows: the Experience subject when one is
@@ -3210,7 +3143,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					addToGuide,
 					removalItem(controller, 'remove-presentation', 'Remove Presentation', { kind: 'presentation', presentationId: presentation.id })
 				],
-				back: backOf(controller, null),
+				back: cardBack(controller, null),
 				writer: writerOf('Presentation', ExperiencePresentationWriter),
 				kindLink:
 					reference === null || subjectLabel === null
@@ -3244,7 +3177,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						viewId: view.id
 					})
 				],
-				back: backOf(controller, { kind: 'presentation', presentationId: view.presentationId }),
+				back: cardBack(controller, { kind: 'presentation', presentationId: view.presentationId }),
 				writer: writerOf('View', ExperienceViewWriter),
 				kindLink: {
 					label: controller.presentationLabel(view.presentationId),
@@ -3296,7 +3229,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				facts: model.facts,
 				writer: writerOf('Stop', ExperienceStopWriter),
 				menu: items,
-				back: backOf(controller, null)
+				back: cardBack(controller, null)
 			};
 		}
 		if (subject?.kind === 'transition') {
@@ -3311,7 +3244,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				identity: model.identity,
 				facts: model.facts,
 				writer: writerOf('Transition', ExperienceTransitionWriter),
-				back: backOf(controller, { kind: 'stop', stopId: stop.id })
+				back: cardBack(controller, { kind: 'stop', stopId: stop.id })
 			};
 		}
 		// D-2: with nothing selected the Card is the Experience Card. A Guide is never a Card
