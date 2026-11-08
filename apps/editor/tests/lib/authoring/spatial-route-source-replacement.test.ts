@@ -23,6 +23,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const harness = vi.hoisted(() => ({
 	document: null as unknown,
 	loadCalls: 0,
+	deferNextLoad: false,
+	releaseLoad: null as (() => void) | null,
+	loadSignal: null as AbortSignal | null,
+	deferredLoadFinished: false,
+	deferNextCloudAdmission: false,
+	releaseCloudAdmission: null as (() => void) | null,
+	cloudAdmissionFinished: false,
 	version: 1,
 	savedBaseToken: 'token-1',
 	publicationReads: 0,
@@ -87,10 +94,18 @@ vi.mock('$lib/platform/project-persistence', async (importOriginal) => {
 			signOut: async () => undefined
 		}),
 		createProjectApi: () => ({
-			async loadProject(projectId: string) {
+			async loadProject(projectId: string, signal?: AbortSignal) {
 				harness.loadCalls += 1;
 				const document = harness.document as ProjectEnvelope;
+				const deferred = harness.deferNextLoad;
+				if (deferred) {
+					harness.deferNextLoad = false;
+					harness.loadSignal = signal ?? null;
+					await new Promise<void>((resolve) => { harness.releaseLoad = resolve; });
+				}
 				const { computeEnvelopeSourceContentId } = await import('@portfolio/project-model/units');
+				const savedSourceContentId = await computeEnvelopeSourceContentId(document);
+				if (deferred) harness.deferredLoadFinished = true;
 				return {
 					projectId,
 					name: document.name,
@@ -99,7 +114,7 @@ vi.mock('$lib/platform/project-persistence', async (importOriginal) => {
 					document,
 			savedBaseToken: harness.loadCalls === 1 ? 'token-1' : harness.savedBaseToken,
 					savedRevision: document.acceptedRevision,
-					savedSourceContentId: await computeEnvelopeSourceContentId(document)
+					savedSourceContentId
 				};
 			},
 			async getPublicationStatus() {
@@ -147,6 +162,20 @@ vi.mock('$lib/authoring/stage/boot-state', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('$lib/authoring/stage/boot-state')>();
 	return {
 		...actual,
+		async bootFromLoadOutcome(
+			state: import('$lib/authoring/stage/boot-state').BootState,
+			outcome: import('$lib/authoring/stage/boot-state').BootLoadOutcome,
+			context: import('$lib/authoring/stage/source-admission').AdmissionContext
+		) {
+			const deferred = harness.deferNextCloudAdmission;
+			if (deferred) {
+				harness.deferNextCloudAdmission = false;
+				await new Promise<void>((resolve) => { harness.releaseCloudAdmission = resolve; });
+			}
+			const result = await actual.bootFromLoadOutcome(state, outcome, context);
+			if (deferred) harness.cloudAdmissionFinished = true;
+			return result;
+		},
 		async bootFromSourceJson(
 			json: string,
 			projectId: string,
@@ -218,6 +247,13 @@ beforeEach(async () => {
 	});
 	harness.document = mountedProject;
 	harness.loadCalls = 0;
+	harness.deferNextLoad = false;
+	harness.releaseLoad = null;
+	harness.loadSignal = null;
+	harness.deferredLoadFinished = false;
+	harness.deferNextCloudAdmission = false;
+	harness.releaseCloudAdmission = null;
+	harness.cloudAdmissionFinished = false;
 	harness.version = 1;
 	harness.savedBaseToken = 'saved-base:00000000-0000-4000-8000-000000000001';
 	harness.publicationReads = 0;
@@ -276,6 +312,10 @@ afterEach(() => {
 	component = null;
 	target.replaceChildren();
 	nextFile = null;
+	harness.releaseLoad?.();
+	harness.releaseLoad = null;
+	harness.releaseCloudAdmission?.();
+	harness.releaseCloudAdmission = null;
 	harness.releaseBootFromSource?.();
 	harness.releaseBootFromSource = null;
 	harness.releaseRename?.();
@@ -296,7 +336,7 @@ async function sourceFile(name: string): Promise<File> {
 }
 
 /** The same envelope as a conflict's remote copy: a Reload that actually admits. */
-async function admittedOffer(name: string): Promise<ReloadOffer> {
+async function admittedOffer(name: string): Promise<Extract<ReloadOffer, { kind: 'reload' }>> {
 	return {
 		kind: 'reload',
 		projectId: 'project-1',
@@ -337,6 +377,64 @@ async function mountReady(): Promise<void> {
 }
 
 describe('spatial route source replacement', () => {
+	it('cancels an outstanding initial cloud read when the route is torn down', async () => {
+		harness.deferNextLoad = true;
+		component = mount(Page, { target });
+		await vi.waitFor(() => expect(harness.releaseLoad).not.toBeNull());
+		expect(harness.loadSignal?.aborted).toBe(false);
+
+		unmount(component);
+		component = null;
+		expect(harness.loadSignal?.aborted).toBe(true);
+		harness.releaseLoad?.();
+		await vi.waitFor(() => expect(harness.deferredLoadFinished).toBe(true));
+		await settled();
+		expect(target.querySelector('[data-testid="stage-canvas"]')).toBeNull();
+		expect(target.querySelector('[data-testid="head"]')).toBeNull();
+	});
+
+	it('does not install a late initial cloud read over a newer replacement', async () => {
+		harness.deferNextLoad = true;
+		component = mount(Page, { target });
+		await vi.waitFor(() => expect(harness.releaseLoad).not.toBeNull());
+		expect(harness.loadSignal?.aborted).toBe(false);
+
+		setReloadOffer(await admittedOffer('Replacement project'));
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Replacement project'));
+		const replacementCanvas = stageCanvas();
+		expect(harness.loadSignal?.aborted).toBe(true);
+		expect(head().dataset.saveBase).toBe('remote-token');
+
+		harness.releaseLoad?.();
+		await vi.waitFor(() => expect(harness.deferredLoadFinished).toBe(true));
+		await settled();
+		expect(head().dataset.project).toBe('Replacement project');
+		expect(head().dataset.saveBase).toBe('remote-token');
+		expect(head().dataset.saveStatus).toBe('saved');
+		expect(stageCanvas()).toBe(replacementCanvas);
+	});
+
+	it('does not install an admitted initial load after a replacement takes ownership', async () => {
+		harness.deferNextCloudAdmission = true;
+		component = mount(Page, { target });
+		await vi.waitFor(() => expect(harness.releaseCloudAdmission).not.toBeNull());
+
+		setReloadOffer(await admittedOffer('Replacement project'));
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Replacement project'));
+		const replacementCanvas = stageCanvas();
+		expect(head().dataset.saveBase).toBe('remote-token');
+
+		harness.releaseCloudAdmission?.();
+		await vi.waitFor(() => expect(harness.cloudAdmissionFinished).toBe(true));
+		await settled();
+		expect(head().dataset.project).toBe('Replacement project');
+		expect(head().dataset.saveBase).toBe('remote-token');
+		expect(head().dataset.saveStatus).toBe('saved');
+		expect(stageCanvas()).toBe(replacementCanvas);
+	});
+
 	it('keeps the mounted project and its saved base when the Open dialog is cancelled', async () => {
 		await mountReady();
 		const originalCanvas = stageCanvas();
@@ -490,6 +588,28 @@ describe('spatial route source replacement', () => {
 		expect(stageCanvas()).not.toBeNull();
 	});
 
+	it('refreshes the replacement Head Save from the replacement acceptance host', async () => {
+		await mountReady();
+		const previousServices = harness.services;
+		const offer = await admittedOffer('Remote project');
+		setReloadOffer({ ...offer, document: { ...mountedProject, name: 'Remote project' } });
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Remote project'));
+		expect(head().dataset.saveBase).toBe('remote-token');
+		expect(head().dataset.saveStatus).toBe('saved');
+
+		const services = harness.services as StageAdapterServices;
+		expect(services).not.toBe(previousServices);
+		expect((await consumerSceneEdit(services)).kind).toBe('installed');
+		await vi.waitFor(() => expect(head().dataset.saveStatus).toBe('dirty'));
+		expect(head().dataset.saveBase).toBe('remote-token');
+		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		openSourceFromFind();
+		await tick();
+		expect(confirm).toHaveBeenCalledOnce();
+		expect(head().dataset.project).toBe('Remote project');
+	});
+
 	it('drops a delayed admitted Open after a newer replacement owns the Stage', async () => {
 		await mountReady();
 
@@ -586,6 +706,29 @@ describe('spatial route source replacement', () => {
 		expect(head().dataset.project).toBe('Opened project');
 		expect(stageCanvas()).toBe(openedCanvas);
 		expect(target.textContent).not.toContain('The remote copy was not installed');
+	});
+
+	it('cancels a project metadata read when a replacement takes ownership', async () => {
+		await mountReady();
+		harness.deferNextLoad = true;
+		button('Rename').click();
+		await vi.waitFor(() => expect(harness.releaseLoad).not.toBeNull());
+		expect(harness.loadSignal?.aborted).toBe(false);
+
+		setReloadOffer(await admittedOffer('Replacement project'));
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Replacement project'));
+		const replacementCanvas = stageCanvas();
+		expect(harness.loadSignal?.aborted).toBe(true);
+
+		harness.releaseLoad?.();
+		await vi.waitFor(() => expect(harness.deferredLoadFinished).toBe(true));
+		await settled();
+		expect(head().dataset.project).toBe('Replacement project');
+		expect(head().dataset.saveBase).toBe('remote-token');
+		expect(stageCanvas()).toBe(replacementCanvas);
+		expect(target.querySelector('dialog')?.hasAttribute('open')).toBe(false);
+		expect(harness.renameCalls).toHaveLength(0);
 	});
 
 	it('pre-reads a name-only Cloud change, adopts it, and renames with the refreshed saved-base token', async () => {

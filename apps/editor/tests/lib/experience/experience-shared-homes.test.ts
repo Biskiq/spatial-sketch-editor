@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { EDITOR_LIB, EDITOR_SRC, listSourceFiles, relativeToRepo, stripComments } from '../../helpers/import-closure';
+import { EDITOR_LIB, EDITOR_SRC, constructsImportedOwner, importClosure, listSourceFiles, relativeToRepo, stripComments } from '../../helpers/import-closure';
 
 const ROUTE = path.join(EDITOR_LIB, '..', 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
 const EXPERIENCE_DIR = path.join(EDITOR_LIB, 'authoring', 'experience');
@@ -72,13 +72,29 @@ function authoringSources(): { name: string; file: string; code: string }[] {
 		.map((file) => ({ name: path.basename(file), file, code: codeOf(file) }));
 }
 
+/** Find the closed Guide state in the route or the Experience owner it composes. */
+function guideOwner(sources: readonly { file: string; code: string }[]): { file: string; code: string } {
+	const owners = sources.filter(({ code }) => /let experienceGuideOpen = \$state\(false\);/.test(code));
+	if (owners.length !== 1) throw new Error(`Expected one closed-by-default Guide owner, found ${owners.length}`);
+	return owners[0]!;
+}
+
+function composedHostSources(): { file: string; code: string }[] {
+	const projectSession = path.join(EDITOR_LIB, 'authoring', 'project-session');
+	return [...importClosure([ROUTE])]
+		.filter((file) => file === ROUTE || file.startsWith(`${EXPERIENCE_DIR}${path.sep}`) || file.startsWith(`${projectSession}${path.sep}`))
+		.filter((file) => /\.(svelte|ts)$/.test(file))
+		.map((file) => ({ file, code: codeOf(file) }));
+}
+
 describe('R217.S25 — the Experience home map', () => {
 	it('retires the full-surface overlay: its component is gone and the route mounts no lens-surface', () => {
 		expect(existsSync(path.join(EXPERIENCE_DIR, 'ExperienceSurface.svelte'))).toBe(false);
-		const route = codeOf(ROUTE);
-		expect(route).not.toContain('ExperienceSurface');
-		expect(route).not.toContain('lens-surface');
-		expect(route).not.toContain('Experience lens"');
+		for (const { file, code } of composedHostSources()) {
+			expect(code, file).not.toContain('ExperienceSurface');
+			expect(code, file).not.toContain('lens-surface');
+			expect(code, file).not.toContain('Experience lens"');
+		}
 	});
 
 	it('reaches Preview and the lens only through the Head: no homes module names a Preview entry', () => {
@@ -88,10 +104,14 @@ describe('R217.S25 — the Experience home map', () => {
 			)
 		);
 		expect(offenders.map(relativeToRepo)).toEqual([]);
-		const route = codeOf(ROUTE);
-		expect(route).not.toContain('onEnterPreview');
-		expect(route).not.toContain('Preview from this Stop');
-		expect(route).not.toContain('Enter Preview');
+		for (const { file, code } of composedHostSources()) {
+			expect(code, file).not.toContain('onEnterPreview');
+			expect(code, file).not.toContain('Preview from this Stop');
+			expect(code, file).not.toContain('Enter Preview');
+			// The Head is mounted by the route; extracted host code must not
+			// introduce another Preview entry as a component prop.
+			if (file !== ROUTE) expect(code.match(/onPreview=\{/g) ?? [], file).toHaveLength(0);
+		}
 	});
 
 	it('keeps the single lens group in the Head', () => {
@@ -123,7 +143,7 @@ describe('R217.S25 — the Experience home map', () => {
 			'Create Experience',
 			'Create first Guide'
 		];
-		const homes = [...HOME_FILES, ROUTE].map((file) => ({ file, code: codeOf(file) }));
+		const homes = [...HOME_FILES.map((file) => ({ file, code: codeOf(file) })), ...composedHostSources()];
 		for (const label of removed) {
 			const found = homes.filter((home) => home.code.includes(label)).map((home) => relativeToRepo(home.file));
 			expect(found, label).toEqual([]);
@@ -164,13 +184,21 @@ describe('R217.S25 — the Experience home map', () => {
 		expect(place).toContain("'Place a View where the camera stands'");
 	});
 
-	it('leaves the Guide closed by default in the route', () => {
-		const route = codeOf(ROUTE);
-		expect(route).toMatch(/let experienceGuideOpen = \$state\(false\);/);
+	it('leaves the Guide closed by default in the composed Experience owner', () => {
+		const sources = composedHostSources();
+		expect(sources.map(({ file }) => file)).toContain(ROUTE);
+		const owner = guideOwner(sources);
+		if (owner.file !== ROUTE) {
+			expect(constructsImportedOwner(ROUTE, readFileSync(ROUTE, 'utf8'), owner.file, 'createExperienceLens')).toBe(true);
+		}
+		expect(owner.code).toMatch(/let experienceGuideOpen = \$state\(false\);/);
 		// Lens entry closes the Guide and clears the Card subject (the R217.S25 Guide-open effect would reopen it otherwise).
-		expect(route).toMatch(/if \(lens === 'experience'\) \{\s*experienceGuideOpen = false;\s*experienceFocus\.select\(null\);/);
+		expect(owner.code).toMatch(/if \(lens === 'experience'\) \{\s*experienceGuideOpen = false;\s*experienceFocus\.select\(null\);/);
 		// With no Experience, a World selection carried in has no Card, so lens entry drops it.
-		expect(route).toMatch(/experienceController\?\.current == null && selection !== null\) closeSelection\(\);/);
+		expect(owner.code).toMatch(/experienceController\?\.current == null && selection !== null\) closeSelection\(\);/);
+		// The lookup must fail closed when the owner disappears or is duplicated.
+		expect(() => guideOwner(sources.filter(({ file }) => file !== owner.file))).toThrow('found 0');
+		expect(() => guideOwner([...sources, owner])).toThrow('found 2');
 	});
 
 	it('keeps the Card the one writer of Experience subjects: no subject carries its own Card', () => {

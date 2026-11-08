@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { composedSpatialHost } from '../../helpers/import-closure';
 import { LineSegments, ShaderMaterial } from 'three';
 import {
 	VIEWPORT_NEAR_FLOOR_METERS,
@@ -384,8 +385,10 @@ describe('the workspace reads committed geometry only', () => {
 			const source = readFileSync(resolve(process.cwd(), `src/lib/authoring/stage/shell/${file}`), 'utf8');
 			expect(source).not.toContain('candidateBounds');
 		}
+		const host = composedSpatialHost();
+		for (const { file, code } of host) expect(code, file).not.toContain('candidateBounds');
+		// StageCanvas is a shell slot owned by the composition root, not the lens.
 		const route = readFileSync(resolve(process.cwd(), 'src/routes/project/[projectId]/spatial/+page.svelte'), 'utf8');
-		expect(route).not.toContain('candidateBounds');
 		expect(route).toContain('contentBounds={paperContentBounds}');
 	});
 

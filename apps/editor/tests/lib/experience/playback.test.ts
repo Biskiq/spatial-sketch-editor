@@ -7,7 +7,9 @@
  * source edit invalidates the old run immediately.
  */
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { EDITOR_LIB, EDITOR_SRC, constructsImportedOwner, importClosure, stripComments } from '../../helpers/import-closure';
 import {
 	computeEnvelopeSourceContentId,
 	lowerExperienceProgram,
@@ -136,7 +138,18 @@ describe('R217.S30 playback', () => {
 	});
 
 	it('keeps the accepted map and clock on the Stage, not in the Guide panel', () => {
-		const page = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
+		const route = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
+		const experience = path.join(EDITOR_LIB, 'authoring/experience');
+		const sources = [...importClosure([route])]
+			.filter((file) => file === route || file.startsWith(`${experience}${path.sep}`))
+			.filter((file) => /\.(svelte|ts)$/.test(file))
+			.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
+		const owners = sources.filter(({ code }) => /\bconst playback = createExperiencePlayback\(/.test(code));
+		expect(owners.map(({ file }) => file)).toHaveLength(1);
+		if (owners[0]!.file !== route) {
+			expect(constructsImportedOwner(route, readFileSync(route, 'utf8'), owners[0]!.file, 'createExperienceLens')).toBe(true);
+		}
+		const page = owners[0]!.code;
 		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
 		expect(page).toContain('createExperiencePlayback');
 		expect(page).toContain('shouldWritePlaybackSample');
