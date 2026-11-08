@@ -32,6 +32,7 @@ import {
 } from './experience-view-edit';
 import { isStageDrag } from '../stage/stage-input';
 import type { StageFacade } from '../stage/stage-facade';
+import type { StagePostureClaim, StagePostureLayer, StagePostureMark } from '../stage/stage-adapter-host';
 import type { ExperienceController } from './experience-controller.svelte';
 import type { ExperienceGuideTransport, ExperienceHomes } from './experience-homes';
 import type { ExperienceSubject } from './experience-model';
@@ -75,6 +76,11 @@ export type ExperienceLensHost = {
 	/** The one Card selection: the Stage selection it replaces is cleared first. */
 	readonly clearStageSelection: () => void;
 	readonly openCard: () => void;
+	/** The Card's link-to-Stage pick, owned by the route's selection slot. */
+	readonly pickActive: () => boolean;
+	readonly cancelPick: () => void;
+	/** Experience Esc unwinding after the route's shared dismiss checks. */
+	readonly dismiss: () => boolean;
 };
 
 type StageTriple = [number, number, number];
@@ -272,10 +278,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 
 	/** Register the lens's lifecycle effects during route initialisation. */
 	/** Press precedence after pinch: a live edit, then Look through, place, a View glyph. */
-	function pointerDown(
-		event: PointerEvent,
-		mark: { readonly viewId: string; readonly kind: string; readonly mark: Element } | null
-	): boolean {
+	function pointerDown(event: PointerEvent, mark: StagePostureMark | null): boolean {
 		if (viewEdit !== null) return true;
 		if (lookThroughSession !== null) {
 			beginReaim(event);
@@ -391,6 +394,57 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Experience keys. `capture` runs before Stage key handling; `unwind` runs after the
+	 * route has exhausted its shared dismiss checks.
+	 */
+	function key(event: KeyboardEvent, phase: 'capture' | 'unwind' = 'capture'): StagePostureClaim {
+		if (phase === 'unwind') return event.key === 'Escape' && host.dismiss() ? 'claimed' : 'pass';
+		if (event.key === 'Escape') {
+			if (host.pickActive()) {
+				host.cancelPick();
+				return 'claimed';
+			}
+			return escape() ? 'claimed' : 'pass';
+		}
+		if (
+			event.key === 'ArrowLeft' &&
+			event.altKey &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.shiftKey &&
+			!event.defaultPrevented
+		) {
+			if (host.activeController()?.back()) {
+				host.openCard();
+				return 'claimed';
+			}
+			return 'pass';
+		}
+		if (event.key === 'Backspace' || event.key === 'Delete') {
+			const controller = host.activeController();
+			const anchorId = controller?.selectedAnchorId ?? null;
+			if (controller !== null && anchorId !== null) {
+				void controller.removePathAnchor(anchorId);
+				return 'claimed';
+			}
+		}
+		return 'pass';
+	}
+
+	/** Leaving the lens ends transient posture; an armed Place never survives into World. */
+	function deactivate(): void {
+		if (host.tool() === 'place') {
+			host.setTool('select');
+			placementAim = null;
+			cancelPlacement();
+			host.notice('');
+		}
+		if (lookThroughSession !== null) exitLookThrough();
+		if (pendingViewWrite !== null) pendingViewWrite = null;
+		if (viewEdit !== null) cancelViewEdit();
 	}
 
 	/** Look through owns the wheel: a drag turns the provisional view, never the Stage. */
@@ -1129,6 +1183,21 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		}
 	}
 
+	const posture: StagePostureLayer = {
+		id: 'experience-lens',
+		pointerDown: (event, mark) => (pointerDown(event, mark) ? 'claimed' : 'pass'),
+		pointerMove: (event) => (pointerMove(event) ? 'claimed' : 'pass'),
+		pointerUp: (event) => (pointerUp(event) ? 'claimed' : 'pass'),
+		pointerCancel: (event) => (pointerCancel(event) ? 'claimed' : 'pass'),
+		lostCapture: (event) => (lostCapture(event) ? 'claimed' : 'pass'),
+		pinch: () => 'pass',
+		click: (_event, overMark) => (ownsClick(overMark) ? 'claimed' : 'pass'),
+		wheel: (event, viewportHeight) => (wheelZoom(event, viewportHeight) ? 'claimed' : 'pass'),
+		key,
+		deactivate,
+		dispose
+	};
+
 	/** Idempotent: the first caller restores the entry and stops the session. */
 	function dispose(): void {
 		if (disposed) return;
@@ -1149,7 +1218,10 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		playGuide,
 		install,
 		homes,
+		posture,
 		escape,
+		key,
+		deactivate,
 		wheelZoom,
 		pointerDown,
 		ownsClick,

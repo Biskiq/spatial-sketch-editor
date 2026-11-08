@@ -50,6 +50,42 @@ export type StageAdapterServices = {
 
 export type StageAdapterFactory = (services: StageAdapterServices) => StageAdapter;
 
+/** One route-active interaction posture; at most one is active at a time. */
+export type StagePostureClaim = 'claimed' | 'pass';
+
+export type StagePostureMark = {
+	readonly viewId: string;
+	readonly kind: string;
+	readonly mark: Element;
+};
+
+/**
+ * A session-only posture that claims Stage input before adapters and navigation.
+ * It owns no selection, history or Camera state; it realizes viewing through
+ * facade intents only. `deactivate` ends transient posture on lens exit;
+ * `dispose` is final and runs exactly once.
+ */
+export type StagePostureLayer = {
+	readonly id: 'experience-lens' | 'studio-scope';
+	pointerDown(event: PointerEvent, mark: StagePostureMark | null): StagePostureClaim;
+	pointerMove(event: PointerEvent): StagePostureClaim;
+	pointerUp(event: PointerEvent): StagePostureClaim;
+	pointerCancel(event: PointerEvent): StagePostureClaim;
+	lostCapture(event: PointerEvent): StagePostureClaim;
+	/** A second pointer arrives before navigation claims a pinch. */
+	pinch(event: PointerEvent): StagePostureClaim;
+	click(event: MouseEvent, overMark: boolean): StagePostureClaim;
+	wheel(event: WheelEvent, viewportHeight: number): StagePostureClaim;
+	/** `capture` claims before adapters; `unwind` runs after shared dismiss handling. */
+	key(event: KeyboardEvent, phase: 'capture' | 'unwind'): StagePostureClaim;
+	readonly chrome?: {
+		readonly dockToolFilter?: (id: string) => boolean;
+		readonly cardInset?: number;
+	};
+	deactivate?(): void;
+	dispose(): void;
+};
+
 /**
  * One epoch's adapter-facing ports. Constructing a second value over the same
  * facade and host is safe: it is access, not state, so a lens surface and the

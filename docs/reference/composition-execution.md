@@ -593,8 +593,9 @@ layer → adapter intents → navigation, so a posture claims a gesture before a
 A posture is a session-only `.svelte.ts` controller constructed during route initialization, so
 its effects attach to the route's effect tree. It owns no selection, history or Camera state; it
 realizes viewing only through Stage facade intents and returns `claimed | pass`. At most one
-posture layer is active. It disposes exactly once on lens exit, project replacement and route
-teardown. The Experience lens is the first consumer; Studio is the second.
+posture layer is active. It deactivates on lens exit, ending transient posture, and disposes
+exactly once on route teardown; project replacement clears its Card focus and Preview. The
+Experience lens is the first consumer; Studio is the second.
 
 **Consumers:** T2/T3 editor adapters through the public facade (no private Stage imports).
 **Conformance:** projection/inverse agreement across Plan/3D/transitions, DPR and aspect

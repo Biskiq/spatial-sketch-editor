@@ -181,6 +181,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	} from '$lib/authoring/experience/experience-problems';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
 	import { createExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
+	import type { StagePostureLayer } from '$lib/authoring/stage/stage-adapter-host';
 import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
 import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
 import { removalItem, backOf, experienceNameWriter, experienceShownCardFor } from '$lib/authoring/experience/experience-card-wiring';
@@ -303,6 +304,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// A lens switch invalidates any Present-this framing run still waiting.
 		stagePickPresentationId = null;
 
+		// Leaving the lens ends its transient posture before World sees any input.
+		if (lens === 'experience' && next === 'world') experienceLens.deactivate();
 		// Preview returns to the lens it was entered from; a lens switch ends it.
 		previewController.close();
 		clearHover();
@@ -498,6 +501,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			selection = null;
 		},
 		openCard: () => { cardOpen = true; },
+		pickActive: () => stagePickPresentationId !== null,
+		cancelPick: () => {
+			stagePickPresentationId = null;
+			notice = 'Pick cancelled.';
+		},
+		dismiss: () => {
+			if (experienceFocus.subject !== null) { experienceFocus.select(null); return true; }
+			if (selection !== null) { closeSelection(); return true; }
+			if (experienceGuideOpen) { experienceGuideOpen = false; return true; }
+			return false;
+		},
 		reducedMotion: () => reducedMotion,
 		previewOpen: () => previewController.openState,
 		previewBusy: () => previewController.busy,
@@ -521,6 +535,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		renameRequest: () => { cardOpen = true; cardRenameRequest += 1; },
 		notice: (message) => { notice = message; }
 	});
+	/** The one active posture; World dispatches to adapters and navigation directly. */
+	const activeLayer = $derived<StagePostureLayer | null>(lens === 'experience' ? experienceLens.posture : null);
 	/** The lens's one playback session, read by the Guide instrument. */
 	const playback = experienceLens.playback;
 	experienceLens.install();
@@ -2058,6 +2074,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		clearHover();
 		const firstId = press.owner();
 		if (firstId !== null && firstId !== event.pointerId && drag !== null) {
+			if (activeLayer?.pinch(event) === 'claimed') return;
 			const first: [number, number] = [drag.x, drag.y];
 			interruptPress('second-pointer');
 			press.refuse(firstId); press.refuse(event.pointerId);
@@ -2070,7 +2087,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
-		if (experienceLens.pointerDown(event, viewMarkAt(event))) return;
+		if (activeLayer?.pointerDown(event, viewMarkAt(event)) === 'claimed') return;
 		// The adapters get the press first: the binding that owns an open task (a Scene
 		// transform, an armed Ink chain) may claim it, and so may a binding that offers
 		// direct manipulation with no task at all (a selected Wall's handles). Only a
@@ -2319,7 +2336,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (oldDistance > 0 && newDistance > 0) zoom(oldDistance / newDistance);
 			return;
 		}
-		if (experienceLens.pointerMove(event)) return;
+		if (activeLayer?.pointerMove(event) === 'claimed') return;
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
 			hoverSample = { css: stageCss(event), shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
@@ -2420,7 +2437,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
-		if (experienceLens.pointerUp(event)) return;
+		if (activeLayer?.pointerUp(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
 		// ended, not aborted. Only the owning pointer may end it — a refused second
@@ -2502,12 +2519,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
-		if (experienceLens.pointerCancel(event)) return;
+		if (activeLayer?.pointerCancel(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
-		if (experienceLens.lostCapture(event)) return;
+		if (activeLayer?.lostCapture(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
 
@@ -2525,7 +2542,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// A frustum's captured release also dispatches a click. Its View owns that
 		// click just as it owned the press; picking the floor here clears the Card.
 		// A View glyph, Look through or placement owns the release; it must not pick the Floor.
-		if (experienceLens.ownsClick(viewMarkAt(event) !== null)) return;
+		if (activeLayer?.click(event, viewMarkAt(event) !== null) === 'claimed') return;
 		// An **armed dock tool** owns the Stage surface: its tap already placed a
 		// point, split a Wall or was refused, and re-selecting underneath it would
 		// silently move what the tool is editing. Another adapter's task (Compose,
@@ -2558,7 +2575,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
 		if (viewEdit !== null) return;
-		if (lens === 'experience' && experienceLens.wheelZoom(event, evaluation?.rect.height ?? 1)) return;
+		if (activeLayer?.wheel(event, evaluation?.rect.height ?? 1) === 'claimed') return;
 		zoom(Math.exp(event.deltaY * 0.001));
 	}
 
@@ -2570,15 +2587,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		// S28 Esc precedence: a live marker gesture, then place, then Look through,
 		// then the Card's own unwinding.
-		if (event.key === 'Escape' && lens === 'experience') {
-			if (stagePickPresentationId !== null) {
-				event.preventDefault();
-				event.stopPropagation();
-				stagePickPresentationId = null;
-				notice = 'Pick cancelled.';
-				return;
-			}
-			if (experienceLens.escape()) {
+		if (event.key === 'Escape' && activeLayer !== null) {
+			if (activeLayer.key(event, 'capture') === 'claimed') {
 				event.preventDefault();
 				event.stopPropagation();
 				return;
@@ -2589,7 +2599,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// R217.S26 (E17): Alt+← is the Card's Back in the Experience lens. A focused Stop card
 		// or View tile claims Alt+← for its own reorder first (it prevents the default).
 		if (
-			lens === 'experience' &&
+			activeLayer !== null &&
 			event.key === 'ArrowLeft' &&
 			event.altKey &&
 			!event.metaKey &&
@@ -2597,7 +2607,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			!event.shiftKey &&
 			!event.defaultPrevented
 		) {
-			if (experienceController?.back()) {
+			if (activeLayer.key(event, 'capture') === 'claimed') {
 				event.preventDefault();
 				cardOpen = true;
 			}
@@ -2676,11 +2686,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				break;
 			}
 			case 'delete': {
-				const controller = activeExperience;
-				const anchorId = controller?.selectedAnchorId ?? null;
-				if (lens === 'experience' && controller !== null && anchorId !== null) {
+				if (activeLayer?.key(event, 'capture') === 'claimed') {
 					event.preventDefault();
-					void controller.removePathAnchor(anchorId);
 					break;
 				}
 				requestDelete();
@@ -2715,13 +2722,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				const armedKey = dockKeys.find((key) => key.id === armedDockId);
 				if (task !== null && armedKey?.palette === true && paletteOpen) { paletteOpen = false; break; }
 				if (task !== null) closeTask();
-				else if (lens === 'experience') {
-					// R217.S25: Esc clears the Card selection (Experience subject or Stage), then
-					// closes the Guide instrument. A menu or mode in a component answered first.
-					if (experienceFocus.subject !== null) experienceFocus.select(null);
-					else if (selection !== null) closeSelection();
-					else if (experienceGuideOpen) experienceGuideOpen = false;
-				} else if (selection !== null) closeSelection();
+				else if (activeLayer?.key(event, 'unwind') !== 'claimed' && selection !== null) closeSelection();
 				break;
 			}
 			case 'none':

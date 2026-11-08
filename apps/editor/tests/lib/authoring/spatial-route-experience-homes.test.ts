@@ -1544,3 +1544,40 @@ it('R217.S27/R33 writes welcome text on blur on the Experience Card, its only ho
 		stageExperience(facade().snapshot()).experiences[0]?.welcome
 	).toEqual({ kind: 'plain', body: 'Welcome to the gallery.' }));
 });
+
+/**
+ * Fix 1 regression: an armed Place is lens-local posture. Switching to World must
+ * return the press to adapters or navigation, and the next Experience entry must
+ * start unarmed.
+ */
+it('does not claim World presses after Place View was armed in Experience', async () => {
+	await remountRouteWith(await seededExperienceProject());
+	await enterExperience();
+	const stage = facade();
+	const viewIds = new Set(stageCamera(stage.snapshot()).views.map((view) => view.id));
+	dockKey('place-view').click();
+	await frame();
+	expect(dockKey('place-view').getAttribute('aria-pressed')).toBe('true');
+
+	target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
+	await frame();
+	const id = stage.evaluationId();
+	if (id === null) throw new Error('the Stage has no evaluation in World');
+	const projected = stage.projectWorld([1, 0, 1], id);
+	if (projected.kind !== 'projected') throw new Error('the Floor point must project');
+	const acquireGesture = vi.spyOn(stage, 'acquireGesture');
+	const adapterPointer = vi.spyOn(stage, 'pointerIntent');
+	const surface = target.querySelector<HTMLElement>('.stage')!;
+	for (const type of ['pointerdown', 'pointerup', 'click']) {
+		const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: projected.css[0], clientY: projected.css[1] });
+		Object.defineProperty(event, 'pointerId', { value: 1 });
+		Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+		surface.dispatchEvent(event);
+	}
+	await frame();
+	expect(stageCamera(stage.snapshot()).views).toHaveLength(viewIds.size);
+	expect(acquireGesture.mock.calls.length + adapterPointer.mock.calls.length).toBeGreaterThan(0);
+
+	await enterExperience();
+	expect(dockKey('place-view').getAttribute('aria-pressed')).toBe('false');
+});
