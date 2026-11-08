@@ -14,7 +14,7 @@ import {
 	readPendingCloudSave,
 	writePendingCloudSave,
 	type PendingCloudSaveResult
-} from '$lib/platform/project-persistence';
+} from '$lib/platform/project-pending-save';
 import type { SaveRequest } from '@portfolio/project-model/save';
 
 /** Persist the exact capture before the auth redirect. */

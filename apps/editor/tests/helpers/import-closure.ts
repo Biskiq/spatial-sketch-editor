@@ -29,6 +29,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse } from 'svelte/compiler';
+import ts from 'typescript';
 
 /** Repository root, derived from this file's own location (never cwd). */
 export const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
@@ -248,6 +250,102 @@ export function importClosure(
 		}
 	}
 	return seen;
+}
+
+/**
+ * A conservative source-level check that a directly imported controller is
+ * constructed and called during initialization. It does not prove that a
+ * particular behavior is wired to a live event; that requires a call-site or
+ * mounted behavioral test. Svelte markup is excluded from TypeScript parsing.
+ */
+export function constructsImportedOwner(importer: string, source: string, owner: string, exportedName: string): boolean {
+	let code = source;
+	if (importer.endsWith('.svelte')) {
+		const script = parse(source, { modern: true }).instance;
+		if (script == null) return false;
+		// The parser provides offsets on its ESTree Program at runtime, though
+		// ESTree's public Program type does not require them.
+		const content: typeof script.content & { start?: number; end?: number } = script.content;
+		if (content.start === undefined || content.end === undefined) return false;
+		code = source.slice(content.start, content.end);
+	}
+	const virtualFile = 'spatial-host.ts';
+	const tree = ts.createSourceFile(virtualFile, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	const options: ts.CompilerOptions = { noLib: true, noResolve: true };
+	const host = ts.createCompilerHost(options);
+	host.getSourceFile = (file) => file === virtualFile ? tree : undefined;
+	host.fileExists = (file) => file === virtualFile;
+	host.readFile = (file) => file === virtualFile ? code : undefined;
+	const checker = ts.createProgram([virtualFile], options, host).getTypeChecker();
+	const factories = new Set<ts.Symbol>();
+	for (const statement of tree.statements) {
+		if (!ts.isImportDeclaration(statement) || !statement.importClause || statement.importClause.isTypeOnly ||
+			!ts.isStringLiteral(statement.moduleSpecifier) || resolveSpecifier(importer, statement.moduleSpecifier.text) !== owner) continue;
+		const bindings = statement.importClause.namedBindings;
+		if (!bindings || !ts.isNamedImports(bindings)) continue;
+		for (const element of bindings.elements) {
+			if (!element.isTypeOnly && (element.propertyName?.text ?? element.name.text) === exportedName) {
+				const symbol = checker.getSymbolAtLocation(element.name);
+				if (symbol) factories.add(symbol);
+			}
+		}
+	}
+	// Require an unconditional top-level construction rather than a call hidden
+	// in a callback, dead branch, or short-circuit expression.
+	function callsFactory(expression: ts.Expression): boolean {
+		while (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isNonNullExpression(expression)) expression = expression.expression;
+		return ts.isCallExpression(expression) && !expression.questionDotToken && ts.isIdentifier(expression.expression) &&
+			factories.has(checker.getSymbolAtLocation(expression.expression)!);
+	}
+	for (const [index, statement] of tree.statements.entries()) {
+		if (!ts.isVariableStatement(statement)) continue;
+		for (const declaration of statement.declarationList.declarations) {
+			if (!ts.isIdentifier(declaration.name) || !declaration.initializer || !callsFactory(declaration.initializer)) continue;
+			const symbol = checker.getSymbolAtLocation(declaration.name);
+			if (!symbol) continue;
+			// A property read inside an unused callback, a conditional branch, or a
+			// short circuit is not evidence the controller is invoked. Accept only a
+			// direct top-level method call after the controller was constructed.
+			for (const later of tree.statements.slice(index + 1)) {
+				if (!ts.isExpressionStatement(later) || !ts.isCallExpression(later.expression) || later.expression.questionDotToken) continue;
+				const method = later.expression.expression;
+				if (!ts.isPropertyAccessExpression(method) || method.questionDotToken || !ts.isIdentifier(method.expression)) continue;
+				if (checker.getSymbolAtLocation(method.expression) === symbol) return true;
+			}
+		}
+	}
+	return false;
+}
+
+/** Spatial route and its explicitly constructed extracted controllers. */
+export function composedSpatialHost(): { file: string; code: string }[] {
+	const route = path.join(EDITOR_SRC, 'routes/project/[projectId]/spatial/+page.svelte');
+	const code = fs.readFileSync(route, 'utf8');
+	const reachable = importClosure([route]);
+	const controllers = [
+		[path.join(EDITOR_LIB, 'authoring/experience/experience-lens.svelte.ts'), 'createExperienceLens'],
+		[path.join(EDITOR_LIB, 'authoring/project-session/project-session.svelte.ts'), 'createProjectSession']
+	] as const;
+	const sources = [{ file: route, code }];
+	for (const [file, factory] of controllers) {
+		if (!reachable.has(file)) continue;
+		if (!constructsImportedOwner(route, code, file, factory)) throw new Error(`Route must construct ${factory} from ${file}`);
+		sources.push({ file, code: fs.readFileSync(file, 'utf8') });
+	}
+	// Markup and helpers reached by either extracted owner remain inside host-wide
+	// negative checks, even when they are not controller factories. Do not add
+	// a named controller twice if it was already included above.
+	const ownerDirs = [
+		path.join(EDITOR_LIB, 'authoring/experience'),
+		path.join(EDITOR_LIB, 'authoring/project-session')
+	];
+	for (const file of reachable) {
+		if (ownerDirs.some((dir) => file.startsWith(`${dir}${path.sep}`)) && /\.(svelte|ts)$/.test(file) &&
+			!sources.some((source) => source.file === file)) {
+			sources.push({ file, code: fs.readFileSync(file, 'utf8') });
+		}
+	}
+	return sources;
 }
 
 /** Recursively collect files under `root` (skips dotfiles). */

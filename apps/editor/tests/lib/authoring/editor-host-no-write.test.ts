@@ -21,12 +21,13 @@
  * the unconditional arch lane for the same reason that suite does.
  *
  * **Scope.** Every editor-source member of the route host's closure except the two
- * transport homes and `lib/platform/project-persistence.ts` itself. Persistence is
- * the writer's own home: the client interface declares `saveProject`, and the
- * module exports the pending-save helpers. The two Save-owned seams call those
- * helpers so no host module has to. Those modules matching the write predicate are
- * therefore expected and asserted below — the *exclusion* is deliberate, not the
- * absence.
+ * transport homes, `lib/platform/project-persistence.ts` and its pending-save
+ * sibling. Persistence is the writer's own home: the client interface declares
+ * `saveProject`. Since slice 6 the pending-capture helpers and their validation
+ * live in `lib/platform/project-pending-save.ts`, the other home. The two Save-owned
+ * seams call those helpers so no host module has to. Those modules matching the
+ * write predicate are therefore expected and asserted below — the *exclusion* is
+ * deliberate, not the absence.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import ts from 'typescript';
@@ -37,6 +38,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	EDITOR_SRC,
 	REPO_ROOT,
+	constructsImportedOwner,
 	importClosure,
 	relativeToRepo,
 	stripComments
@@ -46,7 +48,9 @@ import {
 const ROUTE_ROOT = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
 const ROUTE_MEMBER = 'apps/editor/src/routes/project/[projectId]/spatial/+page.svelte';
 const PLATFORM_PERSISTENCE_MEMBER = 'apps/editor/src/lib/platform/project-persistence.ts';
+const PLATFORM_PENDING_SAVE_MEMBER = 'apps/editor/src/lib/platform/project-pending-save.ts';
 const EDITOR_SOURCE_PREFIX = 'apps/editor/src/';
+const PROJECT_SESSION_PREFIX = 'apps/editor/src/lib/authoring/project-session/';
 
 /** The two Save-owned transports: the only modules that may call a raw writer. */
 const AUTHORIZED_SAVE = 'saveAcceptedSource';
@@ -62,6 +66,7 @@ const HOST_MEMBERS = REACHED.filter(
 	(member) =>
 		member.startsWith(EDITOR_SOURCE_PREFIX) &&
 		member !== PLATFORM_PERSISTENCE_MEMBER &&
+		member !== PLATFORM_PENDING_SAVE_MEMBER &&
 		!TRANSPORT_MEMBERS.has(member)
 );
 
@@ -81,11 +86,29 @@ function sourceOf(member: string): string {
 	return readFileSync(join(REPO_ROOT, member), 'utf8');
 }
 
+/** A route-composed session owner, not an arbitrary matching dependency. */
+function sessionOwners(members: readonly string[]): string[] {
+	return members.filter((member) => member === ROUTE_MEMBER || member.startsWith(PROJECT_SESSION_PREFIX));
+}
+
+function sessionOwnerWith(pattern: RegExp): { member: string; code: string } {
+	const owners = sessionOwners(REACHED)
+		.map((member) => ({ member, code: stripComments(sourceOf(member)) }))
+		.filter(({ code }) => pattern.test(code));
+	expect(owners, `one composed session owner must match ${pattern}`).toHaveLength(1);
+	const owner = owners[0]!;
+	if (owner.member !== ROUTE_MEMBER) {
+		expect(constructsImportedOwner(ROUTE_ROOT, sourceOf(ROUTE_MEMBER), join(REPO_ROOT, owner.member), 'createProjectSession')).toBe(true);
+	}
+	return owner;
+}
+
 describe('the editor host reaches only authorized write paths', () => {
 	it('walks the route host and the editor modules it mounts', () => {
 		// Positive controls: the walk is real, and it is the host's own graph.
 		expect(REACHED).toContain(ROUTE_MEMBER);
 		expect(REACHED).toContain(PLATFORM_PERSISTENCE_MEMBER);
+		expect(REACHED).toContain(PLATFORM_PENDING_SAVE_MEMBER);
 		expect(REACHED).toContain(SAVE_TRANSPORT_MEMBER);
 		expect(REACHED).toContain(PENDING_CAPTURE_MEMBER);
 		expect(REACHED).toContain('apps/editor/src/lib/authoring/stage/boot-state.ts');
@@ -99,7 +122,7 @@ describe('the editor host reaches only authorized write paths', () => {
 	it('calls no forbidden write path from the host or any editor module it mounts', () => {
 		// The reader is the host's whole interaction with persistence, so a rename of it
 		// cannot leave this suite approving an otherwise empty host.
-		expect(/\bloadProject\s*\(/.test(stripComments(sourceOf(ROUTE_MEMBER)))).toBe(true);
+		expect(sessionOwnerWith(/\bloadProject\s*\(/).code).toMatch(/\bloadProject\s*\(/);
 
 		const offenders = HOST_MEMBERS.filter((member) => callsIn(sourceOf(member)).length > 0).map(
 			(member) => `${member}: ${callsIn(sourceOf(member)).join(', ')}`
@@ -109,16 +132,15 @@ describe('the editor host reaches only authorized write paths', () => {
 
 	it('mounts the one authorized Save controller on the Head', () => {
 		const route = stripComments(sourceOf(ROUTE_MEMBER));
-		// The exception is scoped to the Head Save mount: the route builds the epoch's
-		// state machine and passes it to the Head. It must not grow a second writer.
-		expect(/\bcreateSaveState\s*\(/.test(route)).toBe(true);
-		expect(/\bcreateHeadSave\s*\(/.test(route)).toBe(true);
+		// The exception stays scoped to the Head Save mount; the composed session
+		// owner builds the state machine and supplies the one Head controller.
+		const owner = sessionOwnerWith(/\bcreateSaveState\s*\(/);
+		expect(/\bcreateSaveState\s*\(/.test(owner.code)).toBe(true);
+		expect(/\bcreateHeadSave\s*\(/.test(owner.code)).toBe(true);
 		expect(/save=\{headSave\}/.test(route)).toBe(true);
-		// An accepted edit is what makes the project dirty, and the Head re-reads its
-		// Save state only when that controller refreshes. The refresh must sit in the
-		// acceptance subscription: without it the Head keeps reporting the pre-edit
-		// status, so the unsaved-work exit and replacement guards never fire.
-		expect(/mounted\.onChanged\(\(\) => \{[\s\S]{0,800}?headSave\?\.refresh\(\)/.test(route)).toBe(true);
+		// The acceptance subscription must still refresh this same Head state.
+		const refreshOwner = sessionOwnerWith(/mounted\.onChanged\(\(\) => \{[\s\S]{0,800}?headSave\?\.refresh\(\)/);
+		expect(/mounted\.onChanged\(\(\) => \{[\s\S]{0,800}?headSave\?\.refresh\(\)/.test(refreshOwner.code)).toBe(true);
 	});
 
 	it('reaches the authorized Save writer only through its transport module', () => {
@@ -139,21 +161,23 @@ describe('the editor host reaches only authorized write paths', () => {
 			'writePendingCloudSave',
 			'clearPendingCloudSave'
 		]);
-		const route = stripComments(sourceOf(ROUTE_MEMBER));
-		expect(/\bpersistPendingCapture\s*\(/.test(route)).toBe(true);
-		expect(/\breadPendingCapture\s*\(/.test(route)).toBe(true);
-		expect(/\bdiscardPendingCapture\s*\(/.test(route)).toBe(true);
+		const owner = sessionOwnerWith(/\bpersistPendingCapture\s*\(/);
+		expect(/\bpersistPendingCapture\s*\(/.test(owner.code)).toBe(true);
+		expect(/\breadPendingCapture\s*\(/.test(owner.code)).toBe(true);
+		expect(/\bdiscardPendingCapture\s*\(/.test(owner.code)).toBe(true);
 	});
 
 	it('would flag a write call, and does flag the writer module the walk reaches', () => {
 		// The predicate detects real writer code in a module this walk reaches, so the
 		// host exclusion above is a scope decision rather than a hole. `saveProject`
-		// moved out of this module with T3's conditional Save; the pending-cloud-save
-		// writers are still here, and both must be detected.
-		expect(callsIn(sourceOf(PLATFORM_PERSISTENCE_MEMBER))).toEqual([
+		// moved out of this module with T3's conditional Save; slice 6 moved the
+		// pending-cloud-save writers to their own validation-owning home, and both must
+		// still be detected there.
+		expect(callsIn(sourceOf(PLATFORM_PENDING_SAVE_MEMBER))).toEqual([
 			'writePendingCloudSave',
 			'clearPendingCloudSave'
 		]);
+		expect(callsIn(sourceOf(PLATFORM_PERSISTENCE_MEMBER))).toEqual([]);
 		expect(sourceOf(PLATFORM_PERSISTENCE_MEMBER)).not.toMatch(/\bsaveProject\s*\(/);
 		// And it flags a call site, which is the defect this suite exists to catch.
 		expect(callsIn('await api.saveProject(project, signal)')).toEqual(['saveProject']);

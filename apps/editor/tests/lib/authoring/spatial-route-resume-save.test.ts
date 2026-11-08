@@ -136,7 +136,7 @@ import {
 import {
 	readPendingCloudSave,
 	writePendingCloudSave
-} from '$lib/platform/project-persistence';
+} from '$lib/platform/project-pending-save';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { consumerSceneEdit } from './__fixtures__/stage-domain-consumer';

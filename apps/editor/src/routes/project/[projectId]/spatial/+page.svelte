@@ -41,51 +41,24 @@
 	import { onMount, tick, untrack } from 'svelte';
 	import { DEFAULT_APP_PREFERENCES, readAppPreferences, writeAppPreferences, type AppPreferences } from '$lib/platform/app-preferences';
 	import { createEditorMotionClock } from '$lib/platform/editor-motion-clock';
-	import { beforeNavigate, goto, replaceState } from '$app/navigation';
+	import { createProjectSession } from '$lib/authoring/project-session/project-session.svelte';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
-	import {
-		createProjectApi,
-		createProjectAuth,
-		ProjectPersistenceError,
-		type ProjectApi,
-		type PreparedProjectLifecycle,
-		type ProjectLifecycleActionResult,
-		type ProjectLifecyclePrepareResult
-	} from '$lib/platform/project-persistence';
-	import { perfInput, perfMark, perfMarksEnabled, perfMeasureSync, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
+	import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
+	import { perfInput, perfMark, perfMarksEnabled, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
 	import { installPerfWorkObserver } from '$lib/platform/perf-work';
 	import {
-		discardPendingCapture,
-		persistPendingCapture,
-		readPendingCapture
-	} from '$lib/authoring/save/pending-capture';
-	import { isSavedBaseToken, type SaveRequest } from '@portfolio/project-model/save';
-	import {
 		SCENE_ENVIRONMENT_SET_KIND,
-		serializeProjectEnvelope,
-		validateProjectEnvelope,
 		type ProjectEnvelope,
 		type SceneEnvironmentPreset
 	} from '@portfolio/project-model/units';
 	import { layoutSelectionReference, primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
-	import {
-		bootEmpty,
-		bootFromLoadOutcome,
-		bootFromSourceJson,
-		bootIntentFromSearch,
-		bootStarterGallery,
-		initialBootState,
-		type BootIntent,
-		type BootLoadOutcome,
-		type BootState
-	} from '$lib/authoring/stage/boot-state';
-	import type { AdmissionContext, StageDomainRead, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
+	import { bootIntentFromSearch, type BootIntent } from '$lib/authoring/stage/boot-state';
+	import type { StageDomainRead, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
 	import {
 		createStageSession,
 		runBoundLoad,
-		type ReplacementEpochToken,
 		type StageSession,
 		type StageSelection,
 		type StageTask
@@ -127,13 +100,7 @@
 		type StageAcceptanceHost,
 		type StageHistoryState
 	} from '$lib/authoring/stage/host-acceptance';
-	import {
-		createApiSaveTransport,
-		createHeadSave,
-		createSaveState,
-		type HeadSave,
-		type ReloadOffer
-	} from '$lib/authoring/save';
+
 import {
 	LAYOUT_DIMENSION_LIMIT_MESSAGE,
 	planFragmentOf,
@@ -141,7 +108,7 @@ import {
 	type PlanEvaluation,
 	type PlanMembershipReason
 } from '@portfolio/layout-core';
-	import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportCameraState, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -192,10 +159,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
 	import ExperienceExperienceWriter from '$lib/authoring/experience/ExperienceExperienceWriter.svelte';
 	import ExperienceSubjectWriter from '$lib/authoring/experience/ExperienceSubjectWriter.svelte';
-	import {
-		provideExperienceHomes,
-		type ExperienceGuideTransport
-	} from '$lib/authoring/experience/experience-homes';
+	import { provideExperienceHomes } from '$lib/authoring/experience/experience-homes';
 	import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 	import {
 		experienceCardModel,
@@ -216,11 +180,13 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 		type ExperienceProblem
 	} from '$lib/authoring/experience/experience-problems';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
-	import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
-	import {
-		createExperiencePlayback,
-		shouldWritePlaybackSample
-	} from '$lib/authoring/experience/playback.svelte';
+	import { createExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
+	import type { StagePostureLayer } from '$lib/authoring/stage/stage-adapter-host';
+import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
+import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
+import { removalItem, backOf, experienceNameWriter, experienceShownCardFor } from '$lib/authoring/experience/experience-card-wiring';
+import { rememberWelcomeDismissed, welcomeDismissed } from '$lib/authoring/experience/experience-welcome';
+import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
 		enterPreview,
 		nextPreviewRunEpoch,
@@ -252,7 +218,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const auth = env.PUBLIC_API_ORIGIN ? createProjectAuth(env.PUBLIC_API_ORIGIN) : null;
 	const session = createStageSession({ sessionEpoch: 'session:route-boot' });
 
-	let boot = $state<BootState>(initialBootState(projectId, intent));
+	const projectSession = createProjectSession({
+		projectId, intent, api, auth, session,
+		url: () => page.url,
+		acceptance: () => acceptance,
+		tornDown: () => tornDown,
+		activate,
+		get notice() { return notice; },
+		set notice(value) { notice = value; }
+	});
+	const boot = $derived(projectSession.boot);
+	const headSave = $derived(projectSession.headSave);
+	const resumeOffer = $derived(projectSession.resumeOffer);
+	const pendingReplacement = $derived(projectSession.pendingReplacement);
+	const projectActionBusy = $derived(projectSession.projectActionBusy);
+	const { activeProject, requestReplacement, runReplacement, resumePendingSave, dismissResumeOffer,
+		prepareProjectLifecycle, renameCurrentProject, deleteCurrentProject, finishCurrentProjectAction,
+		reloadLifecycleRemote, applyReloadOffer } = projectSession;
 	/**
 	 * Validator findings of the mounted source, disclosed without being repaired.
 	 * `closure` is executable and blocks Save; `diagnostics` are repairable
@@ -287,43 +269,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let unsubscribeContributions: (() => void) | null = null;
 	let unsubscribeAcceptance: (() => void) | null = null;
 	let contributedTaskId = $state<{ id: string; adapterId: string } | null>(null);
-	/**
-	 * The saved-base metadata of the project this host last loaded from the cloud.
-	 *
-	 * It is `null` for a baseline the host itself minted (starter, empty, opened
-	 * source), so a Save there is a create rather than an update of someone else's
-	 * version. It is read once, when the save state for that epoch is built.
-	 */
-	let pendingSavedBase = $state.raw<{
-		readonly token: string | null;
-		readonly revision: { readonly projectId: string; readonly revisionId: string;
-		} | null;
-		readonly contentId: string | null;
-	} | null>(null);
-	/**
-	 * The PLATE Head's conditional-Save controller for the current epoch.
-	 *
-	 * T3.P01.S02 owns the state machine, the protocol and the server; this host only
-	 * constructs it per epoch, mounts it, and keeps the replacement guard the only
-	 * path that can install a remote document.
-	 */
-	let headSave = $state.raw<HeadSave | null>(null);
-	/**
-	 * TD-9 — the exact Save captured before a sign-in redirect, offered on return.
-	 * It is never run until the creator chooses *Resume pending Save*.
-	 */
-	let resumeOffer = $state.raw<{
-		readonly save: SaveRequest;
-		readonly project: ProjectEnvelope;
-	} | null>(null);
-	/** Set only for the epoch that mounts a resumed capture. */
-	let resumeSource: SaveRequest | null = null;
-	/** The cloud row's canonical bytes, for the resumed capture's dirty comparison. */
-	let remoteSavedCanonicalJson: string | null = null;
-	let headSaveVersion = $state(0);
-	let unsubscribeHeadSave: (() => void) | null = null;
-	let projectActionBusy = $state(false);
-	let deleteNavigationAuthorized = false;
 
 	let historyState = $state<StageHistoryState>({
 		canUndo: false,
@@ -359,14 +304,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// A lens switch invalidates any Present-this framing run still waiting.
 		stagePickPresentationId = null;
 
+		const previous = lens;
 		// Preview returns to the lens it was entered from; a lens switch ends it.
-		closePreview();
+		previewController.close();
 		clearHover();
 		interruptPress('lens-change');
 		// A notice describes the previous context; the lens is the new one.
 		notice = '';
 		if (facade?.changeLens(next)) {
 			lens = session.lens();
+			// Leaving the lens ends its transient posture; a refused switch keeps it.
+			if (previous === 'experience' && lens !== 'experience') experienceLens.deactivate();
 			task = null;
 			contributionsVersion += 1;
 			// R217.S25: the Guide instrument is closed by default, so every entry starts closed. A Card
@@ -441,58 +389,36 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		preferences = next;
 		writeAppPreferences(next);
 	}
-	/**
-	 * The isolated visitor Preview session (T3.P02.S02).
-	 *
-	 * Entering is a **Camera handover**: the Stage's inspection run hands its one
-	 * output to the Preview run through the landed F3 ticket protocol, and leaving
-	 * returns it. `epoch` is the protocol run epoch and the interpreter's run
-	 * identity at once, so an older Preview completion can neither drive the
-	 * restored inspection output nor be accepted by a newer run.
-	 */
-	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number;
-	} | null>(null);
-	/**
-	 * The last entry a mounted visitor surface carries.
-	 *
-	 * The surface is built once and reused: leaving Preview hides it and ends its
-	 * Camera claim, but keeps the loaded chunk, renderer and scene alive, so a
-	 * repeat entry costs a fresh run rather than a rebuild. A new entry replaces
-	 * these props and its epoch creates the next run.
-	 */
-	let previewView = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number;
-	} | null>(null);
-	/**
-	 * The read the mounted surface was built from, frozen at its entry.
-	 *
-	 * A hidden surface must not rebuild itself for every accepted authoring edit;
-	 * the next entry supplies the current read instead.
-	 */
-	let previewViewRead = $state.raw<StageDomainRead | null>(null);
-	type VisitorSurface = (typeof import('$lib/visitor/VisitorPreviewSurface.svelte'))['default'];
-	let previewSurface = $state.raw<VisitorSurface | null>(null);
-	let previewEpoch = 0;
-	let previewBusy = $state(false);
-	/** An explicit Card action's entry mode (guided or free), or null for the head Preview. */
-	let previewRequestedMode = $state<'guided' | 'free' | null>(null);
+	const previewController = createExperiencePreview({
+		lens: () => lens,
+		snapshot: () => (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null),
+		token: () => session.token(),
+		isCurrent: (token) => session.isCurrent(token as never),
+		envelope: () => currentEnvelope,
+		envelopeOf: (snapshot) => stageEnvelope(snapshot as Parameters<typeof stageEnvelope>[0]),
+		focus: () => experienceFocus.read(),
+		setProblem: (problem) => { previewProblem = problem as ExperienceProblem | null; },
+		stage: () => facade,
+		stopAndRestore: () => experienceLens.stopAndRestore(),
+		snapSuspended: () => drafting.snapSuspended,
+		patchDrafting: (patch) => patchDrafting(patch),
+		notice: (message) => { notice = message; },
+		perfMark: (name, data) => perfMark(name, data)
+	});
+	const preview = $derived(previewController.preview);
+	const previewView = $derived(previewController.view);
+	const previewViewRead = $derived(previewController.viewRead as StageDomainRead | null);
+	const previewSurface = $derived(previewController.surface);
+	const previewRequestedMode = $derived(previewController.requestedMode);
+	const previewGuideStats = $derived(previewController.stats);
+	const previewViewLabels = $derived(previewController.labels);
+	const previewAvailable = $derived(previewController.available);
+	const projectActionsUnavailableReason = $derived(projectSession.projectActionsUnavailableReason());
 	type PlaybackView = {
 		readonly eye: [number, number, number];
 		readonly target: [number, number, number];
 		readonly fov: number;
 	};
-	/** S30 playback writes the one Camera through a set-view intent, never a pose copy. */
-	function applyPlaybackView(view: PlaybackView): boolean {
-		const stage = facade;
-		if (stage === null) return false;
-		const ticket = stage.inspectionTicket();
-		if (ticket === null) return false;
-		const result = stage.requestViewingIntent(
-			{ kind: 'set-view', eye: view.eye, target: view.target, fovYDegrees: view.fov },
-			ticket,
-			performance.now() / 1000
-		);
-		return result.kind === 'accepted';
-	}
 	/** The adapter services the Stage and the Experience homes edit through. */
 	let adapterServices = $state.raw<StageAdapterServices | null>(null);
 	/**
@@ -539,17 +465,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const showOffCount = $derived([showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length);
 	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
 	let expandedPresentationId = $state<string | null>(null);
-	/**
-	 * R217.S25 (D10) — the one Card selection. A Presentation, View, Stop, transition or the
-	 * Experience replaces the Stage selection; nothing here moves the Camera.
-	 */
-	function selectExperienceSubject(subject: ExperienceSubject | null): void {
-		stagePickPresentationId = null;
-		facade?.select(null);
-		selection = null;
-		experienceController?.select(subject);
-		cardOpen = true;
-	}
 	/** The Scene entity the Card shows in the Experience lens: the Stage's primary Scene selection. */
 	const experienceSceneSubject = $derived.by(() => {
 		const selected = selection;
@@ -564,308 +479,77 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Place a View is an armed Stage tool; Look through is a provisional posture. */
 	let experienceTool = $state<'select' | 'place'>('select');
-	let placementPress = $state.raw<{ readonly pointerId: number; readonly start: StageTriple; readonly css: readonly [number, number] } | null>(null);
-	let placementGhost = $state.raw<ReturnType<typeof viewPlacementPose>>(null);
-	/** Present this in Plan aims the armed placement at the subject. */
-	let placementAim = $state<StageTriple | null>(null);
-	let lookThroughSession = $state<{ readonly viewId: string; readonly presentationId: string; readonly label: string } | null>(null);
-	let lookThroughTick = $state(0);
-	let lookThroughConfirm = $state<readonly string[] | null>(null);
 	/** Scroll in Look through accumulates until one 0.25 m step is owed. */
-	const EXPERIENCE_WELCOME_KEY = 'museum.experience.welcome-dismissed';
 	let showExperienceWelcome = $state(false);
 
-	function dismissExperienceWelcome(): void {
-		showExperienceWelcome = false;
-		try {
-			localStorage.setItem(EXPERIENCE_WELCOME_KEY, '1');
-		} catch {
-			// A blocked preference store still allows dismissal for this visit.
-		}
-	}
-
-	let lookThroughZoom: { pending: number; startedAt: number; applied: number } | null = null;
-	const lookThroughPointers = new Map<number, { x: number; y: number; truck: boolean }>();
 	/** The capture frame's measured local viewport for the one Stage renderer. */
 	let throughViewport = $state<{ readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
 	let throughFrameEl = $state<HTMLElement | null>(null);
 	/** Monotone guard: only the newest Present-this run may capture framing. */
 
 
-	/* --- R217.S30 — one Stage-owned ephemeral playback session ----------------- */
+	/* --- R217.S30 — the Experience lens owns playback and its Follow entry ---- */
 
-	const playback = createExperiencePlayback(() => activeExperience?.playbackSource ?? null);
-	/** The exact settled inspection (pose **and** reading) Follow restores. */
-	let playbackEntryStandpoint = $state.raw<ViewportCameraState | null>(null);
-	/** The Stage that captured the standpoint; a replacement must never inherit it. */
-	let playbackEntryStage = $state.raw<object | null>(null);
-	/** A restore refused while a handoff owned the Camera; retry only on the same Stage. */
-	let playbackRestorePending = $state.raw<{ readonly stage: object; readonly standpoint: ViewportCameraState } | null>(null);
-	/** Playback is a Guide instrument: any takeover or armed tool ends it. */
-	const playbackSuppressed = $derived(
-		preview !== null ||
-			previewBusy ||
-			previewRequestedMode !== null ||
-			lookThroughSession !== null ||
-			placementPress !== null ||
-			placementAim !== null ||
-			experienceTool === 'place' ||
-			lens !== 'experience' ||
-			!experienceGuideOpen
-	);
-
-	/** A Card transport action opens its own Guide; the rail need not be open first. */
-	function guideSeconds(guideId: string): number | null {
-		const source = activeExperience?.playbackSourceFor(guideId) ?? null;
-		if (source === null) return null;
-		const map = guideTimeMapForProgram({
-			program: source.program,
-			transitions: source.transitions,
-			graph: source.graph,
-			entryStopId: source.entryStopId
-		});
-		return map.kind === 'ready' ? map.map.totalSeconds : null;
-	}
-
-	function playGuide(guideId: string, action: ExperienceGuideTransport): void {
-		const controller = activeExperience;
-		if (
-			controller === null ||
-			lens !== 'experience' ||
-			preview !== null ||
-			previewBusy ||
-			previewRequestedMode !== null ||
-			lookThroughSession !== null ||
-			placementPress !== null ||
-			placementAim !== null ||
-			experienceTool === 'place'
-		) return;
-		controller.openGuide(guideId);
-		experienceGuideOpen = true;
-		void tick().then(() => {
-			if (activeExperience !== controller || !experienceGuideOpen) return;
-			playback.prepare();
-			if (action.kind === 'start') playback.playFromStart();
-			else if (action.kind === 'stop') playback.playFromStop(action.stopId);
-			else playback.previewMove(action.occurrence);
-		});
-	}
-
-	/** Synchronously end Follow and restore its exact entry before any handoff. */
-	function stopPlaybackAndRestore(): void {
-		const stage = facade;
-		if (playbackRestorePending !== null && playbackRestorePending.stage !== stage) playbackRestorePending = null;
-		playback.stop();
-		if (playbackEntryStandpoint !== null) restorePlaybackEntry(stage);
-	}
-
-	function restorePlaybackEntry(stage: typeof facade = facade): boolean {
-		const standpoint = playbackEntryStandpoint;
-		if (standpoint === null) return true;
-		if (stage === null || playbackEntryStage !== stage) {
-			// Never write an old Stage's standpoint into a replacement.
-			playbackEntryStandpoint = null;
-			playbackEntryStage = null;
+	const experienceLens = createExperienceLens({
+		activeController: () => activeExperience,
+		stage: () => facade,
+		lens: () => lens,
+		guideOpen: () => experienceGuideOpen,
+		setGuideOpen: (open) => { experienceGuideOpen = open; },
+		clearStageSelection: () => {
+			stagePickPresentationId = null;
+			facade?.select(null);
+			selection = null;
+		},
+		openCard: () => { cardOpen = true; },
+		pickActive: () => stagePickPresentationId !== null,
+		cancelPick: () => {
+			stagePickPresentationId = null;
+			notice = 'Pick cancelled.';
+		},
+		dismiss: () => {
+			if (experienceFocus.subject !== null) { experienceFocus.select(null); return true; }
+			if (selection !== null) { closeSelection(); return true; }
+			if (experienceGuideOpen) { experienceGuideOpen = false; return true; }
 			return false;
-		}
-		if (!stage.camera.restoreStandpoint(standpoint)) {
-			playbackRestorePending = { stage, standpoint };
-			return false;
-		}
-		playbackEntryStandpoint = null;
-		playbackEntryStage = null;
-		playbackRestorePending = null;
-		return true;
-	}
+		},
+		reducedMotion: () => reducedMotion,
+		previewOpen: () => previewController.openState,
+		previewBusy: () => previewController.busy,
+		previewRequested: () => previewController.requestedMode !== null,
+		pathAnchorPoint: (css, height) => pathAnchorPoint(css, height),
+		stageCss: (event) => stageCss(event),
+		showMarkers: () => showMarkers,
+		showFrustums: () => showFrustums,
+		gestureActive: () => session.gesture() !== null,
+		refusePress: (pointerId) => press.refuse(pointerId),
+		clearHover: () => clearHover(),
+		evaluationGeneration: () => evaluation?.token.evaluationGeneration ?? 0,
+		tool: () => experienceTool,
+		setTool: (next) => { experienceTool = next; },
+		absoluteCss: (event) => absoluteCss(event),
+		stageElement: () => stageEl,
+		capturePointer: (target, pointerId) => capturePointer(target, pointerId),
+		floorDatum: () => experienceFloorDatum,
+		evaluation: () => evaluation,
+		refresh: () => refresh(),
+		renameRequest: () => { cardOpen = true; cardRenameRequest += 1; },
+		notice: (message) => { notice = message; }
+	});
+	/** The one active posture; World dispatches to adapters and navigation directly. */
+	const activeLayer = $derived<StagePostureLayer | null>(lens === 'experience' ? experienceLens.posture : null);
+	/** The lens's one playback session, read by the Guide instrument. */
+	const playback = experienceLens.playback;
+	experienceLens.install();
 
-	$effect(() => {
-		const source = activeExperience?.playbackSource ?? null;
-		playback.setReducedMotion(reducedMotion);
-		playback.setBlocked(playbackSuppressed);
-		if (source === null || lens !== 'experience' || !experienceGuideOpen) {
-			stopPlaybackAndRestore();
-			return;
-		}
-		// Derive as soon as the Guide opens; an accepted edit derives a new map
-		// immediately and stops the old clock. Refused edits never reach here.
-		if (playback.source !== source || playback.map === null) {
-			if (playback.following) stopPlaybackAndRestore();
-			playback.invalidate();
-			playback.prepare();
-		}
-	});
-	$effect(() => {
-		if (playbackSuppressed && playback.status !== 'idle') stopPlaybackAndRestore();
-	});
-	$effect(() => {
-		if (playback.following && playbackEntryStandpoint === null && facade !== null) {
-			playbackEntryStandpoint = facade.camera.captureStandpoint();
-			playbackEntryStage = facade;
-		}
-	});
-	$effect(() => {
-		if (!playback.following && playbackEntryStandpoint !== null) restorePlaybackEntry();
-	});
-	$effect(() => {
-		const stage = facade;
-		void lookThroughSession;
-		void preview;
-		if (playbackRestorePending === null) return;
-		if (lookThroughSession !== null || preview !== null) return;
-		if (playbackRestorePending.stage !== stage) {
-			playbackRestorePending = null;
-			return;
-		}
-		const pending = playbackRestorePending;
-		playbackRestorePending = null;
-		restorePlaybackEntry(stage);
-		void pending;
-	});
-	$effect(() => {
-		// A replacement owns a new Camera: drop, never transplant, the old entry.
-		if (playbackEntryStage !== null && playbackEntryStage !== facade) {
-			playbackEntryStandpoint = null;
-			playbackEntryStage = null;
-		}
-		if (playbackRestorePending !== null && playbackRestorePending.stage !== facade) playbackRestorePending = null;
-	});
-	$effect(() => () => {
-		if (playbackEntryStandpoint !== null) restorePlaybackEntry();
-	});
-	/**
-	 * The playback clock runs inside the Stage's own frame loop (`advancePlayback`,
-	 * called just before the Camera is evaluated), so a Follow pose is written and
-	 * drawn in the same frame. A second rAF loop raced the Stage's and landed some
-	 * poses a frame late, which read as judder.
-	 */
-	let playbackClock: number | null = null;
-	let lastFollowSample: typeof playback.sample = null;
-	function writeFollowSample(): void {
-		const sample = playback.sample;
-		if (sample === null || !shouldWritePlaybackSample(playback.following, playbackSuppressed)) {
-			lastFollowSample = null;
-			return;
-		}
-		if (sample === lastFollowSample) return;
-		lastFollowSample = sample;
-		const accepted = applyPlaybackView({
-			eye: [sample.eye[0], sample.eye[1], sample.eye[2]],
-			target: [sample.target[0], sample.target[1], sample.target[2]],
-			fov: sample.fov
-		});
-		// A refused write stops the run instead of letting the playhead drift on
-		// a Camera the Stage no longer owns.
-		if (!accepted) playback.fail('The Stage refused the playback camera.');
-	}
-	function advancePlayback(now: number): void {
-		if (playback.status !== 'playing' || playbackSuppressed) {
-			playbackClock = null;
-		} else {
-			if (playbackClock !== null) playback.tick((now - playbackClock) / 1000);
-			playbackClock = now;
-		}
-		writeFollowSample();
-	}
-	// A seek, a Stop press or Follow turning on while paused writes at once; the
-	// frame loop covers playing.
-	$effect(() => {
-		void playback.sample;
-		void playback.following;
-		untrack(() => writeFollowSample());
-	});
-	$effect(() => {
-		const onKey = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
-			if (event.key === 'Escape' && playback.following) {
-				event.preventDefault();
-				playback.setFollow(false);
-				return;
-			}
-			if (event.key !== ' ' || !experienceGuideOpen || lens !== 'experience' || preview !== null) return;
-			if (activeExperience?.busy === true || playbackSuppressed) return;
-			const target = event.target;
-			if (
-				target instanceof HTMLElement &&
-				target.closest('input, textarea, select, button, a[href], [contenteditable="true"], [role="menu"], [role="slider"]') !== null
-			) return;
-			event.preventDefault();
-			playback.playPause();
-		};
-		window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
-	});
-
-	let advancedCamera = $state(false);
-	const advancedViewId = $derived(
-		advancedCamera && experienceTool === 'select' && lookThroughSession === null &&
-			playback.status === 'idle' && preview === null && !previewBusy
-			? activeExperience?.selectedView?.id ?? null : null
-	);
-	type ViewEditSession = {
-		readonly viewId: string;
-		readonly presentationId: string;
-		readonly kind: ViewEditKind;
-		readonly pointerId: number;
-		readonly capture: Element;
-		readonly start: AuthoredViewPose;
-		eye: StageTriple;
-		target: StageTriple;
-		fov: number;
-		readonly advanced: boolean;
-		readonly sourceRevision: string;
-		readonly handleId: string;
-		readonly origin: readonly [number, number];
-		readonly lease: { readonly active: boolean; release(): void };
-		readonly resolve: (event: PointerEvent, id: string) => AuthoredViewPose | null;
-		pointer: readonly [number, number];
-		moved: boolean;
-	};
-	/** A live marker drag: the authored View is untouched until release. */
-	let viewEdit = $state<ViewEditSession | null>(null);
-	/** A marker edit that changes a View another Presentation also lists, awaiting confirmation. */
-	let pendingViewWrite = $state<{
-		readonly viewId: string;
-		readonly presentationId: string;
-		readonly pose: AuthoredViewPose;
-		readonly alsoIn: readonly string[];
-		readonly sourceRevision: string;
-	} | null>(null);
+	const advancedCamera = $derived(experienceLens.advancedCamera());
+	const advancedViewId = $derived(experienceLens.advancedViewId());
+	const viewEdit = $derived(experienceLens.viewEdit());
+	const pendingViewWrite = $derived(experienceLens.pendingViewWrite());
 
 	const experienceFloorDatum = $derived.by(() =>
 		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0
 	);
-
-	const lookThroughMoved = $derived.by(() => {
-		void lookThroughTick;
-		return facade?.camera.lookThrough()?.moved ?? false;
-	});
-
-	function floorPlane(): {
-		readonly originMeters: StageTriple;
-		readonly normal: StageTriple;
-		readonly yawRadians: number;
-		readonly datumMeters: number;
-		readonly supportedLocalExtent: null;
-	} {
-		return {
-			originMeters: [0, experienceFloorDatum, 0],
-			normal: [0, 1, 0],
-			yawRadians: 0,
-			datumMeters: experienceFloorDatum,
-			supportedLocalExtent: null
-		};
-	}
-
-	/** The Floor point under one pointer, through Camera's own ray and plane hit. */
-	function placementPoint(event: PointerEvent): StageTriple | null {
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		if (stage === null || id === null) return null;
-		const ray = stage.pointerRay(absoluteCss(event), id);
-		if (ray.kind !== 'ray') return null;
-		const hit = stage.intersectWorkingPlane(ray.ray, floorPlane(), id);
-		return hit.kind === 'intersected' ? hit.worldPoint : null;
-	}
 
 	/** One path anchor drag point, through the same Camera ray and a level plane at its height. */
 	let pathDragLease: { release(): void } | null = null;
@@ -907,22 +591,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return hit.kind === 'intersected' ? hit.worldPoint : null;
 	}
 
-	function togglePlaceView(): void {
-		if (lens !== 'experience' || viewEdit !== null) return;
-		if (experienceTool === 'place') {
-			experienceTool = 'select';
-			placementAim = null;
-			cancelPlacement();
-			notice = '';
-			return;
-		}
-		if (lookThroughSession !== null) exitLookThrough();
-		stopPlaybackAndRestore();
-		experienceTool = 'place';
-		placementAim = null;
-		notice = '';
-	}
-
 	function viewMarkAt(event: MouseEvent) {
 		const target = event.target;
 		if (!(target instanceof Element)) return null;
@@ -931,502 +599,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const kind = target.closest('[data-turn-grip]') !== null ? 'turn' : mark?.getAttribute('data-mark-kind') ?? null;
 		return viewId === null || kind === null || mark === null ? null : { viewId, kind, mark };
 	}
-
-	function viewEditResolver(event: PointerEvent, pose: AuthoredViewPose, kind: ViewEditKind, mark: Element, id: string, advanced: boolean): ViewEditSession['resolve'] | null {
-		const stage = facade;
-		if (stage === null) return null;
-		const origin = absoluteCss(event);
-		const datum = experienceFloorDatum;
-		const framed = (kind: AdvancedViewFraming['kind'], value: number, next: PointerEvent) =>
-			frameView(pose, { kind, value: snapViewDrag(kind, value, next) }, datum);
-		if (kind === 'move') {
-			const grab = pathAnchorPoint(origin, datum);
-			if (grab === null) return null;
-			return (next) => {
-				const point = pathAnchorPoint(absoluteCss(next), datum);
-				if (point === null) return null;
-				const x = pose.eye[0] + point[0] - grab[0];
-				const z = pose.eye[2] + point[2] - grab[2];
-				return moveViewOnFloor(pose, [advanced ? snapViewDrag('move', x, next) : x, datum,
-					advanced ? snapViewDrag('move', z, next) : z]);
-			};
-		}
-		if (kind === 'turn') {
-			// Plan is orthographic. The datum gives the same X/Z even when the
-			// authored eye is above Plan's depth range (including an empty World).
-			const point = pathAnchorPoint(origin, datum);
-			const grab = point === null ? null : yawFromEye(pose, point);
-			if (grab === null) return null;
-			return (next) => {
-				const hit = pathAnchorPoint(absoluteCss(next), datum);
-				const yaw = hit === null ? null : yawFromEye(pose, hit);
-				if (yaw === null) return null;
-				const degrees = angleDelta(yaw, grab) * 180 / Math.PI;
-				return turnViewAboutEye(pose, snapViewDrag('turn', degrees, next) * Math.PI / 180);
-			};
-		}
-		if (kind === 'lift') {
-			const travel = (next: PointerEvent, evaluationId: string) => {
-				const result = stage.pointerRay(absoluteCss(next), evaluationId);
-				return result.kind !== 'ray' ? null : axisTravelFromRay({
-					origin: [...pose.eye], direction: [0, 1, 0], rayOrigin: result.ray.origin, rayDirection: result.ray.direction
-				});
-			};
-			const grab = travel(event, id);
-			if (grab === null) return null;
-			return (next, evaluationId) => {
-				const distance = travel(next, evaluationId);
-				return distance === null ? null : framed('lift', pose.eye[1] - datum + distance - grab, next);
-			};
-		}
-		if (kind === 'tilt') {
-			const tilt = viewTilt(pose);
-			return (next) => framed('tilt', tilt - (next.clientY - origin[1]) * 0.45, next);
-		}
-
-		const side = mark.getAttribute('data-side') === '-1' ? -1 : 1;
-		const apexX = mark.getAttribute('data-apex-x');
-		const apexY = mark.getAttribute('data-apex-y');
-		if (apexX !== null && apexY !== null) {
-			const angle = (next: PointerEvent) => {
-				const x = next.clientX - Number(apexX);
-				const y = next.clientY - Number(apexY);
-				return Math.hypot(x, y) < 4 ? null : Math.atan2(y, x);
-			};
-			const grab = angle(event);
-			if (grab === null) return null;
-			return (next) => {
-				const current = angle(next);
-				return current === null ? null : framed('lens', planLensFromDrag(pose.fov, grab, current, side), next);
-			};
-		}
-		const initialRay = stage.pointerRay(origin, id);
-		if (initialRay.kind !== 'ray' || Math.hypot(...pose.target.map((v, i) => v - pose.eye[i]!)) <= 1e-6) return null;
-		const basis = createEditorCameraFramingBasis([...pose.eye], [...pose.target]);
-		const forward: StageTriple = [basis.forward.x, basis.forward.y, basis.forward.z];
-		const up: StageTriple = [basis.up.x, basis.up.y, basis.up.z];
-		const depth = CAMERA_FRUSTUM_FAR_METRES;
-		const center = basis.eye.clone().addScaledVector(basis.forward, CAMERA_LENS_OFFSET_METRES + depth);
-		const plane = {
-			originMeters: [center.x, center.y, center.z] as StageTriple,
-			normal: forward,
-			yawRadians: Math.atan2(forward[0], forward[2]) + Math.PI / 2,
-			datumMeters: null,
-			supportedLocalExtent: null
-		};
-		const grab = stage.intersectWorkingPlane(initialRay.ray, plane, id);
-		const dragBasis = createEditorCameraFovDragBasis({
-			eye: [...pose.eye], forward, up, depth, fov0: pose.fov,
-			side: side === 1 ? 'top' : 'bottom',
-			rayDirection: initialRay.ray.direction,
-			p0: grab.kind === 'intersected' ? grab.worldPoint : null,
-			startClientY: event.clientY
-		});
-		return (next, evaluationId) => {
-			const ray = stage.pointerRay(absoluteCss(next), evaluationId);
-			if (ray.kind !== 'ray') return null;
-			const hit = stage.intersectWorkingPlane(ray.ray, plane, evaluationId);
-			return framed('lens', evaluateEditorCameraFovDrag(
-				dragBasis, hit.kind === 'intersected' ? hit.worldPoint : null,
-				side === -1 && dragBasis.useSlider ? origin[1] * 2 - next.clientY : next.clientY,
-				ray.ray.direction
-			), next);
-		};
-	}
-
-	function beginViewEdit(event: PointerEvent, viewId: string, kind: ViewEditKind, mark: Element): void {
-		const stage = facade;
-		const controller = activeExperience;
-		const id = stage?.evaluationId() ?? null;
-		const advanced = viewId === advancedViewId;
-		const handleId = mark.getAttribute('data-advanced-handle');
-		if (event.button !== 0 || (!advanced && event.shiftKey) || viewEdit !== null || pendingViewWrite !== null) return;
-		if (stage === null || controller === null || controller.busy || id === null || evaluation === null) return;
-		if (handleId !== null && !advanced) return;
-		if (!advanced && kind === 'move' && evaluation.projectionKind !== 'plan-orthographic') return;
-		const facts = controller.viewFacts(viewId);
-		const pose = controller.viewPose(viewId);
-		if (facts === null || pose === null) return;
-		const resolve = viewEditResolver(event, pose, kind, mark, id, advanced);
-		if (resolve === null) return;
-		const acquisition = stage.acquireGesture({ owner: 'experience-view-edit', evaluationId: id, policy: 'cancel-on-reading-change' });
-		if (acquisition.kind !== 'granted') {
-			notice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
-			return;
-		}
-		// Advanced handles may go out of frame while held. Capture on the stable Stage.
-		const capture = handleId !== null ? stageEl ?? null : event.target instanceof Element ? event.target : null;
-		if (capture === null || !capturePointer(capture, event.pointerId)) {
-			acquisition.lease.release();
-			return;
-		}
-		if (handleId !== null) press.refuse(event.pointerId);
-		clearHover();
-		viewEdit = {
-			viewId,
-			presentationId: controller.selectedView?.id === viewId ? controller.selectedView.presentationId : facts.presentationId,
-			kind,
-			pointerId: event.pointerId,
-			capture,
-			start: pose,
-			eye: [...pose.eye],
-			target: [...pose.target],
-			fov: pose.fov,
-			advanced,
-			handleId: handleId ?? '',
-			origin: absoluteCss(event),
-			pointer: stageCss(event),
-			sourceRevision: controller.sourceRevision,
-			lease: acquisition.lease,
-			resolve,
-			moved: false
-		};
-	}
-
-	function updateViewEdit(event: PointerEvent): void {
-		const edit = viewEdit;
-		const id = facade?.evaluationId() ?? null;
-		if (edit === null || id === null || event.pointerId !== edit.pointerId) return;
-		const distance = Math.hypot(event.clientX - edit.origin[0], event.clientY - edit.origin[1]);
-		const pose = distance < 2 ? edit.start : edit.resolve(event, id);
-		if (pose === null) return;
-		viewEdit = { ...edit, eye: [...pose.eye], target: [...pose.target], fov: pose.fov,
-			pointer: stageCss(event), moved: viewEditMoved(edit.kind, edit.start, pose) };
-	}
-
-	function releaseViewEditPointer(edit: ViewEditSession): void {
-		if (edit.capture.hasPointerCapture?.(edit.pointerId)) edit.capture.releasePointerCapture(edit.pointerId);
-		edit.lease.release();
-	}
-
-	function viewEditIsCurrent(edit: ViewEditSession): boolean {
-		return facade !== null && edit.lease.active && session.gesture() !== null &&
-			activeExperience?.sourceRevision === edit.sourceRevision &&
-			(!edit.advanced || (advancedViewId === edit.viewId && showMarkers &&
-				(showFrustums || (edit.kind !== 'tilt' && edit.kind !== 'lens'))));
-	}
-
-	// Reading/source/selection changes cancel provisional work before it can become a write.
-	$effect(() => {
-		const edit = viewEdit;
-		if (edit === null) return;
-		void evaluation?.token.evaluationGeneration;
-		if (!viewEditIsCurrent(edit)) untrack(cancelViewEdit);
-	});
-
-	function cancelViewEdit(): void {
-		const edit = viewEdit;
-		viewEdit = null;
-		if (edit !== null) releaseViewEditPointer(edit);
-	}
-
-	async function endViewEdit(): Promise<void> {
-		const edit = viewEdit;
-		if (edit === null) return;
-		const current = viewEditIsCurrent(edit);
-		cancelViewEdit();
-		if (current && edit.moved) await writeViewEdit(edit.viewId, edit.presentationId, edit, edit.sourceRevision);
-	}
-
-	async function writeViewEdit(viewId: string, presentationId: string, pose: AuthoredViewPose, sourceRevision: string): Promise<void> {
-		const controller = activeExperience;
-		if (controller === null || controller.sourceRevision !== sourceRevision || controller.busy) return;
-		// Keep only the Camera payload, never the captured pointer or its live gesture.
-		const next = { eye: pose.eye, target: pose.target, fov: pose.fov };
-		const outcome = await controller.updateViewPose(viewId, next, presentationId);
-		if (outcome.kind === 'needs-confirmation') {
-			pendingViewWrite = { viewId, presentationId, pose: next, alsoIn: outcome.alsoIn, sourceRevision };
-		} else if (outcome.kind === 'updated') {
-			refresh();
-		} else {
-			notice = outcome.message;
-		}
-	}
-
-	async function setAdvancedViewFraming(viewId: string, edit: AdvancedViewFraming): Promise<void> {
-		const controller = activeExperience;
-		if (controller === null || viewId !== advancedViewId || viewEdit !== null || pendingViewWrite !== null) return;
-		const facts = controller.viewFacts(viewId);
-		const start = controller.viewPose(viewId);
-		if (facts === null || start === null) return;
-		const pose = frameView(start, edit, experienceFloorDatum);
-		if (viewEditMoved(edit.kind, start, pose)) await writeViewEdit(viewId, controller.selectedView?.presentationId ?? facts.presentationId, pose, controller.sourceRevision);
-	}
-
-	async function confirmPendingViewWrite(): Promise<void> {
-		const pending = pendingViewWrite;
-		pendingViewWrite = null;
-		if (pending === null) return;
-		const controller = activeExperience;
-		if (controller === null || controller.sourceRevision !== pending.sourceRevision) return;
-		const outcome = await controller.updateViewPose(pending.viewId, pending.pose, pending.presentationId, {
-			confirmShared: true
-		});
-		if (outcome.kind === 'updated') {
-			refresh();
-		} else if (outcome.kind === 'refused') {
-			notice = outcome.message;
-		}
-	}
-
-	function beginPlacement(event: PointerEvent): void {
-		if (event.button !== 0 || placementPress !== null) return;
-		const point = placementPoint(event);
-		if (point === null) {
-			notice = 'Point at the Floor to place a View.';
-			return;
-		}
-		if (!capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
-		placementPress = { pointerId: event.pointerId, start: point, css: absoluteCss(event) };
-		placementGhost = placementPose(point, point);
-	}
-
-	function placementPose(start: StageTriple, current: StageTriple) {
-		return viewPlacementPose({
-			startFloorPoint: start,
-			currentFloorPoint: current,
-			aimPoint: placementAim,
-			minimumDragMeters: 0,
-			defaultAzimuthRadians: evaluation?.pose.azimuthRadians,
-			floorDatumMeters: experienceFloorDatum,
-			fovYDegrees: CAMERA_FOV.default
-		});
-	}
-
-	function movePlacement(event: PointerEvent): void {
-		const press = placementPress;
-		if (press === null || event.pointerId !== press.pointerId) return;
-		const point = placementPoint(event);
-		if (point === null) return;
-		const [x, y] = absoluteCss(event);
-		const [startX, startY] = press.css;
-		const dragged = isStageDrag({ x: startX, y: startY }, { x, y });
-		placementGhost = placementPose(press.start, dragged ? point : press.start);
-	}
-
-	function cancelPlacement(): void {
-		const press = placementPress;
-		placementPress = null;
-		placementGhost = null;
-		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
-	}
-
-	function endPlacement(): void {
-		const press = placementPress;
-		const pose = placementGhost;
-		placementPress = null;
-		placementGhost = null;
-		placementAim = null;
-		if (press === null) return;
-		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
-		if (pose === null) {
-			notice = 'The View needs a target away from its eye.';
-			return;
-		}
-		const controller = activeExperience;
-		if (controller === null) return;
-		void controller.placeView({ eye: pose.eye, target: pose.target, fov: pose.fovYDegrees }).then((outcome) => {
-			if (outcome.kind === 'refused') {
-				notice = outcome.message;
-				return;
-			}
-			if (outcome.createdPresentation) {
-				cardOpen = true;
-				// X28.2: the new Presentation opens its existing inline name editor.
-				cardRenameRequest += 1;
-				notice = 'Presentation created; name it in the Card.';
-			} else {
-				notice = '';
-			}
-		});
-	}
-
-	function beginReaim(event: PointerEvent): void {
-		if (event.button !== 0 && event.button !== 2) return;
-		if (lookThroughPointers.size >= 2 || (lookThroughPointers.size > 0 && event.pointerType !== 'touch')) return;
-		if (!capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
-		lookThroughPointers.set(event.pointerId, { x: event.clientX, y: event.clientY, truck: event.button === 2 });
-	}
-
-	function moveReaim(event: PointerEvent): void {
-		const stage = facade;
-		const press = lookThroughPointers.get(event.pointerId);
-		if (stage === null || press === undefined) return;
-		const dx = event.clientX - press.x;
-		const dy = event.clientY - press.y;
-		press.x = event.clientX;
-		press.y = event.clientY;
-		if (dx === 0 && dy === 0) return;
-		const scale = evaluation?.targetPlaneMetersPerCssPixel ?? 0;
-		const touches = lookThroughPointers.size === 2;
-		const pan = press.truck || event.shiftKey || touches;
-		const share = touches ? 0.5 : 1;
-		const moved = pan
-			? scale > 0 && stage.camera.truckLookThrough(-dx * scale * share, dy * scale * share)
-			: stage.camera.turnLookThrough(dx * 0.0032, dy * 0.0032);
-		if (moved) {
-			lookThroughTick += 1;
-			refresh();
-		}
-	}
-
-	function endReaim(pointerId: number): void {
-		lookThroughPointers.delete(pointerId);
-		if (stageEl?.hasPointerCapture?.(pointerId)) stageEl.releasePointerCapture(pointerId);
-	}
-
-	/** Ease remaining wheel travel through Camera's existing step intent. */
-	function advanceLookThroughZoom(now: number, finish = false): void {
-		const zoom = lookThroughZoom;
-		const stage = facade;
-		if (zoom === null || stage === null || lookThroughSession === null) return;
-		const progress = finish || reducedMotion ? 1 : Math.min(1, (now - zoom.startedAt) / 120);
-		const next = zoom.pending * (1 - (1 - progress) ** 3);
-		const delta = next - zoom.applied;
-		zoom.applied = next;
-		if (progress === 1) lookThroughZoom = null;
-		if (delta !== 0 && stage.camera.stepLookThrough(delta)) lookThroughTick += 1;
-	}
-
-	function lookThroughView(viewId: string, presentationId?: string | null): void {
-		if (viewEdit !== null) return;
-		const stage = facade;
-		const controller = activeExperience;
-		if (stage === null || controller === null) return;
-		const facts = controller.viewFacts(viewId);
-		const pose = controller.viewPose(viewId);
-		const owner = presentationId ?? facts?.presentationId ?? null;
-		if (facts === null || pose === null || owner === null) {
-			notice = 'That View is not in this project.';
-			return;
-		}
-		// The moving Follow pose must never become Look through's entry memory.
-		stopPlaybackAndRestore();
-		const result = stage.camera.beginLookThrough({
-			viewId,
-			presentationId: owner,
-			label: facts.label,
-			eye: pose.eye,
-			target: pose.target,
-			fovYDegrees: pose.fov
-		});
-		if (result.kind === 'refused') {
-			notice = result.message;
-			return;
-		}
-		if (experienceTool === 'place') {
-			experienceTool = 'select';
-			cancelPlacement();
-		}
-
-		lookThroughSession = { viewId, presentationId: owner, label: facts.label };
-		lookThroughConfirm = null;
-		lookThroughTick += 1;
-		refresh();
-	}
-
-	function exitLookThrough(): void {
-		lookThroughZoom = null;
-		for (const pointerId of lookThroughPointers.keys()) endReaim(pointerId);
-
-		facade?.camera.endLookThrough();
-		lookThroughSession = null;
-		lookThroughConfirm = null;
-		lookThroughTick += 1;
-		refresh();
-	}
-
-	/** Lens and Eye height step only the provisional Camera; Update View commits them. */
-	function setLookThroughLens(fovYDegrees: number): boolean {
-		const stage = facade;
-		if (stage === null || lookThroughSession === null) return false;
-		if (!stage.camera.stepLookThroughLens(fovYDegrees)) return false;
-		lookThroughTick += 1;
-		refresh();
-		return true;
-	}
-
-	function setLookThroughEyeHeight(metres: number): boolean {
-		const stage = facade;
-		if (stage === null || lookThroughSession === null) return false;
-		if (!stage.camera.setLookThroughEyeHeight(metres, experienceFloorDatum)) return false;
-		lookThroughTick += 1;
-		refresh();
-		return true;
-	}
-
-	async function updateLookThrough(confirmShared = false): Promise<void> {
-		const controller = activeExperience;
-		const stage = facade;
-		const session = lookThroughSession;
-		if (controller === null || stage === null || session === null) return;
-		advanceLookThroughZoom(performance.now(), true);
-		const provisional = stage.camera.provisionalView();
-		if (provisional === null) return;
-		const outcome = await controller.updateViewPose(
-			session.viewId,
-			{ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees },
-			session.presentationId,
-			{ confirmShared }
-		);
-		if (outcome.kind === 'needs-confirmation') {
-			lookThroughConfirm = outcome.alsoIn;
-			return;
-		}
-		if (outcome.kind === 'updated') {
-			stage.camera.commitLookThrough();
-			lookThroughConfirm = null;
-			lookThroughTick += 1;
-			refresh();
-			return;
-		}
-		notice = outcome.message;
-	}
-
-	async function captureProvisional(): Promise<void> {
-		const controller = activeExperience;
-		const provisional = facade?.camera.provisionalView() ?? null;
-		if (controller === null || provisional === null) return;
-		await controller.capturePose({ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees });
-	}
-
-	/** Frame the new View through Camera without changing the Stage's reading. */
-	async function presentThis(entityId: string, label: string): Promise<void> {
-		const stage = facade;
-		const controller = activeExperience;
-		if (stage === null || controller === null) return;
-		const bounds = stage.sceneBounds(entityId);
-		if (stage.camera.state().reading === 'plan' || evaluation?.projectionKind === 'plan-orthographic') {
-			placementAim = bounds === null ? null : [
-				(bounds.min[0] + bounds.max[0]) / 2,
-				(bounds.min[1] + bounds.max[1]) / 2,
-				(bounds.min[2] + bounds.max[2]) / 2
-			];
-			stopPlaybackAndRestore();
-			experienceTool = 'place';
-			notice = `Place a View aimed at ${label}: click where the camera stands.`;
-			return;
-		}
-		const viewerEye = stage.evaluation()?.eye;
-		const framed = bounds === null || viewerEye === undefined ? null : frameSubjectPose({
-			bounds,
-			viewerEye,
-			eyeYMeters: experienceFloorDatum + EYE_HEIGHT_STEPS[1]!.metres,
-			fovYDegrees: LENS_STEPS[1]!.fovYDegrees,
-			aspect: 16 / 10
-		});
-		if (framed === null) {
-			notice = 'The Stage could not frame that subject.';
-			return;
-		}
-		await controller.presentThisFramed(entityId, label, { eye: framed.eye, target: framed.target, fov: framed.fovYDegrees });
-	}
-
-	// Leaving the lens ends the provisional posture; the entry standpoint is never
-	// restored into another lens's Camera.
-	$effect(() => {
-		if (lens !== 'experience' && lookThroughSession !== null) untrack(() => exitLookThrough());
-	});
 
 	const viewEditPreview = $derived.by(() => {
 		const stage = facade;
@@ -1477,13 +649,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		};
 	});
 
-	provideExperienceHomes({
+	provideExperienceHomes(experienceLens.homes({
 		controller: () => (lens === 'experience' ? experienceController : null),
 		guideOpen: () => experienceGuideOpen,
 		setGuideOpen: (open) => {
 			experienceGuideOpen = open;
 		},
-		select: selectExperienceSubject,
+		select: experienceLens.selectSubject,
 		sceneSubject: () => experienceSceneSubject,
 		openInWorld: () => changeLens('world'),
 		pickStageSubject: (presentationId) => {
@@ -1492,39 +664,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			notice = 'Pick a Stage object to link. Esc cancels.';
 			return true;
 		},
-		advancedCamera: {
-			on: () => advancedCamera,
-			set: (on) => { advancedCamera = on; },
-			eligible: (viewId) => advancedViewId === viewId,
-			busy: () => viewEdit !== null || pendingViewWrite !== null,
-			pose: (viewId) => viewEdit?.advanced && viewEdit.viewId === viewId && viewEdit.moved ? viewEdit : null,
-			write: setAdvancedViewFraming
-		},
-		lookThroughViewId: () => lookThroughSession?.viewId ?? null,
-		lookThroughMoved: () => {
-			void lookThroughTick;
-			return facade?.camera.lookThrough()?.moved ?? false;
-		},
-		lookThroughFraming: () => {
-			void lookThroughTick;
-			const provisional = facade?.camera.provisionalView() ?? null;
-			return provisional === null
-				? null
-				: { fovYDegrees: provisional.fovYDegrees, eyeHeightMetres: provisional.eye[1] - experienceFloorDatum };
-		},
-		lookThroughLens: (fovYDegrees) => setLookThroughLens(fovYDegrees),
-		lookThroughEyeHeight: (metres) => setLookThroughEyeHeight(metres),
-		lookThrough: (viewId) => lookThroughView(viewId),
-		exitLookThrough,
-		updateLookThrough: () => updateLookThrough(),
-		captureProvisional,
-		presentThis,
-		playback: () => playback,
-		previewMode: (mode, guideId) => void openPreview(mode, guideId),
-		guideSeconds,
-		guideForStop: (stopId) => experienceController?.guideForStop(stopId) ?? null,
-		playGuide
-	});
+		previewMode: (mode, guideId) => void previewController.open(mode, guideId),
+		guideForStop: (stopId) => experienceController?.guideForStop(stopId) ?? null
+	}));
 	// The controller can set a subject itself (a Capture, an added Stop); the Stage selection it
 	// replaces must not linger beside it.
 	$effect(() => {
@@ -1557,7 +699,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	$effect(() => {
 		const kind = activeExperience?.subject?.kind;
 		if (kind !== 'stop' && kind !== 'transition') return;
-		untrack(() => openExperienceGuide());
+		untrack(() => experienceLens.openGuide());
 	});
 	// The Index opens the selected Presentation's Views. Only its id drives the effect, so a new object
 	// for the same Presentation (a rename, a capture) cannot re-expand a row the user collapsed.
@@ -1568,216 +710,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
-	/** The visitor-facing View labels Places reads; program ids stay the identity. */
-	const previewViewLabels = $derived(
-		new Map<string, string>(
-			(currentEnvelope?.units.camera.data.views ?? []).map((view) => [view.id, view.label])
-		)
-	);
-	/** The welcome chooser's guided estimate, from the one lowered time map. */
-	const previewGuideStats = $derived.by(() => {
-		const view = previewView;
-		const graph = previewViewRead?.graph ?? null;
-		if (view === null || view.entry.kind !== 'program' || graph === null) return { stops: 0, seconds: 0 };
-		const read = guideTimeMapForProgram({
-			program: view.entry.program,
-			transitions: view.entry.transitions,
-			graph,
-			entryStopId: view.entry.program.entryStopId
-		});
-		return {
-			stops: view.entry.program.stops.length,
-			seconds: read.kind === 'ready' ? read.map.totalSeconds : 0
-		};
-	});
-	let preparedLifecycleEpoch: ReplacementEpochToken | null = null;
-	const projectActionsUnavailableReason = $derived.by(() => {
-		void headSaveVersion;
-		if (api === null) return 'Cloud project actions are unavailable because the Cloud service is not configured.';
-		if (!activeProject()) return 'Open a saved Cloud project to rename or delete it.';
-		if (!pendingSavedBase?.token) return 'Save this project to Cloud before renaming or deleting it.';
-		const save = headSave?.snapshot();
-		if (save?.busy || save?.pending) return 'Finish or retry the current Save before using project actions.';
-		return null;
-	});
-
-	const previewAvailable = $derived(
-		currentEnvelope !== null && currentEnvelope.units.experience.data.experiences.length > 0
-	);
-	let previewWarming = false;
-
-	/**
-	 * Build the visitor surface before the first press.
-	 *
-	 * The chunk, renderer and scene are the cold-entry cost, and none of them
-	 * depends on the Camera handoff. Once the source can be Previewed the editor
-	 * already knows its scene, so it builds the hidden surface at idle; the press
-	 * then only mints the run and reveals it. A failed or skipped warm-up leaves
-	 * the ordinary entry path untouched.
-	 */
-	async function warmPreview(): Promise<void> {
-		if (previewWarming || previewSurface !== null || preview !== null) return;
-		if (boot.status !== 'ready' && boot.status !== 'empty') return;
-		const token = session.token();
-		const snapshot = boot.snapshot;
-		previewWarming = true;
-		try {
-			const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
-			// A replacement during the load owns the source now: `activate` dropped
-			// the old surface and the new source warms its own scene from its own
-			// snapshot, so an old read is never installed over it.
-			if (!session.isCurrent(token) || boot.snapshot !== snapshot) return;
-			// A press that won the race owns the surface now; only the hidden
-			// scene/read is ours to install, never its entry or epoch.
-			if (preview !== null || previewView !== null) return;
-			previewSurface = module.default;
-			previewViewRead = snapshot.domain;
-			const entry = previewEntryFor({
-				envelope: stageEnvelope(snapshot),
-				sourceContentId: snapshot.sourceContentId,
-				sessionEpoch: snapshot.sessionEpoch,
-				epoch: 0,
-				focus: experienceFocus.read()
-			});
-			if (entry.kind !== 'unavailable' && previewView === null) previewView = { entry, epoch: 0 };
-			perfMark('preview:warmed');
-		} catch {
-			// The press path loads and reports its own failure.
-		} finally {
-			previewWarming = false;
-		}
-	}
-
-	$effect(() => {
-		// The Experience lens is the intent to author what Preview shows; building
-		// the hidden scene here means the first press is already warm. Building at
-		// admission was measured to block the first dock interaction, so the cost
-		// stays behind an explicit lens choice.
-		const ready = boot.status === 'ready' || boot.status === 'empty';
-		if (!ready || lens !== 'experience' || previewSurface !== null || preview !== null) return;
-		void warmPreview();
-	});
-
-	/**
-	 * Leave Preview and return the Camera output to the Stage.
-	 *
-	 * Only a valid return restores the inspection run. When no Preview claim
-	 * survives — a source/project change ended it through the protocol's rebase —
-	 * nothing is reinstated: the Stage continues under the claim the content change
-	 * already minted, which is why a stale pose can never come back with it.
-	 */
-	function closePreview(): void {
-		const stage = facade;
-		const active = preview;
-		preview = null;
-		previewRequestedMode = null;
-		// A hold entered before Preview may have been released while its keyup was
-		// guarded; leaving Preview always reconciles Snap to the physical modifier.
-		if (drafting.snapSuspended) patchDrafting({ snapSuspended: false });
-		// The takeover stays mounted, so the Exit control the creator pressed is now
-		// inside an inert subtree and would keep focus while invisible. Returning
-		// drops focus to the document, as unmounting the takeover used to.
-		if (typeof document !== 'undefined') {
-			const focused = document.activeElement;
-			if (focused instanceof HTMLElement && focused.closest('.preview-takeover') !== null) focused.blur();
-		}
-		if (active === null || stage === null) return;
-		const returned = returnPreview(stage.camera);
-		perfMark('preview:returned', { outcome: returned.kind });
-		// A return can be refused when a newer owner claimed the output while the
-		// isolated run was mounted. The Stage then owns nothing, so it mints its
-		// own inspection claim before it reports rather than leaving every Stage
-		// intent refused until a content change.
-		if (returned.kind === 'refused') {
-			stage.acquireInspection('exclusive');
-			notice = returned.message;
-		}
-	}
-
-	/**
-	 * Enter Preview through the Camera handover.
-	 *
-	 * Order matters: the entry rule resolves first (an unavailable entry changes no
-	 * ownership), then the isolated chunk loads (a failed load never takes the
-	 * output), and only then does the Stage hand its output to the Preview run. A
-	 * replacement or teardown that landed while the chunk loaded owns the Stage now,
-	 * so the handover is not entered against the newer source.
-	 */
-	async function openPreview(mode: 'guided' | 'free' | null = null, guideId: string | null = null): Promise<void> {
-		if (previewBusy || preview !== null || (boot.status !== 'ready' && boot.status !== 'empty')) return;
-		perfMark('preview:press');
-		const stage = facade;
-		if (stage === null) return;
-		previewRequestedMode = mode;
-		// Playback is a Guide instrument, not an authoring mode that survives a
-		// visitor takeover. Restore its exact entry synchronously before the
-		// Camera ticket moves; waiting for an effect would capture the Follow pose.
-		stopPlaybackAndRestore();
-		const snapshot = boot.snapshot;
-		const token = session.token();
-		previewBusy = true;
-		let entered = false;
-		try {
-			const runEpoch = nextPreviewRunEpoch(stage.camera.output(), ++previewEpoch);
-			// A Card action names its own Guide; it must not inherit a selected Stop,
-			// another open Guide, or a previously focused Presentation.
-			const focus = guideId === null
-				? experienceFocus.read()
-				: { ...experienceFocus.read(), guideId, stopId: null, presentationId: null };
-			const entry = previewEntryFor({
-				envelope: stageEnvelope(snapshot),
-				sourceContentId: snapshot.sourceContentId,
-				sessionEpoch: snapshot.sessionEpoch,
-				epoch: runEpoch,
-				focus
-			});
-			if (entry.kind === 'unavailable') {
-				previewProblem =
-					entry.refusal == null ? null : loweringProblem(stageEnvelope(snapshot), entry.refusal);
-				notice = entry.message;
-				return;
-			}
-			previewProblem = null;
-			perfMark('preview:entry-resolved', { kind: entry.kind });
-			// The visitor surface is its own chunk: the Stage first-load set never
-			// carries it, and a second entry reuses what the first loaded. Only this
-			// load can fail below, and it runs **before** ownership moves, so a failure
-			// never leaves the output owned by a Preview that did not mount.
-			if (previewSurface === null) {
-				try {
-					const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
-					previewSurface = module.default;
-					perfMark('preview:chunk-ready');
-				} catch {
-					notice = 'The visitor Preview could not be loaded; the Stage kept the Camera output.';
-					return;
-				}
-			}
-			// A load is asynchronous: the source this entry resolved against must still
-			// be the mounted one before ownership moves.
-			if (!session.isCurrent(token) || stage !== facade) return;
-			const handover = enterPreview(stage.camera, {
-				runEpoch,
-				returnToken: previewReturnToken(snapshot.sessionEpoch, runEpoch)
-			});
-			if (handover.kind === 'refused') {
-				notice = handover.message;
-				return;
-			}
-			notice = '';
-			perfMark('preview:handover', { runEpoch: handover.runEpoch });
-			previewViewRead = snapshot.domain;
-			previewView = { entry, epoch: handover.runEpoch };
-			preview = { entry, epoch: handover.runEpoch };
-			entered = true;
-			perfMark('preview:entered', { runEpoch: handover.runEpoch, mode: entry.kind });
-		} finally {
-			// Any abandoned entry (unavailable, load failure, stale source or refused
-			// handover) must not keep playback suppressed by a stale requested mode.
-			if (!entered) previewRequestedMode = null;
-			previewBusy = false;
-		}
-	}
 	let evaluation = $state<ViewportEvaluation | null>(null);
 	/**
 	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
@@ -1965,7 +897,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const timeout = setTimeout(() => { if (notice === shown) notice = ''; }, 4000);
 		return () => clearTimeout(timeout);
 	});
-	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
 	/** Set by the route's teardown: no late completion may mount a stage after it. */
 	let tornDown = false;
 	let stageEl: HTMLDivElement | undefined = $state(undefined);
@@ -2104,30 +1035,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const sheetLaneRight = $derived(heightSheetSide === 'right' ? sheetLaneWidth : 0);
 	const sheetLaneLeft = $derived(heightSheetSide === 'left' ? sheetLaneWidth : 0);
 
-	let epochCounter = 0;
-	let revisionCounter = 0;
-
-	/**
-	 * Leaving the route is an exit like any other: unsaved work asks first.
-	 *
-	 * The signal is explicit (`unsavedWork`), not inferred from a counter, and a
-	 * declined confirmation cancels the navigation. A clean project never sees a
-	 * prompt, and this guard never saves anything by itself.
-	 */
-	beforeNavigate(({ cancel }) => {
-		if (deleteNavigationAuthorized) return;
-		if (confirmUnsavedWork()) return;
-		cancel();
-	});
-
-	function admissionContext(): AdmissionContext {
-		epochCounter += 1;
-		revisionCounter += 1;
-		return {
-			sessionEpoch: `session-${epochCounter}-${projectId}`,
-			acceptedRevision: { projectId, revisionId: `revision-${revisionCounter}` }
-		};
-	}
+	// Register the session's unsaved-work navigation guard during route initialization.
+	projectSession.bindNavigation();
 
 	/* --- activation, content change and the replacement epoch --------------- */
 
@@ -2158,62 +1067,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		hoverSelection = null;
 	}
 
-	/**
-	 * Build the epoch's conditional-Save controller over T3.P01.S02's state machine.
-	 *
-	 * The saved base is what the cloud row reported when this project was loaded;
-	 * a locally minted baseline has none. `loadRemote` is the conflict reader: it
-	 * returns data to the Head, which hands the replacement offer to this host's
-	 * guard — the state machine never installs a remote document itself.
-	 */
-	function buildHeadSave(mounted: StageAcceptanceHost, snapshot: StageReadSnapshot): HeadSave | null {
-		if (api === null) return null;
-		const saved = pendingSavedBase;
-		const closure = snapshot.domain.closure;
-		const state = createSaveState({
-			coordinator: mounted.coordinator(),
-			save: createApiSaveTransport(api),
-			resume: resumeSource,
-			onAuthRequired: async (request) => {
-				// Capture the exact unit Save before the platform redirect. The draft
-				// carries the precondition and operation ID, so the return visit can
-				// resume it rather than mint a new write from a moved base. A redirect
-				// without that draft would lose the operation, so storage failure keeps
-				// the creator here with a visible reason instead of signing in.
-				if (!persistPendingCapture(request)) {
-					notice =
-						'The pending Save could not be stored in this browser; sign-in was not started. Retry when browser storage is available.';
-					return;
-				}
-				await auth?.signIn('save');
-			},
-			baseline: {
-				savedBaseToken: saved?.token ?? null,
-				// Only the cloud row knows the saved revision; a minted baseline and a
-				// legacy row both report none rather than a locally invented one.
-				savedRevision: saved?.revision ?? null,
-				savedCanonicalJson: remoteSavedCanonicalJson ?? snapshot.canonicalJson,
-				savedSourceContentId: saved?.contentId ?? snapshot.sourceContentId
-			},
-			loadRemote: async (id) => {
-				const loaded = await api!.loadProject(id);
-				return {
-					projectId: id,
-					document: loaded.document,
-					savedBaseToken: loaded.savedBaseToken,
-					savedRevision: loaded.savedRevision,
-					savedSourceContentId: loaded.savedSourceContentId
-				};
-			}
-		});
-		return createHeadSave(state, {
-			unavailableReason:
-				closure.length === 0
-					? null
-					: `This source cannot execute (${closure[0]!.code}): ${closure[0]!.message} Save is unavailable until the resource requirement is satisfied.`
-		});
-	}
-
 	function activate(snapshot: StageReadSnapshot): void {
 
 		// A completion that arrives after the route tore down must not mount a stage:
@@ -2225,15 +1078,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		clearHover();
 		interruptPress('replacement');
 		session.replace(snapshot);
-		// A Preview run and the lens focus name identities from the replaced source.
-		preview = null;
-		// The warm surface was built from the replaced source's scene, compile and
-		// program, so it cannot describe the new one: drop it (the chunk stays
-		// cached) rather than keeping another project's scene alive behind the
-		// editor. The lens effect warms the new source.
-		previewView = null;
-		previewViewRead = null;
-		previewSurface = null;
+		// A Preview run and the lens focus name identities from the replaced source;
+		// the warm surface cannot describe the new one. Drop both (the chunk stays
+		// cached) rather than keeping another project's scene alive behind the editor.
+		previewController.reset();
 		adapterServices = null;
 		experienceFocus.reset();
 		expandedPresentationId = null;
@@ -2276,8 +1124,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			facade
 		});
 		unsubscribeAcceptance?.();
-		unsubscribeHeadSave?.();
-		unsubscribeHeadSave = null;
+		projectSession.unmountSave();
 		// The mounted facade is the epoch's source. The mark is the anchor the
 		// performance harness uses for the first architectural frame (F1/F2).
 		perfMark('build:identity', { version: typeof __BISKIQ_BUILD_REVISION__ === 'string' ? __BISKIQ_BUILD_REVISION__ : 'unverified' });
@@ -2290,7 +1137,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// A source change ends the Preview claim through the protocol's rebase (the
 			// output's source identity is no longer current), so leaving it restores
 			// nothing: the Stage continues under the claim the content change minted.
-			if (preview !== null) closePreview();
+			if (previewController.openState) previewController.close();
 			refreshHistory();
 			// The Save state derives its status from the accepted source, so an
 			// accepted edit is what makes the project dirty. Without this refresh
@@ -2298,7 +1145,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// guards never see unsaved work.
 			headSave?.refresh();
 			if (facade !== null && (boot.status === 'ready' || boot.status === 'empty')) {
-				boot = { ...boot, snapshot: facade.snapshot() };
+				projectSession.updateSnapshot(facade.snapshot());
 				// A newly placed (or removed) model changes the pins this route holds.
 				void resolveModels(facade.snapshot());
 			}
@@ -2312,809 +1159,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		for (const factory of stageAdapterFactories) mountStageAdapter(facade, mounted, factory);
 		// The previous epoch's controller belongs to its disposed coordinator; this
 		// epoch gets exactly one state machine over the new one.
-		headSave = buildHeadSave(mounted, snapshot);
-		const mountedHeadSave = headSave;
-		if (mountedHeadSave !== null) {
-			unsubscribeHeadSave = mountedHeadSave.subscribe(() => {
-				if (headSave === mountedHeadSave) {
-					perfMeasureSync('save.page-state-signal', () => (headSaveVersion += 1));
-				}
-			});
-		}
-		// A resumed capture belongs to the epoch that consumed it.
-		resumeSource = null;
+		projectSession.mountSave(mounted, snapshot);
 		historyState = mounted.history();
 		resetViewContext();
 	}
 
-	function applyState(next: BootState): void {
-		// Every entry on this route is a replacement: a cloud boot, an explicit
-		// current-format source open, the starter gallery or the empty baseline each
-		// start a new project baseline, so they get a fresh session epoch and a fresh
-		// view. The **content-change** transition (same project, new content, view
-		// kept) is the seam's own install path, proved in `stage-content-change.test.ts`
-		// and reached by accepted editing commands through the Stage acceptance host.
-		if (next.status === 'ready' || next.status === 'empty') activate(next.snapshot);
-		boot = next;
-	}
-
-	/**
-	 * A refused **local** source action keeps the mounted project.
-	 *
-	 * An explicit Open or a conflict *Reload remote* is an attempt to replace the
-	 * source on screen, not a fresh boot. The session, facade, acceptance history,
-	 * selection and saved base all still describe the mounted project, so a
-	 * refused parse, format or compile must be reported as a typed notice rather
-	 * than assigned to `boot`: the template unmounts the Stage for a non-mounted
-	 * state and offers no way back. Only an admitted replacement may reach
-	 * `applyState`.
-	 */
-	function reportSourceRefusal(next: BootState, action: 'open' | 'reload'): void {
-		const outcome = action === 'open' ? 'The source was not opened' : 'The remote copy was not installed';
-		if (next.status === 'refused') {
-			if (next.reason === 'dimension-limit') {
-				notice = `${outcome}: ${LAYOUT_DIMENSION_LIMIT_MESSAGE} The current project is unchanged.`;
-				return;
-			}
-			const reason =
-				next.reason === 'invalid-json'
-					? 'the JSON did not parse'
-					: next.reason === 'project-mismatch'
-						? 'it belongs to another project'
-						: 'it is not the current document format';
-			const issue = next.issues[0];
-			notice = `${outcome}: ${reason}. The current project is unchanged.${
-				issue === undefined ? '' : ` (${issue.path}: ${issue.message})`
-			}`;
-			return;
-		}
-		if (next.status === 'diagnostics') {
-			const issue = next.issues[0];
-			notice = `${outcome}: its canonical compile is blocked. The current project is unchanged.${
-				issue === undefined ? '' : ` (${issue.path}: ${issue.message})`
-			}`;
-			return;
-		}
-		notice = `${outcome}: ${
-			next.status === 'error' ? next.message : 'the source is unavailable'
-		}. The current project is unchanged.`;
-	}
-
-	/* --- boot -------------------------------------------------------------- */
-
-	async function load(projectIdToLoad: string, requestedIntent: BootIntent): Promise<void> {
-		// A read is a new epoch's source: no previous saved base, saved bytes or
-		// previous epoch's Save controller may survive into it.
-		pendingSavedBase = null;
-		remoteSavedCanonicalJson = null;
-		headSave = null;
-		boot = initialBootState(projectIdToLoad, requestedIntent);
-		// A minted identity is a local editing intent, not a request to discover
-		// whether the cloud happens to be reachable. Admit the empty baseline through
-		// the same source path as every other mounted Stage and leave Save create-only.
-		// Explicit opens still perform a cloud read so missing/forbidden/network
-		// outcomes remain distinct.
-		if (requestedIntent === 'create') {
-			const token = session.token();
-			const next = await bootEmpty(projectIdToLoad, admissionContext());
-			if (!session.isCurrent(token)) return;
-			applyState(next);
-			perfMark(next.status === 'empty' ? 'f2:create-empty' : `f2:create-${next.status}`);
-			if (next.status === 'empty') offerResumeSave({ createOnly: true });
-			return;
-		}
-		if (api === null) {
-			boot = { status: 'error', projectId: projectIdToLoad, message: 'Cloud service is unavailable' };
-			return;
-		}
-		const token = session.token();
-		// The cloud row's saved base is held per attempt, never in route state: a load
-		// that a replacement or a local open supersedes must not leave its token behind.
-		const captured: { base: typeof pendingSavedBase } = { base: null };
-		let outcome: BootLoadOutcome | null;
-		try {
-			// The host performs only the project GET, as a load bound to this session
-			// epoch: a replacement or teardown aborts it exactly once, and a completion
-			// that lands after either is dropped instead of installing itself over the
-			// newer source.
-			outcome = await runBoundLoad(session, (signal) => fetchOutcome(projectIdToLoad, signal, captured, requestedIntent));
-		} catch {
-			// The GET was cancelled: the replacement that cancelled it owns the stage now.
-			return;
-		}
-		if (outcome === null) return;
-		const next = await bootFromLoadOutcome(boot, outcome, admissionContext());
-		// Admission is asynchronous too, so the same question is asked again with its
-		// answer: a replacement or teardown that happened during it still wins.
-		if (!session.isCurrent(token)) return;
-		// Only now, with the currency check passed, does this load's base become the
-		// epoch's base: the save state built by `activate` reads it once, and only a
-		// source that actually admitted gets a base to pair with.
-		if (next.status === 'ready' || next.status === 'empty') {
-			pendingSavedBase = captured.base;
-			// The cloud row's canonical bytes are the saved side of a resumed capture's
-			// dirty comparison; the captured bytes are the local work.
-			remoteSavedCanonicalJson = next.snapshot.canonicalJson;
-		}
-		applyState(next);
-		perfMark(next.status === 'ready' || next.status === 'empty' ? 'f2:cloud-admitted' : `f2:cloud-${next.status}`);
-		// A loaded source is offered with whatever precondition its capture states.
-		// An absent row is different: only a create-only capture can describe a Save
-		// the server could still accept, so the offer is deliberately narrowed there.
-		// The boot state itself is unchanged — `new` stays `new`, `missing` stays
-		// `missing`; the offer is a separate, explicit creator action.
-		if (next.status === 'ready' || next.status === 'empty') offerResumeSave({ createOnly: false });
-		else if (next.status === 'new' || next.status === 'missing') offerResumeSave({ createOnly: true });
-	}
-
-	/**
-	 * TD-9 — offer, never auto-run, a Save captured before the sign-in redirect.
-	 *
-	 * The `/` auth return path lands here with `resume-save=1`. A create-only
-	 * capture is offered even when the cloud row is still absent: the Save never
-	 * reached the server, so the return visit's 404 is exactly why the pending work
-	 * must remain resumable. The draft's exact operation identity and precondition
-	 * are preserved; mounting and retrying it are both explicit creator actions.
-	 */
-	function offerResumeSave(options: { readonly createOnly: boolean }): void {
-		const url = new URL(page.url);
-		if (url.searchParams.get('resume-save') !== '1') return;
-		const pending = readPendingCapture();
-		if (pending.status !== 'ready' || pending.project.id !== projectId) {
-			// Consume the flag only once a draft was actually considered, so a direct
-			// visit cannot leave a stale flag that re-offers a later draft by accident.
-			url.searchParams.delete('resume-save');
-			replaceState(`${url.pathname}${url.search}`, {});
-			notice =
-				pending.status === 'expired'
-					? 'The pending Save expired; the cloud copy is unchanged.'
-					: 'The pending Save is unavailable; the cloud copy is unchanged.';
-			return;
-		}
-		if (options.createOnly && pending.save.capture.precondition.kind !== 'create-only') {
-			// A row that does not exist cannot satisfy an expected saved base. Keep
-			// the normal boot state and leave the flag for the next real load retry.
-			return;
-		}
-		// Consume the flag so a refresh cannot re-offer a draft this visit resolved.
-		url.searchParams.delete('resume-save');
-		replaceState(`${url.pathname}${url.search}`, {});
-		resumeOffer = pending;
-		notice = 'A Save captured before sign-in is available. Resume it to save exactly that work.';
-	}
-
-	/**
-	 * Mount the captured local source and replay its exact Save.
-	 *
-	 * Resuming is a **source replacement**, so it asks the same unsaved-work
-	 * question as every other replacement: cancelling preserves the mounted
-	 * content, selection, history and saved base. Admission is asynchronous, so the
-	 * session token captured before it must still be current afterwards; a newer
-	 * replacement wins and the captured source is never installed over it.
-	 *
-	 * The captured precondition is the base that Save states, so the server — not
-	 * this host — decides whether that base still matches. A moved base answers a
-	 * typed conflict and preserves the local work.
-	 */
-	async function resumePendingSave(): Promise<void> {
-		const offer = resumeOffer;
-		if (offer === null) return;
-		// The Head disables Save for a source with executable closure. Resuming is
-		// the same Save command, so it must respect the same visible refusal rather
-		// than bypass the control and rely on the server to reject it.
-		const control = headSave?.control();
-		if (control?.unavailable === true) {
-			notice = control.reason ?? 'Save is unavailable for this source.';
-			return;
-		}
-		if (activeProject()) {
-			const unsaved = headSave?.unsavedWork();
-			if (
-				unsaved?.kind === 'confirm' &&
-				typeof window !== 'undefined' &&
-				!window.confirm(unsaved.message)
-			) {
-				return;
-			}
-		}
-		const token = session.token();
-		// The captured Save states the local acceptance revision its operation was
-		// minted under. Re-admitting the same bytes under a fresh revision would
-		// make the retained capture un-replayable (the state compares revisions),
-		// so the epoch is new but the acceptance identity is the capture's own.
-		const context = admissionContext();
-		const next = await bootFromSourceJson(offer.save.capture.canonicalJson, projectId, {
-			sessionEpoch: context.sessionEpoch,
-			acceptedRevision: offer.save.capture.acceptedRevision
-		});
-		// The admission is asynchronous: a replacement or teardown that happened
-		// while it ran owns the Stage now, and this older capture must not overwrite
-		// it. The offer remains available for an explicit retry.
-		if (!session.isCurrent(token)) return;
-		if (next.status !== 'ready' && next.status !== 'empty') {
-			reportSourceRefusal(next, 'reload');
-			return;
-		}
-		const precondition = offer.save.capture.precondition;
-		pendingSavedBase = {
-			token: precondition.kind === 'expected-saved-base' ? precondition.token : null,
-			revision: pendingSavedBase?.revision ?? null,
-			contentId: pendingSavedBase?.contentId ?? null
-		};
-		resumeSource = offer.save;
-		resumeOffer = null;
-		applyState(next);
-		const outcome = await headSave?.retry();
-		switch (outcome?.kind) {
-			case 'saved':
-				discardPendingCapture();
-				notice = 'The pending Save completed.';
-				break;
-			case 'dirty':
-				discardPendingCapture();
-				notice = 'The pending Save completed; newer edits remain local.';
-				break;
-			case 'conflict':
-				discardPendingCapture();
-				notice = 'The cloud copy changed; the pending Save was not applied. Resolve the conflict explicitly.';
-				break;
-			case 'refused':
-				notice = outcome.message;
-				// A refused capture cannot become a successful replay under the same
-				// operation ID; the state machine has already dropped it. Keep it only
-				// for the resumable auth-required case.
-				if (headSave?.snapshot().pending !== true) discardPendingCapture();
-				break;
-			case 'error':
-				notice = outcome.message;
-				break;
-			default:
-				break;
-		}
-	}
-
-	function dismissResumeOffer(): void {
-		resumeOffer = null;
-		discardPendingCapture();
-		notice = 'The pending Save was discarded; the cloud copy is unchanged.';
-	}
-
-	async function fetchOutcome(
-		projectIdToLoad: string,
-		signal: AbortSignal,
-		captured: { base: typeof pendingSavedBase },
-		requestedIntent: BootIntent
-	): Promise<BootLoadOutcome> {
-		try {
-			const loaded = await api!.loadProject(projectIdToLoad, signal);
-			// Capture the cloud row's saved base with the document it describes: the
-			// save state is built from this pair, never from the admitted snapshot
-			// alone (which cannot know the server's version token).
-			captured.base = {
-				token: loaded.savedBaseToken,
-				revision: loaded.savedRevision,
-				contentId: loaded.savedSourceContentId
-			};
-			return { kind: 'loaded', document: loaded.document };
-		} catch (error) {
-			// An abort is not a cloud answer, so it must not become one: rethrow so the
-			// bound load drops the whole attempt.
-			if (signal.aborted) throw error;
-			// A minted guest identity starts local work before authentication. An
-			// unrelated Open still reports forbidden, and Save remains create-only: no
-			// project row is created until the creator explicitly saves.
-			if (requestedIntent === 'create' && error instanceof ProjectPersistenceError && error.code === 'auth') {
-				return { kind: 'not-found' };
-			}
-			return loadOutcomeFromError(error);
-		}
-	}
-
-	function loadOutcomeFromError(error: unknown): BootLoadOutcome {
-		if (error instanceof ProjectPersistenceError) {
-			if (error.code === 'not-found') return { kind: 'not-found' };
-			if (error.code === 'auth') return { kind: 'forbidden' };
-			if (error.code === 'network') return { kind: 'network' };
-			return { kind: 'server', message: error.message };
-		}
-		return { kind: 'network' };
-	}
-
-	function activeProject(): boolean {
-		return boot.status === 'ready' || boot.status === 'empty';
-	}
-
-	function confirmUnsavedWork(): boolean {
-		const unsaved = headSave?.unsavedWork();
-		if (unsaved?.kind !== 'confirm') return true;
-		return typeof window === 'undefined' || window.confirm(unsaved.message);
-	}
-
-	type LifecycleRead = {
-		loaded: Awaited<ReturnType<ProjectApi['loadProject']>>;
-		envelope: ProjectEnvelope;
-		canonicalJson: string;
-		publication: Awaited<ReturnType<ProjectApi['getPublicationStatus']>> | null;
-	};
-
-	function parseLifecycleEnvelope(loaded: Awaited<ReturnType<ProjectApi['loadProject']>>):
-		| { kind: 'ready'; envelope: ProjectEnvelope; canonicalJson: string }
-		| { kind: 'error'; message: string } {
-		const validation = validateProjectEnvelope(loaded.document);
-		if (
-			!validation.success ||
-			loaded.projectId !== projectId ||
-			validation.envelope.id !== projectId ||
-			loaded.name !== validation.envelope.name
-		) {
-			return { kind: 'error', message: 'Cloud returned an invalid or mismatched project document.' };
-		}
-		if (
-			loaded.savedRevision !== null &&
-			(loaded.savedRevision.projectId !== validation.envelope.acceptedRevision.projectId ||
-				loaded.savedRevision.revisionId !== validation.envelope.acceptedRevision.revisionId)
-		) {
-			return { kind: 'error', message: 'Cloud project metadata does not match its saved document.' };
-		}
-		return {
-			kind: 'ready',
-			envelope: validation.envelope,
-			canonicalJson: serializeProjectEnvelope(validation.envelope)
-		};
-	}
-
-	function isMetadataOnlyRemoteChange(next: ProjectEnvelope): boolean {
-		if (remoteSavedCanonicalJson === null) return false;
-		let previous: ProjectEnvelope;
-		try {
-			const validation = validateProjectEnvelope(JSON.parse(remoteSavedCanonicalJson) as unknown);
-			if (!validation.success || validation.envelope.id !== projectId) return false;
-			previous = validation.envelope;
-		} catch {
-			return false;
-		}
-		return (
-			serializeProjectEnvelope({
-			...next,
-			name: previous.name,
-			acceptedRevision: previous.acceptedRevision
-		}) === remoteSavedCanonicalJson
-		);
-	}
-
-	function sameLifecycleEpoch(token: ReplacementEpochToken): boolean {
-		return (
-			session.isCurrent(token) && !tornDown && activeProject() && acceptance !== null
-		);
-	}
-
-	async function readLifecycleProject(
-		includePublication: boolean,
-		token: ReplacementEpochToken
-	): Promise<
-		| { kind: 'ready'; value: LifecycleRead } | { kind: 'stale' } | { kind: 'error'; message: string }> {
-		if (api === null) return { kind: 'error', message: 'Cloud project actions are unavailable.' };
-		try {
-			const value = await runBoundLoad(session, async (signal) => {
-				const loaded = await api!.loadProject(projectId, signal);
-				if (signal.aborted || !session.isCurrent(token)) return null;
-				const publication = includePublication
-					? await api!.getPublicationStatus(projectId, signal)
-					: null;
-				if (signal.aborted || !session.isCurrent(token)) return null;
-				return { loaded, publication };
-			});
-			if (value === null || !session.isCurrent(token)) return { kind: 'stale' };
-			const parsed = parseLifecycleEnvelope(value.loaded);
-			if (parsed.kind !== 'ready') return parsed;
-			return {
-				kind: 'ready',
-				value: { ...value, envelope: parsed.envelope, canonicalJson: parsed.canonicalJson }
-			};
-		} catch (error) {
-			if (!session.isCurrent(token)) return { kind: 'stale' };
-			return {
-				kind: 'error',
-				message: error instanceof ProjectPersistenceError
-					? error.message
-					: 'Cloud project metadata could not be loaded.'
-			};
-		}
-	}
-
-	function lifecyclePrepared(value: LifecycleRead): PreparedProjectLifecycle | null {
-		if (!isSavedBaseToken(value.loaded.savedBaseToken)) return null;
-		return {
-			projectId,
-			name: value.loaded.name,
-			version: value.loaded.version,
-			precondition: { kind: 'expected-saved-base', token: value.loaded.savedBaseToken },
-			...(value.publication === null ? {} : { publication: value.publication })
-		};
-	}
-
-	async function adoptRemoteLifecycleMetadata(
-		value: LifecycleRead,
-		token: ReplacementEpochToken,
-		existingLock?: { release(): void }
-	): Promise<{ kind: 'adopted' } | { kind: 'stale' } | { kind: 'error'; message: string }> {
-		const mounted = acceptance;
-		const save = headSave;
-		const savedRevision = value.loaded.savedRevision ?? value.envelope.acceptedRevision;
-		if (mounted === null || save === null || !sameLifecycleEpoch(token)) return { kind: 'stale' };
-		const acquired = existingLock === undefined ? mounted.beginProjectAction() : null;
-		if (acquired?.kind === 'refused') return { kind: 'error', message: acquired.message };
-		try {
-			const adopted = await mounted.adoptProjectName({ name: value.loaded.name, savedRevision });
-			if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
-			if (adopted.kind === 'refused') return { kind: 'error', message: adopted.message };
-			const baseline = {
-				savedBaseToken: value.loaded.savedBaseToken,
-				savedRevision,
-				savedCanonicalJson: value.canonicalJson,
-				savedSourceContentId: value.loaded.savedSourceContentId
-			};
-			if (!save.adoptSavedBase(baseline)) {
-				return { kind: 'error', message: 'The current Save must finish before Cloud project metadata can be refreshed.' };
-			}
-			pendingSavedBase = {
-				token: value.loaded.savedBaseToken,
-				revision: savedRevision,
-				contentId: value.loaded.savedSourceContentId
-			};
-			remoteSavedCanonicalJson = value.canonicalJson;
-			return { kind: 'adopted' };
-		} finally {
-			if (existingLock === undefined && acquired?.kind === 'locked') acquired.release();
-		}
-	}
-
-	async function prepareProjectLifecycle(includePublication: boolean): Promise<ProjectLifecyclePrepareResult> {
-		if (api === null) return { kind: 'blocked', message: 'Cloud project actions are unavailable because the Cloud service is not configured.' };
-		if (!activeProject() || pendingSavedBase?.token === null || pendingSavedBase?.token === undefined) {
-			return { kind: 'blocked', message: 'Save this project to Cloud before renaming or deleting it.' };
-		}
-		const saveSnapshot = headSave?.snapshot();
-		if (saveSnapshot === undefined || saveSnapshot.busy || saveSnapshot.pending) {
-			return { kind: 'blocked', message: 'Finish or retry the current Save before using project actions.' };
-		}
-		const token = session.token();
-		preparedLifecycleEpoch = token;
-		const read = await readLifecycleProject(includePublication, token);
-		if (read.kind === 'stale') return { kind: 'stale' };
-		if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
-		if (read.kind === 'error') return { kind: 'error', message: read.message };
-		const prepared = lifecyclePrepared(read.value);
-		if (prepared === null) return { kind: 'blocked', message: 'This project has no current Cloud saved base. Reload it before renaming or deleting.' };
-		if (includePublication && (read.value.publication === null || read.value.publication.activeVersion !== null)) {
-			return { kind: 'blocked', message: 'Unpublish this project before deleting it.' };
-		}
-		if (!isMetadataOnlyRemoteChange(read.value.envelope)) {
-			return { kind: 'blocked', message: 'Cloud project content changed. Resolve the Save conflict and reload remote before using project actions.' };
-		}
-		const savedRevision = read.value.loaded.savedRevision ?? read.value.envelope.acceptedRevision;
-		if (
-			pendingSavedBase?.token !== read.value.loaded.savedBaseToken ||
-			read.value.canonicalJson !== remoteSavedCanonicalJson ||
-			savedRevision.revisionId !== pendingSavedBase.revision?.revisionId ||
-			read.value.loaded.name !== (boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : '')
-		) {
-			const adopted = await adoptRemoteLifecycleMetadata(read.value, token);
-			if (adopted.kind === 'stale') return { kind: 'stale' };
-			if (adopted.kind === 'error') return { kind: 'blocked', message: adopted.message };
-		}
-		if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
-		preparedLifecycleEpoch = token;
-		return { kind: 'ready', prepared };
-	}
-
-	function retryableLifecycleError(error: unknown): boolean {
-		return (
-			error instanceof ProjectPersistenceError && ['network', 'server', 'project-busy'].includes(error.code)
-		);
-	}
-
-	async function runBoundProjectAction<T>(
-		token: ReplacementEpochToken,
-		start: (signal: AbortSignal) => Promise<T>
-	): Promise<{ kind: 'value'; value: T } | { kind: 'stale' }> {
-		const controller = new AbortController();
-		const unregister = session.writers().register('project-action', token, () => controller.abort());
-		try {
-			const value = await start(controller.signal);
-			if (controller.signal.aborted || !sameLifecycleEpoch(token)) return { kind: 'stale' };
-			return { kind: 'value', value };
-		} catch (error) {
-			if (controller.signal.aborted || !sameLifecycleEpoch(token)) return { kind: 'stale' };
-			throw error;
-		} finally {
-			unregister();
-		}
-	}
-
-	async function refreshLifecycleConflict(
-		projectIdToRefresh: string,
-		includePublication: boolean
-	): Promise<ProjectLifecycleActionResult> {
-		const token = session.token();
-		preparedLifecycleEpoch = token;
-		const read = await readLifecycleProject(includePublication, token);
-		if (read.kind === 'stale' || !sameLifecycleEpoch(token)) return { kind: 'stale' };
-		if (read.kind === 'error') return { kind: 'error', message: read.message, retryable: false };
-		if (projectIdToRefresh !== projectId || !isSavedBaseToken(read.value.loaded.savedBaseToken)) {
-			return { kind: 'error', message: 'Cloud returned invalid project metadata.', retryable: false };
-		}
-		if (includePublication && (read.value.publication === null || read.value.publication.activeVersion !== null)) {
-			return { kind: 'refused', message: 'Unpublish this project before deleting it.' };
-		}
-		const safeToRetry = isMetadataOnlyRemoteChange(read.value.envelope);
-		return {
-			kind: 'conflict',
-			message: safeToRetry
-				? 'The Cloud saved base changed. Review the remote name, then explicitly refresh and retry.'
-				: 'The Cloud project content changed. Reload remote to replace this session before retrying.',
-			remoteName: read.value.loaded.name,
-			retryPrepared: safeToRetry
-				? { ...lifecyclePrepared(read.value)!, requiresExplicitRefresh: true }
-				: null
-		};
-	}
-
-	async function reconcileExplicitRenameRetry(
-		prepared: PreparedProjectLifecycle,
-		token: ReplacementEpochToken,
-		lock: { release(): void }
-	): Promise<
-		| { kind: 'ready'; prepared: PreparedProjectLifecycle } | ProjectLifecycleActionResult> {
-		if (!prepared.requiresExplicitRefresh) return { kind: 'ready', prepared };
-		const read = await readLifecycleProject(false, token);
-		if (read.kind === 'stale' || !sameLifecycleEpoch(token)) return { kind: 'stale' };
-		if (read.kind === 'error') return { kind: 'error', message: read.message, retryable: false };
-		if (!isSavedBaseToken(read.value.loaded.savedBaseToken) || !isMetadataOnlyRemoteChange(read.value.envelope)) {
-			return { kind: 'refused', message: 'Cloud project content changed again. Reload remote before retrying.' };
-		}
-		const nextPrepared = lifecyclePrepared(read.value);
-		if (nextPrepared === null) return { kind: 'refused', message: 'Cloud returned no current saved base.' };
-		const adopted = await adoptRemoteLifecycleMetadata(read.value, token, lock);
-		if (adopted.kind === 'stale') return { kind: 'stale' };
-		if (adopted.kind === 'error') return { kind: 'refused', message: adopted.message };
-		preparedLifecycleEpoch = token;
-		return { kind: 'ready', prepared: nextPrepared };
-	}
-
-	async function renameCurrentProject(
-		prepared: PreparedProjectLifecycle,
-		name: string
-	): Promise<ProjectLifecycleActionResult> {
-		const token = preparedLifecycleEpoch;
-		if (token === null || !sameLifecycleEpoch(token) || prepared.projectId !== projectId) return { kind: 'stale' };
-		const mounted = acceptance;
-		if (mounted === null) return { kind: 'stale' };
-		const lock = mounted.beginProjectAction();
-		if (lock.kind !== 'locked') return { kind: 'refused', message: lock.message };
-		try {
-			const reconciled = await reconcileExplicitRenameRetry(prepared, token, lock);
-			if (reconciled.kind !== 'ready') return reconciled;
-			const operation = reconciled.prepared;
-			if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
-			if (name === operation.name && prepared.requiresExplicitRefresh) return { kind: 'unchanged' };
-			const response = await runBoundProjectAction(token, (signal) =>
-				api!.renameProject(projectId, { name, precondition: operation.precondition }, signal)
-			);
-			if (response.kind === 'stale') return { kind: 'stale' };
-			const acknowledgement = response.value;
-			const adopted = await mounted.adoptProjectName({ name: acknowledgement.name, savedRevision: acknowledgement.savedRevision });
-			if (!sameLifecycleEpoch(token)) return { kind: 'stale' };
-			if (adopted.kind === 'refused') return { kind: 'error', message: adopted.message, retryable: false };
-			let baselineEnvelope: ProjectEnvelope;
-			try {
-				const validation = validateProjectEnvelope(JSON.parse(remoteSavedCanonicalJson ?? '') as unknown);
-				if (!validation.success || validation.envelope.id !== projectId) throw new Error('Saved project baseline is unavailable.');
-				baselineEnvelope = validation.envelope;
-			} catch {
-				return { kind: 'error', message: 'The saved project baseline could not be updated after rename.', retryable: false };
-			}
-			const canonicalJson = serializeProjectEnvelope({
-				...baselineEnvelope,
-				name: acknowledgement.name,
-				acceptedRevision: acknowledgement.savedRevision
-			});
-			const nextBase = {
-				savedBaseToken: acknowledgement.savedBaseToken,
-				savedRevision: acknowledgement.savedRevision,
-				savedCanonicalJson: canonicalJson,
-				savedSourceContentId: acknowledgement.sourceContentId
-			};
-			if (!headSave?.adoptSavedBase(nextBase)) {
-				return { kind: 'error', message: 'Rename completed, but the current Save baseline could not be refreshed.', retryable: false };
-			}
-			pendingSavedBase = {
-				token: acknowledgement.savedBaseToken,
-				revision: acknowledgement.savedRevision,
-				contentId: acknowledgement.sourceContentId
-			};
-			remoteSavedCanonicalJson = canonicalJson;
-			return { kind: 'renamed', name: acknowledgement.name, version: acknowledgement.version };
-		} catch (error) {
-			if (error instanceof ProjectPersistenceError && error.code === 'conflict') {
-				return await refreshLifecycleConflict(projectId, false);
-			}
-			return {
-				kind: error instanceof ProjectPersistenceError && ['invalid', 'auth', 'not-found'].includes(error.code) ? 'refused' : 'error',
-				message: error instanceof ProjectPersistenceError ? error.message : 'Cloud rename failed.',
-				retryable: retryableLifecycleError(error)
-			};
-		} finally {
-			lock.release();
-		}
-	}
-
-	async function deleteCurrentProject(prepared: PreparedProjectLifecycle): Promise<ProjectLifecycleActionResult> {
-		const token = preparedLifecycleEpoch;
-		if (token === null || !sameLifecycleEpoch(token) || prepared.projectId !== projectId) return { kind: 'stale' };
-		if (!confirmUnsavedWork()) return { kind: 'refused', message: 'Delete canceled. Your local work is unchanged.' };
-		const mounted = acceptance;
-		if (mounted === null) return { kind: 'stale' };
-		const lock = mounted.beginProjectAction();
-		if (lock.kind !== 'locked') return { kind: 'refused', message: lock.message };
-		try {
-			const response = await runBoundProjectAction(token, (signal) =>
-				api!.deleteProject(projectId, { precondition: prepared.precondition }, signal)
-			);
-			if (response.kind === 'stale') return { kind: 'stale' };
-			return { kind: 'deleted', cleanup: response.value.cleanup };
-		} catch (error) {
-			if (error instanceof ProjectPersistenceError && error.code === 'conflict') {
-				return await refreshLifecycleConflict(projectId, true);
-			}
-			if (error instanceof ProjectPersistenceError && error.code === 'unpublish-first') {
-				return { kind: 'refused', message: error.message };
-			}
-			return {
-				kind: error instanceof ProjectPersistenceError && ['invalid', 'auth', 'not-found'].includes(error.code) ? 'refused' : 'error',
-				message: error instanceof ProjectPersistenceError ? error.message : 'Cloud deletion failed.',
-				retryable: retryableLifecycleError(error)
-			};
-		} finally {
-			lock.release();
-		}
-	}
-
-	async function finishCurrentProjectAction(
-		result: Extract<ProjectLifecycleActionResult, { kind: 'renamed' | 'deleted' | 'unchanged' }>
-	): Promise<void> {
-		if (result.kind !== 'deleted') return;
-		const token = preparedLifecycleEpoch;
-		if (token === null || !sameLifecycleEpoch(token)) return;
-		deleteNavigationAuthorized = true;
-		// A server acknowledgement is the only path that retires this session.
-		// Route teardown then releases its normal Stage, history and asset owners.
-		session.dispose();
-		const query = new URLSearchParams({ deleted: result.cleanup });
-		if (boot.status === 'ready' || boot.status === 'empty') query.set('name', boot.snapshot.domain.name);
-		await goto(`/projects?${query.toString()}`);
-	}
-
-	async function reloadLifecycleRemote(): Promise<boolean> {
-		if (api === null || !activeProject()) return false;
-		const token = session.token();
-		const loaded = await runBoundLoad(session, (signal) => api!.loadProject(projectId, signal));
-		if (loaded === null || !session.isCurrent(token)) return false;
-		return applyReloadOffer({
-			kind: 'reload',
-			projectId,
-			document: loaded.document,
-			savedBaseToken: loaded.savedBaseToken,
-			savedRevision: loaded.savedRevision,
-			savedSourceContentId: loaded.savedSourceContentId
-		});
-	}
-
-	/**
-	 * A conflict's explicit *Reload remote*: the offer is data, and this host's
-	 * replacement path is the only thing that installs it.
-	 */
-	async function applyReloadOffer(offer: ReloadOffer): Promise<boolean> {
-		if (offer.kind === 'unavailable') {
-			notice = 'The remote copy could not be loaded; your local work is unchanged.';
-			return false;
-		}
-		if (!confirmUnsavedWork()) return false;
-		// TD-10: the accepted offer is this epoch's, not whichever epoch is mounted
-		// when its admission resolves. Capture the token before admitting, so a
-		// `Reload remote` that a newer replacement (or teardown) superseded is
-		// abandoned instead of installing over the project the creator now has.
-		const token = session.token();
-		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
-		// Admission itself is asynchronous: a stale offer installs nothing, adopts no
-		// saved base and reports no refusal over the newer session.
-		if (!session.isCurrent(token)) return false;
-		// Only a source that actually admitted replaces the mounted project and
-		// becomes this epoch's saved base. A failed reload keeps the local source,
-		// its history/selection and the saved base the Head is still saving against.
-		if (next.status !== 'ready' && next.status !== 'empty') {
-			reportSourceRefusal(next, 'reload');
-			return false;
-		}
-		pendingSavedBase = {
-			token: offer.savedBaseToken,
-			revision: offer.savedRevision,
-			contentId: offer.savedSourceContentId
-		};
-		remoteSavedCanonicalJson = next.snapshot.canonicalJson;
-		applyState(next);
-		return true;
-	}
-
-	function requestReplacement(action: 'starter' | 'empty' | 'source'): void {
-		if (projectActionBusy) return;
-		if (activeProject()) {
-			// Unsaved work is signalled explicitly and confirmed before the guard even
-			// opens: a replacement would discard the local source, so no path may skip
-			// this question.
-			if (!confirmUnsavedWork()) return;
-			// Explicit project-replacement guard: nothing is swapped until the creator
-			// confirms, and the guard is the same host path for every entry.
-			pendingReplacement = action;
-			return;
-		}
-		void runReplacement(action);
-	}
-
-	async function runReplacement(action: 'starter' | 'empty' | 'source'): Promise<void> {
-		pendingReplacement = null;
-		if (action === 'starter') {
-			// A minted baseline has no cloud saved base: its first Save is a create.
-			pendingSavedBase = null;
-			remoteSavedCanonicalJson = null;
-			applyState(await bootStarterGallery(projectId, admissionContext()));
-			return;
-		}
-		if (action === 'empty') {
-			pendingSavedBase = null;
-			remoteSavedCanonicalJson = null;
-			applyState(await bootEmpty(projectId, admissionContext()));
-			return;
-		}
-		if (action === 'source') {
-			await openSourceJson();
-		}
-	}
-
-	async function openSourceJson(): Promise<void> {
-		const input = document.createElement('input');
-		input.type = 'file';
-		input.accept = 'application/json,.json';
-		const file = await new Promise<File | null>((resolve) => {
-			input.onchange = () => resolve(input.files?.[0] ?? null);
-			input.click();
-		});
-		// A cancelled dialog changes nothing — including the saved base the current
-		// Head is still saving against.
-		if (file === null) return;
-		// F2 starts when the file actually exists: the dialog itself is not the flow.
-		perfMark('f2:open-requested', { bytes: file.size });
-		// TD-10: reading and admitting the chosen file is asynchronous, and the epoch
-		// this Open belongs to is the one captured here — not whichever project is
-		// mounted when the admission resolves. A superseded Open is abandoned rather
-		// than installed over the newer project, its history and its saved base.
-		const token = session.token();
-		const next = await bootFromSourceJson(await file.text(), projectId, admissionContext());
-		// A stale result reports nothing: neither a success nor a refusal may appear
-		// for an action the creator has already replaced.
-		if (!session.isCurrent(token)) return;
-		if (next.status !== 'ready' && next.status !== 'empty') {
-			reportSourceRefusal(next, 'open');
-			return;
-		}
-		// A successfully opened source is a locally minted baseline with no cloud
-		// row behind it, so its first Save is a create. Set this only once the
-		// source has actually admitted; a refused open must not clear it.
-		pendingSavedBase = null;
-		remoteSavedCanonicalJson = null;
-		applyState(next);
-		perfMark('f2:open-admitted', { sourceContentId: next.snapshot.sourceContentId });
-	}
 
 	/* --- viewport measurement and evaluation -------------------------------- */
 
@@ -3148,7 +1197,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	// `bind:this` lands after the first look-through refresh; measure it then.
 	$effect(() => {
 		const frame = throughFrameEl;
-		const session = lookThroughSession;
+		const session = experienceLens.lookThroughSession();
 		if (frame !== null && session !== null) untrack(() => refresh());
 	});
 
@@ -3180,7 +1229,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let tracePreview = $state<PerfTracePreview | null>(null);
 
 	function refresh(): void {
-		advanceLookThroughZoom(performance.now());
+		experienceLens.advanceLookThroughZoom(performance.now());
 		const stage = facade;
 		if (stage === null) return;
 		// The gesture lease is host state that changes what Undo can do without an
@@ -3198,7 +1247,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// Look through renders the real picture inside its 16:10 capture frame; the
 		// same measured rect is both Camera's evaluation and the Canvas scissor.
 		let currentRect = rect ?? measure();
-		const framed = lookThroughSession === null ? null : measureThroughFrame();
+		const framed = experienceLens.lookThroughSession() === null ? null : measureThroughFrame();
 		if (framed !== null) currentRect = framed.absolute;
 		if (framed === null) {
 			if (throughViewport !== null) throughViewport = null;
@@ -3336,7 +1385,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	onMount(() => {
 		perfMark('stage:route-mounted');
 		try {
-			showExperienceWelcome = localStorage.getItem(EXPERIENCE_WELCOME_KEY) !== '1';
+			showExperienceWelcome = !welcomeDismissed();
 		} catch {
 			showExperienceWelcome = true;
 		}
@@ -3366,7 +1415,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						acceptRect(next);
 					}
 				}
-				advancePlayback(performance.now());
+				experienceLens.advancePlayback(performance.now());
 				refresh();
 			} finally {
 				frame = requestAnimationFrame(tick);
@@ -3417,13 +1466,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		window.addEventListener('blur', onWindowBlur);
 		const removeInterruptions = installStageInterruptions(window, document, interruptPress);
 
-		void load(projectId, intent);
+		void projectSession.load(projectId, intent);
 
 		return () => {
 			// Order matters: the flag and the session teardown both run before the
 			// facade is disposed, so a load already past its fetch sees a torn-down
 			// session (`isCurrent` is false, the registered abort fires) and drops its
 			// result instead of mounting a second stage.
+			experienceLens.dispose();
 			tornDown = true;
 			cancelAnimationFrame(frame);
 			clearHover();
@@ -3440,9 +1490,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// the route.
 			unsubscribeContributions?.();
 			unsubscribeAcceptance?.();
-			unsubscribeHeadSave?.();
+			projectSession.dispose();
 			unsubscribeContributions = null;
-			unsubscribeHeadSave = null;
 			acceptance?.dispose();
 			facade?.dispose();
 			// The route owns every approved-model URL it acquired; the visitor
@@ -3768,7 +1817,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			selection = null;
 			cardOpen = true;
 			void activeExperience?.linkPresentation(pick, next.reference.subject.id).then((accepted) => {
-				if (accepted) selectExperienceSubject({ kind: 'presentation', presentationId: pick });
+				if (accepted) experienceLens.selectSubject({ kind: 'presentation', presentationId: pick });
 			});
 			return;
 		}
@@ -3845,13 +1894,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (lens !== 'experience') changeLens('experience');
 		cardOpen = true;
 		const subject = problem.subject;
-		if (subject.kind === 'guide') {
+			if (subject.kind === 'guide') {
 			// D-2: a Guide has no Card. Show opens its instrument and keeps the Experience Card.
 			const controller = activeExperience;
 			const guide = controller?.guides.find((entry) => entry.id === subject.guideId);
 			if (controller == null || guide === undefined) return;
-			controller.openGuide(guide.id);
-			experienceGuideOpen = true;
+			experienceLens.openGuide(guide.id);
 			experienceFocus.select({ kind: 'experience' });
 			return;
 		}
@@ -4027,6 +2075,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		clearHover();
 		const firstId = press.owner();
 		if (firstId !== null && firstId !== event.pointerId && drag !== null) {
+			if (activeLayer?.pinch(event) === 'claimed') return;
 			const first: [number, number] = [drag.x, drag.y];
 			interruptPress('second-pointer');
 			press.refuse(firstId); press.refuse(event.pointerId);
@@ -4039,21 +2088,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
-		if (viewEdit !== null) return;
-		if (lens === 'experience' && lookThroughSession !== null) { beginReaim(event); return; }
-		if (lens === 'experience' && experienceTool === 'place') { beginPlacement(event); return; }
-		if (lens === 'experience' && lookThroughSession === null && experienceTool === 'select' && event.button === 0) {
-			const mark = viewMarkAt(event);
-			if (mark !== null && (!event.shiftKey || mark.viewId === advancedViewId)) {
-				if (mark.kind === 'eye' || mark.kind === 'move' || mark.kind === 'turn' ||
-					mark.kind === 'lift' || mark.kind === 'tilt' || mark.kind === 'lens') {
-					beginViewEdit(event, mark.viewId, mark.kind === 'eye' ? 'move' : mark.kind, mark.mark);
-				}
-				// A 3D glyph is a click entry, not navigation: never claim the Stage
-				// pointer lease or capture on the Stage ancestor.
-				return;
-			}
-		}
+		if (activeLayer?.pointerDown(event, viewMarkAt(event)) === 'claimed') return;
 		// The adapters get the press first: the binding that owns an open task (a Scene
 		// transform, an armed Ink chain) may claim it, and so may a binding that offers
 		// direct manipulation with no task at all (a selected Wall's handles). Only a
@@ -4289,7 +2324,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
-		if (viewEdit !== null) { updateViewEdit(event); return; }
 		if (pinch !== null) {
 			if (!pinch.has(event.pointerId)) return;
 			if (session.gesture() === null) { endPinch(); return; }
@@ -4302,8 +2336,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (oldDistance > 0 && newDistance > 0) zoom(oldDistance / newDistance);
 			return;
 		}
-		if (lookThroughSession !== null) { moveReaim(event); return; }
-		if (placementPress !== null) { movePlacement(event); return; }
+		if (activeLayer?.pointerMove(event) === 'claimed') return;
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
 			hoverSample = { css: stageCss(event), shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
@@ -4404,15 +2437,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
-		if (viewEdit !== null) {
-			if (viewEdit.pointerId === event.pointerId) {
-				updateViewEdit(event);
-				void endViewEdit();
-			}
-			return;
-		}
-		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
-		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) endPlacement(); return; }
+		if (activeLayer?.pointerUp(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
 		// ended, not aborted. Only the owning pointer may end it — a refused second
@@ -4473,7 +2498,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interruptPress(reason: StageInterruptionReason): void {
-		if (viewEdit !== null) { cancelViewEdit(); return; }
+		if (activeLayer?.interrupt?.() === 'claimed') return;
 		if (pinch !== null) { endPinch(); clearHover(); return; }
 		const pointerId = press.owner();
 		if (pointerId === null || drag === null) { clearHover(); return; }
@@ -4494,16 +2519,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
-		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) cancelViewEdit(); return; }
-		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
-		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) cancelPlacement(); return; }
+		if (activeLayer?.pointerCancel(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
-		if (viewEdit !== null && viewEdit.pointerId === event.pointerId) { cancelViewEdit(); return; }
-		if (lookThroughPointers.has(event.pointerId)) { endReaim(event.pointerId); return; }
-		if (placementPress !== null && placementPress.pointerId === event.pointerId) { cancelPlacement(); return; }
+		if (activeLayer?.lostCapture(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
 
@@ -4520,9 +2541,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
 		// A frustum's captured release also dispatches a click. Its View owns that
 		// click just as it owned the press; picking the floor here clears the Card.
-		if (lens === 'experience' && viewMarkAt(event) !== null) return;
-		// Look through owns the Stage: a drag turns the view and its release is not a pick.
-		if (lens === 'experience' && (lookThroughSession !== null || experienceTool === 'place')) return;
+		// A View glyph, Look through or placement owns the release; it must not pick the Floor.
+		if (activeLayer?.click(event, viewMarkAt(event) !== null) === 'claimed') return;
 		// An **armed dock tool** owns the Stage surface: its tap already placed a
 		// point, split a Wall or was refused, and re-selecting underneath it would
 		// silently move what the tool is editing. Another adapter's task (Compose,
@@ -4554,61 +2574,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
-		if (viewEdit !== null) return;
-		const stage = facade;
-		if (lens === 'experience' && lookThroughSession !== null && stage !== null) {
-			const now = performance.now();
-			advanceLookThroughZoom(now);
-			const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? (evaluation?.rect.height ?? 1) : 1);
-			const remaining = lookThroughZoom === null ? 0 : lookThroughZoom.pending - lookThroughZoom.applied;
-			lookThroughZoom = { pending: remaining - pixels * 0.004, startedAt: now, applied: 0 };
-			if (reducedMotion) advanceLookThroughZoom(now, true);
-			return;
-		}
+		if (activeLayer?.wheel(event, evaluation?.rect.height ?? 1) === 'claimed') return;
 		zoom(Math.exp(event.deltaY * 0.001));
 	}
 
 	function handleKey(event: KeyboardEvent): void {
 		// Preview is an isolated visitor run: Stage viewing keys do not apply there.
 		if (preview !== null) {
-			if (event.key === 'Escape') closePreview();
+			if (event.key === 'Escape') previewController.close();
 			return;
 		}
 		// S28 Esc precedence: a live marker gesture, then place, then Look through,
 		// then the Card's own unwinding.
-		if (event.key === 'Escape' && lens === 'experience') {
-			if (stagePickPresentationId !== null) {
+		if (event.key === 'Escape' && activeLayer !== null) {
+			if (activeLayer.key(event, 'capture') === 'claimed') {
 				event.preventDefault();
 				event.stopPropagation();
-				stagePickPresentationId = null;
-				notice = 'Pick cancelled.';
-				return;
-			}
-			if (pendingViewWrite !== null) {
-				event.preventDefault();
-				event.stopPropagation();
-				pendingViewWrite = null;
-				return;
-			}
-			if (viewEdit !== null) {
-				event.preventDefault();
-				event.stopPropagation();
-				cancelViewEdit();
-				return;
-			}
-			if (experienceTool === 'place') {
-				event.preventDefault();
-				event.stopPropagation();
-				experienceTool = 'select';
-				placementAim = null;
-				cancelPlacement();
-				notice = '';
-				return;
-			}
-			if (lookThroughSession !== null) {
-				event.preventDefault();
-				event.stopPropagation();
-				exitLookThrough();
 				return;
 			}
 		}
@@ -4617,7 +2598,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// R217.S26 (E17): Alt+← is the Card's Back in the Experience lens. A focused Stop card
 		// or View tile claims Alt+← for its own reorder first (it prevents the default).
 		if (
-			lens === 'experience' &&
+			activeLayer !== null &&
 			event.key === 'ArrowLeft' &&
 			event.altKey &&
 			!event.metaKey &&
@@ -4625,7 +2606,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			!event.shiftKey &&
 			!event.defaultPrevented
 		) {
-			if (experienceController?.back()) {
+			if (activeLayer.key(event, 'capture') === 'claimed') {
 				event.preventDefault();
 				cardOpen = true;
 			}
@@ -4704,11 +2685,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				break;
 			}
 			case 'delete': {
-				const controller = activeExperience;
-				const anchorId = controller?.selectedAnchorId ?? null;
-				if (lens === 'experience' && controller !== null && anchorId !== null) {
+				if (activeLayer?.key(event, 'capture') === 'claimed') {
 					event.preventDefault();
-					void controller.removePathAnchor(anchorId);
 					break;
 				}
 				requestDelete();
@@ -4743,13 +2721,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				const armedKey = dockKeys.find((key) => key.id === armedDockId);
 				if (task !== null && armedKey?.palette === true && paletteOpen) { paletteOpen = false; break; }
 				if (task !== null) closeTask();
-				else if (lens === 'experience') {
-					// R217.S25: Esc clears the Card selection (Experience subject or Stage), then
-					// closes the Guide instrument. A menu or mode in a component answered first.
-					if (experienceFocus.subject !== null) experienceFocus.select(null);
-					else if (selection !== null) closeSelection();
-					else if (experienceGuideOpen) experienceGuideOpen = false;
-				} else if (selection !== null) closeSelection();
+				else if (activeLayer?.key(event, 'unwind') !== 'claimed' && selection !== null) closeSelection();
 				break;
 			}
 			case 'none':
@@ -5043,112 +3015,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * Guides, and the Presentations with their Views and Stop numbers. A read of the controller;
 	 * every action is one of its commands or the one Card selection.
 	 */
-	const experienceIndex = $derived.by((): ExperienceIndexGroups | null => {
-		if (lens !== 'experience') return null;
-		const controller = experienceController;
-		if (controller === null) {
-			return {
-				pending: true,
-				experiences: [],
-				draftLabel: '',
-				current: null,
-				guides: [],
-				presentations: [],
-				totalPresentations: 0,
-				query: '',
-				busy: false,
-				onQuery: () => {},
-				onOpenExperience: () => {},
-				onCreateExperience: () => {},
-				onRenameExperience: async () => ({ kind: 'refused' as const }),
-				onOpenGuide: () => {},
-				onRenameGuide: async () => ({ kind: 'refused' as const }),
-				onRemoveGuide: () => {},
-				onAddStopFromView: () => {},
-				onSelectPresentation: () => {},
-				onToggleExpand: () => {},
-				onSelectView: () => {}
-			};
-		}
-		const current = controller.current;
-		const subject = controller.subject;
-		// The open chip reads the active Guide; the Stop numbers and On tour read the context Guide (entry before open).
-		const activeGuideId = controller.currentGuide?.id ?? null;
-		const stopNumbers = new Map<string, number[]>();
-		controller.guideStops.forEach((stop, index) => {
-			stopNumbers.set(stop.presentationId, [...(stopNumbers.get(stop.presentationId) ?? []), index + 1]);
-		});
-		return {
-			pending: false,
-			experiences: controller.experiences.map((entry) => ({
-				id: entry.id,
-				label: entry.label,
-				stopCount: entry.stops.length,
-				presentationCount: entry.presentations.length
-			})),
-			draftLabel: controller.draftLabel,
-			current: current === null ? null : { id: current.id, label: current.label },
-			guides: controller.guides.map((guide) => ({
-				id: guide.id,
-				label: guide.label,
-				stopCount: guide.stopIds.length,
-				open: experienceGuideOpen && guide.id === activeGuideId,
-				opening: current?.entryGuideId === guide.id
-			})),
-			presentations: controller.filteredPresentations.map((entry) => ({
-				id: entry.id,
-				label: controller.presentationDisplayName(entry.id),
-				viewCount: entry.views.length,
-				explorable: entry.explorable,
-				stopNumbers: stopNumbers.get(entry.id) ?? [],
-				selected: subject?.kind === 'presentation' && subject.presentationId === entry.id,
-				expanded: expandedPresentationId === entry.id,
-				views: (controller.viewsOf.get(entry.id) ?? []).map((view) => ({
-					id: view.id,
-					label: view.label,
-					onTour: controller.viewStops(view.id).length > 0,
-					isDefault: entry.views[0]?.viewId === view.id,
-					selected:
-						subject?.kind === 'view' && subject.viewId === view.id && subject.presentationId === entry.id
-				}))
-			})),
-			totalPresentations: current?.presentations.length ?? 0,
-			query: controller.query,
-			busy: controller.busy,
-			onQuery: (query: string) => {
-				controller.query = query;
-			},
-			onOpenExperience: (experienceId: string) => {
-				controller.openExperience(experienceId);
-					expandedPresentationId = null;
-				cardOpen = true;
-			},
-			onCreateExperience: (label?: string) => {
-				// A pending name prompt or an expanded row belongs to the Experience it was opened in.
-					expandedPresentationId = null;
-				return controller.createExperience(label);
-			},
-			onRenameExperience: (label: string) => controller.renameExperience(label),				onOpenGuide: (guideId: string | null) => {
-				if (guideId !== null) controller.openGuide(guideId);
-				experienceGuideOpen = true;
-				// D-2: a Guide has no Card; opening it keeps the Experience Card.
-				selectExperienceSubject({ kind: 'experience' });
-			},
-				onRenameGuide: (guideId: string, label: string) => controller.renameGuide(guideId, label),				onRemoveGuide: (guideId: string) => void controller.remove({ kind: 'guide', guideId }),
-				onAddStopFromView: (viewId: string, presentationId: string) => {
-					void controller.addStop(presentationId, { entryViewId: viewId });
-				},
-				onSelectPresentation: (presentationId: string) => {
-				selectExperienceSubject({ kind: 'presentation', presentationId });
-			},
-			onToggleExpand: (presentationId: string) => {
-				expandedPresentationId = expandedPresentationId === presentationId ? null : presentationId;
-			},
-			onSelectView: (viewId: string, presentationId: string) => {
-				selectExperienceSubject({ kind: 'view', viewId, presentationId });
-			}
-		};
-	});
+	const experienceIndex = $derived(experienceIndexFor({
+		lens,
+		controller: experienceController,
+		guideOpen: experienceGuideOpen,
+		expandedPresentationId,
+		select: experienceLens.selectSubject,
+		setExpanded: (presentationId) => { expandedPresentationId = presentationId; },
+		setCardOpen: (open) => { cardOpen = open; },
+		setGuideOpen: (open) => { experienceGuideOpen = open; }
+	}));
 
 	/** The Card's `menu` item shape (R217.S26: danger items, consequence blocks and submenus). */
 	type ExperienceCardMenuItem = NonNullable<ComponentProps<typeof EditorCard>['menu']>[number];
@@ -5177,299 +3053,31 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		back: null
 	};
 
-	/**
-	 * R217.S26 (E4) — a danger item for one removal. Its consequence block reads the same plan the
-	 * removal planner installs; an item the plan refuses stays disabled with the reason as its hint.
-	 * A Default View's removal asks for the new Default in the block (no automatic choice).
-	 */
-	function removalItem(
-		controller: ExperienceController,
-		id: string,
-		label: string,
-		target: ExperienceRemovalTarget
-	): ExperienceCardMenuItem {
-		const withChoice = (choice: string | null): ExperienceRemovalTarget =>
-			target.kind === 'view' ? { ...target, newDefaultViewId: choice } : target;
-		const initial = controller.removalPreview(target);
-		return {
-			id,
-			label,
-			danger: true,
-			...(controller.busy
-				? { disabled: true, reason: 'Wait for the current change' }
-				: initial.kind === 'refused'
-					? { disabled: true, reason: initial.reason }
-					: {}),
-			consequence: {
-				read: (choice) => {
-					const preview = controller.removalPreview(withChoice(choice));
-					if (preview.kind === 'refused') return preview;
-					return {
-						kind: 'ready',
-						lines: preview.lines,
-						choose: preview.chooseDefault === null ? null : { label: 'New Default View', options: preview.chooseDefault },
-						runnable: preview.runnable
-					};
-				},
-				run: (choice) => controller.remove(withChoice(choice))
-			}
-		};
-	}
+	const cardBack = (controller: ExperienceController, parent: Parameters<typeof backOf>[1]) =>
+		backOf(controller, parent, () => { cardOpen = true; });
 
-	/**
-	 * R217.S26 (E17): the kind line's *‹ Back* when the previous subject is not the kind line's
-	 * own parent link (a View's Presentation is already its kind link).
-	 */
-	function backOf(controller: ExperienceController, parent: ExperienceSubject | null): ShownCard['back'] {
-		const target = controller.backTarget;
-		if (target === null) return null;
-		if (parent !== null && JSON.stringify(parent) === JSON.stringify(target)) return null;
-		// Review round 3: stepping between siblings (Stop ‹ › Stop) is not a drill-in, so the
-		// Card names no "back" to the sibling it came from; Alt+← still returns there.
-		if (controller.subject !== null && controller.subject.kind === target.kind) return null;
-		return {
-			label: controller.subjectName(target),
-			onBack: () => {
-				controller.back();
-				cardOpen = true;
-			}
-		};
-	}
-
-	/** The Experience rename fields commit on Enter or blur and refuse an empty name (R217.S26). */
-	function experienceNameWriter(value: () => string, commit: (name: string) => Promise<{ readonly kind: string; readonly message?: string }>): ShownCard['nameWriter'] {
-		return {
-			get value() {
-				return value();
-			},
-			commit,
-			commitOnBlur: true,
-			emptyMessage: NAME_NEEDED
-		};
-	}
-
-	/**
-	 * R217.S25 (D10) — the one Card the Experience lens shows: the Experience subject when one is
-	 * selected, otherwise the Stage selection as the subject Card, otherwise none. The latest
-	 * selection always replaced the other, so there is never a second Card to arbitrate.
-	 */
 	const experienceShownCard = $derived.by((): ShownCard => {
 		const controller = activeExperience;
 		const services = adapterServices;
 		// The ready draft (no Experience yet) still shows the Stage selection, so Present this can start it.
 		if (controller === null || services === null) return NO_CARD;
-		// The Stop and transition kind lines name the context Guide, so a tour Stop reads its Guide before it is opened.
-		const guideLabel = controller.contextGuide?.label ?? '';
-		const writerOf = (summary: string, component: NonNullable<StageCardWriterRecord['view']>['component']): StageCardWriterRecord => ({
-			summary,
-			adapterId: 'experience',
-			fieldIds: [],
-			view: { component, services }
-		});
-		const subject = controller.subject;
-		if (subject?.kind === 'presentation') {
-			const presentation = controller.selectedPresentation;
-			if (presentation === null) return NO_CARD;
-			const reference = presentation.subject;
-			const subjectLabel = reference === null ? null : referenceLabel(reference as StageSelectionEntry['reference']);
-			const model = presentationCardModel({
-				presentationId: presentation.id,
-				label: controller.presentationDisplayName(presentation.id),
-				hasSubject: reference !== null && subjectLabel !== null,
-				viewCount: presentation.views.length,
-				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
-				hasDefaultView: presentation.views.length > 0
-			});
-			// E5: Add to Guide ▸ — the Guides, the active one first, with *again* where the
-			// Presentation already has a Stop, then New Guide…, which asks the name inline (D8).
-			const activeGuideId = controller.currentGuide?.id ?? controller.contextGuide?.id ?? null;
-			const guidesInOrder = [
-				...controller.guides.filter((guide) => guide.id === activeGuideId),
-				...controller.guides.filter((guide) => guide.id !== activeGuideId)
-			];
-			const presentationStops = new Set(controller.stopUsage.get(presentation.id) ?? []);
-			const busyReason = controller.busy ? { disabled: true, reason: 'Wait for the current change' } : {};
-			const addToGuide: ExperienceCardMenuItem = {
-				id: 'add-to-guide',
-				label: 'Add to Guide',
-				children: [
-					...guidesInOrder.map((guide) => ({
-						id: `add-to-guide:${guide.id}`,
-						label: guide.label,
-						...(guide.stopIds.some((stopId) => presentationStops.has(stopId)) ? { hint: 'again' } : {}),
-						...busyReason,
-						run: () => void controller.addToGuide(presentation.id, guide.id)
-					})),
-					{
-						id: 'new-guide',
-						label: 'New Guide…',
-						...busyReason,
-						run: () => void controller.createGuide(presentation.id)
-					}
-				]
-			};
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				nameWriter: experienceNameWriter(
-					() => controller.presentationDisplayName(presentation.id),
-					(name: string) => controller.renamePresentation(presentation.id, name)
-				),
-				menu: [
-					addToGuide,
-					removalItem(controller, 'remove-presentation', 'Remove Presentation', { kind: 'presentation', presentationId: presentation.id })
-				],
-				back: backOf(controller, null),
-				writer: writerOf('Presentation', ExperiencePresentationWriter),
-				kindLink:
-					reference === null || subjectLabel === null
-						? null
-						: {
-								label: subjectLabel,
-								onOpen: () => selectStageReference(reference as StageSelectionEntry['reference'])
-							}
-			};
-		}
-		if (subject?.kind === 'view') {
-			const view = controller.selectedView;
-			if (view === null) return NO_CARD;
-			const model = viewCardModel({
-				viewId: view.id,
-				label: view.label,
-				presentationLabel: controller.presentationLabel(view.presentationId)
-			});
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				nameWriter: experienceNameWriter(
-					() => view.label,
-					(name: string) => controller.renameView(view.id, name)
-				),
-				menu: [
-					removalItem(controller, 'remove-view', 'Remove View', {
-						kind: 'view',
-						presentationId: view.presentationId,
-						viewId: view.id
-					})
-				],
-				back: backOf(controller, { kind: 'presentation', presentationId: view.presentationId }),
-				writer: writerOf('View', ExperienceViewWriter),
-				kindLink: {
-					label: controller.presentationLabel(view.presentationId),
-					onOpen: () => selectExperienceSubject({ kind: 'presentation', presentationId: view.presentationId })
-				}
-			};
-		}
-		if (subject?.kind === 'stop') {
-			const stop = controller.selectedStop;
-			if (stop === null) return NO_CARD;
-			const order = controller.guideStops;
-			const at = order.findIndex((entry) => entry.id === stop.id);
-			const position = at === -1 ? null : at + 1;
-			const model = stopCardModel({
-				stopId: stop.id,
-				presentationLabel: controller.presentationLabel(stop.presentationId),
-				position,
-				guideLength: order.length,
-				guideLabel
-			});
-			const items: ExperienceCardMenuItem[] = [
-				{
-					id: 'open-presentation',
-					label: 'Open Presentation',
-					run: () => selectExperienceSubject({ kind: 'presentation', presentationId: stop.presentationId })
-				}
-			];
-			if (position !== null) {
-				const first = position === 1;
-				const last = position === order.length;
-				const busy = controller.busy;
-				const stuck = (atEnd: boolean, reason: string): { disabled: boolean; reason?: string } =>
-					busy ? { disabled: true, reason: 'Wait for the current change' } : atEnd ? { disabled: true, reason } : { disabled: false };
-				items.push(
-					{ id: 'move-earlier', label: 'Move earlier', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStop(stop.id, -1) },
-					{ id: 'move-later', label: 'Move later', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStop(stop.id, 1) }
-				);
-				if (order.length > 6) {
-					items.push(
-						{ id: 'move-start', label: 'Move to the start', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStopTo(stop.id, 0) },
-						{ id: 'move-end', label: 'Move to the end', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStopTo(stop.id, order.length - 1) }
-					);
-				}
-			}
-			items.push(removalItem(controller, 'remove-stop', 'Remove Stop', { kind: 'stop', stopId: stop.id }));
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				writer: writerOf('Stop', ExperienceStopWriter),
-				menu: items,
-				back: backOf(controller, null)
-			};
-		}
-		if (subject?.kind === 'transition') {
-			const stop = controller.selectedStop;
-			if (stop === null) return NO_CARD;
-			const at = controller.guideStops.findIndex((entry) => entry.id === stop.id);
-			const continuation = controller.resolveContinuation(stop.id);
-			if (at === -1 || continuation === null) return NO_CARD;
-			const model = transitionCardModel({ stopId: stop.id, fromPosition: at + 1, guideLabel, continuation });
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				writer: writerOf('Transition', ExperienceTransitionWriter),
-				back: backOf(controller, { kind: 'stop', stopId: stop.id })
-			};
-		}
-		// D-2: with nothing selected the Card is the Experience Card. A Guide is never a Card
-		// subject; opening one keeps this Card and shows its strip.
-		if (subject?.kind === 'experience' || (subject === null && selection === null)) {
-			const current = controller.current;
-			if (current === null) return NO_CARD;
-			const model = experienceCardModel({
-				experienceId: current.id,
-				label: current.label,
-				guideCount: controller.guides.length
-			});
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				nameWriter: experienceNameWriter(
-					() => current.label,
-					(name: string) => controller.renameExperience(name)
-				),
-				writer: writerOf('Experience', ExperienceExperienceWriter)
-			};
-		}
-		// No Experience subject, but a Stage pick is: the Stage selection is the Card.
-		const selected = selection;
-		if (selected === null) return NO_CARD;
 		const bring = () => {
 			const target = selectedWorldPoint();
 			if (target !== null) bringIntoView(target);
 		};
-		const scene = experienceSceneSubject;
-		if (scene !== null) {
-			const model = subjectCardModel({ entityId: scene.entityId, label: scene.label });
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				writer: writerOf('Scene object', ExperienceSubjectWriter),
-				bringIntoView: bring
-			};
-		}
-		// A Layout or other Stage subject: identity only, and the way back to its editing home.
-		return {
-			...NO_CARD,
-			identity: cardIdentity,
-			bringIntoView: bring,
-			menu: [{ id: 'open-in-world', label: 'Open in World', run: () => changeLens('world') }]
-		};
+		return experienceShownCardFor({
+			controller,
+			services,
+			selection,
+			sceneSubject: experienceSceneSubject,
+			cardIdentity,
+			select: experienceLens.selectSubject,
+			changeLens: () => changeLens('world'),
+			bring,
+			selectStageReference,
+			referenceLabel,
+			openCard: () => { cardOpen = true; }
+		}) as unknown as ShownCard;
 	});
 
 	/**
@@ -5493,31 +3101,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (target !== null) bringIntoView(target);
 			}
 		};
-	});
-
-	/** Show the instrument on the active Guide, or on the entry Guide when none is active. */
-	function openExperienceGuide(): void {
-		const controller = activeExperience;
-		const entryGuideId = controller?.current?.entryGuideId ?? null;
-		if (controller !== null && controller.currentGuide === null && entryGuideId !== null) {
-			controller.openGuide(entryGuideId);
-		}
-		experienceGuideOpen = true;
-	}
-	/** The dock's Guide key: show or hide the instrument for the active Guide. */
-	function toggleExperienceGuide(): void {
-		if (experienceGuideOpen) {
-			experienceGuideOpen = false;
-			return;
-		}
-		openExperienceGuide();
-	}
-	/** Why the dock's Capture cannot run, or undefined when it can. */
-	const experienceCaptureReason = $derived.by((): string | undefined => {
-		const controller = activeExperience;
-		if (controller === null) return undefined;
-		if (controller.busy) return 'Wait for the current change';
-		return undefined;
 	});
 
 	/**
@@ -5893,7 +3476,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		onReloadRemote={(offer) => void applyReloadOffer(offer)}
 		saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
 		canPreview={previewAvailable}
-		onPreview={() => void openPreview()}
+		onPreview={() => void previewController.open()}
 		previewUnavailableReason={currentEnvelope === null
 			? 'Preview needs an admitted project source.'
 			: 'Create an Experience in the Experience lens to Preview it.'}
@@ -5908,7 +3491,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		onPrepareDelete={() => prepareProjectLifecycle(true)}
 		onDeleteProject={deleteCurrentProject}
 		onProjectActionComplete={finishCurrentProjectAction}
-		onProjectActionBusyChange={(busy) => (projectActionBusy = busy)}
+		onProjectActionBusyChange={projectSession.setProjectActionBusy}
 		onRefreshRemoteProject={reloadLifecycleRemote}
 		find={{
 			query: findQuery,
@@ -6061,7 +3644,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				data-paper={paperVisible ? 'true' : 'false'}
 				data-cursor={viewEdit !== null ? (viewEdit.kind === 'turn' ? 'turn' : 'grabbing')
 				: drag?.mode === 'pan' || drag?.mode === 'orbit' || (drag?.mode === 'adapter' && task === null) ? 'grabbing'
-				: lookThroughSession !== null ? 'look'
+				: experienceLens.lookThroughSession() !== null ? 'look'
 				: experienceTool === 'place' ? 'place-view'
 				: hoverMove ? 'move'
 				: task?.kind === 'layout-ink' || armedHostTool !== null ? 'draw'
@@ -6076,7 +3659,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				onlostpointercapture={onLostPointerCapture}
 				onclick={onClick}
 				onwheel={onWheel}
-				oncontextmenu={(event) => { if (lookThroughSession !== null) event.preventDefault(); }}
+				oncontextmenu={(event) => { if (experienceLens.lookThroughSession() !== null) event.preventDefault(); }}
 			>
 				{#if boot.status === 'ready' || boot.status === 'empty'}
 					<StageCanvas
@@ -6097,7 +3680,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						contentBounds={paperContentBounds}
 						snapshotBounds={stageContentBounds}
 						environment={editOnPaper ? 'paper' : worldEnvironment}
-						framedViewport={lookThroughSession !== null ? throughViewport : null}
+						framedViewport={experienceLens.lookThroughSession() !== null ? throughViewport : null}
 							{selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
@@ -6106,20 +3689,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					/>
 				{/if}
 				<div class="overlay-layer">
-					{#if lookThroughSession === null}
+					{#if experienceLens.lookThroughSession() === null}
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
 								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 					{/if}
-					{#if lens === 'experience' && evaluation !== null && lookThroughSession === null}
+					{#if lens === 'experience' && evaluation !== null && experienceLens.lookThroughSession() === null}
 						<ExperienceMarks
 							{evaluation}
-							{placementGhost}
+							placementGhost={experienceLens.placementGhost()}
 							liveEdit={viewEdit}
 							advanced={advancedViewId !== null}
 							datum={experienceFloorDatum}
 							rig={playback.status === 'idle' ? null : playback.sample}
-							onLookThrough={lookThroughView}
+							onLookThrough={experienceLens.lookThroughView}
 							{showMarkers}
 							{showFrustums}
 							{showPaths}
@@ -6158,7 +3741,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="stage-actions"
-					style:display={lookThroughSession !== null ? 'none' : undefined}
+					style:display={experienceLens.lookThroughSession() !== null ? 'none' : undefined}
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
@@ -6328,7 +3911,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{/key}
 				{/if}
 
-				{#if lens === 'experience' && lookThroughSession !== null}
+				{#if lens === 'experience' && experienceLens.lookThroughSession() !== null}
 					<!-- The capture frame sits beside the Card and above the Guide; helpers are hidden. -->
 					<div class="through-slot" bind:this={throughFrameEl} data-through-frame>
 						<div class="through-frame" aria-hidden="true"></div>
@@ -6342,25 +3925,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onpointerdown={(event) => event.stopPropagation()}
 					>
 						<span class="live-dot" aria-hidden="true"></span>
-						<span>Looking through <b>{lookThroughSession.label}</b></span>
-						{#if lookThroughMoved}<span class="moved">moved</span>{/if}
+						<span>Looking through <b>{experienceLens.lookThroughSession()!.label}</b></span>
+						{#if experienceLens.lookThroughMoved()}<span class="moved">moved</span>{/if}
 						<button
 							type="button"
 							class="pill-gold"
-							disabled={!lookThroughMoved || (activeExperience?.busy ?? false)}
-							title={lookThroughMoved ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
-							onclick={() => void updateLookThrough(lookThroughConfirm !== null)}>Update View</button
+							disabled={!experienceLens.lookThroughMoved() || (activeExperience?.busy ?? false)}
+							title={experienceLens.lookThroughMoved() ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
+							onclick={() => void experienceLens.updateLookThrough(experienceLens.lookThroughConfirm() !== null)}>Update View</button
 						>
-						<button type="button" onclick={exitLookThrough}>Exit View Esc</button>
-						<button type="button" title="Capture this provisional pose as a new View" onclick={() => void captureProvisional()}>Capture</button>
+						<button type="button" onclick={experienceLens.exitLookThrough}>Exit View Esc</button>
+						<button type="button" title="Capture this provisional pose as a new View" onclick={() => void experienceLens.captureProvisional()}>Capture</button>
 					</div>
-					{#if lookThroughConfirm !== null}
+					{#if experienceLens.lookThroughConfirm() !== null}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
-							<p>Also changes {lookThroughConfirm.join(', ')}.</p>
+							<p>Also changes {experienceLens.lookThroughConfirm()!.join(', ')}.</p>
 							<div class="through-confirm-actions">
-								<button type="button" class="pill-gold" onclick={() => void updateLookThrough(true)}>Update View</button>
-								<button type="button" onclick={() => (lookThroughConfirm = null)}>Cancel</button>
+								<button type="button" class="pill-gold" onclick={() => void experienceLens.updateLookThrough(true)}>Update View</button>
+								<button type="button" onclick={() => experienceLens.clearLookThroughConfirm()}>Cancel</button>
 							</div>
 						</div>
 					{/if}
@@ -6370,12 +3953,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
 						<p>Also changes {pendingViewWrite.alsoIn.join(', ')}.</p>
 						<div class="through-confirm-actions">
-							<button type="button" class="pill-gold" onclick={() => void confirmPendingViewWrite()}>Update View</button>
-							<button type="button" onclick={() => (pendingViewWrite = null)}>Cancel</button>
+							<button type="button" class="pill-gold" onclick={() => void experienceLens.confirmPendingViewWrite()}>Update View</button>
+							<button type="button" onclick={() => (experienceLens.clearPendingViewWrite())}>Cancel</button>
 						</div>
 					</div>
 				{/if}
-				{#if lens === 'experience' && showExperienceWelcome && lookThroughSession === null && experienceTool === 'select'}
+				{#if lens === 'experience' && showExperienceWelcome && experienceLens.lookThroughSession() === null && experienceTool === 'select'}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<aside class="experience-welcome" aria-label="Welcome to Experience" onpointerdown={(event) => event.stopPropagation()} onclick={(event) => event.stopPropagation()}>
 						<span>Welcome to Experience</span>
@@ -6387,7 +3970,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						</ol>
 						<footer>
 							<small>Tips again: ⌘K → Show Experience tips</small>
-							<button type="button" onclick={dismissExperienceWelcome}>Got it</button>
+							<button type="button" onclick={() => { showExperienceWelcome = false; rememberWelcomeDismissed(); }}>Got it</button>
 						</footer>
 					</aside>
 				{/if}
@@ -6439,7 +4022,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						guideStopCount={previewGuideStats.stops}
 						guideSeconds={previewGuideStats.seconds}
 						viewLabels={previewViewLabels}
-						onExit={closePreview}
+						onExit={previewController.close}
 						environment={worldEnvironment}
 					/>
 				</div>
@@ -6501,13 +4084,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{#if activeExperience !== null}
 					<!-- Column order is bottom-up: the dock, its feedback line, then the Guide instrument above them. -->
 					<ExperienceDock
-						captureDisabled={experienceCaptureReason !== undefined}
-						captureReason={experienceCaptureReason}
+						captureDisabled={experienceLens.captureReason() !== undefined}
+						captureReason={experienceLens.captureReason()}
 						guideOpen={experienceGuideOpen}
 						placeArmed={experienceTool === 'place'}
-						onPlaceView={togglePlaceView}
+						onPlaceView={experienceLens.togglePlaceView}
 						onCapture={() => void activeExperience?.capture()}
-						onToggleGuide={toggleExperienceGuide}
+						onToggleGuide={experienceLens.toggleGuide}
 					/>
 					{#if notice || activeExperience.feedback}
 						<p
@@ -6589,7 +4172,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			<h1>Replace the current project?</h1>
 			<p>This cancels pending work and clears selection and task before swapping to the new baseline.</p>
 			<button type="button" class="primary" onclick={() => void runReplacement(pendingReplacement!)}>Replace</button>
-			<button type="button" onclick={() => (pendingReplacement = null)}>Cancel</button>
+			<button type="button" onclick={projectSession.cancelReplacement}>Cancel</button>
 		</div>
 	{/if}
 </div>

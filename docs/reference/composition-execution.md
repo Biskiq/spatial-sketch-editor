@@ -494,6 +494,13 @@ capability growth uses the declared points rather than parallel formats.
 | Profile capabilities | required semantics, fallback behavior, conformance fixture |
 | Domain admission | authority, F.1 conformance, unit, validation, channel families/operators, evaluator/lowering, effects, fixtures |
 
+**Adapter port.** Adapters and posture modules receive the Stage through
+`StageAdapterPort` and `StageTaskPort` (exported from `stage-adapter-host.ts`),
+never the whole facade or private Stage modules. The port narrows what an
+extension may name while the runtime object stays the facade; an architecture
+check enforces the import boundary. New capabilities contribute through the same
+slots rather than a plugin-only path.
+
 **Negotiation.** Units, program payloads and releases declare their kind and
 version explicitly, and every extension or capability reference declares itself
 **required** or optional. A reader must reject an unsupported required one and
@@ -573,6 +580,22 @@ against. Keying a proposal by the generation cancels live work on any redraw.
 One persistent Threlte Canvas/Stage serves all readings and lenses; renderer Camera objects
 realize evaluated output only. Editor mounting contracts stay editor-only and must not pull
 selection/history/runes/DOM into shared packages.
+
+### Route as composition root
+
+The spatial route mounts the Stage, constructs controllers, routes raw DOM events in one fixed
+order and renders shell slots. A new posture or capability adds a module and a wiring line, not
+route branches; no line budget applies. The fixed order is pinch/second pointer → active posture
+layer → adapter intents → navigation, so a posture claims a gesture before adapters see it.
+
+### Posture layer
+
+A posture is a session-only `.svelte.ts` controller constructed during route initialization, so
+its effects attach to the route's effect tree. It owns no selection, history or Camera state; it
+realizes viewing only through Stage facade intents and returns `claimed | pass`. At most one
+posture layer is active. It deactivates on lens exit, ending transient posture, and disposes
+exactly once on route teardown; project replacement clears its Card focus and Preview. The
+Experience lens is the first consumer; Studio is the second.
 
 **Consumers:** T2/T3 editor adapters through the public facade (no private Stage imports).
 **Conformance:** projection/inverse agreement across Plan/3D/transitions, DPR and aspect

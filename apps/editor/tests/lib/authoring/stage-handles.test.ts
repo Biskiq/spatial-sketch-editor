@@ -15,6 +15,7 @@
 import { readFileSync } from 'node:fs';
 import { BoxGeometry, Group, Mesh } from 'three';
 import { describe, expect, it } from 'vitest';
+import { composedSpatialHost } from '../../helpers/import-closure';
 import { createScenePickSource, hasVisibleAncestor } from '$lib/authoring/scene/scene-pick-source';
 import {
 	STAGE_MARK_GLYPH_CSS,
@@ -670,16 +671,13 @@ describe('R217.S07 — no leftover ad hoc handles', () => {
 			new URL('../../../src/lib/authoring/stage/shell/StageOverlay.svelte', import.meta.url),
 			'utf8'
 		);
-		const page = readFileSync(
-			new URL('../../../src/routes/project/[projectId]/spatial/+page.svelte', import.meta.url),
-			'utf8'
-		);
+		const host = composedSpatialHost();
 		const adapter = readFileSync(
 			new URL('../../../src/lib/authoring/adapters/layout.adapter.ts', import.meta.url),
 			'utf8'
 		);
 		expect(overlay).not.toContain('selectionMarker');
-		expect(page).not.toContain('selectionMarker');
+		for (const { file, code } of host) expect(code, file).not.toContain('selectionMarker');
 		for (const id of ['layout-wall-start', 'layout-wall-end', 'layout-wall-body']) {
 			expect(adapter).not.toContain(`id: '${id}'`);
 		}

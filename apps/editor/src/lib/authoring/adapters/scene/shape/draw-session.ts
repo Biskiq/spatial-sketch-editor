@@ -35,9 +35,9 @@ import {
 	type StageKeyboardIntent,
 	type StageOverlayContribution,
 	type StagePointerIntent
-} from '$lib/authoring/stage/stage-facade';
-import { snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
-import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
+} from '$lib/authoring/stage/stage-adapter-host';
+import { snapDraftingPoint } from '$lib/authoring/stage/stage-adapter-host';
+import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	MIN_SHAPE_EDGE_METERS,
 	freeOutline,

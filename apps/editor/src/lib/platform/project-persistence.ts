@@ -1,11 +1,5 @@
 import {
-	serializeProjectEnvelope,
-	validateProjectEnvelope,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
-import {
 	isSavedBaseToken,
-	readSaveRequest,
 	type SaveAcknowledgement,
 	type SaveRequest,
 	type SavePrecondition
@@ -13,17 +7,10 @@ import {
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
 
-export type ProjectLoginIntent = 'projects' | 'save';
+import { ProjectPersistenceError, type FetchLike, type ProjectAuth } from './project-identity';
+export { createProjectAuth, createProjectId, ProjectPersistenceError, type ProjectAuth, type ProjectLoginIntent, type ProjectPersistenceErrorCode } from './project-identity';
 
-/**
- * The pending draft now carries the whole `SaveAcceptedSource@1` request
- * (precondition, operation ID and canonical source), not a bare document: a
- * resumed save can never become an unconditioned write. `v1` entries are legacy
- * and read as invalid.
- */
-export const PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v2';
-export const LEGACY_PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v1';
-export const PENDING_CLOUD_SAVE_MAX_AGE_MS = 15 * 60 * 1000;
+
 export { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 
 export type ProjectAssetMime = 'image/png' | 'image/webp' | 'image/jpeg';
@@ -51,12 +38,6 @@ export type ProjectAssetContent = {
 };
 
 export type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
-
-export type PendingCloudSaveResult =
-	| { status: 'missing' }
-	| { status: 'invalid' | 'expired' }
-	/** `project` keeps the `/` route's existing reader shape compatible. */
-	| { status: 'ready'; project: ProjectEnvelope; save: SaveRequest };
 
 export type ProjectSummary = {
 	id: string;
@@ -133,19 +114,12 @@ export type ProjectSession =
 	| { authenticated: false }
 	| { authenticated: true; user: { id: string } };
 
-export type ProjectAuth = {
-	getSession(signal?: AbortSignal): Promise<ProjectSession>;
-	signIn: (intent?: ProjectLoginIntent) => void | Promise<void>;
-	signOut: (signal?: AbortSignal) => Promise<void>;
-};
-
 export type ProjectPersistenceConfig = {
 	apiOrigin?: string;
 	auth?: ProjectAuth | null;
 	fetch?: FetchLike;
 };
 
-export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 export type ProjectApi = {
 	listProjects(signal?: AbortSignal): Promise<ProjectSummary[]>;
@@ -176,55 +150,6 @@ export type ProjectApi = {
 	): Promise<ProjectAssetMetadata>;
 	loadAssetContent(projectId: string, assetId: string, signal?: AbortSignal): Promise<ProjectAssetContent>;
 };
-
-export type ProjectPersistenceErrorCode =
-	| 'configuration'
-	| 'auth'
-	| 'invalid'
-	| 'not-found'
-	| 'too-large'
-	| 'network'
-	| 'server'
-	/** The expected saved base moved; reload explicitly, never overwrite. */
-	| 'conflict'
-	/** `create-only` found an existing project; owner-blind. */
-	| 'collision'
-	/** A project-owned object writer still holds a live lease; retry after it stops. */
-	| 'project-busy'
-	| 'unpublish-first';
-
-export class ProjectPersistenceError extends Error {
-	constructor(
-		readonly code: ProjectPersistenceErrorCode,
-		message: string,
-		readonly status?: number,
-		/** The server's typed refusal, when it supplied one. */
-		readonly serverCode?: string,
-		readonly issues?: readonly { path: string; code: string; message: string }[]
-	) {
-		super(message);
-		this.name = 'ProjectPersistenceError';
-	}
-}
-
-export function createProjectAuth(apiOrigin: string, fetchImpl?: FetchLike): ProjectAuth {
-	const origin = normalizeApiOrigin(apiOrigin);
-	const requestFetch = fetchImpl ?? globalThis.fetch?.bind(globalThis);
-	if (!origin || !requestFetch) {
-		throw new ProjectPersistenceError('configuration', 'Cloud requests are unavailable');
-	}
-
-	return {
-		getSession: (signal) =>
-			requestJson(requestFetch, origin, '/auth/me', { method: 'GET' }, signal).then(readSession),
-		signIn: (intent = 'projects') => {
-			if (typeof window === 'undefined') throw new ProjectPersistenceError('configuration', 'Sign-in is unavailable');
-			window.location.assign(`/login?intent=${encodeURIComponent(intent)}`);
-		},
-		signOut: (signal) =>
-			requestJson(requestFetch, origin, '/auth/logout', { method: 'POST' }, signal).then(() => undefined)
-	};
-}
 
 export function createProjectApi(
 	config: ProjectPersistenceConfig,
@@ -334,130 +259,6 @@ export function createProjectApi(
 	};
 }
 
-export function createProjectId(randomUUID: () => string = () => globalThis.crypto.randomUUID()): string {
-	return `project:${randomUUID()}`;
-}
-
-/**
- * A draft pairs one capture with the exact document it will re-admit. The
- * envelope must name the capture's project **and** revision, and the bytes must
- * be the canonical encoding of that envelope: a draft that only happens to
- * parse is not the source the server will accept under this operation ID.
- */
-function captureDescribesEnvelope(
-	capture: SaveRequest['capture'],
-	envelope: ProjectEnvelope
-): boolean {
-	if (envelope.id !== capture.projectId) return false;
-	if (
-		envelope.acceptedRevision.projectId !== capture.acceptedRevision.projectId ||
-		envelope.acceptedRevision.revisionId !== capture.acceptedRevision.revisionId
-	) {
-		return false;
-	}
-	try {
-		return serializeProjectEnvelope(envelope) === capture.canonicalJson;
-	} catch {
-		return false;
-	}
-}
-
-export function writePendingCloudSave(
-	save: SaveRequest,
-	storage: SessionStorageLike | null = browserSessionStorage(),
-	createdAt = Date.now()
-): boolean {
-	if (!storage || !Number.isFinite(createdAt)) return false;
-	// The draft is a capture, not a document: validate the protocol shape and the
-	// captured project before persisting, so a resumed save can only reach the
-	// server with its precondition and operation ID intact.
-	const parsed = readSaveRequest(save);
-	if (parsed.kind === 'invalid') return false;
-	let project: unknown;
-	try {
-		project = JSON.parse(parsed.request.capture.canonicalJson);
-	} catch {
-		return false;
-	}
-	const validation = validateProjectEnvelope(project);
-	if (!validation.success) return false;
-	// The draft pairs this capture with the document it names. A capture whose
-	// project, revision or canonical bytes disagree with its own document would
-	// resume a different write than the creator captured.
-	if (!captureDescribesEnvelope(parsed.request.capture, validation.envelope)) return false;
-	try {
-		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-export function readPendingCloudSave(
-	storage: SessionStorageLike | null = browserSessionStorage(),
-	now = Date.now()
-): PendingCloudSaveResult {
-	if (!storage) return { status: 'missing' };
-	const raw = storage.getItem(PENDING_CLOUD_SAVE_KEY);
-	if (!raw) {
-		// A v1 entry held only a document and cannot become a conditional Save.
-		// Read it as invalid (and clear it) rather than pretending it is absent.
-		if (storage.getItem(LEGACY_PENDING_CLOUD_SAVE_KEY) !== null) {
-			safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
-			return { status: 'invalid' };
-		}
-		return { status: 'missing' };
-	}
-	try {
-		const value: unknown = JSON.parse(raw);
-		if (
-			!isRecord(value) ||
-			Object.keys(value).length !== 2 ||
-			Object.keys(value).some((key) => !['createdAt', 'save'].includes(key))
-		) {
-			throw new Error('invalid handoff');
-		}
-		if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt) || value.createdAt > now) {
-			throw new Error('invalid timestamp');
-		}
-		if (now - value.createdAt > PENDING_CLOUD_SAVE_MAX_AGE_MS) {
-			storage.removeItem(PENDING_CLOUD_SAVE_KEY);
-			return { status: 'expired' };
-		}
-		const parsed = readSaveRequest(value.save);
-		if (parsed.kind === 'invalid') throw new Error('invalid capture');
-		const validation = validateProjectEnvelope(JSON.parse(parsed.request.capture.canonicalJson));
-		if (!validation.success) throw new Error('invalid envelope');
-		// Same rule on the read side: the capture, its stamped revision and the
-		// canonical document must describe one write, or the entry is invalid and
-		// cleared rather than offered as a misleading resume.
-		if (!captureDescribesEnvelope(parsed.request.capture, validation.envelope)) {
-			throw new Error('capture mismatch');
-		}
-		return {
-			status: 'ready',
-			project: validation.envelope,
-			save: parsed.request
-		};
-	} catch {
-		safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
-		return { status: 'invalid' };
-	}
-}
-
-export function clearPendingCloudSave(storage: SessionStorageLike | null = browserSessionStorage()): void {
-	safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
-	safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
-}
-
-function safeRemove(storage: SessionStorageLike | null, key: string): void {
-	try {
-		storage?.removeItem(key);
-	} catch {
-		// Best-effort cleanup; the slot is session-scoped and expires on read.
-	}
-}
-
 export type ProjectFingerprint = {
 	sceneCanonicalJson: string;
 	layoutCanonicalJson: string;
@@ -486,15 +287,6 @@ function normalizeApiOrigin(origin: string): string {
 
 function assetPath(projectId: string): string {
 	return `/projects/${encodeURIComponent(projectId)}/assets`;
-}
-
-function browserSessionStorage(): SessionStorageLike | null {
-	if (typeof window === 'undefined') return null;
-	try {
-		return window.sessionStorage;
-	} catch {
-		return null;
-	}
 }
 
 async function requestJson(

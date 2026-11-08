@@ -11,6 +11,7 @@ vi.mock('$lib/authoring/stage/stage-facade', async (original) => {
 	const actual = await original<typeof import('$lib/authoring/stage/stage-facade')>();
 	return { ...actual, createStageFacade: (...args: Parameters<typeof actual.createStageFacade>) => {
 			const facade = actual.createStageFacade(...args);
+			vi.spyOn(facade, 'acquireInspection');
 			harness.facade = facade;
 			return facade;
 		} };
@@ -300,6 +301,67 @@ describe('mounted Stage pointer lifecycle', () => {
 		const index = target.querySelector('[data-plate-landmark="index"]');
 		expect(indexRowOf(index as HTMLElement, wallId)?.getAttribute('aria-current')).toBe('true');
 	});
+	it('reports excluded Plan subjects on a miss without reporting ordinary empty clicks', async () => {
+		const point: [number, number] = [RECT.left + 25, RECT.top + 25];
+		const notice = 'Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.';
+		const stageFacade = facade();
+		const initial = stageFacade.plan();
+		if (initial.kind !== 'evaluated') throw new Error('the Plan did not evaluate');
+		expect(initial.plan.membership.every((row) => row.eligible)).toBe(true);
+		pointer('pointerdown', point); pointer('pointerup', point); pointer('click', point);
+		await frame();
+		expect(target.textContent).not.toContain('Nothing selectable there');
+
+		stageFacade.setPlanParameters({ sourceKindFilter: ['wall'] });
+		const filtered = stageFacade.plan();
+		if (filtered.kind !== 'evaluated' || !filtered.plan.membership.some((row) => !row.eligible)) {
+			throw new Error('the fixture needs an excluded Plan subject');
+		}
+		await frame();
+		pointer('pointerdown', point); pointer('pointerup', point); pointer('click', point);
+		await frame();
+		expect(target.textContent).toContain(notice);
+	});
+
+	it('releases a navigation lease when pointer capture fails', async () => {
+		const point: [number, number] = [RECT.left + 25, RECT.top + 25];
+		vi.spyOn(HTMLElement.prototype, 'setPointerCapture').mockImplementationOnce(() => {
+			throw new DOMException('Pointer ended', 'NotFoundError');
+		});
+		expect(() => pointer('pointerdown', point)).not.toThrow();
+		expect(facade().session.gesture()).toBeNull();
+		pointer('pointerdown', point);
+		expect(facade().session.gesture()?.navigation).toBe(true);
+		pointer('pointerup', point);
+	});
+
+	it('offers a selected Wall press to its adapter before navigation', async () => {
+		const stage = facade();
+		const adapter = vi.spyOn(stage, 'pointerIntent');
+		const gesture = vi.spyOn(stage, 'acquireGesture');
+		const mark = stage.marks().find((item) => item.id === 'layout-wall-length');
+		if (mark?.tip == null) throw new Error('the Wall length ray is not projected');
+		pointer('pointerdown', [mark.tip[0] + RECT.left, mark.tip[1] + RECT.top]);
+		expect(adapter).toHaveBeenCalledWith(expect.objectContaining({ phase: 'down' }));
+		expect(stage.session.gesture()?.owner).not.toBe('stage-pointer');
+		expect(gesture.mock.calls.some(([request]) => request.owner === 'stage-pointer')).toBe(false);
+		pointer('pointercancel', [mark.tip[0] + RECT.left, mark.tip[1] + RECT.top]);
+	});
+	it('offers an unclaimed press to adapters before starting navigation', async () => {
+		const stage = facade();
+		const adapter = vi.spyOn(stage, 'pointerIntent');
+		const gesture = vi.spyOn(stage, 'acquireGesture');
+		const point: [number, number] = [RECT.left + 25, RECT.top + 25];
+		pointer('pointerdown', point);
+		const adapterDown = adapter.mock.calls.findIndex(([request]) => request.phase === 'down');
+		const navigation = gesture.mock.calls.findIndex(([request]) => request.owner === 'stage-pointer');
+		expect(adapterDown).toBeGreaterThanOrEqual(0);
+		expect(navigation).toBeGreaterThanOrEqual(0);
+		expect(adapter.mock.invocationCallOrder[adapterDown]!).toBeLessThan(gesture.mock.invocationCallOrder[navigation]!);
+		expect(stage.session.gesture()?.navigation).toBe(true);
+		pointer('pointerup', point);
+	});
+
 	it('commits one uninterrupted drag across ordinary Camera evaluation updates', async () => {
 		const baseline = facade().snapshot().canonicalJson;
 		const id = facade().evaluationId();
@@ -413,6 +475,33 @@ describe('mounted Stage pointer lifecycle', () => {
 		expect(facade().session.liveProposal()).toBeNull();
 		expect(history().undoReason).not.toBe(reason);
 	});
+	it('contains a failed second-pointer capture during pinch', async () => {
+		const first: [number, number] = [RECT.left + 25, RECT.top + 25];
+		const second: [number, number] = [first[0] + 100, first[1]];
+		const capture = vi.spyOn(HTMLElement.prototype, 'setPointerCapture').mockImplementation((id) => {
+			if (id === 2) throw new DOMException('Pointer ended', 'NotFoundError');
+		});
+		const errors: unknown[] = [];
+		const onError = (event: ErrorEvent) => {
+			errors.push(event.error);
+			event.preventDefault();
+		};
+		window.addEventListener('error', onError);
+		try {
+			pointer('pointerdown', first, false, 1, 'touch');
+			pointer('pointerdown', second, false, 2, 'touch');
+			await frame();
+			expect(capture).toHaveBeenCalledWith(2);
+			expect(errors).toEqual([]);
+			expect(facade().session.gesture()?.navigation).toBe(true);
+			pointer('pointerup', second, false, 2, 'touch');
+			await frame();
+			expect(facade().session.gesture()).toBeNull();
+		} finally {
+			window.removeEventListener('error', onError);
+		}
+	});
+
 	it('cancels a Wall drag when a second touch starts, then navigates by pinch', async () => {
 		const baseline = facade().snapshot().canonicalJson;
 		const selected = facade().selectionState();
@@ -1066,6 +1155,28 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		window.dispatchEvent(new Event('blur'));
 		await frame();
 		expect(facade().session.drafting().snapSuspended).toBe(false);
+	});
+
+	it('acquires the inspection claim when the Stage mounts', async () => {
+		unmount(component);
+		target.remove();
+		target = document.createElement('div');
+		document.body.append(target);
+		component = mount(Page, { target });
+		await vi.waitFor(() => expect(target.querySelector('[data-testid="stage-canvas"]')).not.toBeNull());
+		expect(facade().acquireInspection).toHaveBeenCalledWith('exclusive');
+		expect(facade().inspectionTicket()).not.toBeNull();
+	});
+
+	it('submits a viewing intent with the live inspection ticket', async () => {
+		const stageFacade = facade();
+		const ticket = stageFacade.inspectionTicket();
+		expect(ticket).not.toBeNull();
+		const request = vi.spyOn(stageFacade, 'requestViewingIntent');
+		target.querySelector<HTMLButtonElement>('[data-head-find] [data-find-id="scale:100"]')!.click();
+		await frame();
+		expect(request).toHaveBeenCalled();
+		expect(request.mock.calls[0]![1]).toEqual(ticket);
 	});
 
 	it('reaches Scale detents through Find and Fit through the zoom cluster', async () => {
@@ -1767,6 +1878,15 @@ describe('R217.S22 — Card on the mounted route', () => {
 		expect(card()!.classList.contains('gesturing')).toBe(false);
 		if (navigation.kind === 'granted') navigation.lease.release();
 		await frame();
+
+		for (const owner of ['experience-view-edit', 'experience-path-point'] as const) {
+			const camera = stage.acquireGesture({ owner, evaluationId, policy: 'continue-after-revalidation' });
+			expect(camera.kind).toBe('granted');
+			await frame();
+			expect(card()!.classList.contains('gesturing')).toBe(false);
+			if (camera.kind === 'granted') camera.lease.release();
+			await frame();
+		}
 
 		const authored = stage.acquireGesture({
 			owner: 'test-authored',

@@ -146,6 +146,9 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 			return createDomainConsumer(objectId, disposed)(port);
 		});
 		if (registration.kind !== 'registered' || !services) throw new Error('consumer did not mount');
+		// The port is type-only: no wrapper or second session is installed at runtime.
+		expect(services.stage).toBe(facade);
+		expect(services.stage.session).toBe(facade.session);
 		expect(host.coordinator().planners()).toHaveLength(2);
 		expect(stageFindEntries(facade)[0]?.label).toBe('Move probe');
 		expect(facade.openContributedTask('consumer-move')).toMatchObject({ kind: 'opened', instrument: { summary: snapshot.sourceContentId } });

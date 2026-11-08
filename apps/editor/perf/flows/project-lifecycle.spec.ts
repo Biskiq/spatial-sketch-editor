@@ -193,6 +193,12 @@ async function saveThroughHead(page: Page, projectId: string): Promise<Response>
 	return saved;
 }
 
+async function openProjectMenu(page: Page): Promise<void> {
+	const trigger = page.locator('[data-head-project]');
+	if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
+	await expect(page.getByRole('group', { name: 'Project actions' })).toBeVisible();
+}
+
 async function hubRow(page: Page, name: string) {
 	const row = page.locator('li').filter({ has: page.getByText(name, { exact: true }) });
 	await expect(row).toBeVisible();
@@ -557,6 +563,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		await commitPrecisionLength(page, 4.5);
 		await waitForAcceptedResult(page, acceptedBefore);
 		await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeEnabled();
+		await openProjectMenu(page);
 		const headRename = page.getByRole('button', { name: 'Rename S01 ambiguous commit', exact: true });
 		await headRename.click();
 		const dirtyDialog = page.getByRole('dialog', { name: 'Rename project' });
@@ -579,6 +586,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		if (!persistedDirty) throw new Error('Renamed dirty project disappeared');
 		expect(persistedDirty.name).toBe('S01 dirty rename');
 		expect(JSON.stringify((persistedDirty.document as any).units.layout.data)).not.toBe(JSON.stringify((savedBeforeEdit.document as any).units.layout.data));
+		await openProjectMenu(page);
 		const downloaded = page.waitForEvent('download');
 		await page.getByRole('button', { name: 'Download source JSON', exact: true }).click();
 		const sourceDownload = await downloaded;
@@ -592,15 +600,16 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 
 		// Create an Experience only through its authored lens, then verify Preview isolation.
 		await page.getByRole('group', { name: 'Product lens' }).getByRole('button', { name: 'Experience', exact: true }).click();
-		await page.getByRole('button', { name: 'Create Experience', exact: true }).click();
+		await page.getByRole('button', { name: 'New Experience', exact: true }).click();
+		await page.getByRole('textbox', { name: 'New Experience name' }).press('Enter');
 		await expect(page.getByRole('button', { name: 'Preview', exact: true })).toBeEnabled({ timeout: 60_000 });
 		await page.getByRole('button', { name: 'Preview', exact: true }).click();
-		await expect(page.getByRole('button', { name: /Exit Preview/ })).toBeVisible({ timeout: 60_000 });
+		await expect(page.getByRole('button', { name: /Exit preview/i })).toBeVisible({ timeout: 60_000 });
 		await expect(page.locator('[data-head-save]')).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: 'Rename S01 dirty rename', exact: true })).toHaveCount(0);
 		await captureScreenshot(page, 'project-lifecycle-preview-isolation.png');
-		await page.getByRole('button', { name: /Exit Preview/ }).click();
+		await page.getByRole('button', { name: /Exit preview/i }).click();
 		await expect(page.locator('[data-head-save]')).toBeVisible();
 		await page.getByRole('group', { name: 'Product lens' }).getByRole('button', { name: 'World', exact: true }).click();
 		results.push('Experience Preview uses the authored source and mounts no Save, Undo, or lifecycle authoring controls');
@@ -609,6 +618,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		const beforeDeleteEdit = await acceptedResultCount(page);
 		await commitPrecisionLength(page, 5.25);
 		await waitForAcceptedResult(page, beforeDeleteEdit);
+		await openProjectMenu(page);
 		const recoverableDownload = page.waitForEvent('download');
 		await page.getByRole('button', { name: 'Download source JSON', exact: true }).click();
 		const recovered = JSON.parse(await readFile((await (await recoverableDownload).path())!, 'utf8')) as ApiJson;
@@ -714,6 +724,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		await selectFirstWall(page);
 		await commitPrecisionLength(page, 4.75);
 		await waitForAcceptedResult(page, dirtyPending);
+		await openProjectMenu(page);
 		const pendingDownload = page.waitForEvent('download');
 		await page.getByRole('button', { name: 'Download source JSON', exact: true }).click();
 		await readFile((await (await pendingDownload).path())!, 'utf8');
@@ -778,6 +789,7 @@ test('project lifecycle works through the Hub, open Stage, and real API', async 
 		const otherForRace = await createSavedFixture(page, 'S', 'S01 New session destination');
 		await page.goto('/projects');
 		await openFromHub(page, sourceForRace.projectId, sourceForRace.envelope.name);
+		await openProjectMenu(page);
 		const raceButton = page.getByRole('button', { name: `Rename ${sourceForRace.envelope.name}`, exact: true });
 		await raceButton.click();
 		const raceDialog = page.getByRole('dialog', { name: 'Rename project' });

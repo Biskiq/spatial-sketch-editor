@@ -50,13 +50,13 @@ import type {
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
-import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
+import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
+import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	snapDraftingCoordinate,
 	snapDraftingPlacement
-} from '$lib/authoring/stage/stage-drafting';
+} from '$lib/authoring/stage/stage-adapter-host';
 
 import {
 	catalogueModelContactMinY,

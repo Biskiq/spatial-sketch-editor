@@ -27,14 +27,33 @@ import { stageCamera, stageExperience } from '$lib/authoring/stage/unit-stage-so
 import { registerStageSnapshotRenderer, type SnapshotRequest } from '$lib/authoring/stage/stage-snapshots';
 import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
+import type { ExperienceHomes } from '$lib/authoring/experience/experience-homes';
+import { previewEntryFor } from '$lib/authoring/experience/preview-entry';
 import { CONNECTIONS, EXPERIENCE, VIEWS } from '../experience/fixtures';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
 const harness = vi.hoisted(() => ({
 	document: null as unknown,
 	facade: null as unknown,
-	acceptance: null as unknown
+	acceptance: null as unknown,
+	homes: null as ExperienceHomes | null
 }));
+
+vi.mock('$lib/authoring/experience/experience-homes', async (original) => {
+	const actual = await original<typeof import('$lib/authoring/experience/experience-homes')>();
+	return {
+		...actual,
+		provideExperienceHomes: (homes: ExperienceHomes) => {
+			harness.homes = homes;
+			actual.provideExperienceHomes(homes);
+		}
+	};
+});
+
+vi.mock('$lib/authoring/experience/preview-entry', async (original) => {
+	const actual = await original<typeof import('$lib/authoring/experience/preview-entry')>();
+	return { ...actual, previewEntryFor: vi.fn(actual.previewEntryFor) };
+});
 
 vi.mock('$lib/authoring/stage/stage-facade', async (original) => {
 	const actual = await original<typeof import('$lib/authoring/stage/stage-facade')>();
@@ -188,6 +207,7 @@ async function pressEscape(): Promise<void> {
 }
 
 async function mountRoute(source?: unknown): Promise<void> {
+	harness.homes = null;
 	harness.document = source ?? await createUnitProject({ id: 'project-1', name: 'Experience homes', layout: buildStarterEnclosureLayout() });
 	target = document.createElement('div');
 	document.body.append(target);
@@ -399,6 +419,8 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 			: (ghost()?.querySelector('[data-plan-camera]')?.getAttribute('transform')?.match(/translate\(([^ ]+) ([^)]+)\)/)?.slice(1, 3) ?? [null, null]);
 		const baseline = stage.snapshot().canonicalJson;
 		const viewIds = new Set(stageCamera(stage.snapshot()).views.map((view) => view.id));
+		const adapterPointer = vi.spyOn(stage, 'pointerIntent');
+		const acquireGesture = vi.spyOn(stage, 'acquireGesture');
 
 		dockKey('place-view').click();
 		await frame();
@@ -410,8 +432,20 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		const startEye = eye();
 		expect(startWire).toBeTruthy();
 		expect(startEye.every(Boolean)).toBe(true);
+		// A second pointer cannot take over or end the active placement.
+		pointer('pointerdown', surface, 2, ...aim.css);
+		pointer('pointermove', surface, 2, ...aim.css);
+		pointer('pointerup', surface, 2, ...aim.css);
+		await frame();
+		expect(frustum()?.getAttribute('d')).toBe(startWire);
+		expect(eye()).toEqual(startEye);
+		expect(adapterPointer).not.toHaveBeenCalled();
+		expect(acquireGesture).not.toHaveBeenCalled();
 		pointer('pointermove', surface, 1, ...aim.css);
 		await frame();
+		// Placement claims the press before either an adapter or navigation can use it.
+		expect(adapterPointer).not.toHaveBeenCalled();
+		expect(acquireGesture).not.toHaveBeenCalled();
 		expect(eye()).toEqual(startEye);
 		expect(frustum()?.getAttribute('d')).not.toBe(startWire);
 		expect(stage.snapshot().canonicalJson).toBe(baseline);
@@ -486,6 +520,38 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		expect(experienceFocus.subject).toEqual({ kind: 'view', viewId, presentationId: 'presentation-1' });
 	});
 
+	it('releases the View edit lease if pointer capture fails', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		target.querySelector<SVGCircleElement>('[data-view-mark][data-mark-kind="eye"] .hit')!.dispatchEvent(
+			new MouseEvent('click', { bubbles: true, cancelable: true })
+		);
+		await vi.waitFor(() => turnMarker());
+		const stage = facade();
+		const before = stage.snapshot().canonicalJson;
+		await withSvgPointerCapture(async () => {
+			const [x, y] = markerPoint();
+			const { hit } = turnMarker();
+			Object.defineProperty(hit, 'setPointerCapture', {
+				configurable: true,
+				value: () => { throw new DOMException('Pointer ended', 'NotFoundError'); }
+			});
+			try {
+				pointer('pointerdown', hit, 1, x, y);
+				expect(stage.session.gesture()).toBeNull();
+				pointer('pointermove', hit, 1, x + 30, y + 12);
+				pointer('pointerup', hit, 1, x + 30, y + 12);
+				await frame();
+				expect(stage.snapshot().canonicalJson).toBe(before);
+			} finally {
+				Reflect.deleteProperty(hit, 'setPointerCapture');
+			}
+			pointer('pointerdown', hit, 2, x, y);
+			expect(stage.session.gesture()?.owner).toBe('experience-view-edit');
+			pointer('pointerup', hit, 2, x, y);
+		});
+	});
+
 	it('authors one turn update, ignores a second pointer, and preserves click/double-click without authoring', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
@@ -535,6 +601,19 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		});
 		expect(target.querySelector('[data-through-frame]')).not.toBeNull();
 		expect(stageCamera(facade().snapshot()).views.find((view) => view.id === viewId)!.target).toEqual(afterTurnTarget);
+
+		// Re-aim owns the Stage before adapter presses and ordinary navigation.
+		const stage = facade();
+		const adapterPointer = vi.spyOn(stage, 'pointerIntent');
+		const acquireGesture = vi.spyOn(stage, 'acquireGesture');
+		const turn = vi.spyOn(stage.camera, 'turnLookThrough');
+		const surface = target.querySelector<HTMLElement>('.stage')!;
+		pointer('pointerdown', surface, 1, 700, 350);
+		pointer('pointermove', surface, 1, 730, 365);
+		pointer('pointerup', surface, 1, 730, 365);
+		expect(turn).toHaveBeenCalled();
+		expect(adapterPointer).not.toHaveBeenCalled();
+		expect(acquireGesture).not.toHaveBeenCalled();
 	});
 
 	it('renders the Advanced Card picture only after a drag is accepted', async () => {
@@ -729,6 +808,14 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(experienceName()).toBe('Experience 1');
 	});
 
+	it('registers the Guide closed before the first Experience entry', async () => {
+		if (harness.homes === null) throw new Error('Experience homes were not registered');
+		expect(harness.homes.guideOpen()).toBe(false);
+		await enterExperience();
+		expect(harness.homes.guideOpen()).toBe(false);
+		expect(guidePanel()).toBeNull();
+	});
+
 	it('keeps the Guide closed on lens entry; the dock key opens it with a status before any Experience exists', async () => {
 		await enterExperience();
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('false');
@@ -742,6 +829,85 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		await frame();
 		expect(dockGuide().getAttribute('aria-pressed')).toBe('false');
 	});
+
+	it('drops a carried World selection on entry when no Experience exists', async () => {
+		await selectWallOnStage();
+		expect(card()).not.toBeNull();
+
+		await enterExperience();
+		expect(experienceName()).toBeNull();
+		expect(facade().selectionState().primary).toBeNull();
+		expect(card()).toBeNull();
+	});
+
+	it('runs the mounted Guide clock and restores the Stage standpoint after Follow', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		guideRow('guide-1')!.click();
+		await frame();
+		const panel = guidePanel();
+		if (panel === null) throw new Error('the Guide did not open');
+		const stage = facade();
+		const capture = vi.spyOn(stage.camera, 'captureStandpoint');
+		const restore = vi.spyOn(stage.camera, 'restoreStandpoint');
+		const viewing = vi.spyOn(stage, 'requestViewingIntent');
+		const play = panel.querySelector<HTMLButtonElement>('[aria-label="Play"]');
+		if (play === null || play.disabled) throw new Error('Guide playback is unavailable');
+		const registeredPlayback = harness.homes?.playback() ?? null;
+		if (registeredPlayback === null) throw new Error('the registered homes did not provide playback');
+		expect(registeredPlayback.status).toBe('idle');
+		let now = performance.now();
+		const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+		play.click();
+		await frame();
+		const startTime = panel.querySelector('[data-playback-total]')?.textContent;
+		now += 1200;
+		await frame();
+		expect(panel.querySelector('[data-playback-total]')?.textContent).not.toBe(startTime);
+		expect(panel.querySelector('[aria-label="Pause"]')).not.toBeNull();
+		expect(registeredPlayback.status).toBe('playing');
+		expect(capture).not.toHaveBeenCalled();
+		expect(viewing).not.toHaveBeenCalled();
+		clock.mockRestore();
+
+		const follow = panel.querySelector<HTMLButtonElement>('button[title="Follow the camera"]');
+		if (follow === null || follow.disabled) throw new Error('Follow is unavailable');
+		follow.click();
+		await frame();
+		expect(follow.getAttribute('aria-pressed')).toBe('true');
+		expect(capture).toHaveBeenCalled();
+		expect(viewing).toHaveBeenCalled();
+		follow.click();
+		await frame();
+		expect(follow.getAttribute('aria-pressed')).toBe('false');
+		expect(restore).toHaveBeenCalled();
+	});
+
+	it('restores the Follow entry once at teardown and removes the lens key listener', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		guideRow('guide-1')!.click();
+		await frame();
+		const stage = facade();
+		const restore = vi.spyOn(stage.camera, 'restoreStandpoint');
+		const remove = vi.spyOn(window, 'removeEventListener');
+		const panel = guidePanel();
+		if (panel === null) throw new Error('the Guide did not open');
+		panel.querySelector<HTMLButtonElement>('[aria-label="Play"]')!.click();
+		await frame();
+		const follow = panel.querySelector<HTMLButtonElement>('button[title="Follow the camera"]');
+		if (follow === null || follow.disabled) throw new Error('Follow is unavailable');
+		follow.click();
+		await frame();
+		expect(restore).not.toHaveBeenCalled();
+
+		// Unmounting the route is the same teardown path a project replacement uses:
+		// the lens' one dispose restores its entry, and its key listener is removed.
+		await remountRouteWith(await seededExperienceProject());
+
+		expect(restore).toHaveBeenCalledTimes(1);
+		expect(remove.mock.calls.some(([type]) => type === 'keydown')).toBe(true);
+	}, 15000);
 
 	it('reads the tour through the entry Guide before any Guide is opened: Presentations show their Stop numbers, not free', async () => {
 		await remountRouteWith(await seededExperienceProject());
@@ -794,6 +960,63 @@ describe('R217.S25 — the Guide instrument (D3)', () => {
 		await frame();
 		expect(guidePanel()).not.toBeNull();
 		expect(guideRow('guide-1')?.querySelector('.chip')?.textContent).toBe('Open');
+	});
+
+	it('routes the registered start transport to the mounted Guide', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		dockGuide().click();
+		await frame();
+		await frame();
+		if (harness.homes === null) throw new Error('Experience homes were not registered');
+		const playback = harness.homes.playback();
+		if (playback === null) throw new Error('the registered homes did not provide playback');
+		const prepare = vi.spyOn(playback, 'prepare');
+		harness.homes.playGuide('guide-1', { kind: 'start' });
+		await frame();
+		await frame();
+		expect(prepare).toHaveBeenCalled();
+		const panel = guidePanel();
+		if (panel === null) throw new Error('the Guide did not open');
+		expect(panel.querySelector('[aria-label="Pause"]')).not.toBeNull();
+		expect(panel.querySelector('[data-playback-total]')?.textContent).toContain('0:00');
+	});
+
+	it('passes the registered Preview mode and Guide to the route takeover', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		if (harness.homes === null) throw new Error('Experience homes were not registered');
+		vi.mocked(previewEntryFor).mockClear();
+		harness.homes.previewMode('free', 'guide-1');
+		await vi.waitFor(() => expect(target.querySelector('.preview-takeover:not([hidden])')).not.toBeNull());
+		expect(vi.mocked(previewEntryFor)).toHaveBeenCalledWith(expect.objectContaining({
+			focus: expect.objectContaining({ guideId: 'guide-1', stopId: null, presentationId: null })
+		}));
+		expect(target.querySelector('.preview-takeover [data-testid="stage-canvas"]')?.getAttribute('data-start-mode')).toBe('free');
+	});
+
+	it('routes Stop and transition playback actions to the mounted Guide', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		dockGuide().click();
+		await frame();
+		target.querySelector<HTMLButtonElement>('[data-stop-id="stop-2"]')!.click();
+		await frame();
+		control('Play from this Stop').click();
+		await frame();
+		await frame();
+		const panel = guidePanel();
+		if (panel === null) throw new Error('the Guide did not open');
+		expect(panel.querySelector('[aria-label="Pause"]')).not.toBeNull();
+		expect(panel.querySelector('[data-playback-total]')?.textContent).toContain('0:02');
+
+		panel.querySelector<HTMLButtonElement>('[data-connector="stop-1"]')!.click();
+		await frame();
+		control('Preview this move').click();
+		await frame();
+		await frame();
+		expect(panel.querySelector('[aria-label="Pause"]')).not.toBeNull();
+		expect(panel.querySelector('[data-playback-total]')?.textContent).toContain('0:04');
 	});
 
 	it('× closes the instrument', async () => {
@@ -1185,6 +1408,9 @@ describe('R217.S25 — Preview and Undo (D-harvest "Kept")', () => {
 		expect(head.match(/data-head-preview-button/g)).toHaveLength(2);
 
 		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
+		const headMounts = [...route.matchAll(/<EditorHead\b[\s\S]*?\/>/g)];
+		expect(headMounts).toHaveLength(1);
+		expect(headMounts[0]![0].match(/onPreview=\{/g)).toHaveLength(1);
 		expect(route.match(/onPreview=\{/g)).toHaveLength(1);
 
 		const homes = [
@@ -1317,4 +1543,41 @@ it('R217.S27/R33 writes welcome text on blur on the Experience Card, its only ho
 	await vi.waitFor(() => expect(
 		stageExperience(facade().snapshot()).experiences[0]?.welcome
 	).toEqual({ kind: 'plain', body: 'Welcome to the gallery.' }));
+});
+
+/**
+ * Fix 1 regression: an armed Place is lens-local posture. Switching to World must
+ * return the press to adapters or navigation, and the next Experience entry must
+ * start unarmed.
+ */
+it('does not claim World presses after Place View was armed in Experience', async () => {
+	await remountRouteWith(await seededExperienceProject());
+	await enterExperience();
+	const stage = facade();
+	const viewIds = new Set(stageCamera(stage.snapshot()).views.map((view) => view.id));
+	dockKey('place-view').click();
+	await frame();
+	expect(dockKey('place-view').getAttribute('aria-pressed')).toBe('true');
+
+	target.querySelector<HTMLButtonElement>('[data-testid="lens-world"]')!.click();
+	await frame();
+	const id = stage.evaluationId();
+	if (id === null) throw new Error('the Stage has no evaluation in World');
+	const projected = stage.projectWorld([1, 0, 1], id);
+	if (projected.kind !== 'projected') throw new Error('the Floor point must project');
+	const acquireGesture = vi.spyOn(stage, 'acquireGesture');
+	const adapterPointer = vi.spyOn(stage, 'pointerIntent');
+	const surface = target.querySelector<HTMLElement>('.stage')!;
+	for (const type of ['pointerdown', 'pointerup', 'click']) {
+		const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: projected.css[0], clientY: projected.css[1] });
+		Object.defineProperty(event, 'pointerId', { value: 1 });
+		Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+		surface.dispatchEvent(event);
+	}
+	await frame();
+	expect(stageCamera(stage.snapshot()).views).toHaveLength(viewIds.size);
+	expect(acquireGesture.mock.calls.length + adapterPointer.mock.calls.length).toBeGreaterThan(0);
+
+	await enterExperience();
+	expect(dockKey('place-view').getAttribute('aria-pressed')).toBe('false');
 });

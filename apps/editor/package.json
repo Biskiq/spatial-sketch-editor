@@ -17,6 +17,7 @@
     "perf": "node perf/retired-suite.mjs",
     "perf:spot": "vite-node perf/spot.ts",
     "perf:bundle": "node perf/bundle-report.mjs",
+    "perf:bundle:first-load": "node perf/bundle-report.mjs --provenance ./.svelte-kit/output/client/bundle-provenance.json --forbid \"/=three\" --forbid \"/projects=three\"",
     "perf:workloads": "vite-node perf/generate-workloads.ts"
   },
   "dependencies": {

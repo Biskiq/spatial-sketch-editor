@@ -8,12 +8,13 @@ import { expect, test, type Page } from '@playwright/test';
 import { createEmptyUnitEnvelope } from '@portfolio/project-model/units';
 import { newMeasuredSession } from '../lib/browser';
 import { closeProjectToHub, openProjectFromHub } from '../lib/flow';
+import { clearObservations } from '../lib/ledger';
 
 const publicationId = '11111111-1111-4111-8111-111111111111';
 const routes = [
-	['/', 'Museum Editor'],
+	['/', 'Biskiq Editor'],
 	['/editor', 'Museum editor'],
-	['/projects', 'Projects — Museum Editor'],
+	['/projects', 'Projects — Biskiq Editor'],
 	['/dev/assets', 'Asset Preview — Chopin Museum Dev'],
 	['/dev/materials', 'Material Preview — Chopin Museum Dev'],
 	['/p/invalid', 'Published project']
@@ -103,7 +104,7 @@ test('published bundle titles update and clear across client navigation without 
 		await navigate(page, '/editor');
 		await metadata(page, 'Museum editor');
 		await navigate(page, '/projects');
-		await metadata(page, 'Projects — Museum Editor');
+		await metadata(page, 'Projects — Biskiq Editor');
 		expect(await page.evaluate(() => performance.timeOrigin)).toBe(lifetime);
 		samples.push(await count());
 		expect(samples.at(-1)).toEqual(baseline);
@@ -119,7 +120,25 @@ test('empty project navigation has exact connected counts and no native growth',
 		await anonymousSession(page);
 		await page.goto('/projects');
 		const lifetime = await page.evaluate(() => performance.timeOrigin);
-		const cycle = async () => { await openProjectFromHub(page); await closeProjectToHub(page); };
+		const cycle = async () => {
+			await openProjectFromHub(page);
+			await page.evaluate(() => {
+				const stage = document.querySelector('[aria-label="Spatial stage"]');
+				const canvas = stage?.querySelector('canvas');
+				if (!stage || !canvas) throw new Error('Stage nodes were not mounted');
+				const state = window as Window & { __HEAD_RETIRED_NODES__?: WeakRef<Element>[] };
+				(state.__HEAD_RETIRED_NODES__ ??= []).push(new WeakRef(stage), new WeakRef(canvas));
+			});
+			await closeProjectToHub(page);
+			await clearObservations(page);
+			await expect.poll(async () => {
+				await cdp.send('HeapProfiler.collectGarbage');
+				return page.evaluate(() =>
+					(window as Window & { __HEAD_RETIRED_NODES__?: WeakRef<Element>[] })
+						.__HEAD_RETIRED_NODES__?.every((ref) => ref.deref() === undefined)
+				);
+			}, { message: 'closed project Stage/canvas must become collectible' }).toBe(true);
+		};
 		const measure = async () => {
 			await cdp.send('HeapProfiler.collectGarbage');
 			return {

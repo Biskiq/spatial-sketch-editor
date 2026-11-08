@@ -15,7 +15,7 @@
  * second authority over the Wall.
  */
 
-import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
+import { angleDeltaLabel, planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import type { FixedWallEndpoint, LayoutVec2 } from '@portfolio/layout-core';
 
 import {

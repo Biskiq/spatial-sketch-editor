@@ -31,8 +31,12 @@ import { createViewportCameraState, evaluateViewport } from '@portfolio/camera-c
 import {
 	EDITOR_SRC,
 	REPO_ROOT,
+	composedSpatialHost,
+	constructsImportedOwner,
+	importClosure,
 	listSourceFiles,
 	parseModuleSpecifiers,
+	resolveSpecifier,
 	relativeToRepo,
 	stripComments
 } from '../../helpers/import-closure';
@@ -40,6 +44,8 @@ import {
 const STAGE_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'stage');
 const SHELL_DIR = join(STAGE_DIR, 'shell');
 const ROUTE = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
+const PROJECT_SESSION_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'project-session');
+const EXPERIENCE_LENS = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'experience-lens.svelte.ts');
 // R217.S28's offscreen snapshot host (fixed capture rect, not a viewport measurement).
 const SNAPSHOT_HOST = 'apps/editor/src/lib/authoring/stage/shell/StageSnapshotRenderer.svelte';
 
@@ -74,7 +80,71 @@ const CANVAS_FILE = 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelt
 const HEIGHT_SHEET = relativeToRepo(join(SHELL_DIR, 'StageHeightSheet.svelte'));
 const HEIGHT_SHEET_RAIL_READ = 'track?.getBoundingClientRect()';
 
+/** The route and its one constructed posture controller, never all dependencies. */
+function postureSources(): { file: string; code: string }[] {
+	const route = readFileSync(ROUTE, 'utf8');
+	const files = [ROUTE];
+	if (importClosure([ROUTE]).has(EXPERIENCE_LENS)) {
+		expect(constructsImportedOwner(ROUTE, route, EXPERIENCE_LENS, 'createExperienceLens')).toBe(true);
+		files.push(EXPERIENCE_LENS);
+	}
+	return files.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
+}
+
 describe('Stage shell composition', () => {
+
+	it('lets adapters reach Stage modules only through the adapter host', () => {
+		const adapters = join(EDITOR_SRC, 'lib', 'authoring', 'adapters');
+		const host = join(STAGE_DIR, 'stage-adapter-host.ts');
+		const imports = (file: string, source: string) => parseModuleSpecifiers(source)
+			.map((specifier) => ({ specifier, target: resolveSpecifier(file, specifier) }))
+			.filter(({ target }) => target !== null && target.startsWith(`${STAGE_DIR}/`) && target !== host)
+			.map(({ specifier }) => specifier);
+		const probe = join(adapters, 'scene.adapter.ts');
+		expect(imports(probe, "import { createStageFacade } from '$lib/authoring/stage/stage-facade';")).toEqual(['$lib/authoring/stage/stage-facade']);
+		expect(imports(probe, "export { evaluationIdOf } from '../stage/camera-session';")).toEqual(['../stage/camera-session']);
+		expect(imports(probe, "import('../stage/stage-session');")).toEqual(['../stage/stage-session']);
+		expect(imports(probe, "import type { StageAdapterServices } from '../stage/stage-adapter-host';")).toEqual([]);
+		const files = listSourceFiles(adapters).filter((file) => /\.(ts|svelte)$/.test(file));
+		for (const name of ['layout.adapter.ts', 'scene.adapter.ts', 'experience.adapter.ts']) {
+			expect(files).toContain(join(adapters, name));
+		}
+		// Studio and extension modules will be held to the same boundary when added.
+		const futureConsumers = ['studio', 'extensions'].flatMap((name) =>
+			listSourceFiles(join(EDITOR_SRC, 'lib', 'authoring', name)).filter((file) => /\.(ts|svelte)$/.test(file))
+		);
+		const offenders = [...files, ...futureConsumers].flatMap((file) => imports(file, readFileSync(file, 'utf8'))
+			.map((specifier) => `${relativeToRepo(file)}: ${specifier}`));
+		expect(offenders).toEqual([]);
+	});
+
+	it('requires an actual call to the specifically imported controller', () => {
+		const owner = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'playback.svelte.ts');
+		const source = (script: string) => `<script lang="ts">${script}</script>`;
+		const specifier = '$lib/authoring/experience/playback.svelte';
+		const check = (script: string) => constructsImportedOwner(ROUTE, source(script), owner, 'createExperiencePlayback');
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();`)).toBe(true);
+		expect(check(`import { createExperiencePlayback as make } from '${specifier}'; const playback = make(); playback.play();`)).toBe(true);
+		expect(check(`import { createExperiencePlayback } from '${specifier}';`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; createExperiencePlayback();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); other.playback;`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); function unused() { playback.play(); }`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); function unused(playback: any) { playback.play(); }`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); if (false) playback.play();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); false && playback.play();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play;`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play?.();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; playback.play(); const playback = createExperiencePlayback();`)).toBe(false);
+		expect(constructsImportedOwner(ROUTE, `<script module lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
+		expect(constructsImportedOwner(ROUTE, `<script context="module" lang="ts">import { createExperiencePlayback } from '${specifier}'; const playback = createExperiencePlayback(); playback.play();</script>`, owner, 'createExperiencePlayback')).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; // createExperiencePlayback();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; function unused() { createExperiencePlayback(); }`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; if (false) createExperiencePlayback();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '${specifier}'; const value = false && createExperiencePlayback();`)).toBe(false);
+		expect(check(`import type { createExperiencePlayback } from '${specifier}'; createExperiencePlayback();`)).toBe(false);
+		expect(check(`import { createExperiencePlayback } from '$lib/authoring/experience/experience-homes'; createExperiencePlayback();`)).toBe(false);
+	});
 
 	it('preserves Camera pose and vertical extent when the viewport height changes', () => {
 		const camera = createViewportCameraState({
@@ -188,12 +258,14 @@ describe('Stage shell composition', () => {
 	});
 
 	it('drives pose only through the host’s own inspection claim', () => {
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).toContain('stage.requestViewingIntent(intent, stage.inspectionTicket()');
-		expect(route).toContain('stage.acquireInspection(');
-		// No direct pose write anywhere in the route host: every viewing intent is
-		// owned by a claim, so a replaced output cannot keep being driven.
-		expect(route).not.toMatch(/\.applyIntent\s*\(/);
+		const sources = postureSources();
+		const owners = sources.filter(({ code }) => code.includes('stage.requestViewingIntent(intent, stage.inspectionTicket()'));
+		expect(owners).toHaveLength(1);
+		expect(owners[0]!.code).toContain('stage.requestViewingIntent(intent, stage.inspectionTicket()');
+		expect(owners[0]!.code).toContain('stage.acquireInspection(');
+		// No direct pose write in the route or its posture layer: every viewing
+		// intent stays owned by a claim after the layer is extracted.
+		for (const { file, code } of composedSpatialHost()) expect(stripComments(code), file).not.toMatch(/\.applyIntent\s*\(/);
 	});
 
 	it('captures every pointer through a guarded helper, so a failed capture cannot strand a claim', () => {
@@ -201,12 +273,31 @@ describe('Stage shell composition', () => {
 		// claims a lease, a press or a session first; a throwing capture then left that
 		// claim held and every later gesture refused. Only the helper and the pinch's
 		// own try may call it.
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		const raw = route.match(/\.setPointerCapture\(/g) ?? [];
+		const sources = postureSources();
+		const matches = (pattern: RegExp) => sources.filter(({ code }) => pattern.test(code));
+		// ExperiencePaths already owns its own guarded path-point capture; include
+		// every other composed component so extracting route markup cannot hide a
+		// new, unguarded Stage capture in the lens layer.
+		const pathsFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperiencePaths.svelte');
+		const guideFile = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'ExperienceGuide.svelte');
+		const host = composedSpatialHost().map(({ file, code }) => ({ file, code: stripComments(code) }));
+		const paths = host.filter(({ file }) => file === pathsFile);
+		expect(paths).toHaveLength(1);
+		expect(paths[0]!.code.match(/\.setPointerCapture(?:\?\.)?\(/g) ?? []).toHaveLength(1);
+		// The Guide timeline already uses an optional capture of its own; it is
+		// not a Stage gesture capture. Count it separately, without overlooking
+		// additional optional captures in extracted host code.
+		const guide = host.filter(({ file }) => file === guideFile);
+		expect(guide).toHaveLength(1);
+		expect(guide[0]!.code.match(/\.setPointerCapture(?:\?\.)?\(/g) ?? []).toHaveLength(1);
+		expect(guide[0]!.code).toContain('(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)');
+		const raw = host.filter(({ file }) => file !== pathsFile && file !== guideFile)
+			.flatMap(({ code }) => code.match(/\.setPointerCapture(?:\?\.)?\(/g) ?? []);
 		expect(raw).toHaveLength(2);
-		expect(route).toMatch(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/);
-		expect(route).toContain('try { surface.setPointerCapture(event.pointerId); } catch');
-		expect(route).toContain('capture === null || !capturePointer(capture, event.pointerId)');
+		expect(matches(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/)).toHaveLength(1);
+		expect(matches(/try \{ surface\.setPointerCapture\(event\.pointerId\); \} catch/)).toHaveLength(1);
+		const lens = stripComments(readFileSync(EXPERIENCE_LENS, 'utf8'));
+		expect(lens).toMatch(/capture === null \|\| !host\.capturePointer\(capture, event\.pointerId\)/);
 	});
 
 	it('renders one geometry set and takes Plan eligibility from the representation, not a second renderer', () => {
@@ -250,14 +341,25 @@ describe('Stage shell composition', () => {
 		// installed itself over the newer source and mounted a stage no one would
 		// dispose. The mechanism is the session's own cancellation registry, so the
 		// call site — not the helper's unit test — is what proves the host uses it.
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).toContain('runBoundLoad(session,');
-		expect(route).toContain('session.isCurrent(token)');
+		const composed = [...importClosure([ROUTE])]
+			.filter((file) => file === ROUTE || file.startsWith(`${PROJECT_SESSION_DIR}/`))
+			.filter((file) => /\.(svelte|ts)$/.test(file))
+			.map((file) => ({ file, code: stripComments(readFileSync(file, 'utf8')) }));
+		// Model resolution has its own bound load; identify the project read rather
+		// than confusing it with that independent, route-owned operation.
+		const owners = composed.filter(({ code }) => code.includes('runBoundLoad(session, (signal) => fetchOutcome('));
+		expect(owners).toHaveLength(1);
+		const owner = owners[0]!.code;
+		if (owners[0]!.file !== ROUTE) {
+			expect(constructsImportedOwner(ROUTE, readFileSync(ROUTE, 'utf8'), owners[0]!.file, 'createProjectSession')).toBe(true);
+		}
+		expect(owner).toContain('runBoundLoad(session,');
+		expect(owner).toContain('session.isCurrent(token)');
 		// Project actions have their own request cancellation and register it with
 		// the session writer registry. The project read itself must continue to use
 		// `runBoundLoad`, not a private controller the session cannot cancel.
-		expect(route).toContain("session.writers().register('project-action', token, () => controller.abort())");
-		expect(route).not.toMatch(/loadProject\([^)]*controller\.signal/);
+		expect(owner).toContain("session.writers().register('project-action', token, () => controller.abort())");
+		for (const { file, code } of composed) expect(code, file).not.toMatch(/loadProject\([^)]*controller\.signal/);
 	});
 
 	it('holds the gesture contract at the route: refusals and every ending release once', () => {
@@ -332,8 +434,37 @@ describe('Stage shell composition', () => {
 		// Blank exactly that one literal and prove it remains the only occurrence.
 		const snapshotHost = codeOf(SNAPSHOT_HOST);
 		const sanctionedSnapshotHost = snapshotHost.replace('devicePixelRatio: 1', '');
+		// Existing Experience homes measure their own Guide/View rails and scale
+		// their glyph artwork, not the Stage. Blank only those exact known reads and
+		// transforms, and verify their counts; scan every reachable Experience
+		// component so moving the lens markup cannot hide a new Stage measurement.
+		const experienceDir = join(EDITOR_SRC, 'lib', 'authoring', 'experience');
+		const allowed: Record<string, readonly (readonly [string, number])[]> = {
+			'ExperienceGuide.svelte': [
+				['element.getBoundingClientRect()', 1],
+				['(rowEl ?? barEl).getBoundingClientRect()', 1],
+				['barEl.getBoundingClientRect()', 2],
+				['els[index]!.getBoundingClientRect()', 1],
+				['scroller.getBoundingClientRect()', 1],
+				['scroller.clientWidth', 6],
+				[' scale(.9)', 1]
+			],
+			'ExperienceViewRail.svelte': [['(event.currentTarget as HTMLElement).getBoundingClientRect()', 1]],
+			'ExperienceMarks.svelte': [[' scale(${scale})', 1]]
+		};
+		const hostLayers = composedSpatialHost()
+			.filter(({ file }) => file.startsWith(`${experienceDir}/`) || file.startsWith(`${PROJECT_SESSION_DIR}/`))
+			.map(({ file, code }) => {
+				let checked = stripComments(code);
+				for (const [literal, count] of allowed[file.slice(experienceDir.length + 1)] ?? []) {
+					expect(checked.split(literal).length - 1, `${file}: ${literal}`).toBe(count);
+					checked = checked.replaceAll(literal, '');
+				}
+				return { file, code: checked };
+			});
 		const sources: readonly (readonly [string, string])[] = [
 			[ROUTE, route],
+			...hostLayers.map(({ file, code }) => [file, stripComments(code)] as const),
 			...STAGE_FILES.map(
 				(file) =>
 					[
@@ -407,15 +538,17 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		// The flag is the live lease the session holds; a navigation press is excluded, and
 		// review round 3 (sheet §24, Card only) keeps the Card clear while a camera is edited.
-		expect(route).toContain("const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');");
-		expect(route).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');
+		const owners = postureSources().filter(({ code }) => code.includes("const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');"));
+		expect(owners).toHaveLength(1);
+		expect(owners[0]!.code).toContain("const cameraEdit = lease !== null && (lease.owner === 'experience-view-edit' || lease.owner === 'experience-path-point');");
+		expect(owners[0]!.code).toContain('const gesturing = lease !== null && lease.navigation !== true && !cameraEdit;');
 		expect(route).toContain('gesturing={cardGesturing}');
 	});
 
 	it('states no plain "Nothing selectable there." for an ordinary empty click, but keeps the excluded-subjects reason', () => {
-		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).not.toContain("'Nothing selectable there.'");
-		expect(route).toContain('Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.');
+		const sources = postureSources();
+		for (const { file, code } of composedSpatialHost()) expect(stripComments(code), file).not.toContain("'Nothing selectable there.'");
+		expect(sources.filter(({ code }) => code.includes('Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.'))).toHaveLength(1);
 	});
 
 	it('holds the one pin hint on the Stage host, so each Stage session shows its own first-pin hint', () => {
@@ -513,7 +646,8 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 
 	it('ends the constrained Index above the lower column and drops the viewport-sized shadow', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).not.toContain('100vmax');
+		// Extracted Experience markup cannot reintroduce the viewport-sized shadow.
+		for (const { file, code } of composedSpatialHost()) expect(stripComments(code), file).not.toContain('100vmax');
 		expect(route).toContain('bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);');
 		expect(route).toMatch(/\.index-scrim \{[^}]*bottom: calc\(0\.75rem \+ var\(--lower-column-height, 0px\)\);/);
 		// The lane variables are published on the body that holds the Index and the scrim.

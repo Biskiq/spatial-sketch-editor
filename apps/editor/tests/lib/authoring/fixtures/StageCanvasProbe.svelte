@@ -10,12 +10,14 @@
 		heightPlaneVisible = false,
 		hover = null,
 		hoverTone = 'hover',
+		startMode = null,
 		...rest
 	}: {
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
 		hover?: { readonly reference: { readonly subject: { readonly id: string } } } | null;
 		hoverTone?: 'hover' | 'erase';
+		startMode?: string | null;
 	} = $props();
 	// Referencing the received props keeps this double honest about accepting the
 	// real component's surface without claiming any of its behaviour.
@@ -29,4 +31,5 @@
 	data-height-plane={String(heightPlaneVisible)}
 	data-hover-id={hover?.reference.subject.id ?? 'none'}
 	data-hover-tone={hoverTone}
+	data-start-mode={startMode}
 ></div>

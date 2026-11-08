@@ -1,6 +1,6 @@
-import { planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
-import { roomLabelFacts } from '$lib/authoring/stage/room-labels';
-import { axisTravelFromRay } from '$lib/authoring/stage/stage-axis-travel';
+import { planarDeltaLabel, sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
+import { roomLabelFacts } from '$lib/authoring/stage/stage-adapter-host';
+import { axisTravelFromRay } from '$lib/authoring/stage/stage-adapter-host';
 /**
  * T1.P01.S04/S05 + T1.P02.S02 — the Layout adapter.
  *
@@ -80,11 +80,11 @@ import {
 	type StageCandidatePreview,
 	type StageKeyboardIntent,
 	type StagePointerIntent
-} from '$lib/authoring/stage/stage-facade';
-import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
-import { isStageDrag } from '$lib/authoring/stage/stage-input';
-import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-session';
-import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
+} from '$lib/authoring/stage/stage-adapter-host';
+import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/stage-adapter-host';
+import { isStageDrag } from '$lib/authoring/stage/stage-adapter-host';
+import type { GestureAcquisition, ProposalLease } from '$lib/authoring/stage/stage-adapter-host';
+import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutCardFields from './layout/LayoutCardFields.svelte';
@@ -145,9 +145,9 @@ import {
 	type ProjectedJunction,
 	type ProjectedWall
 } from './layout/ink';
-import type { StageInkReadingRecord, StageInkReadingSession } from '$lib/authoring/stage/stage-facade';
+import type { StageInkReadingRecord, StageInkReadingSession } from '$lib/authoring/stage/stage-adapter-host';
 import type { SemanticReference } from '@portfolio/project-model';
-import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
+import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	planNumericEntryField,
 	planNumericEntryInput,
@@ -202,7 +202,7 @@ import {
 	snapWallDrag,
 	type LayoutSnapWinner
 } from './layout/snap';
-import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingPlacement, snapDraftingPoint } from '$lib/authoring/stage/stage-drafting';
+import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingPlacement, snapDraftingPoint } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	buildLayoutCandidatePaper,
 	openingAttemptFacePaper,
