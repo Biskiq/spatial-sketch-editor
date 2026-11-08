@@ -12,6 +12,7 @@ const T = {
   pointer: null, pressed: false, space: false, measure: null, lastIntent: null,
   objRot: 0, sel: null, shelf: SHELF_DEFAULT.slice(),
   famLast: {}, sunDrag: false,
+  recentMat: ['limewash', 'brick', 'timber', 'slate', 'grass'],
 };
 const H_WALL = { low: 1.2, room: 3, tall: 4.5 };
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -33,6 +34,8 @@ function setOpt(id, v, tool = T.tool) {
   if (tool === 'building' && id === 'def' && BUILDING_DEFS[v]) { T.opts.building.shape = BUILDING_DEFS[v].shape; T.opts.building.floors = BUILDING_DEFS[v].floors; }
   if (tool === T.tool && T.draft && (id === 'shape' || id === 'item' || id === 'brush' || id === 'mode' || id === 'def')) cancelDraft(true);
   if (id === 'item') T.artGhost = null;
+  // Paint keeps the materials you used last within reach; the rest are in the Library.
+  if (id === 'material') T.recentMat = [v, ...T.recentMat.filter((x) => x !== v)].slice(0, 5);
   VIEW.dirty = true; uiSync();
 }
 /* The palette groups that apply now: conditional groups follow the current options; the shelf comes from T.shelf. */
@@ -1349,7 +1352,6 @@ function escLadder(fromRightClick) {
   if (typeof UI !== 'undefined' && (UI.lib || UI.sky)) { UI.lib = null; UI.sky = false; uiSync(); return 'library'; }
   if (T.amend) { T.amend = null; VIEW.dirty = true; uiSync(); return 'tokens'; }
   if (T.sel) { selectId(null); return 'selection'; }
-  if (typeof UI !== 'undefined' && UI.paletteOpen && TOOLS[T.tool].palette.length) { UI.paletteOpen = false; uiSync(); return 'palette'; }
   if (T.tool !== 'select') { armTool('select'); return 'tool'; }
   return null;
 }
@@ -1362,7 +1364,7 @@ function armTool(id) {
   HL.hover = null; HL.paint = null; HL.extra.clear();
   if (id !== 'select') { T.sel = null; HL.sel = null; }
   setTag(null);
-  if (typeof UI !== 'undefined') { UI.paletteOpen = true; UI.lib = null; }
+  if (typeof UI !== 'undefined') UI.lib = null;
   VIEW.cv.style.cursor = id === 'select' ? 'default' : 'crosshair';
   setState('idle'); VIEW.dirty = true; uiSync();
 }

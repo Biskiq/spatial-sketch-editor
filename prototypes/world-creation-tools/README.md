@@ -28,13 +28,18 @@ left shows the interaction state chain and a few things to try with the armed to
 ## The direction in short
 
 - **Eight labelled keys, not sixteen glyphs.** `Select | Build  Form  Landscape  Furnish | Paint  Erase | Library`.
-  A family key arms the tool you last used in it; dots under the key show how many tools it holds
-  and which one is armed. Pressing the armed key again folds the tier away. The dock stays this size
-  as Biskiq grows: new tools go inside a family.
-- **One parchment tier above the dock** holds one thing at a time: the family's tools as words
-  (Walls, Opening, Stair, Building) with the options of the armed one as pictures, or the
-  selection's actions, or the Library. *Nouns get words; variants get pictures.* Letter keys still
-  arm any tool directly.
+  Click a family: its tools appear and the one you last used in it is armed. Click a tool: it is
+  armed. Dots under a family key show how many tools it holds and which one is armed. The dock
+  stays this size as Biskiq grows: new tools go inside a family.
+- **One instrument of fixed size** (656 × 164; full width less 16 px on a phone). A parchment plate of
+  two rows sits on the dock: a words row (the family's tools, the selection's name, or the Library's
+  kinds) over a pictures strip (the armed tool's options, the selection's actions, or the
+  catalogue). Read bottom up: family, tool, options. Nothing resizes when the tool changes; a row
+  with more than fits scrolls sideways inside itself, with a fade on the side that continues.
+- **Click only.** No hover tooltips or hover menus. One word above each option group names the
+  current choice (Cottage, Two storeys, Limewash); there are no guidance sentences in the toolbar.
+  *Nouns get words; variants get pictures.* Letter keys still arm any tool directly.
+- **Paint stays compact:** five recent materials, then All, which opens the Library at Materials.
 - **The families.** Build (Layout): Walls `W`, Opening `O`, Stair `T`, Building `B`. Form (Scene):
   Form `D`. Landscape (needs an owner): Ground `G`, Water `A`, Path `P`, Plants `N`. Furnish
   (Scene): Objects `F`, Lights `L`.
@@ -66,8 +71,9 @@ Precise drafting and illustrated making in one surface. A forest chassis (head a
 instrument; parchment with a fine grain carries what you read and choose. On the Stage, ink edges
 mark what is built and a hatched section cuts the ground slab. Fraunces names things (tools, places,
 selections), Instrument Sans runs the interface, DM Mono gives measures and tags. Dock keys are
-duotone: a pencil line over an offset wash in the family's colour (terracotta Build, parchment Form,
-moss Landscape, ochre Furnish). Gold is reserved for selection; cobalt blue pencil for proposals;
+monochrome: a parchment pencil line on forest. A family's colour (terracotta Build, gold-brown Form,
+moss Landscape, ochre Furnish) appears only when it is armed: its dot and its tool's underline. Gold
+is reserved for selection; cobalt blue pencil for proposals;
 red for refusals.
 
 Two Stage profiles, a viewing preference that is never saved into the world: **Living** (warm light,
@@ -77,7 +83,7 @@ the hour, shadows) and **Paper** (flat parchment tones, ink outlines, fixed noon
 
 | Scenario | Try |
 | --- | --- |
-| Village by the pond | Select (`V`) inside the walled garden: the tier offers it a roof |
+| Village by the pond | Select (`V`) inside the walled garden: the plate offers it a roof |
 | Village by the pond | Path (`P`), Freehand, from the small cottage across the pond into the garden: door, bridge and gate tokens appear as you cross; click one after release |
 | Village by the pond | Paint (`C`) a cottage with reach Room or building: it asks before changing every Cottage |
 | Village by the pond | Build, then Stair, then Landscape, then Build again: it comes back to Stair |
@@ -89,8 +95,8 @@ the hour, shadows) and **Paper** (flat parchment tones, ink outlines, fixed noon
 
 ## Real and simulated
 
-Real (enough to test the interaction): family keys with memory, the tier, tooltips, selection actions
-and the Library in one tier, the Sky with undoable hour changes, shared shape drafting with grid and
+Real (enough to test the interaction): family keys with memory, the fixed plate with internal scrolling, selection actions
+and the Library in one plate, the Sky with undoable hour changes, shared shape drafting with grid and
 wall snapping, live tokens and amendable commits, refusal, the Esc ladder, undo and redo with one row
 per gesture, hover and selection, the selection Card, terrain brushing, water, plant scatter skipping
 paths, buildings from definitions, the intent log, both render profiles.
@@ -105,7 +111,7 @@ placeholders. None of these shortcuts is a proposed implementation.
 | Approved today | Proposed |
 | --- | --- |
 | Ink: one pen for walls, rooms and openings | Named tools in four families: Build, Form, Landscape, Furnish |
-| Flat utility dock: Select, Ink, Slice, Eraser, Brush, Measure | Eight labelled keys and one tier; Measure, Slice and the Sky in the head |
+| Flat utility dock: Select, Ink, Slice, Eraser, Brush, Measure | Eight labelled keys and one fixed plate; Measure, Slice and the Sky in the head |
 | Brush for materials | Paint with reach and the Ask Rule; the ground takes it as a brush |
 | Consequences in an acceptance bar before commit | Live tokens, commit on release, amend in the same undo step |
 | Esc: palette, then disarm | Six-rung Esc ladder |
@@ -141,8 +147,8 @@ their own owner and two tools.
 
 ## For T1 and T2
 
-This prototype is the donor, not a plan. T1 takes the instrument (family keys with memory, the tier,
-tooltips), the placement rule, shared shape keys, the Esc ladder, consequence tokens and
+This prototype is the donor, not a plan. T1 takes the instrument (family keys with memory, the fixed
+plate and its scrolling rows), the placement rule, shared shape keys, the Esc ladder, consequence tokens and
 amend-in-step over the existing Walls, Opening, Paint and Erase, plus the Living Draft tokens and
 type. T2 takes Building with definitions, roofs offered on closing and on selection, Paint reach and
 the Ask Rule, Object frames as a wall attachment, Form, and the Sky. Landscape follows the ownership
@@ -151,11 +157,11 @@ decision.
 ## Files
 
 `index.html` shell and boot · `styles.css` Living Draft tokens and surfaces · `icons.js` icon set and
-duotone dock icons · `registry.js` families, tools, building definitions, Sky presets, Library,
+monochrome dock icons · `registry.js` families, tools, building definitions, Sky presets, Library,
 shapes, states and the interaction matrix (single source for the Stage and the sheet) · `model.js`
 simulated world, planners and history · `render.js` axonometric Canvas renderer with Living and Paper
 profiles · `tools.js` tool behaviour, gestures, tokens, keys and scenarios · `ui.js` the instrument
-(dock, tier, selection actions, Library, tooltips), head and Sky, Card, Spec drawer, readout and
+(dock, plate, selection actions, Library), head and Sky, Card, Spec drawer, readout and
 routing · `sheet.js` System sheet.
 
 Checks: `node --check` on each script; open the page and confirm a clean console on the Stage and

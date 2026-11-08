@@ -15,7 +15,7 @@ const SHEET = {
       try {
         const tier = mode === 'library' ? UI.libraryHtml() : mode === 'selection' ? UI.selectionHtml(selected) : UI.paletteHtml();
         const f = familyOf(tool), last = f ? { ...T.famLast, [f.id]: tool } : T.famLast;
-        return `<div class="edge joined specimen" inert><div class="tier${mode === 'library' ? ' library' : ''}">${tier}</div><nav class="dock">${UI.dockHtml(tool, mode === 'library', last)}</nav></div>`;
+        return `<div class="edge specimen" inert><div class="tier${mode === 'library' ? ' library' : ''}">${tier}</div><nav class="dock">${UI.dockHtml(tool, mode === 'library', last)}</nav></div>`;
       } finally { T.tool = keep.tool; UI.lib = keep.lib; }
     };
     const bench = { kind: 'objects', item: { id: 'o1', name: 'Bench 1' } };
@@ -57,13 +57,30 @@ const SHEET = {
       ['The sun on an arc inside Light', 'Lights are fixtures only. The Sky lives in the head: presets, the hour, and the arc you can drag while it is open', 'The hour is not a pointer tool and should not need one armed. It sits with the other ways of setting how the world looks.'],
       ['Water as Ground’s Pond and Stream modes', 'Water is its own Landscape tool (A), with Pond and Stream as its modes', 'Once tools inside a family cost no dock space, the noun deserves its name. Ground’s options shrink to what ground does.'],
       ['Library only as the last dock key', 'Library is a key (K) and also the last action in every palette that draws on the catalogue', 'The catalogue is reached from where you are, not only from the end of the dock.'],
-      ['Ivory and dark green, system type, line icons', 'Living Draft: forest chassis, parchment with grain, ink edges on what is built, Fraunces for names, DM Mono for measures, duotone keys, Living and Paper profiles', 'Distinctive without decoration: every new mark carries meaning (a family, a name, a measure, a cut).'],
+      ['Ivory and dark green, system type, line icons', 'Living Draft: forest chassis, parchment with grain, ink edges on what is built, Fraunces for names, DM Mono for measures, monochrome keys with family accents, Living and Paper profiles', 'Distinctive without decoration: every new mark carries meaning (a family, a name, a measure, a cut).'],
+    ];
+
+    // ── the final pass on the toolbar ──────────────────────────────────────────
+    const tightened = [
+      ['The tier folded, and grew or shrank with each tool', 'One fixed instrument, 656 × 164: a plate of two rows on the dock. Same size for every tool, the selection and the Library', 'Your hand learns where things are. Nothing jumps when you switch.'],
+      ['Hover tooltips and a hover list of each family’s tools', 'Nothing appears on hover. Click a family: its tools are in the words row. Click a tool: it is armed', 'Discovery by clicking is predictable and works on touch. The words row already lists every tool.'],
+      ['A line of guidance under every palette', 'Gone. One word above each option group names what it holds now (Cottage, Two storeys, Limewash)', 'Names and pictures carry it. The readout on this prototype keeps the coaching, outside the product.'],
+      ['Duotone keys in four washes', 'Parchment line on forest. Family colour only on the armed family: its dot and its tool’s underline', 'Colour washes muddied the forest. Accents now mean state.'],
+      ['Every material swatch in Paint', 'Five recent materials, then All, which opens the Library at Materials', 'Scales to any catalogue; the ones you are using stay in reach.'],
+    ];
+    const anatomy = [
+      ['Instrument', '656 px wide (phone: full width less 16 px); 164 px tall. One radius, one shadow'],
+      ['Words row', '40 px. The family’s tools in Fraunces 16, the armed one underlined in the family accent. Or the selection’s name, or the Library’s kinds and Close'],
+      ['Pictures strip', '62 px. Option groups, each with one Mono 10 word above it naming the current choice. Selection actions and Erase; or catalogue tiles'],
+      ['Dock', '62 px. Eight keys of equal width: icon, label, one dot per tool. The armed key is parchment and joins the plate'],
+      ['Overflow', 'Each row scrolls sideways inside itself (wheel, trackpad or touch). A fade marks the side that continues. The instrument never resizes'],
+      ['Clicks', 'Family key: open its tools and arm the last one used. Tool word: arm it. Armed key again: nothing changes. Library key or Esc: open and close the Library'],
     ];
 
     // ── where things live ─────────────────────────────────────────────────────
     const placement = [
       ['Build, Form, Landscape, Furnish', 'Dock key: a family', 'One owner and one kind of making. A family earns a key when it has its own owner and its own verb. The key arms the tool you last used in it.'],
-      ['Walls, Opening, Stair, Building · Form · Ground, Water, Path, Plants · Objects, Lights', 'A tool inside its family, named in words in the tier', 'Each has its own gesture and its own target. Letter keys arm any of them directly.'],
+      ['Walls, Opening, Stair, Building · Form · Ground, Water, Path, Plants · Objects, Lights', 'A tool inside its family, named in the words row', 'Each has its own gesture and its own target. Letter keys arm any of them directly.'],
       ['Select, Paint, Erase', 'Dock key, outside the families', 'They work on everything, whichever family made it.'],
       ['Shape, kind, size, finish, mode, definition', 'The armed tool’s options, as pictures', 'Variants of the gesture in hand. Options never act on something that already exists.'],
       ['Turn, Duplicate, Replace, Straighten, Save to Library, Erase', 'Selection actions (Select armed)', 'Operations on something that exists. Its properties stay in the Card.'],
@@ -120,24 +137,23 @@ const SHEET = {
 
     // ── identity ──────────────────────────────────────────────────────────────
     const sw = (c, name, use) => `<figure><i style="--c:${c}"></i><figcaption><b>${name}</b>${esc(use)} <code>${c}</code></figcaption></figure>`;
-    const WASH = { select: '#b7c6ad', paint: '#9cc3c0', erase: '#e8a395', library: '#d8c29a' };
     const palette = `<div class="pal">
-      ${sw('#13261b', 'Forest', 'The chassis: head, dock, tooltips, toasts, armed options.')}
-      ${sw('#7f9150', 'Moss', 'The current tool’s underline; turf on the cut.')}
+      ${sw('#13261b', 'Forest', 'The chassis: head, dock, toasts, armed options.')}
+      ${sw('#7f9150', 'Moss', 'Landscape’s accent; turf on the cut.')}
       ${sw('#9fb39a', 'Sage', 'Ground; quiet labels on forest.')}
-      ${sw('#fbf6ea', 'Parchment', 'Every surface you read: tier, Card, Sky, sheet. With grain.')}
-      ${sw('#c2643f', 'Terracotta', 'Build’s wash, roofs and brick. Never a state.')}
+      ${sw('#fbf6ea', 'Parchment', 'Every surface you read: the plate, Card, Sky, sheet. With grain.')}
+      ${sw('#c2643f', 'Terracotta', 'Build’s accent, roofs and brick.')}
       ${sw('#d4ad45', 'Gold', 'Selection, and only selection.')}
       ${sw('#2a62d6', 'Blue pencil', 'Proposals: dashed while drawing, solid to amend.')}
       ${sw('#26231d', 'Ink', 'Text, and the drafting line on what is built.')}
       ${sw('#c8462f', 'Erase', 'Removal and refusal, always with words.')}
       ${sw('#f2d000', 'Inspect', 'Temporary readings. Never saved.')}
     </div>
-    <h3>Family washes</h3><p class="sec-lede">Each dock key is a pencil line over an offset wash of its family’s colour, like a misregistered print. The wash appears on the dock and nowhere else, so colour never competes with state.</p>
-    <div class="icons">${['select', ...FAMILIES.map((f) => f.icon), 'paint', 'erase', 'library'].map((k) => { const f = FAMILIES.find((x) => x.icon === k); return `<figure class="dark" style="--wash:${f ? f.mark : WASH[k]}">${heroIcon(k, 32)}<figcaption>${f ? f.name : TOOLS[k] ? TOOLS[k].name : 'Library'}</figcaption></figure>`; }).join('')}</div>`;
+    <h3>Dock keys and family accents</h3><p class="sec-lede">One parchment pencil line on forest for every key. A family’s colour appears only when it is armed: the filled dot under its key and the underline of its armed tool.</p>
+    <div class="icons">${['select', ...FAMILIES.map((f) => f.icon), 'paint', 'erase', 'library'].map((k) => { const f = FAMILIES.find((x) => x.icon === k); return `<figure class="dark">${heroIcon(k, 32)}<figcaption>${f ? `<i class="acc" style="--c:${f.accent}"></i>${f.name}` : TOOLS[k] ? TOOLS[k].name : 'Library'}</figcaption></figure>`; }).join('')}</div>`;
     const type = `<div class="type">
       <figure><div class="t-d">Village by the pond</div><figcaption><b>Fraunces</b> for names: the worlds and things you author, the tools you pick, headings. Words for nouns.</figcaption></figure>
-      <figure><div class="t-s">Hold to brush; Shift inverts.</div><figcaption><b>Instrument Sans</b> for the interface: labels, hints, actions.</figcaption></figure>
+      <figure><div class="t-s">Duplicate · Save to Library</div><figcaption><b>Instrument Sans</b> for the interface: key labels and actions.</figcaption></figure>
       <figure><div class="t-m">8.0 × 6.0 m · 15:30</div><figcaption><b>DM Mono</b> for what is measured and tagged: lengths, the hour, owners, kinds.</figcaption></figure>
     </div>`;
     const shots = UI.shots;
@@ -146,8 +162,8 @@ const SHEET = {
       : `<p class="sec-lede"><b>Living</b> is the illustrated world: sage and moss ground, warm light, the hour, ink edges on what is built, the slab cut and hatched. <b>Paper</b> is the same world as a technical drawing: parchment tones by value, flat light, stronger ink, no hour. Switch them in the head on the Stage; open the Stage before the sheet to see both here.</p>`;
     const surfaces = [
       ['Two materials, one each', 'Forest is the chassis you hold (head, dock); parchment is what you read (tier, Card, Sky). Nothing else gets a background.'],
-      ['One surface, one shadow', 'The tier and the dock are one instrument with one shadow. No card inside a card; groups are separated by space and a hairline.'],
-      ['The armed key is a tab', 'Raised parchment with a pressed edge. When the tier is open it joins it, so you can see what the tier belongs to.'],
+      ['One surface, one shadow', 'The plate and the dock are one instrument of fixed size with one shadow. No card inside a card; rows are separated by a hairline, groups by space.'],
+      ['The armed key is a tab', 'Parchment, joined to the plate above it, so you can see what the plate belongs to.'],
       ['Grain on paper only', 'A faint paper grain on parchment surfaces and the Stage. Forest stays clean so state reads crisply against it.'],
       ['Ink on what is built', 'Architecture, forms and objects get a drafting line; ground and plants stay soft. The world reads as drawn and grown.'],
       ['Motion with meaning', 'One orchestrated motion: what you commit rises out of the ground.'],
@@ -166,6 +182,10 @@ const SHEET = {
         <table class="dec"><thead><tr><th>Was</th><th>Now</th><th>Why</th></tr></thead><tbody>${challenged.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>
       </section>
 
+      <section><h2>Final pass: the toolbar</h2><p class="sec-lede">Visual polish and behaviour only; the families, the grammar and the Sky are unchanged.</p>
+        <table class="dec"><thead><tr><th>Was</th><th>Now</th><th>Why</th></tr></thead><tbody>${tightened.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      </section>
+
       <section><h2>Principles</h2><div class="principles">
         <div><h3>Name the intent</h3><p>Walls, Building, Water, Plants. The tool knows its target, so a shape key and a drag are enough.</p></div>
         <div><h3>Words for nouns, pictures for variants</h3><p>Families and tools are named. Shapes, kinds and sizes are drawn. You read what you are making and see how.</p></div>
@@ -178,12 +198,14 @@ const SHEET = {
       </div></section>
 
       <section><h2>The instrument</h2>
-        <p class="sec-lede">One surface at the lower edge. The forest dock carries eight labelled keys; the parchment tier above it holds one thing at a time, and the armed key is the tab it hangs from. A family key arms the tool you last used in it (the filled dot); its tools are named in the tier. Press the armed key again to fold the tier away. Letter keys arm any tool directly.</p>
+        <p class="sec-lede">One instrument of fixed size at the lower edge, read from the bottom up: family, tool, options. Click a family, then a tool. Nothing appears on hover and nothing resizes; a row with more than fits scrolls inside itself. Letter keys arm any tool directly.</p>
+        <table class="dec"><tbody>${anatomy.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</tbody></table>
         <div class="stills">
-          <figure>${still('water', 'palette')}<figcaption><b>Tools and options</b> Landscape armed with Water. The family’s tools in words, the armed tool’s options in pictures, one line of guidance.</figcaption></figure>
+          <figure>${still('water', 'palette')}<figcaption><b>Tools and options</b> Landscape armed with Water. The family’s tools in words, the armed tool’s options in pictures, one word above each group.</figcaption></figure>
           <figure>${still('building', 'palette')}<figcaption><b>Definitions drive Building</b> Pick Cottage, Tower, Pavilion or Long barn and draw its footprint; it rises as you draw.</figcaption></figure>
+          <figure>${still('paint', 'palette')}<figcaption><b>Paint</b> Five recent materials, then All for the Library’s Materials. Reach and brush size beside them.</figcaption></figure>
           <figure>${still('select', 'selection', bench)}<figcaption><b>Selection</b> Select armed and something chosen: the gold pip, the operations it allows, Erase at the far end. Its properties stay in the Card.</figcaption></figure>
-          <figure>${still('object', 'library')}<figcaption><b>Library</b> K. Catalogue content by kind. The Library key is armed; the tool that will place the pick stays held beneath.</figcaption></figure>
+          <figure>${still('object', 'library')}<figcaption><b>Library</b> K. Its kinds in the words row, the catalogue in the strip, scrolling sideways. The tool that will place the pick stays held beneath.</figcaption></figure>
         </div>
         <h3>Where things live</h3><p class="sec-lede">One rule decides placement, so a new capability has one obvious home.</p>
         <table class="dec place"><thead><tr><th>Capability</th><th>Lives in</th><th>Why</th></tr></thead><tbody>${placement.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>
@@ -192,7 +214,7 @@ const SHEET = {
       </section>
 
       <section><h2>Tools</h2>
-        ${FAMILIES.map((f) => `<h3 class="famh"><span class="hico" style="--wash:${f.mark}">${heroIcon(f.icon, 28)}</span>${f.name} <span>${esc(f.blurb)}</span><em class="${/Needs/.test(f.owner) ? 'needs' : ''}">${f.owner}</em></h3><table class="tools">${thead}<tbody>${f.tools.map((id) => row(TOOLS[id])).join('')}</tbody></table><p class="grow">Grows: ${f.grows.join(' · ')}</p>`).join('')}
+        ${FAMILIES.map((f) => `<h3 class="famh"><span class="hico">${heroIcon(f.icon, 28)}</span>${f.name} <span>${esc(f.blurb)}</span><em class="${/Needs/.test(f.owner) ? 'needs' : ''}">${f.owner}</em></h3><table class="tools">${thead}<tbody>${f.tools.map((id) => row(TOOLS[id])).join('')}</tbody></table><p class="grow">Grows: ${f.grows.join(' · ')}</p>`).join('')}
         <h3 class="famh"><span class="hico">${heroIcon('select', 28)}</span>Utilities and view <span>Outside the families: they work on everything, or only look.</span></h3><table class="tools">${thead}<tbody>${[...UTILITY_LEFT, ...UTILITY_RIGHT, ...VIEW_TOOLS].map((id) => row(TOOLS[id])).join('')}</tbody></table>
       </section>
 

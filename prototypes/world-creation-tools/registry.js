@@ -17,28 +17,28 @@
 
 const FAMILIES = [
   {
-    id: 'build', name: 'Build', icon: 'fam-build', mark: '#d4835c',
+    id: 'build', name: 'Build', icon: 'fam-build', mark: '#d4835c', accent: '#c2643f',
     owner: 'Layout',
     blurb: 'Architecture: walls and the rooms they close, openings, stairs and whole buildings.',
     tools: ['walls', 'opening', 'stair', 'building'],
     grows: ['Level', 'Railing', 'Column grid'],
   },
   {
-    id: 'form', name: 'Form', icon: 'fam-form', mark: '#ead9b2',
+    id: 'form', name: 'Form', icon: 'fam-form', mark: '#ead9b2', accent: '#b08a3e',
     owner: 'Scene',
     blurb: 'Solids you draw yourself: stages, pedestals, drums, columns, sculpture. Draw it here; pick it in Furnish.',
     tools: ['form'],
     grows: ['Carve', 'Sweep', 'Lathe', 'Array'],
   },
   {
-    id: 'land', name: 'Landscape', icon: 'fam-land', mark: '#9dbb73',
+    id: 'land', name: 'Landscape', icon: 'fam-land', mark: '#9dbb73', accent: '#6f8a3e',
     owner: 'Needs an owner',
     blurb: 'The ground and what flows and grows on it: terrain, water, paths and plants.',
     tools: ['ground', 'water', 'path', 'plants'],
     grows: ['Hedge', 'Fence', 'Rocks'],
   },
   {
-    id: 'furnish', name: 'Furnish', icon: 'fam-furnish', mark: '#e3b75f',
+    id: 'furnish', name: 'Furnish', icon: 'fam-furnish', mark: '#e3b75f', accent: '#c08a2a',
     owner: 'Scene',
     blurb: 'Things you pick, not draw: objects, frames and lights from the shelf and the Library.',
     tools: ['object', 'light'],
@@ -270,7 +270,7 @@ const TOOLS = {
       { id: 'brush', label: 'Mode', kind: 'seg', default: 'raise', options: [
         { v: 'raise', icon: 'raise', label: 'Raise (Shift lowers)', key: '1' }, { v: 'lower', icon: 'lower', label: 'Lower (Shift raises)', key: '2' },
         { v: 'flatten', icon: 'flatten', label: 'Flatten to where you start', key: '3' }, { v: 'smooth', icon: 'smooth', label: 'Smooth', key: '4' },
-        { v: 'terrace', icon: 'terrace', label: 'Terrace: draw, then pull', key: '5' },
+        { v: 'terrace', icon: 'terrace', label: 'Terrace', key: '5' },
       ] },
       sizeGroup('m', (v) => v('brush') !== 'terrace'),
     ],
@@ -284,7 +284,7 @@ const TOOLS = {
     area: 'Landscape', today: null,
     palette: [
       { id: 'mode', label: 'Water', kind: 'seg', default: 'pond', options: [
-        { v: 'pond', icon: 'water-pond', label: 'Pond: hold to paint water', key: '1' }, { v: 'stream', icon: 'water-stream', label: 'Stream: drag a stroke', key: '2' },
+        { v: 'pond', icon: 'water-pond', label: 'Pond', key: '1' }, { v: 'stream', icon: 'water-stream', label: 'Stream', key: '2' },
       ] },
       { id: 'depth', label: 'Depth', kind: 'seg', default: 'shallow', options: [
         { v: 'shallow', icon: 'depth-shallow', label: 'Shallow · 0.5 m' }, { v: 'deep', icon: 'depth-deep', label: 'Deep · 1.2 m' },
@@ -425,7 +425,6 @@ const ESC_LADDER = [
   'Close the Library or the Sky',
   'Dismiss the amend tokens',
   'Clear the selection',
-  'Collapse the palette',
   'Return to Select',
 ];
 

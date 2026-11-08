@@ -197,8 +197,9 @@ const HERO = {
 
 /** A dock key's hero icon: wash in var(--wash), line in currentColor. */
 function heroIcon(name, size = 26) {
-  const [line, wash] = HERO[name] || [ICONS[name] || ICONS.info, ''];
-  return `<svg class="ico hero" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><g class="hw" transform="translate(1.3 1.4)" fill="var(--wash, #b7c6ad)">${wash}</g><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${line}</g></svg>`;
+  // Monochrome: one parchment pencil line on the forest dock. Family colour is an accent, never a fill.
+  const [line] = HERO[name] || [ICONS[name] || ICONS.info];
+  return `<svg class="ico hero" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${line}</g></svg>`;
 }
 
 /* The mark: a drafting set-square with a leaf growing through it. Precise drawing, living world. */
