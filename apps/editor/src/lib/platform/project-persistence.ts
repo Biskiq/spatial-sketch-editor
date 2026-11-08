@@ -1,8 +1,8 @@
 import {
 	serializeProjectEnvelope,
-	validateProjectEnvelope,
-	type ProjectEnvelope
-} from '@portfolio/project-model/units';
+	validateProjectEnvelope
+} from '@portfolio/project-model/units/validate';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	isSavedBaseToken,
 	readSaveRequest,
@@ -13,7 +13,9 @@ import {
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 import { perfMark, perfMeasureSync } from '$lib/platform/perf-marks';
 
-export type ProjectLoginIntent = 'projects' | 'save';
+import { ProjectPersistenceError, type FetchLike, type ProjectAuth } from './project-identity';
+export { createProjectAuth, createProjectId, ProjectPersistenceError, type ProjectAuth, type ProjectLoginIntent, type ProjectPersistenceErrorCode } from './project-identity';
+
 
 /**
  * The pending draft now carries the whole `SaveAcceptedSource@1` request
@@ -133,19 +135,12 @@ export type ProjectSession =
 	| { authenticated: false }
 	| { authenticated: true; user: { id: string } };
 
-export type ProjectAuth = {
-	getSession(signal?: AbortSignal): Promise<ProjectSession>;
-	signIn: (intent?: ProjectLoginIntent) => void | Promise<void>;
-	signOut: (signal?: AbortSignal) => Promise<void>;
-};
-
 export type ProjectPersistenceConfig = {
 	apiOrigin?: string;
 	auth?: ProjectAuth | null;
 	fetch?: FetchLike;
 };
 
-export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 export type ProjectApi = {
 	listProjects(signal?: AbortSignal): Promise<ProjectSummary[]>;
@@ -176,55 +171,6 @@ export type ProjectApi = {
 	): Promise<ProjectAssetMetadata>;
 	loadAssetContent(projectId: string, assetId: string, signal?: AbortSignal): Promise<ProjectAssetContent>;
 };
-
-export type ProjectPersistenceErrorCode =
-	| 'configuration'
-	| 'auth'
-	| 'invalid'
-	| 'not-found'
-	| 'too-large'
-	| 'network'
-	| 'server'
-	/** The expected saved base moved; reload explicitly, never overwrite. */
-	| 'conflict'
-	/** `create-only` found an existing project; owner-blind. */
-	| 'collision'
-	/** A project-owned object writer still holds a live lease; retry after it stops. */
-	| 'project-busy'
-	| 'unpublish-first';
-
-export class ProjectPersistenceError extends Error {
-	constructor(
-		readonly code: ProjectPersistenceErrorCode,
-		message: string,
-		readonly status?: number,
-		/** The server's typed refusal, when it supplied one. */
-		readonly serverCode?: string,
-		readonly issues?: readonly { path: string; code: string; message: string }[]
-	) {
-		super(message);
-		this.name = 'ProjectPersistenceError';
-	}
-}
-
-export function createProjectAuth(apiOrigin: string, fetchImpl?: FetchLike): ProjectAuth {
-	const origin = normalizeApiOrigin(apiOrigin);
-	const requestFetch = fetchImpl ?? globalThis.fetch?.bind(globalThis);
-	if (!origin || !requestFetch) {
-		throw new ProjectPersistenceError('configuration', 'Cloud requests are unavailable');
-	}
-
-	return {
-		getSession: (signal) =>
-			requestJson(requestFetch, origin, '/auth/me', { method: 'GET' }, signal).then(readSession),
-		signIn: (intent = 'projects') => {
-			if (typeof window === 'undefined') throw new ProjectPersistenceError('configuration', 'Sign-in is unavailable');
-			window.location.assign(`/login?intent=${encodeURIComponent(intent)}`);
-		},
-		signOut: (signal) =>
-			requestJson(requestFetch, origin, '/auth/logout', { method: 'POST' }, signal).then(() => undefined)
-	};
-}
 
 export function createProjectApi(
 	config: ProjectPersistenceConfig,
@@ -332,10 +278,6 @@ export function createProjectApi(
 				signal
 			)
 	};
-}
-
-export function createProjectId(randomUUID: () => string = () => globalThis.crypto.randomUUID()): string {
-	return `project:${randomUUID()}`;
 }
 
 /**

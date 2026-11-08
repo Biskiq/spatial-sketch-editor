@@ -8,11 +8,7 @@
 		createProjectId,
 		type ProjectLoginIntent,
 		ProjectPersistenceError
-	} from '$lib/platform/project-persistence';
-	import {
-		discardPendingCapture,
-		readPendingCapture
-	} from '$lib/authoring/save/pending-capture';
+	} from '$lib/platform/project-identity';
 
 	const apiOrigin = env.PUBLIC_API_ORIGIN;
 	const auth = apiOrigin ? createProjectAuth(apiOrigin) : null;
@@ -52,8 +48,23 @@
 		}
 	}
 
-	function discardDraft(): void {
-		discardPendingCapture();
+	/** The pending Save is validated only on an auth-return path, so its chunk stays lazy. */
+	async function readPendingDraft() {
+		try {
+			const { readPendingCapture } = await import('$lib/authoring/save/pending-capture');
+			return readPendingCapture();
+		} catch {
+			return null;
+		}
+	}
+
+	async function discardDraft(): Promise<void> {
+		try {
+			const { discardPendingCapture } = await import('$lib/authoring/save/pending-capture');
+			discardPendingCapture();
+		} catch {
+			// The draft is already unusable; clearing the notice must still work.
+		}
 		pendingDraft = false;
 		notice = 'Draft discarded';
 		authStatus = null;
@@ -62,28 +73,32 @@
 	}
 
 	onMount(() => {
-		redirecting = authStatus === 'success';
-		if (authStatus === 'success' && authIntent === 'projects') {
-			void goto('/projects', { replaceState: true });
-			return;
-		}
-		if (authStatus !== 'success' || authIntent !== 'save') {
-			if (authIntent === 'save' && (authStatus === 'cancelled' || authStatus === 'failed')) {
-				pendingDraft = readPendingCapture().status === 'ready';
-				notice = authStatus === 'cancelled' ? 'Sign-in was cancelled' : 'Sign-in failed';
+		void (async () => {
+			redirecting = authStatus === 'success';
+			if (authStatus === 'success' && authIntent === 'projects') {
+				void goto('/projects', { replaceState: true });
+				return;
 			}
-			redirecting = false;
-			return;
-		}
+			if (authStatus !== 'success' || authIntent !== 'save') {
+				if (authIntent === 'save' && (authStatus === 'cancelled' || authStatus === 'failed')) {
+					const pending = await readPendingDraft();
+					pendingDraft = pending?.status === 'ready';
+					notice = authStatus === 'cancelled' ? 'Sign-in was cancelled' : 'Sign-in failed';
+				}
+				redirecting = false;
+				return;
+			}
 
-		const pending = readPendingCapture();
-		if (pending.status !== 'ready') {
-			redirecting = false;
-			notice = pending.status === 'expired' ? 'The saved draft expired' : 'The saved draft is unavailable';
-			return;
-		}
-		void goto(`${projectUrl(pending.project.id)}?resume-save=1`, { replaceState: true });
+			const pending = await readPendingDraft();
+			if (pending === null || pending.status !== 'ready') {
+				redirecting = false;
+				notice = pending?.status === 'expired' ? 'The saved draft expired' : 'The saved draft is unavailable';
+				return;
+			}
+			void goto(`${projectUrl(pending.project.id)}?resume-save=1`, { replaceState: true });
+		})();
 	});
+
 </script>
 
 <svelte:head>
@@ -112,7 +127,7 @@
 			<div class="actions">
 				{#if pendingDraft}
 					<button type="button" class="primary" onclick={() => void signIn('save')}>Retry sign-in</button>
-					<button type="button" onclick={discardDraft}>Discard draft</button>
+					<button type="button" onclick={() => void discardDraft()}>Discard draft</button>
 				{:else}
 					<button type="button" class="primary" onclick={() => void signIn('projects')}>Retry sign-in</button>
 				{/if}

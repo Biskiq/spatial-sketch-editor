@@ -5,11 +5,9 @@
 	import { env } from '$env/dynamic/public';
 	import ProjectLifecycleActions from '$lib/platform/ProjectLifecycleActions.svelte';
 	import { isSavedBaseToken } from '@portfolio/project-model/save';
+	import { createProjectAuth, createProjectId, ProjectPersistenceError } from '$lib/platform/project-identity';
 	import {
 		createProjectApi,
-		createProjectAuth,
-		createProjectId,
-		ProjectPersistenceError,
 		type PreparedProjectLifecycle,
 		type ProjectLifecycleActionResult,
 		type ProjectLifecyclePrepareResult,

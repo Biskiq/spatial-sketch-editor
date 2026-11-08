@@ -35,6 +35,10 @@
     "./f4/unit-acceptance": {
       "types": "./src/f4/unit-acceptance.ts",
       "default": "./src/f4/unit-acceptance.ts"
+    },
+    "./units/validate": {
+      "types": "./src/units/validate.ts",
+      "default": "./src/units/validate.ts"
     }
   },
   "files": [
