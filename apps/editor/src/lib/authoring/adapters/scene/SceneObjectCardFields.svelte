@@ -11,7 +11,7 @@
 	 * to the shell (which clears the selection), and blur never commits.
 	 */
 	import { onDestroy, untrack, type Snippet } from 'svelte';
-	import { compactMeasure } from '$lib/authoring/stage/shell/compact-measure';
+	import { compactMeasure } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import {
 		saveSceneObjectToMyObjects,
@@ -23,7 +23,7 @@
 		sceneObjectSizeFieldIds,
 		type SceneObjectCardFieldId
 	} from './object-marks';
-	import { stageScene } from '$lib/authoring/stage/unit-stage-source';
+	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 	import type { SceneEntity } from '@portfolio/project-model';
 
 	let {

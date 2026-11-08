@@ -18,7 +18,7 @@
  */
 import type { AuthoringIntent } from '@portfolio/project-model';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
+import { stageEnvelope, stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityLift, type SceneOperationContext } from '@portfolio/project-model/scene-planning';
 
 import { acceptFormCommand } from './form-card-command';

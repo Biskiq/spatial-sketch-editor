@@ -13,7 +13,7 @@ import { env } from '$env/dynamic/public';
 import { formLibraryPayloadFromEntity } from '@portfolio/project-model/library';
 import type { SceneFormEntity } from '@portfolio/project-model';
 
-import type { StageCardActionOutcome } from '$lib/authoring/stage/stage-facade';
+import type { StageCardActionOutcome } from '$lib/authoring/stage/stage-adapter-host';
 import { FormLibraryClientError, createFormLibraryClient, type FormLibraryClient } from './client';
 
 export async function saveFormToMyObjects(

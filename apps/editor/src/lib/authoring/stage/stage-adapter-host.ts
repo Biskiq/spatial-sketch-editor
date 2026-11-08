@@ -2,9 +2,48 @@
 import type { DomainPlanner, RegistrationOutcome } from '@portfolio/project-model';
 import type { StageAcceptanceHost } from './host-acceptance';
 import type { StageAdapter, StageAdapterRegistration, StageFacade } from './stage-facade';
+import type { StageSession } from './stage-session';
+
+/** Public Stage values used by adapter contributions; implementation remains in Stage. */
+export { evaluationIdOf } from './camera-session';
+export { datumWorkingPlane } from './stage-facade';
+export { angleDeltaLabel, planarDeltaLabel, signed, sizeDeltaLabel } from './gesture-values';
+export { roomLabelFacts } from './room-labels';
+export { axisTravelFromRay } from './stage-axis-travel';
+export { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingCoordinate, snapDraftingPlacement, snapDraftingPoint } from './stage-drafting';
+export { isStageDrag } from './stage-input';
+export { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from './unit-stage-source';
+export { PAPER_LAYER, buildPaperPlan, unionOutline } from './paper-plan';
+export { compactMeasure } from './shell/compact-measure';
+export { default as ShellIcon } from './shell/ShellIcon.svelte';
+export type {
+	StageAdapter, StageAdapterBinding, StageAdapterContext, StageCardAction,
+	StageCardActionOutcome, StageCardFact, StageCardSubject, StageCandidatePreview,
+	StageDomainPick, StageGhostMesh, StageInkReadingRecord, StageInkReadingSession,
+	StageKeyboardIntent, StageOverlayContribution, StagePointerIntent
+} from './stage-facade';
+export type { StageHandleDescriptor } from './stage-handles';
+export type { GestureAcquisition, ProposalLease } from './stage-session';
+export type { StageHeightTick } from './stage-height-sheet';
+export type { StageDraftingState } from './stage-drafting';
+export type { StageAcceptOutcome } from './host-acceptance';
+export type { StageReadSnapshot } from './accepted-read';
+
+/** Only the task and proposal state adapter contributions use. */
+export type StageTaskPort = Pick<StageSession,
+	'task' | 'gesture' | 'writerGeneration' | 'taskChoiceGeneration' | 'registerProposal'
+>;
+
+/** The same runtime facade, narrowed to the operations used by adapters. */
+export type StageAdapterPort = Pick<StageFacade,
+	'snapshot' | 'evaluation' | 'evaluationId' | 'plan' | 'heightSheet' | 'heightTicks' |
+	'resolvePick' | 'hitMark' | 'selection' | 'selectionState' | 'setSelection' | 'select' |
+	'drafting' | 'onAdaptersChanged' | 'inkReadings' | 'openInkReading' |
+	'openContributedTask' | 'notifySurfaceChange' | 'acquireGesture'
+> & { readonly session: StageTaskPort };
 
 export type StageAdapterServices = {
-	readonly stage: StageFacade;
+	readonly stage: StageAdapterPort;
 	/** One epoch's F4 boundary. Planner registrations last for this epoch. */
 	readonly authoring: Pick<StageAcceptanceHost, 'accept' | 'acceptedRevision'> & { registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome };
 };

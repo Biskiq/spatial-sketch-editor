@@ -9,7 +9,7 @@
  */
 
 import type { SceneEntity } from '@portfolio/project-model';
-import type { StageGhostMesh } from '$lib/authoring/stage/stage-facade';
+import type { StageGhostMesh } from '$lib/authoring/stage/stage-adapter-host';
 import { NATIVE_PLACEMENT_DIMENSIONS, type NativePlacementPrimitive } from '../../scene/object-definition-policy';
 
 import type { SceneCandidate } from './placement';

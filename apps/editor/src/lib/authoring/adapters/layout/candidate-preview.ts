@@ -23,8 +23,8 @@ import {
 } from '@portfolio/layout-core';
 
 import { compiledOpeningFaceLoops, openingFaceLoops, openingLoopSegments, wallPointAtDistance } from '../../layout/opening-faces';
-import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/paper-plan';
-import type { StageCandidatePreview } from '$lib/authoring/stage/stage-facade';
+import { buildPaperPlan, unionOutline } from '$lib/authoring/stage/stage-adapter-host';
+import type { StageCandidatePreview } from '$lib/authoring/stage/stage-adapter-host';
 
 type Vec3 = [number, number, number];
 

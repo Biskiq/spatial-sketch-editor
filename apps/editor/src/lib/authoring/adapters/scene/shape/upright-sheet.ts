@@ -6,7 +6,7 @@
  * Stage control reaches it.
  */
 import type { Vec3, WorkingPlane } from '@portfolio/camera-core';
-import { datumWorkingPlane } from '$lib/authoring/stage/stage-facade';
+import { datumWorkingPlane } from '$lib/authoring/stage/stage-adapter-host';
 import type { ShapeOutlineAnchor, ShapePoint } from './outline';
 
 export type ShapeSheet = { readonly x: number; readonly z: number; readonly yaw: number };

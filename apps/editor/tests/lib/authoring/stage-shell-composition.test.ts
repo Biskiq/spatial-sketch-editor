@@ -36,6 +36,7 @@ import {
 	importClosure,
 	listSourceFiles,
 	parseModuleSpecifiers,
+	resolveSpecifier,
 	relativeToRepo,
 	stripComments
 } from '../../helpers/import-closure';
@@ -91,6 +92,31 @@ function postureSources(): { file: string; code: string }[] {
 }
 
 describe('Stage shell composition', () => {
+
+	it('lets adapters reach Stage modules only through the adapter host', () => {
+		const adapters = join(EDITOR_SRC, 'lib', 'authoring', 'adapters');
+		const host = join(STAGE_DIR, 'stage-adapter-host.ts');
+		const imports = (file: string, source: string) => parseModuleSpecifiers(source)
+			.map((specifier) => ({ specifier, target: resolveSpecifier(file, specifier) }))
+			.filter(({ target }) => target !== null && target.startsWith(`${STAGE_DIR}/`) && target !== host)
+			.map(({ specifier }) => specifier);
+		const probe = join(adapters, 'scene.adapter.ts');
+		expect(imports(probe, "import { createStageFacade } from '$lib/authoring/stage/stage-facade';")).toEqual(['$lib/authoring/stage/stage-facade']);
+		expect(imports(probe, "export { evaluationIdOf } from '../stage/camera-session';")).toEqual(['../stage/camera-session']);
+		expect(imports(probe, "import('../stage/stage-session');")).toEqual(['../stage/stage-session']);
+		expect(imports(probe, "import type { StageAdapterServices } from '../stage/stage-adapter-host';")).toEqual([]);
+		const files = listSourceFiles(adapters).filter((file) => /\.(ts|svelte)$/.test(file));
+		for (const name of ['layout.adapter.ts', 'scene.adapter.ts', 'experience.adapter.ts']) {
+			expect(files).toContain(join(adapters, name));
+		}
+		// Studio and extension modules will be held to the same boundary when added.
+		const futureConsumers = ['studio', 'extensions'].flatMap((name) =>
+			listSourceFiles(join(EDITOR_SRC, 'lib', 'authoring', name)).filter((file) => /\.(ts|svelte)$/.test(file))
+		);
+		const offenders = [...files, ...futureConsumers].flatMap((file) => imports(file, readFileSync(file, 'utf8'))
+			.map((specifier) => `${relativeToRepo(file)}: ${specifier}`));
+		expect(offenders).toEqual([]);
+	});
 
 	it('requires an actual call to the specifically imported controller', () => {
 		const owner = join(EDITOR_SRC, 'lib', 'authoring', 'experience', 'playback.svelte.ts');

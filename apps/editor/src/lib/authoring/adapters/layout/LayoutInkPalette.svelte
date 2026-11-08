@@ -20,7 +20,7 @@
 	 * backtracks, Escape cancels (the host owns those keys on the Stage).
 	 */
 	import { untrack, type Component } from 'svelte';
-	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
+	import { ShellIcon } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { parseMeasureInput, parsePlacementXZ } from './precision';
 	import { inkSurface, inkSurfaceRevision, type InkPaletteSnapshot } from './ink';

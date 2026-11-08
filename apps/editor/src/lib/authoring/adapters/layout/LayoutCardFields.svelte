@@ -14,7 +14,7 @@
 	 * the DOM never turns an empty field into zero.
 	 */
 	import { onDestroy, untrack, type Snippet } from 'svelte';
-	import { compactMeasure } from '$lib/authoring/stage/shell/compact-measure';
+	import { compactMeasure } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';

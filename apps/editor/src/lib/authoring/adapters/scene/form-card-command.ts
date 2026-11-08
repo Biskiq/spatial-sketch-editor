@@ -1,7 +1,7 @@
 /** Shared captured intent builder; Card fields stay outside Stage first load. */
 import type { AuthoringIntent } from '@portfolio/project-model';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
+import type { StageReadSnapshot } from '$lib/authoring/stage/stage-adapter-host';
 import { perfMark } from '$lib/platform/perf-marks';
 import { sceneEntityReference } from './placement';
 

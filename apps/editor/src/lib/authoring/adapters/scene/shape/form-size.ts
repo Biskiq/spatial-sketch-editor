@@ -12,7 +12,7 @@
  * authored outline plus `form.scale`; nothing generated is stored.
  */
 import { Euler, Vector3 } from 'three';
-import { sizeDeltaLabel } from '$lib/authoring/stage/gesture-values';
+import { sizeDeltaLabel } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	planSetFormSize,
 	type SceneOperationResult
@@ -20,8 +20,8 @@ import {
 import type { SceneFormEntity } from '@portfolio/project-model';
 import type { Vec3 } from '@portfolio/camera-core';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
-import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
-import { axisTravelFromRay } from '$lib/authoring/stage/stage-axis-travel';
+import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
+import { axisTravelFromRay } from '$lib/authoring/stage/stage-adapter-host';
 
 /** Local mesh axis: 0 = Width (X), 1 = Height (Y), 2 = Depth (Z). */
 export type FormSizeAxis = 0 | 1 | 2;

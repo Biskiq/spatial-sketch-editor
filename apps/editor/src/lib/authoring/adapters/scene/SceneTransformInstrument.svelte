@@ -13,13 +13,13 @@
 	 * Esc/Close and unmount both run the session's one `cancel()`.
 	 */
 	import { onDestroy, tick, untrack } from 'svelte';
-	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
+	import { ShellIcon } from '$lib/authoring/stage/stage-adapter-host';
 
 	import { UNIT_SOURCE_KIND } from '@portfolio/project-model/units';
 
 	import type { StageAdapterServices } from '../../stage/stage-adapter-host';
-	import { stageEnvelope } from '../../stage/unit-stage-source';
-	import { draftingSnapIncrementMeters } from '../../stage/stage-drafting';
+	import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
+	import { draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-adapter-host';
 	import { choosePrimitive, clearArmedModel, rememberArmedModel, peekArmedModel } from './import/definitions';
 	import MyObjectsSectionLazy from './library/MyObjectsSectionLazy.svelte';
 	import { SHAPE_KINDS } from './shape/outline';

@@ -15,7 +15,7 @@
  * dispatch, so typing a value and dragging to it produce the same candidate and
  * the same refusal words.
  */
-import { angleDeltaLabel, planarDeltaLabel, signed } from '$lib/authoring/stage/gesture-values';
+import { angleDeltaLabel, planarDeltaLabel, signed } from '$lib/authoring/stage/stage-adapter-host';
 import type {
 	AuthoringIntent,
 	SceneEntity,
@@ -31,7 +31,7 @@ import {
 	type SceneOperationContext,
 	type SceneOperationResult
 } from '@portfolio/project-model/scene-planning';
-import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
+import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
 import { sceneEntityReference, type SceneCandidate } from './placement';
 import {
 	formSizeMeasurement,

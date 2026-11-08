@@ -18,7 +18,7 @@
 	import type { StageAdapterServices } from '../../../stage/stage-adapter-host';
 	import { UNIT_SOURCE_KIND, type TypedResource } from '@portfolio/project-model/units';
 	import { creatorModelDefinition, approvedModelResources } from '@portfolio/project-model/scene-planning';
-	import { stageEnvelope } from '../../../stage/unit-stage-source';
+	import { stageEnvelope } from '$lib/authoring/stage/stage-adapter-host';
 
 	import { CreatorImportSession, type ArmedCreatorModel, type CreatorImportSessionState } from './session';
 	import { clearArmedModel, rememberArmedModel, rememberCreatorDefinition } from './definitions';

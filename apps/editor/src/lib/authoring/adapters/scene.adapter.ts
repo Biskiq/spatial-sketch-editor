@@ -21,7 +21,7 @@ import type {
 	StageAdapterFactory,
 	StageAdapterServices
 } from '$lib/authoring/stage/stage-adapter-host';
-import { evaluationIdOf } from '$lib/authoring/stage/camera-session';
+import { evaluationIdOf } from '$lib/authoring/stage/stage-adapter-host';
 import type {
 	StageAdapter,
 	StageAdapterBinding,
@@ -33,17 +33,17 @@ import type {
 	StageDomainPick,
 	StageKeyboardIntent,
 	StagePointerIntent
-} from '$lib/authoring/stage/stage-facade';
-import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-handles';
-import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
-import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
+} from '$lib/authoring/stage/stage-adapter-host';
+import type { StageHandleDescriptor } from '$lib/authoring/stage/stage-adapter-host';
+import type { GestureAcquisition } from '$lib/authoring/stage/stage-adapter-host';
+import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model';
 import {
 	draftingSnapIncrementMeters,
 	snapDraftingPlacement
-} from '$lib/authoring/stage/stage-drafting';
-import { isStageDrag } from '$lib/authoring/stage/stage-input';
-import { stageEnvelope, stageScene } from '$lib/authoring/stage/unit-stage-source';
+} from '$lib/authoring/stage/stage-adapter-host';
+import { isStageDrag } from '$lib/authoring/stage/stage-adapter-host';
+import { stageEnvelope, stageScene } from '$lib/authoring/stage/stage-adapter-host';
 import type { SceneFormEntity } from '$lib/content/scene';
 import { evaluateFormMesh } from '$lib/content/form-evaluation';
 import {
@@ -68,7 +68,7 @@ import {
 
 import { buildPlanSceneFootprintProjection, planSceneFootprintsFor } from '$lib/authoring/scene/plan-scene-footprint';
 import { pickPlanSceneSubject } from '$lib/authoring/scene/plan-scene-hit';
-import { PAPER_LAYER } from '$lib/authoring/stage/paper-plan';
+import { PAPER_LAYER } from '$lib/authoring/stage/stage-adapter-host';
 import SceneObjectCardFields from './scene/SceneObjectCardFields.svelte';
 import { createObjectDrawSession, type ObjectDrawSession } from './scene/shape/draw-session';
 import { armTile, armedTile, setObjectsPanelCompact, requestObjectsPrecision } from './scene/shape/armed-tile';

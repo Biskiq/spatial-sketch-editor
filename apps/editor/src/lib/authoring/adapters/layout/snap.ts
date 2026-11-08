@@ -28,9 +28,9 @@ import {
 	type SnapFeatureKind
 } from '@portfolio/layout-core';
 
-import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-drafting';
+import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters } from '$lib/authoring/stage/stage-adapter-host';
 
-import type { StageDraftingState } from '$lib/authoring/stage/stage-drafting';
+import type { StageDraftingState } from '$lib/authoring/stage/stage-adapter-host';
 
 /** The winning snap, in the words the marks use. */
 export type LayoutSnapWinner = {
