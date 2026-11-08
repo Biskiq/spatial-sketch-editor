@@ -30,6 +30,12 @@
 		snapIncrement,
 		reducedMotion = false,
 		side = 'right',
+		/**
+		 * While an authored drawing task owns the Stage, the Sheet's lane must not
+		 * intercept presses aimed at the canvas beneath it. It stays visible and
+		 * keyboard-operable; only its pointer surface yields.
+		 */
+		drawing = false,
 		pinHintSeen = false,
 		onPinHintSeen = () => {},
 		laneRef = $bindable(null),
@@ -46,6 +52,7 @@
 		snapIncrement: number;
 		reducedMotion?: boolean;
 		side?: 'left' | 'right';
+		drawing?: boolean;
 		/**
 		 * Whether this Stage session has already shown the pin hint. The owner (the Stage
 		 * host) holds it, so a fresh Stage session shows its own first-pin hint.
@@ -364,6 +371,7 @@
 	class="sheet"
 	class:left={side === 'left'}
 	class:instant={reducedMotion}
+	class:drawing
 	data-stage-height-sheet
 	data-ink="forest-on-paper"
 	bind:this={laneRef}
@@ -523,6 +531,10 @@
 	.sheet.left {
 		right: auto;
 		left: calc(10px + var(--index-cover, 0px));
+	}
+	/* The armed drawing tool owns the Stage: its lane must not swallow a press. */
+	.sheet.drawing {
+		pointer-events: none;
 	}
 	.rail-wrap {
 		position: relative;
