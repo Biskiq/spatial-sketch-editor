@@ -309,6 +309,10 @@ export function createExperienceLens(host: ExperienceLensHost) {
 
 	/** Move precedence after pinch: a marker edit, then re-aim, then placement. */
 	function pointerMove(event: PointerEvent): boolean {
+		if (viewEdit !== null) {
+			updateViewEdit(event);
+			return true;
+		}
 		if (lookThroughSession !== null) {
 			moveReaim(event);
 			return true;
@@ -1193,6 +1197,11 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		pinch: () => 'pass',
 		click: (_event, overMark) => (ownsClick(overMark) ? 'claimed' : 'pass'),
 		wheel: (event, viewportHeight) => (wheelZoom(event, viewportHeight) ? 'claimed' : 'pass'),
+		interrupt: () => {
+			if (viewEdit === null) return 'pass';
+			cancelViewEdit();
+			return 'claimed';
+		},
 		key,
 		deactivate,
 		dispose

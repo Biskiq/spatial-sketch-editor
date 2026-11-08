@@ -66,7 +66,7 @@ export type StagePostureMark = {
  * `dispose` is final and runs exactly once.
  */
 export type StagePostureLayer = {
-	readonly id: 'experience-lens' | 'studio-scope';
+	readonly id: string;
 	pointerDown(event: PointerEvent, mark: StagePostureMark | null): StagePostureClaim;
 	pointerMove(event: PointerEvent): StagePostureClaim;
 	pointerUp(event: PointerEvent): StagePostureClaim;
@@ -76,6 +76,8 @@ export type StagePostureLayer = {
 	pinch(event: PointerEvent): StagePostureClaim;
 	click(event: MouseEvent, overMark: boolean): StagePostureClaim;
 	wheel(event: WheelEvent, viewportHeight: number): StagePostureClaim;
+	/** A route interruption (lens or reading change, second pointer, Escape) ends a live posture press. */
+	interrupt?(): StagePostureClaim;
 	/** `capture` claims before adapters; `unwind` runs after shared dismiss handling. */
 	key(event: KeyboardEvent, phase: 'capture' | 'unwind'): StagePostureClaim;
 	readonly chrome?: {

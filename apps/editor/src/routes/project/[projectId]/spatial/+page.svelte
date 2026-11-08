@@ -304,8 +304,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// A lens switch invalidates any Present-this framing run still waiting.
 		stagePickPresentationId = null;
 
-		// Leaving the lens ends its transient posture before World sees any input.
-		if (lens === 'experience' && next === 'world') experienceLens.deactivate();
+		const previous = lens;
 		// Preview returns to the lens it was entered from; a lens switch ends it.
 		previewController.close();
 		clearHover();
@@ -314,6 +313,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		notice = '';
 		if (facade?.changeLens(next)) {
 			lens = session.lens();
+			// Leaving the lens ends its transient posture; a refused switch keeps it.
+			if (previous === 'experience' && lens !== 'experience') experienceLens.deactivate();
 			task = null;
 			contributionsVersion += 1;
 			// R217.S25: the Guide instrument is closed by default, so every entry starts closed. A Card
@@ -2323,7 +2324,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
-		if (viewEdit !== null) { experienceLens.updateViewEdit(event); return; }
 		if (pinch !== null) {
 			if (!pinch.has(event.pointerId)) return;
 			if (session.gesture() === null) { endPinch(); return; }
@@ -2498,7 +2498,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interruptPress(reason: StageInterruptionReason): void {
-		if (viewEdit !== null) { experienceLens.cancelViewEdit(); return; }
+		if (activeLayer?.interrupt?.() === 'claimed') return;
 		if (pinch !== null) { endPinch(); clearHover(); return; }
 		const pointerId = press.owner();
 		if (pointerId === null || drag === null) { clearHover(); return; }
@@ -2574,7 +2574,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
-		if (viewEdit !== null) return;
 		if (activeLayer?.wheel(event, evaluation?.rect.height ?? 1) === 'claimed') return;
 		zoom(Math.exp(event.deltaY * 0.001));
 	}
