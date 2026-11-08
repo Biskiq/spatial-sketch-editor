@@ -32,7 +32,8 @@ export default defineConfig({
 		'head-lifetime.spec.ts',
 		'renderer-lifetime.spec.ts',
 		'trace-unit.spec.ts',
-		'trace-gate-unit.spec.ts'
+		'trace-gate-unit.spec.ts',
+		'core-closeout-live.spec.ts'
 	],
 	fullyParallel: false,
 	workers: 1,

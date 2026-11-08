@@ -279,7 +279,18 @@ export async function setStageReading(page: Page, reading: 'Plan' | '3D'): Promi
 export async function addInkPoint(page: Page, x: number, z: number): Promise<void> {
 	const xInput = page.locator('[data-ink-x]');
 	if (!(await xInput.isVisible().catch(() => false))) {
-		await page.locator('[data-ink-point-toggle]').click();
+		const pointToggle = page.locator('[data-ink-point-toggle]');
+		if ((await pointToggle.count()) === 0) {
+			await page.getByRole('button', { name: 'Ink settings and Opening' }).click();
+		}
+		const wallReading = page.locator('[data-ink-reading-wall]');
+		if ((await wallReading.count()) > 0) await wallReading.click();
+		const lineMode = page.locator('[data-ink-wall-mode="line"]');
+		if ((await lineMode.count()) > 0 && (await lineMode.getAttribute('aria-checked')) !== 'true') {
+			await lineMode.click();
+		}
+		await expect(pointToggle).toBeVisible();
+		await pointToggle.click();
 	}
 	await expect(xInput).toBeVisible();
 	await xInput.fill(String(x));
