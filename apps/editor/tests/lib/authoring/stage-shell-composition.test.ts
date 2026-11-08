@@ -551,14 +551,16 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
 		expect(sources.filter(({ code }) => code.includes('Nothing selectable there — some subjects are excluded from this Plan; Reveal one from the Index.'))).toHaveLength(1);
 	});
 
-	it('holds the one pin hint on the Stage host, so each Stage session shows its own first-pin hint', () => {
+	it('keeps the Sheet visual-only while its interaction is undecided: no hint, numeric card or pin CRUD', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
-		expect(route).toContain('let pinHintSeen = $state(false);');
-		expect(route).toContain('{pinHintSeen}');
-		expect(route).toContain('onPinHintSeen={() => (pinHintSeen = true)}');
+		expect(route).not.toContain('pinHintSeen');
+		expect(route).not.toContain('onAddPin');
+		expect(route).not.toContain('onRemovePin');
 		const sheet = codeOf(HEIGHT_SHEET);
-		expect(sheet).not.toMatch(/let heightHintSeen/);
-		expect(sheet).toContain('export const PIN_HINT_MS');
+		expect(sheet).not.toContain('PIN_HINT_MS');
+		expect(sheet).not.toContain('pin-context');
+		expect(sheet).not.toContain('numeric');
+		expect(sheet).toContain("onSetHeight(pin, 'tick')");
 	});
 });
 

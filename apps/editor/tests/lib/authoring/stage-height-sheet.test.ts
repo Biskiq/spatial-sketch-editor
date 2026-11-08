@@ -9,9 +9,9 @@
  * proven by the route and facade suites in C2/C3.
  */
 import { readFileSync } from 'node:fs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import StageHeightSheet, { PIN_HINT_MS } from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
+import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import HeightSheetProbe from './fixtures/HeightSheetProbe.svelte';
 import {
 	HEIGHT_TICK_MERGE_TOLERANCE_METERS,
@@ -188,7 +188,7 @@ describe('R217.S06 — owner-declared height ticks', () => {
 
 /**
  * R217.S22 — the Height Sheet as a control on the Stage: a thin line, the value on focus,
- * drag and touch, the keyboard and pins unchanged, and the one pin hint per Stage session.
+ * drag and touch, the keyboard, and pin jumps without an exposed editor.
  */
 describe('R217.S22 — the Height Sheet control', () => {
 	let cleanup: (() => void) | undefined;
@@ -206,29 +206,21 @@ describe('R217.S22 — the Height Sheet control', () => {
 	function mountSheet(props: { heightMeters?: number; pins?: readonly number[] } = {}) {
 		const target = document.createElement('div');
 		document.body.append(target);
-		const calls = { heights: [] as Array<[number, StageHeightCause]>, added: 0, removed: [] as number[] };
+		const calls = { heights: [] as Array<[number, StageHeightCause]> };
 		const component = mount(HeightSheetProbe, {
 			target,
 			props: {
 				heightMeters: props.heightMeters ?? 1.2,
 				pins: props.pins ?? [],
 				ticks: ticksOf(),
-				onSetHeight: (height: number, cause: StageHeightCause) => calls.heights.push([height, cause]),
-				onAddPin: () => {
-					calls.added += 1;
-				},
-				onRemovePin: (height: number) => calls.removed.push(height)
+				onSetHeight: (height: number, cause: StageHeightCause) => calls.heights.push([height, cause])
 			}
 		});
 		cleanup = () => void unmount(component);
 		return { target, calls };
 	}
 
-	const sheetOf = (target: HTMLElement) => target.querySelector<HTMLElement>('[data-stage-height-sheet]')!;
 	const readoutOf = (target: HTMLElement) => target.querySelector<HTMLElement>('.knob')!;
-	const hintOf = () => document.querySelector<HTMLElement>('[data-pin-hint]');
-	const addButtonOf = (target: HTMLElement) =>
-		target.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!;
 
 	it('draws a line with a knob and ticks, with no boxed title and no permanent value', () => {
 		const { target } = mountSheet();
@@ -239,15 +231,29 @@ describe('R217.S22 — the Height Sheet control', () => {
 		// The value is held back until the control is focused, dragged or touched.
 		expect(readoutOf(target).textContent).toContain('1.20');
 	});
-it('discloses height precision on Enter without writing until submitted',async()=>{
- const {target,calls}=mountSheet();const slider=target.querySelector<HTMLElement>('[role="slider"]')!;
- slider.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await tick();
- const input=target.querySelector<HTMLInputElement>('[aria-label="Sheet height (m)"]')!;expect(input).not.toBeNull();expect(calls.heights).toEqual([]);
- target.querySelector('form')!.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await tick();expect(calls.heights).toEqual([]);
- window.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter'}));
- input.value='2.375';input.dispatchEvent(new Event('input',{bubbles:true}));target.querySelector('form')!.dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await tick();
- expect(calls.heights).toEqual([[2.375,'key']]);expect(target.querySelector('form')).toBeNull();
-});
+
+	it('matches the production wireframe: thin axis, white marks on the dark Stage, and a border-box sticker', () => {
+		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
+		expect(source).toMatch(/\.rail\s*\{[^}]*width:\s*2px;[^}]*background:\s*rgb\(255 255 255 \/ 0\.28\);/s);
+		expect(source).toMatch(/\.pin-dot\s*\{[^}]*width:\s*8px;[^}]*height:\s*8px;[^}]*border:\s*0;[^}]*background:\s*#fff;/s);
+		expect(source).toMatch(/\.tick\.datum\s*\{[^}]*width:\s*22px;[^}]*height:\s*2\.5px;[^}]*background:\s*#fff;/s);
+		expect(source).toMatch(/\.knob\s*\{[^}]*box-sizing:\s*border-box;[^}]*height:\s*22px;[^}]*min-width:\s*40px;/s);
+	});
+
+	it('has no click-to-edit card and no exposed pin CRUD', async () => {
+		const { target, calls } = mountSheet({ pins: [0.4] });
+		const slider = target.querySelector<HTMLElement>('[role="slider"]')!;
+		slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		slider.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+		await tick();
+		expect(calls.heights).toEqual([]);
+		expect(target.querySelector('form')).toBeNull();
+		expect(target.querySelector('.numeric')).toBeNull();
+		expect(target.querySelector('.pin-context')).toBeNull();
+		expect(target.querySelector('button[aria-label^="Pin the height"]')).toBeNull();
+		expect([...target.querySelectorAll('button')].some((button) => button.textContent?.includes('Remove pin'))).toBe(false);
+	});
+
 
 	it('steps the height from the keyboard and jumps owner ticks, as before', async () => {
 		const { target, calls } = mountSheet({ heightMeters: 1.2 });
@@ -261,67 +267,24 @@ it('discloses height precision on Enter without writing until submitted',async()
 		expect(calls.heights.at(-1)).toEqual([0.75, 'tick']);
 	});
 
-	it('pins and removes through the knob and the pin marks, as before', async () => {
+	it('jumps to an existing pin and opens no card', async () => {
 		const { target, calls } = mountSheet({ pins: [0.4] });
-		addButtonOf(target).click();
+		const pin = target.querySelector<HTMLButtonElement>('button[aria-label^="Jump to pin"]')!;
+		expect(pin).not.toBeNull();
+		pin.click();
 		await tick();
-		expect(calls.added).toBe(1);
-		target.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')!
-			.click();
-		await tick();
-		[...target.querySelectorAll<HTMLButtonElement>('button')]
-			.find((b) => b.textContent === 'Remove pin')!.click();
-		await tick();
-		expect(calls.removed).toEqual([0.4]);
-	});
-
-	it('shows the pin hint on the first pin of a Stage session and clears it by itself', async () => {
-		vi.useFakeTimers();
-		try {
-			const { target } = mountSheet();
-			expect(hintOf()).toBeNull();
-			addButtonOf(target).click();
-			await tick();
-			expect(hintOf()?.getAttribute('role')).toBe('note');
-			// It needs no dismissal: time alone clears it.
-			vi.advanceTimersByTime(PIN_HINT_MS);
-			await tick();
-			expect(hintOf()).toBeNull();
-			// Once per session: a second pin shows nothing.
-			addButtonOf(target).click();
-			await tick();
-			expect(hintOf()).toBeNull();
-		} finally {
-			vi.useRealTimers();
-		}
-	});
-
-	it('shows the hint again in a fresh Stage session, because the flag belongs to the session (TD-15)', async () => {
-		const first = mountSheet();
-		addButtonOf(first.target).click();
-		await tick();
-		expect(hintOf()).not.toBeNull();
-		cleanup?.();
-		cleanup = undefined;
-		document.body.replaceChildren();
-		expect(hintOf()).toBeNull();
-
-		// A new Stage session holds its own flag: its first pin shows its own hint.
-		const second = mountSheet();
-		addButtonOf(second.target).click();
-		await tick();
-		expect(hintOf()).not.toBeNull();
+		expect(calls.heights).toEqual([[0.4, 'tick']]);
+		expect(target.querySelector('.pin-context')).toBeNull();
+		expect(target.querySelector('.numeric')).toBeNull();
 	});
 
 });
 
 /**
- * R217.S23 — the Sheet's ink on the light ground. The 3D ground is pale on the plate and
- * dark on the mat margin, Paper is pale and Shaded is dark, so the Sheet carries its own
- * pale plate and forest ink. Its colours are shell-role tokens, and the ink does not depend
- * on the 2D-only flag.
+ * R217.S23 — the Sheet has one white mark set on the stage edge. It does not switch ink
+ * for Paper or the overlay's light-ground flag, and its colours are shell-role tokens.
  */
-describe('R217.S23 — the Height Sheet ink on the light ground', () => {
+describe('R217.S23 — the Height Sheet white mark set', () => {
 	const SHEET_SOURCE = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
 	const ROLES = readFileSync('src/lib/authoring/stage/shell/shell-roles.css', 'utf8');
 	const token = (name: string): string => {
@@ -343,9 +306,11 @@ describe('R217.S23 — the Height Sheet ink on the light ground', () => {
 	};
 
 
-	it('does not depend on the 2D-only flag: the Sheet has no quiet variant to switch', () => {
+	it('has no quiet or light-ground variant to switch', () => {
 		expect(SHEET_SOURCE).not.toMatch(/\bquiet\b/);
-		expect(SHEET_SOURCE).toContain('data-ink="forest-on-paper"');
+		expect(SHEET_SOURCE).not.toContain('data-paper');
+		expect(SHEET_SOURCE).not.toContain('lightGround');
+		expect(SHEET_SOURCE).not.toContain('data-ink');
 	});
 
 	it('meets the contrast thresholds on the shell-role pairs the Sheet stands on', () => {
@@ -377,9 +342,7 @@ describe('R217.S23 — the Height Sheet ink on the light ground', () => {
 			props: {
 				heightMeters: 1.2,
 				ticks,
-				onSetHeight: () => {},
-				onAddPin: () => {},
-				onRemovePin: () => {}
+				onSetHeight: () => {}
 			}
 		});
 		try {
@@ -394,12 +357,12 @@ describe('R217.S23 — the Height Sheet ink on the light ground', () => {
 		}
 	});
 
-	it('takes the 2D Paper and the 3D ground alike: the route never passes a quiet flag to the Sheet', () => {
+	it('takes no quiet, Paper or light-ground flag from the route', () => {
 		const route = readFileSync('src/routes/project/[projectId]/spatial/+page.svelte', 'utf8');
 		const start = route.indexOf('<StageHeightSheet');
 		const end = route.indexOf('/>', start);
 		expect(start).toBeGreaterThan(0);
-		expect(route.slice(start, end)).not.toMatch(/quiet/);
+		expect(route.slice(start, end)).not.toMatch(/quiet|lightGround|data-paper/);
 	});
 });
 
