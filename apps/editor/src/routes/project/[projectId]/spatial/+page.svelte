@@ -183,7 +183,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import { createExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
 import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
 import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
-import { removalItem, backOf, experienceNameWriter } from '$lib/authoring/experience/experience-card-wiring';
+import { removalItem, backOf, experienceNameWriter, experienceShownCardFor } from '$lib/authoring/experience/experience-card-wiring';
 import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
 		enterPreview,
@@ -3071,228 +3071,28 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const cardBack = (controller: ExperienceController, parent: Parameters<typeof backOf>[1]) =>
 		backOf(controller, parent, () => { cardOpen = true; });
 
-	/**
-	 * R217.S25 (D10) — the one Card the Experience lens shows: the Experience subject when one is
-	 * selected, otherwise the Stage selection as the subject Card, otherwise none. The latest
-	 * selection always replaced the other, so there is never a second Card to arbitrate.
-	 */
 	const experienceShownCard = $derived.by((): ShownCard => {
 		const controller = activeExperience;
 		const services = adapterServices;
 		// The ready draft (no Experience yet) still shows the Stage selection, so Present this can start it.
 		if (controller === null || services === null) return NO_CARD;
-		// The Stop and transition kind lines name the context Guide, so a tour Stop reads its Guide before it is opened.
-		const guideLabel = controller.contextGuide?.label ?? '';
-		const writerOf = (summary: string, component: NonNullable<StageCardWriterRecord['view']>['component']): StageCardWriterRecord => ({
-			summary,
-			adapterId: 'experience',
-			fieldIds: [],
-			view: { component, services }
-		});
-		const subject = controller.subject;
-		if (subject?.kind === 'presentation') {
-			const presentation = controller.selectedPresentation;
-			if (presentation === null) return NO_CARD;
-			const reference = presentation.subject;
-			const subjectLabel = reference === null ? null : referenceLabel(reference as StageSelectionEntry['reference']);
-			const model = presentationCardModel({
-				presentationId: presentation.id,
-				label: controller.presentationDisplayName(presentation.id),
-				hasSubject: reference !== null && subjectLabel !== null,
-				viewCount: presentation.views.length,
-				stopCount: (controller.stopUsage.get(presentation.id) ?? []).length,
-				hasDefaultView: presentation.views.length > 0
-			});
-			// E5: Add to Guide ▸ — the Guides, the active one first, with *again* where the
-			// Presentation already has a Stop, then New Guide…, which asks the name inline (D8).
-			const activeGuideId = controller.currentGuide?.id ?? controller.contextGuide?.id ?? null;
-			const guidesInOrder = [
-				...controller.guides.filter((guide) => guide.id === activeGuideId),
-				...controller.guides.filter((guide) => guide.id !== activeGuideId)
-			];
-			const presentationStops = new Set(controller.stopUsage.get(presentation.id) ?? []);
-			const busyReason = controller.busy ? { disabled: true, reason: 'Wait for the current change' } : {};
-			const addToGuide: ExperienceCardMenuItem = {
-				id: 'add-to-guide',
-				label: 'Add to Guide',
-				children: [
-					...guidesInOrder.map((guide) => ({
-						id: `add-to-guide:${guide.id}`,
-						label: guide.label,
-						...(guide.stopIds.some((stopId) => presentationStops.has(stopId)) ? { hint: 'again' } : {}),
-						...busyReason,
-						run: () => void controller.addToGuide(presentation.id, guide.id)
-					})),
-					{
-						id: 'new-guide',
-						label: 'New Guide…',
-						...busyReason,
-						run: () => void controller.createGuide(presentation.id)
-					}
-				]
-			};
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				nameWriter: experienceNameWriter(
-					() => controller.presentationDisplayName(presentation.id),
-					(name: string) => controller.renamePresentation(presentation.id, name)
-				),
-				menu: [
-					addToGuide,
-					removalItem(controller, 'remove-presentation', 'Remove Presentation', { kind: 'presentation', presentationId: presentation.id })
-				],
-				back: cardBack(controller, null),
-				writer: writerOf('Presentation', ExperiencePresentationWriter),
-				kindLink:
-					reference === null || subjectLabel === null
-						? null
-						: {
-								label: subjectLabel,
-								onOpen: () => selectStageReference(reference as StageSelectionEntry['reference'])
-							}
-			};
-		}
-		if (subject?.kind === 'view') {
-			const view = controller.selectedView;
-			if (view === null) return NO_CARD;
-			const model = viewCardModel({
-				viewId: view.id,
-				label: view.label,
-				presentationLabel: controller.presentationLabel(view.presentationId)
-			});
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				nameWriter: experienceNameWriter(
-					() => view.label,
-					(name: string) => controller.renameView(view.id, name)
-				),
-				menu: [
-					removalItem(controller, 'remove-view', 'Remove View', {
-						kind: 'view',
-						presentationId: view.presentationId,
-						viewId: view.id
-					})
-				],
-				back: cardBack(controller, { kind: 'presentation', presentationId: view.presentationId }),
-				writer: writerOf('View', ExperienceViewWriter),
-				kindLink: {
-					label: controller.presentationLabel(view.presentationId),
-					onOpen: () => selectExperienceSubject({ kind: 'presentation', presentationId: view.presentationId })
-				}
-			};
-		}
-		if (subject?.kind === 'stop') {
-			const stop = controller.selectedStop;
-			if (stop === null) return NO_CARD;
-			const order = controller.guideStops;
-			const at = order.findIndex((entry) => entry.id === stop.id);
-			const position = at === -1 ? null : at + 1;
-			const model = stopCardModel({
-				stopId: stop.id,
-				presentationLabel: controller.presentationLabel(stop.presentationId),
-				position,
-				guideLength: order.length,
-				guideLabel
-			});
-			const items: ExperienceCardMenuItem[] = [
-				{
-					id: 'open-presentation',
-					label: 'Open Presentation',
-					run: () => selectExperienceSubject({ kind: 'presentation', presentationId: stop.presentationId })
-				}
-			];
-			if (position !== null) {
-				const first = position === 1;
-				const last = position === order.length;
-				const busy = controller.busy;
-				const stuck = (atEnd: boolean, reason: string): { disabled: boolean; reason?: string } =>
-					busy ? { disabled: true, reason: 'Wait for the current change' } : atEnd ? { disabled: true, reason } : { disabled: false };
-				items.push(
-					{ id: 'move-earlier', label: 'Move earlier', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStop(stop.id, -1) },
-					{ id: 'move-later', label: 'Move later', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStop(stop.id, 1) }
-				);
-				if (order.length > 6) {
-					items.push(
-						{ id: 'move-start', label: 'Move to the start', ...stuck(first, 'Already the first Stop'), run: () => void controller.moveStopTo(stop.id, 0) },
-						{ id: 'move-end', label: 'Move to the end', ...stuck(last, 'Already the last Stop'), run: () => void controller.moveStopTo(stop.id, order.length - 1) }
-					);
-				}
-			}
-			items.push(removalItem(controller, 'remove-stop', 'Remove Stop', { kind: 'stop', stopId: stop.id }));
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				writer: writerOf('Stop', ExperienceStopWriter),
-				menu: items,
-				back: cardBack(controller, null)
-			};
-		}
-		if (subject?.kind === 'transition') {
-			const stop = controller.selectedStop;
-			if (stop === null) return NO_CARD;
-			const at = controller.guideStops.findIndex((entry) => entry.id === stop.id);
-			const continuation = controller.resolveContinuation(stop.id);
-			if (at === -1 || continuation === null) return NO_CARD;
-			const model = transitionCardModel({ stopId: stop.id, fromPosition: at + 1, guideLabel, continuation });
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				writer: writerOf('Transition', ExperienceTransitionWriter),
-				back: cardBack(controller, { kind: 'stop', stopId: stop.id })
-			};
-		}
-		// D-2: with nothing selected the Card is the Experience Card. A Guide is never a Card
-		// subject; opening one keeps this Card and shows its strip.
-		if (subject?.kind === 'experience' || (subject === null && selection === null)) {
-			const current = controller.current;
-			if (current === null) return NO_CARD;
-			const model = experienceCardModel({
-				experienceId: current.id,
-				label: current.label,
-				guideCount: controller.guides.length
-			});
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				nameWriter: experienceNameWriter(
-					() => current.label,
-					(name: string) => controller.renameExperience(name)
-				),
-				writer: writerOf('Experience', ExperienceExperienceWriter)
-			};
-		}
-		// No Experience subject, but a Stage pick is: the Stage selection is the Card.
-		const selected = selection;
-		if (selected === null) return NO_CARD;
 		const bring = () => {
 			const target = selectedWorldPoint();
 			if (target !== null) bringIntoView(target);
 		};
-		const scene = experienceSceneSubject;
-		if (scene !== null) {
-			const model = subjectCardModel({ entityId: scene.entityId, label: scene.label });
-			return {
-				...NO_CARD,
-				identity: model.identity,
-				facts: model.facts,
-				writer: writerOf('Scene object', ExperienceSubjectWriter),
-				bringIntoView: bring
-			};
-		}
-		// A Layout or other Stage subject: identity only, and the way back to its editing home.
-		return {
-			...NO_CARD,
-			identity: cardIdentity,
-			bringIntoView: bring,
-			menu: [{ id: 'open-in-world', label: 'Open in World', run: () => changeLens('world') }]
-		};
+		return experienceShownCardFor({
+			controller,
+			services,
+			selection,
+			sceneSubject: experienceSceneSubject,
+			cardIdentity,
+			select: selectExperienceSubject,
+			changeLens: () => changeLens('world'),
+			bring,
+			selectStageReference,
+			referenceLabel,
+			openCard: () => { cardOpen = true; }
+		}) as unknown as ShownCard;
 	});
 
 	/**
