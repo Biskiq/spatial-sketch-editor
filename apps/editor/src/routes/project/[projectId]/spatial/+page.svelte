@@ -182,6 +182,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
 	import { createExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
 import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
+import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
 import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
 		enterPreview,
@@ -3028,112 +3029,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * Guides, and the Presentations with their Views and Stop numbers. A read of the controller;
 	 * every action is one of its commands or the one Card selection.
 	 */
-	const experienceIndex = $derived.by((): ExperienceIndexGroups | null => {
-		if (lens !== 'experience') return null;
-		const controller = experienceController;
-		if (controller === null) {
-			return {
-				pending: true,
-				experiences: [],
-				draftLabel: '',
-				current: null,
-				guides: [],
-				presentations: [],
-				totalPresentations: 0,
-				query: '',
-				busy: false,
-				onQuery: () => {},
-				onOpenExperience: () => {},
-				onCreateExperience: () => {},
-				onRenameExperience: async () => ({ kind: 'refused' as const }),
-				onOpenGuide: () => {},
-				onRenameGuide: async () => ({ kind: 'refused' as const }),
-				onRemoveGuide: () => {},
-				onAddStopFromView: () => {},
-				onSelectPresentation: () => {},
-				onToggleExpand: () => {},
-				onSelectView: () => {}
-			};
-		}
-		const current = controller.current;
-		const subject = controller.subject;
-		// The open chip reads the active Guide; the Stop numbers and On tour read the context Guide (entry before open).
-		const activeGuideId = controller.currentGuide?.id ?? null;
-		const stopNumbers = new Map<string, number[]>();
-		controller.guideStops.forEach((stop, index) => {
-			stopNumbers.set(stop.presentationId, [...(stopNumbers.get(stop.presentationId) ?? []), index + 1]);
-		});
-		return {
-			pending: false,
-			experiences: controller.experiences.map((entry) => ({
-				id: entry.id,
-				label: entry.label,
-				stopCount: entry.stops.length,
-				presentationCount: entry.presentations.length
-			})),
-			draftLabel: controller.draftLabel,
-			current: current === null ? null : { id: current.id, label: current.label },
-			guides: controller.guides.map((guide) => ({
-				id: guide.id,
-				label: guide.label,
-				stopCount: guide.stopIds.length,
-				open: experienceGuideOpen && guide.id === activeGuideId,
-				opening: current?.entryGuideId === guide.id
-			})),
-			presentations: controller.filteredPresentations.map((entry) => ({
-				id: entry.id,
-				label: controller.presentationDisplayName(entry.id),
-				viewCount: entry.views.length,
-				explorable: entry.explorable,
-				stopNumbers: stopNumbers.get(entry.id) ?? [],
-				selected: subject?.kind === 'presentation' && subject.presentationId === entry.id,
-				expanded: expandedPresentationId === entry.id,
-				views: (controller.viewsOf.get(entry.id) ?? []).map((view) => ({
-					id: view.id,
-					label: view.label,
-					onTour: controller.viewStops(view.id).length > 0,
-					isDefault: entry.views[0]?.viewId === view.id,
-					selected:
-						subject?.kind === 'view' && subject.viewId === view.id && subject.presentationId === entry.id
-				}))
-			})),
-			totalPresentations: current?.presentations.length ?? 0,
-			query: controller.query,
-			busy: controller.busy,
-			onQuery: (query: string) => {
-				controller.query = query;
-			},
-			onOpenExperience: (experienceId: string) => {
-				controller.openExperience(experienceId);
-					expandedPresentationId = null;
-				cardOpen = true;
-			},
-			onCreateExperience: (label?: string) => {
-				// A pending name prompt or an expanded row belongs to the Experience it was opened in.
-					expandedPresentationId = null;
-				return controller.createExperience(label);
-			},
-			onRenameExperience: (label: string) => controller.renameExperience(label),				onOpenGuide: (guideId: string | null) => {
-				if (guideId !== null) controller.openGuide(guideId);
-				experienceGuideOpen = true;
-				// D-2: a Guide has no Card; opening it keeps the Experience Card.
-				selectExperienceSubject({ kind: 'experience' });
-			},
-				onRenameGuide: (guideId: string, label: string) => controller.renameGuide(guideId, label),				onRemoveGuide: (guideId: string) => void controller.remove({ kind: 'guide', guideId }),
-				onAddStopFromView: (viewId: string, presentationId: string) => {
-					void controller.addStop(presentationId, { entryViewId: viewId });
-				},
-				onSelectPresentation: (presentationId: string) => {
-				selectExperienceSubject({ kind: 'presentation', presentationId });
-			},
-			onToggleExpand: (presentationId: string) => {
-				expandedPresentationId = expandedPresentationId === presentationId ? null : presentationId;
-			},
-			onSelectView: (viewId: string, presentationId: string) => {
-				selectExperienceSubject({ kind: 'view', viewId, presentationId });
-			}
-		};
-	});
+	const experienceIndex = $derived(experienceIndexFor({
+		lens,
+		controller: experienceController,
+		guideOpen: experienceGuideOpen,
+		expandedPresentationId,
+		select: selectExperienceSubject,
+		setExpanded: (presentationId) => { expandedPresentationId = presentationId; },
+		setCardOpen: (open) => { cardOpen = open; },
+		setGuideOpen: (open) => { experienceGuideOpen = open; }
+	}));
 
 	/** The Card's `menu` item shape (R217.S26: danger items, consequence blocks and submenus). */
 	type ExperienceCardMenuItem = NonNullable<ComponentProps<typeof EditorCard>['menu']>[number];
