@@ -33,7 +33,8 @@ import {
 import { isStageDrag } from '../stage/stage-input';
 import type { StageFacade } from '../stage/stage-facade';
 import type { ExperienceController } from './experience-controller.svelte';
-import type { ExperienceGuideTransport } from './experience-homes';
+import type { ExperienceGuideTransport, ExperienceHomes } from './experience-homes';
+import type { ExperienceSubject } from './experience-model';
 import { guideTimeMapForProgram } from './playback-map';
 import { createExperiencePlayback, shouldWritePlaybackSample } from './playback.svelte';
 
@@ -230,6 +231,55 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	/** Register the lens's lifecycle effects during route initialisation. */
+	/** The Card and Guide homes, wired from the lens's own posture. */
+	function homes(slots: {
+		readonly controller: () => ExperienceController | null;
+		readonly guideOpen: () => boolean;
+		readonly setGuideOpen: (open: boolean) => void;
+		readonly select: (subject: ExperienceSubject | null) => void;
+		readonly sceneSubject: () => { readonly entityId: string; readonly label: string } | null;
+		readonly openInWorld: () => void;
+		readonly pickStageSubject?: (presentationId: string) => boolean;
+		readonly previewMode: (mode: 'guided' | 'free', guideId: string | null) => void;
+		readonly guideForStop: (stopId: string) => string | null;
+	}): ExperienceHomes {
+		return {
+			controller: slots.controller,
+			guideOpen: slots.guideOpen,
+			setGuideOpen: slots.setGuideOpen,
+			select: slots.select,
+			sceneSubject: slots.sceneSubject,
+			openInWorld: slots.openInWorld,
+			pickStageSubject: slots.pickStageSubject,
+			advancedCamera: {
+				on: () => advancedCamera,
+				set: (on) => { advancedCamera = on; },
+				eligible: (viewId) => advancedViewId === viewId,
+				busy: () => viewEdit !== null || pendingViewWrite !== null,
+				pose: (viewId) => {
+					const edit = viewEdit;
+					return edit?.advanced && edit.viewId === viewId && edit.moved ? edit : null;
+				},
+				write: setAdvancedViewFraming
+			},
+			lookThroughViewId: () => lookThroughSession?.viewId ?? null,
+			lookThroughMoved: () => lookThroughMoved,
+			lookThroughFraming: () => lookThroughFraming,
+			lookThroughLens: setLookThroughLens,
+			lookThroughEyeHeight: setLookThroughEyeHeight,
+			lookThrough: lookThroughView,
+			exitLookThrough,
+			updateLookThrough: () => updateLookThrough(),
+			captureProvisional,
+			presentThis,
+			playback: () => playback,
+			previewMode: slots.previewMode,
+			guideSeconds,
+			guideForStop: slots.guideForStop,
+			playGuide
+		};
+	}
+
 	function install(): void {
 	$effect(() => {
 		const source = host.activeController()?.playbackSource ?? null;
@@ -921,6 +971,7 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		guideSeconds,
 		playGuide,
 		install,
+		homes,
 		// Manual placement
 		placementPress: () => placementPress,
 		placementGhost: () => placementGhost,

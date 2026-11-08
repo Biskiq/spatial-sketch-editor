@@ -165,7 +165,8 @@ describe('R217.S30 playback', () => {
 		expect(readFileSync('src/lib/authoring/experience/ExperienceExperienceWriter.svelte', 'utf8')).not.toContain('playGuide(');
 		expect(readFileSync('src/lib/authoring/experience/ExperienceStopWriter.svelte', 'utf8')).toContain("kind: 'stop'");
 		expect(readFileSync('src/lib/authoring/experience/ExperienceTransitionWriter.svelte', 'utf8')).toContain("kind: 'move'");
-		expect(routeCode).toContain('playback: () => experienceLens.playback');
+		expect(page).toContain('playback: () => playback');
+		expect(routeCode).toContain('experienceLens.homes(');
 		expect(routeCode).toContain('experienceLens.install()');
 		expect(page).toContain('playback.playFromStart()');
 		expect(page).toContain('playback.playFromStop(action.stopId)');

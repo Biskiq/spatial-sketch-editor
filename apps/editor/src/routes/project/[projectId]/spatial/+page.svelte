@@ -644,7 +644,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		};
 	});
 
-	provideExperienceHomes({
+	provideExperienceHomes(experienceLens.homes({
 		controller: () => (lens === 'experience' ? experienceController : null),
 		guideOpen: () => experienceGuideOpen,
 		setGuideOpen: (open) => {
@@ -659,33 +659,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			notice = 'Pick a Stage object to link. Esc cancels.';
 			return true;
 		},
-		advancedCamera: {
-			on: experienceLens.advancedCamera,
-			set: experienceLens.setAdvancedCamera,
-			eligible: (viewId) => experienceLens.advancedViewId() === viewId,
-			busy: () => experienceLens.viewEdit() !== null || experienceLens.pendingViewWrite() !== null,
-			pose: (viewId) => {
-				const edit = experienceLens.viewEdit();
-				return edit?.advanced && edit.viewId === viewId && edit.moved ? edit : null;
-			},
-			write: experienceLens.setAdvancedViewFraming
-		},
-		lookThroughViewId: experienceLens.lookThroughViewId,
-		lookThroughMoved: experienceLens.lookThroughMoved,
-		lookThroughFraming: experienceLens.lookThroughFraming,
-		lookThroughLens: experienceLens.setLookThroughLens,
-		lookThroughEyeHeight: experienceLens.setLookThroughEyeHeight,
-		lookThrough: experienceLens.lookThroughView,
-		exitLookThrough: experienceLens.exitLookThrough,
-		updateLookThrough: () => experienceLens.updateLookThrough(),
-		captureProvisional: experienceLens.captureProvisional,
-		presentThis: experienceLens.presentThis,
-		playback: () => experienceLens.playback,
 		previewMode: (mode, guideId) => void previewController.open(mode, guideId),
-		guideSeconds: experienceLens.guideSeconds,
-		guideForStop: (stopId) => experienceController?.guideForStop(stopId) ?? null,
-		playGuide: experienceLens.playGuide
-	});
+		guideForStop: (stopId) => experienceController?.guideForStop(stopId) ?? null
+	}));
 	// The controller can set a subject itself (a Capture, an added Stop); the Stage selection it
 	// replaces must not linger beside it.
 	$effect(() => {
