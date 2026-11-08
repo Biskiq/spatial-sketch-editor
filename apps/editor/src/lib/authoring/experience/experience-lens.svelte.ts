@@ -72,6 +72,9 @@ export type ExperienceLensHost = {
 	readonly clearHover: () => void;
 	readonly evaluationGeneration: () => number;
 	notice: (message: string) => void;
+	/** The one Card selection: the Stage selection it replaces is cleared first. */
+	readonly clearStageSelection: () => void;
+	readonly openCard: () => void;
 };
 
 type StageTriple = [number, number, number];
@@ -177,6 +180,43 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			entryStopId: source.entryStopId
 		});
 		return map.kind === 'ready' ? map.map.totalSeconds : null;
+	}
+
+	/** Show the instrument on the active Guide, or on the entry Guide when none is active. */
+	function openGuide(guideId?: string): void {
+		const controller = host.activeController();
+		if (guideId !== undefined) controller?.openGuide(guideId);
+		else if (controller !== null && controller.currentGuide === null) {
+			const entryGuideId = controller.current?.entryGuideId ?? null;
+			if (entryGuideId !== null) controller.openGuide(entryGuideId);
+		}
+		host.setGuideOpen(true);
+	}
+
+	/** The dock's Guide key: show or hide the instrument for the active Guide. */
+	function toggleGuide(): void {
+		if (host.guideOpen()) {
+			host.setGuideOpen(false);
+			return;
+		}
+		openGuide();
+	}
+
+	/** Why Capture cannot run, or undefined when it can. */
+	function captureReason(): string | undefined {
+		const controller = host.activeController();
+		if (controller === null) return undefined;
+		if (controller.busy) return 'Wait for the current change';
+		return undefined;
+	}
+
+	/**
+	 * D10 — a Card subject replaces the Stage selection. Nothing here moves the Camera.
+	 */
+	function selectSubject(subject: ExperienceSubject | null): void {
+		host.clearStageSelection();
+		host.activeController()?.select(subject);
+		host.openCard();
 	}
 
 	function playGuide(guideId: string, action: ExperienceGuideTransport): void {
@@ -1102,6 +1142,10 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			return suppressed;
 		},
 		guideSeconds,
+		openGuide,
+		toggleGuide,
+		captureReason,
+		selectSubject,
 		playGuide,
 		install,
 		homes,

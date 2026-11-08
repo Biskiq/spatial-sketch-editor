@@ -184,6 +184,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 import { createExperiencePreview } from '$lib/authoring/experience/experience-preview.svelte';
 import { experienceIndexFor } from '$lib/authoring/experience/experience-index';
 import { removalItem, backOf, experienceNameWriter, experienceShownCardFor } from '$lib/authoring/experience/experience-card-wiring';
+import { rememberWelcomeDismissed, welcomeDismissed } from '$lib/authoring/experience/experience-welcome';
 import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
 		enterPreview,
@@ -460,17 +461,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const showOffCount = $derived([showMarkers, showFrustums, showPaths, showLabels].filter((on) => !on).length);
 	/** The Presentation whose Views the Index shows: one at a time, following the selection. */
 	let expandedPresentationId = $state<string | null>(null);
-	/**
-	 * R217.S25 (D10) — the one Card selection. A Presentation, View, Stop, transition or the
-	 * Experience replaces the Stage selection; nothing here moves the Camera.
-	 */
-	function selectExperienceSubject(subject: ExperienceSubject | null): void {
-		stagePickPresentationId = null;
-		facade?.select(null);
-		selection = null;
-		experienceController?.select(subject);
-		cardOpen = true;
-	}
 	/** The Scene entity the Card shows in the Experience lens: the Stage's primary Scene selection. */
 	const experienceSceneSubject = $derived.by(() => {
 		const selected = selection;
@@ -486,17 +476,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/** Place a View is an armed Stage tool; Look through is a provisional posture. */
 	let experienceTool = $state<'select' | 'place'>('select');
 	/** Scroll in Look through accumulates until one 0.25 m step is owed. */
-	const EXPERIENCE_WELCOME_KEY = 'museum.experience.welcome-dismissed';
 	let showExperienceWelcome = $state(false);
-
-	function dismissExperienceWelcome(): void {
-		showExperienceWelcome = false;
-		try {
-			localStorage.setItem(EXPERIENCE_WELCOME_KEY, '1');
-		} catch {
-			// A blocked preference store still allows dismissal for this visit.
-		}
-	}
 
 	/** The capture frame's measured local viewport for the one Stage renderer. */
 	let throughViewport = $state<{ readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
@@ -512,6 +492,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		lens: () => lens,
 		guideOpen: () => experienceGuideOpen,
 		setGuideOpen: (open) => { experienceGuideOpen = open; },
+		clearStageSelection: () => {
+			stagePickPresentationId = null;
+			facade?.select(null);
+			selection = null;
+		},
+		openCard: () => { cardOpen = true; },
 		reducedMotion: () => reducedMotion,
 		previewOpen: () => previewController.openState,
 		previewBusy: () => previewController.busy,
@@ -652,7 +638,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		setGuideOpen: (open) => {
 			experienceGuideOpen = open;
 		},
-		select: selectExperienceSubject,
+		select: experienceLens.selectSubject,
 		sceneSubject: () => experienceSceneSubject,
 		openInWorld: () => changeLens('world'),
 		pickStageSubject: (presentationId) => {
@@ -696,7 +682,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	$effect(() => {
 		const kind = activeExperience?.subject?.kind;
 		if (kind !== 'stop' && kind !== 'transition') return;
-		untrack(() => openExperienceGuide());
+		untrack(() => experienceLens.openGuide());
 	});
 	// The Index opens the selected Presentation's Views. Only its id drives the effect, so a new object
 	// for the same Presentation (a rename, a capture) cannot re-expand a row the user collapsed.
@@ -1382,7 +1368,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	onMount(() => {
 		perfMark('stage:route-mounted');
 		try {
-			showExperienceWelcome = localStorage.getItem(EXPERIENCE_WELCOME_KEY) !== '1';
+			showExperienceWelcome = !welcomeDismissed();
 		} catch {
 			showExperienceWelcome = true;
 		}
@@ -1814,7 +1800,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			selection = null;
 			cardOpen = true;
 			void activeExperience?.linkPresentation(pick, next.reference.subject.id).then((accepted) => {
-				if (accepted) selectExperienceSubject({ kind: 'presentation', presentationId: pick });
+				if (accepted) experienceLens.selectSubject({ kind: 'presentation', presentationId: pick });
 			});
 			return;
 		}
@@ -1891,13 +1877,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (lens !== 'experience') changeLens('experience');
 		cardOpen = true;
 		const subject = problem.subject;
-		if (subject.kind === 'guide') {
+			if (subject.kind === 'guide') {
 			// D-2: a Guide has no Card. Show opens its instrument and keeps the Experience Card.
 			const controller = activeExperience;
 			const guide = controller?.guides.find((entry) => entry.id === subject.guideId);
 			if (controller == null || guide === undefined) return;
-			controller.openGuide(guide.id);
-			experienceGuideOpen = true;
+			experienceLens.openGuide(guide.id);
 			experienceFocus.select({ kind: 'experience' });
 			return;
 		}
@@ -3035,7 +3020,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		controller: experienceController,
 		guideOpen: experienceGuideOpen,
 		expandedPresentationId,
-		select: selectExperienceSubject,
+		select: experienceLens.selectSubject,
 		setExpanded: (presentationId) => { expandedPresentationId = presentationId; },
 		setCardOpen: (open) => { cardOpen = open; },
 		setGuideOpen: (open) => { experienceGuideOpen = open; }
@@ -3086,7 +3071,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			selection,
 			sceneSubject: experienceSceneSubject,
 			cardIdentity,
-			select: selectExperienceSubject,
+			select: experienceLens.selectSubject,
 			changeLens: () => changeLens('world'),
 			bring,
 			selectStageReference,
@@ -3116,31 +3101,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (target !== null) bringIntoView(target);
 			}
 		};
-	});
-
-	/** Show the instrument on the active Guide, or on the entry Guide when none is active. */
-	function openExperienceGuide(): void {
-		const controller = activeExperience;
-		const entryGuideId = controller?.current?.entryGuideId ?? null;
-		if (controller !== null && controller.currentGuide === null && entryGuideId !== null) {
-			controller.openGuide(entryGuideId);
-		}
-		experienceGuideOpen = true;
-	}
-	/** The dock's Guide key: show or hide the instrument for the active Guide. */
-	function toggleExperienceGuide(): void {
-		if (experienceGuideOpen) {
-			experienceGuideOpen = false;
-			return;
-		}
-		openExperienceGuide();
-	}
-	/** Why the dock's Capture cannot run, or undefined when it can. */
-	const experienceCaptureReason = $derived.by((): string | undefined => {
-		const controller = activeExperience;
-		if (controller === null) return undefined;
-		if (controller.busy) return 'Wait for the current change';
-		return undefined;
 	});
 
 	/**
@@ -4010,7 +3970,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						</ol>
 						<footer>
 							<small>Tips again: ⌘K → Show Experience tips</small>
-							<button type="button" onclick={dismissExperienceWelcome}>Got it</button>
+							<button type="button" onclick={() => { showExperienceWelcome = false; rememberWelcomeDismissed(); }}>Got it</button>
 						</footer>
 					</aside>
 				{/if}
@@ -4124,13 +4084,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{#if activeExperience !== null}
 					<!-- Column order is bottom-up: the dock, its feedback line, then the Guide instrument above them. -->
 					<ExperienceDock
-						captureDisabled={experienceCaptureReason !== undefined}
-						captureReason={experienceCaptureReason}
+						captureDisabled={experienceLens.captureReason() !== undefined}
+						captureReason={experienceLens.captureReason()}
 						guideOpen={experienceGuideOpen}
 						placeArmed={experienceTool === 'place'}
 						onPlaceView={experienceLens.togglePlaceView}
 						onCapture={() => void activeExperience?.capture()}
-						onToggleGuide={toggleExperienceGuide}
+						onToggleGuide={experienceLens.toggleGuide}
 					/>
 					{#if notice || activeExperience.feedback}
 						<p
