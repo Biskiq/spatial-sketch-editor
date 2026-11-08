@@ -21,12 +21,13 @@
  * the unconditional arch lane for the same reason that suite does.
  *
  * **Scope.** Every editor-source member of the route host's closure except the two
- * transport homes and `lib/platform/project-persistence.ts` itself. Persistence is
- * the writer's own home: the client interface declares `saveProject`, and the
- * module exports the pending-save helpers. The two Save-owned seams call those
- * helpers so no host module has to. Those modules matching the write predicate are
- * therefore expected and asserted below — the *exclusion* is deliberate, not the
- * absence.
+ * transport homes, `lib/platform/project-persistence.ts` and its pending-save
+ * sibling. Persistence is the writer's own home: the client interface declares
+ * `saveProject`. Since slice 6 the pending-capture helpers and their validation
+ * live in `lib/platform/project-pending-save.ts`, the other home. The two Save-owned
+ * seams call those helpers so no host module has to. Those modules matching the
+ * write predicate are therefore expected and asserted below — the *exclusion* is
+ * deliberate, not the absence.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import ts from 'typescript';
@@ -47,6 +48,7 @@ import {
 const ROUTE_ROOT = join(EDITOR_SRC, 'routes', 'project', '[projectId]', 'spatial', '+page.svelte');
 const ROUTE_MEMBER = 'apps/editor/src/routes/project/[projectId]/spatial/+page.svelte';
 const PLATFORM_PERSISTENCE_MEMBER = 'apps/editor/src/lib/platform/project-persistence.ts';
+const PLATFORM_PENDING_SAVE_MEMBER = 'apps/editor/src/lib/platform/project-pending-save.ts';
 const EDITOR_SOURCE_PREFIX = 'apps/editor/src/';
 const PROJECT_SESSION_PREFIX = 'apps/editor/src/lib/authoring/project-session/';
 
@@ -64,6 +66,7 @@ const HOST_MEMBERS = REACHED.filter(
 	(member) =>
 		member.startsWith(EDITOR_SOURCE_PREFIX) &&
 		member !== PLATFORM_PERSISTENCE_MEMBER &&
+		member !== PLATFORM_PENDING_SAVE_MEMBER &&
 		!TRANSPORT_MEMBERS.has(member)
 );
 
@@ -105,6 +108,7 @@ describe('the editor host reaches only authorized write paths', () => {
 		// Positive controls: the walk is real, and it is the host's own graph.
 		expect(REACHED).toContain(ROUTE_MEMBER);
 		expect(REACHED).toContain(PLATFORM_PERSISTENCE_MEMBER);
+		expect(REACHED).toContain(PLATFORM_PENDING_SAVE_MEMBER);
 		expect(REACHED).toContain(SAVE_TRANSPORT_MEMBER);
 		expect(REACHED).toContain(PENDING_CAPTURE_MEMBER);
 		expect(REACHED).toContain('apps/editor/src/lib/authoring/stage/boot-state.ts');
@@ -166,12 +170,14 @@ describe('the editor host reaches only authorized write paths', () => {
 	it('would flag a write call, and does flag the writer module the walk reaches', () => {
 		// The predicate detects real writer code in a module this walk reaches, so the
 		// host exclusion above is a scope decision rather than a hole. `saveProject`
-		// moved out of this module with T3's conditional Save; the pending-cloud-save
-		// writers are still here, and both must be detected.
-		expect(callsIn(sourceOf(PLATFORM_PERSISTENCE_MEMBER))).toEqual([
+		// moved out of this module with T3's conditional Save; slice 6 moved the
+		// pending-cloud-save writers to their own validation-owning home, and both must
+		// still be detected there.
+		expect(callsIn(sourceOf(PLATFORM_PENDING_SAVE_MEMBER))).toEqual([
 			'writePendingCloudSave',
 			'clearPendingCloudSave'
 		]);
+		expect(callsIn(sourceOf(PLATFORM_PERSISTENCE_MEMBER))).toEqual([]);
 		expect(sourceOf(PLATFORM_PERSISTENCE_MEMBER)).not.toMatch(/\bsaveProject\s*\(/);
 		// And it flags a call site, which is the defect this suite exists to catch.
 		expect(callsIn('await api.saveProject(project, signal)')).toEqual(['saveProject']);

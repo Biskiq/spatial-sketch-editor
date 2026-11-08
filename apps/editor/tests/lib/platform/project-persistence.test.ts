@@ -14,15 +14,17 @@ import {
 } from '@portfolio/project-model/save';
 
 import {
-	LEGACY_PENDING_CLOUD_SAVE_KEY,
-	PENDING_CLOUD_SAVE_KEY,
 	ProjectPersistenceError,
-	clearPendingCloudSave,
 	createProjectApi,
-	readPendingCloudSave,
-	writePendingCloudSave,
 	type SessionStorageLike
 } from '$lib/platform/project-persistence';
+import {
+	LEGACY_PENDING_CLOUD_SAVE_KEY,
+	PENDING_CLOUD_SAVE_KEY,
+	clearPendingCloudSave,
+	readPendingCloudSave,
+	writePendingCloudSave
+} from '$lib/platform/project-pending-save';
 
 const PROJECT_ID = 'project:client-test';
 const TOKEN = 'saved-base:11111111-1111-4111-8111-111111111111';

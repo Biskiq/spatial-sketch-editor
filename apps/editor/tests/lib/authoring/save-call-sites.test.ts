@@ -45,9 +45,17 @@ describe('conditional Save call sites', () => {
 	it('exposes one conditional client entry point', () => {
 		const client = relativeToRepo(join(EDITOR_SRC, 'lib', 'platform', 'project-persistence.ts'));
 		const source = readFileSync(join(EDITOR_SRC, 'lib', 'platform', 'project-persistence.ts'), 'utf8');
+		// Slice 6: the capture protocol reader lives beside the pending slot, so the
+		// project API surface never loads the unit-envelope closure for a list route.
+		const pendingSource = readFileSync(
+			join(EDITOR_SRC, 'lib', 'platform', 'project-pending-save.ts'),
+			'utf8'
+		);
 		expect(client).toBe('apps/editor/src/lib/platform/project-persistence.ts');
 		expect(source).toContain('saveAcceptedSource');
-		expect(source).toContain('readSaveRequest');
+		expect(source).not.toContain('readSaveRequest');
 		expect(source).not.toMatch(/\bsaveProject\s*\(/);
+		expect(pendingSource).toContain('readSaveRequest');
+		expect(pendingSource).toContain('validateProjectEnvelope');
 	});
 });
