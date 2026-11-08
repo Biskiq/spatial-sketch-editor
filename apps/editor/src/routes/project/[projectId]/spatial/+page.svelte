@@ -491,9 +491,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Place a View is an armed Stage tool; Look through is a provisional posture. */
 	let experienceTool = $state<'select' | 'place'>('select');
-	let lookThroughSession = $state<{ readonly viewId: string; readonly presentationId: string; readonly label: string } | null>(null);
-	let lookThroughTick = $state(0);
-	let lookThroughConfirm = $state<readonly string[] | null>(null);
 	/** Scroll in Look through accumulates until one 0.25 m step is owed. */
 	const EXPERIENCE_WELCOME_KEY = 'museum.experience.welcome-dismissed';
 	let showExperienceWelcome = $state(false);
@@ -507,8 +504,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 	}
 
-	let lookThroughZoom: { pending: number; startedAt: number; applied: number } | null = null;
-	const lookThroughPointers = new Map<number, { x: number; y: number; truck: boolean }>();
 	/** The capture frame's measured local viewport for the one Stage renderer. */
 	let throughViewport = $state<{ readonly left: number; readonly top: number; readonly width: number; readonly height: number } | null>(null);
 	let throughFrameEl = $state<HTMLElement | null>(null);
@@ -527,7 +522,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewOpen: () => preview !== null,
 		previewBusy: () => previewBusy,
 		previewRequested: () => previewRequestedMode !== null,
-		lookThroughOpen: () => lookThroughSession !== null,
 		viewEditActive: () => viewEdit !== null,
 		tool: () => experienceTool,
 		setTool: (next) => { experienceTool = next; },
@@ -536,7 +530,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		capturePointer: (target, pointerId) => capturePointer(target, pointerId),
 		floorDatum: () => experienceFloorDatum,
 		evaluation: () => evaluation,
-		exitLookThrough: () => exitLookThrough(),
+		refresh: () => refresh(),
 		renameRequest: () => { cardOpen = true; cardRenameRequest += 1; },
 		notice: (message) => { notice = message; }
 	});
@@ -546,7 +540,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	let advancedCamera = $state(false);
 	const advancedViewId = $derived(
-		advancedCamera && experienceTool === 'select' && lookThroughSession === null &&
+		advancedCamera && experienceTool === 'select' && experienceLens.lookThroughSession() === null &&
 			experienceLens.playback.status === 'idle' && preview === null && !previewBusy
 			? activeExperience?.selectedView?.id ?? null : null
 	);
@@ -583,11 +577,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const experienceFloorDatum = $derived.by(() =>
 		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0
 	);
-
-	const lookThroughMoved = $derived.by(() => {
-		void lookThroughTick;
-		return facade?.camera.lookThrough()?.moved ?? false;
-	});
 
 	/** One path anchor drag point, through the same Camera ray and a level plane at its height. */
 	let pathDragLease: { release(): void } | null = null;
@@ -875,193 +864,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 	}
 
-	function beginReaim(event: PointerEvent): void {
-		if (event.button !== 0 && event.button !== 2) return;
-		if (lookThroughPointers.size >= 2 || (lookThroughPointers.size > 0 && event.pointerType !== 'touch')) return;
-		if (!capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
-		lookThroughPointers.set(event.pointerId, { x: event.clientX, y: event.clientY, truck: event.button === 2 });
-	}
-
-	function moveReaim(event: PointerEvent): void {
-		const stage = facade;
-		const press = lookThroughPointers.get(event.pointerId);
-		if (stage === null || press === undefined) return;
-		const dx = event.clientX - press.x;
-		const dy = event.clientY - press.y;
-		press.x = event.clientX;
-		press.y = event.clientY;
-		if (dx === 0 && dy === 0) return;
-		const scale = evaluation?.targetPlaneMetersPerCssPixel ?? 0;
-		const touches = lookThroughPointers.size === 2;
-		const pan = press.truck || event.shiftKey || touches;
-		const share = touches ? 0.5 : 1;
-		const moved = pan
-			? scale > 0 && stage.camera.truckLookThrough(-dx * scale * share, dy * scale * share)
-			: stage.camera.turnLookThrough(dx * 0.0032, dy * 0.0032);
-		if (moved) {
-			lookThroughTick += 1;
-			refresh();
-		}
-	}
-
-	function endReaim(pointerId: number): void {
-		lookThroughPointers.delete(pointerId);
-		if (stageEl?.hasPointerCapture?.(pointerId)) stageEl.releasePointerCapture(pointerId);
-	}
-
-	/** Ease remaining wheel travel through Camera's existing step intent. */
-	function advanceLookThroughZoom(now: number, finish = false): void {
-		const zoom = lookThroughZoom;
-		const stage = facade;
-		if (zoom === null || stage === null || lookThroughSession === null) return;
-		const progress = finish || reducedMotion ? 1 : Math.min(1, (now - zoom.startedAt) / 120);
-		const next = zoom.pending * (1 - (1 - progress) ** 3);
-		const delta = next - zoom.applied;
-		zoom.applied = next;
-		if (progress === 1) lookThroughZoom = null;
-		if (delta !== 0 && stage.camera.stepLookThrough(delta)) lookThroughTick += 1;
-	}
-
-	function lookThroughView(viewId: string, presentationId?: string | null): void {
-		if (viewEdit !== null) return;
-		const stage = facade;
-		const controller = activeExperience;
-		if (stage === null || controller === null) return;
-		const facts = controller.viewFacts(viewId);
-		const pose = controller.viewPose(viewId);
-		const owner = presentationId ?? facts?.presentationId ?? null;
-		if (facts === null || pose === null || owner === null) {
-			notice = 'That View is not in this project.';
-			return;
-		}
-		// The moving Follow pose must never become Look through's entry memory.
-		experienceLens.stopAndRestore();
-		const result = stage.camera.beginLookThrough({
-			viewId,
-			presentationId: owner,
-			label: facts.label,
-			eye: pose.eye,
-			target: pose.target,
-			fovYDegrees: pose.fov
-		});
-		if (result.kind === 'refused') {
-			notice = result.message;
-			return;
-		}
-		if (experienceTool === 'place') {
-			experienceTool = 'select';
-			experienceLens.cancelPlacement();
-		}
-
-		lookThroughSession = { viewId, presentationId: owner, label: facts.label };
-		lookThroughConfirm = null;
-		lookThroughTick += 1;
-		refresh();
-	}
-
-	function exitLookThrough(): void {
-		lookThroughZoom = null;
-		for (const pointerId of lookThroughPointers.keys()) endReaim(pointerId);
-
-		facade?.camera.endLookThrough();
-		lookThroughSession = null;
-		lookThroughConfirm = null;
-		lookThroughTick += 1;
-		refresh();
-	}
-
-	/** Lens and Eye height step only the provisional Camera; Update View commits them. */
-	function setLookThroughLens(fovYDegrees: number): boolean {
-		const stage = facade;
-		if (stage === null || lookThroughSession === null) return false;
-		if (!stage.camera.stepLookThroughLens(fovYDegrees)) return false;
-		lookThroughTick += 1;
-		refresh();
-		return true;
-	}
-
-	function setLookThroughEyeHeight(metres: number): boolean {
-		const stage = facade;
-		if (stage === null || lookThroughSession === null) return false;
-		if (!stage.camera.setLookThroughEyeHeight(metres, experienceFloorDatum)) return false;
-		lookThroughTick += 1;
-		refresh();
-		return true;
-	}
-
-	async function updateLookThrough(confirmShared = false): Promise<void> {
-		const controller = activeExperience;
-		const stage = facade;
-		const session = lookThroughSession;
-		if (controller === null || stage === null || session === null) return;
-		advanceLookThroughZoom(performance.now(), true);
-		const provisional = stage.camera.provisionalView();
-		if (provisional === null) return;
-		const outcome = await controller.updateViewPose(
-			session.viewId,
-			{ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees },
-			session.presentationId,
-			{ confirmShared }
-		);
-		if (outcome.kind === 'needs-confirmation') {
-			lookThroughConfirm = outcome.alsoIn;
-			return;
-		}
-		if (outcome.kind === 'updated') {
-			stage.camera.commitLookThrough();
-			lookThroughConfirm = null;
-			lookThroughTick += 1;
-			refresh();
-			return;
-		}
-		notice = outcome.message;
-	}
-
-	async function captureProvisional(): Promise<void> {
-		const controller = activeExperience;
-		const provisional = facade?.camera.provisionalView() ?? null;
-		if (controller === null || provisional === null) return;
-		await controller.capturePose({ eye: provisional.eye, target: provisional.target, fov: provisional.fovYDegrees });
-	}
-
-	/** Frame the new View through Camera without changing the Stage's reading. */
-	async function presentThis(entityId: string, label: string): Promise<void> {
-		const stage = facade;
-		const controller = activeExperience;
-		if (stage === null || controller === null) return;
-		const bounds = stage.sceneBounds(entityId);
-		if (stage.camera.state().reading === 'plan' || evaluation?.projectionKind === 'plan-orthographic') {
-			experienceLens.aimPlacement(bounds === null ? null : [
-				(bounds.min[0] + bounds.max[0]) / 2,
-				(bounds.min[1] + bounds.max[1]) / 2,
-				(bounds.min[2] + bounds.max[2]) / 2
-			]);
-			experienceLens.stopAndRestore();
-			experienceTool = 'place';
-			notice = `Place a View aimed at ${label}: click where the camera stands.`;
-			return;
-		}
-		const viewerEye = stage.evaluation()?.eye;
-		const framed = bounds === null || viewerEye === undefined ? null : frameSubjectPose({
-			bounds,
-			viewerEye,
-			eyeYMeters: experienceFloorDatum + EYE_HEIGHT_STEPS[1]!.metres,
-			fovYDegrees: LENS_STEPS[1]!.fovYDegrees,
-			aspect: 16 / 10
-		});
-		if (framed === null) {
-			notice = 'The Stage could not frame that subject.';
-			return;
-		}
-		await controller.presentThisFramed(entityId, label, { eye: framed.eye, target: framed.target, fov: framed.fovYDegrees });
-	}
-
-	// Leaving the lens ends the provisional posture; the entry standpoint is never
-	// restored into another lens's Camera.
-	$effect(() => {
-		if (lens !== 'experience' && lookThroughSession !== null) untrack(() => exitLookThrough());
-	});
-
 	const viewEditPreview = $derived.by(() => {
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
@@ -1134,25 +936,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			pose: (viewId) => viewEdit?.advanced && viewEdit.viewId === viewId && viewEdit.moved ? viewEdit : null,
 			write: setAdvancedViewFraming
 		},
-		lookThroughViewId: () => lookThroughSession?.viewId ?? null,
-		lookThroughMoved: () => {
-			void lookThroughTick;
-			return facade?.camera.lookThrough()?.moved ?? false;
-		},
-		lookThroughFraming: () => {
-			void lookThroughTick;
-			const provisional = facade?.camera.provisionalView() ?? null;
-			return provisional === null
-				? null
-				: { fovYDegrees: provisional.fovYDegrees, eyeHeightMetres: provisional.eye[1] - experienceFloorDatum };
-		},
-		lookThroughLens: (fovYDegrees) => setLookThroughLens(fovYDegrees),
-		lookThroughEyeHeight: (metres) => setLookThroughEyeHeight(metres),
-		lookThrough: (viewId) => lookThroughView(viewId),
-		exitLookThrough,
-		updateLookThrough: () => updateLookThrough(),
-		captureProvisional,
-		presentThis,
+		lookThroughViewId: experienceLens.lookThroughViewId,
+		lookThroughMoved: experienceLens.lookThroughMoved,
+		lookThroughFraming: experienceLens.lookThroughFraming,
+		lookThroughLens: experienceLens.setLookThroughLens,
+		lookThroughEyeHeight: experienceLens.setLookThroughEyeHeight,
+		lookThrough: experienceLens.lookThroughView,
+		exitLookThrough: experienceLens.exitLookThrough,
+		updateLookThrough: () => experienceLens.updateLookThrough(),
+		captureProvisional: experienceLens.captureProvisional,
+		presentThis: experienceLens.presentThis,
 		playback: () => experienceLens.playback,
 		previewMode: (mode, guideId) => void openPreview(mode, guideId),
 		guideSeconds: experienceLens.guideSeconds,
@@ -1895,7 +1688,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	// `bind:this` lands after the first look-through refresh; measure it then.
 	$effect(() => {
 		const frame = throughFrameEl;
-		const session = lookThroughSession;
+		const session = experienceLens.lookThroughSession();
 		if (frame !== null && session !== null) untrack(() => refresh());
 	});
 
@@ -1927,7 +1720,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let tracePreview = $state<PerfTracePreview | null>(null);
 
 	function refresh(): void {
-		advanceLookThroughZoom(performance.now());
+		experienceLens.advanceLookThroughZoom(performance.now());
 		const stage = facade;
 		if (stage === null) return;
 		// The gesture lease is host state that changes what Undo can do without an
@@ -1945,7 +1738,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// Look through renders the real picture inside its 16:10 capture frame; the
 		// same measured rect is both Camera's evaluation and the Canvas scissor.
 		let currentRect = rect ?? measure();
-		const framed = lookThroughSession === null ? null : measureThroughFrame();
+		const framed = experienceLens.lookThroughSession() === null ? null : measureThroughFrame();
 		if (framed !== null) currentRect = framed.absolute;
 		if (framed === null) {
 			if (throughViewport !== null) throughViewport = null;
@@ -2787,9 +2580,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
 		if (viewEdit !== null) return;
-		if (lens === 'experience' && lookThroughSession !== null) { beginReaim(event); return; }
+		if (lens === 'experience' && experienceLens.lookThroughSession() !== null) { experienceLens.beginReaim(event); return; }
 		if (lens === 'experience' && experienceTool === 'place') { experienceLens.beginPlacement(event); return; }
-		if (lens === 'experience' && lookThroughSession === null && experienceTool === 'select' && event.button === 0) {
+		if (lens === 'experience' && experienceLens.lookThroughSession() === null && experienceTool === 'select' && event.button === 0) {
 			const mark = viewMarkAt(event);
 			if (mark !== null && (!event.shiftKey || mark.viewId === advancedViewId)) {
 				if (mark.kind === 'eye' || mark.kind === 'move' || mark.kind === 'turn' ||
@@ -3049,7 +2842,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (oldDistance > 0 && newDistance > 0) zoom(oldDistance / newDistance);
 			return;
 		}
-		if (lookThroughSession !== null) { moveReaim(event); return; }
+		if (experienceLens.lookThroughSession() !== null) { experienceLens.moveReaim(event); return; }
 		if (experienceLens.placementPress() !== null) { experienceLens.movePlacement(event); return; }
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
@@ -3158,7 +2951,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			}
 			return;
 		}
-		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
+		if (experienceLens.lookThroughSession() !== null) { experienceLens.endReaim(event.pointerId); return; }
 		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.endPlacement(); return; }
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
@@ -3242,14 +3035,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	function onPointerCancel(event: PointerEvent): void {
 		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) cancelViewEdit(); return; }
-		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
+		if (experienceLens.lookThroughSession() !== null) { experienceLens.endReaim(event.pointerId); return; }
 		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
 		if (viewEdit !== null && viewEdit.pointerId === event.pointerId) { cancelViewEdit(); return; }
-		if (lookThroughPointers.has(event.pointerId)) { endReaim(event.pointerId); return; }
+		if (experienceLens.hasLookThroughPointer(event.pointerId)) { experienceLens.endReaim(event.pointerId); return; }
 		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
@@ -3269,7 +3062,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// click just as it owned the press; picking the floor here clears the Card.
 		if (lens === 'experience' && viewMarkAt(event) !== null) return;
 		// Look through owns the Stage: a drag turns the view and its release is not a pick.
-		if (lens === 'experience' && (lookThroughSession !== null || experienceTool === 'place')) return;
+		if (lens === 'experience' && (experienceLens.lookThroughSession() !== null || experienceTool === 'place')) return;
 		// An **armed dock tool** owns the Stage surface: its tap already placed a
 		// point, split a Wall or was refused, and re-selecting underneath it would
 		// silently move what the tool is editing. Another adapter's task (Compose,
@@ -3303,13 +3096,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		event.preventDefault();
 		if (viewEdit !== null) return;
 		const stage = facade;
-		if (lens === 'experience' && lookThroughSession !== null && stage !== null) {
+		if (lens === 'experience' && experienceLens.lookThroughSession() !== null && stage !== null) {
 			const now = performance.now();
-			advanceLookThroughZoom(now);
+			experienceLens.advanceLookThroughZoom(now);
 			const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? (evaluation?.rect.height ?? 1) : 1);
-			const remaining = lookThroughZoom === null ? 0 : lookThroughZoom.pending - lookThroughZoom.applied;
-			lookThroughZoom = { pending: remaining - pixels * 0.004, startedAt: now, applied: 0 };
-			if (reducedMotion) advanceLookThroughZoom(now, true);
+			experienceLens.queueLookThroughZoom(pixels, now);
 			return;
 		}
 		zoom(Math.exp(event.deltaY * 0.001));
@@ -3352,10 +3143,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				notice = '';
 				return;
 			}
-			if (lookThroughSession !== null) {
+			if (experienceLens.lookThroughSession() !== null) {
 				event.preventDefault();
 				event.stopPropagation();
-				exitLookThrough();
+				experienceLens.exitLookThrough();
 				return;
 			}
 		}
@@ -4808,7 +4599,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				data-paper={paperVisible ? 'true' : 'false'}
 				data-cursor={viewEdit !== null ? (viewEdit.kind === 'turn' ? 'turn' : 'grabbing')
 				: drag?.mode === 'pan' || drag?.mode === 'orbit' || (drag?.mode === 'adapter' && task === null) ? 'grabbing'
-				: lookThroughSession !== null ? 'look'
+				: experienceLens.lookThroughSession() !== null ? 'look'
 				: experienceTool === 'place' ? 'place-view'
 				: hoverMove ? 'move'
 				: task?.kind === 'layout-ink' || armedHostTool !== null ? 'draw'
@@ -4823,7 +4614,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				onlostpointercapture={onLostPointerCapture}
 				onclick={onClick}
 				onwheel={onWheel}
-				oncontextmenu={(event) => { if (lookThroughSession !== null) event.preventDefault(); }}
+				oncontextmenu={(event) => { if (experienceLens.lookThroughSession() !== null) event.preventDefault(); }}
 			>
 				{#if boot.status === 'ready' || boot.status === 'empty'}
 					<StageCanvas
@@ -4844,7 +4635,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						contentBounds={paperContentBounds}
 						snapshotBounds={stageContentBounds}
 						environment={editOnPaper ? 'paper' : worldEnvironment}
-						framedViewport={lookThroughSession !== null ? throughViewport : null}
+						framedViewport={experienceLens.lookThroughSession() !== null ? throughViewport : null}
 							{selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
@@ -4853,12 +4644,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					/>
 				{/if}
 				<div class="overlay-layer">
-					{#if lookThroughSession === null}
+					{#if experienceLens.lookThroughSession() === null}
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
 								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 					{/if}
-					{#if lens === 'experience' && evaluation !== null && lookThroughSession === null}
+					{#if lens === 'experience' && evaluation !== null && experienceLens.lookThroughSession() === null}
 						<ExperienceMarks
 							{evaluation}
 							placementGhost={experienceLens.placementGhost()}
@@ -4866,7 +4657,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							advanced={advancedViewId !== null}
 							datum={experienceFloorDatum}
 							rig={playback.status === 'idle' ? null : playback.sample}
-							onLookThrough={lookThroughView}
+							onLookThrough={experienceLens.lookThroughView}
 							{showMarkers}
 							{showFrustums}
 							{showPaths}
@@ -4905,7 +4696,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="stage-actions"
-					style:display={lookThroughSession !== null ? 'none' : undefined}
+					style:display={experienceLens.lookThroughSession() !== null ? 'none' : undefined}
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
@@ -5075,7 +4866,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{/key}
 				{/if}
 
-				{#if lens === 'experience' && lookThroughSession !== null}
+				{#if lens === 'experience' && experienceLens.lookThroughSession() !== null}
 					<!-- The capture frame sits beside the Card and above the Guide; helpers are hidden. -->
 					<div class="through-slot" bind:this={throughFrameEl} data-through-frame>
 						<div class="through-frame" aria-hidden="true"></div>
@@ -5089,25 +4880,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onpointerdown={(event) => event.stopPropagation()}
 					>
 						<span class="live-dot" aria-hidden="true"></span>
-						<span>Looking through <b>{lookThroughSession.label}</b></span>
-						{#if lookThroughMoved}<span class="moved">moved</span>{/if}
+						<span>Looking through <b>{experienceLens.lookThroughSession()!.label}</b></span>
+						{#if experienceLens.lookThroughMoved()}<span class="moved">moved</span>{/if}
 						<button
 							type="button"
 							class="pill-gold"
-							disabled={!lookThroughMoved || (activeExperience?.busy ?? false)}
-							title={lookThroughMoved ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
-							onclick={() => void updateLookThrough(lookThroughConfirm !== null)}>Update View</button
+							disabled={!experienceLens.lookThroughMoved() || (activeExperience?.busy ?? false)}
+							title={experienceLens.lookThroughMoved() ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
+							onclick={() => void experienceLens.updateLookThrough(experienceLens.lookThroughConfirm() !== null)}>Update View</button
 						>
-						<button type="button" onclick={exitLookThrough}>Exit View Esc</button>
-						<button type="button" title="Capture this provisional pose as a new View" onclick={() => void captureProvisional()}>Capture</button>
+						<button type="button" onclick={experienceLens.exitLookThrough}>Exit View Esc</button>
+						<button type="button" title="Capture this provisional pose as a new View" onclick={() => void experienceLens.captureProvisional()}>Capture</button>
 					</div>
-					{#if lookThroughConfirm !== null}
+					{#if experienceLens.lookThroughConfirm() !== null}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
-							<p>Also changes {lookThroughConfirm.join(', ')}.</p>
+							<p>Also changes {experienceLens.lookThroughConfirm()!.join(', ')}.</p>
 							<div class="through-confirm-actions">
-								<button type="button" class="pill-gold" onclick={() => void updateLookThrough(true)}>Update View</button>
-								<button type="button" onclick={() => (lookThroughConfirm = null)}>Cancel</button>
+								<button type="button" class="pill-gold" onclick={() => void experienceLens.updateLookThrough(true)}>Update View</button>
+								<button type="button" onclick={() => experienceLens.clearLookThroughConfirm()}>Cancel</button>
 							</div>
 						</div>
 					{/if}
@@ -5122,7 +4913,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						</div>
 					</div>
 				{/if}
-				{#if lens === 'experience' && showExperienceWelcome && lookThroughSession === null && experienceTool === 'select'}
+				{#if lens === 'experience' && showExperienceWelcome && experienceLens.lookThroughSession() === null && experienceTool === 'select'}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<aside class="experience-welcome" aria-label="Welcome to Experience" onpointerdown={(event) => event.stopPropagation()} onclick={(event) => event.stopPropagation()}>
 						<span>Welcome to Experience</span>
