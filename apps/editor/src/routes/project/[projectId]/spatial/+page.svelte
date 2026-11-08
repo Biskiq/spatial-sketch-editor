@@ -760,12 +760,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		heightSheet.set(heightMetersValue, cause);
 		heightMeters = heightSheet.height();
 	}
+	/** Session-only pin creation; pin removal is intentionally unexposed. */
 	function addHeightPin(): void {
 		heightSheet.addPin(heightMeters);
-		heightPins = heightSheet.pins();
-	}
-	function removeHeightPin(heightMetersValue: number): void {
-		heightSheet.removePin(heightMetersValue);
 		heightPins = heightSheet.pins();
 	}
 	function setHeightPlaneActive(active: boolean): void {
@@ -912,11 +909,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let sheetLaneWidth = $state(0);
 	/** True while an authored (non-navigation) gesture holds the Stage: the Card fades (D36). */
 	let cardGesturing = $state(false);
-	/**
-	 * TD-15 — the one pin hint belongs to this Stage session (this host), not to the
-	 * module, so a fresh Stage shows its own first-pin hint.
-	 */
-	let pinHintSeen = $state(false);
 	/**
 	 * Whether the contextual Card is shown. Closing the Card never clears the
 	 * selection: the Index keeps echoing it, and selecting the subject again (or
@@ -3842,8 +3834,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
 						the control and its plane are hidden in Experience and return with the
 						session height on the way back. The slot is a transparent wrapper: the
-						Sheet places its own lane and its pin hint on the Stage, so neither is
-						clipped by a box of the slot's own.
+						Sheet places its own lane on the Stage, so it is not clipped by a box of
+						the slot's own.
 					-->
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
@@ -3858,14 +3850,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 								snapIncrement={heightSnapIncrement}
 								{reducedMotion}
 								side={heightSheetSide}
-								{pinHintSeen}
-								onPinHintSeen={() => (pinHintSeen = true)}
+								drawing={task?.kind === 'layout-ink'}
 								bind:laneRef={sheetLaneEl}
 								onSetHeight={setHeight}
 								onAddPin={addHeightPin}
-								onRemovePin={removeHeightPin}
 								onActiveChange={setHeightPlaneActive}
-								onResetSubscribe={(onReset) =>
+								onResetSubscribe={(onReset: () => void) =>
 									heightSheet.subscribeReset('height-sheet-control', onReset)}
 							/>
 						</div>

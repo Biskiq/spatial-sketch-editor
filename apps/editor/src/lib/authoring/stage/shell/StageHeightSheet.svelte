@@ -1,10 +1,5 @@
 <script module lang="ts">
 	/**
-	 * How long the one-time pin hint stays before it clears itself. The hint is never
-	 * dismissed by the creator: it appears once per Stage session and goes away.
-	 */
-	export const PIN_HINT_MS = 6000;
-	/**
 	 * The rail's height in CSS px (13 rem at the root size). The tick labels use it only to
 	 * skip a label that would sit on the one above it; the layout itself is in rem.
 	 */
@@ -13,13 +8,10 @@
 	export const TICK_LABEL_GAP_PX = 16;
 </script>
 
-<svelte:window onkeyup={(event) => { if (event.key === 'Enter') openingKeyHeld = false; }} />
-
 <script lang="ts">
-	/** Session-only height rail, neutral pins and invoked precision. No source, history or selection writes. */
+	/** Session-only height rail and neutral pins. No source, history or selection writes. */
 	import { onMount } from 'svelte';
 	import ShellIcon from './ShellIcon.svelte';
-	import { parseMeasureInput } from '$lib/authoring/adapters/layout/precision';
 	import { PLAN_DEFAULT_CUT_HEIGHT_METERS } from '../plan-parameters';
 	import type { StageHeightCause, StageHeightTick } from '../stage-height-sheet';
 
@@ -30,12 +22,15 @@
 		snapIncrement,
 		reducedMotion = false,
 		side = 'right',
-		pinHintSeen = false,
-		onPinHintSeen = () => {},
+		/**
+		 * While an authored drawing task owns the Stage, the Sheet's lane must not
+		 * intercept presses aimed at the canvas beneath it. It stays visible and
+		 * keyboard-operable; only its pointer surface yields.
+		 */
+		drawing = false,
 		laneRef = $bindable(null),
 		onSetHeight,
 		onAddPin,
-		onRemovePin,
 		onActiveChange,
 		onResetSubscribe
 	}: {
@@ -46,17 +41,12 @@
 		snapIncrement: number;
 		reducedMotion?: boolean;
 		side?: 'left' | 'right';
-		/**
-		 * Whether this Stage session has already shown the pin hint. The owner (the Stage
-		 * host) holds it, so a fresh Stage session shows its own first-pin hint.
-		 */
-		pinHintSeen?: boolean;
-		onPinHintSeen?: () => void;
+		drawing?: boolean;
 		/** The Sheet's own lane box, so the host can publish its measured width. */
 		laneRef?: HTMLElement | null;
 		onSetHeight: (heightMeters: number, cause: StageHeightCause) => void;
+		/** Creates a session pin at the current working height. Removal stays unexposed. */
 		onAddPin: () => void;
-		onRemovePin: (heightMeters: number) => void;
 		onActiveChange: (active: boolean) => void;
 		onResetSubscribe: (onReset: () => void) => () => void;
 	} = $props();
@@ -70,31 +60,6 @@
 		observer.observe(node);
 		return { destroy: () => observer.disconnect() };
 	}
-	function focusNumeric(node: HTMLInputElement): void {
-		node.focus();
-		node.select();
-	}
-	let numeric = $state(false);
-	let openingKeyHeld = false;
-	let heightText = $state('');
-	let heightError = $state('');
-	let pinContext = $state<number | null>(null);
-	function editHeight(fromKeyboard = false): void {
-		openingKeyHeld = fromKeyboard;
-		heightText = String(heightMeters);
-		numeric = true;
-		heightError = '';
-	}
-	function commitHeight(): void {
-		if (openingKeyHeld) return;
-		const parsed = parseMeasureInput(heightText);
-		if (!parsed.ok || parsed.value < 0) {
-			heightError = parsed.ok ? 'Height must be zero or greater.' : parsed.reason;
-			return;
-		}
-		onSetHeight(parsed.value, 'key');
-		numeric = false;
-	}
 	let active = false;
 	let dragging = $state(false);
 	let hovered = $state(false);
@@ -103,8 +68,6 @@
 	let touching = $state(false);
 	let dragPointerId: number | null = null;
 	let snapName = $state<string | null>(null);
-	let hintVisible = $state(false);
-	let hintTimer: ReturnType<typeof setTimeout> | null = null;
 	let track = $state<HTMLDivElement | undefined>(undefined);
 
 	const maxMeters = $derived(
@@ -277,10 +240,6 @@
 			dragPointerId = null;
 			snapName = null;
 			touching = false;
-			if (hintTimer !== null) {
-				clearTimeout(hintTimer);
-				hintTimer = null;
-			}
 			if (active) {
 				active = false;
 				onActiveChange(false);
@@ -306,11 +265,6 @@
 
 	function onKeydown(event: KeyboardEvent): void {
 		switch (event.key) {
-			case 'Enter':
-				event.preventDefault();
-				event.stopPropagation();
-				editHeight(true);
-				return;
 			case 'ArrowUp':
 			case 'ArrowRight':
 				event.preventDefault();
@@ -338,22 +292,6 @@
 		}
 	}
 
-	/**
-	 * Pin the current height. The first pin of a Stage session shows the hint, once,
-	 * and the hint clears itself; a later pin shows nothing.
-	 */
-	function pinAtHeight(): void {
-		onAddPin();
-		if (pinHintSeen) return;
-		onPinHintSeen();
-		hintVisible = true;
-		if (hintTimer !== null) clearTimeout(hintTimer);
-		hintTimer = setTimeout(() => {
-			hintVisible = false;
-			hintTimer = null;
-		}, PIN_HINT_MS);
-	}
-
 	function stopPointer(event: PointerEvent): void {
 		event.stopPropagation();
 	}
@@ -364,8 +302,8 @@
 	class="sheet"
 	class:left={side === 'left'}
 	class:instant={reducedMotion}
+	class:drawing
 	data-stage-height-sheet
-	data-ink="forest-on-paper"
 	bind:this={laneRef}
 	onpointerenter={() => {
 		hovered = true;
@@ -416,8 +354,7 @@
 			onpointercancel={onPointerEnd}
 			onlostpointercapture={onPointerEnd}
 			onkeydown={onKeydown}
-			ondblclick={() => editHeight()}
-			title="Working height · drag, or Enter to type"
+			title="Working height · drag"
 		>
 			<span class="rail" aria-hidden="true"></span>
 			{#each ticks as tick (`${tick.kind}:${tick.heightMeters}:${tick.label}`)}
@@ -434,10 +371,10 @@
 					type="button"
 					class="pin"
 					style={`bottom: ${percentOf(pin)}%`}
-					aria-label={`Pin at ${pin.toFixed(2)} metres; options`}
-					title={`Remove pin at ${pin.toFixed(2)} m`}
+					aria-label={`Jump to pin at ${pin.toFixed(2)} metres`}
+					title={`Jump to pin at ${pin.toFixed(2)} m`}
 					onpointerdown={stopPointer}
-					onclick={() => (pinContext = pinContext === pin ? null : pin)}
+					onclick={() => onSetHeight(pin, 'tick')}
 				>
 					<span class="pin-dot"></span>
 				</button>
@@ -453,61 +390,16 @@
 			aria-label={`Pin the height at ${heightMeters.toFixed(2)} metres`}
 			title="Pin this height for the session"
 			onpointerdown={stopPointer}
-			onclick={pinAtHeight}
+			onclick={() => onAddPin()}
 		>
 			<ShellIcon name="pin" size={12} />
 		</button>
 	</div>
-	{#if numeric}<form
-			class="numeric"
-			style={`bottom:${percentOf(heightMeters)}%`}
-			onsubmit={(event) => {
-				event.preventDefault();
-				commitHeight();
-			}}
-		>
-			<label
-				>Height (m)<input
-					aria-label="Sheet height (m)"
-					use:focusNumeric
-					type="text"
-					inputmode="decimal"
-					bind:value={heightText}
-					onkeydown={(event) => {
-						if (event.key === 'Escape') {
-							event.preventDefault();
-							event.stopPropagation();
-							numeric = false;
-							track?.focus();
-						}
-					}}
-				/></label
-			><button type="submit">Apply</button>{#each pins as pin}<button
-					type="button"
-					onclick={() => onRemovePin(pin)}>Remove pin at {pin.toFixed(2)} m</button
-				>{/each}{#if heightError}<p role="alert">
-					{heightError}
-				</p>{/if}
-		</form>{/if}
-	{#if pinContext !== null}<div class="pin-context" style={`bottom:${percentOf(pinContext)}%`}>
-			<button
-				type="button"
-				onclick={() => {
-					onRemovePin(pinContext!);
-					pinContext = null;
-				}}>Remove pin</button
-			><button type="button" onclick={() => (pinContext = null)}>Close</button>
-		</div>{/if}
 
 	{#if snapName !== null}
 		<p class="snap" role="status">{snapName}</p>
 	{/if}
 </div>
-{#if hintVisible}
-	<p class="hint" role="note" data-pin-hint>
-		Pins mark a working height for this session. They are never saved.
-	</p>
-{/if}
 
 <style>
 	.sheet {
@@ -523,6 +415,32 @@
 	.sheet.left {
 		right: auto;
 		left: calc(10px + var(--index-cover, 0px));
+	}
+	/*
+	 * The armed drawing tool owns the Stage. The full-lane track yields so a press
+	 * on the lane reaches the canvas; the knob handle and pins remain
+	 * pointer-operable. The knob's expanded hit area is the slider's pointer
+	 * handle during drawing.
+	 */
+	.sheet.drawing {
+		pointer-events: none;
+	}
+	.sheet.drawing .track {
+		pointer-events: none;
+	}
+	.sheet.drawing .knob {
+		pointer-events: auto;
+		cursor: ns-resize;
+	}
+	.sheet.drawing .knob::before {
+		content: '';
+		position: absolute;
+		inset: -11px -2px;
+		border-radius: 12px;
+	}
+	.sheet.drawing .pin,
+	.sheet.drawing .add {
+		pointer-events: auto;
 	}
 	.rail-wrap {
 		position: relative;
@@ -542,20 +460,20 @@
 		left: calc(50% - 1px);
 		width: 2px;
 		border-radius: 1px;
-		background: rgb(27 32 28 / 0.2);
-		box-shadow: 0 0 1px var(--shell-white);
+		background: rgb(255 255 255 / 0.28);
 	}
 	.tick {
 		position: absolute;
 		left: 50%;
 		width: 10px;
 		height: 1.5px;
-		background: var(--shell-ink-3);
+		background: rgb(255 255 255 / 0.7);
 		transform: translate(-50%, 50%);
 	}
 	.tick.datum {
 		width: 22px;
 		height: 2.5px;
+		background: var(--shell-white);
 	}
 	.knob {
 		position: absolute;
@@ -563,6 +481,7 @@
 		transform: translate(-50%, 50%);
 		display: grid;
 		place-items: center;
+		box-sizing: border-box;
 		height: 22px;
 		min-width: 40px;
 		padding: 0 5px;
@@ -592,21 +511,6 @@
 		transform: translateY(50%);
 		font: 11px var(--shell-sans);
 	}
-	.add {
-		position: absolute;
-		right: calc(100% + 3px);
-		display: grid;
-		place-items: center;
-		width: 20px;
-		height: 20px;
-		padding: 0;
-		transform: translateY(50%);
-		border: 0;
-		border-radius: 50%;
-		background: #11291fdd;
-		color: var(--shell-white);
-		cursor: pointer;
-	}
 	.pin {
 		position: absolute;
 		left: 50%;
@@ -623,43 +527,23 @@
 	.pin-dot {
 		width: 8px;
 		height: 8px;
-		border: 1px solid var(--shell-white);
-		border-radius: 50%;
-		background: var(--shell-ink-3);
-		box-shadow: 0 0 1px var(--shell-forest);
-	}
-	.numeric,
-	.pin-context {
-		position: absolute;
-		right: calc(100% + 8px);
-		z-index: 20;
-		width: 180px;
-		padding: 8px;
-		border: 1px solid var(--shell-hairline);
-		border-radius: 8px;
-		background: var(--shell-white);
-		color: var(--shell-ink);
-		box-shadow: var(--shell-shadow);
-	}
-	.numeric label {
-		display: grid;
-		gap: 3px;
-	}
-	.numeric input {
-		box-sizing: border-box;
-		width: 100%;
-		height: 26px;
-		padding: 0 6px;
-		border: 1px solid var(--shell-hairline-strong);
-		border-radius: 6px;
-		font: 12px var(--shell-mono);
-	}
-	.numeric button,
-	.pin-context button {
-		min-height: 26px;
 		border: 0;
-		border-radius: 6px;
-		background: var(--shell-leaf-tint);
+		border-radius: 50%;
+		background: var(--shell-white);
+	}
+	.add {
+		position: absolute;
+		right: calc(100% + 3px);
+		display: grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
+		padding: 0;
+		transform: translateY(50%);
+		border: 0;
+		border-radius: 50%;
+		background: #11291fdd;
+		color: var(--shell-white);
 		cursor: pointer;
 	}
 	.snap {
@@ -672,25 +556,17 @@
 		background: #11291fdd;
 		color: var(--shell-white);
 	}
-	.hint {
-		position: absolute;
-		left: calc(12px + var(--index-cover, 0px));
-		bottom: 80px;
-		z-index: 9;
-		max-width: 256px;
-		padding: 8px;
-		border-radius: 8px;
-		background: var(--shell-forest);
-		color: var(--shell-ink-light);
-		font-size: 12px;
-		pointer-events: none;
-	}
 	@media (pointer: coarse) {
 		.sheet {
 			width: 44px;
 		}
 		.track {
 			width: 44px;
+		}
+		.pin {
+			pointer-events: auto;
+			min-width: 44px;
+			min-height: 44px;
 		}
 		.add {
 			width: 44px;
@@ -702,17 +578,6 @@
 			box-sizing: content-box;
 			border-radius: 50%;
 			background: #11291fdd;
-		}
-		.pin {
-			pointer-events: none;
-			min-width: 44px;
-			min-height: 44px;
-		}
-		.numeric input,
-		.numeric button,
-		.pin-context button {
-			min-height: 44px;
-			min-width: 44px;
 		}
 	}
 </style>

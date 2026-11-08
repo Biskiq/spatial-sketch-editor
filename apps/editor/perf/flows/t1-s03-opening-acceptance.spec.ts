@@ -16,7 +16,17 @@ import { resolve } from 'node:path';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
-import { acceptedResultCount, uniqueProjectId, waitForAcceptedResult } from '../lib/flow';
+import {
+	acceptedResultCount,
+	addInkPoint,
+	chooseCreateStarter,
+	downloadSourceJson,
+	fitStage,
+	gotoCreateIntent,
+	setStageReading,
+	uniqueProjectId,
+	waitForAcceptedResult
+} from '../lib/flow';
 import { perfInitScript } from '../lib/ledger';
 
 const apiOrigin = process.env.PERF_API_ORIGIN;
@@ -118,9 +128,8 @@ async function session(
 
 async function startProject(page: Page, starter: 'Enclosed room' | 'Begin empty'): Promise<string> {
 	const projectId = uniqueProjectId('t1s03');
-	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-	await page.getByRole('button', { name: starter, exact: true }).click();
+	await gotoCreateIntent(page, projectId);
+	await chooseCreateStarter(page, starter);
 	await expect(page.locator(STAGE)).toBeVisible({ timeout: 60_000 });
 	await expect(page.locator(DOCK)).toBeVisible();
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
@@ -153,18 +162,12 @@ async function waitForCameraSettled(page: Page, timeout = 20_000): Promise<void>
 }
 
 async function fitPlan(page: Page): Promise<void> {
-	await page.locator('.stage-actions').getByRole('button', { name: 'Fit', exact: true }).click();
-	await waitForCameraSettled(page);
-	await page.locator('.stage-actions').getByRole('button', { name: 'Plan', exact: true }).click();
-	await expect(page.locator('.stage-actions').getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute('aria-pressed', 'true');
-	await waitForCameraSettled(page);
+	await fitStage(page);
+	await setReading(page, 'Plan');
 }
 
 async function setReading(page: Page, reading: 'Plan' | '3D'): Promise<void> {
-	const button = page.locator('.stage-actions').getByRole('button', { name: reading, exact: true });
-	await button.click();
-	await expect(button).toHaveAttribute('aria-pressed', 'true');
-	await waitForCameraSettled(page);
+	await setStageReading(page, reading);
 }
 
 async function armInk(page: Page): Promise<void> {
@@ -234,10 +237,7 @@ async function finishWithEnter(page: Page): Promise<void> {
 }
 
 async function downloadSource(page: Page): Promise<Record<string, any>> {
-	const [download] = await Promise.all([
-		page.waitForEvent('download'),
-		page.getByRole('button', { name: 'Download source JSON', exact: true }).click()
-	]);
+	const download = await downloadSourceJson(page);
 	const path = await download.path();
 	if (path === null) throw new Error('the source download produced no local path');
 	return JSON.parse(await readFile(path, 'utf8')) as Record<string, any>;
@@ -332,7 +332,7 @@ async function selectSubject(page: Page, sourceId: string): Promise<void> {
 	const closeCard = page.getByRole('button', { name: 'Close selection card' });
 	if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
 	await page.locator('#plate-index-search').fill(sourceId);
-	const row = page.locator('button.item-row', { hasText: sourceId }).first();
+	const row = page.locator(`li.item[data-source-id$=":${sourceId}"] button.item-row`).first();
 	await expect(row).toBeVisible();
 	await row.click();
 	await expect(page.locator(CARD)).toBeVisible();
@@ -606,12 +606,10 @@ test('empty: draw a Wall, then place a window with keyboard metrics', async ({ b
 		await fitPlan(page);
 		await armInk(page);
 		const typePoint = async (x: number, z: number, count: number) => {
-			await page.locator('[data-ink-x]').fill(String(x));
-			await page.locator('[data-ink-z]').fill(String(z));
-			await page.locator('[data-ink-add-point]').click();
+			await addInkPoint(page, x, z);
 			await expect.poll(async () => {
-				const text = await page.locator('[data-layout-ink-palette] .live').innerText();
-				return Number(/Points\s*(\d+)/.exec(text)?.[1] ?? -1);
+				const value = await page.locator('[data-layout-ink-palette]').getAttribute('data-ink-points');
+				return value === null ? -1 : Number(value);
 			}, { timeout: 10_000 }).toBe(count);
 		};
 		await typePoint(0, 0, 1);

@@ -18,6 +18,7 @@ export default defineConfig({
 	testDir: './flows',
 	testMatch: [
 		'spot-wiring.spec.ts',
+		'shell-favicon.spec.ts',
 		't1-s02-browser-acceptance.spec.ts',
 		't1-s03-opening-acceptance.spec.ts',
 		't1-s04-integrated-acceptance.spec.ts',
@@ -31,7 +32,8 @@ export default defineConfig({
 		'head-lifetime.spec.ts',
 		'renderer-lifetime.spec.ts',
 		'trace-unit.spec.ts',
-		'trace-gate-unit.spec.ts'
+		'trace-gate-unit.spec.ts',
+		'core-closeout-live.spec.ts'
 	],
 	fullyParallel: false,
 	workers: 1,

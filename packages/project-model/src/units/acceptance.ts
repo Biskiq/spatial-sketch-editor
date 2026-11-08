@@ -230,6 +230,89 @@ function lockChanged(before: ProjectEnvelope, after: ProjectEnvelope): boolean {
 	return JSON.stringify(left) !== JSON.stringify(right);
 }
 
+/** The header fields a unit payload's planner never owns. */
+const UNIT_HEADER_AUTHORED_FIELDS = ['domain', 'unitId', 'formatVersion'] as const;
+
+/**
+ * Unit headers are bookkeeping, not planner input.
+ *
+ * `contentRevision` is deliberately excluded: normalization derives it from the
+ * payload, so it must move with a legitimate content change. The other header
+ * fields identify the codec and are authored envelope facts; a candidate that
+ * rewrites one is changing something no domain planner was granted.
+ */
+function unitHeaderIssues(before: ProjectEnvelope, after: ProjectEnvelope): ShapeIssue[] {
+	const issues: ShapeIssue[] = [];
+	for (const domain of UNIT_DOMAINS) {
+		const previous = before.units[domain].header;
+		const candidate = after.units[domain].header;
+		for (const field of UNIT_HEADER_AUTHORED_FIELDS) {
+			if (previous[field] === candidate[field]) continue;
+			issues.push(
+				issue(
+					`$.units.${domain}.header.${field}`,
+					'unit-header-mismatch',
+					`an accepted operation cannot change the ${domain} unit header's ${field}`
+				)
+			);
+		}
+	}
+	return issues;
+}
+
+/**
+ * One unit-scoped lock entry's authored metadata, without the revision
+ * normalization derives. A resource entry is excluded by the caller: resource
+ * locks have their own grant and are compared by `lockChanged`.
+ */
+function unitLockMetadata(entry: ProjectEnvelope['dependencyLock']['entries'][number]): string {
+	return JSON.stringify({
+		domain: entry.domain,
+		subjectKind: entry.subjectKind,
+		subjectId: entry.subjectId,
+		instancePath: entry.instancePath,
+		requiredCapabilities: entry.requiredCapabilities,
+		pin: entry.pin
+	});
+}
+
+/**
+ * Unit-scoped lock entries are derived bookkeeping too: a planner never owns
+ * their presence, order, subject or capability metadata. Only their
+ * `contentRevision` may move, and only because `normalizeUnitEnvelope`
+ * recomputes it from the candidate's own unit data.
+ */
+function unitLockIssues(before: ProjectEnvelope, after: ProjectEnvelope): ShapeIssue[] {
+	const left = before.dependencyLock.entries
+		.map((entry, index) => ({ entry, index }))
+		.filter(({ entry }) => !entry.domain.startsWith('resource:'));
+	const right = after.dependencyLock.entries
+		.map((entry, index) => ({ entry, index }))
+		.filter(({ entry }) => !entry.domain.startsWith('resource:'));
+	if (left.length !== right.length) {
+		return [
+			issue(
+				'$.dependencyLock.entries',
+				'lock-metadata-mismatch',
+				'an accepted operation cannot add or remove unit-scoped dependency lock entries'
+			)
+		];
+	}
+	const issues: ShapeIssue[] = [];
+	for (const [position, candidate] of right.entries()) {
+		const previous = left[position]!;
+		if (unitLockMetadata(previous.entry) === unitLockMetadata(candidate.entry)) continue;
+		issues.push(
+			issue(
+				`$.dependencyLock.entries[${candidate.index}]`,
+				'lock-metadata-mismatch',
+				'an accepted operation cannot change a unit-scoped lock entry\'s subject, capabilities or pin'
+			)
+		);
+	}
+	return issues;
+}
+
 /**
  * The F.2 source adapter for the landed coordinator.
  *
@@ -424,6 +507,10 @@ export function createUnitAcceptanceAdapter(
 					)
 				);
 			}
+			// A header or unit-lock rewrite changes no unit payload digest, so it
+			// cannot be attributed to a planner by `changedDomains`; refuse it here.
+			issues.push(...unitHeaderIssues(before, after));
+			issues.push(...unitLockIssues(before, after));
 			const changed = changedDomains(before, after);
 			// Two admissions hold, in this order: the host profile grants compound
 			// installs at all, and the producing planner's declaration says which

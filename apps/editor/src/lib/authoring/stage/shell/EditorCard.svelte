@@ -164,6 +164,8 @@
 	let detailOpen = $state(false);
 	let moreOpen = $state(false);
 	let actionTrigger = $state<HTMLButtonElement>();
+	/** The inline destructive action that opened its confirmation, for focus return. */
+	let inlineActionTrigger = $state<HTMLButtonElement>();
 	let panel = $state<HTMLDivElement>();
 	let titleButton = $state<HTMLButtonElement>();
 	let nameInput = $state<HTMLInputElement>();
@@ -226,6 +228,14 @@
 	let actionMessage = $state<string | null>(null);
 	let actionBusy = $state(false);
 
+	/** Cancel returns the creator to the action whose consequences they just read. */
+	async function cancelInlineAction(): Promise<void> {
+		confirming = null;
+		actionMessage = null;
+		await tick();
+		if (inlineActionTrigger?.isConnected) inlineActionTrigger.focus();
+	}
+
 	$effect(() => {
 		// The disclosure belongs to one action of one subject: switching subject,
 		// losing that action (a rebuilt adapter registry) or changing what its adapter
@@ -248,10 +258,11 @@
 	 * discloses rather than inheriting the confirmation its neighbour opened. A
 	 * non-destructive action runs directly.
 	 */
-	async function runAction(action: (typeof actions)[number]): Promise<void> {
+	async function runAction(action: (typeof actions)[number], trigger?: HTMLButtonElement): Promise<void> {
 		if (actionBusy) return;
 		const key = confirmationKeyOf(action);
 		if (action.destructive === true && confirming !== key) {
+			inlineActionTrigger = trigger;
 			confirming = key;
 			actionMessage = action.detail ?? null;
 			return;
@@ -441,11 +452,12 @@
 			{#if actions.some((action) => action.destructive === true)}<hr />{/if}
 			{#each actions.filter((action) => action.destructive === true) as action (`${action.adapterId}:${action.id}`)}
 				<button type="button" class="destructive" data-card-action={action.id} aria-label={action.label}
-					disabled={actionBusy} onclick={() => void runAction(action)}>
+					disabled={actionBusy}
+					onclick={(event) => void runAction(action, event.currentTarget)}>
 					{confirming === confirmationKeyOf(action) ? 'Confirm erase' : 'Erase'}
 				</button>
 			{/each}
-			{#if confirming !== null}<button type="button" onclick={() => { confirming = null; actionMessage = null; }}>Cancel</button>{/if}
+			{#if confirming !== null}<button type="button" onclick={cancelInlineAction}>Cancel</button>{/if}
 			{#if actionMessage}<p class="error" role="alert">{actionMessage}</p>{/if}
 		</div>
 	{/if}

@@ -767,6 +767,203 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 	});
 });
 
+describe('F.2 unit acceptance — authored envelope metadata is not planner-writable', () => {
+	function unitLockEntry(
+		source: ProjectEnvelope,
+		domain: 'layout' | 'camera',
+		subjectKind: string,
+		subjectId: string
+	): ProjectEnvelope['dependencyLock']['entries'][number] {
+		return {
+			domain,
+			subjectKind,
+			subjectId,
+			instancePath: [],
+			contentRevision: source.units[domain].header.contentRevision,
+			requiredCapabilities: [],
+			pin: null
+		};
+	}
+
+	it('refuses a unitId-only rewrite even though no payload revision moves', async () => {
+		const source = await envelope();
+		const candidate: ProjectEnvelope = {
+			...source,
+			units: {
+				...source.units,
+				layout: {
+					...source.units.layout,
+					header: { ...source.units.layout.header, unitId: 'unit-layout-forged' }
+				}
+			}
+		};
+		const issues = createUnitAcceptanceAdapter({ compound: true }).validateChange?.(source, candidate, {
+			domain: 'experience',
+			compound: true,
+			writes: ['camera'],
+			units: true,
+			resources: false
+		}) ?? [];
+		expect(issues).toContainEqual(
+			expect.objectContaining({ path: '$.units.layout.header.unitId', code: 'unit-header-mismatch' })
+		);
+	});
+
+	it('refuses a formatVersion-only header rewrite', async () => {
+		const source = await envelope();
+		const candidate: ProjectEnvelope = {
+			...source,
+			units: {
+				...source.units,
+				layout: {
+					...source.units.layout,
+					header: { ...source.units.layout.header, formatVersion: source.units.layout.header.formatVersion + 1 }
+				}
+			}
+		};
+		const issues = createUnitAcceptanceAdapter({ compound: true }).validateChange?.(source, candidate, {
+			domain: 'layout',
+			compound: false,
+			units: true,
+			resources: false
+		}) ?? [];
+		expect(issues).toContainEqual(
+			expect.objectContaining({ path: '$.units.layout.header.formatVersion', code: 'unit-header-mismatch' })
+		);
+	});
+
+	it('refuses a resolvable unit-scoped lock entry with uncatalogued capabilities', async () => {
+		const source = await envelope();
+		const adapter = createUnitAcceptanceAdapter({ compound: true });
+		const candidate: ProjectEnvelope = {
+			...source,
+			dependencyLock: {
+				formatVersion: 1,
+				entries: [
+					...source.dependencyLock.entries,
+					{
+						...unitLockEntry(source, 'layout', 'level', source.units.layout.data.floor.id),
+						requiredCapabilities: [{ id: 't1.test:uncatalogued', version: '1' }]
+					}
+				]
+			}
+		};
+		const admitted = await adapter.admit(candidate, []);
+		expect(admitted.kind).toBe('admitted');
+		if (admitted.kind !== 'admitted') return;
+		const issues = adapter.validateChange?.(source, admitted.source, {
+			domain: 'layout',
+			compound: false,
+			units: true,
+			resources: false
+		}) ?? [];
+		expect(issues).toContainEqual(
+			expect.objectContaining({ path: '$.dependencyLock.entries', code: 'lock-metadata-mismatch' })
+		);
+	});
+
+	it('refuses unit lock capability, pin and order rewrites', async () => {
+		const base = await envelope();
+		const first = unitLockEntry(base, 'layout', 'level', base.units.layout.data.floor.id);
+		const second = unitLockEntry(base, 'camera', 'view', 'view-entry');
+		const source: ProjectEnvelope = {
+			...base,
+			dependencyLock: { formatVersion: 1, entries: [first, second] }
+		};
+		const adapter = createUnitAcceptanceAdapter({ compound: true });
+		const admission = { domain: 'layout' as const, compound: false, units: true, resources: false };
+		const cases: readonly ProjectEnvelope[] = [
+			{
+				...source,
+				dependencyLock: {
+					formatVersion: 1,
+					entries: [{ ...first, requiredCapabilities: [{ id: 't1.test:other', version: '1' }] }, second]
+				}
+			},
+			{
+				...source,
+				dependencyLock: {
+					formatVersion: 1,
+					entries: [
+						{ ...first, pin: { hash: `sha256-${'b'.repeat(64)}`, mime: 'image/png', size: 8, locator: 'r2://forged.png' } },
+						second
+					]
+				}
+			},
+			{ ...source, dependencyLock: { formatVersion: 1, entries: [second, first] } }
+		];
+		for (const candidate of cases) {
+			const issues = adapter.validateChange?.(source, candidate, admission) ?? [];
+			expect(issues.some((entry) => entry.code === 'lock-metadata-mismatch')).toBe(true);
+		}
+	});
+
+	it('accepts a legitimate Layout change and re-derives its unit lock revision', async () => {
+		const base = await envelope();
+		const entry = unitLockEntry(base, 'layout', 'level', base.units.layout.data.floor.id);
+		const source: ProjectEnvelope = {
+			...base,
+			dependencyLock: { formatVersion: 1, entries: [entry] }
+		};
+		const candidate = replaceUnitData(source, 'layout', {
+			...source.units.layout.data,
+			floor: { ...source.units.layout.data.floor, elevation: source.units.layout.data.floor.elevation + 0.1 }
+		});
+		const normalized = await normalizeUnitEnvelope(candidate);
+		expect(normalized.dependencyLock.entries[0]!.contentRevision).not.toBe(entry.contentRevision);
+		const issues = createUnitAcceptanceAdapter({ compound: true }).validateChange?.(source, normalized, {
+			domain: 'layout',
+			compound: false,
+			units: true,
+			resources: false
+		}) ?? [];
+		expect(issues.filter((issue) => issue.code === 'lock-metadata-mismatch')).toEqual([]);
+	});
+
+	it('refuses a metadata-writing planner without installing or recording history', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true });
+		const base = createCaptureBindPlanner();
+		const registration = coordinator.register({
+			...base,
+			id: 'conformance.capture-bind-with-header-write',
+			kind: 'conformance-capture-bind-with-header-write',
+			prepare(request) {
+				const outcome = base.prepare(request);
+				if (outcome.kind !== 'prepared') return outcome;
+				const planned = outcome.candidate.source;
+				return {
+					...outcome,
+					candidate: {
+						...outcome.candidate,
+						source: {
+							...planned,
+							units: {
+								...planned.units,
+								layout: {
+									...planned.units.layout,
+									header: { ...planned.units.layout.header, unitId: 'unit-layout-forged' }
+								}
+							}
+						}
+					}
+				};
+			}
+		});
+		expect(registration.kind).toBe('registered');
+		const refused = await coordinator.accept(
+			compoundIntent(source, { kind: 'conformance-capture-bind-with-header-write' })
+		);
+		expect(refused).toMatchObject({ kind: 'rejected', code: 'admission-refused', reason: 'unsupported-change' });
+		if (refused.kind !== 'rejected') return;
+		expect(refused.diagnostics.some((entry) => entry.code === 'unit-header-mismatch')).toBe(true);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(source);
+		expect(coordinator.acceptedRevision()).toEqual(REVISION);
+		expect(coordinator.installs()).toBe(1);
+		expect(coordinator.canUndo()).toBe(false);
+	});
+});
+
 describe('R217.S26 — the structure and removal planners in the one admission profile', () => {
 	const S26 = {
 		'experience-update': null,

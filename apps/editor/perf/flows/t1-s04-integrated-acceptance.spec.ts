@@ -19,7 +19,19 @@ import { resolve } from 'node:path';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
-import { acceptedResultCount, uniqueProjectId, waitForAcceptedResult } from '../lib/flow';
+import {
+	acceptedResultCount,
+	addInkPoint,
+	chooseCreateStarter,
+	closeInkRing,
+	downloadSourceJson,
+	fitStage,
+	gotoCreateIntent,
+	openProjectMenu,
+	setStageReading,
+	uniqueProjectId,
+	waitForAcceptedResult
+} from '../lib/flow';
 import { perfInitScript } from '../lib/ledger';
 
 const apiOrigin = process.env.PERF_API_ORIGIN;
@@ -149,9 +161,8 @@ async function session(
 
 async function startProject(page: Page, starter: 'Enclosed room' | 'Begin empty'): Promise<string> {
 	const projectId = uniqueProjectId('t1s04');
-	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-	await page.getByRole('button', { name: starter, exact: true }).click();
+	await gotoCreateIntent(page, projectId);
+	await chooseCreateStarter(page, starter);
 	await expect(page.locator(STAGE)).toBeVisible({ timeout: 60_000 });
 	await expect(page.locator(DOCK)).toBeVisible();
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
@@ -187,21 +198,12 @@ async function waitForCameraSettled(page: Page, timeout = 20_000): Promise<void>
 }
 
 async function fitPlan(page: Page): Promise<void> {
-	await page.locator('.stage-actions').getByRole('button', { name: 'Fit', exact: true }).click();
-	await waitForCameraSettled(page);
-	await page.locator('.stage-actions').getByRole('button', { name: 'Plan', exact: true }).click();
-	await expect(page.locator('.stage-actions').getByRole('button', { name: 'Plan', exact: true })).toHaveAttribute(
-		'aria-pressed',
-		'true'
-	);
-	await waitForCameraSettled(page);
+	await fitStage(page);
+	await setReading(page, 'Plan');
 }
 
 async function setReading(page: Page, reading: 'Plan' | '3D'): Promise<void> {
-	const button = page.locator('.stage-actions').getByRole('button', { name: reading, exact: true });
-	await button.click();
-	await expect(button).toHaveAttribute('aria-pressed', 'true');
-	await waitForCameraSettled(page);
+	await setStageReading(page, reading);
 }
 
 async function armInk(page: Page): Promise<void> {
@@ -226,9 +228,10 @@ async function armOpening(page: Page): Promise<void> {
 
 async function inkPoints(page: Page): Promise<number> {
 	return page.evaluate(() => {
-		const text = document.querySelector('[data-layout-ink-palette] .live')?.textContent ?? '';
-		const match = /Points\s*(\d+)/.exec(text);
-		return match ? Number(match[1]) : -1;
+		const count = document
+			.querySelector('[data-layout-ink-palette]')
+			?.getAttribute('data-ink-points');
+		return count === null || count === undefined ? -1 : Number(count);
 	});
 }
 
@@ -291,9 +294,7 @@ async function clickWorldAndWait(page: Page, point: readonly [number, number, nu
 }
 
 async function typePoint(page: Page, x: number, z: number, count: number): Promise<void> {
-	await page.locator('[data-ink-x]').fill(String(x));
-	await page.locator('[data-ink-z]').fill(String(z));
-	await page.locator('[data-ink-add-point]').click();
+	await addInkPoint(page, x, z);
 	await waitForPoints(page, count);
 }
 
@@ -303,10 +304,7 @@ async function finishWithEnter(page: Page): Promise<void> {
 }
 
 async function downloadSource(page: Page): Promise<Record<string, any>> {
-	const [download] = await Promise.all([
-		page.waitForEvent('download'),
-		page.getByRole('button', { name: 'Download source JSON', exact: true }).click()
-	]);
+	const download = await downloadSourceJson(page);
 	const path = await download.path();
 	if (path === null) throw new Error('the source download produced no local path');
 	return JSON.parse(await readFile(path, 'utf8')) as Record<string, any>;
@@ -359,7 +357,7 @@ async function selectSubject(page: Page, sourceId: string): Promise<void> {
 	const closeCard = page.getByRole('button', { name: 'Close selection card' });
 	if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
 	await page.locator('#plate-index-search').fill(sourceId);
-	const row = page.locator('button.item-row', { hasText: sourceId }).first();
+	const row = page.locator(`li.item[data-source-id$=":${sourceId}"] button.item-row`).first();
 	await expect(row).toBeVisible();
 	await row.click();
 	await expect(page.locator(CARD)).toBeVisible();
@@ -410,7 +408,8 @@ async function deleteWallThroughCard(page: Page, wallId: string): Promise<number
 
 async function openSourceVariant(page: Page, source: Record<string, any>): Promise<void> {
 	const chooserPromise = page.waitForEvent('filechooser');
-	await page.locator('.stage-actions').getByRole('button', { name: 'Open source JSON', exact: true }).click();
+	await openProjectMenu(page);
+	await page.locator('[data-head-source]').click();
 	// An active project always passes the replacement guard first; the file
 	// chooser belongs to the confirmed attempt, not to the guard's first press.
 	const replace = page.getByRole('alertdialog', { name: 'Replace project' });
@@ -490,7 +489,7 @@ test('starter: draw, close, divide, host an Opening, delete, identities, Undo/Re
 		await typePoint(page, 9, 4, 3);
 		await typePoint(page, 7, 4, 4);
 		const closeBefore = await acceptedResultCount(page);
-		await page.locator('[data-ink-close]').click();
+		await closeInkRing(page);
 		await waitForAcceptedResult(page, closeBefore);
 		await expect(page.locator('[data-ink-refusal]')).toHaveCount(0);
 		const closedSource = await downloadSource(page);
@@ -826,7 +825,7 @@ test('empty: draw, close, divide, place an Opening, delete and reload', async ({
 		await typePoint(page, 6, 2, 3);
 		await typePoint(page, 2, 2, 4);
 		const closeBefore = await acceptedResultCount(page);
-		await page.locator('[data-ink-close]').click();
+		await closeInkRing(page);
 		await waitForAcceptedResult(page, closeBefore);
 		const closedSource = await downloadSource(page);
 		const afterClose = layoutCounts(closedSource);
@@ -1028,10 +1027,9 @@ test('narrow: keyboard, policy refusal and shell arbitration at 900×700 with re
 			)
 		);
 
-		await page.locator('[data-head-find] summary').click();
-		const find = page.locator('[data-head-find] input[type="search"]');
+		const find = page.getByRole('combobox', { name: 'Find a subject, tool or operation' });
 		await find.fill('Ink');
-		const findEntry = page.locator('[data-head-find] button', { hasText: 'Ink' }).first();
+		const findEntry = page.getByRole('option', { name: /Ink/ }).first().getByRole('button');
 		await expect(findEntry).toBeVisible();
 		await findEntry.click();
 		await expect(page.locator('[data-dock-tool="layout-ink"]')).toHaveAttribute('aria-pressed', 'true');

@@ -443,6 +443,27 @@ describe('R217.S10 — Ink Box', () => {
 		expect(mounted.session.liveProposal()).toBeNull();
 	});
 
+	it('commits two tapped corners when each press has its own evaluation identity', async () => {
+		const mounted = await mount();
+		const baseline = mounted.facade.snapshot().canonicalJson;
+		armInk(mounted.facade).setWallMode('box');
+		const tap = (point: readonly [number, number], clock: number) => {
+			// A browser press samples the live evaluation; the next press can therefore
+			// carry a different id. The draft, not the prior press's id, owns corner one.
+			mounted.facade.camera.evaluate(RECT, clock);
+			const evaluationId = mounted.facade.evaluationId()!;
+			const css = boxCss(mounted.facade, point);
+			mounted.facade.pointerIntent({ phase: 'down', css, evaluationId });
+			mounted.facade.pointerIntent({ phase: 'up', css, evaluationId });
+		};
+		tap([8, 0], 1);
+		expect(mounted.session.liveProposal()).not.toBeNull();
+		tap([10, 2], 2);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== baseline);
+		expect(acceptedLayout(mounted.facade).rooms).toHaveLength(mounted.document.rooms.length + 1);
+		expect(mounted.session.liveProposal()).toBeNull();
+	});
+
 	it('commits the previewed anchor when the second corner is dragged after a first tap', async () => {
 		const mounted = await mount();
 		const baseline = mounted.facade.snapshot().canonicalJson;

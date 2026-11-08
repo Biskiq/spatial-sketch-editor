@@ -14,7 +14,13 @@ import { resolve } from 'node:path';
 import { TEST_AUTH_SESSION_COOKIE, loginAs } from '../../tests/e2e/test-auth';
 import { newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
-import { acceptedResultCount, uniqueProjectId, waitForCameraSettled } from '../lib/flow';
+import {
+	acceptedResultCount,
+	downloadSourceJson,
+	setStageReading as setDraftingReading,
+	uniqueProjectId,
+	waitForCameraSettled
+} from '../lib/flow';
 
 const apiOrigin = process.env.PERF_API_ORIGIN!;
 const editorOrigin = process.env.PERF_BASE_URL!;
@@ -26,14 +32,10 @@ const VIEWPORTS = [[1440, 900], [1280, 800], [1180, 820], [820, 1180]] as const;
 type Entity = { kind: string; name: string; position: number[]; form?: { generator: { outline: { u: number; v: number; smooth: boolean }[]; extent: number } }; primitive?: string };
 
 async function source(page: Page) {
-	const menu = page.getByLabel('Application menu');
-	await menu.click();
-	const button = page.getByRole('button', { name: 'Download source JSON', exact: true });
-	await expect(button).toBeEnabled({ timeout: 20_000 });
-	const [file] = await Promise.all([page.waitForEvent('download'), button.click()]);
-	if (await button.isVisible()) await menu.click();
+	const file = await downloadSourceJson(page);
 	const path = await file.path();
-	return JSON.parse(await readFile(path!, 'utf8'));
+	if (path === null) throw new Error('the source download produced no local path');
+	return JSON.parse(await readFile(path, 'utf8'));
 }
 async function entities(page: Page): Promise<Entity[]> {
 	return (await source(page)).units.scene.data.entities;
@@ -46,7 +48,7 @@ async function accepted(page: Page, before: number) {
 	await expect.poll(() => acceptedResultCount(page), { timeout: 30_000 }).toBeGreaterThan(before);
 }
 async function setStageReading(page: Page, reading: 'Plan' | '3D') {
-	await page.getByRole('button', { name: reading === 'Plan' ? '2D' : '3D', exact: true }).click();
+	await setDraftingReading(page, reading);
 	await waitForCameraSettled(page);
 }
 const tile = (page: Page, name: string) => page.getByRole('group', { name: 'Shapes' }).getByRole('button', { name, exact: true });
@@ -103,7 +105,7 @@ test.describe('S17A Objects', () => {
 
 			// Box: click, then drag with a live preview, in this reading.
 			await tile(page, 'Box').click();
-			await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible();
+			await expect(page.getByRole('group', { name: 'Subject kinds' }).getByRole('button', { name: 'All', exact: true })).toBeVisible();
 			const count = (await entities(page)).length;
 			await clickAt(page, offset, -100);
 			const clicked = (await entities(page)).at(-1)!;
@@ -163,7 +165,7 @@ test.describe('S17A Objects', () => {
 		expect((await entities(page)).at(-1)!.primitive ?? (await entities(page)).at(-1)!.name).toBe(sphere.primitive ?? sphere.name);
 		// Exact position, on the datum.
 		await tile(page, 'Box').click();
-		await page.getByRole('button', { name: 'All', exact: true }).click();
+		await page.getByRole('group', { name: 'Subject kinds' }).getByRole('button', { name: 'All', exact: true }).click();
 		const exact = page.getByRole('group', { name: 'Exact position' });
 		await exact.getByLabel('X (m)').fill('12');
 		await exact.getByLabel('Z (m)').fill('-7');

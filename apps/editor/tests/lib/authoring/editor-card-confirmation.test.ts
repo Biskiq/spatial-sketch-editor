@@ -118,6 +118,28 @@ describe('Card confirmation is bound to one action', () => {
 		expect(remove.run).not.toHaveBeenCalled();
 	});
 
+	it('returns focus to the destructive action when Cancel closes its confirmation', async () => {
+		const remove = cardAction('wall-delete', 'layout', 'This deletes Wall wall-a.');
+		const target = mountCard({ actions: () => [remove] });
+		const trigger = controls(target)[0]!;
+		trigger.focus();
+		expect(document.activeElement).toBe(trigger);
+
+		await press(target, 0);
+		expect(trigger.textContent).toContain('Confirm erase');
+
+		const cancel = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+			(button) => button.textContent === 'Cancel'
+		);
+		expect(cancel).toBeDefined();
+		cancel!.click();
+		await tick();
+
+		expect(document.activeElement).toBe(trigger);
+		expect(trigger.textContent).toContain('Erase');
+		expect(remove.run).not.toHaveBeenCalled();
+	});
+
 	it('keeps two adapters\u2019 same-named actions apart', async () => {
 		// The id is unique per adapter, not across them: the owning adapter stamps it.
 		const owner = cardAction('wall-delete', 'layout', 'This deletes Wall wall-a.');

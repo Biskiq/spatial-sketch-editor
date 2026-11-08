@@ -1387,15 +1387,14 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		expect(raised).toBeGreaterThan(1.2);
 		expect(Number(slider!.getAttribute('aria-valuenow'))).toBeCloseTo(raised, 6);
 
-		// Pins and a drag are the same session fact, not a source edit.
-		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		// Pins and a drag are the same session fact, not a source edit. The Sheet
+		// exposes no pin CRUD; a pin click moves the Sheet to the pin.
+		facade().session.heightSheet().addPin(0.4);
 		await frame();
-		expect(pins()).toHaveLength(1);
-		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')!.click();
+		expect(pins()).toEqual([0.4]);
+		sheet!.querySelector<HTMLButtonElement>('button[aria-label^="Jump to pin at 0.40"]')!.click();
 		await frame();
-		[...target.querySelectorAll<HTMLButtonElement>('.pin-context button')].find(b=>b.textContent==='Remove pin')!.click();
-		await frame();
-		expect(pins()).toEqual([]);
+		expect(height()).toBeCloseTo(0.4, 6);
 		const max = Number(slider!.getAttribute('aria-valuemax'));
 		const fromY = RECT.bottom - (height() / max) * RECT.height;
 		trackPointer('pointerdown', fromY);
@@ -1426,18 +1425,18 @@ describe('R217.S06 — mounted Height Sheet', () => {
 	});
 
 	it('drops a mounted pin when the session fact resets', async () => {
-		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		facade().session.heightSheet().addPin(0.4);
 		await frame();
 		expect(pins()).toHaveLength(1);
 		expect(
-			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Jump to pin"]')
 		).not.toBeNull();
 
 		facade().session.heightSheet().reset();
 		await frame();
 		expect(pins()).toEqual([]);
 		expect(
-			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')
+			sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Jump to pin"]')
 		).toBeNull();
 	});
 
@@ -1535,9 +1534,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		expect(height()).toBeCloseTo(Math.max(0, beforeFallback - 0.1), 6);
 
 		// Page Up/Down and Home walk the owner ticks and pins, not an invented grid.
-		facade().session.heightSheet().set(0.75, 'key');
-		await frame();
-		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin the height"]')!.click();
+		facade().session.heightSheet().addPin(0.75);
 		await frame();
 		facade().session.heightSheet().set(0.4, 'key');
 		await frame();
@@ -1551,11 +1548,7 @@ describe('R217.S06 — mounted Height Sheet', () => {
 		slider!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
 		await frame();
 		expect(height()).toBe(0);
-		sheetNode()!.querySelector<HTMLButtonElement>('button[aria-label^="Pin at"]')!.click();
-		await frame();
-		[...target.querySelectorAll<HTMLButtonElement>('.pin-context button')].find(b=>b.textContent==='Remove pin')!.click();
-		await frame();
-		expect(pins()).toEqual([]);
+		expect(pins()).toEqual([0.75]);
 	});
 
 	it('hides the Sheet and its plane in Experience and returns the session height', async () => {
