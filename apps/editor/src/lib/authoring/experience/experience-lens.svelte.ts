@@ -231,6 +231,39 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	/** Register the lens's lifecycle effects during route initialisation. */
+	/** Press precedence after pinch: a live edit, then Look through, place, a View glyph. */
+	function pointerDown(
+		event: PointerEvent,
+		mark: { readonly viewId: string; readonly kind: string; readonly mark: Element } | null
+	): boolean {
+		if (viewEdit !== null) return true;
+		if (lookThroughSession !== null) {
+			beginReaim(event);
+			return true;
+		}
+		if (host.tool() === 'place') {
+			beginPlacement(event);
+			return true;
+		}
+		if (host.tool() === 'select' && event.button === 0 && mark !== null &&
+			(!event.shiftKey || mark.viewId === advancedViewId)) {
+			if (mark.kind === 'eye' || mark.kind === 'move' || mark.kind === 'turn' ||
+				mark.kind === 'lift' || mark.kind === 'tilt' || mark.kind === 'lens') {
+				beginViewEdit(event, mark.viewId, mark.kind === 'eye' ? 'move' : mark.kind, mark.mark);
+			}
+			// A 3D glyph is a click entry, not navigation: never claim the Stage
+			// pointer lease or capture on the Stage ancestor.
+			return true;
+		}
+		return false;
+	}
+
+	/** A Stage click belongs to the lens over a glyph, in Look through, or while placing. */
+	function ownsClick(overMark: boolean): boolean {
+		return host.lens() === 'experience' &&
+			(overMark || lookThroughSession !== null || host.tool() === 'place');
+	}
+
 	/** Move precedence after pinch: a marker edit, then re-aim, then placement. */
 	function pointerMove(event: PointerEvent): boolean {
 		if (lookThroughSession !== null) {
@@ -1074,6 +1107,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		homes,
 		escape,
 		wheelZoom,
+		pointerDown,
+		ownsClick,
 		pointerMove,
 		pointerUp,
 		pointerCancel,

@@ -2083,21 +2083,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
-		if (viewEdit !== null) return;
-		if (lens === 'experience' && experienceLens.lookThroughSession() !== null) { experienceLens.beginReaim(event); return; }
-		if (lens === 'experience' && experienceTool === 'place') { experienceLens.beginPlacement(event); return; }
-		if (lens === 'experience' && experienceLens.lookThroughSession() === null && experienceTool === 'select' && event.button === 0) {
-			const mark = viewMarkAt(event);
-			if (mark !== null && (!event.shiftKey || mark.viewId === advancedViewId)) {
-				if (mark.kind === 'eye' || mark.kind === 'move' || mark.kind === 'turn' ||
-					mark.kind === 'lift' || mark.kind === 'tilt' || mark.kind === 'lens') {
-					experienceLens.beginViewEdit(event, mark.viewId, mark.kind === 'eye' ? 'move' : mark.kind, mark.mark);
-				}
-				// A 3D glyph is a click entry, not navigation: never claim the Stage
-				// pointer lease or capture on the Stage ancestor.
-				return;
-			}
-		}
+		if (experienceLens.pointerDown(event, viewMarkAt(event))) return;
 		// The adapters get the press first: the binding that owns an open task (a Scene
 		// transform, an armed Ink chain) may claim it, and so may a binding that offers
 		// direct manipulation with no task at all (a selected Wall's handles). Only a
@@ -2551,9 +2537,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
 		// A frustum's captured release also dispatches a click. Its View owns that
 		// click just as it owned the press; picking the floor here clears the Card.
-		if (lens === 'experience' && viewMarkAt(event) !== null) return;
-		// Look through owns the Stage: a drag turns the view and its release is not a pick.
-		if (lens === 'experience' && (experienceLens.lookThroughSession() !== null || experienceTool === 'place')) return;
+		// A View glyph, Look through or placement owns the release; it must not pick the Floor.
+		if (experienceLens.ownsClick(viewMarkAt(event) !== null)) return;
 		// An **armed dock tool** owns the Stage surface: its tap already placed a
 		// point, split a Wall or was refused, and re-selecting underneath it would
 		// silently move what the tool is editing. Another adapter's task (Compose,
