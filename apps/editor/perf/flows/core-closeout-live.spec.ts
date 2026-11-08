@@ -6,7 +6,8 @@
  * palette are the shipped controls a creator uses.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { expect, test, type Browser, type Page } from '@playwright/test';
@@ -37,6 +38,8 @@ const STAGE = '[role="application"][aria-label="Spatial stage"]';
 const CARD = 'aside.card';
 const DESTRUCTIVE = '[data-card-action="layout-wall-delete"]';
 const evidencePath = resolve(resultsDir, 'core-closeout-live.json');
+const runId = randomUUID();
+const runChecks: Record<string, unknown> = {};
 
 type LiveEvidence = {
 	readonly revision: string;
@@ -45,18 +48,14 @@ type LiveEvidence = {
 
 async function writeEvidence(evidence: LiveEvidence): Promise<void> {
 	await mkdir(resultsDir!, { recursive: true });
-	let previous: LiveEvidence = { revision: evidence.revision, checks: {} };
-	try {
-		previous = JSON.parse(await readFile(evidencePath, 'utf8')) as LiveEvidence;
-	} catch {
-		/* first check */
-	}
+	Object.assign(runChecks, evidence.checks);
 	await writeFile(
 		evidencePath,
 		JSON.stringify(
 			{
 				revision: evidence.revision,
-				checks: { ...previous.checks, ...evidence.checks }
+				runId,
+				checks: runChecks
 			},
 			null,
 			2
@@ -251,6 +250,10 @@ async function readPointerTrace(page: Page): Promise<unknown[]> {
 }
 
 test.describe.configure({ mode: 'serial' });
+
+test.beforeAll(async () => {
+	await rm(evidencePath, { force: true });
+});
 
 test('Card Cancel restores the destructive action and the current Head/Ink locators resolve', async ({
 	browser,
