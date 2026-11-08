@@ -2599,14 +2599,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
 		if (viewEdit !== null) return;
-		const stage = facade;
-		if (lens === 'experience' && experienceLens.lookThroughSession() !== null && stage !== null) {
-			const now = performance.now();
-			experienceLens.advanceLookThroughZoom(now);
-			const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? (evaluation?.rect.height ?? 1) : 1);
-			experienceLens.queueLookThroughZoom(pixels, now);
-			return;
-		}
+		if (lens === 'experience' && experienceLens.wheelZoom(event, evaluation?.rect.height ?? 1)) return;
 		zoom(Math.exp(event.deltaY * 0.001));
 	}
 
@@ -2626,31 +2619,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				notice = 'Pick cancelled.';
 				return;
 			}
-			if (pendingViewWrite !== null) {
+			if (experienceLens.escape()) {
 				event.preventDefault();
 				event.stopPropagation();
-				experienceLens.clearPendingViewWrite();
-				return;
-			}
-			if (viewEdit !== null) {
-				event.preventDefault();
-				event.stopPropagation();
-				experienceLens.cancelViewEdit();
-				return;
-			}
-			if (experienceTool === 'place') {
-				event.preventDefault();
-				event.stopPropagation();
-				experienceTool = 'select';
-				experienceLens.aimPlacement(null);
-				experienceLens.cancelPlacement();
-				notice = '';
-				return;
-			}
-			if (experienceLens.lookThroughSession() !== null) {
-				event.preventDefault();
-				event.stopPropagation();
-				experienceLens.exitLookThrough();
 				return;
 			}
 		}

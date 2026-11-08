@@ -231,6 +231,41 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	/** Register the lens's lifecycle effects during route initialisation. */
+	/** S28 Escape precedence: provisional write, marker edit, place, then Look through. */
+	function escape(): boolean {
+		if (pendingViewWrite !== null) {
+			pendingViewWrite = null;
+			return true;
+		}
+		if (viewEdit !== null) {
+			cancelViewEdit();
+			return true;
+		}
+		if (host.tool() === 'place') {
+			host.setTool('select');
+			placementAim = null;
+			cancelPlacement();
+			host.notice('');
+			return true;
+		}
+		if (lookThroughSession !== null) {
+			exitLookThrough();
+			return true;
+		}
+		return false;
+	}
+
+	/** Look through owns the wheel: a drag turns the provisional view, never the Stage. */
+	function wheelZoom(event: WheelEvent, viewportHeight: number): boolean {
+		if (viewEdit !== null) return true;
+		if (lookThroughSession === null) return false;
+		const now = performance.now();
+		advanceLookThroughZoom(now);
+		const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? viewportHeight : 1);
+		queueLookThroughZoom(pixels, now);
+		return true;
+	}
+
 	/** The Card and Guide homes, wired from the lens's own posture. */
 	function homes(slots: {
 		readonly controller: () => ExperienceController | null;
@@ -972,6 +1007,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		playGuide,
 		install,
 		homes,
+		escape,
+		wheelZoom,
 		// Manual placement
 		placementPress: () => placementPress,
 		placementGhost: () => placementGhost,
