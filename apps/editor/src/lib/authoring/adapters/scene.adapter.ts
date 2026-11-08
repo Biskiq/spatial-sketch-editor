@@ -21,7 +21,7 @@ import type {
 	StageAdapterFactory,
 	StageAdapterServices
 } from '$lib/authoring/stage/stage-adapter-host';
-import { evaluationIdOf } from '$lib/authoring/stage/stage-adapter-host';
+import { datumWorkingPlane, evaluationIdOf } from '$lib/authoring/stage/stage-adapter-host';
 import type {
 	StageAdapter,
 	StageAdapterBinding,
@@ -267,13 +267,10 @@ function pointerDatumPoint(
 ): Vec3 | null {
 	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
 	if (ray === null || Math.abs(ray.direction[1]) < 1e-8) return null;
-	const distance = (context.snapshot.domain.datumMeters - ray.origin[1]) / ray.direction[1];
-	if (!Number.isFinite(distance) || distance < 0) return null;
-	const point: Vec3 = [
-		ray.origin[0] + ray.direction[0] * distance,
-		context.snapshot.domain.datumMeters,
-		ray.origin[2] + ray.direction[2] * distance
-	];
+	const datum = context.snapshot.domain.datumMeters;
+	const hit = context.intersect(ray, datumWorkingPlane(datum));
+	if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters)) return null;
+	const point: Vec3 = [hit.worldPoint[0], datum, hit.worldPoint[2]];
 	return point.every(Number.isFinite) ? point : null;
 }
 
@@ -971,10 +968,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					css[1] + adapterContext.evaluation.rect.top
 				]);
 				if (ray === null || Math.abs(ray.direction[1]) < 1e-6) return null;
-				const t = (planeY - ray.origin[1]) / ray.direction[1];
-				if (!Number.isFinite(t) || t <= 0) return null;
-				const x = ray.origin[0] + ray.direction[0] * t;
-				const z = ray.origin[2] + ray.direction[2] * t;
+				const hit = adapterContext.intersect(ray, datumWorkingPlane(planeY));
+				if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters) || hit.distanceMeters <= 0) return null;
+				const [x, , z] = hit.worldPoint;
 				const angle = Math.atan2(-(z - entity.position[2]), x - entity.position[0]);
 				return Number.isFinite(angle) ? angle : null;
 			}
@@ -1805,15 +1801,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					let distance = drawn?.distanceMeters ?? Infinity;
 					let cssDistance = 0;
 					if (live.evaluation.renderedReading === 'plan') {
-						const t = (live.snapshot.domain.datumMeters - ray.origin[1]) / ray.direction[1];
-						if (!(t >= 0 && Number.isFinite(t))) return null;
-						const point: [number, number] = [ray.origin[0] + ray.direction[0] * t, ray.origin[2] + ray.direction[2] * t];
+						const hit = live.intersect(ray, datumWorkingPlane(live.snapshot.domain.datumMeters));
+						if (hit.kind !== 'intersected' || !Number.isFinite(hit.distanceMeters)) return null;
+						const point: [number, number] = [hit.worldPoint[0], hit.worldPoint[2]];
 						const planHit = pickPlanSceneSubject({
 							footprints,
 							point,
 							edgeHaloMeters: 6 * live.evaluation.targetPlaneMetersPerCssPixel,
 							datumMeters: live.snapshot.domain.datumMeters,
-							datumDistanceMeters: t,
+							datumDistanceMeters: hit.distanceMeters,
 							pixelsPerMeter: live.evaluation.targetPlaneMetersPerCssPixel,
 							ray,
 							pickScene: (probe) => live.pickScene(probe),
