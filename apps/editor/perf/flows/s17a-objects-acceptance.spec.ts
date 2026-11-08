@@ -105,7 +105,7 @@ test.describe('S17A Objects', () => {
 
 			// Box: click, then drag with a live preview, in this reading.
 			await tile(page, 'Box').click();
-			await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible();
+			await expect(page.getByRole('group', { name: 'Subject kinds' }).getByRole('button', { name: 'All', exact: true })).toBeVisible();
 			const count = (await entities(page)).length;
 			await clickAt(page, offset, -100);
 			const clicked = (await entities(page)).at(-1)!;
@@ -165,7 +165,7 @@ test.describe('S17A Objects', () => {
 		expect((await entities(page)).at(-1)!.primitive ?? (await entities(page)).at(-1)!.name).toBe(sphere.primitive ?? sphere.name);
 		// Exact position, on the datum.
 		await tile(page, 'Box').click();
-		await page.getByRole('button', { name: 'All', exact: true }).click();
+		await page.getByRole('group', { name: 'Subject kinds' }).getByRole('button', { name: 'All', exact: true }).click();
 		const exact = page.getByRole('group', { name: 'Exact position' });
 		await exact.getByLabel('X (m)').fill('12');
 		await exact.getByLabel('Z (m)').fill('-7');

@@ -532,9 +532,33 @@
 		right: auto;
 		left: calc(10px + var(--index-cover, 0px));
 	}
-	/* The armed drawing tool owns the Stage: its lane must not swallow a press. */
+	/*
+	 * The armed drawing tool owns the Stage. The full-lane track yields so a press
+	 * on the lane reaches the canvas; the knob handle, pins, pin button and the
+	 * numeric/pin forms remain pointer-operable. The knob's expanded hit area is
+	 * the slider's pointer handle during drawing.
+	 */
 	.sheet.drawing {
 		pointer-events: none;
+	}
+	.sheet.drawing .track {
+		pointer-events: none;
+	}
+	.sheet.drawing .knob {
+		pointer-events: auto;
+		cursor: ns-resize;
+	}
+	.sheet.drawing .knob::before {
+		content: '';
+		position: absolute;
+		inset: -11px -2px;
+		border-radius: 12px;
+	}
+	.sheet.drawing .add,
+	.sheet.drawing .pin,
+	.sheet.drawing .numeric,
+	.sheet.drawing .pin-context {
+		pointer-events: auto;
 	}
 	.rail-wrap {
 		position: relative;

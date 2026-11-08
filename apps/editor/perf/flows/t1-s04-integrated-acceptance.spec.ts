@@ -22,8 +22,11 @@ import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
 import {
 	acceptedResultCount,
 	addInkPoint,
+	chooseCreateStarter,
+	closeInkRing,
 	downloadSourceJson,
 	fitStage,
+	gotoCreateIntent,
 	openProjectMenu,
 	setStageReading,
 	uniqueProjectId,
@@ -158,9 +161,8 @@ async function session(
 
 async function startProject(page: Page, starter: 'Enclosed room' | 'Begin empty'): Promise<string> {
 	const projectId = uniqueProjectId('t1s04');
-	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-	await page.getByRole('button', { name: starter, exact: true }).click();
+	await gotoCreateIntent(page, projectId);
+	await chooseCreateStarter(page, starter);
 	await expect(page.locator(STAGE)).toBeVisible({ timeout: 60_000 });
 	await expect(page.locator(DOCK)).toBeVisible();
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
@@ -226,9 +228,10 @@ async function armOpening(page: Page): Promise<void> {
 
 async function inkPoints(page: Page): Promise<number> {
 	return page.evaluate(() => {
-		const text = document.querySelector('[data-layout-ink-palette] .live')?.textContent ?? '';
-		const match = /Points\s*(\d+)/.exec(text);
-		return match ? Number(match[1]) : -1;
+		const count = document
+			.querySelector('[data-layout-ink-palette]')
+			?.getAttribute('data-ink-points');
+		return count === null || count === undefined ? -1 : Number(count);
 	});
 }
 
@@ -354,7 +357,7 @@ async function selectSubject(page: Page, sourceId: string): Promise<void> {
 	const closeCard = page.getByRole('button', { name: 'Close selection card' });
 	if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
 	await page.locator('#plate-index-search').fill(sourceId);
-	const row = page.locator('button.item-row', { hasText: sourceId }).first();
+	const row = page.locator(`li.item[data-source-id$=":${sourceId}"] button.item-row`).first();
 	await expect(row).toBeVisible();
 	await row.click();
 	await expect(page.locator(CARD)).toBeVisible();
@@ -486,7 +489,7 @@ test('starter: draw, close, divide, host an Opening, delete, identities, Undo/Re
 		await typePoint(page, 9, 4, 3);
 		await typePoint(page, 7, 4, 4);
 		const closeBefore = await acceptedResultCount(page);
-		await page.locator('[data-ink-close]').click();
+		await closeInkRing(page);
 		await waitForAcceptedResult(page, closeBefore);
 		await expect(page.locator('[data-ink-refusal]')).toHaveCount(0);
 		const closedSource = await downloadSource(page);
@@ -822,7 +825,7 @@ test('empty: draw, close, divide, place an Opening, delete and reload', async ({
 		await typePoint(page, 6, 2, 3);
 		await typePoint(page, 2, 2, 4);
 		const closeBefore = await acceptedResultCount(page);
-		await page.locator('[data-ink-close]').click();
+		await closeInkRing(page);
 		await waitForAcceptedResult(page, closeBefore);
 		const closedSource = await downloadSource(page);
 		const afterClose = layoutCounts(closedSource);

@@ -15,7 +15,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { newMeasuredSession, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, VIEWPORT } from '../lib/config';
-import { uniqueProjectId, waitForMark, acceptedResultCount } from '../lib/flow';
+import { uniqueProjectId, waitForMark, acceptedResultCount, runFindCommand } from '../lib/flow';
 
 const EXPERIENCE_LENS = { name: 'Experience', exact: true } as const;
 const VISITOR_CANVAS = '[aria-label="Visitor preview canvas"]';
@@ -37,14 +37,20 @@ async function session(browser: Parameters<typeof newMeasuredSession>[0], errors
 	return started;
 }
 
-/** Starter gallery → Experience lens → one explicit Experience. */
+/** Empty create → starter replacement through Find → Experience lens → one explicit Experience. */
 async function startExperience(page: Page): Promise<void> {
 	await page.goto(`/project/${encodeURIComponent(uniqueProjectId('journey'))}/spatial?create=1`);
-	await page.getByRole('button', { name: 'Enclosed room' }).click();
-	await waitForMark(page, 'stage:activated');
+	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
+	const markStart = await page.evaluate(() => performance.now());
+	await runFindCommand(page, 'Use enclosed room starter');
+	const replacement = page.getByRole('alertdialog', { name: 'Replace project' });
+	await expect(replacement).toBeVisible();
+	await replacement.getByRole('button', { name: 'Replace', exact: true }).click();
+	await waitForMark(page, 'stage:activated', 20_000, markStart);
 	await expect(page.locator('canvas').first()).toBeVisible();
 	await page.getByRole('button', EXPERIENCE_LENS).click();
-	await page.getByRole('button', { name: 'Create Experience' }).click();
+	await page.getByRole('button', { name: 'New Experience', exact: true }).click();
+	await page.getByRole('textbox', { name: 'New Experience name' }).press('Enter');
 	await expect(page.locator(SURFACE)).toBeVisible();
 }
 
@@ -325,7 +331,8 @@ test.describe('integrated Capture / Guide / Preview journeys', () => {
 			await startExperience(page);
 			const surface = page.locator(SURFACE);
 			await capture(page);
-			await surface.getByRole('button', { name: 'Create Experience' }).click();
+			await page.getByRole('button', { name: 'New Experience', exact: true }).click();
+			await page.getByRole('textbox', { name: 'New Experience name' }).press('Enter');
 			await expect.poll(async () => experienceSelect(surface).locator('option').count()).toBe(2);
 			await experienceSelect(surface).selectOption({ label: 'Experience 2' });
 			await capture(page);

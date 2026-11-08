@@ -19,8 +19,10 @@ import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
 import {
 	acceptedResultCount,
 	addInkPoint,
+	chooseCreateStarter,
 	downloadSourceJson,
 	fitStage,
+	gotoCreateIntent,
 	setStageReading,
 	uniqueProjectId,
 	waitForAcceptedResult
@@ -126,9 +128,8 @@ async function session(
 
 async function startProject(page: Page, starter: 'Enclosed room' | 'Begin empty'): Promise<string> {
 	const projectId = uniqueProjectId('t1s03');
-	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-	await page.getByRole('button', { name: starter, exact: true }).click();
+	await gotoCreateIntent(page, projectId);
+	await chooseCreateStarter(page, starter);
 	await expect(page.locator(STAGE)).toBeVisible({ timeout: 60_000 });
 	await expect(page.locator(DOCK)).toBeVisible();
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
@@ -331,7 +332,7 @@ async function selectSubject(page: Page, sourceId: string): Promise<void> {
 	const closeCard = page.getByRole('button', { name: 'Close selection card' });
 	if (await closeCard.isVisible().catch(() => false)) await closeCard.click();
 	await page.locator('#plate-index-search').fill(sourceId);
-	const row = page.locator('button.item-row', { hasText: sourceId }).first();
+	const row = page.locator(`li.item[data-source-id$=":${sourceId}"] button.item-row`).first();
 	await expect(row).toBeVisible();
 	await row.click();
 	await expect(page.locator(CARD)).toBeVisible();
@@ -607,8 +608,8 @@ test('empty: draw a Wall, then place a window with keyboard metrics', async ({ b
 		const typePoint = async (x: number, z: number, count: number) => {
 			await addInkPoint(page, x, z);
 			await expect.poll(async () => {
-				const text = await page.locator('[data-layout-ink-palette] .live').innerText();
-				return Number(/Points\s*(\d+)/.exec(text)?.[1] ?? -1);
+				const value = await page.locator('[data-layout-ink-palette]').getAttribute('data-ink-points');
+				return value === null ? -1 : Number(value);
 			}, { timeout: 10_000 }).toBe(count);
 		};
 		await typePoint(0, 0, 1);

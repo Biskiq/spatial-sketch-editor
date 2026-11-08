@@ -11,6 +11,7 @@ import { loginAs } from '../../tests/e2e/test-auth';
 import { newMeasuredSession } from '../lib/browser';
 import {
 	acceptedResultCount,
+	chooseCreateStarter,
 	commandPresentation,
 	downloadSourceJson,
 	gotoCreateIntent,
@@ -107,7 +108,7 @@ test('native forms are selectable and operable through Stage, Plan, Index, Find 
 		const equals = login.cookie.indexOf('=');
 		await context.addCookies([{ name: login.cookie.slice(0, equals), value: login.cookie.slice(equals + 1), domain: new URL(editorOrigin).hostname, path: '/', httpOnly: true, secure: false }]);
 		await gotoCreateIntent(page, id);
-		await page.getByRole('button', { name: 'Begin empty', exact: true }).click();
+		await chooseCreateStarter(page, 'Begin empty');
 		const source = await fixture(id);
 		const chooser = page.waitForEvent('filechooser');
 		await openProjectMenu(page);
@@ -231,7 +232,7 @@ test('native form M cold open and Size/Undo/Redo measurements', async ({ browser
 				page.on('dialog', (dialog) => void dialog.accept());
 				await context.addCookies([{ name: login.cookie.slice(0, equals), value: login.cookie.slice(equals + 1), domain: new URL(editorOrigin).hostname, path: '/', httpOnly: true, secure: false }]);
 				await gotoCreateIntent(page, id);
-				await page.getByRole('button', { name: 'Begin empty', exact: true }).click();
+				await chooseCreateStarter(page, 'Begin empty');
 				const chooser = page.waitForEvent('filechooser');
 				await openProjectMenu(page);
 				await page.locator('[data-head-source]').click();

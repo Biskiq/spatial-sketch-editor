@@ -173,6 +173,7 @@
 <div
 	class="ink-palette"
 	data-layout-ink-palette
+	data-ink-points={snapshot.points.length}
 	onkeydown={(event) => {
 		if (event.key === 'Escape' && disclosed !== null) {
 			event.preventDefault();

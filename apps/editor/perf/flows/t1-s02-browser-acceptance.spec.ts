@@ -20,8 +20,11 @@ import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
 import {
 	acceptedResultCount,
 	addInkPoint,
+	chooseCreateStarter,
+	closeInkRing,
 	downloadSourceJson,
 	fitStage,
+	gotoCreateIntent,
 	openProjectMenu,
 	runFindCommand,
 	setStageReading,
@@ -129,9 +132,8 @@ async function session(
 
 async function startProject(page: Page, starter: 'Enclosed room' | 'Begin empty'): Promise<string> {
 	const projectId = uniqueProjectId('t1s02');
-	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
-	await page.getByRole('button', { name: starter, exact: true }).click();
+	await gotoCreateIntent(page, projectId);
+	await chooseCreateStarter(page, starter);
 	await expect(page.locator(STAGE)).toBeVisible({ timeout: 60_000 });
 	await expect(page.locator(DOCK)).toBeVisible();
 	await expect(page.locator('canvas').first()).toBeVisible({ timeout: 60_000 });
@@ -181,9 +183,10 @@ async function armInk(page: Page): Promise<void> {
 
 async function inkPoints(page: Page): Promise<number> {
 	return page.evaluate(() => {
-		const text = document.querySelector('[data-layout-ink-palette] .live')?.textContent ?? '';
-		const match = /Points\s*(\d+)/.exec(text);
-		return match ? Number(match[1]) : -1;
+		const count = document
+			.querySelector('[data-layout-ink-palette]')
+			?.getAttribute('data-ink-points');
+		return count === null || count === undefined ? -1 : Number(count);
 	});
 }
 
@@ -295,7 +298,7 @@ function layoutIds(source: Record<string, any>) {
 
 async function selectSubject(page: Page, sourceId: string): Promise<void> {
 	await page.locator('#plate-index-search').fill(sourceId);
-	const row = page.locator('button.item-row', { hasText: sourceId }).first();
+	const row = page.locator(`li.item[data-source-id$=":${sourceId}"] button.item-row`).first();
 	await expect(row).toBeVisible();
 	await row.click();
 	await expect(page.locator(CARD)).toBeVisible();
@@ -498,7 +501,7 @@ test('empty: draw and close an enclosure, read it in 3D, edit Card precision and
 		await typePoint(page, 6, 2, 3);
 		await typePoint(page, 2, 2, 4);
 		const closeBefore = await acceptedResultCount(page);
-		await page.locator('[data-ink-close]').click();
+		await closeInkRing(page);
 		await waitForAcceptedResult(page, closeBefore);
 		const afterClose = layoutCounts(await downloadSource(page));
 		expect(afterClose).toEqual({ walls: 4, junctions: 4, rooms: 1, openings: 0 });
@@ -674,7 +677,7 @@ test('policy: crossing, collinear overlap, nested ring and invalid input refuse 
 		await typePoint(page, 4, -2, 3);
 		await typePoint(page, 2, -2, 4);
 		const nestedBefore = await acceptedResultCount(page);
-		await page.locator('[data-ink-close]').click();
+		await closeInkRing(page);
 		await expect(page.locator('[data-ink-refusal]')).toContainText(/nest|shared|ring|junction/i);
 		expect(await acceptedResultCount(page)).toBe(nestedBefore);
 		expect(layoutCounts(await downloadSource(page))).toEqual(baseline);

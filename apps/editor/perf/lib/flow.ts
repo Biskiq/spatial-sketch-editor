@@ -61,14 +61,54 @@ export async function closeProjectToHub(page: Page): Promise<void> {
 /** Full document navigation to a fresh create intent; preserves cache, not app state. */
 export async function gotoCreateIntent(page: Page, projectId: string): Promise<void> {
 	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
+	const chooser = page.getByRole('dialog', { name: 'Start a project' });
+	const canvas = page.locator('canvas').first();
+	// The current route opens an empty project immediately; an older build
+	// still shows the starter chooser. Wait for whichever this build serves.
+	await expect
+		.poll(
+			async () => {
+				if (await chooser.isVisible().catch(() => false)) return 'chooser';
+				if (await canvas.isVisible().catch(() => false)) return 'direct';
+				return 'pending';
+			},
+			{ timeout: 60_000 }
+		)
+		.not.toBe('pending');
 }
 
-/** The canonical starter gallery, through the boot panel. */
+/**
+ * Choose the create intent's starter on either build.
+ *
+ * The current route starts empty and replaces that project with the enclosed
+ * room through Find. The old chooser is still served by stale previews, so the
+ * same helper keeps those flows working without restoring the removed UI.
+ */
+export async function chooseCreateStarter(
+	page: Page,
+	starter: 'Enclosed room' | 'Begin empty'
+): Promise<void> {
+	const chooser = page.getByRole('dialog', { name: 'Start a project' });
+	const canvas = page.locator('canvas').first();
+	if (await chooser.isVisible().catch(() => false)) {
+		await page.getByRole('button', { name: starter, exact: true }).click();
+		await expect(canvas).toBeVisible({ timeout: 60_000 });
+		return;
+	}
+	if (starter === 'Enclosed room') {
+		const markStart = await page.evaluate(() => performance.now());
+		await runFindCommand(page, 'Use enclosed room starter');
+		const replacement = page.getByRole('alertdialog', { name: 'Replace project' });
+		await expect(replacement).toBeVisible();
+		await replacement.getByRole('button', { name: 'Replace', exact: true }).click();
+		await waitForMark(page, 'stage:activated', 60_000, markStart);
+	}
+	await expect(canvas).toBeVisible({ timeout: 60_000 });
+}
+
+/** The canonical starter gallery, through the current Find entry or the old boot panel. */
 export async function startStarterGallery(page: Page): Promise<void> {
-	await page.getByRole('button', { name: 'Enclosed room' }).click();
-	await waitForMark(page, 'stage:activated');
-	await expect(page.locator('canvas').first()).toBeVisible();
+	await chooseCreateStarter(page, 'Enclosed room');
 }
 
 /**
@@ -95,16 +135,17 @@ export async function drawInkEnclosure(page: Page): Promise<void> {
 			.poll(
 				() =>
 					page.evaluate(() => {
-						const text = document.querySelector('[data-layout-ink-palette] .live')?.textContent ?? '';
-						const match = /Points\s*(\d+)/.exec(text);
-						return match ? Number(match[1]) : -1;
+						const count = document
+							.querySelector('[data-layout-ink-palette]')
+							?.getAttribute('data-ink-points');
+						return count === null || count === undefined ? -1 : Number(count);
 					}),
 				{ timeout: 10_000 }
 			)
 			.toBe(index + 1);
 	}
 	const before = await acceptedResultCount(page);
-	await page.locator('[data-ink-close]').click();
+	await closeInkRing(page);
 	await waitForAcceptedResult(page, before);
 }
 
@@ -120,12 +161,20 @@ export async function openProjectMenu(page: Page): Promise<void> {
 	await expect(page.getByRole('group', { name: 'Project actions' })).toBeVisible();
 }
 
+/** Close the Head's project-procedure menu when it is open. */
+export async function closeProjectMenu(page: Page): Promise<void> {
+	const trigger = page.locator('[data-head-project]');
+	if ((await trigger.getAttribute('aria-expanded')) === 'true') await trigger.click();
+}
+
 /** Download the accepted source through the Head's project menu. */
 export async function downloadSourceJson(page: Page): Promise<Download> {
 	await openProjectMenu(page);
 	const download = page.waitForEvent('download');
 	await page.locator('[data-head-download]').click();
-	return download;
+	const file = await download;
+	await closeProjectMenu(page);
+	return file;
 }
 
 /** Run one operation through the Head's Find combobox. */
@@ -298,6 +347,16 @@ export async function addInkPoint(page: Page, x: number, z: number): Promise<voi
 	await page.locator('[data-ink-add-point]').click();
 }
 
+/** Close the live Ink ring through the key row, opening it from a disclosure when needed. */
+export async function closeInkRing(page: Page): Promise<void> {
+	const close = page.locator('[data-ink-close]');
+	if (!(await close.isVisible().catch(() => false))) {
+		await page.getByRole('button', { name: 'Ink settings and Opening' }).click();
+	}
+	await expect(close).toBeVisible();
+	await close.click();
+}
+
 /**
  * A scripted pan and zoom on the shipped Stage controls for `durationMs`: the
  * keyboard pans (arrow keys) and wheel zooms at the Stage center, alternating
@@ -323,7 +382,7 @@ export async function scriptedPanZoom(page: Page, durationMs: number): Promise<v
  */
 export async function selectWallById(page: Page, wallId: string): Promise<void> {
 	await page.locator('#plate-index-search').fill(wallId);
-	const wallRow = page.locator('button.item-row', { hasText: wallId }).first();
+	const wallRow = page.locator(`li.item[data-source-id$=":${wallId}"] button.item-row`).first();
 	await expect(wallRow).toBeVisible();
 	await wallRow.click();
 	await expect(handleLocator(page, 'Wall end')).toBeVisible();

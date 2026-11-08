@@ -443,3 +443,76 @@ test('Box second-corner release across fine and coarse viewports records a point
 		}
 	}
 });
+
+test('Height Sheet controls stay pointer-operable while Ink owns the Stage', async ({
+	browser,
+	baseURL
+}) => {
+	test.setTimeout(300_000);
+	const started = await session(browser, baseURL!, {
+		viewport: { width: 820, height: 1180 },
+		coarse: true,
+		reducedMotion: 'reduce'
+	});
+	const page = started.page;
+	try {
+		await startProject(page, 'Begin empty');
+		await fitStage(page);
+		await setStageReading(page, 'Plan');
+		await armInk(page);
+
+		const sheet = page.locator('[data-stage-height-sheet]');
+		const track = page.locator('[data-stage-height-sheet] [role="slider"]');
+		const knob = page.locator('[data-stage-height-sheet] .knob');
+		const add = page.locator('button[aria-label^="Pin the height"]');
+		await expect(sheet).toHaveCSS('pointer-events', 'none');
+		await expect(track).toHaveCSS('pointer-events', 'none');
+		await expect(knob).toHaveCSS('pointer-events', 'auto');
+		await expect(add).toHaveCSS('pointer-events', 'auto');
+
+		const sliderValue = async (): Promise<number> => Number(await track.getAttribute('aria-valuenow'));
+		const beforeHeight = await sliderValue();
+		const knobBox = await knob.boundingBox();
+		if (knobBox === null) throw new Error('the Height Sheet knob has no box');
+		await installPointerTrace(page);
+		await page.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y + knobBox.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y - 40, { steps: 4 });
+		await page.mouse.up();
+		await expect.poll(sliderValue).not.toBe(beforeHeight);
+		const afterHeight = await sliderValue();
+		const rawTrace = await page.evaluate(() => {
+			type EventRow = { type: string; target: string | null };
+			return ((window as Window & { __BOX_TRACE__?: EventRow[] }).__BOX_TRACE__ ?? []).filter(
+				(row) => row.type === 'pointerdown' && row.target?.includes('knob')
+			);
+		});
+		expect(rawTrace.length, 'the knob did not receive the drag pointerdown').toBeGreaterThan(0);
+
+		const pinsBefore = await page.locator('button[aria-label^="Pin at"]').count();
+		await add.click();
+		await expect(page.locator('button[aria-label^="Pin at"]')).toHaveCount(pinsBefore + 1);
+		const pinsAfter = await page.locator('button[aria-label^="Pin at"]').count();
+
+		await writeEvidence({
+			revision: REVISION,
+			checks: {
+				heightSheetControls: {
+					status: 'passed',
+					viewport: '820x1180-coarse',
+					trackPointerEvents: 'none',
+					knobPointerEvents: 'auto',
+					addPointerEvents: 'auto',
+					heightBefore: beforeHeight,
+					heightAfter: afterHeight,
+					knobPointerDownTarget: rawTrace[0]?.target ?? null,
+					pinsBefore,
+					pinsAfter
+				}
+			}
+		});
+		expect(started.errors).toEqual([]);
+	} finally {
+		await started.close();
+	}
+});
