@@ -296,7 +296,8 @@ describe('Stage shell composition', () => {
 		expect(raw).toHaveLength(2);
 		expect(matches(/function capturePointer\([^)]*\): boolean \{\s*try \{\s*target\.setPointerCapture\(pointerId\);/)).toHaveLength(1);
 		expect(matches(/try \{ surface\.setPointerCapture\(event\.pointerId\); \} catch/)).toHaveLength(1);
-		expect(matches(/capture === null \|\| !capturePointer\(capture, event\.pointerId\)/)).toHaveLength(1);
+		const lens = stripComments(readFileSync(EXPERIENCE_LENS, 'utf8'));
+		expect(lens).toMatch(/capture === null \|\| !host\.capturePointer\(capture, event\.pointerId\)/);
 	});
 
 	it('renders one geometry set and takes Plan eligibility from the representation, not a second renderer', () => {
