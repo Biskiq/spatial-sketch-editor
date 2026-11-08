@@ -91,22 +91,22 @@
 	.writer {
 		display: flex;
 		flex-direction: column;
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 	}
 	.sec {
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
 		padding: 8px 12px;
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
+		border-top: 1px solid var(--shell-hairline);
 	}
 	.sec:first-child {
 		border-top: 0;
 	}
 	.sec-title {
 		margin: 0;
-		color: var(--shell-ink-3, #79817b);
-		font: 600 11px/1.3 var(--shell-sans, system-ui);
+		color: var(--shell-ink-3);
+		font: 600 11px/1.3 var(--shell-sans);
 	}
 	.welcome textarea {
 		box-sizing: border-box;
@@ -114,14 +114,14 @@
 		min-height: 44px;
 		resize: vertical;
 		padding: 6px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 6px;
-		background: var(--shell-card, #fff);
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-card);
+		color: var(--shell-ink);
 		font: inherit;
 	}
 	.welcome textarea:focus-visible {
-		outline: 2px solid var(--shell-forest-raised, #22503c);
+		outline: 2px solid var(--shell-forest-raised);
 		outline-offset: 1px;
 	}
 	.opens {
@@ -131,31 +131,31 @@
 	.opens button {
 		display: grid;
 		gap: 2px;
-		min-height: var(--shell-control-height, 30px);
+		min-height: var(--shell-control-height);
 		padding: 7px 9px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 8px;
-		background: var(--shell-card, #fff);
+		background: var(--shell-card);
 		color: inherit;
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
 	}
 	.opens button[aria-checked='true'] {
-		border-color: var(--shell-forest-raised, #22503c);
-		box-shadow: inset 0 0 0 1px var(--shell-forest-raised, #22503c);
+		border-color: var(--shell-forest-raised);
+		box-shadow: inset 0 0 0 1px var(--shell-forest-raised);
 	}
 	.opens button:disabled {
 		opacity: 0.45;
 		cursor: not-allowed;
 	}
 	.opens small {
-		color: var(--shell-ink-3, #6b736d);
+		color: var(--shell-ink-3);
 		font-size: 11px;
 	}
 	.foot-note {
 		margin: 0;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 10.5px;
 		line-height: 1.4;
 	}

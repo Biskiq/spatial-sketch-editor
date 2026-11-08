@@ -187,13 +187,13 @@
 	}
 	.profile-label {
 		margin-right: 0.2rem;
-		color: var(--shell-ink-quiet, #9fb2a2);
+		color: var(--shell-ink-quiet);
 		font-size: 0.68rem;
 	}
 	.profiles button {
 		min-height: 1.7rem;
 		padding: 0.1rem 0.4rem;
-		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
+		border: 1px solid var(--shell-ink-quiet);
 		border-radius: 0.3rem;
 		background: transparent;
 		color: inherit;
@@ -215,15 +215,15 @@
 	select {
 		min-height: 1.9rem;
 		padding: 0.1rem 0.35rem;
-		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
+		border: 1px solid var(--shell-ink-quiet);
 		border-radius: 0.3rem;
-		background: var(--shell-forest, #11291f);
+		background: var(--shell-forest);
 		color: inherit;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-family: var(--shell-mono);
 	}
 	.unit,
 	.quiet {
-		color: var(--shell-ink-quiet, #9fb2a2);
+		color: var(--shell-ink-quiet);
 		font-size: 0.68rem;
 	}
 	.refusal {
@@ -253,9 +253,9 @@
 	button {
 		min-height: 2.25rem;
 		padding: 0.15rem 0.55rem;
-		border: 1px solid var(--shell-ink-quiet, #9fb2a2);
+		border: 1px solid var(--shell-ink-quiet);
 		border-radius: 0.35rem;
-		background: var(--shell-forest-raised, #22503c);
+		background: var(--shell-forest-raised);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
@@ -267,7 +267,7 @@
 	button:focus-visible,
 	input:focus-visible,
 	select:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 1px;
 	}
 </style>

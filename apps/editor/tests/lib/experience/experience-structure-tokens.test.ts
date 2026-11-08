@@ -2,7 +2,7 @@
  * R217.S26 — the visual-token check (OD5, E16).
  *
  * The slice's new controls use the shell contract's role tokens and metrics
- * (`shell-roles.css`, the editor shell and visual-system contract): the refusal ink for
+ * (`presentation-tokens.css`, the app-level visual-system contract): the refusal ink for
  * danger items and Remove, the gold only for the reorder caret (the Stop cards' own
  * insertion caret), mono 10 px for the *Start* and *opens* tags, the Card title and crumb
  * metrics for the rename fields, and 44 px coarse-pointer targets for every new control.
@@ -32,7 +32,7 @@ function coarse(text: string): string {
 		.join('\n');
 }
 
-const tokens = readFileSync('src/lib/authoring/stage/shell/shell-roles.css', 'utf8');
+const tokens = readFileSync('src/lib/design/presentation-tokens.css', 'utf8');
 
 describe('R217.S26 visual tokens', () => {
 	it('uses only role tokens the shell defines', () => {
@@ -78,7 +78,7 @@ describe('R217.S26 visual tokens', () => {
 	it('the strip and View rail mark reorders with a quiet light line, never gold', () => {
 		const guide = source('experience/ExperienceGuide');
 		const guideCaret = rule(guide, '.caret');
-		for (const declaration of ['width: 3px', 'border-radius: 2px', 'var(--shell-leaf-soft, #9fd3b6)']) {
+		for (const declaration of ['width: 3px', 'border-radius: 2px', 'var(--shell-leaf-soft)']) {
 			expect(guideCaret).toContain(declaration);
 		}
 		const rail = source('experience/ExperienceViewRail');

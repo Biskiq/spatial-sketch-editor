@@ -252,7 +252,7 @@
 		display: grid;
 		gap: 2px;
 		min-width: 0;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 		font-size: 10.5px;
 	}
 	input {
@@ -261,22 +261,22 @@
 		min-width: 0;
 		height: 26px;
 		padding: 0 18px 0 6px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 6px;
-		background: var(--shell-control-surface, #fafbf9);
-		color: var(--shell-ink, #1b201c);
-		font: 12px var(--shell-mono, monospace);
+		background: var(--shell-control-surface);
+		color: var(--shell-ink);
+		font: 12px var(--shell-mono);
 		font-variant-numeric: tabular-nums;
 	}
 	input:hover {
-		border-color: var(--shell-hairline-strong, #cdd2ca);
+		border-color: var(--shell-hairline-strong);
 	}
 	input:focus {
-		background: #fff;
-		border-color: var(--shell-leaf, #4f8f6c);
+		background: var(--shell-white);
+		border-color: var(--shell-leaf);
 	}
 	input[aria-invalid='true'] {
-		border-color: var(--shell-refuse, #7e2718);
+		border-color: var(--shell-refuse);
 	}
 	.unit {
 		position: absolute;
@@ -294,13 +294,13 @@
 	.placeholder input {
 		border-style: dashed;
 		background: transparent;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 		cursor: default;
 	}
 	.error {
 		margin: 0;
 		padding: 4px 12px;
-		color: var(--shell-refuse, #7e2718);
+		color: var(--shell-refuse);
 		font-size: 11px;
 	}
 	.paused {
@@ -312,9 +312,9 @@
 	}
 	button {
 		min-height: 26px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 6px;
-		background: var(--shell-control-surface, #fafbf9);
+		background: var(--shell-control-surface);
 		color: inherit;
 		cursor: pointer;
 	}

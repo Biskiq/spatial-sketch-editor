@@ -655,14 +655,22 @@ import { PCFShadowMap } from 'three';
 </div>
 
 <style>
+	/*
+	 * The published-visit presentation owns its roles. The values equal the
+	 * approved PLATE defaults today, but they are deliberately not aliases of
+	 * `--shell-*`: an editor skin must never change what a published Experience
+	 * looks like. Change them only with a visitor-facing design decision.
+	 */
 	.visitor-preview {
 		--visitor-forest: #11291f;
 		--visitor-glass: rgba(14, 30, 25, 0.78);
 		--visitor-gold: #d4ad45;
 		--visitor-gold-ink: #74560c;
 		--visitor-ivory: #f3f0e4;
-		--visitor-serif: 'Iowan Old Style', Palatino, Georgia, serif;
-		--visitor-sans: var(--shell-sans, system-ui, sans-serif);
+		--visitor-quiet: #9fb2a5;
+		--visitor-white: #ffffff;
+		--visitor-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+		--visitor-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 		position: relative;
 		width: 100%;
 		height: 100%;
@@ -908,7 +916,7 @@ import { PCFShadowMap } from 'three';
 		left: 20px;
 		top: 68px;
 		margin: 0;
-		color: #fff;
+		color: var(--visitor-white);
 		font: 500 12px var(--visitor-sans);
 		text-shadow: 0 1px 3px rgb(0 0 0 / 55%);
 		pointer-events: none;
@@ -948,7 +956,7 @@ import { PCFShadowMap } from 'three';
 		font: 500 17px var(--visitor-serif);
 	}
 	.hud-status {
-		color: var(--visitor-quiet, #9fb2a5);
+		color: var(--visitor-quiet);
 		white-space: nowrap;
 	}
 	.hud-actions {
@@ -990,13 +998,13 @@ import { PCFShadowMap } from 'three';
 		font: 500 17px var(--visitor-serif);
 	}
 	.guided-remaining {
-		color: var(--visitor-quiet, #9fb2a5);
+		color: var(--visitor-quiet);
 		font: 500 12px var(--visitor-sans);
 		white-space: nowrap;
 	}
 	.visitor-free .overline {
 		margin: 0;
-		color: var(--visitor-quiet, #9fb2a5);
+		color: var(--visitor-quiet);
 		font: 500 12px var(--visitor-sans);
 		letter-spacing: 0;
 		text-transform: none;
@@ -1029,7 +1037,7 @@ import { PCFShadowMap } from 'three';
 		border-radius: 12px;
 		background: rgb(10 24 18 / 0.88);
 		box-shadow: 0 8px 24px rgb(0 0 0 / 30%);
-		color: #fff;
+		color: var(--visitor-white);
 		z-index: 7;
 		animation: visitor-invite 0.35s ease-out;
 	}

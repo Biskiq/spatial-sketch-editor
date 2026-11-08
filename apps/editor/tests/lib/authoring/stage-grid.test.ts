@@ -282,14 +282,14 @@ describe('R217.S13 — fixed grid values and thinning', () => {
 
 	it('uses PLATE’s Paper and mat inks', () => {
 		expect(PAPER_GRID_INK).toEqual({
-			minor: '#9FB2A2',
+			minor: '#9fb2a2',
 			major: '#809984',
 			minorOpacity: 0.4,
 			majorOpacity: 0.55
 		});
 		expect(MAT_GRID_INK).toEqual({
-			minor: '#2B5147',
-			major: '#3C6A5C',
+			minor: '#2b5147',
+			major: '#3c6a5c',
 			minorOpacity: 1,
 			majorOpacity: 1
 		});

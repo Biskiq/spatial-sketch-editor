@@ -696,19 +696,19 @@
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		height: var(--shell-head-height, 44px);
+		height: var(--shell-head-height);
 		padding: 0 8px;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--shell-forest);
+		color: var(--shell-ink-light);
 		min-width: 0;
-		font: var(--shell-text-body, 13px)/1.35 var(--shell-sans, system-ui);
+		font: var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 	button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		gap: 6px;
-		height: var(--shell-control-height, 30px);
+		height: var(--shell-control-height);
 		padding: 0 8px;
 		border: 0;
 		border-radius: 7px;
@@ -738,9 +738,9 @@
 	}
 	.project-name {
 		max-width: 180px;
-		color: #fff;
+		color: var(--shell-white);
 		padding: 0 4px;
-		font: var(--shell-text-identity, 15px) var(--shell-serif, Georgia);
+		font: var(--shell-text-identity) var(--shell-serif);
 	}
 	.project-text {
 		overflow: hidden;
@@ -749,7 +749,7 @@
 	}
 	.chevron {
 		font: 11px system-ui;
-		color: var(--shell-ink-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 	}
 	.project-menu {
 		position: absolute;
@@ -762,7 +762,7 @@
 		padding: 10px;
 		border: 1px solid rgb(255 255 255 / 0.14);
 		border-radius: 10px;
-		background: var(--shell-forest, #11291f);
+		background: var(--shell-forest);
 		box-shadow: var(--shell-shadow);
 	}
 	.project-menu[hidden] {
@@ -773,7 +773,7 @@
 	}
 	.project-id {
 		margin: 0;
-		color: var(--shell-ink-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 		font-size: 11px;
 		overflow-wrap: anywhere;
 	}
@@ -793,8 +793,8 @@
 		font-size: 12.5px;
 	}
 	.lens-button.active {
-		background: var(--shell-paper, #e9ebe6);
-		color: var(--shell-forest, #11291f);
+		background: var(--shell-paper);
+		color: var(--shell-forest);
 		font-weight: 600;
 	}
 	.location {
@@ -803,7 +803,7 @@
 		max-width: 320px;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 		background: rgb(255 255 255 / 0.08);
 	}
 	.actions {
@@ -841,11 +841,11 @@
 		height: auto;
 		padding: 7px 9px;
 		border-radius: 8px;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--shell-forest);
+		color: var(--shell-ink-light);
 		box-shadow: var(--shell-shadow);
 		clip-path: none;
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 		white-space: normal;
 	}
 	.reason-line {
@@ -857,7 +857,7 @@
 		align-items: center;
 		gap: 6px;
 		width: 250px;
-		height: var(--shell-control-height, 30px);
+		height: var(--shell-control-height);
 		padding: 0 8px;
 		border-radius: 8px;
 		background: rgb(255 255 255 / 0.1);
@@ -865,8 +865,8 @@
 	}
 	.find.open {
 		width: 330px;
-		background: #fff;
-		color: var(--shell-ink-3, #79817b);
+		background: var(--shell-white);
+		color: var(--shell-ink-3);
 	}
 	.find input {
 		width: 100%;
@@ -876,17 +876,17 @@
 		padding: 0;
 		background: transparent;
 		color: inherit;
-		font: 12.5px var(--shell-sans, system-ui);
+		font: 12.5px var(--shell-sans);
 	}
 	.find input::placeholder {
-		color: var(--shell-ink-quiet, #9fb2a5);
+		color: var(--shell-ink-quiet);
 	}
 	.find.open input {
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 	}
 	kbd {
-		color: var(--shell-ink-quiet, #9fb2a5);
-		font: 10px var(--shell-mono, monospace);
+		color: var(--shell-ink-quiet);
+		font: 10px var(--shell-mono);
 		white-space: nowrap;
 	}
 	.find-body {
@@ -896,10 +896,10 @@
 		right: 0;
 		width: 330px;
 		padding: 4px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
 		background: white;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		box-shadow: var(--shell-shadow);
 	}
 	.find-body[hidden] {
@@ -916,7 +916,7 @@
 		justify-content: flex-start;
 		width: 100%;
 		height: auto;
-		min-height: var(--shell-control-height, 30px);
+		min-height: var(--shell-control-height);
 		padding: 5px 8px;
 		text-align: left;
 		white-space: normal;
@@ -924,13 +924,13 @@
 	}
 	.find-results [aria-selected='true'],
 	.find-results button:hover {
-		background: var(--shell-hover, #eef0ed);
+		background: var(--shell-hover);
 		border-radius: 6px;
 	}
 	.find-verb {
 		flex: none;
 		font-size: 11px;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 	}
 	.find-group {
 		padding: 6px 8px 2px;
@@ -941,17 +941,17 @@
 	}
 	.find-empty {
 		margin: 8px;
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 	}
 	.primary {
 		padding: 0 11px;
 		border-radius: 8px;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 		color: #2a2208;
 		font-weight: 600;
 	}
 	.primary:hover {
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 	}
 	button[aria-disabled='true'] {
 		opacity: 0.45;

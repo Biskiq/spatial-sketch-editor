@@ -275,7 +275,7 @@
 		border: 1px solid #b997f2;
 		border-radius: 0.4rem;
 		background: #8f69c8;
-		color: #fff;
+		color: var(--shell-white);
 		font: inherit;
 		cursor: pointer;
 		text-decoration: none;

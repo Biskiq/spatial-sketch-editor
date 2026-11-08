@@ -162,7 +162,7 @@
 	button, .button { display: inline-block; width: fit-content; padding: 0.65rem 0.85rem; border: 1px solid #635a6f; border-radius: 0.4rem; background: #292632; color: inherit; font: inherit; cursor: pointer; text-decoration: none; }
 	button:hover:not(:disabled), .button:hover { border-color: #c9a9ff; }
 	button:disabled { cursor: default; opacity: 0.55; }
-	.primary { border-color: #b997f2; background: #8f69c8; color: #fff; }
+	.primary { border-color: #b997f2; background: #8f69c8; color: var(--shell-white); }
 	.status { color: #e3c4c4; line-height: 1.4; }
 	.switch { display: flex; align-items: center; gap: 0.4rem; color: #bcb5c4; font-size: 0.9rem; }
 	.text-button { padding: 0; border: 0; background: transparent; color: #d4baff; text-decoration: underline; }

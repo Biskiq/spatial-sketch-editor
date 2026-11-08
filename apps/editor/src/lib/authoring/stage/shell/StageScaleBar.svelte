@@ -49,13 +49,13 @@
 		gap: 2px;
 		color: #f4f0e9;
 		pointer-events: none;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-family: var(--shell-mono);
 		font-size: 11px;
 		letter-spacing: 0.02em;
 		text-shadow: 0 1px 2px rgb(6 20 14 / 55%);
 	}
 	.scale-bar.quiet {
-		color: #1b201c;
+		color: var(--shell-ink);
 		text-shadow: none;
 	}
 	.rule {

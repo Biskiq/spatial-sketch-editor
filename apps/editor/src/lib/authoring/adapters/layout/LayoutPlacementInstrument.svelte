@@ -94,7 +94,7 @@
 	.hint {
 		margin: 0;
 		font-size: 0.7rem;
-		color: var(--head-ink-quiet, #98a89c);
+		color: var(--stage-instrument-ink-quiet);
 	}
 	.fields {
 		display: grid;
@@ -110,17 +110,17 @@
 	input {
 		min-height: 1.8rem;
 		padding: 0.1rem 0.35rem;
-		border: 1px solid var(--chassis-hairline, #2f4a3d);
+		border: 1px solid var(--stage-instrument-hairline);
 		border-radius: 0.25rem;
 		background: transparent;
 		color: inherit;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-family: var(--shell-mono);
 	}
 	button {
 		justify-self: start;
 		min-height: 1.8rem;
 		padding: 0.15rem 0.6rem;
-		border: 1px solid var(--chassis-hairline, #2f4a3d);
+		border: 1px solid var(--stage-instrument-hairline);
 		border-radius: 0.25rem;
 		background: transparent;
 		color: inherit;

@@ -242,8 +242,8 @@
 		align-items: flex-start;
 		gap: 6px;
 		max-width: calc(100vw - 20px);
-		color: var(--shell-ink, #1b201c);
-		font: 12px var(--shell-sans, system-ui);
+		color: var(--shell-ink);
+		font: 12px var(--shell-sans);
 	}
 	/* Light glass groups in both lenses: one material for World and Experience. */
 	.reading,
@@ -266,7 +266,7 @@
 		border: 0;
 		border-radius: 7px;
 		background: transparent;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font: inherit;
 		font-size: 12.5px;
 		white-space: nowrap;
@@ -277,8 +277,8 @@
 	}
 	.reading button[aria-pressed='true'],
 	.words button[aria-pressed='true'] {
-		background: var(--shell-forest, #11291f);
-		color: #fff;
+		background: var(--shell-forest);
+		color: var(--shell-white);
 		font-weight: 600;
 	}
 	.words {
@@ -291,7 +291,7 @@
 	button:focus-visible,
 	select:focus-visible,
 	input:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 1px;
 	}
 	.words [aria-pressed='false'] {
@@ -322,8 +322,8 @@
 		padding: 12px;
 		border: 1px solid rgba(27, 32, 28, 0.12);
 		border-radius: 14px;
-		background: #fff;
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-white);
+		color: var(--shell-ink);
 		box-shadow: 0 10px 30px rgba(17, 41, 31, 0.16);
 	}
 	/* Leaf checkbox in the light Card: shell-drawn, never the browser's blue. */
@@ -336,12 +336,12 @@
 		margin: 0;
 		border: 1.5px solid rgba(27, 32, 28, 0.2);
 		border-radius: 5px;
-		background: #fff;
+		background: var(--shell-white);
 		cursor: pointer;
 	}
 	.viewing .check input[type='checkbox']:checked {
-		border-color: #4f8f6c;
-		background-color: #4f8f6c;
+		border-color: var(--shell-leaf);
+		background-color: var(--shell-leaf);
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.5 9.5 3.8' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 		background-size: 12px 12px;
 		background-position: center;
@@ -360,14 +360,14 @@
 		appearance: none;
 		min-height: 30px;
 		padding: 0 22px 0 8px;
-		background-image: linear-gradient(45deg, transparent 50%, #4a524c 50%), linear-gradient(135deg, #4a524c 50%, transparent 50%);
+		background-image: linear-gradient(45deg, transparent 50%, var(--shell-ink-2) 50%), linear-gradient(135deg, var(--shell-ink-2) 50%, transparent 50%);
 		background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
 		background-size: 4px 4px;
 		background-repeat: no-repeat;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 6px;
-		background-color: var(--shell-control-surface, #fafbf9);
-		color: var(--shell-ink, #1b201c);
+		background-color: var(--shell-control-surface);
+		color: var(--shell-ink);
 		font: inherit;
 	}
 	.pref-row {
@@ -383,15 +383,15 @@
 	.viewing .switch {
 		height: 26px;
 		padding: 0 9px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 13px;
-		background: #fff;
-		color: var(--shell-ink-2, #4a524c);
+		background: var(--shell-white);
+		color: var(--shell-ink-2);
 	}
 	.viewing .switch[aria-checked='true'] {
-		border-color: var(--shell-ink, #1b201c);
-		background: var(--shell-ink, #1b201c);
-		color: #fff;
+		border-color: var(--shell-ink);
+		background: var(--shell-ink);
+		color: var(--shell-white);
 	}
 	.viewing .tone-row {
 		display: flex;
@@ -399,16 +399,16 @@
 		align-items: center;
 		width: 100%;
 		padding: 0 4px;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 	}
 	.viewing .tone-row:hover {
-		background: var(--shell-hover, #eef0ed);
+		background: var(--shell-hover);
 	}
 	.tone-now {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 	}
 	.swatch {
 		width: 14px;
@@ -434,7 +434,7 @@
 		height: auto;
 		padding: 4px;
 		border-radius: 8px;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 		font-size: 11px;
 		white-space: normal;
 	}
@@ -449,23 +449,23 @@
 		background-size: 8px 8px;
 	}
 	.tile[aria-pressed='true'] .paper {
-		outline: 2px solid var(--shell-ink, #1b201c);
+		outline: 2px solid var(--shell-ink);
 		outline-offset: 1px;
 	}
 	/* The 2D|3D segment's pressed fill must not reach the panel's own controls. */
 	.reading .viewing .tile[aria-pressed='true'] {
 		background: transparent;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font-weight: 600;
 	}
 	.group-title {
 		font-size: 10px;
 		text-transform: uppercase;
 		letter-spacing: 0.07em;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 	}
 	.quiet .group-title {
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 	}
 	.sr-only {
 		position: absolute;
