@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { roomLabelFacts, projectRoomLabels, type RoomLabelView } from '$lib/authoring/stage/room-labels';
 	import { acceptedSceneRoomMembership } from '$lib/authoring/adapters/scene/room-membership';
-	import { STAGE_PAINT_CSS } from '$lib/authoring/stage/shell/stage-paint';
 	import {
 		createWorldIndexModel,
 		resolveWorldScope,
@@ -3442,7 +3441,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 </script>
 
-<div class="editor-host" style={`--shell-ink:${STAGE_PAINT_CSS.ink};--shell-leaf:${STAGE_PAINT_CSS.hover};--shell-gold:${STAGE_PAINT_CSS.selection}`}>
+<div class="editor-host">
 	<!--
 		The Head and the Index are authoring chrome, so they are not mounted while
 		the isolated Preview run owns the Camera output: a visible Undo, Save or
@@ -4211,7 +4210,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		box-shadow: inset 0 0 0 1px #c9cfc2;
 	}
 	.stage:focus-visible {
-		box-shadow: inset 0 0 0 1px #d4ad45;
+		box-shadow: inset 0 0 0 1px var(--shell-gold);
 	}
 	.stage :global(canvas) {
 		display: block;
@@ -4267,7 +4266,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	@media (max-width: 1100px) {
 		.editor-body > :global(.plate-index) {
 			bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);
-			width: min(var(--shell-index-width, 256px), 80%);
+			width: min(var(--shell-index-width), 80%);
 		}
 		/*
 			The scrim covers the Stage above the lower column and beneath it: the dock, the
@@ -4317,21 +4316,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		gap: 0.5rem;
 		width: min(20rem, calc(100% - 1.5rem));
 		padding: 0.75rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 0.4rem;
-		background: var(--shell-forest, #11291f);
-		color: var(--shell-ink-light, #f3f4ee);
+		background: var(--shell-forest);
+		color: var(--shell-ink-light);
 		box-shadow: 0 0.6rem 1.4rem rgb(6 20 14 / 40%);
-		font-family: var(--shell-sans, Inter, sans-serif);
-		font-size: var(--shell-text-body, 13px);
+		font-family: var(--shell-sans);
+		font-size: var(--shell-text-body);
 	}
 	.keys-panel:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 2px;
 	}
 	.keys-panel h2 {
 		margin: 0;
-		font-size: var(--shell-text-body, 13px);
+		font-size: var(--shell-text-body);
 		font-weight: 600;
 	}
 	.keys-panel dl {
@@ -4345,21 +4344,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		gap: 0.5rem;
 	}
 	.keys-panel dt {
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: var(--shell-text-utility, 12px);
-		color: var(--shell-gold, #d4ad45);
+		font-family: var(--shell-mono);
+		font-size: var(--shell-text-utility);
+		color: var(--shell-gold);
 		font-variant-numeric: tabular-nums;
 	}
 	.keys-panel dd {
 		margin: 0;
-		font-size: var(--shell-text-utility, 12px);
-		color: var(--shell-ink-quiet, #9fb2a2);
+		font-size: var(--shell-text-utility);
+		color: var(--shell-ink-quiet);
 	}
 	.keys-panel button {
 		justify-self: start;
-		min-height: var(--shell-control-height, 32px);
+		min-height: var(--shell-control-height);
 		padding: 0 0.6rem;
-		border: 1px solid var(--shell-hairline, #2f4a3d);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 0.35rem;
 		background: transparent;
 		color: inherit;
@@ -4384,13 +4383,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.view-edit-preview .turn-arc {
 		fill: none;
-		stroke: var(--shell-gold-ink, #74560c);
+		stroke: var(--shell-gold-ink);
 		stroke-width: 1.2;
 		stroke-dasharray: 3 3;
 	}
 	.view-edit-preview .turn-angle {
-		fill: var(--shell-gold-ink, #74560c);
-		font: 600 11px var(--shell-sans, system-ui, sans-serif);
+		fill: var(--shell-gold-ink);
+		font: 600 11px var(--shell-sans);
 		paint-order: stroke;
 		stroke: rgb(255 255 255 / 0.85);
 		stroke-width: 3px;
@@ -4416,7 +4415,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		border: 0;
 		border-radius: 7px;
 		background: transparent;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font: inherit;
 		font-size: 12.5px;
 		cursor: pointer;
@@ -4425,20 +4424,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: rgb(27 32 28 / 0.06);
 	}
 	.show-button[aria-expanded='true'] {
-		background: var(--shell-forest, #11291f);
-		color: #fff;
+		background: var(--shell-forest);
+		color: var(--shell-white);
 	}
 	.show-button:focus-visible,
 	.show-mode button:focus-visible,
 	.show-all:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 1px;
 	}
 	.show-off {
 		padding: 0 6px;
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--shell-gold, #d4ad45) 28%, transparent);
-		color: var(--shell-gold-ink, #74560c);
+		background: color-mix(in srgb, var(--shell-gold) 28%, transparent);
+		color: var(--shell-gold-ink);
 		font-size: 11px;
 		font-weight: 600;
 	}
@@ -4453,8 +4452,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 12px;
 		border: 1px solid rgb(27 32 28 / 0.12);
 		border-radius: 14px;
-		background: #fff;
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-white);
+		color: var(--shell-ink);
 		box-shadow: 0 10px 30px rgb(17 41 31 / 0.16);
 		font-size: 12.5px;
 	}
@@ -4468,7 +4467,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font-size: 13.5px;
 	}
 	.show-popover header span {
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 11.5px;
 	}
 	.show-mode {
@@ -4484,14 +4483,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		border: 0;
 		border-radius: 8px;
 		background: none;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 		font: inherit;
 		font-size: 12px;
 		cursor: pointer;
 	}
 	.show-mode button[aria-pressed='true'] {
-		background: #fff;
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-white);
+		color: var(--shell-ink);
 		font-weight: 600;
 		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 	}
@@ -4516,15 +4515,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		margin: 0;
 		border: 1.5px solid rgb(27 32 28 / 0.2);
 		border-radius: 5px;
-		background: #fff;
+		background: var(--shell-white);
 		cursor: pointer;
 	}
 	.show-popover input[type='checkbox']:checked {
-		border-color: var(--shell-leaf, #4f8f6c);
-		background: var(--shell-leaf, #4f8f6c) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+		border-color: var(--shell-leaf);
+		background: var(--shell-leaf) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
 	}
 	.show-popover input[type='checkbox']:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 2px;
 	}
 	.show-all {
@@ -4532,7 +4531,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		margin-top: 2px;
 		border: 1px solid rgb(27 32 28 / 0.14);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--shell-white);
 		color: inherit;
 		font: inherit;
 		font-size: 12px;
@@ -4549,7 +4548,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.through-frame {
 		position: absolute;
 		inset: 0;
-		box-shadow: inset 0 0 0 3px var(--shell-gold, #d4ad45);
+		box-shadow: inset 0 0 0 3px var(--shell-gold);
 	}
 	.through-safe {
 		position: absolute;
@@ -4581,8 +4580,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		gap: 8px;
 		padding: 4px 4px 4px 12px;
 		border-radius: 20px;
-		background: var(--shell-glass-dark, rgb(14 30 25 / 0.8));
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--shell-glass-dark);
+		color: var(--shell-ink-light);
 		font-size: 12px;
 		box-shadow: 0 8px 20px rgb(0 0 0 / 0.28);
 	}
@@ -4602,7 +4601,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cursor: default;
 	}
 	.mode-pill button.pill-gold {
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 		color: #2a2208;
 		font-weight: 600;
 	}
@@ -4610,10 +4609,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 	}
 	.mode-pill .moved {
-		color: var(--shell-gold, #d4ad45);
+		color: var(--shell-gold);
 		font-weight: 600;
 	}
 	/* Center Look through in the part of the Stage that the Index leaves visible. */
@@ -4646,8 +4645,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		width: min(22rem, calc(100% - 2rem));
 		padding: 10px 12px;
 		border-radius: 10px;
-		background: var(--shell-popup-dark, rgb(17 41 31 / 0.97));
-		color: var(--shell-ink-light, #eef1ec);
+		background: var(--shell-popup-dark);
+		color: var(--shell-ink-light);
 		box-shadow: 0 10px 28px rgb(0 0 0 / 0.35);
 		font-size: 12px;
 	}
@@ -4671,7 +4670,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cursor: pointer;
 	}
 	.through-confirm button.pill-gold {
-		background: var(--shell-gold, #d4ad45);
+		background: var(--shell-gold);
 		color: #2a2208;
 		font-weight: 600;
 	}
@@ -4681,15 +4680,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		bottom: 4.75rem;
 		width: min(18rem, calc(100% - 2rem));
 		padding: 1rem;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 12px;
-		background: var(--shell-card, #fff);
-		box-shadow: var(--shell-shadow, 0 8px 24px rgb(0 0 0 / 0.12));
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-card);
+		box-shadow: var(--shell-shadow);
+		color: var(--shell-ink);
 		font-size: 0.8rem;
 	}
 	.experience-welcome > span {
-		color: var(--shell-gold-ink, #74560c);
+		color: var(--shell-gold-ink);
 		font-size: 0.65rem;
 		font-weight: 700;
 		letter-spacing: 0.12em;
@@ -4697,7 +4696,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.experience-welcome h2 {
 		margin: 0.25rem 0 0.6rem;
-		font: 400 1.15rem var(--shell-serif, Georgia, serif);
+		font: 400 1.15rem var(--shell-serif);
 	}
 	.experience-welcome ol {
 		margin: 0 0 0.75rem;
@@ -4715,7 +4714,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 0.35rem 0.65rem;
 		border: 0;
 		border-radius: 6px;
-		background: var(--shell-forest, #11291f);
+		background: var(--shell-forest);
 		color: white;
 		cursor: pointer;
 	}
@@ -4738,7 +4737,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		line-height: 1.35;
 	}
 	/* Kind decides the styling, never the words: a success is never a refusal. */
-	.experience-feedback.success { background: #22503c; }
+	.experience-feedback.success { background: var(--shell-forest-raised); }
 	.experience-feedback.info { background: #2c3b44; }
 	.experience-feedback.refused { background: #623639; }
 	.preview-takeover {
@@ -4811,11 +4810,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.resume-offer button.primary {
 		border-color: #d8b26a;
 		background: #7a5a22;
-		color: #fff;
+		color: var(--shell-white);
 	}
 	.source-findings {
 		position: absolute;
-		top: calc(var(--shell-head-height, 48px) + 8px);
+		top: calc(var(--shell-head-height) + 8px);
 		left: 50%;
 		z-index: 30;
 		transform: translateX(-50%);
@@ -4825,7 +4824,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		border-radius: 12px;
 		background: rgb(255 255 255 / 0.96);
 		box-shadow: 0 6px 18px rgb(17 41 31 / 0.14);
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font-size: 12.5px;
 	}
 	.source-findings summary {
@@ -4836,25 +4835,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		list-style: none;
 	}
 	.source-findings strong {
-		color: var(--shell-gold-ink, #74560c);
+		color: var(--shell-gold-ink);
 	}
 	.source-findings.blocking strong {
-		color: var(--shell-caution, #c85a48);
+		color: var(--shell-caution);
 	}
 	.source-findings-more {
 		margin-left: auto;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		text-decoration: underline;
 	}
 	.source-findings ul {
 		margin: 6px 0 4px 1rem;
 		padding: 0;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 	}
 	.source-findings button {
 		border: 1px solid rgb(27 32 28 / 0.14);
 		border-radius: 8px;
-		background: #fff;
+		background: var(--shell-white);
 		padding: 3px 9px;
 		font: inherit;
 		cursor: pointer;

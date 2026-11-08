@@ -147,9 +147,9 @@
 <style>
 	:global(body) {
 		margin: 0;
-		background: #11291f;
-		color: #f3f0e4;
-		font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+		background: var(--shell-forest);
+		color: var(--shell-ivory);
+		font-family: var(--shell-sans);
 	}
 	.entry-page {
 		position: relative;
@@ -159,8 +159,8 @@
 		padding: 16px;
 		box-sizing: border-box;
 		overflow: hidden;
-		background: var(--shell-forest, #11291f);
-		color: #f3f0e4;
+		background: var(--shell-forest);
+		color: var(--shell-ivory);
 	}
 	.entry-sketch {
 		position: absolute;
@@ -183,7 +183,7 @@
 	}
 	.eyebrow {
 		margin: 0 0 0.8rem;
-		color: #d4ad45;
+		color: var(--shell-gold);
 		font-size: 0.72rem;
 		font-weight: 600;
 		letter-spacing: 0.14em;
@@ -191,11 +191,11 @@
 	}
 	h1 {
 		margin: 0;
-		font-family: 'Iowan Old Style', Palatino, Georgia, serif;
+		font-family: var(--shell-serif);
 		font-weight: 500;
 		font-size: clamp(1.8rem, 6vw, 2.2rem);
 		line-height: 1.1;
-		color: #f3f0e4;
+		color: var(--shell-ivory);
 	}
 	.lede {
 		margin: 0.9rem 0 0;
@@ -213,7 +213,7 @@
 		border: 1px solid rgba(255, 255, 255, 0.28);
 		border-radius: 8px;
 		background: transparent;
-		color: #f3f0e4;
+		color: var(--shell-ivory);
 		font: inherit;
 		font-size: 0.9rem;
 		cursor: pointer;
@@ -226,9 +226,9 @@
 		opacity: 0.45;
 	}
 	button.primary {
-		border-color: #d4ad45;
-		background: #d4ad45;
-		color: #11291f;
+		border-color: var(--shell-gold);
+		background: var(--shell-gold);
+		color: var(--shell-forest);
 		font-weight: 600;
 	}
 	button.primary:hover:not(:disabled) {
@@ -236,7 +236,7 @@
 		border-color: #e0bb58;
 	}
 	button:focus-visible {
-		outline: 2px solid #d4ad45;
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 2px;
 	}
 	.status {

@@ -22,6 +22,7 @@
  * and never writes a pose, source, history or Save entry.
  */
 import { viewportGroundReachMeters, type ViewportEvaluation } from '@portfolio/camera-core';
+import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
 import { GRID_MAJOR_METERS, GRID_MINOR_METERS } from './stage-drafting';
 
 /** PLATE's grid inks. Opacity is part of the role, not a renderer default. */
@@ -33,15 +34,15 @@ export type GridInk = {
 };
 
 export const PAPER_GRID_INK: GridInk = {
-	minor: '#9FB2A2',
-	major: '#809984',
+	minor: SPATIAL_PAINT_ROLES.gridMinor,
+	major: SPATIAL_PAINT_ROLES.gridMajor,
 	minorOpacity: 0.4,
 	majorOpacity: 0.55
 };
 
 export const MAT_GRID_INK: GridInk = {
-	minor: '#2B5147',
-	major: '#3C6A5C',
+	minor: SPATIAL_PAINT_ROLES.gridMatMinor,
+	major: SPATIAL_PAINT_ROLES.gridMatMajor,
 	minorOpacity: 1,
 	majorOpacity: 1
 };

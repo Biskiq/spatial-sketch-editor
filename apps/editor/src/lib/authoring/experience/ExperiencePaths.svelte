@@ -506,13 +506,13 @@
 	}
 	.ribbon {
 		fill: none;
-		stroke: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 26%, transparent);
+		stroke: color-mix(in srgb, var(--shell-leaf) 26%, transparent);
 		stroke-width: 9;
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
 	.ribbon.selected {
-		stroke: color-mix(in srgb, var(--shell-gold, #d4ad45) 34%, transparent);
+		stroke: color-mix(in srgb, var(--shell-gold) 34%, transparent);
 		stroke-width: 11;
 	}
 	.ribbon.faint,
@@ -523,23 +523,23 @@
 	}
 	.chevron {
 		fill: none;
-		stroke: var(--shell-forest, #11291f);
+		stroke: var(--shell-forest);
 		stroke-width: 1.8;
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
 	.chevron.selected {
-		stroke: var(--shell-gold-ink, #74560c);
+		stroke: var(--shell-gold-ink);
 	}
 	.start-ring {
-		fill: #fff;
-		stroke: var(--shell-leaf, #4f8f6c);
+		fill: var(--shell-white);
+		stroke: var(--shell-leaf);
 		stroke-width: 2;
 	}
 	.start-ring.selected {
-		stroke: var(--shell-gold, #d4ad45);
+		stroke: var(--shell-gold);
 	}
-	.path-hint rect { fill: var(--shell-forest, #11291f); }
+	.path-hint rect { fill: var(--shell-forest); }
 	.path-hint text { fill: white; font-size: 10px; }
 	.route-hit:focus,
 	.anchor-hit:focus {
@@ -547,17 +547,17 @@
 	}
 	.route {
 		fill: none;
-		stroke: var(--shell-leaf, #4f8f6c);
+		stroke: var(--shell-leaf);
 		stroke-width: 1.6;
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
 	.route.selected {
-		stroke: var(--shell-gold, #d4ad45);
+		stroke: var(--shell-gold);
 		stroke-width: 2.2;
 	}
 	.route.near {
-		stroke: var(--shell-forest-raised, #22503c);
+		stroke: var(--shell-forest-raised);
 	}
 	.route.faint {
 		opacity: 0.3;
@@ -567,34 +567,34 @@
 		stroke: transparent;
 		stroke-width: 22;
 		pointer-events: stroke;
-		cursor: var(--cursor-select, default);
+		cursor: var(--cursor-select);
 	}
 	.route-hit.edit {
-		cursor: var(--cursor-add-point, copy);
+		cursor: var(--cursor-add-point);
 	}
 	.anchor {
-		fill: var(--shell-card, #fff);
-		stroke: var(--shell-leaf, #4f8f6c);
+		fill: var(--shell-card);
+		stroke: var(--shell-leaf);
 		stroke-width: 1.8;
 		pointer-events: none;
 	}
 	.anchor.selected {
-		fill: var(--shell-gold, #d4ad45);
-		stroke: var(--shell-gold-ink, #74560c);
+		fill: var(--shell-gold);
+		stroke: var(--shell-gold-ink);
 	}
 	.anchor-hit {
 		fill: transparent;
 		pointer-events: auto;
-		cursor: var(--cursor-select, default);
+		cursor: var(--cursor-select);
 	}
 	.dragging :is(.anchor-hit, .route-hit.edit) {
-		cursor: var(--cursor-grabbing, grabbing);
+		cursor: var(--cursor-grabbing);
 	}
 	.preview {
 		pointer-events: none;
 	}
 	.cut {
-		stroke: var(--shell-ink-2, #4a524c);
+		stroke: var(--shell-ink-2);
 		stroke-width: 1;
 		stroke-dasharray: 3 4;
 		opacity: 0.75;

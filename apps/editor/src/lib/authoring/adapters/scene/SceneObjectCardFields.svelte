@@ -274,7 +274,7 @@
 		position: relative;
 		min-width: 0;
 		font-size: 10.5px;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 	}
 	input {
 		width: 100%;
@@ -282,11 +282,11 @@
 		box-sizing: border-box;
 		height: 26px;
 		padding: 0 20px 0 6px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 6px;
-		background: var(--shell-control-surface, #fafbf9);
-		color: var(--shell-ink, #1b201c);
-		font: 12px var(--shell-mono, monospace);
+		background: var(--shell-control-surface);
+		color: var(--shell-ink);
+		font: 12px var(--shell-mono);
 	}
 	.unit {
 		position: absolute;
@@ -295,7 +295,7 @@
 	}
 	.refusal,
 	.refused {
-		color: var(--shell-refuse, #7e2718);
+		color: var(--shell-refuse);
 	}
 	@media (pointer: coarse) {
 		input {

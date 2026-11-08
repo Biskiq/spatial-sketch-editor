@@ -238,8 +238,8 @@ describe('R217.S22 — the Height Sheet control', () => {
 	it('matches the production wireframe: thin axis, white marks on the dark Stage, and a border-box sticker', () => {
 		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
 		expect(source).toMatch(/\.rail\s*\{[^}]*width:\s*2px;[^}]*background:\s*rgb\(255 255 255 \/ 0\.28\);/s);
-		expect(source).toMatch(/\.pin-dot\s*\{[^}]*width:\s*8px;[^}]*height:\s*8px;[^}]*border:\s*0;[^}]*background:\s*#fff;/s);
-		expect(source).toMatch(/\.tick\.datum\s*\{[^}]*width:\s*22px;[^}]*height:\s*2\.5px;[^}]*background:\s*#fff;/s);
+		expect(source).toMatch(/\.pin-dot\s*\{[^}]*width:\s*8px;[^}]*height:\s*8px;[^}]*border:\s*0;[^}]*background:\s*var\(--shell-white\);/s);
+		expect(source).toMatch(/\.tick\.datum\s*\{[^}]*width:\s*22px;[^}]*height:\s*2\.5px;[^}]*background:\s*var\(--shell-white\);/s);
 		expect(source).toMatch(/\.knob\s*\{[^}]*box-sizing:\s*border-box;[^}]*height:\s*22px;[^}]*min-width:\s*40px;/s);
 	});
 
@@ -294,7 +294,7 @@ describe('R217.S22 — the Height Sheet control', () => {
  */
 describe('R217.S23 — the Height Sheet white mark set', () => {
 	const SHEET_SOURCE = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
-	const ROLES = readFileSync('src/lib/authoring/stage/shell/shell-roles.css', 'utf8');
+	const ROLES = readFileSync('src/lib/design/presentation-tokens.css', 'utf8');
 	const token = (name: string): string => {
 		const match = ROLES.match(new RegExp(`--shell-${name}:\\s*(#[0-9a-fA-F]{6});`));
 		if (match === null) throw new Error(`no shell token --shell-${name}`);

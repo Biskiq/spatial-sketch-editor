@@ -300,7 +300,7 @@
 	button, li a { padding: 0.55rem 0.75rem; border: 1px solid #635a6f; border-radius: 0.4rem; background: #292632; color: inherit; font: inherit; cursor: pointer; text-decoration: none; }
 	button:hover:not(:disabled), li a:hover { border-color: #c9a9ff; }
 	button:disabled { cursor: default; opacity: 0.45; }
-	.primary { border-color: #b997f2; background: #8f69c8; color: #fff; }
+	.primary { border-color: #b997f2; background: #8f69c8; color: var(--shell-white); }
 	.new-project { margin-top: 1.25rem; }
 	.muted, .status { color: #bcb5c4; line-height: 1.45; }
 	.status { color: #e3c4c4; }

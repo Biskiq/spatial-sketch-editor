@@ -18,6 +18,7 @@
  * The press is an authoring lease (its release writes), so Undo explains it while
  * the finger is down.
  */
+import { SPATIAL_PAINT_ROLES } from '$lib/design/spatial-paint';
 import type { StageFacade, StageSourceHit } from './stage-facade';
 import type { GestureAcquisition } from './stage-session';
 
@@ -25,7 +26,7 @@ import type { GestureAcquisition } from './stage-session';
 export const STAGE_ERASER_TASK = 'host-erase';
 
 /** The PLATE erase treatment: red dashes, never gold. */
-export const STAGE_ERASE_INK = '#d0412d';
+export const STAGE_ERASE_INK = SPATIAL_PAINT_ROLES.erase;
 
 /** The winner under the pointer, as the Stage draws it. */
 export type StageEraseCandidate = {

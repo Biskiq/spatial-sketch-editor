@@ -106,12 +106,12 @@
 		flex-direction: column;
 		gap: 6px;
 		padding: 8px 12px;
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
+		border-top: 1px solid var(--shell-hairline);
 	}
 	.sec-title {
 		margin: 0;
-		color: var(--shell-ink-3, #79817b);
-		font: 600 11px/1.3 var(--shell-sans, system-ui);
+		color: var(--shell-ink-3);
+		font: 600 11px/1.3 var(--shell-sans);
 	}
 	.c-actions {
 		display: flex;
@@ -119,17 +119,17 @@
 	}
 	.c-note {
 		margin: 0;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 		font-size: 11.5px;
 		line-height: 1.45;
 	}
 	.reach-note,
 	.note {
 		margin: 0;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 	}
 	.note.refused {
-		color: var(--shell-refuse, #7e2718);
+		color: var(--shell-refuse);
 	}
 	.rows {
 		display: flex;
@@ -149,13 +149,13 @@
 		border: 0;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font: inherit;
 		text-align: left;
 		cursor: pointer;
 	}
 	.link-row:hover {
-		background: var(--shell-hover, #eef0ed);
+		background: var(--shell-hover);
 	}
 	.lr-thumb {
 		flex: none;
@@ -169,18 +169,18 @@
 	}
 	.lr-chev {
 		display: inline-flex;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 	}
 	.row-name {
 		min-width: 0;
-		font: 12.5px/1.3 var(--shell-serif, Georgia, serif);
+		font: 12.5px/1.3 var(--shell-serif);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.row-meta {
 		flex: none;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 11px;
 	}
 
@@ -190,16 +190,16 @@
 		justify-content: center;
 		min-height: 24px;
 		padding: 0 8px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 6px;
-		background: var(--shell-card, #fff);
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-card);
+		color: var(--shell-ink);
 		font: inherit;
 		font-size: 11.5px;
 		cursor: pointer;
 	}
 	button:hover {
-		background: var(--shell-hover, #eef0ed);
+		background: var(--shell-hover);
 	}
 	button.link-row {
 		justify-content: flex-start;
@@ -216,17 +216,17 @@
 		flex: 1;
 	}
 	button.btn.primary {
-		border-color: var(--shell-forest-raised, #22503c);
-		background: var(--shell-forest-raised, #22503c);
-		color: #fff;
+		border-color: var(--shell-forest-raised);
+		background: var(--shell-forest-raised);
+		color: var(--shell-white);
 	}
 	button.quiet {
 		align-self: flex-start;
 		border-color: transparent;
 		background: transparent;
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 		text-decoration: underline;
-		text-decoration-color: var(--shell-hairline-strong, #cdd2ca);
+		text-decoration-color: var(--shell-hairline-strong);
 		text-underline-offset: 2px;
 	}
 	button:disabled {

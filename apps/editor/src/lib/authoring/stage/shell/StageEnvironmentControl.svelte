@@ -155,7 +155,7 @@
 		border: 0;
 		border-radius: 7px;
 		background: transparent;
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font: inherit;
 		font-size: 12.5px;
 		cursor: pointer;
@@ -164,13 +164,13 @@
 		background: rgb(27 32 28 / 0.06);
 	}
 	.env-chip[aria-expanded='true'] {
-		background: var(--shell-forest, #11291f);
-		color: #fff;
+		background: var(--shell-forest);
+		color: var(--shell-white);
 	}
 	.env-chip:focus-visible,
 	.env-tile:focus-visible,
 	.env-edit:focus-visible {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 1px;
 	}
 	.env-swatch {
@@ -190,8 +190,8 @@
 		padding: 12px;
 		border: 1px solid rgb(27 32 28 / 0.12);
 		border-radius: 14px;
-		background: #fff;
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-white);
+		color: var(--shell-ink);
 		box-shadow: 0 10px 30px rgb(17 41 31 / 0.16);
 		font-size: 12.5px;
 	}
@@ -208,7 +208,7 @@
 		justify-content: space-between;
 	}
 	header span {
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 11.5px;
 	}
 	.env-grid {
@@ -222,57 +222,57 @@
 		padding: 0;
 		border: 0;
 		background: none;
-		color: var(--shell-ink-2, #4a524c);
-		font: 11px var(--shell-sans, system-ui);
+		color: var(--shell-ink-2);
+		font: 11px var(--shell-sans);
 		text-align: center;
 		cursor: pointer;
 	}
 	.env-tile i {
 		display: block;
 		height: 40px;
-		border: 1px solid var(--shell-hairline, #e1e4de);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 8px;
 	}
 	.env-tile[aria-pressed='true'] i {
-		outline: 2px solid var(--shell-gold, #d4ad45);
+		outline: 2px solid var(--shell-gold);
 		outline-offset: 1px;
 	}
 	.env-tile[aria-pressed='true'] span {
-		color: var(--shell-ink, #1b201c);
+		color: var(--shell-ink);
 		font-weight: 600;
 	}
 	.env-shelf {
 		display: grid;
 		padding: 7px 9px;
-		border: 1px dashed var(--shell-hairline-strong, #cdd2ca);
+		border: 1px dashed var(--shell-hairline-strong);
 		border-radius: 9px;
 	}
 	.env-shelf small,
 	.env-section small,
 	.env-pref small {
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 11px;
 	}
 	.env-edit {
 		padding: 7px;
 		border: 0;
 		border-radius: 8px;
-		background: var(--shell-hover, #eef0ed);
-		color: var(--shell-forest-2, #22503c);
-		font: 500 12.5px var(--shell-sans, system-ui);
+		background: var(--shell-hover);
+		color: var(--shell-forest-raised);
+		font: 500 12.5px var(--shell-sans);
 		cursor: pointer;
 	}
 	.env-panel header {
 		align-items: flex-start;
 	}
 	.env-eyebrow {
-		color: var(--shell-gold-ink, #74560c);
-		font: 600 10.5px var(--shell-sans, system-ui);
+		color: var(--shell-gold-ink);
+		font: 600 10.5px var(--shell-sans);
 		letter-spacing: 0.14em;
 	}
 	.env-panel h3 {
 		margin: 2px 0 0;
-		font: 400 20px/1.2 var(--shell-serif, Georgia, serif);
+		font: 400 20px/1.2 var(--shell-serif);
 	}
 	.env-close {
 		display: grid;
@@ -282,12 +282,12 @@
 		border: 0;
 		border-radius: 7px;
 		background: none;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		cursor: pointer;
 	}
 	.env-note {
 		margin: 0;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 11.5px;
 	}
 	.env-section {
@@ -295,20 +295,20 @@
 		grid-template-columns: 1fr auto;
 		gap: 6px;
 		padding-top: 8px;
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
+		border-top: 1px solid var(--shell-hairline);
 	}
 	.env-section .env-grid,
 	.env-section small {
 		grid-column: 1 / -1;
 	}
 	.env-section.later strong {
-		color: var(--shell-ink-2, #4a524c);
+		color: var(--shell-ink-2);
 	}
 	.env-later {
 		padding: 1px 7px;
-		border: 1px solid var(--shell-hairline-strong, #cdd2ca);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 999px;
-		color: var(--shell-ink-3, #79817b);
+		color: var(--shell-ink-3);
 		font-size: 10px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -318,11 +318,11 @@
 		align-items: center;
 		gap: 7px;
 		padding-top: 8px;
-		border-top: 1px solid var(--shell-hairline, #e1e4de);
-		color: var(--shell-ink-2, #4a524c);
+		border-top: 1px solid var(--shell-hairline);
+		color: var(--shell-ink-2);
 		font-size: 12px;
 	}
 	.env-pref input {
-		accent-color: var(--shell-forest-2, #22503c);
+		accent-color: var(--shell-forest-raised);
 	}
 </style>

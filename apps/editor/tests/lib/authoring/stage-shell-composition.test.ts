@@ -574,7 +574,7 @@ describe('Stage shell lanes and the Card (R217.S22)', () => {
  * is the proof. The mounted route suite proves the behaviour they enable, and the browser
  * record measures the rectangles and the ground.
  */
-const SHELL_ROLES = readSource('apps/editor/src/lib/authoring/stage/shell/shell-roles.css');
+const SHELL_ROLES = readSource('apps/editor/src/lib/design/presentation-tokens.css');
 const INSTRUMENT_HOST = 'apps/editor/src/lib/authoring/stage/shell/StageInstrumentHost.svelte';
 const INK_PALETTE = 'apps/editor/src/lib/authoring/adapters/layout/LayoutInkPalette.svelte';
 const OPENING_PALETTE = 'apps/editor/src/lib/authoring/adapters/layout/LayoutOpeningPalette.svelte';
@@ -619,7 +619,7 @@ describe('Ink row, constrained Index and scrim (R217.S23)', () => {
 		const host = codeOf(INSTRUMENT_HOST);
 		expect(host).not.toContain('World Instrument');
 		expect(host).not.toContain('eyebrow');
-		expect(host).toContain('background: var(--shell-forest, #11291f);');
+		expect(host).toContain('background: var(--shell-forest);');
 		// The adapter's content is the body; its facts stay on the head's tooltip, not in a block.
 		expect(host).not.toContain('contributed-facts');
 		expect(host).not.toContain('contributed-summary');

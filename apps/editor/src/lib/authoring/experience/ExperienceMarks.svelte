@@ -549,15 +549,15 @@
 
 <style>
 	.handle-hit { fill: transparent; pointer-events: all; touch-action: none; }
-	.advanced-handle[data-mark-kind='move'] { cursor: var(--cursor-move, move); }
-	.advanced-handle[data-mark-kind='turn'] { cursor: var(--cursor-turn, crosshair); }
+	.advanced-handle[data-mark-kind='move'] { cursor: var(--cursor-move); }
+	.advanced-handle[data-mark-kind='turn'] { cursor: var(--cursor-turn); }
 	.advanced-handle[data-mark-kind='lift'],
 	.advanced-handle[data-mark-kind='tilt'] { cursor: ns-resize; }
 	.advanced-handle[data-mark-kind='lens'] { cursor: nwse-resize; }
 	[data-stage-reading='plan'] .advanced-handle[data-mark-kind='lens'] { cursor: ew-resize; }
 	.advanced-value { pointer-events: none; }
-	.advanced-value rect { fill: var(--shell-ink, #1b201c); }
-	.advanced-value text { fill: #fff; font: 11px var(--shell-mono, monospace); }
+	.advanced-value rect { fill: var(--shell-ink); }
+	.advanced-value text { fill: var(--shell-white); font: 11px var(--shell-mono); }
 
 	.experience-marks {
 		position: absolute;
@@ -572,19 +572,19 @@
 
 	/* Plan wedges: quiet, on the tour, and the selected View's full cone. */
 	.frustum {
-		fill: color-mix(in srgb, var(--shell-ink, #1b201c) 6%, transparent);
-		stroke: color-mix(in srgb, var(--shell-ink, #1b201c) 28%, transparent);
+		fill: color-mix(in srgb, var(--shell-ink) 6%, transparent);
+		stroke: color-mix(in srgb, var(--shell-ink) 28%, transparent);
 		stroke-width: 1;
 		stroke-linejoin: round;
 	}
 	.frustum.strong {
-		fill: color-mix(in srgb, var(--shell-leaf, #4f8f6c) 13%, transparent);
-		stroke: var(--shell-leaf, #4f8f6c);
+		fill: color-mix(in srgb, var(--shell-leaf) 13%, transparent);
+		stroke: var(--shell-leaf);
 		stroke-opacity: 0.65;
 	}
 	.frustum.selected {
-		fill: color-mix(in srgb, var(--shell-gold, #d4ad45) 20%, transparent);
-		stroke: var(--shell-gold, #d4ad45);
+		fill: color-mix(in srgb, var(--shell-gold) 20%, transparent);
+		stroke: var(--shell-gold);
 		stroke-width: 1.4;
 		stroke-opacity: 1;
 	}
@@ -594,18 +594,18 @@
 
 	/* Plan dot. */
 	.dot {
-		fill: #fff;
-		stroke: var(--shell-ink, #1b201c);
+		fill: var(--shell-white);
+		stroke: var(--shell-ink);
 		stroke-width: 1.4;
 	}
 	.mark.strong .dot {
-		fill: var(--shell-leaf, #4f8f6c);
-		stroke: #fff;
+		fill: var(--shell-leaf);
+		stroke: var(--shell-white);
 		stroke-width: 1.6;
 	}
 	.mark.selected .dot {
-		fill: var(--shell-gold, #d4ad45);
-		stroke: #fff;
+		fill: var(--shell-gold);
+		stroke: var(--shell-white);
 		stroke-width: 2;
 	}
 	/* Review round 2: the selected View's wedge is its turn grip. */
@@ -613,21 +613,21 @@
 		fill: transparent;
 		stroke: none;
 		pointer-events: auto;
-		cursor: var(--cursor-turn, crosshair);
+		cursor: var(--cursor-turn);
 	}
 	.turn-wire {
 		fill: none;
 		stroke: transparent;
 		stroke-width: 12;
 		pointer-events: stroke;
-		cursor: var(--cursor-turn, crosshair);
+		cursor: var(--cursor-turn);
 	}
 	.mark.selected[data-mark-kind='eye'] .hit {
-		cursor: var(--cursor-select, default);
+		cursor: var(--cursor-select);
 	}
 
 	:global(.stage[data-cursor='grabbing']) .mark.selected[data-mark-kind='eye'] .hit {
-		cursor: var(--cursor-grabbing, grabbing);
+		cursor: var(--cursor-grabbing);
 	}
 
 	/* The 3D Detailed camera: one ink outline over white faces. */
@@ -639,8 +639,8 @@
 		stroke-linejoin: round;
 	}
 	.face.light {
-		fill: #fff;
-		stroke: #fff;
+		fill: var(--shell-white);
+		stroke: var(--shell-white);
 	}
 	.face.side {
 		fill: #eceee9;
@@ -655,19 +655,19 @@
 		stroke: #2c332e;
 	}
 	.face.ink {
-		fill: #1b201c;
-		stroke: #1b201c;
+		fill: var(--shell-ink);
+		stroke: var(--shell-ink);
 	}
 	.glass {
 		fill: #557a72;
 	}
 	.glint {
-		fill: #fff;
+		fill: var(--shell-white);
 		opacity: 0.85;
 	}
 	.outline {
 		fill: none;
-		stroke: var(--shell-ink, #1b201c);
+		stroke: var(--shell-ink);
 		stroke-opacity: 0.75;
 		stroke-width: 2;
 		stroke-linejoin: round;
@@ -681,7 +681,7 @@
 		stroke: #e2eee6;
 	}
 	.mark.strong .outline {
-		stroke: var(--shell-leaf, #4f8f6c);
+		stroke: var(--shell-leaf);
 		stroke-opacity: 1;
 	}
 	.mark.selected .face.light {
@@ -693,7 +693,7 @@
 		stroke: #f6e7bd;
 	}
 	.mark.selected .outline {
-		stroke: var(--shell-gold-ink, #74560c);
+		stroke: var(--shell-gold-ink);
 		stroke-opacity: 1;
 	}
 	.mark.selected .glass {
@@ -704,33 +704,33 @@
 		filter: blur(1.4px);
 	}
 	.stem {
-		stroke: var(--shell-ink, #1b201c);
+		stroke: var(--shell-ink);
 		stroke-opacity: 0.55;
 		stroke-width: 1;
 		stroke-dasharray: 3 3;
 	}
 	.foot {
-		fill: var(--shell-ink, #1b201c);
+		fill: var(--shell-ink);
 	}
 	.wire {
 		fill: none;
-		stroke: color-mix(in srgb, var(--shell-ink, #1b201c) 45%, transparent);
+		stroke: color-mix(in srgb, var(--shell-ink) 45%, transparent);
 		stroke-width: 1;
 		stroke-linejoin: round;
 	}
 	.mark.strong .wire {
-		stroke: var(--shell-leaf, #4f8f6c);
+		stroke: var(--shell-leaf);
 		stroke-width: 1.2;
 	}
 	.mark.selected .wire {
-		stroke: var(--shell-gold, #d4ad45);
+		stroke: var(--shell-gold);
 		stroke-width: 1.4;
 	}
 
 	/* Selection: gold corner brackets, never a box. */
 	.brk {
 		fill: none;
-		stroke: var(--shell-gold, #d4ad45);
+		stroke: var(--shell-gold);
 		stroke-width: 2;
 		stroke-linecap: round;
 	}
@@ -746,7 +746,7 @@
 	.hit {
 		fill: transparent;
 		pointer-events: auto;
-		cursor: var(--cursor-select, default);
+		cursor: var(--cursor-select);
 	}
 	/* Mouse clicks never draw the browser ring (B8); keyboard focus gets a gold ring. */
 	.hit:focus {
@@ -754,26 +754,26 @@
 	}
 	.hit:focus-visible {
 		outline: none;
-		stroke: var(--shell-gold, #d4ad45);
+		stroke: var(--shell-gold);
 		stroke-width: 2;
 	}
 
 	.tag rect {
-		fill: var(--shell-forest, #11291f);
+		fill: var(--shell-forest);
 	}
 	.tag text {
-		fill: #fff;
-		font: 500 11px var(--shell-sans, system-ui, sans-serif);
+		fill: var(--shell-white);
+		font: 500 11px var(--shell-sans);
 	}
 	.number circle {
-		fill: var(--shell-forest, #11291f);
+		fill: var(--shell-forest);
 	}
 	.number text {
-		fill: #fff;
-		font: 600 9.5px var(--shell-sans, system-ui, sans-serif);
+		fill: var(--shell-white);
+		font: 600 9.5px var(--shell-sans);
 	}
 	.mark.selected .number circle {
-		fill: var(--shell-gold, #d4ad45);
+		fill: var(--shell-gold);
 	}
 	.mark.selected .number text {
 		fill: #2a2208;
@@ -785,24 +785,24 @@
 
 	/* Review round 3 (sheet §23): the Plan camera, in the 3D sticker finish and states. */
 	.plan-cam { filter: drop-shadow(0 1.2px 1.3px rgba(20, 24, 20, 0.3)); }
-	.plan-cam .o { fill: var(--shell-ink, #1b201c); stroke: var(--shell-ink, #1b201c); stroke-width: 2.4; stroke-linejoin: round; }
-	.plan-cam .body { fill: #fff; }
+	.plan-cam .o { fill: var(--shell-ink); stroke: var(--shell-ink); stroke-width: 2.4; stroke-linejoin: round; }
+	.plan-cam .body { fill: var(--shell-white); }
 	.plan-cam .barrel { fill: #e4e7e1; }
 	.plan-cam .hump { fill: #eceee9; }
 	.plan-cam .button,
-	.plan-cam .lens-cap { fill: var(--shell-ink, #1b201c); }
+	.plan-cam .lens-cap { fill: var(--shell-ink); }
 	.plan-cam .rim { fill: none; stroke: none; stroke-width: 2.2; stroke-linecap: round; }
-	.mark.strong .plan-cam .o { fill: var(--shell-forest-2, #22503c); stroke: var(--shell-forest-2, #22503c); }
+	.mark.strong .plan-cam .o { fill: var(--shell-forest-raised); stroke: var(--shell-forest-raised); }
 	.mark.strong .plan-cam .body { fill: #f4faf6; }
 	.mark.strong .plan-cam .barrel { fill: #d2e3d8; }
 	.mark.strong .plan-cam .hump { fill: #e2eee6; }
-	.mark.strong .plan-cam .rim { stroke: var(--shell-leaf, #4f8f6c); }
-	.mark.selected .plan-cam .o { fill: var(--shell-gold-ink, #74560c); stroke: var(--shell-gold-ink, #74560c); }
+	.mark.strong .plan-cam .rim { stroke: var(--shell-leaf); }
+	.mark.selected .plan-cam .o { fill: var(--shell-gold-ink); stroke: var(--shell-gold-ink); }
 	.mark.selected .plan-cam .body { fill: #fff8e6; }
 	.mark.selected .plan-cam .barrel { fill: #ecd69a; }
 	.mark.selected .plan-cam .hump { fill: #f6e7bd; }
-	.mark.selected .plan-cam :is(.button, .lens-cap) { fill: var(--shell-gold-ink, #74560c); }
-	.mark.selected .plan-cam .rim { stroke: var(--shell-gold, #d4ad45); }
+	.mark.selected .plan-cam :is(.button, .lens-cap) { fill: var(--shell-gold-ink); }
+	.mark.selected .plan-cam .rim { stroke: var(--shell-gold); }
 
 	/* The start pose of a live drag: dashed, faint, never pressable. */
 	.edit-ghost { pointer-events: none; }
@@ -815,13 +815,13 @@
 	.advanced-ghost :is(.face, .glass, .glint, .cam-shadow, .foot, .stem) { display: none; }
 	.advanced-ghost :is(.outline, .wire, .frustum, .plan-cam .o, .dot) {
 		fill: none;
-		stroke: var(--shell-proposal, #2a62d6);
+		stroke: var(--stage-proposal);
 		stroke-opacity: 1;
 		stroke-width: 1.3;
 		stroke-dasharray: 4 3;
 		filter: drop-shadow(0 0 .7px rgba(255,255,255,.95));
 	}
-	.edit-ghost .offset { stroke: var(--shell-gold-ink, #74560c); stroke-width: 1.2; stroke-dasharray: 3 3; }
+	.edit-ghost .offset { stroke: var(--shell-gold-ink); stroke-width: 1.2; stroke-dasharray: 3 3; }
 	.edit-ghost .value rect { fill: rgba(10, 24, 18, 0.82); }
-	.edit-ghost .value text { fill: #fff; font: 500 10.5px var(--shell-sans, system-ui, sans-serif); }
+	.edit-ghost .value text { fill: var(--shell-white); font: 500 10.5px var(--shell-sans); }
 </style>

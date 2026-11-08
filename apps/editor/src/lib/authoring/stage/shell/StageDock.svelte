@@ -88,7 +88,7 @@
 		border-radius: 8px;
 		background: var(--shell-forest);
 		color: var(--shell-ink-light);
-		font-size: var(--shell-text-utility, 12px);
+		font-size: var(--shell-text-utility);
 		box-shadow: var(--shell-shadow);
 	}
 	.unavailable-reason[hidden] {
@@ -130,8 +130,8 @@
 		background: rgb(255 255 255 / 0.08);
 	}
 	.key.armed {
-		background: var(--shell-ivory, #f3f0e4);
-		color: var(--shell-forest, #11291f);
+		background: var(--shell-ivory);
+		color: var(--shell-forest);
 		box-shadow: 0 1px 3px #0004;
 	}
 	.key[aria-disabled='true'] {
@@ -149,10 +149,10 @@
 		left: 13px;
 		bottom: 3px;
 		opacity: 0.9;
-		background: var(--shell-ink, #1b201c);
+		background: var(--shell-ink);
 	}
 	.key[data-dock-slot='erase']::after {
-		background: #d0412d;
+		background: var(--stage-erase);
 	}
 	.key[data-dock-tool='unavailable-slice']::after {
 		background: #f2d000;
@@ -169,7 +169,7 @@
 		height: 0;
 		border-left: 5px solid transparent;
 		border-right: 5px solid transparent;
-		border-bottom: 5px solid var(--shell-ivory, #f3f0e4);
+		border-bottom: 5px solid var(--shell-ivory);
 		opacity: 0.55;
 		pointer-events: none;
 	}

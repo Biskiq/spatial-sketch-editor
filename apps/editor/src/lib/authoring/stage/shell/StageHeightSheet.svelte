@@ -409,8 +409,8 @@
 		right: 10px;
 		z-index: 8;
 		width: 40px;
-		color: var(--shell-ink, #1b201c);
-		font: 11px/1.35 var(--shell-mono, monospace);
+		color: var(--shell-ink);
+		font: 11px/1.35 var(--shell-mono);
 	}
 	.sheet.left {
 		right: auto;
@@ -473,7 +473,7 @@
 	.tick.datum {
 		width: 22px;
 		height: 2.5px;
-		background: #fff;
+		background: var(--shell-white);
 	}
 	.knob {
 		position: absolute;
@@ -486,8 +486,8 @@
 		min-width: 40px;
 		padding: 0 5px;
 		border-radius: 11px;
-		background: var(--shell-sheet-knob, #fbfaf2);
-		color: var(--shell-ink, #1b201c);
+		background: var(--shell-sheet-knob);
+		color: var(--shell-ink);
 		box-shadow: 0 1px 4px #0006;
 		font-size: 10.5px;
 		font-weight: 600;
@@ -505,11 +505,11 @@
 		right: 0;
 		padding: 2px 5px;
 		border-radius: 4px;
-		background: var(--shell-sheet-knob, #fbfaf2);
+		background: var(--shell-sheet-knob);
 		box-shadow: 0 1px 2px #0002;
 		white-space: nowrap;
 		transform: translateY(50%);
-		font: 11px var(--shell-sans, system-ui);
+		font: 11px var(--shell-sans);
 	}
 	.pin {
 		position: absolute;
@@ -529,7 +529,7 @@
 		height: 8px;
 		border: 0;
 		border-radius: 50%;
-		background: #fff;
+		background: var(--shell-white);
 	}
 	.add {
 		position: absolute;
@@ -543,7 +543,7 @@
 		border: 0;
 		border-radius: 50%;
 		background: #11291fdd;
-		color: #fff;
+		color: var(--shell-white);
 		cursor: pointer;
 	}
 	.snap {
@@ -554,7 +554,7 @@
 		padding: 4px 6px;
 		border-radius: 5px;
 		background: #11291fdd;
-		color: #fff;
+		color: var(--shell-white);
 	}
 	@media (pointer: coarse) {
 		.sheet {

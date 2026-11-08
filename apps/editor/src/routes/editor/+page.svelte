@@ -33,27 +33,27 @@
 <style>
 	:global(body) {
 		margin: 0;
-		background: #e9ebe6;
+		background: var(--shell-paper);
 	}
 	.opening {
 		display: flex;
 		flex-direction: column;
 		min-height: 100dvh;
 		box-sizing: border-box;
-		background: #e9ebe6;
-		font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+		background: var(--shell-paper);
+		font-family: var(--shell-sans);
 	}
 	.opening-head {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		height: 44px;
+		height: var(--shell-head-height);
 		padding: 0 16px;
 		box-sizing: border-box;
-		background: var(--shell-forest, #11291f);
-		color: #f3f0e4;
-		font-family: 'Iowan Old Style', Palatino, Georgia, serif;
-		font-size: 15px;
+		background: var(--shell-forest);
+		color: var(--shell-ivory);
+		font-family: var(--shell-serif);
+		font-size: var(--shell-text-identity);
 		font-weight: 500;
 	}
 	.opening-body {
@@ -64,7 +64,7 @@
 		padding: 16px;
 		box-sizing: border-box;
 		text-align: center;
-		background-color: #e9ebe6;
+		background-color: var(--shell-paper);
 		background-image:
 			linear-gradient(rgba(27, 32, 28, 0.06) 1px, transparent 1px),
 			linear-gradient(90deg, rgba(27, 32, 28, 0.06) 1px, transparent 1px);
@@ -76,12 +76,12 @@
 		font-weight: 500;
 		font-size: clamp(1.6rem, 6vw, 2.2rem);
 		line-height: 1.1;
-		color: #1b201c;
+		color: var(--shell-ink);
 	}
 	.opening-line {
 		margin: 8px 0 0;
-		font-size: 13px;
-		color: #4a524c;
+		font-size: var(--shell-text-body);
+		color: var(--shell-ink-2);
 	}
 	.opening-bar {
 		position: relative;
@@ -90,7 +90,7 @@
 		margin-top: 16px;
 		border-radius: 2px;
 		overflow: hidden;
-		background: #cdd2ca;
+		background: var(--shell-hairline-strong);
 	}
 	.opening-bar i {
 		position: absolute;
@@ -99,7 +99,7 @@
 		left: 0;
 		width: 40%;
 		border-radius: 2px;
-		background: #d4ad45;
+		background: var(--shell-gold);
 		animation: opening-slide 1.4s ease-in-out infinite;
 	}
 	@keyframes opening-slide {
