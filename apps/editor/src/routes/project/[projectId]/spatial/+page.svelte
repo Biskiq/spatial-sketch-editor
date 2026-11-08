@@ -491,10 +491,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Place a View is an armed Stage tool; Look through is a provisional posture. */
 	let experienceTool = $state<'select' | 'place'>('select');
-	let placementPress = $state.raw<{ readonly pointerId: number; readonly start: StageTriple; readonly css: readonly [number, number] } | null>(null);
-	let placementGhost = $state.raw<ReturnType<typeof viewPlacementPose>>(null);
-	/** Present this in Plan aims the armed placement at the subject. */
-	let placementAim = $state<StageTriple | null>(null);
 	let lookThroughSession = $state<{ readonly viewId: string; readonly presentationId: string; readonly label: string } | null>(null);
 	let lookThroughTick = $state(0);
 	let lookThroughConfirm = $state<readonly string[] | null>(null);
@@ -532,8 +528,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewBusy: () => previewBusy,
 		previewRequested: () => previewRequestedMode !== null,
 		lookThroughOpen: () => lookThroughSession !== null,
-		placementOpen: () => placementPress !== null || placementAim !== null,
+		viewEditActive: () => viewEdit !== null,
 		tool: () => experienceTool,
+		setTool: (next) => { experienceTool = next; },
+		absoluteCss: (event) => absoluteCss(event),
+		stageElement: () => stageEl,
+		capturePointer: (target, pointerId) => capturePointer(target, pointerId),
+		floorDatum: () => experienceFloorDatum,
+		evaluation: () => evaluation,
+		exitLookThrough: () => exitLookThrough(),
+		renameRequest: () => { cardOpen = true; cardRenameRequest += 1; },
 		notice: (message) => { notice = message; }
 	});
 	/** The lens's one playback session, read by the Guide instrument. */
@@ -585,33 +589,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return facade?.camera.lookThrough()?.moved ?? false;
 	});
 
-	function floorPlane(): {
-		readonly originMeters: StageTriple;
-		readonly normal: StageTriple;
-		readonly yawRadians: number;
-		readonly datumMeters: number;
-		readonly supportedLocalExtent: null;
-	} {
-		return {
-			originMeters: [0, experienceFloorDatum, 0],
-			normal: [0, 1, 0],
-			yawRadians: 0,
-			datumMeters: experienceFloorDatum,
-			supportedLocalExtent: null
-		};
-	}
-
-	/** The Floor point under one pointer, through Camera's own ray and plane hit. */
-	function placementPoint(event: PointerEvent): StageTriple | null {
-		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
-		if (stage === null || id === null) return null;
-		const ray = stage.pointerRay(absoluteCss(event), id);
-		if (ray.kind !== 'ray') return null;
-		const hit = stage.intersectWorkingPlane(ray.ray, floorPlane(), id);
-		return hit.kind === 'intersected' ? hit.worldPoint : null;
-	}
-
 	/** One path anchor drag point, through the same Camera ray and a level plane at its height. */
 	let pathDragLease: { release(): void } | null = null;
 	function beginPathDragLease(): boolean {
@@ -650,22 +627,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			id
 		);
 		return hit.kind === 'intersected' ? hit.worldPoint : null;
-	}
-
-	function togglePlaceView(): void {
-		if (lens !== 'experience' || viewEdit !== null) return;
-		if (experienceTool === 'place') {
-			experienceTool = 'select';
-			placementAim = null;
-			cancelPlacement();
-			notice = '';
-			return;
-		}
-		if (lookThroughSession !== null) exitLookThrough();
-		experienceLens.stopAndRestore();
-		experienceTool = 'place';
-		placementAim = null;
-		notice = '';
 	}
 
 	function viewMarkAt(event: MouseEvent) {
@@ -914,78 +875,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 	}
 
-	function beginPlacement(event: PointerEvent): void {
-		if (event.button !== 0 || placementPress !== null) return;
-		const point = placementPoint(event);
-		if (point === null) {
-			notice = 'Point at the Floor to place a View.';
-			return;
-		}
-		if (!capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
-		placementPress = { pointerId: event.pointerId, start: point, css: absoluteCss(event) };
-		placementGhost = placementPose(point, point);
-	}
-
-	function placementPose(start: StageTriple, current: StageTriple) {
-		return viewPlacementPose({
-			startFloorPoint: start,
-			currentFloorPoint: current,
-			aimPoint: placementAim,
-			minimumDragMeters: 0,
-			defaultAzimuthRadians: evaluation?.pose.azimuthRadians,
-			floorDatumMeters: experienceFloorDatum,
-			fovYDegrees: CAMERA_FOV.default
-		});
-	}
-
-	function movePlacement(event: PointerEvent): void {
-		const press = placementPress;
-		if (press === null || event.pointerId !== press.pointerId) return;
-		const point = placementPoint(event);
-		if (point === null) return;
-		const [x, y] = absoluteCss(event);
-		const [startX, startY] = press.css;
-		const dragged = isStageDrag({ x: startX, y: startY }, { x, y });
-		placementGhost = placementPose(press.start, dragged ? point : press.start);
-	}
-
-	function cancelPlacement(): void {
-		const press = placementPress;
-		placementPress = null;
-		placementGhost = null;
-		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
-	}
-
-	function endPlacement(): void {
-		const press = placementPress;
-		const pose = placementGhost;
-		placementPress = null;
-		placementGhost = null;
-		placementAim = null;
-		if (press === null) return;
-		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
-		if (pose === null) {
-			notice = 'The View needs a target away from its eye.';
-			return;
-		}
-		const controller = activeExperience;
-		if (controller === null) return;
-		void controller.placeView({ eye: pose.eye, target: pose.target, fov: pose.fovYDegrees }).then((outcome) => {
-			if (outcome.kind === 'refused') {
-				notice = outcome.message;
-				return;
-			}
-			if (outcome.createdPresentation) {
-				cardOpen = true;
-				// X28.2: the new Presentation opens its existing inline name editor.
-				cardRenameRequest += 1;
-				notice = 'Presentation created; name it in the Card.';
-			} else {
-				notice = '';
-			}
-		});
-	}
-
 	function beginReaim(event: PointerEvent): void {
 		if (event.button !== 0 && event.button !== 2) return;
 		if (lookThroughPointers.size >= 2 || (lookThroughPointers.size > 0 && event.pointerType !== 'touch')) return;
@@ -1061,7 +950,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		if (experienceTool === 'place') {
 			experienceTool = 'select';
-			cancelPlacement();
+			experienceLens.cancelPlacement();
 		}
 
 		lookThroughSession = { viewId, presentationId: owner, label: facts.label };
@@ -1142,11 +1031,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (stage === null || controller === null) return;
 		const bounds = stage.sceneBounds(entityId);
 		if (stage.camera.state().reading === 'plan' || evaluation?.projectionKind === 'plan-orthographic') {
-			placementAim = bounds === null ? null : [
+			experienceLens.aimPlacement(bounds === null ? null : [
 				(bounds.min[0] + bounds.max[0]) / 2,
 				(bounds.min[1] + bounds.max[1]) / 2,
 				(bounds.min[2] + bounds.max[2]) / 2
-			];
+			]);
 			experienceLens.stopAndRestore();
 			experienceTool = 'place';
 			notice = `Place a View aimed at ${label}: click where the camera stands.`;
@@ -2899,7 +2788,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
 		if (viewEdit !== null) return;
 		if (lens === 'experience' && lookThroughSession !== null) { beginReaim(event); return; }
-		if (lens === 'experience' && experienceTool === 'place') { beginPlacement(event); return; }
+		if (lens === 'experience' && experienceTool === 'place') { experienceLens.beginPlacement(event); return; }
 		if (lens === 'experience' && lookThroughSession === null && experienceTool === 'select' && event.button === 0) {
 			const mark = viewMarkAt(event);
 			if (mark !== null && (!event.shiftKey || mark.viewId === advancedViewId)) {
@@ -3161,7 +3050,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (lookThroughSession !== null) { moveReaim(event); return; }
-		if (placementPress !== null) { movePlacement(event); return; }
+		if (experienceLens.placementPress() !== null) { experienceLens.movePlacement(event); return; }
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
 			hoverSample = { css: stageCss(event), shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
@@ -3270,7 +3159,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
-		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) endPlacement(); return; }
+		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.endPlacement(); return; }
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
 		// ended, not aborted. Only the owning pointer may end it — a refused second
@@ -3354,14 +3243,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function onPointerCancel(event: PointerEvent): void {
 		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) cancelViewEdit(); return; }
 		if (lookThroughSession !== null) { endReaim(event.pointerId); return; }
-		if (placementPress !== null) { if (placementPress.pointerId === event.pointerId) cancelPlacement(); return; }
+		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
 		if (viewEdit !== null && viewEdit.pointerId === event.pointerId) { cancelViewEdit(); return; }
 		if (lookThroughPointers.has(event.pointerId)) { endReaim(event.pointerId); return; }
-		if (placementPress !== null && placementPress.pointerId === event.pointerId) { cancelPlacement(); return; }
+		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.cancelPlacement(); return; }
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
 
@@ -3458,8 +3347,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				event.preventDefault();
 				event.stopPropagation();
 				experienceTool = 'select';
-				placementAim = null;
-				cancelPlacement();
+				experienceLens.aimPlacement(null);
+				experienceLens.cancelPlacement();
 				notice = '';
 				return;
 			}
@@ -4972,7 +4861,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#if lens === 'experience' && evaluation !== null && lookThroughSession === null}
 						<ExperienceMarks
 							{evaluation}
-							{placementGhost}
+							placementGhost={experienceLens.placementGhost()}
 							liveEdit={viewEdit}
 							advanced={advancedViewId !== null}
 							datum={experienceFloorDatum}
@@ -5363,7 +5252,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						captureReason={experienceCaptureReason}
 						guideOpen={experienceGuideOpen}
 						placeArmed={experienceTool === 'place'}
-						onPlaceView={togglePlaceView}
+						onPlaceView={experienceLens.togglePlaceView}
 						onCapture={() => void activeExperience?.capture()}
 						onToggleGuide={toggleExperienceGuide}
 					/>

@@ -11,7 +11,8 @@
  * each ask, and only the first restore happens.
  */
 import { tick, untrack } from 'svelte';
-import type { ViewportCameraState } from '@portfolio/camera-core';
+import { CAMERA_FOV, viewPlacementPose, type ViewportCameraState } from '@portfolio/camera-core';
+import { isStageDrag } from '../stage/stage-input';
 import type { StageFacade } from '../stage/stage-facade';
 import type { ExperienceController } from './experience-controller.svelte';
 import type { ExperienceGuideTransport } from './experience-homes';
@@ -30,11 +31,22 @@ export type ExperienceLensHost = {
 	previewBusy: () => boolean;
 	previewRequested: () => boolean;
 	lookThroughOpen: () => boolean;
-	/** Play a View is armed or a placement press is live. */
-	placementOpen: () => boolean;
-	tool: () => 'select' | 'place';
+	/** A live View-edit gesture owns the pointer. */
+	viewEditActive: () => boolean;
+	readonly tool: () => 'select' | 'place';
+	readonly setTool: (tool: 'select' | 'place') => void;
+	readonly absoluteCss: (event: PointerEvent) => readonly [number, number];
+	readonly stageElement: () => HTMLElement | undefined;
+	readonly capturePointer: (target: Element, pointerId: number) => boolean;
+	readonly floorDatum: () => number;
+	readonly evaluation: () => { readonly pose: { readonly azimuthRadians: number } } | null;
+	readonly exitLookThrough: () => void;
+	/** The new Presentation's inline name editor is the Card's. */
+	readonly renameRequest: () => void;
 	notice: (message: string) => void;
 };
+
+type StageTriple = [number, number, number];
 
 type PlaybackView = {
 	readonly eye: [number, number, number];
@@ -52,13 +64,19 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	let restorePending = $state.raw<{ readonly stage: object; readonly standpoint: ViewportCameraState } | null>(null);
 	let disposed = false;
 
+	/** Manual placement state: the press, its ghost and Present this's aim. */
+	let placementPress = $state.raw<{ readonly pointerId: number; readonly start: StageTriple; readonly css: readonly [number, number] } | null>(null);
+	let placementGhost = $state.raw<ReturnType<typeof viewPlacementPose>>(null);
+	let placementAim = $state<StageTriple | null>(null);
+
 	/** Playback is a Guide instrument: any takeover or armed tool ends it. */
 	const suppressed = $derived(
 		host.previewOpen() ||
 			host.previewBusy() ||
 			host.previewRequested() ||
 			host.lookThroughOpen() ||
-			host.placementOpen() ||
+			placementPress !== null ||
+			placementAim !== null ||
 			host.tool() === 'place' ||
 			host.lens() !== 'experience' ||
 			!host.guideOpen()
@@ -100,7 +118,8 @@ export function createExperienceLens(host: ExperienceLensHost) {
 			host.previewBusy() ||
 			host.previewRequested() ||
 			host.lookThroughOpen() ||
-			host.placementOpen() ||
+			placementPress !== null ||
+			placementAim !== null ||
 			host.tool() === 'place'
 		) return;
 		controller.openGuide(guideId);
@@ -261,6 +280,115 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		return () => window.removeEventListener('keydown', onKey);
 	});
 
+	function floorPlane() {
+		const datum = host.floorDatum();
+		return {
+			originMeters: [0, datum, 0] as StageTriple,
+			normal: [0, 1, 0] as StageTriple,
+			yawRadians: 0,
+			datumMeters: datum,
+			supportedLocalExtent: null
+		};
+	}
+
+	/** The Floor point under one pointer, through Camera's own ray and plane hit. */
+	function placementPoint(event: PointerEvent): StageTriple | null {
+		const stage = host.stage();
+		const id = stage?.evaluationId() ?? null;
+		if (stage === null || id === null) return null;
+		const ray = stage.pointerRay([...host.absoluteCss(event)], id);
+		if (ray.kind !== 'ray') return null;
+		const hit = stage.intersectWorkingPlane(ray.ray, floorPlane(), id);
+		return hit.kind === 'intersected' ? hit.worldPoint : null;
+	}
+
+	function placementPose(start: StageTriple, current: StageTriple) {
+		return viewPlacementPose({
+			startFloorPoint: start,
+			currentFloorPoint: current,
+			aimPoint: placementAim,
+			minimumDragMeters: 0,
+			defaultAzimuthRadians: host.evaluation()?.pose.azimuthRadians,
+			floorDatumMeters: host.floorDatum(),
+			fovYDegrees: CAMERA_FOV.default
+		});
+	}
+
+	function beginPlacement(event: PointerEvent): void {
+		if (event.button !== 0 || placementPress !== null) return;
+		const point = placementPoint(event);
+		if (point === null) {
+			host.notice('Point at the Floor to place a View.');
+			return;
+		}
+		if (!host.capturePointer(event.currentTarget as HTMLElement, event.pointerId)) return;
+		placementPress = { pointerId: event.pointerId, start: point, css: host.absoluteCss(event) };
+		placementGhost = placementPose(point, point);
+	}
+
+	function movePlacement(event: PointerEvent): void {
+		const press = placementPress;
+		if (press === null || event.pointerId !== press.pointerId) return;
+		const point = placementPoint(event);
+		if (point === null) return;
+		const [x, y] = host.absoluteCss(event);
+		const dragged = isStageDrag({ x: press.css[0], y: press.css[1] }, { x, y });
+		placementGhost = placementPose(press.start, dragged ? point : press.start);
+	}
+
+	function cancelPlacement(): void {
+		const press = placementPress;
+		placementPress = null;
+		placementGhost = null;
+		const stageEl = host.stageElement();
+		if (press !== null && stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+	}
+
+	function endPlacement(): void {
+		const press = placementPress;
+		const pose = placementGhost;
+		placementPress = null;
+		placementGhost = null;
+		placementAim = null;
+		if (press === null) return;
+		const stageEl = host.stageElement();
+		if (stageEl?.hasPointerCapture?.(press.pointerId)) stageEl.releasePointerCapture(press.pointerId);
+		if (pose === null) {
+			host.notice('The View needs a target away from its eye.');
+			return;
+		}
+		const controller = host.activeController();
+		if (controller === null) return;
+		void controller.placeView({ eye: pose.eye, target: pose.target, fov: pose.fovYDegrees }).then((outcome) => {
+			if (outcome.kind === 'refused') {
+				host.notice(outcome.message);
+				return;
+			}
+			if (outcome.createdPresentation) {
+				host.renameRequest();
+				host.notice('Presentation created; name it in the Card.');
+			} else {
+				host.notice('');
+			}
+		});
+	}
+
+	function togglePlaceView(): void {
+		if (host.lens() !== 'experience' || host.viewEditActive()) return;
+		if (host.tool() === 'place') {
+			host.setTool('select');
+			placementAim = null;
+			cancelPlacement();
+			host.notice('');
+			return;
+		}
+		if (host.lookThroughOpen()) host.exitLookThrough();
+		stopAndRestore();
+		host.setTool('place');
+		placementAim = null;
+		host.notice('');
+	}
+
 	/** Idempotent: the first caller restores the entry and stops the session. */
 	function dispose(): void {
 		if (disposed) return;
@@ -276,6 +404,16 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		guideSeconds,
 		playGuide,
 		install,
+		// Manual placement
+		placementPress: () => placementPress,
+		placementGhost: () => placementGhost,
+		placementAim: () => placementAim,
+		aimPlacement: (point: StageTriple | null) => { placementAim = point; },
+		beginPlacement,
+		movePlacement,
+		cancelPlacement,
+		endPlacement,
+		togglePlaceView,
 		advancePlayback,
 		stopAndRestore,
 		dispose
