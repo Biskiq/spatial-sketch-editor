@@ -157,7 +157,7 @@ describe('R217.S30 playback', () => {
 		expect(page).toContain('captureStandpoint');
 		expect(page).toContain('restoreStandpoint');
 		expect(page).toContain('playback.prepare()');
-		expect(routeCode).toContain('previewMode: (mode, guideId) => void openPreview(mode, guideId)');
+		expect(routeCode).toContain('previewMode: (mode, guideId) => void previewController.open(mode, guideId)');
 		expect(guide).not.toContain('createExperiencePlayback');
 		expect(guide).toContain('data-view-span');
 		// The strip requests transport through the host; only the host opens the
