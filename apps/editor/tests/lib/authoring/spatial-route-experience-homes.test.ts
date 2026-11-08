@@ -883,6 +883,32 @@ describe('R217.S25 — the Experience lens mounts the shared homes', () => {
 		expect(restore).toHaveBeenCalled();
 	});
 
+	it('restores the Follow entry once at teardown and removes the lens key listener', async () => {
+		await remountRouteWith(await seededExperienceProject());
+		await enterExperience();
+		guideRow('guide-1')!.click();
+		await frame();
+		const stage = facade();
+		const restore = vi.spyOn(stage.camera, 'restoreStandpoint');
+		const remove = vi.spyOn(window, 'removeEventListener');
+		const panel = guidePanel();
+		if (panel === null) throw new Error('the Guide did not open');
+		panel.querySelector<HTMLButtonElement>('[aria-label="Play"]')!.click();
+		await frame();
+		const follow = panel.querySelector<HTMLButtonElement>('button[title="Follow the camera"]');
+		if (follow === null || follow.disabled) throw new Error('Follow is unavailable');
+		follow.click();
+		await frame();
+		expect(restore).not.toHaveBeenCalled();
+
+		// Unmounting the route is the same teardown path a project replacement uses:
+		// the lens' one dispose restores its entry, and its key listener is removed.
+		await remountRouteWith(await seededExperienceProject());
+
+		expect(restore).toHaveBeenCalledTimes(1);
+		expect(remove.mock.calls.some(([type]) => type === 'keydown')).toBe(true);
+	}, 15000);
+
 	it('reads the tour through the entry Guide before any Guide is opened: Presentations show their Stop numbers, not free', async () => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
