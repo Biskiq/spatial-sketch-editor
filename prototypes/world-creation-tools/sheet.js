@@ -2,25 +2,28 @@
 /*
  * World creation tools — the System sheet.
  * Generated from the same registry as the Stage, so the reference cannot drift from the
- * prototype. Specimens reuse the live classes (.key, .tok, .tag, .opt).
+ * prototype. The instrument stills are the Stage's own markup (UI.dockHtml, paletteHtml,
+ * selectionHtml, libraryHtml) rendered for one state and made inert.
  */
 
 const SHEET = {
   render(root) {
-    const fam = (id) => FAMILIES.find((f) => f.id === id);
-    const keyHtml = (id, armed) => { const t = TOOLS[id]; return `<span class="key${armed ? ' armed' : ''}${t.disabled ? ' off' : ''}">${icon(t.icon, 22)}<span class="kl">${t.name}</span><kbd>${t.key}</kbd></span>`; };
-    const dockFamilies = `<div class="dock specimen" data-mode="families"><div class="dg">${keyHtml('select')}</div><i class="ds"></i>
-      <div class="fam open" style="--mark:${fam('build').mark}"><span class="famkey holds">${icon('fam-build', 22)}<span class="kl">Build</span></span><div class="famtools">${fam('build').tools.map((t) => keyHtml(t, t === 'walls')).join('')}</div></div>
-      <div class="fam" style="--mark:${fam('furnish').mark}"><span class="famkey">${icon('fam-furnish', 22)}<span class="kl">Furnish</span><em>3</em></span></div>
-      <div class="fam" style="--mark:${fam('land').mark}"><span class="famkey">${icon('fam-land', 22)}<span class="kl">Landscape</span><em>4</em></span></div>
-      <i class="ds"></i><div class="dg">${UTILITY_RIGHT.map((t) => keyHtml(t)).join('')}</div><i class="ds"></i><div class="dg quiet">${INSPECT.map((t) => keyHtml(t)).join('')}</div><i class="ds"></i><span class="key lib">${icon('library', 22)}<span class="kl">Library</span></span></div>`;
-    const dockFlat = `<div class="dock specimen" data-mode="flat"><div class="dg">${keyHtml('select')}</div><i class="ds"></i>${FAMILIES.map((f) => `<div class="fam flat" style="--mark:${f.mark}">${f.tools.map((t) => keyHtml(t, t === 'walls')).join('')}</div>`).join('')}<i class="ds"></i><div class="dg">${UTILITY_RIGHT.map((t) => keyHtml(t)).join('')}</div><i class="ds"></i><div class="dg quiet">${INSPECT.map((t) => keyHtml(t)).join('')}</div></div>`;
+    // A still of the live instrument: the Stage's markup for one state, inert.
+    const still = (tool, mode, selected) => {
+      const keep = { tool: T.tool, lib: UI.lib };
+      T.tool = tool; UI.lib = mode === 'library' ? { mode: 'browse', target: null, cat: 'objects' } : null;
+      try {
+        const tier = mode === 'library' ? UI.libraryHtml() : mode === 'selection' ? UI.selectionHtml(selected) : UI.paletteHtml();
+        return `<div class="edge joined specimen" inert><div class="tier${mode === 'library' ? ' library' : ''}">${tier}</div><nav class="dock">${UI.dockHtml(tool, mode === 'library')}</nav></div>`;
+      } finally { T.tool = keep.tool; UI.lib = keep.lib; }
+    };
+    const bench = { kind: 'objects', item: { id: 'o1', name: 'Bench 1' } };
 
     const toolRows = (f) => f.tools.map((id) => {
       const t = TOOLS[id];
       return `<tr><th scope="row"><span class="ti">${icon(t.icon, 20)}</span>${t.name}<kbd>${t.key}</kbd></th><td>${esc(t.makes)}</td><td>${esc(t.gesture)}</td><td><ul>${t.proposes.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></td><td class="${/Needs/.test(t.owner) ? 'needs' : ''}">${esc(t.owner)}</td><td>${esc(t.area)}</td></tr>`;
     }).join('');
-    const utilRows = [...UTILITY_LEFT, ...UTILITY_RIGHT, ...INSPECT].map((id) => {
+    const utilRows = [...UTILITY_LEFT, ...UTILITY_RIGHT, ...VIEW_TOOLS].map((id) => {
       const t = TOOLS[id];
       return `<tr><th scope="row"><span class="ti">${icon(t.icon, 20)}</span>${t.name}<kbd>${t.key}</kbd></th><td>${esc(t.makes)}</td><td>${esc(t.gesture)}</td><td><ul>${t.proposes.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></td><td>${esc(t.owner)}</td><td>${esc(t.area)}</td></tr>`;
     }).join('');
@@ -52,22 +55,34 @@ const SHEET = {
       <figure><svg viewBox="0 0 150 70"><path d="M20 56 L20 22 L80 10 L80 44 Z" fill="#eab1a6" stroke="#d0412d" stroke-width="2"/><path d="M80 44 L80 10 L130 24 L130 58 Z" fill="#f5d7d1" stroke="#d0412d" stroke-width="1.6"/></svg><figcaption><b>Refusal and removal</b> Red. Always with words.</figcaption></figure>
     </div>`;
 
+    const placement = [
+      ['Walls, Building, Opening, Stair · Object, Form, Light · Ground, Path, Plants', 'Dock key, in its family', 'Each has its own gesture and its own target, and is used across scene types: a single sculpture, an exhibition, a house, a garden.'],
+      ['Select, Paint, Erase', 'Dock key, outside the families', 'They work on everything, whichever family made it.'],
+      ['Shape, kind, size, finish, brush mode', 'The armed tool’s palette', 'Variants of the gesture in hand. A palette never acts on something that already exists.'],
+      ['Turn, Duplicate, Replace, Straighten, Save to Library, Erase', 'Selection actions (Select armed)', 'Operations on something that exists. Its properties stay in the Card.'],
+      ['Objects, lights, plants, building definitions, materials', 'Library (K), the last dock key', 'Catalogue content. Picking one arms the tool that places it; Object’s shelf keeps the recent ones.'],
+      ['Frames and art', 'Object: frames are wall items on the shelf', 'Hanging is Object’s gesture against a wall face. A separate Art tool repeated Object for one kind of content.'],
+      ['Roof', 'Walls (the token when a run closes) and the selection of a room', 'A roof is a consequence of closing a room, or an operation on one. It is not a drawing gesture.'],
+      ['Water: ponds and streams', 'Ground modes (Pond 6, Stream 7)', 'A terrain edit with a surface. It shares Ground’s brush and its refusals.'],
+      ['Sun and hour', 'Light, on the sky arc', 'One tool for light. The environment does not earn a dock key.'],
+      ['Stages, pedestals, drums, columns', 'Form', 'Composition without architecture: standalone objects and exhibitions get a first-class tool.'],
+      ['Measure, Slice', 'The view cluster in the head', 'Ways of looking. They make nothing, so they sit beside Plan and 3D.'],
+    ];
     const decisions = [
-      ['Ink (one pen for walls, rooms and openings)', 'Named creation tools: Walls, Building, Opening, Roof, Stair; Object, Art, Light; Ground, Path, Water, Plants', 'The tool says what you are making, so the gesture can be simple and the preview can be the result.'],
-      ['Flat utility dock: Select · Ink · Slice · Eraser · Brush · Measure', 'Families dock: Select, Build, Furnish, Landscape, Paint, Erase, Measure, Slice, Library', 'Thirteen creation tools do not fit a flat row that stays learnable. A flat dock is kept as a comparison toggle.'],
+      ['Ink (one pen for walls, rooms and openings)', 'Named creation tools: Walls, Building, Opening, Stair; Object, Form, Light; Ground, Path, Plants', 'The tool says what you are making, so the gesture can be simple and the preview can be the result.'],
+      ['Flat utility dock: Select, Ink, Slice, Eraser, Brush, Measure', 'One instrument: ten icon keys in three captioned families, Select, Paint, Erase and the Library; one ivory tier above for palette, selection actions or Library; Measure and Slice in the head', 'Ten keys fit one row once the families are captions instead of drawers, so nothing has to expand before you can reach it.'],
       ['Brush (materials)', 'Paint: universal, reach by scope (face, wall, room or building, everything like it); the ground takes it as a brush', 'One way to colour anything. The Ask Rule fires when a click would change a shared definition.'],
       ['Shape chosen per gesture inside Ink', 'Shared shape keys 1 to 6 in every drawing tool', 'One meaning, one key: 3 is always Box, in Walls, Building and Path.'],
       ['Consequences shown in an acceptance bar before commit', 'Consequence tokens in place, during the gesture; release commits; tokens stay to amend the same undo step', 'Keeps the Tiny Glade flow (no confirm step) without hiding anything: every consequence is visible before release and changeable after.'],
-      ['Esc: palette, then disarm', 'Esc: draft, amend tokens, selection, palette, then Select', 'Adds one rung for the amend tokens. Right-click cancels only the live draft.'],
+      ['Esc: palette, then disarm', 'Esc: draft, Library, amend tokens, selection, palette, then Select', 'Adds rungs for the Library and the amend tokens. Right-click cancels only the live draft.'],
       ['Eraser: click, scrub and lasso with an acceptance bar', 'Erase: click with a tag that names what goes and what stays; hold over plants to clear', 'Lasso stays valid and is not re-prototyped here.'],
     ];
     const pushback = [
       ['Lighting as one tool', 'Light holds fixtures, and the sun lives on a sky arc inside it. Environment is Scene; it does not earn its own dock key.'],
-      ['Water as its own family', 'Water is a terrain edit with a surface, so it sits in Landscape with Ground, Path and Plants.'],
+      ['Water as its own tool', 'Water is a mode of Ground (Pond, Stream): a terrain edit with a surface, on the same brush.'],
       ['Paths/Stairs as one tool', 'Two things: a Stair is architecture (Layout) between two heights; a path’s Steps are a consequence of laying a path on a slope.'],
       ['Openings as a side effect', 'Openings stay first-class (Opening tool) and are also proposed by Path and Walls. Either way the result is one ordinary Opening.'],
       ['Materials as a family tool', 'Paint is universal, next to Erase: it works on Build, Furnish and Landscape surfaces alike.'],
-      ['Art inside Objects', 'Art is first-class: it hangs on a wall face, in rows, skipping openings. Hanging is an explicit attachment.'],
       ['Procedural magic', 'Procedural results are proposals with names. A path never silently cuts a wall; it proposes a doorway that you can drop.'],
     ];
     const owners = [
@@ -75,6 +90,7 @@ const SHEET = {
       ['Placed buildings', 'Building assumes Layout placed structures from reusable definitions (T5). “Every Cottage” edits the definition; “Only this one” writes an override.'],
       ['Cross-owner acceptance', 'A path that proposes a doorway commits Landscape and Layout changes in one step. Needs the atomic cross-domain acceptance the North Star asks for.'],
       ['Sun and hour', 'The prototype treats the hour as Scene environment, set with an undoable step. Whether the hour is authored or a viewing preference needs a decision.'],
+      ['Saved forms', 'Save to Library makes a composed form reusable. Whether that is a Scene-owned definition or a typed resource needs a decision; the prototype does not keep the entry.'],
       ['Plant scatter rule', 'The skip rule (paths, water, buildings) runs once at painting time and is not stored. Confirm that a persistent rule is not wanted.'],
     ];
     const pathFlow = [
@@ -90,10 +106,10 @@ const SHEET = {
 
     root.innerHTML = `<article class="sheet">
       <header class="sh-hero">
-        <div class="sh-dockmark">${dockFamilies}</div>
+        <div class="sh-dockmark">${still('walls', 'palette')}</div>
         <h1>Say what you are making.</h1>
         <p class="lede">A World tool system for Biskiq where each tool names its intent, shows the result while you gesture, proposes its consequences where they happen, and commits one undo step you can still amend. This sheet is generated from the same registry as the interactive Stage.</p>
-        <p class="sh-nav"><button data-view="stage">Open the Stage</button> <a href="#village/path">Try Path in the village</a> <a href="#gallery/art">Try Art in the gallery</a> <a href="#slope/building">Try Building on a slope</a></p>
+        <p class="sh-nav"><button data-view="stage">Open the Stage</button> <a href="#village/path">Try Path in the village</a> <a href="#gallery/object">Hang frames in the gallery</a> <a href="#studio/form">Compose forms in the studio</a> <a href="#slope/building">Try Building on a slope</a></p>
       </header>
 
       <section><h2>Principles</h2><div class="principles">
@@ -102,22 +118,25 @@ const SHEET = {
         <div><h3>Propose in place</h3><p>Doorways, steps, bridges and plinths appear as tokens where they will happen, before release.</p></div>
         <div><h3>Commit on release, amend after</h3><p>No confirm step. The tokens stay after release; changing one re-plans the same undo step.</p></div>
         <div><h3>Results are ordinary things</h3><p>A path’s doorway is an Opening. Erase the path and the opening stays, now just an opening.</p></div>
-        <div><h3>Explicit relationships only</h3><p>Art hangs on its wall. A spot keeps aiming only when you choose it. A bench by a wall is placement, not attachment.</p></div>
+        <div><h3>Explicit relationships only</h3><p>A frame hangs on its wall. A spot keeps aiming only when you choose it. A bench by a wall is placement, not attachment.</p></div>
         <div><h3>Refuse in words</h3><p>“Too close to the end of Wall 3.” The refused part turns red; nothing half-commits.</p></div>
         <div><h3>Every domain keeps its owner</h3><p>Build is Layout, Furnish is Scene, Landscape needs an owner. The Card always says which.</p></div>
       </div></section>
 
-      <section><h2>The dock</h2>
-        <p class="sec-lede">The lower working edge stays: dock, then the palette above it, then any Instrument. Families expand in place, one at a time; clicking a family re-arms the tool you last used in it. Letter keys arm any tool directly and open its family.</p>
-        <div class="dock-compare">
-          <figure>${dockFamilies}<figcaption><b>Families</b> (proposed). Three family keys keep the dock short; the open family shows its tools with its colour mark.</figcaption></figure>
-          <figure>${dockFlat}<figcaption><b>Flat</b> (comparison). Every tool visible; scans well once learned, but it is twenty keys wide. Toggle it on the Stage from the top strip.</figcaption></figure>
+      <section><h2>The instrument</h2>
+        <p class="sec-lede">One surface at the lower edge. The forest tier is the dock; the ivory tier above it holds one thing at a time, and the armed key is the tab it hangs from. Click the armed key to fold the tier away. Letter keys arm any tool directly; hovering a key names it, its key and what it makes.</p>
+        <div class="stills">
+          <figure>${still('object', 'palette')}<figcaption><b>Palette</b> Variants of the armed tool’s gesture: what to place, which shape, which size. More opens the Library.</figcaption></figure>
+          <figure>${still('select', 'selection', bench)}<figcaption><b>Selection</b> Select armed and something chosen: the operations it allows, Erase at the far end. Its properties stay in the Card.</figcaption></figure>
+          <figure>${still('object', 'library')}<figcaption><b>Library</b> K. Catalogue content by kind. The Library key is armed and the tool that will place the pick stays held beneath.</figcaption></figure>
         </div>
+        <h3>Where things live</h3><p class="sec-lede">One rule decides placement, so a new capability has one obvious home.</p>
+        <table class="dec place"><thead><tr><th>Capability</th><th>Lives in</th><th>Why</th></tr></thead><tbody>${placement.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>
       </section>
 
       <section><h2>Tools</h2>
         ${FAMILIES.map((f) => `<h3 class="famh" style="--mark:${f.mark}">${icon(f.icon, 22)} ${f.name} <span>${esc(f.blurb)}</span><em class="${/Needs/.test(f.owner) ? 'needs' : ''}">${f.owner}</em></h3><table class="tools">${thead}<tbody>${toolRows(f)}</tbody></table>`).join('')}
-        <h3 class="famh" style="--mark:#f3f0e4">${icon('select', 22)} Utilities <span>Outside the families: they work on everything.</span></h3><table class="tools">${thead}<tbody>${utilRows}</tbody></table>
+        <h3 class="famh" style="--mark:#f3f0e4">${icon('select', 22)} Utilities and view <span>Outside the families: they work on everything, or only look.</span></h3><table class="tools">${thead}<tbody>${utilRows}</tbody></table>
       </section>
 
       <section><h2>Shared grammar</h2>

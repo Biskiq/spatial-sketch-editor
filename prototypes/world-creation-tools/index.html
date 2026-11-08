@@ -16,12 +16,9 @@
       <button type="button" data-view="stage" aria-pressed="true">Try it</button>
       <button type="button" data-view="sheet" aria-pressed="false">System sheet</button>
     </span>
-    <span class="pseg" role="group" aria-label="Dock layout">
-      <button type="button" data-action="dock" data-v="families" aria-pressed="true">Families</button>
-      <button type="button" data-action="dock" data-v="flat" aria-pressed="false">Flat</button>
-    </span>
     <label class="pfield">Scenario <select id="scenario"></select></label>
     <button type="button" class="pbtn" data-action="reset">Reset scenario</button>
+    <button type="button" class="pbtn" data-action="spec" aria-pressed="false" title="The armed tool’s spec, last intent and history">Spec drawer</button>
     <span class="pnote">Simulated geometry. Nothing is saved.</span>
   </header>
 
@@ -36,11 +33,12 @@
     <aside id="spec" aria-label="Tool spec" hidden></aside>
     <aside id="readout" aria-label="Interaction state (prototype instrument)"></aside>
     <div id="toasts" aria-live="polite"></div>
-    <div id="edge">
-      <div id="palette" class="palette"></div>
+    <div id="edge" class="edge">
+      <div id="palette" class="tier" aria-label="Palette"></div>
       <nav id="dock" class="dock" aria-label="World tools"></nav>
     </div>
   </main>
+  <div id="tip" class="tip" role="tooltip" hidden></div>
 
   <section id="sheetView" aria-label="System sheet" hidden></section>
 

@@ -10,7 +10,7 @@ const T = {
   tool: 'select', opts: {}, state: 'idle', stateAt: 0,
   draft: null, live: [], amend: null, ghosts: [], tag: null, flash: null,
   pointer: null, pressed: false, space: false, measure: null, lastIntent: null,
-  objRot: 0, sel: null,
+  objRot: 0, sel: null, shelf: SHELF_DEFAULT.slice(),
 };
 const H_WALL = { low: 1.2, room: 3, tall: 4.5 };
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -28,9 +28,20 @@ function opt(id, tool = T.tool) {
 }
 function setOpt(id, v, tool = T.tool) {
   (T.opts[tool] = T.opts[tool] || {})[id] = v;
-  if (tool === T.tool && T.draft && id === 'shape') cancelDraft(true);
+  if (tool === T.tool && T.draft && (id === 'shape' || id === 'item' || id === 'brush')) cancelDraft(true);
+  if (id === 'item') T.artGhost = null;
   VIEW.dirty = true; uiSync();
 }
+/* The palette groups that apply now: conditional groups follow the current options; the shelf comes from T.shelf. */
+function groupsOf(tool = T.tool) {
+  return (TOOLS[tool].palette || []).filter((g) => !g.when || g.when((id) => opt(id, tool)))
+    .map((g) => g.shelf ? { ...g, options: T.shelf.map((v, i) => ({ v, icon: ITEMS[v].icon, label: ITEMS[v].label, key: String(i + 1) })) } : g);
+}
+/* A thing picked from the Library joins the shelf at the front; the oldest leaves. */
+function shelfPut(v) { if (!T.shelf.includes(v)) T.shelf = [v, ...T.shelf].slice(0, SHELF_DEFAULT.length); }
+const isStream = () => T.tool === 'ground' && opt('brush') === 'stream';
+/* Pointer input goes to the shared shape machinery (not to a tool's own move/down/up). */
+function shapeInput() { return !(T.draft && T.draft.kind) && (DRAWING.has(T.tool) || isStream()); }
 function setState(s) { if (T.state !== s) { T.state = s; T.stateAt = performance.now(); uiSync(); } }
 function setTag(at, text, kind = 'live', sub = null) { T.tag = at ? { at, text, kind, sub } : null; }
 
@@ -121,6 +132,12 @@ function pickAny(sx, sy) {
   for (const o of world.objects) {
     const def = OBJECTS[o.item], z = objBase(o.x, o.y), c = P(o.x, o.y, z + 0.45), r = Math.max(def.w, def.d) / 2 * CAM.scale * 0.85 + 5;
     if (Math.hypot(c.x - sx, c.y - sy) < r) cands.push({ kind: 'object', item: o, id: o.id, d: depthOf(o.x, o.y, z + 0.45), p: o });
+  }
+  for (const f of world.forms) {
+    const z0 = f.base, z1 = f.base + f.h;
+    let on = G.inPoly(q, f.pts.map((p) => P(p.x, p.y, z1)));
+    for (let i = 0; i < f.pts.length && !on; i++) { const a = f.pts[i], b = f.pts[(i + 1) % f.pts.length]; on = G.inPoly(q, [P(a.x, a.y, z0), P(b.x, b.y, z0), P(b.x, b.y, z1), P(a.x, a.y, z1)]); }
+    if (on) { const c = G.centroid(f.pts); cands.push({ kind: 'form', item: f, id: f.id, d: depthOf(c.x, c.y, z1) + 0.2, p: { ...c, z: z1 } }); }
   }
   for (const l of world.lights) {
     const lp = lightPos(l); if (!lp) continue;
@@ -284,6 +301,7 @@ function consIntent(cons) {
     if (c.type === 'clear') return { intent: 'landscape.plants.remove', count: c.count };
     if (c.type === 'aim') return c.choice === 'keep' ? { intent: 'scene.light.aimAt', target: c.target } : c.choice === 'once' ? { intent: 'scene.light.orient', toward: c.target } : null;
     if (c.type === 'style') return { intent: 'scene.material.scope', scope: c.choice };
+    if (c.type === 'roof') return c.choice === 'none' ? null : { intent: 'layout.roof.set', style: c.choice, pitch: 'mid' };
     return { intent: c.type };
   }).filter(Boolean);
 }
@@ -309,6 +327,10 @@ function eraseSummary(hit) {
     if ((hit.item.crossings || []).some((c) => c.mode === 'bridge')) goes.push('its bridge');
   } else if (hit.kind === 'art') {
     for (const l of world.lights) if (l.aimAt === id) stays.push(`${l.name} stops aiming`);
+  } else if (hit.kind === 'form') {
+    const f = hit.item;
+    for (const g of world.forms) if (g.on === id) stays.push(`${g.name} comes down`);
+    for (const o of world.objects) if (G.inPoly(o, f.pts) && !formAt(o.x, o.y, id)) stays.push(`${o.name} comes down`);
   }
   return { goes, stays, ids };
 }
@@ -323,11 +345,25 @@ function removeThing(w, kind, id) {
   }
   if (kind === 'building') { drop('openings', (o) => o.hostId === id); drop('buildings', (b) => b.id === id); return; }
   if (kind === 'path') { const pa = w.paths.find((x) => x.id === id); if (pa) for (const o of w.openings) if (o.origin === pa.name) o.origin = null; drop('paths', (x) => x.id === id); return; }
+  if (kind === 'form') {
+    const f = w.forms.find((x) => x.id === id);
+    if (f) for (const g of formsAbove(w, id)) { g.base -= f.h; if (g.on === id) g.on = f.on || null; }
+    drop('forms', (x) => x.id === id); return;
+  }
   if (kind === 'art') { for (const l of w.lights) if (l.aimAt === id) { l.aimPoint = null; l.aimAt = null; } drop('art', (x) => x.id === id); return; }
   const map = { opening: 'openings', object: 'objects', light: 'lights', stair: 'stairs', roof: 'roofs' };
   if (map[kind]) drop(map[kind], (x) => x.id === id);
 }
-const OWNER_OF = { wall: 'layout', opening: 'layout', building: 'layout', roof: 'layout', stair: 'layout', room: 'layout', object: 'scene', art: 'scene', light: 'scene', path: 'landscape' };
+const OWNER_OF = { wall: 'layout', opening: 'layout', building: 'layout', roof: 'layout', stair: 'layout', room: 'layout', object: 'scene', form: 'scene', art: 'scene', light: 'scene', path: 'landscape' };
+/* Forms stacked on a form, all the way up. */
+function formsAbove(w, id) { const out = []; const walk = (pid) => { for (const g of w.forms) if (g.on === pid && !out.includes(g)) { out.push(g); walk(g.id); } }; walk(id); return out; }
+/* What rides along when a form moves: forms stacked on it, and things standing on its top. */
+function formRiders(id) {
+  const f = world.forms.find((x) => x.id === id); if (!f) return [];
+  const stack = [f, ...formsAbove(world, id)];
+  const things = [...world.objects, ...world.lights.filter((l) => !l.wallId && l.kind !== 'pendant')].filter((o) => stack.some((g) => G.inPoly(o, g.pts)));
+  return [...stack.slice(1), ...things];
+}
 
 // ── tool behaviours ───────────────────────────────────────────────────────────
 const IMPL = {};
@@ -339,17 +375,21 @@ IMPL.select = {
     const k = selectKnob(ev.sx, ev.sy);
     const hit = k ? null : pickAny(ev.sx, ev.sy);
     HL.hover = hit ? hit.id : null; HL.hoverMode = 'hover';
-    VIEW.cv.style.cursor = k ? (k.type === 'storey' ? 'ns-resize' : 'grab') : hit ? 'pointer' : 'default';
+    VIEW.cv.style.cursor = k ? (k.type === 'bend' ? 'grab' : 'ns-resize') : hit ? 'pointer' : 'default';
     setTag(null);
     if (k) setTag(null);
   },
   down(ev) {
     const k = selectKnob(ev.sx, ev.sy);
-    if (k) { const it = byId(world, k.id).item; T.drag = { type: k.type, id: k.id, sy: ev.sy, start: k.start, was: k.type === 'bend' ? it.bulge : it.floors }; liveBegin(); return true; }
+    if (k) { const it = byId(world, k.id).item; T.drag = { type: k.type, id: k.id, sy: ev.sy, start: k.start, was: k.type === 'bend' ? it.bulge : k.type === 'fheight' ? it.h : it.floors }; liveBegin(); return true; }
     const hit = pickAny(ev.sx, ev.sy);
     if (!hit) { selectId(null); return false; }
     selectId(hit.id);
     if (hit.kind === 'object' || (hit.kind === 'light' && hit.item.kind !== 'wall')) T.drag = { type: 'move', id: hit.id, from: ev.g, moved: false, ox: hit.item.x - ev.g.x, oy: hit.item.y - ev.g.y, sx: ev.sx, sy: ev.sy };
+    if (hit.kind === 'form') {
+      const keep = (o) => ({ o, x: o.x, y: o.y, pts: o.pts ? o.pts.map((p) => ({ ...p })) : null });
+      T.drag = { type: 'fmove', id: hit.id, from: clampWS(ev.g), moved: false, sx: ev.sx, sy: ev.sy, parts: [hit.item, ...formRiders(hit.id)].map(keep) };
+    }
     return true;
   },
   drag(ev) {
@@ -367,15 +407,28 @@ IMPL.select = {
       if (!d.moved) { d.moved = true; liveBegin(); }
       const it = byId(world, d.id).item; it.x = clampWS(ev.g).x + d.ox; it.y = clampWS(ev.g).y + d.oy;
       setTag(it, `${fmt(it.x, 1)}, ${fmt(it.y, 1)}`);
+    } else if (d.type === 'fheight') {
+      const f = r.item, h = clamp(Math.round((d.was + (d.sy - ev.sy) / (CAM.scale * Math.max(0.35, _ce))) * 10) / 10, 0.1, 8), dh = h - f.h;
+      if (dh) { f.h = h; for (const g of formsAbove(world, f.id)) g.base += dh; }
+      setTag({ ...G.centroid(f.pts), z: f.base + f.h + 0.9 }, `${fmt(h, 1)} m`);
+    } else if (d.type === 'fmove') {
+      if (!d.moved && Math.hypot(ev.sx - d.sx, ev.sy - d.sy) < 4) return;
+      if (!d.moved) { d.moved = true; liveBegin(); }
+      const g = clampWS(ev.g), dx = Math.round((g.x - d.from.x) * 4) / 4, dy = Math.round((g.y - d.from.y) * 4) / 4;
+      for (const k of d.parts) { if (k.pts) k.o.pts = k.pts.map((p) => ({ x: p.x + dx, y: p.y + dy })); else { k.o.x = k.x + dx; k.o.y = k.y + dy; } }
+      const n = d.parts.length - 1;
+      setTag({ ...G.centroid(r.item.pts), z: r.item.base + r.item.h + 0.6 }, n ? `carries ${n} thing${n > 1 ? 's' : ''}` : `${fmt(dx, 2)}, ${fmt(dy, 2)} m`);
     }
     VIEW.dirty = true;
   },
   up() {
     const d = T.drag; T.drag = null; if (!d) return;
     const r = byId(world, d.id); setTag(null);
-    if ((d.type === 'bend' && r.item.bulge === d.was) || (d.type === 'storey' && r.item.floors === d.was)) { liveCancel(); VIEW.dirty = true; return; }
+    if ((d.type === 'bend' && r.item.bulge === d.was) || (d.type === 'storey' && r.item.floors === d.was) || (d.type === 'fheight' && r.item.h === d.was)) { liveCancel(); VIEW.dirty = true; return; }
     if (d.type === 'bend') { liveEnd(`Bend ${r.item.name}`, { intent: 'layout.wall.bend', wall: d.id, sagitta: r2(r.item.bulge) }); T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; }
     else if (d.type === 'storey') { liveEnd(`${r.item.name} to ${r.item.floors} storeys`, { intent: 'layout.structure.setStoreys', structure: d.id, storeys: r.item.floors }); T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; }
+    else if (d.type === 'fheight') { liveEnd(`${r.item.name} to ${fmt(r.item.h, 1)} m`, { intent: 'scene.form.setHeight', form: d.id, height: r.item.h, stacked: formsAbove(world, d.id).map((g) => g.id) }); T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; }
+    else if (d.type === 'fmove' && d.moved) { liveEnd(`Move ${r.item.name}`, { intent: 'scene.instance.move', id: d.id, by: pt2(G.sub(r.item.pts[0], d.parts[0].pts[0])), carries: d.parts.slice(1).map((k) => k.o.id) }); T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; }
     else if (d.type === 'move' && d.moved) { liveEnd(`Move ${r.item.name}`, { intent: `${OWNER_OF[r.kind === 'lights' ? 'light' : 'object']}.instance.move`, id: d.id, to: pt2(r.item) }); T.lastIntent = HIST.undo[HIST.undo.length - 1].intent; }
     T.amend = null; VIEW.dirty = true; uiSync();
   },
@@ -391,6 +444,10 @@ function selectKnob(sx, sy) {
   if (r.kind === 'buildings') {
     const b = r.item, c = G.centroid(footOf(b)), s = P(c.x, c.y, roofTopZ(b) + 0.9);
     if (Math.hypot(s.x - sx, s.y - sy) < 12) return { type: 'storey', id: b.id, start: b.floors };
+  }
+  if (r.kind === 'forms') {
+    const f = r.item, c = G.centroid(f.pts), s = P(c.x, c.y, f.base + f.h + 0.55);
+    if (Math.hypot(s.x - sx, s.y - sy) < 11) return { type: 'fheight', id: f.id };
   }
   return null;
 }
@@ -413,10 +470,19 @@ IMPL.walls = {
     const h = H_WALL[opt('height')], base = chainBase(gm), shape = T.draft.shape;
     const n = gm.closed ? gm.pts.length : gm.pts.length - 1;
     const label = gm.closed && shape === 'circle' ? 'Draw a round room' : gm.closed ? `Enclose a room with ${n} walls` : `Draw ${n} wall${n > 1 ? 's' : ''}`;
+    // Closing a run offers the new room a roof. Open is the default: the offer never covers the interior unasked.
+    const cons = plan.cons.slice();
+    if (gm.closed && opt('height') !== 'low') {
+      const round = gm.bulges.slice(0, n).every((b) => b), boxy = n === 4 && gm.bulges.slice(0, n).every((b) => !b);
+      const options = roofStyles(round, boxy), c = G.centroid(gm.pts);
+      cons.push({ id: cid(), type: 'roof', at: { ...c, z: base + h + 1.2 }, options, choice: 'none', labels: Object.fromEntries(options.map((v) => [v, v === 'none' ? 'No roof · open to the sky' : ROOF_STYLES[v].label.split(' (')[0]])), icon: 'roof' });
+    }
     let ids = [];
-    commitAmendable(label, plan.cons, (w, cons) => {
+    commitAmendable(label, cons, (w, cons) => {
       const made = addWallChain(w, gm.pts, gm.bulges, gm.closed, { height: h, base });
       for (const c of cons) if (c.type === 'wallOpening' && c.accepted && made.walls[c.seg]) addOpening(w, { hostKind: 'wall', hostId: made.walls[c.seg].id, s: c.s, kind: h <= 1.5 ? 'gate' : 'doorway', width: c.width, origin: 'crossing path' });
+      const rc = cons.find((c) => c.type === 'roof');
+      if (rc && rc.choice !== 'none' && made.room) { const { id, name } = nid(w, 'roof'); w.roofs.push({ id, name, roomId: made.room.id, style: rc.choice, pitch: 'mid', mat: 'slate' }); }
       ids = made.walls.map((x) => x.id);
       return made;
     }, (cons) => ({ intent: 'layout.walls.draw', shape, points: gm.pts.map(pt2), bulges: gm.bulges.slice(0, n).map(r2), closed: gm.closed, height: h, datum: r2(base), consequences: consIntent(cons) }));
@@ -430,6 +496,27 @@ IMPL.walls = {
     return `${fmt(G.polyLen(seg), 2)} m${gm.bulges[i] ? ' arc' : ''}`;
   },
 };
+/* Which roofs a room can take: a dome needs a round room, a gable four straight walls. */
+function roofStyles(round, boxy) { return round ? ['none', 'dome', 'flat'] : boxy ? ['none', 'flat', 'hip', 'gable'] : ['none', 'flat', 'hip']; }
+function roomRoofStyles(room) {
+  const walls = room.wallIds.map((id) => world.walls.find((x) => x.id === id)).filter(Boolean);
+  return roofStyles(walls.length > 1 && walls.every((x) => x.bulge), walls.length === 4 && walls.every((x) => !x.bulge));
+}
+/* Selection action: set, change or remove a room's roof, as one undo step through Layout. */
+function setRoomRoof(roomId, style, pitch) {
+  const room = world.rooms.find((r) => r.id === roomId); if (!room) return;
+  const cur = world.roofs.find((r) => r.roomId === roomId);
+  const p = pitch || (cur && cur.pitch) || 'mid';
+  if ((cur ? cur.style : 'none') === style && (!cur || cur.pitch === p)) return;
+  const label = style === 'none' ? `Open ${room.name} to the sky` : !cur ? `Roof ${room.name}` : cur.style === style ? `Pitch the roof on ${room.name}` : `Change the roof on ${room.name}`;
+  plainCommit(label, (w) => {
+    const keep = w.roofs.find((r) => r.roomId === roomId);
+    w.roofs = w.roofs.filter((r) => r.roomId !== roomId);
+    if (style !== 'none') { const { id, name } = keep || nid(w, 'roof'); w.roofs.push({ id, name, roomId, style, pitch: p, mat: (keep && keep.mat) || 'slate' }); }
+  }, style === 'none' ? { intent: 'layout.roof.remove', room: roomId } : { intent: 'layout.roof.set', room: roomId, style, pitch: p });
+  if (T.sel && !byId(world, T.sel)) selectId(room.id);
+  setState('commit'); VIEW.dirty = true; uiSync();
+}
 function chainBase(gm) { let lo = Infinity; for (const p of geomPoints(gm)) lo = Math.min(lo, hAt(p.x, p.y)); return isFinite(lo) ? lo : 0; }
 
 /* Building: footprint in, whole building out; still editable afterwards. */
@@ -489,7 +576,80 @@ IMPL.path = {
   },
   tag(gm) { return gm ? `${fmt(G.polyLen(geomPoints(gm)), 1)} m` : null; },
 };
-const DRAWING = new Set(['walls', 'building', 'path']);
+/* Form: a footprint pulled up into a solid. It rests on the form, floor or ground beneath it. */
+function formFoot(gm) { if (gm.circle) return G.circlePoly(gm.circle.c, gm.circle.r, 28); return G.area(gm.pts) < 0 ? gm.pts.slice().reverse() : gm.pts.slice(); }
+/* A form is named by its proportions, so a composition reads in words: Stage, Drum, Pillar. */
+function formName(pts, h, circle) {
+  const a = Math.abs(G.area(pts)), span = Math.sqrt(a);
+  if (circle) return h > span * 1.3 ? 'Column' : 'Drum';
+  if (h <= 0.6 && a >= 4) return 'Stage';
+  if (a < 2.5 && h <= 1.4) return 'Pedestal';
+  if (h > span * 1.6) return 'Pillar';
+  return 'Block';
+}
+IMPL.form = {
+  begin() { return newShape(opt('shape')); },
+  plan(gm) {
+    const pts = formFoot(gm), c = G.centroid(pts), area = Math.abs(G.area(pts)), cons = [];
+    if (area < 0.25) return { pts, base: hAt(c.x, c.y), cons, refused: 'Too small for a form' };
+    const blk = world.buildings.find((b) => { const f = footOf(b); return pts.some((p) => G.inPoly(p, f)) || f.some((p) => G.inPoly(p, pts)); });
+    const under = formAt(c.x, c.y);
+    const room = !under && world.rooms.find((r) => { const p = roomPoly(r); return p && G.inPoly(c, p); });
+    const g = groundRange(pts);
+    const base = under ? under.base + under.h : room ? roomBase(room) + 0.03 : g.lo;
+    const at = { ...c, z: base + 1.1 };
+    if (blk) return { pts, base, cons, refused: `Overlaps ${blk.name}` };
+    if (under) cons.push({ id: cid(), info: true, at, icon: 'datum', label: `Rests on ${under.name}` });
+    else if (room) cons.push({ id: cid(), info: true, at, icon: 'datum', label: `Stands in ${room.name}` });
+    else if (g.hi - g.lo > 0.15) cons.push({ id: cid(), info: true, at, icon: 'datum', label: `Grounded at its low corner · ${fmt(g.hi - g.lo, 1)} m into the slope` });
+    const hit = under ? [] : world.plants.filter((p) => G.inPoly(p, pts));
+    if (hit.length) cons.push({ id: cid(), type: 'clear', at: { ...c, z: base }, count: hit.length, accepted: true, label: `Clears ${hit.length} plant${hit.length > 1 ? 's' : ''}`, icon: 'clear' });
+    return { pts, base, under, room, cons };
+  },
+  preview(gm, plan) { T.ghosts = [{ kind: 'form', obj: { id: 'ghost', pts: plan.pts, base: plan.base, h: 0.12, mat: opt('finish') }, hl: plan.refused ? 'refuse' : 'ghost' }]; },
+  /* The footprint is done: enter the pull phase. Moving the pointer up raises it; a click sets it. */
+  finish(gm) {
+    const p0 = gm.pts[0];
+    if (!gm.closed || (gm.pts.length < 3 && !gm.circle)) return refuse(p0 ? { ...p0, z: hAt(p0.x, p0.y) + 1 } : null, 'Refused · A footprint needs three corners');
+    const plan = this.plan(gm);
+    if (plan.refused) { const c = G.centroid(plan.pts); return refuse({ ...c, z: plan.base + 1 }, `Refused · ${plan.refused}`); }
+    T.draft = { kind: 'formpull', shape: T.draft.shape, pts: plan.pts, base: plan.base, plan, sy: T.pointer ? T.pointer.sy : 0, h: 0.6, circle: !!gm.circle, r: gm.circle ? gm.circle.r : null };
+    T.live = plan.cons.slice();
+    this.pull(T.pointer);
+  },
+  pull(ev) {
+    const d = T.draft; if (!ev || !d) return;
+    d.h = clamp(Math.round((0.6 + (d.sy - ev.sy) / (CAM.scale * Math.max(0.35, _ce))) * 10) / 10, 0.1, 8);
+    const c = G.centroid(d.pts);
+    T.ghosts = [{ kind: 'form', obj: { id: 'ghost', pts: d.pts, base: d.base, h: d.h, mat: opt('finish') }, hl: 'ghost' }];
+    setTag({ ...c, z: d.base + d.h + 0.6 }, `${formName(d.pts, d.h, d.circle)} · ${fmt(d.h, 1)} m · click to set`, 'live');
+    setState('propose'); VIEW.dirty = true;
+  },
+  move(ev) { if (T.draft && T.draft.kind === 'formpull') this.pull(ev); },
+  down() { if (T.draft && T.draft.kind === 'formpull') { this.set(); return true; } return false; },
+  up() {},
+  set() {
+    const d = T.draft, h = d.h, mat = opt('finish'), nm = formName(d.pts, h, d.circle), label = `Make a ${nm.toLowerCase()}`, under = d.plan.under;
+    let fid = null;
+    commitAmendable(label, d.plan.cons, (w, cs) => {
+      const { id, name } = nid(w, 'form', nm); fid = id;
+      const f = { id, name, pts: d.pts.map((p) => ({ x: p.x, y: p.y })), base: d.base, h, mat, on: under ? under.id : null };
+      w.forms.push(f);
+      const cl = cs.find((c) => c.type === 'clear'); if (cl && cl.accepted) w.plants = w.plants.filter((p) => !G.inPoly(p, f.pts));
+      return f;
+    }, (cs) => ({ intent: 'scene.form.make', shape: d.shape, footprint: d.circle ? { circle: pt2(G.centroid(d.pts)), r: r2(d.r) } : d.pts.map(pt2), height: h, base: r2(d.base), finish: mat, restsOn: under ? under.id : d.plan.room ? d.plan.room.id : 'ground', consequences: consIntent(cs) }));
+    finishCommit(label, [fid]);
+  },
+  tag(gm, d) {
+    if (!gm) return null;
+    const plan = planCache.plan, on = plan && plan.under ? ` · on ${plan.under.name}` : '';
+    if (gm.circle) return `⌀ ${fmt(gm.circle.r * 2, 1)} m${on}`;
+    if (d.shape === 'box') return `${fmt(Math.abs(gm.pts[0].x - gm.pts[2].x), 1)} × ${fmt(Math.abs(gm.pts[0].y - gm.pts[2].y), 1)} m${on}`;
+    return `${gm.pts.length} corners · ${fmt(Math.abs(G.area(gm.pts)), 1)} m²${on}`;
+  },
+};
+const DRAWING = new Set(['walls', 'building', 'path', 'form']);
+const FOOTPRINT = new Set(['building', 'form']);
 
 /* Opening: aim at a wall face, see the opening on it, click to cut. */
 function openingAim(ev) {
@@ -541,43 +701,6 @@ IMPL.opening = {
   },
 };
 
-/* Roof: over a closed room drawn with Walls. */
-function roofAim(ev) {
-  const style = opt('style', 'roof'), g = ev.g;
-  const hb = pickBuilding(ev.sx, ev.sy);
-  if (hb) return { refuse: `${hb.item.name} makes its own roof. Change it on its Card`, at: hb.p };
-  let room = world.rooms.find((r) => { const p = roomPoly(r); return p && G.inPoly(g, p); });
-  const hw = pickWall(ev.sx, ev.sy);
-  if (!room && hw) { const rs = roomsOfWall(hw.id); if (rs.length) room = rs[0]; else return { refuse: `${hw.item.name} doesn’t close a room yet`, at: { ...hw.p, z: wallBase(hw.item) + hw.item.height + 0.6 } }; }
-  if (!room) return { aim: 'Point inside a closed room' };
-  const poly = roomPoly(room), c = G.centroid(poly), at = { ...c, z: roomTop(room) + 2 };
-  const straight = room.wallIds.every((id) => { const wl = world.walls.find((x) => x.id === id); return wl && !wl.bulge; });
-  if (style === 'gable' && (room.wallIds.length !== 4 || !straight)) return { refuse: 'Gable needs four straight walls. Try Hip or Dome', at, room };
-  const existing = world.roofs.find((r) => r.roomId === room.id);
-  return { ok: true, room, at, existing, info: existing ? `Replaces ${existing.name}` : `Over ${room.name}` };
-}
-IMPL.roof = {
-  move(ev) {
-    const a = roofAim(ev); T.ghosts = [];
-    HL.hover = a.room ? a.room.id : null;
-    if (a.ok) { T.ghosts = [{ kind: 'roof', obj: { id: 'ghost', roomId: a.room.id, style: opt('style'), pitch: opt('pitch'), mat: 'slate' }, hl: 'ghost' }]; setTag(a.at, a.info, 'live'); setState('aim'); }
-    else if (a.refuse) { if (a.room) T.ghosts = [{ kind: 'roof', obj: { id: 'ghost', roomId: a.room.id, style: 'hip', pitch: opt('pitch') }, hl: 'refuse' }]; setTag(a.at, a.refuse, 'refuse'); setState('aim'); }
-    else { setTag(null); setState('idle'); }
-    VIEW.dirty = true;
-  },
-  down(ev) {
-    const a = roofAim(ev);
-    if (!a.ok) { if (a.refuse) refuse(a.at, `Refused · ${a.refuse}`); return true; }
-    const style = opt('style'), pitch = opt('pitch'), label = a.existing ? `Change the roof on ${a.room.name}` : `Roof ${a.room.name}`;
-    plainCommit(label, (w) => {
-      w.roofs = w.roofs.filter((r) => r.roomId !== a.room.id);
-      const { id, name } = nid(w, 'roof'); w.roofs.push({ id, name, roomId: a.room.id, style, pitch, mat: 'slate' });
-    }, { intent: 'layout.roof.set', room: a.room.id, style, pitch });
-    T.ghosts = []; finishCommit(label, []);
-    return true;
-  },
-};
-
 /* Stair: drag from the bottom to the top. */
 IMPL.stair = {
   down(ev) { T.draft = { kind: 'stair', a: clampWS(ev.g), b: clampWS(ev.g) }; setState('draft'); return true; },
@@ -607,12 +730,13 @@ IMPL.stair = {
   },
 };
 
-/* Object: shelf item at the pointer; backs onto a nearby wall as placement only. */
-function objectAim(ev) {
-  const item = opt('item', 'object'), def = OBJECTS[item], g = clampWS(ev.g);
+/* Object: the shelf item at the pointer. Floor things back onto a nearby wall (placement only);
+ * a drag lays an evenly spaced row. Wall things (frames) hang on a wall face; a drag along it hangs a row. */
+function objectAim(ev, at0) {
+  const item = opt('item', 'object'), def = OBJECTS[item], g = clampWS(at0 || ev.g);
   let x = g.x, y = g.y, r = T.objRot, backs = null;
   let best = null;
-  for (const wl of world.walls) { const res = G.distPoly(g, wallPts(wl)); if (res.d < def.d / 2 + 0.7 && (!best || res.d < best.res.d)) best = { wl, res }; }
+  if (!at0) for (const wl of world.walls) { const res = G.distPoly(g, wallPts(wl)); if (res.d < def.d / 2 + 0.7 && (!best || res.d < best.res.d)) best = { wl, res }; }
   if (best && best.wl.height > 0.9) {
     const pts = wallPts(best.wl), dir = G.norm(G.sub(pts[best.res.i + 1], pts[best.res.i])), n0 = G.left(dir);
     const side = G.dot(G.sub(g, best.res.p), n0) >= 0 ? 1 : -1, n = G.mul(n0, side), q = G.add(best.res.p, G.mul(n, best.wl.thick / 2 + def.d / 2 + 0.04));
@@ -623,34 +747,67 @@ function objectAim(ev) {
   const inB = footprintBlocked(world, { x, y }, 0.05);
   if (inB) return { o, at, refuse: `Inside ${inB.name}. Its interior isn’t open in this prototype` };
   if (!isNaN(waterAt(x, y))) return { o, at, refuse: 'That’s water' };
-  return { ok: true, o, at, backs, info: backs ? `Backs onto ${backs.name} · placement only` : OBJ_LABEL[item] };
+  const f = formAt(x, y);
+  return { ok: true, o, at, backs, info: backs ? `Backs onto ${backs.name} · placement only` : f ? `On ${f.name}` : OBJ_LABEL[item] };
 }
+/* An evenly spaced row of floor things from where the drag began; each spot is checked on its own. */
+function objectRow(d, to) {
+  const def = OBJECTS[d.o.item], v = G.sub(to, d.start), L = G.len(v);
+  const dir = L > 1e-6 ? G.mul(v, 1 / L) : { x: 1, y: 0 }, sp = def.w + 0.6, n = Math.floor(L / sp) + 1, r = Math.atan2(dir.y, dir.x) + T.objRot;
+  const spots = [];
+  for (let i = 0; i < n; i++) {
+    const p = G.add(d.start, G.mul(dir, i * sp)), o = { id: 'ghost' + i, item: d.o.item, x: p.x, y: p.y, r };
+    const a = objectAim(null, p);
+    let why = a.ok ? null : a.refuse;
+    if (!why) { const wl = world.walls.find((wl2) => G.distPoly(p, wallPts(wl2)).d < wl2.thick / 2 + def.d / 2); if (wl) why = `Crosses ${wl.name}`; }
+    if (!why) { const hit = world.objects.find((o2) => G.dist(o2, p) < (Math.max(def.w, def.d) + Math.max(OBJECTS[o2.item].w, OBJECTS[o2.item].d)) * 0.42); if (hit) why = `${hit.name} is there`; }
+    spots.push({ o, ok: !why, why });
+  }
+  return spots;
+}
+const plural = (n, word) => `${n} ${word.toLowerCase()}${n === 1 ? '' : word.endsWith('s') ? 'es' : 's'}`;
 IMPL.object = {
   move(ev) {
+    if (isWallItem(opt('item'))) return frameMove(ev);
     if (T.draft) {
-      const d = T.draft, v = G.sub(ev.g, d.o);
-      if (G.len(v) > 0.3) { d.o.r = Math.atan2(v.y, v.x) - Math.PI / 2; d.turned = true; setTag(d.at, `turn ${Math.round(((d.o.r * 180 / Math.PI) % 360 + 360) % 360)}°`, 'live'); }
-      T.ghosts = [{ kind: 'object', obj: d.o, hl: 'ghost' }]; VIEW.dirty = true; return;
+      const d = T.draft, g = clampWS(ev.g);
+      if (G.dist(g, d.start) < 0.6 && !d.row) { T.ghosts = [{ kind: 'object', obj: d.o, hl: 'ghost' }]; VIEW.dirty = true; return; }
+      d.row = objectRow(d, g);
+      const ok = d.row.filter((x) => x.ok).length, skip = d.row.length - ok;
+      T.ghosts = d.row.map((x) => ({ kind: 'object', obj: x.o, hl: x.ok ? 'ghost' : 'refuse' }));
+      setTag({ ...g, z: objBase(g.x, g.y) + 1.4 }, ok ? `${plural(ok, OBJ_LABEL[d.o.item])}${skip ? ` · skips ${skip}` : ''}` : 'Nothing fits along here', ok ? 'live' : 'refuse');
+      setState(skip ? 'propose' : 'draft'); VIEW.dirty = true; return;
     }
     const a = objectAim(ev); T.aimRes = a;
     T.ghosts = [{ kind: 'object', obj: a.o, hl: a.ok ? 'ghost' : 'refuse' }];
     setTag(a.at, a.ok ? a.info : a.refuse, a.ok ? 'live' : 'refuse'); setState('aim'); VIEW.dirty = true;
   },
   down(ev) {
+    if (isWallItem(opt('item'))) return frameDown(ev);
     const a = objectAim(ev);
     if (!a.ok) { refuse(a.at, `Refused · ${a.refuse}`); return true; }
-    T.draft = { kind: 'object', o: { ...a.o }, at: a.at, backs: a.backs }; setState('draft'); return true;
+    T.draft = { kind: 'object', o: { ...a.o }, at: a.at, backs: a.backs, start: clampWS(ev.g), row: null }; setState('draft'); return true;
   },
   up() {
+    if (isWallItem(opt('item'))) return frameUp();
     const d = T.draft; if (!d) return;
-    const label = `Place ${/^[aeiou]/i.test(OBJ_LABEL[d.o.item]) ? 'an' : 'a'} ${OBJ_LABEL[d.o.item].toLowerCase()}`;
-    plainCommit(label, (w) => { const { id, name } = nid(w, 'object', OBJ_LABEL[d.o.item]); w.objects.push({ id, name, item: d.o.item, x: d.o.x, y: d.o.y, r: d.o.r }); },
-      { intent: 'scene.instance.place', asset: d.o.item, at: pt2(d.o), turn: Math.round(d.o.r * 180 / Math.PI), note: d.backs && !d.turned ? `placed against ${d.backs.id}; no attachment` : undefined });
+    const word = OBJ_LABEL[d.o.item];
+    if (d.row && d.row.length > 1) {
+      const ok = d.row.filter((x) => x.ok), skipped = d.row.length - ok.length;
+      if (!ok.length) return refuse(null, 'Refused · Nothing fits along there');
+      const label = `Lay a row of ${plural(ok.length, word)}`;
+      plainCommit(label, (w) => { for (const x of ok) { const { id, name } = nid(w, 'object', word); w.objects.push({ id, name, item: x.o.item, x: x.o.x, y: x.o.y, r: x.o.r }); } },
+        { intent: 'scene.instance.placeRow', asset: d.o.item, from: pt2(ok[0].o), to: pt2(ok[ok.length - 1].o), count: ok.length, spacing: r2(OBJECTS[d.o.item].w + 0.6), skipped });
+      T.ghosts = []; finishCommit(label, []); return;
+    }
+    const label = `Place ${/^[aeiou]/i.test(word) ? 'an' : 'a'} ${word.toLowerCase()}`;
+    plainCommit(label, (w) => { const { id, name } = nid(w, 'object', word); w.objects.push({ id, name, item: d.o.item, x: d.o.x, y: d.o.y, r: d.o.r }); },
+      { intent: 'scene.instance.place', asset: d.o.item, at: pt2(d.o), turn: Math.round(d.o.r * 180 / Math.PI), note: d.backs ? `placed against ${d.backs.id}; no attachment` : undefined });
     T.ghosts = []; finishCommit(label, []);
   },
 };
 
-/* Art: hang on a wall face; drag along it for an evenly spaced row. */
+/* Frames: the Object tool's wall item. Hang on a wall face; drag along it for an evenly spaced row. */
 function artFrames(wl, side, s0, s1, size) {
   const [w] = ART_SIZES[size], L = wallLen(wl), gap = 0.6;
   const a = Math.min(s0, s1), b = Math.max(s0, s1);
@@ -668,43 +825,42 @@ function artBlocked(wl, side, s, size, line) {
   if (a) return `Overlaps ${a.name}`;
   return null;
 }
-IMPL.art = {
-  move(ev) {
-    const size = opt('size'), line = +opt('line');
-    const hb = !T.draft && pickBuilding(ev.sx, ev.sy), hw = pickWall(ev.sx, ev.sy);
-    if (hb && (!hw || hb.d < hw.d)) { T.artGhost = null; setTag(hb.p, `${hb.item.name}’s walls are generated. Hang art on walls you drew`, 'refuse'); setState('aim'); VIEW.dirty = true; return; }
-    if (T.draft) {
-      const d = T.draft; let s1 = d.s0;
-      if (hw && hw.id === d.wl.id && hw.side === d.side) s1 = hw.s;
-      const all = artFrames(d.wl, d.side, d.s0, s1, size), ok = all.filter((s) => !artBlocked(d.wl, d.side, s, size, line));
-      d.frames = ok; d.skipped = all.length - ok.length;
-      T.artGhost = { wl: d.wl, side: d.side, frames: all.map((s) => ({ s, ok: ok.includes(s) })), size, line };
-      setTag(wallUV(wallPts(d.wl), d.wl, s1, line + 1, d.side), ok.length > 1 ? `${ok.length} frames${d.skipped ? ` · skips ${d.skipped}` : ''}` : ok.length ? '1 frame' : 'Nothing fits here', ok.length ? 'live' : 'refuse');
-      setState(d.skipped ? 'propose' : 'draft'); VIEW.dirty = true; return;
-    }
-    if (!hw) { T.artGhost = null; setTag(null); setState('idle'); VIEW.dirty = true; return; }
-    const wl = hw.item, at = wallUV(wallPts(wl), wl, hw.s, line + 1, hw.side);
-    if (wl.height < 2.2) { T.artGhost = { wl, side: hw.side, frames: [{ s: hw.s, ok: false }], size, line: Math.min(line, wl.height - 0.3) }; setTag(at, `${wl.name} is too low to hang art`, 'refuse'); setState('aim'); VIEW.dirty = true; return; }
-    const blocked = artBlocked(wl, hw.side, hw.s, size, line);
-    T.artGhost = { wl, side: hw.side, frames: [{ s: hw.s, ok: !blocked }], size, line };
-    setTag(at, blocked || 'Click to hang · drag for a row', blocked ? 'refuse' : 'live'); setState('aim'); VIEW.dirty = true;
-  },
-  down(ev) {
-    const hw = pickWall(ev.sx, ev.sy); if (!hw) return true;
-    if (hw.item.height < 2.2) { refuse(null, `Refused · ${hw.item.name} is too low to hang art`); return true; }
-    T.draft = { kind: 'art', wl: hw.item, side: hw.side, s0: hw.s, frames: [hw.s] }; setState('draft'); this.move(ev); return true;
-  },
-  up() {
-    const d = T.draft; if (!d) return;
-    const size = opt('size'), line = +opt('line'), frames = d.frames || [];
-    T.artGhost = null;
-    if (!frames.length) return refuse(null, 'Refused · Nothing fits there');
-    const label = frames.length > 1 ? `Hang ${frames.length} artworks` : 'Hang an artwork';
-    plainCommit(label, (w) => { for (const s of frames) { const { id, name } = nid(w, 'art'); w.art.push({ id, name, wallId: d.wl.id, side: d.side, s, size, line, hue: ART_HUES[(w.counters.id || 0) % ART_HUES.length] }); } },
-      { intent: 'scene.art.hang', wall: d.wl.id, face: d.side > 0 ? 'left' : 'right', at: frames.map(r2), size, hangLine: line, skipped: d.skipped || 0 });
-    finishCommit(label, []);
-  },
-};
+function frameMove(ev) {
+  const size = opt('fsize'), line = +opt('line');
+  T.ghosts = [];
+  const hb = !T.draft && pickBuilding(ev.sx, ev.sy), hw = pickWall(ev.sx, ev.sy);
+  if (hb && (!hw || hb.d < hw.d)) { T.artGhost = null; setTag(hb.p, `${hb.item.name}’s walls are generated. Hang frames on walls you drew`, 'refuse'); setState('aim'); VIEW.dirty = true; return; }
+  if (T.draft) {
+    const d = T.draft; let s1 = d.s0;
+    if (hw && hw.id === d.wl.id && hw.side === d.side) s1 = hw.s;
+    const all = artFrames(d.wl, d.side, d.s0, s1, size), ok = all.filter((s) => !artBlocked(d.wl, d.side, s, size, line));
+    d.frames = ok; d.skipped = all.length - ok.length;
+    T.artGhost = { wl: d.wl, side: d.side, frames: all.map((s) => ({ s, ok: ok.includes(s) })), size, line };
+    setTag(wallUV(wallPts(d.wl), d.wl, s1, line + 1, d.side), ok.length > 1 ? `${ok.length} frames${d.skipped ? ` · skips ${d.skipped}` : ''}` : ok.length ? '1 frame' : 'Nothing fits here', ok.length ? 'live' : 'refuse');
+    setState(d.skipped ? 'propose' : 'draft'); VIEW.dirty = true; return;
+  }
+  if (!hw) { T.artGhost = null; setTag(ev.g, 'Point at a wall face', 'live'); setState('idle'); VIEW.dirty = true; return; }
+  const wl = hw.item, at = wallUV(wallPts(wl), wl, hw.s, line + 1, hw.side);
+  if (wl.height < 2.2) { T.artGhost = { wl, side: hw.side, frames: [{ s: hw.s, ok: false }], size, line: Math.min(line, wl.height - 0.3) }; setTag(at, `${wl.name} is too low to hang a frame`, 'refuse'); setState('aim'); VIEW.dirty = true; return; }
+  const blocked = artBlocked(wl, hw.side, hw.s, size, line);
+  T.artGhost = { wl, side: hw.side, frames: [{ s: hw.s, ok: !blocked }], size, line };
+  setTag(at, blocked || 'Click to hang · drag along for a row', blocked ? 'refuse' : 'live'); setState('aim'); VIEW.dirty = true;
+}
+function frameDown(ev) {
+  const hw = pickWall(ev.sx, ev.sy); if (!hw) return true;
+  if (hw.item.height < 2.2) { refuse(null, `Refused · ${hw.item.name} is too low to hang a frame`); return true; }
+  T.draft = { kind: 'art', wl: hw.item, side: hw.side, s0: hw.s, frames: [hw.s] }; setState('draft'); frameMove(ev); return true;
+}
+function frameUp() {
+  const d = T.draft; if (!d) return;
+  const size = opt('fsize'), line = +opt('line'), frames = d.frames || [];
+  T.artGhost = null;
+  if (!frames.length) return refuse(null, 'Refused · Nothing fits there');
+  const label = frames.length > 1 ? `Hang ${frames.length} frames` : 'Hang a frame';
+  plainCommit(label, (w) => { for (const s of frames) { const { id, name } = nid(w, 'art'); w.art.push({ id, name, wallId: d.wl.id, side: d.side, s, size, line, hue: ART_HUES[(w.counters.id || 0) % ART_HUES.length] }); } },
+    { intent: 'scene.instance.hang', asset: 'frame', wall: d.wl.id, face: d.side > 0 ? 'left' : 'right', at: frames.map(r2), size, hangLine: line, skipped: d.skipped || 0 });
+  finishCommit(label, []);
+}
 
 /* Light: fixtures; and the sun on the sky arc (environment). */
 function skyArc() {
@@ -793,14 +949,14 @@ function brushTick() {
   const st = T.brush; if (!st || !T.pointer) return;
   const g = clampWS(T.pointer.g), R = brushRadius(), e = T.pointer.e || {};
   st.frames++;
-  if (T.tool === 'ground') {
-    let mode = opt('brush'); if (e.shiftKey && mode === 'raise') mode = 'lower'; else if (e.shiftKey && mode === 'lower') mode = 'raise';
-    brushTerrain(world, mode, g, R, 0.045, st.ref);
-    st.touched.push(g);
-  } else if (T.tool === 'water' && opt('mode') === 'pond') {
+  if (T.tool === 'ground' && opt('brush') === 'pond') {
     const kept = paintWater(world, g, R * 0.75, st.surface, opt('depth') === 'deep' ? 1.2 : 0.5);
     if (kept) st.kept.add(kept.name);
     const before = world.plants.length; world.plants = world.plants.filter((p) => isNaN(waterAt(p.x, p.y))); st.count += before - world.plants.length;
+  } else if (T.tool === 'ground') {
+    let mode = opt('brush'); if (e.shiftKey && mode === 'raise') mode = 'lower'; else if (e.shiftKey && mode === 'lower') mode = 'raise';
+    brushTerrain(world, mode, g, R, 0.045, st.ref);
+    st.touched.push(g);
   } else if (T.tool === 'plants') {
     if (e.shiftKey) { const before = world.plants.length; world.plants = world.plants.filter((p) => G.dist(p, g) > R); st.cleared += before - world.plants.length; }
     else if (st.frames % 3 === 0) {
@@ -828,8 +984,12 @@ function brushBegin(ev, extra = {}) {
 }
 function brushEnd() {
   const st = T.brush; T.brush = null; if (!st) return;
-  const tool = T.tool; let label = 'Brush', intent = {}, infos = [];
-  if (tool === 'ground') {
+  const tool = T.tool, pond = tool === 'ground' && opt('brush') === 'pond'; let label = 'Brush', intent = {}, infos = [];
+  if (pond) {
+    label = 'Paint a pond'; intent = { intent: 'landscape.water.paint', surface: r2(st.surface), depth: opt('depth') };
+    for (const n of st.kept) infos.push({ id: cid(), info: true, at: T.pointer.g, icon: 'keep', label: `Keeps clear of ${n}` });
+    if (st.count) infos.push({ id: cid(), info: true, at: T.pointer.g, icon: 'plants', label: `Drowned ${st.count} plant${st.count > 1 ? 's' : ''}` });
+  } else if (tool === 'ground') {
     let mode = opt('brush'); const shift = T.pointer && T.pointer.e && T.pointer.e.shiftKey; if (shift && mode === 'raise') mode = 'lower'; else if (shift && mode === 'lower') mode = 'raise';
     label = `${mode[0].toUpperCase() + mode.slice(1)} the ground`;
     intent = { intent: 'landscape.ground.brush', mode, radius: brushRadius(), stroke: G.resample(st.touched, 1).slice(0, 40).map(pt2) };
@@ -837,10 +997,6 @@ function brushEnd() {
     for (const b of world.buildings) { const f = footOf(b); if (st.touched.some((p) => G.distPoly(p, f.concat([f[0]])).d < R || G.inPoly(p, f))) { const g = groundRange(f); const c = G.centroid(f); infos.push({ id: cid(), info: true, at: { ...c, z: b.base + 0.4 }, icon: 'datum', label: `${b.name} keeps its datum${b.base - g.lo > 0.05 ? ` · plinth ${fmt(b.base - g.lo, 1)} m` : ''}` }); } }
     for (const pa of world.paths) if (st.touched.some((p) => G.distPoly(p, pa.pts).d < R)) { const m = G.atLen(pa.pts, G.polyLen(pa.pts) / 2).p; infos.push({ id: cid(), info: true, at: m, icon: 'path', label: `${pa.name} re-drapes` }); }
     for (const wl of world.walls) if (st.touched.some((p) => G.distPoly(p, wallPts(wl)).d < R)) { infos.push({ id: cid(), info: true, at: { ...G.mid(wl.a, wl.b), z: wallBase(wl) + wl.height + 0.5 }, icon: 'datum', label: `${wl.name} keeps its datum` }); break; }
-  } else if (tool === 'water') {
-    label = 'Paint a pond'; intent = { intent: 'landscape.water.paint', surface: r2(st.surface), depth: opt('depth') };
-    for (const n of st.kept) infos.push({ id: cid(), info: true, at: T.pointer.g, icon: 'keep', label: `Keeps clear of ${n}` });
-    if (st.count) infos.push({ id: cid(), info: true, at: T.pointer.g, icon: 'plants', label: `Drowned ${st.count} plant${st.count > 1 ? 's' : ''}` });
   } else if (tool === 'plants') {
     if (st.cleared) { label = `Clear ${st.cleared} plant${st.cleared > 1 ? 's' : ''}`; intent = { intent: 'landscape.plants.remove', count: st.cleared }; }
     else {
@@ -862,7 +1018,7 @@ function brushEnd() {
   T.draft = null;
   T.amend = infos.length ? { cons: infos, label, redo() {} } : null;
   // water may now cross paths: propose bridges, amended in place inside the same step
-  if (tool === 'water') proposeBridges();
+  if (pond) proposeBridges();
   setState('commit'); VIEW.dirty = true; uiSync();
 }
 function proposeBridges() {
@@ -883,12 +1039,31 @@ function proposeBridges() {
 }
 
 IMPL.ground = {
+  begin() { return newShape('free'); },
   move(ev) {
-    if (opt('brush') === 'terrace') return terraceMove(ev);
-    setTag(T.brush ? null : ev.g, T.brush ? null : `${TOOLS.ground.palette[0].options.find((o) => o.v === opt('brush')).label.split(' (')[0]} · ${brushRadius()} m`, 'live'); setState(T.brush ? 'draft' : 'aim'); VIEW.dirty = true;
+    const mode = opt('brush');
+    if (mode === 'terrace') return terraceMove(ev);
+    if (mode === 'stream') { setTag(null); return; }
+    const name = TOOLS.ground.palette[0].options.find((o) => o.v === mode).label.split(/ \(|:/)[0];
+    const text = mode === 'pond' ? `Pond · ${fmt(brushRadius() * 0.75, 1)} m` : `${name} · ${brushRadius()} m`;
+    setTag(T.brush ? null : ev.g, T.brush ? null : text, 'live'); setState(T.brush ? 'draft' : 'aim'); VIEW.dirty = true;
   },
   down(ev) { if (opt('brush') === 'terrace') return terraceDown(ev); brushBegin(ev); return true; },
   up(ev) { if (opt('brush') === 'terrace') return terraceUp(ev); brushEnd(); },
+  /* Stream mode: a drawn stroke becomes lowered ground with a surface. */
+  finishStream(gm) {
+    const pts = G.resample(gm.pts, 0.5), R = brushRadius() * 0.45, depth = opt('depth') === 'deep' ? 1.2 : 0.5;
+    const surf = pts.map((p) => hAt(p.x, p.y) - 0.08);
+    liveBegin(); T.brush = null;
+    const kept = new Set(); let drowned = 0;
+    pts.forEach((p, i) => { const k = paintWater(world, p, R, surf[i], depth); if (k) kept.add(k.name); });
+    const before = world.plants.length; world.plants = world.plants.filter((p) => isNaN(waterAt(p.x, p.y))); drowned = before - world.plants.length;
+    const intent = { intent: 'landscape.water.stream', points: G.resample(pts, 1).map(pt2), depth: opt('depth') };
+    liveEnd('Draw a stream', intent); T.lastIntent = intent;
+    T.amend = { cons: [...kept].map((n) => ({ id: cid(), info: true, at: pts[pts.length >> 1], icon: 'keep', label: `Keeps clear of ${n}` })).concat(drowned ? [{ id: cid(), info: true, at: pts[0], icon: 'plants', label: `Drowned ${drowned} plants` }] : []), label: 'Draw a stream', redo() {} };
+    proposeBridges();
+    finishCommit('Draw a stream', []);
+  },
 };
 function terraceMove(ev) {
   const d = T.draft;
@@ -914,26 +1089,6 @@ function terraceUp(ev) {
   const g = groundRange(d.pts); d.phase = 'pull'; d.sy = ev.sy; d.h0 = g.hi + 0.5; d.h = d.h0; d.g0 = g.lo; setState('propose');
   terraceMove(ev);
 }
-
-IMPL.water = {
-  begin() { return newShape('free'); },
-  move(ev) { if (opt('mode') === 'pond') { setTag(T.brush ? null : ev.g, T.brush ? null : `Pond · ${fmt(brushRadius() * 0.75, 1)} m`, 'live'); setState(T.brush ? 'draft' : 'aim'); VIEW.dirty = true; } },
-  down(ev) { if (opt('mode') === 'pond') { brushBegin(ev); return true; } return false; },
-  up() { if (opt('mode') === 'pond') brushEnd(); },
-  finishStream(gm) {
-    const pts = G.resample(gm.pts, 0.5), R = brushRadius() * 0.45, depth = opt('depth') === 'deep' ? 1.2 : 0.5;
-    const surf = pts.map((p) => hAt(p.x, p.y) - 0.08);
-    liveBegin(); T.brush = null;
-    const kept = new Set(); let drowned = 0;
-    pts.forEach((p, i) => { const k = paintWater(world, p, R, surf[i], depth); if (k) kept.add(k.name); });
-    const before = world.plants.length; world.plants = world.plants.filter((p) => isNaN(waterAt(p.x, p.y))); drowned = before - world.plants.length;
-    const intent = { intent: 'landscape.water.stream', points: G.resample(pts, 1).map(pt2), depth: opt('depth') };
-    liveEnd('Draw a stream', intent); T.lastIntent = intent;
-    T.amend = { cons: [...kept].map((n) => ({ id: cid(), info: true, at: pts[pts.length >> 1], icon: 'keep', label: `Keeps clear of ${n}` })).concat(drowned ? [{ id: cid(), info: true, at: pts[0], icon: 'plants', label: `Drowned ${drowned} plants` }] : []), label: 'Draw a stream', redo() {} };
-    proposeBridges();
-    finishCommit('Draw a stream', []);
-  },
-};
 
 IMPL.plants = {
   move(ev) { const k = TOOLS.plants.palette[0].options.find((o) => o.v === opt('kind')).label; setTag(T.brush ? null : ev.g, T.brush ? null : `${k} · ${brushRadius()} m${ev.e.shiftKey ? ' · clear' : ''}`, 'live'); setState(T.brush ? 'draft' : 'aim'); VIEW.dirty = true; },
@@ -975,6 +1130,14 @@ function paintAim(ev) {
     else t.push({ id: hit.id, part: 'roof' });
     return { hit, t, cur, roof: true, label: `Paint the roof of ${hit.kind === 'roof' ? nameOf(hit.item.roomId) : name} ${MATERIALS[mat].label.toLowerCase()}` };
   }
+  if (hit.kind === 'form') {
+    const f = hit.item, cur = f.mat, stack = [f, ...formsAbove(world, f.id)];
+    if (scope === 'all') for (const f2 of world.forms) { if (f2.mat === cur) t.push({ id: f2.id, part: 'face' }); }
+    else if (scope === 'room') for (const f2 of stack) t.push({ id: f2.id, part: 'face' });
+    else t.push({ id: f.id, part: 'face' });
+    const what = scope === 'all' ? `every form in ${MATERIALS[cur].label.toLowerCase()}` : scope === 'room' && stack.length > 1 ? `${name} and what stands on it` : name;
+    return { hit, t, cur, label: `Paint ${what} ${MATERIALS[mat].label.toLowerCase()}` };
+  }
   if (hit.kind === 'room') { t.push({ id: hit.id, part: 'floor' }); return { hit, t, cur: hit.item.floor, label: `Paint the floor of ${name} ${MATERIALS[mat].label.toLowerCase()}` }; }
   return { ground: true };
 }
@@ -988,6 +1151,7 @@ function applyPaint(w, t, mat, ask) {
       else { it.mat = mat; it.overrides = {}; if (ask && ask.choice === 'style') for (const id of ask.twins) { const b2 = w.buildings.find((b) => b.id === id); if (b2) { b2.mat = mat; b2.overrides = {}; } } }
     } else if (r.kind === 'roofs') it.mat = mat;
     else if (r.kind === 'rooms') it.floor = mat;
+    else if (r.kind === 'forms') it.mat = mat;
   }
 }
 IMPL.paint = {
@@ -1058,9 +1222,9 @@ function drawingUpdate(ev) {
   const gm = shapeGeom(d, false, ev.e);
   T.ghosts = []; T.groundGhost = null; T.live = [];
   if (!impl.plan) { if (gm) setTag({ ...gm.pts[gm.pts.length - 1], z: hAt(gm.pts[gm.pts.length - 1].x, gm.pts[gm.pts.length - 1].y) + 0.4 }, `Stream · ${fmt(G.polyLen(gm.pts), 1)} m`, 'live'); setState('draft'); return; }
-  if (!gm || (T.tool === 'building' && !gm.closed && d.shape !== 'outline')) { setTag(null); return; }
-  if (T.tool === 'building' && d.shape === 'outline' && gm.pts.length < 3) { setTag(null); return; }
-  const gmc = T.tool === 'building' && d.shape === 'outline' ? { ...gm, closed: true } : gm;
+  if (!gm || (FOOTPRINT.has(T.tool) && !gm.closed && d.shape !== 'outline')) { setTag(null); return; }
+  if (FOOTPRINT.has(T.tool) && d.shape === 'outline' && gm.pts.length < 3) { setTag(null); return; }
+  const gmc = FOOTPRINT.has(T.tool) && d.shape === 'outline' ? { ...gm, closed: true } : gm;
   const key = JSON.stringify(gmc.pts) + gmc.bulges.join(',') + gmc.closed + T.tool + JSON.stringify(T.opts[T.tool] || {});
   if (key !== planCache.key) planCache = { key, plan: impl.plan(gmc) };
   const plan = planCache.plan;
@@ -1076,7 +1240,7 @@ function drawingFinish(e) {
   const d = T.draft, impl = IMPL[T.tool];
   const gm = shapeGeom(d, true, e);
   if (!gm) return cancelDraft();
-  if (T.tool === 'water') return impl.finishStream(gm);
+  if (T.tool === 'ground') return IMPL.ground.finishStream(gm);
   impl.finish(gm);
 }
 
@@ -1093,9 +1257,9 @@ function bindStage(cv) {
     if (T.amend && !T.draft) { T.amend = null; uiSync(); }
     if (T.state === 'refuse' || T.state === 'commit' || T.state === 'cancel') setTag(null);
     const tool = T.tool, impl = IMPL[tool];
-    if (DRAWING.has(tool) || (tool === 'water' && opt('mode') === 'stream')) {
+    if (shapeInput()) {
       if (!T.draft) T.draft = impl.begin ? impl.begin() : newShape('free');
-      if (tool === 'water') T.draft.shape = 'free';
+      if (isStream()) T.draft.shape = 'free';
       const raw = clampWS(ev.g), sp = T.draft.shape === 'free' ? { p: raw, kind: 'free' } : snapPoint(ev.g, e);
       T.draft.snap = sp.kind; T.draft.cursor = sp.p;
       const r = shapeDown(T.draft, sp.p);
@@ -1116,9 +1280,9 @@ function bindStage(cv) {
       VIEW.dirty = true; return;
     }
     const tool = T.tool, impl = IMPL[tool];
-    if (DRAWING.has(tool) || (tool === 'water' && opt('mode') === 'stream')) {
+    if (shapeInput()) {
       const raw = clampWS(ev.g);
-      const sp = (T.draft ? T.draft.shape : opt('shape')) === 'free' || tool === 'water' ? { p: raw, kind: 'free' } : snapPoint(ev.g, e, T.draft ? T.draft.pts.slice(0, 1) : []);
+      const sp = (T.draft ? T.draft.shape : opt('shape')) === 'free' || isStream() ? { p: raw, kind: 'free' } : snapPoint(ev.g, e, T.draft ? T.draft.pts.slice(0, 1) : []);
       T.cursor = sp;
       if (T.draft) { T.draft.snap = sp.kind; shapeMove(T.draft, sp.p, raw); drawingUpdate(ev); }
       else { setTag(null); setState('aim'); }
@@ -1133,7 +1297,7 @@ function bindStage(cv) {
     if (CAMDRAG) { CAMDRAG = null; return; }
     const ev = evAt(e); T.pointer = ev;
     const tool = T.tool, impl = IMPL[tool];
-    if (T.draft && (DRAWING.has(tool) || (tool === 'water' && T.draft.shape === 'free'))) {
+    if (T.draft && shapeInput()) {
       const sp = T.draft.shape === 'free' ? { p: clampWS(ev.g) } : snapPoint(ev.g, e);
       const r = shapeUp(T.draft, sp.p, e);
       if (r === 'finish') drawingFinish(e);
@@ -1147,7 +1311,7 @@ function bindStage(cv) {
   cv.addEventListener('pointercancel', end);
   cv.addEventListener('pointerleave', () => { if (!T.pressed) { HL.hover = null; HL.paint = null; if (!T.draft) { T.ghosts = []; T.artGhost = null; setTag(null); if (T.state === 'aim') setState('idle'); } VIEW.dirty = true; } });
   cv.addEventListener('dblclick', (e) => {
-    const d = T.draft; if (!d) return;
+    const d = T.draft; if (!d || d.kind) return;
     if (d.shape === 'line' || d.shape === 'outline') { if (d.shape === 'outline') d.closed = d.pts.length >= 3; drawingFinish(e); }
     else if (d.shape === 'arc') { if (d.phase === 'bend') { d.bulges[d.bulges.length - 1] = 0; d.phase = 'end'; } drawingFinish(e); }
   });
@@ -1165,6 +1329,7 @@ function escLadder(fromRightClick) {
   if (T.measure) { T.measure = null; T.draft = null; setTag(null); setState('cancel'); VIEW.dirty = true; return 'draft'; }
   if (T.draft) { cancelDraft(); return 'draft'; }
   if (fromRightClick) return null;
+  if (typeof UI !== 'undefined' && UI.lib) { UI.lib = null; uiSync(); return 'library'; }
   if (T.amend) { T.amend = null; VIEW.dirty = true; uiSync(); return 'tokens'; }
   if (T.sel) { selectId(null); return 'selection'; }
   if (typeof UI !== 'undefined' && UI.paletteOpen && TOOLS[T.tool].palette.length) { UI.paletteOpen = false; uiSync(); return 'palette'; }
@@ -1179,7 +1344,7 @@ function armTool(id) {
   HL.hover = null; HL.paint = null; HL.extra.clear();
   if (id !== 'select') { T.sel = null; HL.sel = null; }
   setTag(null);
-  if (typeof UI !== 'undefined') UI.paletteOpen = true;
+  if (typeof UI !== 'undefined') { UI.paletteOpen = true; UI.lib = null; }
   VIEW.cv.style.cursor = id === 'select' ? 'default' : 'crosshair';
   setState('idle'); VIEW.dirty = true; uiSync();
 }
@@ -1187,7 +1352,7 @@ function doUndo() { if (T.draft) cancelDraft(true); const e = undo(); T.amend = 
 function doRedo() { const e = redo(); T.amend = null; if (e) toast(`Redid · ${e.label}`); VIEW.dirty = true; uiSync(); }
 function eraseSelection() {
   if (!T.sel) return; const r = byId(world, T.sel); if (!r) return;
-  const kind = { walls: 'wall', openings: 'opening', buildings: 'building', roofs: 'roof', stairs: 'stair', objects: 'object', art: 'art', lights: 'light', paths: 'path', rooms: 'room' }[r.kind];
+  const kind = { walls: 'wall', openings: 'opening', buildings: 'building', roofs: 'roof', stairs: 'stair', objects: 'object', forms: 'form', art: 'art', lights: 'light', paths: 'path', rooms: 'room' }[r.kind];
   const sm = eraseSummary({ kind, id: T.sel, item: r.item });
   if (sm.refuse) { toast(sm.refuse); return; }
   plainCommit(`Erase ${r.item.name}`, (w) => removeThing(w, kind, T.sel), { intent: `${OWNER_OF[kind]}.remove`, id: T.sel, with: sm.ids });
@@ -1205,6 +1370,7 @@ function ghostDepth(g) {
   if (g.kind === 'wall') { const m = G.mid(o.a, o.b); return depthOf(m.x, m.y, (o.base || 0) + o.height / 2); }
   if (g.kind === 'building') { const c = G.centroid(footOf(o)); return depthOf(c.x, c.y, o.base + bHeight(o) / 2); }
   if (g.kind === 'stair') { const m = G.mid(o.a, o.b); return depthOf(m.x, m.y, (o.z0 + o.z1) / 2); }
+  if (g.kind === 'form') { const c = G.centroid(o.pts); return depthOf(c.x, c.y, o.base + o.h / 2); }
   if (g.kind === 'roof') return -1e6;
   return depthOf(o.x, o.y, 0.4);
 }
@@ -1216,6 +1382,7 @@ function drawGhost(ctx, g) {
   else if (g.kind === 'object') drawObject(ctx, g.obj, opts);
   else if (g.kind === 'stair') drawStair(ctx, g.obj, { hl: g.hl, refuse: g.hl === 'refuse' });
   else if (g.kind === 'light') drawLight(ctx, g.obj, opts);
+  else if (g.kind === 'form') drawForm(ctx, g.obj, opts);
 }
 function previewItems(items) {
   const list = T.ghosts.slice();
@@ -1252,7 +1419,7 @@ function brushRing(ctx, g, R, color, fill) {
 function drawOverlay(ctx) {
   const tool = T.tool, d = T.draft, ptr = T.pointer;
   // draft ink
-  if (d && (DRAWING.has(tool) || (tool === 'water' && d.shape === 'free'))) {
+  if (d && !d.kind && (DRAWING.has(tool) || isStream())) {
     const gm = shapeGeom(d, false, ptr && ptr.e);
     if (gm) {
       const pts = geomPoints(gm); if (gm.closed) pts.push(pts[0]);
@@ -1262,12 +1429,12 @@ function drawOverlay(ctx) {
     }
   }
   // snap end mark
-  if ((DRAWING.has(tool)) && T.cursor && ptr) endMark(ctx, T.cursor.p, T.cursor.kind);
+  if (DRAWING.has(tool) && !(d && d.kind) && T.cursor && ptr) endMark(ctx, T.cursor.p, T.cursor.kind);
   // brushes
   if (ptr && !CAMDRAG) {
     const g = clampWS(ptr.g);
-    if (tool === 'ground' && opt('brush') !== 'terrace') brushRing(ctx, g, brushRadius(), C.ink);
-    if (tool === 'water' && opt('mode') === 'pond') brushRing(ctx, g, brushRadius() * 0.75, '#2f6f86', 'rgba(90,160,180,.18)');
+    if (tool === 'ground' && !['terrace', 'stream', 'pond'].includes(opt('brush'))) brushRing(ctx, g, brushRadius(), C.ink);
+    if (tool === 'ground' && opt('brush') === 'pond') brushRing(ctx, g, brushRadius() * 0.75, '#2f6f86', 'rgba(90,160,180,.18)');
     if (tool === 'plants') brushRing(ctx, g, brushRadius(), ptr.e.shiftKey ? C.erase : '#3f6e4a', ptr.e.shiftKey ? 'rgba(208,65,45,.08)' : 'rgba(80,140,90,.10)');
     if (tool === 'paint' && T.aimRes && T.aimRes.ground) brushRing(ctx, g, brushRadius(), C.ink, col(MATERIALS[opt('material')].color, 1, 0.45));
     if (tool === 'erase' && !HL.hover && (T.brush || world.plants.some((p) => G.dist(p, g) < 1.2))) brushRing(ctx, g, 1.2, C.erase, 'rgba(208,65,45,.08)');
@@ -1282,7 +1449,7 @@ function drawOverlay(ctx) {
     ctx.setLineDash([5, 3]); ctx.lineWidth = 1.8; ctx.strokeStyle = color; ctx.stroke(); ctx.setLineDash([]);
   }
   // art ghost
-  if (tool === 'art' && T.artGhost) {
+  if (tool === 'object' && T.artGhost) {
     const { wl, side, frames, size, line } = T.artGhost, pts = wallPts(wl), [w, h] = ART_SIZES[size];
     for (const f of frames) {
       const cs = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(([u, v]) => wallUV(pts, wl, f.s + u, line + v, side, 0.06));
@@ -1310,6 +1477,11 @@ function drawOverlay(ctx) {
       ctx.fillStyle = C.gold; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.rect(s.x - 7, s.y - 7, 14, 14); ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(s.x, s.y - 14); ctx.lineTo(s.x - 4, s.y - 10); ctx.lineTo(s.x + 4, s.y - 10); ctx.closePath(); ctx.moveTo(s.x, s.y + 14); ctx.lineTo(s.x - 4, s.y + 10); ctx.lineTo(s.x + 4, s.y + 10); ctx.closePath(); ctx.fillStyle = C.goldDeep; ctx.fill();
+    }
+    if (r && r.kind === 'forms') {
+      const f = r.item, c = G.centroid(f.pts), s0 = P(c.x, c.y, f.base + f.h), s = P(c.x, c.y, f.base + f.h + 0.55);
+      ctx.beginPath(); ctx.moveTo(s0.x, s0.y); ctx.lineTo(s.x, s.y); ctx.strokeStyle = C.goldDeep; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = C.gold; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.rect(s.x - 6, s.y - 6, 12, 12); ctx.fill(); ctx.stroke();
     }
     if (r && r.kind === 'lights' && r.item.aimAt) { const a = world.art.find((x) => x.id === r.item.aimAt), lp = lightPos(r.item); if (a && lp) line3(ctx, [lp, artCentre(a)], C.goldDeep, 1.4, [4, 3]); }
   }
@@ -1339,7 +1511,8 @@ function onKey(e) {
   if (mod && (k === 'y')) { e.preventDefault(); doRedo(); return; }
   if (mod) return;
   if (k === 'Escape') { e.preventDefault(); escLadder(false); return; }
-  if (k === 'Enter' && T.draft && DRAWING.has(T.tool)) {
+  if (k === 'Enter' && T.draft && T.draft.kind === 'formpull') { IMPL.form.set(); return; }
+  if (k === 'Enter' && T.draft && !T.draft.kind && DRAWING.has(T.tool)) {
     const d = T.draft;
     if (d.shape === 'outline') d.closed = d.pts.length >= 3;
     if (d.shape === 'arc' && d.phase === 'bend') { d.bulges[d.bulges.length - 1] = arcBulge(d, d.cursor); d.phase = 'end'; }
@@ -1355,14 +1528,15 @@ function onKey(e) {
   if (k === 'Shift' || k === 'Alt') { if (T.pointer) { T.pointer.e = e; const impl = IMPL[T.tool]; if (impl && impl.move && !DRAWING.has(T.tool)) impl.move(T.pointer); } VIEW.dirty = true; return; }
   if ((k === 'r' || k === 'R') && T.tool === 'object') { T.objRot += Math.PI / 12; if (T.pointer) IMPL.object.move(T.pointer); return; }
   if (k === '[' || k === ']') {
-    const g = (TOOLS[T.tool].palette || []).find((x) => x.id === 'size'); if (!g) return;
+    const g = groupsOf().find((x) => x.id === 'size'); if (!g) return;
     const vs = g.options.map((o) => o.v), i = vs.indexOf(opt('size')); setOpt('size', vs[clamp(i + (k === ']' ? 1 : -1), 0, vs.length - 1)]); return;
   }
   if (/^[1-9]$/.test(k)) {
-    for (const g of TOOLS[T.tool].palette || []) { const o = g.options && g.options.find((x) => x.key === k); if (o) { setOpt(g.id, o.v); return; } }
+    for (const g of groupsOf()) { const o = g.options && g.options.find((x) => x.key === k); if (o) { setOpt(g.id, o.v); return; } }
     return;
   }
   const up = k.toUpperCase();
+  if (up === 'K' && typeof UI !== 'undefined') { UI.openLibrary(); return; }
   const tool = Object.keys(TOOLS).find((id) => TOOLS[id].key === up);
   if (tool) { armTool(tool); }
 }
@@ -1458,6 +1632,31 @@ const SCENARIOS = {
       w.paths[0].name = 'Entrance path';
       scatter(w, rng, 'tree', 22, (p) => !(p.x > -10 && p.x < 12 && p.y > -6 && p.y < 6));
       scatter(w, rng, 'grass', 30);
+    },
+  },
+  studio: {
+    name: 'Studio composition', hour: 17.5,
+    build(w) {
+      const rng = mulberry(13);
+      hill(w, 15, 15, 7, 1.1); hill(w, -16, 14, 6, 0.8);
+      w.terrain.paint.forEach((_, c) => { const i = c % TER.N, j = (c / TER.N) | 0, x = i - TER.HALF + 0.5, y = j - TER.HALF + 0.5; if (Math.abs(x) < 11 && Math.abs(y) < 9) w.terrain.paint[c] = 'gravel'; });
+      const box = (x0, y0, x1, y1) => [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+      const form = (label, pts, base, h, mat, on) => { const { id, name } = nid(w, 'form', label); const f = { id, name, pts, base, h, mat, on: on || null }; w.forms.push(f); return f; };
+      const stage = form('Stage', box(-7, -3.5, 1, 2.5), 0, 0.4, 'timber');
+      form('Drum', G.circlePoly({ x: -4.4, y: -0.6 }, 1.1, 28), 0.4, 0.9, 'limewash', stage.id);
+      form('Pillar', box(4, -4.6, 5.2, -3.4), 0, 3.2, 'ochre');
+      form('Pedestal', box(6.4, -1.2, 7.2, -0.4), 0, 1.1, 'stone');
+      const back = addWallChain(w, [{ x: 3, y: 5.5 }, { x: -8, y: 5.5 }], [0], false, { height: 3.2, base: 0, mat: 'plaster' });
+      const bw = back.walls[0]; bw.name = 'Back wall';
+      const frame = (s, size, hue) => { const { id, name } = nid(w, 'art'); w.art.push({ id, name, wallId: bw.id, side: 1, s, size, line: 1.45, hue }); return id; };
+      const f1 = frame(3.2, 'l', ART_HUES[1]), f2 = frame(7.4, 'm', ART_HUES[4]);
+      const spot = (x, y, aimAt) => { const { id, name } = nid(w, 'light', 'Spot'); w.lights.push({ id, name, kind: 'spot', x, y, aimAt }); };
+      spot(-0.2, 3.4, f1); spot(-4.4, 3.4, f2);
+      const obj = (label, item, x, y, r) => { const { id, name } = nid(w, 'object', label); w.objects.push({ id, name, item, x, y, r }); };
+      obj('Plinth', 'plinth', -1.4, 0.9, 0); obj('Vitrine', 'vitrine', -1.6, -2.3, 0); obj('Screen', 'screen', 3.4, 1.4, 0.5);
+      obj('Bench', 'bench', -3, -7, 0);
+      scatter(w, rng, 'tree', 12, (p) => Math.abs(p.x) > 12 || Math.abs(p.y) > 10);
+      scatter(w, rng, 'grass', 24, (p) => Math.abs(p.x) > 11.5 || Math.abs(p.y) > 9.5);
     },
   },
   slope: {

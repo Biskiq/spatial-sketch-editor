@@ -1,29 +1,35 @@
 'use strict';
 /*
  * World creation tools — the registry.
- * One description drives the dock, every palette, the Spec drawer and the System sheet,
- * so the prototype and its reference cannot drift apart. Nothing here is a persisted
- * format: it is the proposal's capability description (shell "capability placement").
+ * One description drives the dock, every palette, the Library, the Spec drawer and the
+ * System sheet, so the prototype and its reference cannot drift apart. Nothing here is a
+ * persisted format: it is the proposal's capability description (shell "capability placement").
+ *
+ * Where a capability lives is decided by one rule:
+ *   Dock key       its own gesture and its own target, used across scene types
+ *   Palette        a variant of the armed tool's gesture (shape, kind, size, finish)
+ *   Library        catalogue content you pick from (objects, lights, plants, definitions, materials)
+ *   Selection      an operation on something that already exists (roof a room, turn, replace)
  */
 
 const FAMILIES = [
   {
     id: 'build', name: 'Build', icon: 'fam-build', mark: '#d9b98b',
     owner: 'Layout',
-    blurb: 'Architecture. Walls, whole buildings, openings, roofs and stairs.',
-    tools: ['walls', 'building', 'opening', 'roof', 'stair'],
+    blurb: 'Architecture: walls and the rooms they close, whole buildings, openings and stairs.',
+    tools: ['walls', 'building', 'opening', 'stair'],
   },
   {
     id: 'furnish', name: 'Furnish', icon: 'fam-furnish', mark: '#c3b4db',
     owner: 'Scene',
-    blurb: 'Things placed in the world. Objects, art and light.',
-    tools: ['object', 'art', 'light'],
+    blurb: 'What stands in the world: things from the shelf, forms you compose yourself, and light.',
+    tools: ['object', 'form', 'light'],
   },
   {
     id: 'land', name: 'Landscape', icon: 'fam-land', mark: '#9fc58d',
     owner: 'Needs an owner',
-    blurb: 'The ground and what grows on it. Terrain, paths, water and plants.',
-    tools: ['ground', 'path', 'water', 'plants'],
+    blurb: 'The ground and what grows on it: terrain and water, paths, plants.',
+    tools: ['ground', 'path', 'plants'],
   },
 ];
 
@@ -41,8 +47,8 @@ const shapeGroup = (list, dflt) => ({
   id: 'shape', label: 'Shape', kind: 'seg', shared: true, default: dflt || list[0],
   options: list.map((v) => ({ v, icon: SHAPES[v].icon, label: SHAPES[v].label, key: SHAPES[v].key })),
 });
-const sizeGroup = (dflt = 'm') => ({
-  id: 'size', label: 'Brush size', kind: 'seg', default: dflt,
+const sizeGroup = (dflt = 'm', when) => ({
+  id: 'size', label: 'Size', kind: 'seg', default: dflt, when,
   options: [
     { v: 's', icon: 'size-s', label: 'Small · 1.5 m', key: '[' },
     { v: 'm', icon: 'size-m', label: 'Medium · 3 m' },
@@ -65,28 +71,60 @@ const MATERIALS = {
   sand: { label: 'Sand', color: '#e5d6b2', for: 'ground' },
 };
 
+/*
+ * Things you place with Object. Floor items stand on the ground, a floor or a form;
+ * wall items hang on a wall face. The shelf in the palette shows recent ones; the
+ * Library holds them all and puts a picked one back on the shelf.
+ */
+const ITEMS = {
+  plinth: { label: 'Plinth and sculpture', short: 'Plinth', icon: 'obj-plinth' },
+  bench: { label: 'Bench', short: 'Bench', icon: 'obj-bench' },
+  chair: { label: 'Chair', short: 'Chair', icon: 'obj-chair' },
+  table: { label: 'Table', short: 'Table', icon: 'obj-table' },
+  planter: { label: 'Planter', short: 'Planter', icon: 'obj-planter' },
+  frame: { label: 'Frame (hangs on a wall)', short: 'Frame', icon: 'obj-frame', wall: true },
+  sofa: { label: 'Sofa', short: 'Sofa', icon: 'obj-sofa' },
+  stool: { label: 'Stool', short: 'Stool', icon: 'obj-stool' },
+  vitrine: { label: 'Vitrine', short: 'Vitrine', icon: 'obj-vitrine' },
+  screen: { label: 'Screen', short: 'Screen', icon: 'obj-screen' },
+};
+const SHELF_DEFAULT = ['plinth', 'bench', 'chair', 'table', 'planter', 'frame'];
+const isWallItem = (v) => !!(ITEMS[v] && ITEMS[v].wall);
+
+const FRAME_SIZES = [
+  { v: 's', icon: 'art-s', label: 'Small · 0.5 × 0.6 m' }, { v: 'm', icon: 'art-m', label: 'Medium · 0.8 × 1 m' }, { v: 'l', icon: 'art-l', label: 'Large · 1.4 × 1.2 m' },
+];
+const ROOF_STYLES = {
+  none: { icon: 'roof-none', label: 'Open to the sky' },
+  flat: { icon: 'roof-flat', label: 'Flat roof' },
+  hip: { icon: 'roof-hip', label: 'Hip roof' },
+  gable: { icon: 'roof-gable', label: 'Gable roof (four straight walls)' },
+  dome: { icon: 'roof-dome', label: 'Dome (round rooms)' },
+};
+const PITCHES = [{ v: 'low', text: '20°', label: 'Low pitch' }, { v: 'mid', text: '35°', label: 'Middle pitch' }, { v: 'steep', text: '50°', label: 'Steep pitch' }];
+
 const TOOLS = {
   select: {
     name: 'Select', key: 'V', icon: 'select', family: null,
-    makes: 'Nothing new. Picks a thing and pulls its marks.',
+    makes: 'Nothing new. Picks a thing, pulls its marks, and offers what you can do to it.',
     target: 'Anything', gesture: 'Click to select; drag a mark; drag empty Stage to orbit (3D) or pan (2D)',
     result: 'Edits through the selected owner', owner: 'Each subject’s owner',
-    proposes: [], area: 'Today',
-    today: 'Landed for walls, openings and objects. The prototype adds a bend knob on walls and storey and roof marks on buildings.',
+    proposes: ['Selection actions in the palette: roof a room, turn, duplicate, replace from the Library'], area: 'Today',
+    today: 'Landed for walls, openings and objects. The prototype adds a bend knob on walls, height marks on buildings and forms, and the action palette.',
     palette: [],
   },
 
   // ── Build ────────────────────────────────────────────────────────────────
   walls: {
     name: 'Walls', key: 'W', icon: 'walls', family: 'build',
-    makes: 'Walls: straight, curved, boxed or round. A closed run encloses a room.',
+    makes: 'Walls: straight, curved, boxed or round. Closing a run makes a room and offers it a roof.',
     target: 'Ground, a terrace, a wall end', gesture: 'Any shape; pull a wall’s middle later to curve it',
-    result: 'Layout Walls; a closed run derives a Room', owner: 'Layout',
-    proposes: ['Room it encloses (derived)', 'Doorway where it crosses a path', 'Refuses crossing a building'],
-    area: 'T1', today: 'Straight Wall chains by Line or Box land today under Ink. Arc, Circle and bending are new.',
+    result: 'Layout Walls; a closed run derives a Room; an accepted roof is a Layout Roof', owner: 'Layout',
+    proposes: ['A roof when the run closes (open, flat, hip, gable or dome)', 'Doorway where it crosses a path', 'Refuses crossing a building'],
+    area: 'T1', today: 'Straight Wall chains by Line or Box land today under Ink. Arc, Circle, bending and the roof offer are new.',
     palette: [
       shapeGroup(['line', 'arc', 'box', 'circle']),
-      { id: 'height', label: 'Wall height', kind: 'seg', default: 'room', options: [
+      { id: 'height', label: 'Height', kind: 'seg', default: 'room', options: [
         { v: 'low', icon: 'h-low', label: 'Garden wall · 1.2 m' },
         { v: 'room', icon: 'h-room', label: 'Room · 3 m' },
         { v: 'tall', icon: 'h-tall', label: 'Hall · 4.5 m' },
@@ -129,27 +167,10 @@ const TOOLS = {
       ] },
     ],
   },
-  roof: {
-    name: 'Roof', key: 'R', icon: 'roof', family: 'build',
-    makes: 'A roof over walls you drew yourself.',
-    target: 'Inside a closed room', gesture: 'Hover a room to see the roof; click to set',
-    result: 'A Layout Roof over that room’s walls', owner: 'Layout',
-    proposes: ['Refuses open walls, explains why'],
-    area: 'T5', today: null,
-    palette: [
-      { id: 'style', label: 'Style', kind: 'seg', default: 'hip', options: [
-        { v: 'gable', icon: 'roof-gable', label: 'Gable (four walls)' }, { v: 'hip', icon: 'roof-hip', label: 'Hip' },
-        { v: 'flat', icon: 'roof-flat', label: 'Flat' }, { v: 'dome', icon: 'roof-dome', label: 'Dome' },
-      ] },
-      { id: 'pitch', label: 'Pitch', kind: 'seg', default: 'mid', options: [
-        { v: 'low', text: '20°', label: 'Low pitch' }, { v: 'mid', text: '35°', label: 'Middle pitch' }, { v: 'steep', text: '50°', label: 'Steep pitch' },
-      ] },
-    ],
-  },
   stair: {
     name: 'Stair', key: 'T', icon: 'stair', family: 'build',
     makes: 'An architectural stair between two heights.',
-    target: 'From one height to another (ground, terrace, later a Level)', gesture: 'Drag from the bottom to the top',
+    target: 'From one height to another (ground, terrace, a form, later a Level)', gesture: 'Drag from the bottom to the top',
     result: 'A Layout Stair with derived treads', owner: 'Layout',
     proposes: ['Tread count from the rise', 'Refuses when there is nothing to climb'],
     area: 'T1 with Levels', today: null,
@@ -163,34 +184,31 @@ const TOOLS = {
   // ── Furnish ──────────────────────────────────────────────────────────────
   object: {
     name: 'Object', key: 'F', icon: 'object', family: 'furnish',
-    makes: 'Furniture, plinths and props from a shelf of recent things; the Library holds the rest.',
-    target: 'Ground, a floor, a raised top', gesture: 'Click to place; press and drag to turn; R turns 15°',
-    result: 'A placed Scene instance', owner: 'Scene',
-    proposes: ['Backs onto a wall when close (placement only, not attached)'],
-    area: 'T2', today: 'Placing from the Library lands today; the shelf palette is new.',
+    makes: 'Furniture, plinths, vitrines and frames from a shelf of recent things; the Library holds the rest.',
+    target: 'Ground, a floor, the top of a form; a wall face for frames', gesture: 'Click places one; drag lays an evenly spaced row; R turns 15°',
+    result: 'Placed Scene instances; a frame is attached to its wall by hanging', owner: 'Scene',
+    proposes: ['Backs onto a wall when close (placement only)', 'A row skips what is in the way and says so', 'Frames: a row skips doors and windows; refuses walls too low to hang'],
+    area: 'T2', today: 'Placing from the Library lands today; the shelf, rows and wall items are new.',
     palette: [
-      { id: 'item', label: 'Shelf', kind: 'seg', default: 'bench', options: [
-        { v: 'bench', icon: 'obj-bench', label: 'Bench' }, { v: 'table', icon: 'obj-table', label: 'Table' },
-        { v: 'chair', icon: 'obj-chair', label: 'Chair' }, { v: 'plinth', icon: 'obj-plinth', label: 'Plinth and sculpture' },
-        { v: 'sofa', icon: 'obj-sofa', label: 'Sofa' }, { v: 'planter', icon: 'obj-planter', label: 'Planter' },
-      ] },
-      { id: 'library', label: 'Library', kind: 'action', icon: 'library', text: 'Library', note: 'Opens the Library Instrument (not prototyped)' },
-    ],
-  },
-  art: {
-    name: 'Art', key: 'A', icon: 'art', family: 'furnish',
-    makes: 'Hung artwork. One frame, or a whole evenly spaced row in one drag.',
-    target: 'A wall face', gesture: 'Click to hang at the hang line; drag along the wall for a row',
-    result: 'Scene art attached to its wall (explicit, by hanging)', owner: 'Scene',
-    proposes: ['Row skips doors and windows', 'Refuses walls too low to hang'],
-    area: 'T2', today: null,
-    palette: [
-      { id: 'size', label: 'Frame', kind: 'seg', default: 'm', options: [
-        { v: 's', icon: 'art-s', label: 'Small · 0.5 × 0.6 m' }, { v: 'm', icon: 'art-m', label: 'Medium · 0.8 × 1 m' }, { v: 'l', icon: 'art-l', label: 'Large · 1.4 × 1.2 m' },
-      ] },
-      { id: 'line', label: 'Hang line', kind: 'seg', default: '1.45', options: [
+      { id: 'item', label: 'Shelf', kind: 'seg', shelf: true, default: 'plinth', options: [] },
+      { id: 'fsize', label: 'Frame', kind: 'seg', default: 'm', when: (v) => isWallItem(v('item')), options: FRAME_SIZES },
+      { id: 'line', label: 'Hang line', kind: 'seg', default: '1.45', when: (v) => isWallItem(v('item')), options: [
         { v: '1.45', text: '1.45', label: 'Centre at 1.45 m (gallery)' }, { v: '1.6', text: '1.60', label: 'Centre at 1.60 m (domestic)' },
       ] },
+      { id: 'library', label: 'More', kind: 'action', icon: 'library', text: 'Library', note: 'Everything that is not on the shelf' },
+    ],
+  },
+  form: {
+    name: 'Form', key: 'D', icon: 'form', family: 'furnish',
+    makes: 'Solids you compose yourself: a stage, a pedestal, a drum, a stepped mass, a sculpture.',
+    target: 'Ground, a floor, the top of another form', gesture: 'Draw a Box, Circle or Outline, pull up its height, click to set',
+    result: 'A composed Scene object, placed', owner: 'Scene (composed object)',
+    proposes: ['Rests on the form or floor beneath it', 'Clears plants in its footprint', 'Refuses overlapping a building'],
+    area: 'T2', today: null,
+    palette: [
+      shapeGroup(['box', 'circle', 'outline']),
+      { id: 'finish', label: 'Finish', kind: 'swatch', default: 'limewash',
+        options: ['limewash', 'stone', 'timber', 'ochre', 'slate'].map((v) => ({ v, color: MATERIALS[v].color, label: MATERIALS[v].label })) },
     ],
   },
   light: {
@@ -198,7 +216,7 @@ const TOOLS = {
     makes: 'Light fixtures, and the sun. Drag the sun across the sky arc to change the hour.',
     target: 'Ground, a wall, inside a room (pendant), the sky arc (sun)', gesture: 'Click to place; drag the sun',
     result: 'Scene lights; the sun is Scene environment', owner: 'Scene',
-    proposes: ['Aim a spot at nearby art: once, or keep aimed (explicit)', 'Refuses a pendant with nothing to hang from'],
+    proposes: ['Aim a spot at a nearby frame: once, or keep aimed (explicit)', 'Refuses a pendant with nothing to hang from'],
     area: 'T2', today: null,
     palette: [
       { id: 'kind', label: 'Fixture', kind: 'seg', default: 'spot', options: [
@@ -211,18 +229,22 @@ const TOOLS = {
   // ── Landscape ────────────────────────────────────────────────────────────
   ground: {
     name: 'Ground', key: 'G', icon: 'ground', family: 'land',
-    makes: 'Raised, lowered, flattened and smoothed ground, and flat terraces.',
-    target: 'Ground', gesture: 'Hold to brush (Shift inverts); Terrace: draw a shape, then pull its height',
-    result: 'A terrain edit', owner: 'Needs an owner (Landscape)',
-    proposes: ['Buildings keep their datum; their plinth follows', 'Paths re-drape (they belong to the ground)'],
+    makes: 'Raised, lowered, flattened and smoothed ground, flat terraces, ponds and streams.',
+    target: 'Ground', gesture: 'Hold to brush (Shift inverts); Terrace: draw, then pull; Stream: drag a stroke',
+    result: 'A terrain edit; water is lowered ground with a surface', owner: 'Needs an owner (Landscape)',
+    proposes: ['Buildings keep their datum; their plinth follows', 'Paths re-drape (they belong to the ground)', 'Water: a bridge where a path now crosses it'],
     area: 'Landscape', today: null,
     palette: [
-      { id: 'brush', label: 'Brush', kind: 'seg', default: 'raise', options: [
-        { v: 'raise', icon: 'raise', label: 'Raise (Shift lowers)' }, { v: 'lower', icon: 'lower', label: 'Lower (Shift raises)' },
-        { v: 'flatten', icon: 'flatten', label: 'Flatten to where you start' }, { v: 'smooth', icon: 'smooth', label: 'Smooth' },
-        { v: 'terrace', icon: 'terrace', label: 'Terrace: draw, then pull' },
+      { id: 'brush', label: 'Mode', kind: 'seg', default: 'raise', options: [
+        { v: 'raise', icon: 'raise', label: 'Raise (Shift lowers)', key: '1' }, { v: 'lower', icon: 'lower', label: 'Lower (Shift raises)', key: '2' },
+        { v: 'flatten', icon: 'flatten', label: 'Flatten to where you start', key: '3' }, { v: 'smooth', icon: 'smooth', label: 'Smooth', key: '4' },
+        { v: 'terrace', icon: 'terrace', label: 'Terrace: draw, then pull', key: '5' },
+        { v: 'pond', icon: 'water-pond', label: 'Pond: hold to paint water', key: '6', gap: true }, { v: 'stream', icon: 'water-stream', label: 'Stream: drag a stroke', key: '7' },
       ] },
-      sizeGroup('m'),
+      { id: 'depth', label: 'Depth', kind: 'seg', default: 'shallow', when: (v) => v('brush') === 'pond' || v('brush') === 'stream', options: [
+        { v: 'shallow', icon: 'depth-shallow', label: 'Shallow · 0.5 m' }, { v: 'deep', icon: 'depth-deep', label: 'Deep · 1.2 m' },
+      ] },
+      sizeGroup('m', (v) => v('brush') !== 'terrace' && v('brush') !== 'stream'),
     ],
   },
   path: {
@@ -242,28 +264,11 @@ const TOOLS = {
       ] },
     ],
   },
-  water: {
-    name: 'Water', key: 'H', icon: 'water', family: 'land',
-    makes: 'Ponds painted into the ground and streams drawn across it.',
-    target: 'Ground', gesture: 'Pond: hold to paint. Stream: drag a stroke',
-    result: 'Lowered ground with a water surface', owner: 'Needs an owner (Landscape)',
-    proposes: ['Bridge for a path it now crosses', 'Keeps clear of buildings'],
-    area: 'Landscape', today: null,
-    palette: [
-      { id: 'mode', label: 'Water', kind: 'seg', default: 'pond', options: [
-        { v: 'pond', icon: 'water-pond', label: 'Pond (paint)' }, { v: 'stream', icon: 'water-stream', label: 'Stream (stroke)' },
-      ] },
-      { id: 'depth', label: 'Depth', kind: 'seg', default: 'shallow', options: [
-        { v: 'shallow', icon: 'depth-shallow', label: 'Shallow · 0.5 m' }, { v: 'deep', icon: 'depth-deep', label: 'Deep · 1.2 m' },
-      ] },
-      sizeGroup('m'),
-    ],
-  },
   plants: {
     name: 'Plants', key: 'N', icon: 'plants', family: 'land',
     makes: 'Trees, shrubs, flowers and grass, scattered by brush or placed one at a time.',
     target: 'Ground', gesture: 'Hold to scatter; click for one; Shift clears',
-    result: 'Plant instances (scatter skips paths, water and buildings when painted)', owner: 'Needs an owner (Landscape or Scene)',
+    result: 'Plant instances (scatter skips paths, water, buildings and forms when painted)', owner: 'Needs an owner (Landscape or Scene)',
     proposes: ['Nothing persistent: the scatter rule runs once, at painting time'],
     area: 'Landscape', today: null,
     palette: [
@@ -281,8 +286,8 @@ const TOOLS = {
   // ── universal ────────────────────────────────────────────────────────────
   paint: {
     name: 'Paint', key: 'C', icon: 'paint', family: null,
-    makes: 'Materials and colours on walls, roofs, floors and ground.',
-    target: 'Any surface; the ground takes it as a brush', gesture: 'Click a surface (scope decides how far); brush the ground; Alt samples',
+    makes: 'Materials and colours on walls, roofs, floors, forms and ground.',
+    target: 'Any surface; the ground takes it as a brush', gesture: 'Click a surface (reach decides how far); brush the ground; Alt samples',
     result: 'Material assignment by the surface’s owner', owner: 'Scene (presentation of Layout surfaces)',
     proposes: ['Asks before changing a shared building style (Ask Rule)'],
     area: 'T2', today: 'Approved as Brush; not landed.',
@@ -290,7 +295,7 @@ const TOOLS = {
       { id: 'material', label: 'Material', kind: 'swatch', default: 'limewash',
         options: Object.entries(MATERIALS).map(([v, m]) => ({ v, color: m.color, label: m.label + (m.for === 'ground' ? ' (ground)' : '') })) },
       { id: 'scope', label: 'Reach', kind: 'seg', default: 'wall', options: [
-        { v: 'face', icon: 'scope-face', label: 'This face' }, { v: 'wall', icon: 'scope-wall', label: 'Whole wall' },
+        { v: 'face', icon: 'scope-face', label: 'This face' }, { v: 'wall', icon: 'scope-wall', label: 'Whole wall or form' },
         { v: 'room', icon: 'scope-room', label: 'Room or building' }, { v: 'all', icon: 'scope-all', label: 'Everything with this material' },
       ] },
       sizeGroup('m'),
@@ -306,37 +311,58 @@ const TOOLS = {
     palette: [],
   },
   measure: {
-    name: 'Measure', key: 'M', icon: 'measure', family: null, group: 'inspect',
+    name: 'Measure', key: 'M', icon: 'measure', family: null, group: 'view',
     makes: 'A temporary distance. Never saved.',
     target: 'Anywhere', gesture: 'Drag', result: 'Temporary reading', owner: 'None (session)',
-    proposes: [], area: 'Today', today: 'Landed.', palette: [],
+    proposes: [], area: 'Today', today: 'Landed. Moves from the dock to the view cluster.', palette: [],
   },
   slice: {
-    name: 'Slice', key: 'X', icon: 'slice', family: null, group: 'inspect', disabled: true,
+    name: 'Slice', key: 'X', icon: 'slice', family: null, group: 'view', disabled: true,
     makes: 'A temporary cut. Unchanged from the approved sheet; not prototyped here.',
     target: '—', gesture: '—', result: 'Temporary reading', owner: 'None (session)',
-    proposes: [], area: 'Approved', today: 'Approved, not landed. Unchanged by this proposal.', palette: [],
+    proposes: [], area: 'Approved', today: 'Approved, not landed. Moves to the view cluster; otherwise unchanged.', palette: [],
   },
 };
 
-/* Utility keys outside the families, in dock order. */
+/* Dock order outside the families. Measure and Slice read the world, so they sit with the view. */
 const UTILITY_LEFT = ['select'];
 const UTILITY_RIGHT = ['paint', 'erase'];
-const INSPECT = ['measure', 'slice'];
+const VIEW_TOOLS = ['measure', 'slice'];
+
+/* The Library: catalogue content. Picking an item arms the tool that places it. */
+const LIBRARY = [
+  { id: 'objects', name: 'Objects', tool: 'object', opt: 'item', blurb: 'Picking one puts it on the shelf.',
+    items: Object.entries(ITEMS).map(([v, it]) => ({ v, icon: it.icon, label: it.short, note: it.wall ? 'Hangs on a wall' : null })) },
+  { id: 'lights', name: 'Lights', tool: 'light', opt: 'kind',
+    items: TOOLS.light.palette[0].options.map((o) => ({ v: o.v, icon: o.icon, label: o.label.split(' (')[0] })) },
+  { id: 'plants', name: 'Plants', tool: 'plants', opt: 'kind',
+    items: TOOLS.plants.palette[0].options.map((o) => ({ v: o.v, icon: o.icon, label: o.label })) },
+  { id: 'buildings', name: 'Buildings', tool: 'building', blurb: 'Definitions. Every placed copy follows its definition.',
+    items: [
+      { v: 'cottage', icon: 'def-cottage', label: 'Cottage', opts: { shape: 'box', floors: '2', roof: 'gable', windows: 'regular' } },
+      { v: 'tower', icon: 'def-tower', label: 'Tower', opts: { shape: 'circle', floors: '3', roof: 'cone', windows: 'sparse' } },
+      { v: 'pavilion', icon: 'def-pavilion', label: 'Pavilion', opts: { shape: 'box', floors: '1', roof: 'flat', windows: 'none' } },
+      { v: 'barn', icon: 'def-barn', label: 'Long barn', opts: { shape: 'outline', floors: '1', roof: 'hip', windows: 'sparse' } },
+    ] },
+  { id: 'materials', name: 'Materials', tool: 'paint', opt: 'material',
+    items: Object.entries(MATERIALS).map(([v, m]) => ({ v, color: m.color, label: m.label })) },
+];
 
 /* What a new gesture proposes against what is already there. Rows: the tool in hand. */
 const INTERACTIONS = {
-  cols: ['Wall', 'Building', 'Path', 'Slope or terrace', 'Water', 'Plants', 'Art', 'Room'],
+  cols: ['Wall', 'Building', 'Path', 'Slope or terrace', 'Water', 'Plants', 'Form', 'Frame', 'Room'],
   rows: [
-    ['Walls', ['Joins at the end', 'Refused: crosses it', 'Doorway where they cross', 'Sits on the ground', '—', '—', '—', 'Encloses a new Room (derived)']],
-    ['Building', ['Refused: crosses it', 'Refused: overlaps', 'Door where it meets', 'Plinth, or level the ground', 'Keeps clear', 'Clears plants in its footprint', '—', '—']],
-    ['Opening', ['Cut in its face', 'Cut on the storey you point at', '—', '—', '—', '—', 'Refused: overlaps', 'Connects two Rooms (derived)']],
-    ['Path', ['Doorway, or a gate in a low wall', 'Door', 'Joins it', 'Steps, or a ramp', 'Bridge, or stepping stones', 'Clears them', '—', '—']],
-    ['Ground', ['Wall keeps its datum', 'Keeps its datum; plinth follows', 'Re-drapes (it belongs to the ground)', '—', '—', 'Ride the ground', '—', '—']],
-    ['Water', ['Keeps clear', 'Keeps clear', 'Bridge, or stepping stones', 'Fills to its level', '—', 'Drowns them', '—', '—']],
-    ['Light', ['Wall light mounts on it', '—', '—', '—', '—', '—', 'Aim once, or keep aimed', 'Pendant hangs from it']],
-    ['Art', ['Hangs on it; skips openings', 'Refused', '—', '—', '—', '—', 'Refused: overlaps', '—']],
-    ['Paint', ['Face, wall, room or all like it', 'Asks: this wall or the whole style', 'Surface', 'Ground brush', '—', '—', '—', 'Floor']],
+    ['Walls', ['Joins at the end', 'Refused: crosses it', 'Doorway where they cross', 'Sits on the ground', '—', '—', '—', '—', 'Closing a run makes one, and offers a roof']],
+    ['Building', ['Refused: crosses it', 'Refused: overlaps', 'Door where it meets', 'Plinth, or level the ground', 'Keeps clear', 'Clears plants in its footprint', '—', '—', '—']],
+    ['Opening', ['Cut in its face', 'Cut on the storey you point at', '—', '—', '—', '—', '—', 'Refused: overlaps', 'Connects two Rooms (derived)']],
+    ['Object', ['Backs onto it (placement only)', 'Refused: inside it', '—', 'Stands on the ground', 'Refused', '—', 'Stands on top', '—', 'Stands on its floor']],
+    ['Object · frame', ['Hangs on it; a row skips openings', 'Refused: generated walls', '—', '—', '—', '—', '—', 'Refused: overlaps', '—']],
+    ['Form', ['—', 'Refused: overlaps', '—', 'Grounds at its lowest corner', '—', 'Clears them', 'Rests on top', '—', 'Stands on its floor']],
+    ['Light', ['Wall light mounts on it', '—', '—', '—', '—', '—', 'Stands on top', 'Aim once, or keep aimed', 'Pendant hangs from it']],
+    ['Path', ['Doorway, or a gate in a low wall', 'Door', 'Joins it', 'Steps, or a ramp', 'Bridge, or stepping stones', 'Clears them', '—', '—', '—']],
+    ['Ground', ['Wall keeps its datum', 'Keeps its datum; plinth follows', 'Re-drapes (it belongs to the ground)', '—', '—', 'Ride the ground', 'Keeps its base', '—', '—']],
+    ['Ground · water', ['Keeps clear', 'Keeps clear', 'Bridge, or stepping stones', 'Fills to its level', '—', 'Drowns them', '—', '—', '—']],
+    ['Paint', ['Face, wall, room or all like it', 'Asks: this one or the whole definition', 'Surface', 'Ground brush', '—', '—', 'Whole form, or all like it', '—', 'Floor']],
   ],
 };
 
@@ -355,6 +381,7 @@ const STATE_EXITS = [
 
 const ESC_LADDER = [
   'Cancel the live draft (Backspace removes one point)',
+  'Close the Library',
   'Dismiss the amend tokens',
   'Clear the selection',
   'Collapse the palette',

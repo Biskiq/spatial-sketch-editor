@@ -19,7 +19,7 @@ const C = {
   erase: '#d0412d', refusal: '#7e2718', inspect: '#e6c42e', soil: '#8c7658', soilDeep: '#6d5a43',
   floor: '#dccbab', glass: '#43554f', door: '#4c3c2c', opening: '#2f342e', frame: '#4a4136',
 };
-const MATS3 = { wood: '#a57b52', dark: '#4b4038', white: '#efede6', bronze: '#8f6b3a', fabric: '#7d8ea3', stone: '#aaa59a', leaf: '#5f8f5b' };
+const MATS3 = { wood: '#a57b52', dark: '#4b4038', white: '#efede6', bronze: '#8f6b3a', fabric: '#7d8ea3', stone: '#aaa59a', leaf: '#5f8f5b', glass: '#d3e2e2' };
 const SURFACE = { gravel: '#d8cdb7', stone: '#bfbab0', boards: '#b4946d' };
 
 // ── colour helpers ────────────────────────────────────────────────────────────
@@ -334,6 +334,7 @@ function shadowPolys() {
     const room = world.rooms.find((x) => x.id === r.roomId), poly = room && roomPoly(room); if (!poly) continue;
     const H = roomTop(room) - roomBase(room) + 1.4; push(poly.concat(poly.map((p) => G.add(p, G.mul(off, H)))));
   }
+  for (const f of world.forms) { const H = f.base + f.h - groundRange(f.pts).lo; push(f.pts.concat(f.pts.map((p) => G.add(p, G.mul(off, H))))); }
   for (const o of world.objects) { const d = OBJECTS[o.item]; const r = Math.max(d.w, d.d) / 2; push(G.circlePoly(o, r * 0.8, 8).concat(G.circlePoly(G.add(o, G.mul(off, 0.8)), r * 0.7, 8))); }
   for (const p of world.plants) {
     if (p.kind === 'tree') push(G.circlePoly(G.add(p, G.mul(off, 2.4 * p.s)), 1.05 * p.s, 9));
@@ -529,8 +530,32 @@ function drawRoomRoof(ctx, r, opts = {}) {
 
 // ── objects, stairs, lights, plants, bridges ──────────────────────────────────
 function objBase(x, y) {
-  for (const r of world.rooms) { const poly = roomPoly(r); if (poly && G.inPoly({ x, y }, poly)) return roomBase(r) + 0.03; }
-  return hAt(x, y);
+  let z = null;
+  for (const r of world.rooms) { const poly = roomPoly(r); if (poly && G.inPoly({ x, y }, poly)) { z = roomBase(r) + 0.03; break; } }
+  if (z == null) z = hAt(x, y);
+  // things stand on the highest form under them
+  const f = formAt(x, y); if (f) z = Math.max(z, f.base + f.h);
+  return z;
+}
+function formAt(x, y, except) {
+  let best = null;
+  for (const f of world.forms) if (f.id !== except && G.inPoly({ x, y }, f.pts) && (!best || f.base + f.h > best.base + best.h)) best = f;
+  return best;
+}
+/* A composed form: an extruded footprint. Faces are depth-sorted so outlines may be concave. */
+function drawForm(ctx, f, opts = {}) {
+  const hl = opts.hl || hlOf(f.id), H = Math.max(0.02, f.h * (opts.ghost ? 1 : riseK(f.id)));
+  const color = paintOf(f.id, 'face') || (MATERIALS[f.mat] || MATERIALS.limewash).color;
+  const pts = G.area(f.pts) < 0 ? f.pts.slice().reverse() : f.pts, z0 = f.base, z1 = f.base + H, faces = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length], d = G.norm(G.sub(b, a)), out = { x: d.y, y: -d.x };
+    if (!facesViewer(out)) continue;
+    const m = G.mid(a, b); faces.push({ a, b, out, d: depthOf(m.x, m.y, (z0 + z1) / 2) });
+  }
+  faces.sort((p, q) => q.d - p.d);
+  for (const fc of faces) fillPoly3(ctx, [{ ...fc.a, z: z0 }, { ...fc.b, z: z0 }, { ...fc.b, z: z1 }, { ...fc.a, z: z1 }], col(tintFor(color, hl), lam(fc.out)), col(color, lam(fc.out) * 0.8), 0.6);
+  fillPoly3(ctx, pts.map((p) => ({ ...p, z: z1 })), col(tintFor(color, hl), lam({ x: 0, y: 0, z: 1 }) * 1.04), col(color, 0.82), 0.6);
+  if (hl && HL_LINE[hl]) { path3(ctx, pts.map((p) => ({ ...p, z: z1 }))); ctx.setLineDash(hl === 'ghost' ? [5, 4] : []); ctx.lineWidth = HL_LINE[hl][1]; ctx.strokeStyle = HL_LINE[hl][0]; ctx.stroke(); ctx.setLineDash([]); }
 }
 function drawBox(ctx, corners2, z0, z1, color, hl) {
   const n = corners2.length;
@@ -682,7 +707,8 @@ function collectItems(items) {
     items.push({ d, draw: (ctx) => drawRoomRoof(ctx, r) });
   }
   for (const b of world.buildings) { const c = G.centroid(footOf(b)); items.push({ d: depthOf(c.x, c.y, b.base + bHeight(b) / 2), draw: (ctx) => drawBuilding(ctx, b) }); }
-  for (const o of world.objects) items.push({ d: depthOf(o.x, o.y, 0.4), draw: (ctx) => drawObject(ctx, o) });
+  for (const f of world.forms) { const c = G.centroid(f.pts); items.push({ d: depthOf(c.x, c.y, f.base + f.h / 2), draw: (ctx) => drawForm(ctx, f) }); }
+  for (const o of world.objects) { const z = objBase(o.x, o.y); items.push({ d: depthOf(o.x, o.y, z + 0.4), draw: (ctx) => drawObject(ctx, o) }); }
   for (const st of world.stairs) { const m = G.mid(st.a, st.b); items.push({ d: depthOf(m.x, m.y, (st.z0 + st.z1) / 2), draw: (ctx) => drawStair(ctx, st) }); }
   for (const l of world.lights) if (l.kind !== 'wall') items.push({ d: depthOf(l.x, l.y, 0.5), draw: (ctx) => drawLight(ctx, l) });
   for (const pa of world.paths) for (const cr of pa.crossings || []) { const m = G.mid(cr.a, cr.b); items.push({ d: depthOf(m.x, m.y, 0), draw: (ctx) => drawCrossing(ctx, pa, cr) }); }

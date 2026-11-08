@@ -140,13 +140,13 @@ function newWorld() {
     rev: 1, counters: {},
     terrain: { h: new Float32Array(TER.V * TER.V), paint: new Array(TER.N * TER.N).fill(null), water: new Float32Array(TER.N * TER.N).fill(NaN) },
     walls: [], rooms: [], openings: [], roofs: [], buildings: [], stairs: [],
-    objects: [], art: [], lights: [], paths: [], plants: [],
+    objects: [], forms: [], art: [], lights: [], paths: [], plants: [],
     sun: 15.5,
   };
 }
 let world = newWorld();
 
-const KIND_LABEL = { wall: 'Wall', room: 'Room', opening: 'Opening', roof: 'Roof', building: 'Building', stair: 'Stair', object: 'Object', art: 'Artwork', light: 'Light', path: 'Path' };
+const KIND_LABEL = { wall: 'Wall', room: 'Room', opening: 'Opening', roof: 'Roof', building: 'Building', stair: 'Stair', object: 'Object', form: 'Form', art: 'Frame', light: 'Light', path: 'Path' };
 function nid(w, kind, label) {
   w.counters.id = (w.counters.id || 0) + 1;
   const key = label || KIND_LABEL[kind] || kind;
@@ -172,7 +172,7 @@ const inWorkspace = (p) => Math.abs(p.x) <= TER.HALF && Math.abs(p.y) <= TER.HAL
 function wallPts(wl) { return G.arcPoints(wl.a, wl.b, wl.bulge || 0); }
 function wallLen(wl) { return G.polyLen(wallPts(wl)); }
 function byId(w, id) {
-  for (const k of ['walls', 'rooms', 'openings', 'roofs', 'buildings', 'stairs', 'objects', 'art', 'lights', 'paths']) {
+  for (const k of ['walls', 'rooms', 'openings', 'roofs', 'buildings', 'stairs', 'objects', 'forms', 'art', 'lights', 'paths']) {
     const f = w[k].find((e) => e.id === id); if (f) return { kind: k, item: f };
   }
   return null;
@@ -303,8 +303,11 @@ const OBJECTS = {
   plinth: { w: 0.6, d: 0.6, parts: [[-0.3, -0.3, 0.3, 0.3, 0, 1.0, 'white']], blob: { z: 1.27, r: 0.27, c: 'bronze' } },
   sofa: { w: 2.0, d: 0.9, parts: [[-1, -0.45, 1, 0.45, 0, 0.42, 'fabric'], [-1, 0.22, 1, 0.45, 0.42, 0.82, 'fabric'], [-1, -0.45, -0.82, 0.45, 0.42, 0.62, 'fabric'], [0.82, -0.45, 1, 0.45, 0.42, 0.62, 'fabric']] },
   planter: { w: 0.7, d: 0.7, parts: [[-0.35, -0.35, 0.35, 0.35, 0, 0.5, 'stone']], blob: { z: 0.95, r: 0.48, c: 'leaf' } },
+  stool: { w: 0.4, d: 0.4, parts: [[-0.19, -0.19, 0.19, 0.19, 0.44, 0.5, 'wood'], [-0.16, -0.16, -0.12, -0.12, 0, 0.44, 'dark'], [0.12, 0.12, 0.16, 0.16, 0, 0.44, 'dark'], [0.12, -0.16, 0.16, -0.12, 0, 0.44, 'dark']] },
+  vitrine: { w: 0.9, d: 0.6, parts: [[-0.45, -0.3, 0.45, 0.3, 0, 0.9, 'white'], [-0.43, -0.28, 0.43, 0.28, 0.9, 1.5, 'glass']] },
+  screen: { w: 1.8, d: 0.1, parts: [[-0.75, -0.25, -0.65, 0.25, 0, 0.06, 'dark'], [0.65, -0.25, 0.75, 0.25, 0, 0.06, 'dark'], [-0.9, -0.04, 0.9, 0.04, 0.06, 2.1, 'white']] },
 };
-const OBJ_LABEL = { bench: 'Bench', table: 'Table', chair: 'Chair', plinth: 'Plinth', sofa: 'Sofa', planter: 'Planter' };
+const OBJ_LABEL = { bench: 'Bench', table: 'Table', chair: 'Chair', plinth: 'Plinth', sofa: 'Sofa', planter: 'Planter', stool: 'Stool', vitrine: 'Vitrine', screen: 'Screen' };
 
 const OPENING_KINDS = {
   door: { width: 0.9, height: 2.1, sill: 0, label: 'Door' },
@@ -422,6 +425,7 @@ function plantAllowed(w, p) {
   for (const pa of w.paths) if (G.distPoly(p, pa.pts).d < pa.width / 2 + 0.25) return false;
   for (const wl of w.walls) if (G.distPoly(p, wallPts(wl)).d < 0.45) return false;
   for (const r of w.rooms) { const poly = roomPoly(r, w); if (poly && G.inPoly(p, poly)) return false; }
+  for (const f of w.forms || []) if (G.inPoly(p, f.pts)) return false;
   return true;
 }
 
