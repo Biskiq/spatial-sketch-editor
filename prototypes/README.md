@@ -17,6 +17,7 @@ start with the [accepted product](../README.md) and [canonical references](../do
 | [Object Composition](./object-composition-prototype/README.md) | Definitions/uses, scope, provenance, attachment, revision comparison and repair | Unratified runnable study; ingest/storage/network are simulated |
 | [Spatial Authoring](./spatial-authoring/README.md) | Plan/3D continuity, Rotunda, Section, Ceiling Lift, nested return and World journeys A–F | Specialized spatial interaction evidence; old Experience and shell treatments are historical |
 | [Conservatory](./experience-ux-alternative/README.md) | Dense Views, long Guides and reproducible Experience scenarios | Historical semantics/scenario evidence; its shell and old runtime model are not current authority |
+| [World creation tools](./world-creation-tools/README.md) | Named World creation tools in families, shared shape keys, in-place consequence tokens amendable in one undo step, Paint reach and the Ask Rule | Proposed UX study for owner review; Canvas sketch geometry, snapshot history, no persistence |
 | [Production shell wireframe](./production-shell-wireframe/README.md) | Owner-approved shell target states, guided interaction and atlas | Approved design evidence for its scope; mock mechanisms are not architecture |
 | [Experience donor](../docs/archive/prototypes/experience-authoring/README.md) | Executable behavior and regression cases | Historical regression evidence; retain until successors demonstrably catch the same failures |
 

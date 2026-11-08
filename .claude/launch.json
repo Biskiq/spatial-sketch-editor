@@ -65,6 +65,18 @@
         "docs/reference/design-system"
       ],
       "port": 8862
+    },
+    {
+      "name": "world-creation-tools",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8840",
+        "--directory",
+        "prototypes/world-creation-tools"
+      ],
+      "port": 8840
     }
   ]
 }
