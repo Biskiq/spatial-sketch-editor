@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>World creation tools — Biskiq prototype</title>
+  <meta name="description" content="Interactive UX study: first-class World creation tools that say what you are making, in the Living Draft identity. Simulated geometry; nothing is saved.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,500..700,0..100&family=Instrument+Sans:wght@400..700&family=DM+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Prototype controls. Not part of the proposed product UI. -->
+  <header class="proto" aria-label="Prototype controls">
+    <span class="pchip">Prototype</span>
+    <span class="ptitle">World creation tools</span>
+    <span class="pseg" role="group" aria-label="View">
+      <button type="button" data-view="stage" aria-pressed="true">Try it</button>
+      <button type="button" data-view="sheet" aria-pressed="false">System sheet</button>
+    </span>
+    <label class="pfield">Scenario <select id="scenario"></select></label>
+    <button type="button" class="pbtn" data-action="reset">Reset scenario</button>
+    <button type="button" class="pbtn" data-action="spec" aria-pressed="false" title="The armed tool’s spec, last intent and history">Spec drawer</button>
+    <span class="pnote">Simulated geometry. Nothing is saved.</span>
+  </header>
+
+  <main id="stageView" aria-label="World Stage">
+    <canvas id="stage" aria-label="World Stage canvas"></canvas>
+    <div id="overlay" aria-live="polite">
+      <div id="tag" class="tag" hidden></div>
+    </div>
+    <div id="head" class="head"></div>
+    <div id="headR" class="head head-r"></div>
+    <div id="skypop" class="pop" role="dialog" aria-label="Sky" hidden></div>
+    <aside id="card" aria-label="Selection" hidden></aside>
+    <aside id="spec" aria-label="Tool spec" hidden></aside>
+    <aside id="readout" aria-label="Interaction state (prototype instrument)"></aside>
+    <div id="toasts" aria-live="polite"></div>
+    <div id="edge" class="edge">
+      <div id="palette" class="tier" aria-label="Palette"></div>
+      <nav id="dock" class="dock" aria-label="World tools"></nav>
+    </div>
+  </main>
+
+  <section id="sheetView" aria-label="System sheet" hidden></section>
+
+  <script src="icons.js"></script>
+  <script src="registry.js"></script>
+  <script src="model.js"></script>
+  <script src="render.js"></script>
+  <script src="tools.js"></script>
+  <script src="ui.js"></script>
+  <script src="sheet.js"></script>
+  <script>
+    (function boot() {
+      const sel = document.getElementById('scenario');
+      for (const [id, s] of Object.entries(SCENARIOS)) {
+        const o = document.createElement('option'); o.value = id; o.textContent = s.name; sel.appendChild(o);
+      }
+      camInit(document.getElementById('stage'));
+      bindStage(VIEW.cv);
+      UI.init();
+      UI.route();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
