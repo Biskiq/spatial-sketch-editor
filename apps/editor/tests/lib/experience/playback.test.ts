@@ -150,13 +150,14 @@ describe('R217.S30 playback', () => {
 			expect(constructsImportedOwner(route, readFileSync(route, 'utf8'), owners[0]!.file, 'createExperienceLens')).toBe(true);
 		}
 		const page = owners[0]!.code;
+		const routeCode = stripComments(readFileSync(route, 'utf8'));
 		const guide = readFileSync('src/lib/authoring/experience/ExperienceGuide.svelte', 'utf8');
 		expect(page).toContain('createExperiencePlayback');
 		expect(page).toContain('shouldWritePlaybackSample');
 		expect(page).toContain('captureStandpoint');
 		expect(page).toContain('restoreStandpoint');
 		expect(page).toContain('playback.prepare()');
-		expect(page).toContain('previewMode: (mode, guideId) => void openPreview(mode, guideId)');
+		expect(routeCode).toContain('previewMode: (mode, guideId) => void openPreview(mode, guideId)');
 		expect(guide).not.toContain('createExperiencePlayback');
 		expect(guide).toContain('data-view-span');
 		// The strip requests transport through the host; only the host opens the
@@ -164,7 +165,8 @@ describe('R217.S30 playback', () => {
 		expect(readFileSync('src/lib/authoring/experience/ExperienceExperienceWriter.svelte', 'utf8')).not.toContain('playGuide(');
 		expect(readFileSync('src/lib/authoring/experience/ExperienceStopWriter.svelte', 'utf8')).toContain("kind: 'stop'");
 		expect(readFileSync('src/lib/authoring/experience/ExperienceTransitionWriter.svelte', 'utf8')).toContain("kind: 'move'");
-		expect(page).toContain('playback: () => playback');
+		expect(routeCode).toContain('playback: () => experienceLens.playback');
+		expect(routeCode).toContain('experienceLens.install()');
 		expect(page).toContain('playback.playFromStart()');
 		expect(page).toContain('playback.playFromStop(action.stopId)');
 		expect(page).toContain('playback.previewMove(action.occurrence)');

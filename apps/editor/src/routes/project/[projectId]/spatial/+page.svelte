@@ -108,7 +108,7 @@ import {
 	type PlanEvaluation,
 	type PlanMembershipReason
 } from '@portfolio/layout-core';
-	import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportCameraState, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -159,10 +159,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import ExperienceTransitionWriter from '$lib/authoring/experience/ExperienceTransitionWriter.svelte';
 	import ExperienceExperienceWriter from '$lib/authoring/experience/ExperienceExperienceWriter.svelte';
 	import ExperienceSubjectWriter from '$lib/authoring/experience/ExperienceSubjectWriter.svelte';
-	import {
-		provideExperienceHomes,
-		type ExperienceGuideTransport
-	} from '$lib/authoring/experience/experience-homes';
+	import { provideExperienceHomes } from '$lib/authoring/experience/experience-homes';
 	import type { ExperienceSubject } from '$lib/authoring/experience/experience-model';
 	import {
 		experienceCardModel,
@@ -183,11 +180,8 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 		type ExperienceProblem
 	} from '$lib/authoring/experience/experience-problems';
 	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
-	import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
-	import {
-		createExperiencePlayback,
-		shouldWritePlaybackSample
-	} from '$lib/authoring/experience/playback.svelte';
+	import { createExperienceLens } from '$lib/authoring/experience/experience-lens.svelte';
+import { guideTimeMapForProgram } from '$lib/authoring/experience/playback-map';
 	import {
 		enterPreview,
 		nextPreviewRunEpoch,
@@ -426,19 +420,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		readonly target: [number, number, number];
 		readonly fov: number;
 	};
-	/** S30 playback writes the one Camera through a set-view intent, never a pose copy. */
-	function applyPlaybackView(view: PlaybackView): boolean {
-		const stage = facade;
-		if (stage === null) return false;
-		const ticket = stage.inspectionTicket();
-		if (ticket === null) return false;
-		const result = stage.requestViewingIntent(
-			{ kind: 'set-view', eye: view.eye, target: view.target, fovYDegrees: view.fov },
-			ticket,
-			performance.now() / 1000
-		);
-		return result.kind === 'accepted';
-	}
 	/** The adapter services the Stage and the Experience homes edit through. */
 	let adapterServices = $state.raw<StageAdapterServices | null>(null);
 	/**
@@ -538,213 +519,31 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/** Monotone guard: only the newest Present-this run may capture framing. */
 
 
-	/* --- R217.S30 — one Stage-owned ephemeral playback session ----------------- */
+	/* --- R217.S30 — the Experience lens owns playback and its Follow entry ---- */
 
-	const playback = createExperiencePlayback(() => activeExperience?.playbackSource ?? null);
-	/** The exact settled inspection (pose **and** reading) Follow restores. */
-	let playbackEntryStandpoint = $state.raw<ViewportCameraState | null>(null);
-	/** The Stage that captured the standpoint; a replacement must never inherit it. */
-	let playbackEntryStage = $state.raw<object | null>(null);
-	/** A restore refused while a handoff owned the Camera; retry only on the same Stage. */
-	let playbackRestorePending = $state.raw<{ readonly stage: object; readonly standpoint: ViewportCameraState } | null>(null);
-	/** Playback is a Guide instrument: any takeover or armed tool ends it. */
-	const playbackSuppressed = $derived(
-		preview !== null ||
-			previewBusy ||
-			previewRequestedMode !== null ||
-			lookThroughSession !== null ||
-			placementPress !== null ||
-			placementAim !== null ||
-			experienceTool === 'place' ||
-			lens !== 'experience' ||
-			!experienceGuideOpen
-	);
-
-	/** A Card transport action opens its own Guide; the rail need not be open first. */
-	function guideSeconds(guideId: string): number | null {
-		const source = activeExperience?.playbackSourceFor(guideId) ?? null;
-		if (source === null) return null;
-		const map = guideTimeMapForProgram({
-			program: source.program,
-			transitions: source.transitions,
-			graph: source.graph,
-			entryStopId: source.entryStopId
-		});
-		return map.kind === 'ready' ? map.map.totalSeconds : null;
-	}
-
-	function playGuide(guideId: string, action: ExperienceGuideTransport): void {
-		const controller = activeExperience;
-		if (
-			controller === null ||
-			lens !== 'experience' ||
-			preview !== null ||
-			previewBusy ||
-			previewRequestedMode !== null ||
-			lookThroughSession !== null ||
-			placementPress !== null ||
-			placementAim !== null ||
-			experienceTool === 'place'
-		) return;
-		controller.openGuide(guideId);
-		experienceGuideOpen = true;
-		void tick().then(() => {
-			if (activeExperience !== controller || !experienceGuideOpen) return;
-			playback.prepare();
-			if (action.kind === 'start') playback.playFromStart();
-			else if (action.kind === 'stop') playback.playFromStop(action.stopId);
-			else playback.previewMove(action.occurrence);
-		});
-	}
-
-	/** Synchronously end Follow and restore its exact entry before any handoff. */
-	function stopPlaybackAndRestore(): void {
-		const stage = facade;
-		if (playbackRestorePending !== null && playbackRestorePending.stage !== stage) playbackRestorePending = null;
-		playback.stop();
-		if (playbackEntryStandpoint !== null) restorePlaybackEntry(stage);
-	}
-
-	function restorePlaybackEntry(stage: typeof facade = facade): boolean {
-		const standpoint = playbackEntryStandpoint;
-		if (standpoint === null) return true;
-		if (stage === null || playbackEntryStage !== stage) {
-			// Never write an old Stage's standpoint into a replacement.
-			playbackEntryStandpoint = null;
-			playbackEntryStage = null;
-			return false;
-		}
-		if (!stage.camera.restoreStandpoint(standpoint)) {
-			playbackRestorePending = { stage, standpoint };
-			return false;
-		}
-		playbackEntryStandpoint = null;
-		playbackEntryStage = null;
-		playbackRestorePending = null;
-		return true;
-	}
-
-	$effect(() => {
-		const source = activeExperience?.playbackSource ?? null;
-		playback.setReducedMotion(reducedMotion);
-		playback.setBlocked(playbackSuppressed);
-		if (source === null || lens !== 'experience' || !experienceGuideOpen) {
-			stopPlaybackAndRestore();
-			return;
-		}
-		// Derive as soon as the Guide opens; an accepted edit derives a new map
-		// immediately and stops the old clock. Refused edits never reach here.
-		if (playback.source !== source || playback.map === null) {
-			if (playback.following) stopPlaybackAndRestore();
-			playback.invalidate();
-			playback.prepare();
-		}
+	const experienceLens = createExperienceLens({
+		activeController: () => activeExperience,
+		stage: () => facade,
+		lens: () => lens,
+		guideOpen: () => experienceGuideOpen,
+		setGuideOpen: (open) => { experienceGuideOpen = open; },
+		reducedMotion: () => reducedMotion,
+		previewOpen: () => preview !== null,
+		previewBusy: () => previewBusy,
+		previewRequested: () => previewRequestedMode !== null,
+		lookThroughOpen: () => lookThroughSession !== null,
+		placementOpen: () => placementPress !== null || placementAim !== null,
+		tool: () => experienceTool,
+		notice: (message) => { notice = message; }
 	});
-	$effect(() => {
-		if (playbackSuppressed && playback.status !== 'idle') stopPlaybackAndRestore();
-	});
-	$effect(() => {
-		if (playback.following && playbackEntryStandpoint === null && facade !== null) {
-			playbackEntryStandpoint = facade.camera.captureStandpoint();
-			playbackEntryStage = facade;
-		}
-	});
-	$effect(() => {
-		if (!playback.following && playbackEntryStandpoint !== null) restorePlaybackEntry();
-	});
-	$effect(() => {
-		const stage = facade;
-		void lookThroughSession;
-		void preview;
-		if (playbackRestorePending === null) return;
-		if (lookThroughSession !== null || preview !== null) return;
-		if (playbackRestorePending.stage !== stage) {
-			playbackRestorePending = null;
-			return;
-		}
-		const pending = playbackRestorePending;
-		playbackRestorePending = null;
-		restorePlaybackEntry(stage);
-		void pending;
-	});
-	$effect(() => {
-		// A replacement owns a new Camera: drop, never transplant, the old entry.
-		if (playbackEntryStage !== null && playbackEntryStage !== facade) {
-			playbackEntryStandpoint = null;
-			playbackEntryStage = null;
-		}
-		if (playbackRestorePending !== null && playbackRestorePending.stage !== facade) playbackRestorePending = null;
-	});
-	$effect(() => () => {
-		if (playbackEntryStandpoint !== null) restorePlaybackEntry();
-	});
-	/**
-	 * The playback clock runs inside the Stage's own frame loop (`advancePlayback`,
-	 * called just before the Camera is evaluated), so a Follow pose is written and
-	 * drawn in the same frame. A second rAF loop raced the Stage's and landed some
-	 * poses a frame late, which read as judder.
-	 */
-	let playbackClock: number | null = null;
-	let lastFollowSample: typeof playback.sample = null;
-	function writeFollowSample(): void {
-		const sample = playback.sample;
-		if (sample === null || !shouldWritePlaybackSample(playback.following, playbackSuppressed)) {
-			lastFollowSample = null;
-			return;
-		}
-		if (sample === lastFollowSample) return;
-		lastFollowSample = sample;
-		const accepted = applyPlaybackView({
-			eye: [sample.eye[0], sample.eye[1], sample.eye[2]],
-			target: [sample.target[0], sample.target[1], sample.target[2]],
-			fov: sample.fov
-		});
-		// A refused write stops the run instead of letting the playhead drift on
-		// a Camera the Stage no longer owns.
-		if (!accepted) playback.fail('The Stage refused the playback camera.');
-	}
-	function advancePlayback(now: number): void {
-		if (playback.status !== 'playing' || playbackSuppressed) {
-			playbackClock = null;
-		} else {
-			if (playbackClock !== null) playback.tick((now - playbackClock) / 1000);
-			playbackClock = now;
-		}
-		writeFollowSample();
-	}
-	// A seek, a Stop press or Follow turning on while paused writes at once; the
-	// frame loop covers playing.
-	$effect(() => {
-		void playback.sample;
-		void playback.following;
-		untrack(() => writeFollowSample());
-	});
-	$effect(() => {
-		const onKey = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
-			if (event.key === 'Escape' && playback.following) {
-				event.preventDefault();
-				playback.setFollow(false);
-				return;
-			}
-			if (event.key !== ' ' || !experienceGuideOpen || lens !== 'experience' || preview !== null) return;
-			if (activeExperience?.busy === true || playbackSuppressed) return;
-			const target = event.target;
-			if (
-				target instanceof HTMLElement &&
-				target.closest('input, textarea, select, button, a[href], [contenteditable="true"], [role="menu"], [role="slider"]') !== null
-			) return;
-			event.preventDefault();
-			playback.playPause();
-		};
-		window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
-	});
+	/** The lens's one playback session, read by the Guide instrument. */
+	const playback = experienceLens.playback;
+	experienceLens.install();
 
 	let advancedCamera = $state(false);
 	const advancedViewId = $derived(
 		advancedCamera && experienceTool === 'select' && lookThroughSession === null &&
-			playback.status === 'idle' && preview === null && !previewBusy
+			experienceLens.playback.status === 'idle' && preview === null && !previewBusy
 			? activeExperience?.selectedView?.id ?? null : null
 	);
 	type ViewEditSession = {
@@ -863,7 +662,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (lookThroughSession !== null) exitLookThrough();
-		stopPlaybackAndRestore();
+		experienceLens.stopAndRestore();
 		experienceTool = 'place';
 		placementAim = null;
 		notice = '';
@@ -1247,7 +1046,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		// The moving Follow pose must never become Look through's entry memory.
-		stopPlaybackAndRestore();
+		experienceLens.stopAndRestore();
 		const result = stage.camera.beginLookThrough({
 			viewId,
 			presentationId: owner,
@@ -1348,7 +1147,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				(bounds.min[1] + bounds.max[1]) / 2,
 				(bounds.min[2] + bounds.max[2]) / 2
 			];
-			stopPlaybackAndRestore();
+			experienceLens.stopAndRestore();
 			experienceTool = 'place';
 			notice = `Place a View aimed at ${label}: click where the camera stands.`;
 			return;
@@ -1465,11 +1264,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		updateLookThrough: () => updateLookThrough(),
 		captureProvisional,
 		presentThis,
-		playback: () => playback,
+		playback: () => experienceLens.playback,
 		previewMode: (mode, guideId) => void openPreview(mode, guideId),
-		guideSeconds,
+		guideSeconds: experienceLens.guideSeconds,
 		guideForStop: (stopId) => experienceController?.guideForStop(stopId) ?? null,
-		playGuide
+		playGuide: experienceLens.playGuide
 	});
 	// The controller can set a subject itself (a Capture, an added Stop); the Stage selection it
 	// replaces must not linger beside it.
@@ -1649,7 +1448,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// Playback is a Guide instrument, not an authoring mode that survives a
 		// visitor takeover. Restore its exact entry synchronously before the
 		// Camera ticket moves; waiting for an effect would capture the Follow pose.
-		stopPlaybackAndRestore();
+		experienceLens.stopAndRestore();
 		const snapshot = boot.snapshot;
 		const token = session.token();
 		previewBusy = true;
@@ -2425,7 +2224,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						acceptRect(next);
 					}
 				}
-				advancePlayback(performance.now());
+				experienceLens.advancePlayback(performance.now());
 				refresh();
 			} finally {
 				frame = requestAnimationFrame(tick);
@@ -2483,6 +2282,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// facade is disposed, so a load already past its fetch sees a torn-down
 			// session (`isCurrent` is false, the registered abort fires) and drops its
 			// result instead of mounting a second stage.
+			experienceLens.dispose();
 			tornDown = true;
 			cancelAnimationFrame(frame);
 			clearHover();
