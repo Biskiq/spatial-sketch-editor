@@ -2346,8 +2346,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (oldDistance > 0 && newDistance > 0) zoom(oldDistance / newDistance);
 			return;
 		}
-		if (experienceLens.lookThroughSession() !== null) { experienceLens.moveReaim(event); return; }
-		if (experienceLens.placementPress() !== null) { experienceLens.movePlacement(event); return; }
+		if (experienceLens.pointerMove(event)) return;
 		if (drag === null) {
 			if (event.pointerType === 'touch' || session.gesture() !== null) { clearHover(); return; }
 			hoverSample = { css: stageCss(event), shift: event.shiftKey, coarse: event.pointerType !== 'mouse' };
@@ -2448,15 +2447,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
-		if (viewEdit !== null) {
-			if (viewEdit.pointerId === event.pointerId) {
-				experienceLens.updateViewEdit(event);
-				void experienceLens.endViewEdit();
-			}
-			return;
-		}
-		if (experienceLens.lookThroughSession() !== null) { experienceLens.endReaim(event.pointerId); return; }
-		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.endPlacement(); return; }
+		if (experienceLens.pointerUp(event)) return;
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
 		// ended, not aborted. Only the owning pointer may end it — a refused second
@@ -2538,16 +2529,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
-		if (viewEdit !== null) { if (viewEdit.pointerId === event.pointerId) experienceLens.cancelViewEdit(); return; }
-		if (experienceLens.lookThroughSession() !== null) { experienceLens.endReaim(event.pointerId); return; }
-		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.cancelPlacement(); return; }
+		if (experienceLens.pointerCancel(event)) return;
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
-		if (viewEdit !== null && viewEdit.pointerId === event.pointerId) { experienceLens.cancelViewEdit(); return; }
-		if (experienceLens.hasLookThroughPointer(event.pointerId)) { experienceLens.endReaim(event.pointerId); return; }
-		if (experienceLens.placementPress()?.pointerId === event.pointerId) { experienceLens.cancelPlacement(); return; }
+		if (experienceLens.lostCapture(event)) return;
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
 

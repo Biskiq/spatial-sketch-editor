@@ -231,6 +231,71 @@ export function createExperienceLens(host: ExperienceLensHost) {
 	}
 
 	/** Register the lens's lifecycle effects during route initialisation. */
+	/** Move precedence after pinch: a marker edit, then re-aim, then placement. */
+	function pointerMove(event: PointerEvent): boolean {
+		if (lookThroughSession !== null) {
+			moveReaim(event);
+			return true;
+		}
+		if (placementPress !== null) {
+			movePlacement(event);
+			return true;
+		}
+		return false;
+	}
+
+	function pointerUp(event: PointerEvent): boolean {
+		const edit = viewEdit;
+		if (edit !== null) {
+			if (edit.pointerId === event.pointerId) {
+				updateViewEdit(event);
+				void endViewEdit();
+			}
+			return true;
+		}
+		if (lookThroughSession !== null) {
+			endReaim(event.pointerId);
+			return true;
+		}
+		if (placementPress?.pointerId === event.pointerId) {
+			endPlacement();
+			return true;
+		}
+		return false;
+	}
+
+	function pointerCancel(event: PointerEvent): boolean {
+		if (viewEdit !== null) {
+			if (viewEdit.pointerId === event.pointerId) cancelViewEdit();
+			return true;
+		}
+		if (lookThroughSession !== null) {
+			endReaim(event.pointerId);
+			return true;
+		}
+		if (placementPress?.pointerId === event.pointerId) {
+			cancelPlacement();
+			return true;
+		}
+		return false;
+	}
+
+	function lostCapture(event: PointerEvent): boolean {
+		if (viewEdit?.pointerId === event.pointerId) {
+			cancelViewEdit();
+			return true;
+		}
+		if (lookThroughPointers.has(event.pointerId)) {
+			endReaim(event.pointerId);
+			return true;
+		}
+		if (placementPress?.pointerId === event.pointerId) {
+			cancelPlacement();
+			return true;
+		}
+		return false;
+	}
+
 	/** S28 Escape precedence: provisional write, marker edit, place, then Look through. */
 	function escape(): boolean {
 		if (pendingViewWrite !== null) {
@@ -1009,6 +1074,10 @@ export function createExperienceLens(host: ExperienceLensHost) {
 		homes,
 		escape,
 		wheelZoom,
+		pointerMove,
+		pointerUp,
+		pointerCancel,
+		lostCapture,
 		// Manual placement
 		placementPress: () => placementPress,
 		placementGhost: () => placementGhost,
