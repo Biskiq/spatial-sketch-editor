@@ -2,46 +2,29 @@
  * C3 checkpoint 5 — the one live unfold context, as a session store.
  *
  * Runes make the Card scrubber, the Stage sheet and the adapter actions read
- * the same state. The store never writes the camera: it asks a registered
- * **executor** (the spatial route, which owns the inspection ticket) to present
- * a `face` or `set-view` intent through the single Camera authority. Session
- * state survives an accepted edit's adapter rebind; it is cleared only by
- * Refold/Done, subject removal or a replaced document.
+ * the same state. Scrubbing, peeling and side changes never write the camera;
+ * only Done/Refold asks the route's single Camera authority to restore the
+ * exact settled pose captured on entry. Session state survives an accepted
+ * edit's adapter rebind; it is cleared only by Refold/Done, subject removal or
+ * a replaced document.
  */
-import {
-	createWallDevelopmentBuffers,
-	developmentFaceFrame,
-	evaluateWallDevelopment,
-	type CompiledPhysicalWall
-} from '@portfolio/layout-core';
+import type { CompiledPhysicalWall } from '@portfolio/layout-core';
 import type { InspectionPose, ViewportReading } from '@portfolio/camera-core';
 
 import {
 	createWallUnfoldState,
 	flipWallUnfoldSide,
-	prepareWallUnfoldDevelopment,
 	refoldWallUnfold,
 	setWallUnfoldAmount,
 	type WallUnfoldState
 } from '$lib/layout/wall-unfold';
 import type { WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
 
-export type WallUnfoldCameraRequest =
-	| {
-			readonly kind: 'face';
-			readonly bounds: {
-				readonly min: [number, number, number];
-				readonly max: [number, number, number];
-			};
-			readonly look: [number, number, number];
-			/** Extra room so the sheet does not run under the Stage chrome. */
-			readonly paddingFraction?: number;
-	  }
-	| {
-			readonly kind: 'return';
-			readonly pose: InspectionPose;
-			readonly reading: ViewportReading;
-	  };
+export type WallUnfoldCameraRequest = {
+	readonly kind: 'return';
+	readonly pose: InspectionPose;
+	readonly reading: ViewportReading;
+};
 
 type CameraExecutor = (request: WallUnfoldCameraRequest) => boolean;
 
@@ -85,21 +68,23 @@ class WallUnfoldStore {
 		this.state = { ...this.state, entry };
 	}
 
-	enter(wall: CompiledPhysicalWall, anchorStation = 0): void {
+	enter(
+		wall: CompiledPhysicalWall,
+		anchorStation = 0,
+		entry?: { readonly pose: InspectionPose; readonly reading: ViewportReading }
+	): void {
 		this.lastPick = null;
 		this.#pickSequence = 0;
 		const state = createWallUnfoldState({
 			wall,
 			anchorStation,
-			entry: this.state?.entry ?? DEFAULT_ENTRY,
+			entry: entry ?? this.state?.entry ?? DEFAULT_ENTRY,
 			u: 0
 		});
 		this.state = state;
-		// One `face` transition to the sheet fitted at u = 1; the sheet animates
-		// 0 → 1 on the same declared clock and easing.
-		// Frame the sheet at its unfolded extent, not the folded source Wall. The
-		// sheet is what the camera faces for the whole transition.
-		this.#requestFace(wall, state, 1);
+		// D5 — entry changes no camera orientation. There is deliberately no
+		// `face` request: the sheet unfolds in the view the creator was already
+		// using, and Done returns the captured settled pose exactly.
 		this.animateTo(wall, 1);
 	}
 
@@ -109,10 +94,10 @@ class WallUnfoldStore {
 		this.#notify();
 	}
 
-	flip(wall: CompiledPhysicalWall): void {
+	flip(_wall: CompiledPhysicalWall): void {
 		if (this.state === null) return;
+		// D6 — the side is a display reading change, never a camera move.
 		this.state = flipWallUnfoldSide(this.state);
-		this.#requestFace(wall, this.state, this.state.u);
 	}
 
 	refold(wall: CompiledPhysicalWall): void {
@@ -149,7 +134,10 @@ class WallUnfoldStore {
 
 	private animateTo(wall: CompiledPhysicalWall, target: 1 | 0, after?: () => void): void {
 		this.#cancelFrame();
-		if (typeof requestAnimationFrame !== 'function') {
+		const reducedMotion = typeof window !== 'undefined' &&
+			typeof window.matchMedia === 'function' &&
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (reducedMotion || typeof requestAnimationFrame !== 'function') {
 			if (this.state !== null) this.state = { ...this.state, u: target };
 			after?.();
 			return;
@@ -177,19 +165,6 @@ class WallUnfoldStore {
 			cancelAnimationFrame(this.#frame);
 		}
 		this.#frame = null;
-	}
-
-	#requestFace(wall: CompiledPhysicalWall, state: WallUnfoldState, amount = state.u): void {
-		const prepared = prepareWallUnfoldDevelopment(state, wall);
-		if ('refused' in prepared) return;
-		const buffers = createWallDevelopmentBuffers(prepared);
-		evaluateWallDevelopment(prepared, amount, buffers);
-		const frame = developmentFaceFrame(prepared, buffers, state.side, {
-			thickness: wall.thickness,
-			height: wall.height
-		});
-		if (frame === null) return;
-		this.#executor?.({ kind: 'face', bounds: frame.bounds, look: frame.look, paddingFraction: 0.18 });
 	}
 
 	#requestReturn(state: WallUnfoldState): void {
