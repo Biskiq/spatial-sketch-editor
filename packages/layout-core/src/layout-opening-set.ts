@@ -36,6 +36,7 @@ import type {
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
 import { countWork } from './p2311-perf';
+import { isClosedWall } from './layout-closed-wall';
 
 /** Fit tolerance shared with the P23.1 precision gates (unchanged semantics). */
 export const OPENING_SET_EPSILON = LAYOUT_GEOMETRY_EPSILON;
@@ -193,6 +194,10 @@ function validateIndexedOpeningRecords(
 			});
 			continue;
 		}
+		// A closed Wall is logically periodic: its seam is both 0 and the full
+		// circumference. Authored offsets stay in `[0, circumference)`, so the
+		// circumference itself is not a second spelling of the seam.
+		const closedHost = isClosedWall(wall);
 		if (!Number.isFinite(opening.offset) || opening.offset < 0) {
 			issues.push({
 				openingId: opening.id,
@@ -200,6 +205,14 @@ function validateIndexedOpeningRecords(
 				path: `${path}.offset`,
 				code: 'opening_offset_invalid',
 				message: `Opening '${opening.id}' offset must be finite and non-negative`
+			});
+		} else if (closedHost && opening.offset >= span.length - OPENING_SET_EPSILON) {
+			issues.push({
+				openingId: opening.id,
+				wallId: opening.wallId,
+				path: `${path}.offset`,
+				code: 'opening_offset_invalid',
+				message: `Opening '${opening.id}' offset must be less than the closed Wall circumference (${span.length} m)`
 			});
 		}
 		if (
@@ -218,7 +231,12 @@ function validateIndexedOpeningRecords(
 				message: `Opening '${opening.id}' must have a finite positive width/height and a finite non-negative sill`
 			});
 		}
-		if (opening.offset + opening.width > span.length + OPENING_SET_EPSILON) {
+		// A closed Wall is logically periodic: an interval that starts before the
+		// seam and ends after it wraps through distance 0 instead of being refused,
+		// and an interval whose width is the whole circumference is not a valid
+		// Opening (it would erase the Wall). Every other host keeps the strict
+		// linear fit rule.
+		if (closedHost ? opening.width >= span.length - OPENING_SET_EPSILON : opening.offset + opening.width > span.length + OPENING_SET_EPSILON) {
 			issues.push({
 				openingId: opening.id,
 				wallId: opening.wallId,
@@ -262,22 +280,55 @@ function validateIndexedOpeningRecords(
 	}
 
 	// Same-Wall interval overlap over the complete hosting-Wall set (never the
-	// edited record in isolation), stable sort by offset then ID.
+	// edited record in isolation). A closed host's intervals are compared modulo
+	// its circumference, so a wrapped Opening overlaps the Opening just after
+	// the seam exactly as it overlaps one in the middle of the Wall.
 	for (const [wallId, openings] of openingsByWall) {
+		const wall = wallById.get(wallId);
+		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
+		const closedHost = wall !== undefined && isClosedWall(wall);
 		const sorted = [...openings].sort(
 			(a, b) => a.offset - b.offset || a.id.localeCompare(b.id)
 		);
-		for (let index = 1; index < sorted.length; index += 1) {
-			const previous = sorted[index - 1]!;
-			const current = sorted[index]!;
-			if (current.offset < previous.offset + previous.width - OPENING_SET_EPSILON) {
-				issues.push({
-					openingId: current.id,
-					wallId,
-					path: `$.openings`,
-					code: 'opening_overlap',
-					message: `Openings '${previous.id}' and '${current.id}' overlap on Wall '${wallId}'`
-				});
+		if (!closedHost || span === undefined) {
+			for (let index = 1; index < sorted.length; index += 1) {
+				const previous = sorted[index - 1]!;
+				const current = sorted[index]!;
+				if (current.offset < previous.offset + previous.width - OPENING_SET_EPSILON) {
+					issues.push({
+						openingId: current.id,
+						wallId,
+						path: `$.openings`,
+						code: 'opening_overlap',
+						message: `Openings '${previous.id}' and '${current.id}' overlap on Wall '${wallId}'`
+					});
+				}
+			}
+			continue;
+		}
+		const intervals = sorted.map((opening) => {
+			const start = ((opening.offset % span.length) + span.length) % span.length;
+			const end = start + opening.width;
+			return end <= span.length
+				? [{ start, end }]
+				: [{ start, end: span.length }, { start: 0, end: end - span.length }];
+		});
+		for (let first = 0; first < intervals.length; first += 1) {
+			for (let second = first + 1; second < intervals.length; second += 1) {
+				const overlaps = intervals[first]!.some((a) =>
+					intervals[second]!.some(
+						(b) => Math.min(a.end, b.end) - Math.max(a.start, b.start) > OPENING_SET_EPSILON
+					)
+				);
+				if (overlaps) {
+					issues.push({
+						openingId: sorted[second]!.id,
+						wallId,
+						path: `$.openings`,
+						code: 'opening_overlap',
+						message: `Openings '${sorted[first]!.id}' and '${sorted[second]!.id}' overlap on Wall '${wallId}'`
+					});
+				}
 			}
 		}
 	}

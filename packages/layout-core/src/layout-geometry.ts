@@ -1807,10 +1807,23 @@ function compileOpening(
 	roomId: string,
 	segmentDependency: CacheKeyDependency
 ): CompiledOpening {
-	const centerDistance = opening.offset + opening.width / 2;
-	const point = pointAlongSamples(sampled.samples, centerDistance);
-	const before = pointAlongSamples(sampled.samples, Math.max(0, centerDistance - OPENING_CENTER_EPSILON));
-	const after = pointAlongSamples(sampled.samples, Math.min(sampled.length, centerDistance + OPENING_CENTER_EPSILON));
+	// A closed Wall is periodic. An Opening that straddles the seam has its
+	// centre and tangent evaluated modulo the circumference, and its Plan
+	// polyline is the two physical pieces joined without a chord through the
+	// middle of the Room.
+	const closedHost = sampledIsClosed(sampled);
+	const rawCenterDistance = opening.offset + opening.width / 2;
+	const centerDistance = closedHost
+		? ((rawCenterDistance % sampled.length) + sampled.length) % sampled.length
+		: rawCenterDistance;
+	const pointAtDistance = (distance: number): LayoutVec2 => {
+		if (!closedHost) return pointAlongSamples(sampled.samples, distance);
+		const wrapped = ((distance % sampled.length) + sampled.length) % sampled.length;
+		return pointAlongSamples(sampled.samples, wrapped);
+	};
+	const point = pointAtDistance(centerDistance);
+	const before = pointAtDistance(centerDistance - OPENING_CENTER_EPSILON);
+	const after = pointAtDistance(centerDistance + OPENING_CENTER_EPSILON);
 	const tangentX = after[0] - before[0];
 	const tangentZ = after[1] - before[1];
 	const magnitude = Math.hypot(tangentX, tangentZ) || 1;
@@ -1818,7 +1831,12 @@ function compileOpening(
 	const profileShape = opening.profile === 'rectangular'
 		? undefined
 		: buildArchProfile(opening.profile, opening.width, opening.height).profile ?? undefined;
-	const centerPolyline = openingCenterPolyline(sampled, opening.offset, opening.offset + opening.width);
+	const centerPolyline = openingCenterPolyline(
+		sampled,
+		opening.offset,
+		opening.offset + opening.width,
+		closedHost
+	);
 	return {
 		id: geometryId(['opening', floorId, roomId, opening.id]),
 		cacheKey: cacheKeyOf(['opening', segmentDependency, opening]),
@@ -1845,7 +1863,34 @@ function compileOpening(
 	};
 }
 
-function openingCenterPolyline(sampled: SampledSegment, start: number, end: number): LayoutVec2[] {
+function sampledIsClosed(sampled: SampledSegment): boolean {
+	const first = sampled.samples[0]?.point;
+	const last = sampled.samples.at(-1)?.point;
+	return (
+		first !== undefined &&
+		last !== undefined &&
+		Math.abs(first[0] - last[0]) <= OPENING_CENTER_EPSILON &&
+		Math.abs(first[1] - last[1]) <= OPENING_CENTER_EPSILON
+	);
+}
+
+function openingCenterPolyline(
+	sampled: SampledSegment,
+	start: number,
+	end: number,
+	closedHost = false
+): LayoutVec2[] {
+	if (closedHost && end > sampled.length + OPENING_CENTER_EPSILON) {
+		const first = openingCenterPolyline(sampled, start, sampled.length);
+		const second = openingCenterPolyline(sampled, 0, end - sampled.length);
+		const seam = first.at(-1);
+		const continuing = second.length > 0 && seam !== undefined &&
+			Math.abs(seam[0] - second[0]![0]) <= OPENING_CENTER_EPSILON &&
+			Math.abs(seam[1] - second[0]![1]) <= OPENING_CENTER_EPSILON
+			? second.slice(1)
+			: second;
+		return [...first, ...continuing];
+	}
 	const points: LayoutVec2[] = [pointAlongSamples(sampled.samples, start)];
 	for (const sample of sampled.samples) {
 		if (sample.distance > start + 1e-6 && sample.distance < end - 1e-6) points.push([...sample.point] as LayoutVec2);
