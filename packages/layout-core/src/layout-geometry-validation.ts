@@ -189,7 +189,16 @@ export function validatePreparedLayoutRoomGeometry(
 			for (const profileIssue of profileResult.issues) issues.push({ path: `${path}.openings[${index}].profile`, code: profileIssue.code, message: profileIssue.message, targetId: opening.id });
 		}
 		const sampledSegment = sampled.get(segment.id);
-		if (sampledSegment && opening.offset + opening.width > sampledSegment.length + LAYOUT_GEOMETRY_EPSILON) {
+		const endpoints = segmentEndpoints(segment);
+		const closedHost =
+			Math.abs(endpoints.start[0] - endpoints.end[0]) <= LAYOUT_GEOMETRY_EPSILON &&
+			Math.abs(endpoints.start[1] - endpoints.end[1]) <= LAYOUT_GEOMETRY_EPSILON;
+		if (
+			sampledSegment &&
+			(closedHost
+				? opening.width >= sampledSegment.length - LAYOUT_GEOMETRY_EPSILON
+				: opening.offset + opening.width > sampledSegment.length + LAYOUT_GEOMETRY_EPSILON)
+		) {
 			issues.push({ path: `${path}.openings[${index}]`, code: 'opening_out_of_bounds', message: 'Opening interval exceeds its wall segment.', targetId: opening.id });
 		}
 		const existing = openingsBySegment.get(segment.id) ?? [];
@@ -200,7 +209,7 @@ export function validatePreparedLayoutRoomGeometry(
 	for (const [segmentId, openings] of openingsBySegment) {
 		const segment = segments.find((candidate) => candidate.id === segmentId);
 		if (!segment) continue;
-		const intervals = openingIntervals(segment, openings);
+		const intervals = openingIntervals(segment, openings, sampled.get(segmentId)?.length);
 		for (let index = 1; index < intervals.length; index += 1) {
 			const previous = intervals[index - 1]!;
 			const current = intervals[index]!;

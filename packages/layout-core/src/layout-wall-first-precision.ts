@@ -256,6 +256,8 @@ export type PrecisionRejection = {
 		| 'split_through_opening_interior'
 		/** D7 — a closed Wall is one canonical loop and refuses topology mutations. */
 		| 'closed_wall_isolated'
+		/** D8 — a circular Wall resizes by radius; its canonical chain is not freely bendable. */
+		| 'closed_wall_not_bendable'
 		/** D4 — a Wall may not gain more than the supported number of bend points. */
 		| 'curve_knot_limit'
 		| 'junction_point_mismatch';
@@ -1653,7 +1655,17 @@ export function planBendWallCurveKnot(
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
-	const { start, end, chain } = target;
+	const { wall, start, end, chain } = target;
+	// D8 — the 16-span chain is the canonical circle, not an authored freeform
+	// curve. Its shape is owned by the radius writer and preserve-angle placement;
+	// a bend would break both invariants, so it refuses explicitly.
+	if (isClosedWall(wall)) {
+		return reject(
+			'closed_wall_not_bendable',
+			'A circular Wall is resized by its radius; it cannot be bent.',
+			[wallId]
+		);
+	}
 	if (!Number.isFinite(intent.distance)) {
 		return reject('invalid_value', 'Bend distance must be a finite number of meters', [wallId]);
 	}
