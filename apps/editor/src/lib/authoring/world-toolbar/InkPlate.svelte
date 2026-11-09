@@ -292,8 +292,8 @@
 		max-width: 100%;
 		padding: 2px 5px;
 		border-radius: 3px;
-		background: color-mix(in srgb, var(--shell-family-build) 14%, transparent);
-		color: var(--shell-family-build-ink);
+		background: var(--shell-refuse-bg);
+		color: var(--shell-refuse);
 		font: 9px/1.2 var(--shell-sans);
 		white-space: nowrap;
 		overflow: hidden;
