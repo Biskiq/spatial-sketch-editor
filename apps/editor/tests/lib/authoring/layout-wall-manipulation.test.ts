@@ -41,6 +41,7 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { inkSurface } from '$lib/authoring/adapters/layout/ink';
+import { stageCardActions } from '$lib/authoring/stage/stage-contributions';
 import {
 	createLayoutInstrument,
 	type LayoutInstrument
@@ -1660,6 +1661,127 @@ describe('R217.S15 — gesture numeric entry', () => {
 		// The hover named the sampled station, not the chord projection of it.
 		expect(created.offset).toBeGreaterThan(4);
 		expect(created.offset).toBeLessThan(5);
+	});
+
+	it('selects an active bend point on canvas and removes it from the Card in one undo step', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		const knots = () => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'cubic-chain' ? wall.centerline.knots : [];
+		};
+		const bendAt = async (distance: number): Promise<void> => {
+			selectWall(mounted.facade, mounted.wallId);
+			settle(mounted.facade, 3);
+			const frame = curvedWallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			const point: [number, number] = frame === null
+				? [distance, 0]
+				: [
+					curvedWallPointAt(frame, distance)!.point[0],
+					curvedWallPointAt(frame, distance)!.point[1]
+				];
+			const evaluationId = mounted.facade.evaluationId()!;
+			const from = stageCss(mounted.facade, point);
+			const to = stageCss(mounted.facade, [point[0], point[1] + 0.6]);
+			expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+			mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+			mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+			const expected = knots().length + 1;
+			await eventually(() => knots().length === expected);
+		};
+		await bendAt(4.5);
+		await bendAt(1.5);
+		expect(knots()).toHaveLength(2);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 4);
+
+		const knotMark = mounted.facade.marks().find((mark) => mark.id.startsWith('layout-wall-knot:'))!;
+		const knotCss: [number, number] = [knotMark.anchor[0] + RECT.left, knotMark.anchor[1] + RECT.top];
+		const clickEvaluation = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: knotCss, evaluationId: clickEvaluation }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: knotCss, evaluationId: clickEvaluation });
+		await eventually(() =>
+			mounted.facade.marks().some((mark) => mark.id === knotMark.id && mark.label === 'Active bend point')
+		);
+
+		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
+		const facts = mounted.facade.cardFacts(subject);
+		expect(facts.map((fact) => fact.label)).toEqual(
+			expect.arrayContaining(['Length (arc)', 'Bend points', 'Active bend point'])
+		);
+		expect(facts.find((fact) => fact.label === 'Bend points')?.value).toBe('2');
+		const actions = stageCardActions(mounted.facade, subject);
+		expect(actions.map((action) => action.id)).toEqual(
+			expect.arrayContaining(['layout-wall-knot-remove', 'layout-wall-straighten', 'layout-wall-delete'])
+		);
+		const remove = actions.find((action) => action.id === 'layout-wall-knot-remove')!;
+		expect(remove.detail).toContain('one undo step');
+		expect((await remove.run()).kind).toBe('accepted');
+		await eventually(() => knots().length === 1);
+		expect(mounted.host.history()).toMatchObject({ depth: 4, position: 3 });
+
+		// The accepted curved Wall round-trips through the Save envelope unchanged.
+		const captured = await captureUnitSave({
+			snapshot: mounted.host.coordinator().acceptedSnapshot(),
+			operationId: 'c1-knot-remove-roundtrip',
+			precondition: { kind: 'create-only' }
+		});
+		expect(captured.kind).toBe('captured');
+		if (captured.kind !== 'captured') throw new Error(`Save capture refused: ${captured.message}`);
+		const reloaded = await readUnitEnvelopeForSave(captured.capture.canonicalJson);
+		expect(reloaded.kind).toBe('read');
+		if (reloaded.kind !== 'read') throw new Error(`Save reload refused: ${reloaded.message}`);
+		const readmitted = await admitSource(reloaded.envelope, {
+			sessionEpoch: 'session-c1-knot-remove',
+			acceptedRevision: captured.capture.acceptedRevision
+		});
+		expect(readmitted.kind).toBe('admitted');
+		if (readmitted.kind !== 'admitted') throw new Error(`Reload admission refused: ${readmitted.kind}`);
+		expect(stageEnvelope(readmitted.snapshot).units).toEqual(stageEnvelope(mounted.facade.snapshot()).units);
+
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(knots()).toHaveLength(2);
+	});
+
+	it('straightens a curved Wall from the Card and leaves straight Walls action-free', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
+		// Straight Walls keep exactly the delete action: no curve vocabulary leaks in.
+		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual(['layout-wall-delete']);
+
+		const evaluationId = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [4.5, 0]);
+		const to = stageCss(mounted.facade, [4.5, 0.7]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'cubic-chain';
+		});
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 4);
+		const curvedBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeOpening = acceptedLayout(mounted.facade).openings.find((opening) => opening.id === mounted.openingId)!;
+		const actions = stageCardActions(mounted.facade, subject);
+		expect(actions.map((action) => action.id)).toEqual(
+			expect.arrayContaining(['layout-wall-straighten', 'layout-wall-delete'])
+		);
+		expect(actions.some((action) => action.id === 'layout-wall-knot-remove')).toBe(false);
+		const straighten = actions.find((action) => action.id === 'layout-wall-straighten')!;
+		expect((await straighten.run()).kind).toBe('accepted');
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'line';
+		});
+		const afterOpening = acceptedLayout(mounted.facade).openings.find((opening) => opening.id === mounted.openingId)!;
+		expect(afterOpening.offset).toBeCloseTo(beforeOpening.offset, 9);
+		expect(afterOpening.width).toBeCloseTo(beforeOpening.width, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(curvedBytes);
 	});
 
 	it('types a Junction X then Z with Tab and commits one shared-Junction edit', async () => {
