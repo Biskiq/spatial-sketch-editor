@@ -1371,7 +1371,7 @@
 		border-bottom: 2px solid transparent;
 		background: transparent;
 		color: var(--shell-ink-light);
-		font: var(--shell-text-identity) var(--shell-serif);
+		font: var(--shell-text-identity) var(--shell-sans);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1398,7 +1398,7 @@
 		border-radius: 7px;
 		background: var(--shell-on-forest-wash);
 		color: var(--shell-ink-light);
-		font: var(--shell-text-identity) var(--shell-serif);
+		font: var(--shell-text-identity) var(--shell-sans);
 	}
 	.name-input::placeholder {
 		color: var(--shell-ink-quiet);
@@ -1500,7 +1500,7 @@
 		background: var(--shell-on-forest-wash);
 	}
 	.menu-label {
-		font: 13px var(--shell-serif);
+		font: var(--shell-text-body) var(--shell-sans);
 	}
 	.menu-hint {
 		color: var(--shell-ink-quiet);
@@ -1639,7 +1639,7 @@
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
-		font: 12.5px/1.2 var(--shell-serif);
+		font: var(--shell-text-body)/1.2 var(--shell-sans);
 	}
 	.stop-meta {
 		overflow: hidden;

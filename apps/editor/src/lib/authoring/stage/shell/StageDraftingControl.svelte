@@ -43,9 +43,9 @@
 		drafting: StageDraftingState;
 		/** The settled reading the segmented control reports. */
 		reading: 'plan' | '3d';
-		/** The Grid word at the fixed values, or `Grid off`. */
+		/** The Grid word for the tooltip; the button itself always reads `Grid`. */
 		gridWord: string;
-		/** The Snap word: fixed increment, `held`, or `off`. */
+		/** The Snap word for the live status; the button itself always reads `Snap`. */
 		snapWord: string;
 		onReading: (reading: 'plan' | '3d') => void;
 		onPatch: (patch: StageDraftingPatch) => void;
@@ -175,8 +175,8 @@
 			title={`${gridWord}: fixed 1 m and 5 m lines, thinned with zoom`}
 			onclick={() => onPatch({ grid: !drafting.grid })}
 		>
-			<span class="icon-only" aria-hidden="true"><ShellIcon name="grid" size={15} /></span>
-			<span class="label">{drafting.grid ? 'Grid' : 'Grid off'}</span>
+			<span class="icon-only" aria-hidden="true"><ShellIcon name="grid" size={14} /></span>
+			<span class="label">Grid</span>
 		</button>
 		<button
 			type="button"
@@ -187,8 +187,8 @@
 			title="Snap: fixed 0.5 m increment (hold Alt or Option to suspend)"
 			onclick={() => onPatch({ snap: !drafting.snap })}
 		>
-			<span class="icon-only" aria-hidden="true"><ShellIcon name="snap" size={15} /></span>
-			<span class="label">{drafting.snap ? (snapWord.includes('held') ? 'Snap held' : 'Snap') : 'Snap off'}</span>
+			<span class="icon-only" aria-hidden="true"><ShellIcon name="snap" size={14} /></span>
+			<span class="label">Snap</span>
 		</button>
 	</div>
 
@@ -205,7 +205,7 @@
 			title="Measure (M)"
 			onclick={onMeasure}
 		>
-			<ShellIcon name="measure" size={16} />
+			<ShellIcon name="measure" size={15} />
 		</button>
 		<button
 			type="button"
@@ -215,7 +215,7 @@
 			aria-label="Slice, planned"
 			title="Slice is planned for T1"
 		>
-			<ShellIcon name="slice" size={16} />
+			<ShellIcon name="slice" size={15} />
 		</button>
 	</div>
 
@@ -328,7 +328,7 @@
 		box-shadow: var(--shell-furniture-shadow);
 		backdrop-filter: blur(8px);
 		color: var(--shell-ink-light);
-		font: 12.5px var(--shell-sans);
+		font: var(--shell-text-control) var(--shell-sans);
 	}
 	.seg {
 		display: flex;
@@ -347,19 +347,32 @@
 		white-space: nowrap;
 		cursor: pointer;
 	}
-	.bar button:hover:not(:disabled) {
+	/* Engaged controls keep their light key on hover; only idle controls wash. */
+	.bar button:hover:not(:disabled):not([aria-pressed='true']) {
 		background: var(--shell-on-forest-wash);
 	}
-	.readings button[aria-pressed='true'],
-	.appearances button[aria-pressed='true'] {
-		background: var(--shell-ivory);
-		color: var(--shell-action);
-		font-weight: 600;
+	/*
+	 * One engaged treatment for every settled control: readings, appearance,
+	 * Grid and Snap. Weight never changes, so a toggle cannot resize the bar,
+	 * and each toggle's word is constant in both states.
+	 */
+	.readings button {
+		min-width: 38px;
 	}
+	.appearances button {
+		min-width: 50px;
+	}
+	.toggles button {
+		justify-content: flex-start;
+		gap: 6px;
+		min-width: 64px;
+		padding: 0 8px;
+	}
+	.readings button[aria-pressed='true'],
+	.appearances button[aria-pressed='true'],
 	.toggles button[aria-pressed='true'] {
-		background: var(--shell-on-forest-wash-strong);
-		color: var(--shell-ivory);
-		box-shadow: inset 0 0 0 1px var(--shell-line-on-forest);
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 	}
 	.toggles button[aria-pressed='false'] {
 		color: var(--shell-ink-quiet);
@@ -371,10 +384,11 @@
 		width: 28px;
 		padding: 0;
 	}
+	/* Armed is temporary, so it stays a wash and an underline, never the light key. */
 	.tools .icon.armed {
-		background: var(--shell-on-forest-wash-strong);
-		color: var(--shell-ivory);
-		box-shadow: inset 0 0 0 1px var(--shell-line-on-forest);
+		background: var(--shell-tool-armed-bg);
+		color: var(--shell-tool-armed-ink);
+		box-shadow: var(--shell-press-ring);
 	}
 	.tools .icon.armed::after {
 		content: '';
@@ -389,12 +403,12 @@
 	}
 	.bar button:disabled {
 		color: var(--shell-ink-quiet);
-		opacity: 0.62;
+		opacity: var(--shell-control-disabled-opacity);
 		cursor: default;
 	}
 	.bar button:focus-visible,
 	.bar select:focus-visible {
-		outline: 2px solid var(--shell-focus-halo);
+		outline: var(--shell-focus-ring);
 		outline-offset: 1px;
 	}
 	.divider {
@@ -599,6 +613,12 @@
 	@media (max-width: 700px) {
 		.label {
 			display: none;
+		}
+		.toggles button {
+			justify-content: center;
+			gap: 0;
+			min-width: 28px;
+			padding: 0;
 		}
 		.icon-only {
 			display: inline-flex;

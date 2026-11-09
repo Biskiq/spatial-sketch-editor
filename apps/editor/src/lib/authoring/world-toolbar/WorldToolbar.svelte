@@ -70,7 +70,6 @@
 	const activeToolData = $derived(worldTool(activeTool));
 	const activeFamily = $derived(familyOf(activeTool));
 	const activeFamilyTools = $derived(activeFamily === null ? [] : familyTools(activeFamily));
-	const activeAccent = $derived(activeFamily?.accent ?? 'var(--ld-gold)');
 
 	$effect(() => {
 		const family = familyOf(activeTool);
@@ -122,7 +121,6 @@
 		class:folded={!plateOpen}
 		data-world-toolbar
 		data-active-tool={activeTool}
-		style:--acc={activeAccent}
 	>
 		<div class="tier" id={plateId} hidden={!plateOpen}>
 		<div class="row words">
@@ -282,7 +280,7 @@
 			title="Select (V)"
 			onclick={pressSelect}
 		>
-			<WorldIcon name="select" size={26} hero />
+			<WorldIcon name="select" size={20} hero />
 			<span class="kl">Select</span>
 			<kbd class="kk">V</kbd>
 		</button>
@@ -296,10 +294,9 @@
 				aria-expanded={activeFamily?.id === family.id && !libraryOpen ? plateOpen : undefined}
 				aria-controls={activeFamily?.id === family.id && !libraryOpen ? plateId : undefined}
 				title={`${family.label}: ${family.tools.map((id) => worldTool(id).label).join(', ')}`}
-				style:--key-acc={family.accent}
 				onclick={() => pressFamily(family)}
 			>
-				<WorldIcon name={family.icon} size={26} hero />
+				<WorldIcon name={family.icon} size={20} hero />
 				<span class="kl">{family.label}</span>
 				<span class="family-dots" aria-hidden="true">
 					{#each family.tools as id (id)}<i class:on={activeTool === id}></i>{/each}
@@ -318,7 +315,7 @@
 				title={tool.summary}
 				onclick={() => pressTool(tool.id)}
 			>
-				<WorldIcon name={tool.icon} size={26} hero />
+				<WorldIcon name={tool.icon} size={20} hero />
 				<span class="kl">{tool.label}</span>
 				{#if tool.shortcut}<kbd class="kk">{tool.shortcut}</kbd>{/if}
 			</button>
@@ -334,7 +331,7 @@
 			title="Library (L)"
 			onclick={() => openLibrary('objects')}
 		>
-			<WorldIcon name="library" size={26} hero />
+			<WorldIcon name="library" size={20} hero />
 			<span class="kl">Library</span>
 			<kbd class="kk">L</kbd>
 		</button>
@@ -343,7 +340,7 @@
 
 <style>
 	.world-toolbar {
-		--ld-plate-line: rgb(38 35 29 / 0.12);
+		--ld-plate-line: var(--shell-hairline);
 		display: flex;
 		flex-direction: column;
 		box-sizing: border-box;
@@ -357,9 +354,10 @@
 		font-family: var(--ld-sans);
 		overflow: hidden;
 	}
+	/* The menu is the same off-white key as the selected dock control. */
 	.tier {
 		flex: none;
-		background: var(--ld-paper);
+		background: var(--shell-mode-active-bg);
 		color: var(--ld-ink);
 	}
 	.row,
@@ -374,10 +372,10 @@
 		box-sizing: border-box;
 	}
 	.words {
-		height: 40px;
+		height: 38px;
 	}
 	.picks {
-		height: 62px;
+		height: 58px;
 		border-top: 1px solid var(--ld-plate-line);
 	}
 	.strip {
@@ -414,7 +412,7 @@
 		border-radius: 0;
 		background: transparent;
 		color: var(--ld-ink-3);
-		font: 500 17.5px/1 var(--ld-serif);
+		font: 500 13px/1 var(--ld-sans);
 		letter-spacing: -0.012em;
 		cursor: pointer;
 	}
@@ -432,7 +430,7 @@
 		left: 7px;
 		height: 2px;
 		border-radius: 2px;
-		background: var(--acc, var(--ld-gold));
+		background: var(--ld-ink);
 	}
 	.sub kbd {
 		transform: translateY(-5px);
@@ -452,7 +450,7 @@
 	.pn b {
 		flex: none;
 		color: var(--ld-ink);
-		font: 500 14px/1 var(--ld-serif);
+		font: 600 var(--shell-text-control)/1 var(--ld-sans);
 	}
 	.pn > span {
 		min-width: 0;
@@ -534,7 +532,7 @@
 		cursor: pointer;
 	}
 	.opt:hover {
-		background: rgb(38 35 29 / 0.075);
+		background: var(--shell-hover);
 		color: var(--ld-ink);
 	}
 	.opt:disabled {
@@ -560,7 +558,7 @@
 		cursor: pointer;
 	}
 	.act:hover {
-		background: rgb(38 35 29 / 0.07);
+		background: var(--shell-hover);
 		color: var(--ld-ink);
 	}
 	.act.primary {
@@ -580,14 +578,14 @@
 	.empty strong {
 		margin-right: 5px;
 		color: var(--ld-ink);
-		font: 500 14px/1 var(--ld-serif);
+		font: 600 var(--shell-text-control)/1 var(--ld-sans);
 	}
 	.empty kbd {
 		flex: none;
 		margin-left: auto;
 		padding: 2px 5px;
 		border-radius: 3px;
-		background: rgb(38 35 29 / 0.07);
+		background: var(--shell-surface-sunken);
 		color: var(--ld-ink-3);
 		font: 400 8px/1 var(--ld-mono);
 	}
@@ -635,7 +633,7 @@
 		cursor: pointer;
 	}
 	.tile:hover {
-		background: rgb(38 35 29 / 0.07);
+		background: var(--shell-hover);
 	}
 	.tile-glyph {
 		display: grid;
@@ -643,7 +641,7 @@
 		width: 100%;
 		height: 28px;
 		border-radius: 4px;
-		background: rgb(38 35 29 / 0.055);
+		background: var(--shell-surface-sunken);
 		color: var(--ld-ink-2);
 	}
 	.tile-label {
@@ -677,7 +675,7 @@
 	.note strong {
 		flex: none;
 		color: var(--ld-ink);
-		font: 500 15px/1 var(--ld-serif);
+		font: 600 var(--shell-text-control)/1 var(--ld-sans);
 	}
 	.note .act {
 		margin-left: auto;
@@ -686,33 +684,33 @@
 		flex: none;
 		display: flex;
 		align-items: stretch;
-		height: 62px;
+		height: 56px;
 		overflow-x: auto;
 		overflow-y: hidden;
 		background: var(--ld-forest);
 	}
 	.key {
 		position: relative;
-		flex: 1 0 54px;
+		flex: 1 0 50px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
 		gap: 2px;
-		min-width: 54px;
+		min-width: 50px;
 		padding: 0 4px;
 		border: 0;
 		background: transparent;
 		color: var(--ld-light-2);
 		cursor: pointer;
 	}
-	.key:hover {
+	.key:hover:not(.armed) {
 		background: var(--shell-on-forest-wash);
-		color: var(--ld-paper);
+		color: var(--ld-light);
 	}
 	.key.armed {
-		background: var(--shell-ivory);
-		color: var(--shell-action);
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		box-shadow: inset 0 0 0 1px var(--shell-hairline);
 	}
 	.key.armed .kk {
@@ -722,7 +720,7 @@
 		background: var(--shell-hairline-strong);
 	}
 	.key.armed .family-dots i.on {
-		background: var(--key-acc);
+		background: var(--shell-action);
 	}
 	.key:focus-visible {
 		outline: 2px solid var(--shell-focus-halo);
@@ -732,7 +730,7 @@
 		outline-color: var(--shell-action);
 	}
 	.kl {
-		font: 500 13px/1 var(--ld-sans);
+		font: 500 var(--shell-text-control)/1 var(--ld-sans);
 		letter-spacing: -0.005em;
 		white-space: nowrap;
 	}
@@ -740,7 +738,7 @@
 		position: absolute;
 		top: 4px;
 		right: 5px;
-		color: rgb(251 246 234 / 0.32);
+		color: color-mix(in srgb, var(--shell-ivory) 32%, transparent);
 		font: 400 7px/1 var(--ld-mono);
 	}
 	.family-dots {
@@ -752,17 +750,17 @@
 		width: 3px;
 		height: 3px;
 		border-radius: 50%;
-		background: rgb(251 246 234 / 0.25);
+		background: color-mix(in srgb, var(--shell-ivory) 25%, transparent);
 	}
 	.family-dots i.on {
-		background: var(--key-acc);
+		background: var(--ld-light);
 	}
 	.sep {
 		flex: none;
 		align-self: stretch;
 		width: 1px;
 		margin: 12px 0;
-		background: rgb(251 246 234 / 0.09);
+		background: var(--shell-line-on-forest);
 	}
 	button:focus-visible {
 		outline: 2px solid var(--shell-leaf);
@@ -780,20 +778,20 @@
 			max-height: 48vh;
 		}
 		.words {
-			height: 40px;
+			height: 38px;
 		}
 		.picks {
-			height: 62px;
-		}
-		.dock {
 			height: 58px;
 		}
+		.dock {
+			height: 54px;
+		}
 		.key {
-			flex-basis: 55px;
-			min-width: 55px;
+			flex-basis: 51px;
+			min-width: 51px;
 		}
 		.kl {
-			font-size: 12px;
+			font-size: 11.5px;
 		}
 	}
 	@media (pointer: coarse) {

@@ -247,13 +247,13 @@
 		color: var(--ld-ink-2);
 		cursor: pointer;
 	}
-	.opt:hover {
-		background: rgb(38 35 29 / 0.075);
+	.opt:hover:not([aria-pressed='true']) {
+		background: var(--shell-hover);
 		color: var(--ld-ink);
 	}
 	.opt[aria-pressed='true'] {
 		background: var(--ld-forest);
-		color: var(--ld-paper);
+		color: var(--ld-light);
 	}
 	.opt:disabled {
 		opacity: 0.55;
@@ -272,7 +272,7 @@
 		cursor: pointer;
 	}
 	.act:hover {
-		background: rgb(38 35 29 / 0.07);
+		background: var(--shell-hover);
 		color: var(--ld-ink);
 	}
 	.act:disabled {
@@ -298,7 +298,7 @@
 		text-overflow: ellipsis;
 	}
 	button:focus-visible {
-		outline: 2px solid var(--ld-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: -2px;
 	}
 </style>

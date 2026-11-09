@@ -652,7 +652,7 @@
 		text-transform: uppercase;
 	}
 	.visits-txt b {
-		font: 500 15px/1.2 var(--shell-serif);
+		font: 600 var(--shell-text-title)/1.2 var(--shell-sans);
 		overflow-wrap: anywhere;
 	}
 	.visits-txt .open {

@@ -709,7 +709,7 @@
 		border-right: 1px solid var(--shell-hairline);
 		background: var(--shell-index);
 		color: var(--shell-ink);
-		font: 13px/1.35 var(--shell-sans);
+		font: var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 
 	.plate-index[hidden] {
@@ -791,7 +791,7 @@
 		min-height: 28px;
 	}
 	.exp-row.current {
-		background: var(--shell-gold-tint);
+		background: var(--shell-selected);
 	}
 	.exp-open {
 		flex: 1;
@@ -803,7 +803,7 @@
 		padding: 4px 8px 4px 12px;
 		border-radius: 0;
 		text-align: left;
-		font: 400 13px/1.35 var(--shell-sans);
+		font: 400 var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 	.exp-row:not(.current) .exp-open:hover {
 		background: var(--shell-hover);
@@ -816,8 +816,8 @@
 		border-radius: 2px;
 	}
 	.exp-row.current .exp-ic {
-		border-color: var(--shell-gold-ink);
-		background: var(--shell-gold);
+		border-color: var(--shell-forest);
+		background: var(--shell-forest);
 	}
 	.exp-name {
 		flex: 1;
@@ -851,7 +851,7 @@
 	.exp-row .crumb-input {
 		margin: 3px 8px 3px 12px;
 		border: 0;
-		border-bottom: 2px solid var(--shell-gold);
+		border-bottom: 2px solid var(--shell-leaf);
 		border-radius: 0;
 		background: none;
 		font: 600 13px/1.35 var(--shell-sans);
@@ -994,9 +994,10 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	/* Index selection mirrors the Stage; gold stays on the drawing itself. */
 	.item.selected,
 	.item-head.selected {
-		background: var(--shell-gold-tint);
+		background: var(--shell-selected);
 	}
 	.item.selected .item-name {
 		font-weight: 600;
@@ -1195,7 +1196,7 @@
 	}
 	/* Round 2 Index rows read in the sans at 13 px; only the selected row is bold. */
 	.presentation-row .item-name {
-		font: 400 13px/1.35 var(--shell-sans);
+		font: 400 var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 	.item-head.selected .item-name {
 		font-weight: 600;
@@ -1244,13 +1245,13 @@
 		border-radius: 0;
 		text-align: left;
 		color: var(--shell-ink);
-		font-size: 13px;
+		font-size: var(--shell-text-body);
 	}
 	.view-row:hover {
 		background: rgb(0 0 0 / 0.035);
 	}
 	.view-row.selected {
-		background: var(--shell-gold-tint);
+		background: var(--shell-selected);
 		font-weight: 600;
 	}
 	.view-name {

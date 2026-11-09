@@ -61,8 +61,7 @@
 							? 'assets'
 							: key.slot === 'erase'
 								? 'eraser'
-								: (key.slot ?? 'dot'))}
-					size={key.slot === 'library' ? 19 : 18}
+								: (key.slot ?? 'dot'))}						size={key.slot === 'library' ? 17 : 16}
 				/>
 				{#if armed && key.palette && !paletteOpen}
 					<span class="caret" data-dock-caret aria-hidden="true"></span>
@@ -117,29 +116,29 @@
 		position: relative;
 		display: grid;
 		place-items: center;
-		width: 40px;
-		height: 40px;
+		width: 36px;
+		height: 36px;
 		padding: 0;
 		border: 0;
-		border-radius: 10px;
+		border-radius: 9px;
 		background: transparent;
 		color: inherit;
 		cursor: pointer;
 	}
-	.key:hover {
+	.key:hover:not(.armed) {
 		background: var(--shell-on-forest-wash);
 	}
 	.key:focus-visible {
-		outline: 2px solid var(--shell-focus-halo);
+		outline: var(--shell-focus-ring);
 		outline-offset: 1px;
 	}
 	.key.armed {
-		background: var(--shell-ivory);
-		color: var(--shell-action);
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		box-shadow: 0 1px 3px #0004;
 	}
 	.key[aria-disabled='true'] {
-		opacity: 0.55;
+		opacity: var(--shell-control-disabled-opacity);
 		cursor: default;
 	}
 	.key[data-dock-slot='ink']::after,
@@ -150,8 +149,8 @@
 		position: absolute;
 		width: 14px;
 		height: 2px;
-		left: 13px;
-		bottom: 3px;
+		left: 11px;
+		bottom: 2px;
 		opacity: 0.9;
 		background: var(--shell-ink);
 	}

@@ -61,8 +61,15 @@ let frameId = 0;
 let wallId: string;
 let captureDescriptor: PropertyDescriptor | undefined;
 const facade = () => harness.facade as StageFacade;
-const currentSnapLabel = () =>
-	draftingSnapIncrementMeters(facade().session.drafting()) === null ? 'Snap off' : 'Snap';
+/**
+ * The keys' words never change: Grid and Snap are toggles, and their state lives
+ * in `aria-pressed` and the shared engaged fill. The drafting session still owns
+ * the fact, so the helper keeps reading it.
+ */
+const currentSnapLabel = () => {
+	void draftingSnapIncrementMeters(facade().session.drafting());
+	return 'Snap';
+};
 const button = (text: string) => {
 	const found = [...target.querySelectorAll('button')].find(
 		(b) => (b.getAttribute('aria-label') ?? b.textContent)?.replace(/\s+/g, '').toLowerCase() === text.replace(/\s+/g, '').toLowerCase());
@@ -1106,13 +1113,13 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		gridKey().click();
 		await frame();
 		expect(gridKey().getAttribute('aria-pressed')).toBe('false');
-		expect(gridKey().textContent?.trim()).toBe('Grid off');
+		expect(gridKey().textContent?.trim()).toBe('Grid');
 
 		expect(snapKey().getAttribute('aria-pressed')).toBe('true');
 		snapKey().click();
 		await frame();
 		expect(snapKey().getAttribute('aria-pressed')).toBe('false');
-		expect(snapKey().textContent?.trim()).toBe('Snap off');
+		expect(snapKey().textContent?.trim()).toBe('Snap');
 
 		// View state is not authored content: no install, no history entry, and the
 		// Save capture is byte-identical.
@@ -1134,14 +1141,16 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		snapKey().click();
 		await frame();
 		expect(snapKey().textContent?.trim()).toBe(currentSnapLabel());
-		expect(gridKey().textContent?.trim()).toBe('Grid off');
+		expect(gridKey().textContent?.trim()).toBe('Grid');
 	});
 
 	it('holds Snap off while Alt/Option is down and restores it on release and blur', async () => {
 		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
 		await frame();
 		expect(facade().session.drafting().snapSuspended).toBe(true);
-		expect(snapKey().textContent?.trim()).toBe('Snap held');
+		// The key's word is constant; the temporary hold is announced in the live status.
+		expect(snapKey().textContent?.trim()).toBe('Snap');
+		expect(target.querySelector('#drafting-snap-state')!.textContent?.trim()).toBe('Snap held');
 
 		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', bubbles: true }));
 		await frame();
@@ -1241,8 +1250,8 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		await frame();
 		expect(gridKey().getAttribute('aria-pressed')).toBe('false');
 		expect(snapKey().getAttribute('aria-pressed')).toBe('false');
-		expect(gridKey().textContent?.trim()).toBe('Grid off');
-		expect(snapKey().textContent?.trim()).toBe('Snap off');
+		expect(gridKey().textContent?.trim()).toBe('Grid');
+		expect(snapKey().textContent?.trim()).toBe('Snap');
 		gridKey().click();
 		snapKey().click();
 		await frame();

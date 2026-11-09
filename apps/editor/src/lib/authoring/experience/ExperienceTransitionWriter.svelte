@@ -405,7 +405,7 @@
 		text-transform: uppercase;
 	}
 	.end b {
-		font: 600 12px/1.3 var(--shell-serif);
+		font: 600 var(--shell-text-control)/1.3 var(--shell-sans);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

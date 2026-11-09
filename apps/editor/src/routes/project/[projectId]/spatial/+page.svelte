@@ -4058,7 +4058,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{#if experienceLens.lookThroughMoved()}<span class="moved">moved</span>{/if}
 						<button
 							type="button"
-							class="pill-gold"
+							class="pill-primary"
 							disabled={!experienceLens.lookThroughMoved() || (activeExperience?.busy ?? false)}
 							title={experienceLens.lookThroughMoved() ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
 							onclick={() => void experienceLens.updateLookThrough(experienceLens.lookThroughConfirm() !== null)}>Update View</button
@@ -4071,7 +4071,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
 							<p>Also changes {experienceLens.lookThroughConfirm()!.join(', ')}.</p>
 							<div class="through-confirm-actions">
-								<button type="button" class="pill-gold" onclick={() => void experienceLens.updateLookThrough(true)}>Update View</button>
+								<button type="button" class="pill-primary" onclick={() => void experienceLens.updateLookThrough(true)}>Update View</button>
 								<button type="button" onclick={() => experienceLens.clearLookThroughConfirm()}>Cancel</button>
 							</div>
 						</div>
@@ -4082,7 +4082,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
 						<p>Also changes {pendingViewWrite.alsoIn.join(', ')}.</p>
 						<div class="through-confirm-actions">
-							<button type="button" class="pill-gold" onclick={() => void experienceLens.confirmPendingViewWrite()}>Update View</button>
+							<button type="button" class="pill-primary" onclick={() => void experienceLens.confirmPendingViewWrite()}>Update View</button>
 							<button type="button" onclick={() => (experienceLens.clearPendingViewWrite())}>Cancel</button>
 						</div>
 					</div>
@@ -4377,10 +4377,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		mapping stay unchanged, and it intercepts no picking.
 	*/
 	.stage[data-paper='true'] {
-		box-shadow: inset 0 0 0 1px #c9cfc2;
+		box-shadow: inset 0 0 0 1px var(--stage-paper-edge);
 	}
 	.stage:focus-visible {
-		box-shadow: inset 0 0 0 1px var(--shell-gold);
+		box-shadow: inset 0 0 0 1px var(--shell-leaf);
 	}
 	.stage :global(canvas) {
 		display: block;
@@ -4430,31 +4430,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		inset: 0 auto 0 0;
 		box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
 	}
-	/* Living Draft's Card and Index share the Head's paper, not the old white sheet. */
+	/* The Card takes its surface, type and radius from the shared roles; only its
+	   lane beside the Height Sheet is the route's business. */
 	.editor-host[data-shell='living-draft'] :global(.card) {
 		top: 10px;
 		right: 10px;
-		border-color: var(--ld-hairline-dark);
-		border-radius: 14px;
-		background: var(--ld-paper-raised);
 		box-shadow: var(--ld-shadow);
-		color: var(--ld-ink);
-	}
-	.editor-host[data-shell='living-draft'] :global(.card .kind) {
-		font-family: var(--ld-mono);
-		font-size: 9px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-	.editor-host[data-shell='living-draft'] :global(.card .name),
-	.editor-host[data-shell='living-draft'] :global(.card .name button) {
-		font-family: var(--ld-serif);
-		font-size: 21px;
-		font-weight: 500;
-		letter-spacing: -0.02em;
-	}
-	.editor-host[data-shell='living-draft'] :global(.card .writer) {
-		border-radius: 0 0 14px 14px;
 	}
 	@media (width > 1100px) {
 		.editor-body[data-index-open='true'] {
@@ -4541,7 +4522,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font-size: var(--shell-text-body);
 	}
 	.keys-panel:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring);
 		outline-offset: 2px;
 	}
 	.keys-panel h2 {
@@ -4562,7 +4543,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.keys-panel dt {
 		font-family: var(--shell-mono);
 		font-size: var(--shell-text-utility);
-		color: var(--shell-gold);
+		color: var(--shell-leaf-soft);
 		font-variant-numeric: tabular-nums;
 	}
 	.keys-panel dd {
@@ -4646,7 +4627,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.show-button:focus-visible,
 	.show-mode button:focus-visible,
 	.show-all:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: 1px;
 	}
 	.show-off {
@@ -4739,7 +4720,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: var(--shell-leaf) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
 	}
 	.show-popover input[type='checkbox']:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: 2px;
 	}
 	.show-all {
@@ -4816,19 +4797,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		opacity: 0.45;
 		cursor: default;
 	}
-	.mode-pill button.pill-gold {
-		background: var(--shell-gold);
-		color: var(--shell-on-gold);
+	.mode-pill button.pill-primary {
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		font-weight: 600;
 	}
 	.mode-pill .live-dot {
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--shell-gold);
+		background: var(--shell-leaf-soft);
 	}
 	.mode-pill .moved {
-		color: var(--shell-gold);
+		color: var(--shell-leaf-soft);
 		font-weight: 600;
 	}
 	/* Center Look through in the part of the Stage that the Index leaves visible. */
@@ -4885,9 +4866,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font-size: 12px;
 		cursor: pointer;
 	}
-	.through-confirm button.pill-gold {
-		background: var(--shell-gold);
-		color: var(--shell-on-gold);
+	.through-confirm button.pill-primary {
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		font-weight: 600;
 	}
 	.experience-welcome {
@@ -4904,15 +4885,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font-size: 0.8rem;
 	}
 	.experience-welcome > span {
-		color: var(--shell-gold-ink);
-		font-size: 0.65rem;
-		font-weight: 700;
+		color: var(--shell-ink-3);
+		font-size: var(--shell-text-meta);
+		font-weight: 600;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 	}
 	.experience-welcome h2 {
 		margin: 0.25rem 0 0.6rem;
-		font: 400 1.15rem var(--shell-serif);
+		font: 600 var(--shell-text-title)/1.25 var(--shell-sans);
 	}
 	.experience-welcome ol {
 		margin: 0 0 0.75rem;
@@ -4979,7 +4960,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.preview-actions-note {
 		top: 0.5rem;
 		bottom: auto;
-		color: var(--shell-gold);
+		color: var(--shell-leaf-soft);
 	}
 	/*
 	 * Parked-task notice. It sits at the top-left because the lower edge already
@@ -5006,7 +4987,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		gap: 0.75rem;
 		padding: 0.7rem 1rem;
 		border-bottom: 1px solid var(--shell-hairline-dark);
-		background: color-mix(in srgb, var(--shell-gold) 12%, var(--shell-forest));
+		background: var(--shell-forest-raised);
 		color: var(--shell-ink-light);
 	}
 	.resume-offer p {
@@ -5024,9 +5005,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cursor: pointer;
 	}
 	.resume-offer button.primary {
-		border-color: var(--shell-gold);
-		background: var(--shell-gold);
-		color: var(--shell-on-gold);
+		border-color: transparent;
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 	}
 	.source-findings {
 		position: absolute;
@@ -5051,7 +5032,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		list-style: none;
 	}
 	.source-findings strong {
-		color: var(--shell-gold-ink);
+		color: var(--shell-ink);
 	}
 	.source-findings.blocking strong {
 		color: var(--shell-caution);
@@ -5074,6 +5055,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font: inherit;
 		cursor: pointer;
 	}
+	/* Boot, absence and replacement are dialogs, so they share the light Card
+	   surface and field grammar rather than the dark stage\'s forest panel. */
 	.boot-panel {
 		position: absolute;
 		z-index: 30;
@@ -5081,51 +5064,61 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		left: 50%;
 		transform: translateX(-50%);
 		width: min(32rem, calc(100% - 2rem));
-		padding: 1.25rem;
-		border: 1px solid color-mix(in srgb, var(--shell-ivory) 20%, transparent);
-		border-radius: 16px;
-		background: var(--shell-dock-surface);
-		color: var(--shell-ivory);
+		padding: 1.1rem 1.2rem 1.15rem;
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 14px;
+		background: var(--shell-card);
+		color: var(--shell-ink);
 		box-shadow: var(--shell-shadow);
 		box-sizing: border-box;
 	}
 	.boot-brand {
-		color: var(--shell-gold);
-		font-size: 0.72rem;
+		color: var(--shell-forest-raised);
+		font-size: 0.68rem;
 		font-weight: 600;
-		letter-spacing: 0.12em;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 	}
 	.boot-panel h1,
 	.boot-panel .boot-loading {
-		margin: 0 0 0.5rem;
-		color: var(--shell-ivory);
-		font: 400 1.4rem/1.25 var(--shell-serif);
+		margin: 0 0 0.4rem;
+		color: var(--shell-ink);
+		font: 600 var(--shell-text-title)/1.25 var(--shell-sans);
+		letter-spacing: -0.01em;
 	}
 	.boot-panel .boot-loading {
-		margin: 0.35rem 0 0;
+		margin: 0.3rem 0 0;
 	}
 	.boot-panel p {
-		margin: 0 0 0.75rem;
-		color: var(--shell-ink-light);
+		margin: 0 0 0.8rem;
+		color: var(--shell-ink-2);
+		font: var(--shell-text-body)/1.45 var(--shell-sans);
 	}
 	.boot-panel button {
-		margin-right: 0.5rem;
-		padding: 0.5rem 0.8rem;
-		border: 1px solid color-mix(in srgb, var(--shell-ivory) 30%, transparent);
-		border-radius: 8px;
-		background: transparent;
-		color: inherit;
-		font: inherit;
+		margin: 0 0.4rem 0.35rem 0;
+		min-height: 30px;
+		padding: 0 0.7rem;
+		border: 1px solid var(--shell-field-line-strong);
+		border-radius: 7px;
+		background: var(--shell-field);
+		color: var(--shell-ink);
+		font: 500 var(--shell-text-control) var(--shell-sans);
 		cursor: pointer;
 	}
+	.boot-panel button:hover {
+		background: var(--shell-hover);
+	}
 	.boot-panel button.primary {
-		border-color: var(--shell-gold);
-		background: var(--shell-gold);
-		color: var(--shell-forest);
+		border-color: transparent;
+		background: var(--shell-action);
+		color: var(--shell-on-action);
+	}
+	.boot-panel button.primary:hover {
+		background: var(--shell-forest-raised);
 	}
 	.boot-panel button:focus-visible {
-		outline-color: var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
+		outline-offset: 1px;
 	}
 
 	@media (max-width: 720px) {

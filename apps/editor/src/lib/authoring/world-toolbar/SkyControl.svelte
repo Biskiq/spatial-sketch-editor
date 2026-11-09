@@ -125,7 +125,7 @@
 		border-radius: 7px;
 		background: transparent;
 		color: var(--shell-ink-light);
-		font: 500 12.5px/1 var(--shell-sans);
+		font: 500 var(--shell-text-control)/1 var(--shell-sans);
 		cursor: pointer;
 	}
 	.chip:hover {
@@ -168,9 +168,7 @@
 		justify-content: space-between;
 	}
 	.popover header strong {
-		font-family: var(--shell-serif);
-		font-size: 16px;
-		font-weight: 500;
+		font: 600 var(--shell-text-identity)/1.2 var(--shell-sans);
 	}
 	.popover header span,
 	.hour-row span,

@@ -50,7 +50,7 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: rgb(38 35 29 / 0.07);
+		background: var(--shell-hover);
 		color: var(--ld-ink);
 	}
 	button span {
@@ -60,10 +60,10 @@
 	}
 	button.panel {
 		margin-left: auto;
-		color: var(--ld-gold);
+		color: var(--ld-ink-2);
 	}
 	button:focus-visible {
-		outline: 2px solid var(--ld-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: -2px;
 	}
 </style>

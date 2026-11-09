@@ -34,7 +34,7 @@
 		title="Select: the pointer selects subjects on the Stage"
 		data-dock-tool="select"
 	>
-		<ShellIcon name="select" size={18} />
+		<ShellIcon name="select" size={16} />
 	</button>
 	<button
 		type="button"
@@ -46,7 +46,7 @@
 		data-dock-tool="place-view"
 		onclick={onPlaceView}
 	>
-		<ShellIcon name="camera" size={18} />
+		<ShellIcon name="camera" size={16} />
 	</button>
 	<span class="separator" aria-hidden="true"></span>
 	<button
@@ -59,7 +59,7 @@
 		data-dock-tool="capture"
 		onclick={onCapture}
 	>
-		<ShellIcon name="capture" size={18} />
+		<ShellIcon name="capture" size={16} />
 		<span class="label">Capture</span>
 	</button>
 	<button
@@ -71,7 +71,7 @@
 		data-dock-tool="guide"
 		onclick={onToggleGuide}
 	>
-		<ShellIcon name="guide" size={18} />
+		<ShellIcon name="guide" size={16} />
 		<span class="label">Guide</span>
 	</button>
 	{#if captureDisabled && captureReason}
@@ -102,13 +102,14 @@
 		background: var(--shell-line-on-forest);
 	}
 	.key {
+		position: relative;
 		display: grid;
 		place-items: center;
-		width: 40px;
-		height: 40px;
+		width: 36px;
+		height: 36px;
 		padding: 0;
 		border: 0;
-		border-radius: 10px;
+		border-radius: 9px;
 		background: transparent;
 		color: inherit;
 		cursor: pointer;
@@ -118,32 +119,45 @@
 		grid-auto-flow: column;
 		gap: 6px;
 		width: auto;
-		padding: 0 10px;
-		font-size: 13px;
+		padding: 0 9px;
+		font: 500 var(--shell-text-control)/1 var(--shell-sans);
 	}
 	.key:hover {
 		background: var(--shell-on-forest-wash);
 	}
 	.key.armed {
-		background: var(--shell-ivory);
-		color: var(--shell-action);
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		box-shadow: 0 1px 3px #0004;
 	}
-	/* Place a View is an armed Stage tool, not a second Select: a leaf, not the ivory key. */
+	/* Place a View is a temporary arm, not a second Select: a wash and an underline. */
 	.key.place-armed {
-		background: color-mix(in srgb, var(--shell-leaf) 55%, var(--shell-forest));
-		box-shadow: inset 0 0 0 1px var(--shell-leaf);
+		background: var(--shell-tool-armed-bg);
+		color: var(--shell-tool-armed-ink);
+		box-shadow: var(--shell-press-ring);
 	}
-	/* Guide open is a pressed key, not a second armed tool: Select stays the one armed key. */
-	.key[aria-pressed='true']:not(.armed) {
-		background: var(--shell-on-forest-wash-strong);
+	.key.place-armed::after {
+		content: '';
+		position: absolute;
+		right: 10px;
+		bottom: 4px;
+		left: 10px;
+		height: 2px;
+		border-radius: 1px;
+		background: var(--shell-tool-armed-ink);
+		opacity: 0.8;
+	}
+	/* An open panel is engaged, so it wears the same light key as a mode. */
+	.key[aria-pressed='true']:not(.armed):not(.place-armed) {
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 	}
 	.key:disabled {
-		opacity: 0.35;
+		opacity: var(--shell-control-disabled-opacity);
 		cursor: default;
 	}
 	.key:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring);
 		outline-offset: 1px;
 	}
 	.visually-hidden {

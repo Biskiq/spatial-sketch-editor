@@ -739,8 +739,8 @@
 		gap: 6px;
 		flex: none;
 		padding: 0 4px 0 1px;
-		color: var(--shell-paper);
-		font: 600 16px/1 var(--shell-serif);
+		color: var(--shell-ink-light);
+		font: 600 var(--shell-text-title)/1 var(--shell-display);
 		letter-spacing: -0.015em;
 	}
 	.brand-word {
@@ -759,7 +759,7 @@
 		max-width: 180px;
 		color: var(--shell-ink-light);
 		padding: 0 4px;
-		font: var(--shell-text-identity) var(--shell-serif);
+		font: 500 var(--shell-text-identity) var(--shell-sans);
 	}
 	.project-text {
 		overflow: hidden;
@@ -809,12 +809,12 @@
 		padding: 0 11px;
 		border-radius: 6px;
 		color: var(--shell-ink-quiet);
-		font-size: 12.5px;
+		font-size: var(--shell-text-control);
 	}
+	/* Weight never changes; the shared engaged fill carries the state. */
 	.lens-button.active {
-		background: var(--shell-paper);
-		color: var(--shell-forest);
-		font-weight: 600;
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 	}
 	.location {
 		order: 1;
@@ -917,7 +917,7 @@
 		padding: 4px;
 		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
-		background: white;
+		background: var(--shell-popover);
 		color: var(--shell-ink);
 		box-shadow: var(--shell-shadow);
 	}
@@ -962,18 +962,19 @@
 		margin: 8px;
 		font-size: var(--shell-text-utility);
 	}
+	/* The row's one filled action uses the same light key as an engaged mode. */
 	.primary {
 		padding: 0 11px;
 		border-radius: 8px;
-		background: var(--shell-gold);
-		color: var(--shell-on-gold);
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		font-weight: 600;
 	}
 	.primary:hover {
-		background: var(--shell-gold);
+		background: var(--shell-mode-active-bg);
 	}
 	button[aria-disabled='true'] {
-		opacity: 0.45;
+		opacity: var(--shell-control-disabled-opacity);
 		cursor: default;
 	}
 	@media (max-width: 1100px) {

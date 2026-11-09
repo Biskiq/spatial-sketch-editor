@@ -54,18 +54,19 @@ describe('R217.S26 visual tokens', () => {
 
 	it('the kind line’s Back reads in the kind line’s own type role', () => {
 		const card = source('stage/shell/EditorCard');
-		expect(rule(card, '.kind')).toMatch(/font-size:\s*11px/);
-		expect(rule(card, '.back-link')).toMatch(/font-size:\s*11px/);
+		// The kind and its Back link share the compact label role, so the head cannot drift.
+		expect(rule(card, '.kind')).toMatch(/font-size:\s*var\(--shell-text-label\)/);
+		expect(rule(card, '.back-link')).toMatch(/font-size:\s*var\(--shell-text-label\)/);
 		expect(rule(card, '.back-link')).toMatch(/color:\s*var\(--shell-ink-2/);
 	});
 
 	it('rename fields keep the title and crumb metrics they replace', () => {
 		const card = source('stage/shell/EditorCard');
-		// The Card rename input inherits the 19 px serif title it replaces.
-		expect(rule(card, '.name')).toMatch(/font:\s*400 19px\/1\.2 var\(--shell-serif/);
+		// The Card title is the compact sans title; its rename field inherits it.
+		expect(rule(card, '.name')).toMatch(/font:\s*600 var\(--shell-text-title\)\/1\.3 var\(--shell-sans/);
 		expect(card).toMatch(/\.rename-input \{[^}]*font: inherit/);
 		const index = source('stage/shell/EditorIndex');
-		expect(rule(index, '.exp-open')).toMatch(/font:\s*400 13px\/1\.35 var\(--shell-sans/);
+		expect(rule(index, '.exp-open')).toMatch(/font:\s*400 var\(--shell-text-body\)\/1\.35 var\(--shell-sans/);
 		expect(rule(index, '.crumb-input')).toMatch(/font:\s*600 12px\/1\.3 var\(--shell-sans/);
 		expect(rule(index, '.crumb-error')).toMatch(/color:\s*var\(--shell-refuse/);
 	});

@@ -173,7 +173,7 @@
 	}
 	.row-name {
 		min-width: 0;
-		font: 12.5px/1.3 var(--shell-serif);
+		font: var(--shell-text-body)/1.3 var(--shell-sans);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

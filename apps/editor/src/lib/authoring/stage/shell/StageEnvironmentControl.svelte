@@ -170,7 +170,7 @@
 	.env-chip:focus-visible,
 	.env-tile:focus-visible,
 	.env-edit:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: 1px;
 	}
 	.env-swatch {
@@ -234,7 +234,7 @@
 		border-radius: 8px;
 	}
 	.env-tile[aria-pressed='true'] i {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: 1px;
 	}
 	.env-tile[aria-pressed='true'] span {
@@ -266,13 +266,13 @@
 		align-items: flex-start;
 	}
 	.env-eyebrow {
-		color: var(--shell-gold-ink);
-		font: 600 10.5px var(--shell-sans);
+		color: var(--shell-ink-3);
+		font: 600 var(--shell-text-meta) var(--shell-sans);
 		letter-spacing: 0.14em;
 	}
 	.env-panel h3 {
 		margin: 2px 0 0;
-		font: 400 20px/1.2 var(--shell-serif);
+		font: 600 var(--shell-text-title)/1.25 var(--shell-sans);
 	}
 	.env-close {
 		display: grid;
