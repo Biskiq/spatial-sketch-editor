@@ -49,6 +49,9 @@ import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrumen
 import { createLayoutPlanners, layoutSubjectOf } from '$lib/authoring/adapters/layout/precision';
 import {
 	createDrawingPlanners,
+	LAYOUT_CIRCLE_RADIUS_KIND,
+	LAYOUT_CIRCLE_ROOM_CREATE_KIND,
+	LAYOUT_CIRCLE_TRANSLATE_KIND,
 	LAYOUT_WALL_CHAIN_COMMIT_KIND,
 	LAYOUT_WALL_DELETE_KIND
 } from '$lib/authoring/adapters/layout/drawing-planners';
@@ -169,7 +172,12 @@ describe('T1.P01.S04 — Layout precision', () => {
 			'layout-wall-straighten',
 			'layout-wall-thickness'
 		]);
+		// C2 — Circle creation, exact radius and rigid body move are retained
+		// planners beside the two S02 drawing operations, not a second write path.
 		expect(createDrawingPlanners().map((planner) => planner.kind).sort()).toEqual([
+			LAYOUT_CIRCLE_RADIUS_KIND,
+			LAYOUT_CIRCLE_ROOM_CREATE_KIND,
+			LAYOUT_CIRCLE_TRANSLATE_KIND,
 			LAYOUT_WALL_CHAIN_COMMIT_KIND,
 			LAYOUT_WALL_DELETE_KIND
 		]);

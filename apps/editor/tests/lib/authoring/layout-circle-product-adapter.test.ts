@@ -286,6 +286,11 @@ describe('C2 product — closed Wall Card and Stage', () => {
 		refused.edit('radius', '0.05');
 		const outcome = await refused.commit('radius');
 		expect(outcome.kind).toBe('refused');
+		// A diameter is converted to radius, so an invalid diameter refuses through
+		// the same planner instead of writing a clamped value.
+		const refusedDiameter = createCardFieldsInstrument(services)!;
+		refusedDiameter.edit('diameter', '0.1');
+		expect((await refusedDiameter.commit('diameter')).kind).toBe('refused');
 		expect(readClosedWallCircle(stageEnvelope(facade.snapshot()).units.layout.data, wallId)!.radius).toBeCloseTo(7, 12);
 	});
 });
