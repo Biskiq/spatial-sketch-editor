@@ -52,6 +52,7 @@ import { validateWallFirstOpeningSet, validateWallFirstOpeningSubset } from './l
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import {
 	reconcileRooms,
+	roomBoundaryPolygon,
 	type ComponentLineage,
 	type ReconciliationFailure,
 	type ReconciliationResult,
@@ -69,10 +70,12 @@ import {
 	createWallSamplingDerivation,
 	nextWallCurveKnotId,
 	translateWallCenterline,
+	wallCenterlineCarriesPoint,
 	wallCenterlineSamples,
 	wallCubicChain,
 	type WallSamplingDerivation
 } from './layout-wall-centerline';
+import { isClosedWall } from './layout-closed-wall';
 import { deriveChainSpans } from './layout-geometry-curve';
 import {
 	deleteWallCurveKnot,
@@ -87,7 +90,11 @@ import {
 	type NodingIdAllocator,
 	type NodingPlan
 } from './layout-wall-noding';
-import { coincidesAsJunction, coincidentJunctionPairs } from './layout-junction-identity';
+import {
+	coincidesAsJunction,
+	coincidentJunctionPairs,
+	JUNCTION_COINCIDENCE_EPSILON
+} from './layout-junction-identity';
 import { createPlanBoxIndex, type PlanBox } from './layout-plan-box-index';
 import { CURVE_SELF_INTERSECTION_TOLERANCE } from './layout-geometry-curve';
 import {
@@ -247,6 +254,8 @@ export type PrecisionRejection = {
 		| 'split_at_existing_endpoint'
 		| 'split_distance_out_of_range'
 		| 'split_through_opening_interior'
+		/** D7 — a closed Wall is one canonical loop and refuses topology mutations. */
+		| 'closed_wall_isolated'
 		/** D4 — a Wall may not gain more than the supported number of bend points. */
 		| 'curve_knot_limit'
 		| 'junction_point_mismatch';
@@ -2542,6 +2551,99 @@ function validateWallFirstTopologyPass(
 	// T1.P02.S06 D.1 (H3) — one id→point index for every Wall this pass resolves,
 	// instead of two linear Junction scans per Wall.
 	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
+
+	// D7 — closed Walls are isolated. This is intentionally document-global, not
+	// component-scoped: an independent Wall crossing a closed loop is still an
+	// unsupported connection, and equal coordinates at different Junction IDs are
+	// an attachment, not independent geometry. Detection uses the same canonical
+	// samples as every other topology predicate.
+	const sampledWall = (wall: LayoutWall): SampledTopologyWall | undefined => {
+		const start = junctionPointById.get(wall.startJunctionId);
+		const end = junctionPointById.get(wall.endJunctionId);
+		if (!start || !end) return undefined;
+		if (wall.centerline.kind === 'line') {
+			const dx = end[0] - start[0];
+			const dz = end[1] - start[1];
+			const length = Math.hypot(dx, dz);
+			if (!(length > POINT_EPSILON)) return undefined;
+			const tangent: LayoutVec2 = [dx / length, dz / length];
+			return {
+				id: wall.id,
+				startJunctionId: wall.startJunctionId,
+				endJunctionId: wall.endJunctionId,
+				samples: [
+					{ point: [...start] as LayoutVec2, distance: 0, tangent, normal: [-tangent[1], tangent[0]], t: 0 },
+					{ point: [...end] as LayoutVec2, distance: length, tangent, normal: [-tangent[1], tangent[0]], t: 1 }
+				]
+			};
+		}
+		const sampled = options.sampling
+			? options.sampling.samples(wall, start, end, 'forward')
+			: wallCenterlineSamples(wall, start, end, 'forward');
+		if (!sampled) return undefined;
+		return {
+			id: wall.id,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId,
+			samples: sampled.samples
+		};
+	};
+	for (const closed of document.walls) {
+		if (!isClosedWall(closed)) continue;
+		const seam = junctionPointById.get(closed.startJunctionId);
+		if (!seam) continue;
+		for (const other of document.walls) {
+			if (other.id === closed.id) continue;
+			if (
+				other.startJunctionId === closed.startJunctionId ||
+				other.endJunctionId === closed.startJunctionId
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' connects at its seam Junction`
+				);
+			}
+			const otherStart = junctionPointById.get(other.startJunctionId);
+			const otherEnd = junctionPointById.get(other.endJunctionId);
+			if (
+				(otherStart && wallCenterlineCarriesPoint(closed, seam, seam, otherStart)) ||
+				(otherEnd && wallCenterlineCarriesPoint(closed, seam, seam, otherEnd))
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' attaches to its centerline`
+				);
+			}
+			if (
+				otherStart &&
+				otherEnd &&
+				wallCenterlineCarriesPoint(other, otherStart, otherEnd, seam)
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): its seam attaches to Wall '${other.id}'`
+				);
+			}
+			const closedSampled = sampledWall(closed);
+			const otherSampled = sampledWall(other);
+			if (
+				closedSampled &&
+				otherSampled &&
+				sampledWallExtentsOverlap(closedSampled, otherSampled) &&
+				sampledWallsCross(closedSampled, otherSampled)
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' crosses its centerline`
+				);
+			}
+		}
+	}
+
 	// The predicate itself, so a scoped pass evaluates the SAME rule with the same path, code,
 	// message and target as the canonical loop (INV-3).
 	const coincidenceFailure = (firstId: string, secondId: string): LayoutGeometryIssue | undefined => {
@@ -2587,7 +2689,18 @@ function validateWallFirstTopologyPass(
 	const wallSegments = new Map<string, TopologySegment>();
 	for (const wall of document.walls) {
 		const endpoints = wallEndpoints(document, wall, junctionPointById);
-		if (!endpoints || !(endpoints.length > POINT_EPSILON)) continue;
+		if (!endpoints) continue;
+		// A closed Wall's endpoint chord is a point; its effective length is the
+		// canonical cubic arc. The old distinct-endpoint check would have rejected
+		// every closed Wall as zero-length before face extraction ever saw it.
+		let effectiveLength = endpoints.length;
+		if (isClosedWall(wall) && wall.centerline.kind === 'cubic-chain') {
+			const sampled = options.sampling
+				? options.sampling.samples(wall, endpoints.start, endpoints.end, 'forward')
+				: wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward');
+			effectiveLength = sampled?.length ?? 0;
+		}
+		if (!(effectiveLength > POINT_EPSILON)) continue;
 		wallSegments.set(wall.id, { id: wall.id, start: endpoints.start, end: endpoints.end });
 	}
 	const lengthCandidates = subject
@@ -2702,7 +2815,18 @@ function validateWallFirstTopologyPass(
 	}
 
 	for (const room of subject && !subject.evaluateRooms ? [] : document.rooms) {
-		if (room.boundary.length < 3) {
+		// A closed Wall contributes ONE oriented ref but many sampled vertices, so
+		// the floor is resolved polygon vertices, not Wall-ref count. This is the
+		// same geometry the Room compiler and reconciliation consume. Only the
+		// canonical self-connected cubic loop earns the one-ref exception; an open
+		// one- or two-ref chain still needs three distinct boundary Walls.
+		const singleClosedWall =
+			room.boundary.length === 1 &&
+			(() => {
+				const wall = wallById.get(room.boundary[0]!.wallId);
+				return wall !== undefined && isClosedWall(wall);
+			})();
+		if (room.boundary.length < 3 && !singleClosedWall) {
 			return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary Walls`);
 		}
 		let previousEnd: string | undefined;
@@ -2728,6 +2852,19 @@ function validateWallFirstTopologyPass(
 			previousEnd = end;
 		}
 		if (previousEnd !== firstStart) return topologyFailure(room.id, undefined, `Room '${room.id}' boundary is not closed`);
+		// Sample only the canonical one-ref loop. Ordinary Rooms already proved
+		// their boundary through the Wall refs above, and sampling every Room here
+		// would add uncached work to the hot preflight path (P23B.5 OR-9).
+		if (singleClosedWall) {
+			const roomPolygon = roomBoundaryPolygon(document, room.id);
+			if (!roomPolygon || roomPolygon.length < 3) {
+				return topologyFailure(
+					room.id,
+					undefined,
+					`Room '${room.id}' needs at least three resolved boundary vertices`
+				);
+			}
+		}
 	}
 
 	if (options.openingSet !== 'defer') {

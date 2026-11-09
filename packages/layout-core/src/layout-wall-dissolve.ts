@@ -137,6 +137,21 @@ export function planDissolveJunction(
 	}
 	const junctionPoint: LayoutVec2 = [junction.point[0], junction.point[1]];
 
+	// D7 — a self-connected Wall is one canonical loop. Check it before degree:
+	// the loop is the only incident Wall, so a generic degree-2 diagnostic would
+	// misdescribe the refusal as an unrelated topology count.
+	const closedIncident = document.walls.find(
+		(wall) => wall.startJunctionId === junctionId && wall.endJunctionId === junctionId
+	);
+	if (closedIncident) {
+		return reject({
+			code: 'degenerate_wall_pair',
+			message: `Junction '${junctionId}' is the seam of closed Wall '${closedIncident.id}' (closed_wall_isolated); a loop cannot dissolve`,
+			junctionIds: [junctionId],
+			wallIds: [closedIncident.id]
+		});
+	}
+
 	const incident = document.walls.filter(
 		(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId
 	);
