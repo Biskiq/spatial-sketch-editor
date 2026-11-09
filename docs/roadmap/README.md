@@ -10,7 +10,7 @@ owns claims/review; [focus](../../focus.md) owns current priority.
 
 | Proposed work | Read when pursuing it |
 | --- | --- |
-| Expressive Walls and Spatial Unfolding (draft plan) | [Implementation plan](./t1-spatial-world/expressive-walls/implementation-plan.md) |
+| Expressive Walls, Circular Rooms and Wall Unfolding (draft plan) | [Implementation plan](./t1-spatial-world/expressive-walls/implementation-plan.md) |
 | Prepared visitor publication | [Release and delivery](./t4-release/README.md) |
 | Native geometric depth / Object Studio | [T5 umbrella and first capability](./t5-expressive-geometry/README.md) |
 
