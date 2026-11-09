@@ -55,6 +55,7 @@ import {
 	planUpdateWallFirstOpening,
 	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
+	projectPointToWallCenterline,
 	wallCenterlineSamples,
 	withLayoutCompileSession,
 	type FixedWallEndpoint,
@@ -848,6 +849,43 @@ export type CurvedWallFrame = {
 	}[];
 };
 
+/** One open Wall's sampled frame, straight or curved. */
+export type OpenWallFrame = CurvedWallFrame;
+
+/**
+ * D1 — the frame the Bend gesture consumes. Unlike `curvedWallFrame` it also
+ * resolves a straight Wall, because a body press must bend it on the spot; the
+ * sampled length of a `line` centerline is its chord.
+ */
+export function openWallFrame(document: LayoutDocumentWallFirst, wallId: string): OpenWallFrame | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined) return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	if (wall.startJunctionId === wall.endJunctionId) return null;
+	const sampled = wallCenterlineSamples(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		'forward'
+	);
+	if (sampled === undefined || !(sampled.length > 0) || sampled.samples.length < 2) return null;
+	return {
+		wallId,
+		startJunctionId: wall.startJunctionId,
+		endJunctionId: wall.endJunctionId,
+		start: [start[0], start[1]],
+		end: [end[0], end[1]],
+		length: sampled.length,
+		samples: sampled.samples.map((sample) => ({
+			point: [sample.point[0], sample.point[1]] as LayoutVec2,
+			distance: sample.distance,
+			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2
+		}))
+	};
+}
+
 export function curvedWallFrame(document: LayoutDocumentWallFirst, wallId: string): CurvedWallFrame | null {
 	const wall = lookupIndexedWall(document, wallId);
 	if (wall === undefined || wall.centerline.kind === 'line') return null;
@@ -1079,6 +1117,79 @@ export function wallBendIntent(input: {
 			knotId: input.knotId
 		}
 	});
+}
+
+/**
+ * The physical station a document point names on one Wall, straight or curved.
+ * `null` when the Wall is unresolved or its centerline cannot be sampled.
+ */
+export function wallStationAtPoint(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	point: readonly [number, number]
+): number | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined) return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	const projected = projectPointToWallCenterline(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		[point[0], point[1]]
+	);
+	return projected === undefined ? null : projected.distance;
+}
+
+/**
+ * The physical station a document point names, only when the point actually
+ * lies within `maxDistanceToPath` of the sampled centerline.
+ *
+ * A body press is resolved against the Wall's own samples rather than a scene
+ * pick: a curved face has no chord to pick, and nearness is measured in the
+ * same metres every station uses. A point outside the tolerance is not the
+ * Wall's body and returns `null`.
+ */
+export function wallStationNearPoint(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	point: readonly [number, number],
+	maxDistanceToPath: number
+): number | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined) return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	const projected = projectPointToWallCenterline(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		[point[0], point[1]]
+	);
+	if (projected === undefined || projected.distanceToPath > maxDistanceToPath) return null;
+	return projected.distance;
+}
+
+/**
+ * The Bend preview: the exact candidate the retained planner builds, or its
+ * refusal. Preview and commit share the same captured knot id.
+ */
+export function previewWallBend(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	distance: number,
+	point: readonly [number, number],
+	knotId: string
+):
+	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	const plan = planBendWallCurveKnot(document, wallId, { distance, point: [point[0], point[1]] }, { knotId });
+	if (plan.kind === 'rejected') {
+		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
+	}
+	return { kind: 'planned', document: plan.document };
 }
 
 /**
