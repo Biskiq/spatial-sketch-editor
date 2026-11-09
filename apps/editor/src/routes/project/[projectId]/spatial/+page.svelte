@@ -741,10 +741,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	);
 	let evaluation = $state<ViewportEvaluation | null>(null);
 	/**
-	 * C3/D14 — the single executor for unfold camera requests. The Card/store
-	 * supplies bounds and a look direction; the `face` pose and the animated
-	 * return are both computed and owned by camera-core through this facade. No
-	 * UI component writes the camera.
+	 * C3/D14 — the single executor for unfold camera requests. The only request
+	 * is the exact return on Done/Refold; entry, scrub, peel and side changes do
+	 * not write the camera. No UI component writes the camera.
 	 */
 	$effect(() => {
 		wallUnfold.setCameraExecutor((request) => {
@@ -753,24 +752,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (stage === null || current === null) return false;
 			const ticket = stage.inspectionTicket();
 			if (ticket === null) return false;
-			const clock = performance.now() / 1000;
-			if (request.kind === 'face') {
-				const camera = stage.camera.state();
-				wallUnfold.recordEntry({ pose: camera.pose, reading: camera.reading });
-				return (
-					stage.requestViewingIntent(
-						{
-							kind: 'face',
-							bounds: request.bounds,
-							look: request.look,
-							rect: current.rect,
-							paddingFraction: request.paddingFraction
-						},
-						ticket,
-						clock
-					).kind === 'accepted'
-				);
-			}
 			return (
 				stage.requestViewingIntent(
 					{
@@ -781,11 +762,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						transition: true
 					},
 					ticket,
-					clock
+					performance.now() / 1000
 				).kind === 'accepted'
 			);
 		});
 		return () => wallUnfold.setCameraExecutor(null);
+	});
+	/** Capture the settled entry pose exactly once, without moving the camera. */
+	let unfoldWasActive = false;
+	$effect(() => {
+		const active = wallUnfold.state !== null;
+		const stage = facade;
+		if (active && !unfoldWasActive && stage !== null) {
+			const camera = stage.camera.state();
+			wallUnfold.recordEntry({ pose: camera.pose, reading: camera.reading });
+		}
+		unfoldWasActive = active;
 	});
 	/**
 	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
@@ -2281,6 +2273,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					css,
 					evaluationId: pointerEvaluationId,
 					shift: event.shiftKey,
+					metaKey: event.metaKey,
+					ctrlKey: event.ctrlKey,
 					coarse,
 					...(handleId === undefined ? {} : { handleId }),
 					...(handleAdapterId === undefined ? {} : { handleAdapterId })
@@ -2522,7 +2516,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// T3.P03.S02: one monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
 			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
-			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey, coarse: event.pointerType !== 'mouse' });
+			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
 		}
@@ -2631,7 +2625,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				// rather than released, so no stale projection commits.
 				const phase = session.gesture() === null ? 'cancel' : 'up';
 				perfMark('input:release', { phase });
-				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey, coarse: event.pointerType !== 'mouse' });
+				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
 				if (
 					chip !== null &&
 					phase === 'up' &&
