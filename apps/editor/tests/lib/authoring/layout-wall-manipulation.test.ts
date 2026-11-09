@@ -52,6 +52,8 @@ import {
 	LAYOUT_WALL_ANGLE_KIND,
 	LAYOUT_WALL_LENGTH_KIND,
 	LAYOUT_WALL_MOVE_KIND,
+	curvedWallFrame,
+	curvedWallPointAt,
 	wallFrame,
 	wallManipulationIntent
 } from '$lib/authoring/adapters/layout/precision';
@@ -1518,6 +1520,40 @@ describe('R217.S15 — gesture numeric entry', () => {
 			return Math.abs(points.start[1] - 2) < 1e-6;
 		});
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+	});
+
+	it('bends a straight Wall body and preserves the hosted Opening arc-length station', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const before = mounted.document.openings.find((opening) => opening.id === mounted.openingId)!;
+		const evaluationId = mounted.facade.evaluationId()!;
+		// 4.5 m along the 6 m Wall is body: past the 3 m move grip and off both ends.
+		const from = stageCss(mounted.facade, [4.5, 0]);
+		const to = stageCss(mounted.facade, [4.5, 0.7]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		expect(
+			mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
+		).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'cubic-chain' && wall.centerline.knots.length === 1;
+		});
+		const accepted = acceptedLayout(mounted.facade);
+		const after = accepted.openings.find((opening) => opening.id === mounted.openingId)!;
+		// D3 — the Opening keeps its authored offset and width (its arc-length
+		// station); bending the host moves the station through space, never along it.
+		expect(after.offset).toBeCloseTo(before.offset, 9);
+		expect(after.width).toBeCloseTo(before.width, 9);
+		const frame = curvedWallFrame(accepted, mounted.wallId)!;
+		const station = curvedWallPointAt(frame, after.offset + after.width / 2)!;
+		expect(Math.abs(station.point[1])).toBeGreaterThan(0.05);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		const restored = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+		expect(restored.centerline.kind).toBe('line');
 	});
 
 	it('types a Junction X then Z with Tab and commits one shared-Junction edit', async () => {

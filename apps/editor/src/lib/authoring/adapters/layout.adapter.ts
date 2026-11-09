@@ -1228,18 +1228,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (press === null) return false;
 					const source = document.walls.find((candidate) => candidate.id === selected.wallId);
 					if (source === undefined) return false;
-					// A straight Wall keeps its existing body semantics when no bend mark
-					// resolved the press: endpoint, Junction and Opening presses must not be
-					// re-read as a bend by proximity alone. Curved Walls own the new body grab.
-					if (source.centerline.kind === 'line' && handle === undefined) return false;
-					const knotId = knotMark
-						? handle!.slice('layout-wall-knot:'.length)
+					// Targeted precedence: a press any admitted mark or other pickable
+					// subject claims belongs to that path. Only a genuine body press on this
+					// Wall reaches the bend — straight and curved alike (D1).
+					let effectiveHandle = handle;
+					if (effectiveHandle === undefined) {
+						const hit = services.stage.hitMark({ css: intent.css, coarse: intent.coarse === true });
+						if (hit !== null) {
+							const bendMark = hit.adapterId === 'layout' &&
+								(hit.id.startsWith('layout-wall-knot:') || hit.id.startsWith('layout-wall-span:'));
+							if (!bendMark) return false;
+							effectiveHandle = hit.id;
+						}
+					}
+					if (effectiveHandle === undefined) {
+						const picked = services.stage.resolvePick({
+							css: intent.css,
+							evaluationId: intent.evaluationId,
+							purpose: 'select',
+							tool: null,
+							...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+						});
+						if (
+							picked.kind !== 'resolved' ||
+							picked.hit.sourceKind !== 'wall' ||
+							picked.hit.sourceId !== selected.wallId
+						) return false;
+					}
+					const resolvedKnotMark = effectiveHandle?.startsWith('layout-wall-knot:') === true;
+					const knotId = resolvedKnotMark
+						? effectiveHandle!.slice('layout-wall-knot:'.length)
 						: globalThis.crypto.randomUUID();
-					const knot = knotMark ? source.centerline.kind === 'line'
-						? undefined
-						: source.centerline.knots.find((candidate) => candidate.id === knotId)
+					const knot = resolvedKnotMark && source.centerline.kind !== 'line'
+						? source.centerline.knots.find((candidate) => candidate.id === knotId)
 						: undefined;
-					if (knotMark && knot === undefined) return false;
+					if (resolvedKnotMark && knot === undefined) return false;
 					const distance = knot === undefined
 						? wallStationNearPoint(document, selected.wallId, [press[0], press[1]], BEND_BODY_TOLERANCE_METERS)
 						: wallStationAtPoint(document, selected.wallId, [knot.point[0], knot.point[1]]);
