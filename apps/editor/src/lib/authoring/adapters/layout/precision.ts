@@ -41,6 +41,8 @@ import {
 	nextLayoutPresetObjectId,
 	planBendWallCurveKnot,
 	planCommitLayoutObjectPresetWithId,
+	planConvertWallToLine,
+	planDeleteWallCurveKnot,
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
 	recordPreparedCowCandidate,
@@ -102,6 +104,9 @@ export const LAYOUT_WALL_MOVE_KIND = 'layout-wall-move';
  * address the same identity.
  */
 export const LAYOUT_WALL_BEND_KIND = 'layout-wall-bend';
+/** C1/D2 — the Card's two knot shape actions, through one planner each. */
+export const LAYOUT_WALL_KNOT_DELETE_KIND = 'layout-wall-knot-delete';
+export const LAYOUT_WALL_STRAIGHTEN_KIND = 'layout-wall-straighten';
 /**
  * Review pass 3 — a Room moves rigidly in X/Z. The retained planner moves the
  * Room's connected group (Rooms sharing a Wall travel together) and refuses
@@ -137,6 +142,8 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_ANGLE_KIND]: ['wallId', 'angleRadians', 'fixed'],
 	[LAYOUT_WALL_MOVE_KIND]: ['wallId', 'deltaX', 'deltaZ'],
 	[LAYOUT_WALL_BEND_KIND]: ['wallId', 'distance', 'x', 'z', 'knotId'],
+	[LAYOUT_WALL_KNOT_DELETE_KIND]: ['wallId', 'knotId'],
+	[LAYOUT_WALL_STRAIGHTEN_KIND]: ['wallId'],
 	[LAYOUT_ROOM_MOVE_KIND]: ['roomId', 'deltaX', 'deltaZ'],
 	[LAYOUT_JUNCTION_MOVE_KIND]: ['wallId', 'junctionId', 'x', 'z'],
 	[LAYOUT_OPENING_MEASURE_KIND]: ['openingId', 'field', 'value'],
@@ -518,6 +525,50 @@ function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
+/**
+ * C1/D2 — remove the active bend point. The retained delete-by-merge planner
+ * owns the geometry, Opening fit and atomic refusal; the Card only names which
+ * captured knot the creator made active.
+ */
+function wallKnotDeletePlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_WALL_KNOT_DELETE_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_KNOT_DELETE_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, knotId } = payload.value;
+		if (!opaqueId(wallId) || !opaqueId(knotId)) {
+			return rejected('invalid-value', 'Removing a bend point needs one wall id and one bend-point id.');
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planDeleteWallCurveKnot(
+			request.snapshot.domain.source.units.layout.data,
+			wallId,
+			knotId
+		);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(request, 'layout-wall-knot-delete', { kind: 'wall', id: wallId }, plan.document, [
+			'shape'
+		]);
+	});
+}
+
+/** C1 — Straighten Wall through the retained convert-to-line planner. */
+function wallStraightenPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_WALL_STRAIGHTEN_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_STRAIGHTEN_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId } = payload.value;
+		if (!opaqueId(wallId)) return rejected('invalid-value', 'Straightening a Wall needs one wall id.');
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planConvertWallToLine(request.snapshot.domain.source.units.layout.data, wallId);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(request, 'layout-wall-straighten', { kind: 'wall', id: wallId }, plan.document, [
+			'shape'
+		]);
+	});
+}
+
 /** Rigid Room-group translation: one delta for the Room and every Room joined to it. */
 function roomMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_ROOM_MOVE_KIND, (request) => {
@@ -764,6 +815,8 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		wallAnglePlanner(),
 		wallMovePlanner(),
 		wallBendPlanner(),
+		wallKnotDeletePlanner(),
+		wallStraightenPlanner(),
 		roomMovePlanner(),
 		junctionMovePlanner(),
 		openingMeasurePlanner(),
@@ -1119,6 +1172,69 @@ export function wallBendIntent(input: {
 	});
 }
 
+/** C1/D2 — one captured intent for removing the active bend point. */
+export function wallKnotDeleteIntent(input: {
+	readonly wallId: string;
+	readonly knotId: string;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	const reference: SemanticReference = {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: 'wall', id: input.wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	return buildLayoutIntent({
+		operationId: input.operationId,
+		projectId: input.projectId,
+		revisionId: input.revisionId,
+		contentRevision: input.contentRevision,
+		levelId: input.levelId,
+		targets: [reference],
+		kind: LAYOUT_WALL_KNOT_DELETE_KIND,
+		payload: { wallId: input.wallId, knotId: input.knotId }
+	});
+}
+
+/** C1 — one captured intent for Straighten Wall. */
+export function wallStraightenIntent(input: {
+	readonly wallId: string;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	const reference: SemanticReference = {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: 'wall', id: input.wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	return buildLayoutIntent({
+		operationId: input.operationId,
+		projectId: input.projectId,
+		revisionId: input.revisionId,
+		contentRevision: input.contentRevision,
+		levelId: input.levelId,
+		targets: [reference],
+		kind: LAYOUT_WALL_STRAIGHTEN_KIND,
+		payload: { wallId: input.wallId }
+	});
+}
+
 /**
  * The station frame Opening marks consume: one `pointAt` that is linear on a
  * straight Wall (byte-identical to `framePoint`) and arc-length on a curved
@@ -1243,6 +1359,37 @@ export function previewWallBend(
 		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
 	}
 	return { kind: 'planned', document: plan.document };
+}
+
+/**
+ * C1/D2 — the exact candidate a Card knot action would install, or its refusal.
+ * The action runs this before acceptance, so a refused edit is named without a
+ * write and the accepted edit is the same planner's document.
+ */
+export function previewWallKnotDelete(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	knotId: string
+):
+	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	const plan = planDeleteWallCurveKnot(document, wallId, knotId);
+	return plan.kind === 'rejected'
+		? { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message }
+		: { kind: 'planned', document: plan.document };
+}
+
+/** C1 — the exact Straighten candidate, or its refusal. */
+export function previewWallStraighten(
+	document: LayoutDocumentWallFirst,
+	wallId: string
+):
+	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	const plan = planConvertWallToLine(document, wallId);
+	return plan.kind === 'rejected'
+		? { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message }
+		: { kind: 'planned', document: plan.document };
 }
 
 /**

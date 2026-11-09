@@ -161,8 +161,12 @@ describe('T1.P01.S04 — Layout precision', () => {
 			// C1 — one grab on an open Wall body is its own retained operation.
 			'layout-wall-bend',
 			'layout-wall-height',
+			// C1/D2 — the Card's two knot shape actions are retained planners of their
+			// own, so the Card's one action channel never mutates a document directly.
+			'layout-wall-knot-delete',
 			'layout-wall-length',
 			'layout-wall-move',
+			'layout-wall-straighten',
 			'layout-wall-thickness'
 		]);
 		expect(createDrawingPlanners().map((planner) => planner.kind).sort()).toEqual([

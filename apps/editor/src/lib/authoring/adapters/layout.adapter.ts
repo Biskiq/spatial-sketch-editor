@@ -75,6 +75,7 @@ import {
 	type StageAdapterBinding,
 	type StageAdapterContext,
 	type StageCardAction,
+	type StageCardActionOutcome,
 	type StageCardFact,
 	type StageCardSubject,
 	type StageCandidatePreview,
@@ -179,10 +180,15 @@ import {
 	parsePlacementXZ,
 	wallFrame,
 	wallStationFrame,
+	curvedWallFrame,
 	curvedWallPointAt,
 	openWallFrame,
 	previewWallBend,
+	previewWallKnotDelete,
+	previewWallStraighten,
 	wallBendIntent,
+	wallKnotDeleteIntent,
+	wallStraightenIntent,
 	wallStationAtPoint,
 	wallStationNearPoint,
 	wallManipulationIntent,
@@ -1172,6 +1178,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
 			let bendGesture: BendGesture | null = null;
+			/**
+			 * C1/D2 — the bend point the Card currently names. It is selection-scoped
+			 * session state: never serialized, cleared by Escape or a different host,
+			 * and read by both the marks and the Card's one action channel.
+			 */
+			let activeKnot: { readonly wallId: string; readonly knotId: string } | null = null;
 
 			function endBendGesture(): void {
 				const current = bendGesture;
@@ -1281,7 +1293,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					bendGesture = {
 						evaluationId: intent.evaluationId,
 						pressCss: intent.css,
-						markId: handle ?? 'layout-wall-body',
+						markId: effectiveHandle ?? 'layout-wall-body',
 						wallId: selected.wallId,
 						knotId,
 						frame: selected.frame,
@@ -1328,6 +1340,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				bendGesture = null;
 				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
 				if (current !== null && current.intent !== null) commitBend(current, current.intent);
+				else if (
+					current !== null &&
+					current.markId.startsWith('layout-wall-knot:') &&
+					!isPointerDrag(current.pressCss, intent.css)
+				) {
+					// A click, not a drag: the solid point becomes the active bend point the
+					// Card names. No document write, so no history entry is created.
+					activeKnot = { wallId: current.wallId, knotId: current.knotId };
+				}
 				services.stage.notifySurfaceChange();
 				return true;
 			}
@@ -1565,6 +1586,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function markDescriptors(adapterContext: StageAdapterContext): readonly StageHandleDescriptor[] {
 				if (openTaskKind !== null || services.stage.session.task() !== null) return [];
+				// D2 — a selection change clears the active bend point. Reconcile here,
+				// where the new primary subject is already known, instead of keeping a
+				// stale knot that a later reselect could silently revive.
+				const primary = adapterContext.selectionState().primary;
+				if (
+					activeKnot !== null &&
+					(primary === null || primary.subject.kind !== 'wall' || primary.subject.id !== activeKnot.wallId)
+				) {
+					activeKnot = null;
+				}
 				const wall = selectedWall(adapterContext);
 				const curved = wall === null ? selectedCurvedWall(adapterContext) : null;
 				const opening = wall === null && curved === null ? selectedOpening(adapterContext) : null;
@@ -1576,20 +1607,26 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// so the vocabulary and the gesture cannot drift apart.
 					const source = document.walls.find((candidate) => candidate.id === curved.wallId);
 					if (source === undefined || source.centerline.kind === 'line') return [];
+					// D2 — a different host clears the session's active knot. This is a
+					// read-side reconciliation, not a document or history change.
+					if (activeKnot !== null && activeKnot.wallId !== curved.wallId) activeKnot = null;
 					const live = bendGesture?.wallId === curved.wallId ? bendGesture : null;
-					const descriptors: StageHandleDescriptor[] = source.centerline.knots.map((knot): StageHandleDescriptor => ({
-						id: `layout-wall-knot:${knot.id}`,
-						kind: 'point',
-						role: 'edit',
-						anchor: [knot.point[0], y, knot.point[1]],
-						draw: { pointRadius: 5.2 },
-						label: 'Bend point',
-						fact: 'bend',
-						verb: 'Bend',
-						planner: LAYOUT_WALL_BEND_KIND,
-						value: `X ${knot.point[0].toFixed(2)} · Z ${knot.point[1].toFixed(2)} m`,
-						refusal: live?.refusal ?? null
-					}));
+					const descriptors: StageHandleDescriptor[] = source.centerline.knots.map((knot): StageHandleDescriptor => {
+						const active = activeKnot?.knotId === knot.id && activeKnot.wallId === curved.wallId;
+						return {
+							id: `layout-wall-knot:${knot.id}`,
+							kind: 'point',
+							role: 'edit',
+							anchor: [knot.point[0], y, knot.point[1]],
+							draw: active ? { pointRadius: 6.8, cross: true } : { pointRadius: 5.2 },
+							label: active ? 'Active bend point' : 'Bend point',
+							fact: 'bend',
+							verb: 'Bend',
+							planner: LAYOUT_WALL_BEND_KIND,
+							value: `X ${knot.point[0].toFixed(2)} · Z ${knot.point[1].toFixed(2)} m`,
+							refusal: live?.refusal ?? null
+						};
+					});
 					const spans = source.centerline.knots.length + 1;
 					for (let index = 0; index < spans; index += 1) {
 						const at = curvedWallPointAt(curved.frame, ((index + 0.5) / spans) * curved.frame.length);
@@ -3577,7 +3614,32 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						sourceKind: cardSubject.sourceKind,
 						sourceId: cardSubject.sourceId
 					});
-					return subject === null ? [] : factsFor(document, subject);
+					if (subject === null) return [];
+					const facts = [...factsFor(document, subject)];
+					// C1 — the approved Card reads a curved Wall's arc length and bend-point
+					// count, and names the active bend point when one is selected. Straight
+					// Walls keep exactly their existing facts.
+					const source = subject.kind === 'wall'
+						? document.walls.find((wall) => wall.id === subject.id)
+						: undefined;
+					if (source?.centerline.kind === 'cubic-chain') {
+						const frame = curvedWallFrame(document, source.id);
+						if (frame !== null) {
+							facts.push({ label: 'Length (arc)', value: `${frame.length.toFixed(3)} m`, fieldId: 'arcLength' });
+						}
+						facts.push({ label: 'Bend points', value: String(source.centerline.knots.length), fieldId: 'bendPoints' });
+						const activeIndex = activeKnot?.wallId === source.id
+							? source.centerline.knots.findIndex((knot) => knot.id === activeKnot!.knotId)
+							: -1;
+						if (activeIndex >= 0) {
+							facts.push({
+								label: 'Active bend point',
+								value: `${activeIndex + 1} of ${source.centerline.knots.length}`,
+								fieldId: 'activeBendPoint'
+							});
+						}
+					}
+					return facts;
 				},
 				cardName(cardSubject: StageCardSubject) {
 					if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
@@ -3682,9 +3744,58 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (cardSubject.sourceKind !== 'wall') return [];
 					const wallId = cardSubject.sourceId;
+					// C1/D2 — one shared action channel for the active knot and the Wall's
+					// shape. Each run previews the retained planner first and then accepts
+					// one captured intent, so a refusal writes nothing and an acceptance is
+					// one undo step. A straight Wall adds no action here.
+					const wallSource = document.walls.find((candidate) => candidate.id === wallId);
+					const curveActions: StageCardAction[] = [];
+					if (wallSource?.centerline.kind === 'cubic-chain') {
+						const knots = wallSource.centerline.knots;
+						const activeIndex = activeKnot?.wallId === wallId
+							? knots.findIndex((knot) => knot.id === activeKnot!.knotId)
+							: -1;
+						const runCurve = async (kind: 'delete' | 'straighten'): Promise<StageCardActionOutcome> => {
+							const preview = kind === 'delete' && activeKnot !== null
+								? previewWallKnotDelete(document, wallId, activeKnot.knotId)
+								: previewWallStraighten(document, wallId);
+							if (preview.kind === 'refused') return { kind: 'refused', message: preview.message };
+							const snapshot = services.stage.snapshot();
+							const base = {
+								operationId: globalThis.crypto.randomUUID(),
+								projectId: snapshot.acceptedRevision.projectId,
+								revisionId: services.authoring.acceptedRevision().revisionId,
+								contentRevision: stageUnitRevision(snapshot, 'layout'),
+								levelId: snapshot.domain.layoutLevelId
+							};
+							const outcome = await services.authoring.accept(
+								kind === 'delete' && activeKnot !== null
+									? wallKnotDeleteIntent({ ...base, wallId, knotId: activeKnot.knotId })
+									: wallStraightenIntent({ ...base, wallId })
+							);
+							if (outcome.kind === 'refused') return { kind: 'refused', message: outcome.message };
+							if (kind === 'delete') activeKnot = null;
+							services.stage.notifySurfaceChange();
+							return { kind: 'accepted' };
+						};
+						if (activeIndex >= 0) {
+							curveActions.push({
+								id: 'layout-wall-knot-remove',
+								label: 'Remove bend point',
+								detail: `Removes bend point ${activeIndex + 1} of ${knots.length}; its two spans merge in one undo step.`,
+								run: () => runCurve('delete')
+							});
+						}
+						curveActions.push({
+							id: 'layout-wall-straighten',
+							label: 'Straighten Wall',
+							detail: 'Returns this curved Wall to its straight chord in one undo step; hosted Openings keep their arc-length stations.',
+							run: () => runCurve('straighten')
+						});
+					}
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [
+						return [...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -3695,6 +3806,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						];
 					}
 					return [
+						...curveActions,
 						{
 							id: 'layout-wall-delete',
 							label: 'Delete Wall',
@@ -3741,6 +3853,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// Direct manipulation has no task, but its press is a writer: typing
 						// freezes the pointer candidate and opens numeric entry, Enter commits
 						// once, and Esc discards without a document change or history entry.
+						// D2 — Escape clears the active bend point before any other Escape
+						// precedence, but only when no live gesture owns the key. It writes
+						// nothing and leaves history untouched.
+						if (
+							intent.kind === 'cancel' &&
+							bendGesture === null &&
+							gesture === null &&
+							junctionGesture === null &&
+							openingGesture === null &&
+							activeKnot !== null
+						) {
+							activeKnot = null;
+							services.stage.notifySurfaceChange();
+							return true;
+						}
 						const active = gesture ?? junctionGesture ?? openingGesture;
 						if (active === null) return false;
 						if (intent.kind === 'type') {
