@@ -149,7 +149,9 @@ export function sampledWallExtentsOverlap(
  * connectivity: both polylines necessarily touch at that point. The shared
  * traversal is oriented so the shared Junction is `a`'s end and `b`'s start —
  * the one configuration the kernel's `ignoreSharedEndpoint` seam recognises —
- * and every other crossing along either curve still rejects.
+ * and every other crossing along either curve still rejects. Two curved Walls
+ * may share BOTH Junctions (a two-Wall lens); both explicit joins are then
+ * legal, so the opposite endpoint seam is ignored as well.
  */
 export function sampledWallsCross(
 	a: SampledTopologyWall,
@@ -163,11 +165,22 @@ export function sampledWallsCross(
 	const reverseSecond = b.startJunctionId !== sharedJunctionId;
 	const first = reverseFirst ? [...a.samples].reverse() : a.samples;
 	const second = reverseSecond ? [...b.samples].reverse() : b.samples;
-	// `first` now ends at the shared Junction and `second` starts there; that
-	// point is the only sample pair the predicate is allowed to ignore.
+	// `first` now ends at the shared Junction and `second` starts there. A
+	// two-Wall lens also joins at the opposite endpoints, so both explicit
+	// joins are ignored and every interior crossing still rejects.
 	const sharedPoint = first.at(-1)?.point;
 	if (!sharedPoint) return false;
-	return sampledPolylineIntersects(first, second, CURVE_SELF_INTERSECTION_TOLERANCE, sharedPoint);
+	const sharesBothJunctions =
+		(a.startJunctionId === b.startJunctionId && a.endJunctionId === b.endJunctionId) ||
+		(a.startJunctionId === b.endJunctionId && a.endJunctionId === b.startJunctionId);
+	const otherSharedPoint = sharesBothJunctions ? first[0]?.point : undefined;
+	return sampledPolylineIntersects(
+		first,
+		second,
+		CURVE_SELF_INTERSECTION_TOLERANCE,
+		sharedPoint,
+		otherSharedPoint
+	);
 }
 
 /**

@@ -34,6 +34,8 @@ export type WallUnfoldCameraRequest =
 				readonly max: [number, number, number];
 			};
 			readonly look: [number, number, number];
+			/** Extra room so the sheet does not run under the Stage chrome. */
+			readonly paddingFraction?: number;
 	  }
 	| {
 			readonly kind: 'return';
@@ -95,7 +97,9 @@ class WallUnfoldStore {
 		this.state = state;
 		// One `face` transition to the sheet fitted at u = 1; the sheet animates
 		// 0 → 1 on the same declared clock and easing.
-		this.#requestFace(wall, state);
+		// Frame the sheet at its unfolded extent, not the folded source Wall. The
+		// sheet is what the camera faces for the whole transition.
+		this.#requestFace(wall, state, 1);
 		this.animateTo(wall, 1);
 	}
 
@@ -108,7 +112,7 @@ class WallUnfoldStore {
 	flip(wall: CompiledPhysicalWall): void {
 		if (this.state === null) return;
 		this.state = flipWallUnfoldSide(this.state);
-		this.#requestFace(wall, this.state);
+		this.#requestFace(wall, this.state, this.state.u);
 	}
 
 	refold(wall: CompiledPhysicalWall): void {
@@ -175,17 +179,17 @@ class WallUnfoldStore {
 		this.#frame = null;
 	}
 
-	#requestFace(wall: CompiledPhysicalWall, state: WallUnfoldState): void {
+	#requestFace(wall: CompiledPhysicalWall, state: WallUnfoldState, amount = state.u): void {
 		const prepared = prepareWallUnfoldDevelopment(state, wall);
 		if ('refused' in prepared) return;
 		const buffers = createWallDevelopmentBuffers(prepared);
-		evaluateWallDevelopment(prepared, state.u, buffers);
+		evaluateWallDevelopment(prepared, amount, buffers);
 		const frame = developmentFaceFrame(prepared, buffers, state.side, {
 			thickness: wall.thickness,
 			height: wall.height
 		});
 		if (frame === null) return;
-		this.#executor?.({ kind: 'face', bounds: frame.bounds, look: frame.look });
+		this.#executor?.({ kind: 'face', bounds: frame.bounds, look: frame.look, paddingFraction: 0.18 });
 	}
 
 	#requestReturn(state: WallUnfoldState): void {

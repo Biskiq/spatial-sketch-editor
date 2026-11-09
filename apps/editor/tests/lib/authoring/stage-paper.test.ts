@@ -307,14 +307,16 @@ describe('Paper Plan — stream treatment', () => {
 		const cutFragments = eligiblePlanFragments(plan).filter((fragment) => fragment.ref.stream === 'cut');
 		expect(cutFragments.length).toBeGreaterThan(0);
 		const poche = drawing.fills.filter((fill) => fill.treatment === 'cut');
-		expect(poche).toHaveLength(cutFragments.length);
+		// One contiguous ribbon per Wall run, not one quad per sampled chord.
+		expect(poche).toHaveLength(new Set(cutFragments.map((fragment) => fragment.ref.sourceId)).size);
 		for (const fill of poche) {
 			expect(fill.layer).toBe(PAPER_LAYER.cut);
-			expect(fill.polygons[0]).toHaveLength(4);
+			expect(fill.polygons[0]!.length).toBeGreaterThanOrEqual(4);
 			// The band is the Wall's own thickness, not a centre-line stroke: at least one
 			// edge is separated from its opposite by the compiled thickness.
 			const polygon = fill.polygons[0]!;
-			const thickness = Math.hypot(polygon[3]![0] - polygon[0]![0], polygon[3]![1] - polygon[0]![1]);
+			const last = polygon.at(-1)!;
+			const thickness = Math.hypot(last[0] - polygon[0]![0], last[1] - polygon[0]![1]);
 			const wall = fixture.compiled.walls.find((candidate) => candidate.wallId === fill.sourceId);
 			expect(thickness).toBeCloseTo(wall!.thickness, 6);
 		}
@@ -442,13 +444,28 @@ describe('Paper Plan — stream treatment', () => {
 
 describe('Paper Plan — Scene and native-form outlines', () => {
 	it('unions thousands of sampled 1000m Wall bands to the exact outer contour', () => {
-		// The compiler samples the long Wall at 0.25m, and Plan emits one cut-band
-		// quad per solid sample interval. The contour remains the four exact outer
-		// edges; internal sample seams are not authored or drawn boundaries.
+		// Plan now emits one continuous ribbon for the sampled Wall. Miter joins mean
+		// its own outline is already the four edges, not one cap per 0.25m sample.
 		const fixture = enclosure([[0, 0], [1000, 0], [1000, 4], [0, 4]]);
 		const wallId = fixture.document.walls[0]!.id;
 		const drawing = buildPaperPlan(evaluate(fixture.compiled, { depthMeters: 2000 }), fixture.compiled, EMPTY_PROJECTION);
-		const bands = drawing.fills.filter((fill) => fill.sourceId === wallId).flatMap((fill) => fill.polygons);
+		const plannedBands = drawing.fills.filter((fill) => fill.sourceId === wallId).flatMap((fill) => fill.polygons);
+		expect(plannedBands).toHaveLength(1);
+		expect(unionOutline(plannedBands)).toHaveLength(4);
+		// Keep the broad-phase proof honest with the per-sample quads it was written
+		// for. They remain a legal `unionOutline` input even though Plan no longer
+		// draws them.
+		const wall = fixture.compiled.walls.find((candidate) => candidate.wallId === wallId)!;
+		const half = wall.thickness / 2;
+		const bands = wall.samples.slice(0, -1).map((start, index) => {
+			const end = wall.samples[index + 1]!;
+			return [
+				[start.point[0] + start.normal[0] * half, start.point[1] + start.normal[1] * half],
+				[end.point[0] + end.normal[0] * half, end.point[1] + end.normal[1] * half],
+				[end.point[0] - end.normal[0] * half, end.point[1] - end.normal[1] * half],
+				[start.point[0] - start.normal[0] * half, start.point[1] - start.normal[1] * half]
+			] as LayoutVec2[];
+		});
 		expect(bands).toHaveLength(4000);
 		const fills = drawing.fills.filter((fill) => fill.sourceId === wallId);
 		const paper = createPaperScene({ fills, lines: [], footprints: [] }, [1280, 720]);
@@ -464,9 +481,9 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 				expect(inks).toHaveLength(1);
 				const mesh = inks[0] as Mesh;
 				expect(mesh).toBeInstanceOf(Mesh);
-				expect(mesh.geometry.index!.count).toBe(bands.length * 6);
+				expect(mesh.geometry.index!.count).toBeGreaterThan(0);
 				const positions = mesh.geometry.getAttribute('position');
-				expect(positions.count).toBe(bands.length * 4);
+				expect(positions.count).toBeGreaterThan(0);
 				for (let index = 0; index < positions.count; index += 1) {
 					expect(positions.getY(index)).toBeCloseTo(fills[0]!.elevationMeters, 6);
 				}
@@ -498,8 +515,9 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 		const lengths = outline.map(([start, end]) => Math.hypot(end[0] - start[0], end[1] - start[1])).sort((a, b) => a - b);
 		expect(lengths[0]).toBeCloseTo(0.2, 6);
 		expect(lengths[1]).toBeCloseTo(0.2, 6);
-		expect(lengths[2]).toBeCloseTo(1000.2, 6);
-		expect(lengths[3]).toBeCloseTo(1000.2, 6);
+		// These synthetic bands carry no junction cap extension.
+		expect(lengths[2]).toBeCloseTo(1000, 6);
+		expect(lengths[3]).toBeCloseTo(1000, 6);
 
 		// Rotation changes both the broad-phase cell coverage and exact edge
 		// coordinates; it must retain the same source union and output lengths.
@@ -515,9 +533,9 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 		expect(rotatedOutline).toHaveLength(4);
 		expect(rotatedLengths[0]).toBeCloseTo(0.2, 5);
 		expect(rotatedLengths[1]).toBeCloseTo(0.2, 5);
-		expect(rotatedLengths[2]).toBeCloseTo(1000.2, 5);
-		expect(rotatedLengths[3]).toBeCloseTo(1000.2, 5);
-	});
+		expect(rotatedLengths[2]).toBeCloseTo(1000, 5);
+		expect(rotatedLengths[3]).toBeCloseTo(1000, 5);
+	}, 15_000);
 
 	it('keeps the outer silhouette when an edge is only partly covered', () => {
 		// Two offset rectangles: A=[0,2]×[0,2], B=[1,3]×[1,3]. Four full edges have

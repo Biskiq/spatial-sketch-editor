@@ -2753,9 +2753,15 @@ function validateWallFirstTopologyPass(
 		if (intersection.kind === 'shared-explicit-junction') {
 			// The classifier intentionally gives explicit connectivity priority;
 			// still reject two collinear spans that overlap beyond the shared
-			// endpoint, which is not a valid graph edge.
+			// endpoint, which is not a valid graph edge. A two-Wall curved lens has
+			// the same chord, but its two curves are the distinct boundary edges;
+			// the sampled curve gate below proves they only meet at both endpoints.
+			const twoWallCurvedLens =
+				shared.length === 2 &&
+				a.centerline.kind === 'cubic-chain' &&
+				b.centerline.kind === 'cubic-chain';
 			const geometric = classifyWallIntersection(segmentA, segmentB, []);
-			if (geometric.kind === 'collinear-overlap') {
+			if (geometric.kind === 'collinear-overlap' && !twoWallCurvedLens) {
 				return topologyFailure(a.id, b.id, 'Walls overlap beyond their explicit shared Junction');
 			}
 			return undefined;
@@ -2827,19 +2833,15 @@ function validateWallFirstTopologyPass(
 	}
 
 	for (const room of subject && !subject.evaluateRooms ? [] : document.rooms) {
-		// A closed Wall contributes ONE oriented ref but many sampled vertices, so
-		// the floor is resolved polygon vertices, not Wall-ref count. This is the
-		// same geometry the Room compiler and reconciliation consume. Only the
-		// canonical self-connected cubic loop earns the one-ref exception; an open
-		// one- or two-ref chain still needs three distinct boundary Walls.
-		const singleClosedWall =
-			room.boundary.length === 1 &&
-			(() => {
-				const wall = wallById.get(room.boundary[0]!.wallId);
-				return wall !== undefined && isClosedWall(wall);
-			})();
-		if (room.boundary.length < 3 && !singleClosedWall) {
-			return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary Walls`);
+		// A closed Wall contributes ONE oriented ref but many sampled vertices, and
+		// a two-Wall curved lens contributes TWO refs and a bounded polygon. The
+		// floor is resolved vertices, not Wall-ref count. Resolve the polygon before
+		// refusing a short boundary, so only a genuinely degenerate loop fails.
+		if (room.boundary.length < 3) {
+			const roomPolygon = roomBoundaryPolygon(document, room.id);
+			if (!roomPolygon || roomPolygon.length < 3) {
+				return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary Walls`);
+			}
 		}
 		let previousEnd: string | undefined;
 		let firstStart: string | undefined;
@@ -2864,19 +2866,6 @@ function validateWallFirstTopologyPass(
 			previousEnd = end;
 		}
 		if (previousEnd !== firstStart) return topologyFailure(room.id, undefined, `Room '${room.id}' boundary is not closed`);
-		// Sample only the canonical one-ref loop. Ordinary Rooms already proved
-		// their boundary through the Wall refs above, and sampling every Room here
-		// would add uncached work to the hot preflight path (P23B.5 OR-9).
-		if (singleClosedWall) {
-			const roomPolygon = roomBoundaryPolygon(document, room.id);
-			if (!roomPolygon || roomPolygon.length < 3) {
-				return topologyFailure(
-					room.id,
-					undefined,
-					`Room '${room.id}' needs at least three resolved boundary vertices`
-				);
-			}
-		}
 	}
 
 	if (options.openingSet !== 'defer') {

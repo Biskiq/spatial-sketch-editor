@@ -26,6 +26,7 @@ import {
 	extractBoundaryCandidateFaces,
 	interiorWitness,
 	planConvertWallToCurve,
+	planMoveWallCurveKnot,
 	roomBoundaryPolygon,
 	validateWallFirstLayoutDocument,
 	validateWallFirstTopology,
@@ -141,6 +142,82 @@ const BOW = curve([0, 0], [6, 0], [3, 2]);
 const BOW_OUT = curve([0, 0], [6, 0], [3, -2]);
 
 describe('P23.11 slice 3 — curved Room face polygons', () => {
+	it('resolves a two-Wall curved lens as a bounded Room polygon', () => {
+		const lens = documentOf(
+			{ 'j-a': [0, 0], 'j-b': [6, 0] },
+			[
+				{ id: 'wall-top', start: 'j-a', end: 'j-b', centerline: curve([0, 0], [6, 0], [3, 2]) },
+				{ id: 'wall-bottom', start: 'j-b', end: 'j-a', centerline: curve([6, 0], [0, 0], [3, -2]) }
+			],
+			[
+				{
+					id: 'room-lens',
+					name: 'Lens',
+					// Bounded face traversal keeps the interior on the left: the lens
+					// runs top B→A then bottom A→B, i.e. both Wall refs reversed.
+					boundary: [
+						{ wallId: 'wall-top', direction: 'reverse' },
+						{ wallId: 'wall-bottom', direction: 'reverse' }
+					],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				}
+			]
+		);
+		const polygon = roomBoundaryPolygon(lens, 'room-lens');
+		expect(polygon).not.toBeNull();
+		expect(polygon!.length).toBeGreaterThan(12);
+		expect(Math.max(...polygon!.map((point) => point[1]))).toBeGreaterThan(1.5);
+		expect(Math.min(...polygon!.map((point) => point[1]))).toBeLessThan(-1.5);
+		expect(interiorWitness(polygon!)).not.toEqual([3, 0]);
+		// A two-reference boundary is still a real Room: document and topology
+		// validation agree, its stored cycle is the bounded face's own canonical
+		// cycle, and the face corresponds to its predecessor 1→1.
+		expect(extractBoundaryCandidateFaces(lens).faces[0]?.boundary).toEqual(lens.rooms[0]!.boundary);
+		expect(validateWallFirstLayoutDocument(lens).success).toBe(true);
+		expect(validateWallFirstTopology(lens)).toBeUndefined();
+		expect(roomCorrespondence(lens)).toEqual(['1→1']);
+	});
+
+	it('keeps a two-Wall lens Room through a bend and a canonical reload', () => {
+		const lens = documentOf(
+			{ 'j-a': [0, 0], 'j-b': [6, 0] },
+			[
+				{ id: 'wall-top', start: 'j-a', end: 'j-b', centerline: curve([0, 0], [6, 0], [3, 2]) },
+				{ id: 'wall-bottom', start: 'j-b', end: 'j-a', centerline: curve([6, 0], [0, 0], [3, -2]) }
+			],
+			[
+				{
+					id: 'room-lens',
+					name: 'Lens',
+					boundary: [
+						{ wallId: 'wall-top', direction: 'reverse' },
+						{ wallId: 'wall-bottom', direction: 'reverse' }
+					],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				}
+			]
+		);
+		// Bend the upper curve through the same canonical knot writer a product
+		// drag commits, then validate the resulting two-Wall enclosure.
+		const bent = planMoveWallCurveKnot(lens, 'wall-top', 'wall-a:knot:1', [3, 2.6]);
+		expect(bent.kind, bent.kind === 'rejected' ? JSON.stringify(bent.rejection) : '').toBe('success');
+		if (bent.kind !== 'success') return;
+		expect(validateWallFirstLayoutDocument(bent.document).success).toBe(true);
+		expect(validateWallFirstTopology(bent.document)).toBeUndefined();
+		expect(roomCorrespondence(bent.document)).toEqual(['1→1']);
+		const polygon = roomBoundaryPolygon(bent.document, 'room-lens');
+		expect(polygon).not.toBeNull();
+		expect(Math.max(...polygon!.map((point) => point[1]))).toBeGreaterThan(2.4);
+
+		// The lens survives the canonical Save/Load boundary unchanged, including
+		// its Room identity and sampled polygon.
+		const reloaded = JSON.parse(JSON.stringify(bent.document)) as LayoutDocumentWallFirst;
+		expect(roomBoundaryPolygon(reloaded, 'room-lens')).toEqual(polygon);
+		expect(roomCorrespondence(reloaded)).toEqual(['1→1']);
+	});
+
 	it('keeps a straight Room polygon at exactly its Junction vertices', () => {
 		const result = extractBoundaryCandidateFaces(rectangularRoom());
 		expect(result.faces).toHaveLength(1);

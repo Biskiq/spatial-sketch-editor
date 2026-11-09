@@ -144,13 +144,6 @@ export function roomBoundaryPolygon(
 	if (!room) return null;
 	const junctionById = lookup ? lookup.junctionById : new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const wallById = lookup ? lookup.wallById : new Map(document.walls.map((wall) => [wall.id, wall]));
-	// The one-ref exception is only the canonical self-connected Wall. A one- or
-	// two-ref open chain stays unresolvable here exactly as it did before D6.
-	if (room.boundary.length < 3) {
-		if (room.boundary.length !== 1) return null;
-		const only = wallById.get(room.boundary[0]!.wallId);
-		if (!only || only.startJunctionId !== only.endJunctionId) return null;
-	}
 	const polygon: LayoutVec2[] = [];
 	for (const ref of room.boundary) {
 		const wall = wallById.get(ref.wallId);

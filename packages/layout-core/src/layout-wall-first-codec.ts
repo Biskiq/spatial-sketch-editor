@@ -160,7 +160,9 @@ export function createEmptyWallFirstLayoutDocument(): LayoutDocumentWallFirst {
  * - IDs are unique within their document-global collection (junctions, walls,
  *   openings, objects) and across rooms;
  * - every Wall references two existing, distinct Junction IDs;
- * - duplicate Walls between the same two Junctions are invalid;
+ * - duplicate Walls between the same two Junctions are invalid, except the
+ *   exactly-two curved Walls of a two-Wall lens (topology must then prove the
+ *   loop closed, simple and bounded);
  * - Room boundary references point at existing Walls; a Room boundary must
  *   not use the same directed Wall ref twice (undirected reuse across two
  *   Rooms is the shared-wall case and stays valid);
@@ -313,11 +315,20 @@ function parseDocument(
 
 	// H3 minimum invariant: duplicate Walls between the same two Junctions are
 	// invalid — in either direction (a reversed pair is the same physical wall
-	// with opposed canonical orientation, not two Walls).
-	const seenWallPairs = new Set<string>();
+	// with opposed canonical orientation, not two Walls). The one exception is
+	// the two-Wall curved lens: two distinct cubic Walls between two distinct
+	// Junctions enclose a real region. Topology still has to prove that loop
+	// closed, simple and bounded; here the codec only admits the candidate shape.
+	const seenWallPairs = new Map<string, { wall: LayoutWall; count: number }>();
 	for (const [index, wall] of walls.entries()) {
 		const pairKey = [wall.startJunctionId, wall.endJunctionId].sort().join('|');
-		if (seenWallPairs.has(pairKey)) {
+		const previous = seenWallPairs.get(pairKey);
+		const twoWallCurvedLens =
+			previous?.count === 1 &&
+			previous.wall.startJunctionId !== previous.wall.endJunctionId &&
+			previous.wall.centerline.kind === 'cubic-chain' &&
+			wall.centerline.kind === 'cubic-chain';
+		if (previous !== undefined && !twoWallCurvedLens) {
 			addIssue(
 				issues,
 				`${path}.walls[${index}]`,
@@ -325,7 +336,8 @@ function parseDocument(
 				`Duplicate Wall between junctions '${wall.startJunctionId}' and '${wall.endJunctionId}'`
 			);
 		}
-		seenWallPairs.add(pairKey);
+		if (previous === undefined) seenWallPairs.set(pairKey, { wall, count: 1 });
+		else previous.count += 1;
 	}
 
 	const junctionById = new Map(junctions.map((junction) => [junction.id, junction] as const));

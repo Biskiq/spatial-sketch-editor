@@ -12,7 +12,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutWall, type LayoutWallOpening
 } from '@portfolio/layout-core';
-import { mergeStraightEdgeRuns, visibleIdentityContour, OUTLINE_DEPTH_BIAS } from '$lib/authoring/stage/shell/stage-outline';
+import { contourPolylines, mergeStraightEdgeRuns, visibleIdentityContour, OUTLINE_DEPTH_BIAS } from '$lib/authoring/stage/shell/stage-outline';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 
 function bodyOf(points: Record<string, [number, number]>, walls: LayoutWall[], wallId: string, openings: LayoutWallOpening[] = []): BufferGeometry {
@@ -83,6 +83,25 @@ describe('straight outline runs', () => {
 		const merged = mergeStraightEdgeRuns(edges);
 		expect(merged.length / 6).toBeGreaterThan((edges.length / 6) * 0.8);
 		expect(totalLength(merged)).toBeCloseTo(totalLength(edges), 3);
+	});
+
+	it('joins a curved silhouette into continuous polylines with no span-end caps', () => {
+		const geometry = bodyOf(
+			{ a: [0, 0], b: [6, 0] },
+			[wall('c', 'a', 'b', { kind: 'cubic-chain', knots: [], spans: [{ handleOut: [2, 3], handleIn: [4, 3] }] })],
+			'c'
+		);
+		const triangles = geometry.toNonIndexed();
+		try {
+			const contour = visibleIdentityContour(triangles.getAttribute('position').array, [9, 8, 12]);
+			const chains = contourPolylines(contour);
+			expect(chains.length).toBeGreaterThan(0);
+			expect(chains.length).toBeLessThan(contour.length / 6);
+			expect(Math.max(...chains.map((chain) => chain.length / 3))).toBeGreaterThan(8);
+		} finally {
+			triangles.dispose();
+			geometry.dispose();
+		}
 	});
 
 	it('handles a segment reversed in the list and a branch at a joint', () => {

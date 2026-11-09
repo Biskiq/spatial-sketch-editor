@@ -31,8 +31,8 @@
 		Vector3,
 		type Object3D
 	} from 'three';
-	import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-	import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+	import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+	import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 	import { untrack } from 'svelte';
 	import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
@@ -41,7 +41,7 @@
 	import { STAGE_PAINT } from './stage-paint';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
-	import { mergeStraightEdgeRuns, visibleIdentityContour, OUTLINE_DEPTH_BIAS } from './stage-outline';
+	import { contourPolylines, mergeStraightEdgeRuns, visibleIdentityContour, OUTLINE_DEPTH_BIAS } from './stage-outline';
 
 	let {
 		selection,
@@ -149,28 +149,32 @@
 
 	function addContour(contour: number[] | Float32Array, tone: 'selection' | 'hover' | 'erase'): void {
 		if (contour.length === 0) return;
-		const edgeGeometry = new LineSegmentsGeometry();
-		edgeGeometry.setPositions(contour);
-		const material = new LineMaterial({
-			color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
-			linewidth: tone === 'selection' ? 3 : 2.5,
-			transparent: true,
-			opacity: 1,
-			toneMapped: false,
-			depthTest: true,
-			depthWrite: false,
-			...OUTLINE_DEPTH_BIAS,
-			resolution: new Vector2(width, height),
-			...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
-		});
-		const line = new LineSegments2(edgeGeometry, material);
-		if (tone === 'erase') line.computeLineDistances();
-		line.frustumCulled = false;
-		line.renderOrder = tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19;
-		line.layers.set(2);
-		root.add(line);
-		fades.push({ material, opacity: 1 });
-		inked.push({ object: line, dispose: () => { edgeGeometry.dispose(); material.dispose(); } });
+		// A polyline has one cap at each real end. The old segment renderer capped
+		// every sampled span, which is what made a curved selection look striped.
+		for (const points of contourPolylines(contour)) {
+			const edgeGeometry = new LineGeometry();
+			edgeGeometry.setPositions(points);
+			const material = new LineMaterial({
+				color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
+				linewidth: tone === 'selection' ? 3 : 2.5,
+				transparent: true,
+				opacity: 1,
+				toneMapped: false,
+				depthTest: true,
+				depthWrite: false,
+				...OUTLINE_DEPTH_BIAS,
+				resolution: new Vector2(width, height),
+				...(tone === 'erase' ? { dashed: true, dashSize: 0.12, gapSize: 0.08 } : {})
+			});
+			const line = new Line2(edgeGeometry, material);
+			if (tone === 'erase') line.computeLineDistances();
+			line.frustumCulled = false;
+			line.renderOrder = tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19;
+			line.layers.set(2);
+			root.add(line);
+			fades.push({ material, opacity: 1 });
+			inked.push({ object: line, dispose: () => { edgeGeometry.dispose(); material.dispose(); } });
+		}
 	}
 
 	function apply(

@@ -397,11 +397,19 @@ defines truthful handles, active/read-only emphasis and readout placement. The *
 supplies the non-pointer precision writer; it is not another selection or an excuse to
 expose duplicate writers.
 
+A developed Wall is the visible working representation while it is unfolded. The
+canonical as-built Wall stays as a subdued dashed spatial reference rather than a second
+solid; the sheet carries the quiet World Paper wall grid, a clean perimeter, and the
+selected or unselected contour that follows the displayed geometry.
+
 Refuse invalid edits locally with the proposed value, reason and useful correction
 where available. Accepted geometry remains visible; refused proposal geometry is
-separately transient. Do not clamp silently, commit then roll back, add history noise,
-clear selection or obscure the writer. Corrections are deliberate actions, never
-automatic repairs. Only valid acceptance creates the logical source edit.
+separately transient. During a refused manipulation the **full attempted shape** stays on
+screen in refusal ink rather than disappearing behind a cursor reach, so one gesture can
+travel valid → invalid → valid. Release while refused restores the accepted geometry and
+writes no history. Do not clamp silently, commit then roll back, add history noise, clear
+selection or obscure the writer. Corrections are deliberate actions, never automatic
+repairs. Only valid acceptance creates the logical source edit.
 
 A refused drawing keeps every already-placed segment visible; only the refused segment
 turns red dashed, and the live tag swaps its length for a short reason (`Crosses a

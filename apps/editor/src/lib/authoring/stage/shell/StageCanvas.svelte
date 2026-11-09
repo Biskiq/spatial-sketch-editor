@@ -32,6 +32,7 @@
 import { paperStageComposition, PAPER_GROUND_INK } from '../paper-plan';
 import { workspaceRectFor } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
 import StageMatGround from './StageMatGround.svelte';
@@ -125,6 +126,8 @@ import StageMatGround from './StageMatGround.svelte';
 	const paperComposition = $derived(
 		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
 	);
+	/** The display sheet owns the canonical body while a Wall is unfolded. */
+	const unfoldedWallId = $derived(wallUnfold.state?.wallId ?? null);
 	const paperReveal = $derived(paperComposition.reveal);
 	const paperVisible = $derived(paperComposition.visible);
 	const paperCovers = $derived(paperComposition.covers);
@@ -253,11 +256,14 @@ import StageMatGround from './StageMatGround.svelte';
 	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
-		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false} />
+		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false}
+			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]} />
 	</T.Group>
 	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
 		not a second scene, and never a registered pick root. -->
-	<StageWallDevelopment {geometry} {datumMeters} />
+	<StageWallDevelopment {geometry} {datumMeters}
+		selected={selection?.reference.domain === 'layout' && selection.reference.subject.kind === 'wall' &&
+			selection.reference.subject.id === unfoldedWallId} />
 	<StageEntities
 		{scenePick}
 		{scene}
