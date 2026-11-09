@@ -50,6 +50,13 @@ class WallUnfoldStore {
 	state = $state<WallUnfoldState | null>(null);
 	/** The last pointer pick, session-only: it is evidence, never authored data. */
 	lastPick = $state<(WallUnfoldPick & { readonly pointerId: number; readonly sequence: number }) | null>(null);
+	/** Live sheet Opening drag; display-only until the canonical planner accepts. */
+	previewOpening = $state<{
+		readonly wallId: string;
+		readonly openingId: string;
+		readonly offset: number;
+		readonly width: number;
+	} | null>(null);
 	#pickSequence = 0;
 	#executor: CameraExecutor | null = null;
 	#frame: number | null = null;
@@ -74,6 +81,7 @@ class WallUnfoldStore {
 		entry?: { readonly pose: InspectionPose; readonly reading: ViewportReading }
 	): void {
 		this.lastPick = null;
+		this.previewOpening = null;
 		this.#pickSequence = 0;
 		const state = createWallUnfoldState({
 			wall,
@@ -86,6 +94,15 @@ class WallUnfoldStore {
 		// `face` request: the sheet unfolds in the view the creator was already
 		// using, and Done returns the captured settled pose exactly.
 		this.animateTo(wall, 1);
+	}
+
+	setOpeningPreview(preview: {
+		readonly wallId: string;
+		readonly openingId: string;
+		readonly offset: number;
+		readonly width: number;
+	} | null): void {
+		this.previewOpening = preview;
 	}
 
 	setU(wall: CompiledPhysicalWall, amount: number): void {
@@ -109,6 +126,7 @@ class WallUnfoldStore {
 	exit(wall?: CompiledPhysicalWall): void {
 		if (this.state === null) return;
 		this.lastPick = null;
+		this.previewOpening = null;
 		this.#requestReturn(this.state);
 		if (wall !== undefined) {
 			this.animateTo(wall, 0, () => {
