@@ -4210,15 +4210,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{libraryOpen}
 						plateOpen={worldPlateOpen}
 						onPlateOpen={(open) => (worldPlateOpen = open)}
-						selection={selection === null
-							? null
-							: {
-								label: shownCard.identity?.label ?? 'Selected',
-								kind: selection.reference.subject.kind,
-								actions: cardActions
-									.filter((action) => !/delete|remove/i.test(action.label))
-									.map((action) => ({ label: action.label, run: () => action.run() }))
-							}}
 						onTool={armWorldTool}
 						onLibrary={toggleWorldLibrary}
 						onObjectPick={pickWorldObject}

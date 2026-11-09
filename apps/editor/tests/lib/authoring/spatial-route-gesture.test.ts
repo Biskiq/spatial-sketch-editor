@@ -314,6 +314,34 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		expect(facade().selection()?.sourceId).toBe(STARTER_WALL_2);
 	});
+	it('leaves Select to the Stage gizmo instead of opening a plate', async () => {
+		// A family arms its plate, so Select has one to dismiss.
+		worldKey('Build').click();
+		await settled();
+		expect(target.querySelector('[data-world-toolbar] .tier')).not.toBeNull();
+
+		worldKey('Select').click();
+		await settled();
+		expect(target.querySelector('[data-world-toolbar] .tier')).toBeNull();
+		const select = worldKey('Select');
+		expect(select.getAttribute('aria-pressed')).toBe('true');
+		expect(select.hasAttribute('aria-expanded')).toBe(false);
+		expect(select.hasAttribute('aria-controls')).toBe(false);
+
+		// A second press only re-arms the tool; it never reopens a readout.
+		select.click();
+		await settled();
+		expect(target.querySelector('[data-world-toolbar] .tier')).toBeNull();
+		expect(target.textContent).not.toContain('Nothing selected');
+
+		// Selection itself is unchanged: the Stage still selects and reports it.
+		const center = projected([3.5, 0, -4]);
+		pointer('pointerdown', center);
+		pointer('pointerup', center);
+		pointer('click', center);
+		await settled();
+		expect(facade().selection()?.sourceId).toBe(wallId);
+	});
 	it('keeps Stage, Card and Index on the same selected identity with an offset Stage', async () => {
 		// The placeholder gold dot is gone; identity is echoed by the Card and the
 		// Index rather than by a second projection marker.

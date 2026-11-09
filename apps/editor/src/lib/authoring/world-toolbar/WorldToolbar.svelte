@@ -22,21 +22,9 @@
 		type WorldToolId
 	} from './registry';
 
-	export type WorldSelectionAction = {
-		readonly label: string;
-		readonly run: () => void;
-	};
-
-	export type WorldSelection = {
-		readonly label: string;
-		readonly kind: string;
-		readonly actions: readonly WorldSelectionAction[];
-	};
-
 	let {
 		activeTool,
 		libraryOpen,
-		selection,
 		onTool,
 		onLibrary,
 		onObjectPick,
@@ -47,7 +35,6 @@
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
-		selection: WorldSelection | null;
 		onTool: (id: WorldToolId) => void;
 		onLibrary: () => void;
 		onObjectPick: (assetId: string) => void;
@@ -85,13 +72,13 @@
 		onPlateOpen(true);
 	}
 
+	/**
+	 * Select owns no plate: the Stage gizmo is its whole readout. Pressing it
+	 * arms the tool and closes whatever plate was open.
+	 */
 	function pressSelect(): void {
-		if (activeTool === 'select' && !libraryOpen) {
-			onPlateOpen(!plateOpen);
-			return;
-		}
 		onTool('select');
-		onPlateOpen(true);
+		onPlateOpen(false);
 	}
 
 	function pressTool(id: WorldToolId): void {
@@ -118,10 +105,11 @@
 	const directTools = $derived([dockToolFor('paint'), dockToolFor('erase')]);
 </script>	<section
 		class="world-toolbar"
-		class:folded={!plateOpen}
+		class:folded={!plateOpen || activeTool === 'select'}
 		data-world-toolbar
 		data-active-tool={activeTool}
 	>
+		{#if activeTool !== 'select'}
 		<div class="tier" id={plateId} hidden={!plateOpen}>
 		<div class="row words">
 			<div class="strip words-strip">
@@ -135,17 +123,6 @@
 							onclick={() => (libraryCategory = category.id)}
 						>{category.label}</button>
 					{/each}
-				{:else if activeTool === 'select'}
-					<button type="button" class="sub on" aria-pressed="true">
-						Select<kbd>V</kbd>
-					</button>
-					{#if selection !== null}
-						<span class="pn selection">
-							<i class="selection-dot" aria-hidden="true"></i>
-							<b>{selection.label}</b>
-							<span>{selection.kind}</span>
-						</span>
-					{/if}
 				{:else if activeFamily !== null}
 					<div class="subs" aria-label={`${activeFamily.label} tools`}>
 						{#each activeFamilyTools as tool (tool.id)}
@@ -220,22 +197,6 @@
 							{/each}
 						</div>
 					{/if}
-				{:else if activeTool === 'select' && selection === null}
-					<div class="pn empty">
-						<span><strong>Nothing selected</strong> Choose a wall, room or object on the Stage, or use the Index.</span>
-						<kbd>V</kbd>
-					</div>
-				{:else if activeTool === 'select' && selection !== null}
-					<div class="pg end">
-						<span class="gl"></span>
-						<div class="opts">
-							{#each selection.actions as action (action.label)}
-								<button type="button" class="act primary" onclick={action.run}>{action.label}</button>
-							{/each}
-							<button type="button" class="act" disabled title="Turning a selected subject arrives with T1">Turn</button>
-							<button type="button" class="act" disabled title="Replacement arrives with T1">Replace</button>
-						</div>
-					</div>
 				{:else if activeToolData.stage === 'planned'}
 					<div class="planned-options">
 						{#each activeToolData.options ?? [] as group (group.label)}
@@ -268,6 +229,7 @@
 			</div>
 		</div>
 	</div>
+	{/if}
 
 	<nav class="dock" aria-label="World tool families">
 		<button
@@ -275,8 +237,6 @@
 			class="key"
 			class:armed={activeTool === 'select' && !libraryOpen}
 			aria-pressed={activeTool === 'select' && !libraryOpen}
-			aria-expanded={activeTool === 'select' && !libraryOpen ? plateOpen : undefined}
-			aria-controls={activeTool === 'select' && !libraryOpen ? plateId : undefined}
 			title="Select (V)"
 			onclick={pressSelect}
 		>
@@ -461,15 +421,6 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.pn.selection {
-		gap: 7px;
-	}
-	.selection-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--shell-gold);
-	}
 	.planned {
 		flex: none;
 		margin-left: auto;
@@ -500,9 +451,6 @@
 		display: grid;
 		flex: none;
 		gap: 3px;
-	}
-	.pg.end {
-		margin-left: auto;
 	}
 	.gl {
 		color: var(--shell-ink-3);
@@ -564,10 +512,6 @@
 		background: var(--shell-hover);
 		color: var(--shell-ink);
 	}
-	.act.primary {
-		color: var(--shell-forest);
-		font-weight: 600;
-	}
 	.act:disabled {
 		color: var(--shell-ink-3);
 		opacity: 0.58;
@@ -577,20 +521,6 @@
 		width: 100%;
 		margin-left: 0;
 		font-size: var(--shell-text-label);
-	}
-	.empty strong {
-		margin-right: 5px;
-		color: var(--shell-ink);
-		font: 600 var(--shell-text-control)/1 var(--shell-sans);
-	}
-	.empty kbd {
-		flex: none;
-		margin-left: auto;
-		padding: 2px 5px;
-		border-radius: 3px;
-		background: var(--shell-surface-sunken);
-		color: var(--shell-ink-3);
-		font: 400 8px/1 var(--shell-mono);
 	}
 	.empty .act {
 		margin-left: auto;
