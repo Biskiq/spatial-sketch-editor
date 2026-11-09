@@ -178,6 +178,7 @@ import {
 	parseMeasureInput,
 	parsePlacementXZ,
 	wallFrame,
+	wallStationFrame,
 	curvedWallPointAt,
 	openWallFrame,
 	previewWallBend,
@@ -188,6 +189,7 @@ import {
 	type LayoutSubject,
 	type OpenWallFrame,
 	type WallFrame,
+	type WallStationFrame,
 	type WallManipulationRequest,
 	type WallNeighbourPreview
 } from './layout/precision';
@@ -452,6 +454,7 @@ type OpeningMarkGesture = {
 	readonly openingId: string;
 	readonly wallId: string;
 	readonly frame: WallFrame;
+	readonly station: WallStationFrame;
 	readonly length: number;
 	readonly offsetAtStart: number;
 	readonly widthAtStart: number;
@@ -496,6 +499,8 @@ type OpeningMarkSubject = {
 	readonly openingId: string;
 	readonly wallId: string;
 	readonly frame: WallFrame;
+	/** Arc-length on a curved host; linear on a straight one. */
+	readonly station: WallStationFrame;
 	readonly length: number;
 	readonly offset: number;
 	readonly width: number;
@@ -1426,6 +1431,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					openingId: opening.id,
 					wallId: opening.wallId,
 					frame: span.frame,
+					station: span.station,
 					length: span.length,
 					offset: opening.offset,
 					width: opening.width
@@ -1733,6 +1739,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					) || 1;
 				const faceOffset = viewSide * hostThickness / 2;
 				const at = (distance: number, elevation: number, offset = faceOffset): [number, number, number] => {
+					// A curved host reads the sampled station and its own tangent, so
+					// the handle sits on the curve with the local face normal. The
+					// straight path is kept verbatim to prove unchanged output.
+					if (opening!.station.curved) {
+						const local = opening!.station.pointAt(distance);
+						if (local !== null) {
+							const stationNormal: readonly [number, number] = [-local.tangent[1], local.tangent[0]];
+							return [
+								local.point[0] + stationNormal[0] * offset,
+								elevation,
+								local.point[1] + stationNormal[1] * offset
+							];
+						}
+					}
 					const point = framePoint(opening!.frame, distance, elevation);
 					return [point[0] + normal[0] * offset, point[1], point[2] + normal[1] * offset];
 				};
@@ -2237,11 +2257,26 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/** The host Wall's frame and resolved length, when it has one. */
-			function openingSpan(wallId: string): { frame: WallFrame; length: number } | null {
-				const frame = wallFrame(document, wallId);
-				if (frame === null) return null;
-				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
-				return length > 0 ? { frame, length } : null;
+			function openingSpan(
+				wallId: string
+			): { frame: WallFrame; length: number; station: WallStationFrame } | null {
+				// Surface 3: one station frame per host. An Opening mark, ghost or
+				// handle reads `station.pointAt`, which is exact arc length on a
+				// curved centerline and linear on a straight one, so only curved
+				// hosts move and straight-host output stays byte-identical.
+				const station = wallStationFrame(document, wallId);
+				if (station === null) return null;
+				const frame = wallFrame(document, wallId) ?? {
+					wallId,
+					startJunctionId: '',
+					endJunctionId: '',
+					start: station.start,
+					end: station.end,
+					direction: station.direction,
+					length: station.length,
+					angleRadians: Math.atan2(station.direction[1], station.direction[0])
+				};
+				return station.length > 0 ? { frame, length: station.length, station } : null;
 			}
 
 			/**
@@ -2255,11 +2290,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			): readonly [LayoutVec2, LayoutVec2] | null {
 				const span = openingSpan(wallId);
 				if (span === null) return null;
-				const { frame, length } = span;
-				const at = (distance: number): LayoutVec2 => [
-					frame.start[0] + ((frame.end[0] - frame.start[0]) / length) * distance,
-					frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance
-				];
+				const { frame, length, station } = span;
+				const at = (distance: number): LayoutVec2 => {
+					const local = station.curved ? station.pointAt(distance) : null;
+					if (local !== null) return [local.point[0], local.point[1]];
+					return [
+						frame.start[0] + ((frame.end[0] - frame.start[0]) / length) * distance,
+						frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance
+					];
+				};
 				return [at(offset), at(offset + openingOptions.width)];
 			}
 
@@ -2397,7 +2436,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function openingPointerWorldAt(
 				adapterContext: StageAdapterContext,
 				css: readonly [number, number],
-				frame: WallFrame
+				frame: WallFrame,
+				station: WallStationFrame
 			): readonly [number, number, number] | null {
 				const datum = adapterContext.snapshot.domain.datumMeters;
 				if (adapterContext.evaluation.settledReading === 'plan') {
@@ -2408,8 +2448,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					css[0] + adapterContext.evaluation.rect.left,
 					css[1] + adapterContext.evaluation.rect.top
 				]);
+				if (ray === null) return null;
+				if (station.curved) {
+					// A curved host has no single face plane. Read the station nearest
+					// the pointer, then intersect the tangent plane at that station so
+					// a slide follows the curve rather than the chord.
+					const datumPoint = pointerDatumPoint(adapterContext, css);
+					const distance = datumPoint === null
+						? null
+						: wallStationNearPoint(document, frame.wallId, datumPoint, 2);
+					const local = distance === null ? null : station.pointAt(distance);
+					if (local !== null) {
+						const tangent = local.tangent;
+						const tangentNormal: readonly [number, number] = [-tangent[1], tangent[0]];
+						const wall = document.walls.find((candidate) => candidate.id === frame.wallId);
+						const side = Math.sign(
+							(adapterContext.evaluation.eye[0] - local.point[0]) * tangentNormal[0] +
+							(adapterContext.evaluation.eye[2] - local.point[1]) * tangentNormal[1]
+						) || 1;
+						const faceOffset = side * (wall?.thickness ?? 0) / 2;
+						const hit = adapterContext.intersect(ray, {
+							originMeters: [
+								local.point[0] + tangentNormal[0] * faceOffset,
+								datum,
+								local.point[1] + tangentNormal[1] * faceOffset
+							],
+							normal: [tangentNormal[0], 0, tangentNormal[1]],
+							yawRadians: Math.atan2(tangent[0], tangent[1]),
+							datumMeters: datum,
+							supportedLocalExtent: null
+						});
+						return hit.kind === 'intersected' ? hit.worldPoint : null;
+					}
+				}
 				const direction = wallDirection(frame);
-				if (ray === null || direction === null) return null;
+				if (direction === null) return null;
 				const normal: readonly [number, number] = [-direction[1], direction[0]];
 				const wall = document.walls.find((candidate) => candidate.id === frame.wallId);
 				const side = Math.sign(
@@ -3958,7 +4031,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (!bodyPress && (descriptor === undefined || descriptor.role !== 'edit')) return false;
 						const openingWorldAtPress = selectedOpeningSubject === null
 							? null
-							: openingPointerWorldAt(adapterContext, intent.css, selectedOpeningSubject.frame);
+							: openingPointerWorldAt(
+									adapterContext,
+									intent.css,
+									selectedOpeningSubject.frame,
+									selectedOpeningSubject.station
+								);
 						const point = selectedOpeningSubject === null
 							? pointerDatumPoint(adapterContext, intent.css)
 							: openingWorldAtPress === null
@@ -4050,9 +4128,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							acquisition.lease.release();
 							return false;
 						}
-						const alongAtPress =
-							(point[0] - selectedOpeningSubject.frame.start[0]) * direction[0] +
-							(point[1] - selectedOpeningSubject.frame.start[1]) * direction[1];
+						const alongAtPress = selectedOpeningSubject.station.curved
+							? wallStationAtPoint(document, selectedOpeningSubject.wallId, point) ?? 0
+							: (point[0] - selectedOpeningSubject.frame.start[0]) * direction[0] +
+								(point[1] - selectedOpeningSubject.frame.start[1]) * direction[1];
 						const targetAlong = action.kind === 'slide'
 							? source.offset + source.width / 2
 							: action.kind === 'edge'
@@ -4071,6 +4150,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							openingId: selectedOpeningSubject.openingId,
 							wallId: selectedOpeningSubject.wallId,
 							frame: selectedOpeningSubject.frame,
+							station: selectedOpeningSubject.station,
 							length: selectedOpeningSubject.length,
 							offsetAtStart: selectedOpeningSubject.offset,
 							widthAtStart: selectedOpeningSubject.width,
@@ -4148,7 +4228,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						const openingWorldPoint = openingGesture === null
 							? null
-							: openingPointerWorldAt(adapterContext, intent.css, openingGesture.frame);
+							: openingPointerWorldAt(
+									adapterContext,
+									intent.css,
+									openingGesture.frame,
+									openingGesture.station
+								);
 						const point = openingGesture === null
 							? pointerDatumPoint(adapterContext, intent.css)
 							: openingWorldPoint === null
@@ -4221,8 +4306,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							const direction = wallDirection(openingGesture.frame);
 							const source = openingGesture.baseline.openings.find((entry) => entry.id === openingGesture!.openingId);
 							if (direction === null || source === undefined || openingWorldPoint === null) return true;
-							const along = (point[0] - openingGesture.frame.start[0]) * direction[0] +
-								(point[1] - openingGesture.frame.start[1]) * direction[1];
+							const along = openingGesture.station.curved
+								? wallStationAtPoint(document, openingGesture.wallId, point) ?? 0
+								: (point[0] - openingGesture.frame.start[0]) * direction[0] +
+									(point[1] - openingGesture.frame.start[1]) * direction[1];
 							const yMeters = openingWorldPoint[1] - adapterContext.snapshot.domain.datumMeters;
 							const hostSpan = {
 								segmentId: openingGesture.wallId,

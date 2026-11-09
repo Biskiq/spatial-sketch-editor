@@ -1556,6 +1556,59 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(restored.centerline.kind).toBe('line');
 	});
 
+	it('reads and edits a curved-host Opening station on the arc, not its chord', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const bendEvaluation = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [4.5, 0]);
+		const to = stageCss(mounted.facade, [4.5, 0.7]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId: bendEvaluation }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId: bendEvaluation });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId: bendEvaluation });
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'cubic-chain' && wall.centerline.knots.length === 1;
+		});
+
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, 0);
+		settle(mounted.facade, 10);
+		selectOpening(mounted.facade, mounted.openingId);
+		settle(mounted.facade, 4);
+
+		const opening = () =>
+			acceptedLayout(mounted.facade).openings.find((candidate) => candidate.id === mounted.openingId)!;
+		const before = opening();
+		const frame = curvedWallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		const midpoint = curvedWallPointAt(frame, before.offset + before.width / 2)!.point;
+		// The bend moved the Opening's station off the chord; otherwise the
+		// mark assertion below would not distinguish the two frames.
+		expect(Math.abs(midpoint[1])).toBeGreaterThan(0.05);
+		const markCss = (id: string): [number, number] => {
+			const mark = mounted.facade.marks().find((candidate) => candidate.id === id)!;
+			return [mark.anchor[0] + RECT.left, mark.anchor[1] + RECT.top];
+		};
+		const position = markCss('layout-opening-position');
+		const stationCss = stageCss(mounted.facade, midpoint);
+		// Surface 3 — the mark reads the sampled arc-length station.
+		expect(Math.hypot(position[0] - stationCss[0], position[1] - stationCss[1])).toBeLessThan(1);
+		const chordCss = stageCss(mounted.facade, [before.offset + before.width / 2, 0]);
+		expect(Math.hypot(position[0] - chordCss[0], position[1] - chordCss[1])).toBeGreaterThan(5);
+
+		// Slide half a metre of arc length through the real pointer machine; the
+		// committed offset is a station, so following the curve adds exactly that.
+		mounted.facade.setDrafting({ snapSuspended: true });
+		const target = curvedWallPointAt(frame, before.offset + before.width / 2 + 0.5)!.point;
+		const targetCss = stageCss(mounted.facade, target);
+		const dragEvaluation = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: position, evaluationId: dragEvaluation }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: targetCss, evaluationId: dragEvaluation });
+		mounted.facade.pointerIntent({ phase: 'up', css: targetCss, evaluationId: dragEvaluation });
+		await eventually(() => Math.abs(opening().offset - (before.offset + 0.5)) < 0.05);
+		expect(opening().width).toBeCloseTo(before.width, 6);
+		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+	});
+
 	it('types a Junction X then Z with Tab and commits one shared-Junction edit', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
