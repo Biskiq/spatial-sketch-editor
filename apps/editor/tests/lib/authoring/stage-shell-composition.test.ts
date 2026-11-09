@@ -217,6 +217,9 @@ describe('Stage shell composition', () => {
 			'apps/editor/src/lib/authoring/stage/shell/StageMatGround.svelte',
 			'apps/editor/src/lib/authoring/stage/shell/stage-mat-grid.ts',
 			'apps/editor/src/lib/authoring/stage/shell/StageFormGhost.svelte',
+			// C3 checkpoint 5 — the unfolded Wall sheet. It draws the checkpoint-4
+			// developed mesh on the existing Canvas and owns no camera or pick root.
+			'apps/editor/src/lib/authoring/stage/shell/StageWallDevelopment.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
 			// R217.S28's snapshot host: an offscreen render target on the existing
