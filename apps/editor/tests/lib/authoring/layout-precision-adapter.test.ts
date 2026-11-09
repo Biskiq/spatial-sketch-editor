@@ -158,6 +158,8 @@ describe('T1.P01.S04 — Layout precision', () => {
 			'layout-plinth-place',
 			'layout-room-move',
 			'layout-wall-angle',
+			// C1 — one grab on an open Wall body is its own retained operation.
+			'layout-wall-bend',
 			'layout-wall-height',
 			'layout-wall-length',
 			'layout-wall-move',

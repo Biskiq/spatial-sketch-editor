@@ -39,6 +39,7 @@ import {
 	lookupIndexedOpening,
 	lookupIndexedWall,
 	nextLayoutPresetObjectId,
+	planBendWallCurveKnot,
 	planCommitLayoutObjectPresetWithId,
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
@@ -54,6 +55,7 @@ import {
 	planUpdateWallFirstOpening,
 	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
+	wallCenterlineSamples,
 	withLayoutCompileSession,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
@@ -93,6 +95,13 @@ export const LAYOUT_WALL_ANGLE_KIND = 'layout-wall-angle';
 /** T1.P01.S05 — rigid straight-Wall translation: both endpoints move by one delta. */
 export const LAYOUT_WALL_MOVE_KIND = 'layout-wall-move';
 /**
+ * T1 C1 — one grab on an open Wall body becomes one bend point and one reshape.
+ * The payload carries the physical arc distance the press resolved and the
+ * captured id of the bend point the write may insert, so preview and commit
+ * address the same identity.
+ */
+export const LAYOUT_WALL_BEND_KIND = 'layout-wall-bend';
+/**
  * Review pass 3 — a Room moves rigidly in X/Z. The retained planner moves the
  * Room's connected group (Rooms sharing a Wall travel together) and refuses
  * with the canonical gates' words; Scene objects stay where they are.
@@ -126,6 +135,7 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_LENGTH_KIND]: ['wallId', 'length', 'fixed'],
 	[LAYOUT_WALL_ANGLE_KIND]: ['wallId', 'angleRadians', 'fixed'],
 	[LAYOUT_WALL_MOVE_KIND]: ['wallId', 'deltaX', 'deltaZ'],
+	[LAYOUT_WALL_BEND_KIND]: ['wallId', 'distance', 'x', 'z', 'knotId'],
 	[LAYOUT_ROOM_MOVE_KIND]: ['roomId', 'deltaX', 'deltaZ'],
 	[LAYOUT_JUNCTION_MOVE_KIND]: ['wallId', 'junctionId', 'x', 'z'],
 	[LAYOUT_OPENING_MEASURE_KIND]: ['openingId', 'field', 'value'],
@@ -470,6 +480,43 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
+/**
+ * C1 — the composite Bend planner. One grab, one candidate, one history entry:
+ * a straight Wall becomes a chain when the grab inserts its first bend point,
+ * and an invalid release rejects atomically through the retained planner.
+ */
+function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_WALL_BEND_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_BEND_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, distance, x, z, knotId } = payload.value;
+		if (
+			!opaqueId(wallId) ||
+			!finiteNonNegative(distance) ||
+			!finiteNumber(x) ||
+			!finiteNumber(z) ||
+			!opaqueId(knotId)
+		) {
+			return rejected(
+				'invalid-value',
+				'A Wall bend needs one wall id, a finite non-negative arc distance, a finite bend point and the captured bend-point id.'
+			);
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planBendWallCurveKnot(
+			request.snapshot.domain.source.units.layout.data,
+			wallId,
+			{ distance, point: [x, z] },
+			{ knotId }
+		);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(request, 'layout-wall-bend', { kind: 'wall', id: wallId }, plan.document, [
+			'shape'
+		]);
+	});
+}
+
 /** Rigid Room-group translation: one delta for the Room and every Room joined to it. */
 function roomMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_ROOM_MOVE_KIND, (request) => {
@@ -707,7 +754,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
-/** The five production Layout planners, one operation kind each. */
+/** The production Layout planners, one operation kind each. */
 export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[] {
 	return [
 		wallHeightPlanner(),
@@ -715,6 +762,7 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		wallLengthPlanner(),
 		wallAnglePlanner(),
 		wallMovePlanner(),
+		wallBendPlanner(),
 		roomMovePlanner(),
 		junctionMovePlanner(),
 		openingMeasurePlanner(),
@@ -775,6 +823,90 @@ export function wallFrame(document: LayoutDocumentWallFirst, wallId: string): Wa
 		length,
 		angleRadians: Math.atan2(dz, dx)
 	};
+}
+
+/**
+ * The canonical frame of a **curved** open Wall: its sampled centerline read
+ * through the one geometry authority, with physical arc distances.
+ *
+ * A straight Wall has no curved frame (`wallFrame` owns it), and a resolved
+ * sample derivation is required: a chain that cannot be sampled is not
+ * addressable, so the caller gets `null` rather than a guessed polyline.
+ */
+export type CurvedWallFrame = {
+	readonly wallId: string;
+	readonly startJunctionId: string;
+	readonly endJunctionId: string;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+	/** Exact sampled arc length, not the chord. */
+	readonly length: number;
+	readonly samples: readonly {
+		readonly point: LayoutVec2;
+		readonly distance: number;
+		readonly tangent: LayoutVec2;
+	}[];
+};
+
+export function curvedWallFrame(document: LayoutDocumentWallFirst, wallId: string): CurvedWallFrame | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined || wall.centerline.kind === 'line') return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	const sampled = wallCenterlineSamples(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		'forward'
+	);
+	if (sampled === undefined || !(sampled.length > 0) || sampled.samples.length < 2) return null;
+	return {
+		wallId,
+		startJunctionId: wall.startJunctionId,
+		endJunctionId: wall.endJunctionId,
+		start: [start[0], start[1]],
+		end: [end[0], end[1]],
+		length: sampled.length,
+		samples: sampled.samples.map((sample) => ({
+			point: [sample.point[0], sample.point[1]] as LayoutVec2,
+			distance: sample.distance,
+			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2
+		}))
+	};
+}
+
+/**
+ * The centerline point at one physical arc distance, with its tangent.
+ *
+ * This is the arc-length inverse the Opening marks and the Bend gesture need:
+ * a station names the same place on a curved host that it names on a straight
+ * one. A distance outside `[0, length]` is refused, never clamped.
+ */
+export function curvedWallPointAt(
+	frame: CurvedWallFrame,
+	distance: number
+): { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null {
+	if (!Number.isFinite(distance) || distance < 0 || distance > frame.length) return null;
+	for (let index = 1; index < frame.samples.length; index += 1) {
+		const previous = frame.samples[index - 1]!;
+		const next = frame.samples[index]!;
+		if (distance > next.distance) continue;
+		const span = next.distance - previous.distance;
+		const t = span > 0 ? (distance - previous.distance) / span : 0;
+		return {
+			point: [
+				previous.point[0] + (next.point[0] - previous.point[0]) * t,
+				previous.point[1] + (next.point[1] - previous.point[1]) * t
+			],
+			tangent: [
+				previous.tangent[0] + (next.tangent[0] - previous.tangent[0]) * t,
+				previous.tangent[1] + (next.tangent[1] - previous.tangent[1]) * t
+			]
+		};
+	}
+	const last = frame.samples.at(-1)!;
+	return { point: [last.point[0], last.point[1]], tangent: [last.tangent[0], last.tangent[1]] };
 }
 
 /**
@@ -898,6 +1030,53 @@ export function wallManipulationIntent(input: {
 			wallId: input.wallId,
 			deltaX: input.request.delta[0],
 			deltaZ: input.request.delta[1]
+		}
+	});
+}
+
+/**
+ * One C1 Bend intent: the physical station the press resolved, the pointer's
+ * bend point, and the captured id the write may insert.
+ *
+ * Preview and commit build this same intent, so the document the preview draws
+ * is the document acceptance writes, and Undo replays the captured knot id
+ * rather than minting an occupancy-derived one.
+ */
+export function wallBendIntent(input: {
+	readonly wallId: string;
+	readonly distance: number;
+	readonly point: LayoutVec2;
+	readonly knotId: string;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	const reference: SemanticReference = {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: 'wall', id: input.wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	return buildLayoutIntent({
+		operationId: input.operationId,
+		projectId: input.projectId,
+		revisionId: input.revisionId,
+		contentRevision: input.contentRevision,
+		levelId: input.levelId,
+		targets: [reference],
+		kind: LAYOUT_WALL_BEND_KIND,
+		payload: {
+			wallId: input.wallId,
+			distance: input.distance,
+			x: input.point[0],
+			z: input.point[1],
+			knotId: input.knotId
 		}
 	});
 }
