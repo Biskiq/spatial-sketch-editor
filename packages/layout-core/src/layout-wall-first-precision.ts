@@ -109,6 +109,16 @@ import type { Vec3 } from './types';
 
 const POINT_EPSILON = LAYOUT_GEOMETRY_EPSILON;
 
+/**
+ * D4 — maximum number of bend points a **new** insertion may produce.
+ *
+ * The ceiling bounds sampling, preflight and unfold cost. It is enforced on the
+ * write paths only: an existing chain that already carries more knots (for
+ * example from a future or imported document) still reads, edits and deletes
+ * normally, because refusing to read it would strand authored geometry.
+ */
+export const MAX_WALL_CURVE_KNOTS = 32;
+
 export type FixedWallEndpoint = 'start' | 'end';
 
 export type WallLengthIntent = {
@@ -237,6 +247,8 @@ export type PrecisionRejection = {
 		| 'split_at_existing_endpoint'
 		| 'split_distance_out_of_range'
 		| 'split_through_opening_interior'
+		/** D4 — a Wall may not gain more than the supported number of bend points. */
+		| 'curve_knot_limit'
 		| 'junction_point_mismatch';
 	message: string;
 	targetIds?: readonly string[];
@@ -827,6 +839,13 @@ export function planInsertWallCurveKnot(
 	if (!Number.isFinite(distance)) {
 		return reject('invalid_value', 'Bend point distance must be a finite number of meters', [wallId]);
 	}
+	if (chain.knots.length >= MAX_WALL_CURVE_KNOTS) {
+		return reject(
+			'curve_knot_limit',
+			`Wall '${wallId}' already has ${MAX_WALL_CURVE_KNOTS} bend points, the maximum a new insertion may produce`,
+			[wallId]
+		);
+	}
 	const insertion = insertWallCurveKnot(
 		chain,
 		distance,
@@ -973,7 +992,11 @@ export function resolveProposedCurveChain(
 	const resolution = p2311Measure('proposal-exact-split', () => resolveWallCurveSplit(chain, intent.distance));
 	if (resolution.kind === 'rejected') return undefined;
 	const { fragments, promotedKnotId, point } = resolution.result;
-	const knotId = promotedKnotId ?? nextWallCurveKnotId(wallId, chain.knots);
+	if (!promotedKnotId && chain.knots.length >= MAX_WALL_CURVE_KNOTS) return undefined;
+	// A preview id is stable and never persisted: an occupancy-derived id here
+	// would be a second allocation authority, and a preview is exactly the place
+	// where the same grab must produce the same transient shape each frame.
+	const knotId = promotedKnotId ?? `${wallId}:knot.preview`;
 	const knots = promotedKnotId
 		? chain.knots.map((knot) => ({ id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 }))
 		: [
@@ -1049,7 +1072,10 @@ function sampleArchitectureProposal(
 /** A live Wall drag checks local geometry and Opening fit without reconciling or compiling. */
 export function readWallFirstDragProposal(
 	document: LayoutDocumentWallFirst,
-	intent: Extract<WallFirstArchitectureProposalIntent, { kind: 'junction-move' | 'wall-move' }>,
+	intent: Extract<
+		WallFirstArchitectureProposalIntent,
+		{ kind: 'junction-move' | 'wall-move' | 'curve-control-move' | 'wall-bend' }
+	>,
 	sampling: WallSamplingDerivation,
 	scope: WallFirstArchitectureVerdictScope
 ): { kind: 'pending'; walls: WallFirstArchitectureProposalWall[] } |
@@ -1613,7 +1639,8 @@ export type WallBendIntent = {
 export function planBendWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	intent: WallBendIntent
+	intent: WallBendIntent,
+	options: { readonly knotId: string }
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
@@ -1622,6 +1649,9 @@ export function planBendWallCurveKnot(
 		return reject('invalid_value', 'Bend distance must be a finite number of meters', [wallId]);
 	}
 	if (!finitePoint(intent.point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId]);
+	if (typeof options.knotId !== 'string' || options.knotId.length === 0) {
+		return reject('invalid_value', 'A Bend must capture the id of the bend point it may insert', [wallId]);
+	}
 
 	// One resolver call decides both halves: whether the grab promotes an
 	// existing bend point, and where the inserted knot belongs.
@@ -1639,7 +1669,16 @@ export function planBendWallCurveKnot(
 	}
 
 	const promotedKnotId = resolution.result.promotedKnotId;
-	const knotId = promotedKnotId ?? nextWallCurveKnotId(wallId, chain.knots);
+	if (!promotedKnotId && chain.knots.length >= MAX_WALL_CURVE_KNOTS) {
+		return reject(
+			'curve_knot_limit',
+			`Wall '${wallId}' already has ${MAX_WALL_CURVE_KNOTS} bend points, the maximum a new insertion may produce`,
+			[wallId]
+		);
+	}
+	// Captured identity, never an occupancy count: a promoted knot keeps its
+	// own id, and a freshly inserted one replays the id the intent captured.
+	const knotId = promotedKnotId ?? options.knotId;
 	const { fragments } = resolution.result;
 	const insertedKnot: LayoutWallCurveKnot = {
 		id: knotId,

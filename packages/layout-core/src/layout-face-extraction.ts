@@ -150,14 +150,17 @@ export function extractBoundaryCandidateFaces(
 	// derivation Junction resolution and the mesh consume. Ordering by chord
 	// merges Rooms whenever a bent Wall leaves a Junction on the other side of a
 	// neighbour (B1).
-	const departureByEdge = new Map<string, DepartureRay>();
+	// The ordering pass derives each curved half-edge's sampled centerline once.
+	// The polygon pass below reuses that same array, so departure ordering adds
+	// no sampling call to the consumer count the P23B.4 observations pin.
+	const departureByEdge = new Map<string, { ray: DepartureRay; sampled?: SampledSegment }>();
 	const departureOf = (edge: HalfEdge): DepartureRay => {
 		const key = `${edge.wallId}|${edge.direction}`;
 		const cached = departureByEdge.get(key);
-		if (cached) return cached;
-		const ray = resolveDepartureRay(edge, junctionById, wallById, sampling);
-		departureByEdge.set(key, ray);
-		return ray;
+		if (cached) return cached.ray;
+		const resolution = resolveDepartureRay(edge, junctionById, wallById, sampling);
+		departureByEdge.set(key, resolution);
+		return resolution.ray;
 	};
 	const outgoing = new Map<string, HalfEdge[]>();
 	for (const edge of halfEdges) {
@@ -232,9 +235,12 @@ export function extractBoundaryCandidateFaces(
 			const end = junctionById.get(wall.endJunctionId)?.point;
 			if (!start || !end) continue;
 			const traversal = half.direction === 'reverse' ? 'reverse' : 'forward';
-			const sampled = sampling
-				? sampling.samples(wall, start, end, traversal)
-				: wallCenterlineSamples(wall, start, end, traversal);
+			const departure = departureByEdge.get(`${wall.id}|${half.direction}`);
+			const sampled = departure
+				? departure.sampled
+				: sampling
+					? sampling.samples(wall, start, end, traversal)
+					: wallCenterlineSamples(wall, start, end, traversal);
 			const faceObserver = faceSamplingObserverForTest;
 			if (faceObserver) {
 				try {
@@ -363,27 +369,29 @@ function resolveDepartureRay(
 	junctionById: Map<string, LayoutJunction>,
 	wallById: Map<string, LayoutWall>,
 	sampling?: WallSamplingDerivation
-): DepartureRay {
+): { ray: DepartureRay; sampled?: SampledSegment } {
 	const wall = wallById.get(edge.wallId);
 	const target = junctionById.get(edge.toId);
 	const origin = junctionById.get(edge.fromId)?.point;
-	if (!origin) return { probe: [0, 0] as LayoutVec2, curvature: 0 };
+	if (!origin) return { ray: { probe: [0, 0] as LayoutVec2, curvature: 0 } };
 	if (!wall || wall.centerline.kind === 'line' || !target) {
 		// Straight Wall: its chord *is* its departure direction.
-		return { probe: target ? target.point : ([origin[0] + 1, origin[1]] as LayoutVec2), curvature: 0 };
+		return {
+			ray: { probe: target ? target.point : ([origin[0] + 1, origin[1]] as LayoutVec2), curvature: 0 }
+		};
 	}
 	const start = junctionById.get(wall.startJunctionId)?.point;
 	const end = junctionById.get(wall.endJunctionId)?.point;
-	if (!start || !end) return { probe: target.point, curvature: 0 };
+	if (!start || !end) return { ray: { probe: target.point, curvature: 0 } };
 	const traversal = edge.direction === 'reverse' ? 'reverse' : 'forward';
 	const sampled = sampling
 		? sampling.samples(wall, start, end, traversal)
 		: wallCenterlineSamples(wall, start, end, traversal);
 	const first = sampled?.samples[0];
-	if (!sampled || !first) return { probe: target.point, curvature: 0 };
+	if (!sampled || !first) return { ray: { probe: target.point, curvature: 0 }, sampled };
 	const tangent = first.tangent;
 	const hasDirection = Number.isFinite(tangent[0]) && Number.isFinite(tangent[1]) && Math.hypot(tangent[0], tangent[1]) > 1e-12;
-	if (!hasDirection) return { probe: target.point, curvature: 0 };
+	if (!hasDirection) return { ray: { probe: target.point, curvature: 0 }, sampled };
 	let curvature = 0;
 	const second = sampled.samples[1];
 	if (second) {
@@ -393,7 +401,10 @@ function resolveDepartureRay(
 			curvature = cross / ds;
 		}
 	}
-	return { probe: [origin[0] + tangent[0], origin[1] + tangent[1]] as LayoutVec2, curvature };
+	return {
+		ray: { probe: [origin[0] + tangent[0], origin[1] + tangent[1]] as LayoutVec2, curvature },
+		sampled
+	};
 }
 
 /**

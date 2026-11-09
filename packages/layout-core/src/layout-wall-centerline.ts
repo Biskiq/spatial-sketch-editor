@@ -592,6 +592,33 @@ export function createWallSamplingDerivation(): WallSamplingDerivation {
  * `JUNCTION_COINCIDENCE_EPSILON` — the single identity tolerance — for the
  * comparison. No additional distance threshold is introduced.
  */
+/**
+ * The one pointer-to-station path: project a document X/Z point onto a Wall's
+ * canonical centerline and report the physical arc distance of the nearest
+ * station.
+ *
+ * It is a thin wrapper over `wallCenterlineSamples` +
+ * `projectPointToSampledSegment`, so the answer is the same samples the
+ * compiler, plan and C1 gestures consume. Curve authoring, Opening placement on
+ * a curved host and unfolding all reuse it instead of inventing a second
+ * distance scan.
+ */
+export function projectPointToWallCenterline(
+	wall: Pick<LayoutWall, 'id' | 'centerline'>,
+	startPoint: LayoutVec2,
+	endPoint: LayoutVec2,
+	point: LayoutVec2
+): { distance: number; point: LayoutVec2; distanceToPath: number } | undefined {
+	const sampled = wallCenterlineSamples(wall, startPoint, endPoint, 'forward');
+	if (!sampled) return undefined;
+	const projected = projectPointToSampledSegment(point, sampled);
+	return {
+		distance: projected.distance,
+		point: [projected.point[0], projected.point[1]] as LayoutVec2,
+		distanceToPath: projected.distanceToPath
+	};
+}
+
 export function wallCenterlineCarriesPoint(
 	wall: Pick<LayoutWall, 'id' | 'centerline'>,
 	startPoint: LayoutVec2,

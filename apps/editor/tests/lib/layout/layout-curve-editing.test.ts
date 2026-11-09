@@ -19,6 +19,7 @@ import {
 	moveWallCurveKnot,
 	planBendWallCurveKnot,
 	planInsertWallCurveKnot,
+	projectPointToWallCenterline,
 	planMoveWallCurveKnot,
 	planWallSplit,
 	sampleSegment,
@@ -344,7 +345,7 @@ describe('P23.11 fix 1 — one Bend drag is one canonical operation', () => {
 	it('plans one candidate with one operation on an existing curve', () => {
 		const document = documentOf(chainOf([0, 0], [CHORD, 0], [3, 2], [8, -1]));
 		const total = wallCurveChainLength(chainViewOf(document, 'wall-a'));
-		const plan = planBendWallCurveKnot(document, 'wall-a', { distance: total * 0.2, point: [2, 4] });
+		const plan = planBendWallCurveKnot(document, 'wall-a', { distance: total * 0.2, point: [2, 4] }, { knotId: 'wall-a:knot:3' });
 		if (plan.kind !== 'success') throw new Error('expected the bend to succeed');
 		expect(plan.operation).toBe('wall-curve-knot-bend');
 		expect(plan.changedWallIds).toEqual(['wall-a']);
@@ -357,7 +358,7 @@ describe('P23.11 fix 1 — one Bend drag is one canonical operation', () => {
 		const total = wallCurveChainLength(chainViewOf(baseline, 'wall-a'));
 		// Grab near the start: the insert lands in the first span and moves there,
 		// so the last two spans must survive.
-		const plan = planBendWallCurveKnot(baseline, 'wall-a', { distance: total * 0.08, point: [0.5, 2.5] });
+		const plan = planBendWallCurveKnot(baseline, 'wall-a', { distance: total * 0.08, point: [0.5, 2.5] }, { knotId: 'wall-a:knot:5' });
 		if (plan.kind !== 'success') throw new Error('expected the bend to succeed');
 		const after = chainViewOf(plan.document, 'wall-a');
 		const before = chainViewOf(baseline, 'wall-a');
@@ -365,11 +366,38 @@ describe('P23.11 fix 1 — one Bend drag is one canonical operation', () => {
 		expect(after.spans.slice(2)).toEqual(before.spans.slice(1));
 	});
 
+	it('refuses a new bend point past the supported knot ceiling', () => {
+		const interior = Array.from({ length: 32 }, (_unused, index) => [index + 1, index % 2 === 0 ? 0.4 : -0.4] as LayoutVec2);
+		const document = documentOf(chainOf([0, 0], [34, 0], ...interior));
+		expect(chainViewOf(document, 'wall-a').knots).toHaveLength(32);
+		const total = wallCurveChainLength(chainViewOf(document, 'wall-a'));
+		expect(planInsertWallCurveKnot(document, 'wall-a', total * 0.5)).toMatchObject({
+			kind: 'rejected',
+			rejection: { code: 'curve_knot_limit' }
+		});
+		expect(
+			planBendWallCurveKnot(document, 'wall-a', { distance: total * 0.5, point: [17, 2] }, { knotId: 'wall-a:knot:33' })
+		).toMatchObject({ kind: 'rejected', rejection: { code: 'curve_knot_limit' } });
+	});
+
+	it('projects a pointer onto the canonical centerline as one station', () => {
+		const document = documentOf({ kind: 'line' });
+		const projected = projectPointToWallCenterline(
+			document.walls[0]!,
+			document.junctions[0]!.point,
+			document.junctions[1]!.point,
+			[4, 2]
+		);
+		expect(projected).toBeDefined();
+		expect(projected!.distance).toBeCloseTo(4, 9);
+		expect(projected!.distanceToPath).toBeCloseTo(2, 9);
+	});
+
 	it('uses the same insertion-plus-local-move result as the explicit planners', () => {
 		const baseline = documentOf(chainOf([0, 0], [CHORD, 0], [3, 2], [8, -1]));
 		const distance = wallCurveChainLength(chainViewOf(baseline, 'wall-a')) * 0.2;
 		const point: LayoutVec2 = [2, 4];
-		const bend = planBendWallCurveKnot(baseline, 'wall-a', { distance, point });
+		const bend = planBendWallCurveKnot(baseline, 'wall-a', { distance, point }, { knotId: 'wall-a:knot:3' });
 		const inserted = planInsertWallCurveKnot(baseline, 'wall-a', distance);
 		if (bend.kind !== 'success' || inserted.kind !== 'success') throw new Error('expected Bend insertion to succeed');
 		const insertedView = chainViewOf(inserted.document, 'wall-a');

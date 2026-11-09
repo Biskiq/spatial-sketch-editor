@@ -34,7 +34,6 @@ const UNCAPTURED_IDENTITY_NAMES = [
 	'nextInteriorAnchorId',
 	'planConvertWallToCurve',
 	'planInsertWallCurveKnot',
-	'planBendWallCurveKnot',
 	'planDissolveJunction'
 ] as const;
 
