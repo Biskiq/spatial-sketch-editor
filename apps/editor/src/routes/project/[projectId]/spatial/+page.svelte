@@ -2696,14 +2696,31 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					event.preventDefault();
 					break;
 				}
-				if (!stage.keyboardIntent({ kind: action.kind }).claimed) break;
-				// One key, one activation: the palette's own control must not also be
-				// activated by the same keystroke.
-				event.preventDefault();
+				if (stage.keyboardIntent({ kind: action.kind }).claimed) {
+					// One key, one activation: the palette's own control must not also be
+					// activated by the same keystroke.
+					event.preventDefault();
+					break;
+				}
+				// D2 — with no task or live press, the selected subject's adapter may own
+				// Backspace (the active bend point). A straight Wall does not claim it, so
+				// the existing command map is unchanged there.
+				if (stage.selectionKeyIntent({ kind: action.kind }).claimed) {
+					event.preventDefault();
+					break;
+				}
 				break;
 			}
 			case 'delete': {
 				if (activeLayer?.key(event, 'capture') === 'claimed') {
+					event.preventDefault();
+					break;
+				}
+				// D2 — an active bend point owns Delete before the Wall's destructive
+				// action. A curved Wall with no active knot claims and refuses the key, so
+				// Delete cannot silently fall through to deleting the Wall; a straight
+				// Wall is not claimed and keeps the existing `requestDelete` path.
+				if (facade?.selectionKeyIntent({ kind: 'delete' }).claimed === true) {
 					event.preventDefault();
 					break;
 				}
