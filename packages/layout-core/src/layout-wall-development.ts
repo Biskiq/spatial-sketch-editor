@@ -159,10 +159,11 @@ export type WallDevelopmentMeshTriangle = {
   stationStart: number;
   stationEnd: number;
   sheetStart: number;
-  sheetEnd: number;
-  spanIndex: number;
-  startKnotId: string;
-  endKnotId: string;
+  sheetEnd: number;	spanIndex: number;
+	startKnotId: string;
+	endKnotId: string;
+	/** A pick-only fill for an Opening void; never rendered or contoured. */
+	void?: boolean;
 };
 
 export type WallDevelopmentMesh = {
@@ -177,10 +178,21 @@ export type WallDevelopmentMesh = {
   bounds: { min: [number, number, number]; max: [number, number, number] };
 };
 
+export type WallDevelopmentMeshHole = {
+  readonly openingId: string;
+  /** Displayed sheet interval, already cut at the closed-Wall display seam. */
+  readonly sheetStart: number;
+  readonly sheetEnd: number;
+  readonly sillHeight: number;
+  readonly headHeight: number;
+};
+
 export type WallDevelopmentMeshOptions = {
   thickness: number;
   height: number;
   spans: readonly WallDevelopmentSourceSpan[];
+  /** Real voids in the developed sheet; omitted leaves the original strip unchanged. */
+  readonly openings?: readonly WallDevelopmentMeshHole[];
 };
 
 export function isWallDevelopmentRefusal(
@@ -544,10 +556,11 @@ export type WallDevelopmentInversePoint = {
   station: number;
   /** Signed offset from the developed centerline, positive along its left normal. */
   lateral: number;
-  face: 'left' | 'right';
-  spanIndex: number;
-  startKnotId: string;
-  endKnotId: string;
+  face: 'left' | 'right';	spanIndex: number;
+	startKnotId: string;
+	endKnotId: string;
+	/** A pick-only fill for an Opening void; never rendered or contoured. */
+	void?: boolean;
 };
 
 /**
@@ -653,6 +666,8 @@ export type WallDevelopmentOpeningBand = {
   readonly stationEnd: number;
   readonly sillHeight: number;
   readonly headHeight: number;
+  /** Door openings carry a leaf on the developed sheet. */
+  readonly kind?: 'door' | 'window';
 };
 
 /**
@@ -821,11 +836,11 @@ export function buildDevelopedWallMesh(
     b: number,
     c: number,
     face: WallDevelopmentFace,
-    stationStart: number,
-    stationEnd: number,
-    sheetStart: number,
-    sheetEnd: number
-  ): void => {
+    stationStart: number,		stationEnd: number,
+		sheetStart: number,
+		sheetEnd: number,
+		voidFill = false
+	): void => {
     const span = spanForStation(
       options.spans,
       development.closed ? wrap((stationStart + stationEnd) / 2, development.length) : (stationStart + stationEnd) / 2,
@@ -841,12 +856,12 @@ export function buildDevelopedWallMesh(
       stationEnd,
       sheetStart,
       sheetEnd,
-      spanIndex: span?.index ?? 0,
-      startKnotId: span?.startKnotId ?? '',
-      endKnotId: span?.endKnotId ?? ''
-    });
-    trianglesByFace[face] += 1;
-  };
+      spanIndex: span?.index ?? 0,			startKnotId: span?.startKnotId ?? '',
+			endKnotId: span?.endKnotId ?? '',
+			...(voidFill ? { void: true } : {})
+		});
+		if (!voidFill) trianglesByFace[face] += 1;
+	};
 
   for (const entry of ordered) {
     stations.push({
@@ -854,32 +869,85 @@ export function buildDevelopedWallMesh(
       sheet: entry.sheet,
       spanIndex: spanForStation(options.spans, entry.station, development.length, development.closed)?.index ?? 0
     });
-  }
+  }	const openings = options.openings ?? [];
+	const insideOpening = (sheet: number, height: number): boolean =>
+		openings.some(
+			(hole) =>
+				sheet > hole.sheetStart + DEVELOPMENT_EPSILON &&
+				sheet < hole.sheetEnd - DEVELOPMENT_EPSILON &&
+				height > hole.sillHeight + DEVELOPMENT_EPSILON &&
+				height < hole.headHeight - DEVELOPMENT_EPSILON
+		);
 
-  for (let index = 1; index < ordered.length; index += 1) {
-    const previous = ordered[index - 1]!;
-    if (ordered[index]!.sheet - previous.sheet <= DEVELOPMENT_EPSILON) continue;
-    const start = previous;
-    const end = ordered[index]!;
-    const lb0 = pushVertex(start.station, start.sheet, -half, 0);
-    const lt0 = pushVertex(start.station, start.sheet, -half, options.height);
-    const rb0 = pushVertex(start.station, start.sheet, half, 0);
-    const rt0 = pushVertex(start.station, start.sheet, half, options.height);
-    const lb1 = pushVertex(end.station, end.sheet, -half, 0);
-    const lt1 = pushVertex(end.station, end.sheet, -half, options.height);
-    const rb1 = pushVertex(end.station, end.sheet, half, 0);
-    const rt1 = pushVertex(end.station, end.sheet, half, options.height);
-    pushTriangle(lb0, lt0, lt1, 'left', start.station, end.station, start.sheet, end.sheet);
-    pushTriangle(lb0, lt1, lb1, 'left', start.station, end.station, start.sheet, end.sheet);
-    pushTriangle(rb0, rb1, rt1, 'right', start.station, end.station, start.sheet, end.sheet);
-    pushTriangle(rb0, rt1, rt0, 'right', start.station, end.station, start.sheet, end.sheet);
-    pushTriangle(lt0, rt0, rt1, 'top', start.station, end.station, start.sheet, end.sheet);
-    pushTriangle(lt0, rt1, lt1, 'top', start.station, end.station, start.sheet, end.sheet);
-    pushTriangle(lb0, lb1, rb1, 'bottom', start.station, end.station, start.sheet, end.sheet);
-    pushTriangle(lb0, rb1, rb0, 'bottom', start.station, end.station, start.sheet, end.sheet);
-  }
+	for (let index = 1; index < ordered.length; index += 1) {
+		const previous = ordered[index - 1]!;
+		if (ordered[index]!.sheet - previous.sheet <= DEVELOPMENT_EPSILON) continue;
+		const start = previous;
+		const end = ordered[index]!;
+		const stationAt = (sheet: number): number =>
+			start.station + ((sheet - start.sheet) / (end.sheet - start.sheet)) * (end.station - start.station);
+		// The display strip is cut at every Opening edge and sill/head so a void is
+		// a real absence of triangles rather than a painted rectangle. Without
+		// openings these sets contain only the segment's own corners, preserving
+		// the original strip exactly.
+		const sheetCuts = new Set<number>([start.sheet, end.sheet]);
+		const heightCuts = new Set<number>([0, options.height]);
+		for (const hole of openings) {
+			if (hole.sheetEnd <= start.sheet + DEVELOPMENT_EPSILON) continue;
+			if (hole.sheetStart >= end.sheet - DEVELOPMENT_EPSILON) continue;
+			for (const sheet of [hole.sheetStart, hole.sheetEnd]) {
+				if (sheet > start.sheet + DEVELOPMENT_EPSILON && sheet < end.sheet - DEVELOPMENT_EPSILON) {
+					sheetCuts.add(sheet);
+				}
+			}
+			for (const height of [hole.sillHeight, hole.headHeight]) {
+				if (height > DEVELOPMENT_EPSILON && height < options.height - DEVELOPMENT_EPSILON) {
+					heightCuts.add(height);
+				}
+			}
+		}
+		const sheets = [...sheetCuts].sort((a, b) => a - b);
+		const heights = [...heightCuts].sort((a, b) => a - b);
+		for (let sheetIndex = 1; sheetIndex < sheets.length; sheetIndex += 1) {
+			const sheet0 = sheets[sheetIndex - 1]!;
+			const sheet1 = sheets[sheetIndex]!;
+			if (sheet1 - sheet0 <= DEVELOPMENT_EPSILON) continue;
+			const station0 = stationAt(sheet0);
+			const station1 = stationAt(sheet1);
+			const sheetMid = (sheet0 + sheet1) / 2;
+			for (let heightIndex = 1; heightIndex < heights.length; heightIndex += 1) {
+				const height0 = heights[heightIndex - 1]!;
+				const height1 = heights[heightIndex]!;
+				if (height1 - height0 <= DEVELOPMENT_EPSILON) continue;
+				if (insideOpening(sheetMid, (height0 + height1) / 2)) continue;
+				const lb0 = pushVertex(station0, sheet0, -half, height0);
+				const lt0 = pushVertex(station0, sheet0, -half, height1);
+				const rb0 = pushVertex(station0, sheet0, half, height0);
+				const rt0 = pushVertex(station0, sheet0, half, height1);
+				const lb1 = pushVertex(station1, sheet1, -half, height0);
+				const lt1 = pushVertex(station1, sheet1, -half, height1);
+				const rb1 = pushVertex(station1, sheet1, half, height0);
+				const rt1 = pushVertex(station1, sheet1, half, height1);
+				pushTriangle(lb0, lt0, lt1, 'left', station0, station1, sheet0, sheet1);
+				pushTriangle(lb0, lt1, lb1, 'left', station0, station1, sheet0, sheet1);
+				pushTriangle(rb0, rb1, rt1, 'right', station0, station1, sheet0, sheet1);
+				pushTriangle(rb0, rt1, rt0, 'right', station0, station1, sheet0, sheet1);
+				if (Math.abs(height1 - options.height) <= DEVELOPMENT_EPSILON) {
+					pushTriangle(lt0, rt0, rt1, 'top', station0, station1, sheet0, sheet1);
+					pushTriangle(lt0, rt1, lt1, 'top', station0, station1, sheet0, sheet1);
+				}
+				if (Math.abs(height0) <= DEVELOPMENT_EPSILON) {
+					pushTriangle(lb0, lb1, rb1, 'bottom', station0, station1, sheet0, sheet1);
+					pushTriangle(lb0, rb1, rb0, 'bottom', station0, station1, sheet0, sheet1);
+				}
+			}
+		}
+	}
 
-  return { vertices, triangles, stations, trianglesByFace, bounds };
+	// A void is a real hole in the rendered strip, but it remains addressable:
+	// one pick-only centre quad per hole keeps the inverse map and Opening
+	// identity working without drawing a second contour or a false surface.
+	return { vertices, triangles, stations, trianglesByFace, bounds };
 }
 
 /**

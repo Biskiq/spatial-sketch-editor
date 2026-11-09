@@ -16,6 +16,7 @@ import {
 	buildDevelopedWallMesh,
 	createWallDevelopmentBuffers,
 	developmentInversePoint,
+	developmentOpeningFragments,
 	developmentOpeningIdentity,
 	evaluateWallDevelopment,
 	developmentPointAtStationFromBuffers,
@@ -26,6 +27,7 @@ import {
 	type WallDevelopment,
 	type WallDevelopmentBuffers,
 	type WallDevelopmentMesh,
+	type WallDevelopmentMeshHole,
 	type WallDevelopmentOpeningBand,
 	type WallDevelopmentSourceSpan
 } from '@portfolio/layout-core';
@@ -50,6 +52,7 @@ export type WallUnfoldDisplay = {
 	readonly positions: Float32Array;
 	readonly normals: Float32Array;
 	readonly openingBands: readonly WallDevelopmentOpeningBand[];
+	readonly openingHoles: readonly WallDevelopmentMeshHole[];
 };
 
 export type WallUnfoldPick = {
@@ -83,10 +86,33 @@ export function buildWallUnfoldDisplay(
 	const buffers = createWallDevelopmentBuffers(development);
 	evaluateWallDevelopment(development, state.u, buffers);
 	const spans = options.spans ?? [];
+	const openingBands: WallDevelopmentOpeningBand[] = wall.openings.map((opening) => ({
+		openingId: opening.openingId,
+		stationStart: opening.offset,
+		stationEnd: opening.offset + opening.width,
+		sillHeight: opening.sillHeight,
+		headHeight: opening.sillHeight + opening.height,
+		kind: opening.kind
+	}));
+	const openingHoles: WallDevelopmentMeshHole[] = openingBands.flatMap((band) => {
+		const developmentOpening = developmentOpeningFragments(
+			development,
+			{ openingId: band.openingId, offset: band.stationStart, width: band.stationEnd - band.stationStart },
+			spans
+		);
+		return developmentOpening.fragments.map((fragment) => ({
+			openingId: band.openingId,
+			sheetStart: fragment.sheetStart,
+			sheetEnd: fragment.sheetEnd,
+			sillHeight: band.sillHeight,
+			headHeight: band.headHeight
+		}));
+	});
 	const mesh = buildDevelopedWallMesh(development, {
 		thickness: wall.thickness,
 		height: wall.height,
-		spans
+		spans,
+		openings: openingHoles
 	});
 	const floorY = options.floorY ?? 0;
 	const positions = new Float32Array(mesh.vertices.length * 3);
@@ -112,13 +138,8 @@ export function buildWallUnfoldDisplay(
 		spans,
 		positions,
 		normals,
-		openingBands: wall.openings.map((opening) => ({
-			openingId: opening.openingId,
-			stationStart: opening.offset,
-			stationEnd: opening.offset + opening.width,
-			sillHeight: opening.sillHeight,
-			headHeight: opening.sillHeight + opening.height
-		}))
+		openingBands,
+		openingHoles
 	};
 }
 
@@ -204,6 +225,53 @@ export function pickWallUnfold(
 			openingId: developmentOpeningIdentity(display.development, display.openingBands, canonicalStation, height),
 			distanceMeters: hit.distance
 		};
+	}
+	// A real Opening void has no rendered triangle to hit. Address the band
+	// analytically at the current development `u` so the same canonical Opening
+	// remains selectable at either side of a closed Wall's seam.
+	for (const band of display.openingBands) {
+		const width = band.stationEnd - band.stationStart;
+		if (!(width > 0)) continue;
+		// Keep the centre on the displayed side of the canonical seam. Wrapping
+		// a seam-crossing centre to 0 would address the sheet's far start rather
+		// than the seam end where the void actually is.
+		const centerStation = Math.min(
+			display.development.length,
+			Math.max(0, band.stationStart + width / 2)
+		);
+		const center = developmentPointAtStationFromBuffers(
+			display.development,
+			display.buffers,
+			centerStation
+		);
+		const centerWorld = [center.point[0], display.floorY + (band.sillHeight + band.headHeight) / 2, center.point[1]] as const;
+		const lengthSquared = direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2];
+		if (!(lengthSquared > 0)) continue;
+		const toCenter = [centerWorld[0] - origin[0], centerWorld[1] - origin[1], centerWorld[2] - origin[2]] as const;
+		const distanceAlong = (toCenter[0] * direction[0] + toCenter[1] * direction[1] + toCenter[2] * direction[2]) / lengthSquared;
+		if (!(distanceAlong > 0)) continue;
+		const closest = [
+			origin[0] + direction[0] * distanceAlong,
+			origin[1] + direction[1] * distanceAlong,
+			origin[2] + direction[2] * distanceAlong
+		] as const;
+		const perpendicular = Math.hypot(closest[0] - centerWorld[0], closest[1] - centerWorld[1], closest[2] - centerWorld[2]);
+		if (perpendicular > width / 2 + 0.05) continue;
+		const candidate: WallUnfoldPick = {
+			station: centerStation,
+			lateral: 0,
+			height: band.sillHeight + (band.headHeight - band.sillHeight) / 2,
+			face: 'left',
+			spanIndex: 0,
+			startKnotId: '',
+			endKnotId: '',
+			openingId: band.openingId,
+			distanceMeters: Math.sqrt(distanceAlong * lengthSquared)
+		};
+		// A jamb beside the void can be a few centimetres nearer than the band
+		// centre. The void is still the intended address for any ray inside its
+		// width, so let the band win within the same claim neighbourhood.
+		if (nearest === null || candidate.distanceMeters <= nearest.distanceMeters + 0.5) nearest = candidate;
 	}
 	return nearest;
 }
