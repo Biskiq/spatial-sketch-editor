@@ -505,16 +505,6 @@ function validateWalls(cand, movedIds) {
       if (warning) break;
     }
   }
-  if (!refusal) {
-    const area0 = roomArea();
-    const pts = S.walls.room.map((id) => cand[id]);
-    let a = 0;
-    for (let i = 0; i < pts.length; i++) { const q = pts[(i + 1) % pts.length]; a += pts[i][0] * q[1] - q[0] * pts[i][1]; }
-    const area = Math.abs(a) / 2;
-    if (Math.abs(area - area0) / Math.max(area0, 1e-6) > 0.1) {
-      warning = warning || { point: [0, 0], text: `Room 1 re-derived · ${fmt(area0, 1)} → ${fmt(area, 1)} m²`, at: "room" };
-    }
-  }
   return { refusal, warning };
 }
 function overlapSegments(a, b, c, e, t) {
@@ -708,7 +698,7 @@ function validateBend(curve) {
     for (let i = 0; i < curve.length; i += 2) {
       const dd = segPointDist(curve[i], w.a, w.b);
       if (dd < 0.12) return { refusal: { point: curve[i], text: `The Wall would lie on ${w.id}. Move it clear.` }, warning: null };
-      if (dd < 0.25) return { refusal: null, warning: { point: curve[i], text: `The Wall passes ${fmt(dd)} m from ${w.id} — accepted with a warning` } };
+      if (dd < 0.25) return { refusal: null, warning: { point: curve[i], text: `The Wall clears ${w.id} by ${fmt(dd)} m — no connection` } };
     }
   }
   // self-intersection on non-adjacent samples
@@ -718,8 +708,6 @@ function validateBend(curve) {
       if (hit) return { refusal: { point: hit.point, text: "The Wall would fold through itself. Ease the bend." }, warning: null };
     }
   }
-  const near = S.bend.knots.find((k, i) => S.bend.knots.some((o, j) => i !== j && dist(k.point, o.point) < 0.4));
-  if (near) return { refusal: null, warning: { point: near.point, text: "Two bend points are closer than 0.40 m — accepted with a warning" } };
   return { refusal: null, warning: null };
 }
 function bendGlyph(p, active) {
@@ -1151,7 +1139,7 @@ function renderWallsCard(card) {
       <h4>Preview grammar</h4>
       <div class="rule"><i class="sel"></i><span><b>Ochre</b> — the accepted Wall and its metal. Never a proposal.</span></div>
       <div class="rule"><i class="prop"></i><span><b>Cobalt dashed</b> — the whole candidate network: the moved Wall solid-ish, affected neighbours thinner, each with its length change.</span></div>
-      <div class="rule"><i class="warn"></i><span><b>Amber</b> — representable, but the consequence needs saying (Room re-derivation, a near-miss that will <em>not</em> connect).</span></div>
+      <div class="rule"><i class="warn"></i><span><b>Amber</b> — rare: a near-miss that will <em>not</em> connect. Room-area changes and predictable valid edits stay neutral.</span></div>
       <div class="rule"><i class="bad"></i><span><b>Coral</b> — refused. The <em>whole</em> attempted network stays visible and the conflict is marked at its real location, not at the pointer.</span></div>
     </div>
     <div class="card-sect">
@@ -1252,7 +1240,7 @@ function renderCircleCard(card) {
         <button class="btn" data-act="side">${C.side === 1 ? "Flip to Outside" : "Flip to Inside"}</button>
         <button class="btn primary" data-act="done">Done</button>
       </div>
-      <div class="note info"><b>View preserved.</b> Scrubbing, flipping and editing never move the camera. Only <b>Done</b> returns to the entry pose — and it returns exactly.</div>
+      <div class="note info"><b>View preserved.</b> Entry may pan, fit or zoom only; orientation stays fixed. Scrubbing, peeling and flipping are camera-free. <b>Done</b> returns the entry pose exactly.</div>
     </div>
     <div class="card-sect">
       <h4>Opening D1 · door</h4>
@@ -1266,9 +1254,11 @@ function renderCircleCard(card) {
     </div>
     <div class="card-sect">
       <h4>Reading</h4>
+      <div class="mini"><b>Displayed side:</b> ${C.side === 1 ? "Inside" : "Outside"} · both sides are the same canonical Wall and door.</div>
       <div class="mini">${C.u > 0.985 ? "Flat: stations and heights are to scale; openings read as true centreline stations." : C.u < 0.02 ? "As built: the sheet is not displaced, so the canonical body is the drawing." : "Partial: heights are true, stations along the sheet are true; face widths foreshorten with the curve."}</div>
       <div class="rule" style="margin-top:6px"><i class="sel"></i><span><b>Anchor</b> — the station nearest your view centre or the selected Opening; never hard-coded station 0.</span></div>
       <div class="rule"><i class="warn"></i><span><b>Inside/Outside</b> — flips the sheet’s reading direction about the anchor. No camera swing.</span></div>
+      <div class="rule"><i class="sel"></i><span><b>Both sides</b> — flip to Outside, then back to Inside: the same canonical Wall and door, mirrored station reading, no camera motion.</span></div>
       <div class="rule"><i class="bad"></i><span><b>Overlap</b> — the sheet refuses edits while it overlaps itself; u never changes automatically.</span></div>
     </div>
     <div class="contract">
