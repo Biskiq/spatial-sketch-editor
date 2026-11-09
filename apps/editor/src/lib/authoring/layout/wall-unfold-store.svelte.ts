@@ -24,6 +24,7 @@ import {
 	setWallUnfoldAmount,
 	type WallUnfoldState
 } from '$lib/layout/wall-unfold';
+import type { WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
 
 export type WallUnfoldCameraRequest =
 	| {
@@ -62,6 +63,9 @@ function smoothstep(value: number): number {
 
 class WallUnfoldStore {
 	state = $state<WallUnfoldState | null>(null);
+	/** The last pointer pick, session-only: it is evidence, never authored data. */
+	lastPick = $state<(WallUnfoldPick & { readonly pointerId: number; readonly sequence: number }) | null>(null);
+	#pickSequence = 0;
 	#executor: CameraExecutor | null = null;
 	#frame: number | null = null;
 
@@ -80,6 +84,8 @@ class WallUnfoldStore {
 	}
 
 	enter(wall: CompiledPhysicalWall, anchorStation = 0): void {
+		this.lastPick = null;
+		this.#pickSequence = 0;
 		const state = createWallUnfoldState({
 			wall,
 			anchorStation,
@@ -113,6 +119,7 @@ class WallUnfoldStore {
 
 	exit(wall?: CompiledPhysicalWall): void {
 		if (this.state === null) return;
+		this.lastPick = null;
 		this.#requestReturn(this.state);
 		if (wall !== undefined) {
 			this.animateTo(wall, 0, () => {
@@ -121,6 +128,11 @@ class WallUnfoldStore {
 		} else {
 			this.state = null;
 		}
+	}
+
+	/** Record the canonical attribution a live Stage press resolved. */
+	recordPick(pick: WallUnfoldPick, pointerId: number): void {
+		this.lastPick = { ...pick, pointerId, sequence: ++this.#pickSequence };
 	}
 
 	/** Cancel exactly to the canonical mesh without leaving the context. */

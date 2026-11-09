@@ -168,6 +168,11 @@ export function pickWallUnfold(
 			display.positions[c * 3]!, display.positions[c * 3 + 1]!, display.positions[c * 3 + 2]!
 		);
 		if (hit === null) continue;
+		// Determinism rule: the nearest positive hit wins, and an equal-distance
+		// tie keeps the earlier triangle in mesh order. Mesh order is the stable
+		// display order (side quads per sample segment), so a ray that lands
+		// exactly on a cusp or display-cut seam gets one answer rather than a
+		// floating-point/array-order answer. Closed stations wrap modulo L below.
 		if (nearest !== null && hit.distance >= nearest.distanceMeters) continue;
 		const va = display.mesh.vertices[a]!;
 		const vb = display.mesh.vertices[b]!;

@@ -13,12 +13,16 @@
  * one place so the Card, the Stage and the adapter cannot disagree.
  */
 import {
+	cubicBezierArcLength,
 	prepareWallDevelopment,
+	wallCenterlineCubics,
 	type CompiledPhysicalWall,
 	type CurveSample,
+	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type WallDevelopment,
-	type WallDevelopmentRefusal
+	type WallDevelopmentRefusal,
+	type WallDevelopmentSourceSpan
 } from '@portfolio/layout-core';
 import type { InspectionPose, ViewportReading } from '@portfolio/camera-core';
 
@@ -192,6 +196,57 @@ export function prepareWallUnfoldDevelopment(
 		closed: isClosedCompiledWall(wall),
 		anchorStation: state.anchorStation,
 		cutStation: state.cutStation
+	});
+}
+
+/**
+ * The canonical span attribution for a Wall's development map.
+ *
+ * The compiler retains samples (and the Station they measure) but not the
+ * authored knot stations, so the live inverse pick reads them from the same
+ * authored Layout the compiler consumed. A straight Wall is one span from its
+ * start Junction to its end Junction; a cubic chain is one span per stored
+ * cubic, with interior knot IDs naming the joins. This is attribution only: it
+ * never changes the centerline, the development map or the display mesh.
+ */
+export function wallUnfoldSourceSpans(
+	layout: LayoutDocumentWallFirst,
+	wallId: string,
+	length: number
+): WallDevelopmentSourceSpan[] {
+	const wall = layout.walls.find((candidate) => candidate.id === wallId);
+	if (wall === undefined) return [];
+	if (wall.centerline.kind === 'line') {
+		return [
+			{
+				index: 0,
+				startKnotId: wall.startJunctionId,
+				endKnotId: wall.endJunctionId,
+				startStation: 0,
+				endStation: length,
+				arcLength: length
+			}
+		];
+	}
+	const start = layout.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
+	const end = layout.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return [];
+	const centerline = wall.centerline;
+	const cubics = wallCenterlineCubics(centerline, start, end, 'forward');
+	let station = 0;
+	return cubics.map((cubic, index) => {
+		const arcLength = cubicBezierArcLength(cubic);
+		const span: WallDevelopmentSourceSpan = {
+			index,
+			startKnotId: index === 0 ? wall.startJunctionId : centerline.knots[index - 1]?.id ?? '',
+			endKnotId:
+				index === cubics.length - 1 ? wall.endJunctionId : centerline.knots[index]?.id ?? '',
+			startStation: station,
+			endStation: station + arcLength,
+			arcLength
+		};
+		station += arcLength;
+		return span;
 	});
 }
 

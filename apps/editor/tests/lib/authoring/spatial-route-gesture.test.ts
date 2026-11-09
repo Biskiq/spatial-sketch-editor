@@ -36,7 +36,23 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import { captureUnitSave } from '@portfolio/project-model/units';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
-import { layoutCapturedId, planCreateWallFirstOpening } from '@portfolio/layout-core';
+import {
+	createClosedWallCircleDocument,
+	createEmptyWallFirstLayoutDocument,
+	deriveChainSpans,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
+	layoutCapturedId,
+	planCreateWallFirstOpening,
+	wallCubicChain,
+	wallFirstWallLength,
+	type LayoutDocumentWallFirst,
+	type LayoutVec2,
+	type LayoutWall,
+	type LayoutWallCurveKnot
+} from '@portfolio/layout-core';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+import { wallUnfoldSourceSpans } from '$lib/layout/wall-unfold';
+import { buildWallUnfoldDisplay, type WallUnfoldDisplay } from '$lib/layout/wall-unfold-pick';
 import {
 	buildStarterEnclosureLayout,
 	STARTER_TEMPLATE_ID_CAPTURE
@@ -230,6 +246,10 @@ beforeEach(async () => {
 	await settled();
 });
 afterEach(() => {
+	// The unfold store is a singleton session. A failed assertion must not leave
+	// it active for the next mounted route, where it would deliberately suppress
+	// ordinary Stage selection (the unfolded display owns the surface).
+	wallUnfold.exit();
 	unmount(component);
 	target.remove();
 	if (captureDescriptor === undefined)
@@ -2168,5 +2188,285 @@ it('retains Box/Line choices while disclosure changes',async()=>{await openInk()
 		expect(index().hasAttribute('hidden')).toBe(true);
 		expect(target.querySelector('[data-index-scrim]')).toBeNull();
 		expect(facade().selection()?.sourceId).toBe(wallId);
+	});
+});
+
+/* ------------------------------------------------------------------------- *
+ * C3 checkpoint 5 — inverse picking through the live mounted Stage.
+ *
+ * These tests deliberately do not call `pickWallUnfold` themselves for the
+ * behaviour under test. They enter the real unfold session, dispatch a real
+ * pointer event at the Stage element and read the route's own pick record and
+ * ordinary selection. The display is constructed only to find a developed
+ * point to press and to state the expected canonical attribution.
+ * ------------------------------------------------------------------------- */
+type UnfoldFixture = {
+	readonly label: string;
+	readonly document: LayoutDocumentWallFirst;
+	readonly wallId: string;
+};
+
+function unfoldKnots(...points: LayoutVec2[]): LayoutWallCurveKnot[] {
+	return points.map((point, index) => ({ id: `wall-a:knot:${index + 1}`, point: [point[0], point[1]] }));
+}
+
+function unfoldDocument(
+	centerline: LayoutWall['centerline'],
+	start: LayoutVec2,
+	end: LayoutVec2
+): LayoutDocumentWallFirst {
+	const document = createEmptyWallFirstLayoutDocument();
+	document.formatVersion = LAYOUT_WALL_FIRST_FORMAT_VERSION;
+	document.junctions = [
+		{ id: 'j-a', point: [start[0], start[1]] },
+		{ id: 'j-b', point: [end[0], end[1]] }
+	];
+	document.walls = [
+		{
+			id: 'wall-a',
+			startJunctionId: 'j-a',
+			endJunctionId: 'j-b',
+			thickness: 0.2,
+			height: 3,
+			centerline
+		} as LayoutWall
+	];
+	return document;
+}
+
+function unfoldChain(points: LayoutVec2[]): LayoutDocumentWallFirst {
+	return unfoldDocument(
+		wallCubicChain(unfoldKnots(...points.slice(1, -1)), deriveChainSpans(points)),
+		points[0]!,
+		points.at(-1)!
+	);
+}
+
+function unfoldFixtures(): UnfoldFixture[] {
+	const multi: LayoutVec2[] = [[0, 0], [2, 1.5], [4, -1], [6, 1], [8, -1], [10, 1.2], [12, 0]];
+	const sCurve: LayoutVec2[] = [[0, 0], [1.5, 2.5], [4.5, -2.5], [6, 0]];
+	const circle = createClosedWallCircleDocument({
+		center: [0, 0],
+		rim: [5, 0],
+		junctionId: 'j-circle',
+		wallId: 'wall-circle',
+		thickness: 0.2,
+		height: 3
+	});
+	if (circle.kind !== 'success') throw new Error(JSON.stringify(circle.rejection));
+	return [
+		{ label: 'straight', wallId: 'wall-a', document: unfoldDocument({ kind: 'line' }, [0, 0], [6, 0]) },
+		{ label: 'multi-bezier', wallId: 'wall-a', document: unfoldChain(multi) },
+		{ label: 's-curve', wallId: 'wall-a', document: unfoldChain(sCurve) },
+		{
+			label: 'inflection',
+			wallId: 'wall-a',
+			document: unfoldDocument(
+				wallCubicChain([], [{ handleOut: [1.5, 3], handleIn: [4.5, -3] }]),
+				[0, 0],
+				[6, 0]
+			)
+		},
+		{ label: 'closed-circle', wallId: 'wall-circle', document: circle.document }
+	];
+}
+
+function openingOn(fixture: UnfoldFixture, offset: number, width: number) {
+	const plan = planCreateWallFirstOpening(
+		fixture.document,
+		{ wallId: fixture.wallId, kind: 'window', offset, width, height: 1.2, sillHeight: 1 },
+		freshCapture(),
+		fixture.document.floor.id
+	);
+	if (plan.kind === 'rejected') throw new Error(JSON.stringify(plan.rejection));
+	return { document: plan.document, openingId: plan.changedOpeningIds[0]! };
+}
+
+async function remountWith(layout: LayoutDocumentWallFirst): Promise<void> {
+	unmount(component);
+	target.remove();
+	await mountRoute(layout);
+	await frame();
+}
+
+/** Enter the real session and let the declared 1 s face transition settle. */
+async function enterUnfold(wallId: string): Promise<void> {
+	const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+	const wall = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === wallId);
+	if (wall === undefined) throw new Error(`missing compiled Wall ${wallId}`);
+	wallUnfold.enter(wall, 0);
+	clock.mockReturnValue(2000);
+	for (let index = 0; index < 4; index += 1) await frame();
+	expect(wallUnfold.state?.u).toBe(1);
+}
+
+type DisplayTriangle = WallUnfoldDisplay['mesh']['triangles'][number];
+
+function triangleCentroid(display: WallUnfoldDisplay, triangle: DisplayTriangle): [number, number, number] {
+	const sum: [number, number, number] = [0, 0, 0];
+	for (const index of triangle.indices) {
+		sum[0] += display.positions[index * 3]!;
+		sum[1] += display.positions[index * 3 + 1]!;
+		sum[2] += display.positions[index * 3 + 2]!;
+	}
+	return [sum[0] / 3, sum[1] / 3, sum[2] / 3];
+}
+
+function wrappedStation(value: number, length: number): number {
+	const wrapped = value % length;
+	return wrapped < 0 ? wrapped + length : wrapped;
+}
+
+/** The station at the triangle centroid, from its three attributed vertices. */
+function triangleStation(display: WallUnfoldDisplay, triangle: DisplayTriangle): number {
+	return triangle.indices.reduce((sum, index) => sum + display.mesh.vertices[index]!.station, 0) / 3;
+}
+
+function developedDisplay(fixture: UnfoldFixture): WallUnfoldDisplay {
+	const wall = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === fixture.wallId)!;
+	const state = wallUnfold.state!;
+	const spans = wallUnfoldSourceSpans(fixture.document, fixture.wallId, wall.length);
+	const display = buildWallUnfoldDisplay(wall, state, {
+		floorY: facade().snapshot().domain.datumMeters,
+		spans
+	});
+	if (display === null) throw new Error('the developed display was refused');
+	return display;
+}
+
+function openingFaceTriangle(display: WallUnfoldDisplay, offset: number, width: number): DisplayTriangle | undefined {
+	return display.mesh.triangles.find((triangle) => {
+		const middle = (triangle.stationStart + triangle.stationEnd) / 2;
+		return (
+			triangle.face === 'right' &&
+			middle > offset + Math.min(0.05, width * 0.1) &&
+			middle < offset + width - Math.min(0.05, width * 0.1)
+		);
+	});
+}
+
+describe('mounted unfolded inverse picking', () => {
+	it.each(unfoldFixtures().map((fixture) => [fixture.label, fixture] as const))(
+		'presses a developed Opening into ordinary selection on %s',
+		async (_label, fixture) => {
+			const length = wallFirstWallLength(fixture.document, fixture.wallId)!;
+			const opening = openingOn(fixture, length * 0.4, 1);
+			await remountWith(opening.document);
+			await enterUnfold(fixture.wallId);
+
+			const wall = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === fixture.wallId)!;
+			const compiledOpening = wall.openings.find((candidate) => candidate.openingId === opening.openingId)!;
+			const display = developedDisplay(fixture);
+			const triangle = openingFaceTriangle(display, compiledOpening.offset, compiledOpening.width);
+			if (triangle === undefined) throw new Error(`no developed Opening triangle on ${fixture.label}`);
+			const expectedStation = wallUnfold.state!.cutStation === null
+				? triangleStation(display, triangle)
+				: wrappedStation(triangleStation(display, triangle), wall.length);
+			const point = projected(triangleCentroid(display, triangle));
+			const before = facade().snapshot();
+
+			pointer('pointerdown', point, false, 7);
+			await frame();
+
+			const pick = wallUnfold.lastPick;
+			expect(pick).not.toBeNull();
+			if (pick === null) return;
+			expect(pick.pointerId).toBe(7);
+			expect(pick.openingId).toBe(opening.openingId);
+			expect(facade().selection()?.sourceId).toBe(opening.openingId);
+			expect(pick.face).toBe('left');
+			expect(pick.spanIndex).toBe(triangle.spanIndex);
+			expect(pick.startKnotId).toBe(triangle.startKnotId);
+			expect(pick.endKnotId).toBe(triangle.endKnotId);
+			expect(pick.station).toBeCloseTo(expectedStation, 6);
+			// The press is a read: the compiled snapshot and canonical document are unchanged.
+			expect(facade().snapshot()).toBe(before);
+			expect(history().canUndo).not.toBe('true');
+		}
+	);
+
+	it('selects a seam-crossing Opening as one canonical Opening through the live path', async () => {
+		const fixture = unfoldFixtures().find((candidate) => candidate.label === 'closed-circle')!;
+		const length = wallFirstWallLength(fixture.document, fixture.wallId)!;
+		const opening = openingOn(fixture, length - 0.2, 0.4);
+		await remountWith(opening.document);
+		await enterUnfold(fixture.wallId);
+
+		const display = developedDisplay(fixture);
+		const seamTriangle = display.mesh.triangles.find((triangle) => {
+			if (triangle.face !== 'right') return false;
+			const station = wrappedStation(triangleStation(display, triangle), length);
+			return station > length - 0.19 || station < 0.19;
+		});
+		if (seamTriangle === undefined) throw new Error('no triangle at the closed Wall seam');
+
+		pointer('pointerdown', projected(triangleCentroid(display, seamTriangle)), false, 9);
+		await frame();
+		expect(wallUnfold.lastPick?.openingId).toBe(opening.openingId);
+		expect(wallUnfold.lastPick?.station).toBeCloseTo(length - 0.1, 1);
+		expect(facade().selection()?.sourceId).toBe(opening.openingId);
+		const compiled = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === fixture.wallId)!;
+		expect(compiled.openings.filter((candidate) => candidate.openingId === opening.openingId)).toHaveLength(1);
+	});
+
+	it('resolves a press across the closed Wall display cut deterministically', async () => {
+		const fixture = unfoldFixtures().find((candidate) => candidate.label === 'closed-circle')!;
+		const length = wallFirstWallLength(fixture.document, fixture.wallId)!;
+		const opening = openingOn(fixture, length / 2 - 0.2, 0.4);
+		await remountWith(opening.document);
+		await enterUnfold(fixture.wallId);
+		const state = wallUnfold.state!;
+		expect(state.cutStation).not.toBeNull();
+		const cut = state.cutStation!;
+		const display = developedDisplay(fixture);
+		const cutTriangle = display.mesh.triangles.find((triangle) => {
+			if (triangle.face !== 'right') return false;
+			return Math.abs(wrappedStation(triangleStation(display, triangle), length) - cut) < 0.12;
+		});
+		if (cutTriangle === undefined) throw new Error('no triangle at the display cut');
+		const point = projected(triangleCentroid(display, cutTriangle));
+
+		pointer('pointerdown', point, false, 10);
+		await frame();
+		const first = wallUnfold.lastPick;
+		expect(first?.openingId).toBe(opening.openingId);
+		expect(facade().selection()?.sourceId).toBe(opening.openingId);
+		pointer('pointerdown', point, false, 13);
+		await frame();
+		const second = wallUnfold.lastPick;
+		expect(second?.spanIndex).toBe(first?.spanIndex);
+		expect(second?.startKnotId).toBe(first?.startKnotId);
+		expect(second?.endKnotId).toBe(first?.endKnotId);
+		expect(second?.station).toBeCloseTo(first!.station, 12);
+	});
+
+	it('resolves a press at a cusp-adjacent span joint deterministically', async () => {
+		const fixture = unfoldFixtures().find((candidate) => candidate.label === 'multi-bezier')!;
+		await remountWith(fixture.document);
+		await enterUnfold(fixture.wallId);
+		const display = developedDisplay(fixture);
+		const joint = display.spans[2]!.startStation;
+		const triangle = display.mesh.triangles.find(
+			(candidate) =>
+				candidate.face === 'right' && candidate.stationStart < joint && candidate.stationEnd > joint
+		);
+		if (triangle === undefined) throw new Error('no triangle straddles the cusp-adjacent span joint');
+		const point = projected(triangleCentroid(display, triangle));
+
+		pointer('pointerdown', point, false, 11);
+		await frame();
+		const first = wallUnfold.lastPick;
+		expect(first).not.toBeNull();
+		pointer('pointerdown', point, false, 12);
+		await frame();
+		const second = wallUnfold.lastPick;
+		expect(second).not.toBeNull();
+		if (first === null || second === null) return;
+		expect(second.station).toBeCloseTo(first.station, 12);
+		expect(second.spanIndex).toBe(first.spanIndex);
+		expect(second.startKnotId).toBe(first.startKnotId);
+		expect(second.endKnotId).toBe(first.endKnotId);
+		expect(second.face).toBe(first.face);
+		expect(facade().selection()?.sourceId).toBe(fixture.wallId);
 	});
 });
