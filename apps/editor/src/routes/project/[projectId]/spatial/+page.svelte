@@ -6,7 +6,7 @@
 		resolveWorldScope,
 		type WorldScope
 	} from '$lib/authoring/stage/shell/world-index-model';
-	import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
+	import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		indexLabels,
 		layoutKindWord,
@@ -99,18 +99,24 @@
 		type StageAcceptanceHost,
 		type StageHistoryState
 	} from '$lib/authoring/stage/host-acceptance';
-
-import {
-	LAYOUT_DIMENSION_LIMIT_MESSAGE,
-	planFragmentOf,
-	planMembershipOf,
-	type PlanEvaluation,
-	type PlanMembershipReason
-} from '@portfolio/layout-core';
+	import {
+		developmentPointAtStationFromBuffers,
+		LAYOUT_DIMENSION_LIMIT_MESSAGE,
+		planFragmentOf,
+		planMembershipOf,
+		type PlanEvaluation,
+		type PlanMembershipReason
+	} from '@portfolio/layout-core';
+	import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
 	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import { wallUnfoldSourceSpans } from '$lib/layout/wall-unfold';
 	import { buildWallUnfoldDisplay, pickWallUnfold, type WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
+	import {
+		mapSheetOpeningDrag,
+		sheetOpeningModeFromEdges,
+		type SheetOpeningMode
+	} from '$lib/layout/wall-unfold-opening-drag';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -1992,7 +1998,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
 		if (wall === undefined) return false;
 		const spans = wallUnfoldSourceSpans(layout, wall.wallId, wall.length);
-		const display = buildWallUnfoldDisplay(wall, state, {
+		const preview = wallUnfold.previewOpening;
+		const displayWall = preview?.wallId === wall.wallId ? {
+			...wall,
+			openings: wall.openings.map((opening) => opening.openingId === preview.openingId
+				? { ...opening, offset: preview.offset, width: preview.width }
+				: opening)
+		} : wall;
+		const display = buildWallUnfoldDisplay(displayWall, state, {
 			floorY: snapshot.domain.datumMeters,
 			spans
 		});
@@ -2003,9 +2016,141 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (pick === null) return false;
 		wallUnfold.recordPick(pick, event.pointerId);
 		selectUnfoldedPick(wall.wallId, pick);
+		// S5b — a press on an Opening void starts a canonical offset/width edit.
+		// The jamb is chosen by the projected edge distance; the void's analytic
+		// pick returns its centre, so edge proximity must be measured separately.
+		const sourceOpening = pick.openingId === null ? undefined : layout.openings.find((opening) => opening.id === pick.openingId);
+		const band = pick.openingId === null ? undefined : display.openingBands.find((candidate) => candidate.openingId === pick.openingId);
+		if (sourceOpening !== undefined && band !== undefined && pick.openingId !== null) {
+			const height = snapshot.domain.datumMeters + (band.sillHeight + band.headHeight) / 2;
+			const projectionId = stage.evaluationId();
+			const edgeAt = (station: number): number => {
+				if (projectionId === null) return Infinity;
+				// Stations past a closed Wall's seam clamp to the drawn strip end, which
+				// is where the void's visible jamb is actually rendered.
+				const at = developmentPointAtStationFromBuffers(display.development, display.buffers, station);
+				const projected = stage.projectWorld([at.point[0], height, at.point[1]], projectionId);
+				return projected.kind === 'projected'
+					? Math.hypot(projected.css[0] - event.clientX, projected.css[1] - event.clientY)
+					: Infinity;
+			};
+			const mode = sheetOpeningModeFromEdges(edgeAt(band.stationStart), edgeAt(band.stationEnd));
+			sheetOpeningDrag = {
+				pointerId: event.pointerId,
+				wallId: wall.wallId,
+				openingId: pick.openingId,
+				mode,
+				grabStation: mode === 'left' ? band.stationStart : mode === 'right' ? band.stationEnd : pick.station,
+				startOffset: sourceOpening.offset,
+				startWidth: sourceOpening.width,
+				length: wall.length,
+				closed: display.development.closed,
+				pressX: event.clientX,
+				pressY: event.clientY,
+				moved: false,
+				previewOffset: sourceOpening.offset,
+				previewWidth: sourceOpening.width
+			};
+			wallUnfold.setOpeningPreview({ wallId: wall.wallId, openingId: pick.openingId, offset: sourceOpening.offset, width: sourceOpening.width });
+			try { stageEl?.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
+		}
 		// The press is consumed: its release must not run the canonical Stage pick.
 		press.refuse(event.pointerId);
 		return true;
+	}
+
+	function sheetOpeningMove(event: PointerEvent): void {
+		const active = sheetOpeningDrag;
+		const stage = facade;
+		const current = evaluation;
+		const layout = layoutPayload;
+		const state = wallUnfold.state;
+		if (active === null || active.pointerId !== event.pointerId || stage === null || current === null || layout === null || state === null) return;
+		const snapshot = stage.snapshot();
+		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall === undefined) return;
+		const preview = wallUnfold.previewOpening;
+		const displayWall = preview?.wallId === wall.wallId ? {
+			...wall,
+			openings: wall.openings.map((opening) => opening.openingId === preview.openingId
+				? { ...opening, offset: preview.offset, width: preview.width }
+				: opening)
+		} : wall;
+		const display = buildWallUnfoldDisplay(displayWall, state, {
+			floorY: snapshot.domain.datumMeters,
+			spans: wallUnfoldSourceSpans(layout, wall.wallId, wall.length)
+		});
+		if (display === null) return;
+		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
+		if (ray.kind !== 'ray') return;
+		const pick = pickWallUnfold(display, ray.ray);
+		if (pick === null) return;
+		// A press without travel is a click, not an edit: leave the preview at the
+		// canonical values so release commits nothing and the selection stands.
+		if (!active.moved && Math.hypot(event.clientX - active.pressX, event.clientY - active.pressY) <= 3) return;
+		active.moved = true;
+		const edit = mapSheetOpeningDrag({
+			mode: active.mode,
+			startOffset: active.startOffset,
+			startWidth: active.startWidth,
+			grabStation: active.grabStation,
+			pointerStation: pick.station,
+			length: active.length,
+			closed: active.closed
+		});
+		active.previewOffset = edit.offset;
+		active.previewWidth = edit.width;
+		wallUnfold.setOpeningPreview({ wallId: active.wallId, openingId: active.openingId, offset: edit.offset, width: edit.width });
+	}
+
+	async function finishSheetOpening(event: PointerEvent): Promise<void> {
+		const active = sheetOpeningDrag;
+		if (active === null || active.pointerId !== event.pointerId) return;
+		sheetOpeningDrag = null;
+		// An unmoved press selected the Opening at press time; it owes no edit.
+		if (!active.moved) {
+			wallUnfold.setOpeningPreview(null);
+			return;
+		}
+		const services = adapterServices;
+		const stage = facade;
+		if (services === null || stage === null) { wallUnfold.setOpeningPreview(null); return; }
+		const snapshot = stage.snapshot();
+		const field = active.mode === 'slide' ? 'offset' : 'width';
+		const value = active.mode === 'slide' ? active.previewOffset : active.previewWidth;
+		const target = {
+			version: 1 as const,
+			domain: 'layout' as const,
+			subject: { kind: 'opening' as const, id: active.openingId },
+			revision: { kind: 'exact' as const, contentRevision: stageUnitRevision(snapshot, 'layout') },
+			instancePath: [] as const,
+			location: {
+				kind: 'layout-location' as const,
+				levelId: snapshot.domain.layoutLevelId,
+				structureInstancePath: [] as const
+			},
+			componentId: null,
+			capabilityId: null
+		};
+		const outcome = await services.authoring.accept(buildLayoutIntent({
+			kind: LAYOUT_OPENING_MEASURE_KIND,
+			operationId: globalThis.crypto.randomUUID(),
+			projectId: snapshot.acceptedRevision.projectId,
+			revisionId: services.authoring.acceptedRevision().revisionId,
+			contentRevision: stageUnitRevision(snapshot, 'layout'),
+			levelId: snapshot.domain.layoutLevelId,
+			targets: [target],
+			payload: { openingId: active.openingId, field, value }
+		}));
+		if (outcome.kind === 'refused') notice = outcome.message;
+		wallUnfold.setOpeningPreview(null);
+		stage.notifySurfaceChange();
+	}
+
+	function cancelSheetOpening(): void {
+		if (sheetOpeningDrag === null) return;
+		sheetOpeningDrag = null;
+		wallUnfold.setOpeningPreview(null);
 	}
 
 	/** Select a developed pick through the same `StageFacade` selection as a canonical hit. */
@@ -2147,6 +2292,24 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* --- pointer and keyboard ---------------------------------------------- */
 
 	let drag = $state<{ x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null>(null);
+	/** S5b — one canonical Opening edit on the developed sheet. */
+	type SheetOpeningDrag = {
+		readonly pointerId: number;
+		readonly wallId: string;
+		readonly openingId: string;
+		readonly mode: SheetOpeningMode;
+		readonly grabStation: number;
+		readonly startOffset: number;
+		readonly startWidth: number;
+		readonly length: number;
+		readonly closed: boolean;
+		readonly pressX: number;
+		readonly pressY: number;
+		moved: boolean;
+		previewOffset: number;
+		previewWidth: number;
+	};
+	let sheetOpeningDrag = $state<SheetOpeningDrag | null>(null);
 	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
 	let adapterMarkPress = false;
 	/** A dragging disclosure's press: a release within click tolerance toggles it. */
@@ -2466,6 +2629,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
+		if (sheetOpeningDrag !== null) {
+			if (event.pointerId === sheetOpeningDrag.pointerId) sheetOpeningMove(event);
+			return;
+		}
 		if (pinch !== null) {
 			if (!pinch.has(event.pointerId)) return;
 			if (session.gesture() === null) { endPinch(); return; }
@@ -2579,6 +2746,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
+		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
+			void finishSheetOpening(event);
+			return;
+		}
 		if (activeLayer?.pointerUp(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
@@ -2640,6 +2811,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interruptPress(reason: StageInterruptionReason): void {
+		if (sheetOpeningDrag !== null) {
+			cancelSheetOpening();
+			clearHover();
+			return;
+		}
 		if (activeLayer?.interrupt?.() === 'claimed') return;
 		if (pinch !== null) { endPinch(); clearHover(); return; }
 		const pointerId = press.owner();
@@ -2661,11 +2837,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
+		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
+			cancelSheetOpening();
+			return;
+		}
 		if (activeLayer?.pointerCancel(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
+		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
+			cancelSheetOpening();
+			return;
+		}
 		if (activeLayer?.lostCapture(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}

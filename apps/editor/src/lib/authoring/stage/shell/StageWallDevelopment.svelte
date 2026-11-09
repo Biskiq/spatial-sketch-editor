@@ -110,6 +110,7 @@
 	let display: WallUnfoldDisplay | null = null;
 	let displayWallId: string | null = null;
 	let displayCutStation: number | null = null;
+	let displayPreviewKey = '';
 	let topologyEdges: readonly (readonly [number, number])[] = [];
 	let wallHeight = 0;
 	let wallThickness = 0;
@@ -196,10 +197,20 @@
 			invalidate();
 			return;
 		}
-		if (display === null || displayWallId !== wall.wallId || displayCutStation !== state.cutStation) {
-			display = buildWallUnfoldDisplay(wall, state, { floorY: datumMeters });
+		const preview = wallUnfold.previewOpening;
+		const previewForWall = preview?.wallId === wall.wallId ? preview : null;
+		const previewKey = previewForWall === null ? '' : `${previewForWall.openingId}:${previewForWall.offset}:${previewForWall.width}`;
+		if (display === null || displayWallId !== wall.wallId || displayCutStation !== state.cutStation || displayPreviewKey !== previewKey) {
+			const displayWall = previewForWall === null ? wall : {
+				...wall,
+				openings: wall.openings.map((opening) => opening.openingId === previewForWall.openingId
+					? { ...opening, offset: previewForWall.offset, width: previewForWall.width }
+					: opening)
+			};
+			display = buildWallUnfoldDisplay(displayWall, state, { floorY: datumMeters });
 			displayWallId = wall.wallId;
 			displayCutStation = state.cutStation;
+			displayPreviewKey = previewKey;
 			if (display === null) {
 				root.visible = false;
 				invalidate();
