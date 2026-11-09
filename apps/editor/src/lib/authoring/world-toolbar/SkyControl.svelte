@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * The #285 sky chip in the Head. It is the existing `scene-environment-set`
-	 * controller with a Living Draft face; the hour slider is visibly planned
-	 * because the model stores a preset, not a clock.
+	 * The Sky segment of the Stage viewing bar. It is the existing
+	 * `scene-environment-set` controller with a forest-bar face; the hour slider is
+	 * visibly planned because the model stores a preset, not a clock.
 	 */
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import { WORLD_ENVIRONMENT_CHOICES, worldEnvironmentLook } from '$lib/render/world-environment';
@@ -36,7 +36,7 @@
 
 	function swatch(preset: SceneEnvironmentPreset): string {
 		const look = worldEnvironmentLook(preset);
-		if (look === null) return 'linear-gradient(#f4f1e6, #e4e2d7)';
+		if (look === null) return 'linear-gradient(var(--stage-paper), var(--stage-paper))';
 		return `linear-gradient(${look.sky[0]}, ${look.sky[1]} 55%, ${look.haze} 56%, ${look.ground})`;
 	}
 
@@ -65,14 +65,15 @@
 	<button
 		type="button"
 		class="chip"
+		data-environment-chip
 		aria-expanded={open}
 		aria-haspopup="true"
 		title="Sky and light: the World's saved environment"
 		onclick={() => (open = !open)}
 	>
 		<WorldIcon name="sun" size={15} />
-		<span>{label}</span>
-		<small>{hour}</small>
+		<span class="chip-title">Sky</span>
+		<small>{label} · {hour}</small>
 		<WorldIcon name="chevron" size={11} />
 	</button>
 	{#if open}
@@ -83,6 +84,7 @@
 					<button
 						type="button"
 						class="preset"
+						data-environment={choice.preset}
 						aria-pressed={environment === choice.preset}
 						disabled={busy}
 						onclick={() => onEnvironment(choice.preset)}
@@ -109,44 +111,56 @@
 <style>
 	.sky {
 		position: relative;
-		height: 34px;
+		display: flex;
+		align-items: center;
+		height: 28px;
 	}
 	.chip {
 		display: flex;
 		align-items: center;
-		gap: 7px;
-		height: 34px;
-		padding: 0 10px;
-		border: 1px solid rgb(240 244 236 / 0.16);
-		border-radius: 9px;
-		background: rgb(0 0 0 / 0.12);
-		color: var(--ld-light, #f2f0e6);
-		font: 500 11.5px/1 var(--ld-sans, 'Instrument Sans', system-ui, sans-serif);
+		gap: 6px;
+		height: 28px;
+		padding: 0 6px;
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: var(--shell-ink-light);
+		font: 500 12.5px/1 var(--shell-sans);
 		cursor: pointer;
 	}
-	.chip:hover,
+	.chip:hover {
+		background: var(--shell-on-forest-wash);
+	}
 	.open .chip {
-		background: rgb(242 240 230 / 0.1);
+		background: var(--shell-on-forest-wash-strong);
+		color: var(--shell-ivory);
+	}
+	.chip:focus-visible {
+		outline: 2px solid var(--shell-focus-halo);
+		outline-offset: 1px;
 	}
 	.chip small {
-		font-family: var(--ld-mono, 'DM Mono', monospace);
+		color: var(--shell-ink-quiet);
+		font-family: var(--shell-mono);
 		font-size: 9px;
-		color: var(--ld-light-2, #c3d1c6);
+	}
+	.chip-title {
+		font-weight: 500;
 	}
 	.popover {
 		position: absolute;
 		z-index: 40;
-		top: 40px;
+		top: 36px;
 		right: 0;
 		display: grid;
 		gap: 9px;
 		width: 286px;
 		padding: 12px;
-		border: 1px solid rgb(240 244 236 / 0.16);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 13px;
-		background: var(--ld-forest-deep, #102d20);
-		box-shadow: var(--ld-shadow, 0 14px 40px rgb(10 24 18 / 0.3));
-		color: var(--ld-light, #f2f0e6);
+		background: var(--shell-popover);
+		box-shadow: var(--shell-shadow);
+		color: var(--shell-ink);
 	}
 	.popover header {
 		display: flex;
@@ -154,7 +168,7 @@
 		justify-content: space-between;
 	}
 	.popover header strong {
-		font-family: var(--ld-serif, 'Fraunces', Georgia, serif);
+		font-family: var(--shell-serif);
 		font-size: 16px;
 		font-weight: 500;
 	}
@@ -164,7 +178,7 @@
 		font-size: 9px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: var(--ld-light-2, #c3d1c6);
+		color: var(--shell-ink-3);
 	}
 	.presets {
 		display: grid;
@@ -178,17 +192,22 @@
 		gap: 7px;
 		height: 39px;
 		padding: 4px;
-		border: 1px solid rgb(240 244 236 / 0.12);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 7px;
-		background: rgb(242 240 230 / 0.04);
-		color: var(--ld-light, #f2f0e6);
-		font: 10.5px var(--ld-sans, 'Instrument Sans', system-ui, sans-serif);
+		background: var(--shell-field);
+		color: var(--shell-ink);
+		font: 10.5px var(--shell-sans);
 		text-align: left;
 		cursor: pointer;
 	}
 	.preset[aria-pressed='true'] {
-		border-color: var(--ld-mint, #96c7a9);
-		background: rgb(150 199 169 / 0.12);
+		border-color: var(--shell-leaf);
+		background: var(--shell-leaf-tint);
+	}
+	.preset:disabled {
+		color: var(--shell-ink-3);
+		opacity: 0.62;
+		cursor: default;
 	}
 	.preset i {
 		width: 30px;
@@ -201,36 +220,47 @@
 		gap: 8px;
 	}
 	.hour-row strong {
-		font-family: var(--ld-mono, 'DM Mono', monospace);
+		font-family: var(--shell-mono);
 		font-size: 11px;
 	}
 	.hour-row .planned {
 		margin-left: auto;
 		padding: 2px 5px;
-		border: 1px solid rgb(240 244 236 / 0.14);
+		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 999px;
-		color: var(--ld-mint, #96c7a9);
+		color: var(--shell-ink-3);
 		font-size: 8px;
 	}
 	input[type='range'] {
 		width: 100%;
-		accent-color: var(--ld-mint, #96c7a9);
-		opacity: 0.5;
+		accent-color: var(--shell-leaf);
+		opacity: 0.55;
 	}
 	.paper {
 		display: flex;
 		align-items: center;
 		gap: 7px;
 		padding-top: 3px;
-		border-top: 1px solid rgb(240 244 236 / 0.1);
+		border-top: 1px solid var(--shell-hairline);
 		font-size: 10.5px;
 	}
 	.paper input {
-		accent-color: var(--ld-leaf, #4f8061);
+		accent-color: var(--shell-action);
 	}
-	button:focus-visible,
-	input:focus-visible {
-		outline: 2px solid var(--ld-gold, #c8a653);
+	.preset:focus-visible,
+	.paper input:focus-visible {
+		outline: 2px solid var(--shell-leaf);
 		outline-offset: 1px;
+	}
+	@media (max-width: 700px) {
+		.chip span,
+		.chip small {
+			display: none;
+		}
+	}
+	@media (max-width: 820px) {
+		.chip small {
+			display: none;
+		}
 	}
 </style>

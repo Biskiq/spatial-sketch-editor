@@ -439,6 +439,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
 	/** The World toolbar's selected row; the task/selection controllers remain authoritative. */
 	let activeWorldTool = $state<WorldToolId>('select');
+	/** The upper parchment plate: opens on a family press and folds on a second one. */
+	let worldPlateOpen = $state(false);
 	let libraryOpen = $state(false);
 	let toolBeforeLibrary = $state<WorldToolId>('select');
 	let inkReading = $state<'wall' | 'opening'>('wall');
@@ -452,6 +454,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// just completed belongs back at Select.
 			if (worldTool(activeWorldTool).stage === 'planned') return;
 			activeWorldTool = 'select';
+			worldPlateOpen = false;
 			return;
 		}
 		if (task.kind === STAGE_MEASURE_TASK) activeWorldTool = 'measure';
@@ -2735,7 +2738,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (armedHostTool === 'erase' && eraserTool?.clear()) { eraseHover = null; refreshHostTools(); break; }
 				const armedKey = dockKeys.find((key) => key.id === armedDockId);
 				if (task !== null && armedKey?.palette === true && paletteOpen) { paletteOpen = false; break; }
+				if (libraryOpen) { toggleWorldLibrary(); break; }
 				if (task !== null) closeTask();
+				else if (activeWorldTool !== 'select') { libraryOpen = false; activeWorldTool = 'select'; }
+				// The plate is the last layer before Select: once the tool is clear,
+				// Escape folds the parchment instead of moving the selection.
+				else if (lens === 'world' && worldPlateOpen) { worldPlateOpen = false; }
 				else if (activeLayer?.key(event, 'unwind') !== 'claimed' && selection !== null) closeSelection();
 				break;
 			}
@@ -3229,6 +3237,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		invokeContribution(tool.adapterId, tool.id);
 		armedTool = { id: tool.id, adapterId: tool.adapterId };
 		paletteOpen = true;
+		worldPlateOpen = true;
 		pendingDelete = null;
 	}
 
@@ -3257,6 +3266,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		task = next;
 		armedTool = { id: kind, adapterId: STAGE_HOST_ADAPTER_ID };
 		paletteOpen = true;
+		worldPlateOpen = true;
 		pendingDelete = null;
 		notice = '';
 		refreshHostTools();
@@ -3288,6 +3298,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** The Living Draft row's one bridge into the existing dock/host controllers. */
 	function armWorldTool(id: WorldToolId): void {
+		worldPlateOpen = id !== 'select';
 		if (id === 'library') {
 			toggleWorldLibrary();
 			return;
@@ -3343,6 +3354,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		closeTask();
 		libraryOpen = true;
 		activeWorldTool = 'library';
+		worldPlateOpen = true;
 		paletteOpen = false;
 	}
 
@@ -3745,13 +3757,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				<StageDraftingControl
 					{drafting}
 					reading={draftingReading}
-					quiet={paperVisible}
 					gridWord={draftingGridWord}
 					snapWord={draftingSnapWord}
 					onReading={setReading}
 					onPatch={patchDrafting}
 					planAppearance={preferences.planAppearance}
 					onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+					measureActive={activeWorldTool === 'measure'}
+					onMeasure={() => armWorldTool('measure')}
 					roomLabels2d={preferences.roomLabels2d}
 					roomLabels3d={preferences.roomLabels3d}
 					paperTone2d={preferences.paperTone2d}
@@ -3763,27 +3776,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
 					motionSpeed={preferences.motionSpeed}
 					onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
-				/>
-				<button
-					type="button"
-					class="view-tool"
-					class:active={activeWorldTool === 'measure'}
-					title="Measure (M)"
-					aria-label="Measure"
-					onclick={() => armWorldTool('measure')}
-				><WorldIcon name="measure" size={18} /></button>
-				<button type="button" class="view-tool" disabled title="Slice is planned for T1" aria-label="Slice, planned">
-					<WorldIcon name="slice" size={18} />
-				</button>
-				{#if adapterServices !== null}
-					<SkyControl
-						environment={worldEnvironment}
-						onEnvironment={(preset) => void setWorldEnvironment(preset)}
-						{editOnPaper}
-						onEditOnPaper={(value) => (editOnPaper = value)}
-						busy={environmentWrite === adapterServices}
-					/>
-				{/if}
+				>
+					{#snippet sky()}
+						{#if adapterServices !== null}
+							<SkyControl
+								environment={worldEnvironment}
+								onEnvironment={(preset) => void setWorldEnvironment(preset)}
+								{editOnPaper}
+								onEditOnPaper={(value) => (editOnPaper = value)}
+								busy={environmentWrite === adapterServices}
+							/>
+						{/if}
+					{/snippet}
+				</StageDraftingControl>
 			</div>
 		{/if}
 
@@ -4197,6 +4202,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<WorldToolbar
 						activeTool={activeWorldTool}
 						{libraryOpen}
+						plateOpen={worldPlateOpen}
+						onPlateOpen={(open) => (worldPlateOpen = open)}
 						selection={selection === null
 							? null
 							: {
@@ -4502,36 +4509,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.view-line > :global(*) {
 		pointer-events: auto;
-	}
-	.view-tool {
-		display: grid;
-		place-items: center;
-		width: 34px;
-		height: 34px;
-		padding: 0;
-		border: 1px solid rgb(38 35 29 / 0.12);
-		border-radius: 9px;
-		background: rgb(251 246 234 / 0.94);
-		box-shadow: 0 4px 14px rgb(8 20 13 / 0.12);
-		color: var(--ld-ink-2);
-		cursor: pointer;
-	}
-	.view-tool:hover {
-		background: var(--ld-paper);
-		color: var(--ld-ink);
-	}
-	.view-tool.active {
-		background: var(--ld-forest);
-		border-color: var(--ld-forest);
-		color: var(--ld-paper);
-	}
-	.view-tool:disabled {
-		opacity: 0.38;
-		cursor: default;
-	}
-	.view-tool:focus-visible {
-		outline: 2px solid var(--ld-gold);
-		outline-offset: 2px;
 	}
 	/* Experience's Show control sits below the restored reading line. */
 	.stage-actions {

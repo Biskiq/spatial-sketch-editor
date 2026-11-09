@@ -256,7 +256,7 @@
 		color: var(--ld-paper);
 	}
 	.opt:disabled {
-		opacity: 0.3;
+		opacity: 0.55;
 		cursor: default;
 	}
 	.act {
@@ -277,7 +277,7 @@
 	}
 	.act:disabled {
 		color: var(--ld-ink-3);
-		opacity: 0.36;
+		opacity: 0.58;
 		cursor: default;
 	}
 	.act.more {

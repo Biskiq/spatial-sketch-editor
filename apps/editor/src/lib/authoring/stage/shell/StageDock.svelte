@@ -129,13 +129,17 @@
 	.key:hover {
 		background: var(--shell-on-forest-wash);
 	}
+	.key:focus-visible {
+		outline: 2px solid var(--shell-focus-halo);
+		outline-offset: 1px;
+	}
 	.key.armed {
 		background: var(--shell-ivory);
 		color: var(--shell-action);
 		box-shadow: 0 1px 3px #0004;
 	}
 	.key[aria-disabled='true'] {
-		opacity: 0.35;
+		opacity: 0.55;
 		cursor: default;
 	}
 	.key[data-dock-slot='ink']::after,
@@ -155,10 +159,10 @@
 		background: var(--stage-erase);
 	}
 	.key[data-dock-tool='unavailable-slice']::after {
-		background: #f2d000;
+		background: var(--shell-ink-quiet);
 	}
 	.key[data-dock-tool='unavailable-brush']::after {
-		background: #c98b6b;
+		background: var(--shell-ink-quiet);
 	}
 	.caret {
 		position: absolute;

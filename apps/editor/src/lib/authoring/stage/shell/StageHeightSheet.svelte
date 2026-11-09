@@ -460,20 +460,38 @@
 		left: calc(50% - 1px);
 		width: 2px;
 		border-radius: 1px;
-		background: color-mix(in srgb, var(--shell-ink-light) 28%, transparent);
+		background: var(--stage-height-rail);
+	}
+	/* End caps only: the rail stays one line, never a capsule or backing panel. */
+	.rail::before,
+	.rail::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		width: 7px;
+		height: 2px;
+		border-radius: 1px;
+		background: var(--stage-height-cap);
+		transform: translateX(-50%);
+	}
+	.rail::before {
+		top: 0;
+	}
+	.rail::after {
+		bottom: 0;
 	}
 	.tick {
 		position: absolute;
 		left: 50%;
 		width: 10px;
 		height: 1.5px;
-		background: color-mix(in srgb, var(--shell-ink-light) 65%, transparent);
+		background: var(--stage-height-tick);
 		transform: translate(-50%, 50%);
 	}
 	.tick.datum {
 		width: 22px;
 		height: 2.5px;
-		background: var(--shell-ink-light);
+		background: var(--stage-height-cap);
 	}
 	.knob {
 		position: absolute;
@@ -527,9 +545,9 @@
 	.pin-dot {
 		width: 8px;
 		height: 8px;
-		border: 0;
+		border: 1px solid var(--stage-height-rail);
 		border-radius: 50%;
-		background: var(--shell-ink-light);
+		background: var(--stage-height-cap);
 	}
 	.add {
 		position: absolute;

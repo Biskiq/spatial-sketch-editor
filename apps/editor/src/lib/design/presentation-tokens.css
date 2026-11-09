@@ -223,12 +223,17 @@
 	--stage-selection: #d4ad45;
 	--stage-hover: #4f8f6c;
 	--stage-erase: #d0412d;
-	--stage-paper: #e9ebe6;
+	/* Warm drafting stone: the sheet under Plan and the 3D plate. */
+	--stage-paper: #e8e1d3;
 	--stage-mat: #1d3a33;
-	--stage-grid-minor: #9fb2a2;
-	--stage-grid-major: #809984;
+	--stage-grid-minor: #a4a690;
+	--stage-grid-major: #858a73;
 	--stage-grid-mat-minor: #2b5147;
 	--stage-grid-mat-major: #3c6a5c;
+	/* Height Sheet rail: neutral stone that holds on forest and on Paper. */
+	--stage-height-rail: #8e9588;
+	--stage-height-tick: #a7ab9d;
+	--stage-height-cap: #b9bcaf;
 	/* The dark instrument chassis reads quieter than the shell's ink. */
 	--stage-instrument-ink-quiet: #98a89c;
 	--stage-instrument-hairline: var(--shell-hairline-dark);

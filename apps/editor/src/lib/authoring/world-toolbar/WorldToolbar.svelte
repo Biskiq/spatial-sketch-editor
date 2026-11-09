@@ -41,7 +41,9 @@
 		onLibrary,
 		onObjectPick,
 		onMaterialPick,
-		plate
+		plate,
+		plateOpen = true,
+		onPlateOpen = () => {}
 	}: {
 		activeTool: WorldToolId;
 		libraryOpen: boolean;
@@ -51,8 +53,12 @@
 		onObjectPick: (assetId: string) => void;
 		onMaterialPick: (materialId: string) => void;
 		plate?: Snippet;
+		/** The upper parchment plate is an intentional expanded/collapsed state. */
+		plateOpen?: boolean;
+		onPlateOpen?: (open: boolean) => void;
 	} = $props();
 
+	const plateId = $props.id();
 	let libraryCategory = $state<WorldLibraryCategory>('objects');
 	let remembered = $state<Record<WorldFamily['id'], WorldToolId>>({
 		build: 'walls',
@@ -72,13 +78,36 @@
 	});
 
 	function pressFamily(family: WorldFamily): void {
-		if (activeFamily?.id === family.id) return;
+		if (activeFamily?.id === family.id) {
+			onPlateOpen(!plateOpen);
+			return;
+		}
 		onTool(remembered[family.id] ?? family.defaultTool);
+		onPlateOpen(true);
+	}
+
+	function pressSelect(): void {
+		if (activeTool === 'select' && !libraryOpen) {
+			onPlateOpen(!plateOpen);
+			return;
+		}
+		onTool('select');
+		onPlateOpen(true);
+	}
+
+	function pressTool(id: WorldToolId): void {
+		if (activeTool === id && !libraryOpen) {
+			onPlateOpen(!plateOpen);
+			return;
+		}
+		onTool(id);
+		onPlateOpen(true);
 	}
 
 	function openLibrary(category: WorldLibraryCategory = 'objects'): void {
 		libraryCategory = category;
 		if (!libraryOpen) onLibrary();
+		onPlateOpen(true);
 	}
 
 	function dockToolFor(id: WorldToolId): WorldTool {
@@ -88,15 +117,14 @@
 	const approvedAssets = assets.filter((asset) => asset.status === 'approved').slice(0, 8);
 	const visibleMaterials = materials.slice(0, 6);
 	const directTools = $derived([dockToolFor('paint'), dockToolFor('erase')]);
-</script>
-
-<section
-	class="world-toolbar"
-	data-world-toolbar
-	data-active-tool={activeTool}
-	style:--acc={activeAccent}
->
-	<div class="tier">
+</script>	<section
+		class="world-toolbar"
+		class:folded={!plateOpen}
+		data-world-toolbar
+		data-active-tool={activeTool}
+		style:--acc={activeAccent}
+	>
+		<div class="tier" id={plateId} hidden={!plateOpen}>
 		<div class="row words">
 			<div class="strip words-strip">
 				{#if libraryOpen}
@@ -249,8 +277,10 @@
 			class="key"
 			class:armed={activeTool === 'select' && !libraryOpen}
 			aria-pressed={activeTool === 'select' && !libraryOpen}
+			aria-expanded={activeTool === 'select' && !libraryOpen ? plateOpen : undefined}
+			aria-controls={activeTool === 'select' && !libraryOpen ? plateId : undefined}
 			title="Select (V)"
-			onclick={() => onTool('select')}
+			onclick={pressSelect}
 		>
 			<WorldIcon name="select" size={26} hero />
 			<span class="kl">Select</span>
@@ -263,6 +293,8 @@
 				class="key family"
 				class:armed={activeFamily?.id === family.id && !libraryOpen}
 				aria-pressed={activeFamily?.id === family.id && !libraryOpen}
+				aria-expanded={activeFamily?.id === family.id && !libraryOpen ? plateOpen : undefined}
+				aria-controls={activeFamily?.id === family.id && !libraryOpen ? plateId : undefined}
 				title={`${family.label}: ${family.tools.map((id) => worldTool(id).label).join(', ')}`}
 				style:--key-acc={family.accent}
 				onclick={() => pressFamily(family)}
@@ -281,8 +313,10 @@
 				class="key"
 				class:armed={activeTool === tool.id && !libraryOpen}
 				aria-pressed={activeTool === tool.id && !libraryOpen}
+				aria-expanded={activeTool === tool.id && !libraryOpen ? plateOpen : undefined}
+				aria-controls={activeTool === tool.id && !libraryOpen ? plateId : undefined}
 				title={tool.summary}
-				onclick={() => onTool(tool.id)}
+				onclick={() => pressTool(tool.id)}
 			>
 				<WorldIcon name={tool.icon} size={26} hero />
 				<span class="kl">{tool.label}</span>
@@ -295,6 +329,8 @@
 			class="key"
 			class:armed={libraryOpen}
 			aria-pressed={libraryOpen}
+			aria-expanded={libraryOpen ? plateOpen : undefined}
+			aria-controls={libraryOpen ? plateId : undefined}
 			title="Library (L)"
 			onclick={() => openLibrary('objects')}
 		>
@@ -437,7 +473,7 @@
 		flex: none;
 		margin-left: auto;
 		padding-right: 2px;
-		color: var(--acc);
+		color: var(--ld-ink-2);
 		font: 400 9px/1 var(--ld-mono);
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -502,7 +538,7 @@
 		color: var(--ld-ink);
 	}
 	.opt:disabled {
-		opacity: 0.3;
+		opacity: 0.55;
 		cursor: default;
 	}
 	.opt.text {
@@ -533,7 +569,7 @@
 	}
 	.act:disabled {
 		color: var(--ld-ink-3);
-		opacity: 0.42;
+		opacity: 0.58;
 		cursor: default;
 	}
 	.empty {
@@ -623,7 +659,7 @@
 		box-shadow: inset 0 0 0 1px rgb(38 35 29 / 0.12);
 	}
 	.planned-tile:disabled {
-		opacity: 0.48;
+		opacity: 0.58;
 		cursor: default;
 	}
 	.planned-tile small {
@@ -671,12 +707,29 @@
 		cursor: pointer;
 	}
 	.key:hover {
-		background: rgb(251 246 234 / 0.045);
+		background: var(--shell-on-forest-wash);
 		color: var(--ld-paper);
 	}
 	.key.armed {
-		background: rgb(0 0 0 / 0.17);
-		color: var(--ld-paper);
+		background: var(--shell-ivory);
+		color: var(--shell-action);
+		box-shadow: inset 0 0 0 1px var(--shell-hairline);
+	}
+	.key.armed .kk {
+		color: var(--shell-ink-3);
+	}
+	.key.armed .family-dots i {
+		background: var(--shell-hairline-strong);
+	}
+	.key.armed .family-dots i.on {
+		background: var(--key-acc);
+	}
+	.key:focus-visible {
+		outline: 2px solid var(--shell-focus-halo);
+		outline-offset: -2px;
+	}
+	.key.armed:focus-visible {
+		outline-color: var(--shell-action);
 	}
 	.kl {
 		font: 500 13px/1 var(--ld-sans);
@@ -712,8 +765,14 @@
 		background: rgb(251 246 234 / 0.09);
 	}
 	button:focus-visible {
-		outline: 2px solid var(--ld-gold);
+		outline: 2px solid var(--shell-leaf);
 		outline-offset: -2px;
+	}
+	.dock button:focus-visible {
+		outline-color: var(--shell-focus-halo);
+	}
+	.dock .key.armed:focus-visible {
+		outline-color: var(--shell-action);
 	}
 	@media (max-width: 760px) {
 		.world-toolbar {

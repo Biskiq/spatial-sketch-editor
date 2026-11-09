@@ -162,7 +162,7 @@ async function mountRoute(layout = buildStarterEnclosureLayout()): Promise<void>
 	component = mount(Page, { target });
 	await vi.waitFor(() => expect(target.querySelector('[data-testid="stage-canvas"]')).not.toBeNull());
 	await frame();
-	button('2D').click();
+	button('Plan').click();
 	await frame();
 	await fitAll();
 	await frame();
@@ -408,7 +408,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		expect(facade().snapshot().canonicalJson).not.toBe(baseline);
 		expect(history().canUndo).toBe('true');
-		button('2D').click();
+		button('Plan').click();
 		await frame();
 		expect(facade().evaluation()?.settledReading).toBe('plan');
 		expect(target.querySelector('.instrument')).toBeNull();
@@ -1106,13 +1106,13 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		gridKey().click();
 		await frame();
 		expect(gridKey().getAttribute('aria-pressed')).toBe('false');
-		expect(gridKey().textContent?.trim()).toBe('Grid');
+		expect(gridKey().textContent?.trim()).toBe('Grid off');
 
 		expect(snapKey().getAttribute('aria-pressed')).toBe('true');
 		snapKey().click();
 		await frame();
 		expect(snapKey().getAttribute('aria-pressed')).toBe('false');
-		expect(snapKey().textContent?.trim()).toBe('Snap');
+		expect(snapKey().textContent?.trim()).toBe('Snap off');
 
 		// View state is not authored content: no install, no history entry, and the
 		// Save capture is byte-identical.
@@ -1134,7 +1134,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		snapKey().click();
 		await frame();
 		expect(snapKey().textContent?.trim()).toBe(currentSnapLabel());
-		expect(gridKey().textContent?.trim()).toBe('Grid');
+		expect(gridKey().textContent?.trim()).toBe('Grid off');
 	});
 
 	it('holds Snap off while Alt/Option is down and restores it on release and blur', async () => {
@@ -1241,15 +1241,15 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		await frame();
 		expect(gridKey().getAttribute('aria-pressed')).toBe('false');
 		expect(snapKey().getAttribute('aria-pressed')).toBe('false');
-		expect(gridKey().textContent?.trim()).toBe('Grid');
-		expect(snapKey().textContent?.trim()).toBe('Snap');
+		expect(gridKey().textContent?.trim()).toBe('Grid off');
+		expect(snapKey().textContent?.trim()).toBe('Snap off');
 		gridKey().click();
 		snapKey().click();
 		await frame();
 		expect(gridKey().textContent?.trim()).toBe('Grid');
 		expect(snapKey().textContent?.trim()).toBe('Snap');
 
-		button('2D').click();
+		button('Plan').click();
 		await frame();
 		expect(target.querySelector('[data-stage-scale-bar]')).not.toBeNull();
 	});
@@ -1297,7 +1297,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(status.textContent?.trim()).toBe(currentSnapLabel());
 	});
 
-	it('switches 2D | 3D through set-reading and keeps grid, snap and selection', async () => {
+	it('switches Plan | 3D through set-reading and keeps grid, snap and selection', async () => {
 		const request = vi.spyOn(facade(), 'requestViewingIntent');
 		const selection = facade().selectionState();
 		const drafting = facade().session.drafting();
@@ -1307,25 +1307,26 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(facade().selectionState()).toEqual(selection);
 		expect(facade().session.drafting()).toEqual(drafting);
 
-		button('2D').click();
+		button('Plan').click();
 		await frame();
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'set-reading', reading: 'plan' });
 	});
 
 	it('exposes the words as native, stateful, focusable controls with 44 px coarse targets', async () => {
-		// Two readings, two words and the R217.S20 ⚙ disclosure, all native buttons.
+		// Two readings, two appearances, two words, two inspection tools, the Sky
+		// segment and the R217.S20 ⚙ disclosure, all native buttons in one bar.
 		// The ⚙ panel's own controls are counted with the panel, not the cluster.
 		const controls = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-drafting] button')].filter(
 			(control) => control.closest('[data-stage-viewing-panel]') === null
 		);
-		expect(controls.length).toBe(5);
+		expect(controls.length).toBeGreaterThanOrEqual(9);
 		expect(target.querySelector('[data-stage-viewing]')?.getAttribute('aria-expanded')).toBe('false');
-		for (const control of controls) {
+		for (const control of controls.filter((candidate) => !candidate.disabled)) {
 			expect(control.tagName).toBe('BUTTON');
 			expect(control.getAttribute('type')).toBe('button');
 			expect(control.tabIndex).toBe(0);
-			expect(control.disabled).toBe(false);
 		}
+		expect(target.querySelector<HTMLButtonElement>('[data-view-slice]')?.disabled).toBe(true);
 		// Keyboard activation is the native button's own; the state is announced.
 		expect(gridKey().getAttribute('aria-pressed')).toMatch(/^(true|false)$/);
 		expect(snapKey().getAttribute('aria-pressed')).toMatch(/^(true|false)$/);

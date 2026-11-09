@@ -214,7 +214,7 @@ async function mountRoute(source?: unknown): Promise<void> {
 	component = mount(Page, { target });
 	await vi.waitFor(() => expect(target.querySelector('[data-testid="stage-canvas"]')).not.toBeNull());
 	await frame();
-	control('2D').click();
+	control('Plan').click();
 	await frame();
 }
 
@@ -273,7 +273,7 @@ async function setThreeD(): Promise<void> {
 }
 
 async function setTwoD(): Promise<void> {
-	control('2D').click();
+	control('Plan').click();
 	await frame();
 	await settleReading('plan');
 }
@@ -400,7 +400,7 @@ describe('R217.S28 — Stage View markers keep click and edit distinct', () => {
 		await vi.waitFor(() => expect(target.querySelector('input.rename-input')).not.toBeNull());
 	}, 15000);
 
-	it.each(['3D', '2D'] as const)('anchors the %s placement ghost, commits its aimed pose once, and cancels with Escape', async (reading) => {
+	it.each(['3D', 'Plan'] as const)('anchors the %s placement ghost, commits its aimed pose once, and cancels with Escape', async (reading) => {
 		await remountRouteWith(await seededExperienceProject());
 		await enterExperience();
 		if (reading === '3D') await setThreeD();
