@@ -4,6 +4,7 @@
 	 * It never writes geometry itself; every command goes through the adapter's
 	 * published controller.
 	 */
+	import WorldIcon from './WorldIcon.svelte';
 	import { inkSurface, inkSurfaceRevision, type InkPaletteSnapshot } from '../adapters/layout/ink';
 
 	let {
@@ -83,54 +84,120 @@
 			sillHeight: kind === 'door' ? 0 : opening.sillHeight
 		});
 	}
+
+	const height = $derived(snapshot.options?.height ?? 3);
+	const heightName = $derived(Math.abs(height - 2.4) < 0.01 ? 'Low' : Math.abs(height - 3.6) < 0.01 ? 'Tall' : 'Room');
+	const shapeName = $derived(snapshot.wallMode === 'box' ? 'Box' : 'Line');
+	// The donor shows the current choice even before a Wall exists. The controls
+	// still write only through the Ink surface once it has an Opening to change.
+	const openingKind = $derived(snapshot.opening?.kind ?? 'door');
+	const openingProfile = $derived(snapshot.opening?.profile ?? 'rectangular');
+	const kindName = $derived(openingKind === 'window' ? 'Window' : 'Door');
+	const profileName = $derived(
+		openingProfile === 'rounded' ? 'Arch' : openingProfile === 'pointed' ? 'Pointed' : 'Square'
+	);
 </script>
 
 <div class="ink-plate" data-ink-plate data-ink-reading={reading}>
 	{#if reading === 'wall'}
-		<div class="group">
-			<span>Shape</span>
-			<div class="segment">
-				<button type="button" aria-pressed={snapshot.wallMode === 'line'} onclick={() => setShape('line')}>Line</button>
-				<button type="button" aria-pressed={snapshot.wallMode === 'box'} onclick={() => setShape('box')}>Box</button>
-				<button type="button" disabled title="Curved walls arrive with T1">Arc</button>
-				<button type="button" disabled title="Circular rooms arrive with T1">Circle</button>
+		<div class="pg">
+			<span class="gl" title="Shape">{shapeName}</span>
+			<div class="opts" role="group" aria-label="Shape">
+				<button
+					type="button"
+					class="opt"
+					aria-label="Line"
+					aria-pressed={snapshot.wallMode === 'line'}
+					title="Line"
+					onclick={() => setShape('line')}
+				><WorldIcon name="shape-line" size={19} /></button>
+				<button type="button" class="opt" aria-label="Arc" title="Curved walls arrive with T1" disabled>
+					<WorldIcon name="shape-arc" size={19} />
+				</button>
+				<button
+					type="button"
+					class="opt"
+					aria-label="Box"
+					aria-pressed={snapshot.wallMode === 'box'}
+					title="Box"
+					onclick={() => setShape('box')}
+				><WorldIcon name="shape-box" size={19} /></button>
+				<button type="button" class="opt" aria-label="Circle" title="Circular rooms arrive with T1" disabled>
+					<WorldIcon name="shape-circle" size={19} />
+				</button>
 			</div>
 		</div>
-		<div class="group">
-			<span>Height</span>
-			<div class="segment">
-				{#each [2.4, 3, 3.6] as height (height)}
+		<div class="pg">
+			<span class="gl" title="Height">{heightName} · {height.toFixed(1)} m</span>
+			<div class="opts" role="group" aria-label="Height">
+				{#each [2.4, 3, 3.6] as option (option)}
 					<button
 						type="button"
-						aria-pressed={Math.abs((snapshot.options?.height ?? 3) - height) < 0.01}
-						onclick={() => setHeight(height)}
-					>{height.toFixed(1)}</button>
+						class="opt"
+						aria-label={`${option.toFixed(1)} metres`}
+						aria-pressed={Math.abs(height - option) < 0.01}
+						title={`${option.toFixed(1)} m`}
+						onclick={() => setHeight(option)}
+					><WorldIcon name={option === 2.4 ? 'h-low' : option === 3.6 ? 'h-tall' : 'h-room'} size={19} /></button>
 				{/each}
 			</div>
 		</div>
 	{:else}
-		<div class="group">
-			<span>Kind</span>
-			<div class="segment">
-				<button type="button" aria-pressed={snapshot.opening?.kind === 'door'} onclick={() => setOpening('door', snapshot.opening?.profile ?? 'rectangular')}>Door</button>
-				<button type="button" aria-pressed={snapshot.opening?.kind === 'window'} onclick={() => setOpening('window', snapshot.opening?.profile ?? 'rectangular')}>Window</button>
+		<div class="pg">
+			<span class="gl" title="Kind">{kindName}</span>
+			<div class="opts" role="group" aria-label="Kind">
+				<button
+					type="button"
+					class="opt"
+					aria-label="Door"
+					aria-pressed={openingKind === 'door'}
+					title="Door"
+					onclick={() => setOpening('door', openingProfile)}
+				><WorldIcon name="op-door" size={19} /></button>
+				<button
+					type="button"
+					class="opt"
+					aria-label="Window"
+					aria-pressed={openingKind === 'window'}
+					title="Window"
+					onclick={() => setOpening('window', openingProfile)}
+				><WorldIcon name="op-window" size={19} /></button>
 			</div>
 		</div>
-		<div class="group">
-			<span>Profile</span>
-			<div class="segment">
-				<button type="button" aria-pressed={snapshot.opening?.profile === 'rectangular'} onclick={() => setOpening(snapshot.opening?.kind ?? 'door', 'rectangular')}>Square</button>
-				<button type="button" aria-pressed={snapshot.opening?.profile === 'rounded'} onclick={() => setOpening(snapshot.opening?.kind ?? 'door', 'rounded')}>Arch</button>
-				<button type="button" disabled title="Pointed openings arrive with T1">Pointed</button>
+		<div class="pg">
+			<span class="gl" title="Profile">{profileName}</span>
+			<div class="opts" role="group" aria-label="Profile">
+				<button
+					type="button"
+					class="opt"
+					aria-label="Square"
+					aria-pressed={openingProfile === 'rectangular'}
+					title="Square"
+					onclick={() => setOpening(openingKind, 'rectangular')}
+				><WorldIcon name="shape-box" size={19} /></button>
+				<button
+					type="button"
+					class="opt"
+					aria-label="Arch"
+					aria-pressed={openingProfile === 'rounded'}
+					title="Arch"
+					onclick={() => setOpening(openingKind, 'rounded')}
+				><WorldIcon name="op-arch" size={19} /></button>
+				<button type="button" class="opt" aria-label="Pointed" title="Pointed openings arrive with T1" disabled>
+					<WorldIcon name="op-niche" size={19} />
+				</button>
 			</div>
 		</div>
 	{/if}
 
-	<div class="ink-actions">
-		<button type="button" class="more" onclick={onMore} title="Open exact Ink settings">More</button>
-		<button type="button" data-ink-backtrack disabled={!snapshot.canBacktrack} onclick={() => inkSurface()?.controller.backtrack()}>Back</button>
-		<button type="button" data-ink-finish disabled={!snapshot.canFinish} onclick={() => inkSurface()?.controller.finish()}>Finish</button>
-		<button type="button" data-ink-close disabled={!snapshot.canClose} onclick={() => inkSurface()?.controller.close()}>Close ring</button>
+	<div class="pg end">
+		<span class="gl"></span>
+		<div class="opts ink-actions">
+			<button type="button" class="act more" onclick={onMore} title="Open exact Ink settings">More</button>
+			<button type="button" class="act" data-ink-backtrack disabled={!snapshot.canBacktrack} onclick={() => inkSurface()?.controller.backtrack()}>Back</button>
+			<button type="button" class="act" data-ink-finish disabled={!snapshot.canFinish} onclick={() => inkSurface()?.controller.finish()}>Finish</button>
+			<button type="button" class="act" data-ink-close disabled={!snapshot.canClose} onclick={() => inkSurface()?.controller.close()}>Close ring</button>
+		</div>
 	</div>
 	{#if snapshot.refusal !== null}
 		<span class="refusal" role="status">{snapshot.refusal}</span>
@@ -142,100 +209,96 @@
 		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		gap: 18px;
 		width: 100%;
-		overflow-x: auto;
-		overflow-y: hidden;
-		scrollbar-width: none;
+		min-width: max-content;
+		height: 100%;
 	}
-	.group {
+	.pg {
 		display: grid;
 		flex: none;
 		gap: 3px;
 	}
-	.group > span {
-		font-size: 8.5px;
-		font-weight: 500;
-		letter-spacing: 0.09em;
-		text-transform: uppercase;
-		color: rgb(242 240 230 / 0.52);
+	.pg.end {
+		margin-left: auto;
 	}
-	.segment {
+	.gl {
+		color: var(--ld-ink-3);
+		font: 400 9.5px/1 var(--ld-mono);
+		letter-spacing: 0.02em;
+		white-space: nowrap;
+	}
+	.opts {
 		display: flex;
-		gap: 1px;
-		height: 29px;
-		padding: 2px;
-		border: 1px solid rgb(240 244 236 / 0.12);
-		border-radius: 7px;
-		background: rgb(0 0 0 / 0.12);
+		align-items: center;
+		gap: 2px;
+		height: 31px;
 	}
-	.segment button {
-		height: 23px;
+	.opt {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 30px;
+		height: 30px;
+		padding: 0;
+		border: 0;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--ld-ink-2);
+		cursor: pointer;
+	}
+	.opt:hover {
+		background: rgb(38 35 29 / 0.075);
+		color: var(--ld-ink);
+	}
+	.opt[aria-pressed='true'] {
+		background: var(--ld-forest);
+		color: var(--ld-paper);
+	}
+	.opt:disabled {
+		opacity: 0.3;
+		cursor: default;
+	}
+	.act {
+		flex: none;
+		height: 30px;
 		padding: 0 8px;
 		border: 0;
-		border-radius: 5px;
+		border-radius: 6px;
 		background: transparent;
-		color: rgb(242 240 230 / 0.82);
-		font: 500 10.5px/1 var(--ld-sans, 'Instrument Sans', system-ui, sans-serif);
+		color: var(--ld-ink-2);
+		font: 500 11.5px/1 var(--ld-sans);
 		white-space: nowrap;
 		cursor: pointer;
 	}
-	.segment button:hover {
-		background: rgb(242 240 230 / 0.08);
+	.act:hover {
+		background: rgb(38 35 29 / 0.07);
+		color: var(--ld-ink);
 	}
-	.segment button[aria-pressed='true'] {
-		background: var(--ld-paper, #f4f1e6);
-		color: var(--ld-forest-deep, #102d20);
-		font-weight: 600;
-	}
-	.segment button:disabled {
-		opacity: 0.35;
+	.act:disabled {
+		color: var(--ld-ink-3);
+		opacity: 0.36;
 		cursor: default;
 	}
-	.ink-actions {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		margin-left: auto;
-		flex: none;
-	}
-	.ink-actions button {
-		height: 29px;
-		padding: 0 8px;
-		border: 1px solid rgb(240 244 236 / 0.16);
-		border-radius: 6px;
-		background: transparent;
-		color: rgb(242 240 230 / 0.86);
-		font: 500 10.5px/1 var(--ld-sans, 'Instrument Sans', system-ui, sans-serif);
-		cursor: pointer;
-	}
-	.ink-actions button:hover {
-		background: rgb(242 240 230 / 0.08);
-	}
-	.ink-actions button:disabled {
-		opacity: 0.32;
-		cursor: default;
-	}
-	.ink-actions .more {
-		border-color: rgb(200 166 83 / 0.46);
-		color: var(--ld-gold, #c8a653);
+	.act.more {
+		color: var(--ld-gold);
 	}
 	.refusal {
 		position: absolute;
-		left: 0;
-		bottom: -1px;
+		right: 0;
+		bottom: 0;
 		max-width: 100%;
 		padding: 2px 5px;
 		border-radius: 3px;
-		background: rgb(200 90 72 / 0.2);
-		color: #f2c5bb;
-		font-size: 9px;
+		background: rgb(194 100 63 / 0.14);
+		color: #8a3d25;
+		font: 9px/1.2 var(--ld-sans);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 	button:focus-visible {
-		outline: 2px solid var(--ld-gold, #c8a653);
-		outline-offset: 1px;
+		outline: 2px solid var(--ld-gold);
+		outline-offset: -2px;
 	}
 </style>

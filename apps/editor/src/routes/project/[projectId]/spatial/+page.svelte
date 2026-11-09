@@ -123,9 +123,10 @@ import {
 	import '$lib/authoring/stage/shell/cursors.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
-	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
-import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
+	import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
+	import WorldIcon from '$lib/authoring/world-toolbar/WorldIcon.svelte';
+
 import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
 import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
 import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
@@ -3600,45 +3601,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			onQuery: (value) => (findQuery = value),
 			onRun: runHeadFindEntry
 		}}
-	>
-		{#snippet view()}
-			<StageDraftingControl
-				{drafting}
-				reading={draftingReading}
-				quiet={false}
-				gridWord={draftingGridWord}
-				snapWord={draftingSnapWord}
-				onReading={setReading}
-				onPatch={patchDrafting}
-				planAppearance={preferences.planAppearance}
-				onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
-				roomLabels2d={preferences.roomLabels2d}
-				roomLabels3d={preferences.roomLabels3d}
-				paperTone2d={preferences.paperTone2d}
-				paperTone3d={preferences.paperTone3d}
-				onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
-				{heightSheetSide}
-				onHeightSheetSide={(side) => (heightSheetSide = side)}
-				{reducedMotion}
-				onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
-				motionSpeed={preferences.motionSpeed}
-				onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
-			/>
-			<button type="button" class="head-tool" class:active={activeWorldTool === 'measure'} title="Measure (M)" aria-label="Measure" onclick={() => armWorldTool('measure')}>
-				<ShellIcon name="measure" size={16} />
-			</button>
-			<button type="button" class="head-tool" disabled title="Slice is planned for T1" aria-label="Slice, planned">
-				<ShellIcon name="slice" size={16} />
-			</button>
-			<SkyControl
-				environment={worldEnvironment}
-				onEnvironment={(preset) => void setWorldEnvironment(preset)}
-				{editOnPaper}
-				onEditOnPaper={(value) => (editOnPaper = value)}
-				busy={environmentWrite === adapterServices}
-			/>
-		{/snippet}
-	</EditorHead>
+	/>
 	{/if}
 
 	{#if resumeOffer}
@@ -3766,6 +3729,64 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			></button>
 		{/if}
 
+		<!--
+			The old second line is restored: the reading grid and 2D/3D controls sit
+			under the project Head, and the new Measure, Slice and Sky controls join
+			that line rather than replacing it.
+		-->
+		{#if preview === null}
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<div
+				class="view-line"
+				data-view-line
+				onclick={(event) => event.stopPropagation()}
+				onpointerdown={(event) => event.stopPropagation()}
+			>
+				<StageDraftingControl
+					{drafting}
+					reading={draftingReading}
+					quiet={paperVisible}
+					gridWord={draftingGridWord}
+					snapWord={draftingSnapWord}
+					onReading={setReading}
+					onPatch={patchDrafting}
+					planAppearance={preferences.planAppearance}
+					onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+					roomLabels2d={preferences.roomLabels2d}
+					roomLabels3d={preferences.roomLabels3d}
+					paperTone2d={preferences.paperTone2d}
+					paperTone3d={preferences.paperTone3d}
+					onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
+					{heightSheetSide}
+					onHeightSheetSide={(side) => (heightSheetSide = side)}
+					{reducedMotion}
+					onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
+					motionSpeed={preferences.motionSpeed}
+					onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
+				/>
+				<button
+					type="button"
+					class="view-tool"
+					class:active={activeWorldTool === 'measure'}
+					title="Measure (M)"
+					aria-label="Measure"
+					onclick={() => armWorldTool('measure')}
+				><WorldIcon name="measure" size={17} /></button>
+				<button type="button" class="view-tool" disabled title="Slice is planned for T1" aria-label="Slice, planned">
+					<WorldIcon name="slice" size={17} />
+				</button>
+				{#if adapterServices !== null}
+					<SkyControl
+						environment={worldEnvironment}
+						onEnvironment={(preset) => void setWorldEnvironment(preset)}
+						{editOnPaper}
+						onEditOnPaper={(value) => (editOnPaper = value)}
+						busy={environmentWrite === adapterServices}
+					/>
+				{/if}
+			</div>
+		{/if}
+
 		<div class="stage-frame">
 			{#if preview === null}
 				<!--
@@ -3885,33 +3906,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
-					<!--
-						R217.S20: the ⚙ holds the viewing preferences the Head used to hold. They
-						are browser session values, so the cluster writes the same state the
-						route always wrote, and Find reaches the same values.
-					-->
-					<StageDraftingControl
-						{drafting}
-						reading={draftingReading}
-						quiet={paperVisible}
-						gridWord={draftingGridWord}
-						snapWord={draftingSnapWord}
-						onReading={setReading}
-						onPatch={patchDrafting}
-						planAppearance={preferences.planAppearance}
-						onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
-						roomLabels2d={preferences.roomLabels2d}
-						roomLabels3d={preferences.roomLabels3d}
-						paperTone2d={preferences.paperTone2d}
-						paperTone3d={preferences.paperTone3d}
-						onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
-							{heightSheetSide}
-						onHeightSheetSide={(side) => (heightSheetSide = side)}
-						{reducedMotion}
-						onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
-						motionSpeed={preferences.motionSpeed}
-						onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
-					/>
 					{#if lens === 'experience'}
 						<!-- R217.S29 Show ▾: session-only Stage drawing flags beside the reading control. -->
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -4345,9 +4339,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		--shell-sans: var(--ld-sans);
 		--shell-serif: var(--ld-serif);
 		--shell-mono: var(--ld-mono);
-		--shell-index-width: 264px;
-		--shell-card-width: 300px;
-		--shell-head-height: 62px;
 	}
 	.editor-body {
 		position: relative;
@@ -4408,7 +4399,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	*/
 	.lower-column {
 		position: absolute;
-		inset-inline-start: 12px;
+		inset-inline-start: calc(12px + var(--index-cover, 0px));
 		inset-inline-end: 12px;
 		bottom: 10px;
 		z-index: 11;
@@ -4428,27 +4419,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* The Index covers the Stage without participating in viewport layout. */
 	.editor-body > :global(.plate-index) {
 		position: absolute;
-		inset: 0 auto 0 0;
 		z-index: 20;
-		top: calc(var(--shell-head-height) + 8px);
-		bottom: 10px;
-		left: 0;
+		inset: 0 auto 0 0;
 		box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
-	}
-	@media (max-width: 1180px) {
-		.editor-host[data-shell='living-draft'] {
-			--shell-head-height: 112px;
-		}
-	}
-	@media (max-width: 860px) {
-		.editor-host[data-shell='living-draft'] {
-			--shell-head-height: 176px;
-		}
 	}
 	/* Living Draft's Card and Index share the Head's paper, not the old white sheet. */
 	.editor-host[data-shell='living-draft'] :global(.card) {
-		top: calc(var(--shell-head-height) + 8px);
-		right: 12px;
+		top: 10px;
+		right: 10px;
 		border-color: var(--ld-hairline-dark);
 		border-radius: 14px;
 		background: var(--ld-paper-raised);
@@ -4472,15 +4450,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		border-radius: 0 0 14px 14px;
 	}
 	@media (width > 1100px) {
-		.editor-body > :global(.plate-index) {
-			border: 1px solid var(--ld-hairline-dark);
-			border-left: 0;
-			border-radius: 0 12px 12px 0;
-			background: var(--ld-paper-raised);
-			box-shadow: var(--ld-shadow);
-		}
-	}
-	@media (width > 1100px) {
 		.editor-body[data-index-open='true'] {
 			--index-cover: var(--shell-index-width);
 		}
@@ -4488,7 +4457,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* The constrained Index ends above the lower column and has a close scrim. */
 	@media (max-width: 1100px) {
 		.editor-body > :global(.plate-index) {
+			/* Keep the dock's measured span, but never trust a stale zero reading. */
 			bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);
+			bottom: calc(0.75rem + max(var(--lower-column-height, 0px), 166px) + 0.5rem);
 			width: min(var(--shell-index-width), 80%);
 		}
 		/*
@@ -4517,46 +4488,59 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	@media (pointer: coarse) {
 		.editor-host { --shell-touch-target:44px; --shell-head-height:52px; }
 	}
-	.stage-actions {
+	/* The old second line, with the new tools beside it rather than replacing it. */
+	.view-line {
 		position: absolute;
-		top: calc(var(--shell-head-height) + 8px);
+		top: 10px;
 		left: calc(10px + var(--index-cover, 0px));
-		/* Experience's Show control sits below the floating Head pills. */
-		z-index: 6;
+		z-index: 8;
 		display: flex;
-		gap: 0.4rem;
+		align-items: flex-start;
+		flex-wrap: wrap;
+		gap: 6px;
+		max-width: calc(100% - 20px - var(--index-cover, 0px));
 	}
-	.stage-actions :global([data-stage-drafting]),
-	.stage-actions :global([data-environment-control]) {
-		display: none;
+	.view-line > :global(*) {
+		pointer-events: auto;
 	}
-	.head-tool {
+	.view-tool {
 		display: grid;
 		place-items: center;
-		width: 32px;
-		height: 32px;
+		width: 34px;
+		height: 34px;
 		padding: 0;
-		border: 1px solid rgb(240 244 236 / 0.14);
-		border-radius: 8px;
-		background: rgb(0 0 0 / 0.12);
-		color: var(--ld-light-2, #c3d1c6);
+		border: 1px solid rgb(38 35 29 / 0.12);
+		border-radius: 9px;
+		background: rgb(251 246 234 / 0.94);
+		box-shadow: 0 4px 14px rgb(8 20 13 / 0.12);
+		color: var(--ld-ink-2);
 		cursor: pointer;
 	}
-	.head-tool:hover {
-		background: rgb(242 240 230 / 0.1);
-		color: var(--ld-light, #f2f0e6);
+	.view-tool:hover {
+		background: var(--ld-paper);
+		color: var(--ld-ink);
 	}
-	.head-tool.active {
-		background: rgb(150 199 169 / 0.15);
-		color: var(--ld-mint, #96c7a9);
+	.view-tool.active {
+		background: var(--ld-forest);
+		border-color: var(--ld-forest);
+		color: var(--ld-paper);
 	}
-	.head-tool:disabled {
+	.view-tool:disabled {
 		opacity: 0.38;
 		cursor: default;
 	}
-	.head-tool:focus-visible {
-		outline: 2px solid var(--ld-gold, #c8a653);
-		outline-offset: 1px;
+	.view-tool:focus-visible {
+		outline: 2px solid var(--ld-gold);
+		outline-offset: 2px;
+	}
+	/* Experience's Show control sits below the restored reading line. */
+	.stage-actions {
+		position: absolute;
+		top: 54px;
+		left: calc(10px + var(--index-cover, 0px));
+		z-index: 6;
+		display: flex;
+		gap: 0.4rem;
 	}
 	/*
 		R217.S20: the Keys reference Find opens. It sits where the stage's top-right

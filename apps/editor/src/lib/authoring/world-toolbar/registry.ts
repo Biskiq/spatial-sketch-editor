@@ -56,15 +56,15 @@ export type WorldTool = {
   readonly options?: readonly WorldOptionGroup[];
   /** The one production shortcut, when the existing input map already owns it. */
   readonly shortcut?: string;
-};
-
-export type WorldFamily = {
-  readonly id: WorldFamilyId;
-  readonly label: string;
-  readonly icon: string;
-  /** The first tool a family opens when it has no remembered member yet. */
-  readonly defaultTool: WorldToolId;
-  readonly tools: readonly WorldToolId[];
+};export type WorldFamily = {
+	readonly id: WorldFamilyId;
+	readonly label: string;
+	readonly icon: string;
+	/** The prototype's family accent, used for the active tab rule and dots. */
+	readonly accent: string;
+	/** The first tool a family opens when it has no remembered member yet. */
+	readonly defaultTool: WorldToolId;
+	readonly tools: readonly WorldToolId[];
 };
 
 export type WorldLibraryCategory =
@@ -125,7 +125,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'building',
     label: 'Building',
-    icon: 'familyBuild',
+    icon: 'building',
     family: 'build',
     stage: 'planned',
     after: 'T5',
@@ -302,31 +302,31 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
 
 export const WORLD_FAMILIES: readonly WorldFamily[] = [
   {
-    id: 'build',
-    label: 'Build',
-    icon: 'familyBuild',
-    defaultTool: 'walls',
+    id: 'build',		label: 'Build',
+		icon: 'fam-build',
+		accent: '#c2643f',
+		defaultTool: 'walls',
     tools: ['walls', 'opening', 'stair', 'building', 'room', 'slice']
   },
   {
-    id: 'form',
-    label: 'Form',
-    icon: 'familyForm',
-    defaultTool: 'form',
+    id: 'form',		label: 'Form',
+		icon: 'fam-form',
+		accent: '#b08a3e',
+		defaultTool: 'form',
     tools: ['form', 'roofline', 'terrace']
   },
   {
-    id: 'land',
-    label: 'Landscape',
-    icon: 'familyLand',
-    defaultTool: 'ground',
+    id: 'land',		label: 'Landscape',
+		icon: 'fam-land',
+		accent: '#6f8a3e',
+		defaultTool: 'ground',
     tools: ['ground', 'water', 'path', 'plants', 'trees']
   },
   {
-    id: 'furnish',
-    label: 'Furnish',
-    icon: 'familyFurnish',
-    defaultTool: 'objects',
+    id: 'furnish',		label: 'Furnish',
+		icon: 'fam-furnish',
+		accent: '#c08a2a',
+		defaultTool: 'objects',
     tools: ['objects', 'lights']
   }
 ];

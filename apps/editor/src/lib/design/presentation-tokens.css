@@ -212,31 +212,54 @@
  * 3D proposal keeps the same cobalt it has in every other reading.
  */
 [data-shell='living-draft'] {
-	--ld-forest: #173d2a;
-	--ld-forest-deep: #102d20;
-	--ld-leaf: #4f8061;
-	--ld-mint: #96c7a9;
-	--ld-gold: #c8a653;
-	--ld-paper: #f4f1e6;
-	--ld-paper-raised: #faf8ef;
-	--ld-ink: #1c2821;
-	--ld-ink-2: #4f5e54;
-	--ld-ink-3: #7b887e;
-	--ld-light: #f2f0e6;
-	--ld-light-2: #c3d1c6;
-	--ld-hairline: rgb(240 244 236 / 0.16);
-	--ld-hairline-dark: rgb(28 40 33 / 0.14);
-	--ld-glass: rgb(23 61 42 / 0.9);
-	--ld-shadow: 0 14px 40px rgb(10 24 18 / 0.18), 0 2px 6px rgb(10 24 18 / 0.1);
+	/* The #285 prototype palette, used directly rather than tinted on top. */
+	--ld-forest: #13261b;
+	--ld-forest-deep: #0d1c13;
+	--ld-forest-2: #1b3426;
+	--ld-forest-3: #24432f;
+	--ld-leaf: #7f9150;
+	--ld-mint: #9dbb73;
+	--ld-gold: #d4ad45;
+	--ld-paper: #fbf6ea;
+	--ld-paper-raised: #fbf6ea;
+	--ld-paper-3: #ece0c6;
+	--ld-ink: #26231d;
+	--ld-ink-2: #5a5448;
+	--ld-ink-3: #8a8272;
+	--ld-light: #fbf6ea;
+	--ld-light-2: #9fb39a;
+	--ld-on-forest: rgb(251 246 234 / 0.72);
+	--ld-hairline: rgb(251 246 234 / 0.14);
+	--ld-hairline-dark: rgb(38 35 29 / 0.12);
+	--ld-glass: rgb(19 38 27 / 0.92);
+	--ld-shadow: 0 14px 40px rgb(8 20 13 / 0.24), 0 2px 6px rgb(8 20 13 / 0.14);
+	--ld-build: #c2643f;
+	--ld-form: #b08a3e;
+	--ld-land: #6f8a3e;
+	--ld-furnish: #c08a2a;
 	--ld-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
 	--ld-sans: 'Instrument Sans', system-ui, sans-serif;
 	--ld-mono: 'DM Mono', ui-monospace, monospace;
 	--ld-radius: 14px;
 	/* The shell furniture this skin repaints; spatial --stage-* paint stays shared. */
-	--shell-index: var(--ld-paper-raised);
-	--shell-card: var(--ld-paper-raised);
+	--shell-forest: var(--ld-forest);
+	--shell-forest-raised: var(--ld-forest-2);
+	--shell-forest-3: var(--ld-forest-3);
+	--shell-index: var(--ld-paper);
+	--shell-card: var(--ld-paper);
+	--shell-paper: var(--ld-paper-3);
 	--shell-ink: var(--ld-ink);
 	--shell-ink-2: var(--ld-ink-2);
 	--shell-ink-3: var(--ld-ink-3);
+	--shell-ink-light: var(--ld-light);
+	--shell-ink-quiet: var(--ld-light-2);
 	--shell-hairline: var(--ld-hairline-dark);
+	--shell-hairline-dark: var(--ld-hairline);
+	--shell-gold: var(--ld-gold);
+	--shell-serif: var(--ld-serif);
+	--shell-sans: var(--ld-sans);
+	--shell-mono: var(--ld-mono);
+	--shell-head-height: 44px;
+	--shell-index-width: 256px;
+	--shell-card-width: 288px;
 }

@@ -1,7 +1,8 @@
 <script lang="ts">
 	/** Shared Head: project lifecycle, lens, scoped Find, history and truthful Save/Preview states. */
-	import { tick, untrack, type Snippet } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import ShellIcon from './ShellIcon.svelte';
+	import WorldMark from './WorldMark.svelte';
 	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
@@ -84,8 +85,7 @@
 		onProjectActionComplete = async () => {},
 		onProjectActionBusyChange = () => {},
 		onRefreshRemoteProject = null,
-		find = null,
-		view = undefined
+		find = null
 	}: {
 		projectId: string;
 		projectName: string;
@@ -147,8 +147,6 @@
 			readonly onQuery: (value: string) => void;
 			readonly onRun: (entry: HeadFindEntry) => void;
 		} | null;
-		/** Living Draft's view cluster: drafting, Sky, Measure and Slice live in the Head pill. */
-		view?: Snippet;
 	} = $props();
 
 	const LENSES = [
@@ -356,7 +354,6 @@
 
 <svelte:window onkeydown={findShortcut} onpointerdown={onWindowPointerDown} />
 <header class="head" data-editor-head>
-	<div class="head-left">
 	<button
 		type="button"
 		class="head-index"
@@ -368,6 +365,11 @@
 	>
 		<ShellIcon name="menu" />
 	</button>
+
+	<span class="brand" aria-label="Biskiq">
+		<WorldMark />
+		<span class="brand-word">Biskiq</span>
+	</span>
 
 	<!--
 		Escape closes the project menu from any control inside it. The group only
@@ -460,10 +462,7 @@
 			</button>
 		{/each}
 	</div>
-	</div>
 
-	<div class="head-right">
-		{#if view}{@render view()}{/if}
 	<div class="actions">
 		{#if find !== null}
 			<div class="find" class:open={findOpen} data-head-find>
@@ -689,7 +688,6 @@
 			</div>
 		{/if}
 	</div>
-	</div>
 </header>
 
 <style>
@@ -701,63 +699,15 @@
 		clip-path: inset(50%);
 	}
 	.head {
-		position: absolute;
-		z-index: 30;
-		top: 10px;
-		left: calc(10px + var(--index-cover, 0px));
-		right: 10px;
-		display: flex;
-		align-items: flex-start;
-		flex-wrap: wrap;
-		gap: 7px;
-		padding: 0;
-		background: transparent;
-		color: var(--ld-light, var(--shell-ink-light));
-		min-width: 0;
-		font: 12px/1.35 var(--ld-sans, 'Instrument Sans', system-ui, sans-serif);
-		pointer-events: none;
-	}
-	.head-left,
-	.head-right {
 		display: flex;
 		align-items: center;
-		gap: 4px;
-		min-height: 42px;
-		padding: 0 6px;
-		border: 1px solid rgb(240 244 236 / 0.13);
-		border-radius: 12px;
-		background: var(--ld-forest, var(--shell-forest));
-		box-shadow: 0 8px 24px rgb(8 22 16 / 0.18);
-		pointer-events: auto;
-	}
-	.head-left {
-		padding-left: 3px;
-	}
-	.head-right {
-		margin-left: auto;
-		padding: 3px 4px;
-	}
-	.head-right :global(.cluster) {
-		gap: 4px;
-	}
-	.head-right :global(.reading),
-	.head-right :global(.words) {
-		background: rgb(0 0 0 / 0.12);
-		border-color: rgb(240 244 236 / 0.13);
-		box-shadow: none;
-		color: var(--ld-light, #f2f0e6);
-	}
-	.head-right :global(.reading button),
-	.head-right :global(.words button) {
-		color: var(--ld-light-2, #c3d1c6);
-	}
-	.head-right :global(.reading button[aria-pressed='true']),
-	.head-right :global(.words button[aria-pressed='true']) {
-		background: var(--ld-paper, #f4f1e6);
-		color: var(--ld-forest-deep, #102d20);
-	}
-	.head-right :global(.viewing) {
-		color: var(--ld-ink, #1c2821);
+		gap: 6px;
+		height: var(--shell-head-height);
+		padding: 0 8px;
+		background: var(--shell-forest);
+		color: var(--shell-ink-light);
+		min-width: 0;
+		font: var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 	button {
 		display: inline-flex;
@@ -783,6 +733,19 @@
 		padding: 0;
 		color: #dfe6df;
 	}
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		flex: none;
+		padding: 0 4px 0 1px;
+		color: var(--shell-paper);
+		font: 600 16px/1 var(--shell-serif);
+		letter-spacing: -0.015em;
+	}
+	.brand-word {
+		white-space: nowrap;
+	}
 	.identity {
 		position: relative;
 		min-width: 0;
@@ -793,11 +756,10 @@
 		font: inherit;
 	}
 	.project-name {
-		max-width: 190px;
-		color: var(--ld-light, #f2f0e6);
-		padding: 0 6px;
-		font: 500 16px var(--ld-serif, 'Fraunces', Georgia, serif);
-		letter-spacing: -0.01em;
+		max-width: 180px;
+		color: var(--shell-white);
+		padding: 0 4px;
+		font: var(--shell-text-identity) var(--shell-serif);
 	}
 	.project-text {
 		overflow: hidden;
@@ -867,8 +829,8 @@
 		order: 2;
 		display: flex;
 		align-items: center;
-		gap: 3px;
-		margin-left: 0;
+		gap: 6px;
+		margin-left: auto;
 		min-width: 0;
 	}
 	.history {
@@ -1023,40 +985,23 @@
 			width: 210px;
 		}
 	}
-	@media (max-width: 1500px) {
-		.find,
-		.find.open {
-			width: 180px;
+	@media (max-width: 560px) {
+		/* Keep every Head action reachable without letting the row widen the page. */
+		.actions {
+			overflow-x: auto;
+			overflow-y: hidden;
+			scrollbar-width: none;
 		}
-		.find.open {
-			width: 300px;
-		}
-		.preview-label {
+		.actions::-webkit-scrollbar {
 			display: none;
-		}
-		.primary {
-			width: 32px;
-			padding: 0;
-		}
-	}
-	@media (max-width: 1180px) {
-		.head-right {
-			margin-left: 0;
 		}
 	}
 	@media (max-width: 860px) {
-		.head {
-			left: 8px;
-			right: 8px;
-			gap: 5px;
+		.brand-word {
+			display: none;
 		}
-		.head-left,
-		.head-right {
-			width: 100%;
-			flex-wrap: wrap;
-		}
-		.head-right {
-			padding: 4px;
+		.brand {
+			padding-right: 0;
 		}
 		.preview-label,
 		kbd {
@@ -1081,9 +1026,6 @@
 		}
 		.location {
 			max-width: 130px;
-		}
-		.location {
-			display: none;
 		}
 		.lens-button {
 			padding: 0 8px;
