@@ -234,6 +234,42 @@ function stageCssWorld(facade: StageFacade, point: readonly [number, number, num
 	return [projected.css[0] - RECT.left, projected.css[1] - RECT.top];
 }
 
+/** D2 — bend the mounted Wall at one centerline station through the real press path. */
+async function bendWallAt(mounted: Mounted, distance: number): Promise<void> {
+	selectWall(mounted.facade, mounted.wallId);
+	settle(mounted.facade, 3);
+	const frame = curvedWallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+	const station = frame === null ? null : curvedWallPointAt(frame, distance);
+	const point: [number, number] = station === null ? [distance, 0] : [station.point[0], station.point[1]];
+	const evaluationId = mounted.facade.evaluationId()!;
+	const from = stageCss(mounted.facade, point);
+	const to = stageCss(mounted.facade, [point[0], point[1] + 0.6]);
+	expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+	mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+	mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+	const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+	const expected = wall.centerline.kind === 'cubic-chain' ? wall.centerline.knots.length + 1 : 1;
+	await eventually(() => {
+		const next = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+		return next.centerline.kind === 'cubic-chain' && next.centerline.knots.length === expected;
+	});
+}
+
+/** Click the first bend mark so the session names it active, as the creator would. */
+async function activateFirstBendPoint(mounted: Mounted): Promise<void> {
+	selectWall(mounted.facade, mounted.wallId);
+	settle(mounted.facade, 4);
+	const mark = mounted.facade.marks().find((candidate) => candidate.id.startsWith('layout-wall-knot:'));
+	if (mark === undefined) throw new Error('the fixture published no bend point');
+	const css: [number, number] = [mark.anchor[0] + RECT.left, mark.anchor[1] + RECT.top];
+	const evaluationId = mounted.facade.evaluationId()!;
+	expect(mounted.facade.pointerIntent({ phase: 'down', css, evaluationId }).claimed).toBe(true);
+	mounted.facade.pointerIntent({ phase: 'up', css, evaluationId });
+	await eventually(() =>
+		mounted.facade.marks().some((candidate) => candidate.id === mark.id && candidate.label === 'Active bend point')
+	);
+}
+
 /**
  * R217.S15 — the length ray is the outward measure grip at the free end. Its
  * tip is Stage-local CSS, so pressing it exercises the real mark tier rather
@@ -1741,6 +1777,168 @@ describe('R217.S15 — gesture numeric entry', () => {
 
 		expect((await mounted.host.undo()).kind).toBe('installed');
 		expect(knots()).toHaveLength(2);
+	});
+
+	it('removes the active bend point with Delete through the shared Card channel', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		await bendWallAt(mounted, 4.5);
+		await bendWallAt(mounted, 1.5);
+		await activateFirstBendPoint(mounted);
+		const knots = () => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'cubic-chain' ? wall.centerline.knots : [];
+		};
+		expect(knots()).toHaveLength(2);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+
+		// D2 — Delete is the Card's own removal helper: the retained delete planner
+		// previews, one captured intent is accepted once, and the active knot clears.
+		expect(mounted.facade.selectionKeyIntent({ kind: 'delete' })).toEqual({
+			claimed: true,
+			adapterId: 'layout'
+		});
+		await eventually(() => knots().length === 1);
+		expect(mounted.host.history()).toMatchObject({
+			depth: beforeHistory.depth + 1,
+			position: beforeHistory.position + 1
+		});
+		expect(mounted.facade.marks().some((mark) => mark.label === 'Active bend point')).toBe(false);
+
+		// The keyboard result is a canonical document: Save/Load admits it unchanged.
+		const captured = await captureUnitSave({
+			snapshot: mounted.host.coordinator().acceptedSnapshot(),
+			operationId: 'd2-delete-roundtrip',
+			precondition: { kind: 'create-only' }
+		});
+		expect(captured.kind).toBe('captured');
+		if (captured.kind !== 'captured') throw new Error(`Save capture refused: ${captured.message}`);
+		const reloaded = await readUnitEnvelopeForSave(captured.capture.canonicalJson);
+		expect(reloaded.kind).toBe('read');
+		if (reloaded.kind !== 'read') throw new Error(`Save reload refused: ${reloaded.message}`);
+		const readmitted = await admitSource(reloaded.envelope, {
+			sessionEpoch: 'session-d2-delete-roundtrip',
+			acceptedRevision: captured.capture.acceptedRevision
+		});
+		expect(readmitted.kind).toBe('admitted');
+		if (readmitted.kind !== 'admitted') throw new Error(`Reload admission refused: ${readmitted.kind}`);
+		expect(stageEnvelope(readmitted.snapshot).units).toEqual(stageEnvelope(mounted.facade.snapshot()).units);
+
+		// One keypress is one undo step, and Undo restores the exact prior curve.
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(knots()).toHaveLength(2);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+	});
+
+	it('removes the active bend point with Backspace and Undo restores the curve', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		await bendWallAt(mounted, 4.5);
+		await activateFirstBendPoint(mounted);
+		const knots = () => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'cubic-chain' ? wall.centerline.knots : [];
+		};
+		expect(knots()).toHaveLength(1);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+
+		expect(mounted.facade.selectionKeyIntent({ kind: 'backtrack' })).toEqual({
+			claimed: true,
+			adapterId: 'layout'
+		});
+		await eventually(() => knots().length === 0);
+		expect(mounted.host.history()).toMatchObject({
+			depth: beforeHistory.depth + 1,
+			position: beforeHistory.position + 1
+		});
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		expect(knots()).toHaveLength(1);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+	});
+
+	it('refuses Delete on a curved Wall with no active bend point instead of deleting it', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 4);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+
+		// A curved Wall claims the key and refuses without an active knot, so Delete
+		// can never fall through to the Wall's destructive Card action.
+		expect(mounted.facade.selectionKeyIntent({ kind: 'delete' })).toEqual({
+			claimed: true,
+			adapterId: 'layout'
+		});
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+		expect(acceptedLayout(mounted.facade).walls.some((wall) => wall.id === mounted.wallId)).toBe(true);
+	});
+
+	it('refuses Delete when the named bend point is already gone', async () => {
+		// A pre-curved Wall stays curved after the inserted knot is undone, so the
+		// selected Wall is still a valid Delete target while its named knot is not.
+		const base = createEmptyWallFirstLayoutDocument();
+		base.floor.elevation = ELEVATION;
+		base.junctions = [
+			{ id: 'stale-a', point: [0, 0] },
+			{ id: 'stale-b', point: [6, 0] }
+		];
+		base.walls = [
+			{
+				id: 'stale-curve',
+				startJunctionId: 'stale-a',
+				endJunctionId: 'stale-b',
+				thickness: 0.2,
+				height: 3,
+				centerline: {
+					kind: 'cubic-chain',
+					knots: [],
+					spans: [{ handleOut: [2, 3], handleIn: [4, 3] }]
+				}
+			} satisfies LayoutWall
+		];
+		const mounted = await mount({ document: base, wallId: 'stale-curve', openingId: '' });
+		settle(mounted.facade, 2);
+		await bendWallAt(mounted, 3);
+		await activateFirstBendPoint(mounted);
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'stale-curve')!;
+			return wall.centerline.kind === 'cubic-chain' && wall.centerline.knots.length === 0;
+		});
+		// Undo rebases the source: the adapter binding is rebuilt on the host's
+		// next live frame, exactly as every other post-write assertion does.
+		settle(mounted.facade, 5);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+
+		// Stale state refuses; it never straightens and never deletes the Wall.
+		expect(mounted.facade.selectionKeyIntent({ kind: 'delete' })).toEqual({
+			claimed: true,
+			adapterId: 'layout'
+		});
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
+		expect(acceptedLayout(mounted.facade).walls.some((wall) => wall.id === 'stale-curve')).toBe(true);
+	});
+
+	it('leaves straight-Wall Delete to the host command map', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 4);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+		// A straight Wall claims neither key, so the route keeps its existing Delete
+		// action and Backspace command instead of growing a curve-only branch.
+		expect(mounted.facade.selectionKeyIntent({ kind: 'delete' })).toEqual({ claimed: false, adapterId: null });
+		expect(mounted.facade.selectionKeyIntent({ kind: 'backtrack' })).toEqual({ claimed: false, adapterId: null });
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toEqual(beforeHistory);
 	});
 
 	it('straightens a curved Wall from the Card and leaves straight Walls action-free', async () => {

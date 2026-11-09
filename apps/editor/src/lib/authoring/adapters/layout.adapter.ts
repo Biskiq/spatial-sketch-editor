@@ -1207,6 +1207,33 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return source === undefined || source.centerline.kind === 'line' ? null : selected;
 			}
 
+			/**
+			 * D2 — one bend-point removal for both callers: the Card action and the
+			 * Delete/Backspace key. The keyboard must not grow a second write path, so it
+			 * calls exactly this helper: preview the retained planner, capture one intent,
+			 * accept it once, then clear the session's active knot.
+			 */
+			async function removeWallKnot(wallId: string, knotId: string): Promise<StageCardActionOutcome> {
+				const preview = previewWallKnotDelete(document, wallId, knotId);
+				if (preview.kind === 'refused') return { kind: 'refused', message: preview.message };
+				const snapshot = services.stage.snapshot();
+				const outcome = await services.authoring.accept(
+					wallKnotDeleteIntent({
+						wallId,
+						knotId,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId
+					})
+				);
+				if (outcome.kind === 'refused') return { kind: 'refused', message: outcome.message };
+				if (activeKnot?.wallId === wallId && activeKnot.knotId === knotId) activeKnot = null;
+				services.stage.notifySurfaceChange();
+				return { kind: 'accepted' };
+			}
+
 			function commitBend(current: BendGesture, intent: NonNullable<BendGesture['intent']>): void {
 				const snapshot = services.stage.snapshot();
 				void services.authoring.accept(
@@ -3758,28 +3785,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const runCurve = async (kind: 'delete' | 'straighten'): Promise<StageCardActionOutcome> => {
 							// A Card record can outlive the session state it was rendered from. A
 							// stale Remove must refuse, never fall through to the other shape action.
-							if (kind === 'delete' && (activeKnot === null || activeKnot.wallId !== wallId)) {
-								return { kind: 'refused', message: 'Select the bend point again before removing it.' };
+							if (kind === 'delete') {
+								if (activeKnot === null || activeKnot.wallId !== wallId) {
+									return { kind: 'refused', message: 'Select the bend point again before removing it.' };
+								}
+								// Exactly the helper the Delete/Backspace key calls: one shared channel.
+								return removeWallKnot(wallId, activeKnot.knotId);
 							}
-							const preview = kind === 'delete' && activeKnot !== null
-								? previewWallKnotDelete(document, wallId, activeKnot.knotId)
-								: previewWallStraighten(document, wallId);
+							const preview = previewWallStraighten(document, wallId);
 							if (preview.kind === 'refused') return { kind: 'refused', message: preview.message };
 							const snapshot = services.stage.snapshot();
-							const base = {
-								operationId: globalThis.crypto.randomUUID(),
-								projectId: snapshot.acceptedRevision.projectId,
-								revisionId: services.authoring.acceptedRevision().revisionId,
-								contentRevision: stageUnitRevision(snapshot, 'layout'),
-								levelId: snapshot.domain.layoutLevelId
-							};
 							const outcome = await services.authoring.accept(
-								kind === 'delete' && activeKnot !== null
-									? wallKnotDeleteIntent({ ...base, wallId, knotId: activeKnot.knotId })
-									: wallStraightenIntent({ ...base, wallId })
+								wallStraightenIntent({
+									operationId: globalThis.crypto.randomUUID(),
+									projectId: snapshot.acceptedRevision.projectId,
+									revisionId: services.authoring.acceptedRevision().revisionId,
+									contentRevision: stageUnitRevision(snapshot, 'layout'),
+									levelId: snapshot.domain.layoutLevelId,
+									wallId
+								})
 							);
 							if (outcome.kind === 'refused') return { kind: 'refused', message: outcome.message };
-							if (kind === 'delete') activeKnot = null;
 							services.stage.notifySurfaceChange();
 							return { kind: 'accepted' };
 						};
@@ -3874,7 +3900,36 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							return true;
 						}
 						const active = gesture ?? junctionGesture ?? openingGesture;
-						if (active === null) return false;
+						if (active === null) {
+							// D2 — Delete/Backspace remove the active bend point. Callers reach this
+							// branch only when no task or live press owns the key, and a live numeric
+							// writer was already offered it above. The helper is the Card's own
+							// removal path, so one keypress captures one intent and one undo step.
+							// A straight or unselected Wall is not claimed, leaving the host's
+							// existing Delete map unchanged. A curved Wall with no active knot or a
+							// stale record is claimed and refused: the key must never fall through to
+							// the Wall's destructive action.
+							if (intent.kind === 'delete' || intent.kind === 'backtrack') {
+								if (
+									bendGesture !== null ||
+									gesture !== null ||
+									junctionGesture !== null ||
+									openingGesture !== null ||
+									scalarGesture !== null
+								) {
+									return false;
+								}
+								const curved = selectedCurvedWall(adapterContext);
+								// A straight Wall with no active knot leaves Delete to the host's
+								// existing map. A surviving active-knot record on a now-straight Wall is
+								// stale, so it claims and refuses instead of deleting the Wall.
+								if (curved === null) return activeKnot !== null;
+								if (activeKnot === null || activeKnot.wallId !== curved.wallId) return true;
+								void removeWallKnot(curved.wallId, activeKnot.knotId);
+								return true;
+							}
+							return false;
+						}
 						if (intent.kind === 'type') {
 							if (intent.key === '\t') {
 								if (active.numeric === null) return false;

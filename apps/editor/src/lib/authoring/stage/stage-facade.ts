@@ -327,6 +327,8 @@ export type StagePointerIntent = {
  */
 export type StageKeyboardIntent =
 	| { readonly kind: 'finish' | 'backtrack' | 'cancel' }
+	/** The platform's delete key; the owning adapter may have a scoped meaning for it. */
+	| { readonly kind: 'delete' }
 	/** One printable keystroke while a gesture owns the pointer (numeric entry). */
 	| { readonly kind: 'type'; readonly key: string };
 
@@ -972,6 +974,13 @@ export type StageFacade = {
 	 * through `keyboardIntent`.
 	 */
 	gestureKeyIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	/**
+	 * Offer a command key to the registered adapters when neither an open task nor
+	 * a live press owns the keyboard. A selected subject's adapter can claim a
+	 * key it has a scoped meaning for (D2: Delete/Backspace on an active bend
+	 * point); every other adapter leaves it to the host's existing map.
+	 */
+	selectionKeyIntent(intent: StageKeyboardIntent): { readonly claimed: boolean; readonly adapterId: string | null };
 	/**
 	 * Ask the shell to re-read contributions now. An adapter that changes preview
 	 * state (a candidate pose) calls this so the overlay reflects it without a
@@ -2412,6 +2421,32 @@ export function createStageFacade(input: {
 			} catch {
 				return { claimed: false, adapterId: null };
 			}
+		},
+		selectionKeyIntent(intent) {
+			// This is the **unowned** key path: an open task or a live press has already
+			// been offered the key and owns it first. Asking adapters underneath either
+			// one would let a selection shortcut compete with an active writer.
+			if (!isLive() || session.task() !== null || session.gesture() !== null) {
+				return { claimed: false, adapterId: null };
+			}
+			if (pointerOwner !== null) return { claimed: false, adapterId: null };
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return { claimed: false, adapterId: null };
+			// Deterministic adapter order, exactly like `cardWriter`: each adapter's
+			// `keyIntent` checks its own selection and returns `false` when the key has
+			// no scoped meaning, so only the selected subject can claim it.
+			const ids = [...adapters.keys()].sort();
+			for (const adapterId of ids) {
+				const claim = adapters.get(adapterId)?.contributions.keyIntent;
+				if (claim === undefined) continue;
+				try {
+					if (claim(intent, handle.context)) return { claimed: true, adapterId };
+				} catch {
+					// A throwing claim is a refusal, never a stolen key.
+				}
+			}
+			return { claimed: false, adapterId: null };
 		},
 		notifySurfaceChange() {
 			if (isLive()) notifyAdaptersChanged();
