@@ -202,10 +202,15 @@ describe('P23.11 fix 2 — one authored Wall-distance metric', () => {
 		for (const fraction of [0.12, 0.37, 0.62]) {
 			const index = Math.floor(fraction * (compiled.samples.length - 1));
 			const authoredDistance = compiled.samples[index]!.distance;
-			const plan = planBendWallCurveKnot(document, 'wall-a', {
-				distance: authoredDistance,
-				point: compiled.samples[index]!.point
-			});
+			const plan = planBendWallCurveKnot(
+				document,
+				'wall-a',
+				{
+					distance: authoredDistance,
+					point: compiled.samples[index]!.point
+				},
+				{ knotId: 'wall-a:knot:3' }
+			);
 			if (plan.kind !== 'success') throw new Error('expected the bend to succeed');
 			const after = chainViewOf(plan.document, 'wall-a');
 			const inserted = after.knots.find((knot) => knot.id === 'wall-a:knot:3') ?? after.knots.at(-1)!;

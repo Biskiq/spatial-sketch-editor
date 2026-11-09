@@ -466,7 +466,7 @@ describe('P23.11 slice 5 — bend point planners', () => {
 describe('P23.11 slice 5 — the composite Bend planner', () => {
 	it('curves a straight Wall in one candidate, one operation', () => {
 		const document = documentOf();
-		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 4, point: [4, 1.5] }));
+		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 4, point: [4, 1.5] }, { knotId: 'wall-a:knot:1' }));
 		expect(plan.operation).toBe('wall-curve-knot-bend');
 		const chain = wallOf(plan.document, 'wall-a').centerline;
 		if (chain.kind !== 'cubic-chain') throw new Error('expected a chain');
@@ -483,7 +483,7 @@ describe('P23.11 slice 5 — the composite Bend planner', () => {
 	it('is identity-preserving when the bend is released at the grabbed arc position', () => {
 		const document = documentOf();
 		const baseline = samplePointsOf(document, 'wall-a');
-		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 4, point: [4, 0] }));
+		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 4, point: [4, 0] }, { knotId: 'wall-a:knot:1' }));
 		expect(worstDeviation(samplePointsOf(plan.document, 'wall-a'), baseline)).toBeLessThan(1e-9);
 	});
 
@@ -492,7 +492,7 @@ describe('P23.11 slice 5 — the composite Bend planner', () => {
 		// The knot is placed at the release point, so releasing exactly on the
 		// Wall's own position at that distance leaves the curve straight and the
 		// knot at that distance.
-		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 4, point: [4, 0] }));
+		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 4, point: [4, 0] }, { knotId: 'wall-a:knot:1' }));
 		const chain = chainViewOf(plan.document, 'wall-a');
 		// Placement is exact to the documented arc-length inversion tolerance:
 		// the bisection resolves the straight chord's parameter to 1e-12, so the
@@ -506,7 +506,7 @@ describe('P23.11 slice 5 — the composite Bend planner', () => {
 	it('inserts at the grabbed arc position on an already-curved Wall', () => {
 		const document = curvedDocument();
 		const before = chainViewOf(document, 'wall-a');
-		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 3, point: [2.2, 2.6] }));
+		const plan = expectSuccess(planBendWallCurveKnot(document, 'wall-a', { distance: 3, point: [2.2, 2.6] }, { knotId: 'wall-a:knot:3' }));
 		const after = chainViewOf(plan.document, 'wall-a');
 		expect(after.knots).toHaveLength(3);
 		// Pre-existing bend points keep their IDs and positions.
@@ -524,7 +524,7 @@ describe('P23.11 slice 5 — the composite Bend planner', () => {
 	it('drags an existing bend point instead of inserting a duplicate on top of it', () => {
 		const document = curvedDocument();
 		const plan = expectSuccess(
-			planBendWallCurveKnot(document, 'wall-a', { distance: knotDistanceOf(document, 'wall-a:knot:2'), point: [8.5, -2] })
+			planBendWallCurveKnot(document, 'wall-a', { distance: knotDistanceOf(document, 'wall-a:knot:2'), point: [8.5, -2] }, { knotId: 'wall-a:knot:captured' })
 		);
 		const chain = chainViewOf(plan.document, 'wall-a');
 		expect(chain.knots.map((knot) => knot.id)).toEqual(['wall-a:knot:1', 'wall-a:knot:2']);
@@ -534,15 +534,15 @@ describe('P23.11 slice 5 — the composite Bend planner', () => {
 	it('rejects a bend out of range or with a non-finite release point', () => {
 		const document = curvedDocument();
 		const total = wallLengthOf(document, 'wall-a');
-		expect(planBendWallCurveKnot(document, 'wall-a', { distance: total + 2, point: [1, 1] })).toMatchObject({
+		expect(planBendWallCurveKnot(document, 'wall-a', { distance: total + 2, point: [1, 1] }, { knotId: 'wall-a:knot:9' })).toMatchObject({
 			kind: 'rejected',
 			rejection: { code: 'split_distance_out_of_range' }
 		});
-		expect(planBendWallCurveKnot(document, 'wall-a', { distance: Number.NaN, point: [1, 1] })).toMatchObject({
+		expect(planBendWallCurveKnot(document, 'wall-a', { distance: Number.NaN, point: [1, 1] }, { knotId: 'wall-a:knot:9' })).toMatchObject({
 			kind: 'rejected',
 			rejection: { code: 'invalid_value' }
 		});
-		expect(planBendWallCurveKnot(document, 'wall-a', { distance: 5, point: [Number.NaN, 1] })).toMatchObject({
+		expect(planBendWallCurveKnot(document, 'wall-a', { distance: 5, point: [Number.NaN, 1] }, { knotId: 'wall-a:knot:9' })).toMatchObject({
 			kind: 'rejected',
 			rejection: { code: 'invalid_value' }
 		});
