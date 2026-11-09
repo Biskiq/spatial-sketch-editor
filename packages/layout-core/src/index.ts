@@ -38,6 +38,7 @@ export * from './layout-wall-heights';
 export * from './layout-wall-openings';
 export * from './layout-wall-noding';
 export * from './layout-wall-centerline';
+export * from './layout-wall-development';
 export * from './layout-wall-curve-algebra';
 export * from './layout-wall-offset-clearance';
 export * from './layout-wall-chain';

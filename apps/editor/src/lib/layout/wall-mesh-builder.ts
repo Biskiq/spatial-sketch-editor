@@ -86,6 +86,23 @@ export type IndexedWallMesh = {
 	 * `wallRanges` cannot identify (reveals and bridges have no owner today).
 	 */
 	pickRanges: Layout3dPickRange[];
+	/**
+	 * C3 checkpoint 4 — optional canonical development attribution: three
+	 * values per vertex, in vertex order: station `s`, signed offset `w`
+	 * (positive along the canonical left normal) and height `y` above the
+	 * floor. Present only when `WallMeshOptions.attribution` is true; the
+	 * visitor and the retained representation never request it.
+	 */
+	attribution?: Float32Array;
+	/**
+	 * Exact (Float64) twin of `attribution`, for the C3 proof suite only. The
+	 * render/GPU path uses the compact Float32 array; at metre-scale stations
+	 * Float32 quantisation is already larger than the development's 1e-9 m
+	 * contract, so the geometric proof must read the unrounded values.
+	 */
+	attributionExact?: Float64Array;
+	/** Unquantised source positions paired with `attributionExact`. */
+	attributionSourcePositions?: Float64Array;
 	bounds: LayoutBounds3;
 };
 
@@ -100,6 +117,8 @@ export type WallMeshOptions = {
 	 * derived from their geometry (e.g. sloped arch undersides).
 	 */
 	assertWinding?: boolean;
+	/** Emit the optional per-vertex `(s, w, y)` development attribution. */
+	attribution?: boolean;
 };
 
 export type WallMeshBuildResult = {
@@ -146,7 +165,14 @@ export type ResolvedWallEnds = {
 
 type V3 = [number, number, number];
 
-type Vertex = { p: V3; n: V3; u: number; v: number };
+type Vertex = {
+	p: V3;
+	n: V3;
+	u: number;
+	v: number;
+	/** C3 attribution attached where the emitter already knows the station. */
+	a?: [number, number, number];
+};
 
 /**
  * Pick identity attached to a face at build time. `'lintel'` exists on both
@@ -214,6 +240,12 @@ type WallFaces = {
 	sections: SectionFaces[];
 	reveals: RevealFaces[];
 	bridges: BridgeFaces[];
+	/** Present when this record can attribute its own vertices. */
+	development?: {
+		samples: readonly CurveSample[];
+		thickness: number;
+		floorElevation: number;
+	};
 };
 
 const DEFAULT_WELD_TOLERANCE = 1e-4;
@@ -229,7 +261,7 @@ const WINDING_DEGENERATE_AREA = 1e-12;
  * the editor and standalone museum copies.
  */
 export const STANDALONE_WALL_MESH_BUILDER_SIGNATURE =
-	'buildStandaloneWallMesh(v2:whole-wall,floor-elevation,resolved-ends,exposed-end-surfaces)';
+	'buildStandaloneWallMesh(v3:whole-wall,floor-elevation,resolved-ends,exposed-end-surfaces,attribution)';
 
 /**
  * Build one watertight, surface-major `IndexedWallMesh` for a room. Unsafe
@@ -248,7 +280,13 @@ export function buildRoomWallMesh(room: CompiledRoom, options: WallMeshOptions =
 
 	const wallResult = buildAllWallFaces(room, options, classify);
 	if (wallResult.issues.length > 0) return { mesh: undefined, issues: wallResult.issues };
-	const mesh = emitMesh(room.roomId, wallResult.wallsFaces, classify, weldTolerance);
+	const mesh = emitMesh(
+		room.roomId,
+		wallResult.wallsFaces,
+		classify,
+		weldTolerance,
+		options.attribution === true
+	);
 	if (options.assertWinding) assertWindingAgreesWithNormals(mesh);
 	return { mesh, issues: [] };
 }
@@ -412,7 +450,8 @@ export function buildStandaloneWallMesh(
 			classify,
 			false,
 			clip,
-			suppressions
+			suppressions,
+			options.attribution === true
 		)
 	);
 	const bridges: BridgeFaces[] = [];
@@ -443,7 +482,13 @@ export function buildStandaloneWallMesh(
 		faces.sections.push({ ref, surfaceKey: classify(ref), faces: keelFaces });
 	}
 	const wallsFaces = [faces];
-	const mesh = emitMesh(wall.wallId, wallsFaces, classify, weldTolerance);
+	const mesh = emitMesh(
+		wall.wallId,
+		wallsFaces,
+		classify,
+		weldTolerance,
+		options.attribution === true
+	);
 	if (options.assertWinding) assertWindingAgreesWithNormals(mesh);
 	return { mesh, issues: [] };
 }
@@ -847,7 +892,8 @@ function buildWallFaces(
 	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
 	emitBridges = true,
 	clip?: ResolvedEndClip,
-	suppressions: readonly ResolvedFaceSuppression[] = []
+	suppressions: readonly ResolvedFaceSuppression[] = [],
+	attribution = false
 ): WallFaces {
 	const half = wall.thickness / 2;
 	const sections: SectionFaces[] = [];
@@ -860,7 +906,18 @@ function buildWallFaces(
 			kind: section.kind
 		};
 		const surfaceKey = classify(ref);
-		const faces = buildSectionFaces(room, wall, section, half, cornerStart, cornerEnd, roomBreakpoints, clip, suppressions);
+		const faces = buildSectionFaces(
+			room,
+			wall,
+			section,
+			half,
+			cornerStart,
+			cornerEnd,
+			roomBreakpoints,
+			clip,
+			suppressions,
+			attribution
+		);
 		if (faces.length > 0) sections.push({ ref, surfaceKey, faces });
 	}
 
@@ -873,7 +930,20 @@ function buildWallFaces(
 			...(opening.openingId ? { openingId: opening.openingId } : {}),
 			kind: 'side'
 		});
-		const faces = buildRevealFaces(room, wall, prevWall, nextWall, opening, half, wallHeight, roomBreakpoints, cornerStart, cornerEnd, clip);
+		const faces = buildRevealFaces(
+			room,
+			wall,
+			prevWall,
+			nextWall,
+			opening,
+			half,
+			wallHeight,
+			roomBreakpoints,
+			cornerStart,
+			cornerEnd,
+			clip,
+			attribution
+		);
 		if (faces.length > 0) reveals.push({ openingId: opening.openingId, surfaceKey, faces });
 	}
 
@@ -886,7 +956,13 @@ function buildWallFaces(
 		if (bridge) bridges.push(bridge);
 	}
 
-	return { segmentId: wall.segmentId, sections, reveals, bridges };
+	return {
+		segmentId: wall.segmentId,
+		sections,
+		reveals,
+		bridges,
+		development: { samples: wall.samples, thickness: wall.thickness, floorElevation: room.floorElevation }
+	};
 }
 
 function buildSectionFaces(
@@ -898,7 +974,8 @@ function buildSectionFaces(
 	cornerEnd: Corner,
 	roomBreakpoints: readonly number[],
 	endClip?: ResolvedEndClip,
-	suppressions: readonly ResolvedFaceSuppression[] = []
+	suppressions: readonly ResolvedFaceSuppression[] = [],
+	attribution = false
 ): Face[] {
 	// P23.15 — a trimmed end shortens the Wall's own material: the section span
 	// starts (or stops) at the resolved clip distance, never at the Junction
@@ -952,6 +1029,7 @@ function buildSectionFaces(
 		: sectionPick;
 
 	for (let index = 1; index < clip.length; index += 1) {
+		// (attribution is applied to the completed faces below)
 		const a = clip[index - 1]!;
 		const b = clip[index]!;
 		const bottomA = sectionBottomAt(section, a.distance);
@@ -1033,6 +1111,25 @@ function buildSectionFaces(
 			));
 		}
 	}
+	if (attribution) {
+		for (const face of faces) {
+			for (const vertex of face.verts) {
+				if (vertex.a) continue;
+				// The emitter wrote the exact source station into `u` for every
+				// section vertex (side bands, top and bottom/underside). Use that
+				// station directly; projecting an offset point back onto a curved
+				// polyline would shift it by the curvature. The signed lateral is
+				// measured against the sample normal at that station.
+				const sample = sampleAt(wall.samples, vertex.u);
+				vertex.a = [
+					vertex.u,
+					(vertex.p[0] - sample.point[0]) * sample.normal[0] +
+						(vertex.p[2] - sample.point[1]) * sample.normal[1],
+					vertex.p[1] - room.floorElevation
+				];
+			}
+		}
+	}
 	return faces;
 }
 
@@ -1072,7 +1169,8 @@ function buildRevealFaces(
 	roomBreakpoints: readonly number[],
 	cornerStart: Corner,
 	cornerEnd: Corner,
-	endClip?: ResolvedEndClip
+	endClip?: ResolvedEndClip,
+	attribution = false
 ): Face[] {
 	const floorElevation = room.floorElevation;
 	// The jamb face ends where the arch spring begins: for rectangular openings
@@ -1143,6 +1241,12 @@ function buildRevealFaces(
 			const backTop = vertex(back[0], yHi, back[1], tx, 0, tz, 0, hi);
 			const backBottom = vertex(back[0], yLo, back[1], tx, 0, tz, 0, lo);
 			const frontBottom = vertex(front[0], yLo, front[1], tx, 0, tz, wall.thickness, lo);
+			if (attribution) {
+				frontTop.a = [side.distance, half, hi];
+				backTop.a = [side.distance, -half, hi];
+				backBottom.a = [side.distance, -half, lo];
+				frontBottom.a = [side.distance, half, lo];
+			}
 			// Winding must agree with the stored normal `sign * tangent`. The
 			// opening-end jamb (−sign) is already front→back→back-bottom→front-bottom;
 			// the opening-start jamb (+sign) needs the opposite order.
@@ -1685,6 +1789,43 @@ function vertex(x: number, y: number, z: number, nx: number, ny: number, nz: num
 	return { p: [x, y, z], n: [nx, ny, nz], u, v };
 }
 
+/**
+ * C3 checkpoint 4 — the builder's explicit development attribution. A vertex
+ * is projected onto the source centerline segment it was emitted from; the
+ * station is the true sample distance, the offset is signed along the
+ * canonical left normal, and the height is above the floor. This is the
+ * per-vertex `(s, w, y)` the development consumes, not a guess from UVs.
+ */
+function attributeWallVertex(
+	development: NonNullable<WallFaces['development']>,
+	point: V3
+): [number, number, number] {
+	const samples = development.samples;
+	let bestDistance = Infinity;
+	let bestStation = 0;
+	let bestOffset = 0;
+	for (let index = 1; index < samples.length; index += 1) {
+		const start = samples[index - 1]!;
+		const end = samples[index]!;
+		const dx = end.point[0] - start.point[0];
+		const dz = end.point[1] - start.point[1];
+		const squared = dx * dx + dz * dz;
+		const raw = squared > 0 ? ((point[0] - start.point[0]) * dx + (point[2] - start.point[1]) * dz) / squared : 0;
+		const amount = Math.min(1, Math.max(0, raw));
+		const px = start.point[0] + dx * amount;
+		const pz = start.point[1] + dz * amount;
+		const distanceSquared = (point[0] - px) ** 2 + (point[2] - pz) ** 2;
+		if (distanceSquared >= bestDistance) continue;
+		bestDistance = distanceSquared;
+		bestStation = start.distance + (end.distance - start.distance) * amount;
+		const nx = start.normal[0] + (end.normal[0] - start.normal[0]) * amount;
+		const nz = start.normal[1] + (end.normal[1] - start.normal[1]) * amount;
+		const magnitude = Math.hypot(nx, nz) || 1;
+		bestOffset = ((point[0] - px) * nx + (point[2] - pz) * nz) / magnitude;
+	}
+	return [bestStation, bestOffset, point[1] - development.floorElevation];
+}
+
 function quad(a: Vertex, b: Vertex, c: Vertex, d: Vertex, pick?: FacePick): Face {
 	return { verts: [a, b, c, d], ...(pick ? { pick } : {}) };
 }
@@ -1729,12 +1870,16 @@ function emitMesh(
 	roomId: string,
 	wallsFaces: WallFaces[],
 	classify: (ref: WallMeshSectionRef) => WallMeshSurfaceKey,
-	weldTolerance: number
+	weldTolerance: number,
+	attributionEnabled = false
 ): IndexedWallMesh {
 	const positions: number[] = [];
 	const normals: number[] = [];
 	const uvs: number[] = [];
 	const indices: number[] = [];
+	const attributions: number[] = [];
+	const exactAttributions: number[] = [];
+	let activeDevelopment: WallFaces['development'] | undefined;
 	const weld = new Map<string, number>();
 	const materialGroups: IndexedWallMeshGroup[] = [];
 	const sectionToRange: IndexedWallMesh['sectionToRange'] = [];
@@ -1788,13 +1933,24 @@ function emitMesh(
 	}
 
 	function vertexIndex(vertex: Vertex): number {
-		const key = `${Math.round(vertex.p[0] / weldTolerance)},${Math.round(vertex.p[1] / weldTolerance)},${Math.round(vertex.p[2] / weldTolerance)}|${Math.round(vertex.n[0] / NORMAL_GRID)},${Math.round(vertex.n[1] / NORMAL_GRID)},${Math.round(vertex.n[2] / NORMAL_GRID)}|${Math.round(vertex.u / UV_GRID)},${Math.round(vertex.v / UV_GRID)}`;
+		const attribution =
+			attributionEnabled && activeDevelopment
+				? (vertex.a ?? attributeWallVertex(activeDevelopment, vertex.p))
+				: null;
+		const attributionKey = attribution
+			? `|${Math.round(attribution[0] / 1e-6)},${Math.round(attribution[1] / 1e-6)},${Math.round(attribution[2] / 1e-6)}`
+			: '';
+		const key = `${Math.round(vertex.p[0] / weldTolerance)},${Math.round(vertex.p[1] / weldTolerance)},${Math.round(vertex.p[2] / weldTolerance)}|${Math.round(vertex.n[0] / NORMAL_GRID)},${Math.round(vertex.n[1] / NORMAL_GRID)},${Math.round(vertex.n[2] / NORMAL_GRID)}|${Math.round(vertex.u / UV_GRID)},${Math.round(vertex.v / UV_GRID)}${attributionKey}`;
 		const existing = weld.get(key);
 		if (existing !== undefined) return existing;
 		const index = positions.length / 3;
 		positions.push(vertex.p[0], vertex.p[1], vertex.p[2]);
 		normals.push(vertex.n[0], vertex.n[1], vertex.n[2]);
 		uvs.push(vertex.u, vertex.v);
+		if (attribution) {
+			attributions.push(attribution[0], attribution[1], attribution[2]);
+			exactAttributions.push(attribution[0], attribution[1], attribution[2]);
+		}
 		min[0] = Math.min(min[0], vertex.p[0]);
 		min[1] = Math.min(min[1], vertex.p[1]);
 		min[2] = Math.min(min[2], vertex.p[2]);
@@ -1832,6 +1988,7 @@ function emitMesh(
 	for (const surfaceKey of keyOrder) {
 		const groupStart = indices.length;
 		for (const wall of wallsFaces) {
+			activeDevelopment = wall.development;
 			const wallRange = wallRangeBySegment.get(wall.segmentId)!;
 			for (const section of wall.sections) {
 				if (section.surfaceKey !== surfaceKey) continue;
@@ -1878,6 +2035,13 @@ function emitMesh(
 		sectionToRange,
 		wallRanges,
 		pickRanges,
+		...(attributionEnabled
+			? {
+					attribution: new Float32Array(attributions),
+					attributionExact: new Float64Array(exactAttributions),
+					attributionSourcePositions: new Float64Array(positions)
+				}
+			: {}),
 		bounds: { min: [...min] as V3, max: [...max] as V3 }
 	};
 }
