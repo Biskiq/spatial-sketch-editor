@@ -1,4 +1,73 @@
 /*
+ * Living Draft's type is vendored rather than fetched, so the editor keeps a
+ * single deterministic face set offline. Licences travel beside the faces in
+ * `apps/editor/static/fonts`.
+ */
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/fraunces-400.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/fraunces-500.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/fonts/fraunces-600.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/fonts/fraunces-700.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Instrument Sans';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/instrument-sans-400.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Instrument Sans';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/instrument-sans-500.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Instrument Sans';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/fonts/instrument-sans-600.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'DM Mono';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/dm-mono-400.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'DM Mono';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/dm-mono-500.ttf') format('truetype');
+}
+
+/*
  * Biskiq presentation roles — the one authoritative source for shared design
  * roles.
  *
@@ -135,4 +204,32 @@
 	/* The dark instrument chassis reads quieter than the shell's ink. */
 	--stage-instrument-ink-quiet: #98a89c;
 	--stage-instrument-hairline: var(--shell-hairline-dark);
+}
+
+/*
+ * Living Draft is a scoped shell skin, not a replacement for the shared roles.
+ * It paints the editor's furniture while leaving spatial paint untouched, so a
+ * 3D proposal keeps the same cobalt it has in every other reading.
+ */
+[data-shell='living-draft'] {
+	--ld-forest: #173d2a;
+	--ld-forest-deep: #102d20;
+	--ld-leaf: #4f8061;
+	--ld-mint: #96c7a9;
+	--ld-gold: #c8a653;
+	--ld-paper: #f4f1e6;
+	--ld-paper-raised: #faf8ef;
+	--ld-ink: #1c2821;
+	--ld-ink-2: #4f5e54;
+	--ld-ink-3: #7b887e;
+	--ld-light: #f2f0e6;
+	--ld-light-2: #c3d1c6;
+	--ld-hairline: rgb(240 244 236 / 0.16);
+	--ld-hairline-dark: rgb(28 40 33 / 0.14);
+	--ld-glass: rgb(23 61 42 / 0.9);
+	--ld-shadow: 0 14px 40px rgb(10 24 18 / 0.18), 0 2px 6px rgb(10 24 18 / 0.1);
+	--ld-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+	--ld-sans: 'Instrument Sans', system-ui, sans-serif;
+	--ld-mono: 'DM Mono', ui-monospace, monospace;
+	--ld-radius: 14px;
 }

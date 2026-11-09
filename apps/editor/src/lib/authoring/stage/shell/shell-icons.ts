@@ -83,4 +83,12 @@ export const shellIcons: Readonly<Record<string, string>> = {
   shape: '<rect x="4" y="4" width="16" height="16" rx="2.5" stroke-dasharray="3 2.4"/><path d="M9 15 L12 8 L15 15 Z"/>',
   bend: '<path d="M4 18 Q12 4 20 18"/><circle cx="12" cy="11" r="1.6" fill="currentColor" stroke="none"/>',
   travel: '<path d="M7 12 H21 M17 8 L21 12 L17 16"/><path d="M3 9 H6 M3 15 H6"/>',
+  leaf: '<path d="M20 4 C12 4 5 7.5 5 14 C5 17.5 7.5 20 11 20 C17.5 20 20 12 20 4 Z"/><path d="M4 21 C7 15 11 11 17 7"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5 V5 M12 19 V21.5 M2.5 12 H5 M19 12 H21.5 M5.3 5.3 L7.1 7.1 M16.9 16.9 L18.7 18.7 M18.7 5.3 L16.9 7.1 M7.1 16.9 L5.3 18.7"/>',
+  familyBuild: '<path d="M3 20 H21"/><path d="M5 20 V10 L12 4 L19 10 V20"/><path d="M9 20 V14 H15 V20"/><path d="M2 10 L12 2 L22 10" stroke-dasharray="2 2.5"/>',
+  familyForm: '<path d="M3 20 V12 A9 9 0 0 1 21 12 V20"/><path d="M3 20 H21"/><path d="M9 20 V12 A3 3 0 0 1 15 12 V20"/>',
+  familyLand: '<path d="M2 20 L8 8 L12 14 L15 9 L22 20 Z"/><path d="M17 7 V19"/><path d="M14 10 L17 7 L20 10"/>',
+  familyFurnish: '<path d="M6 11 V5 A2 2 0 0 1 8 3 H16 A2 2 0 0 1 18 5 V11"/><path d="M4 11 H20 V16 H4 Z"/><path d="M6 16 V21 M18 16 V21"/>',
+  sky: '<circle cx="12" cy="9" r="3.5"/><path d="M3 19 C5 15.5 8 15 10 17 C12 13 16 13 18 17 C19.5 15.5 21 16 22 17"/><path d="M2 19 H22"/>',
+  room: '<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 10 H20 M10 4 V20"/>',
 };
