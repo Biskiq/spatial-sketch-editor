@@ -105,7 +105,16 @@ export function validatePreparedLayoutRoomGeometry(
 	if (floor.height !== undefined && (floor.height <= 0 || !Number.isFinite(floor.height))) {
 		issues.push({ path: 'floor.height', code: 'invalid_floor_height', message: 'Floor height must be finite and greater than zero', targetId: floor.id });
 	}
-	if (segments.length < 3) {
+	// A closed Wall is ONE segment whose start and end are the same point. Its
+	// boundary is genuinely closed and encloses area, so the three-segment floor
+	// is about distinct boundary edges, not Wall reference count. An open one- or
+	// two-segment chain still fails: only the canonical self-connected cubic
+	// chain earns this exception.
+	const singleClosedCurve =
+		segments.length === 1 &&
+		segments[0]!.kind === 'cubic-chain' &&
+		pointsEqual(segmentEndpoints(segments[0]!).start, segmentEndpoints(segments[0]!).end);
+	if (segments.length < 3 && !singleClosedCurve) {
 		issues.push({ path: `${path}.boundary.segments`, code: 'too_few_segments', message: 'A room boundary needs at least three segments', targetId: room.id });
 	}
 
@@ -124,7 +133,7 @@ export function validatePreparedLayoutRoomGeometry(
 		}
 	}
 
-	if (segments.length >= 3) {
+	if (segments.length >= 3 || singleClosedCurve) {
 		for (let index = 0; index < segments.length; index += 1) {
 			const current = segments[index]!;
 			const next = segments[(index + 1) % segments.length]!;

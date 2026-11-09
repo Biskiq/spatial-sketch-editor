@@ -64,6 +64,8 @@ export type NodingRejection = {
 		 * normally and exactly.
 		 */
 		| 'curved_wall_unsupported'
+		/** D7 — a closed Wall is one canonical loop and cannot be subdivided. */
+		| 'closed_wall_isolated'
 		| 'junction_point_mismatch';
 	message: string;
 	/** Involved authored IDs where available. */
@@ -136,6 +138,17 @@ function planWallSplitInternal(
 	const wall = document.walls.find((candidate) => candidate.id === wallId);
 	if (!wall) {
 		return rejected({ code: 'unknown_wall', message: `Unknown wall '${wallId}'`, wallId });
+	}
+	// D7 — splitting a closed Wall would create two open fragments and destroy
+	// the single canonical loop. This is a closed-Wall policy refusal, not a
+	// distance error; the caller must detach/resize through the circle product
+	// path instead.
+	if (wall.startJunctionId === wall.endJunctionId) {
+		return rejected({
+			code: 'closed_wall_isolated',
+			message: `Closed Wall '${wallId}' is isolated (closed_wall_isolated) and cannot be split`,
+			wallId
+		});
 	}
 	const startJunction = document.junctions.find((junction) => junction.id === wall.startJunctionId);
 	const endJunction = document.junctions.find((junction) => junction.id === wall.endJunctionId);
