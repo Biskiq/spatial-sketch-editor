@@ -394,7 +394,10 @@ describe('runner expected-failure semantics', () => {
 		);
 	});
 
-	it('exercises the installed Vitest runner end-to-end', () => {
+	// This case spawns a second Vitest process; the default 5 s budget is not
+	// product behavior and expires under a loaded full-suite run. A bounded 60 s
+	// ceiling still fails a genuinely hung runner.
+	it('exercises the installed Vitest runner end-to-end', { timeout: 60_000 }, () => {
 		// The JSON reporter is the contract this harness reads. Run the installed
 		// runner on both `it.fails` outcomes rather than trusting hand-written
 		// statuses, then feed its real artifact through the CLI.
