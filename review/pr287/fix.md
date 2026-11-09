@@ -13,7 +13,7 @@ Read this with the owner handoff and screenshots `01`–`07`. Tags used througho
 | **[S]** | Visible in an owner screenshot. |
 | **[H]** | Hypothesis; needs a browser repro before changing production code. |
 | **[D]** | Deliberate departure from the donor; rationale given. |
-| **[O]** | Material owner decision required before implementation. |
+| **[O]** | Material owner decision; approved where marked in §9, with only D4 still conditional. |
 
 ---
 
@@ -27,15 +27,15 @@ The **interaction layer is not mergeable yet**. The seven captures reduce to six
 2. Refused attempts keep proposal cobalt while the tag is coral, and the tag sits at the pointer, not the conflict. **[S 01–02, 04]**
 3. Curved selection draws the canonical silhouette plus a second candidate contour. **[S 03]**
 4. A new bend is not made active, and the only mark drawn is a four-way move cross; the planner's 0.35 m body tolerance is also used as the knot promotion radius. **[S 04; V]**
-5. A curved open Wall has no rigid body move: body drag only bends. This is the current plan's grammar, and it is the grammar the owner proposes to reverse. **[V; O D1]**
+5. A curved open Wall has no rigid body move: body drag only bends. This is the current plan's grammar; the owner has **approved reversing it** (D1). **[V; D1 approved]**
 6. `wallUnfold.enter` always anchors at station 0; `wallUnfoldAnchor` is test-only. `flip` re-requests a `face` camera move. The sheet has no Opening voids, no door, no ruler, no seam, and no complete as-built frame. **[V; S 05, 07]**
 
-The missing states are: **whole-network refusal truth**, **accepted-with-warning**, and **a deliberate partial/peel state with reduced-motion and exact return**.
+The missing states are: **whole-network refusal truth**, **a deliberately narrow accepted-with-warning state**, and **a deliberate partial/peel state with reduced-motion and exact return**.
 
 The recommended model is not a mechanical application of the owner's notes. Two proposals are challenged:
 
-- The **donor is not evidence for Wall-editing grammar**. It is a museum viewer; its transferable evidence is the sheet, anchor, camera discipline, as-built and Opening presentation. Body-move / modifier-bend is justified by the current PR's contradiction and the owner's hypothesis, not by donor behavior.
-- **Warnings must not become soft refusals.** An amber state is only for a candidate the canonical planner already accepts, or for a representable state whose only consequence is a deterministic Room re-derivation or a gap. Anything that needs a new connection/split/Room-identity semantic stays refused. **[O D2, D8]**
+- The **donor is not evidence for Wall-editing grammar**. It is a museum viewer; its transferable evidence is the sheet, anchor, camera discipline, as-built and Opening presentation. Body-move / modifier-bend is justified by the current PR's contradiction and the owner's approved direction, not by donor behavior.
+- **Warnings must stay rare and non-obvious.** Amber is only for a canonical-accepted candidate whose meaningful consequence is not visible in the preview. In #287 that means an unconnected near-miss that could be mistaken for a snap; ordinary Room-area changes, stable Room re-derivation, ordinary Opening edits and other predictable valid edits are **neutral**, never amber. Anything needing a new split/merge/overlap/connection semantic is refused. **[D2/D8 approved, narrowed]**
 
 ---
 
@@ -79,7 +79,7 @@ Known simplifications, stated in the demo: oblique 2.5D projection, no occlusion
 | Curved silhouette | 03 | Canonical selected Wall draws its ochre silhouette while the bend candidate draws a band outline; `wallProposalPaper` publishes the whole proposed Wall, not a centerline. | Double contour, ambiguous "which is the Wall". | While a Wall gesture is live, suppress the canonical body silhouette and draw **one** dashed candidate centerline. The selected ochre body returns on cancel/commit. Keep the as-built/reference separate. | [S][H] |
 | Bend handle | 04; `markDescriptors` | Curved Walls publish no permanent knots; only the active/dragging knot is drawn. A new bend commits without setting `activeKnot` (only a subsequent click on an existing knot sets it). The active glyph uses `cross: true` (four-way move). | After a bend there is no visibly editable point; when one appears it reads as "move", not "bend". | A new bend becomes active **as soon as it is inserted** (live during the drag, active after release) and is drawn as a bend mark: point + tangent tick, not the four-way cross. Only active/hovered knots are drawn. Delete/Backspace removes the active knot. | [S][V] |
 | Knot promotion | 04; `layout.adapter.ts` | `BEND_BODY_TOLERANCE_METERS = 0.35` is used for the nearest-knot search and for `wallStationNearPoint`; also used as the body band. | A world-space 0.35 m radius changes with zoom and steals presses far from the visible mark. | Point marks (knot, Junction, jamb) use a **screen-space 10 px** promotion radius; the Wall body uses a screen band (`max(6 px, half-thickness in px + 4 px)`). Keep 0.35 m only as a geometric fallback for ray/plane sampling, never for mark promotion. | [V] |
-| Curved body move | Owner handoff A; current adapter | Body press on a curved open Wall opens a bend; there is no plain-drag translate. | A bent Wall cannot be moved without editing its shape; the creator adds bends accidentally. | Plain body drag = rigid translation of the whole Wall (endpoints, knots, and shared Junctions). Modifier (⌘/Ctrl) or armed Bend = insert a bend at the grabbed station. This reverses plan D1. | [V][O D1] |
+| Curved body move | Owner handoff A; current adapter | Body press on a curved open Wall opens a bend; there is no plain-drag translate. | A bent Wall cannot be moved without editing its shape; the creator adds bends accidentally. | Plain body drag = rigid translation of the whole Wall (endpoints, knots, and shared Junctions). Modifier (⌘/Ctrl) or armed Bend = insert a bend at the grabbed station. **D1 approved.** Route the move through `LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove`, which already carries a curved chain; do not hand-edit knots. | [V][D1 approved] |
 | Straight body move | Current adapter | Straight Wall body already has a rigid move (`mode: 'move'`) with a normal-distance drag. | Works; preserve it. | Keep; unify the curved path with it so both use one translation contract and one history entry. | [V] |
 | Junction availability | Owner handoff A; 01–02 | Junction end marks exist on a selected Wall; a hover Junction candidate exists. The refusal path is the failure, not necessarily the absence of the gesture. | The gesture works but its preview lies. | Preserve Junction/Opening precedence; do not hide Junction marks when a Wall is selected. If 3D picking is unreliable, keep the precise edit in Plan and expose the same values in the Card. **[H]** Repro before changing reading gates. | [H] |
 | Snap | 04; plan D-snap | Grid/axis snap exists; bend insertion snaps by station. | A bend can land a few centimetres off the visible line; the handle is not obviously snapped. | Show the snap chip (`Grid 0.25 m`, `Axis`, `Wall`, `Junction`); snap the inserted knot to the Wall centerline at insertion, then to the grid/axes while dragging. Do not silently connect to another Wall; connection requires an explicit Junction snap. | [V] |
@@ -90,7 +90,7 @@ Known simplifications, stated in the demo: oblique 2.5D projection, no occlusion
 | Area | Donor evidence | Current #287 | Observed effect | Recommended | Tag |
 |---|---|---|---|---|---|
 | Anchor | Donor 222° sheet anchored at the place being studied; gold anchor dot; camera inset. | `wallUnfold.enter(wall, anchorStation = 0)`; Card calls `enter(compiledWall)` so the anchor is always 0. `wallUnfoldAnchor` (Opening → view centre → start) is implemented but unused in production. | Sheet unrolls from an arbitrary end, away from the creator's view. | Pass a computed anchor: selected Opening centre on this Wall → station nearest the view-centre ray → canonical start (open Walls, headless fallback). For closed Walls, wrap the anchor; the display cut stays opposite. Never default to 0 when a view centre exists. | [V][S 05][O D5] |
-| Camera on entry | Donor uses a face view for the sheet; explicit focus. | `enter` issues one `face` request and animates `u: 0 → 1` over `FOLD_SECONDS = 1`. | A forced fit is acceptable for an explicit Unfold, but not for a peel/scrub. | One `face` fit is allowed only on an explicit **Unfold** action. A drag/peel open, a scrub, a side flip and a partial stop never move the camera. Done/Refold restores the recorded entry pose and reading exactly. | [V][O D5] |
+| Camera on entry | Donor uses a face view for the sheet; explicit focus. | `enter` issues one `face` request and animates `u: 0 → 1` over `FOLD_SECONDS = 1`. | A face request changes orientation; that violates the owner's preserve-the-view rule. | **Preserve camera orientation exactly** (yaw/pitch/roll/up). On explicit **Unfold**, only pan, fit/zoom and target recentring may change; no `face`, orbit or roll. Record the entry pose before any fit. A drag/peel open, scrub, side flip and partial stop make **no** camera request. Done/Refold restores the entry pose and reading exactly. | [V][D5 approved] |
 | Camera on flip | Donor used camera choreography; owner explicitly rejects a spin. | `flip(wall)` calls `#requestFace(wall, state, state.u)` → the route records entry and issues another `face`. | Inside/Outside unexpectedly moves the camera. | Flip is a **display-only** side change. No camera request. The sheet's station reading direction reverses about the anchor; the as-built stays put. This is a deliberate departure from the donor's camera move. | [V][D][O D6] |
 | Partial/flat | Donor 222° partial unroll; Flat stop; station ruler; as-built ring. | Development map exists; `u` controls the sheet. No peel/dog-ear; `Flat`/`Half` jumps; sheet is built with `buildDevelopedWallMesh(..., { thickness, height, spans })`. | Partial works mathematically but has no physical peel affordance; the sheet is visually a smooth ribbon with no working-surface detail. | Keep the development map. Add a peel handle at the anchored edge with the donor's 260 px full-open mapping, magnetic stops at 0 / 0.5 / 1, a dog-ear shadow, and no camera motion. Reduced motion snaps instantly. | [V][S 06] |
 | Sheet fidelity | Donor: top/perimeter contours, wall grid, door/window voids, labels, station ruler, seam ticks, as-built ring + top line + verticals. | Sheet mesh has **no Opening voids**. Opening contours are only on one face with four edges (`openingCount * 4`); as-built is two horizontal rings + one top line, no verticals/label; no ruler/seam. | The sheet cannot be a working surface: openings are lines, the as-built is detached, scale is unreadable. | Build the sheet as a real developed surface: perimeter/top/bottom, seam and cut ticks, station ruler with canonical (wrapped) stations, Opening voids with sill/head/jamb and a door leaf, anchor pin, registration lines to the as-built, a complete as-built frame (base ring, top ring, verticals, label). | [V][S 05,06,07] |
@@ -104,7 +104,7 @@ Known simplifications, stated in the demo: oblique 2.5D projection, no occlusion
 
 | Donor behavior | Recommendation | Why |
 |---|---|---|
-| Camera moves into a face view and can swing 180° for the other side. | Fit once on explicit Unfold; never move for scrub/peel/flip; Done returns exactly. | The owner's working surface must stay put; a camera spin destroys the anchor relationship and disorients. The sheet's reading direction, not the camera, carries Inside/Outside. **[O D6]** |
+| Camera moves into a face view and can swing 180° for the other side. | Preserve orientation on explicit Unfold; permit only pan/fit/zoom; never move for scrub/peel/flip; Done returns exactly. | The owner's working surface must stay put; a camera spin destroys the anchor relationship and disorients. The sheet's reading direction, not the camera, carries Inside/Outside. **[D5/D6 approved]** |
 | Unroll is a viewer gesture with a gold anchor dot and a camera inset. | Editor exposes a Card + peel handle; anchor pin and as-built stay visible. | Authoring needs a stable, discoverable control and keyboard access, not a viewer's guided journey. |
 | "UNROLLED · VIEW ONLY". | "UNROLLED · OPENINGS EDITABLE" (or a short "Edit openings" chip). | #287 explicitly makes the sheet the working surface for Openings; "view only" contradicts D13. |
 | As-built includes a scene-specific ceiling note. | Include it only with a real ceiling relation from the Scene. | Do not fabricate spatial claims from an approximation. |
@@ -166,7 +166,7 @@ Hover reveals a mark and its label; selection does not preempt a nearer mark. On
 |---|---|---|---|
 | Selected / accepted | Ochre body, ochre selection | None or neutral | This is the committed Wall. |
 | Proposal | Cobalt dashed; moved Wall solid-ish, affected neighbours thinner; length deltas | Cobalt snap chip | This is what release would commit. |
-| Accepted with warning | Cobalt proposal; after commit ochre | **Amber** tag/note at the consequence (Room label, gap midpoint) | Representable, but the consequence must be said. |
+| Accepted with warning | Cobalt proposal; after commit ochre | **Amber** tag/note only at a non-obvious connectivity consequence (near-miss/gap) | Canonical-accepted, but a meaningful consequence is not visible in the preview. |
 | Refused | **Coral whole attempted network**; offending segment emphasised | Coral tag at the real conflict | Release writes nothing; the attempt is evidence, not a proposal. |
 | As-built | Subdued grey dashed | "as built" | The canonical Wall, not a second geometry. |
 | Sheet | Vellum, wall grid, ruler, seam, anchor pin | "UNROLLED · OPENINGS EDITABLE" | A working view of the Wall. |
@@ -174,9 +174,9 @@ Hover reveals a mark and its label; selection does not preempt a nearer mark. On
 **Copy deck:**
 
 - Scrub label: **Unfold**; output `0%` = folded, `100%` = flat; stop label **Flat** at 100%.
-- Controls: `Flat` · `Half` · `Flip to Outside` / `Flip to Inside` (the label names the other side) · `Done`; helper "No view moves; Openings edit in place."
+- Controls: `Flat` · `Half` · `Flip to Outside` / `Flip to Inside` (the label names the other side) · `Done`; helper "Entry may pan, fit or zoom only; orientation stays fixed; Openings edit in place."
 - Warning near-miss: `0.20 m gap to Wall 1 — no connection.`
-- Warning Room: `Room 1 area 24.0 → 22.0 m². No topology change.` (Only if the planner actually accepts the Room re-derivation.)
+- Room/area change: **neutral**, not amber — `Room 1 24.0 → 22.0 m²` is an ordinary accepted update. Stable re-derivation is also neutral; a lost/merged Room is a refusal.
 - Refusal crossing: `Wing would cross Wall 3. Move it clear.`
 - Refusal overlap: `Wing would lie on Wall 1. Move it clear.`
 - Refusal Opening: `Door D1 would end 0.32 m past the 4.72 m Wall. Move it 0.32 m earlier or narrow it.`
@@ -193,20 +193,43 @@ The tag must name the **moved** subject first (`Wing would cross Wall 3`), not w
 
 | Tier | Definition | Examples | Presentation | Write? |
 |---|---|---|---|---|
-| **Accepted** | Canonical planner accepts; no semantic surprise. | Move a Wall into free space; acute corner; concave Room; narrow but clear gap; ordinary Opening slide/resize. | Cobalt proposal → ochre commit. | Yes. |
-| **Accepted with warning** | Canonical planner accepts **and** the consequence is deterministic and explainable. | Room area changes; Room re-derivation with stable identity; a near-miss that stays unconnected; a Junction snap that connects two Walls and re-nodes at an existing point; a Wall endpoint landing on another Wall with an explicit Junction snap. | Amber tag/note; geometry stays a proposal (cobalt) until commit. | Yes, after owner approval of the wording and semantics. |
+| **Accepted** | Canonical planner accepts; no semantic surprise. | Move a Wall into free space; acute corner; concave Room; narrow but clear gap; **ordinary Room-area change**; stable Room re-derivation; ordinary Opening slide/resize; a **named** explicit Junction snap. | Cobalt proposal → ochre commit; Room area simply updates. **Neutral, never amber.** | Yes. |
+| **Accepted with warning (rare)** | Canonical planner accepts **and** one meaningful consequence is genuinely non-obvious from the preview. In #287 the only such case is an unconnected near-miss at the connection tolerance that could be mistaken for a snap. | A 0.20 m gap that stays unconnected; no implicit Junction. Do **not** include ordinary area changes, stable re-derivation, predictable edits or a visible named snap. | Amber tag/note at the gap; geometry stays a proposal (cobalt) until commit. | Yes; one command, one history entry. |
 | **Refused** | No canonical state exists, or accepting would invent a connection/split/Room identity. | Crossing without a node; collinear overlap; self-intersection; duplicate Junction; zero-length Wall; interior contact without connection; closed-Wall external connection; Room identity loss; implicit Room splitting; arbitrary overlap/fold. | Coral whole attempted network + conflict at the real feature. | No; no history. |
 
 **Rule:** a warning is a classification of an already-valid candidate, not a relaxation of canonical validation. Never call a validator with warnings enabled in a way that admits an invalid document.
 
-### 4.2 Smallest safe relaxations
+### 4.2 Essential invariants vs unsupported capabilities
 
-1. **Audit over-refusal of unusual but valid shapes.** Concave rooms, acute angles, narrow gaps, collinear adjacent Walls and a Wall along another's extension are valid if the planner compiles them; they must not be refused for looking unusual. Add characterization tests for each.
-2. **Warn on Room consequences only where identity is stable.** A Room area change is not a refusal; a changed Room identity or a lost/merged Room is a refusal until an explicit split/merge semantic exists.
-3. **Near-miss is not a connection.** A gap ≥ the connection tolerance is accepted with `no connection`; do not silently snap. If the creator wants a connection, they must land on the Junction snap.
-4. **Do not accept crossings/overlaps.** A planar layout cannot represent two Walls crossing without deciding whether they connect, split, or pass in different planes. That decision is a new topology semantic, not a #287 bug fix. Refuse.
-5. **Explicit Junction snap for a T-contact.** If the planner supports noding a Wall at an interior point, the snap must be visible and named ("Connect to Wall 2"); the resulting Room re-derivation is a warning, not a silent topology change.
-6. **Closed Walls are not implicitly connectable.** An external Wall touching a closed Wall is refused unless the existing planner explicitly supports the connection; do not invent it.
+The current refusal rules mix two different things. Keep the first; do not present the second as a rejected product goal.
+
+**Essential invariants for #287 (keep):**
+
+1. **One canonical writer.** Every accepted gesture compiles through the canonical planner; no editor-only geometry, no second writer, no warning that admits an invalid document.
+2. **Single-level planar topology.** Two Walls may not cross or collinearly overlap without a node; a Wall may not self-intersect. The representation has one plan level and no layering/stacking semantic.
+3. **Junction integrity.** No zero-length Wall, duplicate Junction point, duplicate joined Wall, or silently invented three-way Junction. The planner's junction-degree rule remains authoritative.
+4. **Room identity.** A gesture may not silently lose, merge, split, rename or reconnect a Room. Stable area changes and stable re-derivation are allowed and neutral; identity loss is refused.
+5. **Opening containment.** An Opening must stay within its Wall and retain its identity; no implicit resize to make an invalid offset fit.
+6. **No implicit connection or split.** A near-miss stays disconnected unless the creator lands on the named Junction snap; an overlap does not silently create a connection or a new Room.
+
+These are **representation invariants for #287**, not universal statements that the product must never support the excluded shape.
+
+**Unsupported topology capabilities (explicit follow-on, not rejected):**
+
+- **Permissive overlaps / arbitrary crossings.** The owner's requested permissive-overlap direction is a real product goal, but a single-level planar document cannot represent it without deciding layer/stacking, connectivity and Room semantics. Keep refusing it in #287.
+- **Explicit Room split/merge** and deliberate Room re-identification.
+- **T-connections / closed-Wall external connections**, unless the existing planner already supports the exact case.
+- **Three-or-more-way Junctions** and duplicate/stacked Junction semantics.
+- **Crossing Walls that pass without connecting** (a bridge/underpass representation).
+
+In #287, label these as `unsupported_topology` / `needs_topology_decision` where possible, and use copy such as **"Overlapping Walls need a layering decision; not available yet."** Do not tell the creator the design is invalid. File the follow-on with its own schema, commands, refusal semantics and Room model; do not smuggle it in as an amber warning or a validator relaxation.
+
+**Safe corrections within #287:**
+
+1. **Audit over-refusal of unusual but valid shapes.** Concave Rooms, acute angles, narrow gaps, collinear adjacent Walls and a Wall along another's extension are valid if the planner compiles them. Add characterization tests; do not refuse for looking unusual.
+2. **Near-miss is not a connection.** A gap at or above the connection tolerance is accepted; a genuinely ambiguous near-miss gets the single amber warning with explicit `no connection`. Do not silently snap.
+3. **Explicit Junction snap.** A visible, named snap is a neutral accepted edit; if the resulting Room identity changes, refuse rather than warn.
+4. **Closed Walls.** An external Wall touching a closed Wall stays refused unless the planner already supports the connection; do not invent it.
 
 ### 4.3 Refusal taxonomy and examples
 
@@ -220,6 +243,8 @@ The tag must name the **moved** subject first (`Wing would cross Wall 3`), not w
 | `zero_length_wall` | Endpoint dragged onto the other | "A Wall cannot be zero length." | The collapsed Wall. |
 | `unsupported_geometry` / `curved_wall_unsupported` | Bend on a shape the planner cannot represent | "This shape is not a valid Wall layout." plus the reason | The offending span/knot. |
 
+**Classify every refusal.** `unconnected_crossing`, `collinear_overlap` and `self_intersection` are **unsupported topology capabilities** in #287 (follow-on), not proof that the shape is invalid. `room_identity_lost`, duplicate Junction, zero-length Wall and Opening containment are **essential invariants**. The remaining `unsupported_geometry` cases are capability limits with a named reason. The distinction belongs in the code/copy, not only this document.
+
 The default "This change cannot be applied." is removed from every reachable path. Tests should enumerate the codes the adapter can produce and assert a specific sentence.
 
 ### 4.4 Examples the prototype encodes
@@ -227,7 +252,8 @@ The default "This change cannot be applied." is removed from every reachable pat
 - Dragging the lower-right Junction so the Wing crosses Wall 3: **refused**, whole Wing + affected Walls coral, conflict at the crossing, no history.
 - Dragging the same Junction to a 0.20 m gap: **accepted with warning**, amber "no connection", no topology change.
 - Dragging the Wall onto the partition: **refused** ("would lie on P1"), no history.
-- Moving a Wall 0.5 m left: **accepted**, one history entry; the connected neighbour stretches; the Room area updates.
+- Moving a Wall 0.5 m left: **accepted**, one history entry; the connected neighbour stretches; the Room area updates. **Neutral; no amber.**
+- Ordinary Opening slide/resize and stable Room re-derivation: **neutral**; no warning.
 
 ---
 
@@ -243,18 +269,20 @@ The default "This change cannot be applied." is removed from every reachable pat
 
 At entry, `createWallUnfoldState` sets `cutStation = wrap(anchor + L/2)` for closed Walls (D11); the display cut never moves the canonical seam. The store currently calls `enter(wall, 0)`; fix the call site and add a test that the anchor is not 0 when the view centre or a selected Opening exists. **[V]**
 
-### 5.2 Camera
+### 5.2 Camera orientation and entry
 
 - Record `entry = { pose, reading }` **before** the first camera request.
-- On explicit Unfold, one `face` fit is allowed (the current behavior); the fold animation may run on the declared clock.
-- On **peel/scrub/flip/partial stop**: no `face`, no `set-view`, no `recordEntry` overwrite.
+- On explicit **Unfold**, **preserve camera orientation exactly** (yaw, pitch, roll and up). The only permitted changes are **pan, fit/zoom and target recentring**; one bounded fit may frame the sheet. No `face`, orbit, roll or other orientation change.
+- The current `#requestFace` behavior does not meet this rule. Replace it with an orientation-preserving fit, or issue no camera request at all; do not reinterpret `face` as a fit.
+- On **scrub/peel/side flip/partial stop**: no camera call of any kind — no `face`, no fit, no `set-view`, no `recordEntry` overwrite. The same applies when a peel opens the sheet.
 - On Done/Refold: issue exactly one `set-view` to the recorded entry pose and reading; do not fit again, do not guess.
 - If the document changes or the Wall disappears: invalidate, return to the entry pose with a notice, no nearby-Wall substitution.
-- Reduced motion: `u` jumps to the target, no 1 s animation; camera fit (if explicitly requested) uses the app's reduced-motion camera path.
+- Reduced motion: `u` jumps to the target, no 1 s animation; an explicitly requested entry fit is instant and still orientation-preserving.
+- Acceptance: camera orientation (including up) is equal before and after entry, scrub, peel and either side; only position/zoom may differ on explicit entry. Both sides of a circular Wall are demonstrated from the same orientation.
 
 ### 5.3 Side and reading direction
 
-`flip` is `flipWallUnfoldSide` only. The sheet's station axis reverses about the anchor; the as-built, camera and Room stay put. The displayed face label says `Inside` or `Outside`; the station ruler and Opening labels remain canonical. **Do not** call `#requestFace`. This deliberately differs from the donor's 180° camera move; the sheet itself communicates the side. **[D][O D6]**
+`flip` is `flipWallUnfoldSide` only. The sheet's station axis reverses about the anchor; the as-built, camera and Room stay put. The displayed face label says `Inside` or `Outside`; the station ruler and Opening labels remain canonical. **Do not** call `#requestFace` or any camera request. Demonstrate both sides: flip to Outside and back to Inside; both are the same canonical Wall, with mirrored sheet readings and identical camera orientation. This deliberately differs from the donor's 180° camera move; the sheet itself communicates the side. **[D][D6 approved]**
 
 ### 5.4 Sheet coordinate system and Opening mapping
 
@@ -286,7 +314,9 @@ The sheet uses one station domain:
 
 ### 5.7 Scene scope boundary
 
-Only the selected Wall unfolds. Rooms, other Walls, and Scene objects remain in the 3D Scene; no object is projected onto the sheet in #287. A future contract may attach a Scene object to `(wallId, station, height, side)` and draw an anchored marker on the sheet; nearby objects must never be silently treated as attached. This is explicitly out of #287. **[O D7]**
+Only the selected Wall unfolds. **Opening geometry and canonical Opening identity are in scope:** the sheet addresses the same Opening id, with the same writer, through selection, slide, jamb resize, Undo, flip, scrub and save/reload. No editor-only Opening clone, no remapped identity, no second writer.
+
+Rooms, other Walls, and general Scene objects remain in the 3D Scene; no Scene object is projected onto the sheet in #287. A future contract may attach a Scene object to `(wallId, station, height, side)` and draw an anchored marker on the sheet; nearby objects must never be silently treated as attached. General Scene-object attachment is explicitly out of #287; Opening support is not. **[D7 approved]**
 
 ---
 
@@ -294,9 +324,11 @@ Only the selected Wall unfolds. Rooms, other Walls, and Scene objects remain in 
 
 Each slice is independently reviewable, keeps canonical validation intact, and ends with tests. Do not implement slices before owner approval.
 
-### S0 — Characterization (tests only)
+### S0 — Characterization and transport (tests only)
 
-- Pin the current behavior of: junction refusal candidate ids/roles/geometry; bend refusal candidate; knot activation after commit; unfold anchor; `flip` camera calls; sheet mesh vertex/opening contour counts; `Curvature` copy.
+- Pin the current behavior of: junction refusal candidate ids/roles/geometry; bend refusal candidate; knot activation after commit; unfold anchor; entry/`flip` camera calls; sheet mesh vertex/opening contour counts; `Curvature` copy.
+- **Modifier transport.** `StagePointerIntent` currently exposes only `shift` (`stage-facade.ts`), and the host builds the intent with `shift: event.shiftKey` (`spatial/+page.svelte`). Add `metaKey`/`ctrlKey` (or one platform-neutral `alternateShape` captured at **pointer-down**) and carry it through `down`/`move`/`up`/`cancel`. Pin the host construction and the layout adapter's read; a modifier change mid-drag does not change the gesture.
+- **Curved rigid translation.** `LAYOUT_WALL_MOVE_KIND` (`wallId`, `deltaX`, `deltaZ`) already delegates to `planRigidWallMove`, which carries a curved chain — knots and span controls receive the same delta and sampled geometry is translated exactly (tests: `layout-curve-planners.test.ts` “translates a curved Wall without changing its shape”; `layout-curve-proposals.test.ts` curved proposal). Characterize a connected curved Wall with ≥2 knots, one shared Junction, and an Opening: one command, knot count/length/Opening station preserved, neighbours follow, one history entry.
 - Add a browser repro for **[H1]** (closed-Wall sheet station vs cut) and **[H2]** (which refusal code produces the generic sentence).
 - No production change. This slice is the safety net for every later diff.
 
@@ -310,12 +342,13 @@ Each slice is independently reviewable, keeps canonical validation intact, and e
 
 ### S2 — Gesture grammar and handles
 
-- Plain body drag on a curved open Wall translates endpoints + knots; modifier/armed bend inserts one knot; preserve straight-wall behavior.
+- Plain body drag on a curved open Wall routes through `LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove`; the canonical planner translates the whole chain and connected neighbours. Do not hand-edit knots in the adapter. Modifier/armed bend inserts one knot; preserve straight-wall behavior.
+- Transport `metaKey`/`ctrlKey` (or `alternateShape`) through `StagePointerIntent`; plain body drag never inserts a knot, even if the modifier is released mid-drag.
 - New knot active immediately; active glyph = bend mark, not `cross`; point promotion 10 CSS px; body band in px; delete/straighten.
 - Suppress the canonical body silhouette while a live Wall gesture draws one dashed centerline.
 - Preserve Junction/Opening precedence; do not hide Junction marks when a Wall is selected; repro the reading gate before changing it.
 - Tests: move-with-knots (count unchanged), add bend (one knot, active), multiple bends, delete, straighten, overlap refusal, priority overlap, snapping.
-- Files: `layout.adapter.ts` (`bend*`, `markDescriptors`, `hit` resolution, `BEND_BODY_TOLERANCE_METERS`), `StageOverlay.svelte` (bend glyph), tests.
+- Files: `layout.adapter.ts` (`bend*`, `markDescriptors`, `hit` resolution, `BEND_BODY_TOLERANCE_METERS`), `precision.ts` (`LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove` call), `stage-facade.ts` + `spatial/+page.svelte` (modifier transport), `StageOverlay.svelte` (bend glyph), tests.
 
 ### S3 — Copy, controls, motion
 
@@ -328,15 +361,17 @@ Each slice is independently reviewable, keeps canonical validation intact, and e
 ### S4 — Anchor and camera
 
 - Compute and pass the anchor at every `enter` call site; wire `wallUnfoldAnchor` with the selected Opening centre and the view-centre station.
-- `flip` stops calling `#requestFace`; no `recordEntry` outside the first Unfold; Done issues exactly one return.
-- Tests: anchor priority, closed wrap, no camera on flip/scrub/peel, entry restoration bit-for-bit, removal invalidation.
+- Replace `enter`'s `#requestFace` with an **orientation-preserving** entry fit (pan/fit/zoom only) or no camera request. `flip` stops calling `#requestFace`; scrub/peel make no camera calls; no `recordEntry` outside the first Unfold; Done issues exactly one return.
+- Demonstrate and test both faces: `Inside` and `Outside` at the same orientation, mirrored sheet readings, no camera executor call on either flip.
+- Tests: anchor priority, closed wrap, entry orientation quaternion/up unchanged, entry pan/fit/zoom allowed, no camera on flip/scrub/peel, both sides, entry restoration bit-for-bit, removal invalidation.
 - Files: `wall-unfold-store.svelte.ts`, `+page.svelte` (executor/call sites), `wall-unfold.ts`, `wall-unfold.test.ts`, page tests.
 
 ### S5 — Sheet fidelity and Opening editing
 
 - Draw opening voids/door/sill/head/jamb; station ruler, seam/cut ticks, anchor pin, registration lines; complete as-built frame.
+- **Preserve Opening identity:** the sheet addresses the same canonical Opening id, selection, offset/width and writer as the 3D Wall. No editor-only clone, no remapped id, no second writer.
 - Map canonical↔sheet stations through the verified cut origin; add inverse pick for door/jamb; preview on sheet + as-built; commit through the existing Opening planner.
-- Tests: meshes contain void boundaries (not just contour pairs), door leaf orientation, ruler wrap at L, as-built verticals, seam-crossing Opening, door slide/resize round-trip, refusal at the Opening.
+- Tests: meshes contain void boundaries (not just contour pairs), door leaf orientation, ruler wrap at L, as-built verticals, seam-crossing Opening, door slide/resize round-trip, identity preserved across flip/scrub/Undo/save/reload, refusal at the Opening.
 - Files: `StageWallDevelopment.svelte`, `wall-unfold-pick.ts`, `layout-core` wall-development API (possibly a holes/spans option), `+page.svelte` unfolded press, tests. This is the largest slice; split into S5a (sheet) and S5b (Opening edit) if review size matters.
 
 ### S6 — Peel, keyboard, touch
@@ -362,30 +397,32 @@ Each slice is independently reviewable, keeps canonical validation intact, and e
 | 1 | Junction drag, valid | Candidate contains the pressed Wall + every incident/affected Wall; roles are `subject`/`affected`; release commits one command; Undo restores the whole network. |
 | 2 | Junction drag, invalid | Candidate roles are all `refused`; every incident Wall is present; conflict marker is at the true intersection; no segment ends at the pointer/origin; release leaves canonical JSON and history unchanged. |
 | 3 | Invalid → valid → invalid | Every move revalidates; the last sample is never a stale commit candidate; no frozen ghost. |
-| 4 | Curved body move | Plain drag changes both endpoints and every knot by the same delta; knot count unchanged; no bend added; one history entry. |
-| 5 | Modifier bend | ⌘/Ctrl-drag adds exactly one knot at the press station, active immediately; release commits one entry; Delete removes it. |
+| 4 | Curved body move | Plain drag routes through `LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove`; every knot and span control shifts by the same delta; knot count, length and Opening stations unchanged; no bend added; one history entry. |
+| 5 | Modifier bend | ⌘/Ctrl captured at pointer-down reaches the layout adapter through `StagePointerIntent` and adds exactly one knot at the press station, active immediately; release commits one entry; Delete removes it. |
 | 6 | Multi-bend | Two or more knots can be added, moved, deleted and the Wall straightened; move preserves all knot offsets. |
 | 7 | Priority | Overlapping knot/Junction/Opening/body hits choose knot > Opening > Junction > body at 10 px; a 12 px miss falls through. |
 | 8 | Warning near-miss | A 0.20 m gap commits with a warning; canonical topology is unchanged; the toast says "no connection"; no implicit Junction. |
-| 9 | Warning Room | A Room area change commits with the exact old→new area; if Room identity changes, the planner refuses and the test expects a refusal, not a warning. |
+| 9 | Neutral Room / predictable edits | A Room-area change commits with **no amber**; stable re-derivation and ordinary Opening slide/resize are neutral; identity loss is refused, not warned. |
 | 10 | Anchor | Selected Opening centre wins; else the view-centre station; else start; closed Walls wrap; anchor is not 0 when a view centre exists. |
-| 11 | Flip camera | `flip` changes `side` and the sheet, but the camera executor receives **no** request; entry pose/reading stay unchanged. |
+| 11 | Both sides + flip camera | Flip Inside↔Outside changes the sheet reading and face label; both sides address the same canonical Wall/Openings; the camera executor receives **no** request; entry orientation/pose/reading stay unchanged. |
 | 12 | Exit | Done/Refold returns `u = 0` and the exact entry pose/reading; no history; removal invalidation returns with a notice. |
 | 13 | Station mapping | Open and closed Walls, an Opening at the seam, and a door slide/resize round-trip canonical ↔ sheet; the result matches the development map's cut origin (H1). |
 | 14 | Sheet | Mesh has real Opening voids (boundary loops), a door leaf, sill/head/jamb, ruler labels wrapped at L, seam ticks, as-built verticals; no Opening appears on the wrong face. |
 | 15 | Reduced motion | Under reduced motion, `u` reaches the target without a 1 s animation; camera fit is instant. |
 | 16 | Save/load/visitor parity | Warning/accepted states serialize; reload, Undo and visitor view produce the same canonical JSON and Room derivation. |
+| 17 | Entry orientation | Explicit Unfold may pan/fit/zoom but camera orientation (yaw/pitch/roll/up) is unchanged; scrub/peel make no camera call; Done restores exactly. |
+| 18 | Modifier transport | `metaKey`/`ctrlKey` survives every pointer phase; releasing the modifier mid-drag does not change the gesture; the keyboard/Bend path produces the same command. |
 
 ### 7.2 Browser journeys
 
 **A. Connected rectangle** (screenshots 01–02)
-Select a Wall → drag its body 0.5 m: whole network preview; release; Undo. Drag the lower-right Junction into Wall 3: full coral attempted network, conflict at the crossing, specific words, release writes nothing. Drag to a 0.20 m gap: amber warning, commit, reload; topology unchanged. Escape cancels. Verify the tag names the moved Wall first.
+Select a Wall → drag its body 0.5 m: whole network preview; release; Undo. A Room-area change is **neutral**; no amber. Drag the lower-right Junction into Wall 3: full coral attempted network, conflict at the crossing, specific words, release writes nothing. Drag to a 0.20 m gap: the single amber warning, commit, reload; topology unchanged. Escape cancels. Verify the tag names the moved Wall first.
 
 **B. Bent Wall** (screenshots 03–04)
 Plain drag moves the bent Wall without adding a knot. ⌘/Ctrl-drag adds a bend at the grabbed station; the new knot is active and drawn as a bend mark; drag it; Delete removes it; add two knots; straighten. During the gesture there is one dashed centerline, no double contour. Drive the Wall into the partition: specific "would lie on" refusal, no history. Hover/selection priority is unambiguous at a knot/Junction overlap.
 
 **C. Circle + Opening** (screenshots 05–07)
-Select the Rotunda Wall and its door; Unfold. Sheet anchors at the door (or the view-centre station), not station 0. Scrub 0 → 0.5 → 1: camera pose unchanged. Inside/Outside flips the reading, camera unchanged. Drag the door along the sheet and resize the jamb: preview on sheet + as-built; commit; Undo; save/reload. Done returns exactly to the entry pose/reading. Repeat with a seam-crossing Opening.
+Select the Rotunda Wall and its door; Unfold. Sheet anchors at the door (or the view-centre station), not station 0. Entry may pan/fit/zoom only; orientation is preserved. Scrub 0 → 0.5 → 1: no camera call. Flip to Outside, then to Inside: both sides show the same canonical Wall and mirrored readings, with no camera call. Drag the door along the sheet and resize the jamb: preview on sheet + as-built; commit; Undo; save/reload; the canonical Opening id is unchanged. Done returns exactly to the entry pose/reading. Repeat with a seam-crossing Opening.
 
 **D. Accessibility and motion**
 Keyboard-only: tab to Unfold, scrub, Flat/Half, Inside/Outside, Done; `B` arms Bend; Esc cancels; Delete removes a knot. Touch: long-press arms Bend; no modifier required. Reduced motion: no fold animation. Focus remains visible and the Card is reachable.
@@ -402,11 +439,11 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 | H1 | Closed-Wall sheet station is anchor-relative vs cut-relative. | Add an Opening crossing the seam; compare `unfoldCanonicalStation` with `developmentOpeningIdentity` and the developed mesh. | Use the cut origin in the mapping; do not change the writer. |
 | H2 | Which reachable bend code yields "This change cannot be applied." | Instrument the bend refusal path; enumerate codes; force each. | Add the missing map entry; add a regression test for every code. |
 | H3 | A curved neighbour's knots after a Junction drag. | Drag a shared Junction of a curved Wall; inspect knot world positions, length and undo. | If the planner cannot preserve the curve, restrict the gesture or propose a new semantic; do not hand-edit knots. |
-| H4 | Room re-derivation is deterministic for every warning candidate. | Save/reload/visitor parity for area changes, T-connections and near-misses. | Refuse the state or require an explicit Room decision. |
+| H4 | Room re-derivation is deterministic for every accepted candidate. | Save/reload/visitor parity for area changes, stable re-derivation, T-connections and near-misses. | Refuse identity changes or require an explicit Room decision; do not warn around a lost Room. |
 | H5 | Whole-network preview cost on 40 Walls. | Measure candidate build/paint at 12 and 40 Walls; budget one frame. | Reuse compiled neighbours / simplify affected geometry; never drop truth. |
 | H6 | 3D Junction picking is reliable enough. | Repro with the camera at oblique angles; compare Plan and 3D. | Keep precise Junction editing in Plan and expose values in the Card; do not silently gate. |
 | H7 | `buildDevelopedWallMesh` can carry voids without a core API break. | Prototype the holes option and run the development tests. | Split S5; propose a core API change rather than an editor-only mesh. |
-| H8 | Warning fatigue / meaning. | Five-creator hallway test on the prototype and the real build. | Reduce warnings to Room area only; keep gaps as neutral labels. |
+| H8 | Warning fatigue / meaning. | Five-creator hallway test on the prototype and the real build. | Warnings are already limited to an ambiguous near-miss; if still fatiguing, make that a neutral “no connection” label and keep only refusals. Never add area warnings. |
 
 **The prototype cannot settle** occlusion, depth, true perspective foreshortening, canonical Room derivation, pick tolerance in 3D, or save/reload. Those are Stage 2 browser/automated tests.
 
@@ -414,9 +451,9 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 ## 9. Owner decisions (only material ones)
 
-### D1 — Reverse the body-drag grammar **[O]**
+### D1 — Reverse the body-drag grammar **[Approved]**
 
-**Recommendation:** plain body drag = rigid translate for straight **and** curved open Walls; ⌘/Ctrl or armed Bend = add a bend at the grabbed station. New bend active immediately.
+**Decision:** plain body drag = rigid translate for straight **and** curved open Walls, through the canonical `LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove` path; ⌘/Ctrl or armed Bend = add a bend at the grabbed station. New bend active immediately.
 
 **Why:** the current grammar makes "move a bent Wall" impossible without adding another bend, and it is the direct cause of the owner's "no rigid move affordance" finding. The modifier is a deliberate shape action; moving is the common action.
 
@@ -424,17 +461,17 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 **Consequence:** changes plan D1; needs copy/onboarding (`Bend (B)` button, `B` toggle) and tests that a move never changes knot count.
 
-### D2 — Amber accepted-with-warning **[O]**
+### D2 — Amber accepted-with-warning **[Approved, narrowed]**
 
-**Recommendation:** add the amber tier only for canonical-accepted states with a deterministic consequence (Room area/re-derivation, near-miss/no connection, explicit Junction connect). Never use it to admit an invalid document.
+**Decision:** keep one **rare** amber tier only for an ambiguous, canonical-accepted **near-miss/no-connection** that could be mistaken for a snap. Ordinary Room-area changes, stable re-derivation, predictable valid edits and a visible named Junction snap are **neutral**, not amber. Never use amber to admit an invalid document.
 
-**Why:** the owner wants creative freedom; warnings preserve truth without silently relaxing topology.
+**Why:** the owner wants creative freedom, but routine edits must not feel provisional. A warning must carry information the preview cannot; otherwise it is noise.
 
-**Consequence:** new visual role/class, copy tests, save/reload/visitor parity tests; if a consequence cannot be proven deterministic, it stays refused.
+**Consequence:** new visual role/class, copy tests, and a negative test that area/predictable edits stay neutral. Save/reload/visitor parity applies to the one warning state; if it cannot be proven deterministic, make it neutral or refuse it — never widen the tier.
 
-### D3 — Whole-network refusal display **[O]**
+### D3 — Whole-network refusal display **[Approved]**
 
-**Recommendation:** a refused attempt draws the whole attempted network in coral, with the conflict at the real feature, even though release cannot commit it. The attempt is display-only evidence.
+**Decision:** a refused attempt draws the whole attempted network in coral, with the conflict at the real feature, even though release cannot commit it. The attempt is display-only evidence.
 
 **Why:** a refusal the creator cannot see is indistinguishable from an input that never arrived; screenshots 01–02 are exactly this.
 
@@ -448,48 +485,48 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 **Consequence:** if 3D picking fails H6, keep precise editing in Plan and mirror values in the Card; do not invent a 3D-only Junction authority.
 
-### D5 — Camera discipline for unfolding **[O]**
+### D5 — Camera discipline for unfolding **[Approved]**
 
-**Recommendation:** one `face` fit on explicit Unfold only; no camera on scrub/peel/flip/partial stop; Done returns exactly to the recorded entry pose/reading; reduced motion instant.
+**Decision:** on explicit Unfold, **preserve camera orientation exactly**; only pan, fit/zoom and target recentring may change. No camera on scrub/peel/flip/partial stop; Done returns exactly to the recorded entry pose/reading; reduced motion instant and orientation-preserving.
 
-**Why:** the owner explicitly wants the original view preserved; the donor's camera choreography is a viewer behavior, not an authoring requirement.
+**Why:** the owner explicitly wants the original view preserved. The donor's face fit is a viewer behavior; a face/orbit change violates the authoring requirement even once.
 
-**Consequence:** remove `flip`'s `face` call; add a camera-call spy test; document the departure.
+**Consequence:** replace `enter`'s `face` request with an orientation-preserving fit or none; remove `flip`'s `face` call; add orientation and camera-call spy tests; document the departure.
 
-### D6 — Inside/Outside without a camera spin **[O]**
+### D6 — Inside/Outside without a camera spin **[Approved]**
 
-**Recommendation:** flip the sheet's reading direction about the anchor; camera unchanged; label the displayed face. Deliberate departure from the donor's 180° move.
+**Decision:** flip the sheet's reading direction about the anchor; camera orientation unchanged; label the displayed face. Demonstrate **both** Inside and Outside on the circular Wall. Deliberate departure from the donor's 180° move.
 
 **Why:** a camera spin loses the anchor and disorients; the sheet itself can communicate the side.
 
-**Consequence:** station ruler/Opening labels must remain canonical; test both sides and seam crossings.
+**Consequence:** station ruler/Opening labels must remain canonical; both sides address the same canonical Opening identity; test both sides and seam crossings.
 
-### D7 — Sheet scope **[O]**
+### D7 — Sheet scope and Opening identity **[Approved]**
 
-**Recommendation:** in #287, add Opening voids/door/ruler/seam/as-built/peel and sheet Opening editing. Do **not** add Scene object projection/attachment; define only a future contract.
+**Decision:** in #287, add Opening voids/door/ruler/seam/as-built/peel and sheet Opening editing, preserving the **existing canonical Opening id and writer**. Do **not** add general Scene object projection/attachment; define only a future contract.
 
-**Why:** the sheet must be a coherent working surface, but a cross-domain attachment system is a separate product decision.
+**Why:** the sheet must be a coherent working surface, and Opening geometry without stable identity would create a second address for the same door. A cross-domain Scene attachment system is a separate product decision.
 
-**Consequence:** possibly a `layout-core` holes option (S5); Scene attachment out of scope.
+**Consequence:** possibly a `layout-core` holes option (S5); identity tests across selection/edit/flip/Undo/reload; general Scene attachment out of scope.
 
-### D8 — Room semantics **[O]**
+### D8 — Room semantics **[Approved, narrowed]**
 
-**Recommendation:** area changes and stable re-derivations are warnings; identity loss/merges/splits/implicit connections are refusals. Broader permission needs a separate split/merge semantic.
+**Decision:** ordinary area changes and stable re-derivation are **neutral**; identity loss, merges, silent splits and implicit connections are refusals. Broader permission needs a separate split/merge semantic. The owner's **permissive-overlap** direction is preserved as an explicit follow-on capability, not rejected by the #287 refusal.
 
-**Why:** Room identity is canonical; a warning must not hide a lost Room.
+**Why:** Room identity is canonical, and routine area updates are visible and expected; warning them would be noise. Overlap needs a new layer/topology decision, not a warning.
 
-**Consequence:** parity tests; if H4 fails, demote to refusal.
+**Consequence:** neutral-area tests; identity-loss refusal tests; follow-on documented with its own schema/commands; if H4 fails, refuse identity changes rather than warning.
 
 ---
 
 ## 10. Approve-to-build checklist
 
-- [ ] Owner has decided **D1–D8**; no implicit approval from this document.
+- [x] Owner approved **D1**, **D2/D8 narrowed**, **D3**, **D5**, **D6** and **D7**; **D4** remains conditional on the repro. No implicit Stage 2 approval.
 - [ ] Stage 2 scope is the slices above; no merge.
 - [ ] Baseline tests recorded green at the PR head; H1/H2 repros attached.
-- [ ] No canonical validator relaxation; warnings are display-only classifications of accepted candidates.
-- [ ] S0 characterization merged before S1; each later slice is independently reviewable.
-- [ ] Automated tests 1–16 pass; browser journeys A–E pass, including save/reload and visitor parity.
+- [ ] No canonical validator relaxation; warnings are display-only classifications of accepted candidates, and area/predictable edits stay neutral.
+- [ ] S0 characterization (including `StagePointerIntent` modifier transport and canonical curved translation) merged before S1; each later slice is independently reviewable.
+- [ ] Automated tests 1–18 pass; browser journeys A–E pass, including both sides, save/reload and visitor parity.
 - [ ] Screenshots 01–07 recreated as expected states; no generic refusal for reachable codes.
 - [ ] Reduced motion, keyboard-only, touch and modifier alternatives verified.
 - [ ] Performance budget for a 40-Wall network measured; no dropped preview truth.
@@ -515,14 +552,20 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 | `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` | unfold executor L749–785, `unfoldedPointerPress` L1993, press routing L2238, click guard L2693 | Camera authority, sheet press, selection. |
 | `apps/editor/tests/lib/layout/wall-unfold.test.ts` | anchor L403–413, station L661, camera/entry tests | Existing invariants; do not weaken. |
 | `apps/editor/tests/lib/authoring/layout-candidate-preview.test.ts` | wall/junction/bend preview tests | Add whole-network/refusal tests here. |
+| `apps/editor/src/lib/authoring/stage/stage-facade.ts` | `StagePointerIntent` L305 (currently only `shift`) | Add `metaKey`/`ctrlKey` (or `alternateShape`) transport; keep it stable across phases. |
+| `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` | pointer intent construction L2280 (`shift: event.shiftKey`) | Pass platform modifiers at pointer-down and through move/up/cancel. |
+| `apps/editor/src/lib/authoring/adapters/layout/precision.ts` | `LAYOUT_WALL_MOVE_KIND` L101, `wallMovePlanner` L473 | Reuse the canonical move planner for curved body drag; do not write knots in the adapter. |
+| `packages/layout-core/src/layout-wall-first-precision.ts` | `planRigidWallMove` L353 | Existing curved-chain translation; characterize and test, no schema change. |
+| `apps/editor/tests/lib/layout/layout-curve-planners.test.ts` | rigid movement L752 | Curved translation preserves knots, span controls, shape and length. |
+| `apps/editor/tests/lib/layout/layout-curve-proposals.test.ts` | curved proposal L185 | Whole-chain preview and reshaped neighbours. |
 
 ## Appendix B — Prototype map
 
 Open `review/pr287/interaction-review.html` directly (no build, no server). Three scenarios:
 
-1. **Connected Walls** — drag a Wall or a Junction; see the whole candidate network; accepted (ochre/cobalt), warning (amber), refused (coral + conflict); reset/Undo.
-2. **Bent Wall** — plain drag moves; ⌘/Ctrl-drag or `Bend (B)` adds; active knot edit/remove/straighten; snap; refusal at the partition.
-3. **Circular Wall + Opening** — select the Wall, unfold, scrub, Inside/Outside, drag the door, Done; as-built, ruler, seam, anchor pin.
+1. **Connected Walls** — drag a Wall or a Junction; see the whole candidate network; accepted (ochre/cobalt), the one rare warning (amber near-miss/no connection), refused (coral + conflict); reset/Undo. A Room-area update is neutral.
+2. **Bent Wall** — plain drag moves through the canonical rigid move; ⌘/Ctrl-drag or `Bend (B)` adds; active knot edit/remove/straighten; snap; refusal at the partition.
+3. **Circular Wall + Opening** — select the Wall, unfold, scrub, flip to Outside and back to Inside, drag the door, Done; as-built, ruler, seam, anchor pin, same canonical Opening.
 
 The demo deliberately labels its 2.5D approximation. It is the behavior contract, not a geometry proof.
 
@@ -532,7 +575,8 @@ The demo deliberately labels its 2.5D approximation. It is the behavior contract
 - The first `nearestOnCurve` implementation sampled only control points, so a straight Wall's middle could not be grabbed and its mid-span refusal was missed. It now projects onto segments; the straight Wall is sampled for validation. Production must use its existing sampled frames, not this demo helper.
 - The demo's neighbour deformation is simplified; the production contract must verify curved-neighbour knot behavior (H3).
 - The warning threshold (0.25 m) and the 0.12 m overlap threshold are demo values, not proposed production tolerances. Production must use the planner's connection tolerance and a named snap.
+- The prototype originally emitted an amber Room-area warning. That was **removed** after D2/D8 narrowing: ordinary area changes are neutral; only the ambiguous near-miss remains amber. Close-knot warnings were also removed as predictable.
 - The prototype does not model Room derivation, save/reload, visitor parity, depth/occlusion or touch. Those are explicit Stage 2 tests.
-- The demo's "Inside/Outside" reverses the sheet's station direction; production must verify ruler/label consistency and seam-crossing Openings before shipping.
+- The demo's "Inside/Outside" reverses the sheet's station direction and draws a face chip; both sides are reachable and use the same Opening. Production must verify ruler/label consistency, canonical Opening identity and seam-crossing Openings before shipping.
 
 If any of these assumptions is rejected, the corresponding slice changes; the core recommendation (whole-network truth, rigid move, active bend, viewpoint-relative anchor, camera discipline, honest sheet) does not.
