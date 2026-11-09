@@ -107,8 +107,10 @@ import {
 	type PlanEvaluation,
 	type PlanMembershipReason
 } from '@portfolio/layout-core';
-	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import { wallUnfoldSourceSpans } from '$lib/layout/wall-unfold';
+	import { buildWallUnfoldDisplay, pickWallUnfold, type WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -1966,6 +1968,82 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		experienceFocus.select(subject);
 	}
 
+	/**
+	 * C3 checkpoint 5 — the live unfolded press.
+	 *
+	 * The developed sheet is the addressed surface while unfolded, so a primary
+	 * press is cast through the accepted Camera evaluation into the same
+	 * checkpoint-4 display strip the Stage draws. The nearest positive hit is
+	 * attributed to canonical Station/span/knot/face (ties keep the first display
+	 * triangle in mesh order; a closed Station wraps modulo L; a seam-crossing
+	 * Opening resolves through `developmentOpeningIdentity`) and selected through
+	 * the route's ordinary selection state. This reads geometry and writes only
+	 * selection/pick evidence: no document write, no edit, no undo entry.
+	 *
+	 * An open adapter task keeps the press: Opening placement/editing is still
+	 * canonical work under D13. A miss falls through to ordinary Stage navigation
+	 * and the click guard in `onClick` prevents a canonical hit behind the sheet.
+	 */
+	function unfoldedPointerPress(event: PointerEvent): boolean {
+		const stage = facade;
+		const state = wallUnfold.state;
+		const current = evaluation;
+		const layout = layoutPayload;
+		if (stage === null || state === null || current === null || layout === null || task !== null) return false;
+		const snapshot = stage.snapshot();
+		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
+		if (wall === undefined) return false;
+		const spans = wallUnfoldSourceSpans(layout, wall.wallId, wall.length);
+		const display = buildWallUnfoldDisplay(wall, state, {
+			floorY: snapshot.domain.datumMeters,
+			spans
+		});
+		if (display === null) return false;
+		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
+		if (ray.kind !== 'ray') return false;
+		const pick = pickWallUnfold(display, ray.ray);
+		if (pick === null) return false;
+		wallUnfold.recordPick(pick, event.pointerId);
+		selectUnfoldedPick(wall.wallId, pick);
+		// The press is consumed: its release must not run the canonical Stage pick.
+		press.refuse(event.pointerId);
+		return true;
+	}
+
+	/** Select a developed pick through the same `StageFacade` selection as a canonical hit. */
+	function selectUnfoldedPick(wallId: string, pick: WallUnfoldPick): void {
+		const stage = facade;
+		if (stage === null) return;
+		const sourceId = pick.openingId ?? wallId;
+		// Use the snapshot's resolved subject reference, exactly as `selectSource`
+		// does. Constructing the reference here would re-state a revision the
+		// resolver already owns and can disagree with the current qualification.
+		const subject = stage.subjects().find((candidate) => candidate.id === sourceId);
+		if (subject !== undefined) {
+			const change = stage.setSelection({ ordered: [{ reference: subject.reference }], primary: subject.reference });
+			if (change.kind === 'selected') {
+				selection = primaryEntry(stage.selectionState());
+				experienceFocus.select(null);
+				cardOpen = true;
+				return;
+			}
+		}
+		// A compiled Wall/Opening can be present in the Plan while its resolved
+		// subject is not contributed to the Index. `selectSource` already handles
+		// that case from the Plan fragment; the unfolded pick uses the same fallback.
+		const fragment = planView === null ? undefined : planFragmentOf(planView, sourceId);
+		if (fragment === undefined) return;
+		stage.select({
+			sourceId: fragment.ref.sourceId,
+			sourceKind: fragment.ref.sourceKind,
+			generationId: fragment.ref.generationId,
+			ref: fragment.ref
+		});
+		selection = primaryEntry(stage.selectionState());
+		experienceFocus.select(null);
+		cardOpen = true;
+	}
+
 	function selectSource(sourceId: string): void {
 		const stage = facade;
 		const plan = planView;
@@ -2148,6 +2226,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
+		// Primary, unmodified presses address the developed sheet while a Wall is
+		// unfolded. Shift/secondary presses stay navigation, which is how the
+		// creator can still orbit the sheet.
+		if (event.button === 0 && !event.shiftKey && unfoldedPointerPress(event)) return;
 		if (activeLayer?.pointerDown(event, viewMarkAt(event)) === 'claimed') return;
 		// The adapters get the press first: the binding that owns an open task (a Scene
 		// transform, an armed Ink chain) may claim it, and so may a binding that offers
@@ -2599,6 +2681,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// also select (or report that nothing was selectable). The decision is consumed
 		// here, after the pointer sequence has ended, and only by the pointer it belongs to.
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
+		// The unfolded display is the addressed surface. A click that missed it must
+		// not select the canonical Wall/Opening drawn behind the sheet (and so must
+		// not disagree with the pointer pick); an empty click stays non-selecting.
+		if (wallUnfold.state !== null) return;
 		// A frustum's captured release also dispatches a click. Its View owns that
 		// click just as it owned the press; picking the floor here clears the Card.
 		// A View glyph, Look through or placement owns the release; it must not pick the Floor.
