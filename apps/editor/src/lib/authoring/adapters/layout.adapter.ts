@@ -1296,6 +1296,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
 			let bendGesture: BendGesture | null = null;
+			/** The keyboard/Card alternative to holding Meta/Ctrl for the next body press. */
+			let bendArmed = false;
 			/** C2 — one radius grip drag on a selected closed Wall. */
 			type CircleRadiusGesture = {
 				readonly evaluationId: string;
@@ -1671,7 +1673,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (handle !== undefined && !knotMark && !spanMark) return false;
 					// D1 — a plain body press is the rigid move, not a bend. The modifier
 					// is captured here, on pointer-down, and stays fixed for the gesture.
-					const shapeModifier = intent.metaKey === true || intent.ctrlKey === true;
+					const shapeModifier = bendArmed || intent.metaKey === true || intent.ctrlKey === true;
+					if (bendArmed) bendArmed = false;
 					const press = pointerDatumPoint(adapterContext, intent.css);
 					if (press === null) return false;
 					const source = document.walls.find((candidate) => candidate.id === selected.wallId);
@@ -4471,9 +4474,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									}
 								}
 							];
+					const bendArmActions: StageCardAction[] = wallUnfold.isActive(wallId)
+						? []
+						: [
+								{
+									id: 'layout-wall-bend-arm',
+									label: bendArmed ? 'Bend armed' : 'Bend Wall',
+									detail: bendArmed
+										? 'The next body drag bends this Wall. Escape disarms.'
+										: 'Arms Bend for the next body drag, without holding Meta or Ctrl.',
+									run: async () => {
+										bendArmed = !bendArmed;
+										services.stage.notifySurfaceChange();
+										return { kind: 'accepted' };
+									}
+								}
+							];
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [...unfoldActions, ...curveActions,
+						return [...unfoldActions, ...bendArmActions, ...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -4485,6 +4504,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					return [
 						...unfoldActions,
+						...bendArmActions,
 						...curveActions,
 						{
 							id: 'layout-wall-delete',
@@ -4526,6 +4546,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * the live chain has nothing to say about is refused, not swallowed.
 				 */
 				keyIntent(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
+					// D2/S6 — B toggles the next body press between move and Bend without a
+					// modifier. Escape disarms it before any other Escape precedence.
+					if (intent.kind === 'type' && intent.key.toLowerCase() === 'b') {
+						if (selectedCurvedWall(adapterContext) === null) return false;
+						bendArmed = !bendArmed;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					if (intent.kind === 'cancel' && bendArmed) {
+						bendArmed = false;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
 					if (openTaskKind !== LAYOUT_INK_TASK) {
 						if (scalarKey(intent)) return true;
 						if (roomMoveKey(intent)) return true;

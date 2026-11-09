@@ -1957,9 +1957,10 @@ describe('R217.S15 — gesture numeric entry', () => {
 		// leaks in, and C3/D12 intentionally makes unfolding available on straight
 		// Walls too (the checkpoint-4 proof covers that geometry).
 		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual([
-			'layout-wall-delete',
-			'layout-wall-unfold'
-		]);
+				'layout-wall-bend-arm',
+				'layout-wall-delete',
+				'layout-wall-unfold'
+			]);
 
 		const evaluationId = mounted.facade.evaluationId()!;
 		const from = stageCss(mounted.facade, [4.5, 0]);

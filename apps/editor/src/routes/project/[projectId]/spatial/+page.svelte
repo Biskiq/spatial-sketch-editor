@@ -2761,6 +2761,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// While a press is live the dock letters and `2` keep reaching the gesture's
 		// typed entry, exactly as before they were dock keys.
 		const action = stageKeyAction(event.key, { pressing: drag !== null || pinch !== null });
+		// S6 — B is the modifier-free Bend arm, owned by the selected Wall's adapter
+		// only when no task or press already owns the key.
+		if (
+			action.kind === 'none' &&
+			event.key.toLowerCase() === 'b' &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			facade?.selectionKeyIntent({ kind: 'type', key: 'b' }).claimed === true
+		) {
+			event.preventDefault();
+			return;
+		}
 		// A direct-manipulation writer keeps the keyboard while its press is live:
 		// Tab moves between numeric fields and a printable key opens/extends entry.
 		const gestureStage = facade;
