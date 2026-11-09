@@ -196,10 +196,11 @@ export type InkOpeningProfile = 'rectangular' | 'rounded' | 'pointed';
 
 /**
  * R217.S10 — how the Wall reading names a chain: **Line** taps or drags points one
- * at a time; **Box** takes two opposite corners and closes the four-Wall ring.
- * Both submit the same one Wall-chain commit.
+ * at a time; **Box** takes two opposite corners and closes the four-Wall ring;
+ * **Circle** takes a centre then a rim point and authors the canonical closed
+ * Wall. Each submits through the same captured intent surface.
  */
-export type InkWallMode = 'line' | 'box';
+export type InkWallMode = 'line' | 'box' | 'circle';
 
 /** The next Opening's palette defaults; a session remembers them. */
 export type InkOpeningOptions = {

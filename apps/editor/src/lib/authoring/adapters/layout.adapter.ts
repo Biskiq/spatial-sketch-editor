@@ -61,6 +61,11 @@ import {
 	type WallFirstArchitectureProposalWall,
 	planExactWallHeight,
 	planExactWallThickness,
+	planCreateCircularRoom,
+	planResizeClosedWallRadius,
+	planTranslateClosedWall,
+	readClosedWallCircle,
+	isClosedWall,
 	planUpdateWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
@@ -122,7 +127,11 @@ import {
 	type OpeningResizePayload
 } from './layout/opening-planners';
 import {
+	circleRoomCreateIntent,
+	circleRadiusIntent,
+	circleTranslateIntent,
 	createDrawingPlanners,
+	LAYOUT_CIRCLE_RADIUS_KIND,
 	planWallDeletion,
 	wallChainCommitIntent,
 	wallDeleteIntent,
@@ -1178,6 +1187,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
 			let bendGesture: BendGesture | null = null;
+			/** C2 — one radius grip drag on a selected closed Wall. */
+			type CircleRadiusGesture = {
+				readonly evaluationId: string;
+				readonly pressCss: readonly [number, number];
+				readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+				readonly wallId: string;
+				readonly baseline: LayoutDocumentWallFirst;
+				readonly center: LayoutVec2;
+				preview: LayoutDocumentWallFirst | null;
+				radius: number | null;
+				refusal: string | null;
+			};
+			let circleRadiusGesture: CircleRadiusGesture | null = null;
+			function endCircleRadius(): void {
+				const current = circleRadiusGesture;
+				circleRadiusGesture = null;
+				if (current?.lease.lease.active) current.lease.lease.release();
+			}
+			/** D8 — one rigid body drag on a selected closed Wall. */
+			type CircleTranslateGesture = {
+				readonly evaluationId: string;
+				readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+				readonly wallId: string;
+				readonly baseline: LayoutDocumentWallFirst;
+				readonly pressPoint: LayoutVec2;
+				preview: LayoutDocumentWallFirst | null;
+				delta: LayoutVec2 | null;
+				refusal: string | null;
+			};
+			let circleTranslateGesture: CircleTranslateGesture | null = null;
+			function endCircleTranslate(): void {
+				const current = circleTranslateGesture;
+				circleTranslateGesture = null;
+				if (current?.lease.lease.active) current.lease.lease.release();
+			}
 			/**
 			 * C1/D2 — the bend point the Card currently names. It is selection-scoped
 			 * session state: never serialized, cleared by Escape or a different host,
@@ -1197,6 +1241,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') return null;
 				const frame = openWallFrame(document, primary.subject.id);
 				return frame === null ? null : { wallId: primary.subject.id, frame };
+			}
+
+			/** The selected closed Wall's persisted circle facts, or `null`. */
+			function selectedClosedWall(
+				adapterContext: StageAdapterContext
+			): { wallId: string; center: LayoutVec2; radius: number; seam: LayoutVec2 } | null {
+				const primary = adapterContext.selectionState().primary;
+				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') return null;
+				const source = stageLayout(adapterContext.snapshot).walls.find((wall) => wall.id === primary.subject.id);
+				if (source === undefined || !isClosedWall(source)) return null;
+				const facts = readClosedWallCircle(stageLayout(adapterContext.snapshot), source.id);
+				return facts === null
+					? null
+					: { wallId: source.id, center: facts.center, radius: facts.radius, seam: facts.seam };
 			}
 
 			/** The selected **curved** open Wall, or `null` for a straight one. */
@@ -1249,6 +1307,215 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						levelId: snapshot.domain.layoutLevelId
 					})
 				);
+			}
+
+			/**
+			 * C2/D8 — the radius grip. A press captures the selected closed Wall and
+			 * one gesture lease; every move previews the retained radius planner; the
+			 * release accepts exactly that radius once. Bending never enters this path.
+			 */
+			function circleRadiusPointer(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				const active = circleRadiusGesture;
+				if (active === null) {
+					if (intent.phase !== 'down' || intent.handleId !== 'layout-circle-radius-mark') return false;
+					const selected = selectedClosedWall(adapterContext);
+					if (selected === null) return false;
+					const acquisition = services.stage.acquireGesture({
+						owner: 'layout-circle-radius',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						refusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+						return false;
+					}
+					circleRadiusGesture = {
+						evaluationId: intent.evaluationId,
+						pressCss: intent.css,
+						lease: acquisition,
+						wallId: selected.wallId,
+						baseline: stageLayout(adapterContext.snapshot),
+						center: selected.center,
+						preview: null,
+						radius: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (
+					intent.phase === 'cancel' ||
+					intent.evaluationId !== active.evaluationId
+				) {
+					endCircleRadius();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return true;
+					const radius = Math.hypot(point[0] - active.center[0], point[1] - active.center[1]);
+					const planned = planResizeClosedWallRadius({
+						document: active.baseline,
+						wallId: active.wallId,
+						radius
+					});
+					if (planned.kind === 'rejected') {
+						active.preview = null;
+						active.radius = null;
+						active.refusal = planned.rejection.message;
+					} else {
+						active.preview = planned.document;
+						active.radius = radius;
+						active.refusal = null;
+					}
+					refusal = active.refusal;
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				// release: one captured write, never a clamped repair.
+				const current = circleRadiusGesture;
+				if (current === null) return true;
+				const radius = current.radius;
+				const wallId = current.wallId;
+				endCircleRadius();
+				if (radius !== null) {
+					const snapshot = services.stage.snapshot();
+					void services.authoring.accept(
+						circleRadiusIntent({
+							wallId,
+							radius,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId: snapshot.domain.layoutLevelId
+						})
+					);
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			/**
+			 * C2/D8 — a circular Wall is translated by a body drag. The straight move
+			 * path requires a chord frame, which a self-connected Wall does not have,
+			 * so this gesture runs the closed-Wall translation planner and the canonical
+			 * `layout-wall-move` intent. It never enters the bend sub-machine:
+			 * `openWallFrame` deliberately refuses a self-connected Wall, and the bend
+			 * planner refuses `closed_wall_not_bendable`.
+			 */
+			function circleTranslatePointer(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				const active = circleTranslateGesture;
+				if (active === null) {
+					if (intent.phase !== 'down') return false;
+					// Any admitted mark keeps its own writer; only an unmarked body press
+					// moves the Wall.
+					if (intent.handleId !== undefined) return false;
+					const selected = selectedClosedWall(adapterContext);
+					if (selected === null) return false;
+					const hit = services.stage.hitMark({ css: intent.css, coarse: intent.coarse === true });
+					if (hit !== null) return false;
+					const picked = services.stage.resolvePick({
+						css: intent.css,
+						evaluationId: intent.evaluationId,
+						purpose: 'select',
+						tool: null,
+						...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+					});
+					if (
+						picked.kind !== 'resolved' ||
+						picked.hit.sourceKind !== 'wall' ||
+						picked.hit.sourceId !== selected.wallId
+					) return false;
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return false;
+					const acquisition = services.stage.acquireGesture({
+						owner: 'layout-circle-move',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						refusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+						return false;
+					}
+					circleTranslateGesture = {
+						evaluationId: intent.evaluationId,
+						lease: acquisition,
+						wallId: selected.wallId,
+						baseline: stageLayout(adapterContext.snapshot),
+						pressPoint: [point[0], point[1]],
+						preview: null,
+						delta: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'cancel' || intent.evaluationId !== active.evaluationId) {
+					endCircleTranslate();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return true;
+					const delta: LayoutVec2 = [point[0] - active.pressPoint[0], point[1] - active.pressPoint[1]];
+					if (Math.hypot(delta[0], delta[1]) < 1e-9) {
+						active.preview = null;
+						active.delta = null;
+						active.refusal = null;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					const planned = planTranslateClosedWall({
+						document: active.baseline,
+						wallId: active.wallId,
+						delta
+					});
+					if (planned.kind === 'rejected') {
+						active.preview = null;
+						active.delta = null;
+						active.refusal = planned.rejection.message;
+					} else {
+						active.preview = planned.document;
+						active.delta = delta;
+						active.refusal = null;
+					}
+					refusal = active.refusal;
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const current = circleTranslateGesture;
+				if (current === null) return true;
+				const delta = current.delta;
+				const wallId = current.wallId;
+				endCircleTranslate();
+				if (delta !== null) {
+					// One captured intent on release, through the same retained planner
+					// the preview ran. The straight `layout-wall-move` planner is not used:
+					// a self-connected Wall has no endpoint chord to solve.
+					const snapshot = services.stage.snapshot();
+					void services.authoring.accept(
+						circleTranslateIntent({
+							wallId,
+							delta,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId: snapshot.domain.layoutLevelId
+						})
+					);
+				}
+				services.stage.notifySurfaceChange();
+				return true;
 			}
 
 			/**
@@ -1625,9 +1892,30 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				const wall = selectedWall(adapterContext);
 				const curved = wall === null ? selectedCurvedWall(adapterContext) : null;
-				const opening = wall === null && curved === null ? selectedOpening(adapterContext) : null;
-				if (wall === null && curved === null && opening === null) return [];
+				const closed = wall === null && curved === null ? selectedClosedWall(adapterContext) : null;
+				const opening = wall === null && curved === null && closed === null ? selectedOpening(adapterContext) : null;
+				if (wall === null && curved === null && closed === null && opening === null) return [];
 				const y = adapterContext.snapshot.domain.datumMeters;
+				if (closed !== null) {
+					// D8 — the only shape grip a closed Wall publishes is the radius grip.
+					// It sits on the authored seam (the rim point) and writes the same
+					// retained radius planner as the Card's Radius/Diameter fields.
+					return [
+						{
+							id: 'layout-circle-radius-mark',
+							kind: 'point',
+							role: 'edit',
+							anchor: [closed.seam[0], y, closed.seam[1]],
+							draw: { pointRadius: 5.2 },
+							label: 'Radius',
+							fact: 'radius',
+							verb: 'Resize',
+							planner: LAYOUT_CIRCLE_RADIUS_KIND,
+							value: `${closed.radius.toFixed(2)} m`,
+							refusal: circleRadiusGesture?.refusal ?? null
+						}
+					];
+				}
 				if (curved !== null) {
 					// C1 — a curved Wall publishes its knot points and one hollow midpoint
 					// per span. Every mark names the same Bend planner the body press uses,
@@ -2999,6 +3287,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					inkNotice = null;
 					return;
 				}
+				if (inkReading === 'wall' && inkWallMode === 'circle') {
+					// Circle previews the exact captured centre → rim plan its release
+					// commits. The authored rim point is the canonical seam, so the ghost
+					// shows the same seam the saved Wall will carry.
+					const circle = circlePreviewPoints();
+					inkPreview = circle === null ? null : planCircleDraft(circle.center, circle.rim);
+					if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
+					return;
+				}
 				if (inkReading === 'wall' && inkWallMode === 'box') {
 					// Box previews the very ring its release commits. With no second corner
 					// yet there is nothing to plan, and a refusal set by the last release
@@ -3025,6 +3322,48 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					...(inkThickness === null ? {} : { thickness: inkThickness }),
 					...(inkHeight === null ? {} : { height: inkHeight })
 				});
+			}
+
+			/**
+			 * Circle's two authored points: a centre tap (or the live press) and the
+			 * rim under the pointer. The rim is the canonical seam, exactly as D9
+			 * requires; no separate circle geometry is inferred later.
+			 */
+			function circlePreviewPoints(): { center: ChainDraftPoint; rim: ChainDraftPoint } | null {
+				const placed = draft.points[0];
+				const pressed = inkPress?.pressTarget;
+				const center = placed ?? (pressed === undefined ? null : { point: pressed.point, target: pressed.target });
+				if (center === null || inkHover === null) return null;
+				if (Math.hypot(inkHover.point[0] - center.point[0], inkHover.point[1] - center.point[1]) < 1e-9) return null;
+				return { center, rim: { point: inkHover.point, target: inkHover.target } };
+			}
+
+			/** One retained circular-Room plan over the live centre → rim pair. */
+			function planCircleDraft(center: ChainDraftPoint, rim: ChainDraftPoint): ChainPlanPreview {
+				const plan = planCreateCircularRoom({
+					baseline: document,
+					center: [center.point[0], center.point[1]],
+					rim: [rim.point[0], rim.point[1]],
+					capture: chainCapture ?? mintLayoutIdCapture(),
+					levelId,
+					roomNamePrefix: 'Room',
+					...(inkThickness === null ? {} : { thickness: inkThickness }),
+					...(inkHeight === null ? {} : { height: inkHeight })
+				});
+				if (plan.kind === 'rejected') {
+					return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
+				}
+				return {
+					kind: 'planned',
+					document: plan.document,
+					authoredWallIds: [plan.wallId],
+					createdWallIds: [plan.wallId],
+					createdJunctionIds: [plan.junctionId],
+					splitWallIds: [],
+					createdRoomIds: [...plan.createdRoomIds],
+					retiredRoomIds: [],
+					consequence: { kind: 'encloses', summary: 'Creates one circular Room on finish.' }
+				};
 			}
 
 			/**
@@ -3060,6 +3399,68 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				void commitChain(box);
 			}
 
+			/**
+			 * Accept one Circle as one captured closed-Wall intent. The preview and
+			 * the commit use the same capture and the same centre/rim points, so the
+			 * seam is exactly the authored rim and a replay reproduces both ids.
+			 */
+			async function commitCircle(center: ChainDraftPoint, rim: ChainDraftPoint): Promise<void> {
+				if (chainCommitInFlight) return;
+				const capture = chainCapture ?? mintLayoutIdCapture();
+				const planned = planCircleDraft(center, rim);
+				if (planned.kind === 'refused') {
+					inkNotice = planned.message;
+					publishInk();
+					return;
+				}
+				chainCommitInFlight = true;
+				try {
+					const snapshot = services.stage.snapshot();
+					const outcome = await services.authoring.accept(
+						circleRoomCreateIntent({
+							payload: {
+								center: [center.point[0], center.point[1]],
+								rim: [rim.point[0], rim.point[1]],
+								thickness: inkThickness,
+								height: inkHeight
+							},
+							capture,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId
+						})
+					);
+					if (outcome.kind === 'refused') {
+						inkNotice = outcome.message;
+						publishInk();
+						return;
+					}
+					const wallId = planned.authoredWallIds[0] ?? null;
+					clearChain();
+					const fresh = services.stage.snapshot();
+					if (wallId !== null) {
+						services.stage.select({
+							sourceId: wallId,
+							sourceKind: 'wall',
+							generationId: fresh.compileGeneration,
+							ref: {
+								sourceId: wallId,
+								sourceKind: 'wall',
+								generationId: fresh.compileGeneration,
+								stream: 'projected',
+								subRef: null
+							}
+						});
+					}
+					services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
+					services.stage.notifySurfaceChange();
+				} finally {
+					chainCommitInFlight = false;
+				}
+			}
+
 			/** Layout's built-in readings, then every contributed reading in host order. */
 			function paletteReadings(): readonly InkPaletteReading[] {
 				return [
@@ -3079,12 +3480,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			function snapshotForPalette(): InkPaletteSnapshot {
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
-				const withHover =
-					linePreviewDraft();
+				const circleMode = inkReading === 'wall' && inkWallMode === 'circle';
+				const withHover = circleMode ? draft : linePreviewDraft();
 				const effective = boxMode ? (boxPreviewDraft() ?? draft)
 					: 'points' in withHover ? withHover : draft;
 				const pending =
-					inkHover === null || boxMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
+					inkHover === null || boxMode || circleMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
 				const box =
 					anchor === null || inkHover === null
@@ -3122,11 +3523,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					,
 					points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 					closed: effective.closed,
-					canFinish: !boxMode && draft.points.length >= 2,
-					canClose: !boxMode && draft.points.length >= 3 && !draft.closed,
+					canFinish: !boxMode && !circleMode && draft.points.length >= 2,
+					canClose: !boxMode && !circleMode && draft.points.length >= 3 && !draft.closed,
 					canBacktrack: draft.points.length > 0,
 					consequence:
-						inkPreview !== null && inkPreview.kind === 'planned' && effective.points.length >= 2
+						inkPreview !== null &&
+						inkPreview.kind === 'planned' &&
+						(circleMode || effective.points.length >= 2)
 							? inkPreview.consequence.summary
 							: null,
 					pending,
@@ -3217,7 +3620,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					setWallMode: (mode: InkWallMode) => {
 						if (mode === inkWallMode) return;
 						if (draft.points.length > 0 || inkPress !== null) {
-							inkNotice = 'Finish or cancel the Wall chain before switching between Line and Box.';
+							inkNotice = 'Finish or cancel the Wall chain before switching between Line, Box and Circle.';
 							publishInk();
 							return;
 						}
@@ -3541,6 +3944,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (travel > 4) commitBox(draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target }, releasePoint);
 					else if (draft.points.length === 0) beginChain(releasePoint);
 					else commitBox(draft.points[0]!, releasePoint);
+				} else if (inkReading === 'wall' && inkWallMode === 'circle') {
+					// Circle: a drag names centre → rim in one gesture; a tap names the
+					// centre, and the next tap names the rim. The rim is released exactly
+					// where the creator finished, so it is the canonical seam.
+					const releasePoint: ChainDraftPoint = { point: release.point, target: release.target };
+					if (travel > 4) {
+						void commitCircle(
+							draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target },
+							releasePoint
+						);
+					} else if (draft.points.length === 0) beginChain(releasePoint);
+					else void commitCircle(draft.points[0]!, releasePoint);
 				} else if (travel <= 4) appendInkPoint({ point: release.point, target: release.target });
 				else dragInkWall(pressTarget, release);
 				refreshInkPreview();
@@ -4120,6 +4535,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkPointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
+					if (circleRadiusPointer(intent, adapterContext)) return true;
+					if (circleTranslatePointer(intent, adapterContext)) return true;
 					if (bendPointer(intent, adapterContext)) return true;
 					if (scalarPointer(intent, adapterContext)) return true;
 					if (roomMovePointer(intent, adapterContext)) return true;
@@ -5169,6 +5586,47 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							labels: [{ world: world(activeWall.pointerPoint), text: refusal }]
 						})
 					];
+				}
+				// C2 — the radius grip's candidate is the same resized closed Wall the
+				// release writes. A refused radius draws no geometry and names its reason.
+				const activeCircleRadius = circleRadiusGesture;
+				if (activeCircleRadius !== null && activeCircleRadius.preview !== null) {
+					const built = candidatePaper(
+						activeCircleRadius.preview,
+						y,
+						new Set([activeCircleRadius.wallId]),
+						new Set()
+					);
+					if (built !== null) {
+						return [
+							candidatePreviewOf({
+								id: 'layout-candidate-circle-radius',
+								role: 'subject',
+								geometry: built.paper.subject,
+								snap: snapOf(null)
+							})
+						];
+					}
+				}
+				// D8 — a body drag previews the translated closed Wall it will commit.
+				const activeCircleTranslate = circleTranslateGesture;
+				if (activeCircleTranslate !== null && activeCircleTranslate.preview !== null) {
+					const built = candidatePaper(
+						activeCircleTranslate.preview,
+						y,
+						new Set([activeCircleTranslate.wallId]),
+						new Set()
+					);
+					if (built !== null) {
+						return [
+							candidatePreviewOf({
+								id: 'layout-candidate-circle-translate',
+								role: 'subject',
+								geometry: built.paper.subject,
+								snap: snapOf(null)
+							})
+						];
+					}
 				}
 				// A typed value with no pointer movement has no candidate document, but its
 				// tag still belongs at the press, not only on the midpoint grip.

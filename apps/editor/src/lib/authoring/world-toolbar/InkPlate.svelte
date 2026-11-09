@@ -62,7 +62,7 @@
 		if (surface.snapshot().reading !== reading) surface.controller.setReading(reading);
 	});
 
-	function setShape(mode: 'line' | 'box'): void {
+	function setShape(mode: 'line' | 'box' | 'circle'): void {
 		inkSurface()?.controller.setWallMode(mode);
 	}
 
@@ -87,7 +87,9 @@
 
 	const height = $derived(snapshot.options?.height ?? 3);
 	const heightName = $derived(Math.abs(height - 2.4) < 0.01 ? 'Low' : Math.abs(height - 3.6) < 0.01 ? 'Tall' : 'Room');
-	const shapeName = $derived(snapshot.wallMode === 'box' ? 'Box' : 'Line');
+	const shapeName = $derived(
+		snapshot.wallMode === 'box' ? 'Box' : snapshot.wallMode === 'circle' ? 'Circle' : 'Line'
+	);
 	// The donor shows the current choice even before a Wall exists. The controls
 	// still write only through the Ink surface once it has an Opening to change.
 	const openingKind = $derived(snapshot.opening?.kind ?? 'door');
@@ -122,9 +124,14 @@
 					title="Box"
 					onclick={() => setShape('box')}
 				><WorldIcon name="shape-box" size={19} /></button>
-				<button type="button" class="opt" aria-label="Circle" title="Circular rooms arrive with T1" disabled>
-					<WorldIcon name="shape-circle" size={19} />
-				</button>
+				<button
+					type="button"
+					class="opt"
+					aria-label="Circle"
+					aria-pressed={snapshot.wallMode === 'circle'}
+					title="Circle"
+					onclick={() => setShape('circle')}
+				><WorldIcon name="shape-circle" size={19} /></button>
 			</div>
 		</div>
 		<div class="pg">
