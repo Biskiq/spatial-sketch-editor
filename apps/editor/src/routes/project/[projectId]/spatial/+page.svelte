@@ -759,7 +759,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				wallUnfold.recordEntry({ pose: camera.pose, reading: camera.reading });
 				return (
 					stage.requestViewingIntent(
-						{ kind: 'face', bounds: request.bounds, look: request.look, rect: current.rect },
+						{
+							kind: 'face',
+							bounds: request.bounds,
+							look: request.look,
+							rect: current.rect,
+							paddingFraction: request.paddingFraction
+						},
 						ticket,
 						clock
 					).kind === 'accepted'

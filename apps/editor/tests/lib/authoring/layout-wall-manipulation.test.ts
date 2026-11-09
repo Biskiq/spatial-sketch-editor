@@ -259,14 +259,15 @@ async function bendWallAt(mounted: Mounted, distance: number): Promise<void> {
 async function activateFirstBendPoint(mounted: Mounted): Promise<void> {
 	selectWall(mounted.facade, mounted.wallId);
 	settle(mounted.facade, 4);
-	const mark = mounted.facade.marks().find((candidate) => candidate.id.startsWith('layout-wall-knot:'));
-	if (mark === undefined) throw new Error('the fixture published no bend point');
-	const css: [number, number] = [mark.anchor[0] + RECT.left, mark.anchor[1] + RECT.top];
+	const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+	const knot = wall.centerline.kind === 'cubic-chain' ? wall.centerline.knots[0] : undefined;
+	if (knot === undefined) throw new Error('the fixture has no bend point');
+	const css = stageCss(mounted.facade, knot.point);
 	const evaluationId = mounted.facade.evaluationId()!;
 	expect(mounted.facade.pointerIntent({ phase: 'down', css, evaluationId }).claimed).toBe(true);
 	mounted.facade.pointerIntent({ phase: 'up', css, evaluationId });
 	await eventually(() =>
-		mounted.facade.marks().some((candidate) => candidate.id === mark.id && candidate.label === 'Active bend point')
+		mounted.facade.marks().some((candidate) => candidate.id === `layout-wall-knot:${knot.id}` && candidate.label === 'Active bend point')
 	);
 }
 
@@ -696,7 +697,11 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		mounted.facade.pointerIntent({ phase: 'move', css: otherJunctionCss, evaluationId });
 		const refusal = mounted.facade.candidatePreviews().find((candidate) => candidate.role === 'refused');
 		expect(refusal).toBeDefined();
-		expect(refusal!.segments.length).toBe(1);
+		expect(refusal!.segments).toEqual([]);
+		// The hand's full attempt stays visible; only the refusal words are added.
+		const attempt = mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-wall-attempt');
+		expect(attempt).toBeDefined();
+		expect(attempt!.segments.length).toBeGreaterThan(0);
 		expect(refusal!.labels[0]?.text).toContain('cross or meet another Wall');
 		expect(refusal!.labels[0]?.text).not.toContain('duplicate_junction_point');
 		expect(refusal!.labels[0]?.text).not.toContain('junction');
@@ -1731,13 +1736,13 @@ describe('R217.S15 — gesture numeric entry', () => {
 		selectWall(mounted.facade, mounted.wallId);
 		settle(mounted.facade, 4);
 
-		const knotMark = mounted.facade.marks().find((mark) => mark.id.startsWith('layout-wall-knot:'))!;
-		const knotCss: [number, number] = [knotMark.anchor[0] + RECT.left, knotMark.anchor[1] + RECT.top];
+		const firstKnot = knots()[0]!;
+		const knotCss = stageCss(mounted.facade, firstKnot.point);
 		const clickEvaluation = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: knotCss, evaluationId: clickEvaluation }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'up', css: knotCss, evaluationId: clickEvaluation });
 		await eventually(() =>
-			mounted.facade.marks().some((mark) => mark.id === knotMark.id && mark.label === 'Active bend point')
+			mounted.facade.marks().some((mark) => mark.id === `layout-wall-knot:${firstKnot.id}` && mark.label === 'Active bend point')
 		);
 
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
@@ -2034,16 +2039,14 @@ describe('R217.S15 — gesture numeric entry', () => {
 		const mounted = await mount({ document: base, wallId: 'curved', openingId: '' });
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, 'curved');
-		// C1 — a curved Wall publishes its knot points and one hollow span midpoint,
-		// every one naming the same Bend planner the body press submits.
+		// C1 — ordinary selection does not expose a field of bend gizmos. The body
+		// press is the editing surface; the active knot is disclosed only on demand.
 		const bendMarks = mounted.facade
 			.marks()
 			.filter((mark) => mark.adapterId === 'layout' && mark.role === 'edit');
-		expect(bendMarks.length).toBeGreaterThan(0);
-		expect(bendMarks.every((mark) => mark.planner === 'layout-wall-bend')).toBe(true);
-		expect(bendMarks.some((mark) => mark.id.startsWith('layout-wall-span:'))).toBe(true);
-		const span = bendMarks.find((mark) => mark.id.startsWith('layout-wall-span:'))!;
-		const from: [number, number] = [span.anchor[0] + RECT.left, span.anchor[1] + RECT.top];
+		expect(bendMarks).toEqual([]);
+		const curved = curvedWallFrame(acceptedLayout(mounted.facade), 'curved')!;
+		const from = stageCss(mounted.facade, curvedWallPointAt(curved, curved.length / 2)!.point);
 		const evaluationId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
 		const to = stageCss(mounted.facade, [3, 3.4]);
@@ -2060,10 +2063,8 @@ describe('R217.S15 — gesture numeric entry', () => {
 		// A second press cancelled before release leaves no preview and no write.
 		selectWall(mounted.facade, 'curved');
 		settle(mounted.facade, 3);
-		const secondSpan = mounted.facade
-			.marks()
-			.find((mark) => mark.id.startsWith('layout-wall-span:'))!;
-		const secondFrom: [number, number] = [secondSpan.anchor[0] + RECT.left, secondSpan.anchor[1] + RECT.top];
+		const secondCurve = curvedWallFrame(acceptedLayout(mounted.facade), 'curved')!;
+		const secondFrom = stageCss(mounted.facade, curvedWallPointAt(secondCurve, secondCurve.length / 2)!.point);
 		const secondId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: secondFrom, evaluationId: secondId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId: secondId });

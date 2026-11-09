@@ -679,7 +679,9 @@ export function sampledPolylineIntersects(
 	first: readonly CurveSample[],
 	second: readonly CurveSample[],
 	tolerance = CURVE_SELF_INTERSECTION_TOLERANCE,
-	ignoreSharedEndpoint?: LayoutVec2
+	ignoreSharedEndpoint?: LayoutVec2,
+	/** A second legitimate join, for a closed boundary with exactly two curves. */
+	ignoreOtherSharedEndpoint?: LayoutVec2
 ): boolean {
 	const firstSegments = first.length - 1;
 	const secondSegments = second.length - 1;
@@ -703,6 +705,7 @@ export function sampledPolylineIntersects(
 		const secondStart = secondPoints[secondIndex]!;
 		const secondEnd = secondPoints[secondIndex + 1]!;
 		if (ignoreSharedEndpoint && ((pointsWithinTolerance(firstEnd, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondStart, ignoreSharedEndpoint, tolerance)) || (pointsWithinTolerance(firstStart, ignoreSharedEndpoint, tolerance) && pointsWithinTolerance(secondEnd, ignoreSharedEndpoint, tolerance)))) return false;
+		if (ignoreOtherSharedEndpoint && ((pointsWithinTolerance(firstEnd, ignoreOtherSharedEndpoint, tolerance) && pointsWithinTolerance(secondStart, ignoreOtherSharedEndpoint, tolerance)) || (pointsWithinTolerance(firstStart, ignoreOtherSharedEndpoint, tolerance) && pointsWithinTolerance(secondEnd, ignoreOtherSharedEndpoint, tolerance)))) return false;
 		return polylineSegmentsIntersect(firstStart, firstEnd, secondStart, secondEnd, tolerance);
 	});
 }

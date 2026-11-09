@@ -37,11 +37,12 @@ import {
 	type PaperFillPolygons
 } from './paper-fill-geometry';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import { sameReference, type StageSelectionEntry } from './semantic-selection';
 import { STAGE_ERASE_INK } from './stage-eraser';
+import { contourPolylines } from './shell/stage-outline';
 import {
 	PAPER_LAYER,
 	PAPER_LINE_STYLE,
@@ -112,6 +113,38 @@ export type PaperMarkSet = {
 
 const EMPTY_GEOMETRY: PaperMarkGeometry = { fills: [], contours: [] };
 
+/**
+ * A selected filled subject is painted as one contiguous region.
+ *
+ * A curved Wall compiles to many solid spans, and painting those spans as
+ * separate gold polygons lets their shared edges show through the translucent
+ * mark as a row of dark ticks. Unioning the same fills first removes those
+ * internal edges while the union outline supplies the real perimeter.
+ */
+function unionSelectedFills(
+	fills: readonly PaperPlanDrawing['fills'][number][]
+): { readonly fill: PaperFillPolygons; readonly cut: boolean }[] {
+	const groups = new Map<string, { elevationMeters: number; cut: boolean; polygons: (readonly LayoutVec2[])[] }>();
+	for (const fill of fills) {
+		const key = `${fill.treatment}:${fill.elevationMeters}`;
+		const group = groups.get(key) ?? { elevationMeters: fill.elevationMeters, cut: fill.treatment === 'cut', polygons: [] };
+		group.polygons.push(...fill.polygons);
+		groups.set(key, group);
+	}
+	const unioned: { fill: PaperFillPolygons; cut: boolean }[] = [];
+	for (const group of groups.values()) {
+		const union = group.polygons.length > 1 ? unionPaperFillPolygons(group.polygons) : null;
+		unioned.push({
+			fill: {
+				elevationMeters: group.elevationMeters,
+				...(union ?? { polygons: group.polygons })
+			},
+			cut: group.cut
+		});
+	}
+	return unioned;
+}
+
 function groupByElevation<T>(
 	entries: readonly T[],
 	elevationOf: (entry: T) => number
@@ -167,9 +200,10 @@ function geometryOf(drawing: PaperPlanDrawing, entry: StageSelectionEntry): Pape
 		for (const group of lineGroups.values()) {
 			contours.push({ elevationMeters: group.elevationMeters, segments: group.segments, dashed: group.dashed });
 		}
+		const painted = unionSelectedFills(fills);
 		return {
-			fills,
-			cutFills: fills.filter((fill) => fill.treatment === 'cut'),
+			fills: painted.map((entry) => entry.fill),
+			cutFills: painted.filter((entry) => entry.cut).map((entry) => entry.fill),
 			contours,
 			...(entry.reference.subject.kind === 'opening' ? { selectedOpening: true } : {})
 		};
@@ -250,11 +284,12 @@ type FadeEntry = { readonly material: Material & { opacity: number }; readonly b
 
 
 
-function linePositions(geometry: PaperMarkGeometry): Float32Array {
-	const positions: number[] = [];
+function linePositions(geometry: PaperMarkGeometry): number[][] {
+	const positions: number[][] = [];
 	for (const contour of geometry.contours) {
+		const segments: number[] = [];
 		for (const [start, end] of contour.segments) {
-			positions.push(
+			segments.push(
 				start[0],
 				contour.elevationMeters,
 				start[1],
@@ -263,8 +298,9 @@ function linePositions(geometry: PaperMarkGeometry): Float32Array {
 				end[1]
 			);
 		}
+		for (const chain of contourPolylines(segments)) positions.push(Array.from(chain));
 	}
-	return new Float32Array(positions);
+	return positions;
 }
 
 /**
@@ -292,32 +328,32 @@ export function createPaperMarkScene(
 		renderOrder: number,
 		dashed = false
 	): void => {
-		const positions = linePositions(geometry);
-		if (positions.length === 0) return;
-		const lineGeometry = new LineSegmentsGeometry();
-		lineGeometry.setPositions(positions);
-		const material = new LineMaterial({
-			color: new Color(ink).getHex(),
-			linewidth: widthCssPx,
-			transparent: true,
-			opacity,
-			depthTest: false,
-			depthWrite: false,
-			// PLATE inks are semantic colors; tone mapping would shift the gold.
-			toneMapped: false,
-			dashed,
-			// Dash lengths are world meters on the sheet.
-			...(dashed ? { dashSize: 0.12, gapSize: 0.08 } : {})
-		});
-		material.resolution.set(resolution[0], resolution[1]);
-		const object = new LineSegments2(lineGeometry, material);
-		if (dashed) object.computeLineDistances();
-		object.renderOrder = renderOrder;
-		object.frustumCulled = false;
-		object.layers.set(STAGE_OVERLAY_LAYER);
-		group.add(object);
-		disposables.push(lineGeometry, material);
-		fades.push({ material, baseOpacity: material.opacity });
+		for (const positions of linePositions(geometry)) {
+			const lineGeometry = new LineGeometry();
+			lineGeometry.setPositions(new Float32Array(positions));
+			const material = new LineMaterial({
+				color: new Color(ink).getHex(),
+				linewidth: widthCssPx,
+				transparent: true,
+				opacity,
+				depthTest: false,
+				depthWrite: false,
+				// PLATE inks are semantic colors; tone mapping would shift the gold.
+				toneMapped: false,
+				dashed,
+				// Dash lengths are world meters on the sheet.
+				...(dashed ? { dashSize: 0.12, gapSize: 0.08 } : {})
+			});
+			material.resolution.set(resolution[0], resolution[1]);
+			const object = new Line2(lineGeometry, material);
+			if (dashed) object.computeLineDistances();
+			object.renderOrder = renderOrder;
+			object.frustumCulled = false;
+			object.layers.set(STAGE_OVERLAY_LAYER);
+			group.add(object);
+			disposables.push(lineGeometry, material);
+			fades.push({ material, baseOpacity: material.opacity });
+		}
 	};
 
 	// Hover: a restrained light contour held by the vocabulary's dark halo, so it
@@ -418,7 +454,7 @@ export function createPaperMarkScene(
 		group,
 		setResolution(widthCssPx: number, heightCssPx: number): void {
 			group.traverse((node) => {
-				if (node instanceof LineSegments2) {
+				if (node instanceof Line2) {
 					(node.material as LineMaterial).resolution.set(widthCssPx, heightCssPx);
 				}
 			});

@@ -186,6 +186,11 @@ describe('C2 product — closed Wall Card and Stage', () => {
 		expect(facade.pointerIntent({ phase: 'down', css: center, evaluationId }).claimed).toBe(true);
 		facade.pointerIntent({ phase: 'move', css: stageCss(facade, [21.5, 0]), evaluationId });
 		facade.pointerIntent({ phase: 'move', css: rim, evaluationId });
+		const preview = facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-circle');
+		expect(preview).toBeDefined();
+		expect(preview!.segments).toHaveLength(64);
+		expect(preview!.labels[0]?.text).toContain('r 3.00 m · ⌀ 6.00 m');
+		expect(preview!.polygons).toEqual([]);
 		facade.pointerIntent({ phase: 'up', css: rim, evaluationId });
 		await eventually(() => facade.snapshot().canonicalJson !== baseline);
 

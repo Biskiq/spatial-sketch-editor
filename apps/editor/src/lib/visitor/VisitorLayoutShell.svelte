@@ -21,7 +21,8 @@
 		presentation,
 		textureScope = null,
 		plinth = true,
-		doorFrames = true
+		doorFrames = true,
+		hiddenWallIds = []
 	}: {
 		geometry: CompiledLayoutGeometry;
 		presentation: Readonly<Record<string, VisitorRoomPresentation>>;
@@ -32,6 +33,8 @@
 		 */
 		plinth?: boolean;
 		doorFrames?: boolean;
+		/** A display-only overlay (the unfold sheet) owns these Wall bodies. */
+		hiddenWallIds?: readonly string[];
 	} = $props();
 
 	function polygonShape(points: readonly LayoutVec2[], invertZ = true): Shape {
@@ -109,6 +112,12 @@
 	// representation immediately before every update.
 	$effect(() => {
 		walls.update(geometry);
+		const hidden = new Set(hiddenWallIds);
+		for (const wall of geometry.walls) {
+			const object = walls.object3d.getObjectByName(`VisitorPhysicalWall:${wall.wallId}`) ??
+				walls.object3d.getObjectByName(`VisitorPhysicalWallFailure:${wall.wallId}`);
+			if (object !== undefined) object.visible = !hidden.has(wall.wallId);
+		}
 	});
 	$effect(() => () => walls.dispose());
 

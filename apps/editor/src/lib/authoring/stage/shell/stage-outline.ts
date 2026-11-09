@@ -90,6 +90,74 @@ export function mergeStraightEdgeRuns(positions: ArrayLike<number>): Float32Arra
 }
 
 /**
+ * Split a segment list into the longest end-to-end chains that pass through
+ * ordinary (degree-two) vertices. A fat line drawn from a chain has no cap at
+ * an internal tessellation joint, so a curved Wall's sampled spans read as one
+ * continuous silhouette instead of a row of ticks.
+ *
+ * A branch or a real end stops the chain. Closed rings come back as one chain
+ * whose first and last point coincide.
+ */
+export function contourPolylines(positions: ArrayLike<number>): Float32Array[] {
+	const count = Math.floor(positions.length / 6);
+	const pointOf = (segment: number, end: 0 | 1): Point => {
+		const at = segment * 6 + end * 3;
+		return [positions[at]!, positions[at + 1]!, positions[at + 2]!];
+	};
+	const keyOf = (p: Point): string => p.map((value) => Math.round(value * WELD)).join(',');
+	const incident = new Map<string, number[]>();
+	for (let segment = 0; segment < count; segment += 1) {
+		for (const end of [0, 1] as const) {
+			const key = keyOf(pointOf(segment, end));
+			const list = incident.get(key);
+			if (list === undefined) incident.set(key, [segment]);
+			else list.push(segment);
+		}
+	}
+	const otherEnd = (segment: number, near: Point): Point => {
+		const start = pointOf(segment, 0);
+		return keyOf(start) === keyOf(near) ? pointOf(segment, 1) : start;
+	};
+	const used = new Uint8Array(count);
+	const out: Float32Array[] = [];
+	for (let seed = 0; seed < count; seed += 1) {
+		if (used[seed] === 1) continue;
+		used[seed] = 1;
+		const a = pointOf(seed, 0);
+		const b = pointOf(seed, 1);
+		const startKey = keyOf(a);
+		const chain: Point[] = [a, b];
+		let current = b;
+		for (;;) {
+			if (keyOf(current) === startKey) break;
+			const around = incident.get(keyOf(current)) ?? [];
+			if (around.length !== 2) break;
+			const next = around.find((segment) => used[segment] === 0);
+			if (next === undefined) break;
+			used[next] = 1;
+			current = otherEnd(next, current);
+			chain.push(current);
+		}
+		const before: Point[] = [];
+		current = a;
+		for (;;) {
+			const around = incident.get(keyOf(current)) ?? [];
+			if (around.length !== 2) break;
+			const next = around.find((segment) => used[segment] === 0);
+			if (next === undefined) break;
+			used[next] = 1;
+			current = otherEnd(next, current);
+			before.push(current);
+		}
+		before.reverse();
+		const points = [...before, ...chain];
+		if (points.length < 2) continue;
+		out.push(new Float32Array(points.flat()));
+	}
+	return out;
+}
+
+/**
  * View-dependent identity silhouette of the renderer's triangles, in world space.
  * Coplanar seams and front/front creases carry no identity ink. Opposite coincident
  * faces cancel (the internal caps of joined render spans). Real aperture rims and

@@ -388,6 +388,12 @@ describe('R217.S07 — Paper mark filtering', () => {
 		expect(marks.selection.contours).toHaveLength(1);
 		// Four outer edges; the shared x = 4 edge is not in the union boundary.
 		expect(marks.selection.contours[0]!.segments).toHaveLength(4);
+		// The gold repaint is one contiguous fill; separate span fills would leave
+		// their shared edge visible as a dark tick through the translucent mark.
+		expect(marks.selection.fills).toHaveLength(1);
+		expect(marks.selection.fills[0]!.polygons).toHaveLength(1);
+		expect(ringArea(marks.selection.fills[0]!.polygons[0]!)).toBeCloseTo(1.4, 9);
+		expect(marks.selection.cutFills).toHaveLength(1);
 	});
 
 	it('keeps a filled subject’s non-cut lines and drops only the duplicate cut outline', () => {
