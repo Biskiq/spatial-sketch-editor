@@ -14,6 +14,8 @@
 	let { wall }: { wall: CompiledPhysicalWall } = $props();
 	const state = $derived(wallUnfold.state?.wallId === wall.wallId ? wallUnfold.state : null);
 	const percent = $derived(state === null ? 0 : Math.round(state.u * 100));
+	const flat = $derived(percent === 100);
+	const flipLabel = $derived(state?.side === 1 ? 'Flip to Outside' : 'Flip to Inside');
 
 	function scrub(event: Event): void {
 		const value = Number((event.currentTarget as HTMLInputElement).value);
@@ -24,7 +26,7 @@
 {#if state !== null}
 	<div class="unfold" data-wall-unfold data-wall-unfold-u={percent}>
 		<label class="scrub">
-			<span>Curvature</span>
+			<span>Unfold</span>
 			<input
 				type="range"
 				min="0"
@@ -32,16 +34,17 @@
 				step="1"
 				value={percent}
 				aria-label="Unfold amount"
-				aria-valuetext={`${percent} percent unfolded`}
+				aria-valuetext={flat ? 'Flat, 100 percent unfolded' : `${percent} percent unfolded`}
 				data-wall-unfold-scrub
 				oninput={scrub}
 			/>
-			<output>{percent}%</output>
+			<output>{flat ? 'Flat' : `${percent}%`}</output>
 		</label>
+		<p class="hint">Entry keeps orientation; the sheet may pan, fit or zoom. Openings edit in place.</p>
 		<div class="stops">
 			<button type="button" data-wall-unfold-flat onclick={() => wallUnfold.setU(wall, 1)}>Flat</button>
 			<button type="button" data-wall-unfold-half onclick={() => wallUnfold.setU(wall, 0.5)}>Half</button>
-			<button type="button" data-wall-unfold-flip onclick={() => wallUnfold.flip(wall)}>Inside/Outside</button>
+			<button type="button" data-wall-unfold-flip onclick={() => wallUnfold.flip(wall)}>{flipLabel}</button>
 			<button type="button" data-wall-unfold-done onclick={() => wallUnfold.exit(wall)}>Done</button>
 		</div>
 	</div>
@@ -72,6 +75,12 @@
 		color: var(--shell-ink);
 		font: 12px var(--shell-mono);
 		font-variant-numeric: tabular-nums;
+	}
+	.hint {
+		margin: 0;
+		color: var(--shell-ink-2);
+		font-size: 10px;
+		line-height: 1.35;
 	}
 	.stops {
 		display: flex;
