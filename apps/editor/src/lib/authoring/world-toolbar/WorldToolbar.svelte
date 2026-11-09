@@ -211,6 +211,17 @@
 	</div>
 
 	<nav class="dock" aria-label="World tool families">
+		<button
+			type="button"
+			class:active={activeTool === 'select' && !libraryOpen}
+			aria-pressed={activeTool === 'select' && !libraryOpen}
+			title="Select (V)"
+			onclick={() => onTool('select')}
+		>
+			<span class="key-icon"><ShellIcon name="select" size={20} /></span>
+			<span class="key-word">Select</span>
+			<span class="key-shortcut">V</span>
+		</button>
 		{#each WORLD_FAMILIES as family (family.id)}
 			<button
 				type="button"
@@ -243,17 +254,6 @@
 			<span class="key-icon"><ShellIcon name="library" size={20} /></span>
 			<span class="key-word">Library</span>
 			<span class="key-shortcut">L</span>
-		</button>
-		<button
-			type="button"
-			class:active={activeTool === 'select' && !libraryOpen}
-			aria-pressed={activeTool === 'select' && !libraryOpen}
-			title="Select (V)"
-			onclick={() => onTool('select')}
-		>
-			<span class="key-icon"><ShellIcon name="select" size={20} /></span>
-			<span class="key-word">Select</span>
-			<span class="key-shortcut">V</span>
 		</button>
 	</nav>
 </section>
@@ -305,9 +305,9 @@
 		color: var(--ld-light, #f2f0e6);
 	}
 	.words button.active {
-		background: rgb(242 240 230 / 0.13);
+		background: transparent;
 		color: var(--ld-light, #f2f0e6);
-		box-shadow: inset 0 -1px 0 var(--ld-mint, #96c7a9);
+		box-shadow: inset 0 -2px 0 var(--ld-mint, #96c7a9);
 	}
 	.words .close-word {
 		margin-left: auto;
@@ -575,9 +575,9 @@
 	.option-group button {
 		height: 28px;
 		padding: 0 9px;
-		border: 1px solid rgb(240 244 236 / 0.15);
+		border: 0;
 		border-radius: 6px;
-		background: rgb(242 240 230 / 0.04);
+		background: rgb(242 240 230 / 0.06);
 		color: var(--ld-light, #f2f0e6);
 		font: 11px var(--ld-sans, 'Instrument Sans', system-ui, sans-serif);
 	}
