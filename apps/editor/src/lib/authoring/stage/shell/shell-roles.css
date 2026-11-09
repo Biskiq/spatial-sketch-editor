@@ -21,5 +21,5 @@
 .editor-host :is(button, input, select, summary):focus-visible {
 	outline: 2px solid var(--shell-forest-raised);
 	outline-offset: 1px;
-	box-shadow: 0 0 0 4px rgb(255 255 255 / 0.9);
+	box-shadow: 0 0 0 4px var(--shell-focus-halo);
 }

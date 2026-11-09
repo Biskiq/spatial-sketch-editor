@@ -282,11 +282,18 @@
 		box-sizing: border-box;
 		height: 26px;
 		padding: 0 20px 0 6px;
-		border: 1px solid var(--shell-hairline);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 6px;
-		background: var(--shell-control-surface);
+		background: var(--shell-field);
 		color: var(--shell-ink);
 		font: 12px var(--shell-mono);
+	}
+	input:hover {
+		border-color: var(--shell-field-line-strong);
+	}
+	input:focus {
+		background: var(--shell-field-focus);
+		border-color: var(--shell-leaf);
 	}
 	.unit {
 		position: absolute;
@@ -296,6 +303,15 @@
 	.refusal,
 	.refused {
 		color: var(--shell-refuse);
+	}
+	.object-fields > p[role='status'] {
+		margin: 0 12px 8px;
+		color: var(--shell-positive);
+		font-size: 11px;
+	}
+	.object-fields > p[role='alert'] {
+		margin: 0 12px 8px;
+		font-size: 11px;
 	}
 	@media (pointer: coarse) {
 		input {

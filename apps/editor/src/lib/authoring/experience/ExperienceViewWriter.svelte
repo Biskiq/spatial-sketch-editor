@@ -305,7 +305,7 @@
 		width: 14px;
 		height: 14px;
 		border-radius: 50%;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		box-shadow: 0 1px 2px #1b201c33;
 	}
 	.advanced-switch[aria-checked='true'] .switch-track {
@@ -331,9 +331,9 @@
 		width: 7ch;
 		min-height: 28px;
 		padding: 0 4px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 5px;
-		background: transparent;
+		background: var(--shell-field);
 		color: inherit;
 		font: inherit;
 		text-align: right;
@@ -459,7 +459,7 @@
 		padding: 0 5px;
 		border-radius: 10px;
 		background: var(--shell-forest);
-		color: var(--shell-white);
+		color: var(--shell-on-action);
 		font: 600 11px/1 var(--shell-mono);
 		font-variant-numeric: tabular-nums;
 	}
@@ -516,9 +516,9 @@
 		background: var(--shell-hover);
 	}
 	.btn.primary {
-		border-color: var(--shell-forest-raised);
-		background: var(--shell-forest-raised);
-		color: var(--shell-white);
+		border-color: var(--shell-action);
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 	}
 	.btn.primary:hover:not(:disabled) {
 		background: var(--shell-forest-raised);

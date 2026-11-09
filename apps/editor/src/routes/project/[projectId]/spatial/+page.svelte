@@ -4630,7 +4630,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		fill: var(--shell-gold-ink);
 		font: 600 11px var(--shell-sans);
 		paint-order: stroke;
-		stroke: rgb(255 255 255 / 0.85);
+		stroke: var(--shell-focus-halo);
 		stroke-width: 3px;
 	}
 	/* R217.S29 Show ▾: a light disclosure beside the Stage reading control. */
@@ -4639,10 +4639,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		display: flex;
 		align-items: center;
 		padding: 3px;
-		border: 1px solid rgb(27 32 28 / 0.1);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
-		background: rgb(255 255 255 / 0.94);
-		box-shadow: 0 4px 14px rgb(17 41 31 / 0.12);
+		background: var(--shell-glass-light);
+		box-shadow: var(--shell-furniture-shadow);
 		backdrop-filter: blur(10px);
 	}
 	.show-button {
@@ -4663,8 +4663,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: rgb(27 32 28 / 0.06);
 	}
 	.show-button[aria-expanded='true'] {
-		background: var(--shell-forest);
-		color: var(--shell-white);
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 	}
 	.show-button:focus-visible,
 	.show-mode button:focus-visible,
@@ -4689,11 +4689,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		display: grid;
 		gap: 6px;
 		padding: 12px;
-		border: 1px solid rgb(27 32 28 / 0.12);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 14px;
-		background: var(--shell-white);
+		background: var(--shell-popover);
 		color: var(--shell-ink);
-		box-shadow: 0 10px 30px rgb(17 41 31 / 0.16);
+		box-shadow: var(--shell-shadow);
 		font-size: 12.5px;
 	}
 	.show-popover header {
@@ -4715,7 +4715,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		gap: 3px;
 		padding: 3px;
 		border-radius: 10px;
-		background: rgb(27 32 28 / 0.05);
+		background: var(--shell-surface-sunken);
 	}
 	.show-mode button {
 		height: 28px;
@@ -4728,7 +4728,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cursor: pointer;
 	}
 	.show-mode button[aria-pressed='true'] {
-		background: var(--shell-white);
+		background: var(--shell-field-focus);
 		color: var(--shell-ink);
 		font-weight: 600;
 		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
@@ -4743,7 +4743,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cursor: pointer;
 	}
 	.show-popover label:hover {
-		background: rgb(27 32 28 / 0.04);
+		background: var(--shell-hover);
 	}
 	.show-popover input[type='checkbox'] {
 		appearance: none;
@@ -4752,9 +4752,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		width: 18px;
 		height: 18px;
 		margin: 0;
-		border: 1.5px solid rgb(27 32 28 / 0.2);
+		border: 1.5px solid var(--shell-field-line-strong);
 		border-radius: 5px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		cursor: pointer;
 	}
 	.show-popover input[type='checkbox']:checked {
@@ -4768,9 +4768,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.show-all {
 		height: 28px;
 		margin-top: 2px;
-		border: 1px solid rgb(27 32 28 / 0.14);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 8px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		color: inherit;
 		font: inherit;
 		font-size: 12px;
@@ -4801,7 +4801,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		position: absolute;
 		width: 22px;
 		height: 22px;
-		border: 0 solid rgb(255 255 255 / 0.9);
+		border: 0 solid var(--shell-ink-light);
 		filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.6));
 	}
 	.through-safe i:nth-child(1) { left: 0; top: 0; border-width: 2px 0 0 2px; }
@@ -4829,7 +4829,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 0 11px;
 		border: 0;
 		border-radius: 14px;
-		background: rgb(255 255 255 / 0.12);
+		background: var(--shell-on-forest-wash-strong);
 		color: inherit;
 		font: inherit;
 		font-size: 12px;
@@ -4841,7 +4841,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.mode-pill button.pill-gold {
 		background: var(--shell-gold);
-		color: #2a2208;
+		color: var(--shell-on-gold);
 		font-weight: 600;
 	}
 	.mode-pill .live-dot {
@@ -4902,7 +4902,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 0 10px;
 		border: 0;
 		border-radius: 7px;
-		background: rgb(255 255 255 / 0.14);
+		background: var(--shell-on-forest-wash-strong);
 		color: inherit;
 		font: inherit;
 		font-size: 12px;
@@ -4910,7 +4910,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.through-confirm button.pill-gold {
 		background: var(--shell-gold);
-		color: #2a2208;
+		color: var(--shell-on-gold);
 		font-weight: 600;
 	}
 	.experience-welcome {
@@ -4921,7 +4921,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 1rem;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 12px;
-		background: var(--shell-card);
+		background: var(--shell-surface-raised);
 		box-shadow: var(--shell-shadow);
 		color: var(--shell-ink);
 		font-size: 0.8rem;
@@ -4953,8 +4953,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 0.35rem 0.65rem;
 		border: 0;
 		border-radius: 6px;
-		background: var(--shell-forest);
-		color: white;
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 		cursor: pointer;
 	}
 	@media (pointer: coarse) {
@@ -4970,15 +4970,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		margin: 0;
 		padding: 0.25rem 0.6rem;
 		border-radius: 8px;
-		background: rgb(17 41 31 / 0.92);
-		color: white;
+		background: var(--shell-dock-surface);
+		color: var(--shell-ink-light);
 		font-size: 0.78rem;
 		line-height: 1.35;
 	}
 	/* Kind decides the styling, never the words: a success is never a refusal. */
 	.experience-feedback.success { background: var(--shell-forest-raised); }
-	.experience-feedback.info { background: #2c3b44; }
-	.experience-feedback.refused { background: #623639; }
+	.experience-feedback.info { background: var(--shell-forest-3); }
+	.experience-feedback.refused { background: color-mix(in srgb, var(--shell-refuse) 70%, var(--shell-forest)); }
 	.preview-takeover {
 		position: absolute;
 		inset: 0;
@@ -4996,13 +4996,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		margin: 0;
 		padding: 0.4rem 0.6rem;
 		border-radius: 0.35rem;
-		background: rgb(25 24 31 / 88%);
-		color: #e3c4c4;
+		background: var(--shell-popup-dark);
+		color: var(--shell-ink-light);
 	}
 	.preview-actions-note {
 		top: 0.5rem;
 		bottom: auto;
-		color: #f5e8b5;
+		color: var(--shell-gold);
 	}
 	/*
 	 * Parked-task notice. It sits at the top-left because the lower edge already
@@ -5019,8 +5019,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		max-width: min(22rem, calc(100% - 2rem));
 		padding: 0.75rem;
 		box-sizing: border-box;
-		background: #19181f;
-		border: 1px solid #635a6f;
+		background: var(--shell-popup-dark);
+		border: 1px solid var(--shell-line-on-forest);
 	}
 	.resume-offer {
 		display: flex;
@@ -5028,9 +5028,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.7rem 1rem;
-		border-bottom: 1px solid #6b5426;
-		background: #2b2417;
-		color: #f4e5c8;
+		border-bottom: 1px solid var(--shell-hairline-dark);
+		background: color-mix(in srgb, var(--shell-gold) 12%, var(--shell-forest));
+		color: var(--shell-ink-light);
 	}
 	.resume-offer p {
 		flex: 1 1 22rem;
@@ -5039,17 +5039,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.resume-offer button {
 		padding: 0.45rem 0.7rem;
-		border: 1px solid #8a6a31;
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 0.35rem;
-		background: #3a3020;
+		background: var(--shell-forest-raised);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
 	}
 	.resume-offer button.primary {
-		border-color: #d8b26a;
-		background: #7a5a22;
-		color: var(--shell-white);
+		border-color: var(--shell-gold);
+		background: var(--shell-gold);
+		color: var(--shell-on-gold);
 	}
 	.source-findings {
 		position: absolute;
@@ -5059,10 +5059,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		transform: translateX(-50%);
 		max-width: min(32rem, calc(100% - 2rem));
 		padding: 6px 12px;
-		border: 1px solid rgb(27 32 28 / 0.12);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 12px;
-		background: rgb(255 255 255 / 0.96);
-		box-shadow: 0 6px 18px rgb(17 41 31 / 0.14);
+		background: var(--shell-popover);
+		box-shadow: var(--shell-shadow);
 		color: var(--shell-ink);
 		font-size: 12.5px;
 	}
@@ -5090,9 +5090,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		color: var(--shell-ink-2);
 	}
 	.source-findings button {
-		border: 1px solid rgb(27 32 28 / 0.14);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 8px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		padding: 3px 9px;
 		font: inherit;
 		cursor: pointer;

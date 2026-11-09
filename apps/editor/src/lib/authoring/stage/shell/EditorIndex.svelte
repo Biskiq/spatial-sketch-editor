@@ -745,8 +745,8 @@
 		min-width: 0;
 		height: 28px;
 		padding: 0 7px;
-		background: var(--shell-white);
-		border: 1px solid var(--shell-hairline);
+		background: var(--shell-field);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 7px;
 		color: var(--shell-ink-3);
 	}
@@ -864,9 +864,9 @@
 		margin: 2px 8px 4px;
 		padding: 0 8px;
 		height: 26px;
-		border: 1px solid var(--shell-hairline);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 7px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		color: var(--shell-ink-3);
 	}
 	.exp-more-toggle {
@@ -932,7 +932,7 @@
 		padding: 3px;
 		max-height: 220px;
 		overflow: auto;
-		background: var(--shell-white);
+		background: var(--shell-popover);
 		border: 1px solid var(--shell-hairline);
 		border-radius: 8px;
 		box-shadow: 0 1px 2px #0001, 0 8px 24px #0002;
@@ -953,7 +953,7 @@
 		margin: 0 8px 4px;
 		padding: 2px;
 		border-radius: 7px;
-		background: #eceee9;
+		background: var(--shell-surface-sunken);
 	}
 	.facets button {
 		flex: 1;
@@ -966,7 +966,7 @@
 		color: var(--shell-ink-3);
 	}
 	.facets [aria-pressed='true'] {
-		background: var(--shell-white);
+		background: var(--shell-field-focus);
 		color: var(--shell-ink);
 		box-shadow: 0 0 0 1px var(--shell-hairline-strong);
 	}
@@ -1066,7 +1066,7 @@
 		padding: 0 6px;
 		border: 1px solid var(--shell-leaf);
 		border-radius: 999px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		color: var(--shell-forest-3);
 		font-size: 10px;
 		line-height: 15px;
@@ -1113,8 +1113,8 @@
 		padding: 4px;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 8px;
-		background: var(--shell-card);
-		box-shadow: 0 6px 18px rgb(20 30 24 / 14%);
+		background: var(--shell-popover);
+		box-shadow: var(--shell-shadow);
 	}
 	.guide-menu button {
 		justify-content: flex-start;
@@ -1139,9 +1139,9 @@
 		min-height: 28px;
 		margin: 2px 0;
 		padding: 3px 7px;
-		border: 1px solid var(--shell-forest-raised);
+		border: 1px solid var(--shell-field-line-strong);
 		border-radius: 5px;
-		background: var(--shell-card);
+		background: var(--shell-field);
 		color: var(--shell-ink);
 		font: inherit;
 	}

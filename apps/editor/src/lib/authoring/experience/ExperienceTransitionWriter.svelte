@@ -343,8 +343,8 @@
 		font-weight: 500;
 	}
 	.seg button[aria-pressed='true'] {
-		background: var(--shell-card);
-		color: var(--shell-forest-raised);
+		background: var(--shell-surface-raised);
+		color: var(--shell-action);
 		box-shadow:
 			0 1px 2px rgb(0 0 0 / 0.08),
 			inset 0 0 0 1px var(--shell-hairline-strong);
@@ -395,7 +395,7 @@
 		padding: 0 5px;
 		border-radius: 9px;
 		background: var(--shell-forest);
-		color: var(--shell-white);
+		color: var(--shell-on-action);
 		font: 600 11px/1 var(--shell-sans);
 	}
 	.end-tag {

@@ -346,7 +346,7 @@
 <style>
 	.ink-palette {
 		position: relative;
-		color: #d9e2da;
+		color: var(--shell-ink-light);
 		font: 12px var(--shell-sans);
 	}
 	.keys {
@@ -370,11 +370,11 @@
 		height: 18px;
 	}
 	.key:hover {
-		background: rgb(255 255 255 / 0.08);
+		background: var(--shell-on-forest-wash);
 	}
 	.key[aria-checked='true'] {
-		background: rgb(243 240 228 / 0.14);
-		box-shadow: inset 0 0 0 1px rgb(243 240 228 / 0.55);
+		background: var(--shell-on-forest-wash-strong);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shell-ink-light) 55%, transparent);
 	}
 	.key[aria-disabled='true'] {
 		opacity: 0.35;
@@ -389,9 +389,9 @@
 		gap: 6px;
 		width: 216px;
 		padding: 8px;
-		border: 1px solid #ffffff17;
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 12px;
-		background: rgba(17, 41, 31, 0.97);
+		background: var(--shell-popup-dark);
 		box-shadow: var(--shell-shadow);
 	}
 	.panel button {
@@ -399,7 +399,7 @@
 		padding: 4px 6px;
 		border: 0;
 		border-radius: 6px;
-		background: #ffffff0a;
+		background: var(--shell-on-forest-wash);
 		color: inherit;
 		font: inherit;
 		text-align: left;
@@ -422,11 +422,11 @@
 		min-width: 0;
 		width: 100%;
 		height: 26px;
-		border: 1px solid #ffffff44;
+		border: 1px solid color-mix(in srgb, var(--shell-ink-light) 30%, transparent);
 		border-radius: 6px;
 		padding: 0 6px;
 		background: var(--shell-forest);
-		color: white;
+		color: var(--shell-ink-light);
 		font: 12px var(--shell-mono);
 	}
 	.refusal {
@@ -442,7 +442,7 @@
 	}
 	.error {
 		margin: 0;
-		color: #f0a98c;
+		color: color-mix(in srgb, var(--shell-caution) 55%, var(--shell-ink-light));
 	}
 	.unit {
 		color: var(--shell-ink-quiet);

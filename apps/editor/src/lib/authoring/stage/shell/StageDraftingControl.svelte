@@ -252,12 +252,12 @@
 		align-items: center;
 		padding: 3px;
 		gap: 2px;
-		border: 1px solid rgba(27, 32, 28, 0.1);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
-		background: rgba(255, 255, 255, 0.94);
+		background: var(--shell-glass-light);
 		-webkit-backdrop-filter: blur(10px);
 		backdrop-filter: blur(10px);
-		box-shadow: 0 4px 14px rgba(17, 41, 31, 0.12);
+		box-shadow: var(--shell-furniture-shadow);
 	}
 	button {
 		height: 28px;
@@ -277,8 +277,8 @@
 	}
 	.reading button[aria-pressed='true'],
 	.words button[aria-pressed='true'] {
-		background: var(--shell-forest);
-		color: var(--shell-white);
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 		font-weight: 600;
 	}
 	.words {
@@ -320,11 +320,11 @@
 		display: grid;
 		gap: 8px;
 		padding: 12px;
-		border: 1px solid rgba(27, 32, 28, 0.12);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 14px;
-		background: var(--shell-white);
+		background: var(--shell-popover);
 		color: var(--shell-ink);
-		box-shadow: 0 10px 30px rgba(17, 41, 31, 0.16);
+		box-shadow: var(--shell-shadow);
 	}
 	/* Leaf checkbox in the light Card: shell-drawn, never the browser's blue. */
 	.viewing .check input[type='checkbox'] {
@@ -334,9 +334,9 @@
 		width: 18px;
 		height: 18px;
 		margin: 0;
-		border: 1.5px solid rgba(27, 32, 28, 0.2);
+		border: 1.5px solid var(--shell-field-line-strong);
 		border-radius: 5px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		cursor: pointer;
 	}
 	.viewing .check input[type='checkbox']:checked {
@@ -364,9 +364,9 @@
 		background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
 		background-size: 4px 4px;
 		background-repeat: no-repeat;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 6px;
-		background-color: var(--shell-control-surface);
+		background-color: var(--shell-field);
 		color: var(--shell-ink);
 		font: inherit;
 	}
@@ -383,15 +383,15 @@
 	.viewing .switch {
 		height: 26px;
 		padding: 0 9px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 13px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		color: var(--shell-ink-2);
 	}
 	.viewing .switch[aria-checked='true'] {
 		border-color: var(--shell-ink);
 		background: var(--shell-ink);
-		color: var(--shell-white);
+		color: var(--shell-on-action);
 	}
 	.viewing .tone-row {
 		display: flex;

@@ -725,13 +725,13 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: rgb(255 255 255 / 0.08);
+		background: var(--shell-on-forest-wash);
 	}
 	.head-index,
 	.action:not(.primary) {
 		width: 32px;
 		padding: 0;
-		color: #dfe6df;
+		color: var(--shell-ink-light);
 	}
 	.brand {
 		display: inline-flex;
@@ -757,7 +757,7 @@
 	}
 	.project-name {
 		max-width: 180px;
-		color: var(--shell-white);
+		color: var(--shell-ink-light);
 		padding: 0 4px;
 		font: var(--shell-text-identity) var(--shell-serif);
 	}
@@ -779,9 +779,9 @@
 		gap: 6px;
 		width: 288px;
 		padding: 10px;
-		border: 1px solid rgb(255 255 255 / 0.14);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 10px;
-		background: var(--shell-forest);
+		background: var(--shell-popup-dark);
 		box-shadow: var(--shell-shadow);
 	}
 	.project-menu[hidden] {
@@ -808,7 +808,7 @@
 		height: 26px;
 		padding: 0 11px;
 		border-radius: 6px;
-		color: #cfd8d0;
+		color: var(--shell-ink-quiet);
 		font-size: 12.5px;
 	}
 	.lens-button.active {
@@ -823,7 +823,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		font-size: var(--shell-text-utility);
-		background: rgb(255 255 255 / 0.08);
+		background: var(--shell-on-forest-wash);
 	}
 	.actions {
 		order: 2;
@@ -860,7 +860,7 @@
 		height: auto;
 		padding: 7px 9px;
 		border-radius: 8px;
-		background: var(--shell-forest);
+		background: var(--shell-popup-dark);
 		color: var(--shell-ink-light);
 		box-shadow: var(--shell-shadow);
 		clip-path: none;
@@ -879,12 +879,12 @@
 		height: var(--shell-control-height);
 		padding: 0 8px;
 		border-radius: 8px;
-		background: rgb(255 255 255 / 0.1);
-		color: #b9c8bd;
+		background: var(--shell-on-forest-wash-strong);
+		color: var(--shell-ink-quiet);
 	}
 	.find.open {
 		width: 330px;
-		background: var(--shell-white);
+		background: var(--shell-field-focus);
 		color: var(--shell-ink-3);
 	}
 	.find input {
@@ -966,7 +966,7 @@
 		padding: 0 11px;
 		border-radius: 8px;
 		background: var(--shell-gold);
-		color: #2a2208;
+		color: var(--shell-on-gold);
 		font-weight: 600;
 	}
 	.primary:hover {

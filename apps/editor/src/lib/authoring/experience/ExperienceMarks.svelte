@@ -776,7 +776,7 @@
 		fill: var(--shell-gold);
 	}
 	.mark.selected .number text {
-		fill: #2a2208;
+		fill: var(--shell-on-gold);
 	}
 
 	.rig {

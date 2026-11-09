@@ -100,12 +100,12 @@
 		align-items: center;
 		gap: 2px;
 		padding: 4px;
-		border: 1px solid rgb(255 255 255 / 0.09);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 14px;
-		background: rgba(17, 41, 31, 0.95);
-		color: #e6ece6;
+		background: var(--shell-dock-surface);
+		color: var(--shell-ink-light);
 		box-shadow:
-			inset 0 1px 0 rgb(255 255 255 / 0.05),
+			inset 0 1px 0 var(--shell-on-forest-wash),
 			0 10px 28px rgb(0 0 0 / 0.28);
 		backdrop-filter: blur(8px);
 	}
@@ -127,11 +127,11 @@
 		cursor: pointer;
 	}
 	.key:hover {
-		background: rgb(255 255 255 / 0.08);
+		background: var(--shell-on-forest-wash);
 	}
 	.key.armed {
 		background: var(--shell-ivory);
-		color: var(--shell-forest);
+		color: var(--shell-action);
 		box-shadow: 0 1px 3px #0004;
 	}
 	.key[aria-disabled='true'] {
@@ -180,7 +180,7 @@
 		width: 1px;
 		height: 22px;
 		margin: 0 4px;
-		background: rgb(255 255 255 / 0.12);
+		background: var(--shell-line-on-forest);
 	}
 	.palette-anchor {
 		position: absolute;

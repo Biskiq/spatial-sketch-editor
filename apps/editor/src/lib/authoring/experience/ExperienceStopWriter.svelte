@@ -424,7 +424,7 @@
 		width: 14px;
 		height: 14px;
 		border-radius: 7px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		transition: transform 120ms ease;
 	}
 	.switch[aria-checked='true'] {
@@ -443,15 +443,16 @@
 	.prompt input {
 		min-height: 28px;
 		padding: 0 8px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 7px;
+		background: var(--shell-field);
 		font: inherit;
 		font-size: var(--shell-text-utility);
 		color: var(--shell-ink);
 	}
 	.warn-note {
 		margin: 6px 0 0;
-		color: #8a5a00;
+		color: var(--shell-caution);
 		font-size: 11px;
 	}
 	.conns {
@@ -489,7 +490,7 @@
 	}
 	.warn {
 		margin-left: 4px;
-		color: #a3650a;
+		color: var(--shell-caution);
 	}
 
 	.writer {
@@ -599,7 +600,7 @@
 		padding: 0 5px;
 		border-radius: 9px;
 		background: var(--shell-forest);
-		color: var(--shell-white);
+		color: var(--shell-on-action);
 		font: 600 10.5px/1 var(--shell-mono);
 		flex: none;
 	}

@@ -122,6 +122,8 @@
 	--shell-hairline-strong: #cdd2ca;
 	/* The dark chassis line: dialogs and instruments on forest surfaces. */
 	--shell-hairline-dark: #2f4a3d;
+	/* A light rule drawn on the forest chassis (docks, instruments, Guide). */
+	--shell-line-on-forest: rgb(255 255 255 / 0.12);
 
 	/* Ink. */
 	--shell-ink-light: #eef1ec;
@@ -141,12 +143,38 @@
 	--shell-control-surface: #fafbf9;
 	--shell-sheet-knob: #fbfaf2;
 
+	/*
+	 * Semantic surfaces. A component names the job — page plane, raised card,
+	 * sunken well, editable field, floating popover, action — and the skin
+	 * decides the colour. `--shell-white` stays the white mark/highlight role;
+	 * it is never the name for "an input".
+	 */
+	--shell-surface: var(--shell-paper);
+	--shell-surface-raised: var(--shell-card);
+	--shell-surface-sunken: #f0f1ed;
+	--shell-popover: var(--shell-card);
+	--shell-field: var(--shell-white);
+	--shell-field-hover: var(--shell-white);
+	--shell-field-focus: var(--shell-white);
+	--shell-field-line: var(--shell-hairline);
+	--shell-field-line-strong: var(--shell-hairline-strong);
+	--shell-action: var(--shell-forest);
+	--shell-on-action: var(--shell-white);
+	/* Text/fill that sits on the gold accent (never gold-on-gold). */
+	--shell-on-gold: #2a2208;
+	/* Translucent washes and the focus halo belong to the surface family too. */
+	--shell-on-forest-wash: rgb(255 255 255 / 0.08);
+	--shell-on-forest-wash-strong: rgb(255 255 255 / 0.14);
+	--shell-focus-halo: rgb(255 255 255 / 0.9);
+
 	/* Gold: selection and the primary accent. */
 	--shell-gold: #d4ad45;
 	--shell-gold-ink: #74560c;
 	--shell-gold-tint: #f8efd6;
 
-	/* States. Caution is recoverable; refuse is a hard stop. */
+	/* States. Positive confirms, caution is recoverable, refuse is a hard stop. */
+	--shell-positive: #4f8f6c;
+	--shell-positive-bg: #e7f1ea;
 	--shell-caution: #c85a48;
 	--shell-caution-bg: #f7ede8;
 	--shell-refuse: #7e2718;
@@ -223,6 +251,20 @@
 	--ld-paper: #fbf6ea;
 	--ld-paper-raised: #fbf6ea;
 	--ld-paper-3: #ece0c6;
+	/* The editable field is a shade below Paper, so a control reads as a well,
+	   not as a second white sheet laid on the Card. Focus lifts it back to light. */
+	--ld-field: #f2e8d3;
+	--ld-field-hover: #f6efdd;
+	--ld-field-focus: #fffcf3;
+	--ld-line-field: rgb(38 35 29 / 0.18);
+	--ld-line-field-strong: rgb(38 35 29 / 0.3);
+	--ld-positive: #4c6a2e;
+	--ld-positive-bg: #eaf0d9;
+	--ld-caution: #a9631f;
+	--ld-caution-bg: #f8ecd9;
+	/* Deeper and redder than BUILD's terracotta: refusal is never a material. */
+	--ld-refuse: #9c3b29;
+	--ld-refuse-bg: #f7e9e2;
 	--ld-ink: #26231d;
 	--ld-ink-2: #5a5448;
 	--ld-ink-3: #8a8272;
@@ -248,14 +290,54 @@
 	--shell-index: var(--ld-paper);
 	--shell-card: var(--ld-paper);
 	--shell-paper: var(--ld-paper-3);
+	--shell-hover: rgb(38 35 29 / 0.055);
+	--shell-selected: rgb(38 35 29 / 0.075);
+	--shell-leaf: #6f8a3e;
+	--shell-leaf-tint: #edf1df;
+	--shell-leaf-soft: #b8cf94;
 	--shell-ink: var(--ld-ink);
 	--shell-ink-2: var(--ld-ink-2);
 	--shell-ink-3: var(--ld-ink-3);
 	--shell-ink-light: var(--ld-light);
 	--shell-ink-quiet: var(--ld-light-2);
 	--shell-hairline: var(--ld-hairline-dark);
+	--shell-hairline-strong: rgb(38 35 29 / 0.24);
 	--shell-hairline-dark: var(--ld-hairline);
+	--shell-line-on-forest: var(--ld-hairline);
 	--shell-gold: var(--ld-gold);
+	--shell-gold-ink: #6e520f;
+	--shell-gold-tint: #f4e8c6;
+	--shell-ivory: var(--ld-paper);
+	--shell-sheet-knob: var(--ld-paper);
+	--shell-glass-light: rgb(251 246 234 / 0.94);
+	--shell-popup-dark: var(--ld-glass);
+	--shell-dock-surface: var(--ld-glass);
+	--shell-shadow: var(--ld-shadow);
+	--shell-furniture-shadow: 0 8px 22px rgb(8 20 13 / 0.18);
+	--shell-positive: var(--ld-positive);
+	--shell-positive-bg: var(--ld-positive-bg);
+	--shell-caution: var(--ld-caution);
+	--shell-caution-bg: var(--ld-caution-bg);
+	--shell-refuse: var(--ld-refuse);
+	--shell-refuse-bg: var(--ld-refuse-bg);
+	/* Semantic surfaces: Paper is the plane, cards and popovers are the same
+	   sheet lifted by line and shadow; fields are the sunken cream well. */
+	--shell-surface: var(--ld-paper);
+	--shell-surface-raised: var(--ld-paper-raised);
+	--shell-surface-sunken: #f1e7d1;
+	--shell-popover: var(--ld-paper-raised);
+	--shell-field: var(--ld-field);
+	--shell-field-hover: var(--ld-field-hover);
+	--shell-field-focus: var(--ld-field-focus);
+	--shell-field-line: var(--ld-line-field);
+	--shell-field-line-strong: var(--ld-line-field-strong);
+	--shell-control-surface: var(--ld-field);
+	--shell-action: var(--ld-forest);
+	--shell-on-action: var(--ld-paper);
+	--shell-on-gold: #241d0b;
+	--shell-on-forest-wash: rgb(251 246 234 / 0.08);
+	--shell-on-forest-wash-strong: rgb(251 246 234 / 0.14);
+	--shell-focus-halo: rgb(251 246 234 / 0.65);
 	--shell-serif: var(--ld-serif);
 	--shell-sans: var(--ld-sans);
 	--shell-mono: var(--ld-mono);

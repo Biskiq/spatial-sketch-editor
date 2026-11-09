@@ -140,10 +140,10 @@
 		display: flex;
 		align-items: center;
 		padding: 3px;
-		border: 1px solid rgb(27 32 28 / 0.1);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
-		background: rgb(255 255 255 / 0.94);
-		box-shadow: 0 4px 14px rgb(17 41 31 / 0.12);
+		background: var(--shell-glass-light);
+		box-shadow: var(--shell-furniture-shadow);
 		backdrop-filter: blur(10px);
 	}
 	.env-chip {
@@ -164,8 +164,8 @@
 		background: rgb(27 32 28 / 0.06);
 	}
 	.env-chip[aria-expanded='true'] {
-		background: var(--shell-forest);
-		color: var(--shell-white);
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 	}
 	.env-chip:focus-visible,
 	.env-tile:focus-visible,
@@ -188,11 +188,11 @@
 		display: grid;
 		gap: 8px;
 		padding: 12px;
-		border: 1px solid rgb(27 32 28 / 0.12);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 14px;
-		background: var(--shell-white);
+		background: var(--shell-popover);
 		color: var(--shell-ink);
-		box-shadow: 0 10px 30px rgb(17 41 31 / 0.16);
+		box-shadow: var(--shell-shadow);
 		font-size: 12.5px;
 	}
 	.env-pop {
@@ -257,8 +257,8 @@
 		padding: 7px;
 		border: 0;
 		border-radius: 8px;
-		background: var(--shell-hover);
-		color: var(--shell-forest-raised);
+		background: var(--shell-field);
+		color: var(--shell-ink);
 		font: 500 12.5px var(--shell-sans);
 		cursor: pointer;
 	}
@@ -323,6 +323,6 @@
 		font-size: 12px;
 	}
 	.env-pref input {
-		accent-color: var(--shell-forest-raised);
+		accent-color: var(--shell-action);
 	}
 </style>

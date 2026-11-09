@@ -460,20 +460,20 @@
 		left: calc(50% - 1px);
 		width: 2px;
 		border-radius: 1px;
-		background: rgb(255 255 255 / 0.28);
+		background: color-mix(in srgb, var(--shell-ink-light) 28%, transparent);
 	}
 	.tick {
 		position: absolute;
 		left: 50%;
 		width: 10px;
 		height: 1.5px;
-		background: rgb(255 255 255 / 0.7);
+		background: color-mix(in srgb, var(--shell-ink-light) 65%, transparent);
 		transform: translate(-50%, 50%);
 	}
 	.tick.datum {
 		width: 22px;
 		height: 2.5px;
-		background: var(--shell-white);
+		background: var(--shell-ink-light);
 	}
 	.knob {
 		position: absolute;
@@ -529,7 +529,7 @@
 		height: 8px;
 		border: 0;
 		border-radius: 50%;
-		background: var(--shell-white);
+		background: var(--shell-ink-light);
 	}
 	.add {
 		position: absolute;
@@ -542,8 +542,8 @@
 		transform: translateY(50%);
 		border: 0;
 		border-radius: 50%;
-		background: #11291fdd;
-		color: var(--shell-white);
+		background: color-mix(in srgb, var(--shell-forest) 87%, transparent);
+		color: var(--shell-ink-light);
 		cursor: pointer;
 	}
 	.snap {
@@ -553,8 +553,8 @@
 		width: max-content;
 		padding: 4px 6px;
 		border-radius: 5px;
-		background: #11291fdd;
-		color: var(--shell-white);
+		background: color-mix(in srgb, var(--shell-forest) 87%, transparent);
+		color: var(--shell-ink-light);
 	}
 	@media (pointer: coarse) {
 		.sheet {
@@ -577,7 +577,7 @@
 			padding: 4px;
 			box-sizing: content-box;
 			border-radius: 50%;
-			background: #11291fdd;
+			background: color-mix(in srgb, var(--shell-forest) 87%, transparent);
 		}
 	}
 </style>
