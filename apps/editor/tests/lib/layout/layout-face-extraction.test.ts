@@ -82,6 +82,81 @@ function refString(face: DerivedCandidateFace): string {
 	return face.boundary.map((ref) => `${ref.wallId}:${ref.direction}`).join(' ');
 }
 
+/**
+ * B1 regression probe: two triangular Rooms share `wall-d`, and the curved
+ * `wall-b` departs J0 at 50° while its chord runs at 20° toward J2. Chord
+ * ordering therefore inserts `wall-b` inside the A/D sector that belongs to
+ * the first Room, merging the two Rooms; departure-tangent ordering keeps it
+ * outside. J0 is where the walk decides between `wall-a` and `wall-d`.
+ */
+function curvedDepartureDocument(): LayoutDocumentWallFirst {
+	return {
+		units: 'meters',
+		formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION,
+		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
+		junctions: [
+			{ id: 'j-0', point: [0, 0] as LayoutVec2 },
+			{ id: 'j-1', point: [4, 0] as LayoutVec2 },
+			{ id: 'j-2', point: [10, 3.64] as LayoutVec2 },
+			{ id: 'j-3', point: [5, 4] as LayoutVec2 }
+		],
+		walls: [
+			{
+				id: 'wall-a',
+				startJunctionId: 'j-0',
+				endJunctionId: 'j-1',
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			},
+			{
+				id: 'wall-b',
+				startJunctionId: 'j-0',
+				endJunctionId: 'j-2',
+				thickness: 0.2,
+				height: 3,
+				centerline: {
+					kind: 'cubic-chain',
+					knots: [],
+					spans: [
+						{
+							handleOut: [3.8567, 4.5963] as LayoutVec2,
+							handleIn: [5.3015, 5.3501] as LayoutVec2
+						}
+					]
+				}
+			},
+			{
+				id: 'wall-c',
+				startJunctionId: 'j-1',
+				endJunctionId: 'j-3',
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			},
+			{
+				id: 'wall-d',
+				startJunctionId: 'j-3',
+				endJunctionId: 'j-0',
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			},
+			{
+				id: 'wall-e',
+				startJunctionId: 'j-2',
+				endJunctionId: 'j-3',
+				thickness: 0.2,
+				height: 3,
+				centerline: { kind: 'line' }
+			}
+		],
+		rooms: [],
+		openings: [],
+		objects: []
+	};
+}
+
 describe('candidate-face extraction (P23.8 / H3 §10)', () => {
 	it('extracts one bounded face for a single closed rectangle', () => {
 		const result = extractBoundaryCandidateFaces(RECT);
@@ -98,6 +173,16 @@ describe('candidate-face extraction (P23.8 / H3 §10)', () => {
 			[6, 4],
 			[0, 4]
 		]);
+	});
+
+	it('orders a Junction star by departure tangent, not by chord (B1)', () => {
+		const result = extractBoundaryCandidateFaces(curvedDepartureDocument());
+		expect(result.cutEdgeWallIds).toEqual([]);
+		expect(result.diagnostics).toEqual([]);
+		expect(result.faces).toHaveLength(2);
+		const refs = result.faces.map(refString);
+		expect(refs).toContain('wall-a:forward wall-c:forward wall-d:forward');
+		expect(refs).toContain('wall-b:reverse wall-d:reverse wall-e:reverse');
 	});
 
 	it('derives deterministic face keys independent of wall array order', () => {
