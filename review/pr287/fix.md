@@ -542,6 +542,35 @@ Committed on `claude/spatial-world-t1-planning-3f4013` after `18014c0d`:
 
 Non-browser verification at the implementation head: `npm run check --workspace @portfolio/editor` reports 0 errors (4 pre-existing Visitor warnings); the focused suites report 126/126 passing, including 8 new cases for the sheet Opening mapping (slide, both jambs, closed-seam wrap, minimum width, circumference refusal and edge tolerance). No full Playwright/E2E or bulk capture was run, by policy.
 
+### 9.2 Completion ledger (2026-11-09)
+
+**Done and committed**
+
+| Slice | Commit | State |
+|---|---|---|
+| S0 modifier transport + S2 move/Bend | `9f53c7e6` | Plain body drag moves the curved Wall; Meta/Ctrl captured at down adds a knot; hidden knots promote; active bend glyph; whole-network refusals. |
+| S3/S4 orientation + exact return | `428eff82` | Entry preserves orientation, no `face`; flip/scrub/peel make no camera request; Done restores the recorded pose and reading. |
+| S5a sheet fidelity | `c6c4f141` | Real Opening voids, seam-safe identity, door leaf, complete as-built frame, no doubled contours. |
+| S5b sheet Opening edits | `6b696aa1` | Press selects; body drag slides; jamb press within 12 CSS px resizes; display preview; one canonical `layout-opening-measure` commit; click without travel commits nothing; closed Walls wrap and allow seam-crossing widths. |
+| S6 alternatives | `b0b23f21` | `B`/Card Bend arm; Card peel at the 260 px mapping with magnetic stops; reduced-motion instant; no camera call. |
+| QA policy + status docs | `c10fec7d`, `2b3e1765` | Focused manual QA is the default; implementation limits recorded. |
+
+**Outstanding / not done**
+
+- **True sheet-edge peel:** the implemented peel is the Card affordance, not a drag at the developed sheet edge. No dog-ear drag tab exists.
+- **Touch long-press Bend:** not implemented. The Card's Bend action is the touch-visible alternative.
+- **Focused browser pass is incomplete:** a 4 m Wall was created through the Build typed-point path with a clean console, but no Opening could be placed. Without an Opening, Unfold, sheet Opening slide/resize, flip, Done, save/reload and visitor parity were not exercised in the browser.
+- **Full test suite, Playwright/E2E and bulk screenshot capture:** not run, by policy.
+- **Owner acceptance:** still pending; this branch is for review only, not merge.
+
+**Findings to triage (not fixed in Stage 2)**
+
+- With Wall 1 selected in its Card, `InkOpeningSnapshot.selectedHostId` remained `null` and **Place by offset** stayed disabled; the palette asks the creator to select a host but does not accept that selection. It is unclear whether this is intentional (stage face pick only) or a defect.
+- **Bring into view** did not recenter Wall 1: the Wall stayed at the right edge in both 3D and Plan. This may be a Plan-camera defect rather than an interaction defect.
+- A seam-crossing right jamb whose station exceeds `L` addresses the drawn strip end rather than wrapping to the far side; the canonical width commit itself is correct.
+- Jamb proximity is measured at the Opening's mid-height only, so a press near the sill/head of a tall narrow void may not enter resize mode.
+- Untracked `review/*.png` screenshots are intentionally excluded from commits.
+
 ## 10. Approve-to-build checklist
 
 - [x] Owner approved **D1**, **D2/D8 narrowed**, **D3**, **D5**, **D6** and **D7**; **D4** remains conditional on the repro.
