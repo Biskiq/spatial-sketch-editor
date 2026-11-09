@@ -111,9 +111,9 @@
 		inkSurface()?.controller.setReading(id);
 	}
 
-	function chooseWallMode(mode: 'line' | 'box'): void {
-		// A Box has no typed point, so an open point disclosure does not carry over.
-		if (mode === 'box' && disclosed === 'point') disclosed = null;
+	function chooseWallMode(mode: 'line' | 'box' | 'circle'): void {
+		// Box and Circle have no typed point, so an open point disclosure does not carry over.
+		if (mode !== 'line' && disclosed === 'point') disclosed = null;
 		inkSurface()?.controller.setWallMode(mode);
 	}
 
@@ -321,15 +321,16 @@
 				aria-disabled="true"
 				title="Round is not available yet"><ShellIcon name="round" size={16} /></button
 			>
-			{#each ['box', 'line'] as const as mode}
+			{#each ['box', 'line', 'circle'] as const as mode}
 				<button
 					type="button"
 					class="key"
 					role="radio"
-					aria-label={mode === 'box' ? 'Box' : 'Line'}
+					aria-label={mode === 'box' ? 'Box' : mode === 'circle' ? 'Circle' : 'Line'}
 					aria-checked={snapshot.wallMode === mode}
 					data-ink-wall-mode={mode}
-					onclick={() => chooseWallMode(mode)}><ShellIcon name={mode} size={16} /></button
+					onclick={() => chooseWallMode(mode)}
+				><ShellIcon name={mode === 'circle' ? 'round' : mode} size={16} /></button
 				>
 			{/each}
 			<button

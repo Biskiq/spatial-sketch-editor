@@ -32,6 +32,8 @@ import {
 	materializeLayoutSourceForCapture,
 	createLayoutCompileSession,
 	deriveLayoutWallRole,
+	isClosedWall,
+	readClosedWallCircle,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	lookupIndexedJunction,
@@ -1408,15 +1410,31 @@ export function layoutFacts(
 	if (subject.kind === 'wall') {
 		const wall = lookupIndexedWall(document, subject.id);
 		if (wall === undefined) return [];
-		return [
+		const facts: LayoutFact[] = [
 			{ label: 'Kind', value: 'Wall', fieldId: 'kind' },
 			{ label: 'Name', value: wall.name ?? '(unnamed)', fieldId: 'name' },
 			{ label: 'Height', value: formatMeters(wall.height), fieldId: 'height' },
-			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' },
-			// Format 6 — the role is derived from Room boundary membership, shown
-			// read-only because it follows geometry rather than a control.
-			{ label: 'Role', value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)`, fieldId: 'role' }
+			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' }
 		];
+		if (isClosedWall(wall)) {
+			const circle = readClosedWallCircle(document, wall.id);
+			if (circle !== null) {
+				facts.push(
+					{ label: 'Shape', value: 'Circular (radius edit only; cannot bend)', fieldId: 'shape' },
+					{ label: 'Radius', value: formatMeters(circle.radius), fieldId: 'radius' },
+					{ label: 'Diameter', value: formatMeters(circle.radius * 2), fieldId: 'diameter' },
+					{ label: 'Circumference', value: formatMeters(circle.radius * Math.PI * 2), fieldId: 'circumference' }
+				);
+			}
+		}
+		// Format 6 — the role is derived from Room boundary membership, shown
+		// read-only because it follows geometry rather than a control.
+		facts.push({
+			label: 'Role',
+			value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)`,
+			fieldId: 'role'
+		});
+		return facts;
 	}
 	if (subject.kind === 'opening') {
 		const opening = lookupIndexedOpening(document, subject.id);
@@ -1457,8 +1475,26 @@ export function layoutWritableFacts(
 	if (subject.kind === 'wall') {
 		const wall = lookupIndexedWall(document, subject.id);
 		if (wall === undefined) return [];
+		// A closed Wall owns radius/diameter writes instead of straight-Wall
+		// length/angle/coordinate solves. The values are exact metres read from the
+		// persisted 16-span chain, never a remembered gesture.
+		if (isClosedWall(wall)) {
+			const circle = readClosedWallCircle(document, subject.id);
+			const dimensions: LayoutWritableFact[] = [
+				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
+				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' }
+			];
+			if (circle !== null) {
+				dimensions.push(
+					{ id: 'radius', label: 'Radius', value: circle.radius, unit: 'm' },
+					{ id: 'diameter', label: 'Diameter', value: circle.radius * 2, unit: 'm' }
+				);
+			}
+			return dimensions;
+		}
 		const frame = wallFrame(document, subject.id);
-		// A curved Wall keeps every S04 scalar edit and gains no length/angle/rigid
+		// A curved open Wall keeps every S04 scalar edit and gains no length/angle/rigid
 		// field: those are straight-Wall solves and offering them would be an
 		// invitation the canonical planner has to refuse.
 		if (frame === null) {

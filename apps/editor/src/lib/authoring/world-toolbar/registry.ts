@@ -93,7 +93,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     stage: 'landed',
     summary: 'Draw a Wall chain; close a Room.',
     options: [
-      { label: 'Shape', options: [{ label: 'Line' }, { label: 'Box' }, { label: 'Arc', disabled: true }, { label: 'Circle', disabled: true }] },
+      { label: 'Shape', options: [{ label: 'Line' }, { label: 'Box' }, { label: 'Circle' }, { label: 'Arc', disabled: true }] },
       { label: 'Height', options: [{ label: '2.4' }, { label: '3.0' }, { label: '3.6' }] }
     ]
   },

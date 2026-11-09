@@ -66,8 +66,16 @@
 		)
 	);
 	const primaryFields = $derived.by(() => {
-		const ids = instrument?.subject.kind === 'wall' ? ['length', 'height'] : ['width', 'height'];
-		return ids.flatMap(id => ordinaryFields.filter(field => field.id === id));
+		// A closed Wall has no straight length/angle writer; its primary physical
+		// facts are radius and diameter, and both are exact Card edits.
+		const closedWall = ordinaryFields.some((field) => field.id === 'radius');
+		const ids =
+			instrument?.subject.kind === 'wall'
+				? closedWall
+					? ['radius', 'diameter', 'height']
+					: ['length', 'height']
+				: ['width', 'height'];
+		return ids.flatMap((id) => ordinaryFields.filter((field) => field.id === id));
 	});
 
 	function refresh(current = currentController): void {
