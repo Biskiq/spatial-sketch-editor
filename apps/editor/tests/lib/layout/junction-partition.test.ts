@@ -54,7 +54,7 @@ function scene(walls: WallSeed[]): LayoutDocumentWallFirst {
 	}
 	return {
 		units: 'meters',
-		formatVersion: 6,
+		formatVersion: 7,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 		walls: walls.map((wall): LayoutWall => {
@@ -166,7 +166,7 @@ describe('P23.15 correction — Junction partition and curved Junctions', () => 
 		]);
 		const documentValue: LayoutDocumentWallFirst = {
 			units: 'meters',
-			formatVersion: 6,
+			formatVersion: 7,
 			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [...junctionById].map(([id, point]) => ({ id, point })),
 			walls: [

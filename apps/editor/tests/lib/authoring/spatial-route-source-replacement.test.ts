@@ -491,7 +491,7 @@ describe('spatial route source replacement', () => {
 		const originalCanvas = stageCanvas();
 		const layout: LayoutDocumentWallFirst = {
 			units: 'meters',
-			formatVersion: 6,
+			formatVersion: 7,
 			floor: { id: 'floor', name: 'Floor', elevation: 0 },
 			junctions: [
 				{ id: 'j-1', point: [0, 0] },

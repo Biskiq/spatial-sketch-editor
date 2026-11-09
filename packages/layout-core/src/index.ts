@@ -28,6 +28,7 @@ export * from './layout-issue';
 export * from './layout-identity';
 export * from './layout-id-capture';
 export * from './layout-wall-first-codec';
+export * from './layout-closed-wall';
 export * from './layout-wall-first-precision';
 export * from './p2311-perf';
 export * from './layout-wall-first-types';
