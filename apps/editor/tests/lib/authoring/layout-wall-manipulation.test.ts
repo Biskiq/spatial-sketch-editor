@@ -1608,6 +1608,22 @@ describe('R217.S15 — gesture numeric entry', () => {
 		await eventually(() => Math.abs(opening().offset - (before.offset + 0.5)) < 0.05);
 		expect(opening().width).toBeCloseTo(before.width, 6);
 		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+
+		// Width is the other station edit: the right edge follows the same arc
+		// frame, so half a metre of curve adds half a metre of Opening width and
+		// leaves the offset where the slide put it.
+		settle(mounted.facade, 4);
+		const slid = opening();
+		const rightEdge = markCss('layout-opening-width-end');
+		const widened = curvedWallPointAt(frame, slid.offset + slid.width + 0.5)!.point;
+		const widenedCss = stageCss(mounted.facade, widened);
+		const widthEvaluation = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: rightEdge, evaluationId: widthEvaluation }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: widenedCss, evaluationId: widthEvaluation });
+		mounted.facade.pointerIntent({ phase: 'up', css: widenedCss, evaluationId: widthEvaluation });
+		await eventually(() => Math.abs(opening().width - (slid.width + 0.5)) < 0.05);
+		expect(opening().offset).toBeCloseTo(slid.offset, 6);
+		expect(mounted.host.history()).toMatchObject({ depth: 4, position: 3 });
 	});
 
 	it('places a new Opening on a curved host from the Ink pointer reading', async () => {
