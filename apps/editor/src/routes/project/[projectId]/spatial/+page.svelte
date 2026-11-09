@@ -107,7 +107,8 @@ import {
 	type PlanEvaluation,
 	type PlanMembershipReason
 } from '@portfolio/layout-core';
-	import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -737,6 +738,47 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
 	let evaluation = $state<ViewportEvaluation | null>(null);
+	/**
+	 * C3/D14 — the single executor for unfold camera requests. The Card/store
+	 * supplies bounds and a look direction; the `face` pose and the animated
+	 * return are both computed and owned by camera-core through this facade. No
+	 * UI component writes the camera.
+	 */
+	$effect(() => {
+		wallUnfold.setCameraExecutor((request) => {
+			const stage = facade;
+			const current = stage?.evaluation() ?? null;
+			if (stage === null || current === null) return false;
+			const ticket = stage.inspectionTicket();
+			if (ticket === null) return false;
+			const clock = performance.now() / 1000;
+			if (request.kind === 'face') {
+				const camera = stage.camera.state();
+				wallUnfold.recordEntry({ pose: camera.pose, reading: camera.reading });
+				return (
+					stage.requestViewingIntent(
+						{ kind: 'face', bounds: request.bounds, look: request.look, rect: current.rect },
+						ticket,
+						clock
+					).kind === 'accepted'
+				);
+			}
+			return (
+				stage.requestViewingIntent(
+					{
+						kind: 'set-view',
+						eye: eyeOfInspectionPose(request.pose),
+						target: request.pose.target,
+						fovYDegrees: fovYDegreesOf(request.pose),
+						transition: true
+					},
+					ticket,
+					clock
+				).kind === 'accepted'
+			);
+		});
+		return () => wallUnfold.setCameraExecutor(null);
+	});
 	/**
 	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
 	 * session so the furniture re-renders; it is never part of the project source,

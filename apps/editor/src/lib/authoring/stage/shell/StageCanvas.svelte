@@ -40,6 +40,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
+	import StageWallDevelopment from './StageWallDevelopment.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
@@ -254,6 +255,9 @@ import StageMatGround from './StageMatGround.svelte';
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
 		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false} />
 	</T.Group>
+	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
+		not a second scene, and never a registered pick root. -->
+	<StageWallDevelopment {geometry} {datumMeters} />
 	<StageEntities
 		{scenePick}
 		{scene}

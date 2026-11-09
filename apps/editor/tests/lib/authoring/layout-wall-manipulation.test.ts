@@ -1946,8 +1946,13 @@ describe('R217.S15 — gesture numeric entry', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
-		// Straight Walls keep exactly the delete action: no curve vocabulary leaks in.
-		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual(['layout-wall-delete']);
+		// Straight Walls expose unfold entry and delete only: no curve vocabulary
+		// leaks in, and C3/D12 intentionally makes unfolding available on straight
+		// Walls too (the checkpoint-4 proof covers that geometry).
+		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual([
+			'layout-wall-delete',
+			'layout-wall-unfold'
+		]);
 
 		const evaluationId = mounted.facade.evaluationId()!;
 		const from = stageCss(mounted.facade, [4.5, 0]);

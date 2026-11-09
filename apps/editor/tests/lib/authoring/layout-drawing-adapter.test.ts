@@ -321,8 +321,13 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		const mounted = await mount();
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
 		const actions = stageCardActions(mounted.facade, subject);
-		expect(actions).toHaveLength(1);
-		const action = actions[0]!;
+		// C3/D12 adds the Wall's unfold entry beside deletion; deletion stays the
+		// destructive action and keeps its disclosure.
+		expect(actions.map((candidate) => candidate.id)).toEqual([
+			'layout-wall-delete',
+			'layout-wall-unfold'
+		]);
+		const action = actions.find((candidate) => candidate.id === 'layout-wall-delete')!;
 		expect(action).toMatchObject({ id: 'layout-wall-delete', destructive: true, adapterId: 'layout' });
 		// The words the creator reads before accepting name the real consequences:
 		// the hosted Opening, in the same undo step, and what happens to the Room.

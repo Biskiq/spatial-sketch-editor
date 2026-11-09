@@ -94,6 +94,8 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutCardFields from './layout/LayoutCardFields.svelte';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
 import { wallRefusalWords } from './layout/refusals';
@@ -1293,6 +1295,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			function commitBend(current: BendGesture, intent: NonNullable<BendGesture['intent']>): void {
+				// D13 — the sheet's centerline is display-only. A bend gesture that began
+				// before unfolding must not write the canonical chain.
+				if (wallUnfold.isActive(current.wallId)) return;
 				const snapshot = services.stage.snapshot();
 				void services.authoring.accept(
 					wallBendIntent({
@@ -1607,6 +1612,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				}
 				if (intent.phase === 'move') {
+					if (wallUnfold.isActive(active.wallId)) {
+						active.intent = null;
+						active.previewDocument = null;
+						active.refusal = WALL_UNFOLD_SHAPE_REFUSAL;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
 					if (!isPointerDrag(active.pressCss, intent.css)) {
 						active.intent = null;
 						active.previewDocument = null;
@@ -4198,6 +4210,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							? knots.findIndex((knot) => knot.id === activeKnot!.knotId)
 							: -1;
 						const runCurve = async (kind: 'delete' | 'straighten'): Promise<StageCardActionOutcome> => {
+							// D13 — centerline and knot shape edits are refused while unfolded,
+							// explicitly and with the same words the Stage uses.
+							if (wallUnfold.isActive(wallId)) {
+								return { kind: 'refused', message: WALL_UNFOLD_SHAPE_REFUSAL };
+							}
 							// A Card record can outlive the session state it was rendered from. A
 							// stale Remove must refuse, never fall through to the other shape action.
 							if (kind === 'delete') {
@@ -4239,9 +4256,50 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							run: () => runCurve('straighten')
 						});
 					}
+					// C3/D12 — unfold entry, scrub and exit are Card actions; there is no
+					// new toolbar. The session store owns the state and asks the route to
+					// present the `face`/`set-view` intents through the one Camera.
+					const compiledWall = services.stage
+						.snapshot()
+						.domain.geometry.walls.find((candidate) => candidate.wallId === wallId);
+					const unfoldActions: StageCardAction[] = compiledWall === undefined ? [] : wallUnfold.isActive(wallId)
+						? [
+								{
+									id: 'layout-wall-refold',
+									label: 'Refold Wall',
+									detail: 'Folds the sheet back to its canonical mesh and returns the view you entered from.',
+									run: async () => {
+										wallUnfold.exit(compiledWall);
+										services.stage.notifySurfaceChange();
+										return { kind: 'accepted' };
+									}
+								},
+								{
+									id: 'layout-wall-unfold-flip',
+									label: 'Flip Inside/Outside',
+									detail: 'Faces the sheet’s other side about the same anchor.',
+									run: async () => {
+										wallUnfold.flip(compiledWall);
+										services.stage.notifySurfaceChange();
+										return { kind: 'accepted' };
+									}
+								}
+							]
+						: [
+								{
+									id: 'layout-wall-unfold',
+									label: 'Unfold Wall',
+									detail: 'Opens this Wall as a flat sheet. Openings and height stay editable; the Card offers the scrub and Done.',
+									run: async () => {
+										wallUnfold.enter(compiledWall);
+										services.stage.notifySurfaceChange();
+										return { kind: 'accepted' };
+									}
+								}
+							];
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [...curveActions,
+						return [...unfoldActions, ...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -4252,6 +4310,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						];
 					}
 					return [
+						...unfoldActions,
 						...curveActions,
 						{
 							id: 'layout-wall-delete',

@@ -19,6 +19,7 @@
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createCardFieldsInstrument } from './adapter-support';
+	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
 
 	let {
 		services,
@@ -53,6 +54,19 @@
 	const selectionKey = $derived.by(() => {
 		const selection = services.stage.selection();
 		return selection === null ? null : `${selection.sourceKind}:${selection.sourceId}`;
+	});
+	/** The compiled Wall the selected subject names, for the unfold controls. */
+	const unfoldWall = $derived.by(() => {
+		const stage = services.stage;
+		// Pure Card controller tests mount a narrow fake stage; a missing read
+		// simply means there is no compiled Wall to offer unfold controls for.
+		if (typeof stage.snapshot !== 'function') return null;
+		const selection = stage.selection();
+		if (selection === null || selection.sourceKind !== 'wall') return null;
+		return (
+			stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === selection.sourceId) ??
+			null
+		);
 	});
 	const instrument = $derived.by(() => {
 		void selectionKey;
@@ -218,6 +232,8 @@
 					field
 				)}{/each}
 		</div>
+		<!-- C3/D12 — unfold entry, scrub and exit live in the Card's own writer. -->
+		{#if unfoldWall !== null}<LayoutWallUnfold wall={unfoldWall} />{/if}
 		{#if paused !== null}
 			<div class="paused" data-layout-paused>
 				<p>Paused after a reading change — {paused.label}</p>
