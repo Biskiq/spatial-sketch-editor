@@ -6,7 +6,7 @@
 	 */
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import { WORLD_ENVIRONMENT_CHOICES, worldEnvironmentLook } from '$lib/render/world-environment';
-	import ShellIcon from '../stage/shell/ShellIcon.svelte';
+	import WorldIcon from './WorldIcon.svelte';
 
 	let {
 		environment = 'paper',
@@ -70,10 +70,10 @@
 		title="Sky and light: the World's saved environment"
 		onclick={() => (open = !open)}
 	>
-		<ShellIcon name="sun" size={15} />
+		<WorldIcon name="sun" size={15} />
 		<span>{label}</span>
 		<small>{hour}</small>
-		<ShellIcon name="chevronDown" size={11} />
+		<WorldIcon name="chevron" size={11} />
 	</button>
 	{#if open}
 		<div class="popover" role="dialog" aria-label="Sky and light">

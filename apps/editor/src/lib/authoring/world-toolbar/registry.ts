@@ -88,7 +88,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'walls',
     label: 'Walls',
-    icon: 'wall',
+    icon: 'walls',
     family: 'build',
     stage: 'landed',
     summary: 'Draw a Wall chain; close a Room.',
@@ -164,7 +164,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'form',
     label: 'Form',
-    icon: 'familyForm',
+    icon: 'form',
     family: 'form',
     stage: 'planned',
     after: 'T1',
@@ -190,7 +190,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'terrace',
     label: 'Terrace',
-    icon: 'layers',
+    icon: 'terrace',
     family: 'form',
     stage: 'planned',
     after: 'T5',
@@ -203,7 +203,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'ground',
     label: 'Ground',
-    icon: 'familyLand',
+    icon: 'ground',
     family: 'land',
     stage: 'planned',
     after: 'T2',
@@ -216,7 +216,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'water',
     label: 'Water',
-    icon: 'material',
+    icon: 'water',
     family: 'land',
     stage: 'planned',
     after: 'T2',
@@ -242,7 +242,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'plants',
     label: 'Plants',
-    icon: 'leaf',
+    icon: 'plants',
     family: 'land',
     stage: 'planned',
     after: 'T2',
@@ -255,7 +255,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
   {
     id: 'trees',
     label: 'Trees',
-    icon: 'familyLand',
+    icon: 'plant-tree',
     family: 'land',
     stage: 'planned',
     after: 'T2',
@@ -287,7 +287,7 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     ]
   },
   { id: 'paint', label: 'Paint', icon: 'paint', family: null, stage: 'planned', after: 'T5', summary: 'Assign a material to a surface.' },
-  { id: 'erase', label: 'Erase', icon: 'eraser', family: null, stage: 'landed', summary: 'Remove a subject from the Stage.', shortcut: 'E' },
+  { id: 'erase', label: 'Erase', icon: 'erase', family: null, stage: 'landed', summary: 'Remove a subject from the Stage.', shortcut: 'E' },
   { id: 'measure', label: 'Measure', icon: 'measure', family: null, stage: 'landed', summary: 'Measure between two points.', shortcut: 'M' },
   {
     id: 'library',

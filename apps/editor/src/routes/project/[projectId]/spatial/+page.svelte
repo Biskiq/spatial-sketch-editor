@@ -3771,9 +3771,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					title="Measure (M)"
 					aria-label="Measure"
 					onclick={() => armWorldTool('measure')}
-				><WorldIcon name="measure" size={17} /></button>
+				><WorldIcon name="measure" size={18} /></button>
 				<button type="button" class="view-tool" disabled title="Slice is planned for T1" aria-label="Slice, planned">
-					<WorldIcon name="slice" size={17} />
+					<WorldIcon name="slice" size={18} />
 				</button>
 				{#if adapterServices !== null}
 					<SkyControl

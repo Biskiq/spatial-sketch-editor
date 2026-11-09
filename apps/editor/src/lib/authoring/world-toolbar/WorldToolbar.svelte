@@ -252,7 +252,7 @@
 			title="Select (V)"
 			onclick={() => onTool('select')}
 		>
-			<WorldIcon name="select" size={25} />
+			<WorldIcon name="select" size={26} hero />
 			<span class="kl">Select</span>
 			<kbd class="kk">V</kbd>
 		</button>
@@ -267,7 +267,7 @@
 				style:--key-acc={family.accent}
 				onclick={() => pressFamily(family)}
 			>
-				<WorldIcon name={family.icon} size={25} />
+				<WorldIcon name={family.icon} size={26} hero />
 				<span class="kl">{family.label}</span>
 				<span class="family-dots" aria-hidden="true">
 					{#each family.tools as id (id)}<i class:on={activeTool === id}></i>{/each}
@@ -284,7 +284,7 @@
 				title={tool.summary}
 				onclick={() => onTool(tool.id)}
 			>
-				<WorldIcon name={tool.icon} size={25} />
+				<WorldIcon name={tool.icon} size={26} hero />
 				<span class="kl">{tool.label}</span>
 				{#if tool.shortcut}<kbd class="kk">{tool.shortcut}</kbd>{/if}
 			</button>
@@ -298,7 +298,7 @@
 			title="Library (L)"
 			onclick={() => openLibrary('objects')}
 		>
-			<WorldIcon name="library" size={25} />
+			<WorldIcon name="library" size={26} hero />
 			<span class="kl">Library</span>
 			<kbd class="kk">L</kbd>
 		</button>
