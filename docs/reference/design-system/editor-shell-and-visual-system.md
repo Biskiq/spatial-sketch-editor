@@ -1333,6 +1333,16 @@ Acceptance assesses the promoted written contract and interaction outcomes. Refe
 support relative hierarchy, information homes and spatial grammar; literal pixels, fixture
 names/counts and demonstration mechanisms are not product contracts.
 
+## Stage state pill
+
+A long-running Stage reading that must survive a selection change carries one **state pill**, not
+a Card panel. It sits top-centre of the Stage in the dock's forest glass, with the gold reserved
+for its exit action. The unroll reading is the first use: reading name · face switch · **Put back**.
+The pill owns only what must outlive the selection — context, face and exit — and the amount stays
+in the Card so no value is duplicated. Slice, face and section readings inherit the same
+component rather than growing their own chrome.
+
+
 ## Design evidence
 
 The [World sheet](./world-interaction-sheet.html) and

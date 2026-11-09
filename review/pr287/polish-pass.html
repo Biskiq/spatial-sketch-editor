@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PR #287 — UX/UI polish pass</title>
+<style>
+:root{
+  --ink:#1b201c; --ink2:#4a524c; --ink3:#79817b; --paper:#e7eae4; --page:#f6f7f3; --field:#fbfbf9;
+  --hair:#e1e4de; --hair2:#cdd2ca; --gold:#d4ad45; --goldink:#6e520f; --goldtint:#f4e8c6;
+  --leaf:#4f8f6c; --leaftint:#e7f1ea; --forest:#11291f; --refuse:#c2513a; --cobalt:#2f5fd0;
+  --mono:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.5 -apple-system,'Inter','Segoe UI',system-ui,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:28px 20px 80px}
+h1{font:600 26px/1.2 Georgia,'Iowan Old Style',serif;margin:0 0 4px}
+h2{font:600 19px/1.25 Georgia,serif;margin:44px 0 8px;padding-top:14px;border-top:1px solid var(--hair2)}
+h3{font-size:14px;margin:22px 0 6px}
+p{margin:6px 0 10px;max-width:74ch}
+.sub{color:var(--ink2)}
+.eyebrow{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--goldink)}
+code,.mono{font:12px var(--mono)}
+code{background:#eceee8;padding:1px 4px;border-radius:4px}
+table{border-collapse:collapse;width:100%;margin:8px 0 14px;font-size:13px}
+th,td{text-align:left;vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--hair)}
+th{font:500 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);border-bottom-color:var(--hair2)}
+.wrap{overflow-x:auto}
+.tag{display:inline-block;font:500 10.5px var(--mono);padding:1px 6px;border-radius:99px;white-space:nowrap}
+.t-own{background:var(--goldtint);color:var(--goldink)} .t-bug{background:#f6dcd5;color:#8a2f1c}
+.t-ok{background:var(--leaftint);color:#2f6247} .t-p{background:#e4e7f6;color:#2b3f8f}
+.verdict{background:#fff;border:1px solid var(--hair2);border-left:3px solid var(--gold);border-radius:8px;padding:12px 16px;margin:14px 0}
+.verdict li{margin:4px 0}
+ul,ol{padding-left:20px;margin:6px 0 10px;max-width:76ch}
+ol li{margin:5px 0}
+.fig{background:var(--paper);border:1px solid var(--hair2);border-radius:10px;margin:10px 0 6px;position:relative;overflow:hidden}
+.fig svg{display:block;width:100%;height:auto;touch-action:none;user-select:none}
+.cap{font-size:12.5px;color:var(--ink2);margin:4px 0 14px;max-width:80ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:8px 12px;border-top:1px solid var(--hair2);background:#f1f3ee;font-size:12.5px;color:var(--ink2)}
+.bar button,.pill button{font:inherit;border:1px solid var(--hair2);background:var(--field);border-radius:6px;padding:3px 9px;cursor:pointer;color:inherit}
+.bar button[aria-pressed=true]{background:var(--forest);border-color:var(--forest);color:#eef1ec}
+.bar .status{font:12px var(--mono);color:var(--ink);margin-left:auto}
+.bar .who{font:500 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)}
+.bar .rowmock{display:none;align-items:center;gap:8px;background:#fff;border:1px solid var(--hair2);border-radius:8px;padding:3px 8px;color:var(--ink)}
+.bar .rowmock input{width:130px;accent-color:var(--leaf)}
+.bar .rowmock output{font:12px var(--mono);min-width:34px;text-align:right}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.panel{background:var(--paper);border:1px solid var(--hair2);border-radius:10px;padding:0;overflow:hidden}
+.panel svg{display:block;width:100%;height:auto}
+.panel b{display:block;font:500 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);padding:8px 10px 0}
+.panel small{display:block;padding:0 10px 9px;color:var(--ink2);font-size:12px}
+/* pill */
+.pill{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:none;align-items:center;gap:8px;white-space:nowrap;
+  background:rgba(17,41,31,.95);color:#eef1ec;border-radius:99px;padding:5px 6px 5px 12px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.pill.on{display:flex}
+.pill .name{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:#9fd3b6}
+.pill .seg{display:flex;background:rgba(255,255,255,.1);border-radius:99px;padding:2px}
+.pill .seg button{border:0;background:transparent;color:#cfd8d1;border-radius:99px;padding:2px 9px}
+.pill .seg button[aria-pressed=true]{background:#eef1ec;color:var(--forest)}
+.pill .put{background:var(--gold);color:#241d0b;border:0;border-radius:99px;padding:3px 11px;font-weight:600}
+/* card mock */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-items:start}
+.card{background:#fff;border:1px solid var(--hair2);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.08);font-size:12px;max-width:300px}
+.card .hd{padding:9px 12px 2px;display:flex;justify-content:space-between;color:var(--ink3);font:500 10px var(--mono);letter-spacing:.08em}
+.card .nm{padding:0 12px 6px;font:600 15px Georgia,serif}
+.card .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 12px 8px}
+.card .f span{display:block;font-size:10.5px;color:var(--ink2)}
+.card .f i{display:block;font:12px var(--mono);font-style:normal;border:1px solid var(--hair);border-radius:6px;padding:4px 6px;background:var(--field)}
+.card .f i.ro{border-style:dashed;background:transparent;color:var(--ink2)}
+.card .blk{border-top:1px solid var(--hair);padding:7px 12px}
+.card .ft{border-top:1px solid var(--hair);padding:6px 10px;display:flex;gap:4px;align-items:center}
+.card .ic{width:26px;height:26px;border:1px solid var(--hair);border-radius:6px;display:grid;place-items:center;background:var(--field)}
+.card .ic.on{background:var(--forest);border-color:var(--forest)}
+.card .ic.off{opacity:.4}
+.card .more{margin-left:auto;color:var(--ink2)}
+.fake{border:1px solid var(--hair);border-radius:6px;padding:2px 7px;background:var(--field);display:inline-block;margin:2px 2px 0 0}
+.lbl{font:500 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin:0 0 6px}
+.note{font-size:12px;color:var(--ink2);margin:6px 0 0}
+.track{position:relative;height:4px;background:var(--hair2);border-radius:2px;flex:1}
+.track::before{content:"";position:absolute;left:0;top:0;bottom:0;width:64%;background:var(--leaf);border-radius:2px}
+.track::after{content:"";position:absolute;left:64%;top:-4px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#fff;border:1.5px solid var(--ink)}
+.stops{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--ink3);margin:5px 44px 0 46px}
+.stops span:nth-child(2){margin-left:auto;margin-right:auto;transform:translateX(8px)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+
+<div class="eyebrow">PR #287 · design only · revision 2 · 2026-11-09 · head 1e48fe36</div>
+<h1>Wall marks, bending, unrolling and the Card — polish pass</h1>
+<p class="sub">Revision 2 folds in the owner's review of the first pass. Sections 1, 2, 4 and 5 are the approved direction, tightened. Section 3 (Unrolling) is rewritten. The document ends with one interaction contract (§8) and the implementation handoff (§9). No production code was changed.</p>
+
+<div class="verdict">
+<b>What changed in this revision.</b>
+<ul>
+<li><b>The sheet's own edge is the peel.</b> I withdraw my end knobs and the corner tab. Each free end of the unrolled sheet is the handle, drawn as an edge and nothing more.</li>
+<li><b>Fine adjustment stays in the Card,</b> cut from a seven-control panel to one row. I withdraw "a reading's controls never appear in the Card".</li>
+<li><b>The pill carries three things:</b> the reading's name, which face you are on, and Put back. No amount, so nothing is duplicated.</li>
+<li><b>Flatten-to-remove gets a snap and a preview</b> so removal is a visible, reversible choice (§2).</li>
+</ul>
+<b>Where I still push back.</b>
+<ul>
+<li><b>Entry cannot be a direct gesture.</b> On a rolled Wall the end is already the Junction handle (dragging it reshapes the Wall), and a circle has no end. So the Card-foot icon opens the reading, and direct manipulation starts from there.</li>
+<li><b>The face switch belongs in the pill, not the Card.</b> When an Opening on the sheet is selected the Card becomes the Opening's, and the Wall's amount row leaves with it. The amount survives that because the edge is still on the Stage. The face has no Stage gesture, so it needs the one surface that stays.</li>
+<li><b>A bare edge is weak on touch,</b> where nothing can hover. I keep one resting cue, a lift shadow under each free edge, and a 44 px hit band.</li>
+<li><b>A straight Wall should not enter the reading.</b> The same rule covers it (nothing to peel), so the icon stays in place and is disabled with "Already flat".</li>
+</ul>
+Three items need your ruling (§7). Everything else is decided here and listed as an assumption you can overturn.
+</div>
+
+<!-- ───────────────────────── 1 ───────────────────────── -->
+<h2>1 · Wall marks: the Wall is the handle <span class="tag t-ok">approved</span></h2>
+<p>A selected straight Wall shows five marks today (six in 3D); a selected curved Wall shows none. One rule for every Wall kind: contour, two ends, one size chip. The persistent move arrow is retired because a plain body drag already is the move.</p>
+
+<div class="grid3">
+<div class="panel"><b>Today · selected</b>
+<svg viewBox="0 0 300 120"><rect width="300" height="120" fill="#e7eae4"/>
+<rect x="40" y="54" width="200" height="12" fill="#d9b658" stroke="#6e520f"/>
+<circle cx="44" cy="60" r="5" fill="#fff" stroke="#1b201c"/><circle cx="236" cy="60" r="5" fill="#fff" stroke="#1b201c"/>
+<path d="M246 60h12m0-5l8 5-8 5z" fill="#fff" stroke="#1b201c"/>
+<path d="M140 44l6 8h-4v16h4l-6 8-6-8h4V52h-4z" fill="#fff" stroke="#1b201c"/>
+<path d="M92 53v14M88 53h8M88 67h8" stroke="#1b201c" stroke-width="1.6" fill="none"/></svg>
+<small>Five marks at once. The move arrow and the body are the same gesture.</small></div>
+<div class="panel"><b>Proposed · selected</b>
+<svg viewBox="0 0 300 120"><rect width="300" height="120" fill="#e7eae4"/>
+<rect x="40" y="54" width="200" height="12" fill="#d9b658" stroke="#6e520f"/>
+<circle cx="44" cy="60" r="5" fill="#fff" stroke="#1b201c"/><circle cx="236" cy="60" r="5" fill="#fff" stroke="#1b201c"/>
+<rect x="246" y="36" width="24" height="15" rx="7.5" fill="#fff" stroke="#1b201c"/><path d="M252 47l12-7m-12 7v-4m0 4h4m8-7v4m0-4h-4" stroke="#1b201c" fill="none"/></svg>
+<small>Contour, two ends, one size chip. The body moves; the cursor says so.</small></div>
+<div class="panel"><b>Proposed · size chip on</b>
+<svg viewBox="0 0 300 120"><rect width="300" height="120" fill="#e7eae4"/>
+<rect x="40" y="54" width="200" height="12" fill="#d9b658" stroke="#6e520f"/>
+<circle cx="44" cy="60" r="5" fill="#fff" stroke="#1b201c"/><circle cx="236" cy="60" r="5" fill="#fff" stroke="#1b201c"/>
+<rect x="246" y="36" width="24" height="15" rx="7.5" fill="#1b201c"/><path d="M252 47l12-7m-12 7v-4m0 4h4m8-7v4m0-4h-4" stroke="#fff" fill="none"/>
+<path d="M246 60h14m0-5l8 5-8 5z" fill="#fff" stroke="#1b201c"/>
+<path d="M52 40l5 7h-3v26h3l-5 7-5-7h3V47h-3z" fill="#fff" stroke="#1b201c"/>
+<rect x="196" y="76" width="62" height="16" rx="3" fill="#1b201c"/><text x="227" y="87.5" font-family="monospace" font-size="9.5" fill="#fff" text-anchor="middle">5.00 m</text></svg>
+<small>Length ray and thickness arrow on the cap (height stem in 3D). Session intent, off after reload.</small></div>
+</div>
+
+<div class="wrap"><table>
+<tr><th>State</th><th>Shown</th></tr>
+<tr><td>Hover, unselected</td><td>Leaf contour only</td></tr>
+<tr><td>Selected, pointer away</td><td>Contour · two end points · the size chip. A circle shows a radius ray from its centre instead of ends</td></tr>
+<tr><td>Selected, pointer on the Wall</td><td>+ its shape points (§2)</td></tr>
+<tr><td>Size chip pressed</td><td>+ length ray, thickness arrow on the cap, height stem (3D). Reuses the Object W·D·H chip</td></tr>
+<tr><td>Dragging anything</td><td>Only the held mark, its track and one Δ tag</td></tr>
+</table></div>
+
+<!-- ───────────────────────── 2 ───────────────────────── -->
+<h2>2 · Bending: points that appear when relevant <span class="tag t-ok">approved</span></h2>
+<p>No armed state. Shape points appear when the pointer reaches the selected Wall: solid discs are bend points, hollow discs (one per span) mean "pull here". Drag a hollow point to create a bend, a solid one to change it, the body anywhere else to move the Wall. ⌘/Ctrl-drag on the body stays as the expert path for a bend at an exact station.</p>
+
+<h3>Removing a bend point by dragging it flat</h3>
+<p>Removal has to be a choice, not something that happens when a small bend is released a little too low. The preview does that with four parts, all from the existing vocabulary:</p>
+<div class="grid3">
+<div class="panel"><b>1 · Pulling back</b>
+<svg viewBox="0 0 300 130"><rect width="300" height="130" fill="#e7eae4"/>
+<path d="M40 88 Q150 20 260 88" fill="none" stroke="#d9b658" stroke-width="10" opacity=".35"/>
+<path d="M40 88 Q150 60 260 88" fill="none" stroke="#fff" stroke-width="4.5"/><path d="M40 88 Q150 60 260 88" fill="none" stroke="#2f5fd0" stroke-width="2" stroke-dasharray="7 5"/>
+<circle cx="150" cy="74" r="6.4" fill="#d4ad45" stroke="#1b201c" stroke-width="1.3"/>
+<rect x="111" y="42" width="78" height="17" rx="3" fill="#1b201c"/><text x="150" y="54" font-family="monospace" font-size="10.5" fill="#fff" text-anchor="middle">Bend 0.35 m</text></svg>
+<small>Ordinary re-bend. Gold point, dashed proposal, offset tag.</small></div>
+<div class="panel"><b>2 · Snapped onto the line</b>
+<svg viewBox="0 0 300 130"><rect width="300" height="130" fill="#e7eae4"/>
+<path d="M40 88 Q150 20 260 88" fill="none" stroke="#d9b658" stroke-width="10" opacity=".35"/>
+<path d="M40 88 L260 88" fill="none" stroke="#fff" stroke-width="4.5"/><path d="M40 88 L260 88" fill="none" stroke="#2f5fd0" stroke-width="2" stroke-dasharray="7 5"/>
+<circle cx="150" cy="88" r="6.4" fill="rgba(255,255,255,.92)" stroke="#1b201c" stroke-width="1.3" stroke-dasharray="2.4 2"/>
+<rect x="92" y="103" width="116" height="17" rx="3" fill="#2f5fd0"/><text x="150" y="115" font-family="monospace" font-size="10.5" fill="#fff" text-anchor="middle">Remove bend point</text></svg>
+<small>The point jumps to the line and turns hollow. The proposal is the Wall without it.</small></div>
+<div class="panel"><b>3 · Released</b>
+<svg viewBox="0 0 300 130"><rect width="300" height="130" fill="#e7eae4"/>
+<path d="M40 88 L260 88" fill="none" stroke="#6e520f" stroke-width="12"/><path d="M41 88 L259 88" fill="none" stroke="#d9b658" stroke-width="10"/>
+<circle cx="44" cy="88" r="5" fill="#fff" stroke="#1b201c"/><circle cx="256" cy="88" r="5" fill="#fff" stroke="#1b201c"/>
+<circle cx="150" cy="88" r="5" fill="rgba(255,255,255,.9)" stroke="#1b201c" stroke-width="1.3" stroke-dasharray="2.4 2"/>
+<text x="150" y="52" font-family="monospace" font-size="10.5" fill="#4a524c" text-anchor="middle">one history entry · Undo puts it back</text></svg>
+<small>The solid point has become the hollow span point it started as.</small></div>
+</div>
+<div class="wrap"><table>
+<tr><th>Part</th><th>Rule</th><th>Why</th></tr>
+<tr><td>Snap</td><td>Within the Stage's existing snap distance of the line between the point's two neighbours, the point jumps onto that line</td><td>A visible click, the same as every other snap, marks the moment the outcome changes</td></tr>
+<tr><td>Preview</td><td>The proposal line draws the Wall as it will be <i>without</i> the point; the as-built Wall stays dimmed underneath; the held point turns hollow; the tag reads <code>Remove bend point</code></td><td>With several bends the result is not a straight line, so the true result is drawn rather than implied</td></tr>
+<tr><td>Hysteresis</td><td>The zone is left at about 1.5× the distance it is entered at</td><td>No flicker at the boundary</td></tr>
+<tr><td>Must leave first</td><td>A point can only be removed after it has been outside the zone in this drag. A new point released before it leaves is "no bend", with no history entry</td><td>Creating a bend never deletes it, and a click on a hollow point does nothing</td></tr>
+<tr><td>Reversible</td><td>One history entry. Undo restores the point at its position before the drag. Esc during the drag cancels</td><td>Uses what the editor already has</td></tr>
+<tr><td>Not red</td><td>Removal uses the cobalt proposal colour</td><td>Red means refused in the grammar; this is allowed</td></tr>
+</table></div>
+<p class="note"><b>One cost, accepted.</b> A bend point can no longer be dropped exactly on the line between its neighbours by dragging. That placement is rare (an inflection point between two bends) and remains available through the Card row's X and Z. Delete on the active point and the Card row's ✕ remove a point too.</p>
+
+<div class="fig" id="figA">
+<svg id="svgA" viewBox="0 0 760 300" role="img" aria-label="Interactive bend sketch"></svg>
+<div class="bar">
+  <span>Try: hover the Wall · pull a hollow point · drag it back to the line · Undo</span>
+  <label><input type="checkbox" id="touchA"> touch (tap the selected Wall again)</label>
+  <button id="undoA">Undo</button><button id="resetA">Reset</button>
+  <span class="status" id="statA">—</span>
+</div>
+</div>
+<p class="cap">Carried over from the first pass and updated with the snap, the hysteresis and Undo. Catmull–Rom stands in for the canonical cubic chain; it shows the gesture, not the geometry.</p>
+
+<!-- ───────────────────────── 3 ───────────────────────── -->
+<h2>3 · Unrolling: grab the edge <span class="tag t-own">rewritten</span></h2>
+<p><b>What exists.</b> Card ⋯ → Unfold Wall jumps to Flat with no fit. All control is a Card panel: range, a help sentence, a dashed Peel button, then Flat · Half · Flip · Done. The sheet has no handle. With an Opening selected the panel is not mounted at all (<code>LayoutCardFields.svelte:59–71</code>), so the reading has no visible exit.</p>
+<p><b>The simplest model that holds for every Wall.</b> An unrolled sheet always has exactly one <i>pin</i>, where it stays attached to the real Wall, and two <i>free edges</i>. Grab a free edge and pull: the sheet opens until that edge is under the pointer. Push it back to the Wall and it rolls up.</p>
+
+<div class="grid3">
+<div class="panel"><b>Straight</b>
+<svg viewBox="0 0 300 120"><rect width="300" height="120" fill="#e7eae4"/>
+<path d="M50 70 L250 70" stroke="#6e520f" stroke-width="9"/><path d="M51 70 L249 70" stroke="#d9b658" stroke-width="7"/>
+<text x="150" y="44" font-family="monospace" font-size="10.5" fill="#4a524c" text-anchor="middle">Already flat</text></svg>
+<small>Nothing to peel. The Card-foot icon keeps its place and is disabled.</small></div>
+<div class="panel"><b>Curved, open</b>
+<svg viewBox="0 0 300 120"><rect width="300" height="120" fill="#e7eae4"/>
+<path d="M70 30 Q150 110 230 30" fill="none" stroke="#5d665f" stroke-width="1.4" stroke-dasharray="5 4"/>
+<path d="M52 70 L248 70" stroke="#3c423d" stroke-width="3"/>
+<path d="M52 61v18M248 61v18" stroke="#1b201c" stroke-width="3.2"/>
+<path d="M150 70v11" stroke="#1b201c" stroke-width="1.4"/><circle cx="150" cy="85" r="4.5" fill="#fff" stroke="#1b201c" stroke-width="1.4"/>
+<path d="M52 70 Q56 44 70 30M248 70 Q244 44 230 30" fill="none" stroke="#5d665f" stroke-width="1" stroke-dasharray="1.5 4"/></svg>
+<small>Plan view. The free edges are the Wall's own ends. Dotted: the way home.</small></div>
+<div class="panel"><b>Closed</b>
+<svg viewBox="0 0 300 120"><rect width="300" height="120" fill="#e7eae4"/>
+<circle cx="150" cy="46" r="24" fill="none" stroke="#5d665f" stroke-width="1.4" stroke-dasharray="5 4"/>
+<path d="M150 18v8" stroke="#1b201c" stroke-width="2"/>
+<path d="M75 70 L225 70" stroke="#3c423d" stroke-width="3"/>
+<path d="M75 61v18M225 61v18" stroke="#1b201c" stroke-width="3.2"/>
+<path d="M150 70v11" stroke="#1b201c" stroke-width="1.4"/><circle cx="150" cy="85" r="4.5" fill="#fff" stroke="#1b201c" stroke-width="1.4"/></svg>
+<small>The free edges are the two sides of a cut opposite the pin. The cut never lands inside an Opening.</small></div>
+</div>
+
+<div class="fig" id="figB">
+<div class="pill" id="pillB">
+  <span class="name">Unrolled · Wall 1</span>
+  <span class="seg"><button id="sideOut" aria-pressed="true">Outside</button><button id="sideIn" aria-pressed="false">Room 1 side</button></span>
+  <button class="put" id="putB">Put back</button>
+</div>
+<svg id="svgB" viewBox="0 0 760 360" role="img" aria-label="Interactive unroll sketch"></svg>
+<div class="bar">
+  <span class="who">Card · <span id="whoB">Wall 1</span></span>
+  <button id="unrollB" aria-pressed="false" title="Card foot: Unroll">Unroll</button>
+  <span class="rowmock" id="amtB">Unroll <input type="range" id="rangeB" min="0" max="100" value="0" aria-label="Unroll amount"><output id="outB">0%</output><button id="halfB">Half</button><button id="flatB">Flat</button></span>
+  <span class="rowmock" id="opB">Width 0.95 m · Head 2.05 m · Station 2.40 m</span>
+  <span class="status" id="statB">—</span>
+</div>
+</div>
+<p class="cap">Interactive sketch, the one gesture worth trying: press Unroll, then drag either end edge of the sheet; push it back onto the Wall to put it back. Also: click an Opening (the Card row changes subject, the pill stays), drag the pin, switch face. Fixed oblique view; the camera never moves. The development is the production formula, drawn without thickness.</p>
+
+<div class="wrap"><table>
+<tr><th>Question</th><th>Resolution</th><th>Reason</th></tr>
+<tr><td><b>Entry</b></td><td>The Unroll icon at the Card's foot, on every Wall Card, in the same place. It rolls the sheet out to Flat about the pin</td><td>Not a Stage gesture: on the rolled Wall the end is the Junction handle and a circle has no end. The roll-out animation is what teaches that the ends are the moving part</td></tr>
+<tr><td><b>Peel</b></td><td>Drag either free edge. The amount is solved so the edge follows the pointer along its path home. Magnetic at Half and Flat. Back on the Wall: tag <code>Release to put back</code></td><td>The handle is the thing itself. The whole edge height is the target, larger than any knob</td></tr>
+<tr><td><b>Discoverability</b></td><td>At rest: the free edge is drawn at contour weight with a lift shadow. Hover or press: it turns leaf, the cursor becomes a grab hand, and a dotted track shows its path back to the Wall. No label, no bar</td><td>Edge, track and tag are existing grammar. The shadow is the one resting cue, for touch</td></tr>
+<tr><td><b>Fine adjustment</b></td><td>One row on the Wall Card: the existing range, its percentage, and Half and Flat as its two stops. The help sentence, Peel button, Flip and Done are deleted</td><td>Reuses the Card's range and <code>snapWallUnfoldAmount</code>. The range is also the keyboard path (arrows, Home, End)</td></tr>
+<tr><td><b>Stage pill</b></td><td>Reading name · face switch · <b>Put back</b>. Nothing else. It stays whatever is selected</td><td>It is the only surface that survives a selection change, so it holds exactly what must survive: context, face, exit</td></tr>
+<tr><td><b>Off-screen sheets</b></td><td>Entry makes one pan/zoom fit to the as-built Wall plus the Flat sheet, inside the Stage area not covered by the Card or Index. Because the fit covers the whole peel range, no camera motion is needed while peeling. After the creator navigates away, the Card's Bring into view frames the same box</td><td>D5 allows exactly this fit. Fitting the full range once is what keeps the peel camera-free</td></tr>
+<tr><td><b>Camera</b></td><td>Orientation is never changed by entry, peel, face or pin. Put back returns the entry pose only if the creator has not navigated since entry; otherwise the Camera stays where they left it</td><td>Today exit always restores the entry pose, which undoes deliberate navigation</td></tr>
+<tr><td><b>Pin</b></td><td>Default: the selected Opening's centre, else the Wall station under the view centre. Drag it along the as-built footprint to roll the sheet round the Wall. Display state only</td><td>The station under the view centre is the part of the Wall already facing the creator, so the sheet lands readable without turning the Camera</td></tr>
+<tr><td><b>Inside / Outside</b></td><td>Default: the face toward the Camera (in Plan, the Room side). Switching is a rigid half-turn of the sheet about the pin's vertical. The pill's two-part switch names both faces by what they bound (<code>Room 1 side</code> / <code>Outside</code>; free-standing: <code>This side</code> / <code>Far side</code>)</td><td>One extra display rotation after the development map; stations are untouched, so Opening edits still reach the planner in canonical stations. Camera untouched, as D6 requires</td></tr>
+<tr><td><b>Opening selection</b></td><td>Click an Opening on the sheet: it is selected and the Card becomes that Opening's Card, with its ordinary fields and no reading controls. Click the sheet elsewhere: the Wall is selected again. Its handles are the as-built Opening kit, placed through the development map</td><td>The Card stays about the selected subject. Press priority on the sheet: free edge, pin, selected Opening's handles, Opening body, sheet</td></tr>
+<tr><td><b>Keyboard</b></td><td>Unroll icon and Put back are buttons; the Card range adjusts the amount; Esc cancels a held gesture, otherwise puts back</td><td>No gesture is the only path</td></tr>
+<tr><td><b>Touch</b></td><td>44 px hit band on each free edge and on the pin; the lift shadow replaces hover; no long-press anywhere</td><td>Removes the outstanding long-press item in fix.md</td></tr>
+<tr><td><b>Plan view</b></td><td>Unroll works from above: the footprint straightens and stations and jambs are editable. Heights need a 3D view; Unroll does not switch view</td><td>Switching view would be a Camera change the reading must not make. Not checked live</td></tr>
+<tr><td><b>Exit and name</b></td><td>Put back (pill), Esc, pressing the Card-foot icon again, or rolling an edge home. One name everywhere: <b>Unroll</b></td><td>The words Unfold, Refold, Flip and Done leave the UI</td></tr>
+</table></div>
+<p class="note"><b>Pointer solve, for the implementer.</b> Sample the edge's screen position for amounts 0 to 1 and take the nearest to the pointer, biased toward the current amount. If that screen path is shorter than about 120 px (the edge travels toward the camera), fall back to the existing 260 px mapping along the dominant axis. Pure function, unit-testable.</p>
+
+<!-- ───────────────────────── 4 ───────────────────────── -->
+<h2>4 · Card: the selected subject, plus one row <span class="tag t-ok">approved, refined</span></h2>
+<div class="cards">
+<div>
+<p class="lbl">Today · circle, unrolled</p>
+<div class="card">
+<div class="hd"><span>WALL</span><span>••• ✕</span></div><div class="nm">Wall 1</div>
+<div class="row"><div class="f"><span>Radius</span><i>1.5 m</i></div><div class="f"><span>Diameter</span><i>3 m</i></div><div class="f"><span>Height</span><i>3 m</i></div></div>
+<div class="blk"><div style="display:flex;gap:8px;align-items:center">Unfold <div style="flex:1;height:4px;background:var(--leaf);border-radius:2px"></div><span class="mono">Flat</span></div>
+<div style="color:var(--ink2);font-size:10px;margin:4px 0">Entry keeps orientation; the sheet may pan, fit or zoom. Openings edit in place.</div>
+<div class="fake" style="display:block;text-align:center;border-style:dashed">⌃ Peel</div>
+<span class="fake">Flat</span><span class="fake">Half</span><span class="fake">Flip to Outside</span><span class="fake">Done</span></div>
+<div class="ft"><span class="ic">⛶</span><span class="more">More ⌄</span></div>
+</div>
+<p class="note">Seven controls. Entry is two levels down in ⋯.</p>
+</div>
+<div>
+<p class="lbl">Proposed · Wall selected, unrolled</p>
+<div class="card">
+<div class="hd"><span>WALL · bounds Room 1</span><span>••• ✕</span></div><div class="nm">Wall 1</div>
+<div class="row"><div class="f"><span>Radius</span><i>1.5 m</i></div><div class="f"><span>Diameter</span><i>3 m</i></div><div class="f"><span>Height</span><i>3 m</i></div></div>
+<div class="blk"><div style="display:flex;gap:10px;align-items:center">Unroll <div class="track"></div><span class="mono">64%</span></div>
+<div class="stops"><span></span><span>Half</span><span>Flat</span></div></div>
+<div class="ft"><span class="ic" title="Bring into view">⛶</span><span class="ic on" title="Unroll (active)"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 3h7a3 3 0 010 6H2z" fill="none" stroke="#eef1ec" stroke-width="1.3"/><path d="M9 9a2 2 0 100-3" fill="none" stroke="#eef1ec" stroke-width="1.3"/></svg></span><span class="more">More ⌄</span></div>
+</div>
+<p class="note">One row, present only while this Wall is unrolled. Half and Flat are the range's stops, not extra buttons.</p>
+</div>
+<div>
+<p class="lbl">Proposed · Opening selected on the sheet</p>
+<div class="card">
+<div class="hd"><span>WALL 1 › OPENING</span><span>••• ✕</span></div><div class="nm">Door 1</div>
+<div class="row"><div class="f"><span>Width</span><i>0.95 m</i></div><div class="f"><span>Head</span><i>2.05 m</i></div><div class="f"><span>Sill</span><i>0 m</i></div></div>
+<div class="row"><div class="f"><span>Station</span><i>2.40 m</i></div><div></div><div></div></div>
+<div class="ft"><span class="ic">⛶</span><span class="more">More ⌄</span></div>
+</div>
+<p class="note">The Opening's own Card, unchanged by the reading. The pill and the sheet's edges are still there.</p>
+</div>
+<div>
+<p class="lbl">Proposed · curved Wall, bend point active</p>
+<div class="card">
+<div class="hd"><span>WALL · free-standing</span><span>••• ✕</span></div><div class="nm">Wall 2</div>
+<div class="row"><div class="f"><span>Length</span><i class="ro">5.65 m</i></div><div class="f"><span>Height</span><i>3 m</i></div><div></div></div>
+<div class="blk" style="background:#fbf7ea"><div style="display:flex;justify-content:space-between;color:var(--goldink)"><span>Bend point 1 of 1</span><span>✕</span></div>
+<div class="row" style="padding:4px 0 0"><div class="f"><span>X</span><i>4.25 m</i></div><div class="f"><span>Z</span><i>−1.10 m</i></div><div></div></div></div>
+<div class="ft"><span class="ic">⛶</span><span class="ic"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 3h7a3 3 0 010 6H2z" fill="none" stroke="#1b201c" stroke-width="1.3"/><path d="M9 9a2 2 0 100-3" fill="none" stroke="#1b201c" stroke-width="1.3"/></svg></span><span class="more">More ⌄</span></div>
+</div>
+<p class="note">The bend-point row exists only while a point is active. Length stays as a read-only arc length.</p>
+</div>
+</div>
+<ul>
+<li><b>⋯ list for a Wall:</b> Straighten Wall (curved only) · Paint… · Present in Experience · Erase. Bend Wall, Unfold, Refold, Flip and Remove bend point leave it; each has a better home above. Working rows come before "Soon" rows.</li>
+<li><b>More:</b> Bend points, Length, Circumference and Shape are facts, not Relations. Move them under a Shape heading.</li>
+</ul>
+
+<!-- ───────────────────────── 5 ───────────────────────── -->
+<h2>5 · Workspace coherence <span class="tag t-ok">approved</span></h2>
+<ul>
+<li><b>One pill component.</b> Top-centre of the Stage, forest glass like the dock, gold only on Put back. Slice, Face and Section inherit it later.</li>
+<li><b>Stage safe area.</b> Every fit targets the Stage minus the Card and Index.</li>
+<li><b>Colour roles.</b> The sheet is World Paper with the quiet grid; ochre only on the contour and the selected Opening. Today the whole sheet is selection ochre, so a selected Opening has nowhere to go.</li>
+<li><b>Context.</b> Other architecture drops to the quiet reference treatment while a sheet is out, so a sheet crossing a neighbour reads as a reading, not a collision.</li>
+<li><b>Sheet furniture.</b> Pin, the two free edges, a station ruler on the bottom edge, the face name once. Registration lines only while partly unrolled. No sentences on the Stage.</li>
+<li><b>Motion.</b> Shape points 120 ms; half-turn 250 ms; roll 350 ms; all instant under reduced motion.</li>
+</ul>
+
+<!-- ───────────────────────── 6 ───────────────────────── -->
+<h2>6 · P0 mechanical defects <span class="tag t-bug">bugs, not design</span></h2>
+<p>Observed in the running editor at this head unless marked "code". Nothing in §8 depends on leaving these in place, and none needs a ruling.</p>
+<div class="wrap"><table>
+<tr><th>#</th><th>Defect</th><th>Evidence</th></tr>
+<tr><td>B1</td><td>Unroll entry performs no fit; the sheet leaves the viewport and passes under the Card</td><td>Observed. <code>wall-unfold-store.svelte.ts</code> issues only the return request</td></tr>
+<tr><td>B2</td><td>The anchor uses the sample nearest the camera <i>eye</i>, not the view-centre station</td><td>Code, <code>layout.adapter.ts:4457–4469</code>; contradicts fix.md §5.1</td></tr>
+<tr><td>B3</td><td>The circle's radius disc stays drawn while unrolled, although shape edits are refused</td><td>Observed; the closed-Wall branch of <code>markDescriptors</code> has no unfold check</td></tr>
+<tr><td>B4</td><td>A new bend is not shown active after release</td><td>Observed; <code>activeKnot</code> is set at <code>:1818</code>, so the drawn id likely differs from the committed one (hypothesis)</td></tr>
+<tr><td>B5</td><td><code>B</code> does nothing on a straight Wall, so the first bend has no keyboard path</td><td>Code, <code>keyIntent</code> gate at <code>:4552</code></td></tr>
+<tr><td>B6</td><td>A curved Wall publishes no end points; its ends cannot be dragged</td><td>Code, curved branch of <code>markDescriptors</code>. Verify planner support (fix.md H3) first</td></tr>
+<tr><td>B7</td><td>Default face is Inside even when the camera is outside the Room</td><td>Observed</td></tr>
+<tr><td>B8</td><td>Circle Card shows <code>Circumference 9.424777960769378 m</code> and <code>Bend points 15</code></td><td>Observed. The 16-span encoding leaks; the fact row is unformatted</td></tr>
+<tr><td>B9</td><td>Curved Wall bodies are visibly faceted at tight bends in Plan</td><td>Observed</td></tr>
+<tr><td>B10</td><td>Wall names renumber: "Wall 1" became "Wall 2" after a circle was drawn</td><td>Observed once; triage, may be intended</td></tr>
+<tr><td>B11</td><td>Unfold is offered and enters on a straight Wall</td><td>Observed in ⋯</td></tr>
+<tr><td>B12</td><td>With an Opening selected during the reading, the Card's controls are not mounted and no exit is visible</td><td>Code, <code>LayoutCardFields.svelte:59–71</code>; not exercised live</td></tr>
+<tr><td>B13</td><td>Exit always restores the entry Camera pose, even after the creator has navigated</td><td>Code, <code>#requestReturn</code> in the store</td></tr>
+<tr><td>—</td><td>Still open from fix.md §9.2: jamb proximity only at mid-height; seam-crossing jamb addresses the strip end; Place by offset disabled with a host selected; Bring into view does not recentre</td><td>fix.md</td></tr>
+</table></div>
+
+<!-- ───────────────────────── 7 ───────────────────────── -->
+<h2>7 · What still needs the owner</h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>Decision</th><th>My recommendation</th><th>If you say no</th></tr>
+<tr><td>1</td><td>Where the face switch lives</td><td><b>The pill.</b> It is the only surface present when an Opening is selected, and the face is the reading's context, shown once</td><td>A second Card row on the Wall Card. The face then cannot be changed while an Opening is selected</td></tr>
+<tr><td>2</td><td>Unroll on a straight Wall</td><td><b>Icon in place, disabled, "Already flat".</b> Same rule as every Wall; nothing to peel</td><td>Let it enter as a trivial reading (already Flat) so the face half-turn and sheet Opening editing work on straight Walls too. Costs a mode that appears to do nothing</td></tr>
+<tr><td>3</td><td>Sign-off to amend approved documents with §8 as the text</td><td><b>One approval covers all four:</b> grammar Wall row (size chip, no move glyph, hollow span midpoint admitted, flatten-to-remove); fix.md D1 (armed Bend dropped); fix.md D6 (face = half-turn about the pin, camera-side default); plan D12 (the Card keeps one amount row; face and exit move to the pill). Tier 2 under the workflow</td><td>Tell me which clause to change; the rest can proceed</td></tr>
+</table></div>
+<p><b>Decided here, overturn if wrong (not gates).</b></p>
+<ul>
+<li>The Opening's Card carries no reading controls. I read "keep the Card focused on the selected subject" this way.</li>
+<li>Put back restores the entry Camera pose only if the creator has not navigated since.</li>
+<li>The removal zone is the Stage's existing snap distance; a point cannot be dropped exactly on the line by dragging.</li>
+<li>⌘/Ctrl-drag stays as the unadvertised expert bend. <code>B</code> shows shape points and focuses the first.</li>
+<li>The pin is draggable, but ships last (P3); until then it is a fixed mark.</li>
+<li>Two follow-ons stay out of #287: a square-on <i>Face</i> action through the Camera's existing <code>face</code> intent, and Ink placing an Opening directly on the sheet.</li>
+</ul>
+
+<!-- ───────────────────────── 8 ───────────────────────── -->
+<h2>8 · Recommended interaction contract</h2>
+<p>This is the text I recommend adopting. It replaces the Wall row of the spatial instrument grammar and the corresponding parts of fix.md §3 and §5.</p>
+
+<h3>A Wall at rest</h3>
+<ol>
+<li>A selected Wall shows its contour, its two end points and one size chip. A closed Wall shows a radius ray instead of end points. The rule is the same for straight, curved and closed Walls.</li>
+<li>Dragging the body moves the Wall rigidly. There is no move glyph; the track is drawn during the drag.</li>
+<li>The size chip toggles the length ray, the thickness arrow and, in 3D, the height stem. It is session state.</li>
+<li>During any drag only the held mark, its track and one signed Δ tag are drawn.</li>
+</ol>
+
+<h3>Bending</h3>
+<ol start="5">
+<li>Shape points appear while the pointer is on the selected Wall, or after a second tap on it (touch), or <code>B</code> (keyboard). Solid points are bend points; each span has one hollow point. They leave with the pointer unless a point is active.</li>
+<li>Dragging a hollow point creates a bend. Dragging a solid point changes it. ⌘/Ctrl-drag on the body bends at that exact station. Nothing arms a mode, on the Stage or in the Card.</li>
+<li>A bend point dragged to within the snap distance of the line between its neighbours snaps onto it. The point turns hollow, the proposal shows the Wall without it and the tag reads <code>Remove bend point</code>. Release removes it as one history entry; Undo restores it where it was before the drag.</li>
+<li>The removal zone is left at a larger distance than it is entered. A point must have been outside the zone during the drag before it can be removed; a new point released before that makes no bend and no history entry.</li>
+<li>Delete on the active point and ✕ on the Card's bend-point row also remove it. The row appears only while a point is active and holds its exact X and Z.</li>
+</ol>
+
+<h3>Unrolling</h3>
+<ol start="10">
+<li><b>Entry.</b> Every Wall Card has an Unroll icon at its foot. It is disabled with "Already flat" on a straight Wall. Pressing it rolls the sheet out to Flat.</li>
+<li><b>Framing.</b> Entry keeps the Camera's orientation and makes one pan/zoom fit to the as-built Wall plus the Flat sheet, inside the Stage safe area. Nothing else in the reading moves the Camera.</li>
+<li><b>Shape of the sheet.</b> A sheet has one pin and two free edges. On an open Wall the free edges are its ends. On a closed Wall they are the two sides of a cut opposite the pin; the cut never falls inside an Opening.</li>
+<li><b>Peel.</b> Dragging a free edge sets the unroll amount so the edge follows the pointer, with magnetic stops at Half and Flat. Returned to the Wall, the tag reads <code>Release to put back</code> and release ends the reading. Peeling writes no history.</li>
+<li><b>Edge affordance.</b> A free edge is drawn at contour weight with a lift shadow. On hover or press it turns leaf and shows its track home. Its hit band is at least 44 px on touch.</li>
+<li><b>Fine amount.</b> The Wall Card shows one Unroll row while that Wall is unrolled: a range with its percentage and Half and Flat as stops. The amount appears nowhere else.</li>
+<li><b>Pill.</b> While a Wall is unrolled the Stage shows one state pill: reading name, face switch, Put back. It does not depend on selection.</li>
+<li><b>Face.</b> The sheet opens showing the face toward the Camera (in Plan, the Room side). The face switch turns the sheet half a turn about the pin's vertical. Faces are named by what they bound. The Camera does not move.</li>
+<li><b>Pin.</b> The pin starts at the selected Opening's centre, else at the Wall station under the view centre. Dragging it along the as-built footprint rolls the sheet round the Wall. It is display state.</li>
+<li><b>Selection.</b> Clicking an Opening on the sheet selects it and the Card becomes that Opening's Card, with no reading controls. Clicking the sheet elsewhere selects the Wall. Opening handles on the sheet are the as-built kit placed through the development map, and every edit reaches the canonical planner in canonical stations. Edits to the Wall's own shape are refused while it is unrolled.</li>
+<li><b>Exit.</b> Put back, Esc with no gesture held, the Card-foot icon, or rolling an edge home. The Camera returns to its entry pose only if the creator has not navigated since entry.</li>
+<li><b>Words.</b> Unroll, Put back, pin, bend point. Unfold, Refold, Flip, Done and Peel are not UI copy.</li>
+</ol>
+
+<!-- ───────────────────────── 9 ───────────────────────── -->
+<h2>9 · Prioritised implementation handoff</h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>Slice</th><th>Scope (contract clauses)</th><th>Where</th><th>Needs</th></tr>
+<tr><td><span class="tag t-p">P0</span></td><td>Mechanical defects</td><td>B1–B5, B7, B8, B11–B13 and the four open fix.md items. B6 after H3 is verified. B9, B10 triage</td><td><code>wall-unfold-store</code>, <code>layout.adapter.ts</code> (<code>markDescriptors</code>, <code>keyIntent</code>, unfold action), <code>precision.ts</code>, <code>wall-unfold-pick.ts</code></td><td>Nothing; start now</td></tr>
+<tr><td><span class="tag t-p">P1</span></td><td>Pill, Card foot, Card row</td><td>10, 15, 16, 20, 21. Build the shell's state pill once. Unroll icon at the Card foot. Cut <code>LayoutWallUnfold.svelte</code> to the range row with Half and Flat as stops; delete the hint, Peel, Flip and Done. Rename</td><td>New shell pill component, <code>EditorCard.svelte</code> footer, <code>LayoutWallUnfold.svelte</code>, adapter Card actions</td><td>Decisions 1, 2, 3</td></tr>
+<tr><td><span class="tag t-p">P1</span></td><td>Wall mark disclosure</td><td>1–4. Ends for every Wall kind; retire the move glyph; size chip</td><td><code>markDescriptors</code>, <code>StageOverlay.svelte</code> (reuse the Object size-chip sticker)</td><td>Decision 3; B6</td></tr>
+<tr><td><span class="tag t-p">P1</span></td><td>Shape points and removal</td><td>5–9. Proximity reveal, hollow span points, snap-to-line removal with hysteresis and preview, plain Point glyph, Δ tag, Card bend-point row, remove armed Bend</td><td>Bend gesture and marks in <code>layout.adapter.ts</code>, <code>StageOverlay.svelte</code>, Card facts</td><td>Decision 3</td></tr>
+<tr><td><span class="tag t-p">P2</span></td><td>Edge peel</td><td>12–14. Free-edge hit band and affordance, pointer solve with the 260 px fallback, track, roll-home exit</td><td><code>wall-unfold.ts</code> (pure solver and tests), spatial route press routing, <code>StageWallDevelopment.svelte</code></td><td>P1 pill</td></tr>
+<tr><td><span class="tag t-p">P2</span></td><td>Faces</td><td>17. Camera-side default, half-turn about the pin, face names from Room derivation</td><td><code>wall-unfold.ts</code> (<code>flipWallUnfoldSide</code>), development display transform, pill</td><td>Decision 1</td></tr>
+<tr><td><span class="tag t-p">P2</span></td><td>Opening on the sheet</td><td>19. As-built Opening kit through the development map; delete the bespoke jamb rule; Card follows selection</td><td><code>wall-unfold-pick.ts</code>, Opening branch of <code>markDescriptors</code></td><td>Nothing</td></tr>
+<tr><td><span class="tag t-p">P3</span></td><td>Pin, cut and furniture</td><td>18, cut avoids Openings, ruler, face name, Paper sheet, quiet neighbours</td><td><code>wall-unfold-store</code>, <code>StageWallDevelopment.svelte</code></td><td>Nothing</td></tr>
+<tr><td><span class="tag t-p">Later</span></td><td>Follow-on claims</td><td>Square-on Face action; Ink Opening on the sheet</td><td>Camera <code>face</code> intent; Ink Opening host resolution</td><td>Separate claims</td></tr>
+</table></div>
+<p class="note">Every slice leaves the canonical planners, the development map and the one-command-one-history rule untouched. The reading stays display state: nothing in §8 serialises. Document edits ride with the P1 slices once decision 3 is given.</p>
+
+</main>
+
+<script>
+(() => {
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const el=(n,a={},t)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;return e};
+const pt=(svg,ev)=>{const r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal;return {x:(ev.clientX-r.left)*vb.width/r.width,y:(ev.clientY-r.top)*vb.height/r.height}};
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function segD(p,a,b){const dx=b.x-a.x,dy=b.y-a.y,l=dx*dx+dy*dy||1;const t=((p.x-a.x)*dx+(p.y-a.y)*dy)/l,tc=Math.max(0,Math.min(1,t));return {d:Math.hypot(p.x-(a.x+dx*tc),p.y-(a.y+dy*tc)),t,proj:{x:a.x+dx*tc,y:a.y+dy*tc}}}
+function tag(g,x,y,text,col='#1b201c'){const w=text.length*6.3+12;g.append(el('rect',{x:x-w/2,y:y-9,width:w,height:17,rx:3,fill:col}),el('text',{x,y:y+3.5,'text-anchor':'middle','font-family':'DM Mono,ui-monospace,Menlo,monospace','font-size':10.5,fill:'#fff'},text))}
+function grid(g,w,h){for(let x=40;x<w;x+=40)g.append(el('line',{x1:x,y1:0,x2:x,y2:h,stroke:'#d8dcd4','stroke-width':1}));for(let y=40;y<h;y+=40)g.append(el('line',{x1:0,y1:y,x2:w,y2:y,stroke:'#d8dcd4','stroke-width':1}))}
+
+/* ───────────── A · bend ───────────── */
+{
+const svg=document.getElementById('svgA'), stat=document.getElementById('statA'), touch=document.getElementById('touchA');
+const M=40, ZIN=9, ZOUT=15;
+let S;
+const init=()=>{S={ends:[{x:120,y:170},{x:640,y:170}],knots:[],sel:true,active:null,undo:[],ptr:null,drag:null,shown:false,msg:'Selected. Hover the Wall.'}};
+init();
+const all=(k=S.knots,e=S.ends)=>[e[0],...k,e[1]];
+function curve(P){const out=[];for(let i=0;i<P.length-1;i++){const p0=P[i-1]||P[i],p1=P[i],p2=P[i+1],p3=P[i+2]||P[i+1];for(let j=0;j<(i===P.length-2?17:16);j++){const t=j/16,t2=t*t,t3=t2*t;out.push({x:.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3),y:.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3)})}}return out}
+const mids=()=>{const c=curve(all());const m=[];for(let i=0;i<all().length-1;i++)m.push(c[i*16+8]);return m};
+const pathOf=c=>'M'+c.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join('L');
+function bodyDist(p){const c=curve(all());let m=1e9;for(let i=0;i<c.length-1;i++)m=Math.min(m,segD(p,c[i],c[i+1]).d);return m}
+const chord=(i,p)=>{const P=all();return segD(p,P[i],P[i+2])};
+const reveal=()=>S.sel&&(S.drag?.type==='knot'||S.active!==null||(touch.checked?S.shown:(S.ptr&&bodyDist(S.ptr)<34)));
+function hit(p){
+  if(!S.sel) return bodyDist(p)<10?{type:'select'}:null;
+  for(let i=0;i<S.knots.length;i++) if(dist(p,S.knots[i])<11) return {type:'knot',i};
+  if(reveal()){const m=mids();for(let i=0;i<m.length;i++) if(dist(p,m[i])<11) return {type:'mid',seg:i,at:m[i]};}
+  for(let i=0;i<2;i++) if(dist(p,S.ends[i])<11) return {type:'end',i};
+  if(bodyDist(p)<10) return {type:'body'};
+  return null;
+}
+function render(){
+  svg.replaceChildren();const g=el('g');svg.append(g);grid(g,760,300);
+  const D=S.drag, removing=D?.type==='knot'&&D.zone;
+  const shown=D&&D.moved?curve(all(D.base[1],D.base[0])):curve(all()), d=pathOf(shown), dim=D&&D.moved?0.35:1;
+  if(S.sel){g.append(el('path',{d,fill:'none',stroke:'#6e520f','stroke-width':12,'stroke-linejoin':'round',opacity:dim}),el('path',{d,fill:'none',stroke:'#d9b658','stroke-width':10,'stroke-linejoin':'round',opacity:dim}))}
+  else g.append(el('path',{d,fill:'none',stroke:'#262a26','stroke-width':10,'stroke-linejoin':'round'}));
+  if(D&&D.moved){const k=removing?S.knots.filter((_,j)=>j!==D.i):S.knots;const pd=pathOf(curve(all(k)));
+    g.append(el('path',{d:pd,fill:'none',stroke:'#fff','stroke-width':4.5,opacity:.9}),el('path',{d:pd,fill:'none',stroke:'#2f5fd0','stroke-width':2,'stroke-dasharray':'7 5'}))}
+  if(S.sel){
+    if(!D||D.type==='body'||D.type==='end') S.ends.forEach((e,i)=>{if(D?.type==='end'&&D.i!==i)return;g.append(el('circle',{cx:e.x,cy:e.y,r:5.2,fill:D?.type==='end'&&D.i===i?'#d4ad45':'#fff',stroke:'#1b201c','stroke-width':1.3,opacity:D?.type==='body'?.5:1}))});
+    if(reveal()&&!(D&&D.type!=='knot')){
+      if(!D) mids().forEach(m=>g.append(el('circle',{cx:m.x,cy:m.y,r:5,fill:'rgba(255,255,255,.9)',stroke:'#1b201c','stroke-width':1.3,'stroke-dasharray':'2.4 2'})));
+      S.knots.forEach((k,i)=>{const held=D?.type==='knot'&&D.i===i,act=S.active===i;
+        if(D&&!held) return;
+        g.append(el('circle',{cx:k.x,cy:k.y,r:held||act?6.4:5.2,fill:held&&removing?'rgba(255,255,255,.92)':held?'#d4ad45':'#fff',stroke:'#1b201c','stroke-width':act&&!held?2.6:1.3,'stroke-dasharray':held&&removing?'2.4 2':''}))});
+    }
+    if(D?.moved&&S.ptr){
+      if(D.type==='knot'){const k=S.knots[D.i],s=chord(D.i,k);tag(g,k.x,k.y+(removing?26:-22),removing?'Remove bend point':`Bend ${(s.d/M).toFixed(2)} m`,removing?'#2f5fd0':'#1b201c')}
+      if(D.type==='body'){const dx=(S.ends[0].x-D.base[0][0].x)/M,dz=(S.ends[0].y-D.base[0][0].y)/M;tag(g,S.ptr.x,S.ptr.y-22,`Δx ${dx>=0?'+':'−'}${Math.abs(dx).toFixed(2)} · Δz ${dz>=0?'+':'−'}${Math.abs(dz).toFixed(2)} m`)}
+      if(D.type==='end'){tag(g,S.ptr.x,S.ptr.y-22,`${(dist(S.ends[0],S.ends[1])/M).toFixed(2)} m`)}
+    }
+  }
+  stat.textContent=`${S.msg} · bend points ${S.knots.length} · history ${S.undo.length}`;
+}
+const snap=()=>JSON.parse(JSON.stringify([S.ends,S.knots]));
+const commit=(base,msg)=>{S.undo.push(base);S.msg=msg};
+const undo=()=>{const b=S.undo.pop();if(!b||S.drag)return;[S.ends,S.knots]=b;S.active=null;S.msg='Undone';render()};
+svg.addEventListener('pointerdown',ev=>{const p=pt(svg,ev),h=hit(p);S.ptr=p;
+  if(!h){S.sel=false;S.active=null;S.shown=false;S.msg='Nothing selected';return render()}
+  if(h.type==='select'){S.sel=true;S.msg='Selected';return render()}
+  svg.setPointerCapture(ev.pointerId);
+  const base=snap();
+  if(h.type==='mid'){S.knots.splice(h.seg,0,{x:h.at.x,y:h.at.y});S.drag={type:'knot',i:h.seg,isNew:true,armed:false,zone:false,base,start:p,moved:false}}
+  else if(h.type==='knot'){S.drag={type:'knot',i:h.i,isNew:false,armed:chord(h.i,S.knots[h.i]).d>ZOUT,zone:false,base,start:p,moved:false}}
+  else S.drag={type:h.type,i:h.i,base,start:p,moved:false};
+  render()});
+svg.addEventListener('pointermove',ev=>{const p=pt(svg,ev);S.ptr=p;const D=S.drag;
+  if(!D){const h=hit(p);svg.style.cursor=!h?'default':h.type==='body'?'move':h.type==='select'?'pointer':'grab';return render()}
+  if(dist(p,D.start)>3)D.moved=true; if(!D.moved)return;
+  const dx=p.x-D.start.x,dy=p.y-D.start.y;
+  if(D.type==='knot'){const c=chord(D.i,p),inner=c.t>.06&&c.t<.94,k=S.knots[D.i];
+    if(!D.armed&&c.d>ZOUT)D.armed=true;
+    if(D.armed){if(!D.zone&&c.d<ZIN&&inner)D.zone=true;else if(D.zone&&(c.d>ZOUT||!inner))D.zone=false}
+    if(D.zone){k.x=c.proj.x;k.y=c.proj.y}else{k.x=p.x;k.y=p.y}}
+  if(D.type==='body'){S.ends=D.base[0].map(e=>({x:e.x+dx,y:e.y+dy}));S.knots=D.base[1].map(e=>({x:e.x+dx,y:e.y+dy}))}
+  if(D.type==='end'){S.ends[D.i]={x:p.x,y:p.y}}
+  render()});
+const up=()=>{const D=S.drag;if(!D)return;S.drag=null;
+  if(D.type==='knot'){
+    if(D.zone&&D.moved){S.knots.splice(D.i,1);S.active=null;commit(D.base,'Bend point removed (Undo restores it)')}
+    else if(D.isNew&&!D.armed){S.knots=D.base[1];S.msg='No bend made'}
+    else if(D.moved){S.active=D.i;commit(D.base,D.isNew?'Bend added, point active':'Bend changed')}
+    else {S.active=D.i;S.msg='Bend point active (Delete removes)'}
+  } else if(D.type==='body'){ if(D.moved)commit(D.base,'Wall moved, shape kept'); else {S.active=null; if(touch.checked){S.shown=!S.shown;S.msg=S.shown?'Shape points shown':'Shape points hidden'}}}
+  else if(D.type==='end'&&D.moved)commit(D.base,'End moved');
+  render()};
+svg.addEventListener('pointerup',up);svg.addEventListener('lostpointercapture',up);addEventListener('pointerup',up);addEventListener('mouseup',up);
+svg.addEventListener('pointercancel',()=>{if(S.drag){[S.ends,S.knots]=S.drag.base;S.drag=null;S.msg='Cancelled';render()}});
+svg.addEventListener('pointerleave',()=>{if(!S.drag){S.ptr=null;render()}});
+addEventListener('keydown',ev=>{if(document.activeElement.tagName==='INPUT')return;
+  if((ev.key==='Delete'||ev.key==='Backspace')&&S.active!==null&&!S.drag){const b=snap();S.knots.splice(S.active,1);S.active=null;commit(b,'Bend point removed');render()}
+  if((ev.metaKey||ev.ctrlKey)&&ev.key.toLowerCase()==='z'){ev.preventDefault();undo()}
+  if(ev.key==='Escape'){if(S.drag){[S.ends,S.knots]=S.drag.base;S.drag=null;S.msg='Cancelled'}else{S.active=null;S.shown=false}render()}});
+document.getElementById('resetA').onclick=()=>{init();render()};document.getElementById('undoA').onclick=undo;touch.onchange=()=>{S.shown=false;render()};
+render();
+}
+
+/* ───────────── B · unroll ───────────── */
+{
+const svg=document.getElementById('svgB'), stat=document.getElementById('statB'), pill=document.getElementById('pillB');
+const range=document.getElementById('rangeB'), out=document.getElementById('outB'), bOut=document.getElementById('sideOut'), bIn=document.getElementById('sideIn');
+const amt=document.getElementById('amtB'), opRow=document.getElementById('opB'), who=document.getElementById('whoB'), unrollBtn=document.getElementById('unrollB');
+const R=2.2,H=2.4,L=2*Math.PI*R,s=46,cx=380,cy=205;
+const ops=[{st:2.4,w:.95,sill:0,head:2.05,name:'Door 1',row:'Width 0.95 m · Head 2.05 m · Station 2.40 m'},{st:-3.3+L,w:1.5,sill:.9,head:2.0,name:'Window 1',row:'Width 1.50 m · Sill 0.90 m · Head 2.00 m'}];
+const B={th:Math.PI/2,u:0,phi:0,drag:null,anim:null,hover:0,selOp:null,polys:[]};
+const P=(x,y,z)=>({x:cx+x*s,y:cy+z*s*.42-y*s*.92,z});
+const wrap=v=>((v%L)+L)%L;
+function dev(d,u=B.u,phi=B.phi){const th=B.th,A=[R*Math.cos(th),R*Math.sin(th)],t=[-Math.sin(th),Math.cos(th)],n=[-Math.cos(th),-Math.sin(th)],k=(1-u)/R;
+  let a,b;if(k<1e-5){a=d;b=0}else{a=Math.sin(k*d)/k;b=(1-Math.cos(k*d))/k}
+  let ox=t[0]*a+n[0]*b,oz=t[1]*a+n[1]*b; if(phi){const c=Math.cos(phi),sn=Math.sin(phi);[ox,oz]=[ox*c-oz*sn,ox*sn+oz*c]}
+  return [A[0]+ox,A[1]+oz]}
+const stationOf=d=>wrap(B.th*R+d);
+const edgeOf=(sgn,u)=>{const e=dev(sgn*L/2,u);return {b:P(e[0],0,e[1]),t:P(e[0],H,e[1]),m:P(e[0],H/2,e[1])}};
+function solid(sta){let bands=[[0,H]];for(const o of ops){const rel=wrap(sta-wrap(o.st));if(rel<o.w){bands=o.sill>0?[[0,o.sill],[o.head,H]]:[[o.head,H]]}}return bands}
+function inside(p,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)c=!c}return c}
+function render(){
+  svg.replaceChildren();const g=el('g');svg.append(g);
+  const open=B.u>0.012, quiet=open?0.35:1;
+  for(let i=-8;i<=8;i++){const a=P(i,0,-3.2),b=P(i,0,3.6);g.append(el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#d8dcd4'}))}
+  for(let z=-3;z<=3.5;z+=1){const a=P(-8,0,z),b=P(8,0,z);g.append(el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#d8dcd4'}))}
+  {const a=P(-7.4,0,-2.6),b=P(-3.6,0,-2.9),c=P(-3.6,2.4,-2.9),d=P(-7.4,2.4,-2.6);g.append(el('polygon',{points:[a,b,c,d].map(p=>p.x+','+p.y).join(' '),fill:'#e9dfc6',stroke:'#8d8672',opacity:quiet}))}
+  if(open){const ring=y=>{let d='';for(let i=0;i<=72;i++){const a=i/72*2*Math.PI,p=P(R*Math.cos(a),y,R*Math.sin(a));d+=(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)}return d};
+    for(const y of [0,H])g.append(el('path',{d:ring(y),fill:'none',stroke:'#5d665f','stroke-width':1.2,'stroke-dasharray':'5 4'}));
+    for(let i=0;i<8;i++){const a=i/8*2*Math.PI,p=P(R*Math.cos(a),0,R*Math.sin(a)),q=P(R*Math.cos(a),H,R*Math.sin(a));g.append(el('line',{x1:p.x,y1:p.y,x2:q.x,y2:q.y,stroke:'#5d665f','stroke-width':1,'stroke-dasharray':'3 4',opacity:.7}))}
+    const lp=P(R*Math.cos(Math.PI*1.22),H,R*Math.sin(Math.PI*1.22));g.append(el('text',{x:lp.x-6,y:lp.y-6,'font-size':10,'font-family':'monospace',fill:'#5d665f','text-anchor':'end'},'as built'))}
+  const N=96,quads=[],face=(B.phi<Math.PI/2)?'out':'in';
+  for(let i=0;i<N;i++){const d0=-L/2+L*i/N,d1=-L/2+L*(i+1)/N,a=dev(d0),b=dev(d1),sta=stationOf((d0+d1)/2);
+    for(const [y0,y1] of solid(sta)) quads.push({z:(a[1]+b[1])/2,pts:[P(a[0],y0,a[1]),P(b[0],y0,b[1]),P(b[0],y1,b[1]),P(a[0],y1,a[1])]})}
+  quads.sort((p,q)=>p.z-q.z);
+  const fill=!open?'#eadfc2':face==='out'?'#f6f0de':'#e6efe6';
+  for(const q of quads)g.append(el('polygon',{points:q.pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' '),fill,stroke:fill,'stroke-width':.6}));
+  const edge=(y,col,w)=>{let d='';for(let i=0;i<=N;i++){const dd=-L/2+L*i/N,a=dev(dd),p=P(a[0],y,a[1]);d+=(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)}g.append(el('path',{d,fill:'none',stroke:col,'stroke-width':w}))};
+  edge(0,open?'#3c423d':'#b8902c',open?1.2:1.6);edge(H,open?'#3c423d':'#b8902c',open?1.2:1.6);
+  if(open&&B.u>.3){for(let m=Math.ceil(-L/2);m<L/2;m++){const a=dev(m),p=P(a[0],0,a[1]),q=P(a[0],m%5===0?.22:.1,a[1]);g.append(el('line',{x1:p.x,y1:p.y,x2:q.x,y2:q.y,stroke:'#3c423d','stroke-width':1}))}}
+  B.polys=[];
+  ops.forEach((o,i)=>{let d0=wrap(o.st-B.th*R);if(d0>L/2)d0-=L;const pts=[[d0,o.sill],[d0,o.head],[d0+o.w,o.head],[d0+o.w,o.sill]].filter(q=>q[0]>-L/2&&q[0]<L/2).map(q=>{const a=dev(q[0]);return P(a[0],q[1],a[1])});
+    if(pts.length===4){const sel=open&&B.selOp===i;B.polys[i]=pts;
+      g.append(el(sel?'polygon':'polyline',{points:pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' '),fill:sel?'rgba(212,173,69,.22)':'none',stroke:sel?'#b8902c':open?'#3c423d':'#8d7a3a','stroke-width':sel?2.6:1.2}));
+      if(sel)pts.forEach(p=>g.append(el('rect',{x:p.x-3,y:p.y-3,width:6,height:6,fill:'#fff',stroke:'#1b201c','stroke-width':1})));
+      if(open&&B.u<.985){const a=dev(d0+o.w/2),p=P(a[0],0,a[1]),ang=(o.st+o.w/2)/R,q=P(R*Math.cos(ang),0,R*Math.sin(ang));g.append(el('line',{x1:p.x,y1:p.y,x2:q.x,y2:q.y,stroke:'#5d665f','stroke-dasharray':'2 3','stroke-width':1}))}}});
+  const A=dev(0),pinP=P(A[0],0,A[1]);
+  if(open){
+    for(const sgn of [-1,1]){const e=edgeOf(sgn,B.u),held=B.drag?.type==='end'&&B.drag.sgn===sgn,hot=held||B.hover===sgn;
+      if(hot){let d='';for(let i=0;i<=30;i++){const m=edgeOf(sgn,i/30).m;d+=(i?'L':'M')+m.x.toFixed(1)+' '+m.y.toFixed(1)}g.append(el('path',{d,fill:'none',stroke:'#3c423d','stroke-width':1.3,'stroke-dasharray':'1.5 4','stroke-linecap':'round'}))}
+      g.append(el('line',{x1:e.b.x+2.5,y1:e.b.y+2.5,x2:e.t.x+2.5,y2:e.t.y+2.5,stroke:'rgba(0,0,0,.22)','stroke-width':4,'stroke-linecap':'round'}),
+               el('line',{x1:e.b.x,y1:e.b.y,x2:e.t.x,y2:e.t.y,stroke:held?'#d4ad45':hot?'#4f8f6c':'#1b201c','stroke-width':hot?4.5:2.8,'stroke-linecap':'round'}))}
+    g.append(el('line',{x1:pinP.x,y1:pinP.y,x2:pinP.x,y2:pinP.y+13,stroke:'#1b201c','stroke-width':1.4}),el('circle',{cx:pinP.x,cy:pinP.y+17,r:5,fill:B.drag?.type==='pin'?'#d4ad45':'#fff',stroke:'#1b201c','stroke-width':1.4}));
+    if(B.u>.45){const q=P(A[0],H,A[1]);g.append(el('text',{x:q.x,y:q.y+15,'text-anchor':'middle','font-size':10,'font-family':'monospace','letter-spacing':'.08em',fill:'#5d665f'},face==='out'?'OUTSIDE FACE':'ROOM 1 SIDE'))}
+    if(B.drag?.type==='end')tag(g,B.drag.p.x,B.drag.p.y-20,B.u>.985?'Flat':B.u<.04?'Release to put back':Math.abs(B.u-.5)<.001?'Half':`${Math.round(B.u*100)}%`,B.u<.04?'#2f5fd0':'#1b201c');
+    if(B.drag?.type==='pin')tag(g,pinP.x,pinP.y+38,`pin ${stationOf(0).toFixed(2)} m`);
+  }
+  pill.classList.toggle('on',open);range.value=Math.round(B.u*100);out.textContent=B.u>.985?'Flat':Math.round(B.u*100)+'%';
+  bOut.setAttribute('aria-pressed',face==='out');bIn.setAttribute('aria-pressed',face==='in');
+  unrollBtn.setAttribute('aria-pressed',open);
+  const op=open&&B.selOp!==null?ops[B.selOp]:null;
+  who.textContent=op?`Wall 1 › ${op.name}`:'Wall 1';
+  amt.style.display=open&&!op?'flex':'none';opRow.style.display=op?'flex':'none';if(op)opRow.textContent=op.row;
+  unrollBtn.style.display=op?'none':'';
+  stat.textContent=open?`${Math.round(B.u*100)}% · ${face==='out'?'Outside':'Room 1 side'} · camera unchanged · history 0`:'rolled · press Unroll';
+}
+function animate(to,key,ms,done){cancelAnimationFrame(B.anim);const from=B[key];if(reduce||ms===0){B[key]=to;render();done&&done();return}
+  const t0=performance.now();const step=t=>{const e=Math.min(1,(t-t0)/ms),k=e*e*(3-2*e);B[key]=from+(to-from)*k;render();if(e<1)B.anim=requestAnimationFrame(step);else done&&done()};B.anim=requestAnimationFrame(step)}
+function putBack(){B.selOp=null;const roll=()=>animate(0,'u',380);if(B.phi>0.01)animate(0,'phi',240,roll);else roll()}
+function setFace(f){const cur=(B.phi<Math.PI/2)?'out':'in';if(f===cur)return;animate(f==='in'?Math.PI:0,'phi',260)}
+function solveU(p,sgn){let best=B.u,bd=1e9;for(let i=0;i<=200;i++){const u=i/200,q=edgeOf(sgn,u).m,d=Math.hypot(q.x-p.x,q.y-p.y)+Math.abs(u-B.u)*4;if(d<bd){bd=d;best=u}}
+  if(best>.965)best=1;if(Math.abs(best-.5)<.025)best=.5;return best}
+const edgeHit=p=>{for(const sgn of [-1,1]){const e=edgeOf(sgn,B.u);if(segD(p,e.b,e.t).d<14)return sgn}return 0};
+const pinHit=p=>{const A=dev(0),pin=P(A[0],0,A[1]);return Math.hypot(p.x-pin.x,p.y-(pin.y+17))<14};
+svg.addEventListener('pointerdown',ev=>{const p=pt(svg,ev);if(B.u<=.012)return;cancelAnimationFrame(B.anim);
+  const sgn=edgeHit(p);
+  if(sgn){B.drag={type:'end',sgn,p};svg.setPointerCapture(ev.pointerId);return render()}
+  if(pinHit(p)){B.drag={type:'pin',p};svg.setPointerCapture(ev.pointerId);return render()}
+  let hitOp=null;B.polys.forEach((poly,i)=>{if(poly&&inside(p,poly))hitOp=i});
+  B.selOp=hitOp;render()});
+svg.addEventListener('pointermove',ev=>{const p=pt(svg,ev),D=B.drag;
+  if(!D){if(B.u<=.012){svg.style.cursor='default';return}
+    const h=edgeHit(p),pin=!h&&pinHit(p),onOp=!h&&!pin&&B.polys.some(poly=>poly&&inside(p,poly));
+    svg.style.cursor=h||pin?'grab':onOp?'pointer':'default';if(h!==B.hover){B.hover=h;render()}return}
+  D.p=p;svg.style.cursor='grabbing';
+  if(D.type==='end')B.u=solveU(p,D.sgn);
+  if(D.type==='pin'){const x=(p.x-cx)/s,z=(p.y-17-cy)/(s*.42);B.th=Math.atan2(z,x)}
+  render()});
+const upB=()=>{const D=B.drag;if(!D)return;B.drag=null;B.hover=0;
+  if(B.u<.04){B.phi=0;B.u=0;B.selOp=null}
+  render()};
+svg.addEventListener('pointerup',upB);svg.addEventListener('pointercancel',upB);svg.addEventListener('lostpointercapture',upB);addEventListener('pointerup',upB);addEventListener('mouseup',upB);
+svg.addEventListener('pointerleave',()=>{if(!B.drag&&B.hover){B.hover=0;render()}});
+range.oninput=()=>{cancelAnimationFrame(B.anim);B.u=range.value/100;render()};
+document.getElementById('halfB').onclick=()=>animate(.5,'u',260);document.getElementById('flatB').onclick=()=>animate(1,'u',260);
+document.getElementById('putB').onclick=putBack;unrollBtn.onclick=()=>{if(B.u<.012)animate(1,'u',420);else putBack()};
+bOut.onclick=()=>setFace('out');bIn.onclick=()=>setFace('in');
+addEventListener('keydown',ev=>{if(ev.key==='Escape'&&B.u>0.012&&!B.drag)putBack()});
+render();
+}
+})();
+</script>
+</body>
+</html>

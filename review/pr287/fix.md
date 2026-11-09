@@ -461,7 +461,7 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 ### D1 — Reverse the body-drag grammar **[Approved]**
 
-**Decision:** plain body drag = rigid translate for straight **and** curved open Walls, through the canonical `LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove` path; ⌘/Ctrl or armed Bend = add a bend at the grabbed station. New bend active immediately.
+**Decision:** plain body drag = rigid translate for straight **and** curved open Walls, through the canonical `LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove` path; ⌘/Ctrl adds a bend at the grabbed station, and shape points appear from proximity or `B` with no armed mode. New bend active immediately. **Revision 2 (approved) drops the armed Bend state.** The arrow-key-only path is `B` to reveal shape points and the Card's bend point row.
 
 **Why:** the current grammar makes "move a bent Wall" impossible without adding another bend, and it is the direct cause of the owner's "no rigid move affordance" finding. The modifier is a deliberate shape action; moving is the common action.
 
@@ -503,7 +503,7 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 ### D6 — Inside/Outside without a camera spin **[Approved]**
 
-**Decision:** flip the sheet's reading direction about the anchor; camera orientation unchanged; label the displayed face. Demonstrate **both** Inside and Outside on the circular Wall. Deliberate departure from the donor's 180° move.
+**Decision:** the face switch is a rigid half-turn of the sheet about the pin's vertical; camera orientation unchanged; label the displayed face by what it bounds. Demonstrate **both** Inside and Outside on the circular Wall. Deliberate departure from the donor's 180° move. **Revision 2 (approved) places this switch in the Stage state pill**, because the pill survives an Opening selection while the Wall Card does not.
 
 **Why:** a camera spin loses the anchor and disorients; the sheet itself can communicate the side.
 
@@ -632,3 +632,33 @@ The demo deliberately labels its 2.5D approximation. It is the behavior contract
 - The demo's "Inside/Outside" reverses the sheet's station direction and draws a face chip; both sides are reachable and use the same Opening. Production must verify ruler/label consistency, canonical Opening identity and seam-crossing Openings before shipping.
 
 If any of these assumptions is rejected, the corresponding slice changes; the core recommendation (whole-network truth, rigid move, active bend, viewpoint-relative anchor, camera discipline, honest sheet) does not.
+
+---
+
+## 11. Revision 2 — owner approvals and implementation amendments (2026-11-09)
+
+The owner approved every design decision in [`polish-pass.html`](./polish-pass.html) revision 2 and
+authorised implementation on PR #287 (draft, unmerged). The approved interaction contract is §8 of
+that artifact; it replaces the Wall row of the spatial instrument grammar and the corresponding
+parts of §3 and §5 here. Two final amendments are part of the contract:
+
+1. **Straight Walls keep Unroll.** Unroll is available on every Wall. A straight Wall enters the
+   same measured Wall-sheet reading already flat, with editable Openings, and has **no artificial
+   unfolding animation**. Curved and circular Walls retain the physical peel.
+2. **Camera return is conditional.** Entry preserves orientation and may perform one bounded fit.
+   Peel, face change, pin and edits never move the Camera. Put back restores the entry pose only
+   when entry adjusted the Camera **and** the creator has not navigated since; after a deliberate
+   pan, zoom or orbit the creator's viewpoint is preserved.
+
+The revision also settles the gates this file left open:
+
+- **D1 amended:** no armed Bend state. Shape points appear from proximity (`B` on the keyboard,
+  a second tap on touch); ⌘/Ctrl remains the expert bend path.
+- **D6 amended:** the face switch is a rigid half-turn about the pin's vertical and lives in the
+  Stage state pill.
+- **D12 amended:** one Card-foot Unroll action, one Unroll amount row, one Stage pill carrying the
+  reading name, face and Put back. No `face` Camera intent (D14 superseded): entry uses the existing
+  `fit` intent and the reading composes no pose.
+- **D2 unchanged:** a bend point dragged onto the line between its neighbours shows a cobalt
+  proposal and `Remove bend point`, and release removes it as one history entry. Red remains
+  refusal-only.
