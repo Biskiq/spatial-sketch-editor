@@ -40,6 +40,7 @@ import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/sta
 import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
+import { inkSurface } from '$lib/authoring/adapters/layout/ink';
 import {
 	createLayoutInstrument,
 	type LayoutInstrument
@@ -1607,6 +1608,42 @@ describe('R217.S15 — gesture numeric entry', () => {
 		await eventually(() => Math.abs(opening().offset - (before.offset + 0.5)) < 0.05);
 		expect(opening().width).toBeCloseTo(before.width, 6);
 		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+	});
+
+	it('places a new Opening on a curved host from the Ink pointer reading', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		const bendEvaluation = mounted.facade.evaluationId()!;
+		const from = stageCss(mounted.facade, [4.5, 0]);
+		const to = stageCss(mounted.facade, [4.5, 0.7]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId: bendEvaluation }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId: bendEvaluation });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId: bendEvaluation });
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
+			return wall.centerline.kind === 'cubic-chain' && wall.centerline.knots.length === 1;
+		});
+		mounted.facade.camera.applyIntent({ kind: 'set-reading', reading: 'plan' }, 0);
+		settle(mounted.facade, 10);
+
+		const opened = mounted.facade.openContributedTask('layout-ink');
+		expect(opened.kind).toBe('opened');
+		inkSurface()!.controller.setReading('opening');
+		const frame = curvedWallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		const station = curvedWallPointAt(frame, 4.5)!;
+		const css = stageCss(mounted.facade, station.point);
+		const evaluationId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css, evaluationId });
+		await eventually(() => acceptedLayout(mounted.facade).openings.length === 2);
+		const created = acceptedLayout(mounted.facade).openings.find(
+			(opening) => opening.id !== mounted.openingId
+		)!;
+		expect(created.wallId).toBe(mounted.wallId);
+		// The hover named the sampled station, not the chord projection of it.
+		expect(created.offset).toBeGreaterThan(4);
+		expect(created.offset).toBeLessThan(5);
 	});
 
 	it('types a Junction X then Z with Tab and commits one shared-Junction edit', async () => {

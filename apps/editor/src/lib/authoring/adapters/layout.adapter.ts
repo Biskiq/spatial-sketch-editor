@@ -2429,6 +2429,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						preferredBest = { candidate, distance: hit.distanceMeters };
 					}
 				}
+				// Surface 3: a curved host has no chord plane to intersect. Resolve
+				// the pointer's datum point to its nearest arc-length station and
+				// offer that station, so placement lands on the curve rather than on
+				// the chord. Straight Walls keep the ray path above unchanged.
+				const datumPoint = pointerDatumPoint(adapterContext, css);
+				for (const data of document.walls) {
+					if (data.centerline.kind === 'line' || datumPoint === null) continue;
+					const station = wallStationFrame(document, data.id);
+					if (station === null) continue;
+					const distance = wallStationNearPoint(document, data.id, datumPoint, 2);
+					if (distance === null || distance < 0 || distance > station.length) continue;
+					const local = station.pointAt(distance);
+					if (local === null) continue;
+					const candidate = { wallId: data.id, offset: distance };
+					const proximity = Math.hypot(datumPoint[0] - local.point[0], datumPoint[1] - local.point[1]);
+					if (data.id === preferred) return candidate;
+					if (best === null || proximity < best.distance) best = { candidate, distance: proximity };
+				}
 				return (preferredBest ?? best)?.candidate ?? null;
 			}
 
