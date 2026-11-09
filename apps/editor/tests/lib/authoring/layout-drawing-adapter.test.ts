@@ -521,7 +521,7 @@ describe('R217.S10 — Ink Box', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
-	it('refuses a Line/Box switch during the first captured press', async () => {
+	it('refuses a Line/Box/Circle switch during the first captured press', async () => {
 		const mounted = await mount();
 		const controller = armInk(mounted.facade);
 		const evaluationId = mounted.facade.evaluationId()!;
@@ -529,7 +529,9 @@ describe('R217.S10 — Ink Box', () => {
 		mounted.facade.pointerIntent({ phase: 'down', css, evaluationId });
 		controller.setWallMode('box');
 		expect(inkSurface()?.snapshot().wallMode).toBe('line');
-		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line and Box/);
+		// C2 — Circle is now a third Wall mode, so the live-chain guard names all
+		// three rather than implying only Line and Box are switchable.
+		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line, Box and Circle/);
 		mounted.facade.pointerIntent({ phase: 'cancel', css, evaluationId });
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 	});
@@ -540,7 +542,7 @@ describe('R217.S10 — Ink Box', () => {
 		controller.typePoint('8', '0');
 		controller.setWallMode('box');
 		expect(inkSurface()?.snapshot().wallMode).toBe('line');
-		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line and Box/);
+		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line, Box and Circle/);
 	});
 });
 

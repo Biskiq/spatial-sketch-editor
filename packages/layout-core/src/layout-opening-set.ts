@@ -179,11 +179,18 @@ function validateIndexedOpeningRecords(
 	const issues: OpeningSetIssue[] = [];
 	const wallById = walls.wallById;
 	const openingsByWall = new Map<string, LayoutWallOpening[]>();
+	// One span per hosting Wall: the periodic overlap pass must reuse the span
+	// the fit pass already resolved. Recomputing it doubles every consumer
+	// kernel/wall call on documents with many hosted Openings (P23B.4).
+	const spanByWall = new Map<string, ReturnType<typeof wallFirstWallSpan>>();
 
 	for (const { opening, index } of entries) {
 		const path = `$.openings[${index}]`;
 		const wall = wallById.get(opening.wallId);
+		// Keep the historical per-record span call (P23B.4 freezes its count); the
+		// cached value is only so the periodic overlap pass below does not repeat it.
 		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
+		if (wall !== undefined) spanByWall.set(opening.wallId, span);
 		if (!wall || !span || !(span.length > OPENING_SET_EPSILON)) {
 			issues.push({
 				openingId: opening.id,
@@ -285,7 +292,7 @@ function validateIndexedOpeningRecords(
 	// the seam exactly as it overlaps one in the middle of the Wall.
 	for (const [wallId, openings] of openingsByWall) {
 		const wall = wallById.get(wallId);
-		const span = wall ? wallFirstWallSpan(document, wall, sampling, walls) : undefined;
+		const span = spanByWall.get(wallId);
 		const closedHost = wall !== undefined && isClosedWall(wall);
 		const sorted = [...openings].sort(
 			(a, b) => a.offset - b.offset || a.id.localeCompare(b.id)
