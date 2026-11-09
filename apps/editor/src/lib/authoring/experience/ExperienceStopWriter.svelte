@@ -405,7 +405,7 @@
 	}
 	.switch-row small {
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.switch {
 		position: relative;
@@ -437,7 +437,7 @@
 		display: grid;
 		gap: 3px;
 		margin-top: 8px;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		color: var(--shell-ink-3);
 	}
 	.prompt input {
@@ -453,7 +453,7 @@
 	.warn-note {
 		margin: 6px 0 0;
 		color: var(--shell-caution);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.conns {
 		display: grid;
@@ -588,7 +588,7 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		color: var(--shell-ink-3);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 	}
 
 	.num {
@@ -661,7 +661,7 @@
 		gap: 3px;
 		margin-top: 2px;
 		color: var(--shell-forest-raised);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		font-weight: 600;
 		/* One line even when the Card's scrollbar narrows the row beside the steppers. */
 		white-space: nowrap;
@@ -679,7 +679,7 @@
 	}
 	.c-sec h3 {
 		margin: 0 0 8px;
-		font: 650 12.5px/1.2 var(--shell-sans);
+		font: 650 var(--shell-text-body)/1.2 var(--shell-sans);
 		color: var(--shell-ink);
 	}
 	.c-foot-note {
@@ -688,7 +688,7 @@
 		align-items: baseline;
 		margin: 10px 0 0;
 		color: var(--shell-ink-3);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		line-height: 1.45;
 	}
 	.c-note {
@@ -713,7 +713,7 @@
 		border: 1px solid currentColor;
 		border-radius: 3px;
 		color: var(--shell-forest-raised);
-		font: 500 10px/1.4 var(--shell-mono);
+		font: 500 var(--shell-text-meta)/1.4 var(--shell-mono);
 		font-style: normal;
 		letter-spacing: 0.02em;
 	}
@@ -743,7 +743,7 @@
 	.stepper .value {
 		min-width: 26px;
 		text-align: center;
-		font: 600 11px var(--shell-mono);
+		font: 600 var(--shell-text-label) var(--shell-mono);
 	}
 
 	/* Connections */

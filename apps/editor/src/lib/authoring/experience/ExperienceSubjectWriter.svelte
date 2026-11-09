@@ -99,7 +99,7 @@
 	.writer {
 		display: flex;
 		flex-direction: column;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 	.sec {
 		display: flex;
@@ -111,7 +111,7 @@
 	.sec-title {
 		margin: 0;
 		color: var(--shell-ink-3);
-		font: 600 11px/1.3 var(--shell-sans);
+		font: 600 var(--shell-text-label)/1.3 var(--shell-sans);
 	}
 	.c-actions {
 		display: flex;
@@ -120,7 +120,7 @@
 	.c-note {
 		margin: 0;
 		color: var(--shell-ink-2);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		line-height: 1.45;
 	}
 	.reach-note,
@@ -181,7 +181,7 @@
 	.row-meta {
 		flex: none;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 
 	button {
@@ -195,7 +195,7 @@
 		background: var(--shell-surface-raised);
 		color: var(--shell-ink);
 		font: inherit;
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		cursor: pointer;
 	}
 	button:hover {

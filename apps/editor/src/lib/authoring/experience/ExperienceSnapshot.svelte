@@ -190,6 +190,6 @@
 		border-radius: 4px;
 		background: var(--shell-forest);
 		color: var(--shell-on-action);
-		font: 600 10px/1.4 var(--shell-mono);
+		font: 600 var(--shell-text-meta)/1.4 var(--shell-mono);
 	}
 </style>

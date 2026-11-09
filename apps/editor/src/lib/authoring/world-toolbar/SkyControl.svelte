@@ -219,7 +219,7 @@
 	}
 	.hour-row strong {
 		font-family: var(--shell-mono);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.hour-row .planned {
 		margin-left: auto;

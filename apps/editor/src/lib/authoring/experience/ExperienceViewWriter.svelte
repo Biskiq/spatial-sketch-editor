@@ -343,7 +343,7 @@
 		margin: 0;
 		padding: 0 12px 8px;
 		color: var(--shell-ink-2);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 	}
 	button.also-link {
 		display: inline;
@@ -362,7 +362,7 @@
 		display: flex;
 		flex-direction: column;
 		color: var(--shell-ink);
-		font-size: 12.5px;
+		font-size: var(--shell-text-body);
 		line-height: 1.45;
 	}
 	.c-actions {
@@ -382,7 +382,7 @@
 	.sec h3 {
 		margin: 0 0 8px;
 		color: var(--shell-ink);
-		font-size: 12.5px;
+		font-size: var(--shell-text-body);
 		font-weight: 650;
 	}
 	.hero {
@@ -396,7 +396,7 @@
 		border-radius: 10px;
 		background: rgb(17 41 31 / 0.8);
 		color: #e3eee7;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		font-weight: 500;
 		font-variant-numeric: tabular-nums;
 	}
@@ -413,7 +413,7 @@
 	.foot-note {
 		margin: 8px 0 0;
 		color: var(--shell-ink-3);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 	}
 	.entries {
 		display: flex;
@@ -460,7 +460,7 @@
 		border-radius: 10px;
 		background: var(--shell-forest);
 		color: var(--shell-on-action);
-		font: 600 11px/1 var(--shell-mono);
+		font: 600 var(--shell-text-label)/1 var(--shell-mono);
 		font-variant-numeric: tabular-nums;
 	}
 	.chev {
@@ -484,7 +484,7 @@
 		height: 26px;
 		padding: 0 10px;
 		border-radius: 13px;
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		font-weight: 600;
 	}
 	.badge.def {
@@ -507,7 +507,7 @@
 		background: var(--shell-card);
 		color: var(--shell-ink);
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		font-weight: 500;
 		white-space: nowrap;
 		cursor: pointer;
@@ -531,7 +531,7 @@
 	.tag-mono {
 		margin-left: 4px;
 		color: var(--shell-ink-3);
-		font: 500 10px var(--shell-mono);
+		font: 500 var(--shell-text-meta) var(--shell-mono);
 	}
 	.seg {
 		display: inline-flex;
@@ -551,7 +551,7 @@
 		border-radius: 5px;
 		background: transparent;
 		color: var(--shell-ink-2);
-		font: 500 11px var(--shell-sans);
+		font: 500 var(--shell-text-label) var(--shell-sans);
 		cursor: pointer;
 	}
 	.seg-btn[aria-pressed='true'] {

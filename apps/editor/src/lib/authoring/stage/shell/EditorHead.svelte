@@ -767,7 +767,7 @@
 		white-space: nowrap;
 	}
 	.chevron {
-		font: 11px system-ui;
+		font: var(--shell-text-label) var(--shell-sans);
 		color: var(--shell-ink-quiet);
 	}
 	.project-menu {
@@ -793,7 +793,7 @@
 	.project-id {
 		margin: 0;
 		color: var(--shell-ink-quiet);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		overflow-wrap: anywhere;
 	}
 	.lens {
@@ -895,7 +895,7 @@
 		padding: 0;
 		background: transparent;
 		color: inherit;
-		font: 12.5px var(--shell-sans);
+		font: var(--shell-text-body) var(--shell-sans);
 	}
 	.find input::placeholder {
 		color: var(--shell-ink-quiet);
@@ -905,7 +905,7 @@
 	}
 	kbd {
 		color: var(--shell-ink-quiet);
-		font: 10px var(--shell-mono);
+		font: var(--shell-text-meta) var(--shell-mono);
 		white-space: nowrap;
 	}
 	.find-body {
@@ -948,13 +948,13 @@
 	}
 	.find-verb {
 		flex: none;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		color: var(--shell-ink-3);
 	}
 	.find-group {
 		padding: 6px 8px 2px;
 		color: var(--shell-ink-3);
-		font-size: 10px;
+		font-size: var(--shell-text-meta);
 		text-transform: uppercase;
 		letter-spacing: 0.07em;
 	}

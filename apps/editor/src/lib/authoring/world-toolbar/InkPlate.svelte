@@ -222,9 +222,10 @@
 	.pg.end {
 		margin-left: auto;
 	}
+	/* Miniature marks stay below the UI scale. */
 	.gl {
-		color: var(--ld-ink-3);
-		font: 400 9.5px/1 var(--ld-mono);
+		color: var(--shell-ink-3);
+		font: 400 9.5px/1 var(--shell-mono);
 		letter-spacing: 0.02em;
 		white-space: nowrap;
 	}
@@ -244,16 +245,16 @@
 		border: 0;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--ld-ink-2);
+		color: var(--shell-ink-2);
 		cursor: pointer;
 	}
 	.opt:hover:not([aria-pressed='true']) {
 		background: var(--shell-hover);
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.opt[aria-pressed='true'] {
-		background: var(--ld-forest);
-		color: var(--ld-light);
+		background: var(--shell-forest);
+		color: var(--shell-ink-light);
 	}
 	.opt:disabled {
 		opacity: 0.55;
@@ -266,22 +267,23 @@
 		border: 0;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--ld-ink-2);
-		font: 500 11.5px/1 var(--ld-sans);
+		color: var(--shell-ink-2);
+		font: 500 var(--shell-text-utility)/1 var(--shell-sans);
 		white-space: nowrap;
 		cursor: pointer;
 	}
 	.act:hover {
 		background: var(--shell-hover);
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.act:disabled {
-		color: var(--ld-ink-3);
+		color: var(--shell-ink-3);
 		opacity: 0.58;
 		cursor: default;
 	}
+	/* The plate's disclosure mark keeps the gold accent; it is not a state. */
 	.act.more {
-		color: var(--ld-gold);
+		color: var(--shell-gold);
 	}
 	.refusal {
 		position: absolute;
@@ -290,9 +292,9 @@
 		max-width: 100%;
 		padding: 2px 5px;
 		border-radius: 3px;
-		background: rgb(194 100 63 / 0.14);
-		color: #8a3d25;
-		font: 9px/1.2 var(--ld-sans);
+		background: color-mix(in srgb, var(--shell-family-build) 14%, transparent);
+		color: var(--shell-family-build-ink);
+		font: 9px/1.2 var(--shell-sans);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;

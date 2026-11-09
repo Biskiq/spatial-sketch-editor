@@ -263,7 +263,7 @@
 		display: flex;
 		flex-direction: column;
 		color: var(--shell-ink);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 	button {
 		position: relative;
@@ -339,7 +339,7 @@
 		border-radius: 6px;
 		background: none;
 		color: var(--shell-ink-2);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		font-weight: 500;
 	}
 	.seg button[aria-pressed='true'] {
@@ -396,11 +396,11 @@
 		border-radius: 9px;
 		background: var(--shell-forest);
 		color: var(--shell-on-action);
-		font: 600 11px/1 var(--shell-sans);
+		font: 600 var(--shell-text-label)/1 var(--shell-sans);
 	}
 	.end-tag {
 		color: var(--shell-ink-3);
-		font: 600 10px/1.2 var(--shell-sans);
+		font: 600 var(--shell-text-meta)/1.2 var(--shell-sans);
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 	}
@@ -411,7 +411,7 @@
 		white-space: nowrap;
 	}
 	.end b.muted {
-		font: 11px/1.4 var(--shell-sans);
+		font: var(--shell-text-label)/1.4 var(--shell-sans);
 		white-space: normal;
 	}
 	button.end:hover b {
@@ -428,7 +428,7 @@
 		color: var(--shell-forest-raised);
 	}
 	.ends-mid small {
-		font: 600 10px/1 var(--shell-sans);
+		font: 600 var(--shell-text-meta)/1 var(--shell-sans);
 	}
 	.meta-row {
 		display: flex;
@@ -444,7 +444,7 @@
 		border-radius: 999px;
 		background: var(--shell-gold-tint);
 		color: var(--shell-gold-ink);
-		font: 500 11px/1.2 var(--shell-sans);
+		font: 500 var(--shell-text-label)/1.2 var(--shell-sans);
 	}
 
 	/* Sections */
@@ -456,7 +456,7 @@
 	.c-note {
 		margin: 12px 12px 0;
 		color: var(--shell-ink-2);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		line-height: 1.5;
 	}
 	.gaps {
@@ -472,7 +472,7 @@
 		border-radius: 8px;
 		background: var(--shell-caution-bg);
 		color: var(--shell-refuse);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		line-height: 1.45;
 	}
 	.alert :global(svg) {
@@ -498,7 +498,7 @@
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 7px;
 		background: var(--shell-card);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		font-weight: 500;
 		white-space: nowrap;
 	}

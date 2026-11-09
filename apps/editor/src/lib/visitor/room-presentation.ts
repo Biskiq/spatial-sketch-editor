@@ -36,4 +36,4 @@ export const DEFAULT_WALL_UNLIT_SHARE = 0.5;
  * editor-free module cannot import; a test holds them equal). Drawn unlit, so a
  * floor on the ground reads as the ground.
  */
-export const DEFAULT_FLOOR_COLOR = '#e9ebe6';
+export const DEFAULT_FLOOR_COLOR = '#e5e8e1';

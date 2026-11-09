@@ -339,31 +339,34 @@
 </section>
 
 <style>
+	/*
+	 * Miniature marks (mono shortcuts, planned tags, counts) intentionally sit
+	 * below the UI scale; ordinary controls and captions use --shell-text-*.
+	 */
 	.world-toolbar {
-		--ld-plate-line: var(--shell-hairline);
 		display: flex;
 		flex-direction: column;
 		box-sizing: border-box;
 		width: min(656px, 100%);
 		max-height: min(228px, 46vh);
 		border: 0;
-		border-radius: var(--ld-radius);
-		background: var(--ld-forest);
-		box-shadow: 0 18px 46px rgb(8 20 13 / 0.34), 0 2px 6px rgb(8 20 13 / 0.18);
-		color: var(--ld-light);
-		font-family: var(--ld-sans);
+		border-radius: var(--shell-instrument-radius);
+		background: var(--shell-forest);
+		box-shadow: var(--shell-instrument-shadow);
+		color: var(--shell-ink-light);
+		font-family: var(--shell-sans);
 		overflow: hidden;
 	}
 	/* The menu is the same off-white key as the selected dock control. */
 	.tier {
 		flex: none;
 		background: var(--shell-mode-active-bg);
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.row,
 	.strip,
 	.dock {
-		scrollbar-color: rgb(38 35 29 / 0.24) transparent;
+		scrollbar-color: color-mix(in srgb, var(--shell-ink) 24%, transparent) transparent;
 		scrollbar-width: thin;
 	}
 	.row {
@@ -376,7 +379,7 @@
 	}
 	.picks {
 		height: 58px;
-		border-top: 1px solid var(--ld-plate-line);
+		border-top: 1px solid var(--shell-hairline);
 	}
 	.strip {
 		display: flex;
@@ -411,16 +414,16 @@
 		border: 0;
 		border-radius: 0;
 		background: transparent;
-		color: var(--ld-ink-3);
-		font: 500 13px/1 var(--ld-sans);
+		color: var(--shell-ink-3);
+		font: 500 var(--shell-text-identity)/1 var(--shell-sans);
 		letter-spacing: -0.012em;
 		cursor: pointer;
 	}
 	.sub:hover {
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.sub.on {
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.sub.on::after {
 		content: '';
@@ -430,12 +433,12 @@
 		left: 7px;
 		height: 2px;
 		border-radius: 2px;
-		background: var(--ld-ink);
+		background: var(--shell-ink);
 	}
 	.sub kbd {
 		transform: translateY(-5px);
-		color: var(--ld-ink-3);
-		font: 400 8px/1 var(--ld-mono);
+		color: var(--shell-ink-3);
+		font: 400 8px/1 var(--shell-mono);
 	}
 	.pn {
 		display: flex;
@@ -443,14 +446,14 @@
 		gap: 6px;
 		min-width: 0;
 		margin-left: 4px;
-		color: var(--ld-ink-3);
-		font: 11px/1.2 var(--ld-sans);
+		color: var(--shell-ink-3);
+		font: var(--shell-text-label)/1.2 var(--shell-sans);
 		overflow: hidden;
 	}
 	.pn b {
 		flex: none;
-		color: var(--ld-ink);
-		font: 600 var(--shell-text-control)/1 var(--ld-sans);
+		color: var(--shell-ink);
+		font: 600 var(--shell-text-control)/1 var(--shell-sans);
 	}
 	.pn > span {
 		min-width: 0;
@@ -465,14 +468,14 @@
 		width: 6px;
 		height: 6px;
 		border-radius: 50%;
-		background: var(--ld-gold);
+		background: var(--shell-gold);
 	}
 	.planned {
 		flex: none;
 		margin-left: auto;
 		padding-right: 2px;
-		color: var(--ld-ink-2);
-		font: 400 9px/1 var(--ld-mono);
+		color: var(--shell-ink-2);
+		font: 400 9px/1 var(--shell-mono);
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 	}
@@ -482,12 +485,12 @@
 		padding: 4px 6px 4px 10px;
 		border: 0;
 		background: transparent;
-		color: var(--ld-ink-2);
-		font: 500 10px/1 var(--ld-sans);
+		color: var(--shell-ink-2);
+		font: 500 var(--shell-text-meta)/1 var(--shell-sans);
 		cursor: pointer;
 	}
 	.close-word:hover {
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.picks .strip {
 		gap: 18px;
@@ -502,8 +505,8 @@
 		margin-left: auto;
 	}
 	.gl {
-		color: var(--ld-ink-3);
-		font: 400 9.5px/1 var(--ld-mono);
+		color: var(--shell-ink-3);
+		font: 400 9.5px/1 var(--shell-mono);
 		letter-spacing: 0.02em;
 	}
 	.pg.plan .gl {
@@ -526,14 +529,14 @@
 		border: 0;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--ld-ink-2);
+		color: var(--shell-ink-2);
 	}
 	button.opt {
 		cursor: pointer;
 	}
 	.opt:hover {
 		background: var(--shell-hover);
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.opt:disabled {
 		opacity: 0.55;
@@ -542,7 +545,7 @@
 	.opt.text {
 		min-width: 0;
 		padding: 0 8px;
-		font: 500 11px/1 var(--ld-sans);
+		font: 500 var(--shell-text-label)/1 var(--shell-sans);
 		white-space: nowrap;
 	}
 	.act {
@@ -552,33 +555,33 @@
 		border: 0;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--ld-ink-2);
-		font: 500 11.5px/1 var(--ld-sans);
+		color: var(--shell-ink-2);
+		font: 500 var(--shell-text-utility)/1 var(--shell-sans);
 		white-space: nowrap;
 		cursor: pointer;
 	}
 	.act:hover {
 		background: var(--shell-hover);
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	.act.primary {
-		color: var(--ld-forest);
+		color: var(--shell-forest);
 		font-weight: 600;
 	}
 	.act:disabled {
-		color: var(--ld-ink-3);
+		color: var(--shell-ink-3);
 		opacity: 0.58;
 		cursor: default;
 	}
 	.empty {
 		width: 100%;
 		margin-left: 0;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.empty strong {
 		margin-right: 5px;
-		color: var(--ld-ink);
-		font: 600 var(--shell-text-control)/1 var(--ld-sans);
+		color: var(--shell-ink);
+		font: 600 var(--shell-text-control)/1 var(--shell-sans);
 	}
 	.empty kbd {
 		flex: none;
@@ -586,8 +589,8 @@
 		padding: 2px 5px;
 		border-radius: 3px;
 		background: var(--shell-surface-sunken);
-		color: var(--ld-ink-3);
-		font: 400 8px/1 var(--ld-mono);
+		color: var(--shell-ink-3);
+		font: 400 8px/1 var(--shell-mono);
 	}
 	.empty .act {
 		margin-left: auto;
@@ -602,8 +605,8 @@
 	.planned-note {
 		flex: 1 0 210px;
 		max-width: 260px;
-		color: var(--ld-ink-3);
-		font: 10px/1.35 var(--ld-sans);
+		color: var(--shell-ink-3);
+		font: var(--shell-text-meta)/1.35 var(--shell-sans);
 		white-space: normal;
 	}
 	.librow {
@@ -627,8 +630,8 @@
 		border: 0;
 		border-radius: 7px;
 		background: transparent;
-		color: var(--ld-ink);
-		font: 9.5px/1.1 var(--ld-sans);
+		color: var(--shell-ink);
+		font: 9.5px/1.1 var(--shell-sans);
 		text-align: center;
 		cursor: pointer;
 	}
@@ -642,7 +645,7 @@
 		height: 28px;
 		border-radius: 4px;
 		background: var(--shell-surface-sunken);
-		color: var(--ld-ink-2);
+		color: var(--shell-ink-2);
 	}
 	.tile-label {
 		max-width: 100%;
@@ -654,28 +657,28 @@
 		width: 100%;
 		height: 28px;
 		border-radius: 4px;
-		box-shadow: inset 0 0 0 1px rgb(38 35 29 / 0.12);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shell-ink) 12%, transparent);
 	}
 	.planned-tile:disabled {
 		opacity: 0.58;
 		cursor: default;
 	}
 	.planned-tile small {
-		color: var(--ld-ink-3);
-		font: 8px/1 var(--ld-mono);
+		color: var(--shell-ink-3);
+		font: 8px/1 var(--shell-mono);
 	}
 	.note {
 		display: flex;
 		align-items: center;
 		gap: 10px;
 		width: 100%;
-		color: var(--ld-ink-3);
-		font: 10.5px/1.3 var(--ld-sans);
+		color: var(--shell-ink-3);
+		font: var(--shell-text-label)/1.3 var(--shell-sans);
 	}
 	.note strong {
 		flex: none;
-		color: var(--ld-ink);
-		font: 600 var(--shell-text-control)/1 var(--ld-sans);
+		color: var(--shell-ink);
+		font: 600 var(--shell-text-control)/1 var(--shell-sans);
 	}
 	.note .act {
 		margin-left: auto;
@@ -687,7 +690,7 @@
 		height: 56px;
 		overflow-x: auto;
 		overflow-y: hidden;
-		background: var(--ld-forest);
+		background: var(--shell-forest);
 	}
 	.key {
 		position: relative;
@@ -701,12 +704,12 @@
 		padding: 0 4px;
 		border: 0;
 		background: transparent;
-		color: var(--ld-light-2);
+		color: var(--shell-ink-quiet);
 		cursor: pointer;
 	}
 	.key:hover:not(.armed) {
 		background: var(--shell-on-forest-wash);
-		color: var(--ld-light);
+		color: var(--shell-ink-light);
 	}
 	.key.armed {
 		background: var(--shell-mode-active-bg);
@@ -730,7 +733,7 @@
 		outline-color: var(--shell-action);
 	}
 	.kl {
-		font: 500 var(--shell-text-control)/1 var(--ld-sans);
+		font: 500 var(--shell-text-control)/1 var(--shell-sans);
 		letter-spacing: -0.005em;
 		white-space: nowrap;
 	}
@@ -739,7 +742,7 @@
 		top: 4px;
 		right: 5px;
 		color: color-mix(in srgb, var(--shell-ivory) 32%, transparent);
-		font: 400 7px/1 var(--ld-mono);
+		font: 400 7px/1 var(--shell-mono);
 	}
 	.family-dots {
 		display: flex;
@@ -753,7 +756,7 @@
 		background: color-mix(in srgb, var(--shell-ivory) 25%, transparent);
 	}
 	.family-dots i.on {
-		background: var(--ld-light);
+		background: var(--shell-ink-light);
 	}
 	.sep {
 		flex: none;
@@ -791,7 +794,7 @@
 			min-width: 51px;
 		}
 		.kl {
-			font-size: 11.5px;
+			font-size: var(--shell-text-utility);
 		}
 	}
 	@media (pointer: coarse) {

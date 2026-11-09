@@ -67,13 +67,13 @@ describe('R217.S26 visual tokens', () => {
 		expect(card).toMatch(/\.rename-input \{[^}]*font: inherit/);
 		const index = source('stage/shell/EditorIndex');
 		expect(rule(index, '.exp-open')).toMatch(/font:\s*400 var\(--shell-text-body\)\/1\.35 var\(--shell-sans/);
-		expect(rule(index, '.crumb-input')).toMatch(/font:\s*600 12px\/1\.3 var\(--shell-sans/);
+		expect(rule(index, '.crumb-input')).toMatch(/font:\s*600 var\(--shell-text-control\)\/1\.3 var\(--shell-sans/);
 		expect(rule(index, '.crumb-error')).toMatch(/color:\s*var\(--shell-refuse/);
 	});
 
 	it('opens is a mono 10 px tag; the strip has no Start tag', () => {
 		expect(source('experience/ExperienceGuide')).not.toContain('.start-tag');
-		expect(rule(source('stage/shell/EditorIndex'), '.opens-tag')).toMatch(/font:\s*500 10px\/[\d.]+ var\(--shell-mono/);
+		expect(rule(source('stage/shell/EditorIndex'), '.opens-tag')).toMatch(/font:\s*500 var\(--shell-text-meta\)\/[\d.]+ var\(--shell-mono/);
 	});
 
 	it('the strip and View rail mark reorders with a quiet light line, never gold', () => {

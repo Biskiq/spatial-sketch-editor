@@ -702,7 +702,7 @@
 	}
 	.error {
 		color: var(--shell-refuse);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		padding: 0 12px;
 	}
 	.destructive {
@@ -753,7 +753,7 @@
 	.subject-actions hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--shell-hairline); }
 	.soon { justify-content: space-between !important; color: var(--shell-ink-2); cursor: default; }
 	.soon:hover { background: transparent; }
-	.menu-item .hint { margin-left: auto; padding-left: 8px; color: var(--shell-ink-2); font-size: 11px; }
+	.menu-item .hint { margin-left: auto; padding-left: 8px; color: var(--shell-ink-2); font-size: var(--shell-text-label); }
 	.menu-item:disabled { color: var(--shell-ink-2); cursor: default; }
 	.menu-item:disabled:hover { background: transparent; }
 	.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -773,10 +773,10 @@
 	/* Review round 3: a hairline divides the back link from the kind, never run together. */
 	.back-link::after { content: ''; display: inline-block; width: 1px; height: 10px; margin: 0 0.55em; background: var(--shell-hairline-strong); vertical-align: -1px; }
 	.back-link:hover { background: none; color: var(--shell-ink); }
-	.consequence { display: grid; gap: 6px; margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--shell-refuse); border-radius: 8px; background: var(--shell-surface-sunken); font-size: 12px; }
+	.consequence { display: grid; gap: 6px; margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--shell-refuse); border-radius: 8px; background: var(--shell-surface-sunken); font-size: var(--shell-text-control); }
 	.consequence-line { margin: 0; color: var(--shell-ink); line-height: 1.4; }
 	.consequence-choice { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; }
-	.consequence-choice legend { padding: 0; color: var(--shell-ink-2); font-size: 11px; }
+	.consequence-choice legend { padding: 0; color: var(--shell-ink-2); font-size: var(--shell-text-label); }
 	.consequence-choice label { display: flex; align-items: center; gap: 6px; accent-color: var(--shell-action); }
 	.consequence-actions { display: flex; gap: 6px; }
 	.consequence-actions button { min-height: 28px; padding: 0 11px; border: 1px solid var(--shell-hairline-strong); font-weight: 600; }

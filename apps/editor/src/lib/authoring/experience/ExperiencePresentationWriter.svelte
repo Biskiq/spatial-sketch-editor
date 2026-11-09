@@ -195,7 +195,7 @@
 	.writer {
 		display: flex;
 		flex-direction: column;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 	.c-actions {
 		display: flex;
@@ -215,7 +215,7 @@
 		gap: 5px;
 		margin: 0;
 		color: var(--shell-ink-3);
-		font: 600 11px/1.3 var(--shell-sans);
+		font: 600 var(--shell-text-label)/1.3 var(--shell-sans);
 	}
 	.foot-note {
 		margin: 0;
@@ -235,7 +235,7 @@
 	}
 	.follow-state {
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.quiet {
 		border: 0;
@@ -266,7 +266,7 @@
 		background: var(--shell-card);
 		color: var(--shell-ink);
 		font: inherit;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		padding: 3px 6px;
 	}
 	textarea {
@@ -308,7 +308,7 @@
 		background: var(--shell-card);
 		color: var(--shell-ink);
 		font: inherit;
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		cursor: pointer;
 	}
 	button:hover {
@@ -323,7 +323,7 @@
 		min-height: 20px;
 		padding: 0 7px;
 		border-radius: 999px;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	button.mono {
 		font-family: var(--shell-mono);

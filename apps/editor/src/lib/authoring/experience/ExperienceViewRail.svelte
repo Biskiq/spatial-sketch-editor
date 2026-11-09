@@ -370,7 +370,7 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		min-width: 0;
-		font: 12px var(--shell-sans);
+		font: var(--shell-text-control) var(--shell-sans);
 		color: var(--shell-ink);
 	}
 	button {
@@ -398,7 +398,7 @@
 		border-radius: 999px;
 		background: var(--shell-hover);
 		color: var(--shell-ink-2);
-		font: 600 11px var(--shell-sans);
+		font: 600 var(--shell-text-label) var(--shell-sans);
 	}
 	.sum {
 		min-width: 0;
@@ -407,7 +407,7 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		font-weight: 400;
 	}
 	.gapn {
@@ -512,7 +512,7 @@
 		border-radius: 999px;
 		background: var(--shell-surface-raised);
 		box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		white-space: nowrap;
 	}
 	.chip button {
@@ -604,7 +604,7 @@
 		white-space: nowrap;
 	}
 	.nm b {
-		font-size: 12.5px;
+		font-size: var(--shell-text-body);
 		font-weight: 600;
 	}
 	.nm small {
@@ -620,7 +620,7 @@
 	}
 	.grip {
 		color: var(--shell-ink-3);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		text-align: center;
 		cursor: grab;
 		opacity: 0;
@@ -652,7 +652,7 @@
 		gap: 4px;
 		min-width: 0;
 		margin-bottom: 6px;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 	.ed-head b {
 		flex: 1;
@@ -666,7 +666,7 @@
 		border: 0;
 		background: none;
 		color: var(--shell-ink-3);
-		font-size: 13px;
+		font-size: var(--shell-text-identity);
 	}
 	.ed-row {
 		display: flex;
@@ -685,7 +685,7 @@
 		border-radius: 6px;
 		background: var(--shell-field);
 		color: var(--shell-ink-2);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		white-space: nowrap;
 	}
 	.seg button[aria-pressed='true'] {
@@ -718,7 +718,7 @@
 	.stepper b {
 		min-width: 34px;
 		color: var(--shell-ink);
-		font: 600 11.5px var(--shell-mono);
+		font: 600 var(--shell-text-utility) var(--shell-mono);
 		text-align: center;
 		white-space: nowrap;
 	}
@@ -726,7 +726,7 @@
 	.warn-text {
 		margin: 6px 0 0;
 		color: var(--shell-ink-3);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		line-height: 1.4;
 	}
 	.note b {
@@ -742,7 +742,7 @@
 		border-radius: 6px;
 		background: var(--shell-field);
 		color: var(--shell-ink);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		text-decoration: none;
 	}
 	.link {
@@ -770,7 +770,7 @@
 	}
 	.more b {
 		color: var(--shell-forest-raised);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		font-weight: 600;
 	}
 	.more small {

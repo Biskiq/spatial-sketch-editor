@@ -557,7 +557,7 @@
 	[data-stage-reading='plan'] .advanced-handle[data-mark-kind='lens'] { cursor: ew-resize; }
 	.advanced-value { pointer-events: none; }
 	.advanced-value rect { fill: var(--shell-ink); }
-	.advanced-value text { fill: var(--shell-white); font: 11px var(--shell-mono); }
+	.advanced-value text { fill: var(--shell-white); font: var(--shell-text-label) var(--shell-mono); }
 
 	.experience-marks {
 		position: absolute;
@@ -763,7 +763,7 @@
 	}
 	.tag text {
 		fill: var(--shell-white);
-		font: 500 11px var(--shell-sans);
+		font: 500 var(--shell-text-label) var(--shell-sans);
 	}
 	.number circle {
 		fill: var(--shell-forest);

@@ -574,7 +574,7 @@
 		padding: 4px;
 		border-radius: 8px;
 		color: var(--shell-ink-2);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		white-space: normal;
 	}
 	.tile .paper {
@@ -598,7 +598,7 @@
 		font-weight: 600;
 	}
 	.group-title {
-		font-size: 10px;
+		font-size: var(--shell-text-meta);
 		text-transform: uppercase;
 		letter-spacing: 0.07em;
 		color: var(--shell-ink-2);

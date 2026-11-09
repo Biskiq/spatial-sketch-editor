@@ -45,13 +45,13 @@
 		border: 0;
 		border-radius: 6px;
 		background: transparent;
-		color: var(--ld-ink-2);
-		font: 10.5px/1 var(--ld-sans);
+		color: var(--shell-ink-2);
+		font: var(--shell-text-label)/1 var(--shell-sans);
 		cursor: pointer;
 	}
 	button:hover {
 		background: var(--shell-hover);
-		color: var(--ld-ink);
+		color: var(--shell-ink);
 	}
 	button span {
 		overflow: hidden;
@@ -60,7 +60,7 @@
 	}
 	button.panel {
 		margin-left: auto;
-		color: var(--ld-ink-2);
+		color: var(--shell-ink-2);
 	}
 	button:focus-visible {
 		outline: var(--shell-focus-ring-light);

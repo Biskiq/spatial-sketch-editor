@@ -1302,6 +1302,10 @@
 {/if}
 
 <style>
+	/*
+	 * Dense Stop measurements and miniature marks stay below the UI scale:
+	 * .stop-meta 10.5px, .gutter-time 9px, .pause-glyph 9px.
+	 */
 	.pacing-label {
 		min-height: 24px;
 		padding: 0 8px;
@@ -1309,7 +1313,7 @@
 		border-radius: 999px;
 		background: none;
 		color: inherit;
-		font: 500 11px var(--shell-sans);
+		font: 500 var(--shell-text-label) var(--shell-sans);
 		white-space: nowrap;
 		cursor: pointer;
 	}
@@ -1319,7 +1323,7 @@
 	.badge {
 		margin-left: 4px;
 		color: var(--shell-ink-3);
-		font-size: 10.5px;
+		font-size: var(--shell-text-meta);
 		font-weight: 600;
 	}
 	.badge.invite {
@@ -1358,7 +1362,7 @@
 		border-bottom: 1px solid var(--shell-line-on-forest);
 	}
 	.kicker {
-		font: 600 10px var(--shell-sans);
+		font: 600 var(--shell-text-meta) var(--shell-sans);
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
 		color: var(--shell-ink-quiet);
@@ -1385,7 +1389,7 @@
 	}
 	.count {
 		color: var(--shell-ink-quiet);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		white-space: nowrap;
 	}
 	.name-input {
@@ -1504,7 +1508,7 @@
 	}
 	.menu-hint {
 		color: var(--shell-ink-quiet);
-		font: italic 11px var(--shell-sans);
+		font: italic var(--shell-text-label) var(--shell-sans);
 	}
 
 	/* ---- Empty Guide ---- */
@@ -1525,7 +1529,7 @@
 	}
 	.empty p {
 		margin: 0;
-		font-size: 12.5px;
+		font-size: var(--shell-text-body);
 	}
 	.empty b {
 		color: var(--shell-ink-light);
@@ -1578,7 +1582,7 @@
 		border: 1px solid var(--guide-chip-line);
 		border-radius: 50%;
 		background: var(--guide-chip);
-		font-size: 15px;
+		font-size: var(--shell-text-title);
 		line-height: 1;
 	}
 	.more-arrow:hover span { background: var(--guide-chip-hover); }
@@ -1718,7 +1722,7 @@
 		border-radius: 6px;
 		background: var(--shell-surface-raised);
 		color: var(--shell-forest);
-		font: 500 11px var(--shell-sans);
+		font: 500 var(--shell-text-label) var(--shell-sans);
 		white-space: nowrap;
 		pointer-events: none;
 		box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
@@ -1753,7 +1757,7 @@
 		border-radius: 999px;
 		background: color-mix(in srgb, var(--shell-ink-light) 10%, var(--shell-forest));
 		color: var(--shell-ink-light);
-		font: 600 10px/1 var(--shell-mono);
+		font: 600 var(--shell-text-meta)/1 var(--shell-mono);
 		white-space: nowrap;
 		overflow: hidden;
 		cursor: pointer;
@@ -1814,7 +1818,7 @@
 	.total {
 		flex: none;
 		color: var(--shell-ink-light);
-		font: 500 11px/1.2 var(--shell-mono);
+		font: 500 var(--shell-text-label)/1.2 var(--shell-mono);
 		white-space: nowrap;
 	}
 	.total .waits {
@@ -1833,7 +1837,7 @@
 		border-radius: 20px;
 		background: var(--shell-glass-dark);
 		color: var(--shell-ink-light);
-		font: 12px var(--shell-sans);
+		font: var(--shell-text-control) var(--shell-sans);
 		white-space: nowrap;
 		z-index: 4;
 	}
@@ -1859,7 +1863,7 @@
 	}
 	.kbd {
 		color: var(--shell-ink-quiet);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 
 	/* ---- Stop-order bar ---- */

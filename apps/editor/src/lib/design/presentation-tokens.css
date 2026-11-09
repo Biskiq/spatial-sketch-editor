@@ -133,6 +133,9 @@
 	--shell-ink-3: #79817b;
 	/* Pure white marks and highlights, distinct from a card surface. */
 	--shell-white: #ffffff;
+	/* The World mark's stable brand pair; never a shell state. */
+	--brand-mark-leaf: #9dbb73;
+	--brand-mark-ink: #13261b;
 
 	/* Surfaces. */
 	--shell-paper: #eef0eb;
@@ -193,6 +196,9 @@
 	--shell-gold: #d4ad45;
 	--shell-gold-ink: #74560c;
 	--shell-gold-tint: #f8efd6;
+	/* Tool-family accents: Build's terracotta also tints its refusal wash. */
+	--shell-family-build: #c2643f;
+	--shell-family-build-ink: #8a3d25;
 
 	/* States. Positive confirms, caution is recoverable, refuse is a hard stop. */
 	--shell-positive: #4f8f6c;
@@ -228,6 +234,8 @@
 	/* Geometry. */
 	--shell-head-height: 44px;
 	--shell-control-height: 30px;
+	/* The creation plate's larger radius; controls keep their own geometry. */
+	--shell-instrument-radius: 14px;
 	--shell-index-width: 256px;
 	--shell-card-width: 288px;
 	/* The coarse pointer target; the editor host raises it on touch. */
@@ -236,6 +244,8 @@
 	/* Elevation. */
 	--shell-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.12);
 	--shell-furniture-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.07);
+	/* The World toolbar's deeper lift over the Stage. */
+	--shell-instrument-shadow: 0 18px 46px rgb(8 20 13 / 0.34), 0 2px 6px rgb(8 20 13 / 0.18);
 
 	/*
 	 * Spatial drawing grammar. Drawn ink is black, matching the accepted World
@@ -276,6 +286,10 @@
  * Living Draft is a scoped shell skin, not a replacement for the shared roles.
  * It paints the editor's furniture while leaving spatial paint untouched, so a
  * 3D proposal keeps the same cobalt it has in every other reading.
+ */
+/*
+ * Theme-private palette. Components consume the semantic `--shell-*` roles
+ * below; the `--ld-*` names are this skin's source values, not a second API.
  */
 [data-shell='living-draft'] {
 	/* The #285 prototype palette, used directly rather than tinted on top. */
@@ -320,7 +334,6 @@
 	--ld-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
 	--ld-sans: 'Instrument Sans', system-ui, sans-serif;
 	--ld-mono: 'DM Mono', ui-monospace, monospace;
-	--ld-radius: 14px;
 	/* The shell furniture this skin repaints; spatial --stage-* paint stays shared. */
 	--shell-forest: var(--ld-forest);
 	--shell-forest-raised: var(--ld-forest-2);
@@ -345,6 +358,7 @@
 	--shell-gold: var(--ld-gold);
 	--shell-gold-ink: #6e520f;
 	--shell-gold-tint: #f4e8c6;
+	--shell-family-build: var(--ld-build);
 	--shell-ivory: #f4f5f1;
 	--shell-sheet-knob: var(--ld-card);
 	--shell-glass-light: rgb(248 248 245 / 0.94);

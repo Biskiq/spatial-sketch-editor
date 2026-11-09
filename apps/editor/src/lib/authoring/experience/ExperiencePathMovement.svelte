@@ -133,7 +133,7 @@
 	}
 	h3 {
 		margin: 0;
-		font: 600 11px var(--shell-sans);
+		font: 600 var(--shell-text-label) var(--shell-sans);
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		color: var(--shell-ink-3);
@@ -147,12 +147,12 @@
 	.f-lbl {
 		flex: 0 0 72px;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.f-val {
 		min-width: 0;
 		color: var(--shell-ink);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 	.muted {
 		color: var(--shell-ink-3);
@@ -179,11 +179,11 @@
 	.value {
 		min-width: 74px;
 		text-align: center;
-		font: 600 11px var(--shell-mono);
+		font: 600 var(--shell-text-label) var(--shell-mono);
 	}
 	.small {
 		padding: 0 8px;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.path-actions {
 		display: flex;
@@ -198,7 +198,7 @@
 		background: var(--shell-card);
 		color: var(--shell-ink);
 		font: inherit;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		cursor: pointer;
 	}
 	.btn.refuse {
@@ -213,12 +213,12 @@
 		border-radius: 6px;
 		background: var(--shell-caution-bg);
 		color: var(--shell-caution);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.shared-note {
 		margin: 0;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	button:disabled {
 		opacity: 0.45;

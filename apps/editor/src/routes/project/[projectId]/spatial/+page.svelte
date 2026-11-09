@@ -3410,6 +3410,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			.some((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
 		if (!stillContributed) return;
 		invokeContribution(armed.adapterId, armed.id, false);
+		// The install briefly closed the task, so the task/chrome sync reset the World
+		// tool to Select. Keep the re-armed Ink row attached to the task it drives.
+		if (armed.id === 'layout-ink') {
+			activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
+			worldPlateOpen = true;
+		}
 	}
 
 	/** Pressing the armed key again folds or re-opens its palette without disarming the tool. */
@@ -4342,11 +4348,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: var(--shell-forest);
 		color: var(--shell-ivory);
 	}
-	.editor-host[data-shell='living-draft'] {
-		--shell-sans: var(--ld-sans);
-		--shell-serif: var(--ld-serif);
-		--shell-mono: var(--ld-mono);
-	}
 	.editor-body {
 		position: relative;
 		min-height: 0;
@@ -4435,7 +4436,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.editor-host[data-shell='living-draft'] :global(.card) {
 		top: 10px;
 		right: 10px;
-		box-shadow: var(--ld-shadow);
+		box-shadow: var(--shell-shadow);
 	}
 	@media (width > 1100px) {
 		.editor-body[data-index-open='true'] {
