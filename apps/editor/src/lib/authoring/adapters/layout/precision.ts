@@ -1120,6 +1120,59 @@ export function wallBendIntent(input: {
 }
 
 /**
+ * The station frame Opening marks consume: one `pointAt` that is linear on a
+ * straight Wall (byte-identical to `framePoint`) and arc-length on a curved
+ * one, so an Opening handle lands on the curve instead of on its chord.
+ */
+export type WallStationFrame = {
+	readonly wallId: string;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+	readonly length: number;
+	readonly direction: LayoutVec2;
+	readonly curved: boolean;
+	readonly pointAt: (distance: number) => { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null;
+};
+
+export function wallStationFrame(document: LayoutDocumentWallFirst, wallId: string): WallStationFrame | null {
+	const curved = curvedWallFrame(document, wallId);
+	if (curved !== null) {
+		return {
+			wallId,
+			start: curved.start,
+			end: curved.end,
+			length: curved.length,
+			direction: [
+				(curved.end[0] - curved.start[0]) / Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1]),
+				(curved.end[1] - curved.start[1]) / Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1])
+			],
+			curved: true,
+			pointAt: (distance) => curvedWallPointAt(curved, distance)
+		};
+	}
+	const straight = wallFrame(document, wallId);
+	if (straight === null) return null;
+	return {
+		wallId,
+		start: straight.start,
+		end: straight.end,
+		length: straight.length,
+		direction: straight.direction,
+		curved: false,
+		pointAt: (distance) =>
+			distance < 0 || distance > straight.length
+				? null
+				: {
+						point: [
+							straight.start[0] + straight.direction[0] * distance,
+							straight.start[1] + straight.direction[1] * distance
+						],
+						tangent: straight.direction
+					}
+	};
+}
+
+/**
  * The physical station a document point names on one Wall, straight or curved.
  * `null` when the Wall is unresolved or its centerline cannot be sampled.
  */
