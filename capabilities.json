@@ -20,6 +20,15 @@
       "review": null
     },
     {
+      "id": "layout.wall-curve-edit",
+      "area": "T1",
+      "summary": "Bend a straight or curved Wall anywhere and edit its bend points directly, keeping Wall identity, hosted Openings, Room topology and one Undo per edit",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/stage/**", "apps/editor/src/lib/authoring/adapters/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "layout.canonical-compiler",
       "area": "T1",
       "summary": "Architectural geometry and queries come from one canonical compiler, and Layout representation stays runtime-safe",
