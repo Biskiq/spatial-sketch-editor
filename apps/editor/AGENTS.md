@@ -31,3 +31,12 @@ npm run build                 # production build when the change warrants it
 ```
 
 Use the lane and evidence requirements in [`tests/README.md`](tests/README.md), not a generic triad.
+
+## Browser QA
+
+Focused agent-driven manual browser QA is allowed: open the app, exercise the changed interaction,
+inspect rendering and console errors, and capture targeted evidence where it helps review. Do not
+require full Playwright capture, exhaustive browser journeys, scripted E2E replay or bulk
+screenshots/video for ordinary changes; those need explicit owner authorization. The owner keeps
+final manual browser acceptance. Unit, integration, contract, geometry, typecheck and build checks
+remain the routine gate.

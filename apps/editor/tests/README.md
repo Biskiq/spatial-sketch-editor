@@ -271,6 +271,18 @@ declared complete verification contract — the §7.4 contract **including
 not a demand to run every heavy suite after every edit: focused runs are
 iteration feedback and never stand in for acceptance evidence (rule 25).
 
+### Browser QA policy
+
+Focused **agent-driven manual browser QA** is allowed and expected where visual or interaction
+behavior matters: open the app, exercise the changed interaction, inspect rendering and console
+errors, and capture targeted evidence. It is not a separate mandatory lane and does not replace the
+non-browser contract above.
+
+Do **not** require full Playwright capture, exhaustive automated browser journeys, scripted E2E
+replay, or bulk screenshot/video recording for ordinary changes. Those require explicit owner
+authorization. Historical browser specs and artifacts remain in place; this policy changes what is
+required, not what is preserved. The owner retains final manual browser acceptance.
+
 ### Verification depth
 
 Merging the pull request is the closeout: there is no phase/slice acceptance
@@ -337,6 +349,10 @@ skips.
 
 ## Agent E2E (`tests/e2e/`)
 
+This harness is available for explicit owner-authorized browser automation. It is not a routine
+per-slice gate, and ordinary changes should use focused browser spot checks plus the non-browser
+contract above. The test-auth seam remains supported for authorized runs.
+
 Browser-driven agent tests log in without the external OAuth ceremony through
 the API test-auth seam (`POST {PUBLIC_API_ORIGIN}/test-auth/session`,
 `apps/api/src/test-auth.ts`): bearer `E2E_TEST_AUTH_SECRET` + `{ user }` mints
@@ -369,8 +385,9 @@ authorizes `npm run perf:spot` at the four triggers named there. It is not a rou
 and it is not a CI job.
 
 `npm run perf` refuses and points at `perf:spot`. Functional browser specs that live under
-`apps/editor/perf/flows/` stay acceptance checks; they are not the spot check. Historical
-measurements remain historical. An unmeasured row stays unmeasured. `grid-M` and `grid-L` do not
+`apps/editor/perf/flows/` remain available for owner-authorized or focused diagnostic runs; they are
+not a routine per-slice gate and they are not the spot check. Historical measurements remain
+historical. An unmeasured row stays unmeasured. `grid-M` and `grid-L` do not
 cover imported models or texture-heavy scenes.
 
 The Playwright harness used by those functional specs, and the bundle report, stay outside the

@@ -77,6 +77,22 @@ the North Star states intent. Do not read the archive unless current evidence ne
 10. **No agent footer in commits** — when asked to commit, the message is the message: never append a
     `Generated with …` line or a `Co-Authored-By: <agent>` trailer for any tool, guide or harness.
 
+## Verification and browser QA
+
+Unit, integration, contract, geometry, typecheck and build checks are the routine default. For a
+change whose visual or interaction behavior matters, an agent may open the running application,
+interact with the changed feature, inspect rendering and console errors, and capture targeted
+evidence. That is **focused manual browser QA**, and it is allowed.
+
+Do **not** require full Playwright capture, exhaustive automated browser journeys, scripted E2E
+replay, or bulk screenshot/video recording for ordinary changes. Those need explicit owner
+authorization. The owner retains final manual browser acceptance; agent spot checks are evidence,
+not a substitute for that acceptance. Historical browser artifacts and unrelated test coverage stay
+in place: this policy changes what is *required*, not what is preserved.
+
+Concrete commands and lane semantics stay owned by `apps/editor/tests/README.md`; do not duplicate
+them here.
+
 ## Workflow
 
 **Status** is computed: `npm run status` prints report provenance, maturity, health, flags and
