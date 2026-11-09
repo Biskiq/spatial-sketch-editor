@@ -9,6 +9,7 @@
 	 * keyboard reachable without a toolbar or a global mode.
 	 */
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import { snapWallUnfoldAmount, WALL_UNFOLD_DRAG_CSS } from '$lib/layout/wall-unfold';
 	import type { CompiledPhysicalWall } from '@portfolio/layout-core';
 
 	let { wall }: { wall: CompiledPhysicalWall } = $props();
@@ -20,6 +21,31 @@
 	function scrub(event: Event): void {
 		const value = Number((event.currentTarget as HTMLInputElement).value);
 		wallUnfold.setU(wall, value / 100);
+	}
+
+	// S6 — a camera-free peel affordance. The Card's range remains the accessible
+	// path; this drag uses the same 260 px full-open mapping and magnetic stops.
+	let peelStartY = 0;
+	let peelStartU = 0;
+	let peeling = false;
+	function peelDown(event: PointerEvent): void {
+		if (state === null) return;
+		peeling = true;
+		peelStartY = event.clientY;
+		peelStartU = state.u;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		event.preventDefault();
+	}
+	function peelMove(event: PointerEvent): void {
+		if (!peeling || state === null) return;
+		const amount = peelStartU + (peelStartY - event.clientY) / WALL_UNFOLD_DRAG_CSS;
+		wallUnfold.setU(wall, Math.min(1, Math.max(0, amount)));
+	}
+	function peelUp(event: PointerEvent): void {
+		if (!peeling || state === null) return;
+		peeling = false;
+		wallUnfold.setU(wall, snapWallUnfoldAmount(state.u));
+		(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
 	}
 </script>
 
@@ -41,6 +67,18 @@
 			<output>{flat ? 'Flat' : `${percent}%`}</output>
 		</label>
 		<p class="hint">Entry keeps orientation; the sheet may pan, fit or zoom. Openings edit in place.</p>
+		<button
+			type="button"
+			class="peel"
+			data-wall-unfold-peel
+			aria-label="Peel the unfolded Wall; drag up to open, down to fold"
+			onpointerdown={peelDown}
+			onpointermove={peelMove}
+			onpointerup={peelUp}
+			onpointercancel={peelUp}
+		>
+			<span aria-hidden="true">⌃</span> Peel
+		</button>
 		<div class="stops">
 			<button type="button" data-wall-unfold-flat onclick={() => wallUnfold.setU(wall, 1)}>Flat</button>
 			<button type="button" data-wall-unfold-half onclick={() => wallUnfold.setU(wall, 0.5)}>Half</button>
@@ -81,6 +119,25 @@
 		color: var(--shell-ink-2);
 		font-size: 10px;
 		line-height: 1.35;
+	}
+	.peel {
+		height: 28px;
+		border: 1px dashed var(--shell-field-line-strong);
+		border-radius: 6px;
+		background: var(--shell-field);
+		color: inherit;
+		font: inherit;
+		font-size: 11px;
+		cursor: ns-resize;
+		touch-action: none;
+	}
+	.peel:active {
+		border-color: var(--shell-leaf);
+	}
+	@media (pointer: coarse) {
+		.peel {
+			min-height: 44px;
+		}
 	}
 	.stops {
 		display: flex;
