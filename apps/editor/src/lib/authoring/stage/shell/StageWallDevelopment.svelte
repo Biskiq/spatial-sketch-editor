@@ -113,7 +113,6 @@
 	let topologyEdges: readonly (readonly [number, number])[] = [];
 	let wallHeight = 0;
 	let wallThickness = 0;
-	let openingCount = 0;
 
 	function boundaryEdges(mesh: WallDevelopmentMesh): [number, number][] {
 		const edges = new Map<string, { a: number; b: number; count: number; faces: Set<string> }>();
@@ -137,6 +136,7 @@
 			}
 		};
 		for (const triangle of mesh.triangles) {
+			if (triangle.void === true) continue;
 			const [a, b, c] = triangle.indices;
 			add(a, b, triangle.face);
 			add(b, c, triangle.face);
@@ -160,12 +160,22 @@
 		const edgeCount = closed ? sampleCount : sampleCount - 1;
 		// The floor centreline and its top counterpart read together as one honest
 		// as-built Wall. The top line stays visible above the unfolded sheet.
-		for (const height of [datumMeters + 0.03, datumMeters + wall.height + 0.24]) {
+		for (const height of [datumMeters + 0.02, datumMeters + wall.height]) {
 			for (let index = 0; index < edgeCount; index += 1) {
 				const start = wall.samples[index]!;
 				const end = wall.samples[(index + 1) % sampleCount]!;
 				positions.push(start.point[0], height, start.point[1], end.point[0], height, end.point[1]);
 			}
+		}
+		// A complete as-built frame: base and top rings plus verticals at a fixed
+		// sample interval, subdued dashed ink rather than a detached top line.
+		const verticalStep = Math.max(1, Math.ceil(sampleCount / 24));
+		for (let index = 0; index < sampleCount; index += verticalStep) {
+			const sample = wall.samples[index]!;
+			positions.push(
+				sample.point[0], datumMeters + 0.02, sample.point[1],
+				sample.point[0], datumMeters + wall.height, sample.point[1]
+			);
 		}
 		referenceGeometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
 		referenceGeometry.computeBoundingSphere();
@@ -198,9 +208,10 @@
 			topologyEdges = boundaryEdges(display.mesh);
 			wallHeight = wall.height;
 			wallThickness = wall.thickness;
-			openingCount = wall.openings.length;
 			buildReference(wall.wallId);
-			const pairCount = topologyEdges.length + openingCount * 4;
+			// Opening voids are part of the mesh topology, so the boundary loop
+			// already draws their jambs/sill/head once. Never add a second contour.
+			const pairCount = topologyEdges.length + display.openingBands.filter((band) => band.kind === 'door').length;
 			contourGeometry.setAttribute('position', new BufferAttribute(new Float32Array(pairCount * 6), 3));
 		}
 		if (display === null) return;
@@ -213,7 +224,10 @@
 			position.needsUpdate = true;
 		}
 		const index: number[] = [];
-		for (const triangle of display.mesh.triangles) index.push(...triangle.indices);
+		for (const triangle of display.mesh.triangles) {
+			if (triangle.void === true) continue;
+			index.push(...triangle.indices);
+		}
 		const existingIndex = sheetGeometry.getIndex();
 		if (existingIndex === null || existingIndex.count !== index.length) sheetGeometry.setIndex(index);
 		else {
@@ -284,18 +298,16 @@
 				];
 			};
 			for (const band of display.openingBands) {
-				const sill = band.sillHeight;
-				const head = band.headHeight;
-				const edges: [[number, number, number], [number, number, number]][] = [
-					[pointAt(band.stationStart, -half, sill), pointAt(band.stationEnd, -half, sill)],
-					[pointAt(band.stationStart, -half, head), pointAt(band.stationEnd, -half, head)],
-					[pointAt(band.stationStart, -half, sill), pointAt(band.stationStart, -half, head)],
-					[pointAt(band.stationEnd, -half, sill), pointAt(band.stationEnd, -half, head)]
-				];
-				for (const [from, to] of edges) {
-					values[at++] = from[0]; values[at++] = from[1]; values[at++] = from[2];
-					values[at++] = to[0]; values[at++] = to[1]; values[at++] = to[2];
-				}
+				if (band.kind !== 'door') continue;
+				// One lean-to leaf on the sheet; the void itself supplies the jambs.
+				const hinge = pointAt(band.stationStart, -half, band.sillHeight);
+				const leaf = pointAt(
+					band.stationStart + (band.stationEnd - band.stationStart) * 0.92,
+					-half,
+					band.headHeight
+				);
+				values[at++] = hinge[0]; values[at++] = hinge[1]; values[at++] = hinge[2];
+				values[at++] = leaf[0]; values[at++] = leaf[1]; values[at++] = leaf[2];
 			}
 			contourPosition.needsUpdate = true;
 			contourGeometry.computeBoundingSphere();
