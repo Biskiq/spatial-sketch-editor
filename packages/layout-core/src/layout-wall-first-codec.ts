@@ -2,10 +2,10 @@ import { countWork } from './p2311-perf';
 import { hasImmutableJsonProof } from './immutable-json';
 /**
  * `layout-wall-first-codec.ts` — strict codec for the wall-first
- * `LayoutDocument` (`formatVersion: 6`), shared by P23.1 operations and the
- * canonical project Save boundary. Format 6 is format 5 without the authored
- * Wall `role`; a present `role` key is `unknown_key`, and the derived role is
- * never persisted.
+ * `LayoutDocument` (`formatVersion: 7`), shared by P23.1 operations and the
+ * canonical project Save boundary. Format 7 adds the canonical self-connected
+ * Wall (one Wall with equal endpoint Junction IDs and 16 cubic spans); a closed
+ * Wall in any other representation is refused.
  *
  * The codec intentionally provides:
  *
@@ -38,6 +38,8 @@ import type {
 	OrientedWallRef
 } from './layout-wall-first-types';
 import {
+	CLOSED_WALL_CIRCLE_KNOT_COUNT,
+	CLOSED_WALL_CIRCLE_SPAN_COUNT,
 	LAYOUT_IDENTITY_FAMILIES,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	KNOWN_LAYOUT_FORMAT_VERSIONS
@@ -57,7 +59,7 @@ import type { LayoutObject } from './layout-wall-first-types';
  * Validation result carrying the wall-first document type, not the legacy one.
  *
  * A success is **always** the canonical current-format document. There is one
- * recognized version (`6`) and no historical variant: a payload declaring anything
+ * recognized version (`7`) and no historical variant: a payload declaring anything
  * else fails as `unsupported_format_version` (P23.6I pre-baseline policy).
  */
 export type WallFirstLayoutValidationResult =
@@ -326,6 +328,7 @@ function parseDocument(
 		seenWallPairs.add(pairKey);
 	}
 
+	const junctionById = new Map(junctions.map((junction) => [junction.id, junction] as const));
 	for (const [index, wall] of walls.entries()) {
 		if (!junctionIds.has(wall.startJunctionId)) {
 			addIssue(
@@ -341,6 +344,21 @@ function parseDocument(
 				`${path}.walls[${index}].endJunctionId`,
 				'missing_reference',
 				`Unknown junctionId '${wall.endJunctionId}'`
+			);
+			continue;
+		}
+		// D6 — the 16/15 count above proves only the structural envelope. A closed
+		// Wall is a CIRCULAR Wall, so the codec also proves the saved geometry is
+		// the one symmetric chain the constructor writes. Re-fitting at Save/Load is
+		// exact-safe because JSON preserves the authored doubles; without this a
+		// hand-edited 16-span loop would load as a closed Wall while failing the
+		// accuracy contract that makes a closed Wall a circle.
+		if (wall.startJunctionId === wall.endJunctionId) {
+			validateClosedWallCircle(
+				wall,
+				junctionById.get(wall.startJunctionId)!.point,
+				`${path}.walls[${index}].centerline`,
+				issues
 			);
 		}
 	}
@@ -507,6 +525,102 @@ function parseIdentityLedger(
 	return { cursor, ...assignments };
 }
 
+/**
+ * Enforce the approved D6 closed-Wall geometry: 16 equal circular-arc spans
+ * around one centre, in constructor order from the seam. The reconstruction is
+ * derived only from persisted values (the seam Junction plus the 15 knots), so
+ * this is a real read-boundary check rather than a comparison with a freshly
+ * generated construction.
+ *
+ * Tolerance is relative to radius at 1e-9. At the 5 m reference radius that is
+ * 5 nm, well below the constructor's 3.32e-7 m radial approximation error (which
+ * is a property of the shape, not of how precisely it was saved). A chord,
+ * missing handle, mirrored span order or off-circle knot fails by orders of
+ * magnitude.
+ */
+function validateClosedWallCircle(
+	wall: LayoutWall,
+	seam: LayoutVec2,
+	path: string,
+	issues: LayoutDocumentIssue[]
+): void {
+	if (
+		wall.centerline.kind !== 'cubic-chain' ||
+		wall.centerline.knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT ||
+		wall.centerline.spans.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT
+	) {
+		return;
+	}
+	const points: LayoutVec2[] = [
+		[seam[0], seam[1]],
+		...wall.centerline.knots.map((knot) => [knot.point[0], knot.point[1]] as LayoutVec2)
+	];
+	if (points.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT) return;
+	let centreX = 0;
+	let centreZ = 0;
+	for (const point of points) {
+		centreX += point[0];
+		centreZ += point[1];
+	}
+	centreX /= points.length;
+	centreZ /= points.length;
+	let radiusSum = 0;
+	for (const point of points) radiusSum += Math.hypot(point[0] - centreX, point[1] - centreZ);
+	const radius = radiusSum / points.length;
+	const validRadius = Number.isFinite(radius) && radius > 1e-9;
+	const tolerance = 1e-9 * Math.max(1, radius);
+	const step = (Math.PI * 2) / CLOSED_WALL_CIRCLE_SPAN_COUNT;
+	const startAngle = Math.atan2(seam[1] - centreZ, seam[0] - centreX);
+	const handleDistance = (4 / 3) * Math.tan(step / 4) * radius;
+	let valid = validRadius;
+	if (validRadius) {
+		for (let index = 0; index < points.length; index += 1) {
+			const point = points[index]!;
+			const end = points[(index + 1) % points.length]!;
+			const distance = Math.hypot(point[0] - centreX, point[1] - centreZ);
+			const angle = Math.atan2(point[1] - centreZ, point[0] - centreX);
+			const expectedAngle = startAngle + index * step;
+			const angleError = Math.atan2(
+				Math.sin(angle - expectedAngle),
+				Math.cos(angle - expectedAngle)
+			);
+			const startTangent: LayoutVec2 = [
+				-Math.sin(expectedAngle),
+				Math.cos(expectedAngle)
+			];
+			const endTangent: LayoutVec2 = [
+				-Math.sin(expectedAngle + step),
+				Math.cos(expectedAngle + step)
+			];
+			const span = wall.centerline.spans[index]!;
+			const expectedOut: LayoutVec2 = [
+				point[0] + handleDistance * startTangent[0],
+				point[1] + handleDistance * startTangent[1]
+			];
+			const expectedIn: LayoutVec2 = [
+				end[0] - handleDistance * endTangent[0],
+				end[1] - handleDistance * endTangent[1]
+			];
+			valid &&=
+				Math.abs(distance - radius) <= tolerance &&
+				Math.abs(angleError) <= 1e-9 &&
+				Math.hypot(span.handleOut[0] - expectedOut[0], span.handleOut[1] - expectedOut[1]) <=
+					tolerance &&
+				Math.hypot(span.handleIn[0] - expectedIn[0], span.handleIn[1] - expectedIn[1]) <=
+					tolerance;
+			if (!valid) break;
+		}
+	}
+	if (!valid) {
+		addIssue(
+			issues,
+			path,
+			'invalid_value',
+			'A closed Wall must be the canonical 16-span symmetric circular chain'
+		);
+	}
+}
+
 /** Optional authored name (P23.12): absent means unnamed, blank rejects. */
 function parseOptionalName(
 	input: unknown,
@@ -605,13 +719,29 @@ function parseWall(
 	) {
 		return undefined;
 	}
-	if (startJunctionId === endJunctionId) {
-		addIssue(
-			issues,
-			`${path}.endJunctionId`,
-			'invalid_value',
-			'A Wall must reference two distinct Junctions'
-		);
+	// D6 — a self-connected Wall is the canonical closed representation, not an
+	// accident. It is legal only as the approved 16-span cubic chain: a straight
+	// self-loop has no interior, and any other span count would be a second closed
+	// Wall vocabulary the product cannot author or reason about.
+	if (startJunctionId !== undefined && startJunctionId === endJunctionId) {
+		if (centerline.kind !== 'cubic-chain') {
+			addIssue(
+				issues,
+				`${path}.centerline`,
+				'invalid_value',
+				'A closed Wall must use a 16-span cubic-chain centerline'
+			);
+		} else if (
+			centerline.knots.length !== CLOSED_WALL_CIRCLE_KNOT_COUNT ||
+			centerline.spans.length !== CLOSED_WALL_CIRCLE_SPAN_COUNT
+		) {
+			addIssue(
+				issues,
+				`${path}.centerline`,
+				'invalid_value',
+				`A closed Wall must carry exactly ${CLOSED_WALL_CIRCLE_SPAN_COUNT} cubic spans (${CLOSED_WALL_CIRCLE_KNOT_COUNT} bend points)`
+			);
+		}
 	}
 	return {
 		id,

@@ -699,9 +699,9 @@ test('starter: draw, close, divide, host an Opening, delete, identities, Undo/Re
 			)
 		);
 
-		// Format 6 strict refusal in the editor, for a format-5 payload and an
+		// Format 7 strict refusal in the editor, for a format-5 payload and an
 		// unknown version. Each leaves the mounted project byte-identical and the
-		// source still downloadable in format 6.
+		// source still downloadable in format 7.
 		for (const version of [5, 99]) {
 			const beforeRefusal = layoutIds(await downloadSource(page));
 			await openSourceVariant(page, tamperedFormat(reloadedSource, version));
@@ -709,14 +709,14 @@ test('starter: draw, close, divide, host an Opening, delete, identities, Undo/Re
 			await expect(note).toBeVisible({ timeout: 30_000 });
 			await expect(note).toContainText('current project is unchanged');
 			const recovered = await downloadSource(page);
-			expect(recovered.units.layout.data.formatVersion).toBe(6);
+			expect(recovered.units.layout.data.formatVersion).toBe(7);
 			expect(layoutIds(recovered)).toEqual(beforeRefusal);
 			rows.push(
 				row(
 					`format.refuse-${version}`,
 					`format ${version} refused with recovery`,
 					'passed',
-					`${(await note.innerText()).trim()}; the download recovered format 6 with the same identities`,
+					`${(await note.innerText()).trim()}; the download recovered format 7 with the same identities`,
 					page,
 					viewport,
 					reducedMotion,

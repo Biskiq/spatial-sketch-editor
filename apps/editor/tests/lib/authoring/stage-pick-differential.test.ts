@@ -120,6 +120,9 @@ describe('S03 recorded pre-change selection differential', () => {
 			// revision, because Scene moves to format 5. Winners stay pinned.
 			// The guide-playback plan updates only generation IDs, because
 			// Experience 4 changes the source hashes. Winners stay pinned.
+			// C2 format 7 updates only generation IDs, because the canonical
+			// document now serializes `formatVersion: 7`. Every winner, point and
+			// pick field is unchanged (266 values, all generationId).
 			expect(actual).toEqual(expected);
 		}
 	});
