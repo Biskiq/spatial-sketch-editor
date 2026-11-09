@@ -85,7 +85,7 @@ They are not active instructions and must not be merged over this implementation
 | Kept | Role |
 | --- | --- |
 | `spot.ts`, `lib/spot-decision.ts`, `lib/spot-measurement.ts`, `lib/spot-browser.ts` | The spot check and its decision rules |
-| `flows/*.spec.ts` still listed in `playwright.config.ts` | Functional browser acceptance and focused trace-library checks. They are not the spot check. |
+| `flows/*.spec.ts` still listed in `playwright.config.ts` | Optional functional browser diagnostics/trace-library checks, not a routine per-slice gate and not the spot check. |
 | `lib/flow.ts`, `lib/browser.ts`, `lib/ledger.ts`, `lib/fixtures.ts` | Shared product driving and perf-mark observation |
 | `lib/trace-*.ts`, `lib/save-trace.ts` | Diagnostics the project-lifecycle acceptance still uses |
 | `generate-workloads.ts`, `lib/workloads/grid.ts` | `grid-M` and `grid-L` only |
@@ -94,7 +94,9 @@ They are not active instructions and must not be merged over this implementation
 
 ## Focused browser wiring regression
 
-`spot-wiring.spec.ts` opens one correctness Room and drives the real chooser, typed Length writer,
+This is an optional diagnostic for an owner-authorized run. Ordinary changes do not require a full
+browser journey; focused manual browser QA is the default where visual or interaction behavior
+matters. `spot-wiring.spec.ts` opens one correctness Room and drives the real chooser, typed Length writer,
 source-matched render, before/after known-wall picks and pan clock. It has no workload tier or feel
 label and is not another M/L spot session. Run it through the existing Playwright config against a
 preview; it needs no API or test-auth service:

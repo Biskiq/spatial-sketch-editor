@@ -1,9 +1,10 @@
 # PR #287 — Wall manipulation and unfolding: Stage 1 specification
 
-**Status:** Stage 1 review artifact. **No production code has been changed.**
-**PR head reviewed:** `4950c2eb` (`claude/spatial-world-t1-planning-3f4013`), 2026-11-09.
+**Status:** Stage 2 implementation contract, authorized 2026-11-09. Stage 1 evidence is preserved
+below; Stage 2 changes S0–S7 and does not weaken canonical validation.
+**PR head reviewed:** `4950c2eb` (`claude/spatial-world-t1-planning-3f4013`). Work proceeds from
+`18014c0d`; the PR stays draft and unmerged.
 **Companion prototype:** [`interaction-review.html`](./interaction-review.html) — self-contained, open directly from disk.
-**Stage 2:** not authorized. This document ends with an approve-to-build gate.
 
 Read this with the owner handoff and screenshots `01`–`07`. Tags used throughout:
 
@@ -52,7 +53,7 @@ The recommended model is not a mechanical application of the owner's notes. Two 
 | `wall-unfold*.ts`, `StageWallDevelopment.svelte`, `LayoutWallUnfold.svelte`, spatial route | Unfold state, sheet, camera and pick paths. |
 | `interaction-review.html` | The proposed behavior, exercised with scripted pointer events. |
 
-This is a **code-read review plus an executable design prototype**. No repository test suite was run in Stage 1. Root causes marked **[V]** are direct code facts at `4950c2eb`; **[H]** items need a browser repro in Stage 2 before edits.
+This is a **code-read review plus an executable design prototype**. No repository test suite was run in Stage 1. Root causes marked **[V]** are direct code facts at `4950c2eb`; **[H]** items are verified during Stage 2 by focused browser spot checks or tests before edits.
 
 ### 1.1 Prototype verification (what was actually exercised)
 
@@ -324,13 +325,13 @@ Rooms, other Walls, and general Scene objects remain in the 3D Scene; no Scene o
 
 Each slice is independently reviewable, keeps canonical validation intact, and ends with tests. Do not implement slices before owner approval.
 
-### S0 — Characterization and transport (tests only)
+### S0 — Characterization and transport
 
 - Pin the current behavior of: junction refusal candidate ids/roles/geometry; bend refusal candidate; knot activation after commit; unfold anchor; entry/`flip` camera calls; sheet mesh vertex/opening contour counts; `Curvature` copy.
 - **Modifier transport.** `StagePointerIntent` currently exposes only `shift` (`stage-facade.ts`), and the host builds the intent with `shift: event.shiftKey` (`spatial/+page.svelte`). Add `metaKey`/`ctrlKey` (or one platform-neutral `alternateShape` captured at **pointer-down**) and carry it through `down`/`move`/`up`/`cancel`. Pin the host construction and the layout adapter's read; a modifier change mid-drag does not change the gesture.
 - **Curved rigid translation.** `LAYOUT_WALL_MOVE_KIND` (`wallId`, `deltaX`, `deltaZ`) already delegates to `planRigidWallMove`, which carries a curved chain — knots and span controls receive the same delta and sampled geometry is translated exactly (tests: `layout-curve-planners.test.ts` “translates a curved Wall without changing its shape”; `layout-curve-proposals.test.ts` curved proposal). Characterize a connected curved Wall with ≥2 knots, one shared Junction, and an Opening: one command, knot count/length/Opening station preserved, neighbours follow, one history entry.
-- Add a browser repro for **[H1]** (closed-Wall sheet station vs cut) and **[H2]** (which refusal code produces the generic sentence).
-- No production change. This slice is the safety net for every later diff.
+- Verify **[H1]** (closed-Wall sheet station vs cut) and **[H2]** (which refusal code produces the generic sentence) with a focused browser spot check or a test; capture only what is needed to decide.
+- Minimal modifier-input plumbing is part of this slice. This slice is the safety net for every later diff.
 
 ### S1 — Preview truth
 
@@ -381,10 +382,14 @@ Each slice is independently reviewable, keeps canonical validation intact, and e
 - Tests: drag mapping, snap stops, cancel, touch gesture, keyboard operation.
 - Files: `wall-unfold-store.svelte.ts`, `+page.svelte` press handling, `LayoutWallUnfold.svelte`, tests.
 
-### S7 — Browser acceptance and docs
+### S7 — Focused browser QA, docs and owner handoff
 
-- Recreate screenshots 01–07 as passing journeys; update `docs/reference/components/layout.md` and the plan's checkpoint notes; record any deviations (camera, warnings).
-- No merge; no production schema/validator relaxation.
+- Run focused manual browser spot checks for the changed interactions and visual states. Full
+  Playwright capture, exhaustive journeys, scripted E2E replay and bulk screenshots/video are not
+  required and need explicit owner authorization.
+- Update `docs/reference/components/layout.md` and the plan's checkpoint notes; record deviations
+  (camera, warnings). Recreate screenshots only where a targeted state is useful evidence.
+- No merge; no production schema/validator relaxation. Owner performs final manual acceptance.
 
 ---
 
@@ -413,7 +418,10 @@ Each slice is independently reviewable, keeps canonical validation intact, and e
 | 17 | Entry orientation | Explicit Unfold may pan/fit/zoom but camera orientation (yaw/pitch/roll/up) is unchanged; scrub/peel make no camera call; Done restores exactly. |
 | 18 | Modifier transport | `metaKey`/`ctrlKey` survives every pointer phase; releasing the modifier mid-drag does not change the gesture; the keyboard/Bend path produces the same command. |
 
-### 7.2 Browser journeys
+### 7.2 Focused manual browser spot checks
+
+These are short, targeted checks by an agent or the owner, not an exhaustive automated journey or a
+capture requirement. Full browser journeys need explicit owner authorization.
 
 **A. Connected rectangle** (screenshots 01–02)
 Select a Wall → drag its body 0.5 m: whole network preview; release; Undo. A Room-area change is **neutral**; no amber. Drag the lower-right Junction into Wall 3: full coral attempted network, conflict at the crossing, specific words, release writes nothing. Drag to a 0.20 m gap: the single amber warning, commit, reload; topology unchanged. Escape cancels. Verify the tag names the moved Wall first.
@@ -445,7 +453,7 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 | H7 | `buildDevelopedWallMesh` can carry voids without a core API break. | Prototype the holes option and run the development tests. | Split S5; propose a core API change rather than an editor-only mesh. |
 | H8 | Warning fatigue / meaning. | Five-creator hallway test on the prototype and the real build. | Warnings are already limited to an ambiguous near-miss; if still fatiguing, make that a neutral “no connection” label and keep only refusals. Never add area warnings. |
 
-**The prototype cannot settle** occlusion, depth, true perspective foreshortening, canonical Room derivation, pick tolerance in 3D, or save/reload. Those are Stage 2 browser/automated tests.
+**The prototype cannot settle** occlusion, depth, true perspective foreshortening, canonical Room derivation, pick tolerance in 3D, or save/reload. Those are Stage 2 focused browser/automated checks.
 
 ---
 
@@ -521,19 +529,19 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 ## 10. Approve-to-build checklist
 
-- [x] Owner approved **D1**, **D2/D8 narrowed**, **D3**, **D5**, **D6** and **D7**; **D4** remains conditional on the repro. No implicit Stage 2 approval.
-- [ ] Stage 2 scope is the slices above; no merge.
-- [ ] Baseline tests recorded green at the PR head; H1/H2 repros attached.
+- [x] Owner approved **D1**, **D2/D8 narrowed**, **D3**, **D5**, **D6** and **D7**; **D4** remains conditional on the repro.
+- [x] Owner authorized Stage 2 implementation from `18014c0d`; scope is the slices above; no merge.
+- [ ] Baseline tests recorded green at the implementation head; H1/H2 verified.
 - [ ] No canonical validator relaxation; warnings are display-only classifications of accepted candidates, and area/predictable edits stay neutral.
 - [ ] S0 characterization (including `StagePointerIntent` modifier transport and canonical curved translation) merged before S1; each later slice is independently reviewable.
-- [ ] Automated tests 1–18 pass; browser journeys A–E pass, including both sides, save/reload and visitor parity.
-- [ ] Screenshots 01–07 recreated as expected states; no generic refusal for reachable codes.
+- [ ] Automated tests 1–18 pass; focused manual browser spot checks A–E cover both sides, save/reload and visitor parity where practical.
+- [ ] Targeted states inspected; no generic refusal for reachable codes. Bulk screenshot recreation is not required.
 - [ ] Reduced motion, keyboard-only, touch and modifier alternatives verified.
 - [ ] Performance budget for a 40-Wall network measured; no dropped preview truth.
 - [ ] Reference docs updated; deviations (camera, warnings, "openings editable") documented.
-- [ ] Owner explicitly authorizes Stage 2 implementation.
+- [x] Owner explicitly authorized Stage 2 implementation with the focused-QA policy.
 
-**Stop here.** No production code is changed by this Stage 1 artifact.
+**Owner acceptance remains a manual browser check after implementation.** No merge without it.
 
 ---
 
