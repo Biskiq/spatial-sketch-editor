@@ -124,6 +124,32 @@ const presentationFiles = walk(SRC).filter((file) => {
 	return PRESENTATION_PREFIXES.some((prefix) => rel.startsWith(prefix));
 });
 
+/**
+ * The shell surfaces #286 introduced or substantially rewrote. They consume the
+ * semantic roles; `--ld-*` is the Living Draft theme's private palette.
+ */
+const SHELL_SURFACES = [
+	'lib/authoring/world-toolbar/WorldToolbar.svelte',
+	'lib/authoring/world-toolbar/InkPlate.svelte',
+	'lib/authoring/world-toolbar/ObjectsPlate.svelte',
+	'lib/authoring/world-toolbar/SkyControl.svelte',
+	'lib/authoring/stage/shell/WorldMark.svelte',
+	'lib/authoring/stage/shell/StageDock.svelte',
+	'lib/authoring/stage/shell/StageDraftingControl.svelte',
+	'lib/authoring/stage/shell/StageEnvironmentControl.svelte',
+	'lib/authoring/stage/shell/StageHeightSheet.svelte',
+	'lib/authoring/stage/shell/EditorHead.svelte',
+	'lib/authoring/stage/shell/EditorCard.svelte',
+	'lib/authoring/stage/shell/EditorIndex.svelte',
+	'lib/authoring/adapters/layout/LayoutOpeningPalette.svelte',
+	'lib/authoring/experience/ExperienceDock.svelte',
+	'lib/authoring/experience/ExperienceGuide.svelte',
+	'lib/authoring/experience/ExperienceStopWriter.svelte',
+	'lib/authoring/experience/ExperienceSubjectWriter.svelte',
+	'lib/authoring/experience/ExperienceTransitionWriter.svelte',
+	'routes/project/[projectId]/spatial/+page.svelte'
+];
+
 describe('presentation token ownership', () => {
 	it('declares every spatial role the TypeScript table paints with', () => {
 		const tokens = declarations(readFileSync(TOKEN_FILE, 'utf8'));
@@ -139,7 +165,7 @@ describe('presentation token ownership', () => {
 		const unresolved: string[] = [];
 		for (const file of presentationFiles) {
 			const css = presentationCss(file, readFileSync(file, 'utf8'));
-			for (const match of css.matchAll(/var\(\s*(--(?:shell|stage|cursor)-[a-z0-9-]+)/gi)) {
+			for (const match of css.matchAll(/var\(\s*(--(?:shell|stage|cursor|brand)-[a-z0-9-]+)/gi)) {
 				if (!canonical.has(match[1])) unresolved.push(`${relative(SRC, file)}: ${match[1]}`);
 			}
 		}
@@ -150,7 +176,7 @@ describe('presentation token ownership', () => {
 		const fallbacks: string[] = [];
 		for (const file of presentationFiles) {
 			const css = presentationCss(file, readFileSync(file, 'utf8'));
-			for (const match of css.matchAll(/var\(\s*(--(?:shell|stage|cursor)-[a-z0-9-]+)\s*([\s\S]*?)\)/gi)) {
+			for (const match of css.matchAll(/var\(\s*(--(?:shell|stage|cursor|brand)-[a-z0-9-]+)\s*([\s\S]*?)\)/gi)) {
 				if (!canonical.has(match[1])) continue;
 				const rest = match[2].trimStart();
 				// A functional fallback such as `drop-shadow(...)` closes before the
@@ -203,7 +229,7 @@ describe('presentation token ownership', () => {
 			const rel = relPath(file);
 			if (!INDEPENDENT_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
 			const css = presentationCss(file, readFileSync(file, 'utf8'));
-			for (const match of css.matchAll(/var\(\s*(--(?:shell|stage|cursor)-[a-z0-9-]+)/gi)) {
+			for (const match of css.matchAll(/var\(\s*(--(?:shell|stage|cursor|brand)-[a-z0-9-]+)/gi)) {
 				coupled.push(`${rel}: ${match[1]}`);
 			}
 		}
@@ -229,6 +255,45 @@ describe('presentation token ownership', () => {
 		}
 		expect(overrides).toEqual([]);
 		expect(rootDeclarations(css).size).toBeGreaterThan(0);
+	});
+
+	it('keeps theme-private ld roles out of the shell surfaces #286 rewrote', () => {
+		const leaks: string[] = [];
+		for (const rel of SHELL_SURFACES) {
+			const source = readFileSync(join(SRC, rel), 'utf8');
+			for (const match of source.matchAll(/var\(\s*(--ld-[a-z0-9-]+)/gi)) {
+				leaks.push(`${rel}: ${match[1]}`);
+			}
+		}
+		expect(leaks).toEqual([]);
+	});
+
+	it('declares the ld palette only inside the Living Draft theme scope', () => {
+		const css = readFileSync(TOKEN_FILE, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+		const start = css.search(/\[data-shell=['"]living-draft['"]\]\s*\{/);
+		expect(start).toBeGreaterThan(-1);
+		const open = css.indexOf('{', start);
+		let depth = 0;
+		let end = open;
+		for (let index = open; index < css.length; index += 1) {
+			if (css[index] === '{') depth += 1;
+			else if (css[index] === '}') {
+				depth -= 1;
+				if (depth === 0) {
+					end = index;
+					break;
+				}
+			}
+		}
+		const outside = `${css.slice(0, start)}${css.slice(end + 1)}`;
+		expect([...outside.matchAll(/(--ld-[a-z0-9-]+)\s*:/g)].map((match) => match[1])).toEqual([]);
+	});
+
+	it('resolves the brand roles in the World mark', () => {
+		const source = readFileSync(join(SRC, 'lib/authoring/stage/shell/WorldMark.svelte'), 'utf8');
+		for (const match of source.matchAll(/var\(\s*(--brand-[a-z0-9-]+)/g)) {
+			expect(canonical.has(match[1]), `${match[1]} is missing from presentation-tokens.css`).toBe(true);
+		}
 	});
 
 	it('keeps the retired duplicate names out of the tree', () => {

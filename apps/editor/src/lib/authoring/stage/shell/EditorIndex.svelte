@@ -709,7 +709,7 @@
 		border-right: 1px solid var(--shell-hairline);
 		background: var(--shell-index);
 		color: var(--shell-ink);
-		font: 13px/1.35 var(--shell-sans);
+		font: var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 
 	.plate-index[hidden] {
@@ -745,8 +745,8 @@
 		min-width: 0;
 		height: 28px;
 		padding: 0 7px;
-		background: var(--shell-white);
-		border: 1px solid var(--shell-hairline);
+		background: var(--shell-field);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 7px;
 		color: var(--shell-ink-3);
 	}
@@ -756,7 +756,7 @@
 		border: 0;
 		background: none;
 		color: var(--shell-ink);
-		font: 12px var(--shell-sans);
+		font: var(--shell-text-control) var(--shell-sans);
 	}
 
 	/* Experience review 1 — the Experiences list, in the Index's own row grammar. */
@@ -791,7 +791,7 @@
 		min-height: 28px;
 	}
 	.exp-row.current {
-		background: var(--shell-gold-tint);
+		background: var(--shell-selected);
 	}
 	.exp-open {
 		flex: 1;
@@ -803,7 +803,7 @@
 		padding: 4px 8px 4px 12px;
 		border-radius: 0;
 		text-align: left;
-		font: 400 13px/1.35 var(--shell-sans);
+		font: 400 var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 	.exp-row:not(.current) .exp-open:hover {
 		background: var(--shell-hover);
@@ -816,8 +816,8 @@
 		border-radius: 2px;
 	}
 	.exp-row.current .exp-ic {
-		border-color: var(--shell-gold-ink);
-		background: var(--shell-gold);
+		border-color: var(--shell-forest);
+		background: var(--shell-forest);
 	}
 	.exp-name {
 		flex: 1;
@@ -836,7 +836,7 @@
 	.exp-meta {
 		flex: none;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.exp-more {
 		width: 26px;
@@ -851,10 +851,10 @@
 	.exp-row .crumb-input {
 		margin: 3px 8px 3px 12px;
 		border: 0;
-		border-bottom: 2px solid var(--shell-gold);
+		border-bottom: 2px solid var(--shell-leaf);
 		border-radius: 0;
 		background: none;
-		font: 600 13px/1.35 var(--shell-sans);
+		font: 600 var(--shell-text-identity)/1.35 var(--shell-sans);
 		outline: none;
 	}
 	.exp-filter {
@@ -864,9 +864,9 @@
 		margin: 2px 8px 4px;
 		padding: 0 8px;
 		height: 26px;
-		border: 1px solid var(--shell-hairline);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 7px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		color: var(--shell-ink-3);
 	}
 	.exp-more-toggle {
@@ -877,7 +877,7 @@
 		min-height: 26px;
 		padding: 0 12px;
 		color: var(--shell-ink-3);
-		font: 500 12px var(--shell-sans);
+		font: 500 var(--shell-text-control) var(--shell-sans);
 	}
 	.exp-more-toggle:hover {
 		background: var(--shell-hover);
@@ -891,13 +891,13 @@
 		padding: 1px 4px;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 5px;
-		font: 600 12px/1.3 var(--shell-sans);
+		font: 600 var(--shell-text-control)/1.3 var(--shell-sans);
 		color: inherit;
 	}
 	.crumb-error {
 		margin: -2px 10px 6px;
 		color: var(--shell-refuse);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 	}
 	.opens-tag {
 		flex: none;
@@ -905,12 +905,12 @@
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 3px;
 		color: var(--shell-ink-2);
-		font: 500 10px/1.5 var(--shell-mono);
+		font: 500 var(--shell-text-meta)/1.5 var(--shell-mono);
 		letter-spacing: 0.02em;
 	}
 
 
-	.world-search input { font-size: 12.5px; }
+	.world-search input { font-size: var(--shell-text-body); }
 	.world-search > button { width: 28px; height: 28px; padding: 0; justify-content: center; }
 	.crumbs {
 		display: flex;
@@ -918,7 +918,7 @@
 		align-items: center;
 		gap: 2px 3px;
 		padding: 0 10px 6px;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		color: var(--shell-ink-3);
 	}
 	.crumb { display: inline-flex; align-items: center; }
@@ -932,12 +932,12 @@
 		padding: 3px;
 		max-height: 220px;
 		overflow: auto;
-		background: var(--shell-white);
+		background: var(--shell-popover);
 		border: 1px solid var(--shell-hairline);
 		border-radius: 8px;
 		box-shadow: 0 1px 2px #0001, 0 8px 24px #0002;
 	}
-	.location-list button { width: 100%; padding: 4px 8px; min-height: 0; text-align: left; font-size: 12px; }
+	.location-list button { width: 100%; padding: 4px 8px; min-height: 0; text-align: left; font-size: var(--shell-text-control); }
 	.location-list [aria-current] { background: var(--shell-leaf-tint); font-weight: 600; }
 	.world-list { flex: 1; overflow: auto; padding-bottom: 14px; }
 	.world-group { display: flex; justify-content: space-between; }
@@ -946,27 +946,27 @@
 	.world-list .selected .item-name { font-weight: 600; }
 	.world-list .item:hover:not(.selected) { background: rgb(0 0 0 / 3.5%); }
 	.world-list .item-row:hover { background: transparent; }
-	.world-more { margin: 4px 10px 4px 12px; font-size: 12px; color: var(--shell-forest-raised); }
+	.world-more { margin: 4px 10px 4px 12px; font-size: var(--shell-text-control); color: var(--shell-forest-raised); }
 	.facets {
 		display: flex;
 		gap: 2px;
 		margin: 0 8px 4px;
 		padding: 2px;
 		border-radius: 7px;
-		background: #eceee9;
+		background: var(--shell-surface-sunken);
 	}
 	.facets button {
 		flex: 1;
 		display: grid;
 		place-items: center;
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		height: 24px;
 		min-height: 24px;
 		padding: 0 4px;
 		color: var(--shell-ink-3);
 	}
 	.facets [aria-pressed='true'] {
-		background: var(--shell-white);
+		background: var(--shell-field-focus);
 		color: var(--shell-ink);
 		box-shadow: 0 0 0 1px var(--shell-hairline-strong);
 	}
@@ -994,9 +994,10 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	/* Index selection mirrors the Stage; gold stays on the drawing itself. */
 	.item.selected,
 	.item-head.selected {
-		background: var(--shell-gold-tint);
+		background: var(--shell-selected);
 	}
 	.item.selected .item-name {
 		font-weight: 600;
@@ -1014,7 +1015,7 @@
 	}
 
 	.badge {
-		font-size: 10px;
+		font-size: var(--shell-text-meta);
 		color: var(--shell-ink-3);
 	}
 	.group {
@@ -1026,7 +1027,7 @@
 		margin: 0;
 		padding: 8px 10px 2px 12px;
 		color: var(--shell-ink-3);
-		font: 600 10px var(--shell-sans);
+		font: 600 var(--shell-text-meta) var(--shell-sans);
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
 	}
@@ -1047,7 +1048,7 @@
 	.item-meta {
 		overflow: hidden;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		line-height: 1.3;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -1059,16 +1060,16 @@
 		padding: 0 4px;
 		border: 1px dashed var(--shell-hairline-strong);
 		border-radius: 4px;
-		font-size: 10px;
+		font-size: var(--shell-text-meta);
 	}
 	.chip {
 		flex: none;
 		padding: 0 6px;
 		border: 1px solid var(--shell-leaf);
 		border-radius: 999px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		color: var(--shell-forest-3);
-		font-size: 10px;
+		font-size: var(--shell-text-meta);
 		line-height: 15px;
 		font-weight: 600;
 	}
@@ -1113,8 +1114,8 @@
 		padding: 4px;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 8px;
-		background: var(--shell-card);
-		box-shadow: 0 6px 18px rgb(20 30 24 / 14%);
+		background: var(--shell-popover);
+		box-shadow: var(--shell-shadow);
 	}
 	.guide-menu button {
 		justify-content: flex-start;
@@ -1123,7 +1124,7 @@
 		border: 0;
 		border-radius: 5px;
 		background: transparent;
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		text-align: left;
 	}
 	.guide-menu button:hover,
@@ -1139,9 +1140,9 @@
 		min-height: 28px;
 		margin: 2px 0;
 		padding: 3px 7px;
-		border: 1px solid var(--shell-forest-raised);
+		border: 1px solid var(--shell-field-line-strong);
 		border-radius: 5px;
-		background: var(--shell-card);
+		background: var(--shell-field);
 		color: var(--shell-ink);
 		font: inherit;
 	}
@@ -1195,7 +1196,7 @@
 	}
 	/* Round 2 Index rows read in the sans at 13 px; only the selected row is bold. */
 	.presentation-row .item-name {
-		font: 400 13px/1.35 var(--shell-sans);
+		font: 400 var(--shell-text-body)/1.35 var(--shell-sans);
 	}
 	.item-head.selected .item-name {
 		font-weight: 600;
@@ -1244,13 +1245,13 @@
 		border-radius: 0;
 		text-align: left;
 		color: var(--shell-ink);
-		font-size: 13px;
+		font-size: var(--shell-text-body);
 	}
 	.view-row:hover {
 		background: rgb(0 0 0 / 0.035);
 	}
 	.view-row.selected {
-		background: var(--shell-gold-tint);
+		background: var(--shell-selected);
 		font-weight: 600;
 	}
 	.view-name {
@@ -1276,7 +1277,7 @@
 	.default-mark {
 		flex: none;
 		color: var(--shell-ink-3);
-		font-size: 10px;
+		font-size: var(--shell-text-meta);
 	}
 	.view-more {
 		width: 100%;
@@ -1284,12 +1285,12 @@
 		padding: 3px 6px 3px 24px;
 		border-radius: 6px;
 		color: var(--shell-ink-3);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		text-align: left;
 	}
 	.index-empty {
 		padding: 10px;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		color: var(--shell-ink-3);
 	}
 	@media (pointer: coarse) {

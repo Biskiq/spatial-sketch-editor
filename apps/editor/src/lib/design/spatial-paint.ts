@@ -28,13 +28,13 @@ export const SPATIAL_PAINT_ROLES = Object.freeze({
 	hover: '#4f8f6c',
 	/** The erase treatment: red, never gold. */
 	erase: '#d0412d',
-	/** Paper's sheet. */
-	paper: '#e9ebe6',
+	/** Paper's sheet: a neutral drafting stone that holds with the editor's cards. */
+	paper: '#e5e8e1',
 	/** The mat outside the plate. */
 	mat: '#1d3a33',
-	/** Paper and plate grid inks. */
-	gridMinor: '#9fb2a2',
-	gridMajor: '#809984',
+	/** Paper and plate grid inks: restrained sage/olive-grey on the sheet. */
+	gridMinor: '#a8ad9f',
+	gridMajor: '#8a907f',
 	/** The mat's own grid inks (dark ground). */
 	gridMatMinor: '#2b5147',
 	gridMatMajor: '#3c6a5c'

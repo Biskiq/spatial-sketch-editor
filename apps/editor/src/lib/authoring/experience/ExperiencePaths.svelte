@@ -540,7 +540,7 @@
 		stroke: var(--shell-gold);
 	}
 	.path-hint rect { fill: var(--shell-forest); }
-	.path-hint text { fill: white; font-size: 10px; }
+	.path-hint text { fill: var(--shell-white); font-size: var(--shell-text-meta); }
 	.route-hit:focus,
 	.anchor-hit:focus {
 		outline: none;

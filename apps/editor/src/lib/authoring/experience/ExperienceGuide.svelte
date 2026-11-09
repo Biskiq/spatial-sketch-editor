@@ -1302,24 +1302,28 @@
 {/if}
 
 <style>
+	/*
+	 * Dense Stop measurements and miniature marks stay below the UI scale:
+	 * .stop-meta 10.5px, .gutter-time 9px, .pause-glyph 9px.
+	 */
 	.pacing-label {
 		min-height: 24px;
 		padding: 0 8px;
-		border: 1px solid rgb(255 255 255 / 28%);
+		border: 1px solid color-mix(in srgb, var(--shell-ink-light) 28%, transparent);
 		border-radius: 999px;
 		background: none;
 		color: inherit;
-		font: 500 11px var(--shell-sans);
+		font: 500 var(--shell-text-label) var(--shell-sans);
 		white-space: nowrap;
 		cursor: pointer;
 	}
 	.pacing-label:hover {
-		background: rgb(255 255 255 / 10%);
+		background: var(--shell-on-forest-wash);
 	}
 	.badge {
 		margin-left: 4px;
 		color: var(--shell-ink-3);
-		font-size: 10.5px;
+		font-size: var(--shell-text-meta);
 		font-weight: 600;
 	}
 	.badge.invite {
@@ -1337,6 +1341,13 @@
 		/* Round 2: a fixed 820 px instrument, whatever the number of Stops; the Card stops above it. */
 		width: min(820px, 100%);
 		border-radius: 12px;
+		/* The Guide's own forest tiers: an authored instrument look, not a skin surface. */
+		--guide-tier-1: #16352a;
+		--guide-tier-2: #1d4033;
+		--guide-tier-3: #234b3a;
+		--guide-chip: #1a3a2d;
+		--guide-chip-line: #3c5e4f;
+		--guide-chip-hover: #25483a;
 		background: var(--shell-forest);
 		color: var(--shell-ink-light);
 		box-shadow: 0 12px 30px rgb(0 0 0 / 0.28);
@@ -1348,13 +1359,13 @@
 		align-items: center;
 		gap: 8px;
 		padding: 6px 6px 6px 12px;
-		border-bottom: 1px solid rgb(255 255 255 / 0.08);
+		border-bottom: 1px solid var(--shell-line-on-forest);
 	}
 	.kicker {
-		font: 600 10px var(--shell-sans);
+		font: 600 var(--shell-text-meta) var(--shell-sans);
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
-		color: #9fbcaa;
+		color: var(--shell-ink-quiet);
 	}
 	.guide-name {
 		min-width: 0;
@@ -1363,8 +1374,8 @@
 		border: 0;
 		border-bottom: 2px solid transparent;
 		background: transparent;
-		color: var(--shell-white);
-		font: var(--shell-text-identity) var(--shell-serif);
+		color: var(--shell-ink-light);
+		font: var(--shell-text-identity) var(--shell-sans);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1374,11 +1385,11 @@
 		cursor: default;
 	}
 	.guide-name:hover:not(.plain) {
-		border-bottom-color: rgb(255 255 255 / 0.3);
+		border-bottom-color: color-mix(in srgb, var(--shell-ink-light) 30%, transparent);
 	}
 	.count {
 		color: var(--shell-ink-quiet);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		white-space: nowrap;
 	}
 	.name-input {
@@ -1387,14 +1398,14 @@
 		max-width: 26ch;
 		height: 26px;
 		padding: 0 8px;
-		border: 1px solid rgb(255 255 255 / 0.18);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 7px;
-		background: rgb(255 255 255 / 0.07);
-		color: var(--shell-white);
-		font: var(--shell-text-identity) var(--shell-serif);
+		background: var(--shell-on-forest-wash);
+		color: var(--shell-ink-light);
+		font: var(--shell-text-identity) var(--shell-sans);
 	}
 	.name-input::placeholder {
-		color: #9fbcaa;
+		color: var(--shell-ink-quiet);
 	}
 	.spacer {
 		flex: 1;
@@ -1407,7 +1418,7 @@
 		padding: 0 9px;
 		border: 0;
 		border-radius: 7px;
-		background: rgb(255 255 255 / 0.09);
+		background: var(--shell-on-forest-wash);
 		color: inherit;
 		font: inherit;
 		font-size: var(--shell-text-utility);
@@ -1415,7 +1426,7 @@
 		cursor: pointer;
 	}
 	.tool:hover:not(:disabled) {
-		background: rgb(255 255 255 / 0.16);
+		background: var(--shell-on-forest-wash-strong);
 	}
 	.tool[aria-expanded='true'] {
 		background: rgb(79 143 108 / 0.45);
@@ -1429,11 +1440,11 @@
 		border: 0;
 		border-radius: 7px;
 		background: transparent;
-		color: #cfdcd2;
+		color: var(--shell-ink-quiet);
 		cursor: pointer;
 	}
 	.icon:hover {
-		background: rgb(255 255 255 / 0.1);
+		background: var(--shell-on-forest-wash);
 	}
 	.icon.flipped :global(svg) {
 		transform: rotate(180deg);
@@ -1470,7 +1481,7 @@
 		max-height: min(16rem, 50vh);
 		overflow-y: auto;
 		padding: 4px;
-		border: 1px solid rgb(255 255 255 / 0.1);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 10px;
 		background: var(--shell-popup-dark);
 		box-shadow: 0 10px 28px rgb(0 0 0 / 0.32);
@@ -1490,14 +1501,14 @@
 	}
 	.menu-item:hover,
 	.menu-item:focus-visible {
-		background: rgb(255 255 255 / 0.1);
+		background: var(--shell-on-forest-wash);
 	}
 	.menu-label {
-		font: 13px var(--shell-serif);
+		font: var(--shell-text-body) var(--shell-sans);
 	}
 	.menu-hint {
 		color: var(--shell-ink-quiet);
-		font: italic 11px var(--shell-sans);
+		font: italic var(--shell-text-label) var(--shell-sans);
 	}
 
 	/* ---- Empty Guide ---- */
@@ -1507,21 +1518,21 @@
 		gap: 6px;
 		margin: 10px 12px 12px;
 		padding: 14px 12px;
-		border: 1.5px dashed rgb(255 255 255 / 0.3);
+		border: 1.5px dashed color-mix(in srgb, var(--shell-ink-light) 30%, transparent);
 		border-radius: 10px;
-		color: #c9d6cc;
+		color: var(--shell-ink-quiet);
 		text-align: center;
 	}
 	.empty.over {
 		border-color: var(--shell-ink-light);
-		background: rgb(255 255 255 / 0.06);
+		background: var(--shell-on-forest-wash);
 	}
 	.empty p {
 		margin: 0;
-		font-size: 12.5px;
+		font-size: var(--shell-text-body);
 	}
 	.empty b {
-		color: var(--shell-white);
+		color: var(--shell-ink-light);
 		font-weight: 600;
 	}
 
@@ -1550,31 +1561,31 @@
 		width: 56px;
 		padding: 0 6px;
 		border: 0;
-		color: var(--shell-white);
+		color: var(--shell-ink-light);
 		cursor: pointer;
 	}
 	.more-arrow.left {
 		left: 0;
 		justify-content: flex-start;
-		background: linear-gradient(90deg, rgb(17 41 31) 35%, rgb(17 41 31 / 0));
+		background: linear-gradient(90deg, var(--shell-forest) 35%, transparent);
 	}
 	.more-arrow.right {
 		right: 0;
 		justify-content: flex-end;
-		background: linear-gradient(270deg, rgb(17 41 31) 35%, rgb(17 41 31 / 0));
+		background: linear-gradient(270deg, var(--shell-forest) 35%, transparent);
 	}
 	.more-arrow span {
 		display: grid;
 		place-items: center;
 		width: 26px;
 		height: 26px;
-		border: 1px solid #3c5e4f;
+		border: 1px solid var(--guide-chip-line);
 		border-radius: 50%;
-		background: #1a3a2d;
-		font-size: 15px;
+		background: var(--guide-chip);
+		font-size: var(--shell-text-title);
 		line-height: 1;
 	}
-	.more-arrow:hover span { background: #25483a; }
+	.more-arrow:hover span { background: var(--guide-chip-hover); }
 	.row {
 		position: relative;
 		display: flex;
@@ -1598,7 +1609,7 @@
 		padding: 5px 5px 7px;
 		border: 2px solid transparent;
 		border-radius: 8px;
-		background: #16352a;
+		background: var(--guide-tier-1);
 		color: var(--shell-ink-light);
 		font: inherit;
 		text-align: left;
@@ -1606,11 +1617,11 @@
 		user-select: none;
 	}
 	.stop-card:hover {
-		background: #1d4033;
+		background: var(--guide-tier-2);
 	}
 	.stop-card.selected {
 		border-color: var(--shell-gold);
-		background: #234b3a;
+		background: var(--guide-tier-3);
 	}
 	.stop-card.dragging {
 		position: relative;
@@ -1632,14 +1643,14 @@
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
-		font: 12.5px/1.2 var(--shell-serif);
+		font: var(--shell-text-body)/1.2 var(--shell-sans);
 	}
 	.stop-meta {
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		line-height: 1.35;
-		color: #b9cbbf;
+		color: var(--shell-ink-quiet);
 		font-size: 10.5px;
 		font-variant-numeric: tabular-nums;
 	}
@@ -1650,7 +1661,7 @@
 		bottom: 3px;
 		height: 3px;
 		border-radius: 2px;
-		background: rgb(255 255 255 / 0.14);
+		background: color-mix(in srgb, var(--shell-ink-light) 14%, transparent);
 		pointer-events: none;
 	}
 	.stop-progress {
@@ -1677,7 +1688,7 @@
 		left: 0;
 		right: 0;
 		bottom: 4px;
-		border-top: 1px dotted rgb(255 255 255 / 0.3);
+		border-top: 1px dotted color-mix(in srgb, var(--shell-ink-light) 30%, transparent);
 		pointer-events: none;
 	}
 	.knob {
@@ -1709,9 +1720,9 @@
 		transform: translateX(-50%);
 		padding: 3px 7px;
 		border-radius: 6px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		color: var(--shell-forest);
-		font: 500 11px var(--shell-sans);
+		font: 500 var(--shell-text-label) var(--shell-sans);
 		white-space: nowrap;
 		pointer-events: none;
 		box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
@@ -1730,7 +1741,7 @@
 		left: 0;
 		right: 0;
 		top: 50%;
-		border-top: 1px solid rgb(255 255 255 / 0.28);
+		border-top: 1px solid color-mix(in srgb, var(--shell-ink-light) 28%, transparent);
 	}
 	/* The link lives in the fixed gutter: a glyph pill, never wider than the 38 px slot. */
 	.chip {
@@ -1744,9 +1755,9 @@
 		padding: 0 5px;
 		border: 1px solid transparent;
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--shell-white) 10%, var(--shell-forest));
+		background: color-mix(in srgb, var(--shell-ink-light) 10%, var(--shell-forest));
 		color: var(--shell-ink-light);
-		font: 600 10px/1 var(--shell-mono);
+		font: 600 var(--shell-text-meta)/1 var(--shell-mono);
 		white-space: nowrap;
 		overflow: hidden;
 		cursor: pointer;
@@ -1758,26 +1769,26 @@
 	}
 	/* Cut is a dotted line; Travel is a solid arrow on the leaf green. */
 	.chip.cut {
-		border: 1px dashed rgb(255 255 255 / 0.4);
+		border: 1px dashed color-mix(in srgb, var(--shell-ink-light) 40%, transparent);
 		background: transparent;
 	}
 	.chip.travel {
 		background: var(--shell-gold);
-		color: var(--shell-forest);
+		color: var(--shell-on-gold);
 	}
 	.chip.jump,
 	.chip.end {
-		border: 1px solid rgb(255 255 255 / 0.22);
+		border: 1px solid color-mix(in srgb, var(--shell-ink-light) 22%, transparent);
 	}
 	.chip.gap {
 		border: 1px dashed var(--shell-caution);
 		background: transparent;
-		color: color-mix(in srgb, var(--shell-caution) 35%, var(--shell-white));
+		color: color-mix(in srgb, var(--shell-caution) 45%, var(--shell-ink-light));
 	}
 	/* A selected transition: gold, ringed in ivory (owner review, 5 Nov). */
 	.chip.selected {
 		background: var(--shell-gold);
-		color: var(--shell-forest);
+		color: var(--shell-on-gold);
 		box-shadow: 0 0 0 2px var(--shell-ivory);
 	}
 	.caret {
@@ -1800,14 +1811,14 @@
 	}
 	.tool.on {
 		background: color-mix(in srgb, var(--shell-leaf-soft) 38%, transparent);
-		color: var(--shell-white);
+		color: var(--shell-ink-light);
 	}
 	/* A travel is a solid link with a chevron. */
 	/* The Stop number sits at the start of the Stop's first hold. */
 	.total {
 		flex: none;
 		color: var(--shell-ink-light);
-		font: 500 11px/1.2 var(--shell-mono);
+		font: 500 var(--shell-text-label)/1.2 var(--shell-mono);
 		white-space: nowrap;
 	}
 	.total .waits {
@@ -1826,7 +1837,7 @@
 		border-radius: 20px;
 		background: var(--shell-glass-dark);
 		color: var(--shell-ink-light);
-		font: 12px var(--shell-sans);
+		font: var(--shell-text-control) var(--shell-sans);
 		white-space: nowrap;
 		z-index: 4;
 	}
@@ -1845,14 +1856,14 @@
 		padding: 0 10px;
 		border: 0;
 		border-radius: 14px;
-		background: rgb(255 255 255 / 0.12);
+		background: var(--shell-on-forest-wash-strong);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
 	}
 	.kbd {
 		color: var(--shell-ink-quiet);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 
 	/* ---- Stop-order bar ---- */
@@ -1940,7 +1951,7 @@
 		flex-direction: column;
 		min-width: 190px;
 		padding: 4px;
-		border: 1px solid rgb(255 255 255 / 0.1);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 10px;
 		background: var(--shell-popup-dark);
 		box-shadow: 0 10px 28px rgb(0 0 0 / 0.32);
@@ -1958,12 +1969,12 @@
 	}
 	.pacing-menu button:hover,
 	.pacing-menu button:focus-visible {
-		background: rgb(255 255 255 / 0.1);
+		background: var(--shell-on-forest-wash);
 	}
 	.pacing-menu button[aria-checked='true'] {
 		color: var(--shell-leaf-soft);
 	}
 	.menu-item.danger {
-		color: #f0a99e;
+		color: color-mix(in srgb, var(--shell-caution) 45%, var(--shell-ink-light));
 	}
 </style>

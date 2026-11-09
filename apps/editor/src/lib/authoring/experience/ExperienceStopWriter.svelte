@@ -405,7 +405,7 @@
 	}
 	.switch-row small {
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.switch {
 		position: relative;
@@ -424,7 +424,7 @@
 		width: 14px;
 		height: 14px;
 		border-radius: 7px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		transition: transform 120ms ease;
 	}
 	.switch[aria-checked='true'] {
@@ -437,22 +437,23 @@
 		display: grid;
 		gap: 3px;
 		margin-top: 8px;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		color: var(--shell-ink-3);
 	}
 	.prompt input {
 		min-height: 28px;
 		padding: 0 8px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 7px;
+		background: var(--shell-field);
 		font: inherit;
 		font-size: var(--shell-text-utility);
 		color: var(--shell-ink);
 	}
 	.warn-note {
 		margin: 6px 0 0;
-		color: #8a5a00;
-		font-size: 11px;
+		color: var(--shell-caution);
+		font-size: var(--shell-text-label);
 	}
 	.conns {
 		display: grid;
@@ -489,7 +490,7 @@
 	}
 	.warn {
 		margin-left: 4px;
-		color: #a3650a;
+		color: var(--shell-caution);
 	}
 
 	.writer {
@@ -587,7 +588,7 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		color: var(--shell-ink-3);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 	}
 
 	.num {
@@ -599,7 +600,7 @@
 		padding: 0 5px;
 		border-radius: 9px;
 		background: var(--shell-forest);
-		color: var(--shell-white);
+		color: var(--shell-on-action);
 		font: 600 10.5px/1 var(--shell-mono);
 		flex: none;
 	}
@@ -651,7 +652,7 @@
 		text-transform: uppercase;
 	}
 	.visits-txt b {
-		font: 500 15px/1.2 var(--shell-serif);
+		font: 600 var(--shell-text-title)/1.2 var(--shell-sans);
 		overflow-wrap: anywhere;
 	}
 	.visits-txt .open {
@@ -660,7 +661,7 @@
 		gap: 3px;
 		margin-top: 2px;
 		color: var(--shell-forest-raised);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		font-weight: 600;
 		/* One line even when the Card's scrollbar narrows the row beside the steppers. */
 		white-space: nowrap;
@@ -678,7 +679,7 @@
 	}
 	.c-sec h3 {
 		margin: 0 0 8px;
-		font: 650 12.5px/1.2 var(--shell-sans);
+		font: 650 var(--shell-text-body)/1.2 var(--shell-sans);
 		color: var(--shell-ink);
 	}
 	.c-foot-note {
@@ -687,7 +688,7 @@
 		align-items: baseline;
 		margin: 10px 0 0;
 		color: var(--shell-ink-3);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		line-height: 1.45;
 	}
 	.c-note {
@@ -712,7 +713,7 @@
 		border: 1px solid currentColor;
 		border-radius: 3px;
 		color: var(--shell-forest-raised);
-		font: 500 10px/1.4 var(--shell-mono);
+		font: 500 var(--shell-text-meta)/1.4 var(--shell-mono);
 		font-style: normal;
 		letter-spacing: 0.02em;
 	}
@@ -742,7 +743,7 @@
 	.stepper .value {
 		min-width: 26px;
 		text-align: center;
-		font: 600 11px var(--shell-mono);
+		font: 600 var(--shell-text-label) var(--shell-mono);
 	}
 
 	/* Connections */

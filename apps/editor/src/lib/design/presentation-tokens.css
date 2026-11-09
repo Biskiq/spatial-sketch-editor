@@ -1,4 +1,73 @@
 /*
+ * Living Draft's type is vendored rather than fetched, so the editor keeps a
+ * single deterministic face set offline. Licences travel beside the faces in
+ * `apps/editor/static/fonts`.
+ */
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/fraunces-400.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/fraunces-500.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/fonts/fraunces-600.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Fraunces';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url('/fonts/fraunces-700.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Instrument Sans';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/instrument-sans-400.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Instrument Sans';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/instrument-sans-500.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'Instrument Sans';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('/fonts/instrument-sans-600.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'DM Mono';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/dm-mono-400.ttf') format('truetype');
+}
+@font-face {
+	font-family: 'DM Mono';
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url('/fonts/dm-mono-500.ttf') format('truetype');
+}
+
+/*
  * Biskiq presentation roles — the one authoritative source for shared design
  * roles.
  *
@@ -45,14 +114,16 @@
 	--shell-leaf: #4f8f6c;
 	--shell-leaf-tint: #e7f1ea;
 	--shell-leaf-soft: #9fd3b6;
-	--shell-hover: #eef0ed;
-	--shell-selected: #e8efe9;
+	--shell-hover: #eef0ec;
+	--shell-selected: #e8eee7;
 
 	/* Lines and rules. */
 	--shell-hairline: #e1e4de;
 	--shell-hairline-strong: #cdd2ca;
 	/* The dark chassis line: dialogs and instruments on forest surfaces. */
 	--shell-hairline-dark: #2f4a3d;
+	/* A light rule drawn on the forest chassis (docks, instruments, Guide). */
+	--shell-line-on-forest: rgb(255 255 255 / 0.12);
 
 	/* Ink. */
 	--shell-ink-light: #eef1ec;
@@ -62,22 +133,76 @@
 	--shell-ink-3: #79817b;
 	/* Pure white marks and highlights, distinct from a card surface. */
 	--shell-white: #ffffff;
+	/* The World mark's stable brand pair; never a shell state. */
+	--brand-mark-leaf: #9dbb73;
+	--brand-mark-ink: #13261b;
 
 	/* Surfaces. */
-	--shell-paper: #e9ebe6;
-	--shell-index: #f6f7f5;
-	--shell-card: #ffffff;
+	--shell-paper: #eef0eb;
+	--shell-index: #f8f8f5;
+	--shell-card: #f8f8f5;
 	--shell-mat: #1d3a33;
-	--shell-ivory: #f3f0e4;
-	--shell-control-surface: #fafbf9;
-	--shell-sheet-knob: #fbfaf2;
+	/* The light neutral key on forest: the shared "engaged" fill in every bar. */
+	--shell-ivory: #f4f5f1;
+	--shell-control-surface: #fbfbf9;
+	--shell-sheet-knob: #f8f8f5;
+
+	/*
+	 * Semantic surfaces. A component names the job — page plane, raised card,
+	 * sunken well, editable field, floating popover, action — and the skin
+	 * decides the colour. `--shell-white` stays the white mark/highlight role;
+	 * it is never the name for "an input".
+	 */
+	--shell-surface: var(--shell-paper);
+	--shell-surface-raised: var(--shell-card);
+	--shell-surface-sunken: #e9ece6;
+	--shell-popover: #f8f8f5;
+	--shell-field: var(--shell-white);
+	--shell-field-hover: var(--shell-white);
+	--shell-field-focus: var(--shell-white);
+	--shell-field-line: var(--shell-hairline);
+	--shell-field-line-strong: var(--shell-hairline-strong);
+	--shell-action: var(--shell-forest);
+	--shell-on-action: var(--shell-white);
+	/* Text/fill that sits on the gold accent (never gold-on-gold). */
+	--shell-on-gold: #2a2208;
+	/* Translucent washes and the focus halo belong to the surface family too. */
+	--shell-on-forest-wash: rgb(255 255 255 / 0.08);
+	--shell-on-forest-wash-strong: rgb(255 255 255 / 0.14);
+	--shell-focus-halo: rgb(255 255 255 / 0.9);
+
+	/*
+	 * Interaction grammar — the one control-state language.
+	 *
+	 *  · engaged (a mode, selected key or pressed panel): light neutral fill,
+	 *    forest ink. Weight never changes, so a bar cannot reflow when it moves;
+	 *  · armed (a temporary tool such as Measure or Place a View): a translucent
+	 *    light wash with a light underline, so it never reads as a settled mode;
+	 *  · idle: transparent with the muted light ink;
+	 *  · focus: one halo on forest, moss on paper.
+	 *
+	 * Components consume these roles rather than restating a fill or opacity.
+	 */
+	--shell-mode-active-bg: var(--shell-ivory);
+	--shell-mode-active-ink: var(--shell-forest);
+	--shell-tool-armed-bg: var(--shell-on-forest-wash-strong);
+	--shell-tool-armed-ink: var(--shell-ivory);
+	--shell-press-ring: inset 0 0 0 1px var(--shell-line-on-forest);
+	--shell-control-disabled-opacity: 0.42;
+	--shell-focus-ring: 2px solid var(--shell-focus-halo);
+	--shell-focus-ring-light: 2px solid var(--shell-leaf);
 
 	/* Gold: selection and the primary accent. */
 	--shell-gold: #d4ad45;
 	--shell-gold-ink: #74560c;
 	--shell-gold-tint: #f8efd6;
+	/* Tool-family accents: Build's terracotta also tints its refusal wash. */
+	--shell-family-build: #c2643f;
+	--shell-family-build-ink: #8a3d25;
 
-	/* States. Caution is recoverable; refuse is a hard stop. */
+	/* States. Positive confirms, caution is recoverable, refuse is a hard stop. */
+	--shell-positive: #4f8f6c;
+	--shell-positive-bg: #e7f1ea;
 	--shell-caution: #c85a48;
 	--shell-caution-bg: #f7ede8;
 	--shell-refuse: #7e2718;
@@ -91,16 +216,26 @@
 	--shell-value-surface: rgba(10, 24, 18, 0.82);
 
 	/* Type. */
-	--shell-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-	--shell-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-	--shell-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-	--shell-text-body: 13px;
-	--shell-text-utility: 12px;
-	--shell-text-identity: 15px;
+	/* One UI face across the editor; Fraunces is display and branding only. */
+	--shell-sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--shell-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+	/* Legacy display alias: never a routine control's face. */
+	--shell-serif: var(--shell-display);
+	--shell-mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+	/* A compact scale: title, body/control, label, metadata. */
+	--shell-text-title: 15px;
+	--shell-text-body: 12.5px;
+	--shell-text-control: 12px;
+	--shell-text-utility: 11.5px;
+	--shell-text-label: 11px;
+	--shell-text-meta: 10px;
+	--shell-text-identity: 13px;
 
 	/* Geometry. */
 	--shell-head-height: 44px;
 	--shell-control-height: 30px;
+	/* The creation plate's larger radius; controls keep their own geometry. */
+	--shell-instrument-radius: 14px;
 	--shell-index-width: 256px;
 	--shell-card-width: 288px;
 	/* The coarse pointer target; the editor host raises it on touch. */
@@ -109,6 +244,8 @@
 	/* Elevation. */
 	--shell-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px rgb(0 0 0 / 0.12);
 	--shell-furniture-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.07);
+	/* The World toolbar's deeper lift over the Stage. */
+	--shell-instrument-shadow: 0 18px 46px rgb(8 20 13 / 0.34), 0 2px 6px rgb(8 20 13 / 0.18);
 
 	/*
 	 * Spatial drawing grammar. Drawn ink is black, matching the accepted World
@@ -126,13 +263,137 @@
 	--stage-selection: #d4ad45;
 	--stage-hover: #4f8f6c;
 	--stage-erase: #d0412d;
-	--stage-paper: #e9ebe6;
+	/* Drafting stone: a neutral sage sheet under Plan and the 3D plate. */
+	--stage-paper: #e5e8e1;
+	/* Its one-pixel perimeter, so Paper reads as a sheet on the mat. */
+	--stage-paper-edge: #cbd0c8;
 	--stage-mat: #1d3a33;
-	--stage-grid-minor: #9fb2a2;
-	--stage-grid-major: #809984;
+	/* Restrained sage/olive-grey, tuned to the sheet. */
+	--stage-grid-minor: #a8ad9f;
+	--stage-grid-major: #8a907f;
 	--stage-grid-mat-minor: #2b5147;
 	--stage-grid-mat-major: #3c6a5c;
+	/* Height Sheet rail: neutral stone that holds on forest and on Paper. */
+	--stage-height-rail: #8e9588;
+	--stage-height-tick: #a7ab9d;
+	--stage-height-cap: #b9bcaf;
 	/* The dark instrument chassis reads quieter than the shell's ink. */
 	--stage-instrument-ink-quiet: #98a89c;
 	--stage-instrument-hairline: var(--shell-hairline-dark);
+}
+
+/*
+ * Living Draft is a scoped shell skin, not a replacement for the shared roles.
+ * It paints the editor's furniture while leaving spatial paint untouched, so a
+ * 3D proposal keeps the same cobalt it has in every other reading.
+ */
+/*
+ * Theme-private palette. Components consume the semantic `--shell-*` roles
+ * below; the `--ld-*` names are this skin's source values, not a second API.
+ */
+[data-shell='living-draft'] {
+	/* The #285 prototype palette, used directly rather than tinted on top. */
+	--ld-forest: #13261b;
+	--ld-forest-deep: #0d1c13;
+	--ld-forest-2: #1b3426;
+	--ld-forest-3: #24432f;
+	--ld-leaf: #7f9150;
+	--ld-mint: #9dbb73;
+	--ld-gold: #d4ad45;
+	/* Cards, menus and dialogs share the neutral sheet; fields are white. */
+	--ld-card: #f8f8f5;
+	--ld-plane: #eef0eb;
+	--ld-sunken: #e9ece6;
+	/* Fields are white paper laid on the Card, not a beige well. */
+	--ld-field: #ffffff;
+	--ld-field-hover: #ffffff;
+	--ld-field-focus: #ffffff;
+	--ld-line-field: #dfe3dd;
+	--ld-line-field-strong: #cbd1ca;
+	--ld-positive: #4c6a2e;
+	--ld-positive-bg: #eaf0d9;
+	--ld-caution: #a9631f;
+	--ld-caution-bg: #f8ecd9;
+	/* Deeper and redder than BUILD's terracotta: refusal is never a material. */
+	--ld-refuse: #9c3b29;
+	--ld-refuse-bg: #f7e9e2;
+	--ld-ink: #1b201c;
+	--ld-ink-2: #4a524c;
+	--ld-ink-3: #7b827c;
+	--ld-light: #f4f5f1;
+	--ld-light-2: #a3b1a5;
+	--ld-on-forest: rgb(244 245 241 / 0.72);
+	--ld-hairline: rgb(244 245 241 / 0.14);
+	--ld-hairline-dark: #e2e5df;
+	--ld-glass: rgb(19 38 27 / 0.92);
+	--ld-shadow: 0 14px 40px rgb(8 20 13 / 0.24), 0 2px 6px rgb(8 20 13 / 0.14);
+	--ld-build: #c2643f;
+	--ld-form: #b08a3e;
+	--ld-land: #6f8a3e;
+	--ld-furnish: #c08a2a;
+	--ld-serif: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+	--ld-sans: 'Instrument Sans', system-ui, sans-serif;
+	--ld-mono: 'DM Mono', ui-monospace, monospace;
+	/* The shell furniture this skin repaints; spatial --stage-* paint stays shared. */
+	--shell-forest: var(--ld-forest);
+	--shell-forest-raised: var(--ld-forest-2);
+	--shell-forest-3: var(--ld-forest-3);
+	--shell-index: var(--ld-card);
+	--shell-card: var(--ld-card);
+	--shell-paper: var(--ld-plane);
+	--shell-hover: #eef0ec;
+	--shell-selected: #e8eee7;
+	--shell-leaf: #6f8a3e;
+	--shell-leaf-tint: #edf1df;
+	--shell-leaf-soft: #b8cf94;
+	--shell-ink: var(--ld-ink);
+	--shell-ink-2: var(--ld-ink-2);
+	--shell-ink-3: var(--ld-ink-3);
+	--shell-ink-light: var(--ld-light);
+	--shell-ink-quiet: var(--ld-light-2);
+	--shell-hairline: var(--ld-hairline-dark);
+	--shell-hairline-strong: rgb(38 35 29 / 0.24);
+	--shell-hairline-dark: var(--ld-hairline);
+	--shell-line-on-forest: var(--ld-hairline);
+	--shell-gold: var(--ld-gold);
+	--shell-gold-ink: #6e520f;
+	--shell-gold-tint: #f4e8c6;
+	--shell-family-build: var(--ld-build);
+	--shell-ivory: #f4f5f1;
+	--shell-sheet-knob: var(--ld-card);
+	--shell-glass-light: rgb(248 248 245 / 0.94);
+	--shell-popup-dark: var(--ld-glass);
+	--shell-dock-surface: var(--ld-glass);
+	--shell-shadow: var(--ld-shadow);
+	--shell-furniture-shadow: 0 8px 22px rgb(8 20 13 / 0.18);
+	--shell-positive: var(--ld-positive);
+	--shell-positive-bg: var(--ld-positive-bg);
+	--shell-caution: var(--ld-caution);
+	--shell-caution-bg: var(--ld-caution-bg);
+	--shell-refuse: var(--ld-refuse);
+	--shell-refuse-bg: var(--ld-refuse-bg);
+	/* Semantic surfaces: Paper is the page plane, cards and popovers are the
+	   neutral off-white sheet, fields are white. */
+	--shell-surface: var(--ld-plane);
+	--shell-surface-raised: var(--ld-card);
+	--shell-surface-sunken: var(--ld-sunken);
+	--shell-popover: var(--ld-card);
+	--shell-field: var(--ld-field);
+	--shell-field-hover: var(--ld-field-hover);
+	--shell-field-focus: var(--ld-field-focus);
+	--shell-field-line: var(--ld-line-field);
+	--shell-field-line-strong: var(--ld-line-field-strong);
+	--shell-control-surface: var(--ld-field);
+	--shell-action: var(--ld-forest);
+	--shell-on-action: var(--ld-card);
+	--shell-on-gold: #241d0b;
+	--shell-on-forest-wash: rgb(244 245 241 / 0.08);
+	--shell-on-forest-wash-strong: rgb(244 245 241 / 0.14);
+	--shell-focus-halo: rgb(244 245 241 / 0.7);
+	--shell-serif: var(--ld-serif);
+	--shell-sans: var(--ld-sans);
+	--shell-mono: var(--ld-mono);
+	--shell-head-height: 44px;
+	--shell-index-width: 256px;
+	--shell-card-width: 288px;
 }

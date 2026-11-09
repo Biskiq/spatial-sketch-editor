@@ -460,20 +460,38 @@
 		left: calc(50% - 1px);
 		width: 2px;
 		border-radius: 1px;
-		background: rgb(255 255 255 / 0.28);
+		background: var(--stage-height-rail);
+	}
+	/* End caps only: the rail stays one line, never a capsule or backing panel. */
+	.rail::before,
+	.rail::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		width: 7px;
+		height: 2px;
+		border-radius: 1px;
+		background: var(--stage-height-cap);
+		transform: translateX(-50%);
+	}
+	.rail::before {
+		top: 0;
+	}
+	.rail::after {
+		bottom: 0;
 	}
 	.tick {
 		position: absolute;
 		left: 50%;
 		width: 10px;
 		height: 1.5px;
-		background: rgb(255 255 255 / 0.7);
+		background: var(--stage-height-tick);
 		transform: translate(-50%, 50%);
 	}
 	.tick.datum {
 		width: 22px;
 		height: 2.5px;
-		background: var(--shell-white);
+		background: var(--stage-height-cap);
 	}
 	.knob {
 		position: absolute;
@@ -527,9 +545,9 @@
 	.pin-dot {
 		width: 8px;
 		height: 8px;
-		border: 0;
+		border: 1px solid var(--stage-height-rail);
 		border-radius: 50%;
-		background: var(--shell-white);
+		background: var(--stage-height-cap);
 	}
 	.add {
 		position: absolute;
@@ -542,8 +560,8 @@
 		transform: translateY(50%);
 		border: 0;
 		border-radius: 50%;
-		background: #11291fdd;
-		color: var(--shell-white);
+		background: color-mix(in srgb, var(--shell-forest) 87%, transparent);
+		color: var(--shell-ink-light);
 		cursor: pointer;
 	}
 	.snap {
@@ -553,8 +571,8 @@
 		width: max-content;
 		padding: 4px 6px;
 		border-radius: 5px;
-		background: #11291fdd;
-		color: var(--shell-white);
+		background: color-mix(in srgb, var(--shell-forest) 87%, transparent);
+		color: var(--shell-ink-light);
 	}
 	@media (pointer: coarse) {
 		.sheet {
@@ -577,7 +595,7 @@
 			padding: 4px;
 			box-sizing: content-box;
 			border-radius: 50%;
-			background: #11291fdd;
+			background: color-mix(in srgb, var(--shell-forest) 87%, transparent);
 		}
 	}
 </style>

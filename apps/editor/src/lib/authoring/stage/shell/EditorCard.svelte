@@ -570,7 +570,7 @@
 		flex-direction: column;
 		border: 1px solid var(--shell-hairline);
 		border-radius: 12px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		color: var(--shell-ink);
 		box-shadow: var(--shell-shadow);
 		font: var(--shell-text-body)/1.35 var(--shell-sans);
@@ -606,7 +606,10 @@
 	}
 	.kind {
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
+		font-weight: 600;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
 	}
 	.kind-link {
 		min-height: 0;
@@ -650,7 +653,8 @@
 
 	.name {
 		margin: 0 12px 6px;
-		font: 400 19px/1.2 var(--shell-serif);
+		font: 600 var(--shell-text-title)/1.3 var(--shell-sans);
+		letter-spacing: -0.01em;
 	}
 	.name button {
 		display: block;
@@ -677,7 +681,7 @@
 		gap: 3px 8px;
 		margin: 0;
 		padding: 8px 12px;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 
 	dt {
@@ -694,11 +698,11 @@
 		flex-wrap: wrap;
 		gap: 4px;
 		padding: 8px 12px;
-		background: var(--shell-index);
+		background: var(--shell-surface-sunken);
 	}
 	.error {
 		color: var(--shell-refuse);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		padding: 0 12px;
 	}
 	.destructive {
@@ -742,41 +746,41 @@
 		padding: 8px;
 		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
-		background: var(--shell-card);
+		background: var(--shell-popover);
 		box-shadow: var(--shell-shadow);
 	}
 	.subject-actions button { justify-content: flex-start; min-height: var(--shell-control-height); }
 	.subject-actions hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--shell-hairline); }
 	.soon { justify-content: space-between !important; color: var(--shell-ink-2); cursor: default; }
 	.soon:hover { background: transparent; }
-	.menu-item .hint { margin-left: auto; padding-left: 8px; color: var(--shell-ink-2); font-size: 11px; }
+	.menu-item .hint { margin-left: auto; padding-left: 8px; color: var(--shell-ink-2); font-size: var(--shell-text-label); }
 	.menu-item:disabled { color: var(--shell-ink-2); cursor: default; }
 	.menu-item:disabled:hover { background: transparent; }
 	.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-	.soon-cue { margin-left: auto; padding: 0 5px; border-radius: 4px; background: var(--shell-index); font-size: 10px; letter-spacing: .02em; }
+	.soon-cue { margin-left: auto; padding: 0 5px; border-radius: 4px; background: var(--shell-surface-sunken); font-size: var(--shell-text-meta); letter-spacing: .02em; }
 	.footer .more { gap: 3px; font-size: var(--shell-text-utility); color: var(--shell-ink-2); }
 	.chev { display: inline-block; transition: transform 120ms; }
 	.chev.open { transform: rotate(180deg); }
 	.more-section { padding: 6px 0 4px; border-top: 1px solid var(--shell-hairline); }
-	.more-section h3 { margin: 4px 12px 0; font: 600 10.5px/1.2 var(--shell-sans); color: var(--shell-ink-2); letter-spacing: .03em; text-transform: uppercase; }
+	.more-section h3 { margin: 4px 12px 0; font: 600 var(--shell-text-label)/1.2 var(--shell-sans); color: var(--shell-ink-2); letter-spacing: .06em; text-transform: uppercase; }
 	.more-section .facts { padding-top: 4px; }
-	.rename-input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; color: inherit; border: 1px solid var(--shell-hairline-strong); border-radius: 5px; padding: 3px 5px; }
+	.rename-input { box-sizing: border-box; width: 100%; min-width: 0; padding: 3px 5px; border: 1px solid var(--shell-field-line); border-radius: 5px; background: var(--shell-field); color: inherit; font: inherit; }
 	.menu-item.danger { color: var(--shell-refuse); }
 	.menu-item.danger:disabled { color: var(--shell-ink-2); }
 	.menu-item.nested { padding-left: 18px; }
 	.submenu { display: grid; gap: 2px; }
-	.back-link { min-height: 0; margin-right: 0; padding: 0; color: var(--shell-ink-2); font-size: 11px; }
+	.back-link { min-height: 0; margin-right: 0; padding: 0; color: var(--shell-ink-2); font-size: var(--shell-text-label); }
 	/* Review round 3: a hairline divides the back link from the kind, never run together. */
 	.back-link::after { content: ''; display: inline-block; width: 1px; height: 10px; margin: 0 0.55em; background: var(--shell-hairline-strong); vertical-align: -1px; }
 	.back-link:hover { background: none; color: var(--shell-ink); }
-	.consequence { display: grid; gap: 6px; margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--shell-refuse); border-radius: 8px; background: var(--shell-index); font-size: 12px; }
+	.consequence { display: grid; gap: 6px; margin: 0 12px 8px; padding: 8px 10px; border: 1px solid var(--shell-refuse); border-radius: 8px; background: var(--shell-surface-sunken); font-size: var(--shell-text-control); }
 	.consequence-line { margin: 0; color: var(--shell-ink); line-height: 1.4; }
 	.consequence-choice { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; }
-	.consequence-choice legend { padding: 0; color: var(--shell-ink-2); font-size: 11px; }
-	.consequence-choice label { display: flex; align-items: center; gap: 6px; }
+	.consequence-choice legend { padding: 0; color: var(--shell-ink-2); font-size: var(--shell-text-label); }
+	.consequence-choice label { display: flex; align-items: center; gap: 6px; accent-color: var(--shell-action); }
 	.consequence-actions { display: flex; gap: 6px; }
 	.consequence-actions button { min-height: 28px; padding: 0 11px; border: 1px solid var(--shell-hairline-strong); font-weight: 600; }
-	.consequence-actions .remove { border-color: var(--shell-refuse); background: var(--shell-refuse); color: var(--shell-white); }
+	.consequence-actions .remove { border-color: var(--shell-refuse); background: var(--shell-refuse); color: var(--shell-on-action); }
 	.consequence-actions .remove:hover { background: var(--shell-refuse); }
 	.consequence-actions .remove:disabled { opacity: 0.45; cursor: not-allowed; }
 	@media (pointer: coarse) { .subject-actions button, .rename-input, .consequence-actions button, .consequence-choice label, .back-link { min-height: 44px; } }

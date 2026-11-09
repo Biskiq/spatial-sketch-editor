@@ -2,6 +2,7 @@
 	/** Shared Head: project lifecycle, lens, scoped Find, history and truthful Save/Preview states. */
 	import { tick, untrack } from 'svelte';
 	import ShellIcon from './ShellIcon.svelte';
+	import WorldMark from './WorldMark.svelte';
 	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
@@ -365,6 +366,11 @@
 		<ShellIcon name="menu" />
 	</button>
 
+	<span class="brand" aria-label="Biskiq">
+		<WorldMark />
+		<span class="brand-word">Biskiq</span>
+	</span>
+
 	<!--
 		Escape closes the project menu from any control inside it. The group only
 		carries that key route; its focus targets are the name and the menu's buttons.
@@ -719,13 +725,26 @@
 		cursor: pointer;
 	}
 	button:hover {
-		background: rgb(255 255 255 / 0.08);
+		background: var(--shell-on-forest-wash);
 	}
 	.head-index,
 	.action:not(.primary) {
 		width: 32px;
 		padding: 0;
-		color: #dfe6df;
+		color: var(--shell-ink-light);
+	}
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		flex: none;
+		padding: 0 4px 0 1px;
+		color: var(--shell-ink-light);
+		font: 600 var(--shell-text-title)/1 var(--shell-display);
+		letter-spacing: -0.015em;
+	}
+	.brand-word {
+		white-space: nowrap;
 	}
 	.identity {
 		position: relative;
@@ -738,9 +757,9 @@
 	}
 	.project-name {
 		max-width: 180px;
-		color: var(--shell-white);
+		color: var(--shell-ink-light);
 		padding: 0 4px;
-		font: var(--shell-text-identity) var(--shell-serif);
+		font: 500 var(--shell-text-identity) var(--shell-sans);
 	}
 	.project-text {
 		overflow: hidden;
@@ -748,7 +767,7 @@
 		white-space: nowrap;
 	}
 	.chevron {
-		font: 11px system-ui;
+		font: var(--shell-text-label) var(--shell-sans);
 		color: var(--shell-ink-quiet);
 	}
 	.project-menu {
@@ -760,9 +779,9 @@
 		gap: 6px;
 		width: 288px;
 		padding: 10px;
-		border: 1px solid rgb(255 255 255 / 0.14);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 10px;
-		background: var(--shell-forest);
+		background: var(--shell-popup-dark);
 		box-shadow: var(--shell-shadow);
 	}
 	.project-menu[hidden] {
@@ -774,7 +793,7 @@
 	.project-id {
 		margin: 0;
 		color: var(--shell-ink-quiet);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		overflow-wrap: anywhere;
 	}
 	.lens {
@@ -789,13 +808,13 @@
 		height: 26px;
 		padding: 0 11px;
 		border-radius: 6px;
-		color: #cfd8d0;
-		font-size: 12.5px;
+		color: var(--shell-ink-quiet);
+		font-size: var(--shell-text-control);
 	}
+	/* Weight never changes; the shared engaged fill carries the state. */
 	.lens-button.active {
-		background: var(--shell-paper);
-		color: var(--shell-forest);
-		font-weight: 600;
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 	}
 	.location {
 		order: 1;
@@ -804,7 +823,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		font-size: var(--shell-text-utility);
-		background: rgb(255 255 255 / 0.08);
+		background: var(--shell-on-forest-wash);
 	}
 	.actions {
 		order: 2;
@@ -841,7 +860,7 @@
 		height: auto;
 		padding: 7px 9px;
 		border-radius: 8px;
-		background: var(--shell-forest);
+		background: var(--shell-popup-dark);
 		color: var(--shell-ink-light);
 		box-shadow: var(--shell-shadow);
 		clip-path: none;
@@ -860,12 +879,12 @@
 		height: var(--shell-control-height);
 		padding: 0 8px;
 		border-radius: 8px;
-		background: rgb(255 255 255 / 0.1);
-		color: #b9c8bd;
+		background: var(--shell-on-forest-wash-strong);
+		color: var(--shell-ink-quiet);
 	}
 	.find.open {
 		width: 330px;
-		background: var(--shell-white);
+		background: var(--shell-field-focus);
 		color: var(--shell-ink-3);
 	}
 	.find input {
@@ -876,7 +895,7 @@
 		padding: 0;
 		background: transparent;
 		color: inherit;
-		font: 12.5px var(--shell-sans);
+		font: var(--shell-text-body) var(--shell-sans);
 	}
 	.find input::placeholder {
 		color: var(--shell-ink-quiet);
@@ -886,7 +905,7 @@
 	}
 	kbd {
 		color: var(--shell-ink-quiet);
-		font: 10px var(--shell-mono);
+		font: var(--shell-text-meta) var(--shell-mono);
 		white-space: nowrap;
 	}
 	.find-body {
@@ -898,7 +917,7 @@
 		padding: 4px;
 		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
-		background: white;
+		background: var(--shell-popover);
 		color: var(--shell-ink);
 		box-shadow: var(--shell-shadow);
 	}
@@ -929,13 +948,13 @@
 	}
 	.find-verb {
 		flex: none;
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		color: var(--shell-ink-3);
 	}
 	.find-group {
 		padding: 6px 8px 2px;
 		color: var(--shell-ink-3);
-		font-size: 10px;
+		font-size: var(--shell-text-meta);
 		text-transform: uppercase;
 		letter-spacing: 0.07em;
 	}
@@ -943,18 +962,19 @@
 		margin: 8px;
 		font-size: var(--shell-text-utility);
 	}
+	/* The row's one filled action uses the same light key as an engaged mode. */
 	.primary {
 		padding: 0 11px;
 		border-radius: 8px;
-		background: var(--shell-gold);
-		color: #2a2208;
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		font-weight: 600;
 	}
 	.primary:hover {
-		background: var(--shell-gold);
+		background: var(--shell-mode-active-bg);
 	}
 	button[aria-disabled='true'] {
-		opacity: 0.45;
+		opacity: var(--shell-control-disabled-opacity);
 		cursor: default;
 	}
 	@media (max-width: 1100px) {
@@ -966,7 +986,24 @@
 			width: 210px;
 		}
 	}
+	@media (max-width: 560px) {
+		/* Keep every Head action reachable without letting the row widen the page. */
+		.actions {
+			overflow-x: auto;
+			overflow-y: hidden;
+			scrollbar-width: none;
+		}
+		.actions::-webkit-scrollbar {
+			display: none;
+		}
+	}
 	@media (max-width: 860px) {
+		.brand-word {
+			display: none;
+		}
+		.brand {
+			padding-right: 0;
+		}
 		.preview-label,
 		kbd {
 			display: none;

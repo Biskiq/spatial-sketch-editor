@@ -106,7 +106,7 @@
 	.sec-title {
 		margin: 0;
 		color: var(--shell-ink-3);
-		font: 600 11px/1.3 var(--shell-sans);
+		font: 600 var(--shell-text-label)/1.3 var(--shell-sans);
 	}
 	.welcome textarea {
 		box-sizing: border-box;
@@ -151,7 +151,7 @@
 	}
 	.opens small {
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 	.foot-note {
 		margin: 0;

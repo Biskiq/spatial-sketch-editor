@@ -61,8 +61,7 @@
 							? 'assets'
 							: key.slot === 'erase'
 								? 'eraser'
-								: (key.slot ?? 'dot'))}
-					size={key.slot === 'library' ? 19 : 18}
+								: (key.slot ?? 'dot'))}						size={key.slot === 'library' ? 17 : 16}
 				/>
 				{#if armed && key.palette && !paletteOpen}
 					<span class="caret" data-dock-caret aria-hidden="true"></span>
@@ -100,12 +99,12 @@
 		align-items: center;
 		gap: 2px;
 		padding: 4px;
-		border: 1px solid rgb(255 255 255 / 0.09);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 14px;
-		background: rgba(17, 41, 31, 0.95);
-		color: #e6ece6;
+		background: var(--shell-dock-surface);
+		color: var(--shell-ink-light);
 		box-shadow:
-			inset 0 1px 0 rgb(255 255 255 / 0.05),
+			inset 0 1px 0 var(--shell-on-forest-wash),
 			0 10px 28px rgb(0 0 0 / 0.28);
 		backdrop-filter: blur(8px);
 	}
@@ -117,25 +116,29 @@
 		position: relative;
 		display: grid;
 		place-items: center;
-		width: 40px;
-		height: 40px;
+		width: 36px;
+		height: 36px;
 		padding: 0;
 		border: 0;
-		border-radius: 10px;
+		border-radius: 9px;
 		background: transparent;
 		color: inherit;
 		cursor: pointer;
 	}
-	.key:hover {
-		background: rgb(255 255 255 / 0.08);
+	.key:hover:not(.armed) {
+		background: var(--shell-on-forest-wash);
+	}
+	.key:focus-visible {
+		outline: var(--shell-focus-ring);
+		outline-offset: 1px;
 	}
 	.key.armed {
-		background: var(--shell-ivory);
-		color: var(--shell-forest);
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		box-shadow: 0 1px 3px #0004;
 	}
 	.key[aria-disabled='true'] {
-		opacity: 0.35;
+		opacity: var(--shell-control-disabled-opacity);
 		cursor: default;
 	}
 	.key[data-dock-slot='ink']::after,
@@ -146,8 +149,8 @@
 		position: absolute;
 		width: 14px;
 		height: 2px;
-		left: 13px;
-		bottom: 3px;
+		left: 11px;
+		bottom: 2px;
 		opacity: 0.9;
 		background: var(--shell-ink);
 	}
@@ -155,10 +158,10 @@
 		background: var(--stage-erase);
 	}
 	.key[data-dock-tool='unavailable-slice']::after {
-		background: #f2d000;
+		background: var(--shell-ink-quiet);
 	}
 	.key[data-dock-tool='unavailable-brush']::after {
-		background: #c98b6b;
+		background: var(--shell-ink-quiet);
 	}
 	.caret {
 		position: absolute;
@@ -180,7 +183,7 @@
 		width: 1px;
 		height: 22px;
 		margin: 0 4px;
-		background: rgb(255 255 255 / 0.12);
+		background: var(--shell-line-on-forest);
 	}
 	.palette-anchor {
 		position: absolute;

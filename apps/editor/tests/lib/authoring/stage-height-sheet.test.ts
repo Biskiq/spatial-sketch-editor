@@ -235,11 +235,11 @@ describe('R217.S22 — the Height Sheet control', () => {
 		expect(readoutOf(target).textContent).toContain('1.20');
 	});
 
-	it('matches the production wireframe: thin axis, white marks on the dark Stage, and a border-box sticker', () => {
+	it('matches the production wireframe: thin axis, stage marks and a border-box sticker', () => {
 		const source = readFileSync('src/lib/authoring/stage/shell/StageHeightSheet.svelte', 'utf8');
-		expect(source).toMatch(/\.rail\s*\{[^}]*width:\s*2px;[^}]*background:\s*rgb\(255 255 255 \/ 0\.28\);/s);
-		expect(source).toMatch(/\.pin-dot\s*\{[^}]*width:\s*8px;[^}]*height:\s*8px;[^}]*border:\s*0;[^}]*background:\s*var\(--shell-white\);/s);
-		expect(source).toMatch(/\.tick\.datum\s*\{[^}]*width:\s*22px;[^}]*height:\s*2\.5px;[^}]*background:\s*var\(--shell-white\);/s);
+		expect(source).toMatch(/\.rail\s*\{[^}]*width:\s*2px;[^}]*background:\s*var\(--stage-height-rail\);/s);
+		expect(source).toMatch(/\.pin-dot\s*\{[^}]*width:\s*8px;[^}]*height:\s*8px;[^}]*border:\s*1px solid var\(--stage-height-rail\);[^}]*background:\s*var\(--stage-height-cap\);/s);
+		expect(source).toMatch(/\.tick\.datum\s*\{[^}]*width:\s*22px;[^}]*height:\s*2\.5px;[^}]*background:\s*var\(--stage-height-cap\);/s);
 		expect(source).toMatch(/\.knob\s*\{[^}]*box-sizing:\s*border-box;[^}]*height:\s*22px;[^}]*min-width:\s*40px;/s);
 	});
 

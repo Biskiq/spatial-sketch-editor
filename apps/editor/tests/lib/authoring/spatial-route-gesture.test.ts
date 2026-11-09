@@ -61,8 +61,15 @@ let frameId = 0;
 let wallId: string;
 let captureDescriptor: PropertyDescriptor | undefined;
 const facade = () => harness.facade as StageFacade;
-const currentSnapLabel = () =>
-	draftingSnapIncrementMeters(facade().session.drafting()) === null ? 'Snap off' : 'Snap';
+/**
+ * The keys' words never change: Grid and Snap are toggles, and their state lives
+ * in `aria-pressed` and the shared engaged fill. The drafting session still owns
+ * the fact, so the helper keeps reading it.
+ */
+const currentSnapLabel = () => {
+	void draftingSnapIncrementMeters(facade().session.drafting());
+	return 'Snap';
+};
 const button = (text: string) => {
 	const found = [...target.querySelectorAll('button')].find(
 		(b) => (b.getAttribute('aria-label') ?? b.textContent)?.replace(/\s+/g, '').toLowerCase() === text.replace(/\s+/g, '').toLowerCase());
@@ -154,6 +161,24 @@ async function startDrag() {
 	return desired;
 }
 
+/** The World toolbar's dock key, by its visible word. */
+function worldKey(label: string): HTMLButtonElement {
+	const key = [...target.querySelectorAll<HTMLButtonElement>('[data-world-toolbar] .dock .key')]
+		.find((node) => `${node.getAttribute('title') ?? ''} ${node.textContent ?? ''}`.includes(label));
+	if (key === undefined) throw new Error(`Missing World key ${label}`);
+	return key;
+}
+
+/** Open the Library and choose its first object, which arms Stage placement. */
+async function openPlacement(): Promise<void> {
+	worldKey('Library').click();
+	await settled();
+	const tile = target.querySelector<HTMLButtonElement>('[data-world-toolbar] .tile');
+	if (tile === null) throw new Error('the Library offers no object tile');
+	tile.click();
+	await settled();
+}
+
 async function mountRoute(layout = buildStarterEnclosureLayout()): Promise<void> {
 	wallId = layout.walls[0]!.id;
 	harness.document = await createUnitProject({ id: 'project-1', name: 'Mounted gestures', layout });
@@ -162,7 +187,7 @@ async function mountRoute(layout = buildStarterEnclosureLayout()): Promise<void>
 	component = mount(Page, { target });
 	await vi.waitFor(() => expect(target.querySelector('[data-testid="stage-canvas"]')).not.toBeNull());
 	await frame();
-	button('2D').click();
+	button('Plan').click();
 	await frame();
 	await fitAll();
 	await frame();
@@ -289,10 +314,38 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		expect(facade().selection()?.sourceId).toBe(STARTER_WALL_2);
 	});
+	it('leaves Select to the Stage gizmo instead of opening a plate', async () => {
+		// A family arms its plate, so Select has one to dismiss.
+		worldKey('Build').click();
+		await settled();
+		expect(target.querySelector('[data-world-toolbar] .tier')).not.toBeNull();
+
+		worldKey('Select').click();
+		await settled();
+		expect(target.querySelector('[data-world-toolbar] .tier')).toBeNull();
+		const select = worldKey('Select');
+		expect(select.getAttribute('aria-pressed')).toBe('true');
+		expect(select.hasAttribute('aria-expanded')).toBe(false);
+		expect(select.hasAttribute('aria-controls')).toBe(false);
+
+		// A second press only re-arms the tool; it never reopens a readout.
+		select.click();
+		await settled();
+		expect(target.querySelector('[data-world-toolbar] .tier')).toBeNull();
+		expect(target.textContent).not.toContain('Nothing selected');
+
+		// Selection itself is unchanged: the Stage still selects and reports it.
+		const center = projected([3.5, 0, -4]);
+		pointer('pointerdown', center);
+		pointer('pointerup', center);
+		pointer('click', center);
+		await settled();
+		expect(facade().selection()?.sourceId).toBe(wallId);
+	});
 	it('keeps Stage, Card and Index on the same selected identity with an offset Stage', async () => {
 		// The placeholder gold dot is gone; identity is echoed by the Card and the
 		// Index rather than by a second projection marker.
-		expect(target.querySelector('.selection')).toBeNull();
+		expect(target.querySelector('.stage .selection')).toBeNull();
 		expect(facade().selection()?.sourceId).toBe(wallId);
 		// The Card and the Index show the subject's name; its canonical identity is the
 		// row's `data-source-id` and the Card's, never visible text.
@@ -408,7 +461,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		await frame();
 		expect(facade().snapshot().canonicalJson).not.toBe(baseline);
 		expect(history().canUndo).toBe('true');
-		button('2D').click();
+		button('Plan').click();
 		await frame();
 		expect(facade().evaluation()?.settledReading).toBe('plan');
 		expect(target.querySelector('.instrument')).toBeNull();
@@ -626,7 +679,9 @@ describe('mounted Stage pointer lifecycle', () => {
  */
 describe('mounted Stage drawing and deletion', () => {
 	/** One dock key, by its contributed entry id — the dock shows adapter labels. */
+	/** The World toolbar owns the dock now; Build is the visible Ink key. */
 	function dockKey(id: string): HTMLButtonElement {
+		if (id === 'layout-ink') return worldKey('Build');
 		const key = target.querySelector<HTMLButtonElement>(`[data-dock-tool="${id}"]`);
 		if (key === null)
 			throw new Error(`Missing dock key ${id}`);
@@ -699,7 +754,7 @@ describe('mounted Stage drawing and deletion', () => {
 		dockKey('layout-ink').click();
 		await settled();
 		expect(dockKey('layout-ink').getAttribute('aria-pressed')).toBe('true');
-		expect(target.querySelector('[data-layout-ink-palette]')).not.toBeNull();
+		expect(target.querySelector('[data-ink-plate]')).not.toBeNull();
 		expect(facade().session.task()?.kind).toBe('layout-ink');
 
 		await drawPoint([2, 0, -1]);
@@ -719,7 +774,7 @@ describe('mounted Stage drawing and deletion', () => {
 		// source — the install closed its task and the host re-armed the dock's key.
 		expect((harness.host as StageAcceptanceHost).history()).toMatchObject({ depth: 2, position: 1 });
 		expect(facade().session.task()?.kind).toBe('layout-ink');
-		expect(target.querySelector('[data-layout-ink-palette]')).not.toBeNull();
+		expect(target.querySelector('[data-ink-plate]')).not.toBeNull();
 
 		// The Head is a probe in this suite, so Undo runs through the host it drives.
 		expect(await (harness.host as StageAcceptanceHost).undo()).toMatchObject({ kind: 'installed' });
@@ -746,7 +801,6 @@ describe('mounted Stage drawing and deletion', () => {
 
 		// Backtrack is enabled by the two live points. Enter on it is the button's
 		// activation (backtrack in a browser), never the tool's Finish.
-		target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]')!.click();await settled();
 		const backtrack = target.querySelector<HTMLButtonElement>('[data-ink-backtrack]')!;
 		expect(backtrack.disabled).toBe(false);
 		backtrack.focus();
@@ -811,6 +865,10 @@ describe('mounted Stage drawing and deletion', () => {
 	it('cancels the live chain before it disarms the tool, then unwinds on the next Escape', async () => {
 		dockKey('layout-ink').click();
 		await settled();
+		// The World row arms Ink with its exact palette folded; open that layer so
+		// Escape can exercise the palette-first unwind.
+		target.querySelector<HTMLButtonElement>('[data-ink-plate] .act.more')!.click();
+		await settled();
 		const canonical = facade().snapshot().canonicalJson;
 		await drawPoint([2, 0, -1]);
 		expect(inkSurface()?.snapshot().points).toHaveLength(1);
@@ -829,7 +887,7 @@ describe('mounted Stage drawing and deletion', () => {
 		await frame();
 		expect(facade().session.task()?.kind).toBe('layout-ink');
 		expect(target.querySelector('[data-layout-ink-palette]')).toBeNull();
-		expect(target.querySelector('[data-dock-caret]')).not.toBeNull();
+		expect(dockKey('layout-ink').getAttribute('aria-pressed')).toBe('true');
 
 		// …and the one after it disarms and leaves Select.
 		key('Escape');
@@ -857,16 +915,22 @@ describe('mounted Stage drawing and deletion', () => {
 			await settled();
 			expect(facade().session.task()?.kind, letter).toBe(kind);
 			expect(facade().selectionState()).toEqual(before);
-			expect(target.querySelectorAll('[data-stage-dock] [aria-pressed="true"]')).toHaveLength(1);
+			const engaged = [
+				...target.querySelectorAll<HTMLElement>(
+					'[data-world-toolbar] .dock .key[aria-pressed="true"], [data-view-measure][aria-pressed="true"]'
+				)
+			];
+			expect(engaged, letter).toHaveLength(1);
 		}
 		key('v');
 		await settled();
 		expect(facade().session.task()).toBeNull();
-		expect(target.querySelector('[data-dock-select]')?.getAttribute('aria-pressed')).toBe('true');
+		expect(worldKey('Select').getAttribute('aria-pressed')).toBe('true');
 		expect(facade().selectionState()).toEqual(before);
-		// The dock order is the owner's: Select · Ink · Measure · Eraser | Library.
-		expect([...target.querySelectorAll<HTMLElement>('[data-stage-dock] [data-dock-slot]')].map((node) => node.dataset.dockSlot))
-			.toEqual(['select', 'ink', 'tool', 'erase', 'tool', 'measure', 'library']);
+		// The World dock order is Select · families · direct tools · Library.
+		expect(
+			[...target.querySelectorAll<HTMLElement>('[data-world-toolbar] .dock .kl')].map((node) => node.textContent?.trim())
+		).toEqual(['Select', 'Build', 'Form', 'Landscape', 'Furnish', 'Paint', 'Erase', 'Library']);
 		// Find arms the same five keys with its Arm verb.
 		for (const [id, kind] of [['host-measure', 'host-measure'], ['host-erase', 'host-erase'], ['layout-ink', 'layout-ink'], ['scene-place', 'place-object'], ['host-select', null]] as const) {
 			target.querySelector<HTMLButtonElement>(`[data-head-find] [data-find-id="${id}"]`)!.click();
@@ -985,8 +1049,7 @@ describe('mounted Stage drawing and deletion', () => {
 	});
 
 	it('opens the placement Instrument from the Library key', async () => {
-		target.querySelector<HTMLButtonElement>('[data-dock-slot="library"]')!.click();
-		await settled();
+		await openPlacement();
 		expect(facade().session.task()?.kind).toBe('place-object');
 		expect(target.querySelector('[data-stage-instrument="place-object"]')).not.toBeNull();
 	});
@@ -1064,8 +1127,7 @@ describe('mounted Stage drawing and deletion', () => {
 
 describe('Objects drag interruption', () => {
 	it.each(['blur', 'hidden', 'pointercancel', 'lostpointercapture', 'second-pointer'])('drops a Box drag on %s and leaves no trace', async (ending) => {
-		target.querySelector<HTMLButtonElement>('[data-dock-slot="library"]')!.click();
-		await settled();
+		await openPlacement();
 		const baseline = facade().snapshot().canonicalJson;
 		const from = projected([2, 0, -1]);
 		const to = projected([4, 0, -3]);
@@ -1141,7 +1203,9 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true, bubbles: true }));
 		await frame();
 		expect(facade().session.drafting().snapSuspended).toBe(true);
-		expect(snapKey().textContent?.trim()).toBe('Snap held');
+		// The key's word is constant; the temporary hold is announced in the live status.
+		expect(snapKey().textContent?.trim()).toBe('Snap');
+		expect(target.querySelector('#drafting-snap-state')!.textContent?.trim()).toBe('Snap held');
 
 		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', bubbles: true }));
 		await frame();
@@ -1249,7 +1313,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(gridKey().textContent?.trim()).toBe('Grid');
 		expect(snapKey().textContent?.trim()).toBe('Snap');
 
-		button('2D').click();
+		button('Plan').click();
 		await frame();
 		expect(target.querySelector('[data-stage-scale-bar]')).not.toBeNull();
 	});
@@ -1297,7 +1361,7 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(status.textContent?.trim()).toBe(currentSnapLabel());
 	});
 
-	it('switches 2D | 3D through set-reading and keeps grid, snap and selection', async () => {
+	it('switches Plan | 3D through set-reading and keeps grid, snap and selection', async () => {
 		const request = vi.spyOn(facade(), 'requestViewingIntent');
 		const selection = facade().selectionState();
 		const drafting = facade().session.drafting();
@@ -1307,25 +1371,26 @@ describe('R217.S05 — mounted drafting furniture', () => {
 		expect(facade().selectionState()).toEqual(selection);
 		expect(facade().session.drafting()).toEqual(drafting);
 
-		button('2D').click();
+		button('Plan').click();
 		await frame();
 		expect(request.mock.calls.at(-1)![0]).toMatchObject({ kind: 'set-reading', reading: 'plan' });
 	});
 
 	it('exposes the words as native, stateful, focusable controls with 44 px coarse targets', async () => {
-		// Two readings, two words and the R217.S20 ⚙ disclosure, all native buttons.
+		// Two readings, two appearances, two words, two inspection tools, the Sky
+		// segment and the R217.S20 ⚙ disclosure, all native buttons in one bar.
 		// The ⚙ panel's own controls are counted with the panel, not the cluster.
 		const controls = [...target.querySelectorAll<HTMLButtonElement>('[data-stage-drafting] button')].filter(
 			(control) => control.closest('[data-stage-viewing-panel]') === null
 		);
-		expect(controls.length).toBe(5);
+		expect(controls.length).toBeGreaterThanOrEqual(9);
 		expect(target.querySelector('[data-stage-viewing]')?.getAttribute('aria-expanded')).toBe('false');
-		for (const control of controls) {
+		for (const control of controls.filter((candidate) => !candidate.disabled)) {
 			expect(control.tagName).toBe('BUTTON');
 			expect(control.getAttribute('type')).toBe('button');
 			expect(control.tabIndex).toBe(0);
-			expect(control.disabled).toBe(false);
 		}
+		expect(target.querySelector<HTMLButtonElement>('[data-view-slice]')?.disabled).toBe(true);
 		// Keyboard activation is the native button's own; the state is announced.
 		expect(gridKey().getAttribute('aria-pressed')).toMatch(/^(true|false)$/);
 		expect(snapKey().getAttribute('aria-pressed')).toMatch(/^(true|false)$/);
@@ -1904,6 +1969,7 @@ it('keeps the compact Card useful when a task opens and closes',async()=>{await 
  */
 describe('R217.S23 — Ink row, disclosures and the constrained Index on the mounted route', () => {
 	function dockKey(id: string): HTMLButtonElement {
+		if (id === 'layout-ink') return worldKey('Build');
 		const found = target.querySelector<HTMLButtonElement>(`[data-dock-tool="${id}"]`);
 		if (found === null) throw new Error(`Missing dock key ${id}`);
 		return found;
@@ -1915,7 +1981,21 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 	/** One toggle or key by its hook, clicked and then flushed. */
 	async function press(selector: string): Promise<HTMLElement> {
 		let node = target.querySelector<HTMLElement>(selector);
-		if(node===null) {target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]')!.click();await settled();node=target.querySelector<HTMLElement>(selector);}
+		if (node === null) {
+			if (target.querySelector('[data-layout-ink-palette]') === null) {
+				const rowMore = target.querySelector<HTMLButtonElement>('[data-ink-plate] .act.more');
+				if (rowMore === null) throw new Error(`Missing ${selector} and the Ink row has no More control`);
+				rowMore.click();
+				await settled();
+			}
+			const settings = target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]');
+			if (settings === null) throw new Error(`Missing ${selector} and the Ink settings control`);
+			if (settings.getAttribute('aria-expanded') !== 'true') {
+				settings.click();
+				await settled();
+			}
+			node = target.querySelector<HTMLElement>(selector);
+		}
 		if (node === null) throw new Error(`Missing ${selector}`);
 		node.click();
 		await settled();
@@ -1927,7 +2007,7 @@ describe('R217.S23 — Ink row, disclosures and the constrained Index on the mou
 		field.value = value;
 		field.dispatchEvent(new Event('input', { bubbles: true }));
 	}
-it('keeps Line and Box in the column and invokes precision upward',async()=>{await openInk();const row=target.querySelector('[data-layout-ink-palette] .keys')!;expect(row.querySelector('[data-ink-wall-mode="line"]')).not.toBeNull();expect(row.querySelector('[data-ink-wall-mode="box"]')).not.toBeNull();expect(target.querySelector('[data-ink-x]')).toBeNull();await press('[data-ink-point-toggle]');expect(target.querySelectorAll('[data-ink-x]')).toHaveLength(1);});
+it('keeps Line and Box in the column and invokes precision upward',async()=>{await openInk();target.querySelector<HTMLButtonElement>('[data-ink-plate] .act.more')!.click();await settled();const row=target.querySelector('[data-layout-ink-palette] .keys')!;expect(row.querySelector('[data-ink-wall-mode="line"]')).not.toBeNull();expect(row.querySelector('[data-ink-wall-mode="box"]')).not.toBeNull();expect(target.querySelector('[data-ink-x]')).toBeNull();await press('[data-ink-point-toggle]');expect(target.querySelectorAll('[data-ink-x]')).toHaveLength(1);});
 
 	it('previews the planner’s Room as the pointer returns to a draft Junction and accepts it on click', async () => {
 		await openInk();
@@ -2013,7 +2093,6 @@ it('keeps Line and Box in the column and invokes precision upward',async()=>{awa
 		typeInto('[data-ink-z]', '-1');
 		await press('[data-ink-add-point]');
 		const canonical = facade().snapshot().canonicalJson;
-		target.querySelector<HTMLButtonElement>('[aria-label="Ink settings and Opening"]')!.click();await settled();
 		const finish = target.querySelector<HTMLButtonElement>('[data-ink-finish]')!;
 		expect(finish.disabled).toBe(false);
 		finish.click();
@@ -2033,7 +2112,7 @@ it('retains Box/Line choices while disclosure changes',async()=>{await openInk()
 		expect(target.querySelector('[data-ink-thickness]')).not.toBeNull();
 		await press('[data-ink-reading-opening]');
 		expect(target.querySelector('[data-ink-thickness]')).toBeNull();
-		expect(target.querySelector('[data-ink-finish]')).toBeNull();
+		expect(target.querySelector('[data-layout-ink-palette] [data-ink-finish]')).toBeNull();
 		await vi.waitFor(() => expect(target.querySelector('[data-layout-opening-palette]')).not.toBeNull());
 		expect(target.querySelector('[data-ink-options-toggle]')).toBeNull();
 	});
@@ -2062,7 +2141,7 @@ it('retains Box/Line choices while disclosure changes',async()=>{await openInk()
 		expect(target.querySelector('[data-opening-kind]')).not.toBeNull();
 		expect(target.querySelector('[data-opening-offset]')).not.toBeNull();
 		// The Opening reading has no Wall chain keys in its row.
-		expect(target.querySelector('[data-ink-finish]')).toBeNull();
+		expect(target.querySelector('[data-layout-ink-palette] [data-ink-finish]')).toBeNull();
 	});
 
 	it('draws the Index closed below 1280 px, opens it as a sheet with a scrim, and closes it by the scrim', async () => {

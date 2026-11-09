@@ -370,7 +370,7 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		min-width: 0;
-		font: 12px var(--shell-sans);
+		font: var(--shell-text-control) var(--shell-sans);
 		color: var(--shell-ink);
 	}
 	button {
@@ -398,7 +398,7 @@
 		border-radius: 999px;
 		background: var(--shell-hover);
 		color: var(--shell-ink-2);
-		font: 600 11px var(--shell-sans);
+		font: 600 var(--shell-text-label) var(--shell-sans);
 	}
 	.sum {
 		min-width: 0;
@@ -407,7 +407,7 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		font-weight: 400;
 	}
 	.gapn {
@@ -476,7 +476,7 @@
 	}
 	.spine.up-cut::before,
 	.spine.dn-cut::after {
-		border-left: 2px dotted #b9c0b8;
+		border-left: 2px dotted var(--shell-hairline-strong);
 	}
 	.spine.up-gap::before,
 	.spine.dn-gap::after {
@@ -492,7 +492,7 @@
 		margin: -4px 0 0 -4px;
 		border: 1.5px solid var(--shell-ink-3);
 		border-radius: 50%;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 	}
 	.node.def {
 		border-color: var(--shell-forest);
@@ -508,11 +508,11 @@
 		align-items: center;
 		height: 20px;
 		transform: translate(-50%, -50%);
-		border: 1px dashed #b9c0b8;
+		border: 1px dashed var(--shell-hairline-strong);
 		border-radius: 999px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		white-space: nowrap;
 	}
 	.chip button {
@@ -528,7 +528,7 @@
 		background: var(--shell-hover);
 	}
 	.chip.travel {
-		border: 1px solid #bcd8c6;
+		border: 1px solid color-mix(in srgb, var(--shell-leaf) 45%, transparent);
 		background: var(--shell-leaf-tint);
 	}
 	.chip.travel button {
@@ -547,7 +547,7 @@
 	}
 	.chip.gap {
 		border: 1.5px dashed var(--shell-caution);
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 	}
 	.chip.gap button {
 		color: var(--shell-caution);
@@ -586,8 +586,8 @@
 		top: 2px;
 		padding: 0 3px;
 		border-radius: 4px;
-		background: rgb(17 41 31 / 78%);
-		color: var(--shell-white);
+		background: color-mix(in srgb, var(--shell-forest) 78%, transparent);
+		color: var(--shell-on-action);
 		font: 600 9.5px/13px var(--shell-sans);
 		font-style: normal;
 	}
@@ -604,7 +604,7 @@
 		white-space: nowrap;
 	}
 	.nm b {
-		font-size: 12.5px;
+		font-size: var(--shell-text-body);
 		font-weight: 600;
 	}
 	.nm small {
@@ -620,7 +620,7 @@
 	}
 	.grip {
 		color: var(--shell-ink-3);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		text-align: center;
 		cursor: grab;
 		opacity: 0;
@@ -643,7 +643,7 @@
 		padding: 8px 10px;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 10px;
-		background: var(--shell-white);
+		background: var(--shell-surface-raised);
 		box-shadow: 0 4px 14px rgb(20 24 20 / 10%);
 	}
 	.ed-head {
@@ -652,7 +652,7 @@
 		gap: 4px;
 		min-width: 0;
 		margin-bottom: 6px;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 	.ed-head b {
 		flex: 1;
@@ -666,7 +666,7 @@
 		border: 0;
 		background: none;
 		color: var(--shell-ink-3);
-		font-size: 13px;
+		font-size: var(--shell-text-identity);
 	}
 	.ed-row {
 		display: flex;
@@ -681,15 +681,15 @@
 	}
 	.seg button {
 		padding: 1px 7px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 6px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		color: var(--shell-ink-2);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		white-space: nowrap;
 	}
 	.seg button[aria-pressed='true'] {
-		border-color: #cfe1d5;
+		border-color: color-mix(in srgb, var(--shell-leaf) 45%, transparent);
 		background: var(--shell-leaf-tint);
 		color: var(--shell-forest-raised);
 		font-weight: 600;
@@ -698,9 +698,9 @@
 		display: inline-flex;
 		align-items: center;
 		height: 22px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 999px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 	}
 	.stepper button {
 		width: 22px;
@@ -718,7 +718,7 @@
 	.stepper b {
 		min-width: 34px;
 		color: var(--shell-ink);
-		font: 600 11.5px var(--shell-mono);
+		font: 600 var(--shell-text-utility) var(--shell-mono);
 		text-align: center;
 		white-space: nowrap;
 	}
@@ -726,7 +726,7 @@
 	.warn-text {
 		margin: 6px 0 0;
 		color: var(--shell-ink-3);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		line-height: 1.4;
 	}
 	.note b {
@@ -738,11 +738,11 @@
 	.warn-text .link {
 		margin-top: 4px;
 		padding: 1px 7px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 6px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		color: var(--shell-ink);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 		text-decoration: none;
 	}
 	.link {
@@ -770,7 +770,7 @@
 	}
 	.more b {
 		color: var(--shell-forest-raised);
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 		font-weight: 600;
 	}
 	.more small {

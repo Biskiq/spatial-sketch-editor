@@ -922,7 +922,7 @@
 	}
 
 	.subject code {
-		color: #c9a9ff;
+		color: var(--shell-gold);
 	}
 
 	.hint {
@@ -932,7 +932,7 @@
 	.feedback {
 		margin: 0;
 		min-height: 1.1rem;
-		color: #e7e4dd;
+		color: var(--shell-ink-light);
 	}
 	.objects-tiles button,
 	.objects-models button {
@@ -946,14 +946,15 @@
 		width: 100%;
 		border: 2px solid transparent;
 		border-radius: 8px;
-		background: var(--shell-white);
-		color: var(--shell-ink);
+		background: var(--shell-forest-raised);
+		color: var(--shell-ink-light);
 		font: 600 11px var(--shell-sans);
 	}
 	.objects-tiles button[aria-pressed='true'],
 	.objects-models button[aria-pressed='true'] {
 		border-color: var(--shell-gold);
-		background: var(--shell-gold-tint);
+		background: color-mix(in srgb, var(--shell-gold) 18%, transparent);
+		color: var(--shell-ink-light);
 	}
 	.objects-models {
 		display: grid;
@@ -962,7 +963,7 @@
 	}
 	.row.place {
 		padding-top: 8px;
-		border-top: 1px solid #ffffff22;
+		border-top: 1px solid var(--shell-line-on-forest);
 		font-size: 11px;
 	}
 	@media (pointer: coarse) {

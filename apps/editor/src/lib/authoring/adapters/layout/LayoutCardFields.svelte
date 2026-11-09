@@ -261,18 +261,18 @@
 		min-width: 0;
 		height: 26px;
 		padding: 0 18px 0 6px;
-		border: 1px solid var(--shell-hairline);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 6px;
-		background: var(--shell-control-surface);
+		background: var(--shell-field);
 		color: var(--shell-ink);
 		font: 12px var(--shell-mono);
 		font-variant-numeric: tabular-nums;
 	}
 	input:hover {
-		border-color: var(--shell-hairline-strong);
+		border-color: var(--shell-field-line-strong);
 	}
 	input:focus {
-		background: var(--shell-white);
+		background: var(--shell-field-focus);
 		border-color: var(--shell-leaf);
 	}
 	input[aria-invalid='true'] {
@@ -312,9 +312,9 @@
 	}
 	button {
 		min-height: 26px;
-		border: 1px solid var(--shell-hairline);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 6px;
-		background: var(--shell-control-surface);
+		background: var(--shell-field);
 		color: inherit;
 		cursor: pointer;
 	}

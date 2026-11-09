@@ -171,7 +171,7 @@ describe('R217.S20 — the Head holds no viewing or drafting value', () => {
 });
 
 describe('R217.S20 — the Stage ⚙ holds viewing preferences and no drafting value', () => {
-	it('opens a panel with the four viewing preferences and nothing drafting', async () => {
+	it('opens a panel with the remaining viewing preferences and nothing drafting', async () => {
 		const host = mountControl();
 		const gear = host.querySelector<HTMLButtonElement>('[data-stage-viewing]')!;
 		expect(gear.getAttribute('aria-expanded')).toBe('false');
@@ -183,12 +183,11 @@ describe('R217.S20 — the Stage ⚙ holds viewing preferences and no drafting v
 		expect(panel.hidden).toBe(false);
 		// Each label names its own preference; the option words are checked separately.
 		const labels = [...panel.querySelectorAll('label > span')].map((span) => span.textContent?.trim());
-		expect(labels).toEqual(['2D appearance', 'Height Sheet', 'Reduce motion', 'Editor motion speed']);
+		expect(labels).toEqual(['Height Sheet', 'Reduce motion', 'Editor motion speed']);
 		const optionWords = [...panel.querySelectorAll('select')].map((select) =>
 			[...select.options].map((option) => option.textContent?.trim())
 		);
 		expect(optionWords).toEqual([
-			['Paper', 'Shaded'],
 			['Right', 'Left'],
 			['Slow', 'Normal', 'Fast']
 		]);
@@ -214,16 +213,16 @@ describe('R217.S20 — the Stage ⚙ holds viewing preferences and no drafting v
 		const onToggleReducedMotion = vi.fn();
 		const onMotionSpeed = vi.fn();
 		const host = mountControl({ onPlanAppearance, onHeightSheetSide, onToggleReducedMotion, onMotionSpeed });
+		host.querySelector<HTMLButtonElement>('[data-plan-appearance="living"]')!.click();
+		await tick();
 		host.querySelector<HTMLButtonElement>('[data-stage-viewing]')!.click();
 		await tick();
 
 		const selects = host.querySelectorAll<HTMLSelectElement>('[data-stage-viewing-panel] select');
-		selects[0]!.value = 'shaded';
+		selects[0]!.value = 'left';
 		selects[0]!.dispatchEvent(new Event('change', { bubbles: true }));
-		selects[1]!.value = 'left';
+		selects[1]!.value = 'fast';
 		selects[1]!.dispatchEvent(new Event('change', { bubbles: true }));
-		selects[2]!.value = 'fast';
-		selects[2]!.dispatchEvent(new Event('change', { bubbles: true }));
 		host.querySelector<HTMLInputElement>('[data-stage-viewing-panel] input[type="checkbox"]')!.dispatchEvent(
 			new Event('change', { bubbles: true })
 		);
@@ -262,9 +261,9 @@ describe('R217.S20 — the Stage ⚙ holds viewing preferences and no drafting v
 		host.querySelector<HTMLButtonElement>('[data-stage-viewing]')!.click();
 		await tick();
 		const selects = host.querySelectorAll<HTMLSelectElement>('[data-stage-viewing-panel] select');
-		expect(selects[0]!.value).toBe('shaded');
-		expect(selects[1]!.value).toBe('left');
-		expect(selects[2]!.value).toBe('slow');
+		expect(host.querySelector('[data-plan-appearance="living"]')!.getAttribute('aria-pressed')).toBe('true');
+		expect(selects[0]!.value).toBe('left');
+		expect(selects[1]!.value).toBe('slow');
 		expect(host.querySelector<HTMLInputElement>('[data-stage-viewing-panel] input[type="checkbox"]')!.checked).toBe(true);
 	});
 });

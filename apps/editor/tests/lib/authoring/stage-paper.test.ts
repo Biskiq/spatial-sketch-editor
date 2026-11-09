@@ -733,7 +733,7 @@ describe('Paper Plan — appearance is a camera layer mask', () => {
 	});
 
 	it('puts 3D on the mat and keeps Paper inks out of the renderer tone map', () => {
-		expect(PAPER_GROUND_INK).toBe('#e9ebe6');
+		expect(PAPER_GROUND_INK).toBe('#e5e8e1');
 		expect(MAT_BACKGROUND_INK).toBe('#1d3a33');
 
 		const canvas = readFileSync(join(REPO_ROOT, 'apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte'), 'utf8');

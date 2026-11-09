@@ -118,7 +118,7 @@
 		width: min(480px, 100%);
 		max-width: 100%;
 		max-height: min(24rem, 60vh);
-		border: 1px solid rgb(255 255 255 / 0.09);
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 12px;
 		background: var(--shell-forest);
 		box-shadow: 0 0.5rem 1.5rem rgb(6 20 14 / 45%);
@@ -133,7 +133,7 @@
 		gap: 0.5rem;
 		min-width: 0;
 		padding: 0.1rem 0.2rem 0.1rem 0.5rem;
-		border-bottom: 1px solid var(--shell-hairline);
+		border-bottom: 1px solid var(--shell-line-on-forest);
 	}
 
 	.title {
@@ -204,7 +204,7 @@
 
 	.about:focus-visible,
 	.close:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring);
 		outline-offset: 1px;
 	}
 
@@ -215,7 +215,7 @@
 		gap: 0.2rem 0.6rem;
 		margin: 0;
 		padding: 0.35rem 0.6rem;
-		border-bottom: 1px solid var(--shell-hairline);
+		border-bottom: 1px solid var(--shell-line-on-forest);
 		font-size: var(--shell-text-utility);
 	}
 
@@ -270,7 +270,7 @@
 		padding: 4px 4px 2px;
 		overflow: visible;
 		max-height: none;
-		background: rgba(17, 41, 31, 0.95);
+		background: var(--shell-dock-surface);
 		box-shadow: 0 10px 24px #0004;
 	}
 	.palette .instrument-body {
@@ -284,7 +284,7 @@
 		margin-top: 1px;
 		padding: 0;
 		border-radius: 6px;
-		color: #d9e2da;
+		color: var(--shell-ink-light);
 		background: transparent;
 		cursor: pointer;
 	}

@@ -99,7 +99,7 @@
 	.writer {
 		display: flex;
 		flex-direction: column;
-		font-size: 12px;
+		font-size: var(--shell-text-control);
 	}
 	.sec {
 		display: flex;
@@ -111,7 +111,7 @@
 	.sec-title {
 		margin: 0;
 		color: var(--shell-ink-3);
-		font: 600 11px/1.3 var(--shell-sans);
+		font: 600 var(--shell-text-label)/1.3 var(--shell-sans);
 	}
 	.c-actions {
 		display: flex;
@@ -120,7 +120,7 @@
 	.c-note {
 		margin: 0;
 		color: var(--shell-ink-2);
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		line-height: 1.45;
 	}
 	.reach-note,
@@ -173,7 +173,7 @@
 	}
 	.row-name {
 		min-width: 0;
-		font: 12.5px/1.3 var(--shell-serif);
+		font: var(--shell-text-body)/1.3 var(--shell-sans);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -181,7 +181,7 @@
 	.row-meta {
 		flex: none;
 		color: var(--shell-ink-3);
-		font-size: 11px;
+		font-size: var(--shell-text-label);
 	}
 
 	button {
@@ -190,12 +190,12 @@
 		justify-content: center;
 		min-height: 24px;
 		padding: 0 8px;
-		border: 1px solid var(--shell-hairline-strong);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 6px;
-		background: var(--shell-card);
+		background: var(--shell-surface-raised);
 		color: var(--shell-ink);
 		font: inherit;
-		font-size: 11.5px;
+		font-size: var(--shell-text-utility);
 		cursor: pointer;
 	}
 	button:hover {
@@ -216,9 +216,9 @@
 		flex: 1;
 	}
 	button.btn.primary {
-		border-color: var(--shell-forest-raised);
-		background: var(--shell-forest-raised);
-		color: var(--shell-white);
+		border-color: var(--shell-action);
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 	}
 	button.quiet {
 		align-self: flex-start;

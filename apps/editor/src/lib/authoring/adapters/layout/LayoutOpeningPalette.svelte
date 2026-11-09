@@ -267,7 +267,7 @@
 	button:focus-visible,
 	input:focus-visible,
 	select:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring);
 		outline-offset: 1px;
 	}
 </style>

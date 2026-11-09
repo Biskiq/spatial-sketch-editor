@@ -123,11 +123,15 @@ import {
 	import '$lib/authoring/stage/shell/cursors.css';
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
-	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
-	import StageEnvironmentControl from '$lib/authoring/stage/shell/StageEnvironmentControl.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
-	import StageDock from '$lib/authoring/stage/shell/StageDock.svelte';
-import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
+	import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
+	import WorldIcon from '$lib/authoring/world-toolbar/WorldIcon.svelte';
+
+import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
+import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
+import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
+import SkyControl from '$lib/authoring/world-toolbar/SkyControl.svelte';
+import { worldTool, type WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
@@ -433,6 +437,29 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const worldEnvironment = $derived.by(() => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper');
 	let editOnPaper = $state(false);
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
+	/** The World toolbar's selected row; the task/selection controllers remain authoritative. */
+	let activeWorldTool = $state<WorldToolId>('select');
+	/** The upper parchment plate: opens on a family press and folds on a second one. */
+	let worldPlateOpen = $state(false);
+	let libraryOpen = $state(false);
+	let toolBeforeLibrary = $state<WorldToolId>('select');
+	let inkReading = $state<'wall' | 'opening'>('wall');
+
+	// A completed task leaves no plate behind. A library visit is its own mode and
+	// Select is already the empty state, so those two keep their word.
+	$effect(() => {
+		if (task === null) {
+			if (activeWorldTool === 'library' || activeWorldTool === 'select') return;
+			// A planned row is inspectable without a task; only a landed tool that has
+			// just completed belongs back at Select.
+			if (worldTool(activeWorldTool).stage === 'planned') return;
+			activeWorldTool = 'select';
+			worldPlateOpen = false;
+			return;
+		}
+		if (task.kind === STAGE_MEASURE_TASK) activeWorldTool = 'measure';
+		else if (task.kind === STAGE_ERASER_TASK) activeWorldTool = 'erase';
+	});
 
 	async function setWorldEnvironment(preset: SceneEnvironmentPreset): Promise<void> {
 		const services = adapterServices;
@@ -2711,7 +2738,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				if (armedHostTool === 'erase' && eraserTool?.clear()) { eraseHover = null; refreshHostTools(); break; }
 				const armedKey = dockKeys.find((key) => key.id === armedDockId);
 				if (task !== null && armedKey?.palette === true && paletteOpen) { paletteOpen = false; break; }
+				if (libraryOpen) { toggleWorldLibrary(); break; }
 				if (task !== null) closeTask();
+				else if (activeWorldTool !== 'select') { libraryOpen = false; activeWorldTool = 'select'; }
+				// The plate is the last layer before Select: once the tool is clear,
+				// Escape folds the parchment instead of moving the selection.
+				else if (lens === 'world' && worldPlateOpen) { worldPlateOpen = false; }
 				else if (activeLayer?.key(event, 'unwind') !== 'claimed' && selection !== null) closeSelection();
 				break;
 			}
@@ -3205,6 +3237,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		invokeContribution(tool.adapterId, tool.id);
 		armedTool = { id: tool.id, adapterId: tool.adapterId };
 		paletteOpen = true;
+		worldPlateOpen = true;
 		pendingDelete = null;
 	}
 
@@ -3233,6 +3266,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		task = next;
 		armedTool = { id: kind, adapterId: STAGE_HOST_ADAPTER_ID };
 		paletteOpen = true;
+		worldPlateOpen = true;
 		pendingDelete = null;
 		notice = '';
 		refreshHostTools();
@@ -3240,9 +3274,98 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Arm one dock key (from the dock, its key or Find). */
 	function armDockKey(key: StageDockKey): void {
-		if (key.slot === 'select') selectTool();
-		else if (key.adapterId === STAGE_HOST_ADAPTER_ID) armHostTool(key.id);
-		else armDockTool({ id: key.id, adapterId: key.adapterId });
+		if (key.slot === 'select') {
+			activeWorldTool = 'select';
+			libraryOpen = false;
+			selectTool();
+		} else if (key.adapterId === STAGE_HOST_ADAPTER_ID) {
+			activeWorldTool = key.id === STAGE_MEASURE_TASK ? 'measure' : 'erase';
+			libraryOpen = false;
+			armHostTool(key.id);
+		} else if (key.slot === 'library') {
+			activeWorldTool = 'objects';
+			libraryOpen = false;
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+		} else if (key.slot === 'ink') {
+			activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
+			libraryOpen = false;
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+			paletteOpen = false;
+		} else {
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+		}
+	}
+
+	/** The Living Draft row's one bridge into the existing dock/host controllers. */
+	function armWorldTool(id: WorldToolId): void {
+		worldPlateOpen = id !== 'select';
+		if (id === 'library') {
+			toggleWorldLibrary();
+			return;
+		}
+		libraryOpen = false;
+		if (id === 'select') {
+			activeWorldTool = 'select';
+			selectTool();
+			return;
+		}
+		if (id === 'walls' || id === 'opening') {
+			const key = dockKeys.find((candidate) => candidate.slot === 'ink');
+			if (key === undefined) {
+				notice = 'Ink is not available in this project.';
+				return;
+			}
+			inkReading = id === 'opening' ? 'opening' : 'wall';
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+			activeWorldTool = id;
+			paletteOpen = false;
+			return;
+		}
+		if (id === 'objects') {
+			const key = dockKeys.find((candidate) => candidate.slot === 'library');
+			if (key === undefined) {
+				notice = 'Objects is not available in this project.';
+				return;
+			}
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+			activeWorldTool = 'objects';
+			paletteOpen = false;
+			return;
+		}
+		if (id === 'measure' || id === 'erase') {
+			armHostTool(id === 'measure' ? STAGE_MEASURE_TASK : STAGE_ERASER_TASK);
+			activeWorldTool = id;
+			paletteOpen = false;
+			return;
+		}
+		// A planned row is inspectable, but it writes nothing until its post-merge branch.
+		closeTask();
+		activeWorldTool = id;
+		paletteOpen = false;
+	}
+
+	function toggleWorldLibrary(): void {
+		if (libraryOpen) {
+			libraryOpen = false;
+			activeWorldTool = toolBeforeLibrary === 'library' ? 'select' : toolBeforeLibrary;
+			return;
+		}
+		toolBeforeLibrary = activeWorldTool === 'library' ? 'select' : activeWorldTool;
+		closeTask();
+		libraryOpen = true;
+		activeWorldTool = 'library';
+		worldPlateOpen = true;
+		paletteOpen = false;
+	}
+
+	function pickWorldObject(assetId: string): void {
+		libraryOpen = false;
+		armWorldTool('objects');
+		notice = assetId === '' ? 'Choose a placement in the Objects panel.' : 'Choose the object in the Objects panel to place it.';
+	}
+
+	function pickWorldMaterial(): void {
+		notice = 'Paint is planned for T5; the material stays in the Library without changing the World.';
 	}
 
 	/** A dock press: arm the key, or fold/unfold the armed key's own palette. */
@@ -3287,6 +3410,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			.some((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
 		if (!stillContributed) return;
 		invokeContribution(armed.adapterId, armed.id, false);
+		// The install briefly closed the task, so the task/chrome sync reset the World
+		// tool to Select. Keep the re-armed Ink row attached to the task it drives.
+		if (armed.id === 'layout-ink') {
+			activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
+			worldPlateOpen = true;
+		}
 	}
 
 	/** Pressing the armed key again folds or re-opens its palette without disarming the tool. */
@@ -3441,7 +3570,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 </script>
 
-<div class="editor-host">
+<div class="editor-host" data-shell="living-draft">
 	<!--
 		The Head and the Index are authoring chrome, so they are not mounted while
 		the isolated Preview run owns the Camera output: a visible Undo, Save or
@@ -3618,6 +3747,57 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			></button>
 		{/if}
 
+		<!--
+			The old second line is restored: the reading grid and 2D/3D controls sit
+			under the project Head, and the new Measure, Slice and Sky controls join
+			that line rather than replacing it.
+		-->
+		{#if preview === null}
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<div
+				class="view-line"
+				data-view-line
+				onclick={(event) => event.stopPropagation()}
+				onpointerdown={(event) => event.stopPropagation()}
+			>
+				<StageDraftingControl
+					{drafting}
+					reading={draftingReading}
+					gridWord={draftingGridWord}
+					snapWord={draftingSnapWord}
+					onReading={setReading}
+					onPatch={patchDrafting}
+					planAppearance={preferences.planAppearance}
+					onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+					measureActive={activeWorldTool === 'measure'}
+					onMeasure={() => armWorldTool('measure')}
+					roomLabels2d={preferences.roomLabels2d}
+					roomLabels3d={preferences.roomLabels3d}
+					paperTone2d={preferences.paperTone2d}
+					paperTone3d={preferences.paperTone3d}
+					onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
+					{heightSheetSide}
+					onHeightSheetSide={(side) => (heightSheetSide = side)}
+					{reducedMotion}
+					onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
+					motionSpeed={preferences.motionSpeed}
+					onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
+				>
+					{#snippet sky()}
+						{#if adapterServices !== null}
+							<SkyControl
+								environment={worldEnvironment}
+								onEnvironment={(preset) => void setWorldEnvironment(preset)}
+								{editOnPaper}
+								onEditOnPaper={(value) => (editOnPaper = value)}
+								busy={environmentWrite === adapterServices}
+							/>
+						{/if}
+					{/snippet}
+				</StageDraftingControl>
+			</div>
+		{/if}
+
 		<div class="stage-frame">
 			{#if preview === null}
 				<!--
@@ -3729,6 +3909,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					own pointer and click events: pressing Plan/3D/Fit must never also
 					hit-test the world underneath the button.
 				-->
+				{#if lens === 'experience'}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="stage-actions"
@@ -3736,33 +3917,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					onclick={(event) => event.stopPropagation()}
 					onpointerdown={(event) => event.stopPropagation()}
 				>
-					<!--
-						R217.S20: the ⚙ holds the viewing preferences the Head used to hold. They
-						are browser session values, so the cluster writes the same state the
-						route always wrote, and Find reaches the same values.
-					-->
-					<StageDraftingControl
-						{drafting}
-						reading={draftingReading}
-						quiet={paperVisible}
-						gridWord={draftingGridWord}
-						snapWord={draftingSnapWord}
-						onReading={setReading}
-						onPatch={patchDrafting}
-						planAppearance={preferences.planAppearance}
-						onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
-						roomLabels2d={preferences.roomLabels2d}
-						roomLabels3d={preferences.roomLabels3d}
-						paperTone2d={preferences.paperTone2d}
-						paperTone3d={preferences.paperTone3d}
-						onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
-							{heightSheetSide}
-						onHeightSheetSide={(side) => (heightSheetSide = side)}
-						{reducedMotion}
-						onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
-						motionSpeed={preferences.motionSpeed}
-						onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
-					/>
 					{#if lens === 'experience'}
 						<!-- R217.S29 Show ▾: session-only Stage drawing flags beside the reading control. -->
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -3819,16 +3973,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							{/if}
 						</div>
 					{/if}
-					{#if adapterServices !== null}
-						<StageEnvironmentControl
-							environment={worldEnvironment}
-							onEnvironment={(preset) => void setWorldEnvironment(preset)}
-							{editOnPaper}
-							onEditOnPaper={(value) => (editOnPaper = value)}
-							busy={environmentWrite === adapterServices}
-						/>
-					{/if}
 				</div>
+				{/if}
 				{#if lens === 'world'}
 					<!--
 						PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
@@ -3918,7 +4064,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{#if experienceLens.lookThroughMoved()}<span class="moved">moved</span>{/if}
 						<button
 							type="button"
-							class="pill-gold"
+							class="pill-primary"
 							disabled={!experienceLens.lookThroughMoved() || (activeExperience?.busy ?? false)}
 							title={experienceLens.lookThroughMoved() ? 'Write the provisional pose back to this View' : 'Adjust the camera or lens first'}
 							onclick={() => void experienceLens.updateLookThrough(experienceLens.lookThroughConfirm() !== null)}>Update View</button
@@ -3931,7 +4077,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
 							<p>Also changes {experienceLens.lookThroughConfirm()!.join(', ')}.</p>
 							<div class="through-confirm-actions">
-								<button type="button" class="pill-gold" onclick={() => void experienceLens.updateLookThrough(true)}>Update View</button>
+								<button type="button" class="pill-primary" onclick={() => void experienceLens.updateLookThrough(true)}>Update View</button>
 								<button type="button" onclick={() => experienceLens.clearLookThroughConfirm()}>Cancel</button>
 							</div>
 						</div>
@@ -3942,7 +4088,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					<div class="through-confirm" role="alertdialog" tabindex="-1" aria-label="Update a shared View" onclick={(event) => event.stopPropagation()} onpointerdown={(event) => event.stopPropagation()}>
 						<p>Also changes {pendingViewWrite.alsoIn.join(', ')}.</p>
 						<div class="through-confirm-actions">
-							<button type="button" class="pill-gold" onclick={() => void experienceLens.confirmPendingViewWrite()}>Update View</button>
+							<button type="button" class="pill-primary" onclick={() => void experienceLens.confirmPendingViewWrite()}>Update View</button>
 							<button type="button" onclick={() => (experienceLens.clearPendingViewWrite())}>Cancel</button>
 						</div>
 					</div>
@@ -4059,16 +4205,32 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			-->
 			<div class="lower-column" hidden={preview !== null} inert={preview !== null} data-lower-column bind:this={lowerColumnEl}>
 				{#if lens === 'world'}
-				<StageDock keys={dockKeys} armedId={armedDockId} {paletteOpen} onPress={pressDockKey}
+					<WorldToolbar
+						activeTool={activeWorldTool}
+						{libraryOpen}
+						plateOpen={worldPlateOpen}
+						onPlateOpen={(open) => (worldPlateOpen = open)}
+						onTool={armWorldTool}
+						onLibrary={toggleWorldLibrary}
+						onObjectPick={pickWorldObject}
+						onMaterialPick={pickWorldMaterial}
 					>
-						{#snippet palette()}<StageInstrumentHost
-								task={paletteOpen ? taskHost : null}
-								onClose={closeTask}
-								onCollapse={() => (paletteOpen = false)}
-								instrument={contributedInstrument}
-							/>
-				{/snippet}
-					</StageDock>
+						{#snippet plate()}
+							{#if activeWorldTool === 'walls' || activeWorldTool === 'opening'}
+								<InkPlate reading={inkReading} onMore={() => (paletteOpen = !paletteOpen)} />
+							{:else if activeWorldTool === 'objects'}
+								<ObjectsPlate onOpen={pickWorldObject} />
+							{/if}
+						{/snippet}
+					</WorldToolbar>
+					{#if contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || paletteOpen)}
+						<StageInstrumentHost
+							task={taskHost}
+							onClose={closeTask}
+							onCollapse={() => (paletteOpen = false)}
+							instrument={contributedInstrument}
+						/>
+					{/if}
 				{/if}
 				{#if activeExperience !== null}
 					<!-- Column order is bottom-up: the dock, its feedback line, then the Guide instrument above them. -->
@@ -4207,10 +4369,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		mapping stay unchanged, and it intercepts no picking.
 	*/
 	.stage[data-paper='true'] {
-		box-shadow: inset 0 0 0 1px #c9cfc2;
+		box-shadow: inset 0 0 0 1px var(--stage-paper-edge);
 	}
 	.stage:focus-visible {
-		box-shadow: inset 0 0 0 1px var(--shell-gold);
+		box-shadow: inset 0 0 0 1px var(--shell-leaf);
 	}
 	.stage :global(canvas) {
 		display: block;
@@ -4236,15 +4398,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	*/
 	.lower-column {
 		position: absolute;
-		inset-inline-start: 12px;
+		inset-inline-start: calc(12px + var(--index-cover, 0px));
 		inset-inline-end: 12px;
 		bottom: 10px;
-		z-index: 6;
+		z-index: 11;
 		display: flex;
 		flex-direction: column-reverse;
 		align-items: center;
 		gap: 0.4rem;
 		pointer-events: none;
+	}
+	.lower-column > :global(.world-toolbar) {
+		align-self: center;
 	}
 	.lower-column > :global(*) {
 		pointer-events: auto;
@@ -4257,6 +4422,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		inset: 0 auto 0 0;
 		box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
 	}
+	/* The Card takes its surface, type and radius from the shared roles; only its
+	   lane beside the Height Sheet is the route's business. */
+	.editor-host[data-shell='living-draft'] :global(.card) {
+		top: 10px;
+		right: 10px;
+		box-shadow: var(--shell-shadow);
+	}
 	@media (width > 1100px) {
 		.editor-body[data-index-open='true'] {
 			--index-cover: var(--shell-index-width);
@@ -4265,7 +4437,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* The constrained Index ends above the lower column and has a close scrim. */
 	@media (max-width: 1100px) {
 		.editor-body > :global(.plate-index) {
+			/* Keep the dock's measured span, but never trust a stale zero reading. */
 			bottom: calc(0.75rem + var(--lower-column-height, 0px) + 0.5rem);
+			bottom: calc(0.75rem + max(var(--lower-column-height, 0px), 166px) + 0.5rem);
 			width: min(var(--shell-index-width), 80%);
 		}
 		/*
@@ -4294,11 +4468,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	@media (pointer: coarse) {
 		.editor-host { --shell-touch-target:44px; --shell-head-height:52px; }
 	}
-	.stage-actions {
+	/* The old second line, with the new tools beside it rather than replacing it. */
+	.view-line {
 		position: absolute;
 		top: 10px;
 		left: calc(10px + var(--index-cover, 0px));
-		/* Its popovers (Show, Environment) open over the Stage's start card. */
+		z-index: 8;
+		display: flex;
+		align-items: flex-start;
+		flex-wrap: wrap;
+		gap: 6px;
+		max-width: calc(100% - 20px - var(--index-cover, 0px));
+	}
+	.view-line > :global(*) {
+		pointer-events: auto;
+	}
+	/* Experience's Show control sits below the restored reading line. */
+	.stage-actions {
+		position: absolute;
+		top: 54px;
+		left: calc(10px + var(--index-cover, 0px));
 		z-index: 6;
 		display: flex;
 		gap: 0.4rem;
@@ -4325,7 +4514,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		font-size: var(--shell-text-body);
 	}
 	.keys-panel:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring);
 		outline-offset: 2px;
 	}
 	.keys-panel h2 {
@@ -4346,7 +4535,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	.keys-panel dt {
 		font-family: var(--shell-mono);
 		font-size: var(--shell-text-utility);
-		color: var(--shell-gold);
+		color: var(--shell-leaf-soft);
 		font-variant-numeric: tabular-nums;
 	}
 	.keys-panel dd {
@@ -4391,7 +4580,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		fill: var(--shell-gold-ink);
 		font: 600 11px var(--shell-sans);
 		paint-order: stroke;
-		stroke: rgb(255 255 255 / 0.85);
+		stroke: var(--shell-focus-halo);
 		stroke-width: 3px;
 	}
 	/* R217.S29 Show ▾: a light disclosure beside the Stage reading control. */
@@ -4400,10 +4589,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		display: flex;
 		align-items: center;
 		padding: 3px;
-		border: 1px solid rgb(27 32 28 / 0.1);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 10px;
-		background: rgb(255 255 255 / 0.94);
-		box-shadow: 0 4px 14px rgb(17 41 31 / 0.12);
+		background: var(--shell-glass-light);
+		box-shadow: var(--shell-furniture-shadow);
 		backdrop-filter: blur(10px);
 	}
 	.show-button {
@@ -4424,13 +4613,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: rgb(27 32 28 / 0.06);
 	}
 	.show-button[aria-expanded='true'] {
-		background: var(--shell-forest);
-		color: var(--shell-white);
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 	}
 	.show-button:focus-visible,
 	.show-mode button:focus-visible,
 	.show-all:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: 1px;
 	}
 	.show-off {
@@ -4450,11 +4639,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		display: grid;
 		gap: 6px;
 		padding: 12px;
-		border: 1px solid rgb(27 32 28 / 0.12);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 14px;
-		background: var(--shell-white);
+		background: var(--shell-popover);
 		color: var(--shell-ink);
-		box-shadow: 0 10px 30px rgb(17 41 31 / 0.16);
+		box-shadow: var(--shell-shadow);
 		font-size: 12.5px;
 	}
 	.show-popover header {
@@ -4476,7 +4665,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		gap: 3px;
 		padding: 3px;
 		border-radius: 10px;
-		background: rgb(27 32 28 / 0.05);
+		background: var(--shell-surface-sunken);
 	}
 	.show-mode button {
 		height: 28px;
@@ -4489,7 +4678,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cursor: pointer;
 	}
 	.show-mode button[aria-pressed='true'] {
-		background: var(--shell-white);
+		background: var(--shell-field-focus);
 		color: var(--shell-ink);
 		font-weight: 600;
 		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
@@ -4504,7 +4693,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		cursor: pointer;
 	}
 	.show-popover label:hover {
-		background: rgb(27 32 28 / 0.04);
+		background: var(--shell-hover);
 	}
 	.show-popover input[type='checkbox'] {
 		appearance: none;
@@ -4513,9 +4702,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		width: 18px;
 		height: 18px;
 		margin: 0;
-		border: 1.5px solid rgb(27 32 28 / 0.2);
+		border: 1.5px solid var(--shell-field-line-strong);
 		border-radius: 5px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		cursor: pointer;
 	}
 	.show-popover input[type='checkbox']:checked {
@@ -4523,15 +4712,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: var(--shell-leaf) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
 	}
 	.show-popover input[type='checkbox']:focus-visible {
-		outline: 2px solid var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
 		outline-offset: 2px;
 	}
 	.show-all {
 		height: 28px;
 		margin-top: 2px;
-		border: 1px solid rgb(27 32 28 / 0.14);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 8px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		color: inherit;
 		font: inherit;
 		font-size: 12px;
@@ -4562,7 +4751,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		position: absolute;
 		width: 22px;
 		height: 22px;
-		border: 0 solid rgb(255 255 255 / 0.9);
+		border: 0 solid var(--shell-ink-light);
 		filter: drop-shadow(0 0 1px rgb(0 0 0 / 0.6));
 	}
 	.through-safe i:nth-child(1) { left: 0; top: 0; border-width: 2px 0 0 2px; }
@@ -4590,7 +4779,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 0 11px;
 		border: 0;
 		border-radius: 14px;
-		background: rgb(255 255 255 / 0.12);
+		background: var(--shell-on-forest-wash-strong);
 		color: inherit;
 		font: inherit;
 		font-size: 12px;
@@ -4600,19 +4789,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		opacity: 0.45;
 		cursor: default;
 	}
-	.mode-pill button.pill-gold {
-		background: var(--shell-gold);
-		color: #2a2208;
+	.mode-pill button.pill-primary {
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		font-weight: 600;
 	}
 	.mode-pill .live-dot {
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--shell-gold);
+		background: var(--shell-leaf-soft);
 	}
 	.mode-pill .moved {
-		color: var(--shell-gold);
+		color: var(--shell-leaf-soft);
 		font-weight: 600;
 	}
 	/* Center Look through in the part of the Stage that the Index leaves visible. */
@@ -4663,15 +4852,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 0 10px;
 		border: 0;
 		border-radius: 7px;
-		background: rgb(255 255 255 / 0.14);
+		background: var(--shell-on-forest-wash-strong);
 		color: inherit;
 		font: inherit;
 		font-size: 12px;
 		cursor: pointer;
 	}
-	.through-confirm button.pill-gold {
-		background: var(--shell-gold);
-		color: #2a2208;
+	.through-confirm button.pill-primary {
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 		font-weight: 600;
 	}
 	.experience-welcome {
@@ -4682,21 +4871,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 1rem;
 		border: 1px solid var(--shell-hairline-strong);
 		border-radius: 12px;
-		background: var(--shell-card);
+		background: var(--shell-surface-raised);
 		box-shadow: var(--shell-shadow);
 		color: var(--shell-ink);
 		font-size: 0.8rem;
 	}
 	.experience-welcome > span {
-		color: var(--shell-gold-ink);
-		font-size: 0.65rem;
-		font-weight: 700;
+		color: var(--shell-ink-3);
+		font-size: var(--shell-text-meta);
+		font-weight: 600;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 	}
 	.experience-welcome h2 {
 		margin: 0.25rem 0 0.6rem;
-		font: 400 1.15rem var(--shell-serif);
+		font: 600 var(--shell-text-title)/1.25 var(--shell-sans);
 	}
 	.experience-welcome ol {
 		margin: 0 0 0.75rem;
@@ -4714,8 +4903,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		padding: 0.35rem 0.65rem;
 		border: 0;
 		border-radius: 6px;
-		background: var(--shell-forest);
-		color: white;
+		background: var(--shell-action);
+		color: var(--shell-on-action);
 		cursor: pointer;
 	}
 	@media (pointer: coarse) {
@@ -4731,15 +4920,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		margin: 0;
 		padding: 0.25rem 0.6rem;
 		border-radius: 8px;
-		background: rgb(17 41 31 / 0.92);
-		color: white;
+		background: var(--shell-dock-surface);
+		color: var(--shell-ink-light);
 		font-size: 0.78rem;
 		line-height: 1.35;
 	}
 	/* Kind decides the styling, never the words: a success is never a refusal. */
 	.experience-feedback.success { background: var(--shell-forest-raised); }
-	.experience-feedback.info { background: #2c3b44; }
-	.experience-feedback.refused { background: #623639; }
+	.experience-feedback.info { background: var(--shell-forest-3); }
+	.experience-feedback.refused { background: color-mix(in srgb, var(--shell-refuse) 70%, var(--shell-forest)); }
 	.preview-takeover {
 		position: absolute;
 		inset: 0;
@@ -4757,13 +4946,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		margin: 0;
 		padding: 0.4rem 0.6rem;
 		border-radius: 0.35rem;
-		background: rgb(25 24 31 / 88%);
-		color: #e3c4c4;
+		background: var(--shell-popup-dark);
+		color: var(--shell-ink-light);
 	}
 	.preview-actions-note {
 		top: 0.5rem;
 		bottom: auto;
-		color: #f5e8b5;
+		color: var(--shell-leaf-soft);
 	}
 	/*
 	 * Parked-task notice. It sits at the top-left because the lower edge already
@@ -4780,8 +4969,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		max-width: min(22rem, calc(100% - 2rem));
 		padding: 0.75rem;
 		box-sizing: border-box;
-		background: #19181f;
-		border: 1px solid #635a6f;
+		background: var(--shell-popup-dark);
+		border: 1px solid var(--shell-line-on-forest);
 	}
 	.resume-offer {
 		display: flex;
@@ -4789,9 +4978,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.7rem 1rem;
-		border-bottom: 1px solid #6b5426;
-		background: #2b2417;
-		color: #f4e5c8;
+		border-bottom: 1px solid var(--shell-hairline-dark);
+		background: var(--shell-forest-raised);
+		color: var(--shell-ink-light);
 	}
 	.resume-offer p {
 		flex: 1 1 22rem;
@@ -4800,17 +4989,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.resume-offer button {
 		padding: 0.45rem 0.7rem;
-		border: 1px solid #8a6a31;
+		border: 1px solid var(--shell-line-on-forest);
 		border-radius: 0.35rem;
-		background: #3a3020;
+		background: var(--shell-forest-raised);
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
 	}
 	.resume-offer button.primary {
-		border-color: #d8b26a;
-		background: #7a5a22;
-		color: var(--shell-white);
+		border-color: transparent;
+		background: var(--shell-mode-active-bg);
+		color: var(--shell-mode-active-ink);
 	}
 	.source-findings {
 		position: absolute;
@@ -4820,10 +5009,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		transform: translateX(-50%);
 		max-width: min(32rem, calc(100% - 2rem));
 		padding: 6px 12px;
-		border: 1px solid rgb(27 32 28 / 0.12);
+		border: 1px solid var(--shell-hairline);
 		border-radius: 12px;
-		background: rgb(255 255 255 / 0.96);
-		box-shadow: 0 6px 18px rgb(17 41 31 / 0.14);
+		background: var(--shell-popover);
+		box-shadow: var(--shell-shadow);
 		color: var(--shell-ink);
 		font-size: 12.5px;
 	}
@@ -4835,7 +5024,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		list-style: none;
 	}
 	.source-findings strong {
-		color: var(--shell-gold-ink);
+		color: var(--shell-ink);
 	}
 	.source-findings.blocking strong {
 		color: var(--shell-caution);
@@ -4851,13 +5040,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		color: var(--shell-ink-2);
 	}
 	.source-findings button {
-		border: 1px solid rgb(27 32 28 / 0.14);
+		border: 1px solid var(--shell-field-line);
 		border-radius: 8px;
-		background: var(--shell-white);
+		background: var(--shell-field);
 		padding: 3px 9px;
 		font: inherit;
 		cursor: pointer;
 	}
+	/* Boot, absence and replacement are dialogs, so they share the light Card
+	   surface and field grammar rather than the dark stage\'s forest panel. */
 	.boot-panel {
 		position: absolute;
 		z-index: 30;
@@ -4865,51 +5056,61 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		left: 50%;
 		transform: translateX(-50%);
 		width: min(32rem, calc(100% - 2rem));
-		padding: 1.25rem;
-		border: 1px solid color-mix(in srgb, var(--shell-ivory) 20%, transparent);
-		border-radius: 16px;
-		background: var(--shell-dock-surface);
-		color: var(--shell-ivory);
+		padding: 1.1rem 1.2rem 1.15rem;
+		border: 1px solid var(--shell-hairline-strong);
+		border-radius: 14px;
+		background: var(--shell-card);
+		color: var(--shell-ink);
 		box-shadow: var(--shell-shadow);
 		box-sizing: border-box;
 	}
 	.boot-brand {
-		color: var(--shell-gold);
-		font-size: 0.72rem;
+		color: var(--shell-forest-raised);
+		font-size: 0.68rem;
 		font-weight: 600;
-		letter-spacing: 0.12em;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
 	}
 	.boot-panel h1,
 	.boot-panel .boot-loading {
-		margin: 0 0 0.5rem;
-		color: var(--shell-ivory);
-		font: 400 1.4rem/1.25 var(--shell-serif);
+		margin: 0 0 0.4rem;
+		color: var(--shell-ink);
+		font: 600 var(--shell-text-title)/1.25 var(--shell-sans);
+		letter-spacing: -0.01em;
 	}
 	.boot-panel .boot-loading {
-		margin: 0.35rem 0 0;
+		margin: 0.3rem 0 0;
 	}
 	.boot-panel p {
-		margin: 0 0 0.75rem;
-		color: var(--shell-ink-light);
+		margin: 0 0 0.8rem;
+		color: var(--shell-ink-2);
+		font: var(--shell-text-body)/1.45 var(--shell-sans);
 	}
 	.boot-panel button {
-		margin-right: 0.5rem;
-		padding: 0.5rem 0.8rem;
-		border: 1px solid color-mix(in srgb, var(--shell-ivory) 30%, transparent);
-		border-radius: 8px;
-		background: transparent;
-		color: inherit;
-		font: inherit;
+		margin: 0 0.4rem 0.35rem 0;
+		min-height: 30px;
+		padding: 0 0.7rem;
+		border: 1px solid var(--shell-field-line-strong);
+		border-radius: 7px;
+		background: var(--shell-field);
+		color: var(--shell-ink);
+		font: 500 var(--shell-text-control) var(--shell-sans);
 		cursor: pointer;
 	}
+	.boot-panel button:hover {
+		background: var(--shell-hover);
+	}
 	.boot-panel button.primary {
-		border-color: var(--shell-gold);
-		background: var(--shell-gold);
-		color: var(--shell-forest);
+		border-color: transparent;
+		background: var(--shell-action);
+		color: var(--shell-on-action);
+	}
+	.boot-panel button.primary:hover {
+		background: var(--shell-forest-raised);
 	}
 	.boot-panel button:focus-visible {
-		outline-color: var(--shell-gold);
+		outline: var(--shell-focus-ring-light);
+		outline-offset: 1px;
 	}
 
 	@media (max-width: 720px) {
