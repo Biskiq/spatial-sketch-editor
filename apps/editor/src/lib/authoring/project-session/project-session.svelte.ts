@@ -898,7 +898,18 @@ export function createProjectSession(host: {
 		const mountedHeadSave = headSave;
 		if (mountedHeadSave !== null) {
 			unsubscribeHeadSave = mountedHeadSave.subscribe(() => {
-				if (headSave === mountedHeadSave) perfMeasureSync('save.page-state-signal', () => (headSaveVersion += 1));
+				if (headSave !== mountedHeadSave) return;
+				perfMeasureSync('save.page-state-signal', () => (headSaveVersion += 1));
+				// `create=1` means "this identity was just minted", so a refresh must
+				// stay on the empty local baseline. Once the first Save has been
+				// acknowledged the row exists and the same address is an explicit open;
+				// consuming the marker here is what makes Save followed by reload read the
+				// saved project instead of minting another empty one.
+				if (mountedHeadSave.snapshot().status !== 'saved') return;
+				const url = new URL(host.url());
+				if (url.searchParams.get('create') !== '1') return;
+				url.searchParams.delete('create');
+				replaceState(`${url.pathname}${url.search}`, {});
 			});
 		}
 		resumeSource = null;

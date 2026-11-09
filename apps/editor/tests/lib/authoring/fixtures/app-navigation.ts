@@ -11,6 +11,7 @@ export function beforeNavigate(_guard: (event: { cancel: () => void }) => void):
 }
 
 export const navigations: string[] = [];
+export const replaceStates: string[] = [];
 
 export async function goto(url: string): Promise<void> {
 	navigations.push(url);
@@ -21,11 +22,10 @@ export function resetNavigations(): void {
 }
 
 /**
- * The route consumes `resume-save` with `replaceState` after considering a
- * draft. The mounted harness owns the URL it is testing, so this is a no-op
- * instead of a second navigation source.
+ * The route consumes `resume-save` and `create=1` with `replaceState`. Record
+ * each call so mounted tests can assert the address the route leaves behind
+ * without introducing a second navigation source.
  */
-export function replaceState(_url: string, _state: unknown): void {
-	// The suite sets `page.url` before each mount and asserts the offer behaviour,
-	// not the browser history entry.
+export function replaceState(url: string, _state: unknown): void {
+	replaceStates.push(url);
 }
