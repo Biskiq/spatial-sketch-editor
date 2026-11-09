@@ -276,6 +276,10 @@
 				</g>
 			{:else if mark.glyph === 'top-knob' || mark.glyph === 'lift-knob'}
 				<StageSticker kind={mark.glyph === 'top-knob' ? 'hex' : 'hexSmall'} at={mark.anchor} stem={mark.stem} {emphasised} held={mark.active} />
+			{:else if mark.bend}
+				<!-- A bend knot is a point with a tangent tick; it must read as a shape edit, not a move. -->
+				<circle class="bend-knot" cx={mark.anchor[0]} cy={mark.anchor[1]} r={emphasised ? 6.2 : 5.4} />
+				<line class="bend-tick" x1={mark.anchor[0] - 5} y1={mark.anchor[1] + 7} x2={mark.anchor[0] + 5} y2={mark.anchor[1] + 7} />
 			{:else if mark.cross}
 				<StageSticker kind="move" at={mark.anchor} angle={headingOf(mark.direction)} scale={mark.glyphScale} {emphasised} held={mark.active} />
 			{:else if mark.kind === 'ray' || mark.kind === 'track'}
@@ -444,6 +448,17 @@
 	}
 
 	/* The sticker glyph set: white body, fine ink keyline, small soft shadow. */
+	.mark .bend-knot {
+		fill: var(--shell-gold-tint);
+		stroke: var(--overlay-ink);
+		stroke-width: 1.4;
+		filter: drop-shadow(0 1.2px 1.3px rgba(20, 24, 20, 0.3));
+	}
+	.mark .bend-tick {
+		stroke: var(--overlay-ink);
+		stroke-width: 1.6;
+		stroke-linecap: round;
+	}
 	.mark .glyph {
 		fill: var(--shell-white);
 		stroke: var(--overlay-ink);

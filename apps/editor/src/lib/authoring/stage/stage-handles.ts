@@ -54,6 +54,8 @@ export type StageHandleBase = {
 		readonly twoWayHalf?: number;
 		readonly pointRadius?: number;
 		readonly cross?: boolean;
+		/** A bend knot: a point with a short tangent tick, never the four-way move cross. */
+		readonly bend?: boolean;
 		readonly glyph?: 'top-knob' | 'lift-knob';
 		/** Hide the Stage mark itself while retaining its admitted pointer target. */
 		readonly hidden?: boolean;
@@ -310,6 +312,7 @@ export type StageMarkView = {
 	readonly ring: readonly (readonly [number, number])[] | null;
 	readonly pointRadius?:number;
 	readonly cross?:boolean;
+	readonly bend?:boolean;
 	/** Projected direction of a point's or ray's world axis (the glyph's heading). */
 	readonly direction?: readonly [number, number] | null;
 	/** The ring's one turn arrow: where it sits and which way it points. */
@@ -676,6 +679,7 @@ export function projectStageHandles(input: {
 			id: descriptor.id,
 			pointRadius:Number.isFinite(descriptor.draw?.pointRadius)?Math.min(6,Math.max(3,descriptor.draw!.pointRadius!)):4.2,
 			cross:descriptor.kind==='point' && descriptor.draw?.cross===true,
+			bend:descriptor.kind==='point' && descriptor.draw?.bend===true,
 			direction,
 			ringGlyph,
 			stem: stemPoint,
