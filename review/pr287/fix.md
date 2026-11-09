@@ -527,6 +527,20 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 ---
 
+### 9.1 Stage 2 implementation status (2026-11-09)
+
+Committed on `claude/spatial-world-t1-planning-3f4013` after `18014c0d`:
+
+- **S0:** `metaKey`/`ctrlKey` survive every pointer phase; curved body translation uses `LAYOUT_WALL_MOVE_KIND` / `planRigidWallMove`.
+- **S1:** refused Wall/Junction attempts render one coral whole-network candidate at the real conflict; settled refusals retain that geometry.
+- **S2:** plain body drag moves; Meta/Ctrl is captured at pointer-down; hidden knots promote within 10 CSS px; a new/edited knot becomes active; the active bend glyph is drawn.
+- **S3/S4:** Unfold copy is corrected, Flat reads at 100%, side labels name the other side, reduced motion is instant, entry records the settled pose without a `face` request, and flip/scrub/peel make no camera request. Done remains the only camera return.
+- **S5:** the developed mesh has real Opening voids; Opening identity is addressable through the void at the current `u`, including a seam-crossing band; the sheet draws a door leaf and a complete as-built base/top/vertical frame without duplicate Opening contours. Sheet Opening **drag/resize** is not implemented; the press selects the canonical Opening.
+- **S6:** `B` and the Card's Bend action arm the next body press; the Card peel uses the 260 px mapping and magnetic stops. The peel is Card-based, not a drag at the sheet edge; touch long-press is not implemented (the Bend action is the touch-visible alternative).
+- **S7:** QA policy updated; focused app launch is clean with no console errors. No Wall/Opening existed in the fresh project, so gestures, both sides, save/reload and visitor parity remain owner checks.
+
+Non-browser verification at the implementation head: `npm run check --workspace @portfolio/editor` reports 0 errors (4 pre-existing Visitor warnings); the focused suites report 118/118 passing. No full Playwright/E2E or bulk capture was run, by policy.
+
 ## 10. Approve-to-build checklist
 
 - [x] Owner approved **D1**, **D2/D8 narrowed**, **D3**, **D5**, **D6** and **D7**; **D4** remains conditional on the repro.
