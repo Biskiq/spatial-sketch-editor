@@ -3756,6 +3756,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							? knots.findIndex((knot) => knot.id === activeKnot!.knotId)
 							: -1;
 						const runCurve = async (kind: 'delete' | 'straighten'): Promise<StageCardActionOutcome> => {
+							// A Card record can outlive the session state it was rendered from. A
+							// stale Remove must refuse, never fall through to the other shape action.
+							if (kind === 'delete' && (activeKnot === null || activeKnot.wallId !== wallId)) {
+								return { kind: 'refused', message: 'Select the bend point again before removing it.' };
+							}
 							const preview = kind === 'delete' && activeKnot !== null
 								? previewWallKnotDelete(document, wallId, activeKnot.knotId)
 								: previewWallStraighten(document, wallId);
