@@ -7,9 +7,10 @@ identity”) is the design donor, not a production contract. The prototype says 
 is “the donor, not a plan”.
 
 **Delivery shape:** one draft PR on `plan/world-toolbar-shell-cutover`, one plan commit followed by
-separate implementation commits. No stacked PRs and no second PR for the capability work. The PR
-stays draft until the owner has reviewed the real editor visually and accepted the cutover. Do not
-merge it as part of this plan.
+separate implementation commits A1–A6. The PR ends at A6: the complete visual cutover, existing
+capability wiring and the owner's browser review. T1/T2/T5 geometry and capability work branches
+after this shell is accepted and merged; it is not part of this PR. No stacked PRs. The PR stays
+draft until the owner has reviewed the real editor visually. Do not merge it as part of this plan.
 
 ## Goal
 
@@ -30,9 +31,9 @@ The measurable reference, taken from the prototype rather than from memory:
 | Element | Reference |
 | --- | --- |
 | Lower instrument | 656 × 164 px: 40 px words row + 62 px pictures strip + 62 px dock; bottom 14 px; radius 16; `width: min(656px, 100% - 24px)` |
-| Phone | ≤ 560 px: width `100% - 16px`, dock 56 px, total 158 px, 9 px key labels |
+| Phone | ≤ 560 px: width `100% - 16px`; rows stay readable and the dock scrolls horizontally at a usable key width rather than compressing eight labels |
 | Plate | parchment with grain; words row 40 px; pictures strip 62 px; internal horizontal scrolling with a 44 px fade on the side that continues; no page overflow |
-| Dock | forest; eight equal-width keys; separators after Select, after Furnish, before Library; armed key is a parchment tab with `border-radius: 0 0 11px 11px`; family dots are 4 px |
+| Dock | forest; eight keys; separators after Select, after Furnish, before Library; armed key is a parchment tab with `border-radius: 0 0 11px 11px`; family dots are 4 px; the dock itself scrolls internally on narrow screens rather than shrinking labels below a usable size |
 | Type | Fraunces display, Instrument Sans UI, DM Mono labels. Exact families, sizes, weights and variable settings come from `prototypes/world-creation-tools/styles.css` |
 | Colour | Living Draft token set in `styles.css` `:root`; forest chassis, parchment plate, ink, moss, terracotta, ochre, gold and cobalt. Exact values are lifted from that file, not approximated here |
 | Head | two floating forest pills, 46 px high, radius 14; left identity/history, right view cluster plus Sky; at ≤ 860 the right pill becomes a second row |
@@ -73,9 +74,10 @@ python3 -m http.server 8840 --directory prototypes/world-creation-tools
 
 ## Ownership and non-negotiables
 
-1. **Layout, Scene, Camera and Experience keep their authorities.** The toolbar is a capability
-   placement description and a presenter; it never plans geometry, mutates a document, evaluates a
-   route or stores an authored fact.
+1. **Layout, Scene, Camera and Experience keep their authorities.** Tool families are grouped by
+   creative workflow, not by domain ownership (Build is Layout; Form and Furnish are Scene;
+   Landscape needs an owner). The toolbar is a capability placement description and a presenter; it
+   never plans geometry, mutates a document, evaluates a route or stores an authored fact.
 2. **One selection.** The plate, Card and Index resolve the same canonical subject. The Card remains
    the one writer for ordinary facts.
 3. **One history.** Every landed plate action calls the existing adapter action record. Placeholders
@@ -212,18 +214,18 @@ Existing keys are preserved unless listed. The canonical new map:
 | Action | Key | Note |
 | --- | --- | --- |
 | Select | V | existing |
-| Walls | W | P remains a legacy alias for Walls while Path is planned |
+| Walls | W | P remains a legacy alias for Walls while Path is planned; test this in the editor before retiring either |
 | Opening | O | |
 | Stair | T | planned tool; key arms its inspection plate |
 | Building | B | planned tool |
 | Form | D | planned tool |
 | Ground / Water / Path / Plants | G / A / P / N | landscape placeholders; P is not used until the Walls alias retires |
-| Objects | F | Fit moves to `Shift+F` and the Head’s Fit control |
+| Objects | F | proposed; Fit moves to `Shift+F` and the Head’s Fit control. Keep both reachable and test the split before making it final |
 | Lights | — | planned; no key until T2, because L remains Library |
 | Paint | C | planned tool |
 | Erase | E | existing |
 | Measure | M | existing; now in the Head |
-| Library | K, with L as the existing alias | both open Library |
+| Library | K, with L as the existing alias | both open Library; keep L working |
 | Shapes | 1–6 | 1 Line, 2 Arc, 3 Box, 4 Circle, 5 Freehand, 6 Outline, **while a drawing tool is armed** |
 | Readings | 2 / 3 | still Plan/3D when no drawing tool is armed; the same key never has two meanings in one context |
 | Fit | Shift+F | plus Head control |
@@ -232,8 +234,10 @@ Existing keys are preserved unless listed. The canonical new map:
 | Dismiss | Esc | see ladder |
 
 The key map is one table in the registry; `stage-input.ts` consumes it. Text-entry and control
-guards stay exactly as they are. Tests must cover both contexts for 2/3, the legacy P/L aliases, and
-the F/Shift+F split.
+guards stay exactly as they are. The conflict points (F, P, L and 2/3) are **provisional through
+A6**: test them in the running editor before committing to a permanent map, and keep the old key
+working wherever a new assignment would otherwise remove an existing workflow. Tests must cover
+both contexts for 2/3 and the F/Shift+F split.
 
 **Esc ladder** (one ordered function, deepest first):
 
@@ -337,12 +341,12 @@ No commit stages the plan’s local screenshot artifacts.
 - Acceptance: Library placement/import/My Objects still work; selection actions produce one history
   step; Sky presets keep their existing semantics; key and Esc tests pass; no hover tooltips.
 
-### Commit A6 — browser visual comparison and polish
+### Commit A6 — browser visual comparison and polish; PR end
 
 - Add the manual Playwright visual comparison and measurement spec; capture the editor and #285 at
   1440 × 900, 1100 × 720 and 390 × 844; fix the deltas; record intentional differences.
 - Owner reviews the real editor side by side with the prototype. This is the prune checkpoint before
-  any T1/T2/T5 work.
+  any T1/T2/T5 work, and the end of this PR.
 
 ### Owner checkpoint — after A6
 
@@ -355,9 +359,9 @@ The owner accepts, prunes or changes entries before capability implementation. P
 
 Registry entries make a prune one descriptor plus its plate group, not a shell rewrite.
 
-### T1 — Layout capability commits
+### After this PR: T1 — Layout capability commits
 
-After A6 acceptance, in the same PR:
+After A6 acceptance and this PR's merge, on a fresh branch:
 
 - Walls: Arc/Circle where Layout supports them; bending; roof offer and accepted Layout Roof.
 - Opening: arch, round, niche, wide; multiple kinds in one plate.
@@ -369,7 +373,7 @@ Each commit flips one registry availability from `planned` to `landed`, adds the
 tests, and does not edit the shell. The placeholder visual is replaced by the real palette in the
 same descriptor.
 
-### T2 — Scene capability commits
+### After this PR: T2 — Scene capability commits
 
 - Form drawing and its shared shape keys; Object shelf/rows, size/finish; Lights; Paint and real
   material application; library content.
@@ -377,7 +381,7 @@ same descriptor.
 - Living/Paper full render profile if it needs renderer work.
 - Scene selection actions (turn, duplicate, replace, save to Library) where Scene owns them.
 
-### T5 — Expressive geometry commits
+### After this PR: T5 — Expressive geometry commits
 
 - Building definitions and placed structures; saved forms and Studio; Library definitions.
 - Replace the corresponding Build/Library placeholders without shell edits.
@@ -484,7 +488,7 @@ baseline recorder and this plan does not reintroduce one.
 | **Placeholder UI looks like working UI** | Availability is visible text, accessible name and inert action; tests assert no task/history/selection change |
 | **The old shell's selectors are used by tests and perf flows** | Update them in the cutover commit; run the affected browser flows and the whole arch lane. Do not add compatibility aliases that keep two dock models alive |
 | **Stage rendering is not part of this cutover** | The world’s parchment diorama, lighting, shadows and full Living render profile are separate T2 work. Visual comparison judges the shell chrome and records the Stage delta explicitly |
-| **One PR is large** | Commit A1–A6 are separately reviewable and each leaves the tree usable. Review at commit boundaries; the PR stays draft until the owner accepts A6 |
+| **One PR is large** | Commit A1–A6 are separately reviewable and each leaves the tree usable. Review at commit boundaries; the PR stays draft until the owner accepts A6. The PR ends at A6; T1/T2/T5 follow on separate branches after merge |
 
 ## Non-goals
 
@@ -505,4 +509,4 @@ The owner is asked to accept or amend:
 4. the partial Living/Paper mapping and the planned Sky hour;
 5. the vendored font set and its licences;
 6. the placeholder grammar (inspectable plate, inert actions, visible planned label);
-7. the A1–A6 commit sequence in one draft PR, with the owner visual checkpoint after A6.
+7. the A1–A6 commit sequence in one draft PR ending at A6, with the owner visual checkpoint after A6.
