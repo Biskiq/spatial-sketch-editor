@@ -232,4 +232,11 @@
 	--ld-sans: 'Instrument Sans', system-ui, sans-serif;
 	--ld-mono: 'DM Mono', ui-monospace, monospace;
 	--ld-radius: 14px;
+	/* The shell furniture this skin repaints; spatial --stage-* paint stays shared. */
+	--shell-index: var(--ld-paper-raised);
+	--shell-card: var(--ld-paper-raised);
+	--shell-ink: var(--ld-ink);
+	--shell-ink-2: var(--ld-ink-2);
+	--shell-ink-3: var(--ld-ink-3);
+	--shell-hairline: var(--ld-hairline-dark);
 }

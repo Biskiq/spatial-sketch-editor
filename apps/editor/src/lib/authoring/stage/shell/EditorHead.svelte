@@ -1082,6 +1082,9 @@
 		.location {
 			max-width: 130px;
 		}
+		.location {
+			display: none;
+		}
 		.lens-button {
 			padding: 0 8px;
 		}

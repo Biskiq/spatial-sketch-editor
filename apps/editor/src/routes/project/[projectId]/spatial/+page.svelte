@@ -124,10 +124,13 @@ import {
 	import EditorHead from '$lib/authoring/stage/shell/EditorHead.svelte';
 	import EditorIndex from '$lib/authoring/stage/shell/EditorIndex.svelte';
 	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
-	import StageEnvironmentControl from '$lib/authoring/stage/shell/StageEnvironmentControl.svelte';
 	import EditorCard from '$lib/authoring/stage/shell/EditorCard.svelte';
-	import StageDock from '$lib/authoring/stage/shell/StageDock.svelte';
 import StageDraftingControl from '$lib/authoring/stage/shell/StageDraftingControl.svelte';
+import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
+import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
+import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
+import SkyControl from '$lib/authoring/world-toolbar/SkyControl.svelte';
+import { worldTool, type WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
@@ -433,6 +436,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const worldEnvironment = $derived.by(() => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper');
 	let editOnPaper = $state(false);
 	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
+	/** The World toolbar's selected row; the task/selection controllers remain authoritative. */
+	let activeWorldTool = $state<WorldToolId>('select');
+	let libraryOpen = $state(false);
+	let toolBeforeLibrary = $state<WorldToolId>('select');
+	let inkReading = $state<'wall' | 'opening'>('wall');
+
+	// A completed task leaves no plate behind. A library visit is its own mode and
+	// Select is already the empty state, so those two keep their word.
+	$effect(() => {
+		if (task === null) {
+			if (activeWorldTool === 'library' || activeWorldTool === 'select') return;
+			// A planned row is inspectable without a task; only a landed tool that has
+			// just completed belongs back at Select.
+			if (worldTool(activeWorldTool).stage === 'planned') return;
+			activeWorldTool = 'select';
+			return;
+		}
+		if (task.kind === STAGE_MEASURE_TASK) activeWorldTool = 'measure';
+		else if (task.kind === STAGE_ERASER_TASK) activeWorldTool = 'erase';
+	});
 
 	async function setWorldEnvironment(preset: SceneEnvironmentPreset): Promise<void> {
 		const services = adapterServices;
@@ -3240,9 +3263,96 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Arm one dock key (from the dock, its key or Find). */
 	function armDockKey(key: StageDockKey): void {
-		if (key.slot === 'select') selectTool();
-		else if (key.adapterId === STAGE_HOST_ADAPTER_ID) armHostTool(key.id);
-		else armDockTool({ id: key.id, adapterId: key.adapterId });
+		if (key.slot === 'select') {
+			activeWorldTool = 'select';
+			libraryOpen = false;
+			selectTool();
+		} else if (key.adapterId === STAGE_HOST_ADAPTER_ID) {
+			activeWorldTool = key.id === STAGE_MEASURE_TASK ? 'measure' : 'erase';
+			libraryOpen = false;
+			armHostTool(key.id);
+		} else if (key.slot === 'library') {
+			activeWorldTool = 'objects';
+			libraryOpen = false;
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+		} else if (key.slot === 'ink') {
+			activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
+			libraryOpen = false;
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+			paletteOpen = false;
+		} else {
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+		}
+	}
+
+	/** The Living Draft row's one bridge into the existing dock/host controllers. */
+	function armWorldTool(id: WorldToolId): void {
+		if (id === 'library') {
+			toggleWorldLibrary();
+			return;
+		}
+		libraryOpen = false;
+		if (id === 'select') {
+			activeWorldTool = 'select';
+			selectTool();
+			return;
+		}
+		if (id === 'walls' || id === 'opening') {
+			const key = dockKeys.find((candidate) => candidate.slot === 'ink');
+			if (key === undefined) {
+				notice = 'Ink is not available in this project.';
+				return;
+			}
+			inkReading = id === 'opening' ? 'opening' : 'wall';
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+			activeWorldTool = id;
+			paletteOpen = false;
+			return;
+		}
+		if (id === 'objects') {
+			const key = dockKeys.find((candidate) => candidate.slot === 'library');
+			if (key === undefined) {
+				notice = 'Objects is not available in this project.';
+				return;
+			}
+			armDockTool({ id: key.id, adapterId: key.adapterId });
+			activeWorldTool = 'objects';
+			paletteOpen = false;
+			return;
+		}
+		if (id === 'measure' || id === 'erase') {
+			armHostTool(id === 'measure' ? STAGE_MEASURE_TASK : STAGE_ERASER_TASK);
+			activeWorldTool = id;
+			paletteOpen = false;
+			return;
+		}
+		// A planned row is inspectable, but it writes nothing until its post-merge branch.
+		closeTask();
+		activeWorldTool = id;
+		paletteOpen = false;
+	}
+
+	function toggleWorldLibrary(): void {
+		if (libraryOpen) {
+			libraryOpen = false;
+			activeWorldTool = toolBeforeLibrary === 'library' ? 'select' : toolBeforeLibrary;
+			return;
+		}
+		toolBeforeLibrary = activeWorldTool === 'library' ? 'select' : activeWorldTool;
+		closeTask();
+		libraryOpen = true;
+		activeWorldTool = 'library';
+		paletteOpen = false;
+	}
+
+	function pickWorldObject(assetId: string): void {
+		libraryOpen = false;
+		armWorldTool('objects');
+		notice = assetId === '' ? 'Choose a placement in the Objects panel.' : 'Choose the object in the Objects panel to place it.';
+	}
+
+	function pickWorldMaterial(): void {
+		notice = 'Paint is planned for T5; the material stays in the Library without changing the World.';
 	}
 
 	/** A dock press: arm the key, or fold/unfold the armed key's own palette. */
@@ -3441,7 +3551,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 </script>
 
-<div class="editor-host">
+<div class="editor-host" data-shell="living-draft">
 	<!--
 		The Head and the Index are authoring chrome, so they are not mounted while
 		the isolated Preview run owns the Camera output: a visible Undo, Save or
@@ -3490,7 +3600,45 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			onQuery: (value) => (findQuery = value),
 			onRun: runHeadFindEntry
 		}}
-	/>
+	>
+		{#snippet view()}
+			<StageDraftingControl
+				{drafting}
+				reading={draftingReading}
+				quiet={false}
+				gridWord={draftingGridWord}
+				snapWord={draftingSnapWord}
+				onReading={setReading}
+				onPatch={patchDrafting}
+				planAppearance={preferences.planAppearance}
+				onPlanAppearance={(planAppearance) => updatePreferences({ ...preferences, planAppearance })}
+				roomLabels2d={preferences.roomLabels2d}
+				roomLabels3d={preferences.roomLabels3d}
+				paperTone2d={preferences.paperTone2d}
+				paperTone3d={preferences.paperTone3d}
+				onViewPreference={(patch) => { updatePreferences({ ...preferences, ...patch }); refresh(); }}
+				{heightSheetSide}
+				onHeightSheetSide={(side) => (heightSheetSide = side)}
+				{reducedMotion}
+				onToggleReducedMotion={() => { reducedMotion = !reducedMotion; updatePreferences({ ...preferences, reducedMotion }); }}
+				motionSpeed={preferences.motionSpeed}
+				onMotionSpeed={(motionSpeed) => updatePreferences({ ...preferences, motionSpeed })}
+			/>
+			<button type="button" class="head-tool" class:active={activeWorldTool === 'measure'} title="Measure (M)" aria-label="Measure" onclick={() => armWorldTool('measure')}>
+				<ShellIcon name="measure" size={16} />
+			</button>
+			<button type="button" class="head-tool" disabled title="Slice is planned for T1" aria-label="Slice, planned">
+				<ShellIcon name="slice" size={16} />
+			</button>
+			<SkyControl
+				environment={worldEnvironment}
+				onEnvironment={(preset) => void setWorldEnvironment(preset)}
+				{editOnPaper}
+				onEditOnPaper={(value) => (editOnPaper = value)}
+				busy={environmentWrite === adapterServices}
+			/>
+		{/snippet}
+	</EditorHead>
 	{/if}
 
 	{#if resumeOffer}
@@ -3729,6 +3877,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					own pointer and click events: pressing Plan/3D/Fit must never also
 					hit-test the world underneath the button.
 				-->
+				{#if lens === 'experience'}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="stage-actions"
@@ -3819,16 +3968,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							{/if}
 						</div>
 					{/if}
-					{#if adapterServices !== null}
-						<StageEnvironmentControl
-							environment={worldEnvironment}
-							onEnvironment={(preset) => void setWorldEnvironment(preset)}
-							{editOnPaper}
-							onEditOnPaper={(value) => (editOnPaper = value)}
-							busy={environmentWrite === adapterServices}
-						/>
-					{/if}
 				</div>
+				{/if}
 				{#if lens === 'world'}
 					<!--
 						PLATE's Height Sheet in S02's right-edge slot. It is world-lens chrome:
@@ -4059,16 +4200,39 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			-->
 			<div class="lower-column" hidden={preview !== null} inert={preview !== null} data-lower-column bind:this={lowerColumnEl}>
 				{#if lens === 'world'}
-				<StageDock keys={dockKeys} armedId={armedDockId} {paletteOpen} onPress={pressDockKey}
+					<WorldToolbar
+						activeTool={activeWorldTool}
+						{libraryOpen}
+						selection={selection === null
+							? null
+							: {
+								label: shownCard.identity?.label ?? 'Selected',
+								kind: selection.reference.subject.kind,
+								actions: cardActions
+									.filter((action) => !/delete|remove/i.test(action.label))
+									.map((action) => ({ label: action.label, run: () => action.run() }))
+							}}
+						onTool={armWorldTool}
+						onLibrary={toggleWorldLibrary}
+						onObjectPick={pickWorldObject}
+						onMaterialPick={pickWorldMaterial}
 					>
-						{#snippet palette()}<StageInstrumentHost
-								task={paletteOpen ? taskHost : null}
-								onClose={closeTask}
-								onCollapse={() => (paletteOpen = false)}
-								instrument={contributedInstrument}
-							/>
-				{/snippet}
-					</StageDock>
+						{#snippet plate()}
+							{#if activeWorldTool === 'walls' || activeWorldTool === 'opening'}
+								<InkPlate reading={inkReading} onMore={() => (paletteOpen = !paletteOpen)} />
+							{:else if activeWorldTool === 'objects'}
+								<ObjectsPlate onOpen={pickWorldObject} />
+							{/if}
+						{/snippet}
+					</WorldToolbar>
+					{#if contributedInstrument !== null && (contributedInstrument.presentation !== 'palette' || paletteOpen)}
+						<StageInstrumentHost
+							task={taskHost}
+							onClose={closeTask}
+							onCollapse={() => (paletteOpen = false)}
+							instrument={contributedInstrument}
+						/>
+					{/if}
 				{/if}
 				{#if activeExperience !== null}
 					<!-- Column order is bottom-up: the dock, its feedback line, then the Guide instrument above them. -->
@@ -4177,6 +4341,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		background: var(--shell-forest);
 		color: var(--shell-ivory);
 	}
+	.editor-host[data-shell='living-draft'] {
+		--shell-sans: var(--ld-sans);
+		--shell-serif: var(--ld-serif);
+		--shell-mono: var(--ld-mono);
+		--shell-index-width: 264px;
+		--shell-card-width: 300px;
+		--shell-head-height: 62px;
+	}
 	.editor-body {
 		position: relative;
 		min-height: 0;
@@ -4239,12 +4411,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		inset-inline-start: 12px;
 		inset-inline-end: 12px;
 		bottom: 10px;
-		z-index: 6;
+		z-index: 11;
 		display: flex;
 		flex-direction: column-reverse;
 		align-items: center;
 		gap: 0.4rem;
 		pointer-events: none;
+	}
+	.lower-column > :global(.world-toolbar) {
+		align-self: center;
 	}
 	.lower-column > :global(*) {
 		pointer-events: auto;
@@ -4253,9 +4428,57 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* The Index covers the Stage without participating in viewport layout. */
 	.editor-body > :global(.plate-index) {
 		position: absolute;
-		z-index: 20;
 		inset: 0 auto 0 0;
+		z-index: 20;
+		top: calc(var(--shell-head-height) + 8px);
+		bottom: 10px;
+		left: 0;
 		box-shadow: 0 0.5rem 1.25rem rgb(6 20 14 / 35%);
+	}
+	@media (max-width: 1180px) {
+		.editor-host[data-shell='living-draft'] {
+			--shell-head-height: 112px;
+		}
+	}
+	@media (max-width: 860px) {
+		.editor-host[data-shell='living-draft'] {
+			--shell-head-height: 176px;
+		}
+	}
+	/* Living Draft's Card and Index share the Head's paper, not the old white sheet. */
+	.editor-host[data-shell='living-draft'] :global(.card) {
+		top: calc(var(--shell-head-height) + 8px);
+		right: 12px;
+		border-color: var(--ld-hairline-dark);
+		border-radius: 14px;
+		background: var(--ld-paper-raised);
+		box-shadow: var(--ld-shadow);
+		color: var(--ld-ink);
+	}
+	.editor-host[data-shell='living-draft'] :global(.card .kind) {
+		font-family: var(--ld-mono);
+		font-size: 9px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.editor-host[data-shell='living-draft'] :global(.card .name),
+	.editor-host[data-shell='living-draft'] :global(.card .name button) {
+		font-family: var(--ld-serif);
+		font-size: 21px;
+		font-weight: 500;
+		letter-spacing: -0.02em;
+	}
+	.editor-host[data-shell='living-draft'] :global(.card .writer) {
+		border-radius: 0 0 14px 14px;
+	}
+	@media (width > 1100px) {
+		.editor-body > :global(.plate-index) {
+			border: 1px solid var(--ld-hairline-dark);
+			border-left: 0;
+			border-radius: 0 12px 12px 0;
+			background: var(--ld-paper-raised);
+			box-shadow: var(--ld-shadow);
+		}
 	}
 	@media (width > 1100px) {
 		.editor-body[data-index-open='true'] {
@@ -4296,12 +4519,44 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 	.stage-actions {
 		position: absolute;
-		top: 10px;
+		top: calc(var(--shell-head-height) + 8px);
 		left: calc(10px + var(--index-cover, 0px));
-		/* Its popovers (Show, Environment) open over the Stage's start card. */
+		/* Experience's Show control sits below the floating Head pills. */
 		z-index: 6;
 		display: flex;
 		gap: 0.4rem;
+	}
+	.stage-actions :global([data-stage-drafting]),
+	.stage-actions :global([data-environment-control]) {
+		display: none;
+	}
+	.head-tool {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		border: 1px solid rgb(240 244 236 / 0.14);
+		border-radius: 8px;
+		background: rgb(0 0 0 / 0.12);
+		color: var(--ld-light-2, #c3d1c6);
+		cursor: pointer;
+	}
+	.head-tool:hover {
+		background: rgb(242 240 230 / 0.1);
+		color: var(--ld-light, #f2f0e6);
+	}
+	.head-tool.active {
+		background: rgb(150 199 169 / 0.15);
+		color: var(--ld-mint, #96c7a9);
+	}
+	.head-tool:disabled {
+		opacity: 0.38;
+		cursor: default;
+	}
+	.head-tool:focus-visible {
+		outline: 2px solid var(--ld-gold, #c8a653);
+		outline-offset: 1px;
 	}
 	/*
 		R217.S20: the Keys reference Find opens. It sits where the stage's top-right

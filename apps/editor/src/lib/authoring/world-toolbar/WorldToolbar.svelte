@@ -173,7 +173,7 @@
 					{/each}
 				</div>
 			{/if}
-		{:else if activeTool === 'select'}
+		{:else if activeTool === 'select' && selection === null}
 			<div class="selection-empty">
 				<span><strong>No subject selected</strong> Choose a wall, room or object on the Stage, or use the Index.</span>
 				<kbd>V</kbd>
