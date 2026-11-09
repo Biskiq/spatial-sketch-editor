@@ -168,6 +168,7 @@ import {
 	LAYOUT_WALL_HEIGHT_KIND,
 	LAYOUT_WALL_THICKNESS_KIND,
 	LAYOUT_WALL_MOVE_KIND,
+	LAYOUT_WALL_BEND_KIND,
 	LAYOUT_ROOM_MOVE_KIND,
 	buildLayoutIntent,
 	createLayoutPlanners,
@@ -177,8 +178,15 @@ import {
 	parseMeasureInput,
 	parsePlacementXZ,
 	wallFrame,
+	curvedWallPointAt,
+	openWallFrame,
+	previewWallBend,
+	wallBendIntent,
+	wallStationAtPoint,
+	wallStationNearPoint,
 	wallManipulationIntent,
 	type LayoutSubject,
+	type OpenWallFrame,
 	type WallFrame,
 	type WallManipulationRequest,
 	type WallNeighbourPreview
@@ -411,6 +419,27 @@ type JunctionHoverGesture = {
 	snap: LayoutSnapWinner | null;
 	pointerPoint: LayoutVec2 | null;
 };
+
+/** One claimed Bend gesture: a body press anywhere on an open Wall. */
+type BendGesture = {
+	readonly evaluationId: string;
+	readonly pressCss: readonly [number, number];
+	readonly markId: string;
+	readonly wallId: string;
+	/** Captured identity the write may insert; preview and commit share it. */
+	readonly knotId: string;
+	readonly frame: OpenWallFrame;
+	/** Physical station the press resolved on the sampled centerline. */
+	readonly distance: number;
+	readonly lease: GestureAcquisition | null;
+	readonly baseline: LayoutDocumentWallFirst;
+	intent: { readonly distance: number; readonly point: LayoutVec2 } | null;
+	previewDocument: LayoutDocumentWallFirst | null;
+	refusal: string | null;
+};
+
+/** A body press is on the Wall when its sampled centerline is this near, in metres. */
+const BEND_BODY_TOLERANCE_METERS = 0.35;
 
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
 type OpeningMarkGesture = {
@@ -1137,6 +1166,144 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			} | null = null;
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
+			let bendGesture: BendGesture | null = null;
+
+			function endBendGesture(): void {
+				const current = bendGesture;
+				bendGesture = null;
+				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+			}
+
+			/** The selected open Wall's sampled frame, straight or curved. */
+			function selectedOpenWall(adapterContext: StageAdapterContext): { wallId: string; frame: OpenWallFrame } | null {
+				const primary = adapterContext.selectionState().primary;
+				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') return null;
+				const frame = openWallFrame(document, primary.subject.id);
+				return frame === null ? null : { wallId: primary.subject.id, frame };
+			}
+
+			/** The selected **curved** open Wall, or `null` for a straight one. */
+			function selectedCurvedWall(adapterContext: StageAdapterContext): { wallId: string; frame: OpenWallFrame } | null {
+				const selected = selectedOpenWall(adapterContext);
+				if (selected === null) return null;
+				const source = document.walls.find((candidate) => candidate.id === selected.wallId);
+				return source === undefined || source.centerline.kind === 'line' ? null : selected;
+			}
+
+			function commitBend(current: BendGesture, intent: NonNullable<BendGesture['intent']>): void {
+				const snapshot = services.stage.snapshot();
+				void services.authoring.accept(
+					wallBendIntent({
+						wallId: current.wallId,
+						distance: intent.distance,
+						point: intent.point,
+						knotId: current.knotId,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId
+					})
+				);
+			}
+
+			/**
+			 * C1 — the Bend sub-machine, driven through the same `pointer()` entry as
+			 * every other captured gesture. A press on the body captures one station
+			 * and one knot id; a move previews through the retained planner; the up
+			 * commits exactly once. The rigid move mark never enters this path.
+			 */
+			function bendPointer(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+				const active = bendGesture;
+				if (active === null) {
+					if (intent.phase !== 'down' || intent.handleId === 'layout-wall-move-mark') return false;
+					if (gesture !== null || junctionGesture !== null || openingGesture !== null) return false;
+					const selected = selectedOpenWall(adapterContext);
+					if (selected === null) return false;
+					const handle = intent.handleId;
+					const knotMark = handle?.startsWith('layout-wall-knot:') === true;
+					const spanMark = handle?.startsWith('layout-wall-span:') === true;
+					if (handle !== undefined && !knotMark && !spanMark) return false;
+					const press = pointerDatumPoint(adapterContext, intent.css);
+					if (press === null) return false;
+					const source = document.walls.find((candidate) => candidate.id === selected.wallId);
+					if (source === undefined) return false;
+					// A straight Wall keeps its existing body semantics when no bend mark
+					// resolved the press: endpoint, Junction and Opening presses must not be
+					// re-read as a bend by proximity alone. Curved Walls own the new body grab.
+					if (source.centerline.kind === 'line' && handle === undefined) return false;
+					const knotId = knotMark
+						? handle!.slice('layout-wall-knot:'.length)
+						: globalThis.crypto.randomUUID();
+					const knot = knotMark ? source.centerline.kind === 'line'
+						? undefined
+						: source.centerline.knots.find((candidate) => candidate.id === knotId)
+						: undefined;
+					if (knotMark && knot === undefined) return false;
+					const distance = knot === undefined
+						? wallStationNearPoint(document, selected.wallId, [press[0], press[1]], BEND_BODY_TOLERANCE_METERS)
+						: wallStationAtPoint(document, selected.wallId, [knot.point[0], knot.point[1]]);
+					if (distance === null || !(distance > 0) || distance >= selected.frame.length) return false;
+					const acquisition = services.stage.acquireGesture({
+						owner: 'layout-bend',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') return false;
+					bendGesture = {
+						evaluationId: intent.evaluationId,
+						pressCss: intent.css,
+						markId: handle ?? 'layout-wall-body',
+						wallId: selected.wallId,
+						knotId,
+						frame: selected.frame,
+						distance,
+						lease: acquisition,
+						baseline: document,
+						intent: null,
+						previewDocument: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'cancel' || intent.evaluationId !== active.evaluationId) {
+					endBendGesture();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					if (!isPointerDrag(active.pressCss, intent.css)) {
+						active.intent = null;
+						active.previewDocument = null;
+						active.refusal = null;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return true;
+					const planned = previewWallBend(active.baseline, active.wallId, active.distance, [point[0], point[1]], active.knotId);
+					if (planned.kind === 'refused') {
+						active.intent = null;
+						active.previewDocument = null;
+						active.refusal = wallRefusalWords(planned.code);
+					} else {
+						active.intent = { distance: active.distance, point: [point[0], point[1]] };
+						active.previewDocument = planned.document;
+						active.refusal = null;
+					}
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				// up: one captured gesture is at most one accepted command.
+				const current = bendGesture;
+				bendGesture = null;
+				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+				if (current !== null && current.intent !== null) commitBend(current, current.intent);
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
 			function endGesture(): void {
 				endScalar();
 				const current = gesture;
@@ -1370,9 +1537,49 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function markDescriptors(adapterContext: StageAdapterContext): readonly StageHandleDescriptor[] {
 				if (openTaskKind !== null || services.stage.session.task() !== null) return [];
 				const wall = selectedWall(adapterContext);
-				const opening = wall === null ? selectedOpening(adapterContext) : null;
-				if (wall === null && opening === null) return [];
+				const curved = wall === null ? selectedCurvedWall(adapterContext) : null;
+				const opening = wall === null && curved === null ? selectedOpening(adapterContext) : null;
+				if (wall === null && curved === null && opening === null) return [];
 				const y = adapterContext.snapshot.domain.datumMeters;
+				if (curved !== null) {
+					// C1 — a curved Wall publishes its knot points and one hollow midpoint
+					// per span. Every mark names the same Bend planner the body press uses,
+					// so the vocabulary and the gesture cannot drift apart.
+					const source = document.walls.find((candidate) => candidate.id === curved.wallId);
+					if (source === undefined || source.centerline.kind === 'line') return [];
+					const live = bendGesture?.wallId === curved.wallId ? bendGesture : null;
+					const descriptors: StageHandleDescriptor[] = source.centerline.knots.map((knot): StageHandleDescriptor => ({
+						id: `layout-wall-knot:${knot.id}`,
+						kind: 'point',
+						role: 'edit',
+						anchor: [knot.point[0], y, knot.point[1]],
+						draw: { pointRadius: 5.2 },
+						label: 'Bend point',
+						fact: 'bend',
+						verb: 'Bend',
+						planner: LAYOUT_WALL_BEND_KIND,
+						value: `X ${knot.point[0].toFixed(2)} · Z ${knot.point[1].toFixed(2)} m`,
+						refusal: live?.refusal ?? null
+					}));
+					const spans = source.centerline.knots.length + 1;
+					for (let index = 0; index < spans; index += 1) {
+						const at = curvedWallPointAt(curved.frame, ((index + 0.5) / spans) * curved.frame.length);
+						if (at === null) continue;
+						descriptors.push({
+							id: `layout-wall-span:${index}`,
+							kind: 'point',
+							role: 'edit',
+							anchor: [at.point[0], y, at.point[1]],
+							draw: { pointRadius: 3, cross: true },
+							label: 'Add bend point',
+							fact: 'bend',
+							verb: 'Bend',
+							planner: LAYOUT_WALL_BEND_KIND,
+							refusal: live?.refusal ?? null
+						});
+					}
+					return descriptors;
+				}
 				if (wall !== null) {
 					const length = wallLength(wall.frame);
 					const direction = wallDirection(wall.frame);
@@ -3612,6 +3819,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkPointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
+					if (bendPointer(intent, adapterContext)) return true;
 					if (scalarPointer(intent, adapterContext)) return true;
 					if (roomMovePointer(intent, adapterContext)) return true;
 
@@ -4649,6 +4857,26 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				// A typed value with no pointer movement has no candidate document, but its
 				// tag still belongs at the press, not only on the midpoint grip.
+				const activeBend = bendGesture;
+				if (activeBend !== null && activeBend.previewDocument !== null) {
+					const built = candidatePaper(
+						activeBend.previewDocument,
+						y,
+						new Set([activeBend.wallId]),
+						new Set()
+					);
+					if (built !== null) {
+						return [
+							candidatePreviewOf({
+								id: 'layout-candidate-wall-bend',
+								role: 'subject',
+								geometry: built.paper.subject,
+								snap: snapOf(null)
+							})
+						];
+					}
+					return [];
+				}
 				if (activeWall !== null && activeWall.proposal === null && activeWall.numeric !== null) {
 					return [
 						candidatePreviewOf({

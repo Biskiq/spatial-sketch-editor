@@ -1497,21 +1497,22 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
-	it('types a body distance from a press away from the move grip', async () => {
+	it('types a body distance from the move grip and commits it along the normal', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		// 4.5 m along a 6 m Wall: past the midpoint grip, inside the body band.
-		const body = stageCss(mounted.facade, [4.5, 0]);
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: body, evaluationId }).claimed).toBe(true);
+		// D1 re-derivation: a press away from the grip is now a **bend**, so rigid
+		// body translation — and its numeric distance entry — starts on the move
+		// mark itself. The old press at [4.5, 0] is covered by the bend contract.
+		const grip = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-move-mark')!;
+		const gripCss: [number, number] = [grip.anchor[0] + RECT.left, grip.anchor[1] + RECT.top];
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: gripCss, evaluationId }).claimed).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '2' }).claimed).toBe(true);
-		// The fallback press carries the move mark's id, so both the mark tag and the
-		// pointer tag name the value being typed even though the press was not on the grip.
 		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-move-mark' && mark.tag.includes('Distance 2'))).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
 		// The release after Enter must not write a second time.
-		mounted.facade.pointerIntent({ phase: 'up', css: body, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: gripCss, evaluationId });
 		await eventually(() => {
 			const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
 			return Math.abs(points.start[1] - 2) < 1e-6;
@@ -1542,7 +1543,7 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
-	it('offers a curved Wall the Card only, with no body press or edit marks', async () => {
+	it('publishes bend marks and bends a curved Wall from a body press in one Undo step', async () => {
 		const base = createEmptyWallFirstLayoutDocument();
 		base.floor.elevation = ELEVATION;
 		base.junctions = [
@@ -1566,19 +1567,49 @@ describe('R217.S15 — gesture numeric entry', () => {
 		const mounted = await mount({ document: base, wallId: 'curved', openingId: '' });
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, 'curved');
-		const editMarks = mounted.facade
+		// C1 — a curved Wall publishes its knot points and one hollow span midpoint,
+		// every one naming the same Bend planner the body press submits.
+		const bendMarks = mounted.facade
 			.marks()
 			.filter((mark) => mark.adapterId === 'layout' && mark.role === 'edit');
-		expect(editMarks).toHaveLength(0);
-		// The midpoint of the authored cubic lies on the curve, not on its chord.
-		const body = stageCss(mounted.facade, [3, 2.25]);
+		expect(bendMarks.length).toBeGreaterThan(0);
+		expect(bendMarks.every((mark) => mark.planner === 'layout-wall-bend')).toBe(true);
+		expect(bendMarks.some((mark) => mark.id.startsWith('layout-wall-span:'))).toBe(true);
+		const span = bendMarks.find((mark) => mark.id.startsWith('layout-wall-span:'))!;
+		const from: [number, number] = [span.anchor[0] + RECT.left, span.anchor[1] + RECT.top];
+		const evaluationId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		const to = stageCss(mounted.facade, [3, 3.4]);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
 		expect(
-			mounted.facade.pointerIntent({
-				phase: 'down',
-				css: body,
-				evaluationId: mounted.facade.evaluationId()!
-			}).claimed
+			mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
+		).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;
+			return wall.centerline.kind === 'cubic-chain' && wall.centerline.knots.length === 1;
+		});
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		// A second press cancelled before release leaves no preview and no write.
+		selectWall(mounted.facade, 'curved');
+		settle(mounted.facade, 3);
+		const secondSpan = mounted.facade
+			.marks()
+			.find((mark) => mark.id.startsWith('layout-wall-span:'))!;
+		const secondFrom: [number, number] = [secondSpan.anchor[0] + RECT.left, secondSpan.anchor[1] + RECT.top];
+		const secondId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: secondFrom, evaluationId: secondId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId: secondId });
+		mounted.facade.pointerIntent({ phase: 'cancel', css: to, evaluationId: secondId });
+		expect(
+			mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
 		).toBe(false);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		const restored = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;
+		expect(restored.centerline.kind).toBe('cubic-chain');
+		if (restored.centerline.kind !== 'cubic-chain') return;
+		expect(restored.centerline.knots).toHaveLength(0);
 		// The Card remains the non-pointer path for the Wall's ordinary fields.
 		expect(createCardFieldsInstrument(mounted.services)!.fields().some((field) => field.id === 'height')).toBe(true);
 	});
