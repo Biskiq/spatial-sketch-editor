@@ -116,16 +116,16 @@ There is no single universal handle, and a subject gets only the marks its domai
 | Subject | Marks (when its domain supports the operation) |
 | --- | --- |
 | **Object** | Move cross at the base; turn arrow; a size chip that toggles width/depth rays (2D and 3D) and the height stem (3D only), and drag-scales a model or primitive uniformly; a drawn form sizes per axis by its face rays. A bottom knob lifts the object with its height kept. Resizing keeps the base (or lift) on its support and riders follow |
-| **Wall** | End points as disc knobs (shared Junction X/Z); the selected body slides along its normal; a free-end length ray (length, other end fixed); height as a stem's top knob just past the free end (no bottom knob: Layout has no authored Wall base); a two-way base ray (move parallel); a two-way thickness arrow on the cap, symmetric about the wall's line |
+| **Wall** | One rule for straight, curved and closed Walls. A selected Wall shows its contour, its two end points and one size chip; a closed Wall shows a radius ray from its centre instead of end points. Dragging the body moves the Wall rigidly — there is no move glyph. The size chip toggles the free-end length ray, the thickness arrow on the cap and, in 3D, the height stem. Shape points appear while the pointer is on the selected Wall, after a second tap, or with `B`: a solid disc is a bend point and each span has one hollow disc. A bend point dragged within snap distance of the line between its neighbours snaps onto it, turns hollow, previews the Wall without it and reads **Remove bend point**; release removes it as one history entry. The size chip's pressed state is session intent, off after reload |
 | **Room** | A four-way move cross under the selected Room's label; the proposal shows the moved Walls of the connected Room group; objects in a moved Room stay put |
 | **Opening** | A dashed track along the host with a slide point; side rays (width); a head ray; a sill ray |
 | **Platform** | Corner points and a height ray |
 | **Roof** | A ridge ray up and an eave ray down on the nearer eave; a roof-local section with joint points, midpoint **＋** and a gold profile for Edit shape |
 | **Slice** | End points redraw the line, the line moves it, a depth ray sets how deep it reads; a 45° soft snap and a live length tag while drawing |
 
-A curved-Wall midpoint (a hollow point that would bend a free Wall) is specified but not
-admitted until Layout has curved geometry. The thickness arrow's usefulness at overview
-zoom is an open usability problem; the Card field is its precise path.
+The hollow span midpoint is admitted on straight and curved Walls: dragging it creates the
+bend at that station. The thickness arrow's usefulness at overview zoom is an open usability
+problem; the Card field is its precise path.
 
 **Targets and touch.** Marks stay visually small; every point and ray has a larger
 invisible hit area so adjacent targets never overlap, even on a 0.6 m plinth, with rays
