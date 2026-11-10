@@ -56,7 +56,15 @@
 	});
 	const sheet = new Mesh(sheetGeometry, sheetMaterial);
 	sheet.name = 'StageWallDevelopmentSheet';
-	root.add(sheet);
+	// The face switch is one rigid half-turn about the anchor's vertical: the
+	// geometry stays canonical, only this display group turns. The as-built
+	// reference stays outside the hinge and never moves.
+	const hinge = new Group();
+	hinge.name = 'StageWallDevelopmentHinge';
+	const content = new Group();
+	hinge.add(content);
+	content.add(sheet);
+	root.add(hinge);
 
 	const gridGeometry = new BufferGeometry();
 	const gridMaterial = new LineBasicMaterial({
@@ -73,7 +81,7 @@
 	grid.name = 'StageWallDevelopmentGrid';
 	grid.frustumCulled = false;
 	grid.renderOrder = 1;
-	root.add(grid);
+	content.add(grid);
 
 	const contourGeometry = new BufferGeometry();
 	const contourMaterial = new LineBasicMaterial({
@@ -90,7 +98,7 @@
 	contour.name = 'StageWallDevelopmentContour';
 	contour.frustumCulled = false;
 	contour.renderOrder = 2;
-	root.add(contour);
+	content.add(contour);
 
 	const referenceGeometry = new BufferGeometry();
 	const referenceMaterial = new LineDashedMaterial({
@@ -114,6 +122,29 @@
 	let topologyEdges: readonly (readonly [number, number])[] = [];
 	let wallHeight = 0;
 	let wallThickness = 0;
+	let lastSide: 1 | -1 | null = null;
+	let flipFrame: number | null = null;
+
+	function startSideFlip(): void {
+		if (flipFrame !== null) cancelAnimationFrame(flipFrame);
+		const reduced = typeof window !== 'undefined' &&
+			typeof window.matchMedia === 'function' &&
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (reduced || typeof requestAnimationFrame !== 'function') {
+			hinge.rotation.y = 0;
+			return;
+		}
+		const start = performance.now();
+		hinge.rotation.y = -Math.PI;
+		const step = (now: number): void => {
+			const progress = Math.min(1, (now - start) / 260);
+			hinge.rotation.y = -Math.PI * (1 - progress);
+			invalidate();
+			if (progress < 1) flipFrame = requestAnimationFrame(step);
+			else flipFrame = null;
+		};
+		flipFrame = requestAnimationFrame(step);
+	}
 
 	function boundaryEdges(mesh: WallDevelopmentMesh): [number, number][] {
 		const edges = new Map<string, { a: number; b: number; count: number; faces: Set<string> }>();
@@ -194,6 +225,10 @@
 		const wall = state === null ? undefined : geometry.walls.find((candidate) => candidate.wallId === state.wallId);
 		if (state === null || wall === undefined) {
 			root.visible = false;
+			lastSide = null;
+			if (flipFrame !== null) cancelAnimationFrame(flipFrame);
+			flipFrame = null;
+			hinge.rotation.y = 0;
 			invalidate();
 			return;
 		}
@@ -226,6 +261,14 @@
 			contourGeometry.setAttribute('position', new BufferAttribute(new Float32Array(pairCount * 6), 3));
 		}
 		if (display === null) return;
+		// The hinge sits on the anchor's vertical. A side change is a display
+		// rotation only: no Camera intent, no document write.
+		const anchorStation = wrapStation(state.anchorStation, display.development.length, display.development.closed);
+		const anchor = developmentPointAtStationFromBuffers(display.development, display.buffers, anchorStation);
+		hinge.position.set(anchor.point[0], datumMeters, anchor.point[1]);
+		content.position.set(-anchor.point[0], -datumMeters, -anchor.point[1]);
+		if (lastSide !== null && lastSide !== state.side) startSideFlip();
+		lastSide = state.side;
 		const mapped = evaluateWallUnfoldDisplay(display, state);
 		const position = sheetGeometry.getAttribute('position');
 		if (position === undefined || position.array.length !== mapped.positions.length) {
@@ -331,6 +374,7 @@
 	});
 
 	$effect(() => () => {
+		if (flipFrame !== null) cancelAnimationFrame(flipFrame);
 		sheetGeometry.dispose();
 		sheetMaterial.dispose();
 		contourGeometry.dispose();

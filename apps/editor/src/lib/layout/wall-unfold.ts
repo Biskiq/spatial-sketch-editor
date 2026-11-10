@@ -163,6 +163,16 @@ export function createWallUnfoldState(input: {
 	};
 }
 
+/**
+ * The station of the sheet's free edge: the display cut on a closed Wall, and
+ * the open end farther from the entry anchor on an open Wall. The peel gesture
+ * addresses this edge, never the anchored end.
+ */
+export function wallUnfoldFreeEdgeStation(state: WallUnfoldState, length: number): number {
+	if (state.cutStation !== null) return state.cutStation;
+	return state.anchorStation <= length / 2 ? length : 0;
+}
+
 /** A straight Wall has nothing to peel; it enters the sheet already flat. */
 export function isStraightCompiledWall(wall: CompiledPhysicalWall): boolean {
 	const samples = wall.samples;

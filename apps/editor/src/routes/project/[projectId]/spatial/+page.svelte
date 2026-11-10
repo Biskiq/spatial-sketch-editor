@@ -102,6 +102,7 @@
 	import {
 		developmentPointAtStationFromBuffers,
 		LAYOUT_DIMENSION_LIMIT_MESSAGE,
+		type CompiledPhysicalWall,
 		planFragmentOf,
 		planMembershipOf,
 		type PlanEvaluation,
@@ -110,8 +111,23 @@
 	import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
 	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-	import { wallUnfoldShouldReturn, wallUnfoldSourceSpans } from '$lib/layout/wall-unfold';
-	import { buildWallUnfoldDisplay, pickWallUnfold, type WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
+	import {
+		chooseUnfoldAmount,
+		snapWallUnfoldAmount,
+		wallUnfoldFreeEdgeStation,
+		wallUnfoldShouldReturn,
+		wallUnfoldSourceSpans,
+		WALL_UNFOLD_EDGE_HIT_COARSE_CSS,
+		WALL_UNFOLD_EDGE_HIT_CSS,
+		type WallUnfoldEdgeCandidate
+	} from '$lib/layout/wall-unfold';
+	import {
+		buildWallUnfoldDisplay,
+		evaluateWallUnfoldDisplay,
+		pickWallUnfold,
+		type WallUnfoldDisplay,
+		type WallUnfoldPick
+	} from '$lib/layout/wall-unfold-pick';
 	import {
 		mapSheetOpeningDrag,
 		sheetOpeningModeFromEdges,
@@ -2063,6 +2079,35 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			spans
 		});
 		if (display === null) return false;
+		// Peel starts on the free edge, before the sheet pick. The candidates are
+		// the same development map at sampled amounts, so this is a display solve,
+		// not a second geometry authority. A short screen path falls back to the
+		// bounded vertical mapping in `sheetEdgeMove`.
+		const candidates = sheetEdgeCandidates(display, state, wall, stage);
+		if (candidates.length >= 2) {
+			const threshold = event.pointerType === 'mouse' ? WALL_UNFOLD_EDGE_HIT_CSS : WALL_UNFOLD_EDGE_HIT_COARSE_CSS;
+			let nearest: WallUnfoldEdgeCandidate | null = null;
+			let nearestDistance = Number.POSITIVE_INFINITY;
+			for (const candidate of candidates) {
+				const distance = Math.hypot(candidate.css[0] - event.clientX, candidate.css[1] - event.clientY);
+				if (distance < nearestDistance) {
+					nearest = candidate;
+					nearestDistance = distance;
+				}
+			}
+			if (nearest !== null && nearestDistance <= threshold) {
+				sheetEdgeDrag = {
+					pointerId: event.pointerId,
+					wallId: wall.wallId,
+					pressY: event.clientY,
+					startU: state.u,
+					candidates
+				};
+				try { stageEl?.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
+				press.refuse(event.pointerId);
+				return true;
+			}
+		}
 		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
 		if (ray.kind !== 'ray') return false;
 		const pick = pickWallUnfold(display, ray.ray);
@@ -2110,6 +2155,64 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// The press is consumed: its release must not run the canonical Stage pick.
 		press.refuse(event.pointerId);
 		return true;
+	}
+
+	/** Sample the free edge at 21 peel amounts, then restore the live display. */
+	function sheetEdgeCandidates(
+		display: WallUnfoldDisplay | null,
+		state: NonNullable<typeof wallUnfold.state>,
+		wall: CompiledPhysicalWall,
+		stage: StageFacade
+	): WallUnfoldEdgeCandidate[] {
+		if (display === null) return [];
+		const projectionId = stage.evaluationId();
+		if (projectionId === null) return [];
+		const station = wallUnfoldFreeEdgeStation(state, wall.length);
+		const candidates: WallUnfoldEdgeCandidate[] = [];
+		for (let step = 0; step <= 20; step += 1) {
+			const u = step / 20;
+			evaluateWallUnfoldDisplay(display, { ...state, u });
+			const at = developmentPointAtStationFromBuffers(display.development, display.buffers, station);
+			const projected = stage.projectWorld(
+				[at.point[0], display.floorY + display.height / 2, at.point[1]],
+				projectionId
+			);
+			if (projected.kind === 'projected') {
+				candidates.push({ u, css: [projected.css[0], projected.css[1]] });
+			}
+		}
+		evaluateWallUnfoldDisplay(display, state);
+		return candidates;
+	}
+
+	function sheetEdgeMove(event: PointerEvent): void {
+		const active = sheetEdgeDrag;
+		const state = wallUnfold.state;
+		const stage = facade;
+		if (active === null || active.pointerId !== event.pointerId || state === null || stage === null) return;
+		const wall = stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall === undefined) return;
+		const chosen = chooseUnfoldAmount({
+			candidates: active.candidates,
+			pointer: [event.clientX, event.clientY],
+			currentU: state.u
+		});
+		const next = chosen ?? Math.min(1, Math.max(0, active.startU - (event.clientY - active.pressY) / 260));
+		wallUnfold.setU(wall, next);
+	}
+
+	function finishSheetEdge(): void {
+		const active = sheetEdgeDrag;
+		const state = wallUnfold.state;
+		const stage = facade;
+		sheetEdgeDrag = null;
+		if (active === null || state === null || stage === null) return;
+		const wall = stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall !== undefined) wallUnfold.setU(wall, snapWallUnfoldAmount(state.u));
+	}
+
+	function cancelSheetEdge(): void {
+		sheetEdgeDrag = null;
 	}
 
 	function sheetOpeningMove(event: PointerEvent): void {
@@ -2363,6 +2466,15 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		previewWidth: number;
 	};
 	let sheetOpeningDrag = $state<SheetOpeningDrag | null>(null);
+	/** The free-edge peel: a display-only drag that scrubs the same session amount. */
+	type SheetEdgeDrag = {
+		readonly pointerId: number;
+		readonly wallId: string;
+		readonly pressY: number;
+		readonly startU: number;
+		readonly candidates: readonly WallUnfoldEdgeCandidate[];
+	};
+	let sheetEdgeDrag = $state<SheetEdgeDrag | null>(null);
 	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
 	let adapterMarkPress = false;
 	/** A dragging disclosure's press: a release within click tolerance toggles it. */
@@ -2682,6 +2794,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
+		if (sheetEdgeDrag !== null) {
+			if (event.pointerId === sheetEdgeDrag.pointerId) sheetEdgeMove(event);
+			return;
+		}
 		if (sheetOpeningDrag !== null) {
 			if (event.pointerId === sheetOpeningDrag.pointerId) sheetOpeningMove(event);
 			return;
@@ -2799,6 +2915,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
+		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
+			finishSheetEdge();
+			return;
+		}
 		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
 			void finishSheetOpening(event);
 			return;
@@ -2864,6 +2984,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interruptPress(reason: StageInterruptionReason): void {
+		if (sheetEdgeDrag !== null) {
+			cancelSheetEdge();
+			clearHover();
+			return;
+		}
 		if (sheetOpeningDrag !== null) {
 			cancelSheetOpening();
 			clearHover();
@@ -2890,6 +3015,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
+		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
+			cancelSheetEdge();
+			return;
+		}
 		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
 			cancelSheetOpening();
 			return;
@@ -2899,6 +3028,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
+		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
+			cancelSheetEdge();
+			return;
+		}
 		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
 			cancelSheetOpening();
 			return;
