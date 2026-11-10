@@ -178,6 +178,26 @@ export function openingRefusalWords(
 
 /** Drawing diagnostics stay in tooling; the local problem marker offers a remedy. */
 export function drawingRefusalWords(code: string): string {
+	// A chain refusal is about the outline being drawn, not about editing an
+	// existing Room. Name the attempted closure and the smallest repair instead
+	// of the Card's "Room moved across its boundary" words.
+	switch (code) {
+		case 'invalid_candidate_document':
+		case 'candidate_does_not_compile':
+		case 'room_reconciliation_rejected':
+			return 'This outline would not enclose a valid Room. Check that both ends meet the same Wall junctions and that the new Wall does not cross another Wall.';
+		case 'unconnected_interior_contact':
+		case 'unconnected_crossing':
+			return 'This outline would touch or cross a Wall without naming a connection. End on a Wall span or a Junction, or move the leg clear.';
+		case 'collinear_overlap':
+		case 'self_intersecting_chain':
+			return 'This outline overlaps itself or an existing Wall. Move the leg clear of the Wall it runs along.';
+		default:
+			return drawingRefusalFallback(code);
+	}
+}
+
+function drawingRefusalFallback(code: string): string {
 	switch (code) {
 		case 'unconnected_crossing':
 		case 'unconnected_interior_contact': return 'End this line on the wall.';

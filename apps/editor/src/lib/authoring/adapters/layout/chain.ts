@@ -211,7 +211,21 @@ export type ChainPlanPreview =
 			readonly retiredRoomIds: readonly string[];
 			readonly consequence: ChainConsequence;
 	  }
-	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
+	| {
+			readonly kind: 'refused';
+			readonly code: string;
+			readonly message: string;
+			/**
+			 * Canonical gate diagnostics retained with the refusal. The Stage and the
+			 * palette speak the creator-facing `message`; this evidence is what lets a
+			 * test (and a future repair surface) prove the F.2 candidate was rejected
+			 * for a specific reason instead of being dropped as a generic error.
+			 */
+			readonly diagnostics?: readonly {
+				readonly code: string;
+				readonly message: string;
+			}[];
+	  };
 
 function consequenceOf(
 	buildingRoomIds: readonly string[],
@@ -243,6 +257,24 @@ function consequenceOf(
 			? ` Merges ${retiredRoomIds.length} existing Room${retiredRoomIds.length === 1 ? '' : 's'}.`
 			: '';
 	return { kind: 'free-standing', summary: `Free-standing Wall — closes no ring.${hostNote}${mergeNote}` };
+}
+
+/** Convert a canonical rejection into the one refusal shape, retaining its evidence. */
+export function refusedChainPreview(input: {
+	readonly code: string;
+	readonly issues?: readonly { readonly code: string; readonly message: string }[];
+	readonly topology?: readonly { readonly code: string; readonly message: string }[];
+}): Extract<ChainPlanPreview, { readonly kind: 'refused' }> {
+	const diagnostics = [
+		...(input.issues ?? []).map((issue) => ({ code: issue.code, message: issue.message })),
+		...(input.topology ?? []).map((diagnostic) => ({ code: diagnostic.code, message: diagnostic.message }))
+	];
+	return {
+		kind: 'refused',
+		code: input.code,
+		message: drawingRefusalWords(input.code),
+		...(diagnostics.length === 0 ? {} : { diagnostics })
+	};
 }
 
 /**
@@ -287,9 +319,7 @@ export function planChainDraft(options: {
 		...(options.thickness === undefined ? {} : { thickness: options.thickness }),
 		...(options.height === undefined ? {} : { height: options.height })
 	});
-	if (plan.kind === 'rejected') {
-		return { kind: 'refused', code: plan.rejection.code, message: drawingRefusalWords(plan.rejection.code) };
-	}
+	if (plan.kind === 'rejected') return refusedChainPreview(plan.rejection);
 	const createdRoomIds = plan.lineage.map((record) => record.roomId);
 	return {
 		kind: 'planned',
