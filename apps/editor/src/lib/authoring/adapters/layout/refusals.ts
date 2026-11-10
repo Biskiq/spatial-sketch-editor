@@ -16,7 +16,7 @@ import {
 	type WallOpeningRejection
 } from '@portfolio/layout-core';
 
-export function wallRefusalWords(code: string): string {
+export function wallRefusalWords(code: string, message = ''): string {
 	switch (code) {
 		case 'dimension_out_of_range':
 			return LAYOUT_DIMENSION_LIMIT_MESSAGE;
@@ -50,6 +50,26 @@ export function wallRefusalWords(code: string): string {
 		case 'incompatible_wall_pair':
 		case 'topology_invalid':
 			return 'This would cross or meet another Wall.';
+		case 'geometry_invalid':
+			return /offset folds|self-intersect/i.test(message)
+				? "This bend is too tight for the Wall's thickness. Pull it further out or reduce the thickness."
+				: 'This shape is not a valid Wall layout.';
+		case 'split_at_existing_endpoint':
+			return "Bend between the Wall's endpoints, not on one.";
+		case 'split_distance_out_of_range':
+			return 'Bend somewhere along the open Wall.';
+		case 'split_through_opening_interior':
+			return 'A bend cannot pass through an Opening.';
+		case 'curve_knot_limit':
+			return 'This Wall already has the most bend points it supports. Remove one first.';
+		case 'unknown_curve_anchor':
+			return 'That bend point is gone. Start the bend again.';
+		case 'closed_wall_not_bendable':
+		case 'closed_wall_isolated':
+			return 'A circular Wall is resized by its radius; it cannot be bent.';
+		case 'invalid_endpoint':
+		case 'invalid_reference':
+			return 'This shape is not a valid Wall layout.';
 		case 'room_identity_lost':
 		case 'room_reconciliation_rejected':
 		case 'ambiguous_room_correspondence':
