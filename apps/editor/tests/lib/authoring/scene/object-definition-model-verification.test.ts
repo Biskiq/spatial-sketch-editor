@@ -7,9 +7,9 @@ import { cloneModelScene, disposeModelInstance } from '$lib/museum/assets/model-
 import { getAssetById } from '$lib/content/assets';
 import { CATALOGUE_MODEL_CONTACT_RECORDS, catalogueModelDefinition } from '$lib/authoring/scene/object-definition-policy';
 
-describe('catalogue admission on the retained r186 geometry path', () => {
+describe('catalogue admission retains r186-verified geometry under r187', () => {
 	it('reproduces the piano footprint/contact mismatch with normalization applied once', async () => {
-		expect(REVISION).toBe('186');
+		expect(REVISION).toBe('187');
 		const asset = getAssetById('paris-grand-piano')!;
 		const bytes = await readFile(new URL('../../../../static' + asset.productionFile, import.meta.url));
 		const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -56,7 +56,7 @@ describe('catalogue admission on the retained r186 geometry path', () => {
 	});
 
 	it('verifies the salon chair contact and conservatively rounded footprint after normalization once', async () => {
-		expect(REVISION).toBe('186');
+		expect(REVISION).toBe('187');
 	const asset = getAssetById('paris-salon-chair')!;
 	const bytes = await readFile(new URL('../../../../static' + asset.productionFile, import.meta.url));
 	const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);

@@ -1,5 +1,8 @@
 /**
  * Canvas lifetime for Three r186's shared physical-lighting lookup texture.
+ * Keep this shim until an automated native two-renderer teardown check can
+ * replace its simulated lifecycle coverage; manual browser evidence alone is
+ * not enough to prove the survivor guarantee.
  *
  * r186 creates DFG_LUT at module scope and adds a texture-dispose listener for
  * every renderer that uploads it. WebGLRenderer.dispose() leaves those listeners
