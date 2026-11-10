@@ -328,14 +328,31 @@ export function evaluateWallDevelopment(
   countWork('unfold:development-sample', count);
   const amount = clamp(u, 0, 1);
   const anchor = development.anchorIndex;
-  const thetaA = development.theta[anchor]!;
+  const thetaA = development.anchorDirection;
   const points = out.points;
   const normals = out.normals;
   points[anchor * 2] = development.anchorPoint[0];
   points[anchor * 2 + 1] = development.anchorPoint[1];
 
+  // Signed tangent deviation from the anchor tangent. On an open Wall this is
+  // the ordinary unwrapped difference. On a closed Wall each sample is wrapped
+  // into (−π, π], so both halves of the loop leave the pin the short way and
+  // neither wing can accumulate a spurious full turn.
+  const deviationAt = (index: number): number => {
+    const delta = development.theta[index]! - thetaA;
+    return development.closed ? wrapSignedAngle(delta) : delta;
+  };
+  const segmentTurn = (index: number): number => {
+    const delta = deviationAt(index + 1) - deviationAt(index);
+    return development.closed ? nearestAngle(delta, 0) : delta;
+  };
+  const chordDeviation = (index: number): number =>
+    nearestAngle(
+      development.phi[index]! - thetaA,
+      (deviationAt(index) + deviationAt(index + 1)) / 2
+    );
   const segmentLength = (index: number): number => {
-    const halfTurn = (development.theta[index + 1]! - development.theta[index]!) / 2;
+    const halfTurn = segmentTurn(index) / 2;
     const relaxedHalfTurn = (1 - amount) * halfTurn;
     const sinc =
       Math.abs(relaxedHalfTurn) <= 1e-12 ? 1 : Math.sin(relaxedHalfTurn) / relaxedHalfTurn;
@@ -347,19 +364,24 @@ export function evaluateWallDevelopment(
   };
 
   for (let index = anchor; index < count - 1; index += 1) {
-    const direction = thetaA + (1 - amount) * (development.phi[index]! - thetaA);
+    // The signed arc's chord turns only half as far as its tangent: the
+    // deviation is scaled by (1 − u) and the length by sinc of that same
+    // relaxed turn. Both wings therefore follow one continuous development.
+    const direction = thetaA + (1 - amount) * chordDeviation(index);
     const length = segmentLength(index);
     points[(index + 1) * 2] = points[index * 2]! + length * Math.cos(direction);
     points[(index + 1) * 2 + 1] = points[index * 2 + 1]! + length * Math.sin(direction);
   }
   for (let index = anchor - 1; index >= 0; index -= 1) {
-    const direction = thetaA + (1 - amount) * (development.phi[index]! - thetaA);
+    const direction = thetaA + (1 - amount) * chordDeviation(index);
     const length = segmentLength(index);
     points[index * 2] = points[(index + 1) * 2]! - length * Math.cos(direction);
     points[index * 2 + 1] = points[(index + 1) * 2 + 1]! - length * Math.sin(direction);
   }
   for (let index = 0; index < count; index += 1) {
-    const angle = thetaA + (1 - amount) * (development.theta[index]! - thetaA) + Math.PI / 2;
+    // Normals come from the developed tangent itself, never from a separately
+    // blended canonical table, so they stay perpendicular to this centerline.
+    const angle = thetaA + (1 - amount) * deviationAt(index) + Math.PI / 2;
     normals[index * 2] = Math.cos(angle);
     normals[index * 2 + 1] = Math.sin(angle);
   }
@@ -433,25 +455,22 @@ export function createWallDevelopmentSheetBuffers(
       point: [development.points[index * 2]!, development.points[index * 2 + 1]!],
       theta: development.theta[index]!
     });
+  }  for (let index = 0; index < development.sampleCount; index += 1) {
+    const station = development.s[index]!;
+    if (station >= cut - DEVELOPMENT_EPSILON) continue;
+    entries.push({
+      station,
+      sheet: length - cut + station,
+      point: [development.points[index * 2]!, development.points[index * 2 + 1]!],
+      theta: development.theta[index]!
+    });
   }
-  for (let index = 0; index < development.sampleCount; index += 1) {
-    const station = development.s[index]!;		if (station >= cut - DEVELOPMENT_EPSILON) continue;
-		entries.push({
-			station,
-			sheet: length - cut + station,
-			point: [development.points[index * 2]!, development.points[index * 2 + 1]!],
-			// The second wing continues past the seam, so unwrap its canonical
-			// angles by one full turn; otherwise the last segment sees a false
-			// −2π turn and the cut edge folds back on itself.
-			theta: development.theta[index]! + Math.PI * 2
-		});
-	}
-	entries.push({
-		station: cut,
-		sheet: length,
-		point: cutSample.point,
-		theta: cutSample.theta + Math.PI * 2
-	});
+  entries.push({
+    station: cut,
+    sheet: length,
+    point: cutSample.point,
+    theta: cutSample.theta
+  });
 
   const count = entries.length;
   const sheet = new Float64Array(count);
@@ -466,12 +485,23 @@ export function createWallDevelopmentSheetBuffers(
     const entry = entries[index]!;
     sheet[index] = entry.sheet;
     stations[index] = entry.station;
-    theta[index] = entry.theta;
     const distance = Math.abs(entry.station - development.anchorStation);
     if (distance < anchorDistance) {
       anchorDistance = distance;
       anchorIndex = index;
     }
+  }
+  // Accumulate signed tangent deviations outward from the pin, in sheet order.
+  // Each wing starts at zero, so the loop's two ends approach the cut from
+  // opposite sides instead of one wing carrying the full turn. At u = 0 the
+  // positions are unchanged (only cos/sin of the same physical angle are used);
+  // at partial u the two wings extend away from the pin together.
+  theta[anchorIndex] = 0;
+  for (let index = anchorIndex + 1; index < count; index += 1) {
+    theta[index] = theta[index - 1]! + wrapSignedAngle(entries[index]!.theta - entries[index - 1]!.theta);
+  }
+  for (let index = anchorIndex - 1; index >= 0; index -= 1) {
+    theta[index] = theta[index + 1]! - wrapSignedAngle(entries[index + 1]!.theta - entries[index]!.theta);
   }
   for (let index = 0; index < count - 1; index += 1) {
     const start = entries[index]!;
@@ -479,12 +509,14 @@ export function createWallDevelopmentSheetBuffers(
     const dx = end.point[0] - start.point[0];
     const dz = end.point[1] - start.point[1];
     const ell = Math.hypot(dx, dz);
-    const halfTurn = (end.theta - start.theta) / 2;
-    // Chord angles must live on the same unwrapped branch as the sheet's
-    // tangent angles. `atan2` alone wraps to [-π, π], while the second wing
-    // continues past the seam at +2π; a raw chord angle would then make the
-    // wing swing through a spurious half-turn and back during the blend.
-    phi[index] = unwrapAngle(Math.atan2(dz, dx), (start.theta + end.theta) / 2);
+    const halfTurn = (theta[index + 1]! - theta[index]!) / 2;
+    // Chord angles are taken from the canonical chord and placed on the branch
+    // nearest this span's developed tangent midpoint. At u = 0 that is the
+    // exact source chord; at partial u it is the signed arc's chord direction.
+    phi[index] = nearestAngle(
+      Math.atan2(dz, dx) - development.anchorDirection,
+      (theta[index]! + theta[index + 1]!) / 2
+    );
     deltaS[index] = end.sheet - start.sheet;
     correctedEll[index] = ell / (Math.abs(halfTurn) <= 1e-12 ? 1 : Math.sin(halfTurn) / halfTurn);
   }
@@ -518,7 +550,7 @@ export function evaluateWallDevelopmentSheet(
   countWork('unfold:development-sample', count);
   const amount = clamp(u, 0, 1);
   const anchor = out.anchorIndex;
-  const thetaA = out.theta[anchor]!;
+  const thetaA = development.anchorDirection;
   const points = out.points;
   const normals = out.normals;
   points[anchor * 2] = development.anchorPoint[0];
@@ -535,19 +567,19 @@ export function evaluateWallDevelopmentSheet(
   };
 
   for (let index = anchor; index < count - 1; index += 1) {
-    const direction = thetaA + (1 - amount) * (out.phi[index]! - thetaA);
+    const direction = thetaA + (1 - amount) * out.phi[index]!;
     const length = segmentLength(index);
     points[(index + 1) * 2] = points[index * 2]! + length * Math.cos(direction);
     points[(index + 1) * 2 + 1] = points[index * 2 + 1]! + length * Math.sin(direction);
   }
   for (let index = anchor - 1; index >= 0; index -= 1) {
-    const direction = thetaA + (1 - amount) * (out.phi[index]! - thetaA);
+    const direction = thetaA + (1 - amount) * out.phi[index]!;
     const length = segmentLength(index);
     points[index * 2] = points[(index + 1) * 2]! - length * Math.cos(direction);
     points[index * 2 + 1] = points[(index + 1) * 2 + 1]! - length * Math.sin(direction);
   }
   for (let index = 0; index < count; index += 1) {
-    const angle = thetaA + (1 - amount) * (out.theta[index]! - thetaA) + Math.PI / 2;
+    const angle = thetaA + (1 - amount) * out.theta[index]! + Math.PI / 2;
     normals[index * 2] = Math.cos(angle);
     normals[index * 2 + 1] = Math.sin(angle);
   }
@@ -1322,7 +1354,8 @@ export function validateDevelopedMesh(
 export function developmentOverlap(
   development: WallDevelopment,
   buffers: WallDevelopmentBuffers,
-  thickness: number
+  thickness: number,
+  sheet?: WallDevelopmentSheetBuffers
 ): { overlaps: false } | { overlaps: true; stations: [number, number] } {
   const half = Math.max(0, thickness) / 2;
   const lines: Array<{ points: LayoutVec2[]; stations: number[] }> = [
@@ -1330,15 +1363,24 @@ export function developmentOverlap(
     { points: [], stations: [] },
     { points: [], stations: [] }
   ];
-  for (let index = 0; index < development.sampleCount; index += 1) {
-    const point: LayoutVec2 = [buffers.points[index * 2]!, buffers.points[index * 2 + 1]!];
-    const normal: LayoutVec2 = [buffers.normals[index * 2]!, buffers.normals[index * 2 + 1]!];
+  // A closed Wall is displayed cut-to-cut, so its live guard must walk the
+  // sheet buffers; the canonical-order buffer has no second cut copy and would
+  // report a false hook at the seam once the loop begins to open.
+  const count = sheet === undefined ? development.sampleCount : sheet.sheet.length;
+  for (let index = 0; index < count; index += 1) {
+    const point: LayoutVec2 = sheet === undefined
+      ? [buffers.points[index * 2]!, buffers.points[index * 2 + 1]!]
+      : [sheet.points[index * 2]!, sheet.points[index * 2 + 1]!];
+    const normal: LayoutVec2 = sheet === undefined
+      ? [buffers.normals[index * 2]!, buffers.normals[index * 2 + 1]!]
+      : [sheet.normals[index * 2]!, sheet.normals[index * 2 + 1]!];
+    const station = sheet === undefined ? development.s[index]! : sheet.stations[index]!;
     lines[0]!.points.push(point);
-    lines[0]!.stations.push(development.s[index]!);
+    lines[0]!.stations.push(station);
     lines[1]!.points.push([point[0] + half * normal[0], point[1] + half * normal[1]]);
-    lines[1]!.stations.push(development.s[index]!);
+    lines[1]!.stations.push(station);
     lines[2]!.points.push([point[0] - half * normal[0], point[1] - half * normal[1]]);
-    lines[2]!.stations.push(development.s[index]!);
+    lines[2]!.stations.push(station);
   }
   for (const line of lines) {
     const hit = firstPolylineSelfIntersection(line.points, line.stations);
@@ -1539,6 +1581,17 @@ function unwrapAngle(angle: number, previous: number): number {
   while (result - previous > Math.PI) result -= TAU;
   while (result - previous < -Math.PI) result += TAU;
   return result;
+}
+
+/** Wrap an angle into (−π, π], the shortest signed turn. */
+function wrapSignedAngle(angle: number): number {
+  const wrapped = wrap(angle + Math.PI, TAU) - Math.PI;
+  return wrapped === -Math.PI ? Math.PI : wrapped;
+}
+
+/** Move an angle by whole turns to the branch nearest a reference angle. */
+function nearestAngle(angle: number, reference: number): number {
+  return angle + TAU * Math.round((reference - angle) / TAU);
 }
 
 function wrap(value: number, length: number): number {

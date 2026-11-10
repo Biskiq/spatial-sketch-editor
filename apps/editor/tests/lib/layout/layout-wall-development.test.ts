@@ -45,6 +45,8 @@ import {
   wallCubicChain,
   wallDevelopmentFaceLengths,
   createWallDevelopmentBuffers,
+  createWallDevelopmentSheetBuffers,
+  evaluateWallDevelopmentSheet,
   type LayoutDocumentWallFirst,
   type LayoutVec2,
   type LayoutWall,
@@ -651,13 +653,206 @@ describe('C3 checkpoint 4 — general Wall development proof', () => {
   it('reports no overlap for every valid fixture and keeps the u=0/1 endpoints canonical', () => {
     for (const fixture of allFixtures()) {
       const { development } = prepareFixture(fixture);
+      const sheet = fixture.closed ? createWallDevelopmentSheetBuffers(development) : null;
       for (const u of [0, 0.25, 0.5, 0.75, 1]) {
         const buffers = buffersAt(development, u);
-        const overlap = developmentOverlap(development, buffers, fixture.thickness);
-        if (u === 0 || u === 1) {
-          expect(overlap.overlaps).toBe(false);
-        } else {
-          expect(overlap.overlaps).toBe(false);
+        if (sheet !== null) evaluateWallDevelopmentSheet(development, u, sheet);
+        const overlap = developmentOverlap(
+          development,
+          buffers,
+          fixture.thickness,
+          sheet ?? undefined
+        );
+        expect(overlap.overlaps).toBe(false);
+      }
+    }
+  });
+});
+
+describe('C3 checkpoint 4 — one signed-arc development at intermediate amounts', () => {
+  const amounts = [0.3, 0.4, 0.64, 0.8] as const;
+
+  function signedWrap(value: number): number {
+    const turn = Math.PI * 2;
+    const wrapped = ((value + Math.PI) % turn + turn) % turn - Math.PI;
+    return wrapped === -Math.PI ? Math.PI : wrapped;
+  }
+
+  function sheetPoint(sheet: ReturnType<typeof createWallDevelopmentSheetBuffers>, index: number): LayoutVec2 {
+    return [sheet.points[index * 2]!, sheet.points[index * 2 + 1]!];
+  }
+
+  it('opens a closed circle into the analytic signed arc, both wings at once', () => {
+    const radius = 5;
+    // Exact circular samples isolate this map from the cubic approximation the
+    // circle document uses, so the analytic signed arc is the reference itself.
+    const samples: CurveSample[] = [];
+    const sampleCount = 96;
+    for (let index = 0; index <= sampleCount; index += 1) {
+      const angle = (index / sampleCount) * Math.PI * 2;
+      const tangent: LayoutVec2 = [-Math.sin(angle), Math.cos(angle)];
+      samples.push({
+        point: [radius * Math.cos(angle), radius * Math.sin(angle)],
+        distance: radius * angle,
+        tangent,
+        normal: [-tangent[1], tangent[0]],
+        t: index / sampleCount
+      });
+    }
+    const prepared = prepareWallDevelopment({
+      wallId: 'signed-arc-circle',
+      samples,
+      closed: true,
+      anchorStation: 0
+    });
+    if ('refused' in prepared) throw new Error(prepared.message);
+    const development = prepared;
+    const length = development.length;
+    expect(length).toBeCloseTo(2 * Math.PI * radius, 9);
+    const sheet = createWallDevelopmentSheetBuffers(development);
+    const anchorSheet = developmentSheetCoordinate(development, development.anchorStation);
+    expect(anchorSheet).toBeCloseTo(length / 2, 9);
+
+    // Read the canonical curvature from the development itself; its sign owns
+    // which way the developed arc bends, so the reference is orientation-free.
+    const anchor = development.anchorIndex;
+    const previous = Math.max(0, anchor - 1);
+    const next = Math.min(development.sampleCount - 1, anchor + 1);
+    const curvature =
+      (development.theta[next]! - development.theta[previous]!) /
+      (development.s[next]! - development.s[previous]!);
+    expect(Math.abs(Math.abs(curvature) - 1 / radius)).toBeLessThan(1e-9);
+    const tangent: [number, number] = [
+      Math.cos(development.anchorDirection),
+      Math.sin(development.anchorDirection)
+    ];
+    const normal: [number, number] = [-tangent[1], tangent[0]];
+
+    for (const u of [0, ...amounts, 1]) {
+      evaluateWallDevelopmentSheet(development, u, sheet);
+      const k = (1 - u) * curvature;
+      let maxPointError = 0;
+      let maxNormalError = 0;
+      for (let index = 0; index < sheet.sheet.length; index += 1) {
+        // The sheet opens toward positive sheet coordinate: d = sheet − pin.
+        const d = sheet.sheet[index]! - anchorSheet;
+        const along = k === 0 ? d : Math.sin(k * d) / k;
+        const inward = k === 0 ? 0 : (1 - Math.cos(k * d)) / k;
+        const expected: LayoutVec2 = [
+          development.anchorPoint[0] + tangent[0] * along + normal[0] * inward,
+          development.anchorPoint[1] + tangent[1] * along + normal[1] * inward
+        ];
+        maxPointError = Math.max(maxPointError, distance(sheetPoint(sheet, index), expected));
+        const angle = development.anchorDirection + k * d + Math.PI / 2;
+        maxNormalError = Math.max(
+          maxNormalError,
+          Math.hypot(
+            sheet.normals[index * 2]! - Math.cos(angle),
+            sheet.normals[index * 2 + 1]! - Math.sin(angle)
+          )
+        );
+      }
+      expect(maxPointError).toBeLessThan(1e-9);
+      expect(maxNormalError).toBeLessThan(1e-9);
+
+      // The two cut copies are the free edges. They coincide only at the
+      // canonical state; at every partial amount they sit symmetrically on
+      // opposite sides of the pin, and at Flat they are exactly L apart.
+      const first = sheetPoint(sheet, 0);
+      const last = sheetPoint(sheet, sheet.sheet.length - 1);
+      const firstFromPin: LayoutVec2 = [first[0] - development.anchorPoint[0], first[1] - development.anchorPoint[1]];
+      const lastFromPin: LayoutVec2 = [last[0] - development.anchorPoint[0], last[1] - development.anchorPoint[1]];
+      expect(firstFromPin[0] * tangent[0] + firstFromPin[1] * tangent[1]).toBeCloseTo(
+        -lastFromPin[0] * tangent[0] - lastFromPin[1] * tangent[1],
+        9
+      );
+      expect(firstFromPin[0] * normal[0] + firstFromPin[1] * normal[1]).toBeCloseTo(
+        lastFromPin[0] * normal[0] + lastFromPin[1] * normal[1],
+        9
+      );
+      if (u === 0) {
+        expect(distance(first, last)).toBeLessThan(1e-9);
+      } else if (u === 1) {
+        expect(distance(first, last)).toBeCloseTo(length, 9);
+        expect(
+          Math.abs((last[0] - first[0]) * normal[0] + (last[1] - first[1]) * normal[1])
+        ).toBeLessThan(1e-9);
+      }
+    }
+
+    // The normal-derived tangent is one monotone signed turn from one free
+    // edge to the other. No wing winds past the pin or gains an extra turn.
+    for (const u of amounts) {
+      evaluateWallDevelopmentSheet(development, u, sheet);
+      let previousAngle = -Infinity;
+      for (let index = 0; index < sheet.sheet.length; index += 1) {
+        const angle = Math.atan2(-sheet.normals[index * 2]!, sheet.normals[index * 2 + 1]!);
+        const relative = signedWrap(angle - development.anchorDirection);
+        expect(relative).toBeGreaterThanOrEqual(previousAngle - 1e-9);
+        previousAngle = relative;
+      }
+      expect(Math.abs(signedWrap(previousAngle - (1 - u) * Math.PI))).toBeLessThan(1e-9);
+      expect(
+        Math.abs(
+          signedWrap(
+            Math.atan2(-sheet.normals[0]!, sheet.normals[1]!) -
+              development.anchorDirection +
+              (1 - u) * Math.PI
+          )
+        )
+      ).toBeLessThan(1e-9);
+    }
+  });
+
+  it('relaxes every bend of a multi-Bézier Wall simultaneously and keeps the developed tangent field', () => {
+    const fixture = multiFixture();
+    const compiledLength = compileWallFirstLayoutGeometry(fixture.document).geometry.walls[0]!.length;
+    const endpointChord = distance([0, 0], [12, 0]);
+    expect(compiledLength).toBeGreaterThan(endpointChord + 0.1);
+
+    for (const anchor of [0, 6]) {
+      const { development } = prepareFixture(fixture, anchor);
+      const thetaA = development.anchorDirection;
+      for (const u of [0, ...amounts, 1]) {
+        const buffers = buffersAt(development, u);
+        const developed: LayoutVec2[] = [];
+        for (let index = 0; index < development.sampleCount; index += 1) {
+          developed.push([buffers.points[index * 2]!, buffers.points[index * 2 + 1]!]);
+        }
+        for (let index = 0; index < development.sampleCount; index += 1) {
+          const canonicalDeviation = development.theta[index]! - thetaA;
+          const expectedDeviation = (1 - u) * canonicalDeviation;
+          // Normals are the left normal of the developed tangent field; they
+          // are never a separately blended canonical normal.
+          expect(buffers.normals[index * 2]!).toBeCloseTo(-Math.sin(thetaA + expectedDeviation), 9);
+          expect(buffers.normals[index * 2 + 1]!).toBeCloseTo(Math.cos(thetaA + expectedDeviation), 9);
+          // No artificial rotation or overshoot: the deviation only shrinks.
+          expect(Math.abs(expectedDeviation)).toBeLessThanOrEqual(Math.abs(canonicalDeviation) + 1e-12);
+        }
+        // The displayed centerline's own chord directions keep exactly the
+        // canonical chord-to-tangent relationship: any discretization error is
+        // the source curve's, never an extra rotation introduced by Unroll.
+        for (let index = 0; index < developed.length - 1; index += 1) {
+          const dx = developed[index + 1]![0] - developed[index]![0];
+          const dz = developed[index + 1]![1] - developed[index]![1];
+          if (Math.hypot(dx, dz) < 1e-6) continue;
+          const chord = Math.atan2(dz, dx);
+          const canonicalMid = (development.theta[index]! + development.theta[index + 1]!) / 2 - thetaA;
+          const baseline = Math.abs(signedWrap(development.phi[index]! - thetaA - canonicalMid));
+          const expected = (1 - u) * canonicalMid;
+          expect(Math.abs(signedWrap(chord - thetaA - expected))).toBeLessThanOrEqual(baseline + 1e-9);
+        }
+        if (u === 1) {
+          const direction: LayoutVec2 = [Math.cos(thetaA), Math.sin(thetaA)];
+          const start = developed[0]!;
+          const end = developed.at(-1)!;
+          expect(distance(start, end)).toBeCloseTo(development.length, 9);
+          expect(
+            Math.abs((end[0] - start[0]) * direction[1] - (end[1] - start[1]) * direction[0])
+          ).toBeLessThan(1e-9);
+          // The sheet is the actual Wall length, not the original endpoint
+          // separation: the compiled length already exceeds that chord.
+          expect(development.length).toBeCloseTo(compiledLength, 6);
         }
       }
     }
