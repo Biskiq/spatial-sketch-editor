@@ -19,7 +19,9 @@
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createCardFieldsInstrument } from './adapter-support';
+	import { indexLabels } from '$lib/authoring/stage/shell/index-labels';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		isStraightCompiledWall,
 		wallUnfoldSideTowardCamera,
@@ -61,22 +63,102 @@
 		const selection = services.stage.selection();
 		return selection === null ? null : `${selection.sourceKind}:${selection.sourceId}`;
 	});
-	/** The compiled Wall the selected subject names, for the unfold controls. */
-	const unfoldWall = $derived.by(() => {
+	/** The compiled Wall a selected Wall or Opening names, for entry and names. */
+	const selectedHostWall = $derived.by(() => {
 		const stage = services.stage;
 		// Pure Card controller tests mount a narrow fake stage; a missing read
 		// simply means there is no compiled Wall to offer unfold controls for.
-		if (typeof stage.snapshot !== 'function') return null;
+		if (typeof stage.snapshot !== 'function' || typeof stage.selection !== 'function') return null;
 		const selection = stage.selection();
-		if (selection === null || selection.sourceKind !== 'wall') return null;
+		if (selection === null) return null;
+		const snapshot = stage.snapshot();
+		const walls = snapshot.domain.geometry.walls;
+		if (selection.sourceKind === 'wall') {
+			return walls.find((candidate) => candidate.wallId === selection.sourceId) ?? null;
+		}
+		if (selection.sourceKind !== 'opening') return null;
+		let hostWallId: string | undefined;
+		try {
+			hostWallId = stageLayout(snapshot).openings.find(
+				(candidate) => candidate.id === selection.sourceId
+			)?.wallId;
+		} catch {
+			hostWallId = undefined;
+		}
 		return (
-			stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === selection.sourceId) ??
+			(hostWallId === undefined
+				? undefined
+				: walls.find((candidate) => candidate.wallId === hostWallId)) ??
+			walls.find((candidate) =>
+				candidate.openings.some((opening) => opening.openingId === selection.sourceId)
+			) ??
 			null
 		);
 	});
-	const unfoldActive = $derived(
-		unfoldWall !== null && wallUnfold.state?.wallId === unfoldWall.wallId
-	);
+	/** The live session's compiled Wall; it outlives the selection that entered it. */
+	const sessionWall = $derived.by(() => {
+		const state = wallUnfold.state;
+		const stage = services.stage;
+		if (state === null || typeof stage.snapshot !== 'function') return null;
+		return stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId) ?? null;
+	});
+	const sessionShown = $derived(sessionWall !== null && selectedHostWall !== null);
+	const entryShown = $derived.by(() => {
+		const stage = services.stage;
+		if (wallUnfold.state !== null || selectedHostWall === null) return false;
+		return typeof stage.selection === 'function' && stage.selection()?.sourceKind === 'wall';
+	});
+	const sessionContextual = $derived.by(() => {
+		const stage = services.stage;
+		return typeof stage.selection === 'function' && stage.selection()?.sourceKind === 'opening';
+	});
+	const layoutDocument = $derived.by(() => {
+		const stage = services.stage;
+		if (typeof stage.snapshot !== 'function') return null;
+		try {
+			return stageLayout(stage.snapshot());
+		} catch {
+			return null;
+		}
+	});
+	/**
+	 * The same display labels as the Index and the Card head: an authored name,
+	 * else `Wall n` / `Room n` numbered by canonical identity. A default Wall has
+	 * no persisted name, so the session block must not fall back to a bare kind.
+	 */
+	const layoutLabels = $derived.by(() => {
+		if (layoutDocument === null) return null;
+		return {
+			walls: indexLabels(
+				layoutDocument.walls.map((wall) => ({
+					identity: wall.id,
+					kind: 'Wall',
+					name: wall.name ?? null
+				}))
+			),
+			rooms: indexLabels(
+				layoutDocument.rooms.map((room) => ({
+					identity: room.id,
+					kind: 'Room',
+					name: room.name ?? null
+				}))
+			)
+		};
+	});
+	const sessionWallName = $derived.by(() => {
+		const wall = sessionWall;
+		if (wall === null || layoutLabels === null) return null;
+		return layoutLabels.walls.get(wall.wallId)?.label ?? null;
+	});
+	const sessionRoomName = $derived.by(() => {
+		const wall = sessionWall;
+		const stage = services.stage;
+		if (wall === null || layoutLabels === null || typeof stage.snapshot !== 'function') return null;
+		const room = stage.snapshot().domain.geometry.rooms.find((candidate) =>
+			candidate.walls.some((compiled) => compiled.segmentId === wall.wallId)
+		);
+		return room === undefined ? null : layoutLabels.rooms.get(room.roomId)?.label ?? null;
+	});
 
 	/**
 	 * Enter from the Card foot. The view centre names the anchor and the eye side
@@ -85,7 +167,7 @@
 	 * records the current orientation and asks the session for one bounded fit.
 	 */
 	function toggleUnfold(): void {
-		const wall = unfoldWall;
+		const wall = selectedHostWall;
 		if (wall === null) return;
 		if (wallUnfold.state?.wallId === wall.wallId) {
 			wallUnfold.exit(wall);
@@ -283,15 +365,14 @@
 					field
 				)}{/each}
 		</div>
-		<!-- C3/D12 — the foot icon enters; the one Unroll row owns the amount. -->
-		{#if unfoldWall !== null}
+		<!-- C3/D12 — the foot icon enters; the Card owns the whole Unroll session. -->
+		{#if entryShown && selectedHostWall !== null}
 			<div class="unroll-entry">
 				<button
 					type="button"
-					class:active={unfoldActive}
 					class="unroll-icon"
-					aria-label={unfoldActive ? 'Put back the Wall' : 'Unroll the Wall'}
-					title={unfoldActive ? 'Put back' : 'Unroll Wall'}
+					aria-label="Unroll the Wall"
+					title="Unroll Wall"
 					data-wall-unroll-entry
 					onclick={toggleUnfold}
 				>
@@ -300,8 +381,15 @@
 						<path d="m11 8.5 2 2-2 2" />
 					</svg>
 				</button>
-				{#if unfoldActive}<LayoutWallUnfold wall={unfoldWall} />{/if}
 			</div>
+		{/if}
+		{#if sessionShown && sessionWall !== null}
+			<LayoutWallUnfold
+				wall={sessionWall}
+				wallName={sessionWallName}
+				roomName={sessionRoomName}
+				contextual={sessionContextual}
+			/>
 		{/if}
 		{#if paused !== null}
 			<div class="paused" data-layout-paused>
@@ -397,10 +485,6 @@
 	.unroll-icon:hover {
 		border-color: var(--shell-field-line-strong);
 		color: var(--shell-ink);
-	}
-	.unroll-icon.active {
-		border-color: var(--shell-leaf);
-		color: var(--shell-leaf);
 	}
 	.precision {
 		display: grid;
