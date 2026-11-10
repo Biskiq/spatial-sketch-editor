@@ -305,7 +305,9 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		await eventually(() => inkSurface()!.snapshot().refusal !== null);
 		const refusal = inkSurface()!.snapshot().refusal!;
 		expect(refusal).not.toContain(mounted.wallId);
-		expect(refusal).toBe('End this line on the wall.');
+		// The refusal names the attempted connection and the repair action instead
+		// of only repeating the old generic "end on the wall" hint.
+		expect(refusal).toContain('Wall span or a Junction');
 		// Zero partial source, and the chain is still editable rather than dropped.
 		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
 		expect(inkSurface()!.snapshot().points).toHaveLength(2);
