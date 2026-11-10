@@ -2,11 +2,12 @@
  * C3 checkpoint 5 — the one live unfold context, as a session store.
  *
  * Runes make the Card scrubber, the Stage sheet and the adapter actions read
- * the same state. Scrubbing, peeling and side changes never write the camera;
- * only Done/Refold asks the route's single Camera authority to restore the
- * exact settled pose captured on entry. Session state survives an accepted
- * edit's adapter rebind; it is cleared only by Refold/Done, subject removal or
- * a replaced document.
+ * the same state. Entry preserves the Camera's orientation and may perform one
+ * bounded fit; peeling, face changes and edits never write the Camera. Put back
+ * asks for the exact entry pose only when entry adjusted the Camera and the
+ * creator has not navigated since. Session state survives an accepted edit's
+ * adapter rebind; it is cleared only by Put back, subject removal or a replaced
+ * document.
  */
 import type { CompiledPhysicalWall } from '@portfolio/layout-core';
 import type { InspectionPose, ViewportReading } from '@portfolio/camera-core';
@@ -14,17 +15,28 @@ import type { InspectionPose, ViewportReading } from '@portfolio/camera-core';
 import {
 	createWallUnfoldState,
 	flipWallUnfoldSide,
+	isStraightCompiledWall,
 	refoldWallUnfold,
 	setWallUnfoldAmount,
+	wallUnfoldFitBounds,
+	type WallUnfoldBounds,
 	type WallUnfoldState
 } from '$lib/layout/wall-unfold';
 import type { WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
 
-export type WallUnfoldCameraRequest = {
-	readonly kind: 'return';
-	readonly pose: InspectionPose;
-	readonly reading: ViewportReading;
-};
+export type WallUnfoldCameraRequest =
+	| {
+			readonly kind: 'fit';
+			readonly wallId: string;
+			readonly bounds: WallUnfoldBounds;
+	  }
+	| {
+			readonly kind: 'return';
+			readonly pose: InspectionPose;
+			readonly reading: ViewportReading;
+			readonly entryAdjusted: boolean;
+			readonly settled: { readonly pose: InspectionPose; readonly reading: ViewportReading } | null;
+	  };
 
 type CameraExecutor = (request: WallUnfoldCameraRequest) => boolean;
 
@@ -69,30 +81,46 @@ class WallUnfoldStore {
 		return wallId !== null && wallId !== undefined && this.state?.wallId === wallId;
 	}
 
-	/** The route captures the settled camera it entered from, exactly once. */
-	recordEntry(entry: { readonly pose: InspectionPose; readonly reading: ViewportReading }): void {
+	/** The route records the settled pose entry produced, once. */
+	recordSettled(entry: { readonly pose: InspectionPose; readonly reading: ViewportReading }): void {
 		if (this.state === null) return;
-		this.state = { ...this.state, entry };
+		this.state = { ...this.state, settled: entry };
 	}
 
 	enter(
 		wall: CompiledPhysicalWall,
 		anchorStation = 0,
-		entry?: { readonly pose: InspectionPose; readonly reading: ViewportReading }
+		entry?: { readonly pose: InspectionPose; readonly reading: ViewportReading },
+		options: {
+			readonly side?: 1 | -1;
+			readonly floorY?: number;
+			readonly straight?: boolean;
+		} = {}
 	): void {
 		this.lastPick = null;
 		this.previewOpening = null;
 		this.#pickSequence = 0;
+		const straight = options.straight ?? isStraightCompiledWall(wall);
 		const state = createWallUnfoldState({
 			wall,
 			anchorStation,
+			side: options.side,
 			entry: entry ?? this.state?.entry ?? DEFAULT_ENTRY,
-			u: 0
+			u: straight ? 1 : 0
 		});
 		this.state = state;
-		// D5 — entry changes no camera orientation. There is deliberately no
-		// `face` request: the sheet unfolds in the view the creator was already
-		// using, and Done returns the captured settled pose exactly.
+		// D5 — entry changes no Camera orientation. One bounded fit is allowed;
+		// the route records the settled pose after the fit so Put back can tell
+		// deliberate navigation from the entry adjustment.
+		const fitted = this.#requestFit(wall, state, options.floorY ?? 0);
+		if (fitted) this.state = { ...this.state, entryAdjusted: true };
+		if (straight) {
+			// The straight Wall enters already flat: there is nothing to peel and
+			// no artificial unfolding animation.
+			this.state = { ...this.state, u: 1 };
+			this.#notify();
+			return;
+		}
 		this.animateTo(wall, 1);
 	}
 
@@ -118,16 +146,15 @@ class WallUnfoldStore {
 	}
 
 	refold(wall: CompiledPhysicalWall): void {
-		if (this.state === null) return;
-		this.#requestReturn(this.state);
-		this.animateTo(wall, 0);
+		this.exit(wall);
 	}
 
 	exit(wall?: CompiledPhysicalWall): void {
 		if (this.state === null) return;
 		this.lastPick = null;
 		this.previewOpening = null;
-		this.#requestReturn(this.state);
+		const state = this.state;
+		this.#requestReturn(state);
 		if (wall !== undefined) {
 			this.animateTo(wall, 0, () => {
 				this.state = null;
@@ -185,9 +212,24 @@ class WallUnfoldStore {
 		this.#frame = null;
 	}
 
+	#requestFit(wall: CompiledPhysicalWall, state: WallUnfoldState, floorY: number): boolean {
+		if (this.#executor === null) return false;
+		return this.#executor({
+			kind: 'fit',
+			wallId: wall.wallId,
+			bounds: wallUnfoldFitBounds({ wall, state, floorY })
+		});
+	}
+
 	#requestReturn(state: WallUnfoldState): void {
 		if (this.#executor === null) return;
-		this.#executor({ kind: 'return', pose: state.entry.pose, reading: state.entry.reading });
+		this.#executor({
+			kind: 'return',
+			pose: state.entry.pose,
+			reading: state.entry.reading,
+			entryAdjusted: state.entryAdjusted === true,
+			settled: state.settled ?? null
+		});
 	}
 
 	#notify(): void {

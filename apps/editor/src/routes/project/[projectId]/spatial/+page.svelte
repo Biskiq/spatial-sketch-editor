@@ -110,7 +110,7 @@
 	import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
 	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-	import { wallUnfoldSourceSpans } from '$lib/layout/wall-unfold';
+	import { wallUnfoldShouldReturn, wallUnfoldSourceSpans } from '$lib/layout/wall-unfold';
 	import { buildWallUnfoldDisplay, pickWallUnfold, type WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
 	import {
 		mapSheetOpeningDrag,
@@ -155,6 +155,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 		type ApprovedModelSources
 	} from '$lib/authoring/scene/model-bytes';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
+	import StagePill from '$lib/authoring/stage/shell/StagePill.svelte';
 	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
 	import ExperienceMarks from '$lib/authoring/experience/ExperienceMarks.svelte';
@@ -746,10 +747,28 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
 	let evaluation = $state<ViewportEvaluation | null>(null);
+	/** The live unroll subject, for the Stage pill that outlives its selection. */
+	const unfoldStageWall = $derived.by(() => {
+		const state = wallUnfold.state;
+		if (state === null) return null;
+		const stage = facade;
+		if (stage === null) return null;
+		return stage.snapshot().domain.geometry.walls.find((wall) => wall.wallId === state.wallId) ?? null;
+	});
+	const unfoldWallName = $derived.by(() => {
+		const wall = unfoldStageWall;
+		if (wall === null) return null;
+		const layout = layoutPayload;
+		return layout?.walls.find((candidate) => candidate.id === wall.wallId)?.name ?? null;
+	});
 	/**
-	 * C3/D14 — the single executor for unfold camera requests. The only request
-	 * is the exact return on Done/Refold; entry, scrub, peel and side changes do
-	 * not write the camera. No UI component writes the camera.
+	 * C3/D14 — the single executor for unfold camera requests.
+	 *
+	 * Entry may ask for one bounded fit; the fit intent only moves the target and
+	 * plane height, so orientation is preserved. The exact return is conditional:
+	 * it is refused unless entry adjusted the camera and the settled pose still
+	 * matches the current one. Scrub, peel and face changes never come here, and
+	 * no UI component writes the camera.
 	 */
 	$effect(() => {
 		wallUnfold.setCameraExecutor((request) => {
@@ -758,6 +777,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (stage === null || current === null) return false;
 			const ticket = stage.inspectionTicket();
 			if (ticket === null) return false;
+			if (request.kind === 'fit') {
+				if (wallUnfold.state?.wallId !== request.wallId) return false;
+				return stage.requestViewingIntent(
+					{ kind: 'fit', bounds: request.bounds, rect: current.rect },
+					ticket,
+					performance.now() / 1000
+				).kind === 'accepted';
+			}
+			const camera = stage.camera.state();
+			if (
+				!wallUnfoldShouldReturn({
+					entryAdjusted: request.entryAdjusted,
+					settled: request.settled,
+					current: { pose: camera.pose, reading: camera.reading }
+				})
+			) return false;
 			return (
 				stage.requestViewingIntent(
 					{
@@ -774,17 +809,35 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		});
 		return () => wallUnfold.setCameraExecutor(null);
 	});
-	/** Capture the settled entry pose exactly once, without moving the camera. */
-	let unfoldWasActive = false;
+	/**
+	 * Capture the settled entry pose after the bounded fit finishes. This only
+	 * observes the Camera; the pose Put back restores is exactly what entry left.
+	 */
 	$effect(() => {
-		const active = wallUnfold.state !== null;
-		const stage = facade;
-		if (active && !unfoldWasActive && stage !== null) {
-			const camera = stage.camera.state();
-			wallUnfold.recordEntry({ pose: camera.pose, reading: camera.reading });
-		}
-		unfoldWasActive = active;
+		const state = wallUnfold.state;
+		if (state?.entryAdjusted !== true || state.settled !== null) return;
+		const wallId = state.wallId;
+		untrack(() => watchEntrySettled(wallId));
 	});
+	function watchEntrySettled(wallId: string): void {
+		const stage = facade;
+		if (stage === null) return;
+		let frames = 0;
+		const watch = (): void => {
+			const state = wallUnfold.state;
+			if (state?.wallId !== wallId || state.settled !== null) return;
+			const camera = stage.camera.state();
+			const transitioning = (camera as { transition?: unknown }).transition !== null &&
+				(camera as { transition?: unknown }).transition !== undefined;
+			if (!transitioning || frames >= 120) {
+				wallUnfold.recordSettled({ pose: camera.pose, reading: camera.reading });
+				return;
+			}
+			frames += 1;
+			requestAnimationFrame(watch);
+		};
+		requestAnimationFrame(watch);
+	}
 	/**
 	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
 	 * session so the furniture re-renders; it is never part of the project source,
@@ -4203,6 +4256,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{/if}
 				<div class="overlay-layer">
 					{#if experienceLens.lookThroughSession() === null}
+						<StagePill wall={unfoldStageWall} name={unfoldWallName} />
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
 								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />

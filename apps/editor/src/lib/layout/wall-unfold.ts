@@ -13,7 +13,9 @@
  * one place so the Card, the Stage and the adapter cannot disagree.
  */
 import {
+	createWallDevelopmentBuffers,
 	cubicBezierArcLength,
+	evaluateWallDevelopment,
 	prepareWallDevelopment,
 	wallCenterlineCubics,
 	type CompiledPhysicalWall,
@@ -34,6 +36,9 @@ export const WALL_UNFOLD_CLOSE_THRESHOLD = 0.04;
 export const WALL_UNFOLD_SNAP_TOLERANCE = 0.035;
 /** The two developed faces, named by the sign of the lateral offset. */
 export type WallUnfoldSide = 1 | -1;
+/** A free edge's resting cue and hit band, in CSS pixels (44 on touch). */
+export const WALL_UNFOLD_EDGE_HIT_CSS = 22;
+export const WALL_UNFOLD_EDGE_HIT_COARSE_CSS = 44;
 
 /** Why a shape edit is refused while unfolded (D13). */
 export const WALL_UNFOLD_SHAPE_REFUSAL =
@@ -60,6 +65,13 @@ export type WallUnfoldState = {
 	/** Partial-unfold parameter, `0` canonical … `1` flat. */
 	readonly u: number;
 	readonly entry: WallUnfoldEntryRecipe;
+	/**
+	 * Whether entry asked the Camera for a bounded fit. The exact return is
+	 * conditional on this and on the creator not having navigated since.
+	 */
+	readonly entryAdjusted?: boolean;
+	/** The settled pose entry produced, or `null` when it made no fit. */
+	readonly settled?: WallUnfoldEntryRecipe | null;
 };
 
 /** A compiled self-connected Wall is a closed Wall (one Junction, two legs). */
@@ -145,8 +157,215 @@ export function createWallUnfoldState(input: {
 		cutStation: closed ? wrap(anchorStation + length / 2, length) : null,
 		side: input.side ?? 1,
 		u: clamp(input.u ?? 1, 0, 1),
-		entry: input.entry
+		entry: input.entry,
+		entryAdjusted: false,
+		settled: null
 	};
+}
+
+/** A straight Wall has nothing to peel; it enters the sheet already flat. */
+export function isStraightCompiledWall(wall: CompiledPhysicalWall): boolean {
+	const samples = wall.samples;
+	if (samples.length < 3) return true;
+	const [ax, az] = samples[0]!.point;
+	const [bx, bz] = samples[1]!.point;
+	const dx = bx - ax;
+	const dz = bz - az;
+	const length = Math.hypot(dx, dz);
+	if (!(length > 0)) return true;
+	for (const sample of samples) {
+		const cross = dx * (sample.point[1] - az) - dz * (sample.point[0] - ax);
+		if (Math.abs(cross) > length * 1e-4) return false;
+	}
+	return true;
+}
+
+/**
+ * The face the sheet opens on: the one toward the Camera, so the creator is
+ * already looking at the reading. In Plan there is no eye-side reading, so the
+ * Room side (the Wall's own left normal) is used.
+ */
+export function wallUnfoldSideTowardCamera(input: {
+	readonly wall: CompiledPhysicalWall;
+	readonly eye: readonly [number, number, number] | null;
+	readonly reading: ViewportReading;
+	readonly anchorStation?: number;
+}): WallUnfoldSide {
+	if (input.reading === 'plan' || input.eye === null) return 1;
+	const samples = input.wall.samples;
+	if (samples.length === 0) return 1;
+	const station = input.anchorStation ?? 0;
+	let nearest = samples[0]!;
+	let nearestDistance = Math.abs(nearest.distance - station);
+	for (const sample of samples) {
+		const distance = Math.abs(sample.distance - station);
+		if (distance < nearestDistance) {
+			nearest = sample;
+			nearestDistance = distance;
+		}
+	}
+	const normal: LayoutVec2 = [-nearest.tangent[1], nearest.tangent[0]];
+	const dot =
+		(input.eye[0] - nearest.point[0]) * normal[0] +
+		(input.eye[2] - nearest.point[1]) * normal[1];
+	return dot >= 0 ? 1 : -1;
+}
+
+/** The canonical station nearest a world point (the view centre, not the eye). */
+export function wallUnfoldViewCentreStation(
+	wall: CompiledPhysicalWall,
+	target: readonly [number, number, number] | null
+): number | null {
+	if (target === null || wall.samples.length === 0) return null;
+	let nearest = wall.samples[0]!;
+	let nearestDistance = Math.hypot(nearest.point[0] - target[0], nearest.point[1] - target[2]);
+	for (const sample of wall.samples) {
+		const distance = Math.hypot(sample.point[0] - target[0], sample.point[1] - target[2]);
+		if (distance < nearestDistance) {
+			nearest = sample;
+			nearestDistance = distance;
+		}
+	}
+	return nearest.distance;
+}
+
+export type WallUnfoldBounds = {
+	readonly min: [number, number, number];
+	readonly max: [number, number, number];
+};
+
+/**
+ * One bounded fit box: the as-built Wall plus the fully developed sheet, with a
+ * little air. The fit covers the whole peel range, so peeling never needs a
+ * second Camera move.
+ */
+export function wallUnfoldFitBounds(input: {
+	readonly wall: CompiledPhysicalWall;
+	readonly state: WallUnfoldState;
+	readonly floorY: number;
+}): WallUnfoldBounds {
+	const { wall, state } = input;
+	const floorY = input.floorY;
+	const pad = wall.thickness / 2 + 0.25;
+	let minX = Number.POSITIVE_INFINITY;
+	let maxX = Number.NEGATIVE_INFINITY;
+	let minZ = Number.POSITIVE_INFINITY;
+	let maxZ = Number.NEGATIVE_INFINITY;
+	const include = (x: number, z: number): void => {
+		minX = Math.min(minX, x - pad);
+		maxX = Math.max(maxX, x + pad);
+		minZ = Math.min(minZ, z - pad);
+		maxZ = Math.max(maxZ, z + pad);
+	};
+	for (const sample of wall.samples) include(sample.point[0], sample.point[1]);
+	const prepared = prepareWallDevelopment({
+		wallId: wall.wallId,
+		samples: wallUnfoldSamples(wall),
+		closed: isClosedCompiledWall(wall),
+		anchorStation: state.anchorStation,
+		cutStation: state.cutStation
+	});
+	if (!('refused' in prepared)) {
+		const buffers = createWallDevelopmentBuffers(prepared);
+		for (const u of [0, 0.5, 1]) {
+			evaluateWallDevelopment(prepared, u, buffers);
+			for (let index = 0; index < prepared.sampleCount; index += 1) {
+				include(buffers.points[index * 2]!, buffers.points[index * 2 + 1]!);
+			}
+		}
+	} else {
+		for (const sample of wall.samples) {
+			include(sample.point[0] + sample.tangent[1] * wall.length, sample.point[1] - sample.tangent[0] * wall.length);
+		}
+	}
+	return {
+		min: [minX, floorY - 0.2, minZ],
+		max: [maxX, floorY + wall.height + 0.2, maxZ]
+	};
+}
+
+/** Compare two settled inspection poses; position and orientation only. */
+export function sameInspectionPose(
+	a: InspectionPose,
+	b: InspectionPose,
+	epsilon = 1e-4
+): boolean {
+	const near = (left: number, right: number): boolean => Math.abs(left - right) <= epsilon;
+	return (
+		near(a.target[0], b.target[0]) &&
+		near(a.target[1], b.target[1]) &&
+		near(a.target[2], b.target[2]) &&
+		near(a.azimuthRadians, b.azimuthRadians) &&
+		near(a.elevationRadians, b.elevationRadians) &&
+		near(a.targetPlaneHeightMeters, b.targetPlaneHeightMeters) &&
+		(a.fovYDegrees ?? null) === (b.fovYDegrees ?? null)
+	);
+}
+
+/**
+ * The Put back rule. The entry pose is restored only when entry performed a
+ * bounded fit and the creator has not navigated since; deliberate pan, zoom or
+ * orbit keeps the creator's viewpoint.
+ */
+export function wallUnfoldShouldReturn(input: {
+	readonly entryAdjusted: boolean | undefined;
+	readonly settled: WallUnfoldEntryRecipe | null | undefined;
+	readonly current: WallUnfoldEntryRecipe;
+}): boolean {
+	if (input.entryAdjusted !== true) return false;
+	if (input.settled === null || input.settled === undefined) return false;
+	return (
+		input.current.reading === input.settled.reading &&
+		sameInspectionPose(input.current.pose, input.settled.pose)
+	);
+}
+
+/** One sampled screen position of a free edge at a candidate unroll amount. */
+export type WallUnfoldEdgeCandidate = {
+	readonly u: number;
+	readonly css: readonly [number, number];
+};
+
+/** The drawn length of a candidate edge path, in CSS pixels. */
+export function unfoldEdgePathLength(candidates: readonly WallUnfoldEdgeCandidate[]): number {
+	let total = 0;
+	for (let index = 1; index < candidates.length; index += 1) {
+		const previous = candidates[index - 1]!;
+		const current = candidates[index]!;
+		total += Math.hypot(current.css[0] - previous.css[0], current.css[1] - previous.css[1]);
+	}
+	return total;
+}
+
+/**
+ * The pointer solve for a free-edge peel: take the candidate nearest the
+ * pointer, biased toward the current amount so the sheet does not jump between
+ * equal-distance samples. `null` means the screen path is too short to read (the
+ * edge travels toward the Camera) and the caller should use the 260 px mapping.
+ */
+export function chooseUnfoldAmount(input: {
+	readonly candidates: readonly WallUnfoldEdgeCandidate[];
+	readonly pointer: readonly [number, number];
+	readonly currentU: number;
+	readonly biasPx?: number;
+}): number | null {
+	if (input.candidates.length < 2) return null;
+	if (unfoldEdgePathLength(input.candidates) < 120) return null;
+	const bias = input.biasPx ?? 30;
+	let best: WallUnfoldEdgeCandidate | null = null;
+	let bestScore = Number.POSITIVE_INFINITY;
+	for (const candidate of input.candidates) {
+		const distance = Math.hypot(
+			candidate.css[0] - input.pointer[0],
+			candidate.css[1] - input.pointer[1]
+		);
+		const score = distance + Math.abs(candidate.u - input.currentU) * bias;
+		if (score < bestScore) {
+			best = candidate;
+			bestScore = score;
+		}
+	}
+	return best?.u ?? null;
 }
 
 /** The drag-to-open mapping: `u = |drag| / 260` CSS px, clamped. */

@@ -19,6 +19,12 @@
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createCardFieldsInstrument } from './adapter-support';
+	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import {
+		isStraightCompiledWall,
+		wallUnfoldSideTowardCamera,
+		wallUnfoldViewCentreStation
+	} from '$lib/layout/wall-unfold';
 	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
 
 	let {
@@ -68,6 +74,51 @@
 			null
 		);
 	});
+	const unfoldActive = $derived(
+		unfoldWall !== null && wallUnfold.state?.wallId === unfoldWall.wallId
+	);
+
+	/**
+	 * Enter from the Card foot. The view centre names the anchor and the eye side
+	 * names the face, so the reading opens where the creator is looking; a
+	 * selected Opening on the same Wall is the second anchor preference. Entry
+	 * records the current orientation and asks the session for one bounded fit.
+	 */
+	function toggleUnfold(): void {
+		const wall = unfoldWall;
+		if (wall === null) return;
+		if (wallUnfold.state?.wallId === wall.wallId) {
+			wallUnfold.exit(wall);
+			return;
+		}
+		const stage = services.stage;
+		const selection = typeof stage.selection === 'function' ? stage.selection() : null;
+		const evaluation = typeof stage.evaluation === 'function' ? stage.evaluation() : null;
+		const opening = selection?.sourceKind === 'opening'
+			? wall.openings.find((candidate) => candidate.openingId === selection.sourceId)
+			: undefined;
+		const viewCentre = evaluation === null
+			? null
+			: wallUnfoldViewCentreStation(wall, evaluation.target);
+		const anchor = viewCentre ?? (opening === undefined ? 0 : opening.offset + opening.width / 2);
+		const side = wallUnfoldSideTowardCamera({
+			wall,
+			eye: evaluation?.eye ?? null,
+			reading: evaluation?.settledReading ?? '3d',
+			anchorStation: anchor
+		});
+		wallUnfold.enter(
+			wall,
+			anchor,
+			evaluation === null ? undefined : { pose: evaluation.pose, reading: evaluation.settledReading },
+			{
+				side,
+				floorY: stage.snapshot().domain.datumMeters,
+				straight: isStraightCompiledWall(wall)
+			}
+		);
+	}
+
 	const instrument = $derived.by(() => {
 		void selectionKey;
 		return createCardFieldsInstrument(services);
@@ -232,8 +283,26 @@
 					field
 				)}{/each}
 		</div>
-		<!-- C3/D12 — unfold entry, scrub and exit live in the Card's own writer. -->
-		{#if unfoldWall !== null}<LayoutWallUnfold wall={unfoldWall} />{/if}
+		<!-- C3/D12 — the foot icon enters; the one Unroll row owns the amount. -->
+		{#if unfoldWall !== null}
+			<div class="unroll-entry">
+				<button
+					type="button"
+					class:active={unfoldActive}
+					class="unroll-icon"
+					aria-label={unfoldActive ? 'Put back the Wall' : 'Unroll the Wall'}
+					title={unfoldActive ? 'Put back' : 'Unroll Wall'}
+					data-wall-unroll-entry
+					onclick={toggleUnfold}
+				>
+					<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" aria-hidden="true">
+						<path d="M3 2.5h7.5a2 2 0 0 1 0 4H5.5a2 2 0 0 0 0 4H13" />
+						<path d="m11 8.5 2 2-2 2" />
+					</svg>
+				</button>
+				{#if unfoldActive}<LayoutWallUnfold wall={unfoldWall} />{/if}
+			</div>
+		{/if}
 		{#if paused !== null}
 			<div class="paused" data-layout-paused>
 				<p>Paused after a reading change — {paused.label}</p>
@@ -308,6 +377,30 @@
 		bottom: 6px;
 		font-size: 10px;
 		pointer-events: none;
+	}
+	.unroll-entry {
+		display: grid;
+		gap: 4px;
+		padding: 2px 12px 6px;
+	}
+	.unroll-icon {
+		display: inline-grid;
+		place-items: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		border: 1px solid var(--shell-field-line);
+		border-radius: 7px;
+		background: var(--shell-field);
+		color: var(--shell-ink-2);
+	}
+	.unroll-icon:hover {
+		border-color: var(--shell-field-line-strong);
+		color: var(--shell-ink);
+	}
+	.unroll-icon.active {
+		border-color: var(--shell-leaf);
+		color: var(--shell-leaf);
 	}
 	.precision {
 		display: grid;
