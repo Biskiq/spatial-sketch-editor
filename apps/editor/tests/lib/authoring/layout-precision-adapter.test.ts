@@ -652,9 +652,10 @@ function selectWall(facade: StageFacade, sourceId: string): void {
 
 describe('Layout scalar Stage grips',()=>{
  it.each(['height','thickness'] as const)('types a Wall %s through one lease, one F4 install and Undo',async(field)=>{
-  const {facade,host,wallId}=await mount();selectWall(facade,wallId);
-  const before=facade.snapshot().canonicalJson;
-  const mark=facade.marks().find(m=>m.id===`layout-wall-${field}`)!;expect(mark?.tip).toBeDefined();
+	  const {facade,host,wallId}=await mount();selectWall(facade,wallId);
+	  const before=facade.snapshot().canonicalJson;
+	  expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
+	  const mark=facade.marks().find(m=>m.id===`layout-wall-${field}`)!;expect(mark?.tip).toBeDefined();
   const evaluationId=facade.evaluationId()!;
   expect(facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId}).claimed).toBe(true);
   expect(host.history().undoUnavailableReason).toContain('proposal is live');
@@ -668,8 +669,9 @@ describe('Layout scalar Stage grips',()=>{
   facade.dispose();
  });
  it.each(['cancel','refused','reading'] as const)('leaves source and history unchanged after %s',async(end)=>{
-  const {facade,host,wallId}=await mount();selectWall(facade,wallId);const before=facade.snapshot().canonicalJson;
-  const mark=facade.marks().find(m=>m.id==='layout-wall-height')!;const evaluationId=facade.evaluationId()!;
+	  const {facade,host,wallId}=await mount();selectWall(facade,wallId);const before=facade.snapshot().canonicalJson;
+	  expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
+	  const mark=facade.marks().find(m=>m.id==='layout-wall-height')!;const evaluationId=facade.evaluationId()!;
   facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId});
   if(end==='cancel')facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});
   else if(end==='reading')facade.pointerIntent({phase:'move',css:mark.tip!,evaluationId:'stale-evaluation'});

@@ -774,7 +774,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (!source || !direction) return [];
 					const length = wallLength(wall.frame);
 					const planReading=ctx.evaluation.settledReading==='plan';
-					const thicknessAt=planReading && document.openings.some(o=>o.wallId===source.id&&o.offset<=length/4&&o.offset+o.width>=length/4) ? length*3/4 : length/4;
 					return [
 						{
 							id: 'layout-wall-height',
@@ -795,7 +794,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							subjectId: source.id,
 							field: 'thickness',
 							value: source.thickness,
-							anchor: framePoint(wall.frame,thicknessAt,planReading?y:y+source.height),
+							anchor: framePoint(wall.frame,length,planReading?y:y+source.height),
 							axis: [-direction[1], 0, direction[0]]
 						}
 					];
@@ -838,7 +837,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (plan.kind === 'rejected') {
 					current.value = null;
 					current.candidate = null;
-					current.refusal = wallRefusalWords(plan.rejection.code);
+					current.refusal = wallRefusalWords(plan.rejection.code, plan.rejection.message);
 					return false;
 				}
 				current.value = value;
@@ -1104,7 +1103,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						snap: null,
 						centerlines,
 						movedRooms: isolation.kind === 'success' ? isolation.subgraph.roomIds.length : 1,
-						refusal: isolation.kind === 'rejected' ? wallRefusalWords(isolation.rejection.code) : null
+						refusal: isolation.kind === 'rejected' ? wallRefusalWords(isolation.rejection.code, isolation.rejection.message) : null
 					};
 					services.stage.notifySurfaceChange();
 					return true;
@@ -1173,7 +1172,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					})
 				);
 				if (outcome.kind === 'refused' && stageUnitRevision(services.stage.snapshot(), 'layout') === contentRevision) {
-					settleRoomRefusal(current, wallRefusalWords(outcome.code));
+					settleRoomRefusal(current, wallRefusalWords(outcome.code, outcome.message));
 				}
 				services.stage.notifySurfaceChange();
 			}
@@ -2287,16 +2286,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const refusalFor = (markId: string): string | null =>
 						gesture?.markId === markId ? refusal : null;
 					const middle = framePoint(wall.frame, length / 2, y);
+					const planReading = adapterContext.evaluation.settledReading === 'plan';
+					// The one size disclosure owns the Wall's three dimensions. The
+					// working thickness and height scalar handles are revealed by it.
 					const descriptors: StageHandleDescriptor[] = [
 						{
-							// The Wall's one size disclosure: the length ray lives behind it.
+							// The Wall's one size disclosure: its measured handles live behind it.
 							id: 'layout-wall-size-chip',
 							kind: 'point',
 							role: 'disclose',
 							anchor: framePoint(wall.frame, length * 0.82, y),
 							screen: { offset: [0, -22] },
 							label: 'Size',
-							reveals: ['layout-wall-length']
+							reveals: [
+								'layout-wall-length',
+								'layout-wall-thickness',
+								...(planReading ? [] : ['layout-wall-height'])
+							]
 						},
 						{
 							// The one span's plain shape point. The selected Wall's body remains
@@ -2393,7 +2399,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// and the retired mark id survives only as that press's stable writer
 					// identity. Angle has no Stage grip: the owner's 2026-10-29 ruling keeps
 					// it a Card field and removes the ring.
-					const priority = ['layout-wall-size-chip', 'layout-wall-start-mark', 'layout-wall-span:0', 'layout-wall-end-mark', 'layout-wall-length'];
+					const priority = [
+						'layout-wall-size-chip',
+						'layout-wall-start-mark',
+						'layout-wall-span:0',
+						'layout-wall-end-mark',
+						'layout-wall-length'
+					];
 					return [...descriptors].sort((a, b) => priority.indexOf(a.id) - priority.indexOf(b.id));
 				}
 				const sourceOpening = document.openings.find((candidate) => candidate.id === opening!.openingId);
@@ -2583,7 +2595,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				request: WallManipulationRequest,
 				fixed: FixedWallEndpoint,
 				wallId: string,
-				point: LayoutVec2 | null = null
+				point: LayoutVec2 | null = null,
+				attemptGeometry: CandidatePaperGeometry | null = null
 			): Promise<void> {
 				// T3.P03.S02: release commits exactly once; that commit is the command
 				// whose completion the performance flow measures.
@@ -2601,14 +2614,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						levelId: snapshot.domain.layoutLevelId
 					})
 				);
-				refusal = outcome.kind === 'refused' ? wallRefusalWords(outcome.code) : null;
+				refusal = outcome.kind === 'refused' ? wallRefusalWords(outcome.code, outcome.message) : null;
 				if (point !== null && refusal !== null && gesture === null && junctionGesture === null &&
 					stageUnitRevision(services.stage.snapshot(), 'layout') === stageUnitRevision(snapshot, 'layout')) {
 					settledRefusal = {
 						subject: request.kind === 'junction' ? { kind: 'junction' } : { kind: 'wall', wallId },
 						contentRevision: stageUnitRevision(snapshot, 'layout'),
 						point,
-						text: refusal
+						text: refusal,
+						...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
 					};
 				}
 				services.stage.notifySurfaceChange();
@@ -4761,6 +4775,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 										id: spec.id,
 										kind: 'ray',
 										role: 'edit',
+										disclosedBy: 'layout-wall-size-chip',
 										anchor: spec.anchor,
 										axis: spec.axis,
 										extent: spec.value,
@@ -5610,20 +5625,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const dragged = isPointerDrag(junctionGesture.pressCss, intent.css);
 						const pending = dragged ? junctionGesture.request : null;
 						const wallId = junctionGesture.wallId;
+						const attemptGeometry = junctionGesture.attempt === null
+							? null
+							: wallProposalPaper(junctionGesture.attempt, adapterContext.snapshot.domain.datumMeters);
 						if (dragged && pending === null && refusal !== null && junctionGesture.pointerPoint !== null) {
 							settledRefusal = {
 								subject: { kind: 'junction' },
 								contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
 								point: junctionGesture.refusalPoint ?? junctionGesture.pointerPoint,
 								text: refusal,
-								...(junctionGesture.attempt === null ? {} : {
-									geometry: wallProposalPaper(junctionGesture.attempt, adapterContext.snapshot.domain.datumMeters)
-								})
+								...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
 							};
 						}
 						const point = junctionGesture.pointerPoint;
 						endJunctionGesture();
-						if (pending !== null) void commit(pending, 'start', wallId, point);
+						if (pending !== null) void commit(pending, 'start', wallId, point, attemptGeometry);
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -5654,18 +5670,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const wallId = gesture!.frame.wallId;
 					const refusedPoint = dragged ? gesture!.pointerPoint : null;
 					const refusedText = dragged ? refusal : null;
-					if (pending === null && refusedText !== null && refusedPoint !== null) {							settledRefusal = {
+					const attemptGeometry = gesture!.attempt === null
+						? null
+						: wallProposalPaper(gesture!.attempt, adapterContext.snapshot.domain.datumMeters);
+					if (pending === null && refusedText !== null && refusedPoint !== null) {
+							settledRefusal = {
 								subject: { kind: 'wall', wallId },
 								contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
 								point: gesture!.refusalPoint ?? refusedPoint,
 								text: refusedText,
-								...(gesture!.attempt === null ? {} : {
-									geometry: wallProposalPaper(gesture!.attempt, adapterContext.snapshot.domain.datumMeters)
-								})
+								...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
 							};
-					}
+						}
 					endGesture();
-					if (pending !== null) void commit(pending, fixed, wallId, refusedPoint);
+					if (pending !== null) void commit(pending, fixed, wallId, refusedPoint, attemptGeometry);
 					services.stage.notifySurfaceChange();
 					return true;
 				},

@@ -14,6 +14,22 @@ describe('Wall bend refusals', () => {
 		);
 	});
 
+	it.each(['room_identity_lost', 'room_reconciliation_rejected'])(
+		'names the Room boundary conflict for %s without the generic sentence',
+		(code) => {
+			const words = wallRefusalWords(code);
+			expect(words).toContain('Room');
+			expect(words).not.toBe('This would break a Room.');
+			expect(words).not.toBe('This change cannot be applied.');
+		}
+	);
+
+	it('names a Room even when a future code is not mapped yet', () => {
+		expect(wallRefusalWords('future_room_gate', "Room 'room-1' has no candidate boundary")).toBe(
+			'This would change a Room boundary. Keep the moved Wall on the Room side.'
+		);
+	});
+
 	it.each([
 		'split_at_existing_endpoint',
 		'split_distance_out_of_range',

@@ -1035,11 +1035,14 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 				'layout-wall-end-mark'
 			])
 		);
-		// The size chip is the one route to the length ray; before it opens the ray
-		// is not admitted to the drawn/hit vocabulary.
+		// The size chip is the one route to the Wall's measured marks; before it
+		// opens neither the length ray nor the thickness arrow is admitted.
 		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-length');
+		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-thickness');
 		revealWallSize(mounted);
-		expect(mounted.facade.marks().map((mark) => mark.id)).toContain('layout-wall-length');
+		const revealed = mounted.facade.marks().map((mark) => mark.id);
+		expect(revealed).toContain('layout-wall-length');
+		expect(revealed).toContain('layout-wall-thickness');
 		// The rigid move glyph is retired; the hidden writer record is not drawn.
 		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-move-mark');
 		// The owner's 2026-10-29 ruling removes the Wall angle ring: it is not part
@@ -1460,6 +1463,11 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		await new Promise((resolve) => setTimeout(resolve, 20));
 		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		// A refusal decided only at release must keep the attempted network; the
+		// commit may not overwrite it with a geometry-less tag.
+		const settled = mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-refused-settled');
+		expect(settled?.role).toBe('refused');
+		expect(settled!.segments.length).toBeGreaterThan(0);
 	});
 
 	it('treats a press and release without travel as a click, not a commit', async () => {

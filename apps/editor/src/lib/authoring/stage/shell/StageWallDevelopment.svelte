@@ -237,6 +237,14 @@
 		const state = wallUnfold.state;
 		const wall = state === null ? undefined : geometry.walls.find((candidate) => candidate.wallId === state.wallId);
 		if (state === null || wall === undefined) {
+			// A Put back ends the reading. Drop the development built from the
+			// Wall as it was then: the Wall can be bent, moved or resized before
+			// the next Unroll, and a display keyed only by Wall id would animate
+			// the old shape instead of the current one.
+			display = null;
+			displayWallId = null;
+			displayCutStation = null;
+			displayPreviewKey = '';
 			root.visible = false;
 			lastSide = null;
 			if (flipFrame !== null) cancelAnimationFrame(flipFrame);
