@@ -33,14 +33,21 @@
 		buildWallUnfoldDisplay,
 		evaluateWallUnfoldDisplay,
 		unfoldDisplayPointAtStation,
+		wallUnfoldDisplayKey,
 		type WallUnfoldDisplay
 	} from '$lib/layout/wall-unfold-pick';
 
 	let {
 		geometry,
 		datumMeters,
+		layoutRevision,
 		selected = false
-	}: { geometry: CompiledLayoutGeometry; datumMeters: number; selected?: boolean } = $props();
+	}: {
+		geometry: CompiledLayoutGeometry;
+		datumMeters: number;
+		layoutRevision: string;
+		selected?: boolean;
+	} = $props();
 
 	const { invalidate } = useThrelte();
 	const root = new Group();
@@ -129,9 +136,7 @@
 	root.add(pin);
 
 	let display: WallUnfoldDisplay | null = null;
-	let displayWallId: string | null = null;
-	let displayCutStation: number | null = null;
-	let displayPreviewKey = '';
+	let displayKey: string | null = null;
 	let topologyEdges: readonly (readonly [number, number])[] = [];
 	let wallHeight = 0;
 	let wallThickness = 0;
@@ -242,9 +247,7 @@
 			// the next Unroll, and a display keyed only by Wall id would animate
 			// the old shape instead of the current one.
 			display = null;
-			displayWallId = null;
-			displayCutStation = null;
-			displayPreviewKey = '';
+			displayKey = null;
 			root.visible = false;
 			lastSide = null;
 			if (flipFrame !== null) cancelAnimationFrame(flipFrame);
@@ -256,7 +259,13 @@
 		const preview = wallUnfold.previewOpening;
 		const previewForWall = preview?.wallId === wall.wallId ? preview : null;
 		const previewKey = previewForWall === null ? '' : `${previewForWall.openingId}:${previewForWall.offset}:${previewForWall.width}`;
-		if (display === null || displayWallId !== wall.wallId || displayCutStation !== state.cutStation || displayPreviewKey !== previewKey) {
+		const nextDisplayKey = wallUnfoldDisplayKey({
+			wallId: wall.wallId,
+			cutStation: state.cutStation,
+			previewKey,
+			sourceRevision: layoutRevision
+		});
+		if (display === null || displayKey !== nextDisplayKey) {
 			const displayWall = previewForWall === null ? wall : {
 				...wall,
 				openings: wall.openings.map((opening) => opening.openingId === previewForWall.openingId
@@ -264,9 +273,7 @@
 					: opening)
 			};
 			display = buildWallUnfoldDisplay(displayWall, state, { floorY: datumMeters });
-			displayWallId = wall.wallId;
-			displayCutStation = state.cutStation;
-			displayPreviewKey = previewKey;
+			displayKey = nextDisplayKey;
 			if (display === null) {
 				root.visible = false;
 				invalidate();

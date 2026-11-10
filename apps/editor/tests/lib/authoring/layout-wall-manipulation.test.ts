@@ -53,8 +53,10 @@ import {
 } from '$lib/authoring/adapters/layout/adapter-support';
 import {
 	LAYOUT_WALL_ANGLE_KIND,
+	LAYOUT_WALL_HEIGHT_KIND,
 	LAYOUT_WALL_LENGTH_KIND,
 	LAYOUT_WALL_MOVE_KIND,
+	LAYOUT_WALL_THICKNESS_KIND,
 	curvedWallFrame,
 	curvedWallPointAt,
 	wallFrame,
@@ -1624,6 +1626,21 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect((await mounted.host.undo()).kind).toBe('installed');
 		const restored = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === mounted.wallId)!;
 		expect(restored.centerline.kind).toBe('line');
+	});
+
+	it('reveals thickness and height on a curved Wall through the size chip', async () => {
+		const mounted = await mount();
+		await bendWallAt(mounted, 4.5);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-thickness')).toBe(false);
+		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-height')).toBe(false);
+		revealWallSize(mounted);
+		const marks = mounted.facade.marks();
+		expect(marks.some((mark) => mark.id === 'layout-wall-height' && mark.planner === LAYOUT_WALL_HEIGHT_KIND)).toBe(true);
+		expect(marks.some((mark) => mark.id === 'layout-wall-thickness' && mark.planner === LAYOUT_WALL_THICKNESS_KIND)).toBe(true);
+		// Arc length is not an exact-length writer; the chip must not advertise one.
+		expect(marks.some((mark) => mark.id === 'layout-wall-length')).toBe(false);
 	});
 
 	it('reads and edits a curved-host Opening station on the arc, not its chord', async () => {
