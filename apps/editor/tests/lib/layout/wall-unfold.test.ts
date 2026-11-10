@@ -53,9 +53,17 @@ import {
 import type { InspectionPose } from '@portfolio/camera-core';
 
 import {
+	chooseUnfoldAmount,
 	createWallUnfoldState,
 	isClosedCompiledWall,
+	isStraightCompiledWall,
 	prepareWallUnfoldDevelopment,
+	sameInspectionPose,
+	unfoldEdgePathLength,
+	wallUnfoldFitBounds,
+	wallUnfoldShouldReturn,
+	wallUnfoldSideTowardCamera,
+	wallUnfoldViewCentreStation,
 	refoldWallUnfold,
 	setWallUnfoldAmount,
 	snapWallUnfoldAmount,
@@ -662,5 +670,68 @@ describe('C3 checkpoint 5 — canonical Opening edits from the sheet', () => {
 		const scrubbed = setWallUnfoldAmount(state, 0.9);
 		expect(scrubbed.entry).toBe(state.entry);
 		expect(scrubbed.entry.pose).toEqual(ENTRY.pose);
+	});
+});
+
+describe('C3 revision 2 — entry camera, face and free-edge helpers', () => {
+	it('distinguishes a straight Wall from a curved or closed one', () => {
+		expect(isStraightCompiledWall(compiledWall(straightFixture()))).toBe(true);
+		expect(isStraightCompiledWall(compiledWall(sCurveFixture()))).toBe(false);
+		expect(isStraightCompiledWall(compiledWall(circleFixture()))).toBe(false);
+	});
+
+	it('takes the view-centre station and the eye-side face, never the eye station', () => {
+		const wall = compiledWall(straightFixture());
+		const centre = wall.length / 2;
+		expect(wallUnfoldViewCentreStation(wall, [centre, 1.5, 0])).toBeCloseTo(centre, 1);
+		expect(wallUnfoldViewCentreStation(wall, null)).toBeNull();
+		expect(
+			wallUnfoldSideTowardCamera({ wall, eye: [centre, 1.8, 2], reading: '3d', anchorStation: centre })
+		).toBe(1);
+		expect(
+			wallUnfoldSideTowardCamera({ wall, eye: [centre, 1.8, -2], reading: '3d', anchorStation: centre })
+		).toBe(-1);
+		// Plan has no eye-side reading; the Room side is the default face.
+		expect(
+			wallUnfoldSideTowardCamera({ wall, eye: null, reading: 'plan', anchorStation: centre })
+		).toBe(1);
+	});
+
+	it('returns the entry pose only when entry fitted and the creator has not navigated', () => {
+		const settled: WallUnfoldEntryRecipe = { pose: ENTRY.pose, reading: '3d' };
+		expect(wallUnfoldShouldReturn({ entryAdjusted: true, settled, current: settled })).toBe(true);
+		expect(
+			wallUnfoldShouldReturn({
+				entryAdjusted: true,
+				settled,
+				current: { pose: { ...ENTRY.pose, azimuthRadians: ENTRY.pose.azimuthRadians + 0.2 }, reading: '3d' }
+			})
+		).toBe(false);
+		expect(wallUnfoldShouldReturn({ entryAdjusted: false, settled, current: settled })).toBe(false);
+		expect(wallUnfoldShouldReturn({ entryAdjusted: true, settled: null, current: settled })).toBe(false);
+		expect(sameInspectionPose(ENTRY.pose, { ...ENTRY.pose })).toBe(true);
+	});
+
+	it('covers the whole peel range in one bounded fit box', () => {
+		const fixture = straightFixture();
+		const wall = compiledWall(fixture);
+		const state = stateFor(fixture, wall.length / 2, 0);
+		const bounds = wallUnfoldFitBounds({ wall, state, floorY: 12 });
+		expect(bounds.min[1]).toBeCloseTo(11.8, 6);
+		expect(bounds.max[1]).toBeCloseTo(15.2, 6);
+		expect(bounds.min[0]).toBeLessThan(0);
+		expect(bounds.max[0]).toBeGreaterThan(wall.length);
+	});
+
+	it('solves a free-edge peel by the nearest candidate, with a current-amount bias', () => {
+		const candidates = [
+			{ u: 0, css: [0, 0] as const },
+			{ u: 0.5, css: [100, 0] as const },
+			{ u: 1, css: [200, 0] as const }
+		];
+		expect(unfoldEdgePathLength(candidates)).toBeCloseTo(200, 6);
+		expect(chooseUnfoldAmount({ candidates, pointer: [104, 0], currentU: 0.5 })).toBe(0.5);
+		expect(chooseUnfoldAmount({ candidates, pointer: [180, 0], currentU: 0 })).toBe(1);
+		expect(chooseUnfoldAmount({ candidates: candidates.slice(0, 2), pointer: [10, 0], currentU: 0 })).toBeNull();
 	});
 });
