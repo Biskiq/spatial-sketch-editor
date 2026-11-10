@@ -173,7 +173,6 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 		type ApprovedModelSources
 	} from '$lib/authoring/scene/model-bytes';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
-	import StagePill from '$lib/authoring/stage/shell/StagePill.svelte';
 	import ExperienceHomesHost from '$lib/authoring/experience/ExperienceHomesHost.svelte';
 	import ExperienceDock from '$lib/authoring/experience/ExperienceDock.svelte';
 	import ExperienceMarks from '$lib/authoring/experience/ExperienceMarks.svelte';
@@ -765,31 +764,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
 	let evaluation = $state<ViewportEvaluation | null>(null);
-	/** The live unroll subject, for the Stage pill that outlives its selection. */
-	const unfoldStageWall = $derived.by(() => {
-		const state = wallUnfold.state;
-		if (state === null) return null;
-		const stage = facade;
-		if (stage === null) return null;
-		return stage.snapshot().domain.geometry.walls.find((wall) => wall.wallId === state.wallId) ?? null;
-	});
-	const unfoldWallName = $derived.by(() => {
-		const wall = unfoldStageWall;
-		if (wall === null) return null;
-		const layout = layoutPayload;
-		return layout?.walls.find((candidate) => candidate.id === wall.wallId)?.name ?? null;
-	});
-	/** The Room whose boundary owns the unrolled Wall, named from the Layout Room. */
-	const unfoldRoomName = $derived.by(() => {
-		const wall = unfoldStageWall;
-		const stage = facade;
-		if (wall === null || stage === null) return null;
-		const room = stage.snapshot().domain.geometry.rooms.find((candidate) =>
-			candidate.walls.some((compiled) => compiled.segmentId === wall.wallId)
-		);
-		if (room === undefined) return null;
-		return layoutPayload?.rooms.find((candidate) => candidate.id === room.roomId)?.name ?? null;
-	});
 	/**
 	 * C3/D14 — the single executor for unfold camera requests.
 	 *
@@ -4441,7 +4415,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{/if}
 				<div class="overlay-layer">
 					{#if experienceLens.lookThroughSession() === null}
-						<StagePill wall={unfoldStageWall} name={unfoldWallName} roomName={unfoldRoomName} cardOpen={selection !== null} />
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
 								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
