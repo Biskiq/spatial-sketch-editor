@@ -503,7 +503,7 @@ For each warning state, save, reload, and open the visitor view; canonical JSON,
 
 ### D6 — Inside/Outside without a camera spin **[Approved]**
 
-**Decision:** the face switch is a rigid half-turn of the sheet about the pin's vertical; camera orientation unchanged; label the displayed face by what it bounds. Demonstrate **both** Inside and Outside on the circular Wall. Deliberate departure from the donor's 180° move. **Revision 2 (approved) places this switch in the Stage state pill**, because the pill survives an Opening selection while the Wall Card does not.
+**Decision:** the face switch is a rigid half-turn of the sheet about the pin's vertical; camera orientation unchanged; label the displayed face by what it bounds. Demonstrate **both** Inside and Outside on the circular Wall. Deliberate departure from the donor's 180° move. **Revision 3 (owner amendment, 10 Nov 2026) places this switch in the Card's compact Unroll block.** The block remains visible when an Opening on the sheet is selected, because the host Wall's context renders beneath the Opening's own fields. The Stage pill is withdrawn.
 
 **Why:** a camera spin loses the anchor and disorients; the sheet itself can communicate the side.
 
@@ -640,7 +640,7 @@ If any of these assumptions is rejected, the corresponding slice changes; the co
 The owner approved every design decision in [`polish-pass.html`](./polish-pass.html) revision 2 and
 authorised implementation on PR #287 (draft, unmerged). The approved interaction contract is §8 of
 that artifact; it replaces the Wall row of the spatial instrument grammar and the corresponding
-parts of §3 and §5 here. Two final amendments are part of the contract:
+parts of §3 and §5 here. Three final amendments are part of the contract:
 
 1. **Straight Walls keep Unroll.** Unroll is available on every Wall. A straight Wall enters the
    same measured Wall-sheet reading already flat, with editable Openings, and has **no artificial
@@ -649,16 +649,40 @@ parts of §3 and §5 here. Two final amendments are part of the contract:
    Peel, face change, pin and edits never move the Camera. Put back restores the entry pose only
    when entry adjusted the Camera **and** the creator has not navigated since; after a deliberate
    pan, zoom or orbit the creator's viewpoint is preserved.
+3. **Unroll controls live in the Card.** The revision-2 Stage pill is withdrawn. One compact Card
+   Unroll block carries the reading name, Inside/Outside, amount, exact percentage and Put back.
+   It remains visible when an Opening on the sheet is selected, beneath the Opening's own fields.
+   There is no floating pill or replacement toolbar.
 
 The revision also settles the gates this file left open:
 
 - **D1 amended:** no armed Bend state. Shape points appear from proximity (`B` on the keyboard,
   a second tap on touch); ⌘/Ctrl remains the expert bend path.
 - **D6 amended:** the face switch is a rigid half-turn about the pin's vertical and lives in the
-  Stage state pill.
-- **D12 amended:** one Card-foot Unroll action, one Unroll amount row, one Stage pill carrying the
-  reading name, face and Put back. No `face` Camera intent (D14 superseded): entry uses the existing
-  `fit` intent and the reading composes no pose.
+  Card's Unroll block, including while an Opening on the sheet is selected.
+- **D12 amended:** one Card-foot Unroll action and one Card Unroll block carrying the reading name,
+  Inside/Outside, amount, exact percentage and Put back. No Stage pill and no replacement toolbar.
+  No `face` Camera intent (D14 superseded): entry uses the existing `fit` intent and the reading
+  composes no pose.
 - **D2 unchanged:** a bend point dragged onto the line between its neighbours shows a cobalt
   proposal and `Remove bend point`, and release removes it as one history entry. Red remains
   refusal-only.
+
+## 12. Revision 3 — owner amendment (2026-11-10)
+
+This amendment is part of the approved contract.
+
+1. **Unroll geometry.** A closed Wall opens into one continuous signed arc about the pin; both
+   sides extend away from it simultaneously. A Bézier Wall relaxes every bend simultaneously
+   toward one straight line, and both ends extend outward. The canonical centerline length is
+   preserved, so at 100% the sheet is the real Wall length, not the original endpoint chord.
+   0% is exact canonical geometry; 100% is a straight station mapping. Normals are derived from
+   the developed centerline. One development-map authority serves the sheet and picking.
+2. **Unroll controls.** The Stage pill is withdrawn. The Card's compact Unroll block owns the
+   reading name, Inside/Outside, amount, exact percentage and Put back. An Opening selected on the
+   sheet keeps its own Card fields and shows the same block, not a second panel. The sheet remains
+   directly draggable; the Card is fine adjustment and session control.
+3. **Bend refusal.** A bend that would fold the Wall offset is refused with the actual cause
+   (too tight for the Wall's thickness), not the generic fallback. Direct manipulation keeps the
+   last valid Bend shape instead of blanking it, and release writes nothing while that refusal
+   stands.
