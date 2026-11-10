@@ -149,6 +149,16 @@
 		if (wall === null || layoutLabels === null) return null;
 		return layoutLabels.walls.get(wall.wallId)?.label ?? null;
 	});
+	/** The tool that currently owns the pointer, in the Card's words. */
+	const pointerOwner = $derived.by(() => {
+		const session = services.stage.session;
+		if (session === undefined || typeof session.task !== 'function') return null;
+		const task = session.task();
+		if (task === null) return null;
+		if (task.kind === 'layout-ink') return 'Ink';
+		if (task.kind === 'layout-build' || task.kind === 'build') return 'Build';
+		return 'Another tool';
+	});
 	const sessionRoomName = $derived.by(() => {
 		const wall = sessionWall;
 		const stage = services.stage;
@@ -394,6 +404,11 @@
 				<button type="button" data-resume-paused onclick={resumePaused}>Resume</button>
 				<button type="button" onclick={discardPaused}>Discard</button>
 			</div>{/if}
+		{#if pointerOwner !== null && selectedHostWall !== null}
+			<p class="pointer-owner" data-layout-pointer-owner>
+				{pointerOwner} owns the pointer. Finish or cancel it to move or bend this Wall.
+			</p>
+		{/if}
 		{#if error !== null}<p class="error" role="alert">{error}</p>
 		{/if}
 		{#if footer}{@render footer()}{/if}
@@ -462,6 +477,13 @@
 		bottom: 6px;
 		font-size: 10px;
 		pointer-events: none;
+	}
+	.pointer-owner {
+		margin: 0;
+		padding: 0 12px 8px;
+		color: var(--shell-ink-quiet);
+		font-size: 11px;
+		line-height: 1.35;
 	}
 	.unroll-entry {
 		display: grid;

@@ -1418,6 +1418,33 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		}
 	});
 
+	it('reveals the span Bend target on hover without arming a candidate', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		settle(mounted.facade, 3);
+		const span = () => mounted.facade.marks().find((mark) => mark.id === 'layout-wall-span:0');
+		expect(span()?.tag).toBe('Pull to bend');
+
+		const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
+		const mid = [(points.start[0] + points.end[0]) / 2, (points.start[1] + points.end[1]) / 2] as const;
+		const evaluationId = mounted.facade.evaluationId()!;
+		// Hover the body, not the ring itself: proximity must reveal the writer
+		// before the creator has to find the exact midpoint.
+		mounted.facade.idleHoverIntent({
+			phase: 'move',
+			css: stageCss(mounted.facade, [mid[0] + 0.8, mid[1] + 0.1]),
+			evaluationId,
+			coarse: false
+		});
+		expect(span()?.tag).toBe('Bend · pull here');
+		// Discovery is a cue, not a second gesture target or a live proposal.
+		expect(mounted.facade.candidatePreviews()).toEqual([]);
+
+		mounted.facade.idleHoverIntent({ phase: 'move', css: [640, -400], evaluationId, coarse: false });
+		expect(span()?.tag).toBe('Pull to bend');
+	});
+
 	it('keeps a hosted Opening’s identity, offset and width when its Wall reshapes', async () => {
 		const mounted = await mount();
 		const before = acceptedLayout(mounted.facade).openings.find((opening) => opening.id === mounted.openingId)!;
