@@ -72,11 +72,14 @@ export function wallRefusalWords(code: string, message = ''): string {
 			return 'This shape is not a valid Wall layout.';
 		case 'room_identity_lost':
 		case 'room_reconciliation_rejected':
+		case 'correspondence_failure':
+			return 'This would move a Room across its own boundary. Keep the corner on the Room side.';
 		case 'ambiguous_room_correspondence':
 		case 'ambiguous_room_removal':
+			return 'This would make it unclear which Room boundary moved. Move one boundary at a time.';
 		case 'nonadjacent_portal_relation':
 		case 'portal_relation_invalid':
-			return 'This would break a Room.';
+			return 'This would break the connection between Rooms.';
 		case 'zero_length_wall':
 		case 'zero_length_segment':
 		case 'zero_length_leg':
@@ -98,7 +101,11 @@ export function wallRefusalWords(code: string, message = ''): string {
 		case 'unknown_junction':
 			return 'The Wall cannot be placed there.';
 		default:
-			return 'This change cannot be applied.';
+			// A future Room gate must not fall back to the opaque generic line. The
+			// planner's diagnostic is internal, but its subject is safe to name.
+			return /room/i.test(message)
+				? 'This would change a Room boundary. Keep the moved Wall on the Room side.'
+				: 'This change cannot be applied.';
 	}
 }
 
