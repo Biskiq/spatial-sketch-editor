@@ -1020,10 +1020,11 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 			expect.arrayContaining([
 				'layout-wall-start-mark',
 				'layout-wall-end-mark',
-				'layout-wall-length',
-				'layout-wall-move-mark'
+				'layout-wall-length'
 			])
 		);
+		// The rigid move glyph is retired; the hidden writer record is not drawn.
+		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-move-mark');
 		// The owner's 2026-10-29 ruling removes the Wall angle ring: it is not part
 		// of the ratified Wall vocabulary. Angle stays a Card field, not a grip.
 		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-angle');
@@ -1048,11 +1049,9 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		expect(length.tip).not.toBeNull();
 		expect(distance(length.anchor, length.tip!)).toBeCloseTo(STAGE_MARK_GLYPH_CSS.ray, 6);
 
-		const move = marks.find((mark) => mark.id === 'layout-wall-move-mark')!;
-		// The grammar's two-way base ray: one anchor, a reach on both sides.
-		expect(move.tail).not.toBeNull();
-		expect(distance(move.anchor, move.tip!)).toBeCloseTo(15, 6);
-		expect(distance(move.anchor, move.tail!)).toBeCloseTo(15, 6);
+		// The rigid move has no visible glyph; its hidden record survives only as
+		// the body gesture's numeric writer identity, never as a Stage mark.
+		expect(marks.some((mark) => mark.id === 'layout-wall-move-mark')).toBe(false);
 	});
 
 	it('publishes cursor-only resize targets and the smaller center move glyph', async () => {
@@ -1354,17 +1353,13 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		const evaluationId = mounted.facade.evaluationId()!;
 		const marks = mounted.facade.marks();
 		const end = marks.find((mark) => mark.id === 'layout-wall-end-mark')!;
-		const move = marks.find((mark) => mark.id === 'layout-wall-move-mark')!;
 		const length = marks.find((mark) => mark.id === 'layout-wall-length')!;
 		const empty: [number, number] = [end.anchor[0], end.anchor[1] + 23];
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: empty, evaluationId, coarse: true }).claimed).toBe(false);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: end.anchor, evaluationId, coarse: true }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: end.anchor, evaluationId, coarse: true });
-		// Both arms of the two-way base ray and the length ray's own tip are coarse
-		// targets; the endpoint's 44 px disc must not be the only way to reach length.
-		expect(move.tail).not.toBeNull();
-		expect(mounted.facade.pointerIntent({ phase: 'down', css: move.tail!, evaluationId, coarse: true }).claimed).toBe(true);
-		mounted.facade.pointerIntent({ phase: 'cancel', css: move.tail!, evaluationId, coarse: true });
+		// The length ray's own tip is a coarse target; the endpoint's 44 px disc
+		// must not be the only way to reach length.
 		expect(length.tip).not.toBeNull();
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: length.tip!, evaluationId, coarse: true }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'cancel', css: length.tip!, evaluationId, coarse: true });
@@ -1526,7 +1521,6 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '3' }).claimed).toBe(true);
-		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-move-mark' && mark.tag.includes('Distance 3'))).toBe(true);
 		expect(
 			mounted.facade
 				.candidatePreviews()
@@ -1549,14 +1543,16 @@ describe('R217.S15 — gesture numeric entry', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		// D1 re-derivation: a press away from the grip is now a **bend**, so rigid
-		// body translation — and its numeric distance entry — starts on the move
-		// mark itself. The old press at [4.5, 0] is covered by the bend contract.
-		const grip = mounted.facade.marks().find((mark) => mark.id === 'layout-wall-move-mark')!;
-		const gripCss: [number, number] = [grip.anchor[0] + RECT.left, grip.anchor[1] + RECT.top];
+		// The body press is the rigid-move surface now that the move glyph is
+		// retired; no modifier means move, so its numeric distance writer is live.
+		const gripCss = stageCss(mounted.facade, [4.5, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: gripCss, evaluationId }).claimed).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '2' }).claimed).toBe(true);
-		expect(mounted.facade.marks().some((mark) => mark.id === 'layout-wall-move-mark' && mark.tag.includes('Distance 2'))).toBe(true);
+		expect(
+			mounted.facade.candidatePreviews()
+				.flatMap((candidate) => candidate.labels)
+				.some((label) => label.text.includes('Distance 2'))
+		).toBe(true);
 		expect(mounted.facade.gestureKeyIntent({ kind: 'finish' }).claimed).toBe(true);
 		// The release after Enter must not write a second time.
 		mounted.facade.pointerIntent({ phase: 'up', css: gripCss, evaluationId });
@@ -1953,13 +1949,11 @@ describe('R217.S15 — gesture numeric entry', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
-		// Straight Walls expose unfold entry and delete only: no curve vocabulary
-		// leaks in, and C3/D12 intentionally makes unfolding available on straight
-		// Walls too (the checkpoint-4 proof covers that geometry).
+		// Straight Walls expose Bend arming and delete only: no curve vocabulary
+		// leaks in, and unfold entry lives in the Card foot rather than the menu.
 		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual([
 				'layout-wall-bend-arm',
-				'layout-wall-delete',
-				'layout-wall-unfold'
+				'layout-wall-delete'
 			]);
 
 		const evaluationId = mounted.facade.evaluationId()!;
@@ -2042,12 +2036,13 @@ describe('R217.S15 — gesture numeric entry', () => {
 		const mounted = await mount({ document: base, wallId: 'curved', openingId: '' });
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, 'curved');
-		// C1 — ordinary selection does not expose a field of bend gizmos. The body
-		// press is the editing surface; the active knot is disclosed only on demand.
+		// C1 — ordinary selection does not expose a field of bend gizmos. The two
+		// junction ends stay reachable; the body press is the editing surface and
+		// the active knot is disclosed only on demand.
 		const bendMarks = mounted.facade
 			.marks()
 			.filter((mark) => mark.adapterId === 'layout' && mark.role === 'edit');
-		expect(bendMarks).toEqual([]);
+		expect(bendMarks.map((mark) => mark.id)).toEqual(['layout-wall-start-mark', 'layout-wall-end-mark']);
 		const curved = curvedWallFrame(acceptedLayout(mounted.facade), 'curved')!;
 		const from = stageCss(mounted.facade, curvedWallPointAt(curved, curved.length / 2)!.point);
 		const evaluationId = mounted.facade.evaluationId()!;

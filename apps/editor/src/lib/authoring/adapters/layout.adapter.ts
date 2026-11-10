@@ -95,8 +95,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutCardFields from './layout/LayoutCardFields.svelte';
-import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';	import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
 import { wallRefusalWords } from './layout/refusals';
@@ -2079,6 +2078,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const opening = wall === null && curved === null && closed === null ? selectedOpening(adapterContext) : null;
 				if (wall === null && curved === null && closed === null && opening === null) return [];
 				const y = adapterContext.snapshot.domain.datumMeters;
+				// The unrolled sheet is the editing surface: its Wall's canonical marks
+				// (including a closed Wall's radius grip) are not drawn or hit while it
+				// is open. Card fields remain available.
+				if (
+					(wall !== null && wallUnfold.isActive(wall.wallId)) ||
+					(curved !== null && wallUnfold.isActive(curved.wallId)) ||
+					(closed !== null && wallUnfold.isActive(closed.wallId))
+				) return [];
 				if (closed !== null) {
 					// D8 — the only shape grip a closed Wall publishes is the radius grip.
 					// It sits on the authored seam (the rim point) and writes the same
@@ -2113,9 +2120,40 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						? activeKnot.knotId
 						: live?.knotId ?? null;
 					const knot = shownId === null ? undefined : source.centerline.knots.find((candidate) => candidate.id === shownId);
-					if (knot === undefined) return [];
+					// D1/P1 — both ends of an open curved Wall stay reachable while its
+					// body offers Bend. They are the same junction writers a straight Wall
+					// uses, so shared ends keep canonical identity.
+					const ends: StageHandleDescriptor[] = [
+						{
+							id: 'layout-wall-start-mark',
+							kind: 'point',
+							role: 'edit',
+							anchor: [curved.frame.start[0], y, curved.frame.start[1]],
+							draw: { pointRadius: 4.6 },
+							label: 'Wall start',
+							fact: 'start',
+							verb: 'Move point',
+							planner: LAYOUT_JUNCTION_MOVE_KIND,
+							value: `X ${curved.frame.start[0].toFixed(2)} · Z ${curved.frame.start[1].toFixed(2)} m`,
+							refusal: junctionGesture !== null ? refusal : null
+						},
+						{
+							id: 'layout-wall-end-mark',
+							kind: 'point',
+							role: 'edit',
+							anchor: [curved.frame.end[0], y, curved.frame.end[1]],
+							draw: { pointRadius: 4.6 },
+							label: 'Wall end',
+							fact: 'end',
+							verb: 'Move point',
+							planner: LAYOUT_JUNCTION_MOVE_KIND,
+							value: `X ${curved.frame.end[0].toFixed(2)} · Z ${curved.frame.end[1].toFixed(2)} m`,
+							refusal: junctionGesture !== null ? refusal : null
+						}
+					];
+					if (knot === undefined) return ends;
 					const active = activeKnot?.knotId === knot.id && activeKnot.wallId === curved.wallId;
-					return [{
+					return [...ends, {
 						id: `layout-wall-knot:${knot.id}`,
 						kind: 'point',
 						role: 'edit',
@@ -2209,19 +2247,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							refusal: refusalFor('layout-wall-length')
 						},
 						{
-							// The grammar's **two-way base ray**: the whole base line slides
-							// either way, so the reach is drawn on both sides of one anchor.
-							// The rigid move itself is not clamped; this is an affordance.
+							// The rigid move has no visible glyph: a plain body press on the
+							// selected Wall is the surface. This hidden record keeps the stable
+							// numeric writer identity (`Distance`) and its tag while a body drag
+							// or typed value is live; it is not drawn and cannot be hit.
 							id: 'layout-wall-move-mark',
-							draw: {
-								twoWayHalf:
-									adapterContext.evaluation.settledReading === 'plan' ? 18 : 15
-							},
+							draw: { hidden: true },
 							kind: 'track',
 							role: 'edit',
 							anchor: middle,
 							axis: [-direction[1], 0, direction[0]],
-							extent: 0.6,
+							extent: 0,
 							bothWays: true,
 							label: 'Wall position',
 							fact: 'position',
@@ -2232,13 +2268,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								`X ${wall.frame.start[0].toFixed(3)} · Z ${wall.frame.start[1].toFixed(3)} m`
 							),
 							refusal: refusalFor('layout-wall-move-mark')
-						}
+						},
 					];
-					// Each endpoint keeps its own anchor; the base ray then wins the middle
-					// and the outward length ray keeps the free end. Descriptor order is the
-					// domain's hit order. Angle has no Stage grip: the owner's 2026-10-29
-					// ruling keeps it a Card field and removes the ring.
-					const priority = ['layout-wall-start-mark', 'layout-wall-end-mark', 'layout-wall-move-mark', 'layout-wall-length'];
+					// Each endpoint keeps its own anchor and the outward length ray keeps
+					// the free end. Descriptor order is the domain's hit order. The rigid
+					// move has no glyph: a plain body press on the selected Wall moves it,
+					// and the retired mark id survives only as that press's stable writer
+					// identity. Angle has no Stage grip: the owner's 2026-10-29 ruling keeps
+					// it a Card field and removes the ring.
+					const priority = ['layout-wall-start-mark', 'layout-wall-end-mark', 'layout-wall-length'];
 					return [...descriptors].sort((a, b) => priority.indexOf(a.id) - priority.indexOf(b.id));
 				}
 				const sourceOpening = document.openings.find((candidate) => candidate.id === opening!.openingId);
@@ -4231,7 +4269,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const source = subject.kind === 'wall'
 						? document.walls.find((wall) => wall.id === subject.id)
 						: undefined;
-					if (source?.centerline.kind === 'cubic-chain') {
+					if (source?.centerline.kind === 'cubic-chain' && !isClosedWall(source)) {
 						const frame = curvedWallFrame(document, source.id);
 						if (frame !== null) {
 							facts.push({ label: 'Length (arc)', value: `${frame.length.toFixed(3)} m`, fieldId: 'arcLength' });
@@ -4411,69 +4449,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							run: () => runCurve('straighten')
 						});
 					}
-					// C3/D12 — unfold entry, scrub and exit are Card actions; there is no
-					// new toolbar. The session store owns the state and asks the route to
-					// present the `face`/`set-view` intents through the one Camera.
-					const compiledWall = services.stage
-						.snapshot()
-						.domain.geometry.walls.find((candidate) => candidate.wallId === wallId);
-					const unfoldActions: StageCardAction[] = compiledWall === undefined ? [] : wallUnfold.isActive(wallId)
-						? [
-								{
-									id: 'layout-wall-refold',
-									label: 'Refold Wall',
-									detail: 'Folds the sheet back to its canonical mesh and returns the view you entered from.',
-									run: async () => {
-										wallUnfold.exit(compiledWall);
-										services.stage.notifySurfaceChange();
-										return { kind: 'accepted' };
-									}
-								},
-								{
-									id: 'layout-wall-unfold-flip',
-									label: 'Flip Inside/Outside',
-									detail: 'Faces the sheet’s other side about the same anchor.',
-									run: async () => {
-										wallUnfold.flip(compiledWall);
-										services.stage.notifySurfaceChange();
-										return { kind: 'accepted' };
-									}
-								}
-							]
-						: [
-								{
-									id: 'layout-wall-unfold',
-									label: 'Unfold Wall',
-									detail: 'Unfolds this Wall in the current view. Openings and height stay editable; the Card offers the scrub, peel and Done.',
-									run: async () => {
-										const primary = services.stage.selectionState().primary;
-										const selectedOpening =
-											primary?.domain === 'layout' && primary.subject.kind === 'opening'
-												? compiledWall.openings.find((opening) => opening.openingId === primary.subject.id)
-												: undefined;
-										let anchorStation = selectedOpening
-											? selectedOpening.offset + selectedOpening.width / 2
-											: compiledWall.length / 2;
-										const eye = services.stage.evaluation()?.eye;
-										if (selectedOpening === undefined && eye !== undefined) {
-											let nearest = Infinity;
-											for (const sample of compiledWall.samples) {
-												const distance = Math.hypot(
-													sample.point[0] - eye[0],
-													sample.point[1] - eye[2]
-												);
-												if (distance < nearest) {
-													nearest = distance;
-													anchorStation = sample.distance;
-												}
-											}
-										}
-										wallUnfold.enter(compiledWall, anchorStation);
-										services.stage.notifySurfaceChange();
-										return { kind: 'accepted' };
-									}
-								}
-							];
+					// C3/D14 — unfold entry lives only in the Card foot; the Stage pill
+					// owns Put back and the face switch. A menu action here would be a
+					// second entry with a different anchor and camera behaviour.
 					const bendArmActions: StageCardAction[] = wallUnfold.isActive(wallId)
 						? []
 						: [
@@ -4492,7 +4470,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							];
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [...unfoldActions, ...bendArmActions, ...curveActions,
+						return [...bendArmActions, ...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -4503,7 +4481,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						];
 					}
 					return [
-						...unfoldActions,
 						...bendArmActions,
 						...curveActions,
 						{
@@ -4549,7 +4526,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// D2/S6 — B toggles the next body press between move and Bend without a
 					// modifier. Escape disarms it before any other Escape precedence.
 					if (intent.kind === 'type' && intent.key.toLowerCase() === 'b') {
-						if (selectedCurvedWall(adapterContext) === null) return false;
+						// D1 — B arms Bend for either open Wall shape: a straight Wall takes
+						// its first bend on the next body press, a curved Wall bends its
+						// existing chain.
+						if (
+							selectedCurvedWall(adapterContext) === null &&
+							selectedWall(adapterContext) === null
+						) return false;
 						bendArmed = !bendArmed;
 						services.stage.notifySurfaceChange();
 						return true;

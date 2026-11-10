@@ -321,11 +321,11 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		const mounted = await mount();
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
 		const actions = stageCardActions(mounted.facade, subject);
-		// C3/D12 adds the Wall's unfold entry beside deletion; deletion stays the
-		// destructive action and keeps its disclosure.
+		// C3/D14 moves unfold entry to the Card foot and the Stage pill; the menu
+		// keeps deletion, the destructive action and its disclosure.
 		expect(actions.map((candidate) => candidate.id)).toEqual([
-			'layout-wall-delete',
-			'layout-wall-unfold'
+			'layout-wall-bend-arm',
+			'layout-wall-delete'
 		]);
 		const action = actions.find((candidate) => candidate.id === 'layout-wall-delete')!;
 		expect(action).toMatchObject({ id: 'layout-wall-delete', destructive: true, adapterId: 'layout' });
