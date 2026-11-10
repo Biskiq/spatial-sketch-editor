@@ -767,11 +767,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/**
 	 * C3/D14 — the single executor for unfold camera requests.
 	 *
-	 * Entry may ask for one bounded fit; the fit intent only moves the target and
-	 * plane height, so orientation is preserved. The exact return is conditional:
-	 * it is refused unless entry adjusted the camera and the settled pose still
-	 * matches the current one. Scrub, peel and face changes never come here, and
-	 * no UI component writes the camera.
+	 * Entry no longer fits or otherwise moves the Camera, so the only request is
+	 * the conditional Put-back return. It is refused unless the entry performed a
+	 * fit (legacy state only) and the settled pose still matches the current one.
+	 * Scrub, peel and face changes never move the Camera; Bring into view is the
+	 * explicit framing action.
 	 */
 	$effect(() => {
 		wallUnfold.setCameraExecutor((request) => {
@@ -780,31 +780,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (stage === null || current === null) return false;
 			const ticket = stage.inspectionTicket();
 			if (ticket === null) return false;
-			if (request.kind === 'fit') {
-				if (wallUnfold.state?.wallId !== request.wallId) return false;
-				// Frame the sheet in the usable Stage area. The Card is an absolute
-				// overlay on the right; the top row and the pill own the top strip.
-				// Only the fit rectangle changes, so Camera orientation is untouched.
-				let fitRect = current.rect;
-				const topInset = 56;
-				if (fitRect.height > topInset + 240) {
-					fitRect = { ...fitRect, top: fitRect.top + topInset, height: fitRect.height - topInset };
-				}
-				const card = cardOpen ? document.querySelector<HTMLElement>('aside.card') : null;
-				if (card !== null && stageEl) {
-					const stageBox = stageEl.getBoundingClientRect();
-					const cardBox = card.getBoundingClientRect();
-					const safeWidth = cardBox.left - stageBox.left - 16;
-					if (safeWidth > 320 && safeWidth < fitRect.width) {
-						fitRect = { ...fitRect, width: safeWidth };
-					}
-				}
-				return stage.requestViewingIntent(
-					{ kind: 'fit', bounds: request.bounds, rect: fitRect },
-					ticket,
-					performance.now() / 1000
-				).kind === 'accepted';
-			}
 			const camera = stage.camera.state();
 			if (
 				!wallUnfoldShouldReturn({
@@ -829,35 +804,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		});
 		return () => wallUnfold.setCameraExecutor(null);
 	});
-	/**
-	 * Capture the settled entry pose after the bounded fit finishes. This only
-	 * observes the Camera; the pose Put back restores is exactly what entry left.
-	 */
-	$effect(() => {
-		const state = wallUnfold.state;
-		if (state?.entryAdjusted !== true || state.settled !== null) return;
-		const wallId = state.wallId;
-		untrack(() => watchEntrySettled(wallId));
-	});
-	function watchEntrySettled(wallId: string): void {
-		const stage = facade;
-		if (stage === null) return;
-		let frames = 0;
-		const watch = (): void => {
-			const state = wallUnfold.state;
-			if (state?.wallId !== wallId || state.settled !== null) return;
-			const camera = stage.camera.state();
-			const transitioning = (camera as { transition?: unknown }).transition !== null &&
-				(camera as { transition?: unknown }).transition !== undefined;
-			if (!transitioning || frames >= 120) {
-				wallUnfold.recordSettled({ pose: camera.pose, reading: camera.reading });
-				return;
-			}
-			frames += 1;
-			requestAnimationFrame(watch);
-		};
-		requestAnimationFrame(watch);
-	}
 	/**
 	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
 	 * session so the furniture re-renders; it is never part of the project source,
@@ -2105,6 +2051,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					wallId: wall.wallId,
 					pressY: event.clientY,
 					startU: state.u,
+					grabOffset: nearest === null
+						? [0, 0]
+						: [event.clientX - nearest.css[0], event.clientY - nearest.css[1]],
 					candidates
 				};
 				try { stageEl?.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
@@ -2170,7 +2119,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return true;
 	}
 
-	/** Sample the free edge at 21 peel amounts, then restore the live display. */
+	/** Sample the free edge across the peel range, then restore the live display. */
 	function sheetEdgeCandidates(
 		display: WallUnfoldDisplay | null,
 		state: NonNullable<typeof wallUnfold.state>,
@@ -2182,8 +2131,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (projectionId === null) return [];
 		const station = wallUnfoldFreeEdgeStation(state, wall.length);
 		const candidates: WallUnfoldEdgeCandidate[] = [];
-		for (let step = 0; step <= 20; step += 1) {
-			const u = step / 20;
+		for (let step = 0; step <= 40; step += 1) {
+			const u = step / 40;
 			evaluateWallUnfoldDisplay(display, { ...state, u });
 			const at = unfoldDisplayPointAtStation(display, station);
 			const projected = stage.projectWorld(
@@ -2208,9 +2157,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const chosen = chooseUnfoldAmount({
 			candidates: active.candidates,
 			pointer: [event.clientX, event.clientY],
-			currentU: state.u
+			currentU: state.u,
+			grabOffset: active.grabOffset
 		});
-		const next = chosen ?? Math.min(1, Math.max(0, active.startU - (event.clientY - active.pressY) / 260));
+		const next = chosen ?? Math.min(
+			1,
+			Math.max(0, active.startU - (event.clientY - active.grabOffset[1] - active.pressY) / 260)
+		);
 		wallUnfold.setU(wall, next);
 	}
 
@@ -2498,6 +2451,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		readonly wallId: string;
 		readonly pressY: number;
 		readonly startU: number;
+		/** Pointer minus the grabbed edge point at press, so the edge does not jump. */
+		readonly grabOffset: readonly [number, number];
 		readonly candidates: readonly WallUnfoldEdgeCandidate[];
 	};
 	let sheetEdgeDrag = $state<SheetEdgeDrag | null>(null);
