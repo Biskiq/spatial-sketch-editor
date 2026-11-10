@@ -746,8 +746,10 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		const before = wallPoints(mounted.document, mounted.wallId);
 		const idsBefore = acceptedLayout(mounted.facade).walls.map((wall) => wall.id).sort();
 		const evaluationId = mounted.facade.evaluationId()!;
-		const middle = stageCss(mounted.facade, [3, 0]);
-		const shifted = stageCss(mounted.facade, [3.5, 0.5]);
+		// Press away from the selected Wall's contextual span ring: the ring is
+		// the Bend writer, the rest of the body remains the rigid move surface.
+		const middle = stageCss(mounted.facade, [2.2, 0]);
+		const shifted = stageCss(mounted.facade, [2.7, 0.5]);
 
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		const spans: string[] = [];
@@ -1479,9 +1481,9 @@ describe('R217.S15 — Wall direct manipulation', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const middle = stageCss(mounted.facade, [3, 0]);
-		const between = stageCss(mounted.facade, [3.37, 0.37]);
-		const shifted = stageCss(mounted.facade, [3.37, 0.48]);
+		const middle = stageCss(mounted.facade, [2.2, 0]);
+		const between = stageCss(mounted.facade, [2.57, 0.37]);
+		const shifted = stageCss(mounted.facade, [2.57, 0.48]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: between, evaluationId });
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Δx 0.00 · Δz +0.37 m'))).toBe(true);
@@ -1535,8 +1537,8 @@ describe('R217.S15 — gesture numeric entry', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const middle = stageCss(mounted.facade, [3, 0]);
-		const shifted = stageCss(mounted.facade, [3, 0.37]);
+		const middle = stageCss(mounted.facade, [2.2, 0]);
+		const shifted = stageCss(mounted.facade, [2.2, 0.37]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
 		expect(mounted.facade.gestureKeyIntent({ kind: 'type', key: '3' }).claimed).toBe(true);
@@ -1968,10 +1970,9 @@ describe('R217.S15 — gesture numeric entry', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
-		// Straight Walls expose Bend arming and delete only: no curve vocabulary
-		// leaks in, and unfold entry lives in the Card foot rather than the menu.
+		// Straight Walls expose delete only: no hidden Bend-armed mode and no
+		// curve vocabulary leaks in; unfold entry lives in the Card foot.
 		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual([
-				'layout-wall-bend-arm',
 				'layout-wall-delete'
 			]);
 
@@ -2055,13 +2056,16 @@ describe('R217.S15 — gesture numeric entry', () => {
 		const mounted = await mount({ document: base, wallId: 'curved', openingId: '' });
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, 'curved');
-		// C1 — ordinary selection does not expose a field of bend gizmos. The two
-		// junction ends stay reachable; the body press is the editing surface and
-		// the active knot is disclosed only on demand.
+		// C1/P1 — the selected Wall carries contextual shape points: both junction
+		// ends and one hollow span ring, with no hidden Bend-armed mode.
 		const bendMarks = mounted.facade
 			.marks()
 			.filter((mark) => mark.adapterId === 'layout' && mark.role === 'edit');
-		expect(bendMarks.map((mark) => mark.id)).toEqual(['layout-wall-start-mark', 'layout-wall-end-mark']);
+		expect(bendMarks.map((mark) => mark.id)).toEqual([
+			'layout-wall-start-mark',
+			'layout-wall-end-mark',
+			'layout-wall-span:0'
+		]);
 		const curved = curvedWallFrame(acceptedLayout(mounted.facade), 'curved')!;
 		const from = stageCss(mounted.facade, curvedWallPointAt(curved, curved.length / 2)!.point);
 		const evaluationId = mounted.facade.evaluationId()!;
@@ -2398,8 +2402,8 @@ describe('R217.S15 — body and length reach', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, 'free-wall');
 		const evaluationId = mounted.facade.evaluationId()!;
-		const middle = stageCss(mounted.facade, [2, 0]);
-		const shifted = stageCss(mounted.facade, [2.37, 0.5]);
+		const middle = stageCss(mounted.facade, [1.2, 0]);
+		const shifted = stageCss(mounted.facade, [1.57, 0.5]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
 		expect(mounted.facade.candidatePreviews().some((preview) => preview.id === 'layout-candidate-neighbours')).toBe(false);

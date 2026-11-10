@@ -15,11 +15,16 @@
 import {
 	buildDevelopedWallMesh,
 	createWallDevelopmentBuffers,
+	spanForStation,
+	createWallDevelopmentSheetBuffers,
 	developmentInversePoint,
 	developmentOpeningFragments,
 	developmentOpeningIdentity,
-	evaluateWallDevelopment,
+	developmentPointAtSheetFromBuffers,
 	developmentPointAtStationFromBuffers,
+	developmentSheetCoordinate,
+	evaluateWallDevelopment,
+	evaluateWallDevelopmentSheet,
 	isWallDevelopmentRefusal,
 	prepareWallDevelopment,
 	type CompiledPhysicalWall,
@@ -29,6 +34,7 @@ import {
 	type WallDevelopmentMesh,
 	type WallDevelopmentMeshHole,
 	type WallDevelopmentOpeningBand,
+	type WallDevelopmentSheetBuffers,
 	type WallDevelopmentSourceSpan
 } from '@portfolio/layout-core';
 
@@ -47,6 +53,8 @@ export type WallUnfoldDisplay = {
 	readonly height: number;
 	readonly development: WallDevelopment;
 	readonly buffers: WallDevelopmentBuffers;
+	/** Closed Walls evaluate a cut-to-cut sheet; open Walls keep canonical buffers. */
+	readonly sheetBuffers: WallDevelopmentSheetBuffers | null;
 	readonly mesh: WallDevelopmentMesh;
 	readonly spans: readonly WallDevelopmentSourceSpan[];
 	readonly positions: Float32Array;
@@ -84,7 +92,11 @@ export function buildWallUnfoldDisplay(
 	if (isWallDevelopmentRefusal(prepared)) return null;
 	const development = prepared;
 	const buffers = createWallDevelopmentBuffers(development);
-	evaluateWallDevelopment(development, state.u, buffers);
+	const sheetBuffers = development.closed && development.cutStation !== null
+		? createWallDevelopmentSheetBuffers(development)
+		: null;
+	if (sheetBuffers === null) evaluateWallDevelopment(development, state.u, buffers);
+	else evaluateWallDevelopmentSheet(development, state.u, sheetBuffers);
 	const spans = options.spans ?? [];
 	const openingBands: WallDevelopmentOpeningBand[] = wall.openings.map((opening) => ({
 		openingId: opening.openingId,
@@ -119,7 +131,9 @@ export function buildWallUnfoldDisplay(
 	const normals = new Float32Array(mesh.vertices.length * 3);
 	for (let index = 0; index < mesh.vertices.length; index += 1) {
 		const vertex = mesh.vertices[index]!;
-		const mapped = developmentPointAtStationFromBuffers(development, buffers, vertex.station);
+		const mapped = sheetBuffers === null
+			? developmentPointAtStationFromBuffers(development, buffers, vertex.station)
+			: developmentPointAtSheetFromBuffers(sheetBuffers, vertex.sheet);
 		positions[index * 3] = mapped.point[0] + mapped.normal[0] * vertex.lateral;
 		positions[index * 3 + 1] = floorY + vertex.height;
 		positions[index * 3 + 2] = mapped.point[1] + mapped.normal[1] * vertex.lateral;
@@ -134,6 +148,7 @@ export function buildWallUnfoldDisplay(
 		height: wall.height,
 		development,
 		buffers,
+		sheetBuffers,
 		mesh,
 		spans,
 		positions,
@@ -148,12 +163,15 @@ export function evaluateWallUnfoldDisplay(
 	display: WallUnfoldDisplay,
 	state: WallUnfoldState
 ): { readonly positions: Float32Array; readonly normals: Float32Array } {
-	evaluateWallDevelopment(display.development, state.u, display.buffers);
+	if (display.sheetBuffers === null) evaluateWallDevelopment(display.development, state.u, display.buffers);
+	else evaluateWallDevelopmentSheet(display.development, state.u, display.sheetBuffers);
 	const positions = new Float32Array(display.mesh.vertices.length * 3);
 	const normals = new Float32Array(display.mesh.vertices.length * 3);
 	for (let index = 0; index < display.mesh.vertices.length; index += 1) {
 		const vertex = display.mesh.vertices[index]!;
-		const mapped = developmentPointAtStationFromBuffers(display.development, display.buffers, vertex.station);
+		const mapped = display.sheetBuffers === null
+			? developmentPointAtStationFromBuffers(display.development, display.buffers, vertex.station)
+			: developmentPointAtSheetFromBuffers(display.sheetBuffers, vertex.sheet);
 		positions[index * 3] = mapped.point[0] + mapped.normal[0] * vertex.lateral;
 		positions[index * 3 + 1] = display.floorY + vertex.height;
 		positions[index * 3 + 2] = mapped.point[1] + mapped.normal[1] * vertex.lateral;
@@ -162,6 +180,22 @@ export function evaluateWallUnfoldDisplay(
 		normals[index * 3 + 2] = mapped.normal[1];
 	}
 	return { positions, normals };
+}
+
+/** One canonical station on the displayed strip, cut-aware for closed Walls. */
+export function unfoldDisplayPointAtStation(
+	display: WallUnfoldDisplay,
+	station: number
+): { point: LayoutVec2; normal: LayoutVec2 } {
+	if (display.sheetBuffers === null) {
+		const mapped = developmentPointAtStationFromBuffers(display.development, display.buffers, station);
+		return { point: mapped.point, normal: mapped.normal };
+	}
+	const sheet = display.development.closed
+		? developmentSheetCoordinate(display.development, station)
+		: station - display.development.anchorStation;
+	const mapped = developmentPointAtSheetFromBuffers(display.sheetBuffers, sheet);
+	return { point: mapped.point, normal: mapped.normal };
 }
 
 /**
@@ -239,11 +273,7 @@ export function pickWallUnfold(
 			display.development.length,
 			Math.max(0, band.stationStart + width / 2)
 		);
-		const center = developmentPointAtStationFromBuffers(
-			display.development,
-			display.buffers,
-			centerStation
-		);
+		const center = unfoldDisplayPointAtStation(display, centerStation);
 		const centerWorld = [center.point[0], display.floorY + (band.sillHeight + band.headHeight) / 2, center.point[1]] as const;
 		const lengthSquared = direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2];
 		if (!(lengthSquared > 0)) continue;
@@ -285,27 +315,71 @@ export function pickWallUnfoldSheetPoint(
 	display: WallUnfoldDisplay,
 	point: LayoutVec2
 ): WallUnfoldPick | null {
-	const inverse = developmentInversePoint(
-		display.development,
-		display.buffers,
-		point,
-		display.spans
-	);
-	if (inverse === null) return null;
-	return {
-		station: inverse.station,
-		lateral: inverse.lateral,
-		height: 0,
-		face: inverse.face,
-		spanIndex: inverse.spanIndex,
-		startKnotId: inverse.startKnotId,
-		endKnotId: inverse.endKnotId,
-		openingId: developmentOpeningIdentity(
+	if (display.sheetBuffers === null) {
+		const inverse = developmentInversePoint(
 			display.development,
-			display.openingBands,
-			inverse.station,
-			0
-		),
+			display.buffers,
+			point,
+			display.spans
+		);
+		if (inverse === null) return null;
+		return {
+			station: inverse.station,
+			lateral: inverse.lateral,
+			height: 0,
+			face: inverse.face,
+			spanIndex: inverse.spanIndex,
+			startKnotId: inverse.startKnotId,
+			endKnotId: inverse.endKnotId,
+			openingId: developmentOpeningIdentity(
+				display.development,
+				display.openingBands,
+				inverse.station,
+				0
+			),
+			distanceMeters: 0
+		};
+	}
+
+	// Closed Walls display cut-to-cut, so canonical development buffers cannot
+	// answer a 2D pointer. Project onto the displayed sheet polyline instead;
+	// its sheet coordinate maps back through the cut to a canonical station.
+	const development = display.development;
+	const cut = development.cutStation ?? development.anchorStation;
+	let nearest: { distance: number; station: number; lateral: number; sheet: number } | null = null;
+	for (let index = 1; index < display.mesh.stations.length; index += 1) {
+		const start = display.mesh.stations[index - 1]!;
+		const end = display.mesh.stations[index]!;
+		if (end.sheet - start.sheet <= 1e-9) continue;
+		const a = developmentPointAtSheetFromBuffers(display.sheetBuffers, start.sheet).point;
+		const b = developmentPointAtSheetFromBuffers(display.sheetBuffers, end.sheet).point;
+		const dx = b[0] - a[0];
+		const dz = b[1] - a[1];
+		const lengthSquared = dx * dx + dz * dz;
+		if (!(lengthSquared > 0)) continue;
+		const amount = Math.min(1, Math.max(0, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dz) / lengthSquared));
+		const closest: LayoutVec2 = [a[0] + dx * amount, a[1] + dz * amount];
+		const distance = Math.hypot(point[0] - closest[0], point[1] - closest[1]);
+		if (nearest !== null && distance >= nearest.distance) continue;
+		const sheet = start.sheet + (end.sheet - start.sheet) * amount;
+		nearest = {
+			distance,
+			station: development.closed ? wrap(cut + sheet, development.length) : sheet + development.anchorStation,
+			lateral: (dx * (point[1] - a[1]) - dz * (point[0] - a[0])) / Math.sqrt(lengthSquared),
+			sheet
+		};
+	}
+	if (nearest === null) return null;
+	const span = spanForStation(display.spans, nearest.station, development.length, development.closed);
+	return {
+		station: nearest.station,
+		lateral: nearest.lateral,
+		height: 0,
+		face: nearest.lateral >= 0 ? 'left' : 'right',
+		spanIndex: span?.index ?? 0,
+		startKnotId: span?.startKnotId ?? '',
+		endKnotId: span?.endKnotId ?? '',
+		openingId: developmentOpeningIdentity(development, display.openingBands, nearest.station, 0),
 		distanceMeters: 0
 	};
 }

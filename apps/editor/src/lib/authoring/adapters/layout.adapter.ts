@@ -1313,8 +1313,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
 			let bendGesture: BendGesture | null = null;
-			/** The keyboard/Card alternative to holding Meta/Ctrl for the next body press. */
-			let bendArmed = false;
 			/**
 			 * The host the Opening reading was entered from. Opening the Ink task
 			 * clears the Stage selection, so Place by offset must remember the Wall
@@ -1694,10 +1692,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const knotMark = handle?.startsWith('layout-wall-knot:') === true;
 					const spanMark = handle?.startsWith('layout-wall-span:') === true;
 					if (handle !== undefined && !knotMark && !spanMark) return false;
-					// D1 — a plain body press is the rigid move, not a bend. The modifier
-					// is captured here, on pointer-down, and stays fixed for the gesture.
-					const shapeModifier = bendArmed || intent.metaKey === true || intent.ctrlKey === true;
-					if (bendArmed) bendArmed = false;
+					// D1 — a plain body press is the rigid move, not a bend. Meta/Ctrl is
+					// captured on pointer-down; the visible span rings are the direct
+					// touch/keyboard alternative and need no hidden armed mode.
+					const shapeModifier = intent.metaKey === true || intent.ctrlKey === true;
 					const press = pointerDatumPoint(adapterContext, intent.css);
 					if (press === null) return false;
 					const source = document.walls.find((candidate) => candidate.id === selected.wallId);
@@ -2221,10 +2219,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					spanStations.push(curved.frame.length);
 					spanStations.sort((a, b) => a - b);
 					const spanMarks: StageHandleDescriptor[] = [];
-					// Shape points are a disclosed reading, not permanent furniture: they
-					// appear only once the Wall's Bend reading is armed (B or a live bend),
-					// so an ordinary body press still owns the move surface.
-					if (bendArmed || live !== null) for (let index = 1; index < spanStations.length; index += 1) {
+					// Shape points are contextual on the selected Wall. A body press
+					// away from a ring still moves; a ring press bends. No hidden arm.
+					for (let index = 1; index < spanStations.length; index += 1) {
 						const from = spanStations[index - 1]!;
 						const to = spanStations[index]!;
 						if (!(to - from > 0.02)) continue;
@@ -2300,7 +2297,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							label: 'Size',
 							reveals: ['layout-wall-length']
 						},
-						...(bendArmed ? [{
+						{
 							// The one span's plain shape point. The selected Wall's body remains
 							// the rigid move surface; this ring is the Bend writer at mid-span.
 							id: 'layout-wall-span:0',
@@ -2314,7 +2311,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							planner: LAYOUT_WALL_BEND_KIND,
 							value: 'Pull to bend',
 							refusal: null
-						} satisfies StageHandleDescriptor] : []),
+						} satisfies StageHandleDescriptor,
 						{
 							id: 'layout-wall-start-mark',
 							draw:{pointRadius:4.6},
@@ -4576,27 +4573,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						});
 					}
 					// C3/D14 — unfold entry lives only in the Card foot; the Stage pill
-					// owns Put back and the face switch. A menu action here would be a
-					// second entry with a different anchor and camera behaviour.
-					const bendArmActions: StageCardAction[] = wallUnfold.isActive(wallId)
-						? []
-						: [
-								{
-									id: 'layout-wall-bend-arm',
-									label: bendArmed ? 'Bend armed' : 'Bend Wall',
-									detail: bendArmed
-										? 'The next body drag bends this Wall. Escape disarms.'
-										: 'Arms Bend for the next body drag, without holding Meta or Ctrl.',
-									run: async () => {
-										bendArmed = !bendArmed;
-										services.stage.notifySurfaceChange();
-										return { kind: 'accepted' };
-									}
-								}
-							];
+					// owns Put back and the face switch. Shape rings are contextual on
+					// the selected Wall; there is no hidden Bend-armed mode.
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [...bendArmActions, ...curveActions,
+						return [...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -4607,7 +4588,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						];
 					}
 					return [
-						...bendArmActions,
 						...curveActions,
 						{
 							id: 'layout-wall-delete',
@@ -4649,25 +4629,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * the live chain has nothing to say about is refused, not swallowed.
 				 */
 				keyIntent(intent: StageKeyboardIntent, adapterContext: StageAdapterContext): boolean {
-					// D2/S6 — B toggles the next body press between move and Bend without a
-					// modifier. Escape disarms it before any other Escape precedence.
-					if (intent.kind === 'type' && intent.key.toLowerCase() === 'b') {
-						// D1 — B arms Bend for either open Wall shape: a straight Wall takes
-						// its first bend on the next body press, a curved Wall bends its
-						// existing chain.
-						if (
-							selectedCurvedWall(adapterContext) === null &&
-							selectedWall(adapterContext) === null
-						) return false;
-						bendArmed = !bendArmed;
-						services.stage.notifySurfaceChange();
-						return true;
-					}
-					if (intent.kind === 'cancel' && bendArmed) {
-						bendArmed = false;
-						services.stage.notifySurfaceChange();
-						return true;
-					}
 					if (openTaskKind !== LAYOUT_INK_TASK) {
 						if (scalarKey(intent)) return true;
 						if (roomMoveKey(intent)) return true;

@@ -23,10 +23,23 @@
 	const state = $derived(wall === null ? null : wallUnfold.state?.wallId === wall.wallId ? wallUnfold.state : null);
 	const nearFace = $derived(roomName === null ? 'Inside' : `${roomName} side`);
 	const farFace = $derived(roomName === null ? 'Outside' : 'Outside');
+	// The Stage root begins a pointer gesture from bubbled presses. Stop the
+	// pill's own press here so its first click is a click, not pointer capture.
+	function holdStage(event: Event): void {
+		event.stopPropagation();
+	}
 </script>
 
 {#if state !== null && wall !== null}
-	<div class="stage-pill" data-stage-pill data-stage-pill-u={Math.round(state.u * 100)}>
+	<div
+		class="stage-pill"
+		role="toolbar"
+		aria-label="Wall sheet"
+		tabindex="-1"
+		data-stage-pill
+		data-stage-pill-u={Math.round(state.u * 100)}
+		onpointerdown={holdStage}
+	>
 		<span class="reading">Unrolled · {name ?? 'Wall'}</span>
 		<span class="seg" role="group" aria-label="Sheet face">
 			<button
@@ -51,14 +64,16 @@
 <style>
 	.stage-pill {
 		position: absolute;
-		top: 10px;
+		/* Below the top 2D/3D row; the centred narrow pill keeps the side Card
+		   and the top controls in their own safe areas. */
+		top: calc(env(safe-area-inset-top, 0px) + 56px);
 		left: 50%;
-		z-index: 14;
+		z-index: 20;
 		pointer-events: auto;
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		max-width: calc(100% - 40px);
+		max-width: min(440px, calc(100% - 32px));
 		padding: 5px 6px 5px 12px;
 		transform: translateX(-50%);
 		border-radius: 99px;

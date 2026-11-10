@@ -141,6 +141,9 @@ class WallUnfoldStore {
 
 	setU(wall: CompiledPhysicalWall, amount: number): void {
 		if (this.state === null) return;
+		// A scrub is deliberate input: stop an entry/exit fold where it is so the
+		// sheet follows the hand instead of fighting the animation.
+		this.#cancelFrame();
 		this.state = setWallUnfoldAmount(this.state, amount);
 		this.#notify();
 	}
@@ -194,12 +197,15 @@ class WallUnfoldStore {
 			return;
 		}
 		const wallId = wall.wallId;
+		const fromU = this.state?.u ?? target;
 		const start = performance.now();
 		const step = (now: number): void => {
 			if (this.state === null || this.state.wallId !== wallId) return;
 			const progress = Math.min(1, (now - start) / (FOLD_SECONDS * 1000));
 			const eased = smoothstep(progress);
-			this.state = { ...this.state, u: target === 1 ? eased : 1 - eased };
+			// Refold from the amount on screen, not from an assumed fully open
+			// sheet: a partial scrub must not jump before Put back folds it.
+			this.state = { ...this.state, u: fromU + (target - fromU) * eased };
 			this.#notify();
 			if (progress < 1) {
 				this.#frame = requestAnimationFrame(step);
