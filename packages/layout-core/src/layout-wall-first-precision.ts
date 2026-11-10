@@ -2753,15 +2753,15 @@ function validateWallFirstTopologyPass(
 		if (intersection.kind === 'shared-explicit-junction') {
 			// The classifier intentionally gives explicit connectivity priority;
 			// still reject two collinear spans that overlap beyond the shared
-			// endpoint, which is not a valid graph edge. A two-Wall curved lens has
-			// the same chord, but its two curves are the distinct boundary edges;
-			// the sampled curve gate below proves they only meet at both endpoints.
-			const twoWallCurvedLens =
+			// endpoint, which is not a valid graph edge. A two-Wall lens has the
+			// same chord, but a curved side is the distinct boundary edge; the
+			// sampled curve gate below proves the pair only meets at both
+			// endpoints. A straight side plus a curved side is the D-shaped Room.
+			const twoWallLens =
 				shared.length === 2 &&
-				a.centerline.kind === 'cubic-chain' &&
-				b.centerline.kind === 'cubic-chain';
+				(a.centerline.kind === 'cubic-chain' || b.centerline.kind === 'cubic-chain');
 			const geometric = classifyWallIntersection(segmentA, segmentB, []);
-			if (geometric.kind === 'collinear-overlap' && !twoWallCurvedLens) {
+			if (geometric.kind === 'collinear-overlap' && !twoWallLens) {
 				return topologyFailure(a.id, b.id, 'Walls overlap beyond their explicit shared Junction');
 			}
 			return undefined;

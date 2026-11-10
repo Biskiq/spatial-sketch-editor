@@ -21,9 +21,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	buildCorrespondenceComponents,
+	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
 	extractBoundaryCandidateFaces,
+	hasBlockingLayoutIssues,
 	interiorWitness,
 	planConvertWallToCurve,
 	planMoveWallCurveKnot,
@@ -177,6 +179,36 @@ describe('P23.11 slice 3 — curved Room face polygons', () => {
 		expect(validateWallFirstLayoutDocument(lens).success).toBe(true);
 		expect(validateWallFirstTopology(lens)).toBeUndefined();
 		expect(roomCorrespondence(lens)).toEqual(['1→1']);
+	});
+
+	it('resolves a two-Wall D-shaped Room with one straight side', () => {
+		const mixed = documentOf(
+			{ 'j-a': [0, 0], 'j-b': [6, 0] },
+			[
+				{ id: 'wall-top', start: 'j-a', end: 'j-b', centerline: curve([0, 0], [6, 0], [3, 2]) },
+				{ id: 'wall-bottom', start: 'j-b', end: 'j-a' }
+			],
+			[
+				{
+					id: 'room-d',
+					name: 'D',
+					boundary: [
+						{ wallId: 'wall-top', direction: 'reverse' },
+						{ wallId: 'wall-bottom', direction: 'reverse' }
+					],
+					floorThickness: 0.1,
+					ceilingThickness: 0.1
+				}
+			]
+		);
+		expect(validateWallFirstLayoutDocument(mixed).success).toBe(true);
+		expect(validateWallFirstTopology(mixed)).toBeUndefined();
+		expect(roomBoundaryPolygon(mixed, 'room-d')).not.toBeNull();
+		const faces = extractBoundaryCandidateFaces(mixed).faces;
+		expect(faces).toHaveLength(1);
+		expect(faces[0]?.boundary).toEqual(mixed.rooms[0]!.boundary);
+		const compiled = compileWallFirstLayoutGeometry(mixed);
+		expect(hasBlockingLayoutIssues(compiled.issues)).toBe(false);
 	});
 
 	it('keeps a two-Wall lens Room through a bend and a canonical reload', () => {

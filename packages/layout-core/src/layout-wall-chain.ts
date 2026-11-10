@@ -1569,7 +1569,13 @@ function validateChainTopology(document: LayoutDocumentWallFirst): WallChainReje
 			const classified = classifyWallIntersection(segments[first]!, segments[second]!, shared);
 			if (classified.kind === 'shared-explicit-junction') {
 				const geometric = classifyWallIntersection(segments[first]!, segments[second]!, []);
-				if (geometric.kind === 'collinear-overlap') {
+				const sharesBothJunctions =
+					(a.startJunctionId === b.startJunctionId && a.endJunctionId === b.endJunctionId) ||
+					(a.startJunctionId === b.endJunctionId && a.endJunctionId === b.startJunctionId);
+				const twoWallLens =
+					sharesBothJunctions &&
+					(a.centerline.kind === 'cubic-chain' || b.centerline.kind === 'cubic-chain');
+				if (geometric.kind === 'collinear-overlap' && !twoWallLens) {
 					return {
 						code: 'collinear_overlap',
 						message: `Walls '${a.id}' and '${b.id}' overlap beyond their explicit shared junction`,
