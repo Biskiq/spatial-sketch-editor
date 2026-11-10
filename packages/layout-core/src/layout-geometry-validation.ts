@@ -107,19 +107,20 @@ export function validatePreparedLayoutRoomGeometry(
 	}
 	// A closed Wall is ONE segment whose start and end are the same point. Its
 	// boundary is genuinely closed and encloses area, so the three-segment floor
-	// is about distinct boundary edges, not Wall reference count. Two curved
-	// Walls form the same kind of closed boundary when they meet at both ends
-	// (the two-Wall lens); an open one- or two-segment chain still fails.
+	// is about distinct boundary edges, not Wall reference count. Two Walls form
+	// the same kind of closed boundary when they meet at both ends and at least
+	// one is curved: two cubics are the lens, and a straight chord plus a cubic
+	// is the D-shaped Room. An open one- or two-segment chain still fails.
 	const singleClosedCurve =
 		segments.length === 1 &&
 		segments[0]!.kind === 'cubic-chain' &&
 		pointsEqual(segmentEndpoints(segments[0]!).start, segmentEndpoints(segments[0]!).end);
-	const twoWallCurvedLens =
+	const twoWallLens =
 		segments.length === 2 &&
-		segments.every((segment) => segment.kind === 'cubic-chain') &&
+		segments.some((segment) => segment.kind === 'cubic-chain') &&
 		pointsEqual(segmentEndpoints(segments[0]!).end, segmentEndpoints(segments[1]!).start) &&
 		pointsEqual(segmentEndpoints(segments[1]!).end, segmentEndpoints(segments[0]!).start);
-	const closedCurveBoundary = singleClosedCurve || twoWallCurvedLens;
+	const closedCurveBoundary = singleClosedCurve || twoWallLens;
 	if (segments.length < 3 && !closedCurveBoundary) {
 		issues.push({ path: `${path}.boundary.segments`, code: 'too_few_segments', message: 'A room boundary needs at least three segments', targetId: room.id });
 	}
@@ -160,7 +161,7 @@ export function validatePreparedLayoutRoomGeometry(
 						: segmentEndpoints(segments[first]!).end
 					: undefined;
 				// A two-Wall lens shares BOTH endpoints, so both are legitimate joins.
-				const otherSharedEndpoint = twoWallCurvedLens && first === 0 && second === 1
+				const otherSharedEndpoint = twoWallLens && first === 0 && second === 1
 					? segmentEndpoints(segments[0]!).end
 					: undefined;
 				if (sampledPolylineIntersects(firstSamples, secondSamples, CURVE_SELF_INTERSECTION_TOLERANCE, sharedEndpoint, otherSharedEndpoint)) {

@@ -316,19 +316,20 @@ function parseDocument(
 	// H3 minimum invariant: duplicate Walls between the same two Junctions are
 	// invalid — in either direction (a reversed pair is the same physical wall
 	// with opposed canonical orientation, not two Walls). The one exception is
-	// the two-Wall curved lens: two distinct cubic Walls between two distinct
-	// Junctions enclose a real region. Topology still has to prove that loop
-	// closed, simple and bounded; here the codec only admits the candidate shape.
+	// a two-Wall lens: two distinct Walls between two distinct Junctions enclose
+	// a real region when at least one of them is curved. A straight chord plus
+	// a bowed Wall is the ordinary D-shaped Room; two cubic Walls are the lens.
+	// Topology still has to prove that loop closed, simple and bounded; here the
+	// codec only admits the candidate shape.
 	const seenWallPairs = new Map<string, { wall: LayoutWall; count: number }>();
 	for (const [index, wall] of walls.entries()) {
 		const pairKey = [wall.startJunctionId, wall.endJunctionId].sort().join('|');
 		const previous = seenWallPairs.get(pairKey);
-		const twoWallCurvedLens =
+		const twoWallLens =
 			previous?.count === 1 &&
 			previous.wall.startJunctionId !== previous.wall.endJunctionId &&
-			previous.wall.centerline.kind === 'cubic-chain' &&
-			wall.centerline.kind === 'cubic-chain';
-		if (previous !== undefined && !twoWallCurvedLens) {
+			(previous.wall.centerline.kind === 'cubic-chain' || wall.centerline.kind === 'cubic-chain');
+		if (previous !== undefined && !twoWallLens) {
 			addIssue(
 				issues,
 				`${path}.walls[${index}]`,

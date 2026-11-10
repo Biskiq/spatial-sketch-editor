@@ -458,6 +458,18 @@ describe('C3 checkpoint 5 — unfold session', () => {
 		expect(distance(pin, leftEdge)).toBeGreaterThan(0.1);
 		expect(distance(pin, rightEdge)).toBeGreaterThan(0.1);
 
+		// The owner's partial states must stay one arc of (1 - u) full turns.
+		// The chord between the two cut copies is therefore L·sinc((1 - u)π),
+		// not a coiled full turn; 30/40/64/80 were the frames that exposed the
+		// spurious half-turn branch.
+		for (const u of [0.3, 0.4, 0.5, 0.64, 0.8]) {
+			evaluateWallDevelopmentSheet(development, u, sheet);
+			const gap = distance(pointAtSample(0), pointAtSample(count - 1));
+			const turn = (1 - u) * Math.PI * 2;
+			const expectedGap = wall.length * (Math.sin(turn / 2) / (turn / 2));
+			expect(gap).toBeCloseTo(expectedGap, 2);
+		}
+
 		// 100%: one straight strip, pin between the halves, cut edges at the ends.
 		evaluateWallDevelopmentSheet(development, 1, sheet);
 		const start = pointAtSample(0);

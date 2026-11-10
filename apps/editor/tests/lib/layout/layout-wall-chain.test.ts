@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+	deriveChainSpans,
 	deriveLayoutWallRole,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	planWallChain as planWallChainRaw,
+	wallCubicChain,
 	planWallSegment as planWallSegmentRaw,
 	validateWallFirstTopology,
 	wallsShareTopologyComponent,
@@ -113,6 +115,41 @@ function junctionIdAt(document: LayoutDocumentWallFirst, x: number, z: number): 
 }
 
 describe('P23.9 open wall chains', () => {
+	it('closes a straight Wall onto a curved Wall into one Room', () => {
+		const baseline = baseDocument();
+		baseline.junctions = [
+			{ id: 'j-a', point: [0, 0] },
+			{ id: 'j-b', point: [6, 0] }
+		];
+		baseline.walls = [
+			{
+				id: 'wall-top',
+				startJunctionId: 'j-a',
+				endJunctionId: 'j-b',
+				thickness: 0.2,
+				height: 3,
+				centerline: wallCubicChain(
+					[{ id: 'wall-top:knot:1', point: [3, 2] }],
+					deriveChainSpans([[0, 0], [3, 2], [6, 0]])
+				)
+			}
+		];
+		const plan = expectSuccess(
+			planWallChain({
+				baseline,
+				points: [p(6, 0), p(0, 0)],
+				close: false,
+				endpointJunctionSnaps: [
+					{ pointIndex: 0, junctionId: 'j-b' },
+					{ pointIndex: 1, junctionId: 'j-a' }
+				]
+			})
+		);
+		expect(plan.document.walls).toHaveLength(2);
+		expect(plan.document.rooms).toHaveLength(1);
+		expect(plan.createdWallIds).toHaveLength(1);
+	});
+
 	it('commits an open two-point chain once and creates no Room', () => {
 		const baseline = baseDocument();
 		const plan = expectSuccess(
