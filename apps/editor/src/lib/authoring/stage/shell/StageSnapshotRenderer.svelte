@@ -120,9 +120,9 @@
 				target?.dispose();
 				target = new WebGLRenderTarget(WIDTH, height, { type: UnsignedByteType });
 			}
-			// The renderer's setViewport/setScissor apply the screen DPR even with a
-			// render target bound. This target's own viewport is already in target
-			// pixels; setRenderTarget installs it without that scaling.
+			// This target's viewport is already in target pixels. r187 applies screen
+			// DPR in setViewport/setScissor only on the default framebuffer;
+			// setRenderTarget installs this viewport without scaling it.
 			target.viewport.set(0, 0, WIDTH, height);
 			target.scissor.set(0, 0, WIDTH, height);
 			target.scissorTest = false;
