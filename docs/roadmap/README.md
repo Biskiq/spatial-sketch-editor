@@ -12,6 +12,7 @@ owns claims/review; [focus](../../focus.md) owns current priority.
 | --- | --- |
 | Expressive Walls, Circular Rooms and Wall Unfolding (draft plan) | [Implementation plan](./t1-spatial-world/expressive-walls/implementation-plan.md) |
 | Prepared visitor publication | [Release and delivery](./t4-release/README.md) |
+| Look & Atmosphere: Sky, Finishes and Lights (proposal for owner review) | [Direction and batch](./t2-look-atmosphere/README.md), [review page](./t2-look-atmosphere/review.html) |
 | Native geometric depth / Object Studio | [T5 umbrella and first capability](./t5-expressive-geometry/README.md) |
 
 These proposals preserve unresolved choices and substantive technical design. They do not
