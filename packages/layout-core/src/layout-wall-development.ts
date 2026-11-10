@@ -185,6 +185,12 @@ export type WallDevelopmentMeshHole = {
   readonly sheetEnd: number;
   readonly sillHeight: number;
   readonly headHeight: number;
+  /**
+   * The compiled Opening's top boundary in hole-local sheet/metres. The first
+   * point is the left spring and the last the right spring; the apex is a real
+   * vertex, not a rectangular approximation. Omitted for rectangular Openings.
+   */
+  readonly topBoundary?: readonly LayoutVec2[];
 };
 
 export type WallDevelopmentMeshOptions = {
@@ -914,9 +920,34 @@ export type WallDevelopmentOpeningBand = {
   readonly stationEnd: number;
   readonly sillHeight: number;
   readonly headHeight: number;
+  /** Compiled arch/pointed top boundary in Opening-local metres. */
+  readonly topBoundary?: readonly LayoutVec2[];
   /** Door openings carry a leaf on the developed sheet. */
   readonly kind?: 'door' | 'window';
 };
+
+/** The Opening's compiled top elevation at a local station offset. */
+export function developmentOpeningTopAt(
+  band: WallDevelopmentOpeningBand,
+  localStation: number
+): number {
+  if (band.topBoundary === undefined || band.topBoundary.length === 0) return band.headHeight;
+  const width = band.stationEnd - band.stationStart;
+  const local = Math.min(width, Math.max(0, localStation));
+  const points = band.topBoundary;
+  if (local <= points[0]![0]! + WALL_DEVELOPMENT_TOLERANCE) {
+    return band.sillHeight + points[0]![1]!;
+  }
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]!;
+    const current = points[index]!;
+    if (local > current[0]! + WALL_DEVELOPMENT_TOLERANCE) continue;
+    const span = current[0]! - previous[0]!;
+    const amount = span > WALL_DEVELOPMENT_TOLERANCE ? (local - previous[0]!) / span : 0;
+    return band.sillHeight + previous[1]! + (current[1]! - previous[1]!) * amount;
+  }
+  return band.sillHeight + points.at(-1)![1]!;
+}
 
 /**
  * The Opening identity under a developed point, or `null` for solid Wall.
@@ -932,16 +963,17 @@ export function developmentOpeningIdentity(
   const target = development.closed ? wrap(station, development.length) : station;
   for (const band of bands) {
     if (height < band.sillHeight - WALL_DEVELOPMENT_TOLERANCE) continue;
-    if (height > band.headHeight + WALL_DEVELOPMENT_TOLERANCE) continue;
     const start = development.closed ? wrap(band.stationStart, development.length) : band.stationStart;
     const width = band.stationEnd - band.stationStart;
     if (!(width > 0)) continue;
     if (development.closed) {
       const offset = wrap(target - start, development.length);
-      if (offset <= width + WALL_DEVELOPMENT_TOLERANCE) return band.openingId;
+      if (offset > width + WALL_DEVELOPMENT_TOLERANCE) continue;
+      if (height <= developmentOpeningTopAt(band, offset) + WALL_DEVELOPMENT_TOLERANCE) return band.openingId;
     } else if (
       target >= start - WALL_DEVELOPMENT_TOLERANCE &&
-      target <= band.stationEnd + WALL_DEVELOPMENT_TOLERANCE
+      target <= band.stationEnd + WALL_DEVELOPMENT_TOLERANCE &&
+      height <= developmentOpeningTopAt(band, target - start) + WALL_DEVELOPMENT_TOLERANCE
     ) {
       return band.openingId;
     }
@@ -1117,15 +1149,24 @@ export function buildDevelopedWallMesh(
       sheet: entry.sheet,
       spanIndex: spanForStation(options.spans, entry.station, development.length, development.closed)?.index ?? 0
     });
-  }	const openings = options.openings ?? [];
-	const insideOpening = (sheet: number, height: number): boolean =>
-		openings.some(
-			(hole) =>
-				sheet > hole.sheetStart + DEVELOPMENT_EPSILON &&
-				sheet < hole.sheetEnd - DEVELOPMENT_EPSILON &&
-				height > hole.sillHeight + DEVELOPMENT_EPSILON &&
-				height < hole.headHeight - DEVELOPMENT_EPSILON
-		);
+  }
+	const openings = options.openings ?? [];
+	const topAt = (hole: WallDevelopmentMeshHole, sheet: number): number => {
+		if (hole.topBoundary === undefined || hole.topBoundary.length === 0) return hole.headHeight;
+		const width = hole.sheetEnd - hole.sheetStart;
+		const local = Math.min(width, Math.max(0, sheet - hole.sheetStart));
+		const points = hole.topBoundary;
+		if (local <= points[0]![0]! + DEVELOPMENT_EPSILON) return hole.sillHeight + points[0]![1]!;
+		for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+			const previous = points[pointIndex - 1]!;
+			const current = points[pointIndex]!;
+			if (local > current[0]! + DEVELOPMENT_EPSILON) continue;
+			const span = current[0]! - previous[0]!;
+			const amount = span > DEVELOPMENT_EPSILON ? (local - previous[0]!) / span : 0;
+			return hole.sillHeight + previous[1]! + (current[1]! - previous[1]!) * amount;
+		}
+		return hole.sillHeight + points.at(-1)![1]!;
+	};
 
 	for (let index = 1; index < ordered.length; index += 1) {
 		const previous = ordered[index - 1]!;
@@ -1134,12 +1175,10 @@ export function buildDevelopedWallMesh(
 		const end = ordered[index]!;
 		const stationAt = (sheet: number): number =>
 			start.station + ((sheet - start.sheet) / (end.sheet - start.sheet)) * (end.station - start.station);
-		// The display strip is cut at every Opening edge and sill/head so a void is
-		// a real absence of triangles rather than a painted rectangle. Without
-		// openings these sets contain only the segment's own corners, preserving
-		// the original strip exactly.
+		// Cut at every Opening edge and every compiled arch-profile knot. A void is
+		// a real absence of triangles, and the arch boundary is carried by the same
+		// sampled top boundary the canonical renderer uses.
 		const sheetCuts = new Set<number>([start.sheet, end.sheet]);
-		const heightCuts = new Set<number>([0, options.height]);
 		for (const hole of openings) {
 			if (hole.sheetEnd <= start.sheet + DEVELOPMENT_EPSILON) continue;
 			if (hole.sheetStart >= end.sheet - DEVELOPMENT_EPSILON) continue;
@@ -1148,14 +1187,14 @@ export function buildDevelopedWallMesh(
 					sheetCuts.add(sheet);
 				}
 			}
-			for (const height of [hole.sillHeight, hole.headHeight]) {
-				if (height > DEVELOPMENT_EPSILON && height < options.height - DEVELOPMENT_EPSILON) {
-					heightCuts.add(height);
+			for (const point of hole.topBoundary ?? []) {
+				const sheet = hole.sheetStart + point[0]!;
+				if (sheet > start.sheet + DEVELOPMENT_EPSILON && sheet < end.sheet - DEVELOPMENT_EPSILON) {
+					sheetCuts.add(sheet);
 				}
 			}
 		}
 		const sheets = [...sheetCuts].sort((a, b) => a - b);
-		const heights = [...heightCuts].sort((a, b) => a - b);
 		for (let sheetIndex = 1; sheetIndex < sheets.length; sheetIndex += 1) {
 			const sheet0 = sheets[sheetIndex - 1]!;
 			const sheet1 = sheets[sheetIndex]!;
@@ -1163,31 +1202,63 @@ export function buildDevelopedWallMesh(
 			const station0 = stationAt(sheet0);
 			const station1 = stationAt(sheet1);
 			const sheetMid = (sheet0 + sheet1) / 2;
-			for (let heightIndex = 1; heightIndex < heights.length; heightIndex += 1) {
-				const height0 = heights[heightIndex - 1]!;
-				const height1 = heights[heightIndex]!;
-				if (height1 - height0 <= DEVELOPMENT_EPSILON) continue;
-				if (insideOpening(sheetMid, (height0 + height1) / 2)) continue;
-				const lb0 = pushVertex(station0, sheet0, -half, height0);
-				const lt0 = pushVertex(station0, sheet0, -half, height1);
-				const rb0 = pushVertex(station0, sheet0, half, height0);
-				const rt0 = pushVertex(station0, sheet0, half, height1);
-				const lb1 = pushVertex(station1, sheet1, -half, height0);
-				const lt1 = pushVertex(station1, sheet1, -half, height1);
-				const rb1 = pushVertex(station1, sheet1, half, height0);
-				const rt1 = pushVertex(station1, sheet1, half, height1);
-				pushTriangle(lb0, lt0, lt1, 'left', station0, station1, sheet0, sheet1);
-				pushTriangle(lb0, lt1, lb1, 'left', station0, station1, sheet0, sheet1);
-				pushTriangle(rb0, rb1, rt1, 'right', station0, station1, sheet0, sheet1);
-				pushTriangle(rb0, rt1, rt0, 'right', station0, station1, sheet0, sheet1);
-				if (Math.abs(height1 - options.height) <= DEVELOPMENT_EPSILON) {
-					pushTriangle(lt0, rt0, rt1, 'top', station0, station1, sheet0, sheet1);
-					pushTriangle(lt0, rt1, lt1, 'top', station0, station1, sheet0, sheet1);
+			const active = openings.filter((hole) =>
+				hole.sheetStart < sheet1 - DEVELOPMENT_EPSILON &&
+				hole.sheetEnd > sheet0 + DEVELOPMENT_EPSILON
+			);
+			const addSideBand = (
+				bottom0: number,
+				bottom1: number,
+				top0: number,
+				top1: number
+			): void => {
+				const low0 = Math.max(0, Math.min(options.height, bottom0));
+				const low1 = Math.max(0, Math.min(options.height, bottom1));
+				const high0 = Math.max(0, Math.min(options.height, top0));
+				const high1 = Math.max(0, Math.min(options.height, top1));
+				if (high0 - low0 <= DEVELOPMENT_EPSILON && high1 - low1 <= DEVELOPMENT_EPSILON) return;
+				for (const [lateral, face] of [[-half, 'left'], [half, 'right']] as const) {
+					const a = pushVertex(station0, sheet0, lateral, low0);
+					const b = pushVertex(station1, sheet1, lateral, low1);
+					const c = pushVertex(station1, sheet1, lateral, high1);
+					const d = pushVertex(station0, sheet0, lateral, high0);
+					if (high0 - low0 <= DEVELOPMENT_EPSILON) {
+						pushTriangle(a, b, c, face, station0, station1, sheet0, sheet1);
+					} else if (high1 - low1 <= DEVELOPMENT_EPSILON) {
+						pushTriangle(a, b, d, face, station0, station1, sheet0, sheet1);
+					} else {
+						pushTriangle(a, b, c, face, station0, station1, sheet0, sheet1);
+						pushTriangle(a, c, d, face, station0, station1, sheet0, sheet1);
+					}
 				}
-				if (Math.abs(height0) <= DEVELOPMENT_EPSILON) {
-					pushTriangle(lb0, lb1, rb1, 'bottom', station0, station1, sheet0, sheet1);
-					pushTriangle(lb0, rb1, rb0, 'bottom', station0, station1, sheet0, sheet1);
+			};
+			if (active.length === 0) {
+				addSideBand(0, 0, options.height, options.height);
+			} else {
+				for (const hole of active) {
+					if (hole.sillHeight > DEVELOPMENT_EPSILON) addSideBand(0, 0, hole.sillHeight, hole.sillHeight);
+					const top0 = topAt(hole, sheet0);
+					const top1 = topAt(hole, sheet1);
+					addSideBand(top0, top1, options.height, options.height);
 				}
+			}
+			const topSolid = active.every((hole) => topAt(hole, sheetMid) < options.height - DEVELOPMENT_EPSILON);
+			const bottomSolid = active.every((hole) => hole.sillHeight > DEVELOPMENT_EPSILON);
+			if (topSolid) {
+				const lt0 = pushVertex(station0, sheet0, -half, options.height);
+				const rt0 = pushVertex(station0, sheet0, half, options.height);
+				const lt1 = pushVertex(station1, sheet1, -half, options.height);
+				const rt1 = pushVertex(station1, sheet1, half, options.height);
+				pushTriangle(lt0, rt0, rt1, 'top', station0, station1, sheet0, sheet1);
+				pushTriangle(lt0, rt1, lt1, 'top', station0, station1, sheet0, sheet1);
+			}
+			if (bottomSolid) {
+				const lb0 = pushVertex(station0, sheet0, -half, 0);
+				const rb0 = pushVertex(station0, sheet0, half, 0);
+				const lb1 = pushVertex(station1, sheet1, -half, 0);
+				const rb1 = pushVertex(station1, sheet1, half, 0);
+				pushTriangle(lb0, lb1, rb1, 'bottom', station0, station1, sheet0, sheet1);
+				pushTriangle(lb0, rb1, rb0, 'bottom', station0, station1, sheet0, sheet1);
 			}
 		}
 	}

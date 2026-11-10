@@ -63,7 +63,9 @@ import {
 	sameInspectionPose,
 	unfoldEdgePathLength,
 	wallUnfoldFitBounds,
+	wallUnfoldInsideSide,
 	wallUnfoldShouldReturn,
+	wallUnfoldSideAngle,
 	wallUnfoldSideTowardCamera,
 	wallUnfoldViewCentreStation,
 	refoldWallUnfold,
@@ -82,6 +84,7 @@ import {
 	buildWallUnfoldDisplay,
 	evaluateWallUnfoldDisplay,
 	pickWallUnfold,
+	unfoldDisplayAnchor,
 	pickWallUnfoldSheetPoint,
 	unfoldDisplayPointAtStation,
 	type WallUnfoldRay
@@ -314,11 +317,12 @@ function withOpening(
 	wallId: string,
 	offset: number,
 	width: number,
-	id: string
+	id: string,
+	profile: 'rectangular' | 'rounded' | 'pointed' = 'rectangular'
 ): LayoutDocumentWallFirst {
 	const placed = planCreateWallFirstOpening(
 		document,
-		{ wallId, kind: 'window', offset, width, height: 1.2, sillHeight: 1 },
+		{ wallId, kind: 'window', offset, width, height: 1.2, sillHeight: 1, profile },
 		mintLayoutIdCapture(() => id),
 		document.floor.id
 	);
@@ -540,6 +544,66 @@ describe('C3 checkpoint 5 — unfold session', () => {
 	});
 });
 
+describe('C3 checkpoint 5 — Opening profiles on the developed sheet', () => {
+	it.each([
+		['straight', 'rectangular', straightFixture()],
+		['straight', 'rounded', straightFixture()],
+		['straight', 'pointed', straightFixture()],
+		['curved', 'rectangular', sCurveFixture()],
+		['curved', 'rounded', sCurveFixture()],
+		['curved', 'pointed', sCurveFixture()]
+	] as const)(
+		'preserves a %s Wall %s Opening profile through the sheet and inverse identity',
+		(_host, profile, fixture) => {
+			const wall = compiledWall(fixture);
+			const document = withOpening(
+				fixture.document,
+				fixture.wallId,
+				wall.length * 0.35,
+				1,
+				`unfold-profile-${profile}`,
+				profile
+			);
+			const compiled = compileWallFirstLayoutGeometry(document).geometry.walls.find(
+				(candidate) => candidate.wallId === fixture.wallId
+			)!;
+			const state = createWallUnfoldState({
+				wall: compiled,
+				anchorStation: wall.length * 0.2,
+				entry: ENTRY,
+				u: 1
+			});
+			const display = buildWallUnfoldDisplay(compiled, state);
+			expect(display).not.toBeNull();
+			if (display === null) return;
+			const band = display.openingBands[0]!;
+			const hole = display.openingHoles[0]!;
+			if (profile === 'rectangular') {
+				expect(band.topBoundary).toBeUndefined();
+				expect(hole.topBoundary).toBeUndefined();
+			} else {
+				expect(band.topBoundary?.length).toBeGreaterThan(2);
+				expect(hole.topBoundary?.length).toBeGreaterThan(2);
+				const apex = Math.max(...band.topBoundary!.map((point) => point[1]!));
+				expect(apex).toBeCloseTo(1.2, 6);
+				const centerSheet = hole.sheetStart + (hole.sheetEnd - hole.sheetStart) / 2;
+				expect(display.mesh.vertices.some((vertex) =>
+					Math.abs(vertex.sheet - centerSheet) < 0.2 &&
+					Math.abs(vertex.height - (band.sillHeight + apex)) < 1e-6
+				)).toBe(true);
+			}
+			const openingId = band.openingId;
+			const center = band.stationStart + (band.stationEnd - band.stationStart) / 2;
+			expect(developmentOpeningIdentity(display.development, display.openingBands, center, band.sillHeight + 1.19)).toBe(openingId);
+			if (profile === 'rectangular') {
+				expect(developmentOpeningIdentity(display.development, display.openingBands, band.stationStart + 0.02, band.sillHeight + 1.19)).toBe(openingId);
+			} else {
+				expect(developmentOpeningIdentity(display.development, display.openingBands, band.stationStart + 0.02, band.sillHeight + 1.19)).toBeNull();
+			}
+		}
+	);
+});
+
 describe('C3 checkpoint 5 — inverse picking on every geometry', () => {
 	it.each(allFixtures().map((fixture) => [fixture.label, fixture] as const))(
 		'round-trips station, span and face at u = 0, 0.5 and 1: %s',
@@ -757,6 +821,86 @@ describe('C3 checkpoint 5 — canonical Opening edits from the sheet', () => {
 		const scrubbed = setWallUnfoldAmount(state, 0.9);
 		expect(scrubbed.entry).toBe(state.entry);
 		expect(scrubbed.entry.pose).toEqual(ENTRY.pose);
+	});
+});
+
+describe('C3 revision 2 — one Room-facing half-turn', () => {
+	it('resolves Inside from the derived Room winding, including closed Walls', () => {
+		const wall = compiledWall(circleFixture());
+		const forward = [{ wallId: wall.wallId, direction: 'forward' as const }];
+		const reverse = [{ wallId: wall.wallId, direction: 'reverse' as const }];
+		expect(wallUnfoldInsideSide({ wallId: wall.wallId, boundaries: forward })).toBe(1);
+		expect(wallUnfoldInsideSide({ wallId: wall.wallId, boundaries: reverse })).toBe(-1);
+		// A dividing Wall has a Room on both sides; the Camera chooses which one
+		// the creator is reading, while the labels still follow the real surface.
+		expect(wallUnfoldInsideSide({
+			wallId: wall.wallId,
+			boundaries: [...forward, ...reverse],
+			cameraSide: -1
+		})).toBe(-1);
+		expect(wallUnfoldInsideSide({ wallId: wall.wallId, boundaries: [] })).toBe(1);
+	});
+
+	it('turns the display and inverse pick together around the fixed pin', () => {
+		const fixture = straightFixture();
+		const wall = compiledWall(fixture);
+		const state = stateFor(fixture, wall.length / 2, 1);
+		const display = buildWallUnfoldDisplay(wall, state, { floorY: 12, sideAngle: 0 });
+		expect(display).not.toBeNull();
+		if (display === null) return;
+		const angle = wallUnfoldSideAngle(-1);
+		const anchor = unfoldDisplayAnchor(display);
+		const turned = evaluateWallUnfoldDisplay(display, state, angle);
+		for (let index = 0; index < display.mesh.vertices.length; index += 1) {
+			expect(turned.positions[index * 3]).toBeCloseTo(2 * anchor[0] - display.positions[index * 3]!, 6);
+			expect(turned.positions[index * 3 + 2]).toBeCloseTo(2 * anchor[1] - display.positions[index * 3 + 2]!, 6);
+			expect(turned.positions[index * 3 + 1]).toBeCloseTo(display.positions[index * 3 + 1]!, 9);
+		}
+		const station = wall.length * 0.42;
+		const point = unfoldDisplayPointAtStation(display, station, angle);
+		const picked = pickWallUnfold(
+			{ ...display, positions: turned.positions },
+			{ origin: [point.point[0], 16, point.point[1]], direction: [0, -1, 0] }
+		);
+		expect(picked?.station).toBeCloseTo(station, 2);
+		const inverse = pickWallUnfoldSheetPoint(
+			{ ...display, positions: turned.positions },
+			point.point,
+			angle
+		);
+		expect(inverse?.station).toBeCloseTo(station, 2);
+	});
+
+	it('selects the same Opening on either presented face', () => {
+		const fixture = straightFixture();
+		const wall = compiledWall(fixture);
+		const document = withOpening(fixture.document, fixture.wallId, 2, 1, 'face-opening');
+		const compiled = compileWallFirstLayoutGeometry(document).geometry.walls.find(
+			(candidate) => candidate.wallId === fixture.wallId
+		)!;
+		const state = createWallUnfoldState({
+			wall: compiled,
+			anchorStation: 2.5,
+			entry: ENTRY,
+			u: 1
+		});
+		const display = buildWallUnfoldDisplay(compiled, state, { floorY: 12, sideAngle: 0 });
+		expect(display).not.toBeNull();
+		if (display === null) return;
+		const band = display.openingBands[0]!;
+		for (const angle of [0, Math.PI]) {
+			const station = band.stationStart + (band.stationEnd - band.stationStart) / 2;
+			const point = unfoldDisplayPointAtStation(display, station, angle);
+			const turned = evaluateWallUnfoldDisplay(display, state, angle);
+			const pick = pickWallUnfold(
+				{ ...display, positions: turned.positions },
+				{
+					origin: [point.point[0], 12 + (band.sillHeight + band.headHeight) / 2, point.point[1] + 10],
+					direction: [0, 0, -1]
+				}
+			);
+			expect(pick?.openingId).toBe(band.openingId);
+		}
 	});
 });
 

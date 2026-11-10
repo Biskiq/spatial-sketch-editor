@@ -38,6 +38,34 @@ export const WALL_UNFOLD_CLOSE_THRESHOLD = 0.04;
 export const WALL_UNFOLD_SNAP_TOLERANCE = 0.035;
 /** The two developed faces, named by the sign of the lateral offset. */
 export type WallUnfoldSide = 1 | -1;
+
+/** The settled world-Y orientation for one face, around the fixed anchor. */
+export function wallUnfoldSideAngle(side: WallUnfoldSide): number {
+	return side === 1 ? 0 : Math.PI;
+}
+
+/**
+ * The canonical lateral side that faces the derived Room. Room boundaries run
+ * counter-clockwise with their interior on the left, so a forward reference is
+ * side `1` and a reversed winding is side `-1`. A Wall between two Rooms is
+ * resolved toward the Camera's side when possible; a free Wall has no Room and
+ * keeps the left face as the stable Inside default.
+ */
+export function wallUnfoldInsideSide(input: {
+	readonly wallId: string;
+	readonly boundaries: readonly {
+		readonly wallId: string;
+		readonly direction: 'forward' | 'reverse';
+	}[];
+	readonly cameraSide?: WallUnfoldSide;
+}): WallUnfoldSide {
+	const sides = input.boundaries
+		.filter((boundary) => boundary.wallId === input.wallId)
+		.map((boundary): WallUnfoldSide => (boundary.direction === 'forward' ? 1 : -1));
+	if (sides.length === 0) return 1;
+	if (sides.length === 1) return sides[0]!;
+	return sides.find((side) => side === input.cameraSide) ?? sides[0]!;
+}
 /** A free edge's resting cue and hit band, in CSS pixels (44 on touch). */
 export const WALL_UNFOLD_EDGE_HIT_CSS = 22;
 export const WALL_UNFOLD_EDGE_HIT_COARSE_CSS = 44;
@@ -64,6 +92,8 @@ export type WallUnfoldState = {
 	/** Closed-Wall display cut opposite the anchor (D11); `null` for an open Wall. */
 	readonly cutStation: number | null;
 	readonly side: WallUnfoldSide;
+	/** The side whose surface belongs to the derived Room. */
+	readonly insideSide: WallUnfoldSide;
 	/** Partial-unfold parameter, `0` canonical … `1` flat. */
 	readonly u: number;
 	readonly entry: WallUnfoldEntryRecipe;
@@ -183,6 +213,7 @@ export function createWallUnfoldState(input: {
 	readonly wall: CompiledPhysicalWall;
 	readonly anchorStation?: number;
 	readonly side?: WallUnfoldSide;
+	readonly insideSide?: WallUnfoldSide;
 	readonly entry: WallUnfoldEntryRecipe;
 	readonly u?: number;
 	readonly openings?: readonly WallUnfoldOpeningRange[];
@@ -199,6 +230,7 @@ export function createWallUnfoldState(input: {
 		// void moves to the nearest solid gap so the peel edge is real Wall.
 		cutStation: closed ? wallUnfoldCutStation(anchorStation, length, input.openings) : null,
 		side: input.side ?? 1,
+		insideSide: input.insideSide ?? 1,
 		u: clamp(input.u ?? 1, 0, 1),
 		entry: input.entry,
 		entryAdjusted: false,
