@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T1 next batch: interaction sketches</title>
+<style>
+  :root {
+    --paper: #f6f4ec; --card: #ffffff; --ink: #1c1c1a; --ink2: #6b6a63; --hair: #d9d6c9;
+    --cobalt: #2f55d4; --refuse: #d0412d; --gold: #c8962a; --slice: #f2d000; --wall: #c9c5b6;
+    --room: #ecead9; --new: #dfe7fb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 44px 0 4px; }
+  p { margin: 6px 0 12px; max-width: 76ch; }
+  .lede { color: var(--ink2); }
+  .q { font-weight: 600; }
+  figure { margin: 14px 0 0; background: var(--card); border: 1px solid var(--hair);
+    border-radius: 10px; padding: 14px; overflow-x: auto; }
+  svg { display: block; width: 100%; min-width: 640px; height: auto; }
+  figcaption { color: var(--ink2); font-size: 13px; margin-top: 8px; }
+  .rec { border-left: 3px solid var(--cobalt); padding: 2px 0 2px 12px; margin: 12px 0; }
+  .rec b { color: var(--cobalt); }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  text { font-family: ui-sans-serif, system-ui, sans-serif; fill: var(--ink); }
+  .t { font-size: 12px; } .ts { font-size: 11px; fill: var(--ink2); } .th { font-size: 13px; font-weight: 600; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+  .wall { stroke: var(--ink); stroke-width: 7; fill: none; stroke-linecap: butt; }
+  .wallq { stroke: var(--wall); stroke-width: 7; fill: none; }
+  .prop { stroke: var(--cobalt); stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
+  .ref { stroke: var(--refuse); stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
+  .thin { stroke: var(--ink); stroke-width: 1.2; fill: none; }
+  .dash { stroke: var(--ink2); stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
+  .knob { fill: #fff; stroke: var(--ink); stroke-width: 1.5; }
+  .knobg { fill: var(--gold); stroke: var(--ink); stroke-width: 1.5; }
+  .hollow { fill: var(--card); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 2 2; }
+  .tag { fill: var(--ink); } .tagt { fill: #fff; font-size: 11px; font-family: ui-monospace, Menlo, monospace; }
+  .rtag { fill: var(--refuse); }
+  .menu { fill: #fff; stroke: var(--hair); } .pill { fill: #fff; stroke: var(--ink); stroke-width: 1; }
+  .roomf { fill: var(--room); } .newf { fill: var(--new); }
+</style>
+</head>
+<body>
+<main>
+<h1>T1 next batch: interaction sketches</h1>
+<p class="lede">Six static sketches for the design questions that decide the most. They use the
+existing PLATE vocabulary only: black ink for built Walls, cobalt dashes for a proposal, red dashes
+for a refusal, disc knobs for points, dark mono tags for live values, the Card's scoped list and the
+Stage state pill. They are sketches, not specifications. Part of the
+<a href="./README.md">T1 next-batch proposal</a>.</p>
+
+<h2>1. Split and join: where does a joint come from, and how does it go away?</h2>
+<p class="q">Question: can Junction editing ship without a new tool, a new mark or an armed Card action?</p>
+<figure>
+<svg viewBox="0 0 1000 300" role="img" aria-label="Splitting a wall from the context menu and joining two walls by dragging a joint onto the line">
+  <text x="20" y="22" class="th">a. Split: the scoped list, at the pointer</text>
+  <line x1="40" y1="120" x2="440" y2="120" class="wall"/>
+  <circle cx="40" cy="120" r="6" class="knob"/><circle cx="440" cy="120" r="6" class="knob"/>
+  <rect x="150" y="106" width="60" height="28" fill="#fff" stroke="#1c1c1a" stroke-width="1"/>
+  <text x="165" y="100" class="ts">Opening</text>
+  <circle cx="300" cy="120" r="6" class="hollow"/>
+  <rect x="310" y="132" width="170" height="92" rx="7" class="menu"/>
+  <text x="322" y="152" class="t" style="font-weight:600">Split wall here</text>
+  <text x="322" y="172" class="t">Unroll</text>
+  <text x="322" y="192" class="t" fill="#6b6a63">Face this wall</text>
+  <text x="322" y="212" class="t" style="fill:#d0412d">Erase</text>
+  <rect x="262" y="78" width="76" height="20" rx="4" class="tag"/><text x="270" y="92" class="tagt">at 6.50 m</text>
+  <text x="40" y="252" class="ts">Right-click (or long-press) the Wall body: the list knows the station.</text>
+  <text x="40" y="268" class="ts">From Card ••• with no pointer: splits at the midpoint; drag the new joint after.</text>
+  <text x="40" y="284" class="ts">Under an Opening: refused in words. The Wall on the start side keeps its id.</text>
+
+  <line x1="510" y1="14" x2="510" y2="290" class="dash"/>
+  <text x="530" y="22" class="th">b. Join: the bend-point removal gesture, reused</text>
+  <line x1="550" y1="120" x2="700" y2="120" class="wall"/>
+  <line x1="700" y1="120" x2="960" y2="120" class="wall"/>
+  <circle cx="550" cy="120" r="6" class="knob"/><circle cx="960" cy="120" r="6" class="knob"/>
+  <path d="M550 120 L700 86 L960 120" class="dash"/>
+  <circle cx="700" cy="86" r="5" class="knob" opacity=".45"/>
+  <path d="M700 92 L700 112" class="thin" marker-end="url(#a)"/>
+  <circle cx="700" cy="120" r="7" class="hollow"/>
+  <line x1="550" y1="134" x2="960" y2="134" class="prop"/>
+  <rect x="640" y="146" width="120" height="20" rx="4" class="tag"/><text x="650" y="160" class="tagt">Remove joint</text>
+  <text x="550" y="200" class="ts">Drag a two-Wall joint onto the line between its neighbours: it snaps, turns hollow,</text>
+  <text x="550" y="216" class="ts">previews one Wall and reads Remove joint. Release is one history entry.</text>
+  <text x="550" y="240" class="ts">Already collinear? The Eraser on the joint does the same join.</text>
+  <text x="550" y="264" class="ts" style="fill:#d0412d">At a corner or where three Walls meet: never offered; the Eraser says</text>
+  <text x="550" y="280" class="ts" style="fill:#d0412d">“These walls meet at a corner. A corner can’t be joined.”</text>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1c1c1a"/></marker></defs>
+</svg>
+<figcaption>Both operations use surfaces that already exist: the scoped list (Card •••, context menu, Find) and the Wall row's own removal gesture. Nothing on the Card arms a tool.</figcaption>
+</figure>
+<div class="rec"><b>Recommended.</b> No Junction tool and no selectable Junction subject. Split from the scoped list; join by the existing removal gesture and the Eraser. The one grammar edit is a sentence in the Wall row extending bend-point removal to a two-Wall joint.</div>
+
+<h2>2. Duplicate a Room that shares a Wall</h2>
+<p class="q">Question: what happens to the shared boundary and the door through it?</p>
+<figure>
+<svg viewBox="0 0 1000 300" role="img" aria-label="Duplicating a room that shares a wall creates a free copy with its own copy of the shared wall">
+  <rect x="40" y="50" width="260" height="190" class="roomf"/><rect x="40" y="50" width="260" height="190" class="thin" style="stroke-width:7"/>
+  <text x="120" y="150" class="t">Hall · 49.4 m²</text>
+  <rect x="300" y="90" width="120" height="110" class="roomf"/>
+  <path d="M300 90 H420 V200 H300" class="wall"/>
+  <rect x="296" y="130" width="8" height="34" fill="#fff"/>
+  <text x="326" y="150" class="t">Chapel 1</text>
+  <rect x="417" y="112" width="6" height="30" fill="#fff"/>
+  <text x="270" y="262" class="ts">shared Wall with a door</text>
+  <path d="M300 250 L300 205" class="dash"/>
+
+  <rect x="560" y="90" width="120" height="110" class="newf"/>
+  <rect x="560" y="90" width="120" height="110" class="prop"/>
+  <rect x="556" y="130" width="8" height="34" fill="#fff"/><rect x="677" y="112" width="6" height="30" fill="#fff"/>
+  <text x="586" y="150" class="t">Chapel 2</text>
+  <path d="M430 145 C480 120 510 120 550 140" class="thin" marker-end="url(#a)"/>
+  <rect x="700" y="50" width="280" height="118" rx="8" class="menu"/>
+  <text x="714" y="72" class="t" style="font-weight:600">Duplicate Chapel 1</text>
+  <text x="714" y="94" class="mono">Creates  4 Walls · 2 Openings · 1 Room</text>
+  <text x="714" y="112" class="mono">Keeps    Chapel 1 · Hall</text>
+  <text x="714" y="130" class="mono">Drops    door link to Hall (door stays)</text>
+  <text x="714" y="150" class="mono">one undo step</text>
+  <text x="560" y="228" class="ts">The copy follows the pointer as one cobalt proposal and lands free.</text>
+  <text x="560" y="244" class="ts">Its fourth Wall is a copy of the shared Wall, not the shared Wall.</text>
+  <text x="560" y="268" class="ts" style="fill:#d0412d">Released touching or crossing existing Walls: refused, nothing written.</text>
+  <text x="560" y="284" class="ts">Docking it against the Hall afterwards is ordinary Wall editing.</text>
+</svg>
+<figcaption>Copy, never share. The consequence line uses PLATE's existing Creates · Keeps vocabulary; “Drops” would be one added word and needs the owner's nod.</figcaption>
+</figure>
+<div class="rec"><b>Recommended.</b> One meaning for Duplicate regardless of neighbours. The isolated case ships first on the existing planner; the shared case adds a copy-enclosure planner, not topology surgery.</div>
+
+<h2>3. Connecting to a circle: three models</h2>
+<p class="q">Question: which of these is “a simple connection”, and which is a new architectural model?</p>
+<figure>
+<svg viewBox="0 0 1000 330" role="img" aria-label="Three models for connecting walls to a circular wall">
+  <text x="30" y="22" class="th">A. Seam-only attachment</text>
+  <circle cx="150" cy="150" r="80" class="wall"/>
+  <circle cx="230" cy="150" r="6" class="knob"/>
+  <line x1="230" y1="150" x2="310" y2="150" class="wall"/>
+  <text x="30" y="262" class="ts">One Wall, one Junction, degree 3.</text>
+  <text x="30" y="278" class="ts">No shared boundary, no new Room.</text>
+  <text x="30" y="298" class="t" style="fill:#d0412d;font-weight:600">Simple, and does not solve the case.</text>
+
+  <line x1="335" y1="14" x2="335" y2="316" class="dash"/>
+  <text x="355" y="22" class="th">B. Arc ring + derived Round reading</text>
+  <rect x="530" y="90" width="120" height="120" class="roomf"/>
+  <path d="M547 90 H650 V210 H547" class="wall"/>
+  <path d="M547 90 A80 80 0 1 0 547 210" class="wall"/>
+  <path d="M547 90 A80 80 0 0 1 547 210" class="wall" style="stroke:#2f55d4"/>
+  <circle cx="547" cy="90" r="6" class="knob"/><circle cx="547" cy="210" r="6" class="knob"/>
+  <circle cx="400" cy="150" r="5" class="knob" opacity=".5"/>
+  <text x="372" y="140" class="ts">old seam</text>
+  <text x="462" y="155" class="t">Rotunda</text><text x="582" y="155" class="t">Gallery</text>
+  <path d="M480 150 L562 150" class="dash"/><text x="500" y="170" class="mono">r 4.00</text>
+  <text x="355" y="262" class="ts">Attaching splits the circle into arc Walls.</text>
+  <text x="355" y="278" class="ts">Blue: the shared arc. No new schema.</text>
+  <text x="355" y="298" class="t" style="fill:#2f55d4;font-weight:600">Recommended to prove.</text>
+
+  <line x1="672" y1="14" x2="672" y2="316" class="dash"/>
+  <text x="692" y="22" class="th">C. Station-hosted Junctions</text>
+  <rect x="860" y="90" width="110" height="120" class="roomf"/>
+  <circle cx="800" cy="150" r="80" class="wall"/>
+  <path d="M860 97 H970 V203 H860" class="wall"/>
+  <rect x="853" y="91" width="12" height="12" fill="#fff" stroke="#1c1c1a" stroke-width="1.5" transform="rotate(45 859 97)"/>
+  <rect x="853" y="197" width="12" height="12" fill="#fff" stroke="#1c1c1a" stroke-width="1.5" transform="rotate(45 859 203)"/>
+  <circle cx="720" cy="150" r="6" class="knob"/>
+  <text x="692" y="262" class="ts">Junctions sit on the Wall (◇) without splitting it.</text>
+  <text x="692" y="278" class="ts">Rooms reference Wall sub-ranges. New format.</text>
+  <text x="692" y="298" class="t" style="font-weight:600">The genuinely new model. Wait for evidence.</text>
+</svg>
+<figcaption>B reuses the existing exact cubic split and face extraction. C adds a second way to be connected beside Junction-ID equality.</figcaption>
+</figure>
+
+<h2>4. Radius editing on a connected rotunda (model B)</h2>
+<p class="q">Question: when the radius changes, do the neighbours follow, or does the edit refuse?</p>
+<figure>
+<svg viewBox="0 0 1000 304" role="img" aria-label="Radius edit of a connected rotunda carrying neighbouring walls, and a refused case">
+  <text x="30" y="22" class="th">a. Neighbours follow, as one whole-network proposal</text>
+  <rect x="233" y="80" width="170" height="120" class="roomf"/>
+  <path d="M233 80 H403 V200 H233" class="wallq"/>
+  <path d="M233 80 A80 80 0 1 0 233 200 A80 80 0 0 0 233 80" class="wallq"/>
+  <circle cx="180" cy="140" r="100" class="prop"/>
+  <path d="M259 78 H403 V202 H259" class="prop"/>
+  <line x1="180" y1="140" x2="280" y2="140" class="dash"/>
+  <circle cx="280" cy="140" r="7" class="knobg"/>
+  <rect x="290" y="106" width="146" height="20" rx="4" class="tag"/><text x="298" y="120" class="tagt">r 5.00 m · ⌀ 10.00</text>
+  <text x="30" y="262" class="ts">The radius ray scales every co-circular arc about the fitted centre.</text>
+  <text x="30" y="278" class="ts">Rim Junctions move radially; attached Walls stretch. Openings keep their angle.</text>
+  <text x="30" y="294" class="ts">One cobalt proposal for every changed Wall; one history entry on release.</text>
+
+  <line x1="500" y1="14" x2="500" y2="280" class="dash"/>
+  <text x="520" y="22" class="th">b. A neighbour cannot follow: the whole edit refuses</text>
+  <rect x="723" y="80" width="170" height="120" class="roomf"/>
+  <path d="M723 80 H893 V200 H723" class="wallq"/>
+  <path d="M723 80 A80 80 0 1 0 723 200 A80 80 0 0 0 723 80" class="wallq"/>
+  <rect x="740" y="76" width="44" height="8" fill="#fff" stroke="#1c1c1a"/>
+  <circle cx="670" cy="140" r="104" class="ref"/>
+  <path d="M772 78 H893" class="ref"/>
+  <rect x="750" y="44" width="224" height="20" rx="4" class="rtag"/><text x="758" y="58" class="tagt">Window no longer fits this wall</text>
+  <text x="520" y="262" class="ts">The reason sits at the conflict, not at the pointer. Nothing is written.</text>
+  <text x="520" y="278" class="ts">Card Radius shows the same refusal inside its field.</text>
+  <text x="520" y="294" class="ts">Never a partial result with a neighbour left behind.</text>
+</svg>
+<figcaption>This is #287's approved whole-network preview and refusal (D3), applied to a group planner. Whether “Round” is recognised from geometry or stored as a hint is the spike's question.</figcaption>
+</figure>
+
+<h2>5. Face this wall, and Unroll the room</h2>
+<p class="q">Question: is elevation editing a new mode, or two readings the shell already names?</p>
+<figure>
+<svg viewBox="0 0 1000 340" role="img" aria-label="Face this wall squares the camera to a wall sheet; Unroll the room lays the boundary walls out as one strip">
+  <text x="30" y="22" class="th">a. Face this wall: a Look action, composed with Unroll, never fired by it</text>
+  <path d="M40 120 L300 70 L300 150 L40 180 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.2"/>
+  <path d="M110 120 L150 113 L150 158 L110 163 Z" class="thin"/>
+  <text x="40" y="200" class="ts">Unroll keeps your view (approved, #287).</text>
+  <path d="M320 120 C360 100 380 100 420 118" class="thin" marker-end="url(#a)"/>
+  <text x="338" y="92" class="t">Face</text>
+  <rect x="440" y="60" width="500" height="110" fill="#fff" stroke="#1c1c1a" stroke-width="1.2"/>
+  <rect x="520" y="100" width="60" height="70" class="thin"/><rect x="680" y="90" width="70" height="46" class="thin"/>
+  <rect x="820" y="90" width="70" height="46" class="prop"/>
+  <line x1="440" y1="182" x2="940" y2="182" class="thin"/>
+  <g class="mono"><text x="436" y="198">0</text><text x="560" y="198">3</text><text x="685" y="198">6</text><text x="810" y="198">9</text><text x="920" y="198">12 m</text></g>
+  <rect x="592" y="30" width="250" height="24" rx="12" class="pill"/>
+  <text x="606" y="46" class="t">Unrolled · <tspan font-weight="600">Inside</tspan> | Outside · Put back</text>
+
+  <line x1="30" y1="218" x2="970" y2="218" class="dash"/>
+  <text x="30" y="240" class="th">b. Unroll the room: the Room's boundary Walls as one strip, Room side showing</text>
+  <rect x="40" y="254" width="900" height="54" fill="#fff" stroke="#1c1c1a" stroke-width="1.2"/>
+  <line x1="280" y1="254" x2="280" y2="308" class="dash"/><line x1="440" y1="254" x2="440" y2="308" class="dash"/><line x1="680" y1="254" x2="680" y2="308" class="dash"/>
+  <rect x="110" y="274" width="44" height="34" class="thin"/><rect x="520" y="266" width="60" height="24" class="thin"/><rect x="760" y="266" width="60" height="24" class="thin"/>
+  <g class="ts"><text x="130" y="324">Wall 1</text><text x="335" y="324">Wall 2</text><text x="535" y="324">Wall 3</text><text x="790" y="324">Wall 4</text></g>
+  <g class="mono"><text x="272" y="250">◦</text><text x="432" y="250">◦</text><text x="672" y="250">◦</text></g>
+  <text x="600" y="240" class="ts">◦ corner tick · each segment is that Wall's own development · cut at a corner</text>
+</svg>
+<figcaption>Sketch (a) needs one Camera viewing intent already designed in #287 revision 1. Sketch (b) raises the questions the Layout contract lists as open (display cut for multi-Wall loops, shared Walls, what Put back returns to), which is why it is a planned phase.</figcaption>
+</figure>
+<div class="rec"><b>Recommended.</b> No “Focus” mode and no new surface. Face lands near-term in the Card's Look row. Unroll the room is planned after the connected-curve decision, because under model B it is how a connected rotunda is seen whole.</div>
+
+<h2>6. Walls and overhead: meets, gap, intended</h2>
+<p class="q">Question: can the first overhead slice be useful with no roof forms and no Wall change?</p>
+<figure>
+<svg viewBox="0 0 1000 320" role="img" aria-label="Section sketches of a flat overhead region with a deliberate gap, and a gable roof with gabled wall tops">
+  <text x="30" y="22" class="th">V1. Flat regions: closure or suspended, with truthful relations</text>
+  <line x1="30" y1="250" x2="470" y2="250" class="thin"/>
+  <rect x="60" y="110" width="10" height="140" fill="#1c1c1a"/><rect x="300" y="110" width="10" height="140" fill="#1c1c1a"/>
+  <rect x="60" y="100" width="250" height="10" fill="#c9c5b6" stroke="#1c1c1a"/>
+  <text x="130" y="94" class="ts">closure · meets both Walls</text>
+  <rect x="120" y="170" width="130" height="7" fill="#dfe7fb" stroke="#2f55d4"/>
+  <text x="96" y="196" class="ts">suspended · closes nothing</text>
+  <rect x="330" y="140" width="120" height="8" fill="#c9c5b6" stroke="#1c1c1a"/>
+  <line x1="318" y1="110" x2="318" y2="140" class="dash"/>
+  <rect x="326" y="84" width="146" height="20" rx="4" class="tag"/><text x="334" y="98" class="tagt">gap 0.40 · intended</text>
+  <text x="352" y="166" class="ts">canopy outside</text>
+  <text x="30" y="280" class="ts">A gap is a stated fact with a one-shot fix in either direction, never an error and never</text>
+  <text x="30" y="296" class="ts">followed automatically. Where no authored closure covers, the generated lid remains.</text>
+
+  <line x1="500" y1="14" x2="500" y2="306" class="dash"/>
+  <text x="520" y="22" class="th">V2 + V3. Wall tops, then forms</text>
+  <line x1="520" y1="250" x2="970" y2="250" class="thin"/>
+  <path d="M560 250 V150 L660 80 L760 150 V250 Z" fill="#ecead9" stroke="#1c1c1a" stroke-width="1.5"/>
+  <path d="M548 156 L660 72 L772 156" fill="none" stroke="#1c1c1a" stroke-width="5"/>
+  <circle cx="660" cy="80" r="5" class="knob"/><circle cx="560" cy="150" r="5" class="knob"/><circle cx="760" cy="150" r="5" class="knob"/>
+  <text x="600" y="200" class="ts">end Wall, gable top</text>
+  <text x="600" y="216" class="ts">(edited on its sheet)</text>
+  <path d="M810 250 V150 H930 V250" fill="none" stroke="#1c1c1a" stroke-width="1.5"/>
+  <path d="M800 154 L870 100 L940 154" fill="none" stroke="#1c1c1a" stroke-width="5"/>
+  <path d="M810 150 L870 104 L930 150 Z" fill="#fff" stroke="#d0412d" stroke-dasharray="5 4"/>
+  <rect x="800" y="60" width="166" height="20" rx="4" class="tag"/><text x="808" y="74" class="tagt">gap · Fit wall to roof</text>
+  <text x="520" y="280" class="ts">Left: a gable Wall top (V2) under a gable form (V3). Right: a level Wall under the same</text>
+  <text x="520" y="296" class="ts">roof reads as a gap with an explicit one-shot fix. Nothing constrains them afterwards.</text>
+</svg>
+<figcaption>Vocabulary and ownership are the accepted P26 contract (independent Layout-owned regions, closure versus suspended, level/slope/gable tops, no persistent fit). The sketches only show the order.</figcaption>
+</figure>
+<div class="rec"><b>Recommended.</b> V1 first: it is finished-looking over today's Walls, and it forces the D2 and D3 decisions while the geometry is trivial. A sloped Wall top under today's flat derived lid would look broken.</div>
+</main>
+</body>
+</html>
