@@ -109,6 +109,7 @@
 		type PlanMembershipReason
 	} from '@portfolio/layout-core';
 	import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
+	import { LAYOUT_OPENING_RESIZE_KIND } from '$lib/authoring/adapters/layout/opening-planners';
 	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import {
@@ -126,7 +127,8 @@
 		evaluateWallUnfoldDisplay,
 		pickWallUnfold,
 		type WallUnfoldDisplay,
-		type WallUnfoldPick
+		type WallUnfoldPick,
+		unfoldDisplayPointAtStation
 	} from '$lib/layout/wall-unfold-pick';
 	import {
 		mapSheetOpeningDrag,
@@ -806,8 +808,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			if (ticket === null) return false;
 			if (request.kind === 'fit') {
 				if (wallUnfold.state?.wallId !== request.wallId) return false;
+				// Frame the sheet in the usable Stage area. The Card is an absolute
+				// overlay on the right; the top row and the pill own the top strip.
+				// Only the fit rectangle changes, so Camera orientation is untouched.
+				let fitRect = current.rect;
+				const topInset = 56;
+				if (fitRect.height > topInset + 240) {
+					fitRect = { ...fitRect, top: fitRect.top + topInset, height: fitRect.height - topInset };
+				}
+				const card = cardOpen ? document.querySelector<HTMLElement>('aside.card') : null;
+				if (card !== null && stageEl) {
+					const stageBox = stageEl.getBoundingClientRect();
+					const cardBox = card.getBoundingClientRect();
+					const safeWidth = cardBox.left - stageBox.left - 16;
+					if (safeWidth > 320 && safeWidth < fitRect.width) {
+						fitRect = { ...fitRect, width: safeWidth };
+					}
+				}
 				return stage.requestViewingIntent(
-					{ kind: 'fit', bounds: request.bounds, rect: current.rect },
+					{ kind: 'fit', bounds: request.bounds, rect: fitRect },
 					ticket,
 					performance.now() / 1000
 				).kind === 'accepted';
@@ -2146,7 +2165,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				const wrapped = display.development.closed
 					? ((station % wall.length) + wall.length) % wall.length
 					: station;
-				const at = developmentPointAtStationFromBuffers(display.development, display.buffers, wrapped);
+				const at = unfoldDisplayPointAtStation(display, wrapped);
 				const projected = stage.projectWorld([at.point[0], height, at.point[1]], projectionId);
 				return projected.kind === 'projected'
 					? Math.hypot(projected.css[0] - event.clientX, projected.css[1] - event.clientY)
@@ -2192,7 +2211,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		for (let step = 0; step <= 20; step += 1) {
 			const u = step / 20;
 			evaluateWallUnfoldDisplay(display, { ...state, u });
-			const at = developmentPointAtStationFromBuffers(display.development, display.buffers, station);
+			const at = unfoldDisplayPointAtStation(display, station);
 			const projected = stage.projectWorld(
 				[at.point[0], display.floorY + display.height / 2, at.point[1]],
 				projectionId
@@ -2292,8 +2311,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const stage = facade;
 		if (services === null || stage === null) { wallUnfold.setOpeningPreview(null); return; }
 		const snapshot = stage.snapshot();
-		const field = active.mode === 'slide' ? 'offset' : 'width';
-		const value = active.mode === 'slide' ? active.previewOffset : active.previewWidth;
+		// A jamb drag previews both fields. The left edge therefore commits through
+		// the coupled resize planner (fixed right edge), not a width-only measure.
+		const edge = active.mode === 'left' ? 'left' as const : 'right' as const;
+		const value = edge === 'left'
+			? active.previewOffset
+			: active.previewOffset + active.previewWidth;
 		const target = {
 			version: 1 as const,
 			domain: 'layout' as const,
@@ -2308,16 +2331,25 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			componentId: null,
 			capabilityId: null
 		};
-		const outcome = await services.authoring.accept(buildLayoutIntent({
-			kind: LAYOUT_OPENING_MEASURE_KIND,
+		const request = {
 			operationId: globalThis.crypto.randomUUID(),
 			projectId: snapshot.acceptedRevision.projectId,
 			revisionId: services.authoring.acceptedRevision().revisionId,
 			contentRevision: stageUnitRevision(snapshot, 'layout'),
 			levelId: snapshot.domain.layoutLevelId,
-			targets: [target],
-			payload: { openingId: active.openingId, field, value }
-		}));
+			targets: [target]
+		};
+		const outcome = active.mode === 'slide'
+			? await services.authoring.accept(buildLayoutIntent({
+				...request,
+				kind: LAYOUT_OPENING_MEASURE_KIND,
+				payload: { openingId: active.openingId, field: 'offset', value: active.previewOffset }
+			}))
+			: await services.authoring.accept(buildLayoutIntent({
+				...request,
+				kind: LAYOUT_OPENING_RESIZE_KIND,
+				payload: { openingId: active.openingId, kind: 'edge', edge, value }
+			}));
 		if (outcome.kind === 'refused') notice = outcome.message;
 		wallUnfold.setOpeningPreview(null);
 		stage.notifySurfaceChange();

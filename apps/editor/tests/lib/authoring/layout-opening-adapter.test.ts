@@ -464,7 +464,6 @@ describe('T1.P02.S03 — Opening placement', () => {
 		// C3/D14 moves unfold entry to the Card foot; the delete action keeps its
 		// disclosure and remains the one that retires the hosted Opening.
 		expect(actions.map((candidate) => candidate.id)).toEqual([
-			'layout-wall-bend-arm',
 			'layout-wall-delete'
 		]);
 		const remove = actions.find((candidate) => candidate.id === 'layout-wall-delete')!;

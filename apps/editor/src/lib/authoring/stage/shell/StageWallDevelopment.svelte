@@ -18,10 +18,12 @@
 		LineDashedMaterial,
 		LineSegments,
 		Mesh,
-		MeshBasicMaterial
+		MeshBasicMaterial,
+		SphereGeometry
 	} from 'three';
 	import {
-		developmentPointAtStationFromBuffers,
+		developmentSheetCoordinate,
+		developmentSheetToStation,
 		type CompiledLayoutGeometry,
 		type WallDevelopmentMesh
 	} from '@portfolio/layout-core';
@@ -30,6 +32,7 @@
 	import {
 		buildWallUnfoldDisplay,
 		evaluateWallUnfoldDisplay,
+		unfoldDisplayPointAtStation,
 		type WallUnfoldDisplay
 	} from '$lib/layout/wall-unfold-pick';
 
@@ -114,6 +117,16 @@
 	reference.name = 'StageWallDevelopmentAsBuilt';
 	reference.frustumCulled = false;
 	root.add(reference);
+
+	// The pin is the one fixed point of the unwrap. It is a reading aid, not a
+	// second anchor authority: the session's canonical anchor owns the geometry.
+	const pinGeometry = new SphereGeometry(0.075, 14, 10);
+	const pinMaterial = new MeshBasicMaterial({ color: 0xb9932f, toneMapped: false, depthTest: false });
+	const pin = new Mesh(pinGeometry, pinMaterial);
+	pin.name = 'StageWallDevelopmentPin';
+	pin.renderOrder = 4;
+	pin.frustumCulled = false;
+	root.add(pin);
 
 	let display: WallUnfoldDisplay | null = null;
 	let displayWallId: string | null = null;
@@ -264,9 +277,10 @@
 		// The hinge sits on the anchor's vertical. A side change is a display
 		// rotation only: no Camera intent, no document write.
 		const anchorStation = wrapStation(state.anchorStation, display.development.length, display.development.closed);
-		const anchor = developmentPointAtStationFromBuffers(display.development, display.buffers, anchorStation);
+		const anchor = unfoldDisplayPointAtStation(display, anchorStation);
 		hinge.position.set(anchor.point[0], datumMeters, anchor.point[1]);
 		content.position.set(-anchor.point[0], -datumMeters, -anchor.point[1]);
+		pin.position.set(anchor.point[0], datumMeters + wallHeight + 0.09, anchor.point[1]);
 		if (lastSide !== null && lastSide !== state.side) startSideFlip();
 		lastSide = state.side;
 		const mapped = evaluateWallUnfoldDisplay(display, state);
@@ -293,9 +307,8 @@
 		const gridPositions: number[] = [];
 		const gridLateral = state.side * (wallThickness / 2 + 0.002);
 		const gridPointAt = (station: number, height: number): [number, number, number] => {
-			const atStation = developmentPointAtStationFromBuffers(
-				display!.development,
-				display!.buffers,
+			const atStation = unfoldDisplayPointAtStation(
+				display!,
 				wrapStation(station, display!.development.length, display!.development.closed)
 			);
 			return [
@@ -316,6 +329,27 @@
 				if (next - station <= 1e-6) continue;
 				gridPositions.push(...gridPointAt(station, height), ...gridPointAt(next, height));
 			}
+		}
+		// Station ruler and the two seam/cut ticks. Ticks are sheet coordinates so
+		// a closed Wall's ruler stays evenly spaced across the canonical seam.
+		const rulerAt = (sheet: number, top: number): void => {
+			const development = display!.development;
+			const station = development.closed && development.cutStation !== null
+				? developmentSheetToStation(development, sheet)
+				: sheet;
+			const at = unfoldDisplayPointAtStation(display!, station);
+			const x = at.point[0] + at.normal[0] * gridLateral;
+			const z = at.point[1] + at.normal[1] * gridLateral;
+			gridPositions.push(x, datumMeters + 0.02, z, x, datumMeters + top, z);
+		};
+		const sheetLength = display.development.length;
+		for (let sheet = 1; sheet < sheetLength - 1e-6; sheet += 1) {
+			rulerAt(sheet, Math.abs(sheet % 5) < 1e-9 ? 0.34 : 0.16);
+		}
+		if (display.development.closed) {
+			rulerAt(0, wallHeight);
+			rulerAt(sheetLength, wallHeight);
+			rulerAt(developmentSheetCoordinate(display.development, 0), wallHeight);
 		}
 		const gridAttribute = gridGeometry.getAttribute('position');
 		if (gridAttribute === undefined || gridAttribute.array.length !== gridPositions.length) {
@@ -340,9 +374,8 @@
 			}
 				const half = (wallThickness / 2) * (state.side === 1 ? 1 : -1);
 			const pointAt = (station: number, lateral: number, height: number): [number, number, number] => {
-				const atStation = developmentPointAtStationFromBuffers(
-					display!.development,
-					display!.buffers,
+				const atStation = unfoldDisplayPointAtStation(
+					display!,
 					wrapStation(station, display!.development.length, display!.development.closed)
 				);
 				return [
@@ -383,6 +416,8 @@
 		gridMaterial.dispose();
 		referenceGeometry.dispose();
 		referenceMaterial.dispose();
+		pinGeometry.dispose();
+		pinMaterial.dispose();
 	});
 </script>
 

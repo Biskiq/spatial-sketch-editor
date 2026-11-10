@@ -28,7 +28,9 @@ import {
 	developmentOpeningIdentity,
 	developmentPointAtStationFromBuffers,
 	createWallDevelopmentBuffers,
+	createWallDevelopmentSheetBuffers,
 	evaluateWallDevelopment,
+	evaluateWallDevelopmentSheet,
 	isClosedWall,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	mintLayoutIdCapture,
@@ -81,6 +83,7 @@ import {
 	evaluateWallUnfoldDisplay,
 	pickWallUnfold,
 	pickWallUnfoldSheetPoint,
+	unfoldDisplayPointAtStation,
 	type WallUnfoldRay
 } from '$lib/layout/wall-unfold-pick';
 
@@ -408,6 +411,68 @@ describe('C3 checkpoint 5 — unfold session', () => {
 		expect(openState.cutStation).toBeNull();
 	});
 
+	it('develops a closed Wall cut-to-cut: one pin, two free edges, one strip', () => {
+		const fixture = circleFixture();
+		const wall = compiledWall(fixture);
+		const state = stateFor(fixture, wall.length * 0.2);
+		const development = developmentFor(fixture, state);
+		const sheet = createWallDevelopmentSheetBuffers(development);
+		const count = sheet.sheet.length;
+		const pointAtSample = (index: number): LayoutVec2 => [
+			sheet.points[index * 2]!,
+			sheet.points[index * 2 + 1]!
+		];
+		const distance = (a: LayoutVec2, b: LayoutVec2): number => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+		expect(sheet.sheet[0]).toBe(0);
+		expect(sheet.sheet[count - 1]).toBeCloseTo(wall.length, 9);
+		expect(sheet.anchorIndex).toBeGreaterThan(0);
+		expect(sheet.anchorIndex).toBeLessThan(count - 1);
+
+		// 0% is the original circular Wall: only the cut copies coincide.
+		evaluateWallDevelopmentSheet(development, 0, sheet);
+		const sampled = cachedSamples(fixture);
+		let maxZeroError = 0;
+		for (let index = 0; index < count; index += 1) {
+			const canonical = pointAtDistance(sampled, sheet.stations[index]!).point;
+			maxZeroError = Math.max(maxZeroError, distance(pointAtSample(index), canonical));
+		}
+		expect(maxZeroError).toBeLessThan(1e-6);
+		expect(distance(pointAtSample(0), pointAtSample(count - 1))).toBeLessThan(1e-6);
+
+		// Partial: the two wings share the pin and their free cut edges part.
+		evaluateWallDevelopmentSheet(development, 0.5, sheet);
+		const leftEdge = pointAtSample(0);
+		const rightEdge = pointAtSample(count - 1);
+		const pin = pointAtSample(sheet.anchorIndex);
+		expect(distance(leftEdge, rightEdge)).toBeGreaterThan(0.5);
+		expect(distance(leftEdge, rightEdge)).toBeLessThan(wall.length);
+		expect(distance(pin, leftEdge)).toBeGreaterThan(0.1);
+		expect(distance(pin, rightEdge)).toBeGreaterThan(0.1);
+
+		// 100%: one straight strip, pin between the halves, cut edges at the ends.
+		evaluateWallDevelopmentSheet(development, 1, sheet);
+		const start = pointAtSample(0);
+		const end = pointAtSample(count - 1);
+		const axis: LayoutVec2 = [end[0] - start[0], end[1] - start[1]];
+		const span = Math.hypot(axis[0], axis[1]);
+		expect(span).toBeCloseTo(wall.length, 6);
+		let maxPerpendicular = 0;
+		let pathLength = 0;
+		for (let index = 0; index < count; index += 1) {
+			const point = pointAtSample(index);
+			const dx = point[0] - start[0];
+			const dz = point[1] - start[1];
+			maxPerpendicular = Math.max(maxPerpendicular, Math.abs((dx * axis[1] - dz * axis[0]) / span));
+			if (index > 0) pathLength += distance(point, pointAtSample(index - 1));
+		}
+		expect(maxPerpendicular).toBeLessThan(1e-6);
+		expect(pathLength).toBeCloseTo(wall.length, 6);
+		const pinProjection = ((pin[0] - start[0]) * axis[0] + (pin[1] - start[1]) * axis[1]) / (span * span);
+		expect(pinProjection).toBeGreaterThan(0.1);
+		expect(pinProjection).toBeLessThan(0.9);
+	});
+
 	it('selects the anchor from the selected Opening, then the view centre, then the start', () => {
 		const fixture = sCurveFixture();
 		const wall = compiledWall(fixture);
@@ -468,10 +533,10 @@ describe('C3 checkpoint 5 — inverse picking on every geometry', () => {
 
 				// The sheet inverse is the station map's exact inverse on the
 				// displayed polyline: a point ON it round-trips within the
-				// checkpoint-4 station tolerance.
-				const buffers = createWallDevelopmentBuffers(display.development);
-				evaluateWallDevelopment(display.development, u, buffers);
-				const onSheet = developmentPointAtStationFromBuffers(display.development, buffers, station).point;
+				// checkpoint-4 station tolerance. Closed Walls display the
+				// cut-to-cut sheet, so ask the display for its actual point
+				// rather than rebuilding a canonical 0..L evaluation.
+				const onSheet = unfoldDisplayPointAtStation(display, station).point;
 				const inverse = pickWallUnfoldSheetPoint(display, onSheet);
 				expect(inverse).not.toBeNull();
 				if (inverse === null) continue;
@@ -637,15 +702,13 @@ describe('C3 checkpoint 5 — canonical Opening edits from the sheet', () => {
 		const prepared = prepareWallUnfoldDevelopment(state, compiled);
 		if ('refused' in prepared) throw new Error(prepared.message);
 		const display = buildWallUnfoldDisplay(compiled, state)!;
-		const buffers = createWallDevelopmentBuffers(prepared);
-		evaluateWallDevelopment(prepared, 1, buffers);
 		// One station before the seam and one after it both resolve to the same id.
 		// The identity function is the seam-crossing contract; the ray pick is
 		// covered on the same closed geometry by the Opening test above.
 		for (const station of [compiled.length - 0.1, 0.1]) {
 			expect(developmentOpeningIdentity(prepared, display.openingBands, station, 1.5)).toBe(openingId);
 		}
-		const beforeSeam = developmentPointAtStationFromBuffers(prepared, buffers, compiled.length - 0.1);
+		const beforeSeam = unfoldDisplayPointAtStation(display, compiled.length - 0.1);
 		const picked = pickWallUnfold(display, {
 			origin: [beforeSeam.point[0] + beforeSeam.normal[0] * 2, 1.5, beforeSeam.point[1] + beforeSeam.normal[1] * 2],
 			direction: [-beforeSeam.normal[0], 0, -beforeSeam.normal[1]]
