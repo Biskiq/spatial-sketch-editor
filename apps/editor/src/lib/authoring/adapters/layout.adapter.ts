@@ -1259,6 +1259,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			let junctionGesture: JunctionHoverGesture | null = null;
 			let idleJunctionHover: IdleJunctionHover | null = null;
+			/**
+			 * Hover discovery for the selected Wall's Bend writer. It names the span
+			 * midpoint under the pointer, using the same sampled frame and the same
+			 * span boundaries the span rings use. Ephemeral: no mark is installed and
+			 * no gesture is armed, so a body press still means Move.
+			 */
+			let idleBendHint: { readonly wallId: string; readonly point: LayoutVec2; readonly station: number } | null = null;
 			let openingGesture: OpeningMarkGesture | null = null;
 			let pausedProposal: PausedWallProposal | null = null;
 			let refusal: string | null = null;
@@ -2100,6 +2107,85 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return idleJunctionHover !== null;
 			}
 
+			/**
+			 * Reveal the available Bend target on hover/proximity. Only the selected
+			 * open Wall qualifies; the hint is the midpoint of the span under the
+			 * pointer, so pressing the same place is the ordinary span-ring Bend. A
+			 * coarse pointer does not hover, and any owned task or live gesture keeps
+			 * the pointer for itself.
+			 */
+			function updateIdleBendHover(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				const previous = idleBendHint;
+				const clear = (): false => {
+					idleBendHint = null;
+					if (previous !== null) services.stage.notifySurfaceChange();
+					return false;
+				};
+				if (intent.phase === 'cancel') return clear();
+				if (
+					intent.phase !== 'move' ||
+					intent.coarse === true ||
+					openTaskKind !== null ||
+					services.stage.session.task() !== null ||
+					services.stage.session.gesture() !== null ||
+					gesture !== null ||
+					junctionGesture !== null ||
+					openingGesture !== null ||
+					bendGesture !== null ||
+					scalarGesture !== null
+				) return clear();
+				const selected = selectedOpenWall(adapterContext);
+				if (selected === null || wallUnfold.isActive(selected.wallId)) return clear();
+				const point = pointerDatumPoint(adapterContext, intent.css);
+				if (point === null) return clear();
+				const station = wallStationNearPoint(
+					document,
+					selected.wallId,
+					[point[0], point[1]],
+					BEND_BODY_TOLERANCE_METERS
+				);
+				if (station === null || !(station > 0.02) || station >= selected.frame.length - 0.02) return clear();
+				const source = document.walls.find((candidate) => candidate.id === selected.wallId);
+				if (source === undefined) return clear();
+				const boundaries = [0];
+				if (source.centerline.kind !== 'line') {
+					for (const knot of source.centerline.knots) {
+						const knotStation = wallStationAtPoint(document, selected.wallId, [
+							knot.point[0],
+							knot.point[1]
+						]);
+						if (knotStation !== null && knotStation > boundaries[0]! && knotStation < selected.frame.length) {
+							boundaries.push(knotStation);
+						}
+					}
+				}
+				boundaries.push(selected.frame.length);
+				boundaries.sort((a, b) => a - b);
+				let from = 0;
+				let to = selected.frame.length;
+				for (let index = 1; index < boundaries.length; index += 1) {
+					if (station >= boundaries[index - 1]! && station <= boundaries[index]!) {
+						from = boundaries[index - 1]!;
+						to = boundaries[index]!;
+						break;
+					}
+				}
+				if (!(to - from > 0.02)) return clear();
+				const at = curvedWallPointAt(selected.frame, (from + to) / 2)?.point;
+				if (at === undefined) return clear();
+				const next = { wallId: selected.wallId, point: [at[0], at[1]] as LayoutVec2, station: (from + to) / 2 };
+				idleBendHint = next;
+				if (
+					previous?.wallId !== next.wallId ||
+					previous.point[0] !== next.point[0] ||
+					previous.point[1] !== next.point[1]
+				) services.stage.notifySurfaceChange();
+				return true;
+			}
+
 			/** The one admitted Stage point for the active hover or its live drag. */
 			function idleJunctionHandles(adapterContext: StageAdapterContext): readonly StageHandleDescriptor[] {
 				if (openTaskKind !== null || services.stage.session.task() !== null) return [];
@@ -2297,18 +2383,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (!(to - from > 0.02)) continue;
 						const at = curvedWallPointAt(curved.frame, (from + to) / 2)?.point;
 						if (at === undefined) continue;
+						// Proximity discovery uses the existing span ring: no second target
+						// and no floating toolbar. The ring grows and names the action only
+						// while the pointer is inside this span's body band.
+						const hinted = idleBendHint?.wallId === curved.wallId &&
+							idleBendHint.station >= from && idleBendHint.station <= to;
 						spanMarks.push({
 							id: `layout-wall-span:${index - 1}`,
 							kind: 'point',
 							role: 'edit',
 							anchor: [at[0], y, at[1]],
-							draw: { pointRadius: 4.4, hollow: true },
+							draw: { pointRadius: hinted ? 6.4 : 4.4, hollow: true },
 							label: 'Span midpoint',
 							fact: 'bend',
 							verb: 'Bend',
 							planner: LAYOUT_WALL_BEND_KIND,
-							value: 'Pull to bend',
-							refusal: null
+							value: hinted ? 'Bend · pull here' : 'Pull to bend',
+							refusal: live?.refusal ?? null
 						});
 					}
 					if (knot === undefined) return withSize([...ends, ...spanMarks]);
@@ -2357,6 +2448,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						gesture?.markId === markId ? refusal : null;
 					const middle = framePoint(wall.frame, length / 2, y);
 					const planReading = adapterContext.evaluation.settledReading === 'plan';
+					const hinted = idleBendHint?.wallId === wall.wallId;
 					// The one size disclosure owns the Wall's three dimensions. The
 					// working thickness and height scalar handles are revealed by it.
 					const descriptors: StageHandleDescriptor[] = [
@@ -2381,13 +2473,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							kind: 'point',
 							role: 'edit',
 							anchor: middle,
-							draw: { pointRadius: 4.4, hollow: true },
+							draw: { pointRadius: hinted ? 6.4 : 4.4, hollow: true },
 							label: 'Span midpoint',
 							fact: 'bend',
 							verb: 'Bend',
 							planner: LAYOUT_WALL_BEND_KIND,
-							value: 'Pull to bend',
-							refusal: null
+							value: hinted ? 'Bend · pull here' : 'Pull to bend',
+							refusal: refusalFor('layout-wall-span:0')
 						} satisfies StageHandleDescriptor,
 						{
 							id: 'layout-wall-start-mark',
@@ -4983,9 +5075,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				},
 				idleHoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
-					return updateIdleJunctionHover(intent, adapterContext);
+					if (updateIdleJunctionHover(intent, adapterContext)) {
+						if (idleBendHint !== null) idleBendHint = null;
+						return true;
+					}
+					return updateIdleBendHover(intent, adapterContext);
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (intent.phase === 'down' && idleBendHint !== null) {
+						idleBendHint = null;
+						services.stage.notifySurfaceChange();
+					}
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading !== 'wall' && inkReading !== 'opening') {
 						const session = ensureContributedSession();
 						if (session === null) {
