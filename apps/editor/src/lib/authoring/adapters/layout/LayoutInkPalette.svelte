@@ -300,7 +300,7 @@
 	{/if}
 
 	{#if refusalShown}
-		<p class="refusal sr-only" role="alert" data-ink-refusal>{snapshot.refusal}</p>
+		<p class="refusal" role="alert" data-ink-refusal>{snapshot.refusal}</p>
 	{/if}
 
 	<div class="keys">
@@ -461,5 +461,4 @@
 			width: 100%;
 		}
 	}
-.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 </style>

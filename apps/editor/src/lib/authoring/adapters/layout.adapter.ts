@@ -2984,20 +2984,59 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					});
 				}
 				const walls: ProjectedWall[] = [];
+				// Curved and closed Walls are hit-tested against the compiled samples the
+				// Stage actually drew. A chord between their endpoints would miss the
+				// body entirely and turn an aimed Opening or T-junction into a free point.
+				const compiledByWallId = new Map(
+					adapterContext.snapshot.domain.geometry.walls.map((compiled) => [compiled.wallId, compiled])
+				);
+				const localCss = (css: readonly [number, number]): readonly [number, number] => [
+					css[0] - adapterContext.evaluation.rect.left,
+					css[1] - adapterContext.evaluation.rect.top
+				];
 				for (const wall of document.walls) {
-					if (wall.centerline.kind !== 'line') continue;
 					const start = junctionById.get(wall.startJunctionId)?.point;
 					const end = junctionById.get(wall.endJunctionId)?.point;
 					if (start === undefined || end === undefined) continue;
 					const startCss = adapterContext.project([start[0], y, start[1]]);
 					const endCss = adapterContext.project([end[0], y, end[1]]);
 					if (startCss === null || endCss === null) continue;
+					let path: readonly LayoutVec2[] | undefined;
+					let pathCss: readonly (readonly [number, number])[] | undefined;
+					if (wall.centerline.kind !== 'line') {
+						const compiled = compiledByWallId.get(wall.id);
+						if (compiled !== undefined && compiled.samples.length >= 2) {
+							const worldPath = compiled.samples.map(
+								(sample) => [sample.point[0], sample.point[1]] as LayoutVec2
+							);
+							// The compiled run is canonical, but a Wall's Junction is the authored
+							// endpoint. Keep the host path joined to it even at sampling tolerance.
+							const near = (a: LayoutVec2, b: readonly [number, number]): boolean =>
+								Math.hypot(a[0] - b[0], a[1] - b[1]) <= 1e-6;
+							if (!near(worldPath[0]!, start)) worldPath.unshift([start[0], start[1]]);
+							if (!near(worldPath.at(-1)!, end)) worldPath.push([end[0], end[1]]);
+							const cssPath: (readonly [number, number])[] = [];
+							for (const point of worldPath) {
+								const projected = adapterContext.project([point[0], y, point[1]]);
+								if (projected === null) {
+									cssPath.length = 0;
+									break;
+								}
+								cssPath.push(localCss(projected));
+							}
+							if (cssPath.length === worldPath.length) {
+								path = worldPath;
+								pathCss = cssPath;
+							}
+						}
+					}
 					walls.push({
 						id: wall.id,
-						startCss: [startCss[0] - adapterContext.evaluation.rect.left, startCss[1] - adapterContext.evaluation.rect.top],
-						endCss: [endCss[0] - adapterContext.evaluation.rect.left, endCss[1] - adapterContext.evaluation.rect.top],
+						startCss: localCss(startCss),
+						endCss: localCss(endCss),
 						start: [start[0], start[1]],
-						end: [end[0], end[1]]
+						end: [end[0], end[1]],
+						...(path === undefined || pathCss === undefined ? {} : { path, pathCss })
 					});
 				}
 				return { junctions, walls };
@@ -3290,7 +3329,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				css: readonly [number, number]
 			): OpeningCandidate | null {
 				const projected = projectedScene(adapterContext);
-				const face = openingFaceAt(adapterContext, css, projected.walls);
+				// The flat face solve is chord-based; a curved host's face comes from
+				// the compiled Opening face path below, never from an endpoint chord.
+				const face = openingFaceAt(
+					adapterContext,
+					css,
+					projected.walls.filter((wall) => wall.path === undefined)
+				);
 				if (face !== null) return face;
 				const primary = adapterContext.selectionState().primary;
 				const hit = classifyOpeningHost({
