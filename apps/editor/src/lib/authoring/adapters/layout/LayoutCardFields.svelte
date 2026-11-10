@@ -14,11 +14,20 @@
 	 * the DOM never turns an empty field into zero.
 	 */
 	import { onDestroy, untrack, type Snippet } from 'svelte';
-	import { compactMeasure } from '$lib/authoring/stage/stage-adapter-host';
+	import { compactMeasure, indexLabels, stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createCardFieldsInstrument } from './adapter-support';
+	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import {
+		isStraightCompiledWall,
+		wallUnfoldAnchor,
+		wallUnfoldInsideSide,
+		wallUnfoldOpeningAtStation,
+		wallUnfoldViewCentreStation
+	} from '$lib/layout/wall-unfold';
+	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
 
 	let {
 		services,
@@ -54,6 +63,164 @@
 		const selection = services.stage.selection();
 		return selection === null ? null : `${selection.sourceKind}:${selection.sourceId}`;
 	});
+	/** The compiled Wall a selected Wall or Opening names, for entry and names. */
+	const selectedHostWall = $derived.by(() => {
+		const stage = services.stage;
+		// Pure Card controller tests mount a narrow fake stage; a missing read
+		// simply means there is no compiled Wall to offer unfold controls for.
+		if (typeof stage.snapshot !== 'function' || typeof stage.selection !== 'function') return null;
+		const selection = stage.selection();
+		if (selection === null) return null;
+		const snapshot = stage.snapshot();
+		const walls = snapshot.domain.geometry.walls;
+		if (selection.sourceKind === 'wall') {
+			return walls.find((candidate) => candidate.wallId === selection.sourceId) ?? null;
+		}
+		if (selection.sourceKind !== 'opening') return null;
+		let hostWallId: string | undefined;
+		try {
+			hostWallId = stageLayout(snapshot).openings.find(
+				(candidate) => candidate.id === selection.sourceId
+			)?.wallId;
+		} catch {
+			hostWallId = undefined;
+		}
+		return (
+			(hostWallId === undefined
+				? undefined
+				: walls.find((candidate) => candidate.wallId === hostWallId)) ??
+			walls.find((candidate) =>
+				candidate.openings.some((opening) => opening.openingId === selection.sourceId)
+			) ??
+			null
+		);
+	});
+	/** The live session's compiled Wall; it outlives the selection that entered it. */
+	const sessionWall = $derived.by(() => {
+		const state = wallUnfold.state;
+		const stage = services.stage;
+		if (state === null || typeof stage.snapshot !== 'function') return null;
+		return stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId) ?? null;
+	});
+	const sessionShown = $derived(sessionWall !== null && selectedHostWall !== null);
+	const entryShown = $derived.by(() => {
+		const stage = services.stage;
+		if (wallUnfold.state !== null || selectedHostWall === null) return false;
+		return typeof stage.selection === 'function' && stage.selection()?.sourceKind === 'wall';
+	});
+	const sessionContextual = $derived.by(() => {
+		const stage = services.stage;
+		return typeof stage.selection === 'function' && stage.selection()?.sourceKind === 'opening';
+	});
+	const layoutDocument = $derived.by(() => {
+		const stage = services.stage;
+		if (typeof stage.snapshot !== 'function') return null;
+		try {
+			return stageLayout(stage.snapshot());
+		} catch {
+			return null;
+		}
+	});
+	/**
+	 * The same display labels as the Index and the Card head: an authored name,
+	 * else `Wall n` / `Room n` numbered by canonical identity. A default Wall has
+	 * no persisted name, so the session block must not fall back to a bare kind.
+	 */
+	const layoutLabels = $derived.by(() => {
+		if (layoutDocument === null) return null;
+		return {
+			walls: indexLabels(
+				layoutDocument.walls.map((wall) => ({
+					identity: wall.id,
+					kind: 'Wall',
+					name: wall.name ?? null
+				}))
+			),
+			rooms: indexLabels(
+				layoutDocument.rooms.map((room) => ({
+					identity: room.id,
+					kind: 'Room',
+					name: room.name ?? null
+				}))
+			)
+		};
+	});
+	const sessionWallName = $derived.by(() => {
+		const wall = sessionWall;
+		if (wall === null || layoutLabels === null) return null;
+		return layoutLabels.walls.get(wall.wallId)?.label ?? null;
+	});
+	/** The tool that currently owns the pointer, in the Card's words. */
+	const pointerOwner = $derived.by(() => {
+		const session = services.stage.session;
+		if (session === undefined || typeof session.task !== 'function') return null;
+		const task = session.task();
+		if (task === null) return null;
+		if (task.kind === 'layout-ink') return 'Ink';
+		if (task.kind === 'layout-build' || task.kind === 'build') return 'Build';
+		return 'Another tool';
+	});
+	const sessionRoomName = $derived.by(() => {
+		const wall = sessionWall;
+		const stage = services.stage;
+		if (wall === null || layoutLabels === null || typeof stage.snapshot !== 'function') return null;
+		const room = stage.snapshot().domain.geometry.rooms.find((candidate) =>
+			candidate.walls.some((compiled) => compiled.segmentId === wall.wallId)
+		);
+		return room === undefined ? null : layoutLabels.rooms.get(room.roomId)?.label ?? null;
+	});
+
+	/** A straight Wall is already flat, so its entry is shown but disabled. */
+	const entryDisabled = $derived(selectedHostWall !== null && isStraightCompiledWall(selectedHostWall));
+
+	/**
+	 * Enter from the Card foot. A selected Opening centre wins; otherwise the
+	 * view-centre station is used so the pin starts where the creator is looking.
+	 * The face is always the Room/Inside face, never the Camera's side: the sheet
+	 * must open from the inside out from every view. Entry preserves the current
+	 * Camera pose; Bring into view is the explicit framing action.
+	 */
+	function toggleUnfold(): void {
+		const wall = selectedHostWall;
+		if (wall === null || isStraightCompiledWall(wall)) return;
+		if (wallUnfold.state?.wallId === wall.wallId) {
+			wallUnfold.exit(wall);
+			return;
+		}
+		const stage = services.stage;
+		const selection = typeof stage.selection === 'function' ? stage.selection() : null;
+		const evaluation = typeof stage.evaluation === 'function' ? stage.evaluation() : null;
+		const opening = selection?.sourceKind === 'opening'
+			? wall.openings.find((candidate) => candidate.openingId === selection.sourceId)
+			: undefined;
+		// An explicit session pin wins over a newly selected Opening; selection is
+		// not allowed to silently move the start the creator set.
+		const anchor = wallUnfold.anchorForWall(wall) ?? wallUnfoldAnchor({
+			wall,
+			selectedOpeningCenter: opening === undefined ? null : opening.offset + opening.width / 2,
+			pinStation: evaluation === null ? null : wallUnfoldViewCentreStation(wall, evaluation.pose.target)
+		});
+		// Inside is the face the derived Room actually occupies. A reversed Room
+		// winding puts that face on the Wall's right, so the two labels cannot be
+		// hard-coded to the development's left/right quads. The first canonical
+		// Room reference is stable for a dividing Wall; the Camera is not a tie-break.
+		const insideSide = wallUnfoldInsideSide({
+			wallId: wall.wallId,
+			boundaries: layoutDocument?.rooms.flatMap((room) => room.boundary) ?? []
+		});
+		wallUnfold.enter(
+			wall,
+			anchor,
+			evaluation === null ? undefined : { pose: evaluation.pose, reading: evaluation.settledReading },
+			{
+				side: insideSide,
+				insideSide,
+				floorY: stage.snapshot().domain.datumMeters,
+				pinnedOpeningId: wallUnfoldOpeningAtStation(wall, anchor)
+			}
+		);
+	}
+
 	const instrument = $derived.by(() => {
 		void selectionKey;
 		return createCardFieldsInstrument(services);
@@ -66,8 +233,16 @@
 		)
 	);
 	const primaryFields = $derived.by(() => {
-		const ids = instrument?.subject.kind === 'wall' ? ['length', 'height'] : ['width', 'height'];
-		return ids.flatMap(id => ordinaryFields.filter(field => field.id === id));
+		// A closed Wall has no straight length/angle writer; its primary physical
+		// facts are radius and diameter, and both are exact Card edits.
+		const closedWall = ordinaryFields.some((field) => field.id === 'radius');
+		const ids =
+			instrument?.subject.kind === 'wall'
+				? closedWall
+					? ['radius', 'diameter', 'height']
+					: ['length', 'height']
+				: ['width', 'height'];
+		return ids.flatMap((id) => ordinaryFields.filter((field) => field.id === id));
 	});
 
 	function refresh(current = currentController): void {
@@ -210,12 +385,44 @@
 					field
 				)}{/each}
 		</div>
+		<!-- C3/D12 — the foot icon enters; the Card owns the whole Unroll session. -->
+		{#if entryShown && selectedHostWall !== null}
+			<div class="unroll-entry">
+				<button
+					type="button"
+					class="unroll-icon"
+					aria-label={entryDisabled ? 'Already flat' : 'Unroll the Wall from the pin'}
+					title={entryDisabled ? 'Already flat' : 'Unroll from the pin'}
+					data-wall-unroll-entry
+					disabled={entryDisabled}
+					onclick={toggleUnfold}
+				>
+					<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" aria-hidden="true">
+						<path d="M3 2.5h7.5a2 2 0 0 1 0 4H5.5a2 2 0 0 0 0 4H13" />
+						<path d="m11 8.5 2 2-2 2" />
+					</svg>
+				</button>
+			</div>
+		{/if}
+		{#if sessionShown && sessionWall !== null}
+			<LayoutWallUnfold
+				wall={sessionWall}
+				wallName={sessionWallName}
+				roomName={sessionRoomName}
+				contextual={sessionContextual}
+			/>
+		{/if}
 		{#if paused !== null}
 			<div class="paused" data-layout-paused>
 				<p>Paused after a reading change — {paused.label}</p>
 				<button type="button" data-resume-paused onclick={resumePaused}>Resume</button>
 				<button type="button" onclick={discardPaused}>Discard</button>
 			</div>{/if}
+		{#if pointerOwner !== null && selectedHostWall !== null}
+			<p class="pointer-owner" data-layout-pointer-owner>
+				{pointerOwner} owns the pointer. Finish or cancel it to move or bend this Wall.
+			</p>
+		{/if}
 		{#if error !== null}<p class="error" role="alert">{error}</p>
 		{/if}
 		{#if footer}{@render footer()}{/if}
@@ -284,6 +491,37 @@
 		bottom: 6px;
 		font-size: 10px;
 		pointer-events: none;
+	}
+	.pointer-owner {
+		margin: 0;
+		padding: 0 12px 8px;
+		color: var(--shell-ink-quiet);
+		font-size: 11px;
+		line-height: 1.35;
+	}
+	.unroll-entry {
+		display: grid;
+		gap: 4px;
+		padding: 2px 12px 6px;
+	}
+	.unroll-icon {
+		display: inline-grid;
+		place-items: center;
+		width: 26px;
+		height: 26px;
+		padding: 0;
+		border: 1px solid var(--shell-field-line);
+		border-radius: 7px;
+		background: var(--shell-field);
+		color: var(--shell-ink-2);
+	}
+	.unroll-icon:hover:not(:disabled) {
+		border-color: var(--shell-field-line-strong);
+		color: var(--shell-ink);
+	}
+	.unroll-icon:disabled {
+		opacity: 0.42;
+		cursor: default;
 	}
 	.precision {
 		display: grid;

@@ -144,7 +144,24 @@ export function extractBoundaryCandidateFaces(
 		});
 	}
 
-	// Outgoing half-edges by junction, robustly ordered.
+	// Outgoing half-edges by junction, robustly ordered by **departure
+	// direction**. A straight Wall departs along its chord (unchanged); a curved
+	// Wall departs along the first canonical sample's tangent, which is the same
+	// derivation Junction resolution and the mesh consume. Ordering by chord
+	// merges Rooms whenever a bent Wall leaves a Junction on the other side of a
+	// neighbour (B1).
+	// The ordering pass derives each curved half-edge's sampled centerline once.
+	// The polygon pass below reuses that same array, so departure ordering adds
+	// no sampling call to the consumer count the P23B.4 observations pin.
+	const departureByEdge = new Map<string, { ray: DepartureRay; sampled?: SampledSegment }>();
+	const departureOf = (edge: HalfEdge): DepartureRay => {
+		const key = `${edge.wallId}|${edge.direction}`;
+		const cached = departureByEdge.get(key);
+		if (cached) return cached.ray;
+		const resolution = resolveDepartureRay(edge, junctionById, wallById, sampling);
+		departureByEdge.set(key, resolution);
+		return resolution.ray;
+	};
 	const outgoing = new Map<string, HalfEdge[]>();
 	for (const edge of halfEdges) {
 		const list = outgoing.get(edge.fromId);
@@ -152,7 +169,8 @@ export function extractBoundaryCandidateFaces(
 		else outgoing.set(edge.fromId, [edge]);
 	}
 	for (const [junctionId, edges] of outgoing) {
-		edges.sort((a, b) => compareOutgoingEdges(junctionById, junctionId, a, b));
+		const origin = junctionById.get(junctionId)!.point;
+		edges.sort((a, b) => compareOutgoingEdges(origin, departureOf(a), departureOf(b), a, b));
 	}
 
 	// --- face walk ---------------------------------------------------------
@@ -217,9 +235,12 @@ export function extractBoundaryCandidateFaces(
 			const end = junctionById.get(wall.endJunctionId)?.point;
 			if (!start || !end) continue;
 			const traversal = half.direction === 'reverse' ? 'reverse' : 'forward';
-			const sampled = sampling
-				? sampling.samples(wall, start, end, traversal)
-				: wallCenterlineSamples(wall, start, end, traversal);
+			const departure = departureByEdge.get(`${wall.id}|${half.direction}`);
+			const sampled = departure
+				? departure.sampled
+				: sampling
+					? sampling.samples(wall, start, end, traversal)
+					: wallCenterlineSamples(wall, start, end, traversal);
 			const faceObserver = faceSamplingObserverForTest;
 			if (faceObserver) {
 				try {
@@ -333,36 +354,91 @@ function stripDangles(
 }
 
 /**
- * Quadrant-then-orientation comparison of two outgoing rays at a junction
- * (JTS DirectedEdge.compareDirection pattern via robust orientation; H3
- * §10.2). Returns < 0 when `a` comes before `b` in clockwise radial order.
+ * One half-edge's departure ray at its start Junction, plus the signed
+ * curvature there for the degenerate collinear tie-break.
+ *
+ * `probe` is the point the quadrant/orientation comparison measures: the other
+ * Junction for a straight Wall (its chord, exactly today's behaviour) or
+ * `origin + tangent` for a curved one. `curvature` is CCW-positive
+ * (cross(t0, t1) / ds).
+ */
+type DepartureRay = { probe: LayoutVec2; curvature: number };
+
+function resolveDepartureRay(
+	edge: HalfEdge,
+	junctionById: Map<string, LayoutJunction>,
+	wallById: Map<string, LayoutWall>,
+	sampling?: WallSamplingDerivation
+): { ray: DepartureRay; sampled?: SampledSegment } {
+	const wall = wallById.get(edge.wallId);
+	const target = junctionById.get(edge.toId);
+	const origin = junctionById.get(edge.fromId)?.point;
+	if (!origin) return { ray: { probe: [0, 0] as LayoutVec2, curvature: 0 } };
+	if (!wall || wall.centerline.kind === 'line' || !target) {
+		// Straight Wall: its chord *is* its departure direction.
+		return {
+			ray: { probe: target ? target.point : ([origin[0] + 1, origin[1]] as LayoutVec2), curvature: 0 }
+		};
+	}
+	const start = junctionById.get(wall.startJunctionId)?.point;
+	const end = junctionById.get(wall.endJunctionId)?.point;
+	if (!start || !end) return { ray: { probe: target.point, curvature: 0 } };
+	const traversal = edge.direction === 'reverse' ? 'reverse' : 'forward';
+	const sampled = sampling
+		? sampling.samples(wall, start, end, traversal)
+		: wallCenterlineSamples(wall, start, end, traversal);
+	const first = sampled?.samples[0];
+	if (!sampled || !first) return { ray: { probe: target.point, curvature: 0 }, sampled };
+	const tangent = first.tangent;
+	const hasDirection = Number.isFinite(tangent[0]) && Number.isFinite(tangent[1]) && Math.hypot(tangent[0], tangent[1]) > 1e-12;
+	if (!hasDirection) return { ray: { probe: target.point, curvature: 0 }, sampled };
+	let curvature = 0;
+	const second = sampled.samples[1];
+	if (second) {
+		const ds = second.distance - first.distance;
+		if (ds > 1e-12) {
+			const cross = first.tangent[0] * second.tangent[1] - first.tangent[1] * second.tangent[0];
+			curvature = cross / ds;
+		}
+	}
+	return {
+		ray: { probe: [origin[0] + tangent[0], origin[1] + tangent[1]] as LayoutVec2, curvature },
+		sampled
+	};
+}
+
+/**
+ * Quadrant-then-orientation comparison of two outgoing **departure** rays at a
+ * junction (JTS DirectedEdge.compareDirection pattern via robust orientation;
+ * H3 §10.2). Returns < 0 when `a` comes before `b` in clockwise radial order.
+ *
+ * Exactly collinear departures cannot occur in valid minimum topology
+ * (duplicate/overlapping Walls are rejected upstream). When they do appear, the
+ * Wall that turns more counter-clockwise sorts first, then the stable Wall id
+ * as a diagnostic tie-break.
  */
 function compareOutgoingEdges(
-	junctionById: Map<string, LayoutJunction>,
-	fromId: string,
+	origin: LayoutVec2,
+	aRay: DepartureRay,
+	bRay: DepartureRay,
 	a: HalfEdge,
 	b: HalfEdge
 ): number {
 	if (a.wallId === b.wallId && a.direction === b.direction) return 0;
-	const origin = junctionById.get(fromId)!.point;
-	const aTarget = junctionById.get(a.toId)!.point;
-	const bTarget = junctionById.get(b.toId)!.point;
+	const aTarget = aRay.probe;
+	const bTarget = bRay.probe;
 
 	const quadrantA = quadrantOf(aTarget[0] - origin[0], aTarget[1] - origin[1]);
 	const quadrantB = quadrantOf(bTarget[0] - origin[0], bTarget[1] - origin[1]);
 	if (quadrantA !== quadrantB) return quadrantA - quadrantB;
 
 	// Same quadrant: robust orientation of the two rays from the origin.
-	// Rays are (origin→aTarget) and (origin→bTarget); orientXZ(origin, a, b)
-	// > 0 means b is left of a→b... careful: we compare rays from origin, so
-	// orientXZ(origin, aTarget, bTarget) > 0 ⇒ bTarget is counter-clockwise
-	// (left) of ray a ⇒ a comes first in clockwise order.
+	// orientXZ(origin, a, b) > 0 ⇒ b is counter-clockwise (left) of ray a ⇒ a
+	// comes first in clockwise order.
 	const sign = orientXZ(origin, aTarget, bTarget);
 	if (sign > 0) return -1;
 	if (sign < 0) return 1;
-	// Exactly collinear same-direction rays cannot occur in valid minimum
-	// topology (duplicate/overlapping walls rejected upstream); fall back to
-	// stable wall ID as a diagnostic tie-break (H3 §10.2).
+	if (aRay.curvature !== bRay.curvature) return bRay.curvature - aRay.curvature;
 	if (a.wallId === b.wallId) return a.direction < b.direction ? -1 : 1;
 	return a.wallId < b.wallId ? -1 : a.wallId > b.wallId ? 1 : 0;
 }
@@ -387,8 +463,11 @@ function nextCounterClockwiseFaceEdge(
 ): HalfEdge | undefined {
 	const star = outgoing.get(current.toId);
 	if (!star || star.length === 0) return undefined;
+	// Twin by Wall and opposite direction. `(toId, wallId)` is the same result
+	// for every non-loop Wall, but it is ambiguous on a self-connected Wall,
+	// where both half-edges leave the same seam Junction (B2).
 	const twinIndex = star.findIndex(
-		(edge) => edge.toId === current.fromId && edge.wallId === current.wallId
+		(edge) => edge.wallId === current.wallId && edge.direction !== current.direction
 	);
 	if (twinIndex === -1) {
 		// Dangling target (non-manifold in the working graph): no twin.

@@ -52,6 +52,7 @@ import { validateWallFirstOpeningSet, validateWallFirstOpeningSubset } from './l
 import { validateWallFirstPortalRelations } from './layout-wall-portals';
 import {
 	reconcileRooms,
+	roomBoundaryPolygon,
 	type ComponentLineage,
 	type ReconciliationFailure,
 	type ReconciliationResult,
@@ -69,10 +70,12 @@ import {
 	createWallSamplingDerivation,
 	nextWallCurveKnotId,
 	translateWallCenterline,
+	wallCenterlineCarriesPoint,
 	wallCenterlineSamples,
 	wallCubicChain,
 	type WallSamplingDerivation
 } from './layout-wall-centerline';
+import { isClosedWall } from './layout-closed-wall';
 import { deriveChainSpans } from './layout-geometry-curve';
 import {
 	deleteWallCurveKnot,
@@ -87,7 +90,11 @@ import {
 	type NodingIdAllocator,
 	type NodingPlan
 } from './layout-wall-noding';
-import { coincidesAsJunction, coincidentJunctionPairs } from './layout-junction-identity';
+import {
+	coincidesAsJunction,
+	coincidentJunctionPairs,
+	JUNCTION_COINCIDENCE_EPSILON
+} from './layout-junction-identity';
 import { createPlanBoxIndex, type PlanBox } from './layout-plan-box-index';
 import { CURVE_SELF_INTERSECTION_TOLERANCE } from './layout-geometry-curve';
 import {
@@ -108,6 +115,16 @@ import type { LayoutObject } from './layout-wall-first-types';
 import type { Vec3 } from './types';
 
 const POINT_EPSILON = LAYOUT_GEOMETRY_EPSILON;
+
+/**
+ * D4 — maximum number of bend points a **new** insertion may produce.
+ *
+ * The ceiling bounds sampling, preflight and unfold cost. It is enforced on the
+ * write paths only: an existing chain that already carries more knots (for
+ * example from a future or imported document) still reads, edits and deletes
+ * normally, because refusing to read it would strand authored geometry.
+ */
+export const MAX_WALL_CURVE_KNOTS = 32;
 
 export type FixedWallEndpoint = 'start' | 'end';
 
@@ -237,6 +254,12 @@ export type PrecisionRejection = {
 		| 'split_at_existing_endpoint'
 		| 'split_distance_out_of_range'
 		| 'split_through_opening_interior'
+		/** D7 — a closed Wall is one canonical loop and refuses topology mutations. */
+		| 'closed_wall_isolated'
+		/** D8 — a circular Wall resizes by radius; its canonical chain is not freely bendable. */
+		| 'closed_wall_not_bendable'
+		/** D4 — a Wall may not gain more than the supported number of bend points. */
+		| 'curve_knot_limit'
 		| 'junction_point_mismatch';
 	message: string;
 	targetIds?: readonly string[];
@@ -827,6 +850,13 @@ export function planInsertWallCurveKnot(
 	if (!Number.isFinite(distance)) {
 		return reject('invalid_value', 'Bend point distance must be a finite number of meters', [wallId]);
 	}
+	if (chain.knots.length >= MAX_WALL_CURVE_KNOTS) {
+		return reject(
+			'curve_knot_limit',
+			`Wall '${wallId}' already has ${MAX_WALL_CURVE_KNOTS} bend points, the maximum a new insertion may produce`,
+			[wallId]
+		);
+	}
 	const insertion = insertWallCurveKnot(
 		chain,
 		distance,
@@ -973,7 +1003,11 @@ export function resolveProposedCurveChain(
 	const resolution = p2311Measure('proposal-exact-split', () => resolveWallCurveSplit(chain, intent.distance));
 	if (resolution.kind === 'rejected') return undefined;
 	const { fragments, promotedKnotId, point } = resolution.result;
-	const knotId = promotedKnotId ?? nextWallCurveKnotId(wallId, chain.knots);
+	if (!promotedKnotId && chain.knots.length >= MAX_WALL_CURVE_KNOTS) return undefined;
+	// A preview id is stable and never persisted: an occupancy-derived id here
+	// would be a second allocation authority, and a preview is exactly the place
+	// where the same grab must produce the same transient shape each frame.
+	const knotId = promotedKnotId ?? `${wallId}:knot.preview`;
 	const knots = promotedKnotId
 		? chain.knots.map((knot) => ({ id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 }))
 		: [
@@ -1049,7 +1083,10 @@ function sampleArchitectureProposal(
 /** A live Wall drag checks local geometry and Opening fit without reconciling or compiling. */
 export function readWallFirstDragProposal(
 	document: LayoutDocumentWallFirst,
-	intent: Extract<WallFirstArchitectureProposalIntent, { kind: 'junction-move' | 'wall-move' }>,
+	intent: Extract<
+		WallFirstArchitectureProposalIntent,
+		{ kind: 'junction-move' | 'wall-move' | 'curve-control-move' | 'wall-bend' }
+	>,
 	sampling: WallSamplingDerivation,
 	scope: WallFirstArchitectureVerdictScope
 ): { kind: 'pending'; walls: WallFirstArchitectureProposalWall[] } |
@@ -1613,15 +1650,29 @@ export type WallBendIntent = {
 export function planBendWallCurveKnot(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	intent: WallBendIntent
+	intent: WallBendIntent,
+	options: { readonly knotId: string }
 ): PrecisionPlan {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
-	const { start, end, chain } = target;
+	const { wall, start, end, chain } = target;
+	// D8 — the 16-span chain is the canonical circle, not an authored freeform
+	// curve. Its shape is owned by the radius writer and preserve-angle placement;
+	// a bend would break both invariants, so it refuses explicitly.
+	if (isClosedWall(wall)) {
+		return reject(
+			'closed_wall_not_bendable',
+			'A circular Wall is resized by its radius; it cannot be bent.',
+			[wallId]
+		);
+	}
 	if (!Number.isFinite(intent.distance)) {
 		return reject('invalid_value', 'Bend distance must be a finite number of meters', [wallId]);
 	}
 	if (!finitePoint(intent.point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId]);
+	if (typeof options.knotId !== 'string' || options.knotId.length === 0) {
+		return reject('invalid_value', 'A Bend must capture the id of the bend point it may insert', [wallId]);
+	}
 
 	// One resolver call decides both halves: whether the grab promotes an
 	// existing bend point, and where the inserted knot belongs.
@@ -1639,7 +1690,16 @@ export function planBendWallCurveKnot(
 	}
 
 	const promotedKnotId = resolution.result.promotedKnotId;
-	const knotId = promotedKnotId ?? nextWallCurveKnotId(wallId, chain.knots);
+	if (!promotedKnotId && chain.knots.length >= MAX_WALL_CURVE_KNOTS) {
+		return reject(
+			'curve_knot_limit',
+			`Wall '${wallId}' already has ${MAX_WALL_CURVE_KNOTS} bend points, the maximum a new insertion may produce`,
+			[wallId]
+		);
+	}
+	// Captured identity, never an occupancy count: a promoted knot keeps its
+	// own id, and a freshly inserted one replays the id the intent captured.
+	const knotId = promotedKnotId ?? options.knotId;
 	const { fragments } = resolution.result;
 	const insertedKnot: LayoutWallCurveKnot = {
 		id: knotId,
@@ -2503,6 +2563,99 @@ function validateWallFirstTopologyPass(
 	// T1.P02.S06 D.1 (H3) — one id→point index for every Wall this pass resolves,
 	// instead of two linear Junction scans per Wall.
 	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
+
+	// D7 — closed Walls are isolated. This is intentionally document-global, not
+	// component-scoped: an independent Wall crossing a closed loop is still an
+	// unsupported connection, and equal coordinates at different Junction IDs are
+	// an attachment, not independent geometry. Detection uses the same canonical
+	// samples as every other topology predicate.
+	const sampledWall = (wall: LayoutWall): SampledTopologyWall | undefined => {
+		const start = junctionPointById.get(wall.startJunctionId);
+		const end = junctionPointById.get(wall.endJunctionId);
+		if (!start || !end) return undefined;
+		if (wall.centerline.kind === 'line') {
+			const dx = end[0] - start[0];
+			const dz = end[1] - start[1];
+			const length = Math.hypot(dx, dz);
+			if (!(length > POINT_EPSILON)) return undefined;
+			const tangent: LayoutVec2 = [dx / length, dz / length];
+			return {
+				id: wall.id,
+				startJunctionId: wall.startJunctionId,
+				endJunctionId: wall.endJunctionId,
+				samples: [
+					{ point: [...start] as LayoutVec2, distance: 0, tangent, normal: [-tangent[1], tangent[0]], t: 0 },
+					{ point: [...end] as LayoutVec2, distance: length, tangent, normal: [-tangent[1], tangent[0]], t: 1 }
+				]
+			};
+		}
+		const sampled = options.sampling
+			? options.sampling.samples(wall, start, end, 'forward')
+			: wallCenterlineSamples(wall, start, end, 'forward');
+		if (!sampled) return undefined;
+		return {
+			id: wall.id,
+			startJunctionId: wall.startJunctionId,
+			endJunctionId: wall.endJunctionId,
+			samples: sampled.samples
+		};
+	};
+	for (const closed of document.walls) {
+		if (!isClosedWall(closed)) continue;
+		const seam = junctionPointById.get(closed.startJunctionId);
+		if (!seam) continue;
+		for (const other of document.walls) {
+			if (other.id === closed.id) continue;
+			if (
+				other.startJunctionId === closed.startJunctionId ||
+				other.endJunctionId === closed.startJunctionId
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' connects at its seam Junction`
+				);
+			}
+			const otherStart = junctionPointById.get(other.startJunctionId);
+			const otherEnd = junctionPointById.get(other.endJunctionId);
+			if (
+				(otherStart && wallCenterlineCarriesPoint(closed, seam, seam, otherStart)) ||
+				(otherEnd && wallCenterlineCarriesPoint(closed, seam, seam, otherEnd))
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' attaches to its centerline`
+				);
+			}
+			if (
+				otherStart &&
+				otherEnd &&
+				wallCenterlineCarriesPoint(other, otherStart, otherEnd, seam)
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): its seam attaches to Wall '${other.id}'`
+				);
+			}
+			const closedSampled = sampledWall(closed);
+			const otherSampled = sampledWall(other);
+			if (
+				closedSampled &&
+				otherSampled &&
+				sampledWallExtentsOverlap(closedSampled, otherSampled) &&
+				sampledWallsCross(closedSampled, otherSampled)
+			) {
+				return topologyFailure(
+					closed.id,
+					other.id,
+					`Closed Wall '${closed.id}' is isolated (closed_wall_isolated): Wall '${other.id}' crosses its centerline`
+				);
+			}
+		}
+	}
+
 	// The predicate itself, so a scoped pass evaluates the SAME rule with the same path, code,
 	// message and target as the canonical loop (INV-3).
 	const coincidenceFailure = (firstId: string, secondId: string): LayoutGeometryIssue | undefined => {
@@ -2548,7 +2701,18 @@ function validateWallFirstTopologyPass(
 	const wallSegments = new Map<string, TopologySegment>();
 	for (const wall of document.walls) {
 		const endpoints = wallEndpoints(document, wall, junctionPointById);
-		if (!endpoints || !(endpoints.length > POINT_EPSILON)) continue;
+		if (!endpoints) continue;
+		// A closed Wall's endpoint chord is a point; its effective length is the
+		// canonical cubic arc. The old distinct-endpoint check would have rejected
+		// every closed Wall as zero-length before face extraction ever saw it.
+		let effectiveLength = endpoints.length;
+		if (isClosedWall(wall) && wall.centerline.kind === 'cubic-chain') {
+			const sampled = options.sampling
+				? options.sampling.samples(wall, endpoints.start, endpoints.end, 'forward')
+				: wallCenterlineSamples(wall, endpoints.start, endpoints.end, 'forward');
+			effectiveLength = sampled?.length ?? 0;
+		}
+		if (!(effectiveLength > POINT_EPSILON)) continue;
 		wallSegments.set(wall.id, { id: wall.id, start: endpoints.start, end: endpoints.end });
 	}
 	const lengthCandidates = subject
@@ -2589,9 +2753,15 @@ function validateWallFirstTopologyPass(
 		if (intersection.kind === 'shared-explicit-junction') {
 			// The classifier intentionally gives explicit connectivity priority;
 			// still reject two collinear spans that overlap beyond the shared
-			// endpoint, which is not a valid graph edge.
+			// endpoint, which is not a valid graph edge. A two-Wall lens has the
+			// same chord, but a curved side is the distinct boundary edge; the
+			// sampled curve gate below proves the pair only meets at both
+			// endpoints. A straight side plus a curved side is the D-shaped Room.
+			const twoWallLens =
+				shared.length === 2 &&
+				(a.centerline.kind === 'cubic-chain' || b.centerline.kind === 'cubic-chain');
 			const geometric = classifyWallIntersection(segmentA, segmentB, []);
-			if (geometric.kind === 'collinear-overlap') {
+			if (geometric.kind === 'collinear-overlap' && !twoWallLens) {
 				return topologyFailure(a.id, b.id, 'Walls overlap beyond their explicit shared Junction');
 			}
 			return undefined;
@@ -2663,8 +2833,15 @@ function validateWallFirstTopologyPass(
 	}
 
 	for (const room of subject && !subject.evaluateRooms ? [] : document.rooms) {
+		// A closed Wall contributes ONE oriented ref but many sampled vertices, and
+		// a two-Wall curved lens contributes TWO refs and a bounded polygon. The
+		// floor is resolved vertices, not Wall-ref count. Resolve the polygon before
+		// refusing a short boundary, so only a genuinely degenerate loop fails.
 		if (room.boundary.length < 3) {
-			return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary Walls`);
+			const roomPolygon = roomBoundaryPolygon(document, room.id);
+			if (!roomPolygon || roomPolygon.length < 3) {
+				return topologyFailure(room.id, undefined, `Room '${room.id}' needs at least three boundary Walls`);
+			}
 		}
 		let previousEnd: string | undefined;
 		let firstStart: string | undefined;

@@ -143,6 +143,7 @@ import { consumerSceneEdit } from './__fixtures__/stage-domain-consumer';
 import { primitiveEntity } from './__fixtures__/f4-current-source-fixtures';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { page } from './fixtures/app-state';
+import { replaceStates } from './fixtures/app-navigation';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
 const PROJECT_ID = 'project-1';
@@ -273,6 +274,7 @@ beforeEach(() => {
 	harness.releaseBootFromSource = null;
 	harness.services = null;
 	nextFile = null;
+	replaceStates.length = 0;
 
 	vi.stubGlobal('requestAnimationFrame', () => 1);
 	vi.stubGlobal('cancelAnimationFrame', () => {});
@@ -325,6 +327,24 @@ describe('spatial route resume Save', () => {
 		button('Replace').click();
 		await waitForReady('Enclosed room');
 		expect(harness.loadCalls).toBe(0);
+	});
+
+	it('consumes create=1 after the first acknowledged Save', async () => {
+		harness.loadKind = 'auth';
+		await mountPage('?create=1');
+		await waitForReady('Untitled project');
+		expect(head().dataset.saveStatus).toBe('never-saved');
+
+		const before = replaceStates.length;
+		headSaveButton().click();
+		await vi.waitFor(() => {
+			expect(harness.saves).toHaveLength(1);
+			expect(head().dataset.saveStatus).toBe('saved');
+		});
+
+		const urls = replaceStates.slice(before);
+		expect(urls.some((url) => url.startsWith('/project/project-1/spatial'))).toBe(true);
+		expect(urls.some((url) => new URL(url, 'http://localhost').searchParams.has('create'))).toBe(false);
 	});
 
 	it('captures identical project source bytes with browser preferences unset and set', async () => {

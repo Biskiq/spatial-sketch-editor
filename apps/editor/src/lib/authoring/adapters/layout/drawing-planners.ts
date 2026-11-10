@@ -24,7 +24,10 @@ import {
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	materializeLayoutSourceForCapture,
+	planCreateCircularRoom,
 	planDeleteWall,
+	planResizeClosedWallRadius,
+	planTranslateClosedWall,
 	planWallChain,
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
@@ -50,10 +53,16 @@ import {
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
-import { layoutPlanner } from './precision';
+import { layoutPlanner, preparedLayoutCandidate } from './precision';
 
 export const LAYOUT_WALL_CHAIN_COMMIT_KIND = 'layout-wall-chain-commit';
 export const LAYOUT_WALL_DELETE_KIND = 'layout-wall-delete';
+/** C2 — one centre → rim Circle gesture becomes one closed Wall and one Room. */
+export const LAYOUT_CIRCLE_ROOM_CREATE_KIND = 'layout-circle-room-create';
+/** C2/D3b — exact radius edit on a closed Wall, preserving Opening stations. */
+export const LAYOUT_CIRCLE_RADIUS_KIND = 'layout-circle-radius';
+/** C2/D8 — a circular Wall's body drag is one rigid translation. */
+export const LAYOUT_CIRCLE_TRANSLATE_KIND = 'layout-circle-translate';
 
 /** One draft vertex as the intent carries it: exact coordinates, no display units. */
 export type WallChainCommitPoint = LayoutVec2;
@@ -460,9 +469,265 @@ function wallDeletePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
-/** The two S02 drawing operations, registered beside the precision planners. */
+/** C2 circle payload: exact centre and rim points plus optional Wall dimensions. */
+export type CircleRoomCreatePayload = {
+	readonly center: LayoutVec2;
+	readonly rim: LayoutVec2;
+	readonly thickness: number | null;
+	readonly height: number | null;
+};
+
+function readCircleRoomPayload(
+	payload: unknown
+): CircleRoomCreatePayload | { readonly message: string } {
+	if (!isRecord(payload)) return { message: 'The Circle payload must be an object.' };
+	const expected = ['center', 'rim', 'thickness', 'height'];
+	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
+	if (unknown.length > 0) return { message: `The Circle payload cannot carry ${unknown.join(', ')}.` };
+	for (const key of expected) {
+		if (!(key in payload)) return { message: `The Circle payload is missing "${key}".` };
+	}
+	const point = (value: unknown): LayoutVec2 | null => {
+		if (!Array.isArray(value) || value.length !== 2) return null;
+		const [x, z] = value as unknown[];
+		return typeof x === 'number' && typeof z === 'number' && Number.isFinite(x) && Number.isFinite(z)
+			? [x, z]
+			: null;
+	};
+	const center = point(payload.center);
+	const rim = point(payload.rim);
+	if (center === null || rim === null) return { message: 'A Circle needs finite centre and rim [x, z] points.' };
+	const optional = (value: unknown): number | null | undefined => {
+		if (value === null) return null;
+		if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+		return undefined;
+	};
+	const thickness = optional(payload.thickness);
+	const height = optional(payload.height);
+	if (thickness === undefined) return { message: 'Circle thickness must be null or a finite positive number.' };
+	if (height === undefined) return { message: 'Circle height must be null or a finite positive number.' };
+	return { center, rim, thickness, height };
+}
+
+function circleRoomCreatePlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_CIRCLE_ROOM_CREATE_KIND, (request) => {
+		const payload = readCircleRoomPayload(request.intent.payload);
+		if ('message' in payload) return refused(payload.message);
+		const captured = readCapturedOperation(request);
+		if ('kind' in captured) return captured;
+		const { capture, levelId } = captured;
+		const baseline = request.snapshot.domain.source.units.layout.data;
+		const plan = planCreateCircularRoom({
+			baseline,
+			center: payload.center,
+			rim: payload.rim,
+			capture,
+			levelId,
+			roomNamePrefix: 'Room',
+			...(payload.thickness === null ? {} : { thickness: payload.thickness }),
+			...(payload.height === null ? {} : { height: payload.height })
+		});
+		if (plan.kind === 'rejected') {
+			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+		}
+		const contentRevision = request.snapshot.domain.source.units.layout.header.contentRevision;
+		recordPreparedCowCandidate(request.intent.operationId, plan.document, canonicalUnitJson(request.intent));
+		materializeLayoutSourceForCapture(plan.document);
+		const candidate: PreparedCandidate<ProjectEnvelope> = {
+			operationId: request.intent.operationId,
+			sourceKind: UNIT_SOURCE_KIND,
+			sourceVersion: UNIT_SOURCE_VERSION,
+			source: replaceUnitData(request.snapshot.domain.source, 'layout', plan.document),
+			changes: [
+				{
+					kind: LAYOUT_CIRCLE_ROOM_CREATE_KIND,
+					subjectIds: [plan.wallId],
+					fields: ['walls', 'junctions', 'rooms']
+				}
+			],
+			correspondence: [
+				{
+					relation: 'created',
+					before: null,
+					after: layoutSubjectReference({ kind: 'wall', id: plan.wallId, contentRevision, levelId })
+				},
+				{
+					relation: 'created',
+					before: null,
+					after: layoutSubjectReference({ kind: 'junction', id: plan.junctionId, contentRevision, levelId })
+				},
+				...plan.createdRoomIds.map((roomId) => ({
+					relation: 'created' as const,
+					before: null,
+					after: layoutSubjectReference({ kind: 'room', id: roomId, contentRevision, levelId })
+				}))
+			],
+			diagnostics: []
+		};
+		return { kind: 'prepared', candidate };
+	});
+}
+
+function circleRadiusPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_CIRCLE_RADIUS_KIND, (request) => {
+		const payload = request.intent.payload;
+		if (!isRecord(payload)) return refused('The radius payload must be an object.');
+		if (Object.keys(payload).length !== 2 || !('wallId' in payload) || !('radius' in payload)) {
+			return refused('A radius edit payload is exactly { wallId, radius }.');
+		}
+		const { wallId, radius } = payload;
+		if (typeof wallId !== 'string' || wallId.length === 0) return refused('A radius edit needs one wall id.');
+		if (typeof radius !== 'number' || !Number.isFinite(radius) || radius <= 0) {
+			return refused('A radius must be one finite positive number of meters.');
+		}
+		const plan = planResizeClosedWallRadius({
+			document: request.snapshot.domain.source.units.layout.data,
+			wallId,
+			radius
+		});
+		if (plan.kind === 'rejected') {
+			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+		}
+		return preparedLayoutCandidate(
+			request,
+			LAYOUT_CIRCLE_RADIUS_KIND,
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['radius', 'diameter']
+		);
+	});
+}
+
+function circleTranslatePlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_CIRCLE_TRANSLATE_KIND, (request) => {
+		const payload = request.intent.payload;
+		if (!isRecord(payload)) return refused('The Circle move payload must be an object.');
+		const expected = ['wallId', 'deltaX', 'deltaZ'];
+		if (Object.keys(payload).length !== expected.length || expected.some((key) => !(key in payload))) {
+			return refused('A Circle move payload is exactly { wallId, deltaX, deltaZ }.');
+		}
+		const { wallId, deltaX, deltaZ } = payload;
+		if (typeof wallId !== 'string' || wallId.length === 0) return refused('A Circle move needs one wall id.');
+		if (
+			typeof deltaX !== 'number' ||
+			!Number.isFinite(deltaX) ||
+			typeof deltaZ !== 'number' ||
+			!Number.isFinite(deltaZ)
+		) {
+			return refused('A Circle move needs finite X and Z deltas in meters.');
+		}
+		const plan = planTranslateClosedWall({
+			document: request.snapshot.domain.source.units.layout.data,
+			wallId,
+			delta: [deltaX, deltaZ]
+		});
+		if (plan.kind === 'rejected') {
+			return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+		}
+		return preparedLayoutCandidate(
+			request,
+			LAYOUT_CIRCLE_TRANSLATE_KIND,
+			{ kind: 'wall', id: wallId },
+			plan.document,
+			['position']
+		);
+	});
+}
+
+/** The S02 drawing operations plus C2's Circle creation, radius and move. */
 export function createDrawingPlanners(): readonly DomainPlanner<ProjectEnvelope>[] {
-	return [wallChainCommitPlanner(), wallDeletePlanner()];
+	return [
+		wallChainCommitPlanner(),
+		wallDeletePlanner(),
+		circleRoomCreatePlanner(),
+		circleRadiusPlanner(),
+		circleTranslatePlanner()
+	];
+}
+
+/** The F.4 intent for one Circle creation, with its captured identity and level. */
+export function circleRoomCreateIntent(input: {
+	readonly payload: CircleRoomCreatePayload;
+	readonly capture: LayoutIdCapture;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	return {
+		version: 1,
+		kind: LAYOUT_CIRCLE_ROOM_CREATE_KIND,
+		operationId: input.operationId,
+		expectedRevision: { projectId: input.projectId, revisionId: input.revisionId },
+		targets: [],
+		payload: {
+			center: [input.payload.center[0], input.payload.center[1]],
+			rim: [input.payload.rim[0], input.payload.rim[1]],
+			thickness: input.payload.thickness,
+			height: input.payload.height
+		},
+		capturedInputs: [layoutWorkingLevelInput(input.levelId), layoutIdCaptureInput(input.capture)],
+		allocatedIds: []
+	};
+}
+
+/** The F.4 intent for one exact closed-Wall radius edit. */
+export function circleRadiusIntent(input: {
+	readonly wallId: string;
+	readonly radius: number;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	return {
+		version: 1,
+		kind: LAYOUT_CIRCLE_RADIUS_KIND,
+		operationId: input.operationId,
+		expectedRevision: { projectId: input.projectId, revisionId: input.revisionId },
+		targets: [
+			layoutSubjectReference({
+				kind: 'wall',
+				id: input.wallId,
+				contentRevision: input.contentRevision,
+				levelId: input.levelId
+			})
+		],
+		payload: { wallId: input.wallId, radius: input.radius },
+		capturedInputs: [layoutWorkingLevelInput(input.levelId)],
+		allocatedIds: []
+	};
+}
+
+/** The F.4 intent for one rigid closed-Wall move. */
+export function circleTranslateIntent(input: {
+	readonly wallId: string;
+	readonly delta: LayoutVec2;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	return {
+		version: 1,
+		kind: LAYOUT_CIRCLE_TRANSLATE_KIND,
+		operationId: input.operationId,
+		expectedRevision: { projectId: input.projectId, revisionId: input.revisionId },
+		targets: [
+			layoutSubjectReference({
+				kind: 'wall',
+				id: input.wallId,
+				contentRevision: input.contentRevision,
+				levelId: input.levelId
+			})
+		],
+		payload: { wallId: input.wallId, deltaX: input.delta[0], deltaZ: input.delta[1] },
+		capturedInputs: [layoutWorkingLevelInput(input.levelId)],
+		allocatedIds: []
+	};
 }
 
 /** The F.4 intent for one chain commit, with its captured identity and level. */

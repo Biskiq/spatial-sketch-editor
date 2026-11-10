@@ -16,7 +16,7 @@ import {
 	type WallOpeningRejection
 } from '@portfolio/layout-core';
 
-export function wallRefusalWords(code: string): string {
+export function wallRefusalWords(code: string, message = ''): string {
 	switch (code) {
 		case 'dimension_out_of_range':
 			return LAYOUT_DIMENSION_LIMIT_MESSAGE;
@@ -50,13 +50,36 @@ export function wallRefusalWords(code: string): string {
 		case 'incompatible_wall_pair':
 		case 'topology_invalid':
 			return 'This would cross or meet another Wall.';
+		case 'geometry_invalid':
+			return /offset folds|self-intersect/i.test(message)
+				? "This bend is too tight for the Wall's thickness. Pull it further out or reduce the thickness."
+				: 'This shape is not a valid Wall layout.';
+		case 'split_at_existing_endpoint':
+			return "Bend between the Wall's endpoints, not on one.";
+		case 'split_distance_out_of_range':
+			return 'Bend somewhere along the open Wall.';
+		case 'split_through_opening_interior':
+			return 'A bend cannot pass through an Opening.';
+		case 'curve_knot_limit':
+			return 'This Wall already has the most bend points it supports. Remove one first.';
+		case 'unknown_curve_anchor':
+			return 'That bend point is gone. Start the bend again.';
+		case 'closed_wall_not_bendable':
+		case 'closed_wall_isolated':
+			return 'A circular Wall is resized by its radius; it cannot be bent.';
+		case 'invalid_endpoint':
+		case 'invalid_reference':
+			return 'This shape is not a valid Wall layout.';
 		case 'room_identity_lost':
 		case 'room_reconciliation_rejected':
+		case 'correspondence_failure':
+			return 'This would move a Room across its own boundary. Keep the corner on the Room side.';
 		case 'ambiguous_room_correspondence':
 		case 'ambiguous_room_removal':
+			return 'This would make it unclear which Room boundary moved. Move one boundary at a time.';
 		case 'nonadjacent_portal_relation':
 		case 'portal_relation_invalid':
-			return 'This would break a Room.';
+			return 'This would break the connection between Rooms.';
 		case 'zero_length_wall':
 		case 'zero_length_segment':
 		case 'zero_length_leg':
@@ -78,7 +101,11 @@ export function wallRefusalWords(code: string): string {
 		case 'unknown_junction':
 			return 'The Wall cannot be placed there.';
 		default:
-			return 'This change cannot be applied.';
+			// A future Room gate must not fall back to the opaque generic line. The
+			// planner's diagnostic is internal, but its subject is safe to name.
+			return /room/i.test(message)
+				? 'This would change a Room boundary. Keep the moved Wall on the Room side.'
+				: 'This change cannot be applied.';
 	}
 }
 
@@ -151,6 +178,26 @@ export function openingRefusalWords(
 
 /** Drawing diagnostics stay in tooling; the local problem marker offers a remedy. */
 export function drawingRefusalWords(code: string): string {
+	// A chain refusal is about the outline being drawn, not about editing an
+	// existing Room. Name the attempted closure and the smallest repair instead
+	// of the Card's "Room moved across its boundary" words.
+	switch (code) {
+		case 'invalid_candidate_document':
+		case 'candidate_does_not_compile':
+		case 'room_reconciliation_rejected':
+			return 'This outline would not enclose a valid Room. Check that both ends meet the same Wall junctions and that the new Wall does not cross another Wall.';
+		case 'unconnected_interior_contact':
+		case 'unconnected_crossing':
+			return 'This outline would touch or cross a Wall without naming a connection. End on a Wall span or a Junction, or move the leg clear.';
+		case 'collinear_overlap':
+		case 'self_intersecting_chain':
+			return 'This outline overlaps itself or an existing Wall. Move the leg clear of the Wall it runs along.';
+		default:
+			return drawingRefusalFallback(code);
+	}
+}
+
+function drawingRefusalFallback(code: string): string {
 	switch (code) {
 		case 'unconnected_crossing':
 		case 'unconnected_interior_contact': return 'End this line on the wall.';

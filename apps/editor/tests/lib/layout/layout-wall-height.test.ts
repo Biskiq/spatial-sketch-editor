@@ -385,7 +385,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 			'unsupported_format_version'
 		);
 		expect(() => serializeWallFirstLayoutDocument(historical)).toThrowError(
-			/Canonical Layout Save requires formatVersion 6/
+			/Canonical Layout Save requires formatVersion 7/
 		);
 		// A canonical document round-trips through the same writer unchanged.
 		expect(serializeWallFirstLayoutDocument(rectangleDocument())).toContain(

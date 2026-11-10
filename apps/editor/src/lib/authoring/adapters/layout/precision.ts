@@ -32,6 +32,8 @@ import {
 	materializeLayoutSourceForCapture,
 	createLayoutCompileSession,
 	deriveLayoutWallRole,
+	isClosedWall,
+	readClosedWallCircle,
 	layoutIdCaptureInput,
 	layoutWorkingLevelInput,
 	lookupIndexedJunction,
@@ -39,7 +41,10 @@ import {
 	lookupIndexedOpening,
 	lookupIndexedWall,
 	nextLayoutPresetObjectId,
+	planBendWallCurveKnot,
 	planCommitLayoutObjectPresetWithId,
+	planConvertWallToLine,
+	planDeleteWallCurveKnot,
 	readLayoutIdCapture,
 	readLayoutWorkingLevel,
 	recordPreparedCowCandidate,
@@ -54,6 +59,8 @@ import {
 	planUpdateWallFirstOpening,
 	planRoomMetadataUpdate,
 	planWallMetadataUpdate,
+	projectPointToWallCenterline,
+	wallCenterlineSamples,
 	withLayoutCompileSession,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
@@ -93,6 +100,16 @@ export const LAYOUT_WALL_ANGLE_KIND = 'layout-wall-angle';
 /** T1.P01.S05 — rigid straight-Wall translation: both endpoints move by one delta. */
 export const LAYOUT_WALL_MOVE_KIND = 'layout-wall-move';
 /**
+ * T1 C1 — one grab on an open Wall body becomes one bend point and one reshape.
+ * The payload carries the physical arc distance the press resolved and the
+ * captured id of the bend point the write may insert, so preview and commit
+ * address the same identity.
+ */
+export const LAYOUT_WALL_BEND_KIND = 'layout-wall-bend';
+/** C1/D2 — the Card's two knot shape actions, through one planner each. */
+export const LAYOUT_WALL_KNOT_DELETE_KIND = 'layout-wall-knot-delete';
+export const LAYOUT_WALL_STRAIGHTEN_KIND = 'layout-wall-straighten';
+/**
  * Review pass 3 — a Room moves rigidly in X/Z. The retained planner moves the
  * Room's connected group (Rooms sharing a Wall travel together) and refuses
  * with the canonical gates' words; Scene objects stay where they are.
@@ -126,6 +143,9 @@ const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_LENGTH_KIND]: ['wallId', 'length', 'fixed'],
 	[LAYOUT_WALL_ANGLE_KIND]: ['wallId', 'angleRadians', 'fixed'],
 	[LAYOUT_WALL_MOVE_KIND]: ['wallId', 'deltaX', 'deltaZ'],
+	[LAYOUT_WALL_BEND_KIND]: ['wallId', 'distance', 'x', 'z', 'knotId'],
+	[LAYOUT_WALL_KNOT_DELETE_KIND]: ['wallId', 'knotId'],
+	[LAYOUT_WALL_STRAIGHTEN_KIND]: ['wallId'],
 	[LAYOUT_ROOM_MOVE_KIND]: ['roomId', 'deltaX', 'deltaZ'],
 	[LAYOUT_JUNCTION_MOVE_KIND]: ['wallId', 'junctionId', 'x', 'z'],
 	[LAYOUT_OPENING_MEASURE_KIND]: ['openingId', 'field', 'value'],
@@ -470,6 +490,87 @@ function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
+/**
+ * C1 — the composite Bend planner. One grab, one candidate, one history entry:
+ * a straight Wall becomes a chain when the grab inserts its first bend point,
+ * and an invalid release rejects atomically through the retained planner.
+ */
+function wallBendPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_WALL_BEND_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_BEND_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, distance, x, z, knotId } = payload.value;
+		if (
+			!opaqueId(wallId) ||
+			!finiteNonNegative(distance) ||
+			!finiteNumber(x) ||
+			!finiteNumber(z) ||
+			!opaqueId(knotId)
+		) {
+			return rejected(
+				'invalid-value',
+				'A Wall bend needs one wall id, a finite non-negative arc distance, a finite bend point and the captured bend-point id.'
+			);
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planBendWallCurveKnot(
+			request.snapshot.domain.source.units.layout.data,
+			wallId,
+			{ distance, point: [x, z] },
+			{ knotId }
+		);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(request, 'layout-wall-bend', { kind: 'wall', id: wallId }, plan.document, [
+			'shape'
+		]);
+	});
+}
+
+/**
+ * C1/D2 — remove the active bend point. The retained delete-by-merge planner
+ * owns the geometry, Opening fit and atomic refusal; the Card only names which
+ * captured knot the creator made active.
+ */
+function wallKnotDeletePlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_WALL_KNOT_DELETE_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_KNOT_DELETE_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, knotId } = payload.value;
+		if (!opaqueId(wallId) || !opaqueId(knotId)) {
+			return rejected('invalid-value', 'Removing a bend point needs one wall id and one bend-point id.');
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planDeleteWallCurveKnot(
+			request.snapshot.domain.source.units.layout.data,
+			wallId,
+			knotId
+		);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(request, 'layout-wall-knot-delete', { kind: 'wall', id: wallId }, plan.document, [
+			'shape'
+		]);
+	});
+}
+
+/** C1 — Straighten Wall through the retained convert-to-line planner. */
+function wallStraightenPlanner(): DomainPlanner<ProjectEnvelope> {
+	return layoutPlanner(LAYOUT_WALL_STRAIGHTEN_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_STRAIGHTEN_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId } = payload.value;
+		if (!opaqueId(wallId)) return rejected('invalid-value', 'Straightening a Wall needs one wall id.');
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planConvertWallToLine(request.snapshot.domain.source.units.layout.data, wallId);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return preparedLayoutCandidate(request, 'layout-wall-straighten', { kind: 'wall', id: wallId }, plan.document, [
+			'shape'
+		]);
+	});
+}
+
 /** Rigid Room-group translation: one delta for the Room and every Room joined to it. */
 function roomMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_ROOM_MOVE_KIND, (request) => {
@@ -707,7 +808,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 	});
 }
 
-/** The five production Layout planners, one operation kind each. */
+/** The production Layout planners, one operation kind each. */
 export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[] {
 	return [
 		wallHeightPlanner(),
@@ -715,6 +816,9 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[
 		wallLengthPlanner(),
 		wallAnglePlanner(),
 		wallMovePlanner(),
+		wallBendPlanner(),
+		wallKnotDeletePlanner(),
+		wallStraightenPlanner(),
 		roomMovePlanner(),
 		junctionMovePlanner(),
 		openingMeasurePlanner(),
@@ -775,6 +879,127 @@ export function wallFrame(document: LayoutDocumentWallFirst, wallId: string): Wa
 		length,
 		angleRadians: Math.atan2(dz, dx)
 	};
+}
+
+/**
+ * The canonical frame of a **curved** open Wall: its sampled centerline read
+ * through the one geometry authority, with physical arc distances.
+ *
+ * A straight Wall has no curved frame (`wallFrame` owns it), and a resolved
+ * sample derivation is required: a chain that cannot be sampled is not
+ * addressable, so the caller gets `null` rather than a guessed polyline.
+ */
+export type CurvedWallFrame = {
+	readonly wallId: string;
+	readonly startJunctionId: string;
+	readonly endJunctionId: string;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+	/** Exact sampled arc length, not the chord. */
+	readonly length: number;
+	readonly samples: readonly {
+		readonly point: LayoutVec2;
+		readonly distance: number;
+		readonly tangent: LayoutVec2;
+	}[];
+};
+
+/** One open Wall's sampled frame, straight or curved. */
+export type OpenWallFrame = CurvedWallFrame;
+
+/**
+ * D1 — the frame the Bend gesture consumes. Unlike `curvedWallFrame` it also
+ * resolves a straight Wall, because a body press must bend it on the spot; the
+ * sampled length of a `line` centerline is its chord.
+ */
+export function openWallFrame(document: LayoutDocumentWallFirst, wallId: string): OpenWallFrame | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined) return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	if (wall.startJunctionId === wall.endJunctionId) return null;
+	const sampled = wallCenterlineSamples(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		'forward'
+	);
+	if (sampled === undefined || !(sampled.length > 0) || sampled.samples.length < 2) return null;
+	return {
+		wallId,
+		startJunctionId: wall.startJunctionId,
+		endJunctionId: wall.endJunctionId,
+		start: [start[0], start[1]],
+		end: [end[0], end[1]],
+		length: sampled.length,
+		samples: sampled.samples.map((sample) => ({
+			point: [sample.point[0], sample.point[1]] as LayoutVec2,
+			distance: sample.distance,
+			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2
+		}))
+	};
+}
+
+export function curvedWallFrame(document: LayoutDocumentWallFirst, wallId: string): CurvedWallFrame | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined || wall.centerline.kind === 'line') return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	const sampled = wallCenterlineSamples(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		'forward'
+	);
+	if (sampled === undefined || !(sampled.length > 0) || sampled.samples.length < 2) return null;
+	return {
+		wallId,
+		startJunctionId: wall.startJunctionId,
+		endJunctionId: wall.endJunctionId,
+		start: [start[0], start[1]],
+		end: [end[0], end[1]],
+		length: sampled.length,
+		samples: sampled.samples.map((sample) => ({
+			point: [sample.point[0], sample.point[1]] as LayoutVec2,
+			distance: sample.distance,
+			tangent: [sample.tangent[0], sample.tangent[1]] as LayoutVec2
+		}))
+	};
+}
+
+/**
+ * The centerline point at one physical arc distance, with its tangent.
+ *
+ * This is the arc-length inverse the Opening marks and the Bend gesture need:
+ * a station names the same place on a curved host that it names on a straight
+ * one. A distance outside `[0, length]` is refused, never clamped.
+ */
+export function curvedWallPointAt(
+	frame: CurvedWallFrame,
+	distance: number
+): { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null {
+	if (!Number.isFinite(distance) || distance < 0 || distance > frame.length) return null;
+	for (let index = 1; index < frame.samples.length; index += 1) {
+		const previous = frame.samples[index - 1]!;
+		const next = frame.samples[index]!;
+		if (distance > next.distance) continue;
+		const span = next.distance - previous.distance;
+		const t = span > 0 ? (distance - previous.distance) / span : 0;
+		return {
+			point: [
+				previous.point[0] + (next.point[0] - previous.point[0]) * t,
+				previous.point[1] + (next.point[1] - previous.point[1]) * t
+			],
+			tangent: [
+				previous.tangent[0] + (next.tangent[0] - previous.tangent[0]) * t,
+				previous.tangent[1] + (next.tangent[1] - previous.tangent[1]) * t
+			]
+		};
+	}
+	const last = frame.samples.at(-1)!;
+	return { point: [last.point[0], last.point[1]], tangent: [last.tangent[0], last.tangent[1]] };
 }
 
 /**
@@ -903,6 +1128,273 @@ export function wallManipulationIntent(input: {
 }
 
 /**
+ * One C1 Bend intent: the physical station the press resolved, the pointer's
+ * bend point, and the captured id the write may insert.
+ *
+ * Preview and commit build this same intent, so the document the preview draws
+ * is the document acceptance writes, and Undo replays the captured knot id
+ * rather than minting an occupancy-derived one.
+ */
+export function wallBendIntent(input: {
+	readonly wallId: string;
+	readonly distance: number;
+	readonly point: LayoutVec2;
+	readonly knotId: string;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	const reference: SemanticReference = {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: 'wall', id: input.wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	return buildLayoutIntent({
+		operationId: input.operationId,
+		projectId: input.projectId,
+		revisionId: input.revisionId,
+		contentRevision: input.contentRevision,
+		levelId: input.levelId,
+		targets: [reference],
+		kind: LAYOUT_WALL_BEND_KIND,
+		payload: {
+			wallId: input.wallId,
+			distance: input.distance,
+			x: input.point[0],
+			z: input.point[1],
+			knotId: input.knotId
+		}
+	});
+}
+
+/** C1/D2 — one captured intent for removing the active bend point. */
+export function wallKnotDeleteIntent(input: {
+	readonly wallId: string;
+	readonly knotId: string;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	const reference: SemanticReference = {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: 'wall', id: input.wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	return buildLayoutIntent({
+		operationId: input.operationId,
+		projectId: input.projectId,
+		revisionId: input.revisionId,
+		contentRevision: input.contentRevision,
+		levelId: input.levelId,
+		targets: [reference],
+		kind: LAYOUT_WALL_KNOT_DELETE_KIND,
+		payload: { wallId: input.wallId, knotId: input.knotId }
+	});
+}
+
+/** C1 — one captured intent for Straighten Wall. */
+export function wallStraightenIntent(input: {
+	readonly wallId: string;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	const reference: SemanticReference = {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: 'wall', id: input.wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	return buildLayoutIntent({
+		operationId: input.operationId,
+		projectId: input.projectId,
+		revisionId: input.revisionId,
+		contentRevision: input.contentRevision,
+		levelId: input.levelId,
+		targets: [reference],
+		kind: LAYOUT_WALL_STRAIGHTEN_KIND,
+		payload: { wallId: input.wallId }
+	});
+}
+
+/**
+ * The station frame Opening marks consume: one `pointAt` that is linear on a
+ * straight Wall (byte-identical to `framePoint`) and arc-length on a curved
+ * one, so an Opening handle lands on the curve instead of on its chord.
+ */
+export type WallStationFrame = {
+	readonly wallId: string;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+	readonly length: number;
+	readonly direction: LayoutVec2;
+	readonly curved: boolean;
+	readonly pointAt: (distance: number) => { readonly point: LayoutVec2; readonly tangent: LayoutVec2 } | null;
+};
+
+export function wallStationFrame(document: LayoutDocumentWallFirst, wallId: string): WallStationFrame | null {
+	const curved = curvedWallFrame(document, wallId);
+	if (curved !== null) {
+		return {
+			wallId,
+			start: curved.start,
+			end: curved.end,
+			length: curved.length,
+			direction: [
+				(curved.end[0] - curved.start[0]) / Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1]),
+				(curved.end[1] - curved.start[1]) / Math.hypot(curved.end[0] - curved.start[0], curved.end[1] - curved.start[1])
+			],
+			curved: true,
+			pointAt: (distance) => curvedWallPointAt(curved, distance)
+		};
+	}
+	const straight = wallFrame(document, wallId);
+	if (straight === null) return null;
+	return {
+		wallId,
+		start: straight.start,
+		end: straight.end,
+		length: straight.length,
+		direction: straight.direction,
+		curved: false,
+		pointAt: (distance) =>
+			distance < 0 || distance > straight.length
+				? null
+				: {
+						point: [
+							straight.start[0] + straight.direction[0] * distance,
+							straight.start[1] + straight.direction[1] * distance
+						],
+						tangent: straight.direction
+					}
+	};
+}
+
+/**
+ * The physical station a document point names on one Wall, straight or curved.
+ * `null` when the Wall is unresolved or its centerline cannot be sampled.
+ */
+export function wallStationAtPoint(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	point: readonly [number, number]
+): number | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined) return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	const projected = projectPointToWallCenterline(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		[point[0], point[1]]
+	);
+	return projected === undefined ? null : projected.distance;
+}
+
+/**
+ * The physical station a document point names, only when the point actually
+ * lies within `maxDistanceToPath` of the sampled centerline.
+ *
+ * A body press is resolved against the Wall's own samples rather than a scene
+ * pick: a curved face has no chord to pick, and nearness is measured in the
+ * same metres every station uses. A point outside the tolerance is not the
+ * Wall's body and returns `null`.
+ */
+export function wallStationNearPoint(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	point: readonly [number, number],
+	maxDistanceToPath: number
+): number | null {
+	const wall = lookupIndexedWall(document, wallId);
+	if (wall === undefined) return null;
+	const start = lookupIndexedJunction(document, wall.startJunctionId)?.point;
+	const end = lookupIndexedJunction(document, wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	const projected = projectPointToWallCenterline(
+		{ id: wall.id, centerline: wall.centerline },
+		[start[0], start[1]],
+		[end[0], end[1]],
+		[point[0], point[1]]
+	);
+	if (projected === undefined || projected.distanceToPath > maxDistanceToPath) return null;
+	return projected.distance;
+}
+
+/**
+ * The Bend preview: the exact candidate the retained planner builds, or its
+ * refusal. Preview and commit share the same captured knot id.
+ */
+export function previewWallBend(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	distance: number,
+	point: readonly [number, number],
+	knotId: string
+):
+	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	const plan = planBendWallCurveKnot(document, wallId, { distance, point: [point[0], point[1]] }, { knotId });
+	if (plan.kind === 'rejected') {
+		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
+	}
+	return { kind: 'planned', document: plan.document };
+}
+
+/**
+ * C1/D2 — the exact candidate a Card knot action would install, or its refusal.
+ * The action runs this before acceptance, so a refused edit is named without a
+ * write and the accepted edit is the same planner's document.
+ */
+export function previewWallKnotDelete(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	knotId: string
+):
+	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	const plan = planDeleteWallCurveKnot(document, wallId, knotId);
+	return plan.kind === 'rejected'
+		? { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message }
+		: { kind: 'planned', document: plan.document };
+}
+
+/** C1 — the exact Straighten candidate, or its refusal. */
+export function previewWallStraighten(
+	document: LayoutDocumentWallFirst,
+	wallId: string
+):
+	| { readonly kind: 'planned'; readonly document: LayoutDocumentWallFirst }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string } {
+	const plan = planConvertWallToLine(document, wallId);
+	return plan.kind === 'rejected'
+		? { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message }
+		: { kind: 'planned', document: plan.document };
+}
+
+/**
  * Full typed values, never rounded display values. JavaScript's shortest
  * round-trip number formatting is the exact value that will be saved.
  */
@@ -918,15 +1410,31 @@ export function layoutFacts(
 	if (subject.kind === 'wall') {
 		const wall = lookupIndexedWall(document, subject.id);
 		if (wall === undefined) return [];
-		return [
+		const facts: LayoutFact[] = [
 			{ label: 'Kind', value: 'Wall', fieldId: 'kind' },
 			{ label: 'Name', value: wall.name ?? '(unnamed)', fieldId: 'name' },
 			{ label: 'Height', value: formatMeters(wall.height), fieldId: 'height' },
-			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' },
-			// Format 6 — the role is derived from Room boundary membership, shown
-			// read-only because it follows geometry rather than a control.
-			{ label: 'Role', value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)`, fieldId: 'role' }
+			{ label: 'Thickness', value: formatMeters(wall.thickness), fieldId: 'thickness' }
 		];
+		if (isClosedWall(wall)) {
+			const circle = readClosedWallCircle(document, wall.id);
+			if (circle !== null) {
+				facts.push(
+					{ label: 'Shape', value: 'Circular (radius edit only; cannot bend)', fieldId: 'shape' },
+					{ label: 'Radius', value: formatMeters(circle.radius), fieldId: 'radius' },
+					{ label: 'Diameter', value: formatMeters(circle.radius * 2), fieldId: 'diameter' },
+					{ label: 'Circumference', value: formatMeters(circle.radius * Math.PI * 2), fieldId: 'circumference' }
+				);
+			}
+		}
+		// Format 6 — the role is derived from Room boundary membership, shown
+		// read-only because it follows geometry rather than a control.
+		facts.push({
+			label: 'Role',
+			value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)`,
+			fieldId: 'role'
+		});
+		return facts;
 	}
 	if (subject.kind === 'opening') {
 		const opening = lookupIndexedOpening(document, subject.id);
@@ -967,8 +1475,26 @@ export function layoutWritableFacts(
 	if (subject.kind === 'wall') {
 		const wall = lookupIndexedWall(document, subject.id);
 		if (wall === undefined) return [];
+		// A closed Wall owns radius/diameter writes instead of straight-Wall
+		// length/angle/coordinate solves. The values are exact metres read from the
+		// persisted 16-span chain, never a remembered gesture.
+		if (isClosedWall(wall)) {
+			const circle = readClosedWallCircle(document, subject.id);
+			const dimensions: LayoutWritableFact[] = [
+				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
+				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' }
+			];
+			if (circle !== null) {
+				dimensions.push(
+					{ id: 'radius', label: 'Radius', value: circle.radius, unit: 'm' },
+					{ id: 'diameter', label: 'Diameter', value: circle.radius * 2, unit: 'm' }
+				);
+			}
+			return dimensions;
+		}
 		const frame = wallFrame(document, subject.id);
-		// A curved Wall keeps every S04 scalar edit and gains no length/angle/rigid
+		// A curved open Wall keeps every S04 scalar edit and gains no length/angle/rigid
 		// field: those are straight-Wall solves and offering them would be an
 		// invitation the canonical planner has to refuse.
 		if (frame === null) {

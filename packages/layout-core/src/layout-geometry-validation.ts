@@ -105,7 +105,23 @@ export function validatePreparedLayoutRoomGeometry(
 	if (floor.height !== undefined && (floor.height <= 0 || !Number.isFinite(floor.height))) {
 		issues.push({ path: 'floor.height', code: 'invalid_floor_height', message: 'Floor height must be finite and greater than zero', targetId: floor.id });
 	}
-	if (segments.length < 3) {
+	// A closed Wall is ONE segment whose start and end are the same point. Its
+	// boundary is genuinely closed and encloses area, so the three-segment floor
+	// is about distinct boundary edges, not Wall reference count. Two Walls form
+	// the same kind of closed boundary when they meet at both ends and at least
+	// one is curved: two cubics are the lens, and a straight chord plus a cubic
+	// is the D-shaped Room. An open one- or two-segment chain still fails.
+	const singleClosedCurve =
+		segments.length === 1 &&
+		segments[0]!.kind === 'cubic-chain' &&
+		pointsEqual(segmentEndpoints(segments[0]!).start, segmentEndpoints(segments[0]!).end);
+	const twoWallLens =
+		segments.length === 2 &&
+		segments.some((segment) => segment.kind === 'cubic-chain') &&
+		pointsEqual(segmentEndpoints(segments[0]!).end, segmentEndpoints(segments[1]!).start) &&
+		pointsEqual(segmentEndpoints(segments[1]!).end, segmentEndpoints(segments[0]!).start);
+	const closedCurveBoundary = singleClosedCurve || twoWallLens;
+	if (segments.length < 3 && !closedCurveBoundary) {
 		issues.push({ path: `${path}.boundary.segments`, code: 'too_few_segments', message: 'A room boundary needs at least three segments', targetId: room.id });
 	}
 
@@ -124,7 +140,7 @@ export function validatePreparedLayoutRoomGeometry(
 		}
 	}
 
-	if (segments.length >= 3) {
+	if (segments.length >= 3 || closedCurveBoundary) {
 		for (let index = 0; index < segments.length; index += 1) {
 			const current = segments[index]!;
 			const next = segments[(index + 1) % segments.length]!;
@@ -144,7 +160,11 @@ export function validatePreparedLayoutRoomGeometry(
 						? segmentEndpoints(segments[first]!).start
 						: segmentEndpoints(segments[first]!).end
 					: undefined;
-				if (sampledPolylineIntersects(firstSamples, secondSamples, CURVE_SELF_INTERSECTION_TOLERANCE, sharedEndpoint)) {
+				// A two-Wall lens shares BOTH endpoints, so both are legitimate joins.
+				const otherSharedEndpoint = twoWallLens && first === 0 && second === 1
+					? segmentEndpoints(segments[0]!).end
+					: undefined;
+				if (sampledPolylineIntersects(firstSamples, secondSamples, CURVE_SELF_INTERSECTION_TOLERANCE, sharedEndpoint, otherSharedEndpoint)) {
 					issues.push({ path: `${path}.boundary.segments`, code: 'self_intersection', message: `Segments ${segments[first]!.id} and ${segments[second]!.id} intersect.`, targetId: room.id });
 				}
 			}
@@ -180,7 +200,16 @@ export function validatePreparedLayoutRoomGeometry(
 			for (const profileIssue of profileResult.issues) issues.push({ path: `${path}.openings[${index}].profile`, code: profileIssue.code, message: profileIssue.message, targetId: opening.id });
 		}
 		const sampledSegment = sampled.get(segment.id);
-		if (sampledSegment && opening.offset + opening.width > sampledSegment.length + LAYOUT_GEOMETRY_EPSILON) {
+		const endpoints = segmentEndpoints(segment);
+		const closedHost =
+			Math.abs(endpoints.start[0] - endpoints.end[0]) <= LAYOUT_GEOMETRY_EPSILON &&
+			Math.abs(endpoints.start[1] - endpoints.end[1]) <= LAYOUT_GEOMETRY_EPSILON;
+		if (
+			sampledSegment &&
+			(closedHost
+				? opening.width >= sampledSegment.length - LAYOUT_GEOMETRY_EPSILON
+				: opening.offset + opening.width > sampledSegment.length + LAYOUT_GEOMETRY_EPSILON)
+		) {
 			issues.push({ path: `${path}.openings[${index}]`, code: 'opening_out_of_bounds', message: 'Opening interval exceeds its wall segment.', targetId: opening.id });
 		}
 		const existing = openingsBySegment.get(segment.id) ?? [];
@@ -191,7 +220,7 @@ export function validatePreparedLayoutRoomGeometry(
 	for (const [segmentId, openings] of openingsBySegment) {
 		const segment = segments.find((candidate) => candidate.id === segmentId);
 		if (!segment) continue;
-		const intervals = openingIntervals(segment, openings);
+		const intervals = openingIntervals(segment, openings, sampled.get(segmentId)?.length);
 		for (let index = 1; index < intervals.length; index += 1) {
 			const previous = intervals[index - 1]!;
 			const current = intervals[index]!;

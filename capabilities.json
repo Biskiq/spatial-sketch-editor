@@ -20,6 +20,33 @@
       "review": null
     },
     {
+      "id": "layout.wall-curve-edit",
+      "area": "T1",
+      "summary": "Bend a straight or curved Wall anywhere and edit its bend points directly, keeping Wall identity, hosted Openings, Room topology and one Undo per edit",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/stage/**", "apps/editor/src/lib/authoring/adapters/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.circular-room",
+      "area": "T1",
+      "summary": "Draw a true circular Room as one self-connected Wall enclosing one persistent Room, edit its radius and diameter, and host Openings anywhere on curved Walls, including across the seam",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/adapters/**", "apps/editor/src/lib/authoring/world-toolbar/**", "apps/editor/src/lib/layout/**"],
+      "design": null,
+      "review": null
+    },
+    {
+      "id": "layout.wall-unfold",
+      "area": "T1",
+      "summary": "Unfold any valid Wall, open or closed, smoothly and partially into a flat centerline-true sheet framed through Camera, and edit it there through the canonical writers without changing geometry, identity or history",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "packages/camera-core/src/**", "apps/editor/src/lib/authoring/**", "apps/editor/src/lib/layout/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "layout.canonical-compiler",
       "area": "T1",
       "summary": "Architectural geometry and queries come from one canonical compiler, and Layout representation stays runtime-safe",

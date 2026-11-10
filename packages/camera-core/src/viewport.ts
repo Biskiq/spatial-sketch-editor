@@ -272,6 +272,20 @@ export type ViewingIntent =
 			readonly rect: ViewportRect;
 			readonly paddingFraction?: number;
 	  }
+	/**
+	 * C3/D14 — face a surface: place the eye directly outside it along `−look`
+	 * and frame its bounds, ending in the 3D reading. `look` is the direction the
+	 * camera looks (from the eye toward the surface), so the eye sits on the
+	 * negative side of it. Layout supplies the frame; only camera-core builds a
+	 * pose, so no UI component writes the camera.
+	 */
+	| {
+			readonly kind: 'face';
+			readonly bounds: { readonly min: Vec3; readonly max: Vec3 };
+			readonly look: Vec3;
+			readonly rect: ViewportRect;
+			readonly paddingFraction?: number;
+	  }
 	| { readonly kind: 'bring-into-view'; readonly target: Vec3; readonly targetPlaneHeightMeters?: number }
 	/** R217.S28 — re-aim at a new target with the eye held exactly still. */
 	| { readonly kind: 'aim'; readonly target: Vec3 }
@@ -281,6 +295,13 @@ export type ViewingIntent =
 			readonly eye: Vec3;
 			readonly target: Vec3;
 			readonly fovYDegrees: number;
+			/**
+			 * C3/D14 — animate to the pose instead of installing it. The unfolded
+			 * context returns to its exact entry pose through this flag, so the return
+			 * uses the same generalised transition as `face` rather than a second
+			 * interpolation path.
+			 */
+			readonly transition?: boolean;
 	  }
 	/** R217.S28 — move eye and target together, keeping aim and FOV. */
 	| { readonly kind: 'lift'; readonly deltaMeters: number }
@@ -710,6 +731,74 @@ export function frameSubjectPose(input: {
 	return inspectionPoseFromView(framed) === null ? null : framed;
 }
 
+/**
+ * C3/D14 — the inspection pose that **faces** a surface.
+ *
+ * `look` is the camera's look direction (eye → surface), so the eye is placed
+ * along `−look` from the bounds centre. The framed extent is measured by
+ * projecting the eight bounds corners onto the face's own screen basis, then
+ * applying the same padding rule and current lens as `fit`. This keeps the
+ * pose derivation in camera-core: an owning domain supplies the bounds and the
+ * face direction, never an eye, target or distance.
+ *
+ * A vertical look is refused rather than rolled: `up` would be degenerate and
+ * the reading would silently invent a heading.
+ */
+export function facePoseFromBounds(input: {
+	readonly bounds: { readonly min: Vec3; readonly max: Vec3 };
+	readonly look: Vec3;
+	readonly rect: ViewportRect;
+	readonly paddingFraction?: number;
+	readonly fovYDegrees?: number;
+}): InspectionPose | null {
+	if (!isFiniteVec3(input.bounds?.min) || !isFiniteVec3(input.bounds?.max)) return null;
+	const { min, max } = input.bounds;
+	if (min[0] > max[0] || min[1] > max[1] || min[2] > max[2]) return null;
+	if (!isFiniteVec3(input.look)) return null;
+	if (
+		!isFiniteNumber(input.rect?.width) ||
+		!isFiniteNumber(input.rect?.height) ||
+		!(input.rect.width > 0) ||
+		!(input.rect.height > 0)
+	) return null;
+	const look = normalizeVec3(input.look);
+	if (look === null) return null;
+	// `backward` is eye − target, the direction the pose's eye sits on.
+	const backward = scaleVec3(look, -1);
+	if (Math.abs(backward[1]) > Math.sin(VIEWPORT_ELEVATION_LIMIT_RADIANS)) return null;
+	const right = normalizeVec3(crossVec3([0, 1, 0], backward));
+	if (right === null) return null;
+	const screenUp = crossVec3(backward, right);
+	const target = scaleVec3(addVec3(min, max), 0.5);
+	let horizontal = 0;
+	let vertical = 0;
+	for (let corner = 0; corner < 8; corner += 1) {
+		const offset: Vec3 = [
+			(corner & 1) === 0 ? min[0] - target[0] : max[0] - target[0],
+			(corner & 2) === 0 ? min[1] - target[1] : max[1] - target[1],
+			(corner & 4) === 0 ? min[2] - target[2] : max[2] - target[2]
+		];
+		horizontal = Math.max(horizontal, Math.abs(dotVec3(offset, right)));
+		vertical = Math.max(vertical, Math.abs(dotVec3(offset, screenUp)));
+	}
+	const padding = clamp(input.paddingFraction ?? VIEWPORT_FIT_PADDING_FRACTION, 0, 0.45);
+	const usable = 1 - 2 * padding;
+	const aspect = input.rect.width / input.rect.height;
+	const targetPlaneHeightMeters = clamp(
+		Math.max((2 * vertical) / usable, (2 * horizontal) / aspect / usable, VIEWPORT_TARGET_PLANE_MIN_METERS),
+		VIEWPORT_TARGET_PLANE_MIN_METERS,
+		VIEWPORT_TARGET_PLANE_MAX_METERS
+	);
+	const fovYDegrees = input.fovYDegrees ?? (VIEWPORT_REFERENCE_FOV_Y_RADIANS * 180) / Math.PI;
+	if (!(fovYDegrees > 0 && fovYDegrees < 180)) return null;
+	const distance = perspectiveDistanceMeters(targetPlaneHeightMeters, fovYDegrees);
+	return inspectionPoseFromView({
+		eye: addVec3(target, scaleVec3(backward, distance)),
+		target,
+		fovYDegrees
+	});
+}
+
 /** Move eye and target together by a floor-relative delta, keeping aim and FOV. */
 export function liftPose(pose: InspectionPose, deltaMeters: number): InspectionPose | null {
 	if (!isFiniteNumber(deltaMeters)) return null;
@@ -892,14 +981,20 @@ function transitionFrame(
 	progress: number
 ): { pose: InspectionPose; orthographicWeight: number } {
 	const eased = smoothstep(progress);
-	const orthographicWeight = transition.from === 'plan' ? 1 - eased : eased;
+	// C3/D14 — a face entry and its return run in 3D at both ends. The
+	// orthographic weight is therefore zero throughout, and the pose eases over
+	// the whole duration instead of reserving the flip's Paper pose-hold share.
+	const inPlace3d = transition.from === '3d' && transition.to === '3d';
+	const orthographicWeight = inPlace3d ? 0 : transition.from === 'plan' ? 1 - eased : eased;
 	// The pose is overhead for the Plan end of the flip while the projection keeps
 	// flattening, so Paper's reveal has time on the ground it will register with.
-	const poseEased = smoothstep(
-		transition.from === 'plan'
-			? Math.max(0, (progress - VIEWPORT_READING_POSE_HOLD) / (1 - VIEWPORT_READING_POSE_HOLD))
-			: Math.min(1, progress / (1 - VIEWPORT_READING_POSE_HOLD))
-	);
+	const poseEased = inPlace3d
+		? eased
+		: smoothstep(
+				transition.from === 'plan'
+					? Math.max(0, (progress - VIEWPORT_READING_POSE_HOLD) / (1 - VIEWPORT_READING_POSE_HOLD))
+					: Math.min(1, progress / (1 - VIEWPORT_READING_POSE_HOLD))
+			);
 	// Azimuth takes the shortest path so a flip rotates the way a reading change implies.
 	const rawDelta = transition.toPose.azimuthRadians - transition.fromPose.azimuthRadians;
 	const wrapped = Math.atan2(Math.sin(rawDelta), Math.cos(rawDelta));
@@ -1275,6 +1370,41 @@ export function requestViewingIntent(
 			const target: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
 			return accept(withPose(settled, { ...settled.pose, target, targetPlaneHeightMeters }));
 		}
+		case 'face': {
+			const rectValidation = validateViewportRect(intent.rect);
+			if (!rectValidation.valid || rectValidation.rect === undefined || isHiddenViewport(rectValidation.rect)) {
+				return reject(settled, 'invalid-viewport', 'Face needs a drawable viewport rectangle');
+			}
+			const pose = facePoseFromBounds({
+				bounds: intent.bounds,
+				look: intent.look,
+				rect: rectValidation.rect,
+				paddingFraction: intent.paddingFraction,
+				fovYDegrees: settled.pose.fovYDegrees
+			});
+			if (pose === null) {
+				return reject(
+					settled,
+					'invalid-intent',
+					'Face needs finite ordered bounds, a non-vertical look direction and a supported lens'
+				);
+			}
+			// A face is always an **animated** posture change ending in 3D. Starting
+			// from Plan reuses the reading flip's projective family; starting in 3D
+			// uses the generalised in-place transition (orthographic weight 0). The
+			// pose is camera-core's, never a pose supplied by the UI.
+			return accept({
+				...settled,
+				transition: {
+					from: settled.reading,
+					to: '3d',
+					fromPose: settled.pose,
+					toPose: pose,
+					startSeconds: clockSeconds,
+					durationSeconds: VIEWPORT_READING_TRANSITION_SECONDS
+				}
+			});
+		}
 		case 'bring-into-view': {
 			if (!isFiniteVec3(intent.target)) {
 				return reject(settled, 'invalid-intent', 'Bring into view needs a finite project-world target');
@@ -1320,15 +1450,33 @@ export function requestViewingIntent(
 			}
 			// Installing an authored View is a posture, not a reading flip: the
 			// through-camera is the exact perspective the View authored.
+			const lastReadingElevationRadians = clamp(
+				pose.elevationRadians,
+				-VIEWPORT_ELEVATION_LIMIT_RADIANS,
+				VIEWPORT_ELEVATION_LIMIT_RADIANS
+			);
+			if (intent.transition === true) {
+				// C3/D14 — the unfolded context's return. The endpoint is exactly the
+				// authored pose; only the route to it is animated, through the same
+				// generalised in-place transition as `face`.
+				return accept({
+					...settled,
+					lastReadingElevationRadians,
+					transition: {
+						from: settled.reading,
+						to: '3d',
+						fromPose: settled.pose,
+						toPose: pose,
+						startSeconds: clockSeconds,
+						durationSeconds: VIEWPORT_READING_TRANSITION_SECONDS
+					}
+				});
+			}
 			return accept({
 				...settled,
 				reading: '3d',
 				pose,
-				lastReadingElevationRadians: clamp(
-					pose.elevationRadians,
-					-VIEWPORT_ELEVATION_LIMIT_RADIANS,
-					VIEWPORT_ELEVATION_LIMIT_RADIANS
-				),
+				lastReadingElevationRadians,
 				transition: null
 			});
 		}

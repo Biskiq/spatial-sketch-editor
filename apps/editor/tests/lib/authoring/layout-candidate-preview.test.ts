@@ -406,7 +406,9 @@ describe('R217.S14 — overlay marker space', () => {
 		selectWall(mounted.facade, mounted.wallId);
 		settle(mounted.facade, mounted.rect);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const from = stageCss(mounted, [3, 0]);
+		// The visible span ring at the Wall midpoint is a Bend target now; press
+		// away from it to exercise the ordinary body move this suite covers.
+		const from = stageCss(mounted, [4.2, 0]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
 		// Prove a candidate existed before the pointer leaves the plane; otherwise
 		// the withdrawal assertion would pass for a gesture that never proposed.
@@ -432,7 +434,7 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		settle(mounted.facade, mounted.rect);
 		selectWall(mounted.facade, mounted.wallId);
 		const evaluationId = mounted.facade.evaluationId()!;
-		const from = stageCss(mounted, [3, 0]);
+		const from = stageCss(mounted, [4.2, 0]);
 		const to = stageCss(mounted, [3.5, 0.5]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
@@ -496,7 +498,7 @@ describe('R217.S14 — the preview is the candidate geometry', () => {
 		const plan = mounted.facade.plan();
 		if (plan.kind !== 'evaluated') throw new Error('the fixture Plan is not evaluated');
 		expect(plan.plan.cutElevationMeters).not.toBeCloseTo(datum, 5);
-		const from = stageCss(mounted, [3, 0]);
+		const from = stageCss(mounted, [4.2, 0]);
 		const to = stageCss(mounted, [3.5, 0.5]);
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });

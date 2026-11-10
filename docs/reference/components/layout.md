@@ -85,6 +85,34 @@ eligibility for one source without touching depth or document history. Silent ex
 shared failure of both predecessor codebases.
 
 
+## Wall unrolling is a display reading over the canonical Wall
+
+Unrolling is a **session reading**, never authored data: it holds the Wall, its canonical anchor
+station, the closed-Wall display cut, the displayed face and the unroll amount. It is never
+serialized, never enters history and Undo never changes it. The sheet is built from the same
+development map and canonical samples as the Wall; no second Wall model or writer exists.
+
+- **Entry.** Every Wall Card has one Unroll action. A straight Wall has nothing to peel, so it
+  enters the same measured sheet already flat with editable Openings and no artificial unfolding
+  animation; curved and closed Walls keep the physical roll-out. Entry preserves Camera
+  orientation and may perform one bounded pan/zoom fit inside the Stage safe area.
+- **Camera.** Peel, face change, pin and Opening edits never move the Camera. Put back restores
+  the entry pose only when entry adjusted the Camera and the creator has not navigated since;
+  deliberate pan, zoom or orbit is preserved. A context whose Wall or document disappears
+  invalidates and returns with a reason, never by substituting a nearby Wall.
+- **Station identity.** Openings on the sheet are the as-built Opening kit through the development
+  map. Selection, slide, jamb resize, sill/head and Undo address the same canonical Opening id in
+  canonical stations. A seam-crossing Opening shows as two fragments of one entity.
+- **Faces.** The sheet opens on the face toward the Camera (in Plan, the Room side). The face
+  switch is a rigid half-turn of the sheet about the pin's vertical; the Camera does not move and
+  stations stay canonical. Faces are named by what they bound.
+- **Shape edits.** Centerline, bend-point and body-bend edits are refused with a specific reason
+  while the Wall is unrolled. Opening measures and Wall height remain canonical edits.
+- **Exit.** Put back, Escape with no gesture held, the Card action, or rolling an edge home. The
+  reading leaves no history entry. **Unroll**, **Put back**, **pin** and **bend point** are the UI
+  words; Unfold, Refold, Flip, Done and Peel are not.
+
+
 ## Nested Look/return kept separate from document Undo
 
 Contextual nesting, the view trail and document Undo are three separate things. A recipe records

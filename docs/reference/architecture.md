@@ -320,7 +320,11 @@ enclosure bound it, a Wall that encloses nothing is free-standing, and a Wall
 drawn across an enclosed Room divides it, producing the derived Room topology
 through the canonical compiler and its lineage. Rooms stay derived, and no Room
 geometry becomes editable. Layout format 6 has no authored Wall role; every closed ring encloses.
-Division keeps the landed Room reconciliation (P23.8 lineage:
+Two curved Walls between the same two Junctions are a valid Room boundary when the stored
+cycle matches the bounded face walk (a two-Wall lens); they are not a duplicate-Wall pair.
+The chord-level overlap and the sampled curve gate still prove the loop is simple and
+bounded, and the boundary keeps the face walk's direction. Division keeps the landed Room
+reconciliation (P23.8 lineage:
 split survivor by evidence order, one Room born). The creator-facing expression is
 [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
 
@@ -409,9 +413,12 @@ The Stage supports one optional `candidatePreview(context)` contribution beside 
 the subject, affected neighbours and refusal words a domain is proposing right now. A domain
 publishes world-space polygons, segments, labels and the winning snap; the Stage facade projects
 every point once through the accepted evaluation and `StageOverlay.svelte` draws the result as SVG
-in both readings. A refused candidate contributes no Wall or Opening geometry. Its reason stays
-beside the pointer; a dashed cursor reach may retain the refused input so it can be corrected
-without implying an admitted Wall. Nothing is persisted, admitted to history or serialized. Layout builds its preview from the planner's own
+in both readings. A refused candidate keeps its full **attempted** geometry on screen as
+display-only evidence, separate from the validated candidate that release would install. Its
+reason stays beside the pointer; the attempted shape is never clamped or replaced by a dashed
+normal, so one gesture can travel valid → invalid → valid without the preview disappearing.
+Release while refused writes nothing and restores the accepted geometry with no history entry.
+The attempted geometry is never compiled, persisted, admitted to history or serialized. Layout builds its preview from the planner's own
 candidate document through the existing compile and `buildPaperPlan` path — the same solve release
 commits — and filters it to the changed Wall and Opening ids. Paper's bounded sheet includes a live
 candidate's extent, so a drag never leaves the sheet, and the Camera is never reframed by it.

@@ -54,6 +54,7 @@ import {
 	mintLayoutIdCapture,
 	planCreateWallFirstOpening,
 	planDeleteWallFirstOpening,
+	proposeWallFirstArchitectureGeometry,
 	createWallFirstArchitectureVerdictScope,
 	createWallSamplingDerivation,
 	readWallFirstDragProposal,
@@ -61,6 +62,11 @@ import {
 	type WallFirstArchitectureProposalWall,
 	planExactWallHeight,
 	planExactWallThickness,
+	planCreateCircularRoom,
+	planResizeClosedWallRadius,
+	planTranslateClosedWall,
+	readClosedWallCircle,
+	isClosedWall,
 	planUpdateWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
@@ -75,6 +81,7 @@ import {
 	type StageAdapterBinding,
 	type StageAdapterContext,
 	type StageCardAction,
+	type StageCardActionOutcome,
 	type StageCardFact,
 	type StageCardSubject,
 	type StageCandidatePreview,
@@ -88,6 +95,7 @@ import type { StageHeightTick } from '$lib/authoring/stage/stage-adapter-host';
 import { perfInstall, perfMark } from '$lib/platform/perf-marks';
 
 import LayoutCardFields from './layout/LayoutCardFields.svelte';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';	import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
 import { wallRefusalWords } from './layout/refusals';
@@ -121,7 +129,11 @@ import {
 	type OpeningResizePayload
 } from './layout/opening-planners';
 import {
+	circleRoomCreateIntent,
+	circleRadiusIntent,
+	circleTranslateIntent,
 	createDrawingPlanners,
+	LAYOUT_CIRCLE_RADIUS_KIND,
 	planWallDeletion,
 	wallChainCommitIntent,
 	wallDeleteIntent,
@@ -168,6 +180,7 @@ import {
 	LAYOUT_WALL_HEIGHT_KIND,
 	LAYOUT_WALL_THICKNESS_KIND,
 	LAYOUT_WALL_MOVE_KIND,
+	LAYOUT_WALL_BEND_KIND,
 	LAYOUT_ROOM_MOVE_KIND,
 	buildLayoutIntent,
 	createLayoutPlanners,
@@ -177,9 +190,23 @@ import {
 	parseMeasureInput,
 	parsePlacementXZ,
 	wallFrame,
+	wallStationFrame,
+	curvedWallFrame,
+	curvedWallPointAt,
+	openWallFrame,
+	previewWallBend,
+	previewWallKnotDelete,
+	previewWallStraighten,
+	wallBendIntent,
+	wallKnotDeleteIntent,
+	wallStraightenIntent,
+	wallStationAtPoint,
+	wallStationNearPoint,
 	wallManipulationIntent,
 	type LayoutSubject,
+	type OpenWallFrame,
 	type WallFrame,
+	type WallStationFrame,
 	type WallManipulationRequest,
 	type WallNeighbourPreview
 } from './layout/precision';
@@ -328,6 +355,96 @@ function wallProposalPaper(walls: readonly WallFirstArchitectureProposalWall[], 
 }
 
 /**
+ * The shape the hand is asking for, before validation. It is display evidence
+ * only: it is never submitted, compiled, admitted to history or serialized.
+ */
+/**
+ * The complete network a rigid Wall or Junction move asks for, before validation.
+ * Junction moves reshape every incident Wall; a rigid move translates the whole
+ * chain and lets connected neighbours follow. If the pure proposal cannot
+ * describe the intent, the selected Wall's endpoint attempt is the narrow fallback.
+ */
+function attemptedWallNetwork(
+	document: LayoutDocumentWallFirst,
+	frame: WallFrame,
+	request: WallManipulationRequest,
+	fixed: FixedWallEndpoint
+): WallFirstArchitectureProposalWall[] {
+	const network = request.kind === 'move'
+		? proposeWallFirstArchitectureGeometry(document, {
+			kind: 'wall-move', wallId: frame.wallId, delta: request.delta
+		})
+		: request.kind === 'junction'
+			? proposeWallFirstArchitectureGeometry(document, {
+				kind: 'junction-move', junctionId: request.junctionId, point: request.point
+			})
+			: undefined;
+	return network !== undefined && network.length > 0 ? network : attemptedWallGesture(frame, request, fixed);
+}
+
+/** The first real crossing or contact between an attempted network and untouched Walls. */
+function attemptedConflictPoint(
+	attempt: readonly WallFirstArchitectureProposalWall[],
+	baseline: LayoutDocumentWallFirst
+): LayoutVec2 | null {
+	const attemptedIds = new Set(attempt.map((wall) => wall.wallId));
+	const attemptedSegments = attempt.flatMap((wall) => wall.points.slice(1).map((point, index) =>
+		[wall.points[index]!, point] as const));
+	const baselineSegments = baseline.walls.flatMap((wall) => {
+		if (attemptedIds.has(wall.id)) return [];
+		const start = baseline.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
+		const end = baseline.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+		if (start === undefined || end === undefined) return [];
+		const points = wall.centerline.kind === 'line'
+			? [start, end]
+			: [start, ...wall.centerline.knots.map((knot) => knot.point), end];
+		return points.slice(1).map((point, index) => [points[index]!, point] as const);
+	});
+	const cross = (a: LayoutVec2, b: LayoutVec2, c: LayoutVec2, d: LayoutVec2): LayoutVec2 | null => {
+		const denominator = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0]);
+		if (Math.abs(denominator) < 1e-9) return null;
+		const t = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / denominator;
+		const u = ((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / denominator;
+		return t >= -1e-9 && t <= 1 + 1e-9 && u >= -1e-9 && u <= 1 + 1e-9
+			? [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]
+			: null;
+	};
+	for (const [a, b] of attemptedSegments) {
+		for (const [c, d] of baselineSegments) {
+			const point = cross(a, b, c, d);
+			if (point !== null) return point;
+		}
+	}
+	return null;
+}
+
+function attemptedWallGesture(
+	frame: WallFrame,
+	request: WallManipulationRequest,
+	fixed: FixedWallEndpoint
+): WallFirstArchitectureProposalWall[] {
+	const start: LayoutVec2 = [frame.start[0], frame.start[1]];
+	const end: LayoutVec2 = [frame.end[0], frame.end[1]];
+	if (request.kind === 'junction') {
+		if (request.junctionId === frame.startJunctionId) start[0] = request.point[0], start[1] = request.point[1];
+		else end[0] = request.point[0], end[1] = request.point[1];
+	} else if (request.kind === 'move') {
+		start[0] += request.delta[0]; start[1] += request.delta[1];
+		end[0] += request.delta[0]; end[1] += request.delta[1];
+	} else if (request.kind === 'length') {
+		const fixedPoint = fixed === 'start' ? frame.start : frame.end;
+		const sign = fixed === 'start' ? 1 : -1;
+		const moving: LayoutVec2 = [
+			fixedPoint[0] + frame.direction[0] * request.length * sign,
+			fixedPoint[1] + frame.direction[1] * request.length * sign
+		];
+		if (fixed === 'start') end.splice(0, 2, moving[0], moving[1]);
+		else start.splice(0, 2, moving[0], moving[1]);
+	}
+	return [{ wallId: frame.wallId, points: [start, end] }];
+}
+
+/**
  * One host-relative Opening candidate.
  *
  * `offset` is the exact near-edge distance from the canonical Wall start; the
@@ -380,6 +497,10 @@ type WallGesture = {
 	request: WallManipulationRequest | null;
 	/** The uncommitted centerlines from Layout's direct-edit proposal. */
 	proposal: WallFirstArchitectureProposalWall[] | null;
+	/** The attempted centerlines, retained even while validation refuses them. */
+	attempt: WallFirstArchitectureProposalWall[] | null;
+	/** The real conflict the refusal names, when the attempt has one. */
+	refusalPoint: LayoutVec2 | null;
 	readonly readPreview: ReturnType<typeof createWallDragReader>;
 	/** Neighbours the candidate reshaped at the edited junction. */
 	neighbours: readonly WallNeighbourPreview[];
@@ -406,11 +527,60 @@ type JunctionHoverGesture = {
 	readonly lease: GestureAcquisition | null;
 	numeric: PlanNumericEntryState | null;
 	request: Extract<WallManipulationRequest, { readonly kind: 'junction' }> | null;
+	/** Complete attempted network, retained through validation refusal. */
+	attempt: WallFirstArchitectureProposalWall[] | null;
+	refusalPoint: LayoutVec2 | null;
 	proposal: WallFirstArchitectureProposalWall[] | null;
 	readonly readPreview: ReturnType<typeof createWallDragReader>;
 	snap: LayoutSnapWinner | null;
 	pointerPoint: LayoutVec2 | null;
 };
+
+/** One claimed Bend gesture: a body press anywhere on an open Wall. */
+type BendGesture = {
+	readonly evaluationId: string;
+	readonly pressCss: readonly [number, number];
+	readonly markId: string;
+	readonly wallId: string;
+	/** Captured identity the write may insert; preview and commit share it. */
+	readonly knotId: string;
+	readonly frame: OpenWallFrame;
+	/** Physical station the press resolved on the sampled centerline. */
+	readonly distance: number;
+	/** The captured point on the Wall and the pointer-to-point grab offset. */
+	readonly anchor: LayoutVec2;
+	readonly grabOffset: LayoutVec2;
+	readonly existingKnot: boolean;
+	readonly lease: GestureAcquisition | null;
+	readonly baseline: LayoutDocumentWallFirst;
+	intent: { readonly distance: number; readonly point: LayoutVec2 } | null;
+	previewDocument: LayoutDocumentWallFirst | null;
+	/** Snapped into the neighbour chord: release removes this existing knot. */
+	removal: boolean;
+	/** The pointer has left the removal zone since press; leaving arms removal. */
+	leftRemovalZone: boolean;
+	/** Display-only attempted centerline, retained through validation refusal. */
+	attemptPoints: readonly LayoutVec2[];
+	attemptPoint: LayoutVec2 | null;
+	refusal: string | null;
+};
+
+/** A body press is on the Wall when its sampled centerline is this near, in metres. */
+const BEND_BODY_TOLERANCE_METERS = 0.35;
+/** A held knot enters the remove zone inside this distance of its neighbour chord. */
+const BEND_REMOVE_ENTER_METERS = 0.12;
+/** It must leave this wider zone once before removal can arm; the hysteresis stops flicker. */
+const BEND_REMOVE_LEAVE_METERS = 0.3;
+
+/** Planar distance from `point` to the chord between two neighbour knots. */
+function distanceToChord(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {
+	const dx = end[0] - start[0];
+	const dz = end[1] - start[1];
+	const lengthSquared = dx * dx + dz * dz;
+	if (lengthSquared === 0) return Math.hypot(point[0] - start[0], point[1] - start[1]);
+	const t = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared));
+	return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dz));
+}
 
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
 type OpeningMarkGesture = {
@@ -423,6 +593,7 @@ type OpeningMarkGesture = {
 	readonly openingId: string;
 	readonly wallId: string;
 	readonly frame: WallFrame;
+	readonly station: WallStationFrame;
 	readonly length: number;
 	readonly offsetAtStart: number;
 	readonly widthAtStart: number;
@@ -467,6 +638,8 @@ type OpeningMarkSubject = {
 	readonly openingId: string;
 	readonly wallId: string;
 	readonly frame: WallFrame;
+	/** Arc-length on a curved host; linear on a straight one. */
+	readonly station: WallStationFrame;
 	readonly length: number;
 	readonly offset: number;
 	readonly width: number;
@@ -592,45 +765,73 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (current?.lease.lease.active) current.lease.lease.release();
 			}
 			const WALL_TOP_KNOB_REACH_METERS = 0.45;
-			function scalarSpecs(ctx: StageAdapterContext): ScalarGesture['spec'][] {
-				const wall = selectedWall(ctx);
-				const y = ctx.snapshot.domain.datumMeters;
+			/** The selected Wall's cap and local tangent, for straight, curved or closed. */
+			function selectedScalarTarget(adapterContext: StageAdapterContext): {
+				readonly wallId: string;
+				readonly cap: LayoutVec2;
+				readonly tangent: LayoutVec2;
+			} | null {
+				const wall = selectedWall(adapterContext);
 				if (wall !== null) {
-					const source = document.walls.find((w) => w.id === wall.wallId);
-					const direction = wallDirection(wall.frame);
-					if (!source || !direction) return [];
-					const length = wallLength(wall.frame);
-					const planReading=ctx.evaluation.settledReading==='plan';
-					const thicknessAt=planReading && document.openings.some(o=>o.wallId===source.id&&o.offset<=length/4&&o.offset+o.width>=length/4) ? length*3/4 : length/4;
-					return [
-						{
-							id: 'layout-wall-height',
-							subject: 'wall',
-							subjectId: source.id,
-							field: 'height',
-							value: source.height,
-							// The top knob stands just past the Wall's end on a stem from
-							// its base, clear of the body and the thickness grip. Travel is
-							// vertical, so the drawn offset never changes the planned height.
-							anchor: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y + source.height),
-							stem: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y),
-							axis: [0, 1, 0]
-						},
-						{
-							id: 'layout-wall-thickness',
-							subject: 'wall',
-							subjectId: source.id,
-							field: 'thickness',
-							value: source.thickness,
-							anchor: framePoint(wall.frame,thicknessAt,planReading?y:y+source.height),
-							axis: [-direction[1], 0, direction[0]]
-						}
-					];
+					const tangent = wallDirection(wall.frame);
+					return tangent === null
+						? null
+						: { wallId: wall.wallId, cap: wall.frame.end, tangent: [tangent[0], tangent[1]] };
 				}
-				// Opening dimensions are adjusted by the cursor-only edge/corner targets
-				// below. Keeping the old scalar height knob here would duplicate the top
-				// edge and expose a vertical resize affordance outside the 3D view.
-				return [];
+				const curved = selectedCurvedWall(adapterContext);
+				if (curved !== null) {
+					const end = curvedWallPointAt(curved.frame, curved.frame.length);
+					return end === null ? null : { wallId: curved.wallId, cap: end.point, tangent: end.tangent };
+				}
+				const closed = selectedClosedWall(adapterContext);
+				if (closed === null) return null;
+				const radius = Math.hypot(closed.seam[0] - closed.center[0], closed.seam[1] - closed.center[1]);
+				if (!(radius > 0)) return null;
+				return {
+					wallId: closed.wallId,
+					cap: closed.seam,
+					tangent: [
+						-(closed.seam[1] - closed.center[1]) / radius,
+						(closed.seam[0] - closed.center[0]) / radius
+					]
+				};
+			}
+			function scalarSpecs(ctx: StageAdapterContext): ScalarGesture['spec'][] {
+				const target = selectedScalarTarget(ctx);
+				if (target === null) return [];
+				const source = document.walls.find((wall) => wall.id === target.wallId);
+				if (source === undefined) return [];
+				const y = ctx.snapshot.domain.datumMeters;
+				const planReading = ctx.evaluation.settledReading === 'plan';
+				const normal: LayoutVec2 = [-target.tangent[1], target.tangent[0]];
+				const knob: LayoutVec2 = [
+					target.cap[0] + target.tangent[0] * WALL_TOP_KNOB_REACH_METERS,
+					target.cap[1] + target.tangent[1] * WALL_TOP_KNOB_REACH_METERS
+				];
+				return [
+					{
+						id: 'layout-wall-height',
+						subject: 'wall',
+						subjectId: source.id,
+						field: 'height',
+						value: source.height,
+						// The top knob stands just past the Wall's cap on a stem from its
+						// base, clear of the body and the thickness grip. Travel is vertical,
+						// so the drawn offset never changes the planned height.
+						anchor: [knob[0], y + source.height, knob[1]],
+						stem: [knob[0], y, knob[1]],
+						axis: [0, 1, 0]
+					},
+					{
+						id: 'layout-wall-thickness',
+						subject: 'wall',
+						subjectId: source.id,
+						field: 'thickness',
+						value: source.thickness,
+						anchor: [target.cap[0], planReading ? y : y + source.height, target.cap[1]],
+						axis: [normal[0], 0, normal[1]]
+					}
+				];
 			}
 			function scalarTravel(
 				ctx: StageAdapterContext,
@@ -665,7 +866,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (plan.kind === 'rejected') {
 					current.value = null;
 					current.candidate = null;
-					current.refusal = wallRefusalWords(plan.rejection.code);
+					current.refusal = wallRefusalWords(plan.rejection.code, plan.rejection.message);
 					return false;
 				}
 				current.value = value;
@@ -931,7 +1132,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						snap: null,
 						centerlines,
 						movedRooms: isolation.kind === 'success' ? isolation.subgraph.roomIds.length : 1,
-						refusal: isolation.kind === 'rejected' ? wallRefusalWords(isolation.rejection.code) : null
+						refusal: isolation.kind === 'rejected' ? wallRefusalWords(isolation.rejection.code, isolation.rejection.message) : null
 					};
 					services.stage.notifySurfaceChange();
 					return true;
@@ -1000,7 +1201,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					})
 				);
 				if (outcome.kind === 'refused' && stageUnitRevision(services.stage.snapshot(), 'layout') === contentRevision) {
-					settleRoomRefusal(current, wallRefusalWords(outcome.code));
+					settleRoomRefusal(current, wallRefusalWords(outcome.code, outcome.message));
 				}
 				services.stage.notifySurfaceChange();
 			}
@@ -1058,6 +1259,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			let junctionGesture: JunctionHoverGesture | null = null;
 			let idleJunctionHover: IdleJunctionHover | null = null;
+			/**
+			 * Hover discovery for the selected Wall's Bend writer. It names the span
+			 * midpoint under the pointer, using the same sampled frame and the same
+			 * span boundaries the span rings use. Ephemeral: no mark is installed and
+			 * no gesture is armed, so a body press still means Move.
+			 */
+			let idleBendHint: { readonly wallId: string; readonly point: LayoutVec2; readonly station: number } | null = null;
 			let openingGesture: OpeningMarkGesture | null = null;
 			let pausedProposal: PausedWallProposal | null = null;
 			let refusal: string | null = null;
@@ -1076,6 +1284,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				readonly contentRevision: string;
 				readonly point: LayoutVec2;
 				readonly text: string;
+				/** The refused network stays visible as settled evidence, not a proposal. */
+				readonly geometry?: CandidatePaperGeometry;
 			} | null = null;
 			/**
 			 * The contributed reading this binding is carrying, if any. Ink stays one
@@ -1137,6 +1347,578 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			} | null = null;
 
 			/** Release the live manipulation lease and drop the in-flight gesture. */
+			let bendGesture: BendGesture | null = null;
+			/**
+			 * The host the Opening reading was entered from. Opening the Ink task
+			 * clears the Stage selection, so Place by offset must remember the Wall
+			 * (or the selected Opening's Wall) instead of re-reading a vanished one.
+			 */
+			let openingHostId: string | null = null;
+			/** C2 — one radius grip drag on a selected closed Wall. */
+			type CircleRadiusGesture = {
+				readonly evaluationId: string;
+				readonly pressCss: readonly [number, number];
+				readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+				readonly wallId: string;
+				readonly baseline: LayoutDocumentWallFirst;
+				readonly center: LayoutVec2;
+				preview: LayoutDocumentWallFirst | null;
+				radius: number | null;
+				refusal: string | null;
+			};
+			let circleRadiusGesture: CircleRadiusGesture | null = null;
+			function endCircleRadius(): void {
+				const current = circleRadiusGesture;
+				circleRadiusGesture = null;
+				if (current?.lease.lease.active) current.lease.lease.release();
+			}
+			/** D8 — one rigid body drag on a selected closed Wall. */
+			type CircleTranslateGesture = {
+				readonly evaluationId: string;
+				readonly lease: Extract<GestureAcquisition, { kind: 'granted' }>;
+				readonly wallId: string;
+				readonly baseline: LayoutDocumentWallFirst;
+				readonly pressPoint: LayoutVec2;
+				preview: LayoutDocumentWallFirst | null;
+				delta: LayoutVec2 | null;
+				refusal: string | null;
+			};
+			let circleTranslateGesture: CircleTranslateGesture | null = null;
+			function endCircleTranslate(): void {
+				const current = circleTranslateGesture;
+				circleTranslateGesture = null;
+				if (current?.lease.lease.active) current.lease.lease.release();
+			}
+			/**
+			 * C1/D2 — the bend point the Card currently names. It is selection-scoped
+			 * session state: never serialized, cleared by Escape or a different host,
+			 * and read by both the marks and the Card's one action channel.
+			 */
+			let activeKnot: { readonly wallId: string; readonly knotId: string } | null = null;
+
+			function endBendGesture(): void {
+				const current = bendGesture;
+				bendGesture = null;
+				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+			}
+
+			/** The selected open Wall's sampled frame, straight or curved. */
+			function selectedOpenWall(adapterContext: StageAdapterContext): { wallId: string; frame: OpenWallFrame } | null {
+				const primary = adapterContext.selectionState().primary;
+				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') return null;
+				const frame = openWallFrame(document, primary.subject.id);
+				return frame === null ? null : { wallId: primary.subject.id, frame };
+			}
+
+			/** The selected closed Wall's persisted circle facts, or `null`. */
+			function selectedClosedWall(
+				adapterContext: StageAdapterContext
+			): { wallId: string; center: LayoutVec2; radius: number; seam: LayoutVec2 } | null {
+				const primary = adapterContext.selectionState().primary;
+				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') return null;
+				const source = stageLayout(adapterContext.snapshot).walls.find((wall) => wall.id === primary.subject.id);
+				if (source === undefined || !isClosedWall(source)) return null;
+				const facts = readClosedWallCircle(stageLayout(adapterContext.snapshot), source.id);
+				return facts === null
+					? null
+					: { wallId: source.id, center: facts.center, radius: facts.radius, seam: facts.seam };
+			}
+
+			/** The selected **curved** open Wall, or `null` for a straight one. */
+			function selectedCurvedWall(adapterContext: StageAdapterContext): { wallId: string; frame: OpenWallFrame } | null {
+				const selected = selectedOpenWall(adapterContext);
+				if (selected === null) return null;
+				const source = document.walls.find((candidate) => candidate.id === selected.wallId);
+				return source === undefined || source.centerline.kind === 'line' ? null : selected;
+			}
+
+			/**
+			 * A curved body move still uses the canonical rigid-move request, whose
+			 * address is the Wall id and one world delta. The straight frame here is
+			 * only the local drag basis (normal and press anchor); the retained planner
+			 * reads the curved chain from the document and translates every knot.
+			 */
+			function bodyFrameForOpenWall(frame: OpenWallFrame): WallFrame {
+				const dx = frame.end[0] - frame.start[0];
+				const dz = frame.end[1] - frame.start[1];
+				const length = Math.hypot(dx, dz);
+				return {
+					wallId: frame.wallId,
+					startJunctionId: frame.startJunctionId,
+					endJunctionId: frame.endJunctionId,
+					start: [frame.start[0], frame.start[1]],
+					end: [frame.end[0], frame.end[1]],
+					direction: [dx / length, dz / length],
+					length,
+					angleRadians: Math.atan2(dz, dx)
+				};
+			}
+
+			/**
+			 * D2 — one bend-point removal for both callers: the Card action and the
+			 * Delete/Backspace key. The keyboard must not grow a second write path, so it
+			 * calls exactly this helper: preview the retained planner, capture one intent,
+			 * accept it once, then clear the session's active knot.
+			 */
+			async function removeWallKnot(wallId: string, knotId: string): Promise<StageCardActionOutcome> {
+				const preview = previewWallKnotDelete(document, wallId, knotId);
+				if (preview.kind === 'refused') return { kind: 'refused', message: preview.message };
+				const snapshot = services.stage.snapshot();
+				const outcome = await services.authoring.accept(
+					wallKnotDeleteIntent({
+						wallId,
+						knotId,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId
+					})
+				);
+				if (outcome.kind === 'refused') return { kind: 'refused', message: outcome.message };
+				if (activeKnot?.wallId === wallId && activeKnot.knotId === knotId) activeKnot = null;
+				services.stage.notifySurfaceChange();
+				return { kind: 'accepted' };
+			}
+
+			function commitBend(current: BendGesture, intent: NonNullable<BendGesture['intent']>): void {
+				// D13 — the sheet's centerline is display-only. A bend gesture that began
+				// before unfolding must not write the canonical chain.
+				if (wallUnfold.isActive(current.wallId)) return;
+				const snapshot = services.stage.snapshot();
+				void services.authoring.accept(
+					wallBendIntent({
+						wallId: current.wallId,
+						distance: intent.distance,
+						point: intent.point,
+						knotId: current.knotId,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId
+					})
+				);
+			}
+
+			/**
+			 * C2/D8 — the radius grip. A press captures the selected closed Wall and
+			 * one gesture lease; every move previews the retained radius planner; the
+			 * release accepts exactly that radius once. Bending never enters this path.
+			 */
+			function circleRadiusPointer(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				const active = circleRadiusGesture;
+				if (active === null) {
+					if (intent.phase !== 'down' || intent.handleId !== 'layout-circle-radius-mark') return false;
+					const selected = selectedClosedWall(adapterContext);
+					if (selected === null) return false;
+					const acquisition = services.stage.acquireGesture({
+						owner: 'layout-circle-radius',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						refusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+						return false;
+					}
+					circleRadiusGesture = {
+						evaluationId: intent.evaluationId,
+						pressCss: intent.css,
+						lease: acquisition,
+						wallId: selected.wallId,
+						baseline: stageLayout(adapterContext.snapshot),
+						center: selected.center,
+						preview: null,
+						radius: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (
+					intent.phase === 'cancel' ||
+					intent.evaluationId !== active.evaluationId
+				) {
+					endCircleRadius();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return true;
+					const radius = Math.hypot(point[0] - active.center[0], point[1] - active.center[1]);
+					const planned = planResizeClosedWallRadius({
+						document: active.baseline,
+						wallId: active.wallId,
+						radius
+					});
+					if (planned.kind === 'rejected') {
+						active.preview = null;
+						active.radius = null;
+						active.refusal = planned.rejection.message;
+					} else {
+						active.preview = planned.document;
+						active.radius = radius;
+						active.refusal = null;
+					}
+					refusal = active.refusal;
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				// release: one captured write, never a clamped repair.
+				const current = circleRadiusGesture;
+				if (current === null) return true;
+				const radius = current.radius;
+				const wallId = current.wallId;
+				endCircleRadius();
+				if (radius !== null) {
+					const snapshot = services.stage.snapshot();
+					void services.authoring.accept(
+						circleRadiusIntent({
+							wallId,
+							radius,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId: snapshot.domain.layoutLevelId
+						})
+					);
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			/**
+			 * C2/D8 — a circular Wall is translated by a body drag. The straight move
+			 * path requires a chord frame, which a self-connected Wall does not have,
+			 * so this gesture runs the closed-Wall translation planner and the canonical
+			 * `layout-wall-move` intent. It never enters the bend sub-machine:
+			 * `openWallFrame` deliberately refuses a self-connected Wall, and the bend
+			 * planner refuses `closed_wall_not_bendable`.
+			 */
+			function circleTranslatePointer(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				const active = circleTranslateGesture;
+				if (active === null) {
+					if (intent.phase !== 'down') return false;
+					// Any admitted mark keeps its own writer; only an unmarked body press
+					// moves the Wall.
+					if (intent.handleId !== undefined) return false;
+					const selected = selectedClosedWall(adapterContext);
+					if (selected === null) return false;
+					const hit = services.stage.hitMark({ css: intent.css, coarse: intent.coarse === true });
+					if (hit !== null) return false;
+					const picked = services.stage.resolvePick({
+						css: intent.css,
+						evaluationId: intent.evaluationId,
+						purpose: 'select',
+						tool: null,
+						...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+					});
+					if (
+						picked.kind !== 'resolved' ||
+						picked.hit.sourceKind !== 'wall' ||
+						picked.hit.sourceId !== selected.wallId
+					) return false;
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return false;
+					const acquisition = services.stage.acquireGesture({
+						owner: 'layout-circle-move',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') {
+						refusal = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+						return false;
+					}
+					circleTranslateGesture = {
+						evaluationId: intent.evaluationId,
+						lease: acquisition,
+						wallId: selected.wallId,
+						baseline: stageLayout(adapterContext.snapshot),
+						pressPoint: [point[0], point[1]],
+						preview: null,
+						delta: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'cancel' || intent.evaluationId !== active.evaluationId) {
+					endCircleTranslate();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return true;
+					const delta: LayoutVec2 = [point[0] - active.pressPoint[0], point[1] - active.pressPoint[1]];
+					if (Math.hypot(delta[0], delta[1]) < 1e-9) {
+						active.preview = null;
+						active.delta = null;
+						active.refusal = null;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					const planned = planTranslateClosedWall({
+						document: active.baseline,
+						wallId: active.wallId,
+						delta
+					});
+					if (planned.kind === 'rejected') {
+						active.preview = null;
+						active.delta = null;
+						active.refusal = planned.rejection.message;
+					} else {
+						active.preview = planned.document;
+						active.delta = delta;
+						active.refusal = null;
+					}
+					refusal = active.refusal;
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				const current = circleTranslateGesture;
+				if (current === null) return true;
+				const delta = current.delta;
+				const wallId = current.wallId;
+				endCircleTranslate();
+				if (delta !== null) {
+					// One captured intent on release, through the same retained planner
+					// the preview ran. The straight `layout-wall-move` planner is not used:
+					// a self-connected Wall has no endpoint chord to solve.
+					const snapshot = services.stage.snapshot();
+					void services.authoring.accept(
+						circleTranslateIntent({
+							wallId,
+							delta,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId: snapshot.domain.layoutLevelId
+						})
+					);
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			/**
+			 * C1 — the Bend sub-machine, driven through the same `pointer()` entry as
+			 * every other captured gesture. A press on the body captures one station
+			 * and one knot id; a move previews through the retained planner; the up
+			 * commits exactly once. The rigid move mark never enters this path.
+			 */
+			function bendPointer(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+				const active = bendGesture;
+				if (active === null) {
+					if (intent.phase !== 'down' || intent.handleId === 'layout-wall-move-mark') return false;
+					if (gesture !== null || junctionGesture !== null || openingGesture !== null) return false;
+					const selected = selectedOpenWall(adapterContext);
+					if (selected === null) return false;
+					const handle = intent.handleId;
+					const knotMark = handle?.startsWith('layout-wall-knot:') === true;
+					const spanMark = handle?.startsWith('layout-wall-span:') === true;
+					if (handle !== undefined && !knotMark && !spanMark) return false;
+					// D1 — a plain body press is the rigid move, not a bend. Meta/Ctrl is
+					// captured on pointer-down; the visible span rings are the direct
+					// touch/keyboard alternative and need no hidden armed mode.
+					const shapeModifier = intent.metaKey === true || intent.ctrlKey === true;
+					const press = pointerDatumPoint(adapterContext, intent.css);
+					if (press === null) return false;
+					const source = document.walls.find((candidate) => candidate.id === selected.wallId);
+					if (source === undefined) return false;
+					// Targeted precedence: a press any admitted mark or other pickable
+					// subject claims belongs to that path. Only a genuine body press on this
+					// Wall reaches the bend — straight and curved alike (D1).
+					let effectiveHandle = handle;
+					if (effectiveHandle === undefined) {
+						const hit = services.stage.hitMark({ css: intent.css, coarse: intent.coarse === true });
+						if (hit !== null) {
+							const bendMark = hit.adapterId === 'layout' &&
+								(hit.id.startsWith('layout-wall-knot:') || hit.id.startsWith('layout-wall-span:'));
+							if (!bendMark) return false;
+							effectiveHandle = hit.id;
+						}
+					}
+					if (effectiveHandle === undefined) {
+						const picked = services.stage.resolvePick({
+							css: intent.css,
+							evaluationId: intent.evaluationId,
+							purpose: 'select',
+							tool: null,
+							...(intent.coarse === undefined ? {} : { coarse: intent.coarse })
+						});
+						if (
+							picked.kind !== 'resolved' ||
+							picked.hit.sourceKind !== 'wall' ||
+							picked.hit.sourceId !== selected.wallId
+						) return false;
+					}
+					const resolvedKnotMark = effectiveHandle?.startsWith('layout-wall-knot:') === true;
+					// Reuse a stored knot only when it is within the visible 10 CSS px mark
+					// promotion radius. The 0.35 m body fallback is not a mark radius.
+					const nearestKnot = !resolvedKnotMark && effectiveHandle === undefined && source.centerline.kind !== 'line'
+						? source.centerline.knots.find((candidate) => {
+							const projected = adapterContext.project([
+								candidate.point[0], adapterContext.snapshot.domain.datumMeters, candidate.point[1]
+							]);
+							return projected !== null && Math.hypot(
+								projected[0] - adapterContext.evaluation.rect.left - intent.css[0],
+								projected[1] - adapterContext.evaluation.rect.top - intent.css[1]
+							) <= 10;
+						})
+						: undefined;
+					// A plain body press within the hidden knot's 10 px promotion radius
+					// activates/edits that knot; anywhere else it is the rigid move.
+					if (effectiveHandle === undefined && nearestKnot === undefined && !shapeModifier) return false;
+					const knot = resolvedKnotMark && source.centerline.kind !== 'line'
+						? source.centerline.knots.find((candidate) => candidate.id === effectiveHandle!.slice('layout-wall-knot:'.length))
+						: nearestKnot;
+					if (resolvedKnotMark && knot === undefined) return false;
+					const knotId = knot?.id ?? globalThis.crypto.randomUUID();
+					const distance = knot === undefined
+						? wallStationNearPoint(document, selected.wallId, [press[0], press[1]], BEND_BODY_TOLERANCE_METERS)
+						: wallStationAtPoint(document, selected.wallId, [knot.point[0], knot.point[1]]);
+					if (distance === null || !(distance > 0) || distance >= selected.frame.length) return false;
+					const anchor = knot === undefined
+						? curvedWallPointAt(selected.frame, distance)?.point
+						: knot.point;
+					if (anchor === undefined) return false;
+					const acquisition = services.stage.acquireGesture({
+						owner: 'layout-bend',
+						evaluationId: intent.evaluationId,
+						policy: 'cancel-on-reading-change'
+					});
+					if (acquisition.kind !== 'granted') return false;
+					bendGesture = {
+						evaluationId: intent.evaluationId,
+						pressCss: intent.css,
+						markId: effectiveHandle ?? 'layout-wall-body',
+						wallId: selected.wallId,
+						knotId,
+						frame: selected.frame,
+						distance,
+						anchor: [anchor[0], anchor[1]],
+						grabOffset: [anchor[0] - press[0], anchor[1] - press[1]],
+						existingKnot: knot !== undefined,
+						lease: acquisition,
+						baseline: document,
+						intent: null,
+						previewDocument: null,
+						removal: false,
+						leftRemovalZone: false,
+						attemptPoints: selected.frame.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2),
+						attemptPoint: null,
+						refusal: null
+					};
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'cancel' || intent.evaluationId !== active.evaluationId) {
+					endBendGesture();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					if (wallUnfold.isActive(active.wallId)) {
+						active.intent = null;
+						active.previewDocument = null;
+						active.refusal = WALL_UNFOLD_SHAPE_REFUSAL;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					if (!isPointerDrag(active.pressCss, intent.css)) {
+						active.intent = null;
+						active.previewDocument = null;
+						active.refusal = null;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					const point = pointerDatumPoint(adapterContext, intent.css);
+					if (point === null) return true;
+					const attempted: LayoutVec2 = [
+						point[0] + active.grabOffset[0],
+						point[1] + active.grabOffset[1]
+					];
+					const attemptPoints = active.frame.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2);
+					const insertAt = active.frame.samples.findIndex((sample) => sample.distance >= active.distance);
+					if (active.existingKnot && insertAt >= 0) attemptPoints[insertAt] = attempted;
+					else attemptPoints.splice(Math.max(1, insertAt < 0 ? attemptPoints.length : insertAt), 0, attempted);
+					active.attemptPoints = attemptPoints;
+					active.attemptPoint = attempted;
+					// A held existing knot that comes back onto its neighbours' chord is
+					// a removal, not a bend. The preview is the real no-knot candidate and
+					// release writes exactly that one command; leaving the chord returns
+					// to the ordinary bend. `leftRemovalZone` is the must-leave hysteresis.
+					let removal = false;
+					if (active.existingKnot) {
+						const source = active.baseline.walls.find((candidate) => candidate.id === active.wallId);
+						if (source !== undefined && source.centerline.kind !== 'line') {
+							const index = source.centerline.knots.findIndex((candidate) => candidate.id === active.knotId);
+							if (index >= 0) {
+								const previous = index > 0
+									? source.centerline.knots[index - 1]!.point
+									: active.frame.start;
+								const next = index < source.centerline.knots.length - 1
+									? source.centerline.knots[index + 1]!.point
+									: active.frame.end;
+								const distance = distanceToChord(attempted, previous, next);
+								if (distance > BEND_REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
+								removal = active.leftRemovalZone && distance <= BEND_REMOVE_ENTER_METERS;
+							}
+						}
+					}
+					active.removal = removal;
+					const planned = removal
+						? previewWallKnotDelete(active.baseline, active.wallId, active.knotId)
+						: previewWallBend(active.baseline, active.wallId, active.distance, attempted, active.knotId);
+					if (planned.kind === 'refused') {
+						// Keep the last valid preview on screen: the Bend stops at the
+						// geometric limit instead of snapping back to the baseline. The
+						// release guard below refuses to commit while this refusal stands.
+						active.refusal = wallRefusalWords(planned.code, planned.message);
+					} else {
+						active.intent = removal ? null : { distance: active.distance, point: attempted };
+						active.previewDocument = planned.document;
+						active.refusal = null;
+					}
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				// up: one captured gesture is at most one accepted command.
+				const current = bendGesture;
+				bendGesture = null;
+				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
+				// D2 — the knot a gesture created or edited stays named after release,
+				// including a brand-new knot, until Escape or a different selection.
+				if (current !== null && current.removal) {
+					// The removal is one canonical knot-delete command. The knot is gone,
+					// so the session's active shape point is cleared; Undo restores it.
+					activeKnot = null;
+					void removeWallKnot(current.wallId, current.knotId);
+				} else if (current !== null) activeKnot = { wallId: current.wallId, knotId: current.knotId };
+				if (current !== null && !current.removal && current.intent !== null && current.refusal === null) commitBend(current, current.intent);
+				else if (
+					current !== null &&
+					(current.existingKnot || current.markId.startsWith('layout-wall-knot:')) &&
+					!isPointerDrag(current.pressCss, intent.css)
+				) {
+					// A click, not a drag: the solid point becomes the active bend point the
+					// Card names. No document write, so no history entry is created.
+					activeKnot = { wallId: current.wallId, knotId: current.knotId };
+				}
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
 			function endGesture(): void {
 				endScalar();
 				const current = gesture;
@@ -1236,6 +2018,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					openingId: opening.id,
 					wallId: opening.wallId,
 					frame: span.frame,
+					station: span.station,
 					length: span.length,
 					offset: opening.offset,
 					width: opening.width
@@ -1324,6 +2107,85 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return idleJunctionHover !== null;
 			}
 
+			/**
+			 * Reveal the available Bend target on hover/proximity. Only the selected
+			 * open Wall qualifies; the hint is the midpoint of the span under the
+			 * pointer, so pressing the same place is the ordinary span-ring Bend. A
+			 * coarse pointer does not hover, and any owned task or live gesture keeps
+			 * the pointer for itself.
+			 */
+			function updateIdleBendHover(
+				intent: StagePointerIntent,
+				adapterContext: StageAdapterContext
+			): boolean {
+				const previous = idleBendHint;
+				const clear = (): false => {
+					idleBendHint = null;
+					if (previous !== null) services.stage.notifySurfaceChange();
+					return false;
+				};
+				if (intent.phase === 'cancel') return clear();
+				if (
+					intent.phase !== 'move' ||
+					intent.coarse === true ||
+					openTaskKind !== null ||
+					services.stage.session.task() !== null ||
+					services.stage.session.gesture() !== null ||
+					gesture !== null ||
+					junctionGesture !== null ||
+					openingGesture !== null ||
+					bendGesture !== null ||
+					scalarGesture !== null
+				) return clear();
+				const selected = selectedOpenWall(adapterContext);
+				if (selected === null || wallUnfold.isActive(selected.wallId)) return clear();
+				const point = pointerDatumPoint(adapterContext, intent.css);
+				if (point === null) return clear();
+				const station = wallStationNearPoint(
+					document,
+					selected.wallId,
+					[point[0], point[1]],
+					BEND_BODY_TOLERANCE_METERS
+				);
+				if (station === null || !(station > 0.02) || station >= selected.frame.length - 0.02) return clear();
+				const source = document.walls.find((candidate) => candidate.id === selected.wallId);
+				if (source === undefined) return clear();
+				const boundaries = [0];
+				if (source.centerline.kind !== 'line') {
+					for (const knot of source.centerline.knots) {
+						const knotStation = wallStationAtPoint(document, selected.wallId, [
+							knot.point[0],
+							knot.point[1]
+						]);
+						if (knotStation !== null && knotStation > boundaries[0]! && knotStation < selected.frame.length) {
+							boundaries.push(knotStation);
+						}
+					}
+				}
+				boundaries.push(selected.frame.length);
+				boundaries.sort((a, b) => a - b);
+				let from = 0;
+				let to = selected.frame.length;
+				for (let index = 1; index < boundaries.length; index += 1) {
+					if (station >= boundaries[index - 1]! && station <= boundaries[index]!) {
+						from = boundaries[index - 1]!;
+						to = boundaries[index]!;
+						break;
+					}
+				}
+				if (!(to - from > 0.02)) return clear();
+				const at = curvedWallPointAt(selected.frame, (from + to) / 2)?.point;
+				if (at === undefined) return clear();
+				const next = { wallId: selected.wallId, point: [at[0], at[1]] as LayoutVec2, station: (from + to) / 2 };
+				idleBendHint = next;
+				if (
+					previous?.wallId !== next.wallId ||
+					previous.point[0] !== next.point[0] ||
+					previous.point[1] !== next.point[1]
+				) services.stage.notifySurfaceChange();
+				return true;
+			}
+
 			/** The one admitted Stage point for the active hover or its live drag. */
 			function idleJunctionHandles(adapterContext: StageAdapterContext): readonly StageHandleDescriptor[] {
 				if (openTaskKind !== null || services.stage.session.task() !== null) return [];
@@ -1369,10 +2231,192 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function markDescriptors(adapterContext: StageAdapterContext): readonly StageHandleDescriptor[] {
 				if (openTaskKind !== null || services.stage.session.task() !== null) return [];
+				// D2 — a selection change clears the active bend point. Reconcile here,
+				// where the new primary subject is already known, instead of keeping a
+				// stale knot that a later reselect could silently revive.
+				const primary = adapterContext.selectionState().primary;
+				if (
+					activeKnot !== null &&
+					(primary === null || primary.subject.kind !== 'wall' || primary.subject.id !== activeKnot.wallId)
+				) {
+					activeKnot = null;
+				}
 				const wall = selectedWall(adapterContext);
-				const opening = wall === null ? selectedOpening(adapterContext) : null;
-				if (wall === null && opening === null) return [];
+				const curved = wall === null ? selectedCurvedWall(adapterContext) : null;
+				const closed = wall === null && curved === null ? selectedClosedWall(adapterContext) : null;
+				const opening = wall === null && curved === null && closed === null ? selectedOpening(adapterContext) : null;
+				if (wall === null && curved === null && closed === null && opening === null) return [];
 				const y = adapterContext.snapshot.domain.datumMeters;
+				// The unrolled sheet is the editing surface: its Wall's canonical marks
+				// (including a closed Wall's radius grip) are not drawn or hit while it
+				// is open. Card fields remain available.
+				if (
+					(wall !== null && wallUnfold.isActive(wall.wallId)) ||
+					(curved !== null && wallUnfold.isActive(curved.wallId)) ||
+					(closed !== null && wallUnfold.isActive(closed.wallId))
+				) return [];
+				if (closed !== null) {
+					// D8 — the only shape grip a closed Wall publishes is the radius grip.
+					// It sits on the authored seam (the rim point) and writes the same
+					// retained radius planner as the Card's Radius/Diameter fields.
+					// The closed Wall's only shape grip is a radius ray from the centre to
+					// the authored seam, never a pair of end points: a closed Wall has no
+					// ends to move. The ray is the primary grip, so it stays visible.
+					// The size chip sits away from the seam and discloses the retained
+					// height/thickness writers; it never replaces the radius semantics.
+					const planReading = adapterContext.evaluation.settledReading === 'plan';
+					const seamX = closed.seam[0] - closed.center[0];
+					const seamZ = closed.seam[1] - closed.center[1];
+					const radius = Math.hypot(seamX, seamZ);
+					const chipAngle = Math.atan2(seamZ, seamX) + Math.PI * 2 * 0.82;
+					const chipPoint: LayoutVec2 = [
+						closed.center[0] + Math.cos(chipAngle) * radius,
+						closed.center[1] + Math.sin(chipAngle) * radius
+					];
+					return [
+						{
+							id: 'layout-wall-size-chip',
+							kind: 'point',
+							role: 'disclose',
+							anchor: [chipPoint[0], y, chipPoint[1]],
+							screen: { offset: [0, -22] },
+							label: 'Size',
+							reveals: [
+								'layout-wall-thickness',
+								...(planReading ? [] : ['layout-wall-height'])
+							]
+						},
+						{
+							id: 'layout-circle-radius-mark',
+							kind: 'ray',
+							role: 'edit',
+							anchor: [closed.center[0], y, closed.center[1]],
+							axis: [seamX, 0, seamZ],
+							extent: closed.radius,
+							label: 'Radius',
+							fact: 'radius',
+							verb: 'Resize',
+							planner: LAYOUT_CIRCLE_RADIUS_KIND,
+							value: `${closed.radius.toFixed(2)} m`,
+							refusal: circleRadiusGesture?.refusal ?? null
+						}
+					];
+				}
+				if (curved !== null) {
+					// C1 — a curved Wall does not carry a permanent constellation of bend
+					// handles. The body is the ordinary editing surface; only the knot a
+					// creator deliberately activated, or is currently dragging, is drawn.
+					const source = document.walls.find((candidate) => candidate.id === curved.wallId);
+					if (source === undefined || source.centerline.kind === 'line') return [];
+					const planReading = adapterContext.evaluation.settledReading === 'plan';
+					const chipAt = curvedWallPointAt(curved.frame, curved.frame.length * 0.82);
+					const sizeChip = chipAt === null ? null : ({
+						id: 'layout-wall-size-chip',
+						kind: 'point',
+						role: 'disclose',
+						anchor: [chipAt.point[0], y, chipAt.point[1]],
+						screen: { offset: [0, -22] },
+						label: 'Size',
+						// Arc length is not an exact-length writer on a curve, so the
+						// disclosure offers only the retained height/thickness scalars.
+						reveals: [
+							'layout-wall-thickness',
+							...(planReading ? [] : ['layout-wall-height'])
+						]
+					} satisfies StageHandleDescriptor);
+					const withSize = (marks: StageHandleDescriptor[]): StageHandleDescriptor[] =>
+						sizeChip === null ? marks : [sizeChip, ...marks];
+					// D2 — a different host clears the session's active knot. This is a
+					// read-side reconciliation, not a document or history change.
+					if (activeKnot !== null && activeKnot.wallId !== curved.wallId) activeKnot = null;
+					const live = bendGesture?.wallId === curved.wallId ? bendGesture : null;
+					const shownId = activeKnot?.wallId === curved.wallId
+						? activeKnot.knotId
+						: live?.knotId ?? null;
+					const knot = shownId === null ? undefined : source.centerline.knots.find((candidate) => candidate.id === shownId);
+					// D1/P1 — both ends of an open curved Wall stay reachable while its
+					// body offers Bend. They are the same junction writers a straight Wall
+					// uses, so shared ends keep canonical identity.
+					const ends: StageHandleDescriptor[] = [
+						{
+							id: 'layout-wall-start-mark',
+							kind: 'point',
+							role: 'edit',
+							anchor: [curved.frame.start[0], y, curved.frame.start[1]],
+							draw: { pointRadius: 4.6 },
+							label: 'Wall start',
+							fact: 'start',
+							verb: 'Move point',
+							planner: LAYOUT_JUNCTION_MOVE_KIND,
+							value: `X ${curved.frame.start[0].toFixed(2)} · Z ${curved.frame.start[1].toFixed(2)} m`,
+							refusal: junctionGesture !== null ? refusal : null
+						},
+						{
+							id: 'layout-wall-end-mark',
+							kind: 'point',
+							role: 'edit',
+							anchor: [curved.frame.end[0], y, curved.frame.end[1]],
+							draw: { pointRadius: 4.6 },
+							label: 'Wall end',
+							fact: 'end',
+							verb: 'Move point',
+							planner: LAYOUT_JUNCTION_MOVE_KIND,
+							value: `X ${curved.frame.end[0].toFixed(2)} · Z ${curved.frame.end[1].toFixed(2)} m`,
+							refusal: junctionGesture !== null ? refusal : null
+						}
+					];
+					// One hollow shape point per span. It is the ordinary Bend writer at
+					// that span's midpoint; the knot itself stays hidden until activated.
+					const spanStations = [0];
+					for (const candidate of source.centerline.knots) {
+						const station = wallStationAtPoint(document, curved.wallId, [candidate.point[0], candidate.point[1]]);
+						if (station !== null) spanStations.push(station);
+					}
+					spanStations.push(curved.frame.length);
+					spanStations.sort((a, b) => a - b);
+					const spanMarks: StageHandleDescriptor[] = [];
+					// Shape points are contextual on the selected Wall. A body press
+					// away from a ring still moves; a ring press bends. No hidden arm.
+					for (let index = 1; index < spanStations.length; index += 1) {
+						const from = spanStations[index - 1]!;
+						const to = spanStations[index]!;
+						if (!(to - from > 0.02)) continue;
+						const at = curvedWallPointAt(curved.frame, (from + to) / 2)?.point;
+						if (at === undefined) continue;
+						// Proximity discovery uses the existing span ring: no second target
+						// and no floating toolbar. The ring grows and names the action only
+						// while the pointer is inside this span's body band.
+						const hinted = idleBendHint?.wallId === curved.wallId &&
+							idleBendHint.station >= from && idleBendHint.station <= to;
+						spanMarks.push({
+							id: `layout-wall-span:${index - 1}`,
+							kind: 'point',
+							role: 'edit',
+							anchor: [at[0], y, at[1]],
+							draw: { pointRadius: hinted ? 6.4 : 4.4, hollow: true },
+							label: 'Span midpoint',
+							fact: 'bend',
+							verb: 'Bend',
+							planner: LAYOUT_WALL_BEND_KIND,
+							value: hinted ? 'Bend · pull here' : 'Pull to bend',
+							refusal: live?.refusal ?? null
+						});
+					}
+					if (knot === undefined) return withSize([...ends, ...spanMarks]);
+					const active = activeKnot?.knotId === knot.id && activeKnot.wallId === curved.wallId;
+					return withSize([...ends, ...spanMarks, {
+						id: `layout-wall-knot:${knot.id}`,
+						kind: 'point',
+						role: 'edit',
+						anchor: [knot.point[0], y, knot.point[1]],								draw: active || live !== null ? { pointRadius: 6.8, bend: true } : { pointRadius: 5.2 },
+						label: 'Active bend point',
+						fact: 'bend',
+						verb: 'Bend',
+						planner: LAYOUT_WALL_BEND_KIND,
+						value: `X ${knot.point[0].toFixed(2)} · Z ${knot.point[1].toFixed(2)} m`,
+						refusal: live?.refusal ?? null
+					}]);
+				}
 				if (wall !== null) {
 					const length = wallLength(wall.frame);
 					const direction = wallDirection(wall.frame);
@@ -1403,7 +2447,40 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const refusalFor = (markId: string): string | null =>
 						gesture?.markId === markId ? refusal : null;
 					const middle = framePoint(wall.frame, length / 2, y);
+					const planReading = adapterContext.evaluation.settledReading === 'plan';
+					const hinted = idleBendHint?.wallId === wall.wallId;
+					// The one size disclosure owns the Wall's three dimensions. The
+					// working thickness and height scalar handles are revealed by it.
 					const descriptors: StageHandleDescriptor[] = [
+						{
+							// The Wall's one size disclosure: its measured handles live behind it.
+							id: 'layout-wall-size-chip',
+							kind: 'point',
+							role: 'disclose',
+							anchor: framePoint(wall.frame, length * 0.82, y),
+							screen: { offset: [0, -22] },
+							label: 'Size',
+							reveals: [
+								'layout-wall-length',
+								'layout-wall-thickness',
+								...(planReading ? [] : ['layout-wall-height'])
+							]
+						},
+						{
+							// The one span's plain shape point. The selected Wall's body remains
+							// the rigid move surface; this ring is the Bend writer at mid-span.
+							id: 'layout-wall-span:0',
+							kind: 'point',
+							role: 'edit',
+							anchor: middle,
+							draw: { pointRadius: hinted ? 6.4 : 4.4, hollow: true },
+							label: 'Span midpoint',
+							fact: 'bend',
+							verb: 'Bend',
+							planner: LAYOUT_WALL_BEND_KIND,
+							value: hinted ? 'Bend · pull here' : 'Pull to bend',
+							refusal: refusalFor('layout-wall-span:0')
+						} satisfies StageHandleDescriptor,
 						{
 							id: 'layout-wall-start-mark',
 							draw:{pointRadius:4.6},
@@ -1446,6 +2523,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							anchor: framePoint(wall.frame, length, y),
 							axis: [direction[0], 0, direction[1]],
 							extent: length,
+							disclosedBy: 'layout-wall-size-chip',
 							label: 'Wall length',
 							fact: 'length',
 							verb: 'Length',
@@ -1454,19 +2532,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							refusal: refusalFor('layout-wall-length')
 						},
 						{
-							// The grammar's **two-way base ray**: the whole base line slides
-							// either way, so the reach is drawn on both sides of one anchor.
-							// The rigid move itself is not clamped; this is an affordance.
+							// The rigid move has no visible glyph: a plain body press on the
+							// selected Wall is the surface. This hidden record keeps the stable
+							// numeric writer identity (`Distance`) and its tag while a body drag
+							// or typed value is live; it is not drawn and cannot be hit.
 							id: 'layout-wall-move-mark',
-							draw: {
-								twoWayHalf:
-									adapterContext.evaluation.settledReading === 'plan' ? 18 : 15
-							},
+							draw: { hidden: true },
 							kind: 'track',
 							role: 'edit',
 							anchor: middle,
 							axis: [-direction[1], 0, direction[0]],
-							extent: 0.6,
+							extent: 0,
 							bothWays: true,
 							label: 'Wall position',
 							fact: 'position',
@@ -1477,13 +2553,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								`X ${wall.frame.start[0].toFixed(3)} · Z ${wall.frame.start[1].toFixed(3)} m`
 							),
 							refusal: refusalFor('layout-wall-move-mark')
-						}
+						},
 					];
-					// Each endpoint keeps its own anchor; the base ray then wins the middle
-					// and the outward length ray keeps the free end. Descriptor order is the
-					// domain's hit order. Angle has no Stage grip: the owner's 2026-10-29
-					// ruling keeps it a Card field and removes the ring.
-					const priority = ['layout-wall-start-mark', 'layout-wall-end-mark', 'layout-wall-move-mark', 'layout-wall-length'];
+					// Each endpoint keeps its own anchor and the outward length ray keeps
+					// the free end. Descriptor order is the domain's hit order. The rigid
+					// move has no glyph: a plain body press on the selected Wall moves it,
+					// and the retired mark id survives only as that press's stable writer
+					// identity. Angle has no Stage grip: the owner's 2026-10-29 ruling keeps
+					// it a Card field and removes the ring.
+					const priority = [
+						'layout-wall-size-chip',
+						'layout-wall-start-mark',
+						'layout-wall-span:0',
+						'layout-wall-end-mark',
+						'layout-wall-length'
+					];
 					return [...descriptors].sort((a, b) => priority.indexOf(a.id) - priority.indexOf(b.id));
 				}
 				const sourceOpening = document.openings.find((candidate) => candidate.id === opening!.openingId);
@@ -1503,6 +2587,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					) || 1;
 				const faceOffset = viewSide * hostThickness / 2;
 				const at = (distance: number, elevation: number, offset = faceOffset): [number, number, number] => {
+					// A curved host reads the sampled station and its own tangent, so
+					// the handle sits on the curve with the local face normal. The
+					// straight path is kept verbatim to prove unchanged output.
+					if (opening!.station.curved) {
+						const local = opening!.station.pointAt(distance);
+						if (local !== null) {
+							const stationNormal: readonly [number, number] = [-local.tangent[1], local.tangent[0]];
+							return [
+								local.point[0] + stationNormal[0] * offset,
+								elevation,
+								local.point[1] + stationNormal[1] * offset
+							];
+						}
+					}
 					const point = framePoint(opening!.frame, distance, elevation);
 					return [point[0] + normal[0] * offset, point[1], point[2] + normal[1] * offset];
 				};
@@ -1659,7 +2757,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				request: WallManipulationRequest,
 				fixed: FixedWallEndpoint,
 				wallId: string,
-				point: LayoutVec2 | null = null
+				point: LayoutVec2 | null = null,
+				attemptGeometry: CandidatePaperGeometry | null = null
 			): Promise<void> {
 				// T3.P03.S02: release commits exactly once; that commit is the command
 				// whose completion the performance flow measures.
@@ -1677,14 +2776,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						levelId: snapshot.domain.layoutLevelId
 					})
 				);
-				refusal = outcome.kind === 'refused' ? wallRefusalWords(outcome.code) : null;
+				refusal = outcome.kind === 'refused' ? wallRefusalWords(outcome.code, outcome.message) : null;
 				if (point !== null && refusal !== null && gesture === null && junctionGesture === null &&
 					stageUnitRevision(services.stage.snapshot(), 'layout') === stageUnitRevision(snapshot, 'layout')) {
 					settledRefusal = {
 						subject: request.kind === 'junction' ? { kind: 'junction' } : { kind: 'wall', wallId },
 						contentRevision: stageUnitRevision(snapshot, 'layout'),
 						point,
-						text: refusal
+						text: refusal,
+						...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
 					};
 				}
 				services.stage.notifySurfaceChange();
@@ -1976,20 +3076,59 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					});
 				}
 				const walls: ProjectedWall[] = [];
+				// Curved and closed Walls are hit-tested against the compiled samples the
+				// Stage actually drew. A chord between their endpoints would miss the
+				// body entirely and turn an aimed Opening or T-junction into a free point.
+				const compiledByWallId = new Map(
+					adapterContext.snapshot.domain.geometry.walls.map((compiled) => [compiled.wallId, compiled])
+				);
+				const localCss = (css: readonly [number, number]): readonly [number, number] => [
+					css[0] - adapterContext.evaluation.rect.left,
+					css[1] - adapterContext.evaluation.rect.top
+				];
 				for (const wall of document.walls) {
-					if (wall.centerline.kind !== 'line') continue;
 					const start = junctionById.get(wall.startJunctionId)?.point;
 					const end = junctionById.get(wall.endJunctionId)?.point;
 					if (start === undefined || end === undefined) continue;
 					const startCss = adapterContext.project([start[0], y, start[1]]);
 					const endCss = adapterContext.project([end[0], y, end[1]]);
 					if (startCss === null || endCss === null) continue;
+					let path: readonly LayoutVec2[] | undefined;
+					let pathCss: readonly (readonly [number, number])[] | undefined;
+					if (wall.centerline.kind !== 'line') {
+						const compiled = compiledByWallId.get(wall.id);
+						if (compiled !== undefined && compiled.samples.length >= 2) {
+							const worldPath = compiled.samples.map(
+								(sample) => [sample.point[0], sample.point[1]] as LayoutVec2
+							);
+							// The compiled run is canonical, but a Wall's Junction is the authored
+							// endpoint. Keep the host path joined to it even at sampling tolerance.
+							const near = (a: LayoutVec2, b: readonly [number, number]): boolean =>
+								Math.hypot(a[0] - b[0], a[1] - b[1]) <= 1e-6;
+							if (!near(worldPath[0]!, start)) worldPath.unshift([start[0], start[1]]);
+							if (!near(worldPath.at(-1)!, end)) worldPath.push([end[0], end[1]]);
+							const cssPath: (readonly [number, number])[] = [];
+							for (const point of worldPath) {
+								const projected = adapterContext.project([point[0], y, point[1]]);
+								if (projected === null) {
+									cssPath.length = 0;
+									break;
+								}
+								cssPath.push(localCss(projected));
+							}
+							if (cssPath.length === worldPath.length) {
+								path = worldPath;
+								pathCss = cssPath;
+							}
+						}
+					}
 					walls.push({
 						id: wall.id,
-						startCss: [startCss[0] - adapterContext.evaluation.rect.left, startCss[1] - adapterContext.evaluation.rect.top],
-						endCss: [endCss[0] - adapterContext.evaluation.rect.left, endCss[1] - adapterContext.evaluation.rect.top],
+						startCss: localCss(startCss),
+						endCss: localCss(endCss),
 						start: [start[0], start[1]],
-						end: [end[0], end[1]]
+						end: [end[0], end[1]],
+						...(path === undefined || pathCss === undefined ? {} : { path, pathCss })
 					});
 				}
 				return { junctions, walls };
@@ -2006,12 +3145,35 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				);
 			}
 
+			/** The selected host, or the captured Opening-reading host if selection is gone. */
+			function currentOpeningHostId(): string | null {
+				const selection = services.stage.selection();
+				const selected = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+				const hostId = selected ?? openingHostId;
+				return hostId !== null && document.walls.some((wall) => wall.id === hostId) ? hostId : null;
+			}
+
 			/** The host Wall's frame and resolved length, when it has one. */
-			function openingSpan(wallId: string): { frame: WallFrame; length: number } | null {
-				const frame = wallFrame(document, wallId);
-				if (frame === null) return null;
-				const length = Math.hypot(frame.end[0] - frame.start[0], frame.end[1] - frame.start[1]);
-				return length > 0 ? { frame, length } : null;
+			function openingSpan(
+				wallId: string
+			): { frame: WallFrame; length: number; station: WallStationFrame } | null {
+				// Surface 3: one station frame per host. An Opening mark, ghost or
+				// handle reads `station.pointAt`, which is exact arc length on a
+				// curved centerline and linear on a straight one, so only curved
+				// hosts move and straight-host output stays byte-identical.
+				const station = wallStationFrame(document, wallId);
+				if (station === null) return null;
+				const frame = wallFrame(document, wallId) ?? {
+					wallId,
+					startJunctionId: '',
+					endJunctionId: '',
+					start: station.start,
+					end: station.end,
+					direction: station.direction,
+					length: station.length,
+					angleRadians: Math.atan2(station.direction[1], station.direction[0])
+				};
+				return station.length > 0 ? { frame, length: station.length, station } : null;
 			}
 
 			/**
@@ -2025,11 +3187,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			): readonly [LayoutVec2, LayoutVec2] | null {
 				const span = openingSpan(wallId);
 				if (span === null) return null;
-				const { frame, length } = span;
-				const at = (distance: number): LayoutVec2 => [
-					frame.start[0] + ((frame.end[0] - frame.start[0]) / length) * distance,
-					frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance
-				];
+				const { frame, length, station } = span;
+				const at = (distance: number): LayoutVec2 => {
+					const local = station.curved ? station.pointAt(distance) : null;
+					if (local !== null) return [local.point[0], local.point[1]];
+					return [
+						frame.start[0] + ((frame.end[0] - frame.start[0]) / length) * distance,
+						frame.start[1] + ((frame.end[1] - frame.start[1]) / length) * distance
+					];
+				};
 				return [at(offset), at(offset + openingOptions.width)];
 			}
 
@@ -2160,6 +3326,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						preferredBest = { candidate, distance: hit.distanceMeters };
 					}
 				}
+				// Surface 3: a curved host has no chord plane to intersect. Resolve
+				// the pointer's datum point to its nearest arc-length station and
+				// offer that station, so placement lands on the curve rather than on
+				// the chord. Straight Walls keep the ray path above unchanged.
+				const datumPoint = pointerDatumPoint(adapterContext, css);
+				for (const data of document.walls) {
+					if (data.centerline.kind === 'line' || datumPoint === null) continue;
+					const station = wallStationFrame(document, data.id);
+					if (station === null) continue;
+					const distance = wallStationNearPoint(document, data.id, datumPoint, 2);
+					if (distance === null || distance < 0 || distance > station.length) continue;
+					const local = station.pointAt(distance);
+					if (local === null) continue;
+					const candidate = { wallId: data.id, offset: distance };
+					const proximity = Math.hypot(datumPoint[0] - local.point[0], datumPoint[1] - local.point[1]);
+					if (data.id === preferred) return candidate;
+					if (best === null || proximity < best.distance) best = { candidate, distance: proximity };
+				}
 				return (preferredBest ?? best)?.candidate ?? null;
 			}
 
@@ -2167,7 +3351,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function openingPointerWorldAt(
 				adapterContext: StageAdapterContext,
 				css: readonly [number, number],
-				frame: WallFrame
+				frame: WallFrame,
+				station: WallStationFrame
 			): readonly [number, number, number] | null {
 				const datum = adapterContext.snapshot.domain.datumMeters;
 				if (adapterContext.evaluation.settledReading === 'plan') {
@@ -2178,8 +3363,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					css[0] + adapterContext.evaluation.rect.left,
 					css[1] + adapterContext.evaluation.rect.top
 				]);
+				if (ray === null) return null;
+				if (station.curved) {
+					// A curved host has no single face plane. Read the station nearest
+					// the pointer, then intersect the tangent plane at that station so
+					// a slide follows the curve rather than the chord.
+					const datumPoint = pointerDatumPoint(adapterContext, css);
+					const distance = datumPoint === null
+						? null
+						: wallStationNearPoint(document, frame.wallId, datumPoint, 2);
+					const local = distance === null ? null : station.pointAt(distance);
+					if (local !== null) {
+						const tangent = local.tangent;
+						const tangentNormal: readonly [number, number] = [-tangent[1], tangent[0]];
+						const wall = document.walls.find((candidate) => candidate.id === frame.wallId);
+						const side = Math.sign(
+							(adapterContext.evaluation.eye[0] - local.point[0]) * tangentNormal[0] +
+							(adapterContext.evaluation.eye[2] - local.point[1]) * tangentNormal[1]
+						) || 1;
+						const faceOffset = side * (wall?.thickness ?? 0) / 2;
+						const hit = adapterContext.intersect(ray, {
+							originMeters: [
+								local.point[0] + tangentNormal[0] * faceOffset,
+								datum,
+								local.point[1] + tangentNormal[1] * faceOffset
+							],
+							normal: [tangentNormal[0], 0, tangentNormal[1]],
+							yawRadians: Math.atan2(tangent[0], tangent[1]),
+							datumMeters: datum,
+							supportedLocalExtent: null
+						});
+						return hit.kind === 'intersected' ? hit.worldPoint : null;
+					}
+				}
 				const direction = wallDirection(frame);
-				if (ray === null || direction === null) return null;
+				if (direction === null) return null;
 				const normal: readonly [number, number] = [-direction[1], direction[0]];
 				const wall = document.walls.find((candidate) => candidate.id === frame.wallId);
 				const side = Math.sign(
@@ -2203,7 +3421,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				css: readonly [number, number]
 			): OpeningCandidate | null {
 				const projected = projectedScene(adapterContext);
-				const face = openingFaceAt(adapterContext, css, projected.walls);
+				// The flat face solve is chord-based; a curved host's face comes from
+				// the compiled Opening face path below, never from an endpoint chord.
+				const face = openingFaceAt(
+					adapterContext,
+					css,
+					projected.walls.filter((wall) => wall.path === undefined)
+				);
 				if (face !== null) return face;
 				const primary = adapterContext.selectionState().primary;
 				const hit = classifyOpeningHost({
@@ -2614,6 +3838,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					inkNotice = null;
 					return;
 				}
+				if (inkReading === 'wall' && inkWallMode === 'circle') {
+					// Circle previews the exact captured centre → rim plan its release
+					// commits. The authored rim point is the canonical seam, so the ghost
+					// shows the same seam the saved Wall will carry.
+					const circle = circlePreviewPoints();
+					inkPreview = circle === null ? null : planCircleDraft(circle.center, circle.rim);
+					if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
+					return;
+				}
 				if (inkReading === 'wall' && inkWallMode === 'box') {
 					// Box previews the very ring its release commits. With no second corner
 					// yet there is nothing to plan, and a refusal set by the last release
@@ -2640,6 +3873,48 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					...(inkThickness === null ? {} : { thickness: inkThickness }),
 					...(inkHeight === null ? {} : { height: inkHeight })
 				});
+			}
+
+			/**
+			 * Circle's two authored points: a centre tap (or the live press) and the
+			 * rim under the pointer. The rim is the canonical seam, exactly as D9
+			 * requires; no separate circle geometry is inferred later.
+			 */
+			function circlePreviewPoints(): { center: ChainDraftPoint; rim: ChainDraftPoint } | null {
+				const placed = draft.points[0];
+				const pressed = inkPress?.pressTarget;
+				const center = placed ?? (pressed === undefined ? null : { point: pressed.point, target: pressed.target });
+				if (center === null || inkHover === null) return null;
+				if (Math.hypot(inkHover.point[0] - center.point[0], inkHover.point[1] - center.point[1]) < 1e-9) return null;
+				return { center, rim: { point: inkHover.point, target: inkHover.target } };
+			}
+
+			/** One retained circular-Room plan over the live centre → rim pair. */
+			function planCircleDraft(center: ChainDraftPoint, rim: ChainDraftPoint): ChainPlanPreview {
+				const plan = planCreateCircularRoom({
+					baseline: document,
+					center: [center.point[0], center.point[1]],
+					rim: [rim.point[0], rim.point[1]],
+					capture: chainCapture ?? mintLayoutIdCapture(),
+					levelId,
+					roomNamePrefix: 'Room',
+					...(inkThickness === null ? {} : { thickness: inkThickness }),
+					...(inkHeight === null ? {} : { height: inkHeight })
+				});
+				if (plan.kind === 'rejected') {
+					return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
+				}
+				return {
+					kind: 'planned',
+					document: plan.document,
+					authoredWallIds: [plan.wallId],
+					createdWallIds: [plan.wallId],
+					createdJunctionIds: [plan.junctionId],
+					splitWallIds: [],
+					createdRoomIds: [...plan.createdRoomIds],
+					retiredRoomIds: [],
+					consequence: { kind: 'encloses', summary: 'Creates one circular Room on finish.' }
+				};
 			}
 
 			/**
@@ -2675,6 +3950,68 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				void commitChain(box);
 			}
 
+			/**
+			 * Accept one Circle as one captured closed-Wall intent. The preview and
+			 * the commit use the same capture and the same centre/rim points, so the
+			 * seam is exactly the authored rim and a replay reproduces both ids.
+			 */
+			async function commitCircle(center: ChainDraftPoint, rim: ChainDraftPoint): Promise<void> {
+				if (chainCommitInFlight) return;
+				const capture = chainCapture ?? mintLayoutIdCapture();
+				const planned = planCircleDraft(center, rim);
+				if (planned.kind === 'refused') {
+					inkNotice = planned.message;
+					publishInk();
+					return;
+				}
+				chainCommitInFlight = true;
+				try {
+					const snapshot = services.stage.snapshot();
+					const outcome = await services.authoring.accept(
+						circleRoomCreateIntent({
+							payload: {
+								center: [center.point[0], center.point[1]],
+								rim: [rim.point[0], rim.point[1]],
+								thickness: inkThickness,
+								height: inkHeight
+							},
+							capture,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision: stageUnitRevision(snapshot, 'layout'),
+							levelId
+						})
+					);
+					if (outcome.kind === 'refused') {
+						inkNotice = outcome.message;
+						publishInk();
+						return;
+					}
+					const wallId = planned.authoredWallIds[0] ?? null;
+					clearChain();
+					const fresh = services.stage.snapshot();
+					if (wallId !== null) {
+						services.stage.select({
+							sourceId: wallId,
+							sourceKind: 'wall',
+							generationId: fresh.compileGeneration,
+							ref: {
+								sourceId: wallId,
+								sourceKind: 'wall',
+								generationId: fresh.compileGeneration,
+								stream: 'projected',
+								subRef: null
+							}
+						});
+					}
+					services.stage.openContributedTask(LAYOUT_INK_ENTRY, 'layout');
+					services.stage.notifySurfaceChange();
+				} finally {
+					chainCommitInFlight = false;
+				}
+			}
+
 			/** Layout's built-in readings, then every contributed reading in host order. */
 			function paletteReadings(): readonly InkPaletteReading[] {
 				return [
@@ -2694,12 +4031,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			function snapshotForPalette(): InkPaletteSnapshot {
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
-				const withHover =
-					linePreviewDraft();
+				const circleMode = inkReading === 'wall' && inkWallMode === 'circle';
+				const withHover = circleMode ? draft : linePreviewDraft();
 				const effective = boxMode ? (boxPreviewDraft() ?? draft)
 					: 'points' in withHover ? withHover : draft;
 				const pending =
-					inkHover === null || boxMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
+					inkHover === null || boxMode || circleMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
 				const box =
 					anchor === null || inkHover === null
@@ -2708,8 +4045,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								width: Math.abs(inkHover.point[0] - anchor.point[0]),
 								depth: Math.abs(inkHover.point[1] - anchor.point[1])
 							};
-				const selection = services.stage.selection();
-				const selectedHostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+				const selectedHostId = currentOpeningHostId();
 				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
 					options: { thickness: inkThickness, height: inkHeight },
@@ -2737,11 +4073,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					,
 					points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 					closed: effective.closed,
-					canFinish: !boxMode && draft.points.length >= 2,
-					canClose: !boxMode && draft.points.length >= 3 && !draft.closed,
+					canFinish: !boxMode && !circleMode && draft.points.length >= 2,
+					canClose: !boxMode && !circleMode && draft.points.length >= 3 && !draft.closed,
 					canBacktrack: draft.points.length > 0,
 					consequence:
-						inkPreview !== null && inkPreview.kind === 'planned' && effective.points.length >= 2
+						inkPreview !== null &&
+						inkPreview.kind === 'planned' &&
+						(circleMode || effective.points.length >= 2)
 							? inkPreview.consequence.summary
 							: null,
 					pending,
@@ -2817,6 +4155,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						// A contributed reading's session lives only while it is selected.
 						endContributedSession();
+						if (next === 'opening') openingHostId = currentOpeningHostId() ?? openingHostId;
 						inkReading = next;
 						inkNotice = null;
 						// The palette remounts from the last valid options on the next Opening
@@ -2832,7 +4171,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					setWallMode: (mode: InkWallMode) => {
 						if (mode === inkWallMode) return;
 						if (draft.points.length > 0 || inkPress !== null) {
-							inkNotice = 'Finish or cancel the Wall chain before switching between Line and Box.';
+							inkNotice = 'Finish or cancel the Wall chain before switching between Line, Box and Circle.';
 							publishInk();
 							return;
 						}
@@ -2851,8 +4190,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 					},
 					placeOpening: (offsetText) => {
-						const selection = services.stage.selection();
-						const hostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+						const hostId = currentOpeningHostId();
 						if (hostId === null) {
 							openingNotice = 'Select a Wall — or one of its Openings — before placing by offset.';
 							publishInk();
@@ -3156,6 +4494,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (travel > 4) commitBox(draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target }, releasePoint);
 					else if (draft.points.length === 0) beginChain(releasePoint);
 					else commitBox(draft.points[0]!, releasePoint);
+				} else if (inkReading === 'wall' && inkWallMode === 'circle') {
+					// Circle: a drag names centre → rim in one gesture; a tap names the
+					// centre, and the next tap names the rim. The rim is released exactly
+					// where the creator finished, so it is the canonical seam.
+					const releasePoint: ChainDraftPoint = { point: release.point, target: release.target };
+					if (travel > 4) {
+						void commitCircle(
+							draft.points[0] ?? { point: pressTarget.point, target: pressTarget.target },
+							releasePoint
+						);
+					} else if (draft.points.length === 0) beginChain(releasePoint);
+					else void commitCircle(draft.points[0]!, releasePoint);
 				} else if (travel <= 4) appendInkPoint({ point: release.point, target: release.target });
 				else dragInkWall(pressTarget, release);
 				refreshInkPreview();
@@ -3256,7 +4606,32 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						sourceKind: cardSubject.sourceKind,
 						sourceId: cardSubject.sourceId
 					});
-					return subject === null ? [] : factsFor(document, subject);
+					if (subject === null) return [];
+					const facts = [...factsFor(document, subject)];
+					// C1 — the approved Card reads a curved Wall's arc length and bend-point
+					// count, and names the active bend point when one is selected. Straight
+					// Walls keep exactly their existing facts.
+					const source = subject.kind === 'wall'
+						? document.walls.find((wall) => wall.id === subject.id)
+						: undefined;
+					if (source?.centerline.kind === 'cubic-chain' && !isClosedWall(source)) {
+						const frame = curvedWallFrame(document, source.id);
+						if (frame !== null) {
+							facts.push({ label: 'Length (arc)', value: `${frame.length.toFixed(3)} m`, fieldId: 'arcLength' });
+						}
+						facts.push({ label: 'Bend points', value: String(source.centerline.knots.length), fieldId: 'bendPoints' });
+						const activeIndex = activeKnot?.wallId === source.id
+							? source.centerline.knots.findIndex((knot) => knot.id === activeKnot!.knotId)
+							: -1;
+						if (activeIndex >= 0) {
+							facts.push({
+								label: 'Active bend point',
+								value: `${activeIndex + 1} of ${source.centerline.knots.length}`,
+								fieldId: 'activeBendPoint'
+							});
+						}
+					}
+					return facts;
 				},
 				cardName(cardSubject: StageCardSubject) {
 					if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
@@ -3361,9 +4736,70 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (cardSubject.sourceKind !== 'wall') return [];
 					const wallId = cardSubject.sourceId;
+					// C1/D2 — one shared action channel for the active knot and the Wall's
+					// shape. Each run previews the retained planner first and then accepts
+					// one captured intent, so a refusal writes nothing and an acceptance is
+					// one undo step. A straight Wall adds no action here.
+					const wallSource = document.walls.find((candidate) => candidate.id === wallId);
+					const curveActions: StageCardAction[] = [];
+					if (wallSource?.centerline.kind === 'cubic-chain') {
+						const knots = wallSource.centerline.knots;
+						const activeIndex = activeKnot?.wallId === wallId
+							? knots.findIndex((knot) => knot.id === activeKnot!.knotId)
+							: -1;
+						const runCurve = async (kind: 'delete' | 'straighten'): Promise<StageCardActionOutcome> => {
+							// D13 — centerline and knot shape edits are refused while unfolded,
+							// explicitly and with the same words the Stage uses.
+							if (wallUnfold.isActive(wallId)) {
+								return { kind: 'refused', message: WALL_UNFOLD_SHAPE_REFUSAL };
+							}
+							// A Card record can outlive the session state it was rendered from. A
+							// stale Remove must refuse, never fall through to the other shape action.
+							if (kind === 'delete') {
+								if (activeKnot === null || activeKnot.wallId !== wallId) {
+									return { kind: 'refused', message: 'Select the bend point again before removing it.' };
+								}
+								// Exactly the helper the Delete/Backspace key calls: one shared channel.
+								return removeWallKnot(wallId, activeKnot.knotId);
+							}
+							const preview = previewWallStraighten(document, wallId);
+							if (preview.kind === 'refused') return { kind: 'refused', message: preview.message };
+							const snapshot = services.stage.snapshot();
+							const outcome = await services.authoring.accept(
+								wallStraightenIntent({
+									operationId: globalThis.crypto.randomUUID(),
+									projectId: snapshot.acceptedRevision.projectId,
+									revisionId: services.authoring.acceptedRevision().revisionId,
+									contentRevision: stageUnitRevision(snapshot, 'layout'),
+									levelId: snapshot.domain.layoutLevelId,
+									wallId
+								})
+							);
+							if (outcome.kind === 'refused') return { kind: 'refused', message: outcome.message };
+							services.stage.notifySurfaceChange();
+							return { kind: 'accepted' };
+						};
+						if (activeIndex >= 0) {
+							curveActions.push({
+								id: 'layout-wall-knot-remove',
+								label: 'Remove bend point',
+								detail: `Removes bend point ${activeIndex + 1} of ${knots.length}; its two spans merge in one undo step.`,
+								run: () => runCurve('delete')
+							});
+						}
+						curveActions.push({
+							id: 'layout-wall-straighten',
+							label: 'Straighten Wall',
+							detail: 'Returns this curved Wall to its straight chord in one undo step; hosted Openings keep their arc-length stations.',
+							run: () => runCurve('straighten')
+						});
+					}
+					// C3/D14 — unfold entry lives only in the Card foot; the Stage pill
+					// owns Put back and the face switch. Shape rings are contextual on
+					// the selected Wall; there is no hidden Bend-armed mode.
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [
+						return [...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -3374,6 +4810,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						];
 					}
 					return [
+						...curveActions,
 						{
 							id: 'layout-wall-delete',
 							label: 'Delete Wall',
@@ -3420,8 +4857,52 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// Direct manipulation has no task, but its press is a writer: typing
 						// freezes the pointer candidate and opens numeric entry, Enter commits
 						// once, and Esc discards without a document change or history entry.
+						// D2 — Escape clears the active bend point before any other Escape
+						// precedence, but only when no live gesture owns the key. It writes
+						// nothing and leaves history untouched.
+						if (
+							intent.kind === 'cancel' &&
+							bendGesture === null &&
+							gesture === null &&
+							junctionGesture === null &&
+							openingGesture === null &&
+							activeKnot !== null
+						) {
+							activeKnot = null;
+							services.stage.notifySurfaceChange();
+							return true;
+						}
 						const active = gesture ?? junctionGesture ?? openingGesture;
-						if (active === null) return false;
+						if (active === null) {
+							// D2 — Delete/Backspace remove the active bend point. Callers reach this
+							// branch only when no task or live press owns the key, and a live numeric
+							// writer was already offered it above. The helper is the Card's own
+							// removal path, so one keypress captures one intent and one undo step.
+							// A straight or unselected Wall is not claimed, leaving the host's
+							// existing Delete map unchanged. A curved Wall with no active knot or a
+							// stale record is claimed and refused: the key must never fall through to
+							// the Wall's destructive action.
+							if (intent.kind === 'delete' || intent.kind === 'backtrack') {
+								if (
+									bendGesture !== null ||
+									gesture !== null ||
+									junctionGesture !== null ||
+									openingGesture !== null ||
+									scalarGesture !== null
+								) {
+									return false;
+								}
+								const curved = selectedCurvedWall(adapterContext);
+								// A straight Wall with no active knot leaves Delete to the host's
+								// existing map. A surviving active-knot record on a now-straight Wall is
+								// stale, so it claims and refuses instead of deleting the Wall.
+								if (curved === null) return activeKnot !== null;
+								if (activeKnot === null || activeKnot.wallId !== curved.wallId) return true;
+								void removeWallKnot(curved.wallId, activeKnot.knotId);
+								return true;
+							}
+							return false;
+						}
 						if (intent.kind === 'type') {
 							if (intent.key === '\t') {
 								if (active.numeric === null) return false;
@@ -3501,6 +4982,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 										id: spec.id,
 										kind: 'ray',
 										role: 'edit',
+										disclosedBy: 'layout-wall-size-chip',
 										anchor: spec.anchor,
 										axis: spec.axis,
 										extent: spec.value,
@@ -3593,9 +5075,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return true;
 				},
 				idleHoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
-					return updateIdleJunctionHover(intent, adapterContext);
+					if (updateIdleJunctionHover(intent, adapterContext)) {
+						if (idleBendHint !== null) idleBendHint = null;
+						return true;
+					}
+					return updateIdleBendHover(intent, adapterContext);
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (intent.phase === 'down' && idleBendHint !== null) {
+						idleBendHint = null;
+						services.stage.notifySurfaceChange();
+					}
 					if (openTaskKind === LAYOUT_INK_TASK && inkReading !== 'wall' && inkReading !== 'opening') {
 						const session = ensureContributedSession();
 						if (session === null) {
@@ -3612,6 +5102,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (openTaskKind === LAYOUT_INK_TASK) return inkPointer(intent, adapterContext);
 					if (openTaskKind !== null) return false;
+					if (circleRadiusPointer(intent, adapterContext)) return true;
+					if (circleTranslatePointer(intent, adapterContext)) return true;
+					if (bendPointer(intent, adapterContext)) return true;
 					if (scalarPointer(intent, adapterContext)) return true;
 					if (roomMovePointer(intent, adapterContext)) return true;
 
@@ -3657,6 +5150,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								lease: acquisition,
 								numeric: null,
 								request: null,
+								attempt: null,
+								refusalPoint: null,
 								proposal: null,
 								readPreview: createWallDragReader(baseline),
 								snap: null,
@@ -3666,7 +5161,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							services.stage.notifySurfaceChange();
 							return true;
 						}
-						const selected = selectedWall(adapterContext);
+						// A curved open Wall has no straight `WallFrame`; its body still moves
+						// through the same rigid-move request, using the endpoint chord only as
+						// the local drag basis. The retained planner translates the real chain.
+						const selectedStraight = selectedWall(adapterContext);
+						const selectedCurved = selectedStraight === null ? selectedCurvedWall(adapterContext) : null;
+						const selected = selectedStraight ?? (selectedCurved === null
+							? null
+							: { wallId: selectedCurved.wallId, frame: bodyFrameForOpenWall(selectedCurved.frame) });
 						const selectedOpeningSubject = selected === null ? selectedOpening(adapterContext) : null;
 						if (selected === null && selectedOpeningSubject === null) return false;
 						const descriptors = markDescriptors(adapterContext);
@@ -3727,7 +5229,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (!bodyPress && (descriptor === undefined || descriptor.role !== 'edit')) return false;
 						const openingWorldAtPress = selectedOpeningSubject === null
 							? null
-							: openingPointerWorldAt(adapterContext, intent.css, selectedOpeningSubject.frame);
+							: openingPointerWorldAt(
+									adapterContext,
+									intent.css,
+									selectedOpeningSubject.frame,
+									selectedOpeningSubject.station
+								);
 						const point = selectedOpeningSubject === null
 							? pointerDatumPoint(adapterContext, intent.css)
 							: openingWorldAtPress === null
@@ -3792,6 +5299,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								lease: acquisition,
 								request: null,
 								proposal: null,
+								attempt: null,
+								refusalPoint: null,
 								readPreview: createWallDragReader(stageLayout(adapterContext.snapshot)),
 								neighbours: [],
 								snap: null,
@@ -3819,9 +5328,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							acquisition.lease.release();
 							return false;
 						}
-						const alongAtPress =
-							(point[0] - selectedOpeningSubject.frame.start[0]) * direction[0] +
-							(point[1] - selectedOpeningSubject.frame.start[1]) * direction[1];
+						const alongAtPress = selectedOpeningSubject.station.curved
+							? wallStationAtPoint(document, selectedOpeningSubject.wallId, point) ?? 0
+							: (point[0] - selectedOpeningSubject.frame.start[0]) * direction[0] +
+								(point[1] - selectedOpeningSubject.frame.start[1]) * direction[1];
 						const targetAlong = action.kind === 'slide'
 							? source.offset + source.width / 2
 							: action.kind === 'edge'
@@ -3840,6 +5350,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							openingId: selectedOpeningSubject.openingId,
 							wallId: selectedOpeningSubject.wallId,
 							frame: selectedOpeningSubject.frame,
+							station: selectedOpeningSubject.station,
 							length: selectedOpeningSubject.length,
 							offsetAtStart: selectedOpeningSubject.offset,
 							widthAtStart: selectedOpeningSubject.width,
@@ -3917,7 +5428,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						const openingWorldPoint = openingGesture === null
 							? null
-							: openingPointerWorldAt(adapterContext, intent.css, openingGesture.frame);
+							: openingPointerWorldAt(
+									adapterContext,
+									intent.css,
+									openingGesture.frame,
+									openingGesture.station
+								);
 						const point = openingGesture === null
 							? pointerDatumPoint(adapterContext, intent.css)
 							: openingWorldPoint === null
@@ -3960,6 +5476,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								) < 1e-9
 							) {
 								junctionGesture.request = null;
+								junctionGesture.attempt = null;
+								junctionGesture.refusalPoint = null;
 								junctionGesture.proposal = null;
 								junctionGesture.snap = null;
 								refusal = null;
@@ -3971,15 +5489,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								junctionId: junctionGesture.junctionId,
 								point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2
 							};
+							const attempted = proposeWallFirstArchitectureGeometry(document, {
+								kind: 'junction-move',
+								junctionId: request.junctionId,
+								point: request.point
+							}) ?? null;
+							junctionGesture.attempt = attempted;
 							const planned = junctionGesture.readPreview({ ...request, kind: 'junction-move' });
 							if (planned.kind === 'refused') {
 								junctionGesture.request = null;
 								junctionGesture.proposal = null;
 								junctionGesture.snap = null;
+								junctionGesture.refusalPoint = attempted === null
+									? junctionGesture.pointerPoint
+									: attemptedConflictPoint(attempted, document) ?? junctionGesture.pointerPoint;
 								refusal = wallRefusalWords(planned.code);
 							} else {
 								junctionGesture.request = request;
 								junctionGesture.proposal = planned.walls;
+								junctionGesture.refusalPoint = null;
 								junctionGesture.snap = snap ? { point: request.point, kind: 'grid', name: 'Grid' } : null;
 								refusal = null;
 							}
@@ -3990,8 +5518,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							const direction = wallDirection(openingGesture.frame);
 							const source = openingGesture.baseline.openings.find((entry) => entry.id === openingGesture!.openingId);
 							if (direction === null || source === undefined || openingWorldPoint === null) return true;
-							const along = (point[0] - openingGesture.frame.start[0]) * direction[0] +
-								(point[1] - openingGesture.frame.start[1]) * direction[1];
+							const along = openingGesture.station.curved
+								? wallStationAtPoint(document, openingGesture.wallId, point) ?? 0
+								: (point[0] - openingGesture.frame.start[0]) * direction[0] +
+									(point[1] - openingGesture.frame.start[1]) * direction[1];
 							const yMeters = openingWorldPoint[1] - adapterContext.snapshot.domain.datumMeters;
 							const hostSpan = {
 								segmentId: openingGesture.wallId,
@@ -4180,6 +5710,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// Wall: the planner would place the moved endpoint on the existing side,
 						// mirroring the preview away from the hand. Withdraw the candidate and
 						// name the refusal instead of committing a mirrored Wall.
+						const attempted = request.kind === 'angle'
+							? null
+							: attemptedWallNetwork(document, wallGesture.frame, request, wallGesture.fixed);
+						if (attempted !== null) wallGesture.attempt = attempted;
 						if (request.kind === 'length' && request.length <= 0) {
 							wallGesture.request = null;
 							wallGesture.proposal = null;
@@ -4248,6 +5782,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							wallGesture.proposal = null;
 							wallGesture.neighbours = [];
 							wallGesture.snap = null;
+							wallGesture.refusalPoint = attempted === null
+								? wallGesture.pointerPoint
+								: attemptedConflictPoint(attempted, document) ?? wallGesture.pointerPoint;
 							refusal = wallRefusalWords(planned.code);
 							perfMark('wall-preview:refused', { wallId: wallGesture.frame.wallId });
 						} else {
@@ -4303,17 +5840,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const dragged = isPointerDrag(junctionGesture.pressCss, intent.css);
 						const pending = dragged ? junctionGesture.request : null;
 						const wallId = junctionGesture.wallId;
+						const attemptGeometry = junctionGesture.attempt === null
+							? null
+							: wallProposalPaper(junctionGesture.attempt, adapterContext.snapshot.domain.datumMeters);
 						if (dragged && pending === null && refusal !== null && junctionGesture.pointerPoint !== null) {
 							settledRefusal = {
 								subject: { kind: 'junction' },
 								contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
-								point: junctionGesture.pointerPoint,
-								text: refusal
+								point: junctionGesture.refusalPoint ?? junctionGesture.pointerPoint,
+								text: refusal,
+								...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
 							};
 						}
 						const point = junctionGesture.pointerPoint;
 						endJunctionGesture();
-						if (pending !== null) void commit(pending, 'start', wallId, point);
+						if (pending !== null) void commit(pending, 'start', wallId, point, attemptGeometry);
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -4344,16 +5885,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const wallId = gesture!.frame.wallId;
 					const refusedPoint = dragged ? gesture!.pointerPoint : null;
 					const refusedText = dragged ? refusal : null;
+					const attemptGeometry = gesture!.attempt === null
+						? null
+						: wallProposalPaper(gesture!.attempt, adapterContext.snapshot.domain.datumMeters);
 					if (pending === null && refusedText !== null && refusedPoint !== null) {
-						settledRefusal = {
-							subject: { kind: 'wall', wallId },
-							contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
-							point: refusedPoint,
-							text: refusedText
-						};
-					}
+							settledRefusal = {
+								subject: { kind: 'wall', wallId },
+								contentRevision: adapterContext.snapshot.domain.unitRevisions.layout,
+								point: gesture!.refusalPoint ?? refusedPoint,
+								text: refusedText,
+								...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
+							};
+						}
 					endGesture();
-					if (pending !== null) void commit(pending, fixed, wallId, refusedPoint);
+					if (pending !== null) void commit(pending, fixed, wallId, refusedPoint, attemptGeometry);
 					services.stage.notifySurfaceChange();
 					return true;
 				},
@@ -4619,36 +6164,103 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						candidatePreviewOf({
 							id: 'layout-candidate-refused-settled',
 							role: 'refused',
-							geometry: { polygons: [], segments: [] },
+							geometry: settledRefusal.geometry ?? { polygons: [], segments: [] },
 							labels: [{ world: world(settledRefusal.point), text: settledRefusal.text }]
 						})
 					];
 				}
-				// A refused sample has no candidate; it draws one neutral dashed reach to
-				// the pointer plus the human reason, never the last valid pose and never
-				// the Ink hover mark. This is checked before the preview document because
-				// a refusal deliberately clears it.
+				// A refused sample still shows the full shape the hand asked for. It is
+				// display-only evidence, separate from the validated candidate: release
+				// remains unable to install it, and no history entry exists.
 				if (activeWall !== null && activeWall.request === null && refusal !== null && activeWall.pointerPoint !== null) {
-					const reachFrom: LayoutVec2 =
-						activeWall.handle === 'start'
-							? activeWall.frame.start
-							: activeWall.handle === 'end'
-								? activeWall.frame.end
-								: [
-										(activeWall.frame.start[0] + activeWall.frame.end[0]) / 2,
-										(activeWall.frame.start[1] + activeWall.frame.end[1]) / 2
-									];
-					return [
-						candidatePreviewOf({
-							id: 'layout-candidate-wall-refused',
-							role: 'refused',
-							geometry: { polygons: [], segments: [[world(reachFrom), world(activeWall.pointerPoint)]] },
-							labels: [{ world: world(activeWall.pointerPoint), text: refusal }]
-						})
-					];
+					return [candidatePreviewOf({
+						id: 'layout-candidate-wall-refused',
+						role: 'refused',
+						geometry: activeWall.attempt === null
+							? { polygons: [], segments: [] }
+							: wallProposalPaper(activeWall.attempt, y),
+						labels: [{ world: world(activeWall.refusalPoint ?? activeWall.pointerPoint), text: refusal }]
+					})];
+				}
+				// C2 — the radius grip's candidate is the same resized closed Wall the
+				// release writes. A refused radius draws no geometry and names its reason.
+				const activeCircleRadius = circleRadiusGesture;
+				if (activeCircleRadius !== null && activeCircleRadius.preview !== null) {
+					const built = candidatePaper(
+						activeCircleRadius.preview,
+						y,
+						new Set([activeCircleRadius.wallId]),
+						new Set()
+					);
+					if (built !== null) {
+						return [
+							candidatePreviewOf({
+								id: 'layout-candidate-circle-radius',
+								role: 'subject',
+								geometry: built.paper.subject,
+								snap: snapOf(null)
+							})
+						];
+					}
+				}
+				// D8 — a body drag previews the translated closed Wall it will commit.
+				const activeCircleTranslate = circleTranslateGesture;
+				if (activeCircleTranslate !== null && activeCircleTranslate.preview !== null) {
+					const built = candidatePaper(
+						activeCircleTranslate.preview,
+						y,
+						new Set([activeCircleTranslate.wallId]),
+						new Set()
+					);
+					if (built !== null) {
+						return [
+							candidatePreviewOf({
+								id: 'layout-candidate-circle-translate',
+								role: 'subject',
+								geometry: built.paper.subject,
+								snap: snapOf(null)
+							})
+						];
+					}
 				}
 				// A typed value with no pointer movement has no candidate document, but its
 				// tag still belongs at the press, not only on the midpoint grip.
+				const activeBend = bendGesture;
+				if (activeBend !== null) {
+					if (activeBend.previewDocument !== null) {
+						const built = candidatePaper(
+							activeBend.previewDocument,
+							y,
+							new Set([activeBend.wallId]),
+							new Set()
+						);
+						if (built !== null) {
+							return [
+								candidatePreviewOf({
+									id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
+									role: 'subject',
+									geometry: built.paper.subject,
+									...(activeBend.removal ? {
+										labels: [{ world: world(activeBend.anchor), text: 'Remove bend point' }]
+									} : {}),
+									snap: snapOf(null)
+								})
+							];
+						}
+					}
+					if (activeBend.attemptPoints.length >= 2) {
+						const geometry = wallProposalPaper([{ wallId: activeBend.wallId, points: [...activeBend.attemptPoints] }], y);
+						return [candidatePreviewOf({
+							id: activeBend.refusal === null ? 'layout-candidate-wall-bend-attempt' : 'layout-candidate-wall-bend-refused',
+							role: activeBend.refusal === null ? 'subject' : 'refused',
+							geometry,
+							...(activeBend.refusal === null || activeBend.attemptPoint === null ? {} : {
+								labels: [{ world: world(activeBend.attemptPoint), text: activeBend.refusal }]
+							})
+						})];
+					}
+					return [];
+				}
 				if (activeWall !== null && activeWall.proposal === null && activeWall.numeric !== null) {
 					return [
 						candidatePreviewOf({
@@ -4693,11 +6305,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							return [candidatePreviewOf({
 								id: 'layout-candidate-junction-refused',
 								role: 'refused',
-								geometry: {
-									polygons: [],
-									segments: [[world(activeJunction.startPoint), world(activeJunction.pointerPoint)]]
-								},
-								labels: [{ world: world(activeJunction.pointerPoint), text: refusal }]
+								geometry: activeJunction.attempt === null
+									? { polygons: [], segments: [] }
+									: wallProposalPaper(activeJunction.attempt, y),
+								labels: [{ world: world(activeJunction.refusalPoint ?? activeJunction.pointerPoint), text: refusal }]
 							})];
 						}
 						return [];
@@ -4779,6 +6390,46 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						})];
 					}
 					return [];
+				}
+
+				// Circle is one authored closed-Wall intent, so its live preview is the
+				// authored ring itself. The radius leg stays a measurement label; it is
+				// never the primary shape the creator sees while aiming.
+				if (inkReading === 'wall' && inkWallMode === 'circle') {
+					const circle = circlePreviewPoints();
+					if (circle === null) return [];
+					const radius = Math.hypot(
+						circle.rim.point[0] - circle.center.point[0],
+						circle.rim.point[1] - circle.center.point[1]
+					);
+					if (!(radius > 0)) return [];
+					const planned = planCircleDraft(circle.center, circle.rim);
+					const segments: [[number, number, number], [number, number, number]][] = [];
+					const steps = 64;
+					for (let index = 0; index < steps; index += 1) {
+						const from = (index / steps) * Math.PI * 2;
+						const to = ((index + 1) / steps) * Math.PI * 2;
+						segments.push([
+							[
+								circle.center.point[0] + Math.cos(from) * radius,
+								y,
+								circle.center.point[1] + Math.sin(from) * radius
+							],
+							[
+								circle.center.point[0] + Math.cos(to) * radius,
+								y,
+								circle.center.point[1] + Math.sin(to) * radius
+							]
+						]);
+					}
+					const facts = `r ${radius.toFixed(2)} m · ⌀ ${(radius * 2).toFixed(2)} m`;
+					return [candidatePreviewOf({
+						id: 'layout-candidate-circle',
+						role: planned.kind === 'refused' ? 'refused' : 'subject',
+						geometry: { polygons: [], segments },
+						labels: [{ world: world(circle.center.point), text: planned.kind === 'refused' ? `${facts} — ${planned.message}` : facts }],
+						snap: snapOf(inkSnapWinner)
+					})];
 				}
 
 				// Wall chain / Box, including the cursor point before a plan exists.

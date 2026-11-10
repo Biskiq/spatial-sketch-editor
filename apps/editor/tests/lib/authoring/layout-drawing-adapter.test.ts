@@ -305,7 +305,9 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		await eventually(() => inkSurface()!.snapshot().refusal !== null);
 		const refusal = inkSurface()!.snapshot().refusal!;
 		expect(refusal).not.toContain(mounted.wallId);
-		expect(refusal).toBe('End this line on the wall.');
+		// The refusal names the attempted connection and the repair action instead
+		// of only repeating the old generic "end on the wall" hint.
+		expect(refusal).toContain('Wall span or a Junction');
 		// Zero partial source, and the chain is still editable rather than dropped.
 		expect(mounted.facade.snapshot().canonicalJson).toBe(baseline);
 		expect(inkSurface()!.snapshot().points).toHaveLength(2);
@@ -321,8 +323,12 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		const mounted = await mount();
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
 		const actions = stageCardActions(mounted.facade, subject);
-		expect(actions).toHaveLength(1);
-		const action = actions[0]!;
+		// C3/D14 moves unfold entry to the Card foot and the Stage pill; the menu
+		// keeps deletion, the destructive action and its disclosure.
+		expect(actions.map((candidate) => candidate.id)).toEqual([
+			'layout-wall-delete'
+		]);
+		const action = actions.find((candidate) => candidate.id === 'layout-wall-delete')!;
 		expect(action).toMatchObject({ id: 'layout-wall-delete', destructive: true, adapterId: 'layout' });
 		// The words the creator reads before accepting name the real consequences:
 		// the hosted Opening, in the same undo step, and what happens to the Room.
@@ -521,7 +527,7 @@ describe('R217.S10 — Ink Box', () => {
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 	});
 
-	it('refuses a Line/Box switch during the first captured press', async () => {
+	it('refuses a Line/Box/Circle switch during the first captured press', async () => {
 		const mounted = await mount();
 		const controller = armInk(mounted.facade);
 		const evaluationId = mounted.facade.evaluationId()!;
@@ -529,7 +535,9 @@ describe('R217.S10 — Ink Box', () => {
 		mounted.facade.pointerIntent({ phase: 'down', css, evaluationId });
 		controller.setWallMode('box');
 		expect(inkSurface()?.snapshot().wallMode).toBe('line');
-		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line and Box/);
+		// C2 — Circle is now a third Wall mode, so the live-chain guard names all
+		// three rather than implying only Line and Box are switchable.
+		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line, Box and Circle/);
 		mounted.facade.pointerIntent({ phase: 'cancel', css, evaluationId });
 		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
 	});
@@ -540,7 +548,7 @@ describe('R217.S10 — Ink Box', () => {
 		controller.typePoint('8', '0');
 		controller.setWallMode('box');
 		expect(inkSurface()?.snapshot().wallMode).toBe('line');
-		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line and Box/);
+		expect(inkSurface()?.snapshot().refusal).toMatch(/before switching between Line, Box and Circle/);
 	});
 });
 

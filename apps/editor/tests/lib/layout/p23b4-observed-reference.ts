@@ -140,10 +140,16 @@ export const OBSERVED_REFERENCE: Record<string, ObservedFixtureEntry> = {
 		planner: { wallCalls: 'n=9 checksum=b55ee1bfdc0126bd6611da9f6caa4abd71722141822b1c283f8e4a32df9dc593', gateWalls: 'n=16 checksum=e186e595e4fe995ac0e2265ca7479ea982ac82d29f9518d53886b1d7070d5d1c', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=25 checksum=33d20d21ec18e47159febba5c77904418c9d7dfa5da23ccb165a2d4677295732' },
 		plannerVerdict: 'success:43ab97a4c35bc6a17597f0425a3b43fe5878a3e69206eae7d8561379e4958ab6'
 	},
+	// B1 (Expressive Walls): face extraction now samples each curved half-edge
+	// while ordering its Junction star, before the face walk instead of during
+	// it. On the all-curved fixtures below the same sample arrays are produced in
+	// a different sequence, so `faces.kernelCalls` moves while `wallCalls` and
+	// the exact `faceConsumed` arrays stay identical — evidence that only call
+	// order changed, not any sampled value.
 	'p23b-12-wall-all-curved-v1': {
 		topologyDefer: { wallCalls: 'n=12 checksum=a4a22adff9e9b93430b78d2f6f0b14b4dff9c3308781a690965fdd73a866b7d5', gateWalls: 'n=12 checksum=a631910e0dab069db225132b3565fb8b345c47df9139e8fb47b54996297e4f58', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=12 checksum=93819bdc3fef613d4356554e84f40d91772f7c9ce9264f60a110e64cdf751d52' },
 		topologyTranslate: { wallCalls: 'n=12 checksum=a4a22adff9e9b93430b78d2f6f0b14b4dff9c3308781a690965fdd73a866b7d5', gateWalls: 'n=12 checksum=a631910e0dab069db225132b3565fb8b345c47df9139e8fb47b54996297e4f58', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=12 checksum=93819bdc3fef613d4356554e84f40d91772f7c9ce9264f60a110e64cdf751d52' },
-		faces: { wallCalls: 'n=24 checksum=b241eec85ef0624d00043a324d031f0a755d88bcfcd1d390153bf8fa402eceb2', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=24 checksum=c8cca90982bb761ed83d9eafceef8d650235442f44466a0f5987820ed4109bf7', kernelCalls: 'n=24 checksum=67d08a9748b3e8dcbd95b482f6bab756f2e072d1361b2048284686f53c847751' },
+		faces: { wallCalls: 'n=24 checksum=b241eec85ef0624d00043a324d031f0a755d88bcfcd1d390153bf8fa402eceb2', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=24 checksum=c8cca90982bb761ed83d9eafceef8d650235442f44466a0f5987820ed4109bf7', kernelCalls: 'n=24 checksum=02de0b1382ab887fa0ab4cbd5445b765be71aec173c68536d06267a6cc343651' },
 		openings: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
 		compile: { wallCalls: 'n=12 checksum=a4a22adff9e9b93430b78d2f6f0b14b4dff9c3308781a690965fdd73a866b7d5', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=36 checksum=f434a7b58d369e28f9642610bbe1caaaa0556fae4ff9dd493511a0a56004bcec' },
 		planner: { wallCalls: 'n=60 checksum=010e43b00c52e8a05bc58502e29d712bd0f13f0250e14a397aeef301c8714523', gateWalls: 'n=24 checksum=8a47c2d5f595647be2cc6205926f848a403c11fd9ad4336cd66e0404f439048a', faceConsumed: 'n=24 checksum=56ec4bda6e9875068659b3960ddde1bad653cb4e3684aef63791e3085664a1ec', kernelCalls: 'n=84 checksum=dc90c0e312dc1a03b3c4aca7f4e941a5f3cad59d065f571e7e110db9d5938de0' },
@@ -170,7 +176,7 @@ export const OBSERVED_REFERENCE: Record<string, ObservedFixtureEntry> = {
 	'p23b-40-wall-all-curved-v1': {
 		topologyDefer: { wallCalls: 'n=40 checksum=c263f4b6348d6bd19a06fc89cb0c761d88b0024013d028184e0c0a518a41b5be', gateWalls: 'n=40 checksum=546efbdfe1819c3fd3e8b37d88434e2efc7640fe0d0fb45124bbda963d4e8534', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=40 checksum=c5fd3c3a2a91063ee15608f9373fc64167b395d67b72b545a91a9ca4e9ae4e40' },
 		topologyTranslate: { wallCalls: 'n=40 checksum=c263f4b6348d6bd19a06fc89cb0c761d88b0024013d028184e0c0a518a41b5be', gateWalls: 'n=40 checksum=546efbdfe1819c3fd3e8b37d88434e2efc7640fe0d0fb45124bbda963d4e8534', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=40 checksum=c5fd3c3a2a91063ee15608f9373fc64167b395d67b72b545a91a9ca4e9ae4e40' },
-		faces: { wallCalls: 'n=80 checksum=b58e18258c3fa4420eb5d9c2d821775b18295421ad53e42de7c70433eee0c2e4', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=80 checksum=a874805a82e88e26523f87dda56195dcccfcc8c5d3d24a6c7857250682207645', kernelCalls: 'n=80 checksum=59a8f22cc189681c3819a5a53467f0e9df85c810b67cfd0e1d7a28df2c8970ce' },
+		faces: { wallCalls: 'n=80 checksum=b58e18258c3fa4420eb5d9c2d821775b18295421ad53e42de7c70433eee0c2e4', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=80 checksum=a874805a82e88e26523f87dda56195dcccfcc8c5d3d24a6c7857250682207645', kernelCalls: 'n=80 checksum=68deed0f655b2bcb206566423a75c3d77418259bcf6bdc98d30c0ecda1798b56' },
 		openings: { wallCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
 		compile: { wallCalls: 'n=40 checksum=c263f4b6348d6bd19a06fc89cb0c761d88b0024013d028184e0c0a518a41b5be', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=120 checksum=604a3a4ceb0e3a57b749ce9df4ce96a6bb28ec8d7beb0dee8d40565cdab22844' },
 		planner: { wallCalls: 'n=200 checksum=f1a7b9f8194728706c9a2f14f7409025a7cd507f1b2ff4a05fc5b2e39d264bbe', gateWalls: 'n=80 checksum=8c69fc3edf9847934fb45d21bf0aed47f949dbd4f8bd72191510bf68c474de2a', faceConsumed: 'n=80 checksum=8bda318af6f01e5329c6e1548c572a9e05fdd09db27c81d5dcef1abc7f4c963b', kernelCalls: 'n=280 checksum=797f7d7f94bc893e326dac27f1451f64200945a2497b57ce0765c2de0316df92' },
@@ -206,7 +212,7 @@ export const OBSERVED_REFERENCE: Record<string, ObservedFixtureEntry> = {
 	'wild-shared-curved-v1': {
 		topologyDefer: { wallCalls: 'n=4 checksum=fec029167168f2674a8423bb9dead86d0e2b8882c3f762c1760c08e20dfcfcb6', gateWalls: 'n=7 checksum=12a9d0453feed930ca670ef6b491ec2f3fbe4d9d650dfebb23862e038ec52ab2', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=4 checksum=a53ae1420a1d7fdaf9a00fb10ae3cd2f3bf18307000b4e6f17a5b4bbebf253c4' },
 		topologyTranslate: { wallCalls: 'n=7 checksum=09798aa57ddaddc62f92e4bd4ea2ab3695c00fcbe156e33b36cce7c673bca880', gateWalls: 'n=7 checksum=12a9d0453feed930ca670ef6b491ec2f3fbe4d9d650dfebb23862e038ec52ab2', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=7 checksum=96a993862465bdadd9dcd458245d70c0e8321055fa7816e5f7930afca87731f6' },
-		faces: { wallCalls: 'n=8 checksum=c41d80aba83e02c75582b5dd1d35fe87c5c748fb29066bcfd5d73145dfc404b3', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=8 checksum=5faa12ca2cd8a16a8b7d7ab050504bc4251129edb9edb161b39c5b777f762596', kernelCalls: 'n=8 checksum=50861bf881b3a80c42f4473e6250b400d53f6f0fcc5597badd4a9bcd13e46bc8' },
+		faces: { wallCalls: 'n=8 checksum=c41d80aba83e02c75582b5dd1d35fe87c5c748fb29066bcfd5d73145dfc404b3', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=8 checksum=5faa12ca2cd8a16a8b7d7ab050504bc4251129edb9edb161b39c5b777f762596', kernelCalls: 'n=8 checksum=b32999f293d4f3cf540074b82a60a7b1374a13f3da907c9fb2baf3a3f98bf437' },
 		openings: { wallCalls: 'n=3 checksum=1f97539665304bf169f9c788dbef7d208b012c409a0870a5d2eb7db54fccfd55', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=3 checksum=cd8f19e516c1154048f88e386b1224f716989b49b6e2db037a6e49b9575505ab' },
 		compile: { wallCalls: 'n=8 checksum=9015d9d283cac26839f028ba11f1b5ca8a0a7aa1030988ed8c551589a459b3c1', gateWalls: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', faceConsumed: 'n=0 checksum=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', kernelCalls: 'n=23 checksum=e660ce8610b33f24f05b078e770b553c6b24ea4033b68014b0d03b96a6ae06bb' },
 		planner: { wallCalls: 'n=27 checksum=42acb9b77b30435da3fef0061adef9b566e5bc01ea1eba0fceedad78110fbdcf', gateWalls: 'n=14 checksum=2fa0473053f7d049c0872711a25d432d01200e6c562f90037e63c432720c1275', faceConsumed: 'n=8 checksum=075946a9a1a17844073f3d785cf87d77dab02b28d782130db151f7abb39570dc', kernelCalls: 'n=42 checksum=76856a0106e87ffee22dfcefa06fa8e0bc45a81669a700d93bcbcc71cde30217' },
@@ -264,25 +270,30 @@ export const PLANNER_WORK_REDUCED_FIXTURES: readonly string[] = ['N-2', 'bend-10
  * expectation AND that the rows where history and expectation disagree are
  * exactly the moved set, so the delta stays visible instead of being absorbed
  * into the history column.
+ *
+ * C2 FORMAT 7 RE-DERIVATION (2026-11-09). The closed-Wall schema bump changes
+ * the accepted document's `formatVersion`, so every success digest moved again;
+ * all 15 success rows were re-derived from the live planner. The four
+ * early-reject rows still hash their rejection messages and are unchanged.
  */
 export const PLANNER_VERDICT_EXPECTATION: Record<string, string> = {
-	'p23b-12-wall-straight-v1': 'success:4e3246a5b7d1079fa7dbd422efba2d96ad74bfb3ad79726ff9f99f505000a7ab',
-	'p23b-12-wall-target-curved-v1': 'success:b47e59b1fda602d74aa3bd690d04e3e39162e28d0248e07e7c63fa0d23342b8e',
-	'p23b-12-wall-all-curved-v1': 'success:d71343d22c10bbff2a48153d3db20e896a6516212293a9cf06f6dfef52ede854',
-	'p23b-40-wall-straight-v1': 'success:886ca2ea3524be2b40821cdf9f6bab2168785bd2a5c5a1f565df3d4567bde043',
-	'p23b-40-wall-target-curved-v1': 'success:b16adcadc572ed94f79b36a85c246946addc7decd634d2fa9a3b603c5e11ac89',
-	'p23b-40-wall-all-curved-v1': 'success:79dc93945ce19de580ade6a12e756405418825ca15de098a061d4ba4e17810f5',
-	'bend-10-wall-openings': 'success:a211b9b335a7c629e861ababd43a7c3e562c462cbc96c3325d696187234e7a4b',
-	'bend-3-room-openings': 'success:1dde8fbb752e9d4ea8cfff29c69c5944cf4049df88ee28ce03f3afa2e97eddd7',
-	'd12-exact-coincidence-v1': 'success:ad52f4935a3e544c8c1a0a8e8f8f892f8caefbd7cdb05f5e6699d2662e80a33c',
-	'd12-partial-overlap-v1': 'success:9b00d1454cf64a494a69e6d76b6de154b87220cd260703be765c29e39985ed76',
-	'd12-full-containment-v1': 'success:0e294b06cf289b85973d0d5dc19c1c650b33de5f5409b36eaa4e678e3a2cda3e',
-	'N-2': 'success:05125f8ba0e2add409c137d669e02873dbba1a7243338970067c30bc228cdc2d',
+	'p23b-12-wall-straight-v1': 'success:168b552923b79605a9e62c7b6bb46ce06992a9bd577f5d53248d7e1efdd8839b',
+	'p23b-12-wall-target-curved-v1': 'success:5ae06ec3e56bc47cc4d8621ba178624d02335a3a488a3fe1a4be640c7a5d06c6',
+	'p23b-12-wall-all-curved-v1': 'success:347c8cdf2e82a3d81f6a40305cc8fcdc1fd7376ecc9fe72f512858aadbb7161e',
+	'p23b-40-wall-straight-v1': 'success:49f786335aa4366c06f86f4242e929b484afba6127e284d44cd2a489730a8889',
+	'p23b-40-wall-target-curved-v1': 'success:aa797ff984cb25f670d788571bf7f8becfaded587e23e8f6df4d2abd64f19afc',
+	'p23b-40-wall-all-curved-v1': 'success:24918ceb721bc624186af92db85a4273011c422447123de1a2a50699f3c2dc4c',
+	'bend-10-wall-openings': 'success:2aab6954d50bbf43b7f47c510a351a94f6a971fdd8d1da2c884419d3f7c22c0c',
+	'bend-3-room-openings': 'success:4785f83a80cef92bba903bd19f3afaad053b894fa6234cf7285ffd2816a5f20f',
+	'd12-exact-coincidence-v1': 'success:43d7b14fb85f77f0d20b601ebbab693e70bad488603b58a809b2404f5d7f4bde',
+	'd12-partial-overlap-v1': 'success:200cea1d88ca162b0bdae544abd9358a49c725cafd0050a3a621b8211d562750',
+	'd12-full-containment-v1': 'success:08c244b0b8efd109a2e2817e3f67909118ff9f0827554098050c31969bb9717f',
+	'N-2': 'success:9c870e46e3d194a2e7a3ccd152067ce1ff9e303a080b8193817e667b9cc0abd0',
 	'N-2i': 'rejected:topology_invalid:a634c2998b8e8fea9b5001983ed9ca107577c951da39e26ec1427a59a719dec6',
 	'class4-self-intersection-v1': 'rejected:topology_invalid:8ef8659198189cc04b92753ebaceae6c9750ab8dc1561a0faed4bef928fc6e05',
-	'class4-zero-length-wall-v1': 'success:b12625e0b874e1976a5edd80d4c51efa2e5d81f0721b401446f7c446d888142e',
+	'class4-zero-length-wall-v1': 'success:21d334aea06a7096a09789402bfd9a70513bae679267d9a7cd617f17e329d900',
 	'class4-open-room-boundary-v1': 'rejected:topology_invalid:56625da9666d088f799ccba081de1c4d11d7d01ab3a032c5ead0ad0cc940572c',
 	'class4-component-duplicate-junction-v1': 'rejected:topology_invalid:0219e2ac250159dcbd0cada333baa6f0563b949682e2d3419a10348a0b8f9efe',
-	'wild-room-curved-v1': 'success:1513e4eaa00de5b206d41269419b3256fed9f062b7b2559b0991618a61516ca0',
-	'wild-shared-curved-v1': 'success:3789a7ff89319b202c4eff1a6f630f5b98c04ac9a7cbedbfc9df823324eb032c',
+	'wild-room-curved-v1': 'success:3342c2987428c9f4994399e7437130a2928415fe0ad0f680886210ccbc22ff42',
+	'wild-shared-curved-v1': 'success:9f60887a239a6c8162a534693eac2f2eefb96a0f375e77702ae202c85c850414',
 };

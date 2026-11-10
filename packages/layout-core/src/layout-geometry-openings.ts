@@ -86,19 +86,46 @@ export function archProfileTopAt(profile: ArchProfile, x: number): number {
 
 export function openingIntervals(
 	segment: SampleableSegment,
-	openings: readonly CompilerOpening[]
+	openings: readonly CompilerOpening[],
+	length?: number
 ): WallOpeningInterval[] {
-	return openings
-		.filter((opening) => opening.segmentId === segment.id)
-		.map((opening) => ({
-			openingId: opening.id,
-			startDistance: opening.offset,
-			endDistance: opening.offset + opening.width,
-			sillHeight: opening.sillHeight,
-			height: opening.height,
-			profile: opening.profile
-		}))
-		.sort((a, b) => a.startDistance - b.startDistance || a.openingId.localeCompare(b.openingId));
+	const intervals: WallOpeningInterval[] = [];
+	for (const opening of openings) {
+		if (opening.segmentId !== segment.id) continue;
+		const end = opening.offset + opening.width;
+		// A wrapped interval is authored on a closed Wall: split it at the seam.
+		// The sort below then presents it as the two physical pieces the solid
+		// section splitter and Plan overlay consume. Open Walls reject this shape
+		// in their validator, so this branch can never admit an open overrun.
+		if (length !== undefined && end > length + LAYOUT_GEOMETRY_EPSILON) {
+			intervals.push({
+				openingId: opening.id,
+				startDistance: 0,
+				endDistance: end - length,
+				sillHeight: opening.sillHeight,
+				height: opening.height,
+				profile: opening.profile
+			});
+			intervals.push({
+				openingId: opening.id,
+				startDistance: opening.offset,
+				endDistance: length,
+				sillHeight: opening.sillHeight,
+				height: opening.height,
+				profile: opening.profile
+			});
+		} else {
+			intervals.push({
+				openingId: opening.id,
+				startDistance: opening.offset,
+				endDistance: end,
+				sillHeight: opening.sillHeight,
+				height: opening.height,
+				profile: opening.profile
+			});
+		}
+	}
+	return intervals.sort((a, b) => a.startDistance - b.startDistance || a.openingId.localeCompare(b.openingId));
 }
 
 /**
@@ -122,7 +149,7 @@ export function splitSampledWallAroundOpenings(
 	wallHeight: number
 ): CompiledWallSection[] {
 	const length = sampled.length;
-	const intervals = openingIntervals(segment, openings);
+	const intervals = openingIntervals(segment, openings, length);
 	const sections: CompiledWallSection[] = [];
 	let cursor = 0;
 
@@ -173,11 +200,15 @@ export function splitSampledWallAroundOpenings(
 export function offsetInsideOpeningIntervals(
 	offset: number,
 	openings: readonly Pick<CompilerOpening, 'offset' | 'width'>[],
-	epsilon = 1e-6
+	epsilon = 1e-6,
+	wallLength?: number
 ): boolean {
 	return openings.some((opening) => {
 		const start = opening.offset;
 		const end = opening.offset + opening.width;
+		if (wallLength !== undefined && end > wallLength + epsilon) {
+			return offset >= start - epsilon || offset <= end - wallLength + epsilon;
+		}
 		return offset >= start - epsilon && offset <= end + epsilon;
 	});
 }
@@ -206,7 +237,7 @@ export function wallPolylinesAroundOpenings(
 		const end = sortedCuts[index]!;
 		if (end - start <= 1e-6) continue;
 		const mid = (start + end) / 2;
-		if (offsetInsideOpeningIntervals(mid, openings)) continue;
+		if (offsetInsideOpeningIntervals(mid, openings, 1e-6, length)) continue;
 		const points = samplesInDistanceRange(samples, start, end);
 		if (points.length >= 2) polylines.push(points);
 	}

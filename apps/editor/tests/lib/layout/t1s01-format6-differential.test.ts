@@ -5,6 +5,7 @@ import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	deriveLayoutWallRoles,
+	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	extractBoundaryCandidateFaces,
 	validateWallFirstPortalRelations,
 	wallFirstAdjacentRooms,
@@ -198,7 +199,7 @@ describe('T1.P02.S01 — format 6 pre/post differential over all-boundary kernel
 
 	it('divided-rooms-portal-v1: a dividing Wall and its door portal compile exactly as format 5 did', () => {
 		const document = dividedRoomsFixture();
-		expect(document.formatVersion).toBe(6);
+		expect(document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
 		// The derived model names the shared Wall dividing; the perimeter stays bounding.
 		const roles = deriveLayoutWallRoles(document);
 		expect(roles.get('wall-divider')).toBe('dividing');

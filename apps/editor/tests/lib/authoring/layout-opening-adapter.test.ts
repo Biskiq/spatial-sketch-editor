@@ -461,9 +461,14 @@ describe('T1.P02.S03 — Opening placement', () => {
 			sourceKind: 'wall',
 			ref: null
 		});
-		expect(actions).toHaveLength(1);
-		expect(actions[0]!.detail).toContain('1 hosted Opening in the same undo step');
-		expect((await actions[0]!.run()).kind).toBe('accepted');
+		// C3/D14 moves unfold entry to the Card foot; the delete action keeps its
+		// disclosure and remains the one that retires the hosted Opening.
+		expect(actions.map((candidate) => candidate.id)).toEqual([
+			'layout-wall-delete'
+		]);
+		const remove = actions.find((candidate) => candidate.id === 'layout-wall-delete')!;
+		expect(remove.detail).toContain('1 hosted Opening in the same undo step');
+		expect((await remove.run()).kind).toBe('accepted');
 		let layout = acceptedLayout(mounted.facade);
 		expect(layout.walls.some((wall) => wall.id === mounted.wallId)).toBe(false);
 		expect(layout.openings.some((opening) => opening.id === created.id)).toBe(false);

@@ -78,7 +78,7 @@ function snapshotOf(entities: readonly unknown[] = [BOX]): StageReadSnapshot {
 		{
 			units: {
 				layout: {
-					header: { formatVersion: 6, contentRevision: 'sha256-layout' },
+					header: { formatVersion: 7, contentRevision: 'sha256-layout' },
 					data: createEmptyWallFirstLayoutDocument()
 				},
 				scene: {

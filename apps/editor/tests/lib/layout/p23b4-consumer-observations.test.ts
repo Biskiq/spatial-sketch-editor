@@ -202,10 +202,11 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 		}
 	});
 
-	it('records the format-6 verdict delta exactly, instead of editing history', () => {
-		// Format 6 removed the authored Wall `role`, so every SUCCESS row's digest
-		// (which hashes the accepted document's canonical JSON) moved, while the
-		// four early-reject rows hash their rejection message and did not. The
+	it('records the format-6/7 verdict delta exactly, instead of editing history', () => {
+		// Format 6 removed the authored Wall `role`; format 7 bumps the canonical
+		// `formatVersion`. Each cutover moved every SUCCESS row's digest (which
+		// hashes the accepted document's canonical JSON), while the four early-reject
+		// rows hash their rejection message and did not. The
 		// frozen history column is left alone; this list is the whole allowed
 		// delta. A row that moves for any other reason fails here rather than being
 		// absorbed by an edited `OBSERVED_REFERENCE` value.

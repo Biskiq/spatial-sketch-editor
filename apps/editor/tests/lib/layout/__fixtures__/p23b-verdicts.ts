@@ -31,6 +31,11 @@
  * the ledger's transcriptions, unchanged, and they remain the behavioural
  * expectations. A digest is expected to move with a format that changes the
  * serialized fields; a shape, topology or issue-code move is a finding.
+ *
+ * C2 FORMAT 7 RE-DERIVATION (2026-11-09). The closed-Wall schema bump changes
+ * the serialized `formatVersion`, so every canonical digest moved. Each value
+ * below was re-derived from `serializeWallFirstLayoutDocument` at format 7;
+ * shape, topology and compiler issue expectations are unchanged.
  */
 import type { P23BCorrectnessCaseId } from './p23b-fixtures';
 
@@ -57,7 +62,7 @@ export type P23BFixtureVerdict = {
 /** The six CLASS 5 matrix cells, straight / target-curved / all-curved per size. */
 export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 	'p23b-12-wall-straight-v1': {
-		canonicalSha256: '6948af35f0842e3dc70ac2f9d0a5828d11e23e763b6fb0a4c517f85a5d632268',
+		canonicalSha256: '36233fcdae194adee3aeb7c50188c6d727909f9d2b029a3e9f3daaa6827478f2',
 		shape: {
 			rooms: 3,
 			walls: 12,
@@ -70,7 +75,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-12-wall-target-curved-v1': {
-		canonicalSha256: '06c802df653b5b04a9f1725fcd303b829159063823b6c77abd036a75b09ad95a',
+		canonicalSha256: '1b38df10f0e1c3b10b2f614210d24361c1175198ea212a2e9ea5cb0f60b36c21',
 		shape: {
 			rooms: 3,
 			walls: 12,
@@ -83,7 +88,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-12-wall-all-curved-v1': {
-		canonicalSha256: '44b439f3a2928dd555f38571376fc7aad9e14730a61c354c7ca681e57eb806ac',
+		canonicalSha256: '0d953da29cdb2ccddb7341dc552e3c7134ebb4d890fb987130870302b49ff3b0',
 		shape: {
 			rooms: 3,
 			walls: 12,
@@ -96,7 +101,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-40-wall-straight-v1': {
-		canonicalSha256: 'b1cdf80c8aecedecd7fb312360b6d75b93ba0349ec3f8e9be7cb89d8f4e743de',
+		canonicalSha256: '733abac59fcb590ae0b4600948504e1e88c6b553e2f81f54e3d1287e4fa93d51',
 		shape: {
 			rooms: 10,
 			walls: 40,
@@ -109,7 +114,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-40-wall-target-curved-v1': {
-		canonicalSha256: '5f21f6b8d580995ba5a41c42af29eb822faa229aad69d3ebb4cc45cc6b4e3329',
+		canonicalSha256: '0670c52463f7ed18f141d3b2a8b841017a0a68bee4b36ad63396874ed2884db5',
 		shape: {
 			rooms: 10,
 			walls: 40,
@@ -122,7 +127,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
 		compilerIssues: []
 	},
 	'p23b-40-wall-all-curved-v1': {
-		canonicalSha256: '331d7be30ce6de4ad20b2648a7b8c972fd2ba255c862448cf82ff322f7b9a279',
+		canonicalSha256: 'f181754399033eb7573aff06c38609c63bd4149c65a3d9c39a98d4b2969348a9',
 		shape: {
 			rooms: 10,
 			walls: 40,
@@ -142,7 +147,7 @@ export const P23B_MATRIX_VERDICTS: Record<string, P23BFixtureVerdict> = {
  */
 export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtureVerdict> = {
 	'd12-exact-coincidence-v1': {
-		canonicalSha256: '7da68f3f168c5d14f014ea48b7229f954f0d665e987494176e6e831b16c478c4',
+		canonicalSha256: 'e27c8794dbc161e3ed4069239cead9b1a017925c6c41d084aa40187294426d0e',
 		shape: {
 			rooms: 2,
 			walls: 8,
@@ -155,7 +160,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'd12-partial-overlap-v1': {
-		canonicalSha256: '814c963144dd19d65730d51f6c20467fdd0d9faf8abfcbbee3f604e7f8d2c6b6',
+		canonicalSha256: 'fee04dfdb343df26712e1f17fabfe6851c8683e122262c3ba96e02c86bcd9327',
 		shape: {
 			rooms: 2,
 			walls: 8,
@@ -168,7 +173,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'd12-full-containment-v1': {
-		canonicalSha256: 'd1a3ded2b57f7c73ee152268fc97d4f6ac98c81de00e04a71fd218934dddcb38',
+		canonicalSha256: '5eb641d896ca0121a1d80ce8bd5397f023a829b4e183bdeaf537d0daacec683e',
 		shape: {
 			rooms: 2,
 			walls: 8,
@@ -181,7 +186,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'N-2': {
-		canonicalSha256: '1e3b80b9e23d29318770397b6017b8200b3138592e1f2f8c2e8ade7bbca41210',
+		canonicalSha256: '94212e7ddd02ca806dda9418cfe8bf1680e9c80869bc7bcc3c7b140e1be5ea8f',
 		shape: {
 			rooms: 0,
 			walls: 2,
@@ -194,7 +199,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'N-2i': {
-		canonicalSha256: '071d3357f961a36ce62276a39b3d7bdbe425391151f470fe054b7cb455745e04',
+		canonicalSha256: '411fb77d108dd4188bb7cb1f6d1b567a65da2869d2ac8fa835403e167d798185',
 		shape: {
 			rooms: 0,
 			walls: 2,
@@ -207,7 +212,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'class4-self-intersection-v1': {
-		canonicalSha256: 'ee6159d3e6d1349c322055cd68e8658e7649c0f90b7c86d1b7d8d3ca5224bd64',
+		canonicalSha256: '39f1901dc8aa09ef92d7bd5c9ea980ae78a451ac7213de17da3556c18c4f33f2',
 		shape: {
 			rooms: 0,
 			walls: 1,
@@ -220,7 +225,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: ['wall_offset_overlap']
 	},
 	'class4-zero-length-wall-v1': {
-		canonicalSha256: 'c60ac0af11c306f698aef83d32ee9818a898fc015cba28a8403bc03b253eeb09',
+		canonicalSha256: '13d083788d7073d2f83d6074e3235716e097f725667ec1eb2b663ddae57826bd',
 		shape: {
 			rooms: 0,
 			walls: 1,
@@ -233,7 +238,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: []
 	},
 	'class4-open-room-boundary-v1': {
-		canonicalSha256: 'add996036e7c0319c42899f380044bbb756908c7fd1eec1f54f17e18902ee6e4',
+		canonicalSha256: '47a38a1b52b17703cee5541521ddacee2f77ea23ab00629606cdefa6793f1b00',
 		shape: {
 			rooms: 1,
 			walls: 3,
@@ -246,7 +251,7 @@ export const P23B_CORRECTNESS_VERDICTS: Record<P23BCorrectnessCaseId, P23BFixtur
 		compilerIssues: ['disconnected_boundary']
 	},
 	'class4-component-duplicate-junction-v1': {
-		canonicalSha256: 'eceb16d798f4746900dc06ecae4b57d2ae5654a093cbd2b0cc7992e9e8482d3f',
+		canonicalSha256: 'b0e5a545daa08008e75095cd38fc22d2d93719c938755baaa4e6248016ae3ad4',
 		shape: {
 			rooms: 1,
 			walls: 5,

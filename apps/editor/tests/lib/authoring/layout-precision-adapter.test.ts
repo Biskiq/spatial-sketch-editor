@@ -49,6 +49,9 @@ import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrumen
 import { createLayoutPlanners, layoutSubjectOf } from '$lib/authoring/adapters/layout/precision';
 import {
 	createDrawingPlanners,
+	LAYOUT_CIRCLE_RADIUS_KIND,
+	LAYOUT_CIRCLE_ROOM_CREATE_KIND,
+	LAYOUT_CIRCLE_TRANSLATE_KIND,
 	LAYOUT_WALL_CHAIN_COMMIT_KIND,
 	LAYOUT_WALL_DELETE_KIND
 } from '$lib/authoring/adapters/layout/drawing-planners';
@@ -158,12 +161,23 @@ describe('T1.P01.S04 — Layout precision', () => {
 			'layout-plinth-place',
 			'layout-room-move',
 			'layout-wall-angle',
+			// C1 — one grab on an open Wall body is its own retained operation.
+			'layout-wall-bend',
 			'layout-wall-height',
+			// C1/D2 — the Card's two knot shape actions are retained planners of their
+			// own, so the Card's one action channel never mutates a document directly.
+			'layout-wall-knot-delete',
 			'layout-wall-length',
 			'layout-wall-move',
+			'layout-wall-straighten',
 			'layout-wall-thickness'
 		]);
+		// C2 — Circle creation, exact radius and rigid body move are retained
+		// planners beside the two S02 drawing operations, not a second write path.
 		expect(createDrawingPlanners().map((planner) => planner.kind).sort()).toEqual([
+			LAYOUT_CIRCLE_RADIUS_KIND,
+			LAYOUT_CIRCLE_ROOM_CREATE_KIND,
+			LAYOUT_CIRCLE_TRANSLATE_KIND,
 			LAYOUT_WALL_CHAIN_COMMIT_KIND,
 			LAYOUT_WALL_DELETE_KIND
 		]);
@@ -638,9 +652,10 @@ function selectWall(facade: StageFacade, sourceId: string): void {
 
 describe('Layout scalar Stage grips',()=>{
  it.each(['height','thickness'] as const)('types a Wall %s through one lease, one F4 install and Undo',async(field)=>{
-  const {facade,host,wallId}=await mount();selectWall(facade,wallId);
-  const before=facade.snapshot().canonicalJson;
-  const mark=facade.marks().find(m=>m.id===`layout-wall-${field}`)!;expect(mark?.tip).toBeDefined();
+	  const {facade,host,wallId}=await mount();selectWall(facade,wallId);
+	  const before=facade.snapshot().canonicalJson;
+	  expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
+	  const mark=facade.marks().find(m=>m.id===`layout-wall-${field}`)!;expect(mark?.tip).toBeDefined();
   const evaluationId=facade.evaluationId()!;
   expect(facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId}).claimed).toBe(true);
   expect(host.history().undoUnavailableReason).toContain('proposal is live');
@@ -654,8 +669,9 @@ describe('Layout scalar Stage grips',()=>{
   facade.dispose();
  });
  it.each(['cancel','refused','reading'] as const)('leaves source and history unchanged after %s',async(end)=>{
-  const {facade,host,wallId}=await mount();selectWall(facade,wallId);const before=facade.snapshot().canonicalJson;
-  const mark=facade.marks().find(m=>m.id==='layout-wall-height')!;const evaluationId=facade.evaluationId()!;
+	  const {facade,host,wallId}=await mount();selectWall(facade,wallId);const before=facade.snapshot().canonicalJson;
+	  expect(facade.activateDisclosure('layout-wall-size-chip')).toBe(true);
+	  const mark=facade.marks().find(m=>m.id==='layout-wall-height')!;const evaluationId=facade.evaluationId()!;
   facade.pointerIntent({phase:'down',handleId:mark.id,css:mark.tip!,evaluationId});
   if(end==='cancel')facade.pointerIntent({phase:'cancel',css:mark.tip!,evaluationId});
   else if(end==='reading')facade.pointerIntent({phase:'move',css:mark.tip!,evaluationId:'stale-evaluation'});

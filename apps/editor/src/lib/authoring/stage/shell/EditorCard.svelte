@@ -274,6 +274,10 @@
 			const outcome = await action.run();
 			if (outcome.message !== undefined && outcome.kind !== 'accepted')
 				actionMessage = outcome.message;
+			// The card itself often changes when an action is accepted (Unfold replaces
+			// the action menu with its own controls). Leaving the menu open would cover
+			// the controls the creator now needs.
+			if (outcome.kind === 'accepted') closePanel();
 		} catch {
 			actionMessage = 'The action could not be completed. Try again.';
 		} finally {

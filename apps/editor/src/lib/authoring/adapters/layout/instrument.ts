@@ -57,6 +57,7 @@ import {
 	type WallManipulationRequest
 } from './precision';
 import { wallRefusalWords } from './refusals';
+import { circleRadiusIntent } from './drawing-planners';
 
 export type LayoutWriteOutcome =
 	| { readonly kind: 'installed' | 'unchanged' | 'no-op' }
@@ -345,10 +346,42 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 			// rejection as `planner-rejected`; checking here keeps the Card's words
 			// identical for every field and never takes the gesture lease for it.
 			const dimension =
-				id === 'length' || id === 'height' || id === 'thickness' || isLayoutOpeningField(id);
+				id === 'length' ||
+				id === 'radius' ||
+				id === 'diameter' ||
+				id === 'height' ||
+				id === 'thickness' ||
+				isLayoutOpeningField(id);
 			if (dimension && exceedsLayoutDimension(parsed.value)) {
 				errors.set(id, LAYOUT_DIMENSION_LIMIT_MESSAGE);
 				return { kind: 'refused', code: 'dimension_out_of_range', message: LAYOUT_DIMENSION_LIMIT_MESSAGE };
+			}
+
+			// C2/D3b — a closed Wall's radius and diameter are exact physical writes.
+			// Diameter is converted to radius here so one planner owns the semantics;
+			// the planner preserves every Opening's angular station and width, or
+			// refuses the edit without writing a clamped value.
+			if (options.subject.kind === 'wall' && (id === 'radius' || id === 'diameter')) {
+				const radius = id === 'diameter' ? parsed.value / 2 : parsed.value;
+				if (!(radius > 0)) {
+					const reason = 'Enter a radius or diameter greater than zero.';
+					errors.set(id, reason);
+					return { kind: 'invalid', code: 'malformed', message: reason };
+				}
+				const outcome = await submit(
+					circleRadiusIntent({
+						wallId: options.subject.id,
+						radius,
+						operationId: mint(),
+						projectId: options.projectId,
+						revisionId: options.port.acceptedRevision().revisionId,
+						contentRevision: options.contentRevision,
+						levelId
+					})
+				);
+				if (outcome.kind === 'refused') errors.set(id, outcome.message);
+				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
+				return outcome;
 			}
 
 			// **T1.P01.S05 — existing straight-Wall manipulation.** Length and angle are

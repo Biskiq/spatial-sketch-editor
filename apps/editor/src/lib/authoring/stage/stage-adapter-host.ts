@@ -15,6 +15,7 @@ export { isStageDrag } from './stage-input';
 export { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from './unit-stage-source';
 export { PAPER_LAYER, buildPaperPlan, unionOutline } from './paper-plan';
 export { compactMeasure } from './shell/compact-measure';
+export { indexLabels } from './shell/index-labels';
 export { default as ShellIcon } from './shell/ShellIcon.svelte';
 export type {
 	StageAdapter, StageAdapterBinding, StageAdapterContext, StageCardAction,

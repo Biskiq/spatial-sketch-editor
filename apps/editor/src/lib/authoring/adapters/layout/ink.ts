@@ -54,6 +54,15 @@ export type ProjectedWall = {
 	readonly endCss: readonly [number, number];
 	readonly start: LayoutVec2;
 	readonly end: LayoutVec2;
+	/**
+	 * The compiled sampled centerline in world metres. Present for a curved or
+	 * closed Wall; absent for a straight one, whose chord is exact. These are the
+	 * same canonical samples every other spatial query consumes, never a second
+	 * resolver and never an endpoint chord standing in for a curve.
+	 */
+	readonly path?: readonly LayoutVec2[];
+	/** `path` projected into Stage-local CSS, index-aligned with it. */
+	readonly pathCss?: readonly (readonly [number, number])[];
 };
 
 /** The closest point on a CSS segment, as `[distance, amount]`. */
@@ -69,6 +78,95 @@ function closestOnCssSegment(
 	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
 	const amount = Math.min(1, Math.max(0, raw));
 	return [Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dy * amount)), amount];
+}
+
+/** The world-space centerline polyline: compiled samples when curved, chord when straight. */
+export function projectedWallPath(wall: ProjectedWall): readonly LayoutVec2[] {
+	return wall.path !== undefined && wall.path.length >= 2
+		? wall.path
+		: [wall.start, wall.end];
+}
+
+/** The CSS-space centerline polyline, index-aligned with `projectedWallPath`. */
+export function projectedWallPathCss(
+	wall: ProjectedWall
+): readonly (readonly [number, number])[] {
+	return wall.pathCss !== undefined && wall.pathCss.length >= 2
+		? wall.pathCss
+		: [wall.startCss, wall.endCss];
+}
+
+/** Cumulative arc length at each polyline vertex. */
+function cumulativeLengths(path: readonly (readonly [number, number])[]): number[] {
+	const lengths = new Array<number>(path.length);
+	lengths[0] = 0;
+	for (let index = 1; index < path.length; index += 1) {
+		const previous = path[index - 1]!;
+		const current = path[index]!;
+		lengths[index] = lengths[index - 1]! + Math.hypot(
+			current[0] - previous[0],
+			current[1] - previous[1]
+		);
+	}
+	return lengths;
+}
+
+/**
+ * The nearest point on a polyline, with its segment parameter and its physical
+ * arc-length offset. One implementation serves the CSS hit test, the world
+ * centerline point and the Opening offset, so they can never disagree.
+ */
+function closestOnPolyline(input: {
+	readonly point: readonly [number, number];
+	readonly path: readonly (readonly [number, number])[];
+}): {
+	readonly distance: number;
+	readonly segment: number;
+	readonly amount: number;
+	readonly offset: number;
+	readonly point: readonly [number, number];
+} | null {
+	const { path } = input;
+	if (path.length === 0) return null;
+	if (path.length === 1) {
+		return {
+			distance: Math.hypot(input.point[0] - path[0]![0], input.point[1] - path[0]![1]),
+			segment: 0,
+			amount: 0,
+			offset: 0,
+			point: path[0]!
+		};
+	}
+	const lengths = cumulativeLengths(path);
+	let best: {
+		distance: number; segment: number; amount: number; offset: number;
+		point: readonly [number, number];
+	} | null = null;
+	for (let index = 0; index < path.length - 1; index += 1) {
+		const start = path[index]!;
+		const end = path[index + 1]!;
+		const [distance, amount] = closestOnCssSegment(input.point, start, end);
+		if (best !== null && distance >= best.distance) continue;
+		best = {
+			distance,
+			segment: index,
+			amount,
+			offset: lengths[index]! + (lengths[index + 1]! - lengths[index]!) * amount,
+			point: [
+				start[0] + (end[0] - start[0]) * amount,
+				start[1] + (end[1] - start[1]) * amount
+			]
+		};
+	}
+	return best;
+}
+
+/** Distance from a Stage-local CSS point to a Wall's drawn centerline. */
+function projectedWallDistanceCss(
+	wall: ProjectedWall,
+	point: readonly [number, number]
+): number {
+	return closestOnPolyline({ point, path: projectedWallPathCss(wall) })?.distance ?? Number.POSITIVE_INFINITY;
 }
 
 /**
@@ -96,7 +194,7 @@ export function classifyInkPointerTarget(input: {
 	if (nearestJunction !== null) return { kind: 'junction', junctionId: nearestJunction.id };
 	let nearestWall: { id: string; distance: number } | null = null;
 	for (const wall of input.walls) {
-		const [distance] = closestOnCssSegment(input.css, wall.startCss, wall.endCss);
+		const distance = projectedWallDistanceCss(wall, input.css);
 		if (distance > INK_WALL_HIT_CSS_PX) continue;
 		if (nearestWall === null || distance < nearestWall.distance) {
 			nearestWall = { id: wall.id, distance };
@@ -108,18 +206,27 @@ export function classifyInkPointerTarget(input: {
 
 /** The point on a Wall's centerline a pointer position names (the split point). */
 export function pointOnWallCenterline(wall: ProjectedWall, point: LayoutVec2): LayoutVec2 {
-	const dx = wall.end[0] - wall.start[0];
-	const dz = wall.end[1] - wall.start[1];
-	const squared = dx * dx + dz * dz;
-	if (!(squared > 0)) return [wall.start[0], wall.start[1]];
-	const raw = ((point[0] - wall.start[0]) * dx + (point[1] - wall.start[1]) * dz) / squared;
-	const amount = Math.min(1, Math.max(0, raw));
-	return [wall.start[0] + dx * amount, wall.start[1] + dz * amount];
+	if (wall.path === undefined) {
+		const dx = wall.end[0] - wall.start[0];
+		const dz = wall.end[1] - wall.start[1];
+		const squared = dx * dx + dz * dz;
+		if (!(squared > 0)) return [wall.start[0], wall.start[1]];
+		const raw = ((point[0] - wall.start[0]) * dx + (point[1] - wall.start[1]) * dz) / squared;
+		const amount = Math.min(1, Math.max(0, raw));
+		return [wall.start[0] + dx * amount, wall.start[1] + dz * amount];
+	}
+	const hit = closestOnPolyline({ point, path: projectedWallPath(wall) });
+	if (hit === null) return [wall.start[0], wall.start[1]];
+	return [hit.point[0], hit.point[1]];
 }
 
-/** A Wall's physical straight length in meters (projected Walls are straight). */
-export function projectedWallLength(wall: Pick<ProjectedWall, 'start' | 'end'>): number {
-	return Math.hypot(wall.end[0] - wall.start[0], wall.end[1] - wall.start[1]);
+/** A Wall's physical centerline length in meters (arc length when curved). */
+export function projectedWallLength(wall: Pick<ProjectedWall, 'start' | 'end' | 'path'>): number {
+	if (wall.path === undefined || wall.path.length < 2) {
+		return Math.hypot(wall.end[0] - wall.start[0], wall.end[1] - wall.start[1]);
+	}
+	const lengths = cumulativeLengths(wall.path);
+	return lengths.at(-1) ?? 0;
 }
 
 /**
@@ -131,6 +238,9 @@ export function projectedWallLength(wall: Pick<ProjectedWall, 'start' | 'end'>):
  * planner rather than clamped to zero.
  */
 export function offsetAlongWall(wall: ProjectedWall, point: LayoutVec2): number {
+	if (wall.path !== undefined && wall.path.length >= 2) {
+		return closestOnPolyline({ point, path: projectedWallPath(wall) })?.offset ?? 0;
+	}
 	const dx = wall.end[0] - wall.start[0];
 	const dz = wall.end[1] - wall.start[1];
 	const length = Math.hypot(dx, dz);
@@ -141,6 +251,19 @@ export function offsetAlongWall(wall: ProjectedWall, point: LayoutVec2): number 
 
 /** A point at one meter distance from the Wall start, for the opening ghost. */
 export function pointAlongWall(wall: ProjectedWall, distance: number): LayoutVec2 {
+	if (wall.path !== undefined && wall.path.length >= 2) {
+		const path = projectedWallPath(wall);
+		const lengths = cumulativeLengths(path);
+		const target = Math.min(lengths.at(-1) ?? 0, Math.max(0, distance));
+		let segment = 0;
+		while (segment < path.length - 2 && lengths[segment + 1]! < target) segment += 1;
+		const span = lengths[segment + 1]! - lengths[segment]!;
+		const amount = span > 0 ? (target - lengths[segment]!) / span : 0;
+		return [
+			path[segment]![0] + (path[segment + 1]![0] - path[segment]![0]) * amount,
+			path[segment]![1] + (path[segment + 1]![1] - path[segment]![1]) * amount
+		];
+	}
 	const length = projectedWallLength(wall);
 	if (!(length > 0)) return [wall.start[0], wall.start[1]];
 	const amount = distance / length;
@@ -165,7 +288,7 @@ export function classifyOpeningHost(input: {
 }): { readonly wallId: string; readonly distance: number } | null {
 	const candidates: { id: string; distance: number }[] = [];
 	for (const wall of input.walls) {
-		const [distance] = closestOnCssSegment(input.css, wall.startCss, wall.endCss);
+		const distance = projectedWallDistanceCss(wall, input.css);
 		if (distance > INK_WALL_HIT_CSS_PX) continue;
 		candidates.push({ id: wall.id, distance });
 	}
@@ -196,10 +319,11 @@ export type InkOpeningProfile = 'rectangular' | 'rounded' | 'pointed';
 
 /**
  * R217.S10 — how the Wall reading names a chain: **Line** taps or drags points one
- * at a time; **Box** takes two opposite corners and closes the four-Wall ring.
- * Both submit the same one Wall-chain commit.
+ * at a time; **Box** takes two opposite corners and closes the four-Wall ring;
+ * **Circle** takes a centre then a rim point and authors the canonical closed
+ * Wall. Each submits through the same captured intent surface.
  */
-export type InkWallMode = 'line' | 'box';
+export type InkWallMode = 'line' | 'box' | 'circle';
 
 /** The next Opening's palette defaults; a session remembers them. */
 export type InkOpeningOptions = {

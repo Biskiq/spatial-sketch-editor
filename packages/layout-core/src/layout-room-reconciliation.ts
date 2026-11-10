@@ -141,7 +141,7 @@ export function roomBoundaryPolygon(
 	lookup?: RoomBoundaryLookup
 ): readonly LayoutVec2[] | null {
 	const room = lookup ? lookup.roomById.get(roomId) : document.rooms.find((candidate) => candidate.id === roomId);
-	if (!room || room.boundary.length < 3) return null;
+	if (!room) return null;
 	const junctionById = lookup ? lookup.junctionById : new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const wallById = lookup ? lookup.wallById : new Map(document.walls.map((wall) => [wall.id, wall]));
 	const polygon: LayoutVec2[] = [];
@@ -167,7 +167,10 @@ export function roomBoundaryPolygon(
 			polygon.push([...sample.point] as LayoutVec2);
 		}
 	}
-	return polygon;
+	// A closed Wall contributes ONE boundary reference but many sampled vertices.
+	// The polygon requirement is therefore about resolved vertices, never the
+	// number of Wall refs.
+	return polygon.length >= 3 ? polygon : null;
 }
 
 /**

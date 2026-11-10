@@ -149,7 +149,7 @@ describe('P23.11 slice 6 — Issue #6 rejects before commit', () => {
 			},
 			'anchor:1'
 		)!;
-		const plan = planBendWallCurveKnot(document, 'wall-p', { distance, point: [3, 2] });
+		const plan = planBendWallCurveKnot(document, 'wall-p', { distance, point: [3, 2] }, { knotId: 'wall-p:knot:1' });
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') return;
 		expect(plan.rejection.message.toLowerCase()).toContain('fold');

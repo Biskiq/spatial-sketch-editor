@@ -22,9 +22,10 @@ import { describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { validateProjectEnvelope } from '@portfolio/project-model/units';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
-import { planFirstEnclosureCreation } from '@portfolio/layout-core';
+import { planFirstEnclosureCreation, planCreateCircularRoom } from '@portfolio/layout-core';
 import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -101,6 +102,46 @@ describe('P23.0 stage 4 — visitor compile parity for wall-first', () => {
 		} finally {
 			visitor.dispose();
 		}
+	});
+
+	it('the visitor compiles a created Circle Wall and its Room identically', async () => {
+		const circle = planCreateCircularRoom({
+			baseline: createEmptyWallFirstLayoutDocument(),
+			center: [0, 0],
+			rim: [4, 0],
+			capture: freshCapture(),
+			levelId: 'floor'
+		});
+		if (circle.kind !== 'success') throw new Error(JSON.stringify(circle.rejection));
+		const payload = await createUnitProject({
+			id: 'project-circle-parity',
+			name: 'Circle parity',
+			layout: circle.document,
+			camera: {
+				formatVersion: 1,
+				views: [
+					{
+						id: 'node-1',
+						label: 'Circle',
+						eye: [1, 0, 1],
+						target: [2, 0, 2],
+						fov: 60,
+						connectedViewIds: []
+					}
+				],
+				connections: []
+			}
+		});
+		const visitor = composeColdReleaseBundle({ document: payload, manifest: coldManifest() });
+		try {
+			expect(visitor.geometry.walls).toHaveLength(1);
+			expect(visitor.geometry.rooms).toHaveLength(1);
+		} finally {
+			visitor.dispose();
+		}
+		const prepared = prepareUnitRuntime(structuredClone(payload));
+		if (prepared.kind === 'rejected') throw new Error(JSON.stringify(prepared.issues));
+		expect(prepared.geometry).toEqual(compileWallFirstLayoutGeometry(payload.units.layout.data).geometry);
 	});
 
 	it('runtime preparation equals the direct wall-first compiler output (one shared core)', async () => {

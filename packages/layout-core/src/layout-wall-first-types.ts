@@ -64,20 +64,31 @@ export type LayoutObject = {
  * the current reader and authoring planners.
  *
  * **T1.P02.S01 moved the canonical format to `6`: format 5 without the authored
- * Wall `role`.** A Wall's role is derived from face membership instead
+ * Wall `role`; format 7 adds the closed-Wall shape.** A Wall's role is derived from face membership instead
  * ({@link LayoutDerivedWallRole}): the compiler, the Room gates and the Card fact
  * all read the derived value, and nothing authors it. This settles the
  * "migrate existing `partition` Walls" question by removal — a Wall is bounding,
  * dividing or free-standing because of the topology it is part of, never because a
  * field says so.
  *
- * **`6` is the only recognized version, and there is no `5` decoder.** The
- * change is pre-baseline (`docs/reference/north-star.md` → *Development-stage
- * schema compatibility (pre-baseline)*), so there is no migration, no dual reader
- * and no negotiation: a payload declaring `5` (or any other number) fails as
+ * **`7` is the only recognized version, and there is no `6` decoder.** Format 7
+ * adds the canonical self-connected Wall (D6): one Wall whose start and end
+ * Junction IDs are equal, carrying exactly 16 cubic spans. The change is
+ * pre-baseline (`docs/reference/north-star.md` → *Development-stage schema
+ * compatibility (pre-baseline)*), so there is no migration, no dual reader and
+ * no negotiation: a payload declaring `6` (or any other number) fails as
  * `unsupported_format_version` instead of being silently reinterpreted.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 6 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 7 as const;
+
+/**
+ * The approved closed-Wall representation (D6) is exactly 16 symmetric cubic
+ * spans with 15 interior bend points. The counts are structural: the codec
+ * refuses a closed Wall in any other shape rather than admitting a second,
+ * unbounded closed representation that the product cannot construct.
+ */
+export const CLOSED_WALL_CIRCLE_SPAN_COUNT = 16 as const;
+export const CLOSED_WALL_CIRCLE_KNOT_COUNT = CLOSED_WALL_CIRCLE_SPAN_COUNT - 1;
 
 /** All explicit `formatVersion` values the decoder recognizes. */
 export const KNOWN_LAYOUT_FORMAT_VERSIONS = [LAYOUT_WALL_FIRST_FORMAT_VERSION] as const;
@@ -165,6 +176,12 @@ export type LayoutWallCenterline =
 /**
  * One physical Wall between two explicit Junctions. A Wall exists once even
  * when it bounds two Rooms; no Wall stores or infers Room ownership.
+ *
+ * `startJunctionId === endJunctionId` means one **closed** Wall (D6). It is
+ * still an ordinary Wall record: the single Junction is the canonical seam, and
+ * the centerline must be the canonical 16-span `cubic-chain`. Closed Walls are
+ * isolated (D7); the topology gate refuses a second Wall at the seam and any
+ * crossing or endpoint attachment.
  *
  * `height` is the **authoritative physical height** of this Wall (P23.6H),
  * measured upward from the Floor elevation:

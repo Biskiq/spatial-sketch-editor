@@ -32,6 +32,7 @@
 import { paperStageComposition, PAPER_GROUND_INK } from '../paper-plan';
 import { workspaceRectFor } from '../stage-grid';
 import { STAGE_DRAFTING_DEFAULTS, type StageDraftingState } from '../stage-drafting';
+import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
 import StageMatGround from './StageMatGround.svelte';
@@ -40,6 +41,8 @@ import StageMatGround from './StageMatGround.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
+	import StageWallDevelopment from './StageWallDevelopment.svelte';
+	import StageWallPin from './StageWallPin.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
@@ -53,6 +56,7 @@ import StageMatGround from './StageMatGround.svelte';
 	let {
 		geometry,
 		sourceContentId,
+		layoutRevision,
 		scene,
 		rooms,
 		evaluation,
@@ -78,10 +82,14 @@ import StageMatGround from './StageMatGround.svelte';
 		/** R217.S06's live Height Sheet height, or null in Experience. */
 		heightMeters = null,
 		/** Shown while the Sheet is active (plus its one-second tail). */
-		heightPlaneVisible = false
+		heightPlaneVisible = false,
+		unfoldPinHovered = false,
+		unfoldPinActive = false,
+		unfoldAnchorPin = null
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
+		layoutRevision: string;
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		evaluation: ViewportEvaluation | null;
@@ -116,6 +124,11 @@ import StageMatGround from './StageMatGround.svelte';
 		scenePick: ScenePickSource;
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
+		/** The sheet pin is hovered or being dragged; the route owns both. */
+		unfoldPinHovered?: boolean;
+		unfoldPinActive?: boolean;
+		/** The idle pin shown on a selected curved Wall, before Unroll. */
+		unfoldAnchorPin?: readonly [number, number, number] | null;
 	} = $props();
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
@@ -124,6 +137,8 @@ import StageMatGround from './StageMatGround.svelte';
 	const paperComposition = $derived(
 		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
 	);
+	/** The display sheet owns the canonical body while a Wall is unfolded. */
+	const unfoldedWallId = $derived(wallUnfold.state?.wallId ?? null);
 	const paperReveal = $derived(paperComposition.reveal);
 	const paperVisible = $derived(paperComposition.visible);
 	const paperCovers = $derived(paperComposition.covers);
@@ -252,8 +267,19 @@ import StageMatGround from './StageMatGround.svelte';
 	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
-		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false} />
+		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false}
+			hiddenWallIds={unfoldedWallId === null ? [] : [unfoldedWallId]} />
 	</T.Group>
+	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
+		not a second scene, and never a registered pick root. -->
+	<StageWallDevelopment {geometry} {datumMeters} {layoutRevision}
+		selected={selection?.reference.domain === 'layout' && selection.reference.subject.kind === 'wall' &&
+			selection.reference.subject.id === unfoldedWallId}
+		pinHovered={unfoldPinHovered}
+		pinActive={unfoldPinActive} />
+	{#if unfoldedWallId === null && unfoldAnchorPin !== null}
+		<StageWallPin position={unfoldAnchorPin} hovered={unfoldPinHovered} active={unfoldPinActive} />
+	{/if}
 	<StageEntities
 		{scenePick}
 		{scene}

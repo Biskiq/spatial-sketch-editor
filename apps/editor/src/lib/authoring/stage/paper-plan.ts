@@ -301,47 +301,116 @@ export function openingPlanSymbolSegments(
  * bands close the corner instead of leaving a notch; an end at an Opening stays
  * on its jamb.
  */
-export function cutWallBandOf(
-	fragment: PlanFragment,
-	compiled: CompiledLayoutGeometry
-): readonly LayoutVec2[] | null {
-	if (fragment.ref.sourceKind !== 'wall' || fragment.geometry.kind !== 'span') return null;
-	const wall = indexedCompiledWall(compiled, fragment.ref.sourceId);
-	if (wall === undefined || !(wall.thickness > 0) || !Number.isFinite(wall.thickness)) return null;
-	const interval = fragment.ref.subRef?.kind === 'interval' ? fragment.ref.subRef : null;
-	if (interval === null) return null;
-	const matching = wall.solidSpans.find(
-		(candidate) =>
-			Math.abs(candidate.startDistance - interval.start) < 1e-6 &&
-			Math.abs(candidate.endDistance - interval.end) < 1e-6
-	);
-	if (matching === undefined) return null;
+/** One contiguous solid interval along a Wall, in station metres. */
+export type CutWallSpan = {
+	readonly startDistance: number;
+	readonly endDistance: number;
+};
 
-	const { start, end } = fragment.geometry;
-	const dx = end[0] - start[0];
-	const dz = end[1] - start[1];
-	const length = Math.hypot(dx, dz);
-	if (!(length > 0) || !Number.isFinite(length)) return null;
+type WallPointAt = {
+	readonly point: LayoutVec2;
+	readonly normal: LayoutVec2;
+	readonly tangent: LayoutVec2;
+};
+
+function normalized2(x: number, z: number): LayoutVec2 | null {
+	const length = Math.hypot(x, z);
+	return length > 1e-9 ? [x / length, z / length] : null;
+}
+
+/** Interpolate the compiled centreline, normal and tangent at a station. */
+function wallPointAt(wall: CompiledPhysicalWall, distance: number): WallPointAt | null {
+	const samples = wall.samples;
+	if (samples.length === 0 || !Number.isFinite(distance)) return null;
+	const first = samples[0]!;
+	const last = samples.at(-1)!;
+	if (distance <= first.distance + 1e-9) return first;
+	if (distance >= last.distance - 1e-9) return last;
+	for (let index = 1; index < samples.length; index += 1) {
+		const end = samples[index]!;
+		if (distance > end.distance + 1e-9) continue;
+		const start = samples[index - 1]!;
+		const span = end.distance - start.distance;
+		if (!(span > 1e-9)) return end;
+		const t = Math.min(1, Math.max(0, (distance - start.distance) / span));
+		const normal = normalized2(
+			start.normal[0] + (end.normal[0] - start.normal[0]) * t,
+			start.normal[1] + (end.normal[1] - start.normal[1]) * t
+		) ?? start.normal;
+		const tangent = normalized2(
+			start.tangent[0] + (end.tangent[0] - start.tangent[0]) * t,
+			start.tangent[1] + (end.tangent[1] - start.tangent[1]) * t
+		) ?? start.tangent;
+		return {
+			point: [start.point[0] + (end.point[0] - start.point[0]) * t, start.point[1] + (end.point[1] - start.point[1]) * t],
+			normal,
+			tangent
+		};
+	}
+	return last;
+}
+
+/**
+ * The Wall's cut poché as one ribbon per contiguous solid run.
+ *
+ * A compiled Wall arrives as many chord spans, one per sample. Drawing each span
+ * as its own four-point band leaves a short cap stroke at every facet join, which
+ * reads as ticks through the selected Wall. This builds the same thickness along
+ * the compiled centreline with a miter join at each sample, so the fill and its
+ * outline have only the run's real perimeter.
+ *
+ * End caps extend by half the thickness only where the run reaches a Junction end.
+ * An Opening jamb is an interior station and keeps its exact edge.
+ */
+export function cutWallBandsOf(
+	wall: CompiledPhysicalWall,
+	spans: readonly CutWallSpan[]
+): readonly (readonly LayoutVec2[])[] {
+	if (!(wall.thickness > 0) || !Number.isFinite(wall.thickness) || wall.samples.length < 2) return [];
+	const total = wall.samples.at(-1)?.distance ?? wall.length;
+	if (!(total > 0)) return [];
 	const half = wall.thickness / 2;
-	const ux = dx / length;
-	const uz = dz / length;
-	// Square caps only at a Junction end. An Opening jamb is an interior distance and
-	// keeps its exact edge, so a door never gains half a Wall of poché.
-	const total = wall.samples.at(-1)?.distance ?? length;
-	const startCap = matching.startDistance <= 1e-6 ? half : 0;
-	const endCap = Math.abs(matching.endDistance - total) <= 1e-6 ? half : 0;
-	const sx = start[0] - ux * startCap;
-	const sz = start[1] - uz * startCap;
-	const ex = end[0] + ux * endCap;
-	const ez = end[1] + uz * endCap;
-	const nx = -uz * half;
-	const nz = ux * half;
-	return [
-		[sx + nx, sz + nz],
-		[ex + nx, ez + nz],
-		[ex - nx, ez - nz],
-		[sx - nx, sz - nz]
-	];
+	const intervals = spans
+		.filter((span) => Number.isFinite(span.startDistance) && Number.isFinite(span.endDistance))
+		.map((span) => [Math.max(0, span.startDistance), Math.min(total, span.endDistance)] as const)
+		.filter(([start, end]) => end > start + 1e-9)
+		.sort((left, right) => left[0] - right[0]);
+	const runs: Array<[number, number]> = [];
+	for (const [start, end] of intervals) {
+		const current = runs.at(-1);
+		if (current !== undefined && start <= current[1] + 1e-6) current[1] = Math.max(current[1], end);
+		else runs.push([start, end]);
+	}
+
+	const bands: (readonly LayoutVec2[])[] = [];
+	for (const [startDistance, endDistance] of runs) {
+		const start = wallPointAt(wall, startDistance);
+		const end = wallPointAt(wall, endDistance);
+		if (start === null || end === null) continue;
+		const startCap = startDistance <= 1e-6 ? half : 0;
+		const endCap = Math.abs(endDistance - total) <= 1e-6 ? half : 0;
+		const startPoint: LayoutVec2 = [
+			start.point[0] - start.tangent[0] * startCap,
+			start.point[1] - start.tangent[1] * startCap
+		];
+		const endPoint: LayoutVec2 = [
+			end.point[0] + end.tangent[0] * endCap,
+			end.point[1] + end.tangent[1] * endCap
+		];
+		const left: LayoutVec2[] = [[startPoint[0] + start.normal[0] * half, startPoint[1] + start.normal[1] * half]];
+		const right: LayoutVec2[] = [[startPoint[0] - start.normal[0] * half, startPoint[1] - start.normal[1] * half]];
+		for (const sample of wall.samples) {
+			if (sample.distance <= startDistance + 1e-6 || sample.distance >= endDistance - 1e-6) continue;
+			left.push([sample.point[0] + sample.normal[0] * half, sample.point[1] + sample.normal[1] * half]);
+			right.push([sample.point[0] - sample.normal[0] * half, sample.point[1] - sample.normal[1] * half]);
+		}
+		left.push([endPoint[0] + end.normal[0] * half, endPoint[1] + end.normal[1] * half]);
+		right.push([endPoint[0] - end.normal[0] * half, endPoint[1] - end.normal[1] * half]);
+		if (left.length < 2) continue;
+		right.reverse();
+		bands.push([...left, ...right]);
+	}
+	return bands;
 }
 
 type UnionPolygon = readonly LayoutVec2[];
@@ -649,7 +718,7 @@ export function buildPaperPlan(
 ): PaperPlanDrawing {
 	const lines: PaperLineDraw[] = [];
 	const fills: PaperFillDraw[] = [];
-	const cutBands = new Map<string, Omit<PaperLineDraw, 'segments'> & { bands: (readonly LayoutVec2[])[] }>();
+	const cutBands = new Map<string, Omit<PaperLineDraw, 'segments'> & { spans: CutWallSpan[] }>();
 
 	eligiblePlanFragments(plan).forEach((fragment, index) => {
 		const layer = fragmentLayer(fragment);
@@ -670,17 +739,10 @@ export function buildPaperPlan(
 			return;
 		}
 		if (treatment === 'cut') {
-			const band = cutWallBandOf(fragment, compiled);
-			if (band !== null) {
-				fills.push({
-					key,
-					sourceId: fragment.ref.sourceId,
-					layer: PAPER_LAYER.cut,
-					treatment: 'cut',
-					elevationMeters: fragment.elevationMeters,
-					polygons: [band]
-				});
-				// One stroke per Wall follows below, so the spans leave no cross lines.
+			const interval = fragment.ref.subRef?.kind === 'interval' ? fragment.ref.subRef : null;
+			if (interval !== null) {
+				// The fill and the stroke are built together from the contiguous solid
+				// run below, not from this sampled span, so facet joins leave no tick.
 				const groupKey = `${fragment.ref.sourceId}:${fragment.elevationMeters}`;
 				const group = cutBands.get(groupKey);
 				if (group === undefined) {
@@ -691,10 +753,10 @@ export function buildPaperPlan(
 						layer,
 						treatment,
 						elevationMeters: fragment.elevationMeters,
-						bands: [band]
+						spans: [{ startDistance: interval.start, endDistance: interval.end }]
 					});
 				} else {
-					group.bands.push(band);
+					group.spans.push({ startDistance: interval.start, endDistance: interval.end });
 				}
 				return;
 			}
@@ -751,7 +813,19 @@ export function buildPaperPlan(
 		}
 	});
 
-	for (const { bands, ...line } of cutBands.values()) {
+	for (const { spans, ...line } of cutBands.values()) {
+		const wall = indexedCompiledWall(compiled, line.sourceId);
+		const bands = wall === undefined ? [] : cutWallBandsOf(wall, spans);
+		bands.forEach((polygon, index) => {
+			fills.push({
+				key: `${line.key}:cut:${index}`,
+				sourceId: line.sourceId,
+				layer: PAPER_LAYER.cut,
+				treatment: 'cut',
+				elevationMeters: line.elevationMeters,
+				polygons: [polygon]
+			});
+		});
 		lines.push({ ...line, segments: unionOutline(bands) });
 	}
 

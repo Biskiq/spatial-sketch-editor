@@ -6,7 +6,7 @@
 		resolveWorldScope,
 		type WorldScope
 	} from '$lib/authoring/stage/shell/world-index-model';
-	import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
+	import { stageEnvelope, stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		indexLabels,
 		layoutKindWord,
@@ -99,15 +99,48 @@
 		type StageAcceptanceHost,
 		type StageHistoryState
 	} from '$lib/authoring/stage/host-acceptance';
-
-import {
-	LAYOUT_DIMENSION_LIMIT_MESSAGE,
-	planFragmentOf,
-	planMembershipOf,
-	type PlanEvaluation,
-	type PlanMembershipReason
-} from '@portfolio/layout-core';
-	import { CAMERA_FOV, frameSubjectPose, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import {
+		developmentPointAtStationFromBuffers,
+		LAYOUT_DIMENSION_LIMIT_MESSAGE,
+		type CompiledPhysicalWall,
+		planFragmentOf,
+		planMembershipOf,
+		type PlanEvaluation,
+		type PlanMembershipReason
+	} from '@portfolio/layout-core';
+	import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
+	import { LAYOUT_OPENING_RESIZE_KIND } from '$lib/authoring/adapters/layout/opening-planners';
+	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import {
+		chooseUnfoldAmount,
+		isStraightCompiledWall,
+		snapWallUnfoldAmount,
+		wallUnfoldAnchor,
+		wallUnfoldFreeEdgeStation,
+		wallUnfoldShouldReturn,
+		wallUnfoldSourceSpans,
+		wallUnfoldTopPoint,
+		wallUnfoldViewCentreStation,
+		WALL_UNFOLD_EDGE_HIT_COARSE_CSS,
+		WALL_UNFOLD_EDGE_HIT_CSS,
+		WALL_UNFOLD_PIN_HIT_COARSE_CSS,
+		WALL_UNFOLD_PIN_HIT_CSS,
+		type WallUnfoldEdgeCandidate
+	} from '$lib/layout/wall-unfold';
+	import {
+		buildWallUnfoldDisplay,
+		evaluateWallUnfoldDisplay,
+		pickWallUnfold,
+		type WallUnfoldDisplay,
+		type WallUnfoldPick,
+		unfoldDisplayPointAtStation
+	} from '$lib/layout/wall-unfold-pick';
+	import {
+		mapSheetOpeningDrag,
+		sheetOpeningModeFromEdges,
+		type SheetOpeningMode
+	} from '$lib/layout/wall-unfold-opening-drag';
 	import {
 		createStagePressTracker,
 		readingIntentClockSeconds,
@@ -737,6 +770,46 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
 	);
 	let evaluation = $state<ViewportEvaluation | null>(null);
+	/**
+	 * C3/D14 — the single executor for unfold camera requests.
+	 *
+	 * Entry no longer fits or otherwise moves the Camera, so the only request is
+	 * the conditional Put-back return. It is refused unless the entry performed a
+	 * fit (legacy state only) and the settled pose still matches the current one.
+	 * Scrub, peel and face changes never move the Camera; Bring into view is the
+	 * explicit framing action.
+	 */
+	$effect(() => {
+		wallUnfold.setCameraExecutor((request) => {
+			const stage = facade;
+			const current = stage?.evaluation() ?? null;
+			if (stage === null || current === null) return false;
+			const ticket = stage.inspectionTicket();
+			if (ticket === null) return false;
+			const camera = stage.camera.state();
+			if (
+				!wallUnfoldShouldReturn({
+					entryAdjusted: request.entryAdjusted,
+					settled: request.settled,
+					current: { pose: camera.pose, reading: camera.reading }
+				})
+			) return false;
+			return (
+				stage.requestViewingIntent(
+					{
+						kind: 'set-view',
+						eye: eyeOfInspectionPose(request.pose),
+						target: request.pose.target,
+						fovYDegrees: fovYDegreesOf(request.pose),
+						transition: true
+					},
+					ticket,
+					performance.now() / 1000
+				).kind === 'accepted'
+			);
+		});
+		return () => wallUnfold.setCameraExecutor(null);
+	});
 	/**
 	 * R217.S05's one Grid/Snap view state. It is host view state, mirrored from the
 	 * session so the furniture re-renders; it is never part of the project source,
@@ -1924,6 +1997,546 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		experienceFocus.select(subject);
 	}
 
+	/**
+	 * C3 checkpoint 5 — the live unfolded press.
+	 *
+	 * The developed sheet is the addressed surface while unfolded, so a primary
+	 * press is cast through the accepted Camera evaluation into the same
+	 * checkpoint-4 display strip the Stage draws. The nearest positive hit is
+	 * attributed to canonical Station/span/knot/face (ties keep the first display
+	 * triangle in mesh order; a closed Station wraps modulo L; a seam-crossing
+	 * Opening resolves through `developmentOpeningIdentity`) and selected through
+	 * the route's ordinary selection state. This reads geometry and writes only
+	 * selection/pick evidence: no document write, no edit, no undo entry.
+	 *
+	 * An open adapter task keeps the press: Opening placement/editing is still
+	 * canonical work under D13. A miss falls through to ordinary Stage navigation
+	 * and the click guard in `onClick` prevents a canonical hit behind the sheet.
+	 */
+	type UnfoldPinHit = { readonly css: readonly [number, number] };
+	type UnfoldPinContext = {
+		readonly wallId: string;
+		readonly station: number;
+		readonly point: readonly [number, number, number];
+		readonly active: boolean;
+	};
+
+	/** The curved Wall whose idle pin should accompany the current selection. */
+	const selectedCurvedWall = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		const selected = selection;
+		if (
+			selected === null ||
+			selected.reference.domain !== 'layout' ||
+			selected.reference.subject.kind !== 'wall'
+		) return null;
+		const snapshot = boot.snapshot;
+		const wall = snapshot.domain.geometry.walls.find(
+			(candidate) => candidate.wallId === selected.reference.subject.id
+		);
+		if (wall === undefined || isStraightCompiledWall(wall)) return null;
+		const viewCentre = evaluation === null
+			? null
+			: wallUnfoldViewCentreStation(wall, evaluation.pose.target);
+		return {
+			wall,
+			datumMeters: snapshot.domain.datumMeters,
+			defaultStation: wallUnfoldAnchor({ wall, pinStation: viewCentre })
+		};
+	});
+
+	// Seed once when the Wall is selected. The route, Card and pin all read the
+	// remembered session station after this; selecting an Opening never re-seeds.
+	$effect(() => {
+		const candidate = selectedCurvedWall;
+		if (candidate === null) return;
+		wallUnfold.ensureAnchor(candidate.wall, candidate.defaultStation);
+	});
+
+	/** The idle pin drawn before Unroll; the active sheet draws its own copy. */
+	const idleUnfoldPin = $derived.by(() => {
+		if (wallUnfold.state !== null) return null;
+		const candidate = selectedCurvedWall;
+		if (candidate === null) return null;
+		const station = wallUnfold.anchorForWall(candidate.wall) ?? candidate.defaultStation;
+		const point = wallUnfoldTopPoint(candidate.wall, station, candidate.datumMeters);
+		return point === null ? null : { wallId: candidate.wall.wallId, station, point };
+	});
+
+	/** The one pin context shared by hover, press and rendering. */
+	function unfoldPinContext(stage: StageFacade): UnfoldPinContext | null {
+		const state = wallUnfold.state;
+		if (state !== null) {
+			const snapshot = stage.snapshot();
+			const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
+			if (wall === undefined) return null;
+			const point = wallUnfoldTopPoint(wall, state.anchorStation, snapshot.domain.datumMeters);
+			return point === null
+				? null
+				: { wallId: wall.wallId, station: state.anchorStation, point, active: true };
+		}
+		const candidate = selectedCurvedWall;
+		if (candidate === null) return null;
+		const station = wallUnfold.anchorForWall(candidate.wall) ?? candidate.defaultStation;
+		const point = wallUnfoldTopPoint(candidate.wall, station, candidate.datumMeters);
+		return point === null ? null : { wallId: candidate.wall.wallId, station, point, active: false };
+	}
+
+	function beginSheetPin(event: PointerEvent, wallId: string, activeAtPress: boolean): boolean {
+		// A failed capture still consumes the pin press: releasing it to navigation
+		// or the canonical pick would make the same press mean two different things.
+		if (stageEl === undefined || !capturePointer(stageEl, event.pointerId)) {
+			press.refuse(event.pointerId);
+			return true;
+		}
+		sheetPinDrag = {
+			pointerId: event.pointerId,
+			wallId,
+			pressX: event.clientX,
+			pressY: event.clientY,
+			moved: false,
+			activeAtPress
+		};
+		press.refuse(event.pointerId);
+		return true;
+	}
+
+	/** The pin's Stage-local screen point, using the same canonical top point. */
+	function unfoldedPinAt(
+		css: readonly [number, number],
+		coarse: boolean,
+		stage: StageFacade
+	): UnfoldPinHit | null {
+		const projectionId = stage.evaluationId();
+		if (projectionId === null) return null;
+		const pin = unfoldPinContext(stage);
+		if (pin === null) return null;
+		const projected = stage.projectWorld(
+			[pin.point[0], pin.point[1], pin.point[2]],
+			projectionId
+		);
+		if (projected.kind !== 'projected') return null;
+		// `projectWorld` is viewport CSS; `sample.css` and edge picks are local
+		// to the Stage. Normalise here so hover and press agree on the handle.
+		const current = rect ?? measure();
+		const local: [number, number] = [projected.css[0] - current.left, projected.css[1] - current.top];
+		const distance = Math.hypot(local[0] - css[0], local[1] - css[1]);
+		const threshold = coarse ? WALL_UNFOLD_PIN_HIT_COARSE_CSS : WALL_UNFOLD_PIN_HIT_CSS;
+		return distance <= threshold ? { css: local } : null;
+	}
+
+	/** Map a pointer sample onto the as-built centreline, for a pin drag. */
+	function wallStationAtPointer(
+		wall: CompiledPhysicalWall,
+		datum: number,
+		stage: StageFacade,
+		event: PointerEvent
+	): number | null {
+		const projectionId = stage.evaluationId();
+		if (projectionId === null || wall.samples.length < 2) return null;
+		const height = datum + wall.height + 0.09;
+		let nearest: number | null = null;
+		let nearestDistance = Number.POSITIVE_INFINITY;
+		for (let index = 0; index < wall.samples.length - 1; index += 1) {
+			const from = wall.samples[index]!;
+			const to = wall.samples[index + 1]!;
+			const a = stage.projectWorld([from.point[0], height, from.point[1]], projectionId);
+			const b = stage.projectWorld([to.point[0], height, to.point[1]], projectionId);
+			if (a.kind !== 'projected' || b.kind !== 'projected') continue;
+			const dx = b.css[0] - a.css[0];
+			const dy = b.css[1] - a.css[1];
+			const lengthSq = dx * dx + dy * dy;
+			const t = lengthSq <= 1e-9
+				? 0
+				: Math.min(1, Math.max(0, ((event.clientX - a.css[0]) * dx + (event.clientY - a.css[1]) * dy) / lengthSq));
+			const distance = Math.hypot(
+				event.clientX - (a.css[0] + dx * t),
+				event.clientY - (a.css[1] + dy * t)
+			);
+			if (distance < nearestDistance) {
+				nearestDistance = distance;
+				nearest = from.distance + (to.distance - from.distance) * t;
+			}
+		}
+		return nearest;
+	}
+
+	function unfoldedPointerPress(event: PointerEvent): boolean {
+		const stage = facade;
+		const state = wallUnfold.state;
+		const current = evaluation;
+		const layout = layoutPayload;
+		if (stage === null || current === null || layout === null || task !== null) return false;
+		if (state === null) {
+			// Before Unroll the pin is the only developed-sheet gesture: it seeds the
+			// anchor and never starts a peel.
+			const pin = unfoldPinContext(stage);
+			if (pin === null) return false;
+			if (unfoldedPinAt(stageCss(event), event.pointerType !== 'mouse', stage) === null) return false;
+			return beginSheetPin(event, pin.wallId, false);
+		}
+		const snapshot = stage.snapshot();
+		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
+		if (wall === undefined) return false;
+		const spans = wallUnfoldSourceSpans(layout, wall.wallId, wall.length);
+		const preview = wallUnfold.previewOpening;
+		const displayWall = preview?.wallId === wall.wallId ? {
+			...wall,
+			openings: wall.openings.map((opening) => opening.openingId === preview.openingId
+				? { ...opening, offset: preview.offset, width: preview.width }
+				: opening)
+		} : wall;
+		const display = buildWallUnfoldDisplay(displayWall, state, {
+			floorY: snapshot.domain.datumMeters,
+			spans,
+			sideAngle: wallUnfold.presentationAngle
+		});
+		if (display === null) return false;
+		// The sheet pick wins when the ray lands on the developed Wall. The free
+		// edge is only a peel target when the pick is empty; otherwise a press on
+		// an Opening or Wall near the edge would become an accidental refold.
+		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
+		const pick = ray.kind === 'ray' ? pickWallUnfold(display, ray.ray) : null;
+		if (pick === null) {
+			// Peel starts on the free edge, using the same development map. The
+			// candidates are a display solve, not a second geometry authority. A short
+			// screen path falls back to the bounded vertical mapping in `sheetEdgeMove`.
+			const candidates = sheetEdgeCandidates(display, state, wall, stage);
+			if (candidates.length >= 2) {
+				const threshold = event.pointerType === 'mouse' ? WALL_UNFOLD_EDGE_HIT_CSS : WALL_UNFOLD_EDGE_HIT_COARSE_CSS;
+				let nearest: WallUnfoldEdgeCandidate | null = null;
+				let nearestDistance = Number.POSITIVE_INFINITY;
+				for (const candidate of candidates) {
+					const distance = Math.hypot(candidate.css[0] - event.clientX, candidate.css[1] - event.clientY);
+					if (distance < nearestDistance) {
+						nearest = candidate;
+						nearestDistance = distance;
+					}
+				}
+				if (nearest !== null && nearestDistance <= threshold) {
+					// The peel consumes the press even if capture fails, so the failure
+					// cannot leave a half-started edge drag behind or fall through to a pick.
+					if (stageEl === undefined || !capturePointer(stageEl, event.pointerId)) {
+						press.refuse(event.pointerId);
+						return true;
+					}
+					sheetEdgeDrag = {
+						pointerId: event.pointerId,
+						wallId: wall.wallId,
+						pressY: event.clientY,
+						startU: state.u,
+						grabOffset: [event.clientX - nearest.css[0], event.clientY - nearest.css[1]],
+						candidates
+					};
+					press.refuse(event.pointerId);
+					return true;
+				}
+			}
+		}
+		// The pin is the next handle: press-and-release selects its Opening
+		// (or the Wall on solid Wall); press-and-move slides the anchor along the
+		// canonical centreline. It never moves the Camera or changes the face.
+		const pin = unfoldPinContext(stage);
+		if (pin !== null && unfoldedPinAt(stageCss(event), event.pointerType !== 'mouse', stage) !== null) {
+			return beginSheetPin(event, wall.wallId, true);
+		}
+		if (ray.kind !== 'ray' || pick === null) return false;
+		wallUnfold.recordPick(pick, event.pointerId);
+		selectUnfoldedPick(wall.wallId, pick);
+		// S5b — a press on an Opening void starts a canonical offset/width edit.
+		// The jamb is chosen by the projected edge distance; the void's analytic
+		// pick returns its centre, so edge proximity must be measured separately.
+		const sourceOpening = pick.openingId === null ? undefined : layout.openings.find((opening) => opening.id === pick.openingId);
+		const band = pick.openingId === null ? undefined : display.openingBands.find((candidate) => candidate.openingId === pick.openingId);
+		if (sourceOpening !== undefined && band !== undefined && pick.openingId !== null) {
+			// Measure each jamb at the height the pointer actually picked, not the
+			// void's mid-height. On a tall Opening those are visibly different points.
+			const height = snapshot.domain.datumMeters + Math.max(
+				band.sillHeight,
+				Math.min(band.headHeight, pick.height)
+			);
+			const projectionId = stage.evaluationId();
+			const edgeAt = (station: number): number => {
+				if (projectionId === null) return Infinity;
+				// A station past a closed Wall's seam wraps to the drawn strip's other
+				// end, where the crossing jamb is actually rendered; clamping would put
+				// the hit test on the wrong side of the strip.
+				const wrapped = display.development.closed
+					? ((station % wall.length) + wall.length) % wall.length
+					: station;
+				const at = unfoldDisplayPointAtStation(display, wrapped, wallUnfold.presentationAngle);
+				const projected = stage.projectWorld([at.point[0], height, at.point[1]], projectionId);
+				return projected.kind === 'projected'
+					? Math.hypot(projected.css[0] - event.clientX, projected.css[1] - event.clientY)
+					: Infinity;
+			};
+			const mode = sheetOpeningModeFromEdges(edgeAt(band.stationStart), edgeAt(band.stationEnd));
+			// A failed capture keeps the new Opening selection but installs no drag
+			// preview, so there is no orphaned edit to strand the next press.
+			if (stageEl !== undefined && capturePointer(stageEl, event.pointerId)) {
+				sheetOpeningDrag = {
+					pointerId: event.pointerId,
+					wallId: wall.wallId,
+					openingId: pick.openingId,
+					mode,
+					grabStation: mode === 'left' ? band.stationStart : mode === 'right' ? band.stationEnd : pick.station,
+					startOffset: sourceOpening.offset,
+					startWidth: sourceOpening.width,
+					length: wall.length,
+					closed: display.development.closed,
+					pressX: event.clientX,
+					pressY: event.clientY,
+					moved: false,
+					previewOffset: sourceOpening.offset,
+					previewWidth: sourceOpening.width
+				};
+				wallUnfold.setOpeningPreview({ wallId: wall.wallId, openingId: pick.openingId, offset: sourceOpening.offset, width: sourceOpening.width });
+			} else {
+				sheetOpeningDrag = null;
+				wallUnfold.setOpeningPreview(null);
+			}
+		}
+		// The press is consumed: its release must not run the canonical Stage pick.
+		press.refuse(event.pointerId);
+		return true;
+	}
+
+	/** Sample the free edge across the peel range, then restore the live display. */
+	function sheetEdgeCandidates(
+		display: WallUnfoldDisplay | null,
+		state: NonNullable<typeof wallUnfold.state>,
+		wall: CompiledPhysicalWall,
+		stage: StageFacade
+	): WallUnfoldEdgeCandidate[] {
+		if (display === null) return [];
+		const projectionId = stage.evaluationId();
+		if (projectionId === null) return [];
+		const station = wallUnfoldFreeEdgeStation(state, wall.length);
+		const candidates: WallUnfoldEdgeCandidate[] = [];
+		for (let step = 0; step <= 40; step += 1) {
+			const u = step / 40;
+			evaluateWallUnfoldDisplay(display, { ...state, u }, wallUnfold.presentationAngle);
+			const at = unfoldDisplayPointAtStation(display, station, wallUnfold.presentationAngle);
+			const projected = stage.projectWorld(
+				[at.point[0], display.floorY + display.height / 2, at.point[1]],
+				projectionId
+			);
+			if (projected.kind === 'projected') {
+				candidates.push({ u, css: [projected.css[0], projected.css[1]] });
+			}
+		}
+		evaluateWallUnfoldDisplay(display, state, wallUnfold.presentationAngle);
+		return candidates;
+	}
+
+	function sheetEdgeMove(event: PointerEvent): void {
+		const active = sheetEdgeDrag;
+		const state = wallUnfold.state;
+		const stage = facade;
+		if (active === null || active.pointerId !== event.pointerId || state === null || stage === null) return;
+		const wall = stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall === undefined) return;
+		const chosen = chooseUnfoldAmount({
+			candidates: active.candidates,
+			pointer: [event.clientX, event.clientY],
+			currentU: state.u,
+			grabOffset: active.grabOffset
+		});
+		const next = chosen ?? Math.min(
+			1,
+			Math.max(0, active.startU - (event.clientY - active.grabOffset[1] - active.pressY) / 260)
+		);
+		wallUnfold.setU(wall, next);
+	}
+
+	function finishSheetEdge(): void {
+		const active = sheetEdgeDrag;
+		const state = wallUnfold.state;
+		const stage = facade;
+		sheetEdgeDrag = null;
+		if (active === null || state === null || stage === null) return;
+		const wall = stage.snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall !== undefined) wallUnfold.setU(wall, snapWallUnfoldAmount(state.u));
+	}
+
+	function cancelSheetEdge(): void {
+		sheetEdgeDrag = null;
+	}
+
+	function sheetPinMove(event: PointerEvent): void {
+		const active = sheetPinDrag;
+		const stage = facade;
+		if (active === null || active.pointerId !== event.pointerId || stage === null) return;
+		if (!active.moved) {
+			if (Math.hypot(event.clientX - active.pressX, event.clientY - active.pressY) < 3) return;
+			active.moved = true;
+			unfoldPinHovered = false;
+		}
+		const snapshot = stage.snapshot();
+		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall === undefined) return;
+		const station = wallStationAtPointer(wall, snapshot.domain.datumMeters, stage, event);
+		if (station !== null) wallUnfold.setAnchor(wall, station);
+	}
+
+	function finishSheetPin(): void {
+		const active = sheetPinDrag;
+		sheetPinDrag = null;
+		if (active === null) return;
+		if (!active.moved && active.activeAtPress) selectUnfoldedSubject(active.wallId, wallUnfold.pinnedOpeningId);
+		clearHover();
+	}
+
+	function cancelSheetPin(): void {
+		sheetPinDrag = null;
+	}
+
+	function sheetOpeningMove(event: PointerEvent): void {
+		const active = sheetOpeningDrag;
+		const stage = facade;
+		const current = evaluation;
+		const layout = layoutPayload;
+		const state = wallUnfold.state;
+		if (active === null || active.pointerId !== event.pointerId || stage === null || current === null || layout === null || state === null) return;
+		const snapshot = stage.snapshot();
+		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall === undefined) return;
+		const preview = wallUnfold.previewOpening;
+		const displayWall = preview?.wallId === wall.wallId ? {
+			...wall,
+			openings: wall.openings.map((opening) => opening.openingId === preview.openingId
+				? { ...opening, offset: preview.offset, width: preview.width }
+				: opening)
+		} : wall;
+		const display = buildWallUnfoldDisplay(displayWall, state, {
+			floorY: snapshot.domain.datumMeters,
+			spans: wallUnfoldSourceSpans(layout, wall.wallId, wall.length),
+			sideAngle: wallUnfold.presentationAngle
+		});
+		if (display === null) return;
+		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
+		if (ray.kind !== 'ray') return;
+		const pick = pickWallUnfold(display, ray.ray);
+		if (pick === null) return;
+		// A press without travel is a click, not an edit: leave the preview at the
+		// canonical values so release commits nothing and the selection stands.
+		if (!active.moved && Math.hypot(event.clientX - active.pressX, event.clientY - active.pressY) <= 3) return;
+		active.moved = true;
+		const edit = mapSheetOpeningDrag({
+			mode: active.mode,
+			startOffset: active.startOffset,
+			startWidth: active.startWidth,
+			grabStation: active.grabStation,
+			pointerStation: pick.station,
+			length: active.length,
+			closed: active.closed
+		});
+		active.previewOffset = edit.offset;
+		active.previewWidth = edit.width;
+		wallUnfold.setOpeningPreview({ wallId: active.wallId, openingId: active.openingId, offset: edit.offset, width: edit.width });
+	}
+
+	async function finishSheetOpening(event: PointerEvent): Promise<void> {
+		const active = sheetOpeningDrag;
+		if (active === null || active.pointerId !== event.pointerId) return;
+		sheetOpeningDrag = null;
+		// An unmoved press selected the Opening at press time; it owes no edit.
+		if (!active.moved) {
+			wallUnfold.setOpeningPreview(null);
+			return;
+		}
+		const services = adapterServices;
+		const stage = facade;
+		if (services === null || stage === null) { wallUnfold.setOpeningPreview(null); return; }
+		const snapshot = stage.snapshot();
+		// A jamb drag previews both fields. The left edge therefore commits through
+		// the coupled resize planner (fixed right edge), not a width-only measure.
+		const edge = active.mode === 'left' ? 'left' as const : 'right' as const;
+		const value = edge === 'left'
+			? active.previewOffset
+			: active.previewOffset + active.previewWidth;
+		const target = {
+			version: 1 as const,
+			domain: 'layout' as const,
+			subject: { kind: 'opening' as const, id: active.openingId },
+			revision: { kind: 'exact' as const, contentRevision: stageUnitRevision(snapshot, 'layout') },
+			instancePath: [] as const,
+			location: {
+				kind: 'layout-location' as const,
+				levelId: snapshot.domain.layoutLevelId,
+				structureInstancePath: [] as const
+			},
+			componentId: null,
+			capabilityId: null
+		};
+		const request = {
+			operationId: globalThis.crypto.randomUUID(),
+			projectId: snapshot.acceptedRevision.projectId,
+			revisionId: services.authoring.acceptedRevision().revisionId,
+			contentRevision: stageUnitRevision(snapshot, 'layout'),
+			levelId: snapshot.domain.layoutLevelId,
+			targets: [target]
+		};
+		const outcome = active.mode === 'slide'
+			? await services.authoring.accept(buildLayoutIntent({
+				...request,
+				kind: LAYOUT_OPENING_MEASURE_KIND,
+				payload: { openingId: active.openingId, field: 'offset', value: active.previewOffset }
+			}))
+			: await services.authoring.accept(buildLayoutIntent({
+				...request,
+				kind: LAYOUT_OPENING_RESIZE_KIND,
+				payload: { openingId: active.openingId, kind: 'edge', edge, value }
+			}));
+		if (outcome.kind === 'refused') notice = outcome.message;
+		wallUnfold.setOpeningPreview(null);
+		stage.notifySurfaceChange();
+	}
+
+	function cancelSheetOpening(): void {
+		if (sheetOpeningDrag === null) return;
+		sheetOpeningDrag = null;
+		wallUnfold.setOpeningPreview(null);
+	}
+
+	/** Select a developed pick through the same `StageFacade` selection as a canonical hit. */
+	function selectUnfoldedPick(wallId: string, pick: WallUnfoldPick): void {
+		selectUnfoldedSubject(wallId, pick.openingId);
+	}
+
+	function selectUnfoldedSubject(wallId: string, openingId: string | null): void {
+		const stage = facade;
+		if (stage === null) return;
+		const sourceId = openingId ?? wallId;
+		// Use the snapshot's resolved subject reference, exactly as `selectSource`
+		// does. Constructing the reference here would re-state a revision the
+		// resolver already owns and can disagree with the current qualification.
+		const subject = stage.subjects().find((candidate) => candidate.id === sourceId);
+		if (subject !== undefined) {
+			const change = stage.setSelection({ ordered: [{ reference: subject.reference }], primary: subject.reference });
+			if (change.kind === 'selected') {
+				selection = primaryEntry(stage.selectionState());
+				experienceFocus.select(null);
+				cardOpen = true;
+				return;
+			}
+		}
+		// A compiled Wall/Opening can be present in the Plan while its resolved
+		// subject is not contributed to the Index. `selectSource` already handles
+		// that case from the Plan fragment; the unfolded pick uses the same fallback.
+		const fragment = planView === null ? undefined : planFragmentOf(planView, sourceId);
+		if (fragment === undefined) return;
+		stage.select({
+			sourceId: fragment.ref.sourceId,
+			sourceKind: fragment.ref.sourceKind,
+			generationId: fragment.ref.generationId,
+			ref: fragment.ref
+		});
+		selection = primaryEntry(stage.selectionState());
+		experienceFocus.select(null);
+		cardOpen = true;
+	}
+
 	function selectSource(sourceId: string): void {
 		const stage = facade;
 		const plan = planView;
@@ -2029,6 +2642,47 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	/* --- pointer and keyboard ---------------------------------------------- */
 
 	let drag = $state<{ x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' | 'host' } | null>(null);
+	/** S5b — one canonical Opening edit on the developed sheet. */
+	type SheetOpeningDrag = {
+		readonly pointerId: number;
+		readonly wallId: string;
+		readonly openingId: string;
+		readonly mode: SheetOpeningMode;
+		readonly grabStation: number;
+		readonly startOffset: number;
+		readonly startWidth: number;
+		readonly length: number;
+		readonly closed: boolean;
+		readonly pressX: number;
+		readonly pressY: number;
+		moved: boolean;
+		previewOffset: number;
+		previewWidth: number;
+	};
+	let sheetOpeningDrag = $state<SheetOpeningDrag | null>(null);
+	/** The free-edge peel: a display-only drag that scrubs the same session amount. */
+	type SheetEdgeDrag = {
+		readonly pointerId: number;
+		readonly wallId: string;
+		readonly pressY: number;
+		readonly startU: number;
+		/** Pointer minus the grabbed edge point at press, so the edge does not jump. */
+		readonly grabOffset: readonly [number, number];
+		readonly candidates: readonly WallUnfoldEdgeCandidate[];
+	};
+	let sheetEdgeDrag = $state<SheetEdgeDrag | null>(null);
+	/** The pin drag: a click selects its Opening; movement slides the anchor. */
+	type SheetPinDrag = {
+		readonly pointerId: number;
+		readonly wallId: string;
+		readonly pressX: number;
+		readonly pressY: number;
+		moved: boolean;
+		/** Only a press on the live sheet pin may select on release. */
+		readonly activeAtPress: boolean;
+	};
+	let sheetPinDrag = $state<SheetPinDrag | null>(null);
+	let unfoldPinHovered = $state(false);
 	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
 	let adapterMarkPress = false;
 	/** A dragging disclosure's press: a release within click tolerance toggles it. */
@@ -2106,6 +2760,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			return;
 		}
 		if (pinch !== null) { press.refuse(event.pointerId); return; }
+		// Primary, unmodified presses address the developed sheet while a Wall is
+		// unfolded. Shift/secondary presses stay navigation, which is how the
+		// creator can still orbit the sheet.
+		if (event.button === 0 && !event.shiftKey && unfoldedPointerPress(event)) return;
 		if (activeLayer?.pointerDown(event, viewMarkAt(event)) === 'claimed') return;
 		// The adapters get the press first: the binding that owns an open task (a Scene
 		// transform, an armed Ink chain) may claim it, and so may a binding that offers
@@ -2151,6 +2809,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					css,
 					evaluationId: pointerEvaluationId,
 					shift: event.shiftKey,
+					metaKey: event.metaKey,
+					ctrlKey: event.ctrlKey,
 					coarse,
 					...(handleId === undefined ? {} : { handleId }),
 					...(handleAdapterId === undefined ? {} : { handleAdapterId })
@@ -2233,6 +2893,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (hoverFrame !== null) cancelAnimationFrame(hoverFrame);
 		hoverFrame = null;
 		hoverSample = null;
+		unfoldPinHovered = false;
 		facade?.setMarkHover(null);
 		stageCursor = null;
 		session.setHover(null);
@@ -2266,6 +2927,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			refreshHostTools();
 			return;
 		}
+		// The pin is the sheet's one display handle. It sits above the sheet pick
+		// so a tap can select its Opening and a drag can move the anchor without
+		// selecting the Wall body underneath.
+		if (unfoldedPinAt(sample.css, sample.coarse, stage) !== null) {
+			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+			stage.setMarkHover(null);
+			session.setHover(null);
+			hoverSelection = null;
+			hoverMove = false;
+			unfoldPinHovered = true;
+			stageCursor = 'grab';
+			return;
+		}
+		unfoldPinHovered = false;
 		// The mark tier is above world candidates: a hovered grip suppresses the
 		// subject tint underneath, so two emphases never compete for one pointer.
 		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
@@ -2342,6 +3017,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
+		if (sheetPinDrag !== null) {
+			if (event.pointerId === sheetPinDrag.pointerId) sheetPinMove(event);
+			return;
+		}
+		if (sheetEdgeDrag !== null) {
+			if (event.pointerId === sheetEdgeDrag.pointerId) sheetEdgeMove(event);
+			return;
+		}
+		if (sheetOpeningDrag !== null) {
+			if (event.pointerId === sheetOpeningDrag.pointerId) sheetOpeningMove(event);
+			return;
+		}
 		if (pinch !== null) {
 			if (!pinch.has(event.pointerId)) return;
 			if (session.gesture() === null) { endPinch(); return; }
@@ -2392,7 +3079,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			// T3.P03.S02: one monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
 			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
-			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey, coarse: event.pointerType !== 'mouse' });
+			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
 		}
@@ -2455,6 +3142,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
+		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
+			finishSheetPin();
+			return;
+		}
+		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
+			finishSheetEdge();
+			return;
+		}
+		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
+			void finishSheetOpening(event);
+			return;
+		}
 		if (activeLayer?.pointerUp(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId)) { endPinch(); return; }
 		// A normal ending: the click that follows decides by distance, so the press is
@@ -2501,7 +3200,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				// rather than released, so no stale projection commits.
 				const phase = session.gesture() === null ? 'cancel' : 'up';
 				perfMark('input:release', { phase });
-				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey, coarse: event.pointerType !== 'mouse' });
+				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, coarse: event.pointerType !== 'mouse' });
 				if (
 					chip !== null &&
 					phase === 'up' &&
@@ -2516,6 +3215,21 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interruptPress(reason: StageInterruptionReason): void {
+		if (sheetPinDrag !== null) {
+			cancelSheetPin();
+			clearHover();
+			return;
+		}
+		if (sheetEdgeDrag !== null) {
+			cancelSheetEdge();
+			clearHover();
+			return;
+		}
+		if (sheetOpeningDrag !== null) {
+			cancelSheetOpening();
+			clearHover();
+			return;
+		}
 		if (activeLayer?.interrupt?.() === 'claimed') return;
 		if (pinch !== null) { endPinch(); clearHover(); return; }
 		const pointerId = press.owner();
@@ -2537,11 +3251,37 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
+		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
+			cancelSheetPin();
+			clearHover();
+			return;
+		}
+		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
+			cancelSheetEdge();
+			return;
+		}
+		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
+			cancelSheetOpening();
+			return;
+		}
 		if (activeLayer?.pointerCancel(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || press.ownsPointer(event.pointerId)) interruptPress('pointercancel');
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
+		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
+			cancelSheetPin();
+			clearHover();
+			return;
+		}
+		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
+			cancelSheetEdge();
+			return;
+		}
+		if (sheetOpeningDrag !== null && event.pointerId === sheetOpeningDrag.pointerId) {
+			cancelSheetOpening();
+			return;
+		}
 		if (activeLayer?.lostCapture(event) === 'claimed') return;
 		if (pinch?.has(event.pointerId) || (press.ownsPointer(event.pointerId) && drag !== null)) interruptPress('lostpointercapture');
 	}
@@ -2557,6 +3297,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// also select (or report that nothing was selectable). The decision is consumed
 		// here, after the pointer sequence has ended, and only by the pointer it belongs to.
 		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
+		// The unfolded display is the addressed surface. A click that missed it must
+		// not select the canonical Wall/Opening drawn behind the sheet (and so must
+		// not disagree with the pointer pick); an empty click stays non-selecting.
+		if (wallUnfold.state !== null) return;
 		// A frustum's captured release also dispatches a click. Its View owns that
 		// click just as it owned the press; picking the floor here clears the Card.
 		// A View glyph, Look through or placement owns the release; it must not pick the Floor.
@@ -2633,6 +3377,19 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// While a press is live the dock letters and `2` keep reaching the gesture's
 		// typed entry, exactly as before they were dock keys.
 		const action = stageKeyAction(event.key, { pressing: drag !== null || pinch !== null });
+		// S6 — B is the modifier-free Bend arm, owned by the selected Wall's adapter
+		// only when no task or press already owns the key.
+		if (
+			action.kind === 'none' &&
+			event.key.toLowerCase() === 'b' &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			facade?.selectionKeyIntent({ kind: 'type', key: 'b' }).claimed === true
+		) {
+			event.preventDefault();
+			return;
+		}
 		// A direct-manipulation writer keeps the keyboard while its press is live:
 		// Tab moves between numeric fields and a printable key opens/extends entry.
 		const gestureStage = facade;
@@ -2696,14 +3453,31 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					event.preventDefault();
 					break;
 				}
-				if (!stage.keyboardIntent({ kind: action.kind }).claimed) break;
-				// One key, one activation: the palette's own control must not also be
-				// activated by the same keystroke.
-				event.preventDefault();
+				if (stage.keyboardIntent({ kind: action.kind }).claimed) {
+					// One key, one activation: the palette's own control must not also be
+					// activated by the same keystroke.
+					event.preventDefault();
+					break;
+				}
+				// D2 — with no task or live press, the selected subject's adapter may own
+				// Backspace (the active bend point). A straight Wall does not claim it, so
+				// the existing command map is unchanged there.
+				if (stage.selectionKeyIntent({ kind: action.kind }).claimed) {
+					event.preventDefault();
+					break;
+				}
 				break;
 			}
 			case 'delete': {
 				if (activeLayer?.key(event, 'capture') === 'claimed') {
+					event.preventDefault();
+					break;
+				}
+				// D2 — an active bend point owns Delete before the Wall's destructive
+				// action. A curved Wall with no active knot claims and refuses the key, so
+				// Delete cannot silently fall through to deleting the Wall; a straight
+				// Wall is not claimed and keeps the existing `requestDelete` path.
+				if (facade?.selectionKeyIntent({ kind: 'delete' }).claimed === true) {
 					event.preventDefault();
 					break;
 				}
@@ -3837,6 +4611,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{scenePick}
 						geometry={boot.snapshot.domain.geometry}
 						sourceContentId={boot.snapshot.sourceContentId}
+						layoutRevision={boot.snapshot.domain.unitRevisions.layout}
 						scene={boot.snapshot.domain.scene}
 						rooms={boot.snapshot.domain.rooms}
 						{evaluation}
@@ -3857,6 +4632,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
 						heightMeters={lens === 'world' ? heightMeters : null}
 						heightPlaneVisible={lens === 'world' && heightPlaneVisible}
+						unfoldPinHovered={unfoldPinHovered}
+						unfoldPinActive={sheetPinDrag !== null}
+						unfoldAnchorPin={idleUnfoldPin?.point ?? null}
 					/>
 				{/if}
 				<div class="overlay-layer">

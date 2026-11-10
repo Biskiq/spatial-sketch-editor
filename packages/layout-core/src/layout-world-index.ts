@@ -1120,7 +1120,11 @@ export function verifySweptBoundsGeometryDelta(options: {
 					const inter = classifyWallIntersection(segA, segB, shared);
 					if (inter.kind === 'shared-explicit-junction') {
 						const geom = classifyWallIntersection(segA, segB, []);
-						if (geom.kind === 'collinear-overlap') return 'delegate-cold';
+						const twoWallCurvedLens =
+							shared.length === 2 &&
+							wA.centerline.kind === 'cubic-chain' &&
+							wB.centerline.kind === 'cubic-chain';
+						if (geom.kind === 'collinear-overlap' && !twoWallCurvedLens) return 'delegate-cold';
 					} else if (inter.kind !== 'none') {
 						return 'delegate-cold';
 					}
@@ -1448,7 +1452,9 @@ function buildCertifiedWorldIndex(
 	const roomsByWallMutable = new Map<string, string[]>();
 	for (let i = 0; i < layoutLength(document, 'rooms'); i += 1) {
 		const r = layoutItem(document, 'rooms', i)!;
-		if (r.boundary.length < 3) return undefined;
+		// One self-connected Wall and a two-Wall curved lens are both valid Room
+		// boundaries; closure below is the structural gate for every short boundary.
+		if (r.boundary.length < 2) return undefined;
 		roomById.set(r.id, r);
 		roomIndexById.set(r.id, i);
 		let prevEnd: string | undefined;
@@ -1558,7 +1564,14 @@ function buildCertifiedWorldIndex(
 			const shared = sharedJunctions(wA, wB);
 			const inter = classifyWallIntersection(segA, segB, shared);
 			if (inter.kind === 'shared-explicit-junction') {
-				if (classifyWallIntersection(segA, segB, []).kind === 'collinear-overlap') {
+				const twoWallCurvedLens =
+					shared.length === 2 &&
+					wA.centerline.kind === 'cubic-chain' &&
+					wB.centerline.kind === 'cubic-chain';
+				if (
+					!twoWallCurvedLens &&
+					classifyWallIntersection(segA, segB, []).kind === 'collinear-overlap'
+				) {
 					return undefined;
 				}
 			} else if (inter.kind !== 'none') {
