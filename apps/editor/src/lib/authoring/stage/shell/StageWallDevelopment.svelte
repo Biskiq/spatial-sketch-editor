@@ -140,29 +140,6 @@
 	let topologyEdges: readonly (readonly [number, number])[] = [];
 	let wallHeight = 0;
 	let wallThickness = 0;
-	let lastSide: 1 | -1 | null = null;
-	let flipFrame: number | null = null;
-
-	function startSideFlip(): void {
-		if (flipFrame !== null) cancelAnimationFrame(flipFrame);
-		const reduced = typeof window !== 'undefined' &&
-			typeof window.matchMedia === 'function' &&
-			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		if (reduced || typeof requestAnimationFrame !== 'function') {
-			hinge.rotation.y = 0;
-			return;
-		}
-		const start = performance.now();
-		hinge.rotation.y = -Math.PI;
-		const step = (now: number): void => {
-			const progress = Math.min(1, (now - start) / 260);
-			hinge.rotation.y = -Math.PI * (1 - progress);
-			invalidate();
-			if (progress < 1) flipFrame = requestAnimationFrame(step);
-			else flipFrame = null;
-		};
-		flipFrame = requestAnimationFrame(step);
-	}
 
 	function boundaryEdges(mesh: WallDevelopmentMesh): [number, number][] {
 		const edges = new Map<string, { a: number; b: number; count: number; faces: Set<string> }>();
@@ -249,9 +226,6 @@
 			display = null;
 			displayKey = null;
 			root.visible = false;
-			lastSide = null;
-			if (flipFrame !== null) cancelAnimationFrame(flipFrame);
-			flipFrame = null;
 			hinge.rotation.y = 0;
 			invalidate();
 			return;
@@ -265,6 +239,7 @@
 			previewKey,
 			sourceRevision: layoutRevision
 		});
+		const sideAngle = wallUnfold.presentationAngle;
 		if (display === null || displayKey !== nextDisplayKey) {
 			const displayWall = previewForWall === null ? wall : {
 				...wall,
@@ -272,7 +247,7 @@
 					? { ...opening, offset: previewForWall.offset, width: previewForWall.width }
 					: opening)
 			};
-			display = buildWallUnfoldDisplay(displayWall, state, { floorY: datumMeters });
+			display = buildWallUnfoldDisplay(displayWall, state, { floorY: datumMeters, sideAngle });
 			displayKey = nextDisplayKey;
 			if (display === null) {
 				root.visible = false;
@@ -292,13 +267,14 @@
 		// The hinge sits on the anchor's vertical. A side change is a display
 		// rotation only: no Camera intent, no document write.
 		const anchorStation = wrapStation(state.anchorStation, display.development.length, display.development.closed);
-		const anchor = unfoldDisplayPointAtStation(display, anchorStation);
+		const anchor = unfoldDisplayPointAtStation(display, anchorStation, sideAngle);
 		hinge.position.set(anchor.point[0], datumMeters, anchor.point[1]);
 		content.position.set(-anchor.point[0], -datumMeters, -anchor.point[1]);
 		pin.position.set(anchor.point[0], datumMeters + wallHeight + 0.09, anchor.point[1]);
-		if (lastSide !== null && lastSide !== state.side) startSideFlip();
-		lastSide = state.side;
-		const mapped = evaluateWallUnfoldDisplay(display, state);
+		// Positions carry the shared presentation angle; the hinge itself stays
+		// identity so the Stage cannot disagree with the pick transform.
+		hinge.rotation.y = 0;
+		const mapped = evaluateWallUnfoldDisplay(display, state, sideAngle);
 		const position = sheetGeometry.getAttribute('position');
 		if (position === undefined || position.array.length !== mapped.positions.length) {
 			sheetGeometry.setAttribute('position', new BufferAttribute(mapped.positions, 3));
@@ -324,7 +300,8 @@
 		const gridPointAt = (station: number, height: number): [number, number, number] => {
 			const atStation = unfoldDisplayPointAtStation(
 				display!,
-				wrapStation(station, display!.development.length, display!.development.closed)
+				wrapStation(station, display!.development.length, display!.development.closed),
+				sideAngle
 			);
 			return [
 				atStation.point[0] + atStation.normal[0] * gridLateral,
@@ -352,7 +329,7 @@
 			const station = development.closed && development.cutStation !== null
 				? developmentSheetToStation(development, sheet)
 				: sheet;
-			const at = unfoldDisplayPointAtStation(display!, station);
+			const at = unfoldDisplayPointAtStation(display!, station, sideAngle);
 			const x = at.point[0] + at.normal[0] * gridLateral;
 			const z = at.point[1] + at.normal[1] * gridLateral;
 			gridPositions.push(x, datumMeters + 0.02, z, x, datumMeters + top, z);
@@ -391,7 +368,8 @@
 			const pointAt = (station: number, lateral: number, height: number): [number, number, number] => {
 				const atStation = unfoldDisplayPointAtStation(
 					display!,
-					wrapStation(station, display!.development.length, display!.development.closed)
+					wrapStation(station, display!.development.length, display!.development.closed),
+					sideAngle
 				);
 				return [
 					atStation.point[0] + atStation.normal[0] * lateral,
@@ -422,7 +400,6 @@
 	});
 
 	$effect(() => () => {
-		if (flipFrame !== null) cancelAnimationFrame(flipFrame);
 		sheetGeometry.dispose();
 		sheetMaterial.dispose();
 		contourGeometry.dispose();

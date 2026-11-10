@@ -49,8 +49,14 @@
 		input.value = String(Math.round(clamped));
 	}
 
-	function face(next: 1 | -1): void {
-		if (state === null || state.side === next) return;
+	function face(inside: boolean): void {
+		if (state === null) return;
+		const next: 1 | -1 = inside
+			? state.insideSide
+			: state.insideSide === 1
+				? -1
+				: 1;
+		if (state.side === next) return;
 		wallUnfold.flip(wall);
 	}
 </script>
@@ -77,15 +83,15 @@
 			<div class="faces" role="group" aria-label="Sheet face">
 				<button
 					type="button"
-					aria-pressed={state.side === 1}
+					aria-pressed={state.side === state.insideSide}
 					data-wall-unroll-face="inside"
-					onclick={() => face(1)}
+					onclick={() => face(true)}
 				>Inside</button>
 				<button
 					type="button"
-					aria-pressed={state.side === -1}
+					aria-pressed={state.side !== state.insideSide}
 					data-wall-unroll-face="outside"
-					onclick={() => face(-1)}
+					onclick={() => face(false)}
 				>Outside</button>
 			</div>
 			<label class="amount">

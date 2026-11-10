@@ -4,7 +4,7 @@
  * The store owns no Camera; it may only ask the route for the legacy conditional
  * return. Entry, scrub and face changes must issue no request at all.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
@@ -83,5 +83,70 @@ describe('PR287 — Unroll preserves the Camera', () => {
 		});
 		expect(wallUnfold.state?.anchorStation).toBe(first);
 		wallUnfold.exit();
+	});
+});
+
+describe('PR287 — one persistent two-faced presentation', () => {
+	afterEach(() => {
+		wallUnfold.exit();
+		vi.unstubAllGlobals();
+	});
+
+	it('keeps a persistent half-turn for each face, including reduced motion', () => {
+		vi.stubGlobal('window', { matchMedia: () => ({ matches: true }) });
+		const wall = straightWall();
+		wallUnfold.setCameraExecutor(null);
+		wallUnfold.enter(wall, 0, ENTRY, { side: -1, insideSide: -1 });
+		expect(wallUnfold.state?.side).toBe(-1);
+		expect(wallUnfold.state?.insideSide).toBe(-1);
+		expect(wallUnfold.presentationAngle).toBeCloseTo(Math.PI, 9);
+
+		wallUnfold.flip(wall);
+		expect(wallUnfold.state?.side).toBe(1);
+		expect(wallUnfold.presentationAngle).toBeCloseTo(Math.PI * 2, 9);
+
+		wallUnfold.flip(wall);
+		expect(wallUnfold.state?.side).toBe(-1);
+		expect(wallUnfold.presentationAngle).toBeCloseTo(Math.PI * 3, 9);
+		expect(wallUnfold.state?.u).toBe(1);
+	});
+
+	it('continues from the on-screen angle when a rapid flip reverses', () => {
+		let now = 0;
+		const frames: ((time: number) => void)[] = [];
+		vi.stubGlobal('window', { matchMedia: () => ({ matches: false }) });
+		vi.stubGlobal('performance', { now: () => now });
+		vi.stubGlobal('requestAnimationFrame', (callback: (time: number) => void) => {
+			frames.push(callback);
+			return frames.length;
+		});
+		vi.stubGlobal('cancelAnimationFrame', () => {
+			frames.length = 0;
+		});
+		const step = (time: number): void => {
+			const callback = frames.shift();
+			callback?.(time);
+		};
+		const wall = straightWall();
+		wallUnfold.setCameraExecutor(null);
+		wallUnfold.enter(wall, 0, ENTRY);
+		wallUnfold.setU(wall, 0.45);
+		wallUnfold.flip(wall);
+		expect(wallUnfold.presentationAngle).toBe(0);
+
+		now = 130;
+		step(130);
+		expect(wallUnfold.presentationAngle).toBeCloseTo(Math.PI / 2, 6);
+
+		wallUnfold.flip(wall);
+		expect(wallUnfold.presentationAngle).toBeCloseTo(Math.PI / 2, 6);
+		now = 260;
+		step(260);
+		// The second flip starts from the half-turned sheet, not from π or zero.
+		expect(wallUnfold.presentationAngle).toBeCloseTo(Math.PI / 4, 6);
+		now = 390;
+		step(390);
+		expect(wallUnfold.presentationAngle).toBeCloseTo(0, 6);
+		expect(wallUnfold.state?.u).toBe(0.45);
 	});
 });

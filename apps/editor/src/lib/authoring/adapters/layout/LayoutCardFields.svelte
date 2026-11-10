@@ -24,6 +24,7 @@
 	import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		isStraightCompiledWall,
+		wallUnfoldInsideSide,
 		wallUnfoldSideTowardCamera
 	} from '$lib/layout/wall-unfold';
 	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
@@ -196,12 +197,21 @@
 			reading: evaluation?.settledReading ?? '3d',
 			anchorStation: anchor
 		});
+		// Inside is the face the derived Room actually occupies. A reversed Room
+		// winding puts that face on the Wall's right, so the two labels cannot be
+		// hard-coded to the development's left/right quads.
+		const insideSide = wallUnfoldInsideSide({
+			wallId: wall.wallId,
+			boundaries: layoutDocument?.rooms.flatMap((room) => room.boundary) ?? [],
+			cameraSide: side
+		});
 		wallUnfold.enter(
 			wall,
 			anchor,
 			evaluation === null ? undefined : { pose: evaluation.pose, reading: evaluation.settledReading },
 			{
 				side,
+				insideSide,
 				floorY: stage.snapshot().domain.datumMeters,
 				straight: isStraightCompiledWall(wall)
 			}

@@ -2026,7 +2026,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		} : wall;
 		const display = buildWallUnfoldDisplay(displayWall, state, {
 			floorY: snapshot.domain.datumMeters,
-			spans
+			spans,
+			sideAngle: wallUnfold.presentationAngle
 		});
 		if (display === null) return false;
 		// Peel starts on the free edge, before the sheet pick. The candidates are
@@ -2088,7 +2089,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				const wrapped = display.development.closed
 					? ((station % wall.length) + wall.length) % wall.length
 					: station;
-				const at = unfoldDisplayPointAtStation(display, wrapped);
+				const at = unfoldDisplayPointAtStation(display, wrapped, wallUnfold.presentationAngle);
 				const projected = stage.projectWorld([at.point[0], height, at.point[1]], projectionId);
 				return projected.kind === 'projected'
 					? Math.hypot(projected.css[0] - event.clientX, projected.css[1] - event.clientY)
@@ -2133,8 +2134,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const candidates: WallUnfoldEdgeCandidate[] = [];
 		for (let step = 0; step <= 40; step += 1) {
 			const u = step / 40;
-			evaluateWallUnfoldDisplay(display, { ...state, u });
-			const at = unfoldDisplayPointAtStation(display, station);
+			evaluateWallUnfoldDisplay(display, { ...state, u }, wallUnfold.presentationAngle);
+			const at = unfoldDisplayPointAtStation(display, station, wallUnfold.presentationAngle);
 			const projected = stage.projectWorld(
 				[at.point[0], display.floorY + display.height / 2, at.point[1]],
 				projectionId
@@ -2143,7 +2144,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				candidates.push({ u, css: [projected.css[0], projected.css[1]] });
 			}
 		}
-		evaluateWallUnfoldDisplay(display, state);
+		evaluateWallUnfoldDisplay(display, state, wallUnfold.presentationAngle);
 		return candidates;
 	}
 
@@ -2200,7 +2201,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		} : wall;
 		const display = buildWallUnfoldDisplay(displayWall, state, {
 			floorY: snapshot.domain.datumMeters,
-			spans: wallUnfoldSourceSpans(layout, wall.wallId, wall.length)
+			spans: wallUnfoldSourceSpans(layout, wall.wallId, wall.length),
+			sideAngle: wallUnfold.presentationAngle
 		});
 		if (display === null) return;
 		const ray = pointerRay([event.clientX, event.clientY], current, current.token);

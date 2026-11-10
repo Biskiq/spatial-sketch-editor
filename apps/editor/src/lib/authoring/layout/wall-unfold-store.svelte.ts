@@ -18,6 +18,7 @@ import {
 	isStraightCompiledWall,
 	refoldWallUnfold,
 	setWallUnfoldAmount,
+	wallUnfoldSideAngle,
 	type WallUnfoldState
 } from '$lib/layout/wall-unfold';
 import type { WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
@@ -52,6 +53,11 @@ function smoothstep(value: number): number {
 
 class WallUnfoldStore {
 	state = $state<WallUnfoldState | null>(null);
+	/**
+	 * The one live face transform: a world-Y angle around the fixed pin. The
+	 * Stage sheet, picks, station mapping and edge drags all read this value.
+	 */
+	presentationAngle = $state(0);
 	/** The last pointer pick, session-only: it is evidence, never authored data. */
 	lastPick = $state<(WallUnfoldPick & { readonly pointerId: number; readonly sequence: number }) | null>(null);
 	/** Live sheet Opening drag; display-only until the canonical planner accepts. */
@@ -64,6 +70,7 @@ class WallUnfoldStore {
 	#pickSequence = 0;
 	#executor: CameraExecutor | null = null;
 	#frame: number | null = null;
+	#sideFrame: number | null = null;
 
 	setCameraExecutor(executor: CameraExecutor | null): void {
 		this.#executor = executor;
@@ -85,6 +92,7 @@ class WallUnfoldStore {
 		entry?: { readonly pose: InspectionPose; readonly reading: ViewportReading },
 		options: {
 			readonly side?: 1 | -1;
+			readonly insideSide?: 1 | -1;
 			readonly floorY?: number;
 			readonly straight?: boolean;
 		} = {}
@@ -97,6 +105,7 @@ class WallUnfoldStore {
 			wall,
 			anchorStation,
 			side: options.side,
+			insideSide: options.insideSide,
 			entry: entry ?? this.state?.entry ?? DEFAULT_ENTRY,
 			u: straight ? 1 : 0,
 			// The cut is display-only, but it must still land on solid Wall rather
@@ -107,6 +116,8 @@ class WallUnfoldStore {
 			}))
 		});
 		this.state = state;
+		this.#cancelSideFrame();
+		this.presentationAngle = wallUnfoldSideAngle(state.side);
 		// D5 — entry changes no Camera at all: no fit, no orientation change. The
 		// current pose is preserved and Bring into view remains the explicit action.
 		if (straight) {
@@ -141,6 +152,7 @@ class WallUnfoldStore {
 		if (this.state === null) return;
 		// D6 — the side is a display reading change, never a camera move.
 		this.state = flipWallUnfoldSide(this.state);
+		this.#animateSide(this.state.side);
 	}
 
 	refold(wall: CompiledPhysicalWall): void {
@@ -149,6 +161,7 @@ class WallUnfoldStore {
 
 	exit(wall?: CompiledPhysicalWall): void {
 		if (this.state === null) return;
+		this.#cancelSideFrame();
 		this.lastPick = null;
 		this.previewOpening = null;
 		const state = this.state;
@@ -160,6 +173,47 @@ class WallUnfoldStore {
 		} else {
 			this.state = null;
 		}
+	}
+
+	/** The settled angle for a face, choosing the half-turn from the current pose. */
+	#sideTarget(side: 1 | -1): number {
+		const base = wallUnfoldSideAngle(side);
+		const current = this.presentationAngle;
+		const turns = Math.round((current - base) / (Math.PI * 2));
+		let target = base + turns * Math.PI * 2;
+		if (Math.abs(target - current) <= 1e-9) target += Math.PI * 2;
+		// A tie is a half-turn either way; continue in the current direction so a
+		// rapid double flip completes the physical turn instead of snapping back.
+		if (Math.abs(target - current - Math.PI) <= 1e-9 && target < current) target += Math.PI * 2;
+		return target;
+	}
+
+	#animateSide(side: 1 | -1): void {
+		this.#cancelSideFrame();
+		const target = this.#sideTarget(side);
+		const reducedMotion = typeof window !== 'undefined' &&
+			typeof window.matchMedia === 'function' &&
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (reducedMotion || typeof requestAnimationFrame !== 'function') {
+			this.presentationAngle = target;
+			return;
+		}
+		const from = this.presentationAngle;
+		const start = performance.now();
+		const step = (now: number): void => {
+			const progress = Math.min(1, (now - start) / 260);
+			this.presentationAngle = from + (target - from) * smoothstep(progress);
+			if (progress < 1) this.#sideFrame = requestAnimationFrame(step);
+			else this.#sideFrame = null;
+		};
+		this.#sideFrame = requestAnimationFrame(step);
+	}
+
+	#cancelSideFrame(): void {
+		if (this.#sideFrame !== null && typeof cancelAnimationFrame === 'function') {
+			cancelAnimationFrame(this.#sideFrame);
+		}
+		this.#sideFrame = null;
 	}
 
 	/** Record the canonical attribution a live Stage press resolved. */
