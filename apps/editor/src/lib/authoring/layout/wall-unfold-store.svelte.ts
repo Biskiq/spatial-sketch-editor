@@ -2,12 +2,12 @@
  * C3 checkpoint 5 — the one live unfold context, as a session store.
  *
  * Runes make the Card scrubber, the Stage sheet and the adapter actions read
- * the same state. Entry preserves the Camera's orientation and may perform one
- * bounded fit; peeling, face changes and edits never write the Camera. Put back
- * asks for the exact entry pose only when entry adjusted the Camera and the
- * creator has not navigated since. Session state survives an accepted edit's
- * adapter rebind; it is cleared only by Put back, subject removal or a replaced
- * document.
+ * the same state. Entry **never moves the Camera**: the current pose is the one
+ * the creator chose, and the Card's existing Bring into view is the explicit
+ * framing action. Peeling, face changes and edits never write the Camera. Put
+ * back therefore writes no Camera intent either; it only folds the sheet.
+ * Session state survives an accepted edit's adapter rebind; it is cleared only
+ * by Put back, subject removal or a replaced document.
  */
 import type { CompiledPhysicalWall } from '@portfolio/layout-core';
 import type { InspectionPose, ViewportReading } from '@portfolio/camera-core';
@@ -18,25 +18,17 @@ import {
 	isStraightCompiledWall,
 	refoldWallUnfold,
 	setWallUnfoldAmount,
-	wallUnfoldFitBounds,
-	type WallUnfoldBounds,
 	type WallUnfoldState
 } from '$lib/layout/wall-unfold';
 import type { WallUnfoldPick } from '$lib/layout/wall-unfold-pick';
 
-export type WallUnfoldCameraRequest =
-	| {
-			readonly kind: 'fit';
-			readonly wallId: string;
-			readonly bounds: WallUnfoldBounds;
-	  }
-	| {
-			readonly kind: 'return';
-			readonly pose: InspectionPose;
-			readonly reading: ViewportReading;
-			readonly entryAdjusted: boolean;
-			readonly settled: { readonly pose: InspectionPose; readonly reading: ViewportReading } | null;
-	  };
+export type WallUnfoldCameraRequest = {
+	readonly kind: 'return';
+	readonly pose: InspectionPose;
+	readonly reading: ViewportReading;
+	readonly entryAdjusted: boolean;
+	readonly settled: { readonly pose: InspectionPose; readonly reading: ViewportReading } | null;
+};
 
 type CameraExecutor = (request: WallUnfoldCameraRequest) => boolean;
 
@@ -115,11 +107,8 @@ class WallUnfoldStore {
 			}))
 		});
 		this.state = state;
-		// D5 — entry changes no Camera orientation. One bounded fit is allowed;
-		// the route records the settled pose after the fit so Put back can tell
-		// deliberate navigation from the entry adjustment.
-		const fitted = this.#requestFit(wall, state, options.floorY ?? 0);
-		if (fitted) this.state = { ...this.state, entryAdjusted: true };
+		// D5 — entry changes no Camera at all: no fit, no orientation change. The
+		// current pose is preserved and Bring into view remains the explicit action.
 		if (straight) {
 			// The straight Wall enters already flat: there is nothing to peel and
 			// no artificial unfolding animation.
@@ -222,15 +211,6 @@ class WallUnfoldStore {
 			cancelAnimationFrame(this.#frame);
 		}
 		this.#frame = null;
-	}
-
-	#requestFit(wall: CompiledPhysicalWall, state: WallUnfoldState, floorY: number): boolean {
-		if (this.#executor === null) return false;
-		return this.#executor({
-			kind: 'fit',
-			wallId: wall.wallId,
-			bounds: wallUnfoldFitBounds({ wall, state, floorY })
-		});
 	}
 
 	#requestReturn(state: WallUnfoldState): void {

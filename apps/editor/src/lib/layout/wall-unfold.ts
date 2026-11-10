@@ -14,8 +14,10 @@
  */
 import {
 	createWallDevelopmentBuffers,
+	createWallDevelopmentSheetBuffers,
 	cubicBezierArcLength,
 	evaluateWallDevelopment,
+	evaluateWallDevelopmentSheet,
 	prepareWallDevelopment,
 	wallCenterlineCubics,
 	type CompiledPhysicalWall,
@@ -114,15 +116,18 @@ export function wallUnfoldSamples(wall: CompiledPhysicalWall): CurveSample[] {
 }
 
 /**
- * Choose the anchor. A selected Opening on this Wall wins (its centre is the
- * place the creator is already looking at); otherwise the station nearest the
- * view-centre ray, and finally the canonical start. A closed Wall wraps its
- * anchor, so the display cut can never move the canonical seam.
+ * Choose the anchor deterministically. A selected Opening on this Wall is a
+ * deliberate override (its centre is where the creator is already working); an
+ * explicit pin is the second override; otherwise the canonical start is the
+ * stable default. The Camera target is deliberately absent: the same Wall and
+ * the same explicit anchor must produce the same development from any view.
+ * A closed Wall wraps its anchor, so the display cut can never move the seam.
  */
 export function wallUnfoldAnchor(input: {
 	readonly wall: CompiledPhysicalWall;
 	readonly selectedOpeningCenter?: number | null;
-	readonly viewCentreStation?: number | null;
+	/** A deliberate session pin; never inferred from the Camera. */
+	readonly pinStation?: number | null;
 }): number {
 	const length = input.wall.length;
 	if (!(length > 0)) return 0;
@@ -131,8 +136,8 @@ export function wallUnfoldAnchor(input: {
 	if (input.selectedOpeningCenter !== undefined && input.selectedOpeningCenter !== null && Number.isFinite(input.selectedOpeningCenter)) {
 		return normalise(input.selectedOpeningCenter);
 	}
-	if (input.viewCentreStation !== undefined && input.viewCentreStation !== null && Number.isFinite(input.viewCentreStation)) {
-		return normalise(input.viewCentreStation);
+	if (input.pinStation !== undefined && input.pinStation !== null && Number.isFinite(input.pinStation)) {
+		return normalise(input.pinStation);
 	}
 	return 0;
 }
@@ -314,11 +319,24 @@ export function wallUnfoldFitBounds(input: {
 		cutStation: state.cutStation
 	});
 	if (!('refused' in prepared)) {
-		const buffers = createWallDevelopmentBuffers(prepared);
-		for (const u of [0, 0.5, 1]) {
-			evaluateWallDevelopment(prepared, u, buffers);
-			for (let index = 0; index < prepared.sampleCount; index += 1) {
-				include(buffers.points[index * 2]!, buffers.points[index * 2 + 1]!);
+		if (isClosedCompiledWall(wall) && prepared.cutStation !== null) {
+			// A closed Wall is rendered as the cut-to-cut sheet, not the canonical
+			// seam-to-seam map. Bound the same rendered points the Stage draws, or a
+			// partial peel can leave the frame the fit promised to cover.
+			const sheet = createWallDevelopmentSheetBuffers(prepared);
+			for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+				evaluateWallDevelopmentSheet(prepared, u, sheet);
+				for (let index = 0; index < sheet.sheet.length; index += 1) {
+					include(sheet.points[index * 2]!, sheet.points[index * 2 + 1]!);
+				}
+			}
+		} else {
+			const buffers = createWallDevelopmentBuffers(prepared);
+			for (const u of [0, 0.5, 1]) {
+				evaluateWallDevelopment(prepared, u, buffers);
+				for (let index = 0; index < prepared.sampleCount; index += 1) {
+					include(buffers.points[index * 2]!, buffers.points[index * 2 + 1]!);
+				}
 			}
 		}
 	} else {
@@ -386,34 +404,51 @@ export function unfoldEdgePathLength(candidates: readonly WallUnfoldEdgeCandidat
 }
 
 /**
- * The pointer solve for a free-edge peel: take the candidate nearest the
- * pointer, biased toward the current amount so the sheet does not jump between
- * equal-distance samples. `null` means the screen path is too short to read (the
- * edge travels toward the Camera) and the caller should use the 260 px mapping.
+ * The pointer solve for a free-edge peel. The candidate samples bound the path,
+ * but the answer is the **continuous projection** onto the segment between
+ * them, never the nearest sample: the grabbed edge follows the pointer instead
+ * of stepping through 21 amounts. `grabOffset` preserves where inside the edge
+ * band the press landed, and the small current-amount bias is hysteresis at a
+ * medial axis, not a quantiser. `null` means the screen path is too short to
+ * read (the edge travels toward the Camera), so the caller uses the 260 px map.
  */
 export function chooseUnfoldAmount(input: {
 	readonly candidates: readonly WallUnfoldEdgeCandidate[];
 	readonly pointer: readonly [number, number];
 	readonly currentU: number;
 	readonly biasPx?: number;
+	/** Pointer minus the grabbed edge point at press, in CSS pixels. */
+	readonly grabOffset?: readonly [number, number];
 }): number | null {
 	if (input.candidates.length < 2) return null;
 	if (unfoldEdgePathLength(input.candidates) < 120) return null;
-	const bias = input.biasPx ?? 30;
-	let best: WallUnfoldEdgeCandidate | null = null;
+	const bias = input.biasPx ?? 6;
+	const offset = input.grabOffset ?? [0, 0];
+	const targetX = input.pointer[0] - offset[0];
+	const targetY = input.pointer[1] - offset[1];
+	let bestU: number | null = null;
 	let bestScore = Number.POSITIVE_INFINITY;
-	for (const candidate of input.candidates) {
-		const distance = Math.hypot(
-			candidate.css[0] - input.pointer[0],
-			candidate.css[1] - input.pointer[1]
-		);
-		const score = distance + Math.abs(candidate.u - input.currentU) * bias;
+	for (let index = 0; index < input.candidates.length - 1; index += 1) {
+		const start = input.candidates[index]!;
+		const end = input.candidates[index + 1]!;
+		const dx = end.css[0] - start.css[0];
+		const dy = end.css[1] - start.css[1];
+		const squared = dx * dx + dy * dy;
+		const raw = squared === 0
+			? 0
+			: ((targetX - start.css[0]) * dx + (targetY - start.css[1]) * dy) / squared;
+		const amount = clamp(raw, 0, 1);
+		const pointX = start.css[0] + dx * amount;
+		const pointY = start.css[1] + dy * amount;
+		const distance = Math.hypot(targetX - pointX, targetY - pointY);
+		const u = start.u + (end.u - start.u) * amount;
+		const score = distance + Math.abs(u - input.currentU) * bias;
 		if (score < bestScore) {
-			best = candidate;
 			bestScore = score;
+			bestU = u;
 		}
 	}
-	return best?.u ?? null;
+	return bestU === null ? null : clamp(bestU, 0, 1);
 }
 
 /** The drag-to-open mapping: `u = |drag| / 260` CSS px, clamped. */

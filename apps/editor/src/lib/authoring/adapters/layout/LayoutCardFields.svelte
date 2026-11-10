@@ -24,8 +24,7 @@
 	import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		isStraightCompiledWall,
-		wallUnfoldSideTowardCamera,
-		wallUnfoldViewCentreStation
+		wallUnfoldSideTowardCamera
 	} from '$lib/layout/wall-unfold';
 	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
 
@@ -161,10 +160,11 @@
 	});
 
 	/**
-	 * Enter from the Card foot. The view centre names the anchor and the eye side
-	 * names the face, so the reading opens where the creator is looking; a
-	 * selected Opening on the same Wall is the second anchor preference. Entry
-	 * records the current orientation and asks the session for one bounded fit.
+	 * Enter from the Card foot. The anchor is deterministic: a selected Opening
+	 * on the same Wall wins, otherwise the canonical start. The Camera target is
+	 * not an anchor input, so the same Wall opens at the same development from
+	 * any view. The eye still names which face is read, and entry preserves the
+	 * current Camera pose; Bring into view is the explicit framing action.
 	 */
 	function toggleUnfold(): void {
 		const wall = selectedHostWall;
@@ -179,10 +179,7 @@
 		const opening = selection?.sourceKind === 'opening'
 			? wall.openings.find((candidate) => candidate.openingId === selection.sourceId)
 			: undefined;
-		const viewCentre = evaluation === null
-			? null
-			: wallUnfoldViewCentreStation(wall, evaluation.target);
-		const anchor = viewCentre ?? (opening === undefined ? 0 : opening.offset + opening.width / 2);
+		const anchor = opening === undefined ? 0 : opening.offset + opening.width / 2;
 		const side = wallUnfoldSideTowardCamera({
 			wall,
 			eye: evaluation?.eye ?? null,

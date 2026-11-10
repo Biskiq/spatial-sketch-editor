@@ -493,11 +493,15 @@ describe('C3 checkpoint 5 — unfold session', () => {
 		expect(pinProjection).toBeLessThan(0.9);
 	});
 
-	it('selects the anchor from the selected Opening, then the view centre, then the start', () => {
+	it('selects the anchor from a deliberate Opening or pin, never the Camera target', () => {
 		const fixture = sCurveFixture();
 		const wall = compiledWall(fixture);
-		expect(wallUnfoldAnchor({ wall, selectedOpeningCenter: 3.2, viewCentreStation: 1 })).toBe(3.2);
-		expect(wallUnfoldAnchor({ wall, selectedOpeningCenter: null, viewCentreStation: 1 })).toBe(1);
+		// The input has no Camera field at all: the same Wall and explicit anchor
+		// produce the same anchor from any view. Opening beats pin; pin beats the
+		// canonical start.
+		expect(wallUnfoldAnchor({ wall, selectedOpeningCenter: 3.2, pinStation: 1 })).toBe(3.2);
+		expect(wallUnfoldAnchor({ wall, selectedOpeningCenter: null, pinStation: 1 })).toBe(1);
+		expect(wallUnfoldAnchor({ wall, selectedOpeningCenter: null, pinStation: null })).toBe(0);
 		expect(wallUnfoldAnchor({ wall })).toBe(0);
 		const circle = compiledWall(circleFixture());
 		const anchored = wallUnfoldAnchor({ wall: circle, selectedOpeningCenter: circle.length + 1 });
@@ -813,8 +817,62 @@ describe('C3 revision 2 — entry camera, face and free-edge helpers', () => {
 			{ u: 1, css: [200, 0] as const }
 		];
 		expect(unfoldEdgePathLength(candidates)).toBeCloseTo(200, 6);
-		expect(chooseUnfoldAmount({ candidates, pointer: [104, 0], currentU: 0.5 })).toBe(0.5);
-		expect(chooseUnfoldAmount({ candidates, pointer: [180, 0], currentU: 0 })).toBe(1);
+		// Continuous projection between samples, not the nearest sample.
+		expect(chooseUnfoldAmount({ candidates, pointer: [104, 0], currentU: 0.5 })).toBeCloseTo(0.52, 6);
+		expect(chooseUnfoldAmount({ candidates, pointer: [180, 0], currentU: 0 })).toBeCloseTo(0.9, 6);
+		// The grab offset keeps the edge under the point the creator grabbed.
+		expect(chooseUnfoldAmount({
+			candidates,
+			pointer: [104, 0],
+			currentU: 0.5,
+			grabOffset: [4, 0]
+		})).toBeCloseTo(0.5, 6);
+		// One CSS pixel of pointer travel is one continuous amount step; there is
+		// no sampled plateau or jump between candidate amounts.
+		const before = chooseUnfoldAmount({ candidates, pointer: [100, 0], currentU: 0.5 })!;
+		const after = chooseUnfoldAmount({ candidates, pointer: [101, 0], currentU: 0.5 })!;
+		expect(after - before).toBeCloseTo(0.005, 6);
 		expect(chooseUnfoldAmount({ candidates: candidates.slice(0, 2), pointer: [10, 0], currentU: 0 })).toBeNull();
+	});
+
+	it('bounds every rendered point of a closed partial sheet', () => {
+		const fixture = circleFixture();
+		const wall = compiledWall(fixture);
+		const state = stateFor(fixture, wall.length * 0.2, 0.35);
+		const bounds = wallUnfoldFitBounds({ wall, state, floorY: 12 });
+		const development = developmentFor(fixture, state);
+		const sheet = createWallDevelopmentSheetBuffers(development);
+		for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+			evaluateWallDevelopmentSheet(development, u, sheet);
+			for (let index = 0; index < sheet.sheet.length; index += 1) {
+				const x = sheet.points[index * 2]!;
+				const z = sheet.points[index * 2 + 1]!;
+				expect(x).toBeGreaterThanOrEqual(bounds.min[0]);
+				expect(x).toBeLessThanOrEqual(bounds.max[0]);
+				expect(z).toBeGreaterThanOrEqual(bounds.min[2]);
+				expect(z).toBeLessThanOrEqual(bounds.max[2]);
+			}
+		}
+	});
+
+	it('keeps a multi-bend Bézier sheet arc-length exact at intermediate amounts', () => {
+		const fixture = multiFixture();
+		const wall = compiledWall(fixture);
+		const state = stateFor(fixture, wall.length * 0.3, 0.55);
+		const development = developmentFor(fixture, state);
+		const buffers = createWallDevelopmentBuffers(development);
+		for (const u of [0.25, 0.5, 0.75]) {
+			evaluateWallDevelopment(development, u, buffers);
+			let length = 0;
+			for (let index = 1; index < development.sampleCount; index += 1) {
+				length += Math.hypot(
+					buffers.points[index * 2]! - buffers.points[(index - 1) * 2]!,
+					buffers.points[index * 2 + 1]! - buffers.points[(index - 1) * 2 + 1]!
+				);
+			}
+			// Rendered chord sampling on a 17 m multi-bend Wall stays within 2 cm of
+			// the compiled arc length at every intermediate amount.
+			expect(Math.abs(length - wall.length)).toBeLessThan(0.02);
+		}
 	});
 });
