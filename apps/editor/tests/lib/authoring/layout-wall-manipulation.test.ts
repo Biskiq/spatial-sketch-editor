@@ -279,7 +279,17 @@ async function activateFirstBendPoint(mounted: Mounted): Promise<void> {
  * tip is Stage-local CSS, so pressing it exercises the real mark tier rather
  * than passing a handle id around it.
  */
+/** The Wall's size disclosure is the one route to its length ray. */
+function revealWallSize(mounted: Mounted): void {
+	const chip = mounted.facade.marks().find(
+		(candidate) => candidate.id === 'layout-wall-size-chip' && candidate.role === 'disclose'
+	);
+	if (chip === undefined) throw new Error('the Wall size chip is not admitted');
+	if (!mounted.facade.activateDisclosure(chip.id)) throw new Error('the Wall size chip did not open');
+}
+
 function lengthRayPress(mounted: Mounted): [number, number] {
+	revealWallSize(mounted);
 	const mark = mounted.facade.marks().find((candidate) => candidate.id === 'layout-wall-length');
 	if (mark?.tip === null || mark?.tip === undefined) throw new Error('the Wall length ray is not projected');
 	return [mark.tip[0], mark.tip[1]];
@@ -1018,18 +1028,25 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		const marks = mounted.facade.marks();
 		expect(marks.map((mark) => mark.id)).toEqual(
 			expect.arrayContaining([
+				'layout-wall-size-chip',
 				'layout-wall-start-mark',
-				'layout-wall-end-mark',
-				'layout-wall-length'
+				'layout-wall-end-mark'
 			])
 		);
+		// The size chip is the one route to the length ray; before it opens the ray
+		// is not admitted to the drawn/hit vocabulary.
+		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-length');
+		revealWallSize(mounted);
+		expect(mounted.facade.marks().map((mark) => mark.id)).toContain('layout-wall-length');
 		// The rigid move glyph is retired; the hidden writer record is not drawn.
 		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-move-mark');
 		// The owner's 2026-10-29 ruling removes the Wall angle ring: it is not part
 		// of the ratified Wall vocabulary. Angle stays a Card field, not a grip.
 		expect(marks.map((mark) => mark.id)).not.toContain('layout-wall-angle');
 		expect(createCardFieldsInstrument(mounted.services)!.fields().some((field) => field.id === 'angle')).toBe(true);
-		expect(marks.every((mark) => mark.planner !== null)).toBe(true);
+		// The size chip is a disclosure, not a writer: only editing grips name a
+		// planner. The chip's role is to reveal the length ray.
+		expect(marks.filter((mark) => mark.role === 'edit').every((mark) => mark.planner !== null)).toBe(true);
 		expect(mounted.facade.overlays().some((marker) => marker.id === 'layout-wall-start')).toBe(false);
 	});
 
@@ -1037,6 +1054,7 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
+		revealWallSize(mounted);
 		const marks = mounted.facade.marks();
 		const distance = (a: readonly [number, number], b: readonly [number, number]) =>
 			Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -1350,6 +1368,7 @@ describe('R217.S07 — Layout marks, numeric entry and coarse pointers', () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
+		revealWallSize(mounted);
 		const evaluationId = mounted.facade.evaluationId()!;
 		const marks = mounted.facade.marks();
 		const end = marks.find((mark) => mark.id === 'layout-wall-end-mark')!;
@@ -2078,6 +2097,71 @@ describe('R217.S15 — gesture numeric entry', () => {
 		expect(restored.centerline.knots).toHaveLength(0);
 		// The Card remains the non-pointer path for the Wall's ordinary fields.
 		expect(createCardFieldsInstrument(mounted.services)!.fields().some((field) => field.id === 'height')).toBe(true);
+	});
+
+	it('removes an existing knot by flattening it onto the neighbour chord, and Undo restores it', async () => {
+		const base = createEmptyWallFirstLayoutDocument();
+		base.floor.elevation = ELEVATION;
+		base.junctions = [
+			{ id: 'c-a', point: [0, 0] },
+			{ id: 'c-b', point: [6, 0] }
+		];
+		base.walls = [
+			{
+				id: 'curved',
+				startJunctionId: 'c-a',
+				endJunctionId: 'c-b',
+				thickness: 0.2,
+				height: 3,
+				centerline: {
+					kind: 'cubic-chain',
+					knots: [],
+					spans: [{ handleOut: [2, 3], handleIn: [4, 3] }]
+				}
+			} satisfies LayoutWall
+		];
+		const mounted = await mount({ document: base, wallId: 'curved', openingId: '' });
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, 'curved');
+		const curved = curvedWallFrame(acceptedLayout(mounted.facade), 'curved')!;
+		const from = stageCss(mounted.facade, curvedWallPointAt(curved, curved.length / 2)!.point);
+		const evaluationId = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, metaKey: true }).claimed).toBe(true);
+		const bendTo = stageCss(mounted.facade, [3, 3.4]);
+		mounted.facade.pointerIntent({ phase: 'move', css: bendTo, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: bendTo, evaluationId });
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;
+			return wall.centerline.kind === 'cubic-chain' && wall.centerline.knots.length === 1;
+		});
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+
+		selectWall(mounted.facade, 'curved');
+		settle(mounted.facade, 3);
+		const bent = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;
+		if (bent.centerline.kind !== 'cubic-chain') throw new Error('expected a bent chain');
+		const knot = bent.centerline.knots[0]!;
+		const knotCss = stageCss(mounted.facade, [knot.point[0], knot.point[1]]);
+		const removalEvaluation = mounted.facade.evaluationId()!;
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: knotCss, evaluationId: removalEvaluation, metaKey: true }).claimed).toBe(true);
+		// Leave the chord first, then return to it: the must-leave hysteresis.
+		mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted.facade, [3, 4]), evaluationId: removalEvaluation });
+		const chord = stageCss(mounted.facade, [3, 0.02]);
+		mounted.facade.pointerIntent({ phase: 'move', css: chord, evaluationId: removalEvaluation });
+		const removal = mounted.facade.candidatePreviews().find((candidate) => candidate.id === 'layout-candidate-wall-bend-remove');
+		expect(removal).toBeDefined();
+		expect(removal!.labels[0]?.text).toBe('Remove bend point');
+		mounted.facade.pointerIntent({ phase: 'up', css: chord, evaluationId: removalEvaluation });
+		await eventually(() => {
+			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;
+			return wall.centerline.kind !== 'cubic-chain' || wall.centerline.knots.length === 0;
+		});
+		expect(mounted.host.history()).toMatchObject({ depth: 3, position: 2 });
+		expect((await mounted.host.undo()).kind).toBe('installed');
+		const restored = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;
+		expect(restored.centerline.kind).toBe('cubic-chain');
+		if (restored.centerline.kind !== 'cubic-chain') return;
+		expect(restored.centerline.knots).toHaveLength(1);
 	});
 
 	it('plain-drags a connected curved Wall without changing its knots or Opening station', async () => {

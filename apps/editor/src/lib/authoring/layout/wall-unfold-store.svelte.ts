@@ -106,7 +106,13 @@ class WallUnfoldStore {
 			anchorStation,
 			side: options.side,
 			entry: entry ?? this.state?.entry ?? DEFAULT_ENTRY,
-			u: straight ? 1 : 0
+			u: straight ? 1 : 0,
+			// The cut is display-only, but it must still land on solid Wall rather
+			// than inside an Opening's void.
+			openings: wall.openings.map((opening) => ({
+				start: opening.offset,
+				end: opening.offset + opening.width
+			}))
 		});
 		this.state = state;
 		// D5 — entry changes no Camera orientation. One bounded fit is allowed;

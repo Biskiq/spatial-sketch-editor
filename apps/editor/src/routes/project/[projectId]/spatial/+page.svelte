@@ -777,6 +777,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const layout = layoutPayload;
 		return layout?.walls.find((candidate) => candidate.id === wall.wallId)?.name ?? null;
 	});
+	/** The Room whose boundary owns the unrolled Wall, named from the Layout Room. */
+	const unfoldRoomName = $derived.by(() => {
+		const wall = unfoldStageWall;
+		const stage = facade;
+		if (wall === null || stage === null) return null;
+		const room = stage.snapshot().domain.geometry.rooms.find((candidate) =>
+			candidate.walls.some((compiled) => compiled.segmentId === wall.wallId)
+		);
+		if (room === undefined) return null;
+		return layoutPayload?.rooms.find((candidate) => candidate.id === room.roomId)?.name ?? null;
+	});
 	/**
 	 * C3/D14 — the single executor for unfold camera requests.
 	 *
@@ -2120,13 +2131,22 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const sourceOpening = pick.openingId === null ? undefined : layout.openings.find((opening) => opening.id === pick.openingId);
 		const band = pick.openingId === null ? undefined : display.openingBands.find((candidate) => candidate.openingId === pick.openingId);
 		if (sourceOpening !== undefined && band !== undefined && pick.openingId !== null) {
-			const height = snapshot.domain.datumMeters + (band.sillHeight + band.headHeight) / 2;
+			// Measure each jamb at the height the pointer actually picked, not the
+			// void's mid-height. On a tall Opening those are visibly different points.
+			const height = snapshot.domain.datumMeters + Math.max(
+				band.sillHeight,
+				Math.min(band.headHeight, pick.height)
+			);
 			const projectionId = stage.evaluationId();
 			const edgeAt = (station: number): number => {
 				if (projectionId === null) return Infinity;
-				// Stations past a closed Wall's seam clamp to the drawn strip end, which
-				// is where the void's visible jamb is actually rendered.
-				const at = developmentPointAtStationFromBuffers(display.development, display.buffers, station);
+				// A station past a closed Wall's seam wraps to the drawn strip's other
+				// end, where the crossing jamb is actually rendered; clamping would put
+				// the hit test on the wrong side of the strip.
+				const wrapped = display.development.closed
+					? ((station % wall.length) + wall.length) % wall.length
+					: station;
+				const at = developmentPointAtStationFromBuffers(display.development, display.buffers, wrapped);
 				const projected = stage.projectWorld([at.point[0], height, at.point[1]], projectionId);
 				return projected.kind === 'projected'
 					? Math.hypot(projected.css[0] - event.clientX, projected.css[1] - event.clientY)
@@ -4389,7 +4409,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{/if}
 				<div class="overlay-layer">
 					{#if experienceLens.lookThroughSession() === null}
-						<StagePill wall={unfoldStageWall} name={unfoldWallName} />
+						<StagePill wall={unfoldStageWall} name={unfoldWallName} roomName={unfoldRoomName} />
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
 								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
