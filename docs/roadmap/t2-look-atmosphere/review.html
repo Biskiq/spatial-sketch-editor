@@ -76,6 +76,13 @@ input[type=range]{width:100%;accent-color:var(--leaf)}
 .reach{font:500 10.5px/1.3 var(--mono);color:var(--ink-3)}
 .val{font:500 11px/1 var(--mono);color:var(--ink-2)}
 .more{font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--hair);padding-top:8px}
+details.more summary{cursor:pointer;font:600 11.5px/1.4 var(--sans);color:var(--ink-2)}
+.morebody{display:grid;gap:9px;margin-top:9px}
+.btn{border:1px solid var(--hair-strong);background:var(--card);border-radius:8px;padding:6px 10px;font:600 11.5px/1 var(--sans);color:var(--ink);cursor:pointer}
+.btn[aria-pressed=true]{background:var(--forest);color:var(--ivory);border-color:var(--forest)}
+.btn:disabled{opacity:.45;cursor:default}
+.sw input[type=color]{width:30px;height:28px;padding:0;border:1px solid var(--hair-strong);border-radius:8px;background:var(--card);cursor:pointer}
+.seg button:disabled{opacity:.4;cursor:default}
 .steps{margin:8px 0 0;padding-left:18px;font-size:13px;color:var(--ink-2)}
 .steps li{margin:3px 0}
 .count{float:right;font:500 10px/1 var(--mono);background:var(--forest);color:var(--ivory);padding:4px 7px;border-radius:999px}
@@ -85,11 +92,11 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <div class="eyebrow">Proposal · owner review · not authority</div>
+  <div class="eyebrow">Proposal · revision 2 · owner review · not authority</div>
   <h1>T2 — Look &amp; Atmosphere</h1>
   <p>How a creator gives a World its mood, its surfaces and its light without learning rendering. Companion to <code style="background:transparent;border-color:rgb(255 255 255/.2);color:inherit">README.md</code> in this folder, which carries the full decisions and batch.</p>
   <nav class="toc" aria-label="Sections">
-    <a href="#direction">Direction</a><a href="#homes">Homes</a><a href="#sky">Sky</a><a href="#finish">Finish</a><a href="#light">Light</a><a href="#journeys">Journeys</a><a href="#pushback">Pushback</a><a href="#batch">Batch</a>
+    <a href="#direction">Direction</a><a href="#scope">Now / contract / later</a><a href="#homes">Homes</a><a href="#finish">Finish</a><a href="#kinds">Lights</a><a href="#light">Aim</a><a href="#sky">Sky &amp; Looks</a><a href="#render">Rendering</a><a href="#journeys">Journeys</a><a href="#pushback">Decisions</a><a href="#batch">Batch</a>
   </nav>
 </div></header>
 
@@ -97,14 +104,27 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
 
 <section id="direction">
   <h2>One Look, three reaches</h2>
-  <p class="thesis">The Sky sets the mood. Finishes say what things are made of. Lights say where to look. Each has one home in the shell, a curated start and at most four everyday controls.</p>
+  <p class="thesis">The Sky sets the mood. Finishes say what things are made of. Lights say where to look. Each has one home in the shell and a curated start.</p>
   <div class="grid g3">
-    <div class="panel"><div class="k">World reach</div><h3>Sky</h3><p>Preset, then Time, Direction, Haze, Brightness. The sky itself becomes the reflection and ambient light, so mood and surfaces can never disagree.</p></div>
-    <div class="panel"><div class="k">Surface reach</div><h3>Finish</h3><p>Base + colour + Sheen. Metal is a kind of base, not a slider. Shared by default, unique by one explicit choice.</p></div>
-    <div class="panel"><div class="k">Attention reach</div><h3>Light</h3><p>Fixtures aimed at a target you drag on a surface. Warmth, Brightness and Beam in named stops. <b>Light it</b> does the first one for you.</p></div>
+    <div class="panel"><div class="k">World reach</div><h3>Sky</h3><p>Preset, then Time, Direction, Haze, Brightness. A Look changes any World's atmosphere and treatment in one click without rewriting a Finish.</p></div>
+    <div class="panel"><div class="k">Surface reach</div><h3>Finish</h3><p>Pick a tile, adjust colour and Sheen, open More for your own image, scale and exact values. Shared by default, unique by one explicit choice.</p></div>
+    <div class="panel"><div class="k">Attention reach</div><h3>Light</h3><p>Point, spot and directional emitters placed and edited on the Stage. <b>Light it</b> does the first one for you.</p></div>
   </div>
-  <h3>What changes the order of work</h3>
-  <p class="lede">Today nothing in the renderer reflects anything: a brass with metalness 0.85 has no environment to mirror. Polished, Metal and Glass cannot look right whatever controls we add, so sky-derived reflections come first and need no UI at all.</p>
+  <h3>Curated surface, open engine</h3>
+  <p class="lede">Every everyday control is a named view onto a stored physical value: <i>Satin</i> is roughness 0.6, <i>Warm</i> is a colour, <i>Golden hour</i> is a sun angle and a sky. The model never stores the label and never closes the list. Depth is revealed in three levels that are the same in every home: <b>Pick</b> a tile, <b>Adjust</b> up to four named controls, open <b>More</b> for exact values. Same writer, same undo, no new panel.</p>
+</section>
+
+<section id="scope">
+  <h2>Ship now, contract now, safely later</h2>
+  <p class="lede">The middle column is what keeps the ceiling high: fields and seams that exist from the first slice, with interface added when it earns its place.</p>
+  <div class="tablewrap"><table>
+    <tr><th></th><th>Ship in this batch</th><th>Extensibility contract</th><th>Can wait</th></tr>
+    <tr><td><b>Finish</b></td><td>Curated tiles · any colour · Sheen · a Finish from your own image (P20) · Scale in metres, Direction · shared / just-this</td><td>Every PBR map slot, mapping, opacity and emission as open fields. One material factory</td><td>PBR-set import UX · per-assignment mapping · per-face on forms (T5) · decals</td></tr>
+    <tr><td><b>Light</b></td><td>Emitters of all three kinds, placed and edited on the Stage · Lights in the Index · Light it</td><td>Fixture = object grouped with an emitter. Rig = group</td><td>Fixture models · articulated heads · saved and live-linked rigs · area lights</td></tr>
+    <tr><td><b>Sky</b></td><td>Presets as starts · four dials · sun mark · sky reflections if S0 passes</td><td>Stored as angles, colours, scalars. One resolved-look module with a quality input</td><td>HDRIs · interior capture · solar model · per-Stop mood</td></tr>
+    <tr><td><b>Look</b></td><td>Atmosphere + Treatment on any World · palette · opt-in Adopt palette</td><td>A Treatment is a resolve-time transform, never a rewrite</td><td>Outline, toon, bloom (post pass)</td></tr>
+    <tr><td><b>Rendering</b></td><td>What S0 measures, and nothing else</td><td>No slice builds a material or light outside the shared factory</td><td>Transmission · probes · baked shadows · post</td></tr>
+  </table></div>
 </section>
 
 <section id="homes">
@@ -160,7 +180,7 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
       <g font-family="system-ui" font-size="10" fill="#eef1ec">
         <text x="262" y="441">Paint</text>
         <circle cx="306" cy="437" r="9" fill="#3d2a1a" stroke="#f4f5f1"/><circle cx="330" cy="437" r="9" fill="#c4b4a0"/><circle cx="354" cy="437" r="9" fill="#d6b35f"/><circle cx="378" cy="437" r="9" fill="#e8e4dc"/><circle cx="402" cy="437" r="9" fill="#b5533c"/>
-        <text x="424" y="441" fill="#9fb2a5">| Object · Face · Room | ⌖ | All ›</text>
+        <text x="424" y="441" fill="#9fb2a5">| Object · Face · Space | ⌖ | All ›</text>
       </g>
       <rect x="160" y="462" width="510" height="46" rx="14" fill="#11291f"/>
       <g font-family="system-ui" font-size="11" fill="#9fb2a5">
@@ -179,56 +199,66 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
   <div class="tablewrap" style="margin-top:12px"><table>
     <tr><th>#</th><th>Home</th><th>Writes</th><th>Never</th></tr>
     <tr><td>1</td><td><b>Sky</b> popover</td><td>The World's mood: preset, Time, Direction, Haze, Brightness, Looks</td><td>Per-object facts. A second environment panel</td></tr>
-    <tr><td>2</td><td><b>Card</b></td><td>The selection's Finish row, or a light's Warmth · Brightness · Beam · Shadow. Foot action <b>Light it</b></td><td>Browsing. The World's mood</td></tr>
-    <tr><td>3</td><td><b>Stage</b> marks</td><td>A light's aim target and beam by drag</td><td>Numbers, lists</td></tr>
-    <tr><td>4</td><td><b>Paint</b> palette</td><td>Applies a Finish: Object · Face · Room, dropper, recents, the project palette</td><td>Editing the Finish itself</td></tr>
-    <tr><td>5</td><td><b>Lights</b> tool · <b>Library</b></td><td>Places a fixture; picks Finishes, Lights and Looks</td><td>Editing</td></tr>
+    <tr><td>2</td><td><b>Card</b></td><td>The selection's Finish row (Adjust and More open in place), or a light's stratum. Foot action <b>Light it</b></td><td>Browsing. The World's mood</td></tr>
+    <tr><td>3</td><td><b>Stage</b> marks</td><td>Target, stem, cone rim, reach ring and direction dial, by drag</td><td>Numbers, lists</td></tr>
+    <tr><td>4</td><td><b>Paint</b> palette</td><td>Applies a Finish: Object · Face · Space, dropper, recents, the project palette</td><td>Editing the Finish itself</td></tr>
+    <tr><td>5</td><td><b>Lights</b> tool · <b>Library</b> · <b>Index</b></td><td>Places a light; picks Finishes, Lights and Looks; the Index lists Lights so an invisible emitter is always findable</td><td>Editing</td></tr>
     <tr><td>6</td><td><b>Sun mark</b></td><td>Sun direction, on the workspace rim while Sky is open</td><td>Selection (it is not a subject)</td></tr>
   </table></div>
 </section>
 
-<section id="sky">
-  <h2>Sky: a preset is a starting point</h2>
-  <p class="lede">Interactive. Pick a preset, then move Time and Direction: sky, sun colour and shadow follow together. Try a <b>Look</b> to see that stylized and realistic are the same system at different settings.</p>
-  <div class="study">
-    <div class="stage"><svg id="skySvg" viewBox="0 0 520 320" role="img" aria-label="Sky study scene"></svg></div>
-    <div class="pcard" aria-label="Sky and light">
-      <header><strong>Sky &amp; light</strong><span class="reach" id="skyState">Daylight</span></header>
-      <div class="tiles" id="skyPresets" role="group" aria-label="Preset"></div>
-      <div class="row"><span>Time</span><div><input id="skyTime" type="range" min="5" max="21" step="0.25" value="12" aria-label="Time of day"></div></div>
-      <div class="row"><span>Direction</span><div><input id="skyDir" type="range" min="0" max="360" step="5" value="215" aria-label="Sun direction"></div></div>
-      <div class="row"><span>Haze</span><div><input id="skyHaze" type="range" min="0" max="1" step="0.05" value="0.25" aria-label="Haze"></div></div>
-      <div class="row"><span>Brightness</span><div><input id="skyExp" type="range" min="0.6" max="1.4" step="0.05" value="1" aria-label="Brightness"></div></div>
-      <div class="row"><span>Shadows</span><div class="seg" id="skyShadow"><button aria-pressed="false" data-v="crisp">Crisp</button><button aria-pressed="true" data-v="soft">Soft</button></div></div>
-      <div class="row"><span>Look</span><div class="seg" id="skyLook"><button aria-pressed="true" data-v="natural">Natural</button><button aria-pressed="false" data-v="riso">Riso</button><button aria-pressed="false" data-v="clay">Clay</button></div></div>
-      <div class="more">More: sky and ground colours · <span class="val" id="skyRead"></span> · <button id="skyReset" style="border:0;background:none;color:var(--leaf);font:inherit;cursor:pointer;padding:0">Reset to preset</button></div>
-    </div>
-  </div>
-  <p class="note">Time is proposed as a mood dial along a curated arc, labelled in hours, with free Direction. It is not a solar model (open question 1). A Look replaces Sky settings and palette values only; it never touches assignments or lights.</p>
-</section>
-
 <section id="finish">
-  <h2>Finish: base, colour, sheen</h2>
-  <p class="lede">Interactive. The Card's Finish row expanded. Change anything and the Ask Rule appears once, because this Finish is shared. A colour can follow a palette slot (ringed) instead of being literal.</p>
+  <h2>Finish: a simple row over an open model</h2>
+  <p class="lede">Interactive. The Card's Finish row. <b>Adjust</b> is colour and Sheen; <b>More</b> opens in place for your own image, real-world Scale, Direction and exact values. The tiles and stops are starting points: any colour and any roughness is valid, and the row says <i>Custom</i> when you leave a stop.</p>
   <div class="study">
-    <div class="stage"><svg id="finSvg" viewBox="0 0 520 320" role="img" aria-label="Finish preview"></svg></div>
+    <div class="stage"><svg id="finSvg" viewBox="0 0 520 320" role="img" aria-label="Finish preview: a wall sample and a sphere"></svg></div>
     <div class="pcard" aria-label="Finish">
       <header><strong>Finish</strong><span class="reach" id="finReach">Walnut · shared by 7</span></header>
       <div class="tiles" id="finBase" role="group" aria-label="Base"></div>
-      <div class="row"><span>Colour</span><div class="sw" id="finColour" role="group" aria-label="Palette colour"></div></div>
+      <div class="row"><span>Colour</span><div class="sw" id="finColour" role="group" aria-label="Colour"></div></div>
       <div class="row"><span>Sheen</span><div class="seg" id="finSheen"></div></div>
       <div class="ask" id="finAsk" hidden>
-        <span><b>Walnut</b> is used by 7 things. Change:</span>
+        <span><b id="finAskN">Walnut</b> is used by 7 things. Change:</span>
         <div><button data-v="one">Just this</button><button data-v="all">All 7</button></div>
       </div>
-      <div class="more">More: exact roughness <span class="val" id="finRough"></span> · texture scale · Reset to curated</div>
+      <details class="more" id="finMore">
+        <summary>More</summary>
+        <div class="morebody">
+          <div class="row"><span>Image</span><div class="seg" id="finImg"><button data-v="none" aria-pressed="false">None</button><button data-v="base" aria-pressed="true">Curated</button><button data-v="brick" aria-pressed="false">Your brick.jpg</button></div></div>
+          <div class="row"><span>Scale</span><div><input id="finScale" type="range" min="0.2" max="2.4" step="0.1" value="1.2" aria-label="Tile size in metres"><span class="val" id="finScaleV"></span></div></div>
+          <div class="row"><span>Direction</span><div class="seg" id="finDir"><button data-v="0" aria-pressed="true">0°</button><button data-v="90" aria-pressed="false">90°</button><button data-v="45" aria-pressed="false">45°</button></div></div>
+          <div class="row"><span>Roughness</span><div><input id="finR" type="range" min="0.04" max="1" step="0.01" value="0.6" aria-label="Exact roughness"><span class="val" id="finRough"></span></div></div>
+          <div class="row"><span>Metal</span><div class="seg" id="finMetal"><button data-v="0" aria-pressed="true">No</button><button data-v="1" aria-pressed="false">Yes</button></div></div>
+          <div class="note">Also here: bump strength · opacity · glow · Reset to curated.</div>
+        </div>
+      </details>
     </div>
   </div>
-  <p class="note">The preview reflects a horizon because the Sky is the reflection source. Metal is a property of the base: there is no metallic slider. Glass is opacity + sheen, not physical transmission. Glow does not light the room and the Card says so.</p>
+  <p class="note">Forms and Walls already emit metre UVs, so Scale is stated in real units and one image tiles identically on a wall and a plinth. <b>Your image</b> goes through the existing P20 project-asset path. The schema carries normal, roughness, AO and metalness map slots from the first format bump; a drop-a-folder PBR-set import is a later slice. Metal is a switch under More, not an everyday slider.</p>
+</section>
+
+<section id="kinds">
+  <h2>Lights: three kinds on the Stage</h2>
+  <p class="lede">Interactive. Switch kind to see how each is placed and which marks it carries when selected. An <b>emitter</b> is never visible to visitors; a <b>fixture</b> is a visible object grouped with one. Marks are derived editor state and are never stored.</p>
+  <div class="study">
+    <div class="stage"><svg id="kindSvg" viewBox="0 0 520 320" role="img" aria-label="Light kinds on the Stage"></svg></div>
+    <div class="pcard" aria-label="Light kind">
+      <header><strong id="kindName">Spot</strong><span class="reach" id="kindTag">LIGHT · SPOT</span></header>
+      <div class="row"><span>Kind</span><div class="seg" id="kindSeg"><button data-v="point" aria-pressed="false">Point</button><button data-v="spot" aria-pressed="true">Spot</button><button data-v="dir" aria-pressed="false">Directional</button></div></div>
+      <div class="row"><span>Shown as</span><div class="seg" id="kindFx"><button data-v="0" aria-pressed="true">Light only</button><button data-v="1" aria-pressed="false">Fixture</button></div></div>
+      <div class="row"><span>View</span><div class="seg" id="kindView"><button data-v="edit" aria-pressed="true">Editor, selected</button><button data-v="visit" aria-pressed="false">Visitor</button></div></div>
+      <div class="more" style="display:grid;gap:6px">
+        <div><span class="k">Place</span><div id="kindPlace" style="color:var(--ink-2);font-size:12px;margin-top:3px"></div></div>
+        <div><span class="k">Marks</span><div id="kindMarks" style="color:var(--ink-2);font-size:12px;margin-top:3px"></div></div>
+        <div><span class="k">Card</span><div id="kindCard" style="color:var(--ink-2);font-size:12px;margin-top:3px"></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">Emitters ship in this batch. Fixture models are an asset decision and an aimable track head needs an articulated pivot, so they follow on the same contract. <b>Rigs:</b> now, <i>Light it</i> recipes create ordinary lights; the contract is that lights are ordinary group members, so a saved rig is a saved group; a live-linked rig should arrive together with the same capability for objects.</p>
 </section>
 
 <section id="light">
-  <h2>Light: aim at the thing</h2>
+  <h2>Spot: aim at the thing</h2>
   <p class="lede">Interactive section view. Drag the <b style="color:var(--gold-ink)">gold target</b> on the wall or the fixture along the ceiling. The 30° guide turns green inside the glare-free gallery range; <b>Light it</b> starts there.</p>
   <div class="study">
     <div class="stage"><svg id="litSvg" viewBox="0 0 520 320" role="img" aria-label="Light aiming study, section view" style="touch-action:none;cursor:default"></svg></div>
@@ -242,79 +272,137 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
       <div class="more">More: exact intensity (cd) · edge softness · range · custom colour</div>
     </div>
   </div>
-  <p class="note">Stored truth is unchanged: position + rotation. The target is a derived Stage mark, mounted for the selection only. In the product this section reading is the existing Section; in 3D the same target sits on whatever surface it is dragged across.</p>
+  <p class="note">Stored truth is unchanged: position + rotation, and the ordinary rotate gizmo still works. The target is a derived Stage mark. In 3D the same target sits on whatever surface it is dragged across; <i>Light it</i> finds its mount by casting upward, so it works under a canopy or open sky and assumes no ceiling.</p>
 </section>
+
+<section id="sky">
+  <h2>Sky and Looks: one click on any World</h2>
+  <p class="lede">Interactive. Pick a preset, then move Time and Direction. Then try a <b>Look</b>: this house was painted with ordinary literal colours and never prepared for palettes, yet atmosphere and treatment change at once. <b>Adopt palette</b> is the explicit second step that recolours.</p>
+  <div class="study">
+    <div class="stage"><svg id="skySvg" viewBox="0 0 520 320" role="img" aria-label="Sky study scene"></svg></div>
+    <div class="pcard" aria-label="Sky and light">
+      <header><strong>Sky &amp; light</strong><span class="reach" id="skyState">Daylight</span></header>
+      <div class="tiles" id="skyPresets" role="group" aria-label="Preset"></div>
+      <div class="row"><span>Time</span><div><input id="skyTime" type="range" min="5" max="21" step="0.25" value="12" aria-label="Time of day"></div></div>
+      <div class="row"><span>Direction</span><div><input id="skyDir" type="range" min="0" max="360" step="5" value="215" aria-label="Sun direction"></div></div>
+      <div class="row"><span>Haze</span><div><input id="skyHaze" type="range" min="0" max="1" step="0.05" value="0.25" aria-label="Haze"></div></div>
+      <div class="row"><span>Brightness</span><div><input id="skyExp" type="range" min="0.6" max="1.4" step="0.05" value="1" aria-label="Brightness"></div></div>
+      <div class="row"><span>Shadows</span><div class="seg" id="skyShadow"><button aria-pressed="false" data-v="crisp">Crisp</button><button aria-pressed="true" data-v="soft">Soft</button></div></div>
+      <div class="row"><span>Look</span><div class="seg" id="skyLook"><button aria-pressed="true" data-v="natural">None</button><button aria-pressed="false" data-v="riso">Riso</button><button aria-pressed="false" data-v="clay">Clay</button></div></div>
+      <div class="row"><span>Palette</span><div><button id="skyAdopt" class="btn" aria-pressed="false">Adopt palette</button> <span class="val" id="skyAdoptV"></span></div></div>
+      <div class="more">More: sky and ground colours · <span class="val" id="skyRead"></span> · <button id="skyReset" style="border:0;background:none;color:var(--leaf);font:inherit;cursor:pointer;padding:0">Reset to preset</button></div>
+    </div>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th>Look layer</th><th>Changes</th><th>Ordinary World?</th><th>Authored choices</th></tr>
+    <tr><td><b>Atmosphere</b></td><td>Sky, sun, haze, brightness, shadow softness and tint</td><td>Always</td><td>Replaces Sky settings; one undo; the prior Sky stays as a <i>Previous</i> tile</td></tr>
+    <tr><td><b>Treatment</b></td><td>How finishes are shown: Natural · Flat colour · Clay</td><td>Always</td><td>Untouched. A resolve-time transform; turn it off and every Finish is as authored</td></tr>
+    <tr><td><b>Palette</b></td><td>The project's colour slots</td><td>Followers only</td><td>Literal colours never change unless you choose <b>Adopt palette</b>, which previews the mapping and is one undo</td></tr>
+  </table></div>
+  <p class="note">Applying a Look never touches lights or Finish assignments. Treatment is authored World presentation that visitors see; Living | Paper stays an editor-only viewing preference. Time is proposed as a mood dial labelled in hours, not a solar model.</p>
+</section>
+
+<section id="render">
+  <h2>Rendering truth: S0 is a gate</h2>
+  <p class="lede">Sky-derived reflections are a hypothesis until measured. The interface must not promise what the renderer cannot show, so each promise leaves S0 as <b>go</b>, <b>go with a renamed label</b>, or <b>wait</b>.</p>
+  <div class="grid g2">
+    <div class="panel"><h3>Known limits, stated in the product</h3><ol class="steps">
+      <li><b>Sky reflections are not mirrors.</b> Surfaces reflect sky and ground, never each other or the room. The top Sheen stop is <i>High gloss</i>, not Mirror.</li>
+      <li><b>Indoors is the hard case.</b> A glossy floor in an enclosed room would reflect open sky. S0 shows it and chooses: accept, damp by enclosure, or schedule an interior capture.</li>
+      <li><b>Opacity is not glass.</b> No refraction, no tinted shadow. See-through bases ship as Clear · Frosted · Tinted; the word Glass only if the gate images earn it.</li>
+      <li><b>Glow lights nothing</b> and without bloom reads as bright colour. The Card says so.</li></ol></div>
+    <div class="panel"><h3>S0 exit criteria</h3><ol class="steps">
+      <li><b>Pipeline audit:</b> colour space, tone mapping, exposure, light units as one agreed set. This alone unblocks Lights.</li>
+      <li><b>PBR chart:</b> roughness × metal grid and textured sets, each preset, outdoors and in an enclosed room.</li>
+      <li><b>Live Sky:</b> sun, sky and haze follow a drag every frame; reflection rebuild measured and its policy chosen.</li>
+      <li><b>Performance:</b> frame time and load on a laptop iGPU and a phone-class device, Stage and visit. Sets the shadow budget.</li>
+      <li><b>Paper / Living:</b> Paper stays neutral; D4 decided from images.</li>
+      <li><b>Parity:</b> Stage, snapshot, Preview and visit resolve the same values; no editor code in visitor chunks.</li></ol></div>
+  </div>
+  <p class="note">Not ruled out, each behind its own measurement: interior reflection capture · area lights · transmission · a post pass · baked or cached shadows. The contract that keeps them open: one resolved-look module with a quality input, one material factory, no slice bypassing either.</p>
+</section>
+
 
 <section id="journeys">
   <h2>Four journeys</h2>
   <p class="lede">Counts are interactions after the geometry exists.</p>
   <div class="grid g2">
-    <div class="panel"><span class="count">5</span><h3>Gallery lighting</h3><ol class="steps"><li>Sky → <b>Dusk</b></li><li>Select the painting → Card <b>Light it</b>: a Picture spot lands on the ceiling at 30°, 3000 K, shadow on</li><li>Drag the aim target to the canvas centre</li><li>Beam → <b>Narrow</b></li><li>Duplicate along the wall for the row</li></ol></div>
-    <div class="panel"><span class="count">4</span><h3>Product showcase</h3><ol class="steps"><li>Sky → <b>Paper</b> (studio-neutral reflections)</li><li>Select product → Finish swatch → Library › <b>Polished brass</b></li><li><b>Light it ▾ Showcase</b>: key, fill and rim in one undo</li><li>Sheen → <b>Satin</b> to calm the highlight</li></ol></div>
-    <div class="panel"><span class="count">5</span><h3>Architectural daylight</h3><ol class="steps"><li>Sky → <b>Daylight</b></li><li>Drag the sun mark round the plan rim until light rakes through the window</li><li>Time → 16:00</li><li>Paint <b>Oak</b>, Room scope, on the floor; <b>Plaster</b> on walls</li><li>Shadows → <b>Soft</b></li></ol></div>
-    <div class="panel"><span class="count">4</span><h3>Deliberately stylized</h3><ol class="steps"><li>Library › Looks → <b>Riso</b>: flat two-tone sky, crisp tinted shadows, five colours</li><li>Paint palette colours, <b>Matte</b>, onto forms</li><li>Change the <b>Accent</b> slot: every follower moves</li><li>Sky › <b>Save as look</b></li></ol></div>
+    <div class="panel"><span class="count">5</span><h3>Gallery lighting</h3><ol class="steps"><li>Sky → <b>Dusk</b></li><li>Select the painting → Card <b>Light it</b>: a Picture spot above, 30°, warm, shadow on</li><li>Drag the target to the canvas centre</li><li>Drag the cone rim narrower</li><li>Duplicate along the wall for the row</li></ol></div>
+    <div class="panel"><span class="count">4</span><h3>Product showcase</h3><ol class="steps"><li>Sky → <b>Paper</b></li><li>Select product → Finish → <b>Brass</b></li><li><b>Light it ▾ Showcase</b>: key, fill and rim in one undo</li><li>Sheen → <b>Satin</b>. Honest limit: the brass reflects a neutral studio, not the plinth beside it</li></ol></div>
+    <div class="panel"><span class="count">5</span><h3>Architectural daylight</h3><ol class="steps"><li>Sky → <b>Daylight</b></li><li>Drag the sun mark until light rakes through the opening</li><li>Time → 16:00</li><li>Paint <b>Oak</b> at Space scope; <b>+ From image</b> for the client's brick, Scale 0.6 m</li><li>Shadows → <b>Soft</b></li></ol></div>
+    <div class="panel"><span class="count">3</span><h3>Stylized, on an existing World</h3><ol class="steps"><li>Library › Looks → <b>Riso</b>: flat sky, tinted shadows, flat-colour surfaces, nothing rewritten</li><li><b>Adopt palette</b> → review the mapping, accept</li><li>Change the <b>Accent</b> slot: every follower moves</li></ol></div>
   </div>
 </section>
 
 <section id="pushback">
-  <h2>Pushback and owner decisions</h2>
+  <h2>Where I moved, where I held</h2>
   <div class="tablewrap"><table>
-    <tr><th>Brief item</th><th>Recommendation</th><th>Why</th></tr>
-    <tr><td>Roughness + metallic</td><td>One <b>Sheen</b>; metal is a base</td><td>Two sliders mostly produce invalid materials</td></tr>
-    <tr><td>Area lights</td><td><b>Defer</b>; ship a soft wide <b>Wash</b> spot</td><td>No shadows and a per-material cost in the WebGL path</td></tr>
-    <tr><td>Emissive surfaces</td><td><b>Glow</b> finish, honestly labelled</td><td>Expressive and cheap, but lights nothing; no hidden paired light</td></tr>
-    <tr><td>Light setups</td><td>A one-undo placement, not a stored thing</td><td>A setup entity would be a second owner of the same lights</td></tr>
-    <tr><td>Image-based lighting</td><td>Sky-derived only</td><td>HDRIs add licence, weight and a second source of mood</td></tr>
-    <tr><td>Reflection quality</td><td>Not a setting</td><td>Sky reflections are the quality; no SSR or probes</td></tr>
-    <tr><td>Stylized looks</td><td><b>Looks</b> = Sky + palette; no toon or outline</td><td>Outlines need the post pass the brief excludes</td></tr>
-    <tr><td>Glass</td><td>Opacity + sheen</td><td>Transmission costs an extra scene pass</td></tr>
+    <tr><th>Review point</th><th>Outcome</th><th>Why</th></tr>
+    <tr><td>Free colour, custom Finishes, images, mapping</td><td><span class="tag go">moved</span></td><td>All in the batch. Image upload was wrongly deferred: P20 and <code>baseTextureId</code> already carry it</td></tr>
+    <tr><td>Full PBR-set import now</td><td><span class="tag">held, as sequencing</span></td><td>Schema open from the first bump; the import UX waits for the single-image path to prove the flow</td></tr>
+    <tr><td>Roughness and metallic as everyday sliders</td><td><span class="tag">held</span></td><td>Sheen stays everyday; exact roughness and a Metal switch are one level down, not removed</td></tr>
+    <tr><td>All three light kinds, emitter versus fixture</td><td><span class="tag go">moved</span></td><td>See the Lights study</td></tr>
+    <tr><td>Reusable rigs</td><td><span class="tag">partly</span></td><td>Saved groups are the contract. A live-linked rig should not precede the same capability for objects</td></tr>
+    <tr><td>More sophisticated rendering</td><td><span class="tag go">moved</span></td><td>Nothing ruled out; each step gated by a measurement, not by this proposal</td></tr>
+    <tr><td>Looks on ordinary Worlds</td><td><span class="tag go">moved</span></td><td>A non-destructive Treatment does it without rewriting. Automatic recolouring stays opt-in because it changes authored choices</td></tr>
+    <tr><td>S5 and enclosed Rooms</td><td><span class="tag go">moved</span></td><td>Finishes key on an opaque surface identity Layout publishes; floors and overheads wait for T1 off the critical path</td></tr>
+    <tr><td>Seams slice first</td><td><span class="tag go">agreed</span></td><td>One behaviour-neutral PR, proven by the two consumers that exist today</td></tr>
+    <tr><td>One Scene bump for everything (my own D2)</td><td><span class="tag go">reversed</span></td><td>Coupling the look schema to T1's open questions costs more than a second cheap bump</td></tr>
   </table></div>
   <h3>Decisions that need you</h3>
   <div class="tablewrap"><table>
     <tr><th></th><th>Question</th><th>Recommendation</th><th>Tier</th></tr>
-    <tr><td>D1</td><td>Who stores a Wall, floor or ceiling finish?</td><td>Scene, keyed by stable Layout identity; Layout stays appearance-free</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D2</td><td>Scene format</td><td>One bump 5 → 6 carrying every look field; strict refuse</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D3</td><td>Paint: T2 or T5?</td><td>T2 lands object / wall face / room; T5 adds per-face on forms</td><td><span class="tag">owner</span></td></tr>
-    <tr><td>D4</td><td>Reflections on Paper</td><td>Neutral studio reflection, no added diffuse light</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D5</td><td>Light units</td><td>Keep physical units as stored truth; Brightness is a UI mapping</td><td><span class="tag">Tier 1</span></td></tr>
-    <tr><td>D7</td><td>Is the Sky a Card subject?</td><td>No. One popover writer; retire the old environment panel</td><td><span class="tag">Tier 1</span></td></tr>
-    <tr><td>D8</td><td>Curated texture sets</td><td>~14 finishes, 1k, CC0 only</td><td><span class="tag t2">Tier 2</span></td></tr>
-    <tr><td>D9</td><td>Shadow budget</td><td>Sun + 3 spot shadows, measured in S0; refuse in words beyond</td><td><span class="tag">Tier 1</span></td></tr>
+    <tr><td>D1</td><td>Who stores a surface finish?</td><td>Scene, keyed by a Layout-published surface identity; Layout stays appearance-free</td><td><span class="tag t2">Tier 2</span></td></tr>
+    <tr><td>D2</td><td>Scene format</td><td>Scene 6 for sky, finish, palette, treatment. Surface finishes take their own later bump</td><td><span class="tag t2">Tier 2</span></td></tr>
+    <tr><td>D3</td><td>Paint: T2 or T5?</td><td>T2 lands object / wall face / Space; T5 adds per-face on forms</td><td><span class="tag">owner</span></td></tr>
+    <tr><td>D4</td><td>Reflections on Paper</td><td>Neutral studio reflection, decided from S0 images</td><td><span class="tag t2">Tier 2</span></td></tr>
+    <tr><td>D8</td><td>Curated assets</td><td>~14 finishes and a few fixture models, CC0 only; creator images through P20</td><td><span class="tag t2">Tier 2</span></td></tr>
+    <tr><td>D10</td><td>Seams slice first?</td><td>Yes, P0: one behaviour-neutral PR</td><td><span class="tag">Tier 0–1</span></td></tr>
+    <tr><td>D11</td><td>Treatment as authored presentation</td><td>Yes, in Scene 6, resolve-time only</td><td><span class="tag t2">with D2</span></td></tr>
+    <tr><td>D12</td><td>Fixtures and rigs</td><td>Fixture = object grouped with an emitter; rig = group; no new light type</td><td><span class="tag">Tier 1</span></td></tr>
   </table></div>
+  <p class="note">D5 (light units), D6 (warmth), D7 (Sky is not a Card subject) and D9 (shadow budget, set by S0) are unchanged and in the README.</p>
 </section>
 
 <section id="batch">
-  <h2>Implementation batch</h2>
-  <p class="lede">Two foundations, then three slices that can run in parallel. Lights come first for value: they need no schema change.</p>
+  <h2>A realistic batch</h2>
+  <p class="lede">Capability slices, not implementation plans. Two things start now; Lights ship first because they need no format change. A plan is written only where the workflow asks for one.</p>
   <figure>
-    <svg viewBox="0 0 960 330" role="img" aria-label="Slice dependency diagram">
+    <svg viewBox="0 0 960 330" role="img" aria-label="Slice dependency diagram in three tracks">
       <rect width="960" height="330" fill="#fff"/>
       <defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#79817b"/></marker></defs>
       <g fill="none" stroke="#79817b" stroke-width="1.3" marker-end="url(#ar)">
-        <path d="M200 80 H290"/><path d="M200 80 C245 80 245 180 290 180"/>
-        <path d="M200 250 C245 250 245 190 290 190"/><path d="M200 250 C245 250 245 90 290 90"/><path d="M200 255 H290" stroke-dasharray="4 4"/>
-        <path d="M480 80 C560 80 540 125 620 125"/><path d="M480 180 C560 180 540 135 620 135"/>
-        <path d="M480 180 H620"/><path d="M480 190 C560 190 540 235 620 235"/>
-        <path d="M480 255 H620" transform="translate(0,30)"/>
+        <path d="M180 78 H232"/><path d="M392 78 H444"/>
+        <path d="M180 208 H232"/><path d="M180 200 C210 200 205 92 232 88" stroke-dasharray="4 4"/>
+        <path d="M392 198 C420 198 418 164 444 164"/><path d="M392 214 C420 214 418 248 444 248"/>
+        <path d="M604 164 C636 164 630 200 656 204"/><path d="M604 240 C636 240 630 214 656 210"/>
+        <path d="M604 262 C640 262 640 286 656 286"/>
+        <path d="M800 208 H826"/><path d="M800 286 H826"/>
       </g>
       <g font-family="system-ui" font-size="12">
-        <g><rect x="20" y="52" width="180" height="56" rx="10" fill="#11291f"/><text x="34" y="76" fill="#f4f5f1" font-weight="600">S0 Sky-lit rendering</text><text x="34" y="94" fill="#9fb2a5" font-size="10.5">reflections · parity · budget</text></g>
-        <g><rect x="20" y="222" width="180" height="56" rx="10" fill="#11291f"/><text x="34" y="246" fill="#f4f5f1" font-weight="600">S1 Scene 6 look schema</text><text x="34" y="264" fill="#9fb2a5" font-size="10.5">types · codec · validation</text></g>
-        <g><rect x="296" y="52" width="184" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="310" y="76" font-weight="600">S2 Sky dials</text><text x="310" y="94" fill="#4a524c" font-size="10.5">Time · Direction · Haze · sun mark</text></g>
-        <g><rect x="296" y="152" width="184" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="310" y="176" font-weight="600">S4 Finish</text><text x="310" y="194" fill="#4a524c" font-size="10.5">Card row · Library · Paint</text></g>
-        <g><rect x="296" y="252" width="184" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="310" y="276" font-weight="600">S3 Lights</text><text x="310" y="294" fill="#4a524c" font-size="10.5">place · aim target · Card</text></g>
-        <g><rect x="626" y="102" width="190" height="50" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="640" y="124" font-weight="600">S6 Palette &amp; Looks</text><text x="640" y="141" fill="#4a524c" font-size="10.5">the stylized journey</text></g>
-        <g><rect x="626" y="162" width="190" height="40" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="640" y="187" font-weight="600">S5 Wall / floor / ceiling</text></g>
-        <g><rect x="626" y="212" width="190" height="40" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="640" y="237" font-weight="600">S8 Catalogue · Glass · Glow</text></g>
-        <g><rect x="626" y="262" width="190" height="46" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="640" y="284" font-weight="600">S7 Light it</text><text x="640" y="300" fill="#4a524c" font-size="10.5">one-undo placement</text></g>
-        <text x="20" y="28" fill="#79817b" font-size="10.5" letter-spacing="1">FOUNDATION</text><text x="296" y="28" fill="#79817b" font-size="10.5" letter-spacing="1">PARALLEL</text><text x="626" y="28" fill="#79817b" font-size="10.5" letter-spacing="1">BUILDS ON</text>
-        <text x="836" y="187" fill="#c85a48" font-size="10.5">needs D1</text><text x="836" y="237" fill="#c85a48" font-size="10.5">needs D8</text><text x="212" y="296" fill="#79817b" font-size="10">D5 only</text>
+        <text x="20" y="28" fill="#79817b" font-size="10.5" letter-spacing="1">START NOW</text><text x="238" y="28" fill="#79817b" font-size="10.5" letter-spacing="1">LIGHTS TRACK · NO FORMAT CHANGE</text>
+        <text x="238" y="140" fill="#79817b" font-size="10.5" letter-spacing="1">SURFACE AND SKY TRACK</text>
+        <g><rect x="20" y="50" width="160" height="56" rx="10" fill="#11291f"/><text x="32" y="74" fill="#f4f5f1" font-weight="600">P0 Look seams</text><text x="32" y="92" fill="#9fb2a5" font-size="10.5">one PR · behaviour-neutral</text></g>
+        <g><rect x="20" y="180" width="160" height="56" rx="10" fill="#11291f"/><text x="32" y="204" fill="#f4f5f1" font-weight="600">S0 Rendering gate</text><text x="32" y="222" fill="#9fb2a5" font-size="10.5">report, then land</text></g>
+        <g><rect x="238" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="250" y="74" font-weight="600">S3 Lights</text><text x="250" y="92" fill="#4a524c" font-size="10.5">three kinds · marks · Index</text></g>
+        <g><rect x="450" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="462" y="74" font-weight="600">S7 Light it</text><text x="462" y="92" fill="#4a524c" font-size="10.5">recipes · one undo</text></g>
+        <g><rect x="238" y="180" width="154" height="56" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="250" y="204" font-weight="600">S1 Scene 6</text><text x="250" y="222" fill="#4a524c" font-size="10.5">schema · Tier 2 · plan first</text></g>
+        <g><rect x="450" y="142" width="154" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="462" y="169" font-weight="600">S2 Sky dials</text></g>
+        <g><rect x="450" y="222" width="154" height="56" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="462" y="246" font-weight="600">S4 Finish</text><text x="462" y="264" fill="#4a524c" font-size="10.5">colour · image · mapping</text></g>
+        <g><rect x="662" y="186" width="138" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="674" y="213" font-weight="600">S6 Looks</text></g>
+        <g><rect x="662" y="264" width="138" height="44" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="674" y="291" font-weight="600">S5a Wall faces</text></g>
+        <g><rect x="832" y="186" width="112" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="842" y="205" font-weight="600">S8 Catalogue</text><text x="842" y="221" fill="#4a524c" font-size="10.5">and depth</text></g>
+        <g><rect x="832" y="264" width="112" height="44" rx="10" fill="#fff" stroke="#c85a48" stroke-dasharray="4 3"/><text x="842" y="283" font-weight="600">S5b Floors,</text><text x="842" y="299" font-weight="600">overheads</text></g>
+        <text x="832" y="322" fill="#c85a48" font-size="10.5">waits for T1 (#290)</text>
+        <text x="128" y="150" fill="#79817b" font-size="10">audit only</text>
       </g>
     </svg>
-    <figcaption>S3 needs only the units decision (dashed), so it can start before the schema merges. Suggested order: S0 → S1 → S3 + S2 → S4 → S7 → S6 → S5 → S8.</figcaption>
+    <figcaption>Dark: start now. Green: ships first, no format change. Gold: needs a format bump and a plan. Dashed red: gated on T1's surface identity. The dashed arrow is S0's pipeline audit, the only part of S0 that Lights need. Every interface slice mounts through P0.</figcaption>
   </figure>
-  <h3>Deferred</h3>
-  <p class="lede">Area lights · HDRIs · glass transmission · bloom or any post pass · outlines / toon · per-face finishes on forms (T5) · decals · texture upload as a Finish image · look A/B snapshots · per-Stop lighting in Experience (the highest-value follow-up, but an Experience design).</p>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="panel"><h3>P0, bounded</h3><p>The spatial route is 5,901 lines with 97 imports and every look slice would edit it. P0 leaves one construction of a look module and four mount points (Card stratum, Stage mark layer, Library shelf, Sky popover), and proves the seam by moving the Sky and material-pick wiring that exist today. It is not a route refactor.</p></div>
+    <div class="panel"><h3>Handoff to implementation planning</h3><p>Plan first: <b>S0</b> (invention risk), <b>S1</b> and <b>S5a</b> (Tier 2 format), <b>S8</b> (licence). Everything else is a Tier 0–1 PR described in its own description. Open schema questions for the S1 plan are listed in the README; none is decided here.</p></div>
+  </div>
 </section>
 
 <footer>Proposal only. References and code remain authority. Sketches approximate the shell; they are not pixel specifications.</footer>
@@ -338,11 +426,14 @@ const KEYS = [ // hour, zenith, horizon, ground, sun colour
   [17.75,'#e2a676','#f8e4c2','#e2c99e','#ffc985'],[19.25,'#25313e','#8b6e5d','#45473c','#b9c3dd'],[21,'#141b24','#3a3340','#2b2d2a','#8f9bb8']];
 const PRESETS = { paper:{label:'Paper',t:12,d:215,h:0,sw:'#e9ebe6'}, daylight:{label:'Daylight',t:12,d:215,h:.25,sw:'linear-gradient(#b7cfcd,#eef0e6 55%,#e0e4d3)'},
   golden:{label:'Golden hour',t:17.75,d:300,h:.4,sw:'linear-gradient(#e2a676,#f8e4c2 55%,#e2c99e)'}, dusk:{label:'Dusk',t:19.25,d:330,h:.35,sw:'linear-gradient(#25313e,#8b6e5d 55%,#45473c)'} };
-const LOOKS = { natural:{wall:'#f1e6cf',roof:'#b5533c',acc:'#7b8f6a'}, riso:{wall:'#ee6c4d',roof:'#293241',acc:'#f4d35e',sky:['#f4d35e','#f7e3a1'],ground:'#3d5a80',shadow:'#1f2a44'}, clay:{wall:'#d9d2c5',roof:'#cfc7b8',acc:'#c7bfb0',sky:['#e6e2da','#f1eee8'],ground:'#d4cec2'} };
-const sky = { preset:'daylight', t:12, d:215, h:.25, e:1, shadow:'soft', look:'natural' };
+const AUTH = {wall:'#f1e6cf',roof:'#b5533c',acc:'#7b8f6a'};                 // the creator's literal colours: never rewritten by a Look
+const LOOKS = { natural:{}, riso:{treat:'flat',pal:{wall:'#ee6c4d',roof:'#293241',acc:'#f4d35e'},sky:['#f4d35e','#f7e3a1'],ground:'#3d5a80',shadow:'#1f2a44'}, clay:{treat:'clay',sky:['#e6e2da','#f1eee8'],ground:'#d4cec2'} };
+const CLAY = {wall:'#d9d2c5',roof:'#cfc7b8',acc:'#c7bfb0'};
+const sky = { preset:'daylight', t:12, d:215, h:.25, e:1, shadow:'soft', look:'natural', adopt:false };
 const at = (t) => { let i = 0; while (i < KEYS.length-2 && t > KEYS[i+1][0]) i++; const a = KEYS[i], b = KEYS[i+1]; const k = Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0]))); return [1,2,3,4].map((n) => mix(a[n],b[n],k)); };
 function drawSky(){
-  const paper = sky.preset === 'paper', L = LOOKS[sky.look];
+  const paper = sky.preset === 'paper', LK = LOOKS[sky.look];
+  const L = Object.assign({}, LK, LK.treat === 'clay' ? CLAY : (sky.adopt && LK.pal ? LK.pal : AUTH));
   let [zen,hor,gnd,sunC] = at(sky.t);
   if (L.sky) [zen,hor] = L.sky; if (L.ground) gnd = L.ground;
   if (paper) { zen = hor = '#e9ebe6'; gnd = '#e9ebe6'; }
@@ -380,6 +471,8 @@ function drawSky(){
       <circle cx="${Math.sin(a)*24}" cy="${-Math.cos(a)*24}" r="6" fill="#ffd27a" stroke="#74560c"/></g>`;
   const P = PRESETS[sky.preset], edited = sky.t !== P.t || sky.d !== P.d || sky.h !== P.h;
   $('skyState').textContent = P.label + (edited ? ' · edited' : '') + (sky.look !== 'natural' ? ' · ' + sky.look[0].toUpperCase() + sky.look.slice(1) : '');
+  const ad = $('skyAdopt'); ad.disabled = !LK.pal; ad.setAttribute('aria-pressed', String(sky.adopt && !!LK.pal)); ad.textContent = sky.adopt && LK.pal ? 'Adopted · undo' : 'Adopt palette';
+  $('skyAdoptV').textContent = LK.treat === 'clay' ? 'Clay shows one neutral; your colours are kept' : !LK.pal ? 'your 3 literal colours' : sky.adopt ? '3 colours now follow slots' : 'your 3 literal colours kept';
   const hh = Math.floor(sky.t), mm = String(Math.round((sky.t-hh)*60)).padStart(2,'0');
   $('skyRead').textContent = `${hh}:${mm} · ${sky.d}°`;
 }
@@ -388,44 +481,75 @@ const setPreset = (k) => { const p = PRESETS[k]; Object.assign(sky,{preset:k,t:p
 seg($('skyPresets'), setPreset); seg($('skyShadow'), (v) => { sky.shadow=v; drawSky(); }); seg($('skyLook'), (v) => { sky.look=v; drawSky(); });
 [['skyTime','t'],['skyDir','d'],['skyHaze','h'],['skyExp','e']].forEach(([id,k]) => $(id).addEventListener('input', (e) => { sky[k] = +e.target.value; drawSky(); }));
 $('skyReset').addEventListener('click', () => setPreset(sky.preset));
+$('skyAdopt').addEventListener('click', () => { sky.adopt = !sky.adopt; drawSky(); });
 drawSky();
 
 /* ───────── Finish study ───────── */
-const BASES = { plaster:{label:'Plaster',c:'#c4b4a0',metal:0,sheen:0}, walnut:{label:'Walnut',c:'#5a3d26',metal:0,sheen:1}, brass:{label:'Brass',c:'#d6b35f',metal:1,sheen:2}, marble:{label:'Marble',c:'#e8e4dc',metal:0,sheen:2},
-  paint:{label:'Paint',c:null,metal:0,sheen:0}, glass:{label:'Glass',c:'#cfe3e0',metal:0,sheen:3,glass:1}, glow:{label:'Glow',c:'#ffd27a',metal:0,sheen:0,glow:1}, velvet:{label:'Velvet',c:'#3a1822',metal:0,sheen:0} };
+const BASES = { plaster:{label:'Plaster',c:'#c4b4a0',metal:0,r:.95}, walnut:{label:'Walnut',c:'#5a3d26',metal:0,r:.6,pat:'planks'}, brass:{label:'Brass',c:'#d6b35f',metal:1,r:.3}, marble:{label:'Marble',c:'#e8e4dc',metal:0,r:.3},
+  paint:{label:'Paint',c:'#f1e6cf',metal:0,r:.95}, clear:{label:'Clear',c:'#cfe3e0',metal:0,r:.08,clear:1}, glow:{label:'Glow',c:'#ffd27a',metal:0,r:.95,glow:1}, velvet:{label:'Velvet',c:'#3a1822',metal:0,r:.95} };
 const PAL = ['#f1e6cf','#b5533c','#7b8f6a','#293241','#d4ad45'];
-const SHEEN = [['Matte',.95],['Satin',.6],['Polished',.3],['Mirror',.06]];
-const fin = { base:'walnut', colour:null, sheen:1, asked:false, scope:null };
+const SHEEN = [['Matte',.95],['Satin',.6],['Gloss',.3],['High gloss',.08]];
+const fin = { base:'walnut', lit:null, slot:null, r:.6, metal:0, img:'base', scale:1.2, dir:0, asked:false, scope:null };
+const PXM = 220/2.4;                                                       // wall sample: 2.4 m across 220 px
+function finPattern(kind, c, T){
+  if (kind === 'brick') { const h = T/4, w = T/2, m = mix(c,'#e9e4d8',.7); let o = `<rect width="${T}" height="${T}" fill="${m}"/>`;
+    for (let row = 0; row < 4; row++) for (let k = -1; k < 2; k++) { const x = k*w + (row%2 ? w/2 : 0); o += `<rect x="${x+1}" y="${row*h+1}" width="${w-2}" height="${h-2}" fill="${mix(c,'#000000',((row*3+k+4)%4)*.06)}"/>`; } return o; }
+  if (kind === 'planks') { const w = T/4; let o = ''; for (let k = 0; k < 4; k++) o += `<rect x="${k*w}" width="${w}" height="${T}" fill="${mix(c, k%2 ? '#000000' : '#ffffff', .05+.05*(k%3))}"/><line x1="${k*w}" y1="0" x2="${k*w}" y2="${T}" stroke="#000" stroke-opacity=".28"/><line x1="${k*w}" y1="${T*(.2+.2*k)}" x2="${(k+1)*w}" y2="${T*(.2+.2*k)}" stroke="#000" stroke-opacity=".22"/>`; return o; }
+  return '';
+}
 function drawFin(){
-  const B = BASES[fin.base], c = fin.colour !== null ? (B.c && fin.base!=='paint' ? mix(B.c,PAL[fin.colour],.75) : PAL[fin.colour]) : (B.c || PAL[0]);
-  const r = SHEEN[fin.sheen][1], gloss = 1-r, hi = B.metal ? mix(c,'#ffffff',.55) : '#ffffff';
-  const refl = (B.metal ? .75 : .35)*gloss*gloss, op = B.glass ? .45 : 1;
+  const B = BASES[fin.base], brick = fin.img === 'brick';
+  const c = fin.slot !== null ? PAL[fin.slot] : fin.lit !== null ? fin.lit : brick ? '#a5523b' : B.c;
+  const r = fin.r, gloss = 1-r, hi = fin.metal ? mix(c,'#ffffff',.55) : '#ffffff';
+  const refl = (fin.metal ? .75 : .35)*gloss*gloss, op = B.clear ? .45 : 1;
+  const kind = fin.img === 'none' ? null : brick ? 'brick' : B.pat, T = fin.scale*PXM;
+  const stop = SHEEN.findIndex((x) => Math.abs(x[1]-r) < .02), sName = stop < 0 ? 'Custom sheen' : SHEEN[stop][0];
   $('finSvg').innerHTML = `
     <defs><linearGradient id="fbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b7cfcd"/><stop offset=".62" stop-color="#eef0e6"/><stop offset=".63" stop-color="#d9d3bd"/><stop offset="1" stop-color="#e0e4d3"/></linearGradient>
     <radialGradient id="fb" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="${mix(c,'#ffffff',B.glow?.5:.22)}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${B.glow?c:mix(c,'#000000',.55)}"/></radialGradient>
     <linearGradient id="fr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe0de" stop-opacity="${refl}"/><stop offset=".5" stop-color="#ffffff" stop-opacity="${refl*1.1}"/><stop offset=".53" stop-color="#6b6450" stop-opacity="${refl*.9}"/><stop offset="1" stop-color="#8d8870" stop-opacity="${refl*.4}"/></linearGradient>
+    <linearGradient id="fw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="${.08+refl*.9}"/><stop offset=".5" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".14"/></linearGradient>
     <radialGradient id="fh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${hi}" stop-opacity="${.25+.75*gloss}"/><stop offset="1" stop-color="${hi}" stop-opacity="0"/></radialGradient>
-    <clipPath id="fc"><circle cx="260" cy="150" r="92"/></clipPath><filter id="fgl"><feGaussianBlur stdDeviation="16"/></filter><filter id="fs"><feGaussianBlur stdDeviation="7"/></filter></defs>
+    ${kind ? `<pattern id="fp" width="${T}" height="${T}" patternUnits="userSpaceOnUse" patternTransform="translate(28,58) rotate(${fin.dir})">${finPattern(kind,c,T)}</pattern>` : ''}
+    <clipPath id="fc"><circle cx="396" cy="150" r="78"/></clipPath><filter id="fgl"><feGaussianBlur stdDeviation="16"/></filter><filter id="fs"><feGaussianBlur stdDeviation="7"/></filter></defs>
     <rect width="520" height="320" fill="url(#fbg)"/>
-    <ellipse cx="275" cy="248" rx="96" ry="14" fill="#1b201c" opacity="${B.glow?.08:.28}" filter="url(#fs)"/>
-    ${B.glow ? `<circle cx="260" cy="150" r="104" fill="${c}" opacity=".5" filter="url(#fgl)"/>` : ''}
-    <circle cx="260" cy="150" r="92" fill="url(#fb)" opacity="${op}"/>
-    <g clip-path="url(#fc)"><rect x="168" y="58" width="184" height="184" fill="url(#fr)"/>
-    <ellipse cx="226" cy="112" rx="${16+70*r}" ry="${11+52*r}" fill="url(#fh)"/></g>
-    ${B.glass ? '<circle cx="260" cy="150" r="92" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="1.5"/>' : ''}
-    <text x="16" y="304" font-family="system-ui" font-size="11" fill="#4a524c">${B.label} · ${SHEEN[fin.sheen][0]}${B.glow ? ' · glows, does not light the room' : ''}${B.glass ? ' · opacity + sheen, no transmission' : ''}</text>`;
-  $('finRough').textContent = r.toFixed(2);
-  $('finReach').textContent = fin.scope === 'one' ? `${B.label} (copy) · this object only` : fin.scope === 'all' ? `${B.label} · editing all 7` : `${B.label} · shared by 7`;
+    <rect x="34" y="246" width="220" height="8" fill="#1b201c" opacity=".2" filter="url(#fs)"/>
+    <rect x="28" y="58" width="220" height="184" fill="${c}" opacity="${op}"/>
+    ${kind ? `<rect x="28" y="58" width="220" height="184" fill="url(#fp)" opacity="${op}"/>` : ''}
+    <rect x="28" y="58" width="220" height="184" fill="url(#fw)"/><rect x="28" y="58" width="220" height="184" fill="none" stroke="#1b201c" stroke-opacity=".25"/>
+    <path d="M28 262 h${PXM} M28 258 v8 M${28+PXM} 258 v8" stroke="#4a524c" fill="none"/><text x="${28+PXM+6}" y="266" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#4a524c">1 m</text>
+    <text x="28" y="50" font-family="system-ui" font-size="10.5" fill="#4a524c">wall sample · 2.4 m wide${kind ? ` · one tile = ${fin.scale.toFixed(1)} m` : ' · no image'}</text>
+    <ellipse cx="408" cy="234" rx="82" ry="12" fill="#1b201c" opacity="${B.glow?.08:.28}" filter="url(#fs)"/>
+    ${B.glow ? `<circle cx="396" cy="150" r="90" fill="${c}" opacity=".5" filter="url(#fgl)"/>` : ''}
+    <circle cx="396" cy="150" r="78" fill="url(#fb)" opacity="${op}"/>
+    <g clip-path="url(#fc)"><rect x="318" y="72" width="156" height="156" fill="url(#fr)"/>
+    <ellipse cx="368" cy="118" rx="${14+60*r}" ry="${10+44*r}" fill="url(#fh)"/></g>
+    ${B.clear ? '<circle cx="396" cy="150" r="78" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="1.5"/>' : ''}
+    <text x="16" y="304" font-family="system-ui" font-size="11" fill="#4a524c">${brick ? 'Brick (yours)' : B.label} · ${sName}${fin.metal ? ' · metal' : ''}${B.glow ? ' · glows, does not light the room' : ''}${B.clear ? ' · see-through, does not bend light' : ''}${gloss > .6 ? ' · reflects the sky, not the room' : ''}</text>`;
+  $('finRough').textContent = ' ' + r.toFixed(2); $('finScaleV').textContent = ` one tile = ${fin.scale.toFixed(1)} m`;
+  const nm = (brick ? 'Brick' : B.label) + (fin.slot !== null ? ` · follows slot ${fin.slot+1}` : '');
+  $('finReach').textContent = fin.scope === 'one' ? `${nm} (copy) · this object only` : fin.scope === 'all' ? `${nm} · editing all 7` : `${nm} · shared by 7`;
   $('finAsk').hidden = !fin.asked || fin.scope !== null;
+  $('finAskN').textContent = BASES[fin.base].label;
+  [...$('finSheen').children].forEach((b,i) => b.setAttribute('aria-pressed', String(i === stop)));
+  [...$('finMetal').children].forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === fin.metal)));
+  [...$('finColour').querySelectorAll('button')].forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.v === (fin.slot !== null ? fin.slot : fin.lit !== null ? -2 : -1))));
+  $('finR').value = r; $('finFree').value = c;
 }
 const touch = () => { if (fin.scope === null) fin.asked = true; };
-$('finBase').innerHTML = Object.entries(BASES).map(([k,b]) => `<button class="tile" data-v="${k}" aria-pressed="${k==='walnut'}"><i style="background:${b.c||'conic-gradient(#b5533c,#d4ad45,#7b8f6a,#293241,#b5533c)'}"></i>${b.label}</button>`).join('');
-$('finColour').innerHTML = `<button data-v="-1" aria-pressed="true" title="Base colour" style="background:linear-gradient(135deg,#fff 45%,#c85a48 46%,#c85a48 54%,#fff 55%)"></button>` + PAL.map((p,i) => `<button data-v="${i}" aria-pressed="false" title="Palette slot ${i+1}: followers update when it changes" style="background:${p}"></button>`).join('');
-$('finSheen').innerHTML = SHEEN.map((s,i) => `<button data-v="${i}" aria-pressed="${i===1}">${s[0]}</button>`).join('');
-seg($('finBase'), (v) => { fin.base=v; fin.sheen=BASES[v].sheen; fin.colour=null; fin.asked=false; fin.scope=null;
-  [...$('finSheen').children].forEach((b,i) => b.setAttribute('aria-pressed', String(i===fin.sheen))); [...$('finColour').children].forEach((b,i) => b.setAttribute('aria-pressed', String(i===0))); drawFin(); });
-seg($('finColour'), (v) => { fin.colour = +v < 0 ? null : +v; touch(); drawFin(); });
-seg($('finSheen'), (v) => { fin.sheen=+v; touch(); drawFin(); });
+$('finBase').innerHTML = Object.entries(BASES).map(([k,b]) => `<button class="tile" data-v="${k}" aria-pressed="${k==='walnut'}"><i style="background:${k==='paint' ? 'conic-gradient(#b5533c,#d4ad45,#7b8f6a,#293241,#b5533c)' : b.c}"></i>${b.label}</button>`).join('');
+$('finColour').innerHTML = `<button data-v="-1" aria-pressed="true" title="The base's own colour" style="background:linear-gradient(135deg,#fff 45%,#c85a48 46%,#c85a48 54%,#fff 55%)"></button>` + PAL.map((p,i) => `<button data-v="${i}" aria-pressed="false" title="Palette slot ${i+1}: followers update when it changes" style="background:${p}"></button>`).join('') + `<input id="finFree" type="color" value="#5a3d26" aria-label="Any colour" title="Any colour">`;
+$('finSheen').innerHTML = SHEEN.map((x,i) => `<button data-v="${i}">${x[0]}</button>`).join('');
+seg($('finBase'), (v) => { const B = BASES[v]; Object.assign(fin, { base:v, r:B.r, metal:B.metal, lit:null, slot:null, img:'base', asked:false, scope:null });
+  [...$('finImg').children].forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === 'base'))); drawFin(); });
+$('finColour').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const v = +b.dataset.v; fin.slot = v < 0 ? null : v; fin.lit = null; touch(); drawFin(); });
+$('finFree').addEventListener('input', (e) => { fin.lit = e.target.value; fin.slot = null; touch(); drawFin(); });
+$('finSheen').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; fin.r = SHEEN[+b.dataset.v][1]; touch(); drawFin(); });
+$('finR').addEventListener('input', (e) => { fin.r = +e.target.value; touch(); drawFin(); });
+$('finScale').addEventListener('input', (e) => { fin.scale = +e.target.value; touch(); drawFin(); });
+seg($('finImg'), (v) => { fin.img = v; if (v === 'brick') $('finMore').open = true; touch(); drawFin(); });
+seg($('finDir'), (v) => { fin.dir = +v; touch(); drawFin(); });
+$('finMetal').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; fin.metal = +b.dataset.v; touch(); drawFin(); });
 $('finAsk').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; fin.scope = b.dataset.v; drawFin(); });
 drawFin();
 
@@ -468,6 +592,51 @@ svg.addEventListener('pointermove', (e) => { if (!lit.drag) return; const [x,y] 
 $('litK').addEventListener('input', (e) => { lit.k = +e.target.value; drawLit(); });
 seg($('litB'), (v) => { lit.b=+v; drawLit(); }); seg($('litBeam'), (v) => { lit.beam=+v; drawLit(); }); seg($('litSh'), (v) => { lit.sh=+v; drawLit(); });
 drawLit();
+/* ───────── Light kinds study ───────── */
+const KIND = {
+  point:{ name:'Pendant', tag:'LIGHT · POINT', place:'Click a surface. The light stands off along its normal: hung below a ceiling, at lamp height above a floor. In Plan, height comes from the surface above.', marks:'<b>Stem</b> to the host surface (drag = drop) · <b>reach ring</b> on the floor (drag = range)', card:'Warmth · Brightness · Reach · Shadow (off by default: a point shadow costs six passes)' },
+  spot:{ name:'Picture spot', tag:'LIGHT · SPOT', place:'Press on the mount, drag, release on the target: one gesture. A plain click aims along the surface normal.', marks:'<b>Target</b> on the surface it hits · <b>cone rim</b> (drag = Beam) · dashed axis', card:'Warmth · Brightness · Beam · Shadow. More: edge softness, range' },
+  dir:{ name:'Fill light', tag:'LIGHT · DIRECTIONAL', place:'The Sun belongs to the Sky and moves with the sun mark. An extra directional is added from Lights › More; it has no meaningful position.', marks:'<b>Direction dial</b> at the World mark: compass ring + elevation arc. Parallel rays hatch the Stage during the drag', card:'Warmth · Brightness · Shadow' } };
+const kd = { kind:'spot', fx:0, view:'edit' };
+function drawKind(){
+  const K = KIND[kd.kind], ed = kd.view === 'edit', fx = kd.fx && kd.kind !== 'dir', warm = '#ffd9a0';
+  let light = '', marks = '', body = '';
+  if (kd.kind === 'spot') {
+    light = `<polygon points="296,96 352,128 404,176" fill="${warm}" opacity=".3"/><ellipse cx="380" cy="150" rx="30" ry="36" fill="${warm}" opacity=".5" transform="rotate(-8 380 150)"/>`;
+    marks = `<line x1="296" y1="96" x2="380" y2="150" stroke="#f4f5f1" stroke-dasharray="3 3"/><ellipse cx="380" cy="150" rx="30" ry="36" fill="none" stroke="#f4f5f1" stroke-opacity=".8" transform="rotate(-8 380 150)"/>
+      <rect x="405" y="165" width="9" height="9" fill="#f4f5f1" stroke="#11291f"/><text x="418" y="186" class="kl">cone rim · Beam</text>
+      <circle cx="380" cy="150" r="7" fill="#d4ad45" stroke="#11291f" stroke-width="1.5"/><circle cx="380" cy="150" r="2" fill="#11291f"/><text x="330" y="204" class="kl">target</text>
+      <path d="M287 90 h18 l-4 12 h-10z" fill="#f4f5f1" stroke="#11291f"/><text x="232" y="84" class="kl">emitter</text>`;
+    body = `<rect x="284" y="78" width="24" height="7" rx="2" fill="#2b2f2c"/><path d="M290 85 l14 4 l8 14 l-14 4 z" fill="#3b403c" stroke="#11291f"/>`;
+  } else if (kd.kind === 'point') {
+    light = `<ellipse cx="290" cy="246" rx="96" ry="34" fill="${warm}" opacity=".38"/><circle cx="290" cy="150" r="34" fill="${warm}" opacity=".3" filter="url(#kb)"/>`;
+    marks = `<line x1="290" y1="92" x2="290" y2="144" stroke="#f4f5f1"/><rect x="286" y="118" width="8" height="8" fill="#f4f5f1" stroke="#11291f"/><text x="300" y="118" class="kl">stem · drop</text>
+      <line x1="290" y1="158" x2="290" y2="246" stroke="#f4f5f1" stroke-dasharray="2 4" opacity=".6"/>
+      <ellipse cx="290" cy="246" rx="96" ry="34" fill="none" stroke="#f4f5f1" stroke-dasharray="5 4"/><rect x="382" y="242" width="9" height="9" fill="#f4f5f1" stroke="#11291f"/><text x="396" y="266" class="kl">reach ring</text>
+      <circle cx="290" cy="150" r="8" fill="#f4f5f1" stroke="#11291f"/><text x="232" y="154" class="kl">emitter</text>`;
+    body = `<line x1="290" y1="92" x2="290" y2="138" stroke="#2b2f2c" stroke-width="2"/><path d="M272 158 q18 -34 36 0 z" fill="#ffd27a" stroke="#74560c"/>`;
+  } else {
+    light = `<polygon points="130,250 280,300 204,326 64,272" fill="#0c1611" opacity=".4"/><polygon points="300,190 450,235 450,105 300,60" fill="${warm}" opacity=".2"/>`;
+    marks = `<g stroke="#f4f5f1" stroke-opacity=".45" stroke-dasharray="6 6">${[0,1,2,3,4,5].map((k) => `<line x1="${430+k*16}" y1="${20+k*10}" x2="${250+k*16}" y2="${88+k*10}"/>`).join('')}</g><text x="356" y="30" class="kl">parallel rays while dragging</text>
+      <g transform="translate(74,236)"><ellipse rx="44" ry="17" fill="#11291f" fill-opacity=".85" stroke="#9fb2a5"/><path d="M0 0 Q20 -44 44 0" fill="none" stroke="#9fb2a5"/><line x1="0" y1="0" x2="26" y2="-27" stroke="#ffd27a" stroke-width="2"/>
+        <circle cx="26" cy="-27" r="6" fill="#ffd27a" stroke="#74560c"/><rect x="29" y="7" width="8" height="8" fill="#f4f5f1" stroke="#11291f"/></g><text x="22" y="276" class="kl">direction dial</text>`;
+  }
+  $('kindSvg').innerHTML = `
+    <defs><filter id="kb"><feGaussianBlur stdDeviation="9"/></filter><style>.kl{font:600 10.5px system-ui;fill:#f4f5f1;stroke:#11291f;stroke-width:3px;paint-order:stroke;stroke-linejoin:round}</style></defs>
+    <rect width="520" height="320" fill="#233f38"/>
+    <path d="M40 262 L300 150 L500 220 L250 318Z" fill="#e9ebe6" opacity=".12"/>
+    <polygon points="130,250 300,190 450,235 280,300" fill="#c9bb98"/>
+    <polygon points="130,250 130,120 300,60 300,190" fill="#d8ccb2"/><polygon points="300,190 300,60 450,105 450,235" fill="#e6dbc3"/>
+    <polygon points="350,115 410,133 410,183 350,165" fill="#7b4a3a" stroke="#d4ad45" stroke-width="2"/>
+    ${light}
+    <path d="M130 120 L280 170 L450 105 M280 170 L280 300" fill="none" stroke="#f4f5f1" stroke-opacity=".3" stroke-dasharray="3 5"/>
+    ${fx ? body : ''}${ed ? marks : ''}
+    <text x="16" y="24" font-family="system-ui" font-size="10.5" fill="#9fb2a5">${ed ? 'Editor · light selected' : 'Visitor · the light is seen, the emitter is not'}${kd.kind === 'dir' && kd.fx ? ' · a directional has no body' : ''}</text>`;
+  $('kindName').textContent = K.name; $('kindTag').textContent = K.tag;
+  $('kindPlace').textContent = K.place; $('kindMarks').innerHTML = K.marks; $('kindCard').textContent = K.card;
+}
+seg($('kindSeg'), (v) => { kd.kind = v; drawKind(); }); seg($('kindFx'), (v) => { kd.fx = +v; drawKind(); }); seg($('kindView'), (v) => { kd.view = v; drawKind(); });
+drawKind();
 })();
 </script>
 </body>
