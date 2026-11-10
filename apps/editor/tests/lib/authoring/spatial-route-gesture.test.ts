@@ -160,10 +160,22 @@ function anotherWall(): { readonly id: string; readonly css: [number, number];
 	return { id: fragment.ref.sourceId, css: projected([center[0]!, fragment.elevationMeters, center[1]!]) };
 }
 
+function revealWallSize(): void {
+	// A drag interruption leaves the disclosure open and the ray admitted; toggling
+	// it again would close the control the next press needs.
+	if (facade().marks().some((candidate) => candidate.id === 'layout-wall-length')) return;
+	const chip = facade().marks().find(
+		(candidate) => candidate.id === 'layout-wall-size-chip' && candidate.role === 'disclose'
+	);
+	if (chip === undefined || !facade().activateDisclosure(chip.id))
+		throw new Error('the Wall size chip did not open');
+}
+
 async function startDrag() {
 	// R217.S15 — the end point now moves the shared Junction; the measure ray is
 	// the outward grip at that end. Marks are already in Stage-local CSS; pointer
 	// intents add the accepted Stage rect.
+	revealWallSize();
 	const ray = facade().marks().find((mark) => mark.id === 'layout-wall-length');
 	if (ray?.tip === null || ray?.tip === undefined) throw new Error('the Wall length ray is not projected');
 	const press: [number, number] = [ray.tip[0] + RECT.left, ray.tip[1] + RECT.top];
@@ -412,6 +424,7 @@ describe('mounted Stage pointer lifecycle', () => {
 		const stage = facade();
 		const adapter = vi.spyOn(stage, 'pointerIntent');
 		const gesture = vi.spyOn(stage, 'acquireGesture');
+		revealWallSize();
 		const mark = stage.marks().find((item) => item.id === 'layout-wall-length');
 		if (mark?.tip == null) throw new Error('the Wall length ray is not projected');
 		pointer('pointerdown', [mark.tip[0] + RECT.left, mark.tip[1] + RECT.top]);
@@ -2290,11 +2303,11 @@ async function remountWith(layout: LayoutDocumentWallFirst): Promise<void> {
 }
 
 /** Enter the real session and let the declared 1 s face transition settle. */
-async function enterUnfold(wallId: string): Promise<void> {
+async function enterUnfold(wallId: string, anchorStation = 0): Promise<void> {
 	const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
 	const wall = facade().snapshot().domain.geometry.walls.find((candidate) => candidate.wallId === wallId);
 	if (wall === undefined) throw new Error(`missing compiled Wall ${wallId}`);
-	wallUnfold.enter(wall, 0);
+	wallUnfold.enter(wall, anchorStation);
 	clock.mockReturnValue(2000);
 	for (let index = 0; index < 4; index += 1) await frame();
 	expect(wallUnfold.state?.u).toBe(1);
@@ -2328,7 +2341,8 @@ function developedDisplay(fixture: UnfoldFixture): WallUnfoldDisplay {
 	const spans = wallUnfoldSourceSpans(fixture.document, fixture.wallId, wall.length);
 	const display = buildWallUnfoldDisplay(wall, state, {
 		floorY: facade().snapshot().domain.datumMeters,
-		spans
+		spans,
+		sideAngle: wallUnfold.presentationAngle
 	});
 	if (display === null) throw new Error('the developed display was refused');
 	return display;
@@ -2390,7 +2404,9 @@ describe('mounted unfolded inverse picking', () => {
 		const length = wallFirstWallLength(fixture.document, fixture.wallId)!;
 		const opening = openingOn(fixture, length - 0.2, 0.4);
 		await remountWith(opening.document);
-		await enterUnfold(fixture.wallId);
+		// Keep the anchor pin away from the seam so this test isolates inverse
+		// picking from the pin's intentional press precedence.
+		await enterUnfold(fixture.wallId, length * 0.25);
 
 		const display = developedDisplay(fixture);
 		const seamTriangle = display.mesh.triangles.find((triangle) => {
@@ -2417,13 +2433,15 @@ describe('mounted unfolded inverse picking', () => {
 		await enterUnfold(fixture.wallId);
 		const state = wallUnfold.state!;
 		expect(state.cutStation).not.toBeNull();
-		const cut = state.cutStation!;
 		const display = developedDisplay(fixture);
+		const band = display.openingBands.find((candidate) => candidate.openingId === opening.openingId)!;
+		// The shifted cut avoids the Opening, so press the Opening's own top band
+		// beside the cut. This is the visible face a pick can actually land on.
 		const cutTriangle = display.mesh.triangles.find((triangle) => {
-			if (triangle.face !== 'right') return false;
-			return Math.abs(wrappedStation(triangleStation(display, triangle), length) - cut) < 0.12;
+			const station = wrappedStation(triangleStation(display, triangle), length);
+			return triangle.face === 'top' && station >= band.stationStart && station <= band.stationEnd;
 		});
-		if (cutTriangle === undefined) throw new Error('no triangle at the display cut');
+		if (cutTriangle === undefined) throw new Error('no Opening band at the display cut');
 		const point = projected(triangleCentroid(display, cutTriangle));
 
 		pointer('pointerdown', point, false, 10);

@@ -14,14 +14,12 @@
 	 * the DOM never turns an empty field into zero.
 	 */
 	import { onDestroy, untrack, type Snippet } from 'svelte';
-	import { compactMeasure } from '$lib/authoring/stage/stage-adapter-host';
+	import { compactMeasure, indexLabels, stageLayout } from '$lib/authoring/stage/stage-adapter-host';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createCardFieldsInstrument } from './adapter-support';
-	import { indexLabels } from '$lib/authoring/stage/shell/index-labels';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
-	import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		isStraightCompiledWall,
 		wallUnfoldAnchor,

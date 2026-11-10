@@ -220,6 +220,9 @@ describe('Stage shell composition', () => {
 			// C3 checkpoint 5 — the unfolded Wall sheet. It draws the checkpoint-4
 			// developed mesh on the existing Canvas and owns no camera or pick root.
 			'apps/editor/src/lib/authoring/stage/shell/StageWallDevelopment.svelte',
+			// The one Wall-unroll pin material. It is a shared marker, not a camera,
+			// control object or second renderer.
+			'apps/editor/src/lib/authoring/stage/shell/StageWallPin.svelte',
 			CANVAS_FILE,
 			'apps/editor/src/lib/authoring/stage/shell/StageCamera.svelte',
 			// R217.S28's snapshot host: an offscreen render target on the existing

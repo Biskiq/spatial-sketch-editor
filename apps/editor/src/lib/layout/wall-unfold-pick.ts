@@ -420,10 +420,26 @@ export function pickWallUnfold(
 			openingId: band.openingId,
 			distanceMeters: Math.sqrt(distanceAlong * lengthSquared)
 		};
-		// A jamb beside the void can be a few centimetres nearer than the band
-		// centre. The void is still the intended address for any ray inside its
-		// width, so let the band win within the same claim neighbourhood.
-		if (nearest === null || candidate.distanceMeters <= nearest.distanceMeters + 0.5) nearest = candidate;
+		// The analytic band exists for a true void, where there is no rendered
+		// triangle to hit. A top/bottom hit can sit over that void when the Camera
+		// looks down; keep the hit's canonical span/knot evidence, but identify the
+		// Opening and read its face so ordinary selection can use it. A side-face
+		// hit stays a solid Wall hit.
+		const closed = display.development.closed;
+		const target = closed
+			? wrap(nearest?.station ?? 0, display.development.length)
+			: nearest?.station ?? 0;
+		const start = closed ? wrap(band.stationStart, display.development.length) : band.stationStart;
+		const offset = closed ? wrap(target - start, display.development.length) : target - band.stationStart;
+		const insideBand = nearest !== null && offset >= -1e-9 && offset <= width + 1e-9;
+		if (nearest === null) nearest = candidate;
+		else if (
+			insideBand &&
+			nearest.openingId === null &&
+			(nearest.face === 'top' || nearest.face === 'bottom')
+		) {
+			nearest = { ...nearest, openingId: candidate.openingId, face: 'left', lateral: 0, height: candidate.height };
+		}
 	}
 	return nearest;
 }

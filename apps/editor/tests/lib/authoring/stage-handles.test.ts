@@ -574,7 +574,7 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		);
 		expect(layer).toContain('const GOLD = STAGE_PAINT.selection');
 		expect(layer).toContain('const NEUTRAL = STAGE_PAINT.hover');
-		expect(layer).toContain("color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL");
+		expect(layer).toContain("color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL)");
 		expect(layer).toContain("toneMapped: false");
 		// Hover (and S10's erase dashes) are edges only; the tint is selection's alone.
 		expect(layer).not.toContain('new Mesh(tintGeometry');
@@ -582,16 +582,17 @@ describe('R217.S07 — disclosure through the Stage host', () => {
 		// A selection at rest must repaint even though the ink objects are added
 		// imperatively rather than declared as Threlte children.
 		expect(layer).toContain('invalidate();');
-		// The accepted subject is depth-tested; an occluded wall must not glow
-		// through the wall in front of it.
-		expect(layer).toContain('depthTest: true');
+		// Selection is the identity overlay and stays readable over a derived Room
+		// ceiling; hover and erase remain depth-tested so they cannot imply hidden
+		// geometry.
+		expect(layer).toContain("depthTest: tone !== 'selection'");
 		// Appearance, selection and hover are conditions of mounting, never a
 		// write to `Object3D.visible` (the pick source's eligibility flag).
 		expect(layer).not.toContain('root.visible');
 		// Hidden LODs/children are not drawn, so they cannot contribute a gold clone.
 		expect(layer).toContain('hasVisibleAncestor(node)');
 		// Selection outranks hover when two identities share an edge.
-		expect(layer).toContain("tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19");
+		expect(layer).toContain("tone === 'selection' ? 22 : tone === 'rim' ? 23 : tone === 'erase' ? 24 : 19");
 		expect(layer).not.toContain('tint.renderOrder');
 		const canvas = readFileSync(
 			new URL('../../../src/lib/authoring/stage/shell/StageCanvas.svelte', import.meta.url),

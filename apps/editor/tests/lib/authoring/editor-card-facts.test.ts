@@ -179,6 +179,10 @@ describe('Card actions: only a destructive action is destructive', () => {
 		await settle();
 		expect(duplicate.run).toHaveBeenCalledTimes(1);
 
+		// An accepted action closes the subject panel so the Card can expose what
+		// changed; reopening it is the creator's next step, not a lost action.
+		target.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();
+		await settle();
 		target.querySelector<HTMLButtonElement>('[data-card-action="scene-object-delete"]')!.click();
 		await settle();
 		expect(remove.run).not.toHaveBeenCalled();

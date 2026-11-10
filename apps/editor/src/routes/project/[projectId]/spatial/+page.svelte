@@ -2083,6 +2083,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function beginSheetPin(event: PointerEvent, wallId: string, activeAtPress: boolean): boolean {
+		// A failed capture still consumes the pin press: releasing it to navigation
+		// or the canonical pick would make the same press mean two different things.
+		if (stageEl === undefined || !capturePointer(stageEl, event.pointerId)) {
+			press.refuse(event.pointerId);
+			return true;
+		}
 		sheetPinDrag = {
 			pointerId: event.pointerId,
 			wallId,
@@ -2091,7 +2097,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			moved: false,
 			activeAtPress
 		};
-		try { stageEl?.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
 		press.refuse(event.pointerId);
 		return true;
 	}
@@ -2187,36 +2192,45 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			sideAngle: wallUnfold.presentationAngle
 		});
 		if (display === null) return false;
-		// Peel starts on the free edge, before the sheet pick. The candidates are
-		// the same development map at sampled amounts, so this is a display solve,
-		// not a second geometry authority. A short screen path falls back to the
-		// bounded vertical mapping in `sheetEdgeMove`.
-		const candidates = sheetEdgeCandidates(display, state, wall, stage);
-		if (candidates.length >= 2) {
-			const threshold = event.pointerType === 'mouse' ? WALL_UNFOLD_EDGE_HIT_CSS : WALL_UNFOLD_EDGE_HIT_COARSE_CSS;
-			let nearest: WallUnfoldEdgeCandidate | null = null;
-			let nearestDistance = Number.POSITIVE_INFINITY;
-			for (const candidate of candidates) {
-				const distance = Math.hypot(candidate.css[0] - event.clientX, candidate.css[1] - event.clientY);
-				if (distance < nearestDistance) {
-					nearest = candidate;
-					nearestDistance = distance;
+		// The sheet pick wins when the ray lands on the developed Wall. The free
+		// edge is only a peel target when the pick is empty; otherwise a press on
+		// an Opening or Wall near the edge would become an accidental refold.
+		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
+		const pick = ray.kind === 'ray' ? pickWallUnfold(display, ray.ray) : null;
+		if (pick === null) {
+			// Peel starts on the free edge, using the same development map. The
+			// candidates are a display solve, not a second geometry authority. A short
+			// screen path falls back to the bounded vertical mapping in `sheetEdgeMove`.
+			const candidates = sheetEdgeCandidates(display, state, wall, stage);
+			if (candidates.length >= 2) {
+				const threshold = event.pointerType === 'mouse' ? WALL_UNFOLD_EDGE_HIT_CSS : WALL_UNFOLD_EDGE_HIT_COARSE_CSS;
+				let nearest: WallUnfoldEdgeCandidate | null = null;
+				let nearestDistance = Number.POSITIVE_INFINITY;
+				for (const candidate of candidates) {
+					const distance = Math.hypot(candidate.css[0] - event.clientX, candidate.css[1] - event.clientY);
+					if (distance < nearestDistance) {
+						nearest = candidate;
+						nearestDistance = distance;
+					}
 				}
-			}
-			if (nearest !== null && nearestDistance <= threshold) {
-				sheetEdgeDrag = {
-					pointerId: event.pointerId,
-					wallId: wall.wallId,
-					pressY: event.clientY,
-					startU: state.u,
-					grabOffset: nearest === null
-						? [0, 0]
-						: [event.clientX - nearest.css[0], event.clientY - nearest.css[1]],
-					candidates
-				};
-				try { stageEl?.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
-				press.refuse(event.pointerId);
-				return true;
+				if (nearest !== null && nearestDistance <= threshold) {
+					// The peel consumes the press even if capture fails, so the failure
+					// cannot leave a half-started edge drag behind or fall through to a pick.
+					if (stageEl === undefined || !capturePointer(stageEl, event.pointerId)) {
+						press.refuse(event.pointerId);
+						return true;
+					}
+					sheetEdgeDrag = {
+						pointerId: event.pointerId,
+						wallId: wall.wallId,
+						pressY: event.clientY,
+						startU: state.u,
+						grabOffset: [event.clientX - nearest.css[0], event.clientY - nearest.css[1]],
+						candidates
+					};
+					press.refuse(event.pointerId);
+					return true;
+				}
 			}
 		}
 		// The pin is the next handle: press-and-release selects its Opening
@@ -2226,10 +2240,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (pin !== null && unfoldedPinAt(stageCss(event), event.pointerType !== 'mouse', stage) !== null) {
 			return beginSheetPin(event, wall.wallId, true);
 		}
-		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
-		if (ray.kind !== 'ray') return false;
-		const pick = pickWallUnfold(display, ray.ray);
-		if (pick === null) return false;
+		if (ray.kind !== 'ray' || pick === null) return false;
 		wallUnfold.recordPick(pick, event.pointerId);
 		selectUnfoldedPick(wall.wallId, pick);
 		// S5b — a press on an Opening void starts a canonical offset/width edit.
@@ -2260,24 +2271,30 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					: Infinity;
 			};
 			const mode = sheetOpeningModeFromEdges(edgeAt(band.stationStart), edgeAt(band.stationEnd));
-			sheetOpeningDrag = {
-				pointerId: event.pointerId,
-				wallId: wall.wallId,
-				openingId: pick.openingId,
-				mode,
-				grabStation: mode === 'left' ? band.stationStart : mode === 'right' ? band.stationEnd : pick.station,
-				startOffset: sourceOpening.offset,
-				startWidth: sourceOpening.width,
-				length: wall.length,
-				closed: display.development.closed,
-				pressX: event.clientX,
-				pressY: event.clientY,
-				moved: false,
-				previewOffset: sourceOpening.offset,
-				previewWidth: sourceOpening.width
-			};
-			wallUnfold.setOpeningPreview({ wallId: wall.wallId, openingId: pick.openingId, offset: sourceOpening.offset, width: sourceOpening.width });
-			try { stageEl?.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
+			// A failed capture keeps the new Opening selection but installs no drag
+			// preview, so there is no orphaned edit to strand the next press.
+			if (stageEl !== undefined && capturePointer(stageEl, event.pointerId)) {
+				sheetOpeningDrag = {
+					pointerId: event.pointerId,
+					wallId: wall.wallId,
+					openingId: pick.openingId,
+					mode,
+					grabStation: mode === 'left' ? band.stationStart : mode === 'right' ? band.stationEnd : pick.station,
+					startOffset: sourceOpening.offset,
+					startWidth: sourceOpening.width,
+					length: wall.length,
+					closed: display.development.closed,
+					pressX: event.clientX,
+					pressY: event.clientY,
+					moved: false,
+					previewOffset: sourceOpening.offset,
+					previewWidth: sourceOpening.width
+				};
+				wallUnfold.setOpeningPreview({ wallId: wall.wallId, openingId: pick.openingId, offset: sourceOpening.offset, width: sourceOpening.width });
+			} else {
+				sheetOpeningDrag = null;
+				wallUnfold.setOpeningPreview(null);
+			}
 		}
 		// The press is consumed: its release must not run the canonical Stage pick.
 		press.refuse(event.pointerId);

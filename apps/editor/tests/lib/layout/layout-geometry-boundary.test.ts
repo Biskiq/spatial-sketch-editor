@@ -228,13 +228,15 @@ describe('[cap:layout.canonical-compiler core] G1 geometry boundary', () => {
 		// T4 absorbed the single-module pin that used to live in
 		// `wall-mesh-builder.test.ts` and widened it to the whole layer. PR #115
 		// (§5.1) then removed the 31 `$lib/layout/*` re-export facades, so the
-		// layer is still tiny: the shared mesh builder plus C3's two pure unfold
-		// modules (development preparation and inverse picking). The browser-facing
-		// unfold session store deliberately lives under `$lib/authoring/layout` so
-		// this boundary keeps forbidding animation/browser APIs.
+		// layer is still tiny: the shared mesh builder plus C3's three pure unfold
+		// modules (development preparation, inverse picking and sheet Opening
+		// drag mapping). The browser-facing unfold session store deliberately lives
+		// under `$lib/authoring/layout` so this boundary keeps forbidding
+		// animation/browser APIs.
 		const layoutFiles = ALL_SOURCE_FILES.filter((file) => file.startsWith(`${libRoot}/layout/`));
 		expect(layoutFiles.map((file) => file.slice(libRoot.length + 1))).toEqual([
 			'layout/wall-mesh-builder.ts',
+			'layout/wall-unfold-opening-drag.ts',
 			'layout/wall-unfold-pick.ts',
 			'layout/wall-unfold.ts'
 		]);
