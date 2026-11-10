@@ -55,6 +55,7 @@ import StageMatGround from './StageMatGround.svelte';
 	let {
 		geometry,
 		sourceContentId,
+		layoutRevision,
 		scene,
 		rooms,
 		evaluation,
@@ -84,6 +85,7 @@ import StageMatGround from './StageMatGround.svelte';
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
+		layoutRevision: string;
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		evaluation: ViewportEvaluation | null;
@@ -261,7 +263,7 @@ import StageMatGround from './StageMatGround.svelte';
 	</T.Group>
 	<!-- C3 checkpoint 5 — the unfolded Wall's own developed body. It is a Canvas child,
 		not a second scene, and never a registered pick root. -->
-	<StageWallDevelopment {geometry} {datumMeters}
+	<StageWallDevelopment {geometry} {datumMeters} {layoutRevision}
 		selected={selection?.reference.domain === 'layout' && selection.reference.subject.kind === 'wall' &&
 			selection.reference.subject.id === unfoldedWallId} />
 	<StageEntities

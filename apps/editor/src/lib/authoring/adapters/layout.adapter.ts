@@ -765,44 +765,73 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (current?.lease.lease.active) current.lease.lease.release();
 			}
 			const WALL_TOP_KNOB_REACH_METERS = 0.45;
-			function scalarSpecs(ctx: StageAdapterContext): ScalarGesture['spec'][] {
-				const wall = selectedWall(ctx);
-				const y = ctx.snapshot.domain.datumMeters;
+			/** The selected Wall's cap and local tangent, for straight, curved or closed. */
+			function selectedScalarTarget(adapterContext: StageAdapterContext): {
+				readonly wallId: string;
+				readonly cap: LayoutVec2;
+				readonly tangent: LayoutVec2;
+			} | null {
+				const wall = selectedWall(adapterContext);
 				if (wall !== null) {
-					const source = document.walls.find((w) => w.id === wall.wallId);
-					const direction = wallDirection(wall.frame);
-					if (!source || !direction) return [];
-					const length = wallLength(wall.frame);
-					const planReading=ctx.evaluation.settledReading==='plan';
-					return [
-						{
-							id: 'layout-wall-height',
-							subject: 'wall',
-							subjectId: source.id,
-							field: 'height',
-							value: source.height,
-							// The top knob stands just past the Wall's end on a stem from
-							// its base, clear of the body and the thickness grip. Travel is
-							// vertical, so the drawn offset never changes the planned height.
-							anchor: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y + source.height),
-							stem: framePoint(wall.frame, length + WALL_TOP_KNOB_REACH_METERS, y),
-							axis: [0, 1, 0]
-						},
-						{
-							id: 'layout-wall-thickness',
-							subject: 'wall',
-							subjectId: source.id,
-							field: 'thickness',
-							value: source.thickness,
-							anchor: framePoint(wall.frame,length,planReading?y:y+source.height),
-							axis: [-direction[1], 0, direction[0]]
-						}
-					];
+					const tangent = wallDirection(wall.frame);
+					return tangent === null
+						? null
+						: { wallId: wall.wallId, cap: wall.frame.end, tangent: [tangent[0], tangent[1]] };
 				}
-				// Opening dimensions are adjusted by the cursor-only edge/corner targets
-				// below. Keeping the old scalar height knob here would duplicate the top
-				// edge and expose a vertical resize affordance outside the 3D view.
-				return [];
+				const curved = selectedCurvedWall(adapterContext);
+				if (curved !== null) {
+					const end = curvedWallPointAt(curved.frame, curved.frame.length);
+					return end === null ? null : { wallId: curved.wallId, cap: end.point, tangent: end.tangent };
+				}
+				const closed = selectedClosedWall(adapterContext);
+				if (closed === null) return null;
+				const radius = Math.hypot(closed.seam[0] - closed.center[0], closed.seam[1] - closed.center[1]);
+				if (!(radius > 0)) return null;
+				return {
+					wallId: closed.wallId,
+					cap: closed.seam,
+					tangent: [
+						-(closed.seam[1] - closed.center[1]) / radius,
+						(closed.seam[0] - closed.center[0]) / radius
+					]
+				};
+			}
+			function scalarSpecs(ctx: StageAdapterContext): ScalarGesture['spec'][] {
+				const target = selectedScalarTarget(ctx);
+				if (target === null) return [];
+				const source = document.walls.find((wall) => wall.id === target.wallId);
+				if (source === undefined) return [];
+				const y = ctx.snapshot.domain.datumMeters;
+				const planReading = ctx.evaluation.settledReading === 'plan';
+				const normal: LayoutVec2 = [-target.tangent[1], target.tangent[0]];
+				const knob: LayoutVec2 = [
+					target.cap[0] + target.tangent[0] * WALL_TOP_KNOB_REACH_METERS,
+					target.cap[1] + target.tangent[1] * WALL_TOP_KNOB_REACH_METERS
+				];
+				return [
+					{
+						id: 'layout-wall-height',
+						subject: 'wall',
+						subjectId: source.id,
+						field: 'height',
+						value: source.height,
+						// The top knob stands just past the Wall's cap on a stem from its
+						// base, clear of the body and the thickness grip. Travel is vertical,
+						// so the drawn offset never changes the planned height.
+						anchor: [knob[0], y + source.height, knob[1]],
+						stem: [knob[0], y, knob[1]],
+						axis: [0, 1, 0]
+					},
+					{
+						id: 'layout-wall-thickness',
+						subject: 'wall',
+						subjectId: source.id,
+						field: 'thickness',
+						value: source.thickness,
+						anchor: [target.cap[0], planReading ? y : y + source.height, target.cap[1]],
+						axis: [normal[0], 0, normal[1]]
+					}
+				];
 			}
 			function scalarTravel(
 				ctx: StageAdapterContext,
@@ -2147,13 +2176,36 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// The closed Wall's only shape grip is a radius ray from the centre to
 					// the authored seam, never a pair of end points: a closed Wall has no
 					// ends to move. The ray is the primary grip, so it stays visible.
+					// The size chip sits away from the seam and discloses the retained
+					// height/thickness writers; it never replaces the radius semantics.
+					const planReading = adapterContext.evaluation.settledReading === 'plan';
+					const seamX = closed.seam[0] - closed.center[0];
+					const seamZ = closed.seam[1] - closed.center[1];
+					const radius = Math.hypot(seamX, seamZ);
+					const chipAngle = Math.atan2(seamZ, seamX) + Math.PI * 2 * 0.82;
+					const chipPoint: LayoutVec2 = [
+						closed.center[0] + Math.cos(chipAngle) * radius,
+						closed.center[1] + Math.sin(chipAngle) * radius
+					];
 					return [
+						{
+							id: 'layout-wall-size-chip',
+							kind: 'point',
+							role: 'disclose',
+							anchor: [chipPoint[0], y, chipPoint[1]],
+							screen: { offset: [0, -22] },
+							label: 'Size',
+							reveals: [
+								'layout-wall-thickness',
+								...(planReading ? [] : ['layout-wall-height'])
+							]
+						},
 						{
 							id: 'layout-circle-radius-mark',
 							kind: 'ray',
 							role: 'edit',
 							anchor: [closed.center[0], y, closed.center[1]],
-							axis: [closed.seam[0] - closed.center[0], 0, closed.seam[1] - closed.center[1]],
+							axis: [seamX, 0, seamZ],
 							extent: closed.radius,
 							label: 'Radius',
 							fact: 'radius',
@@ -2170,6 +2222,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// creator deliberately activated, or is currently dragging, is drawn.
 					const source = document.walls.find((candidate) => candidate.id === curved.wallId);
 					if (source === undefined || source.centerline.kind === 'line') return [];
+					const planReading = adapterContext.evaluation.settledReading === 'plan';
+					const chipAt = curvedWallPointAt(curved.frame, curved.frame.length * 0.82);
+					const sizeChip = chipAt === null ? null : ({
+						id: 'layout-wall-size-chip',
+						kind: 'point',
+						role: 'disclose',
+						anchor: [chipAt.point[0], y, chipAt.point[1]],
+						screen: { offset: [0, -22] },
+						label: 'Size',
+						// Arc length is not an exact-length writer on a curve, so the
+						// disclosure offers only the retained height/thickness scalars.
+						reveals: [
+							'layout-wall-thickness',
+							...(planReading ? [] : ['layout-wall-height'])
+						]
+					} satisfies StageHandleDescriptor);
+					const withSize = (marks: StageHandleDescriptor[]): StageHandleDescriptor[] =>
+						sizeChip === null ? marks : [sizeChip, ...marks];
 					// D2 — a different host clears the session's active knot. This is a
 					// read-side reconciliation, not a document or history change.
 					if (activeKnot !== null && activeKnot.wallId !== curved.wallId) activeKnot = null;
@@ -2241,9 +2311,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							refusal: null
 						});
 					}
-					if (knot === undefined) return [...ends, ...spanMarks];
+					if (knot === undefined) return withSize([...ends, ...spanMarks]);
 					const active = activeKnot?.knotId === knot.id && activeKnot.wallId === curved.wallId;
-					return [...ends, ...spanMarks, {
+					return withSize([...ends, ...spanMarks, {
 						id: `layout-wall-knot:${knot.id}`,
 						kind: 'point',
 						role: 'edit',
@@ -2254,7 +2324,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						planner: LAYOUT_WALL_BEND_KIND,
 						value: `X ${knot.point[0].toFixed(2)} · Z ${knot.point[1].toFixed(2)} m`,
 						refusal: live?.refusal ?? null
-					}];
+					}]);
 				}
 				if (wall !== null) {
 					const length = wallLength(wall.frame);

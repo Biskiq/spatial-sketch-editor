@@ -175,6 +175,21 @@ describe('C2 product — closed Wall Card and Stage', () => {
 		expect(marks.some((mark) => mark.id.startsWith('layout-wall-span:'))).toBe(false);
 	});
 
+	it('reveals thickness and height for a closed Wall without replacing its radius grip', async () => {
+		const { facade, wallId } = await mount();
+		selectWall(facade, wallId);
+		expect(facade.marks().some((mark) => mark.id === 'layout-wall-thickness')).toBe(false);
+		expect(facade.marks().some((mark) => mark.id === 'layout-wall-height')).toBe(false);
+		const chip = facade.marks().find((mark) => mark.id === 'layout-wall-size-chip' && mark.role === 'disclose');
+		expect(chip).toBeDefined();
+		expect(facade.activateDisclosure(chip!.id)).toBe(true);
+		const marks = facade.marks();
+		expect(marks.some((mark) => mark.id === 'layout-wall-thickness')).toBe(true);
+		expect(marks.some((mark) => mark.id === 'layout-wall-height')).toBe(true);
+		expect(marks.some((mark) => mark.id === 'layout-circle-radius-mark')).toBe(true);
+		expect(marks.some((mark) => mark.id === 'layout-wall-length')).toBe(false);
+	});
+
 	it('creates a Circle from a centre → rim drag with the seam at the authored rim', async () => {
 		const { facade, host, document } = await mount();
 		const baseline = facade.snapshot().canonicalJson;

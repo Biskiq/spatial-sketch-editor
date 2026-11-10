@@ -4391,6 +4391,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{scenePick}
 						geometry={boot.snapshot.domain.geometry}
 						sourceContentId={boot.snapshot.sourceContentId}
+						layoutRevision={boot.snapshot.domain.unitRevisions.layout}
 						scene={boot.snapshot.domain.scene}
 						rooms={boot.snapshot.domain.rooms}
 						{evaluation}

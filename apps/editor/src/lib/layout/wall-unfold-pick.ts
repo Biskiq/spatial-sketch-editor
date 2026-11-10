@@ -45,6 +45,20 @@ export type WallUnfoldRay = {
 	readonly direction: readonly [number, number, number];
 };
 
+/**
+ * The identity of one built developed display. A cache may reuse a display
+ * only while the Wall, cut, Opening preview and canonical layout revision all
+ * match; a source edit during an active reading therefore rebuilds the sheet.
+ */
+export function wallUnfoldDisplayKey(input: {
+	readonly wallId: string;
+	readonly cutStation: number | null;
+	readonly previewKey: string;
+	readonly sourceRevision: string;
+}): string {
+	return JSON.stringify([input.wallId, input.cutStation, input.previewKey, input.sourceRevision]);
+}
+
 /** One developed strip in world space, with its canonical attribution intact. */
 export type WallUnfoldDisplay = {
 	readonly wallId: string;
