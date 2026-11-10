@@ -555,6 +555,10 @@ type BendGesture = {
 	readonly baseline: LayoutDocumentWallFirst;
 	intent: { readonly distance: number; readonly point: LayoutVec2 } | null;
 	previewDocument: LayoutDocumentWallFirst | null;
+	/** Snapped into the neighbour chord: release removes this existing knot. */
+	removal: boolean;
+	/** The pointer has left the removal zone since press; leaving arms removal. */
+	leftRemovalZone: boolean;
 	/** Display-only attempted centerline, retained through validation refusal. */
 	attemptPoints: readonly LayoutVec2[];
 	attemptPoint: LayoutVec2 | null;
@@ -563,6 +567,20 @@ type BendGesture = {
 
 /** A body press is on the Wall when its sampled centerline is this near, in metres. */
 const BEND_BODY_TOLERANCE_METERS = 0.35;
+/** A held knot enters the remove zone inside this distance of its neighbour chord. */
+const BEND_REMOVE_ENTER_METERS = 0.12;
+/** It must leave this wider zone once before removal can arm; the hysteresis stops flicker. */
+const BEND_REMOVE_LEAVE_METERS = 0.3;
+
+/** Planar distance from `point` to the chord between two neighbour knots. */
+function distanceToChord(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {
+	const dx = end[0] - start[0];
+	const dz = end[1] - start[1];
+	const lengthSquared = dx * dx + dz * dz;
+	if (lengthSquared === 0) return Math.hypot(point[0] - start[0], point[1] - start[1]);
+	const t = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared));
+	return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dz));
+}
 
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
 type OpeningMarkGesture = {
@@ -1297,6 +1315,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let bendGesture: BendGesture | null = null;
 			/** The keyboard/Card alternative to holding Meta/Ctrl for the next body press. */
 			let bendArmed = false;
+			/**
+			 * The host the Opening reading was entered from. Opening the Ink task
+			 * clears the Stage selection, so Place by offset must remember the Wall
+			 * (or the selected Opening's Wall) instead of re-reading a vanished one.
+			 */
+			let openingHostId: string | null = null;
 			/** C2 — one radius grip drag on a selected closed Wall. */
 			type CircleRadiusGesture = {
 				readonly evaluationId: string;
@@ -1756,6 +1780,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						baseline: document,
 						intent: null,
 						previewDocument: null,
+						removal: false,
+						leftRemovalZone: false,
 						attemptPoints: selected.frame.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2),
 						attemptPoint: null,
 						refusal: null
@@ -1795,13 +1821,38 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					else attemptPoints.splice(Math.max(1, insertAt < 0 ? attemptPoints.length : insertAt), 0, attempted);
 					active.attemptPoints = attemptPoints;
 					active.attemptPoint = attempted;
-					const planned = previewWallBend(active.baseline, active.wallId, active.distance, attempted, active.knotId);
+					// A held existing knot that comes back onto its neighbours' chord is
+					// a removal, not a bend. The preview is the real no-knot candidate and
+					// release writes exactly that one command; leaving the chord returns
+					// to the ordinary bend. `leftRemovalZone` is the must-leave hysteresis.
+					let removal = false;
+					if (active.existingKnot) {
+						const source = active.baseline.walls.find((candidate) => candidate.id === active.wallId);
+						if (source !== undefined && source.centerline.kind !== 'line') {
+							const index = source.centerline.knots.findIndex((candidate) => candidate.id === active.knotId);
+							if (index >= 0) {
+								const previous = index > 0
+									? source.centerline.knots[index - 1]!.point
+									: active.frame.start;
+								const next = index < source.centerline.knots.length - 1
+									? source.centerline.knots[index + 1]!.point
+									: active.frame.end;
+								const distance = distanceToChord(attempted, previous, next);
+								if (distance > BEND_REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
+								removal = active.leftRemovalZone && distance <= BEND_REMOVE_ENTER_METERS;
+							}
+						}
+					}
+					active.removal = removal;
+					const planned = removal
+						? previewWallKnotDelete(active.baseline, active.wallId, active.knotId)
+						: previewWallBend(active.baseline, active.wallId, active.distance, attempted, active.knotId);
 					if (planned.kind === 'refused') {
 						active.intent = null;
 						active.previewDocument = null;
 						active.refusal = wallRefusalWords(planned.code);
 					} else {
-						active.intent = { distance: active.distance, point: attempted };
+						active.intent = removal ? null : { distance: active.distance, point: attempted };
 						active.previewDocument = planned.document;
 						active.refusal = null;
 					}
@@ -1814,8 +1865,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (current?.lease?.kind === 'granted' && current.lease.lease.active) current.lease.lease.release();
 				// D2 — the knot a gesture created or edited stays named after release,
 				// including a brand-new knot, until Escape or a different selection.
-				if (current !== null) activeKnot = { wallId: current.wallId, knotId: current.knotId };
-				if (current !== null && current.intent !== null) commitBend(current, current.intent);
+				if (current !== null && current.removal) {
+					// The removal is one canonical knot-delete command. The knot is gone,
+					// so the session's active shape point is cleared; Undo restores it.
+					activeKnot = null;
+					void removeWallKnot(current.wallId, current.knotId);
+				} else if (current !== null) activeKnot = { wallId: current.wallId, knotId: current.knotId };
+				if (current !== null && !current.removal && current.intent !== null) commitBend(current, current.intent);
 				else if (
 					current !== null &&
 					(current.existingKnot || current.markId.startsWith('layout-wall-knot:')) &&
@@ -2090,13 +2146,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// D8 — the only shape grip a closed Wall publishes is the radius grip.
 					// It sits on the authored seam (the rim point) and writes the same
 					// retained radius planner as the Card's Radius/Diameter fields.
+					// The closed Wall's only shape grip is a radius ray from the centre to
+					// the authored seam, never a pair of end points: a closed Wall has no
+					// ends to move. The ray is the primary grip, so it stays visible.
 					return [
 						{
 							id: 'layout-circle-radius-mark',
-							kind: 'point',
+							kind: 'ray',
 							role: 'edit',
-							anchor: [closed.seam[0], y, closed.seam[1]],
-							draw: { pointRadius: 5.2 },
+							anchor: [closed.center[0], y, closed.center[1]],
+							axis: [closed.seam[0] - closed.center[0], 0, closed.seam[1] - closed.center[1]],
+							extent: closed.radius,
 							label: 'Radius',
 							fact: 'radius',
 							verb: 'Resize',
@@ -2151,9 +2211,42 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							refusal: junctionGesture !== null ? refusal : null
 						}
 					];
-					if (knot === undefined) return ends;
+					// One hollow shape point per span. It is the ordinary Bend writer at
+					// that span's midpoint; the knot itself stays hidden until activated.
+					const spanStations = [0];
+					for (const candidate of source.centerline.knots) {
+						const station = wallStationAtPoint(document, curved.wallId, [candidate.point[0], candidate.point[1]]);
+						if (station !== null) spanStations.push(station);
+					}
+					spanStations.push(curved.frame.length);
+					spanStations.sort((a, b) => a - b);
+					const spanMarks: StageHandleDescriptor[] = [];
+					// Shape points are a disclosed reading, not permanent furniture: they
+					// appear only once the Wall's Bend reading is armed (B or a live bend),
+					// so an ordinary body press still owns the move surface.
+					if (bendArmed || live !== null) for (let index = 1; index < spanStations.length; index += 1) {
+						const from = spanStations[index - 1]!;
+						const to = spanStations[index]!;
+						if (!(to - from > 0.02)) continue;
+						const at = curvedWallPointAt(curved.frame, (from + to) / 2)?.point;
+						if (at === undefined) continue;
+						spanMarks.push({
+							id: `layout-wall-span:${index - 1}`,
+							kind: 'point',
+							role: 'edit',
+							anchor: [at[0], y, at[1]],
+							draw: { pointRadius: 4.4, hollow: true },
+							label: 'Span midpoint',
+							fact: 'bend',
+							verb: 'Bend',
+							planner: LAYOUT_WALL_BEND_KIND,
+							value: 'Pull to bend',
+							refusal: null
+						});
+					}
+					if (knot === undefined) return [...ends, ...spanMarks];
 					const active = activeKnot?.knotId === knot.id && activeKnot.wallId === curved.wallId;
-					return [...ends, {
+					return [...ends, ...spanMarks, {
 						id: `layout-wall-knot:${knot.id}`,
 						kind: 'point',
 						role: 'edit',
@@ -2198,6 +2291,31 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const middle = framePoint(wall.frame, length / 2, y);
 					const descriptors: StageHandleDescriptor[] = [
 						{
+							// The Wall's one size disclosure: the length ray lives behind it.
+							id: 'layout-wall-size-chip',
+							kind: 'point',
+							role: 'disclose',
+							anchor: framePoint(wall.frame, length * 0.82, y),
+							screen: { offset: [0, -22] },
+							label: 'Size',
+							reveals: ['layout-wall-length']
+						},
+						...(bendArmed ? [{
+							// The one span's plain shape point. The selected Wall's body remains
+							// the rigid move surface; this ring is the Bend writer at mid-span.
+							id: 'layout-wall-span:0',
+							kind: 'point',
+							role: 'edit',
+							anchor: middle,
+							draw: { pointRadius: 4.4, hollow: true },
+							label: 'Span midpoint',
+							fact: 'bend',
+							verb: 'Bend',
+							planner: LAYOUT_WALL_BEND_KIND,
+							value: 'Pull to bend',
+							refusal: null
+						} satisfies StageHandleDescriptor] : []),
+						{
 							id: 'layout-wall-start-mark',
 							draw:{pointRadius:4.6},
 							kind: 'point',
@@ -2239,6 +2357,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							anchor: framePoint(wall.frame, length, y),
 							axis: [direction[0], 0, direction[1]],
 							extent: length,
+							disclosedBy: 'layout-wall-size-chip',
 							label: 'Wall length',
 							fact: 'length',
 							verb: 'Length',
@@ -2276,7 +2395,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// and the retired mark id survives only as that press's stable writer
 					// identity. Angle has no Stage grip: the owner's 2026-10-29 ruling keeps
 					// it a Card field and removes the ring.
-					const priority = ['layout-wall-start-mark', 'layout-wall-end-mark', 'layout-wall-length'];
+					const priority = ['layout-wall-size-chip', 'layout-wall-start-mark', 'layout-wall-span:0', 'layout-wall-end-mark', 'layout-wall-length'];
 					return [...descriptors].sort((a, b) => priority.indexOf(a.id) - priority.indexOf(b.id));
 				}
 				const sourceOpening = document.openings.find((candidate) => candidate.id === opening!.openingId);
@@ -2811,6 +2930,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return (
 					document.openings.find((opening) => opening.id === sourceId)?.wallId ?? null
 				);
+			}
+
+			/** The selected host, or the captured Opening-reading host if selection is gone. */
+			function currentOpeningHostId(): string | null {
+				const selection = services.stage.selection();
+				const selected = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+				const hostId = selected ?? openingHostId;
+				return hostId !== null && document.walls.some((wall) => wall.id === hostId) ? hostId : null;
 			}
 
 			/** The host Wall's frame and resolved length, when it has one. */
@@ -3699,8 +3826,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								width: Math.abs(inkHover.point[0] - anchor.point[0]),
 								depth: Math.abs(inkHover.point[1] - anchor.point[1])
 							};
-				const selection = services.stage.selection();
-				const selectedHostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+				const selectedHostId = currentOpeningHostId();
 				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
 					options: { thickness: inkThickness, height: inkHeight },
@@ -3810,6 +3936,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						// A contributed reading's session lives only while it is selected.
 						endContributedSession();
+						if (next === 'opening') openingHostId = currentOpeningHostId() ?? openingHostId;
 						inkReading = next;
 						inkNotice = null;
 						// The palette remounts from the last valid options on the next Opening
@@ -3844,8 +3971,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						publishInk();
 					},
 					placeOpening: (offsetText) => {
-						const selection = services.stage.selection();
-						const hostId = selection === null ? null : preferredHostOf(selection.sourceKind, selection.sourceId);
+						const hostId = currentOpeningHostId();
 						if (hostId === null) {
 							openingNotice = 'Select a Wall — or one of its Openings — before placing by offset.';
 							publishInk();
@@ -5916,9 +6042,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (built !== null) {
 							return [
 								candidatePreviewOf({
-									id: 'layout-candidate-wall-bend',
+									id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
 									role: 'subject',
 									geometry: built.paper.subject,
+									...(activeBend.removal ? {
+										labels: [{ world: world(activeBend.anchor), text: 'Remove bend point' }]
+									} : {}),
 									snap: snapOf(null)
 								})
 							];

@@ -137,6 +137,42 @@ export function wallUnfoldAnchor(input: {
 	return 0;
 }
 
+/** One Opening's occupied arc, in canonical station metres. */
+export type WallUnfoldOpeningRange = {
+	readonly start: number;
+	readonly end: number;
+};
+
+/**
+ * The display cut opposite the anchor, moved to the nearest solid gap when that
+ * half-length lands inside an Opening. The cut is display-only: the canonical
+ * seam and the Opening never move.
+ */
+export function wallUnfoldCutStation(
+	anchorStation: number,
+	length: number,
+	openings: readonly WallUnfoldOpeningRange[] = []
+): number {
+	if (!(length > 0)) return 0;
+	const raw = wrap(anchorStation + length / 2, length);
+	const inOpening = (station: number): boolean => openings.some((opening) => {
+		const start = wrap(opening.start, length);
+		const width = Math.max(0, opening.end - opening.start);
+		const offset = wrap(station - start, length);
+		return offset <= width + 0.08 || offset >= length - 0.08;
+	});
+	if (!inOpening(raw)) return raw;
+	// Walk outwards in 5 cm steps and take the nearest station that is solid.
+	// A cut inside the void would make the free edge a jamb and the peel lie.
+	for (let step = 1; step <= Math.ceil(length / 0.05); step += 1) {
+		const ahead = wrap(raw + step * 0.05, length);
+		if (!inOpening(ahead)) return ahead;
+		const behind = wrap(raw - step * 0.05, length);
+		if (!inOpening(behind)) return behind;
+	}
+	return raw;
+}
+
 /** Create a settled unfold context at `u = 1` with the display cut opposite the anchor. */
 export function createWallUnfoldState(input: {
 	readonly wall: CompiledPhysicalWall;
@@ -144,6 +180,7 @@ export function createWallUnfoldState(input: {
 	readonly side?: WallUnfoldSide;
 	readonly entry: WallUnfoldEntryRecipe;
 	readonly u?: number;
+	readonly openings?: readonly WallUnfoldOpeningRange[];
 }): WallUnfoldState {
 	const length = input.wall.length;
 	const closed = isClosedCompiledWall(input.wall);
@@ -153,8 +190,9 @@ export function createWallUnfoldState(input: {
 		wallId: input.wall.wallId,
 		anchorStation,
 		// D11 — the display cut is opposite the anchor. It never changes the
-		// canonical seam or the Wall's Junction.
-		cutStation: closed ? wrap(anchorStation + length / 2, length) : null,
+		// canonical seam or the Wall's Junction. A cut that falls in an Opening's
+		// void moves to the nearest solid gap so the peel edge is real Wall.
+		cutStation: closed ? wallUnfoldCutStation(anchorStation, length, input.openings) : null,
 		side: input.side ?? 1,
 		u: clamp(input.u ?? 1, 0, 1),
 		entry: input.entry,

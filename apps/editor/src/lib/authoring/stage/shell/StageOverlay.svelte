@@ -305,6 +305,11 @@
 				{#if mark.ringGlyph}
 					<StageSticker kind="curved" at={mark.ringGlyph.at} angle={mark.ringGlyph.angle} flip={mark.ringGlyph.flip} {emphasised} held={mark.active} />
 				{/if}
+			{:else if mark.hollow}
+				<!-- A span's shape point: a plain hollow ring, not the four-way move
+				     cross. It is the same Bend writer as the body; the ring only
+				     says "this span is a shape you may pull". -->
+				<circle class="span-point" cx={mark.anchor[0]} cy={mark.anchor[1]} r={emphasised ? 5.4 : 4.4} />
 			{:else}
 				<StageSticker kind="point" at={mark.anchor} {emphasised} held={mark.active} />
 			{/if}
@@ -458,6 +463,13 @@
 		stroke: var(--overlay-ink);
 		stroke-width: 1.6;
 		stroke-linecap: round;
+	}
+	.mark .span-point {
+		fill: var(--shell-white);
+		stroke: var(--overlay-ink);
+		stroke-width: 1.35;
+		stroke-dasharray: 2.4 2;
+		filter: drop-shadow(0 1.2px 1.3px rgba(20, 24, 20, 0.28));
 	}
 	.mark .glyph {
 		fill: var(--shell-white);
