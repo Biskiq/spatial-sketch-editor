@@ -160,7 +160,10 @@
 				transparent: true,
 				opacity: 1,
 				toneMapped: false,
-				depthTest: true,
+				// Selection is the identity overlay, not a surface: a derived Room
+				// ceiling must not bite the gold rim out of a closed Wall. Hover and
+				// erase stay depth-tested so they cannot imply hidden geometry.
+				depthTest: tone !== 'selection',
 				depthWrite: false,
 				...OUTLINE_DEPTH_BIAS,
 				resolution: new Vector2(width, height),

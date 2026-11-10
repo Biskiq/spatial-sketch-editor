@@ -124,8 +124,8 @@ describe('the outline in the Stage', () => {
 		expect(source.match(/new LineMaterial\(/g)).toHaveLength(1);
 	});
 
-	it('stays depth tested, so a Wall in front still hides the outline', () => {
-		expect(source).not.toContain('depthTest: false');
+	it('keeps hover depth tested and lifts only the selected identity above the Room ceiling', () => {
+		expect(source).toContain("depthTest: tone !== 'selection'");
 		expect(OUTLINE_DEPTH_BIAS.polygonOffsetFactor).toBeLessThan(0);
 		expect(OUTLINE_DEPTH_BIAS.polygonOffsetUnits).toBeLessThan(0);
 	});
