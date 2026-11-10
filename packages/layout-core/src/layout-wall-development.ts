@@ -480,7 +480,11 @@ export function createWallDevelopmentSheetBuffers(
     const dz = end.point[1] - start.point[1];
     const ell = Math.hypot(dx, dz);
     const halfTurn = (end.theta - start.theta) / 2;
-    phi[index] = Math.atan2(dz, dx);
+    // Chord angles must live on the same unwrapped branch as the sheet's
+    // tangent angles. `atan2` alone wraps to [-π, π], while the second wing
+    // continues past the seam at +2π; a raw chord angle would then make the
+    // wing swing through a spurious half-turn and back during the blend.
+    phi[index] = unwrapAngle(Math.atan2(dz, dx), (start.theta + end.theta) / 2);
     deltaS[index] = end.sheet - start.sheet;
     correctedEll[index] = ell / (Math.abs(halfTurn) <= 1e-12 ? 1 : Math.sin(halfTurn) / halfTurn);
   }

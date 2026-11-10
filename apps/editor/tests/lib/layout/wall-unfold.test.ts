@@ -418,6 +418,14 @@ describe('C3 checkpoint 5 — unfold session', () => {
 		const development = developmentFor(fixture, state);
 		const sheet = createWallDevelopmentSheetBuffers(development);
 		const count = sheet.sheet.length;
+		// A raw `atan2` chord angle is wrapped to [-π, π]; the cut-to-cut second
+		// wing is deliberately unwrapped by +2π. Every non-zero chord must stay
+		// on its segment's tangent branch or the blend turns it a full revolution.
+		for (let index = 0; index < count - 1; index += 1) {
+			if (sheet.deltaS[index]! <= 1e-9) continue;
+			const midTheta = (sheet.theta[index]! + sheet.theta[index + 1]!) / 2;
+			expect(Math.abs(sheet.phi[index]! - midTheta)).toBeLessThan(Math.PI / 2);
+		}
 		const pointAtSample = (index: number): LayoutVec2 => [
 			sheet.points[index * 2]!,
 			sheet.points[index * 2 + 1]!
