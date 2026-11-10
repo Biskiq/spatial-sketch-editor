@@ -47,9 +47,10 @@ export function wallUnfoldSideAngle(side: WallUnfoldSide): number {
 /**
  * The canonical lateral side that faces the derived Room. Room boundaries run
  * counter-clockwise with their interior on the left, so a forward reference is
- * side `1` and a reversed winding is side `-1`. A Wall between two Rooms is
- * resolved toward the Camera's side when possible; a free Wall has no Room and
- * keeps the left face as the stable Inside default.
+ * side `1` and a reversed winding is side `-1`. A dividing Wall has a Room on
+ * both sides; the first canonical reference is the stable Inside. A free Wall
+ * has no Room and keeps the left face. The Camera is never an input: the same
+ * Wall must open on the same face from every view.
  */
 export function wallUnfoldInsideSide(input: {
 	readonly wallId: string;
@@ -57,18 +58,18 @@ export function wallUnfoldInsideSide(input: {
 		readonly wallId: string;
 		readonly direction: 'forward' | 'reverse';
 	}[];
-	readonly cameraSide?: WallUnfoldSide;
 }): WallUnfoldSide {
 	const sides = input.boundaries
 		.filter((boundary) => boundary.wallId === input.wallId)
 		.map((boundary): WallUnfoldSide => (boundary.direction === 'forward' ? 1 : -1));
-	if (sides.length === 0) return 1;
-	if (sides.length === 1) return sides[0]!;
-	return sides.find((side) => side === input.cameraSide) ?? sides[0]!;
+	return sides[0] ?? 1;
 }
 /** A free edge's resting cue and hit band, in CSS pixels (44 on touch). */
 export const WALL_UNFOLD_EDGE_HIT_CSS = 22;
 export const WALL_UNFOLD_EDGE_HIT_COARSE_CSS = 44;
+/** The pin is a small handle; its hit band is wider than its ink (44 on touch). */
+export const WALL_UNFOLD_PIN_HIT_CSS = 24;
+export const WALL_UNFOLD_PIN_HIT_COARSE_CSS = 44;
 
 /** Why a shape edit is refused while unfolded (D13). */
 export const WALL_UNFOLD_SHAPE_REFUSAL =
@@ -146,6 +147,54 @@ export function wallUnfoldSamples(wall: CompiledPhysicalWall): CurveSample[] {
 }
 
 /**
+ * Normalise one canonical station on a Wall. A closed Wall wraps; an open Wall
+ * clamps. This is the single station rule shared by the live session and the
+ * remembered idle pin.
+ */
+export function wallUnfoldNormaliseStation(
+	wall: Pick<CompiledPhysicalWall, 'length' | 'startJunctionId' | 'endJunctionId'>,
+	station: number
+): number {
+	const length = wall.length;
+	if (!(length > 0) || !Number.isFinite(station)) return 0;
+	return isClosedCompiledWall(wall) ? wrap(station, length) : clamp(station, 0, length);
+}
+
+/**
+ * The world point of the pin on the as-built Wall's top edge. The idle pin and
+ * the active sheet pin both use this point, so press and release cannot make
+ * the handle jump between two representations.
+ */
+export function wallUnfoldTopPoint(
+	wall: Pick<CompiledPhysicalWall, 'length' | 'height' | 'samples'>,
+	station: number,
+	floorY = 0
+): readonly [number, number, number] | null {
+	const samples = wall.samples;
+	if (samples.length === 0) return null;
+	const target = Math.min(wall.length, Math.max(0, Number.isFinite(station) ? station : 0));
+	const height = floorY + wall.height + 0.09;
+	const first = samples[0]!;
+	if (samples.length === 1 || target <= first.distance + 1e-9) {
+		return [first.point[0], height, first.point[1]];
+	}
+	for (let index = 1; index < samples.length; index += 1) {
+		const to = samples[index]!;
+		if (target > to.distance + 1e-9) continue;
+		const from = samples[index - 1]!;
+		const span = to.distance - from.distance;
+		const amount = span > 1e-9 ? (target - from.distance) / span : 0;
+		return [
+			from.point[0] + (to.point[0] - from.point[0]) * amount,
+			height,
+			from.point[1] + (to.point[1] - from.point[1]) * amount
+		];
+	}
+	const last = samples.at(-1)!;
+	return [last.point[0], height, last.point[1]];
+}
+
+/**
  * Choose the anchor deterministically. A selected Opening on this Wall is a
  * deliberate override (its centre is where the creator is already working); an
  * explicit pin is the second override; otherwise the canonical start is the
@@ -159,15 +208,11 @@ export function wallUnfoldAnchor(input: {
 	/** A deliberate session pin; never inferred from the Camera. */
 	readonly pinStation?: number | null;
 }): number {
-	const length = input.wall.length;
-	if (!(length > 0)) return 0;
-	const closed = isClosedCompiledWall(input.wall);
-	const normalise = (value: number): number => (closed ? wrap(value, length) : clamp(value, 0, length));
 	if (input.selectedOpeningCenter !== undefined && input.selectedOpeningCenter !== null && Number.isFinite(input.selectedOpeningCenter)) {
-		return normalise(input.selectedOpeningCenter);
+		return wallUnfoldNormaliseStation(input.wall, input.selectedOpeningCenter);
 	}
 	if (input.pinStation !== undefined && input.pinStation !== null && Number.isFinite(input.pinStation)) {
-		return normalise(input.pinStation);
+		return wallUnfoldNormaliseStation(input.wall, input.pinStation);
 	}
 	return 0;
 }
@@ -238,6 +283,49 @@ export function createWallUnfoldState(input: {
 	};
 }
 
+/** The Opening whose canonical arc contains `station`, or `null` on solid Wall. */
+export function wallUnfoldOpeningAtStation(
+	wall: Pick<CompiledPhysicalWall, 'length' | 'openings' | 'startJunctionId' | 'endJunctionId'>,
+	station: number
+): string | null {
+	const length = wall.length;
+	if (!(length > 0) || !Number.isFinite(station)) return null;
+	const at = isClosedCompiledWall(wall) ? wrap(station, length) : clamp(station, 0, length);
+	for (const opening of wall.openings) {
+		const start = wrap(opening.offset, length);
+		const end = wrap(opening.offset + opening.width, length);
+		const inside = end >= start ? at >= start && at <= end : at >= start || at <= end;
+		if (inside) return opening.openingId;
+	}
+	return null;
+}
+
+/**
+ * Move the pin along the canonical Wall. This changes display state only: the
+ * face, amount, entry recipe and Camera stay exactly where they were. A closed
+ * Wall wraps the station and moves the display cut with its opposite anchor.
+ */
+export function setWallUnfoldAnchor(
+	state: WallUnfoldState,
+	wall: Pick<CompiledPhysicalWall, 'length' | 'openings' | 'startJunctionId' | 'endJunctionId'>,
+	station: number
+): WallUnfoldState {
+	const length = wall.length;
+	const closed = isClosedCompiledWall(wall);
+	const requested = Number.isFinite(station) ? station : state.anchorStation;
+	const anchorStation = length > 0 ? (closed ? wrap(requested, length) : clamp(requested, 0, length)) : 0;
+	return {
+		...state,
+		anchorStation,
+		cutStation: closed
+			? wallUnfoldCutStation(anchorStation, length, wall.openings.map((opening) => ({
+				start: opening.offset,
+				end: opening.offset + opening.width
+			})))
+			: null
+	};
+}
+
 /**
  * The station of the sheet's free edge: the display cut on a closed Wall, and
  * the open end farther from the entry anchor on an open Wall. The peel gesture
@@ -266,9 +354,8 @@ export function isStraightCompiledWall(wall: CompiledPhysicalWall): boolean {
 }
 
 /**
- * The face the sheet opens on: the one toward the Camera, so the creator is
- * already looking at the reading. In Plan there is no eye-side reading, so the
- * Room side (the Wall's own left normal) is used.
+ * The face a Camera is looking at. This is retained for inspection/hover
+ * evidence, never for choosing the face an unfold session opens on.
  */
 export function wallUnfoldSideTowardCamera(input: {
 	readonly wall: CompiledPhysicalWall;

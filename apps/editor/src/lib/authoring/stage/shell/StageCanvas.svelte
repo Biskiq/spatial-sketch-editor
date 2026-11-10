@@ -42,6 +42,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import StagePaper from './StagePaper.svelte';
 	import StageSelectionLayer from './StageSelectionLayer.svelte';
 	import StageWallDevelopment from './StageWallDevelopment.svelte';
+	import StageWallPin from './StageWallPin.svelte';
 	import StageShadowTriggers from './StageShadowTriggers.svelte';
 	import StageSnapshotRenderer from './StageSnapshotRenderer.svelte';
 	import WorldEnvironment from '$lib/render/WorldEnvironment.svelte';
@@ -81,7 +82,10 @@ import StageMatGround from './StageMatGround.svelte';
 		/** R217.S06's live Height Sheet height, or null in Experience. */
 		heightMeters = null,
 		/** Shown while the Sheet is active (plus its one-second tail). */
-		heightPlaneVisible = false
+		heightPlaneVisible = false,
+		unfoldPinHovered = false,
+		unfoldPinActive = false,
+		unfoldAnchorPin = null
 	}: {
 		geometry: CompiledLayoutGeometry;
 		sourceContentId: string;
@@ -120,6 +124,11 @@ import StageMatGround from './StageMatGround.svelte';
 		scenePick: ScenePickSource;
 		heightMeters?: number | null;
 		heightPlaneVisible?: boolean;
+		/** The sheet pin is hovered or being dragged; the route owns both. */
+		unfoldPinHovered?: boolean;
+		unfoldPinActive?: boolean;
+		/** The idle pin shown on a selected curved Wall, before Unroll. */
+		unfoldAnchorPin?: readonly [number, number, number] | null;
 	} = $props();
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
@@ -265,7 +274,12 @@ import StageMatGround from './StageMatGround.svelte';
 		not a second scene, and never a registered pick root. -->
 	<StageWallDevelopment {geometry} {datumMeters} {layoutRevision}
 		selected={selection?.reference.domain === 'layout' && selection.reference.subject.kind === 'wall' &&
-			selection.reference.subject.id === unfoldedWallId} />
+			selection.reference.subject.id === unfoldedWallId}
+		pinHovered={unfoldPinHovered}
+		pinActive={unfoldPinActive} />
+	{#if unfoldedWallId === null && unfoldAnchorPin !== null}
+		<StageWallPin position={unfoldAnchorPin} hovered={unfoldPinHovered} active={unfoldPinActive} />
+	{/if}
 	<StageEntities
 		{scenePick}
 		{scene}

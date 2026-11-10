@@ -24,8 +24,10 @@
 	import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 	import {
 		isStraightCompiledWall,
+		wallUnfoldAnchor,
 		wallUnfoldInsideSide,
-		wallUnfoldSideTowardCamera
+		wallUnfoldOpeningAtStation,
+		wallUnfoldViewCentreStation
 	} from '$lib/layout/wall-unfold';
 	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
 
@@ -170,16 +172,19 @@
 		return room === undefined ? null : layoutLabels.rooms.get(room.roomId)?.label ?? null;
 	});
 
+	/** A straight Wall is already flat, so its entry is shown but disabled. */
+	const entryDisabled = $derived(selectedHostWall !== null && isStraightCompiledWall(selectedHostWall));
+
 	/**
-	 * Enter from the Card foot. The anchor is deterministic: a selected Opening
-	 * on the same Wall wins, otherwise the canonical start. The Camera target is
-	 * not an anchor input, so the same Wall opens at the same development from
-	 * any view. The eye still names which face is read, and entry preserves the
-	 * current Camera pose; Bring into view is the explicit framing action.
+	 * Enter from the Card foot. A selected Opening centre wins; otherwise the
+	 * view-centre station is used so the pin starts where the creator is looking.
+	 * The face is always the Room/Inside face, never the Camera's side: the sheet
+	 * must open from the inside out from every view. Entry preserves the current
+	 * Camera pose; Bring into view is the explicit framing action.
 	 */
 	function toggleUnfold(): void {
 		const wall = selectedHostWall;
-		if (wall === null) return;
+		if (wall === null || isStraightCompiledWall(wall)) return;
 		if (wallUnfold.state?.wallId === wall.wallId) {
 			wallUnfold.exit(wall);
 			return;
@@ -190,30 +195,30 @@
 		const opening = selection?.sourceKind === 'opening'
 			? wall.openings.find((candidate) => candidate.openingId === selection.sourceId)
 			: undefined;
-		const anchor = opening === undefined ? 0 : opening.offset + opening.width / 2;
-		const side = wallUnfoldSideTowardCamera({
+		// An explicit session pin wins over a newly selected Opening; selection is
+		// not allowed to silently move the start the creator set.
+		const anchor = wallUnfold.anchorForWall(wall) ?? wallUnfoldAnchor({
 			wall,
-			eye: evaluation?.eye ?? null,
-			reading: evaluation?.settledReading ?? '3d',
-			anchorStation: anchor
+			selectedOpeningCenter: opening === undefined ? null : opening.offset + opening.width / 2,
+			pinStation: evaluation === null ? null : wallUnfoldViewCentreStation(wall, evaluation.pose.target)
 		});
 		// Inside is the face the derived Room actually occupies. A reversed Room
 		// winding puts that face on the Wall's right, so the two labels cannot be
-		// hard-coded to the development's left/right quads.
+		// hard-coded to the development's left/right quads. The first canonical
+		// Room reference is stable for a dividing Wall; the Camera is not a tie-break.
 		const insideSide = wallUnfoldInsideSide({
 			wallId: wall.wallId,
-			boundaries: layoutDocument?.rooms.flatMap((room) => room.boundary) ?? [],
-			cameraSide: side
+			boundaries: layoutDocument?.rooms.flatMap((room) => room.boundary) ?? []
 		});
 		wallUnfold.enter(
 			wall,
 			anchor,
 			evaluation === null ? undefined : { pose: evaluation.pose, reading: evaluation.settledReading },
 			{
-				side,
+				side: insideSide,
 				insideSide,
 				floorY: stage.snapshot().domain.datumMeters,
-				straight: isStraightCompiledWall(wall)
+				pinnedOpeningId: wallUnfoldOpeningAtStation(wall, anchor)
 			}
 		);
 	}
@@ -388,9 +393,10 @@
 				<button
 					type="button"
 					class="unroll-icon"
-					aria-label="Unroll the Wall"
-					title="Unroll Wall"
+					aria-label={entryDisabled ? 'Already flat' : 'Unroll the Wall from the pin'}
+					title={entryDisabled ? 'Already flat' : 'Unroll from the pin'}
 					data-wall-unroll-entry
+					disabled={entryDisabled}
 					onclick={toggleUnfold}
 				>
 					<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" aria-hidden="true">
@@ -511,9 +517,13 @@
 		background: var(--shell-field);
 		color: var(--shell-ink-2);
 	}
-	.unroll-icon:hover {
+	.unroll-icon:hover:not(:disabled) {
 		border-color: var(--shell-field-line-strong);
 		color: var(--shell-ink);
+	}
+	.unroll-icon:disabled {
+		opacity: 0.42;
+		cursor: default;
 	}
 	.precision {
 		display: grid;

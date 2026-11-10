@@ -23,10 +23,15 @@
 	 */
 	import { T, useThrelte } from '@threlte/core';
 	import {
+		AlwaysStencilFunc,
+		DoubleSide,
 		EdgesGeometry,
 		Group,
 		Matrix4,
 		Mesh,
+		MeshBasicMaterial,
+		NotEqualStencilFunc,
+		ReplaceStencilOp,
 		Vector2,
 		Vector3,
 		type Object3D
@@ -41,7 +46,14 @@
 	import { STAGE_PAINT } from './stage-paint';
 	import { sameReference, type StageSelectionEntry } from '../semantic-selection';
 	import { STAGE_ERASE_INK } from '../stage-eraser';
-	import { contourPolylines, mergeStraightEdgeRuns, visibleIdentityContour, OUTLINE_DEPTH_BIAS } from './stage-outline';
+	import {
+		contourPolylines,
+		mergeStraightEdgeRuns,
+		visibleIdentityContour,
+		visibleRimContour,
+		wallSilhouetteHullScale,
+		OUTLINE_DEPTH_BIAS
+	} from './stage-outline';
 
 	let {
 		selection,
@@ -71,6 +83,17 @@
 	const GOLD = STAGE_PAINT.selection;
 	const NEUTRAL = STAGE_PAINT.hover;
 	const ERASE = Number.parseInt(STAGE_ERASE_INK.slice(1), 16);
+	/**
+	 * Prototype switch, dev only. The shipped contour remains the default until
+	 * the stencil reading is accepted; `?wallOutline=stencil` exercises the
+	 * inverted-hull silhouette in the running Stage.
+	 */
+	const wallOutline =
+		import.meta.env.DEV &&
+		typeof window !== 'undefined' &&
+		new URLSearchParams(window.location.search).get('wallOutline') === 'stencil'
+			? 'stencil'
+			: 'contour';
 	const { invalidate } = useThrelte();
 
 	const root = new Group();
@@ -147,7 +170,113 @@
 		return mesh.matrixWorld.clone();
 	}
 
-	function addContour(contour: number[] | Float32Array, tone: 'selection' | 'hover' | 'erase'): void {
+	/** The accepted mesh's triangles in world space, for silhouette ink. */
+	function worldTriangles(mesh: Mesh): number[] {
+		const matrix = matrixOf(mesh);
+		const vertices = mesh.geometry.getAttribute('position');
+		const index = mesh.geometry.index;
+		const positions: number[] = [];
+		for (let i = 0; i < (index?.count ?? vertices.count); i += 1) {
+			const point = new Vector3().fromBufferAttribute(vertices, index ? index.getX(i) : i).applyMatrix4(matrix);
+			positions.push(point.x, point.y, point.z);
+		}
+		return positions;
+	}
+
+	/**
+	 * One stencil silhouette for a selected or hovered Wall.
+	 *
+	 * The accepted Wall body writes stencil 1 without colour or depth. A copy of
+	 * the same geometry, expanded per axis about its own centre, draws the tone's
+	 * shell wherever that mask is absent. The expansion grows the Wall's openings
+	 * with the shell, so an aperture cannot be cap-filled by the outline. This is
+	 * presentation over the accepted mesh, not a second wall model.
+	 */
+	function addStencilSilhouette(mesh: Mesh, tone: 'selection' | 'hover'): void {
+		mesh.updateWorldMatrix(true, false);
+		const geometry = mesh.geometry;
+		if (geometry.boundingBox === null) geometry.computeBoundingBox();
+		const box = geometry.boundingBox;
+		if (box === null) return;
+		const center = box.getCenter(new Vector3());
+		const size = box.getSize(new Vector3());
+		const scale = wallSilhouetteHullScale([size.x, size.y, size.z]);
+
+		const pivot = new Group();
+		pivot.name = 'StageWallStencilSilhouette';
+		pivot.matrixAutoUpdate = false;
+		pivot.matrix.copy(mesh.matrixWorld);
+		pivot.matrixWorldNeedsUpdate = true;
+
+		const maskMaterial = new MeshBasicMaterial({
+			colorWrite: false,
+			depthTest: false,
+			depthWrite: false,
+			side: DoubleSide,
+			stencilWrite: true,
+			stencilRef: 1,
+			stencilFunc: AlwaysStencilFunc,
+			stencilZPass: ReplaceStencilOp
+		});
+		const mask = new Mesh(geometry, maskMaterial);
+		mask.name = 'StageWallStencilMask';
+		mask.frustumCulled = false;
+		mask.renderOrder = 20;
+		mask.layers.set(2);
+
+		const outlineMaterial = new MeshBasicMaterial({
+			color: tone === 'selection' ? GOLD : NEUTRAL,
+			transparent: true,
+			opacity: 1,
+			// Selection is the identity overlay; hover is still a surface cue and
+			// must not claim ink on geometry in front of it.
+			depthTest: tone !== 'selection',
+			depthWrite: false,
+			toneMapped: false,
+			side: DoubleSide,
+			// `stencilWrite` gates the stencil *test* too: with it off, `NotEqual`
+			// is ignored and the shell floods the Wall it is meant to sit behind.
+			stencilWrite: true,
+			stencilRef: 1,
+			stencilFunc: NotEqualStencilFunc
+		});
+		// p' = s(p - c) + c: the shell is scaled about the accepted mesh's own
+		// centre, not the world origin.
+		const scaleGroup = new Group();
+		scaleGroup.position.copy(center);
+		scaleGroup.scale.set(scale[0], scale[1], scale[2]);
+		const shell = new Mesh(geometry, outlineMaterial);
+		shell.name = 'StageWallStencilShell';
+		shell.position.copy(center).multiplyScalar(-1);
+		shell.frustumCulled = false;
+		shell.renderOrder = 21;
+		shell.layers.set(2);
+		scaleGroup.add(shell);
+		pivot.add(mask, scaleGroup);
+		root.add(pivot);
+		// The stencil mask hides every rim inside the silhouette. Add the
+		// camera-facing top/bottom and aperture rims as depth-tested ink. Hover
+		// keeps the same shape but takes the quieter leaf tone.
+		addContour(
+			visibleRimContour(worldTriangles(mesh), eye),
+			'rim',
+			tone === 'selection' ? GOLD : NEUTRAL
+		);
+		fades.push({ material: outlineMaterial, opacity: 1 });
+		inked.push({
+			object: pivot,
+			dispose: () => {
+				maskMaterial.dispose();
+				outlineMaterial.dispose();
+			}
+		});
+	}
+
+	function addContour(
+		contour: number[] | Float32Array,
+		tone: 'selection' | 'hover' | 'erase' | 'rim',
+		color?: number
+	): void {
 		if (contour.length === 0) return;
 		// A polyline has one cap at each real end. The old segment renderer capped
 		// every sampled span, which is what made a curved selection look striped.
@@ -155,7 +284,7 @@
 			const edgeGeometry = new LineGeometry();
 			edgeGeometry.setPositions(points);
 			const material = new LineMaterial({
-				color: tone === 'selection' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL,
+				color: color ?? (tone === 'selection' || tone === 'rim' ? GOLD : tone === 'erase' ? ERASE : NEUTRAL),
 				linewidth: tone === 'selection' ? 3 : 2.5,
 				transparent: true,
 				opacity: 1,
@@ -172,7 +301,7 @@
 			const line = new Line2(edgeGeometry, material);
 			if (tone === 'erase') line.computeLineDistances();
 			line.frustumCulled = false;
-			line.renderOrder = tone === 'selection' ? 22 : tone === 'erase' ? 24 : 19;
+			line.renderOrder = tone === 'selection' ? 22 : tone === 'rim' ? 23 : tone === 'erase' ? 24 : 19;
 			line.layers.set(2);
 			root.add(line);
 			fades.push({ material, opacity: 1 });
@@ -193,21 +322,25 @@
 		try {
 			const meshes = source.objects.flatMap(meshesUnder);
 			const wall = entry.reference.domain === 'layout' && entry.reference.subject.kind === 'wall';
+			if (
+				wall &&
+				(tone === 'selection' || tone === 'hover') &&
+				wallOutline === 'stencil' &&
+				meshes.length === 1 &&
+				meshes[0]!.name.startsWith('VisitorPhysicalWall:')
+			) {
+				addStencilSilhouette(meshes[0]!, tone);
+				return;
+			}
 			const groups = wall ? [meshes] : meshes.map(mesh => [mesh]);
 			for (const group of groups) {
 				const positions: number[] = [];
 				for (const mesh of group) {
-					const matrix = matrixOf(mesh);
 					if (wall) {
-						const vertices = mesh.geometry.getAttribute('position');
-						const index = mesh.geometry.index;
-						for (let i = 0; i < (index?.count ?? vertices.count); i++) {
-							const point = new Vector3().fromBufferAttribute(vertices, index ? index.getX(i) : i).applyMatrix4(matrix);
-							positions.push(point.x, point.y, point.z);
-						}
+						positions.push(...worldTriangles(mesh));
 					} else {
 						const edges = new EdgesGeometry(mesh.geometry, 30);
-						edges.applyMatrix4(matrix);
+						edges.applyMatrix4(matrixOf(mesh));
 						positions.push(...edges.getAttribute('position').array);
 						edges.dispose();
 					}

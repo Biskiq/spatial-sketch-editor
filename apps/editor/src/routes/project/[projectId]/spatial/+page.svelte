@@ -114,12 +114,18 @@
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import {
 		chooseUnfoldAmount,
+		isStraightCompiledWall,
 		snapWallUnfoldAmount,
+		wallUnfoldAnchor,
 		wallUnfoldFreeEdgeStation,
 		wallUnfoldShouldReturn,
 		wallUnfoldSourceSpans,
+		wallUnfoldTopPoint,
+		wallUnfoldViewCentreStation,
 		WALL_UNFOLD_EDGE_HIT_COARSE_CSS,
 		WALL_UNFOLD_EDGE_HIT_CSS,
+		WALL_UNFOLD_PIN_HIT_COARSE_CSS,
+		WALL_UNFOLD_PIN_HIT_CSS,
 		type WallUnfoldEdgeCandidate
 	} from '$lib/layout/wall-unfold';
 	import {
@@ -2007,12 +2013,163 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * canonical work under D13. A miss falls through to ordinary Stage navigation
 	 * and the click guard in `onClick` prevents a canonical hit behind the sheet.
 	 */
+	type UnfoldPinHit = { readonly css: readonly [number, number] };
+	type UnfoldPinContext = {
+		readonly wallId: string;
+		readonly station: number;
+		readonly point: readonly [number, number, number];
+		readonly active: boolean;
+	};
+
+	/** The curved Wall whose idle pin should accompany the current selection. */
+	const selectedCurvedWall = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		const selected = selection;
+		if (
+			selected === null ||
+			selected.reference.domain !== 'layout' ||
+			selected.reference.subject.kind !== 'wall'
+		) return null;
+		const snapshot = boot.snapshot;
+		const wall = snapshot.domain.geometry.walls.find(
+			(candidate) => candidate.wallId === selected.reference.subject.id
+		);
+		if (wall === undefined || isStraightCompiledWall(wall)) return null;
+		const viewCentre = evaluation === null
+			? null
+			: wallUnfoldViewCentreStation(wall, evaluation.pose.target);
+		return {
+			wall,
+			datumMeters: snapshot.domain.datumMeters,
+			defaultStation: wallUnfoldAnchor({ wall, pinStation: viewCentre })
+		};
+	});
+
+	// Seed once when the Wall is selected. The route, Card and pin all read the
+	// remembered session station after this; selecting an Opening never re-seeds.
+	$effect(() => {
+		const candidate = selectedCurvedWall;
+		if (candidate === null) return;
+		wallUnfold.ensureAnchor(candidate.wall, candidate.defaultStation);
+	});
+
+	/** The idle pin drawn before Unroll; the active sheet draws its own copy. */
+	const idleUnfoldPin = $derived.by(() => {
+		if (wallUnfold.state !== null) return null;
+		const candidate = selectedCurvedWall;
+		if (candidate === null) return null;
+		const station = wallUnfold.anchorForWall(candidate.wall) ?? candidate.defaultStation;
+		const point = wallUnfoldTopPoint(candidate.wall, station, candidate.datumMeters);
+		return point === null ? null : { wallId: candidate.wall.wallId, station, point };
+	});
+
+	/** The one pin context shared by hover, press and rendering. */
+	function unfoldPinContext(stage: StageFacade): UnfoldPinContext | null {
+		const state = wallUnfold.state;
+		if (state !== null) {
+			const snapshot = stage.snapshot();
+			const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
+			if (wall === undefined) return null;
+			const point = wallUnfoldTopPoint(wall, state.anchorStation, snapshot.domain.datumMeters);
+			return point === null
+				? null
+				: { wallId: wall.wallId, station: state.anchorStation, point, active: true };
+		}
+		const candidate = selectedCurvedWall;
+		if (candidate === null) return null;
+		const station = wallUnfold.anchorForWall(candidate.wall) ?? candidate.defaultStation;
+		const point = wallUnfoldTopPoint(candidate.wall, station, candidate.datumMeters);
+		return point === null ? null : { wallId: candidate.wall.wallId, station, point, active: false };
+	}
+
+	function beginSheetPin(event: PointerEvent, wallId: string, activeAtPress: boolean): boolean {
+		sheetPinDrag = {
+			pointerId: event.pointerId,
+			wallId,
+			pressX: event.clientX,
+			pressY: event.clientY,
+			moved: false,
+			activeAtPress
+		};
+		try { stageEl?.setPointerCapture(event.pointerId); } catch { /* The pointer may already be gone. */ }
+		press.refuse(event.pointerId);
+		return true;
+	}
+
+	/** The pin's Stage-local screen point, using the same canonical top point. */
+	function unfoldedPinAt(
+		css: readonly [number, number],
+		coarse: boolean,
+		stage: StageFacade
+	): UnfoldPinHit | null {
+		const projectionId = stage.evaluationId();
+		if (projectionId === null) return null;
+		const pin = unfoldPinContext(stage);
+		if (pin === null) return null;
+		const projected = stage.projectWorld(
+			[pin.point[0], pin.point[1], pin.point[2]],
+			projectionId
+		);
+		if (projected.kind !== 'projected') return null;
+		// `projectWorld` is viewport CSS; `sample.css` and edge picks are local
+		// to the Stage. Normalise here so hover and press agree on the handle.
+		const current = rect ?? measure();
+		const local: [number, number] = [projected.css[0] - current.left, projected.css[1] - current.top];
+		const distance = Math.hypot(local[0] - css[0], local[1] - css[1]);
+		const threshold = coarse ? WALL_UNFOLD_PIN_HIT_COARSE_CSS : WALL_UNFOLD_PIN_HIT_CSS;
+		return distance <= threshold ? { css: local } : null;
+	}
+
+	/** Map a pointer sample onto the as-built centreline, for a pin drag. */
+	function wallStationAtPointer(
+		wall: CompiledPhysicalWall,
+		datum: number,
+		stage: StageFacade,
+		event: PointerEvent
+	): number | null {
+		const projectionId = stage.evaluationId();
+		if (projectionId === null || wall.samples.length < 2) return null;
+		const height = datum + wall.height + 0.09;
+		let nearest: number | null = null;
+		let nearestDistance = Number.POSITIVE_INFINITY;
+		for (let index = 0; index < wall.samples.length - 1; index += 1) {
+			const from = wall.samples[index]!;
+			const to = wall.samples[index + 1]!;
+			const a = stage.projectWorld([from.point[0], height, from.point[1]], projectionId);
+			const b = stage.projectWorld([to.point[0], height, to.point[1]], projectionId);
+			if (a.kind !== 'projected' || b.kind !== 'projected') continue;
+			const dx = b.css[0] - a.css[0];
+			const dy = b.css[1] - a.css[1];
+			const lengthSq = dx * dx + dy * dy;
+			const t = lengthSq <= 1e-9
+				? 0
+				: Math.min(1, Math.max(0, ((event.clientX - a.css[0]) * dx + (event.clientY - a.css[1]) * dy) / lengthSq));
+			const distance = Math.hypot(
+				event.clientX - (a.css[0] + dx * t),
+				event.clientY - (a.css[1] + dy * t)
+			);
+			if (distance < nearestDistance) {
+				nearestDistance = distance;
+				nearest = from.distance + (to.distance - from.distance) * t;
+			}
+		}
+		return nearest;
+	}
+
 	function unfoldedPointerPress(event: PointerEvent): boolean {
 		const stage = facade;
 		const state = wallUnfold.state;
 		const current = evaluation;
 		const layout = layoutPayload;
-		if (stage === null || state === null || current === null || layout === null || task !== null) return false;
+		if (stage === null || current === null || layout === null || task !== null) return false;
+		if (state === null) {
+			// Before Unroll the pin is the only developed-sheet gesture: it seeds the
+			// anchor and never starts a peel.
+			const pin = unfoldPinContext(stage);
+			if (pin === null) return false;
+			if (unfoldedPinAt(stageCss(event), event.pointerType !== 'mouse', stage) === null) return false;
+			return beginSheetPin(event, pin.wallId, false);
+		}
 		const snapshot = stage.snapshot();
 		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === state.wallId);
 		if (wall === undefined) return false;
@@ -2061,6 +2218,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				press.refuse(event.pointerId);
 				return true;
 			}
+		}
+		// The pin is the next handle: press-and-release selects its Opening
+		// (or the Wall on solid Wall); press-and-move slides the anchor along the
+		// canonical centreline. It never moves the Camera or changes the face.
+		const pin = unfoldPinContext(stage);
+		if (pin !== null && unfoldedPinAt(stageCss(event), event.pointerType !== 'mouse', stage) !== null) {
+			return beginSheetPin(event, wall.wallId, true);
 		}
 		const ray = pointerRay([event.clientX, event.clientY], current, current.token);
 		if (ray.kind !== 'ray') return false;
@@ -2182,6 +2346,34 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		sheetEdgeDrag = null;
 	}
 
+	function sheetPinMove(event: PointerEvent): void {
+		const active = sheetPinDrag;
+		const stage = facade;
+		if (active === null || active.pointerId !== event.pointerId || stage === null) return;
+		if (!active.moved) {
+			if (Math.hypot(event.clientX - active.pressX, event.clientY - active.pressY) < 3) return;
+			active.moved = true;
+			unfoldPinHovered = false;
+		}
+		const snapshot = stage.snapshot();
+		const wall = snapshot.domain.geometry.walls.find((candidate) => candidate.wallId === active.wallId);
+		if (wall === undefined) return;
+		const station = wallStationAtPointer(wall, snapshot.domain.datumMeters, stage, event);
+		if (station !== null) wallUnfold.setAnchor(wall, station);
+	}
+
+	function finishSheetPin(): void {
+		const active = sheetPinDrag;
+		sheetPinDrag = null;
+		if (active === null) return;
+		if (!active.moved && active.activeAtPress) selectUnfoldedSubject(active.wallId, wallUnfold.pinnedOpeningId);
+		clearHover();
+	}
+
+	function cancelSheetPin(): void {
+		sheetPinDrag = null;
+	}
+
 	function sheetOpeningMove(event: PointerEvent): void {
 		const active = sheetOpeningDrag;
 		const stage = facade;
@@ -2292,9 +2484,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Select a developed pick through the same `StageFacade` selection as a canonical hit. */
 	function selectUnfoldedPick(wallId: string, pick: WallUnfoldPick): void {
+		selectUnfoldedSubject(wallId, pick.openingId);
+	}
+
+	function selectUnfoldedSubject(wallId: string, openingId: string | null): void {
 		const stage = facade;
 		if (stage === null) return;
-		const sourceId = pick.openingId ?? wallId;
+		const sourceId = openingId ?? wallId;
 		// Use the snapshot's resolved subject reference, exactly as `selectSource`
 		// does. Constructing the reference here would re-state a revision the
 		// resolver already owns and can disagree with the current qualification.
@@ -2458,6 +2654,18 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		readonly candidates: readonly WallUnfoldEdgeCandidate[];
 	};
 	let sheetEdgeDrag = $state<SheetEdgeDrag | null>(null);
+	/** The pin drag: a click selects its Opening; movement slides the anchor. */
+	type SheetPinDrag = {
+		readonly pointerId: number;
+		readonly wallId: string;
+		readonly pressX: number;
+		readonly pressY: number;
+		moved: boolean;
+		/** Only a press on the live sheet pin may select on release. */
+		readonly activeAtPress: boolean;
+	};
+	let sheetPinDrag = $state<SheetPinDrag | null>(null);
+	let unfoldPinHovered = $state(false);
 	/** R217.S15 — this press began on an edit mark, so its tap is a command. */
 	let adapterMarkPress = false;
 	/** A dragging disclosure's press: a release within click tolerance toggles it. */
@@ -2668,6 +2876,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (hoverFrame !== null) cancelAnimationFrame(hoverFrame);
 		hoverFrame = null;
 		hoverSample = null;
+		unfoldPinHovered = false;
 		facade?.setMarkHover(null);
 		stageCursor = null;
 		session.setHover(null);
@@ -2701,6 +2910,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			refreshHostTools();
 			return;
 		}
+		// The pin is the sheet's one display handle. It sits above the sheet pick
+		// so a tap can select its Opening and a drag can move the anchor without
+		// selecting the Wall body underneath.
+		if (unfoldedPinAt(sample.css, sample.coarse, stage) !== null) {
+			stage.idleHoverIntent({ phase: 'cancel', css: sample.css, evaluationId: id, coarse: sample.coarse, shift: sample.shift });
+			stage.setMarkHover(null);
+			session.setHover(null);
+			hoverSelection = null;
+			hoverMove = false;
+			unfoldPinHovered = true;
+			stageCursor = 'grab';
+			return;
+		}
+		unfoldPinHovered = false;
 		// The mark tier is above world candidates: a hovered grip suppresses the
 		// subject tint underneath, so two emphases never compete for one pointer.
 		const mark = stage.hitMark({ css: sample.css, coarse: sample.coarse });
@@ -2777,6 +3000,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
+		if (sheetPinDrag !== null) {
+			if (event.pointerId === sheetPinDrag.pointerId) sheetPinMove(event);
+			return;
+		}
 		if (sheetEdgeDrag !== null) {
 			if (event.pointerId === sheetEdgeDrag.pointerId) sheetEdgeMove(event);
 			return;
@@ -2898,6 +3125,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
+		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
+			finishSheetPin();
+			return;
+		}
 		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
 			finishSheetEdge();
 			return;
@@ -2967,6 +3198,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** End the captured press without ending an independent multi-step proposal. */
 	function interruptPress(reason: StageInterruptionReason): void {
+		if (sheetPinDrag !== null) {
+			cancelSheetPin();
+			clearHover();
+			return;
+		}
 		if (sheetEdgeDrag !== null) {
 			cancelSheetEdge();
 			clearHover();
@@ -2998,6 +3234,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
+		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
+			cancelSheetPin();
+			clearHover();
+			return;
+		}
 		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
 			cancelSheetEdge();
 			return;
@@ -3011,6 +3252,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
+		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
+			cancelSheetPin();
+			clearHover();
+			return;
+		}
 		if (sheetEdgeDrag !== null && event.pointerId === sheetEdgeDrag.pointerId) {
 			cancelSheetEdge();
 			return;
@@ -4369,6 +4615,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						hoverTone={armedHostTool === 'erase' ? 'erase' : 'hover'}
 						heightMeters={lens === 'world' ? heightMeters : null}
 						heightPlaneVisible={lens === 'world' && heightPlaneVisible}
+						unfoldPinHovered={unfoldPinHovered}
+						unfoldPinActive={sheetPinDrag !== null}
+						unfoldAnchorPin={idleUnfoldPin?.point ?? null}
 					/>
 				{/if}
 				<div class="overlay-layer">

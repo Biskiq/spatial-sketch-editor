@@ -18,6 +18,9 @@ import {
 	isStraightCompiledWall,
 	refoldWallUnfold,
 	setWallUnfoldAmount,
+	setWallUnfoldAnchor,
+	wallUnfoldNormaliseStation,
+	wallUnfoldOpeningAtStation,
 	wallUnfoldSideAngle,
 	type WallUnfoldState
 } from '$lib/layout/wall-unfold';
@@ -60,6 +63,13 @@ class WallUnfoldStore {
 	presentationAngle = $state(0);
 	/** The last pointer pick, session-only: it is evidence, never authored data. */
 	lastPick = $state<(WallUnfoldPick & { readonly pointerId: number; readonly sequence: number }) | null>(null);
+	/** The Opening under the pin, or `null` when the pin rests on solid Wall. */
+	pinnedOpeningId = $state<string | null>(null);
+	/**
+	 * The session pin per Wall. This is display state, not authored data: Put back
+	 * leaves it in place so the next Unroll starts where the creator left it.
+	 */
+	anchorsByWall = $state<Record<string, number>>({});
 	/** Live sheet Opening drag; display-only until the canonical planner accepts. */
 	previewOpening = $state<{
 		readonly wallId: string;
@@ -80,6 +90,28 @@ class WallUnfoldStore {
 		return wallId !== null && wallId !== undefined && this.state?.wallId === wallId;
 	}
 
+	/** The remembered pin station, normalised against the Wall as it is now. */
+	anchorForWall(wall: CompiledPhysicalWall): number | null {
+		const stored = this.anchorsByWall[wall.wallId];
+		return Number.isFinite(stored) ? wallUnfoldNormaliseStation(wall, stored!) : null;
+	}
+
+	/** Seed an idle pin once; an explicit pin is never overwritten by selection. */
+	ensureAnchor(wall: CompiledPhysicalWall, station: number): number {
+		const stored = this.anchorForWall(wall);
+		if (stored !== null) return stored;
+		const normalised = wallUnfoldNormaliseStation(wall, station);
+		this.anchorsByWall = { ...this.anchorsByWall, [wall.wallId]: normalised };
+		return normalised;
+	}
+
+	forgetAnchor(wallId: string): void {
+		if (!(wallId in this.anchorsByWall)) return;
+		const next = { ...this.anchorsByWall };
+		delete next[wallId];
+		this.anchorsByWall = next;
+	}
+
 	/** The route records the settled pose entry produced, once. */
 	recordSettled(entry: { readonly pose: InspectionPose; readonly reading: ViewportReading }): void {
 		if (this.state === null) return;
@@ -95,10 +127,12 @@ class WallUnfoldStore {
 			readonly insideSide?: 1 | -1;
 			readonly floorY?: number;
 			readonly straight?: boolean;
+			readonly pinnedOpeningId?: string | null;
 		} = {}
 	): void {
 		this.lastPick = null;
 		this.previewOpening = null;
+		this.pinnedOpeningId = null;
 		this.#pickSequence = 0;
 		const straight = options.straight ?? isStraightCompiledWall(wall);
 		const state = createWallUnfoldState({
@@ -116,6 +150,8 @@ class WallUnfoldStore {
 			}))
 		});
 		this.state = state;
+		this.anchorsByWall = { ...this.anchorsByWall, [wall.wallId]: state.anchorStation };
+		this.pinnedOpeningId = options.pinnedOpeningId ?? wallUnfoldOpeningAtStation(wall, state.anchorStation);
 		this.#cancelSideFrame();
 		this.presentationAngle = wallUnfoldSideAngle(state.side);
 		// D5 — entry changes no Camera at all: no fit, no orientation change. The
@@ -148,6 +184,17 @@ class WallUnfoldStore {
 		this.#notify();
 	}
 
+	/** Move the pin along the Wall without touching the face, amount or Camera. */
+	setAnchor(wall: CompiledPhysicalWall, station: number): void {
+		const normalised = wallUnfoldNormaliseStation(wall, station);
+		this.anchorsByWall = { ...this.anchorsByWall, [wall.wallId]: normalised };
+		if (this.state?.wallId !== wall.wallId) return;
+		this.#cancelFrame();
+		this.state = setWallUnfoldAnchor(this.state, wall, normalised);
+		this.pinnedOpeningId = wallUnfoldOpeningAtStation(wall, this.state.anchorStation);
+		this.#notify();
+	}
+
 	flip(_wall: CompiledPhysicalWall): void {
 		if (this.state === null) return;
 		// D6 — the side is a display reading change, never a camera move.
@@ -164,6 +211,7 @@ class WallUnfoldStore {
 		this.#cancelSideFrame();
 		this.lastPick = null;
 		this.previewOpening = null;
+		this.pinnedOpeningId = null;
 		const state = this.state;
 		this.#requestReturn(state);
 		if (wall !== undefined) {

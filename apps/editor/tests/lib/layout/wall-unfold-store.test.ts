@@ -71,6 +71,50 @@ describe('PR287 — Unroll preserves the Camera', () => {
 		}
 	});
 
+	it('moves the pin without leaving the session or changing the face', () => {
+		const wall = straightWall();
+		wallUnfold.enter(wall, 1, ENTRY, { side: -1, insideSide: -1 });
+		wallUnfold.setAnchor(wall, 4.25);
+		expect(wallUnfold.state?.anchorStation).toBeCloseTo(4.25, 9);
+		expect(wallUnfold.state?.side).toBe(-1);
+		expect(wallUnfold.state?.insideSide).toBe(-1);
+		expect(wallUnfold.state?.u).toBe(1);
+		wallUnfold.exit();
+	});
+
+	it('retains the pin per Wall through Put back and re-entry', () => {
+		const wall = straightWall();
+		wallUnfold.setCameraExecutor(null);
+		wallUnfold.forgetAnchor(wall.wallId);
+		try {
+			wallUnfold.enter(wall, 0, ENTRY);
+			wallUnfold.setAnchor(wall, 4.25);
+			expect(wallUnfold.anchorForWall(wall)).toBeCloseTo(4.25, 9);
+			wallUnfold.exit();
+			expect(wallUnfold.state).toBeNull();
+			expect(wallUnfold.anchorForWall(wall)).toBeCloseTo(4.25, 9);
+
+			const remembered = wallUnfold.anchorForWall(wall)!;
+			wallUnfold.enter(wall, remembered, ENTRY);
+			expect(wallUnfold.state?.anchorStation).toBeCloseTo(4.25, 9);
+			wallUnfold.exit();
+		} finally {
+			wallUnfold.exit();
+			wallUnfold.forgetAnchor(wall.wallId);
+		}
+	});
+
+	it('does not overwrite an explicit pin when the idle default changes', () => {
+		const wall = straightWall();
+		wallUnfold.forgetAnchor(wall.wallId);
+		try {
+			expect(wallUnfold.ensureAnchor(wall, 2)).toBeCloseTo(2, 9);
+			expect(wallUnfold.ensureAnchor(wall, 5)).toBeCloseTo(2, 9);
+		} finally {
+			wallUnfold.forgetAnchor(wall.wallId);
+		}
+	});
+
 	it('produces the same default anchor on repeated entry from any entry pose', () => {
 		const wall = straightWall();
 		wallUnfold.setCameraExecutor(null);

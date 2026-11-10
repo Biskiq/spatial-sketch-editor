@@ -12,7 +12,15 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutWall, type LayoutWallOpening
 } from '@portfolio/layout-core';
-import { contourPolylines, mergeStraightEdgeRuns, visibleIdentityContour, OUTLINE_DEPTH_BIAS } from '$lib/authoring/stage/shell/stage-outline';
+import {
+	contourPolylines,
+	mergeStraightEdgeRuns,
+	visibleIdentityContour,
+	visibleRimContour,
+	wallSilhouetteHullScale,
+	WALL_SILHOUETTE_METRES,
+	OUTLINE_DEPTH_BIAS
+} from '$lib/authoring/stage/shell/stage-outline';
 import { buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 
 function bodyOf(points: Record<string, [number, number]>, walls: LayoutWall[], wallId: string, openings: LayoutWallOpening[] = []): BufferGeometry {
@@ -128,6 +136,53 @@ describe('the outline in the Stage', () => {
 		expect(source).toContain("depthTest: tone !== 'selection'");
 		expect(OUTLINE_DEPTH_BIAS.polygonOffsetFactor).toBeLessThan(0);
 		expect(OUTLINE_DEPTH_BIAS.polygonOffsetUnits).toBeLessThan(0);
+	});
+
+	it('prototypes a stencil silhouette behind a dev-only switch', () => {
+		expect(source).toContain("get('wallOutline') === 'stencil'");
+		expect(source).toContain('wallSilhouetteHullScale');
+		expect(source).toContain('AlwaysStencilFunc');
+		expect(source).toContain('NotEqualStencilFunc');
+		expect(source).toContain('visibleRimContour');
+		expect(source).toContain("'rim'");
+		expect(source).toContain("(tone === 'selection' || tone === 'hover')");
+		expect(source).toContain('addStencilSilhouette(meshes[0]!, tone)');
+		expect(source).toContain("tone === 'selection' ? GOLD : NEUTRAL");
+	});
+
+	it('tests the shell against the mask instead of painting over it', () => {
+		const shell = source.slice(source.indexOf('const outlineMaterial'), source.indexOf('const scaleGroup'));
+		expect(shell).toContain('stencilWrite: true');
+		expect(shell).toContain('stencilFunc: NotEqualStencilFunc');
+	});
+});
+
+describe('stencil silhouette expansion', () => {
+	it('expands each axis by the same outline width around the Wall centre', () => {
+		const extent = [2.6, 3, 0.2] as const;
+		const scale = wallSilhouetteHullScale(extent);
+		for (let axis = 0; axis < 3; axis += 1) {
+			expect((extent[axis]! / 2) * (scale[axis]! - 1)).toBeCloseTo(WALL_SILHOUETTE_METRES, 9);
+		}
+	});
+
+	it('leaves a zero-extent axis finite', () => {
+		for (const value of wallSilhouetteHullScale([0, 0, 0])) expect(Number.isFinite(value)).toBe(true);
+	});
+
+	it('keeps the camera-facing top rim while dropping smooth side seams', async () => {
+		const { CylinderGeometry } = await import('three');
+		const body = new CylinderGeometry(1, 1, 2, 48).toNonIndexed();
+		try {
+			const rim = visibleRimContour(body.getAttribute('position').array, [4, 5, 6]);
+			expect(rim.length).toBeGreaterThan(0);
+			let top = 0;
+			for (let at = 0; at + 5 < rim.length; at += 6) {
+				expect(Math.abs(rim[at + 1]! - rim[at + 4]!)).toBeLessThan(1e-6);
+				if (Math.abs(rim[at + 1]! - 1) < 1e-6) top += 1;
+			}
+			expect(top).toBeGreaterThan(0);
+		} finally { body.dispose(); }
 	});
 });
 

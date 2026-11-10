@@ -18,8 +18,7 @@
 		LineDashedMaterial,
 		LineSegments,
 		Mesh,
-		MeshBasicMaterial,
-		SphereGeometry
+		MeshBasicMaterial
 	} from 'three';
 	import {
 		developmentSheetCoordinate,
@@ -29,6 +28,7 @@
 	} from '@portfolio/layout-core';
 
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
+	import { wallUnfoldTopPoint } from '$lib/layout/wall-unfold';
 	import {
 		buildWallUnfoldDisplay,
 		evaluateWallUnfoldDisplay,
@@ -36,17 +36,22 @@
 		wallUnfoldDisplayKey,
 		type WallUnfoldDisplay
 	} from '$lib/layout/wall-unfold-pick';
+	import StageWallPin from './StageWallPin.svelte';
 
 	let {
 		geometry,
 		datumMeters,
 		layoutRevision,
-		selected = false
+		selected = false,
+		pinHovered = false,
+		pinActive = false
 	}: {
 		geometry: CompiledLayoutGeometry;
 		datumMeters: number;
 		layoutRevision: string;
 		selected?: boolean;
+		pinHovered?: boolean;
+		pinActive?: boolean;
 	} = $props();
 
 	const { invalidate } = useThrelte();
@@ -127,13 +132,8 @@
 
 	// The pin is the one fixed point of the unwrap. It is a reading aid, not a
 	// second anchor authority: the session's canonical anchor owns the geometry.
-	const pinGeometry = new SphereGeometry(0.075, 14, 10);
-	const pinMaterial = new MeshBasicMaterial({ color: 0xb9932f, toneMapped: false, depthTest: false });
-	const pin = new Mesh(pinGeometry, pinMaterial);
-	pin.name = 'StageWallDevelopmentPin';
-	pin.renderOrder = 4;
-	pin.frustumCulled = false;
-	root.add(pin);
+	// The shared marker keeps the idle and active pins on the same world point.
+	let pinPosition = $state<readonly [number, number, number] | null>(null);
 
 	let display: WallUnfoldDisplay | null = null;
 	let displayKey: string | null = null;
@@ -225,6 +225,7 @@
 			// the old shape instead of the current one.
 			display = null;
 			displayKey = null;
+			pinPosition = null;
 			root.visible = false;
 			hinge.rotation.y = 0;
 			invalidate();
@@ -235,6 +236,7 @@
 		const previewKey = previewForWall === null ? '' : `${previewForWall.openingId}:${previewForWall.offset}:${previewForWall.width}`;
 		const nextDisplayKey = wallUnfoldDisplayKey({
 			wallId: wall.wallId,
+			anchorStation: state.anchorStation,
 			cutStation: state.cutStation,
 			previewKey,
 			sourceRevision: layoutRevision
@@ -250,6 +252,7 @@
 			display = buildWallUnfoldDisplay(displayWall, state, { floorY: datumMeters, sideAngle });
 			displayKey = nextDisplayKey;
 			if (display === null) {
+				pinPosition = null;
 				root.visible = false;
 				invalidate();
 				return;
@@ -270,7 +273,9 @@
 		const anchor = unfoldDisplayPointAtStation(display, anchorStation, sideAngle);
 		hinge.position.set(anchor.point[0], datumMeters, anchor.point[1]);
 		content.position.set(-anchor.point[0], -datumMeters, -anchor.point[1]);
-		pin.position.set(anchor.point[0], datumMeters + wallHeight + 0.09, anchor.point[1]);
+		// The pin stays on the canonical top edge while the sheet rotates around
+		// it; the idle pin uses this same point before entry.
+		pinPosition = wallUnfoldTopPoint(wall, state.anchorStation, datumMeters);
 		// Positions carry the shared presentation angle; the hinge itself stays
 		// identity so the Stage cannot disagree with the pick transform.
 		hinge.rotation.y = 0;
@@ -408,9 +413,11 @@
 		gridMaterial.dispose();
 		referenceGeometry.dispose();
 		referenceMaterial.dispose();
-		pinGeometry.dispose();
-		pinMaterial.dispose();
+
 	});
 </script>
 
 <T is={root} />
+{#if pinPosition !== null}
+	<StageWallPin position={pinPosition} hovered={pinHovered} active={pinActive} />
+{/if}

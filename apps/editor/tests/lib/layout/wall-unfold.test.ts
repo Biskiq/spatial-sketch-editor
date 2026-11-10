@@ -67,15 +67,18 @@ import {
 	wallUnfoldShouldReturn,
 	wallUnfoldSideAngle,
 	wallUnfoldSideTowardCamera,
+	wallUnfoldTopPoint,
 	wallUnfoldViewCentreStation,
 	refoldWallUnfold,
 	setWallUnfoldAmount,
+	setWallUnfoldAnchor,
 	snapWallUnfoldAmount,
 	unfoldAmountFromDrag,
 	unfoldCanonicalStation,
 	wallUnfoldAnchor,
 	wallUnfoldEditPolicy,
 	wallUnfoldInvalidation,
+	wallUnfoldOpeningAtStation,
 	wallUnfoldRefusesShapeEdit,
 	WALL_UNFOLD_SHAPE_REFUSAL,
 	type WallUnfoldEntryRecipe
@@ -513,6 +516,50 @@ describe('C3 checkpoint 5 — unfold session', () => {
 		expect(anchored).toBeLessThan(circle.length);
 	});
 
+	it('places the pin on the canonical top edge before and during Unroll', () => {
+		const straight = compiledWall(straightFixture());
+		const straightPoint = wallUnfoldTopPoint(straight, 2.5, 0.4);
+		expect(straightPoint).not.toBeNull();
+		expect(straightPoint![0]).toBeCloseTo(2.5, 9);
+		expect(straightPoint![1]).toBeCloseTo(3.49, 9);
+		expect(straightPoint![2]).toBeCloseTo(0, 9);
+
+		const curve = compiledWall(sCurveFixture());
+		const curvePoint = wallUnfoldTopPoint(curve, curve.length * 0.4);
+		expect(curvePoint).not.toBeNull();
+		expect(curvePoint![1]).toBeCloseTo(3.09, 9);
+	});
+
+	it('moves only the pin anchor, preserving the face, amount and entry', () => {
+		const fixture = sCurveFixture();
+		const wall = compiledWall(fixture);
+		const state = createWallUnfoldState({
+			wall,
+			anchorStation: 1,
+			side: -1,
+			insideSide: -1,
+			u: 0.6,
+			entry: ENTRY
+		});
+		const moved = setWallUnfoldAnchor(state, wall, 4.5);
+		expect(moved.anchorStation).toBeCloseTo(4.5, 9);
+		expect(moved.side).toBe(-1);
+		expect(moved.insideSide).toBe(-1);
+		expect(moved.u).toBe(0.6);
+		expect(moved.cutStation).toBeNull();
+		expect(moved.entry).toBe(ENTRY);
+	});
+
+	it('finds the Opening under the pin station without a second geometry model', () => {
+		const fixture = straightFixture();
+		const document = withOpening(fixture.document, fixture.wallId, 2, 1.5, 'pin-opening');
+		const wall = compileWallFirstLayoutGeometry(document).geometry.walls.find(
+			(candidate) => candidate.wallId === fixture.wallId
+		)!;
+		expect(wallUnfoldOpeningAtStation(wall, 2.5)).toBe(wall.openings[0]!.openingId);
+		expect(wallUnfoldOpeningAtStation(wall, 4.5)).toBeNull();
+	});
+
 	it('states the D13 policy explicitly: Openings and height stay, shape edits refuse', () => {
 		const state = stateFor(sCurveFixture(), 1);
 		const policy = wallUnfoldEditPolicy(state);
@@ -831,13 +878,12 @@ describe('C3 revision 2 — one Room-facing half-turn', () => {
 		const reverse = [{ wallId: wall.wallId, direction: 'reverse' as const }];
 		expect(wallUnfoldInsideSide({ wallId: wall.wallId, boundaries: forward })).toBe(1);
 		expect(wallUnfoldInsideSide({ wallId: wall.wallId, boundaries: reverse })).toBe(-1);
-		// A dividing Wall has a Room on both sides; the Camera chooses which one
-		// the creator is reading, while the labels still follow the real surface.
+		// A dividing Wall has a Room on both sides; the first canonical boundary
+		// is stable, so the Camera cannot change which face opens.
 		expect(wallUnfoldInsideSide({
 			wallId: wall.wallId,
-			boundaries: [...forward, ...reverse],
-			cameraSide: -1
-		})).toBe(-1);
+			boundaries: [...forward, ...reverse]
+		})).toBe(1);
 		expect(wallUnfoldInsideSide({ wallId: wall.wallId, boundaries: [] })).toBe(1);
 	});
 
