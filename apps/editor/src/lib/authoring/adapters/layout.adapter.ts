@@ -1846,9 +1846,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						? previewWallKnotDelete(active.baseline, active.wallId, active.knotId)
 						: previewWallBend(active.baseline, active.wallId, active.distance, attempted, active.knotId);
 					if (planned.kind === 'refused') {
-						active.intent = null;
-						active.previewDocument = null;
-						active.refusal = wallRefusalWords(planned.code);
+						// Keep the last valid preview on screen: the Bend stops at the
+						// geometric limit instead of snapping back to the baseline. The
+						// release guard below refuses to commit while this refusal stands.
+						active.refusal = wallRefusalWords(planned.code, planned.message);
 					} else {
 						active.intent = removal ? null : { distance: active.distance, point: attempted };
 						active.previewDocument = planned.document;
@@ -1869,7 +1870,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					activeKnot = null;
 					void removeWallKnot(current.wallId, current.knotId);
 				} else if (current !== null) activeKnot = { wallId: current.wallId, knotId: current.knotId };
-				if (current !== null && !current.removal && current.intent !== null) commitBend(current, current.intent);
+				if (current !== null && !current.removal && current.intent !== null && current.refusal === null) commitBend(current, current.intent);
 				else if (
 					current !== null &&
 					(current.existingKnot || current.markId.startsWith('layout-wall-knot:')) &&
