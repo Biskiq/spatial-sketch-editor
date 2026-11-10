@@ -4441,7 +4441,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{/if}
 				<div class="overlay-layer">
 					{#if experienceLens.lookThroughSession() === null}
-						<StagePill wall={unfoldStageWall} name={unfoldWallName} roomName={unfoldRoomName} />
+						<StagePill wall={unfoldStageWall} name={unfoldWallName} roomName={unfoldRoomName} cardOpen={selection !== null} />
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
 								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />

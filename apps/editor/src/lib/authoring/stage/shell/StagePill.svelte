@@ -13,11 +13,13 @@
 	let {
 		wall,
 		name,
-		roomName = null
+		roomName = null,
+		cardOpen = false
 	}: {
 		wall: CompiledPhysicalWall | null;
 		name: string | null;
 		roomName?: string | null;
+		cardOpen?: boolean;
 	} = $props();
 
 	const state = $derived(wall === null ? null : wallUnfold.state?.wallId === wall.wallId ? wallUnfold.state : null);
@@ -33,6 +35,7 @@
 {#if state !== null && wall !== null}
 	<div
 		class="stage-pill"
+		class:card-open={cardOpen}
 		role="toolbar"
 		aria-label="Wall sheet"
 		tabindex="-1"
@@ -82,6 +85,21 @@
 		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 		font-size: 12px;
 		white-space: nowrap;
+	}
+	/* A selected subject owns the right lane. On wide Stages the pill takes the
+	   clear left lane; on narrow ones it moves below the Card and above the dock. */
+	.stage-pill.card-open {
+		left: 16px;
+		transform: none;
+	}
+	@media (max-width: 1200px) {
+		.stage-pill.card-open {
+			top: auto;
+			bottom: calc(env(safe-area-inset-bottom, 0px) + var(--lower-column-height, 50px) + 34px);
+			left: 50%;
+			max-width: min(440px, calc(100% - 24px));
+			transform: translateX(-50%);
+		}
 	}
 	.reading {
 		overflow: hidden;
