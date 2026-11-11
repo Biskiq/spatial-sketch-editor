@@ -1,7 +1,14 @@
 {
   "gate": "T2 S0 Gate A",
-  "measuredAt": "2026-11-11",
-  "buildRevision": "d394522a1128d4ab0953cc2730b66cd0d82a57a8-dirty",
+  "measuredAt": "2026-11-11T06:05:20.600Z",
+  "buildRevision": "1a669fb1a752c0b5bf86bfb487fe31c81707024c",
+  "provenance": {
+    "buildRevision": "1a669fb1a752c0b5bf86bfb487fe31c81707024c",
+    "worktreeState": "clean",
+    "revisionSource": "Vite __BISKIQ_BUILD_REVISION__ define",
+    "measuredFrom": "default framebuffer readPixels immediately after render()"
+  },
+  "e1Scope": "shared renderer factory; Stage/snapshot/Preview/visit parity not measured independently",
   "readback": {
     "method": "default-framebuffer readPixels immediately after render()",
     "width": 512,
@@ -9,6 +16,13 @@
     "calibrationPassed": true,
     "calibrationMaxChannelError": 0
   },
+  "limitations": [
+    "E1 captured the shared factory once; it did not instantiate each production surface. Gate B/E6 owns parity.",
+    "Gate A used one synthetic chart and one white light. A1 must test real artwork, transparency and coloured light.",
+    "MeshLambertMaterial with toneMapped=false under a global mapper is not measured; Gate B owns that experiment."
+  ],
+  "artworkBaseline": "MeshLambertMaterial + NoToneMapping",
+  "gateBExperiment": "MeshLambertMaterial with toneMapped=true and false under each candidate global mapper",
   "pipeline": {
     "threeRevision": "187",
     "colorManagement": { "enabled": true, "workingColorSpace": "srgb-linear" },
@@ -57,6 +71,7 @@
   },
   "lightUnits": {
     "referenceIntensity": 3.141592653589793,
+    "physicalNote": "π is a bench calibration constant, not one lux. It produces π renderer units of irradiance; the Lambertian 1/π factor and 50% grey albedo produce the #808080 readback.",
     "brightnessStops": [
       { "stop": -2, "factor": 0.25, "intensity": 0.7853981633974483, "measuredRatio": 0.25238650153083003, "srgb": [66, 66, 66] },
       { "stop": -1, "factor": 0.5, "intensity": 1.5707963267948966, "measuredRatio": 0.49579753091369966, "srgb": [92, 92, 92] },
