@@ -2022,10 +2022,11 @@ describe('R217.S15 — gesture numeric entry', () => {
 		settle(mounted.facade, 2);
 		selectWall(mounted.facade, mounted.wallId);
 		const subject = { sourceId: mounted.wallId, sourceKind: 'wall' as const, ref: null };
-		// Straight Walls expose delete only: no hidden Bend-armed mode and no
-		// curve vocabulary leaks in; unfold entry lives in the Card foot.
+		// Straight Walls expose the scoped Split and delete: no hidden Bend-armed
+		// mode and no curve vocabulary leaks in; unfold entry lives in the Card foot.
 		expect(stageCardActions(mounted.facade, subject).map((action) => action.id)).toEqual([
-				'layout-wall-delete'
+				'layout-wall-delete',
+				'layout-wall-split'
 			]);
 
 		const evaluationId = mounted.facade.evaluationId()!;
