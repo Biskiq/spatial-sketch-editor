@@ -1,7 +1,10 @@
 # T2 — Look & Atmosphere: product direction and capability batch
 
-**Status:** proposal for owner review, revision 3. Not a contract, not implementation permission,
-not a second authority beside the references. **Review page:** [`review.html`](./review.html)
+**Status:** **approved planning baseline** (owner approval of the direction and first milestone,
+2026-11-11; revision 4 closes the last five questions under delegated design authority). It
+authorises the direction and the batch, **not** the implementation of any slice: each slice is
+claimed, planned where §12 says so, and reviewed on its own, and every Tier 2 item is still decided
+in that slice's PR. It is not a reference contract; §12 lists the contracts each slice must amend. **Review page:** [`review.html`](./review.html)
 (open directly in a browser; SVG sketches and five small interactive studies).
 
 **Read against:** [Shell / PLATE](../../reference/design-system/editor-shell-and-visual-system.md),
@@ -24,6 +27,11 @@ graphics as first-class objects that are placed, framed, lit and visited, with a
 a 2D Artwork Studio. It also folds in group behaviour, camera-style free light placement and
 frustum beam controls (§5). I found no written record of those three decisions in the repository
 or on the PRs, so §5 states them **as I understood them**; correct anything that differs.
+
+**What revision 4 settles** (reasoning in §13): *Light it* does not group automatically; the beam
+guide is kept visibly separate from the light itself; S3 gets an implementation plan and group
+behaviour becomes its own slice; S8 separates manual map assignment from automatic set import; no
+control is shown before it works.
 
 ---
 
@@ -65,7 +73,7 @@ can judge by eye.
 | | Ship in this batch | Extensibility contract (model and seams now, UI later) | Can wait |
 | --- | --- | --- | --- |
 | **Finish** | Curated tiles; **any colour** (picker, palette, dropper); Sheen; **a Finish from your own image** through P20; Scale in metres and Direction; shared / just-this Ask | Schema carries every PBR map slot, mapping, opacity and emission as open numeric fields. One material factory, so a new property is one resolver change | Full PBR-set import UX, per-assignment mapping overrides, per-face on forms (T5), decals, painting |
-| **Artwork** | Import PNG / JPEG / WebP as an **Artwork object**; place on a wall or free in 3D; size in real units with the aspect locked; transparency kept; four frame styles and a mat; **Light it** fitted to the frame; identical in Visitor Preview | Artwork `source` is a tagged union (image now, drawing later). Frame geometry is generated from parameters. A reserved **Edit** action and Library **New** entry | Trim (crop, straighten), wall labels, glazing, persistent hosting on a moving wall, SVG / video, the Artwork Studio |
+| **Artwork** | Import PNG / JPEG / WebP as an **Artwork object**; place on a wall or free in 3D; size in real units with the aspect locked; transparency kept; four frame styles and a mat; **Light it** fitted to the frame; a derived *Lit by* reading; identical in Visitor Preview | Artwork `source` is a tagged union (image now, drawing later). Frame geometry is generated from parameters. Card-action and Library-entry slots that show nothing until a capability fills them | Trim (crop, straighten), wall labels, glazing, persistent hosting on a moving wall, SVG / video, the Artwork Studio |
 | **Light** | Bare emitters of all three kinds placed **free in space** and aimed like a camera; **frustum** beam handles; *Look through*; Lights in the Index; **Light it** | A fixture is an ordinary object grouped with an emitter. Lights are ordinary group members, so a saved rig is a saved group | Fixture models, articulated heads, saved rigs, live-linked rigs, area lights |
 | **Sky** | Presets as starts; Time, Direction, Haze, Brightness; sun mark; sky-derived reflections **if S0 passes** | Stored as sun angles, colours and scalars, never as a preset-shaped blob. One resolved-look module with a quality input | Uploaded HDRIs, interior reflection capture, real solar model, per-Stop mood (Experience) |
 | **Look** | Atmosphere + Treatment apply to **any** World; palette for followers; opt-in *Adopt palette* | A Look is data over the same fields; a Treatment is a resolve-time transform, never a rewrite | Outline / toon / bloom (post pass), look A/B snapshots |
@@ -80,7 +88,7 @@ row; depth opens in place.
 | --- | --- | --- |
 | Pick | Library › Finishes: curated, **This project**, **+ From image** | Instance referencing a base and optional maps |
 | Adjust | **Colour** (palette swatches, then a free picker and dropper) · **Sheen** (Matte · Satin · Gloss · High gloss) | `color` as a literal or a palette-slot reference · `roughness` |
-| More | **Image** (replace, remove) · **Scale** ("one tile = 1.2 m") · **Direction** (0° / 90°, free angle) · exact roughness · **Metal** on/off · bump strength · opacity · glow | map slots by P20 asset id · `mapping { tileMeters, rotation, offset }` · `metalness` · `normalScale` · `opacity` · `emissive` |
+| More | **Image** (replace, remove) · **Scale** ("one tile = 1.2 m") · **Direction** (0° / 90°, free angle) · exact roughness · **Metal** on/off · opacity · glow. From S8: **Maps** | map slots by P20 asset id · `mapping { tileMeters, rotation, offset }` · `metalness` · `normalScale` · `opacity` · `emissive` |
 
 Decisions inside this:
 
@@ -93,10 +101,17 @@ Decisions inside this:
   and `baseTextureId` already exists; the missing parts are the Card entry and the mapping fields.
   Because forms and Walls emit metre UVs, **Scale is stated in real units** and one brick image
   tiles identically on a wall and a plinth.
-- **Full PBR sets are a contract, not a UI, in this batch.** The schema carries normal, roughness,
-  AO and metalness map slots from Scene 6. A drop-a-folder import that recognises a set is S8.
-  Most creators have a photo, not a matched set; a single image plus Sheen and bump strength is
-  the honest first step.
+- **PBR maps arrive in two distinct steps, both in S8; the schema is open from S1.**
+  - **S4 ships one image:** the colour image, with Sheen. No bump control appears, because there
+    is no bump map to control.
+  - **S8a, manual assignment:** More › **Maps** lists named slots (Colour · Bump · Roughness ·
+    Shading · Metal). Each slot picks one project image. Bump strength and *Flip bump* appear only
+    once a bump map is assigned. This is deterministic and is the escape hatch for everything else.
+  - **S8b, automatic set import:** drop several files together and Biskiq *proposes* one Finish,
+    matching slots by the common filename suffixes, with a preview and the slot list open for
+    correction. Nothing is assigned silently; an unrecognised file is left unassigned and said so.
+  - Manual comes first because automatic import is built on it and must fall back to it. Packed
+    (three-in-one) maps and gloss-instead-of-roughness conversion wait.
 - **Mapping lives on the Finish.** A different scale on one wall is *Just this* (a clone). A
   per-assignment override is a later field on the assignment, noted so S1 does not preclude it.
 - **Sharing is unchanged from revision 1:** shared by default, the Ask Rule on edit (*just this /
@@ -129,6 +144,19 @@ outlined volume, never a filled one, with its footprint traced on the surfaces i
 | **Point** (Bulb, Pendant, Lamp) | A reach sphere, drawn as its ring on the floor and a stem to the nearest surface | **Ring** (reach) · body | Warmth · Brightness · Reach · Shadow (off by default) |
 | **Directional** (the Sun; Fill, Moon) | A box frustum: direction and the area it shadows. The Sun stays the Sky's and moves by the sun mark | **Direction dial** at the World mark (compass ring + elevation arc) | Warmth · Brightness · Shadow |
 
+**The guide is not the light.** The frustum says where a light *can* reach; the rendered picture
+says what it *does*. They must never be confused:
+
+- The guide is **line only, in mark ink**: never filled, never tinted with the light's colour,
+  never brighter where the light is stronger. It ignores occlusion and falloff by design.
+- Illumination is **only ever the rendered result**, with shadows, falloff, Brightness and the
+  Sky's exposure. No mark imitates it and no overlay "previews" it.
+- The far cap is where the light reaches nothing, not where it is bright. A light at Brightness 0
+  still shows its guide.
+- On **Paper**, where lights are not rendered, a selected light shows the guide with a state pill
+  (*Guide only · Living shows the light*), so nobody reads an outline as a lit wall.
+- *Look through* shows the rendered scene; the circle on it is the same guide.
+
 Rotation stays the stored truth. Target, rim, ring, frustum and dial are derived editor marks,
 mounted for the selection only and never serialized. **Finding invisible things:** emitter glyphs
 show while Lights is armed, on hover and on selection, and Lights have their own Index group.
@@ -141,11 +169,25 @@ show while Lights is armed, on hover and on selection, and Lights have their own
   Erase act on the whole group rigidly, so a spot keeps its aim on its painting.
 - The group's Card shows name, members and the strata all members share; a member's Card is its
   own. Ungroup is one action and changes nothing visible.
-- ***Light it* groups the new light with its subject by default** (*Still life + spot*). Moving
-  the painting brings its light, and Duplicate along a wall produces a lit row. Ungroup when a
-  light should serve several works.
 
-**Rigs.** *Light it* recipes (Picture spot, Wash, Showcase) create ordinary grouped lights now. A
+**Does *Light it* group? No, not with its subject; grouping is one optional action.** Final (D12):
+
+- ***Light it* never groups a light with what it lights.** It places the light, leaves it
+  selected, and the Card foot offers **Group with *Still life***. One tap, never automatic.
+- **A recipe that makes several lights groups those lights with each other.** *Showcase* (key,
+  fill, rim) is one rig; its parts mean nothing alone. The rig is still not grouped with the subject.
+- **Several things selected → one light for all of them.** *Light it* then places a single Wash
+  whose frustum covers the selection. This is the gallery light that serves a wall of works.
+- **The Card shows a derived *Lit by* reading** (*Lit by Picture spot*; tap to select it), computed
+  from which guides reach the object. It answers "which light is this?" without storing a relation.
+
+Why not automatic: a grouped painting needs two clicks to select, which taxes the most common
+object in a gallery; Duplicate would silently multiply shadow-casting lights past the budget;
+Erase would take a light that also serves the neighbour; and one light for many works is ordinary
+practice. The lit-row case stays cheap: group once, then Duplicate, or select painting and light
+together.
+
+**Rigs.** Recipes create ordinary lights now, grouped only as above. A
 saved rig is a saved group in the library, inserted as a detached copy (the My Objects precedent).
 A *live-linked* rig needs the definition/instance model objects do not have either, and should
 arrive for objects and lights together.
@@ -204,7 +246,7 @@ later, explicit bridge (it is how a drawn pattern will reach a wall).
    frame is part of the artwork, sized in real centimetres, so it does not thicken when the
    artwork is scaled. A transparent graphic stays a cut-out when unframed.
 4. **Light it.** One action: a Picture spot placed in front and above at 30°, its frustum fitted
-   to the frame with a margin, grouped with the artwork.
+   to the frame with a margin, left selected, with *Group with artwork* offered and not assumed.
 5. **Visit.** Visitor Preview shows the same thing without marks. Save and reopen restore it.
 
 **What ships, and how it is drawn.** A matte surface that responds to lights and casts a shadow,
@@ -215,8 +257,11 @@ row once S4 lands.
 
 **Pushback and limits.**
 
-- **Not a textured plane.** It would be the cheapest path and the wrong one: the image becomes a
-  shared Finish, resizing stretches it, and the Ask Rule fires on a painting.
+- **Identity, not rendering, is the point.** Internally an Artwork *is* drawn as a textured quad
+  and that is fine. What is rejected is the *authoring* route that exists today, a `plane`
+  primitive carrying a material instance: there the image is a shared Finish, resizing stretches
+  it, and the Ask Rule fires on a painting. The Artwork owns its image reference directly; it has
+  no material instance, never appears among Finishes, and Paint and the dropper do not apply to it.
 - **"Mounted" is a snap, not a bond, in this batch.** An artwork placed on a wall does not follow
   that wall if the wall is later moved, which matches how every object behaves today. Persistent
   hosting should come from Scene's support relation for all objects, not as an artwork special case.
@@ -236,14 +281,14 @@ row once S4 lands.
   pins Finish textures, and the cold visitor loader must verify them. This is the one dependency
   outside the editor and the reason the slice gets a plan.
 
-**High ceiling: a 2D Artwork Studio, without building one now.** The seams, all cheap today:
+**High ceiling: a 2D Artwork Studio, without building one now.** The seams are in the model and the wiring, never on screen: **no control is shown before it works** (a standing rule for the whole batch, which also means no empty Fixtures row before fixture models exist, and that the inert hour slider goes when S2 lands).
 
 | Seam | Now | Later |
 | --- | --- | --- |
 | **Source union** | `source: { kind: 'image', asset }` | `{ kind: 'drawing', document }`: an authored 2D document as a typed resource, rendered to the same displayed image. Frame, placement, lighting and visiting do not change |
-| **Card action slot** | Artwork Card foot: Light it · Replace image | **Edit**, entering a Studio scope |
+| **Card action slot** | Artwork Card foot: Light it · Replace image. The foot is filled from a registry, so **no Edit control exists** until it does something | **Edit**, entering a Studio scope |
 | **Studio scope** | Nothing | The **same scoped-entry pattern as T5's Object Studio** (enter from the selection, world pose kept, *Back to World*, one selection, one Card), with the Stage in a flat reading square to the picture plane. Tools live in the dock and its palette; colours come from the project palette. No new permanent panel and no second canvas application |
-| **Library entry** | Artwork › Import | Artwork › **New drawing** beside it |
+| **Library entry** | Artwork › Import, and nothing else | Artwork › **New drawing** beside it |
 | **Bridge to surfaces** | Nothing | *Use as Finish*, so a drawn pattern can tile a wall without confusing the two identities |
 
 Recommended order after this batch: **Trim** (crop and straighten a photographed painting; far
@@ -337,8 +382,9 @@ Counts are creator interactions after the geometry exists; each is on the review
 
 - **Gallery, from a folder of photographs (6).** Drop the files on the Stage · place the first on
   the wall at the eye line · Card → Frame *Gallery* with a Mat · **Light it** (Picture spot in
-  front and above, 30°, frustum fitted to the frame, grouped) · Duplicate along the wall and
-  *Replace image* on each · Sky → *Dusk*.
+  front and above, 30°, frustum fitted to the frame) · *Group with artwork*, then Duplicate along
+  the wall and *Replace image* on each · Sky → *Dusk*. For one light over the whole wall instead:
+  select the works together, then **Light it**.
 - **Product showcase (4).** Sky → *Paper* · select the product → Finish → *Brass* · **Light it ▾
   Showcase** (key, fill, rim, one undo) · Sheen → *Satin*. Honest limit: the brass reflects a
   neutral studio, not the plinth beside it.
@@ -351,7 +397,11 @@ Counts are creator interactions after the geometry exists; each is on the review
 
 ## 12. Decisions and batch
 
-### Owner decisions
+### Decisions
+
+The direction and first milestone are approved. Rows marked **final** were closed in revision 4
+under delegated design authority. Tier 2 rows are approved as direction and are still decided, with
+evidence, in the PR of the slice that carries them.
 
 | # | Decision | Recommendation | Tier |
 | --- | --- | --- | --- |
@@ -366,10 +416,13 @@ Counts are creator interactions after the geometry exists; each is on the review
 | D9 | Shadow budget | Set by S0 item 4; refuse in words beyond it | 1 |
 | D10 | Seams slice first | Yes: P0 below, one behaviour-neutral PR | 0–1 |
 | D11 | Treatment as authored presentation | Yes, in Scene 6, resolve-time only | with D2 |
-| D12 | Groups, fixtures and rigs | The §5 group rules: flat membership, click group then member, rigid group actions, *Light it* groups by default. Fixture = object + emitter; rig = group | 1 |
-| D13 | Artwork | A new Scene entity kind in its own slice (A1) with its own plan; never a textured plane | 2 |
+| D12 | Groups, fixtures and rigs | **Final.** A group behaves as one unit (§5). *Light it* never groups a light with its subject; *Group with …* is one optional action; a multi-light recipe groups its own lights; several selected works get one shared light | 1 |
+| D13 | Artwork | **Final on identity.** A first-class Scene entity kind in its own slice (A1). Drawn as a textured quad; never authored as a plane with a shared Finish | 2 |
 | D14 | Image identity | One P20 image may back an Artwork and a Finish; the two never share identity. *Use as Finish* is explicit and later | 1 |
 | D15 | Light placement | Free in space, camera-style, with *Look through* realised through Camera; surfaces are magnets only | 1 |
+| D17 | Guide versus light | **Final.** Guides are line-only marks that never imitate illumination; the rendered result is the only light (§5) | 1 |
+| D18 | No inert controls | **Final.** Nothing is shown before it works; future capabilities are seams in the model and wiring only | 1 |
+| D19 | PBR maps | **Final.** S4 one colour image; S8a manual slot assignment; S8b automatic set import as a correctable proposal | 1 |
 | D16 | Artwork response to light | Lit and matte, no sky reflection, fidelity proven by S0 item 7. An always-full-brightness option waits | with S0 |
 
 ### Capability slices
@@ -381,20 +434,21 @@ for multi-PR, Tier 2 or invention-risking work, as the first commit of that work
 | --- | --- | --- | --- | --- |
 | **P0 Look seams** | A `look` authoring module; mount points for a Card stratum, a Stage mark layer and a Library shelf; the existing Sky and material-pick wiring moved out of the route. No behaviour change | — | — | No. One PR |
 | **S0 Rendering gate** | The §8 report, then sky-lit rendering landed to the level it proved | — | — | **Yes** (invention risk) |
-| **S3 Lights** | Emitters of all three kinds: free placement, frustum handles, *Look through*, Index group, Card stratum; group rules | P0 · S0 item 1 | — | No |
+| **S3 Lights** | Emitters of all three kinds: free placement, frustum guides and handles, guide-only state on Paper, Index group, Card stratum, *Lit by*. *Look through* as a second PR | P0 · S0 item 1 | — | **Yes** (interaction grammar; *Look through* touches the Camera authority) |
 | **A1 Artwork** | Import, the Artwork object, wall magnet and free placement, real-unit sizing, transparency, Visitor Preview, save and reopen, release pinning | P0 · S0 items 1 and 7 | **bump** | **Yes** (Tier 2: format, release) |
 | **A2 Framing and hanging** | Four frame styles, Mat, frame colour; eye-line and neighbour guides; Replace image | A1 | — | No |
-| **S7 Light it** | Recipes aimed at the selection, frustum fitted to an artwork's frame, grouped, one undo | S3 (richer with A1) | — | No |
+| **S7 Light it** | Picture spot and Wash aimed at the selection, frustum fitted to an artwork's frame, one light for a multi-selection, one undo | S3 (richer with A1) | — | No |
+| **G1 Groups** | Group as one unit for every object kind: click group then member, rigid actions, group Card, *Group with …*; the Showcase rig | S3 | — | **Yes** (shell-wide selection behaviour) |
 | **S1 Look schema** | Types, codec, validation for §4 and §6 fields | D2, D11 · S0 report | **bump** | **Yes** (Tier 2) |
 | **S2 Sky dials** | Popover dials, sun mark, edited / Reset | P0 · S0 · S1 | — | No |
 | **S4 Finish** | Card row, free colour, Sheen, Paint for objects; then From image, Scale, Direction | P0 · S0 · S1 | — | No; likely two PRs |
 | **S6 Looks** | Atmosphere + Treatment for any World; palette, followers, Adopt palette | S2 · S4 | — | No |
 | **S5a Wall-face finishes** | Paint with Face and Space scope on Walls | S4 · D1 | **bump** | **Yes** (Tier 2, shared with T1) |
 | **S5b Floors and overheads** | The same for T1's floor and overhead surfaces | S5a · T1 identity | — | With T1 |
-| **S8 Catalogue and depth** | Curated sets, PBR-set import, fixture models, see-through and Glow as S0 allows | S4 · D8 | — | **Yes** (licence) |
+| **S8 Catalogue and depth** | **S8a** manual map slots · **S8b** automatic set import · curated sets and fixture models · see-through and Glow as S0 allows | S4 · D8 · G1 for fixtures | — | **Yes** (licence) |
 
 ```text
-now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it         (no format change)
+now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it ─▶ G1 Groups   (no format change)
          S0 gate ──┤               │
                    ├─▶ A1 Artwork ─┴─▶ A2 Framing and hanging   (own bump, own plan)
                    │
@@ -402,6 +456,10 @@ now      P0 seams ─┬─▶ S3 Lights ──┬─▶ S7 Light it         (no
                                        └─▶ S4 Finish ────┴─▶ S6 Looks ─▶ S8 Catalogue and depth
                                              └─▶ S5a Wall faces ─▶ S5b Floors / overheads (T1)
 ```
+
+**Group behaviour is its own slice, after the milestone.** Because *Light it* no longer groups,
+the first milestone needs no group machinery at all. G1 then changes selection for every object
+kind at once, which is why it is planned on its own rather than hidden inside Lights.
 
 **First milestone, and how to verify it.** P0, S3, A1, A2 and S7 together are one scene anyone can
 judge without rendering knowledge: *import a painting, hang it at the eye line, frame it, light it,
@@ -424,6 +482,18 @@ whether a map slot references a P20 asset id or a `SceneTextureAsset`; palette s
 swatches or fixed roles; where Treatment sits (recommended: `environment`); how catalogue bases are
 versioned when a curated Finish changes; what the assignment record reserves for a later mapping
 override and a surface identity.
+
+**Contracts each slice amends when it lands** (none is edited by this proposal):
+
+| Slice | Contract |
+| --- | --- |
+| S0 | Shell / PLATE: the Paper "neutral illumination only" row, if D4 passes. Scene content: stored light units |
+| S3, G1 | Spatial instrument grammar: light guides, the guide-versus-light rule, group selection. Scene content: clusters behave as one unit; lights aim by target |
+| A1 | Scene content: the Artwork entity kind and validation. Assets: an image referenced by an entity; release pinning |
+| S1, S5a | Scene content: material instance fields, palette, treatment, surface finishes. Layout: the published surface identity (T1's to write) |
+| S2 | Shell / PLATE: the Sky popover as the one environment writer; the unmounted panel retired |
+| S4, S8 | Scene content and Assets: Finish maps and their slots |
+| all | World toolbar registry: Paint and Lights stop reading as planned for a later theme |
 
 **Checks per slice** follow the test contract: codec and validation (S1), resolved-look parity and
 visitor-chunk isolation (S0, every Stage mark), one undo per gesture and write-nothing on Ask
@@ -448,6 +518,12 @@ cancel (S2–S6). Browser QA is focused and manual.
 | Mounting | **Narrowed.** A placement snap now; a persistent bond only when all objects get one |
 | Artwork Studio | **Seams only,** and Trim before drawing: crop and straighten serves far more artists than a brush |
 | Mount-first light placement (my revision 2) | **Replaced** by free, camera-style placement with frustum handles and *Look through* |
+| *Revision 4:* should *Light it* group automatically? | **No; I reversed my revision 3 default.** Optional, one tap. Recipe-specific only in that a multi-light recipe groups its own lights. Reasons in §5: selection cost, shadow budget, shared lights, Erase |
+| Artwork drawn as a textured quad | **Accepted, and clarified.** My objection was only ever to authoring it as a plane with a shared Finish |
+| Beam guide versus illumination | **Accepted and made a rule** (D17), including the guide-only state on Paper |
+| Does S3 need a plan? | **Yes.** I was wrong to call it a plain PR: it sets interaction grammar and *Look through* touches the Camera authority. Groups split out as G1 with their own plan |
+| Manual maps versus automatic import | **Clarified as S8a then S8b,** manual first because automatic must fall back to it |
+| Reserved Studio controls | **Accepted and widened** to a standing rule (D18): no inert controls anywhere in the batch |
 
 ## 14. Unresolved questions
 

@@ -81,6 +81,7 @@ details.more summary{cursor:pointer;font:600 11.5px/1.4 var(--sans);color:var(--
 .btn{border:1px solid var(--hair-strong);background:var(--card);border-radius:8px;padding:6px 10px;font:600 11.5px/1 var(--sans);color:var(--ink);cursor:pointer}
 .btn[aria-pressed=true]{background:var(--forest);color:var(--ivory);border-color:var(--forest)}
 .btn:disabled{opacity:.45;cursor:default}
+.btn[hidden]{display:none}
 .sw input[type=color]{width:30px;height:28px;padding:0;border:1px solid var(--hair-strong);border-radius:8px;background:var(--card);cursor:pointer}
 .seg button:disabled{opacity:.4;cursor:default}
 .steps4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 10px}
@@ -98,7 +99,7 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <div class="eyebrow">Proposal · revision 3 · owner review · not authority</div>
+  <div class="eyebrow">Approved planning baseline · revision 4 · authorises the direction and batch, not any slice</div>
   <h1>T2 — Look &amp; Atmosphere</h1>
   <p>How a creator gives a World its mood, its surfaces and its light without learning rendering. Companion to <code style="background:transparent;border-color:rgb(255 255 255/.2);color:inherit">README.md</code> in this folder, which carries the full decisions and batch.</p>
   <nav class="toc" aria-label="Sections">
@@ -128,7 +129,7 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
   <div class="tablewrap"><table>
     <tr><th></th><th>Ship in this batch</th><th>Extensibility contract</th><th>Can wait</th></tr>
     <tr><td><b>Finish</b></td><td>Curated tiles · any colour · Sheen · a Finish from your own image (P20) · Scale in metres, Direction · shared / just-this</td><td>Every PBR map slot, mapping, opacity and emission as open fields. One material factory</td><td>PBR-set import UX · per-assignment mapping · per-face on forms (T5) · decals</td></tr>
-    <tr><td><b>Artwork</b></td><td>Import PNG / JPEG / WebP as an Artwork object · wall or free in 3D · real-unit size, aspect locked · transparency kept · four frames and a mat · Light it fitted to the frame · same in Visitor Preview</td><td>Artwork source is a tagged union (image now, drawing later). Frames generated from parameters. Reserved Edit action and Library New entry</td><td>Trim (crop, straighten) · wall labels · glazing · persistent hosting · SVG, video · Artwork Studio</td></tr>
+    <tr><td><b>Artwork</b></td><td>Import PNG / JPEG / WebP as an Artwork object · wall or free in 3D · real-unit size, aspect locked · transparency kept · four frames and a mat · Light it fitted to the frame · same in Visitor Preview</td><td>Artwork source is a tagged union (image now, drawing later). Frames generated from parameters. Card-action and Library slots that show nothing until filled</td><td>Trim (crop, straighten) · wall labels · glazing · persistent hosting · SVG, video · Artwork Studio</td></tr>
     <tr><td><b>Light</b></td><td>Emitters of all three kinds, placed free in space and aimed like a camera · frustum handles · Look through · Lights in the Index · Light it</td><td>Fixture = object grouped with an emitter. Rig = group</td><td>Fixture models · articulated heads · saved and live-linked rigs · area lights</td></tr>
     <tr><td><b>Sky</b></td><td>Presets as starts · four dials · sun mark · sky reflections if S0 passes</td><td>Stored as angles, colours, scalars. One resolved-look module with a quality input</td><td>HDRIs · interior capture · solar model · per-Stop mood</td></tr>
     <tr><td><b>Look</b></td><td>Atmosphere + Treatment on any World · palette · opt-in Adopt palette</td><td>A Treatment is a resolve-time transform, never a rewrite</td><td>Outline, toon, bloom (post pass)</td></tr>
@@ -233,15 +234,15 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
         <div class="row"><span>Placed</span><div class="seg" id="artMount"><button data-v="wall" aria-pressed="true">On the wall</button><button data-v="free" aria-pressed="false">Free in space</button></div></div>
         <div class="row"><span>Frame</span><div class="seg" id="artFrame"><button data-v="none" aria-pressed="true">None</button><button data-v="thin" aria-pressed="false">Thin</button><button data-v="gallery" aria-pressed="false">Gallery</button><button data-v="float" aria-pressed="false">Float</button></div></div>
         <div class="row"><span>Mat</span><div style="display:flex;gap:8px;align-items:center"><button class="btn" id="artMat" aria-pressed="false">Mat</button><div class="sw" id="artCol" role="group" aria-label="Frame colour"></div></div></div>
-        <div class="row"><span>Light</span><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="artLit" aria-pressed="false">✦ Light it</button><button class="btn" id="artVisit" aria-pressed="false">Visitor Preview</button></div></div>
+        <div class="row"><span>Light</span><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="artLit" aria-pressed="false">✦ Light it</button><button class="btn" id="artGrp" aria-pressed="false" hidden>Group</button><button class="btn" id="artVisit" aria-pressed="false">Visitor Preview</button></div></div>
         <div class="more" id="artNote"></div>
       </div>
     </div>
   </div>
   <div class="grid g3" style="margin-top:12px">
     <div class="panel"><h3>Where the image enters decides what it is</h3><p>Dropped on the Stage or imported in Library › Artwork: an <b>Artwork object</b>. Chosen in a Finish row: a map on a <b>Finish</b>. Both read the same stored image; neither shares identity with the other.</p></div>
-    <div class="panel"><h3>Limits in this batch</h3><p>On the wall is a placement snap, not a bond: the artwork does not follow a wall that is later moved, like every object today. No picture glass. No editing yet. Artwork is lit and matte, and S0 must prove its colours stay true.</p></div>
-    <div class="panel"><h3>Seams for an Artwork Studio</h3><p>A source union (image now, drawing later), a reserved <b>Edit</b> action on the Card, a <b>New drawing</b> entry in the Library, and the same scoped-entry pattern as Object Studio with a flat reading of the picture plane. <b>Trim</b> (crop, straighten) should come before any brush.</p></div>
+    <div class="panel"><h3>Limits in this batch</h3><p>On the wall is a placement snap, not a bond. No picture glass. No editing yet. Artwork is lit and matte, and S0 must prove its colours stay true. It is drawn as a textured quad, which is fine: the point is that it owns its image and is never a Finish.</p></div>
+    <div class="panel"><h3>Seams for an Artwork Studio</h3><p>In the model and wiring only: a source union (image now, drawing later), a Card action registry and a Library shelf that can take new entries, and Object Studio's scoped-entry pattern. <b>No control is shown before it works</b>, so there is no Edit button here. Trim (crop, straighten) should come before any brush.</p></div>
   </div>
 </section>
 
@@ -267,12 +268,12 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
           <div class="row"><span>Direction</span><div class="seg" id="finDir"><button data-v="0" aria-pressed="true">0°</button><button data-v="90" aria-pressed="false">90°</button><button data-v="45" aria-pressed="false">45°</button></div></div>
           <div class="row"><span>Roughness</span><div><input id="finR" type="range" min="0.04" max="1" step="0.01" value="0.6" aria-label="Exact roughness"><span class="val" id="finRough"></span></div></div>
           <div class="row"><span>Metal</span><div class="seg" id="finMetal"><button data-v="0" aria-pressed="true">No</button><button data-v="1" aria-pressed="false">Yes</button></div></div>
-          <div class="note">Also here: bump strength · opacity · glow · Reset to curated.</div>
+          <div class="note">Also here: opacity · glow · Reset to curated.</div>
         </div>
       </details>
     </div>
   </div>
-  <p class="note">Forms and Walls already emit metre UVs, so Scale is stated in real units and one image tiles identically on a wall and a plinth. <b>Your image</b> goes through the existing P20 project-asset path. The schema carries normal, roughness, AO and metalness map slots from the first format bump; a drop-a-folder PBR-set import is a later slice. Metal is a switch under More, not an everyday slider.</p>
+  <p class="note">Forms and Walls already emit metre UVs, so Scale is stated in real units and one image tiles identically on a wall and a plinth. <b>Your image</b> goes through the existing P20 project-asset path. More maps come in two later steps: <b>manual assignment</b> (named slots, each picking one project image; bump controls appear only once a bump map is set), then <b>automatic set import</b> (drop a set and get a correctable proposal, nothing assigned silently). Metal is a switch under More, not an everyday slider.</p>
 </section>
 
 <section id="kinds">
@@ -284,7 +285,7 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
       <header><strong id="kindName">Spot</strong><span class="reach" id="kindTag">LIGHT · SPOT</span></header>
       <div class="row"><span>Kind</span><div class="seg" id="kindSeg"><button data-v="point" aria-pressed="false">Point</button><button data-v="spot" aria-pressed="true">Spot</button><button data-v="dir" aria-pressed="false">Directional</button></div></div>
       <div class="row"><span>Shown as</span><div class="seg" id="kindFx"><button data-v="0" aria-pressed="true">Light only</button><button data-v="1" aria-pressed="false">Fixture</button></div></div>
-      <div class="row"><span>View</span><div class="seg" id="kindView"><button data-v="edit" aria-pressed="true">Selected</button><button data-v="through" aria-pressed="false">Look through</button><button data-v="visit" aria-pressed="false">Visitor</button></div></div>
+      <div class="row"><span>View</span><div class="seg" id="kindView"><button data-v="edit" aria-pressed="true">Selected</button><button data-v="through" aria-pressed="false">Look through</button><button data-v="paper" aria-pressed="false">Paper</button><button data-v="visit" aria-pressed="false">Visitor</button></div></div>
       <div class="more" style="display:grid;gap:6px">
         <div><span class="k">Place</span><div id="kindPlace" style="color:var(--ink-2);font-size:12px;margin-top:3px"></div></div>
         <div><span class="k">Marks</span><div id="kindMarks" style="color:var(--ink-2);font-size:12px;margin-top:3px"></div></div>
@@ -292,9 +293,10 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
       </div>
     </div>
   </div>
-  <div class="grid g2">
-    <div class="panel"><h3>Groups, one rule set</h3><ol class="steps"><li>A group is flat membership: members keep world positions; visitors see them as if ungrouped.</li><li><b>Click selects the group; a second click selects the member.</b></li><li>Move, rotate, Duplicate and Erase act on the group rigidly, so a spot keeps its aim on its painting.</li><li><b>Light it groups the new light with its subject.</b> Duplicate along a wall gives a lit row; Ungroup when one light serves several works.</li></ol></div>
-    <div class="panel"><h3>Fixtures and rigs</h3><p>Emitters ship in this batch. A fixture is an object grouped with an emitter; models are an asset decision and follow later. A saved rig is a saved group, inserted as a detached copy. A live-linked rig should arrive together with the same capability for objects.</p><p class="note" style="margin-top:8px">Look through is realised as a Camera inspection pose through the one Camera authority and writes only the light's transform, once, on Done. These three decisions are stated as I understood them; I found no written record to check against.</p></div>
+  <div class="grid g3">
+    <div class="panel"><h3>The guide is not the light</h3><ol class="steps"><li>The guide is <b>line only, in mark ink</b>: never filled, never tinted with the light's colour. It shows where a light can reach, ignoring occlusion and falloff.</li><li>Illumination is <b>only the rendered result</b>. No mark imitates it.</li><li>On <b>Paper</b>, where lights are not rendered, a selected light shows its guide under a pill saying so. Try the Paper view above.</li></ol></div>
+    <div class="panel"><h3>Groups, and Light it</h3><ol class="steps"><li>A group behaves as one unit: click selects the group, a second click the member; Move, Duplicate and Erase are rigid.</li><li><b>Light it never groups a light with its subject.</b> <i>Group with …</i> is one optional tap.</li><li>A multi-light recipe (Showcase) groups its own lights as a rig.</li><li>Several works selected → one Wash for all of them.</li><li>The Card shows a derived <i>Lit by</i> reading.</li></ol></div>
+    <div class="panel"><h3>Fixtures and rigs</h3><p>Emitters ship in this batch. A fixture is an object grouped with an emitter; models are an asset decision and follow later. A saved rig is a saved group, inserted as a detached copy. A live-linked rig should arrive together with the same capability for objects.</p><p class="note" style="margin-top:8px">Look through is realised as a Camera inspection pose through the one Camera authority and writes only the light's transform, once, on Done. No empty Fixtures row is shown until fixture models exist.</p></div>
   </div>
 </section>
 
@@ -394,9 +396,12 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
     <tr><td>Mounting</td><td><span class="tag">narrowed</span></td><td>A placement snap now; a persistent bond only when all objects get one</td></tr>
     <tr><td>Artwork Studio</td><td><span class="tag">seams only</span></td><td>Recorded path, nothing built. Trim before drawing: far more artists need crop and straighten than a brush</td></tr>
     <tr><td>Mount-first light placement (my revision 2)</td><td><span class="tag go">replaced</span></td><td>Free camera-style placement, frustum handles, Look through</td></tr>
+    <tr><td><i>Rev 4:</i> should Light it group automatically?</td><td><span class="tag go">reversed</span></td><td>No. A grouped painting needs two clicks to select; Duplicate would multiply shadow-casting lights; Erase would take a light serving the neighbour; one light for many works is normal practice</td></tr>
+    <tr><td>Does S3 need a plan?</td><td><span class="tag go">yes</span></td><td>It sets interaction grammar and Look through touches the Camera authority. Groups split out as their own planned slice</td></tr>
     <tr><td>One Scene bump for everything (my own D2)</td><td><span class="tag go">reversed</span></td><td>Coupling the look schema to T1's open questions costs more than a second cheap bump</td></tr>
   </table></div>
-  <h3>Decisions that need you</h3>
+  <h3>Decisions</h3>
+  <p class="note">Direction and first milestone are approved. Rows marked Final were closed in revision 4. Tier 2 rows are approved as direction and are still decided, with evidence, in the PR of the slice that carries them.</p>
   <div class="tablewrap"><table>
     <tr><th></th><th>Question</th><th>Recommendation</th><th>Tier</th></tr>
     <tr><td>D1</td><td>Who stores a surface finish?</td><td>Scene, keyed by a Layout-published surface identity; Layout stays appearance-free</td><td><span class="tag t2">Tier 2</span></td></tr>
@@ -406,10 +411,11 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
     <tr><td>D8</td><td>Curated assets</td><td>~14 finishes and a few fixture models, CC0 only; creator images through P20</td><td><span class="tag t2">Tier 2</span></td></tr>
     <tr><td>D10</td><td>Seams slice first?</td><td>Yes, P0: one behaviour-neutral PR</td><td><span class="tag">Tier 0–1</span></td></tr>
     <tr><td>D11</td><td>Treatment as authored presentation</td><td>Yes, in Scene 6, resolve-time only</td><td><span class="tag t2">with D2</span></td></tr>
-    <tr><td>D12</td><td>Groups, fixtures, rigs</td><td>Flat membership, click group then member, rigid group actions, Light it groups by default</td><td><span class="tag">Tier 1</span></td></tr>
-    <tr><td>D13</td><td>Artwork</td><td>A new Scene entity kind in its own slice with its own plan; never a textured plane</td><td><span class="tag t2">Tier 2</span></td></tr>
+    <tr><td>D12</td><td>Groups, fixtures, rigs</td><td><b>Final.</b> A group is one unit. Light it never groups with its subject; grouping is one optional tap; a multi-light recipe groups its own lights</td><td><span class="tag">Tier 1</span></td></tr>
+    <tr><td>D13</td><td>Artwork</td><td><b>Final on identity.</b> A first-class entity in its own slice; drawn as a textured quad, never authored as a plane with a shared Finish</td><td><span class="tag t2">Tier 2</span></td></tr>
     <tr><td>D14</td><td>Image identity</td><td>One stored image may back an Artwork and a Finish; the two never share identity</td><td><span class="tag">Tier 1</span></td></tr>
     <tr><td>D15</td><td>Light placement</td><td>Free in space, camera-style; Look through realised through Camera</td><td><span class="tag">Tier 1</span></td></tr>
+    <tr><td>D17–19</td><td>Guide versus light · no inert controls · PBR maps</td><td><b>Final.</b> Line-only guides; nothing shown before it works; one image in S4, manual slots then automatic import in S8</td><td><span class="tag">Tier 1</span></td></tr>
     <tr><td>D16</td><td>Artwork response to light</td><td>Lit and matte, no sky reflection; fidelity proven in S0</td><td><span class="tag">with S0</span></td></tr>
   </table></div>
   <p class="note">D5 (light units), D6 (warmth), D7 (Sky is not a Card subject) and D9 (shadow budget, set by S0) are unchanged and in the README.</p>
@@ -417,7 +423,7 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
 
 <section id="batch">
   <h2>A realistic batch</h2>
-  <p class="lede">Capability slices, not implementation plans. Two things start now; Lights and Artwork form the first milestone. A plan is written only where the workflow asks for one.</p>
+  <p class="lede">Capability slices, not implementation plans. Two things start now; Lights and Artwork form the first milestone; group behaviour follows it as its own slice. A plan is written only where the workflow asks for one.</p>
   <figure>
     <svg viewBox="0 0 960 420" role="img" aria-label="Slice dependency diagram in three tracks">
       <rect width="960" height="420" fill="#fff"/>
@@ -437,9 +443,11 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
         <text x="238" y="240" fill="#79817b" font-size="10.5" letter-spacing="1">SURFACE AND SKY TRACK</text>
         <g><rect x="20" y="50" width="160" height="56" rx="10" fill="#11291f"/><text x="32" y="74" fill="#f4f5f1" font-weight="600">P0 Look seams</text><text x="32" y="92" fill="#9fb2a5" font-size="10.5">one PR · behaviour-neutral</text></g>
         <g><rect x="20" y="270" width="160" height="56" rx="10" fill="#11291f"/><text x="32" y="294" fill="#f4f5f1" font-weight="600">S0 Rendering gate</text><text x="32" y="312" fill="#9fb2a5" font-size="10.5">report, then land</text></g>
-        <g><rect x="238" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="250" y="74" font-weight="600">S3 Lights</text><text x="250" y="92" fill="#4a524c" font-size="10.5">free · frustum · groups</text></g>
+        <g><rect x="238" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="250" y="74" font-weight="600">S3 Lights</text><text x="250" y="92" fill="#4a524c" font-size="10.5">free · frustum · plan first</text></g>
         <g><rect x="450" y="50" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="462" y="74" font-weight="600">S7 Light it</text><text x="462" y="92" fill="#4a524c" font-size="10.5">fitted to the frame</text></g>
         <g><rect x="238" y="140" width="154" height="56" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="250" y="164" font-weight="600">A1 Artwork</text><text x="250" y="182" fill="#4a524c" font-size="10.5">object · own bump · plan</text></g>
+        <g><rect x="662" y="56" width="138" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="674" y="76" font-weight="600">G1 Groups</text><text x="674" y="91" fill="#4a524c" font-size="10.5">one unit · plan first</text></g>
+        <path d="M604 78 H656" fill="none" stroke="#79817b" stroke-width="1.3" marker-end="url(#ar)"/>
         <g><rect x="450" y="140" width="154" height="56" rx="10" fill="#e7f1ea" stroke="#4f8f6c"/><text x="462" y="164" font-weight="600">A2 Framing, hanging</text><text x="462" y="182" fill="#4a524c" font-size="10.5">frames · mat · eye line</text></g>
         <g><rect x="238" y="270" width="154" height="56" rx="10" fill="#f8efd6" stroke="#d4ad45"/><text x="250" y="294" font-weight="600">S1 Look schema</text><text x="250" y="312" fill="#4a524c" font-size="10.5">Tier 2 · plan first</text></g>
         <g><rect x="450" y="232" width="154" height="44" rx="10" fill="#f8f8f5" stroke="#cdd2ca"/><text x="462" y="259" font-weight="600">S2 Sky dials</text></g>
@@ -456,11 +464,11 @@ code{font:12px var(--mono);background:var(--card);border:1px solid var(--hair);b
   </figure>
   <div class="grid g2" style="margin-top:12px">
     <div class="panel"><h3>P0, bounded</h3><p>The spatial route is 5,901 lines with 97 imports and every look slice would edit it. P0 leaves one construction of a look module and four mount points (Card stratum, Stage mark layer, Library shelf, Sky popover), and proves the seam by moving the Sky and material-pick wiring that exist today. It is not a route refactor.</p></div>
-    <div class="panel"><h3>Handoff to implementation planning</h3><p>Plan first: <b>S0</b> (invention risk), <b>A1</b> (format bump and release pinning), <b>S1</b> and <b>S5a</b> (Tier 2 format), <b>S8</b> (licence). Everything else is a Tier 0–1 PR described in its own description. Open schema questions for the S1 plan are listed in the README; none is decided here.</p></div>
+    <div class="panel"><h3>Handoff to implementation planning</h3><p>Plan first: <b>S0</b> (invention risk), <b>S3</b> (interaction grammar, Camera), <b>A1</b> (format bump and release pinning), <b>G1</b> (shell-wide selection), <b>S1</b> and <b>S5a</b> (Tier 2 format), <b>S8</b> (licence). Everything else is a Tier 0–1 PR described in its own description. Open schema questions for the S1 plan are listed in the README; none is decided here.</p></div>
   </div>
 </section>
 
-<footer>Proposal only. References and code remain authority. Sketches approximate the shell; they are not pixel specifications.</footer>
+<footer>Approved planning baseline. It authorises the direction and batch; each slice is still claimed, planned and reviewed on its own. References and code remain authority. Sketches approximate the shell; they are not pixel specifications.</footer>
 </main>
 
 <script>
@@ -652,7 +660,7 @@ const ARTS = [ { name:'Still life', file:'still-life.jpg', a:3/4, d:(w,h) => `<r
   { name:'Coast', file:'coast.webp', a:3/2, d:(w,h) => `<rect width="${w}" height="${h}" fill="#b9d3d6"/><rect y="${h*.55}" width="${w}" height="${h*.45}" fill="#2f6f86"/><path d="M0 ${h*.6} L${w*.3} ${h*.36} L${w*.52} ${h*.58} L${w*.7} ${h*.44} L${w} ${h*.6} V${h*.7} H0Z" fill="#5d7355"/><circle cx="${w*.78}" cy="${h*.22}" r="${h*.09}" fill="#fff3cf"/><rect y="${h*.86}" width="${w}" height="${h*.14}" fill="#e3d2a8"/>` },
   { name:'Lettering', file:'lettering.png', a:1, alpha:1, d:(w,h) => `<path d="M${w*.5} ${h*.04} L${w*.62} ${h*.36} L${w*.96} ${h*.38} L${w*.69} ${h*.59} L${w*.79} ${h*.93} L${w*.5} ${h*.73} L${w*.21} ${h*.93} L${w*.31} ${h*.59} L${w*.04} ${h*.38} L${w*.38} ${h*.36}Z" fill="#c8553d"/><circle cx="${w*.5}" cy="${h*.52}" r="${w*.13}" fill="#f4d35e"/>` } ];
 const FCOL = ['#1b1b1b','#8a6238','#f4f1ea'];
-const art = { step:0, imported:false, pick:0, placed:false, x:250, y:160, w:.9, mount:'wall', frame:'none', mat:false, col:0, lit:false, visit:false, drag:null };
+const art = { step:0, imported:false, pick:0, placed:false, x:250, y:160, w:.9, mount:'wall', frame:'none', mat:false, col:0, lit:false, grp:false, visit:false, drag:null };
 const AM = 80, AFLOOR = 280, EYE = AFLOOR - 1.5*AM;                          // px per metre; eye line at 1.5 m
 function drawArt(){
   const A = ARTS[art.pick], w = art.w*AM, h = w/A.a, x = art.x - w/2, y = art.y - h/2, ed = !art.visit;
@@ -693,24 +701,26 @@ function drawArt(){
   [...$('artSteps').children].forEach((b,i) => b.setAttribute('aria-pressed', String(i === art.step)));
   $('artLib').innerHTML = art.imported ? ARTS.map((t,i) => `<button class="tile" data-v="${i}" aria-pressed="${i===art.pick}"><svg viewBox="0 0 60 40" style="display:block;width:100%;height:34px;background:${t.alpha ? 'repeating-conic-gradient(#e1e4de 0 25%,#fff 0 50%) 0 0/10px 10px' : '#fff'};border-radius:5px">${((th) => `<g transform="translate(${(60-th*t.a)/2},${(40-th)/2})">${t.d(th*t.a, th)}</g>`)(Math.min(36, 56/t.a))}</svg>${t.name}</button>`).join('') : `<button class="tile" data-v="import" style="grid-column:1/-1;padding:12px;text-align:center">+ Import images…</button>`;
   $('artHint').textContent = !art.imported ? 'Nothing imported yet.' : !art.placed ? '3 images imported. Aspect ratio and transparency come from the file. Lettering.png is a cut-out.' : 'Picking another tile replaces the image and keeps the size, frame and light.';
-  $('artName').textContent = art.placed ? A.name : 'Library › Artwork'; $('artTag').textContent = art.placed ? (lit ? 'GROUP · ARTWORK + SPOT' : 'OBJECT · ARTWORK') : 'THIS PROJECT';
+  $('artName').textContent = art.placed ? A.name : 'Library › Artwork'; $('artTag').textContent = art.placed ? (lit && art.grp ? 'GROUP · ARTWORK + SPOT' : 'OBJECT · ARTWORK') : 'THIS PROJECT';
+  $('artGrp').hidden = !lit; $('artGrp').setAttribute('aria-pressed', String(art.grp)); $('artGrp').textContent = art.grp ? 'Grouped · ungroup' : 'Group with ' + A.name;
   $('artCard').className = art.placed ? '' : 'dim';
   $('artSize').textContent = art.placed ? `${(art.w*100).toFixed(0)} × ${(art.w/A.a*100).toFixed(0)} cm · aspect locked · centre ${((AFLOOR-art.y)/AM).toFixed(2)} m` : '—';
   [['artMount',art.mount],['artFrame',art.frame]].forEach(([id,v]) => [...$(id).children].forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v))));
   $('artMat').setAttribute('aria-pressed', String(art.mat)); $('artLit').setAttribute('aria-pressed', String(art.lit)); $('artVisit').setAttribute('aria-pressed', String(art.visit));
   $('artLit').textContent = art.lit ? '✦ Lit · remove' : '✦ Light it';
   [...$('artCol').children].forEach((b,i) => b.setAttribute('aria-pressed', String(i === art.col)));
-  $('artNote').textContent = lit ? 'One undo: a Picture spot in front and above, its frustum fitted to the frame, grouped with the artwork. Move the artwork and the light comes with it.' : art.frame !== 'none' ? 'The frame is part of the artwork and is sized in real centimetres: resize the artwork and the frame keeps its width.' : A.alpha ? 'Unframed, a transparent image stays a cut-out and casts its own shadow.' : 'Also here: exact width or height · credit · Replace image · (later) Edit.';
+  $('artNote').textContent = lit ? (art.grp ? 'Grouped: they now move, duplicate and erase as one, and a click selects the group first.' : 'Lit by Picture spot. One undo placed it in front and above, its guide fitted to the frame. It is not grouped: one light may serve several works. Group with one tap if this light belongs to this work.') : art.frame !== 'none' ? 'The frame is part of the artwork and is sized in real centimetres: resize the artwork and the frame keeps its width.' : A.alpha ? 'Unframed, a transparent image stays a cut-out and casts its own shadow.' : 'Also here: exact width or height · credit · Replace image.';
 }
 const artStep = (n) => { art.step = n; if (n >= 0) art.imported = n > 0 || art.imported; if (n >= 1) { art.imported = true; art.placed = true; } if (n >= 2 && art.frame === 'none') { art.frame = 'gallery'; art.mat = true; }
-  if (n === 3) art.lit = true; if (n < 3) art.lit = false; if (n < 2) { art.frame = 'none'; art.mat = false; } if (n < 1) { art.placed = false; art.visit = false; } drawArt(); };
+  if (n === 3) art.lit = true; if (n < 3) { art.lit = false; art.grp = false; } if (n < 2) { art.frame = 'none'; art.mat = false; } if (n < 1) { art.placed = false; art.visit = false; } drawArt(); };
 seg($('artSteps'), (v) => artStep(+v));
 $('artCol').innerHTML = FCOL.map((c,i) => `<button data-v="${i}" aria-pressed="${i===0}" title="Frame colour" style="background:${c}"></button>`).join('');
 $('artLib').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.v === 'import') art.imported = true; else art.pick = +b.dataset.v; drawArt(); });
 seg($('artMount'), (v) => { art.mount = v; drawArt(); }); seg($('artFrame'), (v) => { art.frame = v; art.step = Math.max(art.step, 2); drawArt(); });
 $('artCol').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; art.col = +b.dataset.v; if (art.frame === 'none') art.frame = 'thin'; drawArt(); });
 $('artMat').addEventListener('click', () => { art.mat = !art.mat; drawArt(); });
-$('artLit').addEventListener('click', () => { art.lit = !art.lit; art.step = art.lit ? 3 : Math.min(art.step, 2); drawArt(); });
+$('artGrp').addEventListener('click', () => { art.grp = !art.grp; drawArt(); });
+$('artLit').addEventListener('click', () => { art.lit = !art.lit; if (!art.lit) art.grp = false; art.step = art.lit ? 3 : Math.min(art.step, 2); drawArt(); });
 $('artVisit').addEventListener('click', () => { art.visit = !art.visit; drawArt(); });
 const asvg = $('artSvg'), apt = (e) => { const r = asvg.getBoundingClientRect(); return [(e.clientX-r.left)*520/r.width, (e.clientY-r.top)*320/r.height]; };
 asvg.addEventListener('pointerdown', (e) => { const [px,py] = apt(e);
@@ -730,7 +740,7 @@ const KIND = {
   dir:{ name:'Fill light', tag:'LIGHT · DIRECTIONAL', place:'The Sun belongs to the Sky and moves with the sun mark. An extra directional is added from Lights › More; it has no meaningful position.', marks:'<b>Box frustum</b>: direction and the area it shadows · <b>direction dial</b> at the World mark (compass ring + elevation arc)', card:'Warmth · Brightness · Shadow' } };
 const kd = { kind:'spot', fx:0, view:'edit' };
 function drawKind(){
-  const K = KIND[kd.kind], ed = kd.view === 'edit', fx = kd.fx && kd.kind !== 'dir', warm = '#ffd9a0';
+  const K = KIND[kd.kind], paper = kd.view === 'paper', ed = kd.view === 'edit' || paper, fx = kd.fx && kd.kind !== 'dir', warm = '#ffd9a0';
   let light = '', marks = '', body = '';
   if (kd.kind === 'spot') {
     light = `<polygon points="296,96 352,128 404,176" fill="${warm}" opacity=".3"/><ellipse cx="380" cy="150" rx="30" ry="36" fill="${warm}" opacity=".5" transform="rotate(-8 380 150)"/>`;
@@ -769,10 +779,11 @@ function drawKind(){
     <polygon points="130,250 300,190 450,235 280,300" fill="#c9bb98"/>
     <polygon points="130,250 130,120 300,60 300,190" fill="#d8ccb2"/><polygon points="300,190 300,60 450,105 450,235" fill="#e6dbc3"/>
     <polygon points="350,115 410,133 410,183 350,165" fill="#7b4a3a" stroke="#d4ad45" stroke-width="2"/>
-    ${light}
+    ${paper ? '' : light}
     <path d="M130 120 L280 170 L450 105 M280 170 L280 300" fill="none" stroke="#f4f5f1" stroke-opacity=".3" stroke-dasharray="3 5"/>
     ${fx ? body : ''}${ed ? marks : ''}
-    <text x="16" y="24" font-family="system-ui" font-size="10.5" fill="#9fb2a5">${ed ? 'Editor · light selected' : 'Visitor · the light is seen, the emitter is not'}${kd.kind === 'dir' && kd.fx ? ' · a directional has no body' : ''}</text>`;
+    ${paper ? '<rect x="140" y="10" width="240" height="26" rx="13" fill="#11291f" stroke="#d4ad45"/><text x="260" y="27" text-anchor="middle" class="kl">Guide only · Living shows the light</text>' : ''}
+    <text x="16" y="24" font-family="system-ui" font-size="10.5" fill="#9fb2a5">${paper ? '' : ed ? 'Selected · line guide in mark ink, light as rendered' : 'Visitor · the light is seen, the emitter is not'}${kd.kind === 'dir' && kd.fx ? ' · a directional has no body' : ''}</text>`;
   $('kindName').textContent = K.name; $('kindTag').textContent = K.tag;
   $('kindPlace').textContent = K.place; $('kindMarks').innerHTML = K.marks; $('kindCard').textContent = K.card;
 }
