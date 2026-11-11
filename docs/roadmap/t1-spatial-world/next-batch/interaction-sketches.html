@@ -47,7 +47,7 @@
 <body>
 <main>
 <h1>T1 next batch: interaction sketches</h1>
-<p class="lede">Six static sketches for the design questions that decide the most. They use the
+<p class="lede">Nine static sketches (7–9 added in revision 2) for the design questions that decide the most. They use the
 existing PLATE vocabulary only: black ink for built Walls, cobalt dashes for a proposal, red dashes
 for a refusal, disc knobs for points, dark mono tags for live values, the Card's scoped list and the
 Stage state pill. They are sketches, not specifications. Part of the
@@ -128,6 +128,8 @@ Stage state pill. They are sketches, not specifications. Part of the
 <figcaption>Copy, never share. The consequence line uses PLATE's existing Creates · Keeps vocabulary; “Drops” would be one added word and needs the owner's nod.</figcaption>
 </figure>
 <div class="rec"><b>Recommended.</b> One meaning for Duplicate regardless of neighbours. The isolated case ships first on the existing planner; the shared case adds a copy-enclosure planner, not topology surgery.</div>
+
+<div class="rec"><b>Revision 2 correction:</b> dragging the copy against the hall does <i>not</i> attach it. Room move is a rigid translation and overlap between independent groups is permitted, so the two back Walls lie on top of each other and join nothing. The Stage must read <b>overlaps, not joined</b> on that stretch, and Duplicate must start its proposal clear of the source. Joining a docked island (weld) is a separate, later operation.</div>
 
 <h2>3. Connecting to a circle: three models</h2>
 <p class="q">Question: which of these is “a simple connection”, and which is a new architectural model?</p>
@@ -271,6 +273,156 @@ Stage state pill. They are sketches, not specifications. Part of the
 <figcaption>Vocabulary and ownership are the accepted P26 contract (independent Layout-owned regions, closure versus suspended, level/slope/gable tops, no persistent fit). The sketches only show the order.</figcaption>
 </figure>
 <div class="rec"><b>Recommended.</b> V1 first: it is finished-looking over today's Walls, and it forces the D2 and D3 decisions while the geometry is trivial. A sloped Wall top under today's flat derived lid would look broken.</div>
+
+<h2>7. One rotunda, inspectable parts</h2>
+<p class="q">Question: after a gallery attaches, what is "the rotunda", and what does a click select?</p>
+<figure>
+<svg viewBox="0 0 1000 360" role="img" aria-label="A connected rotunda shown as one Room with four arc Walls, with the Card for a selected arc and the three identity carriers">
+  <text x="20" y="22" class="th">a. On the Stage: click a stretch of wall, get that Wall</text>
+  <circle cx="150" cy="170" r="92" class="roomf"/>
+  <path d="M215 105 A92 92 0 0 0 85 105" class="wall"/>
+  <path d="M85 105 A92 92 0 0 0 85 235" class="wall"/>
+  <path d="M85 235 A92 92 0 0 0 215 235" class="wall"/>
+  <rect x="215" y="105" width="150" height="130" class="roomf"/>
+  <path d="M215 105 L365 105 L365 235 L215 235" class="wall"/>
+  <path d="M215 235 A92 92 0 0 0 215 105" class="wall" style="stroke:#c8962a"/>
+  <circle cx="215" cy="105" r="6" class="knob"/><circle cx="215" cy="235" r="6" class="knob"/>
+  <circle cx="85" cy="105" r="6" class="knob"/><circle cx="85" cy="235" r="6" class="knob"/>
+  <text x="118" y="166" class="th">Rotunda</text><text x="112" y="184" class="ts">r 4.00 m · 50 m²</text>
+  <text x="282" y="174" class="t">Gallery</text>
+  <text x="20" y="300" class="ts">Gold: the selected arc Wall (shared with the Gallery).</text>
+  <text x="20" y="316" class="ts">The rotunda is still one named place with one radius.</text>
+  <text x="20" y="332" class="ts">Its four Walls are real Walls, each with Length, Openings, Unroll.</text>
+
+  <line x1="400" y1="14" x2="400" y2="346" class="dash"/>
+  <text x="420" y="22" class="th">b. The Card: part, then whole</text>
+  <rect x="420" y="40" width="240" height="210" rx="9" class="menu"/>
+  <text x="434" y="64" class="th">Wall 7</text><text x="434" y="82" class="ts">curved · 6.28 m · 1 Opening</text>
+  <line x1="434" y1="94" x2="646" y2="94" class="dash"/>
+  <text x="434" y="114" class="ts">Bounds</text>
+  <rect x="434" y="122" width="100" height="24" rx="12" class="pill"/><text x="448" y="138" class="t">Rotunda ›</text>
+  <rect x="542" y="122" width="100" height="24" rx="12" class="pill"/><text x="558" y="138" class="t">Gallery ›</text>
+  <text x="434" y="174" class="ts">Length  6.28 m</text><text x="434" y="192" class="ts">Height  3.20 m</text>
+  <text x="434" y="226" class="t">Unroll</text><text x="500" y="226" class="t">Split wall here</text>
+  <text x="420" y="278" class="ts">Rotunda › selects the Room. Its Card carries</text>
+  <text x="420" y="294" class="ts">Radius, Duplicate, Unroll the room and the</text>
+  <text x="420" y="310" class="ts">four Walls as Bounds. Nothing is fabricated:</text>
+  <text x="420" y="326" class="ts">both part and whole are canonical subjects.</text>
+
+  <line x1="690" y1="14" x2="690" y2="346" class="dash"/>
+  <text x="710" y="22" class="th">c. What carries "the Rotunda"? (S1 decides)</text>
+  <text x="710" y="56" class="t" style="font-weight:600">Room</text>
+  <text x="710" y="74" class="ts">No format change. Fails if divided</text>
+  <text x="710" y="90" class="ts">by a Wall or opened (no Room).</text>
+  <text x="710" y="126" class="t" style="font-weight:600">Stored element</text>
+  <text x="710" y="144" class="ts">Exact radius, survives opening.</text>
+  <text x="710" y="160" class="ts">Format bump; every planner must</text>
+  <text x="710" y="176" class="ts">keep membership true.</text>
+  <text x="710" y="212" class="t" style="font-weight:600">One Wall (model C)</text>
+  <text x="710" y="230" class="ts">Identity for free. New connectivity</text>
+  <text x="710" y="246" class="ts">primitive in every consumer.</text>
+  <text x="710" y="294" class="ts" style="fill:#d0412d">Not acceptable: a Round reading that is</text>
+  <text x="710" y="310" class="ts" style="fill:#d0412d">re-recognised within a tolerance and can</text>
+  <text x="710" y="326" class="ts" style="fill:#d0412d">vanish when one joint is nudged.</text>
+</svg>
+<figcaption>The requirement is on the creator-facing object, not on the stored encoding. Whichever carrier wins must survive attach, detach, radius edits, move, Duplicate and Undo.</figcaption>
+</figure>
+<div class="rec"><b>Recommendation:</b> prove the Room as carrier first; it is how every other T1 shape already keeps its identity after its Walls are split.</div>
+
+<h2>8. Open Spaces: a name, an extent and a floor are three things</h2>
+<p class="q">Question: what does a pavilion, a terrace or a booth need that a Room record bundles today?</p>
+<figure>
+<svg viewBox="0 0 1000 340" role="img" aria-label="Three layers: Space identity, extent, physical floor; shown for a Room, a booth, a terrace and a pavilion">
+  <text x="20" y="22" class="th">Room (today)</text>
+  <rect x="30" y="50" width="170" height="120" class="roomf"/>
+  <rect x="30" y="50" width="170" height="120" class="wall"/>
+  <text x="84" y="114" class="t">Gallery</text>
+  <text x="20" y="200" class="ts">Name: on the Room record</text>
+  <text x="20" y="216" class="ts">Extent: derived from Walls</text>
+  <text x="20" y="232" class="ts">Floor: generated from the Room</text>
+  <text x="20" y="262" class="ts">All three in one record.</text>
+
+  <line x1="235" y1="14" x2="235" y2="326" class="dash"/>
+  <text x="255" y="22" class="th">Booth</text>
+  <rect x="265" y="50" width="170" height="120" class="newf" stroke="#2f55d4" stroke-dasharray="6 4"/>
+  <path d="M265 170 L265 50 L435 50 L435 170" class="wall"/>
+  <text x="322" y="114" class="t">Booth 2</text>
+  <text x="255" y="200" class="ts">Three Walls, no closed ring:</text>
+  <text x="255" y="216" class="ts" style="fill:#d0412d">no Room, no name, no floor today.</text>
+  <text x="255" y="232" class="ts">Extent must be stated (cobalt).</text>
+  <text x="255" y="262" class="ts">Often made by erasing one Wall</text>
+  <text x="255" y="278" class="ts">of a Room: should the name survive?</text>
+
+  <line x1="470" y1="14" x2="470" y2="326" class="dash"/>
+  <text x="490" y="22" class="th">Terrace</text>
+  <rect x="500" y="50" width="170" height="120" fill="#e3dfcf" stroke="#1c1c1a" stroke-width="1.2"/>
+  <rect x="506" y="56" width="170" height="120" fill="none" stroke="#6b6a63" stroke-width="1"/>
+  <text x="556" y="114" class="t">Terrace</text>
+  <rect x="610" y="150" width="56" height="18" rx="4" class="tag"/><text x="616" y="163" class="tagt">+0.30 m</text>
+  <text x="490" y="200" class="ts">No Walls at all.</text>
+  <text x="490" y="216" class="ts">The floor is independent physical</text>
+  <text x="490" y="232" class="ts">geometry: a Layout-owned region,</text>
+  <text x="490" y="248" class="ts">the mirror of V1's overhead region.</text>
+  <text x="490" y="278" class="ts">The name is a second, later thing.</text>
+
+  <line x1="705" y1="14" x2="705" y2="326" class="dash"/>
+  <text x="725" y="22" class="th">Pavilion</text>
+  <rect x="735" y="50" width="170" height="120" fill="#e3dfcf" stroke="#1c1c1a" stroke-width="1.2"/>
+  <rect x="725" y="40" width="190" height="140" fill="none" stroke="#2f55d4" stroke-width="1.5" stroke-dasharray="2 3"/>
+  <circle cx="745" cy="60" r="5" class="knobg"/><circle cx="895" cy="60" r="5" class="knobg"/>
+  <circle cx="745" cy="160" r="5" class="knobg"/><circle cx="895" cy="160" r="5" class="knobg"/>
+  <text x="792" y="114" class="t">Pavilion</text>
+  <text x="725" y="200" class="ts">Floor region + overhead region</text>
+  <text x="725" y="216" class="ts">(dotted) + posts (objects).</text>
+  <text x="725" y="232" class="ts">Reads as a place before it has</text>
+  <text x="725" y="248" class="ts">a Space at all.</text>
+  <text x="725" y="278" class="ts">Space adds: name, Index group,</text>
+  <text x="725" y="294" class="ts">Paint scope, an Experience target.</text>
+</svg>
+<figcaption>No schema is proposed. The sketch only separates what must not be decided together: Space identity, where its extent comes from, and physical floor geometry.</figcaption>
+</figure>
+<div class="rec"><b>Recommendation:</b> floor and platform regions first, inside the verticality plan; Space identity as research (S2) now and a plan after V1.</div>
+
+<h2>9. Interior Reveal: Lift and cutaway, and who owns what</h2>
+<p class="q">Question: can a creator see and work inside without anything authored, lit or published changing?</p>
+<figure>
+<svg viewBox="0 0 1000 350" role="img" aria-label="A room with its ceiling lifted and near wall cut down, the state pill, and the ownership split between Layout representation, editor session, Camera, Scene and Experience">
+  <text x="20" y="22" class="th">a. The reading</text>
+  <path d="M60 230 L260 270 L420 210 L220 180 Z" class="roomf" stroke="#1c1c1a" stroke-width="1.2"/>
+  <path d="M60 230 L60 130 L220 80 L220 180" fill="#fff" stroke="#1c1c1a" stroke-width="1.5"/>
+  <path d="M220 180 L220 80 L420 110 L420 210" fill="#fff" stroke="#1c1c1a" stroke-width="1.5"/>
+  <path d="M60 230 L260 270 L260 252 L60 212 Z" fill="#f2d000" stroke="#1c1c1a" stroke-width="1.2"/>
+  <path d="M260 270 L420 210 L420 192 L260 252 Z" fill="#f2d000" stroke="#1c1c1a" stroke-width="1.2"/>
+  <path d="M60 130 L260 170 L420 110" class="dash"/><path d="M260 170 L260 252" class="dash"/>
+  <path d="M60 70 L260 110 L420 50 L220 20 Z" fill="none" stroke="#2f55d4" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <path d="M260 164 L260 118" class="thin" marker-end="url(#a9)"/>
+  <rect x="150" y="212" width="26" height="22" fill="#fff" stroke="#1c1c1a"/>
+  <rect x="300" y="196" width="26" height="22" fill="#fff" stroke="#1c1c1a"/>
+  <rect x="150" y="296" width="210" height="26" rx="13" class="pill"/>
+  <text x="164" y="313" class="t">Lift · Gallery ceiling</text><text x="296" y="313" class="t" style="font-weight:600">Put back</text>
+  <text x="440" y="60" class="ts">Ceiling: lifted, drawn</text><text x="440" y="76" class="ts">as its outline.</text>
+  <text x="440" y="236" class="ts">Near Walls: cut to a</text><text x="440" y="252" class="ts">yellow cap; dashed</text><text x="440" y="268" class="ts">ghost stays selectable.</text>
+  <defs><marker id="a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1c1c1a"/></marker></defs>
+
+  <line x1="590" y1="14" x2="590" y2="336" class="dash"/>
+  <text x="610" y="22" class="th">b. One reading, five authorities</text>
+  <text x="610" y="56" class="t" style="font-weight:600">Layout representation</text>
+  <text x="610" y="73" class="ts">How a cut, lifted or hidden source is drawn. Same ids.</text>
+  <text x="610" y="106" class="t" style="font-weight:600">Editor session</text>
+  <text x="610" y="123" class="ts">Which sources, which reading. Not saved, no history.</text>
+  <text x="610" y="156" class="t" style="font-weight:600">Camera</text>
+  <text x="610" y="173" class="ts">The pose only. Stores no reveal; never moved by one.</text>
+  <text x="610" y="206" class="t" style="font-weight:600">Scene / T2</text>
+  <text x="610" y="223" class="ts">Lit as built: a lifted ceiling still blocks the sun.</text>
+  <text x="610" y="256" class="t" style="font-weight:600">Experience</text>
+  <text x="610" y="273" class="ts">Nothing. Preview, snapshots and releases are as built.</text>
+  <text x="610" y="312" class="ts" style="fill:#d0412d">Not proposed: an eye per row in the Index; a</text>
+  <text x="610" y="328" class="ts" style="fill:#d0412d">visitor cutaway reached by leaking session state.</text>
+</svg>
+<figcaption>Lift and the near-wall cutaway are already named in PLATE as viewing state. The slice cue and the pill follow the existing temporary-reading rules; the yellow cap is the grammar's Slice colour.</figcaption>
+</figure>
+<div class="rec"><b>Recommendation:</b> Lift ships with V1, because an authored ceiling the creator cannot see past is a regression.</div>
+
 </main>
 </body>
 </html>
