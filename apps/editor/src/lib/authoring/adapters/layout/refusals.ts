@@ -109,6 +109,29 @@ export function wallRefusalWords(code: string, message = ''): string {
 	}
 }
 
+/**
+ * T1 A1 — the split's own words.
+ *
+ * A split is not a bend: sharing `closed_wall_isolated`'s bend wording would
+ * offer Radius for a Wall the creator is trying to divide. These two refusals
+ * are the slice's promised clear feedback; everything else falls back to the
+ * shared Wall map.
+ */
+export function wallSplitRefusalWords(code: string, message = ''): string {
+	switch (code) {
+		case 'split_through_opening_interior':
+			return 'A split cannot pass through an Opening. Choose a clear point on the Wall.';
+		case 'closed_wall_isolated':
+			return 'A circular Wall is one closed loop and cannot be split. Change its Radius instead.';
+		case 'split_at_existing_endpoint':
+			return "Choose a point between the Wall's ends.";
+		case 'split_distance_out_of_range':
+			return 'Choose a point along the open Wall.';
+		default:
+			return wallRefusalWords(code, message);
+	}
+}
+
 /** The attempted metrics an Opening refusal may quote. */
 export type OpeningRefusalAttempt = {
 	readonly openingId?: string;

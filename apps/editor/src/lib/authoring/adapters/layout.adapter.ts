@@ -98,7 +98,7 @@ import LayoutCardFields from './layout/LayoutCardFields.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';	import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
-import { wallRefusalWords } from './layout/refusals';
+import { wallRefusalWords, wallSplitRefusalWords } from './layout/refusals';
 import {
 	EMPTY_CHAIN_DRAFT,
 	appendChainPoint,
@@ -139,6 +139,7 @@ import {
 	wallDeleteIntent,
 	type WallDeletionPreview
 } from './layout/drawing-planners';
+import { createSplitPlanners, wallSplitIntent } from './layout/split-planners';
 import {
 	classifyInkPointerTarget,
 	INK_JUNCTION_HIT_CSS_PX,
@@ -676,6 +677,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	const planners = [
 		...createLayoutPlanners(),
 		...createDrawingPlanners(),
+		...createSplitPlanners(),
 		...createOpeningPlanners()
 	];
 	for (const planner of planners) {
@@ -1395,6 +1397,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * and read by both the marks and the Card's one action channel.
 			 */
 			let activeKnot: { readonly wallId: string; readonly knotId: string } | null = null;
+			/**
+			 * The last station the pointer named on the selected open Wall. T1 A1's
+			 * scoped Split uses it when the creator pressed the Wall where the joint
+			 * should land; a selection made from the Index has no pointer station, so
+			 * the Card falls back to the midpoint. Session state only: never serialized
+			 * and never a history entry.
+			 */
+			let lastWallStation: { readonly wallId: string; readonly station: number } | null = null;
 
 			function endBendGesture(): void {
 				const current = bendGesture;
@@ -4741,6 +4751,66 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// one captured intent, so a refusal writes nothing and an acceptance is
 					// one undo step. A straight Wall adds no action here.
 					const wallSource = document.walls.find((candidate) => candidate.id === wallId);
+					// T1 A1 — one Split over the retained noder. The station is the one the
+					// pointer named on this Wall, or the midpoint when the selection came
+					// from the Index/Find. Nothing here arms a tool or adds a mark.
+					const splitLength = wallStationFrame(document, wallId)?.length;
+					const splitAt = lastWallStation?.wallId === wallId
+						? lastWallStation.station
+						: splitLength === undefined
+							? null
+							: splitLength / 2;
+					const splitOpening = splitAt === null
+						? undefined
+						: document.openings.find((opening) =>
+							opening.wallId === wallId && splitAt > opening.offset && splitAt < opening.offset + opening.width
+						);
+					const splitRefusal = wallSource === undefined
+						? 'That Wall is no longer in the project.'
+						: isClosedWall(wallSource)
+							? wallSplitRefusalWords('closed_wall_isolated')
+							: splitAt === null
+								? 'This Wall has no resolvable length.'
+								: splitOpening !== undefined
+									? wallSplitRefusalWords('split_through_opening_interior')
+									: null;
+					const splitAction: StageCardAction = {
+						id: 'layout-wall-split',
+						label: 'Split wall here',
+						detail: splitRefusal ??
+							`Adds a joint at ${splitAt!.toFixed(2)} m. The start-side Wall keeps this Wall's identity; Openings keep their places and the Room is unchanged.`,
+						run: async () => {
+							if (splitRefusal !== null || splitAt === null) {
+								return { kind: 'refused', message: splitRefusal ?? 'The Wall cannot be split there.' };
+							}
+							const capture = mintLayoutIdCapture();
+							const snapshot = services.stage.snapshot();
+							const outcome = await services.authoring.accept(
+								wallSplitIntent({
+									wallId,
+									distance: splitAt,
+									capture,
+									operationId: globalThis.crypto.randomUUID(),
+									projectId: snapshot.acceptedRevision.projectId,
+									revisionId: services.authoring.acceptedRevision().revisionId,
+									contentRevision: stageUnitRevision(snapshot, 'layout'),
+									levelId: snapshot.domain.layoutLevelId
+								})
+							);
+							if (outcome.kind === 'refused') {
+								services.stage.notifySurfaceChange();
+								return { kind: 'refused', message: outcome.message };
+							}
+							// The start-side fragment keeps the Wall id; keep the creator on it so
+							// the Card describes the Wall they just divided.
+							lastWallStation = null;
+							selectLayoutSubject('wall', wallId);
+							services.stage.notifySurfaceChange();
+							return outcome.kind === 'no-op'
+								? { kind: 'no-op', message: 'The Wall was already split there.' }
+								: { kind: 'accepted' };
+						}
+					};
 					const curveActions: StageCardAction[] = [];
 					if (wallSource?.centerline.kind === 'cubic-chain') {
 						const knots = wallSource.centerline.knots;
@@ -4799,7 +4869,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// the selected Wall; there is no hidden Bend-armed mode.
 					const preview = deletionPreview(wallId);
 					if (preview.kind === 'refused') {
-						return [...curveActions,
+						return [splitAction, ...curveActions,
 							{
 								id: 'layout-wall-delete',
 								label: 'Delete Wall',
@@ -4810,6 +4880,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						];
 					}
 					return [
+						splitAction,
 						...curveActions,
 						{
 							id: 'layout-wall-delete',
@@ -5082,6 +5153,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return updateIdleBendHover(intent, adapterContext);
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					// Capture the station before any gesture decides whether it owns the
+					// press. A plain press on the selected Wall is still a meaningful
+					// "here" for the scoped Split, even though the host keeps the click.
+					if (intent.phase === 'down' && openTaskKind === null) {
+						const primary = adapterContext.selectionState().primary;
+						if (primary !== null && primary.domain === 'layout' && primary.subject.kind === 'wall') {
+							const point = pointerDatumPoint(adapterContext, intent.css);
+							const station = point === null
+								? null
+								: wallStationNearPoint(document, primary.subject.id, [point[0], point[1]], BEND_BODY_TOLERANCE_METERS);
+							if (station !== null) lastWallStation = { wallId: primary.subject.id, station };
+						}
+					}
 					if (intent.phase === 'down' && idleBendHint !== null) {
 						idleBendHint = null;
 						services.stage.notifySurfaceChange();
