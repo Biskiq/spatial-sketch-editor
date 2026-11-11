@@ -4,7 +4,16 @@ import type { PointerRay } from '@portfolio/camera-core';
 import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
 import type { RuntimeScene } from '@portfolio/project-model';
 
-export type SceneRenderedHit = { readonly entityId: string | null; readonly kind: 'entity' | 'floor' | 'layout'; readonly wallId?: string; readonly wallNormal?: [number, number, number]; readonly distanceMeters: number; readonly worldPoint: [number, number, number] };
+export type SceneRenderedHit = {
+	readonly entityId: string | null;
+	readonly kind: 'entity' | 'floor' | 'layout';
+	readonly wallId?: string;
+	readonly wallNormal?: [number, number, number];
+	readonly distanceMeters: number;
+	readonly worldPoint: [number, number, number];
+	/** World-space surface normal when the hit is a mesh face. */
+	readonly normal?: [number, number, number];
+};
 
 /** True when this node and every ancestor are visible; the same rule the pick ray uses. */
 export function hasVisibleAncestor(node: Object3D): boolean {
@@ -87,8 +96,12 @@ export function createScenePickSource() {
 		const normal = isWall && hit.face
 			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld))
 			: null;
+		const faceNormal = hit.face
+			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld)).toArray() as [number, number, number]
+			: undefined;
 		return {
 			...(normal === null ? {} : { wallId: face?.segmentId, wallNormal: normal.toArray() }),
+			...(faceNormal === undefined ? {} : { normal: faceNormal }),
 			entityId,
 			kind: entityId !== null ? 'entity' : object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout',
 			distanceMeters: hit.distance,

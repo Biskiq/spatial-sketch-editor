@@ -416,7 +416,7 @@
 			{#if relationFacts.length > 0}
 				<h3>Relations</h3>
 				<dl class="facts">
-					{#each relationFacts as fact (fact.label)}<dt>{fact.label}</dt><dd>{fact.value}</dd>{/each}
+					{#each relationFacts as fact (fact.label)}<dt>{fact.label}</dt><dd>{#if fact.select}<button type="button" class="fact-select" onclick={fact.select.onSelect}>{fact.value}</button>{:else}{fact.value}{/if}</dd>{/each}
 				</dl>
 			{/if}
 		</section>
@@ -768,6 +768,8 @@
 	.more-section { padding: 6px 0 4px; border-top: 1px solid var(--shell-hairline); }
 	.more-section h3 { margin: 4px 12px 0; font: 600 var(--shell-text-label)/1.2 var(--shell-sans); color: var(--shell-ink-2); letter-spacing: .06em; text-transform: uppercase; }
 	.more-section .facts { padding-top: 4px; }
+	.fact-select { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--shell-hairline-strong); text-underline-offset: 2px; cursor: pointer; }
+	.fact-select:hover { text-decoration-color: currentColor; }
 	.rename-input { box-sizing: border-box; width: 100%; min-width: 0; padding: 3px 5px; border: 1px solid var(--shell-field-line); border-radius: 5px; background: var(--shell-field); color: inherit; font: inherit; }
 	.menu-item.danger { color: var(--shell-refuse); }
 	.menu-item.danger:disabled { color: var(--shell-ink-2); }

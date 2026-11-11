@@ -121,7 +121,7 @@ describe('G4 visitor shell boundary', () => {
 		expect(stageCanvas()).toContain('StageShadowTriggers');
 		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />');
 		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
-		expect(stageEntities()).toContain('{onFormRendererReady} Model={ModelComponent}');
+		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} Model={ModelComponent}');
 		const groups = entityGroups();
 		expect(groups).toContain('onMounted={onFormRendererReady}');
 		expect(entityForm()).toContain("import { onMount } from 'svelte'");

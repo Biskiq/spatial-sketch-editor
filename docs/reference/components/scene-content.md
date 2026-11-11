@@ -448,7 +448,12 @@ Lights and environment:
   never a silent load-time clamp or reinterpretation, and new publication blocked
   until repaired.
 - Editor-only helpers are mounted for selected lights only and are never
-  serialized; no light scale, and no range-drag gizmo.
+  serialized. The emitter body has no scale control and no screen-space
+  emitter-range gizmo; a selected Point light may show a derived reach ring,
+  and a selected Spot may show a derived far-cap rim plus its cone edges. Those
+  are line-only frustum instruments, not handles that scale the light or
+  silently rewrite an authored field. Exact Reach remains a Card field (and the
+  derived rim/ring follow it).
 - Authored environment is global Scene-level intent (asset id, intensity, Y
   rotation, background mode) with the legacy implicit baseline preserved when
   absent; an explicitly authored mode with no environment is valid. Rotation

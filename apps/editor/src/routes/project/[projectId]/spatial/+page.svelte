@@ -68,6 +68,7 @@
 		type StageInstrumentContent,
 		type StageCandidatePreviewView,
 		type StageGhostMesh,
+		type StageGuideView,
 		type StageOverlayContribution,
 		type StageSourceHit
 	} from '$lib/authoring/stage/stage-facade';
@@ -173,6 +174,7 @@ import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
 	import { Vector3 } from 'three';
 	import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
+	import { armedLightKind } from '$lib/authoring/look/light-tool.svelte';
 import { worldTool, type WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
@@ -509,7 +511,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	// Select is already the empty state, so those two keep their word.
 	$effect(() => {
 		if (task === null) {
-			if (activeWorldTool === 'library' || activeWorldTool === 'select') return;
+			if (libraryOpen || activeWorldTool === 'library' || activeWorldTool === 'select') return;
 			// A planned row is inspectable without a task; only a landed tool that has
 			// just completed belongs back at Select.
 			if (worldTool(activeWorldTool).stage === 'planned') return;
@@ -972,6 +974,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
 	let candidatePreviews = $state.raw<readonly StageCandidatePreviewView[]>([]);
+	let guides = $state.raw<readonly StageGuideView[]>([]);
 	let ghosts = $state<readonly StageGhostMesh[]>([]);
 	/**
 	 * Approved creator-model bytes for the accepted source, keyed by model resource
@@ -1517,6 +1520,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// projection.
 		markers = stage.overlays();
 		candidatePreviews = stage.candidatePreviews();
+		guides = stage.guides();
 		// The key is only evidence for the harness, so it must cost nothing in the
 		// ordinary build: no string building or marker scan when the flag is absent.
 		if (perfMarksEnabled()) {
@@ -2929,7 +2933,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				return;
 			}
 			const claimAdapterPress = (handleId?: string, handleAdapterId?: string): boolean => {
-				if (!stage.pointerIntent({
+				const claimed = stage.pointerIntent({
 					phase: 'down',
 					css,
 					evaluationId: pointerEvaluationId,
@@ -2939,11 +2943,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					coarse,
 					...(handleId === undefined ? {} : { handleId }),
 					...(handleAdapterId === undefined ? {} : { handleAdapterId })
-				}).claimed) return false;
-				if (
-					!capturePointer(event.currentTarget as HTMLElement, event.pointerId) ||
-					press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused'
-				) {
+				}).claimed;
+				if (!claimed) return false;
+				const captured = capturePointer(event.currentTarget as HTMLElement, event.pointerId);
+				const began = captured ? press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) : null;
+				if (!captured || began === 'refused') {
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
 					return true;
 				}
@@ -3780,7 +3784,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		for (const subject of locatedSubjects) {
 			const entity = subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
 			entries.push({
-				group: subject.reference.domain,
+				group: entity?.kind === 'light' ? 'light' : subject.reference.domain,
 				sourceId: subject.id,
 				kindWord: entity === null ? 'Subject' : sceneKindWord(entity.kind),
 				name: entity?.name ?? null,
@@ -4265,6 +4269,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			paletteOpen = false;
 			return;
 		}
+		if (id === 'lights') {
+			const previous = activeWorldTool;
+			closeTask();
+			libraryOpen = true;
+			toolBeforeLibrary = previous === 'library' ? 'select' : previous;
+			activeWorldTool = 'lights';
+			worldPlateOpen = true;
+			paletteOpen = false;
+			return;
+		}
 		if (id === 'objects') {
 			const key = dockKeys.find((candidate) => candidate.slot === 'library');
 			if (key === undefined) {
@@ -4336,13 +4350,54 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * for an entry whose adapter no longer contributes it.
 	 */
 	function rearmDockTool(): void {
-		const armed = armedTool;
 		const stage = facade;
-		if (armed === null || stage === null) return;
+		if (stage === null) return;
+		const armed = armedTool;
+		// The light arm is session fact in the adapter: it survives the install's
+		// task close, and is already cleared when a glyph selects and disarms. A
+		// dock tool's own arm owns the re-open when both facts are present.
+		const lightProjectId = stage.snapshot().acceptedRevision.projectId;
+		if (armed === null && armedLightKind(lightProjectId) !== null) {
+			const lightTask = stage
+				.tasks()
+				.find((entry) => entry.id === 'light-place' && entry.adapterId === 'light');
+			if (lightTask !== undefined && stage.session.task() === null) {
+				const opened = stage.openContributedTask(lightTask.id, lightTask.adapterId);
+				if (opened.kind === 'opened') {
+					task = opened.task;
+					contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
+					activeWorldTool = 'lights';
+					libraryOpen = true;
+					worldPlateOpen = true;
+				}
+			}
+			return;
+		}
+		if (armed === null) return;
 		if (armed.adapterId === STAGE_HOST_ADAPTER_ID) {
 			// An erase installs new content, which closes the task; the Eraser stays armed.
 			const next = hostToolTask(armed.id);
 			if (next !== null && stage.session.task() === null && stage.openTask(next)) task = next;
+			return;
+		}
+		// Other contributed tasks re-open directly; Find entries are the other arm shape.
+		const taskEntry = stage
+			.tasks()
+			.find((entry) => entry.id === armed.id && entry.adapterId === armed.adapterId);
+		if (taskEntry !== undefined) {
+			if (stage.session.task() === null) {
+				const opened = stage.openContributedTask(taskEntry.id, taskEntry.adapterId);
+				if (opened.kind === 'opened') {
+					task = opened.task;
+					contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
+				}
+			}
+			// The install briefly closed the task, so the task/chrome sync reset the
+			// World tool to Select. Keep the re-armed Ink row attached to its task.
+			if (armed.id === 'layout-ink') {
+				activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
+				worldPlateOpen = true;
+			}
 			return;
 		}
 		const stillContributed = stage
@@ -4812,7 +4867,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#if experienceLens.lookThroughSession() === null}
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
-								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} {guides} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 					{/if}
 					{#if lens === 'experience' && evaluation !== null && experienceLens.lookThroughSession() === null}
 						<ExperienceMarks

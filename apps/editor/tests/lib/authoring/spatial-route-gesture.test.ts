@@ -60,6 +60,7 @@ import {
 
 /** The starter keeps its fixed captured identity across every boot. */
 const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
+import { armedLightKind, armLight, clearArmedLight } from '$lib/authoring/look/light-tool.svelte';
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
 import { wallStationFrame } from '$lib/authoring/adapters/layout/precision';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
@@ -1086,6 +1087,28 @@ describe('mounted Stage drawing and deletion', () => {
 		await openPlacement();
 		expect(facade().session.task()?.kind).toBe('place-object');
 		expect(target.querySelector('[data-stage-instrument="place-object"]')).not.toBeNull();
+	});
+
+	it('hides a selected Wall\'s marks while an armed Lights task owns the surface', async () => {
+		const wallMark = facade().marks().find((mark) => mark.id.startsWith('layout-wall-'));
+		expect(wallMark).toBeDefined();
+		armLight('project-1', 'spot');
+		try {
+			const opened = facade().openContributedTask('light-place', 'light');
+			expect(opened.kind).toBe('opened');
+			await frame();
+			expect(facade().session.task()?.kind).toBe('light-place');
+			expect(facade().selection()?.sourceId).toBe(wallId);
+			expect(armedLightKind('project-1')).toBe('spot');
+			// The open Lights task may keep its own selected-light marks, but the
+			// previously selected Wall's marks belong to Layout, not this task.
+			expect(facade().marks()).toEqual([]);
+			expect(target.querySelector('[data-mark-id^="layout-wall-"]')).toBeNull();
+			expect(facade().hitMark({ css: wallMark!.anchor, coarse: false })).toBeNull();
+		} finally {
+			facade().closeTask();
+			clearArmedLight();
+		}
 	});
 
 	it('binds a Card confirmation to the subject whose consequences it disclosed', async () => {

@@ -299,6 +299,7 @@ import StageMatGround from './StageMatGround.svelte';
 		{scene}
 		{rooms}
 		{modelUrls}
+		includeLights={environment !== 'paper'}
 		onFormRendererReady={formRendererReady}
 		onEntityRenderable={entityRendererReady}
 		onEntityRoot={registerSceneRoot}

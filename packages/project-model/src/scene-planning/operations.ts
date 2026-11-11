@@ -20,6 +20,9 @@
  * | `delete-one` | exact removal, cluster-membership cleanup and an emptied-cluster drop |
  * | `set-lift` | the Y that puts the base a given height above the support beneath; X/Z, rotation and scale are preserved |
  * | `set-name` | the entity's name only |
+ * | `create-light` | one appended Point, Spot or Directional light from captured light fields |
+ * | `update-light` | only the named light fields; position, aim, colour, intensity, range, angle, penumbra and shadow |
+ * | `duplicate-light` | one appended copy at +0.5 m world X/Z, everything else copied |
  *
  * Support is always re-derived from the snapshot's canonical compile
  * (`./support`). Move, duplicate and resize must keep their **resting
@@ -74,7 +77,10 @@ export const SCENE_OPERATION_KINDS = [
 	'duplicate-one',
 	'delete-one',
 	'set-lift',
-	'set-name'
+	'set-name',
+	'create-light',
+	'update-light',
+	'duplicate-light'
 ] as const;
 
 export type SceneOperationKind = (typeof SCENE_OPERATION_KINDS)[number];

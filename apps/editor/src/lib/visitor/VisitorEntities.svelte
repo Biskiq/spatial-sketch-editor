@@ -17,7 +17,8 @@
 		textureScope = null,
 		artworkScope = null,
 		onArtworkError,
-		modelUrls = null
+		modelUrls = null,
+		includeLights = true
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
@@ -29,7 +30,9 @@
 		artworkScope?: ArtworkScope | null;
 		onArtworkError?: (message: string) => void;
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** Paper is an editor-only reading: it never draws authored lights. */
+		includeLights?: boolean;
 	} = $props();
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {artworkScope} {onArtworkError} {textureScope} {modelUrls} Model={AssetModel} />
+<VisitorEntityGroups {scene} {rooms} {artworkScope} {onArtworkError} {textureScope} {modelUrls} {includeLights} Model={AssetModel} />

@@ -6,9 +6,11 @@ All Vitest suites live here, mirrored to `src/lib/`. A test for
 
 ## Start here (startup verification summary)
 
-Repository-level verification applies regardless of task scope: implement the
-slice, then run the contract below — task scope never narrows required
-verification (AGENTS.md rule 11). Major lanes: `test:fast` (inner loop),
+Repository-level verification stays intact: focused affected tests are the
+normal local run, while the complete contract below is certified by the
+mandatory GitHub CI merge gate, not routinely duplicated locally (AGENTS.md
+rule 9). Local task scope never narrows the gates; it decides which focused
+contracts you repeat locally. Major lanes: `test:fast` (inner loop),
 `test:arch` (ownership/isolation boundaries, always before a PR, never
 path-gated), `test:heavy` (dense correctness/stress). PR #115 removed the PERF
 lane with its configuration: the bench harness, the `/dev/perf*` routes and the
@@ -265,11 +267,28 @@ stand in for acceptance evidence.
 | Production code (ordinary) | The affected contract, then the §7.7 escalation for its subsystem, call sites and package type checks |
 | `apps/api` code, its tests or fixtures | `npm run check:api` and the DB-backed `npm run test:api` with **zero skips** (a reachable `DATABASE_URL`; the run's DB target is recorded at a checkpoint — `npm run test:api:stack` targets the local Compose database that `npm run stack:up` starts). Root `check`, `build` and `test` cover the editor only and never sub for an API run |
 
-Every #115 checkpoint and every future implementation-PR merge gate keeps the
-declared complete verification contract — the §7.4 contract **including
-`test:heavy`** — however small the change looks. This is a change-impact policy,
-not a demand to run every heavy suite after every edit: focused runs are
-iteration feedback and never stand in for acceptance evidence (rule 25).
+### Local verification policy
+
+Focused affected tests are the normal local run, preferably with limited
+workers. Before CPU-intensive local verification, inspect current CPU/load,
+available cores, memory pressure and competing test/build/browser processes
+across all worktrees. Only one agent should occupy the shared heavy-testing
+slot at a time. If the machine is busy, defer the expensive run to CI or a free
+slot; never kill another agent's processes.
+
+By default, `npm test` and `npm run test:heavy` are certified by the mandatory
+GitHub CI merge gate and are not duplicated locally as routine verification. An
+architecture, build, browser or heavy correctness run may be justified when
+sufficient resources are available. A broad local run needs a stated reason,
+confirmed headroom and owner authorization. Every existing test, CI gate and
+acceptance requirement remains in force; report local evidence separately from
+CI evidence. A CI failure triggers focused local reproduction, not an automatic
+full-suite rerun.
+
+Every checkpoint and implementation-PR merge gate keeps the declared complete
+verification contract — the §7.4 contract **including `test:heavy`** — however
+small the change looks. This is a change-impact policy, not a demand to run
+every heavy suite after every edit.
 
 ### Browser QA policy
 

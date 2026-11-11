@@ -384,7 +384,7 @@ function supportCandidates(
 }
 
 describe('scene operation planners — registration', () => {
-	it('registers exactly the twelve Scene operations as single-domain planners', () => {
+	it('registers exactly the fifteen Scene operations as single-domain planners', () => {
 		const planners = createScenePlanners({ definitions: [nativeBoxDefinition()] });
 		expect(
 			planners.flatMap((planner) =>
@@ -405,7 +405,10 @@ describe('scene operation planners — registration', () => {
 			'duplicate-one',
 			'delete-one',
 			'set-lift',
-			'set-name'
+			'set-name',
+			'create-light',
+			'update-light',
+			'duplicate-light'
 		]);
 		for (const planner of planners) {
 			// `place-object` is the single Scene planner that declares typed-resource

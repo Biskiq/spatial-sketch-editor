@@ -124,7 +124,33 @@ export type SceneOperationPayload =
 			readonly contactMinY: number;
 			readonly choice?: SceneSupportChoice;
 	  }
-	| { readonly kind: 'set-name'; readonly entityId: string; readonly name: string };
+	| { readonly kind: 'set-name'; readonly entityId: string; readonly name: string }
+	| {
+			readonly kind: 'create-light';
+			readonly light: 'point' | 'spot' | 'directional';
+			readonly name: string;
+			readonly color: string;
+			readonly intensity: number;
+			readonly castShadow: boolean;
+			readonly position: Vec3;
+			readonly rotation: Vec3;
+			readonly range?: number;
+			readonly angle?: number;
+			readonly penumbra?: number;
+	  }
+	| {
+			readonly kind: 'update-light';
+			readonly entityId: string;
+			readonly position?: Vec3;
+			readonly rotation?: Vec3;
+			readonly color?: string;
+			readonly intensity?: number;
+			readonly range?: number | null;
+			readonly angle?: number;
+			readonly penumbra?: number | null;
+			readonly castShadow?: boolean;
+	  }
+	| { readonly kind: 'duplicate-light'; readonly entityId: string };
 
 /** Read the payload for one registered operation kind. */
 export function readSceneOperationPayload(
@@ -165,6 +191,16 @@ export function readSceneOperationPayload(
 			const entityId = reader.opaqueId(record.entityId, '$.payload.entityId');
 			const name = reader.string(record.name, '$.payload.name');
 			return entityId === null || name === null ? null : { kind: 'set-name', entityId, name };
+		}
+		case 'create-light':
+			return readCreateLightPayload(reader, raw);
+		case 'update-light':
+			return readUpdateLightPayload(reader, raw);
+		case 'duplicate-light': {
+			const record = reader.object(raw, '$.payload', ['entityId']);
+			if (record === null) return null;
+			const entityId = reader.opaqueId(record.entityId, '$.payload.entityId');
+			return entityId === null ? null : { kind: 'duplicate-light', entityId };
 		}
 		default:
 			reader.problem('$.kind', 'unsupported-operation', `No Scene operation kind "${kind}" is registered`);
@@ -576,6 +612,130 @@ function readSetLiftPayload(reader: ShapeReader, raw: unknown): SceneOperationPa
 	};
 }
 
+function readCreateLightPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, [
+		'light',
+		'name',
+		'color',
+		'intensity',
+		'castShadow',
+		'position',
+		'rotation',
+		'range',
+		'angle',
+		'penumbra'
+	]);
+	if (record === null) return null;
+	const light = reader.tag(record.light, `${path}.light`, ['point', 'spot', 'directional']) as
+		| 'point'
+		| 'spot'
+		| 'directional'
+		| null;
+	const name = reader.string(record.name, `${path}.name`);
+	const color = reader.string(record.color, `${path}.color`);
+	const intensity = reader.number(record.intensity, `${path}.intensity`);
+	const castShadow = reader.boolean(record.castShadow, `${path}.castShadow`);
+	const position = reader.vector3(record.position, `${path}.position`);
+	const rotation = reader.vector3(record.rotation, `${path}.rotation`);
+	const range = record.range === undefined ? undefined : reader.number(record.range, `${path}.range`);
+	const angle = record.angle === undefined ? undefined : reader.number(record.angle, `${path}.angle`);
+	const penumbra =
+		record.penumbra === undefined ? undefined : reader.number(record.penumbra, `${path}.penumbra`);
+	if (
+		light === null ||
+		name === null ||
+		color === null ||
+		intensity === null ||
+		castShadow === null ||
+		position === null ||
+		rotation === null ||
+		(record.range !== undefined && range === null) ||
+		(record.angle !== undefined && angle === null) ||
+		(record.penumbra !== undefined && penumbra === null)
+	) {
+		return null;
+	}
+	return {
+		kind: 'create-light',
+		light,
+		name,
+		color,
+		intensity,
+		castShadow,
+		position,
+		rotation,
+		...(range === undefined || range === null ? {} : { range }),
+		...(angle === undefined || angle === null ? {} : { angle }),
+		...(penumbra === undefined || penumbra === null ? {} : { penumbra })
+	};
+}
+
+function readUpdateLightPayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
+	const path = '$.payload';
+	const record = reader.object(raw, path, [
+		'entityId',
+		'position',
+		'rotation',
+		'color',
+		'intensity',
+		'range',
+		'angle',
+		'penumbra',
+		'castShadow'
+	]);
+	if (record === null) return null;
+	const entityId = reader.opaqueId(record.entityId, `${path}.entityId`);
+	const position =
+		record.position === undefined ? undefined : reader.vector3(record.position, `${path}.position`);
+	const rotation =
+		record.rotation === undefined ? undefined : reader.vector3(record.rotation, `${path}.rotation`);
+	const color = record.color === undefined ? undefined : reader.string(record.color, `${path}.color`);
+	const intensity =
+		record.intensity === undefined ? undefined : reader.number(record.intensity, `${path}.intensity`);
+	const range = readNullableNumber(reader, record.range, `${path}.range`);
+	const angle = record.angle === undefined ? undefined : reader.number(record.angle, `${path}.angle`);
+	const penumbra = readNullableNumber(reader, record.penumbra, `${path}.penumbra`);
+	const castShadow =
+		record.castShadow === undefined ? undefined : reader.boolean(record.castShadow, `${path}.castShadow`);
+	if (
+		entityId === null ||
+		(record.position !== undefined && position === null) ||
+		(record.rotation !== undefined && rotation === null) ||
+		(record.color !== undefined && color === null) ||
+		(record.intensity !== undefined && intensity === null) ||
+		range === null ||
+		(record.angle !== undefined && angle === null) ||
+		penumbra === null ||
+		(record.castShadow !== undefined && castShadow === null)
+	) {
+		return null;
+	}
+	return {
+		kind: 'update-light',
+		entityId,
+		...(position === undefined ? {} : { position: position as Vec3 }),
+		...(rotation === undefined ? {} : { rotation: rotation as Vec3 }),
+		...(color === undefined ? {} : { color: color as string }),
+		...(intensity === undefined ? {} : { intensity: intensity as number }),
+		...(range.present ? { range: range.value } : {}),
+		...(angle === undefined ? {} : { angle: angle as number }),
+		...(penumbra.present ? { penumbra: penumbra.value } : {}),
+		...(castShadow === undefined ? {} : { castShadow: castShadow as boolean })
+	};
+}
+
+function readNullableNumber(
+	reader: ShapeReader,
+	raw: unknown,
+	path: string
+): { readonly present: false } | { readonly present: true; readonly value: number | null } | null {
+	if (raw === undefined) return { present: false };
+	if (raw === null) return { present: true, value: null };
+	const value = reader.number(raw, path);
+	return value === null ? null : { present: true, value };
+}
+
 function readDuplicatePayload(reader: ShapeReader, raw: unknown): SceneOperationPayload | null {
 	const path = '$.payload';
 	const record = reader.object(raw, path, ['entityId', 'contactMinY', 'supportChoice']);
@@ -610,7 +770,12 @@ export function readSceneOperationSubject(input: {
 	readonly sourceContentId: string;
 }): SceneOperationSubject | null {
 	const { reader, kind, targets, payload, sourceContentId } = input;
-	if (kind === 'place-object' || kind === 'create-form' || kind === 'place-form-copy') {
+	if (
+		kind === 'place-object' ||
+		kind === 'create-form' ||
+		kind === 'place-form-copy' ||
+		kind === 'create-light'
+	) {
 		if (targets.length !== 0) {
 			reader.problem(
 				'$.targets',
@@ -629,7 +794,13 @@ export function readSceneOperationSubject(input: {
 		);
 		return null;
 	}
-	if (payload.kind === 'place-object' || payload.kind === 'create-form' || payload.kind === 'place-form-copy') return null;
+	if (
+		payload.kind === 'place-object' ||
+		payload.kind === 'create-form' ||
+		payload.kind === 'place-form-copy' ||
+		payload.kind === 'create-light'
+	)
+		return null;
 	const target = targets[0]!;
 	const entityId = payload.entityId;
 	const problem = sceneEntityTargetProblem(target, entityId, sourceContentId);
@@ -652,7 +823,9 @@ export function readSceneOperationAllocation(input: {
 		kind !== 'place-object' &&
 		kind !== 'create-form' &&
 		kind !== 'place-form-copy' &&
-		kind !== 'duplicate-one'
+		kind !== 'duplicate-one' &&
+		kind !== 'create-light' &&
+		kind !== 'duplicate-light'
 	) {
 		if (allocations.length !== 0) {
 			reader.problem(
