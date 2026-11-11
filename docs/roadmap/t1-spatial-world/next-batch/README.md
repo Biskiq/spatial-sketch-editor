@@ -81,9 +81,10 @@ shape. The shell has promised most of this batch by name.
 
 ### 3. #287 left documentation debt
 
-The expressive-walls plan was to be deleted and its rules promoted before merge. The plan is still
-listed as a draft and the Layout contract still describes format 6 in places. Code is at format 7.
-An agent reading the contract gets the wrong current state. This is slice A0.
+The expressive-walls plan was to be deleted and its rules promoted before merge. A0 is that closeout:
+the enduring rules now live in the [Layout contract](../../../reference/components/layout.md), the
+completed plan is retired and the roadmap no longer lists it. Before A0, the plan was still listed
+and the Layout contract described format 6 while code was at format 7.
 
 ## Positions taken, and why
 
