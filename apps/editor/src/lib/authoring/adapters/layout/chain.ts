@@ -30,6 +30,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
 	type LayoutVec2,
+	type WallChainArc,
 	type WallChainPlan,
 	type WallEndpointHostSnap,
 	type WallEndpointJunctionSnap
@@ -291,6 +292,8 @@ export function planChainDraft(options: {
 	readonly levelId: string;
 	readonly thickness?: number;
 	readonly height?: number;
+	/** A3 — the one drawn Arc leg, when the Wall reading is in Arc mode. */
+	readonly arc?: WallChainArc | null;
 }): ChainPlanPreview {
 	const request = chainPlanRequest(options.draft);
 	if (request.points.length < 2) {
@@ -317,7 +320,8 @@ export function planChainDraft(options: {
 		endpointJunctionSnaps: request.endpointJunctionSnaps,
 		endpointHostSnaps: request.endpointHostSnaps,
 		...(options.thickness === undefined ? {} : { thickness: options.thickness }),
-		...(options.height === undefined ? {} : { height: options.height })
+		...(options.height === undefined ? {} : { height: options.height }),
+		...(options.arc === undefined || options.arc === null ? {} : { arc: options.arc })
 	});
 	if (plan.kind === 'rejected') return refusedChainPreview(plan.rejection);
 	const createdRoomIds = plan.lineage.map((record) => record.roomId);

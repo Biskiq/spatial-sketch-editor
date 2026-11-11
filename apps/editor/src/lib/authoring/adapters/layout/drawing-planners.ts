@@ -35,6 +35,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutIdCapture,
 	type LayoutVec2,
+	type WallChainArc,
 	type WallFirstOpPlan
 } from '@portfolio/layout-core';
 import type {
@@ -76,6 +77,11 @@ export type WallChainCommitPayload = {
 	readonly thickness: number | null;
 	/** `null` when the chain resolves the birth height canonically. */
 	readonly height: number | null;
+	/**
+	 * A3 — the one drawn Arc leg, or `null`/absent for a straight chain. The
+	 * payload stays the same operation: one chain, one candidate, one history entry.
+	 */
+	readonly arc?: WallChainArc | null;
 };
 
 function refused(message: string): PlannerOutcome<ProjectEnvelope> {
@@ -96,10 +102,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly message: string } {
 	if (!isRecord(payload)) return { message: 'The chain commit payload must be an object.' };
-	const expected = ['points', 'close', 'junctionSnaps', 'hostSnaps', 'thickness', 'height'];
+	const expected = ['points', 'close', 'junctionSnaps', 'hostSnaps', 'thickness', 'height', 'arc'];
+	const required = ['points', 'close', 'junctionSnaps', 'hostSnaps', 'thickness', 'height'];
 	const unknown = Object.keys(payload).filter((key) => !expected.includes(key));
 	if (unknown.length > 0) return { message: `The chain commit payload cannot carry ${unknown.join(', ')}.` };
-	for (const key of expected) {
+	for (const key of required) {
 		if (!(key in payload)) return { message: `The chain commit payload is missing "${key}".` };
 	}
 	if (!Array.isArray(payload.points)) return { message: 'The chain commit payload needs a points array.' };
@@ -161,13 +168,35 @@ function readChainPayload(payload: unknown): WallChainCommitPayload | { readonly
 	const height = optionalNumber(payload.height);
 	if (thickness === undefined) return { message: 'Chain thickness must be null or a finite positive number.' };
 	if (height === undefined) return { message: 'Chain height must be null or a finite positive number.' };
+	const readArc = (value: unknown): WallChainArc | null | { readonly message: string } => {
+		if (value === null) return null;
+		if (!isRecord(value)) return { message: 'A chain arc must be an object or null.' };
+		const keys = Object.keys(value);
+		if (keys.length !== 2 || !('pointIndex' in value) || !('apex' in value)) {
+			return { message: 'A chain arc is exactly { pointIndex, apex }.' };
+		}
+		const pointIndex = value.pointIndex;
+		if (typeof pointIndex !== 'number' || !Number.isInteger(pointIndex) || pointIndex < 0) {
+			return { message: 'A chain arc needs a non-negative integer leg index.' };
+		}
+		const apex = Array.isArray(value.apex) && value.apex.length === 2 ? (value.apex as unknown[]) : null;
+		if (apex === null) return { message: 'An arc apex must be a [x, z] pair.' };
+		const [x, z] = apex;
+		if (typeof x !== 'number' || typeof z !== 'number' || !Number.isFinite(x) || !Number.isFinite(z)) {
+			return { message: 'An arc apex must carry two finite numbers.' };
+		}
+		return { pointIndex, apex: [x, z] };
+	};
+	const arc = payload.arc === undefined ? null : readArc(payload.arc);
+	if (arc !== null && 'message' in arc) return arc;
 	return {
 		points,
 		close: payload.close,
 		junctionSnaps: junctionSnaps as readonly { pointIndex: number; junctionId: string }[],
 		hostSnaps: hostSnaps as readonly { pointIndex: number; wallId: string }[],
 		thickness,
-		height
+		height,
+		arc
 	};
 }
 
@@ -256,7 +285,8 @@ function wallChainCommitPlanner(): DomainPlanner<ProjectEnvelope> {
 			endpointJunctionSnaps: payload.junctionSnaps,
 			endpointHostSnaps: payload.hostSnaps,
 			...(payload.thickness === null ? {} : { thickness: payload.thickness }),
-			...(payload.height === null ? {} : { height: payload.height })
+			...(payload.height === null ? {} : { height: payload.height }),
+			...(payload.arc === null || payload.arc === undefined ? {} : { arc: payload.arc })
 		});
 		if (plan.kind === 'rejected') {
 			return {
@@ -755,7 +785,15 @@ export function wallChainCommitIntent(input: {
 			})),
 			hostSnaps: input.payload.hostSnaps.map((snap) => ({ pointIndex: snap.pointIndex, wallId: snap.wallId })),
 			thickness: input.payload.thickness,
-			height: input.payload.height
+			height: input.payload.height,
+			...(input.payload.arc === null || input.payload.arc === undefined
+				? {}
+				: {
+						arc: {
+							pointIndex: input.payload.arc.pointIndex,
+							apex: [input.payload.arc.apex[0], input.payload.arc.apex[1]]
+						}
+					})
 		},
 		// The capture and the working level are the **canonical** captured inputs, not a
 		// phase-local encoding: the planner reads them through the same readers every

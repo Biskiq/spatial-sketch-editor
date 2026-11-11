@@ -319,11 +319,12 @@ export type InkOpeningProfile = 'rectangular' | 'rounded' | 'pointed';
 
 /**
  * R217.S10 — how the Wall reading names a chain: **Line** taps or drags points one
- * at a time; **Box** takes two opposite corners and closes the four-Wall ring;
- * **Circle** takes a centre then a rim point and authors the canonical closed
- * Wall. Each submits through the same captured intent surface.
+ * at a time; **Arc** takes a start, an end and a bulge and authors one open
+ * canonical `cubic-chain` Wall; **Box** takes two opposite corners and closes the
+ * four-Wall ring; **Circle** takes a centre then a rim point and authors the
+ * canonical closed Wall. Each submits through the same captured intent surface.
  */
-export type InkWallMode = 'line' | 'box' | 'circle';
+export type InkWallMode = 'line' | 'arc' | 'box' | 'circle';
 
 /** The next Opening's palette defaults; a session remembers them. */
 export type InkOpeningOptions = {
@@ -351,6 +352,17 @@ export type InkOpeningSnapshot = {
 	readonly refusal: string | null;
 };
 
+/**
+ * A3 — the live Arc's measured facts. `belowMinimum` means the next commit is the
+ * straight fallback, which the creator reads before accepting it.
+ */
+export type InkArcSnapshot = {
+	readonly chord: number;
+	readonly rise: number;
+	readonly radius: number;
+	readonly belowMinimum: boolean;
+};
+
 /** What the Ink palette renders. Everything here is read from the live draft. */
 export type InkPaletteSnapshot = {
 	readonly options?: {
@@ -358,8 +370,10 @@ export type InkPaletteSnapshot = {
 		readonly height: number | null;
 	};
 	readonly reading: InkReading;
-	/** The Wall reading's Line or Box; meaningless for other readings. */
+	/** The Wall reading's Line, Arc, Box or Circle; meaningless for other readings. */
 	readonly wallMode: InkWallMode;
+	/** The live Arc's rise and radius, or `null` outside Arc mode. */
+	readonly arc: InkArcSnapshot | null;
 	/** The live Box's extent on X and Z, in meters, once a corner and a pointer name one. */
 	readonly box: { readonly width: number; readonly depth: number } | null;
 	/** Every reading this project offers: Layout's built-ins then contributed readings. */
@@ -388,7 +402,7 @@ export type InkPaletteSnapshot = {
 export type InkController = {
 	/** Switch the one Ink tool between its supported readings. */
 	readonly setReading: (reading: InkReading) => void;
-	/** Switch the Wall reading between Line and Box; refused while a chain is live. */
+	/** Switch the Wall reading between Line, Arc, Box and Circle; refused while a chain is live. */
 	readonly setWallMode: (mode: InkWallMode) => void;
 	/** Remember the next Opening's kind and exact metrics. */
 	readonly setOpeningOptions: (options: InkOpeningOptions | null) => void;

@@ -29,6 +29,15 @@
       "review": null
     },
     {
+      "id": "layout.wall-arc",
+      "area": "T1",
+      "summary": "Draw one open curved Wall with a start → end → bulge Arc gesture, reading rise and radius, committing one canonical cubic-chain Wall and reconciling Rooms as a Line does, with a straight Line fallback below the minimum rise",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/adapters/**", "apps/editor/src/lib/authoring/world-toolbar/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "layout.wall-curve-edit",
       "area": "T1",
       "summary": "Bend a straight or curved Wall anywhere and edit its bend points directly, keeping Wall identity, hosted Openings, Room topology and one Undo per edit",

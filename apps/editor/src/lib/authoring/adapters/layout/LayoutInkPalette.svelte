@@ -49,6 +49,7 @@
 	const emptySnapshot: InkPaletteSnapshot = {
 		reading: 'wall',
 		wallMode: 'line',
+		arc: null,
 		box: null,
 		readings: [
 			{ id: 'wall', label: 'Wall', summary: 'Straight Wall chain.' },
@@ -111,8 +112,8 @@
 		inkSurface()?.controller.setReading(id);
 	}
 
-	function chooseWallMode(mode: 'line' | 'box' | 'circle'): void {
-		// Box and Circle have no typed point, so an open point disclosure does not carry over.
+	function chooseWallMode(mode: 'line' | 'arc' | 'box' | 'circle'): void {
+		// Arc, Box and Circle have no typed point, so an open point disclosure does not carry over.
 		if (mode !== 'line' && disclosed === 'point') disclosed = null;
 		inkSurface()?.controller.setWallMode(mode);
 	}
@@ -166,6 +167,11 @@
 	/** The planner's consequence, read on the live facts rather than drawn as a line of its own. */
 	const consequenceText = $derived(
 		`On finish: ${snapshot.consequence ?? 'Name at least two points to see the planner’s consequence.'}`
+	);
+	const arcFactsText = $derived(
+		snapshot.arc === null
+			? null
+			: `Rise ${Math.abs(snapshot.arc.rise).toFixed(2)} m · R ${Number.isFinite(snapshot.arc.radius) ? snapshot.arc.radius.toFixed(2) : '∞'} m${snapshot.arc.belowMinimum ? ' · Line' : ''}`
 	);
 </script>
 
@@ -303,6 +309,10 @@
 		<p class="refusal" role="alert" data-ink-refusal>{snapshot.refusal}</p>
 	{/if}
 
+	{#if arcFactsText !== null}
+		<p class="arc-facts" role="status" data-ink-arc-facts>{arcFactsText}</p>
+	{/if}
+
 	<div class="keys">
 		<button
 			type="button"
@@ -321,16 +331,16 @@
 				aria-disabled="true"
 				title="Round is not available yet"><ShellIcon name="round" size={16} /></button
 			>
-			{#each ['box', 'line', 'circle'] as const as mode}
+			{#each ['box', 'line', 'arc', 'circle'] as const as mode}
 				<button
 					type="button"
 					class="key"
 					role="radio"
-					aria-label={mode === 'box' ? 'Box' : mode === 'circle' ? 'Circle' : 'Line'}
+					aria-label={mode === 'box' ? 'Box' : mode === 'circle' ? 'Circle' : mode === 'arc' ? 'Arc' : 'Line'}
 					aria-checked={snapshot.wallMode === mode}
 					data-ink-wall-mode={mode}
 					onclick={() => chooseWallMode(mode)}
-				><ShellIcon name={mode === 'circle' ? 'round' : mode} size={16} /></button
+				><ShellIcon name={mode === 'circle' ? 'round' : mode === 'arc' ? 'bend' : mode} size={16} /></button
 				>
 			{/each}
 			<button
@@ -429,6 +439,18 @@
 		background: var(--shell-forest);
 		color: var(--shell-ink-light);
 		font: 12px var(--shell-mono);
+	}
+	.arc-facts {
+		position: absolute;
+		bottom: calc(100% + 8px);
+		left: 0;
+		margin: 0;
+		padding: 4px 6px;
+		border-radius: 6px;
+		background: var(--shell-popup-dark);
+		color: var(--shell-ink-light);
+		font: 10px/1.3 var(--shell-mono);
+		white-space: nowrap;
 	}
 	.refusal {
 		position: absolute;
