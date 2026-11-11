@@ -1,7 +1,7 @@
 # Agent context — Personal / Museum
 
 **Bootstrap:** [`docs/README.md`](./docs/README.md) (router). **Human start:**
-[`README.md`](./README.md#first-ten-minutes). **Status:** `npm run status`.
+[`README.md`](./README.md#development). **Status:** `npm run status`.
 **Workflow:** [`docs/workflow.md`](./docs/workflow.md) (claims, flags, risk tiers, plans).
 **Focus:** [`focus.md`](./focus.md). **Glossary:** [`docs/glossary.md`](./docs/glossary.md).
 **Path map:** [`docs/path-map.md`](./docs/path-map.md).

@@ -6,7 +6,7 @@ a complete Object Studio and public publication remain future work.
 
 | Need | Read |
 | --- | --- |
-| Run the accepted product | [README](../README.md#first-ten-minutes), [local development](./local-development.md) |
+| Run the accepted product | [README](../README.md#development), [local development](./local-development.md) |
 | Product destination | [North Star](./reference/north-star.md) |
 | Owners, routes and boundaries | [Architecture](./reference/architecture.md) |
 | Shared interfaces | [Composition and execution](./reference/composition-execution.md) |
