@@ -21,6 +21,7 @@
 		type WorldTool,
 		type WorldToolId
 	} from './registry';
+import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte';
 
 	let {
 		activeTool,
@@ -29,6 +30,8 @@
 		onLibrary,
 		onObjectPick,
 		onMaterialPick,
+		lookShelf = null,
+		onLookPick = () => {},
 		plate,
 		plateOpen = true,
 		onPlateOpen = () => {}
@@ -39,6 +42,9 @@
 		onLibrary: () => void;
 		onObjectPick: (assetId: string) => void;
 		onMaterialPick: (materialId: string) => void;
+		/** The Look shelf later T2 slices fill; empty in P0, so nothing is drawn. */
+		lookShelf?: LookLibraryShelf | null;
+		onLookPick?: (entryId: string) => void;
 		plate?: Snippet;
 		/** The upper parchment plate is an intentional expanded/collapsed state. */
 		plateOpen?: boolean;
@@ -46,7 +52,7 @@
 	} = $props();
 
 	const plateId = $props.id();
-	let libraryCategory = $state<WorldLibraryCategory>('objects');
+	let libraryCategory = $state<WorldLibraryCategory | 'look'>('objects');
 	let remembered = $state<Record<WorldFamily['id'], WorldToolId>>({
 		build: 'walls',
 		form: 'form',
@@ -123,6 +129,15 @@
 							onclick={() => (libraryCategory = category.id)}
 						>{category.label}</button>
 					{/each}
+					{#if lookShelf !== null && lookShelf.entries.length > 0}
+						<button
+							type="button"
+							class="sub"
+							class:on={libraryCategory === 'look'}
+							aria-pressed={libraryCategory === 'look'}
+							onclick={() => (libraryCategory = 'look')}
+						>{lookShelf.label}</button>
+					{/if}
 				{:else if activeFamily !== null}
 					<div class="subs" aria-label={`${activeFamily.label} tools`}>
 						{#each activeFamilyTools as tool (tool.id)}
@@ -157,7 +172,16 @@
 		<div class="row picks">
 			<div class="strip">
 				{#if libraryOpen}
-					{#if libraryCategory === 'objects'}
+					{#if libraryCategory === 'look' && lookShelf !== null}
+						<div class="librow" aria-label={lookShelf.label}>
+							{#each lookShelf.entries as entry (entry.id)}
+								<button type="button" class="tile" title={entry.summary ?? entry.label} onclick={() => onLookPick(entry.id)}>
+									<span class="tile-glyph"><WorldIcon name="sun" size={20} /></span>
+									<span class="tile-label">{entry.label}</span>
+								</button>
+							{/each}
+						</div>
+					{:else if libraryCategory === 'objects'}
 						<div class="librow" aria-label="Approved objects">
 							{#each approvedAssets as asset (asset.id)}
 								<button type="button" class="tile" title={asset.name} onclick={() => onObjectPick(asset.id)}>
