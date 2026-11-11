@@ -8,12 +8,15 @@
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import AssetModel from '$lib/museum/assets/AssetModel.svelte';
+	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import VisitorEntityGroups from './VisitorEntityGroups.svelte';
 
 	let {
 		scene,
 		rooms,
 		textureScope = null,
+		artworkScope = null,
+		onArtworkError,
 		modelUrls = null
 	}: {
 		scene: RuntimeScene;
@@ -23,8 +26,10 @@
 		 * Runtime-safe approved model bytes: model resource id → derivative URL. The
 		 * editor and Preview resolve them; this renderer never learns how.
 		 */
+		artworkScope?: ArtworkScope | null;
+		onArtworkError?: (message: string) => void;
 		modelUrls?: ReadonlyMap<string, string> | null;
 	} = $props();
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {textureScope} {modelUrls} Model={AssetModel} />
+<VisitorEntityGroups {scene} {rooms} {artworkScope} {onArtworkError} {textureScope} {modelUrls} Model={AssetModel} />

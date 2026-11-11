@@ -1,5 +1,6 @@
 import { defaultArtworkWidth, isArtworkWidth } from '../artwork';
 import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4';
+import type { SemanticReference } from '../references/types';
 import type { SceneArtworkEntity } from '../scene';
 import { validateArtworkLibrary } from '../scene-codec';
 import { ShapeReader } from '../strict-shape';
@@ -31,6 +32,12 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind): Result {
 		operationKind: kind, changedEntityIds: [], changedEntityFields: [],
 		createdEntityIds: [], removedEntityIds: [], allowClusterCleanup: false
 	} satisfies SceneRecordScope;
+	const reference = (id: string): SemanticReference => ({
+		version: 1, domain: 'scene', revision: { kind: 'exact', contentRevision: header.contentRevision },
+		subject: { kind: 'entity', id }, instancePath: [], location: { kind: 'project-root' },
+		componentId: null, capabilityId: null
+	});
+
 	const complete = (
 		after: CameraFreeSceneDocument,
 		grant: Partial<SceneRecordScope>,
@@ -47,7 +54,10 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind): Result {
 				sourceVersion: request.snapshot.sourceVersion,
 				source: replaceUnitData(envelope, 'scene', finalized.scene),
 				changes: [{ kind, subjectIds, fields }],
-				correspondence: [],
+				correspondence: [
+					...(grant.createdEntityIds ?? []).map((id) => ({ relation: 'created' as const, before: null, after: reference(id) })),
+					...(grant.changedEntityIds ?? []).map((id) => ({ relation: 'preserved' as const, before: reference(id), after: reference(id) }))
+				],
 				diagnostics: []
 			}
 		};

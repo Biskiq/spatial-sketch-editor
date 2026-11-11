@@ -19,6 +19,9 @@ import {
 	type ColdReleaseBundle
 } from './visitor-cold-runtime';
 
+import { imageSha256 } from '$lib/render/artwork/image-digest';
+import type { ReleaseBytesEntry } from './visitor-texture-scope';
+
 export type { ColdReleaseBundle } from './visitor-cold-runtime';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,6 +53,7 @@ export type PublicAssetDescriptor = {
 	assetId: string;
 	mime: string;
 	byteSize: number;
+	sha256?: string;
 };
 
 export type PublicReleasePayload = {
@@ -170,7 +174,11 @@ function readAssetDescriptor(value: unknown): PublicAssetDescriptor {
 	) {
 		throw new PublicVisitorError('invalid-response', 'The published project could not be read');
 	}
-	return { assetId, mime: mime.toLowerCase(), byteSize };
+	const sha256 = value.sha256;
+	if (sha256 !== undefined && (typeof sha256 !== 'string' || !/^sha256-[0-9a-f]{64}$/.test(sha256))) {
+		throw new PublicVisitorError('invalid-response', 'A published asset digest is invalid');
+	}
+	return { assetId, mime: mime.toLowerCase(), byteSize, ...(sha256 === undefined ? {} : { sha256 }) };
 }
 
 /**
@@ -186,7 +194,7 @@ export async function fetchPublicReleaseBytes(input: {
 	apiOrigin: string;
 	fetchImpl?: PublicFetchLike;
 	signal?: AbortSignal;
-}): Promise<Map<string, { bytes: Uint8Array; mime: string }>> {
+}): Promise<Map<string, ReleaseBytesEntry>> {
 	const { publicationId, version, assets, apiOrigin } = input;
 	if (!isValidPublicationId(publicationId) || !Number.isSafeInteger(version) || version < 1) {
 		throw new PublicVisitorError('invalid-response', 'The published project could not be read');
@@ -196,13 +204,19 @@ export async function fetchPublicReleaseBytes(input: {
 	const fetchImpl = requestFetch(input.fetchImpl);
 	input.signal?.throwIfAborted();
 
-	const bytesByUri = new Map<string, { bytes: Uint8Array; mime: string }>();
+	const bytesByUri = new Map<string, ReleaseBytesEntry>();
+	if (new Set(assets.map((asset) => asset.assetId)).size !== assets.length) {
+		throw new PublicVisitorError('invalid-response', 'A published asset is listed twice');
+	}
 	// Few textures per release; parallel fetch keeps cold boot fast. The
 	// shared AbortSignal cancels the remainder on route switch/unmount.
 	await Promise.all(
 		assets.map(async (asset) => {
 			const bytes = await fetchOneAssetBytes(fetchImpl, origin, publicationId, version, asset, input.signal);
-			bytesByUri.set(`/project-assets/${asset.assetId}`, { bytes, mime: asset.mime });
+			if (asset.sha256 !== undefined && `sha256-${await imageSha256(bytes)}` !== asset.sha256) {
+				throw new PublicVisitorError('asset-failed', 'A published image failed digest verification');
+			}
+			bytesByUri.set(`/project-assets/${asset.assetId}`, { bytes, mime: asset.mime, ...(asset.sha256 ? { sha256: asset.sha256 } : {}) });
 		})
 	);
 	return bytesByUri;

@@ -19,6 +19,7 @@
  */
 import {
 	hasBlockingLayoutIssues,
+	artworkAssetUri, probeArtworkImage, type ArtworkImage,
 	type CompiledLayoutGeometry,
 	type LayoutRoomRegistry,
 	type NavigationGraph,
@@ -35,6 +36,8 @@ import {
 } from './shipped-static-registry';
 import { createReleaseTextureScope, type ReleaseBytesEntry, type ReleaseTextureScope } from './visitor-texture-scope';
 
+import { createArtworkScope, type ArtworkScope } from '$lib/render/artwork/artwork-scope';
+
 export type ColdReleaseManifest = {
 	releaseId: string;
 	bytesByUri: ReadonlyMap<string, ReleaseBytesEntry>;
@@ -49,6 +52,7 @@ export type ColdReleaseBundle = {
 	rooms: LayoutRoomRegistry;
 	graph: NavigationGraph;
 	textureScope: ReleaseTextureScope;
+	artworkScope: ArtworkScope;
 	dispose: () => void;
 };
 
@@ -104,7 +108,7 @@ const COLD_SCENE_OPTIONS = {
  * Pure; no IO, no store reads beyond the supplied manifest map.
  */
 export function validateColdReleaseReferences(input: {
-	scene: { textures: Array<{ id: string; name: string; uri: string }>; materials: Array<{ id: string; baseMaterialId?: string; baseTextureId?: string }>; entities: Array<{ kind: string; assetId?: string; materialInstanceId?: string | null; materialId?: string }> };
+	scene: { textures: Array<{ id: string; name: string; uri: string }>; materials: Array<{ id: string; baseMaterialId?: string; baseTextureId?: string }>; entities: Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }> };
 	manifest: ColdReleaseManifest;
 }): ColdReleaseIssue[] {
 	const issues: ColdReleaseIssue[] = [];
@@ -146,6 +150,19 @@ export function validateColdReleaseReferences(input: {
 	for (const [index, entity] of input.scene.entities.entries()) {
 		// Publication admits no native form yet: T4 owns any admission, so a form
 		// must be a blocking issue rather than something a release ships by omission.
+		if (entity.kind === 'artwork') {
+			const source = entity.source;
+			const entry = source === undefined ? undefined : input.manifest.bytesByUri.get(artworkAssetUri(source.assetId));
+			try {
+				if (!source || !entry?.sha256) throw new Error();
+				const dimensions = probeArtworkImage(entry.bytes);
+				if (dimensions.mime !== entry.mime || dimensions.pixelWidth !== source.pixelWidth ||
+					dimensions.pixelHeight !== source.pixelHeight) throw new Error();
+			} catch {
+				issues.push({ path: `$.scene.entities[${index}].source`, message: 'Artwork image is missing or invalid in this release.' });
+			}
+			continue;
+		}
 		if (entity.kind === 'form') {
 			issues.push({
 				path: `$.scene.entities[${index}]`,
@@ -238,7 +255,7 @@ export function composeColdReleaseBundle(input: {
 			scene: {
 				textures: runtimeScene.textures,
 				materials: runtimeScene.materials as ColdReleaseBundle['scene']['materials'],
-				entities: runtimeScene.entities as Array<{ kind: string; assetId?: string; materialInstanceId?: string | null; materialId?: string }>
+				entities: runtimeScene.entities as Array<{ kind: string; source?: ArtworkImage; assetId?: string; materialInstanceId?: string | null; materialId?: string }>
 			},
 			manifest
 		}
@@ -253,11 +270,24 @@ export function composeColdReleaseBundle(input: {
 		bytesByUri: manifest.bytesByUri
 	});
 
+	const artworkBytes = new Map<string, ReleaseBytesEntry>();
+	for (const entity of runtimeScene.entities) {
+		if (entity.kind !== 'artwork' || artworkBytes.has(entity.source.assetId)) continue;
+		const entry = manifest.bytesByUri.get(artworkAssetUri(entity.source.assetId))!;
+		artworkBytes.set(entity.source.assetId, { ...entry, bytes: Uint8Array.from(entry.bytes) });
+	}
+	const artworkScope = createArtworkScope(async (image) => {
+		const entry = artworkBytes.get(image.assetId);
+		if (!entry) throw new Error('Artwork image is missing in this release.');
+		return entry;
+	});
 	let disposed = false;
 	const dispose = () => {
 		if (disposed) return;
 		disposed = true;
 		textureScope.dispose();
+		artworkScope.dispose();
+		artworkBytes.clear();
 	};
 
 	return {
@@ -269,6 +299,7 @@ export function composeColdReleaseBundle(input: {
 		rooms,
 		graph,
 		textureScope,
+		artworkScope,
 		dispose
 	};
 }

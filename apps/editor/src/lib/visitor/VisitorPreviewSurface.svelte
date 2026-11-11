@@ -2,6 +2,7 @@
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
 	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
 	import { onMount, untrack } from 'svelte';
+import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
 	import { T } from '@threlte/core';
@@ -43,6 +44,7 @@ import { PCFShadowMap } from 'three';
 		active = true,
 		resolveTexture,
 		textureScope = null,
+		artworkScope = null,
 		modelUrls = null,
 		reducedMotion = false,
 		mode = 'preview',
@@ -68,6 +70,7 @@ import { PCFShadowMap } from 'three';
 		active?: boolean;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
+		artworkScope?: ArtworkScope | null;
 		/** Runtime-safe approved model bytes, resolved by the owning session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
 		reducedMotion?: boolean;
@@ -429,7 +432,7 @@ import { PCFShadowMap } from 'three';
 			{#if environment === 'paper'}
 				<!-- Paper: the Stage's own tone and neutral light, without the grid. Never a black void. -->
 				<T.Color attach="background" args={['#e9ebe6']} />
-				<T.AmbientLight intensity={0.45} />
+				<T.AmbientLight intensity={0.35} />
 				<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 				<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 				<T.Mesh rotation.x={-Math.PI / 2} position={[0, -0.02, 0]} receiveShadow>
@@ -457,7 +460,7 @@ import { PCFShadowMap } from 'three';
 				/>
 			{/if}
 			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
-			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} {modelUrls} />
+			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} {modelUrls} {artworkScope} />
 		</Canvas>
 	</div>
 	<div class="visitor-brand" class:published={mode === 'public'}>

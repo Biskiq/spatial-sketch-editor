@@ -1,9 +1,10 @@
 /** Mounted Scene geometry is data for the Stage hit provider, never a selection authority. */
-import { Box3, Mesh, Raycaster, type Object3D } from 'three';
+import { Box3, Matrix3, Mesh, Raycaster, type Object3D } from 'three';
 import type { PointerRay } from '@portfolio/camera-core';
+import type { Layout3dPickRange } from '$lib/layout/wall-mesh-builder';
 import type { RuntimeScene } from '@portfolio/project-model';
 
-export type SceneRenderedHit = { readonly entityId: string | null; readonly kind: 'entity' | 'floor' | 'layout'; readonly distanceMeters: number; readonly worldPoint: [number, number, number] };
+export type SceneRenderedHit = { readonly entityId: string | null; readonly kind: 'entity' | 'floor' | 'layout'; readonly wallId?: string; readonly wallNormal?: [number, number, number]; readonly distanceMeters: number; readonly worldPoint: [number, number, number] };
 
 /** True when this node and every ancestor are visible; the same rule the pick ray uses. */
 export function hasVisibleAncestor(node: Object3D): boolean {
@@ -136,7 +137,15 @@ export function createScenePickSource() {
 					if (!visible) continue;
 					if (nearest === null || hit.distance < nearest.distanceMeters ||
 						hit.distance === nearest.distanceMeters && (target.id ?? '') < (nearest.entityId ?? '')) {
-						nearest = { entityId: target.id, kind: target.id !== null ? 'entity' : hit.object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout', distanceMeters: hit.distance, worldPoint: hit.point.toArray() };
+						const triangleOffset = hit.faceIndex == null ? -1 : hit.faceIndex * 3;
+						const ranges = hit.object.geometry.userData.pickRanges as readonly Layout3dPickRange[] | undefined;
+						const face = target.id === null ? ranges?.find((range) =>
+							triangleOffset >= range.start && triangleOffset < range.start + range.count) : undefined;
+						const isWall = face?.kind === 'wall' && face.surface === 'side';
+						const normal = isWall && hit.face
+							? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(hit.object.matrixWorld))
+							: null;
+						nearest = { ...(normal === null ? {} : { wallId: face?.segmentId, wallNormal: normal.toArray() }), entityId: target.id, kind: target.id !== null ? 'entity' : hit.object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout', distanceMeters: hit.distance, worldPoint: hit.point.toArray() };
 					}
 					break;
 				}
