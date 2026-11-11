@@ -205,6 +205,8 @@ export function drawingRefusalWords(code: string): string {
 	// existing Room. Name the attempted closure and the smallest repair instead
 	// of the Card's "Room moved across its boundary" words.
 	switch (code) {
+		case 'arc_rise_out_of_range':
+			return 'An Arc bulge can be no more than half its chord. Pull the bulge closer to the line.';
 		case 'invalid_candidate_document':
 		case 'candidate_does_not_compile':
 		case 'room_reconciliation_rejected':
