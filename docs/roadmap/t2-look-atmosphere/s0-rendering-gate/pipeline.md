@@ -1,8 +1,8 @@
 # T2 S0 Gate A — verified pipeline record
 
-**Status:** measured 2026-11-11 from the Gate A bench (`/dev/render-audit`) in the draft PR for
-slice `T2.S0`. This record is the contract S3 Lights and A1 Artwork may rely on. It is **not** a
-Gate B or Gate C result: reflections, Paper/Living, parity and the shadow budget remain unmeasured.
+**Status:** measured 2026-11-11; Gate A accepted with follow-up corrections applied. This record is
+the contract S3 Lights and A1 Artwork may rely on. It is **not** a Gate B or Gate C result:
+reflections, Paper/Living, parity and the shadow budget remain unmeasured.
 
 **Evidence:** [Gate A report](./report.md) · [artwork fidelity](./artwork-fidelity.md) ·
 [contact sheet](./evidence/2026-11-11/gate-a-contact-sheet.png) ·
@@ -26,7 +26,9 @@ a maximum channel error of **0**.
 
 The Stage, Visitor Preview and published visit all use the same
 `createManagedWebGLRenderer` factory and set no tone-mapping, exposure or output-colour-space
-override. The values above are therefore the shared runtime facts, not a bench-only configuration.
+override. E1 captured that **shared factory** once; it did not instantiate or compare each production
+surface independently. These are factory-level facts, not per-surface parity evidence. Gate B/E6 owns
+the actual Stage / snapshot / Preview / visit comparison.
 
 **Snapshot warning.** Three r187 renders a non-XR render target in
 `ColorManagement.workingColorSpace` (linear). The Stage target and the bench replica both leave the
@@ -52,10 +54,12 @@ measured all four candidates and only the untonemapped Lambert response preserve
 | Neutral @ 1.1 | 2.73 | Failed |
 | **Lambert + None** | **0.00** | **All 18 patches exact; chosen for Artwork** |
 
-The unresolved tradeoff is Gate B's: if the Sky needs a tone mapper to hold highlights, that mapper
-will shift artwork unless D16 changes. Gate A does **not** change D16; it chooses a lit, matte
-Lambert response that keeps the current promise. If Gate B finds that a mapper is required, the
-owner decides whether to accept the shift, add an explicit unlit option, or keep NoToneMapping.
+The open tradeoff is Gate B's: if the Sky needs a tone mapper to hold highlights, a global mapper
+**may** shift artwork, but Gate A did not test `MeshLambertMaterial` with `toneMapped = false` under a
+mapper. Gate B must measure that opt-out before claiming a mapper necessarily compromises artwork.
+Gate A does **not** change D16; it records the accepted baseline `MeshLambertMaterial` +
+`NoToneMapping`. If the opt-out still fails, the owner decides whether to accept the shift, add an
+explicit unlit option, or keep NoToneMapping.
 
 ## 3. Light units
 
@@ -66,9 +70,12 @@ interpreted as:
   attenuation.
 - **Directional:** illuminance in **lux**, with no distance attenuation.
 
-The bench's reference is **intensity π** on a white Lambertian plane at normal incidence. That gives
-unit irradiance and an exact `#808080` readback (128,128,128). All three kinds produce the same
-centre luminance at one metre, which is the check S3 needs before presenting one Brightness control.
+The bench's reference is **intensity π** on a 50% grey Lambertian plane at normal incidence. This is
+a **calibration constant, not unit physical irradiance**. In the renderer, intensity π gives π units
+of directional irradiance (or π/d² at distance d); the Lambertian BRDF's 1/π factor and the 50% grey
+albedo then produce the exact `#808080` readback (128,128,128). The result is a calibrated material
+response, not a photometric claim that the surface receives one lux. All three kinds produce the same
+centre response at one metre, which is the check S3 needs before presenting one Brightness control.
 
 ### Measured Brightness stops
 
@@ -111,7 +118,7 @@ inventing a curve.
 ## 5. What A1 Artwork may rely on
 
 - Use a **diffuse-only lit material** (the bench used `MeshLambertMaterial`) with an **sRGB** image
-  texture. Under unit white light it reproduces all 18 reference patches exactly (ΔE00 = 0),
+  texture. Under the calibrated white reference it reproduces all 18 reference patches exactly (ΔE00 = 0),
   including near-black, while still responding to lights and casting shadows.
 - Do **not** use `MeshStandardMaterial` for the artwork surface by default: its dielectric specular
   lobe lifts near-black (18,18,20 → 35,35,36) and produces a maximum patch ΔE00 of 5.16 under the

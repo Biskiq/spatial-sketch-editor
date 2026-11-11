@@ -9,7 +9,8 @@
  * (linear), while its `UnsignedByteType` readback is interpreted as sRGB by the
  * snapshot PNG writer.
  *
- * E1 captures the shared renderer/material/light facts.
+ * E1 captures the shared renderer factory/material/light facts once; it does not
+ * instantiate each production surface. Per-surface parity is Gate B/E6.
  * E2 measures tone mapping and artwork fidelity against a known sRGB chart.
  * E3 measures light units, Brightness-stop ratios and the spot frustum.
  */
@@ -46,7 +47,10 @@ import {
 import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
 
 export const AUDIT_SIZE = 512;
-/** Intensity that gives unit irradiance at one metre in Three's physical mode. */
+/**
+ * Bench reference intensity. With the 50% grey Lambertian patch and the BRDF's 1/π factor,
+ * π renderer units of irradiance produce the #808080 readback. This is not a physical unit claim.
+ */
 export const LIGHT_REFERENCE_INTENSITY = Math.PI;
 
 type AuditToneMapping =

@@ -1,7 +1,8 @@
 # T2 S0 Gate A — artwork colour fidelity
 
-**Status:** measured 2026-11-11. This is the colour-fidelity record A1 Artwork may rely on. It does
-not decide framing, placement, transparency or release pinning; those are A1's own checks.
+**Status:** measured 2026-11-11; Gate A accepted with follow-up corrections applied. This is the
+colour-fidelity record A1 Artwork may rely on. It does not decide framing, placement, transparency or
+release pinning; those are A1's own checks.
 
 **Evidence:** [pipeline record](./pipeline.md) · [Gate A report](./report.md) ·
 [contact sheet](./evidence/2026-11-11/gate-a-contact-sheet.png) ·
@@ -17,8 +18,10 @@ keep an image close enough to its source that an artist would not see a colour s
 **Bench:** `/dev/render-audit`. A 512 × 512 sRGB chart fills a `PlaneGeometry` viewed through an
 orthographic camera at 1:1 pixel mapping. The chart has 18 patches (neutrals, skin, six pigments,
 paper, brass, wood, near-black, near-white) plus neutral, hue, tonal and dark-detail ramps. One white
-directional light at intensity π gives unit irradiance at normal incidence. No sky, no environment
-map, no shadows, exposure 1.0.
+directional light at intensity π is the bench calibration for the 50% grey patch: π renderer units of
+irradiance and the Lambertian 1/π factor produce the source `#808080` readback. It is not a statement
+that the surface receives one physical unit of illuminance. No sky, no environment map, no shadows,
+exposure 1.0.
 
 **Readback:** default framebuffer `readPixels` immediately after `render()`, not the snapshot target.
 The calibration renders an unlit sRGB texture through the same renderer: **maximum channel error 0**
@@ -74,17 +77,19 @@ The plan's recommendation was to adopt Neutral if it preserved artwork. It does 
 - NoToneMapping is the only mapper that meets the mid-tone target, and Lambert makes it exact across
   every patch.
 
-**Decision:** keep `NoToneMapping`, exposure 1.0 for Gate A, and use a diffuse-only lit material for
-Artwork. This does **not** change D16; it implements "lit and matte" with the material that preserves
-the image.
+**Decision (owner-approved baseline):** keep `NoToneMapping`, exposure 1.0 for Gate A, and use
+`MeshLambertMaterial` as A1's initial lit/matte artwork material. This does **not** change D16; it
+implements "lit and matte" with the material that preserves the image.
 
 ## 4. The genuine escalation
 
 There is a real tradeoff, and it belongs to Gate B, not Gate A:
 
-- If the Sky needs a tone mapper to hold highlights or to make reflections readable, that mapper will
+- If the Sky needs a tone mapper to hold highlights or to make reflections readable, that mapper may
   shift artwork. There is no measured mapper that both handles a bright sky and preserves the
-  reference patches.
+  reference patches. However, **`MeshLambertMaterial` + `toneMapped = false` under a global mapper is
+  untested**; Gate B must measure that opt-out before claiming a mapper necessarily compromises
+  artwork.
 - The owner must then choose: accept a recorded artwork shift, add an explicit unlit/full-brightness
   artwork option, or keep NoToneMapping and design the Sky within its range.
 - Gate A does not make that choice silently. It records the evidence and keeps the approved D16
@@ -97,7 +102,7 @@ There is a real tradeoff, and it belongs to Gate B, not Gate A:
 - Use `MeshLambertMaterial` (or an equivalent zero-specular lit material) for the artwork surface.
   Do not use `MeshStandardMaterial` by default.
 - Set no environment map, and once Gate B adds one, set `envMapIntensity = 0` on the artwork.
-- Keep `toneMapped` irrelevant by keeping the pipeline at `NoToneMapping`; if Gate B changes that,
-  re-run this test with real artwork.
+- Keep `toneMapped` irrelevant by keeping the pipeline at `NoToneMapping`; if Gate B proposes a
+  global mapper, test both `toneMapped = true` and `toneMapped = false` with real artwork.
 - Repeat the fidelity check with a real photograph and a coloured light in A1. The synthetic chart
   proves the transform; it does not prove a specific painting, a transparency, or a frame.

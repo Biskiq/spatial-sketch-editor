@@ -1,10 +1,11 @@
 # T2 S0 — Rendering gate: implementation plan
 
-**Status:** Gate A approved and measured, 2026-11-11. This PR claims the slice **`T2.S0`**, not a
-creator capability: `tools/harness/ledger.mjs` defines capability ids as things a creator would say
-they can do, and a rendering gate is an engineering slice, so no `capabilities.json` row is added.
-Gate A added a dev-only bench and **no production change**. Gate B and Gate C are **not authorised**;
-this draft PR carries the Gate A records and waits for the owner’s checkpoint.
+**Status:** Gate A accepted with follow-up corrections applied, 2026-11-11. This PR claims the slice
+**`T2.S0`**, not a creator capability: `tools/harness/ledger.mjs` defines capability ids as things a
+creator would say they can do, and a rendering gate is an engineering slice, so no
+`capabilities.json` row is added. Gate A added a dev-only bench and **no production change**.
+Gate B and Gate C are **not authorised**; this draft PR carries the Gate A records and waits for the
+next checkpoint.
 
 **Base:** `b9908410` — the approved PR #289 baseline (T2 Look & Atmosphere, revision 4). PR #289 is
 merged; this branch is based on its head, not on later `main`.
@@ -168,8 +169,8 @@ or a second material stack to rescue it.
 
 **Question:** what does a stored `intensity` mean, and what UI stops can S3 present truthfully?
 
-**Bench:** a white Lambertian plane at 1 m and 3 m; one point, one spot and one directional light,
-each at intensity 1 with default decay; the fixed camera and viewport from E2.
+**Bench:** a 50% grey Lambertian plane at 1 m and 3 m; one point, one spot and one directional light
+at a reference intensity with default decay; the fixed camera and viewport from E2.
 
 **Method:**
 
@@ -207,6 +208,9 @@ enclosed Room, under Daylight, Golden hour and Dusk.
 - Add `scene.environment` from a PMREM of the same sky gradient, at `environmentIntensity` 0.3 and
   1.0, with per-material `envMapIntensity` available.
 - Compare: no environment / sky environment / a neutral studio reference (the D4 candidate).
+- Gate B experiment: under each candidate global mapper, measure `MeshLambertMaterial` with
+  `toneMapped = true` and `toneMapped = false`; do not claim a mapper necessarily compromises artwork
+  until the opt-out is measured.
 - Measure PMREM generation time and the cost of rebuilding it while an elevation/azimuth slider is
   dragged.
 - Photograph a glossy floor, a brass sphere and a dark textile; specifically look for the indoor
@@ -319,24 +323,25 @@ runtime.
 
 | Decision | Recommendation | When |
 | --- | --- | --- |
-| Tone mapping | **Measured: no mapper.** E2 rejected Neutral (mid-tone ΔE00 4.07), ACES (3.35) and AgX (6.35); None + Lambert scored 0 across all 18 patches. Gate B may reopen only through a D16 decision. | Gate A done |
+| Tone mapping | **Measured: no mapper.** E2 rejected Neutral (mid-tone ΔE00 4.07), ACES (3.35) and AgX (6.35); None + Lambert scored 0 across all 18 patches. Gate B may reopen only after measuring Lambert + `toneMapped = false`; any remaining shift is a D16 decision. | Gate A accepted; opt-out is a Gate B experiment |
 | D5 light units | Keep physical stored units; Brightness stops are a UI mapping fixed by E3. | After E3 |
 | D4 Paper reflections | **No Sky reflection on Paper**; a neutral studio reflection at most, and only if E5 shows it does not relight Paper. | After E5 |
 | D9 shadow budget | Set from E7; refuse in words beyond it. | After E7 |
-| D16 artwork response | **Measured: lit, matte, diffuse-only.** `MeshLambertMaterial` + `NoToneMapping` was exact (ΔE00 0); the standard PBR material lifted near-black by ΔE00 5.16. No unlit option needed. | Gate A done |
+| D16 artwork response | **Approved baseline: `MeshLambertMaterial` + `NoToneMapping`.** It was exact (ΔE00 0); the standard PBR material lifted near-black by ΔE00 5.16. Gate B must test `toneMapped = false` under any proposed global mapper before rejecting it. | Gate A accepted; Gate B experiment |
 | Snapshot colour path | Treat F5 as a defect to verify and fix, not a look decision. | E6, before parity evidence |
 
 ### Gate A outcome (2026-11-11)
 
-- **E1:** pipeline captured at Three r187: sRGB output, `srgb-linear` working space,
-  `NoToneMapping`, exposure 1.0, `PCFShadowMap`; readback calibration passed with maximum channel
-  error **0**.
+- **E1:** pipeline captured from the shared factory at Three r187: sRGB output, `srgb-linear` working
+  space, `NoToneMapping`, exposure 1.0, `PCFShadowMap`; readback calibration passed with maximum
+  channel error **0**. E1 did not instantiate each production surface; parity is Gate B/E6.
 - **E2:** `MeshLambertMaterial` + `NoToneMapping` reproduced all 18 source patches exactly (ΔE00 0,
   no clipping). The standard PBR material passed the mid-tone target but lifted near-black by 5.16;
   ACES, AgX, Neutral and Neutral @ 1.1 all failed the mid-tone target.
-- **E3:** stored intensity is physical (candela for point/spot, lux for directional) with `decay = 2`;
-  intensity π produced unit irradiance at 1 m for all three kinds. The five Brightness factors
-  measured 0.252 / 0.496 / 1.000 / 2.011 / 3.999.
+- **E3:** stored intensity is physical (candela for point/spot, lux for directional) with `decay = 2`.
+  The π reference produced the calibrated 50% grey response at 1 m for all three kinds; it is a
+  material calibration, not unit physical irradiance. The five Brightness factors measured
+  0.252 / 0.496 / 1.000 / 2.011 / 3.999.
 - **Decision:** keep `NoToneMapping`, exposure 1.0, and give Artwork a diffuse-only lit material.
   This keeps D16 lit and matte; it does not change the promise.
 - **Snapshot:** the 640 × 360 `UnsignedByteType` target has `NoColorSpace`, so r187's linear target
