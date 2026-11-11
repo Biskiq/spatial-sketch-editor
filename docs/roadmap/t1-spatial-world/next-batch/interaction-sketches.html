@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>T1 next batch: interaction sketches</title>
+<title>T1 next batch: UX proposals</title>
 <style>
   :root {
     --paper: #f6f4ec; --card: #ffffff; --ink: #1c1c1a; --ink2: #6b6a63; --hair: #d9d6c9;
@@ -46,12 +46,8 @@
 </head>
 <body>
 <main>
-<h1>T1 next batch: interaction sketches</h1>
-<p class="lede">Nine static sketches (7–9 added in revision 2) for the design questions that decide the most. They use the
-existing PLATE vocabulary only: black ink for built Walls, cobalt dashes for a proposal, red dashes
-for a refusal, disc knobs for points, dark mono tags for live values, the Card's scoped list and the
-Stage state pill. They are sketches, not specifications. Part of the
-<a href="./README.md">T1 next-batch proposal</a>.</p>
+<h1>T1 next batch: UX proposals</h1>
+<p class="lede">Eleven proposals for the questions that decide the most. 1–6 settle a model or a gesture in one figure; 7–11 are step-by-step interaction designs for Spaces, Interior Reveal, Slice and the rotunda. They use the existing PLATE vocabulary: black ink for built Walls, cobalt dashes for a proposal, red dashes for a refusal, disc knobs for points, gold for the active handle, dark mono tags for live values, yellow for temporary inspection, the Card's scoped list and the Stage state pill. Static and untested with creators. Part of the <a href="./README.md">T1 next-batch proposal</a>, revision 3.</p>
 
 <h2>1. Split and join: where does a joint come from, and how does it go away?</h2>
 <p class="q">Question: can Junction editing ship without a new tool, a new mark or an armed Card action?</p>
@@ -123,13 +119,13 @@ Stage state pill. They are sketches, not specifications. Part of the
   <text x="560" y="228" class="ts">The copy follows the pointer as one cobalt proposal and lands free.</text>
   <text x="560" y="244" class="ts">Its fourth Wall is a copy of the shared Wall, not the shared Wall.</text>
   <text x="560" y="268" class="ts" style="fill:#d0412d">Released touching or crossing existing Walls: refused, nothing written.</text>
-  <text x="560" y="284" class="ts">Docking it against the Hall afterwards is ordinary Wall editing.</text>
+  <text x="560" y="284" class="ts">Docked against the Hall it overlaps and joins nothing; the Stage says so.</text>
 </svg>
 <figcaption>Copy, never share. The consequence line uses PLATE's existing Creates · Keeps vocabulary; “Drops” would be one added word and needs the owner's nod.</figcaption>
 </figure>
 <div class="rec"><b>Recommended.</b> One meaning for Duplicate regardless of neighbours. The isolated case ships first on the existing planner; the shared case adds a copy-enclosure planner, not topology surgery.</div>
 
-<div class="rec"><b>Revision 2 correction:</b> dragging the copy against the hall does <i>not</i> attach it. Room move is a rigid translation and overlap between independent groups is permitted, so the two back Walls lie on top of each other and join nothing. The Stage must read <b>overlaps, not joined</b> on that stretch, and Duplicate must start its proposal clear of the source. Joining a docked island (weld) is a separate, later operation.</div>
+<div class="rec"><b>Decided:</b> the copy starts clear of its source. A free island resting on another group's Wall reads <b>overlaps, not joined</b> on the coincident stretch. Weld is outside this batch.</div>
 
 <h2>3. Connecting to a circle: three models</h2>
 <p class="q">Question: which of these is “a simple connection”, and which is a new architectural model?</p>
@@ -144,7 +140,7 @@ Stage state pill. They are sketches, not specifications. Part of the
   <text x="30" y="298" class="t" style="fill:#d0412d;font-weight:600">Simple, and does not solve the case.</text>
 
   <line x1="335" y1="14" x2="335" y2="316" class="dash"/>
-  <text x="355" y="22" class="th">B. Arc ring + derived Round reading</text>
+  <text x="355" y="22" class="th">B. Arc ring, Room states Round</text>
   <rect x="530" y="90" width="120" height="120" class="roomf"/>
   <path d="M547 90 H650 V210 H547" class="wall"/>
   <path d="M547 90 A80 80 0 1 0 547 210" class="wall"/>
@@ -186,7 +182,7 @@ Stage state pill. They are sketches, not specifications. Part of the
   <line x1="180" y1="140" x2="280" y2="140" class="dash"/>
   <circle cx="280" cy="140" r="7" class="knobg"/>
   <rect x="290" y="106" width="146" height="20" rx="4" class="tag"/><text x="298" y="120" class="tagt">r 5.00 m · ⌀ 10.00</text>
-  <text x="30" y="262" class="ts">The radius ray scales every co-circular arc about the fitted centre.</text>
+  <text x="30" y="262" class="ts">The radius ray scales every arc of the round Room about its stated centre.</text>
   <text x="30" y="278" class="ts">Rim Junctions move radially; attached Walls stretch. Openings keep their angle.</text>
   <text x="30" y="294" class="ts">One cobalt proposal for every changed Wall; one history entry on release.</text>
 
@@ -203,7 +199,7 @@ Stage state pill. They are sketches, not specifications. Part of the
   <text x="520" y="278" class="ts">Card Radius shows the same refusal inside its field.</text>
   <text x="520" y="294" class="ts">Never a partial result with a neighbour left behind.</text>
 </svg>
-<figcaption>This is #287's approved whole-network preview and refusal (D3), applied to a group planner. Whether “Round” is recognised from geometry or stored as a hint is the spike's question.</figcaption>
+<figcaption>This is #287's approved whole-network preview and refusal (D3), applied to a group planner. Round is a stated fact of the Room, never re-detected; see proposal 11.</figcaption>
 </figure>
 
 <h2>5. Face this wall, and Unroll the room</h2>
@@ -235,7 +231,7 @@ Stage state pill. They are sketches, not specifications. Part of the
 </svg>
 <figcaption>Sketch (a) needs one Camera viewing intent already designed in #287 revision 1. Sketch (b) raises the questions the Layout contract lists as open (display cut for multi-Wall loops, shared Walls, what Put back returns to), which is why it is a planned phase.</figcaption>
 </figure>
-<div class="rec"><b>Recommended.</b> No “Focus” mode and no new surface. Face lands near-term in the Card's Look row. Unroll the room is planned after the connected-curve decision, because under model B it is how a connected rotunda is seen whole.</div>
+<div class="rec"><b>Decided:</b> no “Focus” mode and no new surface. Face is an explicit Look action that Unroll never triggers. Unroll the room starts at the selected Wall and reads clockwise from inside; it depends on neither Face nor connected curves.</div>
 
 <h2>6. Walls and overhead: meets, gap, intended</h2>
 <p class="q">Question: can the first overhead slice be useful with no roof forms and no Wall change?</p>
@@ -274,154 +270,414 @@ Stage state pill. They are sketches, not specifications. Part of the
 </figure>
 <div class="rec"><b>Recommended.</b> V1 first: it is finished-looking over today's Walls, and it forces the D2 and D3 decisions while the geometry is trivial. A sloped Wall top under today's flat derived lid would look broken.</div>
 
-<h2>7. One rotunda, inspectable parts</h2>
-<p class="q">Question: after a gallery attaches, what is "the rotunda", and what does a click select?</p>
+<h2>7. Making a Space: from a Room, from partial Walls, from a floor</h2>
+<p class="q">Proposal: three entries into one concept. In each, something physical anchors the place.</p>
 <figure>
-<svg viewBox="0 0 1000 360" role="img" aria-label="A connected rotunda shown as one Room with four arc Walls, with the Card for a selected arc and the three identity carriers">
-  <text x="20" y="22" class="th">a. On the Stage: click a stretch of wall, get that Wall</text>
-  <circle cx="150" cy="170" r="92" class="roomf"/>
-  <path d="M215 105 A92 92 0 0 0 85 105" class="wall"/>
-  <path d="M85 105 A92 92 0 0 0 85 235" class="wall"/>
-  <path d="M85 235 A92 92 0 0 0 215 235" class="wall"/>
-  <rect x="215" y="105" width="150" height="130" class="roomf"/>
-  <path d="M215 105 L365 105 L365 235 L215 235" class="wall"/>
-  <path d="M215 235 A92 92 0 0 0 215 105" class="wall" style="stroke:#c8962a"/>
-  <circle cx="215" cy="105" r="6" class="knob"/><circle cx="215" cy="235" r="6" class="knob"/>
-  <circle cx="85" cy="105" r="6" class="knob"/><circle cx="85" cy="235" r="6" class="knob"/>
-  <text x="118" y="166" class="th">Rotunda</text><text x="112" y="184" class="ts">r 4.00 m · 50 m²</text>
-  <text x="282" y="174" class="t">Gallery</text>
-  <text x="20" y="300" class="ts">Gold: the selected arc Wall (shared with the Gallery).</text>
-  <text x="20" y="316" class="ts">The rotunda is still one named place with one radius.</text>
-  <text x="20" y="332" class="ts">Its four Walls are real Walls, each with Length, Openings, Unroll.</text>
-
-  <line x1="400" y1="14" x2="400" y2="346" class="dash"/>
-  <text x="420" y="22" class="th">b. The Card: part, then whole</text>
-  <rect x="420" y="40" width="240" height="210" rx="9" class="menu"/>
-  <text x="434" y="64" class="th">Wall 7</text><text x="434" y="82" class="ts">curved · 6.28 m · 1 Opening</text>
-  <line x1="434" y1="94" x2="646" y2="94" class="dash"/>
-  <text x="434" y="114" class="ts">Bounds</text>
-  <rect x="434" y="122" width="100" height="24" rx="12" class="pill"/><text x="448" y="138" class="t">Rotunda ›</text>
-  <rect x="542" y="122" width="100" height="24" rx="12" class="pill"/><text x="558" y="138" class="t">Gallery ›</text>
-  <text x="434" y="174" class="ts">Length  6.28 m</text><text x="434" y="192" class="ts">Height  3.20 m</text>
-  <text x="434" y="226" class="t">Unroll</text><text x="500" y="226" class="t">Split wall here</text>
-  <text x="420" y="278" class="ts">Rotunda › selects the Room. Its Card carries</text>
-  <text x="420" y="294" class="ts">Radius, Duplicate, Unroll the room and the</text>
-  <text x="420" y="310" class="ts">four Walls as Bounds. Nothing is fabricated:</text>
-  <text x="420" y="326" class="ts">both part and whole are canonical subjects.</text>
-
-  <line x1="690" y1="14" x2="690" y2="346" class="dash"/>
-  <text x="710" y="22" class="th">c. What carries "the Rotunda"? (S1 decides)</text>
-  <text x="710" y="56" class="t" style="font-weight:600">Room</text>
-  <text x="710" y="74" class="ts">No format change. Fails if divided</text>
-  <text x="710" y="90" class="ts">by a Wall or opened (no Room).</text>
-  <text x="710" y="126" class="t" style="font-weight:600">Stored element</text>
-  <text x="710" y="144" class="ts">Exact radius, survives opening.</text>
-  <text x="710" y="160" class="ts">Format bump; every planner must</text>
-  <text x="710" y="176" class="ts">keep membership true.</text>
-  <text x="710" y="212" class="t" style="font-weight:600">One Wall (model C)</text>
-  <text x="710" y="230" class="ts">Identity for free. New connectivity</text>
-  <text x="710" y="246" class="ts">primitive in every consumer.</text>
-  <text x="710" y="294" class="ts" style="fill:#d0412d">Not acceptable: a Round reading that is</text>
-  <text x="710" y="310" class="ts" style="fill:#d0412d">re-recognised within a tolerance and can</text>
-  <text x="710" y="326" class="ts" style="fill:#d0412d">vanish when one joint is nudged.</text>
+<svg viewBox="0 0 1000 440" role="img" aria-label="Three ways to make an open space: erasing a wall of a room, the Room tool on partial walls, and a floor region">
+<defs><marker id="m7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1c1c1a"/></marker></defs>
+<text x="20" y="22" class="th">a. A Room loses a Wall: it stays</text>
+<rect x="50" y="50" width="200" height="120" class="roomf"/>
+<path d="M50 170 L50 50 L250 50 L250 170" class="wall"/>
+<line x1="50" y1="170" x2="250" y2="170" class="ref"/>
+<text x="118" y="114" class="t">Booth 2</text>
+<rect x="60" y="184" width="217" height="20" rx="4" class="tag"/><text x="68" y="198" class="tagt">Keeps Booth 2 as an open space</text>
+<path d="M150 214 L150 232" class="thin" marker-end="url(#m7)"/>
+<rect x="50" y="240" width="200" height="100" class="roomf"/>
+<path d="M50 340 L50 240 L250 240 L250 340" class="wall"/>
+<line x1="50" y1="340" x2="250" y2="340" style="stroke:#1c1c1a;stroke-width:1.4;stroke-dasharray:5 4;fill:none"/>
+<text x="118" y="294" class="t">Booth 2</text>
+<text x="20" y="366" class="ts">Eraser on the front Wall (red dashes). The consequence</text>
+<text x="20" y="382" class="ts">line says what is kept. After: same name, id, floor and</text>
+<text x="20" y="398" class="ts">contents; the front is a dashed virtual edge.</text>
+<text x="20" y="414" class="ts">A Wall between two Rooms still merges them, as today.</text>
+<line x1="330" y1="14" x2="330" y2="426" class="dash"/>
+<text x="350" y="22" class="th">b. Partial Walls: the Room tool proposes the rest</text>
+<rect x="390" y="50" width="200" height="120" class="newf"/>
+<path d="M390 170 L390 50 L590 50 L590 120" class="wall"/>
+<path d="M590 120 L590 170 L390 170" class="prop"/>
+<circle cx="590" cy="120" r="5" class="knob"/>
+<circle cx="390" cy="170" r="5" class="knob"/>
+<path d="M470 96 l0 22 l6 -5 l5 11 l4 -2 l-5 -11 l8 0 z" fill="#1c1c1a"/>
+<rect x="440" y="184" width="224" height="20" rx="4" class="tag"/><text x="448" y="198" class="tagt">Space · 24.0 m² · click to name</text>
+<text x="350" y="232" class="ts">Arm Room on the Build plate and hover inside. Wall</text>
+<text x="350" y="248" class="ts">sides show in ink; missing sides are cobalt dashes</text>
+<text x="350" y="264" class="ts">joining the free ends in order. Click commits and</text>
+<text x="350" y="280" class="ts">the name is ready to type.</text>
+<text x="350" y="296" class="ts"></text>
+<text x="350" y="312" class="ts">Wrong guess, or no free ends to join? Draw the open</text>
+<text x="350" y="328" class="ts">side with the same tool: click, click, like a Wall.</text>
+<text x="350" y="344" class="ts" style="fill:#d0412d">No Walls and no floor: nothing to anchor a Space,</text>
+<text x="350" y="360" class="ts" style="fill:#d0412d">so the tool offers nothing and says why.</text>
+<line x1="670" y1="14" x2="670" y2="426" class="dash"/>
+<text x="690" y="22" class="th">c. A floor: the Space follows it</text>
+<rect x="730" y="56" width="200" height="110" fill="#e3dfcf" stroke="#1c1c1a" stroke-width="1.2"/>
+<rect x="736" y="62" width="200" height="110" fill="none" stroke="#6b6a63" stroke-width="1"/>
+<rect x="724" y="50" width="212" height="122" style="stroke:#1c1c1a;stroke-width:1.4;stroke-dasharray:5 4;fill:none"/>
+<text x="806" y="116" class="t">Terrace</text>
+<rect x="846" y="146" width="63" height="20" rx="4" class="tag"/><text x="854" y="160" class="tagt">+0.30 m</text>
+<text x="690" y="208" class="ts">Draw a floor region with the Terrace tool. It arrives</text>
+<text x="690" y="224" class="ts">with a Space on its outline, open to sky.</text>
+<text x="690" y="240" class="ts"></text>
+<text x="690" y="256" class="ts">Resize the floor and the Space follows. They are</text>
+<text x="690" y="272" class="ts">not edited separately: the dashed edge has no grips</text>
+<text x="690" y="288" class="ts">here.</text>
+<text x="690" y="304" class="ts"></text>
+<text x="690" y="320" class="ts">Remove the floor and the Space goes too, unless a</text>
+<text x="690" y="336" class="ts">Wall still bounds it.</text>
+<text x="690" y="352" class="ts"></text>
+<text x="690" y="368" class="ts">Arrives after a. and b., with floor regions (V1).</text>
 </svg>
-<figcaption>The requirement is on the creator-facing object, not on the stored encoding. Whichever carrier wins must survive attach, detach, radius edits, move, Duplicate and Undo.</figcaption>
+<figcaption>A Space is a named outline whose edges are Wall sides or virtual edges. All Walls reads Room; any virtual edge reads Open space. Same subject, same id.</figcaption>
 </figure>
-<div class="rec"><b>Recommendation:</b> prove the Room as carrier first; it is how every other T1 shape already keeps its identity after its Walls are split.</div>
+<div class="rec"><b>Decided:</b> a Space exists while a Wall stands on its boundary or a floor lies under it. An opened Room is kept, not retired.</div>
 
-<h2>8. Open Spaces: a name, an extent and a floor are three things</h2>
-<p class="q">Question: what does a pavilion, a terrace or a booth need that a Room record bundles today?</p>
+<h2>8. Working with a Space: boundary, selection, overlap</h2>
+<p class="q">Proposal: virtual edges are the only new mark, and they behave like the handles creators already know.</p>
 <figure>
-<svg viewBox="0 0 1000 340" role="img" aria-label="Three layers: Space identity, extent, physical floor; shown for a Room, a booth, a terrace and a pavilion">
-  <text x="20" y="22" class="th">Room (today)</text>
-  <rect x="30" y="50" width="170" height="120" class="roomf"/>
-  <rect x="30" y="50" width="170" height="120" class="wall"/>
-  <text x="84" y="114" class="t">Gallery</text>
-  <text x="20" y="200" class="ts">Name: on the Room record</text>
-  <text x="20" y="216" class="ts">Extent: derived from Walls</text>
-  <text x="20" y="232" class="ts">Floor: generated from the Room</text>
-  <text x="20" y="262" class="ts">All three in one record.</text>
-
-  <line x1="235" y1="14" x2="235" y2="326" class="dash"/>
-  <text x="255" y="22" class="th">Booth</text>
-  <rect x="265" y="50" width="170" height="120" class="newf" stroke="#2f55d4" stroke-dasharray="6 4"/>
-  <path d="M265 170 L265 50 L435 50 L435 170" class="wall"/>
-  <text x="322" y="114" class="t">Booth 2</text>
-  <text x="255" y="200" class="ts">Three Walls, no closed ring:</text>
-  <text x="255" y="216" class="ts" style="fill:#d0412d">no Room, no name, no floor today.</text>
-  <text x="255" y="232" class="ts">Extent must be stated (cobalt).</text>
-  <text x="255" y="262" class="ts">Often made by erasing one Wall</text>
-  <text x="255" y="278" class="ts">of a Room: should the name survive?</text>
-
-  <line x1="470" y1="14" x2="470" y2="326" class="dash"/>
-  <text x="490" y="22" class="th">Terrace</text>
-  <rect x="500" y="50" width="170" height="120" fill="#e3dfcf" stroke="#1c1c1a" stroke-width="1.2"/>
-  <rect x="506" y="56" width="170" height="120" fill="none" stroke="#6b6a63" stroke-width="1"/>
-  <text x="556" y="114" class="t">Terrace</text>
-  <rect x="610" y="150" width="56" height="18" rx="4" class="tag"/><text x="616" y="163" class="tagt">+0.30 m</text>
-  <text x="490" y="200" class="ts">No Walls at all.</text>
-  <text x="490" y="216" class="ts">The floor is independent physical</text>
-  <text x="490" y="232" class="ts">geometry: a Layout-owned region,</text>
-  <text x="490" y="248" class="ts">the mirror of V1's overhead region.</text>
-  <text x="490" y="278" class="ts">The name is a second, later thing.</text>
-
-  <line x1="705" y1="14" x2="705" y2="326" class="dash"/>
-  <text x="725" y="22" class="th">Pavilion</text>
-  <rect x="735" y="50" width="170" height="120" fill="#e3dfcf" stroke="#1c1c1a" stroke-width="1.2"/>
-  <rect x="725" y="40" width="190" height="140" fill="none" stroke="#2f55d4" stroke-width="1.5" stroke-dasharray="2 3"/>
-  <circle cx="745" cy="60" r="5" class="knobg"/><circle cx="895" cy="60" r="5" class="knobg"/>
-  <circle cx="745" cy="160" r="5" class="knobg"/><circle cx="895" cy="160" r="5" class="knobg"/>
-  <text x="792" y="114" class="t">Pavilion</text>
-  <text x="725" y="200" class="ts">Floor region + overhead region</text>
-  <text x="725" y="216" class="ts">(dotted) + posts (objects).</text>
-  <text x="725" y="232" class="ts">Reads as a place before it has</text>
-  <text x="725" y="248" class="ts">a Space at all.</text>
-  <text x="725" y="278" class="ts">Space adds: name, Index group,</text>
-  <text x="725" y="294" class="ts">Paint scope, an Experience target.</text>
+<svg viewBox="0 0 1000 440" role="img" aria-label="A selected open space with grips on its virtual edge, its Card, and the overlap rules">
+<defs><marker id="m8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1c1c1a"/></marker></defs>
+<text x="20" y="22" class="th">a. Selected: the open side has grips</text>
+<rect x="50" y="50" width="200" height="110" class="roomf" stroke="#c8962a" stroke-width="2"/>
+<path d="M50 160 L50 50 L250 50 L250 160" class="wall"/>
+<line x1="50" y1="160" x2="250" y2="160" style="stroke:#1c1c1a;stroke-width:1.4;stroke-dasharray:5 4;fill:none"/>
+<path d="M50 160 L50 200 L250 200 L250 160" class="prop"/>
+<circle cx="50" cy="160" r="5" class="knobg"/>
+<circle cx="250" cy="160" r="5" class="knobg"/>
+<rect x="143" y="153" width="14" height="14" fill="#c8962a" stroke="#1c1c1a" stroke-width="1.5"/>
+<path d="M150 170 L150 194" class="thin" marker-end="url(#m8)"/>
+<text x="118" y="110" class="t">Booth 3</text>
+<rect x="168" y="176" width="103" height="20" rx="4" class="tag"/><text x="176" y="190" class="tagt">9.0 → 12.0 m²</text>
+<text x="20" y="236" class="ts">Click the floor or the name: the Space is selected.</text>
+<text x="20" y="252" class="ts">Click a Wall: that Wall is selected.</text>
+<text x="20" y="268" class="ts"></text>
+<text x="20" y="284" class="ts">Mid-grip: moves the virtual edge square to itself.</text>
+<text x="20" y="300" class="ts">End knobs: slide along the Walls they touch.</text>
+<text x="20" y="316" class="ts">Wall sides are moved by moving the Walls.</text>
+<text x="20" y="332" class="ts"></text>
+<text x="20" y="348" class="ts">The virtual edge is a handle, not a subject: no Card,</text>
+<text x="20" y="364" class="ts">never selected alone. Dashed in Plan always; in 3D</text>
+<text x="20" y="380" class="ts">only while selected; never shown to a visitor.</text>
+<line x1="330" y1="14" x2="330" y2="426" class="dash"/>
+<text x="350" y="22" class="th">b. The Card: one subject, two readings</text>
+<rect x="360" y="44" width="270" height="164" rx="9" class="menu"/>
+<text x="374" y="68" class="th">Booth 3</text>
+<text x="374" y="86" class="ts">Open space · 9.0 m²</text>
+<line x1="374" y1="96" x2="616" y2="96" class="dash"/>
+<text x="374" y="114" class="ts">Bounds</text><text x="460" y="114" class="ts" style="fill:#1c1c1a">3 walls · 1 open side</text>
+<text x="374" y="132" class="ts">Inside</text><text x="460" y="132" class="ts" style="fill:#1c1c1a">Hall  ›</text>
+<text x="374" y="150" class="ts">Overhead</text><text x="460" y="150" class="ts" style="fill:#1c1c1a">[ Closed | Open to sky ]</text>
+<text x="374" y="168" class="ts">Floor</text><text x="460" y="168" class="ts" style="fill:#1c1c1a">0.10 m</text>
+<text x="374" y="194" class="t">Unroll the room · Lift · •••</text>
+<rect x="470" y="44" width="150" height="62" rx="7" class="menu" transform="translate(40,150)"/>
+<text x="522" y="216" class="t">Duplicate</text>
+<text x="522" y="234" class="t">Rename</text>
+<text x="522" y="250" class="t" style="fill:#d0412d">Remove space</text>
+<text x="350" y="290" class="ts">Kind line reads Room when every side is a Wall,</text>
+<text x="350" y="306" class="ts">Open space otherwise. Nothing else changes.</text>
+<text x="350" y="322" class="ts"></text>
+<text x="350" y="338" class="ts">Overhead is the place's intent: Open to sky removes</text>
+<text x="350" y="354" class="ts">the generated lid. A canopy above is separate</text>
+<text x="350" y="370" class="ts">geometry: "Open to sky · under Canopy 1".</text>
+<text x="350" y="386" class="ts"></text>
+<text x="350" y="402" class="ts">Remove space drops the name and generated surfaces</text>
+<text x="350" y="418" class="ts">and keeps the Walls. A Room has no such action.</text>
+<line x1="670" y1="14" x2="670" y2="426" class="dash"/>
+<text x="690" y="22" class="th">c. Overlap: it stops, and says so</text>
+<rect x="700" y="50" width="110" height="90" class="roomf"/>
+<path d="M700 140 L700 50 L810 50" class="wall"/>
+<path d="M810 50 L810 140 L700 140" style="stroke:#1c1c1a;stroke-width:1.4;stroke-dasharray:5 4;fill:none"/>
+<text x="726" y="100" class="ts">Booth 2</text>
+<rect x="810" y="50" width="130" height="90" class="newf"/>
+<path d="M810 50 L940 50 L940 140" class="wall"/>
+<path d="M940 140 L810 140" style="stroke:#1c1c1a;stroke-width:1.4;stroke-dasharray:5 4;fill:none"/>
+<text x="852" y="100" class="ts">Booth 3</text>
+<rect x="803" y="88" width="14" height="14" fill="#c8962a" stroke="#1c1c1a" stroke-width="1.5"/>
+<rect x="742" y="152" width="123" height="20" rx="4" class="tag"/><text x="750" y="166" class="tagt">Stops at Booth 2</text>
+<rect x="700" y="196" width="150" height="80" class="roomf"/>
+<rect x="700" y="196" width="150" height="80" class="wall"/>
+<text x="712" y="214" class="ts">Hall</text>
+<rect x="770" y="226" width="60" height="40" fill="#dfe7fb" style="stroke:#1c1c1a;stroke-width:1.4;stroke-dasharray:5 4;fill:none"/>
+<text x="778" y="250" class="ts">Booth</text>
+<rect x="880" y="216" width="80" height="50" class="ref"/><text x="900" y="282" class="ts" style="fill:#d0412d">refused</text>
+<rect x="850" y="206" width="60" height="40" fill="none" stroke="#1c1c1a" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="690" y="304" class="ts">Two open spaces never overlap. A dragged edge stops</text>
+<text x="690" y="320" class="ts">at the neighbour; nothing is clamped silently.</text>
+<text x="690" y="336" class="ts"></text>
+<text x="690" y="352" class="ts">Wholly inside a Room: allowed. A point belongs to</text>
+<text x="690" y="368" class="ts">the innermost Space (a plinth is in Booth, not Hall).</text>
+<text x="690" y="384" class="ts" style="fill:#d0412d">Partly across a Room or another open space: refused</text>
+<text x="690" y="400" class="ts" style="fill:#d0412d">in red dashes, with the reason.</text>
+<text x="690" y="416" class="ts">Different floors (a raised terrace) do not interact.</text>
 </svg>
-<figcaption>No schema is proposed. The sketch only separates what must not be decided together: Space identity, where its extent comes from, and physical floor geometry.</figcaption>
+<figcaption>Grips reuse the grammar: gold when active, disc knobs for points. The World is not partitioned; ground outside every Space belongs to none.</figcaption>
 </figure>
-<div class="rec"><b>Recommendation:</b> floor and platform regions first, inside the verticality plan; Space identity as research (S2) now and a plan after V1.</div>
+<div class="rec"><b>Decided:</b> no overlap on the same surface; containment only as an open space inside a Room; Zones stay reserved for broader scopes.</div>
 
-<h2>9. Interior Reveal: Lift and cutaway, and who owns what</h2>
-<p class="q">Question: can a creator see and work inside without anything authored, lit or published changing?</p>
+<h2>9. Interior Reveal: Lift and the near-wall cutaway</h2>
+<p class="q">Proposal: one reading the creator enters (Lift) and one automatic behaviour the creator can switch (cutaway).</p>
 <figure>
-<svg viewBox="0 0 1000 350" role="img" aria-label="A room with its ceiling lifted and near wall cut down, the state pill, and the ownership split between Layout representation, editor session, Camera, Scene and Experience">
-  <text x="20" y="22" class="th">a. The reading</text>
-  <path d="M60 230 L260 270 L420 210 L220 180 Z" class="roomf" stroke="#1c1c1a" stroke-width="1.2"/>
-  <path d="M60 230 L60 130 L220 80 L220 180" fill="#fff" stroke="#1c1c1a" stroke-width="1.5"/>
-  <path d="M220 180 L220 80 L420 110 L420 210" fill="#fff" stroke="#1c1c1a" stroke-width="1.5"/>
-  <path d="M60 230 L260 270 L260 252 L60 212 Z" fill="#f2d000" stroke="#1c1c1a" stroke-width="1.2"/>
-  <path d="M260 270 L420 210 L420 192 L260 252 Z" fill="#f2d000" stroke="#1c1c1a" stroke-width="1.2"/>
-  <path d="M60 130 L260 170 L420 110" class="dash"/><path d="M260 170 L260 252" class="dash"/>
-  <path d="M60 70 L260 110 L420 50 L220 20 Z" fill="none" stroke="#2f55d4" stroke-width="1.5" stroke-dasharray="6 4"/>
-  <path d="M260 164 L260 118" class="thin" marker-end="url(#a9)"/>
-  <rect x="150" y="212" width="26" height="22" fill="#fff" stroke="#1c1c1a"/>
-  <rect x="300" y="196" width="26" height="22" fill="#fff" stroke="#1c1c1a"/>
-  <rect x="150" y="296" width="210" height="26" rx="13" class="pill"/>
-  <text x="164" y="313" class="t">Lift · Gallery ceiling</text><text x="296" y="313" class="t" style="font-weight:600">Put back</text>
-  <text x="440" y="60" class="ts">Ceiling: lifted, drawn</text><text x="440" y="76" class="ts">as its outline.</text>
-  <text x="440" y="236" class="ts">Near Walls: cut to a</text><text x="440" y="252" class="ts">yellow cap; dashed</text><text x="440" y="268" class="ts">ghost stays selectable.</text>
-  <defs><marker id="a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1c1c1a"/></marker></defs>
-
-  <line x1="590" y1="14" x2="590" y2="336" class="dash"/>
-  <text x="610" y="22" class="th">b. One reading, five authorities</text>
-  <text x="610" y="56" class="t" style="font-weight:600">Layout representation</text>
-  <text x="610" y="73" class="ts">How a cut, lifted or hidden source is drawn. Same ids.</text>
-  <text x="610" y="106" class="t" style="font-weight:600">Editor session</text>
-  <text x="610" y="123" class="ts">Which sources, which reading. Not saved, no history.</text>
-  <text x="610" y="156" class="t" style="font-weight:600">Camera</text>
-  <text x="610" y="173" class="ts">The pose only. Stores no reveal; never moved by one.</text>
-  <text x="610" y="206" class="t" style="font-weight:600">Scene / T2</text>
-  <text x="610" y="223" class="ts">Lit as built: a lifted ceiling still blocks the sun.</text>
-  <text x="610" y="256" class="t" style="font-weight:600">Experience</text>
-  <text x="610" y="273" class="ts">Nothing. Preview, snapshots and releases are as built.</text>
-  <text x="610" y="312" class="ts" style="fill:#d0412d">Not proposed: an eye per row in the Index; a</text>
-  <text x="610" y="328" class="ts" style="fill:#d0412d">visitor cutaway reached by leaking session state.</text>
+<svg viewBox="0 0 1000 440" role="img" aria-label="The reading control menu with Lift and Near walls, a lifted room with its pill, and a room with near walls cut to stubs">
+<text x="20" y="22" class="th">a. Enter: the reading control, or the Card</text>
+<rect x="40" y="44" width="150" height="28" rx="6" class="pill"/>
+<text x="56" y="63" class="t">2D</text>
+<line x1="88" y1="44" x2="88" y2="72" stroke="#1c1c1a"/>
+<text x="100" y="63" class="t" style="font-weight:600">3D</text>
+<line x1="136" y1="44" x2="136" y2="72" stroke="#1c1c1a"/>
+<text x="152" y="63" class="t">▾</text>
+<rect x="40" y="80" width="230" height="150" rx="7" class="menu"/>
+<text x="54" y="102" class="t">Eye level</text>
+<text x="54" y="124" class="t">Elevations</text>
+<text x="54" y="146" class="t">Projection  ›</text>
+<text x="54" y="168" class="t">Roofs from above</text>
+<line x1="54" y1="176" x2="256" y2="176" class="dash"/>
+<text x="54" y="196" class="t" style="font-weight:600">✓ Lift</text>
+<text x="54" y="218" class="t">Near walls</text>
+<rect x="150" y="204" width="108" height="20" rx="5" class="pill"/>
+<text x="160" y="218" class="ts" style="fill:#1c1c1a;font-weight:600">Cut</text>
+<text x="206" y="218" class="ts">Whole</text>
+<text x="20" y="262" class="ts">Lift is one item behind the ▾, as PLATE places it,</text>
+<text x="20" y="278" class="ts">and a Look icon on a Room, Space or overhead Card.</text>
+<text x="20" y="294" class="ts"></text>
+<text x="20" y="310" class="ts">Scope: the selected Space, or the one the Camera is</text>
+<text x="20" y="326" class="ts">in; with neither, everything.</text>
+<text x="20" y="342" class="ts"></text>
+<text x="20" y="358" class="ts">Near walls is a switch, not a reading: Cut is the</text>
+<text x="20" y="374" class="ts">default; holding a key shows Walls whole for as</text>
+<text x="20" y="390" class="ts">long as it is held.</text>
+<line x1="330" y1="14" x2="330" y2="426" class="dash"/>
+<text x="350" y="22" class="th">b. Lifted: work through it, select it by its outline</text>
+<path d="M360 140 L520 172 L648 124 L488 100 Z" class="roomf" stroke="#1c1c1a" stroke-width="1"/>
+<path d="M360 140 L488 100 L488 54 L360 94 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M488 100 L648 124 L648 78 L488 54 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<rect x="480" y="118" width="14" height="14" fill="#fff" stroke="#1c1c1a"/>
+<rect x="532" y="108" width="14" height="14" fill="#fff" stroke="#1c1c1a"/>
+<path d="M360 140 L520 172 L520 126 L360 94 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M520 172 L648 124 L648 78 L520 126 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M360 94 L520 126 L648 78 L488 54 Z" fill="none" stroke="#1c1c1a" stroke-width="1.3" stroke-dasharray="5 4"/>
+<rect x="400" y="196" width="204" height="26" rx="13" class="pill"/>
+<text x="414" y="213" class="t">Lift · Gallery ▾</text>
+<text x="537.6" y="213" class="t" style="font-weight:600">Put back</text>
+<text x="350" y="254" class="ts">The ceiling is not drawn. A dashed outline stays at</text>
+<text x="350" y="270" class="ts">its true position. Clicks pass through to the inside.</text>
+<text x="350" y="286" class="ts"></text>
+<text x="350" y="302" class="ts">Click the outline (or its Index row): the ceiling is</text>
+<text x="350" y="318" class="ts">selected and draws as a ghost, editable in place.</text>
+<text x="350" y="334" class="ts"></text>
+<text x="350" y="350" class="ts">Exit: Put back, or Escape. Survives 2D ⇄ 3D. Not</text>
+<text x="350" y="366" class="ts">saved, not in history.</text>
+<text x="350" y="382" class="ts" style="fill:#d0412d">Never: moves the Camera, relights, or shows in</text>
+<text x="350" y="398" class="ts" style="fill:#d0412d">Preview, a snapshot or a release.</text>
+<line x1="670" y1="14" x2="670" y2="426" class="dash"/>
+<text x="690" y="22" class="th">c. Near walls: Cut</text>
+<path d="M700 140 L860 172 L988 124 L828 100 Z" class="roomf" stroke="#1c1c1a" stroke-width="1"/>
+<path d="M700 140 L828 100 L828 54 L700 94 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M828 100 L988 124 L988 78 L828 54 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<rect x="820" y="118" width="14" height="14" fill="#fff" stroke="#1c1c1a"/>
+<rect x="872" y="108" width="14" height="14" fill="#fff" stroke="#1c1c1a"/>
+<path d="M700 140 L860 172 L860 163 L700 131 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M860 172 L988 124 L988 115 L860 163 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M700 131 L860 163 L860 158 L700 126 Z" fill="#ffffff" stroke="#1c1c1a" stroke-width="1.2"/>
+<path d="M860 163 L988 115 L988 110 L860 158 Z" fill="#ffffff" stroke="#1c1c1a" stroke-width="1.2"/>
+<path d="M700 94 L860 126 L988 78 L828 54 Z" fill="none" stroke="#1c1c1a" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="690" y="214" class="ts">Inside a Space in 3D, Walls between the Camera and</text>
+<text x="690" y="230" class="ts">the interior drop to a stub with a plain paper cap</text>
+<text x="690" y="246" class="ts">(yellow belongs to Slice). They are click-through.</text>
+<text x="690" y="262" class="ts"></text>
+<text x="690" y="278" class="ts">Click a stub: that Wall is selected and stands whole</text>
+<text x="690" y="294" class="ts">while it is. The selection's host Wall is never cut.</text>
+<text x="690" y="310" class="ts"></text>
+<text x="690" y="326" class="ts">No pill: this is viewing state, as PLATE says.</text>
+<text x="690" y="342" class="ts">No pinning to a Wall: a deliberate cut is Slice.</text>
+<text x="690" y="358" class="ts">Walls change only while the Camera moves.</text>
 </svg>
-<figcaption>Lift and the near-wall cutaway are already named in PLATE as viewing state. The slice cue and the pill follow the existing temporary-reading rules; the yellow cap is the grammar's Slice colour.</figcaption>
+<figcaption>Layout representation draws the state; the editor session holds it; the Camera supplies a pose and stores nothing; lighting stays as built.</figcaption>
 </figure>
-<div class="rec"><b>Recommendation:</b> Lift ships with V1, because an authored ceiling the creator cannot see past is a regression.</div>
+<div class="rec"><b>Decided:</b> Lift ships before the first authored ceiling. The cutaway gets a switch and a hold key, and nothing more.</div>
+
+<h2>10. Slice: deliberate horizontal and vertical cuts</h2>
+<p class="q">Proposal: build the Slice PLATE already specifies, Level cut first, and rank it ahead of the automatic cutaway.</p>
+<figure>
+<svg viewBox="0 0 1000 440" role="img" aria-label="A level cut through a room with the Height Sheet, a drawn vertical cut in plan with its handles and pill, and a comparison with the automatic cutaway">
+<defs><marker id="m10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1c1c1a"/></marker></defs>
+<text x="20" y="22" class="th">a. Level cut: one plane at the Sheet height</text>
+<path d="M30 150 L190 182 L318 134 L158 110 Z" class="roomf" stroke="#1c1c1a" stroke-width="1"/>
+<path d="M30 150 L158 110 L158 50 L30 90 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M158 110 L318 134 L318 74 L158 50 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<rect x="150" y="128" width="14" height="14" fill="#fff" stroke="#1c1c1a"/>
+<rect x="202" y="118" width="14" height="14" fill="#fff" stroke="#1c1c1a"/>
+<path d="M30 150 L190 182 L190 168 L30 136 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M190 182 L318 134 L318 120 L190 168 Z" fill="#fff" stroke="#1c1c1a" stroke-width="1.4"/>
+<path d="M30 136 L190 168 L190 163 L30 131 Z" fill="#f2d000" stroke="#1c1c1a" stroke-width="1.2"/>
+<path d="M190 168 L318 120 L318 115 L190 163 Z" fill="#f2d000" stroke="#1c1c1a" stroke-width="1.2"/>
+<path d="M16 131 L190 173 L332 115 L158 81 Z" fill="#f2d000" fill-opacity=".28" stroke="#b39a00" stroke-width="1"/>
+<line x1="318" y1="60" x2="318" y2="190" stroke="#1c1c1a" stroke-width="2"/>
+<line x1="310" y1="80" x2="326" y2="80" class="thin"/>
+<line x1="312" y1="120" x2="324" y2="120" class="thin"/>
+<line x1="310" y1="180" x2="326" y2="180" class="thin"/>
+<polygon points="318,140 326,145 326,155 318,160 310,155 310,145" fill="#c8962a" stroke="#1c1c1a" stroke-width="1.5"/>
+<rect x="244" y="140" width="56" height="20" rx="4" class="tag"/><text x="252" y="154" class="tagt">1.20 m</text>
+<rect x="40" y="206" width="249" height="26" rx="13" class="pill"/>
+<text x="54" y="223" class="t">Cut at 1.20 m</text>
+<text x="157.8" y="223" class="t">depth ▾</text>
+<text x="222.0" y="223" class="t" style="font-weight:600">Put back</text>
+<text x="20" y="262" class="ts">Arm Slice › Level. Drag the Height Sheet: the plane</text>
+<text x="20" y="278" class="ts">follows and snaps to its ticks. Everything above is</text>
+<text x="20" y="294" class="ts">not drawn; cut Walls and Openings get a yellow cap.</text>
+<text x="20" y="310" class="ts">(The sketch keeps the far Walls tall for legibility.)</text>
+<text x="20" y="326" class="ts"></text>
+<text x="20" y="342" class="ts">Then go back to Select and work: the cut is a</text>
+<text x="20" y="358" class="ts">reading, not a mode. Hidden things stay in the</text>
+<text x="20" y="374" class="ts">Index and draw as ghosts when selected.</text>
+<text x="20" y="390" class="ts">One Slice at a time. Put back or Escape ends it.</text>
+<line x1="340" y1="14" x2="340" y2="426" class="dash"/>
+<text x="360" y="22" class="th">b. Drawn cut: a vertical plane along a segment</text>
+<rect x="380" y="50" width="250" height="130" class="roomf"/>
+<rect x="380" y="50" width="250" height="130" class="wall"/>
+<line x1="500" y1="50" x2="500" y2="180" class="wall"/>
+<rect x="380" y="118" width="250" height="62" fill="#fff" fill-opacity=".8"/>
+<rect x="366" y="70" width="278" height="48" fill="#f2d000" fill-opacity=".28"/>
+<line x1="366" y1="118" x2="644" y2="118" stroke="#b39a00" stroke-width="3"/>
+<circle cx="366" cy="118" r="5" class="knob"/>
+<circle cx="644" cy="118" r="5" class="knob"/>
+<path d="M560 118 L560 74" class="thin" marker-end="url(#m10)"/>
+<circle cx="560" cy="70" r="4" class="knobg"/>
+<rect x="470" y="126" width="56" height="20" rx="4" class="tag"/><text x="478" y="140" class="tagt">8.40 m</text>
+<text x="572" y="96" class="ts">depth</text>
+<text x="392" y="160" class="ts">hidden side</text>
+<rect x="366" y="196" width="285" height="26" rx="13" class="pill"/>
+<text x="380" y="213" class="t">depth</text>
+<text x="431.0" y="213" class="t">Flip</text>
+<text x="475.4" y="213" class="t">Face</text>
+<text x="519.8" y="213" class="t">Section</text>
+<text x="584.0" y="213" class="t" style="font-weight:600">Put back</text>
+<text x="360" y="254" class="ts">Arm Slice › Drawn. Two clicks, like a Wall: 45° soft</text>
+<text x="360" y="270" class="ts">snap and a live length tag. It cuts only within its</text>
+<text x="360" y="286" class="ts">length. The side toward the Camera is hidden.</text>
+<text x="360" y="302" class="ts"></text>
+<text x="360" y="318" class="ts">End points redraw it; the line moves it; the depth</text>
+<text x="360" y="334" class="ts">ray sets how far behind the plane is shown.</text>
+<text x="360" y="350" class="ts">Flip swaps sides. Face squares the Camera to it.</text>
+<text x="360" y="366" class="ts">Section is the flat measured reading of the cut.</text>
+<text x="360" y="382" class="ts">Face and Section exist only while a drawn Slice does.</text>
+<line x1="670" y1="14" x2="670" y2="426" class="dash"/>
+<text x="690" y="22" class="th">c. Level cut or automatic cutaway first?</text>
+<text x="690" y="54" class="t" style="font-weight:600">Level cut</text>
+<text x="690" y="72" class="ts">One drag. One plane, one number.</text>
+<text x="690" y="88" class="ts">Every Room at once, ceilings included.</text>
+<text x="690" y="104" class="ts">Wrong height is visible and fixed by the same drag.</text>
+<text x="690" y="120" class="ts">Uses the Height Sheet and its cut cue, both built.</text>
+<text x="690" y="158" class="t" style="font-weight:600">Automatic cutaway</text>
+<text x="690" y="176" class="ts">No action needed.</text>
+<text x="690" y="192" class="ts">Guesses the working Space from the Camera.</text>
+<text x="690" y="208" class="ts" style="fill:#d0412d">Can flicker while orbiting; can cut a facade the</text>
+<text x="690" y="224" class="ts" style="fill:#d0412d">creator wanted to judge. Tuning has no clear end.</text>
+<text x="690" y="240" class="ts">Covers one Space; ceilings still need Lift.</text>
+<text x="690" y="284" class="t">Order: Lift → Level cut → cutaway switch →</text>
+<text x="690" y="301" class="t">Drawn cut → Section.</text>
+<text x="690" y="318" class="t"></text>
+<text x="690" y="335" class="t">Section is last because it needs Layout's typed cut</text>
+<text x="690" y="352" class="t">and projected streams, which nothing consumes yet.</text>
+</svg>
+<figcaption>Yellow is temporary inspection in the grammar: a translucent plane, a depth volume and the state pill. A Slice is never source and never reaches a visitor.</figcaption>
+</figure>
+<div class="rec"><b>Decided:</b> deterministic before heuristic. In planning scope for this batch; not in its immediate implementation.</div>
+
+<h2>11. The rotunda: whole and components</h2>
+<p class="q">Proposal: the whole is the Room and carries Radius; each stretch of wall is a real Wall; nothing is fabricated in either direction.</p>
+<figure>
+<svg viewBox="0 0 1000 466" role="img" aria-label="A rotunda selected as a whole with its radius knob and Card, one arc selected with its Card, and a refused bend">
+<defs><marker id="m11" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1c1c1a"/></marker></defs>
+<text x="20" y="22" class="th">a. The whole: click the floor or the name</text>
+<circle cx="120" cy="120" r="62" class="roomf"/>
+<rect x="164" y="76.3" width="110" height="87.4" class="roomf"/>
+<path d="M164.0 76.3 L274 76.3 L274 163.7 L164.0 163.7" class="wall"/>
+<path d="M164.0 76.3 A62 62 0 0 0 76.0 76.3" class="wall"/>
+<path d="M76.0 76.3 A62 62 0 0 0 76.0 163.7" class="wall"/>
+<path d="M76.0 163.7 A62 62 0 0 0 164.0 163.7" class="wall"/>
+<path d="M164.0 163.7 A62 62 0 0 0 164.0 76.3" class="wall"/>
+<circle cx="164" cy="76.31934066431688" r="5" class="knob"/>
+<circle cx="76" cy="76.31934066431688" r="5" class="knob"/>
+<circle cx="76" cy="163.68065933568312" r="5" class="knob"/>
+<circle cx="164" cy="163.68065933568312" r="5" class="knob"/>
+<text x="190" y="124" class="ts">Gallery</text>
+<circle cx="120" cy="120" r="57" fill="none" stroke="#c8962a" stroke-width="2"/>
+<circle cx="120" cy="120" r="3" fill="#1c1c1a"/>
+<line x1="120" y1="120" x2="58" y2="120" stroke="#c8962a" stroke-width="2"/>
+<circle cx="58" cy="120" r="6" class="knobg"/>
+<rect x="68" y="92" width="70" height="20" rx="4" class="tag"/><text x="76" y="106" class="tagt">r 4.00 m</text>
+<rect x="30" y="200" width="280" height="164" rx="9" class="menu"/>
+<text x="44" y="224" class="th">Rotunda</text>
+<text x="44" y="242" class="ts">Room · Round · 50.3 m²</text>
+<line x1="44" y1="252" x2="296" y2="252" class="dash"/>
+<text x="44" y="270" class="ts">Radius</text><text x="130" y="270" class="ts" style="fill:#1c1c1a">4.00 m</text>
+<text x="44" y="288" class="ts">Diameter</text><text x="130" y="288" class="ts" style="fill:#1c1c1a">8.00 m</text>
+<text x="44" y="306" class="ts">Overhead</text><text x="130" y="306" class="ts" style="fill:#1c1c1a">Closed</text>
+<text x="44" y="324" class="ts">Bounds</text><text x="130" y="324" class="ts" style="fill:#1c1c1a">4 walls</text>
+<text x="44" y="350" class="t">Duplicate · Lift · Unroll the room</text>
+<text x="20" y="388" class="ts">Drag the rim knob or type Radius: every rim joint moves</text>
+<text x="20" y="404" class="ts">radially, attached Walls stretch, Openings keep their</text>
+<text x="20" y="420" class="ts">angle. If a neighbour would fail, the whole edit refuses.</text>
+<text x="20" y="436" class="ts">••• holds Release round.</text>
+<line x1="330" y1="14" x2="330" y2="452" class="dash"/>
+<text x="350" y="22" class="th">b. A component: click a stretch of wall</text>
+<circle cx="450" cy="120" r="62" class="roomf"/>
+<rect x="494" y="76.3" width="110" height="87.4" class="roomf"/>
+<path d="M494.0 76.3 L604 76.3 L604 163.7 L494.0 163.7" class="wall"/>
+<path d="M494.0 76.3 A62 62 0 0 0 406.0 76.3" class="wall"/>
+<path d="M406.0 76.3 A62 62 0 0 0 406.0 163.7" class="wall"/>
+<path d="M406.0 163.7 A62 62 0 0 0 494.0 163.7" class="wall"/>
+<path d="M494.0 163.7 A62 62 0 0 0 494.0 76.3" class="wall" style="stroke:#c8962a"/>
+<circle cx="494" cy="76.31934066431688" r="5" class="knob"/>
+<circle cx="406" cy="76.31934066431688" r="5" class="knob"/>
+<circle cx="406" cy="163.68065933568312" r="5" class="knob"/>
+<circle cx="494" cy="163.68065933568312" r="5" class="knob"/>
+<text x="520" y="124" class="ts">Gallery</text>
+<rect x="360" y="200" width="280" height="164" rx="9" class="menu"/>
+<text x="374" y="224" class="th">Wall 7</text>
+<text x="374" y="242" class="ts">curved · 3.1 m · 1 Opening</text>
+<line x1="374" y1="252" x2="626" y2="252" class="dash"/>
+<text x="374" y="270" class="ts">Length</text><text x="460" y="270" class="ts" style="fill:#1c1c1a">3.10 m · set by Radius</text>
+<text x="374" y="288" class="ts">Height</text><text x="460" y="288" class="ts" style="fill:#1c1c1a">3.20 m</text>
+<text x="374" y="306" class="ts">Thickness</text><text x="460" y="306" class="ts" style="fill:#1c1c1a">0.20 m</text>
+<text x="374" y="324" class="ts">Bounds</text><text x="460" y="324" class="ts" style="fill:#1c1c1a">Rotunda › · Gallery ›</text>
+<text x="374" y="350" class="t">Unroll · Split wall here</text>
+<text x="350" y="388" class="ts">Each arc is a real Wall with its own Height, Thickness,</text>
+<text x="350" y="404" class="ts">Openings, Unroll and Split. Length is shown, not edited.</text>
+<text x="350" y="420" class="ts">Bounds is one step to each Room it bounds: the way back</text>
+<text x="350" y="436" class="ts">to the whole.</text>
+<line x1="670" y1="14" x2="670" y2="452" class="dash"/>
+<text x="690" y="22" class="th">c. Breaking the circle refuses, with a way out</text>
+<circle cx="780" cy="120" r="62" class="roomf"/>
+<rect x="824" y="76.3" width="110" height="87.4" class="roomf"/>
+<path d="M824.0 76.3 L934 76.3 L934 163.7 L824.0 163.7" class="wall"/>
+<path d="M824.0 76.3 A62 62 0 0 0 736.0 76.3" class="wall"/>
+<path d="M736.0 76.3 A62 62 0 0 0 736.0 163.7" class="wall"/>
+<path d="M736.0 163.7 A62 62 0 0 0 824.0 163.7" class="wall"/>
+<path d="M824.0 163.7 A62 62 0 0 0 824.0 76.3" class="wall"/>
+<circle cx="824" cy="76.31934066431688" r="5" class="knob"/>
+<circle cx="736" cy="76.31934066431688" r="5" class="knob"/>
+<circle cx="736" cy="163.68065933568312" r="5" class="knob"/>
+<circle cx="824" cy="163.68065933568312" r="5" class="knob"/>
+<text x="850" y="124" class="ts">Gallery</text>
+<path d="M736 76.3 Q670 120 736 163.7" class="ref"/>
+<path d="M718 120 L696 120" class="thin" marker-end="url(#m11)"/>
+<text x="690" y="216" class="t" style="fill:#d0412d">“This wall is part of a round room.</text>
+<text x="690" y="233" class="t" style="fill:#d0412d">Change Radius, or release round.”</text>
+<text x="690" y="266" class="ts">Bending a member arc or dragging a rim joint off the</text>
+<text x="690" y="282" class="ts">circle refuses and writes nothing.</text>
+<text x="690" y="298" class="ts"></text>
+<text x="690" y="314" class="ts">Release round (Room •••): the ring becomes ordinary</text>
+<text x="690" y="330" class="ts">curved Walls. Undoable.</text>
+<text x="690" y="346" class="ts"></text>
+<text x="690" y="362" class="ts">Round is stated on the Room, never re-detected.</text>
+<text x="690" y="378" class="ts">It is cleared, with the consequence line “Rotunda</text>
+<text x="690" y="394" class="ts">stops being round”, by: Release round, a Wall drawn</text>
+<text x="690" y="410" class="ts">across the Room, or an arc erased (the Room then</text>
+<text x="690" y="426" class="ts">stays, as an open space).</text>
+</svg>
+<figcaption>Subject to spike S1 proving that Round, Radius, name and id survive attach, detach, Opening edits, move, Duplicate, Undo and Redo, with an exact radius.</figcaption>
+</figure>
+<div class="rec"><b>Decided:</b> the Room is the rotunda. Edits that would break the circle refuse; Release round is the explicit workaround.</div>
 
 </main>
 </body>
