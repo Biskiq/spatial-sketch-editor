@@ -4,8 +4,8 @@ Part of the [T1 next-batch proposal](./README.md). Each journey is a thing a cre
 small exhibition space would do in one sitting. "Stops at" is read from code at `97e208d7`, not
 observed in a browser. J1–J6 define the completeness lane: when they pass, the lane is done.
 
-*Revision 2:* J4 and J5 are corrected, J6 gains the identity requirement, and J10–J12 are new
-depth journeys for Open Spaces, Interior Reveal and the T1–T2 contract.
+Revision 3: each journey names the slices that make it pass. J10–J13 cover Spaces, Interior
+Reveal, Slice and the T1–T2 contract with the approved policies.
 
 ## J1. Move a doorway wall without rebuilding the room
 
@@ -59,14 +59,14 @@ as a bent one.
 3. His room shares a Wall, so the isolated planner refuses (`room_not_isolated`). With A5 the copy
    is a free island: four Walls including a copy of the shared one, both Openings, one new Room.
    The door's relation to the hall is not copied and the consequence line says so.
-4. He drags the copy against the hall. **Revision 2 correction:** nothing attaches. Room move is a
-   rigid translation and overlap between independent groups is permitted, so the chapel's back
-   Wall lies on top of the hall's Wall as a second Wall, and the door joins no Rooms. The model
-   allows this silently. With A5 the Stage reads **overlaps, not joined** on the doubled stretch.
-5. To finish as he intends he must erase the doubled Wall and redraw the joint by hand, or wait for
-   **weld**. This journey is therefore only *partly* met by the completeness lane, and says so.
+4. He drags the copy against the hall. Nothing attaches: Room move is a rigid translation and
+   overlap between independent groups is permitted, so the chapel's back Wall lies on top of the
+   hall's Wall as a second Wall and the door joins no Rooms. With A5 the Stage reads **overlaps,
+   not joined** on the doubled stretch.
+5. To finish he erases the doubled Wall and redraws the two joints. Weld is outside this batch, so
+   this journey is met up to the cue and no further. That limit is accepted.
 
-**Needs:** A4, then A5 with the overlap cue; weld to finish. **Proves:** copy-never-share;
+**Needs:** A4, then A5 with the overlap cue. **Proves:** copy-never-share;
 consequence wording; ids captured so Redo replays them; the copy never lands on its source.
 
 ## J5. Hang a row of windows precisely
@@ -74,7 +74,7 @@ consequence wording; ids captured so Redo replays them; the copy never lands on 
 > Lan has a 12 m wall and wants five windows at equal spacing, heads aligned at 2.4 m.
 
 1. She places the first window. **Stops at:** there is no Repeat. She places four more by eye and
-   corrects each offset in the Card. *(Revision 2: revision 1 missed this; the planner exists.)*
+   corrects each offset in the Card.
 2. With Repeat: on the Opening, **Repeat** takes a count and a spacing in metres; four cobalt
    proposals appear along the Wall; a copy that would leave the Wall or hit another Opening
    refuses the whole set in words. One entry.
@@ -100,13 +100,12 @@ Unroll.
    the rotunda still has a Radius he can change; changing it carries the gallery walls with it or
    refuses and shows why; he can still see the rotunda's whole inside as one sheet.
 
-5. *(Revision 2.)* Throughout, it is still **the Rotunda**: one name, one row in the Index, one
-   thing to select, move, duplicate or paint. When he clicks a stretch of its wall he gets that
-   Wall, with its own length, Openings and Unroll, and one step takes him back to the whole.
-   Attaching the gallery must not turn his rotunda into four anonymous curved walls.
+5. Throughout, it is still **the Rotunda**: one name, one row in the Index, one thing to select,
+   move, duplicate or paint. Clicking its floor selects it and shows Radius; clicking a stretch of
+   its wall selects that Wall, with its own Openings and Unroll, and one step returns to the whole.
+6. He tries to bend one stretch. It refuses and offers **Release round**. He leaves it round.
 
-**Needs:** the connected-curve decision including its identity carrier (S1), then C. Unroll the
-room serves step 4's last clause but does not block the rest. **Proves:** this is the journey that
+**Needs:** S1, then C. Unroll the room (R) serves step 4's last clause and blocks nothing. **Proves:** this is the journey that
 cannot be met by a small change.
 
 ## Depth journeys (not part of the completeness lane)
@@ -117,11 +116,13 @@ cannot be met by a small change.
 
 - Every closed ring gets a derived lid at the height of its tallest Wall. She cannot open the
   courtyard to the sky, lower a ceiling below the Walls, or author a canopy with a deliberate gap.
-- Wants: a flat region she draws or seeds from a Room; a clear statement of whether it closes the
-  Room or hangs in it; "gap 0.40 m, intended" as a fact rather than an error.
+- With Spaces: she sets the courtyard's **Overhead** to **Open to sky**. That is a statement about
+  the place and needs no geometry. The lid goes; the Walls and floor stay.
+- With V1: the canopy is a flat overhead region she draws; its relation to the facade reads "gap
+  0.40 m", and she marks it intended. If she later roofs part of the courtyard, it reads "Open to
+  sky · under Canopy 2" and stays open by intent.
 
-**Needs:** V1. **Raises:** D2 (what the region's height is measured from), D3 (how an intended gap
-or an open-to-sky Room is represented).
+**Needs:** SP1 for the intent, V1 for the canopy.
 
 ### J8. A gabled hall
 
@@ -143,49 +144,78 @@ or an open-to-sky Room is represented).
 **Needs:** levels (`layout.multi-level`), after V1 has shown how creators use overhead regions. A
 flat suspended region at 3 m from V1 is the cheapest probe of whether this demand is real.
 
-### J10. A pavilion, a terrace and a booth *(revision 2)*
+### J10. A booth, a terrace and a pavilion
 
-> Lan's exhibition spills outside: a roofed pavilion on posts, a raised terrace, and three
-> open-fronted booths along one wall.
+> Lan's exhibition has three open-fronted booths along one wall of the hall, a raised terrace
+> outside, and a roofed pavilion on posts.
 
-- **Terrace.** She wants a deck 0.3 m up with a name. Today the only floor is the one a closed
-  ring of Walls generates. She can fence the terrace with low Walls to get a Room, which is the
-  "pretend it is a Room" the Layout contract rules out.
-- **Booth.** Three Walls, open front. No closed ring, so no Room: no name, no floor, no row in the
-  Index, nothing for Paint's Space scope to hold, nowhere for an Experience stop to point.
-- **The reverse case, which happens first.** She has a named, furnished Room and erases its front
-  Wall to open it to the hall. *(verify)* The Room is retired with its name. She did not delete a
-  room; she removed a wall.
-- Wants, in order: a floor she can draw and raise without Walls; her Room to stay "Booth 2" when
-  its front comes off; a name and a scope for a place with no Walls at all.
+**Booth, from a Room.** She has a closed, named, furnished Room, "Booth 2", and erases its front
+Wall. Today the Room is retired with its name. With SP1 the consequence line reads **Keeps Booth 2
+as an open space**; the front becomes a dashed virtual edge; the floor, the name and the plinths
+stay. The booth sits wholly inside the hall Room, which is allowed, and a plinth in it is listed
+under Booth 2, not the hall.
 
-**Needs:** floor and platform regions (verticality plan), then S2's answers, then the Space plan.
-**Raises:** Q13, Q14.
+**Booth, from partial Walls.** For Booth 3 she draws three Walls and no front. She arms **Room**
+and hovers inside: the three Wall sides show in ink and the missing front as a cobalt dash. Click;
+she types the name. She drags the virtual edge's grip outward to give the booth an apron and it
+stops at Booth 2 with **Stops at Booth 2**.
 
-### J11. Working inside a finished room *(revision 2)*
+**Terrace, from a floor.** She draws a floor region 0.3 m up with the Terrace tool. It arrives as a
+Space, "Terrace", open to sky, following the floor's outline. She resizes the floor; the Space
+follows.
 
-> Minh's gallery has four Walls and, after V1, a dropped ceiling. He needs to arrange plinths and
-> aim lights inside it from an orbiting 3D view.
+**Pavilion.** A floor region, an overhead region above it and four posts. The Space came with the
+floor; its Card reads "Open to sky · under Canopy 1".
 
-- From above he sees a lid. From the side he sees the near Wall.
-- Wants: the ceiling off while he works (**Lift**), the Wall between him and the room cut down
-  without asking, and sometimes the opposite, the near Wall *kept* so he can judge the facade. The
-  lighting must not change when the ceiling lifts: he is aiming spots at paintings. The Wall he
-  sees through is still selectable, still has its Card, and is back the moment he leaves. Nothing
-  he did shows up in Preview, a snapshot or the published World.
+**Closing again.** She later draws the front Wall back on Booth 2 along its virtual edge. The Card
+reads Room. Same id; the finish she applied to its floor never moved.
 
-**Needs:** X0 (what happens today), X1 Lift with V1, X2 controllable cutaway. **Proves:** reveal is
-session state over Layout's representation; Camera stores none of it; visitors never see it.
+**Needs:** S2, SP1, SP2; SP3 and V1 for the terrace and pavilion.
 
-### J12. A finish that survives an edit *(revision 2)*
+### J11. Working inside a finished room
 
-> Lan has painted the long wall of the gallery brick (T2). Then she does J1: splits it and pushes
-> out an alcove. Later she changes her mind and joins it back.
+> Minh's gallery has four Walls and, after V1, a dropped ceiling. He arranges plinths and aims
+> lights inside it from an orbiting 3D view.
 
-- Wants: both pieces stay brick after the split; the joined Wall is brick; a duplicated chapel
-  comes with its finishes; if she joins a brick Wall to a plaster one, she is told which wins.
-- And for the rotunda (J6): she painted its inside once, as one surface. After the gallery
-  attaches, it is still painted, everywhere, as one finish.
+1. From above he sees a lid. He picks **Lift** from the reading control. The pill reads **Lift ·
+   Gallery · Put back**; the ceiling leaves a dashed outline; he clicks straight through to the
+   plinths. The spots still fall as they did: nothing is relit.
+2. He needs to change the ceiling height. He clicks its outline; it draws as a ghost with its
+   handles and he edits it in place.
+3. From the side the near Wall is in the way. With the cutaway on **Cut** it is a low stub he can
+   click through. He wants to judge the facade, holds the key, and the Walls stand whole until he
+   lets go.
+4. He opens Preview. Everything is as built. He comes back and Lift is still on. **Put back**.
 
-**Needs:** the joint surface-reference and lineage plan (J), relied on by T2's S5a. **Proves:**
-every topology planner can state its lineage; a finish follows identity, not geometry.
+**Needs:** X0, X1, X2.
+
+### J12. Seeing the whole building at once
+
+> Lan has eleven Rooms under ceilings and wants to check the visitor route through all of them.
+
+1. Lift everything would work but leaves full-height Walls hiding the far Rooms.
+2. She arms **Slice**, Level. A yellow plane appears at the Sheet's height. She drags the Sheet to
+   1.2 m: every Wall is cut to a capped stub, every ceiling is gone, doors and windows read as
+   gaps. The pill reads **Cut at 1.20 m · Put back**.
+3. She returns to Select and moves two plinths. The cut stays.
+4. She wants the long section through the entrance hall. Slice, Drawn: two clicks across the
+   building; the near half disappears; **Flip** shows the other half; the depth ray pulls the
+   reading back to just the hall. **Face** squares her to it.
+5. **Put back.** Nothing was authored.
+
+**Needs:** SL1 for steps 1–3, SL2 and A6 for step 4. Section (SL3) is not needed for this journey.
+
+### J13. A finish that survives an edit
+
+> Lan has painted the long wall of the gallery brick (T2). Then she splits it and pushes out an
+> alcove, and later joins it back.
+
+- Both pieces stay brick after the split. The joined Wall is brick.
+- She joins a brick Wall to a plaster one. The consequence line reads **Plaster replaced by
+  Brick**. Undo brings the plaster back.
+- A duplicated chapel comes with its finishes.
+- She opens Booth 2 by erasing its front Wall. Its floor finish is untouched, because the Space is
+  the same Space.
+- She painted the rotunda's inside once. After the gallery attaches, every arc is still painted.
+
+**Needs:** J, relied on by T2's S5a; SP1 for the booth; C for the rotunda.
