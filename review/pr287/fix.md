@@ -48,7 +48,7 @@ The recommended model is not a mechanical application of the owner's notes. Two 
 | `screenshots/01`–`07` | The observed failures and the donor benchmark. |
 | `prototypes/spatial-authoring/IMPLEMENTER-REFERENCE.md` | Sheet/peel/as-built/camera/selection rules; §§1–13. |
 | `prototypes/spatial-authoring/app/journeys.js` (Journey A) | Executable donor choreography and the 222° benchmark. |
-| `docs/roadmap/t1-spatial-world/expressive-walls/implementation-plan.md` | D1–D14, checkpoints 3/5/6, development map, display cut D11, edit policy D13, camera face D14. |
+| Expressive-walls implementation plan (retired; deleted after its shipped rules were promoted into `docs/reference/components/layout.md`) | D1–D14, checkpoints 3/5/6, development map, display cut D11, edit policy D13, camera face D14. |
 | `layout.adapter.ts`, `StageOverlay.svelte`, `refusals.ts` | Candidate and refusal production paths. |
 | `wall-unfold*.ts`, `StageWallDevelopment.svelte`, `LayoutWallUnfold.svelte`, spatial route | Unfold state, sheet, camera and pick paths. |
 | `interaction-review.html` | The proposed behavior, exercised with scripted pointer events. |

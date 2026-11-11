@@ -105,7 +105,7 @@ executable resource closure. The Stage discloses diagnostics and closure for ins
 inventing resources; closure refuses F4 acceptance, Save and release. An unresolved View remains
 repairable authored state and disables the affected visitor behavior.
 
-**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 6`, the only
+**Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 7`, the only
 recognised version): one floor datum, junctions → walls → reconciled rooms → openings → layout
 objects, project/world-local. The former versionless shape (floors → rooms each carrying a finite
 `frame.origin: [x, z]` plus a normalized radian `frame.yaw`) is **no longer decoded**, and
@@ -118,6 +118,15 @@ re-pointed at it are gone.
 **Layout vertical authority (P23.6H/I):** `LayoutWall.height` is the only authored vertical extent, measured upward from the Floor elevation (`bottomY = floor.elevation`, `topY = floor.elevation + wall.height`); it is finite, strictly positive and within the shared 1,000 m geometry envelope — a Wall may be shorter or taller than its neighbours. The Floor carries a horizontal datum only (`id`, `name`, `elevation`, no vertical extent; a `height` key is rejected as `unknown_key`), so there is no Floor-relative cap and a Room ceiling is the maximum of its boundary Wall heights. New and split Walls take height from layout-core's birth/inheritance rule — explicit height, else the unique incident Wall height, else the named authoring default. The landed model is one floor; a multi-floor payload is **not accepted**. Captured from P23.6H/P23.6I, which made this the final Wall-defined vertical model with no durable clause anywhere in `docs/reference/`.
 
 **Layout canonical curve geometry (P23.11):** a Wall's `centerline` is either a straight `line` between its endpoint Junctions or an explicit `cubic-chain` through them and its ordered interior bend points. Endpoints stay Junction-owned — the chain stores no endpoint point. Bend points carry stable identity; spans are positional (`spans.length === knots.length + 1`), one cubic each, and carry no identity and no lookup by ID. The persisted controls are the read-path authority: nothing re-derives or re-fits them, so subdivision and translation stay exact. Evaluating the stored cubics in order to render them is expected and permitted, not a violation. Wall orientation (start → end) is stable and identity-bearing because Opening `offset` is measured in meters from the canonical Wall start. Captured from P23.11, which selected this persisted model in code and in its slice plan while no reference contract stated it — a re-fit or re-orientation on the read path is the regression this clause exists to prevent.
+
+**Layout closed Wall and periodic Openings:** equal `startJunctionId` and `endJunctionId` are one
+isolated closed Wall, not a second shape kind. Its `cubic-chain` is exactly 16 symmetric cubic
+spans (15 interior bend points) and the single Junction is the persisted seam; the reader refuses
+a closed Wall in any other shape. A closed host is periodic: an authored Opening keeps one
+`offset` in `[0, circumference)` and one canonical id, and may compile to two intervals across the
+seam without becoming two entities. Format 6 and every other declared version are refused, with no
+migration or dual reader. Unroll and its development map are display-only session state and never
+appear in persisted Layout.
 
 **Layout geometry envelope (2026-10-31):** authored Wall height/thickness, Opening offset/width/height/sill height, and each Wall span are limited to 1,000 m. A straight Wall is measured by its chord; a curved Wall by its control-polygon length, which bounds its arc length. Junction positions are not dimensions, so rigid translation remains unrestricted. Exactly 1,000 m is accepted; an over-limit edit is refused without changing source or history, and canonical reads refuse an imported Layout before compilation or Stage admission with a subject-specific issue. This measured boundary keeps the authoring path within the tested geometry-cost envelope; the implementation records the measurement basis in `packages/layout-core/src/layout-geometry-limits.ts`.
 

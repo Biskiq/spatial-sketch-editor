@@ -89,7 +89,7 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 
 | Authority | Owns | Current encoding |
 |---|---|---|
-| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 6`: Junctions, Walls, persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path |
+| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 7`: Junctions, Walls (including one isolated self-connected closed Wall), persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path; format 7 is the only recognized version |
 | **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 6 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
 | **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/pacing, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 4, collection-capable); Presentations, linear Guides, one entry View/stay per Stop, invitations, detours and visitor reach |
@@ -319,7 +319,8 @@ primitive, and its spatial role is derived: Walls taking part in a closed
 enclosure bound it, a Wall that encloses nothing is free-standing, and a Wall
 drawn across an enclosed Room divides it, producing the derived Room topology
 through the canonical compiler and its lineage. Rooms stay derived, and no Room
-geometry becomes editable. Layout format 6 has no authored Wall role; every closed ring encloses.
+geometry becomes editable. Layout format 7 has no authored Wall role; every closed ring encloses,
+and a self-connected Wall is the isolated circular case.
 Two curved Walls between the same two Junctions are a valid Room boundary when the stored
 cycle matches the bounded face walk (a two-Wall lens); they are not a duplicate-Wall pair.
 The chord-level overlap and the sampled curve gate still prove the loop is simple and
