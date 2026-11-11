@@ -1910,25 +1910,13 @@ describe('R217.S21 — Index and Card on the mounted route', () => {
 	});
 it('invokes subject commands through the contextual ellipsis',async()=>{const card=target.querySelector<HTMLElement>('[aria-label="Selected subject"]')!;expect(card.querySelector('[data-card-action]')).toBeNull();card.querySelector<HTMLButtonElement>('[aria-label="Subject actions"]')!.click();await frame();expect(card.querySelector('[data-card-action="layout-wall-delete"]')!.classList.contains('destructive')).toBe(true);expect(card.textContent).not.toContain('Open task');});
 
-	it('splits the selected Wall at the pressed station from the Card scoped list, and Undo restores it', async () => {
+	it('splits at the Card midpoint even after a press elsewhere on the Wall, and Undo restores it', async () => {
 		const before = stageEnvelope(facade().snapshot()).units.layout.data;
 		const length = wallFirstWallLength(before, wallId);
 		if (length === undefined) throw new Error('the selected Wall has no resolvable length');
-		// The starter's first Wall may host an Opening; press in its widest solid
-		// gap so the journey is about the split, not a refusal.
-		const openings = before.openings
-			.filter((opening) => opening.wallId === wallId)
-			.sort((a, b) => a.offset - b.offset);
-		const gaps: Array<[number, number]> = [];
-		let cursor = 0;
-		for (const opening of openings) {
-			if (opening.offset > cursor) gaps.push([cursor, opening.offset]);
-			cursor = Math.max(cursor, opening.offset + opening.width);
-		}
-		if (length > cursor) gaps.push([cursor, length]);
-		const gap = gaps.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0]!;
-		const station = (gap[0] + gap[1]) / 2;
-		const at = wallStationFrame(before, wallId)!.pointAt(station)!;
+		const station = length / 2;
+		const pressAt = length * 0.25;
+		const at = wallStationFrame(before, wallId)!.pointAt(pressAt)!;
 		const press = projected([at.point[0], 0, at.point[1]]);
 		pointer('pointerdown', press);
 		pointer('pointerup', press);
@@ -1950,7 +1938,7 @@ it('invokes subject commands through the contextual ellipsis',async()=>{const ca
 		);
 
 		const after = stageEnvelope(facade().snapshot()).units.layout.data;
-		// The start-side Wall keeps its id and the pressed station is the joint.
+		// The start-side Wall keeps its id, and the joint is the midpoint, not the press.
 		expect(after.walls.some((wall) => wall.id === wallId)).toBe(true);
 		expect(wallFirstWallLength(after, wallId)).toBeCloseTo(station, 6);
 		// Opening and Room identities survive the editor journey.

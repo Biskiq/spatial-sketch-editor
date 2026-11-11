@@ -1397,15 +1397,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * and read by both the marks and the Card's one action channel.
 			 */
 			let activeKnot: { readonly wallId: string; readonly knotId: string } | null = null;
-			/**
-			 * The last station the pointer named on the selected open Wall. T1 A1's
-			 * scoped Split uses it when the creator pressed the Wall where the joint
-			 * should land; a selection made from the Index has no pointer station, so
-			 * the Card falls back to the midpoint. Session state only: never serialized
-			 * and never a history entry.
-			 */
-			let lastWallStation: { readonly wallId: string; readonly station: number } | null = null;
-
 			function endBendGesture(): void {
 				const current = bendGesture;
 				bendGesture = null;
@@ -4751,15 +4742,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// one captured intent, so a refusal writes nothing and an acceptance is
 					// one undo step. A straight Wall adds no action here.
 					const wallSource = document.walls.find((candidate) => candidate.id === wallId);
-					// T1 A1 — one Split over the retained noder. The station is the one the
-					// pointer named on this Wall, or the midpoint when the selection came
-					// from the Index/Find. Nothing here arms a tool or adds a mark.
+					// T1 A1 — one Split over the retained noder. The Card is the
+					// midpoint path: a press elsewhere on the Wall never retargets it.
+					// Pointer-specific placement belongs to the deferred Stage context
+					// menu. Nothing here arms a tool or adds a mark.
 					const splitLength = wallStationFrame(document, wallId)?.length;
-					const splitAt = lastWallStation?.wallId === wallId
-						? lastWallStation.station
-						: splitLength === undefined
-							? null
-							: splitLength / 2;
+					const splitAt = splitLength === undefined ? null : splitLength / 2;
 					const splitOpening = splitAt === null
 						? undefined
 						: document.openings.find((opening) =>
@@ -4803,7 +4791,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							}
 							// The start-side fragment keeps the Wall id; keep the creator on it so
 							// the Card describes the Wall they just divided.
-							lastWallStation = null;
 							selectLayoutSubject('wall', wallId);
 							services.stage.notifySurfaceChange();
 							return outcome.kind === 'no-op'
@@ -5153,19 +5140,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return updateIdleBendHover(intent, adapterContext);
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
-					// Capture the station before any gesture decides whether it owns the
-					// press. A plain press on the selected Wall is still a meaningful
-					// "here" for the scoped Split, even though the host keeps the click.
-					if (intent.phase === 'down' && openTaskKind === null) {
-						const primary = adapterContext.selectionState().primary;
-						if (primary !== null && primary.domain === 'layout' && primary.subject.kind === 'wall') {
-							const point = pointerDatumPoint(adapterContext, intent.css);
-							const station = point === null
-								? null
-								: wallStationNearPoint(document, primary.subject.id, [point[0], point[1]], BEND_BODY_TOLERANCE_METERS);
-							if (station !== null) lastWallStation = { wallId: primary.subject.id, station };
-						}
-					}
 					if (intent.phase === 'down' && idleBendHint !== null) {
 						idleBendHint = null;
 						services.stage.notifySurfaceChange();

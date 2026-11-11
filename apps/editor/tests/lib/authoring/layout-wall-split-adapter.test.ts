@@ -6,8 +6,8 @@
  * 1. **Split wall here** is one scoped action over `planWallSplitAtPoint`;
  * 2. the start-side Wall keeps its id, the new fragment is created, every
  *    Opening keeps its id and world position, and the Room keeps its id;
- * 3. the station is the pointer's when the creator pressed the Wall, and the
- *    midpoint when the Card is reached without a pointer station;
+ * 3. the Card always uses the Wall midpoint, even after a press elsewhere on
+ *    the Wall; pointer-specific placement belongs to the deferred context menu;
  * 4. straight and curved open Walls both split exactly;
  * 5. a split through an Opening and a split of a closed circular Wall refuse in
  *    words, write nothing and add no history;
@@ -295,7 +295,7 @@ async function eventually(predicate: () => boolean): Promise<void> {
 }
 
 describe('T1 A1 — Split wall', () => {
-	it('splits a straight open Wall at the Card midpoint, preserving Opening and Room identity through Undo, Redo and Save/Load', async () => {
+	it('[cap:layout.wall-split core] splits a straight open Wall at the Card midpoint, preserving Opening and Room identity through Undo, Redo and Save/Load', async () => {
 		const fixture = enclosureFixture(4);
 		const mounted = await mount(fixture);
 		selectWall(mounted.facade, fixture.wallId);
@@ -319,7 +319,7 @@ describe('T1 A1 — Split wall', () => {
 		const split = actions.find((action) => action.id === 'layout-wall-split')!;
 		expect(split.label).toBe('Split wall here');
 		expect(split.destructive).toBeUndefined();
-		// No pointer station: the Card falls back to the 6 m Wall's midpoint.
+		// The Card splits the 6 m Wall at its midpoint.
 		expect(split.detail).toContain('3.00 m');
 		expect(split.detail).toContain("keeps this Wall's identity");
 
@@ -413,12 +413,13 @@ describe('T1 A1 — Split wall', () => {
 		expect(afterEnd[1]).toBeCloseTo(beforeEnd[1], 9);
 	});
 
-	it('uses the station the pointer named on the Wall instead of the midpoint', async () => {
+	it('uses the Card midpoint even after a pointer press elsewhere on the Wall', async () => {
 		const fixture = enclosureFixture(4);
 		const mounted = await mount(fixture);
 		selectWall(mounted.facade, fixture.wallId);
 		settle(mounted.facade, 2);
 
+		// A press at 1.5 m must not retarget the Card: the Card is midpoint-only.
 		const evaluationId = mounted.facade.evaluationId()!;
 		const css = stageCss(mounted.facade, [1.5, 0]);
 		mounted.facade.pointerIntent({ phase: 'down', css, evaluationId });
@@ -429,13 +430,13 @@ describe('T1 A1 — Split wall', () => {
 			sourceKind: 'wall',
 			ref: null
 		}).find((action) => action.id === 'layout-wall-split')!;
-		expect(split.detail).toContain('1.50 m');
+		expect(split.detail).toContain('3.00 m');
 
 		expect((await split.run()).kind).toBe('accepted');
 		const after = acceptedLayout(mounted.facade);
-		expect(wallFirstWallLength(after, fixture.wallId)).toBeCloseTo(1.5, 9);
+		expect(wallFirstWallLength(after, fixture.wallId)).toBeCloseTo(3, 9);
 		const opening = after.openings.find((candidate) => candidate.id === fixture.openingId)!;
-		expect(opening.offset).toBeCloseTo(2.5, 9);
+		expect(opening.offset).toBeCloseTo(1, 9);
 	});
 
 	it('splits a curved open Wall exactly and keeps its Opening at the same world point', async () => {
@@ -474,7 +475,7 @@ describe('T1 A1 — Split wall', () => {
 		expect(afterOpeningPoint[1]).toBeCloseTo(beforeOpeningPoint[1], 6);
 	});
 
-	it('refuses a split through an Opening in words, writing nothing and adding no history', async () => {
+	it('[cap:layout.wall-split edge] refuses a split through an Opening in words, writing nothing and adding no history', async () => {
 		const fixture = enclosureFixture(2.5);
 		const mounted = await mount(fixture);
 		selectWall(mounted.facade, fixture.wallId);
@@ -495,7 +496,7 @@ describe('T1 A1 — Split wall', () => {
 		expect(mounted.host.history()).toEqual(beforeHistory);
 	});
 
-	it('refuses a split of a closed circular Wall in words, writing nothing and adding no history', async () => {
+	it('[cap:layout.wall-split edge] refuses a split of a closed circular Wall in words, writing nothing and adding no history', async () => {
 		const fixture = circularFixture();
 		const mounted = await mount(fixture);
 		selectWall(mounted.facade, fixture.wallId);
