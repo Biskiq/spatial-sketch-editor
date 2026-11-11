@@ -19,14 +19,22 @@ Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) /
 
 Artwork stores a world-local centre and rotation, a tagged image source with its immutable P20 ID
 and oriented pixel dimensions, and one authored width in metres. Height follows the image aspect.
-Artwork Library entries live in the Scene unit and survive deletion of a hanging. A hanging carries
-its own entity ID and pose. It has no Finish, uniform scale or persistent wall host. Wall snapping
-sets the placement pose using compiled wall geometry. Undo and redo restore accepted Scene records,
-while P20 retains the bytes.
+It may also carry one optional frame record: `{ style: none|thin|gallery|float, mat, color }`.
+Absent is the canonical no-frame/no-Mat default, and a present none/no-Mat record canonicalizes
+away. Frame and Mat dimensions, generated geometry and physical colours are never serialized;
+they come from one real-world table at render time. Artwork Library entries live in the Scene unit
+and survive deletion of a hanging. A hanging carries its own entity ID and pose. It has no Finish,
+uniform scale or persistent wall host. Wall snapping sets the placement pose using compiled wall
+geometry; eye-line and neighbouring centre guides are editor-only and inferred from the artwork's
+pose, so no wall host is added. Undo and redo restore accepted Scene records, while P20 retains the
+bytes. Replace image changes the hanging's source in one accepted write and preserves its identity,
+pose, frame and a custom name; the old shelf entry and bytes remain.
 
-Stage and Visitor Preview share a diffuse-only Lambert quad with an sRGB map, fractional colour
-alpha and a binary alpha cutoff for shadow silhouettes. The neutral reference uses NoToneMapping
-at exposure 1. The project shelf and placement controls stay in authoring.
+Stage and Visitor Preview share a diffuse-only Lambert image with an sRGB map, fractional colour
+alpha and a binary alpha cutoff for shadow silhouettes. The same generated frame, Mat and backing
+surround it on both surfaces. A framed image gets a backing so alpha reads as a print; an unframed
+image stays a cut-out. The neutral reference uses NoToneMapping at exposure 1. The project shelf,
+placement controls and hanging guides stay in authoring.
 **Architecture rooms are not scene entities** — see [`../architecture.md`](../architecture.md).
 
 | Assets | Today |

@@ -27,6 +27,7 @@ export default defineConfig({
 		's03-own-model-acceptance.spec.ts',
 		's03-diagnostics.spec.ts',
 		'project-lifecycle.spec.ts',
+		't2-a2-artwork-replace.spec.ts',
 		'integrated-journeys.spec.ts',
 		'lifecycle-regression.spec.ts',
 		'head-lifetime.spec.ts',

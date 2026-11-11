@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { artworkHeight, type SceneArtworkEntity } from '@portfolio/project-model';
-	import { ARTWORK_CORNERS, artworkCornerPoint, type ArtworkCorner } from './artwork-resize';
+	import { ARTWORK_CORNERS, artworkHandlePoint, type ArtworkCorner } from './artwork-resize';
 	import type { StageFacade } from '$lib/authoring/stage/stage-facade';
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 
@@ -13,7 +13,7 @@
 		const id = stage.evaluationId();
 		if (id === null) return [];
 		return ARTWORK_CORNERS.flatMap((corner) => {
-			const projected = stage.projectWorld(artworkCornerPoint(entity, corner).toArray(), id);
+			const projected = stage.projectWorld(artworkHandlePoint(entity, corner).toArray(), id);
 			return projected.kind === 'projected'
 				? [{ corner, x: projected.css[0] - evaluation.rect.left, y: projected.css[1] - evaluation.rect.top }]
 				: [];

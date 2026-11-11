@@ -1,7 +1,7 @@
 import { Euler, Vector3 } from 'three';
 import type { PointerRay } from '@portfolio/camera-core';
 import {
-	ARTWORK_MIN_METERS, ARTWORK_MAX_METERS, artworkHeight, type SceneArtworkEntity
+	ARTWORK_MIN_METERS, ARTWORK_MAX_METERS, artworkFrameBorderMeters, artworkHeight, type SceneArtworkEntity
 } from '@portfolio/project-model';
 
 export type ArtworkCorner = readonly [x: -1 | 1, y: -1 | 1];
@@ -16,6 +16,16 @@ export function artworkCornerPoint(entity: SceneArtworkEntity, [x, y]: ArtworkCo
 		.applyEuler(orientation(entity)).add(new Vector3(...entity.position));
 }
 
+/** The manipulation grip sits on the generated outer frame edge, not the image. */
+export function artworkHandlePoint(entity: SceneArtworkEntity, [x, y]: ArtworkCorner) {
+	const border = artworkFrameBorderMeters(entity.frame);
+	return new Vector3(
+		x * (entity.widthMeters + 2 * border) / 2,
+		y * (artworkHeight(entity.widthMeters, entity.source) + 2 * border) / 2,
+		0
+	).applyEuler(orientation(entity)).add(new Vector3(...entity.position));
+}
+
 export function resizeArtworkAtRay(entity: SceneArtworkEntity, [x, y]: ArtworkCorner, ray: PointerRay) {
 	const rotation = orientation(entity);
 	const normal = new Vector3(0, 0, 1).applyEuler(rotation);
@@ -28,7 +38,12 @@ export function resizeArtworkAtRay(entity: SceneArtworkEntity, [x, y]: ArtworkCo
 	if (!(distance > 0)) return null;
 	const aspect = entity.source.pixelHeight / entity.source.pixelWidth;
 	const diagonal = new Vector3(x, y * aspect, 0).applyEuler(rotation);
-	const width = origin.addScaledVector(direction, distance).sub(opposite).dot(diagonal) / diagonal.lengthSq();
+	// The pointer addresses the outer grip. Pull it back by the generated border
+	// so the image corner follows while the opposite image corner stays fixed.
+	const border = artworkFrameBorderMeters(entity.frame);
+	const imageTarget = origin.addScaledVector(direction, distance)
+		.sub(new Vector3(x * border, y * border, 0).applyEuler(rotation));
+	const width = imageTarget.sub(opposite).dot(diagonal) / diagonal.lengthSq();
 	const widthMeters = Math.max(ARTWORK_MIN_METERS / Math.min(1, aspect),
 		Math.min(width, ARTWORK_MAX_METERS / Math.max(1, aspect)));
 	const position = opposite.addScaledVector(diagonal, widthMeters / 2).toArray();

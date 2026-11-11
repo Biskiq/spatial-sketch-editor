@@ -93,8 +93,11 @@ refuse. There is no converter, format sniffing, fallback or dual write.
 
 **Scene 6** carries `textures`, `materials`, `entities`, optional `clusters`, optional
 `environment` and the project Artwork shelf. The shelf owns project-local image entries. Every
-Artwork source must resolve to a shelf entry with matching oriented dimensions. Scene carries no
-Camera or editorial fields. Scene 4 introduced the `form` entity,
+Artwork source must resolve to a shelf entry with matching oriented dimensions. An Artwork may
+carry one optional frame record (`style`, Mat, colour); absent is the canonical no-frame/no-Mat
+default, and generated frame dimensions are never stored. This additive record does not bump the
+Scene unit; a reader that predates it refuses a framed document at strict validation. Scene carries
+no Camera or editorial fields. Scene 4 introduced the `form` entity,
 whose authored source (generator, outline, extent, per-axis scale, next key) is stored verbatim;
 Scene 5 adds world presentation (the fixed `paper`/`daylight`/`golden-hour`/`dusk` environment
 preset). Generated geometry is never serialized, and a reader refuses older Scene formats rather
