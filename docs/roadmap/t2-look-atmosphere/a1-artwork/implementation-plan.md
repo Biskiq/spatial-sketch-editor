@@ -1,6 +1,6 @@
 # T2 A1 Artwork implementation plan
 
-**Claim:** T2 A1 Artwork. **Review:** Tier 2, owner decision in this draft before implementation.
+**Claim:** T2 A1 Artwork. **Review:** implementation approved. Tier 2 owner checkpoint required before merge.
 **Base:** main at `0ce09d70`, including [approved T2 revision 4](../README.md)
 ([#289](https://github.com/Biskiq/spatial-sketch-editor/pull/289)) and
 [P0 Look seams](https://github.com/Biskiq/spatial-sketch-editor/pull/292).
@@ -102,7 +102,8 @@ Finish image path keeps its own identity and behavior.
    Preflight dimensions before allocating the decoded surface. Admit JPEG EXIF orientation
    exactly once across probe, size and drawing, and reject animated PNG/WebP, malformed or
    undecodable inputs. Use one shared byte-probe policy, with browser decode confirmation before
-   authoring and byte-derived validation at the trusted Save/release boundary. Test grayscale,
+   authoring and byte-derived validation at the trusted Save/release boundary. Explain the initial
+   4096 px per-edge limit in the refusal. A future display derivative may admit larger sources. Test grayscale,
    oriented JPEG and alpha PNG/WebP. The same original bytes serve Finish and Artwork.
 3. Use `platform/project-persistence.ts` and `apps/api/src/asset-persistence.ts` for owner-scoped
    register, upload, list and content. The API currently makes a fresh ID on registration; do
@@ -116,13 +117,8 @@ Finish image path keeps its own identity and behavior.
 4. Evaluate the current Stage ray against canonical Layout solid faces via the existing adapter
    intersection/compiled representation. Pick the nearest visible vertical wall face, including
    the local tangent on curved walls, and disregard openings, caps and occluded hits. Orient +Z
-   along the hit-side normal and offset the centre 2 mm outward. Use the active floor elevation
-   plus 1.5 m for the eye line, and same-face neighbour centres as vertical and horizontal guides.
-   Use a proposed 12 CSS px screen-space acquisition radius, prefer the nearest guide and break
-   ties by eye line then entity ID. Derive neighbours from current position, parallel facing and
-   proximity to the same compiled face. Recheck the snapped centre on the same solid face. When
-   it falls in an opening or past an edge, keep the unsnapped hit; the wall remains a placement
-   magnet, and overhang does not move or resize the image. For a curved face, place tangent at the
+   along the hit-side normal and offset the centre 2 mm outward. Overhang does not move or
+   resize the image. A2 owns eye-line and neighbour guides. For a curved face, place tangent at the
    centre and keep the quad flat. Treat wall side/face identity as session input. A wall edit
    after placement leaves the world transform intact.
 5. With no eligible wall hit, follow the pointer on the horizontal plane at floor elevation plus
@@ -156,8 +152,8 @@ Finish image path keeps its own identity and behavior.
   `authoring/project-session/project-session.svelte.ts`. Strictly admit the envelope first.
   Resolve and verify metadata and bytes before replacing an active project, and report a
   recoverable error with retry when a referenced image is unavailable. Read shelf metadata for
-  every entry and verify bytes sequentially. Retain decoded textures only for active render
-  consumers. Preserve the current source and resource scope if preparation fails. No fallback
+  every entry and verify bytes sequentially. Probe and hash unplaced images without decoding
+  their pixels. Decode only for an active ghost, placed image, or requested thumbnail. Preserve the current source and resource scope if preparation fails. No fallback
   to a logical URI fetch or public copy. If a directly opened project cannot hydrate, show its
   blocking load error without presenting an empty editable replacement.
 - **Visitor Preview.** At `experience-preview.svelte.ts` capture the accepted Scene reading and
@@ -230,7 +226,7 @@ Finish image path keeps its own identity and behavior.
    Test first Save required, import without placement across reopen, and one asset shared by
    two independently editable hangings and a Finish.
 3. Add Stage intake, Library, placement, Card, Index, marks and shared drawing. Cover
-   roomless/curved walls, either face, openings, nearest-hit priority, eye-line/neighbor ties,
+   roomless/curved walls, either face, openings, nearest-hit priority,
    free placement, wall move independence, ratio edits, cancel, and exact undo/redo. Cover
    transform history for centre plus size and pointer arbitration with existing Scene tools.
 4. Add Preview and cold fixtures. Test missing/corrupt pins, deduplication, immutable delivery
