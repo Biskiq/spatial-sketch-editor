@@ -7,31 +7,123 @@ reconstructs a second topology or navigation authority.
 
 ## Current contract
 
-Layout format 6 is wall-first. Wall role is derived; every closed ring encloses. A free-standing
+Layout format 7 is wall-first. Wall role is derived; every closed ring encloses. A free-standing
 Wall encloses nothing; a dividing Wall creates reconciled Room topology. Room identity is persistent
 through reconciliation, while Room geometry remains derived and is never directly editable.
 Authored placement is world-local with explicit internal frames, without mandatory Room ownership.
 [Editing-path rules](layout-performance.md) govern previews, commit and retained roots.
 
+Format 7 is the only recognized version. It adds the isolated closed Wall to the previous
+wall-first shape; the reader refuses every other declared version strictly, with no migration and
+no second decoder.
+
+## Closed circular Walls
+
+A circular Room is **one ordinary Wall** whose `startJunctionId` and `endJunctionId` are the same
+Junction, enclosing **one persistent Room** derived by the ordinary face and Room path. The single
+Junction is the canonical seam, authored at the rim point of the centre → rim gesture. The Wall is
+not a parametric circle object and there is no second circle geometry vocabulary: its persisted
+`centerline` is a `cubic-chain` of exactly 16 symmetric cubic spans (15 interior bend points). The
+codec rejects any other closed representation and any chain that is not the canonical symmetric
+circle; its measured error at a 5 m reference radius is bounded at 3.4e-7 m radial and 1.1e-6 m
+circumference.
+
+Closed Walls are isolated. A Wall may not connect at the seam, end on or attach to the circle,
+cross it, or be noded onto it; each refuses as `closed_wall_isolated`. Split and dissolve refuse,
+and bending refuses as `closed_wall_not_bendable`. Walls wholly inside the circle are allowed. The
+seam keeps its identity through Save/Load; radius and diameter are read from the persisted chain,
+not remembered gesture state.
+
+- **Rigid move.** A body drag translates the seam Junction and the whole chain by the same delta.
+  Radius, seam station, bend-point ids and every hosted Opening stay unchanged.
+- **Radius edits.** A Card radius or diameter edit retains the seam angle and rebuilds the canonical
+  chain at the new radius. Every hosted Opening keeps its angular station by scaling `offset` with
+  the circumference, and keeps its physical width. The whole edit refuses if an Opening no longer
+  fits or would overlap; nothing is clamped.
+- **Display cut.** A closed Wall's Unroll sheet is cut at the station opposite the anchor, not at
+  the canonical seam. If that station falls inside an Opening, the cut moves to the nearest solid
+  Wall gap so the peel edge is real Wall; if the whole Wall is occupied, the raw cut is used. The
+  seam remains station 0 and is drawn as a tick; an Opening that still spans the cut is two display
+  fragments of one canonical Opening.
+
+## Periodic Openings on a closed Wall
+
+A closed Wall is periodic: its seam is both station 0 and the circumference. The authored Opening
+remains one record with one host, one `offset` in `[0, L)` and one `width < L`; the circumference
+itself is not a second spelling of the seam. An interval that crosses the seam compiles into two
+derived intervals (before and after station 0) that share the same Opening id, profile range and
+host. Plan strokes, mesh voids, door relations and picking consume both intervals; selecting either
+fragment selects the one Opening. Sliding wraps continuously modulo `L`, and same-Wall overlap is
+validated modulo the circumference. An Opening as wide as the circumference, or one that aliases
+`L` as its offset, refuses.
+
+## Wall development and the Unroll reading
+
+The development map is the one runtime-safe Layout algorithm for flattening a Wall. It serves
+straight, open multi-Bézier, S-curve, inflection and closed Walls from the canonical samples; it is
+never a second Wall model, writer or topology source. Unroll is a **session reading**, never
+authored data: it holds the Wall, canonical anchor station, closed-Wall display cut, displayed face
+and unroll amount. It is never serialized, never enters history and Undo never changes it. The sheet
+is built from the same development map and samples as the Wall; Opening edits go through the
+existing canonical planners.
+
+**Reference surface.** The development is isometric along the **centerline**. Stations, Opening
+offsets and widths, and Wall length are centerline quantities and read true at every amount. Wall
+faces at a signed offset are not isometric: at full flattening both face polylines take the
+centerline's developed length, so the inner face stretches and the outer face shrinks. No face
+length is labelled as true; dimensions on the sheet are centerline stations.
+
+At amount 0 the map reproduces the canonical polyline and its interpolation exactly. At amount 1
+the centerline is a straight sheet on which canonical station `s` sits `s − anchorStation` from the
+anchor; corrected per-segment lengths preserve that station map. Normals come from the developed
+centerline. Every developed vertex and triangle carries canonical station and source-span
+attribution, which is what inverse picking resolves back into canonical stations; there is no
+second authored set of stations.
+
+An open Wall develops around its anchor. A closed Wall rotates the sheet so the display cut is at
+the sheet ends; its canonical seam remains station 0. Intermediate amounts are display state only.
+`developmentOverlap` reports the first meeting stations on the developed centerline and its two
+offset faces for `0 < u < 1`; `u = 0` (canonical) and `u = 1` (straight band) are always safe. An
+overlap never adjusts the amount automatically and is never written to the document.
+
+- **Entry.** The Card's Unroll block is available on curved and closed Walls; a straight Wall is
+  already flat and its entry is disabled. Entry uses the session pin when one exists, otherwise
+  the selected Opening's centre when it is on the Wall, otherwise the station nearest the view
+  centre, and always opens on the Room/Inside face.
+- **Camera.** Entry, scrub, peel, face change, pin and Opening edits do not move the Camera; Bring
+  into view is the explicit framing action. Put back folds the sheet and writes no Camera intent.
+  The reading never substitutes a nearby Wall when its own Wall is no longer present.
+- **Station identity.** Openings on the sheet are the as-built Opening kit through the development
+  map. Selection, slide, jamb resize, sill/head and Undo address the same canonical Opening id in
+  canonical stations. An Opening that spans the sheet's display cut shows as two fragments of one
+  entity.
+- **Faces.** The sheet opens on the Room/Inside face. The face switch is a rigid half-turn of the
+  sheet about the pin's vertical; the Camera does not move and stations stay canonical. The UI
+  names the faces **Inside** and **Outside**.
+- **Shape edits.** Centerline, bend-point and body-bend edits are refused with a specific reason
+  while the Wall is unrolled. Opening placement, Opening measures and Wall height remain canonical
+  edits.
+- **Exit.** Put back ends the reading. The reading leaves no history entry. **Unroll**,
+  **Put back**, **pin** and **bend point** are the UI words; Unfold, Refold, Flip, Done and Peel
+  are not.
+
+## Overlap is placement, not connection
+
+Junction ID equality is the only connectivity fact. Proximity may suggest a snap, but an
+unaccepted snap or a near miss connects nothing; an explicit Junction snap or shared committed
+coordinate is what joins Walls. Two independent Wall groups may occupy the same plan location or
+cross: the placement commits, and it creates no Junction, no shared Wall and no Wall split, and no
+existing Wall is welded or cleaned up automatically. A duplicate is such a free island, with new
+ids for every copied Wall, Junction, Opening and Room. Within one connected component, a crossing,
+collinear overlap or self-intersection still refuses. A closed Wall's contact rules are the
+isolation refusals above.
+
 ## Accepted future requirements and open mechanisms
 
-The requirements below preserve approved spatial depth. They are not claims that circular-Wall,
-Section, peel, arbitrary top profiles, independent overhead regions or multi-level authoring are
-implemented. Encoding and unresolved choices remain explicit; current shell limits do not narrow
-approved design. Prototype mechanisms are evidence, not schemas.
-
-## A circular enclosure needs one self-connected, continuously curved Wall
-
-**Accepted future scope.** A direct Circular Room tool must produce **one** continuous canonical
-Wall enclosing **one** persistent Room, retaining that Wall/Room identity through hosted
-Openings, radius/diameter editing and unfolding. Internal spans, samples and mesh fragments may
-be numerous; none becomes an independently authored Wall. The existing multi-Wall ring stays
-valid architecture but does **not** satisfy this outcome.
-
-Representation requires proof; a candidate is a narrowly scoped parametric
-closed-circle centerline variant on an ordinary Layout Wall with a self-loop topology case and
-one stable seam Junction. The bounded cubic alternative remains a legitimate proof alternative,
-not an accepted segmented-Wall substitute. No representation is chosen here.
+The requirements below preserve approved spatial depth. They are not claims that Section,
+arbitrary top profiles, independent overhead regions or multi-level authoring are implemented.
+Encoding and unresolved choices remain explicit; current shell limits do not narrow approved
+design. Prototype mechanisms are evidence, not schemas.
 
 
 ## Head-fixed arch rise and independent overhead-region intent
@@ -85,34 +177,6 @@ eligibility for one source without touching depth or document history. Silent ex
 shared failure of both predecessor codebases.
 
 
-## Wall unrolling is a display reading over the canonical Wall
-
-Unrolling is a **session reading**, never authored data: it holds the Wall, its canonical anchor
-station, the closed-Wall display cut, the displayed face and the unroll amount. It is never
-serialized, never enters history and Undo never changes it. The sheet is built from the same
-development map and canonical samples as the Wall; no second Wall model or writer exists.
-
-- **Entry.** Every Wall Card has one Unroll action. A straight Wall has nothing to peel, so it
-  enters the same measured sheet already flat with editable Openings and no artificial unfolding
-  animation; curved and closed Walls keep the physical roll-out. Entry preserves Camera
-  orientation and may perform one bounded pan/zoom fit inside the Stage safe area.
-- **Camera.** Peel, face change, pin and Opening edits never move the Camera. Put back restores
-  the entry pose only when entry adjusted the Camera and the creator has not navigated since;
-  deliberate pan, zoom or orbit is preserved. A context whose Wall or document disappears
-  invalidates and returns with a reason, never by substituting a nearby Wall.
-- **Station identity.** Openings on the sheet are the as-built Opening kit through the development
-  map. Selection, slide, jamb resize, sill/head and Undo address the same canonical Opening id in
-  canonical stations. A seam-crossing Opening shows as two fragments of one entity.
-- **Faces.** The sheet opens on the face toward the Camera (in Plan, the Room side). The face
-  switch is a rigid half-turn of the sheet about the pin's vertical; the Camera does not move and
-  stations stay canonical. Faces are named by what they bound.
-- **Shape edits.** Centerline, bend-point and body-bend edits are refused with a specific reason
-  while the Wall is unrolled. Opening measures and Wall height remain canonical edits.
-- **Exit.** Put back, Escape with no gesture held, the Card action, or rolling an edge home. The
-  reading leaves no history entry. **Unroll**, **Put back**, **pin** and **bend point** are the UI
-  words; Unfold, Refold, Flip, Done and Peel are not.
-
-
 ## Nested Look/return kept separate from document Undo
 
 Contextual nesting, the view trail and document Undo are three separate things. A recipe records
@@ -135,10 +199,10 @@ by choosing a nearby entity.
 - **D3 — fit/gap and intentional openings.** Prefer explicit one-shot fixes with previews and
   **no automatic following**; decide the representation of intentional Wall/ceiling gaps
   alongside closure intent. Persistent fit constraints deferred. Open.
-- **D5 — crop, cut-only, seam and ambiguous inverse.** Decide the
-  display-cut presentation for single-Wall and multi-Wall loops, and refusal/recovery for
-  self-overlapping peeled surfaces or invalid recipes. Prefer an explicit reason plus
-  square-up/host recovery over guessing. Display decisions cannot change canonical periodic or
+- **D5 — crop, cut-only, seam and ambiguous inverse.** The closed-Wall display cut is settled:
+  opposite the anchor, moved to the nearest solid Wall gap when it would fall inside an Opening,
+  with the canonical seam at station 0. Any remaining presentation or recovery rule for an
+  intermediate sheet that self-overlaps is display-only and cannot change canonical periodic or
   seam identity. Open.
 - **D6 — exit summary and motion UX.** Keep the separate histories and exact return; validate the
   "undo these" suffix; choose copy for the unavailable case. Adaptive teaching / instant /
@@ -190,7 +254,7 @@ editor-only and single-floor restrictions are superseded.
 authored primitive. Creators draw spatial geometry; whether a Wall bounds an
 enclosure, divides a room or stands free is derived from the resulting topology
 and explained, never chosen before drawing. Rooms stay derived, and dividing a
-room is drawing a Wall across it. Layout format 6 derives roles and every closed ring encloses; the creator-facing expression
+room is drawing a Wall across it. Layout format 7 derives roles and every closed ring encloses; a self-connected Wall is the isolated circular case; the creator-facing expression
 is [PLATE §0.8.4](../design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
 
 `LayoutRoom` is the current enclosed-region minimum, not the universal spatial
