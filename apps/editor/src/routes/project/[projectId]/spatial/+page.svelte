@@ -3616,7 +3616,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		for (const subject of locatedSubjects) {
 			const entity = subject.reference.domain === 'scene' ? sceneEntityOf(subject.reference.subject.id) : null;
 			entries.push({
-				group: subject.reference.domain,
+				group: entity?.kind === 'light' ? 'light' : subject.reference.domain,
 				sourceId: subject.id,
 				kindWord: entity === null ? 'Subject' : sceneKindWord(entity.kind),
 				name: entity?.name ?? null,

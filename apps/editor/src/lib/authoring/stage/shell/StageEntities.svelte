@@ -26,7 +26,8 @@
 		onFormRendererReady,
 		onEntityRenderable,
 		scenePick,
-		onEntityRoot
+		onEntityRoot,
+		includeLights = true
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
@@ -39,6 +40,7 @@
 		scenePick: ScenePickSource;
 		/** Optional registration wrapper; Paper redraws when a Scene root arrives. */
 		onEntityRoot?: (id: string, root: Parameters<ScenePickSource['register']>[1]) => () => void;
+		includeLights?: boolean;
 	} = $props();
 
 	let ModelComponent = $state<AssetModelComponent | null>(null);
@@ -77,4 +79,4 @@
 	});
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />
+<VisitorEntityGroups {scene} {rooms} {modelUrls} {onFormRendererReady} {includeLights} Model={ModelComponent} onEntityRoot={onEntityRoot ?? scenePick.register} />

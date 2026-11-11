@@ -493,6 +493,15 @@ export type StageCardFact = {
 	readonly label: string;
 	readonly value: string;
 	readonly fieldId?: string;
+	/**
+	 * T2.S3's derived relation affordance: the value is a subject the creator may
+	 * reveal. The reference is the semantic identity; the callback is the one
+	 * existing Stage selection write, never a second selection model.
+	 */
+	readonly select?: {
+		readonly reference: SemanticReference;
+		readonly onSelect: () => void;
+	};
 };
 
 /** The Card's subject identity, supplied by the host (never private Stage state). */

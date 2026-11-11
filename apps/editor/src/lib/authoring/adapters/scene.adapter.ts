@@ -161,7 +161,7 @@ function entityFacts(
 	entityId: string
 ): readonly StageCardFact[] {
 	const entity = source.entities.find((candidate) => candidate.id === entityId);
-	if (entity === undefined) return [];
+	if (entity === undefined || entity.kind === 'light') return [];
 	const contact =
 		entity.kind === 'model'
 			? sceneModelContactMinY(stageEnvelope(services.stage.snapshot()), entity)
@@ -1742,8 +1742,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		/** Owner-declared found surfaces; the host merges and sorts them. */
 		heightTicks(adapterContext: StageAdapterContext): readonly StageHeightTick[] {
 			return heightTicksFor(adapterContext);
-		},
-		subjects: source.entities.map((entity) => ({
+		},			subjects: source.entities.filter((entity) => entity.kind !== 'light').map((entity) => ({
 					id: `scene:entity:${entity.id}`,
 					label: entity.name,
 					reference: sceneEntityReference(entity.id, context.snapshot.domain.unitRevisions.scene),
@@ -2299,7 +2298,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const entity = stageScene(services.stage.snapshot()).entities.find(
 						(entry) => entry.id === subject.sourceId
 					);
-					if (entity === undefined) return null;
+					if (entity === undefined || entity.kind === 'light') return null;
 					return {
 						value: entity.name,
 						async commit(name: string) {

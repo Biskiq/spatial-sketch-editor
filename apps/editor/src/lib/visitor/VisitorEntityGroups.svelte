@@ -39,6 +39,8 @@
 		modelUrls = null,
 		onFormRendererReady,
 		onEntityRoot,
+		/** Paper is an editor-only reading: it never draws authored Scene lights. */
+		includeLights = true,
 		Model
 	}: {
 		scene: RuntimeScene;
@@ -52,6 +54,7 @@
 		onEntityRoot?: (id: string, root: Object3D) => (() => void);
 		/** The model renderer; `null` until a lazy host has fetched it. */
 		Model: AssetModelComponent | null;
+		includeLights?: boolean;
 	} = $props();
 
 	const roomGroups = $derived.by(() => {
@@ -158,7 +161,7 @@
 						/>
 					</T.Group>
 				{/if}
-			{:else if isSceneLightEntity(entity)}
+			{:else if includeLights && isSceneLightEntity(entity)}
 				<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 					<EntityLight {entity} />
 				</T.Group>

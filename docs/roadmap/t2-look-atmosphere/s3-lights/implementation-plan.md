@@ -656,6 +656,10 @@ export type LightLookThrough = {
   Look-through action.
 - **Paper:** entering Look through switches the Stage to Living for the inspection session and
   restores the prior Paper/Living reading on exit. The change is session-only, not authored.
+- **Beam coverage is the cone, not the Camera FOV.** S3b projects the same spot-cone geometry S3a
+  already publishes through the one Camera evaluation; the Camera's current FOV is context and crop,
+  never a claim that the beam is as wide as the lens. No second Camera, pose evaluator or FOV-derived
+  beam is added.
 - **No Camera document write:** the Camera unit’s Views and routes are untouched. No second pose
   evaluator, FOV interpolation or navigation graph is added.
 

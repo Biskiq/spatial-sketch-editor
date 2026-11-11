@@ -59,10 +59,11 @@
 		{ id: 'room-floor', label: 'Rooms', icon: 'plan' },
 		{ id: 'wall', label: 'Walls', icon: 'wall' },
 		{ id: 'opening', label: 'Openings', icon: 'opening' },
-		{ id: 'objects', label: 'Objects', icon: 'object' }
+		{ id: 'objects', label: 'Objects', icon: 'object' },
+		{ id: 'lights', label: 'Lights', icon: 'light' }
 	];
 	const rowKind = (group: string) => kinds.find((kind) =>
-		kind.id === (group === 'object' || group === 'scene' ? 'objects' : group)
+		kind.id === (group === 'object' || group === 'scene' ? 'objects' : group === 'light' ? 'lights' : group)
 	);
 	const groups = $derived.by(() => {
 		if (query.trim() === '' && facet !== 'all') return [{ label: `${rowKind(facet)?.label ?? facet} in ${scope === 'project' ? 'the project' : location?.label}`, rows: result.rows, count: result.total }];

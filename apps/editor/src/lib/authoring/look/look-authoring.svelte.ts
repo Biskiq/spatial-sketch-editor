@@ -23,6 +23,7 @@ import type {
 	StageCardWriterRecord
 } from '../stage/stage-facade';
 import type { StageMarkView } from '../stage/stage-handles';
+import { armLight, type ArmedLightKind } from './light-tool.svelte';
 
 /** The exact Library feedback the material shelf has always given. */
 export const LOOK_MATERIAL_PICK_NOTICE =
@@ -53,7 +54,15 @@ export type LookLibraryShelf = {
 
 const EMPTY_CARD_STRATUM: LookCardStratum = { facts: [], writer: null, actions: [] };
 const EMPTY_STAGE_MARKS: readonly StageMarkView[] = [];
-const EMPTY_LIBRARY_SHELF: LookLibraryShelf = { label: 'Look', entries: [] };
+/** T2.S3: the three physical light kinds. S7's recipes are not shelf entries. */
+const LIGHT_SHELF: LookLibraryShelf = {
+	label: 'Lights',
+	entries: [
+		{ id: 'light:point', label: 'Point', summary: 'A light with no direction or beam.' },
+		{ id: 'light:spot', label: 'Spot', summary: 'A cone aimed at a surface.' },
+		{ id: 'light:directional', label: 'Directional', summary: 'Parallel light, like the sun.' }
+	]
+};
 
 export type LookAuthoringHost = {
 	/** The World's admitted environment preset; `paper` until one is saved. */
@@ -109,9 +118,22 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		return EMPTY_CARD_STRATUM;
 	}
 
-	/** A Look shelf entry pick. No entry exists in P0, so this writes nothing. */
+	/**
+	 * A Look shelf pick. The three light kinds arm the one light task; no source is
+	 * written until the Stage press is accepted, and S7's recipes stay absent.
+	 */
 	function pickLibraryEntry(entryId: string): void {
-		void entryId;
+		if (!entryId.startsWith('light:')) return;
+		const kind = entryId.slice('light:'.length) as ArmedLightKind;
+		if (kind !== 'point' && kind !== 'spot' && kind !== 'directional') return;
+		const services = host.services();
+		if (services === null) {
+			host.onNotice('The Stage is still opening; try the light again in a moment.');
+			return;
+		}
+		armLight(services.stage.snapshot().acceptedRevision.projectId, kind);
+		const opened = services.stage.openContributedTask('light-place', 'light');
+		if (opened.kind === 'refused') host.onNotice(opened.message);
 	}
 
 	return {
@@ -134,9 +156,9 @@ export function createLookAuthoring(host: LookAuthoringHost) {
 		get stageMarks(): readonly StageMarkView[] {
 			return EMPTY_STAGE_MARKS;
 		},
-		/** The Library's Look shelf. Empty in P0, so no tab or row is drawn. */
+		/** The Library's Look shelf. Lights are the first populated slice. */
 		get libraryShelf(): LookLibraryShelf {
-			return EMPTY_LIBRARY_SHELF;
+			return LIGHT_SHELF;
 		},
 		setEnvironment,
 		setEditOnPaper(value: boolean) {
