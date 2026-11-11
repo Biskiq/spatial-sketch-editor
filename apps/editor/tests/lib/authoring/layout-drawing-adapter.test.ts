@@ -326,7 +326,8 @@ describe('T1.P02.S02 — drawing refusals and deletion', () => {
 		// C3/D14 moves unfold entry to the Card foot and the Stage pill; the menu
 		// keeps deletion, the destructive action and its disclosure.
 		expect(actions.map((candidate) => candidate.id)).toEqual([
-			'layout-wall-delete'
+			'layout-wall-delete',
+			'layout-wall-split'
 		]);
 		const action = actions.find((candidate) => candidate.id === 'layout-wall-delete')!;
 		expect(action).toMatchObject({ id: 'layout-wall-delete', destructive: true, adapterId: 'layout' });
