@@ -4352,10 +4352,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function rearmDockTool(): void {
 		const stage = facade;
 		if (stage === null) return;
+		const armed = armedTool;
 		// The light arm is session fact in the adapter: it survives the install's
-		// task close, and is already cleared when a glyph selects and disarms.
+		// task close, and is already cleared when a glyph selects and disarms. A
+		// dock tool's own arm owns the re-open when both facts are present.
 		const lightProjectId = stage.snapshot().acceptedRevision.projectId;
-		if (armedLightKind(lightProjectId) !== null) {
+		if (armed === null && armedLightKind(lightProjectId) !== null) {
 			const lightTask = stage
 				.tasks()
 				.find((entry) => entry.id === 'light-place' && entry.adapterId === 'light');
@@ -4371,7 +4373,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			}
 			return;
 		}
-		const armed = armedTool;
 		if (armed === null) return;
 		if (armed.adapterId === STAGE_HOST_ADAPTER_ID) {
 			// An erase installs new content, which closes the task; the Eraser stays armed.
@@ -4390,6 +4391,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					task = opened.task;
 					contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
 				}
+			}
+			// The install briefly closed the task, so the task/chrome sync reset the
+			// World tool to Select. Keep the re-armed Ink row attached to its task.
+			if (armed.id === 'layout-ink') {
+				activeWorldTool = inkReading === 'opening' ? 'opening' : 'walls';
+				worldPlateOpen = true;
 			}
 			return;
 		}
