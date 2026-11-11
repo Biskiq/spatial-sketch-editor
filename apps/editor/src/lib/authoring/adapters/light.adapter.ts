@@ -12,7 +12,7 @@
  * puts the authored cutoff 0.5 m beyond the released target, so the target sits
  * inside the cone rather than on a zero-attenuation cutoff.
  */
-import type { SceneLightEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
 import type {
 	StageAdapterServices,
 	StageReadSnapshot
@@ -46,6 +46,15 @@ import {
 	radiansToDegrees,
 	spotCutoffForTargetDistance
 } from '../look/light-units';
+import {
+	artworkLightBounds,
+	horizontalFront,
+	pictureSpotRecipe,
+	unionLightItBounds,
+	washRecipe,
+	type LightItBounds,
+	type LightItRecipe
+} from '../look/light-recipes';
 import LightCardFields from './light/LightCardFields.svelte';
 
 const LIGHT_TASK = 'light-place';
@@ -147,17 +156,22 @@ function lightGlyphAt(
 	return nearest;
 }
 
-function nextLightName(snapshot: StageReadSnapshot, kind: Light['light']): string {
-	const base = lightKindLabel(kind);
-	const names = new Set(
-		stageScene(snapshot).entities.filter(isLight).map((light) => light.name)
-	);
+function nextEntityName(snapshot: StageReadSnapshot, base: string): string {
+	const names = new Set(stageScene(snapshot).entities.map((entity) => entity.name));
 	if (!names.has(base)) return base;
 	for (let index = 2; index < 10_000; index += 1) {
 		const candidate = `${base} ${index}`;
 		if (!names.has(candidate)) return candidate;
 	}
 	return `${base} ${Date.now()}`;
+}
+
+function nextLightName(snapshot: StageReadSnapshot, kind: Light['light']): string {
+	return nextEntityName(snapshot, lightKindLabel(kind));
+}
+
+function entityById(snapshot: StageReadSnapshot, id: string): SceneEntity | null {
+	return stageScene(snapshot).entities.find((candidate) => candidate.id === id) ?? null;
 }
 
 function cloneLight(light: Light): Light {
@@ -355,6 +369,129 @@ function illuminates(light: Light, bounds: SceneBounds): boolean {
 		);
 		return Math.atan2(perpendicular, distanceAlong) <= light.angle;
 	});
+}
+
+type LightItSelectionRecipe =
+	| { readonly kind: 'ready'; readonly recipe: LightItRecipe }
+	| { readonly kind: 'refused'; readonly message: string };
+
+/**
+ * S7's selection recipe: one Picture spot for one Artwork, otherwise one Wash
+ * over the union of every selected subject's evaluated bounds. A multi-selection
+ * never produces one light per object, and a light in the selection is refused
+ * rather than silently ignored.
+ */
+function lightItSelectionRecipe(services: StageAdapterServices): LightItSelectionRecipe {
+	const snapshot = services.stage.snapshot();
+	const selection = services.stage.selectionState();
+	if (selection.ordered.length === 0) {
+		return { kind: 'refused', message: 'Select Artwork or an object before using Light it.' };
+	}
+	const targets: { readonly entity: SceneEntity; readonly bounds: LightItBounds }[] = [];
+	for (const entry of selection.ordered) {
+		if (entry.reference.domain !== 'scene' || entry.reference.subject.kind !== 'entity') {
+			return {
+				kind: 'refused',
+				message: 'Light it works on Scene Artwork and objects, not on that selection.'
+			};
+		}
+		const entity = entityById(snapshot, entry.reference.subject.id);
+		if (entity === null) {
+			return { kind: 'refused', message: 'A selected subject is no longer in this Scene.' };
+		}
+		if (entity.kind === 'light') {
+			return { kind: 'refused', message: 'A light cannot be lit; select Artwork or an object.' };
+		}
+		const bounds =
+			entity.kind === 'artwork'
+				? artworkLightBounds(entity)
+				: services.stage.sceneBounds(entity.id);
+		if (bounds === null) {
+			return { kind: 'refused', message: `${entity.name} has no evaluated bounds yet.` };
+		}
+		targets.push({ entity, bounds });
+	}
+	const primaryId = selection.primary?.subject.id;
+	const primary = targets.find((target) => target.entity.id === primaryId) ?? targets[0]!;
+	if (targets.length === 1 && primary.entity.kind === 'artwork') {
+		return { kind: 'ready', recipe: pictureSpotRecipe(primary.entity) };
+	}
+	const bounds = unionLightItBounds(targets.map((target) => target.bounds));
+	if (bounds === null) {
+		return { kind: 'refused', message: 'The selection has no bounds to light.' };
+	}
+	return {
+		kind: 'ready',
+		recipe: washRecipe({ bounds, front: horizontalFront(primary.entity.rotation) })
+	};
+}
+
+function lightItDetail(entity: SceneEntity, selectedCount: number): string {
+	if (selectedCount > 1) {
+		return 'Places one Wash covering every selected subject. It is not grouped. One undo.';
+	}
+	return entity.kind === 'artwork'
+		? 'Places a Picture spot 1.4 m in front and 30° above, fitted to the Artwork. It is not grouped. One undo.'
+		: 'Places a Wash fitted to the object’s evaluated bounds. It is not grouped. One undo.';
+}
+
+function lightItAction(
+	services: StageAdapterServices,
+	subject: StageCardSubject
+): StageCardAction | null {
+	if (subject.reference?.domain !== 'scene') return null;
+	const snapshot = services.stage.snapshot();
+	const entity = entityById(snapshot, subject.sourceId);
+	if (entity === null || entity.kind === 'light') return null;
+	const selectedCount = services.stage.selectionState().ordered.length;
+	return {
+		id: 'light-it',
+		label: 'Light it',
+		detail: lightItDetail(entity, selectedCount),
+		async run() {
+			const prepared = lightItSelectionRecipe(services);
+			if (prepared.kind === 'refused') return { kind: 'refused', message: prepared.message };
+			const live = services.stage.snapshot();
+			const allocatedId = `light-${crypto.randomUUID()}`;
+			const { recipe } = prepared;
+			let outcome: Awaited<ReturnType<typeof services.authoring.accept>>;
+			try {
+				outcome = await services.authoring.accept({
+					version: 1,
+					kind: 'create-light',
+					operationId: crypto.randomUUID(),
+					expectedRevision: live.acceptedRevision,
+					targets: [],
+					payload: {
+						light: 'spot',
+						name: nextEntityName(live, recipe.name),
+						color: recipe.color,
+						intensity: recipe.intensity,
+						castShadow: recipe.castShadow,
+						position: [...recipe.position],
+						rotation: [...recipe.rotation],
+						angle: recipe.angle,
+						range: recipe.range
+					} as never,
+					capturedInputs: [],
+					allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+				});
+			} finally {
+				services.stage.notifySurfaceChange();
+			}
+			if (outcome.kind === 'installed') {
+				const reference = sceneEntityReference(
+					allocatedId,
+					services.stage.snapshot().domain.unitRevisions.scene
+				);
+				services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+				return { kind: 'accepted' };
+			}
+			return outcome.kind === 'refused'
+				? { kind: 'refused', message: outcome.message }
+				: { kind: 'no-op' };
+		}
+	};
 }
 
 function lightFacts(light: Light): readonly StageCardFact[] {
@@ -1362,8 +1499,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (subject.reference?.domain !== 'scene') return [];
 					const snapshot = services.stage.snapshot();
 					const light = lightById(snapshot, subject.sourceId);
-					if (light === null) return [];
-					return [duplicateActionFor(light), deleteActionFor(light)];
+					if (light !== null) return [duplicateActionFor(light), deleteActionFor(light)];
+					const lightIt = lightItAction(services, subject);
+					return lightIt === null ? [] : [lightIt];
 				},
 				instrument(task) {
 					openTaskKind = task.kind;
