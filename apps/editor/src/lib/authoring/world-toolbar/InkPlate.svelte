@@ -18,6 +18,7 @@
 	const emptySnapshot: InkPaletteSnapshot = {
 		reading: 'wall',
 		wallMode: 'line',
+		arc: null,
 		box: null,
 		readings: [
 			{ id: 'wall', label: 'Wall', summary: 'Straight Wall chain.' },
@@ -62,7 +63,7 @@
 		if (surface.snapshot().reading !== reading) surface.controller.setReading(reading);
 	});
 
-	function setShape(mode: 'line' | 'box' | 'circle'): void {
+	function setShape(mode: 'line' | 'arc' | 'box' | 'circle'): void {
 		inkSurface()?.controller.setWallMode(mode);
 	}
 
@@ -88,7 +89,20 @@
 	const height = $derived(snapshot.options?.height ?? 3);
 	const heightName = $derived(Math.abs(height - 2.4) < 0.01 ? 'Low' : Math.abs(height - 3.6) < 0.01 ? 'Tall' : 'Room');
 	const shapeName = $derived(
-		snapshot.wallMode === 'box' ? 'Box' : snapshot.wallMode === 'circle' ? 'Circle' : 'Line'
+		snapshot.wallMode === 'box'
+			? 'Box'
+			: snapshot.wallMode === 'circle'
+				? 'Circle'
+				: snapshot.wallMode === 'arc'
+					? 'Arc'
+					: 'Line'
+	);
+	const arcFacts = $derived(
+		snapshot.arc === null
+			? null
+			: snapshot.arc.belowMinimum
+				? `Line · rise ${Math.abs(snapshot.arc.rise).toFixed(2)} m`
+				: `Rise ${Math.abs(snapshot.arc.rise).toFixed(2)} m · R ${Number.isFinite(snapshot.arc.radius) ? snapshot.arc.radius.toFixed(2) : '∞'} m`
 	);
 	// The donor shows the current choice even before a Wall exists. The controls
 	// still write only through the Ink surface once it has an Opening to change.
@@ -113,9 +127,14 @@
 					title="Line"
 					onclick={() => setShape('line')}
 				><WorldIcon name="shape-line" size={19} /></button>
-				<button type="button" class="opt" aria-label="Arc" title="Curved walls arrive with T1" disabled>
-					<WorldIcon name="shape-arc" size={19} />
-				</button>
+				<button
+					type="button"
+					class="opt"
+					aria-label="Arc"
+					aria-pressed={snapshot.wallMode === 'arc'}
+					title="Arc"
+					onclick={() => setShape('arc')}
+				><WorldIcon name="shape-arc" size={19} /></button>
 				<button
 					type="button"
 					class="opt"
@@ -134,6 +153,11 @@
 				><WorldIcon name="shape-circle" size={19} /></button>
 			</div>
 		</div>
+		{#if arcFacts !== null}
+			<div class="pg">
+				<span class="gl" title="Arc rise and radius" data-ink-arc-facts>{arcFacts}</span>
+			</div>
+		{/if}
 		<div class="pg">
 			<span class="gl" title="Height">{heightName} · {height.toFixed(1)} m</span>
 			<div class="opts" role="group" aria-label="Height">
