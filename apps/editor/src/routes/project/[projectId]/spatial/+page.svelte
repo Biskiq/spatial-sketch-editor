@@ -46,11 +46,7 @@
 	import { createProjectApi, createProjectAuth, type ProjectApi } from '$lib/platform/project-persistence';
 	import { perfInput, perfMark, perfMarksEnabled, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
 	import { installPerfWorkObserver } from '$lib/platform/perf-work';
-	import {
-		SCENE_ENVIRONMENT_SET_KIND,
-		type ProjectEnvelope,
-		type SceneEnvironmentPreset
-	} from '@portfolio/project-model/units';
+	import type { ProjectEnvelope } from '@portfolio/project-model/units';
 	import { layoutSelectionReference, primaryEntry, sameReference, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import { bootIntentFromSearch, type BootIntent } from '$lib/authoring/stage/boot-state';
 	import type { StageDomainRead, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
@@ -65,6 +61,7 @@
 	import {
 		createStageFacade,
 		type StageCardActionRecord,
+		type StageCardSubject,
 		type StageCardWriterRecord,
 		type StageFacade,
 		type StageIntentResult,
@@ -164,6 +161,7 @@ import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
 import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
 import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
 import SkyControl from '$lib/authoring/world-toolbar/SkyControl.svelte';
+import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
 import { worldTool, type WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
@@ -466,10 +464,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let experienceGuideOpen = $state(false);
 	/** The controller the homes read; null outside the Experience lens. */
 	const activeExperience = $derived(lens === 'experience' ? experienceController : null);
-	/** Experience review 1 (R5): the World's saved environment, and the unsaved "Plain Paper while editing". */
-	const worldEnvironment = $derived.by(() => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper');
-	let editOnPaper = $state(false);
-	let environmentWrite = $state.raw<StageAdapterServices | null>(null);
 	/** The World toolbar's selected row; the task/selection controllers remain authoritative. */
 	let activeWorldTool = $state<WorldToolId>('select');
 	/** The upper parchment plate: opens on a family press and folds on a second one. */
@@ -494,26 +488,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		else if (task.kind === STAGE_ERASER_TASK) activeWorldTool = 'erase';
 	});
 
-	async function setWorldEnvironment(preset: SceneEnvironmentPreset): Promise<void> {
-		const services = adapterServices;
-		if (services === null || environmentWrite === services || preset === worldEnvironment) return;
-		environmentWrite = services;
-		try {
-			const outcome = await services.authoring.accept({
-				version: 1,
-				kind: SCENE_ENVIRONMENT_SET_KIND,
-				operationId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-				expectedRevision: services.stage.snapshot().acceptedRevision,
-				targets: [],
-				payload: { preset },
-				allocatedIds: [],
-				capturedInputs: []
-			});
-			if (adapterServices === services && outcome.kind === 'refused') notice = outcome.message;
-		} finally {
-			if (environmentWrite === services) environmentWrite = null;
-		}
-	}
 	/** R217.S29 Show ▾ — session-only Stage drawing flags; all on by default. */
 	let showOpen = $state(false);
 	let showMode = $state<'whole' | 'selection'>('whole');
@@ -987,6 +961,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let marks = $state<readonly StageMarkView[]>([]);
 	let stageCursor = $state<string | null>(null);
 	let notice = $state('');
+	/**
+	 * T2 P0 — the route's one Look authoring module. The Sky popover, the Card's
+	 * look stratum, the Stage's Look mark layer and the Library's Look shelf all
+	 * consume this one construction; later T2 slices fill the strata without
+	 * growing a second route writer.
+	 */
+	const look = createLookAuthoring({
+		environment: () => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper',
+		services: () => adapterServices,
+		onNotice: (message) => { notice = message; }
+	});
 	$effect(() => {
 		const shown = notice;
 		if (lens !== 'experience' || shown === '') return;
@@ -1351,7 +1336,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		) {
 			throughViewport = framed.local;
 		}
-		const groundReach = !editOnPaper && worldEnvironment !== 'paper' ? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS : undefined;
+		const groundReach = !look.editOnPaper && look.environment !== 'paper' ? WORLD_ENVIRONMENT_GROUND_RADIUS_METERS : undefined;
 		const result = stage.camera.evaluate(currentRect, nowSeconds(), groundReach);
 		evaluation = result.kind === 'evaluated' ? result.evaluation : null;
 		if (evaluation === null) return;
@@ -3722,6 +3707,27 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	});
 
 	/**
+	 * The selected subject in the shared Card vocabulary. The Look stratum and every
+	 * adapter contribution read the one subject; the route does not rebuild it.
+	 */
+	const cardSubject = $derived.by((): StageCardSubject | null => {
+		const selected = selection;
+		if (selected === null) return null;
+		return {
+			sourceId: selected.reference.subject.id,
+			sourceKind: selected.reference.subject.kind,
+			reference: selected.reference,
+			ref: selected.representation ?? null
+		};
+	});
+
+	/** The Card's Look stratum: empty in P0, filled by later Finish, Light or Artwork slices. */
+	const lookCardStratum = $derived.by(() => {
+		void contributionsVersion;
+		return look.cardStratum(cardSubject);
+	});
+
+	/**
 	 * The Card's ordinary facts: the Layout datum, then whatever adapters registered for
 	 * this subject, without this route knowing which domain contributed them. A fact whose
 	 * field the header or the writer shows is dropped by the Card, so each value appears once.
@@ -3740,19 +3746,14 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				}
 			]
 			: [];
-		return stageCardFacts(facade, { sourceId: selected.reference.subject.id, sourceKind: selected.reference.subject.kind, ref: selected.representation ?? null, reference: selected.reference }, own);
+		return [...stageCardFacts(facade, cardSubject, own), ...lookCardStratum.facts];
 	});
 
 	const cardNameWriter = $derived.by(() => {
 		void contributionsVersion;
-		const selected = selection;
-		if (selected === null || facade === null) return null;
-		return facade.cardNameWriter({
-			sourceId: selected.reference.subject.id,
-			sourceKind: selected.reference.subject.kind,
-			reference: selected.reference,
-			ref: selected.representation ?? null
-		});
+		const subject = cardSubject;
+		if (subject === null || facade === null) return null;
+		return facade.cardNameWriter(subject);
 	});
 
 	/**
@@ -3764,14 +3765,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 */
 	const cardWriter = $derived.by(() => {
 		void contributionsVersion;
-		const selected = selection;
-		if (selected === null || facade === null) return null;
-		return stageCardWriter(facade, {
-			sourceId: selected.reference.subject.id,
-			sourceKind: selected.reference.subject.kind,
-			reference: selected.reference,
-			ref: selected.representation ?? null
-		});
+		const subject = cardSubject;
+		if (subject === null) return null;
+		return lookCardStratum.writer ?? (facade === null ? null : stageCardWriter(facade, subject));
 	});
 
 	/**
@@ -3780,14 +3776,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 */
 	const cardActions = $derived.by((): readonly StageCardActionRecord[] => {
 		void contributionsVersion;
-		const selected = selection;
-		if (selected === null || facade === null) return [];
-		return stageCardActions(facade, {
-			sourceId: selected.reference.subject.id,
-			sourceKind: selected.reference.subject.kind,
-			reference: selected.reference,
-			ref: selected.representation ?? null
-		});
+		const subject = cardSubject;
+		if (subject === null) return [];
+		return [
+			...(facade === null ? [] : stageCardActions(facade, subject)),
+			...lookCardStratum.actions
+		];
 	});
 
 	/** The display label of a located Stage subject, or null when the Index does not list it. */
@@ -4136,10 +4130,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		libraryOpen = false;
 		armWorldTool('objects');
 		notice = assetId === '' ? 'Choose a placement in the Objects panel.' : 'Choose the object in the Objects panel to place it.';
-	}
-
-	function pickWorldMaterial(): void {
-		notice = 'Paint is planned for T5; the material stays in the Library without changing the World.';
 	}
 
 	/** A dock press: arm the key, or fold/unfold the armed key's own palette. */
@@ -4560,11 +4550,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#snippet sky()}
 						{#if adapterServices !== null}
 							<SkyControl
-								environment={worldEnvironment}
-								onEnvironment={(preset) => void setWorldEnvironment(preset)}
-								{editOnPaper}
-								onEditOnPaper={(value) => (editOnPaper = value)}
-								busy={environmentWrite === adapterServices}
+								environment={look.environment}
+								onEnvironment={(preset) => void look.setEnvironment(preset)}
+								editOnPaper={look.editOnPaper}
+								onEditOnPaper={(value) => look.setEditOnPaper(value)}
+								busy={look.busy}
 							/>
 						{/if}
 					{/snippet}
@@ -4625,7 +4615,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						datumMeters={boot.snapshot.domain.datumMeters}
 						contentBounds={paperContentBounds}
 						snapshotBounds={stageContentBounds}
-						environment={editOnPaper ? 'paper' : worldEnvironment}
+						environment={look.stageEnvironment}
 						framedViewport={experienceLens.lookThroughSession() !== null ? throughViewport : null}
 							{selection}
 						hover={armedHostTool === 'erase' ? eraseHover : hoverSelection}
@@ -4641,7 +4631,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#if experienceLens.lookThroughSession() === null}
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
-								{markers} {marks} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 					{/if}
 					{#if lens === 'experience' && evaluation !== null && experienceLens.lookThroughSession() === null}
 						<ExperienceMarks
@@ -4936,7 +4926,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						guideSeconds={previewGuideStats.seconds}
 						viewLabels={previewViewLabels}
 						onExit={previewController.close}
-						environment={worldEnvironment}
+						environment={look.environment}
 					/>
 				</div>
 			{:else if preview !== null}
@@ -4991,7 +4981,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onTool={armWorldTool}
 						onLibrary={toggleWorldLibrary}
 						onObjectPick={pickWorldObject}
-						onMaterialPick={pickWorldMaterial}
+						onMaterialPick={look.pickMaterial}
+						lookShelf={look.libraryShelf}
+						onLookPick={look.pickLibraryEntry}
 					>
 						{#snippet plate()}
 							{#if activeWorldTool === 'walls' || activeWorldTool === 'opening'}
