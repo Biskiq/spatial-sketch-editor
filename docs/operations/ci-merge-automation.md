@@ -34,10 +34,9 @@ The highest profile wins. A Git or event error blocks certification.
 
 - **Minimal** covers Markdown under the documentation, research and audit roots, and the root
   README and CONTRIBUTING guides. It also covers regular CSS additions and edits within editor
-  source/static, plus a conservative Svelte style-only proof. Source CSS with imports, URLs or
-  escapes takes a higher profile. The Svelte proof requires one plain terminal style block on
-  its own line, identical bytes before and after the block, and no markup or resource dependency
-  syntax in the changed style. Other Svelte edits follow the code rules.
+  source/static, plus a conservative Svelte style-only proof. Source CSS with changed or multiline resource references, or with escapes, takes a higher profile. The Svelte proof requires one plain terminal style block on
+  its own line, identical bytes before and after the block, and no markup or changed resource references
+  in the style. Other Svelte edits follow the code rules.
 - **Focused** is the default for editor source and static changes that remain after the Full
   rules. It runs the architecture files plus authoring and design tests and the changed source
   area's matching test directory. Camera, navigation, experience and routes add the experience

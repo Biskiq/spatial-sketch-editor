@@ -14,19 +14,28 @@ function git(...args) {
 	return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
 }
 
-// A deliberately narrow proof: one plain, terminal style block and identical
-// bytes outside it. Refuse angle brackets in the body, preprocessors, and
-// changes to CSS that can introduce new resource dependencies.
-function simpleStyle(source) {
-	return !/@import\b|url\s*\(|\\/i.test(source);
+// Keep unchanged one-line resource references eligible for Minimal. A
+// multiline reference or an escape is uncertain and needs editor verification.
+function sameStyleDependencies(before, after) {
+	const dependencies = (source) => {
+		if (source.includes('\\')) return null;
+		const lines = source.split('\n').filter((line) => /@import\b|url\s*\(/i.test(line));
+		if (lines.some((line) => /@import\b/i.test(line)
+			? !/;/.test(line)
+			: /url\s*\([^)]*$/i.test(line))) return null;
+		return JSON.stringify(lines);
+	};
+	const previous = dependencies(before);
+	return previous !== null && previous === dependencies(after);
 }
 
+// One plain, terminal style block and identical bytes outside it.
 export function styleOnly(before, after) {
 	const block = /^(?<prefix>[\s\S]*\n)<style>(?<css>[^<]*)<\/style>(?<suffix>\s*)$/;
 	const a = block.exec(before)?.groups;
 	const b = block.exec(after)?.groups;
 	return Boolean(a && b && a.prefix === b.prefix && a.suffix === b.suffix &&
-		!/<\/?style\b/i.test(a.prefix) && simpleStyle(a.css) && simpleStyle(b.css));
+		!/<\/?style\b/i.test(a.prefix) && sameStyleDependencies(a.css, b.css));
 }
 
 function fileProfile({ path, status, oldMode, newMode }, read) {
@@ -36,7 +45,7 @@ function fileProfile({ path, status, oldMode, newMode }, read) {
 	if (DOCS.test(path)) return 'minimal';
 	if (!/^apps\/editor\/(?:src|static)\//.test(path)) return 'full';
 	if (path.endsWith('.css') && status !== 'D' && (path.startsWith(EDITOR + 'static/') ||
-		simpleStyle(read('head', path)) && (status === 'A' || simpleStyle(read('base', path))))) {
+		sameStyleDependencies(status === 'A' ? '' : read('base', path), read('head', path)))) {
 		return 'minimal';
 	}
 	if (path.endsWith('.svelte') && status === 'M' && styleOnly(read('base', path), read('head', path))) {

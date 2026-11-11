@@ -82,6 +82,17 @@ it.each([
 	expect(JSON.parse(result.stdout).profile).toBe(profile);
 });
 
+it('keeps ordinary CSS edits Minimal when existing resource references are unchanged', () => {
+	const fixture = repo();
+	const path = 'apps/editor/src/lib/design/tokens.css';
+	const css = '@font-face { src: url(/fonts/ui.ttf); }\n:root { --accent: blue; }\n';
+	const baseSha = fixture.commit({ [path]: css });
+	fixture.commit({ [path]: css.replace('blue', 'red') });
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('minimal');
+	fixture.commit({ [path]: css.replace('/fonts/ui.ttf', '/fonts/new.ttf') });
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('focused');
+});
+
 it('requires identical non-CSS bytes and a plain terminal Svelte style block', () => {
 	const component = '<button>Close</button>\n<style>button { color: blue; }</style>\n';
 	const fixture = repo();
