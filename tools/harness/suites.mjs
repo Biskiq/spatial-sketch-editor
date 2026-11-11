@@ -90,7 +90,22 @@ export const SUITES = [
 /** Every suite the gate and the report require. */
 export const REQUIRED_SUITES = SUITES.map((suite) => suite.name);
 
-export const VITEST_SUITES = SUITES.filter((suite) => suite.kind === 'vitest').map(
+export const FOCUSED_SUITE = {
+	name: 'editor focused tests',
+	kind: 'vitest',
+	cwd: 'apps/editor',
+	args: ['npx', 'vitest', 'run'],
+	slug: 'editor-focused'
+};
+
+export function requiredSuites(profile) {
+	if (profile === 'full') return REQUIRED_SUITES;
+	if (profile === 'focused') return ['npm run check', FOCUSED_SUITE.name];
+	if (profile === 'minimal') return [];
+	throw new Error(`unknown verification profile: ${profile}`);
+}
+
+export const VITEST_SUITES = [...SUITES, FOCUSED_SUITE].filter((suite) => suite.kind === 'vitest').map(
 	(suite) => suite.name
 );
 
@@ -110,7 +125,7 @@ export function expectedCommand(suite) {
 
 /** @param {string} name */
 export function suiteFor(name) {
-	const suite = SUITES.find((entry) => entry.name === name);
+	const suite = [...SUITES, FOCUSED_SUITE].find((entry) => entry.name === name);
 	if (!suite) throw new Error(`${name} is not part of the merge-gate contract`);
 	return suite;
 }

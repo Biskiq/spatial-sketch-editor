@@ -18,90 +18,88 @@ PRs can be queued without manual rebasing.
 
 ## What CI runs
 
-The [Merge gate](../../.github/workflows/merge-gate.yml) runs on `pull_request`, on `push` to `main`
-and on `merge_group`, with no path filter. It records one provenance artifact per required suite and
-the `merge gate` aggregator refuses a run whose evidence is missing, failed, interrupted, from
-another commit, produced by a command override, or missing a real reporter artifact.
+The [Merge gate](../../.github/workflows/merge-gate.yml) runs on every pull request and merge
+group, without workflow-level path filters. It also runs Full every Sunday at 07:17 UTC and on
+manual dispatch. There is no automatic push run on main.
 
-| Suite | Kind | Why it is separate |
+| Profile | Jobs that start on a PR | Required evidence |
 | --- | --- | --- |
-| `npm run test:fast` | Vitest | The complete population minus the arch and heavy lanes |
-| `npm run test:arch` | Vitest | Unconditional architecture, isolation and documentation boundaries |
-| `npm run test:heavy` | Vitest | Dense correctness, property and stress work |
-| `npm run check` | command | Svelte/TypeScript check |
-| `npm run build` | command | Editor production build |
-| `npm run check:api` | command | API TypeScript check |
-| `npm run test:api` | TAP | DB-backed API contract, zero skips |
-| `package checks` | command | Camera, layout, geometry and project-model type checks in one job |
+| Minimal | Classify/static checks and merge gate | Git whitespace check and, for Markdown, the documentation reference walk and ledger anchors |
+| Focused | The same two jobs plus editor focused verification | Editor typecheck and Vitest artifacts from the selected files |
+| Full | The same two jobs plus the existing suite matrix, DB-backed API job, check guards and linux-x64 | Complete existing suite provenance and a successful native golden job |
 
-The four package checks share one job because they are homogeneous `tsc` runs whose separate
-checkouts and installs cost more than the checks themselves. Grouping is a job-shell change only:
-the job runs four producers, and the aggregate still requires all four provenance records. Every
-other suite keeps its own stable check name.
+The classifier compares the checked-out integration SHA against the exact base SHA in the event.
+Git reports additions and deletions separately for renames so the old path is also classified.
+The highest profile wins. A Git or event error blocks certification.
 
-The editor population is partitioned, not sampled. `test:fast` excludes exactly the curated arch and
-heavy files; [lane-membership.test.ts](../../apps/editor/tests/config/lane-membership.test.ts) proves
-that every curated entry exists, the lanes are disjoint, and `fast + arch + heavy` equals every
-collected test file. It also reads the three lane configs, so a hand-edited include cannot silently
-drop a file. `npm test` remains the complete local suite and is never narrowed or removed; CI does
-not run it on top of the lanes because that would execute every arch and heavy test twice.
+- **Minimal** covers Markdown under the documentation, research and audit roots, and the root
+  README and CONTRIBUTING guides. It also covers regular CSS additions and edits within editor
+  source/static, plus a conservative Svelte style-only proof. Source CSS with changed or multiline resource references, or with escapes, takes a higher profile. The Svelte proof requires one plain terminal style block on
+  its own line, identical bytes before and after the block, and no markup or changed resource references
+  in the style. Other Svelte edits follow the code rules.
+- **Focused** is the default for editor source and static changes that remain after the Full
+  rules. It runs the architecture files plus authoring and design tests and the changed source
+  area's matching test directory. Camera, navigation, experience and routes add the experience
+  and museum tests outside museum layout. Unknown editor areas and static assets use a broader
+  set of editor cohorts. Tests that read source text, mount routes or load modules at runtime
+  stay covered by area, even when they have no import edge to the changed file. Focused excludes
+  the curated Heavy lane. Critical changes and scheduled or manual Full runs retain those tests.
+- **Full** covers workspace packages, the API, tests and harnesses, workflow/configuration,
+  repo routing and workflow policy, security, persisted contracts, public/visitor runtime and
+  geometry/layout ownership. JSON and other structured runtime configuration are Full.
+  Unknown paths outside editor source/static and approved documentation, nonregular files
+  and executable mode changes are Full. See [the classifier](../../tools/harness/plan.mjs)
+  for the exact paths.
 
-The arch lane is never path-gated. A documentation-only change still runs it, and the provenance
-aggregator cannot certify a run that omitted it.
+The Full matrix runs all three disjoint editor lanes, editor check/build, API typecheck and the
+grouped package typechecks. The separate API job requires a live Postgres contract run with zero
+skips. The native Linux x64 job still runs the pinned corpus and determinism boundary.
+Local commands, including the complete `npm test` command, keep their existing semantics.
 
-## Merge-group contract
+The gate independently resolves the plan from the event and checks job outcomes and matching
+suite artifacts. Focused evidence must include the exact selected test files in the Vitest
+report. Omitted suites and goldens are recorded as `not applicable`. The required check contexts
+remain `merge gate`, `check guards` and `linux-x64`. GitHub reports conditional jobs as skipped.
+Every Full PR runs the guard scan. In a lower-profile PR, the verified delta contains no changes
+to paths that can declare guarded tests.
 
-Every workflow that provides a required context also triggers on `merge_group`:
+## Tooling choice
 
-- [Merge gate](../../.github/workflows/merge-gate.yml) — `merge gate`, `check guards` and every
-  suite job.
-- [Native form Linux x64 goldens](../../.github/workflows/native-form-goldens.yml) — `linux-x64`.
+Git already provides the exact, NUL-delimited file and mode delta and the two blobs needed
+for the Svelte check. It works with read-only checkout access and adds no action to pin or trust.
 
-For a merge-group run, `github.sha` is the synthetic merge commit GitHub built for the batch. Every
-job checks out that same commit and the aggregator records it with `--commit "$GITHUB_SHA"`, so the
-report is correctly attributed to the tested queue commit and never mistaken for a `main` push
-report. `status` discovery still accepts only a successful `push` run on `main`; merge-group reports
-are merge evidence, not main history.
+- [dorny/paths-filter](https://github.com/dorny/paths-filter) is maintained and MIT-licensed.
+  It handles push and merge-group comparisons with Git and uses the PR files API by default
+  (requires `pull-requests: read`). Its filters operate on changed paths and statuses.
+- [step-security/changed-files](https://github.com/step-security/changed-files) is a maintained,
+  MIT-licensed action with PR, merge-group and push support. It can enumerate file and status
+  changes from local Git or the PR API. Both actions still require blob comparison for the
+  Svelte proof and custom mapping from results to the harness evidence contract.
+- [Vitest](https://github.com/vitest-dev/vitest) is maintained, MIT-licensed and already pinned
+  here. Its [CLI](https://vitest.dev/guide/cli) supports `related` and `--changed` for import-based
+  selection. Biskiq also has filesystem and runtime contracts that the static import graph
+  cannot see. Explicit area cohorts and architecture tests give deterministic selection with
+  the existing Vitest runner and reporter, without a second dependency graph.
 
-`check guards` must report on the queue commit. A `merge_group` payload has no PR number and its
-`head_sha` is the synthetic integration commit, not a PR head. The base branch comes from
-`merge_group.base_ref` (never the unavailable `github.base_ref`) and is validated against the
-repository default branch. [event-context.mjs](../../tools/harness/event-context.mjs) walks the
-synthetic commit's first-parent chain back to `base_sha`; each merge's second parent is a queued PR
-head, matched to an open PR through GitHub's own commit association.
+## Merge groups and main evidence
 
-Each entry is evaluated separately: its own labels authorize only its own integration delta, from
-the previous queue tip to that entry's merge commit. The first entry starts at the event's exact
-`base_sha`; no `origin/main` fetch is used for a queue run, so a branch that advanced after the group
-was built cannot change the comparison. An owner approval on PR A therefore cannot authorize a check
-removal in unrelated PR B. A non-merge commit, an entry with no open PR, a head mismatch, or a
-non-default base fails closed.
+The batch profile uses `merge_group.base_sha` through `merge_group.head_sha`, including the
+net effects of every entry. The guards run for every group even if its net delta is Minimal.
+[event-context.mjs](../../tools/harness/event-context.mjs) walks the synthetic commit's first-parent
+chain, verifies each queued PR association, and supplies each entry's own labels and delta.
+Approval on one entry cannot authorize a removal in another, even if the batch later restores
+the test. A missing association, wrong head, unexpected commit shape or wrong base fails closed.
+Group runs keep isolated concurrency.
 
-Merge-group concurrency is not cancelled: a queue group is already an isolated validation, and
-cancelling it would discard evidence GitHub is waiting for. Pull-request runs and `main` pushes keep
-`cancel-in-progress`.
+`npm run status` accepts complete, successful reports from scheduled and manual runs on main
+and historical main pushes. It requires an exact head match for current evidence. Older full
+reports are eligible only as ancestor comparisons. Current capability evidence may be unknown
+between full runs. Run the Merge gate manually on main to refresh it when needed.
 
-## Measured baseline
-
-The 2026-11-11 baseline run (`43104546090`) took **6m23s** wall-clock and **15.95 runner-minutes**
-across 14 merge-gate jobs. `npm test` alone was 285s and sat on the critical path, while
-`test:arch` (59s) and `test:heavy` (170s) re-ran files it had already executed.
-
-The post-change measurement is recorded on the implementation PR, against the final head SHA, using
-the same method: run-created-to-updated wall-clock and the sum of per-job `started_at` to
-`completed_at` durations from the Actions jobs API. A timing claim is evidence only when a run
-actually produced it; this page does not pre-state the result.
-
-Sharding was evaluated and not adopted. Splitting the heavy lane would require a shard-aware
-provenance merge, and the remaining critical path is the API lane; the added evidence complexity is
-not justified by the wall-clock it could recover. Grouping the remaining editor and API checks with the package checks would save setup time but
-serialise the critical static checks behind one job, so those stay parallel. The measured baseline
-and the final measurement are compared job-for-job on the same runner class.
-
-## Activation (one owner action, after this merges)
+## Optional merge-queue activation
 
 The queue rule is **not active** in the repository today. Do not add pull requests to a queue before
-this command runs. Activate only after the workflows above are on `main`.
+this command runs. Activate only with explicit owner authorization. Change-aware CI does not require this step.
 
 Prerequisite: the repository is public, so GitHub merge queue is available. Confirm the workflow
 runs on `main` contain `merge_group` and that the required contexts are unchanged.
@@ -140,33 +138,5 @@ gh api repos/Biskiq/spatial-sketch-editor/rulesets/22803329 \
 
 ## Rollback
 
-Remove the queue rule first, then revert the workflow change. Reverting the workflow while the queue
-is active would leave queued PRs waiting for a `merge_group` context that no longer reports.
-
-```bash
-gh api --method PUT \
-  repos/Biskiq/spatial-sketch-editor/rulesets/22803329 \
-  --input .github/rulesets/main-branch.pre-merge-queue.json
-```
-
-[main-branch.pre-merge-queue.json](../../.github/rulesets/main-branch.pre-merge-queue.json) is the
-exact pre-activation snapshot: the current rules minus the merge-queue rule. A test asserts it equals
-the desired ruleset with only that rule removed, so the rollback cannot drift from the activation
-file. After removing the rule, revert the implementation commit normally; the prior `npm test`
-suite contract is restored with it.
-
-## Residual limits
-
-- **One-time comparison gap.** The suite identity changes from `npm test` to the three lanes. The
-  last pre-migration `main` report does not contain the new names, so the first post-merge report has
-  no complete ancestor report and regression comparison is unavailable for that one merge. The
-  second report restores it. Gate completeness is not affected.
-- **Queue commit shape.** The guards resolver depends on GitHub's two-parent-per-entry queue shape.
-  A different shape fails closed. This is intentional: the alternative, parsing the temporary branch
-  name, trusts a value the queued change can influence.
-- **PR association.** Each queued entry head must match an open PR through GitHub's commit
-  association. An unmatched entry fails closed rather than silently dropping its authorization.
-- **Per-entry labels.** Authorization does not cross entry boundaries. A change that genuinely needs
-  the same owner approval in two queued PRs must carry the label on both.
-- **Queue provider.** Merge queue is native GitHub; this repository adds no custom orchestrator and
-  no third-party queue.
+Revert this implementation PR to restore the previous unconditional suites and push trigger.
+Both versions support merge groups and publish the same required contexts.

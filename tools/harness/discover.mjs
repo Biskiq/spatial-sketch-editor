@@ -2,10 +2,10 @@
  * Discover the report the merge gate actually published for main.
  *
  * A fresh checkout has no `.harness/report.json`; the only certifying evidence
- * lives in the `harness-report` artifact of a successful `Merge gate` push run.
+ * lives in the `harness-report` artifact of a successful full `Merge gate` run.
  * Discovery is deliberately narrower than "latest successful run":
  *
- * - the workflow must be `merge-gate.yml` and the run a completed `push` on main;
+ * - the workflow must be `merge-gate.yml` and the run a completed schedule, dispatch or historical push on main;
  * - its `headSha` must be the current main head for current evidence, or an
  *   ancestor of it for the previous report;
  * - the `harness-report` artifact must exist and be unexpired;
@@ -67,7 +67,7 @@ function isMainRun(run) {
 		typeof run === 'object' &&
 		run !== null &&
 		run.workflowName === WORKFLOW_NAME &&
-		run.event === 'push' &&
+		['push', 'schedule', 'workflow_dispatch'].includes(run.event) &&
 		run.headBranch === 'main' &&
 		run.status === 'completed' &&
 		run.conclusion === 'success' &&
@@ -77,8 +77,10 @@ function isMainRun(run) {
 	);
 }
 
-function isCompleteRun(run) {
+function isCompleteRun(run, event) {
 	if (validateRun(run).length > 0) return false;
+	if ((event !== 'push' || run.profile !== undefined) &&
+		(run.profile !== 'full' || run.goldens !== 'success')) return false;
 	const suites = Array.isArray(run.suites) ? run.suites : [];
 	return REQUIRED_SUITES.every((name) =>
 		suites.some((suite) => suite?.name === name && suite?.status === 'complete')
@@ -146,7 +148,7 @@ function fetchReport(run, repoRoot, tempRoot) {
 		if (problems.length > 0) {
 			return { run: null, reason: `report is not certifiable: ${problems[0]}` };
 		}
-		if (!isCompleteRun(report)) {
+		if (!isCompleteRun(report, run.event)) {
 			return { run: null, reason: 'report does not contain every required complete suite' };
 		}
 		if (report.commit !== run.headSha) {
@@ -183,7 +185,7 @@ export function discoverMainEvidence({ repoRoot, mainHead, tempRoot = tmpdir() }
 
 	let runs;
 	try {
-		runs = ghJson(
+		runs = ['push', 'schedule', 'workflow_dispatch'].flatMap((event) => ghJson(
 			[
 				'run',
 				'list',
@@ -192,14 +194,14 @@ export function discoverMainEvidence({ repoRoot, mainHead, tempRoot = tmpdir() }
 				'--branch',
 				'main',
 				'--event',
-				'push',
+				event,
 				'--limit',
 				'30',
 				'--json',
 				'databaseId,workflowName,event,status,conclusion,headSha,headBranch,createdAt,url'
 			],
 			repoRoot
-		);
+		));
 	} catch (error) {
 		return { current: null, previous: null, reason: `gh run discovery failed: ${error.message.split('\n')[0]}` };
 	}
@@ -212,7 +214,7 @@ export function discoverMainEvidence({ repoRoot, mainHead, tempRoot = tmpdir() }
 		.sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
 
 	let current = null;
-	let reason = `no successful ${WORKFLOW_NAME} push run for main head ${mainHead}`;
+	let reason = `no successful ${WORKFLOW_NAME} full report for main head ${mainHead}`;
 	for (const run of candidates.filter((entry) => entry.headSha === mainHead)) {
 		const fetched = fetchReport(run, repoRoot, tempRoot);
 		if (fetched.run !== null) {
