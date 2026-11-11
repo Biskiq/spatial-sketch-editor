@@ -455,6 +455,12 @@ export type StageTaskContribution = {
 	readonly target?: SemanticReference | null;
 	readonly configuration?: F4JsonValue;
 	readonly lens?: StageLens;
+	/**
+	 * Keep the primary selection's admitted marks visible and hit-testable while
+	 * this task is open. The task's pointer hook must claim those marks before its
+	 * own task gesture. Default false: an open task owns the whole surface.
+	 */
+	readonly marksWhileOpen?: boolean;
 	/** Called for explicit Resume against current content, never at lens return. */
 	readonly revalidate?: (task: StageTask, snapshot: StageReadSnapshot) => TaskResumeOutcome;
 	/** Explicit deterministic order; ties break by adapter ID, then contribution ID. */
@@ -1441,10 +1447,22 @@ export function createStageFacade(input: {
 		return direct;
 	}
 
+	function openTaskShowsSelectionMarks(): boolean {
+		const owner = contributedTaskOwner;
+		if (owner === null) return false;
+		ensureBindings();
+		return tasksOf().some(
+			(entry) =>
+				entry.adapterId === owner.adapterId &&
+				entry.id === owner.taskId &&
+				entry.marksWhileOpen === true
+		);
+	}
+
 	function selectionMarks(): readonly StageMarkView[] {
 		if (!isLive() || !worldMarksOffered()) return [];
 		syncDisclosureSelection();
-		if (session.task() !== null) return [];
+		if (session.task() !== null && !openTaskShowsSelectionMarks()) return [];
 		const entry = primaryEntry(session.selectionState());
 		if (entry === null) return [];
 		ensureBindings();

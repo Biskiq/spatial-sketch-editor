@@ -6,7 +6,7 @@
  * accepted `update-light` per handle gesture, the surface-normal standoff, the
  * working-height fallback, and the spot's target-based cutoff.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -226,6 +226,85 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(forward[0]).toBeCloseTo(0, 8);
 		expect(forward[1]).toBeCloseTo(-1, 8);
 		expect(forward[2]).toBeCloseTo(0, 8);
+	});
+
+	it('edits a freshly placed light through an admitted mark while placement stays rearmed', async () => {
+		let picks = 0;
+		const scenePick = (): SceneRenderedHit | null => {
+			picks += 1;
+			if (picks === 1) {
+				return {
+					entityId: 'wall',
+					kind: 'entity',
+					distanceMeters: 3,
+					worldPoint: [1, 1, 0],
+					normal: [0, 0, 1]
+				};
+			}
+			if (picks === 2) {
+				return {
+					entityId: 'target',
+					kind: 'entity',
+					distanceMeters: 5,
+					worldPoint: [4, 1, 0],
+					normal: [0, 1, 0]
+				};
+			}
+			return null;
+		};
+		const { facade, host } = await mounted({ scenePick });
+		const accept = vi.spyOn(host, 'accept');
+		const before = host.history();
+		openSpotTask(facade);
+		const evaluationId = facade.evaluationId()!;
+
+		facade.pointerIntent({ phase: 'down', css: [560, 340], evaluationId });
+		facade.pointerIntent({ phase: 'move', css: [760, 340], evaluationId });
+		facade.pointerIntent({ phase: 'up', css: [760, 340], evaluationId });
+		await waitFor(() => lightsOf(facade).length === 1);
+		expect(facade.session.task()).toBeNull();
+		expect(armedLightKind(PROJECT_ID)).toBe('spot');
+
+		// The route reopens the task after the next live evaluation rebuilt the
+		// factory binding; the newly placed light remains the selection.
+		expect(facade.camera.evaluate(RECT, 3).kind).toBe('evaluated');
+		expect(facade.openContributedTask('light-place', 'light').kind).toBe('opened');
+		expect(facade.session.task()?.kind).toBe('light-place');
+		expect(facade.selectionState().primary?.subject.id).toBe(lightsOf(facade)[0]!.id);
+
+		const aim = facade.marks().find((mark) => mark.id === 'light-aim');
+		if (aim === undefined) throw new Error('the rearmed light published no Aim mark');
+		// The route obtains handleId from this same host hit-test before offering the
+		// press to the armed task.
+		const aimHit = facade.hitMark({ css: aim.anchor, coarse: false });
+		expect(aimHit?.id).toBe(aim.id);
+		expect(aimHit?.adapterId).toBe('light');
+		const dragEvaluationId = facade.evaluationId()!;
+		const dragCss: [number, number] = [aim.anchor[0] + 90, aim.anchor[1] - 30];
+		const beforeDrag = facade.snapshot().canonicalJson;
+
+		expect(
+			facade.pointerIntent({
+				phase: 'down',
+				css: aim.anchor,
+				evaluationId: dragEvaluationId,
+				handleId: aim.id,
+				handleAdapterId: aim.adapterId
+			}).claimed
+		).toBe(true);
+		expect(facade.session.task()?.kind).toBe('light-place');
+		expect(facade.session.gesture()?.owner).toBe('light-marks');
+		facade.pointerIntent({ phase: 'move', css: dragCss, evaluationId: dragEvaluationId });
+		expect(facade.session.task()?.kind).toBe('light-place');
+		expect(facade.session.gesture()?.owner).toBe('light-marks');
+		facade.pointerIntent({ phase: 'up', css: dragCss, evaluationId: dragEvaluationId });
+
+		await waitFor(() => host.history().depth === before.depth + 2);
+		const acceptedKinds = accept.mock.calls.map(([intent]) => intent.kind);
+		expect(acceptedKinds.filter((kind) => kind === 'create-light')).toHaveLength(1);
+		expect(acceptedKinds.filter((kind) => kind === 'update-light')).toHaveLength(1);
+		expect(lightsOf(facade)).toHaveLength(1);
+		expect(facade.snapshot().canonicalJson).not.toBe(beforeDrag);
 	});
 
 	it('places with viewport-correct rays when the Stage is offset', async () => {

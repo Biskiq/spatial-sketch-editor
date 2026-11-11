@@ -953,6 +953,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						taskKind: LIGHT_TASK,
 						label: 'Lights',
 						targetRef: null,
+						// Marks beat placement: the selected light can be edited immediately
+						// after the install without a second trip to the dock.
+						marksWhileOpen: true,
 						order: 40
 					}
 				],
@@ -1215,6 +1218,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				pointerIntent(intent, adapterContext) {
 					if (intent.phase === 'down') {
 						if (openTaskKind === LIGHT_TASK) {
+							// The plan gives an admitted mark priority over both the emitter
+							// glyph and a new placement while Lights is armed.
+							const markGesture = beginGesture(intent.handleId, adapterContext);
+							if (markGesture !== null) {
+								if (!acquireLease(intent.evaluationId, 'light-marks')) return false;
+								gesture = markGesture;
+								return true;
+							}
 							const glyph = lightGlyphAt(intent.css, adapterContext);
 							if (glyph !== null) {
 								const reference = sceneEntityReference(

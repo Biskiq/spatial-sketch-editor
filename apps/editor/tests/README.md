@@ -9,7 +9,7 @@ All Vitest suites live here, mirrored to `src/lib/`. A test for
 Repository-level verification stays intact: focused affected tests are the
 normal local run, while the complete contract below is certified by the
 mandatory GitHub CI merge gate, not routinely duplicated locally (AGENTS.md
-rule 11). Local task scope never narrows the gates; it decides which focused
+rule 9). Local task scope never narrows the gates; it decides which focused
 contracts you repeat locally. Major lanes: `test:fast` (inner loop),
 `test:arch` (ownership/isolation boundaries, always before a PR, never
 path-gated), `test:heavy` (dense correctness/stress). PR #115 removed the PERF
