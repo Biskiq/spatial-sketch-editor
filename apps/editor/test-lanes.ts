@@ -13,11 +13,9 @@
  * Every path below is relative to `apps/editor/` (the vitest root). `test:fast`
  * excludes exactly these files and nothing else.
  *
- * Architecture membership is a curated list of durable boundaries. The arch
- * lane is NEVER path-gated: it runs whole before every PR and at every
- * acceptance gate. No tracked CI workflow enforces that today — see
- * `tests/README.md` ("What a change requires"); the reviewed plan and the
- * acceptance record are the mechanism.
+ * Architecture membership is a curated list of durable boundaries. CI runs
+ * these files in Focused and Full verification. See tests/README.md for the
+ * local change-impact contract.
  *
  * PR #115 removed the PERF lane with its configuration (`lib/bench/**`, the
  * `/dev/perf*` routes and the `bench:record`/`reuse:record` scripts). The two

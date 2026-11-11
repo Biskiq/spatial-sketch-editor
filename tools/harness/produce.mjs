@@ -21,7 +21,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { suiteFor } from './suites.mjs';
+import { FOCUSED_SUITE, suiteFor } from './suites.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const OUTPUT_LIMIT = 200_000;
@@ -109,6 +109,14 @@ async function main() {
 	const artifactDir = resolve(REPO_ROOT, options.artifactDir);
 	mkdirSync(artifactDir, { recursive: true });
 	const resultsPath = join(artifactDir, `${suite.slug}.vitest.json`);
+	let testFiles = [];
+	if (suite === FOCUSED_SUITE) {
+		const { eventPlan } = await import('./plan.mjs');
+		const { focusedFiles } = await import('./focused.mjs');
+		const plan = eventPlan();
+		if (plan.profile !== 'focused') throw new Error('focused suite requires a focused plan');
+		testFiles = focusedFiles(plan);
+	}
 
 	/** @type {string[]} */
 	let command;
@@ -116,7 +124,7 @@ async function main() {
 	if (options.override.length > 0) {
 		[command, ...args] = options.override;
 	} else if (suite.kind === 'vitest') {
-		[command, ...args] = suite.args;
+		[command, ...args] = [...suite.args, ...testFiles];
 	} else {
 		command = 'npm';
 		args = ['run', suite.script];

@@ -26,7 +26,6 @@ const ISSUE_RESPONSE = join(REPO_ROOT, 'tools/harness/issue-response.mjs');
 const STATUS = join(REPO_ROOT, 'tools/harness/status.mjs');
 const MERGE_GATE = join(REPO_ROOT, '.github/workflows/merge-gate.yml');
 const ISSUE_GUARDS = join(REPO_ROOT, '.github/workflows/issue-guards.yml');
-const GOLDENS = join(REPO_ROOT, '.github/workflows/native-form-goldens.yml');
 const RULESET = join(REPO_ROOT, '.github/rulesets/main-branch.json');
 const PRE_QUEUE_RULESET = join(REPO_ROOT, '.github/rulesets/main-branch.pre-merge-queue.json');
 const TEMP = mkdtempSync(join(tmpdir(), 'harness-gate-'));
@@ -1373,16 +1372,16 @@ describe('workflow contract', () => {
 		expect(workflow).toContain('gh issue list --state open');
 		expect(workflow).toContain('--ledger capabilities.json');
 		expect(workflow).toContain('--issues .harness/open-issues.json');
-		expect(workflow).toMatch(/\non:\n  pull_request:\n  push:\n    branches: \[main\]\n  merge_group:\n/);
+		expect(workflow).toMatch(/\non:\n  pull_request:\n  merge_group:\n/);
 		expect(workflow).toContain('event-context.mjs');
-		expect(workflow).toContain('steps.event.outputs.base_branch');
+		expect(workflow).toContain('needs.prepare.outputs.base');
 		expect(workflow).not.toContain('${{ github.base_ref }}');
 		expect(workflow).toContain('pull-requests: read');
 		expect(workflow).toContain('--entries-out .harness/queue-entries.json');
 		expect(workflow).toContain('--entries-file .harness/queue-entries.json');
-		expect(workflow).toContain("if: github.event_name == 'pull_request'");
+		expect(workflow).toContain("github.event_name == 'pull_request' && needs.prepare.outputs.profile == 'full'");
 		expect(workflow).toContain('EVENT_NAME');
-		expect(workflow).toContain('Materialize the pull request base');
+		expect(workflow).toContain('--base "$BASE"');
 		expect(workflow).not.toMatch(/\n    paths:/);
 
 		const matrix = JSON.parse(run(MATRIX, []).stdout);
@@ -1409,10 +1408,13 @@ describe('workflow contract', () => {
 		]);
 	});
 
-	it('makes the retained goldens check start on every pull request', () => {
-		const goldens = readFileSync(GOLDENS, 'utf8');
-		expect(goldens).toMatch(/\non:\n  pull_request:\n  merge_group:\n/);
-		expect(goldens).not.toMatch(/\n    paths:/);
+	it('starts the retained goldens job only on the full profile', () => {
+		const workflow = readFileSync(MERGE_GATE, 'utf8');
+		expect(workflow).toContain('name: linux-x64');
+		expect(workflow).toMatch(/goldens:\n[^]*?if: needs.prepare.outputs.profile == 'full'/);
+		expect(workflow).toContain('npx vitest run tests/lib/geometry-core');
+		expect(workflow).toContain('workflow_dispatch:');
+		expect(workflow).toContain('schedule:');
 	});
 
 	it('runs issue-event guards with write access and closure-specific evidence', () => {

@@ -1,4 +1,4 @@
-import { COMMAND_SUITES, REQUIRED_SUITES, TAP_SUITES, VITEST_SUITES } from './suites.mjs';
+import { COMMAND_SUITES, FOCUSED_SUITE, REQUIRED_SUITES, TAP_SUITES, VITEST_SUITES } from './suites.mjs';
 
 /**
  * Capability report — status is computed, never claimed.
@@ -266,10 +266,10 @@ export function validateRun(run) {
 			problems.push(`${where}.name must be a string`);
 			continue;
 		}
-		if (!['complete', 'interrupted', 'failed', 'missing'].includes(suite.status)) {
+		if (!['complete', 'interrupted', 'failed', 'missing', 'not applicable'].includes(suite.status)) {
 			problems.push(`${where}.status is not a known state`);
 		}
-		if (!REQUIRED_SUITES.includes(suite.name)) {
+		if (!REQUIRED_SUITES.includes(suite.name) && suite.name !== FOCUSED_SUITE.name) {
 			problems.push(`${where}: ${suite.name} is not part of the merge-gate contract`);
 			continue;
 		}
@@ -367,7 +367,7 @@ export function validateRun(run) {
 		}
 	}
 
-	if (assertions === 0) {
+	if (assertions === 0 && run.profile !== 'minimal') {
 		problems.push('no test assertions were recorded; a run cannot be certified complete');
 	}
 	return problems;
