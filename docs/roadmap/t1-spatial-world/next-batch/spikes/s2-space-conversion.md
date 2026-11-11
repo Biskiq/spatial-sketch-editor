@@ -43,9 +43,12 @@ The S2 behaviours are executable and pass **in fixtures**:
 The zero-new-field hypothesis (R0) does **not** survive full boundary-authoring feasibility. It
 preserves identity and supports a one-Wall restore, but the production compiler rejects the open
 boundary, the certified world index refuses it, the existing polygon helper returns a wrong
-triangle, and two adjacent erased Walls collapse their corner. The recommendation for SP-plan is
+triangle, and two adjacent erased Walls collapse their corner. The recommended SP-plan candidate is
 therefore **R1: keep the existing Room as the Space, add explicit virtual-edge records, and consume
-them in the compiler and world index in the SP1 format bump**.
+them in the compiler and world index in the SP1 format bump**. R1 is a candidate, not a proven
+complete production model; SP-plan must settle the mixed-boundary ordering, retained virtual-edge
+anchors, Space certification independent of physical Wall-face extraction, and curved, edited and
+overlap validation.
 
 ## Results
 
@@ -101,6 +104,12 @@ real codec rejects the key today (`unknown_key`), so R1 requires the format bump
 It gives the compiler and world index an explicit edge to consume instead of asking them to infer
 one from a gap.
 
+R1 is the **recommended SP-plan candidate, not a proven complete production model**. The fixtures
+show that explicit edges preserve identity and a multi-edge boundary; they do not specify how mixed
+Wall and virtual-edge boundaries are ordered, how anchor Junctions are retained and validated, how a
+Space is certified without relying on physical Wall-face extraction, or how curves, edited edges and
+overlap are validated. Those are SP-plan decisions, not S2 results.
+
 **R2 — separate overlay/collection.** Design assessment only, not fixture-proved. It is larger than
 R1 for this problem: `LayoutObject.roomId` and portal relations validate against the `rooms`
 collection, so a second collection would need a new reference kind or duplicated Room records. It
@@ -145,13 +154,17 @@ format change, and SP1 already requires one.
 
 1. Keep **one** persistent subject: the existing Room record is the Space. Do not add a second
    entity, a synthetic “virtual Wall”, or a boundary-ref union that changes every `wallId` consumer.
-2. Encode the boundary as ordered Wall refs plus **explicit virtual-edge records**; derive nothing
-   that SP1 must edit. Add the overhead intent in the same format bump.
-3. Implement the removal branch, codec/types, compiler, world index and polygon consumers in that
+2. Treat R1 as the **candidate** encoding, not a finished model: encode the boundary as ordered Wall
+   refs plus **explicit virtual-edge records**, and derive nothing that SP1 must edit. Add the
+   overhead intent in the same format bump.
+3. SP-plan must define the unresolved boundary rules: mixed Wall/virtual-edge ordering, retained and
+   validated virtual-edge anchors, Space certification independent of physical Wall-face extraction,
+   and curved, edited and overlap validation.
+4. Implement the removal branch, codec/types, compiler, world index and polygon consumers in that
    order. Reuse the existing 1→1 correspondence for re-close; do not add a new conversion planner.
-4. Carry these fixtures into SP1 as regression evidence, and add the multi-edge and editable-edge
+5. Carry these fixtures into SP1 as regression evidence, and add the multi-edge and editable-edge
    cases the spike exposed.
-5. Bump the format to 8 with strict refusal; no migration.
+6. Bump to the next approved Layout format version with strict refusal; no migration.
 
 ## Limits
 
