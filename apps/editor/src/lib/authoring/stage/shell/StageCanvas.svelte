@@ -235,7 +235,7 @@ import StageMatGround from './StageMatGround.svelte';
 		<T.AmbientLight intensity={0.12} />
 		<WorldEnvironment preset={environment} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
-		<T.AmbientLight intensity={0.35} />
+		<T.AmbientLight intensity={0.45} />
 		<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
 		<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 		<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />

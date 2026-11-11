@@ -382,7 +382,7 @@ export function createApp({
 		const parsed = parseRenameProjectRequest(request.body);
 		if (parsed.kind === 'invalid') return reply.code(400).send(errorBody(parsed.code, parsed.message));
 		try {
-			return await renameProjectLifecycle(pool, userId, projectId, parsed.request);
+			return await renameProjectLifecycle(pool, userId, projectId, parsed.request, objectStore);
 		} catch (error) {
 			if (error instanceof ProjectNotFoundError) return notFound(reply);
 			if (error instanceof SaveRefusalError) return saveRefusal(reply, error);

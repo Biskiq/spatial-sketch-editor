@@ -167,7 +167,7 @@ import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring
 	import { ARTWORK_TRANSFORM } from '@portfolio/project-model/scene-planning';
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import { artworkCommand, artworkReference } from '$lib/authoring/artwork/artwork-command';
-	import { artworkPlacement } from '$lib/authoring/artwork/artwork-placement';
+	import { artworkPlacement, isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
@@ -1089,7 +1089,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		const ray = pointerRay([event.clientX, event.clientY], reading, reading.token);
 		if (ray.kind !== 'ray') return null;
 		const snapshot = stage.snapshot();
-		const hit = scenePick.pick(ray.ray, snapshot.domain.scene);
+		const hit = scenePick.pickVisibleFace(ray.ray, snapshot.domain.scene,
+			(candidate) => isArtworkWallFace(candidate, snapshot.domain.geometry));
 		const forward = new Vector3(...reading.target).sub(new Vector3(...reading.eye)).normalize().toArray();
 		return artworkPlacement(ray.ray, hit, snapshot.domain.datumMeters, reading.eye, forward, snapshot.domain.geometry);
 	}

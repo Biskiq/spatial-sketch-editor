@@ -22,7 +22,7 @@ function png(bytes: Uint8Array, view: DataView): Dimensions {
 		if (next > bytes.length) return invalid();
 		if (matches(bytes, offset + 4, 'acTL')) throw new Error('Animated images cannot be imported as Artwork.');
 		if (matches(bytes, offset + 4, 'eXIf')) {
-			const orientation = exif(bytes.subarray(offset + 8, offset + 8 + size));
+			const orientation = exif(bytes.subarray(offset + 8, offset + 8 + size)) ?? 1;
 			if (orientation !== 1) throw new Error('Artwork supports embedded orientation in JPEG only.');
 		}
 		if (matches(bytes, offset + 4, 'IDAT')) hasData = true;
@@ -34,7 +34,7 @@ function png(bytes: Uint8Array, view: DataView): Dimensions {
 	return invalid();
 }
 
-function exif(bytes: Uint8Array): number {
+function exif(bytes: Uint8Array): number | undefined {
 	if (bytes.length < 8) return invalid();
 	const little = matches(bytes, 0, 'II');
 	if (!little && !matches(bytes, 0, 'MM')) return invalid();
@@ -51,11 +51,11 @@ function exif(bytes: Uint8Array): number {
 		const orientation = view.getUint16(offset + 8, little);
 		return orientation >= 1 && orientation <= 8 ? orientation : invalid();
 	}
-	return 1;
+	return undefined;
 }
 
 function jpeg(bytes: Uint8Array, view: DataView): Dimensions {
-	let orientation = 1;
+	let orientation: number | undefined;
 	let frame: Dimensions | undefined;
 	if (bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) return invalid();
 	for (let offset = 2; offset + 4 <= bytes.length;) {
@@ -67,12 +67,14 @@ function jpeg(bytes: Uint8Array, view: DataView): Dimensions {
 		if (size < 2 || offset + size > bytes.length) return invalid();
 		const payload = offset + 2;
 		if (marker === 0xda && frame !== undefined) {
-			return orientation >= 5
+			return (orientation ?? 1) >= 5
 				? { pixelWidth: frame.pixelHeight, pixelHeight: frame.pixelWidth }
 				: frame;
 		}
 		if (marker === 0xe1 && size >= 8 && matches(bytes, payload, 'Exif\0\0')) {
-			orientation = exif(bytes.subarray(payload + 6, offset + size));
+			// Editors often append a second EXIF APP1 without an orientation tag.
+			// Keep the primary segment's explicit orientation instead of resetting it.
+			orientation ??= exif(bytes.subarray(payload + 6, offset + size));
 		}
 		if ([0xc0, 0xc1, 0xc2].includes(marker) && size >= 8) {
 			frame = { pixelWidth: view.getUint16(payload + 3), pixelHeight: view.getUint16(payload + 1) };
@@ -96,7 +98,7 @@ function webp(bytes: Uint8Array, view: DataView): Dimensions {
 		}
 		if (matches(bytes, offset, 'EXIF')) {
 			const headerSize = size >= 6 && matches(bytes, start, 'Exif\0\0') ? 6 : 0;
-			if (exif(bytes.subarray(start + headerSize, start + size)) !== 1) {
+			if ((exif(bytes.subarray(start + headerSize, start + size)) ?? 1) !== 1) {
 				throw new Error('Artwork supports embedded orientation in JPEG only.');
 			}
 		}

@@ -254,3 +254,38 @@ Finish image path keeps its own identity and behavior.
 
 Record shared-file agreements on the affected drafts before implementation. At rebase, check
 S3 and T1 claims again and resolve overlaps before changing a shared mount or contract.
+
+## Verification record (2026-11-11 takeover)
+
+Continued from reviewed head `7b181e29` on `codex/t2-a1-artwork`.
+
+**Checks.** `npm test` 322 files / 4230 tests exit 0; `npm run check` 0 errors and the 4
+pre-existing `VisitorPreviewSurface.svelte` warnings; `npm run check:api`,
+`npm run check:project-model` and `npm run build:api` exit 0; focused `artwork.test.ts`,
+`project-artwork.test.ts`, `stage-pick-differential.test.ts` and `visitor-public-route.test.ts`
+pass. The Scene 6 baseline re-record changes exactly 266 `generationId` and 16 shared Scene
+`contentRevision` leaves; no winner or pick point changed.
+
+**Browser journey (local API + Postgres + editor).** Real `alpha.png` (96×64 RGBA),
+`photo.png`/`photo.jpg` (160×100), `oriented.jpg` (EXIF orientation 6) and `real.webp`
+(656×369) imported to ready assets and the Artwork shelf. `alpha.png` placed on the
+enclosed-room wall (Card: 100 × 66.6667 cm, yaw 0); duplicate offset +0.15 m along local +X;
+width 160 cm committed height 106.6667 cm and Undo restored 100/66.6667. Saved v2 held all
+five shelf records and the placed Artwork; `?load=1` reopened and rendered it with its
+transparent border. Visitor Preview opened after Capture created a View and loaded the saved
+Artwork content. No console errors during the journey.
+
+**Fixed during takeover.** A second EXIF APP1 without an orientation tag reset the primary
+orientation, so a real oriented JPEG was refused at import. `probeArtworkImage` now keeps the
+first explicit orientation and returns `undefined` when a segment carries none; PNG and WebP
+still refuse non-JPEG orientation. Regression coverage uses a two-EXIF JPEG fixture.
+
+**Reverted.** The unrelated Paper ambient-light change (0.35 → 0.45) in Stage and Preview.
+S0 Gate B owns broader rendering calibration.
+
+**Open.** Stage pointer selection of a placed Artwork selected the wall behind it in the QA
+harness (the injected click target may have altered layer claiming); the Index selects the
+Artwork and Card actions work. Retest on the ordinary pointer path before merge. Preview
+visual parity was exercised through the Visitor Preview state and asset load rather than a
+saved overlay screenshot. A2 framing/hanging, T4 release activation and Gate B calibration
+remain out of A1 scope.

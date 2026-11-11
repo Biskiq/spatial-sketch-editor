@@ -114,9 +114,16 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind): Result {
 	if (kind === ARTWORK_DUPLICATE) {
 		reader.object(request.intent.payload, '$.payload', []);
 		if (reader.issues.length) return refuse(reader.issues[0]!.message);
+		// Offset along the image's own horizontal axis: a wall hanging stays on its
+		// wall instead of being pushed through the surface by a world-axis nudge.
+		const yaw = entity.rotation[1];
 		const duplicate: SceneArtworkEntity = {
 			...entity, id: allocation!.id,
-			position: [entity.position[0] + 0.15, entity.position[1], entity.position[2] + 0.15]
+			position: [
+				entity.position[0] + 0.15 * Math.cos(yaw),
+				entity.position[1],
+				entity.position[2] - 0.15 * Math.sin(yaw)
+			]
 		};
 		return complete({ ...before, entities: [...before.entities, duplicate] },
 			{ createdEntityIds: [duplicate.id] }, [duplicate.id], ['entities']);

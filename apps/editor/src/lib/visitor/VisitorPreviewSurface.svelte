@@ -432,7 +432,7 @@ import { PCFShadowMap } from 'three';
 			{#if environment === 'paper'}
 				<!-- Paper: the Stage's own tone and neutral light, without the grid. Never a black void. -->
 				<T.Color attach="background" args={['#e9ebe6']} />
-				<T.AmbientLight intensity={0.35} />
+				<T.AmbientLight intensity={0.45} />
 				<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 				<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
 				<T.Mesh rotation.x={-Math.PI / 2} position={[0, -0.02, 0]} receiveShadow>

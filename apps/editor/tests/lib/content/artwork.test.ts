@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { artworkHeight, defaultArtworkWidth, probeArtworkImage, type SceneArtworkEntity } from '@portfolio/project-model';
+import { artworkHeight, defaultArtworkWidth, probeArtworkImage, type CompiledLayoutGeometry, type SceneArtworkEntity } from '@portfolio/project-model';
 import { SCENE_UNIT_FORMAT_VERSION, validateCameraFreeScenePayload } from '@portfolio/project-model/units';
-import { artworkPlacement } from '$lib/authoring/artwork/artwork-placement';
+import { artworkPlacement, isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
+import type { SceneRenderedHit } from '$lib/authoring/scene/scene-pick-source';
 import { artworkCornerPoint, resizeArtworkAtRay } from '$lib/authoring/artwork/artwork-resize';
 
 const image = { assetId: '00000000-0000-4000-8000-000000000001', pixelWidth: 2, pixelHeight: 1 };
@@ -48,6 +49,29 @@ describe('Scene Artwork', () => {
 		expect(artworkPlacement(ray as never, null, 0, [0, 2, 3], [0, 0, -1]))
 			.toEqual({ position: [0, 1.5, 2], rotation: [0, 0, 0] });
 	});
+	it('refuses a free-end cap but keeps the local tangent of a curved wall side', () => {
+		const geometry = { walls: [{
+			wallId: 'wall-1',
+			samples: [
+				{ point: [0, 1], tangent: [1, 0], normal: [0, 1] },
+				{ point: [0, 3], tangent: [Math.SQRT1_2, Math.SQRT1_2], normal: [Math.SQRT1_2, -Math.SQRT1_2] }
+			]
+		}] } as unknown as CompiledLayoutGeometry;
+		const side: SceneRenderedHit = { kind: 'layout', entityId: null, distanceMeters: 1, worldPoint: [0, 1, 1], wallId: 'wall-1', wallNormal: [0, 0, 1] };
+		expect(isArtworkWallFace(side, geometry)).toBe(true);
+		expect(isArtworkWallFace({ ...side, wallNormal: [1, 0, 0] }, geometry)).toBe(false);
+		const curved: SceneRenderedHit = { ...side, worldPoint: [0, 1, 3], wallNormal: [Math.SQRT1_2, 0, -Math.SQRT1_2] };
+		expect(isArtworkWallFace(curved, geometry)).toBe(true);
+		const pose = artworkPlacement(
+			{ origin: [0, 2, 5], direction: [0, -0.2, -1] } as never,
+			curved as never, 0, [0, 2, 5], [0, 0, -1], geometry
+		);
+		expect(pose?.rotation[1]).toBeCloseTo(3 * Math.PI / 4);
+		expect(artworkPlacement(
+			{ origin: [0, 2, 3], direction: [0, -0.5, -1] } as never,
+			{ ...side, wallNormal: [1, 0, 0] } as never, 0, [0, 2, 3], [0, 0, -1], geometry
+		)).toEqual({ position: [0, 1.5, 2], rotation: [0, 0, 0] });
+	});
 	it('resizes on the image plane while preserving the opposite corner and aspect', () => {
 		const resized = resizeArtworkAtRay(artwork, [1, 1], { origin: [1.5, 0.75, 3], direction: [0, 0, -1] });
 		expect(resized?.widthMeters).toBeCloseTo(2);
@@ -57,7 +81,7 @@ describe('Scene Artwork', () => {
 
 it('records import, placement and size as separate reversible accepted writes', async () => {
 	const { createUnitCoordinator, createUnitProject } = await import('../authoring/__fixtures__/unit-envelope-fixtures');
-	const { createArtworkPlanners, ARTWORK_IMPORT, ARTWORK_PLACE, ARTWORK_TRANSFORM } = await import('@portfolio/project-model/scene-planning');
+	const { createArtworkPlanners, ARTWORK_DUPLICATE, ARTWORK_IMPORT, ARTWORK_PLACE, ARTWORK_TRANSFORM } = await import('@portfolio/project-model/scene-planning');
 	const baseline = await createUnitProject({ id: 'project:artwork-history', name: 'Artwork history' });
 	const coordinator = await createUnitCoordinator({ baseline, planners: createArtworkPlanners() });
 	const scene = () => coordinator.current().source.units.scene;
@@ -73,6 +97,26 @@ it('records import, placement and size as separate reversible accepted writes', 
 		targets: [], allocatedIds: [{ kind: 'scene-entity', id: artwork.id }], capturedInputs: []
 	});
 	expect(placed.kind).toBe('accepted');
+	const placedEntity = scene().data.entities[0]!;
+	if (placedEntity.kind !== 'artwork') throw new Error('Expected the placed artwork');
+	const duplicate = await coordinator.accept({
+		version: 1, kind: ARTWORK_DUPLICATE, operationId: 'artwork-duplicate-op', expectedRevision: coordinator.acceptedRevision(),
+		payload: {},
+		targets: [{
+			version: 1, domain: 'scene', revision: { kind: 'exact', contentRevision: scene().header.contentRevision },
+			subject: { kind: 'entity', id: artwork.id }, instancePath: [], location: { kind: 'project-root' },
+			componentId: null, capabilityId: null
+		}],
+		allocatedIds: [{ kind: 'scene-entity', id: 'artwork-copy' }], capturedInputs: []
+	});
+	expect(duplicate.kind).toBe('accepted');
+	const copy = scene().data.entities.find((entity) => entity.id === 'artwork-copy')!;
+	if (copy.kind !== 'artwork') throw new Error('Expected a duplicated artwork');
+	expect(copy).toMatchObject({ source: placedEntity.source, rotation: placedEntity.rotation });
+	expect(copy.position[0]).toBeCloseTo(placedEntity.position[0] + 0.15 * Math.cos(0.5));
+	expect(copy.position[2]).toBeCloseTo(placedEntity.position[2] - 0.15 * Math.sin(0.5));
+	expect((await coordinator.undo()).kind).toBe('restored');
+	expect(scene().data.entities).toHaveLength(1);
 	const original = scene().data.entities[0];
 	const sized = await coordinator.accept({
 		version: 1, kind: ARTWORK_TRANSFORM, operationId: 'artwork-size-op', expectedRevision: coordinator.acceptedRevision(),
@@ -102,6 +146,9 @@ it('reads JPEG orientation and static WebP dimensions from the original containe
 	const jpeg = new Uint8Array([
 		0xff, 0xd8, 0xff, 0xe1, 0, 34, 69, 120, 105, 102, 0, 0,
 		73, 73, 42, 0, 8, 0, 0, 0, 1, 0, 0x12, 1, 3, 0, 1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
+		// A trailing EXIF APP1 with no orientation tag must not erase the primary one.
+		0xff, 0xe1, 0, 22, 69, 120, 105, 102, 0, 0,
+		77, 77, 0, 42, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0,
 		0xff, 0xc0, 0, 8, 8, 0, 4, 0, 8, 1, 0xff, 0xda, 0, 2, 0xff, 0xd9
 	]);
 	expect(probeArtworkImage(jpeg)).toEqual({ mime: 'image/jpeg', pixelWidth: 4, pixelHeight: 8 });

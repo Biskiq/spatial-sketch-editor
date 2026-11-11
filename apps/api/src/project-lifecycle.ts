@@ -117,7 +117,8 @@ export async function renameProject(
 	pool: DatabasePool,
 	ownerId: string,
 	projectId: string,
-	request: RenameProjectRequest
+	request: RenameProjectRequest,
+	store?: ObjectStore
 ): Promise<SaveAcknowledgement> {
 	const loaded = await loadProject(pool, ownerId, projectId);
 	const validation = validateProjectEnvelope(loaded.document);
@@ -149,7 +150,7 @@ export async function renameProject(
 	return saveAcceptedSource(pool, ownerId, {
 		contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
 		capture: captured.capture
-	});
+	}, store);
 }
 
 async function renameNoOp(
