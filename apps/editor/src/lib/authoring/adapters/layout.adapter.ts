@@ -70,7 +70,10 @@ import {
 	planUpdateWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
-	type LayoutVec2
+	type LayoutVec2,
+	type WallChainArc,
+	measureWallArc,
+	MIN_WALL_ARC_RISE
 } from '@portfolio/layout-core';
 
 import { createPlanPickProvider } from '$lib/authoring/layout/plan-pick-provider';
@@ -1300,6 +1303,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			} | null = null;
 			/** The live chain draft, its hover target and its planner preview. */
 			let draft: ChainDraft = EMPTY_CHAIN_DRAFT;
+			/** A3 — the decided bulge apex and the raw plane point currently shaping it. */
+			let inkArcApex: LayoutVec2 | null = null;
+			let inkArcHover: LayoutVec2 | null = null;
 			/** One operation, one capture: the same identity previews and commits. */
 			let chainCapture: ReturnType<typeof mintLayoutIdCapture> | null = null;
 			let inkHover: InkPointerTarget | null = null;
@@ -3848,6 +3854,30 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (inkPreview !== null) inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
 					return;
 				}
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					// A3 — the preview is the exact cubic the third activation commits. The
+					// planner owns the range refusal, so the Stage shows the drawn bulge and
+					// repeats its words rather than clamping the bulge to a semicircle.
+					if (draft.points.length < 2) {
+						inkPreview = null;
+						inkNotice = null;
+						return;
+					}
+					if (inkArcHover !== null) {
+						// A pointer on the chord names no bulge: clearing here prevents a
+						// stale curve from outliving the bulge the creator moved away from.
+						inkArcApex = arcApexAt(inkArcHover);
+					}
+					if (inkArcApex === null) {
+						// Keep the release's words ("pull the bulge…") readable: a chord
+						// with no rise is not a plan, but the refusal is still the answer.
+						inkPreview = null;
+						return;
+					}
+					inkPreview = planInkDraft(draft, { pointIndex: 0, apex: inkArcApex });
+					inkNotice = inkPreview.kind === 'refused' ? inkPreview.message : null;
+					return;
+				}
 				if (inkReading === 'wall' && inkWallMode === 'box') {
 					// Box previews the very ring its release commits. With no second corner
 					// yet there is nothing to plan, and a refusal set by the last release
@@ -3865,15 +3895,37 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/** One planner pass over a draft at the remembered thickness and height. */
-			function planInkDraft(target: ChainDraft): ChainPlanPreview {
+			function planInkDraft(target: ChainDraft, arc?: WallChainArc): ChainPlanPreview {
 				return planChainDraft({
 					document,
 					draft: target,
 					capture: chainCapture ?? mintLayoutIdCapture(),
 					levelId,
 					...(inkThickness === null ? {} : { thickness: inkThickness }),
-					...(inkHeight === null ? {} : { height: inkHeight })
+					...(inkHeight === null ? {} : { height: inkHeight }),
+					...(arc === undefined ? {} : { arc })
 				});
+			}
+
+			/**
+			 * The bulge apex under a raw working-plane point. Only the perpendicular
+			 * rise is kept; a bulge past the semicircle is passed through as drawn so
+			 * the canonical planner can refuse it, never silently clamped.
+			 */
+			function arcApexAt(point: LayoutVec2): LayoutVec2 | null {
+				const start = draft.points[0];
+				const end = draft.points[1];
+				if (start === undefined || end === undefined) return null;
+				const measured = measureWallArc(start.point, end.point, point);
+				if (measured === null) return null;
+				const magnitude = Math.abs(measured.rise);
+				if (!(magnitude > 0)) return null;
+				const sign = measured.rise < 0 ? -1 : 1;
+				const dx = end.point[0] - start.point[0];
+				const dz = end.point[1] - start.point[1];
+				const mx = (start.point[0] + end.point[0]) / 2;
+				const mz = (start.point[1] + end.point[1]) / 2;
+				return [mx - (dz / measured.chord) * magnitude * sign, mz + (dx / measured.chord) * magnitude * sign];
 			}
 
 			/**
@@ -4033,11 +4085,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function snapshotForPalette(): InkPaletteSnapshot {
 				const boxMode = inkReading === 'wall' && inkWallMode === 'box';
 				const circleMode = inkReading === 'wall' && inkWallMode === 'circle';
-				const withHover = circleMode ? draft : linePreviewDraft();
+				const arcMode = inkReading === 'wall' && inkWallMode === 'arc';
+				const withHover = circleMode || arcMode ? draft : linePreviewDraft();
 				const effective = boxMode ? (boxPreviewDraft() ?? draft)
 					: 'points' in withHover ? withHover : draft;
 				const pending =
-					inkHover === null || boxMode || circleMode ? null : pendingLegFacts(linePreviewBase(), inkHover.point);
+					inkHover === null || boxMode || circleMode || arcMode
+						? null
+						: pendingLegFacts(linePreviewBase(), inkHover.point);
 				const anchor = boxMode ? boxAnchor() : null;
 				const box =
 					anchor === null || inkHover === null
@@ -4046,12 +4101,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								width: Math.abs(inkHover.point[0] - anchor.point[0]),
 								depth: Math.abs(inkHover.point[1] - anchor.point[1])
 							};
+				const arc =
+					arcMode && draft.points.length >= 2 && inkArcApex !== null
+						? (() => {
+								const measured = measureWallArc(draft.points[0]!.point, draft.points[1]!.point, inkArcApex!);
+								return measured === null
+									? null
+									: {
+											chord: measured.chord,
+											rise: measured.rise,
+											radius: measured.radius,
+											belowMinimum: Math.abs(measured.rise) < MIN_WALL_ARC_RISE
+										};
+							})()
+						: null;
 				const selectedHostId = currentOpeningHostId();
 				const hostId = openingCandidate?.wallId ?? selectedHostId;
 				return {
 					options: { thickness: inkThickness, height: inkHeight },
 					reading: inkReading,
 					wallMode: inkWallMode,
+					arc,
 					box,
 					readings: paletteReadings(),
 					opening:
@@ -4074,13 +4144,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					,
 					points: effective.points.map((entry) => [entry.point[0], entry.point[1]] as LayoutVec2),
 					closed: effective.closed,
-					canFinish: !boxMode && !circleMode && draft.points.length >= 2,
-					canClose: !boxMode && !circleMode && draft.points.length >= 3 && !draft.closed,
+					canFinish: !boxMode && !circleMode && !arcMode && draft.points.length >= 2,
+					canClose: !boxMode && !circleMode && !arcMode && draft.points.length >= 3 && !draft.closed,
 					canBacktrack: draft.points.length > 0,
 					consequence:
 						inkPreview !== null &&
 						inkPreview.kind === 'planned' &&
-						(circleMode || effective.points.length >= 2)
+						(circleMode || arcMode || effective.points.length >= 2)
 							? inkPreview.consequence.summary
 							: null,
 					pending,
@@ -4091,6 +4161,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Begin the live chain: one capture and one proposal lease per operation. */
 			function beginChain(point: ChainDraftPoint): void {
 				draft = { points: [point], closed: false };
+				inkArcApex = null;
+				inkArcHover = null;
 				chainCapture = mintLayoutIdCapture();
 				inkProposal?.release();
 				inkProposal = services.stage.session.registerProposal({
@@ -4105,6 +4177,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Drop the live chain's last point, keeping the operation alive while any remain. */
 			function backtrackChain(): void {
 				draft = backtrackChainPoint(draft);
+				if (draft.points.length < 2) {
+					inkArcApex = null;
+					inkArcHover = null;
+				}
 				if (draft.points.length === 0) {
 					inkProposal?.release();
 					inkProposal = null;
@@ -4118,6 +4194,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			/** Drop the live chain and its proposal, exactly once. */
 			function clearChain(): void {
 				draft = EMPTY_CHAIN_DRAFT;
+				inkArcApex = null;
+				inkArcHover = null;
 				chainCapture = null;
 				inkHover = null;
 				inkSnapWinner = null;
@@ -4172,12 +4250,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					setWallMode: (mode: InkWallMode) => {
 						if (mode === inkWallMode) return;
 						if (draft.points.length > 0 || inkPress !== null) {
-							inkNotice = 'Finish or cancel the Wall chain before switching between Line, Box and Circle.';
+							inkNotice = 'Finish or cancel the Wall chain before switching between Line, Arc, Box and Circle.';
 							publishInk();
 							return;
 						}
 						inkWallMode = mode;
 						inkNotice = null;
+						inkArcApex = null;
+						inkArcHover = null;
 						inkHover = null;
 						refreshInkPreview();
 						services.stage.notifySurfaceChange();
@@ -4205,8 +4285,24 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						setOpeningCandidate(candidate);
 						void commitOpening(candidate);
 					},
-					finish: () => void commitChain(),
+					finish: () => {
+						if (inkReading === 'wall' && inkWallMode === 'arc') {
+							if (draft.points.length < 2 || inkArcApex === null) {
+								inkNotice = 'An Arc needs a start, an end and a bulge.';
+								publishInk();
+								return;
+							}
+							void commitChain(draft, { pointIndex: 0, apex: inkArcApex });
+							return;
+						}
+						void commitChain();
+					},
 					close: () => {
+						if (inkReading === 'wall' && inkWallMode === 'arc') {
+							inkNotice = 'An Arc is one open Wall; a ring is closed with Line.';
+							publishInk();
+							return;
+						}
 						const closed = closeChainDraft(draft);
 						if ('points' in closed) void commitChain(closed);
 						else {
@@ -4220,6 +4316,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const parsed = parsePlacementXZ(xText, zText);
 						if (!parsed.ok) {
 							inkNotice = parsed.reason;
+							publishInk();
+							return;
+						}
+						if (inkReading === 'wall' && inkWallMode === 'arc' && draft.points.length >= 2) {
+							inkNotice = 'An Arc takes its bulge from the Stage: move the pointer and click to finish.';
 							publishInk();
 							return;
 						}
@@ -4253,6 +4354,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				draft = appended;
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					inkArcApex = null;
+					inkArcHover = null;
+				}
 				inkNotice = null;
 				inkHover = null;
 				refreshInkPreview();
@@ -4314,7 +4419,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * saw is what the planner commits. A refusal leaves the live chain editable
 			 * and writes no partial source.
 			 */
-			async function commitChain(override?: ChainDraft): Promise<void> {
+			async function commitChain(override?: ChainDraft, arc?: WallChainArc): Promise<void> {
 				// One chain, one acceptance. A second activation of the same command (a
 				// focused Finish button activated by the very keydown the host maps) is the
 				// same creator intent, not a second operation.
@@ -4327,14 +4432,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				chainCommitInFlight = true;
 				try {
-					await commitChainOnce(target);
+					await commitChainOnce(target, arc);
 				} finally {
 					chainCommitInFlight = false;
 				}
 			}
 
 			/** The one acceptance pass; `commitChain` owns the in-flight guard. */
-			async function commitChainOnce(target: ChainDraft): Promise<void> {
+			async function commitChainOnce(target: ChainDraft, arc?: WallChainArc): Promise<void> {
 				const capture = chainCapture ?? mintLayoutIdCapture();
 				const request = chainPlanRequest(target);
 				const payload = {
@@ -4343,7 +4448,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					junctionSnaps: request.endpointJunctionSnaps,
 					hostSnaps: request.endpointHostSnaps,
 					thickness: inkThickness,
-					height: inkHeight
+					height: inkHeight,
+					...(arc === undefined ? {} : { arc })
 				};
 				const planned = planChainDraft({
 					document,
@@ -4351,7 +4457,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					capture,
 					levelId,
 					...(inkThickness === null ? {} : { thickness: inkThickness }),
-					...(inkHeight === null ? {} : { height: inkHeight })
+					...(inkHeight === null ? {} : { height: inkHeight }),
+					...(arc === undefined ? {} : { arc })
 				});
 				if (planned.kind === 'refused') {
 					// Refused in words, with a repair: the chain stays exactly as it was and
@@ -4439,6 +4546,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						dragging: false
 					};
 					inkHover = target;
+					const pressedArcHover = pointerDatumPoint(adapterContext, intent.css);
+					inkArcHover = pressedArcHover === null ? null : [pressedArcHover[0], pressedArcHover[1]];
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
 					publishInk();
@@ -4473,6 +4582,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					} else {
 						inkHover = null;
 					}
+					const movedArcHover = pointerDatumPoint(adapterContext, intent.css);
+					inkArcHover = movedArcHover === null ? null : [movedArcHover[0], movedArcHover[1]];
+					if (inkReading === 'wall' && inkWallMode === 'arc') inkNotice = null;
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
 					publishInk();
@@ -4488,6 +4600,46 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const pressTarget = current.pressTarget;
 				endInkPress();
 				inkHover = null;
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					// A3 — start, end, bulge. A drag from the first point names both
+					// endpoints in one gesture; the third activation sets the bulge.
+					const apexPoint = pointerDatumPoint(adapterContext, intent.css);
+					const rawRelease: LayoutVec2 =
+						apexPoint === null ? [release.point[0], release.point[1]] : [apexPoint[0], apexPoint[1]];
+					if (draft.points.length === 0) {
+						beginChain({ point: pressTarget.point, target: pressTarget.target });
+						if (travel > 4) {
+							const appended = appendChainPoint(draft, { point: release.point, target: release.target });
+							if ('points' in appended) {
+								draft = appended;
+								inkArcApex = null;
+							}
+						}
+					} else if (draft.points.length === 1) {
+						const appended = appendChainPoint(draft, { point: release.point, target: release.target });
+						if ('points' in appended) {
+							draft = appended;
+							inkArcApex = null;
+						} else {
+							inkNotice = appended.message;
+						}
+					} else {
+						const bulge = arcApexAt(rawRelease);
+						if (bulge !== null) {
+							inkArcApex = bulge;
+							inkArcHover = rawRelease;
+							// The commit's own refusal words must survive: re-planning here
+							// could clear a policy refusal the preview never ran.
+							void commitChain(draft, { pointIndex: 0, apex: bulge });
+							publishInk();
+							return true;
+						}
+						inkNotice = 'Pull the bulge away from the chord to set the Arc.';
+					}
+					refreshInkPreview();
+					publishInk();
+					return true;
+				}
 				if (inkReading === 'wall' && inkWallMode === 'box') {
 					// Box: a drag names both corners; a tap names the first corner, and the
 					// next tap the opposite one.
@@ -5126,6 +5278,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// A Wall-reading hover updates the live chain. It never claims a move:
 					// the host's navigation gesture and the next press stay the host's.
 					if (intent.phase !== 'move') return false;
+					if (inkReading === 'wall' && inkWallMode === 'arc') {
+						const hoveredArc = pointerDatumPoint(adapterContext, intent.css);
+						inkArcHover = hoveredArc === null ? null : [hoveredArc[0], hoveredArc[1]];
+						inkNotice = null;
+					}
 					inkHover = inkTargetAt(adapterContext, intent.css);
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
@@ -6445,6 +6602,92 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							role: 'refused',
 							geometry,
 							...(ghost === null ? {} : { labels: [{ world: world(ghost[0]), text: refusedWords }] })
+						})];
+					}
+					return [];
+				}
+
+				// A3 — Arc's preview is the canonical cubic the third activation commits.
+				// Until the bulge is named, the chord and its length stand in; a straight
+				// fallback says so in words before the creator accepts it.
+				if (inkReading === 'wall' && inkWallMode === 'arc') {
+					const start = draft.points[0];
+					const end = draft.points[1];
+					if (start === undefined) {
+						return [];
+					}
+					if (end === undefined) {
+						if (inkHover === null) return [];
+						const length = Math.hypot(
+							inkHover.point[0] - start.point[0],
+							inkHover.point[1] - start.point[1]
+						);
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc-cursor',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: [], segments: [[world(start.point), world(inkHover.point)]] },
+							labels: [{ world: world(inkHover.point), text: `${length.toFixed(2)} m` }],
+							snap: snapOf(inkSnapWinner)
+						})];
+					}
+					const chord = Math.hypot(end.point[0] - start.point[0], end.point[1] - start.point[1]);
+					const midpoint: [number, number] = [
+						(start.point[0] + end.point[0]) / 2,
+						(start.point[1] + end.point[1]) / 2
+					];
+					if (inkArcApex === null) {
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: [], segments: [[world(start.point), world(end.point)]] },
+							labels: [{ world: world(midpoint), text: `${chord.toFixed(2)} m · pull the bulge` }]
+						})];
+					}
+					const measured = measureWallArc(start.point, end.point, inkArcApex);
+					const fallback = measured !== null && Math.abs(measured.rise) < MIN_WALL_ARC_RISE;
+					const facts =
+						measured === null
+							? null
+							: fallback
+								? `Line · rise under ${MIN_WALL_ARC_RISE.toFixed(2)} m`
+								: `Rise ${Math.abs(measured.rise).toFixed(2)} m · R ${Number.isFinite(measured.radius) ? measured.radius.toFixed(2) : '∞'} m`;
+					if (inkPreview?.kind === 'planned') {
+						const wallId = inkPreview.authoredWallIds[0];
+						const frame = wallId === undefined ? null : openWallFrame(inkPreview.document, wallId);
+						const segments =
+							frame === null
+								? ([[world(start.point), world(end.point)]] as const)
+								: frame.samples
+										.slice(1)
+										.map((sample, index) => [world(frame.samples[index]!.point), world(sample.point)] as const);
+						const closesRoom = inkPreview.createdRoomIds.length > 0;
+						const built = closesRoom
+							? candidatePaper(inkPreview.document, y, new Set(inkPreview.createdRoomIds), new Set())
+							: null;
+						const labels: { world: [number, number, number]; text: string }[] = [];
+						if (facts !== null) labels.push({ world: world(inkArcApex), text: facts });
+						if (closesRoom) {
+							labels.push({
+								world: world(start.point),
+								text: inkPreview.createdRoomIds.length === 1 ? 'Creates 1 Room' : `Creates ${inkPreview.createdRoomIds.length} Rooms`
+							});
+						}
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc',
+							role: 'subject',
+							drawing: true,
+							geometry: { polygons: built?.paper.subject.polygons ?? [], segments },
+							labels
+						})];
+					}
+					if (inkPreview?.kind === 'refused') {
+						return [candidatePreviewOf({
+							id: 'layout-candidate-arc-refused',
+							role: 'refused',
+							geometry: { polygons: [], segments: [[world(start.point), world(end.point)]] },
+							labels: [{ world: world(inkArcApex), text: inkPreview.message }]
 						})];
 					}
 					return [];
