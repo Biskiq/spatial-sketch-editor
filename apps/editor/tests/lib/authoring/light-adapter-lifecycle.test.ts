@@ -305,6 +305,12 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(acceptedKinds.filter((kind) => kind === 'update-light')).toHaveLength(1);
 		expect(lightsOf(facade)).toHaveLength(1);
 		expect(facade.snapshot().canonicalJson).not.toBe(beforeDrag);
+		// The mark edit also installs and closes the task; Lights stays armed and
+		// the next live evaluation lets the route reopen it again.
+		expect(facade.session.task()).toBeNull();
+		expect(armedLightKind(PROJECT_ID)).toBe('spot');
+		expect(facade.camera.evaluate(RECT, 4).kind).toBe('evaluated');
+		expect(facade.openContributedTask('light-place', 'light').kind).toBe('opened');
 	});
 
 	it('places with viewport-correct rays when the Stage is offset', async () => {

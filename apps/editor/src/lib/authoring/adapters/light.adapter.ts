@@ -673,14 +673,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									: current.kind === 'angle'
 										? { angle: entity.light === 'spot' ? entity.angle : LIGHT_DEFAULT_SPOT_ANGLE }
 										: { rotation: [...entity.rotation] };
-				await acceptFormCommand(
-					services,
-					adapterContext.snapshot,
-					entity.id,
-					'update-light',
-					{ entityId: entity.id, ...update } as never
-				);
-				services.stage.notifySurfaceChange();
+				rearmingAfterInstall = true;
+				try {
+					await acceptFormCommand(
+						services,
+						adapterContext.snapshot,
+						entity.id,
+						'update-light',
+						{ entityId: entity.id, ...update } as never
+					);
+				} finally {
+					rearmingAfterInstall = false;
+					services.stage.notifySurfaceChange();
+				}
 			}
 
 			async function commitPlacement(
