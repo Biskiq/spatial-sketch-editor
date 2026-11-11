@@ -476,7 +476,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	// Select is already the empty state, so those two keep their word.
 	$effect(() => {
 		if (task === null) {
-			if (activeWorldTool === 'library' || activeWorldTool === 'select') return;
+			if (libraryOpen || activeWorldTool === 'library' || activeWorldTool === 'select') return;
 			// A planned row is inspectable without a task; only a landed tool that has
 			// just completed belongs back at Select.
 			if (worldTool(activeWorldTool).stage === 'planned') return;
@@ -2789,7 +2789,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				return;
 			}
 			const claimAdapterPress = (handleId?: string, handleAdapterId?: string): boolean => {
-				if (!stage.pointerIntent({
+				const claimed = stage.pointerIntent({
 					phase: 'down',
 					css,
 					evaluationId: pointerEvaluationId,
@@ -2799,11 +2799,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					coarse,
 					...(handleId === undefined ? {} : { handleId }),
 					...(handleAdapterId === undefined ? {} : { handleAdapterId })
-				}).claimed) return false;
-				if (
-					!capturePointer(event.currentTarget as HTMLElement, event.pointerId) ||
-					press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused'
-				) {
+				}).claimed;
+				if (!claimed) return false;
+				const captured = capturePointer(event.currentTarget as HTMLElement, event.pointerId);
+				const began = captured ? press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) : null;
+				if (!captured || began === 'refused') {
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey, coarse });
 					return true;
 				}
@@ -4086,6 +4086,16 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 			inkReading = id === 'opening' ? 'opening' : 'wall';
 			armDockTool({ id: key.id, adapterId: key.adapterId });
 			activeWorldTool = id;
+			paletteOpen = false;
+			return;
+		}
+		if (id === 'lights') {
+			const previous = activeWorldTool;
+			closeTask();
+			libraryOpen = true;
+			toolBeforeLibrary = previous === 'library' ? 'select' : previous;
+			activeWorldTool = 'lights';
+			worldPlateOpen = true;
 			paletteOpen = false;
 			return;
 		}

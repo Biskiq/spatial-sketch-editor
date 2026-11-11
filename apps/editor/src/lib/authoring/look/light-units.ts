@@ -38,15 +38,17 @@ export function intensityForBrightnessStop(stop: number): number {
 	return stop * LIGHT_INTENSITY_REFERENCE;
 }
 
-/** The nearest accepted stop, for the Card's segmented control. */
+/**
+ * The accepted stop only when the stored intensity is within 0.5% of it.
+ * A custom value — including zero — reads Custom and is never rounded.
+ */
 export function brightnessStopForIntensity(intensity: number): LightBrightnessStop | null {
 	if (!Number.isFinite(intensity) || intensity < 0) return null;
-	return LIGHT_BRIGHTNESS_STOPS.reduce((nearest, stop) =>
-		Math.abs(intensityForBrightnessStop(stop) - intensity) <
-		Math.abs(intensityForBrightnessStop(nearest) - intensity)
-			? stop
-			: nearest
-	);
+	for (const stop of LIGHT_BRIGHTNESS_STOPS) {
+		const value = intensityForBrightnessStop(stop);
+		if (Math.abs(value - intensity) <= value * 0.005) return stop;
+	}
+	return null;
 }
 
 export function radiansToDegrees(radians: number): number {

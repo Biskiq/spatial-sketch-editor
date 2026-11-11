@@ -488,8 +488,10 @@ export type LightToolState = {
   `datumMeters + LIGHT_WORKING_HEIGHT_METERS` (1.5 m, the T2 eye line) on the horizontal plane.
 - **No floor-grid snap.** Lights are free spatial subjects; the architecture/object grid snap is
   not applied. Surface hits are exact. The Card is the exact-value path.
-- **Target distance:** a spot target drag always writes `range = distance(position, target)`. On a
-  plain click, `range` is omitted. The Card’s Reach/More can clear it to Unlimited.
+- **Target distance:** a spot target drag writes `range = distance(position, target) +
+  LIGHT_SPOT_TARGET_MARGIN_METERS` (0.5 m), so the released surface is inside the cutoff rather
+  than on a zero-attenuation boundary. On a plain click, `range` is omitted. The Card’s More can
+  clear it to Unlimited.
 - **Preview:** the candidate frustum is a line-only `StageCandidatePreview` with a body point and a
   “Place spot” / “Place point” label. It is the same planner candidate that commits; the last
   displayed pose is the committed pose.

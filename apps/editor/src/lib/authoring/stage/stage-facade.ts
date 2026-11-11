@@ -1390,6 +1390,29 @@ export function createStageFacade(input: {
 		return session.lens() !== 'experience';
 	}
 
+	/**
+	 * The binding that actually publishes this selected subject.
+	 *
+	 * A reference's domain is not always the adapter id: T2's Light adapter owns
+	 * light entities inside the Scene domain, while the Scene adapter deliberately
+	 * excludes them. Prefer a binding whose subject list contains the reference;
+	 * fall back to the domain binding for subjects an adapter does not enumerate.
+	 */
+	function adapterForSelection(entry: StageSelectionState['ordered'][number]) {
+		const direct = adapters.get(entry.reference.domain);
+		const owns = (candidate: NonNullable<typeof direct>): boolean =>
+			candidate.contributions.subjects?.some((subject) =>
+				sameReference(subject.reference, entry.reference)
+			) ?? false;
+		if (direct !== undefined && (direct.contributions.subjects === undefined || owns(direct))) {
+			return direct;
+		}
+		for (const [adapterId, candidate] of adapters) {
+			if (adapterId !== entry.reference.domain && owns(candidate)) return candidate;
+		}
+		return direct;
+	}
+
 	function selectionMarks(): readonly StageMarkView[] {
 		if (!isLive() || !worldMarksOffered()) return [];
 		syncDisclosureSelection();
@@ -1397,7 +1420,7 @@ export function createStageFacade(input: {
 		const entry = primaryEntry(session.selectionState());
 		if (entry === null) return [];
 		ensureBindings();
-		const adapterEntry = adapters.get(entry.reference.domain);
+		const adapterEntry = adapterForSelection(entry);
 		if (adapterEntry === undefined) return [];
 		const handle = adapterContext();
 		if (handle === null) return [];

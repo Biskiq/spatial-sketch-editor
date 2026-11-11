@@ -105,11 +105,18 @@ describe('T2 P0 — the Look authoring seam', () => {
 		expect(host.accept).not.toHaveBeenCalled();
 	});
 
-	it('publishes empty P0 Card, Stage and Library strata', () => {
+	it('publishes the approved Lights shelf and keeps the P0 Card stratum empty', () => {
 		const host = harness();
 		expect(host.look.cardStratum(null)).toEqual({ facts: [], writer: null, actions: [] });
 		expect(host.look.stageMarks).toEqual([]);
-		expect(host.look.libraryShelf).toEqual({ label: 'Look', entries: [] });
+		expect(host.look.libraryShelf).toEqual({
+			label: 'Lights',
+			entries: [
+				{ id: 'light:point', label: 'Point', summary: 'A light with no direction or beam.' },
+				{ id: 'light:spot', label: 'Spot', summary: 'A cone aimed at a surface.' },
+				{ id: 'light:directional', label: 'Directional', summary: 'Parallel light, like the sun.' }
+			]
+		});
 		host.look.pickLibraryEntry('missing');
 		expect(host.notice()).toBe('');
 	});

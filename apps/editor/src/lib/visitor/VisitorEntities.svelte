@@ -14,7 +14,8 @@
 		scene,
 		rooms,
 		textureScope = null,
-		modelUrls = null
+		modelUrls = null,
+		includeLights = true
 	}: {
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
@@ -24,7 +25,9 @@
 		 * editor and Preview resolve them; this renderer never learns how.
 		 */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		/** Paper is an editor-only reading: it never draws authored lights. */
+		includeLights?: boolean;
 	} = $props();
 </script>
 
-<VisitorEntityGroups {scene} {rooms} {textureScope} {modelUrls} Model={AssetModel} />
+<VisitorEntityGroups {scene} {rooms} {textureScope} {modelUrls} {includeLights} Model={AssetModel} />

@@ -457,7 +457,13 @@ import { PCFShadowMap } from 'three';
 				/>
 			{/if}
 			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
-			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} {modelUrls} />
+			<VisitorEntities
+				scene={scene}
+				{rooms}
+				{textureScope}
+				{modelUrls}
+				includeLights={environment !== 'paper'}
+			/>
 		</Canvas>
 	</div>
 	<div class="visitor-brand" class:published={mode === 'public'}>

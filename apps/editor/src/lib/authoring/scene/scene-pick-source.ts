@@ -3,7 +3,7 @@ import { Box3, Mesh, Raycaster, type Object3D } from 'three';
 import type { PointerRay } from '@portfolio/camera-core';
 import type { RuntimeScene } from '@portfolio/project-model';
 
-export type SceneRenderedHit = { readonly entityId: string | null; readonly kind: 'entity' | 'floor' | 'layout'; readonly distanceMeters: number; readonly worldPoint: [number, number, number] };
+export type SceneRenderedHit = { readonly entityId: string | null; readonly kind: 'entity' | 'floor' | 'layout'; readonly distanceMeters: number; readonly worldPoint: [number, number, number]; /** World-space surface normal when the hit is a mesh face. */ readonly normal?: [number, number, number] };
 
 /** True when this node and every ancestor are visible; the same rule the pick ray uses. */
 export function hasVisibleAncestor(node: Object3D): boolean {
@@ -136,7 +136,10 @@ export function createScenePickSource() {
 					if (!visible) continue;
 					if (nearest === null || hit.distance < nearest.distanceMeters ||
 						hit.distance === nearest.distanceMeters && (target.id ?? '') < (nearest.entityId ?? '')) {
-						nearest = { entityId: target.id, kind: target.id !== null ? 'entity' : hit.object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout', distanceMeters: hit.distance, worldPoint: hit.point.toArray() };
+						const normal = hit.face === undefined || hit.face === null
+							? undefined
+							: (hit.face.normal.clone().transformDirection(hit.object.matrixWorld).toArray() as [number, number, number]);
+						nearest = { entityId: target.id, kind: target.id !== null ? 'entity' : hit.object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout', distanceMeters: hit.distance, worldPoint: hit.point.toArray(), ...(normal === undefined ? {} : { normal }) };
 					}
 					break;
 				}

@@ -69,6 +69,12 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		if (family !== null) remembered[family.id] = activeTool;
 	});
 
+	// The Lights tool opens the Library on the Look shelf; it is the same one
+	// arm the shelf uses, not a second placement controller.
+	$effect(() => {
+		if (libraryOpen && activeTool === 'lights') libraryCategory = 'look';
+	});
+
 	function pressFamily(family: WorldFamily): void {
 		if (activeFamily?.id === family.id) {
 			onPlateOpen(!plateOpen);
@@ -207,13 +213,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 						</div>
 					{:else}
 						<div class="librow planned-row">
-							{#each (libraryCategory === 'lights' ? ['Point', 'Spot', 'Area'] : libraryCategory === 'plants' ? ['Bed', 'Shrub', 'Hedge', 'Tree'] : ['House', 'Annex', 'Shed']) as label (label)}
+							{#each (libraryCategory === 'plants' ? ['Bed', 'Shrub', 'Hedge', 'Tree'] : ['House', 'Annex', 'Shed']) as label (label)}
 								<button type="button" class="tile planned-tile" disabled>
 									<span class="tile-glyph">
-										<WorldIcon
-											name={libraryCategory === 'lights' ? 'light' : libraryCategory === 'plants' ? 'plants' : 'building'}
-											size={20}
-										/>
+										<WorldIcon name={libraryCategory === 'plants' ? 'plants' : 'building'} size={20} />
 									</span>
 									<span class="tile-label">{label}</span>
 									<small>Planned · T{libraryCategory === 'buildings' ? '5' : '2'}</small>

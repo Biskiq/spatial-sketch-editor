@@ -71,7 +71,6 @@ export type WorldLibraryCategory =
   | 'objects'
   | 'materials'
   | 'my-objects'
-  | 'lights'
   | 'plants'
   | 'buildings';
 
@@ -278,13 +277,8 @@ export const WORLD_TOOLS: readonly WorldTool[] = [
     label: 'Lights',
     icon: 'light',
     family: 'furnish',
-    stage: 'planned',
-    after: 'T2',
-    summary: 'Place point, spot and area lights.',
-    options: [
-      { label: 'Kind', options: [{ label: 'Point' }, { label: 'Spot' }, { label: 'Area' }] },
-      { label: 'Temperature', options: [{ label: '2700K' }, { label: '3500K' }, { label: '5000K' }] }
-    ]
+    stage: 'landed',
+    summary: 'Place point, spot and directional lights from the Library.'
   },
   { id: 'paint', label: 'Paint', icon: 'paint', family: null, stage: 'planned', after: 'T5', summary: 'Assign a material to a surface.' },
   { id: 'erase', label: 'Erase', icon: 'erase', family: null, stage: 'landed', summary: 'Remove a subject from the Stage.', shortcut: 'E' },
@@ -335,7 +329,6 @@ export const WORLD_LIBRARY_CATEGORIES: readonly { id: WorldLibraryCategory; labe
   { id: 'objects', label: 'Objects' },
   { id: 'materials', label: 'Materials' },
   { id: 'my-objects', label: 'My objects' },
-  { id: 'lights', label: 'Lights' },
   { id: 'plants', label: 'Plants' },
   { id: 'buildings', label: 'Buildings' }
 ];
