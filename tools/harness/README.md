@@ -21,9 +21,13 @@ remain historical while current flags and claims are fetched live.
 
 ## Gate and commands
 
-The unconditional Merge gate workflow executes the complete suite contract, produces per-suite
-provenance and aggregates only matching complete artifacts. The [test contract](../../apps/editor/tests/README.md)
-owns required commands; root editor commands do not substitute for API or package checks.
+The unconditional Merge gate workflow executes the complete suite contract exactly once, produces
+per-suite provenance and aggregates only matching complete artifacts. The editor population is split
+into three disjoint lanes (`test:fast`, `test:arch`, `test:heavy`); their union is the complete
+`npm test` suite, proved by
+[`lane-membership.test.ts`](../../apps/editor/tests/config/lane-membership.test.ts), so CI never
+reruns the full suite on top of them. The [test contract](../../apps/editor/tests/README.md) owns
+required commands; root editor commands do not substitute for API or package checks.
 
 - `npm run status`: inspect current evidence, claims, flags, focus and holds.
 - `npm run gate:produce -- --suite <command> --artifact-dir <directory>`: run one declared suite and
@@ -33,7 +37,9 @@ owns required commands; root editor commands do not substitute for API or packag
 - `npm run gate:guards`: enforce check identities and confirmed bug-state protections.
 
 The default-branch ruleset requires the stable `merge gate`, `check guards` and `linux-x64`
-contexts. An integration run for a pull request is not a main push report. Until a complete report
+contexts. The same workflows also run on `merge_group`; the queue's synthetic commit is the tested
+commit in the provenance. An integration run for a pull request is not a main push report. See
+[CI and merge automation](../../docs/operations/ci-merge-automation.md). Until a complete report
 exists for the actual main head, status remains unknown. Issue guards activate from the default
 branch. No live incident, review or claim demonstration should be fabricated to improve a report.
 

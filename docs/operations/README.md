@@ -1,6 +1,7 @@
 # Operational routes
 
 - [Workflow](../workflow.md): claims, flags, risk tiers and review.
+- [CI and merge automation](./ci-merge-automation.md): lane execution, merge queue, activation and rollback.
 - [Checkpoints](./checkpoints/README.md): transient recovery for interrupted work.
 - [Local development](../local-development.md) and [tests](../../apps/editor/tests/README.md).
 - Confirmed defects live in capability-linked GitHub issues; `npm run status` reports flags/claims.

@@ -63,6 +63,20 @@ current rules apply, and #259 itself remains owner-final-check/owner-merge only.
 - **Merging is the closeout.** No acceptance documents, release rows, batons, phase-close records or
   closeout pull requests. No dated decision-record tier is created. Canonical references directly state the resulting rules.
 
+## CI, queue and merging
+
+The merge gate runs every pull request, every `main` push and every merge-queue group. The editor
+suite is three disjoint lanes (`test:fast`, `test:arch`, `test:heavy`) whose union is the complete
+`npm test` population; CI runs each lane exactly once and never reruns the full suite on top of them.
+The required contexts are `merge gate`, `check guards` and `linux-x64`; the aggregator refuses a run
+with missing, failed or mismatched provenance.
+
+The target operating model is implement → focused local tests → PR → review → CI → merge queue →
+merge. Once the owner activates the queue, the queue validates a batch against current `main`.
+Agents do not manually rebase sibling work, refresh a behind branch, or rerun CI to integrate an
+unrelated merge. Activation is one owner action and rollback is one ruleset replacement; see
+[CI and merge automation](./operations/ci-merge-automation.md).
+
 ## Areas, not gates
 
 T1–T5 name areas (Spatial world, Composition, Experience, Release, Expressive geometry), not

@@ -12,6 +12,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { REPO_ROOT } from '../helpers/docs-references';
@@ -26,13 +27,16 @@ const STATUS = join(REPO_ROOT, 'tools/harness/status.mjs');
 const MERGE_GATE = join(REPO_ROOT, '.github/workflows/merge-gate.yml');
 const ISSUE_GUARDS = join(REPO_ROOT, '.github/workflows/issue-guards.yml');
 const GOLDENS = join(REPO_ROOT, '.github/workflows/native-form-goldens.yml');
+const RULESET = join(REPO_ROOT, '.github/rulesets/main-branch.json');
+const PRE_QUEUE_RULESET = join(REPO_ROOT, '.github/rulesets/main-branch.pre-merge-queue.json');
+const EVENT_LABELS = join(REPO_ROOT, 'tools/harness/event-labels.mjs');
 const TEMP = mkdtempSync(join(tmpdir(), 'harness-gate-'));
 const COMMIT = 'c'.repeat(40);
 
 const REQUIRED_SUITES = [
 	'npm run check',
 	'npm run test:arch',
-	'npm test',
+	'npm run test:fast',
 	'npm run test:heavy',
 	'npm run build',
 	'npm run check:api',
@@ -42,12 +46,12 @@ const REQUIRED_SUITES = [
 	'npm run check:geometry-core',
 	'npm run check:project-model'
 ];
-const VITEST_SUITES = ['npm test', 'npm run test:arch', 'npm run test:heavy'];
+const VITEST_SUITES = ['npm run test:arch', 'npm run test:fast', 'npm run test:heavy'];
 const TAP_SUITE = 'npm run test:api';
 
 /** The production command prefix each suite's provenance must match. */
 const COMMANDS: Record<string, string> = {
-	'npm test': 'npx vitest run',
+	'npm run test:fast': 'npx vitest run --config vitest.fast.config.ts',
 	'npm run test:arch': 'npx vitest run --config vitest.arch.config.ts',
 	'npm run test:heavy': 'npx vitest run --config vitest.heavy.config.ts',
 	'npm run test:api': 'npm run test:api',
@@ -178,7 +182,7 @@ describe('provenance production', () => {
 		);
 		const result = run(PRODUCE, [
 			'--suite',
-			'npm test',
+			'npm run test:fast',
 			'--artifact-dir',
 			dir,
 			'--commit',
@@ -188,7 +192,7 @@ describe('provenance production', () => {
 			writer
 		]);
 		expect(result.status).toBe(0);
-		const record = JSON.parse(readFileSync(join(dir, 'test.json'), 'utf8'));
+		const record = JSON.parse(readFileSync(join(dir, 'test-fast.json'), 'utf8'));
 		expect(record.status).toBe('complete');
 		expect(record.override).toBe(true);
 		expect(record.results.numTotalTests).toBe(1);
@@ -277,7 +281,7 @@ describe('gate aggregation', () => {
 		writeProvenance(
 			dir,
 			fullRun((name) =>
-				name === 'npm test'
+				name === 'npm run test:fast'
 					? {
 							results: {
 								success: false,
@@ -325,7 +329,7 @@ describe('gate aggregation', () => {
 		writeProvenance(
 			dir,
 			fullRun((name) =>
-				name === 'npm test'
+				name === 'npm run test:fast'
 					? {
 							results: {
 								numTotalTests: 1,
@@ -356,7 +360,7 @@ describe('gate aggregation', () => {
 		writeProvenance(
 			dir,
 			fullRun((name) =>
-				name === 'npm test'
+				name === 'npm run test:fast'
 					? {
 							results: {
 								numTotalTests: 1,
@@ -387,7 +391,7 @@ describe('gate aggregation', () => {
 		writeProvenance(
 			dir,
 			fullRun((name) =>
-				name === 'npm test'
+				name === 'npm run test:fast'
 					? {
 							results: {
 								numTotalTests: 1,
@@ -424,7 +428,7 @@ describe('gate aggregation', () => {
 		writeProvenance(
 			dir,
 			fullRun((name) =>
-				name === 'npm test'
+				name === 'npm run test:fast'
 					? {
 							results: {
 								numTotalTests: 1,
@@ -450,7 +454,7 @@ describe('gate aggregation', () => {
 
 	it('refuses a record with no tested commit', () => {
 		const dir = tempDir('aggregate-null-commit');
-		writeProvenance(dir, fullRun((name) => (name === 'npm test' ? { commit: null } : {})));
+		writeProvenance(dir, fullRun((name) => (name === 'npm run test:fast' ? { commit: null } : {})));
 		const result = aggregate(dir, join(TEMP, 'null-commit-report.json'));
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain('no tested commit');
@@ -461,7 +465,7 @@ describe('gate aggregation', () => {
 		writeProvenance(
 			dir,
 			fullRun((name) =>
-				name === 'npm test' ? { error: 'runner evidence missing' } : {}
+				name === 'npm run test:fast' ? { error: 'runner evidence missing' } : {}
 			)
 		);
 		const result = aggregate(dir, join(TEMP, 'producer-error-report.json'));
@@ -471,13 +475,13 @@ describe('gate aggregation', () => {
 
 	it('refuses a test-only command override or a command outside the contract', () => {
 		const overrideDir = tempDir('aggregate-override');
-		writeProvenance(overrideDir, fullRun((name) => (name === 'npm test' ? { override: true } : {})));
+		writeProvenance(overrideDir, fullRun((name) => (name === 'npm run test:fast' ? { override: true } : {})));
 		expect(aggregate(overrideDir, join(TEMP, 'override-report.json')).status).toBe(1);
 
 		const commandDir = tempDir('aggregate-command');
 		writeProvenance(
 			commandDir,
-			fullRun((name) => (name === 'npm test' ? { command: 'npm run something-else' } : {}))
+			fullRun((name) => (name === 'npm run test:fast' ? { command: 'npm run something-else' } : {}))
 		);
 		const result = aggregate(commandDir, join(TEMP, 'command-report.json'));
 		expect(result.status).toBe(1);
@@ -1370,18 +1374,38 @@ describe('workflow contract', () => {
 		expect(workflow).toContain('gh issue list --state open');
 		expect(workflow).toContain('--ledger capabilities.json');
 		expect(workflow).toContain('--issues .harness/open-issues.json');
-		expect(workflow).toMatch(/\non:\n  pull_request:\n  push:\n/);
+		expect(workflow).toMatch(/\non:\n  pull_request:\n  push:\n    branches: \[main\]\n  merge_group:\n/);
+		expect(workflow).toContain('event-labels.mjs');
+		expect(workflow).toContain('merge_group.head_sha');
 		expect(workflow).not.toMatch(/\n    paths:/);
 
 		const matrix = JSON.parse(run(MATRIX, []).stdout);
 		const expected = REQUIRED_SUITES.filter((name) => name !== TAP_SUITE);
-		expect(matrix.include.map((entry: any) => entry.suite)).toEqual(expected);
-		for (const entry of matrix.include) expect(entry.slug.length).toBeGreaterThan(0);
+		// Grouping changes the job shell, never the suite contract: flattening the
+		// matrix must still yield every required suite exactly once.
+		const flattened = matrix.include.flatMap((entry: any) => entry.suites);
+		expect(flattened).toEqual(expected);
+		expect(new Set(flattened).size).toBe(flattened.length);
+		for (const entry of matrix.include) {
+			expect(entry.job.length).toBeGreaterThan(0);
+			expect(entry.slug.length).toBeGreaterThan(0);
+			expect(entry.suites.length).toBeGreaterThan(0);
+		}
+		const packageJob = matrix.include.find((entry: any) =>
+			entry.suites.includes('npm run check:camera-core')
+		);
+		expect(packageJob.job).toBe('package checks');
+		expect(packageJob.suites).toEqual([
+			'npm run check:camera-core',
+			'npm run check:layout-core',
+			'npm run check:geometry-core',
+			'npm run check:project-model'
+		]);
 	});
 
 	it('makes the retained goldens check start on every pull request', () => {
 		const goldens = readFileSync(GOLDENS, 'utf8');
-		expect(goldens).toMatch(/\non:\n  pull_request:\n/);
+		expect(goldens).toMatch(/\non:\n  pull_request:\n  merge_group:\n/);
 		expect(goldens).not.toMatch(/\n    paths:/);
 	});
 
@@ -1396,5 +1420,124 @@ describe('workflow contract', () => {
 		expect(workflow).toMatch(/name: Refuse and restore[^]*?\n\s+if: always\(\)/);
 		expect(workflow).toContain('--event-file "$GITHUB_EVENT_PATH"');
 		expect(workflow).toContain('issue-response.mjs');
+	});
+
+	it('runs the disjoint lanes exactly once and keeps the full local suite', async () => {
+		const suitesModule = await import(
+			pathToFileURL(join(REPO_ROOT, 'tools/harness/suites.mjs')).href
+		);
+		const vitestSuites = suitesModule.SUITES.filter((suite: any) => suite.kind === 'vitest');
+		expect(vitestSuites.map((suite: any) => suite.name)).toEqual([
+			'npm run test:arch',
+			'npm run test:fast',
+			'npm run test:heavy'
+		]);
+		expect(vitestSuites.map((suite: any) => suite.args.join(' '))).toEqual([
+			'npx vitest run --config vitest.arch.config.ts',
+			'npx vitest run --config vitest.fast.config.ts',
+			'npx vitest run --config vitest.heavy.config.ts'
+		]);
+		// `npm test` remains the complete local suite; CI does not rerun it on top
+		// of the lanes that already partition it.
+		const editorPackage = JSON.parse(
+			readFileSync(join(REPO_ROOT, 'apps/editor/package.json'), 'utf8')
+		);
+		expect(editorPackage.scripts.test).toBe('vitest run');
+		expect(editorPackage.scripts['test:full']).toBe('vitest run --config vitest.config.ts');
+	});
+
+	it('ships the exact queue ruleset and an exact rollback snapshot', () => {
+		const desired = JSON.parse(readFileSync(RULESET, 'utf8'));
+		const previous = JSON.parse(readFileSync(PRE_QUEUE_RULESET, 'utf8'));
+		const required = desired.rules
+			.find((rule: any) => rule.type === 'required_status_checks')
+			.parameters.required_status_checks.map((check: any) => check.context)
+			.sort();
+		expect(required).toEqual(['check guards', 'linux-x64', 'merge gate']);
+		expect(desired.conditions).toEqual({
+			ref_name: { exclude: [], include: ['~DEFAULT_BRANCH'] }
+		});
+
+		const queue = desired.rules.find((rule: any) => rule.type === 'merge_queue');
+		expect(queue.parameters).toMatchObject({
+			min_entries_to_merge: 1,
+			min_entries_to_merge_wait_minutes: 0,
+			max_entries_to_merge: 1,
+			grouping_strategy: 'ALLGREEN',
+			merge_method: 'MERGE'
+		});
+		expect(queue.parameters.max_entries_to_build).toBeGreaterThan(1);
+		expect(queue.parameters.max_entries_to_build).toBeLessThanOrEqual(3);
+
+		// Rollback is the current ruleset exactly, not a hand-edited approximation.
+		expect(previous.rules).toEqual(
+			desired.rules.filter((rule: any) => rule.type !== 'merge_queue')
+		);
+		expect(previous.conditions).toEqual(desired.conditions);
+	});
+
+	it('resolves guard labels for pull requests and merge groups, failing closed', () => {
+		const dir = tempDir('event-labels');
+		mkdirSync(dir, { recursive: true });
+		const script = join(dir, 'fake-gh.mjs');
+		const log = join(dir, 'calls.log');
+		writeFileSync(
+			script,
+			[
+				'#!/usr/bin/env node',
+				"import { appendFileSync } from 'node:fs';",
+				'const args = process.argv.slice(2);',
+				"if (process.env.FAKE_LOG) appendFileSync(process.env.FAKE_LOG, args.join(' ') + '\\n');",
+				"if (args[0] === 'api' && /\\/commits\\/[0-9a-f]+\\/pulls$/.test(args[1])) {",
+				"  const sha = args[1].match(/commits\\/([0-9a-f]+)/)[1];",
+				"  console.log(JSON.stringify(sha.startsWith('b') ? [] : [{ number: 12, state: 'open' }, { number: 9, state: 'closed' }]));",
+				'  process.exit(0);',
+				'}',
+				"if (args[0] === 'api' && /\\/issues\\/\\d+\\/labels$/.test(args[1])) {",
+				"  const number = args[1].match(/issues\\/(\\d+)/)[1];",
+				"  console.log(JSON.stringify(number === '12' ? [{ name: 'owner-approved-guard-change' }, { name: 'bug' }] : []));",
+				'  process.exit(0);',
+				'}',
+				"console.error('unexpected gh invocation: ' + args.join(' '));",
+				'process.exit(1);',
+				''
+			].join('\n')
+		);
+		chmodSync(script, 0o755);
+		const runLabels = (event: unknown) => {
+			counter += 1;
+			const eventPath = join(dir, `event-${counter}.json`);
+			writeFileSync(eventPath, JSON.stringify(event));
+			const out = join(dir, `labels-${counter}.json`);
+			const result = run(
+				EVENT_LABELS,
+				['--event-file', eventPath, '--repo', 'o/r', '--out', out, '--gh', script],
+				REPO_ROOT,
+				{ FAKE_LOG: log }
+			);
+			return { result, out };
+		};
+
+		const pull = runLabels({ pull_request: { number: 12 } });
+		expect(pull.result.status).toBe(0);
+		expect(JSON.parse(readFileSync(pull.out, 'utf8'))).toEqual([
+			'bug',
+			'owner-approved-guard-change'
+		]);
+
+		const group = runLabels({ merge_group: { head_sha: 'a'.repeat(40) } });
+		expect(group.result.status).toBe(0);
+		expect(JSON.parse(readFileSync(group.out, 'utf8'))).toEqual([
+			'bug',
+			'owner-approved-guard-change'
+		]);
+
+		// A queue commit with no open PR cannot authorize a removal.
+		const unassociated = runLabels({ merge_group: { head_sha: 'b'.repeat(40) } });
+		expect(unassociated.result.status).toBe(1);
+		expect(existsSync(unassociated.out)).toBe(false);
+
+		const other = runLabels({ push: { ref: 'refs/heads/main' } });
+		expect(other.result.status).toBe(1);
 	});
 });

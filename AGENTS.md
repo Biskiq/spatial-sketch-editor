@@ -111,6 +111,12 @@ review, merge on green CI, owner check at the next checkpoint. **Tier 2** hard-r
 approved-design or ledger-shape change, incompatible format, check removal, owner review,
 production activation, licence or new dependency → owner decides before merge.
 
+**Integration is native.** The target path is implement → focused local tests → PR → review → CI →
+merge queue → merge. Once the owner activates the queue, the queue validates each batch against
+current `main`; agents do not rebase sibling work, refresh a behind branch by hand, or rerun CI to
+integrate another PR. See
+[CI and merge automation](./docs/operations/ci-merge-automation.md).
+
 On-demand skills: `work-checkpoint`, `owner-checkpoint`, `gardener` (archive-only) and `breaker`.
 No schedules. The
 full process contract is [`docs/workflow.md`](./docs/workflow.md).

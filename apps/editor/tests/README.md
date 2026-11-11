@@ -249,13 +249,17 @@ original lane model and the final measurements
 Verification is triggered by **what changed**, not only by production-code
 edits. A test edit is a change like any other and lands through the same
 contract its subject does. The complete merge-gate contract is:
-`npm run check`, `npm run test:arch`, `npm test`, `npm run test:heavy`,
+`npm run check`, `npm run test:fast`, `npm run test:arch`, `npm run test:heavy`,
 `npm run build`, `npm run check:api`, DB-backed `npm run test:api` with zero
 skips, and the affected package checks (`check:layout-core`,
 `check:project-model`, `check:camera-core`, `check:geometry-core`). It runs
-unconditionally for every PR and `main` in `.github/workflows/merge-gate.yml`;
-the arch lane is never path-gated. Focused runs are iteration feedback and never
-stand in for acceptance evidence.
+unconditionally for every PR, `main` push and merge-queue group in
+`.github/workflows/merge-gate.yml`; the arch lane is never path-gated. The three
+lanes are disjoint and their union is the complete `npm test` population, so CI
+runs each exactly once and does not repeat the full suite on top of them;
+`npm test` remains the local complete run. Focused runs are iteration feedback
+and never stand in for acceptance evidence. See
+[CI and merge automation](../../../docs/operations/ci-merge-automation.md).
 
 | Changed | Required before the change is judged green |
 | --- | --- |
