@@ -30,14 +30,12 @@ export const LIGHT_IT_PICTURE_SPOT_ELEVATION_DEGREES = 30;
 export const LIGHT_IT_BEAM_MARGIN_RATIO = 1.1;
 /** A Wash sits above and in front of the bounds at 45°. */
 export const LIGHT_IT_WASH_ELEVATION_DEGREES = 45;
-/** Wash stand-off is proportional to the bounds radius, within practical limits. */
+/** Wash stand-off is proportional to the bounds radius, with no upper cap. */
 export const LIGHT_IT_WASH_STANDOFF_RATIO = 1.5;
 export const LIGHT_IT_WASH_STANDOFF_MIN_METERS = 0.9;
-/** Large enough that a spread-out multi-selection still fits inside one cone. */
-export const LIGHT_IT_WASH_STANDOFF_MAX_METERS = 200;
 /** The smallest stored half-angle; a tiny subject still gets a usable cone. */
 export const LIGHT_IT_MIN_HALF_ANGLE_RADIANS = (2 * Math.PI) / 180;
-/** The largest stored half-angle; the renderer accepts more, but a recipe should not. */
+/** The largest admitted half-angle; a recipe refuses rather than clamping past it. */
 export const LIGHT_IT_MAX_HALF_ANGLE_RADIANS = (80 * Math.PI) / 180;
 
 export const LIGHT_IT_PICTURE_SPOT_NAME = 'Picture spot';
@@ -65,6 +63,11 @@ export type LightItRecipe = {
 	readonly intensity: number;
 	readonly castShadow: boolean;
 };
+
+/** A recipe is ready to submit, or it cannot cover the target within S7's limits. */
+export type LightItRecipeOutcome =
+	| { readonly kind: 'ready'; readonly recipe: LightItRecipe }
+	| { readonly kind: 'refused'; readonly message: string };
 
 type ArtworkRectangle = {
 	readonly center: Vec3;
@@ -119,11 +122,11 @@ export function artworkLightBounds(entity: SceneArtworkEntity): LightItBounds {
  * The body is offset along the artwork's own front (+Z) and world up, so the
  * light follows a turned artwork instead of assuming a room axis. The target is
  * the artwork centre; the beam is the smallest cone containing all four
- * corners, times the margin. The cutoff is the S3 target distance plus its
- * established margin, so the artwork is inside the lit reach rather than on the
- * attenuation boundary.
+ * corners, times the margin. The cutoff reaches the farthest corner plus the
+ * S3 margin, so every corner is inside the lit reach rather than only the
+ * centre being inside it. A rectangle that would need more than 80° is refused.
  */
-export function pictureSpotRecipe(entity: SceneArtworkEntity): LightItRecipe {
+export function pictureSpotRecipe(entity: SceneArtworkEntity): LightItRecipeOutcome {
 	const rectangle = artworkLightRectangle(entity);
 	const front = rotateDirection(entity.rotation, [0, 0, 1]);
 	const elevation = degreesToRadians(LIGHT_IT_PICTURE_SPOT_ELEVATION_DEGREES);
@@ -136,16 +139,26 @@ export function pictureSpotRecipe(entity: SceneArtworkEntity): LightItRecipe {
 		])
 	);
 	const direction = normalize(sub(rectangle.center, position));
+	const angle = fittedHalfAngle(position, direction, rectangle.corners);
+	if (angle === null) {
+		return {
+			kind: 'refused',
+			message: 'This Artwork is too large for a covered Picture spot at 1.4 m; its beam would exceed 80°.'
+		};
+	}
 	return {
-		recipe: 'picture-spot',
-		name: LIGHT_IT_PICTURE_SPOT_NAME,
-		position,
-		rotation: rotationForLightDirection(direction),
-		angle: fittedHalfAngle(position, direction, rectangle.corners),
-		range: spotCutoffForTargetDistance(distance(position, rectangle.center)),
-		color: '#ffffff',
-		intensity: LIGHT_INTENSITY_REFERENCE,
-		castShadow: false
+		kind: 'ready',
+		recipe: {
+			recipe: 'picture-spot',
+			name: LIGHT_IT_PICTURE_SPOT_NAME,
+			position,
+			rotation: rotationForLightDirection(direction),
+			angle,
+			range: spotCutoffForTargetDistance(farthestDistance(position, rectangle.corners)),
+			color: '#ffffff',
+			intensity: LIGHT_INTENSITY_REFERENCE,
+			castShadow: false
+		}
 	};
 }
 
@@ -155,13 +168,16 @@ export function pictureSpotRecipe(entity: SceneArtworkEntity): LightItRecipe {
  * `front` is the primary subject's horizontal forward. The body sits above and
  * in front on a 45° line, far enough that the fitted cone is not cramped for a
  * tall or wide subject, and the target is the bounds centre. Every one of the
- * eight corners participates, so a multi-selection's one light covers the
- * selected subjects rather than only their centres.
+ * eight corners participates, and the cutoff reaches the farthest corner, so a
+ * multi-selection's one light covers the selected subjects rather than only
+ * their centres. Bleed cannot push the cone past 80° because the stand-off is
+ * proportional to the radius without an upper cap; an invalid bounds still
+ * returns a clear refusal.
  */
 export function washRecipe(input: {
 	readonly bounds: LightItBounds;
 	readonly front?: Vec3;
-}): LightItRecipe {
+}): LightItRecipeOutcome {
 	const { bounds } = input;
 	const center: Vec3 = [
 		(bounds.min[0] + bounds.max[0]) / 2,
@@ -174,24 +190,34 @@ export function washRecipe(input: {
 		Math.max(0, (bounds.max[2] - bounds.min[2]) / 2)
 	];
 	const radius = Math.hypot(...halfExtents);
-	const standoff = clamp(
+	const standoff = Math.max(
 		radius * LIGHT_IT_WASH_STANDOFF_RATIO,
-		LIGHT_IT_WASH_STANDOFF_MIN_METERS,
-		LIGHT_IT_WASH_STANDOFF_MAX_METERS
+		LIGHT_IT_WASH_STANDOFF_MIN_METERS
 	);
 	const front = horizontalFront(input.front);
 	const position = add(center, add(scale(front, standoff), [0, standoff, 0]));
 	const direction = normalize(sub(center, position));
+	const corners = boundsCorners(bounds);
+	const angle = fittedHalfAngle(position, direction, corners);
+	if (angle === null) {
+		return {
+			kind: 'refused',
+			message: 'The selected bounds need a beam wider than 80°; move the subjects closer together or select a smaller group.'
+		};
+	}
 	return {
-		recipe: 'wash',
-		name: LIGHT_IT_WASH_NAME,
-		position,
-		rotation: rotationForLightDirection(direction),
-		angle: fittedHalfAngle(position, direction, boundsCorners(bounds)),
-		range: spotCutoffForTargetDistance(distance(position, center)),
-		color: '#ffffff',
-		intensity: LIGHT_INTENSITY_REFERENCE,
-		castShadow: false
+		kind: 'ready',
+		recipe: {
+			recipe: 'wash',
+			name: LIGHT_IT_WASH_NAME,
+			position,
+			rotation: rotationForLightDirection(direction),
+			angle,
+			range: spotCutoffForTargetDistance(farthestDistance(position, corners)),
+			color: '#ffffff',
+			intensity: LIGHT_INTENSITY_REFERENCE,
+			castShadow: false
+		}
 	};
 }
 
@@ -239,29 +265,26 @@ export function boundsCorners(bounds: LightItBounds): Vec3[] {
 
 /**
  * The smallest stored half-angle containing every point around `direction`,
- * expanded by the recipe margin.
- *
- * A point behind the light cannot be covered by a cone at any admitted angle;
- * the clamp is a refusal boundary in values, not a silent re-aim.
+ * expanded by the recipe margin. Returns null when the margined cone would
+ * exceed the largest admitted angle; the caller must refuse with a reason
+ * rather than silently writing a narrower light.
  */
 function fittedHalfAngle(
 	origin: Vec3,
 	direction: Vec3,
 	points: readonly Vec3[]
-): number {
+): number | null {
 	let widest = 0;
 	for (const point of points) {
 		const offset = sub(point, origin);
 		const length = Math.hypot(...offset);
 		if (!(length > 1e-9)) continue;
-		const cosine = clamp(dot(direction, scale(offset, 1 / length)), -1, 1);
+		const cosine = Math.max(-1, Math.min(1, dot(direction, scale(offset, 1 / length))));
 		widest = Math.max(widest, Math.acos(cosine));
 	}
-	return clamp(
-		widest * LIGHT_IT_BEAM_MARGIN_RATIO,
-		LIGHT_IT_MIN_HALF_ANGLE_RADIANS,
-		LIGHT_IT_MAX_HALF_ANGLE_RADIANS
-	);
+	const fitted = widest * LIGHT_IT_BEAM_MARGIN_RATIO;
+	if (!(fitted <= LIGHT_IT_MAX_HALF_ANGLE_RADIANS)) return null;
+	return Math.max(fitted, LIGHT_IT_MIN_HALF_ANGLE_RADIANS);
 }
 
 function rotateDirection(rotation: Vec3, direction: Vec3): Vec3 {
@@ -279,8 +302,10 @@ function distance(left: Vec3, right: Vec3): number {
 	return Math.hypot(right[0] - left[0], right[1] - left[1], right[2] - left[2]);
 }
 
-function clamp(value: number, min: number, max: number): number {
-	return Math.min(max, Math.max(min, value));
+function farthestDistance(origin: Vec3, points: readonly Vec3[]): number {
+	let farthest = 0;
+	for (const point of points) farthest = Math.max(farthest, distance(origin, point));
+	return farthest;
 }
 
 function dot(left: Vec3, right: Vec3): number {

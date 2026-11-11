@@ -53,7 +53,7 @@ import {
 	unionLightItBounds,
 	washRecipe,
 	type LightItBounds,
-	type LightItRecipe
+	type LightItRecipeOutcome
 } from '../look/light-recipes';
 import LightCardFields from './light/LightCardFields.svelte';
 
@@ -371,9 +371,7 @@ function illuminates(light: Light, bounds: SceneBounds): boolean {
 	});
 }
 
-type LightItSelectionRecipe =
-	| { readonly kind: 'ready'; readonly recipe: LightItRecipe }
-	| { readonly kind: 'refused'; readonly message: string };
+type LightItSelectionRecipe = LightItRecipeOutcome;
 
 /**
  * S7's selection recipe: one Picture spot for one Artwork, otherwise one Wash
@@ -414,16 +412,13 @@ function lightItSelectionRecipe(services: StageAdapterServices): LightItSelectio
 	const primaryId = selection.primary?.subject.id;
 	const primary = targets.find((target) => target.entity.id === primaryId) ?? targets[0]!;
 	if (targets.length === 1 && primary.entity.kind === 'artwork') {
-		return { kind: 'ready', recipe: pictureSpotRecipe(primary.entity) };
+		return pictureSpotRecipe(primary.entity);
 	}
 	const bounds = unionLightItBounds(targets.map((target) => target.bounds));
 	if (bounds === null) {
 		return { kind: 'refused', message: 'The selection has no bounds to light.' };
 	}
-	return {
-		kind: 'ready',
-		recipe: washRecipe({ bounds, front: horizontalFront(primary.entity.rotation) })
-	};
+	return washRecipe({ bounds, front: horizontalFront(primary.entity.rotation) });
 }
 
 function lightItDetail(entity: SceneEntity, selectedCount: number): string {

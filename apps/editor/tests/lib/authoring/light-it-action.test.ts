@@ -10,8 +10,15 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
-import type { SceneArtworkEntity, SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
+import type {
+	SceneArtworkEntity,
+	SceneEntity,
+	SceneLightEntity,
+	SceneModelEntity,
+	Vec3
+} from '@portfolio/project-model';
 import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import { creatorModelResourceEntry } from '@portfolio/project-model/scene-planning';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { createAdapter as createLightAdapter } from '$lib/authoring/adapters/light.adapter';
@@ -71,6 +78,47 @@ function boxEntity(id: string, position: Vec3): SceneEntity {
 	};
 }
 
+function formEntity(id: string, position: Vec3): SceneEntity {
+	return {
+		kind: 'form',
+		id,
+		name: `Form ${id}`,
+		position,
+		rotation: [0, 0, 0],
+		materialId: 'plaster-warm',
+		castShadow: true,
+		receiveShadow: true,
+		form: {
+			generator: {
+				kind: 'extrude',
+				plane: 'plan',
+				extent: 1,
+				outline: [
+					{ key: 1, u: 0, v: 0, smooth: false },
+					{ key: 2, u: 1, v: 0, smooth: false },
+					{ key: 3, u: 1, v: 1, smooth: false },
+					{ key: 4, u: 0, v: 1, smooth: false }
+				]
+			},
+			scale: [1, 1, 1],
+			nextKey: 5
+		}
+	};
+}
+
+function modelEntity(id: string, position: Vec3): SceneModelEntity {
+	return {
+		kind: 'model',
+		id,
+		name: `Model ${id}`,
+		assetId: 'paris-grand-piano',
+		fallback: 'piano',
+		position,
+		rotation: [0, 0, 0],
+		scale: 1
+	};
+}
+
 function lightEntity(id: string, position: Vec3): SceneLightEntity {
 	return {
 		kind: 'light',
@@ -89,11 +137,20 @@ function lightEntity(id: string, position: Vec3): SceneLightEntity {
 async function mounted(options: {
 	readonly entities: readonly SceneEntity[];
 	readonly bounds?: Readonly<Record<string, { readonly min: Vec3; readonly max: Vec3 }>>;
+	readonly modelEntry?: NonNullable<ReturnType<typeof creatorModelResourceEntry>>;
 }) {
 	const project = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'Light it',
 		layout: fixtureLayout(),
+		...(options.modelEntry === undefined
+			? {}
+			: {
+					resources: {
+						formatVersion: 2 as const,
+						resources: [options.modelEntry.resource]
+					}
+				}),
 		scene: {
 			formatVersion: SCENE_UNIT_FORMAT_VERSION,
 			textures: [],
@@ -108,8 +165,18 @@ async function mounted(options: {
 				: {})
 		}
 	});
+	const admittedSource =
+		options.modelEntry === undefined
+			? project
+			: {
+					...project,
+					dependencyLock: {
+						...project.dependencyLock,
+						entries: [options.modelEntry.lock]
+					}
+				};
 	const admitted = await admitUnitProject(
-		project,
+		admittedSource,
 		{ projectId: PROJECT_ID, revisionId: 'revision-boot' },
 		SESSION_EPOCH
 	);
@@ -131,7 +198,7 @@ async function mounted(options: {
 		sessionEpoch: admitted.snapshot.sessionEpoch,
 		baseline: {
 			revision: admitted.snapshot.acceptedRevision,
-			source: project,
+			source: admittedSource,
 			canonicalJson: admitted.snapshot.canonicalJson,
 			sourceContentId: admitted.snapshot.sourceContentId
 		}
@@ -201,6 +268,26 @@ function angleFromAim(origin: Vec3, direction: Vec3, point: Vec3): number {
 	return Math.acos(cosine);
 }
 
+function expectLightCovers(light: SceneLightEntity, corners: readonly Vec3[]): void {
+	if (light.light !== 'spot') throw new Error('Light it did not create a spot');
+	const range = 'range' in light ? light.range : undefined;
+	expect(range).toBeDefined();
+	const cutoff = range ?? 0;
+	expect(cutoff).toBeGreaterThan(0);
+	const forward = lightForward(light.rotation);
+	for (const corner of corners) {
+		expect(angleFromAim(light.position, forward, corner)).toBeLessThanOrEqual(
+			light.angle + 1e-9
+		);
+		const distance = Math.hypot(
+			corner[0] - light.position[0],
+			corner[1] - light.position[1],
+			corner[2] - light.position[2]
+		);
+		expect(distance).toBeLessThanOrEqual(cutoff + 1e-9);
+	}
+}
+
 describe('S7 Light it Card action', () => {
 	it('creates one selected Picture spot for Artwork and undoes/redoes it as one entry', async () => {
 		const artwork = artworkEntity();
@@ -248,11 +335,59 @@ describe('S7 Light it Card action', () => {
 		const light = lightsOf(facade)[0]!;
 		expect(light.name).toBe('Wash');
 		expect(host.history().depth).toBe(before + 1);
-		if (light.light !== 'spot') throw new Error('Light it did not create a spot');
-		const forward = lightForward(light.rotation);
-		for (const corner of boundsCorners(bounds)) {
-			expect(angleFromAim(light.position, forward, corner)).toBeLessThanOrEqual(light.angle);
-		}
+		expectLightCovers(light, boundsCorners(bounds));
+	});
+
+	it('creates one Wash for a native Form through evaluated bounds', async () => {
+		const form = formEntity('form-a', [2, 0.5, 1]);
+		const bounds = { min: [1.5, 0, 0.5] as Vec3, max: [2.5, 1, 1.5] as Vec3 };
+		const { facade, host } = await mounted({ entities: [form], bounds: { 'form-a': bounds } });
+		select(facade, [form.id]);
+		const before = host.history().depth;
+		expect(await lightItAction(facade, form.id).run()).toMatchObject({ kind: 'accepted' });
+		await waitFor(() => lightsOf(facade).length === 1);
+		const light = lightsOf(facade)[0]!;
+		expect(light.name).toBe('Wash');
+		expect(host.history().depth).toBe(before + 1);
+		expectLightCovers(light, boundsCorners(bounds));
+	});
+
+	it('creates one Wash for an imported Model through evaluated bounds', async () => {
+		const model = modelEntity('model-a', [3, 0.5, 1]);
+		const bounds = { min: [2.5, 0, 0.5] as Vec3, max: [3.5, 1, 1.5] as Vec3 };
+		const modelEntry = creatorModelResourceEntry(model.assetId, {
+			derivative: {
+				hash: `sha256-${'a'.repeat(64)}`,
+				mime: 'model/gltf-binary',
+				size: 4096,
+				locator: 'models/model-a.glb'
+			},
+			source: { manifestHash: `sha256-${'b'.repeat(64)}`, size: 8192, fileCount: 1 },
+			recipe: { id: 'creator-import@1', version: 1 },
+			reportDigest: `sha256-${'c'.repeat(64)}`,
+			placement: {
+				metresPerSourceUnit: 1,
+				pivot: [0, 0, 0],
+				footprint: { width: 1, depth: 1 },
+				contactMinY: 0
+			}
+		});
+		if (modelEntry === null) throw new Error('the model resource was refused');
+		const { facade, host } = await mounted({
+			entities: [model],
+			bounds: { 'model-a': bounds },
+			modelEntry
+		});
+		select(facade, [model.id]);
+		const before = host.history().depth;
+		const outcome = await lightItAction(facade, model.id).run();
+		if (outcome.kind === 'refused') throw new Error(outcome.message);
+		expect(outcome).toMatchObject({ kind: 'accepted' });
+		await waitFor(() => lightsOf(facade).length === 1);
+		const light = lightsOf(facade)[0]!;
+		expect(light.name).toBe('Wash');
+		expect(host.history().depth).toBe(before + 1);
+		expectLightCovers(light, boundsCorners(bounds));
 	});
 
 	it('creates one shared Wash for a multi-selection instead of one light per object', async () => {
@@ -273,13 +408,21 @@ describe('S7 Light it Card action', () => {
 		expect(lightsOf(facade)[0]!.name).toBe('Wash');
 		expect(host.history().depth).toBe(before + 1);
 		const wash = lightsOf(facade)[0]!;
-		if (wash.light !== 'spot') throw new Error('Light it did not create a spot');
-		const forward = lightForward(wash.rotation);
 		for (const boundsEntry of Object.values(bounds)) {
-			for (const corner of boundsCorners(boundsEntry)) {
-				expect(angleFromAim(wash.position, forward, corner)).toBeLessThanOrEqual(wash.angle);
-			}
+			expectLightCovers(wash, boundsCorners(boundsEntry));
 		}
+	});
+
+	it('refuses a Picture spot when the Artwork would need more than 80°', async () => {
+		const large = artworkEntity({ widthMeters: 6 });
+		const { facade, host } = await mounted({ entities: [large] });
+		select(facade, [large.id]);
+		const before = host.history();
+		const outcome = await lightItAction(facade, large.id).run();
+		expect(outcome).toMatchObject({ kind: 'refused' });
+		if (outcome.kind === 'refused') expect(outcome.message).toContain('80°');
+		expect(host.history()).toEqual(before);
+		expect(lightsOf(facade)).toHaveLength(0);
 	});
 
 	it('refuses an object without evaluated bounds without a history entry', async () => {
