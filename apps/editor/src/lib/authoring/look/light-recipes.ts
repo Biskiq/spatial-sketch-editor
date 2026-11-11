@@ -76,9 +76,11 @@ type ArtworkRectangle = {
 /**
  * The rectangle a Picture spot must cover for one Artwork.
  *
- * A2 will replace this with the artwork's framed outer rectangle. Reading only
- * `widthMeters` and the source aspect here keeps S7 independent of the frame
- * shape and leaves exactly one seam to reconcile after A2 merges.
+ * A2's frame contract exposes the generated outer rectangle through
+ * `artworkFrameLayout(...).outerWidth/outerHeight` (and the border through
+ * `artworkFrameBorderMeters`). Reading only `widthMeters` and the source aspect
+ * here keeps S7 independent of that shape and leaves exactly one seam: after A2
+ * lands, add its border to both half extents in this function.
  */
 export function artworkLightRectangle(entity: SceneArtworkEntity): ArtworkRectangle {
 	const halfWidth = entity.widthMeters / 2;
