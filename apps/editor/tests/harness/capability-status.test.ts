@@ -70,7 +70,7 @@ type Check = {
 const REQUIRED_SUITES = [
 	'npm run check',
 	'npm run test:arch',
-	'npm test',
+	'npm run test:fast',
 	'npm run test:heavy',
 	'npm run build',
 	'npm run check:api',
@@ -81,7 +81,7 @@ const REQUIRED_SUITES = [
 	'npm run check:project-model'
 ];
 
-const TEST_SUITES = ['npm test', 'npm run test:arch', 'npm run test:heavy'];
+const TEST_SUITES = ['npm run test:fast', 'npm run test:arch', 'npm run test:heavy'];
 const TAP_SUITE = 'npm run test:api';
 
 let fixtureCount = 0;
@@ -144,7 +144,7 @@ function reportFor(results: any, options: { commit?: string; suite?: string } = 
 		commit: options.commit ?? COMMIT,
 		generatedAt: '2026-11-06T10:00:00.000Z',
 		suites: REQUIRED_SUITES.map((name) => {
-			if (name === 'npm test') {
+			if (name === 'npm run test:fast') {
 				return { name, status: options.suite ?? 'complete', results };
 			}
 			if (TEST_SUITES.includes(name)) {
@@ -445,7 +445,7 @@ describe('runner expected-failure semantics', () => {
 				{ id: 'probe.repeat' }
 			);
 			const suites = REQUIRED_SUITES.map((name) => {
-				if (name === 'npm test') return { name, status: 'complete', results };
+				if (name === 'npm run test:fast') return { name, status: 'complete', results };
 				if (TEST_SUITES.includes(name)) {
 					return {
 						name,
@@ -674,7 +674,7 @@ describe('a report states its own provenance', () => {
 			report: {
 				commit: COMMIT,
 				generatedAt: '2026-11-06T10:00:00.000Z',
-				suites: [{ name: 'npm test', status: 'complete', results: assertions([{ cap: 'cap.a' }]) }]
+				suites: [{ name: 'npm run test:fast', status: 'complete', results: assertions([{ cap: 'cap.a' }]) }]
 			}
 		});
 		expect(truncated.complete).toBe(false);
@@ -703,7 +703,7 @@ describe('a report states its own provenance', () => {
 		const collectedNothing = {
 			...valid,
 			suites: valid.suites.map((suite: any) =>
-				suite.name === 'npm test'
+				suite.name === 'npm run test:fast'
 					? { name: suite.name, status: 'complete', results: { testResults: [] } }
 					: suite
 			)
@@ -722,7 +722,7 @@ describe('a report states its own provenance', () => {
 		const collectionFailure = {
 			...valid,
 			suites: valid.suites.map((suite: any) =>
-				suite.name === 'npm test'
+				suite.name === 'npm run test:fast'
 					? {
 							name: suite.name,
 							status: 'complete',
@@ -765,7 +765,7 @@ describe('a report states its own provenance', () => {
 		const zeroCollected = {
 			...valid,
 			suites: valid.suites.map((suite: any) =>
-				suite.name === 'npm test'
+				suite.name === 'npm run test:fast'
 					? {
 							name: suite.name,
 							status: 'complete',
@@ -819,7 +819,7 @@ describe('a report states its own provenance', () => {
 		const runtimeFailure = {
 			...valid,
 			suites: valid.suites.map((suite: any) =>
-				suite.name === 'npm test'
+				suite.name === 'npm run test:fast'
 					? {
 							name: suite.name,
 							status: 'complete',

@@ -20,7 +20,7 @@ const TEMP = mkdtempSync(join(tmpdir(), 'harness-discovery-'));
 const REQUIRED_SUITES = [
 	'npm run check',
 	'npm run test:arch',
-	'npm test',
+	'npm run test:fast',
 	'npm run test:heavy',
 	'npm run build',
 	'npm run check:api',
@@ -180,7 +180,7 @@ function reportFor(
 		...(options.ledger === null ? {} : { ledger: options.ledger ?? ledgerFor('r2') }),
 		...(options.issues === null ? {} : { issues: options.issues ?? [] }),
 		suites: REQUIRED_SUITES.map((name) => {
-			if (name === 'npm test') {
+			if (name === 'npm run test:fast') {
 				return { name, status: 'complete', results: { numTotalTests: 1, testResults } };
 			}
 			if (name === 'npm run test:arch' || name === 'npm run test:heavy') {

@@ -12,7 +12,7 @@ a complete Object Studio and public publication remain future work.
 | Shared interfaces | [Composition and execution](./reference/composition-execution.md) |
 | Approved UX | [Shell](./reference/design-system/editor-shell-and-visual-system.md), [spatial grammar](./reference/design-system/spatial-instrument-grammar.md) |
 | Find an area's contract | [Path map](./path-map.md), [glossary](./glossary.md) |
-| Work and verification | [Workflow](./workflow.md), [tests](../apps/editor/tests/README.md) |
+| Work and verification | [Workflow](./workflow.md), [tests](../apps/editor/tests/README.md), [CI and merge automation](./operations/ci-merge-automation.md) |
 | What's next or broken | `npm run status`, [focus](../focus.md), capability-linked GitHub issues/PRs |
 
 Code/tests establish landed behavior. References own enduring contracts; explicitly owner-approved

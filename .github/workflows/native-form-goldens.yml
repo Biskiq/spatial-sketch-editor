@@ -1,8 +1,11 @@
 name: Native form Linux x64 goldens
-# Unconditional on pull requests: this job is a required check, and a required
-# context whose workflow was skipped by a path filter stays pending forever.
+# Unconditional on pull requests and merge-queue groups: this job is a required
+# check, and a required context whose workflow was skipped by a path filter stays
+# pending forever. merge_group is required when the merge queue is active.
 on:
   pull_request:
+  merge_group:
+    types: [checks_requested]
 permissions:
   contents: read
 jobs:

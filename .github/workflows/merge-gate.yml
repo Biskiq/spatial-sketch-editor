@@ -1,21 +1,33 @@
-# The repository merge gate. It runs every PR and every push to main, with no
-# path filter: a docs-only change can still break the architecture lane.
+# The repository merge gate. It runs every PR, every push to main and every
+# merge-queue group, with no path filter: a docs-only change can still break the
+# architecture lane.
 #
 # Each job name is a stable check name. `merge gate` is the single aggregator
 # that fails when any required suite's provenance is missing, failed or
 # incomplete; `check guards` refuses an unapproved check removal/downgrade.
 # The default-branch ruleset must require those two contexts (plus the retained
-# native-form goldens job) before autonomous merges start — see the #259 packet.
+# native-form goldens job) before autonomous merges start — see
+# docs/operations/ci-merge-automation.md.
+#
+# The editor suite is three disjoint lanes (fast, arch, heavy). Their union is
+# the complete `npm test` population, proved by
+# apps/editor/tests/config/lane-membership.test.ts, so the matrix never runs a
+# test twice and never drops one.
 name: Merge gate
 on:
   pull_request:
   push:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
 permissions:
   contents: read
 concurrency:
-  group: merge-gate-${{ github.ref }}
-  cancel-in-progress: true
+  # A merge group is an isolated validation of one batch. Cancelling it when
+  # another group appears would discard evidence GitHub is already waiting for.
+  # Pull requests and main pushes keep cancel-in-progress.
+  group: merge-gate-${{ github.event_name }}-${{ github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 env:
   CI: '1'
 jobs:
@@ -34,7 +46,7 @@ jobs:
         run: echo "matrix=$(node tools/harness/matrix.mjs)" >> "$GITHUB_OUTPUT"
 
   suite:
-    name: ${{ matrix.suite }}
+    name: ${{ matrix.job }}
     needs: prepare
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -46,7 +58,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Materialize main for repository-history tests
-        run: |
+        run: |-
           git fetch origin main:refs/remotes/origin/main
           if [ "$(git symbolic-ref --short -q HEAD)" = "main" ]; then
             current=$(git rev-parse HEAD)
@@ -66,7 +78,15 @@ jobs:
       - name: Generate SvelteKit types
         run: npm exec -w @portfolio/editor -- svelte-kit sync
       - name: Produce suite provenance
-        run: node tools/harness/produce.mjs --suite "${{ matrix.suite }}" --artifact-dir .harness/artifacts
+        env:
+          SUITES: ${{ join(matrix.suites, '|') }}
+        run: |
+          failed=0
+          IFS='|' read -ra suites <<< "$SUITES"
+          for suite in "${suites[@]}"; do
+            node tools/harness/produce.mjs --suite "$suite" --artifact-dir .harness/artifacts || failed=1
+          done
+          exit "$failed"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -114,9 +134,17 @@ jobs:
 
   guards:
     name: check guards
-    if: github.event_name == 'pull_request'
+    # The queue must report this required context too. A merge_group event has
+    # no pull_request object and github.base_ref is empty, so event-context.mjs
+    # derives the base from merge_group.base_ref and enumerates every queued PR
+    # from the synthetic commit's first-parent chain.
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -126,20 +154,40 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" --depth=1
-      - name: Read the pull request's labels
+      - name: Resolve event base and authorizing pull requests
+        id: event
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p .harness
-          gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" \
-            --jq '[.[].name]' > .harness/pr-labels.json
-      - name: Refuse unapproved check removal or downgrade
+          REPOSITORY: ${{ github.repository }}
         run: >-
-          node tools/harness/guards.mjs
-          --base "origin/${{ github.base_ref }}"
-          --head HEAD
-          --labels-file .harness/pr-labels.json
+          node tools/harness/event-context.mjs
+          --event-file "$GITHUB_EVENT_PATH"
+          --repo "$REPOSITORY"
+          --repo-root .
+          --labels-out .harness/pr-labels.json
+          --entries-out .harness/queue-entries.json
+          --github-output "$GITHUB_OUTPUT"
+      - name: Materialize the pull request base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_BRANCH: ${{ steps.event.outputs.base_branch }}
+        run: git fetch origin "${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" --depth=1
+      - name: Refuse unapproved check removal or downgrade
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_BRANCH: ${{ steps.event.outputs.base_branch }}
+        run: |
+          if [ "$EVENT_NAME" = "merge_group" ]; then
+            node tools/harness/guards.mjs \
+              --repo-root . \
+              --entries-file .harness/queue-entries.json
+          else
+            node tools/harness/guards.mjs \
+              --repo-root . \
+              --base "origin/$BASE_BRANCH" \
+              --head HEAD \
+              --labels-file .harness/pr-labels.json
+          fi
 
   gate:
     name: merge gate
