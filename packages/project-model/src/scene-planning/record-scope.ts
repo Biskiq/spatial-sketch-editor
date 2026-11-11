@@ -41,6 +41,7 @@ import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
  */
 export type SceneRecordScope = {
 	readonly operationKind: string;
+	readonly addedArtworkAssetIds?: readonly string[];
 	/** Existing entities this operation may replace in place (same id, same position). */
 	readonly changedEntityIds: readonly string[];
 	/**
@@ -123,7 +124,7 @@ export function checkSceneRecordScope(
 	// known fields) means a future Scene field is protected the day it lands
 	// instead of the day someone remembers to add it here.
 	const carriedFields = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(
-		(field) => field !== 'entities' && field !== 'clusters'
+		(field) => field !== 'entities' && field !== 'clusters' && field !== 'artworkLibrary'
 	);
 	for (const field of carriedFields) {
 		if (
@@ -136,6 +137,20 @@ export function checkSceneRecordScope(
 				message: `${field} is outside the ${scope.operationKind} operation's record scope`
 			});
 		}
+	}
+
+	const additions = new Set(scope.addedArtworkAssetIds);
+	const previousLibrary = before.artworkLibrary ?? [];
+	const nextLibrary = after.artworkLibrary ?? [];
+	const nextByAsset = new Map(nextLibrary.map((entry) => [entry.assetId, entry]));
+	if (nextLibrary.length !== previousLibrary.length + additions.size ||
+		previousLibrary.some((entry) => additions.has(entry.assetId) ||
+			stableJson(nextByAsset.get(entry.assetId)) !== stableJson(entry)) ||
+		[...additions].some((id) => !nextByAsset.has(id))) {
+		issues.push({
+			path: '$.scene.artworkLibrary', code: 'record-scope-violation',
+			message: 'Artwork Library may only add the asset records granted by the operation'
+		});
 	}
 
 	const expectedIds = [

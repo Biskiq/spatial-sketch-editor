@@ -206,7 +206,7 @@ test('a Scene unit carrying a native form saves canonically and reloads identica
 	assert.equal(SCENE_UNIT_FORMAT_VERSION, 5);
 	const storedScene = stored.rows[0].document.units.scene;
 	const canonicalScene = JSON.parse(request.capture.canonicalJson).units.scene;
-	assert.equal(storedScene.header.formatVersion, 5);
+	assert.equal(storedScene.header.formatVersion, 6);
 	assert.deepEqual(storedScene.data.entities, canonicalScene.data.entities);
 	assert.deepEqual(storedScene.data.entities, [NATIVE_FORM]);
 });

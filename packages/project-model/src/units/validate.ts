@@ -34,7 +34,7 @@ import { validateAcceptedRevision, validateSemanticReference } from '../referenc
 import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types';
 import { validateProjectSceneCameraPoses } from '../project-layout-semantics';
 import { SCENE_WORLD_LOCAL_FORMAT_VERSION } from '../scene';
-import { validateSceneDocument } from '../scene-codec';
+import { validateArtworkLibrary, validateSceneDocument } from '../scene-codec';
 import { CAMERA_UNIT_SCENE_VALIDATION } from './camera-connectivity';
 import {
 	ADMITTED_UNIT_VERSIONS,
@@ -311,7 +311,7 @@ export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUni
  */
 export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<CameraFreeSceneDocument> {
 	const reader = new ShapeReader();
-	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'clusters', 'environment']);
+	const record = reader.object(input, '$', ['formatVersion', 'textures', 'materials', 'entities', 'clusters', 'environment', 'artworkLibrary']);
 	if (record === null) return failed(reader);
 	if (record.formatVersion !== SCENE_UNIT_FORMAT_VERSION) {
 		reader.problem(
@@ -343,6 +343,8 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 	});
 	if (!delegated.success) return { success: false, issues: delegatedIssues(delegated.issues) };
 	const document = delegated.document;
+	const { library, issues } = validateArtworkLibrary(record.artworkLibrary, document.entities);
+	if (issues.length > 0) return { success: false, issues: delegatedIssues(issues) };
 	return {
 		success: true,
 		value: {
@@ -350,6 +352,7 @@ export function validateCameraFreeScenePayload(input: unknown): ShapeValidation<
 			textures: document.textures,
 			materials: document.materials,
 			entities: document.entities,
+			...(library.length === 0 ? {} : { artworkLibrary: library }),
 			...(document.clusters === undefined ? {} : { clusters: document.clusters }),
 			...(environment === undefined ? {} : { environment })
 		},
