@@ -3855,17 +3855,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				if (inkReading === 'wall' && inkWallMode === 'arc') {
-					// A3 — the preview is the exact cubic the third activation commits.
-					// The bulge is clamped to the semicircle, so the Stage never draws a
-					// major arc the single-span planner would refuse.
+					// A3 — the preview is the exact cubic the third activation commits. The
+					// planner owns the range refusal, so the Stage shows the drawn bulge and
+					// repeats its words rather than clamping the bulge to a semicircle.
 					if (draft.points.length < 2) {
 						inkPreview = null;
 						inkNotice = null;
 						return;
 					}
 					if (inkArcHover !== null) {
-						const apex = arcApexAt(inkArcHover);
-						if (apex !== null) inkArcApex = apex;
+						// A pointer on the chord names no bulge: clearing here prevents a
+						// stale curve from outliving the bulge the creator moved away from.
+						inkArcApex = arcApexAt(inkArcHover);
 					}
 					if (inkArcApex === null) {
 						// Keep the release's words ("pull the bulge…") readable: a chord
@@ -3908,8 +3909,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			/**
 			 * The bulge apex under a raw working-plane point. Only the perpendicular
-			 * rise is kept, and it is clamped to the semicircle the single cubic span
-			 * can represent; the planner still owns the final refusal.
+			 * rise is kept; a bulge past the semicircle is passed through as drawn so
+			 * the canonical planner can refuse it, never silently clamped.
 			 */
 			function arcApexAt(point: LayoutVec2): LayoutVec2 | null {
 				const start = draft.points[0];
@@ -3917,7 +3918,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (start === undefined || end === undefined) return null;
 				const measured = measureWallArc(start.point, end.point, point);
 				if (measured === null) return null;
-				const magnitude = Math.min(Math.abs(measured.rise), measured.chord / 2);
+				const magnitude = Math.abs(measured.rise);
 				if (!(magnitude > 0)) return null;
 				const sign = measured.rise < 0 ? -1 : 1;
 				const dx = end.point[0] - start.point[0];
@@ -4583,6 +4584,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					const movedArcHover = pointerDatumPoint(adapterContext, intent.css);
 					inkArcHover = movedArcHover === null ? null : [movedArcHover[0], movedArcHover[1]];
+					if (inkReading === 'wall' && inkWallMode === 'arc') inkNotice = null;
 					refreshInkPreview();
 					services.stage.notifySurfaceChange();
 					publishInk();
@@ -5279,6 +5281,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (inkReading === 'wall' && inkWallMode === 'arc') {
 						const hoveredArc = pointerDatumPoint(adapterContext, intent.css);
 						inkArcHover = hoveredArc === null ? null : [hoveredArc[0], hoveredArc[1]];
+						inkNotice = null;
 					}
 					inkHover = inkTargetAt(adapterContext, intent.css);
 					refreshInkPreview();

@@ -272,4 +272,84 @@ describe('T1 A3 — Arc drawing', () => {
 		expect(layout.rooms[0]!.boundary.some((ref) => ref.wallId === wall.id)).toBe(true);
 		expect(mounted.facade.snapshot().canonicalJson).not.toBe(beforeBytes);
 	});
+
+	it('[cap:layout.wall-arc core] draws start → end → bulge with three pointer activations', async () => {
+		const mounted = await mount(emptyDocument());
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		controller.setWallMode('arc');
+
+		click(mounted.facade, [8, 0]);
+		click(mounted.facade, [12, 0]);
+		hover(mounted.facade, [10, 1]);
+		expect(inkSurface()!.snapshot().arc!.rise).toBeCloseTo(1, 1);
+
+		click(mounted.facade, [10, 1]);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== beforeBytes);
+		const wall = createdWall(mounted);
+		expect(wall.centerline.kind).toBe('cubic-chain');
+		if (wall.centerline.kind !== 'cubic-chain') throw new Error('the pointer Arc fell back to a line');
+		expect(wall.centerline.spans).toHaveLength(1);
+	});
+
+	it('[cap:layout.wall-arc edge] names both endpoints in one drag, then commits the bulge', async () => {
+		const mounted = await mount(emptyDocument());
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const controller = armInk(mounted.facade);
+		controller.setWallMode('arc');
+		const evaluationId = mounted.facade.evaluationId();
+		if (evaluationId === null) throw new Error('the A3 fixture has no evaluation');
+		const from = stageCss(mounted.facade, [0, 4]);
+		const through = stageCss(mounted.facade, [2, 4]);
+		const to = stageCss(mounted.facade, [4, 4]);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: through, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+
+		hover(mounted.facade, [2, 5]);
+		click(mounted.facade, [2, 5]);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== beforeBytes);
+		const wall = createdWall(mounted);
+		expect(wall.centerline.kind).toBe('cubic-chain');
+	});
+
+	it('[cap:layout.wall-arc edge] refuses an oversized pointer bulge and clears the preview when the pointer returns to the chord', async () => {
+		const mounted = await mount(emptyDocument());
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+		const controller = armInk(mounted.facade);
+		controller.setWallMode('arc');
+		controller.typePoint('0', '0');
+		controller.typePoint('4', '0');
+
+		hover(mounted.facade, [2, 1]);
+		expect(inkSurface()!.snapshot().arc!.rise).toBeCloseTo(1, 1);
+
+		// A pointer on the chord names no bulge: the previous curve must clear, not
+		// linger while the next click would refuse.
+		hover(mounted.facade, [2, 0]);
+		expect(inkSurface()!.snapshot().arc).toBeNull();
+
+		// A major bulge reaches the planner instead of being silently clamped to a
+		// semicircle. The hover says why, and the third activation refuses too.
+		hover(mounted.facade, [2, 3]);
+		expect(inkSurface()!.snapshot().refusal).toContain('half its chord');
+		click(mounted.facade, [2, 3]);
+		expect(inkSurface()!.snapshot().refusal).toContain('half its chord');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
+		expect(mounted.host.history()).toMatchObject({
+			depth: beforeHistory.depth,
+			position: beforeHistory.position
+		});
+
+		// Let the refused acceptance settle before the next pointer gesture, as a
+		// browser's event turns would; then a minor bulge recovers and commits.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hover(mounted.facade, [2, 1]);
+		click(mounted.facade, [2, 1]);
+		await eventually(() => mounted.facade.snapshot().canonicalJson !== beforeBytes);
+		const wall = createdWall(mounted);
+		expect(wall.centerline.kind).toBe('cubic-chain');
+	});
 });
