@@ -103,12 +103,12 @@ function webp(bytes: Uint8Array, view: DataView): Dimensions {
 		if (matches(bytes, offset, 'VP8X') && size === 10) {
 			if ((view.getUint8(start) & 2) !== 0) throw new Error('Animated images cannot be imported as Artwork.');
 			canvas = {
-				pixelWidth: (view.getUint32(start + 3, true) & 0xffffff) + 1,
-				pixelHeight: view.getUint16(start + 6, true) + view.getUint8(start + 8) * 65536 + 1
+				pixelWidth: (view.getUint32(start + 4, true) & 0xffffff) + 1,
+				pixelHeight: view.getUint16(start + 7, true) + view.getUint8(start + 9) * 65536 + 1
 			};
 		}
 		if (matches(bytes, offset, 'VP8 ') && size >= 10 &&
-			view.getUint8(start + 3) === 0x9d && view.getUint16(start + 4) === 0x012a) {
+			view.getUint8(start + 3) === 0x9d && view.getUint8(start + 4) === 0x01 && view.getUint8(start + 5) === 0x2a) {
 			image = {
 				pixelWidth: view.getUint16(start + 6, true) & 0x3fff,
 				pixelHeight: view.getUint16(start + 8, true) & 0x3fff

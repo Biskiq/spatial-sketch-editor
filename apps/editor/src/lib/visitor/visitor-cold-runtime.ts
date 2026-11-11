@@ -265,9 +265,10 @@ export function composeColdReleaseBundle(input: {
 	}
 	if (signal?.aborted) throw new Error('Release preparation was cancelled');
 
+	const textureUris = new Set(runtimeScene.textures.map((texture) => texture.uri));
 	const textureScope = createReleaseTextureScope({
 		releaseId: manifest.releaseId,
-		bytesByUri: manifest.bytesByUri
+		bytesByUri: new Map([...manifest.bytesByUri].filter(([uri]) => textureUris.has(uri)))
 	});
 
 	const artworkBytes = new Map<string, ReleaseBytesEntry>();

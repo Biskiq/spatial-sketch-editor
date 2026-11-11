@@ -84,15 +84,17 @@ contract until an explicitly reviewed cutover.
 ## One source format (F2 clean epoch)
 
 `ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
-`units`. Unit payload versions are Layout 6, Scene 5, Camera 1, Experience 4 and resources 2.
+`units`. Unit payload versions are Layout 6, Scene 6, Camera 1, Experience 4 and resources 2.
 [Experience 4](experience.md#current-authoring-and-runtime-contract) defines linear Guides,
 entry Views, stays, invitations, outgoing transitions and Presentation naming. Earlier shapes
 are refused without conversion.
 Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
 refuse. There is no converter, format sniffing, fallback or dual write.
 
-**Scene 5** carries `textures`, `materials`, `entities`, optional `clusters` and optional
-`environment`; it carries no Camera or editorial fields. Scene 4 introduced the `form` entity,
+**Scene 6** carries `textures`, `materials`, `entities`, optional `clusters`, optional
+`environment` and the project Artwork shelf. The shelf owns project-local image entries. Every
+Artwork source must resolve to a shelf entry with matching oriented dimensions. Scene carries no
+Camera or editorial fields. Scene 4 introduced the `form` entity,
 whose authored source (generator, outline, extent, per-axis scale, next key) is stored verbatim;
 Scene 5 adds world presentation (the fixed `paper`/`daylight`/`golden-hour`/`dusk` environment
 preset). Generated geometry is never serialized, and a reader refuses older Scene formats rather

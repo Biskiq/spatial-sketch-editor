@@ -10,12 +10,23 @@ owner-controlled)
 
 ## Current implementation
 
-The live Scene is the world-local Scene 5 payload of the F2 envelope. Camera Views and
+The live Scene is the world-local Scene 6 payload of the F2 envelope. Camera Views and
 connections live in the separate Camera unit; Experience owns editorial order. Strict unit
 validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
 Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) / **form** /
-**light** (`point|spot|directional`) · textures · material instances · clusters.
+**light** (`point|spot|directional`) / **artwork** · textures · material instances · clusters.
+
+Artwork stores a world-local centre and rotation, a tagged image source with its immutable P20 ID
+and oriented pixel dimensions, and one authored width in metres. Height follows the image aspect.
+Artwork Library entries live in the Scene unit and survive deletion of a hanging. A hanging carries
+its own entity ID and pose. It has no Finish, uniform scale or persistent wall host. Wall snapping
+sets the placement pose using compiled wall geometry. Undo and redo restore accepted Scene records,
+while P20 retains the bytes.
+
+Stage and Visitor Preview share a diffuse-only Lambert quad with an sRGB map, fractional colour
+alpha and a binary alpha cutoff for shadow silhouettes. The neutral reference uses NoToneMapping
+at exposure 1. The project shelf and placement controls stay in authoring.
 **Architecture rooms are not scene entities** — see [`../architecture.md`](../architecture.md).
 
 | Assets | Today |

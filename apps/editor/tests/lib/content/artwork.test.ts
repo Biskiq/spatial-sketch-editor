@@ -96,3 +96,17 @@ it('records import, placement and size as separate reversible accepted writes', 
 	expect((await coordinator.redo()).kind).toBe('restored');
 	expect(scene().data.artworkLibrary).toHaveLength(1);
 });
+
+it('reads JPEG orientation and static WebP dimensions from the original containers', () => {
+	// Header fixture exercises the metadata probe. Pixel decode is a separate browser check.
+	const jpeg = new Uint8Array([
+		0xff, 0xd8, 0xff, 0xe1, 0, 34, 69, 120, 105, 102, 0, 0,
+		73, 73, 42, 0, 8, 0, 0, 0, 1, 0, 0x12, 1, 3, 0, 1, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
+		0xff, 0xc0, 0, 8, 8, 0, 4, 0, 8, 1, 0xff, 0xda, 0, 2, 0xff, 0xd9
+	]);
+	expect(probeArtworkImage(jpeg)).toEqual({ mime: 'image/jpeg', pixelWidth: 4, pixelHeight: 8 });
+	const webp = Uint8Array.from(atob('UklGRk4AAABXRUJQVlA4WAoAAAAgAAAABwAAAwAAVlA4IDAAAADQAQCdASoIAAQAAUAmJaACdLoB+AADsAD+8ut//NgVzXPv9//S4P0uD9Lg/9KQAAA='), (c) => c.charCodeAt(0));
+	expect(probeArtworkImage(webp)).toEqual({ mime: 'image/webp', pixelWidth: 8, pixelHeight: 4 });
+	webp[20] |= 2;
+	expect(() => probeArtworkImage(webp)).toThrow('Animated images');
+});

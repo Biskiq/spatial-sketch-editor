@@ -19,6 +19,8 @@ import {
 	type ColdReleaseBundle
 } from './visitor-cold-runtime';
 
+import { artworkAssetUri } from '@portfolio/project-model';
+import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 import type { ReleaseBytesEntry } from './visitor-texture-scope';
 
@@ -375,6 +377,24 @@ export async function loadPublicReleaseBundle(input: {
 			'invalid-release',
 			error instanceof Error ? error.message : 'The published project is invalid'
 		);
+	}
+	// The detached manifest is usable without a DOM. Browser boot additionally
+	// refuses images that the browser cannot decode before installing the surface.
+	if (typeof document !== 'undefined') {
+		const checked = new Set<string>();
+		try {
+			for (const entity of bundle.scene.entities) {
+				if (entity.kind !== 'artwork' || checked.has(entity.source.assetId)) continue;
+				const entry = bytesByUri.get(artworkAssetUri(entity.source.assetId))!;
+				await verifyArtworkDecode(entry.bytes, entry.mime, entity.source);
+				input.signal?.throwIfAborted();
+				checked.add(entity.source.assetId);
+			}
+		} catch (error) {
+			bundle.dispose();
+			if (input.signal?.aborted) throw error;
+			throw new PublicVisitorError('asset-failed', 'A published Artwork image could not be decoded');
+		}
 	}
 	// Every visitor-visible authored value comes from the release snapshot:
 	// the bundle name is the released document name, never live-row metadata.

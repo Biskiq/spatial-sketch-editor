@@ -168,7 +168,8 @@ import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import { artworkCommand, artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { artworkPlacement } from '$lib/authoring/artwork/artwork-placement';
-	import { readVerifiedArtwork, verifyArtworkDecode } from '$lib/authoring/artwork/project-artwork';
+	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
+	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
 	import { Vector3 } from 'three';
 	import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';

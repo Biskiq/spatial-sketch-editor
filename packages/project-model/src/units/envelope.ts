@@ -48,7 +48,7 @@ export function createEmptyResourcePayload(): ResourceUnitPayload {
 	return { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [] };
 }
 
-/** The Camera-free Scene 4 baseline. */
+/** The Camera-free Scene baseline. */
 export function createEmptyUnitSceneDocument(): CameraFreeSceneDocument {
 	return { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [] };
 }

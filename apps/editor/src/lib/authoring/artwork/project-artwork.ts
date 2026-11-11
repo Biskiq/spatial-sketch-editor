@@ -1,6 +1,7 @@
 import { ARTWORK_MAX_BYTES, probeArtworkImage, type ArtworkImage, type ArtworkLibraryEntry } from '@portfolio/project-model';
 import type { CameraFreeSceneDocument } from '@portfolio/project-model/units';
 import type { ProjectApi, ProjectAssetMetadata } from '$lib/platform/project-persistence';
+import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 import { imageSha256 } from '$lib/render/artwork/image-digest';
 
 function ready(asset: ProjectAssetMetadata | undefined): asset is ProjectAssetMetadata {
@@ -25,17 +26,6 @@ export async function readVerifiedArtwork(
 		throw new Error('Artwork image bytes do not match the saved project.');
 	}
 	return content;
-}
-
-export async function verifyArtworkDecode(bytes: Uint8Array, mime: string, image: Pick<ArtworkImage, 'pixelWidth' | 'pixelHeight'>) {
-	const bitmap = await createImageBitmap(new Blob([Uint8Array.from(bytes)], { type: mime }), { imageOrientation: 'from-image' });
-	try {
-		if (bitmap.width !== image.pixelWidth || bitmap.height !== image.pixelHeight) {
-			throw new Error('The decoded image dimensions do not match the file.');
-		}
-	} finally {
-		bitmap.close();
-	}
 }
 
 export async function verifyArtworkLibrary(
