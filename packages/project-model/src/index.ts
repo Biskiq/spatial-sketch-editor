@@ -24,5 +24,6 @@ export * from './shipped-static';
 // envelope into the root barrel's closure, which the F.2 entry boundary forbids.
 
 export * from './artwork';
+export * from './artwork-frame';
 
 export * from './artwork-image';

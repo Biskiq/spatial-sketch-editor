@@ -1,4 +1,5 @@
 import { defaultArtworkWidth, isArtworkWidth } from '../artwork';
+import { readArtworkFrame, type ArtworkFrame } from '../artwork-frame';
 import type { DomainPlanner, PlannerOutcome, PlannerRequest } from '../f4';
 import type { SemanticReference } from '../references/types';
 import type { SceneArtworkEntity } from '../scene';
@@ -14,13 +15,25 @@ export const ARTWORK_IMPORT = 'artwork-import';
 export const ARTWORK_PLACE = 'artwork-place';
 export const ARTWORK_TRANSFORM = 'artwork-transform';
 export const ARTWORK_DUPLICATE = 'artwork-duplicate';
+export const ARTWORK_REPLACE = 'artwork-replace';
 
-const kinds = [ARTWORK_IMPORT, ARTWORK_PLACE, ARTWORK_TRANSFORM, ARTWORK_DUPLICATE] as const;
+const kinds = [ARTWORK_IMPORT, ARTWORK_PLACE, ARTWORK_TRANSFORM, ARTWORK_DUPLICATE, ARTWORK_REPLACE] as const;
 type Kind = (typeof kinds)[number];
 type Result = PlannerOutcome<ProjectEnvelope>;
 
 function refuse(message: string, code = 'invalid-value'): Result {
 	return { kind: 'rejected', code, message, diagnostics: [] };
+}
+
+function sameFrame(a: ArtworkFrame | undefined, b: ArtworkFrame | undefined): boolean {
+	return a === b || (a !== undefined && b !== undefined &&
+		a.style === b.style && a.mat === b.mat && a.color === b.color);
+}
+
+function withFrame(entity: SceneArtworkEntity, frame: ArtworkFrame | undefined): SceneArtworkEntity {
+	const { frame: _previousFrame, ...rest } = entity;
+	void _previousFrame;
+	return { ...rest, ...(frame === undefined ? {} : { frame }) };
 }
 
 function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind): Result {
@@ -111,6 +124,43 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind): Result {
 		sceneEntityTargetProblem(target!, entity.id, header.contentRevision)) {
 		return refuse('Choose one Artwork from the current Scene revision.');
 	}
+	if (kind === ARTWORK_REPLACE) {
+		const payload = reader.object(request.intent.payload, '$.payload', ['entry']);
+		if (payload?.entry === undefined || reader.issues.length) {
+			return refuse('Replace requires one project Artwork image.');
+		}
+		const { library, issues } = validateArtworkLibrary([payload.entry], []);
+		if (issues.length || library.length !== 1) {
+			return refuse(issues[0]?.message ?? 'Replace requires one project Artwork image.');
+		}
+		const candidate = library[0]!;
+		const existing = before.artworkLibrary?.find((entry) => entry.assetId === candidate.assetId);
+		if (existing && (existing.pixelWidth !== candidate.pixelWidth || existing.pixelHeight !== candidate.pixelHeight)) {
+			return refuse('An Artwork image no longer matches its Library record.');
+		}
+		const entry = existing ?? candidate;
+		if (entry.assetId === entity.source.assetId) return refuse('Artwork already uses this image.', 'no-change');
+		const prior = before.artworkLibrary?.find((item) => item.assetId === entity.source.assetId);
+		const widthMeters = isArtworkWidth(entity.widthMeters, entry)
+			? entity.widthMeters
+			: defaultArtworkWidth(entry);
+		const changedFields = ['source'];
+		if (widthMeters !== entity.widthMeters) changedFields.push('widthMeters');
+		const name = prior !== undefined && entity.name === prior.name ? entry.name : entity.name;
+		if (name !== entity.name) changedFields.push('name');
+		const source = { kind: 'image' as const, assetId: entry.assetId, pixelWidth: entry.pixelWidth, pixelHeight: entry.pixelHeight };
+		const next: SceneArtworkEntity = {
+			...entity, source, widthMeters, ...(name === entity.name ? {} : { name })
+		};
+		const additions = existing === undefined ? [entry] : [];
+		return complete({
+			...before, entities: before.entities.map((item) => item.id === entity.id ? next : item),
+			...(additions.length === 0 ? {} : { artworkLibrary: [...(before.artworkLibrary ?? []), ...additions] })
+		}, {
+			changedEntityIds: [entity.id], changedEntityFields: changedFields,
+			addedArtworkAssetIds: additions.map((item) => item.assetId)
+		}, [entity.id], changedFields);
+	}
 	if (kind === ARTWORK_DUPLICATE) {
 		reader.object(request.intent.payload, '$.payload', []);
 		if (reader.issues.length) return refuse(reader.issues[0]!.message);
@@ -129,17 +179,31 @@ function prepare(request: PlannerRequest<ProjectEnvelope>, kind: Kind): Result {
 			{ createdEntityIds: [duplicate.id] }, [duplicate.id], ['entities']);
 	}
 
-	const payload = reader.object(request.intent.payload, '$.payload', ['widthMeters', 'position', 'rotation']);
+	const payload = reader.object(request.intent.payload, '$.payload', ['widthMeters', 'position', 'rotation', 'frame']);
 	const position = payload?.position === undefined ? entity.position : reader.vector3(payload.position, '$.payload.position');
 	const rotation = payload?.rotation === undefined ? entity.rotation : reader.vector3(payload.rotation, '$.payload.rotation');
 	const widthMeters = payload?.widthMeters === undefined ? entity.widthMeters : reader.number(payload.widthMeters, '$.payload.widthMeters');
+	let frame = entity.frame;
+	let frameSupplied = false;
+	if (payload !== null && 'frame' in payload) {
+		frameSupplied = true;
+		if (payload.frame === null) frame = undefined;
+		else {
+			const parsed = readArtworkFrame(payload.frame);
+			if (parsed.error !== undefined) return refuse(parsed.error);
+			frame = parsed.frame;
+		}
+	}
 	if (!position || !rotation || widthMeters === null || !isArtworkWidth(widthMeters, entity.source) || reader.issues.length) {
 		return refuse('Artwork needs a finite pose and a width and height between 0.001 and 1000 m.');
 	}
 	if (widthMeters === entity.widthMeters && position.every((value, i) => value === entity.position[i]) &&
-		rotation.every((value, i) => value === entity.rotation[i])) return refuse('Artwork is unchanged.', 'no-change');
+		rotation.every((value, i) => value === entity.rotation[i]) && (!frameSupplied || sameFrame(frame, entity.frame))) {
+		return refuse('Artwork is unchanged.', 'no-change');
+	}
 	const fields = Object.keys(payload!);
-	const entities = before.entities.map((item) => item.id === entity.id ? { ...entity, position, rotation, widthMeters } : item);
+	const next = withFrame({ ...entity, position, rotation, widthMeters }, frame);
+	const entities = before.entities.map((item) => item.id === entity.id ? next : item);
 	return complete({ ...before, entities }, { changedEntityIds: [entity.id], changedEntityFields: fields }, [entity.id], fields);
 }
 

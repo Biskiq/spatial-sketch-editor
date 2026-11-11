@@ -164,7 +164,9 @@ import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
 import SkyControl from '$lib/authoring/world-toolbar/SkyControl.svelte';
 import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring.svelte';
 	import ArtworkResizeOverlay from '$lib/authoring/artwork/ArtworkResizeOverlay.svelte';
+	import ArtworkHangingGuides from '$lib/authoring/artwork/ArtworkHangingGuides.svelte';
 	import { artworkPlanePoint, resizeArtworkAtRay, type ArtworkCorner } from '$lib/authoring/artwork/artwork-resize';
+	import { artworkHangingGuides, snapArtworkHeight, activeArtworkHangGuide } from '$lib/authoring/artwork/artwork-hanging';
 	import { ARTWORK_TRANSFORM } from '@portfolio/project-model/scene-planning';
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import { artworkCommand, artworkReference } from '$lib/authoring/artwork/artwork-command';
@@ -1054,6 +1056,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function readArtworkResize(event: PointerEvent) {
 		const drag = artworkResize;
 		if (!drag?.lease.active || evaluation === null || drag.pointerId !== event.pointerId) return null;
+		const stage = facade;
+		if (stage === null) return null;
+		const snapshot = stage.snapshot();
 		const ray = pointerRay([event.clientX, event.clientY], evaluation, evaluation.token);
 		if (drag.mode === 'turn') {
 			const rotation = [...drag.entity.rotation] as SceneArtworkEntity['rotation'];
@@ -1064,7 +1069,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (drag.mode === 'move') {
 			const point = artworkPlanePoint(drag.entity, ray.ray);
 			if (!point || !drag.startPoint) return null;
-			return { ...drag.entity, position: point.sub(drag.startPoint).add(new Vector3(...drag.entity.position)).toArray() };
+			const candidate = {
+				...drag.entity,
+				position: point.sub(drag.startPoint).add(new Vector3(...drag.entity.position)).toArray() as SceneArtworkEntity['position']
+			};
+			const guides = artworkHangingGuides(snapshot.domain.scene, candidate, snapshot.domain.datumMeters);
+			return { ...candidate, position: snapArtworkHeight(candidate.position, guides).position };
 		}
 		return resizeArtworkAtRay(drag.entity, drag.mode, ray.ray);
 	}
@@ -3895,6 +3905,23 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		return entity?.kind === 'artwork' ? entity : null;
 	});
 
+	/** The one live proposal that can carry hanging guides: placement or Move, never Turn/resize. */
+	const hangingCandidate = $derived.by(() => {
+		if (artworkResize !== null) return artworkResize.mode === 'move' ? artworkResizeGhost : null;
+		return artwork.ghost;
+	});
+	const hangingGuides = $derived.by(() => {
+		const stage = facade;
+		const candidate = hangingCandidate;
+		if (stage === null || candidate === null) return [];
+		const snapshot = stage.snapshot();
+		return artworkHangingGuides(snapshot.domain.scene, candidate, snapshot.domain.datumMeters);
+	});
+	const activeHangingGuide = $derived.by(() => {
+		const candidate = hangingCandidate;
+		return candidate === null ? null : activeArtworkHangGuide(hangingGuides, candidate.position[1]);
+	});
+
 	/** The Card's Look stratum: empty in P0, filled by later Finish, Light or Artwork slices. */
 	const lookCardStratum = $derived.by(() => {
 		void contributionsVersion;
@@ -5112,6 +5139,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							<button type="button" onclick={() => { showExperienceWelcome = false; rememberWelcomeDismissed(); }}>Got it</button>
 						</footer>
 					</aside>
+				{/if}
+				{#if facade && evaluation?.renderedReading === '3d' && hangingGuides.length > 0}
+					<ArtworkHangingGuides guides={hangingGuides} stage={facade} {evaluation} activeGuideId={activeHangingGuide} />
 				{/if}
 				{#if selectedArtwork && facade && evaluation?.renderedReading === '3d' && canPlaceArtwork() && !artwork.armed}
 					<ArtworkResizeOverlay entity={artworkResizeGhost ?? selectedArtwork} stage={facade}
