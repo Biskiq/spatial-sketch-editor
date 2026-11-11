@@ -9,16 +9,20 @@
  *
  * The approved starting geometry is the review study's Picture spot: 1.4 m in
  * front of the artwork and 30° above its centre, aimed at the centre, with the
- * beam fitted to the artwork rectangle plus a small margin. A2 owns the final
- * frame contract; until it lands the fit uses the artwork's own rectangle. That
- * substitution is deliberately one function (`artworkLightRectangle`), not a
- * competing frame representation.
+ * beam fitted to the Artwork's generated outer rectangle plus a small margin.
+ * A2's `artworkFrameLayout` owns that rectangle, including face, Mat and reveal;
+ * this module has one mapping (`artworkLightRectangle`) into light geometry.
  *
  * A Wash uses one union of the selected subjects' evaluated bounds, so a
  * multi-selection produces one shared light rather than one light per object.
  */
 import { Euler, Vector3 } from 'three';
-import { artworkHeight, type SceneArtworkEntity, type Vec3 } from '@portfolio/project-model';
+import {
+	artworkFrameLayout,
+	artworkHeight,
+	type SceneArtworkEntity,
+	type Vec3
+} from '@portfolio/project-model';
 import { rotationForLightDirection } from './light-aim';
 import { LIGHT_INTENSITY_REFERENCE, spotCutoffForTargetDistance } from './light-units';
 
@@ -79,15 +83,19 @@ type ArtworkRectangle = {
 /**
  * The rectangle a Picture spot must cover for one Artwork.
  *
- * A2's frame contract exposes the generated outer rectangle through
- * `artworkFrameLayout(...).outerWidth/outerHeight` (and the border through
- * `artworkFrameBorderMeters`). Reading only `widthMeters` and the source aspect
- * here keeps S7 independent of that shape and leaves exactly one seam: after A2
- * lands, add its border to both half extents in this function.
+ * A2's frame layout is the authoritative generated outer rectangle: its
+ * `outerWidth`/`outerHeight` already include the face, Mat and reveal. This is
+ * the single mapping from that contract into light geometry, so a framed
+ * Artwork's multi-selection Wash uses the same outer bounds as its Picture spot.
  */
 export function artworkLightRectangle(entity: SceneArtworkEntity): ArtworkRectangle {
-	const halfWidth = entity.widthMeters / 2;
-	const halfHeight = artworkHeight(entity.widthMeters, entity.source) / 2;
+	const layout = artworkFrameLayout(
+		entity.widthMeters,
+		artworkHeight(entity.widthMeters, entity.source),
+		entity.frame
+	);
+	const halfWidth = layout.outerWidth / 2;
+	const halfHeight = layout.outerHeight / 2;
 	const rotation = new Euler(entity.rotation[0], entity.rotation[1], entity.rotation[2], 'XYZ');
 	const center = new Vector3(...entity.position);
 	const corners: Vec3[] = [

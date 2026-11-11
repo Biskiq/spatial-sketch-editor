@@ -9,8 +9,15 @@
  * radial cutoff, because fitting the direction alone can still clip a corner.
  */
 import { describe, expect, it } from 'vitest';
-import type { SceneArtworkEntity, Vec3 } from '@portfolio/project-model';
 import {
+	artworkFrameLayout,
+	artworkHeight,
+	type ArtworkFrame,
+	type SceneArtworkEntity,
+	type Vec3
+} from '@portfolio/project-model';
+import {
+	artworkLightBounds,
 	artworkLightRectangle,
 	boundsCorners,
 	LIGHT_IT_BEAM_MARGIN_RATIO,
@@ -24,9 +31,11 @@ import {
 	type LightItRecipeOutcome
 } from '$lib/authoring/look/light-recipes';
 import { lightForward } from '$lib/authoring/look/light-aim';
-import { radiansToDegrees } from '$lib/authoring/look/light-units';
+import { radiansToDegrees, spotCutoffForTargetDistance } from '$lib/authoring/look/light-units';
 
 const ASSET_ID = '11111111-1111-4111-8111-111111111111';
+const GALLERY_MAT: ArtworkFrame = { style: 'gallery', mat: true, color: 'walnut' };
+const FLOAT: ArtworkFrame = { style: 'float', mat: false, color: 'ivory' };
 
 function artwork(overrides: Partial<SceneArtworkEntity> = {}): SceneArtworkEntity {
 	return {
@@ -73,6 +82,16 @@ function expectCornersCovered(recipe: LightItRecipe, corners: readonly Vec3[]): 
 	}
 }
 
+function expectFittedAngleAndFarthestRange(recipe: LightItRecipe, corners: readonly Vec3[]): void {
+	const forward = lightForward(recipe.rotation);
+	const widest = Math.max(
+		...corners.map((corner) => angleFromAim(recipe.position, forward, corner))
+	);
+	const farthest = Math.max(...corners.map((corner) => distanceFrom(recipe.position, corner)));
+	expect(recipe.angle).toBeCloseTo(widest * LIGHT_IT_BEAM_MARGIN_RATIO, 9);
+	expect(recipe.range).toBeCloseTo(spotCutoffForTargetDistance(farthest), 9);
+}
+
 describe('S7 Light it recipes', () => {
 	it('places a Picture spot 1.4 m in front and 30° above an upright Artwork', () => {
 		const entity = artwork();
@@ -111,6 +130,54 @@ describe('S7 Light it recipes', () => {
 		expect(recipe.position[0]).toBeCloseTo(-1 + LIGHT_IT_PICTURE_SPOT_FRONT_METERS, 9);
 		expect(recipe.position[2]).toBeCloseTo(4, 9);
 		expect(rectangle.center).toEqual(entity.position);
+	});
+
+	it('fits the Picture spot to the outer frame for Gallery + Mat, Float and unframed Artworks', () => {
+		const cases: readonly { readonly label: string; readonly frame: ArtworkFrame | undefined }[] = [
+			{ label: 'Gallery + Mat', frame: GALLERY_MAT },
+			{ label: 'Float', frame: FLOAT },
+			{ label: 'unframed', frame: undefined }
+		];
+		for (const entry of cases) {
+			const entity = artwork({ id: `artwork-${entry.label}`, frame: entry.frame });
+			const layout = artworkFrameLayout(
+				entity.widthMeters,
+				artworkHeight(entity.widthMeters, entity.source),
+				entry.frame
+			);
+			const recipe = recipeFrom(pictureSpotRecipe(entity));
+			const rectangle = artworkLightRectangle(entity);
+			expect(rectangle.halfWidth).toBeCloseTo(layout.outerWidth / 2);
+			expect(rectangle.halfHeight).toBeCloseTo(layout.outerHeight / 2);
+			if (entry.frame !== undefined) {
+				expect(layout.outerWidth).toBeGreaterThan(entity.widthMeters);
+				expect(layout.outerHeight).toBeGreaterThan(
+					artworkHeight(entity.widthMeters, entity.source)
+				);
+			}
+			expectCornersCovered(recipe, rectangle.corners);
+			expectFittedAngleAndFarthestRange(recipe, rectangle.corners);
+		}
+	});
+
+	it('uses framed Artwork outer bounds in a multi-selection Wash', () => {
+		const left = artwork({ id: 'artwork-left', position: [-2, 1.6, 3], frame: GALLERY_MAT });
+		const right = artwork({ id: 'artwork-right', position: [2, 1.6, 3], frame: GALLERY_MAT });
+		const leftBounds = artworkLightBounds(left);
+		const rightBounds = artworkLightBounds(right);
+		const layout = artworkFrameLayout(
+			left.widthMeters,
+			artworkHeight(left.widthMeters, left.source),
+			GALLERY_MAT
+		);
+		expect(leftBounds.max[0] - leftBounds.min[0]).toBeCloseTo(layout.outerWidth);
+		expect(leftBounds.max[1] - leftBounds.min[1]).toBeCloseTo(layout.outerHeight);
+		const union = unionLightItBounds([leftBounds, rightBounds]);
+		expect(union).not.toBeNull();
+		const corners = boundsCorners(union!);
+		const recipe = recipeFrom(washRecipe({ bounds: union!, front: [0, 0, 1] }));
+		expectCornersCovered(recipe, corners);
+		expectFittedAngleAndFarthestRange(recipe, corners);
 	});
 
 	it('fits a Wash to all eight evaluated bounds corners within its cutoff', () => {
