@@ -13,6 +13,7 @@ owns claims/review; [focus](../../focus.md) owns current priority.
 | Expressive Walls, Circular Rooms and Wall Unfolding (draft plan) | [Implementation plan](./t1-spatial-world/expressive-walls/implementation-plan.md) |
 | T1 next batch: fundamentals, Spaces, Interior Reveal, Slice, connected curves, verticality (proposal, revision 3) | [Proposal](./t1-spatial-world/next-batch/README.md) |
 | Prepared visitor publication | [Release and delivery](./t4-release/README.md) |
+| Look & Atmosphere: Artwork, Sky, Finishes and Lights (approved planning baseline; authorises the direction and batch, not any slice's implementation) | [Direction and batch](./t2-look-atmosphere/README.md), [review page](./t2-look-atmosphere/review.html) |
 | Native geometric depth / Object Studio | [T5 umbrella and first capability](./t5-expressive-geometry/README.md) |
 
 These proposals preserve unresolved choices and substantive technical design. They do not
