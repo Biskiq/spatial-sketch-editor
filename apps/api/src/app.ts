@@ -364,7 +364,7 @@ export function createApp({
 			return reply.code(400).send(errorBody('project_id_mismatch', 'Project ID does not match captured project ID'));
 		}
 		try {
-			return await saveAcceptedSource(pool, userId, parsed.request);
+			return await saveAcceptedSource(pool, userId, parsed.request, objectStore);
 		} catch (error) {
 			if (error instanceof ProjectNotFoundError) return notFound(reply);
 			if (error instanceof SaveRefusalError || error instanceof ModelPinRefusalError) return saveRefusal(reply, error);
@@ -440,6 +440,10 @@ export function createApp({
 			const loaded = await loadProject(pool, userId, projectId);
 			const validation = validateProjectEnvelope(loaded.document);
 			if (!validation.success || validation.envelope.id !== projectId) {
+				if (!validation.success && validation.issues.some((issue) =>
+					issue.code === 'unsupported_format_version' && issue.path.startsWith('$.units.scene.'))) {
+					return reply.code(422).send(errorBody('unsupported_scene_format', 'This project was saved in an incompatible Scene format.'));
+				}
 				// A stored project that fails only the dimension envelope is not a
 				// broken database row: it is unsupported geometry, and the creator gets
 				// the same canonical refusal as every other dimension entry point.
