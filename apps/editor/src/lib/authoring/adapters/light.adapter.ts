@@ -35,6 +35,7 @@ import { armedLightKind, clearArmedLight } from '../look/light-tool.svelte';
 import {
 	LIGHT_AIM_GUIDE_METERS,
 	lightForward,
+	LIGHT_GUIDE_MAX_ANGLE,
 	rotationForLightDirection,
 	spotConeGuide
 } from '../look/light-aim';
@@ -71,6 +72,14 @@ type Gesture = {
 	readonly pointRangePlaneY?: number;
 };
 
+/** Stage pointer intent coordinates are local; Camera rays include the surface offset. */
+function viewportCss(
+	css: readonly [number, number],
+	context: StageAdapterContext
+): [number, number] {
+	return [css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top];
+}
+
 type Placement = {
 	readonly startCss: readonly [number, number];
 	/** The body: the surface hit plus 0.02 m along its normal, or working height. */
@@ -102,6 +111,40 @@ function lightRange(light: Light): number | undefined {
 function lightById(snapshot: StageReadSnapshot, id: string): Light | null {
 	const entity = stageScene(snapshot).entities.find((candidate) => candidate.id === id);
 	return isLight(entity) ? entity : null;
+}
+
+/** The light glyph under a Stage-local point, using the same 18 px target as selection. */
+function lightGlyphAt(
+	css: readonly [number, number],
+	context: StageAdapterContext
+): { readonly light: Light; readonly distance: number } | null {
+	const viewport = viewportCss(css, context);
+	const candidates: { readonly light: Light; readonly distance: number }[] = [];
+	for (const entity of stageScene(context.snapshot).entities.filter(isLight)) {
+		const projected = context.project(entity.position);
+		if (projected === null) continue;
+		const distance = Math.hypot(projected[0] - viewport[0], projected[1] - viewport[1]);
+		if (distance <= LIGHT_PICK_CSS) candidates.push({ light: entity, distance });
+	}
+	if (candidates.length === 0) return null;
+	const ray = context.ray(viewport);
+	const occluder = ray === null ? null : context.pickScene(ray);
+	let nearest: { readonly light: Light; readonly distance: number } | null = null;
+	for (const candidate of candidates) {
+		const { light } = candidate;
+		if (
+			ray !== null &&
+			occluder !== null &&
+			!(occluder.kind === 'entity' && occluder.entityId === light.id)
+		) {
+			const depth = dot(sub(light.position, ray.origin), ray.direction);
+			if (depth > 0 && occluder.distanceMeters < depth - LIGHT_SURFACE_STANDOFF_METERS) {
+				continue;
+			}
+		}
+		if (nearest === null || candidate.distance < nearest.distance) nearest = candidate;
+	}
+	return nearest;
 }
 
 function nextLightName(snapshot: StageReadSnapshot, kind: Light['light']): string {
@@ -366,6 +409,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let openTaskKind: string | null = null;
 			let gesture: Gesture | null = null;
 			let placement: Placement | null = null;
+			let rearmingAfterInstall = false;
 			let lease: ReturnType<StageAdapterServices['stage']['acquireGesture']> | null = null;
 
 			function releaseLease(): void {
@@ -397,7 +441,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				css: readonly [number, number],
 				adapterContext: StageAdapterContext
 			): Placement | null {
-				const ray = adapterContext.ray(css);
+				const ray = adapterContext.ray(viewportCss(css, adapterContext));
 				if (ray === null) return null;
 				let body: Vec3;
 				let normal: Vec3;
@@ -434,7 +478,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				current: Placement,
 				adapterContext: StageAdapterContext
 			): Vec3 | null {
-				const ray = adapterContext.ray(css);
+				const ray = adapterContext.ray(viewportCss(css, adapterContext));
 				if (ray === null) return null;
 				const drawn = adapterContext.pickScene(ray);
 				if (drawn !== null) return [...drawn.worldPoint];
@@ -499,7 +543,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				adapterContext: StageAdapterContext
 			): void {
 				if (gesture === null) return;
-				const ray = adapterContext.ray(intent.css);
+				const ray = adapterContext.ray(viewportCss(intent.css, adapterContext));
 				if (ray === null) return;
 				const current = gesture.entity;
 				if (gesture.kind === 'move') {
@@ -668,24 +712,29 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				}
 				const payload = createPayload({ kind, name, position, rotation, range });
 				const allocatedId = `light-${crypto.randomUUID()}`;
-				const outcome = await services.authoring.accept({
-					version: 1,
-					kind: 'create-light',
-					operationId: crypto.randomUUID(),
-					expectedRevision: adapterContext.snapshot.acceptedRevision,
-					targets: [],
-					payload: payload as never,
-					capturedInputs: [],
-					allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
-				});
-				if (outcome.kind === 'installed') {
-					const reference = sceneEntityReference(
-						allocatedId,
-						services.stage.snapshot().domain.unitRevisions.scene
-					);
-					services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+				rearmingAfterInstall = true;
+				try {
+					const outcome = await services.authoring.accept({
+						version: 1,
+						kind: 'create-light',
+						operationId: crypto.randomUUID(),
+						expectedRevision: adapterContext.snapshot.acceptedRevision,
+						targets: [],
+						payload: payload as never,
+						capturedInputs: [],
+						allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+					});
+					if (outcome.kind === 'installed') {
+						const reference = sceneEntityReference(
+							allocatedId,
+							services.stage.snapshot().domain.unitRevisions.scene
+						);
+						services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+					}
+				} finally {
+					rearmingAfterInstall = false;
+					services.stage.notifySurfaceChange();
 				}
-				services.stage.notifySurfaceChange();
 			}
 
 			function sceneBoundsUnion(): SceneBounds | null {
@@ -914,32 +963,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					worldPoint: entity.position
 				})),
 				pick(candidate, live) {
-					const css: [number, number] = [
-						candidate.css[0] + live.evaluation.rect.left,
-						candidate.css[1] + live.evaluation.rect.top
-					];
-					const ray = live.ray(css);
-					const occluder = ray === null ? null : live.pickScene(ray);
-					let nearest: { light: Light; distance: number } | null = null;
-					for (const entity of stageScene(live.snapshot).entities.filter(isLight)) {
-						const projected = live.project(entity.position);
-						if (projected === null) continue;
-						const cssDistance = Math.hypot(projected[0] - css[0], projected[1] - css[1]);
-						if (cssDistance > LIGHT_PICK_CSS) continue;
-						if (
-							ray !== null &&
-							occluder !== null &&
-							!(occluder.kind === 'entity' && occluder.entityId === entity.id)
-						) {
-							const depth = dot(sub(entity.position, ray.origin), ray.direction);
-							if (depth > 0 && occluder.distanceMeters < depth - LIGHT_SURFACE_STANDOFF_METERS) {
-								continue;
-							}
-						}
-						if (nearest === null || cssDistance < nearest.distance) {
-							nearest = { light: entity, distance: cssDistance };
-						}
-					}
+					const nearest = lightGlyphAt(candidate.css, live);
 					if (nearest === null) return null;
 					return {
 						hit: {
@@ -1080,32 +1104,37 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							halfAngle: light.angle,
 							range: lightRange(light) ?? guideReachFor(light)
 						});
-						handles.push({
-							role: 'edit',
-							id: 'light-angle',
-							kind: 'ring',
-							anchor: guide.capCenter,
-							axis: forward,
-							extent: Math.max(0.02, guide.capRadius),
-							label: 'Beam',
-							fact: 'angle',
-							verb: 'Beam {value}°',
-							planner: 'update-light',
-							value: `${radiansToDegrees(light.angle).toFixed(1)}°`
-						});
-						handles.push({
-							role: 'edit',
-							id: 'light-penumbra',
-							kind: 'ring',
-							anchor: guide.capCenter,
-							axis: forward,
-							extent: Math.max(0.02, guide.capRadius * (light.penumbra ?? 0)),
-							label: 'Soft edge',
-							fact: 'soft-edge',
-							verb: 'Soft edge {value}%',
-							planner: 'update-light',
-							value: `${Math.round((light.penumbra ?? 0) * 100)}%`
-						});
+						if (radiansToDegrees(light.angle) <= LIGHT_GUIDE_MAX_ANGLE) {
+							handles.push({
+								role: 'edit',
+								id: 'light-angle',
+								kind: 'ring',
+								anchor: guide.capCenter,
+								axis: forward,
+								extent: Math.max(0.02, guide.capRadius),
+								label: 'Beam',
+								fact: 'angle',
+								verb: 'Beam {value}°',
+								planner: 'update-light',
+								value: `${radiansToDegrees(light.angle).toFixed(1)}°`
+							});
+						}
+						const penumbra = light.penumbra ?? 0;
+						if (penumbra >= 0.02 && penumbra <= 0.98) {
+							handles.push({
+								role: 'edit',
+								id: 'light-penumbra',
+								kind: 'ring',
+								anchor: guide.capCenter,
+								axis: forward,
+								extent: Math.max(0.02, guide.capRadius * penumbra),
+								label: 'Soft edge',
+								fact: 'soft-edge',
+								verb: 'Soft edge {value}%',
+								planner: 'update-light',
+								value: `${Math.round(penumbra * 100)}%`
+							});
+						}
 					}
 					return handles;
 				},
@@ -1186,6 +1215,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				pointerIntent(intent, adapterContext) {
 					if (intent.phase === 'down') {
 						if (openTaskKind === LIGHT_TASK) {
+							const glyph = lightGlyphAt(intent.css, adapterContext);
+							if (glyph !== null) {
+								const reference = sceneEntityReference(
+									glyph.light.id,
+									adapterContext.snapshot.domain.unitRevisions.scene
+								);
+								services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+								clearArmedLight();
+								services.stage.closeTask();
+								return true;
+							}
 							const nextPlacement = placementBodyAt(intent.css, adapterContext);
 							if (nextPlacement === null) return false;
 							if (!acquireLease(intent.evaluationId, 'light-place')) return false;
@@ -1319,6 +1359,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					};
 				},
 				taskClosed() {
+					// Opening a task also notifies the previous task owner. Only an armed
+					// task that really was open is a disarm; the opening notification is not.
+					if (openTaskKind === LIGHT_TASK && !rearmingAfterInstall) clearArmedLight();
 					openTaskKind = null;
 					gesture = null;
 					placement = null;
@@ -1329,7 +1372,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					gesture = null;
 					placement = null;
 					releaseLease();
-					clearArmedLight();
+					if (!rearmingAfterInstall) clearArmedLight();
 				}
 			};
 			return binding;

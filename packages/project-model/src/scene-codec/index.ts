@@ -23,6 +23,7 @@
 import { SCENE_WORLD_LOCAL_FORMAT_VERSION, type SceneDocument } from '../scene';
 import { addIssue, assertAllowedKeys, isRecord } from './readers';
 import {
+	parseArtworkLibraryEntry,
 	parseCluster,
 	parseEntity,
 	parseMaterialInstance,
@@ -195,4 +196,34 @@ export function serializeSceneDocument(
 	const result = validateSceneDocument(document, options);
 	if (!result.success) throw new SceneDocumentValidationError(result.issues[0]!);
 	return result.canonicalJson;
+}
+
+/** Artwork shelf admission belongs to the authored Scene unit. */
+export function validateArtworkLibrary(input: unknown, entities: SceneDocument['entities']) {
+	const issues: SceneDocumentIssue[] = [];
+	const entries = new Map<string, NonNullable<ReturnType<typeof parseArtworkLibraryEntry>>>();
+	if (input !== undefined) {
+		if (!Array.isArray(input)) {
+			addIssue(issues, '$.artworkLibrary', 'invalid_type', 'Expected an array');
+		} else {
+			for (const [index, value] of input.entries()) {
+				const path = `$.artworkLibrary[${index}]`;
+				const entry = parseArtworkLibraryEntry(value, path, issues);
+				if (entry === undefined) continue;
+				if (entries.has(entry.assetId)) {
+					addIssue(issues, `${path}.assetId`, 'duplicate_asset_id', 'Artwork Library asset appears more than once');
+				}
+				entries.set(entry.assetId, entry);
+			}
+		}
+	}
+	for (const [index, entity] of entities.entries()) {
+		if (entity.kind !== 'artwork') continue;
+		const entry = entries.get(entity.source.assetId);
+		if (entry?.pixelWidth !== entity.source.pixelWidth || entry.pixelHeight !== entity.source.pixelHeight) {
+			addIssue(issues, `$.entities[${index}].source`, 'artwork_library_mismatch', 'Artwork must match its project Library image');
+		}
+	}
+	const library = [...entries.values()].sort((a, b) => a.assetId < b.assetId ? -1 : a.assetId > b.assetId ? 1 : 0);
+	return { library, issues };
 }

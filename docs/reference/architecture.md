@@ -90,7 +90,7 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 | Authority | Owns | Current encoding |
 |---|---|---|
 | **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`), `formatVersion: 7`: Junctions, Walls (including one isolated self-connected closed Wall), persistent Rooms and Wall-hosted Openings over one floor datum, plus document-level objects. The Room-owned legacy Layout document was retired by T1.P02.S05 — there is no second reader or compatibility path; format 7 is the only recognized version |
-| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 5 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
+| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, native drawn forms, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 6 (`@portfolio/project-model`), world-local, no `roomId`; bounded model resources; authored native form sources evaluated by `@portfolio/geometry-core`; no admitted general components or attachments |
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
 | **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/pacing, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 4, collection-capable); Presentations, linear Guides, one entry View/stay per Stop, invitations, detours and visitor reach |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | `units.resources.data` and the exact dependency lock; bytes stay in the P20 registry/private storage; general ingest remains future work |
@@ -267,7 +267,7 @@ interior-only.
 |---------|-----------------|
 | Junctions, Walls, Room boundaries, Wall-hosted openings | `units.layout.data` / `LayoutDocumentWallFirst` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
-| Scene models, primitives, lights, materials, native form sources | `units.scene.data` / Scene 5 (`@portfolio/project-model`) |
+| Scene models, primitives, lights, materials, native form sources | `units.scene.data` / Scene 6 (`@portfolio/project-model`) |
 | Camera nodes, connections, paths, view tracks | `units.camera.data` / Camera 1 (`@portfolio/project-model`) |
 | Derived geometry | pure `compileWallFirstLayoutGeometry()` → `compileLayoutGeometrySource` (`@portfolio/layout-core`) |
 | Derived native-form meshes | `@portfolio/geometry-core` (`evaluateProfile` → `extrudeProfile`, `formMeshDigest`); normals and metre UVs are editor render derivatives |

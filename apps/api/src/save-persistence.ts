@@ -38,6 +38,8 @@ import {
 } from '@portfolio/project-model/save';
 
 import type { DatabaseClient, DatabasePool } from './database.js';
+import { ArtworkAssetRefusal, prepareArtworkPins, verifyArtworkPinRows, type ArtworkAssetPin } from './artwork-persistence.js';
+import type { ObjectStore } from './object-store.js';
 import { verifyModelResourcePins } from './model-persistence.js';
 import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
 
@@ -93,9 +95,10 @@ function saveDatabase(db: DatabaseClient): SaveSourceDatabase {
 export async function saveAcceptedSource(
 	pool: DatabasePool,
 	ownerId: string,
-	request: SaveRequest
+	request: SaveRequest,
+	store?: ObjectStore
 ): Promise<SaveAcknowledgement> {
-	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [UNIT_SAVE_HANDLER]);
+	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [UNIT_SAVE_HANDLER], store);
 }
 
 /**
@@ -119,7 +122,8 @@ export async function saveAcceptedSourceWithHandlers(
 	pool: DatabasePool,
 	ownerId: string,
 	request: SaveRequest,
-	handlers: readonly SaveSourceHandler[]
+	handlers: readonly SaveSourceHandler[],
+	store?: ObjectStore
 ): Promise<SaveAcknowledgement> {
 	if (request.contentIdentityScheme !== SAVE_CONTENT_IDENTITY_SCHEME) {
 		throw new SaveRefusalError('identity-scheme-mismatch', `This server saves ${SAVE_CONTENT_IDENTITY_SCHEME} sources`);
@@ -138,6 +142,17 @@ export async function saveAcceptedSourceWithHandlers(
 		throw new SaveRefusalError(preparedResult.code, preparedResult.message, preparedResult.issues ?? []);
 	}
 	const prepared = preparedResult.source;
+	const scene = (prepared.document as ProjectEnvelope).units?.scene?.data;
+	let artworkPins: readonly ArtworkAssetPin[] = [];
+	let artworkRefusal: ArtworkAssetRefusal | undefined;
+	if (scene?.artworkLibrary?.length) {
+		try {
+			artworkPins = await prepareArtworkPins(pool, store, ownerId, capture.projectId, scene, 'save');
+		} catch (error) {
+			if (!(error instanceof ArtworkAssetRefusal)) throw error;
+			artworkRefusal = error;
+		}
+	}
 
 	return withTransaction(pool, async (db) => {
 		// TD-7: an expected-saved-base Save proves ownership **before** taking any
@@ -282,6 +297,15 @@ LIMIT 1`,
 		// retained bytes and provenance agree with the resource's pins; the refusal
 		// rolls the transaction back, so no stored version changes.
 		await verifyModelResourcePins(db, capture.projectId, finalSource.document as ProjectEnvelope);
+		try {
+			if (artworkRefusal) throw artworkRefusal;
+			await verifyArtworkPinRows(db, ownerId, capture.projectId, artworkPins);
+		} catch (error) {
+			if (!(error instanceof ArtworkAssetRefusal)) throw error;
+			throw new SaveRefusalError('invalid-project', error.message, [
+				{ path: error.path, code: 'artwork_asset_unavailable', message: error.message }
+			]);
+		}
 
 		const nextVersion = latestVersion + 1;
 		const savedBaseToken = createSavedBaseToken();

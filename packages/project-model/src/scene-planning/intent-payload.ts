@@ -865,7 +865,7 @@ export function readSceneOperationAllocation(input: {
 	return { kind: 'created', entityId: allocation.id };
 }
 
-function sceneEntityTargetProblem(
+export function sceneEntityTargetProblem(
 	target: SemanticReference,
 	entityId: string,
 	sourceContentId: string

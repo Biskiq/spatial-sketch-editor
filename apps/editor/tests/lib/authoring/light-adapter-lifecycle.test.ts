@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
-import { armLight } from '$lib/authoring/look/light-tool.svelte';
+import { armedLightKind, armLight } from '$lib/authoring/look/light-tool.svelte';
 import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
 import { sceneEntityReference } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter as createSceneAdapter } from '$lib/authoring/adapters/scene.adapter';
@@ -26,6 +26,7 @@ import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelop
 const PROJECT_ID = 'project-light-lifecycle';
 const SESSION_EPOCH = 'session-light-lifecycle';
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
+const OFFSET_RECT = { left: 240, top: 110, width: 1280, height: 720, devicePixelRatio: 1 };
 
 function fixtureLayout() {
 	const baseline = createEmptyWallFirstLayoutDocument();
@@ -206,6 +207,14 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(light).toBeDefined();
 		expect(light!.castShadow).toBe(false);
 		expect(light!.light).toBe('spot');
+		expect(facade.session.task()).toBeNull();
+		expect(armedLightKind(PROJECT_ID)).toBe('spot');
+		// The next Stage frame rebuilds the factory binding; the route's dock-rearm
+		// seam can then reopen the same task without a second Library trip.
+		expect(facade.camera.evaluate(RECT, 3).kind).toBe('evaluated');
+		const reopened = facade.openContributedTask('light-place', 'light');
+		expect(reopened.kind).toBe('opened');
+		expect(facade.session.task()?.kind).toBe('light-place');
 		// A plain click aims straight down and writes no range; its body is at the
 		// working plane, not snapped to the floor grid.
 		expect(light!.position[1]).toBeCloseTo(
@@ -219,8 +228,59 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(forward[2]).toBeCloseTo(0, 8);
 	});
 
-	it('moves a selected light once on release and writes nothing on cancel', async () => {
+	it('places with viewport-correct rays when the Stage is offset', async () => {
+		const { facade } = await mounted({ rect: OFFSET_RECT });
+		openSpotTask(facade);
+		const evaluationId = facade.evaluationId()!;
+		const local: [number, number] = [560, 340];
+		const result = facade.pointerRay(
+			[local[0] + OFFSET_RECT.left, local[1] + OFFSET_RECT.top],
+			evaluationId
+		);
+		if (result.kind !== 'ray') throw new Error('the offset placement produced no pointer ray');
+		const y = facade.snapshot().domain.datumMeters + 1.5;
+		const t = (y - result.ray.origin[1]) / result.ray.direction[1];
+		const expected: Vec3 = [
+			result.ray.origin[0] + result.ray.direction[0] * t,
+			y,
+			result.ray.origin[2] + result.ray.direction[2] * t
+		];
+		facade.pointerIntent({ phase: 'down', css: local, evaluationId });
+		facade.pointerIntent({ phase: 'up', css: local, evaluationId });
+		await waitFor(() => lightsOf(facade).length === 1);
+		const light = lightsOf(facade)[0]!;
+		expect(light.position[0]).toBeCloseTo(expected[0], 8);
+		expect(light.position[1]).toBeCloseTo(expected[1], 8);
+		expect(light.position[2]).toBeCloseTo(expected[2], 8);
+	});
+
+	it('selects an existing light and disarms armed placement on its glyph', async () => {
 		const { facade, host } = await mounted({ entities: [spotAt([0, 2, 0])] });
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const body = facade.marks().find((mark) => mark.id.includes('light-body'));
+		if (body === undefined) throw new Error('the existing light has no body glyph');
+		facade.select(null);
+		openSpotTask(facade);
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history().depth;
+
+		expect(
+			facade.pointerIntent({ phase: 'down', css: body.anchor, evaluationId }).claimed
+		).toBe(true);
+		expect(facade.session.task()).toBeNull();
+		expect(armedLightKind(PROJECT_ID)).toBeNull();
+		expect(facade.selectionState().primary?.subject.id).toBe('light-existing');
+		facade.pointerIntent({ phase: 'up', css: body.anchor, evaluationId });
+		expect(host.history().depth).toBe(before);
+		expect(lightsOf(facade)).toHaveLength(1);
+	});
+
+	it('moves a selected light once on release and writes nothing on cancel', async () => {
+		const { facade, host } = await mounted({ entities: [spotAt([0, 2, 0])], rect: OFFSET_RECT });
 		const reference = sceneEntityReference(
 			'light-existing',
 			facade.snapshot().domain.unitRevisions.scene
@@ -234,7 +294,19 @@ describe('S3a light adapter pointer lifecycle', () => {
 			);
 		}
 		const start = mark.anchor;
+		const dragCss: [number, number] = [start[0] + 80, start[1] + 10];
 		const evaluationId = facade.evaluationId()!;
+		const dragRay = facade.pointerRay(
+			[dragCss[0] + OFFSET_RECT.left, dragCss[1] + OFFSET_RECT.top],
+			evaluationId
+		);
+		if (dragRay.kind !== 'ray') throw new Error('the offset manipulation produced no pointer ray');
+		const dragT = (2 - dragRay.ray.origin[1]) / dragRay.ray.direction[1];
+		const expectedMove: Vec3 = [
+			dragRay.ray.origin[0] + dragRay.ray.direction[0] * dragT,
+			2,
+			dragRay.ray.origin[2] + dragRay.ray.direction[2] * dragT
+		];
 		const before = host.history();
 		const sourceBefore = facade.snapshot().canonicalJson;
 
@@ -247,25 +319,20 @@ describe('S3a light adapter pointer lifecycle', () => {
 			}).claimed
 		).toBe(true);
 		expect(facade.session.gesture()?.owner).toBe('light-marks');
-		facade.pointerIntent({
-			phase: 'move',
-			css: [start[0] + 80, start[1] + 10],
-			evaluationId
-		});
+		facade.pointerIntent({ phase: 'move', css: dragCss, evaluationId });
 		expect(facade.session.gesture()?.owner).toBe('light-marks');
-		facade.pointerIntent({
-			phase: 'up',
-			css: [start[0] + 80, start[1] + 10],
-			evaluationId
-		});
+		facade.pointerIntent({ phase: 'up', css: dragCss, evaluationId });
 		await waitFor(() => host.history().depth === before.depth + 1);
 		expect(facade.session.gesture()).toBeNull();
 		// The real Stage evaluates its next frame after an accepted install; that is
 		// when factory bindings rebuild against the new snapshot.
-		expect(facade.camera.evaluate(RECT, 3).kind).toBe('evaluated');
+		expect(facade.camera.evaluate(OFFSET_RECT, 3).kind).toBe('evaluated');
 		expect(facade.snapshot().canonicalJson).not.toBe(sourceBefore);
 		const moved = lightsOf(facade)[0]!;
 		expect(moved.position).not.toEqual([0, 2, 0]);
+		expect(moved.position[0]).toBeCloseTo(expectedMove[0], 8);
+		expect(moved.position[1]).toBeCloseTo(expectedMove[1], 8);
+		expect(moved.position[2]).toBeCloseTo(expectedMove[2], 8);
 
 		const afterMove = facade.snapshot().canonicalJson;
 		const currentMark = facade.marks().find((candidate) => candidate.id.includes('light-body'));
@@ -393,6 +460,36 @@ describe('S3a light adapter pointer lifecycle', () => {
 		);
 		spot.facade.setSelection({ ordered: [{ reference: spotReference }], primary: spotReference });
 		expect(spot.facade.marks().map((mark) => mark.id)).toContain('light-penumbra');
+	});
+
+	it('applies the approved Spot Beam and soft-edge mark limits', async () => {
+		const degrees = (value: number) => (value * Math.PI) / 180;
+		const { facade } = await mounted({
+			entities: [
+				{ ...spotAt([0, 2, 0], 'light-beam-wide'), angle: degrees(81), penumbra: 0.35 } as SceneLightEntity,
+				{ ...spotAt([2, 2, 0], 'light-hard'), angle: degrees(30), penumbra: 0.01 } as SceneLightEntity,
+				// A 60° beam keeps the 2% inner ring above the host's minimum projected
+				// ring size, so the test reaches the mark-visibility rule itself.
+				{ ...spotAt([4, 2, 0], 'light-soft-low'), angle: degrees(60), penumbra: 0.02 } as SceneLightEntity,
+				{ ...spotAt([6, 2, 0], 'light-soft-high'), angle: degrees(60), penumbra: 0.98 } as SceneLightEntity,
+				{ ...spotAt([8, 2, 0], 'light-soft-over'), angle: degrees(60), penumbra: 0.99 } as SceneLightEntity
+			]
+		});
+		const markIds = (id: string): string[] => {
+			const reference = sceneEntityReference(id, facade.snapshot().domain.unitRevisions.scene);
+			facade.setSelection({ ordered: [{ reference }], primary: reference });
+			const selected = facade.selectionState().primary?.subject.id;
+			if (selected !== id) throw new Error(`selection stayed on ${selected ?? 'none'} instead of ${id}`);
+			return facade.marks().map((mark) => mark.id);
+		};
+
+		expect(markIds('light-beam-wide')).not.toContain('light-angle');
+		const hard = markIds('light-hard');
+		expect(hard).toContain('light-angle');
+		expect(hard).not.toContain('light-penumbra');
+		expect(markIds('light-soft-low')).toContain('light-penumbra');
+		expect(markIds('light-soft-high')).toContain('light-penumbra');
+		expect(markIds('light-soft-over')).not.toContain('light-penumbra');
 	});
 
 	it('exposes persistent selection guides separately from candidate previews', async () => {

@@ -123,6 +123,10 @@ describe('S03 recorded pre-change selection differential', () => {
 			// C2 format 7 updates only generation IDs, because the canonical
 			// document now serializes `formatVersion: 7`. Every winner, point and
 			// pick field is unchanged (266 values, all generationId).
+			// A1 Artwork updates only generation IDs and the Scene content
+			// revision, because Scene moves to format 6 and the source hash covers
+			// the header. Every winner, point and pick field is unchanged (266
+			// values are generationId; 16 are the shared Scene contentRevision).
 			expect(actual).toEqual(expected);
 		}
 	});

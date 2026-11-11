@@ -26,6 +26,8 @@
 	import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import type { LayoutRoomRegistry } from '@portfolio/project-model';
+	import EntityArtwork from '$lib/museum/entities/EntityArtwork.svelte';
+	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 	import EntityLight from '$lib/museum/entities/EntityLight.svelte';
 	import EntityPrimitive from '$lib/museum/entities/EntityPrimitive.svelte';
 
@@ -36,6 +38,8 @@
 		scene,
 		rooms,
 		textureScope = null,
+		artworkScope = null,
+		onArtworkError,
 		modelUrls = null,
 		onFormRendererReady,
 		onEntityRoot,
@@ -46,6 +50,8 @@
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		textureScope?: TextureLoadScope | null;
+		artworkScope?: ArtworkScope | null;
+		onArtworkError?: (message: string) => void;
 		/** Runtime-safe approved model bytes: model resource id → derivative URL. */
 		modelUrls?: ReadonlyMap<string, string> | null;
 		/** Optional Stage-only notification after a lazy form mesh has mounted. */
@@ -161,6 +167,8 @@
 						/>
 					</T.Group>
 				{/if}
+			{:else if entity.kind === 'artwork'}
+				<EntityArtwork {entity} scope={artworkScope} onError={onArtworkError} onReady={onFormRendererReady} />
 			{:else if includeLights && isSceneLightEntity(entity)}
 				<T.Group position={entity.position} rotation={entity.rotation} scale={entity.scale ?? 1}>
 					<EntityLight {entity} />

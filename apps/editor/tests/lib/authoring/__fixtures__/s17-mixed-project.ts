@@ -274,7 +274,7 @@ export async function buildS17MixedProject(projectId = PROJECT_ID): Promise<{
 		id: projectId,
 		name: 'R217.S17 mixed scene and form project',
 		layout,
-		scene: { formatVersion: 5, textures: [], materials: [], entities: sceneEntities },
+		scene: { formatVersion: 6, textures: [], materials: [], entities: sceneEntities },
 		resources
 	});
 	return {

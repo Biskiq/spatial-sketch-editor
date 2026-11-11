@@ -338,3 +338,38 @@ describe('[cap:release.visitor-isolation core] P22.3 public release client', () 
 		expect(route).toContain('untrack(disposeBundle)');
 	});
 });
+
+it('verifies Artwork digest and dimensions before installing the detached release', async () => {
+	const image = { assetId: ASSET_ID, pixelWidth: 1, pixelHeight: 1 };
+	const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII='), (c) => c.charCodeAt(0));
+	const { imageSha256 } = await import('$lib/render/artwork/image-digest');
+	const sha256 = `sha256-${await imageSha256(bytes)}`;
+	const document = await createUnitProject({
+		id: 'project:public-artwork', name: 'Released Artwork',
+		scene: {
+			formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [],
+			artworkLibrary: [{ ...image, name: 'Image' }],
+			entities: [{
+				kind: 'artwork', id: 'a', name: 'Picture', position: [0, 1, 0], rotation: [0, 0, 0],
+				widthMeters: 1, source: { kind: 'image', ...image }
+			}]
+		}
+	});
+	const asset = { assetId: ASSET_ID, mime: 'image/png', byteSize: bytes.length, sha256 };
+	const url = `https://api.test/publications/${PUB_A}/versions/1/assets/${ASSET_ID}/content`;
+	async function open(responseBytes: Uint8Array, descriptor: typeof asset | Omit<typeof asset, 'sha256'>) {
+		return loadPublicReleaseBundle({
+			publicationId: PUB_A, apiOrigin: 'https://api.test',
+			fetchImpl: async (input) => input === url ? bytesResponse(responseBytes, asset.mime)
+				: jsonResponse(releasePayload(document, [descriptor]))
+		});
+	}
+	const { bundle } = await open(bytes, asset);
+	expect(bundle.scene.entities[0]).toMatchObject({ kind: 'artwork', source: image });
+	bundle.dispose();
+	const changed = bytes.slice();
+	changed[changed.length - 1] ^= 1;
+	await expect(open(changed, asset)).rejects.toMatchObject({ code: 'asset-failed' });
+	await expect(open(bytes, { assetId: ASSET_ID, mime: asset.mime, byteSize: bytes.length }))
+		.rejects.toMatchObject({ code: 'invalid-release' });
+});

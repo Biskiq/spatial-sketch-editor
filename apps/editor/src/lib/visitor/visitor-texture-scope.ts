@@ -19,6 +19,7 @@ import { isAllowedShippedTextureUri } from './shipped-static-registry';
 export type ReleaseBytesEntry = {
 	bytes: Uint8Array;
 	mime: string;
+	sha256?: string;
 };
 
 export type ReleaseTextureScopeInit = {

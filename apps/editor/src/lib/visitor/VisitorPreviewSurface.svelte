@@ -2,6 +2,7 @@
 	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
 	import { perfMark, perfRenderer } from '$lib/platform/perf-marks';
 	import { onMount, untrack } from 'svelte';
+import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
 import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
 	import { T } from '@threlte/core';
@@ -43,6 +44,7 @@ import { PCFShadowMap } from 'three';
 		active = true,
 		resolveTexture,
 		textureScope = null,
+		artworkScope = null,
 		modelUrls = null,
 		reducedMotion = false,
 		mode = 'preview',
@@ -68,6 +70,7 @@ import { PCFShadowMap } from 'three';
 		active?: boolean;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
+		artworkScope?: ArtworkScope | null;
 		/** Runtime-safe approved model bytes, resolved by the owning session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
 		reducedMotion?: boolean;
@@ -461,6 +464,7 @@ import { PCFShadowMap } from 'three';
 				scene={scene}
 				{rooms}
 				{textureScope}
+				{artworkScope}
 				{modelUrls}
 				includeLights={environment !== 'paper'}
 			/>
