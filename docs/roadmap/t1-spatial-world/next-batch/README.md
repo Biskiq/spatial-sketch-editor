@@ -1,590 +1,490 @@
 # T1 next batch: product and UX proposal
 
-**Status:** planning proposal, revision 2, 2026-11-10. Authorises no production change. **Base:**
-`main` at `97e208d7` (#287 merged). Coordinated with, and mergeable independently of, the T2 Look &
-Atmosphere proposal (#289, revision 2).
+**Status:** revision 3, 2026-11-10, final for implementation planning. Owner decisions are approved
+and recorded in [implementation-prs.md](./implementation-prs.md#decision-record); none remain open
+in this document. Authorises no production change by itself: each slice still opens its own PR, and
+Tier 2 slices their own plan. **Base:** `main` at `97e208d7` (#287 merged). Coordinated with the T2
+Look & Atmosphere proposal (#289), which this PR does not edit.
 
-**What revision 2 changes** (owner review of revision 1). The plan and its order stand. Added:
-an architectural-identity requirement on the connected-curve spike
-([§](#architectural-identity-one-rotunda-inspectable-parts)); two future capabilities, each planned
-and neither in the immediate batch, [Open Spaces](#open-spaces) and
-[Interior Reveal](#interior-reveal); a [T1–T2 contract](#t1t2-contract) with #289. Corrected, from a
-recheck of code: Opening Repeat is a built, unwired planner and is the real answer to the window-row
-journey; a duplicated Room docked against a Wall **overlaps and joins nothing**; Unroll the room
-never depended on Face or on the connected-curve decision. [The last section](#where-i-held-and-where-i-moved)
-lists where I moved and where I did not.
-
-**Evidence limit:** every statement about current behaviour comes from reading code, tests and
-contracts at that commit. Nothing here was exercised in a browser. Items marked *(verify)* need a
-five-minute check before an implementer relies on them.
+**Evidence limit.** Statements about current behaviour come from reading code, tests and contracts
+at that commit. Nothing was exercised in the running editor. The UX proposals are static sketches
+that have not been tried by a creator. What still needs a check is listed once, under
+[Verify first](./implementation-prs.md#verify-first).
 
 | Read | For |
 | --- | --- |
-| This file | Verdict, findings, priorities, roadmap, recommendation |
-| [Creator journeys](./creator-journeys.md) | Where ordinary work stops today |
-| [Interaction sketches](./interaction-sketches.html) | The nine consequential design questions |
-| [Implementation PRs and decisions](./implementation-prs.md) | PR boundaries, tiers, owner decisions |
+| This file | Verdict, findings, the designs in words, execution sequence, readiness, accepted risks |
+| [Creator journeys](./creator-journeys.md) | Where ordinary work stops today, and what each slice must make pass |
+| [UX proposals](./interaction-sketches.html) | Step-by-step interaction designs for the eleven consequential questions |
+| [Implementation slices](./implementation-prs.md) | Slice boundaries, dependencies, acceptance criteria, decision record |
 
 ## Verdict
 
-**T1 does not have an editing-fundamentals design gap. It has a wiring gap.** Most of the operations
-asked for under "editing fundamentals" already exist as tested layout-core planners that no editor
-intent reaches. That work is cheap, low-risk and should ship first, as five or six small PRs.
+**T1 has a wiring gap, not a design gap, in its fundamentals.** Split, join, isolated Room
+duplicate and Opening Repeat exist as tested layout-core planners that no editor intent reaches.
+Arc is a disabled option on the Walls plate. These ship first as six small PRs.
 
-The three deeper directions are not equal:
+Behind them sit five pieces of real design, now resolved to the level a plan can start from:
 
-- **Connected curved architecture is a model decision, not a feature.** There is no useful "simple
-  connection". It needs a short decision spike before anyone writes a plan.
-- **Wall and Room Focus is two things of very different size**, and "Focus" is the wrong word for
-  both. The Wall half is small and near-term. The Room half is a planned phase.
-- **Verticality is the real next milestone**, but as bundled in the brief it is four milestones. It
-  should start as a technical plan now and land in slices, the first of which contains no roof form
-  at all.
-
-Revision 2 adds two capabilities the first draft did not name, and both are already promised by the
-contracts rather than new ideas:
-
-- **Open Spaces** is in the Layout contract as the destination ("Indoor Rooms are one kind of
-  semantic Space") with its schema explicitly unratified. It is a research phase now and a plan
-  later. Most of its visible value is a **floor**, which belongs to verticality, not to Space.
-- **Interior Reveal** is in PLATE as Lift, Reveal, the near-wall cutaway and X-ray overhead. It is
-  an editor-session reading, small in model terms, and it becomes **mandatory the day V1 ships**,
-  because authored ceilings and canopies hide the inside.
+- **Spaces.** A Room that loses a Wall stays the same named place as an *open space*. Open spaces
+  can also be made from partial Walls and, later, from a floor. One concept, one rule for when it
+  exists, no overlap on the same surface.
+- **Interior Reveal.** Lift takes overheads off; the near-wall cutaway becomes switchable. Both are
+  session readings.
+- **Slice.** A deliberate horizontal or drawn vertical cut, already specified by PLATE and never
+  built. The horizontal cut is ranked **ahead of** the automatic cutaway.
+- **Connected curves.** A connected rotunda is a ring of arc Walls whose identity is its Room. A
+  bounded spike proves it before any plan.
+- **Verticality.** Flat horizontal regions, then Wall top profiles, then shed and gable forms.
 
 ## What inspection found
 
-### 1. The fundamentals are mostly built and unreachable
+### 1. Built and unreachable
 
 | Operation | layout-core | Editor intent |
 | --- | --- | --- |
-| Split a Wall at a station or point, straight **and curved** (exact cubic subdivision, Openings re-based) | `planWallSplit`, `planWallSplitAtPoint`, `planWallSubdivision` | **None** |
-| Dissolve a degree-2 Junction, merging two Walls, keeping Room identity | `planDissolveJunction` | **None** |
-| Duplicate an isolated Room with its Walls, Junctions and Openings | `planDuplicateIsolatedRoom` | **None** |
-| Rotate a Room group | `planWallFirstRoomRotation` | **None** (move only) |
-| Remove a Room | `planRemoveRoom` | **None** (the Eraser refuses a Room floor) |
+| Split a Wall at a station or point, straight and curved (exact cubic subdivision, Openings re-based) | `planWallSplit`, `planWallSplitAtPoint`, `planWallSubdivision` | None |
+| Dissolve a degree-2 Junction, merging two Walls, keeping Room identity | `planDissolveJunction` | None |
+| Duplicate an isolated Room with its Walls, Junctions and Openings | `planDuplicateIsolatedRoom` | None |
+| Repeat an Opening along its Wall (count 1–50, spacing in metres, one validated batch) | `planRepeatWallOpening` | None |
+| Repeat a Layout object | `planRepeatLayoutObject` | None |
+| Rotate a Room group; remove a Room | `planWallFirstRoomRotation`, `planRemoveRoom` | None |
 | Arc Wall | Open `cubic-chain` Walls, bend and knot planners | Walls plate **Arc** is disabled |
-| Pointed Opening | `profile: 'pointed'` is in the schema | Ink plate **Pointed** is disabled |
-| Repeat an Opening along its Wall (count 1–50, spacing in metres, whole set validated as one batch) | `planRepeatWallOpening` | **None** *(revision 2)* |
-| Repeat a Layout object | `planRepeatLayoutObject` | **None** *(revision 2)* |
+| Pointed Opening | `profile: 'pointed'` in the schema | Ink plate **Pointed** is disabled |
 
-A grep of `apps/editor/src` for those planner names returns only `planDeleteWall`. The Card's `•••`
-menu already lists **Face this wall**, **Unroll the room** and **Section through here** as disabled
-`Soon` items, so the shell already promises three of the brief's features by name.
+The Card's `•••` menu already lists **Face this wall**, **Unroll the room** and **Section through
+here** as disabled items. The World toolbar already registers **Slice**, **Room**, **Roof** and
+**Terrace** as planned tools. PLATE already specifies Slice, Lift, the near-wall cutaway and Edit
+shape. The shell has promised most of this batch by name.
 
-### 2. Known curved-Wall limits that are deliberate
+### 2. Facts that shaped the designs
 
-- Crossing noding is straight-only: `planWallCrossing` refuses a curved participant with
-  `curved_wall_unsupported`. Attaching a new Wall's **end** to a curved host is handled
-  (`layout-wall-chain.ts` projects onto sampled cubic hosts). So a Wall can end on a curve, but
-  cannot be drawn through one.
-- The [Layout contract](../../../reference/components/layout.md#build--world-architecture) lists
-  "arbitrary curve intersection and noding" as **demand/evidence-gated**. This proposal keeps it
-  gated.
-- Face extraction synthesises no holes (`layout-face-extraction.ts`: "No hole/Room semantics are
-  synthesized"). A free-standing rotunda inside a hall therefore does not subtract from the hall's
-  Room. *(verify: what the hall's area label and floor show.)*
+- **Overlap is permitted and silent.** The canonical topology gate allows overlap between
+  independent Wall groups; a clone placed across other Walls commits and joins nothing
+  (`layout-duplicate.ts`, policy D-1/E and D-9). Room move is a rigid translation that asserts no
+  Room is born, retired, split or merged. Nothing in the model turns a docked island into a shared
+  Wall.
+- **Opening an enclosure retires the Room.** Reconciliation retires any Room whose face has no
+  successor (`layout-room-reconciliation.ts`, "room disappearance"). Erase one outside Wall and the
+  Room, its name and its surface thicknesses are gone. This is the behaviour the approved Space
+  policy replaces.
+- **A Room record bundles three things:** identity (`id`, `name`), derived topology (`boundary`)
+  and physical surface data (`floorThickness`, `ceilingThickness`).
+- **Crossing noding is straight-only**, a Wall can end on a curve but not pass through one, and
+  face extraction synthesises no holes. All three stay as they are.
+- **Slice is specified and unbuilt.** PLATE defines a horizontal cut at the Sheet height and a
+  drawn vertical Slice with a pill, depth, Flip, Face and Section. Code has a disabled dock button
+  and a toolbar stub whose options (Axis X / Z) do not match PLATE.
+- **The automatic near-wall cutaway is specified.** PLATE says near-side walls are cut away and
+  click-through while working inside a room in 3D. I found no implementation under any obvious
+  name. Whether it exists is the first thing the Reveal lane establishes.
 
-### 3. Rechecked in revision 2
+### 3. #287 left documentation debt
 
-- **Room duplication and overlap.** The duplicate planner runs the canonical topology gate, whose
-  ratified policy (D-1/E, D-9 in `layout-duplicate.ts`) is that overlap between *independent*
-  components is **permitted**: a clone placed across its source or any other group commits and
-  joins nothing. Room move (`layout-room-move.ts`) is a rigid translation that asserts zero Room
-  births, retirements, splits or merges. So nothing in the model turns a docked copy into a shared
-  Wall. Revision 1's journey J4 ended with "the ordinary attach rules apply". That was wrong.
-- **Opening Repeat.** Built, tested, unreachable. Revision 1 assigned the row-of-windows journey to
-  Face. Repeat is the feature that journey needs; Face only makes it more comfortable.
-- **Room identity is fragile to opening the enclosure.** A Room is a persistent identity reconciled
-  over a *derived face*. Erase one boundary Wall and the face is gone. *(verify: whether the Room
-  record, its name and its thicknesses are retired at once.)* This matters to Open Spaces, to T2's
-  floor finishes and to every creator who removes a wall to make an open-sided room.
-- **A Room record bundles three things**: identity (`id`, `name`), derived topology (`boundary`) and
-  physical surface data (`floorThickness`, `ceilingThickness`). Open Spaces and overhead regions
-  both pull on that bundle from different sides.
-- **How the Stage shows the inside of a closed Room today is not established.** PLATE states that
-  the near-wall cutaway and X-ray overhead are viewing state and that the cutaway is automatic. I
-  found no implementation under those names. *(verify before planning Reveal.)*
+The expressive-walls plan was to be deleted and its rules promoted before merge. The plan is still
+listed as a draft and the Layout contract still describes format 6 in places. Code is at format 7.
+An agent reading the contract gets the wrong current state. This is slice A0.
 
-### 4. #287 left documentation debt
+## Positions taken, and why
 
-The merged plan says "before merge, this plan is deleted" and its rules promoted. Neither happened:
-the [plan](../expressive-walls/implementation-plan.md) is still listed as a draft in the
-[roadmap index](../../README.md), and the Layout contract still says "Layout format 6" and that
-circular Walls are not implemented. Code is at format 7 with all three capabilities landed. An
-agent reading the contract today gets the wrong current state. This is the first PR.
+These were open questions in earlier revisions. They are now design decisions with their reasons.
+The governing direction is the owner's: **simple, predictable concepts over unrestricted
+flexibility; sensible defaults; explicit workarounds.**
 
-## Pushback on the brief
+**Junction editing is two operations.** Split a Wall, and join two Walls. "Delete a Junction" has
+no single meaning once three Walls meet. Erasing a joint joins when exactly two compatible Walls
+meet there and refuses in words otherwise. Corners are never joinable.
 
-**"Insert, delete and dissolve Junctions" is two operations, not three.** Insert is *split a Wall
-here*. Dissolve is *join two Walls*. "Delete a Junction" has no single meaning once three Walls
-meet there, and inventing one creates a topology command the creator cannot predict. The proposal
-is: split and join exist; erasing a joint means join when exactly two compatible Walls meet, and
-refuses in words otherwise.
+**Duplicate copies, never shares, and says when a copy is not joined.** The copy is a free island.
+It starts clear of its source. When any free island rests on another group's Wall, the Stage reads
+**overlaps, not joined**. Joining a docked island (weld) is not in this batch: the cue first shows
+how often creators want it.
 
-**Do not make corners joinable.** `planDissolveJunction` refuses a non-collinear straight pair
-(`non_collinear_straight_pair`). That is correct: joining an L into one Wall would silently turn a
-corner into a curve or a polyline Wall, which the schema does not have. Keep the refusal and give
-it good words.
+**There is no simple connection to a circle.** A Room adjoining a rotunda puts two Junctions on the
+rim. The connected rotunda becomes a ring of arc Walls.
 
-**"Duplicate a Room including shared boundaries" should copy, never share.** The tempting version,
-a duplicate that stays attached to the neighbour through the shared Wall, is topology surgery with
-ambiguous Room reconciliation. The predictable version is: the copy is a new free island containing
-a copy of every boundary Wall (shared ones included), their Openings and Junctions. Door relations
-to Rooms outside the copy are dropped and named in the consequence line.
+**One architectural object does not mean one stored Wall.** The rotunda's identity is its Room,
+which is how a Box with a split Wall is still one Room. Roundness is a stated fact of that Room,
+never a shape re-recognised within a tolerance.
 
-*Revision 2 correction.* Copy-never-share stands, but it does not finish the side-chapel journey.
-A copy dragged against the hall leaves two coincident Walls and no shared door, and the model
-permits that silently. Two consequences: Duplicate must **place the copy clear of its source** and
-the Stage must **say "overlaps, not joined"** when a free island rests on another Wall; and joining
-a docked island (a **weld** of coincident Walls) is a separate operation with real reconciliation
-questions. It is a small plan, not part of Duplicate, and I would wait for the overlap cue to show
-how often creators hit it.
+**A Space must rest on something physical.** A named outline of nothing is the failure mode of
+every "zone" feature. A Space exists while a Wall stands on its boundary or a floor lies under it.
 
-**"A simple connection" to a circle does not exist.** The only topologically simple case is one
-extra Wall meeting the circle at its seam Junction. That produces no shared boundary and no new
-Room, so it does not deliver the rotunda-plus-room journey. The moment a rectangular Room adjoins a
-rotunda, two Junctions sit on the rim, and the one-closed-Wall representation cannot hold them. See
-[Connected curves](#connected-curved-architecture).
+**Reveal is two readings, not a visibility system.** No eye per row, no stored hidden state,
+nothing a visitor can inherit.
 
-**"Focus" is taken.** PLATE already uses Focus for the Height Sheet's story focus ("Focus height",
-"Under Focus, the Sheet's plane is drawn as an outline"). PLATE also already names the readings
-this brief describes: **Face** and **Unroll**. The proposal uses those words: *Face this wall* and
-*Unroll the room*. No new reading name, no new surface.
+**Deterministic before heuristic.** A horizontal Slice is one plane at a stated height. The
+automatic cutaway is a guess about which Walls are in the way. The plane ships first.
 
-**Wall Focus was already decided against once, in part.** #287 revision 2 removed the `face`
-Camera intent from Unroll because the owner wanted entry to preserve the view. That decision
-stands. Face must be a separate, explicit Look action that the creator asks for, never something
-Unroll does on its own.
+**"Focus" stays the Height Sheet's word.** The readings are Face and Unroll, as PLATE already has
+them.
 
-**Verticality is bundled too tightly.** Roofs, canopies, ceilings, slabs, three forms, sloped Wall
-tops, fitting, gaps, levels, storeys and terrain are at least four milestones with two unresolved
-owner decisions (D2 datum, D3 gaps) underneath. Terrain is not T1 at all: the World toolbar files
-Ground under T2. Named levels have their own capability (`layout.multi-level`) and should not ride
-in on a roof plan.
+**Verticality is four milestones, and three are in scope.** Levels, stairs and terrain are not.
 
-**"One architectural object" must not depend on a tolerance.** Revision 1 leaned on a *derived*
-Round reading for a connected rotunda. The owner's requirement, that the rotunda stays one
-creator-facing object with inspectable parts, is right, and a reading that is re-recognised from
-geometry on every edit cannot guarantee it: nudge one rim joint and the object would silently
-stop existing. Identity needs a carrier. See
-[Architectural identity](#architectural-identity-one-rotunda-inspectable-parts).
+## Spaces
 
-**An Open Space is mostly a floor.** A pavilion, terrace or booth reads as a place because of what
-is under and over it. The semantic Space adds a name, a scope and a grouping. If Space ships first,
-creators get a labelled outline of nothing. Physical horizontal regions come first, and they are
-already V1's subject.
+### The concept
 
-**Reveal is not hide.** A per-entity visibility switch (an eye in the Index) becomes persistent
-layer state within one release, and then someone publishes a World with a wall they forgot to turn
-back on. Reveal should be a temporary reading with a pill and Put back, like Unroll, and nothing
-else.
+A **Space** is a named place. Its boundary is a closed outline whose edges are each either a
+**Wall side** or a **virtual edge**, a stated straight segment with no architecture on it.
 
-**Not every missing operation deserves a slot.** Room rotation, general curve crossing, bending a
-circle (D8) and free-form closed Walls all have plausible stories and no journey evidence. They
-wait.
-
-## Priorities
-
-Scores are relative, 1 (low) to 5 (high). Value is creator value in ordinary sessions.
-
-| Direction | Value | Ambiguity | Arch. risk | Depends on | Class |
-| --- | --- | --- | --- | --- | --- |
-| Docs promotion after #287 | 2 | 1 | 1 | – | Small PR |
-| Split and join Walls (Junction editing) | 5 | 2 | 1 | – | Small PRs |
-| Arc Wall in the Walls plate | 4 | 2 | 1 | – | Small PR |
-| Repeat an Opening *(r2)* | 4 | 1 | 1 | – | Small PR |
-| Duplicate an isolated Room | 4 | 1 | 1 | – | Small PR |
-| Duplicate any Room (copy enclosure) | 3 | 3 | 2 | isolated duplicate; overlap cue | Small plan inside its PR |
-| Weld a docked island *(r2)* | 3 | 4 | 3 | overlap cue evidence | Wait for demand, then small plan |
-| Face this wall | 3 | 2 | 2 | – | Small plan inside its PR |
-| Pointed Opening, fixed-end choice on Length | 2 | 1 | 1 | – | Small PRs |
-| Unroll the room | 4 | 4 | 3 | D5 only *(r2)* | Dedicated plan |
-| Connected curved architecture | 3 | 5 | 5 | decision spike, incl. identity | Research, then dedicated plan |
-| Interior Reveal: Lift and near-wall cutaway *(r2)* | 5 | 3 | 2 | truth check; ships with V1 | Short plan; future capability |
-| Open Spaces: semantic Space identity *(r2)* | 3 | 5 | 4 | floor regions; S2 research | Research, then dedicated plan |
-| Floor and platform regions *(r2)* | 4 | 4 | 4 | V-plan | Inside the verticality plan |
-| Layout surface references for T2 *(r2)* | 4 | 3 | 3 | joint with #289 S5a | Joint plan, first commit of S5a |
-| Overhead regions (flat, closure and suspended) | 5 | 4 | 4 | D2, D3 | Dedicated plan, phase V1 |
-| Wall top profiles (slope, gable) | 4 | 3 | 4 | format bump; V1 | Dedicated plan, phase V2 |
-| Shed and gable overhead forms, Edit shape | 4 | 4 | 3 | V1, V2 | Phase V3 |
-| Levels and multi-storey | 3 | 5 | 5 | V1; D2 | Wait for V1 evidence |
-| Room rotation, curve crossing, bendable circles | 2 | 3 | 3 | – | Wait for demand |
-| Terrain | ? | 5 | 5 | T2 | Not T1 |
-
-## Connected curved architecture
-
-Three candidate models. Sketch 3 draws them side by side.
-
-| | A. Seam-only attachment | B. Arc ring with a derived Round reading | C. Station-hosted Junctions |
+| | Edges | Reads as | How it comes to exist |
 | --- | --- | --- | --- |
-| Idea | Lift `closed_wall_isolated` only at the seam Junction | Attaching to a circle splits it into ordinary open arc Walls between rim Junctions. Co-circular arcs are recognised and offered radius editing as a group | A Junction may sit **on** a Wall at a station without splitting it; Room boundaries reference Wall sub-ranges |
-| Rotunda + adjoining Room | **No** (one rim point only) | **Yes** | **Yes** |
-| Topology change | Seam Junction degree > 2 | None: arcs are existing `cubic-chain` Walls | New connectivity primitive beside Junction-ID equality |
-| Format | None | **None** | Incompatible: Junction hosting, ranged `OrientedWallRef` |
-| Wall identity | One Wall kept | Original id survives on one arc; others are new | One Wall kept |
-| Openings | Unchanged | Re-hosted by the existing curved-split planner; an Opening under an attach point refuses (`split_through_opening_interior`); no Opening may span a rim Junction | Unchanged, including across attach points |
-| Radius edit | Unchanged | New group planner: scale arcs about the fitted centre, move rim Junctions radially, neighbours follow through the existing whole-network preview and refusal | Unchanged, plus neighbour follow |
-| Unroll | Unchanged | One arc at a time; the whole rotunda needs Unroll the room | Unchanged |
-| Reverse | – | Removing the last attachment must rejoin arcs into one closed Wall (dissolve refuses self-loops today) | – |
-| Cost | Small, little value | Medium: one planner family, no schema | Large: every topology consumer |
+| Enclosed | All Wall sides | **Room** | Derived from Walls, as today |
+| Open | At least one virtual edge | **Open space** | A Room loses a Wall; or made from partial Walls; or follows a floor |
 
-**Assessment.** A is a simple connection that does not solve the stated case; reject it. C is the
-genuinely new architectural model: it adds a second way to be connected, which is exactly what
-"Junction ID equality *is* connectivity" exists to prevent, and it should not be started without
-evidence that B fails creators. **B is the recommended direction to prove**, with one honest cost:
-it breaks the accepted statement that a circular enclosure is "one continuous canonical Wall" for
-the *connected* case. An isolated circle stays one Wall. That contract change is the owner's.
+It is one subject kind with one Card, one Index group and one id. "Room" and "Open space" are what
+the Card's kind line says, not two entities with a conversion between them.
 
-This is not ready for an implementation plan. It is ready for a **bounded spike whose exit is a
-decision**, covering: arc accuracy after exact subdivision, radius-edit behaviour when a neighbour
-refuses, rejoin into a closed Wall, Room identity through attach and detach, and the identity
-requirement below.
+### The rules
 
-### Architectural identity: one rotunda, inspectable parts
+1. **Existence.** A Space exists while at least one Wall stands on its boundary or a floor region
+   lies under it. When the last one goes, the Space goes with it, and the consequence line says so.
+2. **Opening a Room.** Erasing a boundary Wall that faces outside keeps the Room as an open space:
+   the erased stretch becomes a virtual edge between the same two ends. Name, id, floor, overhead
+   setting and contents are kept. Erasing a Wall between two Rooms merges them as it does today.
+3. **Closing it again.** Drawing a Wall along a virtual edge replaces that edge. When no virtual
+   edge is left the Space reads Room again. Same id throughout, and Undo reverses each step.
+4. **No overlap on the same surface.** Two open spaces never overlap. An open space never overlaps
+   a Room it is not wholly inside. An open space **may sit wholly inside a Room** (booths in a
+   hall); a point then belongs to the innermost Space. Spaces on different floors (a raised
+   terrace) are on different surfaces and do not interact. The World is not partitioned: ground
+   outside every Space belongs to none.
+5. **Floor and overhead are generated from the outline**, exactly as a Room's are today, so an
+   opened Room keeps its floor. Independent floor and overhead **regions** are separate physical
+   geometry from the verticality plan.
+6. **Overhead intent is the Space's, not a region's.** Each Space states **Closed** or **Open to
+   sky**. Closed generates the lid; Open to sky does not. Rooms default to Closed; Spaces made from
+   partial Walls or from a floor default to Open to sky; an opened Room keeps what it had. An
+   authored canopy above an open-to-sky Space is physical geometry and changes no intent: the
+   readout says "Open to sky · under Canopy 1".
+7. **Zones are reserved** for broader, overlapping scopes (a wing, a route, a ticketed area).
+   Nothing here designs them.
 
-**Requirement (owner, revision 2).** A connected rotunda remains **one creator-facing architectural
-object**. Its Walls and components stay individually inspectable. Sketch 7.
+### The interactions
 
-This changes the comparison. Model C satisfies it natively: one Wall. Model B does not, and
-"derived Round" is not enough, because identity that is re-recognised within a tolerance can vanish
-on an ordinary edit. Under B the whole needs a **carrier**, and there are three candidates:
+Sketches 7 and 8 draw these step by step.
 
-| Carrier | What holds the identity | Cost | Fails when |
-| --- | --- | --- | --- |
-| **The Room** | The rotunda *is* its Room. The Room id already survives attach, split and move through reconciliation. Round, Radius and whole-ring actions are offered on the Room; arcs are its Bounds | None: no format change, no new subject kind | A Wall across the rotunda makes two Rooms; removing an arc leaves no Room at all (an exedra); the outside face belongs to nobody |
-| **A stored Layout element** | An authored record naming the member Walls and the form ("round, r = 4 m") | Format bump, a new subject kind, membership upkeep in every topology planner | Membership drifts unless every planner maintains it; a second grouping beside Rooms |
-| **Model C** | The single closed Wall | New connectivity primitive | See the table above |
+- **From an opened Room.** No gesture of its own. The Eraser's consequence line reads **Keeps
+  Gallery as an open space**. One history entry.
+- **From partial Walls.** Arm **Room** on the Build plate (registered today as planned: "Draw a
+  named room"). Hovering inside Walls that nearly enclose a place proposes the outline: Wall sides
+  in ink, the missing sides as cobalt dashes joining the free ends in order. Click commits and the
+  name is ready to type. Where the guess is wrong or there are no free ends to join, the creator
+  draws the open side with the same tool: click, click, like a Wall.
+- **From a floor.** A floor region drawn with the Terrace tool gets a Space that follows its
+  outline. Resizing the floor resizes the Space; they are not edited separately. This arrives with
+  floor regions, after the other two.
+- **Virtual edges.** Always drawn in Plan as a thin dashed ink line, in 3D only for the selected
+  Space, never for a visitor. With the Space selected, each virtual edge has a mid-grip that moves
+  it perpendicular to itself and end knobs that slide along the Walls they touch. A virtual edge is
+  a handle of its Space, not a subject: it has no Card and cannot be selected alone.
+- **Selection.** A click on the floor or the name label selects the Space, as a Room is selected
+  today. A click on a Wall selects the Wall. The Card names the kind, the area, the overhead
+  setting, and lists Bounds with virtual edges counted ("3 walls · 1 open side").
+- **Overlap.** A dragged edge stops at the neighbouring Space and the tag reads **Stops at Booth
+  2**. A proposal that would overlap is drawn in red dashes with the reason. Nothing is clamped
+  silently on commit.
+- **Removing.** An open space's scoped list has **Remove space**, which removes the name and the
+  generated surfaces and leaves the Walls. A Room has no such action: it is removed by removing its
+  Walls, as today.
 
-Reading of this, before evidence: **the Room is the right first carrier and probably the lasting
-one**, because it is how every other T1 shape already works. A Box whose Wall has been split is
-still one Room with five Walls; nobody asks for the Box back as an object. The rotunda differs in
-one way only: it has a parameter (radius) that spans its Walls. That is a whole-Room *action*, not
-a new entity.
+### Why this and not the alternatives
 
-The Room fails in the open-ring case, and that case is exactly an Open Space with a curved screen.
-I take that as a reason to keep the stored element out until Open Spaces is decided, not as a
-reason to add it now.
-
-**PLATE already has the rule for the parts**: "Expand reveals information, Focus deepens task
-context, Select changes canonical identity", and "do not fabricate selectable component identity".
-Here the parts are real Walls and the whole is a real Room, so nothing is fabricated in either
-direction: a click selects the arc Wall, the Room is one step up through the Card's context line
-and the Index, and whole-ring actions live on the Room.
-
-**Added to the spike's exit criteria** (S1):
-
-1. For each carrier, does the rotunda's identity (id, name, radius reading) survive: first attach,
-   second attach, detach back to isolated, an Opening placed and moved, a radius edit, Room move,
-   Duplicate, Undo and Redo of each?
-2. What happens to it when an interior Wall divides the rotunda, and when one arc is erased?
-3. Can radius be **stated from the carrier without a tolerance**, or only re-fitted from the arcs?
-   If only re-fitted, what is the smallest stored fact that makes it exact?
-4. With one arc selected, can the creator reach every other arc, the whole ring and the adjoining
-   Room in one step each, using only the existing Card, Index and Look vocabulary?
-5. Does a surface finish (T2) applied to "the rotunda's inside" survive each attach, as one finish?
-   See the [T1–T2 contract](#t1t2-contract).
-
-If the Room carrier passes 1, 3 and 4 and fails only the cases in 2, I recommend model B with the
-Room as carrier and the cases in 2 deferred to Open Spaces. If it fails 3, the choice is between a
-stored radius fact and model C, and that is the owner's call with the spike's numbers in hand.
-
-## Face and Unroll the room
-
-**Face this wall** is a Look action on the Wall Card (already listed, disabled). It asks the Camera
-authority for a face-on framing of the selected Wall, or of its sheet when unrolled. It composes
-with Unroll and never fires from it. The camera-core design already exists in #287's revision 1
-(`face` viewing intent, generalised 3D-to-3D transition) and was removed for scope and for the
-entry-preservation ruling, not because it was wrong. This is a near-term usability feature: Unroll
-at Flat plus Face is the "explicit elevation editing" the brief asks for, with the canonical
-Opening kit that already works on the sheet.
-
-**Unroll the room** is a later planned phase. It is a multi-Wall development: each boundary Wall's
-existing development map, concatenated in the Room's boundary order, always showing the Room-side
-face. It needs answers that the Layout contract still lists as open (D5: display cut for
-multi-Wall loops; corner presentation; shared Walls; what Put back returns to). Sketch 5 shows the reading.
-
-*Revision 2 correction.* Revision 1 made Unroll the room wait for Face and for the connected-curve
-decision. Neither is a dependency. The strip is a concatenation of per-Wall development maps that
-#287 already ships, it works on a plain rectangular Room, and it works the same whether a rotunda
-is one Wall or four arcs. Model B only raises its *priority*, because the strip is then the way to
-see a connected rotunda's inside as one sheet. Its one real blocker is the owner decision on D5.
-Face does not block it either: Unroll preserves the view by ruling.
-
-Neither is a standalone phase with its own surface. Both live in the existing Card foot, the Stage
-state pill and the reading control.
-
-## Open Spaces
-
-**What exists.** The Layout contract already names the destination: physical architecture, derived
-spatial topology and a semantic spatial model (Space, Site, Building, Level, Zone) are three
-things; "Indoor Rooms are one kind of semantic Space; future outdoor/open regions must not require
-pretending the world is one giant Room"; "the exact future schema is not ratified yet; do not
-invent implementation types ahead of planning." PLATE's Index already speaks of Spaces and Zones.
-Code has only `LayoutWallFirstRoom`.
-
-**Three things to keep apart.** Sketch 8.
-
-| | Is | Owner today | Example |
-| --- | --- | --- | --- |
-| **Space identity** | A named place a creator and a visitor can refer to: name, scope for Paint and the Index, a target for Experience | Bundled into the Room record | "Terrace", "Booth 3" |
-| **Extent** | Where the place is. *Derived* from enclosing Walls, or *stated* by the creator where no Walls enclose it | Derived only (`boundary`) | A face of the Wall graph; a drawn outline |
-| **Physical floor or slab** | Geometry that can be stood on, finished, seen and supported from | Generated per Room from `floorThickness`; one Floor datum for the document | A deck, a plinth floor, a stage |
-
-A pavilion is a slab, a canopy, some posts and a name. A terrace is a slab and a name. A booth is
-three Walls that do not close, a slab or none, and a name. In none of them does the name carry the
-geometry.
-
-**Position.**
-
-1. **The floor comes first and belongs to verticality.** A floor or platform region is the mirror
-   of V1's overhead region: Layout-owned, independent of any Room, with a footprint, a height and a
-   thickness. The V-plan should treat **horizontal regions as one family** (overhead, floor,
-   platform) and decide whether it is one kind with a role or two kinds. This alone delivers a
-   visible terrace and gives T2 a floor to finish.
-2. **Space identity comes second and is research now.** The open questions are product questions
-   that an encoding would answer by accident:
-   - Is a Room a Space whose extent happens to be derived, so one identity survives closing and
-     opening its Walls? Or are Room and open Space separate kinds with a conversion?
-   - Do open Spaces **partition** the World like Rooms, or may they **overlap**? If they overlap,
-     how is an open Space different from PLATE's Zone?
-   - What does the creator do to make one: draw an outline, promote a floor region, or name a
-     place where a Room used to be?
-   - What is the extent of a booth: the hull of its Walls, a drawn outline, or its slab?
-3. **No schema here.** I am deliberately not proposing a `Space` record, a kind enum or an owner
-   for the outline. The contract forbids it ahead of planning and the evidence is not in.
-
-**Pushback.** I would not let Open Spaces into the immediate batch, and I would not start its plan
-until V1's region encoding exists, because Space extent will want to reference it. The single
-piece worth pulling forward is the fragility noted above: if erasing one Wall of a named Room
-destroys the Room, its name and (later) its floor finish, creators meet the Open Space problem as
-*data loss* long before they ask for a pavilion. S2 should establish that behaviour first.
-
-**Classification.** Future capability (`layout.space`, *new*). Research phase **S2** now, on paper
-and fixtures. Floor and platform regions inside the verticality plan. Dedicated Space plan after V1.
+| Alternative | Why not |
+| --- | --- |
+| Room and open Space as two kinds with a conversion | Two ids for one place across an ordinary edit; every reference (finish, Experience target, Index) would need re-pointing |
+| Free outlines with no physical anchor | Names with nothing under them; undiscoverable in 3D; no natural end of life |
+| Overlap allowed, with priority | Point location becomes a rule to learn; Paint scope and the Index stop being predictable |
+| Full partition of the World | Forces a Space onto ground nobody named; contradicts the Layout contract's "not one giant Room" |
+| Floor regions first, Space later (revision 2) | Withdrawn. The approved conversion policy needs no region: the outline generates the floor. Waiting for V1 would leave the data-loss case open for no reason |
 
 ## Interior Reveal
 
-**What exists.** PLATE lists Lift and Reveal among temporary readings, says "a Ceiling [may offer]
-Lift or Look up", places Lift behind the reading control, and states that "the near-wall cutaway,
-X-ray overhead and Focus height are viewing state". Its open-issues list says the cutaway is
-automatic with no hold-to-see-outside. The Layout contract defines typed **cut / projected /
-hidden** representation streams with source identity, and a Reveal affordance that "changes
-presentation and interaction eligibility for one source without touching depth or document
-history". What is built is not established *(verify)*.
+Two readings, both editor-session state over Layout's representation. Sketch 9.
 
-**Who owns what.** Sketch 9. Nothing here is new authority; the point is to stop it leaking.
+**Lift** removes overheads from view.
 
-| Authority | Owns in Reveal | Never |
+- *Enter:* the reading control's ▾ **Lift**, or the Look icon on a Room, Space or overhead Card.
+  With a Space selected or the Camera inside one it lifts that Space; otherwise everything.
+- *While active:* a state pill reads **Lift · Gallery ▾ · Put back**; the ▾ switches between this
+  Space and everything. Each lifted overhead leaves a thin dashed outline at its true position.
+  Clicks pass through to the interior. Clicking the outline, or the Index row, selects the
+  overhead, which then draws as a translucent ghost so it can be edited in place.
+- *Exit:* **Put back**, Escape at the temporary-reading level, or leaving the project. Lift
+  survives a switch to 2D and back. It is not saved, not in history and Undo does not touch it.
+- *Never:* moves the Camera, changes lighting, or appears in Preview, a snapshot or a release.
+
+**Near-wall cutaway** is PLATE's automatic behaviour: inside a Space in 3D, Walls between the
+Camera and the interior are cut to a low stub and are click-through, sparing the selected
+subject's host Wall.
+
+- *Control:* one switch in the reading control's ▾, **Near walls: Cut | Whole**, and holding a key
+  shows them whole for as long as it is held. This closes PLATE's listed gap ("no
+  hold-to-see-outside").
+- *Appearance:* the stub's cap is plain paper with an ink edge. Yellow is the Slice's alone.
+- *Selection:* clicking the stub selects the Wall and restores it whole while selected.
+- *No pill:* it is viewing state, not a reading the creator entered. PLATE already says so.
+- *No pinning to a named Wall.* That was proposed in revision 2 and is withdrawn: a deliberate cut
+  is what Slice is for.
+
+Ownership is unchanged from the Unroll precedent. Layout representation draws the lifted or cut
+state with source identity on every primitive; the editor session holds which reading is on;
+Camera supplies the pose and stores nothing; lighting stays as built; Experience gets nothing.
+
+## Slice
+
+PLATE specifies it and the dock already shows its disabled button. This is its interaction design.
+Sketch 10.
+
+**Level cut.** A horizontal plane at the Height Sheet's height.
+
+- *Enter:* arm Slice; the palette offers **Level** and **Drawn**, Level first. The plane appears at
+  the Sheet's current height as a translucent yellow sheet across the Layout bounds.
+- *Adjust:* drag the Sheet's knob; the plane follows and snaps to the Sheet's ticks (Wall tops,
+  found surfaces, pins). The pill reads **Cut at 1.20 m · depth ▾ · Put back**. Depth chooses how
+  far below the plane is shown: to the floor by default.
+- *Reading:* everything above the plane is not drawn. Cut Walls show a yellow-edged cap. Openings
+  the plane passes through are shown cut. Overheads above the plane are gone, so a Level cut below
+  the ceilings needs no Lift.
+- *Working in it:* the cut is a reading, not a mode. After placing it the creator returns to
+  Select and edits normally: places objects, draws Walls, aims lights. Hidden subjects stay
+  reachable from the Index; selecting one draws it as a ghost.
+- *Exit:* Put back or Escape. One Slice exists at a time; a new one replaces the old.
+
+**Drawn cut.** A vertical plane along a drawn segment.
+
+- *Draw:* like a Wall: start, end, 45° soft snap, live length tag. It cuts only within its length.
+- *Reading:* the side toward the Camera at the moment of drawing is hidden. The pill reads
+  **depth · Flip · Face · Section · Put back**.
+- *Handles:* end points redraw the line, the line moves it, a depth ray sets how far behind the
+  plane is shown (the grammar's Slice row).
+- *Face* squares the Camera to the cut through the same `face` viewing intent as Face this wall.
+  *Section* is the flat measured reading of that cut. Both exist only while a drawn Slice does.
+
+**Priority against the automatic cutaway.**
+
+| | Level cut | Automatic near-wall cutaway |
 | --- | --- | --- |
-| **Layout representation** (runtime-safe, consumes the one compiler) | *How* a Wall or overhead is drawn when cut, lifted or hidden: the typed streams, the cut cap, the ghost outline, source identity on every primitive | Which sources are revealed. A second geometry |
-| **Editor session** | *Which* sources are revealed and by which reading (Lift, Reveal, cutaway on or off), exactly like the Unroll session: not serialized, not in history, untouched by Undo | Authored truth. Anything a visitor loads |
-| **Camera** | The pose. An automatic cutaway is a pure function of the pose and the compiled geometry, evaluated by the representation | Storing reveal state. Changing pose because something was revealed (the #287 entry ruling, again) |
-| **Scene / T2** | Lighting stays as built: a revealed surface still casts and blocks light (#289's requirement, accepted) | Relighting because a ceiling is lifted |
-| **Experience** | Nothing in this capability | Inheriting the creator's reveal state. A visit, snapshot, thumbnail or published release always shows as-built |
+| What the creator must do | One drag of the Sheet | Nothing |
+| Predictable | Fully: one plane, one number | No: depends on Camera position and a guess at the working Space |
+| Covers | Every Room at once, ceilings included, overview and close work | The one Space the Camera is in; ceilings need Lift |
+| Fails how | Too low or too high: visibly, and fixed by the same drag | Flicker while orbiting; cuts a facade the creator wanted to judge |
+| Build risk | Clip plane and cap generation, both bounded | Tuning with no clear finish line |
+| Existing parts | Height Sheet, its cut-plane cue, PLATE spec | PLATE sentence only |
 
-**Identity.** A revealed Wall is the same Wall: same id, same Card, same Index row, same Openings,
-still selectable through its ghost and through the Index. It must not look deleted, damaged or
-displaced (PLATE's rule for every temporary reading).
+**Decision: Level cut before the cutaway.** It is the deterministic way to see inside and it makes
+the first authored ceilings workable even without Lift. If the truth check finds the cutaway
+already built, it gains its switch at once; if not, it is built after the Level cut, sized by what
+the Level cut leaves uncovered. The drawn cut follows, and Section last, because Section needs
+Layout's typed cut and projected streams, which nothing consumes yet.
 
-**Shape, smallest first.**
+Slice is in this batch's planning scope and outside its immediate implementation batch.
 
-- **X0. Truth.** Establish what the Stage does today for a closed Room seen from outside and from
-  above, and make PLATE's sentence true or correct it.
-- **X1. Lift.** One reading that takes overheads off the selection's Space, with a pill and Put
-  back. This is what V1 needs on the day it ships, so it lands **with V1 or just before it**.
-- **X2. Near-wall cutaway, made controllable.** Automatic by default; one control to hold it off
-  ("see outside") and one to pin it on a named Wall.
-- **X3. Reveal one source.** The per-source hide the Layout contract describes, as a reading with
-  a pill, entered from the selection. Only if X1 and X2 leave real cases uncovered.
+## Connected curved architecture
 
-**Pushback.** Hide, lift and cutaway were asked for as three features. I would build two readings
-(Lift, cutaway) and treat per-source hide as evidence-gated, because it is the one that tends to
-become persistent visibility state. And a **visitor-facing cutaway** (a dollhouse view in a
-published World) is a different capability: an authored presentation that Experience would invoke
-through the same Layout representation. It waits for demand and must not be reached by letting
-session state through.
+| | A. Seam-only attachment | B. Arc ring | C. Station-hosted Junctions |
+| --- | --- | --- | --- |
+| Idea | Lift the isolation refusal only at the seam Junction | Attaching to a circle splits it into open arc Walls between rim Junctions | A Junction sits on a Wall at a station without splitting it |
+| Rotunda + adjoining Room | No | Yes | Yes |
+| Format | None | None for the Walls | Incompatible |
+| Cost | Small, little value | One planner family | Every topology consumer |
 
-**Classification.** Future capability (`layout.interior-reveal`, *new*; the ledger owner is a
-question, Q15). X0 now. X1 tied to V1. Not in the fundamentals batch.
+A does not solve the case. C adds a second way to be connected, which "Junction ID equality is
+connectivity" exists to prevent. **B is the direction, with the Room as the identity carrier**
+(approved, subject to the spike).
 
-## T1–T2 contract
+### Whole and components
 
-#289 revision 2 asks Layout for three things: an opaque **surface identity** it publishes, a
-**Space-scope query** ("which surfaces belong with this one"), and a cutaway that does not relight.
-It keeps wall-face finishes (S5a) on its path and parks floors and overheads (S5b) until T1
-decides. I agree with all of that. This section states what T1 owes and where I would amend #289.
+Sketch 11.
 
-**1. Surface references are typed and built from authored ids.** "Opaque to T2" is right. Opaque
-must not mean minted per compile. A reference is the authored source plus a role: a Wall and a
-side; a floor surface and its owner; an overhead and top or underside. The Layout contract's
-derivation identity `{sourceId, stream, subRef?}` is the precedent. Wall-first gives one useful
-property for free: Walls end at Junctions, so one side of one Wall faces at most one Room, and
-"this Wall's side" is already as fine as "this Room's wall".
+- **The whole is the Room.** Clicking the rotunda's floor or its name selects it. Its Card reads
+  **Room · Round** and carries **Radius** and **Diameter**, Area, Overhead, Duplicate, Lift and
+  Unroll the room. On the Stage it shows a centre mark and one radius ray with a knob on the rim.
+- **Changing the radius** drags that knob or types the value. Every rim Junction moves radially,
+  attached Walls stretch, Openings keep their angle. If any neighbour would fail, the whole edit
+  refuses and names the Wall. One history entry.
+- **A component is a Wall.** Clicking a stretch of wall selects that arc Wall. Its Card has its own
+  Height, Thickness, Openings, Unroll and Split. Its Length is shown and marked **set by Radius**.
+  The Card's context line offers one step to each Room the Wall bounds.
+- **Edits that would break the circle refuse, with one workaround.** Bending a member arc, or
+  dragging a rim joint off the circle, refuses: "This wall is part of a round room. Change Radius,
+  or release round." **Release round** on the Room's scoped list turns the ring into ordinary
+  curved Walls. It is an ordinary undoable edit.
+- **Round is stated, not detected.** The Room carries the fact that it is round, with its centre
+  and radius. Drawing a circle states it. The radius edit maintains it. Release round, dividing the
+  Room with a Wall, or opening it by erasing an arc clears it, and the consequence line says
+  **Rotunda stops being round**.
+- **An isolated circle is unchanged**: one closed Wall. Radius appears on both the Wall Card, as
+  today, and the Room Card.
 
-**2. Identity continuity is a planner obligation, and it starts with Lane A.** Split, join,
-duplicate, attach-to-circle and weld all change which Wall ids exist. A finish keyed by Wall id
-must follow:
+### The spike (S1)
 
-| Operation | Lineage | Finish consequence |
-| --- | --- | --- |
-| Split (A1) | one Wall → the kept id and one new id | The new Wall inherits both sides |
-| Join (A2) | two Walls → one surviving id | Same finish: nothing to say. Different: the survivor's wins and the consequence line says so, or the join refuses. Owner choice (Q17) |
-| Duplicate (A4, A5) | source → copy | The copy carries the same shared Finish |
-| Attach to a circle (model B) | one closed Wall → N arcs | Every arc inherits. One more cost of B that C does not pay |
-| Divide a Room | one Room → the kept id and one new | The new Room's floor inherits |
-| Open an enclosure | Room → none, today | **Unresolved.** The floor finish has nothing to hang on. This is the Open Space question again |
+Bounded, core only, on fixtures. It must show, for model B with the Room as carrier:
 
-Layout stays appearance-free (#289 D1, agreed), so Layout cannot apply these itself. The contract
-is that every topology plan can **state its lineage** (old reference → new references), and that
-the finish follow-up commits in the same history entry. Whether that is a field on the plan result
-or derived from the before and after documents is for the joint plan. I would **not** add lineage
-output to A1 and A2 speculatively; I would require each of those PRs to state its lineage rule in
-words, so S5a's plan can rely on it.
+1. Arc accuracy after exact subdivision at 1, 2 and 4 attach points.
+2. Round, radius, name and id survive: first and second attach, detach back to one closed Wall,
+   an Opening placed and moved, a radius edit, Room move, Duplicate, and Undo and Redo of each.
+3. Radius is exact from the stated fact, with no fit and no tolerance.
+4. The radius edit moves every rim Junction and refuses as a whole when a neighbour fails.
+5. The clearing cases behave as written: divide, open, release.
+6. One surface reference for "the rotunda's inside" resolves to every arc after each attach.
 
-**3. Floor support has two meanings and both need the same answer.** A floor is a surface to
-*finish* (T2) and a surface to *stand things on* (Scene's qualified support, *Light it*'s upward
-cast, the visitor). Today both resolve through the Room's generated floor. Once horizontal regions
-exist, a slab or a canopy must be published through the **same** owner-qualified surface and
-support queries, or a terrace can be painted but not furnished. That goes into the V-plan's scope.
+If 2, 3 and 4 pass, connected curves gets its plan on model B. If 3 fails, the stored fact grows
+by whatever makes it exact. If 2 or 4 fails in a way a stored fact cannot fix, the spike reports
+what model C would cost and connected curves waits. It does not start C.
 
-**4. Sequencing.** S5a (wall faces) can proceed against landed Wall identity, with the lineage rule
-above. S5b should wait for the V-plan's horizontal-region decision, not only for "T1's identity":
-keying floor finishes to Room ids now would have to be re-keyed when floors become regions.
+## Face and Unroll the room
 
-**5. Amendments I would ask of #289.**
-- Add lineage to S5a's plan as a named requirement on T1 planners, with the table above.
-- Say what an **unresolved** surface reference does (kept and shown as detached, or dropped with a
-  consequence). It will happen: Undo across documents, an opened enclosure, a welded Wall.
-- Paint's widest scope is called **Space** while Space does not exist. Until it does, the query
-  answers with the Room. The label is fine; the plan should say the query, not the word, is the
-  contract.
-- The shared plan lives in **one** place. I propose it is the first commit of S5a's draft PR,
-  reviewed from both tracks, rather than a third document.
+**Face this wall** is an explicit Look action that squares the Camera to the selected Wall or its
+unrolled sheet, through one `face` viewing intent in the Camera authority. Unroll never invokes it:
+the #287 ruling that entry preserves the view stands. The same intent serves **Face the cut**.
+
+**Unroll the room** shows a Space's boundary Walls as one developed strip, each Wall's existing
+development map concatenated in boundary order with the Room-side face showing. Virtual edges
+appear as labelled gaps. Its only blocker was the display-cut rule, now decided: the strip starts
+at the selected Wall, or at the first Wall of the boundary when the Room is selected, and reads
+clockwise seen from inside. It depends on neither Face nor connected curves.
 
 ## Architectural volume and verticality
 
-The P26 contract already fixes the vocabulary: level, slope and gable Wall tops measured along the
-Wall; independent Layout-owned overhead regions with **closure** versus **suspended** intent;
-simple flat, shed and gable forms; truthful meets/gap relations with explicit one-shot fixes and no
-automatic following. The grammar already has a Roof row and PLATE already specifies Edit shape.
-What is missing is encoding, two owner decisions and an order.
+The P26 contract fixes the vocabulary. The order, each phase shippable alone:
 
-Recommended order, each phase shippable on its own:
+- **V1. Flat horizontal regions.** Layout-owned, independent of any Space: footprint, height,
+  thickness. Overhead regions (canopy, dropped ceiling) and floor regions (terrace, platform) are
+  one family. Heights are Floor-relative with the world height always shown. Each region publishes
+  surface references and support through the existing owner-qualified queries, so it can be
+  finished, stood on and hung from. Relations to Walls are read out as meets, gap or intended.
+- **V2. Wall top profiles.** Slope and gable tops measured along the Wall, level as the scalar
+  case, edited on the Unroll sheet.
+- **V3. Shed and gable forms**, Edit shape, and one-shot fit in both directions.
 
-- **V1. Flat overhead regions.** One Layout-owned region kind with footprint, height, thickness and
-  closure or suspended intent. Generated Room closure stays the fallback wherever no authored
-  closure covers. Delivers canopies, dropped ceilings, a lid lower than the Walls, and the first
-  truthful gap readout. No Wall change. Needs D2 and D3.
-- **V2. Wall top profiles.** One authoritative Wall top definition with level as today's scalar
-  case; slope and gable measured along the Wall. Format bump. Edited on the Unroll sheet, which is
-  why Face lands first. Opening fit, mesh, the development map and head-fixed arch rise all consume
-  it.
-- **V3. Shed and gable overhead forms** with Edit shape, and the one-shot "fit Walls to this roof"
-  and "fit roof to these Walls" fixes.
-- **Later, evidence-gated.** Named levels and multi-storey (`layout.multi-level`), then stairs.
-  Terrain belongs to T2.
+V1 before V2 is a product order: a flat canopy over today's Walls looks finished, while a sloped
+Wall top under today's flat lid looks broken. It is not a technical dependency. V2 does not depend
+on Face. V1 does not merge before Lift exists, because an authored ceiling the creator cannot see
+past is a regression.
 
-V1 before V2 is deliberate. A sloped Wall top under today's derived flat lid looks broken; a flat
-canopy over today's Walls looks finished. V1 also forces the ownership questions (D2, D3) that
-every later phase inherits, while the geometry is still trivial.
+Levels, stairs and terrain are outside this batch. A suspended region at height is the probe for
+whether mezzanine demand is real.
 
-*Revision 2.* Three changes to this plan's scope, none to its order:
+## T1–T2 contract
 
-- **Horizontal regions are one family.** Floor and platform regions join overhead regions in the
-  V-plan ([Open Spaces](#open-spaces)). Whether V1 ships both or overhead first is the plan's call.
-- **Regions publish surface and support queries** ([T1–T2 contract](#t1t2-contract)).
-- **V1 ships with Lift** ([Interior Reveal](#interior-reveal)). An authored ceiling the creator
-  cannot see past is a regression.
+#289 asks Layout for a published surface identity, a Space-scope query and a reveal that does not
+relight. Agreed. T1's side, as approved:
 
-And two dependencies removed: V2 does not need Face (the Unroll sheet already exists), and V1 before
-V2 is a product order, not a technical dependency. If the owner wants gabled end Walls first, V2
-can lead; I still recommend V1.
+1. **Surface references** are the authored source plus a role (a Wall and a side; a Space's floor;
+   a region's top or underside). Opaque to T2, never minted per compile.
+2. **Lineage is a duty of every topology planner.** Each states which references survive and which
+   are created from which.
 
-The plan for V1–V3 is Tier 2 and can be written **in parallel now**. It touches no file the
-fundamentals batch touches.
+   | Operation | Finish consequence |
+   | --- | --- |
+   | Split | The new Wall inherits both sides |
+   | Join | The survivor's finish wins. The consequence line names what is replaced; Undo restores it |
+   | Duplicate | The copy carries the same shared Finish |
+   | Attach to a circle | Every arc inherits |
+   | Divide a Room | The new Room's floor inherits |
+   | Open a Room | Nothing changes: the Space and its floor reference survive |
 
-## Roadmap
+3. **Space scope** is a Layout query. It answers for Rooms today and for open spaces when they
+   land, with no T2 change.
+4. **Floor and overhead finishes** key to the Space's generated surfaces or to a region. T2's S5b
+   waits for V1's regions; a Room floor can be finished as soon as S5a's plan defines the
+   reference.
+5. **The joint plan** is the first commit of #289's S5a draft PR, reviewed from both tracks. It
+   also settles what an unresolved reference does and how one history entry spans Layout and
+   Scene.
+
+No lineage field is added to any planner before that plan asks for it. Lane A's PRs state their
+lineage rule in words.
+
+## Execution sequence
+
+One format-changing slice is in flight at a time. Parallel work within a wave touches different
+planners.
 
 ```text
-Now          A0 docs · A1 split · A2 join · A3 arc · A4 duplicate (isolated)      small PRs, parallel
-             A8 repeat an Opening                                                 small PR
-             S1 connected-curve spike, incl. identity carrier                     research, parallel
-             S2 Open Space and Room-identity research · X0 reveal truth check     research, parallel
-             V  verticality plan (V1–V3, horizontal regions, support queries)     planning, parallel
+Wave 0   A0  docs promotion owed by #287
 
-Next         A5 duplicate any Room + overlap cue · A6 Face · A7 parity items      small plans in-PR
-             V1 flat regions  +  X1 Lift                                          land together
-             J  surface references and lineage (first commit of T2's S5a)         joint with #289
+Wave 1   A1 split · A2 join · A3 arc · A4 duplicate (isolated) · A8 repeat      implement, parallel
+         X0  what the Stage shows inside a closed Room today                    check
+         S1  connected-curve spike · S2  Space conversion spike                 fixtures, parallel
+         V-plan (regions, Wall tops, forms)                                     write
 
-Then         C  connected curves (model and carrier from S1)
-             R  Unroll the room                                                   needs D5 only
-             X2 controllable cutaway
-             V2 Wall top profiles → V3 shed and gable
-             Space plan (after V1's regions exist)
+Wave 2   A5 duplicate any Room + overlap cue · A6 Face · A7 parity items        implement
+         X1  Lift                                                               implement
+         SL1 Level cut                                                          plan, implement
+         SP-plan (Spaces)                                                       write, on S2
 
-Wait         weld a docked island · X3 per-source reveal · visitor cutaway ·
-             levels and multi-storey · stairs · Room rotation · curve crossing ·
-             bendable circles · hosted Junctions · stored architectural elements · terrain (T2)
+Wave 3   SP1 opened Room stays a Space · SP2 Space from partial Walls           format change
+         V1  flat horizontal regions                                            format change, after SP
+         J   surface references and lineage, with T2's S5a                      joint plan
+         X2  near-wall cutaway switch                                           implement
+
+Wave 4   C   connected curves (plan on S1) · R  Unroll the room
+         SL2 Drawn cut · SP3 Space from a floor
+         V2  Wall top profiles → V3 shed and gable → SL3 Section
+
+Outside  weld · per-source hide · visitor cutaway · Zones · hosted Junctions ·
+         levels · stairs · Room rotation · curve crossing · bendable circles · terrain
 ```
 
-## Answer to the main question
+The completeness lane is bounded by journeys J1–J6, not by a feature list. One depth plan is
+written while that lane ships. Every depth phase leads with an everyday increment: Lift before
+Slice's Section, an opened Room before a pavilion, a flat canopy before a gable.
 
-*How does T1 feel increasingly complete through ordinary workflows without delaying depth
-indefinitely?*
+## Readiness
 
-Run two lanes with three rules.
+| Part | State | What starts next |
+| --- | --- | --- |
+| A0, A1–A4, A8 | **Ready to implement.** Planners exist; boundaries and acceptance are written | PRs |
+| A5, A6, A7 | **Ready**, each with a short plan as its first commit | PRs after wave 1 |
+| S1, S2, X0 | **Ready to run.** Exits are stated | Fixtures and a browser check |
+| X1 Lift, X2 cutaway switch | **Ready for a short plan**, pending X0 | After X0 |
+| SL1 Level cut | **Ready for its plan.** Interaction is settled; cap generation is the implementer's | Plan |
+| Spaces | **Ready for its plan once S2 reports.** Concept and rules are settled; the encoding is not, on purpose | SP-plan |
+| Verticality | **Ready for its plan.** Order, datum and intent are settled | V-plan |
+| Connected curves | **Not ready for a plan.** Waits for S1 | S1 |
+| Section (SL3), SP3, V2, V3 | **Sequenced, not planned.** Each follows a slice that will inform it | Later |
 
-1. **The completeness lane is bounded by journeys, not by a feature list.** The six journeys in
-   [creator-journeys.md](./creator-journeys.md) define it. When they pass, the lane is empty until
-   real usage adds a journey. That is what stops fundamentals from expanding forever.
-2. **Exactly one depth plan is in flight at a time, and it is always being planned while the
-   completeness lane ships.** Depth is not delayed by fundamentals because they do not share
-   people-hours of the same kind: one is wiring and review, the other is decisions.
-3. **Every depth phase must lead with an everyday increment.** Face before Unroll the room. A flat
-   canopy before a gable. The arc ring before any new topology primitive. If a phase cannot name
-   its ordinary first slice, it is not ready.
+Overall: the proposal is ready to drive implementation of the fundamentals and implementation
+planning for Spaces, Reveal, Slice and verticality. It is deliberately **not** a technical plan for
+any of them: no schema, type name or format number is fixed here.
 
-## Recommendation
+## Risks accepted
 
-**Implement immediately** (no further design needed beyond the decisions marked in
-[implementation-prs.md](./implementation-prs.md)): A0 docs promotion, A1 split, A2 join, A3 Arc, A4
-duplicate an isolated Room, A8 repeat an Opening.
+1. **Spaces change what a Room record is.** Virtual edges mean a boundary that is no longer purely
+   derived, and reconciliation, the most delicate module in layout-core, must learn it. Accepted
+   because the alternative is the data loss creators hit today. S2 exists to find out early whether
+   it is tractable; if it is not, SP1 falls back to keeping only the name and id through a re-close.
+2. **Containment is allowed in one direction only** (open space inside a Room). A Room inside an
+   open space, or nested open spaces, refuse. Some real layouts will hit this. The workaround is to
+   make the outer place the Room or leave it unnamed.
+3. **A divided or opened rotunda stops being round.** A circular hall with a partition loses
+   radius editing. Accepted for a carrier that costs no new entity.
+4. **Round arcs refuse direct bending.** One more refusal for creators to meet, in exchange for a
+   radius that never silently stops working. Release round is the way out.
+5. **The Level cut ships before the automatic cutaway**, so until then creators take one deliberate
+   action to see inside, unless X0 finds the cutaway already works.
+6. **A docked duplicate leaves doubled Walls**, visibly flagged, with no weld in this batch.
+7. **Join can replace a finish.** It is named at the moment and reversible, but it is still a loss
+   the creator did not ask for.
+8. **Face re-admits a Camera intent that #287 removed.** Approved as an explicit action only.
+9. **Three format changes in sequence** (Spaces, V1, V2). Each is a bump with strict refusal of the
+   previous version and no migration, per the standing rule. Sequencing them avoids concurrent
+   bumps and costs calendar time.
+10. **The UX proposals are untested.** They follow PLATE and the grammar closely and reuse existing
+    surfaces, but no creator has tried them. Each slice's own browser check is the first test.
+11. **Much of "current behaviour" was read, not run.** The checks are listed and cheap, and two of
+    them (X0, S2) are scheduled as work.
 
-**Plan and research independently, starting now:** the verticality technical plan (V1–V3, Tier 2,
-now including floor regions, support queries and Lift); the connected-curve spike with its identity
-criteria (S1); the Open Space and Room-identity research (S2); the reveal truth check (X0).
+## Revision history
 
-**Implement next, each with a short in-PR plan:** A5 duplicate any Room with the overlap cue, A6
-Face this wall.
-
-**Plan jointly with T2:** surface references and lineage, as the first commit of #289's S5a.
-
-**Plan after its decision:** connected curves (S1), Unroll the room (D5), Space (V1's regions).
-
-**Do not start:** hosted Junctions, stored architectural elements, weld, per-source hide, visitor
-cutaway, levels, stairs, terrain, Room rotation, general curve noding.
-
-## Key tradeoffs
-
-| Tradeoff | If we go one way | If we go the other | Recommendation |
-| --- | --- | --- | --- |
-| Rotunda identity: Room as carrier vs stored element vs one Wall (C) | Room: free, consistent with every other shape, fails for divided and open rings | Stored element or C: exact and robust, at the cost of a format bump or a new connectivity primitive | Prove the Room carrier in S1; decide on its numbers |
-| Open Spaces: floor first vs Space first | Floor first: visible value, T2 gets a surface, Space waits | Space first: the semantic model is settled early, on thin evidence, with nothing to show | Floor first |
-| Reveal: readings vs visibility switches | Readings: cannot be forgotten or published, fewer controls | Switches: more flexible, become persistent state | Readings |
-| Finish continuity: lineage stated by planners vs re-matched by geometry | Lineage: exact, a small duty on every topology PR | Geometry matching: no planner duty, wrong at exactly the edits creators make most | Lineage |
-| Join with different finishes: survivor wins vs refuse | Wins: join always works, one finish silently lost unless named | Refuse: nothing lost, join becomes two steps | Survivor wins with a named consequence (Q17) |
-| Duplicate: copy-never-share vs duplicate-and-attach | Copy: predictable, leaves doubled Walls when docked | Attach: finishes the chapel journey, needs weld and reconciliation rules | Copy now, with an overlap cue; weld on evidence |
-| V1 before V2 | Canopies and ceilings first, Lift required at once | Gabled halls first, under a flat lid | V1 first |
-
-## Where I held and where I moved
-
-| Review point | Outcome |
-| --- | --- |
-| A connected rotunda is one architectural object | **Moved.** "Derived Round" was too weak. Identity needs a carrier; the spike now tests three |
-| …so it should be one stored object | **Held, pending evidence.** The Room may already be that object. A stored element is not ruled out |
-| Open Spaces | **Moved in scope, held in order.** Planned as a capability; floor regions before Space; no schema |
-| Interior Reveal | **Moved.** Planned, and tied to V1. **Held:** two readings, not three features; no visibility switches; never visitor-facing by leakage |
-| T1–T2 contract | **Moved.** Lineage is now a stated duty of Lane A's planners. **Held:** nothing is added to A1 and A2 speculatively |
-| Room duplication overlap | **Corrected.** J4 was wrong; overlap cue added; weld named and deferred |
-| Opening Repeat | **Corrected.** Added as A8, ahead of Face |
-| Room Unroll, connected curves and verticality dependencies | **Corrected.** Three false dependencies removed; one real one added (V1 needs Lift) |
+- **r1.** Fundamentals as a wiring gap; connected-curve models; Face and Unroll the room;
+  verticality order.
+- **r2.** Rotunda identity requirement; Open Spaces, Interior Reveal and the T1–T2 contract added;
+  Opening Repeat found; docked duplicates found to overlap; three false dependencies removed.
+- **r3.** Owner decisions approved and folded in. Spaces resolved to one concept with a conversion
+  policy, replacing "floor first". Reveal reduced to Lift and a cutaway switch. Slice added and
+  ranked ahead of the automatic cutaway. Rotunda whole and component editing designed. Sketches
+  rewritten as step-by-step UX proposals. Acceptance criteria added to every slice.

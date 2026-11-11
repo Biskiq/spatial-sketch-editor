@@ -11,7 +11,7 @@ owns claims/review; [focus](../../focus.md) owns current priority.
 | Proposed work | Read when pursuing it |
 | --- | --- |
 | Expressive Walls, Circular Rooms and Wall Unfolding (draft plan) | [Implementation plan](./t1-spatial-world/expressive-walls/implementation-plan.md) |
-| T1 next batch: editing fundamentals, connected curves, Face/Unroll the room, verticality (proposal) | [Proposal](./t1-spatial-world/next-batch/README.md) |
+| T1 next batch: fundamentals, Spaces, Interior Reveal, Slice, connected curves, verticality (proposal, revision 3) | [Proposal](./t1-spatial-world/next-batch/README.md) |
 | Prepared visitor publication | [Release and delivery](./t4-release/README.md) |
 | Native geometric depth / Object Studio | [T5 umbrella and first capability](./t5-expressive-geometry/README.md) |
 
