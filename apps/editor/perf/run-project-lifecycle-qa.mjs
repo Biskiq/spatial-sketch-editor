@@ -299,6 +299,7 @@ try {
 
   const cliPath = resolve(repoRoot, 'node_modules/@playwright/test/cli.js');
   const grep = process.env.PROJECT_LIFECYCLE_QA_GREP;
+  const spec = process.env.PROJECT_LIFECYCLE_QA_SPEC ?? 'perf/flows/project-lifecycle.spec.ts';
   const project = process.env.PROJECT_LIFECYCLE_QA_PROJECT ?? 'chromium';
   if (!['chromium', 'chrome'].includes(project)) throw new Error(`Unsupported QA Playwright project: ${project}`);
   playwrightChild = spawn(process.execPath, [
@@ -310,7 +311,7 @@ try {
     '--workers=1',
     ...(process.env.PROJECT_LIFECYCLE_QA_HEADED === '1' ? ['--headed'] : []),
     ...(grep ? ['--grep', grep] : []),
-    'perf/flows/project-lifecycle.spec.ts'
+    spec
   ], {
     cwd: editorRoot,
     env: process.env,

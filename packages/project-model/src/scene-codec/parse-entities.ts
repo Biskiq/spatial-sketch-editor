@@ -20,6 +20,8 @@ import {
 } from '@portfolio/geometry-core';
 import { ARTWORK_MAX_IMAGE_EDGE, isArtworkAssetId, isArtworkImageEdge, isArtworkWidth } from '../artwork';
 import type { ArtworkImage, ArtworkLibraryEntry } from '../artwork';
+import { readArtworkFrame } from '../artwork-frame';
+import type { ArtworkFrame } from '../artwork-frame';
 import type {
 	SceneArtworkEntity,
 	SceneBoxDimensions,
@@ -759,12 +761,21 @@ export function parseArtworkLibraryEntry(input: unknown, path: string, issues: S
 }
 
 function parseArtworkEntity(input: JsonRecord, path: string, issues: SceneDocumentIssue[]): SceneArtworkEntity | undefined {
-	assertAllowedKeys(input, ['kind', 'id', 'name', 'position', 'rotation', 'source', 'widthMeters'], path, issues);
+	assertAllowedKeys(input, ['kind', 'id', 'name', 'position', 'rotation', 'source', 'widthMeters', 'frame'], path, issues);
 	const id = readRequiredString(input, 'id', path, issues);
 	const name = readRequiredString(input, 'name', path, issues);
 	const position = readVec3(input.position, `${path}.position`, issues);
 	const rotation = readVec3(input.rotation, `${path}.rotation`, issues);
 	const widthMeters = readRequiredNumber(input, 'widthMeters', path, issues);
+	let frame: ArtworkFrame | undefined;
+	let frameInvalid = false;
+	if ('frame' in input) {
+		const parsed = readArtworkFrame(input.frame);
+		if (parsed.error !== undefined) {
+			addIssue(issues, `${path}.frame`, 'invalid_frame', parsed.error);
+			frameInvalid = true;
+		} else frame = parsed.frame;
+	}
 	const sourcePath = `${path}.source`;
 	const source = input.source;
 	if (!isRecord(source) || source.kind !== 'image') {
@@ -773,12 +784,16 @@ function parseArtworkEntity(input: JsonRecord, path: string, issues: SceneDocume
 	}
 	assertAllowedKeys(source, ['kind', 'assetId', 'pixelWidth', 'pixelHeight'], sourcePath, issues);
 	const image = readArtworkImage(source, sourcePath, issues);
-	if (!id || !name || !position || !rotation || !image || widthMeters === undefined) return undefined;
+	if (!id || !name || !position || !rotation || !image || widthMeters === undefined || frameInvalid) return undefined;
 	if (!isArtworkWidth(widthMeters, image)) {
 		addIssue(issues, `${path}.widthMeters`, 'invalid_dimension', 'Artwork width and height must be between 0.001 and 1000 m');
 		return undefined;
 	}
-	return { kind: 'artwork', id, name, position, rotation, widthMeters, source: { kind: 'image', ...image } };
+	return {
+		kind: 'artwork', id, name, position, rotation, widthMeters,
+		source: { kind: 'image', ...image },
+		...(frame === undefined ? {} : { frame })
+	};
 }
 
 export function parseEntity(

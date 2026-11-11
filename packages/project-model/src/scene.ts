@@ -3,6 +3,7 @@ import {
   validateSceneDocument
 } from './scene-codec';
 import type { SceneValidationOptions } from './scene-validation';
+import type { ArtworkFrame } from './artwork-frame';
 
 export type Vec3 = [number, number, number];
 export type RoomId = string;
@@ -320,6 +321,8 @@ export type SceneArtworkEntity = Omit<SceneEntityBase, 'roomId' | 'scale'> & {
   kind: 'artwork';
   source: import('./artwork').ArtworkImageSource;
   widthMeters: number;
+  /** Optional generated framing presentation; absent means no frame and no Mat. */
+  frame?: ArtworkFrame;
   roomId?: never;
   scale?: never;
 };
@@ -534,7 +537,8 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
     return {
       kind: 'artwork', id: entity.id, name: entity.name,
       position: cloneVec3(entity.position), rotation: cloneVec3(entity.rotation),
-      source: { ...entity.source }, widthMeters: entity.widthMeters
+      source: { ...entity.source }, widthMeters: entity.widthMeters,
+      ...(entity.frame === undefined ? {} : { frame: { ...entity.frame } })
     };
   }
 
