@@ -63,12 +63,14 @@ report is correctly attributed to the tested queue commit and never mistaken for
 report. `status` discovery still accepts only a successful `push` run on `main`; merge-group reports
 are merge evidence, not main history.
 
-`check guards` must report on the queue commit. Because `merge_group` has no `pull_request` object,
-[event-labels.mjs](../../tools/harness/event-labels.mjs) resolves the queued pull request from
-`merge_group.head_sha` and unions the labels of the open PRs GitHub associates with it. If no pull
-request can be resolved, the job fails closed. A native batch does not expose the lower PRs' labels;
-an owner-approved check removal in a lower PR therefore fails the guard rather than passing
-unapproved. Re-run that PR alone (or merge it directly with owner authority) in that rare case.
+`check guards` must report on the queue commit. A `merge_group` payload has no PR number and its
+`head_sha` is the synthetic integration commit, not a PR head. The base branch comes from
+`merge_group.base_ref` (never the unavailable `github.base_ref`) and is validated against the
+repository default branch. [event-context.mjs](../../tools/harness/event-context.mjs) walks the
+synthetic commit's first-parent chain back to `base_sha`; each merge's second parent is a queued PR
+head, matched to an open PR through GitHub's own commit association. Labels from every entry are
+unioned, so an owner approval on an earlier PR in a stacked batch remains visible. A non-merge
+commit, an entry with no open PR, a head mismatch, or a non-default base fails closed.
 
 Merge-group concurrency is not cancelled: a queue group is already an isolated validation, and
 cancelling it would discard evidence GitHub is waiting for. Pull-request runs and `main` pushes keep
@@ -121,6 +123,7 @@ validation:
 | `max_entries_to_merge` | 1 | A batch merges one PR at a time |
 | `max_entries_to_build` | 3 | At most three PRs are validated concurrently |
 | `grouping_strategy` | `ALLGREEN` | Every PR in a batch must pass |
+| `merge_method` | `SQUASH` | Squash each queued PR, matching the repository convention |
 | `check_response_timeout_minutes` | 60 | Bounded wait for required checks |
 
 Verify the rule and the required contexts:
@@ -153,8 +156,10 @@ suite contract is restored with it.
   last pre-migration `main` report does not contain the new names, so the first post-merge report has
   no complete ancestor report and regression comparison is unavailable for that one merge. The
   second report restores it. Gate completeness is not affected.
-- **Batch label resolution.** Only the PRs GitHub associates with `merge_group.head_sha` are visible
-  to `check guards`; lower PRs' approvals are not exposed by the native payload. This fails closed,
-  never open.
+- **Queue commit shape.** The guards resolver depends on GitHub's two-parent-per-entry queue shape.
+  A different shape fails closed. This is intentional: the alternative, parsing the temporary branch
+  name, trusts a value the queued change can influence.
+- **PR association.** Each queued entry head must match an open PR through GitHub's commit
+  association. An unmatched entry fails closed rather than silently dropping its authorization.
 - **Queue provider.** Merge queue is native GitHub; this repository adds no custom orchestrator and
   no third-party queue.

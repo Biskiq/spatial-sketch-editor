@@ -38,7 +38,9 @@ required commands; root editor commands do not substitute for API or package che
 
 The default-branch ruleset requires the stable `merge gate`, `check guards` and `linux-x64`
 contexts. The same workflows also run on `merge_group`; the queue's synthetic commit is the tested
-commit in the provenance. An integration run for a pull request is not a main push report. See
+commit in the provenance. The guards job derives the base branch from `merge_group.base_ref` and
+enumerates the batch's PRs from the synthetic commit's first-parent chain. An integration run for a
+pull request is not a main push report. See
 [CI and merge automation](../../docs/operations/ci-merge-automation.md). Until a complete report
 exists for the actual main head, status remains unknown. Issue guards activate from the default
 branch. No live incident, review or claim demonstration should be fabricated to improve a report.

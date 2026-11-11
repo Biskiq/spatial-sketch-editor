@@ -29,7 +29,6 @@ const ISSUE_GUARDS = join(REPO_ROOT, '.github/workflows/issue-guards.yml');
 const GOLDENS = join(REPO_ROOT, '.github/workflows/native-form-goldens.yml');
 const RULESET = join(REPO_ROOT, '.github/rulesets/main-branch.json');
 const PRE_QUEUE_RULESET = join(REPO_ROOT, '.github/rulesets/main-branch.pre-merge-queue.json');
-const EVENT_LABELS = join(REPO_ROOT, 'tools/harness/event-labels.mjs');
 const TEMP = mkdtempSync(join(tmpdir(), 'harness-gate-'));
 const COMMIT = 'c'.repeat(40);
 
@@ -1375,8 +1374,11 @@ describe('workflow contract', () => {
 		expect(workflow).toContain('--ledger capabilities.json');
 		expect(workflow).toContain('--issues .harness/open-issues.json');
 		expect(workflow).toMatch(/\non:\n  pull_request:\n  push:\n    branches: \[main\]\n  merge_group:\n/);
-		expect(workflow).toContain('event-labels.mjs');
-		expect(workflow).toContain('merge_group.head_sha');
+		expect(workflow).toContain('event-context.mjs');
+		expect(workflow).toContain('steps.event.outputs.base_branch');
+		expect(workflow).not.toContain('${{ github.base_ref }}');
+		expect(workflow).toContain('pull-requests: read');
+		expect(workflow).toContain('Materialize the event base');
 		expect(workflow).not.toMatch(/\n    paths:/);
 
 		const matrix = JSON.parse(run(MATRIX, []).stdout);
@@ -1464,7 +1466,7 @@ describe('workflow contract', () => {
 			min_entries_to_merge_wait_minutes: 0,
 			max_entries_to_merge: 1,
 			grouping_strategy: 'ALLGREEN',
-			merge_method: 'MERGE'
+			merge_method: 'SQUASH'
 		});
 		expect(queue.parameters.max_entries_to_build).toBeGreaterThan(1);
 		expect(queue.parameters.max_entries_to_build).toBeLessThanOrEqual(3);
@@ -1474,70 +1476,5 @@ describe('workflow contract', () => {
 			desired.rules.filter((rule: any) => rule.type !== 'merge_queue')
 		);
 		expect(previous.conditions).toEqual(desired.conditions);
-	});
-
-	it('resolves guard labels for pull requests and merge groups, failing closed', () => {
-		const dir = tempDir('event-labels');
-		mkdirSync(dir, { recursive: true });
-		const script = join(dir, 'fake-gh.mjs');
-		const log = join(dir, 'calls.log');
-		writeFileSync(
-			script,
-			[
-				'#!/usr/bin/env node',
-				"import { appendFileSync } from 'node:fs';",
-				'const args = process.argv.slice(2);',
-				"if (process.env.FAKE_LOG) appendFileSync(process.env.FAKE_LOG, args.join(' ') + '\\n');",
-				"if (args[0] === 'api' && /\\/commits\\/[0-9a-f]+\\/pulls$/.test(args[1])) {",
-				"  const sha = args[1].match(/commits\\/([0-9a-f]+)/)[1];",
-				"  console.log(JSON.stringify(sha.startsWith('b') ? [] : [{ number: 12, state: 'open' }, { number: 9, state: 'closed' }]));",
-				'  process.exit(0);',
-				'}',
-				"if (args[0] === 'api' && /\\/issues\\/\\d+\\/labels$/.test(args[1])) {",
-				"  const number = args[1].match(/issues\\/(\\d+)/)[1];",
-				"  console.log(JSON.stringify(number === '12' ? [{ name: 'owner-approved-guard-change' }, { name: 'bug' }] : []));",
-				'  process.exit(0);',
-				'}',
-				"console.error('unexpected gh invocation: ' + args.join(' '));",
-				'process.exit(1);',
-				''
-			].join('\n')
-		);
-		chmodSync(script, 0o755);
-		const runLabels = (event: unknown) => {
-			counter += 1;
-			const eventPath = join(dir, `event-${counter}.json`);
-			writeFileSync(eventPath, JSON.stringify(event));
-			const out = join(dir, `labels-${counter}.json`);
-			const result = run(
-				EVENT_LABELS,
-				['--event-file', eventPath, '--repo', 'o/r', '--out', out, '--gh', script],
-				REPO_ROOT,
-				{ FAKE_LOG: log }
-			);
-			return { result, out };
-		};
-
-		const pull = runLabels({ pull_request: { number: 12 } });
-		expect(pull.result.status).toBe(0);
-		expect(JSON.parse(readFileSync(pull.out, 'utf8'))).toEqual([
-			'bug',
-			'owner-approved-guard-change'
-		]);
-
-		const group = runLabels({ merge_group: { head_sha: 'a'.repeat(40) } });
-		expect(group.result.status).toBe(0);
-		expect(JSON.parse(readFileSync(group.out, 'utf8'))).toEqual([
-			'bug',
-			'owner-approved-guard-change'
-		]);
-
-		// A queue commit with no open PR cannot authorize a removal.
-		const unassociated = runLabels({ merge_group: { head_sha: 'b'.repeat(40) } });
-		expect(unassociated.result.status).toBe(1);
-		expect(existsSync(unassociated.out)).toBe(false);
-
-		const other = runLabels({ push: { ref: 'refs/heads/main' } });
-		expect(other.result.status).toBe(1);
 	});
 });

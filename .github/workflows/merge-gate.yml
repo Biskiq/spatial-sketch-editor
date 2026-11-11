@@ -135,14 +135,16 @@ jobs:
   guards:
     name: check guards
     # The queue must report this required context too. A merge_group event has
-    # no pull_request object, so event-labels.mjs resolves the queued PR's
-    # labels from merge_group.head_sha and fails closed when it cannot.
+    # no pull_request object and github.base_ref is empty, so event-context.mjs
+    # derives the base from merge_group.base_ref and enumerates every queued PR
+    # from the synthetic commit's first-parent chain.
     if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
       issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -152,20 +154,28 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" --depth=1
-      - name: Read the pull request's labels
+      - name: Resolve event base and authorizing pull requests
+        id: event
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
         run: >-
-          node tools/harness/event-labels.mjs
+          node tools/harness/event-context.mjs
           --event-file "$GITHUB_EVENT_PATH"
           --repo "$REPOSITORY"
-          --out .harness/pr-labels.json
+          --repo-root .
+          --labels-out .harness/pr-labels.json
+          --github-output "$GITHUB_OUTPUT"
+      - name: Materialize the event base
+        env:
+          BASE_BRANCH: ${{ steps.event.outputs.base_branch }}
+        run: git fetch origin "${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" --depth=1
       - name: Refuse unapproved check removal or downgrade
+        env:
+          BASE_BRANCH: ${{ steps.event.outputs.base_branch }}
         run: >-
           node tools/harness/guards.mjs
-          --base "origin/${{ github.base_ref }}"
+          --base "origin/$BASE_BRANCH"
           --head HEAD
           --labels-file .harness/pr-labels.json
 
