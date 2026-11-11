@@ -42,7 +42,8 @@ The highest profile wins. A Git or event error blocks certification.
   area's matching test directory. Camera, navigation, experience and routes add the experience
   and museum tests outside museum layout. Unknown editor areas and static assets use a broader
   set of editor cohorts. Tests that read source text, mount routes or load modules at runtime
-  stay covered by area, even when they have no import edge to the changed file.
+  stay covered by area, even when they have no import edge to the changed file. Focused excludes
+  the curated Heavy lane. Critical changes and scheduled or manual Full runs retain those tests.
 - **Full** covers workspace packages, the API, tests and harnesses, workflow/configuration,
   repo routing and workflow policy, security, persisted contracts, public/visitor runtime and
   geometry/layout ownership. JSON and other structured runtime configuration are Full.

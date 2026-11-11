@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { ARCH_FILES } from '../../apps/editor/test-lanes.ts';
+import { ARCH_FILES, HEAVY_FILES } from '../../apps/editor/test-lanes.ts';
+
+const heavyFiles = new Set(HEAVY_FILES);
 
 // Area cohorts include source-reading, mounted, and dynamically loaded tests
 // that import-graph selection alone cannot reliably see. Keep the editor's
@@ -24,7 +26,7 @@ export function focusedFiles(plan, cwd = process.cwd()) {
 		.map((path) => path.slice('apps/editor/'.length))
 		.filter((path) => {
 			const [, , area, subarea] = path.split('/');
-			return areas.has(area) && !(area === 'museum' && subarea === 'layout');
+			return areas.has(area) && !heavyFiles.has(path) && !(area === 'museum' && subarea === 'layout');
 		});
 	return [...new Set([...ARCH_FILES, ...cohort])].sort();
 }

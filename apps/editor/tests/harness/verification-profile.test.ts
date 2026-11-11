@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 
+import { ARCH_FILES } from '../../test-lanes';
 import { REPO_ROOT } from '../helpers/docs-references';
 
 const PLAN = join(REPO_ROOT, 'tools/harness/plan.mjs');
@@ -145,8 +146,14 @@ it('certifies Minimal only with successful static checks and skipped test jobs',
 
 it('rejects missing, mismatched or failed focused evidence', () => {
 	const fixture = repo();
+	const cameraTest = 'tests/lib/museum/navigation/camera-motion.test.ts';
+	const heavyTest = 'tests/lib/museum/navigation/camera-motion-dense-sweeps.test.ts';
+	const baseSha = fixture.commit({
+		[`apps/editor/${cameraTest}`]: 'fixture',
+		[`apps/editor/${heavyTest}`]: 'fixture'
+	});
 	const head = fixture.commit({ 'apps/editor/src/lib/authoring/camera/dial.ts': 'fixture' });
-	const plan = JSON.parse(fixture.run(PLAN).stdout);
+	const plan = JSON.parse(fixture.run(PLAN, { baseSha }).stdout);
 	const focusedModule = pathToFileURL(join(REPO_ROOT, 'tools/harness/focused.mjs')).href;
 	const files: string[] = JSON.parse(execFileSync(process.execPath, [
 		'--input-type=module', '--eval',
@@ -154,8 +161,10 @@ it('rejects missing, mismatched or failed focused evidence', () => {
 		'console.log(JSON.stringify(focusedFiles(JSON.parse(process.argv[1]))))',
 		JSON.stringify(plan)
 	], { cwd: fixture.root, encoding: 'utf8' }));
+	expect(files).toEqual([...ARCH_FILES, cameraTest].sort());
+
 	const jobs = {
-		prepare: { result: 'success', outputs: { profile: 'focused', base: fixture.base } },
+		prepare: { result: 'success', outputs: { profile: 'focused', base: baseSha } },
 		suite: { result: 'skipped' },
 		api: { result: 'skipped' },
 		focused: { result: 'success' },
@@ -163,7 +172,7 @@ it('rejects missing, mismatched or failed focused evidence', () => {
 		goldens: { result: 'skipped' }
 	};
 	const args = ['--dir', 'artifacts', '--out', '.git/report.json'];
-	const aggregate = () => fixture.run(AGGREGATE, { args, jobs });
+	const aggregate = () => fixture.run(AGGREGATE, { args, jobs, baseSha });
 	expect(aggregate().status).toBe(1);
 	mkdirSync(join(fixture.root, 'artifacts'));
 	const provenance = { commit: head, status: 'complete', exitCode: 0 };
