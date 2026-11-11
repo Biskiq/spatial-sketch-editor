@@ -13,11 +13,13 @@
  * matched to open PRs through GitHub's own commit association, never through the
  * temporary branch name (a value the queued change can influence).
  *
- * Labels from every entry are unioned, so an owner approval on an earlier PR in
- * a stacked batch remains visible to `check guards`. Fail closed on a non-merge
- * commit in the chain, an entry with no open PR, a checked-out commit that is
- * not the event head, or a base ref other than the repository default branch.
- * Unreadable authorization is never treated as an empty approval.
+ * Every entry is matched to its own open PR and evaluated against its own
+ * integration delta with that PR's labels. There is deliberately no combined
+ * label set that could let an approval on one PR authorize another PR's removal.
+ * Fail closed on a non-merge commit in the chain, an entry with no open PR, a
+ * checked-out commit that is not the event head, or a base ref other than the
+ * repository default branch. Unreadable authorization is never treated as an
+ * empty approval.
  *
  * Usage:
  *   node tools/harness/event-context.mjs \
@@ -25,6 +27,7 @@
  *     --repo Biskiq/spatial-sketch-editor \
  *     --repo-root . \
  *     --labels-out .harness/pr-labels.json \
+ *     --entries-out .harness/queue-entries.json \
  *     --github-output "$GITHUB_OUTPUT"
  */
 import { execFileSync } from 'node:child_process';
@@ -41,6 +44,7 @@ function parseArgs(argv) {
 		repo: process.env.GITHUB_REPOSITORY ?? null,
 		repoRoot: '.',
 		labelsOut: '.harness/pr-labels.json',
+		entriesOut: null,
 		githubOutput: null,
 		gh: 'gh'
 	};
@@ -55,6 +59,7 @@ function parseArgs(argv) {
 		else if (arg === '--repo') options.repo = next();
 		else if (arg === '--repo-root') options.repoRoot = next();
 		else if (arg === '--labels-out') options.labelsOut = next();
+		else if (arg === '--entries-out') options.entriesOut = next();
 		else if (arg === '--github-output') options.githubOutput = next();
 		else if (arg === '--gh') options.gh = next();
 		else throw new Error(`unknown argument: ${arg}`);
@@ -159,16 +164,17 @@ function parentsOf(repoRoot, sha) {
 }
 
 /**
- * Every queued pull-request head, oldest first.
+ * Every queued entry, oldest first.
  *
- * The queue tip is the first parent and the entry's pull-request head is the
- * second, so walking first parents is exact for a standalone entry and for a
- * candidate built on earlier queued PRs. A different shape fails closed.
+ * Each entry carries the exact delta the queue tested: `base` is the previous
+ * queue tip (`base_sha` for the first entry), `head` is that entry's integration
+ * merge commit, and `prHead` is the merged pull-request head. Authorization is
+ * evaluated against this delta, never against the whole batch.
  *
  * @param {{repoRoot: string, baseSha: string, headSha: string}} input
- * @returns {string[]}
+ * @returns {{base: string, head: string, prHead: string}[]}
  */
-export function entryHeadsFromGroup({ repoRoot, baseSha, headSha }) {
+export function entriesFromGroup({ repoRoot, baseSha, headSha }) {
 	if (!SHA.test(baseSha) || !SHA.test(headSha)) {
 		throw new Error('merge group has an invalid base or head sha');
 	}
@@ -178,7 +184,7 @@ export function entryHeadsFromGroup({ repoRoot, baseSha, headSha }) {
 	}
 
 	let current = headSha;
-	const heads = [];
+	const entries = [];
 	const seen = new Set();
 	while (current !== baseSha) {
 		if (seen.has(current)) {
@@ -196,11 +202,11 @@ export function entryHeadsFromGroup({ repoRoot, baseSha, headSha }) {
 		if (entryHead === baseSha) {
 			throw new Error(`merge group commit ${current} has no pull-request head`);
 		}
-		heads.unshift(entryHead);
+		entries.unshift({ base: previousTip, head: current, prHead: entryHead });
 		current = previousTip;
 	}
-	if (heads.length === 0) throw new Error('merge group contains no queued entries');
-	return heads;
+	if (entries.length === 0) throw new Error('merge group contains no queued entries');
+	return entries;
 }
 
 function pullsForHead({ gh, repo, head }) {
@@ -226,8 +232,17 @@ function labelsForPull({ gh, repo, number }) {
 	return labels;
 }
 
+function labelsForNumbers({ gh, repo, numbers }) {
+	const labels = new Set();
+	for (const number of [...numbers].sort((left, right) => left - right)) {
+		for (const label of labelsForPull({ gh, repo, number })) labels.add(label);
+	}
+	return [...labels].sort();
+}
+
 /**
- * The validated event context plus the union of authorizing labels.
+ * The validated event context plus either the PR's labels or the per-entry
+ * queue authorization scopes. Merge groups never expose a combined label set.
  *
  * @param {{event: any, repo: string, repoRoot?: string, gh?: string}} input
  */
@@ -237,42 +252,54 @@ export function resolveEventContext({ event, repo, repoRoot = '.', gh = 'gh' }) 
 	}
 	const kind = eventKind(event);
 	const baseBranch = baseBranchFor(event);
-	const numbers = new Set();
 
 	if (kind === 'pull_request') {
 		const number = event.pull_request.number;
 		if (!Number.isInteger(number) || number <= 0) {
 			throw new Error('pull_request.number is missing');
 		}
-		numbers.add(number);
-	} else {
-		const group = event.merge_group;
-		const heads = entryHeadsFromGroup({
-			repoRoot: resolve(repoRoot),
-			baseSha: group.base_sha,
-			headSha: group.head_sha
-		});
-		for (const head of heads) {
-			const pulls = pullsForHead({ gh, repo, head });
-			if (pulls.length === 0) {
-				throw new Error(`queued head ${head} matches no open pull request`);
-			}
-			for (const pull of pulls) numbers.add(pull.number);
-		}
+		return {
+			event: kind,
+			baseBranch,
+			baseSha: null,
+			headSha: null,
+			prNumbers: [number],
+			labels: labelsForNumbers({ gh, repo, numbers: [number] })
+		};
 	}
 
-	const labels = new Set();
-	for (const number of [...numbers].sort((left, right) => left - right)) {
-		for (const label of labelsForPull({ gh, repo, number })) labels.add(label);
-	}
+	const group = event.merge_group;
+	const entries = entriesFromGroup({
+		repoRoot: resolve(repoRoot),
+		baseSha: group.base_sha,
+		headSha: group.head_sha
+	}).map((entry) => {
+		const pulls = pullsForHead({ gh, repo, head: entry.prHead });
+		if (pulls.length === 0) {
+			throw new Error(`queued head ${entry.prHead} matches no open pull request`);
+		}
+		const numbers = [...new Set(pulls.map((pull) => pull.number))].sort(
+			(left, right) => left - right
+		);
+		return {
+			base: entry.base,
+			head: entry.head,
+			prHead: entry.prHead,
+			prNumbers: numbers,
+			labels: labelsForNumbers({ gh, repo, numbers })
+		};
+	});
+	const prNumbers = [...new Set(entries.flatMap((entry) => entry.prNumbers))].sort(
+		(left, right) => left - right
+	);
 
 	return {
 		event: kind,
 		baseBranch,
-		baseSha: kind === 'merge_group' ? event.merge_group.base_sha : null,
-		headSha: kind === 'merge_group' ? event.merge_group.head_sha : null,
-		prNumbers: [...numbers].sort((left, right) => left - right),
-		labels: [...labels].sort()
+		baseSha: group.base_sha,
+		headSha: group.head_sha,
+		prNumbers,
+		entries
 	};
 }
 
@@ -290,15 +317,23 @@ function cli() {
 		repoRoot: options.repoRoot,
 		gh: options.gh
 	});
-	const labelsOut = resolve(options.labelsOut);
-	mkdirSync(dirname(labelsOut), { recursive: true });
-	writeFileSync(labelsOut, `${JSON.stringify(context.labels, null, 2)}\n`);
+	if (context.event === 'merge_group') {
+		if (!options.entriesOut) throw new Error('--entries-out is required for merge_group');
+		const entriesOut = resolve(options.entriesOut);
+		mkdirSync(dirname(entriesOut), { recursive: true });
+		writeFileSync(entriesOut, `${JSON.stringify(context.entries, null, 2)}\n`);
+	} else {
+		const labelsOut = resolve(options.labelsOut);
+		mkdirSync(dirname(labelsOut), { recursive: true });
+		writeFileSync(labelsOut, `${JSON.stringify(context.labels, null, 2)}\n`);
+	}
 	if (options.githubOutput) {
 		appendFileSync(options.githubOutput, `base_branch=${context.baseBranch}\n`);
 	}
 	console.log(
 		`harness event context: ${context.event} base=${context.baseBranch} ` +
-			`prs=${context.prNumbers.join(',') || '(none)'} labels=${context.labels.length}`
+			`entries=${context.entries?.length ?? 0} prs=${context.prNumbers.join(',') || '(none)'} ` +
+			`labels=${context.labels?.length ?? 'per-entry'}`
 	);
 }
 

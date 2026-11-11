@@ -1378,7 +1378,11 @@ describe('workflow contract', () => {
 		expect(workflow).toContain('steps.event.outputs.base_branch');
 		expect(workflow).not.toContain('${{ github.base_ref }}');
 		expect(workflow).toContain('pull-requests: read');
-		expect(workflow).toContain('Materialize the event base');
+		expect(workflow).toContain('--entries-out .harness/queue-entries.json');
+		expect(workflow).toContain('--entries-file .harness/queue-entries.json');
+		expect(workflow).toContain("if: github.event_name == 'pull_request'");
+		expect(workflow).toContain('EVENT_NAME');
+		expect(workflow).toContain('Materialize the pull request base');
 		expect(workflow).not.toMatch(/\n    paths:/);
 
 		const matrix = JSON.parse(run(MATRIX, []).stdout);

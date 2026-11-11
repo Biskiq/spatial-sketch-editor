@@ -165,19 +165,29 @@ jobs:
           --repo "$REPOSITORY"
           --repo-root .
           --labels-out .harness/pr-labels.json
+          --entries-out .harness/queue-entries.json
           --github-output "$GITHUB_OUTPUT"
-      - name: Materialize the event base
+      - name: Materialize the pull request base
+        if: github.event_name == 'pull_request'
         env:
           BASE_BRANCH: ${{ steps.event.outputs.base_branch }}
         run: git fetch origin "${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" --depth=1
       - name: Refuse unapproved check removal or downgrade
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BASE_BRANCH: ${{ steps.event.outputs.base_branch }}
-        run: >-
-          node tools/harness/guards.mjs
-          --base "origin/$BASE_BRANCH"
-          --head HEAD
-          --labels-file .harness/pr-labels.json
+        run: |
+          if [ "$EVENT_NAME" = "merge_group" ]; then
+            node tools/harness/guards.mjs \
+              --repo-root . \
+              --entries-file .harness/queue-entries.json
+          else
+            node tools/harness/guards.mjs \
+              --repo-root . \
+              --base "origin/$BASE_BRANCH" \
+              --head HEAD \
+              --labels-file .harness/pr-labels.json
+          fi
 
   gate:
     name: merge gate

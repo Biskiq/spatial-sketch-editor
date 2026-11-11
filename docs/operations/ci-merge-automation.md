@@ -68,9 +68,14 @@ are merge evidence, not main history.
 `merge_group.base_ref` (never the unavailable `github.base_ref`) and is validated against the
 repository default branch. [event-context.mjs](../../tools/harness/event-context.mjs) walks the
 synthetic commit's first-parent chain back to `base_sha`; each merge's second parent is a queued PR
-head, matched to an open PR through GitHub's own commit association. Labels from every entry are
-unioned, so an owner approval on an earlier PR in a stacked batch remains visible. A non-merge
-commit, an entry with no open PR, a head mismatch, or a non-default base fails closed.
+head, matched to an open PR through GitHub's own commit association.
+
+Each entry is evaluated separately: its own labels authorize only its own integration delta, from
+the previous queue tip to that entry's merge commit. The first entry starts at the event's exact
+`base_sha`; no `origin/main` fetch is used for a queue run, so a branch that advanced after the group
+was built cannot change the comparison. An owner approval on PR A therefore cannot authorize a check
+removal in unrelated PR B. A non-merge commit, an entry with no open PR, a head mismatch, or a
+non-default base fails closed.
 
 Merge-group concurrency is not cancelled: a queue group is already an isolated validation, and
 cancelling it would discard evidence GitHub is waiting for. Pull-request runs and `main` pushes keep
@@ -161,5 +166,7 @@ suite contract is restored with it.
   name, trusts a value the queued change can influence.
 - **PR association.** Each queued entry head must match an open PR through GitHub's commit
   association. An unmatched entry fails closed rather than silently dropping its authorization.
+- **Per-entry labels.** Authorization does not cross entry boundaries. A change that genuinely needs
+  the same owner approval in two queued PRs must carry the label on both.
 - **Queue provider.** Merge queue is native GitHub; this repository adds no custom orchestrator and
   no third-party queue.

@@ -7,9 +7,10 @@
  * entry's PR head as second parent. That makes a standalone group and a
  * candidate built on an earlier PR testable without a live queue.
  *
- * The stacked case is the authorization proof: the lower PR removes a tagged
- * check and carries the owner approval, while the top PR does not. The union of
- * the batch's PR labels must authorize the removal; a top-PR-only view must not.
+ * Authorization is per entry. The lower entry removes one tagged check and
+ * carries the owner approval; the top entry removes a different tagged check
+ * without approval. A union of the batch's labels would authorize both, so the
+ * negatives prove that neither PR's approval crosses into the other's delta.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
@@ -63,11 +64,12 @@ function git(repo: string, ...args: string[]) {
 }
 
 /**
- * Base has the tagged check. PR A removes it and is the lower entry. PR B is
- * built on A and adds an unrelated file. The queue commits merge each entry in
+ * Base has two tagged checks. PR A removes the first and is the lower entry.
+ * PR B is built on A and either adds an unrelated file or removes the second
+ * check (the unauthorized-cross-PR case). The queue commits merge each entry in
  * order, giving the real first-parent / second-parent shape.
  */
-function makeRepo() {
+function makeRepo({ topRemovesCheck = false } = {}) {
 	counter += 1;
 	const repo = join(TEMP, `repo-${counter}`);
 	const tests = join(repo, 'apps/editor/tests');
@@ -76,16 +78,17 @@ function makeRepo() {
 	git(repo, 'symbolic-ref', 'HEAD', 'refs/heads/main');
 	writeFileSync(
 		join(tests, 'a.test.ts'),
-		"it('[cap:cap.a core] works', () => {});\n"
+		"it('[cap:cap.a core] works', () => {});\n" +
+			"it('[cap:cap.b core] works', () => {});\n"
 	);
 	git(repo, 'add', '-A');
 	git(repo, 'commit', '-qm', 'base');
 	const base = git(repo, 'rev-parse', 'HEAD');
 
 	git(repo, 'checkout', '-q', '-b', 'pr-a', 'main');
-	writeFileSync(join(tests, 'a.test.ts'), '// removed by PR A\n');
+	writeFileSync(join(tests, 'a.test.ts'), "it('[cap:cap.b core] works', () => {});\n");
 	git(repo, 'add', '-A');
-	git(repo, 'commit', '-qm', 'remove the check');
+	git(repo, 'commit', '-qm', 'remove the first check');
 	const prA = git(repo, 'rev-parse', 'HEAD');
 
 	git(repo, 'checkout', '-q', '-b', 'queue-a', 'main');
@@ -93,7 +96,11 @@ function makeRepo() {
 	const queueA = git(repo, 'rev-parse', 'HEAD');
 
 	git(repo, 'checkout', '-q', '-b', 'pr-b', 'pr-a');
-	writeFileSync(join(repo, 'b.txt'), 'b\n');
+	if (topRemovesCheck) {
+		writeFileSync(join(tests, 'a.test.ts'), '// removed by PR B\n');
+	} else {
+		writeFileSync(join(repo, 'b.txt'), 'b\n');
+	}
 	git(repo, 'add', '-A');
 	git(repo, 'commit', '-qm', 'PR B');
 	const prB = git(repo, 'rev-parse', 'HEAD');
@@ -155,6 +162,7 @@ function runContext({
 	const eventPath = join(repo, `event-${counter}.json`);
 	const mapPath = join(repo, `gh-map-${counter}.json`);
 	const out = join(repo, `labels-${counter}.json`);
+	const entriesOut = join(repo, `entries-${counter}.json`);
 	const output = join(repo, `github-output-${counter}.txt`);
 	writeFileSync(eventPath, JSON.stringify(event));
 	writeFileSync(mapPath, JSON.stringify(map));
@@ -171,6 +179,8 @@ function runContext({
 			repo,
 			'--labels-out',
 			out,
+			'--entries-out',
+			entriesOut,
 			'--github-output',
 			output,
 			'--gh',
@@ -182,97 +192,167 @@ function runContext({
 			env: { ...process.env, FAKE_GH_MAP: mapPath }
 		}
 	);
-	return { result, out, output };
+	return { result, out, entriesOut, output };
 }
 
-function labelsOf(path: string): string[] {
+function readArray(path: string): any[] {
 	return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+function runGuards(repo: string, args: string[]) {
+	return spawnSync(process.execPath, [GUARDS, '--repo-root', repo, ...args], {
+		encoding: 'utf8'
+	});
 }
 
 describe('pull-request event context', () => {
 	it('keeps the PR base branch and labels', () => {
-		const { repo, queueB } = makeRepo();
-		git(repo, 'checkout', '-q', queueB);
-		const { result, out, output } = runContext({
+		const { repo } = makeRepo();
+		const { result, out, entriesOut, output } = runContext({
 			repo,
 			event: { pull_request: { number: 101, base: { ref: 'release/x' } } },
 			map: mapFor('a'.repeat(40), 'b'.repeat(40))
 		});
 		expect(result.status).toBe(0);
-		expect(labelsOf(out)).toEqual(['bug', 'owner-approved-guard-change']);
+		expect(readArray(out)).toEqual(['bug', 'owner-approved-guard-change']);
 		expect(readFileSync(output, 'utf8')).toContain('base_branch=release/x');
+		expect(existsSync(entriesOut)).toBe(false);
 	});
 });
 
 describe('merge-group event context', () => {
-	it('resolves a standalone queued PR from the synthetic commit', () => {
+	it('resolves a standalone queued PR to its own delta and labels', () => {
 		const { repo, base, queueA, prA, prB } = makeRepo();
 		git(repo, 'checkout', '-q', queueA);
-		const { result, out, output } = runContext({
+		const { result, out, entriesOut, output } = runContext({
 			repo,
 			event: mergeEvent({ base, head: queueA }),
 			map: mapFor(prA, prB)
 		});
 		expect(result.status).toBe(0);
-		// The branch name says pr-999; the labels come from GitHub's association
-		// for the synthetic commit's second parent.
-		expect(labelsOf(out)).toEqual(['bug', 'owner-approved-guard-change']);
+		expect(readArray(entriesOut)).toEqual([
+			{
+				base,
+				head: queueA,
+				prHead: prA,
+				prNumbers: [101],
+				labels: ['bug', 'owner-approved-guard-change']
+			}
+		]);
+		// A merge group must not expose a combined label file.
+		expect(existsSync(out)).toBe(false);
 		expect(readFileSync(output, 'utf8')).toContain('base_branch=main');
 	});
 
-	it('unions labels across a queue candidate built on an earlier PR', () => {
-		const { repo, base, queueB, prA, prB } = makeRepo();
+	it('pins the first entry to the event base_sha even when main advanced', () => {
+		const { repo, base, queueA, prA, prB } = makeRepo();
+		git(repo, 'checkout', '-q', 'main');
+		writeFileSync(join(repo, 'main-after-queue.txt'), 'advanced\n');
+		git(repo, 'add', '-A');
+		git(repo, 'commit', '-qm', 'advanced main');
+		const advanced = git(repo, 'rev-parse', 'HEAD');
+		git(repo, 'checkout', '-q', queueA);
+
+		const { entriesOut } = runContext({
+			repo,
+			event: mergeEvent({ base, head: queueA }),
+			map: mapFor(prA, prB)
+		});
+		const [entry] = readArray(entriesOut);
+		expect(entry.base).toBe(base);
+		expect(entry.base).not.toBe(advanced);
+	});
+
+	it('keeps labels and deltas separate across a stacked batch', () => {
+		const { repo, base, queueA, queueB, prA, prB } = makeRepo();
 		git(repo, 'checkout', '-q', queueB);
-		const { result, out } = runContext({
+		const { result, entriesOut } = runContext({
 			repo,
 			event: mergeEvent({ base, head: queueB }),
 			map: mapFor(prA, prB)
 		});
 		expect(result.status).toBe(0);
-		// PR B is the top entry and has no approval. PR A is the lower entry and
-		// does; the batch must see both.
-		expect(labelsOf(out)).toEqual(['bug', 'owner-approved-guard-change']);
+		const entries = readArray(entriesOut);
+		expect(entries).toHaveLength(2);
+		expect(entries[0]).toMatchObject({
+			base,
+			head: queueA,
+			prHead: prA,
+			prNumbers: [101],
+			labels: ['bug', 'owner-approved-guard-change']
+		});
+		expect(entries[1]).toMatchObject({
+			base: queueA,
+			head: queueB,
+			prHead: prB,
+			prNumbers: [102],
+			labels: ['bug']
+		});
+		expect(entries[0].labels).not.toEqual(entries[1].labels);
 	});
 
-	it('authorizes a lower entry removal through the batch, not the top PR alone', () => {
+	it('passes a stacked batch when each entry authorizes its own delta', () => {
 		const { repo, base, queueB, prA, prB } = makeRepo();
 		git(repo, 'checkout', '-q', queueB);
-		const { out } = runContext({
+		const { entriesOut } = runContext({
+			repo,
+			event: mergeEvent({ base, head: queueB }),
+			map: mapFor(prA, prB)
+		});
+		const guard = runGuards(repo, ['--entries-file', entriesOut]);
+		expect(guard.status).toBe(0);
+		expect(guard.stdout).toContain('no unapproved check or bug-state change');
+	});
+
+	it('does not let the lower PR approval authorize the top PR removal', () => {
+		const { repo, base, queueB, prA, prB } = makeRepo({ topRemovesCheck: true });
+		git(repo, 'checkout', '-q', queueB);
+		const { entriesOut } = runContext({
 			repo,
 			event: mergeEvent({ base, head: queueB }),
 			map: mapFor(prA, prB)
 		});
 
-		const authorized = spawnSync(
-			process.execPath,
-			[
-				GUARDS,
-				'--repo-root',
-				repo,
-				'--base',
-				base,
-				'--head',
-				queueB,
-				'--labels-file',
-				out
-			],
-			{ encoding: 'utf8' }
-		);
-		expect(authorized.status).toBe(0);
+		// This is the defect the per-entry check closes: a union of the batch's
+		// labels would authorize both removals.
+		const union = runGuards(repo, [
+			'--base',
+			base,
+			'--head',
+			queueB,
+			'--labels',
+			'owner-approved-guard-change'
+		]);
+		expect(union.status).toBe(0);
 
-		const topOnly = spawnSync(
-			process.execPath,
-			[GUARDS, '--repo-root', repo, '--base', base, '--head', queueB, '--labels', 'bug'],
-			{ encoding: 'utf8' }
-		);
-		expect(topOnly.status).toBe(1);
-		expect(topOnly.stderr).toContain('removed tagged check');
+		const perEntry = runGuards(repo, ['--entries-file', entriesOut]);
+		expect(perEntry.status).toBe(1);
+		expect(perEntry.stderr).toContain('entry 2 (#102)');
+		expect(perEntry.stderr).toContain('removed tagged check');
+	});
+
+	it('does not let the top PR approval authorize the lower PR removal', () => {
+		const { repo, base, queueB, prA, prB } = makeRepo();
+		git(repo, 'checkout', '-q', queueB);
+		const { entriesOut } = runContext({
+			repo,
+			event: mergeEvent({ base, head: queueB }),
+			map: mapFor(prA, prB, {
+				'labels:101': [{ name: 'bug' }],
+				'labels:102': [{ name: 'bug' }, { name: 'owner-approved-guard-change' }]
+			})
+		});
+
+		const perEntry = runGuards(repo, ['--entries-file', entriesOut]);
+		expect(perEntry.status).toBe(1);
+		expect(perEntry.stderr).toContain('entry 1 (#101)');
+		expect(perEntry.stderr).toContain('removed tagged check');
 	});
 
 	it('fails closed when a queued head has no open PR', () => {
 		const { repo, base, queueA, prA, prB } = makeRepo();
 		git(repo, 'checkout', '-q', queueA);
-		const { result, out } = runContext({
+		const { result, out, entriesOut } = runContext({
 			repo,
 			event: mergeEvent({ base, head: queueA }),
 			map: mapFor(prA, prB, { [prA]: [{ number: 101, state: 'closed' }] })
@@ -280,6 +360,7 @@ describe('merge-group event context', () => {
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain('matches no open pull request');
 		expect(existsSync(out)).toBe(false);
+		expect(existsSync(entriesOut)).toBe(false);
 	});
 
 	it('fails closed when an entry is not a two-parent merge', () => {
