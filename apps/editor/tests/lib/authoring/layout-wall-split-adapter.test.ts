@@ -99,6 +99,26 @@ function enclosureFixture(openingOffset: number): Fixture {
 	};
 }
 
+/** The same enclosure with a second Opening on the start side of the midpoint. */
+function twoSidedOpeningFixture(): Fixture & { readonly startOpeningId: string } {
+	const fixture = enclosureFixture(4);
+	const second = planCreateWallFirstOpening(
+		fixture.document,
+		{
+			wallId: fixture.wallId,
+			kind: 'window',
+			offset: 1,
+			width: 1,
+			height: 1.2,
+			sillHeight: 1
+		},
+		freshCapture(),
+		fixture.document.floor.id
+	);
+	if (second.kind === 'rejected') throw new Error(`A1 start-side Opening refused: ${second.rejection.message}`);
+	return { ...fixture, document: second.document, startOpeningId: second.changedOpeningIds[0]! };
+}
+
 /** One open curved Wall between the same two junctions, with one Opening. */
 function curvedFixture(): Fixture {
 	const base = createEmptyWallFirstLayoutDocument();
@@ -356,6 +376,41 @@ describe('T1 A1 — Split wall', () => {
 		expect(readmitted.kind).toBe('admitted');
 		if (readmitted.kind !== 'admitted') throw new Error(`Reload admission refused: ${readmitted.kind}`);
 		expect(stageEnvelope(readmitted.snapshot).units).toEqual(stageEnvelope(mounted.facade.snapshot()).units);
+	});
+
+	it('keeps Openings on both sides of the split with their ids and world positions', async () => {
+		const fixture = twoSidedOpeningFixture();
+		const mounted = await mount(fixture);
+		selectWall(mounted.facade, fixture.wallId);
+		settle(mounted.facade, 2);
+
+		const before = acceptedLayout(mounted.facade);
+		const beforeStart = openingStart(before, fixture.startOpeningId);
+		const beforeEnd = openingStart(before, fixture.openingId);
+
+		const split = stageCardActions(mounted.facade, {
+			sourceId: fixture.wallId,
+			sourceKind: 'wall',
+			ref: null
+		}).find((action) => action.id === 'layout-wall-split')!;
+		expect((await split.run()).kind).toBe('accepted');
+
+		const after = acceptedLayout(mounted.facade);
+		const startOpening = after.openings.find((candidate) => candidate.id === fixture.startOpeningId)!;
+		const endOpening = after.openings.find((candidate) => candidate.id === fixture.openingId)!;
+		// The start-side Opening stays on the source Wall at its original station.
+		expect(startOpening.wallId).toBe(fixture.wallId);
+		expect(startOpening.offset).toBeCloseTo(1, 9);
+		// The end-side Opening moves to the new fragment and its station rebases.
+		expect(endOpening.wallId).not.toBe(fixture.wallId);
+		expect(endOpening.offset).toBeCloseTo(1, 9);
+		// Both keep the world point they had before the split.
+		const afterStart = openingStart(after, fixture.startOpeningId);
+		const afterEnd = openingStart(after, fixture.openingId);
+		expect(afterStart[0]).toBeCloseTo(beforeStart[0], 9);
+		expect(afterStart[1]).toBeCloseTo(beforeStart[1], 9);
+		expect(afterEnd[0]).toBeCloseTo(beforeEnd[0], 9);
+		expect(afterEnd[1]).toBeCloseTo(beforeEnd[1], 9);
 	});
 
 	it('uses the station the pointer named on the Wall instead of the midpoint', async () => {
