@@ -1,0 +1,77 @@
+{
+  "gate": "T2 S0 Gate A",
+  "measuredAt": "2026-11-11",
+  "buildRevision": "d394522a1128d4ab0953cc2730b66cd0d82a57a8-dirty",
+  "readback": {
+    "method": "default-framebuffer readPixels immediately after render()",
+    "width": 512,
+    "height": 512,
+    "calibrationPassed": true,
+    "calibrationMaxChannelError": 0
+  },
+  "pipeline": {
+    "threeRevision": "187",
+    "colorManagement": { "enabled": true, "workingColorSpace": "srgb-linear" },
+    "renderer": {
+      "outputColorSpace": "srgb",
+      "drawingBufferColorSpace": "srgb",
+      "drawingBufferSize": [512, 512],
+      "pixelRatio": 1,
+      "toneMapping": 0,
+      "toneMappingLabel": "None",
+      "toneMappingExposure": 1,
+      "shadowMapType": 1,
+      "shadowMapLabel": "PCFShadowMap"
+    },
+    "material": { "type": "MeshStandardMaterial", "toneMapped": true, "mapColorSpace": "srgb" },
+    "stageSnapshotTarget": {
+      "width": 640,
+      "height": 360,
+      "textureColorSpace": "",
+      "textureType": "UnsignedByteType",
+      "textureFormat": "RGBAFormat",
+      "risk": "Three r187 renders a non-XR target in the linear working space; the PNG readback has no sRGB encode."
+    },
+    "lights": {
+      "directional": { "intensity": 3.141592653589793, "unit": "lux" },
+      "point": { "intensity": 3.141592653589793, "unit": "candela", "decay": 2, "distance": 0 },
+      "spot": { "intensity": 3.141592653589793, "unit": "candela", "decay": 2, "distance": 0, "angleRadians": 0.5235987755982988, "penumbra": 0 }
+    }
+  },
+  "artworkFidelity": {
+    "acceptance": { "midToneMeanDeltaE00Max": 2, "maxClippedPct": 1 },
+    "variants": [
+      { "key": "lambert-lit", "label": "Lambert · lit", "meanDeltaE00": 0, "midToneMeanDeltaE00": 0, "maxDeltaE00": 0, "p95DeltaE00": 0, "maxClippedPct": 0, "greyRampMonotonic": true, "chosen": true },
+      { "key": "none-lit", "label": "None · lit", "meanDeltaE00": 1.4787620859701802, "midToneMeanDeltaE00": 1.30083979054482, "maxDeltaE00": 5.164162941163454, "p95DeltaE00": 5.164162941163454, "maxClippedPct": 0, "greyRampMonotonic": true },
+      { "key": "aces-lit", "label": "ACES Filmic · lit", "meanDeltaE00": 3.253591381685217, "midToneMeanDeltaE00": 3.34905940142996, "maxDeltaE00": 5.573839213538156, "p95DeltaE00": 5.573839213538156, "maxClippedPct": 0, "greyRampMonotonic": true },
+      { "key": "agx-lit", "label": "AgX · lit", "meanDeltaE00": 6.414591074311353, "midToneMeanDeltaE00": 6.349642002911798, "maxDeltaE00": 10.995739629996184, "p95DeltaE00": 10.995739629996184, "maxClippedPct": 0, "greyRampMonotonic": true },
+      { "key": "neutral-lit", "label": "Neutral · lit", "meanDeltaE00": 3.8493229594316767, "midToneMeanDeltaE00": 4.067862795117521, "maxDeltaE00": 8.08783260065028, "p95DeltaE00": 8.08783260065028, "maxClippedPct": 0, "greyRampMonotonic": true },
+      { "key": "neutral-exposure-1.1", "label": "Neutral @ 1.1", "meanDeltaE00": 2.576761227753794, "midToneMeanDeltaE00": 2.727676958269755, "maxDeltaE00": 7.286340902274459, "p95DeltaE00": 7.286340902274459, "maxClippedPct": 0, "greyRampMonotonic": true }
+    ],
+    "chosen": { "key": "lambert-lit", "label": "Lambert · lit", "toneMapping": 0, "exposure": 1 },
+    "standardNoneWorstPatches": [
+      { "id": "near-black", "source": [18, 18, 20], "rendered": [35, 35, 36], "deltaE00": 5.164 },
+      { "id": "textile-dark", "source": [42, 38, 52], "rendered": [51, 48, 59], "deltaE00": 3.599 },
+      { "id": "neutral-dark", "source": [52, 52, 52], "rendered": [59, 59, 59], "deltaE00": 2.269 }
+    ]
+  },
+  "lightUnits": {
+    "referenceIntensity": 3.141592653589793,
+    "brightnessStops": [
+      { "stop": -2, "factor": 0.25, "intensity": 0.7853981633974483, "measuredRatio": 0.25238650153083003, "srgb": [66, 66, 66] },
+      { "stop": -1, "factor": 0.5, "intensity": 1.5707963267948966, "measuredRatio": 0.49579753091369966, "srgb": [92, 92, 92] },
+      { "stop": 0, "factor": 1, "intensity": 3.141592653589793, "measuredRatio": 1, "srgb": [128, 128, 128] },
+      { "stop": 1, "factor": 2, "intensity": 6.283185307179586, "measuredRatio": 2.0112694816590664, "srgb": [176, 176, 176] },
+      { "stop": 2, "factor": 4, "intensity": 12.566370614359172, "measuredRatio": 3.9986806896058136, "srgb": [239, 239, 239] }
+    ],
+    "spot": {
+      "angleRadians": 0.5235987755982988,
+      "angleDegrees": 30,
+      "distance": 1,
+      "expectedRadiusMeters": 0.5773502691896257,
+      "measuredRadiusMeters": 0.57421875,
+      "errorMeters": -0.003131519189625731
+    },
+    "range": { "limited": 0, "unlimited": 0.018500220128379697 }
+  }
+}

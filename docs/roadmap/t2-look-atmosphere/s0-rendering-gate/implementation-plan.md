@@ -1,8 +1,10 @@
 # T2 S0 — Rendering gate: implementation plan
 
-**Status:** draft plan, revision 1. This is the first commit of the draft PR that claims
-`look.rendering-gate`. It authorises **no production change**. Once the owner approves it, Gate A
-starts and the same PR carries the evidence and any minimal renderer change the evidence proves.
+**Status:** Gate A approved and measured, 2026-11-11. This PR claims the slice **`T2.S0`**, not a
+creator capability: `tools/harness/ledger.mjs` defines capability ids as things a creator would say
+they can do, and a rendering gate is an engineering slice, so no `capabilities.json` row is added.
+Gate A added a dev-only bench and **no production change**. Gate B and Gate C are **not authorised**;
+this draft PR carries the Gate A records and waits for the owner’s checkpoint.
 
 **Base:** `b9908410` — the approved PR #289 baseline (T2 Look & Atmosphere, revision 4). PR #289 is
 merged; this branch is based on its head, not on later `main`.
@@ -215,11 +217,13 @@ indoor verdict.
 
 **Acceptance:**
 
-- Each promise (top Sheen stop, see-through bases, Glow, shadow budget, Paper reflections) leaves
-  as **go**, **go with a renamed label**, or **wait**, with the image that decided it.
+- Each reflection promise (top Sheen stop, see-through bases, Glow) leaves as **go**, **go with a
+  renamed label**, or **wait**, with the image that decided it.
 - The indoor policy is one of: accept, damp by enclosure, or schedule an interior capture. It is
   not left implicit.
 - The reflection rebuild policy is throttled or on release, with a measured number supporting it.
+
+Shadow budget (D9) is E7 and Paper reflections are E5. Neither is an E4 acceptance criterion.
 
 **Stop:** if sky leak indoors is unacceptable and damping is insufficient, schedule the interior
 capture as its own slice and keep the top Sheen stop at **High gloss**. Do not ship a gloss label
@@ -315,12 +319,30 @@ runtime.
 
 | Decision | Recommendation | When |
 | --- | --- | --- |
-| Tone mapping | Adopt **NeutralToneMapping** if E2 confirms it preserves artwork better than ACES; otherwise no mapper for this batch. ACES is a stylistic choice, not a neutral default. | After E2 |
+| Tone mapping | **Measured: no mapper.** E2 rejected Neutral (mid-tone ΔE00 4.07), ACES (3.35) and AgX (6.35); None + Lambert scored 0 across all 18 patches. Gate B may reopen only through a D16 decision. | Gate A done |
 | D5 light units | Keep physical stored units; Brightness stops are a UI mapping fixed by E3. | After E3 |
 | D4 Paper reflections | **No Sky reflection on Paper**; a neutral studio reflection at most, and only if E5 shows it does not relight Paper. | After E5 |
 | D9 shadow budget | Set from E7; refuse in words beyond it. | After E7 |
-| D16 artwork response | Lit and matte, tone-mapped, with a measured ΔE tolerance. An unlit option is the fallback if E2 fails, not the default. | After E2 |
+| D16 artwork response | **Measured: lit, matte, diffuse-only.** `MeshLambertMaterial` + `NoToneMapping` was exact (ΔE00 0); the standard PBR material lifted near-black by ΔE00 5.16. No unlit option needed. | Gate A done |
 | Snapshot colour path | Treat F5 as a defect to verify and fix, not a look decision. | E6, before parity evidence |
+
+### Gate A outcome (2026-11-11)
+
+- **E1:** pipeline captured at Three r187: sRGB output, `srgb-linear` working space,
+  `NoToneMapping`, exposure 1.0, `PCFShadowMap`; readback calibration passed with maximum channel
+  error **0**.
+- **E2:** `MeshLambertMaterial` + `NoToneMapping` reproduced all 18 source patches exactly (ΔE00 0,
+  no clipping). The standard PBR material passed the mid-tone target but lifted near-black by 5.16;
+  ACES, AgX, Neutral and Neutral @ 1.1 all failed the mid-tone target.
+- **E3:** stored intensity is physical (candela for point/spot, lux for directional) with `decay = 2`;
+  intensity π produced unit irradiance at 1 m for all three kinds. The five Brightness factors
+  measured 0.252 / 0.496 / 1.000 / 2.011 / 3.999.
+- **Decision:** keep `NoToneMapping`, exposure 1.0, and give Artwork a diffuse-only lit material.
+  This keeps D16 lit and matte; it does not change the promise.
+- **Snapshot:** the 640 × 360 `UnsignedByteType` target has `NoColorSpace`, so r187's linear target
+  bytes are not sRGB-encoded. Gate A did not use it; E6 owns the fix.
+- **Unblocked:** S3 Lights and A1 Artwork may consume [pipeline.md](./pipeline.md) and
+  [artwork-fidelity.md](./artwork-fidelity.md). Gate B and Gate C remain waiting.
 
 ## 6. Deliverables
 
