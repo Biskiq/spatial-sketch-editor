@@ -2,10 +2,9 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, expect, it } from 'vitest';
 
-import { focusedFiles } from '../../../../tools/harness/focused.mjs';
-import { styleOnly } from '../../../../tools/harness/plan.mjs';
 import { REPO_ROOT } from '../helpers/docs-references';
 
 const PLAN = join(REPO_ROOT, 'tools/harness/plan.mjs');
@@ -92,8 +91,10 @@ it('requires identical non-CSS bytes and a plain terminal Svelte style block', (
 	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('minimal');
 	fixture.commit({ [path]: component.replace('Close', 'Open') });
 	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('focused');
-	expect(styleOnly(component, component.replace('<style>', '<style lang="scss">'))).toBe(false);
-	expect(styleOnly(component, component.replace('color: blue;', 'background: url(foo);'))).toBe(false);
+	fixture.commit({ [path]: component.replace('<style>', '<style lang="scss">') });
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('focused');
+	fixture.commit({ [path]: component.replace('color: blue;', 'background: url(foo);') });
+	expect(JSON.parse(fixture.run(PLAN, { baseSha }).stdout).profile).toBe('focused');
 });
 
 it('takes the highest profile across the complete queue delta, including earlier entries', () => {
@@ -135,7 +136,13 @@ it('rejects missing, mismatched or failed focused evidence', () => {
 	const fixture = repo();
 	const head = fixture.commit({ 'apps/editor/src/lib/authoring/camera/dial.ts': 'fixture' });
 	const plan = JSON.parse(fixture.run(PLAN).stdout);
-	const files = focusedFiles(plan, fixture.root);
+	const focusedModule = pathToFileURL(join(REPO_ROOT, 'tools/harness/focused.mjs')).href;
+	const files: string[] = JSON.parse(execFileSync(process.execPath, [
+		'--input-type=module', '--eval',
+		'import { focusedFiles } from ' + JSON.stringify(focusedModule) + '; ' +
+		'console.log(JSON.stringify(focusedFiles(JSON.parse(process.argv[1]))))',
+		JSON.stringify(plan)
+	], { cwd: fixture.root, encoding: 'utf8' }));
 	const jobs = {
 		prepare: { result: 'success', outputs: { profile: 'focused', base: fixture.base } },
 		suite: { result: 'skipped' },
