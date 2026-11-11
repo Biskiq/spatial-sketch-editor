@@ -1447,27 +1447,36 @@ export function createStageFacade(input: {
 		return direct;
 	}
 
-	function openTaskShowsSelectionMarks(): boolean {
+	/**
+	 * The adapter whose marks may stay visible under the open contributed task.
+	 * A task that opts into `marksWhileOpen` owns only its own selection marks;
+	 * another adapter's selected subject must not leak through the task surface.
+	 */
+	function openTaskMarkOwner(): string | null {
 		const owner = contributedTaskOwner;
-		if (owner === null) return false;
+		if (owner === null) return null;
 		ensureBindings();
-		return tasksOf().some(
+		const task = tasksOf().find(
 			(entry) =>
 				entry.adapterId === owner.adapterId &&
 				entry.id === owner.taskId &&
 				entry.marksWhileOpen === true
 		);
+		return task?.adapterId ?? null;
 	}
 
 	function selectionMarks(): readonly StageMarkView[] {
 		if (!isLive() || !worldMarksOffered()) return [];
 		syncDisclosureSelection();
-		if (session.task() !== null && !openTaskShowsSelectionMarks()) return [];
+		const taskOpen = session.task() !== null;
+		const taskMarkOwner = taskOpen ? openTaskMarkOwner() : null;
+		if (taskOpen && taskMarkOwner === null) return [];
 		const entry = primaryEntry(session.selectionState());
 		if (entry === null) return [];
 		ensureBindings();
 		const adapterEntry = adapterForSelection(entry);
 		if (adapterEntry === undefined) return [];
+		if (taskMarkOwner !== null && adapterEntry.adapter.id !== taskMarkOwner) return [];
 		const handle = adapterContext();
 		if (handle === null) return [];
 		let descriptors: readonly StageHandleDescriptor[] = [];
