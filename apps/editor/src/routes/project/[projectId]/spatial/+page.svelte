@@ -68,6 +68,7 @@
 		type StageInstrumentContent,
 		type StageCandidatePreviewView,
 		type StageGhostMesh,
+		type StageGuideView,
 		type StageOverlayContribution,
 		type StageSourceHit
 	} from '$lib/authoring/stage/stage-facade';
@@ -939,6 +940,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
 	let candidatePreviews = $state.raw<readonly StageCandidatePreviewView[]>([]);
+	let guides = $state.raw<readonly StageGuideView[]>([]);
 	let ghosts = $state<readonly StageGhostMesh[]>([]);
 	/**
 	 * Approved creator-model bytes for the accepted source, keyed by model resource
@@ -1377,6 +1379,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// projection.
 		markers = stage.overlays();
 		candidatePreviews = stage.candidatePreviews();
+		guides = stage.guides();
 		// The key is only evidence for the harness, so it must cost nothing in the
 		// ordinary build: no string building or marker scan when the flag is absent.
 		if (perfMarksEnabled()) {
@@ -4641,7 +4644,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					{#if experienceLens.lookThroughSession() === null}
 						<StageOverlay
 								lightGround={paperVisible || evaluation?.renderedReading === '3d'}
-								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
+								{markers} marks={[...marks, ...look.stageMarks]} {roomLabels} {guides} candidates={candidatePreviews} viewportWidth={rect?.width ?? 0} viewportHeight={rect?.height ?? 0} {tracePreview} hostTools={hostToolOverlay} onActivateDisclosure={(id) => { if (facade?.activateDisclosure(id) === true) { facade.notifySurfaceChange(); } }} />
 					{/if}
 					{#if lens === 'experience' && evaluation !== null && experienceLens.lookThroughSession() === null}
 						<ExperienceMarks

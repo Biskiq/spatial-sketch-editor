@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
-import type { SceneLightEntity, Vec3 } from '@portfolio/project-model';
+import type { SceneEntity, SceneLightEntity, Vec3 } from '@portfolio/project-model';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { armLight } from '$lib/authoring/look/light-tool.svelte';
 import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
@@ -55,10 +55,57 @@ function spotAt(position: Vec3, id = 'light-existing'): SceneLightEntity {
 	};
 }
 
+function pointAt(position: Vec3, range?: number): SceneLightEntity {
+	return {
+		kind: 'light',
+		light: 'point',
+		id: 'light-point',
+		name: 'Point light',
+		color: '#ffffff',
+		intensity: Math.PI,
+		castShadow: false,
+		position,
+		rotation: [0, 0, 0],
+		...(range === undefined ? {} : { range })
+	};
+}
+
+function directionalAt(position: Vec3): SceneLightEntity {
+	return {
+		kind: 'light',
+		light: 'directional',
+		id: 'light-sun',
+		name: 'Sun',
+		color: '#ffffff',
+		intensity: Math.PI,
+		castShadow: false,
+		position,
+		rotation: rotationForLightDirection([0, -1, 0])
+	};
+}
+
+function targetBox(): SceneEntity {
+	return {
+		kind: 'primitive',
+		primitive: 'box',
+		id: 'target-box',
+		name: 'Target box',
+		position: [3, 1, 0],
+		rotation: [0, 0, 0],
+		dimensions: { width: 1, height: 2, depth: 1 },
+		materialId: 'plaster-warm' as never,
+		castShadow: false,
+		receiveShadow: true
+	};
+}
+
 async function mounted(options: {
-	readonly entities?: readonly SceneLightEntity[];
+	readonly entities?: readonly SceneEntity[];
 	readonly scenePick?: (ray: unknown) => SceneRenderedHit | null;
+	readonly sceneBounds?: (id: string) => { readonly min: Vec3; readonly max: Vec3 } | null;
+	readonly rect?: typeof RECT;
 } = {}) {
+	const rect = options.rect ?? RECT;
 	const project = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'Light lifecycle',
@@ -66,7 +113,9 @@ async function mounted(options: {
 		scene: {
 			formatVersion: 1,
 			textures: [],
-			materials: [],
+			materials: [
+				{ id: 'material-target', name: 'Target', baseMaterialId: 'plaster-warm' as never }
+			],
 			entities: [...(options.entities ?? [])],
 			navigationNodes: [],
 			connections: []
@@ -83,9 +132,10 @@ async function mounted(options: {
 	const facade = createStageFacade({
 		snapshot: admitted.snapshot,
 		session,
-		...(options.scenePick === undefined ? {} : { scenePick: options.scenePick as never })
+		...(options.scenePick === undefined ? {} : { scenePick: options.scenePick as never }),
+		...(options.sceneBounds === undefined ? {} : { sceneBounds: options.sceneBounds })
 	});
-	const evaluated = facade.camera.evaluate(RECT, 1);
+	const evaluated = facade.camera.evaluate(rect, 1);
 	if (evaluated.kind !== 'evaluated') throw new Error('light fixture did not evaluate');
 	facade.acquireInspection('exclusive');
 	const host = createStageAcceptanceHost({
@@ -102,7 +152,7 @@ async function mounted(options: {
 		const registration = mountStageAdapter(facade, host, adapter);
 		if (registration.kind !== 'registered') throw new Error('light fixture adapter did not mount');
 	}
-	facade.camera.evaluate(RECT, 2);
+	facade.camera.evaluate(rect, 2);
 	return { facade, host };
 }
 
@@ -292,5 +342,195 @@ describe('S3a light adapter pointer lifecycle', () => {
 				forward[1] * (toTarget[1] / length) +
 				forward[2] * (toTarget[2] / length)
 		).toBeGreaterThan(0.999);
+	});
+
+	it('changes Spot Reach through the forward-axis handle instead of clamping to 0.1 m', async () => {
+		const { facade, host } = await mounted({
+			entities: [{ ...spotAt([0, 2, 0]), range: 3 } as SceneLightEntity]
+		});
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const mark = facade.marks().find((candidate) => candidate.id.includes('light-range'));
+		if (mark === undefined) throw new Error('the selected spot has no Reach mark');
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history().depth;
+		facade.pointerIntent({ phase: 'down', css: mark.anchor, evaluationId, handleId: mark.id });
+		facade.pointerIntent({
+			phase: 'move',
+			css: [mark.anchor[0] + 90, mark.anchor[1] + 25],
+			evaluationId
+		});
+		facade.pointerIntent({
+			phase: 'up',
+			css: [mark.anchor[0] + 90, mark.anchor[1] + 25],
+			evaluationId
+		});
+		await waitFor(() => host.history().depth === before + 1);
+		const light = lightsOf(facade)[0]!;
+		if (!('range' in light)) throw new Error('the Reach drag did not write a range');
+		expect(light.range).toBeGreaterThan(0.2);
+		expect(light.range).not.toBeCloseTo(3, 5);
+	});
+
+	it('publishes Point Reach and Spot soft-edge controls', async () => {
+		const point = await mounted({ entities: [pointAt([0, 2, 0])] });
+		const pointReference = sceneEntityReference(
+			'light-point',
+			point.facade.snapshot().domain.unitRevisions.scene
+		);
+		point.facade.setSelection({ ordered: [{ reference: pointReference }], primary: pointReference });
+		expect(point.facade.marks().map((mark) => mark.id)).toContain('light-reach');
+
+		const spot = await mounted({
+			entities: [{ ...spotAt([0, 2, 0]), range: 3, penumbra: 0.35 } as SceneLightEntity]
+		});
+		const spotReference = sceneEntityReference(
+			'light-existing',
+			spot.facade.snapshot().domain.unitRevisions.scene
+		);
+		spot.facade.setSelection({ ordered: [{ reference: spotReference }], primary: spotReference });
+		expect(spot.facade.marks().map((mark) => mark.id)).toContain('light-penumbra');
+	});
+
+	it('exposes persistent selection guides separately from candidate previews', async () => {
+		const { facade } = await mounted({ entities: [spotAt([0, 2, 0])] });
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		expect(facade.guides().map((guide) => guide.id)).toContain('light-guide');
+		expect(facade.candidatePreviews().map((candidate) => candidate.id)).not.toContain('light-guide');
+	});
+
+	it('exposes directional azimuth and elevation controls', async () => {
+		const { facade, host } = await mounted({ entities: [directionalAt([0, 2, 0])] });
+		const reference = sceneEntityReference(
+			'light-sun',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const ids = facade.marks().map((mark) => mark.id);
+		expect(ids).toContain('light-azimuth');
+		expect(ids).toContain('light-elevation');
+		const mark = facade.marks().find((candidate) => candidate.id.includes('light-azimuth'));
+		if (mark === undefined) throw new Error('the selected directional has no azimuth mark');
+		const beforeRotation = [...lightsOf(facade)[0]!.rotation];
+		const before = host.history().depth;
+		const evaluationId = facade.evaluationId()!;
+		facade.pointerIntent({
+			phase: 'down',
+			css: mark.anchor,
+			evaluationId,
+			handleId: mark.id
+		});
+		facade.pointerIntent({
+			phase: 'move',
+			css: [mark.anchor[0] + 80, mark.anchor[1] + 20],
+			evaluationId
+		});
+		facade.pointerIntent({
+			phase: 'up',
+			css: [mark.anchor[0] + 80, mark.anchor[1] + 20],
+			evaluationId
+		});
+		await waitFor(() => host.history().depth === before + 1);
+		expect(lightsOf(facade)[0]!.rotation).not.toEqual(beforeRotation);
+	});
+
+	it('uses viewport-correct rays for light picking with a nonzero Stage offset', async () => {
+		const rect = { left: 240, top: 110, width: 1280, height: 720, devicePixelRatio: 1 };
+		const rays: { origin: Vec3; direction: Vec3 }[] = [];
+		const { facade } = await mounted({
+			entities: [spotAt([0, 2, 0])],
+			rect,
+			scenePick: (ray) => {
+				rays.push(ray as { origin: Vec3; direction: Vec3 });
+				return null;
+			}
+		});
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const body = facade.marks().find((mark) => mark.id.includes('light-body'));
+		if (body === undefined) throw new Error('the selected light has no body mark');
+		const evaluationId = facade.evaluationId()!;
+		const expected = facade.pointerRay(
+			[body.anchor[0] + rect.left, body.anchor[1] + rect.top],
+			evaluationId
+		);
+		const target = facade.hostToolTarget({ evaluationId, css: body.anchor, tool: 'erase' });
+		expect(target.kind).toBe('hit');
+		expect(expected.kind).toBe('ray');
+		if (expected.kind !== 'ray') return;
+		expect(rays.length).toBeGreaterThan(0);
+		for (const ray of rays) {
+			expect(ray.origin).toEqual(expected.ray.origin);
+			expect(ray.direction).toEqual(expected.ray.direction);
+		}
+	});
+
+	it('deletes a selected light through the keyboard and eraser through the same Card action', async () => {
+		const keyboard = await mounted({ entities: [spotAt([0, 2, 0])] });
+		const reference = sceneEntityReference(
+			'light-existing',
+			keyboard.facade.snapshot().domain.unitRevisions.scene
+		);
+		keyboard.facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const before = keyboard.host.history().depth;
+		expect(keyboard.facade.selectionKeyIntent({ kind: 'delete' })).toMatchObject({
+			claimed: true,
+			adapterId: 'light'
+		});
+		await waitFor(() => lightsOf(keyboard.facade).length === 0);
+		expect(keyboard.host.history().depth).toBe(before + 1);
+
+		const eraser = await mounted({ entities: [spotAt([0, 2, 0])] });
+		const eraserReference = sceneEntityReference(
+			'light-existing',
+			eraser.facade.snapshot().domain.unitRevisions.scene
+		);
+		eraser.facade.setSelection({ ordered: [{ reference: eraserReference }], primary: eraserReference });
+		const body = eraser.facade.marks().find((mark) => mark.id.includes('light-body'));
+		if (body === undefined) throw new Error('the eraser target has no body mark');
+		const target = eraser.facade.hostToolTarget({
+			evaluationId: eraser.facade.evaluationId()!,
+			css: body.anchor,
+			tool: 'erase'
+		});
+		expect(target.kind).toBe('hit');
+		if (target.kind !== 'hit') return;
+		const answer = eraser.facade.eraseAnswer(target.adapterId, target.hit);
+		expect(answer?.kind).toBe('action');
+		if (answer?.kind !== 'action') return;
+		await answer.action.run();
+		await waitFor(() => lightsOf(eraser.facade).length === 0);
+	});
+
+	it('reads Lit by from object bounds rather than an object centre', async () => {
+		const { facade } = await mounted({
+			entities: [pointAt([0, 2, 0], 2.5), targetBox()],
+			sceneBounds: (id) =>
+				id === 'target-box'
+					? { min: [2, 0, -0.75], max: [4, 2, 0.75] }
+					: null
+		});
+		const reference = sceneEntityReference(
+			'target-box',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		const facts = facade.cardFacts({
+			sourceId: 'target-box',
+			sourceKind: 'entity',
+			reference,
+			ref: null
+		});
+		expect(facade.sceneBounds('target-box')).toEqual({ min: [2, 0, -0.75], max: [4, 2, 0.75] });
+		expect(facts.map((fact) => fact.label)).toContain('Lit by');
 	});
 });

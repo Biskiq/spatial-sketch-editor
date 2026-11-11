@@ -240,6 +240,30 @@ export type StageOverlayContribution = {
 };
 
 /**
+ * A persistent, world-space guide contributed by a domain binding.
+ *
+ * Unlike a candidate preview, this is not an uncommitted proposal: it stays
+ * while its subject is selected. The Stage projects both segment lists once
+ * through the same evaluation as the candidate layer, so the guide can never
+ * disagree with the geometry it describes.
+ */
+export type StageGuideContribution = {
+	readonly id: string;
+	readonly role: 'selection' | 'hover' | 'armed';
+	readonly segments: readonly (readonly [Vec3, Vec3])[];
+	/** Derived helpers (unbounded reach, stems) are drawn differently. */
+	readonly derivedSegments?: readonly (readonly [Vec3, Vec3])[];
+};
+
+/** One guide after the facade's single projection into Stage CSS space. */
+export type StageGuideView = {
+	readonly id: string;
+	readonly role: StageGuideContribution['role'];
+	readonly segments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+	readonly derivedSegments: readonly (readonly [readonly [number, number], readonly [number, number]])[];
+};
+
+/**
  * One candidate the creator is currently proposing, before acceptance.
  *
  * Domain contribution, in world coordinates. The Stage projects every point
@@ -632,6 +656,8 @@ export type StageAdapterBinding = {
 	 */
 	readonly heightTicks?: (context: StageAdapterContext) => readonly StageHeightTick[];
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
+	/** Persistent selected/armed guide lines; projected once by the host. */
+	readonly guides?: (context: StageAdapterContext) => readonly StageGuideContribution[];
 	/**
 	 * R217.S14 — the candidate geometry this binding proposes right now.
 	 *
@@ -968,6 +994,8 @@ export type StageFacade = {
 	/** Every scoped Card action contributed for a subject, in deterministic order. */
 	cardActions(subject: StageCardSubject): readonly StageCardActionRecord[];
 	overlays(): readonly StageOverlayContribution[];
+	/** Every adapter's persistent line guide, projected once into Stage CSS space. */
+	guides(): readonly StageGuideView[];
 	/** Every adapter candidate, projected once into Stage CSS space. */
 	candidatePreviews(): readonly StageCandidatePreviewView[];
 	graphics(): readonly StageWorldGraphic[];
@@ -2142,6 +2170,37 @@ export function createStageFacade(input: {
 						css: [marker.css[0] - left, marker.css[1] - top] as const
 					}));
 				} catch { return []; }
+			});
+		},
+		guides() {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			const { left, top } = handle.context.evaluation.rect;
+			const project = (world: Vec3): readonly [number, number] | null => {
+				if (world.length !== 3 || !world.every(Number.isFinite)) return null;
+				const projected = handle.context.project(world);
+				return projected === null ? null : [projected[0] - left, projected[1] - top];
+			};
+			const segmentsOf = (
+				segments: readonly (readonly [Vec3, Vec3])[]
+			): readonly (readonly [readonly [number, number], readonly [number, number]])[] =>
+				segments.flatMap(([from, to]) => {
+					const a = project(from);
+					const b = project(to);
+					return a === null || b === null ? [] : [[a, b] as const];
+				});
+			return [...adapters.values()].flatMap((entry) => {
+				try {
+					return (entry.contributions.guides?.(handle.context) ?? []).map((guide) => ({
+						id: guide.id,
+						role: guide.role,
+						segments: segmentsOf(guide.segments),
+						derivedSegments: segmentsOf(guide.derivedSegments ?? [])
+					}));
+				} catch {
+					return [];
+				}
 			});
 		},
 		candidatePreviews() {

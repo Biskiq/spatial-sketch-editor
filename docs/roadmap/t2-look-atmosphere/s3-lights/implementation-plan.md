@@ -386,7 +386,8 @@ Key decisions:
   light has an invisible but hit-testable glyph; hovering reveals it. This is the “finding
   invisible things” rule, not a second selection.
 - **`selectionKeyIntent`** claims Delete/Backspace for a selected light and runs the same
-  `delete-one` action as the Card; it never opens a second confirmation path.
+  `delete-one` action as the Card; it never opens a second confirmation path. The Stage adapter
+  seam is named `keyIntent`; it is the same unowned selection-key path.
 
 ### 5.5 P0 Look seams (`apps/editor/src/lib/authoring/look/look-authoring.svelte.ts`)
 
@@ -420,11 +421,12 @@ export type LookStageGuide = {
   For a non-light subject the stratum returns empty. *Lit by* is contributed by the light adapter,
   not here, because it needs the adapter’s `sceneBounds`.
 - **Stage marks.** `stageMarks` stays a projected `StageMarkView[]`; it is used only for any
-  non-interactive glyph the light adapter does not own. **Frustum guides are `LookStageGuide[]`**
-  returned by a new `stageGuides` getter. `StageOverlay` gains a `guides` prop and one line-only
-  `<path>` per guide; the route projects each world point once through the same `facade` evaluation
-  it uses for marks. This is the P0 Stage mark layer extended to a line species, not a second
-  shell writer and not a second camera.
+  non-interactive glyph the light adapter does not own.  **Frustum guides are `StageGuideContribution[]`**
+  published by the light adapter's `guides` contribution. The facade projects each world point once
+  through the same evaluation it uses for marks; the route only passes the projected view to
+  `StageOverlay`, which owns one line-only `<path>` per guide. The adapter owns the contribution so
+  a selected guide exists while selected with no Look shelf mounted. This is the P0 Stage mark
+  layer extended to a line species, not a second shell writer and not a second camera.
   - **Why not `StageMarkView`:** its `point`/`ray`/`track`/`ring` vocabulary draws a stem, a knob
     or a handle hit area. A cone has four edges and a cap; faking each edge as a `track` would
     advertise four drag targets that do not exist. The line layer is the truthful representation.

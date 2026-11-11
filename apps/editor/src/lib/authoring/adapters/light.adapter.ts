@@ -55,11 +55,20 @@ const LIGHT_WORKING_HEIGHT_METERS = 1.5;
 const LIGHT_PLACEMENT_DRAG_CSS = 4;
 
 type Light = SceneLightEntity;
-type GestureKind = 'move' | 'aim' | 'range' | 'angle';
+type GestureKind =
+	| 'move'
+	| 'aim'
+	| 'range'
+	| 'angle'
+	| 'penumbra'
+	| 'azimuth'
+	| 'elevation';
 
 type Gesture = {
 	readonly kind: GestureKind;
 	readonly entity: Light;
+	/** Point Reach ring: datum when the sphere reaches it, otherwise light height. */
+	readonly pointRangePlaneY?: number;
 };
 
 type Placement = {
@@ -166,6 +175,49 @@ function rayPlane(ray: { origin: Vec3; direction: Vec3 }, point: Vec3, normal: V
 	return add(ray.origin, scale(ray.direction, t));
 }
 
+/**
+ * Closest point on the light's forward axis to the pointer ray.
+ *
+ * Reach is an axis extent. A plane through the light perpendicular to forward
+ * would project to one point on that plane and can never produce a length.
+ */
+function closestAxisPoint(
+	ray: { origin: Vec3; direction: Vec3 },
+	origin: Vec3,
+	axis: Vec3
+): { readonly point: Vec3; readonly distanceAlongAxis: number } | null {
+	const w0 = sub(origin, ray.origin);
+	const a = dot(ray.direction, ray.direction);
+	const b = dot(ray.direction, axis);
+	const c = dot(axis, axis);
+	const d = dot(ray.direction, w0);
+	const e = dot(axis, w0);
+	const denominator = a * c - b * b;
+	if (Math.abs(denominator) < 1e-9) return null;
+	const distanceAlongAxis = (b * d - a * e) / denominator;
+	return {
+		point: add(origin, scale(axis, distanceAlongAxis)),
+		distanceAlongAxis
+	};
+}
+
+function lightAngles(rotation: Vec3): { readonly azimuth: number; readonly elevation: number } {
+	const forward = lightForward(rotation);
+	return {
+		azimuth: Math.atan2(-forward[0], -forward[2]),
+		elevation: Math.asin(clamp(forward[1], -1, 1))
+	};
+}
+
+function directionForAngles(azimuth: number, elevation: number): Vec3 {
+	const horizontal = Math.cos(elevation);
+	return normalize([
+		-Math.sin(azimuth) * horizontal,
+		Math.sin(elevation),
+		-Math.cos(azimuth) * horizontal
+	]);
+}
+
 function lightPayload(light: Light) {
 	return {
 		light: light.light,
@@ -212,25 +264,54 @@ function createPayload(input: {
 		: base;
 }
 
-function illuminates(light: Light, point: Vec3): boolean {
+type SceneBounds = { readonly min: Vec3; readonly max: Vec3 };
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(max, Math.max(min, value));
+}
+
+function nearestPointInBounds(point: Vec3, bounds: SceneBounds): Vec3 {
+	return [
+		clamp(point[0], bounds.min[0], bounds.max[0]),
+		clamp(point[1], bounds.min[1], bounds.max[1]),
+		clamp(point[2], bounds.min[2], bounds.max[2])
+	];
+}
+
+function boundsCorners(bounds: SceneBounds): Vec3[] {
+	return [
+		[bounds.min[0], bounds.min[1], bounds.min[2]],
+		[bounds.min[0], bounds.min[1], bounds.max[2]],
+		[bounds.min[0], bounds.max[1], bounds.min[2]],
+		[bounds.min[0], bounds.max[1], bounds.max[2]],
+		[bounds.max[0], bounds.min[1], bounds.min[2]],
+		[bounds.max[0], bounds.min[1], bounds.max[2]],
+		[bounds.max[0], bounds.max[1], bounds.min[2]],
+		[bounds.max[0], bounds.max[1], bounds.max[2]]
+	];
+}
+
+/** A light illuminates an object only when it reaches its bounds, not its centre. */
+function illuminates(light: Light, bounds: SceneBounds): boolean {
 	if (light.light === 'directional') return true;
 	const range = lightRange(light);
-	const distanceToPoint = distance(light.position, point);
-	if (range !== undefined && distanceToPoint > range) return false;
-	if (light.light === 'point') return true;
-	const direction = lightForward(light.rotation);
-	const toPoint = sub(point, light.position);
-	const distanceAlong = dot(toPoint, direction);
-	if (!(distanceAlong > 0)) return false;
-	const angle = Math.atan2(
-		Math.hypot(
+	if (light.light === 'point') {
+		if (range === undefined) return true;
+		return distance(light.position, nearestPointInBounds(light.position, bounds)) <= range;
+	}
+	return boundsCorners(bounds).some((corner) => {
+		if (range !== undefined && distance(light.position, corner) > range) return false;
+		const direction = lightForward(light.rotation);
+		const toPoint = sub(corner, light.position);
+		const distanceAlong = dot(toPoint, direction);
+		if (!(distanceAlong > 0)) return false;
+		const perpendicular = Math.hypot(
 			toPoint[0] - direction[0] * distanceAlong,
 			toPoint[1] - direction[1] * distanceAlong,
 			toPoint[2] - direction[2] * distanceAlong
-		),
-		distanceAlong
-	);
-	return angle <= light.angle;
+		);
+		return Math.atan2(perpendicular, distanceAlong) <= light.angle;
+	});
 }
 
 function lightFacts(light: Light): readonly StageCardFact[] {
@@ -390,8 +471,27 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								? 'range'
 								: handleId === 'light-angle'
 									? 'angle'
-									: null;
-				return kind === null ? null : { kind, entity: cloneLight(entity) };
+									: handleId === 'light-penumbra'
+										? 'penumbra'
+										: handleId === 'light-azimuth'
+											? 'azimuth'
+											: handleId === 'light-elevation'
+												? 'elevation'
+												: null;
+				if (kind === null) return null;
+				if (kind === 'range' && entity.light === 'point') {
+					const height = Math.max(0, entity.position[1] - adapterContext.snapshot.domain.datumMeters);
+					const range = lightRange(entity);
+					const supportPlaneReached = range === undefined || range >= height;
+					return {
+						kind,
+						entity: cloneLight(entity),
+						pointRangePlaneY: supportPlaneReached
+							? adapterContext.snapshot.domain.datumMeters
+							: entity.position[1]
+					};
+				}
+				return { kind, entity: cloneLight(entity) };
 			}
 
 			function updateGesture(
@@ -408,30 +508,44 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				if (gesture.kind === 'aim') {
-					const rayPoint = add(
-						ray.origin,
-						scale(ray.direction, Math.max(LIGHT_AIM_GUIDE_METERS, distance(current.position, ray.origin)))
-					);
+					const drawn = adapterContext.pickScene(ray);
+					const rayPoint =
+						drawn?.worldPoint ??
+						add(
+							ray.origin,
+							scale(
+								ray.direction,
+								Math.max(LIGHT_AIM_GUIDE_METERS, distance(current.position, ray.origin))
+							)
+						);
 					current.rotation = rotationForLightDirection(sub(rayPoint, current.position));
+					if (current.light === 'spot') {
+						(current as { range?: number }).range = Math.max(
+							0.1,
+							spotCutoffForTargetDistance(distance(current.position, rayPoint))
+						);
+					}
 					return;
 				}
 				const forward = lightForward(current.rotation);
 				if (gesture.kind === 'range' && current.light === 'point') {
-					const point = pointOf(ray, current.position[1]);
+					const planeY =
+						gesture.pointRangePlaneY ?? adapterContext.snapshot.domain.datumMeters;
+					const point = pointOf(ray, planeY);
 					if (point !== null) {
-						(current as { range?: number }).range = Math.max(0.1, horizontalDistance(current.position, point));
+						(current as { range?: number }).range = Math.max(
+							0.1,
+							planeY === adapterContext.snapshot.domain.datumMeters
+								? distance(current.position, point)
+								: horizontalDistance(current.position, point)
+						);
 					}
 					return;
 				}
 				if (gesture.kind === 'range') {
-					const denominator = dot(ray.direction, forward);
-					if (Math.abs(denominator) < 1e-9) return;
-					const t = dot(sub(current.position, ray.origin), forward) / denominator;
-					const point = add(ray.origin, scale(ray.direction, t));
-					(current as { range?: number }).range = Math.max(
-						0.1,
-						dot(sub(point, current.position), forward)
-					);
+					const axis = closestAxisPoint(ray, current.position, forward);
+					if (axis === null) return;
+					(current as { range?: number }).range = Math.max(0.1, axis.distanceAlongAxis);
 					return;
 				}
 				if (gesture.kind === 'angle' && current.light === 'spot') {
@@ -446,6 +560,50 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						Math.PI,
 						Math.max(0.001, Math.atan2(radius, capDistance))
 					);
+					return;
+				}
+				if (gesture.kind === 'penumbra' && current.light === 'spot') {
+					const range = lightRange(current);
+					const capDistance = range !== undefined && range > 0 ? range : LIGHT_AIM_GUIDE_METERS;
+					const capCenter = add(current.position, scale(forward, capDistance));
+					const capRadius = Math.tan(current.angle) * capDistance;
+					if (!(capRadius > 1e-6)) return;
+					const point = rayPlane(ray, capCenter, forward);
+					if (point === null) return;
+					(current as { penumbra: number }).penumbra = clamp(
+						distance(point, capCenter) / capRadius,
+						0,
+						1
+					);
+					return;
+				}
+				if (gesture.kind === 'azimuth') {
+					const point = pointOf(ray, adapterContext.snapshot.domain.datumMeters);
+					if (point === null) return;
+					const angles = lightAngles(current.rotation);
+					const azimuth = Math.atan2(
+						-(point[0] - current.position[0]),
+						-(point[2] - current.position[2])
+					);
+					current.rotation = rotationForLightDirection(
+						directionForAngles(azimuth, angles.elevation)
+					);
+					return;
+				}
+				if (gesture.kind === 'elevation') {
+					const worldMark: Vec3 = [0, adapterContext.snapshot.domain.datumMeters, 0];
+					const horizontal = normalize([forward[0], 0, forward[2]]);
+					const normal: Vec3 = [horizontal[2], 0, -horizontal[0]];
+					const point = rayPlane(ray, worldMark, normal);
+					if (point === null) return;
+					const angles = lightAngles(current.rotation);
+					const elevation = Math.atan2(
+						point[1] - worldMark[1],
+						horizontalDistance(worldMark, point)
+					);
+					current.rotation = rotationForLightDirection(
+						directionForAngles(angles.azimuth, elevation)
+					);
 				}
 			}
 
@@ -458,10 +616,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					current.kind === 'move'
 						? { position: [...entity.position] }
 						: current.kind === 'aim'
-							? { rotation: [...entity.rotation] }
+							? {
+									rotation: [...entity.rotation],
+									...(entity.light === 'spot'
+										? { range: lightRange(entity) ?? LIGHT_AIM_GUIDE_METERS }
+										: {})
+								}
 							: current.kind === 'range'
 								? { range: lightRange(entity) ?? (entity.light === 'point' ? 3 : 5) }
-								: { angle: entity.light === 'spot' ? entity.angle : LIGHT_DEFAULT_SPOT_ANGLE };
+								: current.kind === 'penumbra'
+									? { penumbra: entity.light === 'spot' ? (entity.penumbra ?? 0) : 0 }
+									: current.kind === 'angle'
+										? { angle: entity.light === 'spot' ? entity.angle : LIGHT_DEFAULT_SPOT_ANGLE }
+										: { rotation: [...entity.rotation] };
 				await acceptFormCommand(
 					services,
 					adapterContext.snapshot,
@@ -521,14 +688,116 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				services.stage.notifySurfaceChange();
 			}
 
-			function guideSegments(light: Light): readonly (readonly [Vec3, Vec3])[] {
+			function sceneBoundsUnion(): SceneBounds | null {
+				let union: SceneBounds | null = null;
+				for (const entity of stageScene(services.stage.snapshot()).entities) {
+					if (isLight(entity)) continue;
+					const bounds = services.stage.sceneBounds(entity.id);
+					if (bounds === null) continue;
+					union =
+						union === null
+							? { min: [...bounds.min] as Vec3, max: [...bounds.max] as Vec3 }
+							: {
+									min: [
+										Math.min(union.min[0], bounds.min[0]),
+										Math.min(union.min[1], bounds.min[1]),
+										Math.min(union.min[2], bounds.min[2])
+									],
+									max: [
+										Math.max(union.max[0], bounds.max[0]),
+										Math.max(union.max[1], bounds.max[1]),
+										Math.max(union.max[2], bounds.max[2])
+									]
+								};
+				}
+				return union;
+			}
+
+			function guideReachFor(light: Light): number {
+				const authored = lightRange(light);
+				if (authored !== undefined) return authored;
+				const bounds = sceneBoundsUnion();
+				if (bounds === null) return light.light === 'directional' ? 10 : 5;
+				if (light.light === 'point') return Math.max(1, distance(bounds.min, bounds.max) / 2);
+				if (light.light === 'spot') {
+					return Math.max(
+						1,
+						...boundsCorners(bounds).map((corner) => distance(light.position, corner))
+					);
+				}
+				return Math.max(1, distance(bounds.min, bounds.max));
+			}
+
+			function directionalBoxSegments(light: Light, bounds: SceneBounds | null): [Vec3, Vec3][] {
+				if (bounds === null) return [];
+				const center: Vec3 = [
+					(bounds.min[0] + bounds.max[0]) / 2,
+					(bounds.min[1] + bounds.max[1]) / 2,
+					(bounds.min[2] + bounds.max[2]) / 2
+				];
+				const forward = lightForward(light.rotation);
+				const reference: Vec3 = Math.abs(forward[1]) > 0.9 ? [0, 0, 1] : [0, 1, 0];
+				const right = normalize([
+					forward[1] * reference[2] - forward[2] * reference[1],
+					forward[2] * reference[0] - forward[0] * reference[2],
+					forward[0] * reference[1] - forward[1] * reference[0]
+				]);
+				const up = normalize([
+					right[1] * forward[2] - right[2] * forward[1],
+					right[2] * forward[0] - right[0] * forward[2],
+					right[0] * forward[1] - right[1] * forward[0]
+				]);
+				let minRight = Infinity, maxRight = -Infinity, minUp = Infinity, maxUp = -Infinity;
+				for (const corner of boundsCorners(bounds)) {
+					const offset = sub(corner, center);
+					const r = dot(offset, right);
+					const u = dot(offset, up);
+					minRight = Math.min(minRight, r);
+					maxRight = Math.max(maxRight, r);
+					minUp = Math.min(minUp, u);
+					maxUp = Math.max(maxUp, u);
+				}
+				const depth = distance(bounds.min, bounds.max);
+				const rectangle = [
+					add(center, add(scale(right, minRight), scale(up, minUp))),
+					add(center, add(scale(right, maxRight), scale(up, minUp))),
+					add(center, add(scale(right, maxRight), scale(up, maxUp))),
+					add(center, add(scale(right, minRight), scale(up, maxUp)))
+				];
 				const segments: [Vec3, Vec3][] = [];
+				for (const offset of [scale(forward, depth / 2), scale(forward, -depth / 2)]) {
+					for (let index = 0; index < 4; index += 1) {
+						segments.push([
+							add(rectangle[index]!, offset),
+							add(rectangle[(index + 1) % 4]!, offset)
+						]);
+					}
+				}
+				for (let index = 0; index < 4; index += 1) {
+					segments.push([
+						add(rectangle[index]!, scale(forward, depth / 2)),
+						add(rectangle[index]!, scale(forward, -depth / 2))
+					]);
+				}
+				return segments;
+			}
+
+			function guideSegments(
+				light: Light,
+				datumMeters: number,
+				derivedReach: number
+			): {
+				readonly segments: readonly (readonly [Vec3, Vec3])[];
+				readonly derivedSegments: readonly (readonly [Vec3, Vec3])[];
+			} {
+				const segments: [Vec3, Vec3][] = [];
+				const derivedSegments: [Vec3, Vec3][] = [];
 				if (light.light === 'spot') {
 					const guide = spotConeGuide({
 						position: light.position,
 						rotation: light.rotation,
 						halfAngle: light.angle,
-						...(lightRange(light) === undefined ? {} : { range: lightRange(light)! })
+						range: lightRange(light) ?? derivedReach
 					});
 					for (const edge of guide.edges) segments.push([edge[0], edge[1]]);
 					for (let index = 0; index < guide.capRing.length; index += 1) {
@@ -537,30 +806,97 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							guide.capRing[(index + 1) % guide.capRing.length]!
 						]);
 					}
-				} else if (light.light === 'point' && lightRange(light) !== undefined) {
-					const range = lightRange(light)!;
+				} else if (light.light === 'point') {
+					const range = lightRange(light);
+					const height = Math.max(0, light.position[1] - datumMeters);
+					const ringRadius =
+						range === undefined ? derivedReach : range >= height ? Math.sqrt(range * range - height * height) : range;
+					const ringY = range !== undefined && range < height ? light.position[1] : datumMeters;
 					const ring: Vec3[] = [];
 					for (let index = 0; index < 64; index += 1) {
 						const angle = (index / 64) * Math.PI * 2;
 						ring.push([
-							light.position[0] + Math.cos(angle) * range,
-							light.position[1],
-							light.position[2] + Math.sin(angle) * range
+							light.position[0] + Math.cos(angle) * ringRadius,
+							ringY,
+							light.position[2] + Math.sin(angle) * ringRadius
 						]);
 					}
 					for (let index = 0; index < ring.length; index += 1) {
-						segments.push([ring[index]!, ring[(index + 1) % ring.length]!]);
+						(ringRadius === derivedReach && range === undefined ? derivedSegments : segments).push([
+							ring[index]!,
+							ring[(index + 1) % ring.length]!
+						]);
 					}
+					derivedSegments.push([
+						light.position,
+						[light.position[0], ringY, light.position[2]]
+					]);
 				} else {
 					segments.push([
 						light.position,
 						add(light.position, scale(lightForward(light.rotation), LIGHT_AIM_GUIDE_METERS))
 					]);
 				}
-				return segments;
+				return { segments, derivedSegments };
+			}
+
+			function duplicateActionFor(light: Light): StageCardAction {
+				return {
+					id: 'light-duplicate',
+					label: 'Duplicate light',
+					group: 'secondary',
+					detail: `Add one copy of ${light.name} at +0.5 m X/Z. Undo removes it.`,
+					async run() {
+						const allocatedId = `light-${crypto.randomUUID()}`;
+						const outcome = await acceptFormCommand(
+							services,
+							services.stage.snapshot(),
+							light.id,
+							'duplicate-light',
+							{ entityId: light.id },
+							allocatedId
+						);
+						if (outcome.kind === 'installed') {
+							const reference = sceneEntityReference(
+								allocatedId,
+								services.stage.snapshot().domain.unitRevisions.scene
+							);
+							services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+						}
+						return outcome.kind === 'refused'
+							? { kind: 'refused', message: outcome.message }
+							: outcome.kind === 'no-op'
+								? { kind: 'no-op' }
+								: { kind: 'accepted' };
+					}
+				};
+			}
+
+			function deleteActionFor(light: Light): StageCardAction {
+				return {
+					id: 'light-delete',
+					label: 'Delete light',
+					destructive: true,
+					detail: `Remove ${light.name}. Undo restores it.`,
+					async run() {
+						const outcome = await acceptFormCommand(
+							services,
+							services.stage.snapshot(),
+							light.id,
+							'delete-one',
+							{ entityId: light.id }
+						);
+						return outcome.kind === 'refused'
+							? { kind: 'refused', message: outcome.message }
+							: outcome.kind === 'no-op'
+								? { kind: 'no-op' }
+								: { kind: 'accepted' };
+					}
+				};
 			}
 
 			const binding: ReturnType<NonNullable<StageAdapter['bind']>> = {
+				hostTools: ['erase'],
 				pressWhenNoTask: true,
 				tasks: [
 					{
@@ -582,7 +918,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						candidate.css[0] + live.evaluation.rect.left,
 						candidate.css[1] + live.evaluation.rect.top
 					];
-					const ray = live.ray(candidate.css);
+					const ray = live.ray(css);
 					const occluder = ray === null ? null : live.pickScene(ray);
 					let nearest: { light: Light; distance: number } | null = null;
 					for (const entity of stageScene(live.snapshot).entities.filter(isLight)) {
@@ -623,51 +959,74 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				eraseAction(hit) {
 					if (hit.reference?.domain !== 'scene') return null;
-					const action = binding.cardActions?.({
-						sourceId: hit.sourceId,
-						sourceKind: hit.sourceKind,
-						reference: hit.reference,
-						ref: null
-					})?.find((candidate) => candidate.destructive === true);
-					return action === undefined
+					const light = lightById(services.stage.snapshot(), hit.sourceId);
+					return light === null
 						? { kind: 'refused', message: 'That light cannot be erased.' }
-						: { kind: 'action', action, confirm: false };
+						: { kind: 'action', action: deleteActionFor(light), confirm: false };
+				},
+				keyIntent(intent, adapterContext) {
+					if (intent.kind !== 'delete') return false;
+					const light = selectedLight(adapterContext);
+					if (light === null) return false;
+					void deleteActionFor(light).run();
+					return true;
 				},
 				handles(adapterContext) {
 					const light = effectiveLight(adapterContext);
 					if (light === null) return [];
 					const forward = lightForward(light.rotation);
-					const target = add(light.position, scale(forward, LIGHT_AIM_GUIDE_METERS));
-					const handles: StageHandleDescriptor[] = light.light === 'directional'
-						? []
-						: [
+					const datum = adapterContext.snapshot.domain.datumMeters;
+					const range = lightRange(light);
+					if (light.light === 'directional') {
+						const worldMark: Vec3 = [0, datum, 0];
+						const radius = guideReachFor(light);
+						const angles = lightAngles(light.rotation);
+						return [
 							{
 								role: 'edit',
-								id: 'light-body',
-								kind: 'point',
-								anchor: [...light.position],
-								label: 'Move light',
-								fact: 'position',
-								verb: 'Move {value}',
+								id: 'light-azimuth',
+								kind: 'ring',
+								anchor: worldMark,
+								axis: [0, 1, 0],
+								extent: radius,
+								label: 'Direction',
+								fact: 'azimuth',
+								verb: 'Azimuth {value}°',
 								planner: 'update-light',
-								draw: { cross: true },
-								value: `${light.position[0].toFixed(2)}, ${light.position[2].toFixed(2)} m`
+								value: `${radiansToDegrees(angles.azimuth).toFixed(1)}°`
+							},
+							{
+								role: 'edit',
+								id: 'light-elevation',
+								kind: 'ray',
+								anchor: worldMark,
+								axis: forward,
+								extent: radius,
+								label: 'Elevation',
+								fact: 'elevation',
+								verb: 'Elevation {value}°',
+								planner: 'update-light',
+								value: `${radiansToDegrees(angles.elevation).toFixed(1)}°`
 							}
 						];
-					if (light.light === 'directional') {
-						handles.push({
+					}
+					const targetDistance = light.light === 'spot' ? guideReachFor(light) : LIGHT_AIM_GUIDE_METERS;
+					const target = add(light.position, scale(forward, targetDistance));
+					const handles: StageHandleDescriptor[] = [
+						{
 							role: 'edit',
-							id: 'light-aim',
+							id: 'light-body',
 							kind: 'point',
 							anchor: [...light.position],
-							label: 'Direction',
-							fact: 'aim',
-							verb: 'Aim {value}',
+							label: 'Move light',
+							fact: 'position',
+							verb: 'Move {value}',
 							planner: 'update-light',
-							draw: { pointRadius: 4.5 },
-							value: `${radiansToDegrees(Math.atan2(-forward[0], -forward[2])).toFixed(1)}°`
-						});
-					} else if (light.light !== 'point') {
+							draw: { cross: true },
+							value: `${light.position[0].toFixed(2)}, ${light.position[2].toFixed(2)} m`
+						}
+					];
+					if (light.light === 'spot') {
 						handles.push({
 							role: 'edit',
 							id: 'light-aim',
@@ -681,44 +1040,45 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							value: `${target[0].toFixed(2)}, ${target[2].toFixed(2)} m`
 						});
 					}
-					const range = lightRange(light);
-					if (range !== undefined) {
-						handles.push(
-							light.light === 'point'
-								? {
-										role: 'edit',
-										id: 'light-reach',
-										kind: 'ring',
-										anchor: [...light.position],
-										axis: [0, 1, 0],
-										extent: range,
-										label: 'Reach',
-										fact: 'range',
-										verb: 'Reach {value} m',
-										planner: 'update-light',
-										value: `${range.toFixed(2)} m`
-									}
-								: {
-										role: 'edit',
-										id: 'light-range',
-										kind: 'ray',
-										anchor: [...light.position],
-										axis: forward,
-										extent: range,
-										label: 'Reach',
-										fact: 'range',
-										verb: 'Reach {value} m',
-										planner: 'update-light',
-										value: `${range.toFixed(2)} m`
-									}
-						);
+					if (light.light === 'point') {
+						const reach = range ?? Math.max(1, guideReachFor(light));
+						const supportPlaneReached = range === undefined || range >= Math.max(0, light.position[1] - datum);
+						handles.push({
+							role: 'edit',
+							id: 'light-reach',
+							kind: 'ring',
+							anchor: supportPlaneReached
+								? [light.position[0], datum, light.position[2]]
+								: [...light.position],
+							axis: [0, 1, 0],
+							extent: reach,
+							label: 'Reach',
+							fact: 'range',
+							verb: 'Reach {value} m',
+							planner: 'update-light',
+							value: range === undefined ? 'Derived' : `${range.toFixed(2)} m`
+						});
+					} else {
+						handles.push({
+							role: 'edit',
+							id: 'light-range',
+							kind: 'ray',
+							anchor: [...light.position],
+							axis: forward,
+							extent: range ?? guideReachFor(light),
+							label: 'Reach',
+							fact: 'range',
+							verb: 'Reach {value} m',
+							planner: 'update-light',
+							value: range === undefined ? 'Unbounded' : `${range.toFixed(2)} m`
+						});
 					}
 					if (light.light === 'spot') {
 						const guide = spotConeGuide({
 							position: light.position,
 							rotation: light.rotation,
 							halfAngle: light.angle,
-							...(lightRange(light) === undefined ? {} : { range: lightRange(light)! })
+							range: lightRange(light) ?? guideReachFor(light)
 						});
 						handles.push({
 							role: 'edit',
@@ -733,32 +1093,47 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							planner: 'update-light',
 							value: `${radiansToDegrees(light.angle).toFixed(1)}°`
 						});
+						handles.push({
+							role: 'edit',
+							id: 'light-penumbra',
+							kind: 'ring',
+							anchor: guide.capCenter,
+							axis: forward,
+							extent: Math.max(0.02, guide.capRadius * (light.penumbra ?? 0)),
+							label: 'Soft edge',
+							fact: 'soft-edge',
+							verb: 'Soft edge {value}%',
+							planner: 'update-light',
+							value: `${Math.round((light.penumbra ?? 0) * 100)}%`
+						});
 					}
 					return handles;
 				},
+				guides(adapterContext) {
+					const light = effectiveLight(adapterContext);
+					if (light === null) return [];
+					const bounds = sceneBoundsUnion();
+					const guide = guideSegments(
+						light,
+						adapterContext.snapshot.domain.datumMeters,
+						Math.max(1, guideReachFor(light))
+					);
+					return [
+						{
+							id: 'light-guide',
+							role: 'selection' as const,
+							segments: [
+								...guide.segments,
+								...(light.light === 'directional'
+									? directionalBoxSegments(light, bounds)
+									: [])
+							],
+							derivedSegments: guide.derivedSegments
+						}
+					];
+				},
 				candidatePreview(adapterContext) {
 					const previews: StageCandidatePreview[] = [];
-					const light = effectiveLight(adapterContext);
-					if (light !== null) {
-						previews.push({
-							id: 'light-guide',
-							role: 'affected',
-							segments: guideSegments(light),
-							labels: [
-								{
-									world: add(
-										light.position,
-										scale(lightForward(light.rotation), LIGHT_AIM_GUIDE_METERS)
-									),
-									text:
-										light.light === 'spot'
-											? `${radiansToDegrees(light.angle).toFixed(1)}° · ${lightRange(light) === undefined ? 'unbounded' : `${lightRange(light)!.toFixed(2)} m`}`
-											: lightKindLabel(light.light)
-								}
-							],
-							polygons: []
-						});
-					}
 					if (placement !== null) {
 						const kind = armedLightKind(projectId()) ?? 'spot';
 						if (kind === 'spot' && placement.moved) {
@@ -883,9 +1258,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						(candidate) => candidate.id === subject.sourceId
 					);
 					if (target === undefined) return [];
+					const bounds = services.stage.sceneBounds(target.id);
+					if (bounds === null) return [];
 					const lights = stageScene(snapshot).entities.filter(
 						(candidate): candidate is Light =>
-							isLight(candidate) && illuminates(candidate, target.position)
+							isLight(candidate) && illuminates(candidate, bounds)
 					);
 					if (lights.length === 0) return [];
 					const names = lights.slice(0, 2).map((candidate) => candidate.name);
@@ -930,58 +1307,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const snapshot = services.stage.snapshot();
 					const light = lightById(snapshot, subject.sourceId);
 					if (light === null) return [];
-					const actions: StageCardAction[] = [
-						{
-							id: 'light-duplicate',
-							label: 'Duplicate light',
-							group: 'secondary',
-							detail: `Add one copy of ${light.name} at +0.5 m X/Z. Undo removes it.`,
-							async run() {
-								const allocatedId = `light-${crypto.randomUUID()}`;
-								const outcome = await acceptFormCommand(
-									services,
-									services.stage.snapshot(),
-									light.id,
-									'duplicate-light',
-									{ entityId: light.id },
-									allocatedId
-								);
-								if (outcome.kind === 'installed') {
-									const reference = sceneEntityReference(
-										allocatedId,
-										services.stage.snapshot().domain.unitRevisions.scene
-									);
-									services.stage.setSelection({ ordered: [{ reference }], primary: reference });
-								}
-								return outcome.kind === 'refused'
-									? { kind: 'refused', message: outcome.message }
-									: outcome.kind === 'no-op'
-										? { kind: 'no-op' }
-										: { kind: 'accepted' };
-							}
-						},
-						{
-							id: 'light-delete',
-							label: 'Delete light',
-							destructive: true,
-							detail: `Remove ${light.name}. Undo restores it.`,
-							async run() {
-								const outcome = await acceptFormCommand(
-									services,
-									services.stage.snapshot(),
-									light.id,
-									'delete-one',
-									{ entityId: light.id }
-								);
-								return outcome.kind === 'refused'
-									? { kind: 'refused', message: outcome.message }
-									: outcome.kind === 'no-op'
-										? { kind: 'no-op' }
-										: { kind: 'accepted' };
-							}
-						}
-					];
-					return actions;
+					return [duplicateActionFor(light), deleteActionFor(light)];
 				},
 				instrument(task) {
 					openTaskKind = task.kind;

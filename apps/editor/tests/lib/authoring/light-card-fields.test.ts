@@ -110,7 +110,11 @@ afterEach(() => {
 
 async function mountCard(
 	entity: SceneLightEntity,
-	options: { readonly detailOpen?: boolean; readonly footer?: Snippet } = {}
+	options: {
+		readonly detailOpen?: boolean;
+		readonly footer?: Snippet;
+		readonly secondary?: Snippet<[Snippet?]>;
+	} = {}
 ) {
 	const snapshot = snapshotOf(entity);
 	const accept = vi.fn(async (_intent: unknown) => ({ kind: 'installed' as const }));
@@ -136,7 +140,8 @@ async function mountCard(
 		props: {
 			services,
 			detailOpen: options.detailOpen ?? true,
-			...(options.footer === undefined ? {} : { footer: options.footer })
+			...(options.footer === undefined ? {} : { footer: options.footer }),
+			...(options.secondary === undefined ? {} : { secondary: options.secondary })
 		}
 	});
 	cleanup = () => unmount(component);
@@ -160,6 +165,14 @@ describe('S3a Light Card writer', () => {
 		const { target } = await mountCard(spot(), { detailOpen: false, footer });
 		expect(target.querySelector('[data-test-footer]')).not.toBeNull();
 		expect(target.querySelector('[data-field="exact-intensity"]')).toBeNull();
+	});
+
+	it('renders the shared secondary menu so Duplicate and Delete stay reachable', async () => {
+		const secondary = createRawSnippet(() => ({
+			render: () => '<button type="button" data-test-secondary>Menu</button>'
+		}));
+		const { target } = await mountCard(spot(), { detailOpen: false, secondary });
+		expect(target.querySelector('[data-test-secondary]')).not.toBeNull();
 	});
 
 	it('enables the authored Shadow toggle and writes castShadow', async () => {

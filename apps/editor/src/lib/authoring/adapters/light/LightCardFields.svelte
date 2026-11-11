@@ -33,11 +33,13 @@
 	let {
 		services,
 		detailOpen = false,
-		footer
+		footer,
+		secondary
 	}: {
 		services: StageAdapterServices;
 		detailOpen?: boolean;
 		footer?: Snippet;
+		secondary?: Snippet<[Snippet?]>;
 	} = $props();
 
 	type Light = SceneLightEntity;
@@ -484,6 +486,7 @@
 		<p class="readout">{formatBrightness(light.intensity, light.light)} · {lightKindLabel(light.light)}</p>
 		<p class="readout">Paper draws the guide only; Living draws the light.</p>
 		{#if footer}{@render footer()}{/if}
+		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}
 
