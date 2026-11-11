@@ -7,7 +7,7 @@
 
 ## Codec boundary
 
-Scene 5 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
+Scene 6 is the Camera-free Scene unit in the current envelope. The internal Scene projection used
 by the Camera codec is not a second authored Scene authority. Camera and Experience are separate
 units today. Release readers do not consume authoring codecs. Compound acceptance belongs to F.4.
 

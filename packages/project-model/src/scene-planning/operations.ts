@@ -686,6 +686,7 @@ export function planResizeOnFloor(input: {
 }): SceneOperationResult {
 	const target = readObject(input.context.scene, input.entityId);
 	if (target.kind !== 'object') return target;
+	if (target.entity.kind === 'artwork') return unsupportedTransform(input.entityId, 'resize-on-floor');
 	if (target.entity.kind === 'form') {
 		return refusal(
 			'unsupported-transform',
@@ -1084,6 +1085,13 @@ export type FloorTransformSupport =
 	  };
 
 export function floorTransformSupport(entity: SceneEntity): FloorTransformSupport {
+	if (entity.kind === 'artwork') {
+		return {
+			supported: false,
+			code: 'unsupported-transform',
+			message: 'Artwork is positioned by its centre and has no floor contact.'
+		};
+	}
 	if (entity.kind === 'light') {
 		return {
 			supported: false,

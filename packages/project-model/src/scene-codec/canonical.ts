@@ -9,7 +9,7 @@
  *
  * Tagged `@internal` — never imported outside `scene-codec/`.
  */
-import { cloneFormSource } from '../scene';
+import { cloneFormSource, cloneSceneEntity } from '../scene';
 import type {
 	CameraFramingEnvelope,
 	SceneCameraViewKeyframe,
@@ -52,6 +52,7 @@ function cloneFramingEnvelope(value: CameraFramingEnvelope): CameraFramingEnvelo
 }
 
 export function cloneEntity(entity: SceneEntity): SceneEntity {
+	if (entity.kind === 'artwork') return cloneSceneEntity(entity);
 	if (entity.kind === 'model') {
 		return {
 			kind: 'model',

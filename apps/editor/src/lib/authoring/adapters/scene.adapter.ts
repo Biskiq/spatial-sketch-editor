@@ -58,6 +58,7 @@ import { getAssetById } from '$lib/content/assets';
 import {
 	approvedModelResources,
 	createScenePlanners,
+	createArtworkPlanners,
 	creatorModelDefinition,
 	resolveSceneSupportOnGeometry,
 	sceneEntityLift,
@@ -179,6 +180,7 @@ function entityFacts(
 		},
 		{
 			label: 'Elevation',
+			...(entity.kind === 'artwork' ? { fieldId: 'elevation' } : {}),
 			value: `${entity.position[1]} m`
 		},
 		{
@@ -289,7 +291,7 @@ function sceneEntityAtCandidate(
 ): SceneEntity | null {
 	if (candidate.entityId !== null) {
 		const accepted = acceptedEntities.find((entity) => entity.id === candidate.entityId);
-		if (accepted === undefined) return null;
+		if (accepted === undefined || accepted.kind === 'artwork') return null;
 		if (accepted.kind === 'form') {
 			return {
 				...accepted,
@@ -443,7 +445,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 	// else. Built-in catalogue models enter this set only after their r186 contact
 	// verification is recorded; approved creator models remain project-scoped.
 	const admitted: NormalizedPlacementDefinition[] = [];
-	const planners = createScenePlanners({
+	const planners = [...createArtworkPlanners(), ...createScenePlanners({
 		definitions: () => {
 			// The approved model a creator has armed is an admitted definition even
 			// before its first placement installs the resource. A rebind (a drawing
@@ -453,7 +455,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			const armed = armedModelDefinition(projectId);
 			return [...admitted, ...creatorDefinitions(), ...(armed === null ? [] : [armed])];
 		}
-	});
+	})];
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {

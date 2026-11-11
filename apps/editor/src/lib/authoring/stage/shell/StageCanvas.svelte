@@ -36,6 +36,9 @@ import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 import StageCamera from './StageCamera.svelte';
 import StageGrid from './StageGrid.svelte';
 import StageMatGround from './StageMatGround.svelte';
+	import EntityArtwork from '$lib/museum/entities/EntityArtwork.svelte';
+	import type { ArtworkScope } from '$lib/render/artwork/artwork-scope';
+	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import StageEntities from './StageEntities.svelte';
 	import StageFormGhost from './StageFormGhost.svelte';
 	import StagePrimitiveGhost from './StagePrimitiveGhost.svelte';
@@ -62,6 +65,9 @@ import StageMatGround from './StageMatGround.svelte';
 		evaluation,
 		ghosts = [],
 		modelUrls = null,
+		artworkScope = null,
+		artworkGhost = null,
+		onArtworkError,
 		plan = null,
 		planAppearance = 'paper',
 		paperInk2d = PAPER_GROUND_INK,
@@ -97,6 +103,9 @@ import StageMatGround from './StageMatGround.svelte';
 		ghosts?: readonly StageGhostMesh[];
 		/** Resolved approved creator-model bytes, owned by the route's session. */
 		modelUrls?: ReadonlyMap<string, string> | null;
+		artworkScope?: ArtworkScope | null;
+		artworkGhost?: SceneArtworkEntity | null;
+		onArtworkError?: (message: string) => void;
 		/** The facade's retained Plan: the drawing and the hit path share this object. */
 		plan?: PlanEvaluation | null;
 		/** PLATE's app preference; Paper is the default. */
@@ -226,7 +235,7 @@ import StageMatGround from './StageMatGround.svelte';
 		<T.AmbientLight intensity={0.12} />
 		<WorldEnvironment preset={environment} bounds={snapshotBounds} {shadowBounds} groundY={datumMeters} flatGround />
 	{:else}
-		<T.AmbientLight intensity={0.35} />
+		<T.AmbientLight intensity={0.45} />
 		<!-- Neutral illumination only: a cast shadow comes from an authored light. -->
 		<T.DirectionalLight position={[6, 12, 8]} intensity={1.1} />
 		<T.DirectionalLight position={[-8, 6, -6]} intensity={0.35} />
@@ -280,7 +289,12 @@ import StageMatGround from './StageMatGround.svelte';
 	{#if unfoldedWallId === null && unfoldAnchorPin !== null}
 		<StageWallPin position={unfoldAnchorPin} hovered={unfoldPinHovered} active={unfoldPinActive} />
 	{/if}
+	{#if artworkGhost !== null}
+		<EntityArtwork entity={artworkGhost} scope={artworkScope} ghost onError={onArtworkError} />
+	{/if}
 	<StageEntities
+		{artworkScope}
+		{onArtworkError}
 		{scenePick}
 		{scene}
 		{rooms}

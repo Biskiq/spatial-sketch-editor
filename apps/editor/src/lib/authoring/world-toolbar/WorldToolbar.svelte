@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { ArtworkLibraryEntry } from '@portfolio/project-model';
 	/**
 	 * The Living Draft World toolbar: the #285 plate and dock.
 	 *
@@ -31,6 +32,9 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onObjectPick,
 		onMaterialPick,
 		lookShelf = null,
+		artworkShelf = null,
+		onArtworkPick = () => {},
+		onArtworkImport = () => {},
 		onLookPick = () => {},
 		plate,
 		plateOpen = true,
@@ -44,6 +48,9 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		onMaterialPick: (materialId: string) => void;
 		/** The Look shelf later T2 slices fill; empty in P0, so nothing is drawn. */
 		lookShelf?: LookLibraryShelf | null;
+		artworkShelf?: readonly ArtworkLibraryEntry[] | null;
+		onArtworkPick?: (entry: ArtworkLibraryEntry) => void;
+		onArtworkImport?: (files: File[]) => void;
 		onLookPick?: (entryId: string) => void;
 		plate?: Snippet;
 		/** The upper parchment plate is an intentional expanded/collapsed state. */
@@ -52,7 +59,8 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 	} = $props();
 
 	const plateId = $props.id();
-	let libraryCategory = $state<WorldLibraryCategory | 'look'>('objects');
+	let artworkFileInput = $state<HTMLInputElement>();
+	let libraryCategory = $state<WorldLibraryCategory | 'look' | 'artwork'>('objects');
 	let remembered = $state<Record<WorldFamily['id'], WorldToolId>>({
 		build: 'walls',
 		form: 'form',
@@ -129,6 +137,10 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 							onclick={() => (libraryCategory = category.id)}
 						>{category.label}</button>
 					{/each}
+					{#if artworkShelf !== null}
+						<button type="button" class="sub" class:on={libraryCategory === 'artwork'}
+							aria-pressed={libraryCategory === 'artwork'} onclick={() => (libraryCategory = 'artwork')}>Artwork</button>
+					{/if}
 					{#if lookShelf !== null && lookShelf.entries.length > 0}
 						<button
 							type="button"
@@ -172,7 +184,16 @@ import type { LookLibraryShelf } from '$lib/authoring/look/look-authoring.svelte
 		<div class="row picks">
 			<div class="strip">
 				{#if libraryOpen}
-					{#if libraryCategory === 'look' && lookShelf !== null}
+					{#if libraryCategory === 'artwork' && artworkShelf !== null}
+						<div class="librow" aria-label="Artwork in this project">
+							<input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden bind:this={artworkFileInput}
+								onchange={() => { onArtworkImport(Array.from(artworkFileInput?.files ?? [])); if (artworkFileInput) artworkFileInput.value = ''; }} />
+							<button class="tile" type="button" onclick={() => artworkFileInput?.click()}>Import</button>
+							{#each artworkShelf as entry (entry.assetId)}
+								<button class="tile" type="button" title={entry.name} onclick={() => onArtworkPick(entry)}>{entry.name}</button>
+							{/each}
+						</div>
+					{:else if libraryCategory === 'look' && lookShelf !== null}
 						<div class="librow" aria-label={lookShelf.label}>
 							{#each lookShelf.entries as entry (entry.id)}
 								<button type="button" class="tile" title={entry.summary ?? entry.label} onclick={() => onLookPick(entry.id)}>

@@ -316,7 +316,16 @@ export type SceneLightEntity =
 			castShadow: boolean;
 	  });
 
+export type SceneArtworkEntity = Omit<SceneEntityBase, 'roomId' | 'scale'> & {
+  kind: 'artwork';
+  source: import('./artwork').ArtworkImageSource;
+  widthMeters: number;
+  roomId?: never;
+  scale?: never;
+};
+
 export type SceneEntity =
+	| SceneArtworkEntity
 	| SceneModelEntity
 	| ScenePrimitiveEntity
 	| SceneFormEntity
@@ -520,6 +529,14 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
     rotation: cloneVec3(entity.rotation),
     ...(entity.scale === undefined ? {} : { scale: entity.scale })
   };
+
+  if (entity.kind === 'artwork') {
+    return {
+      kind: 'artwork', id: entity.id, name: entity.name,
+      position: cloneVec3(entity.position), rotation: cloneVec3(entity.rotation),
+      source: { ...entity.source }, widthMeters: entity.widthMeters
+    };
+  }
 
   if (entity.kind === 'model') {
     return {

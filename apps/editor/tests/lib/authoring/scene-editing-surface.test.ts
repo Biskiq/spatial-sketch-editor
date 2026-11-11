@@ -1424,6 +1424,7 @@ describe('Scene adapter registration', () => {
 		if (candidate === null) throw new Error('the typed Move did not create a candidate');
 
 		const accepted = stageScene(facade.snapshot()).entities.find((entity) => entity.id === FIXTURE_ENTITY_ID)!;
+		if (accepted.kind !== 'primitive') throw new Error('Expected a box entity');
 		const candidateEntity = {
 			...accepted,
 			position: [...candidate.position] as Vec3,

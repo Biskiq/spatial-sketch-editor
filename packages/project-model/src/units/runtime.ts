@@ -1,7 +1,7 @@
 /**
  * F.2 unit runtime preparation — the one live read path for an admitted project.
  *
- * The Layout compiles through the one canonical geometry core. The Scene 2
+ * The Layout compiles through the one canonical geometry core. The Scene
  * payload resolves through the landed Scene resolver. The **Camera unit**, not
  * the Scene, supplies the navigation graph: views become navigation nodes and
  * the Camera connections stay Camera-owned records. A source that the editor

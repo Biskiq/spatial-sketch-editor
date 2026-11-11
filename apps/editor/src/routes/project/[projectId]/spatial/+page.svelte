@@ -161,7 +161,18 @@ import WorldToolbar from '$lib/authoring/world-toolbar/WorldToolbar.svelte';
 import InkPlate from '$lib/authoring/world-toolbar/InkPlate.svelte';
 import ObjectsPlate from '$lib/authoring/world-toolbar/ObjectsPlate.svelte';
 import SkyControl from '$lib/authoring/world-toolbar/SkyControl.svelte';
-import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
+import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring.svelte';
+	import ArtworkResizeOverlay from '$lib/authoring/artwork/ArtworkResizeOverlay.svelte';
+	import { artworkPlanePoint, resizeArtworkAtRay, type ArtworkCorner } from '$lib/authoring/artwork/artwork-resize';
+	import { ARTWORK_TRANSFORM } from '@portfolio/project-model/scene-planning';
+	import type { SceneArtworkEntity } from '@portfolio/project-model';
+	import { artworkCommand, artworkReference } from '$lib/authoring/artwork/artwork-command';
+	import { artworkPlacement, isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
+	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
+	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
+	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
+	import { Vector3 } from 'three';
+	import { createLookAuthoring } from '$lib/authoring/look/look-authoring.svelte';
 import { worldTool, type WorldToolId } from '$lib/authoring/world-toolbar/registry';
 import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte';
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
@@ -437,7 +448,29 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		snapSuspended: () => drafting.snapSuspended,
 		patchDrafting: (patch) => patchDrafting(patch),
 		notice: (message) => { notice = message; },
-		perfMark: (name, data) => perfMark(name, data)
+		perfMark: (name, data) => perfMark(name, data),
+		async prepareArtwork(domain, signal) {
+			const read = domain as StageDomainRead;
+			const images = new Map(read.scene.entities.flatMap((entity) =>
+				entity.kind === 'artwork' ? [[entity.source.assetId, entity.source] as const] : []));
+			if (!images.size) return null;
+			if (api === null) throw new Error('Artwork images are unavailable in Preview.');
+			const bytes = new Map<string, ArtworkBytes>();
+			const rows = new Map((await api.listAssets(projectId, signal)).map((row) => [row.id, row]));
+			for (const [id, image] of images) {
+				const row = rows.get(id);
+				if (!row) throw new Error('A placed Artwork is missing. Retry entering Preview.');
+				const content = await readVerifiedArtwork(api, projectId, image, signal, row);
+				await verifyArtworkDecode(content.bytes, content.mime, image);
+				signal.throwIfAborted();
+				bytes.set(id, content);
+			}
+			return createArtworkScope(async (image) => {
+				const content = bytes.get(image.assetId);
+				if (!content) throw new Error('Artwork is missing in this Preview.');
+				return content;
+			});
+		}
 	});
 	const preview = $derived(previewController.preview);
 	const previewView = $derived(previewController.view);
@@ -967,6 +1000,113 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	 * consume this one construction; later T2 slices fill the strata without
 	 * growing a second route writer.
 	 */
+	const canPlaceArtwork = () => lens === 'world' && preview === null && wallUnfold.state === null;
+	const artwork = createArtworkAuthoring({
+		api,
+		services: () => adapterServices,
+		canEdit: canPlaceArtwork,
+		isSaved: () => headSave?.snapshot().savedBaseToken != null,
+		notice: (message) => { notice = message; },
+		select: (services, id) => selectStageReference(artworkReference(services, id))
+	});
+	const stageArtworkScope = createArtworkScope(async (image, signal) => {
+		if (api === null) throw new Error('Artwork storage is unavailable.');
+		return readVerifiedArtwork(api, projectId, image, signal);
+	});
+	$effect(() => () => { artwork.cancel(); stageArtworkScope.dispose(); });
+	$effect(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') artwork.cancel();
+		if (!canPlaceArtwork()) {
+			artwork.cancel();
+			cancelArtworkResize();
+		}
+	});
+
+	let artworkResize = $state.raw<{
+		entity: SceneArtworkEntity; mode: ArtworkCorner | 'move' | 'turn'; pointerId: number;
+		startX: number; startPoint: Vector3 | null;
+		lease: Extract<ReturnType<StageFacade['acquireGesture']>, { kind: 'granted' }>['lease'];
+	} | null>(null);
+	let artworkResizeGhost = $state.raw<SceneArtworkEntity | null>(null);
+	function cancelArtworkResize(): void {
+		artworkResize?.lease.release();
+		artworkResize = null;
+		artworkResizeGhost = null;
+	}
+	function startArtworkResize(event: PointerEvent, mode: ArtworkCorner | 'move' | 'turn'): void {
+		const stage = facade;
+		const entity = selectedArtwork;
+		const evaluationId = stage?.evaluationId();
+		if (event.button !== 0 || stage === null || !entity || !evaluationId || stageEl == null) return;
+		event.preventDefault();
+		event.stopPropagation();
+		const acquired = stage.acquireGesture({ owner: 'artwork-resize', evaluationId, policy: 'cancel-on-reading-change' });
+		if (acquired.kind !== 'granted') return;
+		if (!capturePointer(stageEl, event.pointerId)) { acquired.lease.release(); return; }
+		press.refuse(event.pointerId);
+		const ray = evaluation === null ? null : pointerRay([event.clientX, event.clientY], evaluation, evaluation.token);
+		const startPoint = mode === 'move' && ray?.kind === 'ray' ? artworkPlanePoint(entity, ray.ray) : null;
+		artworkResize = { entity, mode, startPoint, startX: event.clientX, pointerId: event.pointerId, lease: acquired.lease };
+	}
+	function readArtworkResize(event: PointerEvent) {
+		const drag = artworkResize;
+		if (!drag?.lease.active || evaluation === null || drag.pointerId !== event.pointerId) return null;
+		const ray = pointerRay([event.clientX, event.clientY], evaluation, evaluation.token);
+		if (drag.mode === 'turn') {
+			const rotation = [...drag.entity.rotation] as SceneArtworkEntity['rotation'];
+			rotation[1] += (event.clientX - drag.startX) * Math.PI / 360;
+			return { ...drag.entity, rotation };
+		}
+		if (ray.kind !== 'ray') return null;
+		if (drag.mode === 'move') {
+			const point = artworkPlanePoint(drag.entity, ray.ray);
+			if (!point || !drag.startPoint) return null;
+			return { ...drag.entity, position: point.sub(drag.startPoint).add(new Vector3(...drag.entity.position)).toArray() };
+		}
+		return resizeArtworkAtRay(drag.entity, drag.mode, ray.ray);
+	}
+	async function finishArtworkResize(event: PointerEvent): Promise<void> {
+		const drag = artworkResize;
+		const services = adapterServices;
+		const candidate = readArtworkResize(event);
+		cancelArtworkResize();
+		if (!drag || !candidate || !services) return;
+		const changed = (a: readonly number[], b: readonly number[]) => a.some((value, i) => Math.abs(value - b[i]!) > 1e-7);
+		if (!changed([candidate.widthMeters, ...candidate.position, ...candidate.rotation],
+			[drag.entity.widthMeters, ...drag.entity.position, ...drag.entity.rotation])) return;
+		const result = await artworkCommand(services, ARTWORK_TRANSFORM,
+			drag.mode === 'turn' ? { rotation: candidate.rotation }
+				: drag.mode === 'move' ? { position: candidate.position }
+				: { position: candidate.position, widthMeters: candidate.widthMeters },
+			{ target: candidate.id, expectedRevision: drag.lease.acceptedRevision });
+		if (adapterServices === services && result.kind === 'refused') notice = result.message;
+	}
+
+	function artworkPoseAt(event: MouseEvent) {
+		const stage = facade;
+		const reading = evaluation;
+		if (!canPlaceArtwork() || stage === null || reading === null || reading.renderedReading !== '3d') return null;
+		const ray = pointerRay([event.clientX, event.clientY], reading, reading.token);
+		if (ray.kind !== 'ray') return null;
+		const snapshot = stage.snapshot();
+		const hit = scenePick.pickVisibleFace(ray.ray, snapshot.domain.scene,
+			(candidate) => isArtworkWallFace(candidate, snapshot.domain.geometry));
+		const forward = new Vector3(...reading.target).sub(new Vector3(...reading.eye)).normalize().toArray();
+		return artworkPlacement(ray.ray, hit, snapshot.domain.datumMeters, reading.eye, forward, snapshot.domain.geometry);
+	}
+
+	function acceptsArtworkDrop(transfer: DataTransfer | null): boolean {
+		return canPlaceArtwork() && transfer !== null && [...transfer.items].some((item) =>
+			item.kind === 'file' && ['', 'image/png', 'image/jpeg', 'image/webp'].includes(item.type));
+	}
+
+	function onArtworkDrop(event: DragEvent) {
+		if (!acceptsArtworkDrop(event.dataTransfer)) return;
+		event.preventDefault();
+		selectTool();
+		void artwork.importFiles(Array.from(event.dataTransfer?.files ?? []));
+	}
+
 	const look = createLookAuthoring({
 		environment: () => currentEnvelope?.units.scene.data.environment?.preset ?? 'paper',
 		services: () => adapterServices,
@@ -3002,6 +3142,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerMove(event: PointerEvent): void {
+		if (artworkResize?.pointerId === event.pointerId) {
+			artworkResizeGhost = readArtworkResize(event);
+			return;
+		}
+		if (artwork.armed && event.buttons === 0) artwork.move(artworkPoseAt(event));
 		if (sheetPinDrag !== null) {
 			if (event.pointerId === sheetPinDrag.pointerId) sheetPinMove(event);
 			return;
@@ -3127,6 +3272,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerUp(event: PointerEvent): void {
+		if (artworkResize?.pointerId === event.pointerId) { void finishArtworkResize(event); return; }
 		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
 			finishSheetPin();
 			return;
@@ -3236,6 +3382,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onPointerCancel(event: PointerEvent): void {
+		if (artworkResize?.pointerId === event.pointerId) { cancelArtworkResize(); return; }
 		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
 			cancelSheetPin();
 			clearHover();
@@ -3254,6 +3401,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function onLostPointerCapture(event: PointerEvent): void {
+		if (artworkResize?.pointerId === event.pointerId) { cancelArtworkResize(); return; }
 		if (sheetPinDrag !== null && event.pointerId === sheetPinDrag.pointerId) {
 			cancelSheetPin();
 			clearHover();
@@ -3286,6 +3434,11 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		// not select the canonical Wall/Opening drawn behind the sheet (and so must
 		// not disagree with the pointer pick); an empty click stays non-selecting.
 		if (wallUnfold.state !== null) return;
+		if (artwork.armed) {
+			if (evaluation?.renderedReading !== '3d') notice = 'Switch to 3D to place Artwork.';
+			else void artwork.place(artworkPoseAt(event));
+			return;
+		}
 		// A frustum's captured release also dispatches a click. Its View owns that
 		// click just as it owned the press; picking the floor here clears the Card.
 		// A View glyph, Look through or placement owns the release; it must not pick the Floor.
@@ -3326,6 +3479,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	}
 
 	function handleKey(event: KeyboardEvent): void {
+		if (event.key === 'Escape' && artworkResize !== null) {
+			cancelArtworkResize();
+			event.preventDefault();
+			return;
+		}
+		if (event.key === 'Escape' && (artwork.armed || artwork.importing)) {
+			artwork.cancel();
+			notice = '';
+			event.preventDefault();
+			return;
+		}
 		// Preview is an isolated visitor run: Stage viewing keys do not apply there.
 		if (preview !== null) {
 			if (event.key === 'Escape') previewController.close();
@@ -3721,10 +3885,20 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		};
 	});
 
+	const selectedArtwork = $derived.by(() => {
+		if (cardSubject?.reference?.domain !== 'scene') return null;
+		const entity = scenePayload?.entities.find((candidate) => candidate.id === cardSubject.sourceId);
+		return entity?.kind === 'artwork' ? entity : null;
+	});
+
 	/** The Card's Look stratum: empty in P0, filled by later Finish, Light or Artwork slices. */
 	const lookCardStratum = $derived.by(() => {
 		void contributionsVersion;
-		return look.cardStratum(cardSubject);
+		const subject = cardSubject;
+		const entity = subject?.reference?.domain === 'scene'
+			? scenePayload?.entities.find((entry) => entry.id === subject.sourceId)
+			: undefined;
+		return (entity?.kind === 'artwork' ? artwork.card(entity) : null) ?? look.cardStratum(subject);
 	});
 
 	/**
@@ -4011,6 +4185,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** Select — the host's own tool: it closes the contributed task and keeps what is selected. */
 	function selectTool(): void {
+		artwork.cancel();
 		closeTask();
 	}
 
@@ -4066,6 +4241,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	/** The Living Draft row's one bridge into the existing dock/host controllers. */
 	function armWorldTool(id: WorldToolId): void {
+		artwork.cancel();
 		worldPlateOpen = id !== 'select';
 		if (id === 'library') {
 			toggleWorldLibrary();
@@ -4586,7 +4762,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				: 'select'}
 				style:cursor={stageCursor ?? undefined}
 				aria-label="Spatial stage"
-				onpointerleave={clearHover}
+				onpointerleave={() => { clearHover(); artwork.move(null); }}
+				ondragover={(event) => { if (acceptsArtworkDrop(event.dataTransfer)) event.preventDefault(); }}
+				ondrop={onArtworkDrop}
 				onpointerdown={onPointerDown}
 				onpointermove={onPointerMove}
 				onpointerup={onPointerUp}
@@ -4607,6 +4785,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						{evaluation}
 						{ghosts}
 						{modelUrls}
+						artworkScope={stageArtworkScope}
+						artworkGhost={artworkResizeGhost ?? artwork.ghost}
+						onArtworkError={(message) => { notice = message; }}
 						plan={planView}
 						planAppearance={preferences.planAppearance}
 						paperInk2d={PAPER_TONES[preferences.paperTone2d].ink}
@@ -4877,6 +5058,10 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						</footer>
 					</aside>
 				{/if}
+				{#if selectedArtwork && facade && evaluation?.renderedReading === '3d' && canPlaceArtwork() && !artwork.armed}
+					<ArtworkResizeOverlay entity={artworkResizeGhost ?? selectedArtwork} stage={facade}
+						{evaluation} resizing={artworkResizeGhost !== null} onStart={startArtworkResize} />
+				{/if}
 				{#if lens !== 'experience' && notice}<p class="stage-note" role="status">{notice}</p>{/if}
 			</div>
 			{/if}
@@ -4918,6 +5103,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						resolveTexture={(uri: string) =>
 							isAllowedShippedTextureUri(uri) ? uri : null}
 						{modelUrls}
+						artworkScope={previewController.artworkScope}
 						{reducedMotion}
 						title={entry?.title ?? null}
 						experienceTitle={entry?.title ?? null}
@@ -4983,6 +5169,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						onObjectPick={pickWorldObject}
 						onMaterialPick={look.pickMaterial}
 						lookShelf={look.libraryShelf}
+						artworkShelf={scenePayload === null ? null : scenePayload.artworkLibrary ?? []}
+						onArtworkPick={(entry) => { selectTool(); artwork.arm(entry); }}
+						onArtworkImport={(files) => { selectTool(); void artwork.importFiles(files); }}
 						onLookPick={look.pickLibraryEntry}
 					>
 						{#snippet plate()}

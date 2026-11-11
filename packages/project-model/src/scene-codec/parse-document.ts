@@ -651,6 +651,7 @@ export function validateSemantics(
 			memberIds.add(memberId);
 			const entity = entityById.get(memberId);
 			if (!entity) addIssue(issues, path, 'unknown_cluster_member', `Unknown member in scene cluster ${cluster.id}: ${memberId}`);
+			else if (entity.kind === 'artwork') addIssue(issues, path, 'invalid_cluster_member', 'Artwork grouping is unavailable');
 			else if (entity.roomId !== cluster.roomId) addIssue(issues, path, 'cross_room_cluster_member', `Cross-room member in scene cluster ${cluster.id}: ${memberId}`);
 			if (clusteredIds.has(memberId)) addIssue(issues, path, 'multiple_cluster_membership', `Scene entity belongs to multiple clusters: ${memberId}`);
 			clusteredIds.add(memberId);

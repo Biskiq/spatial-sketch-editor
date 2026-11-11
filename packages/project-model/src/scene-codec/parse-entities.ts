@@ -18,7 +18,10 @@ import {
 	extrudeProfile,
 	type EvaluatedProfile
 } from '@portfolio/geometry-core';
+import { ARTWORK_MAX_IMAGE_EDGE, isArtworkAssetId, isArtworkImageEdge, isArtworkWidth } from '../artwork';
+import type { ArtworkImage, ArtworkLibraryEntry } from '../artwork';
 import type {
+	SceneArtworkEntity,
 	SceneBoxDimensions,
 	SceneCylinderDimensions,
 	SceneEntity,
@@ -728,6 +731,56 @@ export function parseLightEntity(
 	};
 }
 
+function readArtworkImage(input: JsonRecord, path: string, issues: SceneDocumentIssue[]): ArtworkImage | undefined {
+	const assetId = readRequiredString(input, 'assetId', path, issues);
+	const pixelWidth = readRequiredNumber(input, 'pixelWidth', path, issues);
+	const pixelHeight = readRequiredNumber(input, 'pixelHeight', path, issues);
+	if (assetId === undefined || !isArtworkAssetId(assetId)) {
+		addIssue(issues, `${path}.assetId`, 'invalid_asset_id', 'Expected a canonical project asset UUID');
+		return undefined;
+	}
+	if (pixelWidth === undefined || pixelHeight === undefined ||
+		!isArtworkImageEdge(pixelWidth) || !isArtworkImageEdge(pixelHeight)) {
+		addIssue(issues, path, 'invalid_dimension', `Artwork image edges must be whole pixels from 1 to ${ARTWORK_MAX_IMAGE_EDGE}`);
+		return undefined;
+	}
+	return { assetId, pixelWidth, pixelHeight };
+}
+
+export function parseArtworkLibraryEntry(input: unknown, path: string, issues: SceneDocumentIssue[]): ArtworkLibraryEntry | undefined {
+	if (!isRecord(input)) {
+		addIssue(issues, path, 'invalid_type', 'Expected an Artwork Library image');
+		return undefined;
+	}
+	assertAllowedKeys(input, ['assetId', 'name', 'pixelWidth', 'pixelHeight'], path, issues);
+	const name = readRequiredString(input, 'name', path, issues);
+	const image = readArtworkImage(input, path, issues);
+	return name && image ? { ...image, name } : undefined;
+}
+
+function parseArtworkEntity(input: JsonRecord, path: string, issues: SceneDocumentIssue[]): SceneArtworkEntity | undefined {
+	assertAllowedKeys(input, ['kind', 'id', 'name', 'position', 'rotation', 'source', 'widthMeters'], path, issues);
+	const id = readRequiredString(input, 'id', path, issues);
+	const name = readRequiredString(input, 'name', path, issues);
+	const position = readVec3(input.position, `${path}.position`, issues);
+	const rotation = readVec3(input.rotation, `${path}.rotation`, issues);
+	const widthMeters = readRequiredNumber(input, 'widthMeters', path, issues);
+	const sourcePath = `${path}.source`;
+	const source = input.source;
+	if (!isRecord(source) || source.kind !== 'image') {
+		addIssue(issues, sourcePath, 'invalid_artwork_source', 'Expected an image source');
+		return undefined;
+	}
+	assertAllowedKeys(source, ['kind', 'assetId', 'pixelWidth', 'pixelHeight'], sourcePath, issues);
+	const image = readArtworkImage(source, sourcePath, issues);
+	if (!id || !name || !position || !rotation || !image || widthMeters === undefined) return undefined;
+	if (!isArtworkWidth(widthMeters, image)) {
+		addIssue(issues, `${path}.widthMeters`, 'invalid_dimension', 'Artwork width and height must be between 0.001 and 1000 m');
+		return undefined;
+	}
+	return { kind: 'artwork', id, name, position, rotation, widthMeters, source: { kind: 'image', ...image } };
+}
+
 export function parseEntity(
 	input: unknown,
 	path: string,
@@ -743,6 +796,7 @@ export function parseEntity(
 	if (kind === 'primitive') return parsePrimitiveEntity(input, path, issues, options);
 	if (kind === 'form') return parseFormEntity(input, path, issues, options);
 	if (kind === 'light') return parseLightEntity(input, path, issues);
+	if (kind === 'artwork') return parseArtworkEntity(input, path, issues);
 	if (kind !== undefined) {
 		addIssue(issues, `${path}.kind`, 'invalid_entity_kind', `Invalid scene entity kind: ${kind}`);
 	}
