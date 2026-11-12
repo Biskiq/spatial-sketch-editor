@@ -199,6 +199,17 @@ export function openingRefusalWords(
 	return `That ${kind} was refused. Adjust its host or size and try again.`;
 }
 
+/** The one coincident-copy refusal sentence: preview, pointer and acceptance share it. */
+export const ROOM_DUPLICATE_COINCIDENT_MESSAGE =
+	'Move the copy clear of its source before placing it.';
+
+/** The planner/refusal shape the Room duplicate seam accepts. */
+export type RoomDuplicateRejection = {
+	readonly code: string;
+	readonly message?: string;
+	readonly targetIds?: readonly string[];
+};
+
 /**
  * T1 A4 — duplicate's own words.
  *
@@ -210,11 +221,11 @@ export function openingRefusalWords(
  */
 export function roomDuplicateRefusalWords(
 	document: LayoutDocumentWallFirst,
-	rejection: { readonly code: string; readonly message?: string; readonly targetIds?: readonly string[] }
+	rejection: RoomDuplicateRejection
 ): string {
 	switch (rejection.code) {
 		case 'coincident_with_source':
-			return 'Move the copy clear of its source before placing it.';
+			return ROOM_DUPLICATE_COINCIDENT_MESSAGE;
 		case 'room_not_isolated': {
 			const walls = (rejection.targetIds ?? [])
 				.map((id) => document.walls.find((wall) => wall.id === id))
@@ -232,6 +243,8 @@ export function roomDuplicateRefusalWords(
 			return 'This Room contains a read-only profile object. Remove it before duplicating.';
 		case 'unknown_room':
 			return 'That Room is gone. Select the Room again.';
+		case 'unresolvable_floor':
+			return 'This Room has no resolvable floor to place a copy.';
 		case 'captured_id_in_use':
 			return 'That identity is already taken. Start the duplicate again.';
 		case 'invalid-value':

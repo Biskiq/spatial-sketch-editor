@@ -60,16 +60,9 @@ import {
 
 import { layoutSubjectReference } from './drawing-planners';
 import { layoutPlanner } from './precision';
-import { roomDuplicateRefusalWords } from './refusals';
+import { ROOM_DUPLICATE_COINCIDENT_MESSAGE, roomDuplicateRefusalWords } from './refusals';
 
 export const LAYOUT_ROOM_DUPLICATE_KIND = 'layout-room-duplicate';
-
-/**
- * The one refusal a coincident copy needs. Pointer proposal and acceptance read
- * the same sentence, so a refused click never writes and never changes its words.
- */
-export const ROOM_DUPLICATE_COINCIDENT_MESSAGE =
-	'Move the copy clear of its source before placing it.';
 
 /**
  * Is this translation identical to the source placement?

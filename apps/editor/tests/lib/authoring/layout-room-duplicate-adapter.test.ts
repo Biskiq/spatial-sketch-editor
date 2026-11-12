@@ -39,6 +39,10 @@ import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { stageCardActions } from '$lib/authoring/stage/stage-contributions';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { roomDuplicateIntent } from '$lib/authoring/adapters/layout/room-duplicate-planners';
+import {
+	ROOM_DUPLICATE_COINCIDENT_MESSAGE,
+	roomDuplicateRefusalWords
+} from '$lib/authoring/adapters/layout/refusals';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -489,6 +493,10 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 		const beforeBytes = mounted.facade.snapshot().canonicalJson;
 		const beforeHistory = mounted.host.history();
 		const snapshot = mounted.facade.snapshot();
+		const coincidentWords = roomDuplicateRefusalWords(fixture.document, {
+			code: 'coincident_with_source'
+		});
+		expect(coincidentWords).toBe(ROOM_DUPLICATE_COINCIDENT_MESSAGE);
 
 		// The planner refuses zero translation even if a caller bypasses the
 		// pointer proposal: no intent may record a coincident copy.
@@ -506,7 +514,7 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 		);
 		expect(direct.kind).toBe('refused');
 		if (direct.kind !== 'refused') throw new Error(`coincident duplicate was not refused: ${direct.kind}`);
-		expect(direct.message).toContain('Move the copy clear of its source');
+		expect(direct.message).toBe(coincidentWords);
 		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
 		expect(mounted.host.history()).toEqual(beforeHistory);
 
@@ -519,11 +527,14 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 		hover(mounted, [3 - initial[0], 2 - initial[1]]);
 		const preview = mounted.facade.candidatePreviews()[0]!;
 		expect(preview.role).toBe('refused');
-		expect(preview.labels[0]!.text).toBe('Move the copy clear of its source before placing it.');
+		expect(preview.labels[0]!.text).toBe(coincidentWords);
 
 		click(mounted, [3 - initial[0], 2 - initial[1]]);
 		await new Promise((resolve) => setTimeout(resolve, 20));
 		expect(mounted.facade.session.task()?.kind).toBe('layout-room-duplicate');
+		// The pointer refusal and the live proposal read the same words as the
+		// planner's acceptance refusal; a click never invents a second sentence.
+		expect(mounted.facade.candidatePreviews()[0]!.labels[0]!.text).toBe(coincidentWords);
 		expect(mounted.facade.snapshot().canonicalJson).toBe(beforeBytes);
 		// The live proposal holds Undo with its own reason; it records no entry.
 		expect(mounted.host.history()).toMatchObject({

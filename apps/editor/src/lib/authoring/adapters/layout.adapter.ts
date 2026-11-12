@@ -105,7 +105,12 @@ import LayoutCardFields from './layout/LayoutCardFields.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';	import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
-import { roomDuplicateRefusalWords, wallRefusalWords, wallSplitRefusalWords } from './layout/refusals';
+import {
+	roomDuplicateRefusalWords,
+	wallRefusalWords,
+	wallSplitRefusalWords,
+	type RoomDuplicateRejection
+} from './layout/refusals';
 import {
 	EMPTY_CHAIN_DRAFT,
 	appendChainPoint,
@@ -151,8 +156,7 @@ import {
 	createRoomDuplicatePlanners,
 	LAYOUT_ROOM_DUPLICATE_KIND,
 	roomDuplicateIntent,
-	roomDuplicateIsCoincident,
-	ROOM_DUPLICATE_COINCIDENT_MESSAGE
+	roomDuplicateIsCoincident
 } from './layout/room-duplicate-planners';
 import {
 	classifyInkPointerTarget,
@@ -1298,7 +1302,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let roomDuplicate: RoomDuplicateSession | null = null;
 			/** The Room the Card asked to duplicate, consumed by the task's instrument. */
 			let pendingRoomDuplicateId: string | null = null;
-			let roomDuplicateNotice: string | null = null;
+			let roomDuplicateNotice: RoomDuplicateRejection | null = null;
 			let roomDuplicateCommitting = false;
 			let roomDuplicateProposal: ProposalLease | null = null;
 			const ROOM_DUPLICATE_PREVIEW_ID = 'layout-room-duplicate-candidate';
@@ -1365,17 +1369,17 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function beginRoomDuplicate(roomId: string): boolean {
 				const room = document.rooms.find((entry) => entry.id === roomId);
 				if (room === undefined) {
-					roomDuplicateNotice = 'That Room is gone. Select the Room again.';
+					roomDuplicateNotice = { code: 'unknown_room' };
 					return false;
 				}
 				const isolation = resolveIsolatedRoomSubgraph(document, roomId);
 				if (isolation.kind === 'rejected') {
-					roomDuplicateNotice = roomDuplicateRefusalWords(document, isolation.rejection);
+					roomDuplicateNotice = isolation.rejection;
 					return false;
 				}
 				const frame = roomDuplicateFrame(roomId);
 				if (frame === null) {
-					roomDuplicateNotice = 'This Room has no resolvable floor to place a copy.';
+					roomDuplicateNotice = { code: 'unresolvable_floor' };
 					return false;
 				}
 				roomDuplicate = {
@@ -1442,12 +1446,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (point !== null) moveRoomDuplicate(ctx, [point[0], point[1]]);
 					const current = roomDuplicate;
 					if (current === null) {
-						roomDuplicateNotice = 'That Room cannot be duplicated as it stands.';
+						roomDuplicateNotice = { code: 'unknown_room' };
 						services.stage.notifySurfaceChange();
 						return true;
 					}
 					if (roomDuplicateIsCoincident(current.delta)) {
-						roomDuplicateNotice = ROOM_DUPLICATE_COINCIDENT_MESSAGE;
+						roomDuplicateNotice = { code: 'coincident_with_source' };
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -1456,8 +1460,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					roomDuplicateNotice = current.preview?.kind === 'rejected'
-						? current.preview.rejection.message
-						: 'This Room cannot be duplicated here.';
+						? current.preview.rejection
+						: { code: 'invalid-value' };
 					services.stage.notifySurfaceChange();
 					return true;
 				}
@@ -1505,7 +1509,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						})
 					);
 					if (outcome.kind === 'refused') {
-						roomDuplicateNotice = outcome.message;
+						roomDuplicateNotice = { code: outcome.code, message: outcome.message };
 						services.stage.notifySurfaceChange();
 						return;
 					}
@@ -1521,9 +1525,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				const current = roomDuplicate;
 				if (current === null) return [];
 				const plan = current.preview;
-				const refused = roomDuplicateIsCoincident(current.delta)
-					? ROOM_DUPLICATE_COINCIDENT_MESSAGE
-					: roomDuplicateNotice ?? (plan?.kind === 'rejected' ? plan.rejection.message : null);
+				const rejection: RoomDuplicateRejection | null = roomDuplicateIsCoincident(current.delta)
+					? { code: 'coincident_with_source' }
+					: plan?.kind === 'rejected'
+						? plan.rejection
+						: roomDuplicateNotice;
+				const refused = rejection === null ? null : roomDuplicateRefusalWords(document, rejection);
 				const anchor: [number, number, number] = current.pointer === null
 					? [current.center[0] + current.delta[0], y, current.center[1] + current.delta[1]]
 					: [current.pointer[0], y, current.pointer[1]];
@@ -6628,7 +6635,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									label: 'Place',
 									value: started
 										? 'Move the pointer, then click. Escape cancels.'
-										: roomDuplicateNotice ?? 'Select an isolated Room and choose Duplicate.'
+										: roomDuplicateNotice === null
+											? 'Select an isolated Room and choose Duplicate.'
+											: roomDuplicateRefusalWords(document, roomDuplicateNotice)
 								}
 							]
 						};
