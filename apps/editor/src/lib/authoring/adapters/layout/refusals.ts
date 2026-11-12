@@ -16,7 +16,10 @@ import {
 	type WallOpeningRejection
 } from '@portfolio/layout-core';
 
+const CLOSED_WALL_CONTACT_WORDS = 'This would touch or cross a circular Wall. Move it clear of the circle.';
+
 export function wallRefusalWords(code: string, message = ''): string {
+	if (message.includes('(closed_wall_isolated)')) return CLOSED_WALL_CONTACT_WORDS;
 	switch (code) {
 		case 'dimension_out_of_range':
 			return LAYOUT_DIMENSION_LIMIT_MESSAGE;
@@ -263,6 +266,7 @@ export function roomDuplicateRefusalWords(
 	document: LayoutDocumentWallFirst,
 	rejection: RoomDuplicateRejection
 ): string {
+	if (rejection.message?.includes('(closed_wall_isolated)')) return CLOSED_WALL_CONTACT_WORDS;
 	switch (rejection.code) {
 		case 'coincident_with_source':
 			return ROOM_DUPLICATE_COINCIDENT_MESSAGE;
@@ -297,6 +301,7 @@ export function roomDuplicateRefusalWords(
 
 /** Drawing diagnostics stay in tooling; the local problem marker offers a remedy. */
 export function drawingRefusalWords(code: string): string {
+	if (code === 'closed_wall_isolated') return CLOSED_WALL_CONTACT_WORDS;
 	// A chain refusal is about the outline being drawn, not about editing an
 	// existing Room. Name the attempted closure and the smallest repair instead
 	// of the Card's "Room moved across its boundary" words.

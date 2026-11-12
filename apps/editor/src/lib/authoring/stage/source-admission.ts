@@ -1,3 +1,4 @@
+import { areEquivalentLayoutClones, type CompiledLayoutGeometryResult } from '@portfolio/layout-core';
 import { sealCompiledLayoutSnapshot } from '@portfolio/layout-core';
 /**
  * Source admission — **admission equals runtime preparation**.
@@ -187,6 +188,11 @@ function projectIssues(issues: readonly ShapeIssue[]): ProjectIssue[] {
  * The whole path is one envelope validation plus one unit runtime preparation —
  * never a second decode for the editor.
  */
+type PreparedLayout = {
+	readonly data: ProjectEnvelope['units']['layout']['data'];
+	readonly compiled: { readonly geometry: CompiledLayoutGeometryResult['geometry']; readonly issues: readonly LayoutGeometryIssue[] };
+};
+
 export async function admitSource(
 	input: unknown,
 	context: AdmissionContext,
@@ -201,6 +207,7 @@ export async function admitSource(
 	 */
 	options: {
 		readonly compileSession?: LayoutCompileSession;
+		readonly preparedLayout?: PreparedLayout;
 		readonly knownIdentity?: {
 			readonly sourceContentId: string;
 			readonly canonicalJson: string;
@@ -209,7 +216,7 @@ export async function admitSource(
 ): Promise<AdmissionOutcome> {
 	// Harness-gated stage span (inert without the work observer).
 	return measureWorkAsync('admission', () =>
-		admitSourceOnce(input, context, options.compileSession, options.knownIdentity)
+		admitSourceOnce(input, context, options.compileSession, options.knownIdentity, options.preparedLayout)
 	);
 }
 
@@ -220,7 +227,8 @@ async function admitSourceOnce(
 	knownIdentity?: {
 		readonly sourceContentId: string;
 		readonly canonicalJson: string;
-	}
+	},
+	preparedLayout?: PreparedLayout
 ): Promise<AdmissionOutcome> {
 	// Read the envelope once so the host policy can see its model registry before
 	// Scene resolution, then prepare **that validated value**: preparation splits
@@ -245,7 +253,12 @@ async function admitSourceOnce(
 	const yieldTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 	if (coldForms) await yieldTask();
 	const prepared = p2311Measure('admission:runtime', () =>
-		prepareValidatedUnitRuntime(read, sceneOptionsFor(read.envelope), compileSession)
+		prepareValidatedUnitRuntime(
+			read, sceneOptionsFor(read.envelope),
+			preparedLayout && compileSession && areEquivalentLayoutClones(preparedLayout.data, read.envelope.units.layout.data)
+				? { ...compileSession, compile: () => ({ geometry: preparedLayout.compiled.geometry, issues: [...preparedLayout.compiled.issues] }) }
+				: compileSession
+		)
 	);
 	if (prepared.kind === 'rejected') {
 		return { kind: 'refused', reason: 'invalid-format', issues: projectIssues(prepared.issues) };

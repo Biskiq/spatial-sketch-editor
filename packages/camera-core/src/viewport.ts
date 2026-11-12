@@ -264,7 +264,7 @@ export type ViewingIntent =
 	/** A CSS-pixel pan in the settled reading's target plane. */
 	| { readonly kind: 'pan'; readonly deltaCss: readonly [number, number]; readonly rect: ViewportRect }
 	| { readonly kind: 'orbit'; readonly deltaAzimuthRadians: number; readonly deltaElevationRadians: number }
-	| { readonly kind: 'zoom'; readonly scale: number }
+	| { readonly kind: 'zoom'; readonly scale: number; readonly anchor?: Vec3 }
 	| { readonly kind: 'set-reading'; readonly reading: ViewportReading }
 	| {
 			readonly kind: 'fit';
@@ -1312,6 +1312,28 @@ export function requestViewingIntent(
 			if (!isFiniteNumber(intent.scale) || intent.scale <= 0) {
 				return reject(settled, 'invalid-intent', 'a zoom scale must be a finite positive multiplier');
 			}
+			if (intent.anchor !== undefined && settled.reading === '3d' && settled.transition === null) {
+				if (!isFiniteVec3(intent.anchor)) return reject(settled, 'invalid-intent', 'Zoom anchor must be finite.');
+				const eye = eyeOfInspectionPose(settled.pose);
+				const backward = poseDirection(settled.pose);
+				const depth = dotVec3(subtractVec3(eye, intent.anchor), backward);
+				const hitExtent = depth / perspectiveDistanceMeters(1, settled.pose.fovYDegrees);
+				if (hitExtent > 0 && Number.isFinite(hitExtent)) {
+					// An off-plane hit can already be outside the framing bounds.
+					// Allow movement back toward the range without snapping the eye to it.
+					const nextHitExtent = clamp(
+						hitExtent * intent.scale,
+						Math.min(hitExtent, VIEWPORT_TARGET_PLANE_MIN_METERS),
+						Math.max(hitExtent, VIEWPORT_TARGET_PLANE_MAX_METERS)
+					);
+					if (nextHitExtent === hitExtent) return accept(settled);
+					const extent = clamp(nextHitExtent, VIEWPORT_TARGET_PLANE_MIN_METERS, VIEWPORT_TARGET_PLANE_MAX_METERS);
+					const nextEye = addVec3(intent.anchor, scaleVec3(subtractVec3(eye, intent.anchor), nextHitExtent / hitExtent));
+					const target = subtractVec3(nextEye, scaleVec3(backward, perspectiveDistanceMeters(extent, settled.pose.fovYDegrees)));
+					return accept(withPose(settled, { ...settled.pose, target, targetPlaneHeightMeters: extent }));
+				}
+			}
+
 			const targetPlaneHeightMeters = clamp(
 				settled.pose.targetPlaneHeightMeters * intent.scale,
 				VIEWPORT_TARGET_PLANE_MIN_METERS,
