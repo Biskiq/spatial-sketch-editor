@@ -74,8 +74,9 @@ verbatim report untouched.
   separates the WebGPU and Rust/WASM questions. Rust/WASM stays closed under the P23B.8 reopen
   conditions; WebGPU's open question is per-backend cost and T2 shader portability, not browser
   support. Inventories the current renderer lock-in surface, proposes a T2 portability rule and
-  three minutes-scale probes (count census, unit-cost calibration, prediction check). Research
-  input for owner review, not a contract, plan or decision.
+  three minutes-scale probes (count census, unit-cost calibration, prediction check). §7 records
+  the owner's decisions and the P1/P2 outcome (stay on `WebGLRenderer`; WebGPU reopen conditions;
+  the open clustered-lighting sweep). Research input, not a contract or plan.
 
 ## Cross-domain synthesis
 

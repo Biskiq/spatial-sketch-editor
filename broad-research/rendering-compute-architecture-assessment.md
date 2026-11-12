@@ -3,6 +3,7 @@
 Status: research assessment, written 2026-11-12 against `main` `73103c27`. **Not** a contract,
 plan, roadmap change, dependency decision or authorization. No production code changed and no
 benchmark ran. It proposes three small probes for the owner to authorize or decline (§6).
+**Updated 2026-11-12:** the owner's decisions and the P1/P2 outcome are recorded in §7.
 
 Labels follow the repository's research convention: **[M]** measured (with its source),
 **[A]** arithmetic from stated assumptions, **[H]** a hypothesis a named probe can falsify,
@@ -110,9 +111,12 @@ This is close to the best possible starting position: a WebGPU trial is a factor
 file, one render-target site and a leak check, not a migration. The goal is to keep it that way through T2. Proposed rule for T2
 slices (a review checklist line, not a contract change):
 
-1. Materials come from the shared material factory using built-in Three materials; a new
-   `ShaderMaterial` / `onBeforeCompile` needs a sentence in the PR naming its TSL equivalent or
-   why it stays editor-only.
+1. Materials come from the shared material factory using built-in Three materials and their
+   parameters. A new `ShaderMaterial`, `onBeforeCompile` or node (TSL) material needs a
+   `WebGLRenderer` implementation **and** a sentence in the PR naming its TSL port, or saying why
+   it stays editor-only. *(Tightened 2026-11-12: P2 showed three's internal WebGL fallback is
+   not usable, so any WebGPU trial runs two renderers, and node materials do not run on
+   `WebGLRenderer`. See §7.)*
 2. **No post-processing pipeline is built on `EffectComposer` before the backend question (§6) is
    answered.** Post is the largest single fork between the two renderers; if a Gate B/C promise
    needs bloom or similar, that is the moment to decide the backend, not after.
@@ -181,14 +185,65 @@ session: one HTML page, three's own builds, no product imports, no dependency ad
 workspace. P1 needs a short product-side read of `renderer.info` on real Worlds and can run here.
 P3 needs the owner's devices for the one real reading.
 
-## 7. Questions for the owner
+## 7. Owner decisions and probe outcome (2026-11-12)
 
-1. Is **many lights** (rigs, fixtures, several shadow-casting lights) a real T2/T3 promise for
-   visitors on integrated GPUs? If yes, it is the most likely place where WebGPU becomes
-   product-justified under the North Star gate, and P2 should weight it.
-2. Should §5.1 become a line in the T2 slice review checklist now, ahead of Gate B?
-3. Authorize P1–P3 (and whether P2 goes to a separate session), or defer all three until T2
-   Gate C is authorized, which needs the same device readings anyway?
+### Owner decisions
+
+| Question | Decision |
+| --- | --- |
+| Many lights on ordinary laptops | Yes, as a long-term capability, with adaptive budgets and no promise that every light casts dynamic shadows. |
+| T2 portability rule before Gate B | Yes, immediately. §5.1 (as tightened) is a review line in the [T2 README](../docs/roadmap/t2-look-atmosphere/README.md). |
+| Probes now or at Gate C | Run P1 and P2 now; prepare P3 and coordinate device validation with Gate C. |
+
+### Probe outcome
+
+P1 and P2 ran on one MacBook Air M2 (Chrome 157) in PR #316, at
+`prototypes/render-cost-calibration/`. P3 is prepared there (`model.md`) but not run. Timings are
+synchronized milliseconds (submit plus a ~1.5 ms GPU readback), not frame time. **[M]**
+
+| Constant | A · `WebGLRenderer` | B · WebGPU | C · `forceWebGL` |
+| --- | ---: | ---: | ---: |
+| per draw | 0.68 µs | 2.44 µs | 3.19 µs |
+| per triangle | 0.99 ns | 1.64 ns | 1.41 ns |
+| shadow pass, 1,000 draws | 0.23 ms | 1.02 ms | 0.80 ms |
+| 5,000 / 10,000 separate draws | 8.0 / 11.0 ms | 22.4 / 50.7 ms | 19.5 / 44.0 ms |
+| first frame after adding a fifth light | 13.6 ms | 40.4 ms | 199.7 ms |
+
+- The §6 row "WebGPU per-draw cost ≥ WebGL" holds: B is 3.6× A per draw, and superlinear past
+  5,000 draws. Shadows favour A by 4.5×.
+- The §6 row "`forceWebGL` materially slower" holds: 4.7× A per draw.
+- With `InstancedMesh` or `BatchedMesh` the backends tie within noise. Instancing alone brings
+  5,000 draws to about 4.2 ms on all three. `BatchedMesh` gives A no gain on this machine.
+- With default forward lighting, B handles 64 point lights at 1,000 draws faster than A (26.9 vs
+  67.5 ms); A wins at 32 lights and below, and at 5,000 draws.
+- Shadow budget at 5,000 draws on A, 16.7 ms: 2 shadowed lights rendered every frame, or 4 with
+  cached shadows. An integrated GPU will be lower.
+- Census: the saved World draws 64 meshes / 44,937 triangles / 3 lights / no shadows in Stage,
+  about 1 % of the cinematic reference's 6,600 draws.
+- The reference estimate on A is about 23 ms before texture cost; triangles (8.95 ms) outweigh
+  draws (4.46 ms). Detail and visibility matter as much as instancing. **[A]**
+
+**Gap found at review.** three r187 ships `ClusteredLighting` and `DynamicLighting` for
+`WebGPURenderer` only, without custom shaders. P2 compared forward lighting on both backends, so
+WebGPU's many-light path, the one likely reason to adopt it for the long-term many-lights goal, is
+unpriced. The sweep is recorded as open in PR #316.
+
+### Resulting decisions (recommended; owner confirms by merge)
+
+1. **Renderer:** `WebGLRenderer` stays the production renderer. No WebGPU trial now. Reopen only
+   when both hold: (a) the product submits through shared materials and instancing, and (b) a
+   many-light or other WebGPU-only need cannot be met on WebGL within the adaptive budget. The
+   clustered/dynamic lighting sweep is the evidence for (b). If a trial ever runs,
+   `WebGLRenderer`, not three's internal fallback, serves browsers without WebGPU.
+2. **Rust/WASM:** unchanged, closed under the P23B.8 reopen conditions. Nothing here touched it.
+3. **T2:** the tightened §5.1 rule applies now. P2's shadow numbers are input to Gate C's shadow
+   budget (D9). Static shadow caching and a small dynamic-shadow cap are the expected shape.
+4. **T1/T2 refactor order:** describe-once sharing → `InstancedMesh` (not `BatchedMesh` on
+   WebGL until rechecked on Windows) → detail and visibility → texture budget. All are
+   backend-neutral (§5.3).
+5. **Gate C:** run the P3 protocol in `model.md` on the M2 and an Iris Xe-class laptop when Gate C
+   opens, with the clustered/dynamic lighting rows added. Until then, today's Worlds give no
+   renderer work to do.
 
 ## 8. Sources
 
