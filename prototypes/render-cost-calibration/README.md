@@ -142,14 +142,18 @@ back inside 16.7 ms (A 4.2, B 4.05, C 4.45 ms).
 1. **On today's un-instanced scene shape, WebGPU loses.** At 1,000 draws the backends are close
    (6.35 / 6.90 / 7.10 ms). At 5,000 draws A is 2.8× faster than B; at 10,000 it is 4.6× faster.
    B's per-draw submit cost is 3.6× A's, and the page submits every mesh separately today.
-2. **Collapsing submission changes the answer.** With `InstancedMesh`, B is slightly faster than A
-   at 1,000 draws (3.45 vs 4.35 ms) and a tie at 5,000 (4.05 vs 4.20). With `BatchedMesh`, B is
-   faster at both (2.55 vs 5.20; 5.30 vs 7.70). The Web GPU win is a submission win, not a
-   per-triangle win: B's per-triangle cost is 1.65× A's.
+2. **Collapsing submission removes A's lead; it does not establish a B lead.** With
+   `InstancedMesh`, B reads 3.45 vs A's 4.35 ms at 1,000 draws and 4.05 vs 4.20 at 5,000. With
+   `BatchedMesh`, B reads 2.55 vs 5.20 and 5.30 vs 7.70. These gaps are smaller than the
+   difference between the backends' fixed costs (`c0` 5.66 vs 4.45 ms, [`model.md`](./model.md))
+   and within the up-to-2× run-to-run slope variation noted under Limits, so they are read as a
+   **tie**. B's per-triangle cost is 1.65× A's. *(Amended in review, 2026-11-12.)*
 3. **WebGPU wins on many lights only when submission is not the bottleneck.** At 1,000 draws, B
    handles 64 point lights in 26.9 ms against A's 67.5 ms. At 32 lights A still wins (11.2 vs
    15.1 ms), and at 5,000 draws A wins at 16 and 32 lights because B's 5,000 submissions already
-   cost 20.8 ms. The curves leave their linear range at 64 lights in every backend.
+   cost 20.8 ms. The curves leave their linear range at 64 lights in every backend. This compares
+   **default forward lighting** on both backends; WebGPU's many-light paths were not measured (see
+   Review findings).
 4. **Shadows are WebGL's clearest win.** A shadow pass costs 0.23 ms at 1,000 draws and 1.07 ms at
    5,000; B costs 1.02 and 3.58 ms; C 0.80 and 3.91 ms. Caching lifts A to 4 shadowed lights
    (9 passes) at 5,000 draws inside 16.7 ms, where every-frame reaches only 2 lights. B and C
@@ -161,6 +165,34 @@ back inside 16.7 ms (A 4.2, B 4.05, C 4.45 ms).
 6. **Compile cost is not visible in program counts.** B and C add no program when the fifth light
    arrives, yet B spends 40 ms and C 200 ms on the next frame. A adds one program and spends 14 ms.
    A shader-count budget would miss the stall.
+
+## Review findings (2026-11-12)
+
+Recorded at review; the measured rows above are unchanged.
+
+1. **WebGPU's many-light path is unmeasured.** three r187 ships two lighting systems for
+   `WebGPURenderer` that need no custom shader, set with `renderer.lighting = …`:
+   `ClusteredLighting` (`three/addons/lighting/ClusteredLighting.js`, up to 1,024 point and spot
+   lights in screen tiles × depth slices) and `DynamicLighting`
+   (`three/addons/lighting/DynamicLighting.js`, light arrays batched to fixed maxima, which should
+   avoid the light-count recompile behind Finding 6's 40 ms stall). Neither exists for
+   `WebGLRenderer`. Finding 3 therefore prices forward lighting only, and WebGPU's one plausible
+   advantage for the owner's long-term many-lights goal is unpriced. **Open sweep:** B only,
+   default vs `DynamicLighting` vs `ClusteredLighting`, N = 1,000 and 5,000 (instanced and
+   separate), 16 / 64 / 256 point lights, plus first-frame cost of adding one light. Minutes on
+   this page; run it on the M2 now or with the Gate C devices. It decides the WebGPU reopen
+   condition in the assessment, not a migration.
+2. **B's per-draw cost is superlinear past 5,000.** From 5,000 to 10,000 separate draws B rises
+   28.3 ms, about 5.7 µs per draw against the fitted 2.4 µs (C: 4.9 µs). B's and C's cinematic
+   estimates in [`model.md`](./model.md) are therefore optimistic. The direction of Finding 1 is
+   strengthened, not changed.
+3. **`BatchedMesh` buys A nothing here.** A's batching frame ratio is 1.01× / 1.03×, against
+   1.21× / 1.89× for `InstancedMesh`; multi-draw on Chrome / ANGLE-Metal behaves as if emulated.
+   On `WebGLRenderer`, prefer `InstancedMesh` for collapsing submission, and recheck `BatchedMesh`
+   on the Windows Gate C device before relying on it.
+4. **A's fixed cost exceeding B's is unexplained.** `c0` is 5.66 ms on A and 4.45 on B, with a
+   similar readback. This is why the 64-draw World prediction ranks B ahead of A; that ranking
+   carries no weight.
 
 ## Census (P1)
 
@@ -197,8 +229,9 @@ batching, materials, the fallback, and what was not checked (notably visual pari
   present-to-photon frame time.
 - Timer queries are noisy at 1–4 ms; shadow rows repeat three times and take a median, but
   single-run variation of up to about 2× in a slope was observed across runs.
-- No tiled/clustered lighting addon: three r187 ships none that works with `WebGPURenderer` without
-  custom shaders, so that sweep was not run.
+- No clustered or dynamic lighting sweep. three r187 does ship `ClusteredLighting` and
+  `DynamicLighting` for `WebGPURenderer` (an earlier draft of this page said it did not); the sweep
+  is open, see Review findings 1.
 - No post-processing, no custom shaders, no visual comparison. Pixel parity between backends was
   not inspected; only cost and counts are claimed.
 - The 64-light point is outside the linear fit. The budget tables therefore stop at the largest

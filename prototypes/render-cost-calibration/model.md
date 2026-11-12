@@ -85,7 +85,8 @@ casters, so this scales it linearly by 6.6 — an assumption, labelled [A].
 | B | 16.07 | 14.76 | 3.12 | 6.75 | 4.45 | **45.2 ms** |
 | C | 21.07 | 12.73 | 2.80 | 5.30 | 3.89 | **45.8 ms** |
 
-All three exceed 16.7 ms. The estimate omits texture sampling for 120 2K maps and the 40-material
+All three exceed 16.7 ms. B's and C's draw terms are optimistic: their measured per-draw cost
+rises superlinearly between 5,000 and 10,000 draws (README, Review findings 2). The estimate omits texture sampling for 120 2K maps and the 40-material
 mix, so it is a lower bound, not a complete reference-frame cost. It is also the arithmetic case for
 the assessment's point: the reference is a work-elimination problem. Instancing collapses `D` by
 orders of magnitude; making the same 6,600 submissions faster does not reach the budget.

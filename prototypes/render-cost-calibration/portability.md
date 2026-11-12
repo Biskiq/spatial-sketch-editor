@@ -88,8 +88,9 @@ roughly 1.5 ms of readback. They are comparable to each other, not to a present-
 - **Availability elsewhere.** No Safari, Firefox, Windows/Iris Xe, Android or iOS run. B's
   availability and C's cost on those devices are unknown.
 - **Device loss, context restoration, multiple canvases, resizing.** Not exercised.
-- **The tiled/clustered lighting addon.** three r187 ships no such addon usable with
-  `WebGPURenderer` without custom shaders, so the sweep was skipped rather than approximated.
+- **WebGPU lighting systems.** three r187 ships `ClusteredLighting` and `DynamicLighting`
+  (`three/addons/lighting/`) for `WebGPURenderer` only, with no custom shader. They were not
+  swept; an earlier draft wrongly said no such addon existed. See the README's Review findings 1.
 - **Long-run stability.** Each backend ran once; no thermal soak, no repeat session, no memory
   growth measurement. The cached-shadow saving at 1,000 draws is within run-to-run noise, which is
   itself a portability warning about single-run conclusions.
@@ -97,9 +98,11 @@ roughly 1.5 ms of readback. They are comparable to each other, not to a present-
 ## What a trial would inherit
 
 - Keep A as the production renderer and as the fallback.
-- Do not switch on B without instancing/batching; at today's 64-draw World the difference is inside
+- Do not switch on B without instancing; at today's 64-draw World the difference is inside
   the noise, and at 5,000 separate draws B is 2.8× slower.
 - Budget for a 40 ms first-frame stall when the light set changes on B, and 200 ms on C, even when
   the program count does not move.
 - Re-run this page on the target Iris Xe laptop before treating any of these constants as
   device-class facts. One M2 is a direction, not a portability result.
+- If B is ever trialled, `WebGLRenderer` stays the fallback, so every material must render on
+  both renderers. Node (TSL) materials do not run on `WebGLRenderer`; built-in materials do.
