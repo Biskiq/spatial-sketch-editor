@@ -212,7 +212,11 @@ overhead region   underside = datum face    top    = underside + thickness
 The Card shows the Floor-relative value and the world value together (Q7). A floor region at
 elevation 0 is legal: it is a paved area on the datum. Where it lies in the plane of a generated
 Space floor, the authored region draws over the generated surface; that priority is a stated rule
-of the Layout representation and is identical for the visitor.
+of the Layout representation and is identical for the visitor. V1a specifies a deterministic
+coplanar presentation mechanism that retains both source identities without z-fighting or
+duplicate shadow artifacts. V1c gives the authored region picking priority over the generated
+floor at coincident pixels in Plan and 3D; this does not change the merged support witnesses
+in T-V8. Editor and visitor presentation must agree.
 
 ### 5.2 Generated surfaces and regions
 
@@ -356,6 +360,9 @@ type LayoutSpaceSurfaceRef  = { roomId: string;  surface: 'floor' | 'lid' };
   source's three. Removal leaves them unresolved. There is no region split or merge.
 - Proposed qualification above layout-core: subject kind `region` in the Layout domain, with the
   surface as `componentId`. J/S5a ratifies or replaces it (§14).
+- V1d's region support witness may cross into project-model for placement, but is **not** a
+  published surface-finish key. The Layout-local surface resolver does not establish T2's wire
+  type or storage contract; those remain jointly ratified in J/S5a (§14, H-8).
 
 ### 5.8 Compiled output and presentation
 
@@ -551,8 +558,12 @@ stored relation.
 Evaluate the portion of the compiled Wall body's plan strip inside or on the roof footprint,
 including resolved ends and mitres. Use the Wall's canonical top station mapping and endpoint
 clamps (§6.1). Clip the plan cells at the footprint, the roof ridge and Wall profile breaks.
-Within each resulting piece the height differences are affine, so extrema occur at its vertices.
-Use these extrema for both fits and the derived reading. A fit requires covered Wall geometry.
+Where the clipped station-to-world mapping and roof evaluation are affine (including straight
+Wall pieces), extrema occur at piece vertices. That premise is **not** automatic for curved Walls:
+centerline station is generally nonlinear in world coordinates. V3b must certify conservative
+extrema for the actual compiled curved Wall strip and evaluator, with the stated tolerance, or
+refuse the fit atomically if the bounds cannot be established. Vertex-only sampling is not proof.
+Use verified extrema for both fits and the derived reading. A fit requires covered Wall geometry.
 
 ```text
 wallTopY(p) = floor.elevation + wallTopAt(wall, station(p))
@@ -682,7 +693,7 @@ captured ids; a refusal has words and writes nothing; session readings are never
 | **V1a** Format and compile | §3.1 (regions), §3.2, §5.1, §5.8, thickness cutover (§5.2, §9, H-3, H-5), the format bump. Hand-built region fixtures compile, draw and pick in editor and visitor. No planner creates a region | This plan approved with OD-1–OD-3; SP1a–SP1c merged | 2 |
 | **V1b** Planners and queries | §5.3–§5.6 in layout-core only: planners, relations, the four fits (flat and level case), support and clearance queries, Wall lineage. No editor intent | V1a | 1 |
 | **V1c** Authoring and parity | §5.9; F4 wiring; Lift registration; visitor parity; focused browser QA of J7 and J11 | V1b; **X1 merged** | 1 |
-| **V1d** Support and reference seam | Region witnesses qualified in project-model so an object rests on a floor region; `queryOverheadSupports` exported for T2's light magnet; Layout-local surface-reference resolver. A3 and A4 are its first checks | V1b. Independent of V1c. Reviewed from T2 | 1 |
+| **V1d** Support and reference seam | Region witnesses qualified in project-model so an object rests on a floor region; `queryOverheadSupports` exported for T2's light magnet; Layout-local surface-reference resolver (not T2's published finish key). A3 and A4 are its first checks | V1b. Independent of V1c. Reviewed from T2 | 1 |
 | **V2a** Format and compile | §3.1 (`top`), §3.3, §6.1, §6.2, the bump. Hand-built tops compile and draw. No planner writes one | V1c merged (Q9, product order); the baton | 2 |
 | **V2b** Planners | §6.3, including split, join, dissolve and C's rules | V2a; A1, A2 core | 1 |
 | **V2c** Authoring and parity | §6.4; F4; visitor parity; focused browser QA | V2b | 1 |
@@ -707,7 +718,8 @@ captured ids; a refusal has words and writes nothing; session readings are never
   with its measure, or intended; nothing follows after a fit. J11 steps 1, 2 and 4 pass with Lift.
 - **V1d.** An object placed on a floor region rests at its top and records a region witness; the
   overhead query returns the underside under a canopy and the lid in a closed Room. The PR states
-  what it found for A3 and A4.
+  what it found for A3 and A4. **Creator-facing V1 acceptance requires both V1c and V1d merged
+  and verified**; they remain independently implementable, but V1c alone is not the product gate.
 - **V2a.** The previous format is refused. T-P1 passes. Hand-built slope and gable Walls render
   with closed corners at every Junction degree in the fixture set, with and without Openings.
 - **V2b.** Each row of §6.3 has a core test. T-P2 to T-P6 pass.
@@ -715,7 +727,7 @@ captured ids; a refusal has words and writes nothing; session readings are never
   mesh and the Unroll sheet agree with it. A straight gable end is edited on its face.
 - **V3a.** The previous format is refused. Flat regions compile unchanged (T-R1). Shed and gable
   fixtures compile to planar faces that close without gaps (T-R2).
-- **V3b.** Both fits pass T-R3 to T-R6 and T-R8. Form defaults pass T-R7.
+- **V3b.** Both fits pass T-R3 to T-R6, T-R8 and T-R9. Form defaults pass T-R7.
 - **V3c.** The approved V3 sentence holds, and J8 passes with two explicit fits. A thin-roof
   refusal identifies the blocking Wall and the measured overrun, with no history entry.
 
@@ -733,7 +745,7 @@ captured ids; a refusal has words and writes nothing; session readings are never
 | T-V8 | Under a platform over a Room floor, the support query returns two candidates at two elevations; on a region coplanar with the Room floor it returns one candidate with both witnesses; a Room witness with a wrong datum still refuses | Witness generalisation dropped the datum check or picked by array order |
 | T-V9 | For each planner that changes the Wall id set (split, join, dissolve, removal, noded chain, and C's when present): an intended gap survives onto the right Wall and no dangling id is written | Flags are pruned, or one planner was missed |
 | T-V10 | `queryOverheadSupports` under a canopy inside a closed Room returns the canopy then the lid; under open sky, none; clearance equals the difference | Lids are forgotten, or order is not by elevation |
-| T-V11 | Visitor primitives for the V1 fixtures equal the editor's with editor-only streams removed; no relation cue, handle or ghost is present; a lifted overhead is still drawn and still casts shadow in Preview | Lift state leaks, or regions are drawn by an editor-only path |
+| T-V11 | Visitor primitives for the V1 fixtures equal the editor's with editor-only streams removed; no relation cue, handle or ghost is present; a lifted overhead is still drawn and still casts shadow in Preview. A region coplanar with a generated floor has stable drawing priority without z-fighting or duplicate shadows, retains both identities, and wins coincident surface picking in Plan and 3D; support witnesses still follow T-V8 | Lift state leaks, regions are drawn by an editor-only path, or coincident floors render and pick nondeterministically |
 | T-V12 | Undo and Redo of create, each edit, each fit and Erase restore exact canonical bytes; Redo reuses the captured region id | Redo allocates a new id |
 | T-V13 | Mounted gesture boundary: a corner drag and a body drag show a preview with no full compile and no history write; release installs the same proposal once; Escape restores | The adapter calls a planner per pointer move |
 | T-V14 | The new codec rejects either legacy Room key in an otherwise current payload. Save/Load round-trips the new shape with authored region thickness. Open/re-close and the lid toggle preserve identity and the existing association and surface-reference rules. Split and duplicate keep their lineage and overhead behavior. Run the enclosed and open thickness-conflict merge fixtures in the new shape and assert the existing survivor and overhead rules, with exact Undo. No operation synthesizes a physical region from Room metadata | The cutover drops unrelated Space behavior, leaves an obsolete refusal or turns generated planes into physical slabs |
@@ -751,6 +763,7 @@ captured ids; a refusal has words and writes nothing; session readings are never
 | T-R6 | After both fits, moving the roof, changing its rise, or moving a Wall changes only that subject | A stored constraint |
 | T-R7 | A long rectangle defaults to a gable ridge parallel to its long edge, and a shed rises along that edge. A square selects the stated endpoint pair under every cyclic reindexing. Exercise reversed edge endpoints in the orientation rule, the centred 30° default, positive `ridgeOffset` toward `qMax`, and an explicit azimuth surviving resize and rotating with the region | The ridge is turned 90°, equal edges depend on array order, or the offset sign flips |
 | T-R8 | A 45° roof over a fully covered 0.20 m thick Wall parallel to the eave has a 0.20 m underside height spread. With 0.10 m roof thickness, the sealing fit would project 0.10 m above the roof. Refuse the entire multi-Wall fit even if another selected Wall can fit. The refusal identifies the blocking Wall and overrun, preserves bytes and writes no history. At 0.20 m roof thickness, contact with the upper face passes as **meets** | The planner accepts a crossing, clips the fit and leaves a gap, or writes part of the selection |
+| T-R9 | A non-level curved Wall under a sloped roof exercises interior contact/gap/overrun extrema between sampled vertices. Verify conservative bounds against a denser independent reference; accept only with certified tolerance or refuse atomically with no history when proof is unavailable | Vertex-only extrema miss a crossing and a fit falsely reads **meets** |
 
 Core cases sit beside the existing Layout contracts; adapter and F4 cases beside the circle and
 unit-acceptance suites; placement follows `apps/editor/tests/README.md`. Each format slice also
