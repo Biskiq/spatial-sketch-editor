@@ -357,6 +357,22 @@ describe('T1 A2 — Join walls', () => {
 		moveTo(mounted.facade, [3, 1]);
 		moveTo(mounted.facade, [4, 0]);
 		expect(namesRemoveJoint(mounted.facade)).toBe(true);
+		// The candidate is the joined Wall itself, not just the mark's words: its
+		// paper spans the full 0–6 m the two halves are about to become.
+		const joinCandidate = mounted.facade
+			.candidatePreviews()
+			.find((candidate) => candidate.id === 'layout-candidate-junction-join');
+		expect(joinCandidate).toBeDefined();
+		// Candidate previews are projectied into Stage CSS, so the joined Wall's
+		// 0–6 m extent is compared in the same space the paper draws it.
+		const startX = stageCss(mounted.facade, [0, 0])[0];
+		const endX = stageCss(mounted.facade, [6, 0])[0];
+		const candidateX = [
+			...joinCandidate!.segments.flat().map((point) => point[0]),
+			...joinCandidate!.polygons.flat().map((point) => point[0])
+		];
+		expect(Math.min(...candidateX)).toBeCloseTo(Math.min(startX, endX), 6);
+		expect(Math.max(...candidateX)).toBeCloseTo(Math.max(startX, endX), 6);
 		release(mounted.facade, [4, 0]);
 		await eventually(() => mounted.facade.snapshot().canonicalJson !== beforeBytes, 'the join never committed');
 
@@ -575,6 +591,33 @@ describe('T1 A2 — Join walls', () => {
 			...firstHalf.centerline.spans,
 			...secondHalf.centerline.spans
 		]);
+	});
+
+	it('commits a join when the pointer leaves the Joint and returns to it before release', async () => {
+		const mounted = await mount(collinearPair());
+		settle(mounted.facade, 2);
+		const beforeBytes = mounted.facade.snapshot().canonicalJson;
+		const beforeHistory = mounted.host.history();
+
+		pressJoint(mounted.facade, [3, 0]);
+		// Out and back: the release lands on the press point, so displacement alone
+		// would read this as no drag even though the creator armed the removal.
+		moveTo(mounted.facade, [3, 1]);
+		moveTo(mounted.facade, [3, 0]);
+		expect(namesRemoveJoint(mounted.facade)).toBe(true);
+		release(mounted.facade, [3, 0]);
+		await eventually(
+			() => mounted.facade.snapshot().canonicalJson !== beforeBytes,
+			'the out-and-back join never committed'
+		);
+
+		const after = acceptedLayout(mounted.facade);
+		expect(after.walls).toHaveLength(1);
+		expect(after.junctions.some((junction) => junction.id === 'j')).toBe(false);
+		expect(mounted.host.history()).toMatchObject({
+			depth: beforeHistory.depth + 1,
+			position: beforeHistory.position + 1
+		});
 	});
 
 	it('refuses a three-Wall Joint through the planner its intent calls, in words', async () => {

@@ -146,7 +146,7 @@ import {
 	type WallDeletionPreview
 } from './layout/drawing-planners';
 import { createSplitPlanners, wallSplitIntent } from './layout/split-planners';
-import { createJoinPlanners, wallJoinIntent } from './layout/join-planners';
+import { createJoinPlanners, LAYOUT_WALL_JOIN_KIND, wallJoinIntent } from './layout/join-planners';
 import {
 	classifyInkPointerTarget,
 	INK_JUNCTION_HIT_CSS_PX,
@@ -550,6 +550,14 @@ type JunctionHoverGesture = {
 	leftRemovalZone: boolean;
 	/** The dissolve candidate while removal is armed; `null` when refused. */
 	joinPreview: { readonly document: LayoutDocumentWallFirst; readonly survivorWallId: string } | null;
+	/**
+	 * The pointer travelled past the drag threshold at some point since the press.
+	 *
+	 * A junction edit is a drag, not a displacement: an out-and-back that ends
+	 * where it started is still an edit request, and `isPointerDrag(press, release)`
+	 * alone would discard it.
+	 */
+	dragged: boolean;
 };
 
 /** One claimed Bend gesture: a body press anywhere on an open Wall. */
@@ -2301,10 +2309,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					kind: 'point',
 					role: 'edit',
 					anchor: [point[0], adapterContext.snapshot.domain.datumMeters, point[1]],
-					label: 'Move point',
+					// The armed mark is the join's own operation, not a Junction move with a
+					// different caption: label, verb and planner all name the join it will
+					// accept. The handle id is unchanged, so gesture ownership is untouched.
+					label: active?.removal === true ? 'Remove joint' : 'Move point',
 					fact: 'junction',
-					verb: 'Move',
-					planner: LAYOUT_JUNCTION_MOVE_KIND,
+					verb: active?.removal === true ? 'Join' : 'Move',
+					planner: active?.removal === true ? LAYOUT_WALL_JOIN_KIND : LAYOUT_JUNCTION_MOVE_KIND,
 					value: numericValue ?? (active?.removal === true
 						? 'Remove joint'
 						: active?.request === null || active?.request === undefined
@@ -5481,7 +5492,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								capture: mintLayoutIdCapture(),
 								removal: false,
 								leftRemovalZone: false,
-								joinPreview: null
+								joinPreview: null,
+								dragged: false
 							};
 							idleJunctionHover = null;
 							services.stage.notifySurfaceChange();
@@ -5730,7 +5742,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// the creator is entering, and its eventual up never commits.
 						if ((gesture?.numeric ?? junctionGesture?.numeric ?? openingGesture?.numeric ?? null) !== null) return true;
 						const pressCss = junctionGesture?.pressCss ?? gesture?.pressCss ?? openingGesture!.pressCss;
-						if (!isPointerDrag(pressCss, intent.css)) {
+						// A Junction edit is a drag, not a displacement: once the pointer has
+						// passed the threshold the gesture stays an edit even when it returns
+						// to the press point, which is exactly how an already-collinear Joint
+						// is armed and joined.
+						if (junctionGesture !== null && isPointerDrag(junctionGesture.pressCss, intent.css)) {
+							junctionGesture.dragged = true;
+						}
+						if (!isPointerDrag(pressCss, intent.css) && junctionGesture?.dragged !== true) {
 							if (junctionGesture !== null) {
 								junctionGesture.request = null;
 								junctionGesture.proposal = null;
@@ -6203,7 +6222,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					if (junctionGesture !== null) {
-						const dragged = isPointerDrag(junctionGesture.pressCss, intent.css);
+						const dragged = junctionGesture.dragged;
 						// A Joint in the removal zone is not a move: its parameter is withdrawn
 						// while armed, so release writes the join or its refusal and can never
 						// install the move the pointer passed through on the way.
@@ -6673,6 +6692,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 				const activeJunction = junctionGesture;
 				if (activeJunction !== null) {
+					// A successful join candidate is the whole joined Wall, not a Junction
+					// move: it has no Junction parameter, so `request` is null by design.
+					// Drawn from the planner's own document through the same paper pass as
+					// every other candidate, before the move branch can read that null as
+					// "nothing to preview".
+					if (activeJunction.removal && activeJunction.joinPreview !== null && activeJunction.proposal !== null) {
+						return [candidatePreviewOf({
+							id: 'layout-candidate-junction-join',
+							role: 'subject',
+							geometry: wallProposalPaper(activeJunction.proposal, y),
+							labels: [{ world: world(activeJunction.pointerPoint ?? activeJunction.startPoint), text: 'Remove joint' }]
+						})];
+					}
 					if (activeJunction.request === null || activeJunction.proposal === null) {
 						if (refusal !== null && activeJunction.pointerPoint !== null) {
 							return [candidatePreviewOf({

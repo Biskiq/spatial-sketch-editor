@@ -372,9 +372,15 @@ describe('P23B.11 S3 — OR-6: the count oracle', () => {
 		// The S4 gate reads this row family: on one Wall group the group check has
 		// nothing to skip, so whatever the optimized path saves there comes from the
 		// box prune, the containment skip or the identity condition — all proven
-		// neutral above. Five rows since the review fix added the dissolve caller's.
+		// neutral above. Four rows: the dissolve caller's row left this family in
+		// T1 A2 because the join gate now refuses it before the pass, and that
+		// refusal is asserted here rather than silently dropped.
 		const connected = passRows(shipped).filter((entry) => entry.row.covers.includes('OR-1(h)'));
-		expect(connected).toHaveLength(5);
+		expect(connected).toHaveLength(4);
+		expect(frozenById.get('h-connected-corner-dissolve')?.operation).toEqual({
+			verdict: 'rejected',
+			code: 'non_tangent_curved_pair'
+		});
 		for (const { row, observations } of connected) {
 			expect(row.counts.crossGroupPairs, row.id).toBe(0);
 			expect(row.counts.undefinedPairs, row.id).toBe(0);
