@@ -667,3 +667,51 @@ candidate, preview cleared with no write on Esc and on refusal. Run the focused 
 gives one undo entry; Esc mid-drag gives none and the light returns to its accepted look; the
 light visibly changes during the drag; Undo and Redo restore exactly; save → reload keeps the
 value. Compare each mark and string against §4 and the matching sheet panel.
+
+## 12. Implementation record
+
+The scope above is implemented on `t2-review-pass` in PR #314 with one commit per checkpoint.
+The PR stays open and unmerged.
+
+| # | Commit | Scope |
+| --- | --- | --- |
+| 1 | `3dfb004b` | Corrected light presentation maths, Aim/Reach and Card truthfulness |
+| 1a | `15e54ddc` | Session-only `StageLightPreview`, renderer merge and light and shadow preview |
+| 2 | `fd8978a3` | Everyday Light Card rows and the Direction values |
+| 3 | `bfe3801c` | Advanced registry, Warmth, colour dial and live sliders |
+| 4 | `52d95d15` | Artwork selection ink, Card order and scoped Card actions |
+| 5 | `da72ce8b` | Spot Aim dial, wide-beam ink and fixed surface target |
+| 6 | `fd022fc2` | Point stem, screen-facing reach ring and placement stand-offs |
+| 7 | `9869922f` | Directional dial and immediate Directional shelf creation |
+| 8 | `f81918f0` | Light hover ghost, lit candidate and placement lifecycle |
+| 9 | `1c77c42b` | Artwork wall-follow move, nine-point fit test and ghost lifecycle |
+
+Two verification follow-ups are separate commits: `80409077` moves the new colour dial onto the
+`--shell-white` presentation token, and `c1e6e699` fixes the Advanced White/Colour mode toggle so it
+uses Card-local display state instead of writing the invalid string `colour` as a hex colour.
+
+**Verification evidence**
+
+- `npm test` — 347 files, 4473 tests passed.
+- `npm run test:arch` — 24 files, 202 tests passed.
+- `npm run check` — 0 errors; the 4 reported warnings are the existing visitor a11y warnings in
+  `VisitorPreviewSurface.svelte`.
+- Focused suites for this work: `directional-dial`, `light-presentation`, `light-adapter-lifecycle`,
+  `light-advanced`, `light-card-fields`, `artwork-wall-move`, `artwork-overlay`, `artwork-card`.
+- Browser pass on a local Vite session: Spot placement from the Lights shelf created one selected
+  light and one undo entry; the Advanced Colour group opened the hue dial; the Directional shelf
+  pick created a selected `Sun` immediately at From 225° / Height 50° with only the dial's From and
+  Height-in-sky marks. The browser pass did not exercise Artwork move, Point placement or visible
+  cast shadows because the guest scene has no Artwork asset or receiving geometry; those paths are
+  covered by the focused unit suites rather than by a visual check.
+
+**Known gaps**
+
+- The Directional dial's centre name chip and other-Directional ticks with click selection are not
+  implemented; the approved marks are the ring, From spoke, quarter arc, travel arrows and the two
+  point beads.
+- A hover over a surface with no passing Artwork pose uses the candidate ghost ink only; there is no
+  separate refusal predicate or refusal ink because the session has no planner refusal preview for
+  Wall fit.
+- The Artwork fit test samples the nine outer-frame points and rejects a sample that meets another
+  Wall or lies more than 0.07 m from the pointer's Wall. It adds no conformal Artwork geometry.
