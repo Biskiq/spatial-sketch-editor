@@ -711,8 +711,8 @@ registry and resolves a light release through its final up position.
 
 **Verification evidence**
 
-- `npm test` — 347 files, 4473 tests passed.
-- `npm run test:arch` — 24 files, 202 tests passed.
+- `npm test` — 347 files, 4474 tests passed.
+- `npm run test:arch` — 24 files, 202 tests passed with `--maxWorkers=2`.
 - `npm run check` — 0 errors; the 4 reported warnings are the existing visitor a11y warnings in
   `VisitorPreviewSurface.svelte`.
 - Focused suites for this work: `directional-dial`, `light-presentation`, `light-adapter-lifecycle`,
