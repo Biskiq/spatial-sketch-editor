@@ -63,7 +63,6 @@ import {
 	resolveIsolatedRoomGroupSubgraph,
 	resolveIsolatedRoomSubgraph,
 	type DuplicatePlan,
-	type LayoutIdCapture,
 	type WallFirstArchitectureProposalWall,
 	planExactWallHeight,
 	planExactWallThickness,
