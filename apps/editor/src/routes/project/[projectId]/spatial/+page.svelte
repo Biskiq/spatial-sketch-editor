@@ -109,7 +109,7 @@
 	} from '@portfolio/layout-core';
 	import { buildLayoutIntent, LAYOUT_OPENING_MEASURE_KIND } from '$lib/authoring/adapters/layout/precision';
 	import { LAYOUT_OPENING_RESIZE_KIND } from '$lib/authoring/adapters/layout/opening-planners';
-	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
+	import { CAMERA_FOV, eyeOfInspectionPose, fovYDegreesOf, frameSubjectPose, pointerRay, viewPlacementPose, type PointerRay, type ViewingIntent, type ViewportEvaluation, type ViewportRect } from '@portfolio/camera-core';
 	import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';
 	import {
 		chooseUnfoldAmount,
@@ -172,6 +172,7 @@ import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import { artworkCommand, artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { artworkPlacement, isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
+	import { artworkFitsWall, artworkIsHung, artworkOuterSize } from '$lib/authoring/artwork/artwork-wall-move';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
@@ -1032,14 +1033,27 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 
 	let artworkResize = $state.raw<{
 		entity: SceneArtworkEntity; mode: ArtworkCorner | 'move' | 'turn'; pointerId: number;
-		startX: number; startPoint: Vector3 | null;
+		startX: number; startPoint: Vector3 | null; shift: boolean; hung: boolean;
+		lastPassing: SceneArtworkEntity | null; blocked: boolean;
 		lease: Extract<ReturnType<StageFacade['acquireGesture']>, { kind: 'granted' }>['lease'];
 	} | null>(null);
 	let artworkResizeGhost = $state.raw<SceneArtworkEntity | null>(null);
+	let artworkResizeBlocked = $state(false);
 	function cancelArtworkResize(): void {
 		artworkResize?.lease.release();
 		artworkResize = null;
 		artworkResizeGhost = null;
+		artworkResizeBlocked = false;
+	}
+	function artworkWallHit(ray: PointerRay) {
+		const stage = facade;
+		if (stage === null) return null;
+		const snapshot = stage.snapshot();
+		return scenePick.pickVisibleFace(ray, snapshot.domain.scene,
+			(candidate) => isArtworkWallFace(candidate, snapshot.domain.geometry));
+	}
+	function artworkIsHungNow(entity: SceneArtworkEntity): boolean {
+		return artworkIsHung(entity.position, entity.rotation[1], artworkWallHit);
 	}
 	function startArtworkResize(event: PointerEvent, mode: ArtworkCorner | 'move' | 'turn'): void {
 		const stage = facade;
@@ -1054,7 +1068,12 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		press.refuse(event.pointerId);
 		const ray = evaluation === null ? null : pointerRay([event.clientX, event.clientY], evaluation, evaluation.token);
 		const startPoint = mode === 'move' && ray?.kind === 'ray' ? artworkPlanePoint(entity, ray.ray) : null;
-		artworkResize = { entity, mode, startPoint, startX: event.clientX, pointerId: event.pointerId, lease: acquired.lease };
+		const hung = mode === 'move' && artworkIsHungNow(entity);
+		artworkResize = {
+			entity, mode, startPoint, startX: event.clientX, pointerId: event.pointerId,
+			shift: event.shiftKey, hung, lastPassing: hung ? entity : null, blocked: false,
+			lease: acquired.lease
+		};
 	}
 	function readArtworkResize(event: PointerEvent) {
 		const drag = artworkResize;
@@ -1070,8 +1089,40 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		}
 		if (ray.kind !== 'ray') return null;
 		if (drag.mode === 'move') {
+			// A plain drag follows whatever wall face is under the pointer. Shift
+			// keeps the historical free-plane move (used to pull Artwork off a wall).
+			if (!drag.shift) {
+				const hit = artworkWallHit(ray.ray);
+				if (hit !== null && hit.wallId !== undefined) {
+					const forward = new Vector3(...evaluation.target).sub(new Vector3(...evaluation.eye)).normalize().toArray();
+					const pose = artworkPlacement(ray.ray, hit, snapshot.domain.datumMeters, evaluation.eye, forward, snapshot.domain.geometry);
+					if (pose !== null) {
+						const placed = { ...drag.entity, ...pose };
+						const guides = artworkHangingGuides(snapshot.domain.scene, placed, snapshot.domain.datumMeters);
+						const candidate = { ...placed, position: snapArtworkHeight(placed.position, guides).position };
+						const fits = artworkFitsWall(
+							candidate.position, candidate.rotation[1], artworkOuterSize(drag.entity),
+							hit.wallId, artworkWallHit
+						);
+						if (fits) {
+							drag.lastPassing = candidate;
+							drag.blocked = false;
+							return candidate;
+						}
+						drag.blocked = true;
+						// A hung Artwork never leaves its wall: freeze at the last pose
+						// whose whole outer frame fitted and refuse when there is none.
+						return drag.lastPassing;
+					}
+				}
+				if (drag.lastPassing !== null) {
+					drag.blocked = drag.hung;
+					return drag.lastPassing;
+				}
+			}
 			const point = artworkPlanePoint(drag.entity, ray.ray);
 			if (!point || !drag.startPoint) return null;
+			drag.blocked = false;
 			const candidate = {
 				...drag.entity,
 				position: point.sub(drag.startPoint).add(new Vector3(...drag.entity.position)).toArray() as SceneArtworkEntity['position']
@@ -3167,6 +3218,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function onPointerMove(event: PointerEvent): void {
 		if (artworkResize?.pointerId === event.pointerId) {
 			artworkResizeGhost = readArtworkResize(event);
+			artworkResizeBlocked = artworkResize.blocked;
 			return;
 		}
 		if (artwork.armed && event.buttons === 0) artwork.move(artworkPoseAt(event));
@@ -5155,7 +5207,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{/if}
 				{#if selectedArtwork && facade && evaluation?.renderedReading === '3d' && canPlaceArtwork() && !artwork.armed}
 					<ArtworkResizeOverlay entity={artworkResizeGhost ?? selectedArtwork} stage={facade}
-						{evaluation} resizing={artworkResizeGhost !== null} onStart={startArtworkResize} />
+						{evaluation} resizing={artworkResizeGhost !== null} blocked={artworkResizeBlocked}
+						canTurn={selectedArtwork === null || !artworkIsHungNow(selectedArtwork)} onStart={startArtworkResize} />
 				{/if}
 				{#if lens !== 'experience' && notice}<p class="stage-note" role="status">{notice}</p>{/if}
 			</div>

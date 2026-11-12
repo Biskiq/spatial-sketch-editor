@@ -156,6 +156,13 @@ import StageMatGround from './StageMatGround.svelte';
 	 * unchanged, and the accepted `scene` object is never mutated.
 	 */
 	const renderScene = $derived(mergeLightPreview(scene, lightPreview));
+	// A live Artwork manipulation draws one opaque ghost; the accepted body is
+	// hidden so the drag never shows two copies of the same Artwork.
+	const entityScene = $derived(
+		artworkGhost === null || !renderScene.entities.some((entity) => entity.id === artworkGhost.id)
+			? renderScene
+			: { ...renderScene, entities: renderScene.entities.filter((entity) => entity.id !== artworkGhost.id) }
+	);
 	// One reveal for the sheet, grid, ink and Camera mask (see `paperStageComposition`).
 	const paperComposition = $derived(
 		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
@@ -310,7 +317,7 @@ import StageMatGround from './StageMatGround.svelte';
 		{artworkScope}
 		{onArtworkError}
 		{scenePick}
-		scene={renderScene}
+		scene={entityScene}
 		{rooms}
 		{modelUrls}
 		includeLights={environment !== 'paper'}

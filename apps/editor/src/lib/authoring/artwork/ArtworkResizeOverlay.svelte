@@ -8,9 +8,10 @@
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 
 	type Manipulation = ArtworkCorner | 'move' | 'turn';
-	let { entity, stage, evaluation, resizing, onStart }: {
+	let { entity, stage, evaluation, resizing, blocked = false, canTurn = true, onStart }: {
 		entity: SceneArtworkEntity; stage: StageFacade; evaluation: ViewportEvaluation;
-		resizing: boolean; onStart: (event: PointerEvent, corner: Manipulation) => void;
+		resizing: boolean; blocked?: boolean; canTurn?: boolean;
+		onStart: (event: PointerEvent, corner: Manipulation) => void;
 	} = $props();
 	const points = $derived.by(() => {
 		const id = stage.evaluationId();
@@ -57,10 +58,15 @@
 	<button type="button" tabindex="-1" class="artwork-grip move" style:left={`${center.x}px`} style:top={`${center.y}px`}
 		aria-label="Move Artwork" title="Move Artwork in its plane"
 		onpointerdown={(event) => onStart(event, 'move')} onclick={(event) => event.stopPropagation()}>✥</button>
-	<button type="button" tabindex="-1" class="artwork-grip turn"
-		style:left={`${(points[1]!.x + points[2]!.x) / 2}px`} style:top={`${Math.min(points[1]!.y, points[2]!.y) - 24}px`}
-		aria-label="Turn Artwork" title="Turn Artwork around its vertical axis"
-		onpointerdown={(event) => onStart(event, 'turn')} onclick={(event) => event.stopPropagation()}>↻</button>
+	{#if canTurn}
+		<button type="button" tabindex="-1" class="artwork-grip turn"
+			style:left={`${(points[1]!.x + points[2]!.x) / 2}px`} style:top={`${Math.min(points[1]!.y, points[2]!.y) - 24}px`}
+			aria-label="Turn Artwork" title="Turn Artwork around its vertical axis"
+			onpointerdown={(event) => onStart(event, 'turn')} onclick={(event) => event.stopPropagation()}>↻</button>
+	{/if}
+	{#if blocked}
+		<output class="artwork-edge" style:left={`${center.x}px`} style:top={`${Math.min(points[1]!.y, points[2]!.y) - 48}px`}>Stops at the wall edge</output>
+	{/if}
 {/if}
 <style>
 	.artwork-selection {
@@ -71,7 +77,11 @@
 		fill: none; stroke: #d9a521; stroke-width: 1;
 		vector-effect: non-scaling-stroke;
 	}
-	.artwork-grip, .artwork-size { position: absolute; transform: translate(-50%, -50%); z-index: 5; }
+	.artwork-grip, .artwork-size, .artwork-edge { position: absolute; transform: translate(-50%, -50%); z-index: 5; }
+	.artwork-edge {
+		color: #6b1d12; background: #f6d7c9; padding: 0.15rem 0.35rem;
+		font: 10.5px var(--shell-mono); white-space: nowrap; pointer-events: none;
+	}
 	.artwork-grip { width: 24px; height: 24px; border: 0; background: transparent; cursor: nwse-resize; touch-action: none; }
 	.artwork-grip::before {
 		content: ''; display: block; width: 9px; height: 9px; margin: auto;
