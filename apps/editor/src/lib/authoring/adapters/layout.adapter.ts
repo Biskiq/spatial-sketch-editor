@@ -54,6 +54,7 @@ import {
 	mintLayoutIdCapture,
 	planCreateWallFirstOpening,
 	planDeleteWallFirstOpening,
+	planDissolveJunction,
 	proposeWallFirstArchitectureGeometry,
 	createWallFirstArchitectureVerdictScope,
 	createWallSamplingDerivation,
@@ -74,9 +75,11 @@ import {
 	planUpdateWallFirstOpening,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
+	type LayoutIdCapture,
 	type LayoutVec2,
 	type WallChainArc,
 	measureWallArc,
+	wallCenterlinePoints,
 	MIN_WALL_ARC_RISE
 } from '@portfolio/layout-core';
 
@@ -107,6 +110,7 @@ import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
 import {
 	roomDuplicateRefusalWords,
+	wallJoinRefusalWords,
 	wallRefusalWords,
 	wallSplitRefusalWords,
 	type RoomDuplicateRejection
@@ -152,6 +156,7 @@ import {
 	type WallDeletionPreview
 } from './layout/drawing-planners';
 import { createSplitPlanners, wallSplitIntent } from './layout/split-planners';
+import { createJoinPlanners, LAYOUT_WALL_JOIN_KIND, wallJoinIntent } from './layout/join-planners';
 import {
 	createRoomDuplicatePlanners,
 	LAYOUT_ROOM_DUPLICATE_KIND,
@@ -553,6 +558,22 @@ type JunctionHoverGesture = {
 	readonly readPreview: ReturnType<typeof createWallDragReader>;
 	snap: LayoutSnapWinner | null;
 	pointerPoint: LayoutVec2 | null;
+	/** The operation's captured nonce: the join preview and its commit share it. */
+	readonly capture: LayoutIdCapture;
+	/** The pointer names **Remove joint** rather than a Junction move. */
+	removal: boolean;
+	/** The pointer has left the removal zone since press; leaving arms removal. */
+	leftRemovalZone: boolean;
+	/** The dissolve candidate while removal is armed; `null` when refused. */
+	joinPreview: { readonly document: LayoutDocumentWallFirst; readonly survivorWallId: string } | null;
+	/**
+	 * The pointer travelled past the drag threshold at some point since the press.
+	 *
+	 * A junction edit is a drag, not a displacement: an out-and-back that ends
+	 * where it started is still an edit request, and `isPointerDrag(press, release)`
+	 * alone would discard it.
+	 */
+	dragged: boolean;
 };
 
 /** One claimed Bend gesture: a body press anywhere on an open Wall. */
@@ -587,9 +608,13 @@ type BendGesture = {
 /** A body press is on the Wall when its sampled centerline is this near, in metres. */
 const BEND_BODY_TOLERANCE_METERS = 0.35;
 /** A held knot enters the remove zone inside this distance of its neighbour chord. */
-const BEND_REMOVE_ENTER_METERS = 0.12;
+const REMOVE_ENTER_METERS = 0.12;
 /** It must leave this wider zone once before removal can arm; the hysteresis stops flicker. */
-const BEND_REMOVE_LEAVE_METERS = 0.3;
+const REMOVE_LEAVE_METERS = 0.3;
+/** A held joint names **Remove joint** inside this distance of its neighbours' chord. */
+const JOINT_REMOVE_ENTER_METERS = 0.12;
+/** The joint must leave this wider zone once before removal can arm. */
+const JOINT_REMOVE_LEAVE_METERS = 0.3;
 
 /** Planar distance from `point` to the chord between two neighbour knots. */
 function distanceToChord(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {
@@ -599,6 +624,72 @@ function distanceToChord(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2):
 	if (lengthSquared === 0) return Math.hypot(point[0] - start[0], point[1] - start[1]);
 	const t = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / lengthSquared));
 	return Math.hypot(point[0] - (start[0] + t * dx), point[1] - (start[1] + t * dz));
+}
+
+/** The two Walls a degree-2 Joint joins, with each one's far endpoint. */
+function degreeTwoPair(
+	document: LayoutDocumentWallFirst,
+	junctionId: string
+): { readonly firstFar: LayoutVec2; readonly secondFar: LayoutVec2 } | null {
+	const incident = document.walls.filter(
+		(wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId
+	);
+	if (incident.length !== 2) return null;
+	const farOf = (wall: LayoutDocumentWallFirst['walls'][number]): LayoutVec2 | null => {
+		// A closed Wall is one canonical loop; its seam is not a pair at all.
+		if (wall.startJunctionId === wall.endJunctionId) return null;
+		const farId = wall.startJunctionId === junctionId ? wall.endJunctionId : wall.startJunctionId;
+		const junction = document.junctions.find((entry) => entry.id === farId);
+		return junction === undefined ? null : [junction.point[0], junction.point[1]];
+	};
+	const firstFar = farOf(incident[0]!);
+	const secondFar = farOf(incident[1]!);
+	return firstFar === null || secondFar === null ? null : { firstFar, secondFar };
+}
+
+/**
+ * Whether a held Joint is naming **Remove joint**.
+ *
+ * This is the bend-point removal rule one topology level up: a Joint of exactly
+ * two Walls dragged within `JOINT_REMOVE_ENTER_METERS` of the chord between their
+ * far ends asks for the join, and the pointer must have left the wider zone once
+ * since the press (`leftRemovalZone`) so a Joint that is already collinear does
+ * not arm the moment it is touched. A Joint of any other degree names no chord
+ * and is never offered removal — "delete a junction" has no single meaning once
+ * three Walls meet.
+ */
+function jointRemovalArmed(
+	gesture: JunctionHoverGesture,
+	document: LayoutDocumentWallFirst,
+	point: LayoutVec2
+): boolean {
+	const pair = degreeTwoPair(document, gesture.junctionId);
+	if (pair === null) return false;
+	const distance = distanceToChord(point, pair.firstFar, pair.secondFar);
+	if (distance > JOINT_REMOVE_LEAVE_METERS) gesture.leftRemovalZone = true;
+	return gesture.leftRemovalZone && distance <= JOINT_REMOVE_ENTER_METERS;
+}
+
+/**
+ * The join candidate as the Stage draws it: the joined Wall's own canonical
+ * centerline points, read from the planned document through the one centerline
+ * reader. Nothing here re-derives curve geometry or reorders spans by hand.
+ */
+function joinedPreview(plan: {
+	readonly document: LayoutDocumentWallFirst;
+	readonly survivorWallId: string;
+}): WallFirstArchitectureProposalWall[] {
+	const joined = plan.document.walls.find((wall) => wall.id === plan.survivorWallId);
+	if (joined === undefined) return [];
+	const start = plan.document.junctions.find((junction) => junction.id === joined.startJunctionId);
+	const end = plan.document.junctions.find((junction) => junction.id === joined.endJunctionId);
+	if (start === undefined || end === undefined) return [];
+	return [
+		{
+			wallId: joined.id,
+			points: wallCenterlinePoints(joined.centerline, start.point, end.point, 'forward')
+		}
+	];
 }
 
 /** One claimed Opening mark: slide position or width, through the Opening planner. */
@@ -696,6 +787,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createLayoutPlanners(),
 		...createDrawingPlanners(),
 		...createSplitPlanners(),
+		...createJoinPlanners(),
 		...createRoomDuplicatePlanners(),
 		...createOpeningPlanners()
 	];
@@ -2178,8 +2270,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									? source.centerline.knots[index + 1]!.point
 									: active.frame.end;
 								const distance = distanceToChord(attempted, previous, next);
-								if (distance > BEND_REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
-								removal = active.leftRemovalZone && distance <= BEND_REMOVE_ENTER_METERS;
+								if (distance > REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
+								removal = active.leftRemovalZone && distance <= REMOVE_ENTER_METERS;
 							}
 						}
 					}
@@ -2518,13 +2610,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					kind: 'point',
 					role: 'edit',
 					anchor: [point[0], adapterContext.snapshot.domain.datumMeters, point[1]],
-					label: 'Move point',
+					// The armed mark is the join's own operation, not a Junction move with a
+					// different caption: label, verb and planner all name the join it will
+					// accept. The handle id is unchanged, so gesture ownership is untouched.
+					label: active?.removal === true ? 'Remove joint' : 'Move point',
 					fact: 'junction',
-					verb: 'Move',
-					planner: LAYOUT_JUNCTION_MOVE_KIND,
-					value: numericValue ?? (active?.request === null || active?.request === undefined
-						? planarDeltaLabel(0, 0)
-						: planarDeltaLabel(active.request.point[0] - active.startPoint[0], active.request.point[1] - active.startPoint[1])),
+					verb: active?.removal === true ? 'Join' : 'Move',
+					planner: active?.removal === true ? LAYOUT_WALL_JOIN_KIND : LAYOUT_JUNCTION_MOVE_KIND,
+					value: numericValue ?? (active?.removal === true
+						? 'Remove joint'
+						: active?.request === null || active?.request === undefined
+							? planarDeltaLabel(0, 0)
+							: planarDeltaLabel(active.request.point[0] - active.startPoint[0], active.request.point[1] - active.startPoint[1])),
 					refusal: active === null ? null : refusal
 				}];
 			}
@@ -3094,6 +3191,28 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						...(attemptGeometry === null ? {} : { geometry: attemptGeometry })
 					};
 				}
+				services.stage.notifySurfaceChange();
+			}
+
+			/**
+			 * Commit one joint removal through the join intent. The capture was minted at
+			 * the press, so the candidate the creator previewed and the document that
+			 * lands describe the same ids — Undo and Redo replay them.
+			 */
+			async function commitJoin(junctionId: string, capture: LayoutIdCapture): Promise<void> {
+				const snapshot = services.stage.snapshot();
+				const outcome = await services.authoring.accept(
+					wallJoinIntent({
+						junctionId,
+						capture,
+						operationId: globalThis.crypto.randomUUID(),
+						projectId: snapshot.acceptedRevision.projectId,
+						revisionId: services.authoring.acceptedRevision().revisionId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
+						levelId: snapshot.domain.layoutLevelId
+					})
+				);
+				refusal = outcome.kind === 'refused' ? wallJoinRefusalWords(outcome.code, outcome.message) : null;
 				services.stage.notifySurfaceChange();
 			}
 
@@ -5734,7 +5853,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								proposal: null,
 								readPreview: createWallDragReader(baseline),
 								snap: null,
-								pointerPoint: [point[0], point[1]]
+								pointerPoint: [point[0], point[1]],
+								capture: mintLayoutIdCapture(),
+								removal: false,
+								leftRemovalZone: false,
+								joinPreview: null,
+								dragged: false
 							};
 							idleJunctionHover = null;
 							services.stage.notifySurfaceChange();
@@ -5983,7 +6107,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// the creator is entering, and its eventual up never commits.
 						if ((gesture?.numeric ?? junctionGesture?.numeric ?? openingGesture?.numeric ?? null) !== null) return true;
 						const pressCss = junctionGesture?.pressCss ?? gesture?.pressCss ?? openingGesture!.pressCss;
-						if (!isPointerDrag(pressCss, intent.css)) {
+						// A Junction edit is a drag, not a displacement: once the pointer has
+						// passed the threshold the gesture stays an edit even when it returns
+						// to the press point, which is exactly how an already-collinear Joint
+						// is armed and joined.
+						if (junctionGesture !== null && isPointerDrag(junctionGesture.pressCss, intent.css)) {
+							junctionGesture.dragged = true;
+						}
+						if (!isPointerDrag(pressCss, intent.css) && junctionGesture?.dragged !== true) {
 							if (junctionGesture !== null) {
 								junctionGesture.request = null;
 								junctionGesture.proposal = null;
@@ -6048,6 +6179,46 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							const free = snapDraftingPlacement(aimed, null);
 							const snappedPoint = snap ? gridPoint : [free.x, free.z];
 							junctionGesture.pointerPoint = [point[0], point[1]];
+							// **Remove joint.** A degree-2 joint dragged onto the chord between its
+							// neighbours' far ends names the join, exactly as a bend point dragged
+							// onto its neighbours' line names the knot removal. The preview is the
+							// real dissolve candidate; a refusal keeps the attempted chord and its
+							// words, and release writes nothing.
+							const armed = jointRemovalArmed(junctionGesture, document, [
+								snappedPoint[0],
+								snappedPoint[1]
+							] as LayoutVec2);
+							junctionGesture.removal = armed;
+							if (armed) {
+								const dissolved = planDissolveJunction(
+									document,
+									junctionGesture.junctionId,
+									junctionGesture.capture,
+									adapterContext.snapshot.domain.layoutLevelId
+								);
+								junctionGesture.request = null;
+								junctionGesture.snap = null;
+								if (dissolved.kind === 'rejected') {
+									junctionGesture.joinPreview = null;
+									junctionGesture.proposal = null;
+									junctionGesture.attempt = proposeWallFirstArchitectureGeometry(document, {
+										kind: 'junction-move',
+										junctionId: junctionGesture.junctionId,
+										point: [snappedPoint[0], snappedPoint[1]] as LayoutVec2
+									}) ?? null;
+									junctionGesture.refusalPoint = [snappedPoint[0], snappedPoint[1]];
+									refusal = wallJoinRefusalWords(dissolved.rejection.code, dissolved.rejection.message);
+								} else {
+									junctionGesture.joinPreview = dissolved;
+									junctionGesture.attempt = joinedPreview(dissolved);
+									junctionGesture.proposal = junctionGesture.attempt;
+									junctionGesture.refusalPoint = null;
+									refusal = null;
+								}
+								services.stage.notifySurfaceChange();
+								return true;
+							}
+							junctionGesture.joinPreview = null;
 							if (
 								Math.hypot(
 									snappedPoint[0] - junctionGesture.startPoint[0],
@@ -6416,9 +6587,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					if (junctionGesture !== null) {
-						const dragged = isPointerDrag(junctionGesture.pressCss, intent.css);
-						const pending = dragged ? junctionGesture.request : null;
+						const dragged = junctionGesture.dragged;
+						// A Joint in the removal zone is not a move: its parameter is withdrawn
+						// while armed, so release writes the join or its refusal and can never
+						// install the move the pointer passed through on the way.
+						const removing = dragged && junctionGesture.removal && junctionGesture.joinPreview !== null;
+						const pending = dragged && !junctionGesture.removal ? junctionGesture.request : null;
 						const wallId = junctionGesture.wallId;
+						const junctionId = junctionGesture.junctionId;
+						const capture = junctionGesture.capture;
 						const attemptGeometry = junctionGesture.attempt === null
 							? null
 							: wallProposalPaper(junctionGesture.attempt, adapterContext.snapshot.domain.datumMeters);
@@ -6433,7 +6610,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 						const point = junctionGesture.pointerPoint;
 						endJunctionGesture();
-						if (pending !== null) void commit(pending, 'start', wallId, point, attemptGeometry);
+						if (removing) void commitJoin(junctionId, capture);
+						else if (pending !== null) void commit(pending, 'start', wallId, point, attemptGeometry);
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -6904,6 +7082,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 				const activeJunction = junctionGesture;
 				if (activeJunction !== null) {
+					// A successful join candidate is the whole joined Wall, not a Junction
+					// move: it has no Junction parameter, so `request` is null by design.
+					// Drawn from the planner's own document through the same paper pass as
+					// every other candidate, before the move branch can read that null as
+					// "nothing to preview".
+					if (activeJunction.removal && activeJunction.joinPreview !== null && activeJunction.proposal !== null) {
+						return [candidatePreviewOf({
+							id: 'layout-candidate-junction-join',
+							role: 'subject',
+							geometry: wallProposalPaper(activeJunction.proposal, y),
+							labels: [{ world: world(activeJunction.pointerPoint ?? activeJunction.startPoint), text: 'Remove joint' }]
+						})];
+					}
 					if (activeJunction.request === null || activeJunction.proposal === null) {
 						if (refusal !== null && activeJunction.pointerPoint !== null) {
 							return [candidatePreviewOf({

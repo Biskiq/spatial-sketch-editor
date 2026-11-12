@@ -88,6 +88,17 @@
  * the EXHAUSTIVE (test-only bypass) path, today's loop verbatim, then pasted here
  * unchanged; the S3 differential asserts the shipped path and the bypass both
  * reproduce it. Every pre-existing row in this module is untouched.
+ *
+ * ONE ROW MOVED (T1 A2 `layout.wall-join`, 2026-11-12).
+ * `h-connected-corner-dissolve` now records a REFUSAL: the A2 join gate refuses
+ * a non-tangent curved pair, and the grid's 90° corner meets that rule
+ * (`non_tangent_curved_pair`). The row was regenerated from the live planner —
+ * never edited by hand — so its components are empty and its fidelity is `null`
+ * because the operation is refused before the correspondence pass. The finding
+ * this records: dissolve no longer exercises `buildCorrespondenceComponents` on
+ * a corner. That is deliberate, because a cornered chain is not a join the
+ * product offers; the remaining planned rows keep the builder's live coverage.
+ * Every other row is untouched.
  */
 import type { P23B11FrozenCase } from './p23b11-correspondence-cases';
 
@@ -2247,104 +2258,25 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		id: 'h-connected-corner-dissolve',
 		covers: 'OR-1(h)',
 		operation: {
-			verdict: 'success',
-			documentSha256: '0f8e699bd4799d71267b5063709d4290e980047a363739239d2a0b3ba7610a79'
+			verdict: 'rejected',
+			code: 'non_tangent_curved_pair'
 		},
-		fidelity: true,
+		fidelity: null,
 		counts: {
-			faces: 4,
-			predecessors: 4,
-			pairs: 16,
-			sameGroupPairs: 16,
+			faces: 0,
+			predecessors: 0,
+			pairs: 0,
+			sameGroupPairs: 0,
 			crossGroupPairs: 0,
 			undefinedPairs: 0,
-			insideEvaluations: 16,
-			overlapEvaluations: 16
+			insideEvaluations: 0,
+			overlapEvaluations: 0
 		},
-		components: [
-			{
-				candidateFaceKeys: [
-					'4:4:face12:grid:h-1-0~F12:grid:h-1-1~R12:grid:v-1-0~R'
-				],
-				predecessorRoomIds: [
-					'grid:room-1-0'
-				]
-			},
-			{
-				candidateFaceKeys: [
-					'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F12:grid:h-0-1~R12:grid:v-0-0~R'
-				],
-				predecessorRoomIds: [
-					'grid:room-0-0'
-				]
-			},
-			{
-				candidateFaceKeys: [
-					'5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R'
-				],
-				predecessorRoomIds: [
-					'grid:room-0-1'
-				]
-			},
-			{
-				candidateFaceKeys: [
-					'5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R'
-				],
-				predecessorRoomIds: [
-					'grid:room-1-1'
-				]
-			}
-		],
-		faceKeys: [
-			'4:4:face12:grid:h-1-0~F12:grid:h-1-1~R12:grid:v-1-0~R',
-			'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F12:grid:h-0-1~R12:grid:v-0-0~R',
-			'5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R',
-			'5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R'
-		],
+		components: [],
+		faceKeys: [],
 		reconciliation: {
-			kind: 'ok',
-			lineage: [
-				{
-					faceKey: '4:4:face12:grid:h-1-0~F12:grid:h-1-1~R12:grid:v-1-0~R',
-					roomId: 'grid:room-1-0',
-					kind: 'preserved'
-				},
-				{
-					faceKey: '5:4:face12:grid:h-0-0~F12:grid:v-1-0~F12:grid:h-0-1~R12:grid:v-0-0~R',
-					roomId: 'grid:room-0-0',
-					kind: 'preserved'
-				},
-				{
-					faceKey: '5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R',
-					roomId: 'grid:room-0-1',
-					kind: 'preserved'
-				},
-				{
-					faceKey: '5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R',
-					roomId: 'grid:room-1-1',
-					kind: 'preserved'
-				}
-			],
-			retiredRoomIds: [],
-			rooms: [
-				{
-					id: 'grid:room-1-0',
-					name: 'Grid Room 1-0'
-				},
-				{
-					id: 'grid:room-0-0',
-					name: 'Grid Room 0-0'
-				},
-				{
-					id: 'grid:room-0-1',
-					name: 'Grid Room 0-1'
-				},
-				{
-					id: 'grid:room-1-1',
-					name: 'Grid Room 1-1'
-				}
-			],
-			documentSha256: '0f8e699bd4799d71267b5063709d4290e980047a363739239d2a0b3ba7610a79'
+			kind: 'not-run',
+			reason: 'operation refused before the pass'
 		}
 	}
 ];

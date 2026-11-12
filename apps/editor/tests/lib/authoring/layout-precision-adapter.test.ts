@@ -61,6 +61,7 @@ import {
 	LAYOUT_ROOM_DUPLICATE_KIND
 } from '$lib/authoring/adapters/layout/room-duplicate-planners';
 import { createSplitPlanners } from '$lib/authoring/adapters/layout/split-planners';
+import { createJoinPlanners } from '$lib/authoring/adapters/layout/join-planners';
 import { createCardFieldsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -160,6 +161,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 			createLayoutPlanners().length +
 				createDrawingPlanners().length +
 				createSplitPlanners().length +
+				createJoinPlanners().length +
 				createRoomDuplicatePlanners().length +
 				createOpeningPlanners().length
 		);

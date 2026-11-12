@@ -29,6 +29,15 @@
       "review": null
     },
     {
+      "id": "layout.wall-join",
+      "area": "T1",
+      "summary": "Remove a degree-2 Joint to join its two Walls — collinear straight or tangent curved — keeping the surviving Wall, its Openings re-based and every Room identity, and refuse corners, three-Wall joints and mismatched pairs in words",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/adapters/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "layout.room-duplicate",
       "area": "T1",
       "summary": "Duplicate one isolated Room with its Walls, Junctions and Openings, carrying the complete copy as one pointer-followed proposal, refusing a coincident placement and naming the shared Wall when the Room is not isolated",
