@@ -438,8 +438,10 @@ function printReady(state) {
 	console.log(`  Objects   http://127.0.0.1:${state.ports.storage} (bucket ${state.bucket})`);
 	console.log(`  Namespace ${state.namespace}`);
 	console.log('');
-	console.log('  Stop      npm run dev:local:stop');
-	console.log('  Reset     npm run dev:local:reset   (deletes local database and object bytes)');
+	console.log('  Stop      npm run dev:local:stop   (keeps local data)');
+	console.log('  Reset     npm run dev:local:reset  (clears database + object storage)');
+	console.log('  Logs      npm run dev:local:logs');
+	console.log('  Status    npm run dev:local:status');
 	console.log('');
 }
 

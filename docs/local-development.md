@@ -45,6 +45,14 @@ images. Later runs reuse them.
 | `npm run dev:local:logs` | Follow the PostgreSQL and SeaweedFS logs; `Ctrl+C` stops following only. |
 | `npm run dev:local:status` | Print the stack identity, container status and HTTP readiness. |
 
+### Clearing local data
+
+`npm run dev:local:reset` is the supported way to clear the local PostgreSQL
+database and SeaweedFS bucket. It stops the stack, deletes both data volumes and
+the local stack state, and leaves the next `npm run dev:local` to recreate them.
+Use `npm run dev:local:stop` instead when you only want to stop the services and
+keep your accounts, projects and asset bytes.
+
 Startup is idempotent: migrations, bucket creation and service startup may be
 repeated. A lock file prevents two supervisors from racing on one worktree; a
 stale lock from a crashed process is reclaimed. `stop` and `reset` are safe to

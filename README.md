@@ -88,6 +88,13 @@ npm install
 npm run dev:local
 ```
 
+The editor is served at <http://localhost:5173> (or the next free port printed by
+the command). `npm run dev:local:stop` stops the stack and keeps local data. To
+clear the local PostgreSQL database and object storage, run
+`npm run dev:local:reset`; the next start recreates both. Use
+`npm run dev:local:logs` and `npm run dev:local:status` for service logs and
+readiness.
+
 - [Local development](docs/local-development.md)
 - [Documentation](docs/README.md)
 - [Tests](apps/editor/tests/README.md)
