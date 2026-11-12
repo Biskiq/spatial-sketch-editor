@@ -62,6 +62,7 @@ import {
 } from '$lib/authoring/adapters/layout/room-duplicate-planners';
 import { createSplitPlanners } from '$lib/authoring/adapters/layout/split-planners';
 import { createJoinPlanners } from '$lib/authoring/adapters/layout/join-planners';
+import { createOpeningRepeatPlanners } from '$lib/authoring/adapters/layout/opening-repeat';
 import { createCardFieldsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -163,7 +164,8 @@ describe('T1.P01.S04 — Layout precision', () => {
 				createSplitPlanners().length +
 				createJoinPlanners().length +
 				createRoomDuplicatePlanners().length +
-				createOpeningPlanners().length
+				createOpeningPlanners().length +
+				createOpeningRepeatPlanners().length
 		);
 		expect(createLayoutPlanners().map((planner) => planner.kind).sort()).toEqual([
 			'layout-entity-name',

@@ -28,6 +28,7 @@
 		wallUnfoldViewCentreStation
 	} from '$lib/layout/wall-unfold';
 	import LayoutWallUnfold from './LayoutWallUnfold.svelte';
+	import LayoutOpeningRepeat from './LayoutOpeningRepeat.svelte';
 
 	let {
 		services,
@@ -385,6 +386,11 @@
 					field
 				)}{/each}
 		</div>
+		<!-- T1 A8 — Repeat is an Opening operation in the Card's own writer, not a
+		     new tool: count, spacing and the planner's proposal in one place. -->
+		{#if instrument.subject.kind === 'opening'}
+			<LayoutOpeningRepeat {services} />
+		{/if}
 		<!-- C3/D12 — the foot icon enters; the Card owns the whole Unroll session. -->
 		{#if entryShown && selectedHostWall !== null}
 			<div class="unroll-entry">
