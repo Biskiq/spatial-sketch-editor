@@ -146,7 +146,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
         <li><span class="tag defect">defect</span> <b>Aim and Reach are independent</b> (A2). The target is where the beam lands, whatever Reach says. Set Reach shorter than Aim: the bar moves in front of the target, the footprint goes dashed, and the target stays put. A new Spot has no Reach.</li>
         <li><span class="tag defect">defect</span> The <b>soft-edge ring</b> marks the edge of full brightness (A2). Sharp = on the footprint ring; drag inward to soften. Today it is inverted: a sharp beam draws it at the centre.</li>
         <li><span class="tag miss">missing</span> <b>Above 80°</b> the guide is drawn at 80°, dashed, and the Beam and Soft-edge grips are removed; Beam is set from the Card. Drag Beam past 80.</li>
-        <li><span class="tag miss">missing</span> <b>The light follows every drag</b> before release (A1). Release is one undo step; Esc puts the light back.</li>
+        <li><span class="tag miss">missing</span> <b>The light and its cast shadow follow every drag</b> before release (A1). Release is one undo step; Esc puts both back.</li>
       </ul>
       <div class="keys"><b>Target</b><span>drag across surfaces: aim only</span><b>Rim grip</b><span>drag: Beam (to 80°)</span><b>Inner ring grip</b><span>drag: Soft edge</span><b>Reach bar</b><span>drag along the axis: Reach</span><b>Glyph</b><span>drag: move; the target stays put (Shift keeps the direction)</span></div>
       <p class="note"><b>Light it</b> is unchanged. A Picture spot inherits this gizmo: its target lands on the picture and the footprint frames it.</p>
@@ -214,7 +214,8 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
         <tr><td>Height</td><td>Y</td></tr>
       </table></div>
       <ul style="margin-top:10px">
-        <li><b>The light follows the slider</b> while it is dragged (A1): the scene, not only the number, updates before release. Release is one undo step; Esc puts it back.</li>
+        <li><b>The light and any cast shadow follow the slider</b> while it is dragged (A1): the scene, not only the number, updates before release. Release is one undo step; Esc puts both back.</li>
+        <li><b>Numeric Aim coordinates set direction</b>; they are not a stored fixed target. The derived readout may change after committing, while the light keeps the requested direction.</li>
         <li><b>Warmth</b> is a slider for white light. <b>Colour</b> is a dial for coloured light. A light is one or the other.</li>
         <li>The five Brightness chips stay on the everyday Card; Advanced has the fine slider between and beyond them.</li>
         <li>Exact numbers sit beside each control, small. They are never the only way to change a value.</li>
@@ -259,7 +260,8 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
         <li>Over a gap, a doorway or the floor it <b>waits</b> where it was.</li>
         <li>Once it fits on the next wall it <b>jumps</b> there and takes that wall's direction. It never floats across the corner.</li>
         <li><b>Shift</b> at press: move freely in its own plane, as today. Free-standing Artwork attaches to the first wall it fits.</li>
-        <li>Release commits exactly the pose that was drawn.</li>
+        <li>Flat Artwork tangent to a <b>curved Wall</b> remains valid; it does not need to bend to pass the wall-fit test.</li>
+        <li>Release commits the final candidate from the pointer-up event, even when a preview frame was still queued.</li>
       </ul>
     </div>
   </div>
@@ -316,7 +318,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
   <h3 style="margin-top:16px">Amendments from the PR #314 review</h3>
   <div class="tw"><table>
     <tr><th>#</th><th>Gap</th><th>Amendment</th><th>Panel</th></tr>
-    <tr><td>A1</td><td>Lighting visible only after commit</td><td>Card sliders, gizmo drags and light ghosts light the scene before commit. One undo step on release, none on cancel</td><td>Spot, Advanced, Placement</td></tr>
+    <tr><td>A1</td><td>Lighting visible only after commit</td><td>Card sliders, gizmo drags and light ghosts preview illumination and cast shadows. One undo step on release, none on cancel</td><td>Spot, Advanced, Placement</td></tr>
     <tr><td>A2</td><td>Spot correctness</td><td>Soft-edge ring at the edge of full brightness; Aim never reads or writes Reach; beams above 80° drawn clamped and edited from the Card</td><td>Spot</td></tr>
     <tr><td>A3</td><td>Directional in large or multi-light projects</td><td>View-anchored dial of constant screen size; Direction row on the Card; name chip and ticks for other lights</td><td>Directional, Light Cards</td></tr>
     <tr><td>A4</td><td>Artwork at wall ends, openings, corners</td><td>Fits or holds; jumps to the next wall; Shift moves freely</td><td>Artwork</td></tr>
