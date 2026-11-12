@@ -118,6 +118,16 @@ async function mountCard(
 ) {
 	const snapshot = snapshotOf(entity);
 	const accept = vi.fn(async (_intent: unknown) => ({ kind: 'installed' as const }));
+	const overrides = new Map<string, unknown>();
+	const lightPreview = {
+		overrides,
+		candidate: null,
+		setOverride: (id: string, light: unknown) => overrides.set(id, light),
+		clearOverride: (id: string) => overrides.delete(id),
+		setCandidate: vi.fn(),
+		clear: () => overrides.clear(),
+		flush: vi.fn()
+	};
 	const services = {
 		stage: {
 			snapshot: () => snapshot,
@@ -125,7 +135,8 @@ async function mountCard(
 				primary: { domain: 'scene', subject: { kind: 'entity', id: entity.id } }
 			}),
 			notifySurfaceChange: vi.fn(),
-			setSelection: vi.fn()
+			setSelection: vi.fn(),
+			lightPreview: () => lightPreview
 		},
 		authoring: {
 			accept,
@@ -146,7 +157,7 @@ async function mountCard(
 	});
 	cleanup = () => unmount(component);
 	await tick();
-	return { target, accept };
+	return { target, accept, lightPreview };
 }
 
 function field(target: HTMLElement, name: string): HTMLInputElement | HTMLButtonElement {
@@ -155,6 +166,14 @@ function field(target: HTMLElement, name: string): HTMLInputElement | HTMLButton
 	);
 	if (found === null) throw new Error(`the ${name} field is missing`);
 	return found;
+}
+
+async function openGroup(target: HTMLElement, id: string): Promise<void> {
+	const head = target.querySelector<HTMLButtonElement>(`[data-advanced-group-head="${id}"]`);
+	if (head === null) throw new Error(`the ${id} Advanced group is missing`);
+	// The open group is session state remembered per kind; leave it open if it is.
+	if (head.getAttribute('aria-expanded') !== 'true') head.click();
+	await tick();
 }
 
 describe('S3a Light Card writer', () => {
@@ -194,6 +213,7 @@ describe('S3a Light Card writer', () => {
 
 	it('keeps zero and custom Brightness values without selecting a stop', async () => {
 		const { target } = await mountCard(spot({ intensity: 0 }));
+		await openGroup(target, 'brightness');
 		expect(field(target, 'brightness-custom').textContent).toContain('0×');
 		expect(target.textContent).toContain('0.000 cd');
 		expect((field(target, 'exact-intensity') as HTMLInputElement).value).toBe('0.000');
@@ -257,6 +277,7 @@ describe('S3a Light Card writer', () => {
 
 	it('commits exact values on Enter, restores on Esc, and never writes on blur', async () => {
 		const { target, accept } = await mountCard(spot());
+		await openGroup(target, 'brightness');
 		const intensity = field(target, 'exact-intensity') as HTMLInputElement;
 		const accepted = intensity.value;
 
@@ -302,8 +323,53 @@ describe('S3a Light Card writer', () => {
 		expect(intensity.value).toBe(accepted);
 	});
 
+	it('previews a Brightness slider drag and commits exactly once on release', async () => {
+		const { target, accept, lightPreview } = await mountCard(spot());
+		await openGroup(target, 'brightness');
+		const slider = target.querySelector<HTMLInputElement>('[data-advanced-slider="brightness"]');
+		if (slider === null) throw new Error('the Brightness slider is missing');
+
+		slider.value = '1';
+		slider.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		expect(accept).not.toHaveBeenCalled();
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(true);
+		expect((lightPreview.overrides.get(LIGHT_ID) as { intensity: number }).intensity).toBeCloseTo(
+			Math.PI * 2,
+			9
+		);
+
+		slider.dispatchEvent(new Event('change', { bubbles: true }));
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID }
+		});
+		const intensity = (accept.mock.calls[0]![0] as { payload: { intensity: number } }).payload.intensity;
+		expect(intensity).toBeCloseTo(Math.PI * 2, 9);
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(false);
+	});
+
+	it('restores the accepted value and writes nothing when Esc ends a slider drag', async () => {
+		const { target, accept, lightPreview } = await mountCard(spot());
+		await openGroup(target, 'brightness');
+		const slider = target.querySelector<HTMLInputElement>('[data-advanced-slider="brightness"]');
+		if (slider === null) throw new Error('the Brightness slider is missing');
+		slider.value = '-1';
+		slider.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(true);
+		slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await tick();
+		expect(accept).not.toHaveBeenCalled();
+		expect(lightPreview.overrides.has(LIGHT_ID)).toBe(false);
+	});
+
 	it('exposes azimuth/elevation instead of Reach or Beam for a directional', async () => {
 		const { target } = await mountCard(directional());
+		await openGroup(target, 'direction');
 		expect(field(target, 'azimuth')).toBeDefined();
 		expect(field(target, 'elevation')).toBeDefined();
 		expect(target.querySelector('[data-field="adjust-reach"]')).toBeNull();

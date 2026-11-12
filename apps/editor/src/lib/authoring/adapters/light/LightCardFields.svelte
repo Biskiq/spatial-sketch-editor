@@ -1,16 +1,21 @@
+<script module lang="ts">
+	/** Advanced group choice is session state, remembered per light kind. */
+	let rememberedGroup = $state<Record<string, string | null>>({});
+</script>
+
 <script lang="ts">
 	/**
-	 * T2 gallery UX recovery — the Light Card's everyday rows.
+	 * T2 gallery UX recovery — the Light Card.
 	 *
-	 * Four labelled rows per kind, in the approved order: Warmth · Brightness ·
-	 * Reach | Beam | Direction · Shadow. Warmth and Brightness are chips with a
-	 * read-only off-stop value; Reach has an Unlimited chip; a Spot's Beam field
-	 * accepts 1…90° and says when the guide cannot draw the stored beam; a
-	 * Directional gets From and Height in sky, which are always available
-	 * whatever the view shows.
+	 * Everyday rows: Warmth · Brightness · Reach | Beam | Direction · Shadow.
+	 * Advanced expands in the same Card, below them, as a registry of groups with
+	 * one group open at a time. A group is one 32 px row: name left, current-value
+	 * summary right. No group that has no control for the kind is rendered and
+	 * there are no disabled placeholders.
 	 *
-	 * Every explicit commit is the same `update-light` planner the marks submit.
-	 * Exact fields commit on Enter only; Esc restores and blur writes nothing.
+	 * Sliders and the colour dial follow the thumb through the session-only light
+	 * preview and commit once, on release. Typed fields commit on Enter and do not
+	 * preview; Esc restores and blur writes nothing.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -32,7 +37,26 @@
 		formatMultiplier,
 		presentationAngles
 	} from '$lib/authoring/look/light-presentation';
-	import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
+	import {
+		colourAmount,
+		hexToHsv,
+		hsvToHex,
+		nearestWarmth,
+		snapBrightnessSlider,
+		warmthColorAt,
+		warmthName
+	} from '$lib/authoring/look/light-color';
+	import { rotationForLightDirection } from '$lib/authoring/look/light-aim';
+	import {
+		advancedGroupsFor,
+		advancedRowsFor,
+		advancedSummary,
+		type LightAdvancedGroup,
+		type LightAdvancedKind,
+		type LightAdvancedLight,
+		type LightAdvancedRow,
+		type LightAdvancedValue
+	} from './light-advanced';
 
 	let {
 		services,
@@ -59,23 +83,49 @@
 	}
 
 	let light = $state.raw<Light | null>(null);
+	let previewLight = $state.raw<Light | null>(null);
 	let reach = $state('');
 	let beam = $state('');
 	let fromField = $state('');
 	let heightField = $state('');
-	let exactColor = $state('');
-	let exactIntensity = $state('');
-	let exactRange = $state('');
-	let exactHalfAngle = $state('');
-	let exactPenumbra = $state('');
-	let exactX = $state('');
-	let exactY = $state('');
-	let exactZ = $state('');
-	let aimX = $state('');
-	let aimY = $state('');
-	let aimZ = $state('');
 	let message = $state('');
 	let busy = $state(false);
+	let dialActive = $state(false);
+	/** Typed-field drafts: Enter commits, Esc and blur restore without writing. */
+	let drafts = $state<Record<string, string>>({});
+
+	const datum = $derived(
+		services.stage.snapshot().domain.datumMeters
+	);
+	const shown = $derived.by(() => previewLight ?? light);
+	const kind = $derived<LightAdvancedKind | null>(light?.light ?? null);
+	const groups = $derived(kind === null ? [] : advancedGroupsFor(kind));
+	let openGroup = $state<string | null>(null);
+	const openRows = $derived.by(() => {
+		if (kind === null) return [];
+		const value = shown as LightAdvancedLight | null;
+		const group = groups.find((candidate) => candidate.id === openGroup);
+		if (group === undefined || value === null) return [];
+		const rows = advancedRowsFor(group, kind);
+		if (group.id !== 'colour') return rows;
+		// White mode shows the Warmth ramp; Colour mode shows the dial. Neither
+		// control is rendered disabled in the other mode.
+		const white = nearestWarmth(value.color).exact;
+		return rows.filter((row) =>
+			row.id === 'warmth' ? white : row.id === 'colour' ? !white : true
+		);
+	});
+
+	$effect(() => {
+		void services.stage.selectionState().primary;
+		sync();
+	});
+
+	$effect(() => {
+		const current = kind;
+		if (current === null) return;
+		openGroup = rememberedGroup[current] ?? null;
+	});
 
 	function rangeOf(value: Light): number | undefined {
 		return 'range' in value ? value.range : undefined;
@@ -88,6 +138,7 @@
 	function sync(): void {
 		const next = selectedLight();
 		light = next;
+		previewLight = null;
 		if (next === null) return;
 		const range = rangeOf(next);
 		reach = range === undefined ? '' : range.toFixed(2);
@@ -95,34 +146,11 @@
 		const angles = presentationAngles(next.rotation);
 		fromField = String(Math.round(angles.from * 10) / 10);
 		heightField = String(Math.round(angles.heightInSky * 10) / 10);
-		exactColor = next.color;
-		exactIntensity = next.intensity.toFixed(3);
-		exactRange = range === undefined ? '' : range.toFixed(2);
-		exactHalfAngle = next.light === 'spot' ? String(roundedDegrees(next.angle)) : '';
-		exactPenumbra =
-			next.light === 'spot' ? String(Math.round((next.penumbra ?? 0) * 1000) / 10) : '';
-		exactX = next.position[0].toFixed(2);
-		exactY = next.position[1].toFixed(2);
-		exactZ = next.position[2].toFixed(2);
-		const forward = lightForward(next.rotation);
-		const target = [
-			next.position[0] + forward[0] * 3,
-			next.position[1] + forward[1] * 3,
-			next.position[2] + forward[2] * 3
-		];
-		aimX = target[0]!.toFixed(2);
-		aimY = target[1]!.toFixed(2);
-		aimZ = target[2]!.toFixed(2);
 	}
 
-	$effect(() => {
-		void services.stage.selectionState().primary;
-		sync();
-	});
-
-	async function commit(update: Record<string, unknown>): Promise<void> {
+	async function commit(update: Record<string, unknown>): Promise<boolean> {
 		const current = light;
-		if (current === null || busy) return;
+		if (current === null || busy) return false;
 		busy = true;
 		message = '';
 		try {
@@ -133,11 +161,41 @@
 				'update-light',
 				{ entityId: current.id, ...update }
 			);
-			if (outcome.kind === 'refused') message = outcome.message;
-			else sync();
+			if (outcome.kind === 'refused') {
+				message = outcome.message;
+				return false;
+			}
+			sync();
+			return true;
 		} finally {
 			busy = false;
 		}
+	}
+
+	/** Publish the proposed light for this frame; nothing is written. */
+	function preview(update: Record<string, unknown> | null): void {
+		const current = light;
+		const target = services.stage.lightPreview?.() ?? null;
+		if (update === null) {
+			previewLight = null;
+			if (current !== null) target?.clearOverride(current.id);
+			target?.flush();
+			return;
+		}
+		if (current === null) return;
+		const next = { ...(previewLight ?? current), ...update } as Light;
+		previewLight = next;
+		target?.setOverride(current.id, next);
+	}
+
+	async function commitPreview(update: Record<string, unknown>): Promise<void> {
+		const accepted = await commit(update);
+		const current = light;
+		const target = services.stage.lightPreview?.() ?? null;
+		previewLight = null;
+		if (current !== null) target?.clearOverride(current.id);
+		target?.flush();
+		if (!accepted) sync();
 	}
 
 	function setWarmth(color: string): void {
@@ -160,7 +218,6 @@
 		if (light === null) return;
 		const trimmed = value.trim();
 		if (trimmed === '') {
-			// Enter on an unchanged empty field is a no-op, never an implicit clear.
 			if (rangeOf(light) === undefined) return;
 			void commit({ range: null });
 			return;
@@ -200,73 +257,9 @@
 			message = 'From is 0…359° and Height is 0…90°.';
 			return;
 		}
-		const rotation = rotationForLightDirection(directionForPresentationAngles(from, height));
-		void commit({ rotation });
-	}
-
-	function commitExactColor(): void {
-		const color = exactColor.trim();
-		if (!/^#[0-9a-f]{6}$/i.test(color)) {
-			message = 'Colour must be a six-digit sRGB hex value.';
-			return;
-		}
-		void commit({ color });
-	}
-
-	function commitExactIntensity(): void {
-		const intensity = Number(exactIntensity.trim());
-		if (!Number.isFinite(intensity) || intensity < 0) {
-			message = 'Intensity must be zero or greater.';
-			return;
-		}
-		void commit({ intensity });
-	}
-
-	function commitExactRange(): void {
-		commitReach(exactRange);
-	}
-
-	function commitExactHalfAngle(): void {
-		commitBeam(exactHalfAngle);
-	}
-
-	function commitExactPenumbra(): void {
-		if (light === null || light.light !== 'spot') return;
-		const percent = Number(exactPenumbra.trim());
-		if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-			message = 'Soft edge must be between 0% and 100%.';
-			return;
-		}
-		void commit({ penumbra: percent / 100 });
-	}
-
-	function commitPosition(): void {
-		const position: Vec3 = [Number(exactX), Number(exactY), Number(exactZ)];
-		if (!position.every(Number.isFinite)) {
-			message = 'Position needs three finite metres.';
-			return;
-		}
-		void commit({ position });
-	}
-
-	function commitAim(): void {
-		if (light === null || light.light !== 'spot') return;
-		const target: Vec3 = [Number(aimX), Number(aimY), Number(aimZ)];
-		if (!target.every(Number.isFinite)) {
-			message = 'Aim needs three finite metres.';
-			return;
-		}
-		const direction = [
-			target[0] - light.position[0],
-			target[1] - light.position[1],
-			target[2] - light.position[2]
-		] as Vec3;
-		if (Math.hypot(...direction) <= 1e-9) {
-			message = 'Aim must differ from the light position.';
-			return;
-		}
-		// The numeric Aim point controls direction only; it is never a stored target.
-		void commit({ rotation: rotationForLightDirection(direction) });
+		void commit({
+			rotation: rotationForLightDirection(directionForPresentationAngles(from, height))
+		});
 	}
 
 	function exactKey(event: KeyboardEvent, run: () => void): void {
@@ -276,6 +269,7 @@
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			event.stopPropagation();
+			preview(null);
 			sync();
 		}
 	}
@@ -285,24 +279,149 @@
 	}
 
 	function customWarmthLabel(value: Light): string {
-		return value.color.toLowerCase() === '#ffffff' ? 'Neutral white' : 'Custom';
+		const reading = nearestWarmth(value.color);
+		return reading.exact
+			? `${warmthName(reading.w)} white`
+			: value.color.toLowerCase() === '#ffffff'
+				? 'Neutral white'
+				: 'Custom';
 	}
 
 	function brightnessIsCustom(value: Light): boolean {
 		return brightnessStopForIntensity(value.intensity) === null;
 	}
 
-	function brightnessTitle(stop: number, kind: Light['light']): string {
-		const unit = kind === 'directional' ? 'lx' : 'cd';
+	function brightnessTitle(stop: number, kindOfLight: Light['light']): string {
+		const unit = kindOfLight === 'directional' ? 'lx' : 'cd';
 		return `${stop}× · ${intensityForBrightnessStop(stop).toFixed(3)} ${unit}`;
 	}
 
-	function stopLabel(stop: number): string {
-		return `${stop}×`;
+	function toggleGroup(group: LightAdvancedGroup): void {
+		const current = kind;
+		if (current === null) return;
+		openGroup = openGroup === group.id ? null : group.id;
+		rememberedGroup = { ...rememberedGroup, [current]: openGroup };
+	}
+
+	function draftValue(key: string, fallback: string): string {
+		return drafts[key] ?? fallback;
+	}
+
+	function setDraft(key: string, value: string): void {
+		drafts = { ...drafts, [key]: value };
+	}
+
+	function clearDraft(key: string): void {
+		if (!(key in drafts)) return;
+		const next = { ...drafts };
+		delete next[key];
+		drafts = next;
+	}
+
+	/** The exact field beside a slider reads the authored value, not the slider's s. */
+	function fieldReading(row: LightAdvancedRow): number {
+		const current = shown as LightAdvancedLight | null;
+		if (current === null) return 0;
+		if (row.id === 'brightness') return current.intensity;
+		return Number(row.read(current, datum));
+	}
+
+	function commitField(row: LightAdvancedRow, value: number): void {
+		if (!Number.isFinite(value)) return;
+		if (row.id === 'brightness') {
+			void commitPreview({ intensity: value });
+			return;
+		}
+		writeRow(row, value);
+	}
+
+	function fieldHook(row: LightAdvancedRow): string | undefined {
+		if (row.id === 'brightness') return 'exact-intensity';
+		if (row.id === 'direction-from') return 'azimuth';
+		if (row.id === 'direction-height') return 'elevation';
+		return undefined;
+	}
+
+	function fieldText(row: LightAdvancedRow): string {
+		const value = fieldReading(row);
+		const step = row.control.kind === 'slider' && row.control.field ? row.control.field.step : 0.001;
+		if (row.id === 'brightness') return value.toFixed(3);
+		if (step < 1) return String(Number(value.toFixed(3)));
+		return String(Math.round(value));
+	}
+
+	function readRow(row: LightAdvancedRow): LightAdvancedValue {
+		const value = shown as LightAdvancedLight | null;
+		return value === null ? null : row.read(value, datum);
+	}
+
+	function rowSummary(row: LightAdvancedRow): string {
+		const value = shown as LightAdvancedLight | null;
+		return value === null ? '' : row.summary(value, datum);
+	}
+
+	function writeRow(row: LightAdvancedRow, value: LightAdvancedValue): void {
+		const current = light;
+		if (current === null) return;
+		void commitPreview(row.write(value, current as LightAdvancedLight, datum));
+	}
+
+	/* ----- Colour dial -------------------------------------------------- */
+
+	let dialPointerId: number | null = null;
+
+	function dialColour(event: PointerEvent): { hue: number; amount: number } | null {
+		const element = event.currentTarget as HTMLElement | null;
+		if (element === null) return null;
+		const rect = element.getBoundingClientRect();
+		const radius = rect.width / 2;
+		if (!(radius > 0)) return null;
+		const dx = event.clientX - (rect.left + radius);
+		const dy = event.clientY - (rect.top + radius);
+		const amount = Math.min(1, Math.hypot(dx, dy) / radius);
+		const hue = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+		return { hue, amount };
+	}
+
+	function dialDown(event: PointerEvent): void {
+		if (light === null) return;
+		event.preventDefault();
+		const read = dialColour(event);
+		if (read === null) return;
+		dialActive = true;
+		dialPointerId = event.pointerId;
+		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+		preview({ color: hsvToHex(read.hue, read.amount) });
+	}
+
+	function dialMove(event: PointerEvent): void {
+		if (!dialActive || event.pointerId !== dialPointerId) return;
+		const read = dialColour(event);
+		if (read === null) return;
+		preview({ color: hsvToHex(read.hue, read.amount) });
+	}
+
+	function dialUp(event: PointerEvent): void {
+		if (!dialActive || event.pointerId !== dialPointerId) return;
+		dialActive = false;
+		dialPointerId = null;
+		const read = dialColour(event);
+		if (read === null) {
+			preview(null);
+			return;
+		}
+		void commitPreview({ color: hsvToHex(read.hue, read.amount) });
+	}
+
+	function dialCancel(): void {
+		if (!dialActive) return;
+		dialActive = false;
+		dialPointerId = null;
+		preview(null);
 	}
 </script>
 
-{#if light !== null}
+{#if light !== null && shown !== null}
 	<div class="light-fields" data-light-fields>
 		<p class="kind">{lightKindLabel(light.light)}</p>
 
@@ -340,7 +459,7 @@
 						aria-pressed={brightnessStopForIntensity(light.intensity) === stop}
 						title={brightnessTitle(stop, light.light)}
 						onclick={() => setBrightness(stop)}
-					>{stopLabel(stop)}</button>
+					>{stop}×</button>
 				{/each}
 				{#if brightnessIsCustom(light)}
 					<span class="chip readonly" data-field="brightness-custom">{formatMultiplier(light.intensity)}</span>
@@ -454,134 +573,197 @@
 		</p>
 
 		{#if detailOpen}
-		<div class="exact" aria-label="Advanced light values">
-			<p class="section-label">Advanced</p>
-			<div class="field-grid">
-				<label class="field">
-					<span>Colour</span>
-					<input
-						type="text"
-						data-field="exact-color"
-						value={exactColor}
-						spellcheck="false"
-						oninput={(event) => (exactColor = event.currentTarget.value)}
-						onkeydown={(event) => exactKey(event, commitExactColor)}
-						onblur={sync}
-					/>
-					<em>sRGB</em>
-				</label>
-				<label class="field">
-					<span>Intensity</span>
-					<input
-						type="number"
-						data-field="exact-intensity"
-						min="0"
-						step="0.001"
-						value={exactIntensity}
-						oninput={(event) => (exactIntensity = event.currentTarget.value)}
-						onkeydown={(event) => exactKey(event, commitExactIntensity)}
-						onblur={sync}
-					/>
-					<em>{light.light === 'directional' ? 'lx' : 'cd'}</em>
-				</label>
-
-				{#if light.light !== 'directional'}
-					<div class="triplet" role="group" aria-label="Position">
-						<span>Position</span>
-						<input type="number" data-field="exact-x" step="0.01" aria-label="Position X" value={exactX} oninput={(event) => (exactX = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitPosition)} onblur={sync} />
-						<input type="number" data-field="exact-y" step="0.01" aria-label="Position Y" value={exactY} oninput={(event) => (exactY = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitPosition)} onblur={sync} />
-						<input type="number" data-field="exact-z" step="0.01" aria-label="Position Z" value={exactZ} oninput={(event) => (exactZ = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitPosition)} onblur={sync} />
+			<div class="advanced" aria-label="Advanced light values">
+				{#each groups as group (group.id)}
+					<div class="group" data-advanced-group={group.id}>
+						<button
+							type="button"
+							class="group-head"
+							aria-expanded={openGroup === group.id}
+							data-advanced-group-head={group.id}
+							onclick={() => toggleGroup(group)}
+						>
+							<span>{group.label}</span>
+							<span class="summary">{advancedSummary(group, shown as LightAdvancedLight, datum)}</span>
+						</button>
+						{#if openGroup === group.id}
+							<div class="group-body" role="group" aria-label={group.label}>
+								{#each openRows as row (row.id)}
+									<div class="control-row" data-advanced-row={row.id}>
+										<span class="control-label">{row.label}</span>
+										{#if row.control.kind === 'mode'}
+											{@const mode = String(readRow(row))}
+											<div class="chips">
+												<button type="button" class="chip" class:current={mode === 'white'}
+													data-advanced-mode="white" aria-pressed={mode === 'white'}
+													onclick={() => writeRow(row, 'white')}>White</button>
+												<button type="button" class="chip" class:current={mode === 'colour'}
+													data-advanced-mode="colour" aria-pressed={mode === 'colour'}
+													onclick={() => writeRow(row, 'colour')}>Colour</button>
+											</div>
+										{:else if row.control.kind === 'warmth'}
+											{@const value = Number(readRow(row))}
+											<div class="ramp-wrap">
+												<input
+													type="range"
+													class="ramp"
+													data-advanced-warmth
+													min="-100"
+													max="100"
+													step="1"
+													value={value}
+													aria-label="Warmth"
+																													oninput={(event) => preview({ color: warmthColorAt(Number(event.currentTarget.value)) })}
+																onchange={(event) => void commitPreview({ color: warmthColorAt(Number(event.currentTarget.value)) })}
+													onkeydown={(event) => { if (event.key === 'Escape') { preview(null); sync(); } }}
+												/>
+												<div class="ramp-ends"><span>Candle</span><span>Neutral</span><span>Sky</span></div>
+												<p class="value-text">{warmthName(value)} · {value}°</p>
+											</div>
+										{:else if row.control.kind === 'colour'}
+											{@const hex = String(readRow(row))}
+											{@const hsv = hexToHsv(hex)}
+											<div class="colour-wrap">
+												<div
+													class="dial"
+													role="slider"
+													tabindex="0"
+																														aria-label="Colour hue and amount"
+																	aria-valuemin={0}
+																	aria-valuemax={359}
+																	aria-valuenow={Math.round(hexToHsv(hex).hue)}
+																	aria-valuetext={`Hue ${Math.round(hexToHsv(hex).hue)}°, amount ${colourAmount(hex)}%`}
+													onpointerdown={dialDown}
+													onpointermove={dialMove}
+													onpointerup={dialUp}
+													onpointercancel={dialCancel}
+													onkeydown={(event) => {
+														if (event.key === 'Escape') { dialCancel(); return; }
+														const hsv = hexToHsv(hex);
+														if (event.key === 'ArrowLeft') preview({ color: hsvToHex(hsv.hue - 5, hsv.saturation) });
+														else if (event.key === 'ArrowRight') preview({ color: hsvToHex(hsv.hue + 5, hsv.saturation) });
+														else if (event.key === 'ArrowUp') preview({ color: hsvToHex(hsv.hue, hsv.saturation + 0.05) });
+														else if (event.key === 'ArrowDown') preview({ color: hsvToHex(hsv.hue, hsv.saturation - 0.05) });
+													}}
+												>
+													<span
+														class="dial-thumb"
+														style:left={`${50 + Math.cos((hsv.hue * Math.PI) / 180) * hsv.saturation * 42}%`}
+														style:top={`${50 + Math.sin((hsv.hue * Math.PI) / 180) * hsv.saturation * 42}%`}
+													></span>
+												</div>
+												<div class="colour-side">
+													<p class="value-text">Colour amount {colourAmount(hex)}%</p>
+													<label class="hex">
+														<span>Hex</span>
+																																								<input
+																											type="text"
+																											data-advanced-hex
+																											value={hex}
+																											spellcheck="false"
+																											onkeydown={(event) => exactKey(event, () => writeRow(row, (event.currentTarget as HTMLInputElement).value.trim()))}
+																										/>
+													</label>
+												</div>
+											</div>
+										{:else if row.control.kind === 'slider'}
+											{@const value = Number(readRow(row))}
+											{@const control = row.control}
+											<div class="slider-wrap">
+												<input
+													type="range"
+													data-advanced-slider={row.id}
+													min={control.min}
+													max={control.max}
+													step={control.step}
+													value={value}
+													aria-label={row.label}
+													oninput={(event) => {
+														const next = row.id === 'brightness'
+															? snapBrightnessSlider(Number(event.currentTarget.value))
+															: Number(event.currentTarget.value);
+														preview(control.kind === 'slider' ? row.write(next, light as LightAdvancedLight, datum) : {});
+													}}
+													onchange={(event) => {
+														const next = row.id === 'brightness'
+															? snapBrightnessSlider(Number(event.currentTarget.value))
+															: Number(event.currentTarget.value);
+														writeRow(row, next);
+													}}
+													onkeydown={(event) => { if (event.key === 'Escape') { preview(null); sync(); } }}
+												/>
+												{#if control.ends || control.centre}
+													<div class="slider-ends">
+														<span>{control.ends?.[0] ?? ''}</span>
+														{#if control.centre}<span>{control.centre}</span>{/if}
+														<span>{control.ends?.[1] ?? ''}</span>
+													</div>
+												{/if}
+												{#if control.field}
+													<span class="slider-field">
+														<input
+															type="number"
+															data-advanced-field={row.id}
+															data-field={fieldHook(row)}
+															min={control.field.min}
+															max={control.field.max}
+															step={control.field.step}
+																																value={draftValue(`${row.id}-field`, fieldText(row))}
+															aria-label={`${row.label} exact value`}
+															oninput={(event) => setDraft(`${row.id}-field`, event.currentTarget.value)}
+																															onblur={() => clearDraft(`${row.id}-field`)}
+															onkeydown={(event) => { if (event.key === 'Escape') clearDraft(`${row.id}-field`); exactKey(event, () => {
+																const parsed = Number(
+																	draftValue(`${row.id}-field`, String(fieldReading(row))).trim()
+																);
+																clearDraft(`${row.id}-field`);
+																commitField(row, parsed);
+															})}}
+														/>
+														<em>{control.unit ?? ''}</em>
+													</span>
+												{/if}
+											</div>
+										{:else if row.control.kind === 'toggle'}
+											<input
+												type="checkbox"
+												data-advanced-toggle={row.id}
+												checked={Boolean(readRow(row))}
+												onchange={(event) => writeRow(row, event.currentTarget.checked)}
+											/>
+										{:else if row.control.kind === 'triplet'}
+											{@const value = readRow(row) as Vec3}
+											<div class="triplet">
+												{#each row.control.axes as axis, index (axis)}
+													<label>
+														<span>{axis}</span>
+														<input
+															type="number"
+															step="0.05"
+															value={value[index]}
+															data-advanced-axis={`${row.id}-${index}`}
+															onkeydown={(event) => exactKey(event, () => {
+																const inputs = (event.currentTarget as HTMLInputElement)
+																	.closest('.triplet')!.querySelectorAll('input');
+																const next = [Number(inputs[0]!.value), Number(inputs[1]!.value), Number(inputs[2]!.value)] as Vec3;
+																if (!next.every(Number.isFinite)) return;
+																writeRow(row, next);
+															})}
+														/>
+													</label>
+												{/each}
+											</div>
+										{/if}
+										{#if row.control.kind !== 'toggle' && row.control.kind !== 'triplet'}
+											<span class="row-summary">{rowSummary(row)}</span>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{/if}
 					</div>
-					{#if light.light === 'spot'}
-						<div class="triplet" role="group" aria-label="Aim target">
-							<span>Aim</span>
-							<input type="number" data-field="aim-x" step="0.01" aria-label="Aim X" value={aimX} oninput={(event) => (aimX = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
-							<input type="number" data-field="aim-y" step="0.01" aria-label="Aim Y" value={aimY} oninput={(event) => (aimY = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
-							<input type="number" data-field="aim-z" step="0.01" aria-label="Aim Z" value={aimZ} oninput={(event) => (aimZ = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
-						</div>
-					{/if}
-					<label class="field">
-						<span>Reach</span>
-						<input
-							type="number"
-							data-field="exact-reach"
-							min="0.1"
-							step="0.05"
-							value={exactRange}
-							placeholder="Unlimited"
-							oninput={(event) => (exactRange = event.currentTarget.value)}
-							onkeydown={(event) => exactKey(event, commitExactRange)}
-							onblur={sync}
-						/>
-						<em>m</em>
-					</label>
-				{:else}
-					<label class="field">
-						<span>From</span>
-						<input
-							type="number"
-							data-field="azimuth"
-							min="0"
-							max="359"
-							step="1"
-							value={fromField}
-							oninput={(event) => (fromField = event.currentTarget.value)}
-							onkeydown={(event) => exactKey(event, commitDirection)}
-							onblur={sync}
-						/>
-						<em>°</em>
-					</label>
-					<label class="field">
-						<span>Height in sky</span>
-						<input
-							type="number"
-							data-field="elevation"
-							min="0"
-							max="90"
-							step="1"
-							value={heightField}
-							oninput={(event) => (heightField = event.currentTarget.value)}
-							onkeydown={(event) => exactKey(event, commitDirection)}
-							onblur={sync}
-						/>
-						<em>°</em>
-					</label>
-				{/if}
-
-				{#if light.light === 'spot'}
-					<label class="field">
-						<span>Half-angle</span>
-						<input
-							type="number"
-							data-field="exact-half-angle"
-							min="0.1"
-							max="180"
-							step="0.5"
-							value={exactHalfAngle}
-							oninput={(event) => (exactHalfAngle = event.currentTarget.value)}
-							onkeydown={(event) => exactKey(event, commitExactHalfAngle)}
-							onblur={sync}
-						/>
-						<em>°</em>
-					</label>
-					<label class="field">
-						<span>Soft edge</span>
-						<input
-							type="number"
-							data-field="exact-penumbra"
-							min="0"
-							max="100"
-							step="1"
-							value={exactPenumbra}
-							oninput={(event) => (exactPenumbra = event.currentTarget.value)}
-							onkeydown={(event) => exactKey(event, commitExactPenumbra)}
-							onblur={sync}
-						/>
-						<em>%</em>
-					</label>
-				{/if}
+				{/each}
 			</div>
-		</div>
 		{/if}
 
 		{#if footer}{@render footer()}{/if}
@@ -604,9 +786,6 @@
 		grid-template-columns: 74px minmax(0, 1fr);
 		align-items: center;
 		gap: 6px;
-	}
-	.row.toggle {
-		grid-template-columns: 74px minmax(0, 1fr);
 	}
 	.label {
 		color: var(--shell-ink-2);
@@ -690,24 +869,38 @@
 	.readout {
 		margin: 0;
 	}
-	.exact {
+	.advanced {
 		border-top: 1px solid var(--shell-hairline);
-		padding-top: 8px;
+		padding-top: 4px;
+		display: grid;
+		gap: 2px;
+	}
+	.group {
+		border-bottom: 1px solid var(--shell-hairline);
+	}
+	.group-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		height: 32px;
+		padding: 0 2px;
+		border: 0;
+		background: transparent;
+		color: var(--shell-ink);
+		font: 11px var(--shell-sans);
+		cursor: pointer;
+	}
+	.summary {
+		color: var(--shell-ink-2);
+		font: 10px var(--shell-mono);
+	}
+	.group-body {
 		display: grid;
 		gap: 8px;
+		padding: 2px 2px 8px;
 	}
-	.section-label {
-		margin: 0;
-		font-size: 10px;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--shell-ink-2);
-	}
-	.field-grid {
-		display: grid;
-		gap: 7px;
-	}
-	.field {
+	.control-row {
 		display: grid;
 		grid-template-columns: 92px minmax(0, 1fr) auto;
 		align-items: center;
@@ -715,16 +908,124 @@
 		font-size: 10.5px;
 		color: var(--shell-ink-2);
 	}
-	.triplet {
-		display: grid;
-		grid-template-columns: 92px repeat(3, minmax(0, 1fr));
-		gap: 5px;
-		align-items: center;
-		font-size: 10.5px;
+	.control-label {
 		color: var(--shell-ink-2);
 	}
-	.field input,
-	.triplet input {
+	.value-text {
+		margin: 0;
+		color: var(--shell-ink-2);
+		font: 10px var(--shell-mono);
+	}
+	.slider-wrap,
+	.ramp-wrap {
+		display: grid;
+		gap: 2px;
+		min-width: 0;
+	}
+	.slider-wrap {
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+	}
+	.slider-ends {
+		grid-column: 1 / -1;
+		display: flex;
+		justify-content: space-between;
+		color: var(--shell-ink-2);
+		font-size: 9px;
+	}
+	.slider-field {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+	}
+	.slider-field input {
+		width: 54px;
+	}
+	.ramp {
 		width: 100%;
+		background: linear-gradient(
+			90deg,
+			#ffb46b 0%,
+			#ffd6a5 25%,
+			#ffffff 50%,
+			#dbe9ff 75%,
+			#b8d0ff 100%
+		);
+	}
+	.ramp-ends {
+		display: flex;
+		justify-content: space-between;
+		color: var(--shell-ink-2);
+		font-size: 9px;
+	}
+	.colour-wrap {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.dial {
+		position: relative;
+		width: 132px;
+		height: 132px;
+		flex: none;
+		border-radius: 50%;
+		background:
+			radial-gradient(circle, #ffffff 0%, rgb(255 255 255 / 0) 70%),
+			conic-gradient(
+				from 90deg,
+				#ff0000,
+				#ffff00,
+				#00ff00,
+				#00ffff,
+				#0000ff,
+				#ff00ff,
+				#ff0000
+			);
+		touch-action: none;
+		cursor: crosshair;
+		outline: 1px solid var(--shell-field-line);
+	}
+	.dial-thumb {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		border: 1.5px solid var(--shell-ink);
+		background: var(--shell-field);
+		transform: translate(-50%, -50%)
+			rotate(var(--hue))
+			translateX(calc(var(--amount) * 0.6))
+			rotate(calc(-1 * var(--hue)));
+	}
+	.colour-side {
+		display: grid;
+		gap: 6px;
+	}
+	.hex {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 10px;
+	}
+	.hex input {
+		width: 76px;
+	}
+	.triplet {
+		display: flex;
+		gap: 4px;
+	}
+	.triplet label {
+		display: grid;
+		gap: 1px;
+		font-size: 9px;
+	}
+	.triplet input {
+		width: 58px;
+	}
+	.row-summary {
+		color: var(--shell-ink-2);
+		font: 9.5px var(--shell-mono);
 	}
 </style>
