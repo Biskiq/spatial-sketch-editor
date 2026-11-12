@@ -1,7 +1,8 @@
 # T1 SP-plan — Open Spaces architecture
 
-**Status:** proposed, Tier 2, awaiting owner decision. Planning only: no production code, schema,
-fixture or approved-roadmap edit is in this PR, and nothing here is production acceptance.
+**Status:** owner-approved architecture, Tier 2. Decisions B1–B4 and the extended merge rule are
+ratified (§15). Planning only: no production code, schema, fixture or approved-roadmap edit is in
+this PR, and nothing here is production acceptance. Each slice still opens its own PR.
 
 **Capability:** `layout.space` *new*. **Base:** `main` at `06f0d0df`.
 
@@ -42,8 +43,8 @@ The approved fallback (identity only through a re-close) stays unnecessary.
 | `roomBoundaryPolygon()` returns a triangle for an open rectangle | Accepted, and wider than S2 said: eight production callers use it as *reconciliation evidence* (§10) |
 | Re-close needs no reconciliation change | **Rejected.** See F1–F3 |
 | The world index should include virtual edges in the positive-face key | **Rejected.** See §7.4 and alternative A |
-| Virtual edges are straight segments between surviving Junctions | Accepted as the format rule; its consequence for curved Walls and for sliding ends is decided in §5 and B2 |
-| Shared-Wall erase still merges | True for two enclosed Rooms only. S2 has no fixture where one side is already open; production would retire both. Decided in §5.3 |
+| Virtual edges are straight segments between surviving Junctions | Accepted as the format rule; its consequence for curved Walls and for sliding ends is decided in §5 and by B2 |
+| Shared-Wall erase still merges | True for two enclosed Rooms only. S2 has no fixture where one side is already open; production would retire both. Ratified in §5.3 |
 | Snapshot Undo/Redo is exact | Accepted for snapshots. F4 wiring is unproved and is an SP1c check |
 
 ### Assumptions that fail under inspection
@@ -189,12 +190,12 @@ endpoints). That single change fixes F1 at all eight call sites.
   The S2 harness is deleted in SP1b once its cases are production tests.
 - **Docs promoted at SP1a merge, not here:** the Layout contract's "Current contract" paragraph,
   persistence's Layout paragraph, and the glossary entry for Space. Persistence line 87 says "Unit
-  payload versions are Layout 6" while line 111 says format 7; SP1a must establish whether the
-  envelope carries a separate unit version and correct whichever is stale.
+  payload versions are Layout 6" while line 111 says format 7; SP1a resolves this under R-2
+  (§13.1).
 
 ## 5. Lifecycle
 
-`reconcileRooms` gains one input, `spacePolicy: { removedWalls, retireRoomIds }`, and its "room
+`reconcileRooms` gains one input, `spacePolicy: { removedWalls, retireRoomIds, invalidOutline }`, and its "room
 disappearance" block (`:1062`) becomes the **carry rule**. Order of evaluation:
 
 1. **Faces first, unchanged.** Predecessor polygons come from the composer. Three changes to
@@ -207,7 +208,8 @@ disappearance" block (`:1062`) becomes the **carry rule**. Order of evaluation:
 3. **Open merge.** A removed Wall referenced by two carried predecessors splices their cycles at
    that Wall's ends into one Space.
 4. **Support.** A carried Space with no surviving Wall ref retires.
-5. **Outline gate.** I4 and I7 are checked on each carried Space (decision B1).
+5. **Outline gate.** I4 and I7 are checked on each carried Space. What a failure does depends on
+   the operation (§5.4).
 6. **Anchors.** Junctions released by the operation are pruned unless a surviving Wall or virtual
    edge references them (F4).
 
@@ -224,7 +226,7 @@ disappearance" block (`:1062`) becomes the **carry rule**. Order of evaluation:
 | Erase a set that would join three or more Spaces | Refused, `unsupported_component` | Parity with today's 3+→1 |
 | Draw a Wall exactly along a virtual edge | Face appears; same id; `virtualEdges` shrinks by that edge, or to empty → reads Room | Same Junction ids through the existing global Junction resolution |
 | Draw Walls that enclose the Space by another path | The Space takes the new face, larger or smaller; its virtual edges go | "Closure wins." Consequence line states the area change |
-| Draw a Wall dividing an open Space so one part is enclosed | The Space becomes that enclosed Room; the remainder is unnamed ground | Decision B3. The line reads ***name* becomes a room · *n* m² left outside** |
+| Draw a Wall dividing an open Space so one part is enclosed | The Space becomes that enclosed Room; the remainder is unnamed ground | Ratified B3. The line reads ***name* becomes a room · *n* m² left outside** |
 | One stroke encloses two faces inside an open Space | Existing 1→2 split; survivor keeps the id as a Room | Unchanged code path |
 | Draw a Wall across or ending on a virtual edge, closing nothing | Space unchanged; the Wall is free-standing | Virtual edges are not noded (I9) |
 | Draw a Wall along part of a virtual edge from one of its ends | SP1d: the edge shortens to the Wall's free end and the Wall joins the boundary | Until SP1d the Wall is free-standing and the Space is unchanged |
@@ -245,12 +247,37 @@ Wall, and (for T2) the Space's floor surface reference. Lost by design: Openings
 erased Wall, and door relations on it. A closed circular Wall is one Wall, so erasing it is always
 final-support retirement.
 
-### 5.3 Why the merge rule is extended
+### 5.3 The extended merge rule
 
-The approved rule says erasing a Wall between two Rooms merges them. Without an explicit open
+Ratified by the owner: removing a shared Wall between an open Space and another Space merges them
+into one open Space. The approved rule says erasing a Wall between two Rooms merges them. Without an explicit open
 merge, the carry rule would turn that Wall into two coincident virtual edges, one per Space: two
 named places with nothing between them, sharing an edge that no creator can see or grab. The splice
 is the only reading consistent with the approved sentence.
+
+### 5.4 When an edit would invalidate a Space
+
+Two outcomes exist, and which one applies is fixed by the kind of operation, never by the planner's
+convenience.
+
+| Operation | A Space would fail I4 or I7 | History |
+| --- | --- | --- |
+| **Destructive erase**: the Eraser or delete on a Wall, through `planDeleteWall` and the removal set | The Wall is erased and the affected Space **retires**. The consequence line names the Space and the reason before commit (**Removes *name* · its outline would cross itself**, **· it would contain *other***, **· it would overlap *other***) | One entry; Undo restores the Wall, the Space, its associations and its anchors exactly |
+| **Every other operation**: Wall stroke, Junction or Wall move, exact length or angle, bend, split, join, Room move or rotation, duplicate, radius edit, open-side handle drag, overhead or metadata edit, Remove space | **Refused atomically**, with words naming the Space. Nothing is written | None |
+
+Rules that keep the two apart:
+
+- Retirement for invalidity is reachable from one place only: the carry rule when `spacePolicy`
+  carries `invalidOutline: 'retire'`, which only the Wall-removal planner passes. Every other caller
+  of `reconcileRooms` passes nothing and gets `'reject'`, which returns a rejection
+  (`space_outline_invalid`, with the Space id and the failed invariant).
+- `planRemoveRoom` is not an erase of a Wall for this purpose. Its target retires by intent
+  (`retireRoomIds`); if removing its exclusive Walls would invalidate a *different* Space, the whole
+  command refuses.
+- Final-support retirement (the last Wall goes) is the approved existence rule, not an invalidity,
+  and applies to any removal.
+- No operation retires a Space silently. A retirement without a consequence line naming it is a
+  defect.
 
 ## 6. Overhead intent
 
@@ -314,7 +341,7 @@ inside an open Space are refused (accepted risk 2 of the proposal).
 | **`afterBoundaryIndex` on each virtual edge** | Redundant with Junction chaining, so two truths that can disagree, and it shifts under every boundary rewrite |
 | **Virtual-edge ids** | The Junction pair is already a stable, captured identity within a Space. An id adds an allocation family and a ledger question for something that is "a handle, not a subject" |
 | **Coordinate endpoints** | A second coordinate authority beside Junctions; a moved Wall end and its open side would drift apart |
-| **Station-hosted endpoints on a Wall** | Needed only for sliding an end along a Wall. It introduces partial Wall-side refs into the boundary and a second hosted relation every station-changing planner must re-base. See B2 |
+| **Station-hosted endpoints on a Wall** | Needed only for sliding an end along a Wall. It introduces partial Wall-side refs into the boundary and a second hosted relation every station-changing planner must re-base. Settled by B2 |
 | **R2, a separate Space collection** | S2: needs a new reference kind or duplicated records, and solves no compile problem |
 | **Synthetic "virtual Wall" records** | Would enter noding, role, height, mesh and Opening hosting, each needing an exclusion |
 
@@ -393,13 +420,14 @@ reconciliation change is reviewable alone. One format-changing slice is in fligh
 | **SP1a** Format and compile | §3.1–3.3, §4, §6 (data and compile only), §7, §8, the SP1a rows of §10. No planner produces an open Space yet | This plan approved | 2 |
 | **SP1b** Lifecycle | §5 in full, behind a planner option `openSpaces: 'retire' \| 'keep'` defaulting to `retire` so the editor is unchanged | SP1a | 2 |
 | **SP1c** Editor and visitor parity | Flips to `keep` and **deletes the option**; §11; consequence lines; **Remove space**; Overhead control | SP1b | 1 |
-| **SP1d** Open-side handles | Mid-grip, end knobs, **Stops at *name***, red-dash refusal, partial-Wall absorption | SP1c, decision B2 | 1 |
-| **SP2** Room tool | Space from partial Walls. Reuses the composer, I1–I8 and the overlap gate. Must decide how a booth uses a hall's own Wall side (I6 forbids sharing it) and whether dividing an open Space yields two Spaces (B3) | SP1d | 1 |
+| **SP1d** Open-side handles | Mid-grip, end knobs, **Stops at *name***, red-dash refusal, partial-Wall absorption. An end that slides along a Wall splits that Wall at release (B2) | SP1c | 1 |
+| **SP2** Room tool | Space from partial Walls. Reuses the composer, I1–I8 and the overlap gate. Must decide how a booth uses a hall's own Wall side (I6 forbids sharing it) and may revisit whether dividing an open Space yields two Spaces (B3 settles SP1 only) | SP1d | 1 |
 | **SP3** Space from a floor | Relaxes I1 to "or follows a region"; the outline is then the region's, not stored edges | SP1, V1 | 1 |
 
 **Acceptance.**
 
-- **SP1a.** Format 7 is refused; a format-8 document whose Rooms all have empty `virtualEdges` and
+- **SP1a.** The two resolutions in §13.1 are recorded in the PR with their test names; acceptance
+  is not claimed without them. Format 7 is refused; a format-8 document whose Rooms all have empty `virtualEdges` and
   `closed` overhead compiles byte-identically to its format-7 geometry (T1). A hand-built open
   fixture passes codec, compiler and certified index with the intended area (T2–T4). Every I-row
   has a refusing fixture. `open-to-sky` removes the lid and changes no other compiled record (T15).
@@ -410,6 +438,40 @@ reconciliation change is reviewable alone. One format-changing slice is in fligh
   option remains.
 - **SP1d.** The approved sentences for the mid-grip, end knobs, **Stops at *name***, non-overlap
   and containment hold. A slide along a Wall is one history entry.
+
+### 13.1 Resolutions SP1a owes before it claims acceptance
+
+Both were read, not run, and neither may be left as a note.
+
+**R-1. One-Wall open Space certification.** `buildCertifiedWorldIndex` returns uncertified for any
+Room with fewer than two boundary refs (`layout-world-index.ts:1457`), although the comment above
+it says a one-Wall boundary is valid. A rectangle with three Walls erased is a one-Wall open Space
+and is reachable in SP1.
+
+| Check | Expected outcome |
+| --- | --- |
+| Pin today's behaviour: `ensureLayoutWorldIndex` on a closed circular Room (one ref) at the base commit | A test records whether it is certified. The result is stated in the PR; it is not assumed |
+| One-Wall open Space fixture: one straight Wall plus virtual edges forming a valid outline (the three-Walls-erased rectangle) | Codec accepts; compiler emits one Room with the intended area; **the index certifies it** |
+| The same Space after a Junction move on its Wall, and after redrawing one side | A certified result each time, or `delegate-cold` followed by a certified cold build; never a permanently uncertified document |
+| Enclosed one-Wall Room after SP1a | Exactly the pinned behaviour. SP1a changes the guard for open Spaces only: an open Space is admitted when its composed outline has at least three vertices |
+
+If the pin shows closed circular Rooms are uncertified today and that looks unintended, SP1a opens
+a `bug` issue against the owning capability and does not change it. SP1a fails acceptance if a
+valid one-Wall open Space cannot be certified.
+
+**R-2. Layout persistence version.** [Persistence](../../../reference/components/persistence.md)
+states "Unit payload versions are Layout 6" under the envelope and `formatVersion: 7` under Layout.
+
+| Check | Expected outcome |
+| --- | --- |
+| Find where the F2 envelope declares or checks a Layout unit version, separate from `LAYOUT_WALL_FIRST_FORMAT_VERSION` | The PR states which holds: (a) one number, the Layout `formatVersion`; or (b) a distinct envelope unit version |
+| Case (a) | Persistence names one number, 8, in both places. No envelope change |
+| Case (b) | The PR states whether the unit version moves with this bump and why. Persistence names both numbers and what each governs |
+| Either case: an envelope carrying a format-7 Layout unit, loaded through `project-model/src/units/validate.ts` and through the visitor's release path | Refused with `unsupported_format_version`; no partial load, no reinterpretation |
+| Either case: Save of a format-8 document, then Load | Round-trips byte-identically at the stated version or versions |
+
+SP1a fails acceptance if persistence still states two unreconciled Layout numbers, or if either
+refusal path is untested.
 
 ## 14. Tests that separate a correct design from one that only looks right
 
@@ -425,7 +487,7 @@ reconciliation change is reviewable alone. One format-changing slice is in fligh
 | T8 | Erase the Wall between an open Space and an enclosed Room | Two coincident virtual edges, or both retire, instead of one open Space |
 | T9 | Close an open Space with a Wall bulging outside its virtual edge | A phantom lune Space, or the Space stays open inside a complete ring |
 | T10 | Draw an independent Box partly over an open Space; move a Room onto one; duplicate onto one | Commits with overlap because only erase paths check I7 |
-| T11 | Enclosed island Room inside a hall; erase the island's Wall, then the hall's | First is accepted (open inside enclosed); second follows B1 with stated words |
+| T11 | Enclosed island Room inside a hall; erase the island's Wall, then the hall's | First is accepted (open inside enclosed); second erases the Wall and retires the hall with its reason (B1, §5.4) |
 | T12 | Booth inside hall: an object placed in the booth belongs to the booth; a click selects the booth | Last-polygon-wins or two-witness rule picks the hall or nothing (F7) |
 | T13 | Move a Junction on an open Space so its outline self-crosses | The delta fast path certifies it (F5) |
 | T14 | Move an open Space with two Wall components | Half of it stays behind (F6) |
@@ -435,23 +497,26 @@ reconciliation change is reviewable alone. One format-changing slice is in fligh
 | T18 | Undo and Redo of T2, T6, T8 and T9 restore exact canonical bytes; Redo with the same capture is byte-identical | Redo re-runs matching and picks another survivor |
 | T19 | Visitor primitives for T2 contain no open-side symbol and no editor stream; a release round-trips at format 8 and a format-7 release is refused with the stated code | Dashed edges ship, or the visitor silently reinterprets |
 | T20 | A format-8 payload with a virtual edge where no gap exists, a chain that revisits a Junction, and a Wall side used by two Spaces: each refuses with its own code | Greedy parsing accepts ambiguous orders |
-| T21 | Erase a strongly curved Wall whose chord crosses another boundary Wall | Self-crossing outline is committed; must follow B1 |
+| T22 | For each non-erase operation in §5.4 that can break I4 or I7 (stroke, Junction move, Room move, duplicate, bend, handle drag): the document is byte-identical after the refusal and no history entry exists; the same geometry reached by erasing a Wall retires instead | One shared fallback retires silently on a move, or refuses the Eraser |
+| T23 | The one-Wall open Space of R-1 is certified, survives a Junction move and re-closes with the same id | The `< 2` refs guard leaves it uncertified forever |
+| T21 | Erase a strongly curved Wall whose chord crosses another boundary Wall | Self-crossing outline is committed; the erase retires the Space with its reason (B1) |
 
-## 15. Decisions for the owner
+## 15. Ratified decisions
 
-Blocking means the named slice cannot start without it.
+Approved by the owner in review of this plan. Nothing here is awaiting a decision.
 
-| # | Decision | Recommendation | Blocks |
+| # | Decision | Rationale | Governs |
 | --- | --- | --- | --- |
-| **B1** | When opening would leave an invalid open Space (outline self-crosses, contains a Room or another open Space, or overlaps a neighbour): refuse the erase, or erase and retire the Space with the reason in the consequence line? | **Erase and retire, with words.** The Eraser always erases; the line is shown before commit; Undo restores. Refusal makes a Wall undeletable for a reason unrelated to the Wall | SP1b |
-| **B2** | Sliding an open side's end along a Wall: split the Wall at release so the end is always a Junction, or add station-hosted ends? | **Split at release**, stated in the consequence line. Zero format cost and it reuses `planWallSplitAtPoint`. Cost: joints accumulate; they are ordinary joints that Join removes. Station ends bring partial Wall sides into every boundary consumer | SP1d only |
-| **B3** | A Wall that encloses part of an open Space: closure wins and the remainder is unnamed, or the Space splits into a Room and an open space? | **Closure wins for SP1.** Splitting needs the remainder's cycle, which is planar work the carry rule avoids. SP2's Room tool names the remainder in one click; revisit there | SP1b |
-| **B4** | SP1 lands as four PRs with handles last (SP1d), and the editor shows opened Rooms from SP1c before their sides can be dragged | **Yes.** No approved sentence is dropped; the data-loss fix ships two PRs earlier | SP1b onward |
+| **B1** | A Wall erase that would leave an invalid open Space (outline self-crosses, contains a Room or another open Space, or overlaps a neighbour) erases the Wall and retires the Space, with an explicit consequence line and exact Undo. **Destructive erase only**: every other operation that would invalidate Space geometry refuses atomically (§5.4) | The Eraser always erases; a Wall is never undeletable for a reason unrelated to the Wall. Nothing else may cost a creator a Space | SP1b |
+| **B2** | An open side's end that slides along a Wall splits that Wall at release, so an end is always a Junction. The consequence line states the split | Zero format cost; reuses `planWallSplitAtPoint`. Joints accumulate and are ordinary joints that Join removes | SP1d |
+| **B3** | A Wall that encloses part of an open Space: closure wins for SP1 and the remainder stays unnamed | Splitting needs the remainder's cycle, planar work the carry rule avoids. SP2's Room tool names the remainder | SP1b |
+| **B4** | SP1 ships as four PRs, SP1a–SP1d | Isolates the format bump and the reconciliation change; no approved sentence is dropped | SP1 |
+| **Merge** | Removing a shared Wall between an open Space and another Space merges them into one open Space (§5.3) | The only reading of the approved merge rule that leaves no invisible shared edge | SP1b |
 
-Defaults taken without asking, reversible at review: overhead conflict on merge follows the
-survivor (Q17 precedent) while thickness conflict keeps today's refusal; open sides are counted as
-runs and never merged in data; a `closed` open Space keeps its full lid; virtual edges have no ids;
-the collection and type keep the name Room.
+Defaults adopted with the plan: overhead conflict on merge follows the survivor (Q17 precedent)
+while thickness conflict keeps today's refusal; open sides are counted as runs and never merged in
+data; a `closed` open Space keeps its full lid; virtual edges have no ids; the collection and type
+keep the name Room.
 
 ## 16. Migration, rollback and seams
 
@@ -480,11 +545,10 @@ the collection and type keep the name Room.
    option at `retire` plus an unchanged existing suite is the containment.
 2. **The chord rule changes area** when a curved Wall is erased. It is the approved "stated
    straight segment"; the consequence line is the mitigation.
-3. **Split-at-release leaves joints** (B2).
-4. **Closure-wins drops a remainder** without naming it until SP2 (B3).
-5. **The index refuses Rooms with fewer than two refs** (`layout-world-index.ts:1457`), so a
-   one-Wall open Space would never be certified. SP1a must confirm whether closed Walls already
-   take the cold path here and decide the same for one-Wall Spaces.
+3. **Split-at-release leaves joints** (B2, accepted).
+4. **Closure-wins drops a remainder** without naming it until SP2 (B3, accepted).
+5. **The index refuses Rooms with fewer than two refs** (`layout-world-index.ts:1457`). Resolved by
+   SP1a under R-1 (§13.1) before it claims acceptance.
 6. **Nested floors are coincident.** A booth's generated floor lies in the hall's floor plane, as a
    nested Room's does today. What the Stage shows is unverified and is an SP1c check.
 7. **Unreferenced-by-Wall Junctions** (open-side corners) are legal today and already snap
