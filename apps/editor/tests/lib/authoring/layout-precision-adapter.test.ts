@@ -56,6 +56,10 @@ import {
 	LAYOUT_WALL_DELETE_KIND
 } from '$lib/authoring/adapters/layout/drawing-planners';
 import { createOpeningPlanners } from '$lib/authoring/adapters/layout/opening-planners';
+import {
+	createRoomDuplicatePlanners,
+	LAYOUT_ROOM_DUPLICATE_KIND
+} from '$lib/authoring/adapters/layout/room-duplicate-planners';
 import { createSplitPlanners } from '$lib/authoring/adapters/layout/split-planners';
 import { createCardFieldsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
@@ -149,11 +153,15 @@ async function mount(): Promise<Mounted> {
 describe('T1.P01.S04 — Layout precision', () => {
 	it('registers one planner per writable fact and contributes only through the AM-5 surface', async () => {
 		const { facade, host, services, wallId } = await mount();
-		// The precision set S05 shipped plus S02's two drawing operations and S03's
-		// two Opening operations, on the one registry, admission and coordinator:
-		// no family owns a second acceptance path.
+		// The precision set S05 shipped plus S02's two drawing operations, S03's
+		// two Opening operations and A4's Room duplicate, on the one registry,
+		// admission and coordinator: no family owns a second acceptance path.
 		expect(host.coordinator().planners()).toHaveLength(
-			createLayoutPlanners().length + createDrawingPlanners().length + createSplitPlanners().length + createOpeningPlanners().length
+			createLayoutPlanners().length +
+				createDrawingPlanners().length +
+				createSplitPlanners().length +
+				createRoomDuplicatePlanners().length +
+				createOpeningPlanners().length
 		);
 		expect(createLayoutPlanners().map((planner) => planner.kind).sort()).toEqual([
 			'layout-entity-name',
@@ -181,6 +189,9 @@ describe('T1.P01.S04 — Layout precision', () => {
 			LAYOUT_CIRCLE_TRANSLATE_KIND,
 			LAYOUT_WALL_CHAIN_COMMIT_KIND,
 			LAYOUT_WALL_DELETE_KIND
+		]);
+		expect(createRoomDuplicatePlanners().map((planner) => planner.kind)).toEqual([
+			LAYOUT_ROOM_DUPLICATE_KIND
 		]);
 		expect(stageFindEntries(facade).some((entry) => entry.taskKind === 'layout-plinth-place')).toBe(true);
 		expect(facade.openContributedTask('layout-place-plinth')).toMatchObject({ kind: 'opened', instrument: { summary: 'Place plinth' } });
