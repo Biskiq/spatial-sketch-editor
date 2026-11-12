@@ -1,13 +1,16 @@
 <script lang="ts">
 	/**
-	 * T2.S3 — the Card's one light writer.
+	 * T2 gallery UX recovery — the Light Card's everyday rows.
 	 *
-	 * Warmth is an sRGB token, Brightness is one of Gate A's five stops, Reach is
-	 * the authored cutoff and Beam is a half-angle in degrees. Exact values stay
-	 * under More so the ordinary Card remains a short named row. Every explicit
-	 * commit is the same `update-light` planner the marks submit. Exact fields
-	 * commit on Enter only; Esc restores the accepted values and blur writes
-	 * nothing.
+	 * Four labelled rows per kind, in the approved order: Warmth · Brightness ·
+	 * Reach | Beam | Direction · Shadow. Warmth and Brightness are chips with a
+	 * read-only off-stop value; Reach has an Unlimited chip; a Spot's Beam field
+	 * accepts 1…90° and says when the guide cannot draw the stored beam; a
+	 * Directional gets From and Height in sky, which are always available
+	 * whatever the view shows.
+	 *
+	 * Every explicit commit is the same `update-light` planner the marks submit.
+	 * Exact fields commit on Enter only; Esc restores and blur writes nothing.
 	 */
 	import type { Snippet } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -17,7 +20,6 @@
 	import {
 		brightnessStopForIntensity,
 		degreesToRadians,
-		formatBrightness,
 		LIGHT_BRIGHTNESS_STOPS,
 		LIGHT_WARMTH_TOKENS,
 		lightKindLabel,
@@ -25,10 +27,12 @@
 		intensityForBrightnessStop
 	} from '$lib/authoring/look/light-units';
 	import {
-		lightForward,
-		LIGHT_AIM_GUIDE_METERS,
-		rotationForLightDirection
-	} from '$lib/authoring/look/light-aim';
+		directionForPresentationAngles,
+		formatExactIntensity,
+		formatMultiplier,
+		presentationAngles
+	} from '$lib/authoring/look/light-presentation';
+	import { lightForward, rotationForLightDirection } from '$lib/authoring/look/light-aim';
 
 	let {
 		services,
@@ -40,6 +44,7 @@
 		detailOpen?: boolean;
 		footer?: Snippet;
 		secondary?: Snippet<[Snippet?]>;
+		more?: Snippet<[Snippet?]>;
 	} = $props();
 
 	type Light = SceneLightEntity;
@@ -53,9 +58,11 @@
 		return entity?.kind === 'light' ? entity : null;
 	}
 
-	let light = $state<Light | null>(null);
+	let light = $state.raw<Light | null>(null);
 	let reach = $state('');
 	let beam = $state('');
+	let fromField = $state('');
+	let heightField = $state('');
 	let exactColor = $state('');
 	let exactIntensity = $state('');
 	let exactRange = $state('');
@@ -67,8 +74,6 @@
 	let aimX = $state('');
 	let aimY = $state('');
 	let aimZ = $state('');
-	let azimuth = $state('');
-	let elevation = $state('');
 	let message = $state('');
 	let busy = $state(false);
 
@@ -85,35 +90,29 @@
 		light = next;
 		if (next === null) return;
 		const range = rangeOf(next);
-		reach = range === undefined ? '' : String(range);
+		reach = range === undefined ? '' : range.toFixed(2);
 		beam = next.light === 'spot' ? String(roundedDegrees(next.angle)) : '';
+		const angles = presentationAngles(next.rotation);
+		fromField = String(Math.round(angles.from * 10) / 10);
+		heightField = String(Math.round(angles.heightInSky * 10) / 10);
 		exactColor = next.color;
-		exactIntensity = String(next.intensity);
-		exactRange = range === undefined ? '' : String(range);
+		exactIntensity = next.intensity.toFixed(3);
+		exactRange = range === undefined ? '' : range.toFixed(2);
 		exactHalfAngle = next.light === 'spot' ? String(roundedDegrees(next.angle)) : '';
 		exactPenumbra =
 			next.light === 'spot' ? String(Math.round((next.penumbra ?? 0) * 1000) / 10) : '';
-		exactX = String(next.position[0]);
-		exactY = String(next.position[1]);
-		exactZ = String(next.position[2]);
+		exactX = next.position[0].toFixed(2);
+		exactY = next.position[1].toFixed(2);
+		exactZ = next.position[2].toFixed(2);
 		const forward = lightForward(next.rotation);
 		const target = [
-			next.position[0] + forward[0] * LIGHT_AIM_GUIDE_METERS,
-			next.position[1] + forward[1] * LIGHT_AIM_GUIDE_METERS,
-			next.position[2] + forward[2] * LIGHT_AIM_GUIDE_METERS
+			next.position[0] + forward[0] * 3,
+			next.position[1] + forward[1] * 3,
+			next.position[2] + forward[2] * 3
 		];
-		aimX = String(Math.round(target[0] * 100) / 100);
-		aimY = String(Math.round(target[1] * 100) / 100);
-		aimZ = String(Math.round(target[2] * 100) / 100);
-		azimuth =
-			Math.hypot(forward[0], forward[2]) < 1e-9
-				? '0'
-				: String(
-						Math.round(radiansToDegrees(Math.atan2(-forward[0], -forward[2])) * 10) / 10
-					);
-		elevation = String(
-			Math.round(radiansToDegrees(Math.asin(Math.max(-1, Math.min(1, forward[1])))) * 10) / 10
-		);
+		aimX = target[0]!.toFixed(2);
+		aimY = target[1]!.toFixed(2);
+		aimZ = target[2]!.toFixed(2);
 	}
 
 	$effect(() => {
@@ -142,34 +141,67 @@
 	}
 
 	function setWarmth(color: string): void {
+		if (light?.color.toLowerCase() === color) return;
 		void commit({ color });
 	}
 
 	function setBrightness(stop: number): void {
-		void commit({ intensity: intensityForBrightnessStop(stop) });
+		const intensity = intensityForBrightnessStop(stop);
+		if (light !== null && Math.abs(light.intensity - intensity) < 1e-9) return;
+		void commit({ intensity });
+	}
+
+	function setUnlimited(): void {
+		if (light === null || rangeOf(light) === undefined) return;
+		void commit({ range: null });
 	}
 
 	function commitReach(value: string): void {
 		if (light === null) return;
 		const trimmed = value.trim();
-		if (trimmed !== '') {
-			const number = Number(trimmed);
-			if (!Number.isFinite(number) || number <= 0) {
-				message = 'Reach must be greater than 0 m.';
-				return;
-			}
+		if (trimmed === '') {
+			// Enter on an unchanged empty field is a no-op, never an implicit clear.
+			if (rangeOf(light) === undefined) return;
+			void commit({ range: null });
+			return;
 		}
-		void commit({ range: trimmed === '' ? null : Number(trimmed) });
+		const number = Number(trimmed);
+		if (!Number.isFinite(number) || number < 0.1) {
+			message = 'Reach must be at least 0.1 m.';
+			return;
+		}
+		if (rangeOf(light) !== undefined && Math.abs(rangeOf(light)! - number) < 1e-9) return;
+		void commit({ range: number });
 	}
 
 	function commitBeam(value: string): void {
 		if (light === null || light.light !== 'spot') return;
 		const degrees = Number(value.trim());
-		if (!Number.isFinite(degrees) || degrees <= 0 || degrees > 90) {
+		if (!Number.isFinite(degrees) || degrees < 1 || degrees > 90) {
 			message = 'Beam must be between 1° and 90°.';
 			return;
 		}
-		void commit({ angle: degreesToRadians(degrees) });
+		const radians = degreesToRadians(degrees);
+		if (Math.abs(light.angle - radians) < 1e-9) return;
+		void commit({ angle: radians });
+	}
+
+	function commitDirection(): void {
+		const from = Number(fromField.trim());
+		const height = Number(heightField.trim());
+		if (
+			!Number.isFinite(from) ||
+			!Number.isFinite(height) ||
+			from < 0 ||
+			from > 359 ||
+			height < 0 ||
+			height > 90
+		) {
+			message = 'From is 0…359° and Height is 0…90°.';
+			return;
+		}
+		const rotation = rotationForLightDirection(directionForPresentationAngles(from, height));
+		void commit({ rotation });
 	}
 
 	function commitExactColor(): void {
@@ -218,7 +250,7 @@
 	}
 
 	function commitAim(): void {
-		if (light === null) return;
+		if (light === null || light.light !== 'spot') return;
 		const target: Vec3 = [Number(aimX), Number(aimY), Number(aimZ)];
 		if (!target.every(Number.isFinite)) {
 			message = 'Aim needs three finite metres.';
@@ -233,23 +265,7 @@
 			message = 'Aim must differ from the light position.';
 			return;
 		}
-		void commit({ rotation: rotationForLightDirection(direction) });
-	}
-
-	function commitDirection(): void {
-		const az = Number(azimuth.trim());
-		const el = Number(elevation.trim());
-		if (!Number.isFinite(az) || !Number.isFinite(el) || el < -90 || el > 90) {
-			message = 'Azimuth and elevation need finite degrees; elevation is −90° to 90°.';
-			return;
-		}
-		const radiansAz = degreesToRadians(az);
-		const radiansEl = degreesToRadians(el);
-		const direction: Vec3 = [
-			-Math.sin(radiansAz) * Math.cos(radiansEl),
-			Math.sin(radiansEl),
-			-Math.cos(radiansAz) * Math.cos(radiansEl)
-		];
+		// The numeric Aim point controls direction only; it is never a stored target.
 		void commit({ rotation: rotationForLightDirection(direction) });
 	}
 
@@ -265,9 +281,11 @@
 	}
 
 	function warmthIsExact(value: Light): boolean {
-		return LIGHT_WARMTH_TOKENS.some(
-			(token) => token.color === value.color.toLowerCase()
-		);
+		return LIGHT_WARMTH_TOKENS.some((token) => token.color === value.color.toLowerCase());
+	}
+
+	function customWarmthLabel(value: Light): string {
+		return value.color.toLowerCase() === '#ffffff' ? 'Neutral white' : 'Custom';
 	}
 
 	function brightnessIsCustom(value: Light): boolean {
@@ -278,88 +296,167 @@
 		const unit = kind === 'directional' ? 'lx' : 'cd';
 		return `${stop}× · ${intensityForBrightnessStop(stop).toFixed(3)} ${unit}`;
 	}
+
+	function stopLabel(stop: number): string {
+		return `${stop}×`;
+	}
 </script>
 
 {#if light !== null}
 	<div class="light-fields" data-light-fields>
-		<div class="warmth" role="group" aria-label="Warmth">
-			{#each LIGHT_WARMTH_TOKENS as token (token.id)}
-				<button
-					type="button"
-					class="warmth-token"
-					class:current={light.color.toLowerCase() === token.color}
-					aria-pressed={light.color.toLowerCase() === token.color}
-					title={token.label}
-					onclick={() => setWarmth(token.color)}
-				>
-					<span class="swatch" style:background={token.color}></span>
-					<span>{token.label}</span>
-				</button>
-			{/each}
-			{#if !warmthIsExact(light)}<span class="custom">Custom</span>{/if}
+		<p class="kind">{lightKindLabel(light.light)}</p>
+
+		<div class="row" role="group" aria-label="Warmth">
+			<span class="label">Warmth</span>
+			<div class="chips">
+				{#each LIGHT_WARMTH_TOKENS as token (token.id)}
+					<button
+						type="button"
+						class="chip warmth-token"
+						class:current={light.color.toLowerCase() === token.color}
+						aria-pressed={light.color.toLowerCase() === token.color}
+						title={token.label}
+						onclick={() => setWarmth(token.color)}
+					>
+						<span class="swatch" style:background={token.color}></span>
+						<span>{token.label}</span>
+					</button>
+				{/each}
+				{#if !warmthIsExact(light)}
+					<span class="chip readonly" data-field="warmth-custom">{customWarmthLabel(light)}</span>
+				{/if}
+			</div>
 		</div>
 
-		<div class="brightness" role="group" aria-label="Brightness">
-			{#each LIGHT_BRIGHTNESS_STOPS as stop (stop)}
-				<button
-					type="button"
-					data-field={`brightness-${stop}`}
-					class:current={brightnessStopForIntensity(light.intensity) === stop}
-					aria-pressed={brightnessStopForIntensity(light.intensity) === stop}
-					title={brightnessTitle(stop, light.light)}
-					onclick={() => setBrightness(stop)}
-				>{stop}×</button>
-			{/each}
-			{#if brightnessIsCustom(light)}<span class="custom">Custom</span>{/if}
+		<div class="row" role="group" aria-label="Brightness">
+			<span class="label">Brightness</span>
+			<div class="chips">
+				{#each LIGHT_BRIGHTNESS_STOPS as stop (stop)}
+					<button
+						type="button"
+						class="chip"
+						data-field={`brightness-${stop}`}
+						class:current={brightnessStopForIntensity(light.intensity) === stop}
+						aria-pressed={brightnessStopForIntensity(light.intensity) === stop}
+						title={brightnessTitle(stop, light.light)}
+						onclick={() => setBrightness(stop)}
+					>{stopLabel(stop)}</button>
+				{/each}
+				{#if brightnessIsCustom(light)}
+					<span class="chip readonly" data-field="brightness-custom">{formatMultiplier(light.intensity)}</span>
+				{/if}
+			</div>
 		</div>
 
 		{#if light.light === 'point'}
-			<label class="field">
-				<span>Reach</span>
-				<input
-					type="number"
-					data-field="adjust-reach"
-					min="0.01"
-					step="0.05"
-					value={reach}
-					placeholder="Unbounded"
-					oninput={(event) => (reach = event.currentTarget.value)}
-					onkeydown={(event) => exactKey(event, () => commitReach(reach))}
-				/>
-			</label>
+			<div class="row">
+				<span class="label">Reach</span>
+				<div class="chips">
+					<button
+						type="button"
+						class="chip"
+						data-field="unlimited"
+						class:current={rangeOf(light) === undefined}
+						aria-pressed={rangeOf(light) === undefined}
+						onclick={setUnlimited}
+					>Unlimited</button>
+					<input
+						type="number"
+						data-field="adjust-reach"
+						min="0.1"
+						step="0.05"
+						value={reach}
+						placeholder="—"
+						aria-label="Reach in metres"
+						oninput={(event) => (reach = event.currentTarget.value)}
+						onkeydown={(event) => exactKey(event, () => commitReach(reach))}
+					/>
+					<em>m</em>
+				</div>
+			</div>
 		{/if}
 
 		{#if light.light === 'spot'}
-			<label class="field">
-				<span>Beam</span>
-				<input
-					type="number"
-					data-field="adjust-beam"
-					min="1"
-											max="90"
+			<div class="row">
+				<span class="label">Beam</span>
+				<div class="chips">
+					<input
+						type="number"
+						data-field="adjust-beam"
+						min="1"
+						max="90"
 						step="0.5"
-					value={beam}
-					oninput={(event) => (beam = event.currentTarget.value)}
-					onkeydown={(event) => exactKey(event, () => commitBeam(beam))}
-				/>
-									<em>· °</em>
-				</label>
-				{#if roundedDegrees(light.angle) > 80}<span class="custom">Wider than the guide can draw</span>{/if}
+						value={beam}
+						aria-label="Beam width in degrees"
+						oninput={(event) => (beam = event.currentTarget.value)}
+						onkeydown={(event) => exactKey(event, () => commitBeam(beam))}
+					/>
+					<em>°</em>
+				</div>
+				{#if roundedDegrees(light.angle) > 80}
+					<span class="note">Wider than the guide can draw</span>
+				{/if}
+			</div>
 		{/if}
 
-		<label class="toggle" title="Authored shadow flag. Gate C sets the budget and creation default; new lights start off.">
-			<input
-				type="checkbox"
-				data-field="shadow"
-				checked={light.castShadow}
-				onchange={(event) => void commit({ castShadow: event.currentTarget.checked })}
-			/>
-			<span>Cast shadow</span>
+		{#if light.light === 'directional'}
+			<div class="row direction">
+				<span class="label">Direction</span>
+				<div class="pair">
+					<label>
+						<span>From</span>
+						<input
+							type="number"
+							data-field="direction-from"
+							min="0"
+							max="359"
+							step="1"
+							value={fromField}
+							oninput={(event) => (fromField = event.currentTarget.value)}
+							onkeydown={(event) => exactKey(event, commitDirection)}
+						/>
+						<em>°</em>
+					</label>
+					<label>
+						<span>Height</span>
+						<input
+							type="number"
+							data-field="direction-height"
+							min="0"
+							max="90"
+							step="1"
+							value={heightField}
+							oninput={(event) => (heightField = event.currentTarget.value)}
+							onkeydown={(event) => exactKey(event, commitDirection)}
+						/>
+						<em>°</em>
+					</label>
+				</div>
+			</div>
+		{/if}
+
+		<label class="row toggle">
+			<span class="label">Shadow</span>
+			<span class="chips">
+				<input
+					type="checkbox"
+					data-field="shadow"
+					checked={light.castShadow}
+					onchange={(event) => void commit({ castShadow: event.currentTarget.checked })}
+				/>
+				<span>Cast shadows</span>
+			</span>
 		</label>
 
+		{#if message !== ''}<p class="refusal" role="status">{message}</p>{/if}
+		<p class="readout">
+			{formatMultiplier(light.intensity)} · {formatExactIntensity(light.intensity, light.light)} · {lightKindLabel(light.light)}
+		</p>
+
 		{#if detailOpen}
-			<div class="exact">
-				<p class="label">Exact values</p>
+		<div class="exact" aria-label="Advanced light values">
+			<p class="section-label">Advanced</p>
+			<div class="field-grid">
 				<label class="field">
 					<span>Colour</span>
 					<input
@@ -408,10 +505,10 @@
 						<input
 							type="number"
 							data-field="exact-reach"
-							min="0.01"
+							min="0.1"
 							step="0.05"
 							value={exactRange}
-							placeholder="Unbounded"
+							placeholder="Unlimited"
 							oninput={(event) => (exactRange = event.currentTarget.value)}
 							onkeydown={(event) => exactKey(event, commitExactRange)}
 							onblur={sync}
@@ -420,28 +517,30 @@
 					</label>
 				{:else}
 					<label class="field">
-						<span>Azimuth</span>
+						<span>From</span>
 						<input
 							type="number"
 							data-field="azimuth"
+							min="0"
+							max="359"
 							step="1"
-							value={azimuth}
-							oninput={(event) => (azimuth = event.currentTarget.value)}
+							value={fromField}
+							oninput={(event) => (fromField = event.currentTarget.value)}
 							onkeydown={(event) => exactKey(event, commitDirection)}
 							onblur={sync}
 						/>
 						<em>°</em>
 					</label>
 					<label class="field">
-						<span>Elevation</span>
+						<span>Height in sky</span>
 						<input
 							type="number"
 							data-field="elevation"
-							min="-90"
+							min="0"
 							max="90"
 							step="1"
-							value={elevation}
-							oninput={(event) => (elevation = event.currentTarget.value)}
+							value={heightField}
+							oninput={(event) => (heightField = event.currentTarget.value)}
 							onkeydown={(event) => exactKey(event, commitDirection)}
 							onblur={sync}
 						/>
@@ -482,10 +581,9 @@
 					</label>
 				{/if}
 			</div>
+		</div>
 		{/if}
 
-		{#if message !== ''}<p class="refusal" role="status">{message}</p>{/if}
-		<p class="readout">{formatBrightness(light.intensity, light.light)} · {lightKindLabel(light.light)}</p>
 		{#if footer}{@render footer()}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
@@ -494,27 +592,50 @@
 <style>
 	.light-fields {
 		display: grid;
-		gap: 10px;
+		gap: 8px;
 	}
-	.warmth,
-	.brightness {
-		display: flex;
+	.kind {
+		margin: 0;
+		color: var(--shell-ink-2);
+		font: 10.5px var(--shell-mono);
+	}
+	.row {
+		display: grid;
+		grid-template-columns: 74px minmax(0, 1fr);
+		align-items: center;
 		gap: 6px;
-		flex-wrap: wrap;
 	}
-	.warmth-token,
-	.brightness button {
-		border: 1px solid var(--line, #d8d6ce);
+	.row.toggle {
+		grid-template-columns: 74px minmax(0, 1fr);
+	}
+	.label {
+		color: var(--shell-ink-2);
+		font-size: 10.5px;
+	}
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px;
+		min-width: 0;
+	}
+	.chip {
+		border: 1px solid var(--shell-field-line);
 		background: var(--shell-field);
+		color: var(--shell-ink);
 		border-radius: 6px;
-		padding: 5px 7px;
-		font: inherit;
+		padding: 4px 7px;
+		font: 11px var(--shell-mono);
 		cursor: pointer;
 	}
-	.warmth-token.current,
-	.brightness button.current {
-		border-color: var(--ink, #24231f);
-		box-shadow: inset 0 0 0 1px var(--ink, #24231f);
+	.chip.current {
+		border-color: var(--shell-ink);
+		box-shadow: inset 0 0 0 1px var(--shell-ink);
+	}
+	.chip.readonly {
+		border-style: dashed;
+		cursor: default;
+		color: var(--shell-ink-2);
 	}
 	.warmth-token {
 		display: inline-flex;
@@ -522,61 +643,88 @@
 		gap: 5px;
 	}
 	.swatch {
-		width: 13px;
-		height: 13px;
+		width: 12px;
+		height: 12px;
 		border-radius: 50%;
 		border: 1px solid rgb(0 0 0 / 0.18);
 	}
-	.custom {
-		align-self: center;
-		color: var(--muted, #716e65);
-		font-size: 11px;
-		font-style: italic;
-	}
-	.field {
-		display: grid;
-		grid-template-columns: 72px minmax(0, 1fr) auto;
-		align-items: center;
-		gap: 6px;
-	}
 	input[type='number'],
 	input[type='text'] {
+		width: 72px;
 		min-width: 0;
-		width: 100%;
-		font: inherit;
+		font: 11px var(--shell-mono);
 	}
-	.field em,
-	.readout {
-		color: var(--muted, #716e65);
-		font-size: 11px;
+	.chips em,
+	.readout,
+	.note {
+		color: var(--shell-ink-2);
+		font-size: 10px;
+		font-style: normal;
 	}
-	.toggle {
+	.note {
+		grid-column: 2;
+	}
+	.pair {
+		display: flex;
+		gap: 8px;
+	}
+	.pair label {
 		display: flex;
 		align-items: center;
+		gap: 4px;
+		color: var(--shell-ink-2);
+		font-size: 10px;
+	}
+	.pair input {
+		width: 56px;
+	}
+	.toggle .chips {
 		gap: 6px;
+		font-size: 11px;
+	}
+	.refusal {
+		color: var(--shell-caution);
+		font-size: 11px;
+		margin: 0;
+	}
+	.readout {
+		margin: 0;
 	}
 	.exact {
-		border-top: 1px solid var(--line, #e3e0d8);
+		border-top: 1px solid var(--shell-hairline);
 		padding-top: 8px;
 		display: grid;
 		gap: 8px;
 	}
-	.label {
+	.section-label {
 		margin: 0;
-		font-size: 11px;
+		font-size: 10px;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: var(--muted, #716e65);
+		letter-spacing: 0.06em;
+		color: var(--shell-ink-2);
+	}
+	.field-grid {
+		display: grid;
+		gap: 7px;
+	}
+	.field {
+		display: grid;
+		grid-template-columns: 92px minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 6px;
+		font-size: 10.5px;
+		color: var(--shell-ink-2);
 	}
 	.triplet {
 		display: grid;
-		grid-template-columns: 72px repeat(3, minmax(0, 1fr));
+		grid-template-columns: 92px repeat(3, minmax(0, 1fr));
 		gap: 5px;
 		align-items: center;
+		font-size: 10.5px;
+		color: var(--shell-ink-2);
 	}
-	.refusal {
-		color: var(--danger, #a33a2b);
-		font-size: 12px;
-		margin: 0;
+	.field input,
+	.triplet input {
+		width: 100%;
 	}
 </style>

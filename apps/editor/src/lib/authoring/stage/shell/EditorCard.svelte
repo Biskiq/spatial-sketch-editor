@@ -405,13 +405,13 @@
 	<div class="footer">
 		{#if onBringIntoView}<button type="button" aria-label="Bring into view" title="Bring into view" onclick={() => onBringIntoView?.()}><ShellIcon name="fit" size={15} /></button>{/if}
 		<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={toggleMore}
-			>More <span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
+			>Advanced <span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
 	</div>
 {/snippet}
 
 {#snippet more(content?: Snippet)}
 	{#if moreOpen}
-		<section class="more-section" aria-label="More details" data-card-more-section>
+		<section class="more-section" aria-label="Advanced details" data-card-more-section>
 			{#if content}<div class="more-dims">{@render content()}</div>{/if}
 			{#if relationFacts.length > 0}
 				<h3>Relations</h3>

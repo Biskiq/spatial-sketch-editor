@@ -194,9 +194,9 @@ describe('S3a Light Card writer', () => {
 
 	it('keeps zero and custom Brightness values without selecting a stop', async () => {
 		const { target } = await mountCard(spot({ intensity: 0 }));
-		expect(target.textContent).toContain('Custom');
-		expect(target.textContent).toContain('0.00 cd');
-		expect((field(target, 'exact-intensity') as HTMLInputElement).value).toBe('0');
+		expect(field(target, 'brightness-custom').textContent).toContain('0×');
+		expect(target.textContent).toContain('0.000 cd');
+		expect((field(target, 'exact-intensity') as HTMLInputElement).value).toBe('0.000');
 		for (const stop of ['0.25', '0.5', '1', '2', '4']) {
 			expect(field(target, `brightness-${stop}`).getAttribute('aria-pressed')).toBe('false');
 		}
@@ -206,6 +206,53 @@ describe('S3a Light Card writer', () => {
 		const spotCard = await mountCard(spot());
 		expect(field(spotCard.target, 'adjust-beam')).toBeDefined();
 		expect(spotCard.target.querySelector('[data-field="adjust-reach"]')).toBeNull();
+		const directionalCard = await mountCard(directional());
+		expect(directionalCard.target.querySelector('[data-field="adjust-reach"]')).toBeNull();
+		expect(directionalCard.target.querySelector('[data-field="adjust-beam"]')).toBeNull();
+	});
+
+	it('writes an unlimited Reach from the chip and a typed Reach from the field', async () => {
+		const unlimited = await mountCard(spot({ light: 'point', range: 3 } as never));
+		(field(unlimited.target, 'unlimited') as HTMLButtonElement).click();
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(unlimited.accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID, range: null }
+		});
+
+		const typed = await mountCard(spot({ light: 'point' } as never));
+		const reach = field(typed.target, 'adjust-reach') as HTMLInputElement;
+		reach.value = '2.5';
+		reach.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		reach.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(typed.accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID, range: 2.5 }
+		});
+	});
+
+	it('writes Directional From and Height in sky from the everyday Direction row', async () => {
+		const { target, accept } = await mountCard(directional());
+		const from = field(target, 'direction-from') as HTMLInputElement;
+		const height = field(target, 'direction-height') as HTMLInputElement;
+		// A zero rotation travels toward −Z, so the source is at +Z: From 180°, horizon.
+		expect(Number(from.value)).toBeCloseTo(180, 4);
+		expect(Number(height.value)).toBeCloseTo(0, 4);
+		from.value = '300';
+		from.dispatchEvent(new Event('input', { bubbles: true }));
+		height.value = '50';
+		height.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		from.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(accept).toHaveBeenCalledTimes(1);
+		const payload = accept.mock.calls[0]![0] as { payload: { rotation: [number, number, number] } };
+		expect(payload.payload.rotation.every(Number.isFinite)).toBe(true);
 	});
 
 	it('commits exact values on Enter, restores on Esc, and never writes on blur', async () => {
