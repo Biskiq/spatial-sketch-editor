@@ -1,0 +1,205 @@
+# Render cost calibration (P1 + P2, P3 prepared)
+
+Standalone research page for
+[§6 of the rendering/compute assessment](../../broad-research/rendering-compute-architecture-assessment.md#6-proposed-probes-owner-decides-each-is-minutes-to-run-none-uses-the-t2-harness).
+It measures three r187's three built-in renderer configurations on deterministic scenes, records a
+count census of real Worlds, and prepares the Gate C prediction without running Gate C.
+
+Status: research evidence, not product code. No product import, no workspace dependency, no
+`package.json` change, no custom shader and no post-processing. The page renders with
+`MeshStandardMaterial` and `MeshLambertMaterial` only.
+
+## Run
+
+```sh
+cd prototypes/render-cost-calibration
+python3 -m http.server 8852
+```
+
+Open <http://127.0.0.1:8852/>, choose a backend and press **Run selected backend** (about 5–8
+minutes), or **Run all three** (about 20 minutes). **Download JSON** writes the result. Keep the
+tab visible: a backgrounded tab pauses `requestAnimationFrame` and invalidates the run.
+
+The three recorded runs are in [`results/`](./results/):
+
+| File | Configuration |
+| --- | --- |
+| `apple-m2-webgl.json` | A · `WebGLRenderer` |
+| `apple-m2-webgpu.json` | B · `WebGPURenderer` (WebGPU backend) |
+| `apple-m2-webgpu-force-webgl.json` | C · `WebGPURenderer({ forceWebGL: true })` |
+
+Provenance for all three: MacBook Air M2 (`Mac14,2`, Apple M2, 16 GB), macOS 15.8.2 (24H232),
+Chrome 157.0.8103.52, 1280×720 at DPR 1, AC power, battery 100 %, `pmset` recorded no thermal or
+performance warning. The three runs were sequential in one browser session, B then A then C.
+The page reports why a backend is unavailable instead of falling back silently; on this machine all
+three were available.
+
+## Real versus simulated
+
+- **Real:** GPU rendering, shader compilation, draw submission, shadow passes, timer queries and
+  frame synchronisation on the device. The numbers are measurements.
+- **Simulated:** the scenes. They are deterministic boxes and quads with fixed positions, not
+  product geometry, product materials or a product World. Light placement and intensity are chosen
+  for cost, not appearance.
+- **Arithmetic only:** the cinematic-scale reference row in [`census/census.md`](./census/census.md).
+  That scene was not built.
+- **Not run:** P3. [`model.md`](./model.md) states the prediction and the Gate C protocol; no real
+  Stage reading is claimed here.
+
+## Method
+
+The base point is the assessment's: 1,000 separate meshes · 12 triangles each ·
+`MeshStandardMaterial` · one shared material · one directional sun · shadows off · 1280×720 ·
+DPR 1. One-factor sweeps vary mesh count (100–10,000), submission mode, triangles per mesh,
+material, point and spot lights, shadow-casting light count, shadow caching and shadow-map size.
+There are 62 configurations per backend.
+
+Timing per configuration: 30 warm-up frames, then 90 measured frames. The page reports:
+
+- CPU submit time around `renderer.render()`;
+- `requestAnimationFrame` median and p95;
+- GPU time from timer queries where available;
+- `renderer.info` draws, triangles and programs;
+- first-frame and light-variant compile time;
+- provenance (UA, adapter, DPR, canvas, power, date, three revision).
+
+`requestAnimationFrame` is vsync-clamped at 16.7 ms on this machine, so the fits do **not** use it.
+They use the **synchronized frame**: CPU submit plus a GPU-completion readback (1×1
+`gl.readPixels` for WebGL, `queue.onSubmittedWorkDone()` for WebGPU), with 24 samples per shadow
+configuration and a median. The readback adds about 1.5 ms, so a synchronized value is a serial
+cost, not a present-to-photon frame time. `gl.finish()` is a no-op under ANGLE/Metal and was not
+used. Each backend gets a fresh canvas: one canvas cannot carry both a WebGPU and a WebGL2 context.
+
+Fits are ordinary least squares. A fit is used only when R² ≥ 0.8 and the sweep is monotonic;
+otherwise the raw curve is retained. The light-budget tables report the largest **measured** count
+within 16.7/33.3 ms and the next tested count that failed. A fit estimate is shown beside the
+measurement, never substituted for it: at 64 point lights the curve leaves its linear range
+(A: 67.5 ms measured at 1,000 draws).
+
+Shadow rows report authored lights and the pass count they cost. The deterministic mix is
+1 directional at 1 light, +1 spot at 2, +2 spots and 1 point at 4 (9 passes), and +4 spots and 3
+points at 8 (23 passes); a point light costs six cube faces.
+
+## Constants
+
+Synchronized milliseconds. `R²` in parentheses; **raw** marks a fit below 0.8 that is shown, not
+used.
+
+| Constant | A · WebGLRenderer | B · WebGPU | C · forceWebGL |
+| --- | --- | --- | --- |
+| per draw submission | 0.000675 (0.943) | 0.002435 (0.996) | 0.003192 (0.932) |
+| per triangle | 9.94e-7 (0.981) | 1.64e-6 (1.000) | 1.41e-6 (1.000) |
+| per unshadowed point light, N=1,000 | 0.196 (0.807) | 0.260 (0.877) | 0.233 (0.974) |
+| per unshadowed point light, N=5,000 | 0.383 (0.959) | 0.269 (0.879) | **0.403 (0.781; raw)** |
+| per unshadowed point light, 9 draws | 0.362 (0.982) | 0.264 (0.818) | 0.257 (0.874) |
+| per shadow pass, N=1,000 | 0.228 (0.970) | 1.023 (0.984) | 0.803 (0.975) |
+| per shadow pass, N=5,000 | 1.074 (0.989) | 3.577 (0.983) | 3.912 (0.970) |
+| cached saving per pass, N=1,000 | +0.40 | −0.07 | −0.38 |
+| cached saving per pass, N=5,000 | +1.27 | +1.61 | −2.09 |
+| instancing frame ratio, N=1,000 / 5,000 | 1.21× / 1.89× | 1.93× / 5.09× | 1.51× / 3.81× |
+| instancing CPU-submit ratio, N=1,000 / 5,000 | 6.25× / 51× | 6.0× / 21.3× | 6.0× / 29.3× |
+| batching frame ratio, N=1,000 / 5,000 | 1.01× / 1.03× | 2.61× / 3.89× | 1.09× / 2.34× |
+| compile, 4→5 lights (first frame minus steady) | 13.6 ms | 40.4 ms | 199.7 ms |
+| program delta for that change | +1 | 0 | 0 |
+
+The cached saving is the difference between the cached and every-frame rows; at 1,000 draws it is
+within run-to-run noise (B and C negative), so it is reported raw and not used to derive a budget.
+
+## Submission and frame cost
+
+Synchronized ms for the same scene; draws in parentheses.
+
+| Configuration | A | B | C |
+| --- | --- | --- | --- |
+| N=1,000, separate + shared | 6.35 (1,000) | 6.90 (1,001) | 7.10 (1,000) |
+| N=5,000, separate + shared | 8.00 (5,000) | 22.40 (5,001) | 19.45 (5,000) |
+| N=10,000, separate + shared | 11.00 (10,000) | 50.70 (10,001) | 44.00 (10,000) |
+| N=1,000, InstancedMesh | 4.35 (1) | 3.45 (1) | 4.65 (1) |
+| N=5,000, InstancedMesh | 4.20 (1) | 4.05 (1) | 4.45 (1) |
+| N=1,000, BatchedMesh | 5.20 (1) | 2.55 (1) | 6.40 (1) |
+| N=5,000, BatchedMesh | 7.70 (1) | 5.30 (1) | 7.25 (1) |
+
+## Light-budget curves
+
+Largest measured configuration within the budget; the next tested failure in parentheses.
+Unshadowed lights are point lights added to the sun. Shadowed cells show `lights / passes`.
+
+| Backend · N | Unshadowed 16.7 ms | Unshadowed 33.3 ms | Shadowed 16.7 ms | Shadowed 33.3 ms | Cached 16.7 ms | Cached 33.3 ms |
+| --- | --- | --- | --- | --- | --- | --- |
+| A · 1,000 | 32 (64 fails) | 32 (64 fails) | 8 / 23 (all tested) | 8 / 23 (all tested) | 4 / 9 (all tested) | 4 / 9 (all tested) |
+| A · 5,000 | 16 (32 fails) | 32 (64 fails) | 2 / 2 (4 lights fails) | 8 / 23 (all tested) | 4 / 9 (all tested) | 4 / 9 (all tested) |
+| B · 1,000 | 32 (64 fails) | 64 (all tested) | 4 / 9 (8 lights fails) | 8 / 23 (all tested) | 4 / 9 (all tested) | 4 / 9 (all tested) |
+| B · 5,000 | none (0 fails) | 32 (64 fails) | none (0 fails) | 0 (2 lights fails) | none (2 lights fails) | none (2 lights fails) |
+| C · 1,000 | 32 (64 fails) | 32 (64 fails) | 4 / 9 (8 lights fails) | 8 / 23 (all tested) | 4 / 9 (all tested) | 4 / 9 (all tested) |
+| C · 5,000 | none (0 fails) | 32 (64 fails) | none (0 fails) | 0 (2 lights fails) | none (2 lights fails) | none (2 lights fails) |
+
+At 5,000 draws, B and C fail the 16.7 ms budget before a single light is added: 5,000 separate
+submissions cost more than the frame. Instancing is the only configuration that brings that shape
+back inside 16.7 ms (A 4.2, B 4.05, C 4.45 ms).
+
+## Findings
+
+1. **On today's un-instanced scene shape, WebGPU loses.** At 1,000 draws the backends are close
+   (6.35 / 6.90 / 7.10 ms). At 5,000 draws A is 2.8× faster than B; at 10,000 it is 4.6× faster.
+   B's per-draw submit cost is 3.6× A's, and the page submits every mesh separately today.
+2. **Collapsing submission changes the answer.** With `InstancedMesh`, B is slightly faster than A
+   at 1,000 draws (3.45 vs 4.35 ms) and a tie at 5,000 (4.05 vs 4.20). With `BatchedMesh`, B is
+   faster at both (2.55 vs 5.20; 5.30 vs 7.70). The Web GPU win is a submission win, not a
+   per-triangle win: B's per-triangle cost is 1.65× A's.
+3. **WebGPU wins on many lights only when submission is not the bottleneck.** At 1,000 draws, B
+   handles 64 point lights in 26.9 ms against A's 67.5 ms. At 32 lights A still wins (11.2 vs
+   15.1 ms), and at 5,000 draws A wins at 16 and 32 lights because B's 5,000 submissions already
+   cost 20.8 ms. The curves leave their linear range at 64 lights in every backend.
+4. **Shadows are WebGL's clearest win.** A shadow pass costs 0.23 ms at 1,000 draws and 1.07 ms at
+   5,000; B costs 1.02 and 3.58 ms; C 0.80 and 3.91 ms. Caching lifts A to 4 shadowed lights
+   (9 passes) at 5,000 draws inside 16.7 ms, where every-frame reaches only 2 lights. B and C
+   cannot use cached shadows at 5,000 draws because the main pass already exceeds the budget.
+5. **`forceWebGL` is not a drop-in fallback.** C's per-draw cost is 4.7× A's; it takes 44 ms at
+   10,000 draws against A's 11 ms, and adding a fifth light costs 200 ms on first frame even
+   though the program count does not change. Any WebGPU trial must keep `WebGLRenderer` as the
+   fallback, not three's internal one.
+6. **Compile cost is not visible in program counts.** B and C add no program when the fifth light
+   arrives, yet B spends 40 ms and C 200 ms on the next frame. A adds one program and spends 14 ms.
+   A shader-count budget would miss the stall.
+
+## Census (P1)
+
+[`census/census.md`](./census/census.md) records the real Worlds. The one current-format saved
+World (`Untitled project`, 31 Walls, 10 Rooms) renders **64 draws / 44,937 triangles / 6–7 programs /
+3 lights (1 ambient, 2 directional) / 0 shadow-casting lights / 2 textures (512 KiB)** in Stage and
+**58 draws / 25,203 triangles** in the visit view. The cinematic reference is 6,600 draws per pass
+and 12 lights. The saved World is therefore about 1 % of the reference draw count and a quarter of
+its lights: today's product Worlds do not exercise the regime where WebGPU's light advantage
+appears.
+
+`census/census-snippet.js` is the console hook used for that reading
+(`__BISKIQ_PERF__` / `__BISKIQ_PERF_ON_RENDERER__`). See the census file for installation and limits.
+
+## P3 (prepared, not run)
+
+[`model.md`](./model.md) gives the count model, the M-series prediction for the named World (A 6.1,
+B 5.2, C 4.6 ms synchronized, ±30 %), the arithmetic reference estimate (about 23 ms for A before
+texture cost), and the Gate C protocol. No real Stage reading is claimed. Gate C is not authorized
+by this prototype.
+
+## Portability log
+
+[`portability.md`](./portability.md) records what differed between the three backends: availability,
+draw-count artefacts, program counts, timer support, compile behaviour, shadows, instancing,
+batching, materials, the fallback, and what was not checked (notably visual parity).
+
+## Limits
+
+- One device and one browser session: MacBook Air M2, Chrome 157, AC power. No Iris Xe-class
+  Windows laptop, no phone, no Safari or Firefox.
+- Synthetic scenes, not product Worlds. Counts come from P1; costs come from these boxes.
+- Synchronized timing includes a ~1.5 ms readback. It is comparable across these rows but is not a
+  present-to-photon frame time.
+- Timer queries are noisy at 1–4 ms; shadow rows repeat three times and take a median, but
+  single-run variation of up to about 2× in a slope was observed across runs.
+- No tiled/clustered lighting addon: three r187 ships none that works with `WebGPURenderer` without
+  custom shaders, so that sweep was not run.
+- No post-processing, no custom shaders, no visual comparison. Pixel parity between backends was
+  not inspected; only cost and counts are claimed.
+- The 64-light point is outside the linear fit. The budget tables therefore stop at the largest
+  measured count rather than extrapolating.
