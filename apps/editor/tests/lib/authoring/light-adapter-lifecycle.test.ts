@@ -838,11 +838,16 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(host.history().depth).toBe(before.depth);
 		expect(host.history().position).toBe(before.position);
 
-		facade.pointerIntent({ phase: 'up', css: dragCss, evaluationId });
+		// Release resolves its own pointer position, not the previous move frame.
+		const releaseCss: [number, number] = [dragCss[0] + 40, dragCss[1] + 20];
+		facade.pointerIntent({ phase: 'up', css: releaseCss, evaluationId });
+		const released = lightPreview.overrides.get('light-existing');
+		expect(released).toBeDefined();
+		expect(released!.position).not.toEqual(previewed!.position);
 		await waitFor(() => host.history().depth === before.depth + 1);
 		await waitFor(() => !lightPreview.overrides.has('light-existing'));
 		const committed = lightsOf(facade)[0]!;
-		expect(committed.position).toEqual(previewed!.position);
+		expect(committed.position).toEqual(released!.position);
 
 		// Esc/cancel restores the accepted light and writes nothing.
 		const afterMove = host.history();

@@ -53,6 +53,7 @@ import StageMatGround from './StageMatGround.svelte';
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
 	import {
+		LIGHT_PREVIEW_CANDIDATE_ID,
 		mergeLightPreview,
 		type StageLightPreview
 	} from '../stage-light-preview.svelte';
@@ -294,7 +295,9 @@ import StageMatGround from './StageMatGround.svelte';
 		because it owns this renderer's shadow map; see the component for the full
 		trigger contract.
 	-->
-	<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />
+	<!-- The preview projection is a shadow trigger too: an overridden or candidate
+		light must move its cast shadow with its illumination. -->
+	<StageShadowTriggers {geometry} scene={renderScene} {rooms} {modelUrls} {formRenderRevision} />
 	<T.Group oncreate={scenePick.registerLayout}>
 		<!-- The mat is the Stage's ground; the visitor plinth would show through it (R217.S19). -->
 		<VisitorLayoutShell {geometry} {presentation} plinth={false} doorFrames={false}
@@ -323,7 +326,10 @@ import StageMatGround from './StageMatGround.svelte';
 		includeLights={environment !== 'paper'}
 		onFormRendererReady={formRendererReady}
 		onEntityRenderable={entityRendererReady}
-		onEntityRoot={registerSceneRoot}
+		onEntityRoot={(id, root) =>
+			// The placement candidate renders, but it is not an authored or pickable
+			// entity: keep it out of the Stage pick registry.
+			id === LIGHT_PREVIEW_CANDIDATE_ID ? () => {} : registerSceneRoot(id, root)}
 	/>
 	{#if paperReveal !== null && gridVisible}
 		<StageGrid {evaluation} {datumMeters} {contentBounds} fade={paperReveal.sheet} />

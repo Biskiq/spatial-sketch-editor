@@ -1810,6 +1810,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						placement = null;
 						releaseLease();
 						if (pendingGesture !== null) {
+							// Resolve the release synchronously through the final-move function,
+							// publish that exact light, then commit it. A queued frame cannot
+							// replace the value the creator released on.
+							gesture = pendingGesture;
+							updateGesture(intent, adapterContext);
+							publishLightPreview(pendingGesture.entity);
+							gesture = null;
 							void commitGesture(pendingGesture, adapterContext);
 						} else if (pendingPlacement !== null) {
 							// Release first runs the up event through the same candidate function
