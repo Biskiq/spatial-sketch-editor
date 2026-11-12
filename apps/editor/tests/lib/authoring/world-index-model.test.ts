@@ -83,6 +83,16 @@ it('projects real Room boundaries, one shared Wall identity, loose Scene subject
 				revealed: false,
 				membership: 'included',
 				group: 'scene'
+			},
+			{
+				sourceId: 'scene:entity:spot',
+				label: 'Spot light',
+				authored: true,
+				kind: 'Light',
+				eligible: true,
+				revealed: false,
+				membership: 'included',
+				group: 'light'
 			}
 		],
 		'Project'
@@ -95,6 +105,9 @@ it('projects real Room boundaries, one shared Wall identity, loose Scene subject
 	expect(worldScopeRows(model, 'project', 'scene', 'sculpture').rows[0]?.sourceId).toBe(
 		'scene:entity:sculpture'
 	);
+	expect(worldScopeRows(model, 'project', 'lights', '').rows.map((row) => row.sourceId)).toEqual([
+		'scene:entity:spot'
+	]);
 	expect(resolveWorldScope(model, 'room:deleted')).toBe('project');
 	const empty = project(null, [], 'Replacement');
 	expect(resolveWorldScope(empty, `room:${layout.rooms[0]!.id}`)).toBe('project');
