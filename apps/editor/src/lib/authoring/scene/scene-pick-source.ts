@@ -100,7 +100,8 @@ export function createScenePickSource() {
 			? hit.face.normal.clone().applyNormalMatrix(new Matrix3().getNormalMatrix(object.matrixWorld)).toArray() as [number, number, number]
 			: undefined;
 		return {
-			...(normal === null ? {} : { wallId: face?.segmentId, wallNormal: normal.toArray() }),
+			...(face?.kind === 'wall' ? { wallId: face.segmentId } : {}),
+			...(normal === null ? {} : { wallNormal: normal.toArray() }),
 			...(faceNormal === undefined ? {} : { normal: faceNormal }),
 			entityId,
 			kind: entityId !== null ? 'entity' : object.name.startsWith('VisitorFloor:') ? 'floor' : 'layout',

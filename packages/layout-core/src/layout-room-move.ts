@@ -1,3 +1,4 @@
+import { registerCowDocumentDelta } from './layout-world-index';
 /**
  * `layout-room-move.ts` — P23.6a: rigid Room-unit translation for wall-first
  * Layout documents ([P23.6a plan](../../../../docs/roadmap/p23-layout-depth/2026-09-12-P23.6a-wall-first-room-unit-move.md)).
@@ -41,7 +42,7 @@
  */
 import type { LayoutDocumentIssue } from './layout-issue';
 import { canonicalBoundaryCycleKey, extractBoundaryCandidateFaces } from './layout-face-extraction';
-import { compileWallFirstLayoutGeometry } from './layout-geometry';
+import { activeLayoutCompileSession, compileWallFirstLayoutGeometry } from './layout-geometry';
 import type { LayoutGeometryIssue } from './layout-geometry-types';
 import { hasBlockingLayoutIssues } from './layout-geometry-validation';
 import { validateWallFirstOpeningSet, type OpeningSetIssue } from './layout-opening-set';
@@ -563,7 +564,9 @@ function finalizeRoomUnitMotion(
 			structural.issues
 		);
 	}
-	const topologyIssue = validateWallFirstTopology(structural.document);
+	const topologyIssue = validateWallFirstTopology(structural.document, {
+		openingSet: 'defer', closedContactWallIds: new Set(subgraph.wallIds)
+	});
 	if (topologyIssue) {
 		// A rigid translation changes no Opening metric and no Wall height, so
 		// an Opening-fit failure here means an unrelated invariant broke; it
@@ -581,7 +584,7 @@ function finalizeRoomUnitMotion(
 	if (setIssues.length > 0) {
 		const first = setIssues[0]!;
 		return reject(
-			'opening_set_invalid',
+			first.code === 'opening_exceeds_wall_height' ? 'opening_set_invalid' : 'topology_invalid',
 			first.message,
 			[first.openingId, first.wallId],
 			setIssues
@@ -592,7 +595,22 @@ function finalizeRoomUnitMotion(
 		const first = relationIssues[0]!;
 		return reject('portal_relation_invalid', first.message, [first.openingId], relationIssues);
 	}
-	const compiled = compileWallFirstLayoutGeometry(structural.document);
+	const accepted = structural.document;
+	const sameRoomRecords = accepted.rooms.length === document.rooms.length && accepted.rooms.every(
+		(room, index) => JSON.stringify(room) === JSON.stringify(document.rooms[index])
+	);
+	if (sameRoomRecords) {
+		registerCowDocumentDelta(accepted, {
+			baseline: document,
+			changedJunctionIds: subgraph.junctionIds,
+			changedWallIds: subgraph.wallIds,
+			changedOpeningIds: [],
+			changedRoomIds: [],
+			changedObjectIds: subgraph.associatedObjectIds ?? []
+		});
+	}
+	const session = activeLayoutCompileSession();
+	const compiled = session ? session.compile(accepted) : compileWallFirstLayoutGeometry(accepted);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		return reject(
 			'candidate_does_not_compile',

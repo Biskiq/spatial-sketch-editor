@@ -582,6 +582,29 @@ describe('view viewing intents', () => {
 		expectClose(azimuth.state.pose.elevationRadians, Math.PI / 2, 1e-12);
 	});
 
+	it('[cap:camera.one-authority edge] anchors an off-axis Wall point and pans at its depth', () => {
+		const camera = {
+			...state(),
+			pose: { target: [0, 1.5, 0] as Vec3, azimuthRadians: 0, elevationRadians: 0, targetPlaneHeightMeters: 0.08 }
+		};
+		const anchor: Vec3 = [0.3, 1.5, -2];
+		const before = evaluated(camera);
+		const zoom = requestViewingIntent(camera, { kind: 'zoom', scale: 0.8, anchor }, 0);
+		expect(zoom.kind).toBe('accepted');
+		const after = evaluated(zoom.state);
+		const first = projectWorld(anchor, before, before.token);
+		const second = projectWorld(anchor, after, after.token);
+		if (first.kind !== 'projected' || second.kind !== 'projected') throw new Error('Expected visible anchor');
+		expectClose(second.css[0], first.css[0], 1e-8);
+		expectClose(second.css[1], first.css[1], 1e-8);
+		expect(after.pose.targetPlaneHeightMeters).toBeGreaterThan(1);
+		const pan = requestViewingIntent(zoom.state, { kind: 'pan', deltaCss: [40, 0], rect: RECT }, 0);
+		const panned = evaluated(pan.state);
+		const moved = projectWorld(anchor, panned, panned.token);
+		if (moved.kind !== 'projected') throw new Error('Expected projected anchor after pan');
+		expectClose(moved.css[0] - second.css[0], 40, 1e-8);
+	});
+
 	it('zooms multiplicatively with declared bounds, refusing a non-positive scale', () => {
 		const camera = state();
 		const zoomIn = requestViewingIntent(camera, { kind: 'zoom', scale: 2 }, 0);

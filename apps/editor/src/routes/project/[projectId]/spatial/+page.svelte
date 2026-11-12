@@ -3489,7 +3489,26 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
 		if (activeLayer?.wheel(event, evaluation?.rect.height ?? 1) === 'claimed') return;
-		zoom(Math.exp(event.deltaY * 0.001));
+		const scale = Math.exp(event.deltaY * 0.001);
+		const stage = facade;
+		const reading = stage?.evaluation();
+		if (stage && reading?.renderedReading === '3d' && stage.camera.lookThrough() === null &&
+			drag === null && pinch === null && session.gesture() === null) {
+			const ray = pointerRay([event.clientX, event.clientY], reading, reading.token);
+			if (ray.kind === 'ray') {
+				const scene = stage.snapshot().domain.scene;
+				const hit = scenePick.pick(ray.ray, scene);
+				if (hit && (hit.wallId !== undefined ||
+					scene.entities.some((entity) => entity.id === hit.entityId && entity.kind === 'artwork'))) {
+					const projected = stage.projectWorld(hit.worldPoint, stage.evaluationId() ?? '');
+					if (projected.kind === 'projected' && projected.visibility === 'visible') {
+						submit({ kind: 'zoom', scale, anchor: hit.worldPoint }, nowSeconds());
+						return;
+					}
+				}
+			}
+		}
+		zoom(scale);
 	}
 
 	function handleKey(event: KeyboardEvent): void {

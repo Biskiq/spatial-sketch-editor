@@ -40,6 +40,7 @@ import {
 	createLayoutCompileSession,
 	ensureLayoutWorldIndex,
 	linkClonedCowCandidate,
+	readPassiveCompiledGeometry,
 	recordPassiveCompiledGeometry
 } from '@portfolio/layout-core';
 
@@ -312,6 +313,10 @@ export function createStageAcceptanceHost(options: {
 		installOptions: {
 			readonly fromHistory?: boolean;
 			readonly operationId?: string;
+			readonly preparedLayout?: {
+				readonly data: ProjectEnvelope['units']['layout']['data'];
+				readonly compiled: NonNullable<ReturnType<typeof readPassiveCompiledGeometry>>;
+			};
 			readonly knownIdentity?: {
 				readonly sourceContentId: string;
 				readonly canonicalJson: string;
@@ -376,7 +381,11 @@ export function createStageAcceptanceHost(options: {
 			const admission = await admitSource(
 				snapshot.domain.source,
 				{ sessionEpoch, acceptedRevision: snapshot.acceptedRevision },
-				{ compileSession, knownIdentity: installOptions.knownIdentity }
+				{
+					compileSession,
+					knownIdentity: installOptions.knownIdentity,
+					preparedLayout: installOptions.preparedLayout
+				}
 			);
 			if (admission.kind === 'refused') {
 				return { kind: 'refused', code: admission.reason, message: 'the accepted source was refused by the admission path' };
@@ -567,8 +576,16 @@ export function createStageAcceptanceHost(options: {
 				if (result.kind === 'no-op') return { kind: 'no-op', revision: result.revision };
 				if (result.kind === 'rejected') return { kind: 'refused', code: result.code, message: result.message };
 				const preparedCow = consumePreparedCowCandidate(intent.operationId, { baseline: beforeLayout, key: canonicalUnitJson(intent) });
-				if (preparedCow) {
-					linkClonedCowCandidate(preparedCow, result.snapshot.domain.source.units.layout.data);
+				const acceptedLayout = result.snapshot.domain.source.units.layout.data;
+				let preparedLayout: NonNullable<Parameters<typeof install>[2]>['preparedLayout'];
+				if (preparedCow && intent.kind === 'layout-room-move') {
+					if (canonicalUnitJson(preparedCow) === canonicalUnitJson(acceptedLayout)) {
+						linkClonedCowCandidate(preparedCow, acceptedLayout);
+						const compiled = readPassiveCompiledGeometry(preparedCow);
+						if (compiled) preparedLayout = { data: acceptedLayout, compiled };
+					}
+				} else if (preparedCow) {
+					linkClonedCowCandidate(preparedCow, acceptedLayout);
 				}
 				const currentAdmitted = coordinator.current();
 				const knownIdentity =
@@ -581,6 +598,7 @@ export function createStageAcceptanceHost(options: {
 						: undefined;
 				const installed = await install(result.snapshot, result.correspondence, {
 					operationId: intent.operationId,
+					preparedLayout,
 					knownIdentity
 				});
 				if (installed.kind === 'refused' && needsCompensation(installed.code)) {

@@ -18,6 +18,7 @@ import {
 	planCreateWallFirstOpening,
 	planResizeClosedWallRadius,
 	planTranslateClosedWall,
+	planWallFirstRoomMove,
 	planUpdateWallFirstOpening,
 	planWallChain,
 	readClosedWallCircle,
@@ -272,4 +273,38 @@ describe('C2 product — Circle creation and radius semantics', () => {
 	it('keeps the created document canonically valid', () => {
 		expect(validateWallFirstLayoutDocument(circleDocument()).success).toBe(true);
 	});
+});
+
+it('[cap:layout.circular-room edge] refuses a new circular contact while allowing unrelated Room motion', () => {
+	const circle = circleDocument();
+	const circleWall = circle.walls[0]!;
+	const outside = planWallChain({
+		baseline: circle, points: [[-8, 7], [8, 7]], close: false,
+		levelId: circle.floor.id, capture: mintLayoutIdCapture(() => 'outside-wall')
+	});
+	if (outside.kind !== 'success') throw new Error(outside.rejection.message);
+	expect(planTranslateClosedWall({ document: outside.document, wallId: circleWall.id, delta: [0, 4] }).kind).toBe('rejected');
+	expect(planResizeClosedWallRadius({ document: outside.document, wallId: circleWall.id, radius: 8 }).kind).toBe('rejected');
+	expect(planWallChain({
+		baseline: circle, points: [[-8, 1], [8, 1]], close: false,
+		levelId: circle.floor.id, capture: mintLayoutIdCapture(() => 'crossing-wall')
+	}).kind).toBe('rejected');
+	const second = planCreateCircularRoom({
+		baseline: outside.document, center: [30, 0], rim: [32, 0],
+		levelId: circle.floor.id, capture: mintLayoutIdCapture(() => 'second-circle')
+	});
+	if (second.kind !== 'success') throw new Error(second.rejection.message);
+	const existing = outside.document.walls.find((wall) => wall.id !== circleWall.id)!;
+	const legacy = {
+		...second.document,
+		junctions: second.document.junctions.map((j) =>
+			j.id === existing.startJunctionId || j.id === existing.endJunctionId
+				? { ...j, point: [j.point[0], 1] as [number, number] } : j)
+	};
+	const moved = planWallFirstRoomMove(legacy, second.createdRoomIds[0]!, [19.5, -0.44]);
+	expect(moved.kind).toBe('success');
+	if (moved.kind === 'success') {
+		expect(moved.document.rooms).toEqual(legacy.rooms);
+		expect(moved.document.walls.find((wall) => wall.id === circleWall.id)).toEqual(circleWall);
+	}
 });

@@ -2124,10 +2124,19 @@ describe('R217.S15 — gesture numeric entry', () => {
 		const evaluationId = mounted.facade.evaluationId()!;
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: from, evaluationId, metaKey: true }).claimed).toBe(true);
 		const to = stageCss(mounted.facade, [3, 3.4]);
-		mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
-		expect(
-			mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
-		).toBe(true);
+		const work: string[] = [];
+		const previous = setWorkObserver({ count: (name) => work.push(name), span: (name) => work.push(name) });
+		try {
+			mounted.facade.pointerIntent({ phase: 'move', css: stageCss(mounted.facade, [3, 3.1]), evaluationId });
+			mounted.facade.candidatePreviews();
+			mounted.facade.pointerIntent({ phase: 'move', css: to, evaluationId });
+			expect(
+				mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-wall-bend')
+			).toBe(true);
+		} finally {
+			setWorkObserver(previous);
+		}
+		expect(work.filter((name) => name === 'compile' || name === 'validation:layout-document' || name === 'room-reconciliation')).toEqual([]);
 		mounted.facade.pointerIntent({ phase: 'up', css: to, evaluationId });
 		await eventually(() => {
 			const wall = acceptedLayout(mounted.facade).walls.find((candidate) => candidate.id === 'curved')!;

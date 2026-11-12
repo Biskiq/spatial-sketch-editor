@@ -264,7 +264,7 @@ export type ViewingIntent =
 	/** A CSS-pixel pan in the settled reading's target plane. */
 	| { readonly kind: 'pan'; readonly deltaCss: readonly [number, number]; readonly rect: ViewportRect }
 	| { readonly kind: 'orbit'; readonly deltaAzimuthRadians: number; readonly deltaElevationRadians: number }
-	| { readonly kind: 'zoom'; readonly scale: number }
+	| { readonly kind: 'zoom'; readonly scale: number; readonly anchor?: Vec3 }
 	| { readonly kind: 'set-reading'; readonly reading: ViewportReading }
 	| {
 			readonly kind: 'fit';
@@ -1312,6 +1312,21 @@ export function requestViewingIntent(
 			if (!isFiniteNumber(intent.scale) || intent.scale <= 0) {
 				return reject(settled, 'invalid-intent', 'a zoom scale must be a finite positive multiplier');
 			}
+			if (intent.anchor !== undefined && settled.reading === '3d' && settled.transition === null) {
+				if (!isFiniteVec3(intent.anchor)) return reject(settled, 'invalid-intent', 'Zoom anchor must be finite.');
+				const eye = eyeOfInspectionPose(settled.pose);
+				const backward = poseDirection(settled.pose);
+				const depth = dotVec3(subtractVec3(eye, intent.anchor), backward);
+				if (depth > 0 && Number.isFinite(depth)) {
+					const oldExtent = depth * settled.pose.targetPlaneHeightMeters /
+						perspectiveDistanceMeters(settled.pose.targetPlaneHeightMeters, settled.pose.fovYDegrees);
+					const extent = clamp(oldExtent * intent.scale, VIEWPORT_TARGET_PLANE_MIN_METERS, VIEWPORT_TARGET_PLANE_MAX_METERS);
+					const nextEye = addVec3(intent.anchor, scaleVec3(subtractVec3(eye, intent.anchor), extent / oldExtent));
+					const target = subtractVec3(nextEye, scaleVec3(backward, perspectiveDistanceMeters(extent, settled.pose.fovYDegrees)));
+					return accept(withPose(settled, { ...settled.pose, target, targetPlaneHeightMeters: extent }));
+				}
+			}
+
 			const targetPlaneHeightMeters = clamp(
 				settled.pose.targetPlaneHeightMeters * intent.scale,
 				VIEWPORT_TARGET_PLANE_MIN_METERS,

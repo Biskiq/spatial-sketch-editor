@@ -23,6 +23,7 @@ import {
 	extractBoundaryCandidateFaces,
 	planCreateWallFirstOpening,
 	planWallChain,
+	setWorkObserver,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type LayoutWallFirstRoom
@@ -461,15 +462,23 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 		// The first move names the origin; the second moves the default proposal
 		// by exactly the pointer's own displacement (snapped through the shared
 		// drag resolver).
-		hover(mounted, [3, 2]);
-		expect(previewDelta(mounted.facade)).toEqual(initial);
-		hover(mounted, [4, 4]);
+		const work: string[] = [];
+		const previous = setWorkObserver({ count: (name) => work.push(name), span: (name) => work.push(name) });
+		try {
+			hover(mounted, [3, 2]);
+			expect(previewDelta(mounted.facade)).toEqual(initial);
+			hover(mounted, [4, 4]);
+			const shown = previewDelta(mounted.facade);
+			expect(shown[0]).toBeCloseTo(initial[0] + 1, 2);
+			expect(shown[1]).toBeCloseTo(initial[1] + 2, 2);
+			// The copy is still one complete proposal while it moves.
+			expect(mounted.facade.candidatePreviews()).toHaveLength(1);
+			expect(mounted.facade.candidatePreviews()[0]!.role).toBe('subject');
+		} finally {
+			setWorkObserver(previous);
+		}
+		expect(work.filter((name) => name === 'compile' || name === 'validation:layout-document')).toEqual([]);
 		const shown = previewDelta(mounted.facade);
-		expect(shown[0]).toBeCloseTo(initial[0] + 1, 2);
-		expect(shown[1]).toBeCloseTo(initial[1] + 2, 2);
-		// The copy is still one complete proposal while it moves.
-		expect(mounted.facade.candidatePreviews()).toHaveLength(1);
-		expect(mounted.facade.candidatePreviews()[0]!.role).toBe('subject');
 
 		click(mounted, [4, 4]);
 		await eventually(() => mounted.facade.session.task() === null);

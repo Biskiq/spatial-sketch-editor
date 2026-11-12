@@ -58,17 +58,18 @@ import {
 	proposeWallFirstArchitectureGeometry,
 	createWallFirstArchitectureVerdictScope,
 	createWallSamplingDerivation,
-	planDuplicateIsolatedRoom,
 	readWallFirstDragProposal,
 	resolveIsolatedRoomGroupSubgraph,
 	resolveIsolatedRoomSubgraph,
-	type DuplicatePlan,
 	type WallFirstArchitectureProposalWall,
 	planExactWallHeight,
 	planExactWallThickness,
 	planCreateCircularRoom,
 	planResizeClosedWallRadius,
 	planTranslateClosedWall,
+	prepareWallBend,
+	proposeWallKnotRemoval,
+	wallCenterlineSamples,
 	readClosedWallCircle,
 	isClosedWall,
 	planUpdateWallFirstOpening,
@@ -217,7 +218,6 @@ import {
 	curvedWallFrame,
 	curvedWallPointAt,
 	openWallFrame,
-	previewWallBend,
 	previewWallKnotDelete,
 	previewWallStraighten,
 	wallBendIntent,
@@ -255,6 +255,7 @@ import {
 import { DRAFTING_SNAP_METERS, draftingSnapIncrementMeters, snapDraftingPlacement, snapDraftingPoint } from '$lib/authoring/stage/stage-adapter-host';
 import {
 	buildLayoutCandidatePaper,
+	buildCompiledLayoutCandidatePaper,
 	openingAttemptFacePaper,
 	openingAttemptPlanPaper,
 	openingFacePaper,
@@ -593,9 +594,12 @@ type BendGesture = {
 	readonly grabOffset: LayoutVec2;
 	readonly existingKnot: boolean;
 	readonly lease: GestureAcquisition | null;
-	readonly baseline: LayoutDocumentWallFirst;
+	readonly revision: string;
+	readonly shape: ReturnType<typeof prepareWallBend>;
+	readonly removedPoints: readonly LayoutVec2[] | null;
+	readonly removalChord: readonly [LayoutVec2, LayoutVec2] | null;
 	intent: { readonly distance: number; readonly point: LayoutVec2 } | null;
-	previewDocument: LayoutDocumentWallFirst | null;
+	previewPoints: readonly LayoutVec2[] | null;
 	/** Snapped into the neighbour chord: release removes this existing knot. */
 	removal: boolean;
 	/** The pointer has left the removal zone since press; leaving arms removal. */
@@ -1392,7 +1396,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				/** The first pointer point a move named; every later move is relative to it. */
 				origin: LayoutVec2 | null;
 				delta: LayoutVec2;
-				preview: DuplicatePlan | null;
+				readonly revision: string;
+				readonly subjectIds: ReadonlySet<string>;
+				paper: { key: string; geometry: CandidatePaperGeometry } | null;
 				snap: LayoutSnapWinner | null;
 			};
 			let roomDuplicate: RoomDuplicateSession | null = null;
@@ -1449,18 +1455,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				};
 			}
 
-			/** Re-run the retained planner at the session's current translation. */
-			function replanRoomDuplicate(): void {
-				const current = roomDuplicate;
-				if (current === null) return;
-				current.preview = planDuplicateIsolatedRoom(
-					document,
-					{ roomId: current.roomId, delta: [current.delta[0], current.delta[1]] },
-					current.capture,
-					document.floor.id
-				);
-			}
-
 			/** Begin one Room copy: one capture, one proposal lease, one initial delta. */
 			function beginRoomDuplicate(roomId: string): boolean {
 				const room = document.rooms.find((entry) => entry.id === roomId);
@@ -1486,7 +1480,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					pointer: null,
 					origin: null,
 					delta: frame.delta,
-					preview: null,
+					revision: services.authoring.acceptedRevision().revisionId,
+					subjectIds: new Set([
+						roomId, ...isolation.subgraph.wallIds, ...isolation.subgraph.openingIds,
+						...isolation.subgraph.associatedObjectIds
+					]),
+					paper: null,
 					snap: null
 				};
 				roomDuplicateNotice = null;
@@ -1495,7 +1494,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					owner: LAYOUT_ROOM_DUPLICATE_KIND,
 					reason: 'A Room copy is live; place it or cancel it — Undo is available once it settles.'
 				});
-				replanRoomDuplicate();
 				return true;
 			}
 
@@ -1508,7 +1506,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (current.origin === null) {
 					current.origin = [point[0], point[1]];
 					current.snap = null;
-					replanRoomDuplicate();
 					return;
 				}
 				const origin = current.origin;
@@ -1523,7 +1520,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					Number((current.defaultDelta[1] + snapped.point[1] - origin[1]).toFixed(9))
 				];
 				current.snap = snapped.winner;
-				replanRoomDuplicate();
 			}
 
 			function roomDuplicateSelected(): boolean {
@@ -1551,14 +1547,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						services.stage.notifySurfaceChange();
 						return true;
 					}
-					if (current.preview?.kind === 'success') {
-						void commitRoomDuplicate(current);
-						return true;
-					}
-					roomDuplicateNotice = current.preview?.kind === 'rejected'
-						? current.preview.rejection
-						: { code: 'invalid-value' };
-					services.stage.notifySurfaceChange();
+					void commitRoomDuplicate(current);
 					return true;
 				}
 				if (intent.phase === 'move') {
@@ -1584,10 +1573,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			async function commitRoomDuplicate(current: RoomDuplicateSession): Promise<void> {
 				if (roomDuplicateCommitting) return;
-				const plan = current.preview;
-				if (plan?.kind !== 'success') return;
-				const createdRoomId = plan.createdRoomId;
-				if (createdRoomId === undefined) return;
 				roomDuplicateCommitting = true;
 				try {
 					const snapshot = services.stage.snapshot();
@@ -1599,17 +1584,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							capture: current.capture,
 							operationId: globalThis.crypto.randomUUID(),
 							projectId: snapshot.acceptedRevision.projectId,
-							revisionId: services.authoring.acceptedRevision().revisionId,
+							revisionId: current.revision,
 							contentRevision,
 							levelId
 						})
 					);
 					if (outcome.kind === 'refused') {
+						if (roomDuplicate !== current) return;
 						roomDuplicateNotice = { code: outcome.code, message: outcome.message };
 						services.stage.notifySurfaceChange();
 						return;
 					}
-					endRoomDuplicate();
+					if (roomDuplicate === current) endRoomDuplicate();
 					services.stage.notifySurfaceChange();
 				} finally {
 					roomDuplicateCommitting = false;
@@ -1620,41 +1606,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function roomDuplicatePreviews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
 				const current = roomDuplicate;
 				if (current === null) return [];
-				const plan = current.preview;
-				const rejection: RoomDuplicateRejection | null = roomDuplicateIsCoincident(current.delta)
+				const rejection = roomDuplicateIsCoincident(current.delta)
 					? { code: 'coincident_with_source' }
-					: plan?.kind === 'rejected'
-						? plan.rejection
-						: roomDuplicateNotice;
-				const refused = rejection === null ? null : roomDuplicateRefusalWords(document, rejection);
+					: roomDuplicateNotice;
+				const refused = rejection === null ? null : rejection.code === 'planner-rejected'
+					? rejection.message ?? roomDuplicateRefusalWords(document, rejection)
+					: roomDuplicateRefusalWords(document, rejection);
 				const anchor: [number, number, number] = current.pointer === null
 					? [current.center[0] + current.delta[0], y, current.center[1] + current.delta[1]]
 					: [current.pointer[0], y, current.pointer[1]];
 				const label = refused ?? `Copy · ${planarDeltaLabel(current.delta[0], current.delta[1])}`;
-				if (plan?.kind === 'success') {
-					const subjectIds = new Set([
-						...plan.createdJunctionIds,
-						...plan.createdWallIds,
-						...plan.createdOpeningIds,
-						...(plan.createdRoomId === undefined ? [] : [plan.createdRoomId]),
-						...plan.createdObjectIds
-					]);
-					const built = candidatePaper(plan.document, y, subjectIds, new Set());
-					if (built !== null) {
-						return [candidatePreviewOf({
-							id: ROOM_DUPLICATE_PREVIEW_ID,
-							role: refused === null ? 'subject' : 'refused',
-							geometry: built.paper.subject,
-							labels: [{ world: anchor, text: label }],
-							snap: current.snap === null ? undefined : { world: anchor, name: current.snap.name }
-						})];
+				const result = services.stage.plan();
+				if (result.kind === 'evaluated') {
+					const plan = result.plan;
+					const key = JSON.stringify([y, plan.cutHeightMeters, plan.depthMeters, plan.sourceKindFilter, plan.reveal]);
+					if (current.paper?.key !== key) {
+						current.paper = {
+							key,
+							geometry: buildCompiledLayoutCandidatePaper(
+								ctx.snapshot.domain.geometry, plan, y, current.subjectIds, new Set(), null
+							).subject
+						};
 					}
 				}
+				const paper = current.paper?.geometry;
+				const shift = ([x, height, z]: [number, number, number]): [number, number, number] =>
+					[x + current.delta[0], height, z + current.delta[1]];
 				return [candidatePreviewOf({
 					id: ROOM_DUPLICATE_PREVIEW_ID,
 					role: refused === null ? 'subject' : 'refused',
-					geometry: { polygons: [], segments: [] },
-					labels: [{ world: anchor, text: label }]
+					geometry: {
+						polygons: paper?.polygons.map((polygon) => polygon.map(shift)) ?? [],
+						segments: paper?.segments.map(([a, b]) => [shift(a), shift(b)]) ?? []
+					},
+					labels: [{ world: anchor, text: label }],
+					snap: current.snap === null ? undefined : { world: anchor, name: current.snap.name }
 				})];
 			}
 
@@ -1884,24 +1870,33 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return { kind: 'accepted' };
 			}
 
-			function commitBend(current: BendGesture, intent: NonNullable<BendGesture['intent']>): void {
-				// D13 — the sheet's centerline is display-only. A bend gesture that began
-				// before unfolding must not write the canonical chain.
+			async function commitBend(current: BendGesture): Promise<void> {
 				if (wallUnfold.isActive(current.wallId)) return;
 				const snapshot = services.stage.snapshot();
-				void services.authoring.accept(
-					wallBendIntent({
-						wallId: current.wallId,
-						distance: intent.distance,
-						point: intent.point,
-						knotId: current.knotId,
-						operationId: globalThis.crypto.randomUUID(),
-						projectId: snapshot.acceptedRevision.projectId,
-						revisionId: services.authoring.acceptedRevision().revisionId,
-						contentRevision: stageUnitRevision(snapshot, 'layout'),
-						levelId: snapshot.domain.layoutLevelId
-					})
+				if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+				const target = {
+					wallId: current.wallId,
+					knotId: current.knotId,
+					operationId: globalThis.crypto.randomUUID(),
+					projectId: snapshot.acceptedRevision.projectId,
+					revisionId: current.revision,
+					contentRevision,
+					levelId: snapshot.domain.layoutLevelId
+				};
+				const intent = current.intent;
+				if (!current.removal && intent === null) return;
+				const outcome = await services.authoring.accept(
+					current.removal ? wallKnotDeleteIntent(target) : wallBendIntent({ ...target, ...intent! })
 				);
+				if (outcome.kind === 'refused' && stageUnitRevision(services.stage.snapshot(), 'layout') === contentRevision) {
+					settledRefusal = {
+						subject: { kind: 'wall', wallId: current.wallId },
+						contentRevision,
+						point: current.attemptPoint ?? current.anchor,
+						text: wallRefusalWords(outcome.code, outcome.message)
+					};
+					services.stage.notifySurfaceChange();
+				}
 			}
 
 			/**
@@ -2201,6 +2196,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						policy: 'cancel-on-reading-change'
 					});
 					if (acquisition.kind !== 'granted') return false;
+					const removal = knot === undefined ? null : proposeWallKnotRemoval(document, selected.wallId, knotId);
+					const knots = source.centerline.kind === 'cubic-chain' ? source.centerline.knots : [];
+					const knotIndex = knots.findIndex((entry) => entry.id === knotId);
+					const samples = removal?.kind === 'proposed'
+						? wallCenterlineSamples({ id: selected.wallId, centerline: removal.centerline }, removal.start, removal.end, 'forward')
+						: undefined;
+					settledRefusal = null;
 					bendGesture = {
 						evaluationId: intent.evaluationId,
 						pressCss: intent.css,
@@ -2213,9 +2215,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						grabOffset: [anchor[0] - press[0], anchor[1] - press[1]],
 						existingKnot: knot !== undefined,
 						lease: acquisition,
-						baseline: document,
+						revision: services.authoring.acceptedRevision().revisionId,
+						shape: prepareWallBend(document, selected.wallId, distance, knotId),
+						removedPoints: samples?.samples.map((sample) => sample.point) ?? null,
+						removalChord: knotIndex < 0 ? null : [
+							knots[knotIndex - 1]?.point ?? selected.frame.start,
+							knots[knotIndex + 1]?.point ?? selected.frame.end
+						],
 						intent: null,
-						previewDocument: null,
+						previewPoints: null,
 						removal: false,
 						leftRemovalZone: false,
 						attemptPoints: selected.frame.samples.map((sample) => [sample.point[0], sample.point[1]] as LayoutVec2),
@@ -2233,14 +2241,16 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (intent.phase === 'move') {
 					if (wallUnfold.isActive(active.wallId)) {
 						active.intent = null;
-						active.previewDocument = null;
+						active.previewPoints = null;
+						active.removal = false;
 						active.refusal = WALL_UNFOLD_SHAPE_REFUSAL;
 						services.stage.notifySurfaceChange();
 						return true;
 					}
 					if (!isPointerDrag(active.pressCss, intent.css)) {
 						active.intent = null;
-						active.previewDocument = null;
+						active.previewPoints = null;
+						active.removal = false;
 						active.refusal = null;
 						services.stage.notifySurfaceChange();
 						return true;
@@ -2261,38 +2271,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// a removal, not a bend. The preview is the real no-knot candidate and
 					// release writes exactly that one command; leaving the chord returns
 					// to the ordinary bend. `leftRemovalZone` is the must-leave hysteresis.
-					let removal = false;
-					if (active.existingKnot) {
-						const source = active.baseline.walls.find((candidate) => candidate.id === active.wallId);
-						if (source !== undefined && source.centerline.kind !== 'line') {
-							const index = source.centerline.knots.findIndex((candidate) => candidate.id === active.knotId);
-							if (index >= 0) {
-								const previous = index > 0
-									? source.centerline.knots[index - 1]!.point
-									: active.frame.start;
-								const next = index < source.centerline.knots.length - 1
-									? source.centerline.knots[index + 1]!.point
-									: active.frame.end;
-								const distance = distanceToChord(attempted, previous, next);
-								if (distance > REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
-								removal = active.leftRemovalZone && distance <= REMOVE_ENTER_METERS;
-							}
-						}
+					active.removal = false;
+					if (active.removalChord !== null) {
+						const distance = distanceToChord(attempted, ...active.removalChord);
+						if (distance > REMOVE_LEAVE_METERS) active.leftRemovalZone = true;
+						active.removal = active.leftRemovalZone && distance <= REMOVE_ENTER_METERS;
 					}
-					active.removal = removal;
-					const planned = removal
-						? previewWallKnotDelete(active.baseline, active.wallId, active.knotId)
-						: previewWallBend(active.baseline, active.wallId, active.distance, attempted, active.knotId);
-					if (planned.kind === 'refused') {
-						// Keep the last valid preview on screen: the Bend stops at the
-						// geometric limit instead of snapping back to the baseline. The
-						// release guard below refuses to commit while this refusal stands.
-						active.refusal = wallRefusalWords(planned.code, planned.message);
-					} else {
-						active.intent = removal ? null : { distance: active.distance, point: attempted };
-						active.previewDocument = planned.document;
-						active.refusal = null;
-					}
+					const shape = active.shape;
+					const proposal = shape.kind === 'ready' ? shape.reshape(attempted) : shape;
+					const samples = shape.kind === 'ready' && proposal.kind === 'proposed'
+						? wallCenterlineSamples({ id: active.wallId, centerline: proposal.centerline }, shape.start, shape.end, 'forward')
+						: undefined;
+					const points = active.removal ? active.removedPoints : samples?.samples.map((sample) => sample.point);
+					active.previewPoints = points ?? null;
+					active.intent = active.removal || !points ? null : { distance: active.distance, point: attempted };
+					active.refusal = points ? null : proposal.kind === 'rejected'
+						? wallRefusalWords(proposal.rejection.code, proposal.rejection.message)
+						: 'This shape is not a valid Wall layout.';
 					services.stage.notifySurfaceChange();
 					return true;
 				}
@@ -2306,9 +2301,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// The removal is one canonical knot-delete command. The knot is gone,
 					// so the session's active shape point is cleared; Undo restores it.
 					activeKnot = null;
-					void removeWallKnot(current.wallId, current.knotId);
+					if (current.refusal === null) void commitBend(current);
 				} else if (current !== null) activeKnot = { wallId: current.wallId, knotId: current.knotId };
-				if (current !== null && !current.removal && current.intent !== null && current.refusal === null) commitBend(current, current.intent);
+				if (current !== null && !current.removal && current.intent !== null && current.refusal === null) void commitBend(current);
 				else if (
 					current !== null &&
 					(current.existingKnot || current.markId.startsWith('layout-wall-knot:')) &&
@@ -7013,26 +7008,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// tag still belongs at the press, not only on the midpoint grip.
 				const activeBend = bendGesture;
 				if (activeBend !== null) {
-					if (activeBend.previewDocument !== null) {
-						const built = candidatePaper(
-							activeBend.previewDocument,
-							y,
-							new Set([activeBend.wallId]),
-							new Set()
-						);
-						if (built !== null) {
-							return [
-								candidatePreviewOf({
-									id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
-									role: 'subject',
-									geometry: built.paper.subject,
-									...(activeBend.removal ? {
-										labels: [{ world: world(activeBend.anchor), text: 'Remove bend point' }]
-									} : {}),
-									snap: snapOf(null)
-								})
-							];
-						}
+					if (activeBend.previewPoints !== null) {
+						return [candidatePreviewOf({
+							id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
+							role: 'subject',
+							geometry: wallProposalPaper([{ wallId: activeBend.wallId, points: [...activeBend.previewPoints] }], y),
+							...(activeBend.removal ? { labels: [{ world: world(activeBend.anchor), text: 'Remove bend point' }] } : {})
+						})];
 					}
 					if (activeBend.attemptPoints.length >= 2) {
 						const geometry = wallProposalPaper([{ wallId: activeBend.wallId, points: [...activeBend.attemptPoints] }], y);
