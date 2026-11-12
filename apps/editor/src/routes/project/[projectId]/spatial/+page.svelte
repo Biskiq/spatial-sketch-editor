@@ -5304,9 +5304,6 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 							/>
 					{/if}
 				{/if}
-				{#if contributedInstrument!==null && contributedInstrument.presentation !== 'palette'}
-                <StageInstrumentHost task={paletteOpen ? taskHost : null} onClose={closeTask} instrument={contributedInstrument} />
-				{/if}
 			</div>
 		</div>
 	</div>
