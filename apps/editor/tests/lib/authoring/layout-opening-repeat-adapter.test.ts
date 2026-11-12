@@ -657,6 +657,11 @@ describe('T1 A8 — Opening Repeat', () => {
 			expect(
 				mounted.facade.candidatePreviews().some((candidate) => candidate.id === 'layout-candidate-opening-repeat')
 			).toBe(false);
+			// The success notice stands alone: the same values now collide with the
+			// copies they just made, and that refusal must not read as a failure.
+			await eventually(() => target.querySelector('[data-opening-repeat-notice]') !== null);
+			expect(target.querySelector('[data-opening-repeat-notice]')!.textContent).toContain('Added 4 copies.');
+			expect(target.querySelector('[data-opening-repeat-note]')).toBeNull();
 		} finally {
 			await unmount(component);
 		}

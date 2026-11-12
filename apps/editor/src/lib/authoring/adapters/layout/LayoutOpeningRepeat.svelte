@@ -121,16 +121,18 @@ function clearActiveProposal(): void {
 
 // A new selection or a new accepted source retires the proposal it described.
 // The Stage never shows a preview for an Opening that is no longer selected.
-let lastSubject: string | null = null;
+let lastOpeningId: string | null = null;
 $effect(() => {
 	const current = opening;
 	const key = sourceKey;
-	const subject = `${key}:${current?.id ?? ''}`;
 	if (published !== null && (current === null || published.openingId !== current.id || published.sourceContentId !== key)) {
 		clearActiveProposal();
 	}
-	if (subject !== lastSubject) {
-		lastSubject = subject;
+	// A committed Repeat changes the source content but keeps the same Opening:
+	// its success notice must survive. Only a different Opening starts clean.
+	const openingId = current?.id ?? null;
+	if (openingId !== lastOpeningId) {
+		lastOpeningId = openingId;
 		notice = null;
 		error = null;
 	}
@@ -331,7 +333,7 @@ function onEdit(field: 'count' | 'spacing', value: string): void {
 				Repeat
 			</button>
 		</div>
-		{#if note !== null}
+		{#if note !== null && notice === null}
 			<p class="note" class:refused={preview?.kind === 'refused'} data-opening-repeat-note role="status">{note}</p>
 		{/if}
 		{#if error !== null}
