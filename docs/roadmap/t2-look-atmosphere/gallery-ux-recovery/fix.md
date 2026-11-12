@@ -744,8 +744,6 @@ while light rows use the singular group and therefore always showed 0 rows.
 - The Light Card footer still reads `Advanced` with the shell action menu; the sheet's inline group
   summary (`Advanced: Colour · Brightness · Shape · Position · Shadows`) and text Duplicate/Delete
   row are not implemented.
-- The Spot everyday Card exposes Beam and Shadow; Soft edge and Reach live in Advanced Shape rather
-  than as everyday rows.
 - A hover over a surface with no passing Artwork pose uses the candidate ghost ink only; there is no
   separate refusal predicate or refusal ink because the session has no planner refusal preview for
   Wall fit.
