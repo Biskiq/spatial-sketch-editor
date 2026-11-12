@@ -8,10 +8,10 @@ Use Node.js 20 or newer:
 
 ```bash
 npm install
-npm run dev:editor
+npm run dev:local
 ```
 
-The editor runs without the API; cloud save/load and sign-in will be unavailable. See [README.md](./README.md) for the full local stack.
+That starts the editor, API, PostgreSQL and local object storage together. To run the editor alone, use `npm run dev:editor`; cloud save/load and sign-in will be unavailable. See [local development](./docs/local-development.md) for the full stack.
 
 ## Before changing code
 
