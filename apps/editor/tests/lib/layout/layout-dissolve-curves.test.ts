@@ -4,7 +4,12 @@
  * Curve joins concatenate chains with the Junction demoted to one fresh
  * interior knot: zero control-point math, byte-identical spans. Pinned here:
  *
- * - unrelated curve fragments join exactly (spans/knots preserved verbatim);
+ * - a tangent pair joins exactly (spans/knots preserved verbatim);
+ * - a corner between two independently derived arcs refuses as
+ *   `non_tangent_curved_pair`, the curved analogue of the straight
+ *   collinearity gate: the join never smooths a cusp into a new shape;
+ * - the demoted knot id derives from the operation's capture, so the preview a
+ *   creator saw and the committed document name the same id;
  * - the traversal-mirror pin: a reverse-traversed side contributes mirrored
  *   spans in reversed order, so `wallCenterlineCubics(joined)` equals the
  *   concatenated per-side traversal cubics (the review blocker — raw stored
@@ -21,6 +26,8 @@ import {
 	planConvertWallToCurve,
 	planDissolveJunction as planDissolveJunctionWithCapture,
 	planWallSplit,
+	orientedWallChainKnotsAndSpans,
+	wallCubicChain,
 	wallCenterlineCubics,
 	wallCurveChainLength,
 	wallCurveKnotArcDistance,
@@ -32,7 +39,7 @@ import {
 	type LayoutWallCurveKnot,
 	type NodingIdAllocator
 } from '@portfolio/layout-core';
-import { freshCapture } from './__fixtures__/layout-id-capture';
+import { captureFor, capturedId, freshCapture } from './__fixtures__/layout-id-capture';
 
 /** One captured dissolve operation: every call is a new edit with a new nonce. */
 const dissolve = (document: LayoutDocumentWallFirst, junctionId: string) =>
@@ -106,6 +113,67 @@ function roomlessDocument(
 	};
 }
 
+/**
+ * One smooth chain cut at J into two Walls, exactly as a split would leave it.
+ *
+ * The combined point list derives the spans once, so both sides carry the same
+ * shared tangent at J: the pair is tangent by construction. This is the only
+ * curved pair a join accepts, and the spans are byte-identical to the chain the
+ * two Walls were cut from. Wall A is stored J→E1 so the join must reorient it.
+ */
+function tangentPair(
+	leftKnots: Array<[string, LayoutVec2]>,
+	rightKnots: Array<[string, LayoutVec2]>
+): {
+	readonly document: LayoutDocumentWallFirst;
+	readonly wallA: LayoutDocumentWallFirst['walls'][number];
+	readonly wallB: LayoutDocumentWallFirst['walls'][number];
+} {
+	const leftPoints = [
+		junctionPoint('E1'),
+		...leftKnots.map(([, knotPoint]) => knotPoint),
+		junctionPoint('J')
+	];
+	const rightPoints = [
+		junctionPoint('J'),
+		...rightKnots.map(([, knotPoint]) => knotPoint),
+		junctionPoint('E2')
+	];
+	const spans = deriveChainSpans([...leftPoints, ...rightPoints.slice(1)]);
+	const forwardLeft: LayoutWallCenterline = {
+		kind: 'cubic-chain',
+		knots: leftKnots.map(([knotId, knotPoint]) => ({
+			id: knotId,
+			point: [knotPoint[0], knotPoint[1]] as LayoutVec2
+		})),
+		spans: spans.slice(0, leftPoints.length - 1)
+	};
+	const storedLeft = orientedWallChainKnotsAndSpans(forwardLeft, 'reverse');
+	const wallA: LayoutDocumentWallFirst['walls'][number] = {
+		id: 'wa',
+		startJunctionId: 'J',
+		endJunctionId: 'E1',
+		thickness: 0.2,
+		height: 3,
+		centerline: wallCubicChain(storedLeft.knots, storedLeft.spans)
+	};
+	const wallB: LayoutDocumentWallFirst['walls'][number] = {
+		id: 'wb',
+		startJunctionId: 'J',
+		endJunctionId: 'E2',
+		thickness: 0.2,
+		height: 3,
+		centerline: wallCubicChain(
+			rightKnots.map(([knotId, knotPoint]) => ({
+				id: knotId,
+				point: [knotPoint[0], knotPoint[1]] as LayoutVec2
+			})),
+			spans.slice(leftPoints.length - 1)
+		)
+	};
+	return { document: roomlessDocument(POINTS, [wallA, wallB]), wallA, wallB };
+}
+
 /** Dense sample polyline: 400 points per cubic. */
 function denseSamples(cubics: CubicBezierShape[]): Array<[number, number]> {
 	const samples: Array<[number, number]> = [];
@@ -161,40 +229,43 @@ function expectSameSampledCurve(a: CubicBezierShape[], b: CubicBezierShape[]) {
 }
 
 describe('curve dissolve', () => {
-	it('concatenates unrelated chains with byte-identical spans', () => {
-		const wallA = curvedWall('wa', 'J', 'E1', [['ka', point(-1, 0.8)]]);
-		const wallB = curvedWall('wb', 'J', 'E2', [['kb', point(1, -0.8)]]);
-		const document = roomlessDocument(POINTS, [wallA, wallB]);
+	it('concatenates a tangent pair with byte-identical spans', () => {
+		const { document } = tangentPair([['ka', point(-1, 0.8)]], [['kb', point(1, -0.8)]]);
 
 		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		// Both-start configuration: lexicographic survivor is wa, joined E1→E2.
-		// Each single-knot side contributes two spans; the knot counter starts
-		// past the combined existing knots.
+		// Each single-knot side contributes two spans.
 		expect(plan.survivorWallId).toBe('wa');
-		expect(plan.createdKnotId).toBe('wa:knot:3');
+		expect(plan.createdKnotId?.startsWith('wa:knot.')).toBe(true);
 
 		const joined = plan.document.walls.find((wall) => wall.id === 'wa')!;
 		expect([joined.startJunctionId, joined.endJunctionId]).toEqual(['E1', 'E2']);
 		if (joined.centerline.kind !== 'cubic-chain') throw new Error('expected chain');
 		// wa is traversed in reverse: its single knot survives, spans mirrored.
-		expect(joined.centerline.knots.map((knot) => knot.id)).toEqual(['ka', 'wa:knot:3', 'kb']);
+		expect(joined.centerline.knots.map((knot) => knot.id)).toEqual([
+			'ka',
+			plan.createdKnotId,
+			'kb'
+		]);
 		expect(joined.centerline.spans).toHaveLength(4);
 		expect(joined.centerline.knots[1]!.point).toEqual([0, 0]);
 	});
 
 	it('pins the traversal mirror: joined cubics equal concatenated traversal cubics', () => {
 		// Two knots per side so knot ORDER is observable, not just controls.
-		const wallA = curvedWall('wa', 'J', 'E1', [
-			['ka1', point(-1, 0.9)],
-			['ka2', point(-2, 0.2)]
-		]);
-		const wallB = curvedWall('wb', 'J', 'E2', [
-			['kb1', point(1, -0.9)],
-			['kb2', point(2, -0.2)]
-		]);
-		const document = roomlessDocument(POINTS, [wallA, wallB]);
+		// Left knots are listed E1→J, so the stored wall reads [ka1, ka2].
+		const { document, wallA, wallB } = tangentPair(
+			[
+				['ka2', point(-2, 0.2)],
+				['ka1', point(-1, 0.9)]
+			],
+			[
+				['kb1', point(1, -0.9)],
+				['kb2', point(2, -0.2)]
+			]
+		);
 
 		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('success');
@@ -217,6 +288,56 @@ describe('curve dissolve', () => {
 			...wallCenterlineCubics(wallB.centerline, POINTS.J!, POINTS.E2!, 'forward')
 		];
 		expect(joinedCubics).toEqual(expectedCubics);
+	});
+
+	it('refuses a corner between two independently derived arcs', () => {
+		// Each side derives its own tangent from its own knot, so the pair meets
+		// at an angle. Joining would silently smooth a corner the creator drew.
+		const wallA = curvedWall('wa', 'J', 'E1', [['ka', point(-1.5, 0.1)]]);
+		const wallB = curvedWall('wb', 'J', 'E2', [['kb', point(0.4, -1.2)]]);
+		const plan = dissolve(roomlessDocument(POINTS, [wallA, wallB]), 'J');
+		expect(plan.kind).toBe('rejected');
+		if (plan.kind !== 'rejected') throw new Error('unreachable');
+		expect(plan.rejection.code).toBe('non_tangent_curved_pair');
+	});
+
+	it('derives the demoted knot id from the operation capture', () => {
+		const { document } = tangentPair([['ka', point(-1, 0.8)]], [['kb', point(1, -0.8)]]);
+		const capture = freshCapture();
+		const first = planDissolveJunctionWithCapture(document, 'J', capture, document.floor.id);
+		const second = planDissolveJunctionWithCapture(document, 'J', capture, document.floor.id);
+		if (first.kind !== 'success' || second.kind !== 'success') throw new Error('unreachable');
+		// One capture, one id: replaying an operation cannot allocate a new knot.
+		expect(second.createdKnotId).toBe(first.createdKnotId);
+		expect(first.createdKnotId).toBe(capturedId(capture, 'wa:knot'));
+
+		const other = planDissolveJunctionWithCapture(document, 'J', freshCapture(), document.floor.id);
+		if (other.kind !== 'success') throw new Error('unreachable');
+		expect(other.createdKnotId).not.toBe(first.createdKnotId);
+	});
+
+	it('refuses a captured knot id that is already taken, without a suffix fallback', () => {
+		const capture = captureFor('a2joinnonce');
+		const taken = capturedId(capture, 'wa:knot');
+		const { document } = tangentPair([['ka', point(-1, 0.8)]], [['kb', point(1, -0.8)]]);
+		// The survivor's own knot already carries the id this capture derives:
+		// occupancy is a refusal, never a reason to allocate a different id.
+		const renamed: LayoutDocumentWallFirst = {
+			...document,
+			walls: document.walls.map((wall) => {
+				if (wall.id !== 'wa' || wall.centerline.kind !== 'cubic-chain') return wall;
+				const knot = wall.centerline.knots[0];
+				if (knot === undefined) throw new Error('expected a knot');
+				return {
+					...wall,
+					centerline: { ...wall.centerline, knots: [{ ...knot, id: taken }] }
+				};
+			})
+		};
+		const plan = planDissolveJunctionWithCapture(renamed, 'J', capture, renamed.floor.id);
+		expect(plan.kind).toBe('rejected');
+		if (plan.kind !== 'rejected') throw new Error('unreachable');
+		expect(plan.rejection.code).toBe('captured_id_in_use');
 	});
 
 	it('inverts a knot-promoted subdivision to the identical cubic list', () => {

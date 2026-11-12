@@ -106,21 +106,17 @@ export function translateWallCenterline(
  * Stable across a split because the fragments derive their IDs from their own
  * canonical Wall ID, and never derived from time, randomness or array order.
  *
- * T1.P02.S01 §1 scope — deliberately NOT capture-derived, and currently
- * unreachable: its call sites are the curve planners (`planConvertWallToCurve`,
- * `planInsertWallCurveKnot`, `planBendWallCurveKnot`, the
- * `resolveProposedCurveChain` path), each replaced by a captured-id variant, and
- * `planDissolveJunction`'s curve branch, which already threads a capture but mints
- * this knot from occupancy. None of those planners has a caller outside tests:
- * `apps/editor/src` contains no reference to them, the editor's Layout adapter has
- * no curve-authoring intent, and the retained planners refuse a curve with
- * `curved_wall_unsupported`. No accepted intent reaches these ids, so there is no
- * Redo that could replay one.
+ * T1.P02.S01 §1 scope — deliberately NOT capture-derived. Its remaining call
+ * sites are the curve planners (`planConvertWallToCurve`,
+ * `planInsertWallCurveKnot`), which mint a bend point before a capture-shaped
+ * intent owns that id. `planDissolveJunction` no longer calls it: the demoted
+ * knot of a curved join derives from the operation's capture
+ * (`{survivorId}:knot.{nonce}`), so a replay reproduces it exactly.
  *
- * The first curve-authoring slice must take a capture here and derive `{n}` from
- * it before that intent ships: counting occupancy re-mints a `{wallId}:knot:{n}`
- * that a captured tombstone has already retired, which is the exact hazard §1
- * exists to remove.
+ * Counting occupancy can re-mint a `{wallId}:knot:{n}` that a captured tombstone
+ * has already retired, which is the exact hazard §1 exists to remove. A caller
+ * that ships a captured intent for one of those planners must derive its id from
+ * that capture here first.
  */
 export function nextWallCurveKnotId(
 	wallId: string,

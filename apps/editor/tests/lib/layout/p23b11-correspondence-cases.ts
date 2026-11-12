@@ -509,7 +509,7 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		kind: 'planned',
 		baseline: () => buildP23B11ConnectedCase(),
 		plan: (baseline, capture) => planDissolveJunction(baseline, 'grid:j-2-0', capture, baseline.floor.id),
-		note: 'The third live caller of the shared `buildCorrespondenceComponents` — added by the 2026-09-27 owner review fix, because dissolve was the one live caller with no OR-1 row. Dissolving the grid corner joins `grid:h-1-0` and `grid:v-2-0` into one chain through the SAME points: every Room is preserved, the affected Room (1-0) loses its boundary cycle so its pairs fall to the geometric proof, and the other three Rooms keep their keys: nine of the sixteen pairs (three unions, six refusals) are settled by identity with no geometry, and the rest fall to the exact short-circuits. Two of the four grid corners are refused by the planner’s own compile gate (a narrow neck after the join), which is why this row uses the accepted one. Checked against the exhaustive bypass like every other row.'
+		note: 'The dissolve caller row, added by the 2026-09-27 owner review fix. Since T1 A2 (`layout.wall-join`) its frozen verdict is a REFUSAL: the join gate accepts only a collinear straight pair or a tangent curved pair, and this grid corner is a 90° corner (both grid Walls are cubic chains), so it refuses as `non_tangent_curved_pair` before any correspondence runs. The row now freezes that refusal and its empty pass; the recorded finding is in `p23b11-correspondence-reference.ts`, and the remaining planned rows keep the shared builder’s live coverage.'
 	}
 ];
 

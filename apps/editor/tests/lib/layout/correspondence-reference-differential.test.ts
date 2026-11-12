@@ -185,15 +185,16 @@ describe('P23B.11 S3 — OR-1: the shipped short-circuits reproduce the frozen r
 		for (const row of shipped.rows) {
 			expect(row, row.id).toEqual(frozenById.get(row.id));
 		}
-		// OR-1(h) is MANDATORY at S3, and the exclusion is deliberate: the five
+		// OR-1(h) is MANDATORY at S3, and the exclusion is deliberate: the four
 		// CONNECTED rows with a pass (authoring inside, division, shared-wall merge,
-		// outer-wall retire, corner dissolve) are compared above like every other row.
+		// outer-wall retire) are compared above like every other row. The corner
+		// dissolve left this list in T1 A2: the join gate refuses it before the pass
+		// (`p23b11-correspondence-reference.ts` records the move).
 		const connected = passRows(shipped).filter((entry) => entry.row.covers.includes('OR-1(h)'));
 		expect(connected.map((entry) => entry.row.id).sort()).toEqual([
 			'd-connected-outer-wall-retire',
 			'd-connected-shared-wall-merge',
 			'h-connected-authoring-inside',
-			'h-connected-corner-dissolve',
 			'h-connected-room-division'
 		]);
 	});
