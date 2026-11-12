@@ -707,28 +707,45 @@ Verification follow-ups are separate commits: `80409077` moves the new colour di
 `--shell-white` presentation token, `c1e6e699` fixes the Advanced White/Colour mode toggle so it
 uses Card-local display state instead of writing the invalid string `colour` as a hex colour, and
 `3a486ad5` makes the preview projection a shadow trigger, excludes the candidate from the pick
-registry and resolves a light release through its final up position.
+registry and resolves a light release through its final up position. `3ce705d0` corrects curved-Wall
+Artwork fit, overhanging free starts and the 0.01 m hung threshold from the post-implementation
+self-review, and `11f51fcb` fixes the Index's Lights facet, which filtered on the plural facet id
+while light rows use the singular group and therefore always showed 0 rows.
 
 **Verification evidence**
 
-- `npm test` — 347 files, 4474 tests passed.
-- `npm run test:arch` — 24 files, 202 tests passed with `--maxWorkers=2`.
-- `npm run check` — 0 errors; the 4 reported warnings are the existing visitor a11y warnings in
-  `VisitorPreviewSurface.svelte`.
+- Before the final self-review and Index fix: `npm test` — 347 files, 4474 tests passed;
+  `npm run test:arch` — 24 files, 202 tests passed with `--maxWorkers=2`.
+- After the final commits, focused `world-index-model.test.ts` and `artwork-wall-move.test.ts` —
+  2 files, 11 tests passed.
+- After the final commits, `npm run check` — 0 errors; the 4 reported warnings are the existing
+  visitor a11y warnings in `VisitorPreviewSurface.svelte`.
+- After the final commits, `npm run test:arch -- --maxWorkers=2` hit one 5 s timeout in
+  `stage-shell-composition.test.ts` under a host load average of 73; that file alone passed 22/22 with
+  `--maxWorkers=1`. The final full-suite rerun did not complete inside the host's 295 s command limit.
 - Focused suites for this work: `directional-dial`, `light-presentation`, `light-adapter-lifecycle`,
   `light-advanced`, `light-card-fields`, `artwork-wall-move`, `artwork-overlay`, `artwork-card`.
-- Browser pass on a local Vite session: Spot placement from the Lights shelf created one selected
-  light and one undo entry; the Advanced Colour group opened the hue dial; the Directional shelf
-  pick created a selected `Sun` immediately at From 225° / Height 50° with only the dial's From and
-  Height-in-sky marks. The browser pass did not exercise Artwork move, Point placement or visible
-  cast shadows because the guest scene has no Artwork asset or receiving geometry; those paths are
-  covered by the focused unit suites rather than by a visual check.
+- Browser pass on a local Vite session against `ux-design.html`: Spot shelf placement created one
+  selected light and one undo entry, with the placement chip and cone ghost before the click and the
+  Move/Height/Aim/Beam/Soft-edge marks after it; Point showed the lit placement ghost and, once the
+  Card was closed, the emitter glyph and height stem with no Reach ring while Unlimited; Directional
+  created a selected `Sun` immediately at From 225° / Height 50° with the dial's two beads and travel
+  arrows; Advanced opened the five groups and the White/Colour mode stayed Card-local; the Index's
+  Lights facet then listed the light and reported 1. A second Directional light was created, but the
+  dial showed no other-light tick or name chip. The browser pass did not exercise Artwork move or
+  cast shadows because the guest scene has no imported Artwork asset; those paths are covered by the
+  focused unit suites rather than by a visual check.
 
 **Known gaps**
 
 - The Directional dial's centre name chip and other-Directional ticks with click selection are not
   implemented; the approved marks are the ring, From spoke, quarter arc, travel arrows and the two
-  point beads.
+  point beads. Two Directional lights are therefore indistinguishable on the dial in a browser.
+- The Light Card footer still reads `Advanced` with the shell action menu; the sheet's inline group
+  summary (`Advanced: Colour · Brightness · Shape · Position · Shadows`) and text Duplicate/Delete
+  row are not implemented.
+- The Spot everyday Card exposes Beam and Shadow; Soft edge and Reach live in Advanced Shape rather
+  than as everyday rows.
 - A hover over a surface with no passing Artwork pose uses the candidate ghost ink only; there is no
   separate refusal predicate or refusal ink because the session has no planner refusal preview for
   Wall fit.
