@@ -52,6 +52,10 @@ import StageMatGround from './StageMatGround.svelte';
 	import { worldEnvironmentLook } from '$lib/render/world-environment';
 	import type { SceneEnvironmentPreset } from '@portfolio/project-model/units';
 	import type { GridRect } from '../stage-grid';
+	import {
+		mergeLightPreview,
+		type StageLightPreview
+	} from '../stage-light-preview.svelte';
 
 	function ignoreRaycast(): void {}
 
@@ -62,6 +66,8 @@ import StageMatGround from './StageMatGround.svelte';
 		layoutRevision,
 		scene,
 		rooms,
+		/** The session-only light preview merged into the rendered entity list. */
+		lightPreview = null,
 		evaluation,
 		ghosts = [],
 		modelUrls = null,
@@ -98,6 +104,7 @@ import StageMatGround from './StageMatGround.svelte';
 		layoutRevision: string;
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
+		lightPreview?: StageLightPreview | null;
 		evaluation: ViewportEvaluation | null;
 		/** Adapter-proposed poses, drawn here by the one Canvas. */
 		ghosts?: readonly StageGhostMesh[];
@@ -142,6 +149,13 @@ import StageMatGround from './StageMatGround.svelte';
 
 	/** One footprint projection per accepted Scene snapshot, shared with the hit path. */
 	const footprints = $derived(planSceneFootprintsFor(scene, scene.modelFootprints));
+	/**
+	 * The editor shell's one merge point for the session-only light preview: an
+	 * overridden light is replaced by its preview value and a placement candidate
+	 * is appended under a reserved id. Visitor entities and entity renderers are
+	 * unchanged, and the accepted `scene` object is never mutated.
+	 */
+	const renderScene = $derived(mergeLightPreview(scene, lightPreview));
 	// One reveal for the sheet, grid, ink and Camera mask (see `paperStageComposition`).
 	const paperComposition = $derived(
 		paperStageComposition({ evaluation, appearance: planAppearance, framed: framedViewport !== null, hasPlan: plan !== null })
@@ -296,7 +310,7 @@ import StageMatGround from './StageMatGround.svelte';
 		{artworkScope}
 		{onArtworkError}
 		{scenePick}
-		{scene}
+		scene={renderScene}
 		{rooms}
 		{modelUrls}
 		includeLights={environment !== 'paper'}

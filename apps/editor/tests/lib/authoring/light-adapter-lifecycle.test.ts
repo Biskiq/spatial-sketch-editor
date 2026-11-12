@@ -20,6 +20,7 @@ import { createStageAdapterServices, mountStageAdapter } from '$lib/authoring/st
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
+import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
 import { stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
@@ -130,9 +131,11 @@ async function mounted(options: {
 	if (admitted.kind !== 'admitted') throw new Error(`light fixture not admitted: ${admitted.kind}`);
 	const session = createStageSession({ sessionEpoch: admitted.snapshot.sessionEpoch });
 	session.replace(admitted.snapshot);
+	const lightPreview = createStageLightPreview();
 	const facade = createStageFacade({
 		snapshot: admitted.snapshot,
 		session,
+		lightPreview,
 		...(options.scenePick === undefined ? {} : { scenePick: options.scenePick as never }),
 		...(options.sceneBounds === undefined ? {} : { sceneBounds: options.sceneBounds })
 	});
@@ -154,7 +157,7 @@ async function mounted(options: {
 		if (registration.kind !== 'registered') throw new Error('light fixture adapter did not mount');
 	}
 	facade.camera.evaluate(rect, 2);
-	return { facade, host };
+	return { facade, host, lightPreview };
 }
 
 async function waitFor(predicate: () => boolean): Promise<void> {
@@ -709,6 +712,53 @@ describe('S3a light adapter pointer lifecycle', () => {
 		if (answer?.kind !== 'action') return;
 		await answer.action.run();
 		await waitFor(() => lightsOf(eraser.facade).length === 0);
+	});
+
+	it('publishes a session-only preview during a drag and commits its last value once', async () => {
+		const { facade, host, lightPreview } = await mounted({ entities: [spotAt([0, 2, 0])] });
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const body = facade.marks().find((mark) => mark.id === 'light-body');
+		if (body === undefined) throw new Error('the light has no body mark');
+		const evaluationId = facade.evaluationId()!;
+		const before = host.history();
+		const dragCss: [number, number] = [body.anchor[0] + 90, body.anchor[1] + 15];
+
+		facade.pointerIntent({ phase: 'down', css: body.anchor, evaluationId, handleId: body.id });
+		facade.pointerIntent({ phase: 'move', css: dragCss, evaluationId });
+		const previewed = lightPreview.overrides.get('light-existing');
+		expect(previewed).toBeDefined();
+		expect(previewed!.position).not.toEqual([0, 2, 0]);
+		// A preview is not authored work: no history entry, no canonical change.
+		expect(host.history().depth).toBe(before.depth);
+		expect(host.history().position).toBe(before.position);
+
+		facade.pointerIntent({ phase: 'up', css: dragCss, evaluationId });
+		await waitFor(() => host.history().depth === before.depth + 1);
+		await waitFor(() => !lightPreview.overrides.has('light-existing'));
+		const committed = lightsOf(facade)[0]!;
+		expect(committed.position).toEqual(previewed!.position);
+
+		// Esc/cancel restores the accepted light and writes nothing.
+		const afterMove = host.history();
+		expect(facade.camera.evaluate(RECT, 3).kind).toBe('evaluated');
+		const current = facade.marks().find((mark) => mark.id === 'light-body');
+		if (current === undefined) throw new Error('the moved light has no body mark');
+		facade.pointerIntent({ phase: 'down', css: current.anchor, evaluationId, handleId: current.id });
+		facade.pointerIntent({
+			phase: 'move',
+			css: [current.anchor[0] + 50, current.anchor[1]],
+			evaluationId
+		});
+		expect(lightPreview.overrides.has('light-existing')).toBe(true);
+		facade.pointerIntent({ phase: 'cancel', css: current.anchor, evaluationId });
+		expect(lightPreview.overrides.has('light-existing')).toBe(false);
+		expect(host.history().depth).toBe(afterMove.depth);
+		expect(host.history().position).toBe(afterMove.position);
+		expect(lightsOf(facade)[0]!.position).toEqual(committed.position);
 	});
 
 	it('reads Lit by from object bounds rather than an object centre', async () => {

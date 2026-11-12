@@ -73,6 +73,7 @@
 		type StageSourceHit
 	} from '$lib/authoring/stage/stage-facade';
 	import type { StageMarkView } from '$lib/authoring/stage/stage-handles';
+	import { createStageLightPreview } from '$lib/authoring/stage/stage-light-preview.svelte';
 	import { stageResizeCursorCss } from '$lib/authoring/stage/stage-glyphs';
 	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
 	import {
@@ -266,6 +267,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	const api: ProjectApi | null = createProjectApi({ apiOrigin: env.PUBLIC_API_ORIGIN });
 	const auth = env.PUBLIC_API_ORIGIN ? createProjectAuth(env.PUBLIC_API_ORIGIN) : null;
 	const session = createStageSession({ sessionEpoch: 'session:route-boot' });
+	/** One session-only live lighting preview; it is merged by the editor Stage shell. */
+	const lightPreview = createStageLightPreview();
 
 	const projectSession = createProjectSession({
 		projectId, intent, api, auth, session,
@@ -1320,7 +1323,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		unsubscribeContributions = null;
 		facade?.dispose();
 		acceptance?.dispose();
-		facade = createStageFacade({ snapshot, session, scenePick: scenePick.pick, sceneBounds: scenePick.bounds });
+		facade = createStageFacade({
+			snapshot,
+			session,
+			scenePick: scenePick.pick,
+			sceneBounds: scenePick.bounds,
+			lightPreview
+		});
 		measureTool = createStageMeasure(facade);
 		eraserTool = createStageEraser(facade, () => refreshHostTools());
 		// The session keeps Grid/Snap across a replacement; the presenter re-reads it
@@ -4859,6 +4868,7 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 				{#if boot.status === 'ready' || boot.status === 'empty'}
 					<StageCanvas
 						{scenePick}
+						{lightPreview}
 						geometry={boot.snapshot.domain.geometry}
 						sourceContentId={boot.snapshot.sourceContentId}
 						layoutRevision={boot.snapshot.domain.unitRevisions.layout}

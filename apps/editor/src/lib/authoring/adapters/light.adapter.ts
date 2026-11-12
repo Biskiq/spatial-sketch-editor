@@ -585,6 +585,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return refusal.message;
 			}
 
+			/** Publish the dragged light for this frame; nothing is written. */
+			function publishLightPreview(light: Light): void {
+				services.stage.lightPreview()?.setOverride(light.id, cloneLight(light));
+			}
+
+			function clearLightPreview(id?: string): void {
+				const preview = services.stage.lightPreview();
+				if (preview === null) return;
+				if (id === undefined) preview.clear();
+				else preview.clearOverride(id);
+				preview.flush();
+			}
+
 			function releaseLease(): void {
 				if (lease?.kind === 'granted' && lease.lease.active) lease.lease.release();
 				lease = null;
@@ -890,6 +903,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (outcome.kind === 'refused') noteRefusal(outcome.message);
 				} finally {
 					rearmingAfterInstall = false;
+					// Clear in the same tick the outcome applies, so the accepted value
+					// replaces the preview without a flash. Refusal restores it too.
+					clearLightPreview(entity.id);
 					services.stage.notifySurfaceChange();
 				}
 			}
@@ -1552,15 +1568,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (gesture === null && placement === null) return false;
 					if (intent.phase === 'cancel') {
+						const cancelled = gesture?.entity.id;
 						gesture = null;
 						placement = null;
 						releaseLease();
+						clearLightPreview(cancelled);
 						services.stage.notifySurfaceChange();
 						return true;
 					}
 					if (intent.phase === 'move') {
-						if (gesture !== null) updateGesture(intent, adapterContext);
-						else updatePlacement(intent.css, adapterContext);
+						if (gesture !== null) {
+							updateGesture(intent, adapterContext);
+							publishLightPreview(gesture.entity);
+						} else updatePlacement(intent.css, adapterContext);
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -1678,12 +1698,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					gesture = null;
 					placement = null;
 					releaseLease();
+					clearLightPreview();
 				},
 				dispose() {
 					openTaskKind = null;
 					gesture = null;
 					placement = null;
 					releaseLease();
+					clearLightPreview();
 					if (!rearmingAfterInstall) clearArmedLight();
 				}
 			};

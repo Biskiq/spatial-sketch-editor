@@ -111,6 +111,7 @@ import type {
 	StageSession,
 	StageTask
 } from './stage-session';
+import type { StageLightPreview } from './stage-light-preview.svelte';
 
 /** The capabilities this host actually provides. Anything else refuses mounting. */
 export const HOST_STAGE_CAPABILITIES: readonly string[] = [
@@ -854,6 +855,8 @@ export type StageFacade = {
 	snapshot(): StageReadSnapshot;
 	readonly session: StageSession;
 	readonly camera: CameraSession;
+	/** The session-only light preview, or `null` when this host provides none. */
+	lightPreview(): StageLightPreview | null;
 	evaluation(): ViewportEvaluation | null;
 	evaluationId(): string | null;
 	/** The drawn body of one Scene entity, as the host's pick source measured it. */
@@ -1069,6 +1072,8 @@ export function createStageFacade(input: {
 	readonly outputId?: string;
 	readonly scenePick?: (ray: PointerRay, scene: StageReadSnapshot['domain']['scene']) => SceneRenderedHit | null;
 	readonly sceneBounds?: (id: string, scene: StageReadSnapshot['domain']['scene']) => { readonly min: Vec3; readonly max: Vec3 } | null;
+	/** The session-only light preview the editor shell merges into its render. */
+	readonly lightPreview?: StageLightPreview | null;
 }): StageFacade {
 	const { session } = input;
 	let currentSnapshot = input.snapshot;
@@ -1680,6 +1685,7 @@ export function createStageFacade(input: {
 
 	const facade: StageFacade = {
 		snapshot: () => currentSnapshot,
+		lightPreview: () => input.lightPreview ?? null,
 		session,
 		camera,
 		evaluation: () => camera.evaluation(),
