@@ -710,7 +710,10 @@ uses Card-local display state instead of writing the invalid string `colour` as 
 registry and resolves a light release through its final up position. `3ce705d0` corrects curved-Wall
 Artwork fit, overhanging free starts and the 0.01 m hung threshold from the post-implementation
 self-review, and `11f51fcb` fixes the Index's Lights facet, which filtered on the plural facet id
-while light rows use the singular group and therefore always showed 0 rows.
+while light rows use the singular group and therefore always showed 0 rows. `9784d0cd` adds the
+finish-proposal section to `ux-design.html`; `0923555e` ships the extractable parts of it — the
+Instrument icon set on the Advanced group heads, the Card-foot group summary with text
+Duplicate/Delete and in-place delete confirmation, and refusal-red dashed Artwork ink.
 
 **Verification evidence**
 
@@ -725,6 +728,8 @@ while light rows use the singular group and therefore always showed 0 rows.
   `--maxWorkers=1`. The final full-suite rerun did not complete inside the host's 295 s command limit.
 - Focused suites for this work: `directional-dial`, `light-presentation`, `light-adapter-lifecycle`,
   `light-advanced`, `light-card-fields`, `artwork-wall-move`, `artwork-overlay`, `artwork-card`.
+- After `0923555e`: `light-card-fields.test.ts` and `editor-card-facts.test.ts` — 2 files, 30 tests
+  passed; `npm run check` — 0 errors and the same 4 visitor a11y warnings.
 - Browser pass on a local Vite session against `ux-design.html`: Spot shelf placement created one
   selected light and one undo entry, with the placement chip and cone ghost before the click and the
   Move/Height/Aim/Beam/Soft-edge marks after it; Point showed the lit placement ghost and, once the
@@ -741,12 +746,11 @@ while light rows use the singular group and therefore always showed 0 rows.
 - The Directional dial's centre name chip and other-Directional ticks with click selection are not
   implemented; the approved marks are the ring, From spoke, quarter arc, travel arrows and the two
   point beads. Two Directional lights are therefore indistinguishable on the dial in a browser.
-- The Light Card footer still reads `Advanced` with the shell action menu; the sheet's inline group
-  summary (`Advanced: Colour · Brightness · Shape · Position · Shadows`) and text Duplicate/Delete
-  row are not implemented.
-- A hover over a surface with no passing Artwork pose uses the candidate ghost ink only; there is no
-  separate refusal predicate or refusal ink because the session has no planner refusal preview for
-  Wall fit.
+- The Light Card foot now names the closed Advanced groups and owns Duplicate/Delete. Delete asks
+  in the foot and opens no subject menu; a refusal still reports in the Card's existing status line.
+- A hover over a surface with no passing Artwork pose still uses the candidate ghost ink only. The
+  blocked outline is now refusal-red dashed, but there is no separate hover predicate and no
+  per-planner refusal reason; the fixed `Stops at the wall edge` chip remains.
 - The Artwork fit test samples the nine outer-frame points and rejects a sample that meets another
   Wall or lies more than 0.07 m from the pointer's Wall. It adds no conformal Artwork geometry.
 - The Advanced Aim triplet reads the direction's 3 m fallback point, not a surface intercept, and
