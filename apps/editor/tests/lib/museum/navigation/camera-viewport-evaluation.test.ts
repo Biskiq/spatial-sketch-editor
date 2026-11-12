@@ -41,6 +41,7 @@ import {
 	VIEWPORT_ELEVATION_LIMIT_RADIANS,
 	VIEWPORT_READING_TRANSITION_SECONDS,
 	VIEWPORT_TARGET_PLANE_MAX_METERS,
+	VIEWPORT_TARGET_PLANE_MIN_METERS,
 	viewportGroundReachMeters,
 	type ViewportCameraState,
 	type ViewportEvaluation,
@@ -603,6 +604,40 @@ describe('view viewing intents', () => {
 		const moved = projectWorld(anchor, panned, panned.token);
 		if (moved.kind !== 'projected') throw new Error('Expected projected anchor after pan');
 		expectClose(moved.css[0] - second.css[0], 40, 1e-8);
+	});
+
+	it.each([
+		{ boundary: 'near', hitExtent: 0.025, limit: VIEWPORT_TARGET_PLANE_MIN_METERS, blocked: 0.8, recovering: 1.25, reentering: 3 },
+		{ boundary: 'far', hitExtent: 1500, limit: VIEWPORT_TARGET_PLANE_MAX_METERS, blocked: 1.25, recovering: 0.8, reentering: 0.5 }
+	])('keeps anchored zoom directional at the $boundary boundary', ({ hitExtent, limit, blocked, recovering, reentering }) => {
+		const camera = state({
+			pose: { target: [0, 1.5, 0], azimuthRadians: 0, elevationRadians: 0, targetPlaneHeightMeters: 1 },
+			sceneRadiusMeters: 2000
+		});
+		const before = evaluated(camera);
+		const depth = before.eye[2] * hitExtent;
+		const anchor: Vec3 = [hitExtent / 8, 1.5, before.eye[2] - depth];
+		const original = projectWorld(anchor, before, before.token);
+		if (original.kind !== 'projected') throw new Error('Expected projected anchor');
+		expect(original.visibility).toBe('visible');
+
+		for (const scale of [blocked, 1]) {
+			const result = requestViewingIntent(camera, { kind: 'zoom', scale, anchor }, 0);
+			expect(result.kind).toBe('accepted');
+			expect(result.state.pose).toEqual(camera.pose);
+		}
+
+		for (const scale of [recovering, reentering]) {
+			const result = requestViewingIntent(camera, { kind: 'zoom', scale, anchor }, 0);
+			expect(result.kind).toBe('accepted');
+			const after = evaluated(result.state);
+			expectClose(after.eye[2] - anchor[2], depth * scale, 1e-9);
+			expectClose(after.pose.targetPlaneHeightMeters, scale === recovering ? limit : hitExtent * scale, 1e-9);
+			const projected = projectWorld(anchor, after, after.token);
+			if (projected.kind !== 'projected') throw new Error('Expected projected anchor after zoom');
+			expectClose(projected.css[0], original.css[0], 1e-8);
+			expectClose(projected.css[1], original.css[1], 1e-8);
+		}
 	});
 
 	it('zooms multiplicatively with declared bounds, refusing a non-positive scale', () => {

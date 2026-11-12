@@ -1317,11 +1317,18 @@ export function requestViewingIntent(
 				const eye = eyeOfInspectionPose(settled.pose);
 				const backward = poseDirection(settled.pose);
 				const depth = dotVec3(subtractVec3(eye, intent.anchor), backward);
-				if (depth > 0 && Number.isFinite(depth)) {
-					const oldExtent = depth * settled.pose.targetPlaneHeightMeters /
-						perspectiveDistanceMeters(settled.pose.targetPlaneHeightMeters, settled.pose.fovYDegrees);
-					const extent = clamp(oldExtent * intent.scale, VIEWPORT_TARGET_PLANE_MIN_METERS, VIEWPORT_TARGET_PLANE_MAX_METERS);
-					const nextEye = addVec3(intent.anchor, scaleVec3(subtractVec3(eye, intent.anchor), extent / oldExtent));
+				const hitExtent = depth / perspectiveDistanceMeters(1, settled.pose.fovYDegrees);
+				if (hitExtent > 0 && Number.isFinite(hitExtent)) {
+					// An off-plane hit can already be outside the framing bounds.
+					// Allow movement back toward the range without snapping the eye to it.
+					const nextHitExtent = clamp(
+						hitExtent * intent.scale,
+						Math.min(hitExtent, VIEWPORT_TARGET_PLANE_MIN_METERS),
+						Math.max(hitExtent, VIEWPORT_TARGET_PLANE_MAX_METERS)
+					);
+					if (nextHitExtent === hitExtent) return accept(settled);
+					const extent = clamp(nextHitExtent, VIEWPORT_TARGET_PLANE_MIN_METERS, VIEWPORT_TARGET_PLANE_MAX_METERS);
+					const nextEye = addVec3(intent.anchor, scaleVec3(subtractVec3(eye, intent.anchor), nextHitExtent / hitExtent));
 					const target = subtractVec3(nextEye, scaleVec3(backward, perspectiveDistanceMeters(extent, settled.pose.fovYDegrees)));
 					return accept(withPose(settled, { ...settled.pose, target, targetPlaneHeightMeters: extent }));
 				}

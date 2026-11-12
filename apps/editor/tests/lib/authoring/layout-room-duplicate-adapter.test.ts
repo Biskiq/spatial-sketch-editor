@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
 	extractBoundaryCandidateFaces,
+	planCreateCircularRoom,
 	planCreateWallFirstOpening,
 	planWallChain,
 	setWorkObserver,
@@ -552,6 +553,44 @@ describe('T1 A4 — Duplicate isolated Room', () => {
 			canUndo: beforeHistory.canUndo,
 			canRedo: beforeHistory.canRedo
 		});
+	});
+
+	it('retries a refused placement without validating the moving ghost', async () => {
+		const fixture = isolatedFixture();
+		const circle = planCreateCircularRoom({
+			baseline: fixture.document, center: [14, 2], rim: [16, 2],
+			capture: freshCapture(), levelId: fixture.document.floor.id
+		});
+		if (circle.kind !== 'success') throw new Error(circle.rejection.message);
+		const mounted = await mount({ ...fixture, document: circle.document });
+		mounted.session.setDrafting({ snap: false });
+		settle(mounted.facade, 2);
+		const before = mounted.facade.snapshot().canonicalJson;
+		await openDuplicate(mounted);
+
+		click(mounted, [3, 2]);
+		await eventually(() => mounted.facade.candidatePreviews()[0]?.role === 'refused');
+		expect(mounted.facade.candidatePreviews()[0]?.labels[0]?.text).toContain('circular Wall');
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+		expect(mounted.host.history().position).toBe(0);
+
+		const work: string[] = [];
+		const previous = setWorkObserver({ count: (name) => work.push(name), span: (name) => work.push(name) });
+		try {
+			hover(mounted, [12, 2]);
+			expect(mounted.facade.candidatePreviews()[0]?.role).toBe('subject');
+			hover(mounted, [15, 2]);
+			expect(mounted.facade.candidatePreviews()[0]?.polygons.length).toBeGreaterThan(0);
+		} finally {
+			setWorkObserver(previous);
+		}
+		expect(work.filter((name) => name === 'compile' || name === 'validation:layout-document')).toEqual([]);
+		expect(mounted.facade.snapshot().canonicalJson).toBe(before);
+
+		click(mounted, [15, 2]);
+		await eventually(() => acceptedLayout(mounted.facade).rooms.length === circle.document.rooms.length + 1);
+		expect(mounted.host.history().position).toBe(1);
+		mounted.facade.dispose();
 	});
 
 	it('[cap:layout.room-duplicate edge] refuses a non-isolated Room on the Card, naming the shared Wall', async () => {
