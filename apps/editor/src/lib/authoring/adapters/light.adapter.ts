@@ -58,6 +58,10 @@ import {
 	spotTarget
 } from '../look/light-presentation';
 import {
+	directionalDialFrame,
+	type DirectionalDialFrame
+} from '../look/directional-dial';
+import {
 	artworkLightBounds,
 	horizontalFront,
 	pictureSpotRecipe,
@@ -93,6 +97,9 @@ type Gesture = {
 	readonly fixedTarget?: Vec3;
 	/** The Directional presentation bearing at press, kept while overhead. */
 	readonly lastFrom?: number;
+	/** The dial frame is frozen from press to release of either bead. */
+	readonly dialCenter?: Vec3;
+	readonly dialRadius?: number;
 };
 
 /** Stage pointer intent coordinates are local; Camera rays include the surface offset. */
@@ -776,11 +783,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					kind === 'move' && entity.light === 'spot' && !shift
 						? spotTargetFor(entity, adapterContext)
 						: null;
+				const dial = kind === 'azimuth' || kind === 'elevation'
+					? dialFrameFor(adapterContext)
+					: null;
 				return {
 					kind,
 					entity: cloneLight(entity),
 					...(target?.surfaceBound ? { fixedTarget: [...target.target] as Vec3 } : {}),
-					lastFrom: angles.from
+					lastFrom: angles.from,
+					...(dial === null ? {} : { dialCenter: [...dial.center] as Vec3, dialRadius: dial.radius })
 				};
 			}
 
@@ -879,7 +890,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const point = pointOf(ray, adapterContext.snapshot.domain.datumMeters);
 					if (point === null) return;
 					const angles = presentationAngles(current.rotation, gesture.lastFrom ?? 0);
-					const origin: Vec3 = [0, adapterContext.snapshot.domain.datumMeters, 0];
+					const origin: Vec3 = gesture.dialCenter ?? [0, adapterContext.snapshot.domain.datumMeters, 0];
 					const from =
 						((Math.atan2(point[0] - origin[0], -(point[2] - origin[2])) * 180) / Math.PI +
 							360) %
@@ -890,7 +901,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return;
 				}
 				if (gesture.kind === 'elevation') {
-					const worldMark: Vec3 = [0, adapterContext.snapshot.domain.datumMeters, 0];
+					const worldMark: Vec3 = gesture.dialCenter ?? [0, adapterContext.snapshot.domain.datumMeters, 0];
 					const angles = presentationAngles(current.rotation, gesture.lastFrom ?? 0);
 					const azimuth = (angles.from * Math.PI) / 180;
 					const horizontal: Vec3 = [Math.sin(azimuth), 0, -Math.cos(azimuth)];
@@ -1034,6 +1045,31 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return union;
 			}
 
+			function dialFrameFor(adapterContext: StageAdapterContext): DirectionalDialFrame {
+				const bounds = sceneBoundsUnion();
+				const rect = adapterContext.evaluation.rect;
+				const forward = normalize(
+					sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye)
+				);
+				return directionalDialFrame({
+					datumMeters: adapterContext.snapshot.domain.datumMeters,
+					boundsCenter: bounds === null
+						? null
+						: [
+								(bounds.min[0] + bounds.max[0]) / 2,
+								(bounds.min[1] + bounds.max[1]) / 2,
+								(bounds.min[2] + bounds.max[2]) / 2
+							],
+					project: (point) => adapterContext.project(point),
+					centerRay: adapterContext.ray([
+						rect.left + rect.width / 2,
+						rect.top + rect.height / 2
+					]),
+					viewport: { width: rect.width, height: rect.height },
+					cameraRight: cross(forward, [0, 1, 0])
+				});
+			}
+
 			function guideReachFor(light: Light): number {
 				const authored = lightRange(light);
 				if (authored !== undefined) return authored;
@@ -1047,60 +1083,6 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					);
 				}
 				return Math.max(1, distance(bounds.min, bounds.max));
-			}
-
-			function directionalBoxSegments(light: Light, bounds: SceneBounds | null): [Vec3, Vec3][] {
-				if (bounds === null) return [];
-				const center: Vec3 = [
-					(bounds.min[0] + bounds.max[0]) / 2,
-					(bounds.min[1] + bounds.max[1]) / 2,
-					(bounds.min[2] + bounds.max[2]) / 2
-				];
-				const forward = lightForward(light.rotation);
-				const reference: Vec3 = Math.abs(forward[1]) > 0.9 ? [0, 0, 1] : [0, 1, 0];
-				const right = normalize([
-					forward[1] * reference[2] - forward[2] * reference[1],
-					forward[2] * reference[0] - forward[0] * reference[2],
-					forward[0] * reference[1] - forward[1] * reference[0]
-				]);
-				const up = normalize([
-					right[1] * forward[2] - right[2] * forward[1],
-					right[2] * forward[0] - right[0] * forward[2],
-					right[0] * forward[1] - right[1] * forward[0]
-				]);
-				let minRight = Infinity, maxRight = -Infinity, minUp = Infinity, maxUp = -Infinity;
-				for (const corner of boundsCorners(bounds)) {
-					const offset = sub(corner, center);
-					const r = dot(offset, right);
-					const u = dot(offset, up);
-					minRight = Math.min(minRight, r);
-					maxRight = Math.max(maxRight, r);
-					minUp = Math.min(minUp, u);
-					maxUp = Math.max(maxUp, u);
-				}
-				const depth = distance(bounds.min, bounds.max);
-				const rectangle = [
-					add(center, add(scale(right, minRight), scale(up, minUp))),
-					add(center, add(scale(right, maxRight), scale(up, minUp))),
-					add(center, add(scale(right, maxRight), scale(up, maxUp))),
-					add(center, add(scale(right, minRight), scale(up, maxUp)))
-				];
-				const segments: [Vec3, Vec3][] = [];
-				for (const offset of [scale(forward, depth / 2), scale(forward, -depth / 2)]) {
-					for (let index = 0; index < 4; index += 1) {
-						segments.push([
-							add(rectangle[index]!, offset),
-							add(rectangle[(index + 1) % 4]!, offset)
-						]);
-					}
-				}
-				for (let index = 0; index < 4; index += 1) {
-					segments.push([
-						add(rectangle[index]!, scale(forward, depth / 2)),
-						add(rectangle[index]!, scale(forward, -depth / 2))
-					]);
-				}
-				return segments;
 			}
 
 			function ringSegments(center: Vec3, radius: number, y: number): [Vec3, Vec3][] {
@@ -1122,8 +1104,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 
 			function guideSegments(
 				light: Light,
-				adapterContext: StageAdapterContext,
-				derivedReach: number
+				adapterContext: StageAdapterContext
 			): {
 				readonly segments: readonly (readonly [Vec3, Vec3])[];
 				readonly derivedSegments: readonly (readonly [Vec3, Vec3])[];
@@ -1219,10 +1200,55 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						}
 					}
 				} else {
-					segments.push([
-						light.position,
-						add(light.position, scale(lightForward(light.rotation), derivedReach))
+					// The Directional dial: ring on the datum, the From spoke and the
+					// quarter arc are derived; the three travel arrows are Guide ink.
+					const frame = dialFrameFor(adapterContext);
+					const angles = presentationAngles(light.rotation);
+					const from = (angles.from * Math.PI) / 180;
+					const height = (angles.heightInSky * Math.PI) / 180;
+					const horizontal: Vec3 = [Math.sin(from), 0, -Math.cos(from)];
+					const source: Vec3 = [
+						horizontal[0] * Math.cos(height),
+						Math.sin(height),
+						horizontal[2] * Math.cos(height)
+					];
+					const ring: Vec3[] = [];
+					for (let index = 0; index < 48; index += 1) {
+						const angle = (index / 48) * Math.PI * 2;
+						ring.push([
+							frame.center[0] + Math.cos(angle) * frame.radius,
+							adapterContext.snapshot.domain.datumMeters,
+							frame.center[2] + Math.sin(angle) * frame.radius
+						]);
+					}
+					for (let index = 0; index < ring.length; index += 1) {
+						segments.push([ring[index]!, ring[(index + 1) % ring.length]!]);
+					}
+					derivedSegments.push([
+						frame.center,
+						add(frame.center, scale(horizontal, frame.radius))
 					]);
+					const arcSteps = Math.max(2, Math.round((24 * angles.heightInSky) / 90));
+					for (let index = 0; index < arcSteps; index += 1) {
+						const a = (index / arcSteps) * height;
+						const b = ((index + 1) / arcSteps) * height;
+						const point = (t: number): Vec3 => [
+							frame.center[0] + (horizontal[0] * Math.cos(t)) * frame.radius,
+							frame.center[1] + Math.sin(t) * frame.radius,
+							frame.center[2] + (horizontal[2] * Math.cos(t)) * frame.radius
+						];
+						derivedSegments.push([point(a), point(b)]);
+					}
+					const travel: Vec3 = [-source[0], -source[1], -source[2]];
+					const length = frame.radius * 1.35;
+					for (const offset of [-0.4, 0, 0.4]) {
+						const base = add(frame.center, scale(horizontal, offset * frame.radius));
+						const end = add(base, scale(travel, length));
+						segments.push([base, end]);
+						const back = add(end, scale(travel, -frame.radius * 0.12));
+						const side = scale(horizontal, frame.radius * 0.06);
+						segments.push([end, add(back, side)], [end, sub(back, side)]);
+					}
 				}
 				return { segments, derivedSegments };
 			}
@@ -1344,35 +1370,44 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const range = lightRange(light);
 					const refusalNow = refusalMessage();
 					if (light.light === 'directional') {
-						const worldMark: Vec3 = [0, datum, 0];
-						const radius = Math.max(0.5, guideReachFor(light));
+						// A Directional light has no body mark: the dial's two beads are
+						// the instrument. Their frame is frozen while either bead drags.
+						const frame = gesture?.dialCenter !== undefined && gesture.dialRadius !== undefined
+							? { center: gesture.dialCenter, radius: gesture.dialRadius }
+							: dialFrameFor(adapterContext);
 						const angles = presentationAngles(light.rotation);
+						const from = (angles.from * Math.PI) / 180;
+						const height = (angles.heightInSky * Math.PI) / 180;
+						const horizontal: Vec3 = [Math.sin(from), 0, -Math.cos(from)];
+						const source: Vec3 = [
+							horizontal[0] * Math.cos(height),
+							Math.sin(height),
+							horizontal[2] * Math.cos(height)
+						];
 						return [
 							{
 								role: 'edit',
 								id: 'light-azimuth',
-								kind: 'ring',
-								anchor: worldMark,
-								axis: [0, 1, 0],
-								extent: radius,
+								kind: 'point',
+								anchor: add(frame.center, scale(horizontal, frame.radius)),
 								label: 'From',
 								fact: 'azimuth',
 								verb: 'From {value}°',
 								planner: 'update-light',
+								draw: { pointRadius: 5 },
 								value: formatDegrees(angles.from, 0),
 								refusal: refusalNow
 							},
 							{
 								role: 'edit',
 								id: 'light-elevation',
-								kind: 'ray',
-								anchor: worldMark,
-								axis: normalize([-forward[0], -forward[1], -forward[2]]),
-								extent: radius,
+								kind: 'point',
+								anchor: add(frame.center, scale(source, frame.radius)),
 								label: 'Height in sky',
 								fact: 'elevation',
 								verb: 'Height in sky {value}°',
 								planner: 'update-light',
+								draw: { pointRadius: 5 },
 								value: formatDegrees(angles.heightInSky, 0),
 								refusal: refusalNow
 							}
@@ -1537,22 +1572,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				guides(adapterContext) {
 					const light = effectiveLight(adapterContext);
 					if (light === null) return [];
-					const bounds = sceneBoundsUnion();
-					const guide = guideSegments(
-						light,
-						adapterContext,
-						Math.max(1, guideReachFor(light))
-					);
+					const guide = guideSegments(light, adapterContext);
 					return [
 						{
 							id: 'light-guide',
 							role: 'selection' as const,
-							segments: [
-								...guide.segments,
-								...(light.light === 'directional'
-									? directionalBoxSegments(light, bounds)
-									: [])
-							],
+							segments: guide.segments,
 							derivedSegments: guide.derivedSegments
 						}
 					];

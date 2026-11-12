@@ -692,6 +692,11 @@ describe('S3a light adapter pointer lifecycle', () => {
 		const ids = facade.marks().map((mark) => mark.id);
 		expect(ids).toContain('light-azimuth');
 		expect(ids).toContain('light-elevation');
+		// The dial is a ring on the datum with a spoke and a quarter arc, not a
+		// box around the scene and not a forward ray from the light's position.
+		const dial = facade.guides().find((guide) => guide.id === 'light-guide')!;
+		expect(dial.segments.length).toBeGreaterThan(40);
+		expect(dial.derivedSegments.length).toBeGreaterThan(4);
 		const mark = facade.marks().find((candidate) => candidate.id.includes('light-azimuth'));
 		if (mark === undefined) throw new Error('the selected directional has no azimuth mark');
 		const beforeRotation = [...lightsOf(facade)[0]!.rotation];
