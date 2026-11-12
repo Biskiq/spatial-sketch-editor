@@ -76,7 +76,7 @@ verbatim report untouched.
   support. Inventories the current renderer lock-in surface, proposes a T2 portability rule and
   three minutes-scale probes (count census, unit-cost calibration, prediction check). §7 records
   the owner's decisions and the P1/P2 outcome (stay on `WebGLRenderer`; WebGPU reopen conditions;
-  the open clustered-lighting sweep). Research input, not a contract or plan.
+  `DynamicLighting` as WebGPU's measured many-light advantage). Research input, not a contract or plan.
 
 ## Cross-domain synthesis
 

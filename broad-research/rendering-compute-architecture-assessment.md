@@ -223,27 +223,52 @@ synchronized milliseconds (submit plus a ~1.5 ms GPU readback), not frame time. 
 - The reference estimate on A is about 23 ms before texture cost; triangles (8.95 ms) outweigh
   draws (4.46 ms). Detail and visibility matter as much as instancing. **[A]**
 
-**Gap found at review.** three r187 ships `ClusteredLighting` and `DynamicLighting` for
-`WebGPURenderer` only, without custom shaders. P2 compared forward lighting on both backends, so
-WebGPU's many-light path, the one likely reason to adopt it for the long-term many-lights goal, is
-unpriced. The sweep is recorded as open in PR #316.
+**Lighting-system sweep (added at review).** three r187 ships `ClusteredLighting` and
+`DynamicLighting` for `WebGPURenderer` only, without custom shaders. P2 had compared forward
+lighting on both backends, so a follow-up sweep in PR #316 priced them: ranged, unshadowed point
+lights, same M2, run in the desktop app's Chromium 156. **[M]**
+
+| | 64 lights · 1k separate | 256 lights · 1k separate | 256 lights · 5k instanced | add a 17th light |
+| --- | ---: | ---: | ---: | ---: |
+| A · default (WebGL) | 73.4 ms | fails to compile | fails to compile | 171 ms |
+| B · default | 31.0 ms | 262.5 ms | 341.3 ms | 334 ms |
+| B · `DynamicLighting` | **11.7 ms** | **13.8 ms** | **16.2 ms** | **0.1 ms** |
+| B · `ClusteredLighting` | unstable, ≥ dynamic | unstable, ≥ dynamic | unstable | 9.9 ms |
+
+- WebGL's built-in forward lighting has a hard ceiling: at 256 point lights the fragment shader
+  exceeds `MAX_FRAGMENT_UNIFORM_VECTORS` (1024). Within the 16.7 ms budget it holds about 16 lights
+  in this scene.
+- `WebGPURenderer` + `DynamicLighting` holds 256 unshadowed lights inside 16.7 ms on the M2 and
+  adds a light without recompiling. This is the first measured advantage of WebGPU that matches a
+  stated owner goal.
+- The advantage comes from three's implementation, not the API: a fixed-size light loop could be
+  written for WebGL, but only as custom shader code, which §5.1 discourages.
+- Adding a light recompiles on WebGL (171 ms at 16 lights). That stall is relevant to the T2
+  Lights track today, independent of any backend decision.
+- Not measured: shadows with these systems, spot lights, visual parity, other devices.
 
 ### Resulting decisions (recommended; owner confirms by merge)
 
-1. **Renderer:** `WebGLRenderer` stays the production renderer. No WebGPU trial now. Reopen only
-   when both hold: (a) the product submits through shared materials and instancing, and (b) a
-   many-light or other WebGPU-only need cannot be met on WebGL within the adaptive budget. The
-   clustered/dynamic lighting sweep is the evidence for (b). If a trial ever runs,
-   `WebGLRenderer`, not three's internal fallback, serves browsers without WebGPU.
+1. **Renderer:** `WebGLRenderer` stays the production renderer. No WebGPU trial now: today's
+   Worlds use 3 lights, and the WebGPU advantage begins above about 16. Reopen when both hold:
+   (a) the product submits through shared materials and instancing, and (b) a slice needs more
+   than about 16 simultaneous dynamic lights in one view, or live light changes without a stall,
+   and an adaptive budget on WebGL (cap active lights per view, bake the rest) is not acceptable.
+   The sweep shows (b) is a real path, not a hypothetical: `WebGPURenderer` + `DynamicLighting`
+   would be the trial configuration. If a trial ever runs, `WebGLRenderer`, not three's internal
+   fallback, serves browsers without WebGPU.
 2. **Rust/WASM:** unchanged, closed under the P23B.8 reopen conditions. Nothing here touched it.
 3. **T2:** the tightened §5.1 rule applies now. P2's shadow numbers are input to Gate C's shadow
-   budget (D9). Static shadow caching and a small dynamic-shadow cap are the expected shape.
+   budget (D9). Static shadow caching and a small dynamic-shadow cap are the expected shape. The
+   Lights track should expect a recompile hitch (about 170 ms on the M2) whenever the number of
+   lights in a scene changes on WebGL, and either accept it as an edit-time cost or keep the light
+   count stable.
 4. **T1/T2 refactor order:** describe-once sharing → `InstancedMesh` (not `BatchedMesh` on
    WebGL until rechecked on Windows) → detail and visibility → texture budget. All are
    backend-neutral (§5.3).
 5. **Gate C:** run the P3 protocol in `model.md` on the M2 and an Iris Xe-class laptop when Gate C
-   opens, with the clustered/dynamic lighting rows added. Until then, today's Worlds give no
-   renderer work to do.
+   opens, and run the lighting-system sweep on the same devices (one button on the P2 page). Until
+   then, today's Worlds give no renderer work to do.
 
 ## 8. Sources
 
