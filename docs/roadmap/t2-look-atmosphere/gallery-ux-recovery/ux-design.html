@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T2 Gallery UX Recovery — design sheet</title>
+<style>
+:root{
+  --paper:#f4f2ec; --panel:#fbfaf6; --line:#d9d5c8; --ink:#1f2a24; --ink2:#5d665f;
+  --dock:#12261d; --gold:#d9a521; --gold-soft:#f6dc8a; --refuse:#c2452f; --ghost:#2a62d6;
+  --guide:rgba(31,42,36,.45); --wall:#ebe2cb; --wall2:#ddd2b6; --floor:#c3c5bc; --floor2:#b1b4aa;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:28px 16px 8px;max-width:1120px;margin:0 auto}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:19px;margin:0 0 4px}
+h3{font-size:13px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2)}
+p{margin:0 0 10px} .lede{color:var(--ink2);max-width:74ch}
+nav{position:sticky;top:0;z-index:5;background:var(--dock);padding:8px 16px;display:flex;gap:6px;overflow-x:auto}
+nav a{color:#e9efe9;text-decoration:none;font-size:13px;padding:5px 10px;border-radius:7px;white-space:nowrap}
+nav a:hover{background:#244234}
+main{max-width:1120px;margin:0 auto;padding:8px 16px 60px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:18px 0;scroll-margin-top:52px}
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.stage{background:#8f948c;border-radius:10px;overflow:hidden;border:1px solid #7b8078}
+.stage svg{display:block;width:100%;height:auto}
+.ctl{display:grid;gap:10px;margin-top:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.row>span:first-child{min-width:74px;color:var(--ink2)}
+input[type=range]{flex:1;min-width:120px;accent-color:var(--dock)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{border:0;background:transparent;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+.seg button[aria-pressed=true]{background:var(--dock);color:#fff}
+.val{font:12px var(--mono);color:var(--ink2);min-width:58px;text-align:right}
+ul{margin:0 0 10px;padding-left:18px} li{margin:3px 0}
+.tag{display:inline-block;font:11px var(--mono);padding:1px 6px;border-radius:5px;border:1px solid var(--line);background:#fff}
+.tag.defect{border-color:#e3b4a9;background:#fbeae6;color:#8a2c1b}
+.tag.ux{border-color:#e6d49a;background:#fbf4dc;color:#6f5611}
+.tag.miss{border-color:#b9c8e6;background:#eaf0fb;color:#22438a}
+.note{font-size:13px;color:var(--ink2)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;margin:8px 0}
+.keys b{font:12px var(--mono);font-weight:600}
+/* Card mock */
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:700px){.cards{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);font-size:13px}
+.card .k{font:10px var(--mono);letter-spacing:.1em;color:var(--ink2);text-transform:uppercase}
+.card .t{font-size:17px;font-weight:650;margin:2px 0 10px}
+.card .f{display:grid;grid-template-columns:74px 1fr;gap:8px;align-items:center;margin:7px 0}
+.card .f>label{color:var(--ink2);font-size:12px}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);border-radius:7px;padding:3px 8px;background:#fff;font-size:12px;cursor:pointer;font-family:inherit}
+.chip.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.fld{border:1px solid var(--line);border-radius:7px;padding:3px 7px;font:12px var(--mono);background:#fff;min-width:0;width:84px}
+.unit{font:11px var(--mono);color:var(--ink2)}
+.sw{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid #0002;vertical-align:-1px;margin-right:4px}
+.foot{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:10px;padding-top:8px;color:var(--ink2);font-size:12px}
+.bad{outline:2px dashed var(--refuse);outline-offset:2px;border-radius:4px}
+.cap{font-size:12px;color:var(--ink2);margin:6px 0 0}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tile{border:1px solid var(--line);border-radius:8px;background:#fff;padding:5px 2px 3px;text-align:center;font-size:11px;cursor:pointer;font-family:inherit}
+.tile.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.tile svg{display:block;margin:0 auto 2px}
+.acc{border:1px solid var(--line);border-radius:9px;margin:6px 0;background:#fff;overflow:hidden}
+.acc>button{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:10px;width:100%;padding:8px 10px;cursor:pointer;font-size:13px;align-items:center}
+.acc>button b{font-weight:600}.acc>button span{font:11px var(--mono);color:var(--ink2);text-align:right}
+.acc .body{padding:4px 10px 10px;border-top:1px solid var(--line);display:grid;gap:9px}
+.acc .body .r{display:grid;grid-template-columns:92px 1fr auto;gap:8px;align-items:center;font-size:12px}
+.acc .body .r>label{color:var(--ink2)}
+.ends{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink2);grid-column:2/3;margin-top:-6px}
+.later{opacity:.55;border:1px dashed var(--line);border-radius:7px;padding:5px 8px;font-size:12px;display:flex;justify-content:space-between}
+.dial{width:132px;height:132px;border-radius:50%;position:relative;cursor:crosshair;touch-action:none;background:radial-gradient(circle,#fff 0,#fff0 70%),conic-gradient(from 90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);border:1px solid #0003}
+.dial i{position:absolute;width:12px;height:12px;border-radius:50%;border:2px solid #1f2a24;background:#fff;transform:translate(-50%,-50%);pointer-events:none}
+.ramp{height:8px;border-radius:5px;grid-column:2/3;margin-bottom:-4px;border:1px solid #0002}
+.lit{height:120px;border-radius:10px;background:#3b3f3a;position:relative;overflow:hidden;border:1px solid #2a2d29}
+.lit div{position:absolute;inset:0}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2)}
+.tw{overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>T2 · Gallery UX Recovery</h1>
+  <p class="lede">Proposed gizmos, placement ghosts, Light Cards and Artwork framing. Every panel has a <b>Today / Proposed</b> switch and live controls. The diagrams are schematic: they show what is drawn and what each grip writes, not the final pixel style. Diagnosis and execution order are in <code>fix.md</code>.</p>
+  <p class="note">Legend: <span class="tag defect">defect</span> does not do what it shows · <span class="tag ux">confusing</span> works, unreadable · <span class="tag miss">missing</span> promised, not built. Gold = hovered or held grip. Grey line = guide (where light can reach). Glow = the rendered light.</p>
+</header>
+<nav>
+  <a href="#point">Point light</a><a href="#spot">Spot + Light it</a><a href="#directional">Directional</a>
+  <a href="#cards">Light Cards</a><a href="#advanced">Advanced</a><a href="#artwork">Artwork + Frame</a><a href="#placement">Placement ghosts</a><a href="#decisions">Decisions</a>
+</nav>
+<main>
+
+<section id="point">
+  <h2>Point light</h2>
+  <div class="grid">
+    <div>
+      <div class="stage"><svg id="svgPoint" viewBox="0 0 640 400"></svg></div>
+      <div class="ctl">
+        <div class="row"><span>View</span><div class="seg" data-seg="pMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
+        <div class="row"><span>Height</span><input type="range" id="pH" min="0.3" max="3" step="0.05" value="2.2"><span class="val" id="pHv"></span></div>
+        <div class="row"><span>Reach</span><div class="seg" data-seg="pReach"><button data-v="off" aria-pressed="true">Unlimited</button><button data-v="on">Set</button></div><input type="range" id="pR" min="0.4" max="4.5" step="0.05" value="2.6"><span class="val" id="pRv"></span></div>
+      </div>
+    </div>
+    <div>
+      <h3>What changes</h3>
+      <ul>
+        <li><span class="tag miss">missing</span> An <b>emitter glyph</b> marks the light whenever Lights is open, a light is selected, or the pointer is near. It is the Move grip.</li>
+        <li><span class="tag defect">defect</span> A <b>height stem</b> with a lift knob. Today height can only be typed under More.</li>
+        <li><span class="tag ux">confusing</span> <b>No ring when Reach is Unlimited.</b> Today a ring of half the scene size is drawn for a limit that does not exist.</li>
+        <li><span class="tag defect">defect</span> The Reach grip sits <b>on</b> the ring. Today the grip uses the sphere radius and the ring uses the floor radius, so they separate as the light rises.</li>
+        <li><span class="tag ux">confusing</span> Guide ink is 45 % and dashed. The tag says the light <i>fades to nothing</i> at the ring, so the ring is not read as the bright edge.</li>
+      </ul>
+      <div class="keys"><b>Glyph</b><span>drag: move on the horizontal plane</span><b>Lift knob</b><span>drag: height only</span><b>Ring grip</b><span>drag: Reach (only when set)</span></div>
+      <p class="note">Try: Reach <i>Set</i>, then raise Height above the Reach value.</p>
+    </div>
+  </div>
+</section>
+
+<section id="spot">
+  <h2>Spot light and Light it</h2>
+  <div class="grid">
+    <div>
+      <div class="stage"><svg id="svgSpot" viewBox="0 0 640 400"></svg></div>
+      <div class="ctl">
+        <div class="row"><span>View</span><div class="seg" data-seg="sMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
+        <div class="row"><span>Aim</span><input type="range" id="sA" min="1.2" max="4.8" step="0.05" value="3"><span class="val" id="sAv"></span></div>
+        <div class="row"><span>Beam</span><input type="range" id="sB" min="6" max="60" step="1" value="22"><span class="val" id="sBv"></span></div>
+        <div class="row"><span>Reach</span><div class="seg" data-seg="sReach"><button data-v="off">Unlimited</button><button data-v="on" aria-pressed="true">Set</button></div><input type="range" id="sR" min="1" max="6" step="0.05" value="4"><span class="val" id="sRv"></span></div>
+      </div>
+    </div>
+    <div>
+      <h3>What changes</h3>
+      <ul>
+        <li><span class="tag defect">defect</span> <b>Aim no longer rewrites Reach.</b> Today every aim drag sets Reach to target + 0.5 m. In <i>Today</i>, move Aim and watch Reach follow.</li>
+        <li><span class="tag defect">defect</span> The <b>target sits on the surface</b> the light hits. Today it sits at the cutoff, 0.5 m behind the wall, and the Card shows a third point 1.5 m out.</li>
+        <li><span class="tag ux">confusing</span> The <b>footprint ring</b> is drawn at the target, where the pool is. Today the ring is the far cap at the cutoff: the large black circle.</li>
+        <li><span class="tag ux">confusing</span> <b>Two cone edges</b>, not four struts.</li>
+        <li><span class="tag defect">defect</span> <b>Reach is its own bar</b> on the axis past the target. Today it is a short arrow on top of the Move cross.</li>
+      </ul>
+      <div class="keys"><b>Target</b><span>drag across surfaces: aim only</span><b>Rim grip</b><span>drag: Beam</span><b>Reach bar</b><span>drag along the axis: Reach</span><b>Glyph</b><span>drag: move; the target stays put (Shift keeps the direction)</span></div>
+      <p class="note"><b>Light it</b> is unchanged. A Picture spot inherits this gizmo: its target lands on the picture and the footprint frames it.</p>
+    </div>
+  </div>
+</section>
+
+<section id="directional">
+  <h2>Directional light</h2>
+  <div class="grid">
+    <div>
+      <div class="stage"><svg id="svgDir" viewBox="0 0 640 400"></svg></div>
+      <div class="ctl">
+        <div class="row"><span>View</span><div class="seg" data-seg="dMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
+        <div class="row"><span>From</span><input type="range" id="dAz" min="0" max="359" step="1" value="300"><span class="val" id="dAzv"></span></div>
+        <div class="row"><span>Height in sky</span><input type="range" id="dAl" min="5" max="90" step="1" value="50"><span class="val" id="dAlv"></span></div>
+      </div>
+    </div>
+    <div>
+      <h3>What changes</h3>
+      <ul>
+        <li><span class="tag ux">confusing</span> <b>The box is removed.</b> It is the scene's bounding box turned toward the light; it shows neither direction nor coverage.</li>
+        <li><span class="tag defect">defect</span> A new light is created at <b>50° above the horizon</b>. Today it points straight down, where the azimuth drag changes nothing and the elevation drag is rejected on every move.</li>
+        <li><span class="tag defect">defect</span> The Card says <b>From</b> and <b>Height in sky</b>. Today "Elevation" is the travel direction: straight down reads −90° and +20° lights from under the floor.</li>
+        <li><span class="tag ux">confusing</span> A <b>sun dial</b>: one bead on the compass for where light comes from, one bead on the arc for how high, and arrows showing travel.</li>
+      </ul>
+      <div class="keys"><b>Ring bead</b><span>drag around: From</span><b>Arc bead</b><span>drag up or down: Height in sky</span></div>
+      <p class="note">No Move grip: a directional light has no position. The dial sits at the centre of the scene.</p>
+    </div>
+  </div>
+</section>
+
+<section id="cards">
+  <h2>Light Cards</h2>
+  <p class="note">Left: today, with the problems outlined in red. Right: proposed. Choose a kind.</p>
+  <div class="row" style="margin:8px 0 12px"><div class="seg" data-seg="cKind"><button data-v="point" aria-pressed="true">Point</button><button data-v="spot">Spot</button><button data-v="directional">Directional</button></div></div>
+  <div class="cards"><div id="cardOld"></div><div id="cardNew"></div></div>
+</section>
+
+<section id="advanced">
+  <h2>Advanced</h2>
+  <p class="note">The Card's <b>More</b> becomes <b>Advanced</b>. It opens inside the same Card as a short list of groups. One group is open at a time; each closed group shows its current value, so nothing has to be opened just to read it. New features later join a group as one more row, or arrive as a new group at the end. The everyday Card never grows.</p>
+  <div class="row" style="margin:8px 0 12px"><span>Light</span><div class="seg" data-seg="vKind"><button data-v="point">Point</button><button data-v="spot" aria-pressed="true">Spot</button><button data-v="directional">Directional</button></div>
+    <label style="margin-left:auto;font-size:13px"><input type="checkbox" id="vFuture"> Show how later features would fit</label></div>
+  <div class="grid">
+    <div class="card" id="advCard"></div>
+    <div>
+      <h3>Result</h3>
+      <div class="lit"><div id="advGlow"></div></div>
+      <p class="cap" id="advRead"></p>
+      <h3 style="margin-top:14px">Plain words</h3>
+      <div class="tw"><table>
+        <tr><th>The Card says</th><th>Instead of</th></tr>
+        <tr><td>Warmth · Candle, Warm, Neutral, Cool, Sky</td><td>White balance, colour temperature</td></tr>
+        <tr><td>Colour · Colour amount</td><td>Hue, saturation</td></tr>
+        <tr><td>Brightness</td><td>Intensity, candela, lux</td></tr>
+        <tr><td>Beam width</td><td>Half-angle, cone angle</td></tr>
+        <tr><td>Edge softness · Sharp to Soft</td><td>Penumbra</td></tr>
+        <tr><td>Reach · Unlimited</td><td>Range, cutoff, distance</td></tr>
+        <tr><td>From · Height in sky</td><td>Azimuth, elevation</td></tr>
+        <tr><td>Height</td><td>Y</td></tr>
+      </table></div>
+      <ul style="margin-top:10px">
+        <li><b>Warmth</b> is a slider for white light. <b>Colour</b> is a dial for coloured light. A light is one or the other.</li>
+        <li>The five Brightness chips stay on the everyday Card; Advanced has the fine slider between and beyond them.</li>
+        <li>Exact numbers sit beside each control, small. They are never the only way to change a value.</li>
+        <li>No greyed-out controls: a feature appears when it works. The "later" rows here are examples of where things would go, not commitments.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="artwork">
+  <h2>Artwork and Frame</h2>
+  <div class="grid">
+    <div>
+      <div class="stage" style="background:#e9e0c9"><svg id="svgArt" viewBox="0 0 640 400"></svg></div>
+      <div class="ctl">
+        <div class="row"><span>Selection</span><div class="seg" data-seg="aMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
+        <div class="row"><span>Width</span><input type="range" id="aW" min="60" max="320" step="1" value="180"><span class="val" id="aWv"></span></div>
+      </div>
+      <p class="cap">Change the frame in the Card on the right. In <i>Today</i>, the gold selection ink covers the frame, so the change cannot be seen.</p>
+    </div>
+    <div>
+      <div class="card" id="artCard"></div>
+      <ul style="margin-top:12px">
+        <li><span class="tag defect">defect</span> Selection is a 1 px outline <b>6 px outside</b> the frame. Today a 3 px gold line is drawn on every mesh edge, which hides thin frames.</li>
+        <li><span class="tag miss">missing</span> <b>Size tags stay on</b> while selected; a corner drag adds the framed size.</li>
+        <li><span class="tag ux">confusing</span> Card order: Size, Hang, Frame, actions. Position and rotation move under Advanced.</li>
+        <li><span class="tag ux">confusing</span> <b>Move follows the wall</b>; Turn appears only for free-standing Artwork.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="placement">
+  <h2>Placement ghosts</h2>
+  <div class="grid">
+    <div>
+      <div class="stage"><svg id="svgPlace" viewBox="0 0 640 400"></svg></div>
+      <div class="ctl">
+        <div class="row"><span>Placing</span><div class="seg" data-seg="gKind"><button data-v="object">Object</button><button data-v="artwork">Artwork</button><button data-v="point" aria-pressed="true">Point</button><button data-v="spot">Spot</button></div></div>
+        <div class="row"><span>State</span><div class="seg" data-seg="gState"><button data-v="hover" aria-pressed="true">Armed</button><button data-v="press">Pressed</button><button data-v="refused">Refused</button><button data-v="done">Released</button></div></div>
+        <div class="row"><span>View</span><div class="seg" data-seg="gMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
+      </div>
+    </div>
+    <div>
+      <h3>One behaviour for everything placed</h3>
+      <div class="tw"><table>
+        <tr><th>State</th><th>Shows</th></tr>
+        <tr><td>Armed</td><td>Ghost at the candidate pose, contact mark on the surface, chip "Click to place · Esc cancels"</td></tr>
+        <tr><td>Pressed</td><td>Same ghost. Spot only: the cone follows the drag to its target</td></tr>
+        <tr><td>Refused</td><td>Ghost in red, dashed, with the reason</td></tr>
+        <tr><td>Released</td><td>One undo step, subject selected, tool stays armed</td></tr>
+      </table></div>
+      <ul style="margin-top:10px">
+        <li><span class="tag miss">missing</span> <b>Lights</b> show nothing until the button is down, then only a text label. Switch to <i>Today</i> with Point or Spot.</li>
+        <li><b>Artwork</b> already has a ghost; it gains the outline, the size tag and a placeholder while the image loads.</li>
+        <li><b>Objects</b> are the reference behaviour and do not change.</li>
+        <li><b>Directional</b> has no ghost: it is created when picked from the shelf.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="decisions">
+  <h2>Decisions</h2>
+  <p class="note">All accepted by the owner. <code>fix.md</code> is the specification; this table is the summary.</p>
+  <div class="tw"><table>
+    <tr><th>#</th><th>Decision</th><th>Accepted</th></tr>
+    <tr><td>O1</td><td>Where a new light sits relative to the click</td><td>Point: 0.30 m off walls and ceilings. Spot: 0.10 m. Both: 2.20 m above a floor click</td></tr>
+    <tr><td>O2</td><td>Moving a light</td><td>Horizontal drag plus a height stem</td></tr>
+    <tr><td>O3</td><td>Moving a Spot</td><td>Keeps its target; Shift keeps its direction</td></tr>
+    <tr><td>O4</td><td>Directional dial position</td><td>Centre of the scene</td></tr>
+    <tr><td>O5</td><td>Creating a Directional light</td><td>On shelf pick, no Stage click</td></tr>
+    <tr><td>O6</td><td>Brightness chips</td><td>0.25× … 4×, with the row label</td></tr>
+    <tr><td>O7</td><td>Turn grip on wall-hung Artwork</td><td>Hidden</td></tr>
+    <tr><td>O8</td><td>Approved T2 text</td><td>Updated in the implementing PR</td></tr>
+    <tr><td>O9</td><td>More becomes Advanced</td><td>Grouped list, one group open, plain words</td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+/* ---------- tiny helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const state = { pMode:'new', pReach:'off', sMode:'new', sReach:'on', dMode:'new', cKind:'point', aMode:'new', gKind:'point', gState:'hover', gMode:'new', vKind:'spot' };
+const art = { style:'float', color:'#1b1b1b', colorName:'Black', mat:true };
+const S = 62, OX = 250, OY = 110;
+const P = ([x,y,z]) => [OX + (x - z) * S * 0.86, OY + (x + z) * S * 0.36 - y * S * 0.86];
+const pts = (list) => list.map(P).map(([x,y]) => x.toFixed(1)+','+y.toFixed(1)).join(' ');
+const add = (a,b) => [a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub = (a,b) => [a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul = (a,k) => [a[0]*k,a[1]*k,a[2]*k];
+const len = (a) => Math.hypot(a[0],a[1],a[2]);
+const norm = (a) => mul(a, 1/(len(a)||1));
+const cross = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const ring = (c,u,v,r,n=56) => Array.from({length:n},(_,i)=>{const t=i/n*Math.PI*2;return add(c,add(mul(u,Math.cos(t)*r),mul(v,Math.sin(t)*r)));});
+const line = (a,b,st) => { const [x1,y1]=P(a),[x2,y2]=P(b); return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${st}/>`; };
+const G = 'stroke="rgba(31,42,36,.5)" stroke-width="1.2" fill="none"';
+const GD = G + ' stroke-dasharray="4 4"';
+const BLK = 'stroke="#111" stroke-width="1.6" fill="none"';
+const label = (p, text, o={}) => { const [x,y]=Array.isArray(p[0])?p:[p[0],p[1]]; const w=text.length*6.1+12; const dx=o.dx??10, dy=o.dy??-10;
+  return `<g transform="translate(${x+dx},${y+dy})"><rect x="0" y="-11" width="${w}" height="17" rx="4" fill="${o.bg||'#12261d'}"/><text x="6" y="1.5" font-size="10.5" font-family="ui-monospace,Menlo,monospace" fill="${o.fg||'#fff'}">${text}</text></g>`; };
+const grip = (p, on) => { const [x,y]=P(p); return `<circle cx="${x}" cy="${y}" r="5" fill="${on?'#d9a521':'#fff'}" stroke="${on?'#6b4f08':'#1f2a24'}" stroke-width="1.4"/>`; };
+function glyph(p, kind, sel=true, dir=[0,1]) {
+  const [x,y]=P(p); const c = sel ? '#d9a521' : '#fff'; const k='#1f2a24'; let s='';
+  if (kind==='point') for (let i=0;i<8;i++){const a=i*Math.PI/4; s+=`<line x1="${x+Math.cos(a)*8}" y1="${y+Math.sin(a)*8}" x2="${x+Math.cos(a)*12}" y2="${y+Math.sin(a)*12}" stroke="${k}" stroke-width="1.4"/>`;}
+  if (kind==='spot'){const a=Math.atan2(dir[1],dir[0]); const q=(d,r)=>[x+Math.cos(a+d)*r,y+Math.sin(a+d)*r]; const A=q(-.5,15),B=q(.5,15); s+=`<polygon points="${x},${y} ${A} ${B}" fill="${c}" stroke="${k}" stroke-width="1.2"/>`;}
+  return s+`<circle cx="${x}" cy="${y}" r="6.5" fill="${c}" stroke="${k}" stroke-width="1.4"/>`;
+}
+function room(wallLit='') {
+  const floor = [[0,0,0],[6,0,0],[6,0,4],[0,0,4]], wall=[[0,0,0],[6,0,0],[6,3,0],[0,3,0]], side=[[0,0,0],[0,0,4],[0,3,4],[0,3,0]];
+  let g = `<polygon points="${pts(floor)}" fill="#c3c5bc"/>`;
+  for (let i=1;i<6;i++) g += line([i,0,0],[i,0,4],'stroke="#aeb1a7" stroke-width="1"');
+  for (let i=1;i<4;i++) g += line([0,0,i],[6,0,i],'stroke="#aeb1a7" stroke-width="1"');
+  g += `<polygon points="${pts(side)}" fill="#ddd2b6"/><polygon points="${pts(wall)}" fill="#ebe2cb"/>`;
+  return g + wallLit;
+}
+const defs = `<defs><radialGradient id="glow"><stop offset="0" stop-color="#fff6cf" stop-opacity=".95"/><stop offset=".55" stop-color="#ffe9a8" stop-opacity=".45"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient>
+<marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1f2a24"/></marker></defs>`;
+const pool = (poly) => `<polygon points="${pts(poly)}" fill="url(#glow)"/>`;
+
+/* ---------- Point ---------- */
+function drawPoint() {
+  const h=+$('pH').value, r=+$('pR').value, on=state.pReach==='on', nw=state.pMode==='new';
+  $('pHv').textContent=h.toFixed(2)+' m'; $('pRv').textContent=on?r.toFixed(2)+' m':'—'; $('pR').disabled=!on;
+  const B=[3,h,2], F=[3,0,2], X=[1,0,0], Z=[0,0,1];
+  const rho = r>=h ? Math.sqrt(r*r-h*h) : 0;
+  const lit = on ? Math.max(.3, rho*.6) : Math.max(.8, 2.6-h*.5);
+  let s = defs + room() + pool(ring(F,X,Z,lit+.6));
+  if (!nw) {
+    const rr = on ? (r>=h?rho:r) : 3.2, cy = on && r<h ? B : F;
+    s += `<polygon points="${pts(ring(cy,X,Z,rr))}" ${BLK}/>` + line(B,F,BLK+' stroke-dasharray="5 4"');
+    const gp = add(cy,[-(on?r:3.2),0,0]); const [gx,gy]=P(gp);
+    s += `<path d="M${gx-11},${gy+3} q11,-12 22,0" ${BLK}/><path d="M${gx-13},${gy-3} l2,7 l6,-3" ${BLK}/>`;
+    const [bx,by]=P(B); s += `<path d="M${bx-11},${by} h22 M${bx},${by-11} v22" stroke="#111" stroke-width="2.2"/>`;
+    s += label(P(gp),'Reach grip (uses sphere radius)',{dx:-70,dy:-18,bg:'#c2452f'});
+    if(!on) s += label(P(add(F,[3.2,0,0])),'ring drawn, but Reach is Unlimited',{dx:-150,dy:24,bg:'#c2452f'});
+  } else {
+    s += line(B,F,GD); const [fx,fy]=P(F); s += `<circle cx="${fx}" cy="${fy}" r="3" fill="#1f2a24" opacity=".6"/>`;
+    const K=add(B,[0,.42,0]); s += line(B,K,G); const [kx,ky]=P(K);
+    s += `<path d="M${kx-5},${ky+4} L${kx},${ky-5} L${kx+5},${ky+4} z" fill="#fff" stroke="#1f2a24" stroke-width="1.4"/>`;
+    s += label([kx,ky],'Height '+h.toFixed(2)+' m',{dx:10,dy:2});
+    if (on && r>=h) { s += `<polygon points="${pts(ring(F,X,Z,rho))}" ${GD}/>`; const gp=add(F,[rho*.7,0,rho*.7]); s += grip(gp,true) + label(P(gp),'Reach '+r.toFixed(2)+' m · fades to nothing here',{dy:18}); }
+    if (on && r<h) { const [bx,by]=P(B); s += `<circle cx="${bx}" cy="${by}" r="26" ${GD}/><circle cx="${bx+26}" cy="${by}" r="5" fill="#d9a521" stroke="#6b4f08" stroke-width="1.4"/>` + label([bx+26,by],'Reach '+r.toFixed(2)+' m · does not reach the floor',{dy:20,dx:-40}); }
+    s += glyph(B,'point');
+  }
+  $('svgPoint').innerHTML = s;
+}
+
+/* ---------- Spot ---------- */
+function drawSpot() {
+  const tx=+$('sA').value, beam=+$('sB').value*Math.PI/180, on=state.sReach==='on', nw=state.sMode==='new';
+  const B=[3,2.75,2.3], T=[tx,1.45,0], ax=norm(sub(T,B)), d=len(sub(T,B));
+  let reach=+$('sR').value;
+  if (!nw) { reach = d+.5; $('sR').value = Math.min(6,reach); }
+  $('sAv').textContent=d.toFixed(2)+' m'; $('sBv').textContent=(beam*180/Math.PI).toFixed(0)+'°';
+  $('sRv').textContent=(on||!nw)?reach.toFixed(2)+' m':'—'; $('sR').disabled=!on||!nw;
+  const u=norm(cross(ax,[0,1,0])), v=norm(cross(u,ax));
+  const wallR = d*Math.tan(beam);
+  const lit = pool(ring(T,[1,0,0],[0,1,0],wallR*1.25).map(([x,y,z])=>[Math.min(6,Math.max(0,x)),Math.min(3,Math.max(0,y)),0]));
+  let s = defs + room(lit);
+  const b2=P(B);
+  if (!nw) {
+    const C=add(B,mul(ax,reach)), R=reach*Math.tan(beam), rg=ring(C,u,v,R);
+    s += `<polygon points="${pts(rg)}" ${BLK}/>`;
+    [0,14,28,42].forEach(i=>{ s+=line(B,rg[i],BLK); });
+    const [cx,cy]=P(C); s += `<circle cx="${cx}" cy="${cy}" r="5" fill="#fff" stroke="#111" stroke-width="1.6"/>` + label([cx,cy],'Aim grip at cutoff, 0.5 m behind the wall',{bg:'#c2452f',dy:22,dx:-60});
+    s += `<path d="M${b2[0]-11},${b2[1]} h22 M${b2[0]},${b2[1]-11} v22" stroke="#111" stroke-width="2.2"/>`;
+    const a2=P(add(B,mul(ax,.45))); s += `<line x1="${b2[0]+6}" y1="${b2[1]+2}" x2="${a2[0]}" y2="${a2[1]}" stroke="#111" stroke-width="1.8" marker-end="url(#ah)"/>` + label(b2,'Reach arrow on top of Move',{bg:'#c2452f',dy:-16});
+  } else {
+    const rg=ring(T,u,v,wallR), r2=rg.map(P), t2=P(T);
+    const base=Math.atan2(t2[1]-b2[1],t2[0]-b2[0]); let lo=[9,0], hi=[-9,0];
+    r2.forEach((p,i)=>{ let a=Math.atan2(p[1]-b2[1],p[0]-b2[0])-base; a=Math.atan2(Math.sin(a),Math.cos(a)); if(a<lo[0])lo=[a,i]; if(a>hi[0])hi=[a,i]; });
+    s += `<polygon points="${pts(rg)}" ${G}/>` + line(B,rg[lo[1]],G) + line(B,rg[hi[1]],G);
+    if (on) { const C=add(B,mul(ax,reach)), w=.22;
+      s += line(T,C,GD) + line(add(C,mul(u,-w)),add(C,mul(u,w)),'stroke="#1f2a24" stroke-width="2.4"') + grip(C,false)
+        + label(P(C), reach<d ? 'Reach '+reach.toFixed(2)+' m · stops before the target' : 'Reach '+reach.toFixed(2)+' m', {dy:20, bg: reach<d?'#c2452f':'#12261d'}); }
+    const rim=rg[8]; s += grip(rim,true) + label(P(rim),'Beam '+(beam*180/Math.PI).toFixed(0)+'°',{dy:-12});
+    s += `<circle cx="${t2[0]}" cy="${t2[1]}" r="5.5" fill="#fff" stroke="#1f2a24" stroke-width="1.6"/><circle cx="${t2[0]}" cy="${t2[1]}" r="1.6" fill="#1f2a24"/>` + label(t2,'Aim · '+d.toFixed(2)+' m',{dx:-78,dy:22});
+    const K=add(B,[0,.4,0]), k2=P(K); s += line(B,[3,0,2.3],GD) + line(B,K,G) + `<path d="M${k2[0]-5},${k2[1]+4} L${k2[0]},${k2[1]-5} L${k2[0]+5},${k2[1]+4} z" fill="#fff" stroke="#1f2a24" stroke-width="1.4"/>`;
+    s += glyph(B,'spot',true,[t2[0]-b2[0],t2[1]-b2[1]]);
+  }
+  $('svgSpot').innerHTML = s;
+}
+
+/* ---------- Directional ---------- */
+const compass = (deg) => ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45)%8];
+function drawDir() {
+  const az=+$('dAz').value, al=+$('dAl').value, nw=state.dMode==='new';
+  $('dAzv').textContent=az+'°'; $('dAlv').textContent=al+'°';
+  const a=az*Math.PI/180, e=al*Math.PI/180, C=[3,0,2], R=1.35, up=[0,1,0];
+  const sH=[Math.sin(a),0,-Math.cos(a)], src=add(mul(sH,Math.cos(e)),mul(up,Math.sin(e))), perp=[Math.cos(a),0,Math.sin(a)];
+  const sh = add(C, mul(sH, -Math.min(2.2, 0.9/Math.tan(e))));
+  let s = defs + room() + `<polygon points="${pts([[2.6,0,1.6],[3.4,0,1.6],[3.4,.9,1.6],[2.6,.9,1.6]])}" fill="#d8ccb0"/><polygon points="${pts([[3.4,0,1.6],[3.4,0,2.4],[3.4,.9,2.4],[3.4,.9,1.6]])}" fill="#c9bd9f"/><polygon points="${pts([[2.6,.9,1.6],[3.4,.9,1.6],[3.4,.9,2.4],[2.6,.9,2.4]])}" fill="#f1e8d2"/>`;
+  s += `<polygon points="${pts([[2.6,0,2.4],[3.4,0,2.4],add([3.4,0,2.4],sub(sh,C)),add([2.6,0,2.4],sub(sh,C))])}" fill="#1f2a24" opacity=".16"/>`;
+  if (!nw) {
+    const bx=[[.3,0,.3],[5.7,0,.3],[5.7,0,3.7],[.3,0,3.7]], off=mul(src,-.01), t=bx.map(p=>add(p,[.5,2.9,-.2]));
+    s += `<polygon points="${pts(bx)}" ${BLK}/><polygon points="${pts(t)}" ${BLK}/>`; bx.forEach((p,i)=>{ s+=line(p,t[i],BLK); });
+    s += line([0,0,0],[0,-.7,0],BLK+' marker-end="url(#ah)"') + label(P([0,0,0]),'Elevation ray at world origin, into the floor',{bg:'#c2452f',dy:-14});
+    s += label(P([5.2,2.9,1]),'Box = scene bounds, not coverage',{bg:'#c2452f',dx:-150,dy:-12});
+  } else {
+    s += `<polygon points="${pts(ring(C,[1,0,0],[0,0,1],R))}" ${G}/>`;
+    s += line(add(C,[0,0,-R]),add(C,[0,0,-R-.18]),'stroke="#1f2a24" stroke-width="1.6"'); { const p=P(add(C,[0,0,-R-.38])); s+=`<text x="${p[0]-6}" y="${p[1]+4}" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="#1f2a24" opacity=".7">0°</text>`; }
+    const arc=Array.from({length:19},(_,i)=>{const t=i/18*Math.PI/2;return add(C,add(mul(sH,Math.cos(t)*R),mul(up,Math.sin(t)*R)));});
+    s += `<polyline points="${pts(arc)}" ${GD}/>` + line(C,add(C,mul(sH,R)),GD);
+    [-.55,0,.55].forEach(k=>{ const o=add(C,mul(perp,k)); s+=line(add(o,mul(src,1.9)),add(o,mul(src,.55)),'stroke="#1f2a24" stroke-width="1.5" marker-end="url(#ah)" opacity=".8"'); });
+    const rb=add(C,mul(sH,R)), ab=add(C,mul(src,R));
+    s += grip(rb,false) + label(P(rb),'From '+az+'°',{dy:20}) + grip(ab,true) + label(P(ab),'Height in sky '+al+'°',{dy:-12});
+  }
+  $('svgDir').innerHTML = s;
+}
+
+/* ---------- Light cards ---------- */
+function drawCards() {
+  const k=state.cKind, name={point:'Point light',spot:'Picture spot',directional:'Directional light'}[k];
+  const warm=`<div class="chips"><span class="chip on"><i class="sw" style="background:#ffd6a5"></i>Warm</span><span class="chip"><i class="sw" style="background:#fff"></i>Neutral</span><span class="chip"><i class="sw" style="background:#dbe9ff"></i>Cool</span></div>`;
+  const bright=`<div class="chips">${['0.25×','0.5×','1×','2×','4×'].map((c,i)=>`<span class="chip${i===2?' on':''}">${c}</span>`).join('')}</div>`;
+  const shadow=`<label><input type="checkbox" checked> Cast shadow</label>`;
+  let old=`<div class="card"><div class="k">Light</div><div class="t">${name}</div>${warm}<div style="height:6px"></div><div class="bad">${bright}</div><div class="cap">No label: read as Reach multipliers</div>`;
+  if(k==='point') old+=`<div class="f"><label>Reach</label><span class="fld bad" style="width:150px">2.4545373650812587</span></div>`;
+  if(k==='spot') old+=`<div class="f"><label>Beam</label><span><span class="fld">56</span> <i class="unit">half-angle · °</i></span></div>`;
+  old+=`<div style="margin:6px 0">${shadow}</div>`;
+  if(k==='point') old+=`<div class="f bad"><label>Aim</label><span class="fld" style="width:140px">3.00 · 0.70 · 2.00</span></div><div class="cap">A point light has no aim</div>`;
+  if(k==='directional') old+=`<div class="f bad"><label>Elevation</label><span><span class="fld">20</span> <i class="unit">° (lights from below)</i></span></div>`;
+  old+=`<p class="cap" style="margin-top:8px">${k==='directional'?'1× · π lx':'1× · π cd'} · ${name}</p><p class="cap bad">Paper draws the guide only; Living draws the light.</p><div class="cap">Shown in 3D, where the light is drawn</div><div class="foot"><span>⛶</span><span>More ⌄</span></div></div>`;
+  let nw=`<div class="card"><div class="k">Light · ${k}</div><div class="t">${name}</div><div class="f"><label>Warmth</label>${warm}</div><div class="f"><label>Brightness</label>${bright}</div>`;
+  if(k==='point') nw+=`<div class="f"><label>Reach</label><span class="chips"><span class="chip">Unlimited</span><span class="fld">2.45</span><i class="unit">m</i></span></div>`;
+  if(k==='spot') nw+=`<div class="f"><label>Beam</label><span><span class="fld">56.0</span> <i class="unit">°</i></span></div>`;
+  nw+=`<div class="f"><label>Shadow</label>${shadow.replace("Cast shadow","Cast shadows")}</div>`;
+  nw+=`<div class="foot"><span>Advanced: ${k==='directional'?'Colour · Brightness · Direction · Shadows':k==='spot'?'Colour · Brightness · Shape · Position · Shadows':'Colour · Brightness · Shape · Position · Shadows'}</span><span>⌄</span></div><div class="foot" style="border:0;margin-top:2px;padding-top:2px"><span>Duplicate</span><span style="color:#c2452f">Delete</span></div></div>`;
+  $('cardOld').innerHTML='<h3>Today</h3>'+old; $('cardNew').innerHTML='<h3>Proposed</h3>'+nw;
+}
+
+/* ---------- Artwork ---------- */
+const FR={none:{face:0,name:'None'},thin:{face:1.8,name:'Thin'},gallery:{face:6,name:'Gallery'},float:{face:1.5,name:'Float'}};
+function drawArt() {
+  const w=+$('aW').value, h=w*0.46, nw=state.aMode==='new', f=FR[art.style], mat=art.mat?6:0, rev=art.style==='float'?1.2:0;
+  $('aWv').textContent=w+' cm';
+  const sc=1.55, ow=(w+2*(f.face+mat+rev))*sc, oh=(h+2*(f.face+mat+rev))*sc, cx=320, cy=195, x0=cx-ow/2, y0=cy-oh/2;
+  let s=`<rect x="0" y="0" width="640" height="400" fill="#e9e0c9"/><rect x="${x0+5}" y="${y0+7}" width="${ow}" height="${oh}" fill="#0002"/>`;
+  if(f.face>0) s+=`<rect x="${x0}" y="${y0}" width="${ow}" height="${oh}" fill="${art.color}"/>`;
+  let i=f.face*sc; if(rev) { s+=`<rect x="${x0+i}" y="${y0+i}" width="${ow-2*i}" height="${oh-2*i}" fill="#2a2420"/>`; i+=rev*sc; }
+  if(mat){ s+=`<rect x="${x0+i}" y="${y0+i}" width="${ow-2*i}" height="${oh-2*i}" fill="#f6f3ec"/>`; i+=mat*sc; }
+  const iw=ow-2*i, ih=oh-2*i;
+  s+=`<rect x="${x0+i}" y="${y0+i}" width="${iw}" height="${ih}" fill="#17382d"/><polygon points="${cx-iw*.22},${cy+ih*.18} ${cx+iw*.22},${cy+ih*.18} ${cx+iw*.14},${cy-ih*.2} ${cx-iw*.14},${cy-ih*.2}" fill="#e8e6de"/>`;
+  const fw=(w+2*(f.face+mat+rev)).toFixed(1), fh=(h+2*(f.face+mat+rev)).toFixed(1);
+  if(!nw){
+    const gl=(x,y,ww,hh)=>`<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="none" stroke="#e9b320" stroke-width="5"/>`;
+    s+=gl(x0,y0,ow,oh); if(f.face>0) s+=gl(x0+f.face*sc,y0+f.face*sc,ow-2*f.face*sc,oh-2*f.face*sc); if(mat) s+=gl(x0+i,y0+i,iw,ih);
+    [[x0,y0],[x0+ow,y0],[x0,y0+oh],[x0+ow,y0+oh]].forEach(([x,y])=>{s+=`<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="#f9d772" stroke="#292414"/>`;});
+    s+=label([x0+ow,y0],'Gold ink on every mesh edge hides the frame',{bg:'#c2452f',dx:-250,dy:-14});
+  } else {
+    const o=7; s+=`<rect x="${x0-o}" y="${y0-o}" width="${ow+2*o}" height="${oh+2*o}" fill="none" stroke="#d9a521" stroke-width="1.2"/>`;
+    [[x0-o,y0-o],[x0+ow+o,y0-o],[x0-o,y0+oh+o],[x0+ow+o,y0+oh+o]].forEach(([x,y])=>{s+=`<rect x="${x-4.5}" y="${y-4.5}" width="9" height="9" fill="#fff" stroke="#d9a521" stroke-width="1.6"/>`;});
+    s+=label([cx,y0+oh+o],w.toFixed(1)+' cm',{dx:-30,dy:22,bg:'#f6dc8a',fg:'#292414'})+label([x0+ow+o,cy],h.toFixed(1)+' cm',{dx:10,dy:4,bg:'#f6dc8a',fg:'#292414'});
+    s+=`<circle cx="${cx}" cy="${cy}" r="11" fill="#fff" stroke="#1f2a24"/><path d="M${cx-6},${cy} h12 M${cx},${cy-6} v12" stroke="#1f2a24" stroke-width="1.4"/>`;
+  }
+  $('svgArt').innerHTML=s;
+  const thumb=(st)=>{const fc=FR[st].face; return `<svg width="34" height="24" viewBox="0 0 34 24"><rect x="2" y="2" width="30" height="20" fill="${fc?art.color:'#17382d'}"/>${fc?`<rect x="${2+Math.max(1.5,fc*.7)}" y="${2+Math.max(1.5,fc*.7)}" width="${30-2*Math.max(1.5,fc*.7)}" height="${20-2*Math.max(1.5,fc*.7)}" fill="${st==='float'?'#2a2420':'#17382d'}"/>`:''}${st==='float'?'<rect x="6" y="6" width="22" height="12" fill="#17382d"/>':''}</svg>`;};
+  const cols=[['#1b1b1b','Black'],['#8a6238','Walnut'],['#f4f1ea','Ivory']];
+  $('artCard').innerHTML=`<div class="k">Artwork</div><div class="t">Toobig.png</div>
+   <h3>Size</h3><div class="row"><span class="fld">${w.toFixed(1)}</span><span title="Aspect locked">🔒</span><span class="fld">${h.toFixed(1)}</span><i class="unit">cm</i></div><p class="cap">Framed ${fw} × ${fh} cm${f.face?' · 4.0 cm deep':''}</p>
+   <h3 style="margin-top:10px">Hang</h3><div class="row"><span class="fld">145.0</span><i class="unit">cm centre above floor</i></div>
+   <h3 style="margin-top:10px">Frame</h3><div class="tiles">${Object.keys(FR).map(st=>`<button class="tile${art.style===st?' on':''}" data-style="${st}">${thumb(st)}${FR[st].name}</button>`).join('')}</div>
+   <div class="row" style="margin-top:8px">${cols.map(([c,n])=>`<button class="chip${art.color===c?' on':''}" data-color="${c}" data-name="${n}" ${art.style==='none'?'disabled style="opacity:.4"':''}><i class="sw" style="background:${c}"></i>${n}</button>`).join('')}</div>
+   <label class="row" style="margin-top:8px"><input type="checkbox" id="matBox" ${art.mat?'checked':''}> Mat, 6 cm</label>
+   <p class="cap">${art.style==='none'?'No frame':f.name+' · '+art.colorName}${art.mat?' · Mat 6 cm':''}</p>
+   <div class="foot"><b style="color:#1f2a24">Light it</b><span>Replace image</span><span>Advanced ⌄</span></div>`;
+}
+$('artCard').addEventListener('click',(e)=>{const t=e.target.closest('[data-style],[data-color]'); if(!t||t.disabled) return; if(t.dataset.style) art.style=t.dataset.style; else {art.color=t.dataset.color; art.colorName=t.dataset.name;} drawArt();});
+$('artCard').addEventListener('change',(e)=>{ if(e.target.id==='matBox'){art.mat=e.target.checked; drawArt();} });
+
+/* ---------- Placement ---------- */
+function drawPlace() {
+  const k=state.gKind, st=state.gState, nw=state.gMode==='new', ref=st==='refused', done=st==='done';
+  const col = ref ? '#c2452f' : '#2a62d6', dash = ref ? 'stroke-dasharray="5 4"' : 'stroke-dasharray="2 4"';
+  const GH=`stroke="${col}" stroke-width="1.5" fill="none" ${dash}`;
+  let s=defs+room(), chipAt, chip = ref ? {object:'Overlaps Wall 1',artwork:'Not a wall face',point:'Outside the project',spot:'Outside the project'}[k] : done ? 'Placed · selected · tool stays armed' : st==='press' && k==='spot' ? 'Release on what it should light' : 'Click to place · Esc cancels';
+  const lightHidden = !nw && (k==='point'||k==='spot');
+  if(k==='object'){ const a=[2.2,0,1.6], b=[3.2,0,2.6], c=[[a[0],0,a[2]],[b[0],0,a[2]],[b[0],0,b[2]],[a[0],0,b[2]]], t=c.map(p=>[p[0],.9,p[2]]);
+    if(done) s+=`<polygon points="${pts(t)}" fill="#f1e8d2"/><polygon points="${pts([c[1],c[2],t[2],t[1]])}" fill="#c9bd9f"/><polygon points="${pts([c[3],c[2],t[2],t[3]])}" fill="#d8ccb0"/><polygon points="${pts(t)}" fill="none" stroke="#d9a521" stroke-width="2"/>`;
+    else { s+=`<polygon points="${pts(c)}" ${GH}/><polygon points="${pts(t)}" ${GH}/>`; c.forEach((p,i)=>{s+=line(p,t[i],GH);}); }
+    chipAt=P([3.2,.9,2.6]); }
+  if(k==='artwork'){ const q=[[2,1,0],[4,1,0],[4,1.95,0],[2,1.95,0]];
+    s+=`<polygon points="${pts(q)}" fill="#17382d" opacity="${done?1:.65}"/>`;
+    if(nw||done) s+=`<polygon points="${pts(q)}" fill="none" stroke="${done?'#d9a521':col}" stroke-width="1.4" ${done?'':dash}/>`;
+    if(nw&&!done&&!ref) s+=line([0,1.475,0],[6,1.475,0],'stroke="#2a62d6" stroke-width="1" stroke-dasharray="6 5" opacity=".6"')+label(P([.2,1.475,0]),'Eye line 147.5 cm',{dy:-8,dx:4,bg:'#2a62d6'})+label(P([4,1.95,0]),'200.0 × 95.0 cm',{dy:-8,bg:'#f6dc8a',fg:'#292414'});
+    chipAt=P([4,1,0]); }
+  if(k==='point'||k==='spot'){ const F=[3,0,2.2], B=[3,2.2,2.2], T=st==='press'&&k==='spot'?[4.2,1.4,0]:[3,0,2.2];
+    if(done){ s+=pool(ring(k==='spot'&&st?[3,0,2.2]:F,[1,0,0],[0,0,1],1.7))+line(B,F,GD)+glyph(B,k,true,[0,1]); }
+    else if(!lightHidden){ s+=line(B,F,GH); const f2=P(F); s+=`<path d="M${f2[0]-6},${f2[1]} h12 M${f2[0]},${f2[1]-4} v8" stroke="${col}" stroke-width="1.5"/>`;
+      if(k==='spot'){ const ax=norm(sub(T,B)), d=len(sub(T,B)), u=norm(cross(ax,[.01,1,0])), v=norm(cross(u,ax)), rg=ring(T,u,v,d*Math.tan(.5));
+        s+=`<polygon points="${pts(rg)}" ${GH}/>`+line(B,rg[14],GH)+line(B,rg[42],GH); if(st==='press') s+=label(P(T),'Aim · '+d.toFixed(2)+' m',{dy:-10,bg:col}); }
+      const b2=P(B); s+=`<g opacity=".75">${glyph(B,k,false,[P(T)[0]-b2[0],P(T)[1]-b2[1]+.01])}</g>`; }
+    else if(st==='press'||ref){ s+=label(P([3,.02,2.2]),'Place '+k,{dx:-30,dy:4,bg:'#1f2a24'}); }
+    chipAt=P([3,2.2,2.2]); }
+  if(lightHidden && !done){ const m = st==='hover' ? 'Today: nothing is drawn until the button is down' : st==='press' ? 'Today: a text label only'+(k==='spot'?' (cone after 4 px of drag)':'') : 'Today: no refusal preview';
+    s+=label([170,60],m,{dx:0,dy:0,bg:'#c2452f'}); }
+  else s+=label(chipAt,chip,{dx:14,dy:-14,bg:ref?'#c2452f':'#12261d'});
+  $('svgPlace').innerHTML=s;
+}
+
+
+/* ---------- Advanced ---------- */
+const adv={kind:'spot',open:'colour',mode:'white',warmth:-50,hue:28,amt:70,stops:0,beam:30,soft:0,reachOn:false,reach:3,from:300,sky:50,shadow:true,future:false};
+const RAMP=[[-100,[255,180,107]],[-50,[255,214,165]],[0,[255,255,255]],[50,[219,233,255]],[100,[184,208,255]]];
+const hex=(c)=>'#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+function warmthColor(w){ for(let i=0;i<RAMP.length-1;i++){ const [a,ca]=RAMP[i],[b,cb]=RAMP[i+1]; if(w<=b){ const t=(w-a)/(b-a); return ca.map((v,k)=>v+(cb[k]-v)*t); } } return RAMP[4][1]; }
+const warmthName=(w)=>w<=-75?'Candle':w<=-25?'Warm':w<25?'Neutral':w<75?'Cool':'Sky';
+function hsv(h,s){ const f=(n)=>{const k=(n+h/60)%6; return 255*(1-s*Math.max(0,Math.min(k,4-k,1)));}; return [f(5),f(3),f(1)]; }
+const advColor=()=>adv.mode==='white'?warmthColor(adv.warmth):hsv(adv.hue,adv.amt/100);
+const advSum={
+  colour:()=>adv.mode==='white'?warmthName(adv.warmth)+' white':'Colour '+hex(advColor()),
+  bright:()=>Math.pow(2,adv.stops).toFixed(2).replace(/\.?0+$/,'')+'×',
+  shape:()=>adv.kind==='spot'?adv.beam+'° · '+(adv.soft<5?'sharp':adv.soft+'% soft')+' · '+(adv.reachOn?adv.reach.toFixed(2)+' m':'unlimited'):adv.kind==='point'?(adv.reachOn?adv.reach.toFixed(2)+' m':'Unlimited'):'From '+adv.from+'° · '+adv.sky+'° high',
+  pos:()=>'3.00 · 2.20 · 2.00 m', shadow:()=>adv.shadow?'On':'Off', behave:()=>'later'
+};
+function advGroups(){
+  const k=adv.kind, later=(t)=>adv.future?`<div class="later"><span>${t}</span><span>later</span></div>`:'';
+  const reach=`<div class="r"><label>Reach</label><span class="chips"><button class="chip${adv.reachOn?'':' on'}" data-act="reachOff">Unlimited</button><input type="range" data-k="reach" min="0.5" max="10" step="0.05" value="${adv.reach}" ${adv.reachOn?'':'disabled'} style="min-width:70px"></span><span class="unit" id="v_reach"></span></div>`;
+  const g=[['colour','Colour',`<div class="seg" style="justify-self:start"><button data-act="white" aria-pressed="${adv.mode==='white'}">White</button><button data-act="colour" aria-pressed="${adv.mode==='colour'}">Colour</button></div>`+
+    (adv.mode==='white'?`<div class="r"><label>Warmth</label><div class="ramp" style="background:linear-gradient(90deg,${RAMP.map(r=>hex(r[1])).join(',')})"></div><span></span><span></span><input type="range" data-k="warmth" min="-100" max="100" step="1" value="${adv.warmth}"><span class="unit" id="v_warmth"></span><div class="ends"><span>Candle</span><span>Neutral</span><span>Sky</span></div></div>`
+     :`<div class="r" style="grid-template-columns:132px 1fr"><div class="dial" id="advDial"><i id="advKnob"></i></div><div style="display:grid;gap:6px"><span>Drag around for the colour, toward the centre for less of it.</span><span>Colour amount <b id="v_amt"></b></span><span class="fld" id="v_hex" style="width:84px"></span></div></div>`)+later('Colour filter')],
+   ['bright','Brightness',`<div class="r"><label>Brightness</label><input type="range" data-k="stops" min="-3" max="3" step="0.1" value="${adv.stops}"><span class="unit" id="v_stops"></span><div class="ends"><span>Dim</span><span>1×</span><span>Bright</span></div></div>`+later('Fade with distance')],
+   ['shape',k==='directional'?'Direction':'Shape',(k==='spot'?`<div class="r"><label>Beam width</label><input type="range" data-k="beam" min="1" max="80" step="1" value="${adv.beam}"><span class="unit" id="v_beam"></span><div class="ends"><span>Narrow</span><span>Wide</span></div></div><div class="r"><label>Edge softness</label><input type="range" data-k="soft" min="0" max="100" step="1" value="${adv.soft}"><span class="unit" id="v_soft"></span><div class="ends"><span>Sharp</span><span>Soft</span></div></div>`+reach
+     :k==='point'?reach:`<div class="r"><label>From</label><input type="range" data-k="from" min="0" max="359" step="1" value="${adv.from}"><span class="unit" id="v_from"></span></div><div class="r"><label>Height in sky</label><input type="range" data-k="sky" min="0" max="90" step="1" value="${adv.sky}"><span class="unit" id="v_sky"></span><div class="ends"><span>Horizon</span><span>Overhead</span></div></div>`)+(k==='spot'?later('Beam pattern'):'')]];
+  if(k!=='directional') g.push(['pos','Position',`<div class="r"><label>Position</label><span class="chips"><span class="fld" style="width:54px">3.00</span><span class="fld" style="width:54px">2.20</span><span class="fld" style="width:54px">2.00</span></span><span class="unit">m</span><div class="ends"><span>X</span><span>Height</span><span>Z</span></div></div>`+(k==='spot'?`<div class="r"><label>Aim point</label><span class="chips"><span class="fld" style="width:54px">3.00</span><span class="fld" style="width:54px">1.45</span><span class="fld" style="width:54px">0.00</span></span><span class="unit">m</span></div>`:'')]);
+  g.push(['shadow','Shadows',`<label><input type="checkbox" data-act="shadow" ${adv.shadow?'checked':''}> Cast shadows</label>`+later('Shadow softness')]);
+  if(adv.future) g.push(['behave','Behaviour',later('Flicker')+later('On only at night')]);
+  return g;
+}
+function drawAdv(){
+  $('advCard').innerHTML=`<div class="k">Light · ${adv.kind}</div><div class="t">${{point:'Point light',spot:'Picture spot',directional:'Directional light'}[adv.kind]}</div><p class="cap" style="margin:-4px 0 8px">Everyday controls above (Warmth, Brightness, ${adv.kind==='spot'?'Beam, ':adv.kind==='point'?'Reach, ':''}Shadow)</p><div class="foot" style="margin:0 0 6px"><b style="color:#1f2a24">Advanced</b><span>⌃</span></div>`+
+    advGroups().map(([id,name,body])=>`<div class="acc"><button data-open="${id}"><b>${name}</b><span id="s_${id}"></span></button>${adv.open===id?`<div class="body">${body}</div>`:''}</div>`).join('');
+  const dial=$('advDial'); if(dial){ const drag=(e)=>{ const r=dial.getBoundingClientRect(), x=e.clientX-r.left-r.width/2, y=e.clientY-r.top-r.height/2; adv.hue=(Math.atan2(y,x)*180/Math.PI+360)%360; adv.amt=Math.round(Math.min(1,Math.hypot(x,y)/(r.width/2))*100); advLive(); };
+    dial.onpointerdown=(e)=>{dial.setPointerCapture(e.pointerId); drag(e); dial.onpointermove=drag;}; dial.onpointerup=()=>{dial.onpointermove=null;}; }
+  advLive();
+}
+function advLive(){
+  const set=(id,t)=>{const el=$(id); if(el) el.textContent=t;};
+  Object.keys(advSum).forEach(k=>set('s_'+k,advSum[k]()));
+  set('v_warmth',warmthName(adv.warmth)); set('v_stops',advSum.bright()); set('v_beam',adv.beam+'°'); set('v_soft',adv.soft+'%'); set('v_reach',adv.reachOn?adv.reach.toFixed(2)+' m':''); set('v_from',adv.from+'°'); set('v_sky',adv.sky+'°'); set('v_amt',adv.amt+'%'); set('v_hex',hex(advColor()));
+  const knob=$('advKnob'); if(knob){ const a=adv.hue*Math.PI/180, r=adv.amt/100*50; knob.style.left=(50+Math.cos(a)*r)+'%'; knob.style.top=(50+Math.sin(a)*r)+'%'; }
+  const c=advColor().map(Math.round).join(','), b=Math.min(1,.35+.2*(adv.stops+3)/1.5*.75), size=adv.kind==='spot'?18+adv.beam*.9:adv.kind==='point'?60:140, edge=adv.kind==='spot'?Math.max(2,adv.soft*.6):45;
+  $('advGlow').style.background=adv.kind==='directional'?`linear-gradient(${adv.from}deg,rgba(${c},${b}),rgba(${c},${b*.45}))`:`radial-gradient(circle at 50% 50%,rgba(${c},${b}) 0,rgba(${c},${b}) ${Math.max(0,size-edge)}px,rgba(${c},0) ${size}px)`;
+  $('advRead').textContent='Stored: colour '+hex(advColor())+' · '+(Math.PI*Math.pow(2,adv.stops)).toFixed(3)+(adv.kind==='directional'?' lx':' cd')+'. The picture above is a sketch of the effect, not the renderer.';
+}
+$('advCard').addEventListener('click',(e)=>{ const o=e.target.closest('[data-open]'), a=e.target.closest('[data-act]');
+  if(o){ adv.open=adv.open===o.dataset.open?'':o.dataset.open; drawAdv(); }
+  else if(a&&a.type!=='checkbox'){ if(a.dataset.act==='white') adv.mode='white'; if(a.dataset.act==='colour') adv.mode='colour'; if(a.dataset.act==='reachOff') adv.reachOn=!adv.reachOn; drawAdv(); } });
+$('advCard').addEventListener('input',(e)=>{ const k=e.target.dataset.k; if(k){ adv[k]=+e.target.value; advLive(); } });
+$('advCard').addEventListener('change',(e)=>{ if(e.target.dataset.act==='shadow'){ adv.shadow=e.target.checked; advLive(); } });
+$('vFuture').addEventListener('change',(e)=>{ adv.future=e.target.checked; drawAdv(); });
+
+/* ---------- wiring ---------- */
+const draw={p:drawPoint,s:drawSpot,d:drawDir,c:drawCards,a:drawArt,g:drawPlace,v:()=>{adv.kind=state.vKind; if(adv.kind==='directional'&&adv.open==='pos') adv.open='shape'; drawAdv();}};
+document.querySelectorAll('[data-seg]').forEach((seg)=>seg.addEventListener('click',(e)=>{
+  const b=e.target.closest('button'); if(!b) return; const key=seg.dataset.seg; state[key]=b.dataset.v;
+  seg.querySelectorAll('button').forEach((x)=>x.setAttribute('aria-pressed', String(x===b))); draw[key[0]]();
+}));
+['pH','pR'].forEach(i=>$(i).addEventListener('input',drawPoint)); ['sA','sB','sR'].forEach(i=>$(i).addEventListener('input',drawSpot));
+['dAz','dAl'].forEach(i=>$(i).addEventListener('input',drawDir)); $('aW').addEventListener('input',drawArt);
+Object.values(draw).forEach((f)=>f());
+</script>
+</body>
+</html>
