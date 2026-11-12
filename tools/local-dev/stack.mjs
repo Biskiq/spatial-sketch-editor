@@ -24,6 +24,8 @@ const STATE_VERSION = 1;
 const PORT_RANGE_START = 41_000;
 const PORT_RANGE_SPAN = 12_000;
 const PORT_SEARCH_LIMIT = 1_000;
+/** Vite's conventional development port; the allocator falls back if occupied. */
+export const DEFAULT_EDITOR_PORT = 5173;
 
 /**
  * Production values that must never reach a local child process. `.env` is not
@@ -77,14 +79,14 @@ export function stackIdentity(repoRoot) {
 	};
 }
 
-/** A spread-out preferred port block, made collision-free by the allocator. */
+/** Dynamic service ports plus Vite's conventional editor port. */
 export function preferredPorts(hash) {
 	const base = PORT_RANGE_START + (Number.parseInt(hash.slice(0, 4), 16) % PORT_RANGE_SPAN);
 	return {
 		db: base,
 		storage: base + 1,
 		api: base + 2,
-		editor: base + 3
+		editor: DEFAULT_EDITOR_PORT
 	};
 }
 

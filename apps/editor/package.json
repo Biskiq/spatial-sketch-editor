@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "dev:local": "vite --host 127.0.0.1",
+    "dev:local": "vite --host localhost",
     "build": "vite build",
     "build:vercel": "vite build && node scripts/inject-vercel-api-proxy.mjs",
     "preview": "vite preview --host 0.0.0.0",
