@@ -1,7 +1,7 @@
 # T1 C-plan — Connected Curves
 
-**Tier 2 · Proposed production contract for owner review.** Model B keeps the Room as the whole
-and ordinary Walls as its components. A connected rotunda has an all-Wall arc ring, with Junction
+**Tier 2 · Model B and slices C1–C4 approved, subject to final review of this plan.**
+Model B keeps the Room as the whole and ordinary Walls as its components. A connected rotunda has an all-Wall arc ring, with Junction
 ID equality as the only connectivity rule. C delivers the architecture and authoring parts of J6.
 R owns the whole-room sheet. J/S5a owns durable finish bindings and is paused with T2.
 
@@ -49,19 +49,6 @@ unit-header version. The project envelope and other unit versions keep their exi
   remains cyclic and rotation-independent. Copies map the seam through their Junction ID map.
   This adds no seam scalar, membership list or second boundary model. A plan that cannot
   retain the seam refuses while Round is stated.
-- Certify that the existing stored cubics are the canonical circle or an exact partition of
-  its 16-span template about the stated centre/radius. For the ring, traverse from its seam,
-  unwrap endpoint angles about the stated centre and bracket each in the known 22.5°
-  template span. Invert the monotone polar angle by bisection to
-  `WALL_CURVE_SPLIT_PARAMETER_TOLERANCE` and compare all four control points against
-  the subspan from de Casteljau. Snap a template boundary only under the canonical
-  Junction coincidence rule. Require ordered, gap-free coverage once around the template.
-  Compare in centre-local coordinates with the closed-circle consistency budget
-  (`1e-9 × max(1, radius)` metres). This is a consistency check against explicit
-  data. It never sets the fact, refits geometry, or supplies render cubics. Reject a fact on an
-  open/straight/malformed boundary, a missing fact on the enclosed canonical closed circle,
-  off-template controls, an unresolvable seam or nonrepresentable geometry with a typed
-  Room/Wall issue. Keep validation out of per-pointer work.
 - A format-7 or format-8 file, old draft or old Layout unit in an envelope is refused by the
   strict new reader. Keep one decoder and regenerate maintained fixtures, seed/demo data
   and authored test snapshots through canonical builders. Reauthor maintained isolated-circle
@@ -72,6 +59,52 @@ unit-header version. The project envelope and other unit versions keep their exi
   Treat published snapshots separately under their current public contract. Check for
   deployed publications before activation and bring any durability exception to owner review.
   No deployment, reset or release-format change is part of C-plan.
+
+### Round consistency under world translation
+
+C1 owns one checker for the isolated circle and the ring, shared by codec admission and
+planner validation. Replace the codec's legacy fixed-tolerance closed-circle shape test
+with this checker. It rejects a missing fact on an enclosed canonical closed circle and
+a fact on a virtual-edge or non-cubic boundary. The stored centre and radius define the
+template. The oriented seam ray sets its phase. The canonical compiler continues to read
+the stored cubics. The checker never writes geometry or infers Round, centre or radius
+from the Wall controls.
+
+1. Work in centre-local coordinates. Enclose each stored world coordinate by its adjacent
+   binary64 values before subtracting the centre, and propagate that per-axis representation
+   uncertainty through the subtraction and seam-ray normalization. Use outward-rounded
+   bounds for the local operations. The authored radius is the exact stored scalar.
+2. Walk the 16 template spans once in boundary order. Invert the monotone polar angle of
+   each endpoint on its template span, bracketing for the propagated uncertainty and
+   stopping numerical refinement at `WALL_CURVE_SPLIT_PARAMETER_TOLERANCE`. Shared
+   span endpoints use one station bracket. Resolve a template boundary by coverage of its
+   known endpoint within the propagated bounds and the ordered walk. A template match
+   does not equate two authored Junctions. Require positive, ordered, gap-free coverage
+   of the template and unambiguous placement in the walk.
+3. Use those brackets to enclose the four de Casteljau subspan control points, including
+   local arithmetic roundoff. Each stored control must agree within its per-axis
+   coordinate uncertainty and the propagated reference bounds. Require one seam phase
+   and one ordered partition consistent with all the controls, using a shared parameter
+   for each adjoining pair of subspans. Use a deterministic representative within the
+   feasible brackets for subsequent edits. Never grow the bound in response to a
+   residual or expand it to a general metre/radius threshold. A control outside the
+   bound, an unresolvable partition, or a malformed Round boundary returns a typed
+   Room/Wall issue. The canonical topology, Junction identity and clearance gates
+   retain their existing tolerances. There is no new world-coordinate cap. Refuse only
+   where the stored coordinates or candidate cannot certify the intended shape and
+   topology, such as distinct cuts collapsing at the available resolution.
+
+Round geometry writers resolve the seam ray and ordered stations once from the certified
+baseline for each operation. For move, copy and radius, apply the intended transform to
+that local template and its subspans, then add the destination centre once per point and
+round to world coordinates at the write boundary. Use one value per shared Junction.
+This avoids carrying an old location's control-point rounding error into the new
+controls when translating back toward the origin. Seam phase and cut stations still
+have the uncertainty of the coordinates from which they were resolved. Exact subdivision
+still preserves the accepted cubic locus within input/output representation bounds and
+keeps untouched spans. A candidate that cannot preserve that locus or existing station/Junction rules
+refuses atomically. Save/Load validates the same canonical bytes without snapping or
+rewriting them. Keep full certification off the per-pointer path.
 
 ## 3. Topology and deterministic lineage
 
@@ -118,18 +151,54 @@ across the interior is a divide and takes the clearing path below.
   and every born descendant. Erasing an exterior arc clears Round and hands the removed
   Wall to SP1's open-Space carry. When admitted, the same Space retains its ID, name,
   associations and overhead, and the removed arc becomes a straight virtual chord.
-  If the chord fails SP1's outline or overlap gate, follow the owner-approved SP1 policy
-  for refusal or retirement. Removing a shared arc follows SP1's merge policy and clears
-  Round on any changed enclosure. Re-close of a previously opened Space leaves Round
-  absent. The consequence line says **Rotunda stops being round** using the actual Room name.
-- Release round on an open-arc ring clears the Room field only. Release of a one-Wall
-  isolated circle first converts it to two ordinary open arcs of the same locus, so editing
-  can actually proceed. Prefer the original seam and an admissible opposite cut. If a
-  periodic Opening covers the seam, use two admissible cuts away from it and keep the old
-  seam point as a knot on the fragment containing it. That fragment keeps the Wall ID.
-  Use the same deterministic solid-station search and full validation as attachment.
-  If the bounded search finds no legal pair, name the blocking Opening or Junction and offer moving or
-  resizing the Opening. Release creates no incoming Wall and is one undoable operation.
+  Under ratified SP-plan B1, if the resulting open Space fails the outline or overlap
+  gate, destructive Wall erase still removes the arc and retires that Space. Show
+  **Removes *name* · its outline would cross itself** or the applicable containment or
+  overlap reason before commit. Apply SP1's association and anchor cleanup. One Undo
+  restores the arc, Space, associations, anchors and stated Round fact exactly. Only
+  the destructive Wall-removal path may pass SP1's `invalidOutline: 'retire'` policy.
+  Other edits that would invalidate Space geometry refuse atomically with a named reason,
+  including radius, move and Duplicate. Removing a shared arc follows SP1's merge policy and clears
+  Round on any changed enclosure. Re-close leaves Round absent. When the Room survives
+  but loses the fact, say **Rotunda stops being round** using its actual name.
+
+### Release round
+
+On an open-arc ring, clear the Room field only. For a one-Wall isolated circle, convert
+it to two ordinary open arcs of the same locus and clear the field in the same operation.
+Prefer the original seam and an admissible opposite cut, retaining the seam Junction ID
+in that case. If a periodic Opening spans the seam, pick two admissible cuts away from
+it using the deterministic solid-station search above. Then:
+
+- Sort the two cuts by forward station from the old seam. Mint two Junction IDs from
+  the operation capture, source Wall ID and cut ordinal. Each birth records the source
+  Wall and resolved station as its origin. Retire the old seam Junction explicitly
+  with no successor. Neither new Junction inherits that identity. Confirm that no
+  surviving Wall or SP virtual edge still references the old Junction. If an external
+  reference would keep it live, refuse Release and name the reference.
+- Retain the old seam point as an interior knot with a deterministic knot ID on the
+  forward fragment crossing old station zero. Keep the old Wall ID on that fragment
+  and mint one Wall ID for the other fragment. The knot keeps the curve locus and
+  carries no Junction connectivity. Preserve the Room ID/name through the Wall survivor.
+- Unwrap each periodic Opening interval in forward traversal from its fragment's
+  start cut. Its offset is the forward modular distance from that cut to the old
+  near edge, evaluated with the resolved cut station. Require the full interval to
+  fit that single open Wall. Keep each Opening ID, near-edge world station within
+  the existing cubic station tolerance, physical width, profile orientation, height,
+  sill and valid relations. The seam-spanning Opening is one continuous Opening on
+  the survivor. Other Openings can rehost with the same ID.
+- Emit canonical F4 correspondence for the preserved Room, surviving Wall and
+  Openings, resolving an Opening against its post-edit host. Their subject selections
+  survive. Emit explicit retirement with `after: null` for the old seam selection,
+  which clears with the retirement reason. It never transfers to the knot or either
+  new Junction. Undo restores the original Junction ID, Round fact, periodic host
+  and Opening station. Redo restores the same captured replacement IDs and hosts.
+  F4 requalifies still-selected surviving subjects in either direction. Selection
+  remains session state.
+
+If the bounded search finds no legal pair or a candidate fails validation, keep the
+original circle and history untouched and report the blocking Opening or Junction.
+Release creates no incoming Wall and occupies one history entry.
 
 For every operation emit operation-local correspondence keyed to authored IDs. Room
 survival maps the same ID, subdivision maps the source Wall to its surviving fragment and
@@ -156,13 +225,14 @@ at core proposal and commit entry points, including A1/A2 and fast geometry cert
 ## 4. Radius, move and Duplicate
 
 **Radius.** Resolve the Round Room and the set of unique rim Junctions. For new radius
-`r1` and old radius `r0`, apply `center + (p - center) * (r1 / r0)` once per rim Junction,
-knot and handle. The canonical isolated Wall retains its existing one-Wall encoding and
-uses the same stated-centre rule. Ring membership, orientation, IDs and Room centre stay
-fixed. Extend the closed-circle builder to take the stated radius and seam ray explicitly
-for repack and consistency checking. Keep the existing centre-to-rim constructor as a
-wrapper for drawing, where the gesture supplies the initial radius. Scale each ring Opening's near-edge offset by the ratio, wrapping only for a
-closed host. Width, height, profile and sill stay fixed.
+`r1` and old radius `r0`, apply the similarity `center + localPoint * (r1 / r0)` once per
+rim Junction, knot and handle using the certified centre-local template and partition.
+The canonical isolated Wall retains its existing one-Wall encoding. Ring membership,
+orientation, IDs and Room centre stay fixed. Extend the closed-circle builder to take the
+stated radius and seam ray explicitly for repack and consistency checking. Keep the
+existing centre-to-rim constructor as a wrapper for drawing, where the gesture supplies
+the initial radius. Scale each ring Opening's near-edge offset by the ratio, wrapping
+only for a closed host. Width, height, profile and sill stay fixed.
 
 **Neighbours.** The touched set includes every Wall incident to a moved Junction,
 their Openings and adjacent Rooms/Spaces, and any virtual edge using a moved Junction.
@@ -296,7 +366,10 @@ symbols out of visitor imports and published draw streams.
 | Source and codec | Positive closed/ring round trips, exact authored radius and anchored seam after Save/Load; reject old payload/header versions and mismatches, missing isolated fact, bad values, virtual-edge Round, off-template controls and false Round on a noncircular Room. An identical released ring is ordinary. Ordinary Layout fixture geometry and the existing publication gate remain unchanged. |
 | Subdivision and identity | Shipped planners replace S1 staging at 1, 2 and 4 snaps. Match original cubic locus and 5 m radial/length budgets, retain untouched spans, and exercise seam-only, two snaps in one stroke, existing Junction, array-order permutations and independent overlap. Check start-side Wall lineage and stable Room name/ID/associations. Keep the all-rekey falsifier. |
 | Resize | All rim Junctions and controls, straight and curved neighbours, one and two moved endpoints, a virtual-edge neighbour, and the near-edge Opening station. Fail whole on neighbour Opening fit, topology/crossing/clearance, another Round Room and SP overlap. Assert issue target, unchanged source bytes/ledger, no history entry and no invalid preview install. |
-| Openings and topology | Split at start/end and through an Opening; real rehost from later/reversed members to a closed host with same IDs and profile; periodic boundary cases; blocked first attach at occupied seam; isolated Release with an occupied seam and with no admissible cuts. Cover uniform and mixed-attribute last detach, surviving SP anchors, shared erase/merge, divide, exterior erase-to-chord, SP invalid chord policy and ordinary re-close. |
+| Translation and numerical consistency | At C1 for closed Walls and C2/C3 for rings, run paired fixtures near the origin and translated by `[2**32, -(2**32)]` metres, where one coordinate ULP exceeds the former 5 m consistency budget. Repeat radius up/down and translation out/back at least 20 times, including a high→low move, with Save/Load between edits. Assert exact stated radius, stable seam/Room/Junction IDs and Opening stations, canonical bytes on reload, no accumulation beyond current representation bounds, and agreement of the local locus with the untranslated counterpart within propagated station and coordinate uncertainty. Reject altered controls outside those bounds at both origins and a candidate whose cuts collapse at destination precision, without changing source or history. |
+| Openings and topology | Split at start/end and through an Opening; real rehost from later/reversed members to a closed host with same IDs and profile; periodic boundary cases; blocked first attach at occupied seam; uniform and mixed-attribute last detach; shared erase/merge, divide and ordinary re-close. |
+| Exterior erase and B1 | Valid chord preserves the Space and clears Round. Self-crossing and overlap/containment cases erase the arc, retire the invalid Space and disclose its name and reason. Undo restores exact bytes, including the original Round fact, arc, associations and anchors. Reach the same invalidity by a non-erase edit and assert typed refusal with no changes or history entry. |
+| Occupied-seam Release | Retire the old seam Junction, birth two captured Junctions with station lineage, preserve the seam point as a knot and keep Room, survivor Wall and Opening IDs. Check the seam-spanning interval on the survivor and an additional Opening rehost to the other fragment. Exercise canonical Opening/Room/Wall selection, explicit retired-seam clearing, exact Undo/Redo with stable captures, and atomic refusal for an external anchor or no legal cut pair. |
 | Move and copy | Group translation with a dangling branch and shared arc, virtual-linked group, exact centre/radius, valid relations and atomic refusal. A5 detached copy keeps per-arc attributes and all hosted Openings with new IDs, drops only external relations with words, keeps source and annex, and does not weld. Verify the isolated one-Wall copy as well. |
 | Interior and acceptance | One reference before and after each attach, oriented shared side including reversed Wall, Release, detach, survivor/open Space and retirement. Real F4 and adapter tests cover each operation's Undo/Redo and selection, stale refusal, one history entry and canonical bytes through Save/Load. J6 editor walkthrough includes the shared door, radius success/refusal, member refusal and Release. Visitor parity checks physical output, portal relation and absence of editor imports. R covers the whole-room sheet; T2 covers cross-unit paint. |
 
@@ -314,7 +387,7 @@ and the existing visitor boundary tests.
 | Risk or decision | Recommended resolution |
 | --- | --- |
 | Competing format changes and existing projects | Land SP1's format and open behavior first, then one strict C bump. Confirm the active format, public snapshot policy and owner-controlled activation before C1. |
-| Seam order and numeric validation | Anchor the Round boundary at the existing seam in authored array order; keep face keys cyclic. Prove exact partition, repeated edits and large-coordinate behavior in C1/C2. Refuse when the geometry cannot be represented reliably. |
+| Seam order and numeric validation | Anchor the Round boundary in authored array order and keep face keys cyclic. Certify with propagated world-coordinate representation bounds and a centre-local partition. The repeated-edit and Save/Load matrix is an implementation gate. |
 | Lossy canonical repack and seam-crossing Openings | Refuse lossy last detach and blocked attachment with actionable subjects. Keep single-host intervals. Use the safe-cut Release path and keep enclosure-copy segmentation to preserve A5 attributes. |
 | Neighbour scope | Use current endpoint semantics for radius, with atomic refusal on a second Round owner. Translate the full attached component for Round Room move. Confirm both in C2/C3 fixtures before exposing gestures. |
-| Open Space and surface coordination | Inherit SP1's invalid-chord decision and keep C's physical interior query live for a surviving Space. Defer durable bindings, divider finish inheritance and cross-unit undo to J/S5a when T2 resumes. |
+| Open Space and surface coordination | Apply ratified SP-plan B1 on destructive erase and refuse other invalid geometric edits atomically. Keep C's physical interior query live for a surviving Space. Defer durable bindings, divider finish inheritance and cross-unit undo to J/S5a when T2 resumes. |
