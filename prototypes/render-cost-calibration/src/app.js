@@ -1,5 +1,5 @@
 import { allConfigs } from './configs.js';
-import { BACKEND_LABELS, probeWebGPU, runBackend } from './bench.js';
+import { BACKEND_LABELS, probeWebGPU, runBackend, runLightingSweep } from './bench.js';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, DPR } from './scene.js';
 
 let canvas = document.querySelector('#view');
@@ -308,7 +308,57 @@ probeWebGPU().then((probe) => {
 	].join('\n');
 });
 
+const lightingButton = document.querySelector('#run-lighting');
+const lightingStatus = document.querySelector('#lighting-status');
+state.lighting = null;
+
+/** Lighting-system sweep: A default, B default / dynamic / clustered. One JSON for both. */
+async function runLighting() {
+	if (state.running) return null;
+	state.running = true;
+	lightingButton.disabled = true;
+	runButton.disabled = true;
+	runAllButton.disabled = true;
+	const out = { schemaVersion: 1, kind: 'render-cost-lighting-systems', results: {} };
+	try {
+		for (const kind of ['webgl', 'webgpu']) {
+			try {
+				out.results[kind] = await runLightingSweep(kind, freshCanvas(), makeProgressHandler(`Lighting · ${BACKEND_LABELS[kind]}`));
+			} catch (error) {
+				out.results[kind] = { kind, available: false, reason: error.message };
+			}
+		}
+		state.lighting = out;
+		lightingStatus.textContent = 'Lighting sweep complete. Download it with the button.';
+		setStatus('Lighting sweep complete.');
+		return out;
+	} finally {
+		state.running = false;
+		lightingButton.disabled = false;
+		runButton.disabled = false;
+		runAllButton.disabled = false;
+	}
+}
+
+function downloadLighting() {
+	if (!state.lighting) return;
+	const blob = new Blob([JSON.stringify(state.lighting, null, 2)], { type: 'application/json' });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = `render-cost-lighting-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+	link.click();
+	URL.revokeObjectURL(url);
+}
+
+lightingButton.addEventListener('click', async () => {
+	await runLighting();
+});
+document.querySelector('#download-lighting').addEventListener('click', downloadLighting);
+
 window.__RCC__ = {
+	runLighting,
+	getLighting: () => state.lighting,
 	runBackend: runOne,
 	runAll,
 	getResults: () => state.results,

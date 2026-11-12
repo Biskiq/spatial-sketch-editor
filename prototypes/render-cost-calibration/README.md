@@ -170,18 +170,11 @@ back inside 16.7 ms (A 4.2, B 4.05, C 4.45 ms).
 
 Recorded at review; the measured rows above are unchanged.
 
-1. **WebGPU's many-light path is unmeasured.** three r187 ships two lighting systems for
-   `WebGPURenderer` that need no custom shader, set with `renderer.lighting = …`:
-   `ClusteredLighting` (`three/addons/lighting/ClusteredLighting.js`, up to 1,024 point and spot
-   lights in screen tiles × depth slices) and `DynamicLighting`
-   (`three/addons/lighting/DynamicLighting.js`, light arrays batched to fixed maxima, which should
-   avoid the light-count recompile behind Finding 6's 40 ms stall). Neither exists for
-   `WebGLRenderer`. Finding 3 therefore prices forward lighting only, and WebGPU's one plausible
-   advantage for the owner's long-term many-lights goal is unpriced. **Open sweep:** B only,
-   default vs `DynamicLighting` vs `ClusteredLighting`, N = 1,000 and 5,000 (instanced and
-   separate), 16 / 64 / 256 point lights, plus first-frame cost of adding one light. Minutes on
-   this page; run it on the M2 now or with the Gate C devices. It decides the WebGPU reopen
-   condition in the assessment, not a migration.
+1. **WebGPU's many-light path was unmeasured; it is now measured.** three r187 ships two
+   lighting systems for `WebGPURenderer` that need no custom shader, set with
+   `renderer.lighting = …`: `ClusteredLighting` and `DynamicLighting`
+   (`three/addons/lighting/`). Neither exists for `WebGLRenderer`. Finding 3 priced forward
+   lighting only; the [lighting-system sweep](#lighting-system-sweep-2026-11-12) below prices both.
 2. **B's per-draw cost is superlinear past 5,000.** From 5,000 to 10,000 separate draws B rises
    28.3 ms, about 5.7 µs per draw against the fitted 2.4 µs (C: 4.9 µs). B's and C's cinematic
    estimates in [`model.md`](./model.md) are therefore optimistic. The direction of Finding 1 is
@@ -193,6 +186,62 @@ Recorded at review; the measured rows above are unchanged.
 4. **A's fixed cost exceeding B's is unexplained.** `c0` is 5.66 ms on A and 4.45 on B, with a
    similar readback. This is why the 64-draw World prediction ranks B ahead of A; that ranking
    carries no weight.
+
+## Lighting-system sweep (2026-11-12)
+
+Added at review to price WebGPU's many-light path. **Button:** *Run lighting-system sweep (A + B)*
+(about 8 minutes; keep the window uncovered). Result:
+[`results/apple-m2-lighting-systems.json`](./results/apple-m2-lighting-systems.json).
+
+**Setup.** Point lights get a finite range (1.5 grid cells) and are spread over the mesh plane, so
+a clustered system has something to cull. Lights are unshadowed. Configurations: N = 1,000
+separate meshes and N = 5,000 instanced, × 0 / 16 / 64 / 256 lights, for A's default lighting and
+B's default, `DynamicLighting` (sized for 288 point lights) and `ClusteredLighting` (defaults),
+plus the first frame after adding a 17th light. Shader and pipeline errors are captured, so a
+failed compile cannot pass as a fast row.
+
+**Provenance.** Same MacBook Air M2, but run in the Claude desktop app's built-in Chromium
+(Chrome 156.0.8078.75), not Chrome 157. Absolute values are therefore compared only within this
+file; A and B default rows were re-measured in the same session as anchors. A ran on battery (93 %),
+B on AC (it was plugged in between the two). rAF stayed at 16.7 ms throughout, so no row was
+throttled.
+
+Synchronized ms (lower is better; 16.7 ms is the 60 fps budget):
+
+| Lights | A default · 1k sep | B default · 1k sep | B dynamic · 1k sep | B clustered · 1k sep | A default · 5k inst | B default · 5k inst | B dynamic · 5k inst | B clustered · 5k inst |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 2.7 | 7.6 | 6.8 | 5.7 | 1.5 | 4.8 | 3.4 | 54.5 † |
+| 16 | 5.6 | 7.2 | 7.3 | 9.6 | 6.5 | 5.8 | 6.6 | 38.2 † |
+| 64 | 73.4 | 31.0 | **11.7** | 32.9 † | 102.1 | 38.1 | **10.4** | 27.2 † |
+| 256 | **fails to compile** | 262.5 | **13.8** | 98.4 † | **fails to compile** | 341.3 | **16.2** | 19.5 † |
+
+First frame after adding a 17th light: A default **171 ms**, B default **334 ms**, B dynamic
+**0.1 ms**, B clustered 9.9 ms.
+
+† Clustered rows are unstable: the synchronized value is non-monotonic in light count and well
+above the same row's rAF median (21–31 ms) and GPU timestamp (2–31 ms), and the 256-light row's
+first frame is 737 ms. Read them as "slower than dynamic in this scene", not as constants.
+
+**Findings.**
+
+1. **`DynamicLighting` is the WebGPU many-light result.** 256 ranged point lights cost 13.8 ms at
+   1,000 separate draws and 16.2 ms at 5,000 instanced, inside the 60 fps budget on the M2, and
+   adding a light costs nothing (0.1 ms). On A, default lighting reaches 73–102 ms at 64 lights,
+   and **256 lights do not compile**: the fragment shader exceeds
+   `MAX_FRAGMENT_UNIFORM_VECTORS (1024)`. Forward lighting on WebGL has a hard ceiling somewhere
+   between 64 and 256 lights per material, and recompiles (171 ms here) whenever the count changes.
+2. **This is three's implementation, not the API.** A fixed-size, range-tested light loop could be
+   written for WebGL too, but only as custom shader code, which the T2 portability rule
+   discourages. Among built-in paths, only `WebGPURenderer` + `DynamicLighting` holds hundreds of
+   unshadowed lights.
+3. **Clustered lighting did not beat dynamic here.** At 1,000 draws its CPU submit grows with light
+   count (2.6 → 15.8 ms), and its timing is unstable. This scene is flat and front-facing, which
+   gives depth slices nothing to cull; a deep interior may favour it. Not a basis for a decision.
+4. **Up to about 16 lights, the backends are equivalent.** A is cheaper at 0–16 lights at 1,000
+   separate draws, consistent with Finding 1 of the main run; the WebGPU advantage starts above
+   that.
+5. **Not measured:** shadows with these systems, spot lights, visual parity (`DynamicLighting`
+   output was not compared to default lighting), any other device.
 
 ## Census (P1)
 
@@ -229,9 +278,8 @@ batching, materials, the fallback, and what was not checked (notably visual pari
   present-to-photon frame time.
 - Timer queries are noisy at 1–4 ms; shadow rows repeat three times and take a median, but
   single-run variation of up to about 2× in a slope was observed across runs.
-- No clustered or dynamic lighting sweep. three r187 does ship `ClusteredLighting` and
-  `DynamicLighting` for `WebGPURenderer` (an earlier draft of this page said it did not); the sweep
-  is open, see Review findings 1.
+- The lighting-system sweep ran in the built-in Chromium (Chrome 156), not Chrome 157, with A on
+  battery and B on AC; its numbers are compared within its own file only.
 - No post-processing, no custom shaders, no visual comparison. Pixel parity between backends was
   not inspected; only cost and counts are claimed.
 - The 64-light point is outside the linear fit. The budget tables therefore stop at the largest

@@ -1,5 +1,12 @@
 import * as THREE from '../vendor/three.module.js';
-import { allConfigs, compileStepConfig, shadowPasses } from './configs.js';
+import {
+	allConfigs,
+	compileStepConfig,
+	LIGHTING_SYSTEMS,
+	lightingCompileConfig,
+	lightingConfigs,
+	shadowPasses
+} from './configs.js';
 import { budgetFromFit, isMonotonic, linearFit, measuredBudget, median, percentile } from './fit.js';
 import { buildScene, CANVAS_HEIGHT, CANVAS_WIDTH, DPR, disposeScene } from './scene.js';
 
@@ -219,7 +226,52 @@ async function sampleGpu(timer, renderer, scene, camera) {
 	};
 }
 
+/**
+ * Lighting-system sweep: swap `renderer.lighting` per configuration. The
+ * default system is the one the renderer was created with. Dynamic lighting is
+ * sized to the largest tested count so no light falls outside its batch.
+ */
+async function applyLighting(renderer, lighting) {
+	if (renderer.isWebGLRenderer) {
+		if (lighting !== 'default') throw new Error(`${lighting} lighting needs WebGPURenderer`);
+		return;
+	}
+	if (!renderer.__rccDefaultLighting) renderer.__rccDefaultLighting = renderer.lighting;
+	if (lighting === 'default') {
+		renderer.lighting = renderer.__rccDefaultLighting;
+	} else if (lighting === 'dynamic') {
+		const { DynamicLighting } = await import('../vendor/addons/lighting/DynamicLighting.js');
+		renderer.lighting = new DynamicLighting({ maxPointLights: 288 });
+	} else if (lighting === 'clustered') {
+		const { ClusteredLighting } = await import('../vendor/addons/lighting/ClusteredLighting.js');
+		renderer.lighting = new ClusteredLighting();
+	} else {
+		throw new Error(`unknown lighting system ${lighting}`);
+	}
+}
+
+/** Collect shader / pipeline errors so a failed compile is never read as a fast frame. */
+function watchErrors(renderer) {
+	const errors = [];
+	if (renderer.isWebGLRenderer) {
+		renderer.debug.checkShaderErrors = true;
+		renderer.debug.onShaderError = (gl, program) => {
+			errors.push(`shader error: ${gl.getProgramInfoLog(program)?.slice(0, 200) ?? 'unknown'}`);
+		};
+	}
+	const device = renderer.backend?.device;
+	const onError = (event) => errors.push(`gpu error: ${event.error?.message?.slice(0, 200) ?? 'unknown'}`);
+	device?.addEventListener?.('uncapturederror', onError);
+	return {
+		errors,
+		stop() {
+			device?.removeEventListener?.('uncapturederror', onError);
+		}
+	};
+}
+
 async function measureOne(renderer, cfg, timer) {
+	await applyLighting(renderer, cfg.lighting ?? 'default');
 	const built = buildScene(cfg);
 	const { scene, camera } = built;
 	const shadows = cfg.shadowCount > 0;
@@ -274,6 +326,8 @@ async function measureOne(renderer, cfg, timer) {
 		actualTrianglesPerMesh: built.trianglesPerMesh,
 		pointLights: cfg.point,
 		spotLights: cfg.spot,
+		lighting: cfg.lighting ?? 'default',
+		lightLayout: cfg.lightLayout ?? 'ring',
 		shadowCount: cfg.shadowCount,
 		shadowPasses: shadowPasses(cfg),
 		shadowPolicy: cfg.shadowPolicy,
@@ -304,8 +358,8 @@ async function measureOne(renderer, cfg, timer) {
 	return row;
 }
 
-async function measureCompileStep(renderer) {
-	const cfg = compileStepConfig();
+async function measureCompileStep(renderer, cfg = compileStepConfig()) {
+	await applyLighting(renderer, cfg.lighting ?? 'default');
 	const built = buildScene(cfg);
 	const { scene, camera } = built;
 	renderer.shadowMap.enabled = false;
@@ -331,8 +385,10 @@ async function measureCompileStep(renderer) {
 	}
 	const programsAfter = programCount(renderer);
 	const row = {
-		lightsBefore: 4,
-		lightsAfter: 5,
+		id: cfg.id,
+		lighting: cfg.lighting ?? 'default',
+		lightsBefore: cfg.point,
+		lightsAfter: cfg.point + 1,
 		steadyMedianMs: median(steady),
 		firstFrameAfterMs: after[0],
 		secondFrameAfterMs: after[1],
@@ -624,6 +680,72 @@ export async function runBackend(kind, canvas, onProgress = () => {}, onlyIds = 
 		budgets
 	};
 
+	renderer.dispose();
+	return result;
+}
+
+/**
+ * Lighting-system sweep for one backend (review addition, 2026-11-12). Rows use
+ * the same timing as the main run; a row whose shaders or pipelines failed is
+ * marked `failed` and must not be read as a cost.
+ */
+export async function runLightingSweep(kind, canvas, onProgress = () => {}) {
+	const created = await createBackend(kind, canvas);
+	const { renderer, detail } = created;
+	const timer = gpuTimerFor(renderer);
+	const watch = watchErrors(renderer);
+	const configs = lightingConfigs(kind);
+	const rows = [];
+	for (let index = 0; index < configs.length; index += 1) {
+		const cfg = configs[index];
+		onProgress({ index, total: configs.length, label: cfg.label });
+		const errorsBefore = watch.errors.length;
+		let row;
+		try {
+			row = await measureOne(renderer, cfg, timer);
+		} catch (error) {
+			row = { id: cfg.id, group: cfg.group, label: cfg.label, lighting: cfg.lighting, n: cfg.n, mode: cfg.mode, pointLights: cfg.point, thrown: error.message };
+		}
+		const errors = watch.errors.slice(errorsBefore);
+		row.failed = Boolean(row.thrown) || errors.length > 0;
+		row.errors = errors;
+		rows.push(row);
+		onProgress({ index: index + 1, total: configs.length, label: cfg.label, row });
+	}
+	const compile = [];
+	for (const lighting of LIGHTING_SYSTEMS[kind] ?? []) {
+		onProgress({ index: configs.length, total: configs.length, label: `compile step · ${lighting}` });
+		const errorsBefore = watch.errors.length;
+		try {
+			const row = await measureCompileStep(renderer, lightingCompileConfig(lighting));
+			row.errors = watch.errors.slice(errorsBefore);
+			row.failed = row.errors.length > 0;
+			compile.push(row);
+		} catch (error) {
+			compile.push({ lighting, thrown: error.message, failed: true });
+		}
+	}
+	watch.stop();
+	const battery = await batteryState();
+	const result = {
+		kind,
+		label: BACKEND_LABELS[kind],
+		sweep: 'lighting-systems',
+		detail,
+		provenance: {
+			userAgent: navigator.userAgent,
+			platform: navigator.platform,
+			hardwareConcurrency: navigator.hardwareConcurrency ?? null,
+			dpr: DPR,
+			canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+			threeRevision: THREE.REVISION,
+			generatedAt: new Date().toISOString(),
+			battery
+		},
+		timer: timer?.kind ?? null,
+		rows,
+		compile
+	};
 	renderer.dispose();
 	return result;
 }

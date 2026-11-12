@@ -20,7 +20,9 @@ const BASE = Object.freeze({
 	spot: 0,
 	shadowCount: 0,
 	shadowPolicy: 'every-frame',
-	shadowMapSize: 1024
+	shadowMapSize: 1024,
+	lighting: 'default',
+	lightLayout: 'ring'
 });
 
 function config(id, group, label, overrides = {}) {
@@ -160,6 +162,50 @@ export function allConfigs() {
 export function compileStepConfig() {
 	return config('compile-step-4-to-5', 'compile', 'First frame after 4 → 5 point lights', {
 		point: 4
+	});
+}
+
+/**
+ * Lighting-system sweep (added at review, 2026-11-12). Point lights get a
+ * finite range and are spread over the mesh plane, so a clustered system has
+ * something to cull; the default system still evaluates every light per
+ * fragment. `lighting` selects three's default, DynamicLighting or
+ * ClusteredLighting; the last two exist only for WebGPURenderer.
+ */
+export const LIGHTING_SYSTEMS = Object.freeze({
+	webgl: ['default'],
+	webgpu: ['default', 'dynamic', 'clustered'],
+	'webgpu-force-webgl': []
+});
+
+export function lightingConfigs(kind) {
+	const list = [];
+	for (const lighting of LIGHTING_SYSTEMS[kind] ?? []) {
+		for (const [n, mode, tag] of [
+			[1000, 'separate-shared', 'N=1000 separate'],
+			[5000, 'instanced', 'N=5000 instanced']
+		]) {
+			for (const point of [0, 16, 64, 256]) {
+				list.push(
+					config(
+						`lighting-${lighting}-${n}-${mode}-${point}`,
+						`lighting-${lighting}`,
+						`${lighting} · ${tag} · ${point} ranged point lights`,
+						{ n, mode, point, lighting, lightLayout: 'grid-ranged' }
+					)
+				);
+			}
+		}
+	}
+	return list;
+}
+
+/** First frame after 16 → 17 ranged lights, per lighting system. */
+export function lightingCompileConfig(lighting) {
+	return config(`lighting-compile-${lighting}`, 'lighting-compile', `${lighting} · 16 → 17 ranged lights`, {
+		point: 16,
+		lighting,
+		lightLayout: 'grid-ranged'
 	});
 }
 

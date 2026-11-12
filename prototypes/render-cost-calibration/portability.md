@@ -88,12 +88,21 @@ roughly 1.5 ms of readback. They are comparable to each other, not to a present-
 - **Availability elsewhere.** No Safari, Firefox, Windows/Iris Xe, Android or iOS run. B's
   availability and C's cost on those devices are unknown.
 - **Device loss, context restoration, multiple canvases, resizing.** Not exercised.
-- **WebGPU lighting systems.** three r187 ships `ClusteredLighting` and `DynamicLighting`
-  (`three/addons/lighting/`) for `WebGPURenderer` only, with no custom shader. They were not
-  swept; an earlier draft wrongly said no such addon existed. See the README's Review findings 1.
 - **Long-run stability.** Each backend ran once; no thermal soak, no repeat session, no memory
   growth measurement. The cached-shadow saving at 1,000 draws is within run-to-run noise, which is
   itself a portability warning about single-run conclusions.
+
+## Lighting systems (review sweep, 2026-11-12)
+
+- `DynamicLighting` and `ClusteredLighting` exist only for `WebGPURenderer`. Both ran without
+  errors on the WebGPU backend; neither was tried on `forceWebGL`.
+- A's default lighting fails to compile at 256 point lights (`MAX_FRAGMENT_UNIFORM_VECTORS`
+  1024 on ANGLE/Metal). The failure is logged, the frame renders without the material, and the
+  timing looks fast; the page now captures shader and pipeline errors so such rows are marked.
+- Adding a light recompiles on A (171 ms, +1 program) and on B's default lighting (334 ms, no
+  program change); `DynamicLighting` does not (0.1 ms).
+- B's `renderer.info` draw counter misreports on some rows (thousands of "draws" for one instanced
+  mesh); timing columns are unaffected.
 
 ## What a trial would inherit
 

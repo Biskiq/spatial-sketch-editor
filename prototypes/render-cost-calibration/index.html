@@ -5,6 +5,14 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Render cost calibration — Biskiq research</title>
 		<link rel="stylesheet" href="./src/style.css" />
+		<script type="importmap">
+			{
+				"imports": {
+					"three/webgpu": "./vendor/three.webgpu.js",
+					"three/tsl": "./vendor/three.tsl.js"
+				}
+			}
+		</script>
 	</head>
 	<body>
 		<header>
@@ -29,6 +37,9 @@
 				<button id="run" type="button">Run selected backend</button>
 				<button id="run-all" type="button" class="secondary">Run all three (~5–8 min each)</button>
 				<button id="download" type="button" class="secondary" disabled>Download JSON</button>
+				<button id="run-lighting" type="button" class="secondary">Run lighting-system sweep (A + B)</button>
+				<button id="download-lighting" type="button" class="secondary">Download lighting JSON</button>
+				<span id="lighting-status" class="note"></span>
 			</div>
 		</header>
 

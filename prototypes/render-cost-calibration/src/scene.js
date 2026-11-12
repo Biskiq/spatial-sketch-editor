@@ -162,10 +162,26 @@ export function buildScene(cfg) {
 		light.position.set(Math.cos(angle) * ringRadius, ringHeight, Math.sin(angle) * ringRadius);
 	}
 
+	// Ranged grid layout (lighting-system sweep): lights spread over the mesh
+	// plane, each reaching about 1.5 grid cells, so a clustered system can cull.
+	const rangedColumns = Math.max(1, Math.ceil(Math.sqrt(Math.max(cfg.point, 1))));
+	const rangedCell = (extent * 2 + 2) / rangedColumns;
+	function placeRanged(light, index) {
+		const column = index % rangedColumns;
+		const row = Math.floor(index / rangedColumns) % rangedColumns;
+		light.position.set(
+			-extent - 1 + (column + 0.5) * rangedCell,
+			-extent - 1 + (row + 0.5) * rangedCell,
+			1.2
+		);
+		light.distance = rangedCell * 1.5;
+	}
+
 	const points = [];
 	for (let i = 0; i < cfg.point; i += 1) {
 		const light = new THREE.PointLight(0xffe3bd, 45, 0, 2);
-		placeOnRing(light, i, cfg.point);
+		if (cfg.lightLayout === 'grid-ranged') placeRanged(light, i);
+		else placeOnRing(light, i, cfg.point);
 		scene.add(light);
 		points.push(light);
 	}
@@ -218,7 +234,8 @@ export function buildScene(cfg) {
 	let nextPointIndex = 0;
 	function addPointLight() {
 		const light = new THREE.PointLight(0xffe3bd, 45, 0, 2);
-		placeOnRing(light, nextPointIndex, 12);
+		if (cfg.lightLayout === 'grid-ranged') placeRanged(light, cfg.point + nextPointIndex);
+		else placeOnRing(light, nextPointIndex, 12);
 		nextPointIndex += 1;
 		scene.add(light);
 		return light;
