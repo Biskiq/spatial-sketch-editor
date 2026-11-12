@@ -51,7 +51,7 @@ Targeted changes to the accepted design. The visual language (§4) and the Card 
 
 | # | Gap | Amendment | Sections |
 | --- | --- | --- | --- |
-| A1 | Lighting changes were visible only after commit | Card sliders, gizmo drags and placement ghosts light the scene before commit through one session-only preview | §5.8, §6.2, §5.7, §8 |
+| A1 | Lighting changes were visible only after commit | Card sliders, gizmo drags and placement ghosts preview the actual illumination and cast shadows before commit through one session-only preview | §5.8, §6.2, §5.7, §8 |
 | A2 | Spot: inverted soft-edge ring; Aim coupled to Reach; no rule above 80° | Inner ring at the renderer's full-brightness angle; Aim never reads or writes Reach; wide beams are drawn clamped and edited from the Card | §5.4, §5.6, D10 |
 | A3 | Directional dial could sit off-screen or be unreadable in a large project; several Directional lights were indistinguishable | View-anchored fallback, constant screen size, a Direction row on the Card, a name chip and ticks for the other Directional lights | §5.5, §6.1 |
 | A4 | Artwork Move was undefined at wall ends, openings and corners | Fit test, hold-at-edge, jump across corners, Shift for free move | §7.3 |
@@ -333,9 +333,10 @@ One lifecycle for everything placed from the Library (amended, A5).
 
 **The candidate.** One pure function per subject, `candidateFor(pointer) → Candidate | null`,
 produces the full create payload (pose, and for a pressed Spot its rotation). The ghost draws the
-stored candidate; release commits the stored candidate. Release first runs the up event through
-the same function as a final move, redraws, then commits. Nothing recomputes a pose from the up
-event on a second path (today `finishArtworkResize` and `place()` do).
+stored candidate; release commits the stored candidate. Release resolves the final up event
+**synchronously** through the same function as a final move, publishes that final candidate,
+then commits it. A queued animation-frame preview must not overwrite the final input. Nothing
+recomputes a pose from the up event on a second path (today `finishArtworkResize` and `place()` do).
 
 | State | Shows | Writes |
 | --- | --- | --- |
@@ -377,9 +378,17 @@ Every lighting change is seen as light before it is committed.
 
 **Primitive.** A session-only `StageLightPreview`, owned by the Stage session:
 `{ overrides: Map<entityId, LightEntity>, candidate: LightEntity | null }`. The editor Stage shell
-merges it into the entity list it hands to the shared renderer: an overridden light is replaced by
-its preview value; the candidate is appended under one reserved session id. `VisitorEntityGroups`
-and `EntityLight` are unchanged and no visitor chunk imports the preview (hard rules 4, 5).
+merges it into a **render-only** entity projection: an overridden light is replaced by
+its preview value; the candidate is appended under one reserved session id. The accepted Scene
+remains the only input for picking, selection, source identity, dirty state and persistence; the
+candidate is not registered as an authored/pickable entity. `VisitorEntityGroups` and `EntityLight`
+are unchanged and no visitor chunk imports the preview (hard rules 4, 5).
+
+**Shadows.** Previewing a shadow-casting light must update its cast shadow with its illumination.
+`StageShadowTriggers` currently invalidates on accepted Scene/geometry identities, so include a
+render-only preview revision as an invalidation input. Do not mutate the accepted Scene or create
+another renderer. Coalesce shadow invalidation to at most once per rendered frame; on cancel or
+refusal, restore the accepted illumination **and** shadow.
 
 | Source | Preview written | Commit |
 | --- | --- | --- |
@@ -393,11 +402,14 @@ Rules:
   any release payload. It does not survive a reload.
 - **One entry.** Preview writes create no history. Release creates exactly one entry. Esc, cancel
   and a refused release create none and restore the accepted light.
-- **Cleared** on release (in the same tick the outcome is applied, so the accepted value replaces
-  the preview without a flash), Esc, pointer cancel, pointer leaving the Stage (candidate only),
-  refused or failed commit, tool or selection change, reading change, task close, and dispose.
-- **Agreement.** The commit payload is the last preview value; nothing is recomputed on release.
-- **Rate.** At most one preview write per animation frame; later moves in a frame replace earlier.
+- **Cleared** after successful install in the same presentation as the accepted light (the
+  pending `Committing` preview stays visible), or on Esc, pointer cancel, pointer leaving the Stage
+  (candidate only), refused or failed commit, tool or selection change, reading change, task close,
+  and dispose. A refusal restores the accepted illumination and shadow.
+- **Agreement.** The commit payload is the final synchronously resolved candidate, including the
+  release event. Hold that candidate as the pending preview; never commit an older throttled frame.
+- **Rate.** At most one rendered preview update per animation frame; later moves in a frame replace
+  earlier. The final release value is captured synchronously even if a render frame is pending.
 - **Candidate mount.** While a Point or Spot is armed the candidate stays mounted, at intensity 0
   when there is no valid candidate, so the light count changes on arm and disarm rather than on
   every hover. The candidate uses the creation defaults, including `castShadow`.
@@ -467,7 +479,7 @@ mid-drag the preview is cleared and nothing is written. A typed exact value comm
 | **Brightness** | all | **Brightness** slider (§6.5) with the exact intensity field beside it | `1.41×` |
 | **Shape** | Point, Spot | Spot: **Beam width** slider 1…80°, ends `Narrow`/`Wide`, with a field 1…90 (above 80° the thumb pins to `Wide` and the summary shows the true value); **Edge softness** slider 0…100 %, ends `Sharp`/`Soft`; **Reach** (`Unlimited` chip + slider 0.5…10 m + field). Point: **Reach** only | `30° · sharp · unlimited` |
 | **Direction** | Directional | **From** slider 0…359°; **Height in sky** slider 0…90°, ends `Horizon`/`Overhead`, field accepts −90…90 | `From 300° · 50° high` |
-| **Position** | Point, Spot | **Position** `X` · `Height` · `Z` (m). Spot adds **Aim point** `X` · `Height` · `Z` (m): committing it writes `rotation` toward that point and nothing else (§5.4) | `3.00 · 2.20 · 2.00 m` |
+| **Position** | Point, Spot | **Position** `X` · `Height` · `Z` (m). Spot adds **Aim toward (direction only)** `X` · `Height` · `Z` (m): committing it writes `rotation` toward that point and nothing else (§5.4). The typed coordinates are an aiming input, not a saved target; the fields subsequently display the derived surface intercept or 3 m fallback, which may differ from the entered coordinates | `3.00 · 2.20 · 2.00 m` |
 | **Shadows** | all | `Cast shadows` (same field as the everyday row) | `On` / `Off` |
 
 `Height` fields are `position[1] − datum`.
@@ -574,9 +586,13 @@ Writers, payloads and refusals are unchanged (`ARTWORK_TRANSFORM`).
      Every ray must hit a wall face with the **same `wallId`** as the pointer hit within 0.07 m.
      A miss, a farther hit or another `wallId` fails: the Artwork would overhang a wall end, an
      opening or a corner.
-  4. **Pass:** the candidate becomes `P`. **Fail:** the candidate **holds the last passing pose**
+  4. **Curved Walls.** Preserve the existing flat, centre-tangent Artwork placement. Do not apply
+     the 0.07 m straight-face corner proximity threshold to curved faces: their flat corners may
+     naturally stand off the curve. Check wall ends and openings against the same T1 compiled
+     Wall support, without introducing conformal/bending Artwork geometry.
+  5. **Pass:** the candidate becomes `P`. **Fail:** the candidate **holds the last passing pose**
      and shows the tag `Stops at the wall edge`.
-  5. **Not on a wall face** (a gap, a doorway, the floor, empty space): the candidate holds the
+  6. **Not on a wall face** (a gap, a doorway, the floor, empty space): the candidate holds the
      last passing pose. No tag.
 - **Corners.** There is no interpolation around a corner. While the pointer is within reach of the
   corner the fit test fails and the Artwork holds on its wall; once `P` fits on the adjoining
@@ -605,7 +621,7 @@ Writers, payloads and refusals are unchanged (`ARTWORK_TRANSFORM`).
 | Point / ray / ring handles, lift-knob glyph, `screen.offset` | Exist (`stage/stage-handles.ts`) | — |
 | A **screen-space glyph** an adapter can publish for previews and for unselected subjects | Missing. `StageCandidatePreview` has polygons, segments, labels (`stage-facade.ts:273-281`). `StageWorldGraphic` (`:294`) is `{id, kind, world}`; whether an adapter may contribute it is unconfirmed | Final §5.1 glyph and §5.7 light ghost. Interims are specified |
 | A **screen-space bar / custom draw** for one handle | Missing | §5.4 Reach bar draws as a grip disc until then |
-| **`StageLightPreview`** (§5.8): session-only light overrides and one candidate, merged in the editor Stage shell | Missing. No transient render path exists; `registerProposal` (`stage/stage-session.ts`) is a lease record only | All live lighting feedback (A1). **In scope**, step 1a. Shared with any later T1/T2 instrument that previews an entity |
+| **`StageLightPreview`** (§5.8): render-only light overrides and candidate, plus preview shadow invalidation | Missing. No transient render path exists; `registerProposal` (`stage/stage-session.ts`) is a lease record only. `StageShadowTriggers` observes accepted Scene identity | Live illumination and cast shadows (A1). **In scope**, step 1a. Shared with any later T1/T2 instrument that previews an entity |
 | A **planner predicate** an adapter can call before release | Per planner; not uniform | Pre-release refusal ink (§5.7). Without it the refusal arrives on release |
 | Wall pick facts `wallId`, `wallNormal` on `SceneRenderedHit`, from T1 compiled wall geometry | Exist (`artwork/artwork-placement.ts`) | §7.3 fit test. Openings are whatever T1 compiles; no second wall model |
 | Viewport-centre ray and CSS-pixel projection for an adapter | Projection exists for handles; a viewport-centre ray for an adapter is unconfirmed | §5.5 dial fallback centre and constant screen radius |
@@ -659,11 +675,12 @@ One PR per step; each leaves the product working.
 **Acceptance for every step.** Update the suites that pin replaced behaviour
 (`light-adapter-lifecycle.test.ts`, `light-card-fields.test.ts`) and add unit tests for each new
 pure rule: target distance (with and without a range, to prove independence), Aim and Move leave
-`range` untouched, soft-edge radius and its inverse, wide-beam grip mounting, From / Height in sky
+`range` untouched, numeric Aim edits change direction without storing a target, soft-edge radius and its inverse, wide-beam grip mounting, From / Height in sky
 round-trip, dial centre selection, Warmth ramp both directions, Brightness mapping, stand-off
-table, Artwork fit test (wall end, opening, corner, free start), commit payload equals the last
-candidate, preview cleared with no write on Esc and on refusal. Run the focused suites, `npm run check` and
+table, Artwork fit test (wall end, opening, corner, free start, valid centre-tangent placement on
+a curved Wall), commit payload equals the latest release candidate even with a queued frame,
+preview cleared with no write on Esc and on refusal. Run the focused suites, `npm run check` and
 `npm run test:arch`. Then one focused manual browser pass per changed gesture: drag → release
 gives one undo entry; Esc mid-drag gives none and the light returns to its accepted look; the
-light visibly changes during the drag; Undo and Redo restore exactly; save → reload keeps the
-value. Compare each mark and string against §4 and the matching sheet panel.
+light and its cast shadows visibly follow the drag and both restore on cancel; Undo and Redo
+restore exactly; save → reload keeps the value. Compare each mark and string against §4 and the matching sheet panel.
