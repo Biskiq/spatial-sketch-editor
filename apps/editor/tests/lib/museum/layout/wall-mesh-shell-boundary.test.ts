@@ -119,7 +119,9 @@ describe('G4 visitor shell boundary', () => {
 		// because it needs that renderer; the trigger set is the plan's D.6
 		// contract, and the camera is deliberately not one of them.
 		expect(stageCanvas()).toContain('StageShadowTriggers');
-		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} {scene} {rooms} {modelUrls} {formRenderRevision} />');
+		// The render projection, not only the accepted Scene, is the trigger: a
+		// previewed or candidate light must move its cast shadow with its light.
+		expect(stageCanvas()).toContain('<StageShadowTriggers {geometry} scene={renderScene} {rooms} {modelUrls} {formRenderRevision} />');
 		expect(stageCanvas()).toContain('onFormRendererReady={formRendererReady}');
 		expect(stageEntities()).toContain('{onFormRendererReady} {includeLights} Model={ModelComponent}');
 		const groups = entityGroups();
