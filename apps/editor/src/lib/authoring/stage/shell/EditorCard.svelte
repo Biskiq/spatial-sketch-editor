@@ -258,6 +258,12 @@
 	 * discloses rather than inheriting the confirmation its neighbour opened. A
 	 * non-destructive action runs directly.
 	 */
+	/** A writer's own foot runs the same contributed action, including its disclosure. */
+	function runWriterAction(action: StageCardActionRecord): void {
+		if (action.destructive === true) detailOpen = true;
+		void runAction(action);
+	}
+
 	async function runAction(action: (typeof actions)[number], trigger?: HTMLButtonElement): Promise<void> {
 		if (actionBusy) return;
 		const key = confirmationKeyOf(action);
@@ -543,7 +549,8 @@
 		{/if}
 		{#if writer?.view}
 			<div class="writer" data-card-writer={writer.summary}>
-				<writer.view.component services={writer.view.services} detailOpen={moreOpen} {footer} {secondary} {more} />
+				<writer.view.component services={writer.view.services} detailOpen={moreOpen} {footer} {secondary} {more}
+					actions={actions} onAction={runWriterAction} />
 			</div>
 		{:else}
 			{#if ordinaryFacts.length > 0}<dl class="facts">
