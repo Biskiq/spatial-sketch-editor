@@ -88,6 +88,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
   <h1>T2 · Gallery UX Recovery</h1>
   <p class="lede">Proposed gizmos, placement ghosts, Light Cards and Artwork framing. Every panel has a <b>Today / Proposed</b> switch and live controls. The diagrams are schematic: they show what is drawn and what each grip writes, not the final pixel style. Diagnosis and execution order are in <code>fix.md</code>.</p>
   <p class="note">Legend: <span class="tag defect">defect</span> does not do what it shows · <span class="tag ux">confusing</span> works, unreadable · <span class="tag miss">missing</span> promised, not built. Gold = hovered or held grip. Grey line = guide (where light can reach). Glow = the rendered light.</p>
+  <p class="note"><b>Amended after the PR #314 review</b> (A1–A5, listed under Decisions): lights preview as light before commit; the Spot soft-edge ring and wide beams; the Directional dial in large projects and with several lights; Artwork movement at wall ends, openings and corners; the ghost lifecycle.</p>
 </header>
 <nav>
   <a href="#point">Point light</a><a href="#spot">Spot + Light it</a><a href="#directional">Directional</a>
@@ -129,7 +130,8 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
       <div class="ctl">
         <div class="row"><span>View</span><div class="seg" data-seg="sMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
         <div class="row"><span>Aim</span><input type="range" id="sA" min="1.2" max="4.8" step="0.05" value="3"><span class="val" id="sAv"></span></div>
-        <div class="row"><span>Beam</span><input type="range" id="sB" min="6" max="60" step="1" value="22"><span class="val" id="sBv"></span></div>
+        <div class="row"><span>Beam</span><input type="range" id="sB" min="6" max="100" step="1" value="22"><span class="val" id="sBv"></span></div>
+        <div class="row"><span>Soft edge</span><input type="range" id="sS" min="0" max="95" step="1" value="30"><span class="val" id="sSv"></span></div>
         <div class="row"><span>Reach</span><div class="seg" data-seg="sReach"><button data-v="off">Unlimited</button><button data-v="on" aria-pressed="true">Set</button></div><input type="range" id="sR" min="1" max="6" step="0.05" value="4"><span class="val" id="sRv"></span></div>
       </div>
     </div>
@@ -140,9 +142,13 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
         <li><span class="tag defect">defect</span> The <b>target sits on the surface</b> the light hits. Today it sits at the cutoff, 0.5 m behind the wall, and the Card shows a third point 1.5 m out.</li>
         <li><span class="tag ux">confusing</span> The <b>footprint ring</b> is drawn at the target, where the pool is. Today the ring is the far cap at the cutoff: the large black circle.</li>
         <li><span class="tag ux">confusing</span> <b>Two cone edges</b>, not four struts.</li>
-        <li><span class="tag defect">defect</span> <b>Reach is its own bar</b> on the axis past the target. Today it is a short arrow on top of the Move cross.</li>
+        <li><span class="tag defect">defect</span> <b>Reach is its own bar</b> on the axis. Today it is a short arrow on top of the Move cross.</li>
+        <li><span class="tag defect">defect</span> <b>Aim and Reach are independent</b> (A2). The target is where the beam lands, whatever Reach says. Set Reach shorter than Aim: the bar moves in front of the target, the footprint goes dashed, and the target stays put. A new Spot has no Reach.</li>
+        <li><span class="tag defect">defect</span> The <b>soft-edge ring</b> marks the edge of full brightness (A2). Sharp = on the footprint ring; drag inward to soften. Today it is inverted: a sharp beam draws it at the centre.</li>
+        <li><span class="tag miss">missing</span> <b>Above 80°</b> the guide is drawn at 80°, dashed, and the Beam and Soft-edge grips are removed; Beam is set from the Card. Drag Beam past 80.</li>
+        <li><span class="tag miss">missing</span> <b>The light follows every drag</b> before release (A1). Release is one undo step; Esc puts the light back.</li>
       </ul>
-      <div class="keys"><b>Target</b><span>drag across surfaces: aim only</span><b>Rim grip</b><span>drag: Beam</span><b>Reach bar</b><span>drag along the axis: Reach</span><b>Glyph</b><span>drag: move; the target stays put (Shift keeps the direction)</span></div>
+      <div class="keys"><b>Target</b><span>drag across surfaces: aim only</span><b>Rim grip</b><span>drag: Beam (to 80°)</span><b>Inner ring grip</b><span>drag: Soft edge</span><b>Reach bar</b><span>drag along the axis: Reach</span><b>Glyph</b><span>drag: move; the target stays put (Shift keeps the direction)</span></div>
       <p class="note"><b>Light it</b> is unchanged. A Picture spot inherits this gizmo: its target lands on the picture and the footprint frames it.</p>
     </div>
   </div>
@@ -155,6 +161,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
       <div class="stage"><svg id="svgDir" viewBox="0 0 640 400"></svg></div>
       <div class="ctl">
         <div class="row"><span>View</span><div class="seg" data-seg="dMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
+        <div class="row"><span>Project</span><div class="seg" data-seg="dView"><button data-v="near" aria-pressed="true">Scene centre in view</button><button data-v="far">Large project, centre off-screen</button></div></div>
         <div class="row"><span>From</span><input type="range" id="dAz" min="0" max="359" step="1" value="300"><span class="val" id="dAzv"></span></div>
         <div class="row"><span>Height in sky</span><input type="range" id="dAl" min="5" max="90" step="1" value="50"><span class="val" id="dAlv"></span></div>
       </div>
@@ -166,9 +173,12 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
         <li><span class="tag defect">defect</span> A new light is created at <b>50° above the horizon</b>. Today it points straight down, where the azimuth drag changes nothing and the elevation drag is rejected on every move.</li>
         <li><span class="tag defect">defect</span> The Card says <b>From</b> and <b>Height in sky</b>. Today "Elevation" is the travel direction: straight down reads −90° and +20° lights from under the floor.</li>
         <li><span class="tag ux">confusing</span> A <b>sun dial</b>: one bead on the compass for where light comes from, one bead on the arc for how high, and arrows showing travel.</li>
+        <li><span class="tag miss">missing</span> <b>Always reachable</b> (A3). The dial sits at the scene centre while that is in view; otherwise under the centre of the view. It keeps the same size on screen at any zoom. The Card has a <b>Direction</b> row that works without the dial.</li>
+        <li><span class="tag miss">missing</span> <b>Several Directional lights</b> (A3). The dial carries the selected light's name. Every other Directional light is a small tick on the ring where it comes from; hover names it, click selects it.</li>
+        <li><span class="tag miss">missing</span> The light follows the beads while dragging (A1).</li>
       </ul>
-      <div class="keys"><b>Ring bead</b><span>drag around: From</span><b>Arc bead</b><span>drag up or down: Height in sky</span></div>
-      <p class="note">No Move grip: a directional light has no position. The dial sits at the centre of the scene.</p>
+      <div class="keys"><b>Ring bead</b><span>drag around: From</span><b>Arc bead</b><span>drag up or down: Height in sky</span><b>Tick</b><span>click: select that light</span></div>
+      <p class="note">No Move grip: a directional light has no position.</p>
     </div>
   </div>
 </section>
@@ -204,6 +214,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
         <tr><td>Height</td><td>Y</td></tr>
       </table></div>
       <ul style="margin-top:10px">
+        <li><b>The light follows the slider</b> while it is dragged (A1): the scene, not only the number, updates before release. Release is one undo step; Esc puts it back.</li>
         <li><b>Warmth</b> is a slider for white light. <b>Colour</b> is a dial for coloured light. A light is one or the other.</li>
         <li>The five Brightness chips stay on the everyday Card; Advanced has the fine slider between and beyond them.</li>
         <li>Exact numbers sit beside each control, small. They are never the only way to change a value.</li>
@@ -234,6 +245,24 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
       </ul>
     </div>
   </div>
+  <h3 style="margin-top:16px">Moving along walls: ends, openings and corners (A4)</h3>
+  <div class="grid">
+    <div>
+      <div class="stage" style="background:#e9e0c9"><svg id="svgMove" viewBox="0 0 640 230"></svg></div>
+      <div class="ctl"><div class="row"><span>Pointer</span><input type="range" id="mT" min="0" max="660" step="1" value="120"><span class="val" id="mTv"></span></div></div>
+      <p class="cap">Plan view. Drag the pointer along the wall, through the doorway and round the corner.</p>
+    </div>
+    <div>
+      <ul>
+        <li>The Artwork follows the pointer while its whole frame backs onto <b>one wall</b>.</li>
+        <li>Where it would overhang a wall end, an opening or a corner, it <b>stops</b> at the last place it fitted: <i>Stops at the wall edge</i>.</li>
+        <li>Over a gap, a doorway or the floor it <b>waits</b> where it was.</li>
+        <li>Once it fits on the next wall it <b>jumps</b> there and takes that wall's direction. It never floats across the corner.</li>
+        <li><b>Shift</b> at press: move freely in its own plane, as today. Free-standing Artwork attaches to the first wall it fits.</li>
+        <li>Release commits exactly the pose that was drawn.</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <section id="placement">
@@ -243,18 +272,21 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
       <div class="stage"><svg id="svgPlace" viewBox="0 0 640 400"></svg></div>
       <div class="ctl">
         <div class="row"><span>Placing</span><div class="seg" data-seg="gKind"><button data-v="object">Object</button><button data-v="artwork">Artwork</button><button data-v="point" aria-pressed="true">Point</button><button data-v="spot">Spot</button></div></div>
-        <div class="row"><span>State</span><div class="seg" data-seg="gState"><button data-v="hover" aria-pressed="true">Armed</button><button data-v="press">Pressed</button><button data-v="refused">Refused</button><button data-v="done">Released</button></div></div>
+        <div class="row"><span>State</span><div class="seg" data-seg="gState"><button data-v="hover" aria-pressed="true">Armed</button><button data-v="press">Pressed</button><button data-v="refused">Refused</button><button data-v="rel">Refused on release</button><button data-v="done">Placed</button></div></div>
         <div class="row"><span>View</span><div class="seg" data-seg="gMode"><button data-v="today">Today</button><button data-v="new" aria-pressed="true">Proposed</button></div></div>
       </div>
     </div>
     <div>
-      <h3>One behaviour for everything placed</h3>
+      <h3>One lifecycle for everything placed (A5)</h3>
       <div class="tw"><table>
-        <tr><th>State</th><th>Shows</th></tr>
-        <tr><td>Armed</td><td>Ghost at the candidate pose, contact mark on the surface, chip "Click to place · Esc cancels"</td></tr>
-        <tr><td>Pressed</td><td>Same ghost. Spot only: the cone follows the drag to its target</td></tr>
-        <tr><td>Refused</td><td>Ghost in red, dashed, with the reason</td></tr>
-        <tr><td>Released</td><td>One undo step, subject selected, tool stays armed</td></tr>
+        <tr><th>State</th><th>Shows</th><th>Undo steps</th></tr>
+        <tr><td>Armed</td><td>Ghost at the candidate, contact mark, chip "Click to place · Esc cancels". A Point or Spot ghost <b>lights the scene</b></td><td>0</td></tr>
+        <tr><td>Nothing to sit on</td><td>No ghost. Chip says what is needed: "Point at a surface", "Point at a wall"</td><td>0</td></tr>
+        <tr><td>Pressed</td><td>Same ghost. Spot only: the cone follows the drag to its target</td><td>0</td></tr>
+        <tr><td>Refused</td><td>Ghost in red, dashed, with the planner's own reason. Shown only when the planner's check really fails</td><td>0</td></tr>
+        <tr><td>Placing…</td><td>Ghost held still until the result arrives</td><td>0</td></tr>
+        <tr><td>Refused or failed on release</td><td>Ghost stays in red with the reason until the pointer moves; nothing was created; tool still armed; selection unchanged</td><td>0</td></tr>
+        <tr><td>Placed</td><td>Subject selected, tool stays armed. What is placed is exactly what the ghost showed</td><td>1</td></tr>
       </table></div>
       <ul style="margin-top:10px">
         <li><span class="tag miss">missing</span> <b>Lights</b> show nothing until the button is down, then only a text label. Switch to <i>Today</i> with Point or Spot.</li>
@@ -274,12 +306,21 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
     <tr><td>O1</td><td>Where a new light sits relative to the click</td><td>Point: 0.30 m off walls and ceilings. Spot: 0.10 m. Both: 2.20 m above a floor click</td></tr>
     <tr><td>O2</td><td>Moving a light</td><td>Horizontal drag plus a height stem</td></tr>
     <tr><td>O3</td><td>Moving a Spot</td><td>Keeps its target; Shift keeps its direction</td></tr>
-    <tr><td>O4</td><td>Directional dial position</td><td>Centre of the scene</td></tr>
+    <tr><td>O4</td><td>Directional dial position</td><td>Centre of the scene while in view, else under the view centre; constant screen size (A3)</td></tr>
     <tr><td>O5</td><td>Creating a Directional light</td><td>On shelf pick, no Stage click</td></tr>
     <tr><td>O6</td><td>Brightness chips</td><td>0.25× … 4×, with the row label</td></tr>
     <tr><td>O7</td><td>Turn grip on wall-hung Artwork</td><td>Hidden</td></tr>
     <tr><td>O8</td><td>Approved T2 text</td><td>Updated in the implementing PR</td></tr>
     <tr><td>O9</td><td>More becomes Advanced</td><td>Grouped list, one group open, plain words</td></tr>
+  </table></div>
+  <h3 style="margin-top:16px">Amendments from the PR #314 review</h3>
+  <div class="tw"><table>
+    <tr><th>#</th><th>Gap</th><th>Amendment</th><th>Panel</th></tr>
+    <tr><td>A1</td><td>Lighting visible only after commit</td><td>Card sliders, gizmo drags and light ghosts light the scene before commit. One undo step on release, none on cancel</td><td>Spot, Advanced, Placement</td></tr>
+    <tr><td>A2</td><td>Spot correctness</td><td>Soft-edge ring at the edge of full brightness; Aim never reads or writes Reach; beams above 80° drawn clamped and edited from the Card</td><td>Spot</td></tr>
+    <tr><td>A3</td><td>Directional in large or multi-light projects</td><td>View-anchored dial of constant screen size; Direction row on the Card; name chip and ticks for other lights</td><td>Directional, Light Cards</td></tr>
+    <tr><td>A4</td><td>Artwork at wall ends, openings, corners</td><td>Fits or holds; jumps to the next wall; Shift moves freely</td><td>Artwork</td></tr>
+    <tr><td>A5</td><td>Ghost lifecycle</td><td>Truthful refusal, recovery after a failed release, placed = previewed</td><td>Placement</td></tr>
   </table></div>
 </section>
 </main>
@@ -287,7 +328,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
 <script>
 /* ---------- tiny helpers ---------- */
 const $ = (id) => document.getElementById(id);
-const state = { pMode:'new', pReach:'off', sMode:'new', sReach:'on', dMode:'new', cKind:'point', aMode:'new', gKind:'point', gState:'hover', gMode:'new', vKind:'spot' };
+const state = { pMode:'new', pReach:'off', sMode:'new', sReach:'on', dMode:'new', dView:'near', cKind:'point', aMode:'new', gKind:'point', gState:'hover', gMode:'new', vKind:'spot' };
 const art = { style:'float', color:'#1b1b1b', colorName:'Black', mat:true };
 const S = 62, OX = 250, OY = 110;
 const P = ([x,y,z]) => [OX + (x - z) * S * 0.86, OY + (x + z) * S * 0.36 - y * S * 0.86];
@@ -355,19 +396,21 @@ function drawPoint() {
 /* ---------- Spot ---------- */
 function drawSpot() {
   const tx=+$('sA').value, beam=+$('sB').value*Math.PI/180, on=state.sReach==='on', nw=state.sMode==='new';
+  const soft=+$('sS').value/100, wide=+$('sB').value>80, dBeam=Math.min(beam,80*Math.PI/180); $('sSv').textContent=Math.round(soft*100)+'%';
   const B=[3,2.75,2.3], T=[tx,1.45,0], ax=norm(sub(T,B)), d=len(sub(T,B));
   let reach=+$('sR').value;
   if (!nw) { reach = d+.5; $('sR').value = Math.min(6,reach); }
   $('sAv').textContent=d.toFixed(2)+' m'; $('sBv').textContent=(beam*180/Math.PI).toFixed(0)+'°';
   $('sRv').textContent=(on||!nw)?reach.toFixed(2)+' m':'—'; $('sR').disabled=!on||!nw;
   const u=norm(cross(ax,[0,1,0])), v=norm(cross(u,ax));
-  const wallR = d*Math.tan(beam);
+  const wallR = d*Math.tan(dBeam);
   const lit = pool(ring(T,[1,0,0],[0,1,0],wallR*1.25).map(([x,y,z])=>[Math.min(6,Math.max(0,x)),Math.min(3,Math.max(0,y)),0]));
   let s = defs + room(lit);
   const b2=P(B);
   if (!nw) {
-    const C=add(B,mul(ax,reach)), R=reach*Math.tan(beam), rg=ring(C,u,v,R);
+    const C=add(B,mul(ax,reach)), R=reach*Math.tan(dBeam), rg=ring(C,u,v,R);
     s += `<polygon points="${pts(rg)}" ${BLK}/>`;
+    if (soft>.02) { const ir=ring(C,u,v,R*soft); s += `<polygon points="${pts(ir)}" ${BLK} stroke-dasharray="3 3"/>` + label(P(ir[36]),'Soft-edge ring inverted: sharper = smaller',{bg:'#c2452f',dx:-250,dy:-8}); }
     [0,14,28,42].forEach(i=>{ s+=line(B,rg[i],BLK); });
     const [cx,cy]=P(C); s += `<circle cx="${cx}" cy="${cy}" r="5" fill="#fff" stroke="#111" stroke-width="1.6"/>` + label([cx,cy],'Aim grip at cutoff, 0.5 m behind the wall',{bg:'#c2452f',dy:22,dx:-60});
     s += `<path d="M${b2[0]-11},${b2[1]} h22 M${b2[0]},${b2[1]-11} v22" stroke="#111" stroke-width="2.2"/>`;
@@ -376,11 +419,14 @@ function drawSpot() {
     const rg=ring(T,u,v,wallR), r2=rg.map(P), t2=P(T);
     const base=Math.atan2(t2[1]-b2[1],t2[0]-b2[0]); let lo=[9,0], hi=[-9,0];
     r2.forEach((p,i)=>{ let a=Math.atan2(p[1]-b2[1],p[0]-b2[0])-base; a=Math.atan2(Math.sin(a),Math.cos(a)); if(a<lo[0])lo=[a,i]; if(a>hi[0])hi=[a,i]; });
-    s += `<polygon points="${pts(rg)}" ${G}/>` + line(B,rg[lo[1]],G) + line(B,rg[hi[1]],G);
+    const RS = (wide || (on && reach<d)) ? GD : G;
+    s += `<polygon points="${pts(rg)}" ${RS}/>` + line(B,rg[lo[1]],RS) + line(B,rg[hi[1]],RS);
+    if (!wide) { const ir=ring(T,u,v,d*Math.tan(beam*(1-soft))); s += `<polygon points="${pts(ir)}" ${GD}/>` + grip(ir[36],false) + label(P(ir[36]),'Soft edge '+Math.round(soft*100)+'%',{dx:-92,dy:-10}); }
     if (on) { const C=add(B,mul(ax,reach)), w=.22;
       s += line(T,C,GD) + line(add(C,mul(u,-w)),add(C,mul(u,w)),'stroke="#1f2a24" stroke-width="2.4"') + grip(C,false)
         + label(P(C), reach<d ? 'Reach '+reach.toFixed(2)+' m · stops before the target' : 'Reach '+reach.toFixed(2)+' m', {dy:20, bg: reach<d?'#c2452f':'#12261d'}); }
-    const rim=rg[8]; s += grip(rim,true) + label(P(rim),'Beam '+(beam*180/Math.PI).toFixed(0)+'°',{dy:-12});
+    if (!wide) { const rim=rg[8]; s += grip(rim,true) + label(P(rim),'Beam '+(beam*180/Math.PI).toFixed(0)+'°',{dy:-12}); }
+    else s += label(t2,'Beam '+(beam*180/Math.PI).toFixed(0)+'° · wider than the guide',{dx:-78,dy:40,bg:'#6f5611'});
     s += `<circle cx="${t2[0]}" cy="${t2[1]}" r="5.5" fill="#fff" stroke="#1f2a24" stroke-width="1.6"/><circle cx="${t2[0]}" cy="${t2[1]}" r="1.6" fill="#1f2a24"/>` + label(t2,'Aim · '+d.toFixed(2)+' m',{dx:-78,dy:22});
     const K=add(B,[0,.4,0]), k2=P(K); s += line(B,[3,0,2.3],GD) + line(B,K,G) + `<path d="M${k2[0]-5},${k2[1]+4} L${k2[0]},${k2[1]-5} L${k2[0]+5},${k2[1]+4} z" fill="#fff" stroke="#1f2a24" stroke-width="1.4"/>`;
     s += glyph(B,'spot',true,[t2[0]-b2[0],t2[1]-b2[1]]);
@@ -393,7 +439,8 @@ const compass = (deg) => ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45
 function drawDir() {
   const az=+$('dAz').value, al=+$('dAl').value, nw=state.dMode==='new';
   $('dAzv').textContent=az+'°'; $('dAlv').textContent=al+'°';
-  const a=az*Math.PI/180, e=al*Math.PI/180, C=[3,0,2], R=1.35, up=[0,1,0];
+  const far=state.dView==='far' && nw;
+  const a=az*Math.PI/180, e=al*Math.PI/180, C=far?[4.4,0,2.9]:[3,0,2], R=far?1.1:1.35, up=[0,1,0];
   const sH=[Math.sin(a),0,-Math.cos(a)], src=add(mul(sH,Math.cos(e)),mul(up,Math.sin(e))), perp=[Math.cos(a),0,Math.sin(a)];
   const sh = add(C, mul(sH, -Math.min(2.2, 0.9/Math.tan(e))));
   let s = defs + room() + `<polygon points="${pts([[2.6,0,1.6],[3.4,0,1.6],[3.4,.9,1.6],[2.6,.9,1.6]])}" fill="#d8ccb0"/><polygon points="${pts([[3.4,0,1.6],[3.4,0,2.4],[3.4,.9,2.4],[3.4,.9,1.6]])}" fill="#c9bd9f"/><polygon points="${pts([[2.6,.9,1.6],[3.4,.9,1.6],[3.4,.9,2.4],[2.6,.9,2.4]])}" fill="#f1e8d2"/>`;
@@ -410,7 +457,11 @@ function drawDir() {
     s += `<polyline points="${pts(arc)}" ${GD}/>` + line(C,add(C,mul(sH,R)),GD);
     [-.55,0,.55].forEach(k=>{ const o=add(C,mul(perp,k)); s+=line(add(o,mul(src,1.9)),add(o,mul(src,.55)),'stroke="#1f2a24" stroke-width="1.5" marker-end="url(#ah)" opacity=".8"'); });
     const rb=add(C,mul(sH,R)), ab=add(C,mul(src,R));
+    { const o=120*Math.PI/180, op=add(C,mul([Math.sin(o),0,-Math.cos(o)],R)), [ox,oy]=P(op);
+      s += `<circle cx="${ox}" cy="${oy}" r="3.2" fill="#fff" stroke="rgba(31,42,36,.6)" stroke-width="1.2"/>` + label([ox,oy],'Window light',{dx:8,dy:16,bg:'#fff',fg:'#5d665f'}); }
+    s += label(P(C),'Sun',{dx:-16,dy:5,bg:'#f6dc8a',fg:'#292414'});
     s += grip(rb,false) + label(P(rb),'From '+az+'°',{dy:20}) + grip(ab,true) + label(P(ab),'Height in sky '+al+'°',{dy:-12});
+    if (far) s += label([14,26],'Scene centre is out of view: the dial sits under the view centre, same screen size',{dx:0,dy:0,bg:'#22438a'});
   }
   $('svgDir').innerHTML = s;
 }
@@ -431,6 +482,7 @@ function drawCards() {
   let nw=`<div class="card"><div class="k">Light · ${k}</div><div class="t">${name}</div><div class="f"><label>Warmth</label>${warm}</div><div class="f"><label>Brightness</label>${bright}</div>`;
   if(k==='point') nw+=`<div class="f"><label>Reach</label><span class="chips"><span class="chip">Unlimited</span><span class="fld">2.45</span><i class="unit">m</i></span></div>`;
   if(k==='spot') nw+=`<div class="f"><label>Beam</label><span><span class="fld">56.0</span> <i class="unit">°</i></span></div>`;
+  if(k==='directional') nw+=`<div class="f"><label>Direction</label><span><i class="unit">From</i> <span class="fld" style="width:50px">300</span> <i class="unit">° · Height</i> <span class="fld" style="width:44px">50</span> <i class="unit">°</i></span></div>`;
   nw+=`<div class="f"><label>Shadow</label>${shadow.replace("Cast shadow","Cast shadows")}</div>`;
   nw+=`<div class="foot"><span>Advanced: ${k==='directional'?'Colour · Brightness · Direction · Shadows':k==='spot'?'Colour · Brightness · Shape · Position · Shadows':'Colour · Brightness · Shape · Position · Shadows'}</span><span>⌄</span></div><div class="foot" style="border:0;margin-top:2px;padding-top:2px"><span>Duplicate</span><span style="color:#c2452f">Delete</span></div></div>`;
   $('cardOld').innerHTML='<h3>Today</h3>'+old; $('cardNew').innerHTML='<h3>Proposed</h3>'+nw;
@@ -472,15 +524,36 @@ function drawArt() {
    <p class="cap">${art.style==='none'?'No frame':f.name+' · '+art.colorName}${art.mat?' · Mat 6 cm':''}</p>
    <div class="foot"><b style="color:#1f2a24">Light it</b><span>Replace image</span><span>Advanced ⌄</span></div>`;
 }
+const mv={last:{w:'A',p:120}};
+function drawMove(){
+  const t=+$('mT').value, hw=46, A=[40,250,330,560], yA=50, xB=560, yB0=50, yB1=205;
+  const onA=t<=520, px=onA?40+t:xB, py=onA?yA:yB0+(t-520);
+  let fit=null, why='';
+  if(onA){ const a=px-hw,b=px+hw; if((a>=A[0]&&b<=A[1])||(a>=A[2]&&b<=A[3]-8)) fit={w:'A',p:px}; else why=(px>A[1]&&px<A[2])?'gap':'edge'; }
+  else { const a=py-hw,b=py+hw; if(a>=yB0+8&&b<=yB1) fit={w:'B',p:py}; else why='edge'; }
+  if(fit) mv.last=fit; const L=mv.last;
+  $('mTv').textContent=fit?'fits':why==='gap'?'over the doorway':'would overhang';
+  const W='stroke="#8d8468" stroke-width="10" stroke-linecap="butt"';
+  let s=`<rect width="640" height="230" fill="#e9e0c9"/><line x1="${A[0]}" y1="${yA}" x2="${A[1]}" y2="${yA}" ${W}/><line x1="${A[2]}" y1="${yA}" x2="${xB+5}" y2="${yA}" ${W}/><line x1="${xB}" y1="${yB0}" x2="${xB}" y2="${yB1}" ${W}/>`;
+  s+=`<text x="${(A[1]+A[2])/2-26}" y="${yA+4}" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="#5d665f">doorway</text><text x="46" y="${yA-12}" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="#5d665f">Wall A</text><text x="${xB+12}" y="${yB1-4}" font-size="10" font-family="ui-monospace,Menlo,monospace" fill="#5d665f">Wall B</text>`;
+  const hold=!fit, col=hold?'#c2452f':'#2a62d6';
+  if(L.w==='A') s+=`<rect x="${L.p-hw}" y="${yA+6}" width="${hw*2}" height="9" fill="#17382d"/><rect x="${L.p-hw-3}" y="${yA+3}" width="${hw*2+6}" height="15" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="${hold?'5 4':'2 4'}"/>`;
+  else s+=`<rect x="${xB-15}" y="${L.p-hw}" width="9" height="${hw*2}" fill="#17382d"/><rect x="${xB-18}" y="${L.p-hw-3}" width="15" height="${hw*2+6}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="${hold?'5 4':'2 4'}"/>`;
+  const cx=onA?px:xB-22, cy=onA?yA+24:py;
+  s+=`<path d="M${cx-6},${cy} h12 M${cx},${cy-6} v12" stroke="#1f2a24" stroke-width="1.5"/>`;
+  if(hold&&why==='edge'){ const lp=L.w==='A'?[L.p,yA+18]:[xB-18,L.p]; s+=label(lp,'Stops at the wall edge',{dx:L.w==='A'?-70:-170,dy:L.w==='A'?24:4,bg:'#c2452f'}); }
+  $('svgMove').innerHTML=s;
+}
+$('mT').addEventListener('input',drawMove);
 $('artCard').addEventListener('click',(e)=>{const t=e.target.closest('[data-style],[data-color]'); if(!t||t.disabled) return; if(t.dataset.style) art.style=t.dataset.style; else {art.color=t.dataset.color; art.colorName=t.dataset.name;} drawArt();});
 $('artCard').addEventListener('change',(e)=>{ if(e.target.id==='matBox'){art.mat=e.target.checked; drawArt();} });
 
 /* ---------- Placement ---------- */
 function drawPlace() {
-  const k=state.gKind, st=state.gState, nw=state.gMode==='new', ref=st==='refused', done=st==='done';
+  const k=state.gKind, st=state.gState, nw=state.gMode==='new', rel=st==='rel', ref=st==='refused'||rel, done=st==='done';
   const col = ref ? '#c2452f' : '#2a62d6', dash = ref ? 'stroke-dasharray="5 4"' : 'stroke-dasharray="2 4"';
   const GH=`stroke="${col}" stroke-width="1.5" fill="none" ${dash}`;
-  let s=defs+room(), chipAt, chip = ref ? {object:'Overlaps Wall 1',artwork:'Not a wall face',point:'Outside the project',spot:'Outside the project'}[k] : done ? 'Placed · selected · tool stays armed' : st==='press' && k==='spot' ? 'Release on what it should light' : 'Click to place · Esc cancels';
+  let s=defs+room(), chipAt, chip = ref ? {object:'Overlaps Wall 1',artwork:'Not a wall face',point:'Outside the project',spot:'Outside the project'}[k]+(rel?' · nothing placed · still armed':'') : done ? 'Placed · selected · tool stays armed' : st==='press' && k==='spot' ? 'Release on what it should light' : 'Click to place · Esc cancels';
   const lightHidden = !nw && (k==='point'||k==='spot');
   if(k==='object'){ const a=[2.2,0,1.6], b=[3.2,0,2.6], c=[[a[0],0,a[2]],[b[0],0,a[2]],[b[0],0,b[2]],[a[0],0,b[2]]], t=c.map(p=>[p[0],.9,p[2]]);
     if(done) s+=`<polygon points="${pts(t)}" fill="#f1e8d2"/><polygon points="${pts([c[1],c[2],t[2],t[1]])}" fill="#c9bd9f"/><polygon points="${pts([c[3],c[2],t[2],t[3]])}" fill="#d8ccb0"/><polygon points="${pts(t)}" fill="none" stroke="#d9a521" stroke-width="2"/>`;
@@ -493,13 +566,14 @@ function drawPlace() {
     chipAt=P([4,1,0]); }
   if(k==='point'||k==='spot'){ const F=[3,0,2.2], B=[3,2.2,2.2], T=st==='press'&&k==='spot'?[4.2,1.4,0]:[3,0,2.2];
     if(done){ s+=pool(ring(k==='spot'&&st?[3,0,2.2]:F,[1,0,0],[0,0,1],1.7))+line(B,F,GD)+glyph(B,k,true,[0,1]); }
-    else if(!lightHidden){ s+=line(B,F,GH); const f2=P(F); s+=`<path d="M${f2[0]-6},${f2[1]} h12 M${f2[0]},${f2[1]-4} v8" stroke="${col}" stroke-width="1.5"/>`;
+    else if(!lightHidden){ if(nw&&!ref){ s+=`<g opacity=".7">${st==='press'&&k==='spot'?pool(ring(T,[1,0,0],[0,1,0],1.1).map(([x,y])=>[Math.min(6,Math.max(0,x)),Math.min(3,Math.max(0,y)),0])):pool(ring(F,[1,0,0],[0,0,1],1.7))}</g>`+label(P([.3,0,3.6]),'The ghost lights the scene before the click',{dx:0,dy:-4,bg:'#2a62d6'}); }
+      s+=line(B,F,GH); const f2=P(F); s+=`<path d="M${f2[0]-6},${f2[1]} h12 M${f2[0]},${f2[1]-4} v8" stroke="${col}" stroke-width="1.5"/>`;
       if(k==='spot'){ const ax=norm(sub(T,B)), d=len(sub(T,B)), u=norm(cross(ax,[.01,1,0])), v=norm(cross(u,ax)), rg=ring(T,u,v,d*Math.tan(.5));
         s+=`<polygon points="${pts(rg)}" ${GH}/>`+line(B,rg[14],GH)+line(B,rg[42],GH); if(st==='press') s+=label(P(T),'Aim · '+d.toFixed(2)+' m',{dy:-10,bg:col}); }
       const b2=P(B); s+=`<g opacity=".75">${glyph(B,k,false,[P(T)[0]-b2[0],P(T)[1]-b2[1]+.01])}</g>`; }
     else if(st==='press'||ref){ s+=label(P([3,.02,2.2]),'Place '+k,{dx:-30,dy:4,bg:'#1f2a24'}); }
     chipAt=P([3,2.2,2.2]); }
-  if(lightHidden && !done){ const m = st==='hover' ? 'Today: nothing is drawn until the button is down' : st==='press' ? 'Today: a text label only'+(k==='spot'?' (cone after 4 px of drag)':'') : 'Today: no refusal preview';
+  if(lightHidden && !done){ const m = st==='hover' ? 'Today: nothing is drawn until the button is down' : st==='press' ? 'Today: a text label only'+(k==='spot'?' (cone after 4 px of drag)':'') : rel ? 'Today: a refused release ends silently' : 'Today: no refusal preview';
     s+=label([170,60],m,{dx:0,dy:0,bg:'#c2452f'}); }
   else s+=label(chipAt,chip,{dx:14,dy:-14,bg:ref?'#c2452f':'#12261d'});
   $('svgPlace').innerHTML=s;
@@ -535,7 +609,7 @@ function advGroups(){
   return g;
 }
 function drawAdv(){
-  $('advCard').innerHTML=`<div class="k">Light · ${adv.kind}</div><div class="t">${{point:'Point light',spot:'Picture spot',directional:'Directional light'}[adv.kind]}</div><p class="cap" style="margin:-4px 0 8px">Everyday controls above (Warmth, Brightness, ${adv.kind==='spot'?'Beam, ':adv.kind==='point'?'Reach, ':''}Shadow)</p><div class="foot" style="margin:0 0 6px"><b style="color:#1f2a24">Advanced</b><span>⌃</span></div>`+
+  $('advCard').innerHTML=`<div class="k">Light · ${adv.kind}</div><div class="t">${{point:'Point light',spot:'Picture spot',directional:'Directional light'}[adv.kind]}</div><p class="cap" style="margin:-4px 0 8px">Everyday controls above (Warmth, Brightness, ${adv.kind==='spot'?'Beam, ':adv.kind==='point'?'Reach, ':'Direction, '}Shadow)</p><div class="foot" style="margin:0 0 6px"><b style="color:#1f2a24">Advanced</b><span>⌃</span></div>`+
     advGroups().map(([id,name,body])=>`<div class="acc"><button data-open="${id}"><b>${name}</b><span id="s_${id}"></span></button>${adv.open===id?`<div class="body">${body}</div>`:''}</div>`).join('');
   const dial=$('advDial'); if(dial){ const drag=(e)=>{ const r=dial.getBoundingClientRect(), x=e.clientX-r.left-r.width/2, y=e.clientY-r.top-r.height/2; adv.hue=(Math.atan2(y,x)*180/Math.PI+360)%360; adv.amt=Math.round(Math.min(1,Math.hypot(x,y)/(r.width/2))*100); advLive(); };
     dial.onpointerdown=(e)=>{dial.setPointerCapture(e.pointerId); drag(e); dial.onpointermove=drag;}; dial.onpointerup=()=>{dial.onpointermove=null;}; }
@@ -563,9 +637,9 @@ document.querySelectorAll('[data-seg]').forEach((seg)=>seg.addEventListener('cli
   const b=e.target.closest('button'); if(!b) return; const key=seg.dataset.seg; state[key]=b.dataset.v;
   seg.querySelectorAll('button').forEach((x)=>x.setAttribute('aria-pressed', String(x===b))); draw[key[0]]();
 }));
-['pH','pR'].forEach(i=>$(i).addEventListener('input',drawPoint)); ['sA','sB','sR'].forEach(i=>$(i).addEventListener('input',drawSpot));
+['pH','pR'].forEach(i=>$(i).addEventListener('input',drawPoint)); ['sA','sB','sS','sR'].forEach(i=>$(i).addEventListener('input',drawSpot));
 ['dAz','dAl'].forEach(i=>$(i).addEventListener('input',drawDir)); $('aW').addEventListener('input',drawArt);
-Object.values(draw).forEach((f)=>f());
+Object.values(draw).forEach((f)=>f()); drawMove();
 </script>
 </body>
 </html>
