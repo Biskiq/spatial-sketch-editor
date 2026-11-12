@@ -8,8 +8,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { removeProjectVolumes, stopProjectContainers } from './docker.mjs';
 import {
 	allocatePorts,
+	authorizeCleanupState,
 	buildComposeEnv,
 	buildStackEnv,
 	createState,
@@ -73,6 +75,50 @@ test('state validation rejects another worktree, stale identity and duplicate po
 			),
 		/invalid sessionKey|invalid session key/
 	);
+});
+
+test('cleanup never trusts another worktree state and refuses a mismatched reset target', () => {
+	const identity = stackIdentity('/tmp/worktrees/alpha');
+	const ports = { db: 50_000, storage: 50_001, api: 50_002, editor: 50_003 };
+	const own = createState(identity, ports);
+	const foreign = createState(stackIdentity('/tmp/worktrees/beta'), ports);
+
+	assert.equal(authorizeCleanupState(null, identity).state, null);
+	assert.equal(authorizeCleanupState(own, identity).state, own);
+
+	const denied = authorizeCleanupState(foreign, identity);
+	assert.equal(denied.state, null);
+	assert.match(denied.mismatch, /belongs to/);
+	assert.doesNotMatch(denied.mismatch, /biskiq-dev-/);
+});
+
+test('cleanup reports a Docker failure instead of treating the stack as gone', () => {
+	const calls = [];
+	const run = (args) => {
+		calls.push(args);
+		if (args[0] === 'volume' && args[1] === 'ls') {
+			return { status: 0, stdout: 'local_pgdata\nlocal_s3data\n' };
+		}
+		if (args[0] === 'volume' && args[1] === 'rm') {
+			return { status: 1, stderr: 'volume is in use' };
+		}
+		return { status: 0, stdout: '' };
+	};
+
+	assert.throws(() => removeProjectVolumes('local', run), /docker volume rm failed.*in use/);
+	assert.deepEqual(calls, [
+		['volume', 'ls', '-q'],
+		['volume', 'rm', 'local_pgdata', 'local_s3data']
+	]);
+});
+
+test('container stop failure is reported rather than logged as a clean stop', () => {
+	const run = (args) =>
+		args[0] === 'ps'
+			? { status: 0, stdout: 'container-id\n' }
+			: { status: 1, stderr: 'cannot stop container' };
+
+	assert.throws(() => stopProjectContainers('local', run), /docker stop failed.*cannot stop/);
 });
 
 test('stack environment replaces inherited production values with loopback ones', () => {

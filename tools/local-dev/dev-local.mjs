@@ -19,8 +19,10 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
+import { removeProjectContainers, removeProjectVolumes, stopProjectContainers } from './docker.mjs';
 import {
 	allocatePorts,
+	authorizeCleanupState,
 	buildComposeEnv,
 	buildStackEnv,
 	childrenPath,
@@ -212,13 +214,19 @@ async function loadExistingState() {
 	return state;
 }
 
-/** Stop/reset must still work when the state file is stale or broken. */
+/** Stop/reset read the record, but only use it after identity authorization. */
 async function readRawState() {
 	try {
 		return await readState(REPO_ROOT);
 	} catch {
 		return null;
 	}
+}
+
+async function loadCleanupState() {
+	const identity = stackIdentity(REPO_ROOT);
+	const raw = await readRawState();
+	return { identity, ...authorizeCleanupState(raw, identity) };
 }
 
 async function ensureState() {
@@ -374,23 +382,6 @@ async function stopSupervisor() {
 	return true;
 }
 
-function stopProjectContainers(stack) {
-	const result = spawnSync(
-		'docker',
-		['ps', '-q', '--filter', `label=com.docker.compose.project=${stack}`],
-		{ encoding: 'utf8' }
-	);
-	const ids = typeof result.stdout === 'string' ? result.stdout.split(/\s+/).filter(Boolean) : [];
-	if (ids.length > 0) run('docker', ['stop', ...ids], { allowFailure: true });
-}
-
-function removeProjectVolumes(stack) {
-	run('docker', ['volume', 'rm', `${stack}_pgdata`, `${stack}_s3data`], {
-		allowFailure: true,
-		stdio: 'ignore'
-	});
-}
-
 function installSignalHandlers() {
 	for (const signal of SIGNALS) {
 		const handler = () => {
@@ -494,7 +485,16 @@ async function start() {
 
 		const editor = startChild(
 			'editor',
-			['run', 'dev', '-w', '@portfolio/editor', '--', '--port', String(state.ports.editor), '--strictPort'],
+			[
+				'run',
+				'dev:local',
+				'-w',
+				'@portfolio/editor',
+				'--',
+				'--port',
+				String(state.ports.editor),
+				'--strictPort'
+			],
 			env
 		);
 		await waitForHttp('editor', `http://127.0.0.1:${state.ports.editor}/`, editor);
@@ -509,21 +509,21 @@ async function start() {
 }
 
 async function stop() {
-	const state = await readRawState();
-	const identity = stackIdentity(REPO_ROOT);
+	const { identity, state, mismatch } = await loadCleanupState();
+	if (mismatch) log(`ignoring persisted state for cleanup: ${mismatch}`);
 	const stoppedSupervisor = await stopSupervisor();
 	if (!stoppedSupervisor) await killRecordedChildren();
 	let stoppedCompose = false;
-	if (state?.stack) {
+	if (state) {
 		try {
 			stoppedCompose = compose(state, ['stop'], { allowFailure: true }).status === 0;
 		} catch {
 			stoppedCompose = false;
 		}
 	}
-	if (!stoppedCompose) stopProjectContainers(identity.stack);
+	const stoppedContainers = stoppedCompose ? 0 : stopProjectContainers(identity.stack);
 	await releaseLock();
-	if (state || stoppedSupervisor) {
+	if (state || mismatch || stoppedSupervisor || stoppedContainers > 0) {
 		log('local stack stopped; database and object storage data are preserved.');
 	} else {
 		log('no running local stack was found.');
@@ -531,12 +531,16 @@ async function stop() {
 }
 
 async function reset() {
-	const state = await readRawState();
-	const identity = stackIdentity(REPO_ROOT);
+	const { identity, state, mismatch } = await loadCleanupState();
+	if (mismatch) {
+		throw new Error(
+			`Refusing to reset because the persisted state is not for this worktree: ${mismatch}. The state file was left in place.`
+		);
+	}
 	await stopSupervisor();
 	await killRecordedChildren();
 	let removedCompose = false;
-	if (state?.stack) {
+	if (state) {
 		try {
 			removedCompose = compose(state, ['down', '--volumes', '--remove-orphans'], {
 				allowFailure: true
@@ -545,11 +549,17 @@ async function reset() {
 			removedCompose = false;
 		}
 	}
-	if (!removedCompose) stopProjectContainers(identity.stack);
-	removeProjectVolumes(identity.stack);
-	await rm(statePath(REPO_ROOT), { force: true });
+	try {
+		if (!removedCompose) removeProjectContainers(identity.stack);
+		removeProjectVolumes(identity.stack);
+	} catch (error) {
+		throw new Error(
+			`Reset could not remove the local stack; the persisted state was left in place: ${error.message}`
+		);
+	}
 	await rm(lockPath(REPO_ROOT), { force: true });
 	await rm(childrenPath(REPO_ROOT), { force: true });
+	await rm(statePath(REPO_ROOT), { force: true });
 	log('local database and object storage were deleted; the next start recreates them.');
 }
 

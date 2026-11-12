@@ -48,6 +48,18 @@ repeated. A lock file prevents two supervisors from racing on one worktree; a
 stale lock from a crashed process is reclaimed. `stop` and `reset` are safe to
 repeat when nothing is running.
 
+`stop` and `reset` authorize the persisted state against the current absolute
+worktree path before using its Compose project. A state file copied from another
+worktree cannot target that other stack: `stop` falls back to the current
+worktree's identity, and `reset` refuses and leaves the state file in place. If
+Docker cleanup fails, `reset` reports the failure and also leaves the state file
+so the operation can be retried without losing the only recovery record.
+
+The API and editor started by `dev:local` bind to `127.0.0.1`; PostgreSQL and
+SeaweedFS publish their ports on loopback too. The API chooses loopback whenever
+the development-only local object store is active; the normal R2 path keeps its
+`0.0.0.0` listener, and `npm run dev:editor` is unchanged.
+
 ### What is isolated, and where the data lives
 
 Every checkout's absolute path determines a short hash. That hash names the

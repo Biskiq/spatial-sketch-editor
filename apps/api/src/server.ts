@@ -6,6 +6,11 @@ import { createPool, type DatabasePool } from './database.js';
 import { createR2ObjectStore, type ObjectStore } from './object-store.js';
 import { installShutdownHandlers, type ShutdownProcess } from './shutdown.js';
 
+/** The development-only local store implies a loopback-only listener. */
+export function listenHostFor(config: Pick<ApiConfig, 'objectStoreMode'>): string {
+	return config.objectStoreMode === 'local' ? '127.0.0.1' : '0.0.0.0';
+}
+
 export type StartServerOptions = {
 	config?: ApiConfig;
 	env?: NodeJS.ProcessEnv;
@@ -29,7 +34,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Fas
 	const closeOnce = installShutdownHandlers(app, options.processLike);
 
 	try {
-		await app.listen({ host: '0.0.0.0', port: config.port });
+		await app.listen({ host: listenHostFor(config), port: config.port });
 	} catch (error) {
 		await closeOnce();
 		throw error;

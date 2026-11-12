@@ -149,6 +149,28 @@ export function validateState(state, identity) {
 	return state;
 }
 
+/**
+ * Decide whether persisted state may authorize cleanup for this worktree.
+ *
+ * A missing state is safe: cleanup targets the identity derived from the
+ * current absolute path. A state that fails validation is never returned for a
+ * caller to use as a Docker project; the mismatch is exposed instead.
+ */
+export function authorizeCleanupState(rawState, identity) {
+	if (rawState === null || rawState === undefined) {
+		return { state: null, mismatch: null };
+	}
+	try {
+		validateState(rawState, identity);
+		return { state: rawState, mismatch: null };
+	} catch (error) {
+		return {
+			state: null,
+			mismatch: error instanceof Error ? error.message : 'Local stack state is invalid'
+		};
+	}
+}
+
 export async function readState(repoRoot) {
 	try {
 		const text = await readFile(statePath(repoRoot), 'utf8');

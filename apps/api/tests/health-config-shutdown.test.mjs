@@ -12,7 +12,7 @@ import { createApp } from '../dist/app.js';
 import { ConfigError, readConfig } from '../dist/config.js';
 import { sanitizeDatabaseError } from '../dist/database.js';
 import { installShutdownHandlers } from '../dist/shutdown.js';
-import { startServer } from '../dist/server.js';
+import { listenHostFor, startServer } from '../dist/server.js';
 
 import { R2_ENV, stubPool } from './test-support.mjs';
 
@@ -147,6 +147,8 @@ test('local object storage is an explicit development-only loopback driver', () 
 	assert.equal(local.objectStoreMode, 'local');
 	assert.equal(local.objectStoreForcePathStyle, true);
 	assert.equal(local.r2Endpoint, 'http://127.0.0.1:18333');
+	assert.equal(listenHostFor(local), '127.0.0.1');
+	assert.equal(listenHostFor(r2), '0.0.0.0');
 
 	assert.throws(
 		() => readConfig({ ...base, R2_ENDPOINT: 'http://127.0.0.1:18333' }),
