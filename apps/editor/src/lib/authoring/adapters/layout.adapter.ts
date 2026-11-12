@@ -57,8 +57,12 @@ import {
 	proposeWallFirstArchitectureGeometry,
 	createWallFirstArchitectureVerdictScope,
 	createWallSamplingDerivation,
+	planDuplicateIsolatedRoom,
 	readWallFirstDragProposal,
 	resolveIsolatedRoomGroupSubgraph,
+	resolveIsolatedRoomSubgraph,
+	type DuplicatePlan,
+	type LayoutIdCapture,
 	type WallFirstArchitectureProposalWall,
 	planExactWallHeight,
 	planExactWallThickness,
@@ -101,7 +105,7 @@ import LayoutCardFields from './layout/LayoutCardFields.svelte';
 import { wallUnfold } from '$lib/authoring/layout/wall-unfold-store.svelte';	import { WALL_UNFOLD_SHAPE_REFUSAL } from '$lib/layout/wall-unfold';
 import LayoutInkPalette from './layout/LayoutInkPalette.svelte';
 import LayoutPlacementInstrument from './layout/LayoutPlacementInstrument.svelte';
-import { wallRefusalWords, wallSplitRefusalWords } from './layout/refusals';
+import { roomDuplicateRefusalWords, wallRefusalWords, wallSplitRefusalWords } from './layout/refusals';
 import {
 	EMPTY_CHAIN_DRAFT,
 	appendChainPoint,
@@ -143,6 +147,13 @@ import {
 	type WallDeletionPreview
 } from './layout/drawing-planners';
 import { createSplitPlanners, wallSplitIntent } from './layout/split-planners';
+import {
+	createRoomDuplicatePlanners,
+	LAYOUT_ROOM_DUPLICATE_KIND,
+	roomDuplicateIntent,
+	roomDuplicateIsCoincident,
+	ROOM_DUPLICATE_COINCIDENT_MESSAGE
+} from './layout/room-duplicate-planners';
 import {
 	classifyInkPointerTarget,
 	INK_JUNCTION_HIT_CSS_PX,
@@ -681,6 +692,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createLayoutPlanners(),
 		...createDrawingPlanners(),
 		...createSplitPlanners(),
+		...createRoomDuplicatePlanners(),
 		...createOpeningPlanners()
 	];
 	for (const planner of planners) {
@@ -1259,6 +1271,287 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					role: 'refused',
 					geometry: { polygons: [], segments },
 					labels: [label]
+				})];
+			}
+
+			/*
+			 * T1 A4 — Duplicate an isolated Room. The Card arms one task; the task's
+			 * unpressed moves carry the complete cloned Room as one proposal, and a
+			 * click accepts it through one captured intent. The initial proposal is
+			 * placed one metre clear of the source, so Duplicate never proposes an
+			 * ambiguous coincident copy and a click before any move still places it.
+			 * Nothing here is a mark, an armed dock tool or a second document.
+			 */
+			type RoomDuplicateSession = {
+				readonly roomId: string;
+				readonly capture: LayoutIdCapture;
+				readonly defaultDelta: LayoutVec2;
+				readonly center: LayoutVec2;
+				/** The last pointer point on the datum, or `null` before the first move. */
+				pointer: LayoutVec2 | null;
+				/** The first pointer point a move named; every later move is relative to it. */
+				origin: LayoutVec2 | null;
+				delta: LayoutVec2;
+				preview: DuplicatePlan | null;
+				snap: LayoutSnapWinner | null;
+			};
+			let roomDuplicate: RoomDuplicateSession | null = null;
+			/** The Room the Card asked to duplicate, consumed by the task's instrument. */
+			let pendingRoomDuplicateId: string | null = null;
+			let roomDuplicateNotice: string | null = null;
+			let roomDuplicateCommitting = false;
+			let roomDuplicateProposal: ProposalLease | null = null;
+			const ROOM_DUPLICATE_PREVIEW_ID = 'layout-room-duplicate-candidate';
+
+			function endRoomDuplicate(): void {
+				roomDuplicate = null;
+				roomDuplicateNotice = null;
+				roomDuplicateProposal?.release();
+				roomDuplicateProposal = null;
+			}
+
+			function roomDuplicateCount(count: number, noun: string): string {
+				return `${count} ${noun}${count === 1 ? '' : 's'}`;
+			}
+
+			/** The compiled floor extent, with the authored boundary as a fallback. */
+			function roomDuplicateFrame(roomId: string): { readonly center: LayoutVec2; readonly delta: LayoutVec2 } | null {
+				const compiled = services.stage.snapshot().domain.geometry.rooms.find(
+					(entry) => entry.roomId === roomId
+				);
+				let points: readonly LayoutVec2[] = compiled !== undefined && compiled.floorPolygon.length >= 3
+					? compiled.floorPolygon
+					: [];
+				if (points.length === 0) {
+					const room = document.rooms.find((entry) => entry.id === roomId);
+					const collected: LayoutVec2[] = [];
+					for (const ref of room?.boundary ?? []) {
+						const wall = document.walls.find((entry) => entry.id === ref.wallId);
+						if (wall === undefined) continue;
+						for (const junctionId of [wall.startJunctionId, wall.endJunctionId]) {
+							const junction = document.junctions.find((entry) => entry.id === junctionId);
+							if (junction !== undefined) collected.push(junction.point);
+						}
+					}
+					points = collected;
+				}
+				if (points.length === 0) return null;
+				const minX = Math.min(...points.map((point) => point[0]));
+				const maxX = Math.max(...points.map((point) => point[0]));
+				const minZ = Math.min(...points.map((point) => point[1]));
+				const maxZ = Math.max(...points.map((point) => point[1]));
+				const width = Math.max(0, maxX - minX);
+				return {
+					center: [(minX + maxX) / 2, (minZ + maxZ) / 2],
+					// One clear metre past the source's own extent. The planner never
+					// invents a delta; this is the adapter's initial proposal only.
+					delta: [Number((width + 1).toFixed(3)), 0]
+				};
+			}
+
+			/** Re-run the retained planner at the session's current translation. */
+			function replanRoomDuplicate(): void {
+				const current = roomDuplicate;
+				if (current === null) return;
+				current.preview = planDuplicateIsolatedRoom(
+					document,
+					{ roomId: current.roomId, delta: [current.delta[0], current.delta[1]] },
+					current.capture,
+					document.floor.id
+				);
+			}
+
+			/** Begin one Room copy: one capture, one proposal lease, one initial delta. */
+			function beginRoomDuplicate(roomId: string): boolean {
+				const room = document.rooms.find((entry) => entry.id === roomId);
+				if (room === undefined) {
+					roomDuplicateNotice = 'That Room is gone. Select the Room again.';
+					return false;
+				}
+				const isolation = resolveIsolatedRoomSubgraph(document, roomId);
+				if (isolation.kind === 'rejected') {
+					roomDuplicateNotice = roomDuplicateRefusalWords(document, isolation.rejection);
+					return false;
+				}
+				const frame = roomDuplicateFrame(roomId);
+				if (frame === null) {
+					roomDuplicateNotice = 'This Room has no resolvable floor to place a copy.';
+					return false;
+				}
+				roomDuplicate = {
+					roomId,
+					capture: mintLayoutIdCapture(),
+					defaultDelta: frame.delta,
+					center: frame.center,
+					pointer: null,
+					origin: null,
+					delta: frame.delta,
+					preview: null,
+					snap: null
+				};
+				roomDuplicateNotice = null;
+				roomDuplicateProposal?.release();
+				roomDuplicateProposal = services.stage.session.registerProposal({
+					owner: LAYOUT_ROOM_DUPLICATE_KIND,
+					reason: 'A Room copy is live; place it or cancel it — Undo is available once it settles.'
+				});
+				replanRoomDuplicate();
+				return true;
+			}
+
+			/** Translate the proposal by pointer motion, relative to the first move. */
+			function moveRoomDuplicate(ctx: StageAdapterContext, point: LayoutVec2): void {
+				const current = roomDuplicate;
+				if (current === null) return;
+				roomDuplicateNotice = null;
+				current.pointer = [point[0], point[1]];
+				if (current.origin === null) {
+					current.origin = [point[0], point[1]];
+					current.snap = null;
+					replanRoomDuplicate();
+					return;
+				}
+				const origin = current.origin;
+				const snapped = resolvePlanarDragSnap(
+					origin,
+					point,
+					ctx.drafting(),
+					(from, to) => datumSnapDistance(ctx, from, to)
+				);
+				current.delta = [
+					Number((current.defaultDelta[0] + snapped.point[0] - origin[0]).toFixed(9)),
+					Number((current.defaultDelta[1] + snapped.point[1] - origin[1]).toFixed(9))
+				];
+				current.snap = snapped.winner;
+				replanRoomDuplicate();
+			}
+
+			function roomDuplicateSelected(): boolean {
+				return services.stage.session.task()?.kind === LAYOUT_ROOM_DUPLICATE_KIND;
+			}
+
+			function roomDuplicatePointer(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
+				if (!roomDuplicateSelected()) return false;
+				if (intent.phase === 'cancel') {
+					endRoomDuplicate();
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'down') {
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (point !== null) moveRoomDuplicate(ctx, [point[0], point[1]]);
+					const current = roomDuplicate;
+					if (current === null) {
+						roomDuplicateNotice = 'That Room cannot be duplicated as it stands.';
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					if (roomDuplicateIsCoincident(current.delta)) {
+						roomDuplicateNotice = ROOM_DUPLICATE_COINCIDENT_MESSAGE;
+						services.stage.notifySurfaceChange();
+						return true;
+					}
+					if (current.preview?.kind === 'success') {
+						void commitRoomDuplicate(current);
+						return true;
+					}
+					roomDuplicateNotice = current.preview?.kind === 'rejected'
+						? current.preview.rejection.message
+						: 'This Room cannot be duplicated here.';
+					services.stage.notifySurfaceChange();
+					return true;
+				}
+				if (intent.phase === 'move') {
+					const point = pointerDatumPoint(ctx, intent.css);
+					if (point !== null) {
+						moveRoomDuplicate(ctx, [point[0], point[1]]);
+						services.stage.notifySurfaceChange();
+					}
+					return true;
+				}
+				// `up` belongs to the press that committed (or refused) on `down`.
+				return true;
+			}
+
+			function roomDuplicateHover(intent: StagePointerIntent, ctx: StageAdapterContext): boolean {
+				if (intent.phase !== 'move' || !roomDuplicateSelected() || roomDuplicate === null) return false;
+				const point = pointerDatumPoint(ctx, intent.css);
+				if (point === null) return false;
+				moveRoomDuplicate(ctx, [point[0], point[1]]);
+				services.stage.notifySurfaceChange();
+				return true;
+			}
+
+			async function commitRoomDuplicate(current: RoomDuplicateSession): Promise<void> {
+				if (roomDuplicateCommitting) return;
+				const plan = current.preview;
+				if (plan?.kind !== 'success') return;
+				const createdRoomId = plan.createdRoomId;
+				if (createdRoomId === undefined) return;
+				roomDuplicateCommitting = true;
+				try {
+					const snapshot = services.stage.snapshot();
+					if (stageUnitRevision(snapshot, 'layout') !== contentRevision) return;
+					const outcome = await services.authoring.accept(
+						roomDuplicateIntent({
+							roomId: current.roomId,
+							delta: [current.delta[0], current.delta[1]],
+							capture: current.capture,
+							operationId: globalThis.crypto.randomUUID(),
+							projectId: snapshot.acceptedRevision.projectId,
+							revisionId: services.authoring.acceptedRevision().revisionId,
+							contentRevision,
+							levelId
+						})
+					);
+					if (outcome.kind === 'refused') {
+						roomDuplicateNotice = outcome.message;
+						services.stage.notifySurfaceChange();
+						return;
+					}
+					endRoomDuplicate();
+					services.stage.notifySurfaceChange();
+				} finally {
+					roomDuplicateCommitting = false;
+				}
+			}
+
+			/** The complete cloned Room as one proposal; a refusal carries its words. */
+			function roomDuplicatePreviews(ctx: StageAdapterContext, y: number): readonly StageCandidatePreview[] {
+				const current = roomDuplicate;
+				if (current === null) return [];
+				const plan = current.preview;
+				const refused = roomDuplicateIsCoincident(current.delta)
+					? ROOM_DUPLICATE_COINCIDENT_MESSAGE
+					: roomDuplicateNotice ?? (plan?.kind === 'rejected' ? plan.rejection.message : null);
+				const anchor: [number, number, number] = current.pointer === null
+					? [current.center[0] + current.delta[0], y, current.center[1] + current.delta[1]]
+					: [current.pointer[0], y, current.pointer[1]];
+				const label = refused ?? `Copy · ${planarDeltaLabel(current.delta[0], current.delta[1])}`;
+				if (plan?.kind === 'success') {
+					const subjectIds = new Set([
+						...plan.createdJunctionIds,
+						...plan.createdWallIds,
+						...plan.createdOpeningIds,
+						...(plan.createdRoomId === undefined ? [] : [plan.createdRoomId]),
+						...plan.createdObjectIds
+					]);
+					const built = candidatePaper(plan.document, y, subjectIds, new Set());
+					if (built !== null) {
+						return [candidatePreviewOf({
+							id: ROOM_DUPLICATE_PREVIEW_ID,
+							role: refused === null ? 'subject' : 'refused',
+							geometry: built.paper.subject,
+							labels: [{ world: anchor, text: label }],
+							snap: current.snap === null ? undefined : { world: anchor, name: current.snap.name }
+						})];
+					}
+				}
+				return [candidatePreviewOf({
+					id: ROOM_DUPLICATE_PREVIEW_ID,
+					role: refused === null ? 'subject' : 'refused',
+					geometry: { polygons: [], segments: [] },
+					labels: [{ world: anchor, text: label }]
 				})];
 			}
 
@@ -4730,6 +5023,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						taskKind: LAYOUT_PLINTH_PLACE_KIND,
 						label: 'Place plinth',
 						order: 10
+					},
+					// A4 — a procedure invoked by the Room Card, never a dock tool and
+					// never an Index entry: no armable mode is added to the tool strip.
+					{
+						id: LAYOUT_ROOM_DUPLICATE_KIND,
+						taskKind: LAYOUT_ROOM_DUPLICATE_KIND,
+						label: 'Duplicate room',
+						order: 20
 					}
 				],
 				findEntries: [
@@ -4823,6 +5124,58 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				 * returns the host Wall to the selection.
 				 */
 				cardActions(cardSubject: StageCardSubject): readonly StageCardAction[] {
+					// A4 — Duplicate is the Room's one scoped action. The disclosure comes
+					// from the same isolation planner the acceptance re-proves; a
+					// non-isolated Room states why, naming every involved Wall, instead of
+					// offering a copy that would have to detach shared architecture.
+					if (cardSubject.sourceKind === 'room' || cardSubject.sourceKind === 'room-floor') {
+						const roomId = cardSubject.sourceId;
+						const room = document.rooms.find((entry) => entry.id === roomId);
+						if (room === undefined) {
+							return [{
+								id: 'layout-room-duplicate',
+								label: 'Duplicate',
+								group: 'secondary',
+								detail: 'That Room is gone. Select the Room again.',
+								run: async () => ({ kind: 'refused', message: 'That Room is gone. Select the Room again.' })
+							}];
+						}
+						const isolation = resolveIsolatedRoomSubgraph(document, roomId);
+						let detail: string;
+						if (isolation.kind === 'rejected') {
+							detail = roomDuplicateRefusalWords(document, isolation.rejection);
+						} else {
+							const objects = isolation.subgraph.associatedObjectIds.length;
+							detail = [
+								`Copies ${room.name} with its ${roomDuplicateCount(isolation.subgraph.wallIds.length, 'Wall')}, ${roomDuplicateCount(isolation.subgraph.junctionIds.length, 'Junction')}, ${roomDuplicateCount(isolation.subgraph.openingIds.length, 'Opening')}${objects === 0 ? '' : ` and ${roomDuplicateCount(objects, 'object')}`}.`,
+								'The copy starts clear of its source; move the pointer, then click to place it.'
+							].join(' ');
+						}
+						return [{
+							id: 'layout-room-duplicate',
+							label: 'Duplicate',
+							// Duplicate adds a copy and Undo removes it: it is scoped and
+							// reversible, so it sits in the Card's More disclosure rather than
+							// the destructive row.
+							group: 'secondary',
+							detail,
+							run: async () => {
+								if (isolation.kind === 'rejected') {
+									return { kind: 'refused', message: detail };
+								}
+								pendingRoomDuplicateId = roomId;
+								const opened = services.stage.openContributedTask(LAYOUT_ROOM_DUPLICATE_KIND, 'layout');
+								if (opened.kind !== 'opened') {
+									pendingRoomDuplicateId = null;
+									return { kind: 'refused', message: opened.message };
+								}
+								return {
+									kind: 'accepted',
+									message: 'Move the pointer, then click to place the copy. Escape cancels.'
+								};
+							}
+						}];
+					}
 					if (cardSubject.sourceKind === 'opening') {
 						const opening = document.openings.find((entry) => entry.id === cardSubject.sourceId);
 						if (opening === undefined) {
@@ -5266,6 +5619,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return ticks;
 				},
 				hoverIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					// The Room copy follows unpressed motion; the press that places it is
+					// claimed by `pointerIntent`, so navigation still belongs to the host.
+					if (openTaskKind === LAYOUT_ROOM_DUPLICATE_KIND) return roomDuplicateHover(intent, adapterContext);
 					if (openTaskKind !== LAYOUT_INK_TASK) return false;
 					if (inkReading !== 'wall' && inkReading !== 'opening') {
 						const session = ensureContributedSession();
@@ -5297,6 +5653,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					return updateIdleBendHover(intent, adapterContext);
 				},
 				pointerIntent(intent: StagePointerIntent, adapterContext: StageAdapterContext): boolean {
+					if (openTaskKind === LAYOUT_ROOM_DUPLICATE_KIND) return roomDuplicatePointer(intent, adapterContext);
 					if (intent.phase === 'down' && idleBendHint !== null) {
 						idleBendHint = null;
 						services.stage.notifySurfaceChange();
@@ -6255,12 +6612,34 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							view: { component: LayoutPlacementInstrument, services }
 						};
 					}
+					if (task.kind === LAYOUT_ROOM_DUPLICATE_KIND) {
+						// The Card names the Room; opening the task closes any previous
+						// contributed task first, so the request is consumed here, after that
+						// close, and never by a clear on `taskClosed`.
+						const roomId = pendingRoomDuplicateId;
+						pendingRoomDuplicateId = null;
+						const started = roomId !== null && beginRoomDuplicate(roomId);
+						const room = roomId === null ? undefined : document.rooms.find((entry) => entry.id === roomId);
+						return {
+							summary: 'Duplicate Room',
+							facts: [
+								{ label: 'Copy', value: room === undefined ? 'One isolated Room' : `${room.name}, its Walls, Junctions and Openings` },
+								{
+									label: 'Place',
+									value: started
+										? 'Move the pointer, then click. Escape cancels.'
+										: roomDuplicateNotice ?? 'Select an isolated Room and choose Duplicate.'
+								}
+							]
+						};
+					}
 					return null;
 				},
 				/** Esc, task replacement and install all end the writer with no commit. */
 				taskClosed() {
 					rearmEpoch += 1;
 					if (roomMove !== null) endRoomMove();
+					endRoomDuplicate();
 					openTaskKind = null;
 					settledRefusal = null;
 					if (pausedProposal !== null) {
@@ -6321,6 +6700,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function candidatePreviews(adapterContext: StageAdapterContext): readonly StageCandidatePreview[] {
 				const y = adapterContext.snapshot.domain.datumMeters;
+				if (roomDuplicate !== null) return roomDuplicatePreviews(adapterContext, y);
 				if (roomMove !== null) return roomMovePreviews(adapterContext, y);
 				if (scalarGesture !== null) {
 					const current = scalarGesture;

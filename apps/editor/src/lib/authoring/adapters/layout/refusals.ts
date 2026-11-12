@@ -199,6 +199,49 @@ export function openingRefusalWords(
 	return `That ${kind} was refused. Adjust its host or size and try again.`;
 }
 
+/**
+ * T1 A4 — duplicate's own words.
+ *
+ * The planner's diagnostic names ids. The creator needs the same facts in the
+ * Room's vocabulary, and a non-isolated Room must **name the shared Wall** rather
+ * than ask them to read a planner message. `targetIds` carries the involved
+ * Rooms and Walls; every id that resolves to a Wall is named here, with its
+ * authored name when it has one.
+ */
+export function roomDuplicateRefusalWords(
+	document: LayoutDocumentWallFirst,
+	rejection: { readonly code: string; readonly message?: string; readonly targetIds?: readonly string[] }
+): string {
+	switch (rejection.code) {
+		case 'coincident_with_source':
+			return 'Move the copy clear of its source before placing it.';
+		case 'room_not_isolated': {
+			const walls = (rejection.targetIds ?? [])
+				.map((id) => document.walls.find((wall) => wall.id === id))
+				.filter((wall): wall is LayoutDocumentWallFirst['walls'][number] => wall !== undefined)
+				.map((wall) => wall.name ?? wall.id);
+			if (walls.length > 0) {
+				const named = walls.map((wall) => `"${wall}"`).join(', ');
+				return `This Room is not isolated: Wall ${named} is shared with other architecture. A Room can be duplicated only with its own Walls.`;
+			}
+			return 'This Room is not isolated: one of its Walls is shared with other architecture. A Room can be duplicated only with its own Walls.';
+		}
+		case 'external_portal_relation':
+			return 'An Opening in this Room is connected to another Room. Remove that door relation before duplicating.';
+		case 'profile_object_read_only':
+			return 'This Room contains a read-only profile object. Remove it before duplicating.';
+		case 'unknown_room':
+			return 'That Room is gone. Select the Room again.';
+		case 'captured_id_in_use':
+			return 'That identity is already taken. Start the duplicate again.';
+		case 'invalid-value':
+		case 'invalid_value':
+			return 'This Room cannot be placed there. Move the copy and try again.';
+		default:
+			return 'This Room cannot be duplicated as it stands.';
+	}
+}
+
 /** Drawing diagnostics stay in tooling; the local problem marker offers a remedy. */
 export function drawingRefusalWords(code: string): string {
 	// A chain refusal is about the outline being drawn, not about editing an

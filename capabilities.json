@@ -29,6 +29,15 @@
       "review": null
     },
     {
+      "id": "layout.room-duplicate",
+      "area": "T1",
+      "summary": "Duplicate one isolated Room with its Walls, Junctions and Openings, carrying the complete copy as one pointer-followed proposal, refusing a coincident placement and naming the shared Wall when the Room is not isolated",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/adapters/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "layout.wall-arc",
       "area": "T1",
       "summary": "Draw one open curved Wall with a start → end → bulge Arc gesture, reading rise and radius, committing one canonical cubic-chain Wall and reconciling Rooms as a Line does, with a straight Line fallback below the minimum rise",
