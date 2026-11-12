@@ -61,7 +61,8 @@ export function artworkFitsWall(
 	yaw: number,
 	outer: { width: number; height: number },
 	wallId: string,
-	pick: ArtworkWallRayPicker
+	pick: ArtworkWallRayPicker,
+	options: { readonly curved?: boolean } = {}
 ): boolean {
 	const normal = artworkFaceNormal(yaw);
 	for (const point of artworkFrameSamples(position, yaw, outer)) {
@@ -75,29 +76,53 @@ export function artworkFitsWall(
 			direction: [-normal[0], -normal[1], -normal[2]]
 		});
 		if (hit === null || hit.wallId !== wallId) return false;
-		if (Math.abs(hit.distanceMeters - 0.05) > 0.07) return false;
+		// A flat, centre-tangent Artwork on a curved Wall may stand off the curve
+		// at its corners. Keep the same-wall/end/opening check, but do not apply
+		// the straight-face corner proximity threshold (fix.md §7.3.4).
+		if (options.curved !== true && Math.abs(hit.distanceMeters - 0.05) > 0.07) return false;
 	}
 	return true;
 }
 
+/** The wall face immediately behind an Artwork, if its back normal reaches one. */
+export function artworkBackWallHit(
+	position: readonly number[],
+	yaw: number,
+	pick: ArtworkWallRayPicker
+): SceneRenderedHit | null {
+	const normal = artworkFaceNormal(yaw);
+	return pick({
+		origin: [position[0], position[1], position[2]],
+		direction: [-normal[0], -normal[1], -normal[2]]
+	});
+}
+
 /**
- * True when the accepted Artwork is hanging on a wall: a short ray from just
- * in front of its face back to the wall reaches it. Free-standing Artwork keeps its plane move
- * until a passing wall pose attaches it.
+ * True when the accepted Artwork is hanging on a wall: a ray from its face back
+ * along the face normal reaches a wall within 0.01 m. Free-standing Artwork
+ * keeps its plane move until a passing wall pose attaches it.
  */
 export function artworkIsHung(
 	position: readonly number[],
 	yaw: number,
 	pick: ArtworkWallRayPicker
 ): boolean {
-	const normal = artworkFaceNormal(yaw);
-	const hit = pick({
-		origin: [
-			position[0] + normal[0] * 0.03,
-			position[1] + normal[1] * 0.03,
-			position[2] + normal[2] * 0.03
-		],
-		direction: [-normal[0], -normal[1], -normal[2]]
+	const hit = artworkBackWallHit(position, yaw, pick);
+	return hit !== null && hit.distanceMeters <= 0.01;
+}
+
+/** True when the face is a curved (multi-tangent) sampled Wall. */
+export function artworkWallIsCurved(
+	hit: SceneRenderedHit | null,
+	geometry: { readonly walls: readonly { readonly wallId: string; readonly samples: readonly { readonly tangent: readonly [number, number] }[] }[] } | undefined
+): boolean {
+	if (hit?.wallId === undefined || geometry === undefined) return false;
+	const wall = geometry.walls.find((entry) => entry.wallId === hit.wallId);
+	if (wall === undefined || wall.samples.length < 3) return false;
+	const first = wall.samples[0]!.tangent;
+	return wall.samples.some((sample) => {
+		const cross = first[0] * sample.tangent[1] - first[1] * sample.tangent[0];
+		const dot = first[0] * sample.tangent[0] + first[1] * sample.tangent[1];
+		return Math.abs(Math.atan2(cross, dot)) > Math.PI / 60;
 	});
-	return hit !== null && hit.distanceMeters <= 0.08;
 }

@@ -6,7 +6,8 @@ import {
 	artworkFaceNormal,
 	artworkFitsWall,
 	artworkFrameSamples,
-	artworkIsHung
+	artworkIsHung,
+	artworkWallIsCurved
 } from '$lib/authoring/artwork/artwork-wall-move';
 
 /** A flat wall at z = 0, spanning x in [-limit, limit] and y in [0, 3]. */
@@ -59,7 +60,30 @@ describe('artwork wall move', () => {
 
 	it('reads a flat Artwork on the wall as hung and one standing off it as free', () => {
 		expect(artworkIsHung([0, 1.5, 0.002], 0, wallPick())).toBe(true);
+		expect(artworkIsHung([0, 1.5, 0.02], 0, wallPick())).toBe(false);
 		expect(artworkIsHung([0, 1.5, 1], 0, wallPick())).toBe(false);
+	});
+
+	it('preserves a flat, centre-tangent Artwork on a curved Wall', () => {
+		// A curved face stands away from the tangent plane at the frame corners;
+		// the same-wall check still applies but the straight-face distance does not.
+		const curvedPick = (ray: PointerRay) => {
+			const hit = wallPick(2)(ray);
+			if (hit === null) return null;
+			const sagitta = (hit.worldPoint[0] - 1) ** 2 * 0.4;
+			return { ...hit, distanceMeters: hit.distanceMeters + sagitta } as SceneRenderedHit;
+		};
+		expect(artworkFitsWall([1, 1.5, 0.002], 0, outer, 'wall-1', curvedPick)).toBe(false);
+		expect(artworkFitsWall([1, 1.5, 0.002], 0, outer, 'wall-1', curvedPick, { curved: true })).toBe(true);
+		expect(artworkFitsWall([1, 1.5, 0.002], 0, outer, 'wall-1', wallPick(1.4), { curved: true })).toBe(false);
+	});
+
+	it('recognizes a face whose compiled samples change tangent', () => {
+		const hit = wallPick()({ origin: [0, 1.5, 1], direction: [0, 0, -1] })!;
+		const flat = { walls: [{ wallId: 'wall-1', samples: [{ tangent: [1, 0] as const }, { tangent: [1, 0] as const }, { tangent: [1, 0] as const }] }] };
+		const curved = { walls: [{ wallId: 'wall-1', samples: [{ tangent: [1, 0] as const }, { tangent: [0.98, 0.2] as const }, { tangent: [0.9, 0.4] as const }] }] };
+		expect(artworkWallIsCurved(hit, flat)).toBe(false);
+		expect(artworkWallIsCurved(hit, curved)).toBe(true);
 	});
 
 	it('turns the face normal with the Artwork yaw', () => {

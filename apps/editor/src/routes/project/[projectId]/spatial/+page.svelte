@@ -172,7 +172,7 @@ import { createArtworkAuthoring } from '$lib/authoring/artwork/artwork-authoring
 	import type { SceneArtworkEntity } from '@portfolio/project-model';
 	import { artworkCommand, artworkReference } from '$lib/authoring/artwork/artwork-command';
 	import { artworkPlacement, isArtworkWallFace } from '$lib/authoring/artwork/artwork-placement';
-	import { artworkFitsWall, artworkIsHung, artworkOuterSize } from '$lib/authoring/artwork/artwork-wall-move';
+	import { artworkBackWallHit, artworkFitsWall, artworkIsHung, artworkOuterSize, artworkWallIsCurved } from '$lib/authoring/artwork/artwork-wall-move';
 	import { verifyArtworkDecode } from '$lib/render/artwork/artwork-decode';
 	import { readVerifiedArtwork } from '$lib/authoring/artwork/project-artwork';
 	import { createArtworkScope, type ArtworkBytes } from '$lib/render/artwork/artwork-scope';
@@ -1055,6 +1055,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function artworkIsHungNow(entity: SceneArtworkEntity): boolean {
 		return artworkIsHung(entity.position, entity.rotation[1], artworkWallHit);
 	}
+	function artworkStartsWallBound(entity: SceneArtworkEntity): boolean {
+		const stage = facade;
+		if (stage === null) return false;
+		const snapshot = stage.snapshot();
+		const back = artworkBackWallHit(entity.position, entity.rotation[1], artworkWallHit);
+		if (back === null || back.wallId === undefined || back.distanceMeters > 0.01) return false;
+		return artworkFitsWall(
+			entity.position, entity.rotation[1], artworkOuterSize(entity), back.wallId, artworkWallHit,
+			{ curved: artworkWallIsCurved(back, snapshot.domain.geometry) }
+		);
+	}
 	function startArtworkResize(event: PointerEvent, mode: ArtworkCorner | 'move' | 'turn'): void {
 		const stage = facade;
 		const entity = selectedArtwork;
@@ -1068,7 +1079,9 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		press.refuse(event.pointerId);
 		const ray = evaluation === null ? null : pointerRay([event.clientX, event.clientY], evaluation, evaluation.token);
 		const startPoint = mode === 'move' && ray?.kind === 'ray' ? artworkPlanePoint(entity, ray.ray) : null;
-		const hung = mode === 'move' && artworkIsHungNow(entity);
+		// An already-overhanging Artwork starts in free move (fix.md §7.3), while a
+		// hung Artwork that still fits follows its wall.
+		const hung = mode === 'move' && artworkStartsWallBound(entity);
 		artworkResize = {
 			entity, mode, startPoint, startX: event.clientX, pointerId: event.pointerId,
 			shift: event.shiftKey, hung, lastPassing: hung ? entity : null, blocked: false,
@@ -1102,7 +1115,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 						const candidate = { ...placed, position: snapArtworkHeight(placed.position, guides).position };
 						const fits = artworkFitsWall(
 							candidate.position, candidate.rotation[1], artworkOuterSize(drag.entity),
-							hit.wallId, artworkWallHit
+							hit.wallId, artworkWallHit,
+							{ curved: artworkWallIsCurved(hit, snapshot.domain.geometry) }
 						);
 						if (fits) {
 							drag.lastPassing = candidate;
@@ -1116,7 +1130,8 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 					}
 				}
 				if (drag.lastPassing !== null) {
-					drag.blocked = drag.hung;
+					// A gap, doorway or the floor holds the last pose without an edge tag.
+					drag.blocked = false;
 					return drag.lastPassing;
 				}
 			}
