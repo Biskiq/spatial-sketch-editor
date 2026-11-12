@@ -2150,8 +2150,9 @@ function finalizeWallGeometryCandidate(options: {
 		const cowDelta = getCowDocumentDelta(candidate);
 		if (cowDelta && cowDelta.baseline === baseline) {
 			const fastSampling = createWallSamplingDerivation();
-			const closedContact = validateClosedWallContacts(candidate, new Set(changedWallIds), fastSampling);
-			const verdict = closedContact ? 'delegate-cold' : verifySweptBoundsGeometryDelta({
+			// The world index refuses self-connected Walls. Those baselines always
+			// reach the canonical closed-contact gate below.
+			const verdict = verifySweptBoundsGeometryDelta({
 				baseline,
 				candidate,
 				changedJunctionIds,
@@ -2208,7 +2209,14 @@ function finalizeWallGeometryCandidate(options: {
 	// topology helper still validates the same canonical rules, but must defer
 	// translating Opening-set issues or every non-height Opening failure would
 	// be consumed as `topology_invalid` before the explicit gate can classify it.
-	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer', sampling, closedContactWallIds: new Set(changedWallIds) }));
+	const movedJunctions = new Set(changedJunctionIds);
+	const closedContactWallIds = new Set([...changedWallIds, ...(options.createdWallIds ?? [])]);
+	for (const wall of candidate.walls) {
+		if (movedJunctions.has(wall.startJunctionId) || movedJunctions.has(wall.endJunctionId)) {
+			closedContactWallIds.add(wall.id);
+		}
+	}
+	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer', sampling, closedContactWallIds }));
 	if (preTopology) {
 		return reject(
 			preTopology.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -2261,7 +2269,7 @@ function finalizeWallGeometryCandidate(options: {
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
-	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer', sampling, closedContactWallIds: new Set(changedWallIds) }));
+	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer', sampling, closedContactWallIds }));
 	if (topologyIssue) {
 		return reject(
 			topologyIssue.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',

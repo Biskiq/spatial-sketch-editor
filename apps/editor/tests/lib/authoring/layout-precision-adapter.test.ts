@@ -772,8 +772,16 @@ describe('Layout Room move', () => {
 		expect(spans.filter((name) => name.includes('compile') || name.includes('sampling'))).toEqual([]);
 		expect(facade.snapshot().canonicalJson).toBe(before);
 
-		facade.pointerIntent({ phase: 'up', css: to, evaluationId });
-		await expect.poll(() => host.history().position).toBe(1);
+		const release: string[] = [];
+		const releaseObserver = setWorkObserver({ span: () => {}, count: (name) => release.push(name) });
+		try {
+			facade.pointerIntent({ phase: 'up', css: to, evaluationId });
+			await expect.poll(() => host.history().position).toBe(1);
+			await expect.poll(() => facade.snapshot().canonicalJson).not.toBe(before);
+		} finally {
+			setWorkObserver(releaseObserver);
+		}
+		expect(release.filter((name) => name === 'compile')).toHaveLength(1);
 		const moved = points(facade);
 		const delta = [moved[0]![0]! - original[0]![0]!, moved[0]![1]! - original[0]![1]!];
 		expect(Math.hypot(delta[0]!, delta[1]!)).toBeGreaterThan(0);

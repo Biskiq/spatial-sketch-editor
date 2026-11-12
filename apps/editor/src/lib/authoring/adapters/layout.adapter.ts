@@ -69,6 +69,8 @@ import {
 	planTranslateClosedWall,
 	prepareWallBend,
 	proposeWallKnotRemoval,
+	validateWallFirstOpeningSubset,
+	type LayoutWallCenterline,
 	wallCenterlineSamples,
 	readClosedWallCircle,
 	isClosedWall,
@@ -596,6 +598,8 @@ type BendGesture = {
 	readonly lease: GestureAcquisition | null;
 	readonly revision: string;
 	readonly shape: ReturnType<typeof prepareWallBend>;
+	readonly openingRefusal: (centerline: LayoutWallCenterline) => string | null;
+	readonly removalRefusal: string | null;
 	readonly removedPoints: readonly LayoutVec2[] | null;
 	readonly removalChord: readonly [LayoutVec2, LayoutVec2] | null;
 	intent: { readonly distance: number; readonly point: LayoutVec2 } | null;
@@ -1893,7 +1897,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						subject: { kind: 'wall', wallId: current.wallId },
 						contentRevision,
 						point: current.attemptPoint ?? current.anchor,
-						text: wallRefusalWords(outcome.code, outcome.message)
+						text: outcome.code === 'planner-rejected' ? outcome.message : wallRefusalWords(outcome.code, outcome.message)
 					};
 					services.stage.notifySurfaceChange();
 				}
@@ -2199,6 +2203,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const removal = knot === undefined ? null : proposeWallKnotRemoval(document, selected.wallId, knotId);
 					const knots = source.centerline.kind === 'cubic-chain' ? source.centerline.knots : [];
 					const knotIndex = knots.findIndex((entry) => entry.id === knotId);
+					const openings = document.openings.flatMap((opening, index) =>
+						opening.wallId === selected.wallId ? [{ opening, index }] : []);
+					const pointById = new Map([
+						[source.startJunctionId, selected.frame.start],
+						[source.endJunctionId, selected.frame.end]
+					]);
+					const openingRefusal = (centerline: LayoutWallCenterline): string | null => {
+						if (openings.length === 0) return null;
+						const [issue] = validateWallFirstOpeningSubset(document, openings, {
+							pointById, wallById: new Map([[source.id, { ...source, centerline }]])
+						});
+						return issue ? wallRefusalWords(issue.code, issue.message) : null;
+					};
 					const samples = removal?.kind === 'proposed'
 						? wallCenterlineSamples({ id: selected.wallId, centerline: removal.centerline }, removal.start, removal.end, 'forward')
 						: undefined;
@@ -2217,6 +2234,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						lease: acquisition,
 						revision: services.authoring.acceptedRevision().revisionId,
 						shape: prepareWallBend(document, selected.wallId, distance, knotId),
+						openingRefusal,
+						removalRefusal: removal?.kind === 'proposed' ? openingRefusal(removal.centerline) : null,
 						removedPoints: samples?.samples.map((sample) => sample.point) ?? null,
 						removalChord: knotIndex < 0 ? null : [
 							knots[knotIndex - 1]?.point ?? selected.frame.start,
@@ -2285,9 +2304,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const points = active.removal ? active.removedPoints : samples?.samples.map((sample) => sample.point);
 					active.previewPoints = points ?? null;
 					active.intent = active.removal || !points ? null : { distance: active.distance, point: attempted };
-					active.refusal = points ? null : proposal.kind === 'rejected'
+					const openingIssue = active.removal ? active.removalRefusal
+						: proposal.kind === 'proposed' ? active.openingRefusal(proposal.centerline) : null;
+					active.refusal = openingIssue ?? (points ? null : proposal.kind === 'rejected'
 						? wallRefusalWords(proposal.rejection.code, proposal.rejection.message)
-						: 'This shape is not a valid Wall layout.';
+						: 'This shape is not a valid Wall layout.');
 					services.stage.notifySurfaceChange();
 					return true;
 				}
@@ -7008,7 +7029,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// tag still belongs at the press, not only on the midpoint grip.
 				const activeBend = bendGesture;
 				if (activeBend !== null) {
-					if (activeBend.previewPoints !== null) {
+					if (activeBend.previewPoints !== null && activeBend.refusal === null) {
 						return [candidatePreviewOf({
 							id: activeBend.removal ? 'layout-candidate-wall-bend-remove' : 'layout-candidate-wall-bend',
 							role: 'subject',

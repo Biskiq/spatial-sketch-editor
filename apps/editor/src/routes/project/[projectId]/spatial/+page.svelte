@@ -182,6 +182,7 @@ import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
+	import { stageWheelZoom } from '$lib/authoring/stage/stage-wheel-zoom';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	const scenePick = createScenePickSource();
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
@@ -3491,22 +3492,13 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 		if (activeLayer?.wheel(event, evaluation?.rect.height ?? 1) === 'claimed') return;
 		const scale = Math.exp(event.deltaY * 0.001);
 		const stage = facade;
-		const reading = stage?.evaluation();
-		if (stage && reading?.renderedReading === '3d' && stage.camera.lookThrough() === null &&
-			drag === null && pinch === null && session.gesture() === null) {
-			const ray = pointerRay([event.clientX, event.clientY], reading, reading.token);
-			if (ray.kind === 'ray') {
-				const scene = stage.snapshot().domain.scene;
-				const hit = scenePick.pick(ray.ray, scene);
-				if (hit && (hit.wallId !== undefined ||
-					scene.entities.some((entity) => entity.id === hit.entityId && entity.kind === 'artwork'))) {
-					const projected = stage.projectWorld(hit.worldPoint, stage.evaluationId() ?? '');
-					if (projected.kind === 'projected' && projected.visibility === 'visible') {
-						submit({ kind: 'zoom', scale, anchor: hit.worldPoint }, nowSeconds());
-						return;
-					}
-				}
-			}
+		if (stage && stage.camera.lookThrough() === null && drag === null &&
+			pinch === null && session.gesture() === null) {
+			submit(stageWheelZoom(
+				scale, [event.clientX, event.clientY], stage.evaluation(),
+				stage.snapshot().domain.scene, scenePick.pick
+			), nowSeconds());
+			return;
 		}
 		zoom(scale);
 	}
