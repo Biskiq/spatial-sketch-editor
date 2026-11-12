@@ -25,12 +25,18 @@ export type R2ObjectStoreConfig = {
 	r2Bucket: string;
 	r2AccessKeyId: string;
 	r2SecretAccessKey: string;
+	/**
+	 * Development-only local S3 services (SeaweedFS) address buckets by path.
+	 * Cloudflare R2 keeps the SDK default virtual-hosted style.
+	 */
+	forcePathStyle?: boolean;
 };
 
 export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 	const client = new S3Client({
 		endpoint: config.r2Endpoint,
 		region: 'auto',
+		...(config.forcePathStyle ? { forcePathStyle: true } : {}),
 		credentials: {
 			accessKeyId: config.r2AccessKeyId,
 			secretAccessKey: config.r2SecretAccessKey

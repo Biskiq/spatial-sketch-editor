@@ -81,6 +81,13 @@ Default ports: Vellum 5191, Smart Wall 5175, Conservatory 8841, shell 8850. The 
 
 ## Development
 
+One command starts the editor, API, PostgreSQL and local S3-compatible storage:
+
+```sh
+npm install
+npm run dev:local
+```
+
 - [Local development](docs/local-development.md)
 - [Documentation](docs/README.md)
 - [Tests](apps/editor/tests/README.md)
