@@ -12,6 +12,12 @@
  * or the project model fails here first, which is the point at which the
  * curve-authoring slice must take the capture instead.
  *
+ * `planDissolveJunction` retired its place in that list in T1 A2 (`layout.wall-join`):
+ * it now takes a `LayoutIdCapture` and mints the demoted knot from it, and it no
+ * longer calls `nextWallCurveKnotId` at all. The scan therefore names the
+ * allocator, not the planner — a call site that drops the capture no longer
+ * compiles, which is a stronger guarantee than this source scan.
+ *
  * A call-site fact: nothing imports these names today, no type check or build
  * fails if one import is added, and the editor's source closure cannot reveal
  * an uncalled planner. Only a source scan can hold the guarantee.
@@ -33,8 +39,7 @@ const UNCAPTURED_IDENTITY_NAMES = [
 	'nextWallCurveKnotId',
 	'nextInteriorAnchorId',
 	'planConvertWallToCurve',
-	'planInsertWallCurveKnot',
-	'planDissolveJunction'
+	'planInsertWallCurveKnot'
 ] as const;
 
 const SOURCE_ROOTS = [editorSrc, resolve(repoRoot, 'packages/project-model/src')];

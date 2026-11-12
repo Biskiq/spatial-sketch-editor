@@ -6,7 +6,10 @@
  * semantics dissolves into one joined Wall (the exact inverse of
  * `planWallSplit`). Same-kind pairs only: collinear straight Walls rejoin to
  * one `line` Wall, curved Walls concatenate to one chain with the Junction
- * demoted to a fresh interior knot. Everything else rejects atomically.
+ * demoted to a fresh interior knot. A pair is joinable only where the split
+ * inverse is — straight Walls must be collinear and curved Walls must be
+ * tangent at the Junction — so a corner is never a join. Everything else
+ * rejects atomically.
  *
  * The planner builds the complete candidate Walls/Junctions/Openings graph
  * and rides the shared topology acceptance path — geometric correspondence
@@ -18,7 +21,10 @@
  * Identity: the candidate carries the baseline ledger untouched. Commit-time
  * identity promotion (the existing seam) keeps the survivor's assignment,
  * prunes the retired Wall/Junction assignments as no-longer-live, and mints
- * nothing — curve knots are not ledger entities.
+ * nothing — curve knots are not ledger entities. The one id this planner
+ * does mint, the demoted curve knot, is derived from the operation's capture
+ * (`{survivorId}:knot.{nonce}`) so a replay reproduces it exactly and
+ * occupancy never decides it.
  */
 import type {
 	LayoutDocumentWallFirst,
@@ -27,9 +33,13 @@ import type {
 	LayoutWallCurveKnot
 } from './layout-wall-first-types';
 import type { LayoutVec2 } from './layout-coordinates';
-import { LayoutIdCollisionError, layoutWorkingLevelIssue, type LayoutIdCapture } from './layout-id-capture';
 import {
-	nextWallCurveKnotId,
+	allocateCapturedId,
+	LayoutIdCollisionError,
+	layoutWorkingLevelIssue,
+	type LayoutIdCapture
+} from './layout-id-capture';
+import {
 	orientedWallChainKnotsAndSpans,
 	wallCubicChain,
 	type WallCenterlineTraversal
@@ -60,6 +70,7 @@ export type DissolveSpecificRejectionCode =
 	| 'duplicate_joined_wall'
 	| 'incompatible_wall_pair'
 	| 'non_collinear_straight_pair'
+	| 'non_tangent_curved_pair'
 	| 'room_reconciliation_rejected'
 	| 'room_identity_lost'
 	| 'opening_set_invalid'
@@ -301,10 +312,44 @@ export function planDissolveJunction(
 		const otherTraversal: WallCenterlineTraversal = otherForward ? 'forward' : 'reverse';
 		const orientedSurvivor = orientedWallChainKnotsAndSpans(survivor.centerline, survivorTraversal);
 		const orientedOther = orientedWallChainKnotsAndSpans(other.centerline, otherTraversal);
-		createdKnotId = nextWallCurveKnotId(survivor.id, [
-			...(survivor.centerline.kind === 'cubic-chain' ? survivor.centerline.knots : []),
-			...(other.centerline.kind === 'cubic-chain' ? other.centerline.knots : [])
-		]);
+		// Tangency at the Junction: the exact inverse of a curved split, where the
+		// two fragments share one tangent. A real arc corner fails this by a
+		// visible angle and refuses; only floating-point noise passes.
+		const arrivingControl = orientedSurvivor.spans[orientedSurvivor.spans.length - 1]!;
+		const departingControl = orientedOther.spans[0]!;
+		if (
+			!curvePairJoinsTangent(
+				arrivingControl.handleIn,
+				departingControl.handleOut,
+				junctionPoint
+			)
+		) {
+			return reject({
+				code: 'non_tangent_curved_pair',
+				message: `Walls '${first.id}' and '${second.id}' meet at a corner at junction '${junctionId}'; only a tangent curved pair can join`,
+				junctionIds: [junctionId],
+				wallIds: [first.id, second.id]
+			});
+		}
+		// The demoted knot's id comes from the operation's capture, never from
+		// occupancy: counting renamed a `{wallId}:knot:{n}` a captured tombstone
+		// may already have retired (T1.P02.S01 §1). Every pre-existing knot keeps
+		// its id; only this fresh one is derived.
+		try {
+			createdKnotId = allocateCapturedId(
+				new Set([
+					...orientedSurvivor.knots.map((knot) => knot.id),
+					...orientedOther.knots.map((knot) => knot.id)
+				]),
+				`${survivor.id}:knot`,
+				capture
+			);
+		} catch (error) {
+			if (error instanceof LayoutIdCollisionError) {
+				return reject({ code: 'captured_id_in_use', message: error.message, junctionIds: [junctionId] });
+			}
+			throw error;
+		}
 		const demoted: LayoutWallCurveKnot = {
 			id: createdKnotId,
 			point: [junctionPoint[0], junctionPoint[1]]
@@ -487,6 +532,37 @@ function wallArcLength(
 		knots: wall.centerline.knots,
 		spans: wall.centerline.spans
 	});
+}
+
+/**
+ * Tangency at a dissolved curve joint — the curved analogue of
+ * {@link linePairJoinsWithinNoise}.
+ *
+ * The control arriving at the Junction on the survivor and the control leaving
+ * it on the other Wall must point in opposite directions from J: one line
+ * through the joint, with the curve passing through rather than turning. That
+ * is exactly what an exact de Casteljau subdivision produces, so a curved
+ * split's inverse passes within floating-point noise, while an authored arc
+ * corner carries a real angle and is refused.
+ *
+ * The tolerance is numerical noise only (`64 · ε`, the same family the straight
+ * gate uses). It never establishes Junction identity, connectivity, snapping or
+ * Room topology — exact robust orientation stays the authority for all of those.
+ * A control that sits on the Junction itself is a cusp, which is not a smooth
+ * continuation and is refused rather than guessed.
+ */
+function curvePairJoinsTangent(
+	arriving: LayoutVec2,
+	departing: LayoutVec2,
+	junction: LayoutVec2
+): boolean {
+	const a: LayoutVec2 = [arriving[0] - junction[0], arriving[1] - junction[1]];
+	const b: LayoutVec2 = [departing[0] - junction[0], departing[1] - junction[1]];
+	const scale = Math.hypot(a[0], a[1]) * Math.hypot(b[0], b[1]);
+	if (!(scale > 0)) return false;
+	const cross = a[0] * b[1] - a[1] * b[0];
+	if (Math.abs(cross) > 64 * Number.EPSILON * scale) return false;
+	return a[0] * b[0] + a[1] * b[1] < 0;
 }
 
 /**
