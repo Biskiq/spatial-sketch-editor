@@ -81,6 +81,44 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2)}
 .tw{overflow-x:auto}
+/* Finish proposals: icon sets and the remaining sheet gaps */
+.finish-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.finish-head .tag{vertical-align:2px}
+.opt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 16px}
+@media(max-width:820px){.opt-grid{grid-template-columns:1fr}}
+.opt{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px;min-width:0}
+.opt.rec{border-color:#b9c8e6;box-shadow:inset 0 0 0 1px #b9c8e6}
+.opt h3{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 3px;color:var(--ink);font-size:12px;letter-spacing:.04em}
+.opt p{margin:0;color:var(--ink2);font-size:12px}
+.opt .why{margin-top:7px;padding-top:7px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink2)}
+.opt .tag{font-size:10px}
+.icon-set{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px}
+.icon-set.rec{border-color:#b9c8e6;box-shadow:inset 0 0 0 1px #b9c8e6}
+.icon-set-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+.icon-set-top h3{margin:0;font-size:12px;letter-spacing:.05em;color:var(--ink)}
+.icon-set-top span{font-size:10px;color:var(--ink2);font:10px var(--mono)}
+.icon-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.iglyph{display:grid;place-items:center;gap:3px;min-height:54px;padding:5px 2px;border:1px solid var(--line);border-radius:7px;background:#fdfcf8;color:var(--ink);font-size:9.5px;text-align:center}
+.iglyph svg{display:block;width:22px;height:22px}
+.icon-set p{margin:8px 0 0;font-size:11.5px;color:var(--ink2)}
+.light-card-mini{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px;min-height:118px;display:flex;flex-direction:column;justify-content:space-between}
+.light-card-mini .lcm-title{font-size:13px;font-weight:650;margin:0 0 4px}
+.light-card-mini .lcm-kind{font:9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+.light-card-mini .lcm-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.light-card-mini .lcm-chip{border:1px solid var(--line);border-radius:5px;padding:2px 5px;font:10px var(--mono);color:var(--ink2);background:#fff}
+.light-card-mini .lcm-chip.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);color:var(--ink)}
+.lcm-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px solid var(--line);margin-top:7px;padding-top:6px;color:var(--ink2);font-size:10px;min-height:28px}
+.lcm-foot .adv{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lcm-foot .acts{display:flex;gap:6px;flex-shrink:0}
+.lcm-foot .acts b{font-weight:500;color:var(--ink)}
+.lcm-foot .acts b.danger{color:var(--refuse)}
+.dial-option{display:grid;place-items:center;min-height:152px;border:1px solid var(--line);border-radius:9px;background:#fbfaf6;margin:6px 0}
+.dial-option svg{display:block;width:100%;max-width:220px;height:auto}
+.spec-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--ink2);margin:8px 0}
+.spec-row .swatchlet{flex:none;margin-top:2px;border:1px solid var(--line);border-radius:4px;background:#fff;padding:1px 4px;font:10px var(--mono);color:var(--ink)}
+.finish-table td:first-child{font-weight:600;color:var(--ink)}
+.finish-table td:nth-child(2){white-space:nowrap}
+.finish-table td:last-child{color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -92,7 +130,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
 </header>
 <nav>
   <a href="#point">Point light</a><a href="#spot">Spot + Light it</a><a href="#directional">Directional</a>
-  <a href="#cards">Light Cards</a><a href="#advanced">Advanced</a><a href="#artwork">Artwork + Frame</a><a href="#placement">Placement ghosts</a><a href="#decisions">Decisions</a>
+  <a href="#cards">Light Cards</a><a href="#advanced">Advanced</a><a href="#artwork">Artwork + Frame</a><a href="#placement">Placement ghosts</a><a href="#finish">Finish proposals</a><a href="#decisions">Decisions</a>
 </nav>
 <main>
 
@@ -298,6 +336,177 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2
       </ul>
     </div>
   </div>
+</section>
+
+<section id="finish">
+  <div class="finish-head">
+    <h2>Finish proposals · icons and the remaining gaps</h2>
+    <span class="tag miss">proposal · not yet production</span>
+  </div>
+  <p class="lede">Four decisions close the gaps recorded in <code>fix.md</code> §12. Each panel shows the options side by side. <b>A</b> is the recommended direction; the extraction table at the end says which parts are already clean to lift into the editor and which need a host change first.</p>
+
+  <h3>Icon sets</h3>
+  <p class="note" style="margin-bottom:8px">The same eight jobs at 22 px. Judge them on the Card, the dial plate and the dark dock. The set must not depend on colour alone: every glyph keeps a distinct silhouette at 16 px.</p>
+  <div class="opt-grid" id="iconSets">
+    <article class="icon-set rec" data-icon-set="a">
+      <div class="icon-set-top"><h3>A · Instrument <span class="tag miss">recommended</span></h3><span>24 grid · 1.5 round</span></div>
+      <div class="icon-grid" data-icons="a"></div>
+      <p>Open, measured forms that extend the existing shell vocabulary. Best match for the Card, the mono values and the gold selection ink.</p>
+    </article>
+    <article class="icon-set" data-icon-set="b">
+      <div class="icon-set-top"><h3>B · Gallery marks</h3><span>24 grid · 1.8 square</span></div>
+      <div class="icon-grid" data-icons="b"></div>
+      <p>More graphic, squared terminals. Reads as signage at a glance, but sits less comfortably beside the 1.5 px shell glyphs.</p>
+    </article>
+    <article class="icon-set" data-icon-set="c">
+      <div class="icon-set-top"><h3>C · Duotone</h3><span>24 grid · 1.4 + 14% fill</span></div>
+      <div class="icon-grid" data-icons="c"></div>
+      <p>Quiet fill behind the stroke. Helps the Advanced group rows scan faster, but a filled set needs a second token for hover and disabled states.</p>
+    </article>
+  </div>
+  <div class="tw"><table class="finish-table">
+    <tr><th>Job</th><th>Where it appears</th><th>Why the set needs it</th></tr>
+    <tr><td>Colour</td><td>Advanced group head</td><td>Separates the hue dial from Brightness at a glance.</td></tr>
+    <tr><td>Brightness</td><td>Advanced group head</td><td>Pairs with the five everyday chips.</td></tr>
+    <tr><td>Shape</td><td>Advanced group head</td><td>Beam, Reach and soft edge share one row.</td></tr>
+    <tr><td>Position</td><td>Advanced group head</td><td>Reads as a point in the room, not a transform axis.</td></tr>
+    <tr><td>Shadows</td><td>Advanced group head</td><td>Matches the Cast shadows toggle.</td></tr>
+    <tr><td>Duplicate</td><td>Card footer</td><td>The sheet's text action needs a glyph that survives narrow cards.</td></tr>
+    <tr><td>Delete</td><td>Card footer</td><td>Same; refusal ink is reserved for failures.</td></tr>
+    <tr><td>Direction</td><td>Dial name chip</td><td>Anchors the selected Directional light's name to the instrument.</td></tr>
+  </table></div>
+
+  <h3 style="margin-top:18px">Directional · several lights on one dial</h3>
+  <div class="opt-grid">
+    <article class="opt rec">
+      <h3>Option A <span class="tag miss">recommended</span></h3>
+      <div class="dial-option">
+        <svg viewBox="0 0 220 150" aria-label="Dial with a Sun name chip and other-light ticks">
+          <circle cx="110" cy="78" r="54" fill="none" stroke="#5d665f" stroke-width="1.3"/>
+          <path d="M110 78 L136 57" stroke="#9b9586" stroke-width="1" stroke-dasharray="3 3"/>
+          <path d="M110 78 L139 45" stroke="#1f2a24" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <circle cx="136" cy="57" r="4" fill="#fff" stroke="#1f2a24" stroke-width="1.4"/>
+          <circle cx="139" cy="45" r="5" fill="#d9a521" stroke="#74560c" stroke-width="1.4"/>
+          <g fill="#1f2a24"><circle cx="65" cy="58" r="2"/><circle cx="155" cy="101" r="2"/><circle cx="92" cy="126" r="2"/></g>
+          <rect x="84" y="68" width="52" height="20" rx="5" fill="#f6dc8a" stroke="#74560c"/>
+          <text x="110" y="82" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#292414">Sun</text>
+          <path d="M157 48 l8 8 M165 48 l-8 8" stroke="#1f2a24" stroke-width="1.2"/>
+        </svg>
+      </div>
+      <p>Selected name sits at the dial centre; other lights are 6 px clickable ticks on their From angles. Hover names a tick; click selects that light.</p>
+      <div class="why">Clean after one host addition: a click-only mark role. It does not move either bead.</div>
+    </article>
+    <article class="opt">
+      <h3>Option B</h3>
+      <div class="dial-option">
+        <svg viewBox="0 0 220 150" aria-label="Dial with numbered other-light badges">
+          <circle cx="110" cy="78" r="54" fill="none" stroke="#5d665f" stroke-width="1.3"/>
+          <path d="M110 78 L136 57" stroke="#9b9586" stroke-width="1" stroke-dasharray="3 3"/>
+          <path d="M110 78 L139 45" stroke="#1f2a24" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <circle cx="136" cy="57" r="4" fill="#fff" stroke="#1f2a24" stroke-width="1.4"/>
+          <circle cx="139" cy="45" r="5" fill="#d9a521" stroke="#74560c" stroke-width="1.4"/>
+          <g font-family="ui-monospace,Menlo,monospace" font-size="9" text-anchor="middle"><circle cx="65" cy="58" r="8" fill="#fff" stroke="#9b9586"/><text x="65" y="61">2</text><circle cx="155" cy="101" r="8" fill="#fff" stroke="#9b9586"/><text x="155" y="104">3</text><circle cx="92" cy="126" r="8" fill="#fff" stroke="#9b9586"/><text x="92" y="129">4</text></g>
+          <rect x="84" y="68" width="52" height="20" rx="5" fill="#f6dc8a" stroke="#74560c"/><text x="110" y="82" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#292414">1 Sun</text>
+        </svg>
+      </div>
+      <p>Other lights become numbered badges; a compact roster below the dial maps each number to a name. Selects by badge or roster.</p>
+      <div class="why">More markup and a second list; also needs click-only marks. Best when there are many Directional lights.</div>
+    </article>
+    <article class="opt">
+      <h3>Option C</h3>
+      <div class="dial-option">
+        <svg viewBox="0 0 220 150" aria-label="Dial with a selected name and roster of other lights">
+          <circle cx="110" cy="70" r="48" fill="none" stroke="#5d665f" stroke-width="1.3"/>
+          <path d="M110 70 L136 50" stroke="#9b9586" stroke-width="1" stroke-dasharray="3 3"/>
+          <path d="M110 70 L139 38" stroke="#1f2a24" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <circle cx="136" cy="50" r="4" fill="#fff" stroke="#1f2a24" stroke-width="1.4"/>
+          <circle cx="139" cy="38" r="5" fill="#d9a521" stroke="#74560c" stroke-width="1.4"/>
+          <rect x="82" y="60" width="56" height="20" rx="5" fill="#f6dc8a" stroke="#74560c"/><text x="110" y="74" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#292414">Sun</text>
+          <g font-family="ui-monospace,Menlo,monospace" font-size="9" fill="#5d665f"><rect x="28" y="116" width="78" height="18" rx="4" fill="#fff" stroke="#d9d5c8"/><text x="35" y="129">Window light</text><rect x="114" y="116" width="78" height="18" rx="4" fill="#fff" stroke="#d9d5c8"/><text x="121" y="129">North</text></g>
+        </svg>
+      </div>
+      <p>No ticks at all: the selected name stays on the dial and every other Directional light lives in a two-column roster below it.</p>
+      <div class="why">Simplest to draw and the easiest to make keyboard-reachable; less direct than pointing at a direction.</div>
+    </article>
+  </div>
+
+  <h3>Light Card footer</h3>
+  <div class="opt-grid">
+    <article class="opt rec">
+      <h3>Option A <span class="tag miss">recommended</span></h3>
+      <div class="light-card-mini">
+        <div><div class="lcm-kind">Light · Point</div><p class="lcm-title">Point light</p><div class="lcm-row"><span class="lcm-chip on">Warm</span><span class="lcm-chip">Neutral</span><span class="lcm-chip">Cool</span></div><div class="lcm-row"><span class="lcm-chip on">1×</span><span class="lcm-chip">2×</span><span class="lcm-chip">4×</span></div></div>
+        <div class="lcm-foot"><span class="adv">Advanced: Colour · Brightness · Shape · Position · Shadows ⌄</span><span class="acts"><b>Duplicate</b><b class="danger">Delete</b></span></div>
+      </div>
+      <p>One summary line names every closed group; Duplicate and Delete are text actions on the same footer. The menu keeps only rare subject actions.</p>
+      <div class="why">Uses the existing footer slot. Needs the group summary passed through and two actions moved out of the overflow menu.</div>
+    </article>
+    <article class="opt">
+      <h3>Option B</h3>
+      <div class="light-card-mini">
+        <div><div class="lcm-kind">Light · Point</div><p class="lcm-title">Point light</p><div class="lcm-row"><span class="lcm-chip on">Warm</span><span class="lcm-chip">Neutral</span><span class="lcm-chip">Cool</span></div></div>
+        <div class="lcm-foot"><span class="adv">Advanced: Colour · Brightness · Shape · Position · Shadows ⌄</span><span class="acts"><span class="lcm-chip">⧉</span><span class="lcm-chip">⌫</span></span></div>
+      </div>
+      <p>Same summary, icon-only Duplicate and Delete. Saves 60 px on a narrow Card but hides the verbs.</p>
+      <div class="why">Icons need tooltips and a confirm step for Delete; the sheet currently uses words for both.</div>
+    </article>
+    <article class="opt">
+      <h3>Option C · current</h3>
+      <div class="light-card-mini">
+        <div><div class="lcm-kind">Light · Point</div><p class="lcm-title">Point light</p><div class="lcm-row"><span class="lcm-chip on">Warm</span><span class="lcm-chip">Neutral</span><span class="lcm-chip">Cool</span></div></div>
+        <div class="lcm-foot"><span class="adv">Advanced ⌄</span><span class="acts"><b>•••</b></span></div>
+      </div>
+      <p>Advanced without a summary; Duplicate and Delete stay inside the subject menu.</p>
+      <div class="why">No change. This is the mismatch recorded in <code>fix.md</code> §12.</div>
+    </article>
+  </div>
+
+  <h3>Artwork refusal and the Advanced Aim readout</h3>
+  <div class="opt-grid">
+    <article class="opt rec">
+      <h3>Artwork · refusal <span class="tag miss">recommended</span></h3>
+      <p><b>A.</b> When the frame does not fit, draw the same ghost in refusal red dashed and show the planner's own reason. Never invent a reason; if the host has no fit refusal, the ghost keeps proposal ink and the Card says why.</p>
+      <div class="why">Requires one fit predicate shared by hover and release. Cleanly extractable once the predicate exists.</div>
+    </article>
+    <article class="opt">
+      <h3>Artwork · hold</h3>
+      <p><b>B.</b> Keep the last fitted pose, tint only its outline, and put "Stops at the wall edge" beside the pointer. No red ghost.</p>
+      <div class="why">Closest to the current hold behaviour, but does not distinguish a refusal from a pending candidate.</div>
+    </article>
+    <article class="opt">
+      <h3>Artwork · chip only</h3>
+      <p><b>C.</b> No ghost change; a status chip states the reason until the pointer moves.</p>
+      <div class="why">Cheapest, but the pointer and the refused pose are disconnected.</div>
+    </article>
+  </div>
+  <div class="opt-grid">
+    <article class="opt rec">
+      <h3>Aim · surface intercept <span class="tag miss">recommended</span></h3>
+      <p><b>A.</b> Advanced Aim reads the point where the direction meets the picked surface, with the same three fields and an <i>Aim · 2.64 m</i> label. Editing the fields still writes direction only.</p>
+      <div class="why">Needs the pick result already carried by the Spot mark. This removes the 3 m fallback without adding a stored target.</div>
+    </article>
+    <article class="opt">
+      <h3>Aim · direction only</h3>
+      <p><b>B.</b> Keep the 3 m derived point, but label it <i>Aim toward</i> and show the axis line in the Stage.</p>
+      <div class="why">Already shipped and truthful; still reads as a point in space.</div>
+    </article>
+    <article class="opt">
+      <h3>Aim · no coordinates</h3>
+      <p><b>C.</b> Advanced shows only From / Height-in-sky directions and removes the triplet.</p>
+      <div class="why">Least ambiguous, but loses the exact numeric direction entry the sheet approved.</div>
+    </article>
+  </div>
+
+  <h3>Extraction</h3>
+  <div class="tw"><table class="finish-table">
+    <tr><th>Proposal</th><th>Production fit</th><th>Next move</th></tr>
+    <tr><td>Icon set A · Instrument</td><td><span class="tag ux">shipped</span></td><td>The eight glyphs are in the shell vocabulary; the five Advanced group heads use them.</td></tr>
+    <tr><td>Directional name chip + ticks</td><td><span class="tag miss">host addition</span></td><td>Still design-only: add a click-only Stage mark role, ticks from the other lights' From angles and a selection route.</td></tr>
+    <tr><td>Light Card footer</td><td><span class="tag ux">shipped</span></td><td>The closed-group summary and text Duplicate/Delete row are in the Card foot; Delete confirms in place.</td></tr>
+    <tr><td>Artwork refusal ink</td><td><span class="tag ux">ink shipped</span></td><td>The blocked outline is red dashed and the fixed fit message stays beside it. A per-planner reason still needs the hover predicate.</td></tr>
+    <tr><td>Aim surface intercept</td><td><span class="tag miss">design-only</span></td><td>Still reads the derived 3 m point. Reusing the Spot mark's surface hit stays the next clean step.</td></tr>
+  </table></div>
+  <p class="note" style="margin-top:8px"><b>Production rule:</b> the HTML stays the reference; the editor implements the recommended column. This pass ships the Instrument set, the Card footer and Artwork refusal ink. The Directional ticks and Aim intercept stay as reviewed proposals until the host mark role and surface pick are added.</p>
 </section>
 
 <section id="decisions">
@@ -642,6 +851,25 @@ document.querySelectorAll('[data-seg]').forEach((seg)=>seg.addEventListener('cli
 ['pH','pR'].forEach(i=>$(i).addEventListener('input',drawPoint)); ['sA','sB','sS','sR'].forEach(i=>$(i).addEventListener('input',drawSpot));
 ['dAz','dAl'].forEach(i=>$(i).addEventListener('input',drawDir)); $('aW').addEventListener('input',drawArt);
 Object.values(draw).forEach((f)=>f()); drawMove();
+
+/* ---------- finish proposals: icon sets ---------- */
+const ICON_JOBS = [
+  ['Colour', '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16Z" fill="currentColor" stroke="none"/>', '<path d="M12 3.5 19 7.8v8.4L12 20.5 5 16.2V7.8Z"/><circle cx="12" cy="12" r="3.4"/>', '<path d="M12 3.5 19 7.8v8.4L12 20.5 5 16.2V7.8Z" fill="currentColor" fill-opacity=".14"/><circle cx="12" cy="12" r="3.4"/>'],
+  ['Brightness', '<circle cx="12" cy="12" r="4"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3 7.1 7.1M16.9 16.9l1.8 1.8M18.7 5.3 16.9 7.1M7.1 16.9 5.3 18.7"/>', '<circle cx="12" cy="12" r="4.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>', '<circle cx="12" cy="12" r="4.2" fill="currentColor" fill-opacity=".14"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>'],
+  ['Shape', '<path d="M4 18 12 5l8 13Z"/><ellipse cx="12" cy="18" rx="8" ry="2.2" stroke-dasharray="2.5 2"/>', '<path d="M3 17h18L14 5h-4Z"/><path d="M7 17h10"/>', '<path d="M4 18 12 5l8 13Z" fill="currentColor" fill-opacity=".14"/><ellipse cx="12" cy="18" rx="8" ry="2.2" stroke-dasharray="2.5 2"/>'],
+  ['Position', '<circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>', '<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2"/>', '<circle cx="12" cy="12" r="7" fill="currentColor" fill-opacity=".14"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>'],
+  ['Shadows', '<circle cx="9.5" cy="9.5" r="4.5"/><ellipse cx="14.5" cy="17" rx="5.5" ry="2.2" stroke-dasharray="2.5 2"/><path d="M14 14.5 18 18"/>', '<circle cx="9.5" cy="9.5" r="4.5"/><path d="M4 20h16"/><path d="M12 20 19 12"/><path d="M15 20h4"/>', '<circle cx="9.5" cy="9.5" r="4.5" fill="currentColor" fill-opacity=".14"/><ellipse cx="14.5" cy="17" rx="5.5" ry="2.2" fill="currentColor" fill-opacity=".1" stroke-dasharray="2.5 2"/><path d="M14 14.5 18 18"/>'],
+  ['Duplicate', '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/><path d="M13.5 11v5M11 13.5h5"/>', '<rect x="9" y="9" width="11" height="11"/><path d="M4 15V4h11M14 12v5M11.5 14.5h5"/>', '<rect x="8" y="8" width="11" height="11" rx="2" fill="currentColor" fill-opacity=".14"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/><path d="M13.5 11v5M11 13.5h5"/>'],
+  ['Delete', '<path d="M4 7h16M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/>', '<path d="M4 6h16M9 3h6v3M5 6l1.5 15h11L19 6Z"/><path d="M10 10v7M14 10v7"/>', '<path d="M4 7h16M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13" fill="currentColor" fill-opacity=".14"/><path d="M10 11v5M14 11v5"/>'],
+  ['Direction', '<circle cx="12" cy="12" r="8.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><path d="M12 6.5 15 14l-3-1.5-3 1.5Z" fill="currentColor" stroke="none"/>', '<circle cx="12" cy="12" r="8.5"/><path d="M12 3v18M3 12h18"/><path d="M12 6.5 16 15l-4-2-4 2Z"/>', '<circle cx="12" cy="12" r="8.5" fill="currentColor" fill-opacity=".14"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><path d="M12 6.5 15 14l-3-1.5-3 1.5Z" fill="currentColor" stroke="none"/>']
+];
+for (const set of ['a','b','c']) {
+  const host = document.querySelector(`[data-icons="${set}"]`);
+  if (!host) continue;
+  host.innerHTML = ICON_JOBS.map((job) => {
+    return `<div class="iglyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${set==='b'?1.8:set==='c'?1.4:1.5}" stroke-linecap="${set==='b'?'square':'round'}" stroke-linejoin="${set==='b'?'miter':'round'}" aria-hidden="true">${job[set==='a'?1:set==='b'?2:3]}</svg><span>${job[0]}</span></div>`;
+  }).join('');
+}
 </script>
 </body>
 </html>
