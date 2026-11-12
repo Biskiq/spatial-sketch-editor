@@ -947,7 +947,7 @@
 			90deg,
 			#ffb46b 0%,
 			#ffd6a5 25%,
-			#ffffff 50%,
+			var(--shell-white) 50%,
 			#dbe9ff 75%,
 			#b8d0ff 100%
 		);
@@ -970,7 +970,7 @@
 		flex: none;
 		border-radius: 50%;
 		background:
-			radial-gradient(circle, #ffffff 0%, rgb(255 255 255 / 0) 70%),
+			radial-gradient(circle, var(--shell-white) 0%, rgb(255 255 255 / 0) 70%),
 			conic-gradient(
 				from 90deg,
 				#ff0000,
