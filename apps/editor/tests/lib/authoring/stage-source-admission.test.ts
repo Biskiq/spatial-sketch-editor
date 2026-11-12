@@ -1,3 +1,4 @@
+import { createLayoutCompileSession } from '@portfolio/layout-core';
 /**
  * T1.P01.S02 — source admission: **admission equals runtime preparation**.
  *
@@ -64,6 +65,23 @@ function contextFor(projectId: string = PROJECT_ID): AdmissionContext {
 }
 
 const CONTEXT: AdmissionContext = contextFor();
+
+it('compiles canonically when the prepared Layout belongs to different data', async () => {
+	const source = await starterSource();
+	const baseline = await admitSource(source, CONTEXT);
+	if (baseline.kind !== 'admitted') throw new Error('Starter did not admit');
+	const compileSession = createLayoutCompileSession();
+	const outcome = await admitSource(source, CONTEXT, {
+		compileSession,
+		preparedLayout: {
+			data: { ...source.units.layout.data, floor: { ...source.units.layout.data.floor, elevation: 100 } },
+			compiled: { geometry: baseline.snapshot.domain.geometry, issues: [] }
+		}
+	});
+	expect(outcome.kind).toBe('admitted');
+	expect(compileSession.stats().wallsEvaluated).toBeGreaterThan(0);
+});
+
 
 /** The canonical starter enclosure: a real current-format source, built through the retained planner. */
 function starterSource(context: AdmissionContext = CONTEXT) {

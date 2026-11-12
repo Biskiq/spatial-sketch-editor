@@ -182,6 +182,7 @@ import StageHeightSheet from '$lib/authoring/stage/shell/StageHeightSheet.svelte
 import StageScaleBar from '$lib/authoring/stage/shell/StageScaleBar.svelte';
 import type { StageHeightTick } from '$lib/authoring/stage/stage-height-sheet';
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
+	import { stageWheelZoom } from '$lib/authoring/stage/stage-wheel-zoom';
 	import { createScenePickSource } from '$lib/authoring/scene/scene-pick-source';
 	const scenePick = createScenePickSource();
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
@@ -3489,7 +3490,17 @@ import type { GridRect } from '$lib/authoring/stage/stage-grid';
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
 		if (activeLayer?.wheel(event, evaluation?.rect.height ?? 1) === 'claimed') return;
-		zoom(Math.exp(event.deltaY * 0.001));
+		const scale = Math.exp(event.deltaY * 0.001);
+		const stage = facade;
+		if (stage && stage.camera.lookThrough() === null && drag === null &&
+			pinch === null && session.gesture() === null) {
+			submit(stageWheelZoom(
+				scale, [event.clientX, event.clientY], stage.evaluation(),
+				stage.snapshot().domain.scene, scenePick.pick
+			), nowSeconds());
+			return;
+		}
+		zoom(scale);
 	}
 
 	function handleKey(event: KeyboardEvent): void {

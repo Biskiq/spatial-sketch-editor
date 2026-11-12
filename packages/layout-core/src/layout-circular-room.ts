@@ -1,3 +1,4 @@
+import { validateClosedWallContacts } from './layout-wall-first-precision';
 /**
  * `layout-circular-room.ts` — C2 product planners for the canonical closed Wall.
  *
@@ -48,6 +49,7 @@ import { createAuthoringRoomAllocator } from './layout-wall-topology-ops';
 
 /** Why a circular-Wall product edit refused; stable machine codes. */
 export type CircularRoomRejectionCode =
+	| 'closed_wall_isolated'
 	| 'unknown_wall'
 	| 'not_closed_wall'
 	| 'invalid_radius'
@@ -123,7 +125,9 @@ function reject(code: CircularRoomRejectionCode, message: string): CircularRoomP
  * as every other Wall; a radius that folds the chain or an Opening that no
  * longer fits refuses rather than installing a repaired candidate.
  */
-function validateCandidate(document: LayoutDocumentWallFirst): CircularRoomPlan {
+function validateCandidate(document: LayoutDocumentWallFirst, wallId: string): CircularRoomPlan {
+	const contact = validateClosedWallContacts(document, new Set([wallId]));
+	if (contact) return reject('closed_wall_isolated', contact.message);
 	const validated = validateWallFirstLayoutDocument(document);
 	if (!validated.success) {
 		return reject(
@@ -244,7 +248,7 @@ export function planCreateCircularRoom(options: {
 		if ('rejection' in result) {
 			return reject('invalid_candidate_document', result.rejection.message);
 		}
-		const gated = validateCandidate(result.document);
+		const gated = validateCandidate(result.document, wallId);
 		if (gated.kind === 'rejected') return gated;
 		return {
 			kind: 'success',
@@ -342,7 +346,7 @@ export function planResizeClosedWallRadius(options: {
 	if (openingIssues.length > 0) {
 		return reject('opening_does_not_fit', openingIssues[0]!.message);
 	}
-	const gated = validateCandidate(candidate);
+	const gated = validateCandidate(candidate, wallId);
 	if (gated.kind === 'rejected') return gated;
 	return { ...gated, wallId, junctionId: wall.startJunctionId, createdRoomIds: [] };
 }
@@ -390,7 +394,7 @@ export function planTranslateClosedWall(options: {
 				: entry
 		)
 	};
-	const gated = validateCandidate(candidate);
+	const gated = validateCandidate(candidate, wallId);
 	if (gated.kind === 'rejected') return gated;
 	return { ...gated, wallId, junctionId: wall.startJunctionId, createdRoomIds: [] };
 }

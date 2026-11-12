@@ -227,6 +227,10 @@ type PassiveCompileRecord = {
 
 const PASSIVE_COMPILE_BY_DOC = new WeakMap<LayoutDocumentWallFirst, PassiveCompileRecord>();
 
+export function readPassiveCompiledGeometry(document: LayoutDocumentWallFirst): PassiveCompileRecord | undefined {
+	return PASSIVE_COMPILE_BY_DOC.get(document);
+}
+
 /** Record a clean result in O(1). Warming can restore a proven retained root in
  * O(1), or build retained indexes in O(N) when this is only a passive result. */
 export function recordPassiveCompiledGeometry(

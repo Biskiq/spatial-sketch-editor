@@ -215,7 +215,8 @@ function finalizeCandidate(
 		// Wall-pair relation at all, so its verdict cannot differ from the
 		// document's existing one and the check is skipped.
 		const topologyIssue = validateWallFirstTopology(structural.document, {
-			openingSet: 'defer'
+			openingSet: 'defer',
+			closedContactWallIds: new Set(created.createdWallIds)
 		});
 		if (topologyIssue) {
 			return reject(

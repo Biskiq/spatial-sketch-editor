@@ -925,17 +925,12 @@ export function planDeleteWallCurveKnot(
 	wallId: string,
 	knotId: string
 ): PrecisionPlan {
-	const target = resolveCurveTarget(document, wallId);
-	if ('plan' in target) return target.plan;
-	const { chain } = target;
-	const deletion = deleteWallCurveKnot(chain, knotId);
-	if (deletion.kind === 'rejected') {
-		return reject(curveEditRejection(deletion.code), deletion.message, [wallId, knotId]);
-	}
+	const removal = proposeWallKnotRemoval(document, wallId, knotId);
+	if (removal.kind !== 'proposed') return removal;
 	const candidate = withWallCenterline(
 		document,
 		wallId,
-		wallCubicChain(deletion.knots, deletion.spans)
+		removal.centerline
 	);
 	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-delete', wallId);
 }
@@ -1383,7 +1378,7 @@ function validateWallFirstArchitectureAffectedCandidate(
 	disableExtentPruneForTest: boolean | undefined
 ): LayoutGeometryIssue | undefined {
 	return p2311Measure('preflight-topology', () =>
-		validateWallFirstTopologyPass(candidate, { openingSet: 'defer', sampling, disableExtentPruneForTest }, {
+		validateWallFirstTopologyPass(candidate, { openingSet: 'defer', sampling, disableExtentPruneForTest, closedContactWallIds: new Set(extent.wallIds) }, {
 			wallIds: extent.wallIds,
 			wallPairs: extent.wallPairs,
 			junctionPairs: extent.junctionPairs,
@@ -1514,7 +1509,8 @@ export function createWallFirstArchitectureVerdictScope(
 					validateWallFirstTopologyPass(candidate, {
 						openingSet: 'defer',
 						sampling: sampling ?? createWallSamplingDerivation(),
-						disableExtentPruneForTest: options.disableExtentPruneForTest
+						disableExtentPruneForTest: options.disableExtentPruneForTest,
+						closedContactWallIds: new Set(prepared.patch.affectedWallIds)
 					})
 				);
 				stats.canonical += 1;
@@ -1647,12 +1643,12 @@ export type WallBendIntent = {
  * `finalizeWallGeometryCandidate` acceptance, so an invalid release rejects
  * atomically and a valid one is one Undo entry.
  */
-export function planBendWallCurveKnot(
+export function prepareWallBend(
 	document: LayoutDocumentWallFirst,
 	wallId: string,
-	intent: WallBendIntent,
-	options: { readonly knotId: string }
-): PrecisionPlan {
+	distance: number,
+	capturedKnotId: string
+) {
 	const target = resolveCurveTarget(document, wallId, { allowStraight: true });
 	if ('plan' in target) return target.plan;
 	const { wall, start, end, chain } = target;
@@ -1666,17 +1662,16 @@ export function planBendWallCurveKnot(
 			[wallId]
 		);
 	}
-	if (!Number.isFinite(intent.distance)) {
+	if (!Number.isFinite(distance)) {
 		return reject('invalid_value', 'Bend distance must be a finite number of meters', [wallId]);
 	}
-	if (!finitePoint(intent.point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId]);
-	if (typeof options.knotId !== 'string' || options.knotId.length === 0) {
+	if (typeof capturedKnotId !== 'string' || capturedKnotId.length === 0) {
 		return reject('invalid_value', 'A Bend must capture the id of the bend point it may insert', [wallId]);
 	}
 
 	// One resolver call decides both halves: whether the grab promotes an
 	// existing bend point, and where the inserted knot belongs.
-	const resolution = p2311Measure('planner-exact-split', () => resolveWallCurveSplit(chain, intent.distance));
+	const resolution = p2311Measure('planner-exact-split', () => resolveWallCurveSplit(chain, distance));
 	if (resolution.kind === 'rejected') {
 		return reject(
 			resolution.code === 'split_at_endpoint'
@@ -1699,7 +1694,7 @@ export function planBendWallCurveKnot(
 	}
 	// Captured identity, never an occupancy count: a promoted knot keeps its
 	// own id, and a freshly inserted one replays the id the intent captured.
-	const knotId = promotedKnotId ?? options.knotId;
+	const knotId = promotedKnotId ?? capturedKnotId;
 	const { fragments } = resolution.result;
 	const insertedKnot: LayoutWallCurveKnot = {
 		id: knotId,
@@ -1709,33 +1704,53 @@ export function planBendWallCurveKnot(
 		? chain.knots.map((knot) => ({ id: knot.id, point: [knot.point[0], knot.point[1]] as LayoutVec2 }))
 		: [...fragments.a.knots, insertedKnot, ...fragments.b.knots];
 	const grabbed = knots.find((knot) => knot.id === knotId)!;
-	if (coincidesAsJunction(grabbed.point, intent.point)) {
-		// Released exactly where it was grabbed. A rotated bend point is a real
-		// no-op; a freshly inserted knot is not — the insertion itself is the
-		// edit, and the exact partition must be persisted verbatim rather than
-		// re-derived through the smoothness rule.
-		if (promotedKnotId) {
-			return reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId]);
-		}
-		const partition = withWallCenterline(document, wallId, wallCubicChain(fragments.a.knots.concat(insertedKnot, fragments.b.knots), [...fragments.a.spans, ...fragments.b.spans]));
-		return finalizeCurveCandidate(document, partition, 'wall-curve-knot-bend', wallId);
-	}
-	// Insert/promote through the exact subdivision authority, then move the
-	// grabbed knot through the SAME local-move primitive an ordinary knot drag
-	// uses — there is no Bend-specific interpolation. Only the two spans around
-	// the grab reshape, so every other stored span (including exact
-	// split-derived and previously inserted spans) survives byte-identically.
 	const spans = promotedKnotId ? chain.spans : [...fragments.a.spans, ...fragments.b.spans];
-	const moved = p2311Measure('curve-algebra', () =>
-		moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, intent.point)
+	return {
+		kind: 'ready' as const,
+		start,
+		end,
+		reshape(point: LayoutVec2) {
+			if (!finitePoint(point)) return reject('invalid_value', 'Bend point X/Z must be finite', [wallId]);
+			if (coincidesAsJunction(grabbed.point, point)) {
+				return promotedKnotId
+					? reject('no_op', `Bend point '${knotId}' is already at that point`, [wallId, knotId])
+					: { kind: 'proposed' as const, centerline: wallCubicChain(knots, spans) };
+			}
+			const moved = moveWallCurveKnot({ startPoint: start, endPoint: end, knots, spans }, knotId, point);
+			return moved.kind === 'rejected'
+				? reject(curveEditRejection(moved.code), moved.message, [wallId, knotId])
+				: { kind: 'proposed' as const, centerline: wallCubicChain(moved.knots, moved.spans) };
+		}
+	};
+}
+
+export function planBendWallCurveKnot(
+	document: LayoutDocumentWallFirst,
+	wallId: string,
+	intent: WallBendIntent,
+	options: { readonly knotId: string }
+): PrecisionPlan {
+	const prepared = prepareWallBend(document, wallId, intent.distance, options.knotId);
+	if (prepared.kind !== 'ready') return prepared;
+	const proposed = prepared.reshape(intent.point);
+	if (proposed.kind !== 'proposed') return proposed;
+	return finalizeCurveCandidate(
+		document, withWallCenterline(document, wallId, proposed.centerline), 'wall-curve-knot-bend', wallId
 	);
-	if (moved.kind === 'rejected') {
-		return reject(curveEditRejection(moved.code), moved.message, [wallId, knotId]);
-	}
-	const candidate = p2311Measure('candidate-clone', () =>
-		withWallCenterline(document, wallId, wallCubicChain(moved.knots, moved.spans))
-	);
-	return finalizeCurveCandidate(document, candidate, 'wall-curve-knot-bend', wallId);
+}
+
+export function proposeWallKnotRemoval(document: LayoutDocumentWallFirst, wallId: string, knotId: string) {
+	const target = resolveCurveTarget(document, wallId);
+	if ('plan' in target) return target.plan;
+	const deletion = deleteWallCurveKnot(target.chain, knotId);
+	return deletion.kind === 'rejected'
+		? reject(curveEditRejection(deletion.code), deletion.message, [wallId, knotId])
+		: {
+				kind: 'proposed' as const,
+				centerline: wallCubicChain(deletion.knots, deletion.spans),
+				start: target.start,
+				end: target.end
+			};
 }
 
 
@@ -2135,6 +2150,8 @@ function finalizeWallGeometryCandidate(options: {
 		const cowDelta = getCowDocumentDelta(candidate);
 		if (cowDelta && cowDelta.baseline === baseline) {
 			const fastSampling = createWallSamplingDerivation();
+			// The world index refuses self-connected Walls. Those baselines always
+			// reach the canonical closed-contact gate below.
 			const verdict = verifySweptBoundsGeometryDelta({
 				baseline,
 				candidate,
@@ -2192,7 +2209,14 @@ function finalizeWallGeometryCandidate(options: {
 	// topology helper still validates the same canonical rules, but must defer
 	// translating Opening-set issues or every non-height Opening failure would
 	// be consumed as `topology_invalid` before the explicit gate can classify it.
-	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer', sampling }));
+	const movedJunctions = new Set(changedJunctionIds);
+	const closedContactWallIds = new Set([...changedWallIds, ...(options.createdWallIds ?? [])]);
+	for (const wall of candidate.walls) {
+		if (movedJunctions.has(wall.startJunctionId) || movedJunctions.has(wall.endJunctionId)) {
+			closedContactWallIds.add(wall.id);
+		}
+	}
+	const preTopology = p2311Measure('topology-pre', () => validateWallFirstTopology(preStructural.document, { openingSet: 'defer', sampling, closedContactWallIds }));
 	if (preTopology) {
 		return reject(
 			preTopology.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -2245,7 +2269,7 @@ function finalizeWallGeometryCandidate(options: {
 	if (!structural.success) {
 		return reject('geometry_invalid', `Candidate failed wall-first validation: ${structural.issues[0]?.message ?? 'unknown issue'}`, undefined, structural.issues);
 	}
-	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer', sampling }));
+	const topologyIssue = p2311Measure('topology-post', () => validateWallFirstTopology(structural.document, { openingSet: 'defer', sampling, closedContactWallIds }));
 	if (topologyIssue) {
 		return reject(
 			topologyIssue.code === 'wall_height_below_opening' ? 'wall_height_below_opening' : 'topology_invalid',
@@ -2424,6 +2448,8 @@ function assertWallGeometryRoomIdentityPreserved(
  * produced (OR-3a/OR-3b; see `layout-p23b3a-scoped-gate.test.ts`).
  */
 export type WallFirstTopologyOptions = {
+	/** Only the closed-Wall pair check is scoped by an edit. */
+	closedContactWallIds?: ReadonlySet<string>;
 	/**
 	 * Keep the Opening-set validator canonical, but let a caller that owns a
 	 * later stable Opening rejection gate defer its translation. The default
@@ -2533,43 +2559,14 @@ function observeTopologyEvaluation(
 	}
 }
 
-export function validateWallFirstTopology(
+/** Closed-Wall contacts use the same predicates for whole-document and edit validation. */
+export function validateClosedWallContacts(
 	document: LayoutDocumentWallFirst,
-	options: WallFirstTopologyOptions = {}
+	affectedWallIds?: ReadonlySet<string>,
+	sampling?: WallSamplingDerivation,
+	junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point]))
 ): LayoutGeometryIssue | undefined {
-	return validateWallFirstTopologyPass(document, options);
-}
-
-function validateWallFirstTopologyPass(
-	document: LayoutDocumentWallFirst,
-	options: WallFirstTopologyOptions,
-	subject?: TopologyPassSubject
-): LayoutGeometryIssue | undefined {
-	// P23B.3a S5 / D-9 — the coincidence rule is COMPONENT-SCOPED: a coincident node
-	// is an ACCIDENT only where the two nodes describe one graph, so equal
-	// coordinates are refused when the Junctions share a component and PERMITTED when
-	// they do not. The code, path, message and document order below are unchanged —
-	// only which pairs reach the predicate (INV-2).
-	//
-	// UNATTACHED JUNCTIONS keep the general test's deliberate rule: a Junction no Wall
-	// references carries the single `UNATTACHED_JUNCTION_COMPONENT` label, so two
-	// coincident unattached Junctions are STILL invalid, while an unattached Junction
-	// coinciding with a Wall's Junction is permitted (D-9). That label is a SYMBOL,
-	// never a string, so no authored Wall id can collide with it — not even a Wall
-	// whose id is literally `unattached-junctions` (the S5 review blocker).
-	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
-	const junctionIndexById = new Map(document.junctions.map((junction, index) => [junction.id, index] as const));
-	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction] as const));
-	// T1.P02.S06 D.1 (H3) — one id→point index for every Wall this pass resolves,
-	// instead of two linear Junction scans per Wall.
-	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
-
-	// D7 — closed Walls are isolated. This is intentionally document-global, not
-	// component-scoped: an independent Wall crossing a closed loop is still an
-	// unsupported connection, and equal coordinates at different Junction IDs are
-	// an attachment, not independent geometry. Detection uses the same canonical
-	// samples as every other topology predicate.
-	const sampledWall = (wall: LayoutWall): SampledTopologyWall | undefined => {
+	const sample = (wall: LayoutWall): SampledTopologyWall | undefined => {
 		const start = junctionPointById.get(wall.startJunctionId);
 		const end = junctionPointById.get(wall.endJunctionId);
 		if (!start || !end) return undefined;
@@ -2589,8 +2586,8 @@ function validateWallFirstTopologyPass(
 				]
 			};
 		}
-		const sampled = options.sampling
-			? options.sampling.samples(wall, start, end, 'forward')
+		const sampled = sampling
+			? sampling.samples(wall, start, end, 'forward')
 			: wallCenterlineSamples(wall, start, end, 'forward');
 		if (!sampled) return undefined;
 		return {
@@ -2600,12 +2597,18 @@ function validateWallFirstTopologyPass(
 			samples: sampled.samples
 		};
 	};
+	const samples = new Map<string, SampledTopologyWall | undefined>();
+	const sampledWall = (wall: LayoutWall) => {
+		if (!samples.has(wall.id)) samples.set(wall.id, sample(wall));
+		return samples.get(wall.id);
+	};
 	for (const closed of document.walls) {
 		if (!isClosedWall(closed)) continue;
 		const seam = junctionPointById.get(closed.startJunctionId);
 		if (!seam) continue;
 		for (const other of document.walls) {
 			if (other.id === closed.id) continue;
+			if (affectedWallIds && !affectedWallIds.has(closed.id) && !affectedWallIds.has(other.id)) continue;
 			if (
 				other.startJunctionId === closed.startJunctionId ||
 				other.endJunctionId === closed.startJunctionId
@@ -2655,6 +2658,41 @@ function validateWallFirstTopologyPass(
 			}
 		}
 	}
+}
+
+export function validateWallFirstTopology(
+	document: LayoutDocumentWallFirst,
+	options: WallFirstTopologyOptions = {}
+): LayoutGeometryIssue | undefined {
+	return validateWallFirstTopologyPass(document, options);
+}
+
+function validateWallFirstTopologyPass(
+	document: LayoutDocumentWallFirst,
+	options: WallFirstTopologyOptions,
+	subject?: TopologyPassSubject
+): LayoutGeometryIssue | undefined {
+	// P23B.3a S5 / D-9 — the coincidence rule is COMPONENT-SCOPED: a coincident node
+	// is an ACCIDENT only where the two nodes describe one graph, so equal
+	// coordinates are refused when the Junctions share a component and PERMITTED when
+	// they do not. The code, path, message and document order below are unchanged —
+	// only which pairs reach the predicate (INV-2).
+	//
+	// UNATTACHED JUNCTIONS keep the general test's deliberate rule: a Junction no Wall
+	// references carries the single `UNATTACHED_JUNCTION_COMPONENT` label, so two
+	// coincident unattached Junctions are STILL invalid, while an unattached Junction
+	// coinciding with a Wall's Junction is permitted (D-9). That label is a SYMBOL,
+	// never a string, so no authored Wall id can collide with it — not even a Wall
+	// whose id is literally `unattached-junctions` (the S5 review blocker).
+	const keyByJunctionId = topologyComponentKeyByJunctionId(document);
+	const junctionIndexById = new Map(document.junctions.map((junction, index) => [junction.id, index] as const));
+	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction] as const));
+	// T1.P02.S06 D.1 (H3) — one id→point index for every Wall this pass resolves,
+	// instead of two linear Junction scans per Wall.
+	const junctionPointById = new Map(document.junctions.map((junction) => [junction.id, junction.point] as const));
+
+	const closedContact = validateClosedWallContacts(document, options.closedContactWallIds, options.sampling, junctionPointById);
+	if (closedContact) return closedContact;
 
 	// The predicate itself, so a scoped pass evaluates the SAME rule with the same path, code,
 	// message and target as the canonical loop (INV-3).

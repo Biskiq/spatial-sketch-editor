@@ -80,7 +80,7 @@ import {
 	type LayoutIdCapture
 } from './layout-id-capture';
 import { classifyWallIntersection, type TopologySegment } from './layout-wall-topology';
-import { detectWallCurveTopologyCrossings } from './layout-wall-first-precision';
+import { detectWallCurveTopologyCrossings, validateClosedWallContacts } from './layout-wall-first-precision';
 import {
 	topologyComponentKeyByJunctionId,
 	topologyComponentKeyByWallId,
@@ -156,6 +156,7 @@ export type WallEndpointJunctionSnap = {
 
 /** Why a chain sketch rejected; stable machine codes. */
 export type WallChainRejectionCode =
+	| 'closed_wall_isolated'
 	| 'insufficient_chain'
 	| 'non_finite_point'
 	| 'zero_length_leg'
@@ -861,6 +862,8 @@ function planWallChainInternal(options: WallChainPlanOptions): WallChainPlan {
 	}
 
 	// --- topology gate: no un-noded crossing may survive ---------------------
+	const closedContact = validateClosedWallContacts(candidate, new Set([...createdWallIds, ...splitWallIds]));
+	if (closedContact) return reject({ code: 'closed_wall_isolated', message: closedContact.message });
 	const topologyIssue = p2311Measure('chain-topology-gate', () => validateChainTopology(candidate));
 	if (topologyIssue) return reject(topologyIssue);
 
