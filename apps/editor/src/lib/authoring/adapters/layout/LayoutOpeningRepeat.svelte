@@ -1,20 +1,20 @@
-/**
- * T1 A8 — the Card's **Repeat** writer for one selected Opening.
- *
- * Renders beside the Opening's ordinary fields, not in a new panel or a tool:
- * a count of copies and a spacing in metres, with the planner's own proposal
- * and refusal as the note. While the values are being set, the same proposal
- * is published to the Stage, which draws every copy along the host Wall as a
- * candidate. Pressing **Repeat** accepts one captured, undoable operation; a
- * refused batch writes nothing and adds no history.
- *
- * The count and spacing are session state. They are never serialized, never
- * enter history and are cleared as soon as the operation commits or the panel
- * closes.
- */
+<!--
+	T1 A8 — the Card's **Repeat** writer for one selected Opening.
+
+	Renders beside the Opening's ordinary fields, not in a new panel or a tool:
+	a count of copies and a spacing in metres, with the planner's own proposal
+	and refusal as the note. While the values are being set, the same proposal
+	is published to the Stage, which draws every copy along the host Wall as a
+	candidate. Pressing **Repeat** accepts one captured, undoable operation; a
+	refused batch writes nothing and adds no history.
+
+	The count and spacing are session state. They are never serialized, never
+	enter history and are cleared as soon as the operation commits or the panel
+	closes.
+-->
 
 <script lang="ts">
-import { onDestroy } from 'svelte';
+import { onDestroy, onMount } from 'svelte';
 import { mintLayoutIdCapture } from '@portfolio/layout-core';
 import { stageLayout, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { parseExactNumber } from '$lib/authoring/layout/layout-exact-input';
@@ -33,6 +33,22 @@ let busy = $state(false);
 let error = $state<string | null>(null);
 let notice = $state<string | null>(null);
 let alive = true;
+/**
+ * The Stage facade is access, not a signal: its selection and snapshot reads are
+ * ordinary functions. The facade's own change notification is the one signal it
+ * publishes for "the Card's subject may be different now", so every read below
+ * depends on this counter. Without it a live A → B selection change would leave
+ * this panel editing A, and an accepted edit would keep publishing under the
+ * retired source key.
+ */
+let stageRevision = $state(0);
+onMount(() => {
+	const stage = services.stage;
+	if (typeof stage.onAdaptersChanged !== 'function') return;
+	return stage.onAdaptersChanged(() => {
+		stageRevision += 1;
+	});
+});
 /** The exact proposal this panel last published, so teardown clears that one. */
 let published: { readonly sourceContentId: string; readonly openingId: string } | null = null;
 onDestroy(() => {
@@ -41,11 +57,13 @@ onDestroy(() => {
 });
 
 const sourceKey = $derived.by(() => {
+	void stageRevision;
 	const snapshot = services.stage.snapshot();
 	return snapshot.sourceContentId;
 });
 
 const selection = $derived.by(() => {
+	void stageRevision;
 	const stage = services.stage;
 	return typeof stage.selection === 'function' ? stage.selection() : null;
 });
@@ -64,6 +82,9 @@ const wallId = $derived(opening?.wallId ?? null);
 
 const wallLength = $derived.by(() => {
 	if (wallId === null) return null;
+	// The accepted document can change under an unchanged Wall id (a repeat on a
+	// neighbouring Opening, a resize); the revision keeps the read current.
+	void stageRevision;
 	try {
 		return wallStationFrame(stageLayout(services.stage.snapshot()), wallId)?.length ?? null;
 	} catch {
@@ -78,6 +99,7 @@ const preview = $derived.by(() => {
 	const current = opening;
 	const count = parsedCount;
 	const spacing = parsedSpacing;
+	void stageRevision;
 	if (current === null || !count.ok || !spacing.ok) return null;
 	try {
 		return previewOpeningRepeat({
@@ -99,13 +121,43 @@ function clearActiveProposal(): void {
 
 // A new selection or a new accepted source retires the proposal it described.
 // The Stage never shows a preview for an Opening that is no longer selected.
+let lastSubject: string | null = null;
 $effect(() => {
 	const current = opening;
 	const key = sourceKey;
-	if (published === null) return;
-	if (current === null || published.openingId !== current.id || published.sourceContentId !== key) {
+	const subject = `${key}:${current?.id ?? ''}`;
+	if (published !== null && (current === null || published.openingId !== current.id || published.sourceContentId !== key)) {
 		clearActiveProposal();
 	}
+	if (subject !== lastSubject) {
+		lastSubject = subject;
+		notice = null;
+		error = null;
+	}
+});
+
+// The panel is the proposal, including before anything is typed: a valid default
+// batch is drawn as soon as the Opening is selected, so pressing Repeat can never
+// commit a batch the Stage has not shown. After a commit the notice is present
+// and the proposal stays retired until the values are edited again.
+$effect(() => {
+	const current = preview;
+	const source = opening;
+	const key = sourceKey;
+	const count = parsedCount;
+	const spacing = parsedSpacing;
+	if (current === null || current.kind !== 'planned' || source === null) return;
+	if (!count.ok || !spacing.ok) return;
+	if (published !== null || notice !== null || error !== null) return;
+	publishOpeningRepeatProposal({
+		sourceContentId: key,
+		openingId: source.id,
+		wallId: source.wallId,
+		count: count.value,
+		spacing: spacing.value
+	});
+	published = { sourceContentId: key, openingId: source.id };
+	services.stage.notifySurfaceChange();
 });
 
 /** Publish the typed values so the Stage can draw every proposed copy. */
@@ -272,8 +324,7 @@ function onEdit(field: 'count' | 'spacing', value: string): void {
 				type="button"
 				class="repeat"
 				data-opening-repeat-submit
-				disabled={busy}
-				aria-disabled={blocked || busy}
+				disabled={blocked || busy}
 				title={blocked ? 'The current count and spacing are refused' : 'Repeat this Opening along its Wall'}
 				onclick={() => void repeat()}
 			>
