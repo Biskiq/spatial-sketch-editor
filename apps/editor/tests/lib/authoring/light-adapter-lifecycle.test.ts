@@ -452,6 +452,54 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(host.history().depth).toBe(before.depth + 1);
 	});
 
+	it('keeps a surface-bound target fixed while a Spot body moves', async () => {
+		// The floor under the light is the only surface the forward ray meets.
+		const scenePick = (): SceneRenderedHit => ({
+			entityId: 'floor',
+			kind: 'entity',
+			distanceMeters: 2,
+			worldPoint: [0, 0, 0],
+			normal: [0, 1, 0]
+		});
+		const { facade, host } = await mounted({ entities: [spotAt([0, 2, 0])], scenePick });
+		const reference = sceneEntityReference(
+			'light-existing',
+			facade.snapshot().domain.unitRevisions.scene
+		);
+		facade.setSelection({ ordered: [{ reference }], primary: reference });
+		const mark = facade.marks().find((candidate) => candidate.id === 'light-body');
+		if (mark === undefined) throw new Error('the selected spot has no body glyph');
+		const start = mark.anchor;
+		const dragCss: [number, number] = [start[0] + 90, start[1] + 5];
+		const evaluationId = facade.evaluationId()!;
+		const dragRay = facade.pointerRay(
+			[dragCss[0] + RECT.left, dragCss[1] + RECT.top],
+			evaluationId
+		);
+		if (dragRay.kind !== 'ray') throw new Error('the body manipulation produced no pointer ray');
+		const t = (2 - dragRay.ray.origin[1]) / dragRay.ray.direction[1];
+		const expected: Vec3 = [
+			dragRay.ray.origin[0] + dragRay.ray.direction[0] * t,
+			2,
+			dragRay.ray.origin[2] + dragRay.ray.direction[2] * t
+		];
+		const before = host.history().depth;
+
+		facade.pointerIntent({ phase: 'down', css: start, evaluationId, handleId: 'light-body' });
+		facade.pointerIntent({ phase: 'move', css: dragCss, evaluationId });
+		facade.pointerIntent({ phase: 'up', css: dragCss, evaluationId });
+		await waitFor(() => host.history().depth === before + 1);
+		expect(facade.camera.evaluate(RECT, 3).kind).toBe('evaluated');
+		const moved = lightsOf(facade)[0]!;
+		expect(moved.position[0]).toBeCloseTo(expected[0], 6);
+		expect(moved.position[2]).toBeCloseTo(expected[2], 6);
+		const targetVector: Vec3 = [-moved.position[0], -moved.position[1], -moved.position[2]];
+		const targetLength = Math.hypot(...targetVector);
+		const toTarget = targetVector.map((component) => component / targetLength);
+		const forward = lightForward(moved.rotation);
+		expect(forward[0] * toTarget[0] + forward[1] * toTarget[1] + forward[2] * toTarget[2]).toBeCloseTo(1, 6);
+	});
+
 	it('stands off along the surface normal and leaves a pressed Spot Unlimited', async () => {
 		let pick = 0;
 		const scenePick = (): SceneRenderedHit | null => {
@@ -591,6 +639,24 @@ describe('S3a light adapter pointer lifecycle', () => {
 		const wide = markIds('light-beam-wide');
 		expect(wide).not.toContain('light-angle');
 		expect(wide).not.toContain('light-penumbra');
+		expect(facade.marks().find((mark) => mark.id === 'light-aim')?.tag).toContain(
+			'wider than the guide'
+		);
+		// The footprint is still drawn, at the 80° guide limit and in derived ink.
+		const wideGuide = facade.guides().find((guide) => guide.id === 'light-guide')!;
+		expect(wideGuide.derivedSegments.length).toBeGreaterThan(40);
+
+		// Rim and Inner-ring controls share one ring plane; their turn controls
+		// sit on opposite screen sides so a zero soft edge cannot stack them.
+		markIds('light-soft-low');
+		const angle = facade.marks().find((mark) => mark.id === 'light-angle')!;
+		const penumbra = facade.marks().find((mark) => mark.id === 'light-penumbra')!;
+		const phase = (mark: typeof angle): number[] | undefined => mark.descriptor.phase as number[] | undefined;
+		const a = phase(angle);
+		const p = phase(penumbra);
+		expect(a).toBeDefined();
+		expect(p).toBeDefined();
+		expect(a![0] * p![0] + a![1] * p![1] + a![2] * p![2]).toBeLessThan(0);
 	});
 
 	it('exposes persistent selection guides separately from candidate previews', async () => {

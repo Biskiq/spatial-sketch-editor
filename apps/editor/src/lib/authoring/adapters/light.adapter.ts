@@ -281,6 +281,28 @@ function closestAxisPoint(
 }
 
 /** The Spot's derived target through the live scene pick. Never stored. */
+/**
+ * A ring-plane direction that projects toward screen-right or screen-left.
+ *
+ * The Spot's Rim and Inner-ring controls share one ring plane; separating
+ * their controls on opposite sides keeps the two beams editable even when the
+ * soft edge is zero and the rings coincide. Presentation only: the gesture
+ * still measures the ring's real radius.
+ */
+function ringPhase(
+	adapterContext: StageAdapterContext,
+	axis: Vec3,
+	side: 'left' | 'right'
+): Vec3 | undefined {
+	const view = normalize(sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye));
+	const right = cross(view, [0, 1, 0]);
+	const normal = normalize(axis);
+	const projected = sub(right, scale(normal, dot(right, normal)));
+	if (Math.hypot(projected[0], projected[1], projected[2]) < 1e-6) return undefined;
+	const unit = normalize(projected);
+	return side === 'left' ? scale(unit, -1) : unit;
+}
+
 function spotTargetFor(light: Light, adapterContext: StageAdapterContext) {
 	return spotTarget({
 		position: light.position,
@@ -1111,7 +1133,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					const range = lightRange(light);
 					const behind = range !== undefined && range < distance;
-					const footprint = behind ? derivedSegments : segments;
+					// A stored angle beyond 80° is drawn at the guide's 80° limit in
+					// derived-guide ink: the footprint is an illustration, not the
+					// authored beam, and the grips are not mounted to claim otherwise.
+					const footprint = behind || isWideBeam(light.angle) ? derivedSegments : segments;
 					for (let index = 0; index < ring.length; index += 1) {
 						footprint.push([ring[index]!, ring[(index + 1) % ring.length]!]);
 					}
@@ -1374,7 +1399,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								: 'Aim · {value} m',
 							planner: 'update-light',
 							draw: { pointRadius: 4.5 },
-							value: target.distance.toFixed(2),
+							value: wide
+								? `Aim · ${target.distance.toFixed(2)} m · Beam ${formatDegrees(radiansToDegrees(light.angle), 0)} · wider than the guide`
+								: `Aim · ${target.distance.toFixed(2)} m`,
 							refusal: refusalNow
 						});
 						if (range !== undefined) {
@@ -1406,6 +1433,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								kind: 'ring',
 								anchor: footprintCenter,
 								axis: forward,
+								phase: ringPhase(adapterContext, forward, 'right'),
 								extent: Math.max(0.02, footprintRadius),
 								label: 'Beam',
 								fact: 'angle',
@@ -1425,6 +1453,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								kind: 'ring',
 								anchor: footprintCenter,
 								axis: forward,
+								phase: ringPhase(adapterContext, forward, 'left'),
 								extent: Math.max(0.02, innerRadius),
 								label: 'Soft edge',
 								fact: 'soft-edge',
