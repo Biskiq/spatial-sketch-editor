@@ -132,6 +132,46 @@ export function wallSplitRefusalWords(code: string, message = ''): string {
 	}
 }
 
+/**
+ * T1 A2 — the join's own words.
+ *
+ * A join is not a bend and not a delete: "Remove joint" must say why a corner,
+ * a three-Wall joint, a mismatched pair or a non-tangent arc pair cannot join,
+ * in the creator's terms. Every other code falls back to the shared Wall map.
+ */
+export function wallJoinRefusalWords(code: string, message = ''): string {
+	switch (code) {
+		case 'non_collinear_straight_pair':
+			return 'These Walls meet at a corner. Drag the joint onto the line between their ends to join them.';
+		case 'non_tangent_curved_pair':
+			return 'These curved Walls meet at a corner. Only a smooth continuation can join.';
+		case 'junction_degree_not_two':
+			return 'Three or more Walls meet here. A join needs exactly two Walls in a line.';
+		case 'incompatible_wall_pair':
+			if (/thickness or height/i.test(message)) {
+				return 'These Walls differ in height or thickness. Make them match to join.';
+			}
+			if (/mix straight and curved/i.test(message)) {
+				return 'A straight Wall and a curved Wall cannot join.';
+			}
+			if (/authored names/i.test(message)) {
+				return 'These Walls carry different names. Give them the same name to join.';
+			}
+			return 'These Walls cannot join.';
+		case 'degenerate_wall_pair':
+			return 'This Wall loops back to itself here. A closed Wall cannot be joined.';
+		case 'duplicate_joined_wall':
+			return 'Another Wall already joins these two ends.';
+		case 'room_identity_lost':
+		case 'room_reconciliation_rejected':
+			return 'Joining here would change a Room boundary. Keep the joint on the Room side.';
+		case 'captured_id_in_use':
+			return 'That identity is already taken. Start again.';
+		default:
+			return wallRefusalWords(code, message);
+	}
+}
+
 /** The attempted metrics an Opening refusal may quote. */
 export type OpeningRefusalAttempt = {
 	readonly openingId?: string;

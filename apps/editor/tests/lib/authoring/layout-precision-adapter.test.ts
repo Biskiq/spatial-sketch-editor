@@ -57,6 +57,7 @@ import {
 } from '$lib/authoring/adapters/layout/drawing-planners';
 import { createOpeningPlanners } from '$lib/authoring/adapters/layout/opening-planners';
 import { createSplitPlanners } from '$lib/authoring/adapters/layout/split-planners';
+import { createJoinPlanners } from '$lib/authoring/adapters/layout/join-planners';
 import { createCardFieldsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
@@ -153,7 +154,8 @@ describe('T1.P01.S04 — Layout precision', () => {
 		// two Opening operations, on the one registry, admission and coordinator:
 		// no family owns a second acceptance path.
 		expect(host.coordinator().planners()).toHaveLength(
-			createLayoutPlanners().length + createDrawingPlanners().length + createSplitPlanners().length + createOpeningPlanners().length
+			createLayoutPlanners().length + createDrawingPlanners().length + createSplitPlanners().length +
+				createJoinPlanners().length + createOpeningPlanners().length
 		);
 		expect(createLayoutPlanners().map((planner) => planner.kind).sort()).toEqual([
 			'layout-entity-name',
