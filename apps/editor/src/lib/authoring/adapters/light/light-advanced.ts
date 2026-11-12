@@ -313,7 +313,7 @@ const positionRow: LightAdvancedRow = {
 
 const aimRow: LightAdvancedRow = {
 	id: 'aim',
-	label: 'Aim point',
+	label: 'Aim toward (direction only)',
 	kinds: ['spot'],
 	control: { kind: 'triplet', axes: ['X', 'Height', 'Z'], unit: 'm' },
 	read: (light) => {
@@ -334,7 +334,7 @@ const aimRow: LightAdvancedRow = {
 			])
 		};
 	},
-	summary: () => 'Aim'
+	summary: () => 'Direction'
 };
 
 const shadowRow: LightAdvancedRow = {

@@ -134,8 +134,10 @@ describe('Advanced row writes', () => {
 		expect(position.write([3, 1, 2], light(), 0.2)).toEqual({ position: [3, 1.2, 2] });
 	});
 
-	it('writes Aim as rotation only', () => {
+	it('writes Aim as rotation only and never implies a stored target', () => {
 		const aim = row('position', 'aim');
+		expect(aim.label).toContain('direction only');
+		expect(aim.summary(light(), 0)).toBe('Direction');
 		const payload = aim.write([3, 0, -1], light(), 0) as { rotation: [number, number, number] };
 		expect(Object.keys(payload)).toEqual(['rotation']);
 		expect(payload.rotation.every(Number.isFinite)).toBe(true);

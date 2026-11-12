@@ -703,9 +703,11 @@ The PR stays open and unmerged.
 | 8 | `f81918f0` | Light hover ghost, lit candidate and placement lifecycle |
 | 9 | `1c77c42b` | Artwork wall-follow move, nine-point fit test and ghost lifecycle |
 
-Two verification follow-ups are separate commits: `80409077` moves the new colour dial onto the
-`--shell-white` presentation token, and `c1e6e699` fixes the Advanced White/Colour mode toggle so it
-uses Card-local display state instead of writing the invalid string `colour` as a hex colour.
+Verification follow-ups are separate commits: `80409077` moves the new colour dial onto the
+`--shell-white` presentation token, `c1e6e699` fixes the Advanced White/Colour mode toggle so it
+uses Card-local display state instead of writing the invalid string `colour` as a hex colour, and
+`3a486ad5` makes the preview projection a shadow trigger, excludes the candidate from the pick
+registry and resolves a light release through its final up position.
 
 **Verification evidence**
 
@@ -732,3 +734,5 @@ uses Card-local display state instead of writing the invalid string `colour` as 
   Wall fit.
 - The Artwork fit test samples the nine outer-frame points and rejects a sample that meets another
   Wall or lies more than 0.07 m from the pointer's Wall. It adds no conformal Artwork geometry.
+- The Advanced Aim triplet reads the direction's 3 m fallback point, not a surface intercept, and
+  is labelled `Aim toward (direction only)` so the fields do not imply a stored target.
