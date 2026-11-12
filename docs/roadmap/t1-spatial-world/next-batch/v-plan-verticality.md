@@ -34,8 +34,9 @@ implemented at the base commit: Layout is still format 7 and no Lift reading exi
    appearance and no Space ownership. A Space's generated floor and lid stay derived from its
    outline and depend only on the Space's `overhead` intent (SP-plan I11). The P26 words "closure
    versus suspended" are superseded by Q8 and leave the Layout contract when V1a merges.
-3. **The Room record loses `floorThickness` and `ceilingThickness`** (OD-1). Nothing renders them
-   and no editor code writes them. Physical thickness belongs to regions.
+3. **Remove `floorThickness` and `ceilingThickness` from the Room record in V1a**, subject to OD-1.
+   A Space owns identity, boundary and overhead intent. Its generated floor and lid are surfaces.
+   The physical thickness of an authored floor or overhead belongs to its region (§5.2).
 4. **A Wall keeps `height` and gains one required `top`.** `height` is the lowest point of the
    top; `top` adds rise above it: `level`, `slope` or `gable`. Every reader of `wall.height`
    stays correct, and a level Wall compiles to exactly today's output, cache keys included.
@@ -55,8 +56,8 @@ implemented at the base commit: Layout is still format 7 and no Lift reading exi
 | --- | --- | --- |
 | O1 | Layout is format 7; the Layout unit version in the F2 envelope is the same constant, not a second number | `layout-wall-first-types.ts:82`; `packages/project-model/src/units/types.ts:46` |
 | O2 | A Room record is `id`, `name`, `boundary`, `floorThickness`, `ceilingThickness` | `layout-wall-first-types.ts:285`; `layout-wall-first-codec.ts:115` |
-| O3 | The two thicknesses reach only Room `bounds3`, Room cache keys, the metadata planner, duplicate and the merge-conflict refusal. Births use 0.1 for both | `layout-geometry.ts:1752`, `:2182`; `layout-wall-topology-ops.ts:510`; `layout-duplicate.ts:601`; `layout-room-reconciliation.ts:113`, `:1027` |
-| O4 | No file under `apps/editor/src` names either thickness field. Floors and lids are drawn as zero-thickness planes, the lid unconditionally | `VisitorLayoutShell.svelte:209`–`:231` |
+| O3 | The codec accepts any positive finite Room thicknesses. Births use 0.1 m for both. The metadata planner can edit them, split and duplicate carry them, unequal values refuse a merge, and the compiler uses them in Room records, cache keys and bounds | `layout-wall-first-codec.ts:880`; `layout-room-reconciliation.ts:113`, `:990`, `:1027`; `layout-wall-topology-ops.ts:485`, `:531`; `layout-duplicate.ts:601`; `layout-geometry.ts:1752`, `:1774`, `:1791`, `:2187` |
+| O4 | The editor's Room metadata intent writes the name only. The shared visitor shell draws the generated floor and lid as planes at their compiled elevations, with a lid on every Room at this base | `apps/editor/src/lib/authoring/adapters/layout/precision.ts:712`; `VisitorLayoutShell.svelte:209`–`:231` |
 | O5 | A Room's ceiling is `floor.elevation + max(boundary Wall heights)`; its floor polygon follows Wall centerlines | `layout-geometry.ts:237`–`:254`, `:1668` |
 | O6 | A Wall's vertical extent is one scalar. Sections, Junction legs, endpoint bands, bounds and cache keys all take `wall.height` | `layout-geometry.ts:606`, `:607`, `:617`, `:1025`; `layout-geometry-openings.ts:149` |
 | O7 | `CompiledWallSection.topY` is a scalar; the mesh builder draws one level top face per section and already handles sloped *bottoms* for arches | `layout-geometry-types.ts:163`; `wall-mesh-builder.ts:1009`, `:1043`, `:1059`, `:1096` |
@@ -188,7 +189,7 @@ so.
 | # | Question | Resolution |
 | --- | --- | --- |
 | 1 | Authored regions versus derived Space surfaces | Separate, never merged. A Space's floor and lid are generated from its outline and are not persisted. A region is authored and independent. A region never suppresses, trims or replaces a generated surface; only the Space's `overhead` intent removes a lid. Association between the two is the derived query `regionsOverSpace` (§5.6) |
-| 2 | `floorThickness`, `ceilingThickness` | Removed from the Room record and the compiled Room in V1a. Generated surfaces are planes, as they are drawn today (O4). OD-1 |
+| 2 | `floorThickness`, `ceilingThickness` | Remove the authored fields and their compiled copies, cache inputs and bounds padding in V1a, subject to OD-1. Keep the generated surfaces and their source references (§5.2, §5.7). |
 | 3 | Region identity and references | A captured document-global id; a fifth ledger family `regions`. Surface references are the region id plus `top`, `underside` or `edge`, never minted per compile. Region edits keep the id. §5.7 |
 | 4 | Footprint and sloped-top geometry | G1–G5 for footprints; forms are one or two planes parameterised by `rise`, `azimuth` and `ridgeOffset` over the footprint's own extent (§7.1); Wall tops are P1–P8 |
 | 5 | SP1's `overhead: closed \| open-to-sky` | Untouched and still the only thing that decides a lid. A region reads and writes no intent. The Card readout "Open to sky · under *name*" is `overhead` plus `regionsOverSpace` |
@@ -223,6 +224,24 @@ of the Layout representation and is identical for the visitor.
   "ambiguous overlapping-closure surface is refused" with G5 and the intent rule.
 - "Converting a generated surface to an authored region" is two explicit steps, each its own
   history entry: **Fit to space** at region birth or later (§5.5), then **Open to sky**.
+
+**Thickness cutover (OD-1).** Spaces describe places and enclosure. Independently identified
+Layout elements own physical construction geometry, in line with Q8 and the
+[vertical architecture contract](../../../reference/architecture.md#product-convergence-destination).
+Drawings can use region faces and extents for physical sections and
+dimensions, and use Space surfaces and boundaries to describe the enclosure. Any future assembly
+or layer model would refine the physical element's thickness authority. V1 defines the region's
+single thickness scalar.
+
+V1a removes the Room metadata writes and the thickness-only merge refusal on both the enclosed
+and open merge paths. Preserve the existing survivor, overhead, identity, associations and
+surface-reference rules. Switching back to **Closed** regenerates the lid at its derived
+elevation. Room bounds enclose the generated planes that are present and the physical Walls.
+Floor and document bounds can contract where the removed padding was extremal. Its amount comes
+from the stored values (0.1 m is the birth default). This changes inputs to Camera framing and
+depth evaluation (O14). Verify the new bounds through both cold and retained compilation and
+exercise Camera framing with them. The generated floor and lid retain their support and finish
+reference semantics.
 
 ### 5.3 Planners
 
@@ -277,8 +296,8 @@ offers no fix. Marking is `planSetRegionIntendedGap`.
 
 ### 5.5 One-shot fits
 
-Four explicit operations. Each is one planner, one history entry, atomic. None stores anything;
-after a fit the two subjects are independent again and the next reading may be a gap.
+Four explicit operations. Each is one planner, one history entry, atomic. Each writes the proposed
+geometry only. After a fit the two subjects are independent and the next reading may be a gap.
 
 | Operation | Planner | Effect |
 | --- | --- | --- |
@@ -498,8 +517,17 @@ top(p) = underside(p) + thickness
 ### 7.2 Form planners and Edit shape
 
 - `planSetRegionForm` writes kind and values. Changing kind keeps footprint, eave and thickness.
-  Default azimuth for a new shed or gable is the direction of the longest footprint edge (for a
-  gable, the ridge runs along it); default rise gives a 30° pitch on the longer side.
+  When azimuth is omitted on entry to a form, choose the edge with greatest squared length in
+  plan. Order each edge's endpoints lexicographically by `(x, z)` and break equal-length ties by
+  the lexicographically smallest ordered endpoint pair. Let `θ = atan2(Δz, Δx)` from the first
+  endpoint to the second. A shed defaults to `θ` (uphill). A gable defaults to `θ + π/2` so its
+  ridge runs parallel to that edge. Normalize to `(-π, π]`. The endpoint order fixes the sign of
+  `d`, so positive `ridgeOffset` moves the ridge toward `qMax`. Cyclic reindexing or a reversed
+  edge traversal yields the same choice.
+- A new gable defaults to `ridgeOffset: 0`. Default rise is `tan(30°)` times the full projected run
+  for a shed, or the longer of the two projected eave-to-ridge runs for a gable. These defaults
+  apply when the form is set. Footprint edits keep the stored azimuth, and rotation adds the
+  rotation angle as in §5.3.
 - **Edit shape** (PLATE, the grammar's Roof row): a roof-local section perpendicular to the ridge,
   drawn on the roof with joint points.
 
@@ -517,39 +545,48 @@ top(p) = underside(p) + thickness
 
 ### 7.3 The two fits, in general
 
-Both are explicit, atomic, one history entry, and store nothing.
+Both are explicit and atomic. Each accepted fit writes geometry in one history entry, with no
+stored relation.
 
-For a Wall `w` under a region `R`, at station `s`, take the cross-section of the Wall body at `s`
-(evaluated at both faces, and at the ridge where the ridge crosses that section):
+Evaluate the portion of the compiled Wall body's plan strip inside or on the roof footprint,
+including resolved ends and mitres. Use the Wall's canonical top station mapping and endpoint
+clamps (§6.1). Clip the plan cells at the footprint, the roof ridge and Wall profile breaks.
+Within each resulting piece the height differences are affine, so extrema occur at its vertices.
+Use these extrema for both fits and the derived reading. A fit requires covered Wall geometry.
 
 ```text
-contact(w, s) = min over the cross-section of  underside(p) - wallTop(w, s)
-seal(w, s)    = max over the cross-section of  underside(p) - wallTop(w, s)
+wallTopY(p) = floor.elevation + wallTopAt(wall, station(p))
+contact     = min over covered points p of (underside(p) - wallTopY(p))
+gap         = max over covered points p of (underside(p) - wallTopY(p))
+overrun     = max over covered points p of (wallTopY(p) - top(p))
 ```
 
-- **Relation**, replacing the flat row of §5.4 with the same words: **gap** when `max_s seal > ε`
-  (the measure is that maximum); **crosses** when the Wall's top is above `top(p)` anywhere by
-  more than ε; otherwise **meets**.
+- **Relation.** Keep §5.4's plan classes and horizontal gap rule. A `through` Wall reads
+  **crosses** when `overrun > ε`, including when another part has a gap. Otherwise an `edge` or
+  `through` Wall reads **gap** when `gap > ε` (with that measure), and **meets** otherwise. A fit
+  checks both bounds for every fitted Wall, including `edge` Walls.
 - **Fit roof to walls** (`planFitRegionToWalls`). Changes `elevation` only, by
-  `−min over the chosen Walls and stations of contact`. The roof moves straight up or down until it
-  first touches a Wall. No Wall enters the roof. Walls that still show a gap say so.
+  `−min over the chosen Walls of contact`. The roof moves straight up or down to first contact.
+  Walls that still show a gap say so.
 - **Fit walls to roof** (`planFitWallsToRegion`). The set is every chosen Wall whose whole
   centerline lies inside the footprint or on its boundary; a Wall only partly under the roof is
-  left alone and named in the consequence line. For each Wall, the underside along the centerline
-  is sampled at the two ends and at the ridge crossing, giving a level, slope or gable top, and the
-  whole top is then raised by the Wall's **sealing allowance**
-  `δ = max_s ( max over the cross-section of underside − underside at the centerline )`,
-  so `seal ≤ 0` everywhere and the Wall reads **meets**. If the raised Wall comes out of the top of
-  the roof the consequence line says by how much; it is not refused.
+  left alone and named in the consequence line. For each eligible Wall, derive the centerline
+  profile from the two ends and any interior ridge crossing. Raise the whole profile by the
+  smallest nonnegative uniform sealing allowance, `δ = max(0, gap)` measured against that profile.
+  Admit the normalized candidate only if `gap ≤ ε` and `overrun ≤ ε` for every fitted Wall, so
+  each reads **meets**. If the allowance breaches the upper face, refuse the entire fit and name
+  the blocking Wall and the overrun in metres. The creator can adjust the roof thickness or shape
+  and retry, or edit the Wall tops directly. Capping the allowance could leave a gap. Searching
+  for a different profile within the roof thickness would change the fit rule and is deferred.
 - **Refusals**, each naming its subject and writing nothing: a curved Wall whose fitted top would
   not be level; a closed Wall under a sloped form; an Opening that would exceed the new top; a
-  resulting height that is not positive or leaves the envelope; G5 after the move.
-- A gable roof's underside along a straight Wall is concave with at most one breakpoint, so the
-  fitted top is always expressible. That is the reason the Wall-top vocabulary is exactly level,
-  slope and gable.
+  fitted top outside P1–P7; G5 after moving the roof. A gable roof's underside along a straight
+  Wall is concave with at most one breakpoint. The shape is level, slope or gable, subject to the
+  existing Wall-top tolerances.
 
-J8 is then: draw the roof, **Fit roof to walls**, **Fit walls to roof**. Every Wall reads meets,
-and nothing follows either subject afterwards.
+J8's hall fixture uses a roof thick enough for its Wall widths and pitch. Draw the roof, run
+**Fit roof to walls**, then **Fit walls to roof**. All four Walls read **meets**. Each accepted
+action has one Undo entry, and later edits are independent.
 
 ### 7.4 Support and overlap under a sloped form
 
@@ -581,6 +618,13 @@ adapter can read it, and changes nothing. OD-4.
   one place.
 - **Each bump:** strict refusal of the previous version, no migration, no dual reader, no
   defaulting of new fields, every maintained fixture regenerated through canonical builders.
+- **V1a cutover gate (OD-1):** identify any accepted trial projects using the outgoing Layout
+  format, including any non-default Room thickness values, and confirm whether deployed public
+  snapshots need preservation under their separate release contract. Record the result and the
+  owner-approved cutover disposition in the V1a PR before activation. Old source retains its
+  values in the old format. If accepted source needs preservation in the new format, bring an
+  explicit pre-baseline exception to the owner under the persistence contract. Fixture regeneration
+  drops the legacy fields and creates no slabs from their values.
 
 | Order | Slice | Changes | Must follow |
 | --- | --- | --- | --- |
@@ -635,7 +679,7 @@ captured ids; a refusal has words and writes nothing; session readings are never
 
 | Slice | Delivers | Needs | Tier |
 | --- | --- | --- | --- |
-| **V1a** Format and compile | §3.1 (regions), §3.2, §5.1, §5.8, thickness removal, the format bump. Hand-built region fixtures compile, draw and pick in editor and visitor. No planner creates a region | This plan approved with OD-1–OD-3; SP1a–SP1c merged | 2 |
+| **V1a** Format and compile | §3.1 (regions), §3.2, §5.1, §5.8, thickness cutover (§5.2, §9, H-3, H-5), the format bump. Hand-built region fixtures compile, draw and pick in editor and visitor. No planner creates a region | This plan approved with OD-1–OD-3; SP1a–SP1c merged | 2 |
 | **V1b** Planners and queries | §5.3–§5.6 in layout-core only: planners, relations, the four fits (flat and level case), support and clearance queries, Wall lineage. No editor intent | V1a | 1 |
 | **V1c** Authoring and parity | §5.9; F4 wiring; Lift registration; visitor parity; focused browser QA of J7 and J11 | V1b; **X1 merged** | 1 |
 | **V1d** Support and reference seam | Region witnesses qualified in project-model so an object rests on a floor region; `queryOverheadSupports` exported for T2's light magnet; Layout-local surface-reference resolver. A3 and A4 are its first checks | V1b. Independent of V1c. Reviewed from T2 | 1 |
@@ -650,9 +694,10 @@ captured ids; a refusal has words and writes nothing; session readings are never
 
 - **V1a.** The previous format is refused through the codec, `units/validate.ts` and the visitor
   release path. With no regions, compiled output equals the pre-bump output except for the listed
-  differences of T-V1. Each of G1–G7 has a refusing fixture. A hand-built canopy, dropped ceiling
-  and raised floor compile to the faces of §5.8, draw identically in the Stage and in Preview, and
-  select the region from 3D and from Plan. A region edit recompiles no Wall and a Wall edit
+  differences of T-V1. T-V14 and the §9 cutover gate cover removed Room thickness fields and the
+  SP/C preservation handoffs. Each of G1–G7 has a refusing fixture. A hand-built canopy, dropped
+  ceiling and raised floor compile to the faces of §5.8, draw identically in the Stage and in
+  Preview, and select the region from 3D and from Plan. A region edit recompiles no Wall and a Wall edit
   recompiles no region (T-V3). The persistence contract names one Layout number.
 - **V1b.** Every planner of §5.3 and §5.5 has a core test through the real planner, with a
   refusing case. Every row of the two tables in §5.4 has a fixture. T-V4 to T-V10 pass.
@@ -670,19 +715,20 @@ captured ids; a refusal has words and writes nothing; session readings are never
   mesh and the Unroll sheet agree with it. A straight gable end is edited on its face.
 - **V3a.** The previous format is refused. Flat regions compile unchanged (T-R1). Shed and gable
   fixtures compile to planar faces that close without gaps (T-R2).
-- **V3b.** Both fits pass T-R3 to T-R6.
-- **V3c.** The approved V3 sentence holds, and J8 passes with two explicit fits.
+- **V3b.** Both fits pass T-R3 to T-R6 and T-R8. Form defaults pass T-R7.
+- **V3c.** The approved V3 sentence holds, and J8 passes with two explicit fits. A thin-roof
+  refusal identifies the blocking Wall and the measured overrun, with no history entry.
 
 ## 12. Tests that separate a correct design from one that only looks right
 
 | # | Test | A superficial design fails because |
 | --- | --- | --- |
-| T-V1 | Across the existing fixture set with no regions, compiled output equals the pre-bump output except: `regions: []`; the two thickness fields absent; Room and document `bounds3` no longer padded by them; Room cache keys | Thickness removal moves something nobody listed, or regions leak into Wall keys |
+| T-V1 | With no regions, compare pre- and post-bump fixtures (including non-default thickness values and `closed`/`open-to-sky` Spaces). Allow only `regions: []`, the removed compiled fields and Room key inputs, and the new unpadded Room/query, Floor and document bounds. Cold and retained compiles agree. Check Camera's default framing and source rebase against those bounds, with authored Views and the current inspection pose preserved on rebase | The renderer looks the same but compiled extents or a bounds consumer still assumes Room slab padding |
 | T-V2 | A footprint that self-crosses, is clockwise, has a repeated point or exceeds the envelope: each refuses with its own code | The triangulator accepts it and draws garbage |
 | T-V3 | Compile counters: a region move rebuilds one region and no Wall or Room; a Junction move rebuilds no region | Regions are keyed on the whole document |
 | T-V4 | Each row of §5.4, including a footprint drawn to Wall centerlines (meets) and a Wall rising through a canopy (crosses) | Relations are computed from centerlines only and call the generated-floor case a crossing |
 | T-V5 | Fit, then move the Wall, raise it, and move the region: the other subject is byte-identical and the reading is a gap again | A fit left a stored link |
-| T-V6 | Two regions made to interpenetrate by create, move, rotate, elevation, thickness and each fit: refused, document byte-identical, no history entry. Exact stacking and edge contact accepted | G5 is checked on create only |
+| T-V6 | Two regions made to interpenetrate by create, move, rotate, elevation, thickness or any fit that edits a region: refused, document byte-identical, no history entry. Exact stacking and edge contact accepted | G5 is checked on create only |
 | T-V7 | Open to sky removes the lid and leaves every region; adding, moving and removing a region changes no Space's `overhead` and no lid | A region is treated as closure |
 | T-V8 | Under a platform over a Room floor, the support query returns two candidates at two elevations; on a region coplanar with the Room floor it returns one candidate with both witnesses; a Room witness with a wrong datum still refuses | Witness generalisation dropped the datum check or picked by array order |
 | T-V9 | For each planner that changes the Wall id set (split, join, dissolve, removal, noded chain, and C's when present): an intended gap survives onto the right Wall and no dangling id is written | Flags are pruned, or one planner was missed |
@@ -690,6 +736,7 @@ captured ids; a refusal has words and writes nothing; session readings are never
 | T-V11 | Visitor primitives for the V1 fixtures equal the editor's with editor-only streams removed; no relation cue, handle or ghost is present; a lifted overhead is still drawn and still casts shadow in Preview | Lift state leaks, or regions are drawn by an editor-only path |
 | T-V12 | Undo and Redo of create, each edit, each fit and Erase restore exact canonical bytes; Redo reuses the captured region id | Redo allocates a new id |
 | T-V13 | Mounted gesture boundary: a corner drag and a body drag show a preview with no full compile and no history write; release installs the same proposal once; Escape restores | The adapter calls a planner per pointer move |
+| T-V14 | The new codec rejects either legacy Room key in an otherwise current payload. Save/Load round-trips the new shape with authored region thickness. Open/re-close and the lid toggle preserve identity and the existing association and surface-reference rules. Split and duplicate keep their lineage and overhead behavior. Run the enclosed and open thickness-conflict merge fixtures in the new shape and assert the existing survivor and overhead rules, with exact Undo. No operation synthesizes a physical region from Room metadata | The cutover drops unrelated Space behavior, leaves an obsolete refusal or turns generated planes into physical slabs |
 | T-P1 | For every existing fixture, with every Wall `level`: compiled Walls, Junctions, cache keys and Wall mesh buffers are byte-identical to the pre-bump output | The new code path is taken for level Walls, or the key gained a field |
 | T-P2 | A gable Wall split off its apex, at its apex, and rejoined: tops are exact at every cut and the round trip restores the original bytes | Split re-interpolates, or join compares gradients loosely |
 | T-P3 | Corners where a sloped Wall meets a level, a taller and another sloped Wall, at degree 2, 3 and 4: the mesh is watertight and winding agrees with normals | Top heights at mitre vertices are extrapolated |
@@ -698,10 +745,12 @@ captured ids; a refusal has words and writes nothing; session readings are never
 | T-P6 | A Junction move that would put the apex outside the Wall refuses whole; a closed Wall refuses any non-level top | The apex is clamped silently |
 | T-R1 | Every flat-region fixture compiles to the same faces before and after V3a | Flat became a zero-rise shed |
 | T-R2 | Shed and gable over a rectangle, an L and a triangle: faces are planar, the ridge edge is shared exactly, the underside and top are `thickness` apart vertically everywhere | Faces are triangulated per vertex and crack at the ridge |
-| T-R3 | J8 fixture: Fit roof to walls leaves the eave Walls at first contact and no Wall inside the roof; Fit walls to roof then makes all four read meets, the ends gabled with the apex under the ridge | The fit solves for a plane, or seals at the centerline and leaves an interior wedge |
+| T-R3 | J8 long-hall fixture with sufficient roof thickness: Fit roof to walls reaches first contact with no Wall penetration. Fit walls to roof makes all four read **meets**, with level eave Walls and gable ends whose apex lies under the ridge. Check the lower and upper bounds across the covered Wall width, including boundary ends and mitres. Each fit has one Undo entry | The fit solves for a plane, seals only the centerline, or accepts a top that projects through the roof |
 | T-R4 | Fit walls to roof with a curved Wall under a shed, a closed Wall under a gable, and an Opening above the new top: each refuses whole, naming its subject; nothing is written | Partial application |
 | T-R5 | A Wall half under the roof is left unchanged and named in the consequence; an oblique Wall crossing the ridge gets one apex at the crossing station | The fitted top needs two breakpoints |
 | T-R6 | After both fits, moving the roof, changing its rise, or moving a Wall changes only that subject | A stored constraint |
+| T-R7 | A long rectangle defaults to a gable ridge parallel to its long edge, and a shed rises along that edge. A square selects the stated endpoint pair under every cyclic reindexing. Exercise reversed edge endpoints in the orientation rule, the centred 30° default, positive `ridgeOffset` toward `qMax`, and an explicit azimuth surviving resize and rotating with the region | The ridge is turned 90°, equal edges depend on array order, or the offset sign flips |
+| T-R8 | A 45° roof over a fully covered 0.20 m thick Wall parallel to the eave has a 0.20 m underside height spread. With 0.10 m roof thickness, the sealing fit would project 0.10 m above the roof. Refuse the entire multi-Wall fit even if another selected Wall can fit. The refusal identifies the blocking Wall and overrun, preserves bytes and writes no history. At 0.20 m roof thickness, contact with the upper face passes as **meets** | The planner accepts a crossing, clips the fit and leaves a gap, or writes part of the selection |
 
 Core cases sit beside the existing Layout contracts; adapter and F4 cases beside the circle and
 unit-acceptance suites; placement follows `apps/editor/tests/README.md`. Each format slice also
@@ -728,9 +777,9 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
 | --- | --- | --- |
 | H-1 | **X1 Lift** | Take the overhead set from `overheadSourcesOf` (lids now, regions after V1b). Until V1b exists X1 may compute lids itself behind that one function name |
 | H-2 | **SL1 Level cut** | A region whose slab is above the plane is not drawn; one the plane passes through is cut at its footprint; Wall caps under a profile use `wallTopAt` |
-| H-3 | **SP1** | The merge rule's thickness-conflict refusal disappears with the fields (OD-1). `open-to-sky` keeps no thickness to restore |
+| H-3 | **SP1** | Preserve thickness through SP1. At the OD-1 cutover, supersede the field carry in SP-plan §§3.1 and 5.1–5.2, the thickness-only merge refusal in §5.1 and the §15 defaults, and the lid-restore/padding wording in §§3.1 and 6. Keep the overhead setting, derived lid restoration, survivor policy, associations and surface references. Update the affected lifecycle and parity tests in V1a (T-V1, T-V14) |
 | H-4 | **SP3** | Gets: region id, footprint accessor, the surface key, and region planners that report affected region ids so I7 can be gated. SP3 owns the follow relation, the rule that a following Space generates no floor of its own, and the retirement rule |
-| H-5 | **C** | C1 takes the next admitted version after V1a if V1a merges first; "keeps thicknesses" drops out; the Round rules of §6.3 apply once V2b lands |
+| H-5 | **C** | If V1a merges first, C1 takes the next admitted version and uses the admitted Room shape. At the cutover, retire the Room-thickness portion of C-plan §3 Attach's preservation list and any corresponding fixture expectation. Preserve Wall dimensions and all other Round/Room facts, identity, associations and overhead. C2/C3 acceptance follows the admitted shape. The Round rules of §6.3 apply once V2b lands |
 | H-6 | **A1, A2** | Their stated lineage is what `carryRegionWallIntents` and the split and join arithmetic of §6.3 consume |
 | H-7 | **R Unroll the room** | A strip's top edge follows each Wall's top; no further change |
 | H-8 | **J / S5a, S5b (T2)** | **Proposed, not ratified:** the region and Space surface references of §5.7 and their qualification; `regionsOverSpace` as the answer to Space paint scope for regions; duplicate carries the same shared Finish; a removed region and an `open-to-sky` lid are unresolved references. **Left to J:** the wire type, where a finish is stored, what an unresolved reference does, finish inheritance, and one history entry across Layout and Scene |
@@ -748,7 +797,7 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
 | **A stored region transform** | A second frame beside project-world points, for no creator-visible gain |
 | **Regions that trim or replace the generated lid by coverage** (P26 D2 as written) | Makes a lid depend on geometry existing, which Q8 reversed, and needs partial-lid geometry and an overlap joint rule |
 | **Keep the Room thickness fields and draw slabs from them** | Changes the look of every existing Room and gives generated surfaces a physical property that regions exist to carry |
-| **Keep the fields inert** | Dead authored data and a merge refusal no creator can cause or fix |
+| **Keep the fields as legacy Room metadata** | Preserves old values in the current shape. It also retains a second thickness input to compiled bounds and the thickness-only merge refusal. V1a's version boundary and cutover gate address source preservation explicitly (§9) |
 | **Replace `height` with a `top` union** | One authority, but every reader of `wall.height` changes for no behavioural gain. `height` as the lowest top keeps them all correct |
 | **`topProfile` optional beside `height`, absolute heights** | Two numbers able to disagree about the eave |
 | **A general list of top breakpoints** | Admits valleys and sawtooth tops, outside the approved vocabulary, and loses the closed-form split and join rules |
@@ -756,8 +805,9 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
 | **Roof forms as a separate entity from regions** | The approved capability and Q16 put forms in the region family; a second family repeats footprint, identity, support and references |
 | **Forms as arbitrary section profiles** | Gambrel and mansard are outside scope and break the guarantee that a fitted Wall top is expressible |
 | **Fit roof by solving a plane through the Wall tops** | A constraint solver, with no answer for most inputs |
-| **Fit walls at the centerline with no allowance** | Leaves a visible wedge of sky along the inside of every eave Wall |
+| **Fit walls at the centerline with no allowance** | Can leave a visible wedge of sky where the underside rises across a Wall |
 | **Fit walls to the highest underside across the body** | For an oblique Wall crossing the ridge the result has two peaks and cannot be stored |
+| **Accept or cap a sealing allowance that exceeds the upper face** | Acceptance can produce a crossing. Capping can produce a gap. An atomic refusal preserves the meaning of a successful fit |
 | **Persistent meets constraints** | Outside scope by decision; P26 D3 already prefers one-shot fixes |
 | **Relations compiled on every edit** | Cost on every Wall edit for a reading shown for one selected region |
 
@@ -765,13 +815,13 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
 
 | # | Decision | Recommended answer | Blocks |
 | --- | --- | --- | --- |
-| **OD-1** | What becomes of `floorThickness` and `ceilingThickness` | **Remove both in V1a.** Observed consequences: Room and document bounds shrink by 0.1 m above and below, which the Camera session reads (O14); the merge-conflict refusal goes; SP-plan's "kept so switching back restores the lid" has nothing to keep | V1a |
+| **OD-1** | What becomes of `floorThickness` and `ceilingThickness` | **Remove both in V1a**, with the cutover gate in §9 and the SP/C handoffs in §14. Regions own physical thickness. Generated surfaces keep their elevations and source references. Bounds and framing inputs can change, and the thickness-only merge refusal goes (§5.2) | V1a |
 | **OD-2** | Does "V1 does not merge before Lift" bind V1a | **No. It binds V1c**, the first slice in which a creator can author an overhead. V1a and V1b create nothing a creator can reach | V1a start |
 | **OD-3** | Bump order and count | **V1a before C1; five bumps in the batch**, numbers taken at merge. The roadmap's risk 9 counted three | V1a start |
 | **OD-4** | Scene objects on a region that moves | **They stay where they are in V1**, with the count shown before the edit. Riding along needs J's cross-unit transaction | V1c |
 | **OD-5** | A closed Room under an authored roof | **It keeps its flat lid at eave height**, which is a ceiling under a pitched roof. A cathedral ceiling is **Open to sky**, read as "Open to sky · under Roof 1". The owner may prefer other words for that readout when a region covers the whole Space; the model does not change | V3c |
 | **OD-6** | Where a straight Wall's top is edited, given its Unroll entry is disabled | **On the Wall's own face**, through the same marks and the same map at amount 0. The Unroll entry stays disabled for straight Walls | V2c |
-| **OD-7** | What the two fits mean | **Fit roof to walls moves the roof to first contact; Fit walls to roof seals with the allowance** (§7.3). Two explicit steps for J8 | V1b |
+| **OD-7** | What the two fits mean | **Fit roof to walls moves the roof to first contact. Fit walls to roof seals within the slab thickness or refuses atomically** (§7.3). Two explicit steps for J8 | V1b |
 | **OD-8** | "A light mounts under an overhead region" in V1's acceptance | **T1 delivers the query (V1d); T2 wires the magnet.** V1 is accepted on the query and on an object resting on a floor region | V1d |
 
 ## 17. Risks and limits
@@ -780,8 +830,8 @@ runs the DB-backed API tests for version refusal, Save/Load and the unchanged pu
    are the containment: a level Wall must not enter the new path.
 2. **Corner tops are clamped at mitre vertices.** Near a corner a sloped top is flat for at most
    half a Wall thickness. It keeps seams closed and is not visible at ordinary scale.
-3. **A fitted Wall may stand inside the roof's thickness** by up to twice its allowance, and comes
-   out of the top when the roof is thin and steep. The consequence line says so.
+3. **A thin or steep roof may refuse a fit.** The uniform allowance keeps one expressible Wall
+   profile and can exceed the available slab thickness. The refusal names the overrun (§7.3).
 4. **Forms are extruded profiles.** An L-shaped gable has no valley. Hips, valleys and dormers are
    outside this batch.
 5. **Footprints are straight-edged.** Over a round Room, Fit to space writes a many-pointed
