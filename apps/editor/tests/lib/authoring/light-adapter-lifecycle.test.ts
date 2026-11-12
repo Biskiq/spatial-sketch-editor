@@ -343,6 +343,25 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(light.position[2]).toBeCloseTo(expected[2], 8);
 	});
 
+	it('mounts a zero-intensity candidate while armed and previews a hover ghost', async () => {
+		const scenePick = (): SceneRenderedHit => ({
+			entityId: 'floor',
+			kind: 'entity',
+			distanceMeters: 2,
+			worldPoint: [0, 0, 0],
+			normal: [0, 1, 0]
+		});
+		const { facade, lightPreview } = await mounted({ scenePick });
+		openSpotTask(facade);
+		expect(lightPreview.candidate?.intensity).toBe(0);
+		const css: [number, number] = [560, 340];
+		expect(facade.hoverIntent({ phase: 'move', css, evaluationId: facade.evaluationId()! })).toBe(true);
+		expect(lightPreview.candidate?.intensity).toBeCloseTo(Math.PI, 9);
+		expect(lightPreview.candidate?.position).toEqual([0, 2.2, 0]);
+		const ghost = facade.candidatePreviews().find((candidate) => candidate.id === 'light-placement')!;
+		expect(ghost.labels.map((label) => label.text).join(' ')).toContain('click to place');
+	});
+
 	it('selects an existing light and disarms armed placement on its glyph', async () => {
 		const { facade, host } = await mounted({ entities: [spotAt([0, 2, 0])] });
 		const reference = sceneEntityReference(

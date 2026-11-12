@@ -118,6 +118,8 @@ type Placement = {
 	target: Vec3;
 	moved: boolean;
 	readonly hit: boolean;
+	/** The surface point the placement body was derived from. */
+	readonly contact?: Vec3;
 };
 
 function isLight(entity: { readonly kind?: string } | undefined): entity is Light {
@@ -619,6 +621,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let openTaskKind: string | null = null;
 			let gesture: Gesture | null = null;
 			let placement: Placement | null = null;
+			/** The armed hover's last candidate, drawn as a ghost before any press. */
+			let hoverPlacement: Placement | null = null;
 			let rearmingAfterInstall = false;
 			let lease: ReturnType<StageAdapterServices['stage']['acquireGesture']> | null = null;
 			/** The last refusal, shown at the grip and cleared by the next move. */
@@ -648,6 +652,41 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (id === undefined) preview.clear();
 				else preview.clearOverride(id);
 				preview.flush();
+			}
+
+			/**
+			 * The placement candidate light. While Point or Spot is armed it stays
+			 * mounted at intensity 0 with no valid candidate, so the renderer's light
+			 * count changes on arm and disarm rather than on every hover.
+			 */
+			function previewCandidate(
+				kind: 'point' | 'spot',
+				position: Vec3 | null,
+				rotation: Vec3,
+				intensity: number
+			): Light {
+				return {
+					kind: 'light',
+					light: kind,
+					id: 'light-placement-preview',
+					name: 'Preview',
+					color: '#ffffff',
+					intensity,
+					castShadow: false,
+					position: position === null
+						? [0, services.stage.snapshot().domain.datumMeters, 0]
+						: [...position],
+					rotation: [...rotation],
+					...(kind === 'spot' ? { angle: LIGHT_DEFAULT_SPOT_ANGLE } : {})
+				} as Light;
+			}
+
+			function zeroCandidate(): void {
+				const kind = armedLightKind(projectId());
+				if (kind !== 'point' && kind !== 'spot') return;
+				services.stage.lightPreview()?.setCandidate(
+					previewCandidate(kind, null, rotationForLightDirection([0, -1, 0]), 0)
+				);
 			}
 
 			function releaseLease(): void {
@@ -708,7 +747,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					normal,
 					target: body,
 					moved: false,
-					hit: drawn !== null
+					hit: drawn !== null,
+					...(drawn === null ? {} : { contact: [...drawn.worldPoint] as Vec3 })
 				};
 			}
 
@@ -1016,6 +1056,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 				} finally {
 					rearmingAfterInstall = false;
+					services.stage.lightPreview()?.setCandidate(null);
+					if (openTaskKind === LIGHT_TASK) zeroCandidate();
 					services.stage.notifySurfaceChange();
 				}
 			}
@@ -1584,54 +1626,109 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				candidatePreview(adapterContext) {
 					const previews: StageCandidatePreview[] = [];
-					if (placement === null) return previews;
 					const kind = armedLightKind(projectId()) ?? 'spot';
-					if (kind === 'spot' && placement.moved) {
-						const targetDistance = Math.max(0.05, distance(placement.body, placement.target));
-						const direction = normalize(sub(placement.target, placement.body));
-						const rotation = rotationForLightDirection(direction);
+					const active = placement ?? hoverPlacement;
+					if (active === null) {
+						if (openTaskKind === LIGHT_TASK && kind !== 'directional') {
+							previews.push({
+								id: 'light-placement',
+								role: 'subject',
+								segments: [],
+								labels: [{
+									world: [0, adapterContext.snapshot.domain.datumMeters, 0],
+									text: 'Point at a surface'
+								}],
+								polygons: []
+							});
+						}
+						return previews;
+					}
+					const contact = active.contact ?? [active.body[0], adapterContext.snapshot.domain.datumMeters, active.body[2]] as Vec3;
+					const segments: [Vec3, Vec3][] = [
+						[active.body, contact],
+						[add(contact, [0.08, 0, 0]), add(contact, [-0.08, 0, 0])],
+						[add(contact, [0, 0, 0.08]), add(contact, [0, 0, -0.08])]
+					];
+					// The emitter glyph: a small horizontal ring at the body.
+					for (let index = 0; index < 8; index += 1) {
+						const a = (index / 8) * Math.PI * 2;
+						const b = ((index + 1) / 8) * Math.PI * 2;
+						segments.push([
+							[active.body[0] + Math.cos(a) * 0.07, active.body[1], active.body[2] + Math.sin(a) * 0.07],
+							[active.body[0] + Math.cos(b) * 0.07, active.body[1], active.body[2] + Math.sin(b) * 0.07]
+						]);
+					}
+					if (kind === 'spot') {
+						const aimed = active.moved;
+						const direction = aimed
+							? normalize(sub(active.target, active.body))
+							: ([0, -1, 0] as Vec3);
+						const reach = aimed
+							? Math.max(0.05, distance(active.body, active.target))
+							: Math.max(0.2, active.body[1] - (active.contact?.[1] ?? adapterContext.snapshot.domain.datumMeters));
 						const guide = spotConeGuide({
-							position: placement.body,
-							rotation,
+							position: active.body,
+							rotation: rotationForLightDirection(direction),
 							halfAngle: LIGHT_DEFAULT_SPOT_ANGLE,
-							range: targetDistance
+							range: reach
 						});
-						const segments: [Vec3, Vec3][] = guide.edges.slice(0, 2).map((edge) => [edge[0], edge[1]]);
+						segments.push(...guide.edges.slice(0, 2).map((edge): [Vec3, Vec3] => [edge[0], edge[1]]));
 						for (let index = 0; index < guide.capRing.length; index += 1) {
 							segments.push([
 								guide.capRing[index]!,
 								guide.capRing[(index + 1) % guide.capRing.length]!
 							]);
 						}
-						previews.push({
-							id: 'light-placement',
-							role: 'subject',
-							segments,
-							labels: [
-								{
-									world: placement.target,
-									text: `Aim · ${formatMeters(targetDistance)}`
-								}
-							],
-							polygons: []
+					}
+					const labels = [{
+						world: active.body,
+						text: active.moved
+							? 'Release on what it should light'
+							: active.hit
+								? `${lightKindLabel(kind)} · click to place · Esc cancels`
+								: 'Point at a surface'
+					}];
+					if (active.moved && kind === 'spot') {
+						labels.push({
+							world: active.target,
+							text: `Aim · ${formatMeters(distance(active.body, active.target))}`
 						});
-						return previews;
 					}
 					previews.push({
 						id: 'light-placement',
 						role: 'subject',
-						segments: [],
-						labels: [
-							{
-								world: placement.body,
-								text: placement.hit
-									? `${lightKindLabel(kind)} · click to place · Esc cancels`
-									: 'Point at a surface'
-							}
-						],
+						segments,
+						labels,
 						polygons: []
 					});
 					return previews;
+				},
+				hoverIntent(intent, adapterContext) {
+					if (
+						openTaskKind !== LIGHT_TASK ||
+						placement !== null ||
+						gesture !== null ||
+						intent.phase !== 'move'
+					) return false;
+					const kind = armedLightKind(projectId());
+					if (kind !== 'point' && kind !== 'spot') return false;
+					const next = placementBodyAt(intent.css, adapterContext);
+					hoverPlacement = next;
+					const preview = services.stage.lightPreview();
+					if (preview !== null) {
+						preview.setCandidate(
+							next === null
+								? previewCandidate(kind, null, rotationForLightDirection([0, -1, 0]), 0)
+								: previewCandidate(
+										kind,
+										next.body,
+										rotationForLightDirection([0, -1, 0]),
+										LIGHT_INTENSITY_REFERENCE
+									)
+						);
+					}
+					services.stage.notifySurfaceChange();
+					return true;
 				},
 				pointerIntent(intent, adapterContext) {
 					if (intent.phase === 'down') {
@@ -1659,6 +1756,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							if (nextPlacement === null) return false;
 							if (!acquireLease(intent.evaluationId, 'light-place')) return false;
 							placement = nextPlacement;
+							hoverPlacement = null;
+							const kind = armedLightKind(projectId());
+							if (kind === 'point' || kind === 'spot') {
+								services.stage.lightPreview()?.setCandidate(
+									previewCandidate(kind, nextPlacement.body, rotationForLightDirection([0, -1, 0]), LIGHT_INTENSITY_REFERENCE)
+								);
+							}
 							services.stage.notifySurfaceChange();
 							return true;
 						}
@@ -1673,8 +1777,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						const cancelled = gesture?.entity.id;
 						gesture = null;
 						placement = null;
+						hoverPlacement = null;
 						releaseLease();
 						clearLightPreview(cancelled);
+						zeroCandidate();
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -1682,7 +1788,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (gesture !== null) {
 							updateGesture(intent, adapterContext);
 							publishLightPreview(gesture.entity);
-						} else updatePlacement(intent.css, adapterContext);
+						} else if (placement !== null) {
+							updatePlacement(intent.css, adapterContext);
+							const kind = armedLightKind(projectId());
+							if (kind === 'point' || kind === 'spot') {
+								const direction = kind === 'spot' && placement.moved
+									? normalize(sub(placement.target, placement.body))
+									: ([0, -1, 0] as Vec3);
+								services.stage.lightPreview()?.setCandidate(
+									previewCandidate(kind, placement.body, rotationForLightDirection(direction), LIGHT_INTENSITY_REFERENCE)
+								);
+							}
+						}
 						services.stage.notifySurfaceChange();
 						return true;
 					}
@@ -1695,6 +1812,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (pendingGesture !== null) {
 							void commitGesture(pendingGesture, adapterContext);
 						} else if (pendingPlacement !== null) {
+							// Release first runs the up event through the same candidate function
+							// as a final move, so the payload is the pose that was drawn.
+							updatePlacement(intent.css, adapterContext);
 							void commitPlacement(pendingPlacement, adapterContext);
 						}
 						services.stage.notifySurfaceChange();
@@ -1787,6 +1907,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					openTaskKind = task.kind;
 					if (task.kind !== LIGHT_TASK) return null;
 					const kind = armedLightKind(projectId()) ?? 'spot';
+					if (kind === 'point' || kind === 'spot') zeroCandidate();
 					return {
 						summary: `Place ${lightKindLabel(kind)}`,
 						view: undefined
@@ -1799,6 +1920,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					openTaskKind = null;
 					gesture = null;
 					placement = null;
+					hoverPlacement = null;
 					releaseLease();
 					clearLightPreview();
 				},
@@ -1806,6 +1928,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					openTaskKind = null;
 					gesture = null;
 					placement = null;
+					hoverPlacement = null;
 					releaseLease();
 					clearLightPreview();
 					if (!rearmingAfterInstall) clearArmedLight();
