@@ -20,6 +20,15 @@
       "review": null
     },
     {
+      "id": "layout.opening-repeat",
+      "area": "T1",
+      "summary": "Repeat a selected Opening along its host Wall by count and metre spacing, previewing every copy and committing one captured, undoable batch that preserves kind, dimensions, sill and profile, or refusing the whole set",
+      "northStar": "north-star.md#build--world-architecture",
+      "surface": ["packages/layout-core/src/**", "apps/editor/src/lib/authoring/adapters/**"],
+      "design": null,
+      "review": null
+    },
+    {
       "id": "layout.wall-split",
       "area": "T1",
       "summary": "Split a straight or curved open Wall at the Card midpoint, preserving Wall, Opening and Room identity, and refuse splits through Openings or closed circular Walls",

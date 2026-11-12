@@ -252,6 +252,8 @@ import {
 	publishPausedProposal,
 	type PausedWallProposal
 } from './layout/paused-proposal';
+import { createOpeningRepeatPlanners, previewOpeningRepeat } from './layout/opening-repeat';
+import { openingRepeatProposal } from './layout/opening-repeat-proposal';
 
 /** The dock tool's contributed task and Find-entry id. */
 const LAYOUT_INK_TASK = 'layout-ink';
@@ -681,7 +683,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		...createLayoutPlanners(),
 		...createDrawingPlanners(),
 		...createSplitPlanners(),
-		...createOpeningPlanners()
+		...createOpeningPlanners(),
+		// T1 A8 — Repeat is one retained planner beside the other Opening
+		// operations, on the same registry, admission and coordinator.
+		...createOpeningRepeatPlanners()
 	];
 	for (const planner of planners) {
 		const registration = services.authoring.registerPlanner(planner);
@@ -6563,6 +6568,37 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						},
 						labels: [{ world: world(activeOpeningMark.pointerPoint), text: refusal }]
 					})];
+				}
+
+				// T1 A8 — the Card's live Repeat proposal. Every copy comes from the
+				// planner's own candidate document, filtered to the Openings it created,
+				// so the Stage can never show a copy acceptance would refuse. The Card
+				// owns the typed count/spacing; this is a read of the same proposal.
+				const activeRepeat = openingRepeatProposal(
+					adapterContext.snapshot.sourceContentId,
+					selectedOpening(adapterContext)?.openingId ?? ''
+				);
+				if (activeRepeat !== null) {
+					const preview = previewOpeningRepeat({
+						document,
+						openingId: activeRepeat.openingId,
+						count: activeRepeat.count,
+						spacing: activeRepeat.spacing
+					});
+					if (preview.kind === 'planned') {
+						const createdIds = new Set(preview.createdOpeningIds);
+						const built = candidatePaper(preview.document, y, createdIds, new Set());
+						if (built !== null) {
+							const geometry = adapterContext.evaluation.settledReading === 'plan'
+								? built.paper.subject
+								: openingFacePaper(preview.document, createdIds, y);
+							return [candidatePreviewOf({
+								id: 'layout-candidate-opening-repeat',
+								role: 'subject',
+								geometry
+							})];
+						}
+					}
 				}
 
 				if (inkReading === 'opening') {
