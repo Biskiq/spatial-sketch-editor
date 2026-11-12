@@ -51,7 +51,7 @@ rows, because no frame was presented. Their document counts are 24 Walls / 9 Roo
 lights.
 
 The cinematic row is arithmetic from
-[`cinematic-scale-computational-strategy.md` §1](../../broad-research/cinematic-scale-computational-strategy.md#1-work-backward-from-the-experience):
+[`cinematic-scale-computational-strategy.md` §1](../../../broad-research/cinematic-scale-computational-strategy.md#1-work-backward-from-the-experience):
 ≈3,000 placements × 2 meshes + ≈600 Layout meshes ≈ 6,600 draws per pass, ≈9 M triangles, 40 PBR
 materials with 120 2K maps (2,560 MiB RGBA8), 12 authored lights, and one shadow-casting
 directional light that re-renders its casters every frame. The caster count and shadow-map size are
