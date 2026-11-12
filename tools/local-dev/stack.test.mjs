@@ -15,6 +15,7 @@ import {
 	buildComposeEnv,
 	buildStackEnv,
 	createState,
+	DEFAULT_EDITOR_PORT,
 	preferredPorts,
 	stackIdentity,
 	validateState
@@ -35,12 +36,15 @@ test('identity is stable per worktree and distinct between worktrees', () => {
 	assert.match(first.bucket, /^biskiq-[0-9a-f]{8}-assets$/);
 });
 
-test('preferred ports are unique and live in the worktree port block', () => {
+test('preferred ports keep dynamic services isolated and use the editor default', () => {
 	const { hash } = stackIdentity('/tmp/worktrees/alpha');
 	const ports = preferredPorts(hash);
 	const values = Object.values(ports);
 	assert.equal(new Set(values).size, values.length);
-	for (const port of values) {
+	assert.equal(DEFAULT_EDITOR_PORT, 5173);
+	assert.equal(ports.editor, DEFAULT_EDITOR_PORT);
+	for (const name of ['db', 'storage', 'api']) {
+		const port = ports[name];
 		assert.ok(Number.isInteger(port) && port > 40_999 && port < 54_000, String(port));
 	}
 });

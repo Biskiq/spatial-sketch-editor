@@ -25,9 +25,11 @@ That command:
 5. starts SvelteKit/Vite with hot reload in the foreground and waits until both
    HTTP services answer.
 
-Open the printed editor URL (usually `http://localhost:<port>`). No username or
-password account is preconfigured: choose **Create an account** on the sign-in
-page. Accounts, projects, project versions and asset bytes survive restarts.
+Open the printed editor URL (usually `http://localhost:<port>`; the editor
+prefers Vite's default port `5173` and moves to the next free port when it is
+occupied). No username or password account is preconfigured: choose **Create an
+account** on the sign-in page. Accounts, projects, project versions and asset
+bytes survive restarts.
 
 The first run pulls the `postgres:16-alpine` and `chrislusf/seaweedfs:4.53`
 images. Later runs reuse them.
@@ -55,10 +57,12 @@ worktree's identity, and `reset` refuses and leaves the state file in place. If
 Docker cleanup fails, `reset` reports the failure and also leaves the state file
 so the operation can be retried without losing the only recovery record.
 
-The API and editor started by `dev:local` bind to `127.0.0.1`; PostgreSQL and
-SeaweedFS publish their ports on loopback too. The API chooses loopback whenever
-the development-only local object store is active; the normal R2 path keeps its
-`0.0.0.0` listener, and `npm run dev:editor` is unchanged.
+The API and editor started by `dev:local` listen only on loopback. The editor is
+served at `localhost` (the same host used by `npm run dev`), and its browser
+requests use the `localhost` API origin; the API listener itself is loopback-only.
+PostgreSQL and SeaweedFS publish their ports on loopback too. The API chooses
+loopback whenever the development-only local object store is active; the normal
+R2 path keeps its `0.0.0.0` listener, and `npm run dev:editor` is unchanged.
 
 ### What is isolated, and where the data lives
 
@@ -68,8 +72,10 @@ the object-key namespace and the S3 bucket. Two worktrees can therefore run side
 by side without sharing a port, database, bucket or credential.
 
 The first run writes `.local/dev-stack.json` (mode `0600`, git-ignored) with the
-allocated ports, credentials and session key. The ports are reused on the next
-start when they are still free. The Compose volumes are named
+allocated ports, credentials and session key. The editor prefers `5173`; an
+existing state moves to that port on the next start when it is free, otherwise
+the prior editor port is retained. The ports are reused on the next start when
+they are still free. The Compose volumes are named
 `<stack>_pgdata` and `<stack>_s3data`; `dev:local:status` prints `<stack>`. Use
 `npm run dev:local:logs` to follow the service logs.
 

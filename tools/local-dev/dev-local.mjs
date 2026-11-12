@@ -27,6 +27,7 @@ import {
 	buildStackEnv,
 	childrenPath,
 	createState,
+	DEFAULT_EDITOR_PORT,
 	findAvailablePort,
 	isPortAvailable,
 	lockPath,
@@ -188,14 +189,21 @@ async function ensurePorts(state) {
 				: await findAvailablePort(current + 1, used);
 		used.add(next[name]);
 	}
-	for (const name of ['api', 'editor']) {
-		const current = state.ports[name];
-		next[name] =
-			!used.has(current) && (await isPortAvailable(current))
-				? current
-				: await findAvailablePort(current + 1, used);
-		used.add(next[name]);
-	}
+	const currentApi = state.ports.api;
+	next.api =
+		!used.has(currentApi) && (await isPortAvailable(currentApi))
+			? currentApi
+			: await findAvailablePort(currentApi + 1, used);
+	used.add(next.api);
+	const editorPortAvailable = (port) => isPortAvailable(port, 'localhost');
+	const currentEditor = state.ports.editor;
+	next.editor =
+		!used.has(DEFAULT_EDITOR_PORT) && (await editorPortAvailable(DEFAULT_EDITOR_PORT))
+			? DEFAULT_EDITOR_PORT
+			: !used.has(currentEditor) && (await editorPortAvailable(currentEditor))
+				? currentEditor
+				: await findAvailablePort(DEFAULT_EDITOR_PORT + 1, used, editorPortAvailable);
+	used.add(next.editor);
 	if (Object.keys(next).some((name) => next[name] !== state.ports[name])) {
 		state.ports = next;
 		log(`reassigned local ports: db=${next.db} storage=${next.storage} api=${next.api} editor=${next.editor}`);
@@ -237,7 +245,13 @@ async function ensureState() {
 		await writeState(REPO_ROOT, existing);
 		return existing;
 	}
-	const ports = await allocatePorts(preferredPorts(identity.hash));
+	const { editor, ...servicePorts } = preferredPorts(identity.hash);
+	const ports = await allocatePorts(servicePorts);
+	ports.editor = await findAvailablePort(
+		editor,
+		new Set(Object.values(ports)),
+		(port) => isPortAvailable(port, 'localhost')
+	);
 	const state = createState(identity, ports);
 	await writeState(REPO_ROOT, state);
 	return state;
@@ -497,7 +511,7 @@ async function start() {
 			],
 			env
 		);
-		await waitForHttp('editor', `http://127.0.0.1:${state.ports.editor}/`, editor);
+		await waitForHttp('editor', `http://localhost:${state.ports.editor}/`, editor);
 
 		printReady(state);
 		await supervise(state, api, editor);
@@ -583,7 +597,7 @@ async function status() {
 	compose(state, ['ps'], { allowFailure: true });
 	for (const [label, url] of [
 		['API', `http://127.0.0.1:${state.ports.api}/health/ready`],
-		['editor', `http://127.0.0.1:${state.ports.editor}/`]
+		['editor', `http://localhost:${state.ports.editor}/`]
 	]) {
 		try {
 			const response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
