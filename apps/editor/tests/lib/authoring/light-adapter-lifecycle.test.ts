@@ -216,9 +216,9 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(reopened.kind).toBe('opened');
 		expect(facade.session.task()?.kind).toBe('light-place');
 		// A plain click aims straight down and writes no range; its body is at the
-		// working plane, not snapped to the floor grid.
+		// approved floor-like working height, not snapped to the floor grid.
 		expect(light!.position[1]).toBeCloseTo(
-			facade.snapshot().domain.datumMeters + 1.5,
+			facade.snapshot().domain.datumMeters + 2.2,
 			9
 		);
 		expect('range' in light!).toBe(false);
@@ -323,11 +323,12 @@ describe('S3a light adapter pointer lifecycle', () => {
 			evaluationId
 		);
 		if (result.kind !== 'ray') throw new Error('the offset placement produced no pointer ray');
-		const y = facade.snapshot().domain.datumMeters + 1.5;
-		const t = (y - result.ray.origin[1]) / result.ray.direction[1];
+		const datum = facade.snapshot().domain.datumMeters;
+		// Approved placement: a miss meets the datum plane, then rises 2.20 m.
+		const t = (datum - result.ray.origin[1]) / result.ray.direction[1];
 		const expected: Vec3 = [
 			result.ray.origin[0] + result.ray.direction[0] * t,
-			y,
+			datum + 2.2,
 			result.ray.origin[2] + result.ray.direction[2] * t
 		];
 		facade.pointerIntent({ phase: 'down', css: local, evaluationId });
@@ -448,7 +449,7 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(host.history().depth).toBe(before.depth + 1);
 	});
 
-	it('stands off along the surface normal and extends a dragged spot cutoff past the target', async () => {
+	it('stands off along the surface normal and leaves a pressed Spot Unlimited', async () => {
 		let pick = 0;
 		const scenePick = (): SceneRenderedHit | null => {
 			pick += 1;
@@ -483,9 +484,9 @@ describe('S3a light adapter pointer lifecycle', () => {
 		const light = lightsOf(facade)[0]!;
 		expect(light.position[0]).toBeCloseTo(1, 8);
 		expect(light.position[1]).toBeCloseTo(1, 8);
-		expect(Math.abs(light.position[2])).toBeCloseTo(0.02, 8);
-		if (!('range' in light)) throw new Error('the dragged spot did not write a range');
-		expect(light.range).toBeGreaterThan(3.4);
+		expect(Math.abs(light.position[2])).toBeCloseTo(0.1, 8);
+		// A press-drag aims the new Spot; it never invents a cutoff.
+		expect('range' in light).toBe(false);
 		const forward = lightForward(light.rotation);
 		const toTarget = [4 - light.position[0], 1 - light.position[1], 0 - light.position[2]];
 		const length = Math.hypot(...toTarget);
@@ -527,8 +528,19 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(light.range).not.toBeCloseTo(3, 5);
 	});
 
-	it('publishes Point Reach and Spot soft-edge controls', async () => {
-		const point = await mounted({ entities: [pointAt([0, 2, 0])] });
+	it('publishes Point Reach only when a range is authored, and Spot soft-edge controls', async () => {
+		const unlimited = await mounted({ entities: [pointAt([0, 2, 0])] });
+		const unlimitedReference = sceneEntityReference(
+			'light-point',
+			unlimited.facade.snapshot().domain.unitRevisions.scene
+		);
+		unlimited.facade.setSelection({
+			ordered: [{ reference: unlimitedReference }],
+			primary: unlimitedReference
+		});
+		expect(unlimited.facade.marks().map((mark) => mark.id)).not.toContain('light-reach');
+
+		const point = await mounted({ entities: [pointAt([0, 2, 0], 3)] });
 		const pointReference = sceneEntityReference(
 			'light-point',
 			point.facade.snapshot().domain.unitRevisions.scene
@@ -555,9 +567,7 @@ describe('S3a light adapter pointer lifecycle', () => {
 				{ ...spotAt([2, 2, 0], 'light-hard'), angle: degrees(30), penumbra: 0.01 } as SceneLightEntity,
 				// A 60° beam keeps the 2% inner ring above the host's minimum projected
 				// ring size, so the test reaches the mark-visibility rule itself.
-				{ ...spotAt([4, 2, 0], 'light-soft-low'), angle: degrees(60), penumbra: 0.02 } as SceneLightEntity,
-				{ ...spotAt([6, 2, 0], 'light-soft-high'), angle: degrees(60), penumbra: 0.98 } as SceneLightEntity,
-				{ ...spotAt([8, 2, 0], 'light-soft-over'), angle: degrees(60), penumbra: 0.99 } as SceneLightEntity
+				{ ...spotAt([4, 2, 0], 'light-soft-low'), angle: degrees(60), penumbra: 0.02 } as SceneLightEntity
 			]
 		});
 		const markIds = (id: string): string[] => {
@@ -571,10 +581,13 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(markIds('light-beam-wide')).not.toContain('light-angle');
 		const hard = markIds('light-hard');
 		expect(hard).toContain('light-angle');
-		expect(hard).not.toContain('light-penumbra');
+		// The inner ring is the renderer's full-brightness edge; a hard beam puts
+		// it on the footprint ring, not at the cap radius's midpoint.
+		expect(hard).toContain('light-penumbra');
 		expect(markIds('light-soft-low')).toContain('light-penumbra');
-		expect(markIds('light-soft-high')).toContain('light-penumbra');
-		expect(markIds('light-soft-over')).not.toContain('light-penumbra');
+		const wide = markIds('light-beam-wide');
+		expect(wide).not.toContain('light-angle');
+		expect(wide).not.toContain('light-penumbra');
 	});
 
 	it('exposes persistent selection guides separately from candidate previews', async () => {
@@ -651,10 +664,14 @@ describe('S3a light adapter pointer lifecycle', () => {
 		expect(expected.kind).toBe('ray');
 		if (expected.kind !== 'ray') return;
 		expect(rays.length).toBeGreaterThan(0);
-		for (const ray of rays) {
-			expect(ray.origin).toEqual(expected.ray.origin);
-			expect(ray.direction).toEqual(expected.ray.direction);
-		}
+		// Other picks derive a Spot target from the light itself; the pointer's own
+		// hit path must still use the viewport-correct ray.
+		const pointerRays = rays.filter(
+			(ray) =>
+				ray.origin.every((value, index) => value === expected.ray.origin[index]) &&
+				ray.direction.every((value, index) => value === expected.ray.direction[index])
+		);
+		expect(pointerRays.length).toBeGreaterThan(0);
 	});
 
 	it('deletes a selected light through the keyboard and eraser through the same Card action', async () => {

@@ -165,8 +165,8 @@
 	function commitBeam(value: string): void {
 		if (light === null || light.light !== 'spot') return;
 		const degrees = Number(value.trim());
-		if (!Number.isFinite(degrees) || degrees <= 0) {
-			message = 'Beam must be greater than 0°.';
+		if (!Number.isFinite(degrees) || degrees <= 0 || degrees > 90) {
+			message = 'Beam must be between 1° and 90°.';
 			return;
 		}
 		void commit({ angle: degreesToRadians(degrees) });
@@ -336,15 +336,15 @@
 					type="number"
 					data-field="adjust-beam"
 					min="1"
-					max="80"
-					step="0.5"
+											max="90"
+						step="0.5"
 					value={beam}
 					oninput={(event) => (beam = event.currentTarget.value)}
 					onkeydown={(event) => exactKey(event, () => commitBeam(beam))}
 				/>
-				<em>half-angle · °</em>
-			</label>
-			{#if roundedDegrees(light.angle) > 80}<span class="custom">Custom · guide caps at 80°</span>{/if}
+									<em>· °</em>
+				</label>
+				{#if roundedDegrees(light.angle) > 80}<span class="custom">Wider than the guide can draw</span>{/if}
 		{/if}
 
 		<label class="toggle" title="Authored shadow flag. Gate C sets the budget and creation default; new lights start off.">
@@ -395,12 +395,14 @@
 						<input type="number" data-field="exact-y" step="0.01" aria-label="Position Y" value={exactY} oninput={(event) => (exactY = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitPosition)} onblur={sync} />
 						<input type="number" data-field="exact-z" step="0.01" aria-label="Position Z" value={exactZ} oninput={(event) => (exactZ = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitPosition)} onblur={sync} />
 					</div>
-					<div class="triplet" role="group" aria-label="Aim target">
-						<span>Aim</span>
-						<input type="number" data-field="aim-x" step="0.01" aria-label="Aim X" value={aimX} oninput={(event) => (aimX = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
-						<input type="number" data-field="aim-y" step="0.01" aria-label="Aim Y" value={aimY} oninput={(event) => (aimY = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
-						<input type="number" data-field="aim-z" step="0.01" aria-label="Aim Z" value={aimZ} oninput={(event) => (aimZ = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
-					</div>
+					{#if light.light === 'spot'}
+						<div class="triplet" role="group" aria-label="Aim target">
+							<span>Aim</span>
+							<input type="number" data-field="aim-x" step="0.01" aria-label="Aim X" value={aimX} oninput={(event) => (aimX = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
+							<input type="number" data-field="aim-y" step="0.01" aria-label="Aim Y" value={aimY} oninput={(event) => (aimY = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
+							<input type="number" data-field="aim-z" step="0.01" aria-label="Aim Z" value={aimZ} oninput={(event) => (aimZ = event.currentTarget.value)} onkeydown={(event) => exactKey(event, commitAim)} onblur={sync} />
+						</div>
+					{/if}
 					<label class="field">
 						<span>Reach</span>
 						<input
@@ -484,7 +486,6 @@
 
 		{#if message !== ''}<p class="refusal" role="status">{message}</p>{/if}
 		<p class="readout">{formatBrightness(light.intensity, light.light)} · {lightKindLabel(light.light)}</p>
-		<p class="readout">Paper draws the guide only; Living draws the light.</p>
 		{#if footer}{@render footer()}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
