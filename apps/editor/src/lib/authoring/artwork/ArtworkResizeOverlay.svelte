@@ -41,7 +41,7 @@
 </script>
 
 {#if geometry.corners.length === 4}
-	<svg class="artwork-selection" aria-hidden="true">
+	<svg class="artwork-selection" class:blocked aria-hidden="true">
 		<polygon points={geometry.polygon} />
 	</svg>
 {/if}
@@ -76,6 +76,11 @@
 	.artwork-selection polygon {
 		fill: none; stroke: #d9a521; stroke-width: 1;
 		vector-effect: non-scaling-stroke;
+	}
+	.artwork-selection.blocked polygon {
+		stroke: var(--shell-refuse);
+		stroke-width: 1.4;
+		stroke-dasharray: 4 3;
 	}
 	.artwork-grip, .artwork-size, .artwork-edge { position: absolute; transform: translate(-50%, -50%); z-index: 5; }
 	.artwork-edge {

@@ -21,6 +21,7 @@
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { stageScene } from '$lib/authoring/stage/stage-adapter-host';
 	import type { SceneLightEntity, Vec3 } from '@portfolio/project-model';
+	import ShellIcon from '$lib/authoring/stage/shell/ShellIcon.svelte';
 	import { acceptFormCommand } from '../scene/form-card-command';
 	import {
 		brightnessStopForIntensity,
@@ -66,7 +67,7 @@
 	}: {
 		services: StageAdapterServices;
 		detailOpen?: boolean;
-		footer?: Snippet;
+		footer?: Snippet<[string?]>;
 		secondary?: Snippet<[Snippet?]>;
 		more?: Snippet<[Snippet?]>;
 	} = $props();
@@ -100,6 +101,16 @@
 	const shown = $derived.by(() => previewLight ?? light);
 	const kind = $derived<LightAdvancedKind | null>(light?.light ?? null);
 	const groups = $derived(kind === null ? [] : advancedGroupsFor(kind));
+	/** The closed Advanced groups named in the Card foot; values stay in their rows. */
+	const footerSummary = $derived(groups.map((group) => group.label).join(' · '));
+	const GROUP_ICONS: Readonly<Record<string, string>> = {
+		colour: 'lightColour',
+		brightness: 'lightBrightness',
+		shape: 'lightShape',
+		direction: 'direction',
+		position: 'lightPosition',
+		shadows: 'lightShadows'
+	};
 	let openGroup = $state<string | null>(null);
 	/** The colour group's White/Colour mode is a view choice until a hue is picked. */
 	let colourMode = $state<'white' | 'colour' | null>(null);
@@ -590,7 +601,10 @@
 							data-advanced-group-head={group.id}
 							onclick={() => toggleGroup(group)}
 						>
-							<span>{group.label}</span>
+							<span class="group-title">
+								<span class="group-icon"><ShellIcon name={GROUP_ICONS[group.id] ?? 'dot'} size={14} /></span>
+								<span>{group.label}</span>
+							</span>
 							<span class="summary">{advancedSummary(group, shown as LightAdvancedLight, datum)}</span>
 						</button>
 						{#if openGroup === group.id}
@@ -772,7 +786,7 @@
 			</div>
 		{/if}
 
-		{#if footer}{@render footer()}{/if}
+		{#if footer}{@render footer(detailOpen ? undefined : footerSummary)}{/if}
 		{#if secondary}{@render secondary()}{/if}
 	</div>
 {/if}
@@ -883,6 +897,16 @@
 	}
 	.group {
 		border-bottom: 1px solid var(--shell-hairline);
+	}
+	.group-title {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.group-icon {
+		display: inline-flex;
+		color: var(--shell-ink-2);
+		flex: none;
 	}
 	.group-head {
 		display: flex;

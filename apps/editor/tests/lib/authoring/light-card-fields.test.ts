@@ -112,7 +112,7 @@ async function mountCard(
 	entity: SceneLightEntity,
 	options: {
 		readonly detailOpen?: boolean;
-		readonly footer?: Snippet;
+		readonly footer?: Snippet<[string?]>;
 		readonly secondary?: Snippet<[Snippet?]>;
 	} = {}
 ) {
@@ -192,6 +192,28 @@ describe('S3a Light Card writer', () => {
 		}));
 		const { target } = await mountCard(spot(), { detailOpen: false, secondary });
 		expect(target.querySelector('[data-test-secondary]')).not.toBeNull();
+	});
+
+	it('names the closed Advanced groups in the shared foot', async () => {
+		const footer = createRawSnippet((summary: unknown) => ({
+			render: () => {
+				const value = typeof summary === 'function'
+					? (summary as () => string | undefined)()
+					: summary;
+				return `<button type="button" data-test-footer>${value ?? ''}</button>`;
+			}
+		}));
+		const { target } = await mountCard(spot(), { detailOpen: false, footer });
+		expect(target.querySelector('[data-test-footer]')?.textContent).toBe(
+			'Colour · Brightness · Shape · Position · Shadows'
+		);
+	});
+
+	it('draws an Instrument icon on every Advanced group head', async () => {
+		const { target } = await mountCard(spot(), { detailOpen: true });
+		for (const id of ['colour', 'brightness', 'shape', 'position', 'shadows']) {
+			expect(target.querySelector(`[data-advanced-group-head="${id}"] .group-icon svg`)).not.toBeNull();
+		}
 	});
 
 	it('enables the authored Shadow toggle and writes castShadow', async () => {

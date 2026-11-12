@@ -1299,7 +1299,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return {
 					id: 'light-duplicate',
 					label: 'Duplicate light',
-					group: 'secondary',
+					compactLabel: 'Duplicate',
+					group: 'primary',
 					detail: `Add one copy of ${light.name} at +0.5 m X/Z. Undo removes it.`,
 					async run() {
 						const allocatedId = `light-${crypto.randomUUID()}`;
@@ -1331,6 +1332,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return {
 					id: 'light-delete',
 					label: 'Delete light',
+					compactLabel: 'Delete',
 					destructive: true,
 					detail: `Remove ${light.name}. Undo restores it.`,
 					async run() {
@@ -1835,6 +1837,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (light === null) return null;
 					return {
 						summary: 'Light fields',
+						inlineActions: true,
 						fieldIds: [
 							'brightness',
 							'warmth',

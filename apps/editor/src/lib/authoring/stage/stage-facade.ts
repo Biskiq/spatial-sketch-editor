@@ -581,6 +581,8 @@ export type StageCardActionOutcome = {
 export type StageCardAction = {
 	readonly id: string;
 	readonly label: string;
+	/** A shorter Card-foot verb, when the full label is too long for the row. */
+	readonly compactLabel?: string;
 	/**
 	 * Words the creator reads **before** the action is taken: the planner-derived
 	 * consequences (hosted Openings, Room merge/open). Required for a destructive
@@ -624,12 +626,17 @@ export type StageInstrumentContent = {
 	 * Card fact whose `fieldId` is listed is shown by this writer, so it is not repeated.
 	 */
 	readonly fieldIds?: readonly string[];
+	/**
+	 * Place this writer's primary contributed actions in the Card foot instead of
+	 * the subject menu. The Light Card uses it for Duplicate and Delete.
+	 */
+	readonly inlineActions?: boolean;
 	/** Editor-only UI; never serialized or imported by visitor surfaces. */
 	readonly view?: {
 		readonly component: Component<{
 			services: StageAdapterServices;
 			detailOpen?: boolean;
-			footer?: Snippet;
+			footer?: Snippet<[string?]>;
 			secondary?: Snippet<[Snippet?]>;
 			more?: Snippet<[Snippet?]>;
 			/** The subject's scoped actions, so a writer can place a primary one in its foot. */

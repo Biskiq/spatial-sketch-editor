@@ -175,9 +175,15 @@
 		if (functions !== null) return functions;
 		return identity === null ? [] : FUNCTIONS[functionKind(identity.kind)];
 	});
+	/**
+	 * A writer that owns its primary actions shows them in the foot: Duplicate and
+	 * Delete sit beside Advanced instead of inside the subject menu.
+	 */
+	const footerActions = $derived(writer?.inlineActions === true ? actions : []);
+	const overflowActions = $derived(writer?.inlineActions === true ? [] : actions);
 	/** `•••` is shown only when the subject has a function or an action to hold. */
 	const hasSubjectActions = $derived(
-		(menu !== null ? menu.length > 0 : subjectFunctions.length > 0) || actions.length > 0
+		(menu !== null ? menu.length > 0 : subjectFunctions.length > 0) || overflowActions.length > 0
 	);
 	$effect(() => {
 		void identityKey;
@@ -225,6 +231,10 @@
 	const liveConfirmationKeys = $derived(actions.map(confirmationKeyOf));
 	/** The key whose consequence is currently disclosed and awaiting confirmation. */
 	let confirming = $state<string | null>(null);
+	/** A destructive foot action confirms in the foot, not in the closed menu. */
+	const footerConfirmingAction = $derived(
+		footerActions.find((action) => confirming === confirmationKeyOf(action)) ?? null
+	);
 	let actionMessage = $state<string | null>(null);
 	let actionBusy = $state(false);
 
@@ -407,12 +417,34 @@
 
 <svelte:window onpointerdowncapture={onOutside} />
 
-{#snippet footer()}
+{#snippet footer(advanced?: string)}
 	<div class="footer">
-		{#if onBringIntoView}<button type="button" aria-label="Bring into view" title="Bring into view" onclick={() => onBringIntoView?.()}><ShellIcon name="fit" size={15} /></button>{/if}
-		<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={toggleMore}
-			>Advanced <span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
+		<div class="footer-lead">
+			{#if onBringIntoView}<button type="button" aria-label="Bring into view" title="Bring into view" onclick={() => onBringIntoView?.()}><ShellIcon name="fit" size={15} /></button>{/if}
+			<button type="button" class="more" aria-expanded={moreOpen} data-card-more onclick={toggleMore}
+				title={advanced === undefined ? 'Advanced' : `Advanced: ${advanced}`}
+				><span>Advanced</span>{#if advanced}<span class="more-summary">{advanced}</span>{/if}<span class="chev" class:open={moreOpen} aria-hidden="true">⌄</span></button>
+		</div>
+		{#if footerActions.length > 0}
+			<div class="footer-actions">
+				{#each footerActions as action (`${action.adapterId}:${action.id}`)}
+					<button type="button" class="footer-action" class:danger={action.destructive === true}
+						data-card-footer-action={action.id} disabled={actionBusy}
+						title={action.detail}
+						onclick={(event) => void runAction(action, event.currentTarget)}>{action.compactLabel ?? action.label}</button>
+				{/each}
+			</div>
+		{/if}
 	</div>
+	{#if footerConfirmingAction !== null}
+		<div class="footer-confirm" role="group" aria-label={`${footerConfirmingAction.compactLabel ?? footerConfirmingAction.label}?`}>
+			<p>{actionMessage ?? footerConfirmingAction.detail ?? 'This action cannot be undone.'}</p>
+			<div class="footer-confirm-actions">
+				<button type="button" class="remove" disabled={actionBusy} data-card-footer-confirm onclick={() => void runAction(footerConfirmingAction!)}>Remove</button>
+				<button type="button" data-card-footer-cancel onclick={cancelInlineAction}>Cancel</button>
+			</div>
+		</div>
+	{/if}
 {/snippet}
 
 {#snippet more(content?: Snippet)}
@@ -456,11 +488,11 @@
 				{/each}
 			{/if}
 			{#if content}{@render content()}{/if}
-			{#each actions.filter((action) => action.destructive !== true) as action (`${action.adapterId}:${action.id}`)}
+			{#each overflowActions.filter((action) => action.destructive !== true) as action (`${action.adapterId}:${action.id}`)}
 				<button type="button" data-card-action={action.id} disabled={actionBusy} onclick={() => void runAction(action)}>{action.label}</button>
 			{/each}
-			{#if actions.some((action) => action.destructive === true)}<hr />{/if}
-			{#each actions.filter((action) => action.destructive === true) as action (`${action.adapterId}:${action.id}`)}
+			{#if overflowActions.some((action) => action.destructive === true)}<hr />{/if}
+			{#each overflowActions.filter((action) => action.destructive === true) as action (`${action.adapterId}:${action.id}`)}
 				<button type="button" class="destructive" data-card-action={action.id} aria-label={action.label}
 					disabled={actionBusy}
 					onclick={(event) => void runAction(action, event.currentTarget)}>
@@ -684,6 +716,69 @@
 		gap: 4px;
 		padding: 4px 8px 8px 10px;
 		border-top: 1px solid var(--shell-hairline);
+	}
+	.footer-lead {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		min-width: 0;
+		flex: 1;
+	}
+	.footer .more {
+		min-width: 0;
+		flex: 1;
+		justify-content: flex-start;
+		overflow: hidden;
+	}
+	.more-summary {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--shell-ink-2);
+		font-size: var(--shell-text-label);
+	}
+	.footer-actions {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		flex: none;
+	}
+	.footer .footer-action {
+		width: auto;
+		padding: 0 5px;
+		font-size: var(--shell-text-utility);
+		color: var(--shell-ink);
+	}
+	.footer .footer-action.danger {
+		color: var(--shell-refuse);
+	}
+	.footer-confirm {
+		display: grid;
+		gap: 4px;
+		padding: 6px 10px 8px;
+		border-top: 1px solid var(--shell-hairline);
+		background: var(--shell-refuse-bg);
+	}
+	.footer-confirm p {
+		margin: 0;
+		font-size: var(--shell-text-label);
+		color: var(--shell-ink-2);
+	}
+	.footer-confirm-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 6px;
+	}
+	.footer-confirm-actions button {
+		min-height: 26px;
+		padding: 0 9px;
+		border: 1px solid var(--shell-hairline-strong);
+		font-size: var(--shell-text-utility);
+	}
+	.footer-confirm-actions .remove {
+		border-color: var(--shell-refuse);
+		background: var(--shell-refuse);
+		color: var(--shell-on-action);
 	}
 
 	.facts {
