@@ -140,6 +140,7 @@ const modeRow: LightAdvancedRow = {
 	write: (value, light) =>
 		value === 'white'
 			? { color: warmthColorAt(nearestWarmth(light.color).w) }
+			// Choosing the dial is a view change; the hue is written by the dial.
 			: { color: light.color },
 	summary: (light) =>
 		nearestWarmth(light.color).exact

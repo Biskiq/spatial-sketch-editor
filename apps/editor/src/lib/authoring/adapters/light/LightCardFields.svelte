@@ -101,6 +101,13 @@
 	const kind = $derived<LightAdvancedKind | null>(light?.light ?? null);
 	const groups = $derived(kind === null ? [] : advancedGroupsFor(kind));
 	let openGroup = $state<string | null>(null);
+	/** The colour group's White/Colour mode is a view choice until a hue is picked. */
+	let colourMode = $state<'white' | 'colour' | null>(null);
+	const colourIsWhite = $derived.by(() => {
+		if (colourMode !== null) return colourMode === 'white';
+		const value = shown as LightAdvancedLight | null;
+		return value === null ? true : nearestWarmth(value.color).exact;
+	});
 	const openRows = $derived.by(() => {
 		if (kind === null) return [];
 		const value = shown as LightAdvancedLight | null;
@@ -110,9 +117,8 @@
 		if (group.id !== 'colour') return rows;
 		// White mode shows the Warmth ramp; Colour mode shows the dial. Neither
 		// control is rendered disabled in the other mode.
-		const white = nearestWarmth(value.color).exact;
 		return rows.filter((row) =>
-			row.id === 'warmth' ? white : row.id === 'colour' ? !white : true
+			row.id === 'warmth' ? colourIsWhite : row.id === 'colour' ? !colourIsWhite : true
 		);
 	});
 
@@ -138,6 +144,7 @@
 	function sync(): void {
 		const next = selectedLight();
 		light = next;
+		colourMode = null;
 		previewLight = null;
 		if (next === null) return;
 		const range = rangeOf(next);
@@ -592,14 +599,13 @@
 									<div class="control-row" data-advanced-row={row.id}>
 										<span class="control-label">{row.label}</span>
 										{#if row.control.kind === 'mode'}
-											{@const mode = String(readRow(row))}
 											<div class="chips">
-												<button type="button" class="chip" class:current={mode === 'white'}
-													data-advanced-mode="white" aria-pressed={mode === 'white'}
-													onclick={() => writeRow(row, 'white')}>White</button>
-												<button type="button" class="chip" class:current={mode === 'colour'}
-													data-advanced-mode="colour" aria-pressed={mode === 'colour'}
-													onclick={() => writeRow(row, 'colour')}>Colour</button>
+												<button type="button" class="chip" class:current={colourIsWhite}
+													data-advanced-mode="white" aria-pressed={colourIsWhite}
+													onclick={() => { colourMode = 'white'; writeRow(row, 'white'); }}>White</button>
+												<button type="button" class="chip" class:current={!colourIsWhite}
+													data-advanced-mode="colour" aria-pressed={!colourIsWhite}
+													onclick={() => { colourMode = 'colour'; }}>Colour</button>
 											</div>
 										{:else if row.control.kind === 'warmth'}
 											{@const value = Number(readRow(row))}

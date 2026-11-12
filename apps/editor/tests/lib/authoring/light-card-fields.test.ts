@@ -275,6 +275,28 @@ describe('S3a Light Card writer', () => {
 		expect(payload.payload.rotation.every(Number.isFinite)).toBe(true);
 	});
 
+	it('opens the colour dial without writing a mode value', async () => {
+		const { target, accept } = await mountCard(spot());
+		await openGroup(target, 'colour');
+		const colourMode = target.querySelector<HTMLButtonElement>('[data-advanced-mode="colour"]');
+		if (colourMode === null) throw new Error('the Colour mode chip is missing');
+		colourMode.click();
+		await tick();
+		expect(target.querySelector('.dial')).not.toBeNull();
+		expect(target.querySelector('[data-advanced-row="colour"]')).not.toBeNull();
+		expect(target.querySelector('[data-advanced-row="warmth"]')).toBeNull();
+		expect(accept).not.toHaveBeenCalled();
+
+		target.querySelector<HTMLButtonElement>('[data-advanced-mode="white"]')!.click();
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(accept.mock.calls[0]![0]).toMatchObject({
+			kind: 'update-light',
+			payload: { entityId: LIGHT_ID, color: expect.stringMatching(/^#[0-9a-f]{6}$/) }
+		});
+	});
+
 	it('commits exact values on Enter, restores on Esc, and never writes on blur', async () => {
 		const { target, accept } = await mountCard(spot());
 		await openGroup(target, 'brightness');
