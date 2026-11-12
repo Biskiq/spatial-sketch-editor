@@ -198,6 +198,23 @@ export function lightPlacementBody(input: {
 	return add(hit.point, scale(normal, standoff));
 }
 
+/**
+ * The end of a Point light's drop stem: the first surface below the body, or
+ * the datum when nothing is under it. It is derived geometry and never a
+ * stored reach.
+ */
+export function lightDropStem(
+	position: Vec3,
+	datumMeters: number,
+	pick: (ray: { origin: Vec3; direction: Vec3 }) => LightRayHit | null
+): Vec3 {
+	const hit = pick({ origin: [...position] as Vec3, direction: [0, -1, 0] });
+	const y = hit !== null && hit.worldPoint[1] < position[1] - 1e-6
+		? hit.worldPoint[1]
+		: datumMeters;
+	return [position[0], y, position[2]];
+}
+
 /** The point where a ray meets a horizontal plane, or `null`. */
 export function pointOnPlane(
 	ray: { origin: Vec3; direction: Vec3 },

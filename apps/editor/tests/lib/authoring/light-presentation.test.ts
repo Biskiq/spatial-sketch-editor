@@ -18,6 +18,7 @@ import {
 	LIGHT_POINT_STANDOFF_METERS,
 	LIGHT_SPOT_STANDOFF_METERS,
 	LIGHT_WORKING_HEIGHT_METERS,
+	lightDropStem,
 	lightPlacementBody,
 	penumbraForInnerRadius,
 	pointReachRingRadius,
@@ -142,6 +143,24 @@ describe('point reach ring', () => {
 
 	it('reports no floor ring when the sphere does not reach the datum', () => {
 		expect(pointReachRingRadius(2, 3).onDatum).toBe(false);
+	});
+});
+
+describe('Point drop stem', () => {
+	it('ends at the first surface below the body', () => {
+		const end = lightDropStem([1, 2, 1], 0, () => ({
+			distanceMeters: 0.9,
+			worldPoint: [1.4, 1.1, 1.2]
+		}));
+		expect(end).toEqual([1, 1.1, 1]);
+	});
+
+	it('falls back to the datum with no surface below', () => {
+		expect(lightDropStem([1, 2, 1], 0.2, () => null)).toEqual([1, 0.2, 1]);
+		// A hit above the body is not "below" and cannot end the stem.
+		expect(
+			lightDropStem([1, 2, 1], 0.2, () => ({ distanceMeters: 1, worldPoint: [1, 3, 1] }))
+		).toEqual([1, 0.2, 1]);
 	});
 });
 

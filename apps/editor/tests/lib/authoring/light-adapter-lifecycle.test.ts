@@ -599,6 +599,18 @@ describe('S3a light adapter pointer lifecycle', () => {
 		point.facade.setSelection({ ordered: [{ reference: pointReference }], primary: pointReference });
 		expect(point.facade.marks().map((mark) => mark.id)).toContain('light-reach');
 
+		// A sphere that cannot meet the datum keeps a screen-facing reach ring
+		// with the truthful tag, rather than disappearing.
+		const low = await mounted({ entities: [pointAt([0, 0.6, 0], 0.3)] });
+		const lowReference = sceneEntityReference(
+			'light-point',
+			low.facade.snapshot().domain.unitRevisions.scene
+		);
+		low.facade.setSelection({ ordered: [{ reference: lowReference }], primary: lowReference });
+		const lowReach = low.facade.marks().find((mark) => mark.id === 'light-reach');
+		expect(lowReach).toBeDefined();
+		expect(lowReach?.tag).toContain('does not reach the floor');
+
 		const spot = await mounted({
 			entities: [{ ...spotAt([0, 2, 0]), range: 3, penumbra: 0.35 } as SceneLightEntity]
 		});

@@ -48,6 +48,7 @@ import {
 	formatMultiplier,
 	isWideBeam,
 	LIGHT_MIN_RANGE_METERS,
+	lightDropStem,
 	lightPlacementBody,
 	penumbraForInnerRadius,
 	pointReachRingRadius,
@@ -301,6 +302,28 @@ function ringPhase(
 	if (Math.hypot(projected[0], projected[1], projected[2]) < 1e-6) return undefined;
 	const unit = normalize(projected);
 	return side === 'left' ? scale(unit, -1) : unit;
+}
+
+/**
+ * The world radius whose screen projection is about `pixels`, measured at the
+ * body along the camera's right. Used by the Point's reach control when the
+ * sphere never meets the datum: that control is a screen-sized ring at the
+ * light, not a world ring on the floor.
+ */
+function screenRingExtent(
+	adapterContext: StageAdapterContext,
+	position: Vec3,
+	pixels: number
+): number {
+	const forward = normalize(sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye));
+	const right = normalize(cross(forward, [0, 1, 0]));
+	const anchor = adapterContext.project(position);
+	const sample = adapterContext.project(add(position, right));
+	if (anchor !== null && sample !== null) {
+		const css = Math.hypot(sample[0] - anchor[0], sample[1] - anchor[1]);
+		if (css > 0.5) return Math.max(0.02, pixels / css);
+	}
+	return 0.05;
 }
 
 function spotTargetFor(light: Light, adapterContext: StageAdapterContext) {
@@ -1180,11 +1203,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				} else if (light.light === 'point') {
 					const range = lightRange(light);
 					const height = Math.max(0, light.position[1] - datumMeters);
-					// The drop stem is derived geometry: it names the floor, not a stored
-					// reach. An Unlimited Point has no ring at all.
+					// The drop stem is derived geometry: it names the first surface
+					// below the body, or the datum when nothing is under it. It never
+					// states a stored reach.
 					derivedSegments.push([
 						light.position,
-						[light.position[0], datumMeters, light.position[2]]
+						lightDropStem(light.position, datumMeters, (ray) =>
+							adapterContext.pickScene(ray)
+						)
 					]);
 					if (range !== undefined) {
 						const ring = pointReachRingRadius(range, height);
@@ -1474,12 +1500,34 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								kind: 'ring',
 								anchor: [light.position[0], datum, light.position[2]],
 								axis: [0, 1, 0],
+								phase: ringPhase(adapterContext, [0, 1, 0], 'right'),
 								extent: Math.max(0.02, ring.radius),
 								label: 'Reach',
 								fact: 'range',
 								verb: 'Reach {value} m',
 								planner: 'update-light',
 								value: `${formatMeters(range)} · fades to nothing here`,
+								refusal: refusalNow
+							});
+						} else {
+							// The sphere does not meet the datum: a 30 px screen-facing ring
+							// around the glyph is the reach control.
+							const cameraForward = normalize(
+								sub(adapterContext.evaluation.pose.target, adapterContext.evaluation.eye)
+							);
+							handles.push({
+								role: 'edit',
+								id: 'light-reach',
+								kind: 'ring',
+								anchor: [...light.position],
+								axis: cameraForward,
+								phase: ringPhase(adapterContext, cameraForward, 'right'),
+								extent: screenRingExtent(adapterContext, light.position, 30),
+								label: 'Reach',
+								fact: 'range',
+								verb: 'Reach {value} m',
+								planner: 'update-light',
+								value: `${formatMeters(range)} · does not reach the floor`,
 								refusal: refusalNow
 							});
 						}
