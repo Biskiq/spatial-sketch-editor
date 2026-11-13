@@ -328,7 +328,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
 <body>
 <header class="top">
   <h1>T2 · Lighting, Sky and Shell</h1>
-  <p class="lede">The final T2 design for light on the Stage, the Light Cards, Time, Sky and the Celestial Dial, Artwork framing and placement, and how they sit in the real editor shell. Revision 4, 13 November 2026. Design only. PR #314 implements the earlier <code>fix.md</code> design on this branch; §7.4 lists what it ships and what this sheet changes. Every prototype is live; Cards, the Sky popover and the shell compositions are drawn at true pixel size. Stage diagrams are schematic in geometry but exact in what is drawn and what each grip writes.</p>
+  <p class="lede">The final T2 design for light on the Stage, the Light Cards, Time, Sky and the Celestial Dial, Artwork framing and placement, and how they sit in the real editor shell. Revision 4, 13 November 2026. <b>Accepted by the owner on 13 November 2026 and ready for implementation</b>; the owner decisions are recorded in §8. This sheet holds no production code. PR #314 implements the earlier <code>fix.md</code> design on this branch; §7.4 lists what it ships and what this sheet changes. Every prototype is live; Cards, the Sky popover and the shell compositions are drawn at true pixel size. Stage diagrams are schematic in geometry but exact in what is drawn and what each grip writes.</p>
 </header>
 <nav aria-label="Sections">
   <a href="#status">0 Status</a><a href="#identity">1 Identity</a><a href="#stage">2 Light on the Stage</a><a href="#cards">3 Light Cards</a><a href="#sky">4 Environment</a><a href="#artwork">5 Artwork and placement</a><a href="#shell">6 Shell</a><a href="#impl">7 Boundaries</a><a href="#decisions">8 Decisions</a>
@@ -381,7 +381,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>S3 Lights plan §5.5, §5.7–5.9, §5.11</td><td>Directional placement, footprint handles, Brightness stops as chips</td><td>§2 and §3 of this sheet</td></tr>
     <tr><td>Shell cutover plan, Sky chip</td><td>A Sky chip in the middle of the viewing bar</td><td>The Environment control at the Stage's bottom-right (§4.1). The bar keeps viewing controls only</td></tr>
     <tr><td>This sheet, revision 3</td><td>Time at the right end of the World-controls bar; Beam and Soft edge as two rows; flat emitter disc; flat Sky glyphs; a floor sundial with a rim-mark fallback and a floating Sun</td><td>Replaced by the decisions above. A and B remain only as considered panels in §4.1; the sundial and rim mark are combined into the Celestial Dial (§4.2)</td></tr>
-    <tr><td>This sheet before revision 2</td><td>Today/Proposed pairs, footprint-first beam, kelvin track, four icon families, decisions L1–W2</td><td>Removed. The questions that are still open are listed in §8</td></tr>
+    <tr><td>This sheet before revision 2</td><td>Today/Proposed pairs, footprint-first beam, kelvin track, four icon families, decisions L1–W2</td><td>Removed. The owner decisions that closed them are recorded in §8</td></tr>
   </table></div>
 </section>
 
@@ -476,7 +476,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
         <li><b>Without the casing, the guide disappears twice.</b> In a dusk or night room, dark ink falls below 2:1 contrast against the walls. Inside a strong shaft, the rays sit on a moving bright texture. Turn the casing off to see both.</li>
         <li><b>With the casing</b> (a light stroke 2.4 px wider than the ink, at 70%, under every guide line), the rays and axis read in all three rooms and over both shaft strengths. It adds no colour and no glow.</li>
         <li><b>The shaft and the guide disagree, and that is correct.</b> The shaft fades with distance and dust density, so its visible length is shorter than the target distance. The guide always ends at the target distance. Neither is derived from the other.</li>
-        <li>The shaft field (density and dust) lives on the light or the World, not on the guide. It is listed as unresolved in §8, because it waits for WebGPU behind S0.</li>
+        <li>The shaft field (density and dust) lives on the light or the World, not on the guide. Decided (§8): the World owns atmospheric scattering, and each Spot owns its Visible Beam and scattering contribution. Implementation waits until after WebGPU, behind S0.</li>
       </ul>
     </div>
   </div>
@@ -557,7 +557,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
       <tr><td>Colour · Colour</td><td>44 px wheel button + Hue track (spectrum) + Colour amount track (white → hue)</td><td><code>color</code></td><td>Hue 0…360°, amount 0…100 % (HSV saturation at full value; <code>hsvToHex</code>). The amount track's gradient follows the hue. The wheel button and the header swatch open the radial picker</td><td>"28° · 72%"; "White kept" with hollow thumbs when the view's values do not produce the stored colour</td></tr>
       <tr><td>Beam (Spot)</td><td>Dual-scrub: mirrored outer thumbs on a centred track, mirrored notches below it, with a true-angle diagram above (58 px)</td><td><code>angle</code> (half-angle) · <code>penumbra</code></td><td>Track linear in half-angle, 0 at the centre to 80° at each end (2°…160° wide). Outer thumb: <code>angle = W/2</code>, keeps <code>penumbra</code>. Notch: full-brightness half-angle <code>c</code>, writes <code>penumbra = 1 − c/angle</code>. Detents at 15°, 30°, 45°, 60°, 90° wide and at 0, 50, 100 % soft (Alt skips). Stored half-angles above 80° (Advanced only) pin the thumbs hollow at the ends</td><td>"36° wide · 40% soft"; the diagram labels the full width</td></tr>
       <tr><td>Reach (Point)</td><td>Log slider with an ∞ end detent</td><td><code>range</code></td><td>0.5…50 m; the last 10% of the track is Unlimited (<code>range</code> absent); ticks 0.5, 2, 5, 20, ∞</td><td>"4.0 m", "Unlimited"</td></tr>
-      <tr><td>Shadow</td><td>Switch</td><td><code>castShadow</code></td><td>On or off. There is no per-light softness field; shadow softness comes from the Sky (S1). A per-light field is a later contract change, shown disabled in Advanced</td><td>—</td></tr>
+      <tr><td>Shadow</td><td>Switch</td><td><code>castShadow</code></td><td>On or off. A new Spot starts <b>on</b>, subject to the performance quality tier. There is no per-light softness field; shadow softness comes from the Sky (S1). A per-light field is a later contract change, shown disabled in Advanced</td><td>—</td></tr>
       <tr><td>Foot</td><td>Advanced + summary · Duplicate · Delete</td><td>—</td><td>Later: Light it (S7), Look through (S3, second PR), Group with… (G1)</td><td>—</td></tr>
     </table></div>
     <h3>Spec · values outside the slider</h3>
@@ -701,7 +701,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
       <tr><td>≤860 px</td><td>The panel becomes a bottom sheet with the same content in one column; the control stays as the medallion. The Card folds to identity while the sheet is open</td></tr>
       <tr><td>Before S1 (placeholder)</td><td>Full composition is kept. Only <code>environment.preset</code> is live: four preset tiles. The control shows the preset name and <i>Sky</i> with no time. The Time dial is drawn dimmed with no hand handle, and Haze and Sun direction are placeholder rows tagged S1; none of them is focusable or looks operable. The Stage shows the preset's fixed render and no Celestial Dial</td></tr>
       <tr><td>Future Looks</td><td>The panel header reserves a tab row (<i>Sky · Looks</i>) for S6. Looks tiles live in the same panel, so there is still one environment writer and no second placement</td></tr>
-      <tr><td>Contents</td><td>Header (preset · edited · Reset), Time dial and readout, Sun direction row (compass, <i>Aim through windows</i>), five preset tiles, Haze, More (arc height, exposure, sky and ground colours, Moon strength, shadow softness)</td></tr>
+      <tr><td>Contents</td><td>Header (preset · edited · Reset), Time dial and readout, Sun direction row (compass, <i>Aim through windows</i>), six preset tiles (Studio, Daylight, Golden Hour, Dusk, Overcast, Moonlit), Haze, More (Sun shadows, on by default; arc height; exposure; sky and ground colours; Moon colour and strength, with subtle defaults; shadow softness)</td></tr>
     </table></div>
   </div>
 </section>
@@ -772,7 +772,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
   <div class="g4">
     <div class="later">Finish row on a Wall Card · S4</div>
     <div class="later">Looks tiles in Sky · S6</div>
-    <div class="later">Group Card for a light rig · G1</div>
+    <div class="later">Light group: Scene grouping with a group Brightness multiplier · grouping slice</div>
     <div class="later">Area and line emitters · after S3</div>
   </div>
   <div class="spec">
@@ -817,9 +817,9 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td><code>time</code>, <code>heading</code>, <code>arcHeight</code> and the other Sky fields</td><td><span class="tag t2">S1</span></td><td>Format bump; Tier 2</td></tr>
     <tr><td>Sky panel dials, the Celestial Dial, presets with edited and Reset</td><td><span class="tag t2">S2</span></td><td>P0 · S0 · S1</td></tr>
     <tr><td>Light it, Look through</td><td><span class="tag t2">S7 · S3</span></td><td>As the T2 README states</td></tr>
-    <tr><td>Group Card for light rigs</td><td><span class="tag t2">G1</span></td><td>—</td></tr>
+    <tr><td>Light groups: reuse Scene grouping; a non-destructive group Brightness multiplier that preserves each light's own values</td><td><span class="tag t2">G1</span></td><td>The grouping slice</td></tr>
     <tr><td>Physical fixtures</td><td><span class="tag t2">S8</span></td><td>Licence</td></tr>
-    <tr><td>Volumetric shafts, cascaded shadow maps, IES profiles</td><td><span class="tag gpu">WebGPU</span></td><td>After the renderer refactor, behind S0. North Star L430 is unchanged</td></tr>
+    <tr><td>Volumetrics (World atmospheric scattering; per-Spot Visible Beam and scattering contribution), cascaded shadow maps, IES profiles</td><td><span class="tag gpu">WebGPU</span></td><td>After the renderer refactor, behind S0. North Star L430 is unchanged</td></tr>
   </table></div>
   <h3>7.2 · Contract changes this design requires (not edited here)</h3>
   <div class="tw"><table>
@@ -837,7 +837,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>Light model, Aim</td><td>Aim writes <code>rotation</code>; no target field is added. Shadow softness stays a World (Sky) value, never per light</td><td>S3</td></tr>
   </table></div>
   <h3>7.3 · Directional retirement: a separate future slice</h3>
-  <p class="note">This is not part of the design task. It is specified here so it can be picked up as its own small PR. It follows the rule that there are no versioned-data obligations before beta: bump and refuse strictly, with no migration.</p>
+  <p class="note"><b>Accepted by the owner on 13 November 2026.</b> It is not part of the design task and lands as its own small Tier 2 PR, specified here. It follows the rule that there are no versioned-data obligations before beta: bump and refuse strictly, with no migration.</p>
   <div class="tw"><table>
     <tr><th>Area</th><th>Change</th><th>Sites</th></tr>
     <tr><td>Format</td><td>Bump <code>SCENE_UNIT_FORMAT_VERSION</code> 6 → 7</td><td><code>packages/project-model/src/units/types.ts:47</code></td></tr>
@@ -866,7 +866,7 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
 
 <!-- =========================================================== 8 -->
 <section id="decisions">
-  <header><h2>8 · Recommendations, open decisions, handoff</h2></header>
+  <header><h2>8 · Recommendations, owner decisions, handoff</h2></header>
   <div class="g2">
     <div class="box rec">
       <h4>Recommendations</h4>
@@ -879,16 +879,19 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
       </ol>
     </div>
     <div class="box">
-      <h4>Unresolved owner decisions</h4>
+      <h4>Owner decisions <span class="tag rec">approved 13 Nov 2026</span></h4>
       <ol>
-        <li>The final preset set, and how it maps to today's <code>daylight</code>, <code>golden-hour</code>, <code>dusk</code> and the neutral preset.</li>
-        <li>Whether the Sun always casts shadows (PLATE L980).</li>
-        <li>Moon strength and colour under More.</li>
-        <li>Default Shadow state for a new Spot.</li>
-        <li>The volumetric field: on the light, on the World, or both (S0-gated).</li>
-        <li>Group Card scope for light rigs (G1).</li>
-        <li>Where <i>Show influence</i> lives: ⚙ viewing options or a Card foot action.</li>
+        <li><b>Sky presets:</b> Studio, Daylight, Golden Hour, Dusk, Overcast, Moonlit. Studio replaces the user-facing Paper preset.</li>
+        <li><b>Sun shadows:</b> on by default; a toggle under Sky › More.</li>
+        <li><b>Moon:</b> adjustable colour and strength under Sky › More, with subtle defaults.</li>
+        <li><b>Spot shadows:</b> on by default for a new Spot, subject to the performance quality tiers.</li>
+        <li><b>Volumetrics:</b> the World owns atmospheric scattering; each Spot owns its Visible Beam and scattering contribution. Deferred until after WebGPU.</li>
+        <li><b>Light groups:</b> reuse Scene grouping, with a non-destructive group Brightness multiplier that preserves each light's own values. Deferred to the grouping slice.</li>
+        <li><b>Show influence:</b> a Viewing preference, not an authored Light property.</li>
+        <li><b>Directional retirement:</b> accepted, as the separate slice in §7.3.</li>
+        <li><b>This UX design:</b> accepted and ready for implementation.</li>
       </ol>
+      <p class="note">No owner decision remains open in this sheet.</p>
     </div>
   </div>
   <h3>Engineering handoff</h3>
@@ -900,7 +903,15 @@ td.pass{color:var(--moss-ink)} td.fail{color:var(--refuse)} td.warn{color:#8a5d0
     <tr><td>There is no shared popover primitive; each popover positions itself and has its own Esc and outside-press handling</td><td><code>SkyControl.svelte</code> and others</td><td>Add one primitive with anchor, the Card-yield collision rule (Card rect plus 12 px), Esc and focus return</td></tr>
     <tr><td>At 1024 px, the Index overlay covers the left of the World-controls bar</td><td>Shell layout ≤1100 px</td><td>The bar should start at the Index's right edge while the overlay is open</td></tr>
     <tr><td>The Sky popover has an inert hour slider (5–22) and only four presets with fixed values</td><td><code>SkyControl.svelte</code>, <code>world-environment.ts</code></td><td>Replaced by the Time dial and model in S1/S2</td></tr>
-  </table></div>
+      <tr><td>Approved preset set</td><td><code>world-environment.ts</code>, S1 Sky fields, the Sky panel</td><td>Six presets: Studio, Daylight, Golden Hour, Dusk, Overcast, Moonlit. Studio is the user-facing name of today's <code>paper</code> preset. Each preset writes its full set except <code>heading</code>; the prototype draws five tiles, so the Studio tile joins the row and the row is re-checked at 320 px</td></tr>
+    <tr><td>Sun shadows</td><td>S1 Sky fields; Sky › More</td><td>A World-level Sun shadow switch, on by default</td></tr>
+    <tr><td>Moon colour and strength</td><td>S1 Sky fields; Sky › More</td><td>Two World-level fields with subtle defaults; the Moon stays cool and dim unless changed</td></tr>
+    <tr><td>Spot shadow default</td><td>Light creation (shelf placement)</td><td>A new Spot is created with <code>castShadow: true</code>; the performance quality tier may skip rendering it, never the stored value</td></tr>
+    <tr><td>Volumetrics</td><td>Post-WebGPU slice</td><td>Atmospheric scattering is a World (Sky) field; Visible Beam and its scattering contribution are Spot fields. Nothing is added before WebGPU</td></tr>
+    <tr><td>Light groups</td><td>Grouping slice</td><td>Reuse Scene grouping; the group Brightness multiplier is non-destructive and never rewrites each light's <code>intensity</code></td></tr>
+    <tr><td><i>Show influence</i></td><td>Viewing preferences (⚙)</td><td>An editor viewing preference, never serialized into the Scene or any light; it never reaches the visitor runtime</td></tr>
+    <tr><td>Directional retirement</td><td>§7.3</td><td>Accepted; one Tier 2 PR with the format bump and strict refusal, no migration</td></tr>
+</table></div>
 </section>
 
 </main>
@@ -1797,7 +1808,7 @@ const PRESETS = {
 /* Every value a preset writes. heading is never preset-owned: it belongs to the World's windows. */
 const PRESET_KEYS = ['time','haze','arc','exposure','moon','softness'];
 /* Today's model (before S1): SceneEnvironment = { preset } with four fixed renders. */
-const TODAY = { paper:{ name:'Paper', t:null, sw:'linear-gradient(#f4f2ec,#e4dfd0)' }, daylight:{ name:'Daylight', t:13, sw:PRESETS.daylight.sw }, 'golden-hour':{ name:'Golden hour', short:'Golden', t:18.33, sw:PRESETS.golden.sw }, dusk:{ name:'Dusk', t:20.25, sw:PRESETS.dusk.sw } };
+const TODAY = { paper:{ name:'Studio', t:null, sw:'linear-gradient(#f4f2ec,#e4dfd0)' }, daylight:{ name:'Daylight', t:13, sw:PRESETS.daylight.sw }, 'golden-hour':{ name:'Golden hour', short:'Golden', t:18.33, sw:PRESETS.golden.sw }, dusk:{ name:'Dusk', t:20.25, sw:PRESETS.dusk.sw } };
 const SKY = { time:16.5, heading: aimThroughWindows(), arc:62, haze:15, exposure:0, moon:.25, softness:.3, preset:'daylight', today:'daylight', commits:0 };
 const skyEdited = () => { const p = PRESETS[SKY.preset]; return PRESET_KEYS.some(k => Math.abs(p[k] - SKY[k]) > 1e-6); };
 const applyPreset = (k) => { const p = PRESETS[k]; SKY.preset = k; PRESET_KEYS.forEach(f => SKY[f] = p[f]); };
