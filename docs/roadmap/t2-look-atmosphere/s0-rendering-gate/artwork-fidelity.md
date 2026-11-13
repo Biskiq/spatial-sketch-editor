@@ -15,7 +15,7 @@ release pinning; those are A1's own checks.
 **Question:** under the neutral reference light, which tone-mapping pipeline and artwork material
 keep an image close enough to its source that an artist would not see a colour shift?
 
-**Bench:** `/dev/render-audit`. A 512 × 512 sRGB chart fills a `PlaneGeometry` viewed through an
+**Bench:** the dev-only `/dev/render-audit` route, removed before merge; reproduce from commit `1a669fb1` (see [report](./report.md#dev-route-policy)). A 512 × 512 sRGB chart fills a `PlaneGeometry` viewed through an
 orthographic camera at 1:1 pixel mapping. The chart has 18 patches (neutrals, skin, six pigments,
 paper, brass, wood, near-black, near-white) plus neutral, hue, tonal and dark-detail ramps. One white
 directional light at intensity π is the bench calibration for the 50% grey patch: π renderer units of

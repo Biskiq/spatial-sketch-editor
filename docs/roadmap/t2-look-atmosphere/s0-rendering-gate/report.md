@@ -42,14 +42,17 @@ report; the remaining S0 items stay open.
 
 ## Dev route policy
 
-`/dev/render-audit` is a development bench, not a product route. Its `+page.server.ts` returns 404
-whenever `dev` is false. Retain it only while S0 re-runs need it; remove
-`apps/editor/src/routes/dev/render-audit` before PR #291 merge unless the owner explicitly approves a
-gated bench. The evidence in this directory does not depend on the route.
+The `/dev/render-audit` bench (`apps/editor/src/routes/dev/render-audit/`), its `+page.server.ts` 404 guard, and the focused colour-math test (`gate-a-audit.test.ts`) were removed before merge, per the owner's retention policy. The bench is not a product route and is not retained in the tree. Its source remains reproducible from commit `1a669fb1a752c0b5bf86bfb487fe31c81707024c`, which generated the evidence below:
+
+```bash
+git show 1a669fb1a752c0b5bf86bfb487fe31c81707024c:apps/editor/src/routes/dev/render-audit/audit.ts
+git show 1a669fb1a752c0b5bf86bfb487fe31c81707024c:apps/editor/src/routes/dev/render-audit/+page.svelte
+```
+
+Re-running Gate A requires a new owner-approved bench; this slice does not reinstate it.
 
 ## Evidence
 
 - [Contact sheet](./evidence/2026-11-11/gate-a-contact-sheet.png)
 - [Machine-readable result](./evidence/2026-11-11/gate-a-result.json)
-- Bench: `/dev/render-audit`, source `apps/editor/src/routes/dev/render-audit/`.
-- Focused colour-math test: `apps/editor/tests/lib/render/gate-a-audit.test.ts`.
+- Source provenance: commit `1a669fb1a752c0b5bf86bfb487fe31c81707024c` (removed from the tree; see Dev route policy).
