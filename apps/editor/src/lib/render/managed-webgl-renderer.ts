@@ -22,8 +22,12 @@ import {
 	type Object3D,
 	type Texture
 } from 'three';
+import { countWork } from '@portfolio/layout-core';
 
 type PhysicalMaterial = Material & { isMeshStandardMaterial?: boolean };
+
+/** Which Canvas owns the renderer; the frame counter is named for its surface. */
+export type ManagedRenderSurface = 'stage' | 'preview';
 
 function physicalMaterials(root: Object3D): Set<Material> {
 	const found = new Set<Material>();
@@ -37,9 +41,19 @@ function physicalMaterials(root: Object3D): Set<Material> {
 }
 
 /** Own an existing renderer; exported separately so lifecycle tests need no GPU. */
-export function manageWebGLRenderer(renderer: WebGLRenderer): WebGLRenderer {
+export function manageWebGLRenderer(
+	renderer: WebGLRenderer,
+	surface: ManagedRenderSurface = 'stage'
+): WebGLRenderer {
 	const sharedLookups = new Set<Texture>();
 	const render = renderer.render;
+	// The one frame counter. Inert without an observer: no allocation, no branch
+	// beyond `countWork`'s own null check. It wraps the original render directly,
+	// so it survives the discovery wrapper's self-removal below.
+	const managedFrame = function (scene: Object3D, camera: Camera): void {
+		countWork(`render:${surface}-frame`);
+		render.call(renderer, scene, camera);
+	};
 	const dispose = renderer.dispose;
 	let disposed = false;
 
@@ -63,7 +77,7 @@ export function manageWebGLRenderer(renderer: WebGLRenderer): WebGLRenderer {
 			});
 		}
 		try {
-			render.call(renderer, scene, camera);
+			managedFrame(scene, camera);
 		} finally {
 			for (const reset of restore) reset();
 			// Three assigns the singleton after compilation, during this render.
@@ -71,7 +85,7 @@ export function manageWebGLRenderer(renderer: WebGLRenderer): WebGLRenderer {
 				if (lookup.value?.isTexture) {
 					sharedLookups.add(lookup.value);
 					// Ordinary frames have no wrapper or tree walk after discovery.
-					renderer.render = render;
+					renderer.render = managedFrame;
 				}
 			}
 		}
@@ -98,9 +112,10 @@ export function manageWebGLRenderer(renderer: WebGLRenderer): WebGLRenderer {
 /** Same renderer options as Threlte's default factory, with explicit ownership. */
 export function createManagedWebGLRenderer(
 	canvas: HTMLCanvasElement,
-	options: { readonly stencil?: boolean } = {}
+	options: { readonly stencil?: boolean; readonly surface?: ManagedRenderSurface } = {}
 ): WebGLRenderer {
+	const { surface = 'stage', ...rendererOptions } = options;
 	return manageWebGLRenderer(new WebGLRenderer({
-		canvas, powerPreference: 'high-performance', antialias: true, alpha: true, ...options
-	}));
+		canvas, powerPreference: 'high-performance', antialias: true, alpha: true, ...rendererOptions
+	}), surface);
 }

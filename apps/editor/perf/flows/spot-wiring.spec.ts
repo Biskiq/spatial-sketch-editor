@@ -2,7 +2,7 @@
 import { expect, test } from '@playwright/test';
 import { createEmptyUnitEnvelope, serializeProjectEnvelope } from '@portfolio/project-model/units';
 import { newMeasuredSession } from '../lib/browser';
-import { acceptedResultCount, commitPrecisionLength, fitStage, openSourceJson, selectWallById, setStageReading, waitForAcceptedResult, waitForStageSettled } from '../lib/flow';
+import { acceptedResultCount, chooseCreateStarter, commitPrecisionLength, fitStage, gotoCreateIntent, openSourceJson, selectWallById, setStageReading, waitForAcceptedResult, waitForStageSettled } from '../lib/flow';
 import { readLedger } from '../lib/ledger';
 import { clickPick, installPanObserver } from '../lib/spot-browser';
 import { openTiming, typedLengthTiming } from '../lib/spot-measurement';
@@ -16,8 +16,10 @@ test('real chooser, typed Length, rendered source, known-wall hits and pan clock
 		const wallId = layout.walls[0]!.id;
 		const envelope = await createEmptyUnitEnvelope({ id: projectId, name: 'Measurement correctness room', acceptedRevision: { projectId, revisionId: 'wiring-baseline' }, layout });
 		const page = session.page;
-		await page.goto(`${baseURL}/project/${projectId}/spatial?create=1`);
-		await page.getByRole('dialog', { name: 'Start a project' }).waitFor();
+		// Issue #273: the current route opens the minted project directly; the shared
+		// helper still accepts the retired chooser without requiring it.
+		await gotoCreateIntent(page, projectId);
+		await chooseCreateStarter(page, 'Begin empty');
 		await openSourceJson(page, { size: 'correctness-room', projectId, envelope, canonicalJson: serializeProjectEnvelope(envelope), facts: { walls: 4, openings: 0, rooms: 1 } });
 		await setStageReading(page, 'Plan');
 		await fitStage(page);

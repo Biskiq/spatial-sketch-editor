@@ -20,9 +20,11 @@ import { chromium, type CDPSession, type Page } from '@playwright/test';
 import { newMeasuredSession } from './lib/browser';
 import {
 	acceptedResultCount,
+	chooseCreateStarter,
 	commitPrecisionLength,
 	fitStage,
 	frameWindow,
+	gotoCreateIntent,
 	handlePoint,
 	openSourceJson,
 	selectWallById,
@@ -221,8 +223,11 @@ async function runOnce(page: Page, cdp: CDPSession, tier: SpotTier, projectId: s
 	const refresh = await refreshPeriod(page);
 	const openWallStart = Date.now();
 	const openDispatch = 0;
-	await page.goto(`${BASE_URL}/project/${encodeURIComponent(projectId)}/spatial?create=1`);
-	await page.getByRole('dialog', { name: 'Start a project' }).waitFor();
+	// The shipped route opens the minted empty project directly; the shared helper
+	// still accepts a build that presents the retired starter chooser. Issue #273:
+	// never wait for a dialog this shell does not show.
+	await gotoCreateIntent(page, projectId);
+	await chooseCreateStarter(page, 'Begin empty');
 	await openSourceJson(page, { size: tier, projectId, envelope: JSON.parse(canonicalJson), canonicalJson, facts: { walls: 0, openings: 0, rooms: 0 } });
 	const opened = await waitForRelevantFrame(page, async () => openTiming(await readLedger(page), openDispatch));
 	const openWallMs = Date.now() - openWallStart;

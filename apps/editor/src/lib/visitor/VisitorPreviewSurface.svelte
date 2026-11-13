@@ -424,7 +424,7 @@ import { PCFShadowMap } from 'three';
 		aria-describedby="visitor-preview-help"
 	>
 		<Canvas
-		createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas), 'preview')}
+		createRenderer={(canvas) => perfRenderer(createManagedWebGLRenderer(canvas, { surface: 'preview' }), 'preview')}
 		dpr={[1, 1.5]}
 		shadows={PCFShadowMap}
 		renderMode={active ? 'always' : 'on-demand'}

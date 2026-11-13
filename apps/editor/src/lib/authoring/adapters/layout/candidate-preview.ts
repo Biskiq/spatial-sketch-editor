@@ -15,6 +15,7 @@ import {
 	compileWallFirstLayoutGeometry,
 	evaluateLayoutPlan,
 	buildArchProfile,
+	countWork,
 	type LayoutDocumentWallFirst,
 	type LayoutWallOpening,
 	type LayoutVec2,
@@ -171,6 +172,7 @@ export function buildCompiledLayoutCandidatePaper(
 	affectedIds: ReadonlySet<string>,
 	lateralSpanHalfWidthMeters = plan.lateralSpanHalfWidthMeters
 ): LayoutCandidatePaper {
+	countWork('candidate:paper-build');
 	const evaluated = evaluateLayoutPlan(
 		compiled,
 		{
