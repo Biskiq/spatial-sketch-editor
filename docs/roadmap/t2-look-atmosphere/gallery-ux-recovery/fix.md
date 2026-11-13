@@ -728,6 +728,7 @@ The PR stays open and unmerged.
 | 8 | `f81918f0` | Light hover ghost, lit candidate and placement lifecycle |
 | 9 | `1c77c42b` | Artwork wall-follow move, nine-point fit test and ghost lifecycle |
 | 10 | `912c62dc` | Dial 0° tick and tick hover names, light `Placing…`/refused-release ghost, Card foot action width |
+| 11 | `8d6dbc44` | Object and Artwork `Placing…` hold, ignored input, refused-release ghost and placement chips |
 
 Verification follow-ups are separate commits: `80409077` moves the new colour dial onto the
 `--shell-white` presentation token, `c1e6e699` fixes the Advanced White/Colour mode toggle so it
@@ -747,6 +748,14 @@ again. `912c62dc` closes the last §5.5 and §5.7 marks found in the post-implem
 dial's 0° tick, a hovered tick's name, the light placement's `Placing…` hold with input ignored
 until the one create settles, the refused-release ghost held in refusal ink for four seconds, and
 the Card-foot specificity fix that had been clipping `Duplicate` behind the 24 px icon-button rule.
+`8d6dbc44` finishes the same lifecycle for the other Library subjects: Object placement now
+captures its candidate before acceptance, holds it under `Placing…` with all later pointer phases
+claimed and ignored, and keeps a refused or failed release in refusal ink with the planner's
+message for four seconds. Its overlay states `Point at a surface` before a candidate and
+`Click to place · Esc cancels` once one exists. Artwork placement exposes a reactive `placing`
+state and the same four-second refusal, holds the exact ghost through the one acceptance, and
+projects one Stage chip (`Point at a wall` / `Click to place · Esc cancels` / `Placing…` / the
+refusal message) from the ghost centre or the pointer before a pose exists.
 
 **Verification evidence**
 
@@ -794,6 +803,11 @@ the Card-foot specificity fix that had been clipping `Duplicate` behind the 24 p
 - After `912c62dc`: `light-adapter-lifecycle`, `light-card-fields`, `editor-card-facts` and
   `directional-dial` — 4 files, 57 tests passed; `npm run check` — 0 errors and the same 4 visitor
   a11y warnings; `npm run test:arch -- --maxWorkers=2` — 24 files, 202 tests passed.
+- After `8d6dbc44`: `light-adapter-lifecycle` (including the deferred-acceptance hold/refusal
+  case), `scene-editing-surface` (including the Object hold/refusal case), `artwork-wall-move`,
+  `artwork-overlay`, `artwork-card`, `light-card-fields` and `directional-dial` — **7 files,
+  136 tests passed**; `npm run check` — **0 errors** and the same 4 visitor a11y warnings;
+  `npm run test:arch -- --maxWorkers=2` — **24 files, 202 tests passed**.
 
 **Known gaps**
 
@@ -802,11 +816,15 @@ the Card-foot specificity fix that had been clipping `Duplicate` behind the 24 p
   Index and selects that light without a gesture or a write. An unpressed hover on a tick appends
   that light's name at its bearing through the Stage's idle-hover seam. The approved ring, From
   spoke, quarter arc, travel arrows and two point beads remain.
-- Point/Spot placement holds the drawn ghost under `Placing…` and ignores pointer input until the
-  one create settles; a refused release keeps the ghost in refusal ink with the planner's message
-  until the next pointer move or four seconds. Object and Artwork placement still own their older
-  lifecycle paths and have no `Placing…` chip; their own refusal and ghost tests remain the
-  evidence for those subjects.
+- Point/Spot, Object and Artwork placement now all hold the drawn ghost under `Placing…`, claim
+  and ignore pointer input until the one create settles, and keep a refused release in refusal ink
+  with the planner's message until the next pointer move or four seconds. Object's need and
+  candidate chips live on its Stage overlay; Artwork's chip is projected from the ghost centre and
+  falls back to the pointer before a pose exists.
+- The Artwork placement chip and held/refused ghost were not visually exercised: the guest project
+  has no imported Artwork asset, so its shelf contains only `Import`. The authoring path is
+  typechecked; the Object hold/refusal path is covered by `scene-editing-surface`, and the light
+  path by the deferred-acceptance lifecycle test.
 - The Light Card foot now names the closed Advanced groups and owns Duplicate/Delete. Delete asks
   in the foot and opens no subject menu; a refusal still reports in the Card's existing status line.
 - A hover over a surface with no passing Artwork pose still uses the candidate ghost ink only. The
