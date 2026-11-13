@@ -333,6 +333,22 @@ interior reflection capture, area lights, transmission, a post pass, baked or ca
 contract that keeps them open is cheap: one resolved-look module with a quality input, one material
 factory, no slice bypassing either.
 
+**Renderer portability (owner decision 2026-11-12; a review line for every T2 slice, not a
+contract change).** `WebGLRenderer` stays the production renderer. A later WebGPU trial would run
+two renderers, because three's internal WebGL fallback measured 4.7× slower per draw. So:
+
+1. Materials come from the shared material factory as built-in Three materials and parameters. A
+   new `ShaderMaterial`, `onBeforeCompile` or node (TSL) material needs a `WebGLRenderer`
+   implementation and a PR sentence naming its TSL port, or saying why it stays editor-only.
+2. No post pass is built on `EffectComposer` before the renderer question is decided; a promise
+   that needs one (bloom, for example) raises that decision first.
+3. Renderer-specific API (`renderer.info`, render targets, context access) stays in the render
+   modules, not in Svelte components.
+
+Evidence and reopen conditions:
+[rendering and compute assessment §7](../../../broad-research/rendering-compute-architecture-assessment.md#7-owner-decisions-and-probe-outcome-2026-11-12).
+The measured shadow constants there are input to item 4's shadow budget.
+
 ## 9. Homes: one writer per fact, no new panel
 
 | Home (existing) | Owns | Never |

@@ -70,6 +70,13 @@ verbatim report untouched.
   sharing and screen-error detail. Each has its limit and falsifier. Measurements, arithmetic
   and hypotheses are labelled. Research input for T1.P02.S06 and owner review, not a contract,
   plan or decision.
+- **Rendering and compute architecture (2026-11-12):** [`rendering-compute-architecture-assessment.md`](./rendering-compute-architecture-assessment.md)
+  separates the WebGPU and Rust/WASM questions. Rust/WASM stays closed under the P23B.8 reopen
+  conditions; WebGPU's open question is per-backend cost and T2 shader portability, not browser
+  support. Inventories the current renderer lock-in surface, proposes a T2 portability rule and
+  three minutes-scale probes (count census, unit-cost calibration, prediction check). §7 records
+  the owner's decisions and the P1/P2 outcome (stay on `WebGLRenderer`; WebGPU reopen conditions;
+  `DynamicLighting` as WebGPU's measured many-light advantage). Research input, not a contract or plan.
 
 ## Cross-domain synthesis
 

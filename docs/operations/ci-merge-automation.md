@@ -30,7 +30,10 @@ manual dispatch. There is no automatic push run on main.
 
 The classifier compares the checked-out integration SHA against the exact base SHA in the event.
 Git reports additions and deletions separately for renames so the old path is also classified.
-The highest profile wins. A Git or event error blocks certification.
+The highest profile wins. A Git or event error blocks certification. A stacked pull request's
+recorded base SHA can lag the parent branch it targets, so the two planning jobs fetch that branch's
+history when the shallow checkout cannot reach the base. The ancestry check itself is unchanged:
+a base that is not in the tested commit's history still blocks certification.
 
 - **Minimal** covers Markdown under the documentation, research and audit roots, and the root
   README and CONTRIBUTING guides. It also covers regular CSS additions and edits within editor
