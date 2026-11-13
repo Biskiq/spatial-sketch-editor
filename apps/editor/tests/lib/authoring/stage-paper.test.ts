@@ -22,7 +22,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../../helpers/import-closure';
-import { Layers, Mesh, MeshBasicMaterial } from 'three';
+import {
+	InterleavedBufferAttribute,
+	Layers,
+	Mesh,
+	MeshBasicMaterial,
+	type InstancedInterleavedBuffer
+} from 'three';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import {
@@ -64,11 +70,15 @@ import {
 	stageCameraLayerMask,
 	unionOutline,
 	STAGE_OVERLAY_LAYER,
-	STAGE_WORLD_LAYER
+	STAGE_WORLD_LAYER,
+	type PaperLineDraw,
+	type PaperSegment
 } from '$lib/authoring/stage/paper-plan';
+import { paperHiddenSource, paperSourceRuns } from '$lib/authoring/stage/paper-selection';
 import { STARTER_ENCLOSURE_POINTS } from '$lib/authoring/stage/starter-gallery';
 import { DEFAULT_APP_PREFERENCES } from '$lib/platform/app-preferences';
 import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
+import { openingSelection } from './fixtures/selection-entry';
 
 type Fixture = { readonly compiled: CompiledLayoutGeometry; readonly document: LayoutDocumentWallFirst };
 
@@ -119,6 +129,25 @@ function withDoor(fixture: Fixture): Fixture {
 	return { compiled: compileWallFirstLayoutGeometry(door.document).geometry, document: door.document };
 }
 
+function withTwoDoors(fixture: Fixture): Fixture {
+	const layout = fixture.document;
+	const first = planCreateWallFirstOpening(
+		layout,
+		{ wallId: layout.walls[0]!.id, kind: 'door', offset: 1, width: 0.9, height: 2.1, sillHeight: 0 },
+		freshCapture(),
+		layout.floor.id
+	);
+	if (first.kind !== 'success') throw new Error(`the first door no longer plans: ${first.rejection.code}`);
+	const second = planCreateWallFirstOpening(
+		first.document,
+		{ wallId: first.document.walls[1]!.id, kind: 'door', offset: 1, width: 0.9, height: 2.1, sillHeight: 0 },
+		freshCapture(),
+		first.document.floor.id
+	);
+	if (second.kind !== 'success') throw new Error(`the second door no longer plans: ${second.rejection.code}`);
+	return { compiled: compileWallFirstLayoutGeometry(second.document).geometry, document: second.document };
+}
+
 function withWindow(fixture: Fixture): Fixture {
 	const layout = fixture.document;
 	const window = planCreateWallFirstOpening(
@@ -164,6 +193,19 @@ function evaluate(
 }
 
 const EMPTY_PROJECTION: PlanSceneProjection = { footprints: [] };
+
+/** One synthetic batch entry; the addressability contract reads only these fields. */
+function lineOf(sourceId: string, segments: number): PaperLineDraw {
+	return {
+		key: `${sourceId}:${segments}`,
+		sourceId,
+		stream: 'symbol',
+		layer: PAPER_LAYER.symbol,
+		treatment: 'symbol',
+		elevationMeters: 0,
+		segments: Array.from({ length: segments }, (_, index): PaperSegment => [[index, 0], [index + 1, 0]])
+	};
+}
 
 function drawnSourceStreams(drawing: ReturnType<typeof buildPaperPlan>): Set<string> {
 	const drawn = new Set<string>();
@@ -613,6 +655,192 @@ describe('Paper Plan — Scene and native-form outlines', () => {
 		const outlined = drawing.footprints[0]!;
 		expect(outlined.segments).toHaveLength(4);
 		expect(outlined.polygons[0]).toEqual(projection.footprints[0]!.points);
+	});
+});
+
+describe('G3 — selection changes Paper visibility, not its drawing', () => {
+	it('addresses one source as contiguous instance runs of a batch', () => {
+		expect(paperSourceRuns([lineOf('a', 2), lineOf('a', 1), lineOf('b', 2)])).toEqual([
+			{ sourceId: 'a', start: 0, count: 3 },
+			{ sourceId: 'b', start: 3, count: 2 }
+		]);
+	});
+
+	it('hides the exact segments, keeps dash distances and reuses every Paper resource', () => {
+		const fixture = withTwoDoors(enclosure(STARTER_ENCLOSURE_POINTS));
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const [first, second] = fixture.compiled.walls.flatMap((wall) => wall.openings);
+		if (first === undefined || second === undefined) throw new Error('the two-door fixture has no two Openings');
+		const openingIds = [first.openingId, second.openingId] as const;
+		for (const id of openingIds) {
+			expect(paperHiddenSource(openingSelection(id))).toBe(id);
+			expect(drawing.lines.some((line) => line.sourceId === id)).toBe(true);
+		}
+		expect(paperHiddenSource(null)).toBeNull();
+
+		const counts = new Map<string, number>();
+		const previous = setWorkObserver({
+			span() {},
+			count(name, amount) {
+				counts.set(name, (counts.get(name) ?? 0) + amount);
+			}
+		});
+		const resources = createPaperScene(drawing, [800, 600]);
+		try {
+			const inks = () =>
+				resources.group.children.filter(
+					(child): child is LineSegments2 => child instanceof LineSegments2
+				);
+			const positionBuffer = (ink: LineSegments2) =>
+				(ink.geometry.getAttribute('instanceStart') as InterleavedBufferAttribute)
+					.data as InstancedInterleavedBuffer;
+			const distanceBuffer = (ink: LineSegments2) => {
+				const attribute = ink.geometry.getAttribute('instanceDistanceStart') as
+					| InterleavedBufferAttribute
+					| undefined;
+				return attribute === undefined ? null : (attribute.data as InstancedInterleavedBuffer);
+			};
+			const instances = (ink: LineSegments2) => {
+				const positions = positionBuffer(ink).array as Float32Array;
+				const buffer = distanceBuffer(ink);
+				const distances = buffer === null ? null : (buffer.array as Float32Array);
+				return Array.from({ length: ink.geometry.instanceCount }, (_, index) => ({
+					segment: Array.from(positions.slice(index * 6, index * 6 + 6)),
+					distance: distances === null ? null : Array.from(distances.slice(index * 2, index * 2 + 2))
+				}));
+			};
+			const key = (values: readonly number[]) => values.map((value) => value.toFixed(6)).join(',');
+			// The buffer is Float32; key the drawing's doubles through the same width.
+			const segmentKey = (line: PaperLineDraw, segment: PaperSegment) =>
+				key(
+					Array.from(
+						new Float32Array([
+							segment[0][0],
+							line.elevationMeters,
+							segment[0][1],
+							segment[1][0],
+							line.elevationMeters,
+							segment[1][1]
+						])
+					)
+				);
+			const drawnSegments = (sourceId: string | null) =>
+				drawing.lines
+					.filter((line) => sourceId === null || line.sourceId === sourceId)
+					.flatMap((line) => line.segments.map((segment) => segmentKey(line, segment)));
+			const without = (all: readonly string[], removed: readonly string[]) => {
+				const remaining = new Map<string, number>();
+				for (const entry of all) remaining.set(entry, (remaining.get(entry) ?? 0) + 1);
+				for (const entry of removed) remaining.set(entry, (remaining.get(entry) ?? 1) - 1);
+				return [...remaining]
+					.filter(([, count]) => count > 0)
+					.flatMap(([entry, count]) => Array.from({ length: count }, () => entry))
+					.sort();
+			};
+			const visibleSegments = () =>
+				inks()
+					.flatMap((ink) => instances(ink).map((instance) => key(instance.segment)))
+					.sort();
+
+			// Everything the scene realized. Identity is the only observable that
+			// distinguishes a new GPU allocation from a content update.
+			const realized = inks().map((ink) => ({
+				object: ink,
+				geometry: ink.geometry,
+				positions: positionBuffer(ink),
+				distances: distanceBuffer(ink),
+				renderOrder: ink.renderOrder
+			}));
+			const positionArrays = realized.map((entry) => Float32Array.from(entry.positions.array as Float32Array));
+			const distanceArrays = realized.map((entry) =>
+				entry.distances === null ? null : Float32Array.from(entry.distances.array as Float32Array)
+			);
+			const countsBefore = realized.map((entry) => entry.geometry.instanceCount);
+			const versions = realized.map((entry) => entry.positions.version);
+			const childCount = resources.group.children.length;
+			const all = drawnSegments(null);
+			expect(realized.length).toBeGreaterThan(0);
+			expect(realized.some((entry) => entry.distances !== null)).toBe(true);
+			expect(positionArrays.reduce((sum, array) => sum + array.length, 0)).toBe(all.length * 6);
+			expect(visibleSegments()).toEqual([...all].sort());
+
+			// Every segment's own dash pair, so a shift after hiding would be visible.
+			const distancesBySegment = new Map<string, Set<string>>();
+			for (const ink of inks()) {
+				for (const instance of instances(ink)) {
+					if (instance.distance === null) continue;
+					const set = distancesBySegment.get(key(instance.segment)) ?? new Set<string>();
+					set.add(key(instance.distance));
+					distancesBySegment.set(key(instance.segment), set);
+				}
+			}
+			const sameResources = () => {
+				const now = inks().map((ink) => ({
+					object: ink,
+					geometry: ink.geometry,
+					positions: positionBuffer(ink),
+					distances: distanceBuffer(ink),
+					renderOrder: ink.renderOrder
+				}));
+				expect(now).toHaveLength(realized.length);
+				for (const [index, entry] of now.entries()) {
+					const before = realized[index]!;
+					expect(entry.object).toBe(before.object);
+					expect(entry.geometry).toBe(before.geometry);
+					expect(entry.positions).toBe(before.positions);
+					expect(entry.distances).toBe(before.distances);
+					expect(entry.renderOrder).toBe(before.renderOrder);
+				}
+				expect(resources.group.children).toHaveLength(childCount);
+			};
+
+			// A: exactly the complement, with each segment's dash pair carried over.
+			resources.setHiddenSource(openingIds[0]);
+			expect(counts.get('paper:scene-build')).toBe(1);
+			expect(
+				realized.some((entry, index) => entry.positions.version > versions[index]!)
+			).toBe(true);
+			sameResources();
+			expect(visibleSegments()).toEqual(without(all, drawnSegments(openingIds[0])));
+			for (const ink of inks()) {
+				for (const instance of instances(ink)) {
+					if (instance.distance === null) continue;
+					expect(distancesBySegment.get(key(instance.segment))).toContain(key(instance.distance));
+				}
+			}
+
+			// A → B: B's complement replaces A's without allocating anything.
+			resources.setHiddenSource(openingIds[1]);
+			expect(counts.get('paper:scene-build')).toBe(1);
+			sameResources();
+			expect(visibleSegments()).toEqual(without(all, drawnSegments(openingIds[1])));
+
+			// None: the built drawing returns byte for byte, in the same buffers.
+			resources.setHiddenSource(null);
+			expect(counts.get('paper:scene-build')).toBe(1);
+			sameResources();
+			expect(visibleSegments()).toEqual([...all].sort());
+			for (const [index, entry] of realized.entries()) {
+				expect(entry.geometry.instanceCount).toBe(countsBefore[index]);
+				expect(Array.from(entry.positions.array as Float32Array)).toEqual(Array.from(positionArrays[index]!));
+				if (entry.distances !== null) {
+					expect(Array.from(entry.distances.array as Float32Array)).toEqual(
+						Array.from(distanceArrays[index]!)
+					);
+				}
+			}
+		} finally {
+			resources.dispose();
+			setWorkObserver(previous);
+		}
+	});
+
+	it('keeps the drawing unfiltered, so a selection never owns a second copy', () => {
+		const fixture = withDoor(enclosure(STARTER_ENCLOSURE_POINTS));
+		const drawing = buildPaperPlan(evaluate(fixture.compiled), fixture.compiled, EMPTY_PROJECTION);
+		const opening = fixture.compiled.walls.flatMap((wall) => wall.openings)[0]!;
+		expect(paperHiddenSource(openingSelection(opening.openingId))).toBe(opening.openingId);
+		expect(drawing.lines.some((line) => line.sourceId === opening.openingId)).toBe(true);
 	});
 });
 
