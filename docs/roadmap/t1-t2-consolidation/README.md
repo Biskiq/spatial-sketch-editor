@@ -1,13 +1,10 @@
 # T1/T2 — Architecture and performance consolidation
 
-**Status:** planning baseline for owner review. Nothing here is implemented and nothing in it
-authorises implementation; each slice is claimed and reviewed as its own pull request after this
-plan is approved. **Base:** `main` at `afca870f` (PR #314 merged). **Tier:** 2 for the plan (it
+**Status:** owner-approved Tier 2 execution plan (2026-11-13). No production remediation is part of this planning PR. The owner authorises the milestone and its bounded D1 measurements; implementation groups E0–E12 and X1–X8 still require individual claims, applicable reviews and verification before merge. **Base:** `main` at `afca870f` (PR #314 merged). **Tier:** 2 for the plan (it
 proposes enforcement of hard rules and edits to reference contracts); each slice carries its own
 tier in [`slices.md`](./slices.md).
 
-**Claim check (2026-11-13):** the only open pull request is draft #291 (`T2.S0`, Gate A). Open
-issues are #284, #280 and #273. None claims this work.
+**Claim discipline:** check live issues and pull requests before and immediately after every E/X claim; this planning PR is not a claim for any implementation group. Draft #291 (`T2.S0`, Gate A) remains an external prerequisite for E6; issue #273's bounded performance-flow repair belongs to E0.
 
 ## Goal
 
@@ -66,48 +63,26 @@ parallel sessions; order inside a lane is fixed. If the milestone is cut short, 
 I1, G2, I2 + G1, R1, R2a, R3. R7 (instancing and batching) is gated and expected to be abandoned
 unless measurement shows the frame is draw-bound.
 
-## Owner decisions
+## Owner-approved decisions D1–D5 (2026-11-13)
 
-These are the choices the plan cannot make. Each has a recommendation and a default the plan
-assumes; none blocks C0, I1, I2, I3, G2 or G3.
+The owner approves the recommendations below as the execution policy for this milestone. These decisions replace the undecided defaults from the planning draft. They authorise the plan and the bounded measurements, **not a blanket merge or implementation waiver**: claim each E/X packet separately and respect its tests, rollback, Tier 2 gates and external prerequisites. No code optimisation is deemed measured or accepted by this approval.
 
-### D1 — Measurement authority
+### D1 — Measurement authority: approved, bounded
 
-[`performance.md`](../../reference/components/performance.md) makes performance investigation
-owner-initiated and bounds wall-clock runs to `npm run perf:spot`. This milestone asks for targeted
-measurement inside slices. Issue #273 reports the perf browser flows drive a menu that no longer
-exists.
-**Recommend:** treat this plan's approval as the owner initiation; counts are the default and need
-no further authorisation; authorise `perf:spot` at exactly two checkpoints (C0 baseline, milestone
-end) and single named traces where a slice asks for one; fold the #273 repair into C0.
-**Default if undecided:** counts and traces only; wall-clock baseline recorded as unmeasured.
+This owner approval initiates the milestone-specific performance investigation under [performance.md](../../reference/components/performance.md). Deterministic work counts and mounted-call-site characterisations are permitted inside each relevant packet without repeat approval. Authorise exactly **two** `npm run perf:spot` executions: **E0/C0 baseline** and **integrated milestone end**. A slice may run **one named, targeted trace** where its specification needs attribution; record the flow, provenance and observed values. No full perf battery, stress matrix, automatic retry, or per-slice wall-clock certification. Measurements absent from the evidence stay **unmeasured**. E0 owns the bounded repair of issue [#273](https://github.com/Biskiq/spatial-sketch-editor/issues/273) so the approved spot workflow targets the actual UI; do not silently expand the benchmark scope.
 
-### D2 — Visitor free look outside the Camera authority (AR-7)
+### D2 — Visitor free look: explicit temporary exception
 
-The visitor's neutral frame is driven by `OrbitControls`, a pose authority outside Camera. Hard
-rule 1 lists free look as a profile realised through Camera.
-**Recommend:** record it as a named, tested exception until T3 owns free look, rather than rebuild
-Camera work inside a T1/T2 milestone.
-**Default if undecided:** unchanged and unscheduled; the finding stays open.
+Accept **AR-7** as a named, temporary exception: the neutral visitor's `OrbitControls` currently drives free-look pose outside Camera. This does **not** create a second authored Camera, approve a new authority, or claim general hard-rule compliance. Leave free-look migration outside T1/T2; T3 owns its eventual reconciliation. Existing visitor navigation behavior must not regress, and T3's work must include a targeted regression/authority test before the exception is retired. Keep AR-7 visible in the audit until then.
 
-### D3 — Candidate preview wording in the reference contracts
+### D3 — Candidate preview contract: approved target for E4/G1
 
-`architecture.md` describes a candidate preview as a compile plus `buildPaperPlan`;
-`layout-performance.md` keeps compilation off the per-move path. Both are satisfiable.
-**Recommend:** keep the design — a candidate goes through the one compiler, never a second
-evaluator — and amend both to say "once per distinct candidate, through a session; never per
-frame". G1 carries the edit.
-**Default if undecided:** G1 implements that behaviour and leaves the wording for the next owner
-checkpoint.
+Use the **single canonical Layout compiler** through the **project-scoped session**. For each **distinct candidate**, compile and build its Paper result once; reuse the unchanged result across refreshes and idle frames, never recompiling because an rAF tick occurred. Preserve the planner's candidate/release correspondence and refusal semantics. The references describe this as a **target**, not already-shipped behavior; E4/G1 implements and proves it and reconciles any remaining reference wording with the shipped path. No second preview evaluator or duplicate compiler is admitted.
 
-### D4 — Ordering against T2.S0 (PR #291) and Directional retirement
+### D4 — T2 pipeline and light-retirement prerequisites: approved order
 
-R2 encodes the Gate A pipeline record; R6 assumes Point, Spot and the Sky's Sun only.
-**Recommend:** merge #291's Gate A record before R2a opens; land Directional retirement as its own
-product slice before R6.
-**Default if undecided:** R2a reads the pipeline values from the code as merged; R6 waits.
+Merge the applicable T2.S0 Gate A record in [PR #291](https://github.com/Biskiq/spatial-sketch-editor/pull/291) **before E6/R2a** adopts material pipeline values. Do not treat a draft Gate A as landed. **Directional retirement** is a separate T2 product slice that must land **before E10/R6**; E10 does not perform that retirement and must wait if it is unresolved. Other independent E/X packets may proceed while these prerequisites are pending.
 
-### D5 — Priority
+### D5 — Priority: T1/T2 milestone active
 
-[`focus.md`](../../../focus.md) names the PR #259 harness cutover as the current priority and
-changes only by owner commit. Scheduling this milestone is the owner's call.
+Advance [focus.md](../../../focus.md) to **T1/T2 consolidation (#317)**. PR #259's harness cutover is already merged; its old focus line is stale. After this planning PR merges, begin **E0 alone** to establish names, fixtures, baseline counts and the bounded D1 checkpoint. Then allow disjoint implementation packets under the [execution schedule](./execution-schedule.md), normally at most **two local coding agents** and **one shared heavy verification/benchmark slot** to avoid CPU contention. Schedule by file ownership and landed interfaces, not by fixed wave barriers or PR quotas. The owner initiates agents by prompt; this approval does not launch them.

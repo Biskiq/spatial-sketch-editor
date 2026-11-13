@@ -133,6 +133,8 @@ visitor chunks exclude editor selection, history, gizmos and authoring stores.
 Repairable unresolved authored bindings remain explicit under F.1/F.4;
 selected executable/publication programs require closure under F.5.
 
+**Temporary visitor exception (T1/T2 D2, AR-7).** The existing neutral visitor free-look pose is driven by `OrbitControls` outside the Camera evaluator. The owner has explicitly accepted this named exception until T3 reconciles the visitor free-look authority. It is not a second authored Camera or a claim that hard rule 1 is satisfied. Preserve existing navigation behavior; T3 must establish a targeted regression/authority test before removing the exception. The [T1/T2 audit](../roadmap/t1-t2-consolidation/audit.md) continues to record AR-7 as unresolved.
+
 ### Expressive creation and revision (destination)
 
 the [North Star](./north-star.md#creative-freedom-and-depth) owns the product principles.
@@ -421,7 +423,11 @@ normal, so one gesture can travel valid → invalid → valid without the previe
 Release while refused writes nothing and restores the accepted geometry with no history entry.
 The attempted geometry is never compiled, persisted, admitted to history or serialized. Layout builds its preview from the planner's own
 candidate document through the existing compile and `buildPaperPlan` path — the same solve release
-commits — and filters it to the changed Wall and Opening ids. Paper's bounded sheet includes a live
+commits — and filters it to the changed Wall and Opening ids.
+**Approved optimization target (E4/G1, not yet shipped):** use one project-scoped canonical
+compiler session and reuse the compiled Paper result once per **distinct candidate**, never per
+rAF tick or unchanged frame. The accepted intent and the preview must remain the same solve; no
+second preview evaluator is permitted. Paper's bounded sheet includes a live
 candidate's extent, so a drag never leaves the sheet, and the Camera is never reframed by it.
 
 ### Coordination over domain policy
